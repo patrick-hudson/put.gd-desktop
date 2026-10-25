@@ -1,0 +1,25 @@
+{
+ "removed": [
+  "/var/home/lab/.local/state/putgd",
+  "/var/home/lab/.local/share/putgd",
+  "/var/home/lab/Pictures/afa-aurora-vm-edited.png",
+  "/var/home/lab/afa-aurora-vm-review.mp4",
+  "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/appdir",
+  "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/frames",
+  "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/config",
+  "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/cache",
+  "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive",
+  "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/working",
+  "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/urldata"
+ ],
+ "leftovers": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ },
+ "after": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ }
+}

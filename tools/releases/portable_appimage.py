@@ -39,7 +39,9 @@ def tools(directory: Path) -> tuple[dict, dict[str, Path]]:
         else:
             temporary = path.with_suffix(path.suffix + ".download")
             try:
-                urllib.request.urlretrieve(item["url"], temporary)
+                # A socket timeout, so a stalled download fails instead of hanging the build (#467).
+                with urllib.request.urlopen(item["url"], timeout=120) as response, temporary.open("wb") as target:
+                    shutil.copyfileobj(response, target)
                 if digest(temporary) != item["sha256"]:
                     raise ValueError("Official deployment tool digest mismatch: " + item["name"])
                 temporary.replace(path)
@@ -143,8 +145,9 @@ def deployment_qmake(qt: Path, output: Path) -> Path:
 # linuxdeploy's Qt plugin deploys only xcb unless told otherwise. The resident
 # starts its image worker (`putgd-ui --image-job`, src/core/ImageJob.cpp) on
 # offscreen, as do putgd-record and the editor job without a display; Qt aborts
-# a process whose requested platform plugin is absent.
-EXTRA_PLATFORM_PLUGINS = ("libqwayland-generic.so", "libqwayland-egl.so", "libqoffscreen.so")
+# a process whose requested platform plugin is absent. Since Qt 6.10 one
+# libqwayland.so serves the wayland and wayland-egl platform names.
+EXTRA_PLATFORM_PLUGINS = ("libqwayland.so", "libqoffscreen.so")
 
 
 # The image worker decodes History's GIF and WebP previews (#189) with these;
@@ -376,8 +379,8 @@ def write_gpl_notice(appdir: Path, components: list[dict], ffmpeg: dict, version
              "(usr/share/doc/putgd/bundled-licenses/ffmpeg/COPYING.GPLv2). put.gd's own code stays",
              "MIT licensed; every bundled component keeps its own license, listed under",
              "usr/share/doc/putgd/bundled-licenses.", "",
-             "Corresponding source: the release asset putgd-" + version + "-appimage-media-source.tar.gz",
-             "(FFmpeg, x264, x265 and the GStreamer plugin linking x264) and putgd-" + version + "-source.tar.gz",
+             "Corresponding source: the release asset putgd-" + version + "-appimage-complete-source.tar.gz",
+             "(all bundled components, including Qt, LGPL libraries and the static runtime) and putgd-" + version + "-source.tar.gz",
              "(put.gd), published with this image on the project's GitHub release. The source location",
              "of every other bundled component, Qt and the LGPL libraries among them, is listed in",
              "runtime-notices.txt and bundled-components.json.", "",
@@ -549,7 +552,7 @@ def main() -> int:
     parser.add_argument("--stage", type=Path, required=True, help="CMake DESTDIR root containing usr/")
     parser.add_argument("--output-dir", type=Path, required=True, help="New output directory")
     parser.add_argument("--tools-dir", type=Path, required=True)
-    parser.add_argument("--qt-root", type=Path, required=True, help="Official Qt 6.8.3 gcc_64 install")
+    parser.add_argument("--qt-root", type=Path, required=True, help="Official Qt gcc_64 install of the locked version (tools.lock.json)")
     parser.add_argument("--dependency-prefix", type=Path, required=True, help="QtKeychain/LayerShellQt install prefix")
     parser.add_argument("--license-source", type=Path, action="append", required=True,
                         help="Pinned licence source of a bundled component, named by its id "
@@ -662,6 +665,10 @@ def main() -> int:
         distro_licenses.update(system_library_licenses(root, claimed, media_origins))
         return distro_licenses
 
+    # Native DEP-5 metadata includes distro-owned runtime claims. The AppImage
+    # generates its own complete notices and source inventory below.
+    for native_doc in ("copyright", "changelog.gz"):
+        (appdir / "usr/share/doc/putgd" / native_doc).unlink(missing_ok=True)
     notices = appimage_notices.finish(appdir, qt=qt, lock=lock, license_sources=args.license_source,
                                       distro_packages=distro_packages, version=args.version,
                                       build=inventory["manifest"], gpl=gpl)

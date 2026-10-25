@@ -1,0 +1,131 @@
+{
+ "to": "nightly",
+ "patch": true,
+ "patchError": {
+  "code": "",
+  "details": {},
+  "message": ""
+ },
+ "check": {
+  "ok": true,
+  "seconds": 1.84,
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "attemptedAt": "2026-10-23T20:50:35Z",
+   "build": {
+    "channel": "nightly",
+    "kind": "nightly",
+    "packageTarget": "appimage",
+    "reason": null,
+    "supported": true,
+    "version": "26.1023.1068-nightly"
+   },
+   "channel": "nightly",
+   "channelSetting": "nightly",
+   "channelSource": "setting",
+   "check": true,
+   "checkedAt": "2026-10-23T20:50:35Z",
+   "checking": false,
+   "enabled": true,
+   "error": null,
+   "install": {
+    "available": true,
+    "backup": null,
+    "image": "/var/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-nightly-x86_64.AppImage",
+    "installed": null,
+    "kind": "update",
+    "reason": null,
+    "restartRequired": false,
+    "running": false,
+    "state": "idle",
+    "switch": null
+   },
+   "nextCheckAt": "2026-10-24T20:59:17Z",
+   "notifies": false,
+   "reason": null,
+   "result": {
+    "action": {
+     "kind": "download",
+     "repository": "none"
+    },
+    "asset": {
+     "name": "putgd-26.1023.1058-nightly-x86_64.AppImage",
+     "sha256": "ce707fcf4e693b5ca9024da539e5510e149c5edf8a6a17bca28d815e0e20e6db",
+     "size": 115309048
+    },
+    "channel": "nightly",
+    "channelSource": "setting",
+    "checkedAt": "2026-10-23T20:50:35Z",
+    "current": "26.1023.1068-nightly",
+    "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-x86_64.AppImage",
+    "latest": "26.1023.1058-nightly",
+    "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly",
+    "packageTarget": "appimage",
+    "publishedAt": "2026-10-23T04:10:17Z",
+    "tag": "v26.1023.1058-nightly",
+    "updateAvailable": false
+   },
+   "supported": true
+  },
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "status": {
+  "channel": "nightly",
+  "channelSetting": "nightly",
+  "supported": true,
+  "reason": null,
+  "notifies": false,
+  "error": null,
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "asset": {
+    "name": "putgd-26.1023.1058-nightly-x86_64.AppImage",
+    "sha256": "ce707fcf4e693b5ca9024da539e5510e149c5edf8a6a17bca28d815e0e20e6db",
+    "size": 115309048
+   },
+   "channel": "nightly",
+   "channelSource": "setting",
+   "checkedAt": "2026-10-23T20:50:35Z",
+   "current": "26.1023.1068-nightly",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-x86_64.AppImage",
+   "latest": "26.1023.1058-nightly",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly",
+   "packageTarget": "appimage",
+   "publishedAt": "2026-10-23T04:10:17Z",
+   "tag": "v26.1023.1058-nightly",
+   "updateAvailable": false
+  },
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "26.1023.1068-nightly"
+  },
+  "install": {
+   "available": true,
+   "backup": null,
+   "image": "/var/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-nightly-x86_64.AppImage",
+   "installed": null,
+   "kind": "update",
+   "reason": null,
+   "restartRequired": false,
+   "running": false,
+   "state": "idle",
+   "switch": null
+  }
+ },
+ "notifications": [],
+ "full": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm-labh/full/aurora-vm-labh-344-nightly.png"
+}

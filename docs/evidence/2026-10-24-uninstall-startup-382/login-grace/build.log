@@ -1,0 +1,38 @@
+[0/1] Re-running CMake...
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/patrick/work/pgcc/build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.13")  
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found suitable version "3.0.13", minimum required is "1.1.1") found components: Crypto 
+-- Checking for modules 'gstreamer-1.0>=1.24;gstreamer-video-1.0>=1.24;gstreamer-app-1.0>=1.24'
+--   Package 'gstreamer-1.0', required by 'virtual:world', not found
+--   Package 'gstreamer-video-1.0', required by 'virtual:world', not found
+--   Package 'gstreamer-app-1.0', required by 'virtual:world', not found
+-- Checking for modules 'libavcodec>=60.31;libavformat>=60.16;libavfilter>=9.12;libavutil>=58.29;libswscale>=7.5;libswresample>=4.12'
+--   Package 'libavcodec', required by 'virtual:world', not found
+--   Package 'libavformat', required by 'virtual:world', not found
+--   Package 'libavfilter', required by 'virtual:world', not found
+--   Package 'libavutil', required by 'virtual:world', not found
+--   Package 'libswscale', required by 'virtual:world', not found
+--   Package 'libswresample', required by 'virtual:world', not found
+-- putgd-record not built: GStreamer >= 1.24 and FFmpeg >= 6.1 development libraries are required; screen recording reports recording_helper_missing
+-- GNOME extension ownership contract runs in the GNOME lab with its native GJS runtime
+-- Configuring done (0.7s)
+-- Generating done (0.7s)
+-- Build files have been written to: /home/patrick/work/pg382/build/dev
+[1/22] Automatic MOC and UIC for target putgd_log
+[2/20] Automatic MOC and UIC for target putgd_ui_control
+[3/18] cd /home/patrick/work/pg382/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/pg382 -DOUTPUT_DIR=/home/patrick/work/pg382/build/dev/build-identity -DRELEASE_TAG= -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -DSUPPLIED_TIME= -P /home/patrick/work/pg382/cmake/GenerateBuildInfo.cmake
+[4/16] Automatic MOC and UIC for target putgd_core
+[5/14] Automatic MOC and UIC for target putgd_credentials
+[6/12] Automatic MOC and UIC for target putgd_app
+[7/11] Building CXX object CMakeFiles/putgd_app.dir/src/app/LoginStartup.cpp.o
+[8/11] Linking CXX static library libputgd_app.a
+[9/11] Automatic MOC and UIC for target test_login_startup
+[10/10] Linking CXX executable test_login_startup

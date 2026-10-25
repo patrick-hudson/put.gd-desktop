@@ -1,0 +1,71 @@
+{
+ "to": "stable",
+ "patch": true,
+ "patchError": {
+  "code": "",
+  "details": {},
+  "message": ""
+ },
+ "check": {
+  "ok": false,
+  "seconds": 1.55,
+  "result": {},
+  "error": {
+   "code": "update_check_unavailable",
+   "details": {
+    "reason": "development_build"
+   },
+   "message": "This build does not check for updates"
+  }
+ },
+ "status": {
+  "channel": "stable",
+  "channelSetting": "stable",
+  "supported": false,
+  "reason": "development_build",
+  "notifies": true,
+  "error": null,
+  "result": null,
+  "build": {
+   "channel": null,
+   "kind": "none",
+   "packageTarget": "appimage",
+   "reason": "development_build",
+   "supported": false,
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  },
+  "install": {
+   "available": false,
+   "backup": null,
+   "image": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+   "installed": null,
+   "kind": "update",
+   "reason": "development_build",
+   "restartRequired": false,
+   "running": false,
+   "state": "idle",
+   "switch": null
+  }
+ },
+ "notifications": [
+  {
+   "category": "putgd.ui",
+   "fields": {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+    "operationId": null,
+    "summary": "operation_completed",
+    "title": "put.gd \u2014 completed",
+    "warning": false
+   },
+   "level": "info",
+   "message": "Notification shown",
+   "pid": 526865,
+   "process": "putgd",
+   "time": "2026-10-23T18:45:58.048Z",
+   "v": 1
+  }
+ ],
+ "full": "/home/patrick/work/put.gd-qt418/afa/runs/m74/full/m74-344-stable.png"
+}

@@ -1,0 +1,6 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "initial": "AltF8 then60Left selectedGNOMEleftedge and expanded window partlyoffscreen; crop guard refused image",
+  "correction": "AltF8 selectleftedge then60Right shrinksownedwindow toitsnormal1060minimum; original privateframe retained",
+  "productionSourceUnchanged": true
+}

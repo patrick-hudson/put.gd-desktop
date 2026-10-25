@@ -1,0 +1,5 @@
+2026-10-23T19:58:11Z deb-c2 old resident 537730 in session c32
+2026-10-23T19:58:15Z deb-c2 old resident 537730 gone 3.1 s after logout; session c32: closing
+2026-10-23T19:58:20Z deb-c2 relogin requested
+2026-10-23T19:58:24Z deb-c2 fresh resident(s): 538859@c34
+2026-10-23T19:58:34Z deb-c2 capture completed  [{'mime': 'image/png', 'bytes': 852805, 'local': 'saved', 'file': 'Screen-Capture-2026-10-23-14-58-32.png', 'pixels': [1920, 1080], 'error': ''}]

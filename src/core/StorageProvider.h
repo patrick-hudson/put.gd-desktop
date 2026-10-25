@@ -104,7 +104,9 @@ public:
  virtual QString serializationKey(const Destination&,const QJsonObject& objectReference,const QString& candidate) const=0;
  virtual Error validateSettings(const QJsonObject&) const=0;
  virtual Error validateCredentials(const QJsonObject&) const { return {}; }
- virtual void checkName(const Destination&,const QString&,std::function<void(NameCheck)>)=0;
+ // A cancelled name check must stop queued/in-flight work and complete promptly.
+ // It is read-only: an inconclusive/cancelled result never reserves a target.
+ virtual void checkName(const Destination&,const QString&,std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {})=0;
  virtual void upload(const UploadRequest&,std::function<void(UploadResult)>)=0;
  virtual void stat(const StorageReceipt&,std::function<void(StatResult)>)=0;
  virtual void reconcile(const UploadRequest&,std::function<void(StatResult)>)=0;

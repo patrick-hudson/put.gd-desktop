@@ -72,6 +72,64 @@ class LabContracts(unittest.TestCase):
                     # Unset in the session: the login's values stay, as before.
                     self.assertEqual(result, '/etc/xdg|/ssh/share|:7')
 
+    def test_guest_session_shows_appimage_entries_to_the_compositor(self):
+        # #523: AppRun's host entries (KWin permission, icon entries named by the
+        # windows' app IDs) go to XDG_DATA_HOME/applications. KWin reads the
+        # session's data home, so only applications/ points there; put.gd's own
+        # data stays in the private data home.
+        import os, subprocess
+        body = 'printf "%s|%s" "$XDG_DATA_HOME" "$(readlink "$XDG_DATA_HOME/applications")"\n'
+        def script(install):
+            scripts = []
+            with patch.object(lab, 'state', return_value={'guest_user': 'lab', 'profile': 'neon-kde-wayland'}), \
+                 patch.object(lab, 'load_profile', return_value={'session_process': 'plasmashell', 'qt_platform': 'wayland',
+                                                                 'install': install}), \
+                 patch.object(lab, 'ssh', side_effect=lambda _run, text, *a, **k: scripts.append(text) or ''):
+                lab.guest_session('run', body)
+            return scripts[0]
+        def run(text, home, session):
+            root = home / 'bin'
+            root.mkdir(exist_ok=True)
+            shell = subprocess.Popen(['sleep', '30'], env=dict(session, PATH=os.environ['PATH']))
+            try:
+                # Stands in for pgrep, so no real desktop shell on this host is read.
+                (root / 'pgrep').write_text('#!/bin/sh\necho ' + str(shell.pid) + '\n')
+                (root / 'pgrep').chmod(0o700)
+                return subprocess.check_output(['sh', '-c', text], text=True,
+                                               env={'PATH': str(root) + ':' + os.environ['PATH'], 'HOME': str(home)})
+            finally:
+                shell.kill(); shell.wait()
+        appimage = script('appimage')
+        for session_data in (None, 'custom-data'):
+            with self.subTest(session_data=session_data), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                session = {'XDG_SESSION_TYPE': 'wayland', 'WAYLAND_DISPLAY': '/nonexistent/wayland-0'}
+                if session_data:
+                    session['XDG_DATA_HOME'] = str(home / session_data)
+                expected = home / (session_data or '.local/share') / 'applications'
+                self.assertEqual(run(appimage, home, session), f'{home}/putgd-lab/data|{expected}')
+                self.assertTrue(expected.is_dir())
+                # Entries AppRun writes through the link land where KWin looks.
+                (home / 'putgd-lab/data/applications/putgd-ui.desktop').write_text('[Desktop Entry]\n')
+                self.assertTrue((expected / 'putgd-ui.desktop').is_file())
+                # Every later session command keeps the same link.
+                self.assertEqual(run(appimage, home, session), f'{home}/putgd-lab/data|{expected}')
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            session = {'XDG_SESSION_TYPE': 'wayland', 'WAYLAND_DISPLAY': '/nonexistent/wayland-0'}
+            # An overlay whose private applications/ already holds files keeps it.
+            (home / 'putgd-lab/data/applications').mkdir(parents=True)
+            (home / 'putgd-lab/data/applications/putgd-appimage-OLD.desktop').write_text('[Desktop Entry]\n')
+            self.assertEqual(run(appimage, home, session), f'{home}/putgd-lab/data|')
+            self.assertTrue((home / 'putgd-lab/data/applications/putgd-appimage-OLD.desktop').is_file())
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            session = {'XDG_SESSION_TYPE': 'wayland', 'WAYLAND_DISPLAY': '/nonexistent/wayland-0'}
+            # Package profiles install their entries system-wide; nothing is linked.
+            self.assertNotIn('session_applications', script('deb'))
+            self.assertEqual(run(script('deb'), home, session), f'{home}/putgd-lab/data|')
+            self.assertFalse((home / '.local/share/applications').exists())
+
     def test_tablet_ticks_preserve_pixel_targets_for_native_rounding(self):
         # Actual KWin fullscreen probe: old ticks 15372/17421 delivered
         # 600.46875/680.5078125, so Qt selected 81 instead of 80 pixels.
@@ -1012,6 +1070,20 @@ Virtual-3 disconnected (normal left inverted right x axis y axis)
         image = lock['images']['cinnamon-x11']
         self.assertEqual(image['sha256'], 'a081ab202cfda17f6924128dbd2de8b63518ac0531bcfe3f1a1b88097c459bd4')
         self.assertEqual(image['signingFingerprint'], '27DEB15644C6B3CF3BD7D291300F846BA25BAE09')
+
+    def test_neon_profile_is_a_bios_appimage_plasma_wayland_guest_with_a_locked_iso(self):
+        lock = json.loads((ROOT / 'tools/lab/image-lock.json').read_text())
+        for name, sha256 in (('kde-neon-user', 'b1b3bd85136a358713b73155cc662170337bed6d702c65488266a40fec842e3a'),
+                             ('kde-neon-unstable', 'e81d627d27a61b0f3d106998d4377b6e3677b1cea6725e24123889b7e01dc6eb')):
+            self.assertEqual(lock['images'][name]['sha256'], sha256)
+            self.assertEqual(lock['images'][name]['signingFingerprint'], 'B74EA2162376765BEAC3AE4345F4C354638D1F29')
+        profile = lab.load_profile('neon-kde-wayland')
+        self.assertEqual((profile['desktop'], profile['session'], profile['session_process']), ('KDE', 'wayland', 'plasmashell'))
+        self.assertEqual(profile['image'], 'kde-neon')
+        self.assertIsNone(lab.uefi_firmware(profile))
+        # The Ubuntu 24.04 DEB is built on Qt 6.4.2 without the LayerShellQt region overlay.
+        self.assertEqual(lab.install_format(profile), 'appimage')
+        self.assertEqual(profile['fixture_hotkeys'], lab.load_profile('kde-wayland')['fixture_hotkeys'])
 
 
 if __name__ == '__main__':

@@ -1,0 +1,80 @@
+{
+  "missingDevelopmentPackages": [
+    "libgstreamer1.0-dev",
+    "libgstreamer-plugins-base1.0-dev",
+    "libavcodec-dev",
+    "libavformat-dev",
+    "libavfilter-dev",
+    "libavutil-dev",
+    "libswscale-dev",
+    "libswresample-dev"
+  ],
+  "ffmpegOnlyAdditionalDependency": "libpostproc-dev",
+  "hostTransactions": "Broad dependency transaction NOT applied; final recorder-enabled artifact built in pinned supported Ubuntu24 container instead",
+  "logs": [
+    {
+      "name": "configure.log",
+      "sha256": "2494a2525f654a9c9a6a345751eb5f106f436399657e330ba394eee37dfb90ff",
+      "excerpts": [
+        "--   Package 'gstreamer-1.0', required by 'virtual:world', not found",
+        "--   Package 'gstreamer-video-1.0', required by 'virtual:world', not found",
+        "--   Package 'gstreamer-app-1.0', required by 'virtual:world', not found",
+        "--   Package 'libavcodec', required by 'virtual:world', not found",
+        "--   Package 'libavformat', required by 'virtual:world', not found",
+        "--   Package 'libavfilter', required by 'virtual:world', not found",
+        "--   Package 'libavutil', required by 'virtual:world', not found",
+        "--   Package 'libswscale', required by 'virtual:world', not found",
+        "--   Package 'libswresample', required by 'virtual:world', not found",
+        "-- putgd-record not built: GStreamer >= 1.24 and FFmpeg >= 6.1 development libraries are required; screen recording reports recording_helper_missing"
+      ]
+    },
+    {
+      "name": "recorder-dependencies-dryrun.log",
+      "sha256": "3a94cac19bad75b88a95e88a3df7705ca774dafefdcac6cf56a577f677954459",
+      "excerpts": [
+        "4 upgraded, 35 newly installed, 0 to remove and 26 not upgraded.",
+        "Inst libglib2.0-data [2.80.0-6ubuntu3.9] (2.80.0-6ubuntu3.10 Ubuntu:24.04/noble-updates [all])",
+        "Inst libglib2.0-bin [2.80.0-6ubuntu3.9] (2.80.0-6ubuntu3.10 Ubuntu:24.04/noble-updates [amd64]) []",
+        "Inst gir1.2-glib-2.0 [2.80.0-6ubuntu3.9] (2.80.0-6ubuntu3.10 Ubuntu:24.04/noble-updates [amd64]) []",
+        "Inst libglib2.0-0t64 [2.80.0-6ubuntu3.9] (2.80.0-6ubuntu3.10 Ubuntu:24.04/noble-updates [amd64])",
+        "Inst libavutil-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libswresample-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libavcodec-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libavformat-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libpostproc-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libswscale-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libavfilter-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libglib2.0-dev-bin (2.80.0-6ubuntu3.10 Ubuntu:24.04/noble-updates [amd64])",
+        "Inst libglib2.0-dev (2.80.0-6ubuntu3.10 Ubuntu:24.04/noble-updates [amd64])"
+      ]
+    },
+    {
+      "name": "ffmpeg-only-dryrun.log",
+      "sha256": "3a66ad84feacc28223cb1d8cd7dc9c2782f8999eb629c1e2343c9d528918e711",
+      "excerpts": [
+        "0 upgraded, 7 newly installed, 0 to remove and 30 not upgraded.",
+        "Inst libavutil-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libswresample-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libavcodec-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libavformat-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libpostproc-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libswscale-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])",
+        "Inst libavfilter-dev (7:6.1.1-3ubuntu5 Ubuntu:24.04/noble [amd64])"
+      ]
+    },
+    {
+      "name": "gtk4-witness-install-simulation.log",
+      "sha256": "ca95040fedfb202d293f48620516fa26811a03d92f26f15f6e77e76148ba1534",
+      "excerpts": [
+        "0 upgraded, 1 newly installed, 0 to remove and 30 not upgraded."
+      ]
+    },
+    {
+      "name": "m74-replay-install-simulation.log",
+      "sha256": "dd1a7f461f4025fe8f2ff05725d75f08926082f323a5f69060d28862324ab334",
+      "excerpts": [
+        "0 upgraded, 2 newly installed, 0 to remove and 30 not upgraded."
+      ]
+    }
+  ]
+}

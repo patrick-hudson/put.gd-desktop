@@ -124,8 +124,9 @@ host_has_entry() {
     set +f
     return 1
 }
-# A Wayland compositor finds a window's icon in the desktop entry named by its
-# app ID; Qt 6.8 cannot send one with the window. Add NoDisplay entries for the
+# Desktops match windows to desktop entries by app ID or WM_CLASS. Cinnamon
+# also needs this match on X11 even when Qt supplies _NET_WM_ICON; without it
+# the taskbar uses a generic gear. Add NoDisplay entries for the
 # windowed helpers' app IDs while this mount runs, unless the host has them
 # (a DEB/RPM install, or another running launch). `ln` publishes the complete
 # entry and fails rather than replace one that appeared meanwhile.
@@ -152,15 +153,15 @@ icon_entry() {
 case ${XDG_CURRENT_DESKTOP:-} in
     *KDE*|*Plasma*) kde=1 ;;
 esac
-wayland=
-if [ -n "${WAYLAND_DISPLAY:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ]; then
-    wayland=1
+graphical=
+if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || [ "${XDG_SESSION_TYPE:-}" = wayland ] || [ "${XDG_SESSION_TYPE:-}" = x11 ]; then
+    graphical=1
 fi
-if [ -n "$kde$wayland" ]; then
+if [ -n "$kde$graphical" ]; then
     mkdir -p -- "$applications"
     remove_stale_entries
 fi
-if [ -n "$wayland" ] && [ -n "$owner" ]; then
+if [ -n "$graphical" ] && [ -n "$owner" ]; then
     ui_icon_entry=$(icon_entry putgd-ui put.gd)
     record_icon_entry=$(icon_entry putgd-record 'put.gd screen recorder')
 fi
@@ -186,7 +187,7 @@ if [ -n "$kde" ]; then
         exit 1
     fi
 fi
-# Without host entries to remove (X11 Cinnamon/GNOME), avoid a supervisor.
+# Without host entries to remove, avoid a supervisor.
 if [ -z "$permission_entry$ui_icon_entry$record_icon_entry" ]; then
     exec "$appdir/usr/bin/putgd-launcher" "$@"
 fi

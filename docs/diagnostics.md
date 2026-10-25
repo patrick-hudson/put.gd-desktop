@@ -685,7 +685,7 @@ its environment on unchanged. The log records each open as `Opened on the host` 
 `Could not open on the host`, with its `route` and `fallbackFrom`, never the link.
 
 The AppImage's own TLS clients use the host's CA certificates too (#329). The image
-bundles Ubuntu 24.04's OpenSSL and libcurl, plus Qt 6.8. Qt looks only for `*.pem` and `*.crt`
+bundles Ubuntu 24.04's OpenSSL and libcurl, plus Qt 6.12. Qt looks only for `*.pem` and `*.crt`
 files in Debian-style directories, and libcurl only for `/etc/ssl/certs/ca-certificates.crt`.
 Fedora 44 has neither: its `/etc/ssl/certs` holds only hash links. Before #329, Check now,
 S3 and R2 uploads, and Backblaze B2 all failed TLS there. `SSL_CERT_FILE` didn't help,

@@ -1,0 +1,387 @@
+{
+ "startSeconds": 0.33,
+ "credentials": "completed",
+ "sessionSock": true,
+ "processes": [
+  {
+   "pid": 526673,
+   "ppid": 526670,
+   "exe": "/usr/bin/bash",
+   "comm": "bash",
+   "cmd": "bash ac.sh m74 xdotool 5900",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": null
+  },
+  {
+   "pid": 526762,
+   "ppid": 1,
+   "exe": "/usr/bin/python3.12",
+   "comm": "python3",
+   "cmd": "/usr/bin/python3 -I /home/patrick/work/put.gd-qt418/afa/tool/s3_server.py",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": null
+  },
+  {
+   "pid": 526865,
+   "ppid": 526864,
+   "exe": "/tmp/.mount_putgd-MLoekE/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/tmp/.mount_putgd-MLoekE/usr/bin/putgd --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage"
+  },
+  {
+   "pid": 526869,
+   "ppid": 1,
+   "exe": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+   "comm": "putgd-26.1023.1",
+   "cmd": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": null
+  }
+ ],
+ "diagnostics": {
+  "backend": "Qt",
+  "build": {
+   "baseVersion": "26.1023.1068",
+   "commitCount": 1068,
+   "dirty": false,
+   "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+   "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+   "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  },
+  "capabilities": {
+   "editor": {
+    "admissionPixels": 24000000,
+    "available": true,
+    "commands": [
+     "inspect",
+     "apply",
+     "preview",
+     "saveCopy",
+     "fileDialog",
+     "submit",
+     "cancel",
+     "raise"
+    ],
+    "fileFormats": [
+     "png",
+     "jpeg"
+    ],
+    "open": false,
+    "output": "png",
+    "shapes": [
+     "redact",
+     "blur",
+     "arrow",
+     "rectangle",
+     "text",
+     "highlight"
+    ],
+    "sources": [
+     "region",
+     "window",
+     "desktop",
+     "clipboard",
+     "file"
+    ]
+   },
+   "providers": {
+    "backblaze-b2": {
+     "conditionalCreate": true,
+     "conditionalDelete": false,
+     "conditionalReplace": false,
+     "delete": true,
+     "deletionEffect": "Deletes exactly the uploaded B2 file version by its ID. put.gd never uploads over a visible file, so the name then shows nothing, or an older version that was hidden before the upload. Authorized links stop working when they expire.",
+     "maximumNameBytes": 1023,
+     "maximumObjectBytes": 10000000000000,
+     "privateUploads": false,
+     "sharing": false,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": true
+    },
+    "proton-drive": {
+     "conditionalCreate": true,
+     "conditionalDelete": false,
+     "conditionalReplace": false,
+     "delete": false,
+     "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+     "maximumNameBytes": 255,
+     "maximumObjectBytes": null,
+     "privateUploads": true,
+     "sharing": true,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": false
+    },
+    "s3": {
+     "conditionalCreate": true,
+     "conditionalDelete": true,
+     "conditionalReplace": true,
+     "delete": true,
+     "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+     "maximumNameBytes": 1024,
+     "maximumObjectBytes": 5497558138880,
+     "privateUploads": false,
+     "sharing": false,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": true
+    }
+   },
+   "recording": {
+    "active": null,
+    "audio": {
+     "microphone": false,
+     "system": false
+    },
+    "available": false,
+    "codecs": {},
+    "commands": [
+     "prepare",
+     "start",
+     "pause",
+     "resume",
+     "stop",
+     "cancel",
+     "inspect",
+     "select",
+     "raise",
+     "overlay",
+     "edit",
+     "preview",
+     "review",
+     "saveCopy",
+     "upload"
+    ],
+    "editCommands": [
+     "setTrim",
+     "resetTrim",
+     "addMask",
+     "updateMask",
+     "removeMask"
+    ],
+    "formats": [],
+    "limits": {
+     "animationMaxEdge": 1280,
+     "animationMaxUs": 60000000,
+     "maxFileBytes": 1099511627776,
+     "maxMasks": 64
+    },
+    "maskKinds": [
+     "blur",
+     "solid"
+    ],
+    "overlayExclusion": {},
+    "reason": "recording_not_probed",
+    "states": [
+     "preparing",
+     "ready",
+     "starting",
+     "recording",
+     "paused",
+     "stopping",
+     "reviewing",
+     "exporting",
+     "submitted",
+     "cancelled",
+     "failed"
+    ],
+    "targets": [],
+    "timeUnit": "microseconds"
+   },
+   "source": {
+    "adapter": "cinnamon-core-x11",
+    "capture": {
+     "desktop": {
+      "available": true,
+      "consent": "none",
+      "helper": {
+       "active": false,
+       "build": {
+        "baseVersion": "26.1023.1068",
+        "commitCount": 1068,
+        "dirty": false,
+        "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+        "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+        "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1023.1068-dev+g6a325a722afd"
+       },
+       "lastExit": {},
+       "processId": 0
+      },
+      "mode": "visible-pixels"
+     },
+     "region": {
+      "available": true,
+      "consent": "none",
+      "helper": {
+       "active": false,
+       "build": {
+        "baseVersion": "26.1023.1068",
+        "commitCount": 1068,
+        "dirty": false,
+        "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+        "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+        "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1023.1068-dev+g6a325a722afd"
+       },
+       "lastExit": {},
+       "processId": 0
+      },
+      "mode": "visible-pixels"
+     },
+     "window": {
+      "available": true,
+      "consent": "none",
+      "helper": {
+       "active": false,
+       "build": {
+        "baseVersion": "26.1023.1068",
+        "commitCount": 1068,
+        "dirty": false,
+        "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+        "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+        "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1023.1068-dev+g6a325a722afd"
+       },
+       "lastExit": {},
+       "processId": 0
+      },
+      "mode": "visible-pixels"
+     }
+    },
+    "clipboard": {
+     "available": true,
+     "import": "asynchronous-x11-selection",
+     "result": "native-x11-ownership",
+     "types": [
+      "files",
+      "image",
+      "text"
+     ]
+    },
+    "shortcuts": {
+     "available": true,
+     "bindings": {
+      "clipboard": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "desktop": {
+       "actual": "Ctrl+Shift+3",
+       "bound": true,
+       "requested": "Ctrl+Shift+3"
+      },
+      "edit": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "record": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "region": {
+       "actual": "Ctrl+Shift+1",
+       "bound": true,
+       "requested": "Ctrl+Shift+1"
+      },
+      "window": {
+       "actual": "Ctrl+Shift+2",
+       "bound": true,
+       "requested": "Ctrl+Shift+2"
+      }
+     },
+     "keyPaths": {
+      "lastActivation": {},
+      "passive": true,
+      "raw": {
+       "available": true,
+       "xinput": "2.2"
+      }
+     }
+    }
+   }
+  },
+  "journalReady": true,
+  "qtVersion": "6.12.0",
+  "release": {
+   "kind": "none",
+   "url": "",
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  }
+ },
+ "ui": {
+  "ui": {
+   "checkpointBytes": 0,
+   "lastExit": {},
+   "pid": 0,
+   "state": "stopped"
+  },
+  "trayAvailable": true,
+  "trayTint": {
+   "color": "#9bbcff",
+   "panel": "dark",
+   "source": "cinnamon-theme"
+  },
+  "loginStartup": {
+   "applied": true,
+   "enabled": false
+  },
+  "update": {
+   "action": null,
+   "attemptedAt": null,
+   "build": {
+    "channel": null,
+    "kind": "none",
+    "packageTarget": "appimage",
+    "reason": "development_build",
+    "supported": false,
+    "version": "26.1023.1068-dev+g6a325a722afd"
+   },
+   "channel": null,
+   "channelSetting": "build",
+   "channelSource": "setting",
+   "check": true,
+   "checkedAt": null,
+   "checking": false,
+   "enabled": false,
+   "error": null,
+   "install": {
+    "available": false,
+    "backup": null,
+    "image": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+    "installed": null,
+    "kind": "update",
+    "reason": "development_build",
+    "restartRequired": false,
+    "running": false,
+    "state": "idle",
+    "switch": null
+   },
+   "nextCheckAt": null,
+   "notifies": false,
+   "reason": "development_build",
+   "result": null,
+   "supported": false
+  }
+ },
+ "kdeEntries": []
+}

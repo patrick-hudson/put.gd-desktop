@@ -1,0 +1,16 @@
+{
+ "storedChannel": "build",
+ "status": {
+  "channel": "nightly",
+  "channelSetting": "build",
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "26.1023.1068-nightly"
+  }
+ },
+ "closed": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm-labh/full/ubuntu-vm-labh-channel-closed.png"
+}

@@ -215,11 +215,14 @@ bool publicFixtureMatches(const StorageReceipt& published, const QByteArray& exp
 }
 using Client = Aws::S3::S3Client;
 using Head = Aws::S3::Model::HeadObjectOutcome;
-Head head(Client& client, const Destination& destination, const QString& key, const QString& version = {}) {
+Head head(Client& client, const Destination& destination, const QString& key, const QString& version = {}, const std::shared_ptr<std::atomic_bool>& cancellation = {}) {
     Aws::S3::Model::HeadObjectRequest request;
     request.SetBucket(aws(destination.settings["bucket"].toString()));
     request.SetKey(aws(key));
     if (!version.isEmpty()) request.SetVersionId(aws(version));
+    // SdkRuntime installs the SDK continuation handler as Curl progress, even
+    // while a HEAD is waiting for response headers and transfers no body.
+    if (cancellation) request.SetContinueRequestHandler([cancellation](const Aws::Http::HttpRequest*) { return !stopped(cancellation); });
     return client.HeadObject(request);
 }
 QString metadata(const Aws::S3::Model::HeadObjectResult& result, const char* name) {
@@ -818,7 +821,7 @@ struct NetworkS3Driver::State {
 NetworkS3Driver::NetworkS3Driver(CredentialLookup lookup, ReadinessCheck readiness)
     : state_(std::make_unique<State>(std::move(lookup), std::move(readiness))) {}
 NetworkS3Driver::~NetworkS3Driver() = default;
-void NetworkS3Driver::checkName(const Destination& destination, const QString& candidate, std::function<void(NameCheck)> reply) {
+void NetworkS3Driver::checkName(const Destination& destination, const QString& candidate, std::function<void(NameCheck)> reply, std::shared_ptr<std::atomic_bool> cancellation) {
     if (auto error = state_->readiness(destination)) {
         reply({"inconclusive", {}, {}, error});
         return;
@@ -835,7 +838,9 @@ void NetworkS3Driver::checkName(const Destination& destination, const QString& c
     }
     QElapsedTimer requestTimer;
     requestTimer.start();
-    const auto outcome = head(*client, destination, key);
+    if (stopped(cancellation)) { reply({"inconclusive", {}, {}, cancelled()}); return; }
+    const auto outcome = head(*client, destination, key, {}, cancellation);
+    if (stopped(cancellation)) { reply({"inconclusive", {}, {}, cancelled()}); return; }
     QJsonObject reference{{"schemaVersion", 1}, {"key", key}};
     if (!outcome.IsSuccess()) {
         if (absent(outcome.GetError())) reply({"absent", reference, {}, {}});

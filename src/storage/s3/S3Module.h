@@ -2,7 +2,7 @@
 #include "S3Driver.h"
 #include <cstdint>
 namespace putgd {
-inline constexpr std::uint32_t s3ModuleContractVersion = 1;
+inline constexpr std::uint32_t s3ModuleContractVersion = 2;
 struct S3ModuleApi {
     std::uint32_t version;
     const char* buildIdentity;

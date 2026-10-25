@@ -1,0 +1,265 @@
+{
+  "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+  },
+  "ok": true,
+  "requestId": "3b8cc2ee-d6ce-482f-881b-f3f417dc84fd",
+  "result": {
+    "editor": {
+      "admissionPixels": 24000000,
+      "available": true,
+      "commands": [
+        "inspect",
+        "apply",
+        "preview",
+        "saveCopy",
+        "fileDialog",
+        "submit",
+        "cancel",
+        "raise"
+      ],
+      "fileFormats": [
+        "png",
+        "jpeg"
+      ],
+      "open": false,
+      "output": "png",
+      "shapes": [
+        "redact",
+        "blur",
+        "arrow",
+        "rectangle",
+        "text",
+        "highlight"
+      ],
+      "sources": [
+        "region",
+        "window",
+        "desktop",
+        "clipboard",
+        "file"
+      ]
+    },
+    "providers": {
+      "backblaze-b2": {
+        "conditionalCreate": true,
+        "conditionalDelete": false,
+        "conditionalReplace": false,
+        "delete": true,
+        "deletionEffect": "Deletes exactly the uploaded B2 file version by its ID. put.gd never uploads over a visible file, so the name then shows nothing, or an older version that was hidden before the upload. Authorized links stop working when they expire.",
+        "maximumNameBytes": 1023,
+        "maximumObjectBytes": 10000000000000,
+        "privateUploads": false,
+        "sharing": false,
+        "stat": true,
+        "urls": true,
+        "versionAddressing": true
+      },
+      "proton-drive": {
+        "conditionalCreate": true,
+        "conditionalDelete": false,
+        "conditionalReplace": false,
+        "delete": false,
+        "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+        "maximumNameBytes": 255,
+        "maximumObjectBytes": null,
+        "privateUploads": true,
+        "sharing": true,
+        "stat": true,
+        "urls": true,
+        "versionAddressing": false
+      },
+      "s3": {
+        "conditionalCreate": true,
+        "conditionalDelete": true,
+        "conditionalReplace": true,
+        "delete": true,
+        "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+        "maximumNameBytes": 1024,
+        "maximumObjectBytes": 5497558138880,
+        "privateUploads": false,
+        "sharing": false,
+        "stat": true,
+        "urls": true,
+        "versionAddressing": true
+      }
+    },
+    "recording": {
+      "active": null,
+      "audio": {
+        "microphone": false,
+        "system": false
+      },
+      "available": false,
+      "codecs": {},
+      "commands": [
+        "prepare",
+        "start",
+        "pause",
+        "resume",
+        "stop",
+        "cancel",
+        "inspect",
+        "select",
+        "raise",
+        "overlay",
+        "edit",
+        "preview",
+        "review",
+        "saveCopy",
+        "upload"
+      ],
+      "editCommands": [
+        "setTrim",
+        "resetTrim",
+        "addMask",
+        "updateMask",
+        "removeMask"
+      ],
+      "formats": [],
+      "limits": {
+        "animationMaxEdge": 1280,
+        "animationMaxUs": 60000000,
+        "maxFileBytes": 1099511627776,
+        "maxMasks": 64
+      },
+      "maskKinds": [
+        "blur",
+        "solid"
+      ],
+      "overlayExclusion": {},
+      "reason": "recording_not_probed",
+      "states": [
+        "preparing",
+        "ready",
+        "starting",
+        "recording",
+        "paused",
+        "stopping",
+        "reviewing",
+        "exporting",
+        "submitted",
+        "cancelled",
+        "failed"
+      ],
+      "targets": [],
+      "timeUnit": "microseconds"
+    },
+    "source": {
+      "adapter": "gnome-wayland",
+      "capture": {
+        "desktop": {
+          "available": false,
+          "consent": "one-time-extension-setup",
+          "error": {
+            "code": "helper_unavailable",
+            "details": {
+              "dbusError": "org.freedesktop.DBus.Error.UnknownMethod",
+              "helperEndpointMissing": true
+            },
+            "message": "GNOME capture needs the put.gd Shell extension. If it is missing, install the matching put.gd package or extension; after a new installation, log out and back in first. Then run: gnome-extensions enable putgd@put.gd"
+          },
+          "mode": "compositor-native"
+        },
+        "region": {
+          "available": false,
+          "consent": "one-time-extension-setup",
+          "error": {
+            "code": "helper_unavailable",
+            "details": {
+              "dbusError": "org.freedesktop.DBus.Error.UnknownMethod",
+              "helperEndpointMissing": true
+            },
+            "message": "GNOME capture needs the put.gd Shell extension. If it is missing, install the matching put.gd package or extension; after a new installation, log out and back in first. Then run: gnome-extensions enable putgd@put.gd"
+          },
+          "mode": "compositor-native"
+        },
+        "window": {
+          "available": false,
+          "consent": "one-time-extension-setup",
+          "error": {
+            "code": "helper_unavailable",
+            "details": {
+              "dbusError": "org.freedesktop.DBus.Error.UnknownMethod",
+              "helperEndpointMissing": true
+            },
+            "message": "GNOME capture needs the put.gd Shell extension. If it is missing, install the matching put.gd package or extension; after a new installation, log out and back in first. Then run: gnome-extensions enable putgd@put.gd"
+          },
+          "mode": "compositor-native"
+        }
+      },
+      "clipboard": {
+        "available": false,
+        "error": {
+          "code": "helper_unavailable",
+          "details": {
+            "dbusError": "org.freedesktop.DBus.Error.UnknownMethod",
+            "helperEndpointMissing": true
+          },
+          "message": "GNOME capture needs the put.gd Shell extension. If it is missing, install the matching put.gd package or extension; after a new installation, log out and back in first. Then run: gnome-extensions enable putgd@put.gd"
+        },
+        "import": "bounded-mutter-selection",
+        "result": "st-clipboard-only",
+        "types": [
+          "files",
+          "image",
+          "text"
+        ]
+      },
+      "helper": {
+        "available": false,
+        "error": {
+          "code": "helper_unavailable",
+          "details": {
+            "dbusError": "org.freedesktop.DBus.Error.UnknownMethod",
+            "helperEndpointMissing": true
+          },
+          "message": "GNOME capture needs the put.gd Shell extension. If it is missing, install the matching put.gd package or extension; after a new installation, log out and back in first. Then run: gnome-extensions enable putgd@put.gd"
+        },
+        "outdated": false,
+        "packagedExtensionVersion": 2,
+        "protocol": 1,
+        "recordingVersion": 0,
+        "uuid": "putgd@put.gd"
+      },
+      "shortcuts": {
+        "available": false,
+        "bindings": {
+          "clipboard": {
+            "bound": false,
+            "error": "disabled",
+            "requested": ""
+          },
+          "desktop": {
+            "bound": false,
+            "error": "disabled",
+            "requested": ""
+          },
+          "edit": {
+            "bound": false,
+            "error": "disabled",
+            "requested": ""
+          },
+          "record": {
+            "bound": false,
+            "error": "disabled",
+            "requested": ""
+          },
+          "region": {
+            "bound": false,
+            "error": "disabled",
+            "requested": ""
+          },
+          "window": {
+            "bound": false,
+            "error": "disabled",
+            "requested": ""
+          }
+        }
+      }
+    }
+  },
+  "schemaVersion": 1
+}

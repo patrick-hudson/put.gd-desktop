@@ -32,9 +32,9 @@ def assertCompilerCacheIsTrimmedAndSavedOnlyByNightlyPushes(test, text):
 
 
 class Workflows(unittest.TestCase):
-    def test_exactly_four_workflows_and_no_tag_or_cross_workflow_triggers(self):
+    def test_exactly_five_workflows_and_no_tag_or_cross_workflow_triggers(self):
         self.assertEqual(sorted(path.name for path in WORKFLOWS.glob('*.yml')),
-                         ['ci.yml', 'nightly.yml', 'package.yml', 'release.yml'])
+                         ['ci.yml', 'nightly.yml', 'package.yml', 'release.yml', 'renovate.yml'])
         for path in WORKFLOWS.glob('*.yml'):
             text = path.read_text()
             with self.subTest(workflow=path.name):
@@ -224,9 +224,40 @@ class Workflows(unittest.TestCase):
             self.assertIn('bash tools/ci/sdk-source.sh', job(packages, name))
         collect = job(packages, 'collect')
         self.assertIn("if: inputs.release_tag != ''", collect)
-        self.assertIn('needs: [native, appimage]', collect)
+        self.assertIn('needs: [native, appimage, sbom]', collect)
         self.assertIn('python3 tools/releases/collect.py', collect)
         self.assertIn('name: release-assets', collect)
+        # Every run, tagged or not, makes the SBOMs and their vulnerability report (#420).
+        sbom = job(packages, 'sbom')
+        self.assertIn('needs: [native, appimage]', sbom)
+        self.assertNotIn('if:', sbom.split('steps:', 1)[0])
+        for text in ('sbom.py tools', 'sbom.py database', 'sbom.py generate', 'sbom.py scan', '--release-tag "$RELEASE_TAG"',
+                     'name: release-sbom', 'name: vulnerability-report'):
+            self.assertIn(text, sbom)
+
+    def test_nightly_rescans_the_latest_stable_sboms_without_gating_publication(self):
+        nightly = workflow('nightly.yml')
+        scan = job(nightly, 'stable-scan')
+        self.assertNotIn('needs:', scan)
+        self.assertNotIn('stable-scan', job(nightly, 'publish'))
+        self.assertIn('sbom.py scan --released', scan)
+        self.assertIn("grep -E '[.]cdx[.]json$' SHA256SUMS | sha256sum --check --strict", scan)
+        self.assertIn('issues: write', scan)
+
+    def test_renovate_uses_the_workflow_token_and_a_read_only_lookup_on_pull_requests(self):
+        renovate = workflow('renovate.yml')
+        self.assertIn("schedule:\n    - cron: '17 4 * * 1'", renovate)
+        self.assertNotIn('secrets.', renovate)
+        self.assertIn('permissions:\n  contents: read\n', renovate)
+        lookup = job(renovate, 'lookup')
+        self.assertIn("if: github.event_name == 'pull_request'", lookup)
+        self.assertNotIn('permissions:', lookup)
+        self.assertIn('RENOVATE_PLATFORM=local', lookup)
+        run = job(renovate, 'renovate')
+        self.assertIn("if: github.event_name != 'pull_request'", run)
+        self.assertIn('token: ${{ github.token }}', run)
+        self.assertIn('RENOVATE_ALLOWED_COMMANDS: \'["^python3 tools/maintenance/refresh_pins\\\\.py$"]\'', run)
+        self.assertRegex(renovate, r'RENOVATE_IMAGE: ghcr\.io/renovatebot/renovate:[0-9.]+@sha256:[0-9a-f]{64}')
 
     def test_appimage_installer_uses_external_logging_configuration(self):
         appimage = job(workflow('package.yml'), 'appimage')

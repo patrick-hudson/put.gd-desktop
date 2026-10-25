@@ -159,9 +159,9 @@ QJsonObject B2Provider::call(const QString& method, const Destination& destinati
     if (uncertain) *uncertain = false;
     return final["result"].toObject();
 }
-void B2Provider::checkName(const Destination& destination, const QString& candidate, std::function<void(NameCheck)> reply) {
+void B2Provider::checkName(const Destination& destination, const QString& candidate, std::function<void(NameCheck)> reply, std::shared_ptr<std::atomic_bool> cancellation) {
     Error e;
-    const auto r = call("checkName", destination, {{"candidate", candidate}}, e);
+    const auto r = call("checkName", destination, {{"candidate", candidate}}, e, nullptr, cancellation);
     reply({e ? "inconclusive" : r["status"].toString("inconclusive"), r["objectReference"].toObject(), r["concurrencyToken"].toString(), e});
 }
 void B2Provider::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {

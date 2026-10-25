@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-24",
+  "decidedBy": "Patrick Hudson",
+  "decision": "Legacy startup entries in accounts that never ran the updated build are not a first-release blocker, given limited existing app usage. Close #382 on the implemented and tested scope.",
+  "userStatement": "I don't think that gap matters, nobody is really using this app yet, so that can close 382 I think?",
+  "recordedDecision": "https://github.com/patrick-hudson/put.gd-desktop/issues/382#issuecomment-6385319633",
+  "issueClosure": {
+    "closedAt": "2026-10-24T14:20:47Z",
+    "number": 382,
+    "state": "CLOSED",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/issues/382"
+  },
+  "approvedContractUnchanged": "Active accounts clean managed startup files after uninstall; inactive accounts clean at next login; settings/data may remain and package scripts do not traverse user homes.",
+  "implementationPr": 544,
+  "documentationPr": 545,
+  "remainingReleaseVerification": "Published-nightly lifecycle and real-channel AppImage replacement after merge, then exact stable assets; tracked under #384.",
+  "integrationStatusAtDecision": "Both PRs open; code must merge before docs. Closure does not claim shipping."
+}

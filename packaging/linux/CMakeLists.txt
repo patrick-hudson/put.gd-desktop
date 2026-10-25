@@ -53,7 +53,7 @@ set(s3_manifest_install_code [=[
   file(SHA256 "${module_path}" module_hash)
   set(manifest_path "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_INSTALL_DATADIR@/putgd/aws-runtime-manifest.json")
   file(READ "${manifest_path}" manifest)
-  string(JSON manifest SET "${manifest}" module "{\"file\":\"${module_name}\",\"contractVersion\":1,\"buildIdentity\":\"@PUTGD_S3_BUILD_ID@\",\"sha256\":\"${module_hash}\"}")
+  string(JSON manifest SET "${manifest}" module "{\"file\":\"${module_name}\",\"contractVersion\":2,\"buildIdentity\":\"@PUTGD_S3_BUILD_ID@\",\"sha256\":\"${module_hash}\"}")
   file(WRITE "${manifest_path}" "${manifest}\n")
 ]=])
 string(CONFIGURE "${s3_manifest_install_code}" s3_manifest_install_code @ONLY)
@@ -262,4 +262,6 @@ if(PUTGD_GIT AND metainfo_commit MATCHES "^[0-9a-f]+$" AND EXISTS "${PROJECT_SOU
 endif()
 configure_file(gd.put.Putgd.metainfo.xml.in gd.put.Putgd.metainfo.xml @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/gd.put.Putgd.metainfo.xml" DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/LicenseFiles.cmake")
 include(CPack)

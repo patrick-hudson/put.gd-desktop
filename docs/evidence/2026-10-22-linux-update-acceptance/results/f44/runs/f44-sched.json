@@ -1,0 +1,84 @@
+{
+ "name": "f44-sched",
+ "tool": null,
+ "live": true,
+ "image": "/home/patrick/work/put.gd-ua/app/runs/f44-sched/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/home/patrick/work/put.gd-ua/app/runs/f44-sched/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.gqFgwC",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/home/patrick/.local/bin:/home/patrick/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "GNOME",
+  "XDG_SESSION_DESKTOP": "gnome",
+  "DESKTOP_SESSION": "gnome",
+  "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share/:/usr/share/",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.4MMJX3"
+ },
+ "shell": "gnome-shell",
+ "hostPath": "/home/patrick/.local/bin:/home/patrick/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin",
+ "host": "fedora",
+ "vnc": 5901,
+ "urls": {},
+ "input": "uinput",
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 3042349
+ },
+ "created": "2026-10-23T00:05:02Z",
+ "watchStart-u14": "2026-10-23T00:05:03Z",
+ "log": [
+  {
+   "at": "2026-10-23T00:05:03Z",
+   "watch": {
+    "label": "u14",
+    "pid": 3042431,
+    "started": "2026-10-23T00:05:03Z"
+   }
+  },
+  {
+   "at": "2026-10-23T00:21:02Z",
+   "watch": {
+    "label": "u14",
+    "from": "2026-10-23T00:05:03Z",
+    "to": "2026-10-23T00:21:02Z",
+    "notifyCalls": [],
+    "putgdNotifyCalls": [],
+    "journal": [
+     {
+      "time": "2026-10-23T00:17:24.984Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1022.1019-nightly",
+       "operationId": null,
+       "updateAvailable": true
+      }
+     }
+    ]
+   }
+  },
+  {
+   "at": "2026-10-23T00:21:03Z",
+   "frame": {
+    "label": "u14-sched-settings",
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/f44-sched/frames/u14-sched-settings.png"
+   }
+  }
+ ]
+}

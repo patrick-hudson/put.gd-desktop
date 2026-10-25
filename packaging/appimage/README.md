@@ -1,6 +1,6 @@
 # AppImage prerelease assembly
 
-Build x86_64 on Ubuntu 24.04 (glibc 2.39) with the official Qt 6.8.3 gcc_64
+Build x86_64 on Ubuntu 24.04 (glibc 2.39) with the official Qt 6.12.0 gcc_64
 installation, normal distro GCC/CMake/Ninja, and the pinned official AWS SDK.
 This matches the oldest current Cinnamon lab. A build on Ubuntu 26.04/Fedora 44
 is not a compatible substitute: AppImage does not replace glibc.
@@ -15,7 +15,7 @@ runtime. The builder checks all tools before executing them.
 
 ## Build prerequisites
 
-Provision Qt 6.8.3 with the existing pinned install-qt-action in GitHub Actions.
+Provision Qt 6.12.0 with the existing pinned install-qt-action in GitHub Actions.
 Include its native GTK3 platform theme, Wayland platforms, SQL SQLite plugin,
 and Qt Wayland development headers. The image also carries Qt's offscreen platform:
 the resident runs image decoding and previews in `putgd-ui --image-job` on it, and
@@ -53,7 +53,7 @@ cmake --install build/layershell
 
 Check out the immutable commits in `tools.lock.json` with ordinary Git, then
 verify `git rev-parse HEAD` against the lock. Clone each `qtLicenseSources` root
-and the `icu` root without building them; these are the matching 6.8.3
+and the `icu` root without building them; these are the matching 6.12.0
 license/source notices for the official binaries and their ICU 73.2. Pass all
 source roots matching the modules actually bundled.
 
@@ -337,8 +337,8 @@ per window and needs the Wayland platform, so KDE region capture works only
 natively. Before the image carried `xdg-shell` it answered `region_unavailable`.
 A Wayland compositor takes a window's icon from the desktop entry named by its
 app ID (`putgd-ui` for the views and the editor, `putgd-record` for the
-recorder's bar and review), not from the window, and Qt 6.8 has no
-`xdg-toplevel-icon` support. So in a Wayland session AppRun writes
+recorder's bar and review), not from the window; Qt 6.12 sends a window icon
+only to compositors that offer `xdg-toplevel-icon-v1`. So in a Wayland session AppRun writes
 `putgd-ui.desktop` and `putgd-record.desktop` into the user's applications
 directory while the image runs: NoDisplay entries with `StartupWMClass` set to
 the app ID, `Icon` naming the mounted

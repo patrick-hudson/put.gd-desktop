@@ -1,0 +1,112 @@
+{
+ "item": "Screen-Capture-2026-10-23-15-45-33.png",
+ "prepare": {
+  "acknowledgement": "8ff4f074375c234f94c4a775d0dd136b5bda242d070f2a37ba2576043461814f",
+  "cacheNotice": "Origin deletion does not invalidate browser or CDN caches",
+  "localCopiesPreserved": true,
+  "targets": [
+   {
+    "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+    "historyId": "15dc2f82-f073-41e9-ba7b-6f57081bc309",
+    "receipt": {
+     "concurrencyToken": "\"4a0b42e19b05ece35bd620c407e856b9\"",
+     "destination": {
+      "credentials": {
+       "mode": "session",
+       "reference": null
+      },
+      "profileId": "live-s3",
+      "profileRevision": "6c79e8c7d44ec3491a1f5c9290f32970d137e84f9273ae3391f8f6193322d25e",
+      "providerId": "s3",
+      "settings": {
+       "aclMode": "public-read",
+       "addressing": "path",
+       "bucket": "put.gd",
+       "connectTimeoutMs": 10000,
+       "endpoint": "https://s3.us-east-2.amazonaws.com",
+       "lowSpeedBytesPerSecond": 1,
+       "lowSpeedTimeSeconds": 120,
+       "objectPrefix": "acceptance/qt418/aurora-vm/",
+       "publicUrlBase": "https://put.gd",
+       "region": "us-east-2",
+       "requestTimeoutMs": 120000,
+       "storageClass": "STANDARD"
+      }
+     },
+     "directUrl": "https://put.gd/acceptance/qt418/aurora-vm/Screen-Capture-2026-10-23-15-45-33.png",
+     "objectReference": {
+      "bytes": 1088,
+      "key": "acceptance/qt418/aurora-vm/Screen-Capture-2026-10-23-15-45-33.png",
+      "schemaVersion": 1,
+      "sha256": "162262561b65856a21546c6db5b619092c970b679efcfe607d060633af6ca9e7",
+      "versionId": ""
+     },
+     "publicationId": "d9a0dfb1-046e-4398-883a-0afec0058ec3",
+     "schemaVersion": 1
+    }
+   }
+  ]
+ },
+ "confirm": {
+  "deleteOperationId": "419e3726-d19d-4efc-8444-15c58c6f5bde",
+  "deletion": {
+   "acknowledgement": "8ff4f074375c234f94c4a775d0dd136b5bda242d070f2a37ba2576043461814f",
+   "cancelled": false,
+   "created": "2026-10-23T20:47:00.082Z",
+   "id": "419e3726-d19d-4efc-8444-15c58c6f5bde",
+   "items": [
+    {
+     "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+     "historyId": "15dc2f82-f073-41e9-ba7b-6f57081bc309",
+     "progress": {
+      "schemaVersion": 1
+     },
+     "receipt": {
+      "concurrencyToken": "\"4a0b42e19b05ece35bd620c407e856b9\"",
+      "destination": {
+       "credentials": {
+        "mode": "session",
+        "reference": null
+       },
+       "profileId": "live-s3",
+       "profileRevision": "6c79e8c7d44ec3491a1f5c9290f32970d137e84f9273ae3391f8f6193322d25e",
+       "providerId": "s3",
+       "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "put.gd",
+        "connectTimeoutMs": 10000,
+        "endpoint": "https://s3.us-east-2.amazonaws.com",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "acceptance/qt418/aurora-vm/",
+        "publicUrlBase": "https://put.gd",
+        "region": "us-east-2",
+        "requestTimeoutMs": 120000,
+        "storageClass": "STANDARD"
+       }
+      },
+      "directUrl": "https://put.gd/acceptance/qt418/aurora-vm/Screen-Capture-2026-10-23-15-45-33.png",
+      "objectReference": {
+       "bytes": 1088,
+       "key": "acceptance/qt418/aurora-vm/Screen-Capture-2026-10-23-15-45-33.png",
+       "schemaVersion": 1,
+       "sha256": "162262561b65856a21546c6db5b619092c970b679efcfe607d060633af6ca9e7",
+       "versionId": ""
+      },
+      "publicationId": "d9a0dfb1-046e-4398-883a-0afec0058ec3",
+      "schemaVersion": 1
+     },
+     "status": "pending"
+    }
+   ],
+   "state": "accepted"
+  }
+ },
+ "final": null,
+ "remoteAfter": "HTTP 403",
+ "remoteStatus": "removed",
+ "localPath": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm-F/archive/images/Screen-Capture-2026-10-23-15-45-33.png",
+ "localExistsAfter": true,
+ "historyRowKept": true
+}

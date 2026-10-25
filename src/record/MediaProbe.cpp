@@ -84,7 +84,9 @@ QJsonObject probeMedia() {
         if (error) g_error_free(error);
     } else {
         gst["available"] = true;
-        gst["version"] = QString::fromUtf8(gst_version_string());
+        const auto version = gst_version_string();
+        gst["version"] = QString::fromUtf8(version);
+        g_free(version);
         QJsonObject elements;
         QStringList directories;
         for (const char* name : {"ximagesrc", "pipewiresrc", "pulsesrc", "vah264lpenc", "vah264enc", "vaapih264enc", "x264enc", "openh264enc",

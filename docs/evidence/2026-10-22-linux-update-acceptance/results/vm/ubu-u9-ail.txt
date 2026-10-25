@@ -1,0 +1,31 @@
+Moving AppImage to integration directory
+Extracting usr/share/icons/hicolor/scalable/apps/putgd.svg to "/home/lab/.local/share/icons/hicolor/scalable/apps/appimagekit_1ffd3f45fd5fe531427c7a99b2433899_putgd.svg"
+## ail-0-integrated 2026-10-23T02:00:27Z
+2028076 005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a  /home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage
+#### /home/lab/.local/share/applications/appimagekit_1ffd3f45fd5fe531427c7a99b2433899-put.gd.desktop
+Exec=/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage
+Exec=/opt/appimagelauncher.AppDir/usr/lib/x86_64-linux-gnu/appimagelauncher/remove "/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage"
+Exec=/opt/appimagelauncher.AppDir/usr/lib/x86_64-linux-gnu/appimagelauncher/update "/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage"
+entry /home/lab/.local/share/applications/appimagekit_1ffd3f45fd5fe531427c7a99b2433899-put.gd.desktop
+13977 DESKTOPINTEGRATION=AppImageLauncher APPIMAGE=/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage 
+install started True 
+install installed download None backup /home/lab/Applications/.putgd-update-backup-26.1022.1017-nightly.AppImage
+## ail-1-installed 2026-10-23T02:00:37Z
+2028899 e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc  /home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage
+#### /home/lab/.local/share/applications/appimagekit_1ffd3f45fd5fe531427c7a99b2433899-put.gd.desktop
+Exec=/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage
+Exec=/opt/appimagelauncher.AppDir/usr/lib/x86_64-linux-gnu/appimagelauncher/remove "/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage"
+Exec=/opt/appimagelauncher.AppDir/usr/lib/x86_64-linux-gnu/appimagelauncher/update "/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage"
+after restart 26.1022.1019-nightly True
+14279 DESKTOPINTEGRATION=AppImageLauncher APPIMAGE=/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage 
+menu start 26.1022.1019-nightly
+## ail-2-after-menu-launch 2026-10-23T02:00:50Z
+2028899 e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc  /home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage
+#### /home/lab/.local/share/applications/appimagekit_1ffd3f45fd5fe531427c7a99b2433899-put.gd.desktop
+Exec=/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage
+Exec=/opt/appimagelauncher.AppDir/usr/lib/x86_64-linux-gnu/appimagelauncher/remove "/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage"
+Exec=/opt/appimagelauncher.AppDir/usr/lib/x86_64-linux-gnu/appimagelauncher/update "/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage"
+/home/lab/ua/tool/u9_guest.sh: line 45: 14456 Aborted                    (core dumped) /opt/appimagelauncher.AppDir/usr/bin/update --check-for-update "$f" > $OUT/ail-updater-check.log 2>&1
+AIL updater check exit 134 
+1
+/dev/vda2        32G   30G  627M  98% /

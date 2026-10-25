@@ -599,6 +599,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  destinationPage_=new QWidget(this);destinationPage_->setObjectName("destinationsPage");destinationPage_->installEventFilter(this);auto* destinationLayout=new QHBoxLayout(destinationPage_);destinationLayout->setContentsMargins(0,0,0,0);destinationLayout->setSpacing(0);
  auto* rail=new QWidget;rail->setObjectName("destinationRail");rail->setFixedWidth(230);auto* railLayout=new QVBoxLayout(rail);railLayout->setContentsMargins(16,24,16,16);auto* railTitle=new QLabel("DESTINATIONS");VisualStyle::role(railTitle,"eyebrow");railLayout->addWidget(railTitle);auto* destinationList=new DestinationList;destinationList_=destinationList;destinationList_->setObjectName("destinationList");destinationList_->setAccessibleName("Destinations");destinationList_->setWordWrap(false);destinationList_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);railLayout->addWidget(destinationList_,1);auto* add=new QPushButton("+ Add destination");add->setObjectName("addS3Destination");railLayout->addWidget(add);destinationLayout->addWidget(rail);
  auto* destinationBody=new QWidget;auto* pageLayout=new QVBoxLayout(destinationBody);pageLayout->setContentsMargins(24,24,20,24);pageLayout->setSpacing(18);pageLayout->setAlignment(Qt::AlignTop);auto* destinationScroll=new QScrollArea;destinationScroll->setObjectName("destinationScroll");destinationScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);destinationScroll->setWidgetResizable(true);destinationScroll->setFrameShape(QFrame::NoFrame);destinationScroll->setWidget(destinationBody);destinationLayout->addWidget(destinationScroll,1);
+ auto* emptyDestinations=new QLabel("No destinations yet\nAdd a destination to start uploading.");emptyDestinations->setObjectName("destinationsEmpty");emptyDestinations->setWordWrap(true);emptyDestinations->setAlignment(Qt::AlignCenter);VisualStyle::role(emptyDestinations,"muted");destinationLayout->addWidget(emptyDestinations,1);
  profile_=choices(this,"destinationProfile",{});profile_->hide();profileId_=input(this,"destinationId");profileId_->hide();providerJson_=new QPlainTextEdit(this);providerJson_->setObjectName("providerSettingsJson");providerJson_->hide();
  auto* titleRow=new QHBoxLayout;profileLabel_=input(this,"destinationLabel");profileLabel_->setProperty("visualRole","editableTitle");profileLabel_->setPlaceholderText("Destination name");profileLabel_->setAccessibleName("Destination name");bind(profileLabel_,"/profiles/{profile}/label");titleRow->addWidget(profileLabel_,1);titleRow->addWidget(VisualStyle::helpButton("Destination name",settingHelp("/profiles/{profile}/label",{}),profileLabel_,this));auto* test=new QPushButton("Test connection");test->setObjectName("testDestination");titleRow->addWidget(test);defaultButton_=new QPushButton("Make default");defaultButton_->setObjectName("makeDefaultDestination");titleRow->addWidget(defaultButton_);auto* more=new QPushButton("⋯");more->setAccessibleName("Destination actions");titleRow->addWidget(more);pageLayout->addLayout(titleRow);
  auto* description=new QLabel("Amazon S3 or compatible storage. Existing uploads keep their original destination.");description->setWordWrap(true);VisualStyle::role(description,"muted");pageLayout->addWidget(description);
@@ -708,12 +709,9 @@ void SettingsWindow::refresh(bool preserveDrafts){
  autosaveBlocked_=false;for(auto* button:retryAutosave_)button->hide();reorderBaseline_.clear();
  loading_=true;draft_=settings_.document().isEmpty()?Settings::defaults():settings_.document();baseRevision_=settings_.revision();observed_=settings_.metadata()["observedRevision"].toString();dirty_=conflict_=false;refreshMetadata();
  status_->clear();
- auto actions=draft_["actions"].toObject();auto profiles=draft_["profiles"].toArray();initialProfile_=settings_.revision().isEmpty()&&profiles.isEmpty();
- if(initialProfile_){
-  const QString id="s3-1";profiles.append(s3Profile(id));draft_["profiles"]=profiles;
-  for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();if(action["destination"]=="upload"&&action["profileId"].toString().isEmpty())action["profileId"]=id;actions[name]=action;}
-  draft_["actions"]=actions;
- }
+ // Destinations are created only by an explicit Add action. Keep the legacy
+ // first-launch draft flag only for restoring an older UI checkpoint.
+ initialProfile_=false;
  populate();for(auto* field:errors_.keys())inlineError(field,{});refreshDestinationList();refreshCredentialHint();
 }
 void SettingsWindow::populate(){
@@ -1320,6 +1318,7 @@ void SettingsWindow::refreshCredentialHint(){
 void SettingsWindow::refreshDestinationList(const QJsonObject& document){
  if(!destinationList_)return;
  const QSignalBlocker block(destinationList_);const auto doc=document.isEmpty()?candidate():document;const auto profiles=doc["profiles"].toArray();
+ findControl<QWidget*>("destinationScroll")->setVisible(!profiles.isEmpty());findControl<QLabel*>("destinationsEmpty")->setVisible(profiles.isEmpty());
  // Rows are updated in place: rebuilding them here, which runs when a press changes the
  // selection, would drop the view's pressed row, so the drag that follows never starts.
  while(destinationList_->count()>profiles.size())delete destinationList_->takeItem(destinationList_->count()-1);int row=0;const auto actions=doc["actions"].toObject();bool selectedDefault=false;

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=put.gd
+Exec=/bin/sh "/tmp/i382-9ncc8fe7/d ' %% \\$ \\` \\" \\\\ \t __PUTGD_KIND__/putgd/login/start.sh" --background
+Terminal=false
+X-putgd-Managed=true
+X-putgd-StartupId=c9ffb1f5fff96ebd516bb4a511e17c6d9661cb83e03e487a384cbe8d60165270

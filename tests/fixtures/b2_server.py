@@ -190,6 +190,12 @@ class Handler(BaseHTTPRequestHandler):
             if self.headers.get('Authorization') != 'account-token':
                 return self.error(401, 'bad_auth_token')
             r = self.rule(call)
+            if r and r.get('delay'):
+                lock.release()
+                try:
+                    time.sleep(r['delay'])
+                finally:
+                    lock.acquire()
             if r and r.get('drop'):
                 return self.drop()
             if r and r.get('status'):

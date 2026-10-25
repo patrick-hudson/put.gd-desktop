@@ -1,0 +1,14 @@
+{
+  "scope": "Real user-manager AppImage-directory watch with synthetic ELF fixtures; no AppImage/desktop acceptance.",
+  "host": "mint-builder",
+  "run": "/tmp/i382a-a3najtjs",
+  "unitPaths": "Paths=/tmp/i382a-a3najtjs/Applications ' % $ (PathChanged)\nActiveState=active\n",
+  "lastImageRemovalCleanedManagedFiles": true,
+  "eligibleReplacementPreservedStartupWithoutLaunchingAnything": true,
+  "removingFinalReplacementCleanedManagedFiles": true,
+  "passed": true,
+  "ownedProcessExitCodes": [
+    0,
+    0
+  ]
+}

@@ -9,6 +9,34 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Login-startup uninstall contract (#382) — 2026-10-24
+
+Patrick corrected the contract: remove managed startup links for active accounts
+when the installation disappears, and for inactive accounts at next login;
+preserve settings and keep package scripts out of homes. Code PR #544 and docs
+PR #545 implement/document that choice. Clean `d5b561dd` development artifacts
+passed **five native and six actual AppImage** targeted lifecycle rows across
+Mint/Cinnamon X11, Fedora/GNOME Wayland, Debian/Kubuntu Plasma Wayland, Ubuntu
+GNOME Wayland and Aurora Plasma Wayland. Every row includes real enabled and
+post-removal logins, active cleanup with the resident quit, unchanged settings/
+data, explicit CLI disable, reviewed pictures and a 180-second memory check.
+All RSS/PSS measurements are below 40 MiB. Fedora native's strict library-map
+failure is a proven pre-existing distro Qt/OpenSSL dependency and remains
+explicit in the raw receipt. Startup CTest, 26 shell tests, 14 source-collection
+tests and complete branch/integration CI passed; earlier failing attempts are
+retained. Test VMs were retired after verified export and physical locks released.
+
+[Exact matrix, source/artifact identities, pictures and limits](evidence/2026-10-24-uninstall-startup-382/package-acceptance/README.md).
+#382 is closed per Patrick’s explicit decision that old entries in accounts
+which never ran the updated app are not a first-release blocker given limited
+existing usage. The [decision and closure receipt](evidence/2026-10-24-uninstall-startup-382/legacy-rollout-decision.json)
+record that exception. Code #544 merged into `nightly` at
+`35a16d0e6c63bc57bffe8d7bfeeeca5ad428c28c`; companion #545 carries the docs.
+Published-nightly lifecycle verification, including AppImage replacement with
+real channel metadata, continues under #384. These results are targeted
+development-artifact acceptance, not full A–Q/A–K or stable-draft certification.
+The retained-link/TryExec tests at `91864c41` are superseded history.
+
 ## First stable gate plan — 2026-10-22
 
 No release asset has been accepted yet. The first stable switches to calendar
@@ -31,13 +59,66 @@ work packages:
 | Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | latency stale (current63, 121.273 ms p95); history/burst/slow network not started |
 | Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
 | Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
-| Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | needs Patrick's decision |
+| Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | closed by Patrick; 11 development-artifact rows pass, legacy exception accepted; PR integration and #384 release checks remain ([evidence](evidence/2026-10-24-uninstall-startup-382/README.md)) |
 | License, notices, provenance, dependencies | [#383](https://github.com/patrick-hudson/put.gd-desktop/issues/383) | AppImage rehearsal on `v26.1022.968-nightly` ([below](#appimage-exact-asset-audit-rehearsal-383--2026-10-22)): provenance passes; notices, complete source, Qt CVEs and codec patents open (#416–#419); DEB/RPM not yet audited |
 | Release campaign and stable signing | [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) | promote.py dry run passed on `0435ed6a` under the old scheme; repeat after #373 |
 | KDE/X11 rows, graphical-store installs | [#385](https://github.com/patrick-hudson/put.gd-desktop/issues/385) | proposed for 0.1.2; GNOME/X11 obsolete (GNOME 50 has no X11 session) |
 
 Flatpak ([#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83)) is
 outside the first stable.
+
+## Native package full acceptance (#375, #377, #382) — 2026-10-23
+
+[Evidence](evidence/2026-10-23-native-full-acceptance/README.md): the
+[native package profile](acceptance-matrix.md#native-package-full-acceptance-profile)
+(A–Q) on nightly `v26.1023.1058-nightly` (`05991d9d`). It covered the `ubuntu24.04` DEB on m74
+(Mint Cinnamon X11), the `ubuntu26.04` DEB on k72 (Kubuntu Plasma Wayland, plus its X11
+session for recording) and on an Ubuntu 26.04 GNOME VM, the `debian13` DEB on d69 and the
+`fedora44` RPM on f44.
+- **Passes everywhere:**
+  - fresh install from pkg.put.gd;
+  - the never-run dev.133 → nightly upgrade with a 10,000-entry history (#56 layout move,
+    schema 5→7, rows, counts and config preserved);
+  - 0.1.1-nightly.947 → CalVer through apt and dnf;
+  - recording with the distro media stack, motion against a static control;
+  - a real browser loading a live upload;
+  - the read-only repository channel;
+  - start at login and removal.
+- **Fails:** item P on m74, because of [#490](https://github.com/patrick-hudson/put.gd-desktop/issues/490):
+  the login-started resident survives logout on Cinnamon.
+- **Other findings:** #491–#495.
+- **#382:** the per-desktop behaviour of the retained login entry, with and without
+  `TryExec`, is recorded for Patrick's decision.
+- **Scope:** a historical nightly pass. Release acceptance requires fresh evidence
+  on the exact release bytes with reviewed drivers; use the #495 follow-up below
+  for the retired recipes and maintained replacement checks.
+
+## Native acceptance driver hardening (#495) — 2026-10-24
+
+The [follow-up record](evidence/2026-10-24-native-acceptance-drivers-495/README.md)
+retires unsafe recipes and records accepted `72afd00b` live/growth proof for
+[code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
+The later `61439983` delta has 39 passing tests and clear focused round-4
+review: post-login state explicitly does not prove autostart origin, keychain
+receipt/default validation precedes Unlock, and probe preset schema is 5. There
+is a separate 11-check k72 session/registration/already-unlocked backend packet,
+with its first private-wrapper expectation error and correction retained; no
+product/GUI/logout/m74 proof is transferred to that source.
+Independent round 3 cleared all five safety findings and inert-receipt
+compatibility. Only exact-72 growth is permitted under every guard; predecessors
+remain held. Final exact-source Cinnamon/KDE bounded functional packets and
+GNOME session/backend-only protocol evidence are verified.
+Accepted `72afd` proof includes 37 tests, actual serializer/unstripped-receipt/10k
+synthetic CLI checks and fresh physical Cinnamon/X11 and KDE/Wayland SNI activation/Quit visuals,
+peer-bound preparation/same-session refusal, separate-process backend roundtrip,
+absent-CLI snapshot and clean release: Cinnamon uses Qt 6.4.2; KDE uses Qt 6.10.2.
+
+Earlier k72/f44/m74 packets retain their own driver and product identities.
+The original 1058 pass preserved 10,000 rows in five operations and used session
+credentials plus a keychain reference; its outcomes and failures stay historical.
+No positive real logout/login, rendered menu/physical click, product QtKeychain
+lifecycle, cross-login backend persistence, 10k product UI/performance/migration
+or full package/release acceptance is established by this driver evidence.
 
 ## DEB/RPM exact-asset audit rehearsal (#383) — 2026-10-22
 
@@ -101,15 +182,43 @@ pass; it does not certify release bytes.
   ([#420](https://github.com/patrick-hudson/put.gd-desktop/issues/420)).
 - **Open, all release-blockers:** the AppImage notices
   ([#417](https://github.com/patrick-hudson/put.gd-desktop/issues/417)), and
-  three decisions for Patrick: complete source for Qt and the LGPL libraries
-  ([#416](https://github.com/patrick-hudson/put.gd-desktop/issues/416)),
-  Qt 6.8.3's later CVEs
-  ([#418](https://github.com/patrick-hudson/put.gd-desktop/issues/418)) and
+  decisions for Patrick: complete source for Qt and the LGPL libraries
+  ([#416](https://github.com/patrick-hudson/put.gd-desktop/issues/416)) and
   the H.264/H.265/AAC patent posture
   ([#419](https://github.com/patrick-hudson/put.gd-desktop/issues/419)).
+- **Qt 6.8.3's later CVEs
+  ([#418](https://github.com/patrick-hudson/put.gd-desktop/issues/418)):** Patrick
+  chose to bump Qt; the AppImage now bundles Qt 6.12.0
+  ([#497](https://github.com/patrick-hudson/put.gd-desktop/pull/497)), with an
+  A–K re-acceptance on six desktops
+  ([evidence](evidence/2026-10-23-appimage-qt612-418/README.md)).
 
 Not covered: the Proton per-release check. The DEBs and the RPM are in the
 section above.
+
+## AppImage window icon on Plasma (#523) — 2026-10-23
+
+Lab code: [#530](https://github.com/patrick-hudson/put.gd-desktop/pull/530).
+Evidence: [2026-10-23-appimage-icon-523](evidence/2026-10-23-appimage-icon-523/README.md).
+
+- **Cause.** The neon smoke runs' "W" icon was a lab artifact. `lab.py`'s
+  private `XDG_DATA_HOME` hid AppRun's `putgd-ui.desktop` from KWin, and the
+  1058 AppImage's Qt 6.8.3 can't send the icon itself.
+- **Before and after.** On k72 (Plasma 6.6.6), d69 (Plasma 6.3.6) and a neon
+  User 6.8.1 VM: 1058 showed "W" in the dashboard's and the editor's title bars.
+  The Qt 6.12.0 AppImage (`26.1023.1101-dev+gaa047473ad2e`) showed the put.gd
+  icon in the same setup, sending it over `xdg-toplevel-icon-v1`. 1058 with the
+  real data home showed the put.gd icon too.
+- **Lab fix.** For AppImage profiles, the runner links the private data home's
+  `applications/` to the session's. In a fresh neon overlay, 1058 run through
+  `lab.py` showed the put.gd icon and captured the desktop through KWin
+  ScreenShot2.
+- **Capture risk.** On k72 (KWin 6.6.6), 1058 with the private data home failed
+  desktop capture with `capture_permission`, and passed with the real one.
+
+Not covered: neon Unstable, and f44/m74 (no app change). Follow-up: launches
+whose `XDG_DATA_HOME` differs from the compositor's lose KDE capture
+([#531](https://github.com/patrick-hudson/put.gd-desktop/issues/531)).
 
 ## Package install retries and snapshot (#368) — 2026-10-22
 
@@ -132,6 +241,27 @@ Policy: [CI coverage, package installs](ci.md#package-installs). Evidence:
   the snapshot failed, and an unknown package failed without a retry.
 
 Not covered: the `ci.yml` jobs' installs (#389).
+
+## Stalled package installs (#467) — 2026-10-23
+
+Code: [#498](https://github.com/patrick-hudson/put.gd-desktop/pull/498), head
+`1926941a`, all CI jobs green
+([run 40008537011](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40008537011)).
+Policy: [CI coverage, stalled installs](ci.md#stalled-installs). Evidence:
+`docs/evidence/2026-10-23-package-install-stalls-467/`.
+
+- **Before.** Nightly run 39851369595 (`eab13a18`): `packages / appimage`
+  hung for 93 minutes after `Get:5 https://archive.ubuntu.com/ubuntu
+  noble-security InRelease` until it was cancelled.
+- **Demo.** Run 40008409878 on throwaway `04aac39e` (#498's install script plus
+  a stalling apt proxy, not merged). A stall was stopped after 60 s and the
+  retry passed. Two stopped attempts fell back to the snapshot, which
+  installed. With the default limits and no snapshot, four 10-minute stalls
+  failed the job red after 43.5 minutes, inside its 90-minute timeout.
+
+Not covered: retries for the `linux` and `sanitizers` installs (#389), the
+AppImage install's lack of a snapshot (#500), the Windows `portable` job
+(#501), and the Qt ASan download (#502).
 
 ## Weekly stress lane on k72 (#360) — 2026-10-22
 
@@ -190,6 +320,25 @@ Policy and tools: [CI coverage, flaky tests](ci.md#flaky-tests). Evidence:
 
 Not covered: the lane is not scheduled (proposal #360); Python contract suites
 (#99, #160 were flakes there) are outside this policy.
+
+## Recording session contract (#410) — 2026-10-24
+
+The [companion report](evidence/2026-10-24-recording-session-410/README.md) and
+[JSON ledger](evidence/2026-10-24-recording-session-410/summary.json) bind clean
+`3440ab9c` to 108/108 Dev tests, 5/5 MCP tests, three relevant whole unsuppressed
+ASan/UBSan suites and the actual product probe, plus required code CI.
+Cinnamon X11 and GNOME Wayland guests and physical Debian KDE Wayland passed
+six changed-behavior cases and separate 180-second resident RSS/PSS windows,
+with reviewed saved visuals, graceful helper exits and verified cleanup.
+
+Original Mint `c5bb1171` full-run/idle evidence stays on that private-mode archive;
+corrected `fb19e0c7` has the identical nine binary hashes and a fresh three-case
+package smoke/access check. GNOME uses corrected `73faf5f6` with the active
+version-2 extension. Native physical GNOME prerequisites remain blocked; guest
+proof is not physical or full-release acceptance. Early numeric-only memory
+cover failures and baseline missing binary hashes remain explicit. The separately
+identified #556 Btrfs read-only capacity proof establishes storage only.
+Merge recording #551 and prerequisite #556 before companion #550.
 
 ## Recording closeout (#87, #166, #165, #164, #89) — 2026-10-20
 

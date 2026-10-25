@@ -38,14 +38,15 @@ jobs:
 
   contracts:
     runs-on: ubuntu-24.04
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.release_tag || github.sha }}
       - name: Install QEMU disk utilities and dwz for the contracts
-        run: |
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-utils dwz
+        env:
+          PUTGD_PKG_LABEL: contracts
+        run: sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL bash tools/ci/install-packages.sh --no-install-recommends qemu-utils dwz
       - name: Release, packaging and CI tool contracts
         if: always()
         run: python3 tools/ci/contracts.py release
@@ -65,7 +66,7 @@ jobs:
         if: always()
         run: |
           archive="$RUNNER_TEMP/actionlint.tar.gz"
-          curl --fail --silent --show-error --location --output "$archive" \
+          curl --fail --silent --show-error --location --retry 3 --connect-timeout 30 --max-time 300 --output "$archive" \
             https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
           echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $archive" | sha256sum --check --strict
           tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
@@ -84,6 +85,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-24.04
+    # Normally 5-10 minutes (#467).
+    timeout-minutes: 60
     permissions:
       contents: read
       issues: write  # the flaky-test tracker (tools/ci/flake_ledger.py)
@@ -97,11 +100,15 @@ jobs:
         distribution: ['24.04', '26.04']
     steps:
       - name: Install distro dependencies
+        # Not retried yet (#389); a stalled mirror stops it instead of hanging the job (#467).
+        timeout-minutes: 20
+        shell: bash
         run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential ccache git ca-certificates passwd util-linux qemu-utils python3 nodejs npm cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav
+          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
+          apt-get update "${apt[@]}"
+          DEBIAN_FRONTEND=noninteractive apt-get install -y "${apt[@]}" build-essential ccache git ca-certificates passwd util-linux qemu-utils python3 nodejs npm cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav
           if [ '${{ matrix.distribution }}' = '26.04' ]; then
-            apt-get install -y liblayershellqtinterface-dev
+            apt-get install -y "${apt[@]}" liblayershellqtinterface-dev
           fi
           useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -130,6 +137,7 @@ jobs:
         run: python3 tools/ci/sdk_cache.py verify --key '${{ steps.sdk-key.outputs.key }}'
       - name: Provision pinned AWS SDK
         if: steps.sdk-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 30
         run: |
           PUTGD_SDK_JOBS="$(nproc)" bash tools/ci/provision-linux-sdk.sh
           python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
@@ -142,6 +150,7 @@ jobs:
             build/sdk-cache.json
           key: ${{ steps.sdk-key.outputs.key }}
       - name: Provision pinned Proton helper
+        timeout-minutes: 15
         run: python3 tools/proton/provision_runtime.py
       - name: Restore compiler cache
         uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
@@ -237,15 +246,21 @@ jobs:
       contents: read
       issues: write  # the flaky-test tracker (tools/ci/flake_ledger.py)
     runs-on: ubuntu-24.04
+    # Normally 5-10 minutes, more when the instrumented QtCore is rebuilt (#467).
+    timeout-minutes: 90
     container: ubuntu:26.04
     env:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
     steps:
       - name: Install distro dependencies
+        # Not retried yet (#389); a stalled mirror stops it instead of hanging the job (#467).
+        timeout-minutes: 20
+        shell: bash
         run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential clang libclang-rt-dev llvm ccache git ca-certificates curl passwd util-linux python3 cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev liblayershellqtinterface-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
+          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
+          apt-get update "${apt[@]}"
+          DEBIAN_FRONTEND=noninteractive apt-get install -y "${apt[@]}" build-essential clang libclang-rt-dev llvm ccache git ca-certificates curl passwd util-linux python3 cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev liblayershellqtinterface-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
           useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -273,6 +288,7 @@ jobs:
         run: python3 tools/ci/sdk_cache.py verify --key '${{ steps.sdk-key.outputs.key }}'
       - name: Provision pinned AWS SDK
         if: steps.sdk-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 30
         run: |
           PUTGD_SDK_JOBS="$(nproc)" bash tools/ci/provision-linux-sdk.sh
           python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
@@ -385,6 +401,7 @@ jobs:
       actions: write  # delete caches
       contents: read
       pull-requests: read  # list open pull requests
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -492,6 +509,7 @@ jobs:
     needs: [changes, packages]
     if: ${{ always() && needs.changes.outputs.pipewire == 'true' && (needs.packages.result == 'success' || needs.packages.result == 'skipped') }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

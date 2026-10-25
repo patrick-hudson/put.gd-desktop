@@ -1,5 +1,6 @@
 // Backblaze B2 native destination (#282) against the offline b2api v3 oracle.
 #include "storage/b2/B2Provider.h"
+#include "fixtures/Waits.h"
 #include <QCryptographicHash>
 #include <QElapsedTimer>
 #include <QFile>
@@ -123,6 +124,27 @@ QJsonObject seed(const QString& name, const QString& action = "upload", const QS
 class B2Test : public QObject {
     Q_OBJECT
 private slots:
+    void stalledNameCheckCancelsAndRetries() {
+        B2Fixture f;
+        f.destination.settings["requestTimeoutMs"] = 120000;
+        f.rules({QJsonObject{{"call", "b2_list_file_versions"}, {"delay", 30}}});
+        auto cancellation = std::make_shared<std::atomic_bool>(false);
+        auto result = std::async(std::launch::async, [&] {
+            return f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "cancel.png", cb, cancellation); });
+        });
+        PUTGD_TRY_VERIFY(!f.events("b2_list_file_versions").isEmpty());
+        QElapsedTimer elapsed; elapsed.start(); cancellation->store(true);
+        PUTGD_TRY_VERIFY(result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready);
+        const auto checked = result.get();
+        QVERIFY(elapsed.elapsed() < 5000);
+        QCOMPARE(checked.status, QString("inconclusive"));
+        QCOMPARE(checked.error.code, QString("cancelled"));
+        QCOMPARE(f.provider.diagnostics()["activeHelpers"].toInt(), 0);
+        const auto retried = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "cancel.png", cb); });
+        QCOMPARE(retried.status, QString("absent"));
+        QVERIFY(!retried.error);
+    }
+
     void settingsValidation() {
         auto s = b2::defaults();
         s["bucket"] = "putgd-fixture";

@@ -1,0 +1,26 @@
+{"schemaVersion": 1, "passed": true, "scope": "bounded exact-resident 300-second sampled memory/CPU gate; startup/native provenance and functional receipts are separate", "checks": {"samplerCompleted": true, "sampleCount61": true, "spanAtLeast299_5Seconds": true, "maxGapAtMost7_5Seconds": true, "oneResidentNoUiOrEscapedFamily": true, "rssPlusSwapAtMost40MiB": true, "zeroSwap": true, "maxCpuBelow0_5PercentOfOneCore": true}, "samples": 61, "spanSeconds": 300.00036964499986, "maxGapSeconds": 5.024884603999908, "peakRssMiB": 35.38671875, "peakSwapBytes": 0, "maxCpuPercentOfOneCore": 0.19916334839216399, "clockTicksPerSecond": 100, "sourceSamplesSha256": "50816c2f217fa6e1496a9671d1e207746bd16b02041f15eea7e350fbf0ac0806", "sourceResultSha256": "2a5b4fe273821e64221bfb534ac904323accd68d2bbfda5f8711e3c464594215"}
+owned resident and fixture stopped
+native ready
+current production capabilities/configuration inspected
+/home/patrick/work/pgcc-fullerror-native/native_run.py:101: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  colors={(220,30,40),(20,180,70),(35,70,220),(235,190,20)};coords=[(i%w,i//w) for i,v in enumerate(image.getdata()) if v in colors]
+visible native unlocked fixture confirmed
+disabled real GNOME helper gives actionable install/login/enable guidance
+/home/patrick/work/pgcc-fullerror-native/native_run.py:244: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  colors={(17,19,23),(24,27,33),(32,36,44),(35,40,56),(42,47,56)};coords=[(i%w,i//w) for i,v in enumerate(image.getdata()) if v in colors]
+Traceback (most recent call last):
+  File "/home/patrick/work/pgcc-fullerror-native/native_run.py", line 247, in <module>
+    if x1-x0<1050 or y1-y0<670 or x1-x0>1330 or y1-y0>890:raise RuntimeError('full own main-window geometry not established; no screenshot retained')
+                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: full own main-window geometry not established; no screenshot retained
+Traceback (most recent call last):
+  File "/home/patrick/work/pgcc-fullerror-native/native_run.py", line 182, in <module>
+    x0,y0,x1,y1=shot(label+'-list');c=RFB(A.port);c.click(x1-63,y0+38);c.close();shot(label+'-gallery')
+                ~~~~^^^^^^^^^^^^^^^
+  File "/home/patrick/work/pgcc-fullerror-native/native_run.py", line 180, in shot
+    subprocess.run([sys.executable,__file__,'shot','--host',A.host,'--root',str(ROOT),'--repo',str(REPO),'--bin',str(BIN),'--port',str(A.port),'--id',name],check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/usr/bin/python3', '/home/patrick/work/pgcc-fullerror-native/native_run.py', 'shot', '--host', 'f44-native-full-errors', '--root', '/tmp/hfgf', '--repo', '/home/patrick/work/pgcc', '--bin', '/usr/bin', '--port', '5901', '--id', 'disabled-system-guide-list']' returned non-zero exit status 1.

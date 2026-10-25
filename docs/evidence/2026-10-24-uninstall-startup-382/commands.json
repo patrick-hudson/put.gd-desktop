@@ -1,0 +1,100 @@
+[
+  {
+    "name": "fetch",
+    "command": [
+      "git",
+      "fetch",
+      "/home/patrick/work/pg382-code.bundle",
+      "HEAD"
+    ],
+    "exitCode": 0,
+    "startedAt": "2026-10-24T04:02:05.353077+00:00",
+    "finishedAt": "2026-10-24T04:02:05.366351+00:00"
+  },
+  {
+    "name": "checkout",
+    "command": [
+      "git",
+      "checkout",
+      "--detach",
+      "FETCH_HEAD"
+    ],
+    "exitCode": 0,
+    "startedAt": "2026-10-24T04:02:05.366565+00:00",
+    "finishedAt": "2026-10-24T04:02:05.400338+00:00"
+  },
+  {
+    "name": "configure",
+    "command": [
+      "nice",
+      "-n",
+      "10",
+      "cmake",
+      "--preset",
+      "dev",
+      "-DCMAKE_PREFIX_PATH=/home/patrick/work/pgcc/build/sdk",
+      "-DPUTGD_AWS_RUNTIME_DIR=/home/patrick/work/pgcc/build/sdk/lib",
+      "-DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/pgcc/build/dependencies/aws-sdk-cpp"
+    ],
+    "exitCode": 0,
+    "startedAt": "2026-10-24T04:02:05.407398+00:00",
+    "finishedAt": "2026-10-24T04:02:07.280080+00:00"
+  },
+  {
+    "name": "build",
+    "command": [
+      "nice",
+      "-n",
+      "10",
+      "cmake",
+      "--build",
+      "--preset",
+      "dev",
+      "--parallel",
+      "2",
+      "--target",
+      "test_login_startup"
+    ],
+    "exitCode": 0,
+    "startedAt": "2026-10-24T04:02:07.280364+00:00",
+    "finishedAt": "2026-10-24T04:03:52.808818+00:00"
+  },
+  {
+    "name": "socket-preflight",
+    "command": [
+      "python3",
+      "tools/diagnostics/check_socket_paths.py",
+      "--socket",
+      "/tmp/p382-y0016tlr/putgd/session.sock"
+    ],
+    "exitCode": 0,
+    "startedAt": "2026-10-24T04:03:52.809330+00:00",
+    "finishedAt": "2026-10-24T04:03:52.850548+00:00"
+  },
+  {
+    "name": "ctest",
+    "command": [
+      "ctest",
+      "--preset",
+      "dev",
+      "-R",
+      "^login_startup_contract$",
+      "--output-junit",
+      "/home/patrick/work/pg382/work/i382-check3/ctest.xml"
+    ],
+    "exitCode": 0,
+    "startedAt": "2026-10-24T04:03:52.850894+00:00",
+    "finishedAt": "2026-10-24T04:03:52.960767+00:00"
+  },
+  {
+    "name": "appimage-script",
+    "command": [
+      "python3",
+      "tests/unit/test_appimage_login_start.py",
+      "-v"
+    ],
+    "exitCode": 0,
+    "startedAt": "2026-10-24T04:03:52.961088+00:00",
+    "finishedAt": "2026-10-24T04:03:53.574366+00:00"
+  }
+]

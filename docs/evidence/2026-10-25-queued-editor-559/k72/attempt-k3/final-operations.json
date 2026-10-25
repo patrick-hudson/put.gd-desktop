@@ -1,0 +1,489 @@
+[
+  {
+    "id": "3ebe5035-b706-4bc9-a647-2da5b9198c47",
+    "state": "completed",
+    "phase": "completed",
+    "copyStatus": "failed",
+    "error": {
+      "code": "clipboard_unavailable",
+      "details": {},
+      "message": "Native Wayland data-control result copying is unavailable"
+    },
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "ab249945-4419-4f16-aa4b-69302aa562f1",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-24-23-19-35.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559k3/data/putgd/artifacts/../previews/ab249945-4419-4f16-aa4b-69302aa562f1.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-24-23-19-35.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-24-23-19-35.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "85c18b62-f2c2-4699-b425-3b2152557e2b",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "7d09c8906b689bff4e5445e984a143cf924ec482678ff9cb8f9b0d1c96e89d71",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:41505",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:41505/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:41505/fixture/q559/Screen-Capture-2026-10-24-23-19-35.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-24-23-19-35.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "85c18b62-f2c2-4699-b425-3b2152557e2b",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "423b1e4a-539f-43e6-87c7-8df1e89ea887",
+    "state": "completed",
+    "phase": "completed",
+    "copyStatus": "failed",
+    "error": {
+      "code": "clipboard_unavailable",
+      "details": {},
+      "message": "Native Wayland data-control result copying is unavailable"
+    },
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "78ad8c1d-1243-46f3-b9e3-fe72cf1861bd",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-24-23-19-37.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559k3/data/putgd/artifacts/../previews/78ad8c1d-1243-46f3-b9e3-fe72cf1861bd.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-24-23-19-37.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-24-23-19-37.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "2c02b09b-9ad2-43ce-9b79-44ea7b791861",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "7d09c8906b689bff4e5445e984a143cf924ec482678ff9cb8f9b0d1c96e89d71",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:41505",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:41505/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:41505/fixture/q559/Screen-Capture-2026-10-24-23-19-37.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-24-23-19-37.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "2c02b09b-9ad2-43ce-9b79-44ea7b791861",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "e543e916-7a49-4dcf-9c67-5cfd1266531f",
+    "state": "completed",
+    "phase": "completed",
+    "copyStatus": "failed",
+    "error": {
+      "code": "clipboard_unavailable",
+      "details": {},
+      "message": "Native Wayland data-control result copying is unavailable"
+    },
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "9b3c7807-f666-410b-9119-e8d5259e6eee",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-24-23-19-38.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559k3/data/putgd/artifacts/../previews/9b3c7807-f666-410b-9119-e8d5259e6eee.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-24-23-19-38.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-24-23-19-38.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "15bfb0e1-cce8-42d0-b5ee-51dc58bc5e86",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "7d09c8906b689bff4e5445e984a143cf924ec482678ff9cb8f9b0d1c96e89d71",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:41505",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:41505/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:41505/fixture/q559/Screen-Capture-2026-10-24-23-19-38.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-24-23-19-38.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "15bfb0e1-cce8-42d0-b5ee-51dc58bc5e86",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "b7932f72-c9e2-4887-b58a-16efd3017d52",
+    "state": "completed",
+    "phase": "completed",
+    "copyStatus": "failed",
+    "error": {
+      "code": "clipboard_unavailable",
+      "details": {},
+      "message": "Native Wayland data-control result copying is unavailable"
+    },
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "aef96de9-0e18-42a1-b64a-50534ed7a740",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-24-23-19-38.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559k3/data/putgd/artifacts/../previews/aef96de9-0e18-42a1-b64a-50534ed7a740.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-24-23-19-38-09331379-d068-4008-9a0d-f915e520b141.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-24-23-19-38-09331379-d068-4008-9a0d-f915e520b141.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "1996fa85-cc88-4367-ba82-d8a3d4c053ad",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "7d09c8906b689bff4e5445e984a143cf924ec482678ff9cb8f9b0d1c96e89d71",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:41505",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:41505/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:41505/fixture/q559/Screen-Capture-2026-10-24-23-19-38-09331379-d068-4008-9a0d-f915e520b141.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-24-23-19-38-09331379-d068-4008-9a0d-f915e520b141.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "1996fa85-cc88-4367-ba82-d8a3d4c053ad",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "3c16129c-fa97-4193-a1e5-101d313d3d22",
+    "state": "completed",
+    "phase": "completed",
+    "copyStatus": "failed",
+    "error": {
+      "code": "clipboard_unavailable",
+      "details": {},
+      "message": "Native Wayland data-control result copying is unavailable"
+    },
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "5deedde3-a18d-48cc-aaf6-60f32b6368f2",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-24-23-19-39.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559k3/data/putgd/artifacts/../previews/5deedde3-a18d-48cc-aaf6-60f32b6368f2.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-24-23-19-39.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-24-23-19-39.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "ae58fa6c-1020-4afe-baf5-80a8e8d0b2e9",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "7d09c8906b689bff4e5445e984a143cf924ec482678ff9cb8f9b0d1c96e89d71",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:41505",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:41505/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:41505/fixture/q559/Screen-Capture-2026-10-24-23-19-39.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-24-23-19-39.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "ae58fa6c-1020-4afe-baf5-80a8e8d0b2e9",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "d8539216-bacc-453b-a4e3-3ec388113dfc",
+    "state": "cancelled",
+    "phase": "cancelled",
+    "copyStatus": "no_result",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": []
+  }
+]

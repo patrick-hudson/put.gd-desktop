@@ -39,9 +39,9 @@ Earlier tags keep their names and stay readable: `v0.1.1-nightly.N`, the
 unpublished `v0.1.1-rc.1` draft, and before 2026-10-18
 `vBASE-dev.COUNT.UTC+gSHORT`. Every calendar version sorts after them.
 Nightlies never replace GitHub's Latest stable release. Every channel publishes
-all sixteen individual downloads listed below, including the three raw DEBs, the RPM,
-the exact compiled curated source archive, the AppImage's media source and `.zsync`, and the
-debug symbols.
+all twenty-one individual downloads listed below, including the three raw DEBs, the RPM,
+the exact compiled curated source archive, the AppImage's complete bundled-component source and `.zsync`, the
+debug symbols and an SBOM of each package.
 
 ### Nightly
 
@@ -227,6 +227,22 @@ order and verify the combined hash before extracting. These large source parts
 are separate downloads; the combined application ZIP includes the catalog and
 instructions. Preserve them while the corresponding binary release is available.
 
+Native Linux packages also generate `/usr/share/doc/putgd/copyright` in DEP-5
+format and a deterministic `changelog.gz` from the source commit. The copyright
+file reproduces all shipped attribution, including compressed Bun notices and
+ICU 78.3, so it survives Debian's usual minimized-documentation exception. RPM
+notice files are `%license` and survive `--excludedocs`/`tsflags=nodocs` (#470).
+Product ELF executables explicitly use PIE and full RELRO; the native artifact
+audit rejects regressions (#475). Bun's upstream helper is outside that compiler
+change and remains tracked in #471. Proton's installed dependency notices are
+stable across npm 9/10/11 because the formerly optional peer dependency is pinned
+directly (#369), and ICU 78.3 is bound into both Linux redistribution copies
+(#461).
+
+The [native packaging evidence](evidence/2026-10-24-native-packaging-540/README.md)
+records the clean Fedora/Debian build, strict metadata and filtered-install
+checks, npm-version comparison, original failures and the final CI run.
+
 Final packaged functional/resource acceptance remains a separate receipt.
 Previously tested private deployments do not establish package acceptance. P5
 credits the actual Crypto source update and completed rebuild work; ongoing
@@ -248,7 +264,7 @@ and nightly coverage classes continue to apply.
 | Ubuntu 26.04 / Kubuntu DEB | pinned Ubuntu 26.04 container | distro Qt and LayerShellQt |
 | Debian 13 DEB | pinned Debian 13 container | distro Qt 6.8, LayerShellQt and FFmpeg 7.1 |
 | Fedora 44 RPM | pinned Fedora 44 container | distro Qt and LayerShellQt |
-| x86_64 AppImage | Ubuntu 24.04, official Qt 6.8.3, locked ECM/LayerShellQt | dynamically bundled Qt/plugins |
+| x86_64 AppImage | Ubuntu 24.04, official Qt 6.12.0, locked ECM/LayerShellQt | dynamically bundled Qt/plugins |
 
 AppImage requires glibc 2.39 or newer; it does not substitute the host libc.
 DEB/RPM continue using system Qt. AppImage's normal bundled runtime is the
@@ -279,22 +295,60 @@ Because of x264, x265 and the GPL FFmpeg, the AppImage is a GPL-2.0-or-later
 combined work; put.gd's own code stays MIT and each component keeps its
 licence. The image carries `usr/share/doc/putgd/APPIMAGE-GPL-NOTICE.txt` and
 the licence texts under `usr/share/doc/putgd/bundled-licenses`. Every release
-publishes the corresponding source as `putgd-VERSION-appimage-media-source.tar.gz`,
-built in the AppImage job by `tools/releases/appimage_media_sources.py`: the
-pinned FFmpeg commit as `git archive` output with its configure options, and
-the Ubuntu source packages (`apt-get source`, checked against the signed
-archive index) of every bundled GPL binary: x264, x265 and
-`gst-plugins-ugly1.0` for the `x264enc` plugin. The collector binds that
-archive to the exact AppImage digest, FFmpeg commit and package versions in the
-AppImage receipt before staging either. put.gd's own source is the
-`-source.tar.gz` asset. Qt, GLib and the other LGPL libraries keep their
-upstream sources, as before.
+publishes `putgd-VERSION-appimage-complete-source.tar.gz`, built automatically by
+`tools/releases/appimage_complete_sources.py` from the exact image's component
+inventory. It carries all pinned Qt module trees (including embedded third-party
+code), LayerShellQt, QtKeychain, ICU, AWS SDK/CRT submodules, FFmpeg with its
+configure/build scripts, and the exact distro sources of every bundled Ubuntu
+binary. Distro source includes the `.dsc`, original archives and Debian changes,
+verified by source version and checksums after download through signed apt
+indexes. The runtime's source, libfuse patch, static-library sources and Alpine
+recipes/patches are included too; their closure is pinned to the runtime digest
+in `packaging/appimage/runtime-source.json`.
 
-For information: H.264 and HEVC are covered by patent pools. Via LA licenses
-H.264 (AVC) and HEVC, and Access Advance also licenses HEVC. The AVC licence
-has a royalty-free tier for small unit volumes (100,000 units a year). The
-DEBs and the RPM use the codecs the distribution supplies; the AppImage ships
-x264 and x265 binaries.
+The source asset's `SOURCES.json` maps every component to its source and checksums.
+`upstream/*/TREES.json` maps root and recursive submodule archives to their
+original paths. The collector rejects missing components, changed Qt/runtime
+pins, a partial media-only asset or mismatched archive contents. put.gd's own
+`-source.tar.gz` and the Proton source catalog/transport parts remain separately
+verified assets on the same release. Keep all these source assets available
+alongside the corresponding binary. No three-year written-offer process or
+separate source mirror is substituted for these automated assets (#416).
+
+The upstream runtime's old build logs have expired. Its exact binary and debug
+hashes, identified static-library versions, available packaging revisions and
+reproduction limits are recorded in the runtime source lock. Source delivery
+is not a claim that the official runtime or Qt binaries rebuild byte for byte.
+The runtime also embeds mimalloc 2.1.7; its original MIT notice is now included
+in the image's notice inventory.
+
+### Codec distribution decision (#419)
+
+Patrick delegated the distribution choice on 2026-10-23. Retain the software
+H.264 encoder/decoder, H.265 encoder and AAC encoder/decoder in the free,
+directly downloadable stable and nightly AppImage. This preserves recording
+fallback and MP4/H.265 export on systems without a working host hardware encoder,
+following the approved functional choice to bundle x264/x265. AAC is included
+explicitly: GStreamer vo-aacenc supplies recording audio and FFmpeg AAC supplies
+working-clip decoding/export. The DEB/RPM continue to use distribution codecs.
+
+This chooses distribution under the upstream software licences, with complete
+notices and corresponding source; it does not assert a patent licence or
+universal patent clearance. Do not infer an exemption from free downloads,
+source availability, small download counts or the AVC royalty threshold. The
+[AVC programme](https://www.via-la.com/licensing-programs/avc-h-264/) describes
+product licensing and threshold terms; the [AAC programme](https://www.via-la.com/licensing-programs/aac/)
+addresses end-user encoder/decoder products; [Access Advance's FAQ](https://accessadvance.com/faq/)
+addresses downloadable HEVC software. Those are the administrators' published
+positions, not a finding that every patent in their pools applies to this build.
+[FFmpeg's legal guidance](https://www.ffmpeg.org/legal.html) distinguishes code
+licensing from jurisdiction-dependent patent questions.
+
+No patent-pool agreement, payment, territorial clearance or downstream patent
+sublicence is represented or entered into by this decision. Reassess this
+posture if distribution becomes paid, bundled with hardware or services, or a
+specific applicable claim/licensing obligation is established. Source compliance
+and the existing security, exact-package and desktop release gates still apply.
 
 GNOME capture currently targets Shell 50 and requires the host extension.
 Release collection also emits the matching extension ZIP. Installing files inside
@@ -379,11 +433,14 @@ permalink yet): [live update](evidence/2026-10-21-appimage-live-294-296/README.m
 The GitHub Release page publishes each installer as an individual download:
 Ubuntu 24.04, Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM, and the x86_64 AppImage. It also
 publishes `putgd-VERSION-source.tar.gz`, the AppImage's
-`putgd-VERSION-appimage-media-source.tar.gz` and `putgd-VERSION-x86_64.AppImage.zsync`
+`putgd-VERSION-appimage-complete-source.tar.gz` and `putgd-VERSION-x86_64.AppImage.zsync`
 (see [AppImage updates](#appimage-updates)), the GNOME extension ZIP, full build
 receipts, the Proton source catalog and two source transport parts,
-`putgd-VERSION-debug-x86_64.tar.zst`, and `SHA256SUMS`.
-`putgd-VERSION-release.zip` contains the eleven smaller underlying
+`putgd-VERSION-debug-x86_64.tar.zst`, a CycloneDX SBOM of each package
+(`putgd-VERSION-LABEL.cdx.json` for `appimage`, `ubuntu24.04`, `ubuntu26.04`,
+`debian13` and `fedora44`; see [SBOMs and vulnerability scans](#sboms-and-vulnerability-scans)),
+and `SHA256SUMS`.
+`putgd-VERSION-release.zip` contains the sixteen smaller underlying
 files and an inner checksum list. The two large source parts and the debug asset
 stay separate; the outer checksum list covers them and the combined ZIP.
 
@@ -420,6 +477,127 @@ The Ubuntu 24.04 packaging job also compiles an extracted export with the normal
 release preset, verifying the archive contains the required compilation inputs.
 The collector requires that successful compilation receipt and publishes the exact
 archive bytes that were tested.
+
+## SBOMs and vulnerability scans
+
+Every `package.yml` run, tagged or not, ends with an `sbom` job (#420). It
+downloads the five packages, pins Syft and Grype by version and SHA-256
+(`packaging/sbom/tools.lock.json`), and runs `tools/releases/sbom.py`:
+
+1. **SBOM.** Each package is unpacked (the AppImage with `--appimage-extract`, DEBs
+   with `dpkg-deb`, the RPM with `rpm2cpio`) and catalogued by Syft. Syft alone
+   finds almost nothing there: the AppImage carries no dpkg database, and it reads
+   FFmpeg's library sonames as FFmpeg versions. So `sbom.py` adds the components
+   the packages' own inventories name, and drops Syft's guesses for the same
+   components:
+   - the AppImage's `bundled-components.json`: the 124 Ubuntu 24.04 packages as
+     `pkg:deb/ubuntu/...?distro=ubuntu-24.04` with their source packages, the Qt
+     modules, the third-party code Qt builds in (libpng, PCRE2, SQLite, HarfBuzz,
+     libjpeg-turbo, libtiff, libwebp, md4c, ...), FFmpeg, ICU, LayerShellQt,
+     QtKeychain and the type2 runtime;
+   - every package's `dependency-lock.json`: the AWS SDK and the CRT libraries it
+     links, by commit;
+   - every package's Proton helper notices: the npm packages bundled into the
+     helper and its embedded Bun runtime.
+   Components with NVD entries carry a CPE (`qt:qt`, `ffmpeg:ffmpeg`, ...). The
+   SBOM's metadata names the package file and its SHA-256, and `collect` checks
+   that binding before publishing it.
+2. **Scan.** Grype matches each SBOM against its vulnerability database. The job
+   downloads the current database archive (about 195 MB), checks it against
+   its listed SHA-256, keeps it in the `grype-db-v6-<sha256>` cache and imports it.
+3. **Report.** `packaging/sbom/policy.json` sorts the findings, which go to the job
+   summary and the `vulnerability-report` artifact (`vulnerability-report.json`
+   and each SBOM's Grype output, kept 90 days).
+
+| Finding | Pull request and nightly | Stable tag |
+| --- | --- | --- |
+| Critical or high, in bundled code, with a fixed version | flagged: warning annotation and summary row | blocks: the `sbom` job fails, so `collect` and the draft don't run |
+| Critical or high with no fix yet, or medium and below | reported | reported |
+| Accepted in `policy.json` and not expired | reported as accepted | reported as accepted |
+
+Bundled code is everything the AppImage ships, Ubuntu packages included (the
+image freezes them), and the pieces the native packages ship themselves: the AWS
+SDK and the Proton helper. The native packages' distro dependencies, Qt among
+them, are the distribution's to fix; their SBOMs don't list them.
+
+Accept a finding only with a reason and an expiry. An expired acceptance counts
+as a new finding again:
+
+```json
+"ignore": [
+  {"id": "CVE-YYYY-NNNNN", "component": "ffmpeg", "reason": "the affected decoder is not built (media.json)",
+   "expires": "2027-01-21", "issue": 511, "scope": "appimage-ffmpeg-7.1.5"}
+]
+```
+
+`id` also matches a finding's aliases (a GHSA's CVE). Legacy entries permit
+`component: "*"`; the #511 acceptances name one component and an explicit scope.
+Policy schema version 2 requires a scope for every acceptance and is rejected
+by older scanner helpers. The policy's `scopes` bind each acceptance to the package
+label, component version, upstream source commit, actual library bytes and absence
+of the omitted tools. `sbom.py generate` calculates `putgd:filesSha256` from the extracted image's
+component paths and file hashes, and records `putgd:toolsAbsent`. FFmpeg's
+compiled configure string is part of those library bytes. Adding a tool,
+changing a library/configuration, source pin or version, or passing an older
+SBOM without these properties stops the acceptance from matching. Regenerate an
+old SBOM from its verified package; never copy scope properties into it by hand.
+The repository contract also requires reassessment when the locked source or
+`media.json` configure list changes. The existing stable severity/fix gate stays
+unchanged, and all accepted findings remain in the report with reasons and expiry.
+
+The [#511 evidence](../packaging/sbom/dispositions/511.json) records three FFmpeg
+backports and the omitted components behind the other 26 Critical/High matches.
+It also resolves the reachability question for ICU 73.2 CVE-2025-5222: the
+[upstream fix](https://github.com/unicode-org/icu/commit/2c667e31cfd0b6bb1923627a932fd3453a5bac77)
+changes `tools/genrb/parse.cpp`, and that parser and `SRBRoot` belong to the
+`genrb` executable. The audited AppImage ships only `libicudata`, `libicui18n`
+and `libicuuc`; neither `genrb` nor `libicutu` is present. This acceptance applies
+to those exact runtime bytes, not to the ICU source package or a system `genrb`.
+No new upstream patch or ICU ABI substitution is needed for this disposition.
+The acceptances expire on 2027-01-21 and do not cover other CVEs.
+
+The evidence package is the development-identity AppImage from `nightly`
+`50053b01f1bbd7f3776a53513bb8c43151ce0de8` (CI run 40045151634), not a published
+nightly or stable draft. Each later package must satisfy the same fingerprint
+guards, and the exact stable draft still requires its current scan and other
+release acceptance. The [remaining-findings assessment](evidence/2026-10-24-release-blockers-511-416-419/README.md)
+checks the exact source behind libtiff CVE-2026-4775 and GStreamer CVE-2025-3887.
+Qt's pinned libtiff already contains all four upstream overflow corrections.
+GStreamer's affected H.265 parser is bundled and unpatched, but no current
+product input path to it was identified: recording uses explicit H.264/AAC
+graphs, and preview/export uses FFmpeg. Both raw findings remain visible; no
+new policy ignore or release acceptance follows from this assessment.
+
+CPE matching takes NVD's version ranges literally. FFmpeg's maintenance branches
+backport fixes that NVD records only against the next major, and the AppImage
+builds FFmpeg with `--disable-everything` plus a short list of components, so
+check an FFmpeg finding against `packaging/appimage/media.json` before acting on
+it. The AWS SDK and CRT have no NVD product entries, so nothing matches them. Qt's
+own security advisories mostly don't reach NVD's CPE data either: on the
+`v26.1023.1058-nightly` AppImage, Qt 6.8.3 matched one medium finding per module,
+while Qt had published about 23 fixes since it (#418). For Qt, the scan is a
+backstop; Renovate's Qt updates, whose patch releases open at once, are the
+main defence.
+
+**Stable releases after they ship.** A stable AppImage keeps the Ubuntu packages,
+Qt and FFmpeg it was built with; it gets none of the fixes published later. So
+`nightly.yml`'s `stable-scan` job re-scans the latest stable release every day,
+whether or not a nightly is built. It downloads that release's published SBOMs,
+checks them against its `SHA256SUMS`, scans them with that day's database
+(`sbom.py scan --released`, which flags and never fails), and keeps one issue
+current: "Stable vYY.MDD.N: bundled components with fixed critical or high CVEs",
+labelled `area: packaging` and `needs-patrick`. The issue is opened when the
+first finding is flagged, and its body is replaced with each day's table after
+that; close it by hand once a new stable ships or every finding is accepted.
+Whether a finding calls for a new stable release is the re-release policy in
+[#420](https://github.com/patrick-hudson/put.gd-desktop/issues/420). Releases
+before the first with SBOMs are skipped.
+
+To scan a published release yourself, download its SBOM and run any CycloneDX
+scanner, for example
+`grype sbom:putgd-VERSION-appimage.cdx.json --distro ubuntu:24.04`.
+Renovate keeps the pinned components themselves current
+([ci.md](ci.md#dependency-updates)).
 
 ## Version identity
 
@@ -480,8 +658,9 @@ the build ID of the binary the package installs. Without a tag, the
 release would, as the `debug-symbols-dry-run` artifact.
 
 With a tag, the `collect` job requires the four native assets and the AppImage
-from one clean tagged commit/tree/count/version, and the debug files staged by
-all five builds from that identity. It recalculates each artifact's
+from one clean tagged commit/tree/count/version, the debug files staged by
+all five builds from that identity, and the `sbom` job's five SBOMs, each naming
+its package's SHA-256. It recalculates each artifact's
 SHA256 against its build receipt and assigns distro-specific filenames so the
 three DEBs cannot overwrite each other. The AppImage must embed its tag's update
 information, and its `.zsync` must match the receipt and describe exactly the collected

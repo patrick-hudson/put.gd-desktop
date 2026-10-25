@@ -1,0 +1,28 @@
+{
+  "build": {
+    "baseVersion": "26.1024.1185",
+    "commitCount": 1185,
+    "dirty": false,
+    "gitCommit": "bca1ff98c9dfb3ab7ec11efd8427659adcf7d3d4",
+    "gitTree": "76f01e544acf07b40d6d0273318b66580c41b4f2",
+    "packageVersion": "26.1024.1185~dev+gbca1ff98c9df",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1024.1185-dev+gbca1ff98c9df"
+  },
+  "sessionId": "232",
+  "session": {
+    "User": "1000",
+    "Display": "",
+    "Leader": "41218",
+    "Type": "wayland",
+    "Active": "yes",
+    "State": "active",
+    "LockedHint": "no"
+  },
+  "startupJournalErrors": [
+    "2026-10-24T00:47:26-05:00 putgd-ubuntu-lab systemd[41304]: putgd-login-startup-36c7cfc648ea66740bd6ec97a3443f9cf8ac7a616046b90f84bf0763b74882bc.service: Failed with result 'signal'."
+  ],
+  "residentStarted": true,
+  "accepted": false
+}

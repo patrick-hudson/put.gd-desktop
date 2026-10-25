@@ -1,0 +1,106 @@
+{
+  "scenario": "submitted-editor-queued-burst-559",
+  "passed": false,
+  "source": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+  "run": "/tmp/q559k1",
+  "startedUtc": "2026-10-25T04:17:47Z",
+  "checks": {
+    "coverPrecheck": true,
+    "00-coveredPrivacy": true
+  },
+  "host": "kubuntu",
+  "osRelease": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n",
+  "session": {
+    "Id": "906",
+    "Type": "wayland",
+    "Seat": "seat0",
+    "Desktop": "KDE",
+    "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+    "TimestampMonotonic": "31018816964",
+    "Leader": "128842",
+    "shell": {
+      "pid": 129168,
+      "exe": "/usr/bin/plasmashell",
+      "startTicks": 3102035
+    },
+    "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+  },
+  "build": {
+    "schemaVersion": 1,
+    "version": "26.1025.1254-dev+g9f382fd0b07d",
+    "baseVersion": "26.1025.1254",
+    "packageVersion": "26.1025.1254~dev+g9f382fd0b07d",
+    "gitCommit": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+    "gitTree": "368c787617a047d52087a16aefd328503aabf147",
+    "commitCount": 1254,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "qtVersion": "6.10.2",
+  "binaries": {
+    "putgd": "5e77d410b011dfec3ea18883f8c99c5dbd019f55ce61afd3d55109a22679c343",
+    "putgd-cli": "234371d4adcfc5757337e26bd5302ff8a5e56782c6f7bd50db4bee8000488f24",
+    "putgd-ui": "24ec41dff563597fdcb1f2f0def1d1f84a211e35fe0c006177a3e85da506979b"
+  },
+  "visuals": [
+    {
+      "file": "00-covered.png",
+      "sha256": "cba666307076fa1c0e93f031c91af099a0ade66aa8d0e718b56214c03b594f93"
+    }
+  ],
+  "memoryBefore": {
+    "sampleSeconds": 0.562731996004004,
+    "processes": [
+      {
+        "pid": 187805,
+        "startTicks": 10983734,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i559/build/dev/putgd",
+        "device": 2050,
+        "inode": 3584239,
+        "sha256": "5e77d410b011dfec3ea18883f8c99c5dbd019f55ce61afd3d55109a22679c343",
+        "role": "resident",
+        "rssBytes": 35725312,
+        "pssBytes": 11594752,
+        "privateBytes": 9969664,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 3,
+        "threads": 8,
+        "inResidentTree": true
+      },
+      {
+        "pid": 187815,
+        "startTicks": 10983737,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i559/build/dev/putgd-ui",
+        "device": 2050,
+        "inode": 3584241,
+        "sha256": "24ec41dff563597fdcb1f2f0def1d1f84a211e35fe0c006177a3e85da506979b",
+        "role": "ui",
+        "rssBytes": 165781504,
+        "pssBytes": 62808064,
+        "privateBytes": 51204096,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 83,
+        "threads": 9,
+        "inResidentTree": true
+      }
+    ],
+    "totals": {
+      "rssBytes": 201506816,
+      "pssBytes": 74402816,
+      "privateBytes": 61173760
+    },
+    "processCount": 2,
+    "uiProcessCount": 1,
+    "escapedProcessCount": 0
+  },
+  "error": "[Errno 2] No such file or directory: '/tmp/q559k1/config/putgd/config.json'",
+  "cleanup": {
+    "residentExited": true,
+    "fixtureExited": true,
+    "coverExited": true
+  }
+}

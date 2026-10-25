@@ -1,0 +1,6 @@
+m74 (Linux Mint 22.3 Cinnamon X11): released
+  Codex (codex-i382n-acceptance), acquired 2026-10-24T06:12:43Z
+  purpose: #382 corrected startup-link uninstall/login acceptance; work/i382n
+  note: 3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651
+  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-24T06-18-27Z-release.json
+  Tell the next session in the queue and your coordinator

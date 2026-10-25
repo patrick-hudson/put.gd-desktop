@@ -1,0 +1,44 @@
+{
+ "os": "Fedora Linux 44 (Workstation Edition)",
+ "osVersionId": "44",
+ "kernel": "6.19.10-300.fc44.x86_64",
+ "host": "fedora",
+ "sessionProcess": "gnome-shell",
+ "graphicalSessions": [
+  {
+   "Seat": "seat0",
+   "Service": "gdm-autologin",
+   "Desktop": "",
+   "Leader": "3249226",
+   "Type": "wayland",
+   "Class": "user",
+   "State": "active",
+   "Id": "14217"
+  }
+ ],
+ "shellSession": "0::/user.slice/user-1000.slice/user@1000.service/session.slice/org.gnome.Shell@user.service",
+ "envSessionType": "wayland",
+ "currentDesktop": "GNOME",
+ "gnome-shell": [
+  "GNOME Shell 50.0"
+ ],
+ "packages": {
+  "mutter": "50.0-1.fc44",
+  "gnome-shell": "50.0-1.fc44",
+  "xorg-x11-server-Xwayland": "24.1.9-2.fc44",
+  "qt6-qtbase": "6.11.2-3.fc44",
+  "xdg-desktop-portal": "1.21.1-1.fc44",
+  "xdg-desktop-portal-gnome": "50.0-1.fc44",
+  "xdg-desktop-portal-gtk": "1.15.3-3.fc44",
+  "pipewire": "1.6.9-1.fc44",
+  "fuse3": "3.18.2-1.fc44"
+ },
+ "gpu": [
+  "00:02.0 VGA compatible controller: Intel Corporation Skylake-S GT2 [HD Graphics 530] (rev 06)"
+ ],
+ "fuse": {
+  "fusermount": true,
+  "fusermount3": true
+ },
+ "libfuse2": false
+}

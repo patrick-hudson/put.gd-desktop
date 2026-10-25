@@ -1,0 +1,14 @@
+2026-10-23T21:42:19Z lock acquire (30 min); Patrick apps: none; GNOME extension user copy (1058 zip) installed for the re-check, re-login:
+  2026-10-23T21:42:19Z shell gnome-shell pid 3294994
+  2026-10-23T21:42:20Z logout requested (gnome-session-quit --logout)
+  2026-10-23T21:42:22Z old shell gone
+  2026-10-23T21:42:22Z systemctl restart gdm
+  2026-10-23T21:42:23Z new shell pid 3318715
+  14814  1000 patrick     seat0 3318635 user          tty2 no -
+2026-10-23T21:44:38Z merged-head re-check start (/home/patrick/work/put.gd-qt418r/afa/images/putgd-26.1023.1101-dev+gaa047473ad2e-x86_64.AppImage)
+2026-10-23T21:49:05Z merged-head re-check done
+2026-10-23T21:50:20Z merged-head re-check start (/home/patrick/work/put.gd-qt418r/afa/images/putgd-26.1023.1101-dev+gaa047473ad2e-x86_64.AppImage)
+2026-10-23T21:51:30Z merged-head re-check done
+2026-10-23T21:52:09Z merged-head re-check start (/home/patrick/work/put.gd-qt418r/afa/images/putgd-26.1023.1101-dev+gaa047473ad2e-x86_64.AppImage)
+2026-10-23T21:53:26Z merged-head re-check done
+2026-10-23T21:54:05Z GNOME extension user copy uninstalled, enabled-extensions restored to [background-logo, appindicatorsupport]

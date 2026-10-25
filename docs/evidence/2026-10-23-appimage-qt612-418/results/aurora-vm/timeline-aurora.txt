@@ -1,0 +1,5 @@
+2026-10-23T20:16:55Z Aurora F45 overlay: scratch lab tree ~/work/put.gd-qt418/vm-aurora/labtree (nightly ef90bfd4 tools/, profile memory 4096 MiB, 2 vCPUs), run /home/patrick/work/put.gd-qt418/vm-aurora/aur-qt418, ssh 22427, vnc 5927 (fork of appimage-qt-bump-418)
+2026-10-23T20:28:00Z wall: tunnel putgd-vm-aurora-qt418 ws:5992 -> f44:5927 started; tile Aurora 45 KDE VM qt418 (f44) added
+2026-10-23T20:29:07Z guest: run root ~/put.gd-qt418/afa (images verified), ak1.sh aurora-vm (A-C, D-H) start, input vnc 10.0.2.2:5927, AFA_COVER=gtk
+2026-10-23T20:51:35Z retired: guest evidence exported to ~/work/put.gd-qt418/vm-aurora/evidence; QEMU stopped by QMP quit (run not under canonical lab-runs, so lab.py cleanup does not apply); only aur-qt418/disk.qcow2 (overlay of the F45 golden) removed; vars, keys, logs and state kept
+2026-10-23T20:54:10Z wall: tunnel putgd-vm-aurora-qt418 stopped, only its tile removed (another session's new KDE neon tile kept); golden image.qcow2 sha256 33fedf97…8556 unchanged; ports 22427/5927 free

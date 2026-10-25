@@ -39,6 +39,9 @@ public:
  QJsonObject deletion(const QString&,Error* = nullptr) const;
  Error saveSharing(const QJsonObject&); // journal and effective receipt in one transaction
  QJsonObject sharing(const QString&,Error* = nullptr) const;
+ // Record a successful explicit link copy without rewriting item/deletion ledgers
+ // or claiming that a copied subset recovered an entire batch.
+ Error recordCopiedLink(const QString& historyId,QString& operationId);
  Error updateRemote(const QString& historyId,const QString& status,const Error& = {});
 private:
  Error initialize();

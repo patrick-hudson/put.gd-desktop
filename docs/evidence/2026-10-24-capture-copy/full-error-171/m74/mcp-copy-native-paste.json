@@ -1,0 +1,10 @@
+{
+  "formats": [
+    "TARGETS",
+    "TIMESTAMP",
+    "text/plain",
+    "text/plain;charset=utf-8"
+  ],
+  "schemaVersion": 1,
+  "text": "https://example.invalid/copy-recovery"
+}

@@ -1,0 +1,8 @@
+{
+  "host": "mint-builder",
+  "source": "91864c41bcc4c430d6ca967593fc2420c6dc706a",
+  "tree": "8978e584b61233c42032c50d3a1eb191b0fd047a",
+  "qt": "6.4.2",
+  "load": "1.28 1.07 1.02 2/914 578596",
+  "class": "SSH-only file/startup contracts and system desktop-entry parsing; no graphical acceptance"
+}

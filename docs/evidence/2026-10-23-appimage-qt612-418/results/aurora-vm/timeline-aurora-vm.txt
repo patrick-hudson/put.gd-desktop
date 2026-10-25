@@ -1,0 +1,26 @@
+2026-10-23T20:29:07Z ac.sh start
+2026-10-23T20:33:02Z ac.sh done rc=0
+2026-10-23T20:37:53Z dk.sh done rc=0
+2026-10-23T20:38:35Z badfile done rc=0
+AK1-DONE
+2026-10-23T20:39:15Z clipfile start
+2026-10-23T20:40:16Z clipfile done rc=0
+2026-10-23T20:40:29Z B tray picture from put.gd's tray icon (1012,779)
+2026-10-23T20:40:35Z #341 start
+2026-10-23T20:40:56Z #341 done
+2026-10-23T20:41:22Z #341 + tray retake at (1012,779) hit Klipper (its icon appeared left of put.gd after the clipboard uploads; menu Clear History/Configure Clipboard, nothing chosen); results moved to superseded-341-klipper; redo at put.gd (982,779)
+2026-10-23T20:41:22Z B tray picture from put.gd's tray icon (982,779)
+2026-10-23T20:41:28Z #341 start
+2026-10-23T20:41:50Z #341 done
+2026-10-23T20:42:06Z I: launch at login on, private resident quit, sudo -n systemctl reboot
+2026-10-23T20:43:32Z I: login check done (after reboot + plasmalogin autologin)
+2026-10-23T20:43:54Z K: quit from put.gd tray icon (982,778) with a real click
+2026-10-23T20:44:17Z K cleanup: login disable + afa cleanup
+2026-10-23T20:45:21Z F: Firefox Flatpak --profile temporary profile made the https handler (ffdefault_flatpak.py, mimeapps backed up), run aurora-vm-F started
+2026-10-23T20:45:32Z F: live S3 public-read to put.gd/acceptance/qt418/aurora-vm/ (key set 2 piped from f44 into stdin), banner click (vnc)
+2026-10-23T20:46:39Z F: Firefox first-run Terms of Use modal covered the page; NOT accepted (no approval in this session); tried Escape only
+2026-10-23T20:48:31Z F phase B: Firefox Flatpak closed by PID, Delete from destination, run quit + cleaned, ffdefault_flatpak off (mimeapps restored)
+2026-10-23T20:48:41Z J: in-app update 1058 -> lab v26.1023.1068-nightly (run aurora-vm-lab1058) start
+2026-10-23T20:49:04Z J: in-app update done; run quit and cleaned
+2026-10-23T20:49:13Z H/J on the lab nightly (run aurora-vm-labh) start
+2026-10-23T20:50:39Z H/J on the lab nightly done; run quit and cleaned

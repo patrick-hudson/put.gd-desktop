@@ -96,12 +96,11 @@ class ReleaseCollection(unittest.TestCase):
         runtime = {'ffmpeg': {'commit': 'f' * 40}, 'gplComponents': [
             {'file': 'libx264.so.164', 'binaryPackage': 'libx264-164', 'binaryVersion': '2:0.164', 'sourcePackage': 'x264', 'sourceVersion': '2:0.164', 'publishSource': True}]}
         (directory / 'appimage-build.json').write_text(json.dumps({'format': 'AppImage', 'architecture': 'x86_64', 'build': identity, 'postDeploymentAudit': {'proton': self.proton_inventory}, 'recordingRuntime': runtime, 'artifact': {'file': path.name, 'sha256': image_sha, 'bytes': path.stat().st_size}}))
-        media = directory / 'synthetic-appimage-media-source.tar.gz'
-        media.write_bytes(b'byte-integrity fixture, not a source archive')
-        (directory / 'appimage-media-source.json').write_text(json.dumps({'schemaVersion': 1, 'format': 'appimage-media-source',
-            'appImage': {'version': identity['version'], 'sha256': image_sha}, 'file': media.name,
-            'sha256': hashlib.sha256(media.read_bytes()).hexdigest(), 'bytes': media.stat().st_size, 'ffmpegCommit': 'f' * 40,
-            'ubuntuSources': [{'sourcePackage': 'x264', 'sourceVersion': '2:0.164'}]}))
+        from complete_source_fixture import add_inventory, write_source
+        image_path = directory / 'appimage-build.json'
+        image = add_inventory(json.loads(image_path.read_text()))
+        image_path.write_text(json.dumps(image))
+        write_source(directory, image)
         self.write_appimage(TAG)
         directory = self.inputs / 'release-native-ubuntu24.04'
         archive = directory / ('putgd-' + identity['version'] + '-source.tar.gz')
@@ -136,11 +135,27 @@ class ReleaseCollection(unittest.TestCase):
             'zsync': {'file': zsync.name, 'url': url, 'sha256': hashlib.sha256(zsync.read_bytes()).hexdigest(),
                       'bytes': zsync.stat().st_size}}
         receipt_path.write_text(json.dumps(receipt))
-        media_path = directory / 'appimage-media-source.json'
-        media = json.loads(media_path.read_text())
-        media['appImage']['sha256'] = receipt['artifact']['sha256']
-        media_path.write_text(json.dumps(media))
+        from complete_source_fixture import write_source
+        write_source(directory, receipt)
+        self.write_sboms()
         return receipt_path, zsync
+
+    def write_sboms(self):
+        """Each package's SBOM names that package's bytes (sbom.py, #420)."""
+        directory = self.inputs / 'release-sbom'
+        shutil.rmtree(directory, ignore_errors=True)
+        directory.mkdir()
+        receipts = {}
+        for label in ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44'):
+            package = (self.inputs / 'release-appimage/synthetic.AppImage' if label == 'appimage' else
+                       self.inputs / ('release-native-' + label) / ('synthetic.rpm' if label == 'fedora44' else 'synthetic.deb'))
+            digest = hashlib.sha256(package.read_bytes()).hexdigest()
+            path = directory / ('putgd-' + self.release['version'] + '-' + label + '.cdx.json')
+            path.write_text(json.dumps({'bomFormat': 'CycloneDX', 'metadata': {'component': {
+                'name': package.name, 'hashes': [{'alg': 'SHA-256', 'content': digest}]}}, 'components': []}))
+            receipts[label] = {'label': label, 'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                               'packageSha256': digest}
+        (directory / 'sbom-receipts.json').write_text(json.dumps({'schemaVersion': 1, 'sboms': receipts}))
 
     def stage_debug_symbols(self, identity):
         # Each package job stages its split debug files beside its package (#124).
@@ -170,9 +185,11 @@ class ReleaseCollection(unittest.TestCase):
         self.assertIn('putgd-26.1022.1-source.tar.gz', files)
         self.assertIn('putgd-26.1022.1-fedora44-x86_64.rpm', files)
         self.assertIn('putgd-26.1022.1-x86_64.AppImage', files)
-        self.assertIn('putgd-26.1022.1-appimage-media-source.tar.gz', files)
+        self.assertIn('putgd-26.1022.1-appimage-complete-source.tar.gz', files)
         self.assertIn('putgd-26.1022.1-x86_64.AppImage.zsync', files)
-        self.assertEqual(len(lines), 15)
+        self.assertEqual(len(lines), 20)
+        for label in ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44'):
+            self.assertIn('putgd-26.1022.1-' + label + '.cdx.json', files)
         self.assertIn('putgd-26.1022.1-debug-x86_64.tar.zst', files)
         self.assertEqual((self.output / 'putgd-26.1022.1-source.tar.gz').read_bytes(),
                          (self.inputs / 'release-native-ubuntu24.04' / self.source_receipt['artifact']['file']).read_bytes())
@@ -360,6 +377,30 @@ class ReleaseCollection(unittest.TestCase):
         self.assertEqual({p.name for p in output.iterdir()}, {'appimage-build.json', 'sample.AppImage', 'sample.AppImage.zsync'})
         self.assertEqual((output / 'sample.AppImage').read_bytes(), b'image')
 
+    def test_sbom_of_other_bytes_rejected_before_output(self):
+        directory = self.inputs / 'release-sbom'
+        receipts = json.loads((directory / 'sbom-receipts.json').read_text())
+        receipts['sboms']['fedora44']['packageSha256'] = '0' * 64
+        (directory / 'sbom-receipts.json').write_text(json.dumps(receipts))
+        with self.assertRaisesRegex(ValueError, 'SBOM differs from its receipt or package: fedora44'):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+        self.write_sboms()
+        path = directory / receipts['sboms']['appimage']['file']
+        bom = json.loads(path.read_text())
+        bom['metadata']['component']['hashes'][0]['content'] = '0' * 64
+        path.write_text(json.dumps(bom))
+        receipts = json.loads((directory / 'sbom-receipts.json').read_text())
+        receipts['sboms']['appimage']['sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
+        (directory / 'sbom-receipts.json').write_text(json.dumps(receipts))
+        with self.assertRaisesRegex(ValueError, 'SBOM names another package: appimage'):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+        del receipts['sboms']['debian13']
+        (directory / 'sbom-receipts.json').write_text(json.dumps(receipts))
+        with self.assertRaisesRegex(ValueError, 'SBOMs differ from the release packages'):
+            self.run_collection()
+
     def test_corrupt_bytes_rejected_before_output(self):
         path = self.inputs / 'release-native-ubuntu24.04/synthetic.deb'
         original = path.read_bytes()
@@ -461,7 +502,7 @@ class ReleaseCollection(unittest.TestCase):
         (directory / 'source-archive.json').write_text(json.dumps(self.source_receipt))
         return tag, archive
 
-    def test_nightly_cli_preserves_all_sixteen_raw_assets_and_exact_compiled_source(self):
+    def test_nightly_cli_preserves_all_twenty_one_raw_assets_and_exact_compiled_source(self):
         tag, source = self.nightly_inputs()
         (self.inputs / 'credentials.txt').write_text('synthetic excluded fixture')
         argv = ['collect.py', '--tag', tag, '--root', str(self.root),
@@ -475,7 +516,7 @@ class ReleaseCollection(unittest.TestCase):
         expected = set(expected_members(self.release['version']) +
                        ['putgd-' + self.release['version'] + '-release.zip', 'SHA256SUMS', *proton_sources.PART_NAMES, debug_name])
         self.assertEqual(files, expected)
-        self.assertEqual(len(files), 16)
+        self.assertEqual(len(files), 21)
         self.assertEqual(appimage_update.read_update_information(self.output / ('putgd-' + self.release['version'] + '-x86_64.AppImage')),
                          'zsync|https://app.put.gd/dl/nightly/appimage.zsync')
         self.assertEqual((self.output / source.name).read_bytes(), source.read_bytes())

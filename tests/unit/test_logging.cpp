@@ -39,7 +39,7 @@ public:
  ProviderCapabilities capabilities(const Destination&) const override {return {true,true,true,true,true,true,true,255,"Remove the recorded object"};}
  QString serializationKey(const Destination&,const QJsonObject& reference,const QString& name) const override {return reference.isEmpty()?name:reference["key"].toString();}
  Error validateSettings(const QJsonObject& settings) const override {return settings["workspace"].isString()?Error{}:Error{"config_invalid","A workspace is required",{}};}
- void checkName(const Destination&,const QString& name,std::function<void(NameCheck)> reply) override {reply({"absent",{{"key",name}},{},{}});}
+ void checkName(const Destination&,const QString& name,std::function<void(NameCheck)> reply, std::shared_ptr<std::atomic_bool> cancellation = {}) override {reply({"absent",{{"key",name}},{},{}});}
  void upload(const UploadRequest&,std::function<void(UploadResult)> reply) override {
   reply({"failed",{},{"s3_permission_denied","S3 denied the request (HTTP 403).",{{"httpStatus",403},{"serviceCode","AccessDenied"},{"requestStage","upload_put"},
    {"requestId","SYNTHREQ0123ABCD"},{"extendedRequestId","synthetic+Extended/Id2="}}}});

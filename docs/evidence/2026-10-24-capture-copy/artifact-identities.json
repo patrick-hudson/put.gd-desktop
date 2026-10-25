@@ -1,0 +1,35 @@
+{
+  "source": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+  "tree": "9c2dcf250cf07b9d393a56a2533e3fbc069fb5b5",
+  "version": "26.1024.1135-dev+g8a9415c540be",
+  "assets": [
+    {
+      "target": "ubuntu24.04",
+      "host": "m74",
+      "sha256": "313f2146a8ea44bc3d2f87a5b5100665f31a1002bb0b481fadf4aa0202ca97ec",
+      "Qt": "6.4.2",
+      "installation": "native apt; recorder-enabled DEB built with repository-pinned Ubuntu24 container, full production audit passed",
+      "buildContainer": "docker.io/library/ubuntu@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55"
+    },
+    {
+      "target": "ubuntu26.04",
+      "hosts": [
+        "k72",
+        "d69-ccg-Ubuntu-GNOME"
+      ],
+      "sha256": "0cdbbf0f79ff17fdc647a04296209e34dea1a219ef29d39d0b179a8f10cad495",
+      "Qt": "6.10.2",
+      "installation": "native apt in physical Kubuntu and fresh Ubuntu GNOME overlay; production audit passed"
+    },
+    {
+      "target": "fedora44",
+      "host": "f44",
+      "sha256": "c10571e4a0d41dc77c649b6436c4f0f0cd63f3d8c08ef1221e6391c7784ffa42",
+      "Qt": "6.11.2",
+      "installation": "audited extracted RPM only; matching temporary user helper, no native RPM install or host transaction"
+    }
+  ],
+  "independentFixtures": "same-source standalone native Qt and distro GTK witnesses; production packages exclude lab fixture",
+  "recording": "Production artifacts recorder-enabled; no recording feature acceptance is claimed in this scoped capture/copy campaign",
+  "officialAwsSdkVersion": "1.11.907"
+}

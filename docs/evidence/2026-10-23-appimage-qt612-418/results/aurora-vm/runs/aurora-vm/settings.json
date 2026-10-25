@@ -1,0 +1,242 @@
+{
+ "schemes": {
+  "dark": {
+   "patch": true,
+   "appearance": {
+    "theme": "dark",
+    "scheme": "dark",
+    "desktop": "light",
+    "desktopSource": "qt"
+   },
+   "shot": {
+    "label": "settings-dark",
+    "components": [
+     {
+      "blocks": 14719,
+      "box": [
+       0,
+       24,
+       1280,
+       760
+      ]
+     }
+    ],
+    "colour": [
+     24,
+     24,
+     32
+    ],
+    "inner": [
+     2,
+     28,
+     1278,
+     753
+    ],
+    "changedShare": 1.0,
+    "ownShare": 0.967,
+    "kept": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/crops/settings-dark.png"
+   },
+   "full": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/settings-dark.png"
+  },
+  "light": {
+   "patch": true,
+   "appearance": {
+    "theme": "light",
+    "scheme": "light",
+    "desktop": "light",
+    "desktopSource": "qt"
+   },
+   "shot": {
+    "label": "settings-light",
+    "components": [
+     {
+      "blocks": 3196,
+      "box": [
+       232,
+       48,
+       1256,
+       712
+      ]
+     },
+     {
+      "blocks": 136,
+      "box": [
+       16,
+       448,
+       200,
+       496
+      ]
+     },
+     {
+      "blocks": 136,
+      "box": [
+       16,
+       352,
+       200,
+       400
+      ]
+     },
+     {
+      "blocks": 19,
+      "box": [
+       400,
+       168,
+       528,
+       192
+      ]
+     },
+     {
+      "blocks": 14,
+      "box": [
+       528,
+       64,
+       592,
+       80
+      ]
+     },
+     {
+      "blocks": 14,
+      "box": [
+       424,
+       64,
+       496,
+       80
+      ]
+     }
+    ],
+    "colour": [
+     252,
+     252,
+     252
+    ],
+    "inner": [
+     234,
+     50,
+     1254,
+     710
+    ],
+    "changedShare": 0.837,
+    "ownShare": 0.971,
+    "kept": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/crops/settings-light.png"
+   },
+   "full": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/settings-light.png"
+  },
+  "system": {
+   "patch": true,
+   "appearance": {
+    "theme": "system",
+    "scheme": "light",
+    "desktop": "light",
+    "desktopSource": "qt"
+   },
+   "shot": {
+    "label": "settings-system",
+    "components": [
+     {
+      "blocks": 3207,
+      "box": [
+       232,
+       48,
+       1256,
+       712
+      ]
+     },
+     {
+      "blocks": 136,
+      "box": [
+       16,
+       448,
+       200,
+       496
+      ]
+     },
+     {
+      "blocks": 136,
+      "box": [
+       16,
+       352,
+       200,
+       400
+      ]
+     },
+     {
+      "blocks": 19,
+      "box": [
+       400,
+       168,
+       528,
+       192
+      ]
+     },
+     {
+      "blocks": 14,
+      "box": [
+       528,
+       64,
+       592,
+       80
+      ]
+     },
+     {
+      "blocks": 14,
+      "box": [
+       424,
+       64,
+       496,
+       80
+      ]
+     }
+    ],
+    "colour": [
+     252,
+     252,
+     252
+    ],
+    "inner": [
+     234,
+     50,
+     1254,
+     710
+    ],
+    "changedShare": 0.837,
+    "ownShare": 0.97,
+    "kept": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/crops/settings-system.png"
+   },
+   "full": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/settings-system.png"
+  }
+ },
+ "updateStatus": {
+  "channel": null,
+  "channelSetting": "build",
+  "enabled": false,
+  "supported": false,
+  "reason": "development_build",
+  "notifies": false,
+  "checkedAt": null,
+  "nextCheckAt": null,
+  "error": null,
+  "result": null,
+  "build": {
+   "channel": null,
+   "kind": "none",
+   "packageTarget": "appimage",
+   "reason": "development_build",
+   "supported": false,
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  }
+ },
+ "checkNow": {
+  "ok": false,
+  "seconds": 0.02,
+  "result": null,
+  "error": {
+   "code": "update_check_unavailable",
+   "details": {
+    "reason": "development_build"
+   },
+   "message": "This build does not check for updates"
+  }
+ },
+ "notificationsAfterCheck": [],
+ "liveFeed": "{\n  \"schema\": 1,\n  \"channel\": \"nightly\",\n  \"generatedAt\": \"2026-10-23T04:11:47Z\",\n  \"release\": {\n    \"tag\": \"v26.1023.1058-nightly\",\n    \"version\": \"26.1023.1058-nightly\",\n    \"publishedAt\": \"2026-10-23T04:10:17Z\",\n    \"notesUrl\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly\",\n    \"assets\": {\n      \"ubuntu24.04\": {\n        \"name\": \"putgd-26.1023.1058-nightly-ubuntu24.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-ubuntu24.04-x86_64.deb\",\n        \"size\": 54216822,\n        \"sha256\": \"f9b01cd26b3e3cbb3670658969e62f6a4c45e5c21b8a9029923d41ec56d75833\"\n      },\n      \"ubuntu26.04\": {\n        \"name\": \"putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb\",\n        \"size\": 54572542,\n        \"sha256\": \"a06b63f9e4ff0fc21c57392d5f34fc076ea9badca139e0dd87fe09ed73510feb\"\n      },\n      \"debian13\": {\n        \"name\": \"putgd-26.1023.1058-nightly-debian13-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-debian13-x86_64.deb\",\n        \"size\": 54108456,\n        \"sha256\": \"d56909f1703c8ca8225d059ac3a78bf1d7889ea610df82746e5b3ea5796fba0c\"\n      },\n      \"fedora44\": {\n        \"name\": \"putgd-26.1023.1058-nightly-fedora44-x86_64.rpm\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-fedora44-x86_64.rpm\",\n        \"size\": 40554170,\n        \"sha256\": \"d97d711687a4b9e04f77dd71bc87bcfd44529e01c2e7b180655a4a293b828937\"\n      },\n      \"appimage\": {\n        \"name\": \"putgd-26.1023.1058-nightly-x86_64.AppImage\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-ni"
+}

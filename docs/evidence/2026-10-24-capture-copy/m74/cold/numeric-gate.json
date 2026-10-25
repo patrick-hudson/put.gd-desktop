@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "scope": "bounded exact-resident 300-second sampled memory/CPU gate; startup/native provenance and functional receipts are separate",
+  "checks": {
+    "samplerCompleted": true,
+    "sampleCount61": true,
+    "spanAtLeast299_5Seconds": true,
+    "maxGapAtMost7_5Seconds": true,
+    "oneResidentNoUiOrEscapedFamily": true,
+    "rssPlusSwapAtMost40MiB": true,
+    "zeroSwap": true,
+    "maxCpuBelow0_5PercentOfOneCore": true
+  },
+  "samples": 61,
+  "spanSeconds": 300.0001354230044,
+  "maxGapSeconds": 5.056555237999419,
+  "peakRssMiB": 28.74609375,
+  "peakSwapBytes": 0,
+  "maxCpuPercentOfOneCore": 0.1981175724923422,
+  "clockTicksPerSecond": 100,
+  "sourceSamplesSha256": "d1c2cc090595aa57744b98ce6aa871aafa6a6a54e5b1f393e8a225728110e005",
+  "sourceResultSha256": "e99ac2f31ba637d4e80501e30e0eec1da5ccd47e41a691bcb77ff5d21e909999"
+}

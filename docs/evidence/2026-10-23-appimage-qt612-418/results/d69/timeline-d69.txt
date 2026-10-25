@@ -1,0 +1,38 @@
+2026-10-23T18:39:26Z ac.sh start
+2026-10-23T18:43:22Z ac.sh done rc=0
+2026-10-23T18:48:14Z dk.sh done rc=0
+2026-10-23T18:48:14Z badfile done rc=0
+AK1-DONE
+2026-10-23T18:57:47Z clipfile (4 samples via Upload clipboard) start; trial uploads at 18:55/18:57Z kept in history
+2026-10-23T18:58:45Z clipfile done rc=0
+2026-10-23T19:00:31Z B tray picture from put.gd's tray icon (1576,1052)
+2026-10-23T19:00:37Z #341 start
+2026-10-23T19:01:03Z #341 done
+2026-10-23T19:03:02Z I: launch at login enabled
+2026-10-23T19:03:02Z I: real logout/login:
+  2026-10-23T19:03:02Z shell plasmashell pid 2524174
+  2026-10-23T19:03:02Z logout requested (org.kde.Shutdown.logout)
+  2026-10-23T19:03:04Z old shell gone
+  2026-10-23T19:03:04Z temp drop-in /etc/sddm.conf.d/zz-qt418-relogin.conf (Relogin=true) added
+  2026-10-23T19:03:11Z systemctl restart sddm
+  2026-10-23T19:03:14Z new shell pid 2566761
+  2026-10-23T19:03:17Z temp drop-in removed
+  18363 1000 patrick seat0 2566522 user    tty1 no -
+2026-10-23T19:04:02Z I: login check done
+2026-10-23T19:04:30Z K prep: quit this run's private resident (ui.quit); the login-started instance stays for K
+2026-10-23T19:05:47Z K: quit from put.gd's tray icon (1575,1050) with a real click
+2026-10-23T19:08:35Z K cleanup: login disable + afa cleanup (autostart entry, data home, profile, caches)
+2026-10-23T19:14:02Z F: ffdefault on ({"profile": "/home/patrick/work/put.gd-qt418/afa/ff/putgd-qt418-ea6cbede", "entry": "/home/patrick/.local/share/applications/putgd-qt418-firefox.desktop", "gioBefore": "Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop", "gioNow": "Default application for \u201cx-scheme-han)
+2026-10-23T19:14:45Z F: run d69-F, live S3 public-read to put.gd/acceptance/qt418/d69/, banner click (uinput)
+2026-10-23T19:17:02Z F phase B: browser PIDs 2568167 closed; Delete from destination; run cleaned; ffdefault off (); new Firefox paths: n/a
+2026-10-23T19:18:45Z F phase B fix: ffdefault off run separately (the script passed it the wrong argument); restored: {"restored": true, "entryRemoved": true, "profileRemoved": true, "gioBefore": "Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop", "gi
+2026-10-23T19:21:00Z uinput agent stopped (recorded PIDs); host checked; lock released --verified-clean until the lab leg
+2026-10-23T20:15:21Z lock acquire (30 min) for the lab leg; Patrick apps: none
+2026-10-23T20:15:21Z J: in-app update 1058 -> lab v26.1023.1068-nightly (run d69-lab1058) start
+2026-10-23T20:15:50Z J: in-app update done; run quit and cleaned
+2026-10-23T20:15:50Z H/J on the lab nightly (run d69-labh) start
+2026-10-23T20:16:49Z H/J on the lab nightly done; run quit and cleaned
+2026-10-23T20:17:12Z H/J attempt 1 incomplete: a stale uinput socket (agent stopped at 19:21Z) made labh skip starting an agent; socket removed, run kept as d69-labh-attempt1, rerun
+2026-10-23T20:17:12Z H/J on the lab nightly (run d69-labh) start
+2026-10-23T20:18:40Z H/J on the lab nightly done; run quit and cleaned
+2026-10-23T20:18:49Z lab leg done; uinput agent stopped, stale socket removed; host checked; lock released --verified-clean

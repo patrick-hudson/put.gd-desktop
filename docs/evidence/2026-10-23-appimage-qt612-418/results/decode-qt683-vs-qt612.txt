@@ -1,0 +1,81 @@
+control-valid.tiff                         6.8.3   exit-0     format=tiff size=32x32 read=ok error="Unknown error" | for more information.
+control-valid.tiff                         6.12.0  exit-0     format=tiff size=32x32 read=ok error="Unknown error" | for more information.
+cve-2025-10728-pattern-recursion.svg       6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.svg: Cycles detected in SVG, document discarded.
+cve-2025-10728-pattern-recursion.svg       6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.svg: Cycles detected in SVG, document discarded.
+./rundecode.sh: line 4: 2538668 Segmentation fault      env -i HOME=$HOME PATH=/usr/bin:/bin QT_QPA_PLATFORM=offscreen XDG_RUNTIME_DIR=$run timeout 60 ./decode-$v "$f" > "$out/$(basename $f).$v.out" 2> "$out/$(basename $f).$v.err"
+cve-2025-10729-pattern-orphan.svg          6.8.3   SIGNAL-11   | qt.svg: samples/cve-2025-10729-pattern-orphan.svg:3:40: Could not add child element to parent element because 
+cve-2025-10729-pattern-orphan.svg          6.12.0  exit-0     format=svg size=64x64 read=ok error="Unknown error" | qt.svg: samples/cve-2025-10729-pattern-orphan.svg:4:51: Could not resolve property: q
+cve-2025-5683-icns-block-length.icns       6.8.3   exit-0     format=icns size=-1x-1 read=null error="Unable to read image data" | QICNSHandler::read(): The device wasn't parsed properly!
+cve-2025-5683-icns-block-length.icns       6.12.0  exit-0     format=icns size=-1x-1 read=null error="Unable to read image data" | QICNSHandler::read(): The device wasn't parsed properly!
+cve-2026-6210-marker-confusion.svg         6.8.3   exit-0     format=svg size=64x64 read=ok error="Unknown error" | for more information.
+cve-2026-6210-marker-confusion.svg         6.12.0  exit-0     format=svg size=64x64 read=ok error="Unknown error" | for more information.
+cve-2026-8168-deep-nesting.svg             6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | for more information.
+cve-2026-8168-deep-nesting.svg             6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | for more information.
+fuzz-icns-00.icns                          6.8.3   exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-00.icns                          6.12.0  exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-01.icns                          6.8.3   exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-01.icns                          6.12.0  exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-02.icns                          6.8.3   exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-02.icns                          6.12.0  exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-03.icns                          6.8.3   exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-03.icns                          6.12.0  exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-04.icns                          6.8.3   exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-04.icns                          6.12.0  exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-05.icns                          6.8.3   exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-05.icns                          6.12.0  exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-06.icns                          6.8.3   exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-06.icns                          6.12.0  exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-07.icns                          6.8.3   exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-icns-07.icns                          6.12.0  exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+fuzz-tiff-00.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "IO error during reading of \"StripOffsets\""
+fuzz-tiff-00.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "IO error during reading of \"StripOffsets\""
+fuzz-tiff-01.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "IO error during reading of \"Compression\""
+fuzz-tiff-01.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "IO error during reading of \"Compression\""
+fuzz-tiff-02.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incompatible type for \"ImageLength\""
+fuzz-tiff-02.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incompatible type for \"ImageLength\""
+fuzz-tiff-03.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incompatible type for \"SamplesPerPixel\""
+fuzz-tiff-03.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incompatible type for \"SamplesPerPixel\""
+fuzz-tiff-04.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unsupported image format" | for more information.
+fuzz-tiff-04.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unsupported image format" | for more information.
+fuzz-tiff-05.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incompatible type for \"Compression\""
+fuzz-tiff-05.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incompatible type for \"Compression\""
+fuzz-tiff-06.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"ImageWidth\""
+fuzz-tiff-06.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"ImageWidth\""
+fuzz-tiff-07.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Failed to read directory at offset 32520"
+fuzz-tiff-07.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Failed to read directory at offset 32520"
+fuzz-tiff-08.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unsupported image format" | for more information.
+fuzz-tiff-08.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unsupported image format" | for more information.
+fuzz-tiff-09.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unsupported image format" | for more information.
+fuzz-tiff-09.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unsupported image format" | for more information.
+fuzz-tiff-10.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"ImageWidth\""
+fuzz-tiff-10.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"ImageWidth\""
+fuzz-tiff-11.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unsupported image format" | for more information.
+fuzz-tiff-11.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unsupported image format" | for more information.
+fuzz-tiff-12.tiff                          6.8.3   exit-0     format=tiff size=32x32 read=null error="Unable to read image data" | qt.imageformats.tiff: "Sorry, can not handle RGB image with Color channels=1"
+fuzz-tiff-12.tiff                          6.12.0  exit-0     format=tiff size=32x32 read=null error="Unable to read image data" | qt.imageformats.tiff: "Sorry, can not handle RGB image with Color channels=1"
+fuzz-tiff-13.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incompatible type for \"Compression\""
+fuzz-tiff-13.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incompatible type for \"Compression\""
+fuzz-tiff-14.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"Compression\""
+fuzz-tiff-14.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"Compression\""
+fuzz-tiff-15.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"ImageWidth\""
+fuzz-tiff-15.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"ImageWidth\""
+fuzz-tiff-16.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Failed to read directory at offset 2147483656"
+fuzz-tiff-16.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Failed to read directory at offset 2147483656"
+fuzz-tiff-17.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Failed to read directory at offset 8"
+fuzz-tiff-17.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Failed to read directory at offset 8"
+fuzz-tiff-18.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "IO error during reading of \"Compression\""
+fuzz-tiff-18.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "IO error during reading of \"Compression\""
+fuzz-tiff-19.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unsupported image format" | for more information.
+fuzz-tiff-19.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unsupported image format" | for more information.
+fuzz-tiff-20.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"SamplesPerPixel\""
+fuzz-tiff-20.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"SamplesPerPixel\""
+fuzz-tiff-21.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"SamplesPerPixel\""
+fuzz-tiff-21.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"SamplesPerPixel\""
+fuzz-tiff-22.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"ImageWidth\""
+fuzz-tiff-22.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Incorrect count for \"ImageWidth\""
+fuzz-tiff-23.tiff                          6.8.3   exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Sum of Photometric type-related color channels and ExtraSamples doesn't match SamplesPe
+fuzz-tiff-23.tiff                          6.12.0  exit-0     format= size=-1x-1 read=null error="Unable to read image data" | qt.imageformats.tiff: "Sum of Photometric type-related color channels and ExtraSamples doesn't match SamplesPe
+icns-block-length-zero.icns                6.8.3   exit-0     format=icns size=-1x-1 read=null error="Unable to read image data" | QICNSHandler::read(): The device wasn't parsed properly!
+icns-block-length-zero.icns                6.12.0  exit-0     format=icns size=-1x-1 read=null error="Unable to read image data" | QICNSHandler::read(): The device wasn't parsed properly!
+icns-rle-overrun.icns                      6.8.3   exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.
+icns-rle-overrun.icns                      6.12.0  exit-0     format=icns size=-1x-1 read=ok error="Unknown error" | for more information.

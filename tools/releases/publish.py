@@ -21,6 +21,9 @@ from github_api import GitHub
 from nightly import published_nightly, public_inventory
 from release_identity import parse_tag, parse_version
 
+# The release notes name the Qt the AppImage bundles (#418).
+APPIMAGE_QT = json.loads((Path(__file__).resolve().parents[2] / 'packaging/appimage/tools.lock.json')
+                         .read_text())['buildInputs']['qt']
 
 
 def github_json(*arguments):
@@ -189,7 +192,7 @@ def changes_section(tag, producer):
 def publish_nightly(args, release, listed):
     """Publish one automated nightly, retaining exact run and byte evidence."""
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected nightly inventory must contain all sixteen public assets')
+        raise ValueError('Collected nightly inventory must contain all twenty-one public assets')
     producer = run_provenance()
     api = GitHub(producer['repository'])
     expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
@@ -212,9 +215,9 @@ def publish_nightly(args, release, listed):
             'This does not certify current graphical compositor behavior, memory acceptance or live S3 behavior.\n\n'
             'Individual DEBs, RPM, AppImage, source tarball, GNOME ZIP, release-builds.json, '
             'combined ZIP and SHA256SUMS are available separately. DEB/RPM use distro Qt. '
-            'AppImage bundles dynamically linked Qt 6.8.3 and requires glibc 2.39 or newer. '
+            f'AppImage bundles dynamically linked Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
             'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later '
-            'combined work; their corresponding source is the appimage-media-source tarball. '
+            'combined work; their corresponding source is the appimage-complete-source tarball. '
             'The AppImage carries zsync update information for the nightly channel, so AppImageUpdate, '
             'Gear Lever and AppImageLauncher can update it with the .zsync asset. '
             'GNOME 50 requires the included host extension.\n\n'
@@ -224,6 +227,8 @@ def publish_nightly(args, release, listed):
             'download the two source parts separately.\n\n'
             'The debug tar.zst holds every build\'s split debug files by GNU build ID, for symbolizing '
             'crash records (docs/diagnostics.md); it is not part of the combined ZIP.\n\n'
+            'Each package has a CycloneDX SBOM (.cdx.json) of the components it bundles, for any SBOM-aware '
+            'vulnerability scanner (docs/release.md).\n\n'
             + 'Built, tested and packaged by ' + producer['url'] + '\n\n'
             + 'Channel/source and automated producer evidence:\n\n```json\n'
             + json.dumps(receipt, indent=2) + '\n```\n')
@@ -297,7 +302,7 @@ def main():
             raise ValueError('Duplicate collected release checksum')
         listed[name] = digest
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected release inventory must include all sixteen public assets, including Proton and AppImage media sources and debug symbols')
+        raise ValueError('Collected release inventory must include all twenty-one public assets, including Proton and AppImage media sources, debug symbols and SBOMs')
     if args.nightly:
         publish_nightly(args, release, listed)
         return
@@ -326,9 +331,9 @@ def main():
     notes = args.directory / 'release-notes.md'
     notes.write_text('Linux x86_64 ' + kind + ' with individual Ubuntu DEBs, a Fedora RPM, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
                      + changes_section(args.tag, producer) +
-                     'DEB/RPM use distro Qt. AppImage dynamically bundles Qt 6.8.3 and requires glibc 2.39 or newer. '
+                     f'DEB/RPM use distro Qt. AppImage dynamically bundles Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
                      'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later combined work; '
-                     'their corresponding source is the appimage-media-source tarball. '
+                     'their corresponding source is the appimage-complete-source tarball. '
                      'The AppImage carries zsync update information for the stable channel, so AppImageUpdate, '
                      'Gear Lever and AppImageLauncher can update it with the .zsync asset. '
                      'GNOME 50 requires the included host extension. Flatpak needs no host helper, except that Plasma Wayland loses direct screenshots; it is tracked in issue #83 (docs/flatpak.md).\n\n'
@@ -337,6 +342,8 @@ def main():
                      'The combined ZIP includes the catalog; download the two source parts separately.\n\n'
                      'The debug tar.zst holds every build\'s split debug files by GNU build ID, for symbolizing crash records '
                      '(docs/diagnostics.md); it is not part of the combined ZIP.\n\n'
+                     'Each package has a CycloneDX SBOM (.cdx.json) of the components it bundles, for any SBOM-aware '
+                     'vulnerability scanner (docs/release.md).\n\n'
                      'Compiled source identities, dependency inventories, licenses and SHA256 checksums accompany the builds. '
                      'Package-specific acceptance is recorded before this draft is published.\n\n'
                      'Built, tested and packaged by ' + producer['url'] + '\n')

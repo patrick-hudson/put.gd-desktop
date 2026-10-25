@@ -115,6 +115,10 @@ private slots:
   QCOMPARE(TrayController::failureReason({}),QString());
  }
  // #175: several files of one operation transferring at once read like History's active row.
+ void queuedEditorUsesPhaseRatherThanEditingState() {
+  for(const auto& state:QStringList{"editing","acquiring"})
+   QCOMPARE(TrayController::describeActivity({QJsonObject{{"id","submitted-edit"},{"action","edit"},{"state",state},{"phase","queued"}}}),QString("Queued"));
+ }
  void tooltipSummarizesConcurrentFiles() {
   auto item=[](const char* status,const char* phase,qint64 sent,qint64 total){
    QJsonObject value{{"uploadStatus",status},{"phase",phase},{"artifact",QJsonObject{{"bytes",double(total)}}}};

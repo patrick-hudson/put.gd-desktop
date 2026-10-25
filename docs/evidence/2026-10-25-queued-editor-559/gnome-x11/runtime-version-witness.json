@@ -1,0 +1,18 @@
+{
+  "source": "production diagnostics from the same /tmp/q559xg1 run",
+  "sourceFile": "private work/559/gnome-x11/run/diagnostics.json",
+  "sha256": "0dd25ef028461ebcec3d8c7184a21cc4288051c9cc7912de34d8f807462de2db",
+  "qtVersion": "6.4.2",
+  "build": {
+    "baseVersion": "26.1025.1254",
+    "commitCount": 1254,
+    "dirty": null,
+    "gitCommit": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+    "gitTree": "368c787617a047d52087a16aefd328503aabf147",
+    "packageVersion": "26.1025.1254~dev+g9f382fd0b07d",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "26.1025.1254-dev+g9f382fd0b07d"
+  },
+  "note": "Original result.json retained unchanged; its package-name fallback returned an empty version."
+}

@@ -1,0 +1,74 @@
+{
+  "ownedTunnelUnitsStopped": [
+    "putgd-vm-f44-u382a.service",
+    "putgd-vm-f44-a382a.service"
+  ],
+  "wallEntriesRemoved": [
+    {
+      "name": "Aurora 45 a382a - uninstall 382",
+      "port": 5993
+    },
+    {
+      "name": "Ubuntu GNOME u382a - uninstall 382",
+      "port": 5992
+    }
+  ],
+  "wallOtherEntriesPreserved": [
+    {
+      "name": "Fedora 44 GNOME - build server",
+      "port": 5970,
+      "type": "physical",
+      "ip": "192.168.68.70"
+    },
+    {
+      "name": "Debian 13 KDE Plasma - build server",
+      "port": 5979,
+      "type": "physical",
+      "ip": "192.168.68.69"
+    },
+    {
+      "name": "Kubuntu 26.04 KDE X11 - build server",
+      "port": 5972,
+      "type": "physical",
+      "ip": "192.168.68.72"
+    },
+    {
+      "name": "Linux Mint 22.3 Cinnamon - build server",
+      "port": 5974,
+      "type": "physical",
+      "ip": "192.168.68.74"
+    },
+    {
+      "name": "Windows 11 w11-e3ceec338284 (d69)",
+      "port": 5982,
+      "type": "vm",
+      "hostIp": "192.168.68.69"
+    },
+    {
+      "name": "Windows 11 w11b-3e92324d501c (m74)",
+      "port": 5984,
+      "type": "vm",
+      "hostIp": "192.168.68.74"
+    }
+  ],
+  "wallBeforeSha256": "5d500e55670e4a9b1b7f0edf3bd63ce8b9c4cd08eef49ede5fd31f98db59af5d",
+  "wallAfterSha256": "a1e38ea8c9aa91518db72c44493af9ad9b2e07f4045b5b6e3ef43985e39f5f35",
+  "checks": {
+    "m74": {
+      "protectedWindowsPid": 308684,
+      "exists": true,
+      "cgroup": "0::/user.slice/user-1000.slice/session-1768.scope\n"
+    },
+    "f44": {
+      "u382a": {
+        "diskAbsent": true,
+        "processAbsent": true
+      },
+      "a382a": {
+        "diskAbsent": true,
+        "processAbsent": true
+      }
+    }
+  },
+  "desktopLocks": "d69 (Debian 13 Plasma Wayland): free\n  last: release of Codex's lock by codex-i382n-acceptance at 2026-10-24T06:22:41Z\nf44 (Fedora 44 GNOME Wayland): free\n  last: release of Codex's lock by codex-i382n-acceptance at 2026-10-24T06:21:01Z\nk72 (Kubuntu 26.04 Plasma Wayland): free\n  last: release of Codex's lock by codex-i382n-acceptance at 2026-10-24T06:25:29Z\nm74 (Linux Mint 22.3 Cinnamon X11): free\n  last: release of Codex's lock by codex-i382n-acceptance at 2026-10-24T06:26:55Z\n"
+}

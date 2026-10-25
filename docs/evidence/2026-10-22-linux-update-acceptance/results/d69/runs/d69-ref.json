@@ -1,0 +1,110 @@
+{
+ "name": "d69-ref",
+ "tool": null,
+ "live": true,
+ "image": "/home/patrick/work/put.gd-ua/app/runs/d69-ref/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/home/patrick/work/put.gd-ua/app/runs/d69-ref/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.HjhSaA",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/games",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/xauth_rJJEIn",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "KDE",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "XDG_SESSION_DESKTOP": "KDE",
+  "DESKTOP_SESSION": "plasma",
+  "KDE_FULL_SESSION": "true",
+  "KDE_SESSION_VERSION": "6",
+  "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "plasmashell",
+ "hostPath": "/usr/local/bin:/usr/bin:/bin:/usr/games",
+ "host": "debian",
+ "vnc": 5900,
+ "urls": {},
+ "input": "uinput",
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 2490838
+ },
+ "created": "2026-10-23T00:23:58Z",
+ "log": [
+  {
+   "at": "2026-10-23T00:24:03Z",
+   "start": {
+    "pid": 2490810,
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/d69-ref/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/d69-ref/frames/u12-0-start.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:24:09Z",
+   "refuse": {
+    "case": "readonly",
+    "params": {
+     "confirm": true,
+     "method": "download"
+    },
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "install": {
+     "state": "failed",
+     "phase": "checking",
+     "error": {
+      "code": "update_image_not_writable",
+      "details": {
+       "directory": "/home/patrick/work/put.gd-ua/app/runs/d69-ref/apps"
+      },
+      "message": "put.gd can't write to the AppImage's folder"
+     },
+     "available": true,
+     "reason": null,
+     "restartRequired": false
+    },
+    "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+    "unchanged": true,
+    "folder": [
+     "putgd-26.1022.1017-nightly-x86_64.AppImage"
+    ],
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/d69-ref/frames/refuse-readonly.png"
+   }
+  }
+ ]
+}

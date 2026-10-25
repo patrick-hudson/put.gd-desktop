@@ -1,0 +1,16 @@
+Sat Oct 24 02:40:10 AM UTC 2026
+ 21:40:10 up 15 min,  6 users,  load average: 0.85, 0.37, 0.27
+               total        used        free      shared  buff/cache   available
+Mem:            15Gi       2.2Gi        10Gi       354Mi       3.6Gi        13Gi
+Swap:          8.0Gi          0B       8.0Gi
+    PID COMMAND         %CPU %MEM
+   7491 localsearch-ext 42.3  0.3
+   7448 python3         27.4  0.7
+   7426 putgd-ui        23.0  0.7
+   7493 sshd-session     8.6  0.0
+   4686 gnome-software   3.9  1.4
+   7456 systemd-userwor  2.3  0.0
+   7454 systemd-userwor  2.2  0.0
+   4695 w0vncserver      1.5  0.6
+   6699 putgd            1.3  0.2
+a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40  /home/patrick/work/pgcc/tests/performance/bench_ui_process.py

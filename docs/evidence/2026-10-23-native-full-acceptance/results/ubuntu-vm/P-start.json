@@ -1,0 +1,316 @@
+{
+ "startSeconds": 0.34,
+ "credentials": "completed",
+ "sessionSock": true,
+ "processes": [
+  {
+   "pid": 2912,
+   "ppid": 1315,
+   "exe": "/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/usr/bin/putgd --background ",
+   "qtPlatformPlugins": []
+  }
+ ],
+ "diagnostics": {
+  "backend": "Qt",
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "capabilities": {
+   "editor": {
+    "admissionPixels": 24000000,
+    "available": true,
+    "commands": [
+     "inspect",
+     "apply",
+     "preview",
+     "saveCopy",
+     "fileDialog",
+     "submit",
+     "cancel",
+     "raise"
+    ],
+    "fileFormats": [
+     "png",
+     "jpeg"
+    ],
+    "open": false,
+    "output": "png",
+    "shapes": [
+     "redact",
+     "blur",
+     "arrow",
+     "rectangle",
+     "text",
+     "highlight"
+    ],
+    "sources": [
+     "region",
+     "window",
+     "desktop",
+     "clipboard",
+     "file"
+    ]
+   },
+   "providers": {
+    "backblaze-b2": {
+     "conditionalCreate": true,
+     "conditionalDelete": false,
+     "conditionalReplace": false,
+     "delete": true,
+     "deletionEffect": "Deletes exactly the uploaded B2 file version by its ID. put.gd never uploads over a visible file, so the name then shows nothing, or an older version that was hidden before the upload. Authorized links stop working when they expire.",
+     "maximumNameBytes": 1023,
+     "maximumObjectBytes": 10000000000000,
+     "privateUploads": false,
+     "sharing": false,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": true
+    },
+    "proton-drive": {
+     "conditionalCreate": true,
+     "conditionalDelete": false,
+     "conditionalReplace": false,
+     "delete": false,
+     "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+     "maximumNameBytes": 255,
+     "maximumObjectBytes": null,
+     "privateUploads": true,
+     "sharing": true,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": false
+    },
+    "s3": {
+     "conditionalCreate": true,
+     "conditionalDelete": true,
+     "conditionalReplace": true,
+     "delete": true,
+     "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+     "maximumNameBytes": 1024,
+     "maximumObjectBytes": 5497558138880,
+     "privateUploads": false,
+     "sharing": false,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": true
+    }
+   },
+   "recording": {
+    "active": null,
+    "audio": {
+     "microphone": false,
+     "system": false
+    },
+    "available": false,
+    "codecs": {},
+    "commands": [
+     "prepare",
+     "start",
+     "pause",
+     "resume",
+     "stop",
+     "cancel",
+     "inspect",
+     "select",
+     "raise",
+     "overlay",
+     "edit",
+     "preview",
+     "review",
+     "saveCopy",
+     "upload"
+    ],
+    "editCommands": [
+     "setTrim",
+     "resetTrim",
+     "addMask",
+     "updateMask",
+     "removeMask"
+    ],
+    "formats": [],
+    "limits": {
+     "animationMaxEdge": 1280,
+     "animationMaxUs": 60000000,
+     "maxFileBytes": 1099511627776,
+     "maxMasks": 64
+    },
+    "maskKinds": [
+     "blur",
+     "solid"
+    ],
+    "overlayExclusion": {},
+    "reason": "recording_not_probed",
+    "states": [
+     "preparing",
+     "ready",
+     "starting",
+     "recording",
+     "paused",
+     "stopping",
+     "reviewing",
+     "exporting",
+     "submitted",
+     "cancelled",
+     "failed"
+    ],
+    "targets": [],
+    "timeUnit": "microseconds"
+   },
+   "source": {
+    "adapter": "gnome-wayland",
+    "capture": {
+     "desktop": {
+      "available": true,
+      "consent": "one-time-extension-setup",
+      "mode": "compositor-native"
+     },
+     "region": {
+      "available": true,
+      "consent": "one-time-extension-setup",
+      "mode": "compositor-native"
+     },
+     "window": {
+      "available": true,
+      "consent": "one-time-extension-setup",
+      "mode": "compositor-native"
+     }
+    },
+    "clipboard": {
+     "available": true,
+     "import": "bounded-mutter-selection",
+     "result": "st-clipboard-only",
+     "types": [
+      "files",
+      "image",
+      "text"
+     ]
+    },
+    "helper": {
+     "available": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "extensionVersion": 2,
+     "outdated": false,
+     "packagedExtensionVersion": 2,
+     "protocol": 1,
+     "recordingVersion": 1,
+     "shellMajor": 50,
+     "uuid": "putgd@put.gd"
+    },
+    "shortcuts": {
+     "available": true,
+     "bindings": {
+      "clipboard": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "desktop": {
+       "actual": "Ctrl+Shift+3",
+       "bound": true,
+       "requested": "Ctrl+Shift+3"
+      },
+      "edit": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "record": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "region": {
+       "actual": "Ctrl+Shift+1",
+       "bound": true,
+       "requested": "Ctrl+Shift+1"
+      },
+      "window": {
+       "actual": "Ctrl+Shift+2",
+       "bound": true,
+       "requested": "Ctrl+Shift+2"
+      }
+     }
+    }
+   }
+  },
+  "journalReady": true,
+  "qtVersion": "6.10.2",
+  "release": {
+   "kind": "nightly",
+   "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly",
+   "version": "26.1023.1058-nightly"
+  }
+ },
+ "ui": {
+  "ui": {
+   "checkpointBytes": 0,
+   "lastExit": {},
+   "pid": 0,
+   "state": "stopped"
+  },
+  "trayAvailable": true,
+  "trayTint": {
+   "color": "#9bbcff",
+   "panel": "dark",
+   "source": "gnome-shell"
+  },
+  "loginStartup": {
+   "applied": true,
+   "enabled": false
+  },
+  "update": {
+   "action": null,
+   "attemptedAt": null,
+   "build": {
+    "channel": "nightly",
+    "kind": "nightly",
+    "packageTarget": "ubuntu26.04",
+    "reason": null,
+    "supported": true,
+    "version": "26.1023.1058-nightly"
+   },
+   "channel": "nightly",
+   "channelSetting": "build",
+   "channelSource": "setting",
+   "check": true,
+   "checkedAt": null,
+   "checking": false,
+   "enabled": true,
+   "error": null,
+   "install": {
+    "available": false,
+    "backup": null,
+    "image": null,
+    "installed": null,
+    "kind": "update",
+    "reason": "not_appimage",
+    "restartRequired": false,
+    "running": false,
+    "state": "idle",
+    "switch": null
+   },
+   "nextCheckAt": "2026-10-23T04:42:18Z",
+   "notifies": false,
+   "reason": null,
+   "result": null,
+   "supported": true
+  }
+ },
+ "kdeEntries": [
+  "putgd326-url.desktop"
+ ]
+}

@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/home/lab/put.gd-qt418/afa/tool/qt418.py", line 206, in <module>
+    main()
+    ~~~~^^
+  File "/home/lab/put.gd-qt418/afa/tool/qt418.py", line 202, in main
+    {'badfile': badfile, 'clipfile': clipfile}[args.cmd](args)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/lab/put.gd-qt418/afa/tool/qt418.py", line 184, in clipfile
+    inp.key('Home')
+    ~~~~~~~^^^^^^^^
+  File "/home/lab/put.gd-qt418/afa/tool/afa.py", line 383, in key
+    if self.mode == 'vnc': return self.vnc.key(*[self.VKEY.get(n, n) for n in names], hold=hold)
+                                  ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/lab/put.gd-qt418/afa/tool/rfb.py", line 48, in key
+    raise ValueError(names)
+ValueError: ('Home',)

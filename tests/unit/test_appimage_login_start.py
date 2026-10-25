@@ -12,6 +12,7 @@ import pwd
 import shutil
 import subprocess
 import tempfile
+import threading
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -103,23 +104,145 @@ class LoginStartTest(unittest.TestCase):
         Path(str(path) + ".version").write_text(version + "\n")
         return path
 
-    def start(self, configured, info=NIGHTLY):
-        script = self.root / "appimage-start.sh"
+    def render(self, configured, info=NIGHTLY, kind="appimage", entry_text=None, watch_unit=""):
+        self.script = self.root / "start.sh"
+        self.entry = self.root / "putgd.desktop"
+        self.configuration = self.root / "config.json"
+        if not self.configuration.exists():
+            self.configuration.write_text('{"preferences":{"launchAtLogin":true}}\n')
+        identity = "a" * 64
         text = SCRIPT.read_text()
-        text = text.replace("__PUTGD_CONFIGURED__", shell_quoted(str(configured)))
-        text = text.replace("__PUTGD_UPDATE_INFORMATION__", shell_quoted(info))
-        script.write_text(text)
+        values = {"CONFIGURED": str(configured), "UPDATE_INFORMATION": info, "KIND": kind,
+                  "ENTRY": str(self.entry), "SCRIPT": str(self.script), "WATCH_UNIT": watch_unit}
+        for key, value in values.items():
+            text = text.replace("__PUTGD_" + key + "__", shell_quoted(value))
+        text = text.replace("__PUTGD_ID__", identity)
+        self.script.write_text(text)
+        self.script.chmod(0o700)
+        self.entry.write_text(entry_text if entry_text is not None else
+                              "[Desktop Entry]\nX-putgd-Managed=true\nX-putgd-StartupId=" + identity + "\n")
+        self.entry.chmod(0o600)
+        return self.script
+
+    def run_script(self, *args):
         env = dict(os.environ, PG_RECEIPT=str(self.receipt), PG_PROBES=str(self.probes))
-        completed = subprocess.run(["/bin/sh", str(script), "--background"], env=env, cwd=self.root,
+        env.update(getattr(self, "command_env", {}))
+        completed = subprocess.run(["/bin/sh", str(self.script), *args], env=env, cwd=self.root,
                                    capture_output=True, text=True, timeout=60)
         started = self.receipt.read_text().splitlines() if self.receipt.exists() else []
         return completed, started
+
+    def start(self, configured, info=NIGHTLY):
+        self.render(configured, info)
+        return self.run_script("--background")
 
     def assertStarts(self, configured, expected, info=NIGHTLY):
         completed, started = self.start(configured, info)
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(started, [str(expected) + " --background"])
         return completed
+
+    def test_new_watch_checks_an_installation_removed_before_it_was_armed(self):
+        # Model the manager only; the real-user-manager probe is separate.
+        # PathChanged does not report a file already missing when armed.
+        mockbin = self.root / "manager-bin"
+        mockbin.mkdir()
+        manager = mockbin / "systemctl"
+        manager.write_text("""#!/bin/sh
+case "$*" in
+ *--property=LoadState*) [ -e "$PG_ARMED" ] && echo loaded || echo not-found ;;
+ *--property=Description*) printf '%s\\n' "$PG_DESCRIPTION" ;;
+ *is-active*) [ -e "$PG_ARMED" ] ;;
+ *stop*) rm -f -- "$PG_ARMED" ;;
+ *start*) /bin/sh "$PG_SCRIPT" --cleanup-if-missing ;;
+ *) exit 1 ;;
+esac
+""")
+        runner = mockbin / "systemd-run"
+        runner.write_text('#!/bin/sh\n: > "$PG_ARMED"\n')
+        manager.chmod(0o700)
+        runner.chmod(0o700)
+        self.render(self.images / "already-removed", kind="native", watch_unit="putgd-login-startup-fixture")
+        self.command_env = {"PATH": str(mockbin) + os.pathsep + os.environ["PATH"],
+                            "PG_ARMED": str(self.root / "armed"), "PG_SCRIPT": str(self.script),
+                            "PG_DESCRIPTION": "put.gd managed login startup " + "a" * 64}
+        configuration = self.configuration.read_bytes()
+        completed, started = self.run_script("--install-watch")
+        self.assertEqual((completed.returncode, completed.stdout, completed.stderr, started), (0, "", "", []))
+        self.assertFalse(self.entry.exists())
+        self.assertFalse(self.script.exists())
+        self.assertEqual(self.configuration.read_bytes(), configuration)
+
+    def test_missing_native_install_removes_only_managed_startup_files(self):
+        self.render(self.images / "putgd-launcher", kind="native")
+        config = self.configuration.read_bytes()
+        completed, started = self.run_script("--background")
+        self.assertEqual((completed.returncode, completed.stdout, completed.stderr, started), (0, "", "", []))
+        self.assertFalse(self.entry.exists())
+        self.assertFalse(self.script.exists())
+        self.assertEqual(self.configuration.read_bytes(), config)
+
+    def test_login_waits_for_a_native_replacement_before_removing_the_link(self):
+        configured = self.images / "putgd-launcher"
+        self.render(configured, kind="native")
+
+        def replace():
+            configured.write_bytes(self.binary.read_bytes())
+            configured.chmod(0o700)
+
+        replacement = threading.Timer(0.3, replace)
+        replacement.start()
+        try:
+            completed, started = self.run_script("--background")
+        finally:
+            replacement.join()
+        self.assertEqual((completed.returncode, completed.stderr), (0, ""))
+        self.assertEqual(started, [str(configured) + " --background"])
+        self.assertTrue(self.entry.exists())
+        self.assertTrue(self.script.exists())
+
+    def test_missing_appimage_removes_the_link_at_the_next_login(self):
+        self.render(self.images / "putgd-missing.AppImage")
+        config = self.configuration.read_bytes()
+        completed, started = self.run_script("--background")
+        self.assertEqual((completed.returncode, completed.stdout, completed.stderr, started), (0, "", "", []))
+        self.assertFalse(self.entry.exists())
+        self.assertFalse(self.script.exists())
+        self.assertEqual(self.configuration.read_bytes(), config)
+
+    def test_foreign_or_replaced_entry_is_never_removed(self):
+        for entry in ("user entry\n", "X-putgd-Managed=true\nX-putgd-StartupId=another-install\n"):
+            self.render(self.images / "missing.AppImage", entry_text=entry)
+            completed, started = self.run_script("--background")
+            self.assertEqual(completed.returncode, 0)
+            self.assertEqual(self.entry.read_text(), entry)
+            self.assertTrue(self.script.exists())
+
+    def test_symlink_to_an_entry_is_never_removed(self):
+        self.render(self.images / "missing.AppImage")
+        original = self.root / "original.desktop"
+        self.entry.rename(original)
+        self.entry.symlink_to(original)
+        completed, _ = self.run_script("--background")
+        self.assertEqual(completed.returncode, 0)
+        self.assertTrue(self.entry.is_symlink())
+        self.assertTrue(original.exists())
+
+    def test_monitor_keeps_the_link_when_an_eligible_replacement_exists(self):
+        configured = self.images / "putgd-0.1.1-nightly.800-x86_64.AppImage"
+        self.image("putgd-0.1.1-nightly.801-x86_64.AppImage", "0.1.1-nightly.801")
+        self.render(configured)
+        completed, started = self.run_script("--cleanup-if-missing")
+        self.assertEqual((completed.returncode, completed.stdout, completed.stderr, started), (0, "", "", []))
+        self.assertTrue(self.entry.exists())
+        self.assertTrue(self.script.exists())
+
+    def test_monitor_removes_the_link_when_the_last_image_is_gone(self):
+        self.render(self.images / "missing.AppImage")
+        completed, started = self.run_script("--cleanup-if-missing")
+        self.assertEqual((completed.returncode, completed.stdout, completed.stderr, started), (0, "", "", []))
+        self.assertFalse(self.entry.exists())
+        self.assertFalse(self.script.exists())
 
     def test_gear_lever_replaced_in_place_starts_the_configured_image_without_probes(self):
         configured = self.image("put.gd.appimage", "0.1.1-nightly.801")
@@ -205,9 +328,9 @@ class LoginStartTest(unittest.TestCase):
         self.images.chmod(0o777)
         self.addCleanup(self.images.chmod, 0o700)
         completed, started = self.start(configured)
-        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.returncode, 0)
         self.assertEqual(started, [])
-        self.assertIn("cannot start", completed.stderr)
+        self.assertEqual(completed.stderr, "")
 
     def test_release_orders_after_its_candidate(self):
         configured = self.image("putgd-0.1.2-rc.1-x86_64.AppImage", "0.1.2-rc.1", info=STABLE)
@@ -264,18 +387,28 @@ class LoginStartTest(unittest.TestCase):
         self.image("putgd-0.1.1-nightly.801-x86_64.AppImage", "0.1.1-nightly.801")
         self.assertStarts(configured, configured)
 
-    def test_nothing_to_start_fails_with_a_message(self):
+    def test_removed_images_leave_a_quiet_retained_preference(self):
         completed, started = self.start(self.images / "putgd-0.1.1-nightly.800-x86_64.AppImage")
-        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.returncode, 0)
         self.assertEqual(started, [])
-        self.assertIn("no put.gd AppImage with its update information", completed.stderr)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(completed.stderr, "")
+
+    def test_removed_image_folder_leaves_a_quiet_retained_preference(self):
+        configured = self.images / "putgd-26.1023.1058-nightly-x86_64.AppImage"
+        self.images.rmdir()
+        completed, started = self.start(configured)
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(started, [])
+        self.assertEqual(completed.stderr, "")
 
     def test_image_without_update_information_starts_only_itself(self):
         configured = self.images / "putgd-0.1.1-dev.795+g71f241b8f5d3-x86_64.AppImage"
         self.image("putgd-0.1.1-dev.796+g0000000-x86_64.AppImage", "0.1.1-dev.796+g0000000", info="")
         completed, started = self.start(configured, info="")
-        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.returncode, 0)
         self.assertEqual(started, [])
+        self.assertEqual(completed.stderr, "")
 
 
 if __name__ == "__main__":

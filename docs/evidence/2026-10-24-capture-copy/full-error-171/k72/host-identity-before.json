@@ -1,0 +1,23 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "k72",
+  "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a",
+  "kernel": "7.0.0-38-generic",
+  "osRelease": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n",
+  "packages": {
+    "cinnamon": "cinnamon  not-installed",
+    "kwin-wayland": "kwin-wayland 4:6.6.6-0ubuntu0.1 installed",
+    "plasma-workspace": "plasma-workspace 4:6.6.6-0ubuntu0.1 installed",
+    "libqt6core6t64": "libqt6core6t64 6.10.2+dfsg-7 installed",
+    "libgtk-4-1": "libgtk-4-1 4.22.4+ds-0ubuntu0.1 installed",
+    "gir1.2-gtk-4.0": "gir1.2-gtk-4.0 4.22.4+ds-0ubuntu0.1 installed"
+  },
+  "packageAbsentBaseline": true,
+  "session": {
+    "DISPLAY": ":0",
+    "WAYLAND_DISPLAY": "wayland-0",
+    "XDG_CURRENT_DESKTOP": "KDE",
+    "XDG_SESSION_TYPE": "wayland"
+  },
+  "protectedWindowsGuest": "No guest changed"
+}

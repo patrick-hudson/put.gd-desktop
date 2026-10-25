@@ -1,0 +1,19 @@
+{
+ "browserProcesses": [
+  {
+   "pid": 3129663,
+   "comm": "firefox",
+   "cmd": "/usr/lib64/firefox/firefox https://put.gd/acceptance/nfa/f44/Screen-Capture-2026-10-23-00-42-27.png "
+  }
+ ],
+ "opened": [
+  {
+   "itemId": null,
+   "opened": true,
+   "operationId": null,
+   "route": "portal",
+   "target": "notification-link"
+  }
+ ],
+ "full": "/home/patrick/work/put.gd-nfa/runs/P/full/f44-F-browser.png"
+}

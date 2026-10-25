@@ -11,9 +11,11 @@
 #include "ui/FileDialog.h"
 #include <QFileDialog>
 #include "ui/ShortcutEditor.h"
+#include "ui/ShortcutKeyboard.h"
 #include "ui/ViewState.h"
 #include "fixtures/UiSessionFixture.h"
 #include "app/DiagnosticsBundle.h"
+#include "core/SystemUpdates.h"
 #include "core/Log.h"
 #include "core/ArtifactStore.h"
 #include <QJsonDocument>
@@ -370,9 +372,79 @@ private slots:
   auto state=window.settings()->saveViewState();auto routes=state["captureRouting"].toObject();auto edit=routes["edit"].toObject();edit["destinationEnabled"]="false";routes["edit"]=edit;state["captureRouting"]=routes;QVERIFY(validateUiState({{"schemaVersion",1},{"settings",state}}));
   edit["destinationEnabled"]=false;edit["draft"]="unexpected";routes["edit"]=edit;state["captureRouting"]=routes;QVERIFY(validateUiState({{"schemaVersion",1},{"settings",state}}));
  }
+ void firstLaunchHasNoDestinationOrAutomaticConfigurationWrite(){
+  QTemporaryDir dir;
+  const auto path=dir.filePath("config.json");
+  SettingsService service(path);
+  const auto original=service.document();
+  CredentialStore secrets;
+  UiSessionFixture fixture(service,secrets);
+  MainWindow window(fixture.session);
+  window.navigate("destinations");window.show();
+  QCOMPARE(window.findChild<QListWidget*>("destinationList")->count(),0);
+  QVERIFY(window.findChild<QLabel*>("destinationsEmpty")->isVisible());
+  QVERIFY(!window.findChild<QWidget*>("destinationScroll")->isVisible());
+  QCOMPARE(window.findChild<QComboBox*>("storageProvider")->currentIndex(),-1);
+  auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");
+  QCOMPARE(destination->count(),1);
+  QVERIFY(destination->currentData().toString().isEmpty());
+  const auto state=window.settings()->saveViewState();
+  QVERIFY(!state.contains("stateError"));
+  QVERIFY(state["draft"].toObject()["profiles"].toArray().isEmpty());
+  QCOMPARE(state["draft"].toObject()["actions"],original["actions"]);
+  QVERIFY(!state["initialProfile"].toBool());
+  MainWindow reopened(fixture.session);
+  QVERIFY(reopened.settings()->restoreViewState(state));
+  QCOMPARE(reopened.findChild<QListWidget*>("destinationList")->count(),0);
+  fixture.session.invalidate();PUTGD_VERIFY_STEADY(service.revision().isEmpty(),650);
+  QCOMPARE(service.document(),original);
+  QVERIFY(service.revision().isEmpty());
+  QVERIFY(!QFile::exists(path));
+ }
+ void openingExistingConfigurationPreservesExactFileAndRoutes_data(){
+  QTest::addColumn<QString>("kind");
+  QTest::newRow("saved-empty")<<QString("empty");
+  QTest::newRow("legacy-s3-1-default")<<QString("legacy");
+  QTest::newRow("mixed-providers-and-action-exception")<<QString("mixed");
+ }
+ void openingExistingConfigurationPreservesExactFileAndRoutes(){
+  QFETCH(QString,kind);
+  QTemporaryDir dir;
+  SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=Settings::defaults();
+  if(kind=="legacy"){
+   doc=Settings::developmentTemplate();
+   auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();
+   profile["id"]="s3-1";profile["label"]="S3 destination";
+   profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/s3-1"}};
+   profiles[0]=profile;doc["profiles"]=profiles;
+   auto actions=doc["actions"].toObject();
+   for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["profileId"]="s3-1";actions[name]=action;}
+   doc["actions"]=actions;
+  }else if(kind=="mixed"){
+   doc=threeDestinations();auto profiles=doc["profiles"].toArray();
+   auto proton=profiles[1].toObject();proton["provider"]="proton-drive";proton["settings"]=ProtonProvider::defaults();profiles[1]=proton;
+   auto backblaze=profiles[2].toObject();backblaze["provider"]="backblaze-b2";auto settings=b2::defaults();settings["bucket"]="synthetic-bucket";backblaze["settings"]=settings;profiles[2]=backblaze;
+   doc["profiles"]=profiles;
+  }
+  QVERIFY(service.save(doc,{}));
+  QFile file(service.path());QVERIFY(file.open(QIODevice::ReadOnly));const auto bytes=file.readAll();file.close();
+  const auto revision=service.revision();
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  int writes=0;
+  fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="settings.save"||method=="settings.patch")++writes;};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  QCOMPARE(window.findChild<QListWidget*>("destinationList")->count(),doc["profiles"].toArray().size());
+  const auto state=window.settings()->saveViewState();QVERIFY(!state.contains("stateError"));
+  MainWindow reopened(fixture.session);QVERIFY(reopened.settings()->restoreViewState(state));
+  fixture.session.invalidate();PUTGD_COMPARE_STEADY(writes,0,650);
+  QCOMPARE(writes,0);QCOMPARE(service.document(),doc);QCOMPARE(service.revision(),revision);
+  QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),bytes);
+ }
  void firstLaunchLocalCopiesNeedNoDestination(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");destination->setCurrentIndex(destination->findData(QString{}));window.findChild<QCheckBox*>("keepUploadCopies")->setChecked(true);PUTGD_TRY_VERIFY(!service.revision().isEmpty());PUTGD_TRY_VERIFY(service.snapshot().archive.keepUploads);QVERIFY(service.document()["profiles"].toArray().isEmpty());QCOMPARE(service.snapshot().actions["region"].destination,QString("local"));PUTGD_TRY_VERIFY(window.findChild<QLabel*>("autosaveStatus")->text().isEmpty());
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));const auto actions=service.document()["actions"];CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");QCOMPARE(destination->count(),1);QVERIFY(destination->currentData().toString().isEmpty());window.findChild<QCheckBox*>("keepUploadCopies")->setChecked(true);PUTGD_TRY_VERIFY(!service.revision().isEmpty());PUTGD_TRY_VERIFY(service.snapshot().archive.keepUploads);QVERIFY(service.document()["profiles"].toArray().isEmpty());QCOMPARE(service.document()["actions"],actions);PUTGD_TRY_VERIFY(window.findChild<QLabel*>("autosaveStatus")->text().isEmpty());
   MainWindow reopened(fixture.session);QVERIFY(reopened.findChild<QCheckBox*>("keepUploadCopies")->isChecked());QVERIFY(reopened.findChild<QComboBox*>("defaultCaptureDestination")->currentData().toString().isEmpty());QVERIFY(reopened.findChild<QLabel*>("autosaveStatus")->text().isEmpty());
+  SettingsService restarted(service.path());QVERIFY(restarted.reload());QVERIFY(restarted.document()["profiles"].toArray().isEmpty());QCOMPARE(restarted.document()["actions"],actions);
  }
  void unchangedFieldsDoNotSaveOrClaimChangesWereSaved(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));const auto original=service.document();const auto revision=service.revision();CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();auto* status=window.findChild<QLabel*>("autosaveStatus");auto* field=window.findChild<QLineEdit*>("maxFiles");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");tabs->setCurrentIndex(3);
@@ -549,7 +621,12 @@ private slots:
   QImage pixel(2,2,QImage::Format_RGB32);pixel.fill(Qt::blue);const auto png=dir.filePath("Dropped.PNG");QVERIFY(pixel.save(png,"PNG"));
   const auto text=dir.filePath("notes.txt");{QFile file(text);QVERIFY(file.open(QIODevice::WriteOnly));file.write("x");}
   auto drop=[&](const QList<QUrl>& urls){
-   QMimeData data;data.setUrls(urls);const QPoint at(20,20);
+   QMimeData data;data.setUrls(urls);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
+   const QPointF at(20,20);
+#else
+   const QPoint at(20,20);
+#endif
    QDragEnterEvent enter(at,Qt::CopyAction,&data,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(edit,&enter);
    const bool accepted=enter.isAccepted();const bool lit=edit->property("dropTarget").toBool();
    QDropEvent dropped(QPointF(at),Qt::CopyAction,&data,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(edit,&dropped);
@@ -623,7 +700,16 @@ private slots:
   QVERIFY(window.findChild<QWidget*>("useDefaultClipboard"));QCOMPARE(window.findChild<QCheckBox*>("useDefaultClipboard")->accessibleName(),QString("Clipboard upload: use default output"));
  }
  void newDestinationIsDraftUntilValidAndCannotBecomeDefaultWithEmptyBucket(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();QVERIFY(!window.findChild<QPushButton*>("makeDefaultDestination")->isEnabled());window.findChild<QLineEdit*>("s3Bucket")->setText("a");putgd::test::settle(600);PUTGD_TRY_VERIFY(service.revision().isEmpty());PUTGD_TRY_VERIFY(window.findChild<QLineEdit*>("s3Bucket")->property("invalid").toBool());
+  QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);});UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* add=window.findChild<QPushButton*>("addS3Destination");
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget))dialog->reject();});add->menu()->actions().first()->trigger();
+  QCOMPARE(window.findChild<QListWidget*>("destinationList")->count(),0);QVERIFY(service.revision().isEmpty());
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("My S3 destination");dialog->accept();}});add->menu()->actions().first()->trigger();
+  QCOMPARE(window.findChild<QListWidget*>("destinationList")->count(),1);QVERIFY(!window.findChild<QLabel*>("destinationsEmpty")->isVisible());QVERIFY(window.findChild<QWidget*>("destinationScroll")->isVisible());
+  QVERIFY(!window.findChild<QPushButton*>("makeDefaultDestination")->isEnabled());auto* bucket=window.findChild<QLineEdit*>("s3Bucket");bucket->setText("a");putgd::test::settle(600);PUTGD_TRY_VERIFY(service.revision().isEmpty());PUTGD_TRY_VERIFY(bucket->property("invalid").toBool());
+  bucket->setText("synthetic-first-bucket");QMetaObject::invokeMethod(bucket,"editingFinished");PUTGD_TRY_COMPARE(service.document()["profiles"].toArray().size(),1);
+  const auto profile=service.document()["profiles"].toArray()[0].toObject();QCOMPARE(profile["label"].toString(),QString("My S3 destination"));QVERIFY(service.snapshot().actions["region"].profileId.isEmpty());
+  SettingsService restarted(service.path(),[&](auto,auto settings){return provider.validateSettings(settings);});QVERIFY(restarted.reload());QCOMPARE(restarted.document()["profiles"],service.document()["profiles"]);
  }
  void optionalDefaultsStayAbsentAndDoNotBlockDestinationSetup(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});auto doc=Settings::developmentTemplate();auto naming=doc["naming"].toObject();for(const auto& key:QStringList{"fileTemplate","captureTemplate","imageTemplate","textTemplate"})naming.remove(key);doc["naming"]=naming;auto limits=doc["limits"].toObject();limits.remove("pendingImageBytes");doc["limits"]=limits;auto preferences=doc["preferences"].toObject();preferences.remove("uploadClipboardBehavior");doc["preferences"]=preferences;QVERIFY(service.save(doc,{}));int tests=0;UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++tests;reply({});});MainWindow window(fixture.session);auto* pending=window.findChild<QLineEdit*>("pendingImageBytes");QVERIFY(pending);QVERIFY(!pending->property("defaultText").toString().isEmpty());PUTGD_TRY_COMPARE(pending->text(),pending->property("defaultText").toString());window.findChild<QCheckBox*>("notifications")->setChecked(false);PUTGD_TRY_VERIFY(!service.document()["preferences"].toObject()["notifications"].toBool());PUTGD_TRY_VERIFY(!window.settings()->saveViewState().contains("stateError"));QVERIFY(!service.document()["naming"].toObject().contains("fileTemplate"));QVERIFY(!service.document()["limits"].toObject().contains("pendingImageBytes"));QVERIFY(!service.document()["preferences"].toObject().contains("uploadClipboardBehavior"));window.findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_COMPARE(tests,1);
@@ -850,6 +936,42 @@ private slots:
    QCOMPARE(input->text(),QKeySequence(QKeyCombination(Qt::ControlModifier|Qt::KeypadModifier,Qt::Key_2)).toString(QKeySequence::PortableText));QCOMPARE(record->text(),QString("Record shortcut"));
   }
  }
+ void shortcutRecordingStoresTheUnshiftedKey(){
+  // A US map for scan code 13: Shift+4 is $. KDE never sends Ctrl+Shift+$.
+  ShortcutEditor editor;editor.setRecordingControl([](bool,auto reply){reply({});});
+  editor.setChordResolver([](const QKeyEvent& event){return event.nativeScanCode()==13?unshiftedChord(event.keyCombination(),'4','$'):event.keyCombination();});
+  editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
+  auto* record=editor.findChild<QPushButton*>("recordEditShortcut");auto* input=editor.editors().value("edit");QVERIFY(record);QVERIFY(input);
+  const auto send=[&](QEvent::Type type,int key,Qt::KeyboardModifiers modifiers,quint32 scan){QKeyEvent event(type,key,modifiers,scan,0,0);QApplication::sendEvent(input,&event);};
+  const auto shift=Qt::ControlModifier|Qt::ShiftModifier;
+  record->click();send(QEvent::KeyPress,Qt::Key_Control,Qt::ControlModifier,37);send(QEvent::KeyPress,Qt::Key_Shift,shift,50);
+  send(QEvent::KeyPress,Qt::Key_Dollar,shift,13);
+  QVERIFY(editor.findChild<QLabel*>("shortcutRecordingStatus")->text().startsWith(QKeySequence(shift|Qt::Key_4).toString(QKeySequence::NativeText)));
+  send(QEvent::KeyRelease,Qt::Key_Dollar,shift,13);send(QEvent::KeyRelease,Qt::Key_Shift,Qt::ControlModifier,50);send(QEvent::KeyRelease,Qt::Key_Control,Qt::NoModifier,37);
+  QCOMPARE(input->text(),QString("Ctrl+Shift+4"));
+  // Letters keep Qt's key.
+  record->click();send(QEvent::KeyPress,Qt::Key_Control,Qt::ControlModifier,37);send(QEvent::KeyPress,Qt::Key_Shift,shift,50);
+  send(QEvent::KeyPress,Qt::Key_E,shift,26);send(QEvent::KeyRelease,Qt::Key_E,shift,26);send(QEvent::KeyRelease,Qt::Key_Shift,Qt::ControlModifier,50);send(QEvent::KeyRelease,Qt::Key_Control,Qt::NoModifier,37);
+  QCOMPARE(input->text(),QString("Ctrl+Shift+E"));
+ }
+ void shortcutStatusComparesTheEffectiveBinding(){
+  ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
+  auto* input=editor.editors().value("region");auto* label=editor.findChild<QLabel*>("shortcutRegionStatus");QVERIFY(label);
+  input->setText("Ctrl+Shift+1");
+  const auto status=[&](const QJsonObject& entry){editor.setStatus({{"available",true},{"bindings",QJsonObject{{"region",entry}}}});};
+  // KDE holds Ctrl+Shift+1 as Ctrl+!, which is what was asked of it: no line.
+  status({{"requested","Ctrl+Shift+1"},{"effective","Ctrl+!"},{"actual",QJsonArray{"Ctrl+!"}},{"bound",true},{"state","bound"}});
+  QVERIFY(label->isHidden());
+  // A desktop binding other than the effective chord is reported.
+  status({{"requested","Ctrl+Shift+1"},{"effective","Ctrl+!"},{"actual",QJsonArray{"Ctrl+Shift+!"}},{"bound",true},{"state","bound"}});
+  QVERIFY(!label->isHidden());QCOMPARE(label->text(),QString("Active  ·  Ctrl+Shift+!"));
+  // The effective chord of an older request does not vouch for a newer draft.
+  status({{"requested","Ctrl+Shift+2"},{"effective","Ctrl+@"},{"actual",QJsonArray{"Ctrl+@"}},{"bound",true},{"state","bound"}});
+  QVERIFY(!label->isHidden());
+  // Backends without an effective chord still compare the draft.
+  status({{"requested","Ctrl+Shift+1"},{"actual",QJsonArray{"Ctrl+Shift+1"}},{"bound",true},{"state","bound"}});
+  QVERIFY(label->isHidden());
+ }
  void shortcutRecordingCancellationAndFailuresReleaseSuspension(){
   QList<bool> transitions;std::function<void(Error)> ready;ShortcutEditor editor;
   editor.setRecordingControl([&](bool active,auto reply){transitions.append(active);if(active)ready=reply;else reply({});});
@@ -904,6 +1026,50 @@ private slots:
   apply(false,QJsonValue(),"build","development_build");PUTGD_TRY_VERIFY(!channel->isVisibleTo(window.settings()));
   window.findChild<QCheckBox*>("notifications")->setChecked(!window.findChild<QCheckBox*>("notifications")->isChecked());PUTGD_COMPARE_STEADY(stored(),QString("build"),300);
   apply(false,"stable","build","flatpak");PUTGD_TRY_VERIFY(!channel->isVisibleTo(window.settings()));
+ }
+ // #491: the real service supplies ownership before the first UI snapshot,
+ // with no feed result. Saving unrelated preferences must retain the choice
+ // used by manual installs sharing this configuration.
+ void updateChannelIsCorrectOnFirstSnapshot_data(){
+  QTest::addColumn<bool>("managed");QTest::addColumn<QString>("chosen");
+  QTest::newRow("fresh-repository")<<true<<QString("build");
+  QTest::newRow("repository-with-manual-choice")<<true<<QString("nightly");
+  QTest::newRow("fresh-manual")<<false<<QString("build");
+  QTest::newRow("manual-with-choice")<<false<<QString("stable");
+ }
+ void updateChannelIsCorrectOnFirstSnapshot(){
+  QFETCH(bool,managed);QFETCH(QString,chosen);
+  QTemporaryDir dir;QVERIFY(dir.isValid());
+  const bool had=qEnvironmentVariableIsSet("PUTGD_UPDATE_SYSTEM_ROOT");const auto old=qgetenv("PUTGD_UPDATE_SYSTEM_ROOT");
+  const auto restore=qScopeGuard([&]{if(had)qputenv("PUTGD_UPDATE_SYSTEM_ROOT",old);else qunsetenv("PUTGD_UPDATE_SYSTEM_ROOT");});
+  qputenv("PUTGD_UPDATE_SYSTEM_ROOT",dir.path().toUtf8());
+  if(managed){
+   QVERIFY(QDir().mkpath(dir.path()+"/etc/apt/sources.list.d"));QFile file(dir.path()+"/etc/apt/sources.list.d/putgd.sources");
+   QVERIFY(file.open(QIODevice::WriteOnly));file.write(("Types: deb\nURIs: "+update::packageRepository()+"/apt/debian13\nSuites: stable\nComponents: main\n").toUtf8());
+  }
+  SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=Settings::defaults();auto prefs=doc["preferences"].toObject();prefs["updates"]=QJsonObject{{"channel",chosen}};doc["preferences"]=prefs;QVERIFY(service.save(doc,{}));
+  UpdateService updates(service,dir.path(),"/bin/false");
+  updates.setBuild(update::build(QJsonObject{{"version","26.1022.968-nightly"},{"dirty",false},{"sourceProvenance","git"}},"debian13",true));updates.start();
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);fixture.server.setUpdateService(&updates);
+  fixture.server.setUiDiagnostics([&]{return QJsonObject{{"update",updates.status()}};});
+  fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(fixture.session.diagnostics()["update"].isObject());
+  MainWindow window(fixture.session);window.resize(1100,700);window.navigate("settings");window.show();window.settings()->showUpdates();PUTGD_TRY_VERIFY(fixture.session.ready());
+  auto* channel=window.findChild<QComboBox*>("updateChannel");auto* source=window.findChild<QLabel*>("updateChannelSource");
+  auto* text=window.findChild<QLabel*>("otherChannelText");auto* line=window.findChild<QLabel*>("updateStatus");
+  QVERIFY(channel&&source&&text&&line);
+  const auto expected=managed||chosen=="stable"?QString("stable"):QString("nightly");
+  PUTGD_TRY_COMPARE(channel->currentData().toString(),expected);QCOMPARE(channel->isEnabled(),!managed);
+  QCOMPARE(source->isVisibleTo(window.settings()),managed);QCOMPARE(text->isVisibleTo(window.settings()),managed);
+  QVERIFY(line->text().startsWith("Not checked yet"));
+  QJsonObject wire;fixture.server.dispatch({{"schemaVersion",1},{"requestId","startup-update"},{"session",fixture.server.socketPath()},{"method","update.status"},{"params",QJsonObject{}}},[&](Error error,QJsonObject data){QVERIFY(!error);wire=data;});
+  QCOMPARE(wire,updates.status());QCOMPARE(wire["channel"].toString(),expected);QVERIFY(wire["attemptedAt"].isNull());
+  auto* notifications=window.findChild<QCheckBox*>("notifications");const bool before=notifications->isChecked();notifications->setChecked(!before);
+  PUTGD_TRY_COMPARE(service.snapshot().notifications,!before);PUTGD_COMPARE_STEADY(service.snapshot().updateChannel,chosen,300);
+  if(!managed){
+   channel->setCurrentIndex(channel->findData(expected=="stable"?"nightly":"stable"));
+   PUTGD_TRY_COMPARE(service.snapshot().updateChannel,expected=="stable"?QString("build"):QString("stable"));
+  }
  }
  // #386: a DEB/RPM that updates from put.gd's repository shows the
  // repository's channel without a choice, and the commands that move to the

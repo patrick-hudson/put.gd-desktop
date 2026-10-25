@@ -54,7 +54,7 @@ public:
  int maximumConcurrentRequests(const Destination& d) const override {return storage.maximumConcurrentRequests(d);}
  QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n) const override {return storage.serializationKey(d,o,n);}
  Error validateSettings(const QJsonObject& s) const override {return storage.validateSettings(s);}
- void checkName(const Destination& d,const QString& n,std::function<void(NameCheck)> cb) override {storage.checkName(d,n,cb);}
+ void checkName(const Destination& d,const QString& n,std::function<void(NameCheck)> cb, std::shared_ptr<std::atomic_bool> cancellation = {}) override {storage.checkName(d,n,cb,cancellation);}
  void upload(const UploadRequest& r,std::function<void(UploadResult)> cb) override {
   const bool late=shareAll||shareLater.contains(r.candidate);
   storage.upload(r,[late,cb](UploadResult result){if(late)result.receipt.directUrl.clear();cb(result);});
@@ -163,6 +163,30 @@ private slots:
   operations.cancel(ids.first(),[](Error e,QJsonObject){QVERIFY(!e);});if(source.pending)source.acknowledge();
   PUTGD_TRY_VERIFY(source.copies==2||operations.diagnostics()["activeOperations"].toInt()==0);if(source.pending)source.acknowledge();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   QCOMPARE(source.current,journal.operation(ids[1]).items.first().receipt.directUrl);QCOMPARE(journal.operation(ids[0]).copyStatus,QString("no_result"));QCOMPARE(journal.operation(ids[1]).copyStatus,QString("copied"));QCOMPARE(source.revision,quint64(1));
+ }
+ void historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery_data(){
+  QTest::addColumn<int>("items");QTest::addColumn<QString>("status");QTest::addColumn<QString>("errorCode");
+  QTest::newRow("suppressed")<<1<<QString("suppressed")<<QString{};
+  QTest::newRow("failed")<<1<<QString("failed")<<QString{};
+  QTest::newRow("native-failure")<<1<<QString("failed")<<QString("clipboard_unavailable");
+  QTest::newRow("native-suppression")<<1<<QString("suppressed")<<QString("copy_suppressed");
+  QTest::newRow("batch-subset")<<2<<QString("partial")<<QString{};
+  QTest::newRow("pending-auto-copy")<<1<<QString("pending")<<QString{};
+ }
+ void historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery(){
+  QFETCH(int,items);QFETCH(QString,status);QFETCH(QString,errorCode);
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));DeferredClipboardSource source;
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);HistoryStore journal(operations.databasePath());
+  Operation op;op.id="stored-link";op.state="completed";op.copyStatus=status;
+  for(int i=0;i<items;++i){OperationItem item;item.artifact.id=QString("link-%1").arg(i);item.uploadStatus="uploaded";item.receipt.directUrl=QString("https://example.invalid/link-%1").arg(i);op.items.append(item);}
+  QVERIFY(!journal.saveOperation(op));const auto original=journal.operation(op.id).toJson();const auto detail=journal.detail("link-0");
+  bool done=false;Error error;QJsonObject result;history.copyLink("link-0",[&](Error e,QJsonObject value){error=e;result=value;done=true;});
+  PUTGD_TRY_VERIFY(bool(source.pending));QCOMPARE(journal.operation(op.id).copyStatus,status);
+  source.acknowledge(errorCode.isEmpty()?Error{}:Error{errorCode,"Synthetic copy refusal",{}});PUTGD_TRY_VERIFY(done);
+  QCOMPARE(error.code,errorCode);QCOMPARE(result["copied"].toBool(),errorCode.isEmpty());
+  auto expected=original;if(items==1&&errorCode.isEmpty()&&(status=="failed"||status=="suppressed"))expected["copyStatus"]="copied";
+  QCOMPARE(journal.operation(op.id).toJson(),expected);QCOMPARE(journal.detail("link-0"),detail);
+  QCOMPARE(source.reads,0);QCOMPARE(source.copies,1);
  }
  void resumedCopiesRecheckDurableRemoval_data() {QTest::addColumn<QString>("mode");QTest::newRow("each-link")<<QString("each_link");QTest::newRow("list")<<QString("list");}
  void resumedCopiesRecheckDurableRemoval() {
@@ -1137,13 +1161,29 @@ private slots:
  }
  void resumableUploadJournalSurvivesForRetry() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->journalThenUnknown=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
-  Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+  Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());
+  HistoryStore store(ops.databasePath());bool earlyAnswered=false;Error earlyError;
+  // Synchronously observe the durable result before finish() can release its
+  // owner. This forces the ordering that the old inspect/poll occasionally saw
+  // under contention, without sleeps or a production scheduling hook.
+  const auto connection=connect(&ops,&OperationService::changed,this,[&](const QString& changed){
+   if(earlyAnswered||store.operation(changed).state!="partial")return;
+   ops.retry(changed,[&](Error error,QJsonObject){earlyError=error;earlyAnswered=true;});
+  });
+  const auto disconnectEarly=qScopeGuard([&]{disconnect(connection);});
+  QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+  PUTGD_TRY_VERIFY(earlyAnswered);disconnect(connection);
+  QCOMPARE(earlyError.code,QString("operation_busy"));
   QJsonObject op;PUTGD_TRY_VERIFY([&]{auto done=std::make_shared<bool>(false);ops.inspect(id,[&op,done](Error,QJsonObject r){op=r;*done=true;});if(!putgd::test::waitFor([&]{return *done;}))return false;return op["state"]=="partial";}());
   QCOMPARE(op["items"].toArray()[0].toObject()["uploadStatus"].toString(),QString("unknown"));
   // The journal is durable on the item but never part of the public operation.
   QVERIFY(!op["items"].toArray()[0].toObject().contains("uploadJournal"));
-  HistoryStore store(ops.databasePath());Error error;const auto saved=store.operation(id,&error);QVERIFY(!error);
+  Error error;const auto saved=store.operation(id,&error);QVERIFY(!error);
   QCOMPARE(saved.items[0].uploadJournal,QJsonObject({{"schemaVersion",1},{"upload","opaque-resumable"}}));
+  // The worker's durable partial state precedes finish()/clipboard bookkeeping.
+  // Wait for the owner to release the operation, rather than racing retry()
+  // against that separate completion (which correctly returns operation_busy).
+  PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);
   provider->journalThenUnknown=false;bool retried=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);
   PUTGD_TRY_COMPARE(provider->uploads.load(),2);PUTGD_TRY_VERIFY(!ops.storageActive()&&ops.activeObservations().isEmpty());
   QMutexLocker lock(&provider->mutex);QVERIFY(provider->resumes[0].isEmpty());QCOMPARE(provider->resumes[1],saved.items[0].uploadJournal);

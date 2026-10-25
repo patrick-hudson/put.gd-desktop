@@ -1,0 +1,1 @@
+{'quit': {'error': {'code': '', 'details': {}, 'message': ''}, 'ok': True, 'requestId': '77f143db-d71c-4475-b8a4-cd76621c57a2', 'result': {'quitting': True}, 'schemaVersion': 1}, 'apprunGone': True}

@@ -1,0 +1,77 @@
+{
+ "kind": "window",
+ "operation": {
+  "id": "c14cd6f4-3507-4331-8bdf-eeab6223e474",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-13-44-05.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:42775/fixture/afa/Screen-Capture-2026-10-23-13-44-05.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-qt418/afa/runs/m74/archive/images/Screen-Capture-2026-10-23-13-44-05.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": {
+  "bytes": 8697,
+  "sha256": "7c21b1b3f15fcec2d1ecc86873114e125149abda8afa8199c85ee0ca8cc9f9d2",
+  "magic": true,
+  "size": [
+   1920,
+   1080
+  ]
+ },
+ "coverCheck": {
+  "edges": {
+   "bottom": 1.0,
+   "left": 1.0,
+   "right": 1.0,
+   "top": 1.0
+  },
+  "fraction": 0.8889,
+  "kept": "/home/patrick/work/put.gd-qt418/afa/runs/m74/out/capture-window.png",
+  "minFraction": 0.5,
+  "ok": true,
+  "rect": [
+   0,
+   0,
+   1920,
+   1080
+  ],
+  "sha256": "7c21b1b3f15fcec2d1ecc86873114e125149abda8afa8199c85ee0ca8cc9f9d2",
+  "size": [
+   1920,
+   1080
+  ]
+ },
+ "clipboard": "http://127.0.0.1:42775/fixture/afa/Screen-Capture-2026-10-23-13-44-05.png",
+ "linkCopied": true,
+ "linkServes": {
+  "status": 200,
+  "sha256": "7c21b1b3f15fcec2d1ecc86873114e125149abda8afa8199c85ee0ca8cc9f9d2",
+  "matchesLocal": true
+ },
+ "historyEntry": {
+  "id": "6c9a7fb0-e0d5-4c58-be05-7e3b941c15a2",
+  "name": "Screen-Capture-2026-10-23-13-44-05.png",
+  "uploadStatus": "uploaded",
+  "local": "saved",
+  "linkAvailable": true
+ },
+ "notifications": []
+}

@@ -1,0 +1,21 @@
+Test project /home/patrick/work/i559/build/dev
+    Start 32: editor_job_integration
+1/6 Test #32: editor_job_integration ...........   Passed    3.86 sec
+    Start 33: edit_operations_integration
+2/6 Test #33: edit_operations_integration ......   Passed   14.25 sec
+    Start 41: gui_tray
+3/6 Test #41: gui_tray .........................   Passed   48.04 sec
+    Start 78: history_contract
+4/6 Test #78: history_contract .................   Passed    6.44 sec
+    Start 79: operations_contract
+5/6 Test #79: operations_contract ..............   Passed   77.12 sec
+    Start 98: gui_history_view
+6/6 Test #98: gui_history_view .................   Passed   30.72 sec
+
+100% tests passed, 0 tests failed out of 6
+
+Label Time Summary:
+integration    = 174.00 sec*proc (5 tests)
+unit           =   6.44 sec*proc (1 test)
+
+Total Test time (real) = 180.57 sec

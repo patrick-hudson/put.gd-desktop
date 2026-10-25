@@ -38,6 +38,8 @@ public:
 signals:
  void actionRequested(const QString&);
  void capabilitiesChanged();
+ // The display's X server went away, as it does when its session ends.
+ void displayLost();
 private:
  void capture(const X11Target&,const ResourceLimits&,std::function<void(PayloadResult)>);
  void captureSelected(const X11Target&,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>,quint64);

@@ -1,0 +1,16 @@
+{
+  "testedCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+  "testedTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+  "prIntegrationCommit": "ccbd7d4ac5766d618351b8047a7518de4bba5442",
+  "pathsDifferent": [
+    "docs/evidence/2026-10-23-neon-autologin-524/README.md",
+    "docs/evidence/2026-10-23-neon-autologin-524/pictures/unstable-failed-greeter.png",
+    "docs/evidence/2026-10-23-neon-autologin-524/pictures/unstable-repaired.png",
+    "docs/evidence/2026-10-23-neon-autologin-524/pictures/user-failed-backdrop.png",
+    "docs/evidence/2026-10-23-neon-autologin-524/pictures/user-repaired.png",
+    "docs/neon-vm.md",
+    "tests/desktop/test_neon_autologin.py",
+    "tools/lab/bootstrap-neon-guest.sh"
+  ],
+  "appPackagingAndReleaseToolsIdentical": true
+}

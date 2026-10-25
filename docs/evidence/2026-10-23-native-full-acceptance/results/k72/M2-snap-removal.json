@@ -1,0 +1,43 @@
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd-nfa/tool/nfa.py", line 1054, in <module>
+    main()
+    ~~~~^^
+  File "/home/patrick/work/put.gd-nfa/tool/nfa.py", line 1048, in main
+    {'state': state, 'fetch': fetch, 'repo-add': repo_add, 'pkg': pkg, 'identity': identity, 'setup': setup, 'configure': configure, 'seed': seed, 'grow': grow,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'snapshot': snapshot, 'compare': compare, 'history-check': history_check, 'login': login, 'autostart': autostart, 'tryexec': tryexec,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'extension': extension, 's3list': s3list, 'teardown': teardown, 'key': keys, 'type': keys, 'frame': frame, 'updates': updates, 'launch': launch_cmd, 'quit': launch_cmd}[args.cmd](args)
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/patrick/work/put.gd-nfa/tool/nfa.py", line 697, in snapshot
+    t0 = time.monotonic(); lst = run.cli('history.list', {'limit': 5, 'offset': 0}, timeout=120)
+                                 ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-nfa/tool/nfa.py", line 85, in cli
+    r = subprocess.run([self.meta.get('cli', '/usr/bin/putgd-cli'), method, json.dumps(params or {})], env=self.cli_env(private),
+                       timeout=timeout, capture_output=True, text=True)
+  File "/usr/lib/python3.14/subprocess.py", line 555, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 1875, in _execute_child
+    self._posix_spawn(args, executable, env, restore_signals, close_fds,
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                      p2cread, p2cwrite,
+                      ^^^^^^^^^^^^^^^^^^
+                      c2pread, c2pwrite,
+                      ^^^^^^^^^^^^^^^^^^
+                      errread, errwrite)
+                      ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 1819, in _posix_spawn
+    self.pid = os.posix_spawn(executable, args, env, **kwargs)
+               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/usr/bin/putgd-cli'

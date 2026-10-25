@@ -1,0 +1,19 @@
+2026-10-23T05:40:51Z find-tray rc=0
+2026-10-23T05:40:56Z tray-menu-click rc=0
+2026-10-23T05:40:56Z tray-menu-dbus rc=0
+2026-10-23T05:41:10Z window rc=0
+2026-10-23T05:41:17Z cover-start rc=0
+2026-10-23T05:41:23Z capture-region rc=0
+2026-10-23T05:41:27Z capture-window rc=0
+2026-10-23T05:41:31Z capture-desktop rc=0
+2026-10-23T05:41:50Z edit rc=0
+2026-10-23T05:42:40Z record rc=0
+2026-10-23T05:42:41Z cover-stop rc=0
+2026-10-23T05:42:43Z cover-still rc=0
+2026-10-23T05:42:54Z control rc=0
+2026-10-23T05:42:54Z cover-stop2 rc=0
+2026-10-23T05:43:04Z history rc=0
+2026-10-23T05:44:34Z delete rc=0
+2026-10-23T05:45:01Z settings rc=0
+2026-10-23T05:45:16Z updates rc=0
+2026-10-23T05:45:16Z nk-done

@@ -30,7 +30,7 @@ The optional MCP helper is distributed separately from the native application.
 `tools/mcp/uv.lock` identifies its Python dependencies, including the official MCP
 SDK and jsonschema. Preserve their upstream notices when packaging that helper.
 
-The AppImage is different: it bundles the official Qt 6.8.3 binaries with their
+The AppImage is different: it bundles the official Qt 6.12.0 binaries with their
 ICU, QtKeychain, LayerShellQt, a pinned FFmpeg, the AWS SDK, the Proton helper and
 Ubuntu 24.04 libraries. Its notices are generated from the image's contents when it
 is built (`tools/releases/appimage_notices.py`, `packaging/appimage/components.json`):

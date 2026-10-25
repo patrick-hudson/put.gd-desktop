@@ -6,17 +6,23 @@
 #include <QSet>
 #include "core/Error.h"
 #include <functional>
+#include <memory>
+class QKeyEvent;
 class QLineEdit;
 class QLabel;
 class QPlainTextEdit;
 class QPushButton;
 namespace putgd {
+class ShortcutKeyboard;
 class ShortcutEditor final:public QWidget {
 public:
  explicit ShortcutEditor(QWidget* parent=nullptr);
  ~ShortcutEditor() override;
  using RecordingControl=std::function<void(bool,std::function<void(Error)>)>;
  void setRecordingControl(RecordingControl control){recordingControl_=std::move(control);}
+ // Maps a key press to the recorded chord; the default reads the session's keyboard map.
+ using ChordResolver=std::function<QKeyCombination(const QKeyEvent&)>;
+ void setChordResolver(ChordResolver resolver){chordResolver_=std::move(resolver);}
  void cancelRecording();
  void setActions(const QJsonObject&);
  QJsonObject actions(const QJsonObject&) const;
@@ -31,6 +37,8 @@ private:
  QHash<QString,QPushButton*> recordButtons_;
  QLabel* recordingStatus_;
  RecordingControl recordingControl_;
+ ChordResolver chordResolver_;
+ std::unique_ptr<ShortcutKeyboard> keyboard_;
  QString recordingAction_;
  QKeySequence chord_;
  QSet<quint64> pressed_;

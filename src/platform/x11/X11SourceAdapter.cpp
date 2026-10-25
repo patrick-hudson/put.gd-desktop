@@ -25,7 +25,7 @@ bool sameTarget(const X11Target& a,const X11Target& b){
 }
 }
 
-X11SourceAdapter::X11SourceAdapter(QObject* parent,bool nativeRegionSelector):QObject(parent),nativeRegionSelector_(nativeRegionSelector){connect(&shortcuts_,&X11Shortcuts::activated,this,&X11SourceAdapter::actionRequested);connect(&shortcuts_,&X11Shortcuts::bindingsChanged,this,&X11SourceAdapter::capabilitiesChanged);}
+X11SourceAdapter::X11SourceAdapter(QObject* parent,bool nativeRegionSelector):QObject(parent),nativeRegionSelector_(nativeRegionSelector){connect(&shortcuts_,&X11Shortcuts::activated,this,&X11SourceAdapter::actionRequested);connect(&shortcuts_,&X11Shortcuts::bindingsChanged,this,&X11SourceAdapter::capabilitiesChanged);connect(&shortcuts_,&X11Shortcuts::connectionLost,this,&X11SourceAdapter::displayLost);}
 X11SourceAdapter::~X11SourceAdapter(){
  cancelAcquisition();clipboard_.cancel();
  for(auto* t:workers_){t->wait();delete t;}

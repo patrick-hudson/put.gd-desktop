@@ -19,7 +19,7 @@ def stage(build, output, kind):
         selected += [packages / 'appimage-build.json', packages / 'appimage-notices.json', build / 'appimage-dependencies.json',
                      build / 'release/build-identity/build-info.json']
         selected += list(packages.glob('*.AppImage')) + list(packages.glob('*.AppImage.zsync'))
-        selected += [packages / 'appimage-media-source.json'] + list(packages.glob('*-appimage-media-source.tar.gz'))
+        selected += [packages / 'appimage-complete-source.json'] + list(packages.glob('*-appimage-complete-source.tar.gz'))
     # Split debug files by build ID and their manifest (#124, debug_symbols.py).
     selected += sorted((build / 'debug-symbols').glob('debug-symbols-*'))
     # Partial failed-build evidence may be uploaded; the collector still requires

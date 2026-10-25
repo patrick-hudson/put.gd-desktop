@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "052d4363826fc01fa62a552f91db48b74667383b",
+  "sourceTree": "05c1e65a2e14c5df3e28315dadaf36aa45da3d28",
+  "candidatePass": false,
+  "case": "RecordingServiceContract::lifecycleAdmitsOnlyTheExplicitUploadExport",
+  "status": "failed: stale-revision assertion raced asynchronous overwrite export completion",
+  "actual": "recording_state",
+  "expected": "recording_stale",
+  "qtTestCountsIncludingSetupCleanup": {
+    "passed": 2,
+    "failed": 1,
+    "elapsedMs": 111
+  },
+  "correction": "102b four test-only lines await reviewing and lastExport.status=saved after the overwrite. The stale-revision oracle remains unchanged; production source unchanged by that correction. Final3440 whole service suite passes.",
+  "rawPrivateRoot": "/home/patrick/work/put.gd/work/docs410-evidence/oracle052d-d69",
+  "files": [
+    {
+      "file": "052d-binaries.sha256",
+      "sha256": "57975ee27bfe1bee096fd7f67dac0f88ddb6dee7790bf7278a531920e55886c0"
+    },
+    {
+      "file": "oracle-before.log",
+      "sha256": "0aaec780c5e122e7629013c322734b84dcea10aa636c71260e79173929a1b1df"
+    },
+    {
+      "file": "oracle-before-preflight.json",
+      "sha256": "2fb559b92824fb7d1f6d524c987a5c256f8261fc311d1cb8e6b9ad33b82ad4bb"
+    },
+    {
+      "file": "052d-build.json",
+      "sha256": "ed7af0fa8a6b0171595b32de489492da4d76555cd44e1bebd29beea1a6236b40"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+d69 (Debian 13 Plasma Wayland): Not released: 1 item(s) appeared on d69 since you acquired it. Stop or remove yours (exact PIDs only) and check again; name another session's item with --not-mine ID
+  appeared since the lock was taken:
+    process 2755012: /usr/bin/python3 -I /home/patrick/putgd-signer/src/tools/releases/pkgrepo.py --config /home/patrick/.config/putgd-signer/signer.json run
+  already there when the lock was taken:
+    process 2008860: gpg-agent --homedir /home/patrick/.local/share/putgd-signer/gnupg --use-standard-socket --daemon
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 978298

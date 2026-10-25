@@ -1,0 +1,350 @@
+{
+ "aurora-after-existing-setting": {
+  "clipboard": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "desktop": {
+   "actual": [
+    "Ctrl+#"
+   ],
+   "bound": true,
+   "effective": "Ctrl+#",
+   "layout": 0,
+   "requested": "Ctrl+Shift+3",
+   "state": "bound"
+  },
+  "edit": {
+   "actual": [
+    "Ctrl+$"
+   ],
+   "bound": true,
+   "effective": "Ctrl+$",
+   "layout": 0,
+   "requested": "Ctrl+Shift+$",
+   "state": "bound"
+  },
+  "record": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "region": {
+   "actual": [
+    "Ctrl+!"
+   ],
+   "bound": true,
+   "effective": "Ctrl+!",
+   "layout": 0,
+   "requested": "Ctrl+Shift+1",
+   "state": "bound"
+  },
+  "window": {
+   "actual": [
+    "Ctrl+@"
+   ],
+   "bound": true,
+   "effective": "Ctrl+@",
+   "layout": 0,
+   "requested": "Ctrl+Shift+2",
+   "state": "bound"
+  }
+ },
+ "aurora-after-german": {
+  "clipboard": {
+   "actual": [
+    "Ctrl+Alt+§"
+   ],
+   "bound": true,
+   "effective": "Ctrl+Alt+§",
+   "layout": 0,
+   "requested": "Ctrl+Alt+Shift+3",
+   "state": "bound"
+  },
+  "desktop": {
+   "actual": [
+    "Ctrl+§"
+   ],
+   "bound": true,
+   "effective": "Ctrl+§",
+   "layout": 0,
+   "requested": "Ctrl+Shift+3",
+   "state": "bound"
+  },
+  "edit": {
+   "actual": [
+    "Ctrl+$"
+   ],
+   "bound": true,
+   "effective": "Ctrl+$",
+   "layout": 0,
+   "requested": "Ctrl+Shift+4",
+   "state": "bound"
+  },
+  "record": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "region": {
+   "actual": [
+    "Ctrl+!"
+   ],
+   "bound": true,
+   "effective": "Ctrl+!",
+   "layout": 0,
+   "requested": "Ctrl+Shift+1",
+   "state": "bound"
+  },
+  "window": {
+   "actual": [
+    "Ctrl+\""
+   ],
+   "bound": true,
+   "effective": "Ctrl+\"",
+   "layout": 0,
+   "requested": "Ctrl+Shift+2",
+   "state": "bound"
+  }
+ },
+ "aurora-after-us-recorded": {
+  "clipboard": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "desktop": {
+   "actual": [
+    "Ctrl+#"
+   ],
+   "bound": true,
+   "effective": "Ctrl+#",
+   "layout": 0,
+   "requested": "Ctrl+Shift+3",
+   "state": "bound"
+  },
+  "edit": {
+   "actual": [
+    "Ctrl+$"
+   ],
+   "bound": true,
+   "effective": "Ctrl+$",
+   "layout": 0,
+   "requested": "Ctrl+Shift+4",
+   "state": "bound"
+  },
+  "record": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "region": {
+   "actual": [
+    "Ctrl+!"
+   ],
+   "bound": true,
+   "effective": "Ctrl+!",
+   "layout": 0,
+   "requested": "Ctrl+Shift+1",
+   "state": "bound"
+  },
+  "window": {
+   "actual": [
+    "Ctrl+@"
+   ],
+   "bound": true,
+   "effective": "Ctrl+@",
+   "layout": 0,
+   "requested": "Ctrl+Shift+2",
+   "state": "bound"
+  }
+ },
+ "aurora-before-1058": {
+  "clipboard": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "desktop": {
+   "actual": [
+    "Ctrl+#"
+   ],
+   "bound": true,
+   "effective": "Ctrl+#",
+   "layout": 0,
+   "requested": "Ctrl+Shift+3",
+   "state": "bound"
+  },
+  "edit": {
+   "actual": [
+    "Ctrl+Shift+$"
+   ],
+   "bound": true,
+   "effective": "Ctrl+Shift+$",
+   "layout": 0,
+   "requested": "Ctrl+Shift+$",
+   "state": "bound"
+  },
+  "record": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "region": {
+   "actual": [
+    "Ctrl+!"
+   ],
+   "bound": true,
+   "effective": "Ctrl+!",
+   "layout": 0,
+   "requested": "Ctrl+Shift+1",
+   "state": "bound"
+  },
+  "window": {
+   "actual": [
+    "Ctrl+@"
+   ],
+   "bound": true,
+   "effective": "Ctrl+@",
+   "layout": 0,
+   "requested": "Ctrl+Shift+2",
+   "state": "bound"
+  }
+ },
+ "d69-ctrl-shift-4": {
+  "clipboard": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "desktop": {
+   "actual": [
+    "Ctrl+#"
+   ],
+   "bound": true,
+   "effective": "Ctrl+#",
+   "layout": 0,
+   "requested": "Ctrl+Shift+3",
+   "state": "bound"
+  },
+  "edit": {
+   "actual": [
+    "Ctrl+$"
+   ],
+   "bound": true,
+   "effective": "Ctrl+$",
+   "layout": 0,
+   "requested": "Ctrl+Shift+4",
+   "state": "bound"
+  },
+  "record": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "region": {
+   "actual": [
+    "Ctrl+!"
+   ],
+   "bound": true,
+   "effective": "Ctrl+!",
+   "layout": 0,
+   "requested": "Ctrl+Shift+1",
+   "state": "bound"
+  },
+  "window": {
+   "actual": [
+    "Ctrl+@"
+   ],
+   "bound": true,
+   "effective": "Ctrl+@",
+   "layout": 0,
+   "requested": "Ctrl+Shift+2",
+   "state": "bound"
+  }
+ },
+ "d69-start": {
+  "clipboard": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "desktop": {
+   "actual": [
+    "Ctrl+#"
+   ],
+   "bound": true,
+   "effective": "Ctrl+#",
+   "layout": 0,
+   "requested": "Ctrl+Shift+3",
+   "state": "bound"
+  },
+  "edit": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "record": {
+   "actual": [],
+   "bound": false,
+   "effective": "",
+   "layout": 0,
+   "requested": "",
+   "state": "unbound"
+  },
+  "region": {
+   "actual": [
+    "Ctrl+!"
+   ],
+   "bound": true,
+   "effective": "Ctrl+!",
+   "layout": 0,
+   "requested": "Ctrl+Shift+1",
+   "state": "bound"
+  },
+  "window": {
+   "actual": [
+    "Ctrl+@"
+   ],
+   "bound": true,
+   "effective": "Ctrl+@",
+   "layout": 0,
+   "requested": "Ctrl+Shift+2",
+   "state": "bound"
+  }
+ }
+}

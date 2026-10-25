@@ -1,0 +1,146 @@
+[1/101] cd /home/patrick/work/pgcc-fullerror/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/pgcc-fullerror -DOUTPUT_DIR=/home/patrick/work/pgcc-fullerror/build/dev/build-identity -DRELEASE_TAG= -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -DSUPPLIED_TIME= -P /home/patrick/work/pgcc-fullerror/cmake/GenerateBuildInfo.cmake
+[2/98] Building CXX object CMakeFiles/putgd_host_open.dir/putgd_host_open_autogen/mocs_compilation.cpp.o
+[3/98] Building CXX object CMakeFiles/putgd_appearance.dir/putgd_appearance_autogen/mocs_compilation.cpp.o
+[4/98] Building CXX object CMakeFiles/putgd_host_open.dir/src/platform/HostOpen.cpp.o
+[5/98] Building CXX object CMakeFiles/putgd_appearance.dir/src/ui/Appearance.cpp.o
+[6/98] Building CXX object CMakeFiles/putgd_appearance.dir/src/ui/PortalSettings.cpp.o
+[7/98] Building CXX object CMakeFiles/putgd_file_dialog.dir/putgd_file_dialog_autogen/mocs_compilation.cpp.o
+[8/98] Building CXX object CMakeFiles/putgd_shortcut_keyboard.dir/putgd_shortcut_keyboard_autogen/mocs_compilation.cpp.o
+[9/98] Building CXX object CMakeFiles/putgd_file_dialog.dir/src/ui/FileDialog.cpp.o
+[10/98] Building CXX object CMakeFiles/putgd_b2.dir/putgd_b2_autogen/mocs_compilation.cpp.o
+[11/98] Building CXX object CMakeFiles/putgd_shortcut_keyboard.dir/src/ui/ShortcutKeyboard.cpp.o
+[12/98] Building CXX object CMakeFiles/putgd_b2.dir/src/storage/b2/B2Common.cpp.o
+[13/98] Building CXX object CMakeFiles/putgd_proton.dir/putgd_proton_autogen/mocs_compilation.cpp.o
+[14/98] Building CXX object CMakeFiles/putgd_b2.dir/src/storage/b2/B2Provider.cpp.o
+[15/98] Building CXX object CMakeFiles/putgd_client.dir/putgd_client_autogen/mocs_compilation.cpp.o
+[16/98] Building CXX object CMakeFiles/putgd_proton.dir/src/storage/proton/ProtonProvider.cpp.o
+[17/98] Building CXX object CMakeFiles/putgd_ui_state.dir/putgd_ui_state_autogen/mocs_compilation.cpp.o
+[18/98] Building CXX object CMakeFiles/putgd_client.dir/src/client/SessionClient.cpp.o
+[19/98] Linking CXX static library libputgd_s3_wire.a
+[20/98] Linking CXX static library libputgd_client.a
+[21/98] Linking CXX static library libputgd_host_open.a
+[22/98] Linking CXX static library libputgd_appearance.a
+[23/98] Building CXX object CMakeFiles/putgd_ui_state.dir/src/ui/ViewState.cpp.o
+[24/98] Linking CXX static library libputgd_ui_state.a
+[25/98] Linking CXX static library libputgd_file_dialog.a
+[26/98] Linking CXX static library libputgd_shortcut_keyboard.a
+[27/98] Linking CXX static library libputgd_b2.a
+[28/98] Linking CXX static library libputgd_proton.a
+[29/98] Automatic MOC and UIC for target putgd_about
+[30/98] Automatic MOC and UIC for target putgd_editor
+[31/98] Building CXX object CMakeFiles/putgd_s3_module.dir/putgd_s3_module_autogen/mocs_compilation.cpp.o
+[32/98] Automatic MOC and UIC for target putgd_ui
+[33/98] Automatic RCC for src/ui/redesign.qrc
+[34/98] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3Module.cpp.o
+[35/98] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3SdkContext.cpp.o
+[36/98] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/PublicUrl.cpp.o
+[37/98] Building CXX object CMakeFiles/putgd_s3_worker_host.dir/putgd_s3_worker_host_autogen/mocs_compilation.cpp.o
+[38/98] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3Driver.cpp.o
+[39/98] Building CXX object CMakeFiles/putgd_s3_worker_host.dir/src/storage/s3/S3Module.cpp.o
+[40/98] Building CXX object CMakeFiles/putgd_ui.dir/putgd_ui_autogen/mocs_compilation.cpp.o
+[41/98] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/RedesignTheme.cpp.o
+[42/98] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/MainWindow.cpp.o
+[43/98] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/UiSession.cpp.o
+[44/98] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/ShortcutEditor.cpp.o
+[45/98] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/SettingsWindow.cpp.o
+/home/patrick/work/pgcc-fullerror/src/ui/SettingsWindow.cpp: In lambda function:
+/home/patrick/work/pgcc-fullerror/src/ui/SettingsWindow.cpp:508:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  508 |    if(!g)return;g->restartUpdate_->setEnabled(true);
+      |    ^~
+/home/patrick/work/pgcc-fullerror/src/ui/SettingsWindow.cpp:508:17: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  508 |    if(!g)return;g->restartUpdate_->setEnabled(true);
+      |                 ^
+/home/patrick/work/pgcc-fullerror/src/ui/SettingsWindow.cpp: In member function ‘void putgd::SettingsWindow::diagnosticsCommand(const QJsonObject&, std::function<void(putgd::Error, QJsonObject)>)’:
+/home/patrick/work/pgcc-fullerror/src/ui/SettingsWindow.cpp:1139:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+ 1139 |    if(!std::exchange(*answered,true))reply({},diagnosticsState());return;
+      |    ^~
+/home/patrick/work/pgcc-fullerror/src/ui/SettingsWindow.cpp:1139:67: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+ 1139 |    if(!std::exchange(*answered,true))reply({},diagnosticsState());return;
+      |                                                                   ^~~~~~
+/home/patrick/work/pgcc-fullerror/src/ui/SettingsWindow.cpp: In member function ‘void putgd::SettingsWindow::refreshDestinationList(const QJsonObject&)’:
+/home/patrick/work/pgcc-fullerror/src/ui/SettingsWindow.cpp:1325:2: warning: this ‘while’ clause does not guard... [-Wmisleading-indentation]
+ 1325 |  while(destinationList_->count()>profiles.size())delete destinationList_->takeItem(destinationList_->count()-1);int row=0;const auto actions=doc["actions"].toObject();bool selectedDefault=false;
+      |  ^~~~~
+/home/patrick/work/pgcc-fullerror/src/ui/SettingsWindow.cpp:1325:113: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘while’
+ 1325 |  while(destinationList_->count()>profiles.size())delete destinationList_->takeItem(destinationList_->count()-1);int row=0;const auto actions=doc["actions"].toObject();bool selectedDefault=false;
+      |                                                                                                                 ^~~
+[46/98] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/HistoryWindow.cpp.o
+/home/patrick/work/pgcc-fullerror/src/ui/HistoryWindow.cpp: In lambda function:
+/home/patrick/work/pgcc-fullerror/src/ui/HistoryWindow.cpp:277:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  277 |   if(destination.isEmpty())return;if(QFileInfo(destination).absoluteFilePath()==QFileInfo(path).absoluteFilePath()){VisualStyle::feedback(status_,"This is already the retained local file.");return;}
+      |   ^~
+/home/patrick/work/pgcc-fullerror/src/ui/HistoryWindow.cpp:277:35: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  277 |   if(destination.isEmpty())return;if(QFileInfo(destination).absoluteFilePath()==QFileInfo(path).absoluteFilePath()){VisualStyle::feedback(status_,"This is already the retained local file.");return;}
+      |                                   ^~
+[47/98] Building CXX object CMakeFiles/putgd_ui.dir/putgd_ui_autogen/YPKJ5OE7LN/qrc_redesign.cpp.o
+[48/98] Building CXX object CMakeFiles/putgd_about.dir/putgd_about_autogen/mocs_compilation.cpp.o
+[49/98] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/HistoryModel.cpp.o
+[50/98] Building CXX object CMakeFiles/putgd_about.dir/src/ui/AboutWindow.cpp.o
+[51/98] Building CXX object CMakeFiles/putgd_editor.dir/putgd_editor_autogen/mocs_compilation.cpp.o
+[52/98] Building CXX object CMakeFiles/putgd_editor.dir/src/editor/EditDocument.cpp.o
+[53/98] Building CXX object CMakeFiles/putgd_editor.dir/src/editor/EditorCommands.cpp.o
+[54/98] Linking CXX shared module libputgd-s3.so
+[55/98] Linking CXX static library libputgd_s3_worker_host.a
+[56/98] Linking CXX static library libputgd_about.a
+[57/98] Linking CXX static library libputgd_ui.a
+[58/98] Automatic MOC and UIC for target putgd-s3-worker
+[59/98] Automatic MOC and UIC for target putgd_ui_application
+[60/98] Building CXX object CMakeFiles/putgd-s3-worker.dir/putgd-s3-worker_autogen/mocs_compilation.cpp.o
+[61/98] Building CXX object CMakeFiles/putgd_editor.dir/src/editor/EditorCanvas.cpp.o
+[62/98] Linking CXX static library libputgd_editor.a
+[63/98] Automatic MOC and UIC for target putgd_editor_window
+[64/98] Building CXX object CMakeFiles/putgd-s3-worker.dir/src/storage/s3/S3WorkerMain.cpp.o
+[65/98] Building CXX object CMakeFiles/putgd_editor_window.dir/putgd_editor_window_autogen/mocs_compilation.cpp.o
+[66/98] Building CXX object CMakeFiles/putgd_ui_application.dir/putgd_ui_application_autogen/mocs_compilation.cpp.o
+[67/98] Building CXX object CMakeFiles/putgd_editor_window.dir/src/ui/EditorWindow.cpp.o
+[68/98] Linking CXX executable putgd-s3-worker
+[69/98] Linking CXX static library libputgd_editor_window.a
+[70/98] Automatic MOC and UIC for target putgd_s3
+[71/98] Building CXX object CMakeFiles/putgd_ui_application.dir/src/ui/UiApplicationController.cpp.o
+[72/98] Linking CXX static library libputgd_ui_application.a
+[73/98] Automatic MOC and UIC for target putgd-ui
+[74/98] Building CXX object CMakeFiles/putgd_app.dir/src/app/HistoryService.cpp.o
+[75/98] Building CXX object CMakeFiles/putgd_app.dir/src/app/LocalIpc.cpp.o
+[76/98] Building CXX object CMakeFiles/putgd_app.dir/src/app/LocalServer.cpp.o
+[77/98] Building CXX object CMakeFiles/putgd_app.dir/src/app/ResidentSession.cpp.o
+[78/98] Building CXX object CMakeFiles/putgd_app.dir/src/app/LoginStartup.cpp.o
+[79/98] Building CXX object CMakeFiles/putgd_app.dir/src/app/StorageLocations.cpp.o
+[80/98] Building CXX object CMakeFiles/putgd_app.dir/src/app/LogService.cpp.o
+[81/98] Building CXX object CMakeFiles/putgd_app.dir/src/app/UpdateService.cpp.o
+[82/98] Building CXX object CMakeFiles/putgd_app.dir/src/app/DiagnosticsBundle.cpp.o
+[83/98] Building CXX object CMakeFiles/putgd_s3.dir/putgd_s3_autogen/mocs_compilation.cpp.o
+[84/98] Building CXX object CMakeFiles/putgd_app.dir/src/app/AppImageInstall.cpp.o
+[85/98] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/S3Provider.cpp.o
+[86/98] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/S3Module.cpp.o
+[87/98] Building CXX object CMakeFiles/putgd-ui.dir/putgd-ui_autogen/mocs_compilation.cpp.o
+[88/98] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/S3ProcessDriver.cpp.o
+[89/98] Building CXX object CMakeFiles/putgd-ui.dir/src/ui/main.cpp.o
+[90/98] Building CXX object CMakeFiles/putgd-ui.dir/src/ui/ImageJob.cpp.o
+[91/98] Linking CXX static library libputgd_s3.a
+[92/98] Linking CXX static library libputgd_app.a
+[93/98] Building CXX object CMakeFiles/putgd-ui.dir/src/ui/ImageEditor.cpp.o
+[94/98] Linking CXX executable putgd-ui
+[95/98] Automatic MOC and UIC for target test_gui_history_view
+[96/98] Building CXX object CMakeFiles/test_gui_history_view.dir/test_gui_history_view_autogen/mocs_compilation.cpp.o
+[97/98] Building CXX object CMakeFiles/test_gui_history_view.dir/tests/gui/test_history_view.cpp.o
+FAILED: CMakeFiles/test_gui_history_view.dir/tests/gui/test_history_view.cpp.o 
+/usr/bin/c++ -DQT_CORE_LIB -DQT_DBUS_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_SQL_LIB -DQT_TESTCASE_BUILDDIR=\"/home/patrick/work/pgcc-fullerror/build/dev\" -DQT_TESTCASE_SOURCEDIR=\"/home/patrick/work/pgcc-fullerror\" -DQT_TESTLIB_LIB -DQT_WIDGETS_LIB -I/home/patrick/work/pgcc-fullerror/build/dev/test_gui_history_view_autogen/include -I/home/patrick/work/pgcc-fullerror/tests -I/home/patrick/work/pgcc-fullerror/src -isystem /usr/include/x86_64-linux-gnu/qt6/QtCore -isystem /usr/include/x86_64-linux-gnu/qt6 -isystem /usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -isystem /usr/include/x86_64-linux-gnu/qt6/QtGui -isystem /usr/include/x86_64-linux-gnu/qt6/QtSql -isystem /usr/include/x86_64-linux-gnu/qt6/QtNetwork -isystem /usr/include/x86_64-linux-gnu/qt6/QtWidgets -isystem /usr/include/x86_64-linux-gnu/qt6/QtDBus -isystem /usr/include/x86_64-linux-gnu/qt6/QtTest -g -std=gnu++20 -Wall -Wextra -Wpedantic -MD -MT CMakeFiles/test_gui_history_view.dir/tests/gui/test_history_view.cpp.o -MF CMakeFiles/test_gui_history_view.dir/tests/gui/test_history_view.cpp.o.d -o CMakeFiles/test_gui_history_view.dir/tests/gui/test_history_view.cpp.o -c /home/patrick/work/pgcc-fullerror/tests/gui/test_history_view.cpp
+/home/patrick/work/pgcc-fullerror/tests/gui/test_history_view.cpp: In member function ‘void HistoryGui::fullFailureTextIsPaintedWithoutClipping()’:
+/home/patrick/work/pgcc-fullerror/tests/gui/test_history_view.cpp:111:113: error: no matching function for call to ‘QAbstractItemModel::index(int)’
+  111 |    window.resize(target,700);putgd::test::settle(30);list->doItemsLayout();const auto index=list->model()->index(0);const auto row=list->visualRect(index);QVERIFY(row.isValid());
+      |                                                                                             ~~~~~~~~~~~~~~~~~~~~^~~
+In file included from /usr/include/x86_64-linux-gnu/qt6/QtCore/QAbstractListModel:1,
+                 from /home/patrick/work/pgcc-fullerror/src/ui/HistoryModel.h:3,
+                 from /home/patrick/work/pgcc-fullerror/tests/gui/test_history_view.cpp:3:
+/usr/include/x86_64-linux-gnu/qt6/QtCore/qabstractitemmodel.h:271:37: note: candidate: ‘virtual QModelIndex QAbstractItemModel::index(int, int, const QModelIndex&) const’
+  271 |     Q_INVOKABLE virtual QModelIndex index(int row, int column,
+      |                                     ^~~~~
+/usr/include/x86_64-linux-gnu/qt6/QtCore/qabstractitemmodel.h:271:37: note:   candidate expects 3 arguments, 1 provided
+/home/patrick/work/pgcc-fullerror/tests/gui/test_history_view.cpp: In lambda function:
+/home/patrick/work/pgcc-fullerror/tests/gui/test_history_view.cpp:256:4: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+  256 |    for(int y=poster.top();y<=poster.bottom();++y)for(int x=poster.left();x<=poster.right();++x){const int g=qGray(image.pixel(x,y));if(g>70&&g<130)return true;}return false;};
+      |    ^~~
+/home/patrick/work/pgcc-fullerror/tests/gui/test_history_view.cpp:256:161: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+  256 |    for(int y=poster.top();y<=poster.bottom();++y)for(int x=poster.left();x<=poster.right();++x){const int g=qGray(image.pixel(x,y));if(g>70&&g<130)return true;}return false;};
+      |                                                                                                                                                                 ^~~~~~
+ninja: build stopped: subcommand failed.

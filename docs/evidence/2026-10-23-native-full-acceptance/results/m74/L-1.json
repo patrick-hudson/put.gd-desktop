@@ -1,0 +1,108 @@
+{
+ "label": "l-update",
+ "command": [
+  "apt-get",
+  "update"
+ ],
+ "before": {
+  "at": "2026-10-23T05:30:37Z",
+  "host": "mint-builder",
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "83d1c8e34b4724ba11307fbd161d674d0a3b0d4b0664a78fefc1629a30e5fb81",
+    "bytes": 2036,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:37Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:37Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 51,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": []
+ },
+ "startedAt": "2026-10-23T05:30:37Z",
+ "exit": 0,
+ "seconds": 4.7,
+ "log": "/home/patrick/work/put.gd-nfa/runs/L/logs/pkg-l-update.log",
+ "conffilePrompt": false,
+ "signature": [
+  "Ign:1 http://packages.linuxmint.com zena InRelease",
+  "Hit:4 http://security.ubuntu.com/ubuntu noble-security InRelease",
+  "Hit:7 http://archive.ubuntu.com/ubuntu noble InRelease",
+  "Hit:8 http://archive.ubuntu.com/ubuntu noble-updates InRelease",
+  "Get:9 https://pkg.put.gd/apt/ubuntu24.04 nightly InRelease [4,801 B]",
+  "Hit:10 http://archive.ubuntu.com/ubuntu noble-backports InRelease"
+ ],
+ "fetched": [
+  "Ign:1 http://packages.linuxmint.com zena InRelease",
+  "Hit:3 http://packages.linuxmint.com zena Release",
+  "Hit:4 http://security.ubuntu.com/ubuntu noble-security InRelease",
+  "Hit:7 http://archive.ubuntu.com/ubuntu noble InRelease",
+  "Hit:8 http://archive.ubuntu.com/ubuntu noble-updates InRelease",
+  "Get:9 https://pkg.put.gd/apt/ubuntu24.04 nightly InRelease [4,801 B]",
+  "Hit:10 http://archive.ubuntu.com/ubuntu noble-backports InRelease",
+  "Get:11 https://pkg.put.gd/apt/ubuntu24.04 nightly/main amd64 Packages [995 B]",
+  "Get:12 https://pkg.put.gd/apt/ubuntu24.04 nightly/main amd64 Components [750 B]"
+ ],
+ "tail": "Ign:1 http://packages.linuxmint.com zena InRelease\nHit:3 http://packages.linuxmint.com zena Release\nHit:4 http://security.ubuntu.com/ubuntu noble-security InRelease\nHit:7 http://archive.ubuntu.com/ubuntu noble InRelease\nHit:8 http://archive.ubuntu.com/ubuntu noble-updates InRelease\nGet:9 https://pkg.put.gd/apt/ubuntu24.04 nightly InRelease [4,801 B]\nHit:10 http://archive.ubuntu.com/ubuntu noble-backports InRelease\nGet:11 https://pkg.put.gd/apt/ubuntu24.04 nightly/main amd64 Packages [995 B]\nGet:12 https://pkg.put.gd/apt/ubuntu24.04 nightly/main amd64 Components [750 B]\nFetched 13.2 kB in 1s (11.7 kB/s)\nReading package lists...\n",
+ "after": {
+  "at": "2026-10-23T05:30:42Z",
+  "host": "mint-builder",
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "83d1c8e34b4724ba11307fbd161d674d0a3b0d4b0664a78fefc1629a30e5fb81",
+    "bytes": 2036,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:37Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:37Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 51,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": []
+ }
+}

@@ -1,0 +1,48 @@
+{
+  "name": "kde-x11",
+  "desktop": "KDE",
+  "session": "x11",
+  "qt_platform": "xcb",
+  "session_process": "plasmashell",
+  "image": "kde-x11-20261025-559",
+  "memory_mib": 6144,
+  "cpus": 2,
+  "video": "virtio-vga",
+  "display_heads": 1,
+  "guest_user": "lab",
+  "status": "requires-graphical-acceptance",
+  "fixture_hotkeys": {
+    "region": {
+      "shortcut": "Ctrl+Shift+F9",
+      "keys": [
+        "ctrl",
+        "shift",
+        "f9"
+      ]
+    },
+    "window": {
+      "shortcut": "Ctrl+Shift+F10",
+      "keys": [
+        "ctrl",
+        "shift",
+        "f10"
+      ]
+    },
+    "desktop": {
+      "shortcut": "Ctrl+Shift+F11",
+      "keys": [
+        "ctrl",
+        "shift",
+        "f11"
+      ]
+    },
+    "clipboard": {
+      "shortcut": "Ctrl+Shift+F12",
+      "keys": [
+        "ctrl",
+        "shift",
+        "f12"
+      ]
+    }
+  }
+}

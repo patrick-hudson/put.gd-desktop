@@ -133,6 +133,22 @@ class LiveCredentialContracts(unittest.TestCase):
             payload = body.decode().split("<<'" + marker + "'\n", 1)[1].rsplit('\n' + marker + '\n', 1)[0]
             self.assertEqual(json.loads(payload)['credentials']['secretKey'], hostile)
 
+    def test_chain_can_reuse_an_exact_lab_reference_and_nothing_else(self):
+        imports = []
+        def host(_broker, provider, request):
+            return {'ok': True, 'snapshot': SNAPSHOT} if request['op'] == 'export' else {'ok': True}
+        def guest(run, _broker, provider, request):
+            imports.append(request['reference'])
+            return {'ok': True}
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(bridge, 'host_call', side_effect=host), patch.object(bridge, 'guest_call', side_effect=guest):
+            chain = bridge.ProtonSessionChain('/unused', 'existing-host-reference')
+            with self.assertRaises(bridge.ProvisionError):
+                chain.provision('/guest', '/unused', Path(directory) / 'host-name.json', reference='existing-host-reference')
+            self.assertEqual(imports, [])
+            self.assertEqual(chain.provision('/guest', '/unused', Path(directory) / 'a.json', reference=REF), REF)
+            self.assertEqual(imports, [REF])
+
     def test_sequential_session_chain_carries_refresh_with_expected_baseline(self):
         refreshed = SNAPSHOT.replace('synthetic-access', 'synthetic-refreshed')
         events = []

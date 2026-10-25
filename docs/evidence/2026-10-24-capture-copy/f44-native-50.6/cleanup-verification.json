@@ -1,0 +1,31 @@
+{
+  "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8",
+  "packages": {
+    "gnome-shell": "gnome-shell-50.6-1.fc44.x86_64",
+    "mutter": "mutter-50.6-1.fc44.x86_64",
+    "qt6-qtbase": "qt6-qtbase-6.11.2-3.fc44.x86_64",
+    "dnf5": "dnf5-5.4.6.0-1.fc44.x86_64",
+    "kernel-core": "kernel-core-6.19.10-300.fc44.x86_64\nkernel-core-7.2.11-200.fc44.x86_64",
+    "putgd": "package putgd is not installed",
+    "jasper-libs": "package jasper-libs is not installed",
+    "libmng": "package libmng is not installed",
+    "qt6-qtimageformats": "package qt6-qtimageformats is not installed"
+  },
+  "helperPathsAbsent": [
+    "/usr/share/gnome-shell/extensions/putgd@put.gd",
+    "/home/patrick/.local/share/gnome-shell/extensions/putgd@put.gd"
+  ],
+  "uuidInfo": {
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "Extension \u201cputgd@put.gd\u201d doesn't exist\n"
+  },
+  "restoredPreferences": {
+    "enabled-extensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com']",
+    "disabled-extensions": "@as []"
+  },
+  "noSystemUpdateTrigger": true,
+  "noOfflineTransactionState": true,
+  "shellPid": "9589",
+  "passed": true
+}

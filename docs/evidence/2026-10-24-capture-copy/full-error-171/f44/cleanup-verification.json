@@ -1,0 +1,32 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "f44",
+  "utc": "2026-10-24T03:37:32.851288+00:00",
+  "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8",
+  "kernel": "7.2.11-200.fc44.x86_64",
+  "unchangedBaselineRuntimePackages": {
+    "gnome-shell": "gnome-shell-50.6-1.fc44.x86_64",
+    "mutter": "mutter-50.6-1.fc44.x86_64",
+    "qt6-qtbase": "qt6-qtbase-6.11.2-3.fc44.x86_64",
+    "dnf5": "dnf5-5.4.6.0-1.fc44.x86_64"
+  },
+  "removedOnlyOwnedNewPackages": [
+    "putgd",
+    "jasper-libs",
+    "libmng",
+    "qt6-qtimageformats"
+  ],
+  "passed": true,
+  "uuidUnregistered": {
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "Extension \u201cputgd@put.gd\u201d doesn't exist\n"
+  },
+  "helperPathsAbsent": true,
+  "extensionPreferencesRestored": {
+    "enabled-extensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com']",
+    "disabled-extensions": "@as []"
+  },
+  "noSystemUpdateTriggerOrSavedOfflineQueue": true,
+  "shellPid": "35584"
+}

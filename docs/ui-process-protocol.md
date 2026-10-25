@@ -183,6 +183,44 @@ attempts to create another resident. stderr is drained without retaining private
 helper output. The current Unix pipe implementation targets Linux; additional
 platforms need their native implementation before claiming support.
 
+### Resident lifetime and login sessions (#490)
+
+A resident ends with the login session that started it, whatever the session
+manager does with its autostart entries. Cinnamon starts them inside the
+session's own scope, and with logind's `KillUserProcesses=no` (the Mint and
+Ubuntu default) whatever is left there outlives the logout. Two triggers end the
+resident through the same path as Quit, and it logs `Resident session ended`
+with the reason:
+
+- `display_lost`: the X server closed the resident's own X connection
+  (`XCB_CONN_ERROR`).
+- `session_closing` or `session_removed`: logind reports its graphical session
+  (`x11`, `wayland`, `mir`) closing or gone. The resident reads this through
+  sd-login (libsystemd, loaded at run time) and its session monitor. A screen
+  lock or a user switch doesn't close a session.
+
+Diagnostics show the watched session as `loginSession` (`id`, `type`,
+`watched`, `reason`). It isn't watched when:
+
+- `outside_session`: a systemd unit started it, as GNOME and Plasma do for
+  autostart entries, and the unit stops with the session;
+- `not_graphical`: it was started from an SSH session for a desktop's `DISPLAY`;
+- `logind_unavailable` or `monitor_unavailable`.
+
+A launcher hands off only to a resident whose session is still running. On its
+one activation connection, before sending anything, it takes the resident's PID
+from `SO_PEERCRED`. If that process belongs to another login session that is a
+graphical session `closing`, or no longer exists, the launcher:
+
+1. asks it to `ui.quit`;
+2. after 10 s, sends SIGTERM to that exact process (a pidfd, checked against the
+   PID and its start time), and after another 3 s, SIGKILL;
+3. starts in its place and logs `Replaced a resident from an ended login session`
+   (`pid`, `session`, `type`, `state`, `reason`, `how`).
+
+This also clears residents left by builds without the fix. Evidence:
+[2026-10-23 resident session acceptance](evidence/2026-10-23-resident-session-490/README.md).
+
 ## Reproduce the foundation checks
 
 Provision dependencies as documented in [build.md](build.md), then run:

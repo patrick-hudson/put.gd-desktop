@@ -1,0 +1,109 @@
+{
+ "processes": [
+  {
+   "pid": 2561916,
+   "ppid": 2561873,
+   "exe": "/tmp/.mount_putgd-iCliIN/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/tmp/.mount_putgd-iCliIN/usr/bin/putgd --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage"
+  },
+  {
+   "pid": 2562052,
+   "ppid": 2561916,
+   "exe": "/tmp/.mount_putgd-iCliIN/usr/bin/putgd-ui",
+   "comm": "putgd-ui",
+   "cmd": "/tmp/.mount_putgd-iCliIN/usr/bin/putgd-ui",
+   "qtPlatformPlugins": [
+    "libqwayland.so"
+   ],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage"
+  }
+ ],
+ "entries": [
+  "putgd-appimage-f8E665eV.desktop",
+  "putgd-record-appimage-OdGgpADU.desktop",
+  "putgd-record.desktop",
+  "putgd-ui.desktop"
+ ],
+ "window": {
+  "label": "d69-settings-window",
+  "components": [
+   {
+    "blocks": 32400,
+    "box": [
+     0,
+     0,
+     1920,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   300,
+   249,
+   1620,
+   820
+  ],
+  "changedShare": 1.0,
+  "ownShare": 0.979,
+  "kept": "/home/patrick/work/put.gd-qt418/afa/runs/d69/crops/d69-settings-window.png"
+ },
+ "full": "/home/patrick/work/put.gd-qt418/afa/runs/d69/full/d69-settings-window.png",
+ "titlebar": {
+  "label": "d69-settings-titlebar",
+  "components": [
+   {
+    "blocks": 1680,
+    "box": [
+     0,
+     0,
+     1920,
+     56
+    ]
+   }
+  ],
+  "colour": [
+   36,
+   64,
+   76
+  ],
+  "inner": null
+ },
+ "switcher": {
+  "label": "d69-settings-switcher",
+  "components": [
+   {
+    "blocks": 825,
+    "box": [
+     808,
+     432,
+     1120,
+     656
+    ]
+   }
+  ],
+  "colour": [
+   44,
+   80,
+   100
+  ],
+  "inner": [
+   816,
+   441,
+   1112,
+   647
+  ],
+  "changedShare": 0.845,
+  "kept": "/home/patrick/work/put.gd-qt418/afa/runs/d69/crops/d69-settings-switcher.png"
+ },
+ "switcherFull": "/home/patrick/work/put.gd-qt418/afa/runs/d69/full/d69-settings-switcher.png"
+}

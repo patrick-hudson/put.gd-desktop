@@ -1,0 +1,10 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "k72",
+  "archive": "/home/patrick/work/pgcc-fullerror-k72-receipts.tar.gz",
+  "sha256": "214452b208b92bcc10c86d3b536bf97579599628cfde6b5d6f2d7d6b7e2b91ae",
+  "bytes": 38971,
+  "workstationCopy": "/home/patrick/.t3/worktrees/put.gd/t3-0aa1b31c/work/capture-copy/full-error/k72/receipts.tar.gz",
+  "verifiedBothCopies": true,
+  "restore": "Verify SHA256; extract into a NEW private directory; private idle/failure frames are not publication artifacts."
+}

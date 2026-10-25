@@ -1,0 +1,73 @@
+{
+ "label": "m74-tray-menu",
+ "components": [
+  {
+   "blocks": 1022,
+   "box": [
+    1704,
+    744,
+    1920,
+    1080
+   ]
+  },
+  {
+   "blocks": 90,
+   "box": [
+    544,
+    240,
+    1008,
+    336
+   ]
+  },
+  {
+   "blocks": 16,
+   "box": [
+    760,
+    288,
+    824,
+    304
+   ]
+  },
+  {
+   "blocks": 15,
+   "box": [
+    768,
+    400,
+    832,
+    416
+   ]
+  },
+  {
+   "blocks": 3,
+   "box": [
+    760,
+    736,
+    776,
+    752
+   ]
+  },
+  {
+   "blocks": 3,
+   "box": [
+    752,
+    512,
+    768,
+    528
+   ]
+  }
+ ],
+ "colour": [
+  252,
+  252,
+  252
+ ],
+ "inner": [
+  1715,
+  746,
+  1904,
+  1039
+ ],
+ "changedShare": 1.0,
+ "kept": "/home/patrick/work/put.gd-qt418/afa/runs/m74/crops/m74-tray-menu.png",
+ "full": "/home/patrick/work/put.gd-qt418/afa/runs/m74/full/m74-tray-menu.png"
+}

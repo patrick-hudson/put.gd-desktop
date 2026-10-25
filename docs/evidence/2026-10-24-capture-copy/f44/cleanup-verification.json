@@ -1,0 +1,18 @@
+{
+  "helperAbsent": true,
+  "extensionPreferencesRestoredExactly": true,
+  "offlineQueueUnchanged": {
+    "path": "/usr/lib/sysimage/libdnf5/offline/offline-transaction-state.toml",
+    "sha256": "011a32484ff5fd227a4423676d7447515e62487c6308cb0165be971af49abd29",
+    "mtimeNs": 1792753295792740590,
+    "systemUpdateTriggerPresent": false
+  },
+  "rpmdbPrimaryMetadataUnchanged": {
+    "size": 113401856,
+    "mtimeNs": 1792787113809830402,
+    "inode": 32830
+  },
+  "gnomeShellPid": 3411896,
+  "source": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+  "scope": "extracted RPM; no host package installation or RPMDB transaction"
+}

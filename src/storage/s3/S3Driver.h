@@ -8,7 +8,7 @@ using ReadinessCheck = std::function<Error(const Destination&)>;
 class S3Driver {
 public:
     virtual ~S3Driver() = default;
-    virtual void checkName(const Destination&, const QString&, std::function<void(NameCheck)>) = 0;
+    virtual void checkName(const Destination&, const QString&, std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) = 0;
     virtual void upload(const UploadRequest&, std::function<void(UploadResult)>) = 0;
     virtual void stat(const StorageReceipt&, std::function<void(StatResult)>) = 0;
     virtual void reconcile(const UploadRequest&, std::function<void(StatResult)>) = 0;
@@ -21,7 +21,7 @@ class NetworkS3Driver final : public S3Driver {
 public:
     NetworkS3Driver(CredentialLookup, ReadinessCheck);
     ~NetworkS3Driver() override;
-    void checkName(const Destination&, const QString&, std::function<void(NameCheck)>) override;
+    void checkName(const Destination&, const QString&, std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) override;
     void upload(const UploadRequest&, std::function<void(UploadResult)>) override;
     void stat(const StorageReceipt&, std::function<void(StatResult)>) override;
     void reconcile(const UploadRequest&, std::function<void(StatResult)>) override;

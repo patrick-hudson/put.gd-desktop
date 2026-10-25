@@ -1,0 +1,18 @@
+{
+  "source": {
+    "schemaVersion": 1,
+    "version": "26.1024.1140-dev+g171b506e02ca",
+    "baseVersion": "26.1024.1140",
+    "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+    "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+    "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+    "commitCount": 1140,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "DevCtest": "108/108 passed850.58s",
+  "lockedOfficialSdkMcp": "5/5 passed20.954s",
+  "SSHTransportContext": "This child SSH exec observation returned255 after logs completed; preserved as transport outcome, not a test result. Independent readback verifies complete pass summaries/current clean version and no owned build/ctest process remains.",
+  "utc": "2026-10-24T03:25:32.999360+00:00",
+  "ownedBuildOrCtestProcesses": []
+}

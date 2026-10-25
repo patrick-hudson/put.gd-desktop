@@ -1,0 +1,4 @@
+m74 (Linux Mint 22.3 Cinnamon X11): Not released: 1 item(s) appeared on m74 since you acquired it. Stop or remove yours (exact PIDs only) and check again; name another session's item with --not-mine ID
+  appeared since the lock was taken:
+    process 570702: /home/patrick/work/pgcc/build/release/packaging/linux/putgd-desktop-fixture --output /tmp/ccmf/fixture
+  note: 3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651

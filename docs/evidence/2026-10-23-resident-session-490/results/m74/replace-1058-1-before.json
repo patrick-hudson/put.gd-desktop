@@ -1,0 +1,48 @@
+{
+ "at": "2026-10-23T20:02:48Z",
+ "graphicalSession": "c46",
+ "session": {
+  "User": "1000",
+  "Display": ":0",
+  "Leader": "545729",
+  "Type": "x11",
+  "Active": "yes",
+  "State": "active",
+  "LockedHint": "no"
+ },
+ "residents": [
+  {
+   "pid": 546131,
+   "exe": "/tmp/.mount_putgd-fMgLHK/usr/bin/putgd",
+   "ppid": 545734,
+   "start": 18366551,
+   "session": "c46",
+   "sessionState": "active",
+   "sessionType": "x11",
+   "cgroup": "/user.slice/user-1000.slice/session-c46.scope",
+   "display": ":0",
+   "sessionIdEnv": "c46"
+  }
+ ],
+ "snapshot": {
+  "ok": true,
+  "error": "",
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "loginSession": null,
+  "loginStartup": {
+   "applied": true,
+   "enabled": true
+  },
+  "shortcutsAvailable": true
+ }
+}

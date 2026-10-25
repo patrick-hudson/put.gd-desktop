@@ -64,7 +64,7 @@ class ProtonPackageAuditTests(unittest.TestCase):
     def test_complete_inventory_binds_helper_notices_and_source_catalog(self):
         result = audit_proton(self.root, required=True, expected_manifest=self.manifest)
         self.assertEqual(result['runtimeSha256'], self.manifest['sha256'])
-        self.assertEqual(result['redistributionFiles'], 12)
+        self.assertEqual(result['redistributionFiles'], 13)
         self.assertEqual(result['helper'], 'usr/libexec/putgd/proton/putgd-proton-runtime')
 
     def test_absent_optional_runtime_is_allowed_but_required_runtime_is_rejected(self):

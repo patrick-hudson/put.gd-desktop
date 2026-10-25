@@ -1,0 +1,506 @@
+packages / sbom	UNKNOWN STEP	﻿2026-10-24T06:17:42.0957224Z Current runner version: '2.338.0'
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0983890Z ##[group]Runner Image Provisioner
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0984917Z Hosted Compute Agent
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0985522Z Version: 20261012.601
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0986213Z Commit: f3dc54e1fb89da6852db922499a0233137369e1d
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0987010Z Build Date: 2026-10-12T17:48:21Z
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0987716Z Worker ID: {8b82052e-f354-4ecd-a767-1407e098a487}
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0988542Z Region: westus
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0989098Z Cloud: Azure
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0989673Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0991553Z ##[group]Operating System
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0992223Z Ubuntu
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0992877Z 24.04.5
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0993404Z LTS
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0993903Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0994526Z ##[group]Runner Image
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0995178Z Image: ubuntu-24.04
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0995858Z Version: 20261012.334.1
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0997151Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261012.334/images/ubuntu/Ubuntu2404-Readme.md
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0998793Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261012.334
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.0999809Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.1001167Z ##[group]GITHUB_TOKEN Permissions
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.1003163Z Contents: read
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.1003877Z Metadata: read
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.1004471Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.1006659Z Secret source: Actions
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.1007741Z Cache mode: write
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.1008446Z Prepare workflow directory
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.1556000Z Prepare all required actions
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.1606229Z Getting action download info
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.5142955Z Download action repository 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:42.6239726Z Download action repository 'actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093' (SHA:d3f86a106a0bac45b974a628896c90dbdf5c8093)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.0227575Z Download action repository 'actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809' (SHA:0400d5f644dc74513175e3cd8d07132dd4860809)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.1773918Z Download action repository 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.4131874Z Uses: patrick-hudson/put.gd-desktop/.github/workflows/package.yml@refs/pull/544/merge (ccbd7d4ac5766d618351b8047a7518de4bba5442)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.4138253Z ##[group] Inputs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.4139070Z   release_tag: 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.4139780Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.4140725Z Complete job name: packages / sbom
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5179054Z ##[group]Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5180972Z with:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5181694Z   fetch-depth: 0
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5254195Z   ref: ccbd7d4ac5766d618351b8047a7518de4bba5442
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5256193Z   repository: patrick-hudson/put.gd-desktop
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5265386Z   token: ***
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5266165Z   ssh-strict: true
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5266867Z   ssh-user: git
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5267586Z   persist-credentials: true
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5268386Z   clean: true
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5269110Z   sparse-checkout-cone-mode: true
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5269976Z   fetch-tags: false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5270851Z   show-progress: true
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5271567Z   lfs: false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5272218Z   submodules: false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5272936Z   set-safe-directory: true
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5273759Z   allow-unsafe-pr-checkout: false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5275705Z env:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5276362Z   RELEASE_TAG: 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.5277116Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6322256Z Syncing repository: patrick-hudson/put.gd-desktop
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6325171Z ##[group]Getting Git version info
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6326515Z Working directory is '/home/runner/work/put.gd-desktop/put.gd-desktop'
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6328350Z [command]/usr/bin/git version
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6387624Z git version 2.55.0
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6411667Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6429347Z Temporarily overriding HOME='/home/runner/work/_temp/090fa4e2-ffe4-40e5-b530-104f3eebd7a3' before making global git config changes
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6434240Z Adding repository directory to the temporary git global config as a safe directory
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6437385Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/put.gd-desktop/put.gd-desktop
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6492340Z Deleting the contents of '/home/runner/work/put.gd-desktop/put.gd-desktop'
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6498971Z ##[group]Initializing the repository
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6504786Z [command]/usr/bin/git init /home/runner/work/put.gd-desktop/put.gd-desktop
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6626664Z hint: Using 'master' as the name for the initial branch. This default branch name
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6629967Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6632242Z hint: to use in all of your new repositories, which will suppress this warning,
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6634644Z hint: call:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6635603Z hint:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6636482Z hint: 	git config --global init.defaultBranch <name>
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6637508Z hint:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6638509Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6640876Z hint: 'development'. The just-created branch can be renamed via this command:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6642282Z hint:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6642949Z hint: 	git branch -m <name>
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6643733Z hint:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6644800Z hint: Disable this message with "git config set advice.defaultBranchName false"
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6646649Z Initialized empty Git repository in /home/runner/work/put.gd-desktop/put.gd-desktop/.git/
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6649991Z [command]/usr/bin/git remote add origin https://github.com/patrick-hudson/put.gd-desktop
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6692567Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6693825Z ##[group]Disabling automatic garbage collection
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6697503Z [command]/usr/bin/git config --local gc.auto 0
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6729266Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6730752Z ##[group]Setting up auth
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6737037Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.6773957Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.7123298Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.7157206Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.7383236Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.7417868Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.7644173Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.7695879Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.7697434Z ##[group]Fetching the repository
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:43.7706370Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5785669Z From https://github.com/patrick-hudson/put.gd-desktop
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5791111Z  * [new branch]        claude/478-late-link-copy -> origin/claude/478-late-link-copy
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5792212Z  * [new branch]        claude/478-late-link-copy-docs -> origin/claude/478-late-link-copy-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5793436Z  * [new branch]        claude/appimage-412-refusal-tests -> origin/claude/appimage-412-refusal-tests
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5794704Z  * [new branch]        claude/appimage-412-restore-docs -> origin/claude/appimage-412-restore-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5796527Z  * [new branch]        claude/appimage-acceptance-rerun-911312 -> origin/claude/appimage-acceptance-rerun-911312
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5797818Z  * [new branch]        claude/appimage-channel-344 -> origin/claude/appimage-channel-344
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5798948Z  * [new branch]        claude/appimage-channel-344-docs -> origin/claude/appimage-channel-344-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5800100Z  * [new branch]        claude/appimage-icon-523-bc05fd -> origin/claude/appimage-icon-523-bc05fd
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5801586Z  * [new branch]        claude/appimage-license-audit-383 -> origin/claude/appimage-license-audit-383
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5802497Z  * [new branch]        claude/appimage-notices-417-61bce8 -> origin/claude/appimage-notices-417-61bce8
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5803213Z  * [new branch]        claude/appimage-notices-417-docs -> origin/claude/appimage-notices-417-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5804226Z  * [new branch]        claude/appimage-qt-bump-418-9a269d -> origin/claude/appimage-qt-bump-418-9a269d
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5805164Z  * [new branch]        claude/appimage-qt-bump-418-docs -> origin/claude/appimage-qt-bump-418-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5806128Z  * [new branch]        claude/appstream-catalog-314 -> origin/claude/appstream-catalog-314
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5807154Z  * [new branch]        claude/appstream-catalog-314-docs -> origin/claude/appstream-catalog-314-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5807841Z  * [new branch]        claude/audit-creds-keys-f15ac6 -> origin/claude/audit-creds-keys-f15ac6
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5808703Z  * [new branch]        claude/aurora-f45-golden-docs -> origin/claude/aurora-f45-golden-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5809304Z  * [new branch]        claude/calver-373-03743c -> origin/claude/calver-373-03743c
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5809848Z  * [new branch]        claude/calver-373-docs -> origin/claude/calver-373-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5810821Z  * [new branch]        claude/ci-install-timeouts-467-docs -> origin/claude/ci-install-timeouts-467-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5811595Z  * [new branch]        claude/ci-install-timeouts-467-e4198e -> origin/claude/ci-install-timeouts-467-e4198e
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5812366Z  * [new branch]        claude/ci-reliability-rethink-563a94 -> origin/claude/ci-reliability-rethink-563a94
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5813306Z  * [new branch]        claude/ci-reliability-rethink-docs -> origin/claude/ci-reliability-rethink-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5813994Z  * [new branch]        claude/deb-rpm-channel-386 -> origin/claude/deb-rpm-channel-386
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5814853Z  * [new branch]        claude/deb-rpm-channel-386-docs -> origin/claude/deb-rpm-channel-386-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5815470Z  * [new branch]        claude/deps-sbom-420   -> origin/claude/deps-sbom-420
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5816036Z  * [new branch]        claude/deps-sbom-420-docs -> origin/claude/deps-sbom-420-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5816628Z  * [new branch]        claude/golden-offload-docs -> origin/claude/golden-offload-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5817321Z  * [new branch]        claude/kde-neon-goldens-docs -> origin/claude/kde-neon-goldens-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5818157Z  * [new branch]        claude/kde-plasma-testing-setup-9f30c1 -> origin/claude/kde-plasma-testing-setup-9f30c1
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5818902Z  * [new branch]        claude/kde-region-size-333-5a8c96 -> origin/claude/kde-region-size-333-5a8c96
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5819568Z  * [new branch]        claude/kde-region-size-333-docs -> origin/claude/kde-region-size-333-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5820227Z  * [new branch]        claude/linux-update-acceptance -> origin/claude/linux-update-acceptance
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5821299Z  * [new branch]        claude/musing-bartik-8a33d9 -> origin/claude/musing-bartik-8a33d9
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5821952Z  * [new branch]        claude/musing-bartik-8a33d9-docs -> origin/claude/musing-bartik-8a33d9-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5822710Z  * [new branch]        claude/musing-bartik-8a33d9-nightly-docs -> origin/claude/musing-bartik-8a33d9-nightly-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5823685Z  * [new branch]        claude/native-full-acceptance-02a87f -> origin/claude/native-full-acceptance-02a87f
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5824421Z  * [new branch]        claude/native-license-audit-845b3c -> origin/claude/native-license-audit-845b3c
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5825134Z  * [new branch]        claude/native-package-notices-383 -> origin/claude/native-package-notices-383
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5825890Z  * [new branch]        claude/native-windows-parity-app-a34127 -> origin/claude/native-windows-parity-app-a34127
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5826666Z  * [new branch]        claude/package-install-retries-368 -> origin/claude/package-install-retries-368
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5827425Z  * [new branch]        claude/package-install-retries-368-docs -> origin/claude/package-install-retries-368-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5828190Z  * [new branch]        claude/proton-helper-host-env-518 -> origin/claude/proton-helper-host-env-518
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5828911Z  * [new branch]        claude/proton-lab-sessions-c200cf -> origin/claude/proton-lab-sessions-c200cf
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5829634Z  * [new branch]        claude/resident-session-490-docs -> origin/claude/resident-session-490-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5830579Z  * [new branch]        claude/resident-session-exit-490 -> origin/claude/resident-session-exit-490
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5831578Z  * [new branch]        claude/screen-region-edit-button-b34122 -> origin/claude/screen-region-edit-button-b34122
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5832386Z  * [new branch]        claude/shortcuts-menu-grab-341-0fa21d -> origin/claude/shortcuts-menu-grab-341-0fa21d
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5833161Z  * [new branch]        claude/shortcuts-menu-grab-341-docs -> origin/claude/shortcuts-menu-grab-341-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5833916Z  * [new branch]        claude/stress-lane-weekly-360-31d0ab -> origin/claude/stress-lane-weekly-360-31d0ab
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5834655Z  * [new branch]        claude/stress-lane-weekly-360-docs -> origin/claude/stress-lane-weekly-360-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5835418Z  * [new branch]        claude/suppressed-link-copy-visible -> origin/claude/suppressed-link-copy-visible
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5836216Z  * [new branch]        claude/tray-drop-recent-activity-08d7d2 -> origin/claude/tray-drop-recent-activity-08d7d2
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5837333Z  * [new branch]        claude/tray-drop-recent-activity-docs -> origin/claude/tray-drop-recent-activity-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5838689Z  * [new branch]        claude/updater-polish-348-349-7018b7 -> origin/claude/updater-polish-348-349-7018b7
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5839724Z  * [new branch]        claude/updater-polish-348-349-docs -> origin/claude/updater-polish-348-349-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5840752Z  * [new branch]        claude/v011-gate-plan-docs -> origin/claude/v011-gate-plan-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5841469Z  * [new branch]        claude/windows-lab-second-guest -> origin/claude/windows-lab-second-guest
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5842160Z  * [new branch]        claude/windows-logging-125 -> origin/claude/windows-logging-125
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5842828Z  * [new branch]        claude/windows-logging-125-docs -> origin/claude/windows-logging-125-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5843504Z  * [new branch]        claude/windows-multipart-402 -> origin/claude/windows-multipart-402
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5844196Z  * [new branch]        claude/windows-multipart-402-docs -> origin/claude/windows-multipart-402-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5845208Z  * [new branch]        claude/windows-native-docs -> origin/claude/windows-native-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5846015Z  * [new branch]        claude/windows-packaging-404 -> origin/claude/windows-packaging-404
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5846767Z  * [new branch]        claude/windows-packaging-404-docs -> origin/claude/windows-packaging-404-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5847562Z  * [new branch]        claude/windows-proton-ship-408 -> origin/claude/windows-proton-ship-408
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5848284Z  * [new branch]        claude/windows-proton-ship-408-docs -> origin/claude/windows-proton-ship-408-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5849176Z  * [new branch]        claude/windows-recording-400 -> origin/claude/windows-recording-400
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5849829Z  * [new branch]        claude/windows-scroll-repaint -> origin/claude/windows-scroll-repaint
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5850789Z  * [new branch]        claude/windows-ui-parity-403-docs -> origin/claude/windows-ui-parity-403-docs
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5851699Z  * [new branch]        claude/windows-ui-parity-403-e57161 -> origin/claude/windows-ui-parity-403-e57161
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5852477Z  * [new branch]        codex/appimage-complete-source -> origin/codex/appimage-complete-source
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5853155Z  * [new branch]        codex/issue-511-dispositions -> origin/codex/issue-511-dispositions
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5853834Z  * [new branch]        codex/release-packaging-blockers -> origin/codex/release-packaging-blockers
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5854513Z  * [new branch]        codex/uninstall-contract-382 -> origin/codex/uninstall-contract-382
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5855421Z  * [new branch]        dependabot/github_actions/nightly/github-actions-36691a75f2 -> origin/dependabot/github_actions/nightly/github-actions-36691a75f2
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5856366Z  * [new branch]        docs/524-neon-autologin-workaround -> origin/docs/524-neon-autologin-workaround
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5857014Z  * [new branch]        docs/appimage-icon-523 -> origin/docs/appimage-icon-523
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5857716Z  * [new branch]        docs/ci-mirror-upload-journal-evidence -> origin/docs/ci-mirror-upload-journal-evidence
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5858482Z  * [new branch]        docs/gnome-capture-copy-links -> origin/docs/gnome-capture-copy-links
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5859132Z  * [new branch]        docs/issue-511-dispositions -> origin/docs/issue-511-dispositions
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5859710Z  * [new branch]        docs/kde-shortcut-504  -> origin/docs/kde-shortcut-504
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5860274Z  * [new branch]        docs/native-packaging-540 -> origin/docs/native-packaging-540
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5861304Z  * [new branch]        docs/proton-helper-host-env-518 -> origin/docs/proton-helper-host-env-518
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5861961Z  * [new branch]        docs/proton-lab-sessions -> origin/docs/proton-lab-sessions
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5862600Z  * [new branch]        docs/release-packaging-blockers -> origin/docs/release-packaging-blockers
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5863618Z  * [new branch]        docs/suppressed-link-copy-473 -> origin/docs/suppressed-link-copy-473
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5864702Z  * [new branch]        docs/uninstall-contract-382 -> origin/docs/uninstall-contract-382
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5866030Z  * [new branch]        fix/524-neon-autologin-workaround -> origin/fix/524-neon-autologin-workaround
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5867153Z  * [new branch]        fix/empty-fresh-destinations -> origin/fix/empty-fresh-destinations
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5867983Z  * [new branch]        main                   -> origin/main
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5868666Z  * [new branch]        nightly                -> origin/nightly
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5869591Z  * [new branch]        t3/ci-mirror-upload-journal -> origin/t3/ci-mirror-upload-journal
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5870872Z  * [new branch]        t3/gnome-capture-copy-links -> origin/t3/gnome-capture-copy-links
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5871665Z  * [new tag]           proton-sources-0.22.2-crypto2.0.1 -> proton-sources-0.22.2-crypto2.0.1
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5872383Z  * [new tag]           v0.1.1-dev.131.20261012234248+g71f34fd3619d -> v0.1.1-dev.131.20261012234248+g71f34fd3619d
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5873125Z  * [new tag]           v0.1.1-dev.133.20261013004314+gb0ed0461c600 -> v0.1.1-dev.133.20261013004314+gb0ed0461c600
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5873848Z  * [new tag]           v0.1.1-dev.154.20261014042225+g2f21f1414556 -> v0.1.1-dev.154.20261014042225+g2f21f1414556
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5874553Z  * [new tag]           v0.1.1-dev.172.20261014155842+gbc4215d3aa86 -> v0.1.1-dev.172.20261014155842+gbc4215d3aa86
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5875262Z  * [new tag]           v0.1.1-dev.174.20261014163607+g7e5a6a0a8409 -> v0.1.1-dev.174.20261014163607+g7e5a6a0a8409
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5876162Z  * [new tag]           v0.1.1-dev.176.20261014172445+g0e0d9e705c96 -> v0.1.1-dev.176.20261014172445+g0e0d9e705c96
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5876858Z  * [new tag]           v0.1.1-dev.179.20261014201801+g8312d00af869 -> v0.1.1-dev.179.20261014201801+g8312d00af869
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5877567Z  * [new tag]           v0.1.1-dev.181.20261014235106+g827bda347ec4 -> v0.1.1-dev.181.20261014235106+g827bda347ec4
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5878281Z  * [new tag]           v0.1.1-dev.185.20261015024017+g50fd37cafafc -> v0.1.1-dev.185.20261015024017+g50fd37cafafc
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5878999Z  * [new tag]           v0.1.1-dev.201.20261016035329+gda8cfc7543e5 -> v0.1.1-dev.201.20261016035329+gda8cfc7543e5
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5879709Z  * [new tag]           v0.1.1-dev.214.20261016133428+ga3c37b6dd5a2 -> v0.1.1-dev.214.20261016133428+ga3c37b6dd5a2
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5880734Z  * [new tag]           v0.1.1-dev.216.20261016142839+ga5cbb5e87ade -> v0.1.1-dev.216.20261016142839+ga5cbb5e87ade
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5881649Z  * [new tag]           v0.1.1-dev.219.20261016181934+g558cbaf429d4 -> v0.1.1-dev.219.20261016181934+g558cbaf429d4
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5882469Z  * [new tag]           v0.1.1-dev.222.20261016185917+g0ff7639d654c -> v0.1.1-dev.222.20261016185917+g0ff7639d654c
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5883187Z  * [new tag]           v0.1.1-dev.234.20261017005818+gd7b17bb03e39 -> v0.1.1-dev.234.20261017005818+gd7b17bb03e39
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5883902Z  * [new tag]           v0.1.1-dev.239.20261017023211+g879321a43131 -> v0.1.1-dev.239.20261017023211+g879321a43131
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5884616Z  * [new tag]           v0.1.1-dev.244.20261017041702+g1237fbc1a6b7 -> v0.1.1-dev.244.20261017041702+g1237fbc1a6b7
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5885319Z  * [new tag]           v0.1.1-dev.305.20261018020502+gd1b6c830a67c -> v0.1.1-dev.305.20261018020502+gd1b6c830a67c
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5886031Z  * [new tag]           v0.1.1-dev.309.20261018030128+gcb26dc713228 -> v0.1.1-dev.309.20261018030128+gcb26dc713228
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5886616Z  * [new tag]           v0.1.1-nightly.317     -> v0.1.1-nightly.317
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5887067Z  * [new tag]           v0.1.1-nightly.419     -> v0.1.1-nightly.419
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5887505Z  * [new tag]           v0.1.1-nightly.428     -> v0.1.1-nightly.428
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5887931Z  * [new tag]           v0.1.1-nightly.588     -> v0.1.1-nightly.588
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5888365Z  * [new tag]           v0.1.1-nightly.801     -> v0.1.1-nightly.801
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5888811Z  * [new tag]           v0.1.1-nightly.816     -> v0.1.1-nightly.816
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5889428Z  * [new tag]           v0.1.1-nightly.828     -> v0.1.1-nightly.828
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5889896Z  * [new tag]           v0.1.1-nightly.842     -> v0.1.1-nightly.842
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5890595Z  * [new tag]           v0.1.1-nightly.847     -> v0.1.1-nightly.847
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5891221Z  * [new tag]           v0.1.1-nightly.874     -> v0.1.1-nightly.874
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5891662Z  * [new tag]           v0.1.1-nightly.889     -> v0.1.1-nightly.889
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5892106Z  * [new tag]           v0.1.1-nightly.893     -> v0.1.1-nightly.893
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5892541Z  * [new tag]           v0.1.1-nightly.907     -> v0.1.1-nightly.907
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5892970Z  * [new tag]           v0.1.1-nightly.914     -> v0.1.1-nightly.914
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5893402Z  * [new tag]           v0.1.1-nightly.925     -> v0.1.1-nightly.925
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5893831Z  * [new tag]           v0.1.1-nightly.942     -> v0.1.1-nightly.942
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5894254Z  * [new tag]           v0.1.1-nightly.947     -> v0.1.1-nightly.947
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5894675Z  * [new tag]           v0.1.1-rc.1            -> v0.1.1-rc.1
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5895102Z  * [new tag]           v26.1022.1009-nightly  -> v26.1022.1009-nightly
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5895539Z  * [new tag]           v26.1022.1017-nightly  -> v26.1022.1017-nightly
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5895975Z  * [new tag]           v26.1022.1019-nightly  -> v26.1022.1019-nightly
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5896412Z  * [new tag]           v26.1022.968-nightly   -> v26.1022.968-nightly
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5897017Z  * [new tag]           v26.1022.983-nightly   -> v26.1022.983-nightly
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5897455Z  * [new tag]           v26.1022.996-nightly   -> v26.1022.996-nightly
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5897886Z  * [new tag]           v26.1023.1040-nightly  -> v26.1023.1040-nightly
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5898327Z  * [new tag]           v26.1023.1058-nightly  -> v26.1023.1058-nightly
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5898754Z  * [new tag]           v26.1024.1185-nightly  -> v26.1024.1185-nightly
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5900578Z [command]/usr/bin/git rev-parse --verify --quiet ccbd7d4ac5766d618351b8047a7518de4bba5442^{object}
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.5901903Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules origin ccbd7d4ac5766d618351b8047a7518de4bba5442
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.8913900Z From https://github.com/patrick-hudson/put.gd-desktop
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.8915058Z  * branch              ccbd7d4ac5766d618351b8047a7518de4bba5442 -> FETCH_HEAD
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.8927821Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.8928314Z ##[group]Determining the checkout info
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.8928791Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.8931047Z [command]/usr/bin/git sparse-checkout disable
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.8993211Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.9030835Z ##[group]Checking out the ref
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:49.9036424Z [command]/usr/bin/git checkout --progress --force ccbd7d4ac5766d618351b8047a7518de4bba5442
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:50.9233010Z Updating files:  65% (7072/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:50.9278823Z Updating files:  66% (7099/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:50.9321287Z Updating files:  67% (7206/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:50.9385125Z Updating files:  68% (7314/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:50.9431896Z Updating files:  69% (7421/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:50.9473762Z Updating files:  70% (7529/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:50.9522424Z Updating files:  71% (7637/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:50.9562701Z Updating files:  72% (7744/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:50.9604484Z Updating files:  73% (7852/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:50.9806151Z Updating files:  74% (7959/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:50.9982028Z Updating files:  75% (8067/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.0027997Z Updating files:  76% (8174/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.0271546Z Updating files:  77% (8282/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.0373272Z Updating files:  78% (8389/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.0480046Z Updating files:  79% (8497/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.0581019Z Updating files:  80% (8604/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.0744914Z Updating files:  81% (8712/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.0864231Z Updating files:  82% (8820/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.0927734Z Updating files:  83% (8927/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.1135082Z Updating files:  84% (9035/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.1191979Z Updating files:  85% (9142/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.1311170Z Updating files:  86% (9250/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.1378184Z Updating files:  87% (9357/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.1463865Z Updating files:  88% (9465/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.1929018Z Updating files:  89% (9572/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.2060726Z Updating files:  90% (9680/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.2391711Z Updating files:  91% (9788/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.2649276Z Updating files:  92% (9895/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.2742337Z Updating files:  93% (10003/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.2809666Z Updating files:  94% (10110/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.2889387Z Updating files:  95% (10218/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.2998133Z Updating files:  96% (10325/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3104340Z Updating files:  97% (10433/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3195740Z Updating files:  98% (10540/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3347576Z Updating files:  99% (10648/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3348350Z Updating files: 100% (10755/10755)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3349063Z Updating files: 100% (10755/10755), done.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3470717Z Note: switching to 'ccbd7d4ac5766d618351b8047a7518de4bba5442'.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3471229Z 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3471506Z You are in 'detached HEAD' state. You can look around, make experimental
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3473011Z changes and commit them, and you can discard any commits you make in this
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3473899Z state without impacting any branches by switching back to a branch.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3474344Z 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3474644Z If you want to create a new branch to retain commits you create, you may
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3475371Z do so (now or later) by using -c with the switch command. Example:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3475748Z 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3475909Z   git switch -c <new-branch-name>
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3476199Z 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3476372Z Or undo this operation with:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3476661Z 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3476809Z   git switch -
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3477029Z 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3477384Z Turn off this advice by setting config variable advice.detachedHead to false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3477971Z 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3478628Z HEAD is now at ccbd7d4a Merge d5b561ddb94f8255b8bc754c1382552d983a6fa9 into 9dfac15c1ced201d13a2b70a8afb0c253213768b
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3535391Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3591264Z [command]/usr/bin/git log -1 --format=%H
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3613625Z ccbd7d4ac5766d618351b8047a7518de4bba5442
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3867789Z ##[group]Run actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3868232Z with:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3868432Z   pattern: release-*
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3868653Z   path: build/downloaded
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3868882Z   merge-multiple: false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3869146Z   repository: patrick-hudson/put.gd-desktop
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3869424Z   run-id: 40068130492
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3869621Z env:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3869795Z   RELEASE_TAG: 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.3869983Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.5556833Z (node:2322) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.5557797Z (Use `node --trace-deprecation ...` to show where the warning was created)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.8193646Z Found 10 artifact(s)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.8221360Z Filtering artifacts by pattern 'release-*'
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.8231890Z Preparing to download the following artifacts:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.8233176Z - release-native-debian13 (ID: 12550595770, Size: 163672433, Expected Digest: sha256:323749f95ab7062bc5f8efcb1e22b8b23794d313fd5c175b230c22e8bc167bc6)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.8234979Z - release-native-ubuntu24.04 (ID: 12550537477, Size: 162688018, Expected Digest: sha256:80ebfe0ccdf197eb9f36306e3b4c7ca784cdf24d3cfd713087614b83c6486059)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.8236830Z - release-appimage (ID: 12550184602, Size: 900946203, Expected Digest: sha256:baf06a8d6ff484c96c8689d238342fb4e6d8d1e67cfcb123e60266f5cc8546b6)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.8238215Z - release-native-fedora44 (ID: 12549783220, Size: 162233748, Expected Digest: sha256:0e4be23352e6edbd5c4928d91b235fec89967dddee51418737581e41f6befaf3)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:51.8239479Z - release-native-ubuntu26.04 (ID: 12549529476, Size: 168156747, Expected Digest: sha256:fd9a06c29fa7b23eee8923d3b22be2c855afbac35a0df9a00bde69ff4bf62649)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:52.0576895Z Redirecting to blob download url: https://productionresultssa1.blob.core.windows.net/actions-results/5e67110a-f099-8290-9958-1e2412714991/workflow-job-run-9dae7f8f-4028-593a-bf41-be9746abe1dd/artifacts/2c1c4a1b289b2c95586ca9065c5d3541e15c46ff193b62a1853217905ed39aeb.zip
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:52.0578745Z Starting download of artifact to: /home/runner/work/put.gd-desktop/put.gd-desktop/build/downloaded/release-native-debian13
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:52.1961686Z Redirecting to blob download url: https://productionresultssa1.blob.core.windows.net/actions-results/5e67110a-f099-8290-9958-1e2412714991/workflow-job-run-d116c0af-04ea-5a89-a4c4-375005430797/artifacts/e48476bc963dd5f2f8c072ad0f4b886d8473c5ff105e3c4ca17930750b755452.zip
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:52.1964431Z Starting download of artifact to: /home/runner/work/put.gd-desktop/put.gd-desktop/build/downloaded/release-native-ubuntu24.04
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:52.2014884Z Redirecting to blob download url: https://productionresultssa1.blob.core.windows.net/actions-results/5e67110a-f099-8290-9958-1e2412714991/workflow-job-run-f2473927-9592-569e-8ed8-dff610142636/artifacts/b80ea615ebca31fd34252ee948364345258156c84014314591aa9f00b784f22c.zip
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:52.2017582Z Starting download of artifact to: /home/runner/work/put.gd-desktop/put.gd-desktop/build/downloaded/release-native-fedora44
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:52.2022936Z Redirecting to blob download url: https://productionresultssa1.blob.core.windows.net/actions-results/5e67110a-f099-8290-9958-1e2412714991/workflow-job-run-aa1c236e-a7f9-5ab0-a4c5-98241bd08c4e/artifacts/c636d47a4b8347c76a9c0583ea10f3ab76d68eca4db493cbab8c0cf3f00fa144.zip
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:52.2025605Z Starting download of artifact to: /home/runner/work/put.gd-desktop/put.gd-desktop/build/downloaded/release-appimage
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:52.2031599Z Redirecting to blob download url: https://productionresultssa1.blob.core.windows.net/actions-results/5e67110a-f099-8290-9958-1e2412714991/workflow-job-run-36dc9c77-8f55-53ee-8d50-2b71dc200b08/artifacts/67732088e8eff44899a073008dbea31dcbbf7045d9fcfbb1eb0d7f3b59e19243.zip
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:52.2034596Z Starting download of artifact to: /home/runner/work/put.gd-desktop/put.gd-desktop/build/downloaded/release-native-ubuntu26.04
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:52.4293690Z (node:2322) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:59.6561697Z SHA256 digest of downloaded artifact is 80ebfe0ccdf197eb9f36306e3b4c7ca784cdf24d3cfd713087614b83c6486059
+packages / sbom	UNKNOWN STEP	2026-10-24T06:17:59.6562583Z Artifact download completed successfully.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:18:02.8915097Z SHA256 digest of downloaded artifact is 323749f95ab7062bc5f8efcb1e22b8b23794d313fd5c175b230c22e8bc167bc6
+packages / sbom	UNKNOWN STEP	2026-10-24T06:18:02.8916466Z Artifact download completed successfully.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:18:07.4176773Z SHA256 digest of downloaded artifact is 0e4be23352e6edbd5c4928d91b235fec89967dddee51418737581e41f6befaf3
+packages / sbom	UNKNOWN STEP	2026-10-24T06:18:07.4177486Z Artifact download completed successfully.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:18:51.1422626Z SHA256 digest of downloaded artifact is fd9a06c29fa7b23eee8923d3b22be2c855afbac35a0df9a00bde69ff4bf62649
+packages / sbom	UNKNOWN STEP	2026-10-24T06:18:51.1424557Z Artifact download completed successfully.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.6389245Z ##[group]Run sudo --preserve-env=GITHUB_STEP_SUMMARY bash tools/ci/install-packages.sh --no-install-recommends rpm2cpio cpio
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.6390230Z ^[[36;1msudo --preserve-env=GITHUB_STEP_SUMMARY bash tools/ci/install-packages.sh --no-install-recommends rpm2cpio cpio^[[0m
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.6661577Z shell: /usr/bin/bash -e {0}
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.6661947Z env:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.6662201Z   RELEASE_TAG: 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.6662468Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.8263304Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.8436118Z Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.8687887Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.8742811Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.8777973Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.8839964Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:33.9940861Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [12.4 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.0074925Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [652 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.0142380Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [589 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.1234436Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1400 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.1319464Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [310 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.1342077Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1706 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.1432037Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [342 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.1456284Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1805 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.1554659Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [411 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.2328355Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1146 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.2397947Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [231 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.2415077Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1222 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.2487057Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [246 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.2956323Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1713 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:34.3035108Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [392 kB]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:40.0253260Z Fetched 12.6 MB in 1s (9247 kB/s)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.0159570Z Reading package lists...
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.0417032Z Reading package lists...
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.2499781Z Building dependency tree...
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.2508450Z Reading state information...
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.4476437Z rpm2cpio is already the newest version (4.18.2+dfsg-2.1build2).
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.4477449Z rpm2cpio set to manually installed.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.4478089Z cpio is already the newest version (2.15+dfsg-1ubuntu2.1).
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.4478926Z cpio set to manually installed.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.4481208Z 0 upgraded, 0 newly installed, 0 to remove and 99 not upgraded.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.4551637Z ##[group]Run python3 tools/releases/sbom.py tools --output "$RUNNER_TEMP/sbom-tools"
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.4552305Z ^[[36;1mpython3 tools/releases/sbom.py tools --output "$RUNNER_TEMP/sbom-tools"^[[0m
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.4614027Z shell: /usr/bin/bash -e {0}
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.4614307Z env:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.4614533Z   RELEASE_TAG: 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:41.4614761Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7303434Z {
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7303979Z   "syft": {
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7304477Z     "release": "v1.55.0",
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7305422Z     "sha256": "bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d",
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7306516Z     "path": "/home/runner/work/_temp/sbom-tools/syft"
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7307235Z   },
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7307684Z   "grype": {
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7308088Z     "release": "v0.121.0",
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7308646Z     "sha256": "64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519",
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7309417Z     "path": "/home/runner/work/_temp/sbom-tools/grype"
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7309865Z   }
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7310089Z }
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7439071Z ##[group]Run python3 tools/releases/sbom.py database --listing-only --listing build/grype-db.json --output build/grype-db
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7440007Z ^[[36;1mpython3 tools/releases/sbom.py database --listing-only --listing build/grype-db.json --output build/grype-db^[[0m
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7441241Z ^[[36;1mecho "key=grype-db-v6-$(python3 -c 'import json; print(json.load(open("build/grype-db.json"))["sha256"])')" >> "$GITHUB_OUTPUT"^[[0m
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7501624Z shell: /usr/bin/bash -e {0}
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7501899Z env:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7502109Z   RELEASE_TAG: 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.7502332Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:43.9873115Z {"name": "vulnerability-db_v6.1.10_2026-10-23T00:30:52Z_1792737015.tar.zst", "url": "https://grype.anchore.io/databases/v6/vulnerability-db_v6.1.10_2026-10-23T00:30:52Z_1792737015.tar.zst", "sha256": "6e78c0f757fe96976b37b138e54e83fd75f2ad1f6c5feae2ecb008cefa8fcc0f", "built": "2026-10-23T06:30:15Z", "schemaVersion": "v6.1.10"}
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.0262846Z ##[group]Run actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.0263290Z with:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.0263684Z   path: build/grype-db
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.0264106Z   key: grype-db-v6-6e78c0f757fe96976b37b138e54e83fd75f2ad1f6c5feae2ecb008cefa8fcc0f
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.0264579Z   enableCrossOsArchive: false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.0264850Z   fail-on-cache-miss: false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.0265110Z   lookup-only: false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.0265340Z env:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.0265539Z   RELEASE_TAG: 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.0265752Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.1340444Z (node:2796) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.1341560Z (Use `node --trace-deprecation ...` to show where the warning was created)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.3783541Z Cache hit for: grype-db-v6-6e78c0f757fe96976b37b138e54e83fd75f2ad1f6c5feae2ecb008cefa8fcc0f
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:44.3895449Z (node:2796) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:45.6519936Z Received 4194304 of 189410603 (2.2%), 4.0 MBs/sec
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:46.6524161Z Received 134217728 of 189410603 (70.9%), 64.0 MBs/sec
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.1434476Z Received 189410603 of 189410603 (100.0%), 72.5 MBs/sec
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.1436760Z Cache Size: ~181 MB (189410603 B)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.1541439Z [command]/usr/bin/tar -xf /home/runner/work/_temp/d83c7861-1e13-4b7d-aa43-19db7ac85803/cache.tzst -P -C /home/runner/work/put.gd-desktop/put.gd-desktop --use-compress-program unzstd
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.3770803Z Cache restored successfully
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.3936420Z Cache restored from key: grype-db-v6-6e78c0f757fe96976b37b138e54e83fd75f2ad1f6c5feae2ecb008cefa8fcc0f
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.4100161Z ##[group]Run python3 tools/releases/sbom.py database --listing build/grype-db.json --output build/grype-db
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.4101299Z ^[[36;1mpython3 tools/releases/sbom.py database --listing build/grype-db.json --output build/grype-db^[[0m
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.4102691Z ^[[36;1m"$RUNNER_TEMP/sbom-tools/grype" db import build/grype-db/vulnerability-db_*.tar.zst^[[0m
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.4103745Z ^[[36;1m"$RUNNER_TEMP/sbom-tools/grype" db status^[[0m
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.4163985Z shell: /usr/bin/bash -e {0}
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.4164268Z env:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.4164489Z   RELEASE_TAG: 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.4164784Z   GRYPE_DB_CACHE_DIR: /home/runner/work/_temp/grype-db
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.4165159Z   GRYPE_CHECK_FOR_APP_UPDATE: false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.4165449Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:23:47.7626485Z {"name": "vulnerability-db_v6.1.10_2026-10-23T00:30:52Z_1792737015.tar.zst", "url": "https://grype.anchore.io/databases/v6/vulnerability-db_v6.1.10_2026-10-23T00:30:52Z_1792737015.tar.zst", "sha256": "6e78c0f757fe96976b37b138e54e83fd75f2ad1f6c5feae2ecb008cefa8fcc0f", "built": "2026-10-23T06:30:15Z", "schemaVersion": "v6.1.10"}
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0504644Z Path:      /home/runner/work/_temp/grype-db/6/vulnerability.db
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0505187Z Schema:    v6.1.10
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0505524Z Built:     2026-10-23T06:30:15Z
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0505891Z From:      manual import
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0506220Z Status:    valid
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0579303Z ##[group]Run python3 tools/releases/sbom.py generate --inputs build/downloaded --syft "$RUNNER_TEMP/sbom-tools/syft" \
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0580184Z ^[[36;1mpython3 tools/releases/sbom.py generate --inputs build/downloaded --syft "$RUNNER_TEMP/sbom-tools/syft" \^[[0m
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0581351Z ^[[36;1m  --output build/release-sbom --timestamp "$(git show -s --format=%ct HEAD)"^[[0m
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0641481Z shell: /usr/bin/bash -e {0}
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0641761Z env:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0641977Z   RELEASE_TAG: 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.0642208Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.1365857Z Something went wrong trying to read the squashfs image.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.1366400Z Failed to open squashfs image
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2044083Z Traceback (most recent call last):
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2045060Z   File "/home/runner/work/put.gd-desktop/put.gd-desktop/tools/releases/sbom.py", line 583, in <module>
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2046309Z     main()
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2047119Z   File "/home/runner/work/put.gd-desktop/put.gd-desktop/tools/releases/sbom.py", line 549, in main
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2051691Z     receipts[label] = generate(package, label, args.syft, args.output / ('putgd-' + version + '-' + label + '.cdx.json'),
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2052422Z                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2053055Z   File "/home/runner/work/put.gd-desktop/put.gd-desktop/tools/releases/sbom.py", line 307, in generate
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2053598Z     root = extract(package, label, work)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2053907Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2054393Z   File "/home/runner/work/put.gd-desktop/put.gd-desktop/tools/releases/sbom.py", line 117, in extract
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2055116Z     subprocess.run([str(package), '--appimage-extract'], check=True, cwd=work, stdout=subprocess.DEVNULL)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2055715Z   File "/usr/lib/python3.12/subprocess.py", line 571, in run
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2099233Z     raise CalledProcessError(retcode, process.args,
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2101491Z subprocess.CalledProcessError: Command '['/home/runner/work/put.gd-desktop/put.gd-desktop/build/downloaded/release-appimage/putgd-26.1024.1191-dev+gccbd7d4ac576-x86_64.AppImage', '--appimage-extract']' returned non-zero exit status 1.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2258711Z ##[error]Process completed with exit code 1.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2337662Z ##[group]Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2338108Z with:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2338342Z   name: vulnerability-report
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2338634Z   path: build/vulnerabilities/
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2338915Z   if-no-files-found: warn
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2339180Z   retention-days: 90
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2339425Z   compression-level: 6
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2339672Z   overwrite: false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2339931Z   include-hidden-files: false
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2340193Z env:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2340713Z   RELEASE_TAG: 
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.2340948Z ##[endgroup]
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.3984809Z (node:2877) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.3985575Z (Use `node --trace-deprecation ...` to show where the warning was created)
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.4018595Z ##[warning]No files were found with the provided path: build/vulnerabilities/. No artifacts will be uploaded.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.4203068Z Post job cleanup.
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5043231Z [command]/usr/bin/git version
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5083248Z git version 2.55.0
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5125159Z Temporarily overriding HOME='/home/runner/work/_temp/6c60a07b-98ce-43ff-bf86-ce89545bfe58' before making global git config changes
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5126562Z Adding repository directory to the temporary git global config as a safe directory
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5132386Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/put.gd-desktop/put.gd-desktop
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5174347Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5207671Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5456931Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5482822Z http.https://github.com/.extraheader
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5493269Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5524627Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5766459Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.5804737Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.6215535Z Cleaning up orphan processes
+packages / sbom	UNKNOWN STEP	2026-10-24T06:25:06.6583251Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809, actions/checkout@11d5960a326750d5838078e36cf38b85af677262, actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093, actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

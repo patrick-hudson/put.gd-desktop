@@ -85,7 +85,7 @@ NormalizedKdeShortcut normalizeKdeShortcut(const QKeySequence& requested,xkb_key
  }
  std::unique_ptr<xkb_state,StateDeleter> state(xkb_state_new(map));
  if(!state)return failure("shortcut_unavailable");
- unsigned bestCost=std::numeric_limits<unsigned>::max(),candidates=0;
+ unsigned bestRank=std::numeric_limits<unsigned>::max(),candidates=0;
  int bestCombined=0;
  bool ambiguous=false,unsupportedBest=false,unsupportedTarget=false;
  for(xkb_keycode_t code=first;;++code) {
@@ -108,13 +108,6 @@ NormalizedKdeShortcut normalizeKdeShortcut(const QKeySequence& requested,xkb_key
      const auto implicit=masks[index];
      if((implicit&~shiftMask)!=0) {unsupportedTarget=true;continue;}
      if(++candidates>MaxCandidates)return failure("shortcut_unavailable");
-     // Resolve the configured symbol first; explicit Shift must not make
-     // a higher-level copy compete with an unmodified physical key.
-     const auto cost=std::popcount(implicit);
-     if(static_cast<unsigned>(cost)>bestCost)continue;
-     if(static_cast<unsigned>(cost)<bestCost) {
-      bestCost=cost;bestCombined=0;ambiguous=false;unsupportedBest=false;
-     }
      const auto effectiveMask=explicitMask|implicit;
      xkb_state_update_mask(state.get(),effectiveMask,0,0,0,0,layout);
      const int effectiveKey=qtKey(xkb_state_key_get_one_sym(state.get(),code));
@@ -125,6 +118,17 @@ NormalizedKdeShortcut normalizeKdeShortcut(const QKeySequence& requested,xkb_key
       if(modifier.index!=XKB_MOD_INVALID&&effectiveQt.testFlag(modifier.qt)&&
          xkb_state_mod_index_is_consumed2(state.get(),code,modifier.index,XKB_CONSUMED_MODE_GTK)==1)
        consumedQt|=modifier.qt;
+     }
+     // Explicit Shift has to reach the key. One-level copies of a symbol, such
+     // as evdev's KEY_DOLLAR or the keypad parentheses, ignore it: KWin never
+     // sends their Shift chord for an ordinary keyboard (Ctrl+Shift+4 is Ctrl+$).
+     const bool shiftIgnored=!consumedQt.testFlag(Qt::ShiftModifier);
+     // Then resolve the configured symbol first; explicit Shift must not make
+     // a higher-level copy compete with an unmodified physical key.
+     const auto rank=(shiftIgnored?2u:0u)+static_cast<unsigned>(std::popcount(implicit));
+     if(rank>bestRank)continue;
+     if(rank<bestRank) {
+      bestRank=rank;bestCombined=0;ambiguous=false;unsupportedBest=false;
      }
      // KWin preserves Shift for letter chords but consumes it for punctuation.
      if(effectiveQt.testFlag(Qt::ShiftModifier)&&consumedQt==Qt::ShiftModifier&&QChar::isLetter(uint(effectiveKey)))

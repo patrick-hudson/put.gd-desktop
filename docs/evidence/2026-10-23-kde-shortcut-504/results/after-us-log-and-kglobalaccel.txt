@@ -1,0 +1,16 @@
+{"category":"putgd.app","fields":{"architecture":"x86_64","build":{"baseVersion":"26.1023.1058","commitCount":1058,"dirty":false,"gitCommit":"05991d9d42aad68d3bd233a609cf294d839835ed","gitTree":"5e53f777b912ef958678b2f23b400847c7cb4d33","packageVersion":"26.10
+{"category":"default","fields":{"itemId":null,"operationId":null},"level":"warning","message":"Action rejected: output_required","pid":2279,"process":"putgd","time":"2026-10-23T20:12:14.482Z","v":1}
+{"category":"putgd.operation","fields":{"action":"region","itemId":null,"output":"local","profileId":"","provider":""},"level":"info","message":"Operation accepted","operationId":"dd9cacbd-5235-48b8-aa15-550e27290e34","pid":2279,"process":"putgd","time":"2026-
+{"category":"putgd.app","fields":{"architecture":"x86_64","build":{"baseVersion":"26.1023.1066","commitCount":1066,"dirty":false,"gitCommit":"459f1389469e663a113cf94e5289c7922c256962","gitTree":"24160959683251058ba75533a209d2d9ce1033b3","packageVersion":"26.10
+{"category":"putgd.operation","fields":{"action":"edit","itemId":null,"output":"local","profileId":"","provider":""},"level":"info","message":"Operation accepted","operationId":"1cb8a390-4f8e-497b-92fd-de949c8525e8","pid":4130,"process":"putgd","time":"2026-10
+{"category":"putgd.app","fields":{"architecture":"x86_64","build":{"baseVersion":"26.1023.1066","commitCount":1066,"dirty":false,"gitCommit":"459f1389469e663a113cf94e5289c7922c256962","gitTree":"24160959683251058ba75533a209d2d9ce1033b3","packageVersion":"26.10
+{"category":"putgd.operation","fields":{"action":"edit","itemId":null,"output":"local","profileId":"","provider":""},"level":"info","message":"Operation accepted","operationId":"96a93c80-1cd4-4100-be7d-a7c3b683c477","pid":5064,"process":"putgd","time":"2026-10
+---
+[putgd]
+_k_friendly_name=put.gd
+clipboard=none,none,clipboard
+desktop=Ctrl+#,none,desktop
+edit=Ctrl+$,none,edit
+record=none,none,record
+region=Ctrl+!,none,region
+window=Ctrl+@,none,window

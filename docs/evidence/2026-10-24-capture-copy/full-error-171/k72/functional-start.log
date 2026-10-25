@@ -1,0 +1,36 @@
+{"schemaVersion": 1, "passed": true, "scope": "bounded exact-resident 300-second sampled memory/CPU gate; startup/native provenance and functional receipts are separate", "checks": {"samplerCompleted": true, "sampleCount61": true, "spanAtLeast299_5Seconds": true, "maxGapAtMost7_5Seconds": true, "oneResidentNoUiOrEscapedFamily": true, "rssPlusSwapAtMost40MiB": true, "zeroSwap": true, "maxCpuBelow0_5PercentOfOneCore": true}, "samples": 61, "spanSeconds": 300.0002005130009, "maxGapSeconds": 5.051417548002064, "peakRssMiB": 31.71484375, "peakSwapBytes": 0, "maxCpuPercentOfOneCore": 0.19909130991202292, "clockTicksPerSecond": 100, "sourceSamplesSha256": "0633e4308908e7de707baf8dba8c2aca1d264cec4931424f05fd0646bff79422", "sourceResultSha256": "792fbdd3dc7abacb7db0b1f12f93b910e43fa63320955d347c064bd9995f7beb"}
+owned resident and fixture stopped
+native ready
+current production capabilities/configuration inspected
+/home/patrick/work/pgcc-fullerror-native/native_run.py:101: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  colors={(220,30,40),(20,180,70),(35,70,220),(235,190,20)};coords=[(i%w,i//w) for i,v in enumerate(image.getdata()) if v in colors]
+visible native unlocked fixture confirmed
+/home/patrick/work/pgcc-fullerror-native/native_run.py:57: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  c=RFB(A.port);w,h,pixels=c.frame();time.sleep(.2);w,h,pixels=c.frame();image=Image.frombytes('RGB',(w,h),pixels,'raw','BGRX');coords=[(i%w,i//w) for i,v in enumerate(image.getdata()) if v in colors]
+window capture + independent native paste passed
+synthetic guide rendering fixture only
+/home/patrick/work/pgcc-fullerror-native/native_run.py:239: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  colors={(17,19,23),(24,27,33),(32,36,44),(35,40,56),(42,47,56)};coords=[(i%w,i//w) for i,v in enumerate(image.getdata()) if v in colors]
+/home/patrick/work/pgcc-fullerror-native/native_run.py:243: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  crop=image.crop((x0,y0,x1,y1));fraction=sum(v in colors for v in crop.getdata())/(crop.width*crop.height)
+saved gated annotated own-window visual
+/home/patrick/work/pgcc-fullerror-native/native_run.py:239: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  colors={(17,19,23),(24,27,33),(32,36,44),(35,40,56),(42,47,56)};coords=[(i%w,i//w) for i,v in enumerate(image.getdata()) if v in colors]
+/home/patrick/work/pgcc-fullerror-native/native_run.py:243: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  crop=image.crop((x0,y0,x1,y1));fraction=sum(v in colors for v in crop.getdata())/(crop.width*crop.height)
+saved gated annotated own-window visual
+/home/patrick/work/pgcc-fullerror-native/native_run.py:239: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  colors={(17,19,23),(24,27,33),(32,36,44),(35,40,56),(42,47,56)};coords=[(i%w,i//w) for i,v in enumerate(image.getdata()) if v in colors]
+/home/patrick/work/pgcc-fullerror-native/native_run.py:243: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  crop=image.crop((x0,y0,x1,y1));fraction=sum(v in colors for v in crop.getdata())/(crop.width*crop.height)
+saved gated annotated own-window visual
+/home/patrick/work/pgcc-fullerror-native/native_run.py:239: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  colors={(17,19,23),(24,27,33),(32,36,44),(35,40,56),(42,47,56)};coords=[(i%w,i//w) for i,v in enumerate(image.getdata()) if v in colors]
+/home/patrick/work/pgcc-fullerror-native/native_run.py:243: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  crop=image.crop((x0,y0,x1,y1));fraction=sum(v in colors for v in crop.getdata())/(crop.width*crop.height)
+saved gated annotated own-window visual
+Traceback (most recent call last):
+  File "/home/patrick/work/pgcc-fullerror-native/native_run.py", line 189, in <module>
+    crop=shot(label+'-narrow-selected');assert 1050<=crop[2]-crop[0]<=1110,('narrow native window not established',crop);save(ROOT/(label+'-render-proof.json'),{'source':'171b506e02ca37ba75b27dbbbe859502380926ef','host':A.host,'actualNativeInput':True,'minimumMainWindowWidth':1060,'narrowOwnCropWidth':crop[2]-crop[0],'scope':'saved actual in-app text, no external message annotation; synthetic rows labelled separately where used'})
+                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('narrow native window not established', [302, 89, 1618, 965])

@@ -10,7 +10,7 @@ import subprocess
 from audit_native import PROGRAMS, sha256
 from verify_tag import verify
 import proton_sources
-import appimage_media_sources
+import appimage_complete_sources
 import appimage_update
 import debug_symbols
 from release_bundle import create_gnome_zip, create_release_bundle
@@ -34,6 +34,23 @@ def asset_path(directory, filename, suffix):
         raise ValueError('Release asset is missing or is a symlink')
     return path
 
+
+def verified_sboms(directory, release, packages):
+    """Each package's CycloneDX SBOM (sbom.py, #420), naming exactly that package's bytes."""
+    receipts = json.loads((directory / 'sbom-receipts.json').read_text())['sboms']
+    if set(receipts) != set(packages):
+        raise ValueError('SBOMs differ from the release packages')
+    selected = []
+    for label, package in packages.items():
+        receipt = receipts[label]
+        name = 'putgd-' + release['version'] + '-' + label + '.cdx.json'
+        path = asset_path(directory, receipt['file'], '.cdx.json')
+        if receipt['file'] != name or sha256(path) != receipt['sha256'] or receipt['packageSha256'] != sha256(package):
+            raise ValueError('SBOM differs from its receipt or package: ' + label)
+        if json.loads(path.read_text())['metadata']['component'].get('hashes') != [{'alg': 'SHA-256', 'content': receipt['packageSha256']}]:
+            raise ValueError('SBOM names another package: ' + label)
+        selected.append((path, name))
+    return selected, receipts
 
 
 def verified_source(directory, release):
@@ -87,6 +104,7 @@ def collect(root, inputs, output, tag, repository=appimage_update.REPOSITORY):
     # Resolve everything before making an output directory or copying assets.
     selected = []
     receipts = {}
+    packages = {}
     for distro, kind, suffix in NATIVE_TARGETS:
         directory = inputs / ('release-native-' + distro)
         receipt = json.loads((directory / 'native-audit.json').read_text())
@@ -98,6 +116,7 @@ def collect(root, inputs, output, tag, repository=appimage_update.REPOSITORY):
             raise ValueError('Native asset bytes differ from audited receipt: ' + distro)
         name = 'putgd-' + release['version'] + '-' + distro + '-x86_64' + suffix
         selected.append((path, name))
+        packages[distro] = path
         receipts[distro] = receipt
     directory = inputs / 'release-appimage'
     receipt = json.loads((directory / 'appimage-build.json').read_text())
@@ -113,11 +132,13 @@ def collect(root, inputs, output, tag, repository=appimage_update.REPOSITORY):
     zsync = verified_zsync(directory, receipt, image, name, release, repository)
     selected.append((zsync, appimage_update.zsync_name(name)))
     receipts['appimage'] = receipt
+    sboms, receipts['sbom'] = verified_sboms(inputs / 'release-sbom', release, {**packages, 'appimage': image})
+    selected += sboms
     # The image is a GPL combined work: its codec sources ship beside it.
-    media_receipt = json.loads((directory / appimage_media_sources.RECEIPT_NAME).read_text())
-    media_source = appimage_media_sources.verify(directory, media_receipt, receipt)
-    selected.append((media_source, appimage_media_sources.archive_name(release['version'])))
-    receipts['appimageMediaSource'] = media_receipt
+    media_receipt = json.loads((directory / appimage_complete_sources.RECEIPT_NAME).read_text())
+    media_source = appimage_complete_sources.verify(directory, media_receipt, receipt)
+    selected.append((media_source, appimage_complete_sources.archive_name(release['version'])))
+    receipts['appimageCompleteSource'] = media_receipt
     source, source_receipt, source_build = verified_source(inputs / 'release-native-ubuntu24.04', release)
     selected.append((source, 'putgd-' + release['version'] + '-source.tar.gz'))
     receipts['source'] = source_receipt

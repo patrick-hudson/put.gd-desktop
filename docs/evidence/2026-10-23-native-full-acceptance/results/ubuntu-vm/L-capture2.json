@@ -1,0 +1,73 @@
+{
+ "kind": "region",
+ "operation": {
+  "id": "df8df537-71d0-40ee-9dce-6128745666cb",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-23-33-19.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:46655/fixture/afa/Screen-Capture-2026-10-22-23-33-19.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/lab/work/put.gd-nfa/runs/L/archive/images/Screen-Capture-2026-10-22-23-33-19.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": {
+  "bytes": 1544,
+  "sha256": "26f8fc57ec93eae07aaaced87ec3270579ee05c963f08166453218fb18f7d3e7",
+  "magic": true
+ },
+ "coverCheck": {
+  "deleted": true,
+  "edges": {
+   "bottom": 0.242,
+   "left": 1.0,
+   "right": 0.0656,
+   "top": 1.0
+  },
+  "fraction": 0.2917,
+  "minFraction": 0.5,
+  "ok": false,
+  "reason": "uncovered",
+  "rect": [
+   0,
+   0,
+   500,
+   320
+  ],
+  "size": [
+   500,
+   320
+  ]
+ },
+ "clipboard": "http://127.0.0.1:46655/fixture/afa/Screen-Capture-2026-10-22-23-33-19.png",
+ "linkCopied": true,
+ "linkServes": {
+  "status": 200,
+  "sha256": "26f8fc57ec93eae07aaaced87ec3270579ee05c963f08166453218fb18f7d3e7",
+  "matchesLocal": true
+ },
+ "historyEntry": {
+  "id": "f2cdd6a2-89fb-4659-a1a4-c431e9dc2a49",
+  "name": "Screen-Capture-2026-10-22-23-33-19.png",
+  "uploadStatus": "uploaded",
+  "local": "saved",
+  "linkAvailable": true
+ },
+ "notifications": []
+}

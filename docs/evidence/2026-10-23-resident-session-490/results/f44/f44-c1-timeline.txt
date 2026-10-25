@@ -1,0 +1,5 @@
+2026-10-23T20:23:16Z f44-c1 old resident 3292289 in session 14534
+2026-10-23T20:23:17Z f44-c1 old resident 3292289 gone 0.3 s after logout; session 14534: active
+2026-10-23T20:23:22Z f44-c1 relogin requested
+2026-10-23T20:23:28Z f44-c1 fresh resident(s): 3295217@None
+2026-10-23T20:23:37Z f44-c1 capture failed helper_unavailable []

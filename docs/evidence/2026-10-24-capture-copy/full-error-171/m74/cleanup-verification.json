@@ -1,0 +1,24 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "m74",
+  "utc": "2026-10-24T03:32:41.823479+00:00",
+  "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f",
+  "kernel": "6.14.0-37-generic",
+  "unchangedBaselineRuntimePackages": {
+    "cinnamon": "cinnamon 6.6.9+zena installed",
+    "kwin-wayland": "",
+    "plasma-workspace": "",
+    "libqt6core6t64": "libqt6core6t64 6.4.2+dfsg-21.1build5 installed",
+    "libgtk-4-1": "libgtk-4-1 4.14.5+ds-0ubuntu0.10 installed",
+    "gir1.2-gtk-4.0": ""
+  },
+  "removedOnlyOwnedNewPackages": [
+    "putgd",
+    "gir1.2-gtk-4.0"
+  ],
+  "passed": true,
+  "protectedW11bStillRunning": {
+    "pid": 308684,
+    "startTicks": "9741363"
+  }
+}

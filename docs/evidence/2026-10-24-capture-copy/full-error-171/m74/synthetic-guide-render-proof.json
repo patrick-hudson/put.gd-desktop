@@ -1,0 +1,8 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "m74-native-full-errors",
+  "actualNativeInput": true,
+  "minimumMainWindowWidth": 1060,
+  "narrowOwnCropWidth": 1056,
+  "scope": "saved actual in-app text, no external message annotation; synthetic rows labelled separately where used"
+}

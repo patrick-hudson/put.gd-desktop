@@ -71,6 +71,15 @@ it could not use the AWS session; see [Aurora VM](aurora-vm.md#fedora-45-golden)
 | `aurora-stable-44.20260908.1-v3-492c3f8945d1` (Fedora 44 base) | `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` | same name | none |
 | `aurora-stable-44.20260908.1-v2-af46889e2a54`, `-f9c006a376e1` (history) | see [Aurora VM](aurora-vm.md#goldens-on-f44) | same name | none |
 
+The KDE neon goldens are named directories like the Aurora ones. Each is on
+both builders and in S3 (`linux/<name>/<name>.qcow2.zst` and
+`<name>.manifest.json`); see [KDE neon VMs](neon-vm.md).
+
+| Name (profile `neon-kde-wayland`) | SHA-256 | Fedora `f44` | Debian `d69` |
+| --- | --- | --- | --- |
+| `neon-unstable-noble-20261023-d613510c07bd` (Plasma, Frameworks and Gear git master) | `9fef081035ca6691446672b2914c09ff4a7b4a4b359577a6087279b0d892e8f6` | same name; SHA-256 and sidecars verified 2026-10-23 (receipt `work/verification/golden-transfer-7b9fb1191be6`) | same name (made here) |
+| `neon-user-6.8.1-20261023-9ef808278853` (released Plasma 6.8.1) | `191852a5b552492daa9eac1093acd7e15578b0cc5374f4c9a660037af5863238` | same name (made here) | same name; SHA-256 and sidecars verified 2026-10-23 (receipt `work/verification/golden-transfer-6141be2a1211`) |
+
 ## Use a host copy in place
 
 On Fedora or Debian, pass the inventory's final `image.qcow2` path to the runner's

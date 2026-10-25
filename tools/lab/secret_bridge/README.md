@@ -105,6 +105,13 @@ is a terminal or regular file; this check cannot identify what a downstream
 pipe reader later chooses to do with its input, so the controller still owns
 the private pipe destination.
 
+On the lab builders, use `tools/lab/proton_lab.py lend` instead of driving the
+chain by hand. It takes the builder's Proton lock (`desktop_lock.py --resource
+proton`), provisions its signed-in session into one VM run, runs the test
+command, then collects, carries back and cleans up exactly as below, and
+`recover` finishes an interrupted lend from its receipts. The lab section of
+`docs/proton-drive.md` describes it.
+
 For a campaign that uses and refreshes the copied Proton session, retain a
 `ProtonSessionChain` in **one host process**. Import the module normally and:
 
@@ -122,6 +129,12 @@ chain.collect(run_b, guest_broker_b, next_reference)
 chain.carry_back(fresh_save_receipt_b)  # Exact host baseline comparison under the production lock.
 chain.cleanup(run_b, guest_broker_b, next_reference)
 ```
+
+`provision(..., reference=NAME)` reuses an earlier guest's exact
+`putgd-lab-UUIDv4` name instead of a new one, after that entry was cleaned up.
+put.gd binds a history entry's link operations to the reference it uploaded
+with, so this lets that guest finish its own operations, such as revoking its
+test link. The import still refuses an entry that exists.
 
 Every `provision` and `carry_back` now requires a distinct fresh receipt path,
 including guarded replacement of the source entry. The replacement receipt

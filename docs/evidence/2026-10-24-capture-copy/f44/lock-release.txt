@@ -1,0 +1,6 @@
+f44 (Fedora 44 GNOME Wayland): released
+  capture-copy-466-492-493-474 (t3-0aa1b31c), acquired 2026-10-24T01:32:35Z
+  purpose: Quiet exact extracted-RPM GNOME #493/#474; preserve DNF queue, temporary user helper and scoped relogin
+  note: 2 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1956962 2923548
+  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-24T01-58-06Z-release.json
+  Tell the next session in the queue and your coordinator

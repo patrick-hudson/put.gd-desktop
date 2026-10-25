@@ -224,10 +224,10 @@ Error S3Provider::readiness(const Destination& destination) const {
     if (!state_->credentials.cached(destination.profileId, destination.credentialReference)) return accessError();
     return {};
 }
-void S3Provider::checkName(const Destination& destination, const QString& candidate, std::function<void(NameCheck)> reply) {
+void S3Provider::checkName(const Destination& destination, const QString& candidate, std::function<void(NameCheck)> reply, std::shared_ptr<std::atomic_bool> cancellation) {
     reply = once(std::move(reply));
-    state_->run(*this, destination, {}, [destination, candidate, reply](S3Driver& driver) {
-        driver.checkName(destination, candidate, reply);
+    state_->run(*this, destination, cancellation, [destination, candidate, reply, cancellation](S3Driver& driver) {
+        driver.checkName(destination, candidate, reply, cancellation);
     }, [reply](Error error) { reply({"inconclusive", {}, {}, error}); });
 }
 void S3Provider::stat(const StorageReceipt& expected, std::function<void(StatResult)> reply) {

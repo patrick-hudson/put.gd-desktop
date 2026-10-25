@@ -137,6 +137,51 @@ private slots:
    }
   }
  }
+ void oneLevelCopiesDoNotTakeExplicitShift() {
+  // evdev maps KEY_DOLLAR (I442) and the keypad parentheses (I187/I188) to
+  // one-level keys. Shift cannot reach them, so Ctrl+Shift+$ is Ctrl+$ on the 4
+  // key, which is what KWin sends; registering Ctrl+Shift+$ never fired.
+  const QByteArray keys="<DOLR>=201; <KPLP>=202; <AE09>=18; <AD12>=35; <TLDE>=49;";
+  const QByteArray symbols=R"XKB(
+  key <DOLR> { type="ONE_LEVEL", [dollar] };
+  key <KPLP> { type="ONE_LEVEL", [parenleft] };
+  key <TLDE> { type="ONE_LEVEL", [asciitilde] };
+  key <AE09> { type="TWO_LEVEL", symbols[Group1]=[9,parenleft], symbols[Group2]=[ccedilla,9] };
+  key <AD12> { type="TWO_LEVEL", symbols[Group1]=[bracketright,braceright], symbols[Group2]=[dollar,sterling] };
+ )XKB";
+  auto map=compile(fixture(keys,symbols));QVERIFY(map);
+  const auto shift=Qt::ControlModifier|Qt::ShiftModifier;
+  for(const auto key:{Qt::Key_Dollar,Qt::Key_4}) {
+   const auto result=normalizeKdeShortcut(sequence(shift,key),map.get(),0);
+   QCOMPARE(result.error,QString());QCOMPARE(result.sequence,sequence(Qt::ControlModifier,Qt::Key_Dollar));
+  }
+  auto result=normalizeKdeShortcut(sequence(shift,Qt::Key_ParenLeft),map.get(),0);
+  QCOMPARE(result.error,QString());QCOMPARE(result.sequence,sequence(Qt::ControlModifier,Qt::Key_ParenLeft));
+  // The unshifted chord stays literal and reaches either copy.
+  result=normalizeKdeShortcut(sequence(Qt::ControlModifier,Qt::Key_Dollar),map.get(),0);
+  QCOMPARE(result.error,QString());QCOMPARE(result.sequence,sequence(Qt::ControlModifier,Qt::Key_Dollar));
+  // A French-style dollar key takes Shift (to sterling); the one-level copy
+  // used to make this ambiguous.
+  result=normalizeKdeShortcut(sequence(shift,Qt::Key_Dollar),map.get(),1);
+  QCOMPARE(result.error,QString());QCOMPARE(result.sequence,sequence(Qt::ControlModifier,static_cast<Qt::Key>(0x00a3)));
+  // With only a one-level copy, Shift stays in the chord as before.
+  result=normalizeKdeShortcut(sequence(shift,Qt::Key_AsciiTilde),map.get(),0);
+  QCOMPARE(result.error,QString());QCOMPARE(result.sequence,sequence(shift,Qt::Key_AsciiTilde));
+ }
+ void lessThanKeepsTheUnshiftedKey() {
+  // On ISO keyboards Ctrl+Shift+< is the extra key plus Shift (Ctrl+>), the
+  // form the recorder stores; comma's Shift level does not compete with it.
+  const QByteArray keys="<LSGT>=94; <AB08>=59;";
+  const QByteArray symbols=R"XKB(
+  key <LSGT> { type="TWO_LEVEL", [less,greater] };
+  key <AB08> { type="TWO_LEVEL", [comma,less] };
+ )XKB";
+  auto map=compile(fixture(keys,symbols));QVERIFY(map);
+  auto result=normalizeKdeShortcut(sequence(Qt::ControlModifier|Qt::ShiftModifier,Qt::Key_Less),map.get(),0);
+  QCOMPARE(result.error,QString());QCOMPARE(result.sequence,sequence(Qt::ControlModifier,Qt::Key_Greater));
+  result=normalizeKdeShortcut(sequence(Qt::ControlModifier|Qt::ShiftModifier,Qt::Key_Comma),map.get(),0);
+  QCOMPARE(result.error,QString());QCOMPARE(result.sequence,sequence(Qt::ControlModifier,Qt::Key_Less));
+ }
  void nonLatinLayoutsRetainEstablishedLiteralLetterWire() {
   auto text=fixture();
   text.replace("symbols[Group2]=[q,Q]","symbols[Group2]=[Cyrillic_a,Cyrillic_A]");
