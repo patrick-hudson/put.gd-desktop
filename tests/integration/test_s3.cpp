@@ -24,13 +24,12 @@ private slots:
         profile["credentials"] = f.destination.credentialReference;
         config["profiles"] = QJsonArray{profile};
         auto actions = config["actions"].toObject();
-        auto route = actions["clipboard"].toObject();
-        route["profileId"] = f.destination.profileId;
-        actions["clipboard"] = route;
         // The validator requires all upload actions to reference an existing profile.
-        for (const auto& key : actions.keys()) { auto action = actions[key].toObject(); action["profileId"] = f.destination.profileId; actions[key] = action; }
+        // Recording has only a shortcut and inherits the region route.
+        for (const auto& key : Settings::actionNames()) { auto action = actions[key].toObject(); action["profileId"] = f.destination.profileId; actions[key] = action; }
         config["actions"] = actions;
-        QVERIFY(settings.save(config, {}));
+        const auto saved = settings.save(config, {});
+        QVERIFY2(saved, qPrintable(saved.error.message));
         Source source; source.payload = textPayload();
         OperationService operations(f.directory.filePath("data"), settings, registry, source);
         PUTGD_TRY_VERIFY(operations.ready());
