@@ -55,6 +55,8 @@ ca560f64d378b3a82b992603d146a5dfdfbda1e1a417309035cc6988c3942165  ./lab/fault-ch
 f9c9e02b7e8cd30b3dd00fde56baac65efcb16de4a56bc5ba13cc194929fcbc1  ./lab/fault-checks/wrapper-tests-clean-archive.txt
 d17ca6d85f08766601e324c3091009d2e6ae08783dc7ae40198bfba19a15cb9f  ./lab/fault-checks/wrapper-tests-v2-clean-archive.txt
 2712d162b076e1980c5ac2e8c2a3e19a34285eacd619a544d719393ca4a07830  ./lab/fault-checks/wrapper-tests-v3-clean-archive.txt
+c1e54b9af4a64e181dfc56c721995cb16e3bbfecb6c767f6789f09b898eef1be  ./lab/fault-checks/wrapper-tests-v4-attempt1-af397820.txt
+d54ffef4ab03d930884e778e7df75cc914377801df909e5e328d26b7fe844955  ./lab/fault-checks/wrapper-tests-v4-clean-archive.txt
 699aa3c8b807fb8b63a481d38a96875d18aeb6cf04b204a0f1e0996c3bfaf025  ./lab/f-run.sh
 b263449cb8489612c2651ac2abe19edb0ade702d75e480ea9c4733872578bbc4  ./lab/f-run-v2.sh
 e3d0c0213dbd0412be9e8015279333aa8f95e799f451801964a76806bd215882  ./lab/f-run-v3.sh
@@ -94,6 +96,8 @@ f81ff84fe18867332f2338dc902b63eacea7c5c5e23e189b20a30df13cc85c53  ./lab/test_wra
 e349e6362323312548047f58ead237b3291fa0aee79e3e30f6df5c7cbdbe3692  ./lab/test_wrappers_v2.sh
 996e44c2ec16234963a9ae5fcb3b5e654c0ff47f452d8cd8dd9768ff02bf8c0d  ./lab/test_wrappers_v3_setup.sh
 d0de23054ad9edcc68eefdacd902985609d904858e26992e494d4131ff02ea15  ./lab/test_wrappers_v3.sh
+0e3fcc9c60b987cb2ae2e2bfeb94c5b7c3bd226e328369ddead26c89925a5274  ./lab/test_wrappers_v4_setup.sh
+a61182e5fa11498babade70bc0e2d0ae98ec7a757fc9f78a2ce6618b476fc8fb  ./lab/test_wrappers_v4.sh
 7f0089b47ba279a284c8a9592430944150c5120718f96df97dc9dbaffe2d8fcb  ./lab/thp_off.py
 408468d943b4befba5d645fdbfb4297b421389fcb727231319392e3339982526  ./m74/c1-installed-version.json
 b779d574e00fa2f94e444aba4533ed1543c4a1e7ffa7facf05928241cc8491f0  ./m74-ci/chain-ci.log
@@ -109,4 +113,4 @@ f99ae4405fcc6b979929ae08403c218d4894d49080a44bb959452586a5d68ceb  ./m74-ci/ident
 be0439e7de77abee678651feaf2fdef36dd19748f4c4a049a5708033ff770141  ./m74/release-receipt.sanitized.json
 3766234a86373aa0d5b946dea4c63c93fc44234cce3813b152b3b95a6e3753bb  ./m74/t1-RETRY-NOTE.txt
 7f996f2fdbf70dd584c9a334b9d50b1f688e0e296daa24a2481771c9980c8963  ./m74/t2-installed-version.json
-5f8b431f2c91a134e96c77f978e76fd992e59ba3f183a0b097af0d941f65d0b5  ./README.md
+cc619c62f2c4a2a1eaf1f4d8a2bb4456069309444d6f36a48e276f244ceaad5d  ./README.md
