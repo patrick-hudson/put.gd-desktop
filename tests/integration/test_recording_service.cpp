@@ -255,6 +255,44 @@ private slots:
   h.backend->sink({{"id",id},{"event","cancelled"}});
   PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QCOMPARE(h.backend->exports,0);PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
  }
+ void liveDiskStopKeepsTriggerFiguresAndPrivateReview(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  constexpr qint64 gib=1LL<<30;
+  auto reset=qScopeGuard([]{ArtifactStore::setDiskForTesting(-1,-1);});
+  ArtifactStore::setDiskForTesting(400*gib,1000*gib);
+  auto doc=configuration(h.dir.path(),true);auto limits=doc["limits"].toObject();limits["maxFileBytes"]=gib;doc["limits"]=limits;QVERIFY(h.settings.save(doc,h.settings.revision()));
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
+  QVERIFY(!h.rec("pause",{{"id",id}}).error);
+  const QJsonObject sample{{"reason","disk_space"},{"freeBytes",1160LL<<20},{"reserveBytes",gib},{"availableBytes",136LL<<20},{"requiredBytes",160LL<<20},{"finalizationReserveBytes",32LL<<20},{"clipBytes",12LL<<20}};
+  h.backend->sink({{"id",id},{"event","stopped"},{"reason","budget"},{"durationUs",3000000},{"canvas",QJsonArray{1280,720}},{"stopDetails",sample}});
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  const auto inspected=h.rec("inspect",{{"id",id}}).result;
+  const auto details=inspected["stopDetails"].toObject();
+  for(auto it=sample.begin();it!=sample.end();++it)QCOMPARE(details[it.key()],it.value());
+  QVERIFY(details["message"].toString().contains("private review"));
+  QCOMPARE(h.backend->lastControlParams["text"],details["message"]);
+  QCOMPARE(h.rec("stop",{{"id",id}}).result,inspected);
+  HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).state,QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.backend->exports,0);QCOMPARE(h.provider->uploads.load(),0);
+  QVERIFY(!h.rec("preview",{{"id",id},{"time",0}}).error);
+  // A failed local export leaves the review; retry is still explicitly local.
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("copy.mp4")}}).error);
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["lastExport"].toObject()["status"].toString(),QString("failed"));
+  h.backend->failExport=false;
+  QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("copy.mp4")}}).error);
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QVERIFY(QFileInfo::exists(h.dir.filePath("copy.mp4")));QVERIFY(journal.operation(id).items.isEmpty());
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QCOMPARE(h.provider->uploads.load(),0);
+ }
+ void diskFinalizationFailureDoesNotClaimReviewOrUpload(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
+  const Error failure{"recording_disk_full","The clip could not be finalized; nothing was uploaded",{{"reason","disk_space"},{"freeBytes",0},{"finalized",false}}};
+  h.backend->sink({{"id",id},{"event","failed"},{"error",failure.toJson()}});
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));
+  QCOMPARE(journal.operation(id).error.code,failure.code);
+  for(auto it=failure.details.begin();it!=failure.details.end();++it)QCOMPARE(journal.operation(id).error.details[it.key()],it.value());
+  QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.backend->exports,0);QCOMPARE(h.provider->uploads.load(),0);
+ }
  // #283: recording.review works the window's controls; the edit a control
  // proposes reaches the resident before the window answers, so the reply
  // carries the edit it produced. While exporting only inspect is allowed.

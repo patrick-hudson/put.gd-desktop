@@ -37,6 +37,7 @@ public:
 signals:
     void event(const QJsonObject&);
 private:
+    friend class RecordingStorageContract;
     void prepare(const QJsonObject& params, Reply);
     // A region without a rectangle: the X11 drag surface or, on KDE Wayland, the
     // layer-shell screenshot selector; the stream starts only after the choice.

@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QElapsedTimer>
+#include <QStorageInfo>
 #include <algorithm>
 #include <gst/base/gstbasesrc.h>
 #include <ctime>
@@ -254,6 +255,8 @@ Error RecordingPipeline::start(const Options& options) {
     output_ = options.output;
     budget_ = options.budgetBytes;
     budgetSignalled_ = false;
+    diskStop_ = {};
+    storageClock_.invalidate();
     stopping_ = false;
     QStringList failures;
     QString audioEncoder = options.audio && !options.audioEncoders.isEmpty() ? options.audioEncoders.first() : QString();
@@ -281,6 +284,13 @@ qint64 RecordingPipeline::retainedUs() const {
     return last < 0 || first < 0 ? 0 : (last - first + frameDurationNs_) / 1000;
 }
 qint64 RecordingPipeline::fileBytes() const { return QFileInfo(output_).size(); }
+RecordingStorage RecordingPipeline::storage() const {
+    if (storageProbe_) return storageProbe_();
+    QStorageInfo volume(QFileInfo(output_).absolutePath());
+    volume.refresh();
+    return {volume.isValid() && volume.isReady() ? volume.bytesAvailable() : -1,
+            volume.isValid() ? volume.bytesTotal() : -1, fileBytes()};
+}
 QJsonObject RecordingPipeline::status() const {
     return {{"durationUs", double(retainedUs())}, {"bytes", double(fileBytes())}, {"paused", timeline_.paused()}, {"encoder", encoder_}, {"audioEncoder", audioEncoder_}};
 }
@@ -343,7 +353,22 @@ void RecordingPipeline::poll() {
         }
         GError* e = nullptr; gchar* debug = nullptr;
         gst_message_parse_error(message, &e, &debug);
-        const Error error{"recording_failed", QStringLiteral("Capture failed: %1").arg(e ? QString::fromUtf8(e->message) : QString()), {{"debug", QString::fromUtf8(debug ? debug : "").left(512)}}};
+        Error error{"recording_failed", QStringLiteral("Capture failed: %1").arg(e ? QString::fromUtf8(e->message) : QString()), {{"debug", QString::fromUtf8(debug ? debug : "").left(512)}}};
+        const auto disk = storage();
+        // A previous low-space stop is context, not evidence that a later
+        // encoder/source/drain error was caused by storage. Even a generic WRITE
+        // failure plus low free space does not establish ENOSPC. Keep its diagnosis.
+        if (e && e->domain == GST_RESOURCE_ERROR && e->code == GST_RESOURCE_ERROR_NO_SPACE_LEFT) {
+            const auto cause = error.toJson();
+            error = {"recording_disk_full", "The disk filled before the recording could be finalized. No reviewable clip was retained and nothing was uploaded. Free up space and try again.", disk.toJson()};
+            error.details["reason"] = "disk_space";
+            error.details["finalized"] = false;
+            error.details["cause"] = cause;
+        }
+        if (!diskStop_.isEmpty()) {
+            error.details["stopDetails"] = diskStop_;
+            error.details["finalized"] = false;
+        }
         if (e) g_error_free(e);
         g_free(debug);
         gst_message_unref(message);
@@ -355,7 +380,22 @@ void RecordingPipeline::poll() {
         return;
     }
     gst_object_unref(bus);
-    if (budget_ > 0 && !budgetSignalled_ && !stopping_ && fileBytes() >= budget_) { budgetSignalled_ = true; emit budgetReached(); }
+    if (budgetSignalled_ || stopping_) return;
+    const bool byteLimit = budget_ > 0 && fileBytes() >= budget_;
+    // Refresh at a byte stop too: simultaneous pressure must name the disk,
+    // rather than choosing a stale sample just inside the periodic interval.
+    if (byteLimit || !storageClock_.isValid() || storageClock_.elapsed() >= RecordingStorage::pollMs) {
+        storageClock_.start();
+        const auto disk = storage();
+        if (disk.low()) {
+            diskStop_ = disk.toJson();
+            diskStop_["reason"] = "disk_space";
+            budgetSignalled_ = true;
+            emit budgetReached(diskStop_);
+            return;
+        }
+    }
+    if (byteLimit) { budgetSignalled_ = true; emit budgetReached({}); }
 }
 void RecordingPipeline::tearDown() {
     bus_.stop();

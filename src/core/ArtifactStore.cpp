@@ -1,4 +1,5 @@
 #include "ArtifactStore.h"
+#include "DiskSpace.h"
 #include "UploadNaming.h"
 #include <QBuffer>
 #include <QCryptographicHash>
@@ -44,7 +45,7 @@ QString size(qint64 bytes) {
 }
 QJsonObject ArtifactStore::DiskBudget::toJson() const {return {{"freeBytes",double(freeBytes)},{"totalBytes",double(totalBytes)},{"reserveBytes",double(reserveBytes)},{"reservedBytes",double(reservedBytes)},{"availableBytes",double(available())}};}
 QString ArtifactStore::sizeText(qint64 bytes) {return size(bytes);}
-qint64 ArtifactStore::reserveFor(qint64 total) {constexpr qint64 gib=1LL<<30;return qMax(gib,qMin(total>0?total*5/100:0,4*gib));}
+qint64 ArtifactStore::reserveFor(qint64 total) {return systemDiskReserve(total);}
 ArtifactStore::DiskBudget ArtifactStore::diskBudget(const QString& path) {
  DiskBudget budget;QStorageInfo volume(path);volume.refresh();
  budget.freeBytes=freeOverride.load()>=0?freeOverride.load():volume.isValid()?volume.bytesAvailable():-1;

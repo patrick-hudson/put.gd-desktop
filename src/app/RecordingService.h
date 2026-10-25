@@ -99,7 +99,7 @@ private:
     void fail(Error);
     void cancelActive(JsonReply);
     void handleEvent(const QJsonObject&);
-    void stoppedOnBudget(Session&);
+    void stoppedOnBudget(Session&, const QJsonObject& observed = {});
     void prepareSession(const QJsonObject& params, JsonReply);
     // After the durable intent: a shell selection when needed, then the backend.
     void beginPrepare(quint64 generation);
