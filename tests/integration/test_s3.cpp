@@ -45,13 +45,16 @@ private slots:
         operations.cancel(id, [&](Error error, QJsonObject) { QVERIFY(!error); acknowledged = true; });
         PUTGD_TRY_VERIFY(acknowledged);
         PUTGD_TRY_COMPARE(history.operation(id).state, QString("cancelled"));
+        // The journal write precedes the session-thread completion callback.
+        // Include releasing the active slot in the prompt cancellation bound.
+        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
         qInfo() << "stalled HEAD cancelTerminalMs" << elapsed.elapsed();
         QVERIFY2(elapsed.elapsed() < 5000, "Cancellation must finish well before the 120 s request timeout or 30 s fixture delay");
         QCOMPARE(f.events("HEAD").size(), 1);
         QVERIFY(f.events("PUT").isEmpty());
         QCOMPARE(source.copies, 0);
         bool retried = false;
-        operations.retry(id, [&](Error error, QJsonObject) { QVERIFY(!error); retried = true; });
+        operations.retry(id, [&](Error error, QJsonObject) { QVERIFY2(!error, qPrintable(error.code)); retried = true; });
         PUTGD_TRY_VERIFY(retried);
         PUTGD_TRY_COMPARE(history.operation(id).state, QString("completed"));
         QCOMPARE(history.operation(id).items[0].candidate, candidate);
