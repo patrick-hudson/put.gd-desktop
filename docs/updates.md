@@ -81,8 +81,13 @@ channel*, which named the channel it resolved to since
   release, *Nightly* on a nightly. Choosing the other one watches it instead,
   and an AppImage then offers to [switch](#switching-channels). A build that never checks
   hides the choice and the section says why. A DEB or RPM whose pkg.put.gd repository file is in
-  use shows that file's channel instead, without a choice, and **Other channel** lists the
-  terminal commands that move it ([how](package-repositories.md#switching-channels)).
+  use reads that local file at startup and shows its channel immediately, without a
+  choice or a network request. **Other channel** lists the terminal commands that move
+  it ([how](package-repositories.md#switching-channels)). This also works with daily
+  checks turned off. Local ownership is refreshed around each update check, even if
+  the feed request fails. A missing, disabled, foreign or malformed repository file
+  leaves the manual channel setting in control. The stored setting is preserved for
+  manual installs sharing the configuration; detecting a repository never rewrites it.
 - **Status:** the last result, when it was checked and when the next check runs, with
   **Check now**.
 - **Download** and **Release notes:** shown when there is a newer version.

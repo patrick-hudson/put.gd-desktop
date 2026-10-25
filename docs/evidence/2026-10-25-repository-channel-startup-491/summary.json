@@ -1,0 +1,201 @@
+{
+  "source": {
+    "schemaVersion": 1,
+    "version": "26.1025.1256-dev+g29496f587182",
+    "baseVersion": "26.1025.1256",
+    "packageVersion": "26.1025.1256~dev+g29496f587182",
+    "gitCommit": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+    "gitTree": "c8d83f965c9e8314111665516497784671206f89",
+    "commitCount": 1256,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "codePr": "https://github.com/patrick-hudson/put.gd-desktop/pull/563",
+  "releaseAcceptance": "blocked: no authorized tagged artifact containing the fix",
+  "hosts": {
+    "f44": {
+      "buildRoot": "/home/patrick/work/i491",
+      "target": "fedora44",
+      "preset": "dev",
+      "cleanGit": true,
+      "packages": [
+        "package fedora-release is not installed",
+        "gnome-shell-50.6-1.fc44.x86_64",
+        "qt6-qtbase-6.11.2-3.fc44.x86_64",
+        "gcc-c++-16.2.1-2.fc44.x86_64"
+      ],
+      "binarySha256": {
+        "build/dev/putgd": "00ddab474df344c286f92a4831f16485cd8f12a21f4f40389e735284bfdfd843",
+        "build/dev/putgd-cli": "9e89788274a579a9330eff75c2edd637668315175b098b2a7c9484265a854c52",
+        "build/dev/putgd-ui": "5c9050c33ccdab4300649a8e8666a412da6eb2a6cb31a6b7db5e431960010dfc",
+        "build/dev/test_update_service": "d843ba800243894a4b0a775e330f0b2e20ca35098ec006dd44cac64caf3b89f3",
+        "build/dev/test_gui_settings": "7050765e939f7f57fcb56f04eb5bf92b535f37038cf22c4bbdbf5f0b28387282"
+      },
+      "ctest": [
+        {
+          "name": "update_feed_contract",
+          "seconds": 0.07588,
+          "passed": true
+        },
+        {
+          "name": "update_check_request",
+          "seconds": 0.116137,
+          "passed": true
+        },
+        {
+          "name": "update_service_schedule",
+          "seconds": 2.73074,
+          "passed": true
+        },
+        {
+          "name": "update_system_repository",
+          "seconds": 0.0196373,
+          "passed": true
+        },
+        {
+          "name": "gui_settings",
+          "seconds": 109.566,
+          "passed": true
+        }
+      ],
+      "cleanup": {
+        "event": "release",
+        "at": "2026-10-25T04:23:31Z",
+        "session": "codex-491-f44",
+        "acquired": "2026-10-25T04:21:17Z",
+        "newItemsLeft": 0,
+        "notMineExemptions": 0,
+        "originalReceipt": "/home/patrick/putgd-lab/locks/history/2026-10-25T04-23-31Z-release.json"
+      },
+      "sockets": {
+        "schemaVersion": 1,
+        "passed": true,
+        "limitBytesExcludingNul": 107,
+        "paths": [
+          {
+            "path": "/tmp/i491t.DGnnG6/runtime/putgd/session.sock",
+            "utf8Bytes": 44,
+            "passed": true
+          }
+        ]
+      }
+    },
+    "d69": {
+      "buildRoot": "/home/patrick/work/i491",
+      "target": "debian13",
+      "preset": "dev",
+      "cleanGit": true,
+      "packages": [
+        "g++\t4:14.2.0-1",
+        "kwin-wayland\t4:6.3.6-1",
+        "plasma-workspace\t4:6.3.6-2",
+        "qt6-base-dev:amd64\t6.8.2+dfsg-9+deb13u2"
+      ],
+      "binarySha256": {
+        "build/dev/putgd": "69b2c518b40515d6f009429567cab4152a874169123091cdca8972a5b059cc61",
+        "build/dev/putgd-cli": "235db76235ab33b9efa45e7b0c765df047eba91f93fb57ada31f651ff591d832",
+        "build/dev/putgd-ui": "655373140b090a48496119ebddeae595134f3189a11af5c7369823f16224b05a",
+        "build/dev/test_update_service": "9e03cdcfab1e1bfcaad199fadf893c0da2431d27d43d81c3dd364c7619d6ed7d",
+        "build/dev/test_gui_settings": "aa22831c5a26a4ce9404d5fb11b0bdebc63f90795e0e779a417a821fbff88255"
+      },
+      "ctest": [
+        {
+          "name": "update_feed_contract",
+          "seconds": 0.0167068,
+          "passed": true
+        },
+        {
+          "name": "update_check_request",
+          "seconds": 0.122797,
+          "passed": true
+        },
+        {
+          "name": "update_service_schedule",
+          "seconds": 3.87779,
+          "passed": true
+        },
+        {
+          "name": "update_system_repository",
+          "seconds": 0.0169314,
+          "passed": true
+        },
+        {
+          "name": "gui_settings",
+          "seconds": 95.3515,
+          "passed": true
+        }
+      ],
+      "cleanup": {
+        "event": "release",
+        "at": "2026-10-25T04:24:17Z",
+        "session": "codex-491-d69",
+        "acquired": "2026-10-25T04:23:42Z",
+        "newItemsLeft": 0,
+        "notMineExemptions": 0,
+        "originalReceipt": "/home/patrick/putgd-lab/locks/history/2026-10-25T04-24-17Z-release.json"
+      },
+      "sockets": {
+        "schemaVersion": 1,
+        "passed": true,
+        "limitBytesExcludingNul": 107,
+        "paths": [
+          {
+            "path": "/tmp/i491t.QZ7Sp9/runtime/putgd/session.sock",
+            "utf8Bytes": 44,
+            "passed": true
+          }
+        ]
+      }
+    }
+  },
+  "mcp": {
+    "host": "f44",
+    "tests": 5,
+    "seconds": 22.621,
+    "passed": true,
+    "scope": "official SDK stdio adapter and production CLI; synthetic Unix-session peers, not full live-agent acceptance",
+    "sockets": {
+      "schemaVersion": 1,
+      "passed": true,
+      "limitBytesExcludingNul": 107,
+      "paths": [
+        {
+          "path": "/tmp/i491m.eDodUt/putgd mcp socket XXXXXXXX/session socket",
+          "utf8Bytes": 58,
+          "passed": true
+        }
+      ]
+    }
+  },
+  "privateEvidence": {
+    "work/491/f44-evidence.tgz": "66142068abebbc17b41bdbe827dd6ef67e8d17aa9253a15779943ec357e8a515",
+    "work/491/f44-evidence-v2.tgz": "c923b31af45049e86354659fa698db05a91e3a4feb51bb9f46653552b3297271",
+    "work/491/d69-evidence.tgz": "6ed0d807b75e7c0440bdf93c8e07053f0e41a1d1cb674f5db1c6e83c29562f7a",
+    "work/491/native-widget-initial.py": "624298902b1dcaa137cba4a3a69c359a52751173d580aeee6dd14b7e771177ec",
+    "work/491/native-widget-wholeframe.py": "870fcbf18895893bf926426fe91f5774f101bfa5d10f1cea24b6d2ed5baa5467",
+    "work/491/native-widget.py": "05ddd59c94abb60299698082521400f35ec35a8295992bf1bc84e9b3f35be4af"
+  },
+  "pictures": {
+    "manual-with-choice.png": "6c2294b483b3beb8df87d6206e18a93833940b3d4b2a79d694dc609f0a2a9fd6",
+    "fresh-repository.png": "03fdb4e1769edcfdbe50057e12a57cb122ff620b6f3befe52a101f3475be87a6",
+    "repository-with-manual-choice.png": "8f287fd6ced2b96cb0ce422c89e32da9363982e1e62c7cf3df1386627fd30e8c",
+    "fresh-manual.png": "1029f851f4eb166d57744c005408c3d94ec350f8102fba327350719b6b2b9644"
+  },
+  "ci": {
+    "codeHead": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+    "requiredSummary": "SUCCESS",
+    "completedPassing": [
+      "contracts",
+      "linux (24.04)",
+      "linux (26.04)",
+      "sanitizers (clang ASan/UBSan)",
+      "portable (windows-2022)"
+    ],
+    "skipped": [
+      "packages",
+      "prune caches",
+      "pipewire"
+    ],
+    "scope": "CI success does not establish native release-package acceptance"
+  }
+}
