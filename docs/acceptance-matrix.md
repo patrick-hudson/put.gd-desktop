@@ -58,6 +58,38 @@ XWayland or `QT_QPA_PLATFORM=xcb` inside a Wayland session does not establish a
 native GNOME/X11 or KDE/X11 result. Verify the actual login session/compositor
 and Qt platform, along with the OS and desktop versions, in the evidence.
 
+## Package format for issue acceptance
+
+Acceptance for a single issue or pull request runs the exact candidate
+**AppImage** on each required desktop by default. One image runs unchanged on
+every distro, so a difference between desktops comes from the desktop rather
+than from a different build, and the hosts need no install or removal. The
+AppImage still uses the host's glibc, compositor, portals, D-Bus, AT-SPI and
+clipboard.
+
+Use the matching native DEB or RPM as well, on every desktop the issue
+concerns, when the change or the finding involves:
+
+- packaging: dependencies, maintainer scripts, the apt/dnf repositories,
+  signing, upgrade or removal;
+- the distro's own Qt, platform theme or accessibility stack (for example the
+  Qt 6.4 AT-SPI gaps on Debian);
+- the distro's GStreamer or FFmpeg (recording);
+- desktop integration that differs by format: the installed desktop entry,
+  icons, link handlers, autostart or the update path;
+- a memory budget. The AppImage maps a different set of libraries, so its
+  RSS/PSS is not what a native-package user sees; keep at least one native row.
+
+A native-only regression report is accepted on the native package where it was
+reported. Record the package format and its SHA-256 in every row; never present
+an AppImage result as native evidence or the reverse.
+
+This sets the default for issue-level runs only. The release profiles below
+are unchanged: the [screen recording rows](#screen-recording-rows), the
+[Linux update profile](#linux-update-profile-u1u16) and the
+[native package full-acceptance profile](#native-package-full-acceptance-profile)
+still test each format, and the AppImage profile does not replace them.
+
 ## Screen recording rows
 
 Recording ([recording](recording.md)) is accepted per package format, because
