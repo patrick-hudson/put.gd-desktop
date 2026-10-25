@@ -36,7 +36,7 @@ class AppRunTest(unittest.TestCase):
                         XDG_DATA_DIRS=str(self.host_data),
                         XDG_CURRENT_DESKTOP="KDE", PATH=str(self.root / "bin") + ":" + os.environ["PATH"],
                         PG_TEST_RECEIPT=str(self.receipt))
-        for name in ("WAYLAND_DISPLAY", "XDG_SESSION_TYPE", "APPIMAGE"):
+        for name in ("DISPLAY", "WAYLAND_DISPLAY", "XDG_SESSION_TYPE", "APPIMAGE"):
             self.env.pop(name, None)
         self.write(self.root / "bin/kbuildsycoca6", "#!/bin/sh\nexit 0\n")
 
@@ -243,6 +243,22 @@ exit 0
         # No staged copy and no KDE permission entry off Plasma.
         self.assertEqual(listing.split("parent=")[0].split(), ["putgd-record.desktop", "putgd-ui.desktop"])
         self.assertEqual(self.entries(), [])
+
+    def test_x11_registers_window_icons_and_cleans_them(self):
+        self.mount_windowed_helpers()
+        self.env.update(XDG_CURRENT_DESKTOP="X-Cinnamon")
+        self.write(self.app / "usr/bin/putgd-launcher", """#!/bin/sh
+cat "$XDG_DATA_HOME/applications/putgd-ui.desktop" > "$PG_TEST_RECEIPT"
+cat "$XDG_DATA_HOME/applications/putgd-record.desktop" >> "$PG_TEST_RECEIPT"
+""")
+        for session in ({"DISPLAY": ":0"}, {"XDG_SESSION_TYPE": "x11"}):
+            with self.subTest(session=session):
+                self.assertEqual(subprocess.run([str(APP_RUN)], env=dict(self.env, **session)).returncode, 0)
+                receipt = self.receipt.read_text()
+                self.assertIn("StartupWMClass=putgd-ui", receipt)
+                self.assertIn("StartupWMClass=putgd-record", receipt)
+                self.assertEqual(receipt.count("Icon=" + str(self.app / portable.WINDOW_ICON)), 2)
+                self.assertEqual(self.entries(), [])
 
     def test_wayland_session_type_alone_adds_icon_entries(self):
         self.mount_windowed_helpers()

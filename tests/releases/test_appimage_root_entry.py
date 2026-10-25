@@ -87,6 +87,7 @@ class RootDesktopEntryTest(unittest.TestCase):
         text = (ROOT / "packaging/appimage/putgd.desktop").read_text()
         self.assertNotIn("NoDisplay", text)
         self.assertNotIn("Hidden", text)
+        self.assertIn("StartupWMClass=putgd-ui\n", text)
 
 
 if __name__ == "__main__":

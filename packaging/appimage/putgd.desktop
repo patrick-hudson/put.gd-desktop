@@ -7,3 +7,4 @@ Icon=putgd
 Terminal=false
 Categories=Utility;Graphics;
 StartupNotify=true
+StartupWMClass=putgd-ui
