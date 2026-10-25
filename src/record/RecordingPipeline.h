@@ -1,5 +1,7 @@
 #pragma once
 #include "PauseTimeline.h"
+#include "RecordingStorage.h"
+#include <QElapsedTimer>
 #include "core/Error.h"
 #include <QJsonObject>
 #include <QObject>
@@ -60,7 +62,7 @@ public:
     QJsonObject status() const;
 signals:
     void failed(putgd::Error);
-    void budgetReached();
+    void budgetReached(QJsonObject details);
 private:
     // Lab statistics for PUTGD_RECORD_DEBUG_LOG, written on streaming threads and read after teardown.
     struct Spread { gint64 count = 0, min = 0, max = 0, sum = 0; void add(gint64); QString text() const; };
@@ -71,6 +73,7 @@ private:
     bool launch(const Options&, const QString& encoder, const QString& audioEncoder, QString& failure);
     void poll();
     void tearDown();
+    RecordingStorage storage() const;
     // The pipeline's running time now, or -1 before it has a clock.
     gint64 runningTime() const;
     GstElement* pipeline_ = nullptr;
@@ -85,6 +88,8 @@ private:
     gint64 frameDurationNs_ = 0;
     QString encoder_, audioEncoder_, output_;
     qint64 budget_ = 0;
+    QElapsedTimer storageClock_;
+    QJsonObject diskStop_;
     bool stopping_ = false, budgetSignalled_ = false;
     std::function<void(Error, qint64)> stopCallback_;
 };

@@ -2,6 +2,7 @@
 #include "core/Settings.h"
 #include "core/UploadNaming.h"
 #include "core/ArtifactStore.h"
+#include "record/RecordingStorage.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QTemporaryDir>
@@ -14,6 +15,27 @@ class RecordingModelContract final : public QObject {
         return {{"kind", kind}, {"rect", QJsonArray{x, y, w, h}}, {"start", start}, {"end", end}};
     }
 private slots:
+    void liveDiskBudgetLeavesFinalizationAndCopies() {
+        using record::RecordingStorage;
+        constexpr qint64 mib = 1LL << 20, gib = 1LL << 30;
+        RecordingStorage disk{2 * gib, 8 * gib, 12 * mib};
+        QCOMPARE(disk.reserveBytes(), ArtifactStore::reserveFor(disk.totalBytes));
+        QCOMPARE(disk.requiredBytes(), 192 * mib);
+        QVERIFY(!disk.low());
+        // A competing writer crosses the guard before either ENOSPC or the
+        // prepare-time clip cap, including when the paused clip isn't growing.
+        disk.freeBytes = gib + 192 * mib + 1; QVERIFY(!disk.low());
+        --disk.freeBytes; QVERIFY(disk.low());
+        QCOMPARE(disk.toJson()["clipBytes"].toInteger(), 12 * mib);
+        disk.clipBytes = 256 * mib;
+        QCOMPARE(disk.requiredBytes(), 576 * mib);
+        disk.freeBytes = gib + 576 * mib; QVERIFY(disk.low());
+        disk.freeBytes = 0; QVERIFY(disk.low());
+        disk.freeBytes = -1; QVERIFY(!disk.low()); // Unknown is not zero.
+        QCOMPARE(disk.availableBytes(), -1);
+        disk.clipBytes = std::numeric_limits<qint64>::max();
+        QCOMPARE(disk.requiredBytes(), std::numeric_limits<qint64>::max());
+    }
     void transitionsFollowTheRecordingLifecycle() {
         QVERIFY(!recording::checkTransition("ready", "start"));
         QVERIFY(!recording::checkTransition("recording", "pause"));

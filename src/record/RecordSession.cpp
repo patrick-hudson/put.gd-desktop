@@ -65,19 +65,33 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
         if (bar_) bar_->hide();
         emit event({{"event", "failed"}, {"error", error.toJson()}});
     });
-    connect(&pipeline_, &RecordingPipeline::budgetReached, this, [this] {
+    connect(&pipeline_, &RecordingPipeline::budgetReached, this, [this](QJsonObject details) {
         // The admitted byte budget is nearly spent: finish the clip and open review.
         showBar("stopping");
-        pipeline_.stop([this](Error error, qint64 durationUs) {
+        pipeline_.stop([this, details](Error error, qint64 durationUs) {
             progress_.stop();
             barTimer_.stop();
             bounds_.hideAll();
             if (bar_) bar_->hide();
-            if (error || durationUs < 1) { emit event({{"event", "failed"}, {"error", (error ? error : Error{"recording_failed", "The clip could not be finalized", {}}).toJson()}}); return; }
+            // A bounded EOS timeout can leave an unindexed Matroska clip. For a
+            // disk stop, verify it decodes before promising private review.
+            if (!error && durationUs > 0 && !details.isEmpty()) {
+                QImage frame;
+                error = previewFrame(workingClip_, {}, config_, 0, 64, resolved_.canvas, frame);
+            }
+            if (error || durationUs < 1) {
+                if (!details.isEmpty()) {
+                    auto failure = details;
+                    failure["finalized"] = false;
+                    failure["cause"] = error.toJson();
+                    error = {"recording_disk_full", "Recording stopped for low disk space, but the clip could not be finalized for review. Nothing was uploaded. Free up space and try again.", failure};
+                }
+                emit event({{"event", "failed"}, {"error", (error ? error : Error{"recording_failed", "The clip could not be finalized", {}}).toJson()}}); return;
+            }
             durationUs_ = durationUs;
             recorded_ = true;
             openReview();
-            emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"reason", "budget"}});
+            emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"reason", "budget"}, {"stopDetails", details}});
         });
     });
 }
