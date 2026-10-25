@@ -330,7 +330,8 @@ def history(run):
                 image = Image.open(original).convert('RGBA')
                 require(paste['pixelSha256'] == hashlib.sha256(image.tobytes()).hexdigest() and
                         (paste['width'], paste['height']) == image.size, 'copy_image_independent_pixels_mismatch')
-                run.event('copy-image-independent-verification', historyId=selected['id'], **paste)
+                run.event('copy-image-independent-verification', historyId=selected['id'],
+                          **{('clipboardKind' if key == 'kind' else key): value for key, value in paste.items()})
                 ui.save('history-copy-image')
         assess(run, 'historyPreviewP95UpperBoundMs', percentile(previews))
         # Deletion is scoped to one exact seed receipt on the independently
