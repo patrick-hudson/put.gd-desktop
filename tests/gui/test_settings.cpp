@@ -1054,7 +1054,7 @@ private slots:
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);fixture.server.setUpdateService(&updates);
   fixture.server.setUiDiagnostics([&]{return QJsonObject{{"update",updates.status()}};});
   fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(fixture.session.diagnostics()["update"].isObject());
-  MainWindow window(fixture.session);window.navigate("settings");window.show();window.settings()->showUpdates();PUTGD_TRY_VERIFY(fixture.session.ready());
+  MainWindow window(fixture.session);window.resize(1100,700);window.navigate("settings");window.show();window.settings()->showUpdates();PUTGD_TRY_VERIFY(fixture.session.ready());
   auto* channel=window.findChild<QComboBox*>("updateChannel");auto* source=window.findChild<QLabel*>("updateChannelSource");
   auto* text=window.findChild<QLabel*>("otherChannelText");auto* line=window.findChild<QLabel*>("updateStatus");
   QVERIFY(channel&&source&&text&&line);
