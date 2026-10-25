@@ -1,0 +1,15 @@
+{
+  "Id": "906",
+  "Type": "wayland",
+  "Seat": "seat0",
+  "Desktop": "KDE",
+  "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+  "TimestampMonotonic": "31018816964",
+  "Leader": "128842",
+  "shell": {
+    "pid": 129168,
+    "exe": "/usr/bin/plasmashell",
+    "startTicks": 3102035
+  },
+  "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+}

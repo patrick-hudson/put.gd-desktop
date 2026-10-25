@@ -1,0 +1,66 @@
+{
+  "scenario": "submitted-editor-queued-burst-559",
+  "passed": false,
+  "source": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+  "run": "/tmp/q559f2",
+  "driverSha256": "a7a33ac38217a9c5b18c35769a6cc0c80f20913ce65813cab2def9ff51b21569",
+  "command": [
+    "queued_burst.py",
+    "/home/patrick/work/i559",
+    "/home/patrick/work/i559/build/dev",
+    "/tmp/q559f2",
+    "5901"
+  ],
+  "startedUtc": "2026-10-25T04:36:46Z",
+  "checks": {
+    "coverFocusPixel": true,
+    "captureRectPrecheck": false
+  },
+  "host": "fedora",
+  "osRelease": "NAME=\"Fedora Linux\"\nVERSION=\"44 (Workstation Edition)\"\nRELEASE_TYPE=stable\nID=fedora\nVERSION_ID=44\nVERSION_CODENAME=\"\"\nPRETTY_NAME=\"Fedora Linux 44 (Workstation Edition)\"\nANSI_COLOR=\"0;38;2;60;110;180\"\nLOGO=fedora-logo-icon\nCPE_NAME=\"cpe:/o:fedoraproject:fedora:44\"\nDEFAULT_HOSTNAME=\"fedora\"\nHOME_URL=\"https://fedoraproject.org/\"\nDOCUMENTATION_URL=\"https://docs.fedoraproject.org/en-US/fedora/f44/\"\nSUPPORT_URL=\"https://ask.fedoraproject.org/\"\nBUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\nREDHAT_BUGZILLA_PRODUCT=\"Fedora\"\nREDHAT_BUGZILLA_PRODUCT_VERSION=44\nREDHAT_SUPPORT_PRODUCT=\"Fedora\"\nREDHAT_SUPPORT_PRODUCT_VERSION=44\nSUPPORT_END=2027-05-19\nVARIANT=\"Workstation Edition\"\nVARIANT_ID=workstation\n",
+  "session": {
+    "Id": "1100",
+    "Type": "wayland",
+    "Seat": "seat0",
+    "Desktop": null,
+    "Timestamp": "Sat 2026-10-24 01:20:43 CDT",
+    "TimestampMonotonic": "14140790842",
+    "Leader": "144202",
+    "shell": {
+      "pid": 144305,
+      "exe": "/usr/bin/gnome-shell",
+      "startTicks": 1414103
+    },
+    "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8"
+  },
+  "build": {
+    "schemaVersion": 1,
+    "version": "26.1025.1254-dev+g9f382fd0b07d",
+    "baseVersion": "26.1025.1254",
+    "packageVersion": "26.1025.1254~dev+g9f382fd0b07d",
+    "gitCommit": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+    "gitTree": "368c787617a047d52087a16aefd328503aabf147",
+    "commitCount": 1254,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "qtVersion": "6.11.2",
+  "binaries": {
+    "putgd": "f74982b8ff162e3d333b857ada2a116bf97c2db06c8f0689f5b36a9a9a8fa82f",
+    "putgd-cli": "b79d65bbea9c5d7a5084d0722a9e02ccbad0093805c70458996eb7d8e2430747",
+    "putgd-ui": "e474892c411edb466937585839bffff81b821495f14d345e2805bcd916688fa8"
+  },
+  "captureRect": [
+    0,
+    0,
+    1920,
+    1000
+  ],
+  "fullOutputPrecheck": false,
+  "error": "check failed: captureRectPrecheck",
+  "cleanup": {
+    "residentExited": true,
+    "fixtureExited": true,
+    "coverExited": true
+  }
+}

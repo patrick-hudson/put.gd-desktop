@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="6"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="180"
+	timestamp="2026-10-24T23:25:02"
+	>
+	<testcase name="editor_job_integration" classname="editor_job_integration" time="3.86474" status="run">
+		<properties>
+			<property name="cmake_labels" value="integration"/>
+		</properties>
+		<system-out>********* Start testing of EditorJobTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : EditorJobTest::initTestCase()
+PASS   : EditorJobTest::agentEditsPreviewSaveAndSubmitSanitizedResult()
+PASS   : EditorJobTest::agentCancelDiscardsWithoutOutput()
+PASS   : EditorJobTest::helperCrashWhileEditingFailsClosed()
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(never ready (startup timeout))
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(crash while editing)
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(hang while finalizing (finalize timeout))
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(output is not a PNG)
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(output digest mismatch)
+libpng error: Write Error
+PASS   : EditorJobTest::fullDiskWhileStagingIsReportedAsStorage()
+PASS   : EditorJobTest::residentCancellationTerminatesTheHelper()
+...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="edit_operations_integration" classname="edit_operations_integration" time="14.2499" status="run">
+		<properties>
+			<property name="cmake_labels" value="integration"/>
+		</properties>
+		<system-out>********* Start testing of EditOperationsTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : EditOperationsTest::initTestCase()
+PASS   : EditOperationsTest::submittedEditorWaitsOutsideEditing(drain)
+PASS   : EditOperationsTest::submittedEditorWaitsOutsideEditing(cancel)
+PASS   : EditOperationsTest::uploadPublishesOnlyTheRedactedResult()
+PASS   : EditOperationsTest::failedUploadRetriesTheEditedBytesOnly()
+PASS   : EditOperationsTest::cancellingAnOpenEditStoresAndUploadsNothing()
+PASS   : EditOperationsTest::fileSourceOpensStaticImagesOnly()
+PASS   : EditOperationsTest::interruptedEditRecoversWithoutUploading()
+PASS   : EditOperationsTest::residentReturnsEditBuffersAfterEachCycle()
+PASS   : EditOperationsTest::legacyConfigurationInheritsRegionRouteWithoutShortcut()
+PASS   : EditOperationsTest::cleanupTestCase()
+Totals: 11 passed, 0 failed, 0 skipped, 0 blacklisted, 14210ms
+********* Finished testing of Edi...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_tray" classname="gui_tray" time="48.0434" status="run">
+		<properties>
+			<property name="cmake_labels" value="integration"/>
+		</properties>
+		<system-out>********* Start testing of ResidentTray *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : ResidentTray::initTestCase()
+PASS   : ResidentTray::residentThemeScopeRestoresTheEnvironmentForChildren()
+PASS   : ResidentTray::failedOperationsWithoutItemsShowTheirError()
+PASS   : ResidentTray::failedUploadsNameTheFailure()
+PASS   : ResidentTray::queuedEditorUsesPhaseRatherThanEditingState()
+PASS   : ResidentTray::tooltipSummarizesConcurrentFiles()
+QWARN  : ResidentTray::fastUploadsDoNotFlashTheIcon() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::fastUploadsDoNotFlashTheIcon()
+QWARN  : ResidentTray::visibleUploadFinishesWithoutAnIdleGapAndHoldsItsFrame() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::visibleUploadFinishesWithoutAn...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="history_contract" classname="history_contract" time="6.43989" status="run">
+		<properties>
+			<property name="cmake_labels" value="unit"/>
+		</properties>
+		<system-out>********* Start testing of HistoryTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : HistoryTest::initTestCase()
+PASS   : HistoryTest::remoteMetadataReplacementDropsStaleNestedFields()
+QINFO  : HistoryTest::largeClearedLegacyMigrationExpandsDeletionDocumentsOnce() Legacy migration: 1000 cleared items, 200 documents, 20000 targets; elapsed ms 83
+PASS   : HistoryTest::largeClearedLegacyMigrationExpandsDeletionDocumentsOnce()
+PASS   : HistoryTest::changedItemCheckpointPreservesRemoteStateAndRollsBackAsAUnit()
+PASS   : HistoryTest::remoteOutcomesHydrateRecentAndSurviveHistoryCleanup()
+PASS   : HistoryTest::knownRemovalSurvivesClearAndExpiry()
+PASS   : HistoryTest::versionFourMigrationPreservesDeletionState()
+PASS   : HistoryTest::versionFourClearedDeletionCannotRestoreItsLink()
+PASS   : HistoryTest::acceptedDeletionRecoversWithoutLosingPendingIdentity()
+PASS   : HistoryTest::schemaThreeBackfillUsesProviderI...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="operations_contract" classname="operations_contract" time="77.1224" status="run">
+		<properties>
+			<property name="cmake_labels" value="integration"/>
+		</properties>
+		<system-out>********* Start testing of OperationsTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : OperationsTest::initTestCase()
+PASS   : OperationsTest::historyImageCopiesSelectedUploadedOriginalAndRejectsChangedFiles()
+PASS   : OperationsTest::historyImageCopiesSixteenBitOriginalAboveFourBytePixelBudget()
+PASS   : OperationsTest::historyImagePreparationHonorsClipboardAndInvocationChanges(clipboard-owner)
+PASS   : OperationsTest::historyImagePreparationHonorsClipboardAndInvocationChanges(newer-copy)
+PASS   : OperationsTest::historyImageQueuedAfterCommittedCopyRebasesOnlyResidentAcknowledgements(resident-ack)
+PASS   : OperationsTest::historyImageQueuedAfterCommittedCopyRebasesOnlyResidentAcknowledgements(external-owner-after-ack)
+PASS   : OperationsTest::historyImageSupersededWorkerReleasesNewerCopy()
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(destination-0-local-0-inherit-0)
+PASS   : Operat...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_history_view" classname="gui_history_view" time="30.7235" status="run">
+		<properties>
+			<property name="cmake_labels" value="integration"/>
+		</properties>
+		<system-out>********* Start testing of HistoryGui *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : HistoryGui::initTestCase()
+PASS   : HistoryGui::queuedEditorStatusTakesPrecedence(editing)
+PASS   : HistoryGui::queuedEditorStatusTakesPrecedence(acquiring)
+PASS   : HistoryGui::queuedEditorStatusTakesPrecedence(stored)
+PASS   : HistoryGui::queuedEditorStatusTakesPrecedence(running)
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-1000-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-1000-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-1000-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::fullFailureTextIsPaintedWithoutClipping(list-1000-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : His...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+</testsuite>

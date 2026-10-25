@@ -1,0 +1,4 @@
+f44 (Fedora 44 GNOME Wayland): locked
+  Codex559 (mcp:c39a8c24-bbd0-435b-9072-429ab19b3f10), acquired 2026-10-25T04:36:46Z
+  purpose: #559 GNOME cropped-region privacy preflight and queued burst; no pixels outside certified rectangle exported
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1271

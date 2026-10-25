@@ -1,0 +1,4 @@
+k72 (Kubuntu 26.04 Plasma Wayland): locked
+  Codex559 (mcp:c39a8c24-bbd0-435b-9072-429ab19b3f10), acquired 2026-10-25T04:17:34Z
+  purpose: #559 queued-editor functional burst, notes ~/work/i559; no quiet performance claim
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1657
