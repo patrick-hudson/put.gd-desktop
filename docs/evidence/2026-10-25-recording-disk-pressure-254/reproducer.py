@@ -2,14 +2,19 @@
 """Builder-only bounded tmpfs reproduction; Xvfb evidence is not desktop acceptance."""
 import argparse, base64, json, os, pathlib, signal, subprocess, sys, time, traceback
 from reproducer_checks import assert_expected_failure
-p=argparse.ArgumentParser();p.add_argument('--build',required=True);p.add_argument('--run',required=True);p.add_argument('--fail-at',choices=['after-mount','after-stop']);p.add_argument('--baseline',action='store_true');p.add_argument('--exhaust',action='store_true');p.add_argument('--paused',action='store_true');p.add_argument('--scenario',choices=['pressure','minimum','recovery','normal','budget'],default='pressure');a=p.parse_args()
+from reproducer_mount import inspect_mount, cleanup_mount
+p=argparse.ArgumentParser();p.add_argument('--build',required=True);p.add_argument('--run',required=True);p.add_argument('--fail-at',choices=['after-mount','after-stop','after-mount-before-flag']);p.add_argument('--baseline',action='store_true');p.add_argument('--exhaust',action='store_true');p.add_argument('--paused',action='store_true');p.add_argument('--scenario',choices=['pressure','minimum','recovery','normal','budget'],default='pressure');a=p.parse_args()
+if a.fail_at=='after-stop' and not a.exhaust: p.error('--fail-at after-stop requires --exhaust')
 capacity_mib=1216 if a.scenario=='minimum' else 1536
 build=pathlib.Path(a.build).resolve();run=pathlib.Path(a.run).resolve();run.mkdir(mode=0o700);(run/'reproducer.py').write_bytes(pathlib.Path(__file__).read_bytes())
+# Copy replay dependencies before any fallible setup or identity probing.
+for dependency in ('reproducer_checks.py','reproducer_mount.py'):
+ (run/dependency).write_bytes(pathlib.Path(__file__).with_name(dependency).read_bytes())
 repo=pathlib.Path(__file__).resolve().parents[2] if 'tools/lab' in str(__file__) else pathlib.Path('/home/patrick/work/i254')
 env=dict(os.environ,QT_QPA_PLATFORM='xcb',XDG_SESSION_TYPE='x11',XDG_CURRENT_DESKTOP='X-Generic',NO_AT_BRIDGE='1')
 for key,n in [('XDG_CONFIG_HOME','config'),('XDG_DATA_HOME','data'),('XDG_CACHE_HOME','cache'),('XDG_STATE_HOME','state'),('XDG_RUNTIME_DIR','runtime')]:env[key]=str(run/n)
 for key in ('WAYLAND_DISPLAY','DBUS_SESSION_BUS_ADDRESS','XAUTHORITY'):env.pop(key,None)
-children=[];resident=None;events=[];helpers=[];mounted=False
+children=[];resident=None;events=[];helpers=[];mounted=False;acquisition_attempted=False;mount_device=None;exit_code=1
 report={'baseline':a.baseline,'exhaust':a.exhaust,'paused':a.paused,'run':str(run),'build':str(build),'mountLimitBytes':capacity_mib<<20,'scenario':a.scenario,'faultInjection':a.fail_at}
 mount=run/'data/putgd/recording'
 
@@ -49,17 +54,30 @@ def wait_state(rid,states,seconds=35):
   if info.get('state') in states or info.get('ok') is False:return info
   time.sleep(.15)
  raise RuntimeError('state timeout '+str(info))
+class RunInterrupted(Exception):
+ def __init__(self,signum): self.signum=signum;super().__init__(f'interrupted by signal {signum}')
+termination_signals=(signal.SIGINT,signal.SIGTERM,signal.SIGHUP)
+def interrupted(signum,frame): raise RunInterrupted(signum)
+for signum in termination_signals: signal.signal(signum,interrupted)
 try:
  subprocess.run([sys.executable,str(repo/'tools/diagnostics/check_socket_paths.py'),'--ui-output',str(run)],check=True,stdout=open(run/'socket-preflight.json','w'))
  for n in ('config','data','cache','state','runtime','archive'): (run/n).mkdir(mode=0o700)
  mount=run/'data/putgd/recording';mount.mkdir(parents=True,mode=0o700)
  report['identity']=json.loads(subprocess.check_output([str(build/'putgd-cli'),'--version-json'],timeout=15))
  report['binarySha256']={name:__import__('hashlib').sha256((build/name).read_bytes()).hexdigest() for name in ('putgd','putgd-cli','putgd-record')}
- (run/'reproducer_checks.py').write_bytes(pathlib.Path(__file__).with_name('reproducer_checks.py').read_bytes())
  # Only the private capture staging is capacity-limited. Journal/logs stay writable.
- subprocess.run(['sudo','-n','mount','-t','tmpfs','-o',f'size={capacity_mib}M,mode=0700,uid={os.getuid()},gid={os.getgid()},nosuid,nodev','i254-disposable',str(mount)],check=True)
+ acquisition_attempted=True
+ # Let the bounded mount subprocess settle before delivering a termination
+ # signal. A pending signal can still arrive before mounted=True; finally
+ # discovers the exact mount instead of trusting that bookkeeping flag.
+ blocked=signal.pthread_sigmask(signal.SIG_BLOCK,termination_signals)
+ try:
+  subprocess.run(['sudo','-n','mount','-t','tmpfs','-o',f'size={capacity_mib}M,mode=0700,uid={os.getuid()},gid={os.getgid()},nosuid,nodev','i254-disposable',str(mount)],check=True,timeout=15)
+ finally: signal.pthread_sigmask(signal.SIG_SETMASK,blocked)
+ if a.fail_at=='after-mount-before-flag': os.kill(os.getpid(),signal.SIGINT)
  mounted=True
- identity=json.loads(subprocess.check_output(['findmnt','--json','--target',str(mount),'--output','TARGET,SOURCE,FSTYPE']))['filesystems'][0]
+ mount_device=os.stat(mount).st_dev
+ identity=inspect_mount(mount)
  assert identity['target']==str(mount) and identity['source']=='i254-disposable' and identity['fstype']=='tmpfs',identity
  volume=os.statvfs(mount);assert volume.f_blocks*volume.f_frsize==capacity_mib<<20
  report['mountIdentity']=dict(identity,device=os.stat(mount).st_dev,capacityBytes=volume.f_blocks*volume.f_frsize)
@@ -115,7 +133,7 @@ with open(path,'wb',buffering=0) as f:
   if sys.argv[4]!='fast':time.sleep(.05)
 print(json.dumps({'written':written,'freeBytes':os.statvfs(path).f_bavail*os.statvfs(path).f_frsize}),flush=True)
 '''
- identity=json.loads(subprocess.check_output(['findmnt','--json','--target',str(mount),'--output','TARGET,SOURCE,FSTYPE']))['filesystems'][0]
+ identity=inspect_mount(mount)
  assert identity['target']==str(mount) and identity['source']=='i254-disposable' and identity['fstype']=='tmpfs',identity
  volume=os.statvfs(mount);assert volume.f_blocks*volume.f_frsize==capacity_mib<<20
  report['mountIdentity']=dict(identity,device=os.stat(mount).st_dev,capacityBytes=volume.f_blocks*volume.f_frsize)
@@ -162,10 +180,14 @@ print(json.dumps({'written':written,'freeBytes':os.statvfs(path).f_bavail*os.sta
    time.sleep(.2)
   assert op.get('state')=='completed',op
  report['passed']=True
-except Exception:
+except BaseException as error:
  report['passed']=False;report['failure']=traceback.format_exc()
+ if isinstance(error,RunInterrupted):
+  report['interruptedSignal']=error.signum;exit_code=128+error.signum
 finally:
- cleanup={'mountAcquired':mounted,'errors':[],'helpers':[]}
+ # Keep repeat terminal signals from interrupting bounded cleanup/receipt writes.
+ for signum in termination_signals: signal.signal(signum,signal.SIG_IGN)
+ cleanup={'mountFlag':mounted,'errors':[],'helpers':[]}
  # Resume only our exact stopped children before asking the resident to quit.
  for identity in helpers:
   try: cleanup['helpers'].append({'identity':identity,'resumed':owned_signal(identity,signal.SIGCONT)})
@@ -191,18 +213,11 @@ finally:
   except ProcessLookupError: pass
   except OSError as error: cleanup['errors'].append(str(error))
  cleanup['remainingHelpers']=[identity for identity in helpers if helper_owned(identity)]
- if mounted:
-  try:
-   # Do not unlink through a changed mountpoint. Only our exact mount is owned.
-   current=json.loads(subprocess.check_output(['findmnt','--json','--target',str(mount),'--output','TARGET,SOURCE,FSTYPE']))['filesystems'][0]
-   assert current['target']==str(mount) and current['source']=='i254-disposable' and current['fstype']=='tmpfs',current
-   if (mount/'competing-writer').exists(): (mount/'competing-writer').unlink()
-   unmount=subprocess.run(['sudo','-n','umount',str(mount)],capture_output=True,text=True)
-   report['cleanupUnmount']=unmount.returncode
-   if unmount.returncode: cleanup['errors'].append(unmount.stderr)
-  except Exception as error: cleanup['errors'].append('mount cleanup: '+str(error))
- else: report['cleanupUnmount']=None
- cleanup['mountRemaining']=os.path.ismount(mount)
+ mount_cleanup=cleanup_mount(mount,acquisition_attempted,mount_device)
+ cleanup['mountDiscovery']=mount_cleanup
+ cleanup['errors'].extend(mount_cleanup['errors'])
+ report['cleanupUnmount']=mount_cleanup['unmountExit']
+ cleanup['mountRemaining']=mount_cleanup['mountRemaining']
  # The socket belongs to this fresh private run; remove a stale node only
  # after its owned resident has exited. Never unlink a live server's socket.
  session_socket=run/'runtime/putgd/session.sock'
@@ -216,4 +231,4 @@ finally:
  report['cleanup']=cleanup
  (run/'events.json').write_text(json.dumps(events,indent=2));(run/'result.json').write_text(json.dumps(report,indent=2))
  print(json.dumps(report,indent=2))
- sys.exit(0 if report.get('passed') and cleanup['passed'] else 1)
+ sys.exit(0 if report.get('passed') and cleanup['passed'] else exit_code)

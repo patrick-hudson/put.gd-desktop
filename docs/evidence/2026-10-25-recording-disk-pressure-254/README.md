@@ -18,8 +18,14 @@ The code follow-up is `4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6`.
 It preserves GStreamer message/debug as structured `cause` when an explicit
 no-space error becomes `recording_disk_full`. Generic write errors, including
 ones observed while space is low, and unrelated stream/drain/preview failures
-retain their original diagnosis. A prior disk stop adds `stopDetails` and
-`finalized: false`; it does not establish the cause of a later error.
+retain their original diagnosis. A prior disk stop adds `error.details.stopDetails`
+and `error.details.finalized: false`; it does not establish the cause of a later
+error. This documentation-only PR depends on companion [code PR #572](https://github.com/patrick-hudson/put.gd-desktop/pull/572),
+which must merge first; its code is not in the docs branch. At the exact companion
+head, [RecordingPipeline maps explicit no-space errors and preserves cause](https://github.com/patrick-hudson/put.gd-desktop/blob/4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6/src/record/RecordingPipeline.cpp#L361),
+[RecordSession attaches failure details](https://github.com/patrick-hudson/put.gd-desktop/blob/4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6/src/record/RecordSession.cpp#L82),
+and [RecordingService forwards the helper's details](https://github.com/patrick-hudson/put.gd-desktop/blob/4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6/src/app/RecordingService.cpp#L274)
+into `fail`, which [stores the same Error on the operation](https://github.com/patrick-hudson/put.gd-desktop/blob/4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6/src/app/RecordingService.cpp#L207).
 
 On f44, the exact clean source was rebuilt with the same distro Qt 6.11.2 and
 official SDK. Four focused CTest suites pass in 22.60 seconds; see
@@ -34,9 +40,10 @@ and an unrelated stream error during a disk stop. The existing recording
 model/service/helper suites also pass. This is deterministic headless regression
 coverage, not native desktop evidence.
 
-The revised [reproducer](reproducer.py) validates binary identity/version before
-mounting and covers every post-mount operation with `finally`. It verifies mount
-identity before writing or cleanup. Owned helper signaling verifies PID, start
+The revised [reproducer](reproducer.py) records the CLI version manifest and
+binary hashes before mounting; it does not enforce an expected source/version.
+Those records support later identity comparisons. It covers every post-mount
+operation with `finally` and verifies mount identity before writing or cleanup. Owned helper signaling verifies PID, start
 time and executable, using a pidfd to avoid a PID-reuse race; ownership is first
 established against the resident parent. A stopped helper is resumed before
 normal resident quit, which now waits for exit. Cleanup records mount, helper
@@ -78,6 +85,49 @@ No physical lease was acquired for this follow-up, and no owned product/test
 process remains. New-head native acceptance and the full parallel/matrix gates
 are pending. The historical GNOME clipboard and ready-bar limitations below
 remain unresolved; Xvfb clipboard success does not attribute or clear them.
+
+## Harness-only review follow-up (after docs `38f62f04`)
+
+Product code remains `4ee657db`; no product build or capture was repeated.
+[reproducer-38f62f04.py](reproducer-38f62f04.py) preserves the previous script
+byte for byte. The current runner copies both replay dependencies beside its
+script before socket/version/hash setup. `--fail-at after-stop` without
+`--exhaust` is rejected by argument parsing before a run directory is created.
+
+The runner now handles SIGINT/SIGTERM/SIGHUP as unsuccessful runs with a failure
+receipt. Signals are deferred until the bounded mount subprocess settles, and
+repeat terminal signals are ignored during bounded cleanup and receipt writes.
+Cleanup discovers an **exact mountpoint**, independently of the acquisition
+success flag. [reproducer_mount.py](reproducer_mount.py) requires an acquisition
+attempt plus matching target/source/tmpfs type, and the recorded device when
+available, before unmounting. It never unlinks through the mountpoint and never
+uses `findmnt --target`'s parent-filesystem fallback for cleanup.
+
+[Builder checks](test_reproducer_mount.py) ran serially with `nice -n 10` on
+f44 alongside #560's allocated build: five tests passed in 1.475 seconds. They
+used empty disposable tmpfs mounts (16 MiB fixtures and the runner's empty
+1536 MiB mount), with no filling, GUI, encoding or product builds:
+
+- Missing-binary and failed-version bundles include byte-identical replay modules
+  that import from the saved bundle.
+- Invalid `after-stop` arguments exit 2 without creating the run directory.
+- SIGINT immediately after successful mount, before flag assignment, exits 130;
+  the receipt records `mountFlag: false`, exact owned mount discovery and
+  successful unmount with no remaining mount/helper/socket.
+- No-exact-mount cleanup leaves the parent filesystem alone. Foreign source,
+  absent acquisition attempt, changed known device, wrong target and wrong type
+  all refuse cleanup; foreign fixture content stays intact. The test controller
+  retires only its own verified fixtures afterward.
+
+Results, source hashes and failure receipts are in
+[harness-safety/results.json](harness-safety/results.json) and
+[test log](harness-safety/mount-tests.log). Full private bundles remain on f44 at
+`/home/patrick/work/i254-docs-r2/`; the separate retained-file index is
+[harness-safety/SHA256.json](harness-safety/SHA256.json), SHA-256
+`56a25d3ce38cad36b29861e2ead8a61895bc1ee27280f57cfea7ca2ccff2c4ea`.
+Historical result files,
+source snapshots and earlier checksums remain unchanged. These checks add no
+native or full desktop acceptance.
 
 ## Historical reproduction and result (`25b36396`)
 
@@ -267,8 +317,8 @@ all indexed files are committed here. Nothing was deleted or compressed.
 
 [reproducer-25b36396.py](reproducer-25b36396.py) preserves the originally
 committed lab recipe; per-run snapshots remain authoritative for historical
-runs. [reproducer.py](reproducer.py), [reproducer_checks.py](reproducer_checks.py)
-and [mcp_inspect.py](mcp_inspect.py) are the revised follow-up recipe. They are builder-specific evidence scripts, not a release gate
+runs. [reproducer.py](reproducer.py), [reproducer_checks.py](reproducer_checks.py),
+[reproducer_mount.py](reproducer_mount.py) and [mcp_inspect.py](mcp_inspect.py) are the revised follow-up recipe. They are builder-specific evidence scripts, not a release gate
 or an installer. They require a fresh private run path, distro Xvfb/GStreamer/
 FFmpeg, authorized `sudo -n mount`, and the locked MCP environment. The captured
 paths are the real paths used on f44. For example:
