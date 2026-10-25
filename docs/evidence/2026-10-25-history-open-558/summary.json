@@ -19,7 +19,7 @@
     "counting": "resident plus all observed descendants; no exclusions"
   },
   "acceptance": {
-    "physicalCinnamon300_30_300": "pending",
+    "physicalCinnamon300_30_300": "passed",
     "parallelCinnamonGnomeKde": "pending",
     "stableAssets": "pending"
   },
@@ -204,7 +204,7 @@
   },
   "tests": {
     "focused": {
-      "command": "ctest --preset dev --parallel 2 -R ^(gui_application|gui_settings|gui_history_view|gui_theme)$",
+      "command": "ctest --preset dev --parallel 2 -R '^(gui_application|gui_settings|gui_history_view|gui_theme)$'",
       "passed": 4,
       "failed": 0,
       "elapsedSeconds": 103.41
@@ -217,13 +217,13 @@
       ]
     },
     "remainingDev": {
-      "command": "ctest --preset dev --parallel 2 -E ^(gui_application|gui_settings|gui_history_view|gui_theme)$",
+      "command": "ctest --preset dev --parallel 2 -E '^(gui_application|gui_settings|gui_history_view|gui_theme)$'",
       "passed": 103,
       "failed": 0,
       "elapsedSeconds": 368.72
     },
     "qt642Release": {
-      "command": "ctest --preset release --parallel 1 -R ^(gui_application|gui_settings|gui_history_view|gui_theme)$",
+      "command": "ctest --preset release --parallel 1 -R '^(gui_application|gui_settings|gui_history_view|gui_theme)$'",
       "passed": 4,
       "failed": 0,
       "elapsedSeconds": 174.33,
