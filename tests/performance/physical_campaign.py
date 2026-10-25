@@ -733,6 +733,10 @@ class Campaign:
         document['archive']['root'] = str(self.root / 'archive')
         document['archive']['keepUploads'] = True
         document['preferences'].update(notifications=False, launchAtLogin=False)
+        # The resident's first daily update check starts a putgd-cli child 5-15
+        # minutes after launch (#293). It reaches the real feed and broke the
+        # burst settle's one-process rule, so measured profiles never check.
+        document['preferences']['updates'] = {**document['preferences'].get('updates', {}), 'check': False}
         revision = self.call('settings.get')['metadata']['observedRevision']
         self.call('settings.patch', {'patch': document, 'expectedRevision': revision})
         require(self.stop(), 'configuration_resident_cleanup_failed')
