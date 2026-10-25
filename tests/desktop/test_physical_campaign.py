@@ -206,5 +206,30 @@ class EndpointAndBudgetTests(unittest.TestCase):
             self.assertEqual(len(observer.result['driver']['sourceFiles']), 11)
 
 
+class SampleRaceTests(unittest.TestCase):
+    def sample(self, missing_role):
+        row = {'escapedProcessCount': 0, 'processes': [
+            {'pid': 1, 'role': 'resident'}, {'pid': 2, 'role': missing_role}]}
+        observer = mock.Mock(family=mock.Mock(sample=mock.Mock(return_value=row)))
+
+        def mappings(pid):
+            if pid == 2:
+                raise FileNotFoundError(2, 'No such file or directory', '/proc/2/maps')
+            return ['libqxcb.so']
+        with mock.patch.object(campaign, 'platform_mappings', side_effect=mappings):
+            return campaign.Campaign.sample(observer, 'burst-file-editor-handoff')
+
+    def test_worker_exiting_after_family_snapshot_is_recorded_not_fatal(self):
+        # FU2 (8a0cb2ad) died here when a putgd-s3-worker exited mid-sample.
+        row = self.sample('auxiliary')
+        self.assertEqual(row['processes'][0]['qtPlatformMappings'], ['libqxcb.so'])
+        self.assertIsNone(row['processes'][1]['qtPlatformMappings'])
+        self.assertTrue(row['processes'][1]['exitedBeforeMappingRead'])
+
+    def test_resident_disappearing_still_fails(self):
+        with self.assertRaises(FileNotFoundError):
+            self.sample('resident')
+
+
 if __name__ == '__main__':
     unittest.main()

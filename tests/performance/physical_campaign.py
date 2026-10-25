@@ -35,6 +35,7 @@ import subprocess
 import sys
 import tarfile
 import time
+import traceback
 from types import SimpleNamespace
 import uuid
 
@@ -753,7 +754,15 @@ class Campaign:
         row = self.family.sample()
         require(row['escapedProcessCount'] == 0, 'escaped_product_descendant')
         for process in row['processes']:
-            process['qtPlatformMappings'] = platform_mappings(process['pid'])
+            try:
+                process['qtPlatformMappings'] = platform_mappings(process['pid'])
+            except FileNotFoundError:
+                # Upload workers can exit between the family snapshot and this
+                # read. Only the resident's disappearance is a failure here.
+                if process['role'] == 'resident':
+                    raise
+                process['qtPlatformMappings'] = None
+                process['exitedBeforeMappingRead'] = True
         self.event('process-sample', label=label, **row)
         return row
 
@@ -1164,6 +1173,10 @@ def main(argv=None):
         primary_error = error
         campaign.result['status'] = 'failed-or-interrupted'
         campaign.result['errorCode'] = str(error) if isinstance(error, EvidenceError) else type(error).__name__
+        # Private raw results only: an anonymous error code cannot be diagnosed.
+        campaign.result['errorDetail'] = {
+            'type': type(error).__name__, 'filename': getattr(error, 'filename', None),
+            'traceback': traceback.format_exception(error)[-20:]}
         if campaign.cover:
             try:
                 campaign.visual('failed-workload')
