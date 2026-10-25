@@ -271,7 +271,8 @@ def history(run):
         traversal_started = time.monotonic()
         # Visit every page and actually scroll its list from Home to its last
         # row. API reads verify expected rows; they do not drive the viewport.
-        for offset in range(0, 10000, 50):
+        pages = run.args.history_pages
+        for offset in range(0, pages * 50, 50):
             page = run.call('history.list', {'offset': offset, 'limit': 50})['records']
             names = ui.wait_rows(page)
             node = ui.accessible.find('Captures and upload activity')
@@ -290,7 +291,10 @@ def history(run):
                 ui.save('history-scroll-' + str(offset))
             if offset + 50 < 10000:
                 ui.action('history-next-page', lambda: ui.accessible.click('Next'))
-        require(seen == 10000, 'whole_list_traversal_incomplete')
+        require(seen == pages * 50, 'whole_list_traversal_incomplete')
+        run.result['gates']['historyWholeListTraversal'] = (
+            {'status': 'pass', 'rows': seen} if seen == 10000 else
+            {'status': 'unassessed', 'reason': 'partial_traversal_requested', 'rows': seen})
         run.result['metrics']['historyWholeListRowsTraversed'] = seen
         run.result['metrics']['historyWholeListWallSecondsIncludingVerification'] = time.monotonic() - traversal_started
         run.result['metrics']['historyScrollP95GenericRepaintMs'] = percentile(scrolls)

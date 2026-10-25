@@ -398,8 +398,10 @@ class Accessible:
         return [node.get_child_at_index(i).get_name() for i in range(node.get_child_count())]
 
     def select(self, index):
+        self.focus(self.find('Captures and upload activity'))
+        # A focusing click can rebuild Qt's accessible rows; never reuse the
+        # pre-focus object path.
         node = self.find('Captures and upload activity')
-        self.focus(node)
         if not self.api.Selection.select_child(node, index):
             raise EvidenceError('accessible_selection_refused')
 

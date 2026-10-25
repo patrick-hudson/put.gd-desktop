@@ -1150,6 +1150,8 @@ def parser():
     result.add_argument('--native-driver-sha256', help='Pinned reviewed #495 script bytes; checked before executing tray witness')
     result.add_argument('--threshold-policy', help='Private approved numerical maximums JSON; omission never passes response gates')
     result.add_argument('--settle-seconds', type=int, default=300)
+    result.add_argument('--history-pages', type=int, default=200,
+                        help='History pages of 50 to walk; fewer than 200 is recorded as a partial traversal')
     return result
 
 
@@ -1160,6 +1162,7 @@ def main(argv=None):
     require(args.scenario != 'capture' or args.driver, 'capture_driver_required')
     require(1 <= args.open_seconds <= 300, 'invalid_history_open_duration')
     require(1 <= args.settle_seconds <= 1800, 'invalid_settle_duration')
+    require(1 <= args.history_pages <= 200, 'invalid_history_pages')
     require(not args.enable_accessibility or args.scenario in ('history', 'burst', 'slow'),
             'accessibility_override_not_permitted_for_capture_or_memory')
     if args.scenario in ('burst', 'slow'):
