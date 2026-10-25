@@ -131,6 +131,9 @@ SettingsWindow* MainWindow::settings(){
  auto* destinations=pages_->widget(1);auto* preferences=pages_->widget(2);
  pages_->removeWidget(destinations);pages_->removeWidget(preferences);delete destinations;delete preferences;
  pages_->addWidget(settings_->destinationsPage());pages_->addWidget(settings_);
+ // New combo popup containers need the same themed delegate/margin refresh
+ // that the original eager tree received when the main style was applied.
+ RedesignTheme::apply(*this);
  connect(settings_,&SettingsWindow::viewStateChanged,this,[this]{updateSaveStatus();emit viewStateChanged();});
  connect(settings_,&SettingsWindow::actionRequested,this,&MainWindow::actionRequested);
  connect(settings_,&SettingsWindow::quitRequested,this,&MainWindow::quitRequested);
