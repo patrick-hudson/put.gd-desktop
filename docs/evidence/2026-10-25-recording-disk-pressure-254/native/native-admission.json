@@ -1,0 +1,14 @@
+{
+  "desktop": "gnome-shell",
+  "sessionType": "wayland",
+  "waylandDisplay": "/run/user/1000/wayland-0",
+  "screenSaver": "(false,)",
+  "cpuBusyFractionOver3s": 0.006661115736885881,
+  "load": [
+    0.3291015625,
+    1.462890625,
+    1.703125
+  ],
+  "gnome": "GNOME Shell 50.6",
+  "source": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6"
+}

@@ -3,7 +3,7 @@
   "os": "NAME=\"Fedora Linux\"\nVERSION=\"44 (Workstation Edition)\"\nRELEASE_TYPE=stable\nID=fedora\nVERSION_ID=44\nVERSION_CODENAME=\"\"\nPRETTY_NAME=\"Fedora Linux 44 (Workstation Edition)\"\nANSI_COLOR=\"0;38;2;60;110;180\"\nLOGO=fedora-logo-icon\nCPE_NAME=\"cpe:/o:fedoraproject:fedora:44\"\nDEFAULT_HOSTNAME=\"fedora\"\nHOME_URL=\"https://fedoraproject.org/\"\nDOCUMENTATION_URL=\"https://docs.fedoraproject.org/en-US/fedora/f44/\"\nSUPPORT_URL=\"https://ask.fedoraproject.org/\"\nBUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\nREDHAT_BUGZILLA_PRODUCT=\"Fedora\"\nREDHAT_BUGZILLA_PRODUCT_VERSION=44\nREDHAT_SUPPORT_PRODUCT=\"Fedora\"\nREDHAT_SUPPORT_PRODUCT_VERSION=44\nSUPPORT_END=2027-05-19\nVARIANT=\"Workstation Edition\"\nVARIANT_ID=workstation\n",
   "kernel": "7.2.11-200.fc44.x86_64",
   "qt": "6.11.2",
-  "acceptance": "Xvfb integration only; native functional/memory acceptance pending",
+  "acceptance": "Bounded Xvfb integration and targeted native f44 GNOME/Wayland g3/g4 pass; full parallel desktop functional/memory and remaining matrix acceptance pending",
   "runs": [
     {
       "identity": {
@@ -2789,6 +2789,124 @@
         "source": "Xvfb synthetic ball/snow",
         "writer": "separate Python process, verified tmpfs only"
       }
+    },
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1293-dev+g80ffa2e6c0d3",
+        "baseVersion": "26.1025.1293",
+        "packageVersion": "26.1025.1293~dev+g80ffa2e6c0d3",
+        "gitCommit": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+        "gitTree": "8e1abcea6b16634af938f14e94b9eff0de1d02b5",
+        "commitCount": 1293,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "a1a90b085d03e692c04d538bf9976cf3d0282b69489f1900db26f2569609f9cd",
+        "putgd-cli": "c07273b6fe400424abe755855ced89750a95e9c9fe5774c0a2c2a117a0413694",
+        "putgd-record": "fe959ac24878eed3d86c1a9fe52628efc8a327b7f7be8424445c24c63f0b880f"
+      },
+      "baseline": true,
+      "scenario": "pressure",
+      "paused": false,
+      "exhaust": false,
+      "mountLimitBytes": 1610612736,
+      "mountIdentity": {
+        "target": "/tmp/d254b2/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 86,
+        "capacityBytes": 1610612736
+      },
+      "id": "6fb08cf1-92d1-4fe8-baaf-24537c9cf2f3",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254b2",
+      "stop": {
+        "error": {
+          "code": "recording_unavailable",
+          "details": {},
+          "message": "No recording is active"
+        },
+        "ok": false,
+        "requestId": "ddbf5add-bed3-4553-a894-be24ff4dd1ab",
+        "result": {},
+        "schemaVersion": 1
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "no_result",
+        "created": "2026-10-25T17:16:27.282Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "recording_failed",
+          "details": {
+            "debug": "../plugins/elements/gstelements_private.c(364): gst_writev_iovecs (): /GstPipeline:pipeline1/GstFileSink:sink",
+            "step": null
+          },
+          "message": "Capture failed: No space left on the resource."
+        },
+        "id": "6fb08cf1-92d1-4fe8-baaf-24537c9cf2f3",
+        "invocation": "1",
+        "items": [],
+        "phase": "failed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "efb8dfe3852dabec8b6592d47c4742d88b6856b44e0a5606c082d33c19bca0db",
+        "state": "failed"
+      },
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball",
+        "writer": "separate verified tmpfs writer, 8 MiB per 50 ms, to zero"
+      }
     }
-  ]
+  ],
+  "strictDecodes": [
+    {
+      "run": "/tmp/d254f2",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254p1",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254m1",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254n1",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254r1",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254c1",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254f3",
+      "exit": 0
+    }
+  ],
+  "nativeEvidence": "native/native-results.json",
+  "nativeLimitation": "Own ready control bar/fade appears in first preview, including after overlay(false) in g4; no overlay-exclusion acceptance or proven baseline attribution"
 }

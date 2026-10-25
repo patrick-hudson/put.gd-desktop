@@ -4,9 +4,10 @@ Code: [PR #572](https://github.com/patrick-hudson/put.gd-desktop/pull/572),
 `25b36396ea408c53ff2b0d2daa9572a2faad9cd6`, based on nightly
 `80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247`.
 
-**This is bounded filesystem and Xvfb integration evidence, not native desktop
-acceptance.** Current-source Cinnamon, GNOME and KDE functional/memory gates
-remain pending with the parent lab coordinator. Windows is outside this task.
+**Bounded filesystem/Xvfb integration and targeted native f44 GNOME/Wayland
+checks pass.** Full parallel current-source Cinnamon, GNOME and KDE
+functional/memory gates and the remaining declared desktop matrix remain pending
+with the parent lab coordinator. Windows is outside this task.
 No issue closure or release acceptance is claimed.
 
 ## Reproduction and result
@@ -38,14 +39,19 @@ and completes without a network destination.
 | `d254e1` | Freeze only this helper, rapidly fill its mount to zero, resume it | `recording_disk_full`, `reason: disk_space`, `finalized: false`; failed operation, no review claim or uploaded items |
 | `d254f3` | Repeat disk pressure with official-SDK MCP inspection | MCP `get_recording` agrees with CLI stop reason and all stop figures; preview/export/decode and explicit local Upload pass |
 
-All eight final-source runs report successful unmount cleanup. Their manifests,
+All eight final-source runs report successful unmount cleanup. All seven
+successful exported clips also pass strict FFmpeg decoding with `-xerror
+-err_detect explode`; receipts are in `summary.json` under `strictDecodes`. Their manifests,
 binary SHA-256 values, stop/operation results and MCP receipts are in
 [summary.json](summary.json). Earlier `d254f1` is explicitly identified as an
 intermediate `f4565f22` run; it is not substituted for the final source.
 
 The initial baseline used a rapid writer; the final positive pressure protocol
 paces 8 MiB writes by 50 ms. The abrupt-race case deliberately removes that
-spacing and freezes only its own recording helper. These are different cases,
+spacing and freezes only its own recording helper. A separately rebuilt baseline
+run, `d254b2`, repeats the **same paced writer to zero** as the final candidate.
+It also fails with generic ENOSPC and no review, with the exact baseline binary
+hashes now retained alongside its source identity. These are different cases,
 not a claim that periodic sampling prevents an arbitrary zero-space race.
 
 ## Safety and identities
@@ -57,7 +63,8 @@ fill, the runner verifies the exact mountpoint, `tmpfs` type, disposable source
 name, device ID and capacity. The writer independently verifies its open file's
 device ID and filesystem capacity. It never follows a host free-space target.
 Only its filler is removed; the mount is unmounted after owned processes exit.
-No golden images, VM overlays or physical desktop sessions are used.
+The Xvfb runs use no golden images, VM overlays or physical desktop sessions.
+The separately allocated native runs below use the physical f44 session.
 
 The host uses dynamically linked distro Qt 6.11.2, GStreamer 1.28.8, FFmpeg 8.0
 libraries, C++20 and the existing official pinned AWS SDK. Preset configuration
@@ -72,10 +79,74 @@ synthetic Xvfb display and recording UI, with no physical desktop or user data.
 
 ![Candidate opens private review with the live disk-pressure notice](pictures/review-xvfb.png)
 
+## Targeted native GNOME/Wayland evidence
+
+Session `t3-i254-native1` held the f44 desktop lease from 17:19:59 to
+17:30:00 UTC on 2026-10-25, within its 17:39:59 expiry. The coordinator parked
+family heavy builds first. Admission verified the unlocked GNOME Shell 50.6
+Wayland desktop, the visible VNC 5901 wall connection and a 0.00666 CPU busy
+fraction over three seconds. All runs use exact source `25b36396`, distro
+Qt 6.11.2 and the same binary hashes recorded in
+[native-results.json](native/native-results.json). Socket preflight and bounded
+mount identity checks ran before the app and competing writer respectively.
+
+`d254g1` and `d254g2` failed **before capture**: global synthetic cover was
+95.93%, below the unchanged 98% threshold. Their failure metadata and successful
+unmount receipts are retained. Full-desktop failure frames remain on f44 only;
+they are not in this export. The documented f44 fallback in
+[remote-builders.md](../../remote-builders.md) permits capture strictly inside an
+owned window. The coordinator approved that fallback; `d254g3` and `d254g4`
+verified the exact `[640,300,640,480]` capture rectangle was 100% task-owned
+before showing the synthetic pattern and starting recording.
+
+| Native run | Scenario | Result |
+| --- | --- | --- |
+| `d254g3` | Competing writer during recording | `disk_space` stop; private review, preview, local export, strict full FFmpeg decode, CLI/MCP figure parity and separate explicit local Upload pass |
+| `d254g4` | Competing writer while paused | Same preserved review/output and privacy checks pass |
+
+Both mounts were independently identified as disposable 1536 MiB tmpfs before
+writing, and both unmounted successfully. The local archive was empty before
+explicit Upload, including after local export. This tests local-only Upload;
+no cloud destination or user objects were involved.
+
+The preview's four edges and exported review crop's four edges all match the
+synthetic background token at 100%. The review screenshots below are cropped
+from `[0,200,1920,880]`, excluding the Shell overlay, then annotated with run,
+host, source and acceptance scope. Original full frames and unannotated safe
+crops remain retained on f44. Privacy check sidecars and image hashes are in
+[native/SHA256.json](native/SHA256.json).
+
+![Native paused low-space stop opens private review](native/g4-review-annotated.png)
+
+![Preserved first-frame preview from the paused run](native/g4-preview.png)
+
+**Observed limitation:** the first preview in `g3` includes the app's own ready
+control bar. `g4` requests `recording.overlay(false)` before starting, but a faint
+ready-bar fade is still visible in its first preview. These are task-owned pixels,
+not user content. No clean-content or overlay-exclusion acceptance is claimed,
+and this observation has not been established to predate the candidate. It is
+retained separately from #254's disk-preservation result; #516 UI work is outside
+this change. The native runs do not replace the full parallel desktop/memory
+gates, declared distro matrix, or audio/overlay capture acceptance.
+
+[Release receipt](native/native-release.json) records verified-clean release at
+17:30:00 UTC with all four cleanup arrays empty. Only the same three pre-existing
+shared SSH processes remained. The coordinator independently confirmed
+`free/present=[]` at 17:30:34 UTC, inspected the safe visuals, and resumed #558.
+No lease or owned graphical process is retained.
+
+The safe archive at
+`work/i254/evidence/native-safe.tar` in the implementation worktree has SHA-256
+`c86e2f96366984d70c3e1f4e2c7041efb339c8f7b56ceaef14e1938341d50d0e`.
+It contains only the ten committed `native/` members, including their checksum
+index. The complete private f44 retention index after native collection has
+SHA-256 `8667f4ee1293571cd559d602fdb81f4304a3c6f2247f901d4fb321d9ed66cf25`.
+Per-run reproducer snapshots remain with the private evidence.
+
 ## Threshold and tests
 
-The [shared reserve](../../../src/core/DiskSpace.h) keeps the existing 1–4 GiB,
-5%-of-capacity rule. The [live threshold](../../../src/record/RecordingStorage.h)
+The [shared reserve](https://github.com/patrick-hudson/put.gd-desktop/blob/25b36396ea408c53ff2b0d2daa9572a2faad9cd6/src/core/DiskSpace.h) keeps the existing 1–4 GiB,
+5%-of-capacity rule. The [live threshold](https://github.com/patrick-hudson/put.gd-desktop/blob/25b36396ea408c53ff2b0d2daa9572a2faad9cd6/src/record/RecordingStorage.h)
 uses `2 * max(clipBytes, 64 MiB) + 32 MiB` above that reserve. The working clip
 already consumed its portion of free bytes; only the two future copies are
 counted here. The additional 32 MiB is conservative drain headroom for encoded
@@ -99,6 +170,10 @@ The additional payload, pause-timeline, A/V export-sync and review-window suites
 pass 4/4; see [i254-extra-tests.log](i254-extra-tests.log). These checks protect the
 shared reserve formula and existing recording/edit/export behavior.
 
+The parent coordinator verified required CI success on exact code head
+`25b36396` and earlier documentation head `e553c347`; the child did not poll
+CI. This native evidence update requires a fresh docs-only CI result.
+
 No idle-resident timer or media dependency was added. Sampling belongs only to
 the active transient recording pipeline and stops with it. The native functional
 and memory gates are still required to measure the deployed behavior.
@@ -108,7 +183,8 @@ and memory gates are still required to measure the deployed behavior.
 The exact evolving lab harness is retained privately on f44 at
 `/home/patrick/work/i254-evidence/`, including source snapshots per later run,
 logs, clips, synthetic screenshots, parameters, identities and cleanup results.
-[SHA256.json](SHA256.json) indexes that private directory; it is not a claim that
+[SHA256.json](SHA256.json) indexes the pre-native private directory snapshot;
+the post-native index digest is recorded above. Neither index is a claim that
 all indexed files are committed here. Nothing was deleted or compressed.
 
 [reproducer.py](reproducer.py) and [mcp_inspect.py](mcp_inspect.py) snapshot the
