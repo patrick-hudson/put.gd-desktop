@@ -334,10 +334,25 @@ def history(run):
                           **{('clipboardKind' if key == 'kind' else key): value for key, value in paste.items()})
                 ui.save('history-copy-image')
         assess(run, 'historyPreviewP95UpperBoundMs', percentile(previews))
-        # Deletion is scoped to one exact seed receipt on the independently
-        # authenticated fixture. No policy/versioning controls are sent.
+        # The seeded rows' receipts name the fixture instance that made the
+        # seed, which no longer exists. Upload one new synthetic file to this
+        # run's fixture and delete that exact receipt from the populated list.
+        # No policy/versioning controls are sent.
         run.upload_configuration()
-        _, records = ui.search('landscape-00')
+        from campaign_fixture import png
+        media = run.root / 'burst-media'
+        media.mkdir(mode=0o700, exist_ok=True)
+        target = media / 'delete-target-synthetic.png'
+        png(target, 379, 320, 180)
+        target.chmod(0o400)
+        source = upload_source(target, run.root)
+        uploaded = run.wait_operation(submit_file_upload(run, source))
+        verify_uploaded(run, uploaded, source)
+        target_id = uploaded['items'][0]['artifact']['id']
+        name = run.call('history.detail', {'id': target_id})['name']
+        run.event('delete-target-uploaded', historyId=target_id, operationId=uploaded['id'], sourceSha256=source['sha256'])
+        _, records = ui.search(Path(name).stem)
+        require(records and records[0]['id'] == target_id, 'delete_target_not_first_search_result')
         selected = records[0]
         ui.accessible.select(0)
         prepared = run.call('delete.prepare', {'ids': [selected['id']]})
