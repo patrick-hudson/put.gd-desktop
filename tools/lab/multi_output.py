@@ -154,7 +154,13 @@ PY
     def shots(self, label):
         result = []
         for i in range(len(lab.state(self.run).get('heads', [0]))):
-            shot = lab.screenshot(self.run, 'mh-' + self.out.name + '-' + label, i)
+            try:
+                shot = lab.screenshot(self.run, 'mh-' + self.out.name + '-' + label, i)
+            except lab.LabError as error:
+                if getattr(self, 'current', None) == 'output-change':
+                    result.append({'head': i, 'noFrameAfterOutputChange': True, 'error': str(error)})
+                    continue
+                raise
             path = Path(shot['path'])
             target = self.out / path.name
             shutil.copyfile(path, target)
@@ -222,7 +228,7 @@ PY
             try:
                 ready = self.fetch_json(self.fixture_remote + '/ready.json', self.out / ('fixture-motion.json' if motion else 'fixture.json'))
                 break
-            except (lab.LabError, ValueError):
+            except (lab.LabError, ValueError, OSError):
                 if time.monotonic() > deadline:
                     raise RuntimeError('Native checkerboard readiness timeout')
                 time.sleep(.2)
@@ -322,7 +328,7 @@ PY
             deadline = time.monotonic() + 90
             while True:
                 value = self.cli('recording.inspect', {'id': ident})
-                if value.get('lastExport', {}).get('status') == 'saved':
+                if (value.get('lastExport') or {}).get('status') == 'saved':
                     break
                 if time.monotonic() > deadline:
                     raise RuntimeError('Recording export timeout')
@@ -389,6 +395,7 @@ PY
                     body = Path(self.args.change_command).read_text()
                     (self.out / 'output-change-command.sh').write_text(body)
                     (self.out / 'output-change-result.txt').write_text(self.session(body))
+                    save(self.out / 'outputs-after-change.json', lab.guest_outputs(self.run, lab.layout_backend(self.profile)))
                 settled = self.wait_operation(ident)
                 result['operation'] = settled
                 result['ok'] = settled['state'] in ('cancelled', 'failed') and not settled.get('items')

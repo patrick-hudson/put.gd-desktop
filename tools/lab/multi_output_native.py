@@ -90,7 +90,7 @@ def main():
         raise RuntimeError('Temporary fixture path already exists; preserve it')
     resident = None; wall_fixture = None; campaign = None; input_started = False; input_stopped = False
     def local_shell(_run, body, timeout=60, bootstrap=False):
-        return subprocess.run(['sh', '-s'], input=body, env=cli_env, capture_output=True, text=True, check=True, timeout=timeout).stdout
+        return subprocess.run(['sh', '-s'], input=body, env=env, capture_output=True, text=True, check=True, timeout=timeout).stdout
     def local_get(_run, source, target):
         source = Path(source).expanduser()
         if not source.is_absolute():
