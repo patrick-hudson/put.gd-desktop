@@ -295,7 +295,35 @@ debian13 DEB `83e4d2cc…` from the same dispatch run 40225160437.
   loopback links. It was not inspected.
 - **Pre-existing popups:** two stale put.gd popups were already on the desktop and
   were left untouched.
-- **No d69 trunk run yet.**
+- **Matched trunk on d69** (`80ffa2e6`, debian13 DEB `c9ac8836…`):
+  - dt1 failed after 30 s on the frozen sampler race
+    (`ProcessFamily.walk` `descendant_executable_changed`) and produced no score. It
+    is retained.
+  - dt2, the one identical retry, settled at RSS 46,112,768 B, **over 40 MiB**, and
+    PSS 21,779,456 B, which passes. Its admission load was 0.70, the tail of dt1,
+    so quiet admission was not independently proven.
+  - Against candidate db1, the candidate is 6.58 MiB lower in RSS and 6.55 MiB lower
+    in PSS: trunk fails and the candidate passes. This is a single pair.
+  - Matrix C passes on trunk too (32,694,272 B / 9,787,392 B).
+  - The in-flight cancellation outcome is the same on trunk, so it predates #576
+    here as well.
+  - The queued-cancel control dr1 passes.
+  - Frame: [trunk History](gnome-kde/d69-plasma-queued-cancel-history-80ffa2e6.png).
+    "Link copied" means this trunk run also changed the d69 clipboard.
+  - Raw evidence: `i560a-d69-trunk1-raw.tar.gz`, SHA-256
+    `119e925cf7284f253b10371a8b0f523810e21127b1c59042a7a5aced33dcd617`.
+
+**Native candidate vs matched trunk, single pairs** (Wayland burst diagnostic,
+settled family RSS against the 40 MiB limit):
+
+| Desktop | Trunk `80ffa2e6` | Candidate `98878cfe` | RSS change |
+| --- | --- | --- | --- |
+| f44 GNOME 50.6 | 44,077,056 B, fail | 41,304,064 B, pass | −2.64 MiB |
+| d69 Plasma 6.3.6 | 46,112,768 B, fail | 39,211,008 B, pass | −6.58 MiB |
+| k72 Plasma 6.6.6 | 38,260,736 B, pass | 38,014,976 B, pass | −0.23 MiB |
+
+One run each. The k72 and d69 trunk retries started at an elevated load after a
+failed first attempt. These are diagnostics, not the frozen gate.
 - **Frames:** [History](gnome-kde/d69-plasma-queued-cancel-history-98878cfe.png)
   and [Settings](gnome-kde/d69-plasma-settings-98878cfe.png). They show synthetic
   content, the put.gd window and the Plasma panel.
@@ -363,8 +391,9 @@ One diagnostic pair per desktop, using the same driver on each:
   mismatch, not as a pass.
 
 Raw evidence stays private in the acceptance task: `work/i560a/evidence/`, with
-`SHA256SUMS` `b1c2c599ddb8cdd9bd3211aa92d456ec599661011f48c1827e776a93f20826e9`,
-which includes d69 (earlier manifests: `877b4b9d…` with the queued-cancel control,
+`SHA256SUMS` `f19dc51abc10ba31c7477aadcaef9f862d86d317dda53ad2ba9652b50d2e3240`,
+which includes d69 candidate and trunk (earlier manifests: `b1c2c599…` with the d69
+candidate, `877b4b9d…` with the queued-cancel control,
 `66f3d971…` with trunk, `73726b51…` candidate only), and `RESTORE-INDEX.md`. Admission thumbnails and banner crops show the hosts' own
 desktops, so they stay private.
 
@@ -764,9 +793,9 @@ earlier task.
   approved native matrix and scoped functional checks, plus a separately
   identified native-Wayland burst diagnostic, because the #555 burst driver
   requires Cinnamon/X11. The candidate GNOME and Plasma rows are recorded above.
-  Matched-trunk GNOME and Plasma rows are recorded too. The candidate d69 native
-  row is recorded too. Still pending: a d69 trunk run, and the native in-flight
-  cancellation assertion. The queued-cancel
+  Matched-trunk GNOME and Plasma rows are recorded too. The d69 candidate and
+  trunk rows are recorded too. Still pending: the native in-flight cancellation
+  assertion, which predates #576 on every desktop. The queued-cancel
   control passes; that assertion remains a recorded mismatch.
 - `historyOpenPss` fails on the exact candidate (m1) until #558's fix is included.
 - Published-asset gates, after a nightly containing #576 publishes.
