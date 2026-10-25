@@ -136,6 +136,52 @@ def _visibility_target(window, owner, info=None):
             'probeMs': (time.monotonic() - started) * 1000}
 
 
+def _park_pointer(point, owner, bounds):
+    """Idempotent parking; all private X/Y reads and movement share five seconds."""
+    import re
+    if (len(point) != 2 or len(bounds) != 2 or
+            any(type(value) is not int for value in (*point, *bounds)) or
+            not all(0 <= value < maximum for value, maximum in zip(point, bounds))):
+        raise EvidenceError('pointer_parking_invalid_coordinates')
+    deadline = time.monotonic() + 5
+
+    def remaining():
+        if not same_identity(identity(owner['pid']), owner):
+            raise EvidenceError('pointer_parking_owner_changed')
+        budget = deadline - time.monotonic()
+        if budget <= 0:
+            raise EvidenceError('pointer_parking_deadline')
+        return budget
+
+    def location():
+        output = subprocess.check_output(['xdotool', 'getmouselocation', '--shell'],
+            text=True, stderr=subprocess.DEVNULL, timeout=remaining())
+        remaining()
+        if len(output) > 1024:
+            raise EvidenceError('pointer_parking_invalid_coordinates')
+        values = {}
+        for line in output.splitlines():
+            if not line.startswith(('X=', 'Y=')):
+                continue
+            key, value = line.split('=', 1)
+            if key in values or not re.fullmatch(r'[0-9]{1,6}', value):
+                raise EvidenceError('pointer_parking_invalid_coordinates')
+            values[key] = int(value)
+        if set(values) != {'X', 'Y'} or not all(
+                0 <= values[key] < maximum for key, maximum in zip(('X', 'Y'), bounds)):
+            raise EvidenceError('pointer_parking_invalid_coordinates')
+        remaining()
+        return values['X'], values['Y']
+
+    if location() == tuple(point):
+        return
+    subprocess.run(['xdotool', 'mousemove', str(point[0]), str(point[1])],
+        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=remaining())
+    remaining()
+    while location() != tuple(point):
+        time.sleep(min(.02, remaining()))
+
+
 def save_visible_window(window, owner, path, port, *, diagnostics_out=None):
     """Retain a VNC crop only when it equals the stable owned drawable.
 
@@ -173,14 +219,14 @@ def save_visible_window(window, owner, path, port, *, diagnostics_out=None):
         draw = Drawable(window, owner)
         stage = 'vnc-open'
         client = rfb.RFB(port)
+        stage = 'pointer-parking'
         # Physical m74's window leaves a synthetic background margin. Refuse
         # unsupported geometry instead of retaining a cursor-obscured crop.
         points = [(client.width - 80, client.height - 80), (80, client.height - 80), (client.width - 80, 80)]
         point = next((p for p in points if not (x <= p[0] < x + width and y <= p[1] < y + height)), None)
         if point is None:
             raise EvidenceError('no_synthetic_pointer_parking_margin')
-        subprocess.run(['xdotool', 'mousemove', '--sync', str(point[0]), str(point[1])],
-                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        _park_pointer(point, owner, (client.width, client.height))
         rectangle = [inset, inset, width - 2 * inset, height - 2 * inset]
         for index in range(12):
             row = None

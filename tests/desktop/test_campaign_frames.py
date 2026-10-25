@@ -3,6 +3,7 @@
 from pathlib import Path
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -26,11 +27,104 @@ def notification(raw, width, x, y, w, h):
         raw[begin:begin + w * 4] = bytes((33, 77, 211, 0)) * w
 
 
+class PointerParkingTests(unittest.TestCase):
+    def owner(self):
+        return {'pid': 123, 'startTicks': 456, 'uid': os.getuid(), 'device': 7,
+                'inode': 8, 'executable': '/not-executed/putgd-ui'}
+
+    def test_already_parked_reads_xy_once_without_any_move_or_sync(self):
+        owner = self.owner()
+        with mock.patch.object(ui, 'identity', return_value=owner), \
+             mock.patch.object(ui.subprocess, 'check_output', return_value='X=80\nY=80\nWINDOW=999\nSCREEN=0') as read, \
+             mock.patch.object(ui.subprocess, 'run') as move:
+            ui._park_pointer((80, 80), owner, (100, 100))
+        read.assert_called_once()
+        self.assertEqual(read.call_args.args[0], ['xdotool', 'getmouselocation', '--shell'])
+        self.assertLessEqual(read.call_args.kwargs['timeout'], 5)
+        move.assert_not_called()
+
+    def test_non_sync_move_has_bounded_xy_readback_until_actual_target(self):
+        owner = self.owner()
+        with mock.patch.object(ui, 'identity', return_value=owner), \
+             mock.patch.object(ui.subprocess, 'check_output', side_effect=['X=1\nY=2', 'X=50\nY=50', 'X=80\nY=80']) as read, \
+             mock.patch.object(ui.subprocess, 'run') as move, mock.patch.object(ui.time, 'sleep'):
+            ui._park_pointer((80, 80), owner, (100, 100))
+        self.assertEqual(read.call_count, 3)
+        move.assert_called_once()
+        self.assertEqual(move.call_args.args[0], ['xdotool', 'mousemove', '80', '80'])
+        self.assertNotIn('--sync', move.call_args.args[0])
+        self.assertLessEqual(move.call_args.kwargs['timeout'], 5)
+
+    def test_malformed_unavailable_and_out_of_bounds_xy_never_move(self):
+        owner = self.owner()
+        for value in ('X=80', 'X=no\nY=80', 'X=-1\nY=80', 'X=100\nY=80',
+                      'X=80\nX=80\nY=80', 'z' * 1025):
+            with self.subTest(value=value[:20]), mock.patch.object(ui, 'identity', return_value=owner), \
+                 mock.patch.object(ui.subprocess, 'check_output', return_value=value), \
+                 mock.patch.object(ui.subprocess, 'run') as move:
+                with self.assertRaisesRegex(EvidenceError, 'pointer_parking_invalid_coordinates'):
+                    ui._park_pointer((80, 80), owner, (100, 100))
+                move.assert_not_called()
+
+    def test_absolute_five_second_budget_is_shared_by_read_move_and_readback(self):
+        owner, clock, budgets = self.owner(), [0.], []
+        original = None
+        def read(command, **kwargs):
+            nonlocal original
+            budget = kwargs['timeout']; budgets.append(budget)
+            if budget < 1:
+                clock[0] += budget
+                original = subprocess.TimeoutExpired(command, budget)
+                raise original
+            clock[0] += 1
+            return 'X=1\nY=2'
+        with mock.patch.object(ui, 'identity', return_value=owner), \
+             mock.patch.object(ui.time, 'monotonic', side_effect=lambda: clock[0]), \
+             mock.patch.object(ui.time, 'sleep', side_effect=lambda seconds: clock.__setitem__(0, clock[0] + seconds)), \
+             mock.patch.object(ui.subprocess, 'check_output', side_effect=read), \
+             mock.patch.object(ui.subprocess, 'run', side_effect=lambda *a, **k: clock.__setitem__(0, clock[0] + 1)):
+            with self.assertRaises(subprocess.TimeoutExpired) as failure:
+                ui._park_pointer((80, 80), owner, (100, 100))
+        self.assertIs(failure.exception, original)
+        self.assertAlmostEqual(clock[0], 5)
+        self.assertTrue(all(a > b for a, b in zip(budgets, budgets[1:])))
+
+    def test_late_read_even_at_target_cannot_succeed_after_deadline(self):
+        owner, clock = self.owner(), [0.]
+        def read(*args, **kwargs):
+            clock[0] = 5
+            return 'X=80\nY=80'
+        with mock.patch.object(ui, 'identity', return_value=owner), \
+             mock.patch.object(ui.time, 'monotonic', side_effect=lambda: clock[0]), \
+             mock.patch.object(ui.subprocess, 'check_output', side_effect=read), \
+             mock.patch.object(ui.subprocess, 'run') as move:
+            with self.assertRaisesRegex(EvidenceError, 'pointer_parking_deadline'):
+                ui._park_pointer((80, 80), owner, (100, 100))
+            move.assert_not_called()
+
+    def test_original_read_error_and_changed_generation_abort_without_move(self):
+        owner = self.owner()
+        original = OSError('do-not-export-private-read-text')
+        with mock.patch.object(ui, 'identity', return_value=owner), \
+             mock.patch.object(ui.subprocess, 'check_output', side_effect=original), \
+             mock.patch.object(ui.subprocess, 'run') as move:
+            with self.assertRaises(OSError) as failure:
+                ui._park_pointer((80, 80), owner, (100, 100))
+            self.assertIs(failure.exception, original); move.assert_not_called()
+        with mock.patch.object(ui, 'identity', side_effect=[owner, {**owner, 'startTicks': 999}]), \
+             mock.patch.object(ui.subprocess, 'check_output', return_value='X=80\nY=80'), \
+             mock.patch.object(ui.subprocess, 'run') as move:
+            with self.assertRaisesRegex(EvidenceError, 'pointer_parking_owner_changed'):
+                ui._park_pointer((80, 80), owner, (100, 100))
+            move.assert_not_called()
+
+
 class VisibilityDiagnosticsTests(unittest.TestCase):
     INFO = ('Absolute upper-left X: 10\nAbsolute upper-left Y: 10\nWidth: 40\nHeight: 40\n'
             'Map State: IsViewable\nWindow title: never retain this text')
 
-    def guard(self, root, mode, *, read_fault=None, exit_fault=None, close_fault=False, diagnostic=True):
+    def guard(self, root, mode, *, read_fault=None, exit_fault=None, close_fault=False,
+              diagnostic=True, parking_fault=None):
         from PIL import Image
         first, other = (50, 60, 70), (200, 100, 90)
         native = Image.new('RGB', (16, 16), first)
@@ -55,6 +149,7 @@ class VisibilityDiagnosticsTests(unittest.TestCase):
              mock.patch.object(ui, 'Drawable', return_value=draw), \
              mock.patch.object(ui.subprocess, 'run'), \
              mock.patch.object(ui.subprocess, 'check_output', return_value=self.INFO), \
+             mock.patch.object(ui, '_park_pointer', side_effect=parking_fault), \
              mock.patch.object(ui, '_visibility_target', side_effect=[state, exit_fault or state]) as metadata, \
              mock.patch.object(ui.time, 'sleep'):
             try:
@@ -118,6 +213,22 @@ class VisibilityDiagnosticsTests(unittest.TestCase):
             self.assertEqual(list(root.iterdir()), [])
             self.draw.close.assert_called_once(); self.client.close.assert_called_once()
             self.numeric_only(self.diagnostics)
+
+    def test_pointer_read_or_timeout_fault_is_labeled_before_pixels_and_saves_nothing(self):
+        for original in (OSError('do-not-export-pointer-read-text'),
+                         subprocess.TimeoutExpired(['xdotool', 'getmouselocation', '--shell'], 1),
+                         EvidenceError('pointer_parking_invalid_coordinates')):
+            with self.subTest(error=type(original).__name__), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                with self.assertRaises(type(original)) as failure:
+                    self.guard(root, 'exact', parking_fault=original)
+                self.assertIs(failure.exception, original)
+                self.assertEqual(self.diagnostics['errorStage'], 'pointer-parking')
+                self.assertEqual(self.diagnostics['attemptCount'], 0)
+                self.draw.pixels.assert_not_called(); self.client.frame.assert_not_called()
+                self.draw.close.assert_called_once(); self.client.close.assert_called_once()
+                self.assertEqual(list(root.iterdir()), [])
+                self.numeric_only(self.diagnostics)
 
     def test_exit_metadata_fault_cannot_mask_refusal_or_be_treated_as_expected_only(self):
         with tempfile.TemporaryDirectory() as directory:
