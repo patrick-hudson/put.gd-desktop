@@ -9,6 +9,15 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## History-open memory (#558) — 2026-10-25
+
+The History-only helper now defers hidden Settings/destination construction,
+while retaining active drafts and accepted setup inspection. Controlled builder
+measurements and lifecycle tests are recorded in the
+[History memory evidence](evidence/2026-10-25-history-open-558/README.md).
+Physical 300/30/300 Cinnamon and parallel Cinnamon/GNOME/KDE acceptance remain
+pending; headless measurements do not close #558 or certify stable assets.
+
 ## Login-startup uninstall contract (#382) — 2026-10-24
 
 Patrick corrected the contract: remove managed startup links for active accounts
