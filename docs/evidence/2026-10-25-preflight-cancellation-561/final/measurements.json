@@ -1,0 +1,1089 @@
+{
+  "debian-wayland": {
+    "status": "passed",
+    "startedUtc": "2026-10-25T04:54:11.940655+00:00",
+    "finishedUtc": "2026-10-25T04:54:25.936060+00:00",
+    "host": "debian",
+    "session": {
+      "Id": "20103",
+      "Type": "wayland",
+      "Seat": "seat0",
+      "Desktop": "KDE",
+      "Timestamp": "Sat 2026-10-24 01:20:38 CDT",
+      "TimestampMonotonic": "608680693393",
+      "Leader": "2755642",
+      "shell": {
+        "pid": 2755938,
+        "exe": "/usr/bin/plasmashell",
+        "startTicks": 60868265
+      },
+      "bootId": "06f3eec1-88ac-4081-82f6-59f510146647"
+    },
+    "qtPlatform": "wayland",
+    "qtScaleFactor": "0.9",
+    "captureRect": [
+      0,
+      0,
+      1540,
+      1000
+    ],
+    "osRelease": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.7\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+    "source": {
+      "putgd": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "84dd76214698ced7cfd6827180ee1a4d692d815e2f8de7372b2bd90b99febd24"
+      },
+      "putgd-cli": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "ca9fb8796c4e62b2aa418c06313f4fcb994702839e672ef1c935b9e0a0cee723"
+      },
+      "putgd-ui": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "1c8c6ed07eb72ee30a8ae2d207a36bc0ca8af3ae39c88395a5ff11aa85542213"
+      }
+    },
+    "desktopVersions": {
+      "plasmashell": "plasmashell 6.3.6",
+      "gnome-shell": "GNOME Shell 48.7"
+    },
+    "loadStart": [
+      2.46435546875,
+      3.50390625,
+      2.884765625
+    ],
+    "cancelTerminalMs": 327.75,
+    "fixtureRequests": [
+      {
+        "method": "HEAD",
+        "signatureValid": true
+      },
+      {
+        "method": "HEAD",
+        "signatureValid": true
+      },
+      {
+        "method": "PUT",
+        "signatureValid": true
+      }
+    ],
+    "uiProcesses": [
+      {
+        "pid": 2869122,
+        "startTicks": 68989819,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i561/build/dev/putgd",
+        "device": 2050,
+        "inode": 8559025,
+        "sha256": "84dd76214698ced7cfd6827180ee1a4d692d815e2f8de7372b2bd90b99febd24",
+        "role": "resident",
+        "rssBytes": 38035456,
+        "pssBytes": 13518848,
+        "privateBytes": 11489280,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 11,
+        "threads": 10,
+        "inResidentTree": true
+      },
+      {
+        "pid": 2869192,
+        "startTicks": 68990092,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i561/build/dev/putgd-s3-worker",
+        "device": 2050,
+        "inode": 8547405,
+        "sha256": "df0802798e570dd946aa3a6068b6a2ec43af7c7aa4afca8e371ffda7173bd49d",
+        "role": "auxiliary",
+        "rssBytes": 39227392,
+        "pssBytes": 16629760,
+        "privateBytes": 15237120,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 7,
+        "threads": 5,
+        "inResidentTree": true
+      },
+      {
+        "pid": 2869203,
+        "startTicks": 68990111,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i561/build/dev/putgd-ui",
+        "device": 2050,
+        "inode": 8559182,
+        "sha256": "1c8c6ed07eb72ee30a8ae2d207a36bc0ca8af3ae39c88395a5ff11aa85542213",
+        "role": "ui",
+        "rssBytes": 180764672,
+        "pssBytes": 79846400,
+        "privateBytes": 64385024,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 105,
+        "threads": 10,
+        "inResidentTree": true
+      }
+    ],
+    "cleanup": {
+      "children": [
+        {
+          "pid": 2869083,
+          "returncode": 0
+        },
+        {
+          "pid": 2869121,
+          "returncode": -15
+        },
+        {
+          "pid": 2869122,
+          "returncode": 0
+        }
+      ],
+      "socketExists": false,
+      "remainingProfileProcesses": []
+    },
+    "retry": {
+      "id": "d28971ea-fac6-416a-bd90-e093b6b78599",
+      "state": "completed",
+      "phase": "completed",
+      "copyStatus": "copied",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "items": [
+        {
+          "candidate": "Screen-Capture-2026-10-24-23-54-17.png",
+          "uploadStatus": "uploaded"
+        }
+      ]
+    },
+    "visuals": {
+      "preflight.png": {
+        "sha256": "9ee6dbe046bc31ac82dbc609995b03819829142b3be28be323d62fde43d065a1",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.5403,
+          "kept": "/tmp/i561d3/preflight.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            0,
+            1540,
+            1000
+          ],
+          "sha256": "9ee6dbe046bc31ac82dbc609995b03819829142b3be28be323d62fde43d065a1",
+          "size": [
+            1920,
+            1080
+          ]
+        }
+      },
+      "cancelled.png": {
+        "sha256": "c26093b17fc0ede2b676aa846dbac1121e918936a67bc764da4095ad542dd0f2",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.5403,
+          "kept": "/tmp/i561d3/cancelled.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            0,
+            1540,
+            1000
+          ],
+          "sha256": "c26093b17fc0ede2b676aa846dbac1121e918936a67bc764da4095ad542dd0f2",
+          "size": [
+            1920,
+            1080
+          ]
+        }
+      },
+      "retried.png": {
+        "sha256": "6ff7dae7eeabe9d0f41a3f7e657640fa2e556b5954b57568fa7d9d2ffe8f240f",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.5403,
+          "kept": "/tmp/i561d3/retried.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            0,
+            1540,
+            1000
+          ],
+          "sha256": "6ff7dae7eeabe9d0f41a3f7e657640fa2e556b5954b57568fa7d9d2ffe8f240f",
+          "size": [
+            1920,
+            1080
+          ]
+        }
+      }
+    }
+  },
+  "fedora-wayland": {
+    "status": "passed",
+    "startedUtc": "2026-10-25T04:57:57.417631+00:00",
+    "finishedUtc": "2026-10-25T04:58:10.576031+00:00",
+    "host": "fedora",
+    "session": {
+      "Id": "1100",
+      "Type": "wayland",
+      "Seat": "seat0",
+      "Desktop": null,
+      "Timestamp": "Sat 2026-10-24 01:20:43 CDT",
+      "TimestampMonotonic": "14140790842",
+      "Leader": "144202",
+      "shell": {
+        "pid": 144305,
+        "exe": "/usr/bin/gnome-shell",
+        "startTicks": 1414103
+      },
+      "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8"
+    },
+    "qtPlatform": "wayland",
+    "qtScaleFactor": "0.7",
+    "captureRect": [
+      0,
+      180,
+      1920,
+      900
+    ],
+    "osRelease": "NAME=\"Fedora Linux\"\nVERSION=\"44 (Workstation Edition)\"\nRELEASE_TYPE=stable\nID=fedora\nVERSION_ID=44\nVERSION_CODENAME=\"\"\nPRETTY_NAME=\"Fedora Linux 44 (Workstation Edition)\"\nANSI_COLOR=\"0;38;2;60;110;180\"\nLOGO=fedora-logo-icon\nCPE_NAME=\"cpe:/o:fedoraproject:fedora:44\"\nDEFAULT_HOSTNAME=\"fedora\"\nHOME_URL=\"https://fedoraproject.org/\"\nDOCUMENTATION_URL=\"https://docs.fedoraproject.org/en-US/fedora/f44/\"\nSUPPORT_URL=\"https://ask.fedoraproject.org/\"\nBUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\nREDHAT_BUGZILLA_PRODUCT=\"Fedora\"\nREDHAT_BUGZILLA_PRODUCT_VERSION=44\nREDHAT_SUPPORT_PRODUCT=\"Fedora\"\nREDHAT_SUPPORT_PRODUCT_VERSION=44\nSUPPORT_END=2027-05-19\nVARIANT=\"Workstation Edition\"\nVARIANT_ID=workstation\n",
+    "source": {
+      "putgd": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "533f524169202f3acea0cbfa339d778d9b12fe4b6f19889e24a27f4bc2bf9197"
+      },
+      "putgd-cli": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "34a81fda08443eec581648bc33019c8bf81a65b2b66f0e4b17dc898687f87200"
+      },
+      "putgd-ui": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "ea062d078977ed3d8ab5b492294d7355c275122a8fd8d43c834414c877f93e32"
+      }
+    },
+    "desktopVersions": {
+      "gnome-shell": "GNOME Shell 50.6"
+    },
+    "loadStart": [
+      2.3017578125,
+      3.451171875,
+      3.44775390625
+    ],
+    "cancelTerminalMs": 928.12,
+    "fixtureRequests": [
+      {
+        "method": "HEAD",
+        "signatureValid": true
+      },
+      {
+        "method": "HEAD",
+        "signatureValid": true
+      },
+      {
+        "method": "PUT",
+        "signatureValid": true
+      }
+    ],
+    "uiProcesses": [
+      {
+        "pid": 225646,
+        "startTicks": 9557786,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i561u/build/native/putgd",
+        "device": 50,
+        "inode": 5973190,
+        "sha256": "533f524169202f3acea0cbfa339d778d9b12fe4b6f19889e24a27f4bc2bf9197",
+        "role": "resident",
+        "rssBytes": 41824256,
+        "pssBytes": 18534400,
+        "privateBytes": 12128256,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 10,
+        "threads": 10,
+        "inResidentTree": true
+      },
+      {
+        "pid": 225709,
+        "startTicks": 9558020,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i561u/build/native/putgd-s3-worker",
+        "device": 50,
+        "inode": 5973180,
+        "sha256": "da5b3c3ed9bd04b8c8fbcb85d73793caed130575ff14b22ca311a7081e8c3783",
+        "role": "auxiliary",
+        "rssBytes": 40976384,
+        "pssBytes": 17337344,
+        "privateBytes": 13398016,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 5,
+        "threads": 5,
+        "inResidentTree": true
+      },
+      {
+        "pid": 225721,
+        "startTicks": 9558038,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i561u/build/native/putgd-ui",
+        "device": 50,
+        "inode": 5973223,
+        "sha256": "ea062d078977ed3d8ab5b492294d7355c275122a8fd8d43c834414c877f93e32",
+        "role": "ui",
+        "rssBytes": 108380160,
+        "pssBytes": 67605504,
+        "privateBytes": 53813248,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 77,
+        "threads": 14,
+        "inResidentTree": true
+      }
+    ],
+    "cleanup": {
+      "children": [
+        {
+          "pid": 225568,
+          "returncode": 0
+        },
+        {
+          "pid": 225645,
+          "returncode": -15
+        },
+        {
+          "pid": 225646,
+          "returncode": 0
+        }
+      ],
+      "socketExists": false,
+      "remainingProfileProcesses": []
+    },
+    "retry": {
+      "id": "1531d49e-99e5-4a42-8460-a30a4ee6c009",
+      "state": "completed",
+      "phase": "completed",
+      "copyStatus": "failed",
+      "error": {
+        "code": "clipboard_unavailable",
+        "details": {},
+        "message": "GNOME helper cannot own CLIPBOARD"
+      },
+      "items": [
+        {
+          "candidate": "Screen-Capture-2026-10-24-23-58-02.png",
+          "uploadStatus": "uploaded"
+        }
+      ]
+    },
+    "visuals": {
+      "preflight.png": {
+        "sha256": "57dc84a05a092808e77598fc1005bc1c622c3e93c8833871cf0dc9d7ae7c3089",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.6485,
+          "kept": "/tmp/i561f1/preflight.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            180,
+            1920,
+            900
+          ],
+          "sha256": "57dc84a05a092808e77598fc1005bc1c622c3e93c8833871cf0dc9d7ae7c3089",
+          "size": [
+            1920,
+            1080
+          ]
+        }
+      },
+      "cancelled.png": {
+        "sha256": "57479e274bb41cc8b8ac76bb82c9911646e2e7e4a958a71ed8a5a57169460929",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.6485,
+          "kept": "/tmp/i561f1/cancelled.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            180,
+            1920,
+            900
+          ],
+          "sha256": "57479e274bb41cc8b8ac76bb82c9911646e2e7e4a958a71ed8a5a57169460929",
+          "size": [
+            1920,
+            1080
+          ]
+        }
+      },
+      "retried.png": {
+        "sha256": "4dc862d95fede7cec6b2c743258bfa55844bc1df99a0a33652bac8896560aea8",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.6485,
+          "kept": "/tmp/i561f1/retried.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            180,
+            1920,
+            900
+          ],
+          "sha256": "4dc862d95fede7cec6b2c743258bfa55844bc1df99a0a33652bac8896560aea8",
+          "size": [
+            1920,
+            1080
+          ]
+        }
+      }
+    }
+  },
+  "kubuntu-wayland": {
+    "status": "passed",
+    "startedUtc": "2026-10-25T04:58:27.854073+00:00",
+    "finishedUtc": "2026-10-25T04:58:39.545681+00:00",
+    "host": "kubuntu",
+    "session": {
+      "Id": "906",
+      "Type": "wayland",
+      "Seat": "seat0",
+      "Desktop": "KDE",
+      "Timestamp": "Sat 2026-10-24 01:24:11 CDT",
+      "TimestampMonotonic": "31018816964",
+      "Leader": "128842",
+      "shell": {
+        "pid": 129168,
+        "exe": "/usr/bin/plasmashell",
+        "startTicks": 3102035
+      },
+      "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+    },
+    "qtPlatform": "wayland",
+    "qtScaleFactor": "1",
+    "captureRect": [
+      0,
+      0,
+      1920,
+      1000
+    ],
+    "osRelease": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n",
+    "source": {
+      "putgd": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "9a83034c91731c9f1496e8e875052089c4e301e9f050f0f5027d111cae8633bf"
+      },
+      "putgd-cli": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "00b5ae3b177f8af9caf4f9c2ad2f8e6c51af1788f810c9751fb2dd5680058b81"
+      },
+      "putgd-ui": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "57ba7f9d6f02d15c56807f46937687e93d563e31838d75523b8d88629b5f2037"
+      }
+    },
+    "desktopVersions": {
+      "plasmashell": "plasmashell 6.6.6"
+    },
+    "loadStart": [
+      0.9013671875,
+      1.2412109375,
+      1.3310546875
+    ],
+    "cancelTerminalMs": 610.98,
+    "fixtureRequests": [
+      {
+        "method": "HEAD",
+        "signatureValid": true
+      },
+      {
+        "method": "HEAD",
+        "signatureValid": true
+      },
+      {
+        "method": "PUT",
+        "signatureValid": true
+      }
+    ],
+    "uiProcesses": [
+      {
+        "pid": 201816,
+        "startTicks": 11227751,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i561/build/dev/putgd",
+        "device": 2050,
+        "inode": 4233908,
+        "sha256": "9a83034c91731c9f1496e8e875052089c4e301e9f050f0f5027d111cae8633bf",
+        "role": "resident",
+        "rssBytes": 37818368,
+        "pssBytes": 13428736,
+        "privateBytes": 11698176,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 10,
+        "threads": 10,
+        "inResidentTree": true
+      },
+      {
+        "pid": 201884,
+        "startTicks": 11227968,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i561/build/dev/putgd-s3-worker",
+        "device": 2050,
+        "inode": 4233566,
+        "sha256": "ea537e35389ff5f100a1fd745325a8b67d9abd098ba00a59fd0a5c6bc5439449",
+        "role": "auxiliary",
+        "rssBytes": 41525248,
+        "pssBytes": 17645568,
+        "privateBytes": 16199680,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 6,
+        "threads": 5,
+        "inResidentTree": true
+      },
+      {
+        "pid": 201895,
+        "startTicks": 11227982,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i561/build/dev/putgd-ui",
+        "device": 2050,
+        "inode": 4233911,
+        "sha256": "57ba7f9d6f02d15c56807f46937687e93d563e31838d75523b8d88629b5f2037",
+        "role": "ui",
+        "rssBytes": 173277184,
+        "pssBytes": 71000064,
+        "privateBytes": 60043264,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 84,
+        "threads": 10,
+        "inResidentTree": true
+      }
+    ],
+    "cleanup": {
+      "children": [
+        {
+          "pid": 201774,
+          "returncode": 0
+        },
+        {
+          "pid": 201815,
+          "returncode": -15
+        },
+        {
+          "pid": 201816,
+          "returncode": 0
+        }
+      ],
+      "socketExists": false,
+      "remainingProfileProcesses": []
+    },
+    "retry": {
+      "id": "cff109a7-1285-4485-bfa9-89648d567fa6",
+      "state": "completed",
+      "phase": "completed",
+      "copyStatus": "copied",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "items": [
+        {
+          "candidate": "Screen-Capture-2026-10-24-23-58-32.png",
+          "uploadStatus": "uploaded"
+        }
+      ]
+    },
+    "visuals": {
+      "preflight.png": {
+        "sha256": "d6e391eb2bbc53e59db7a8a0939ce07ee8fa08a2d13642b3c298c5cf7a08dbb1",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.566,
+          "kept": "/tmp/i561k1/preflight.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            0,
+            1920,
+            1000
+          ],
+          "sha256": "d6e391eb2bbc53e59db7a8a0939ce07ee8fa08a2d13642b3c298c5cf7a08dbb1",
+          "size": [
+            1920,
+            1080
+          ]
+        }
+      },
+      "cancelled.png": {
+        "sha256": "e0ecb3f75bda415ab8b0dd36cb693e1da4662fa954811c8b753c7023b91b172e",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.566,
+          "kept": "/tmp/i561k1/cancelled.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            0,
+            1920,
+            1000
+          ],
+          "sha256": "e0ecb3f75bda415ab8b0dd36cb693e1da4662fa954811c8b753c7023b91b172e",
+          "size": [
+            1920,
+            1080
+          ]
+        }
+      },
+      "retried.png": {
+        "sha256": "418d63e32caacf6a32f87b9d3f16b36ca5b16c9a60ff9d0439820aaa307855d0",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.566,
+          "kept": "/tmp/i561k1/retried.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            0,
+            1920,
+            1000
+          ],
+          "sha256": "418d63e32caacf6a32f87b9d3f16b36ca5b16c9a60ff9d0439820aaa307855d0",
+          "size": [
+            1920,
+            1080
+          ]
+        }
+      }
+    }
+  },
+  "ubuntu26-wayland": {
+    "status": "passed",
+    "startedUtc": "2026-10-25T05:02:59.887441+00:00",
+    "finishedUtc": "2026-10-25T05:03:12.598479+00:00",
+    "host": "putgd-ubuntu-lab",
+    "session": {
+      "Id": "1",
+      "Type": "wayland",
+      "Seat": "seat0",
+      "Desktop": null,
+      "Timestamp": "Sat 2026-10-24 23:49:48 CDT",
+      "TimestampMonotonic": "22341629",
+      "Leader": "1306",
+      "shell": {
+        "pid": 1847,
+        "exe": "/usr/bin/gnome-shell",
+        "startTicks": 2816
+      },
+      "bootId": "1231108c-fe35-4fa7-ad03-b14ac901a56e"
+    },
+    "qtPlatform": "wayland",
+    "qtScaleFactor": "0.6",
+    "captureRect": [
+      0,
+      32,
+      1280,
+      768
+    ],
+    "osRelease": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n",
+    "source": {
+      "putgd": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "9a83034c91731c9f1496e8e875052089c4e301e9f050f0f5027d111cae8633bf"
+      },
+      "putgd-cli": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "00b5ae3b177f8af9caf4f9c2ad2f8e6c51af1788f810c9751fb2dd5680058b81"
+      },
+      "putgd-ui": {
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "sha256": "57ba7f9d6f02d15c56807f46937687e93d563e31838d75523b8d88629b5f2037"
+      }
+    },
+    "desktopVersions": {
+      "gnome-shell": "GNOME Shell 50.1"
+    },
+    "loadStart": [
+      0.36181640625,
+      0.44775390625,
+      0.44384765625
+    ],
+    "cancelTerminalMs": 1102.74,
+    "fixtureRequests": [
+      {
+        "method": "HEAD",
+        "signatureValid": true
+      },
+      {
+        "method": "HEAD",
+        "signatureValid": true
+      },
+      {
+        "method": "PUT",
+        "signatureValid": true
+      }
+    ],
+    "uiProcesses": [
+      {
+        "pid": 5491,
+        "startTicks": 81659,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd",
+        "device": 64770,
+        "inode": 1076429,
+        "sha256": "9a83034c91731c9f1496e8e875052089c4e301e9f050f0f5027d111cae8633bf",
+        "role": "resident",
+        "rssBytes": 37359616,
+        "pssBytes": 17862656,
+        "privateBytes": 11698176,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 11,
+        "threads": 8,
+        "inResidentTree": true
+      },
+      {
+        "pid": 5549,
+        "startTicks": 81904,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd-s3-worker",
+        "device": 64770,
+        "inode": 1076436,
+        "sha256": "ea537e35389ff5f100a1fd745325a8b67d9abd098ba00a59fd0a5c6bc5439449",
+        "role": "auxiliary",
+        "rssBytes": 41320448,
+        "pssBytes": 19329024,
+        "privateBytes": 15732736,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 6,
+        "threads": 4,
+        "inResidentTree": true
+      },
+      {
+        "pid": 5560,
+        "startTicks": 81923,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd-ui",
+        "device": 64770,
+        "inode": 1076437,
+        "sha256": "57ba7f9d6f02d15c56807f46937687e93d563e31838d75523b8d88629b5f2037",
+        "role": "ui",
+        "rssBytes": 110276608,
+        "pssBytes": 66017280,
+        "privateBytes": 54333440,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 85,
+        "threads": 12,
+        "inResidentTree": true
+      }
+    ],
+    "cleanup": {
+      "children": [
+        {
+          "pid": 5450,
+          "returncode": 0
+        },
+        {
+          "pid": 5490,
+          "returncode": -15
+        },
+        {
+          "pid": 5491,
+          "returncode": 0
+        }
+      ],
+      "socketExists": false,
+      "remainingProfileProcesses": []
+    },
+    "vmRunId": "0131c70a-f774-413b-bd96-be4db095e721",
+    "virtualization": "kvm",
+    "retry": {
+      "id": "38623e78-b17e-4e99-95f5-fd28e314aeaf",
+      "state": "completed",
+      "phase": "completed",
+      "copyStatus": "copied",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "items": [
+        {
+          "candidate": "Screen-Capture-2026-10-25-00-03-04.png",
+          "uploadStatus": "uploaded"
+        }
+      ]
+    },
+    "visuals": {
+      "preflight.png": {
+        "sha256": "0a490423c43fe1aee37fdd1799c8950e2540cacf4a86f58223098df3d933d9a3",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.5405,
+          "kept": "/tmp/i561g2/preflight.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            32,
+            1280,
+            768
+          ],
+          "sha256": "0a490423c43fe1aee37fdd1799c8950e2540cacf4a86f58223098df3d933d9a3",
+          "size": [
+            1280,
+            800
+          ]
+        }
+      },
+      "cancelled.png": {
+        "sha256": "98525048a92a8dd49e540e8b0cd5182aac9853cf4eaba57fa5b80b98d1f55305",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.5405,
+          "kept": "/tmp/i561g2/cancelled.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            32,
+            1280,
+            768
+          ],
+          "sha256": "98525048a92a8dd49e540e8b0cd5182aac9853cf4eaba57fa5b80b98d1f55305",
+          "size": [
+            1280,
+            800
+          ]
+        }
+      },
+      "retried.png": {
+        "sha256": "d1c1aafe983986732c25ecacb59da6e449373b21ecd061852a0ebf5a850db7f2",
+        "reviewed": true,
+        "privacyGate": {
+          "edges": {
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0,
+            "top": 1.0
+          },
+          "fraction": 0.5405,
+          "kept": "/tmp/i561g2/retried.png",
+          "minFraction": 0.5,
+          "ok": true,
+          "rect": [
+            0,
+            32,
+            1280,
+            768
+          ],
+          "sha256": "d1c1aafe983986732c25ecacb59da6e449373b21ecd061852a0ebf5a850db7f2",
+          "size": [
+            1280,
+            800
+          ]
+        }
+      }
+    }
+  }
+}
