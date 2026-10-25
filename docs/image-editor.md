@@ -177,7 +177,7 @@ guarantee forensic erasure from disks, swap or backups.
 `edit` operations move through `accepted → acquiring → editing → acquiring`
 (handoff) `→ stored → running → completed`. `editing` is persisted and is an
 active state; the operation has no items until the finalized PNG is committed.
-After the helper exits successfully, the resident persists `state=acquiring,
+After the helper exits successfully, the resident persists `state=acquiring`,
 `phase=queued` before putting the sanitized PNG in the worker queue. The editor
 is closed; History says **Waiting to upload…**. `stored` begins only after the
 worker commits an immutable artifact. Cancellation while queued still cancels
