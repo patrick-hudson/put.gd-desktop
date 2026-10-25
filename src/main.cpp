@@ -167,9 +167,10 @@ int main(int argc,char* argv[]) {
  // Every resident handles large transient rasters: captures, bridge transfers
  // and Edit & upload staging/handoffs. A fixed mmap threshold returns them on
  // free instead of growing per-thread arenas that malloc_trim cannot shrink.
- // Keep the existing idle cleanup gate active for small-chunk fragmentation.
+ // A single arena keeps worker small-chunk churn trimmable too (#560), so the
+ // existing idle cleanup gate can return it.
  if(!putgd::applyResidentAllocatorPolicy())
-  qWarning("Could not apply the resident transient allocation threshold");
+  qWarning("Could not apply the resident allocation policy");
 #endif
  std::unique_ptr<QCoreApplication> application;
  if(coreResident||gnomeCoreResident||kdeCoreResident)application=std::make_unique<QCoreApplication>(argc,argv);
