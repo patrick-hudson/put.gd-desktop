@@ -27,6 +27,18 @@ def require(value, code):
         raise EvidenceError(code)
 
 
+def _visual_export(action, original=None, stage='diagnostics'):
+    try:
+        return action()
+    except BaseException as error:
+        if original is None:
+            raise
+        original.add_note('visual_diagnostics_export: ' + type(error).__name__)
+        original.add_note('visual_export_stage: ' + stage)
+        original.visibility_abort = True
+        raise original
+
+
 def policy(path):
     if not path:
         return None
@@ -198,15 +210,26 @@ class UI:
         self.run.event('history-visual-presentation-requested', label=label,
                        window=self.window, owner=self.owner, provesPaint=False)
         path = self.run.root / (label + '-0.png')
+        diagnostics = {}
         try:
             # This guard still raises the pinned window and requires exact
             # native-before/composite/native-after equality before any save.
-            proof = save_visible_window(self.window, self.owner, path, self.run.args.vnc_port)
-        except EvidenceError as error:
-            if str(error) != 'owned_ui_not_proven_visible_on_physical_wall':
-                raise
-            self.run.event('owned-window-occluded-no-visual-retained', label=label, window=self.window)
-            raise EvidenceError('no_owned_ui_proven_visible_on_wall') from error
+            proof = save_visible_window(self.window, self.owner, path, self.run.args.vnc_port,
+                                        diagnostics_out=diagnostics)
+        except BaseException as error:
+            expected = isinstance(error, EvidenceError) and str(error) == 'owned_ui_not_proven_visible_on_physical_wall'
+            original = EvidenceError('no_owned_ui_proven_visible_on_wall') if expected else error
+            if expected:
+                original.__cause__ = error
+                original.visibility_abort = getattr(error, 'visibility_abort', False)
+            original.visibility_diagnostics = diagnostics
+            _visual_export(lambda: self.run.event('history-visual-comparison-diagnostics', label=label,
+                                                  diagnostics=diagnostics), original)
+            if expected:
+                _visual_export(lambda: self.run.event('owned-window-occluded-no-visual-retained',
+                                                      label=label, window=self.window), original, 'refusal-event')
+            raise original
+        self.run.event('history-visual-comparison-diagnostics', label=label, diagnostics=diagnostics)
         self.run.event('owned-ui-visual', label=label, path=path.name, sha256=sha256(path), **proof)
 
     def action(self, label, action, rectangle=None, require_change=True):
@@ -522,6 +545,30 @@ def submit_file_upload(run, source):
             run.call('editor.cancel', {'id': operation_id})
 
 
+def _burst_visual_checkpoint(run, ui, label):
+    gate = run.result['gates'].setdefault('burstVisualAttribution',
+        {'status': 'unassessed', 'attempted': 0, 'succeeded': 0, 'refused': 0})
+    gate['attempted'] += 1
+    try:
+        ui.save_history(label)
+    except EvidenceError as error:
+        if str(error) != 'no_owned_ui_proven_visible_on_wall' or getattr(error, 'visibility_abort', False):
+            raise
+        # This one evidence failure does not make the independent file sources
+        # unsafe. Retain a permanent failed gate while completing their checks.
+        context = {'label': label, 'errorCode': 'no_owned_ui_proven_visible_on_wall',
+                   'diagnostics': getattr(error, 'visibility_diagnostics', {})}
+        run.result.setdefault('burstVisualRefusals', []).append(context)
+        gate.update(status='fail', refused=gate['refused'] + 1)
+        gate.setdefault('firstRefusalLabel', label)
+        _visual_export(lambda: run.event('burst-visual-attribution-refused', **context), error, 'checkpoint-event')
+        _visual_export(run.persist, error, 'checkpoint-persist')
+    else:
+        gate['succeeded'] += 1
+        if gate['status'] != 'fail':
+            gate['status'] = 'pass'
+
+
 def burst(run):
     from campaign_fixture import png
     # Prepare and attribute every input before changing the destination/rules.
@@ -562,7 +609,7 @@ def burst(run):
                 run.sample('burst-active')
                 active = tray(run, 'burst-' + str(index))
                 if index in (4, 24, 49):
-                    ui.save_history('burst-progress-' + str(index))
+                    _burst_visual_checkpoint(run, ui, 'burst-progress-' + str(index))
         require(len(set(operations)) == 50 and uploading_peak >= 2 and queued_peak >= 1,
                 'burst_did_not_demonstrate_concurrent_queued_uploads')
         require(active['IconPixmap'] != initial['IconPixmap'] or active['ToolTip'] != initial['ToolTip'],
@@ -578,7 +625,7 @@ def burst(run):
         time.sleep(2)
         final = tray(run, 'burst-settled-tray')
         require(not final['workingTitleObserved'], 'tray_did_not_return_to_idle')
-        ui.save_history('burst-completed')
+        _burst_visual_checkpoint(run, ui, 'burst-completed')
         for source in sources:
             require(upload_source(source['path'], run.root) == source, 'burst_source_identity_changed_after_upload')
         run.result['metrics']['burst'] = {'acceptedFileEditorUploads': 50, 'nativeCapturesExercised': 0,

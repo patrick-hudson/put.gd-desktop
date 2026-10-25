@@ -108,7 +108,35 @@ class Drawable:
                 'definition': 'native owned drawable digest; first sample after action acknowledgement; 10ms requested polling; no compositor presentation claim'}
 
 
-def save_visible_window(window, owner, path, port):
+def _visibility_target(window, owner, info=None):
+    """Numeric facts about this pinned target only; discard command output."""
+    import re
+    started = time.monotonic()
+    if not same_identity(identity(owner['pid']), owner):
+        raise EvidenceError('visibility_owner_changed')
+    if info is None:
+        info = subprocess.check_output(['xwininfo', '-id', window], text=True, timeout=2,
+                                       stderr=subprocess.DEVNULL)
+    prop = subprocess.check_output(['xprop', '-id', window, '_NET_WM_PID'], text=True, timeout=2,
+                                   stderr=subprocess.DEVNULL)
+    if not re.search(r'=\s*' + str(owner['pid']) + r'\s*$', prop):
+        raise EvidenceError('visibility_window_owner_changed')
+    if 'Map State: IsViewable' not in info:
+        raise EvidenceError('visibility_target_not_mapped')
+    active = subprocess.check_output(['xprop', '-root', '_NET_ACTIVE_WINDOW'], text=True, timeout=2,
+                                     stderr=subprocess.DEVNULL)
+    identifiers = re.findall(r'0x[0-9a-fA-F]+', active)
+    if len(identifiers) != 1:
+        raise EvidenceError('visibility_active_window_unavailable')
+    geometry = [int(re.search(pattern, info)[1]) for pattern in (
+        r'Absolute upper-left X:\s+(-?\d+)', r'Absolute upper-left Y:\s+(-?\d+)',
+        r'Width:\s+(\d+)', r'Height:\s+(\d+)')]
+    return {'generationMatches': True, 'ownerPidMatches': True, 'mapped': True,
+            'geometry': geometry, 'activeIsTarget': int(identifiers[0], 16) == int(window, 16),
+            'probeMs': (time.monotonic() - started) * 1000}
+
+
+def save_visible_window(window, owner, path, port, *, diagnostics_out=None):
     """Retain a VNC crop only when it equals the stable owned drawable.
 
     Park the pointer in the synthetic background; the exact inner client crop
@@ -118,20 +146,33 @@ def save_visible_window(window, owner, path, port):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/lab'))
     import rfb
     from PIL import Image
-    subprocess.run(['wmctrl', '-ia', window], check=True, stdout=subprocess.DEVNULL,
-                   stderr=subprocess.DEVNULL, timeout=5)
-    info = subprocess.check_output(['xwininfo', '-id', window], text=True, timeout=5)
-    import re
-    x = int(re.search(r'Absolute upper-left X:\s+(-?\d+)', info)[1])
-    y = int(re.search(r'Absolute upper-left Y:\s+(-?\d+)', info)[1])
-    width = int(re.search(r'Width:\s+(\d+)', info)[1])
-    height = int(re.search(r'Height:\s+(\d+)', info)[1])
-    inset = 12
-    if width <= 2 * inset or height <= 2 * inset:
-        raise EvidenceError('owned_visual_crop_too_small')
-    draw = Drawable(window, owner)
-    client = rfb.RFB(port)
+    draw = client = failure = None
+    exit_attempted = False
+    stage = 'activation'
+    if diagnostics_out is not None:
+        diagnostics_out.update(schemaVersion=1, target={'pid': owner['pid'], 'startTicks': owner['startTicks'],
+            'uid': owner['uid'], 'windowXid': int(window, 16)}, attempts=[], metadataComplete=False)
     try:
+        subprocess.run(['wmctrl', '-ia', window], check=True, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=5)
+        stage = 'geometry'
+        info = subprocess.check_output(['xwininfo', '-id', window], text=True, timeout=5)
+        import re
+        x = int(re.search(r'Absolute upper-left X:\s+(-?\d+)', info)[1])
+        y = int(re.search(r'Absolute upper-left Y:\s+(-?\d+)', info)[1])
+        width = int(re.search(r'Width:\s+(\d+)', info)[1])
+        height = int(re.search(r'Height:\s+(\d+)', info)[1])
+        inset = 12
+        if width <= 2 * inset or height <= 2 * inset:
+            raise EvidenceError('owned_visual_crop_too_small')
+        if diagnostics_out is not None:
+            stage = 'entry-metadata'
+            diagnostics_out['entry'] = _visibility_target(window, owner, info)
+            diagnostics_out['crop'] = [x + inset, y + inset, width - 2 * inset, height - 2 * inset]
+        stage = 'drawable-open'
+        draw = Drawable(window, owner)
+        stage = 'vnc-open'
+        client = rfb.RFB(port)
         # Physical m74's window leaves a synthetic background margin. Refuse
         # unsupported geometry instead of retaining a cursor-obscured crop.
         points = [(client.width - 80, client.height - 80), (80, client.height - 80), (client.width - 80, 80)]
@@ -141,25 +182,93 @@ def save_visible_window(window, owner, path, port):
         subprocess.run(['xdotool', 'mousemove', '--sync', str(point[0]), str(point[1])],
                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
         rectangle = [inset, inset, width - 2 * inset, height - 2 * inset]
-        for _ in range(12):
+        for index in range(12):
+            row = None
+            if diagnostics_out is not None:
+                row = {'attempt': index + 1}
+                diagnostics_out['attempts'].append(row)
+            bracket = started = time.monotonic()
+            stage = 'native-before'
             before = draw.pixels(rectangle).tobytes()
+            if row is not None:
+                row['beforeNativeMs'] = (time.monotonic() - started) * 1000
+            stage, started = 'vnc-frame', time.monotonic()
             w, h, pixels = client.frame()
+            if row is not None:
+                row.update(vncFetchMs=(time.monotonic() - started) * 1000,
+                           framebufferWidth=w, framebufferHeight=h)
             if x < 0 or y < 0 or x + width > w or y + height > h:
                 raise EvidenceError('owned_visual_not_inside_physical_frame')
             crop = Image.frombytes('RGB', (w, h), pixels, 'raw', 'BGRX').crop(
                 (x + inset, y + inset, x + width - inset, y + height - inset))
+            stage, started = 'native-after', time.monotonic()
             after = draw.pixels(rectangle).tobytes()
-            if before == crop.tobytes() == after:
+            after_finished = time.monotonic()
+            composite = crop.tobytes()
+            if row is not None:
+                row.update(afterNativeMs=(after_finished - started) * 1000,
+                    bracketMs=(after_finished - bracket) * 1000,
+                    nativeBeforeEqualsAfter=before == after,
+                    compositeEqualsBefore=composite == before, compositeEqualsAfter=composite == after)
+            if before == composite == after:
+                if diagnostics_out is not None:
+                    stage = 'exit-metadata'
+                    exit_attempted = True
+                    diagnostics_out['exit'] = _visibility_target(window, owner)
+                stage = 'save'
                 crop.save(path)
                 return {'pixelSource': 'physical localhost VNC composite crop', 'equalsStableOwnedDrawable': True,
                         'nativePixelSha256': hashlib.sha256(before).hexdigest(),
                         'clientCrop': [x + inset, y + inset, width - 2 * inset, height - 2 * inset],
                         'window': window, 'owner': owner}
             time.sleep(.1)
+        stage = 'comparison-refusal'
         raise EvidenceError('owned_ui_not_proven_visible_on_physical_wall')
+    except BaseException as error:
+        failure = error
+        if diagnostics_out is not None:
+            diagnostics_out.update(errorStage=stage, errorType=type(error).__name__)
+        raise
     finally:
-        draw.close()
-        client.close()
+        secondary_failure = None
+        if diagnostics_out is not None:
+            if 'entry' in diagnostics_out and not exit_attempted:
+                exit_attempted = True
+                try:
+                    diagnostics_out['exit'] = _visibility_target(window, owner)
+                except BaseException as error:
+                    diagnostics_out['exitMetadataErrorType'] = type(error).__name__
+                    if failure is not None:
+                        failure.add_note('visibility_exit_metadata: ' + type(error).__name__)
+                        failure.visibility_abort = True
+                    else:
+                        secondary_failure = error
+            diagnostics_out['metadataComplete'] = 'entry' in diagnostics_out and 'exit' in diagnostics_out
+            if diagnostics_out['metadataComplete']:
+                diagnostics_out['geometryChanged'] = diagnostics_out['entry']['geometry'] != diagnostics_out['exit']['geometry']
+            rows = diagnostics_out['attempts']
+            complete = [r for r in rows if 'compositeEqualsAfter' in r]
+            diagnostics_out.update(attemptCount=len(rows), completedComparisonCount=len(complete),
+                nativeChangedCount=sum(not r['nativeBeforeEqualsAfter'] for r in complete),
+                stableNativeCompositeMismatchCount=sum(r['nativeBeforeEqualsAfter'] and not r['compositeEqualsBefore'] for r in complete),
+                exactMatchCount=sum(r['nativeBeforeEqualsAfter'] and r['compositeEqualsBefore'] and r['compositeEqualsAfter'] for r in complete))
+        for label, resource in (('drawable', draw), ('vnc', client)):
+            if resource is None:
+                continue
+            try:
+                resource.close()
+            except BaseException as error:
+                if diagnostics_out is not None:
+                    diagnostics_out.setdefault('cleanupErrors', []).append(
+                        {'resource': label, 'type': type(error).__name__})
+                original = failure or secondary_failure
+                if original is not None:
+                    original.add_note('visibility_' + label + '_close: ' + type(error).__name__)
+                    original.visibility_abort = True
+                else:
+                    secondary_failure = error
+        if secondary_failure is not None:
+            raise secondary_failure
 
 
 class Accessible:

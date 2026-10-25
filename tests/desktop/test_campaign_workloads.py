@@ -18,6 +18,7 @@ import campaign_proxy
 import build_current_capture
 import campaign_workloads as workloads
 import campaign_fixture
+import physical_campaign
 from bench_ui_process import EvidenceError
 
 
@@ -194,7 +195,22 @@ class FileUploadSafetyTests(unittest.TestCase):
     def test_waiting_for_worker_created_items_drains_backlog_and_fails_queue_gate(self):
         self.queue_protocol(wait_for_items=True)
 
-    def queue_protocol(self, wait_for_items):
+    def test_visual_refusals_retain_all50_and_settle_but_main_exits_one(self):
+        for failures in (('burst-progress-4',), ('burst-completed',),
+                ('burst-progress-4', 'burst-progress-24', 'burst-progress-49', 'burst-completed')):
+            with self.subTest(failures=failures):
+                self.queue_protocol(False, visual_failures=failures, via_main=True)
+
+    def test_visual_identity_or_read_failure_aborts_before50_and_settle(self):
+        for code in ('history_visual_owner_changed', 'visibility_target_not_mapped', 'drawable_pixels_unavailable'):
+            with self.subTest(code=code):
+                self.queue_protocol(False, visual_fatal=EvidenceError(code))
+
+    def test_refusal_persistence_failure_preserves_original_and_aborts(self):
+        self.queue_protocol(False, visual_failures=('burst-progress-4',), persistence_failure=True)
+
+    def queue_protocol(self, wait_for_items, visual_failures=(), visual_fatal=None,
+                       via_main=False, persistence_failure=False):
         # Production ordering: editor release enqueues empty-item operations;
         # only four workers dequeue/create artifacts/upload. Synthetic time
         # keeps both the correct and original blocked-admission cases bounded.
@@ -203,6 +219,10 @@ class FileUploadSafetyTests(unittest.TestCase):
             run = mock.Mock()
             run.root = root
             run.result = {'metrics': {}, 'gates': {}, 'limitations': []}
+            run.started = 0
+            run.stop.return_value = run.close_fixtures.return_value = True
+            if persistence_failure:
+                run.persist.side_effect = OSError('synthetic-persistence-failure')
             run.sample.return_value = {'totals': {}}
             sources, operations = {}, {}
             pending, active, clock = [], {}, [0.]
@@ -271,9 +291,40 @@ class FileUploadSafetyTests(unittest.TestCase):
                  mock.patch.object(workloads.subprocess, 'run'), \
                  mock.patch.object(workloads.time, 'monotonic', side_effect=lambda: clock[0]), \
                  mock.patch.object(workloads.time, 'sleep', side_effect=advance):
+                original_refusals = []
+                def checkpoint(label):
+                    if visual_fatal is not None:
+                        raise visual_fatal
+                    if label in visual_failures:
+                        error = EvidenceError('no_owned_ui_proven_visible_on_wall')
+                        error.visibility_diagnostics = {'attemptCount': 12, 'nativeChangedCount': 12}
+                        original_refusals.append(error)
+                        raise error
+                ui_factory.return_value.save_history.side_effect = checkpoint
+                fatal = visual_fatal is not None or persistence_failure
+                if fatal:
+                    with self.assertRaises(EvidenceError) as failure:
+                        workloads.burst(run)
+                    self.assertIs(failure.exception, visual_fatal or original_refusals[0])
+                    self.assertEqual(len(sources), 5)
+                    verify.assert_not_called(); settle.assert_not_called()
+                    if persistence_failure:
+                        self.assertTrue(failure.exception.visibility_abort)
+                        self.assertIn('visual_diagnostics_export: OSError', failure.exception.__notes__)
+                    return
                 if wait_for_items:
                     with self.assertRaisesRegex(EvidenceError, 'did_not_demonstrate_concurrent_queued_uploads'):
                         workloads.burst(run)
+                elif via_main:
+                    arguments = ['burst', '--output', '/not-created', '--package', '/not-opened',
+                        '--package-sha256', 'a' * 64, '--source-revision', 'b' * 40, '--version', 'test',
+                        '--desktop-session', 'unused', '--lock-session', 'unused', '--native-driver', '/not-opened',
+                        '--native-driver-revision', 'c' * 40, '--native-driver-sha256', 'd' * 64]
+                    with mock.patch.object(physical_campaign, 'Campaign', return_value=run), \
+                         mock.patch.object(physical_campaign.signal, 'signal'), \
+                         mock.patch.object(physical_campaign.os, 'umask'), \
+                         mock.patch.object(workloads, 'policy', return_value=None):
+                        self.assertEqual(physical_campaign.main(arguments), 1)
                 else:
                     workloads.burst(run)
             self.assertEqual(len(sources), 50)
@@ -298,6 +349,12 @@ class FileUploadSafetyTests(unittest.TestCase):
                 mock.call('burst-progress-4'), mock.call('burst-progress-24'),
                 mock.call('burst-progress-49'), mock.call('burst-completed')])
             ui_factory.return_value.save.assert_not_called()
+            visual = run.result['gates']['burstVisualAttribution']
+            self.assertEqual(visual['attempted'], 4)
+            self.assertEqual(visual['refused'], len(visual_failures))
+            self.assertEqual(visual['succeeded'], 4 - len(visual_failures))
+            self.assertEqual(visual['status'], 'fail' if visual_failures else 'pass')
+            self.assertEqual([v['label'] for v in run.result.get('burstVisualRefusals', [])], list(visual_failures))
 
 
 class BurstHistoryVisualTests(unittest.TestCase):
@@ -328,7 +385,7 @@ class BurstHistoryVisualTests(unittest.TestCase):
                 self.assertEqual(method, 'ui.snapshot')
                 return {'diagnostics': {'ui': {'pid': 123, 'state': 'ready'}}}
             ui.run.call.side_effect = call
-            def save(window, owner, path, port):
+            def save(window, owner, path, port, **kwargs):
                 self.assertEqual(focused[0], 'history')
                 self.assertEqual(order, ['ui.show', 'ui.snapshot'])
                 self.assertEqual((window, owner, port), ('0x2', ui.owner, 5900))
@@ -342,7 +399,8 @@ class BurstHistoryVisualTests(unittest.TestCase):
             events = ui.run.event.call_args_list
             self.assertEqual(events[0].args[0], 'history-visual-presentation-requested')
             self.assertFalse(events[0].kwargs['provesPaint'])
-            self.assertEqual(events[1].args[0], 'owned-ui-visual')
+            self.assertEqual(events[1].args[0], 'history-visual-comparison-diagnostics')
+            self.assertEqual(events[2].args[0], 'owned-ui-visual')
 
     def test_bad_activation_ack_cannot_reach_snapshot_or_visual_guard(self):
         for reply in (None, {}, {'shown': 'settings'}):
@@ -400,11 +458,36 @@ class BurstHistoryVisualTests(unittest.TestCase):
                  mock.patch('campaign_ui.save_visible_window', side_effect=refusal) as guard:
                 with self.assertRaisesRegex(EvidenceError, 'no_owned_ui_proven_visible_on_wall') as failure:
                     ui.save_history('burst-progress-4')
-            guard.assert_called_once_with('0x2', ui.owner, root / 'burst-progress-4-0.png', 5900)
+            guard.assert_called_once_with('0x2', ui.owner, root / 'burst-progress-4-0.png', 5900,
+                                          diagnostics_out=mock.ANY)
             self.assertIs(failure.exception.__cause__, refusal)
             self.assertEqual(list(root.iterdir()), [])
             self.assertNotIn('owned-ui-visual', [call.args[0] for call in ui.run.event.call_args_list])
             self.assertEqual(ui.run.event.call_args_list[-1].args[0], 'owned-window-occluded-no-visual-retained')
+
+    def test_diagnostic_export_fault_keeps_original_refusal_and_forces_abort(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ui = self.setup_ui(Path(directory))
+            original = EvidenceError('owned_ui_not_proven_visible_on_physical_wall')
+            def export(kind, **values):
+                if kind == 'history-visual-comparison-diagnostics':
+                    raise OSError('never replace the comparison refusal')
+            ui.run.event.side_effect = export
+            with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                 mock.patch.object(workloads, 'owned_windows', return_value=['0x2']), \
+                 mock.patch('campaign_ui.save_visible_window', side_effect=original):
+                with self.assertRaisesRegex(EvidenceError, 'no_owned_ui_proven_visible_on_wall') as failure:
+                    ui.save_history('burst-progress-4')
+            self.assertIs(failure.exception.__cause__, original)
+            self.assertTrue(failure.exception.visibility_abort)
+            self.assertIn('visual_diagnostics_export: OSError', failure.exception.__notes__)
+            run = ui.run
+            run.result = {'gates': {}}
+            ui.save_history = mock.Mock(side_effect=failure.exception)
+            with self.assertRaises(EvidenceError) as again:
+                workloads._burst_visual_checkpoint(run, ui, 'burst-progress-4')
+            self.assertIs(again.exception, failure.exception)
+            self.assertNotIn('burstVisualRefusals', run.result)
 
 
 class ProxyStartupTests(unittest.TestCase):
