@@ -175,7 +175,7 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
  }
  return final["result"].toObject();
 }
-void ProtonProvider::checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply){Error e;auto r=call("checkName",d,{{"candidate",name}},e);reply({e?"inconclusive":r["status"].toString("inconclusive"),r["objectReference"].toObject(),r["concurrencyToken"].toString(),e?e:parseError(r["error"].toObject())});}
+void ProtonProvider::checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply,std::shared_ptr<std::atomic_bool> cancellation){Error e;auto r=call("checkName",d,{{"candidate",name}},e,cancellation);reply({e?"inconclusive":r["status"].toString("inconclusive"),r["objectReference"].toObject(),r["concurrencyToken"].toString(),e?e:parseError(r["error"].toObject())});}
 void ProtonProvider::upload(const UploadRequest& req,std::function<void(UploadResult)> reply){
  if(req.condition!="absent"){reply({"failed",{}, {"unsupported_capability","Proton cannot safely replace a recorded file revision",{}}});return;}
  Error e;bool uncertain=false;auto r=call("upload",req.destination,{{"requestTimeoutMs",req.requestTimeoutMs?QJsonValue(*req.requestTimeoutMs):QJsonValue(req.destination.settings["requestTimeoutMs"])},{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"condition",req.condition},{"objectReference",req.objectReference},{"concurrencyToken",req.concurrencyToken}},e,req.cancellation,{},&uncertain,req.progress);

@@ -506,8 +506,9 @@ Operation OperationService::run(Job job) {
   if(auto e=artifacts.verify(item.artifact)) {item.error=e;item.uploadStatus="failed";if(!saveItem(item))return op;continue;}
   if(!item.objectReference.isEmpty()&&!item.condition.isEmpty()&&item.uploadStatus!="failed") {targets[QJsonDocument(item.objectReference).toJson(QJsonDocument::Compact)].append(index);continue;}
   bool checked=false;
-  for(int attempts=0;attempts<32;++attempts) {
-   auto check=storageRequest<NameCheck>([&](auto cb) {provider->checkName(op.destination,item.candidate,cb);});
+  for(int attempts=0;attempts<32&&!job.cancelled->load();++attempts) {
+   auto check=storageRequest<NameCheck>([&](auto cb) {provider->checkName(op.destination,item.candidate,cb,job.cancelled);});
+   if(job.cancelled->load())break;
    if(check.error||check.status=="inconclusive"||check.objectReference.isEmpty()) {item.error=check.error?check.error:Error{"existence_unknown","Name availability is inconclusive",{}};item.uploadStatus="failed";auto fields=itemFields(op,item);fields["status"]=check.status;fields["error"]=logging::errorFields(item.error);logging::warning(providerLog(op.destination.providerId),"Name check failed",fields);break;}
    if(check.status=="present"&&op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";break;}
    if(check.status=="present"&&op.settings.collisionPolicy=="rename") {item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes);if(!saveItem(item))return op;continue;}
@@ -515,7 +516,8 @@ Operation OperationService::run(Job job) {
    if(item.condition=="match"&&item.concurrencyToken.isEmpty()) {item.error={"precondition_missing","Provider returned no replacement precondition",{}};item.uploadStatus="failed";break;}
    item.uploadStatus="stored";targets[QJsonDocument(item.objectReference).toJson(QJsonDocument::Compact)].append(index);checked=true;break;
   }
-  if(!checked&&item.uploadStatus=="stored") {item.uploadStatus="failed";item.error={"collision_exhausted","No available candidate after 32 checks",{}};}
+  if(job.cancelled->load()) {item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Destination check cancelled; Retry uploads this file",{}};}
+  else if(!checked&&item.uploadStatus=="stored") {item.uploadStatus="failed";item.error={"collision_exhausted","No available candidate after 32 checks",{}};}
   if(!saveItem(item))return op;
  }
  for(const auto& group:targets) if(group.size()>1) {if(op.settings.collisionPolicy=="overwrite") {for(int i:group)op.items[i].uploadStatus="conflict";}else if(op.settings.collisionPolicy=="skip") {for(int n=1;n<group.size();++n)op.items[group[n]].uploadStatus="skipped";}else {for(int n=1;n<group.size();++n) {auto& item=op.items[group[n]];item.uploadStatus="failed";item.error={"name_alias_conflict","Provider candidates resolve to one target",{}};}}}
@@ -617,7 +619,8 @@ Operation OperationService::run(Job job) {
    if(op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";if(!commit(item,index))return;break;}
    if(op.settings.collisionPolicy!="rename") {item.uploadStatus="failed";item.error={"precondition_changed","Original replacement precondition changed",{}};if(!commit(item,index))return;break;}
    item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes);item.objectReference={};item.concurrencyToken={};item.condition="absent";item.uploadStatus="stored";item.phase="preflight";if(!commit(item,index))return;
-   auto check=storageRequest<NameCheck>([&](auto cb) {provider->checkName(op.destination,item.candidate,cb);});
+   auto check=storageRequest<NameCheck>([&](auto cb) {provider->checkName(op.destination,item.candidate,cb,cancel);});
+   if(cancel->load()) {item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Destination check cancelled; Retry uploads this file",{}};commit(item,index);break;}
    if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus="failed";item.error={"existence_unknown","Renamed candidate could not be reserved",{}};if(!commit(item,index))return;break;}item.objectReference=check.objectReference;if(!commit(item,index))return;
    guard.unlock();lock=objectLock(op.destination,item.objectReference,item.candidate);guard=std::unique_lock<std::mutex>(*lock);
    if(attempts==31) {item.uploadStatus="failed";item.error={"collision_exhausted","Collision search exhausted",{}};commit(item,index);}

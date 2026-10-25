@@ -17,7 +17,7 @@ public:
  Error validateSettings(const QJsonObject&) const override;
  Error validateCredentials(const QJsonObject&) const override;
  QJsonObject diagnostics() const override;
- void checkName(const Destination&,const QString&,std::function<void(NameCheck)>) override;
+ void checkName(const Destination&,const QString&,std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) override;
  void upload(const UploadRequest&,std::function<void(UploadResult)>) override;
  void stat(const StorageReceipt&,std::function<void(StatResult)>) override;
  void reconcile(const UploadRequest&,std::function<void(StatResult)>) override;

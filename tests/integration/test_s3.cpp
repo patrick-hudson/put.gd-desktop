@@ -1,4 +1,5 @@
 #include "fixtures/S3Fixture.h"
+#include "fixtures/U2Fixtures.h"
 #include <thread>
 #include <QBuffer>
 #include <mutex>
@@ -7,6 +8,67 @@ using namespace putgd::test;
 class S3Test : public QObject {
     Q_OBJECT
 private slots:
+    void stalledPreflightCancelsPromptlyAndRetries() {
+        S3Fixture f;
+        // Longer than the cancellation bound: a timeout or released HEAD cannot pass.
+        f.destination.settings["requestTimeoutMs"] = 120000;
+        f.destination.settings["lowSpeedTimeSeconds"] = 120;
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"delay", 30}}}}});
+        ProviderRegistry registry;
+        registry.add("s3", std::shared_ptr<StorageProvider>(&f.provider, [](StorageProvider*) {}));
+        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        auto config = configuration(f.directory.path());
+        auto profile = Settings::developmentTemplate()["profiles"].toArray()[0].toObject();
+        profile["id"] = f.destination.profileId;
+        profile["settings"] = f.destination.settings;
+        profile["credentials"] = f.destination.credentialReference;
+        config["profiles"] = QJsonArray{profile};
+        auto actions = config["actions"].toObject();
+        auto route = actions["clipboard"].toObject();
+        route["profileId"] = f.destination.profileId;
+        actions["clipboard"] = route;
+        // The validator requires all upload actions to reference an existing profile.
+        for (const auto& key : actions.keys()) { auto action = actions[key].toObject(); action["profileId"] = f.destination.profileId; actions[key] = action; }
+        config["actions"] = actions;
+        QVERIFY(settings.save(config, {}));
+        Source source; source.payload = textPayload();
+        OperationService operations(f.directory.filePath("data"), settings, registry, source);
+        PUTGD_TRY_VERIFY(operations.ready());
+        HistoryStore history(operations.databasePath());
+        QString id;
+        operations.invoke("clipboard", [&](Error error, QJsonObject result) { QVERIFY(!error); id = result["operationId"].toString(); });
+        PUTGD_TRY_VERIFY(!id.isEmpty());
+        PUTGD_TRY_VERIFY(!f.events("HEAD").isEmpty());
+        QCOMPARE(history.operation(id).phase, QString("preflight"));
+        const auto candidate = history.operation(id).items[0].candidate;
+        QElapsedTimer elapsed; elapsed.start();
+        bool acknowledged = false;
+        operations.cancel(id, [&](Error error, QJsonObject) { QVERIFY(!error); acknowledged = true; });
+        PUTGD_TRY_VERIFY(acknowledged);
+        PUTGD_TRY_COMPARE(history.operation(id).state, QString("cancelled"));
+        qInfo() << "stalled HEAD cancelTerminalMs" << elapsed.elapsed();
+        QVERIFY2(elapsed.elapsed() < 5000, "Cancellation must finish well before the 120 s request timeout or 30 s fixture delay");
+        QCOMPARE(f.events("HEAD").size(), 1);
+        QVERIFY(f.events("PUT").isEmpty());
+        QCOMPARE(source.copies, 0);
+        bool retried = false;
+        operations.retry(id, [&](Error error, QJsonObject) { QVERIFY(!error); retried = true; });
+        PUTGD_TRY_VERIFY(retried);
+        PUTGD_TRY_COMPARE(history.operation(id).state, QString("completed"));
+        QCOMPARE(history.operation(id).items[0].candidate, candidate);
+        QCOMPARE(history.operation(id).items[0].uploadStatus, QString("uploaded"));
+        QCOMPARE(f.events("PUT").size(), 1);
+        PUTGD_TRY_COMPARE(source.copies, 1);
+    }
+    void alreadyCancelledNameCheckSendsNoHead() {
+        S3Fixture f;
+        auto cancellation = std::make_shared<std::atomic_bool>(true);
+        const auto result = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "cancelled.txt", cb, cancellation); });
+        QCOMPARE(result.status, QString("inconclusive"));
+        QCOMPARE(result.error.code, QString("cancelled"));
+        QVERIFY(f.events("HEAD").isEmpty());
+    }
+
     void failedNameHeadRetainsSafeTransportDiagnostics() {
         S3Fixture f;
         f.process.terminate();
