@@ -297,19 +297,29 @@ debian13 DEB `83e4d2cc…` from the same dispatch run 40225160437.
   were left untouched.
 - **Matched trunk on d69** (`80ffa2e6`, debian13 DEB `c9ac8836…`):
   - dt1 failed after 30 s on the frozen sampler race
-    (`ProcessFamily.walk` `descendant_executable_changed`) and produced no score. It
-    is retained.
+    (`ProcessFamily.walk` `descendant_executable_changed`, followed by
+    `helper_gone`) and produced no score. It is retained.
   - dt2, the one identical retry, settled at RSS 46,112,768 B, **over 40 MiB**, and
     PSS 21,779,456 B, which passes. Its admission load was 0.70, the tail of dt1,
     so quiet admission was not independently proven.
-  - Against candidate db1, the candidate is 6.58 MiB lower in RSS and 6.55 MiB lower
-    in PSS: trunk fails and the candidate passes. This is a single pair.
-  - Matrix C passes on trunk too (32,694,272 B / 9,787,392 B).
-  - The in-flight cancellation outcome is the same on trunk, so it predates #576
-    here as well.
-  - The queued-cancel control dr1 passes.
+  - Against candidate db1 (39,211,008 B / 14,910,464 B), the candidate is 6.58 MiB
+    lower in RSS and 6.55 MiB lower in PSS: trunk fails and the candidate passes.
+    This is a single pair, and quiet admission is not independently proven: the
+    load was 0.70 at the tail of dt1, with no CPU sample. So it supports no strong
+    causal or repeatability claim.
+  - Visual attribution still fails (4) in both runs. This is an unscored Wayland
+    diagnostic, not frozen acceptance.
+  - Matrix C du1 passes on trunk too (32,694,272 B / 9,787,392 B). The in-flight
+    cancellation outcome is the same as the candidate's, so it predates #576 here
+    as well; the failed original expectation stays recorded.
+  - The queued-cancel control dr1 passes within its scope: 4 objects, 5 PUTs
+    (attempts [1,2,1,1]), no target pixels. The witness was a separate call from
+    the cancel. The clipboard was changed, and persistence is unverified.
   - Frame: [trunk History](gnome-kde/d69-plasma-queued-cancel-history-80ffa2e6.png).
     "Link copied" means this trunk run also changed the d69 clipboard.
+  - The d69 slot was released at 21:03:21Z, and the coordinator independently
+    confirmed it free at 21:03:55Z. The pre-existing signer agent (PID 2008860)
+    and collector (978298) were preserved, and all 9 cleanup receipts were normal.
   - Raw evidence: `i560a-d69-trunk1-raw.tar.gz`, SHA-256
     `119e925cf7284f253b10371a8b0f523810e21127b1c59042a7a5aced33dcd617`.
 
