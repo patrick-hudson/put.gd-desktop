@@ -1,0 +1,26 @@
+{
+ "ok": true,
+ "operations": 2,
+ "operationList": [
+  {
+   "action": "region",
+   "created": "2026-10-23T02:36:02.550Z",
+   "id": "cdbe20c1-d2e9-497f-9c97-8f4158a7a2b2",
+   "items": 1,
+   "state": "completed"
+  },
+  {
+   "action": "region",
+   "created": "2026-10-23T02:29:27.235Z",
+   "id": "ecbdb3f7-0b5c-4a9e-bdba-1313ccf93896",
+   "items": 1,
+   "state": "completed"
+  }
+ ],
+ "scope": {
+  "from": "2026-10-23T01:38:20.345Z",
+  "since": "60m",
+  "to": "2026-10-23T02:38:20.345Z"
+ },
+ "redaction": "hashed"
+}
