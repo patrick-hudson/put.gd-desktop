@@ -1,0 +1,17 @@
+Test project /home/patrick/work/i254/build/dev
+    Start  3: export_av_sync_contract
+1/4 Test  #3: export_av_sync_contract ..........   Passed   14.22 sec
+    Start  5: pause_timeline_contract
+2/4 Test  #5: pause_timeline_contract ..........   Passed    0.01 sec
+    Start  9: gui_review_window
+3/4 Test  #9: gui_review_window ................   Passed    0.58 sec
+    Start 75: payload_contract
+4/4 Test #75: payload_contract .................   Passed    0.18 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Label Time Summary:
+integration    =   0.58 sec*proc (1 test)
+unit           =  14.41 sec*proc (3 tests)
+
+Total Test time (real) =  14.99 sec

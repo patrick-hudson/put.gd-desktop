@@ -122,7 +122,7 @@ Codec rules: MP4 takes `h264` (default) or `h265`; WebM takes `vp9`; GIF and
 WebP take none. `audio.system` is the computer's playback and is refused for
 GIF/WebP (`invalid_request`); `audio.microphone` is reserved and refused
 (`recording_unsupported`). Errors: `recording_unavailable`,
-`disk_space_insufficient`,
+`disk_space_insufficient`, `recording_disk_full` (capture could not be finalized),
 `recording_unsupported`, `recording_active`, `recording_state`,
 `recording_busy`, `recording_stale`, `recording_mask_unknown`,
 `region_unavailable` (a Wayland desktop without a region selector),
@@ -200,6 +200,53 @@ CMake builds the helper only when `gstreamer-1.0 >= 1.24` and FFmpeg
 libraries `>= 6.1` are found (`PUTGD_RECORDING`, default on, also for the
 AppImage, which builds it against its own pinned FFmpeg); a resident without
 the sibling binary reports `recording_helper_missing`.
+
+### Live free-space stop (#254)
+
+The transient capture helper samples the working clip's filesystem every 250 ms,
+including while paused, and refreshes the sample before a byte-limit stop. It
+stops through EOS when free space above the existing system reserve falls to
+`2 * max(clipBytes, 64 MiB) + 32 MiB`. The two copies estimate the eventual export
+and upload artifact; the working clip is already deducted from free space and
+is not counted again. The extra 32 MiB leaves headroom for queued encoded media
+and Matroska finalization. This is a conservative estimate, not a filesystem
+reservation or a guarantee of an export's size. The system reserve remains
+5% of volume capacity, bounded to 1–4 GiB.
+
+The minimum prepare admission is three 64 MiB budgets above that reserve. At
+start the live threshold is 160 MiB, below the admitted 192 MiB, so a recording
+on a minimally admitted volume can begin. Space recovered before the threshold
+is crossed does not latch a stop. When disk and byte pressure coincide, the
+fresh disk observation takes precedence.
+
+A successfully drained and decodable clip enters private review with
+`stopReason: budget` and `stopDetails.reason: disk_space`. Alongside the existing
+budget and duration fields, `stopDetails` retains the triggering `freeBytes`,
+`reserveBytes`, `availableBytes`, `requiredBytes`, `finalizationReserveBytes`,
+and `clipBytes`. Those figures do not change if another process releases space
+while the helper is finalizing. The review banner and tray explain the stop;
+CLI `recording.inspect` and MCP `get_recording` expose the same details.
+
+Sampling cannot prevent an arbitrary writer from consuming all remaining space
+between checks or during finalization. An explicit GStreamer no-space error
+reports `recording_disk_full`, `reason: disk_space`, and `finalized: false`,
+with the original error under `error.details.cause` (including its existing bounded
+debug details). Other write, encoder, drain or preview errors retain their actual
+error code and message: a prior low-space stop is not proof of their cause.
+When they follow a disk stop, `error.details.stopDetails` retains the triggering
+sample and `error.details.finalized: false` states that no reviewable clip was retained. The operation
+fails and private staging is discarded under the existing lifecycle. Nothing
+is uploaded. Free space may also need to be restored before export; a failed
+export keeps an existing review open. Preview, save copy and review never
+authorize Upload.
+
+This contract depends on companion [code PR #572](https://github.com/patrick-hudson/put.gd-desktop/pull/572)
+at `4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6`, which merges before these docs.
+The [pipeline mapping](https://github.com/patrick-hudson/put.gd-desktop/blob/4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6/src/record/RecordingPipeline.cpp#L361)
+sets `error.details.cause`; the [session failure handler](https://github.com/patrick-hudson/put.gd-desktop/blob/4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6/src/record/RecordSession.cpp#L82)
+adds `stopDetails` and `finalized` inside `error.details`. The resident
+[forwards those details unchanged](https://github.com/patrick-hudson/put.gd-desktop/blob/4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6/src/app/RecordingService.cpp#L274)
+and [stores the same Error](https://github.com/patrick-hudson/put.gd-desktop/blob/4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6/src/app/RecordingService.cpp#L207) on the failed operation.
 
 ## Overlay (X11)
 

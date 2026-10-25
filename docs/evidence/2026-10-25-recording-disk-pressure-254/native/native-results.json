@@ -1,0 +1,1767 @@
+[
+  {
+    "nativeSession": "gnome-shell",
+    "desktopLease": {
+      "owner": "T3 issue 254 implementation",
+      "session": "t3-i254-native1",
+      "host": "f44",
+      "purpose": "Quiet native recording disk-pressure test; source25b36396; coordinator3939c6ca; notes /home/patrick/work/put.gd/work/stable-triage-20261025/coordination.md",
+      "acquired": "2026-10-25T17:19:59Z",
+      "expires": "2026-10-25T17:39:59Z",
+      "heartbeat": "2026-10-25T17:19:59Z"
+    },
+    "baseline": false,
+    "exhaust": false,
+    "paused": false,
+    "run": "d254g1",
+    "build": "/home/patrick/work/i254/build/dev",
+    "identity": {
+      "schemaVersion": 1,
+      "version": "26.1025.1297-dev+g25b36396ea40",
+      "baseVersion": "26.1025.1297",
+      "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+      "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+      "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+      "commitCount": 1297,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "mountLimitBytes": 1610612736,
+    "scenario": "pressure",
+    "binarySha256": {
+      "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+      "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+      "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+    },
+    "cover": {
+      "monitorIndex": 0,
+      "ok": true,
+      "output": [
+        "HDMI-1"
+      ],
+      "rect": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "state": "covered"
+    },
+    "coverPrecheck": {
+      "check": "precheck",
+      "fraction": 0.9593,
+      "framebuffer": [
+        1920,
+        1080
+      ],
+      "minFraction": 0.98,
+      "ok": false,
+      "output": [
+        "HDMI-1"
+      ],
+      "rect": [
+        0,
+        0,
+        1920,
+        1080
+      ]
+    },
+    "passed": false,
+    "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-native-pressure.py\", line 54, in <module>\n    report['coverPrecheck']=json.loads(precheck.stdout);assert precheck.returncode==0,report['coverPrecheck']\n                                                               ^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: {'check': 'precheck', 'fraction': 0.9593, 'framebuffer': [1920, 1080], 'minFraction': 0.98, 'ok': False, 'output': ['HDMI-1'], 'rect': [0, 0, 1920, 1080]}\n",
+    "cleanupUnmount": 0,
+    "visualExportPolicy": "Full physical frames retained host-only; export only verified interior crop/preview"
+  },
+  {
+    "nativeSession": "gnome-shell",
+    "desktopLease": {
+      "owner": "T3 issue 254 implementation",
+      "session": "t3-i254-native1",
+      "host": "f44",
+      "purpose": "Quiet native recording disk-pressure test; source25b36396; coordinator3939c6ca; notes /home/patrick/work/put.gd/work/stable-triage-20261025/coordination.md",
+      "acquired": "2026-10-25T17:19:59Z",
+      "expires": "2026-10-25T17:39:59Z",
+      "heartbeat": "2026-10-25T17:19:59Z"
+    },
+    "baseline": false,
+    "exhaust": false,
+    "paused": false,
+    "run": "d254g2",
+    "build": "/home/patrick/work/i254/build/dev",
+    "identity": {
+      "schemaVersion": 1,
+      "version": "26.1025.1297-dev+g25b36396ea40",
+      "baseVersion": "26.1025.1297",
+      "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+      "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+      "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+      "commitCount": 1297,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "mountLimitBytes": 1610612736,
+    "scenario": "pressure",
+    "binarySha256": {
+      "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+      "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+      "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+    },
+    "cover": {
+      "monitorIndex": 0,
+      "ok": true,
+      "output": [
+        "HDMI-1"
+      ],
+      "rect": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "state": "covered"
+    },
+    "coverPrecheck": {
+      "check": "precheck",
+      "fraction": 0.9593,
+      "framebuffer": [
+        1920,
+        1080
+      ],
+      "minFraction": 0.98,
+      "ok": false,
+      "output": [
+        "HDMI-1"
+      ],
+      "rect": [
+        0,
+        0,
+        1920,
+        1080
+      ]
+    },
+    "passed": false,
+    "failure": "Traceback (most recent call last):\n  File \"/home/patrick/work/i254-native-pressure.py\", line 56, in <module>\n    report['coverPrecheck']=json.loads(precheck.stdout);assert precheck.returncode==0,report['coverPrecheck']\n                                                               ^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: {'check': 'precheck', 'fraction': 0.9593, 'framebuffer': [1920, 1080], 'minFraction': 0.98, 'ok': False, 'output': ['HDMI-1'], 'rect': [0, 0, 1920, 1080]}\n",
+    "cleanupUnmount": 0,
+    "visualExportPolicy": "Full physical frames retained host-only; export only verified interior crop/preview"
+  },
+  {
+    "nativeSession": "gnome-shell",
+    "desktopLease": {
+      "owner": "T3 issue 254 implementation",
+      "session": "t3-i254-native1",
+      "host": "f44",
+      "purpose": "Quiet native recording disk-pressure test; source25b36396; coordinator3939c6ca; notes /home/patrick/work/put.gd/work/stable-triage-20261025/coordination.md",
+      "acquired": "2026-10-25T17:19:59Z",
+      "expires": "2026-10-25T17:39:59Z",
+      "heartbeat": "2026-10-25T17:24:17Z"
+    },
+    "baseline": false,
+    "exhaust": false,
+    "paused": false,
+    "run": "d254g3",
+    "build": "/home/patrick/work/i254/build/dev",
+    "identity": {
+      "schemaVersion": 1,
+      "version": "26.1025.1297-dev+g25b36396ea40",
+      "baseVersion": "26.1025.1297",
+      "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+      "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+      "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+      "commitCount": 1297,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "mountLimitBytes": 1610612736,
+    "scenario": "pressure",
+    "binarySha256": {
+      "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+      "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+      "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+    },
+    "cover": {
+      "monitorIndex": 0,
+      "ok": true,
+      "output": [
+        "HDMI-1"
+      ],
+      "rect": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "state": "covered"
+    },
+    "coverPrecheck": {
+      "check": "precheck",
+      "fraction": 0.9593,
+      "framebuffer": [
+        1920,
+        1080
+      ],
+      "minFraction": 0.98,
+      "ok": false,
+      "output": [
+        "HDMI-1"
+      ],
+      "rect": [
+        0,
+        0,
+        1920,
+        1080
+      ]
+    },
+    "regionPrecheck": {
+      "rect": [
+        640,
+        300,
+        640,
+        480
+      ],
+      "fraction": 1.0,
+      "required": 1.0
+    },
+    "coverFallback": "Documented f44 interior-region fallback; persistent Shell overlay outside recorded rectangle",
+    "pattern": {
+      "media": "pattern",
+      "ok": true,
+      "state": "playing"
+    },
+    "capabilities": {
+      "acquisition": "mutter-screencast",
+      "active": null,
+      "audio": {
+        "microphone": false,
+        "system": true
+      },
+      "available": true,
+      "codecs": {
+        "mp4": [
+          "h264"
+        ],
+        "webm": [
+          "vp9"
+        ]
+      },
+      "commands": [
+        "prepare",
+        "start",
+        "pause",
+        "resume",
+        "stop",
+        "cancel",
+        "inspect",
+        "select",
+        "raise",
+        "overlay",
+        "edit",
+        "preview",
+        "review",
+        "saveCopy",
+        "upload"
+      ],
+      "editCommands": [
+        "setTrim",
+        "resetTrim",
+        "addMask",
+        "updateMask",
+        "removeMask"
+      ],
+      "exportEncoders": {
+        "h264": [
+          "libopenh264"
+        ],
+        "h265": [],
+        "vp9": [
+          "libvpx-vp9"
+        ]
+      },
+      "ffmpeg": {
+        "avcodec": "62.28.103",
+        "avfilter": "11.14.103",
+        "avformat": "62.12.103",
+        "avutil": "60.26.103",
+        "encoderFailures": {
+          "h264_nvenc": "libcuda.so.1 is not installed",
+          "h264_vaapi": "Function not implemented",
+          "hevc_nvenc": "libcuda.so.1 is not installed",
+          "hevc_vaapi": "Function not implemented"
+        },
+        "encoders": {
+          "aac": true,
+          "gif": true,
+          "h264_nvenc": true,
+          "h264_vaapi": true,
+          "hevc_nvenc": true,
+          "hevc_vaapi": true,
+          "libopenh264": true,
+          "libopus": true,
+          "libvorbis": true,
+          "libvpx-vp9": true,
+          "libwebp_anim": true,
+          "libx264": false,
+          "libx265": false,
+          "vp9_vaapi": true
+        },
+        "filters": {
+          "asetpts": true,
+          "atrim": true,
+          "avgblur": true,
+          "crop": true,
+          "drawbox": true,
+          "format": true,
+          "fps": true,
+          "palettegen": true,
+          "paletteuse": true,
+          "scale": true,
+          "setpts": true,
+          "trim": true
+        },
+        "h264Decoder": {
+          "failure": null,
+          "name": "libopenh264",
+          "usable": true
+        },
+        "muxers": {
+          "gif": true,
+          "matroska": true,
+          "mp4": true,
+          "webm": true,
+          "webp": true
+        }
+      },
+      "formats": [
+        "mp4",
+        "webm",
+        "gif",
+        "webp"
+      ],
+      "gstreamer": {
+        "audioSources": [
+          "pulsesrc",
+          "pipewiresrc"
+        ],
+        "available": true,
+        "elements": {
+          "aacparse": "1.28.8",
+          "appsink": "1.28.8",
+          "audioconvert": "1.28.8",
+          "audioresample": "1.28.8",
+          "avenc_aac": "1.28.8",
+          "compositor": "1.28.8",
+          "fdkaacenc": "1.28.8",
+          "h264parse": "1.28.8",
+          "matroskamux": "1.28.8",
+          "mp4mux": "1.28.8",
+          "openh264enc": "1.28.8",
+          "pipewiresrc": "1.6.9",
+          "pulsesrc": "1.28.8",
+          "vaapih264enc": null,
+          "vah264enc": null,
+          "vah264lpenc": null,
+          "videoconvert": "1.28.8",
+          "videocrop": "1.28.8",
+          "videorate": "1.28.8",
+          "videoscale": "1.28.8",
+          "voaacenc": null,
+          "vp9enc": "1.28.8",
+          "webmmux": "1.28.8",
+          "webpenc": "1.28.8",
+          "x264enc": null,
+          "x265enc": null,
+          "ximagesrc": "1.28.8"
+        },
+        "encoderFailures": {},
+        "liveAacEncoders": [
+          "avenc_aac",
+          "fdkaacenc"
+        ],
+        "liveH264Encoders": [
+          "openh264enc"
+        ],
+        "liveSources": [
+          "ximagesrc",
+          "pipewiresrc"
+        ],
+        "pluginDirectories": [
+          "/usr/lib64/gstreamer-1.0"
+        ],
+        "usableH264Encoders": [
+          "openh264enc"
+        ],
+        "version": "GStreamer 1.28.8",
+        "webpAnimated": true
+      },
+      "limits": {
+        "animationMaxEdge": 1280,
+        "animationMaxUs": 60000000,
+        "maxFileBytes": 1099511627776,
+        "maxMasks": 64
+      },
+      "liveCapture": {
+        "audio": true,
+        "encoder": true,
+        "source": true
+      },
+      "maskKinds": [
+        "blur",
+        "solid"
+      ],
+      "mutterScreenCast": {
+        "available": true,
+        "service": true
+      },
+      "overlayExclusion": {},
+      "pipewire": {
+        "socket": "/run/user/1000/pipewire-0"
+      },
+      "portal": {
+        "available": true,
+        "cursorModes": 7,
+        "portalVersion": 5,
+        "sourceTypes": 7
+      },
+      "reason": null,
+      "schemaVersion": 1,
+      "session": "wayland",
+      "states": [
+        "preparing",
+        "ready",
+        "starting",
+        "recording",
+        "paused",
+        "stopping",
+        "reviewing",
+        "exporting",
+        "submitted",
+        "cancelled",
+        "failed"
+      ],
+      "targets": [
+        "monitor",
+        "desktop",
+        "region",
+        "window"
+      ],
+      "timeUnit": "microseconds"
+    },
+    "id": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+    "before": {
+      "canvas": [
+        640,
+        480
+      ],
+      "config": {
+        "audio": {
+          "microphone": false,
+          "system": false
+        },
+        "budgetBytes": 178956970,
+        "codec": "h264",
+        "format": "mp4",
+        "fps": 15,
+        "mime": "video/mp4"
+      },
+      "durationUs": 2199999,
+      "edit": {
+        "masks": [],
+        "revision": 1,
+        "trimEnd": null,
+        "trimStart": 0
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "exports": 0,
+      "lastExport": null,
+      "operationId": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+      "outputSize": [
+        640,
+        480
+      ],
+      "overlayExcluded": false,
+      "overlayPlacement": "compositor",
+      "pending": null,
+      "progress": {
+        "audioEncoder": "",
+        "bytes": 33710,
+        "durationUs": 2199999,
+        "encoder": "openh264enc",
+        "paused": false
+      },
+      "recordingId": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+      "retainedUs": 0,
+      "selecting": false,
+      "state": "recording",
+      "target": {
+        "kind": "region",
+        "rect": [
+          640,
+          300,
+          640,
+          480
+        ]
+      }
+    },
+    "mountIdentity": {
+      "target": "/tmp/d254g3/data/putgd/recording",
+      "source": "i254-disposable",
+      "fstype": "tmpfs",
+      "device": 86,
+      "capacityBytes": 1610612736
+    },
+    "after": {
+      "canvas": [
+        640,
+        480
+      ],
+      "config": {
+        "audio": {
+          "microphone": false,
+          "system": false
+        },
+        "budgetBytes": 178956970,
+        "codec": "h264",
+        "format": "mp4",
+        "fps": 15,
+        "mime": "video/mp4"
+      },
+      "durationUs": 5733333,
+      "edit": {
+        "masks": [],
+        "revision": 1,
+        "trimEnd": null,
+        "trimStart": 0
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "exports": 0,
+      "lastExport": null,
+      "operationId": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+      "outputSize": [
+        640,
+        480
+      ],
+      "overlayExcluded": false,
+      "overlayPlacement": "compositor",
+      "pending": null,
+      "progress": {
+        "audioEncoder": "",
+        "bytes": 57930,
+        "durationUs": 5266666,
+        "encoder": "openh264enc",
+        "paused": false
+      },
+      "recordingId": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+      "retainedUs": 5733333,
+      "selecting": false,
+      "state": "reviewing",
+      "stopDetails": {
+        "availableBytes": 142544896,
+        "budgetBytes": 178956970,
+        "clipBytes": 57930,
+        "durationUs": 5733333,
+        "finalizationReserveBytes": 33554432,
+        "freeBytes": 1216286720,
+        "hint": "Free up space in put.gd's data folder before exporting or recording again",
+        "maxFileBytes": 1099511627776,
+        "message": "Recording stopped at 0:05 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+        "reason": "disk_space",
+        "requiredBytes": 167772160,
+        "reserveBytes": 1073741824
+      },
+      "stopReason": "budget",
+      "target": {
+        "kind": "region",
+        "rect": [
+          640,
+          300,
+          640,
+          480
+        ]
+      }
+    },
+    "operationBeforeUpload": {
+      "action": "record",
+      "cancelled": false,
+      "clipboardRevision": "0",
+      "copyStatus": "pending",
+      "created": "2026-10-25T17:24:28.782Z",
+      "destination": {
+        "credentials": {},
+        "profileId": "",
+        "profileRevision": "",
+        "providerId": "",
+        "settings": {}
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "id": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+      "invocation": "1",
+      "items": [],
+      "phase": "reviewing",
+      "requestTimeoutMs": null,
+      "settingsRevision": "69ed5069a8b0627db3d96da05107520aeb55cc859c89e78aee571c87e81bee53",
+      "state": "recording"
+    },
+    "mcpInspect": {
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "ok": true,
+      "requestId": "a79dc42e-5ea8-4fcc-9777-efc309c0b379",
+      "result": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 5733333,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": false,
+        "overlayPlacement": "compositor",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 57930,
+          "durationUs": 5266666,
+          "encoder": "openh264enc",
+          "paused": false
+        },
+        "recordingId": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+        "retainedUs": 5733333,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 142544896,
+          "budgetBytes": 178956970,
+          "clipBytes": 57930,
+          "durationUs": 5733333,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1216286720,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:05 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            640,
+            300,
+            640,
+            480
+          ]
+        }
+      },
+      "schemaVersion": 1
+    },
+    "frameGate": {
+      "edges": {
+        "bottom": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "top": 1.0
+      },
+      "fraction": 0.715,
+      "kept": "/tmp/d254g3/preview.png",
+      "minFraction": 0.5,
+      "ok": true,
+      "rect": [
+        0,
+        0,
+        320,
+        240
+      ],
+      "sha256": "7a081b77c1a68e45f628bccf6c98df732caa97c2d1c4dc370fee4d42c09a8cd8",
+      "size": [
+        320,
+        240
+      ]
+    },
+    "export": {
+      "canvas": [
+        640,
+        480
+      ],
+      "config": {
+        "audio": {
+          "microphone": false,
+          "system": false
+        },
+        "budgetBytes": 178956970,
+        "codec": "h264",
+        "format": "mp4",
+        "fps": 15,
+        "mime": "video/mp4"
+      },
+      "durationUs": 5733333,
+      "edit": {
+        "masks": [],
+        "revision": 1,
+        "trimEnd": null,
+        "trimStart": 0
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "exports": 1,
+      "lastExport": {
+        "bytes": 87561,
+        "command": "saveCopy",
+        "durationUs": 5733333,
+        "path": "/tmp/d254g3/copy.mp4",
+        "revision": 1,
+        "status": "saved"
+      },
+      "operationId": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+      "outputSize": [
+        640,
+        480
+      ],
+      "overlayExcluded": false,
+      "overlayPlacement": "compositor",
+      "pending": null,
+      "progress": {
+        "exportFraction": 0.5232558443753398
+      },
+      "recordingId": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+      "retainedUs": 5733333,
+      "selecting": false,
+      "state": "reviewing",
+      "stopDetails": {
+        "availableBytes": 142544896,
+        "budgetBytes": 178956970,
+        "clipBytes": 57930,
+        "durationUs": 5733333,
+        "finalizationReserveBytes": 33554432,
+        "freeBytes": 1216286720,
+        "hint": "Free up space in put.gd's data folder before exporting or recording again",
+        "maxFileBytes": 1099511627776,
+        "message": "Recording stopped at 0:05 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+        "reason": "disk_space",
+        "requiredBytes": 167772160,
+        "reserveBytes": 1073741824
+      },
+      "stopReason": "budget",
+      "target": {
+        "kind": "region",
+        "rect": [
+          640,
+          300,
+          640,
+          480
+        ]
+      }
+    },
+    "upload": {
+      "canvas": [
+        640,
+        480
+      ],
+      "config": {
+        "audio": {
+          "microphone": false,
+          "system": false
+        },
+        "budgetBytes": 178956970,
+        "codec": "h264",
+        "format": "mp4",
+        "fps": 15,
+        "mime": "video/mp4"
+      },
+      "durationUs": 5733333,
+      "edit": {
+        "masks": [],
+        "revision": 1,
+        "trimEnd": null,
+        "trimStart": 0
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "exports": 2,
+      "lastExport": {
+        "command": "upload",
+        "revision": 1,
+        "status": "exporting"
+      },
+      "operationId": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+      "outputSize": [
+        640,
+        480
+      ],
+      "overlayExcluded": false,
+      "overlayPlacement": "compositor",
+      "pending": "upload",
+      "progress": {
+        "exportFraction": 0.5232558443753398
+      },
+      "recordingId": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+      "retainedUs": 5733333,
+      "selecting": false,
+      "state": "exporting",
+      "stopDetails": {
+        "availableBytes": 142544896,
+        "budgetBytes": 178956970,
+        "clipBytes": 57930,
+        "durationUs": 5733333,
+        "finalizationReserveBytes": 33554432,
+        "freeBytes": 1216286720,
+        "hint": "Free up space in put.gd's data folder before exporting or recording again",
+        "maxFileBytes": 1099511627776,
+        "message": "Recording stopped at 0:05 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+        "reason": "disk_space",
+        "requiredBytes": 167772160,
+        "reserveBytes": 1073741824
+      },
+      "stopReason": "budget",
+      "target": {
+        "kind": "region",
+        "rect": [
+          640,
+          300,
+          640,
+          480
+        ]
+      }
+    },
+    "operationAfterUpload": {
+      "action": "record",
+      "cancelled": false,
+      "clipboardRevision": "0",
+      "copyStatus": "failed",
+      "created": "2026-10-25T17:24:28.782Z",
+      "destination": {
+        "credentials": {},
+        "profileId": "",
+        "profileRevision": "",
+        "providerId": "",
+        "settings": {}
+      },
+      "error": {
+        "code": "clipboard_unavailable",
+        "details": {},
+        "message": "GNOME helper cannot own CLIPBOARD"
+      },
+      "id": "16f71ca1-d39b-4162-88b2-d3c40f6ce1dc",
+      "invocation": "1",
+      "items": [
+        {
+          "artifact": {
+            "bytes": 87561,
+            "category": "videos",
+            "id": "f07e9591-dfc1-48d0-9a6b-5116703f1209",
+            "mime": "video/mp4",
+            "name": "Screen-Recording-2026-10-25-12-24-28.mp4",
+            "namingPrepared": true,
+            "originalFile": false,
+            "previewPath": "",
+            "sha256": "a946e80dd00e477391a7223c2fb06a5f443367ccffa9e671ab20c050673a51be"
+          },
+          "candidate": "",
+          "concurrencyToken": "",
+          "condition": "",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "local": {
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "path": "/tmp/d254g3/archive/videos/Screen-Recording-2026-10-25-12-24-28.mp4",
+            "status": "saved"
+          },
+          "objectReference": {},
+          "phase": "stored",
+          "publicationId": "6cd1dab9-2028-49b5-8e3a-795432f2b6d2",
+          "receipt": {
+            "concurrencyToken": "",
+            "destination": {
+              "credentials": {},
+              "profileId": "",
+              "profileRevision": "",
+              "providerId": "",
+              "settings": {}
+            },
+            "directUrl": "",
+            "objectReference": {},
+            "publicationId": "",
+            "schemaVersion": 1
+          },
+          "remoteStatus": "not_requested",
+          "shareIntent": "",
+          "shareIntentOptions": {},
+          "shareStatus": "not_requested",
+          "uploadProgress": null,
+          "uploadStatus": "local_only"
+        }
+      ],
+      "phase": "completed",
+      "requestTimeoutMs": null,
+      "settingsRevision": "69ed5069a8b0627db3d96da05107520aeb55cc859c89e78aee571c87e81bee53",
+      "state": "completed"
+    },
+    "passed": true,
+    "cleanupUnmount": 0,
+    "visualExportPolicy": "Full physical frames retained host-only; export only verified interior crop/preview"
+  },
+  {
+    "nativeSession": "gnome-shell",
+    "desktopLease": {
+      "owner": "T3 issue 254 implementation",
+      "session": "t3-i254-native1",
+      "host": "f44",
+      "purpose": "Quiet native recording disk-pressure test; source25b36396; coordinator3939c6ca; notes /home/patrick/work/put.gd/work/stable-triage-20261025/coordination.md",
+      "acquired": "2026-10-25T17:19:59Z",
+      "expires": "2026-10-25T17:39:59Z",
+      "heartbeat": "2026-10-25T17:24:17Z"
+    },
+    "baseline": false,
+    "exhaust": false,
+    "paused": true,
+    "run": "d254g4",
+    "build": "/home/patrick/work/i254/build/dev",
+    "identity": {
+      "schemaVersion": 1,
+      "version": "26.1025.1297-dev+g25b36396ea40",
+      "baseVersion": "26.1025.1297",
+      "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+      "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+      "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+      "commitCount": 1297,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "mountLimitBytes": 1610612736,
+    "scenario": "pressure",
+    "binarySha256": {
+      "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+      "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+      "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+    },
+    "cover": {
+      "monitorIndex": 0,
+      "ok": true,
+      "output": [
+        "HDMI-1"
+      ],
+      "rect": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "state": "covered"
+    },
+    "coverPrecheck": {
+      "check": "precheck",
+      "fraction": 0.9593,
+      "framebuffer": [
+        1920,
+        1080
+      ],
+      "minFraction": 0.98,
+      "ok": false,
+      "output": [
+        "HDMI-1"
+      ],
+      "rect": [
+        0,
+        0,
+        1920,
+        1080
+      ]
+    },
+    "regionPrecheck": {
+      "rect": [
+        640,
+        300,
+        640,
+        480
+      ],
+      "fraction": 1.0,
+      "required": 1.0
+    },
+    "coverFallback": "Documented f44 interior-region fallback; persistent Shell overlay outside recorded rectangle",
+    "pattern": {
+      "media": "pattern",
+      "ok": true,
+      "state": "playing"
+    },
+    "capabilities": {
+      "acquisition": "mutter-screencast",
+      "active": null,
+      "audio": {
+        "microphone": false,
+        "system": true
+      },
+      "available": true,
+      "codecs": {
+        "mp4": [
+          "h264"
+        ],
+        "webm": [
+          "vp9"
+        ]
+      },
+      "commands": [
+        "prepare",
+        "start",
+        "pause",
+        "resume",
+        "stop",
+        "cancel",
+        "inspect",
+        "select",
+        "raise",
+        "overlay",
+        "edit",
+        "preview",
+        "review",
+        "saveCopy",
+        "upload"
+      ],
+      "editCommands": [
+        "setTrim",
+        "resetTrim",
+        "addMask",
+        "updateMask",
+        "removeMask"
+      ],
+      "exportEncoders": {
+        "h264": [
+          "libopenh264"
+        ],
+        "h265": [],
+        "vp9": [
+          "libvpx-vp9"
+        ]
+      },
+      "ffmpeg": {
+        "avcodec": "62.28.103",
+        "avfilter": "11.14.103",
+        "avformat": "62.12.103",
+        "avutil": "60.26.103",
+        "encoderFailures": {
+          "h264_nvenc": "libcuda.so.1 is not installed",
+          "h264_vaapi": "Function not implemented",
+          "hevc_nvenc": "libcuda.so.1 is not installed",
+          "hevc_vaapi": "Function not implemented"
+        },
+        "encoders": {
+          "aac": true,
+          "gif": true,
+          "h264_nvenc": true,
+          "h264_vaapi": true,
+          "hevc_nvenc": true,
+          "hevc_vaapi": true,
+          "libopenh264": true,
+          "libopus": true,
+          "libvorbis": true,
+          "libvpx-vp9": true,
+          "libwebp_anim": true,
+          "libx264": false,
+          "libx265": false,
+          "vp9_vaapi": true
+        },
+        "filters": {
+          "asetpts": true,
+          "atrim": true,
+          "avgblur": true,
+          "crop": true,
+          "drawbox": true,
+          "format": true,
+          "fps": true,
+          "palettegen": true,
+          "paletteuse": true,
+          "scale": true,
+          "setpts": true,
+          "trim": true
+        },
+        "h264Decoder": {
+          "failure": null,
+          "name": "libopenh264",
+          "usable": true
+        },
+        "muxers": {
+          "gif": true,
+          "matroska": true,
+          "mp4": true,
+          "webm": true,
+          "webp": true
+        }
+      },
+      "formats": [
+        "mp4",
+        "webm",
+        "gif",
+        "webp"
+      ],
+      "gstreamer": {
+        "audioSources": [
+          "pulsesrc",
+          "pipewiresrc"
+        ],
+        "available": true,
+        "elements": {
+          "aacparse": "1.28.8",
+          "appsink": "1.28.8",
+          "audioconvert": "1.28.8",
+          "audioresample": "1.28.8",
+          "avenc_aac": "1.28.8",
+          "compositor": "1.28.8",
+          "fdkaacenc": "1.28.8",
+          "h264parse": "1.28.8",
+          "matroskamux": "1.28.8",
+          "mp4mux": "1.28.8",
+          "openh264enc": "1.28.8",
+          "pipewiresrc": "1.6.9",
+          "pulsesrc": "1.28.8",
+          "vaapih264enc": null,
+          "vah264enc": null,
+          "vah264lpenc": null,
+          "videoconvert": "1.28.8",
+          "videocrop": "1.28.8",
+          "videorate": "1.28.8",
+          "videoscale": "1.28.8",
+          "voaacenc": null,
+          "vp9enc": "1.28.8",
+          "webmmux": "1.28.8",
+          "webpenc": "1.28.8",
+          "x264enc": null,
+          "x265enc": null,
+          "ximagesrc": "1.28.8"
+        },
+        "encoderFailures": {},
+        "liveAacEncoders": [
+          "avenc_aac",
+          "fdkaacenc"
+        ],
+        "liveH264Encoders": [
+          "openh264enc"
+        ],
+        "liveSources": [
+          "ximagesrc",
+          "pipewiresrc"
+        ],
+        "pluginDirectories": [
+          "/usr/lib64/gstreamer-1.0"
+        ],
+        "usableH264Encoders": [
+          "openh264enc"
+        ],
+        "version": "GStreamer 1.28.8",
+        "webpAnimated": true
+      },
+      "limits": {
+        "animationMaxEdge": 1280,
+        "animationMaxUs": 60000000,
+        "maxFileBytes": 1099511627776,
+        "maxMasks": 64
+      },
+      "liveCapture": {
+        "audio": true,
+        "encoder": true,
+        "source": true
+      },
+      "maskKinds": [
+        "blur",
+        "solid"
+      ],
+      "mutterScreenCast": {
+        "available": true,
+        "service": true
+      },
+      "overlayExclusion": {},
+      "pipewire": {
+        "socket": "/run/user/1000/pipewire-0"
+      },
+      "portal": {
+        "available": true,
+        "cursorModes": 7,
+        "portalVersion": 5,
+        "sourceTypes": 7
+      },
+      "reason": null,
+      "schemaVersion": 1,
+      "session": "wayland",
+      "states": [
+        "preparing",
+        "ready",
+        "starting",
+        "recording",
+        "paused",
+        "stopping",
+        "reviewing",
+        "exporting",
+        "submitted",
+        "cancelled",
+        "failed"
+      ],
+      "targets": [
+        "monitor",
+        "desktop",
+        "region",
+        "window"
+      ],
+      "timeUnit": "microseconds"
+    },
+    "id": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+    "overlayHiddenBeforeStart": true,
+    "before": {
+      "canvas": [
+        640,
+        480
+      ],
+      "config": {
+        "audio": {
+          "microphone": false,
+          "system": false
+        },
+        "budgetBytes": 178956970,
+        "codec": "h264",
+        "format": "mp4",
+        "fps": 15,
+        "mime": "video/mp4"
+      },
+      "durationUs": 3066666,
+      "edit": {
+        "masks": [],
+        "revision": 1,
+        "trimEnd": null,
+        "trimStart": 0
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "exports": 0,
+      "lastExport": null,
+      "operationId": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+      "outputSize": [
+        640,
+        480
+      ],
+      "overlayExcluded": false,
+      "overlayPlacement": "compositor",
+      "pending": null,
+      "progress": {
+        "audioEncoder": "",
+        "bytes": 16629,
+        "durationUs": 3066666,
+        "encoder": "openh264enc",
+        "paused": true
+      },
+      "recordingId": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+      "retainedUs": 0,
+      "selecting": false,
+      "state": "paused",
+      "target": {
+        "kind": "region",
+        "rect": [
+          640,
+          300,
+          640,
+          480
+        ]
+      }
+    },
+    "mountIdentity": {
+      "target": "/tmp/d254g4/data/putgd/recording",
+      "source": "i254-disposable",
+      "fstype": "tmpfs",
+      "device": 86,
+      "capacityBytes": 1610612736
+    },
+    "after": {
+      "canvas": [
+        640,
+        480
+      ],
+      "config": {
+        "audio": {
+          "microphone": false,
+          "system": false
+        },
+        "budgetBytes": 178956970,
+        "codec": "h264",
+        "format": "mp4",
+        "fps": 15,
+        "mime": "video/mp4"
+      },
+      "durationUs": 3133333,
+      "edit": {
+        "masks": [],
+        "revision": 1,
+        "trimEnd": null,
+        "trimStart": 0
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "exports": 0,
+      "lastExport": null,
+      "operationId": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+      "outputSize": [
+        640,
+        480
+      ],
+      "overlayExcluded": false,
+      "overlayPlacement": "compositor",
+      "pending": null,
+      "progress": {
+        "audioEncoder": "",
+        "bytes": 16629,
+        "durationUs": 3133333,
+        "encoder": "openh264enc",
+        "paused": true
+      },
+      "recordingId": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+      "retainedUs": 3133333,
+      "selecting": false,
+      "state": "reviewing",
+      "stopDetails": {
+        "availableBytes": 150974464,
+        "budgetBytes": 178956970,
+        "clipBytes": 16629,
+        "durationUs": 3133333,
+        "finalizationReserveBytes": 33554432,
+        "freeBytes": 1224716288,
+        "hint": "Free up space in put.gd's data folder before exporting or recording again",
+        "maxFileBytes": 1099511627776,
+        "message": "Recording stopped at 0:03 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+        "reason": "disk_space",
+        "requiredBytes": 167772160,
+        "reserveBytes": 1073741824
+      },
+      "stopReason": "budget",
+      "target": {
+        "kind": "region",
+        "rect": [
+          640,
+          300,
+          640,
+          480
+        ]
+      }
+    },
+    "operationBeforeUpload": {
+      "action": "record",
+      "cancelled": false,
+      "clipboardRevision": "0",
+      "copyStatus": "pending",
+      "created": "2026-10-25T17:26:57.475Z",
+      "destination": {
+        "credentials": {},
+        "profileId": "",
+        "profileRevision": "",
+        "providerId": "",
+        "settings": {}
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "id": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+      "invocation": "1",
+      "items": [],
+      "phase": "reviewing",
+      "requestTimeoutMs": null,
+      "settingsRevision": "8cac8d34aa78ef3682afdf441358bc9bf27a0f7639e5e90c77d6595a5e098e51",
+      "state": "recording"
+    },
+    "mcpInspect": {
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "ok": true,
+      "requestId": "e37db3ce-6638-47d8-8d74-2f808c928d5a",
+      "result": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 3133333,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": false,
+        "overlayPlacement": "compositor",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 16629,
+          "durationUs": 3133333,
+          "encoder": "openh264enc",
+          "paused": true
+        },
+        "recordingId": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+        "retainedUs": 3133333,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 150974464,
+          "budgetBytes": 178956970,
+          "clipBytes": 16629,
+          "durationUs": 3133333,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1224716288,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:03 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            640,
+            300,
+            640,
+            480
+          ]
+        }
+      },
+      "schemaVersion": 1
+    },
+    "frameGate": {
+      "edges": {
+        "bottom": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "top": 1.0
+      },
+      "fraction": 0.7318,
+      "kept": "/tmp/d254g4/preview.png",
+      "minFraction": 0.5,
+      "ok": true,
+      "rect": [
+        0,
+        0,
+        320,
+        240
+      ],
+      "sha256": "44421b6560e7fcb2709221ec7d84482c7d356b02a6a8610c0c7cafecff012aac",
+      "size": [
+        320,
+        240
+      ]
+    },
+    "export": {
+      "canvas": [
+        640,
+        480
+      ],
+      "config": {
+        "audio": {
+          "microphone": false,
+          "system": false
+        },
+        "budgetBytes": 178956970,
+        "codec": "h264",
+        "format": "mp4",
+        "fps": 15,
+        "mime": "video/mp4"
+      },
+      "durationUs": 3133333,
+      "edit": {
+        "masks": [],
+        "revision": 1,
+        "trimEnd": null,
+        "trimStart": 0
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "exports": 1,
+      "lastExport": {
+        "bytes": 29126,
+        "command": "saveCopy",
+        "durationUs": 3133333,
+        "path": "/tmp/d254g4/copy.mp4",
+        "revision": 1,
+        "status": "saved"
+      },
+      "operationId": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+      "outputSize": [
+        640,
+        480
+      ],
+      "overlayExcluded": false,
+      "overlayPlacement": "compositor",
+      "pending": null,
+      "progress": {
+        "exportFraction": 0
+      },
+      "recordingId": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+      "retainedUs": 3133333,
+      "selecting": false,
+      "state": "reviewing",
+      "stopDetails": {
+        "availableBytes": 150974464,
+        "budgetBytes": 178956970,
+        "clipBytes": 16629,
+        "durationUs": 3133333,
+        "finalizationReserveBytes": 33554432,
+        "freeBytes": 1224716288,
+        "hint": "Free up space in put.gd's data folder before exporting or recording again",
+        "maxFileBytes": 1099511627776,
+        "message": "Recording stopped at 0:03 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+        "reason": "disk_space",
+        "requiredBytes": 167772160,
+        "reserveBytes": 1073741824
+      },
+      "stopReason": "budget",
+      "target": {
+        "kind": "region",
+        "rect": [
+          640,
+          300,
+          640,
+          480
+        ]
+      }
+    },
+    "upload": {
+      "canvas": [
+        640,
+        480
+      ],
+      "config": {
+        "audio": {
+          "microphone": false,
+          "system": false
+        },
+        "budgetBytes": 178956970,
+        "codec": "h264",
+        "format": "mp4",
+        "fps": 15,
+        "mime": "video/mp4"
+      },
+      "durationUs": 3133333,
+      "edit": {
+        "masks": [],
+        "revision": 1,
+        "trimEnd": null,
+        "trimStart": 0
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "exports": 2,
+      "lastExport": {
+        "command": "upload",
+        "revision": 1,
+        "status": "exporting"
+      },
+      "operationId": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+      "outputSize": [
+        640,
+        480
+      ],
+      "overlayExcluded": false,
+      "overlayPlacement": "compositor",
+      "pending": "upload",
+      "progress": {
+        "exportFraction": 0
+      },
+      "recordingId": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+      "retainedUs": 3133333,
+      "selecting": false,
+      "state": "exporting",
+      "stopDetails": {
+        "availableBytes": 150974464,
+        "budgetBytes": 178956970,
+        "clipBytes": 16629,
+        "durationUs": 3133333,
+        "finalizationReserveBytes": 33554432,
+        "freeBytes": 1224716288,
+        "hint": "Free up space in put.gd's data folder before exporting or recording again",
+        "maxFileBytes": 1099511627776,
+        "message": "Recording stopped at 0:03 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+        "reason": "disk_space",
+        "requiredBytes": 167772160,
+        "reserveBytes": 1073741824
+      },
+      "stopReason": "budget",
+      "target": {
+        "kind": "region",
+        "rect": [
+          640,
+          300,
+          640,
+          480
+        ]
+      }
+    },
+    "operationAfterUpload": {
+      "action": "record",
+      "cancelled": false,
+      "clipboardRevision": "0",
+      "copyStatus": "failed",
+      "created": "2026-10-25T17:26:57.475Z",
+      "destination": {
+        "credentials": {},
+        "profileId": "",
+        "profileRevision": "",
+        "providerId": "",
+        "settings": {}
+      },
+      "error": {
+        "code": "clipboard_unavailable",
+        "details": {},
+        "message": "GNOME helper cannot own CLIPBOARD"
+      },
+      "id": "f9ba01c9-5386-46ad-8448-57df85ee2b1b",
+      "invocation": "1",
+      "items": [
+        {
+          "artifact": {
+            "bytes": 29126,
+            "category": "videos",
+            "id": "05f641b6-e42a-4cc6-8f4c-5d96c67a4d56",
+            "mime": "video/mp4",
+            "name": "Screen-Recording-2026-10-25-12-26-57.mp4",
+            "namingPrepared": true,
+            "originalFile": false,
+            "previewPath": "",
+            "sha256": "c1ce8f2ba57d929c952970575b2c636b359e5596c6404a7d98a1f40e763aee15"
+          },
+          "candidate": "",
+          "concurrencyToken": "",
+          "condition": "",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "local": {
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "path": "/tmp/d254g4/archive/videos/Screen-Recording-2026-10-25-12-26-57.mp4",
+            "status": "saved"
+          },
+          "objectReference": {},
+          "phase": "stored",
+          "publicationId": "25708f33-a951-44c9-aaa5-cdcebb656558",
+          "receipt": {
+            "concurrencyToken": "",
+            "destination": {
+              "credentials": {},
+              "profileId": "",
+              "profileRevision": "",
+              "providerId": "",
+              "settings": {}
+            },
+            "directUrl": "",
+            "objectReference": {},
+            "publicationId": "",
+            "schemaVersion": 1
+          },
+          "remoteStatus": "not_requested",
+          "shareIntent": "",
+          "shareIntentOptions": {},
+          "shareStatus": "not_requested",
+          "uploadProgress": null,
+          "uploadStatus": "local_only"
+        }
+      ],
+      "phase": "completed",
+      "requestTimeoutMs": null,
+      "settingsRevision": "8cac8d34aa78ef3682afdf441358bc9bf27a0f7639e5e90c77d6595a5e098e51",
+      "state": "completed"
+    },
+    "passed": true,
+    "cleanupUnmount": 0,
+    "visualExportPolicy": "Full physical frames retained host-only; export only verified interior crop/preview"
+  }
+]

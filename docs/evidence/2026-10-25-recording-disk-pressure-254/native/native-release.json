@@ -1,0 +1,24 @@
+{
+  "lock": {
+    "owner": "T3 issue 254 implementation",
+    "session": "t3-i254-native1",
+    "host": "f44",
+    "purpose": "Quiet native recording disk-pressure test; source25b36396; coordinator3939c6ca; notes /home/patrick/work/put.gd/work/stable-triage-20261025/coordination.md",
+    "acquired": "2026-10-25T17:19:59Z",
+    "expires": "2026-10-25T17:39:59Z",
+    "heartbeat": "2026-10-25T17:24:17Z"
+  },
+  "releasedBy": "t3-i254-native1",
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1271 255701 255820"
+  ],
+  "event": "release",
+  "host": "f44",
+  "at": "2026-10-25T17:30:00Z"
+}

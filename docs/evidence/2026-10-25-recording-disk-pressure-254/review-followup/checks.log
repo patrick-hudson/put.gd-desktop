@@ -1,0 +1,6 @@
+test_retained_reports_and_negative_fixtures (__main__.ExpectedFailureChecks.test_retained_reports_and_negative_fixtures) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.003s
+
+OK
