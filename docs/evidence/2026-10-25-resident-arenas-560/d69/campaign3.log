@@ -1,0 +1,5 @@
+2026-10-25T20:11:38Z start sa bin-base I560_MODE=cancel3
+2026-10-25T20:13:25Z end sa exit=0 {"runExit":0,"busSocketAbsent":true,"xSocketAbsent":true}
+2026-10-25T20:13:25Z start sb bin-cand I560_MODE=cancel3
+2026-10-25T20:15:13Z end sb exit=0 {"runExit":0,"busSocketAbsent":true,"xSocketAbsent":true}
+2026-10-25T20:15:13Z campaign3-done failed=0

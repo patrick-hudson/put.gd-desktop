@@ -1,0 +1,5 @@
+a91b710de53a7d1f79d1eb12844fb05057e745f570eedc48da4bedc4745f78da  bin-cand/putgd
+61f2b5e67913b20e4a0c0d16055775e45cb2b44758f19e60460f78fc4f4fdcae  bin-cand/putgd-b2-worker
+d2191203f41e28027bd5c3cca982e5b9af6462ecaa705b047dfbdfd4acc6cafe  bin-cand/putgd-s3-worker
+aeeedfda25e56aab0af17f82b9bd48191a0647582bfd324c6405391fb7c40030  bin-cand/putgd-ui
+ae6e0172bef50a80fa86e00af5b90d151c70f0e6a150baf500c9bdd95238aa37  lib/x86_64-linux-gnu/putgd/libputgd-s3.so

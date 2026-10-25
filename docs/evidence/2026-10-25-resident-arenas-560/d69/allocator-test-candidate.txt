@@ -1,0 +1,12 @@
+PASS   : AllocatorPolicyContract::initTestCase()
+PASS   : AllocatorPolicyContract::workerChurnIsTrimmable()
+PASS   : AllocatorPolicyContract::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 156ms
+PASS   : AllocatorPolicyContract::initTestCase()
+PASS   : AllocatorPolicyContract::workerChurnIsTrimmable()
+PASS   : AllocatorPolicyContract::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 145ms
+PASS   : AllocatorPolicyContract::initTestCase()
+PASS   : AllocatorPolicyContract::workerChurnIsTrimmable()
+PASS   : AllocatorPolicyContract::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 143ms

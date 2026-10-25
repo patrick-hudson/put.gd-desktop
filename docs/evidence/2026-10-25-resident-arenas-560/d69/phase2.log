@@ -1,0 +1,89 @@
+2026-10-25T19:07:29Z start o3 bin-base I560_SETTLE=300 (default host THP)
+2026-10-25T19:15:09Z end o3 exit=0 {"runExit":0,"busSocketAbsent":true,"xSocketAbsent":true}
+2026-10-25T19:15:09Z start o4 bin-cand I560_SETTLE=300 (default host THP)
+2026-10-25T19:22:50Z end o4 exit=0 {"runExit":0,"busSocketAbsent":true,"xSocketAbsent":true}
+[0/1] Re-running CMake...
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/patrick/work/i560o/build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.5.7")
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found suitable version "3.5.7", minimum required is "1.1.1") found components: Crypto
+-- Configuring done (0.7s)
+-- Generating done (0.9s)
+-- Build files have been written to: /home/patrick/work/i560o/build/dev
+[1/43] Automatic MOC and UIC for target putgd_log
+[2/41] Automatic MOC and UIC for target putgd_ui_control
+[3/39] Automatic MOC and UIC for target putgd_s3_runtime
+[4/37] cd /home/patrick/work/i560o/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/i560o -DOUTPUT_DIR=/home/patrick/work/i560o/build/dev/build-identity -DRELEASE_TAG= -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -DSUPPLIED_TIME= -P /home/patrick/work/i560o/cmake/GenerateBuildInfo.cmake
+[5/37] Building CXX object CMakeFiles/putgd_build_identity.dir/build-identity/BuildInfo.cpp.o
+[6/37] Linking CXX static library libputgd_build_identity.a
+[7/37] Automatic MOC and UIC for target putgd_crash
+[8/36] Automatic MOC and UIC for target putgd_core
+[9/34] Automatic MOC and UIC for target putgd_s3_wire
+[10/32] Automatic MOC and UIC for target putgd_s3_worker_host
+[11/30] Automatic MOC and UIC for target putgd_s3_module
+[12/29] Automatic MOC and UIC for target putgd_credentials
+[13/27] Automatic MOC and UIC for target putgd_app
+[14/25] Linking CXX shared module libputgd-s3.so
+[15/25] Automatic MOC and UIC for target putgd-s3-worker
+[16/24] Linking CXX executable putgd-s3-worker
+[17/24] Automatic MOC and UIC for target putgd_s3
+[18/22] Automatic MOC and UIC for target operations_upload_probe
+[19/22] Building CXX object CMakeFiles/operations_upload_probe.dir/operations_upload_probe_autogen/mocs_compilation.cpp.o
+[20/22] Building CXX object CMakeFiles/operations_upload_probe.dir/tests/performance/operations_upload_probe.cpp.o
+[21/22] Linking CXX executable operations_upload_probe
+[0/1] Re-running CMake...
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/patrick/work/i560o/build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.5.7")
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found suitable version "3.5.7", minimum required is "1.1.1") found components: Crypto
+-- Configuring done (0.7s)
+-- Generating done (0.9s)
+-- Build files have been written to: /home/patrick/work/i560o/build/dev
+[1/43] Automatic MOC and UIC for target putgd_ui_control
+[2/41] Automatic MOC and UIC for target putgd_log
+[3/39] Automatic MOC and UIC for target putgd_s3_runtime
+[4/37] cd /home/patrick/work/i560o/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/i560o -DOUTPUT_DIR=/home/patrick/work/i560o/build/dev/build-identity -DRELEASE_TAG= -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -DSUPPLIED_TIME= -P /home/patrick/work/i560o/cmake/GenerateBuildInfo.cmake
+[5/37] Building CXX object CMakeFiles/putgd_build_identity.dir/build-identity/BuildInfo.cpp.o
+[6/37] Linking CXX static library libputgd_build_identity.a
+[7/37] Automatic MOC and UIC for target putgd_crash
+[8/36] Automatic MOC and UIC for target putgd_core
+[9/34] Automatic MOC and UIC for target putgd_s3_wire
+[10/32] Automatic MOC and UIC for target putgd_s3_module
+[11/31] Automatic MOC and UIC for target putgd_s3_worker_host
+[12/29] Automatic MOC and UIC for target putgd_credentials
+[13/27] Automatic MOC and UIC for target putgd_app
+[14/25] Linking CXX shared module libputgd-s3.so
+[15/25] Automatic MOC and UIC for target putgd-s3-worker
+[16/24] Linking CXX executable putgd-s3-worker
+[17/24] Automatic MOC and UIC for target putgd_s3
+[18/22] Automatic MOC and UIC for target operations_upload_probe
+[19/21] Building CXX object CMakeFiles/operations_upload_probe.dir/tests/performance/operations_upload_probe.cpp.o
+[20/21] Linking CXX executable operations_upload_probe
+tree 98878cfe31c2506d25ea6cbec97af002210319d2 clean=0
+2026-10-25T19:23:07Z probe 80ffa2e6 round 1
+2026-10-25T19:23:16Z probe 80ffa2e6 round 1 exit=0 {"concurrency":4,"elapsedMs":8021,"heapArenaBytesAfterTrim":6311936,"mainLoopLagMaxUs":38923,"mainLoopLagMeanUs":249,"mostWorkersAtOnce":5,"operations":[{"created":"2026-10-25T19:23:08.212Z","files":[{"bytes":100663296,"name":"m96-0.bin","status":"uploaded"},{"bytes":100663296,"name":"m96-1.bin","status":"uploaded"}],"state":"completed"},{"created":"2026-10-25T19:23:08.011Z","files":[{"bytes":4194304,"name":"m4-0.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-1.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-2.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-3.bin","status":"
+2026-10-25T19:23:16Z probe 98878cfe round 1
+2026-10-25T19:23:24Z probe 98878cfe round 1 exit=0 {"concurrency":4,"elapsedMs":8039,"heapArenaBytesAfterTrim":2269184,"mainLoopLagMaxUs":35960,"mainLoopLagMeanUs":207,"mostWorkersAtOnce":5,"operations":[{"created":"2026-10-25T19:23:16.593Z","files":[{"bytes":100663296,"name":"m96-0.bin","status":"uploaded"},{"bytes":100663296,"name":"m96-1.bin","status":"uploaded"}],"state":"completed"},{"created":"2026-10-25T19:23:16.393Z","files":[{"bytes":4194304,"name":"m4-0.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-1.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-2.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-3.bin","status":"
+2026-10-25T19:23:24Z probe 80ffa2e6 round 2
+2026-10-25T19:23:32Z probe 80ffa2e6 round 2 exit=0 {"concurrency":4,"elapsedMs":7956,"heapArenaBytesAfterTrim":5869568,"mainLoopLagMaxUs":23245,"mainLoopLagMeanUs":188,"mostWorkersAtOnce":5,"operations":[{"created":"2026-10-25T19:23:24.977Z","files":[{"bytes":100663296,"name":"m96-0.bin","status":"uploaded"},{"bytes":100663296,"name":"m96-1.bin","status":"uploaded"}],"state":"completed"},{"created":"2026-10-25T19:23:24.777Z","files":[{"bytes":4194304,"name":"m4-0.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-1.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-2.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-3.bin","status":"
+2026-10-25T19:23:33Z probe 98878cfe round 2
+2026-10-25T19:23:41Z probe 98878cfe round 2 exit=0 {"concurrency":4,"elapsedMs":7980,"heapArenaBytesAfterTrim":2293760,"mainLoopLagMaxUs":17727,"mainLoopLagMeanUs":182,"mostWorkersAtOnce":5,"operations":[{"created":"2026-10-25T19:23:33.252Z","files":[{"bytes":100663296,"name":"m96-0.bin","status":"uploaded"},{"bytes":100663296,"name":"m96-1.bin","status":"uploaded"}],"state":"completed"},{"created":"2026-10-25T19:23:33.052Z","files":[{"bytes":4194304,"name":"m4-0.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-1.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-2.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-3.bin","status":"
+2026-10-25T19:23:41Z probe 80ffa2e6 round 3
+2026-10-25T19:23:49Z probe 80ffa2e6 round 3 exit=0 {"concurrency":4,"elapsedMs":7990,"heapArenaBytesAfterTrim":6709248,"mainLoopLagMaxUs":52578,"mainLoopLagMeanUs":212,"mostWorkersAtOnce":5,"operations":[{"created":"2026-10-25T19:23:41.543Z","files":[{"bytes":100663296,"name":"m96-0.bin","status":"uploaded"},{"bytes":100663296,"name":"m96-1.bin","status":"uploaded"}],"state":"completed"},{"created":"2026-10-25T19:23:41.342Z","files":[{"bytes":4194304,"name":"m4-0.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-1.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-2.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-3.bin","status":"
+2026-10-25T19:23:49Z probe 98878cfe round 3
+2026-10-25T19:23:57Z probe 98878cfe round 3 exit=0 {"concurrency":4,"elapsedMs":7956,"heapArenaBytesAfterTrim":2027520,"mainLoopLagMaxUs":28628,"mainLoopLagMeanUs":214,"mostWorkersAtOnce":5,"operations":[{"created":"2026-10-25T19:23:49.876Z","files":[{"bytes":100663296,"name":"m96-0.bin","status":"uploaded"},{"bytes":100663296,"name":"m96-1.bin","status":"uploaded"}],"state":"completed"},{"created":"2026-10-25T19:23:49.676Z","files":[{"bytes":4194304,"name":"m4-0.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-1.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-2.bin","status":"uploaded"},{"bytes":4194304,"name":"m4-3.bin","status":"
+2026-10-25T19:23:57Z phase2-done

@@ -1,0 +1,9 @@
+phase2_o4 checkout exit=1 revisionDirsCopied=0 patchRestored=yes stderr=
+phase2_o4 apply exit=1 revisionDirsCopied=0 patchRestored=yes stderr=
+phase2_o4 noop-apply exit=5 revisionDirsCopied=0 patchRestored=yes stderr=patch not applied 
+phase2_o4 build exit=1 revisionDirsCopied=0 patchRestored=yes stderr=
+phase2_o4 stale exit=6 revisionDirsCopied=0 patchRestored=yes stderr=stale build/dev/operations_upload_probe for 80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247 
+phase2_o4 identity exit=7 revisionDirsCopied=0 patchRestored=yes stderr=worker identity is not 80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247 
+phase2_o4 nomodule exit=8 revisionDirsCopied=0 patchRestored=yes stderr=module missing for 80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247 
+phase2_o4 badrelative exit=9 revisionDirsCopied=0 patchRestored=yes stderr=worker module lookup is not ../lib/x86_64-linux-gnu/putgd/libputgd-s3.so 
+phase2_o4 none exit=0 revisionDirsCopied=2 patchRestored=yes stderr=
