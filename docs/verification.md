@@ -98,6 +98,13 @@ burst credit is claimed. No failed raw frame was retained. All four residents
 exited normally with full inventory/absence proof; allocation containment
 drained, the original VM resumed, package purged and m74 released verified-clean
 at 23:50:03 UTC. All 128 originals and the separate restore manifest are verified.
+CU3 on 2026-10-25 used actual `5d99ec97`: a fresh cancelled 5+30 prelude
+gave drawable p95 **73.449413 ms ≤150 ms**, without transferring CU2 credit.
+The corrected pinned-History activation path ran, but the queue still refused
+the unchanged visibility comparison after 18.752080 seconds. No 50/settle credit
+or failed raw frame. Four product normal-0/full-cleanup receipts, restored VM,
+purge, containment drain and verified release at 00:39:01 UTC are retained;
+126 originals plus a manifest and 11 local receipt hashes verify.
 M1 stays a pilot and M6 stays partial. No whole performance, populated history,
 burst or network acceptance is claimed. Driver hardening (#495,
 PR #554) and the performance driver (PR #555) remain separately identified code
@@ -124,7 +131,7 @@ work packages:
 | DEB lifecycle, recording rows, live S3 | [#375](https://github.com/patrick-hudson/put.gd-desktop/issues/375) | partial: source144 Cinnamon VM only; no state-preserving upgrade or removal + login on Wayland; schema 5→7 never exercised |
 | RPM lifecycle on f44 | [#377](https://github.com/patrick-hudson/put.gd-desktop/issues/377) | partial: repo upgrade 816→828 only |
 | GUI/CLI/MCP parity, AE17, fresh-agent walkthrough | [#378](https://github.com/patrick-hudson/put.gd-desktop/issues/378) | partial: 2026-10-13, CLI `dev.143` |
-| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | nightly 1185: CU2 empty selector p95 73.359397 ms passes; queue visibility refusal, no50/settle credit. M7 open PSS 61.9473 MiB >60 MiB fails; cold/post-close pass. Populated/history/burst/slow pending ([record](evidence/2026-10-24-physical-cinnamon-379/README.md)) |
+| Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | nightly 1185: CU2/CU3 selector drawable p95 73.359397/73.449413 ms pass; corrected queue visibility refusal, no50/settle credit. M7 open PSS 61.9473 MiB >60 MiB fails; cold/post-close pass. Populated/history/burst/slow pending ([record](evidence/2026-10-24-physical-cinnamon-379/README.md)) |
 | Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
 | Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
 | Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | closed by Patrick; 11 development-artifact rows pass, legacy exception accepted; PR integration and #384 release checks remain ([evidence](evidence/2026-10-24-uninstall-startup-382/README.md)) |

@@ -1,6 +1,6 @@
 # Physical Cinnamon performance campaign (#379)
 
-**Status: CU2 passes empty-history selector p95; M7 fails the 60 MiB History-open PSS gate. The queue exercise stopped at a visibility guard; remaining gates are pending.**
+**Status: CU2/CU3 pass empty-history selector drawable p95; M7 fails the 60 MiB History-open PSS gate. Both queue attempts stopped at the visibility guard; remaining gates are pending.**
 This is the newest-published-nightly rehearsal requested in
 [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379).
 [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) must repeat
@@ -43,12 +43,12 @@ each isolated launch. Retain failed attempts and corrected commands.
 
 | Workload | Required assessment | Current result |
 | --- | --- | --- |
-| Region overlay, empty history | 5 warmups + 30 warm samples; p95 ≤150 ms | CU2 passes: native drawable p95 73.359397 ms |
+| Region overlay, empty history | 5 warmups + 30 warm samples; p95 ≤150 ms | CU2 73.359397 ms; fresh CU3 73.449413 ms, each at native drawable scope |
 | Region overlay, populated history | Same protocol with 10,000 independent image/video operation records | Pending |
 | Cold/closed memory and idle CPU | RSS ≤40 MiB; CPU <0.5% of one core over 300 seconds | M7 cold and post-close pass at their empty-profile scope |
 | Closed family / History-open family | Closed RSS ≤40 MiB; PSS ≤29 MiB / ≤60 MiB, with helpers attributed | M7 closed passes; History-open fails: 61.9473 MiB >60 MiB |
 | 10,000-entry history | Open, whole-list scroll, search, image/video preview, Copy image, Delete from destination; response/frame timings, CPU and memory | Pending; unbudgeted response thresholds need Patrick's explicit approval |
-| Upload burst | At least 50 queued captures/uploads, concurrent slots, correct tray/history/links, memory during and after settle | Pending; CU2 file-editor queue stopped at visibility attribution, no 50/settle credit |
+| Upload burst | At least 50 queued captures/uploads, concurrent slots, correct tray/history/links, memory during and after settle | Pending; CU2/CU3 file-editor queue stopped at visibility attribution, no 50/settle credit |
 | Slow/stalled S3 | 256 KiB/s proxy, a stalled connection, visible progress, responsive UI/tray, measured cancellation and successful retry | Pending |
 
 The memory limits are the approved plan's [source53 checkpoint](../../plans/2026-10-07-1926-feat-qt-linux-share-plan.md#clean-source53-cinnamon-checkpoint-and-wayland-compatibility).
@@ -199,6 +199,16 @@ encoder process. Other low-activity desktop services and the wall stayed up.
   or native-capture-burst credit is claimed. This visibility refusal does not
   establish a product bug; the exact intended-window/focus path needs diagnosis.
 
+- **cu3, 2026-10-25: fresh new-head prelude; corrected queue still refuses visibility.**
+  [The actual `5d99ec97` record](attempt-cu3.json) preserves a fresh 5+30
+  cancelled-selector prelude, p95 **73.449413 ms ≤150 ms**, and a separate
+  36th unscored cancelled operation. It does not relabel or inherit CU2's pass.
+  The queue exercised the new History activation/pinned-window path, then
+  stopped at the same strict visibility guard after **18.752080 seconds**.
+  It again observed queued 2 / uploading 3; no 50-file completion or settle
+  interval ran. The actual visibility cause remains unproven and no product
+  bug is inferred. Cleanup and verified release completed; no retry followed.
+
 ![c1 post-cancellation recovery frame: only synthetic background, no selector-paint claim](c1-witness-failure.png)
 
 This is an annotated recovery frame from the tested nightly after the failed
@@ -337,6 +347,35 @@ conservative aggregate upper bound was 14.005072%, **not sub-10%**; no unexplain
 unmeasured row needed that bound. The reviewed per-process Linux-accounted
 admission path applied. This is not a physical-cycle or instantaneous CPU claim.
 
+### CU3 corrected History targeting; queue remains incomplete
+
+The burst-only caller correction explicitly presented History and rechecked
+the original helper generation and pinned mapped window. The actual event at
+9.376339 seconds records PID `654056` / start `28662650` / window `0x4c00006`,
+with `provesPaint:false`. The unchanged native-before/composite/native-after
+comparison then refused at 11.443169 seconds. Thus the new targeting path ran,
+but its physical fix is not established. No failed frame, active-window or
+geometry capture exists to distinguish an occluder from painting during the
+strict comparison. The privacy guard and refusal remain unchanged.
+
+![CU3 separate unscored sanitized selector with new-head timing and incomplete queue limits](cu3-selector-and-queue-limit.png)
+
+The reviewed derivative's original 1920×1080 RGB rectangle is unchanged; its
+stroke/fill pixels are byte-identical to CU2's independently captured derivative.
+The caption reports CU3's own measurements, not transferred credit. Only actual
+attributed opaque stroke is retained; all other pixels, including the cursor
+mask, are declared synthetic replacement. The later recovery frame is again
+exact solid fill and is privately hash-indexed, not a failed-window picture.
+
+All 30 timed helper generations were distinct; all 35 timed/warmup operations
+and the separate visual operation cancelled with empty items and `no_result`.
+History remained empty during capture. Queue cleanup retained four cancelled
+journals and one editing journal. CU3 admission retained 331 rows over
+10.031896 seconds, with no unexplained unmeasured row. Its separate aggregate
+upper bound was 11.505274%, **not sub-10%**; the per-process path applied.
+No compositor/content/populated/capture-acquisition/mixed-DPI, 50-file/settle
+or native-capture-burst claim follows.
+
 ## Evidence and cleanup
 
 [The first-batch cleanup receipt](batch1-cleanup.json) binds verified per-file
@@ -422,6 +461,17 @@ desktop status was free apart from the three pre-existing shared collectors.
 All **128 originals plus a separate restore manifest** are privately exported
 and hash/size verified, including 90 raw phase files and their original/copy
 comparison. No retry or new allocation followed.
+
+CU3's lease ran **2026-10-25 00:38:00–00:39:01 UTC**. All four product residents
+exited normally with code 0, nonforced, complete inventory/verified absence and
+no family or socket. The capture child exited 0; the overall worker exited 1
+for the queue refusal. Containment drained without force, the fixture was
+stopped/reaped, and scoped input releases passed. The same original VM was
+verified running at **00:38:58.968120 UTC**; only the run-owned package was
+purged, the matching lease released verified-clean and independent status
+reported free. All **126 originals plus a separate manifest**, 90 raw phase
+files with original/copy checks and 11 local receipts were exported and
+hash/size verified. CU3 is consumed; no retry or new allocation is implied.
 
 ### Actual-frame privacy audit
 
