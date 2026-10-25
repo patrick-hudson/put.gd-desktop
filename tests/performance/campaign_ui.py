@@ -402,8 +402,22 @@ class Accessible:
         # A focusing click can rebuild Qt's accessible rows; never reuse the
         # pre-focus object path.
         node = self.find('Captures and upload activity')
-        if not self.api.Selection.select_child(node, index):
-            raise EvidenceError('accessible_selection_refused')
+        from gi.repository import GLib
+        try:
+            if self.api.Selection.select_child(node, index):
+                return
+        except GLib.GError:
+            pass  # Qt < 6.5 has no AT-SPI Selection interface.
+        self.key('Home', *(['Down'] * index))
+        deadline = time.monotonic() + 2
+        while True:
+            node = self.find('Captures and upload activity')
+            child = node.get_child_at_index(index) if index < node.get_child_count() else None
+            if child is not None and child.get_state_set().contains(self.api.StateType.SELECTED):
+                return
+            if time.monotonic() >= deadline:
+                raise EvidenceError('accessible_selection_refused')
+            time.sleep(.05)
 
     def key(self, *keys):
         self.check()
