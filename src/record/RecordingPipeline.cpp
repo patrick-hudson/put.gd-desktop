@@ -373,7 +373,10 @@ void RecordingPipeline::poll() {
     }
     gst_object_unref(bus);
     if (budgetSignalled_ || stopping_) return;
-    if (!storageClock_.isValid() || storageClock_.elapsed() >= RecordingStorage::pollMs) {
+    const bool byteLimit = budget_ > 0 && fileBytes() >= budget_;
+    // Refresh at a byte stop too: simultaneous pressure must name the disk,
+    // rather than choosing a stale sample just inside the periodic interval.
+    if (byteLimit || !storageClock_.isValid() || storageClock_.elapsed() >= RecordingStorage::pollMs) {
         storageClock_.start();
         const auto disk = storage();
         if (disk.low()) {
@@ -384,7 +387,7 @@ void RecordingPipeline::poll() {
             return;
         }
     }
-    if (budget_ > 0 && fileBytes() >= budget_) { budgetSignalled_ = true; emit budgetReached({}); }
+    if (byteLimit) { budgetSignalled_ = true; emit budgetReached({}); }
 }
 void RecordingPipeline::tearDown() {
     bus_.stop();
