@@ -1,0 +1,57 @@
+[
+  {
+    "id": "928e4b89-dd8d-476e-a2e1-0ab0038431e7",
+    "state": "acquiring",
+    "phase": "queued",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": []
+  },
+  {
+    "id": "a8b50f52-1b12-467b-8d44-aa57f1cf4c3b",
+    "state": "acquiring",
+    "phase": "queued",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": []
+  },
+  {
+    "id": "63363159-b65d-4472-b3f7-47221cb9f21d",
+    "state": "acquiring",
+    "phase": "queued",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": []
+  },
+  {
+    "id": "8ae298ef-b232-46b8-8f60-b9163328fc2e",
+    "state": "acquiring",
+    "phase": "queued",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": []
+  },
+  {
+    "id": "e2754490-b6e4-4b96-8530-c8bf17cf1db7",
+    "state": "acquiring",
+    "phase": "queued",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": []
+  }
+]

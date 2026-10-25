@@ -1,0 +1,86 @@
+[
+  {
+    "id": "3ebe5035-b706-4bc9-a647-2da5b9198c47",
+    "action": "edit",
+    "state": "completed",
+    "phase": "completed",
+    "cancelled": false,
+    "copyStatus": "failed",
+    "items": [
+      {
+        "artifactId": "ab249945-4419-4f16-aa4b-69302aa562f1",
+        "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "423b1e4a-539f-43e6-87c7-8df1e89ea887",
+    "action": "edit",
+    "state": "completed",
+    "phase": "completed",
+    "cancelled": false,
+    "copyStatus": "failed",
+    "items": [
+      {
+        "artifactId": "78ad8c1d-1243-46f3-b9e3-fe72cf1861bd",
+        "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "e543e916-7a49-4dcf-9c67-5cfd1266531f",
+    "action": "edit",
+    "state": "completed",
+    "phase": "completed",
+    "cancelled": false,
+    "copyStatus": "failed",
+    "items": [
+      {
+        "artifactId": "9b3c7807-f666-410b-9119-e8d5259e6eee",
+        "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "b7932f72-c9e2-4887-b58a-16efd3017d52",
+    "action": "edit",
+    "state": "completed",
+    "phase": "completed",
+    "cancelled": false,
+    "copyStatus": "failed",
+    "items": [
+      {
+        "artifactId": "aef96de9-0e18-42a1-b64a-50534ed7a740",
+        "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "3c16129c-fa97-4193-a1e5-101d313d3d22",
+    "action": "edit",
+    "state": "completed",
+    "phase": "completed",
+    "cancelled": false,
+    "copyStatus": "failed",
+    "items": [
+      {
+        "artifactId": "5deedde3-a18d-48cc-aaf6-60f32b6368f2",
+        "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+        "uploadStatus": "uploaded"
+      }
+    ]
+  },
+  {
+    "id": "d8539216-bacc-453b-a4e3-3ec388113dfc",
+    "action": "edit",
+    "state": "cancelled",
+    "phase": "cancelled",
+    "cancelled": true,
+    "copyStatus": "no_result",
+    "items": []
+  }
+]

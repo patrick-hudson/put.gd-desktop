@@ -1,0 +1,47 @@
+{
+  "host": "kubuntu",
+  "osRelease": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n",
+  "kernel": "7.0.0-38-generic",
+  "build": {
+    "schemaVersion": 1,
+    "version": "26.1025.1254-dev+g9f382fd0b07d",
+    "baseVersion": "26.1025.1254",
+    "packageVersion": "26.1025.1254~dev+g9f382fd0b07d",
+    "gitCommit": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+    "gitTree": "368c787617a047d52087a16aefd328503aabf147",
+    "commitCount": 1254,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "commands": [
+    "cmake --preset dev (supplied source provenance)",
+    "nice -n 10 cmake --build --preset dev",
+    "#!/bin/sh\nset -u\ncd /home/patrick/work/i559 || exit 1\nattempt=0\nwhile test ! -f build.exit && test \"$attempt\" -lt 80; do sleep 3; attempt=$((attempt+1)); done\ntest -f build.exit && test \"$(cat build.exit)\" = 0 || exit 2\numask 077\nmkdir /tmp/q559t1 /tmp/q559t1/r || exit 3\npython3 tools/diagnostics/check_socket_paths.py --socket /tmp/q559t1/r/putgd/session.sock > /tmp/q559t1/socket-preflight.json || exit 4\nexport TMPDIR=/tmp/q559t1 XDG_RUNTIME_DIR=/tmp/q559t1/r\nexport QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME=generic\nunset DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE\nexport DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/q559-no-session-bus\nnice -n 10 ctest --preset dev -R '^(edit_operations_integration|editor_job_integration|gui_history_view|gui_tray|operations_contract|history_contract)$' --output-junit /tmp/q559t1/results.xml > /tmp/q559t1/ctest.log 2>&1\ncode=$?\nprintf '%s\\n' \"$code\" > /tmp/q559t1/ctest.exit\nexit \"$code\"\n"
+  ],
+  "buildExit": 0,
+  "testExit": 0,
+  "tools": {
+    "g++": "g++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "cmake": "cmake version 4.2.3",
+    "ninja": "1.13.2",
+    "pkg-config": "6.10.2"
+  },
+  "binarySha256": {
+    "putgd": "5e77d410b011dfec3ea18883f8c99c5dbd019f55ce61afd3d55109a22679c343",
+    "putgd-ui": "24ec41dff563597fdcb1f2f0def1d1f84a211e35fe0c006177a3e85da506979b",
+    "putgd-cli": "234371d4adcfc5757337e26bd5302ff8a5e56782c6f7bd50db4bee8000488f24",
+    "putgd-s3-worker": "0f6ff73d10d82061e562d8624dfac9aec024cb625023affbc0eecc0ee246de69",
+    "libputgd-s3.so": "d3f0bb842298425bb62a9812c8158f5735b6195f577f6fd3425ca9234431dcef",
+    "test_edit_operations": "53f7e939ef285d80683a89e917d68e6ea193d603c282d4bc969e9d74ea7ecccb",
+    "test_gui_history_view": "bdaa0b202291f6675b2afca18433f267782848e799c9f7b9a7e98193e7a957ad",
+    "test_gui_tray": "f287c8db865db1518e9515cd001ac57bb74586e54580c5fceb4c15d9627bb0cf"
+  },
+  "sdkVerification": "Verified AWS SDK 1.11.907 and 15 submodules\n",
+  "qtDynamicLinks": [
+    "libQt6Network.so.6 => /usr/lib/x86_64-linux-gnu/libQt6Network.so.6 (0x00007bf3c5e10000)",
+    "libQt6Widgets.so.6 => /usr/lib/x86_64-linux-gnu/libQt6Widgets.so.6 (0x00007bf3c5600000)",
+    "libQt6Gui.so.6 => /usr/lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x00007bf3c4c00000)",
+    "libQt6DBus.so.6 => /usr/lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x00007bf3c5539000)",
+    "libQt6Core.so.6 => /usr/lib/x86_64-linux-gnu/libQt6Core.so.6 (0x00007bf3c4600000)"
+  ]
+}

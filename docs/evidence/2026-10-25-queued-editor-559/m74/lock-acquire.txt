@@ -1,0 +1,4 @@
+m74 (Linux Mint 22.3 Cinnamon X11): locked
+  Codex559 (mcp:c39a8c24-bbd0-435b-9072-429ab19b3f10), acquired 2026-10-25T04:47:38Z
+  purpose: #559 native Cinnamon queued editor burst; prebuilt private prefix, no heavy build
+  note: 3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651

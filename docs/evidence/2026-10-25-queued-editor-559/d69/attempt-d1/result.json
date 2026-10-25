@@ -1,0 +1,103 @@
+{
+  "scenario": "submitted-editor-queued-burst-559",
+  "passed": false,
+  "source": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+  "run": "/tmp/q559d1",
+  "driverSha256": "f1535cabc3fde93208dd459c4114a14ed1f0aa00b8b328d1b114a01e6791f9c7",
+  "command": [
+    "queued_burst.py",
+    "/home/patrick/work/i559",
+    "/home/patrick/work/i559/build/dev",
+    "/tmp/q559d1",
+    "5900"
+  ],
+  "startedUtc": "2026-10-25T04:38:03Z",
+  "checks": {
+    "captureRectPrecheck": true,
+    "00-coveredPrivacy": true
+  },
+  "host": "debian",
+  "osRelease": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.7\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+  "session": {
+    "Id": "20103",
+    "Type": "wayland",
+    "Seat": "seat0",
+    "Desktop": "KDE",
+    "Timestamp": "Sat 2026-10-24 01:20:38 CDT",
+    "TimestampMonotonic": "608680693393",
+    "Leader": "2755642",
+    "shell": {
+      "pid": 2755938,
+      "exe": "/usr/bin/plasmashell",
+      "startTicks": 60868265
+    },
+    "bootId": "06f3eec1-88ac-4081-82f6-59f510146647"
+  },
+  "build": {
+    "schemaVersion": 1,
+    "version": "26.1025.1254-dev+g9f382fd0b07d",
+    "baseVersion": "26.1025.1254",
+    "packageVersion": "26.1025.1254~dev+g9f382fd0b07d",
+    "gitCommit": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+    "gitTree": "368c787617a047d52087a16aefd328503aabf147",
+    "commitCount": 1254,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "qtVersion": "6.8.2",
+  "binaries": {
+    "putgd": "937f7421708066ad0daed14853cd1a8a890ab547d1bea97d46e80dfd53ecaf39",
+    "putgd-cli": "4eac6486e96a0d103d46d87a16165003cdfaa89e5426b1c513a6435ab2adb26d",
+    "putgd-ui": "5e2dad127a53a175358c3eda5c0c1bffc322e9250801fbb0476c7988b2032968"
+  },
+  "captureRect": [
+    0,
+    0,
+    1920,
+    1000
+  ],
+  "fullOutputPrecheck": true,
+  "visuals": [
+    {
+      "file": "00-covered.png",
+      "sha256": "2ac41012272040a16c2e593b588e7b00941b7c9dbe2a687a05d3dc8e7fc89ac8"
+    }
+  ],
+  "memoryBefore": {
+    "sampleSeconds": 0.21614616201259196,
+    "processes": [
+      {
+        "pid": 2844949,
+        "startTicks": 68892930,
+        "uid": 1000,
+        "executable": "/home/patrick/work/i559/build/dev/putgd",
+        "device": 2050,
+        "inode": 8669608,
+        "sha256": "937f7421708066ad0daed14853cd1a8a890ab547d1bea97d46e80dfd53ecaf39",
+        "role": "resident",
+        "rssBytes": 33951744,
+        "pssBytes": 10929152,
+        "privateBytes": 9363456,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 4,
+        "threads": 8,
+        "inResidentTree": true
+      }
+    ],
+    "totals": {
+      "rssBytes": 33951744,
+      "pssBytes": 10929152,
+      "privateBytes": 9363456
+    },
+    "processCount": 1,
+    "uiProcessCount": 0,
+    "escapedProcessCount": 0
+  },
+  "error": "ui.show: ui_crashed",
+  "cleanup": {
+    "residentExited": true,
+    "fixtureExited": true,
+    "coverExited": true
+  }
+}
