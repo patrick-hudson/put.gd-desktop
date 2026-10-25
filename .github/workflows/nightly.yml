@@ -22,7 +22,7 @@ jobs:
       tag: ${{ steps.plan.outputs.tag }}
       skip: ${{ steps.plan.outputs.skip }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.sha }}
@@ -33,7 +33,7 @@ jobs:
         run: python3 tools/releases/nightly.py plan --output "$RUNNER_TEMP/nightly-plan.json"
       - name: Retain the plan
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nightly-plan
           path: ${{ runner.temp }}/nightly-plan.json
@@ -67,11 +67,11 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.plan.outputs.tag }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ needs.plan.outputs.tag }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-assets
           path: build/publish
@@ -104,7 +104,7 @@ jobs:
           fi
       - name: Retain final publication evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: publication-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/publish/publication.json
@@ -124,7 +124,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: The latest stable release's SBOMs
         id: stable
         run: |
@@ -143,7 +143,7 @@ jobs:
           python3 tools/releases/sbom.py tools --output "$RUNNER_TEMP/sbom-tools"
           python3 tools/releases/sbom.py database --listing-only --listing build/grype-db.json --output build/grype-db
           echo "key=grype-db-v6-$(python3 -c 'import json; print(json.load(open("build/grype-db.json"))["sha256"])')" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: steps.stable.outputs.tag != ''
         id: grype-cache
         with:
@@ -157,7 +157,7 @@ jobs:
         run: |
           python3 tools/releases/sbom.py database --listing build/grype-db.json --output build/grype-db
           "$RUNNER_TEMP/sbom-tools/grype" db import build/grype-db/vulnerability-db_*.tar.zst
-      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: steps.stable.outputs.tag != '' && steps.grype-cache.outputs.cache-hit != 'true'
         with:
           path: build/grype-db
@@ -191,7 +191,7 @@ jobs:
           elif [ "$flagged" -gt 0 ]; then
             gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --label 'area: packaging' --label needs-patrick --body-file "$RUNNER_TEMP/issue.md"
           fi
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.stable.outputs.tag != ''
         with:
           name: stable-vulnerability-report
