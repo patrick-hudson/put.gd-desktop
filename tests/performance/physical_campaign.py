@@ -751,7 +751,22 @@ class Campaign:
         return capabilities
 
     def sample(self, label):
-        row = self.family.sample()
+        # Upload workers and file editors start and exit constantly during a
+        # burst; the family sampler gives up after three disturbed snapshots.
+        # Retry for a bounded time instead of failing the workload.
+        deadline = time.monotonic() + 5
+        unsettled = 0
+        while True:
+            try:
+                row = self.family.sample()
+                break
+            except EvidenceError as error:
+                if str(error) != 'process_family_did_not_settle' or time.monotonic() >= deadline:
+                    raise
+                unsettled += 1
+                time.sleep(.05)
+        if unsettled:
+            row['unsettledRetries'] = unsettled
         require(row['escapedProcessCount'] == 0, 'escaped_product_descendant')
         for process in row['processes']:
             try:

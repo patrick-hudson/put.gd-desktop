@@ -256,15 +256,22 @@ def save_visible_window(window, owner, path, port, *, diagnostics_out=None):
                     bracketMs=(after_finished - bracket) * 1000,
                     nativeBeforeEqualsAfter=before == after,
                     compositeEqualsBefore=composite == before, compositeEqualsAfter=composite == after)
-            if before == composite == after:
+            # A live window (upload progress rows) repaints between the two
+            # native reads, so before == after cannot hold during a burst.
+            # The wall frame equalling either exact owned read still proves
+            # it showed only this window's pixels.
+            matched = before if composite == before else after if composite == after else None
+            if matched is not None:
                 if diagnostics_out is not None:
                     stage = 'exit-metadata'
                     exit_attempted = True
                     diagnostics_out['exit'] = _visibility_target(window, owner)
                 stage = 'save'
                 crop.save(path)
-                return {'pixelSource': 'physical localhost VNC composite crop', 'equalsStableOwnedDrawable': True,
-                        'nativePixelSha256': hashlib.sha256(before).hexdigest(),
+                return {'pixelSource': 'physical localhost VNC composite crop',
+                        'equalsStableOwnedDrawable': before == after,
+                        'equalsOwnedDrawableRead': 'before' if matched is before else 'after',
+                        'nativePixelSha256': hashlib.sha256(matched).hexdigest(),
                         'clientCrop': [x + inset, y + inset, width - 2 * inset, height - 2 * inset],
                         'window': window, 'owner': owner}
             time.sleep(.1)

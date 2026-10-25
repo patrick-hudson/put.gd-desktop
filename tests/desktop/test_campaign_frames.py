@@ -128,8 +128,9 @@ class VisibilityDiagnosticsTests(unittest.TestCase):
         from PIL import Image
         first, other = (50, 60, 70), (200, 100, 90)
         native = Image.new('RGB', (16, 16), first)
-        after = Image.new('RGB', (16, 16), other if mode == 'changing' else first)
-        composite = Image.new('RGB', (100, 100), other if mode == 'mismatch' else first)
+        after = Image.new('RGB', (16, 16), other if mode.startswith('changing') else first)
+        composite = Image.new('RGB', (100, 100), other if mode == 'mismatch' else
+                              (1, 2, 3) if mode == 'changing-mismatch' else first)
         draw = mock.Mock()
         draw.pixels.side_effect = [value for _ in range(12) for value in (native, after)]
         client = mock.Mock(width=100, height=100)
@@ -168,8 +169,8 @@ class VisibilityDiagnosticsTests(unittest.TestCase):
         for forbidden in ('never retain this text', 'do-not-export', 'sha256', 'base64'):
             self.assertNotIn(forbidden, encoded)
 
-    def test_changing_native_or_stable_composite_mismatch_never_saves_any_attempt(self):
-        for mode in ('changing', 'mismatch'):
+    def test_composite_matching_neither_owned_read_never_saves_any_attempt(self):
+        for mode in ('changing-mismatch', 'mismatch'):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 with self.assertRaisesRegex(EvidenceError, 'owned_ui_not_proven_visible_on_physical_wall'):
@@ -178,13 +179,26 @@ class VisibilityDiagnosticsTests(unittest.TestCase):
                 self.assertEqual(d['attemptCount'], 12)
                 self.assertEqual(d['completedComparisonCount'], 12)
                 self.assertEqual(d['exactMatchCount'], 0)
-                self.assertEqual(d['nativeChangedCount'], 12 if mode == 'changing' else 0)
+                self.assertEqual(d['nativeChangedCount'], 12 if mode == 'changing-mismatch' else 0)
                 self.assertEqual(d['stableNativeCompositeMismatchCount'], 12 if mode == 'mismatch' else 0)
                 self.assertEqual(list(root.iterdir()), [])
                 self.assertEqual(self.draw.pixels.call_count, 24)
                 self.assertEqual(self.client.frame.call_count, 12)
                 self.assertEqual(self.metadata.call_count, 2)
                 self.numeric_only(d)
+
+    def test_repainting_window_saves_crop_equal_to_one_owned_read(self):
+        # Upload progress repaints History between the two native reads.
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof = self.guard(root, 'changing')
+            with Image.open(root / 'owned.png') as image:
+                self.assertEqual(image.tobytes(), bytes((50, 60, 70)) * 256)
+            self.assertFalse(proof['equalsStableOwnedDrawable'])
+            self.assertEqual(proof['equalsOwnedDrawableRead'], 'before')
+            self.assertEqual(self.diagnostics['attemptCount'], 1)
+            self.assertEqual(self.diagnostics['nativeChangedCount'], 1)
 
     def test_exact_match_saves_only_same_owned_crop_and_reports_one_comparison(self):
         from PIL import Image

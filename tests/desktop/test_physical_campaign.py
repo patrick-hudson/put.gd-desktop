@@ -226,6 +226,23 @@ class SampleRaceTests(unittest.TestCase):
         self.assertIsNone(row['processes'][1]['qtPlatformMappings'])
         self.assertTrue(row['processes'][1]['exitedBeforeMappingRead'])
 
+    def test_family_churn_is_retried_within_a_deadline(self):
+        settled = {'escapedProcessCount': 0, 'processes': []}
+        churn = campaign.EvidenceError('process_family_did_not_settle')
+        observer = mock.Mock(family=mock.Mock(sample=mock.Mock(side_effect=[churn, churn, settled])))
+        with mock.patch.object(campaign.time, 'sleep'):
+            row = campaign.Campaign.sample(observer, 'burst-file-editor-handoff')
+        self.assertEqual(row['unsettledRetries'], 2)
+
+    def test_family_churn_past_the_deadline_still_fails(self):
+        churn = campaign.EvidenceError('process_family_did_not_settle')
+        observer = mock.Mock(family=mock.Mock(sample=mock.Mock(side_effect=churn)))
+        clock = iter(range(0, 100, 2))
+        with mock.patch.object(campaign.time, 'sleep'), \
+             mock.patch.object(campaign.time, 'monotonic', side_effect=lambda: next(clock)):
+            with self.assertRaisesRegex(campaign.EvidenceError, 'did_not_settle'):
+                campaign.Campaign.sample(observer, 'burst-active')
+
     def test_resident_disappearing_still_fails(self):
         with self.assertRaises(FileNotFoundError):
             self.sample('resident')
