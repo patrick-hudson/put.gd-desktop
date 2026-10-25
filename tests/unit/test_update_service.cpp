@@ -1,6 +1,7 @@
 #include "app/UpdateService.h"
 #include "app/AppImageInstall.h"
 #include "core/Log.h"
+#include "core/SystemUpdates.h"
 #include <QCoreApplication>
 #include <QFile>
 #include <QFileInfo>
@@ -18,6 +19,18 @@ constexpr auto fakeScript=R"sh(printf '%s\n' "$*" >> "$0.calls"; cat "$0.out"; e
 class UpdateServiceTest:public QObject {
  Q_OBJECT
  QTemporaryDir dir;
+ QByteArray oldSystemRoot;
+ bool hadSystemRoot=false;
+ QString repositoryFile(const QString& target) const {return dir.path()+(target=="fedora44"?"/system/etc/yum.repos.d/putgd.repo":"/system/etc/apt/sources.list.d/putgd.sources");}
+ void repository(const QString& target,const QString& channel="stable",const QString& state="managed") {
+  const auto path=repositoryFile(target);QVERIFY(QDir().mkpath(QFileInfo(path).path()));
+  QFile file(path);QVERIFY(file.open(QIODevice::WriteOnly));
+  const auto base=state=="foreign"?QString("https://example.invalid"):update::packageRepository();
+  const auto text=state=="invalid"?QString("not a repository\n"):target=="fedora44"?
+   "[putgd]\nbaseurl="+base+"/rpm/fedora/44/x86_64/"+channel+"\nenabled="+(state=="disabled"?"0":"1")+"\n":
+   "Types: deb\nURIs: "+base+"/apt/"+target+"\nSuites: "+channel+"\nComponents: main\nEnabled: "+(state=="disabled"?"no":"yes")+"\n";
+  file.write(text.toUtf8());
+ }
  QDateTime now=QDateTime::fromString("2026-10-20T12:00:00Z",Qt::ISODate);
  static update::Build build(const QString& version,const QString& target="appimage"){
   return update::build(QJsonObject{{"version",version},{"gitCommit","528fe444b0cb0123456789abcdef0123456789ab"},{"dirty",false},{"sourceProvenance","git"}},target,true);
@@ -57,7 +70,73 @@ class UpdateServiceTest:public QObject {
    {"tag",latest.isString()?QJsonValue("v"+latest.toString()):QJsonValue()},{"asset",QJsonValue()}}}};
  }
 private slots:
- void init(){QVERIFY(dir.isValid());for(const auto& name:QDir(dir.path()).entryList(QDir::Files))QFile::remove(dir.filePath(name));}
+ void init(){
+  QVERIFY(dir.isValid());for(const auto& name:QDir(dir.path()).entryList(QDir::Files))QFile::remove(dir.filePath(name));
+  QDir(dir.path()+"/system").removeRecursively();
+  hadSystemRoot=qEnvironmentVariableIsSet("PUTGD_UPDATE_SYSTEM_ROOT");oldSystemRoot=qgetenv("PUTGD_UPDATE_SYSTEM_ROOT");
+  qputenv("PUTGD_UPDATE_SYSTEM_ROOT",(dir.path()+"/system").toUtf8());
+ }
+ void cleanup(){if(hadSystemRoot)qputenv("PUTGD_UPDATE_SYSTEM_ROOT",oldSystemRoot);else qunsetenv("PUTGD_UPDATE_SYSTEM_ROOT");}
+ void startupUsesLocalRepositoryWithoutAFeed_data(){
+  QTest::addColumn<QString>("target");QTest::addColumn<QString>("state");QTest::addColumn<QString>("chosen");QTest::addColumn<bool>("checks");
+  for(const auto& target:{"ubuntu24.04","ubuntu26.04","debian13","fedora44","appimage"})
+   for(const auto& state:{"managed","absent","disabled","foreign","invalid"})
+    for(const auto& chosen:{"build","nightly"})
+     for(const bool checks:{false,true})QTest::newRow(qPrintable(QString("%1-%2-%3-%4").arg(target,state,chosen).arg(checks)))<<QString(target)<<QString(state)<<QString(chosen)<<checks;
+ }
+ void startupUsesLocalRepositoryWithoutAFeed(){
+  QFETCH(QString,target);QFETCH(QString,state);QFETCH(QString,chosen);QFETCH(bool,checks);
+  if(state!="absent")repository(target,"stable",state);
+  SettingsService settings(dir.filePath("config.json"));configure(settings,{{"channel",chosen},{"check",checks}});
+  const auto document=settings.document();const auto revision=settings.revision();
+  auto updates=service(settings,build("26.1022.968-nightly",target));
+  updates->setRandom([](qint64 low,qint64){return low;});updates->start();
+  const bool managed=state=="managed"&&target!="appimage";
+  const auto status=updates->status();
+  QCOMPARE(status["channel"].toString(),managed?QString("stable"):QString("nightly"));
+  QCOMPARE(status["channelSource"].toString(),managed?QString("repository"):QString("setting"));
+  QCOMPARE(status["channelSetting"].toString(),chosen);QCOMPARE(settings.document(),document);QCOMPARE(settings.revision(),revision);
+  QCOMPARE(status["action"].toObject()["kind"].toString(),managed?QString("software-updates"):QString("download"));
+  QCOMPARE(status["action"].toObject()["otherChannel"].isObject(),managed);
+  QVERIFY(status["checkedAt"].isNull());QVERIFY(status["attemptedAt"].isNull());QVERIFY(status["result"].isNull());
+  QVERIFY(!status["checking"].toBool());QVERIFY(calls().isEmpty());
+  QCOMPARE(updates->nextCheckInMs()>0,checks);
+ }
+ void startupDiscardsStaleRepositoryOwnership(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings,{{"check",false},{"channel","nightly"}});
+  repository("debian13","stable");
+  QFile state(dir.filePath("update-check.json"));QVERIFY(state.open(QIODevice::WriteOnly));
+  state.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"checkedAt",now.toString(Qt::ISODate)},
+   {"result",QJsonObject{{"channel","stable"},{"channelSource","repository"},{"latest","26.1020.950"},{"action",QJsonObject{{"kind","software-updates"},{"channel","stable"}}}}}}).toJson());state.close();
+  // The file changed since the successful check: startup follows it now.
+  repository("debian13","nightly");
+  auto changed=service(settings,build("26.1022.968-nightly","debian13"));changed->start();
+  QCOMPARE(changed->status()["channel"].toString(),QString("nightly"));QVERIFY(changed->status()["result"].isNull());
+  QVERIFY(QFile::remove(repositoryFile("debian13")));
+  auto absent=service(settings,build("26.1022.968-nightly","debian13"));absent->start();
+  QCOMPARE(absent->status()["channelSource"].toString(),QString("setting"));QCOMPARE(absent->status()["action"].toObject()["repository"].toString(),QString("absent"));
+  // A different install sharing the state must never inherit apt ownership.
+  configure(settings,{{"check",false},{"channel","stable"}});
+  auto image=service(settings,build("26.1022.968-nightly"));image->start();
+  const auto status=image->status();QCOMPARE(status["channelSource"].toString(),QString("setting"));
+  QCOMPARE(status["result"].toObject()["channelSource"].toString(),QString("setting"));
+  QCOMPARE(status["result"].toObject()["action"].toObject()["kind"].toString(),QString("download"));
+ }
+ void failedCheckStillRefreshesLocalOwnership(){
+  SettingsService settings(dir.filePath("config.json"));configure(settings,{{"check",false}});
+  repository("fedora44","stable");
+  auto updates=service(settings,build("26.1022.968-nightly","fedora44"));updates->start();
+  QCOMPARE(updates->status()["channel"].toString(),QString("stable"));
+  repository("fedora44","nightly");
+  answer({{"schemaVersion",1},{"ok",false},{"error",QJsonObject{{"code","update_feed_unavailable"},{"message","Offline"}}}},1);
+  bool replied=false;updates->check([&](Error error,QJsonObject){QCOMPARE(error.code,QString("update_feed_unavailable"));replied=true;});
+  PUTGD_TRY_VERIFY(replied);QCOMPARE(calls().last(),QString("--check-update nightly"));
+  QCOMPARE(updates->status()["channelSource"].toString(),QString("repository"));
+  QVERIFY(QFile::remove(repositoryFile("fedora44")));replied=false;
+  updates->check([&](Error error,QJsonObject){QVERIFY(error);replied=true;});PUTGD_TRY_VERIFY(replied);
+  QCOMPARE(updates->status()["channelSource"].toString(),QString("setting"));
+  QCOMPARE(updates->status()["action"].toObject()["repository"].toString(),QString("absent"));
+ }
  void unsupportedBuildsNeverCheck(){
   SettingsService settings(dir.filePath("config.json"));configure(settings);
   auto updates=service(settings,build("0.1.1-dev.5+gabc","debian13"));updates->start();
@@ -128,6 +207,7 @@ private slots:
   PUTGD_TRY_VERIFY(updates->status()["result"].isNull());PUTGD_TRY_COMPARE(updates->status()["error"].toObject()["code"].toString(),QString("update_feed_unavailable"));
  }
  void repositoryInstallsLeaveNotificationsToTheSystem(){
+  repository("debian13");
   // A stable DEB whose putgd.sources is in use: the check child says so, and
   // the system updater notifies, not put.gd.
   SettingsService settings(dir.filePath("config.json"));configure(settings);
@@ -148,6 +228,7 @@ private slots:
   Error error;replied=false;updates->openSoftwareUpdates([&](Error e,QJsonObject){error=e;replied=true;});
   PUTGD_TRY_VERIFY(replied);QCOMPARE(error.code,QString("software_updates_unavailable"));QCOMPARE(error.details["command"].toString(),QString("sudo apt update && sudo apt upgrade"));
   // The repository file deleted: the next check reports a download, and stable notifies again.
+  QVERIFY(QFile::remove(repositoryFile("debian13")));
   now=now.addDays(1);result["action"]=QJsonObject{{"kind","download"},{"repository","absent"}};result["latest"]="0.1.2";reply["result"]=result;answer(reply);
   auto later=service(settings,build("0.1.0","debian13"));QSignalSpy again(later.get(),&UpdateService::updateAvailable);later->start();
   PUTGD_TRY_COMPARE(again.size(),1);QCOMPARE(later->status()["notifies"].toBool(),true);
@@ -155,13 +236,14 @@ private slots:
  // #386: a DEB/RPM follows its repository's channel, which the check child
  // reads; the setting stays as stored, and nothing offers to switch.
  void repositoryInstallsFollowTheirRepositorysChannel(){
+  repository("ubuntu24.04");
   SettingsService settings(dir.filePath("config.json"));configure(settings);
   const QJsonObject managed{{"kind","software-updates"},{"manager","apt"},{"channel","stable"},{"command","sudo apt update && sudo apt upgrade"},{"updater",QJsonValue()},
    {"older",QJsonObject{{"version","26.1020.950"},{"command","sudo apt install --allow-downgrades putgd/stable"}}}};
   auto reply=found("stable","26.1022.968-nightly","26.1020.950",false);auto result=reply["result"].toObject();result["action"]=managed;result["channelSource"]="repository";reply["result"]=result;answer(reply);
   auto updates=service(settings,build("26.1022.968-nightly","ubuntu24.04"));QSignalSpy announced(updates.get(),&UpdateService::updateAvailable);updates->start();
-  // The resident asked for its build's channel; the answer names the repository's.
-  PUTGD_TRY_COMPARE(calls().size(),1);QCOMPARE(calls().first(),QString("--check-update nightly"));PUTGD_TRY_VERIFY(!updates->status()["checking"].toBool());
+  // The resident already knows the repository channel before launching the child.
+  PUTGD_TRY_COMPARE(calls().size(),1);QCOMPARE(calls().first(),QString("--check-update stable"));PUTGD_TRY_VERIFY(!updates->status()["checking"].toBool());
   auto status=updates->status();
   QCOMPARE(status["channel"].toString(),QString("stable"));QCOMPARE(status["channelSource"].toString(),QString("repository"));QCOMPARE(status["channelSetting"].toString(),QString("build"));
   QCOMPARE(status["result"].toObject()["latest"].toString(),QString("26.1020.950"));QCOMPARE(status["action"].toObject()["older"].toObject()["version"].toString(),QString("26.1020.950"));
@@ -173,7 +255,8 @@ private slots:
   auto restarted=service(settings,build("26.1022.968-nightly","ubuntu24.04"));restarted->start();
   QCOMPARE(restarted->status()["channel"].toString(),QString("stable"));QCOMPARE(restarted->status()["channelSource"].toString(),QString("repository"));
   // The repository file removed: the setting decides again.
-  result["action"]=QJsonObject{{"kind","download"},{"repository","absent"}};result["channelSource"]="setting";reply["result"]=result;answer(reply);
+  QVERIFY(QFile::remove(repositoryFile("ubuntu24.04")));
+  result["channel"]="nightly";result["action"]=QJsonObject{{"kind","download"},{"repository","absent"}};result["channelSource"]="setting";reply["result"]=result;answer(reply);
   replied=false;restarted->check([&](Error e,QJsonObject){error=e;replied=true;});PUTGD_TRY_VERIFY(replied);
   QCOMPARE(restarted->status()["channelSource"].toString(),QString("setting"));QCOMPARE(restarted->status()["channel"].toString(),QString("nightly"));
  }

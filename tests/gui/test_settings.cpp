@@ -15,6 +15,7 @@
 #include "ui/ViewState.h"
 #include "fixtures/UiSessionFixture.h"
 #include "app/DiagnosticsBundle.h"
+#include "core/SystemUpdates.h"
 #include "core/Log.h"
 #include "core/ArtifactStore.h"
 #include <QJsonDocument>
@@ -1025,6 +1026,50 @@ private slots:
   apply(false,QJsonValue(),"build","development_build");PUTGD_TRY_VERIFY(!channel->isVisibleTo(window.settings()));
   window.findChild<QCheckBox*>("notifications")->setChecked(!window.findChild<QCheckBox*>("notifications")->isChecked());PUTGD_COMPARE_STEADY(stored(),QString("build"),300);
   apply(false,"stable","build","flatpak");PUTGD_TRY_VERIFY(!channel->isVisibleTo(window.settings()));
+ }
+ // #491: the real service supplies ownership before the first UI snapshot,
+ // with no feed result. Saving unrelated preferences must retain the choice
+ // used by manual installs sharing this configuration.
+ void updateChannelIsCorrectOnFirstSnapshot_data(){
+  QTest::addColumn<bool>("managed");QTest::addColumn<QString>("chosen");
+  QTest::newRow("fresh-repository")<<true<<QString("build");
+  QTest::newRow("repository-with-manual-choice")<<true<<QString("nightly");
+  QTest::newRow("fresh-manual")<<false<<QString("build");
+  QTest::newRow("manual-with-choice")<<false<<QString("stable");
+ }
+ void updateChannelIsCorrectOnFirstSnapshot(){
+  QFETCH(bool,managed);QFETCH(QString,chosen);
+  QTemporaryDir dir;QVERIFY(dir.isValid());
+  const bool had=qEnvironmentVariableIsSet("PUTGD_UPDATE_SYSTEM_ROOT");const auto old=qgetenv("PUTGD_UPDATE_SYSTEM_ROOT");
+  const auto restore=qScopeGuard([&]{if(had)qputenv("PUTGD_UPDATE_SYSTEM_ROOT",old);else qunsetenv("PUTGD_UPDATE_SYSTEM_ROOT");});
+  qputenv("PUTGD_UPDATE_SYSTEM_ROOT",dir.path().toUtf8());
+  if(managed){
+   QVERIFY(QDir().mkpath(dir.path()+"/etc/apt/sources.list.d"));QFile file(dir.path()+"/etc/apt/sources.list.d/putgd.sources");
+   QVERIFY(file.open(QIODevice::WriteOnly));file.write(("Types: deb\nURIs: "+update::packageRepository()+"/apt/debian13\nSuites: stable\nComponents: main\n").toUtf8());
+  }
+  SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=Settings::defaults();auto prefs=doc["preferences"].toObject();prefs["updates"]=QJsonObject{{"channel",chosen}};doc["preferences"]=prefs;QVERIFY(service.save(doc,{}));
+  UpdateService updates(service,dir.path(),"/bin/false");
+  updates.setBuild(update::build(QJsonObject{{"version","26.1022.968-nightly"},{"dirty",false},{"sourceProvenance","git"}},"debian13",true));updates.start();
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);fixture.server.setUpdateService(&updates);
+  fixture.server.setUiDiagnostics([&]{return QJsonObject{{"update",updates.status()}};});
+  fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(fixture.session.diagnostics()["update"].isObject());
+  MainWindow window(fixture.session);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());
+  auto* channel=window.findChild<QComboBox*>("updateChannel");auto* source=window.findChild<QLabel*>("updateChannelSource");
+  auto* text=window.findChild<QLabel*>("otherChannelText");auto* line=window.findChild<QLabel*>("updateStatus");
+  QVERIFY(channel&&source&&text&&line);
+  const auto expected=managed||chosen=="stable"?QString("stable"):QString("nightly");
+  PUTGD_TRY_COMPARE(channel->currentData().toString(),expected);QCOMPARE(channel->isEnabled(),!managed);
+  QCOMPARE(source->isVisibleTo(window.settings()),managed);QCOMPARE(text->isVisibleTo(window.settings()),managed);
+  QVERIFY(line->text().startsWith("Not checked yet"));
+  QJsonObject wire;fixture.server.dispatch({{"schemaVersion",1},{"requestId","startup-update"},{"session",fixture.server.socketPath()},{"method","update.status"},{"params",QJsonObject{}}},[&](Error error,QJsonObject data){QVERIFY(!error);wire=data;});
+  QCOMPARE(wire,updates.status());QCOMPARE(wire["channel"].toString(),expected);QVERIFY(wire["attemptedAt"].isNull());
+  auto* notifications=window.findChild<QCheckBox*>("notifications");const bool before=notifications->isChecked();notifications->setChecked(!before);
+  PUTGD_TRY_COMPARE(service.snapshot().notifications,!before);QCOMPARE(service.snapshot().updateChannel,chosen);
+  if(!managed){
+   channel->setCurrentIndex(channel->findData(expected=="stable"?"nightly":"stable"));
+   PUTGD_TRY_COMPARE(service.snapshot().updateChannel,expected=="stable"?QString("build"):QString("stable"));
+  }
  }
  // #386: a DEB/RPM that updates from put.gd's repository shows the
  // repository's channel without a choice, and the commands that move to the
