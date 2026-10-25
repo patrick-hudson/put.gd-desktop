@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "228b404f-8986-4da1-af2a-59b729e69e24",
+  "profile": "kde-x11",
+  "guest_user": "lab",
+  "ssh_port": 22260,
+  "vnc_display": 60,
+  "acceleration": "kvm",
+  "golden": "/home/patrick/work/put.gd/work/lab-images/kde-x11-20261025-559/image.qcow2",
+  "golden_sha256": "5306a311c69220421d3efbbb8929300634c3812214edef3b9203b830ce300826",
+  "bootstrap_key": "/home/patrick/work/put.gd/work/lab-bootstrap-d69/rec-ws/identity",
+  "known_hosts": "/home/patrick/work/i559/work/lab-runs/k559t/known_hosts",
+  "overlay": "/home/patrick/work/i559/work/lab-runs/k559t/disk.qcow2",
+  "heads": [
+    {
+      "head": 0,
+      "port": 5960,
+      "display": "127.0.0.1:5960"
+    }
+  ],
+  "head_layout": "1920x1080+0+0",
+  "pid": 2873689,
+  "head_requests": [
+    {
+      "port": 5960,
+      "width": 1920,
+      "height": 1080,
+      "status": 4
+    }
+  ]
+}

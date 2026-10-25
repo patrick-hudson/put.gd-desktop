@@ -1,5 +1,5 @@
 {
   "exit": 0,
-  "stdout": "{\"edges\": {\"bottom\": 1.0, \"left\": 1.0, \"right\": 1.0, \"top\": 1.0}, \"fraction\": 0.566, \"kept\": \"/tmp/q559k3/03-drained-history.png\", \"minFraction\": 0.5, \"ok\": true, \"rect\": [0, 0, 1920, 1000], \"sha256\": \"d3534e28aa11866b6527fff28622143e9d863da2758b285d3539958a227db40b\", \"size\": [1920, 1080]}\n",
+  "stdout": "{\"edges\": {\"bottom\": 1.0, \"left\": 1.0, \"right\": 1.0, \"top\": 1.0}, \"fraction\": 0.566, \"kept\": \"/tmp/q559k4/03-drained-history.png\", \"minFraction\": 0.5, \"ok\": true, \"rect\": [0, 0, 1920, 1000], \"sha256\": \"37d998e9c87330b296b87f2190e361dacae14225f1257f636b519d4b7796a2fa\", \"size\": [1920, 1080]}\n",
   "stderr": ""
 }

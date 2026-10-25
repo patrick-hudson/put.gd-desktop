@@ -3,6 +3,7 @@
     "id": "4fd1cd35-3476-4224-91f7-245ae44eb837",
     "state": "completed",
     "phase": "completed",
+    "copyStatus": "copied",
     "error": {
       "code": "",
       "details": {},
@@ -97,6 +98,7 @@
     "id": "6a2c73fc-4187-4aac-9114-b845d72b5a6a",
     "state": "completed",
     "phase": "completed",
+    "copyStatus": "copied",
     "error": {
       "code": "",
       "details": {},
@@ -191,6 +193,7 @@
     "id": "2ce70601-0d43-4971-8b81-f265671882e2",
     "state": "completed",
     "phase": "completed",
+    "copyStatus": "copied",
     "error": {
       "code": "",
       "details": {},
@@ -285,6 +288,7 @@
     "id": "8b5c5418-9f91-4803-a21a-14896fec7d84",
     "state": "completed",
     "phase": "completed",
+    "copyStatus": "copied",
     "error": {
       "code": "",
       "details": {},
@@ -379,6 +383,7 @@
     "id": "f38bcbe3-c35b-4c42-be6f-ec8bb08aef4a",
     "state": "completed",
     "phase": "completed",
+    "copyStatus": "copied",
     "error": {
       "code": "",
       "details": {},
@@ -473,6 +478,7 @@
     "id": "b87640e2-3761-46ad-b663-32246276fe99",
     "state": "cancelled",
     "phase": "cancelled",
+    "copyStatus": "no_result",
     "error": {
       "code": "",
       "details": {},

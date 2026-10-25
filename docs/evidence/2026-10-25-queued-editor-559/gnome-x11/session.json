@@ -1,0 +1,15 @@
+{
+  "Id": "1",
+  "Type": "x11",
+  "Seat": "seat0",
+  "Desktop": null,
+  "Timestamp": "Sun 2026-10-25 05:20:27 UTC",
+  "TimestampMonotonic": "130746894",
+  "Leader": "1086",
+  "shell": {
+    "pid": 1498,
+    "exe": "/usr/bin/gnome-shell",
+    "startTicks": 13302
+  },
+  "bootId": "5596ab88-2342-4127-a493-357fa2cc3dcf"
+}

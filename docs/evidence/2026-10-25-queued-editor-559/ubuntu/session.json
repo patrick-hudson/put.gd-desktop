@@ -1,0 +1,15 @@
+{
+  "Id": "1",
+  "Type": "wayland",
+  "Seat": "seat0",
+  "Desktop": null,
+  "Timestamp": "Sat 2026-10-24 23:54:36 CDT",
+  "TimestampMonotonic": "11820219",
+  "Leader": "1298",
+  "shell": {
+    "pid": 1687,
+    "exe": "/usr/bin/gnome-shell",
+    "startTicks": 1383
+  },
+  "bootId": "e7dd50ab-ad71-4e46-ac32-82ce61ef7487"
+}

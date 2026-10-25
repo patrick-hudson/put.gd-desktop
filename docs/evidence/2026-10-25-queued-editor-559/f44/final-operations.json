@@ -3,6 +3,7 @@
     "id": "91242221-52d3-46f3-83bc-263972e2bd87",
     "state": "completed",
     "phase": "completed",
+    "copyStatus": "failed",
     "error": {
       "code": "clipboard_unavailable",
       "details": {},
@@ -97,6 +98,7 @@
     "id": "928e4b89-dd8d-476e-a2e1-0ab0038431e7",
     "state": "completed",
     "phase": "completed",
+    "copyStatus": "failed",
     "error": {
       "code": "clipboard_unavailable",
       "details": {},
@@ -191,6 +193,7 @@
     "id": "a8b50f52-1b12-467b-8d44-aa57f1cf4c3b",
     "state": "completed",
     "phase": "completed",
+    "copyStatus": "failed",
     "error": {
       "code": "clipboard_unavailable",
       "details": {},
@@ -285,6 +288,7 @@
     "id": "63363159-b65d-4472-b3f7-47221cb9f21d",
     "state": "completed",
     "phase": "completed",
+    "copyStatus": "failed",
     "error": {
       "code": "clipboard_unavailable",
       "details": {},
@@ -379,6 +383,7 @@
     "id": "8ae298ef-b232-46b8-8f60-b9163328fc2e",
     "state": "completed",
     "phase": "completed",
+    "copyStatus": "failed",
     "error": {
       "code": "clipboard_unavailable",
       "details": {},
@@ -473,6 +478,7 @@
     "id": "e2754490-b6e4-4b96-8530-c8bf17cf1db7",
     "state": "cancelled",
     "phase": "cancelled",
+    "copyStatus": "no_result",
     "error": {
       "code": "",
       "details": {},

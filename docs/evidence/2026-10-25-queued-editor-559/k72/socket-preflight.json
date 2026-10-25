@@ -4,8 +4,23 @@
   "limitBytesExcludingNul": 107,
   "paths": [
     {
-      "path": "/tmp/q559k3/r/putgd/session.sock",
+      "path": "/tmp/q559k4/r/putgd/session.sock",
       "utf8Bytes": 32,
+      "passed": true
+    },
+    {
+      "path": "/run/user/1000/bus",
+      "utf8Bytes": 18,
+      "passed": true
+    },
+    {
+      "path": "/run/user/1000/wayland-0",
+      "utf8Bytes": 24,
+      "passed": true
+    },
+    {
+      "path": "/tmp/.X11-unix/X0",
+      "utf8Bytes": 17,
       "passed": true
     }
   ]

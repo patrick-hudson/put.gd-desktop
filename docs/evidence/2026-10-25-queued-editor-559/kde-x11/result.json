@@ -1,0 +1,288 @@
+{
+  "scenario": "submitted-editor-queued-burst-559",
+  "passed": true,
+  "source": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+  "run": "/tmp/q559xk1",
+  "driverSha256": "b91550789ac54112839f8eaf823d124cd4f5382772a42a8b5df1d411c6aa344a",
+  "command": [
+    "/home/lab/i559/queued_burst.py",
+    "/home/lab/i559",
+    "/home/lab/i559/bin",
+    "/tmp/q559xk1",
+    "5900"
+  ],
+  "startedUtc": "2026-10-25T05:14:00Z",
+  "checks": {
+    "captureRectPrecheck": true,
+    "00-coveredPrivacy": true,
+    "01-editorPrivacy": true,
+    "fiveSubmittedQueued": true,
+    "editorClosed": true,
+    "persistedHandoff": true,
+    "02-queued-historyPrivacy": true,
+    "drainedFiveCancelledOne": true,
+    "fivePuts": true,
+    "03-drained-historyPrivacy": true
+  },
+  "host": "putgd-kde-lab",
+  "osRelease": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n",
+  "session": {
+    "Id": "1",
+    "Type": "x11",
+    "Seat": "seat0",
+    "Desktop": "KDE",
+    "Timestamp": "Sun 2026-10-25 00:12:05 CDT",
+    "TimestampMonotonic": "10004587",
+    "Leader": "908",
+    "shell": {
+      "pid": 1882,
+      "exe": "/usr/bin/plasmashell",
+      "startTicks": 1617
+    },
+    "bootId": "e712511d-cb83-4c32-afd8-5d7e0e8ccf6f"
+  },
+  "qtScaleFactor": "1",
+  "build": {
+    "schemaVersion": 1,
+    "version": "26.1025.1254-dev+g9f382fd0b07d",
+    "baseVersion": "26.1025.1254",
+    "packageVersion": "26.1025.1254~dev+g9f382fd0b07d",
+    "gitCommit": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+    "gitTree": "368c787617a047d52087a16aefd328503aabf147",
+    "commitCount": 1254,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "qtVersion": "6.10.2",
+  "binaries": {
+    "putgd": "5e77d410b011dfec3ea18883f8c99c5dbd019f55ce61afd3d55109a22679c343",
+    "putgd-cli": "234371d4adcfc5757337e26bd5302ff8a5e56782c6f7bd50db4bee8000488f24",
+    "putgd-ui": "24ec41dff563597fdcb1f2f0def1d1f84a211e35fe0c006177a3e85da506979b"
+  },
+  "windowGeometry": {
+    "x": 410,
+    "y": 130,
+    "width": 1100,
+    "height": 700
+  },
+  "captureRect": [
+    0,
+    0,
+    1920,
+    1000
+  ],
+  "fullOutputPrecheck": true,
+  "visuals": [
+    {
+      "file": "00-covered.png",
+      "sha256": "e3f83c998f903f7a44acb5a777e52daaf32dbc0eb5c9a0150cc0952aafcbc985"
+    },
+    {
+      "file": "01-editor.png",
+      "sha256": "ecdf1dddc0b8c60a37ffb76c515e732ed87dd2402a01d5dffc7a47798dcd63f9"
+    },
+    {
+      "file": "02-queued-history.png",
+      "sha256": "84ea5f93bff9827fad795c9292309fc076087f6f1ba091e49f669fa481b644aa"
+    },
+    {
+      "file": "03-drained-history.png",
+      "sha256": "0e3edc28649945fc9f5760d39a2789f71c708b7ca09d2c3b3f0a1599084f5e3b"
+    }
+  ],
+  "memoryBefore": {
+    "sampleSeconds": 0.5592385539999896,
+    "processes": [
+      {
+        "pid": 2601,
+        "startTicks": 12833,
+        "uid": 1000,
+        "executable": "/home/lab/i559/bin/putgd",
+        "device": 64769,
+        "inode": 985343,
+        "sha256": "5e77d410b011dfec3ea18883f8c99c5dbd019f55ce61afd3d55109a22679c343",
+        "role": "resident",
+        "rssBytes": 43225088,
+        "pssBytes": 14332928,
+        "privateBytes": 11960320,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 6,
+        "threads": 7,
+        "inResidentTree": true
+      },
+      {
+        "pid": 2611,
+        "startTicks": 12839,
+        "uid": 1000,
+        "executable": "/home/lab/i559/bin/putgd-ui",
+        "device": 64769,
+        "inode": 985340,
+        "sha256": "24ec41dff563597fdcb1f2f0def1d1f84a211e35fe0c006177a3e85da506979b",
+        "role": "ui",
+        "rssBytes": 184549376,
+        "pssBytes": 65489920,
+        "privateBytes": 50728960,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 90,
+        "threads": 11,
+        "inResidentTree": true
+      }
+    ],
+    "totals": {
+      "rssBytes": 227774464,
+      "pssBytes": 79822848,
+      "privateBytes": 62689280
+    },
+    "processCount": 2,
+    "uiProcessCount": 1,
+    "escapedProcessCount": 0
+  },
+  "qtPlatformModules": {
+    "01-editor": {
+      "2646": [
+        "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+      ]
+    },
+    "02-queued-history": {
+      "2802": [
+        "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+      ]
+    },
+    "03-drained-history": {
+      "2802": [
+        "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+      ]
+    }
+  },
+  "memoryQueued": {
+    "sampleSeconds": 0.4164617000000135,
+    "processes": [
+      {
+        "pid": 2601,
+        "startTicks": 12833,
+        "uid": 1000,
+        "executable": "/home/lab/i559/bin/putgd",
+        "device": 64769,
+        "inode": 985343,
+        "sha256": "5e77d410b011dfec3ea18883f8c99c5dbd019f55ce61afd3d55109a22679c343",
+        "role": "resident",
+        "rssBytes": 45678592,
+        "pssBytes": 16538624,
+        "privateBytes": 14163968,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 31,
+        "threads": 10,
+        "inResidentTree": true
+      },
+      {
+        "pid": 2692,
+        "startTicks": 13430,
+        "uid": 1000,
+        "executable": "/home/lab/i559/bin/putgd-s3-worker",
+        "device": 64769,
+        "inode": 985342,
+        "sha256": "0f6ff73d10d82061e562d8624dfac9aec024cb625023affbc0eecc0ee246de69",
+        "role": "auxiliary",
+        "rssBytes": 41775104,
+        "pssBytes": 17230848,
+        "privateBytes": 16048128,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 8,
+        "threads": 4,
+        "inResidentTree": true
+      },
+      {
+        "pid": 2802,
+        "startTicks": 13746,
+        "uid": 1000,
+        "executable": "/home/lab/i559/bin/putgd-ui",
+        "device": 64769,
+        "inode": 985340,
+        "sha256": "24ec41dff563597fdcb1f2f0def1d1f84a211e35fe0c006177a3e85da506979b",
+        "role": "ui",
+        "rssBytes": 178167808,
+        "pssBytes": 64264192,
+        "privateBytes": 52191232,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 111,
+        "threads": 10,
+        "inResidentTree": true
+      }
+    ],
+    "totals": {
+      "rssBytes": 265621504,
+      "pssBytes": 98033664,
+      "privateBytes": 82403328
+    },
+    "processCount": 3,
+    "uiProcessCount": 1,
+    "escapedProcessCount": 0
+  },
+  "memoryAfter": {
+    "sampleSeconds": 0.482977089000002,
+    "processes": [
+      {
+        "pid": 2601,
+        "startTicks": 12833,
+        "uid": 1000,
+        "executable": "/home/lab/i559/bin/putgd",
+        "device": 64769,
+        "inode": 985343,
+        "sha256": "5e77d410b011dfec3ea18883f8c99c5dbd019f55ce61afd3d55109a22679c343",
+        "role": "resident",
+        "rssBytes": 45416448,
+        "pssBytes": 16300032,
+        "privateBytes": 13901824,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 67,
+        "threads": 8,
+        "inResidentTree": true
+      },
+      {
+        "pid": 2802,
+        "startTicks": 13746,
+        "uid": 1000,
+        "executable": "/home/lab/i559/bin/putgd-ui",
+        "device": 64769,
+        "inode": 985340,
+        "sha256": "24ec41dff563597fdcb1f2f0def1d1f84a211e35fe0c006177a3e85da506979b",
+        "role": "ui",
+        "rssBytes": 179945472,
+        "pssBytes": 65939456,
+        "privateBytes": 53837824,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 134,
+        "threads": 10,
+        "inResidentTree": true
+      }
+    ],
+    "totals": {
+      "rssBytes": 225361920,
+      "pssBytes": 82239488,
+      "privateBytes": 67739648
+    },
+    "processCount": 2,
+    "uiProcessCount": 1,
+    "escapedProcessCount": 0
+  },
+  "operationIds": [
+    "d1087831-9774-4f40-a358-3a27d009500b",
+    "db624952-de0f-4ff5-a0ba-08bf4d85fc9e",
+    "5be238c7-dac0-4506-a173-7b77e8db6008",
+    "1c1c311f-ddbd-45d9-b680-45a32cb0636e",
+    "236f8f71-9ce1-4673-8e7a-570e11bc5579",
+    "8edef2de-c219-451b-85d8-18579c27e9b3"
+  ],
+  "cleanup": {
+    "residentExited": true,
+    "fixtureExited": true,
+    "coverExited": true
+  }
+}

@@ -1,47 +1,212 @@
 [
   {
-    "id": "423b1e4a-539f-43e6-87c7-8df1e89ea887",
     "action": "edit",
-    "state": "acquiring",
-    "phase": "queued",
     "cancelled": false,
+    "clipboardRevision": "1",
     "copyStatus": "pending",
-    "items": []
+    "created": "2026-10-25T05:08:51.582Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "7f5637be3194b65b0391ece4554e0bcdbac83fff97fb254d25fb4407700ff153",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:37871",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:37871/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "f3949ddf-e88d-480a-bb13-103b79abdd10",
+    "invocation": "2",
+    "items": [],
+    "phase": "queued",
+    "requestTimeoutMs": null,
+    "settingsRevision": "7f5637be3194b65b0391ece4554e0bcdbac83fff97fb254d25fb4407700ff153",
+    "state": "acquiring"
   },
   {
-    "id": "e543e916-7a49-4dcf-9c67-5cfd1266531f",
     "action": "edit",
-    "state": "acquiring",
-    "phase": "queued",
     "cancelled": false,
+    "clipboardRevision": "1",
     "copyStatus": "pending",
-    "items": []
+    "created": "2026-10-25T05:08:51.928Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "7f5637be3194b65b0391ece4554e0bcdbac83fff97fb254d25fb4407700ff153",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:37871",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:37871/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "97106045-e1a6-4c5c-b479-341df44c8224",
+    "invocation": "3",
+    "items": [],
+    "phase": "queued",
+    "requestTimeoutMs": null,
+    "settingsRevision": "7f5637be3194b65b0391ece4554e0bcdbac83fff97fb254d25fb4407700ff153",
+    "state": "acquiring"
   },
   {
-    "id": "b7932f72-c9e2-4887-b58a-16efd3017d52",
     "action": "edit",
-    "state": "acquiring",
-    "phase": "queued",
     "cancelled": false,
+    "clipboardRevision": "1",
     "copyStatus": "pending",
-    "items": []
+    "created": "2026-10-25T05:08:52.297Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "7f5637be3194b65b0391ece4554e0bcdbac83fff97fb254d25fb4407700ff153",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:37871",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:37871/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "a6bab0aa-ba65-41d5-afc8-8a26e8db02a6",
+    "invocation": "4",
+    "items": [],
+    "phase": "queued",
+    "requestTimeoutMs": null,
+    "settingsRevision": "7f5637be3194b65b0391ece4554e0bcdbac83fff97fb254d25fb4407700ff153",
+    "state": "acquiring"
   },
   {
-    "id": "3c16129c-fa97-4193-a1e5-101d313d3d22",
     "action": "edit",
-    "state": "acquiring",
-    "phase": "queued",
     "cancelled": false,
+    "clipboardRevision": "1",
     "copyStatus": "pending",
-    "items": []
+    "created": "2026-10-25T05:08:52.645Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "7f5637be3194b65b0391ece4554e0bcdbac83fff97fb254d25fb4407700ff153",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:37871",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:37871/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "f30a6408-879c-47d5-ae93-83eb96b307bc",
+    "invocation": "5",
+    "items": [],
+    "phase": "queued",
+    "requestTimeoutMs": null,
+    "settingsRevision": "7f5637be3194b65b0391ece4554e0bcdbac83fff97fb254d25fb4407700ff153",
+    "state": "acquiring"
   },
   {
-    "id": "d8539216-bacc-453b-a4e3-3ec388113dfc",
     "action": "edit",
-    "state": "acquiring",
-    "phase": "queued",
     "cancelled": false,
+    "clipboardRevision": "1",
     "copyStatus": "pending",
-    "items": []
+    "created": "2026-10-25T05:08:53.000Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "7f5637be3194b65b0391ece4554e0bcdbac83fff97fb254d25fb4407700ff153",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:37871",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:37871/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "72e22c3d-9aba-4ed6-8dec-6264d909ea00",
+    "invocation": "6",
+    "items": [],
+    "phase": "queued",
+    "requestTimeoutMs": null,
+    "settingsRevision": "7f5637be3194b65b0391ece4554e0bcdbac83fff97fb254d25fb4407700ff153",
+    "state": "acquiring"
   }
 ]

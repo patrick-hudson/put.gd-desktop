@@ -1,0 +1,6 @@
+k72 (Kubuntu 26.04 Plasma Wayland): released
+  Codex559 (mcp:c39a8c24-bbd0-435b-9072-429ab19b3f10), acquired 2026-10-25T05:08:42Z
+  purpose: #559 exact native Wayland queued burst with absolute socket and qpa witness
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1657
+  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-25T05-10-01Z-release.json
+  Tell the next session in the queue and your coordinator
