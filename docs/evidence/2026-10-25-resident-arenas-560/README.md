@@ -555,11 +555,12 @@ Historical scripts stay unchanged. The current scripts for any replay:
 | Historical | Current | Change |
 | --- | --- | --- |
 | `resident_burst_o1.py`, `run_o1.sh`; `resident_burst_o2.py`, `run_o2.sh`, `run_o3.sh` | [`resident_burst_o3.py`](lab/resident_burst_o3.py) (r3), [`run_o4.sh`](lab/run_o4.sh) | Explicit roots and payload-attributed `cancel3` (see below) |
-| `campaign_o.sh`, `campaign_o2.sh`, `campaign_o3.sh` | [`campaign_o4.sh`](lab/campaign_o4.sh) | Status captured before logging; failure returned; uses `run_o4.sh` |
+| `campaign_o.sh` … `campaign_o4.sh` | [`campaign_o5.sh`](lab/campaign_o5.sh) | Status captured before logging; failure returned; runs `run_o4.sh` through `bash` |
 | `phase2_o.sh` … `phase2_o4.sh` | [`phase2_o5.sh`](lab/phase2_o5.sh) | Fail-fast, verified identity and module layout, preflight, source restore |
 | `summarize_o.py` | [`summarize_o2.py`](lab/summarize_o2.py) | Timestamp-based final-270 s window, only after a full settle |
 | `m74-run.sh`, `m74-run-ci.sh` | [`m74-run-v2.sh`](lab/m74-run-v2.sh) | Returns the driver status; lock session is a parameter |
-| `functional_ci.py`, `f-run.sh` | [`f-run-v2.sh`](lab/f-run-v2.sh) | Refuses to launch without an explicit dedicated clipboard scope |
+| `functional_ci.py`, `f-run.sh`, `f-run-v2.sh` | [`f-run-v3.sh`](lab/f-run-v3.sh) | Refuses to launch without an explicit dedicated clipboard scope; `f-run.sh` alone owns the work directory |
+| `module_smoke.sh` | [`module_smoke_v2.sh`](lab/module_smoke_v2.sh) | Arguments and canonical roots checked first; maps parsing handles spaces and empty polls |
 
 - **`resident_burst_o3.py` r3** (#579 Cubic 4372241070): the script now exits non-zero
   when the resident exits abnormally, the forced fallback was used, or tracked
@@ -580,6 +581,37 @@ Historical scripts stay unchanged. The current scripts for any replay:
   exits 3 and creates nothing; with an invalid scope it also exits 3; with no label
   it exits 2 ([output](lab/fault-checks/f-run-v2-guard.txt)). A nested display
   would be a separately labelled diagnostic, never physical evidence.
+- **Second review round** (#579 Greptile 4372270472, 4372270477, 4372270482). Three
+  bugs, each fixed in a new script; the old bytes are kept.
+  - `f-run-v2.sh` created the work directory that `f-run.sh` creates itself under
+    `set -e`, so an approved run always failed. `f-run-v3.sh` leaves the directory
+    to `f-run.sh` and writes the scope receipt as a sibling file before dispatch.
+  - `campaign_o3.sh` and `campaign_o4.sh` executed `run_o3.sh`/`run_o4.sh`
+    directly, which fails when a checkout keeps the committed 100644 mode.
+    `campaign_o5.sh` runs it through `bash`.
+  - `module_smoke.sh` used SRC and OUTROOT after `cd`, so relative roots broke.
+    `module_smoke_v2.sh` checks its arguments and canonicalizes the roots first.
+    Testing v2 exposed two more bugs that v1 shares:
+    - its maps pattern `/[^ ]*libputgd-s3\.so` cannot match a path with spaces;
+    - an empty poll, before the module is mapped, ended the script under
+      `set -e`/`pipefail`.
+
+    The retained real smoke was unaffected: its paths had no spaces, and the
+    module was mapped at the first poll.
+  - The other current launch paths call their scripts explicitly: `run_o4.sh` and
+    `m74-run-v2.sh` call `python3`, the harness uses `sys.executable`, and
+    `phase2_o5.sh` launches nothing.
+  - [`test_wrappers.sh`](lab/test_wrappers.sh) ran from a clean `git archive`
+    export, where the scripts have non-executable modes: 12 of 12 pass
+    ([output](lab/fault-checks/wrapper-tests-clean-archive.txt)). It uses stubs
+    only: no product, no display, and only a stub loopback server.
+    - `f-run-v3.sh`: refusal without a scope or with an invalid one, permitted
+      dispatch to a stub runner, an existing output, and a missing label.
+    - `campaign_o5.sh`: a mode-644 stub runner passing, exiting 37 (logged, and the
+      campaign returns 1), and missing arguments.
+    - `module_smoke_v2.sh`: relative roots with spaces, using a stub fixture, a stub
+      probe and a compiled stub worker that loads its module the way the real one
+      does; plus a missing TAG, bundle or SRC.
 - **Receipts** (Cubic 4372241047): the committed m74 release receipts are
   **sanitized projections**, with the private coordination-notes path removed from
   the lock purpose. The originals (SHA-256 `b235b55b…` for m74 and `63d87a9b…` for
