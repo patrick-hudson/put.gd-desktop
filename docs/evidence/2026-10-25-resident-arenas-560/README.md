@@ -44,11 +44,30 @@ or very few bin chunks. In glibc 2.39, `rest` includes the top chunk (malloc.c
 The resident's existing gated idle trim therefore ran (count 2), but the
 post-score manual trim freed only 372,736 B.
 
-Sources are the `glibc-2.39` tag, `malloc/malloc.c` (SHA-256
+Line numbers above are from the `glibc-2.39` tag: `malloc/malloc.c` (SHA-256
 `5c2e41a83c1c4d1ddaaad761088b93469110a79067ba6485eb594a0423048663`) and
 `malloc/arena.c` (`81b608d7eff41299a50f0b6e265d2bd6860f95f324fde89826ea2841062cf1bb`).
-m74, d69, f44 and the workstation all run glibc 2.39 (`Ubuntu GLIBC 2.39-0ubuntu8.9`
-on m74).
+That is the version of every physical m74 run and of the Ubuntu 24.04 package
+container. Versions differ by host (`getconf GNU_LIBC_VERSION`):
+
+| Where | glibc | Used for |
+| --- | --- | --- |
+| m74 (Mint 22.3, `Ubuntu GLIBC 2.39-0ubuntu8.9`) | 2.39 | original failure, all physical runs |
+| f44 rootless Ubuntu 24.04 container | 2.39 | package builds, Qt 6.4.2 tests |
+| workstation | 2.39 | standalone microcheck |
+| d69 (Debian 13) | 2.41 | headless controls, Qt 6.8 tests |
+| f44 host (Fedora 44) | 2.43 | not used for this evidence |
+
+The 2.39 source proof applies to the 2.39 rows. For the other versions the same
+behaviour was checked in their own sources, without extending the 2.39 proof:
+
+- **2.41** (`malloc.c` SHA-256 `7d931418…`): `mtrim()` is byte-identical to 2.39
+  (lines 5206–5255), and `heap_trim()` is reached at line 4852.
+- **2.43** (`c0cb1540…`): `mtrim()` no longer calls `malloc_consolidate()`, but it
+  still calls `systrim()` only for `main_arena` (line 4818), and `heap_trim()` is
+  reached at line 4565.
+
+The d69 controls exercised 2.41.
 
 Where the arenas come from: `OperationService::background` starts a `QThread`
 per job (journal saves, queries, upload runs), and each item transfer runs on its
@@ -83,10 +102,15 @@ baseline ([candidate](d69/allocator-test-candidate.txt),
 
 ## Tests
 
-- d69, Debian 13, Qt 6.8.2 Debug: 11 focused suites pass
-  ([log](d69/ctest-focused-cand.txt)): allocator_policy, edit_operations,
+- d69, Debian 13, Qt 6.8.2 Debug: 11 focused suites pass:
+  allocator_policy, edit_operations,
   resident_retire, resident_display_loss, archive, upload_naming, history,
   operations, settings, diagnostics_upload and resident_session.
+  - [`d69/ctest-focused-cand.txt`](d69/ctest-focused-cand.txt) is an **excerpt**:
+    only the last 18 lines of the original run were kept, so it starts at 6/11.
+  - The same command was rerun at the same clean `98878cfe` tree, with its full
+    output: [`d69/ctest-focused-cand-full.txt`](d69/ctest-focused-cand-full.txt),
+    100 % of 11 passed in 74.72 s.
 - f44 rootless container, Ubuntu 24.04, Qt 6.4.2, GCC 13.3, Release: the same 11
   suites pass.
   - The container image is `localhost/putgd-i560-u24-deps:v1`: image `d32d68be`
@@ -150,10 +174,71 @@ c1 runs from 36,155,392 B to 36,057,088 B, and t2 from 40,665,088 B to
   so no repeatability or variance is claimed.
 - **Limits:** a finite settle does not prove the absence of all leaks. The
   driver's own limitations are kept in the results.
+- **Runner exit status:** [`lab/m74-run.sh`](lab/m74-run.sh) wrote the driver
+  status to `driver-exit.txt` but always exited 0 itself (#579 review). Every pass
+  and fail above comes from the raw driver `results.json`, gates and cleanup
+  receipts, never from the runner's exit status.
+  [`lab/m74-run-v2.sh`](lab/m74-run-v2.sh) returns the driver status; the exact-CI
+  runs below used scripts that record it the same way.
+
+## Physical m74, exact CI package
+
+The CI package is the ubuntu24.04 DEB from workflow_dispatch run 40225160437 at
+`98878cfe`. It is not the pull request's merge-ref run 40223937660, whose binaries
+embed `4e686c59`.
+
+- Package SHA-256 `5c77da8d6e25228061024afd9adcf55c61c25e87283920e39152eee4412a6300`;
+  `/usr/bin/putgd` is `eccfe8c7…`.
+- Installed identity: `26.1025.1294-dev+g98878cfe31c2`, not dirty
+  ([identity](m74-ci/installed-version.json), [hashes](m74-ci/identities.sha256)).
+- Lock `t3-i560-opus-ci1` was held from 19:31:03Z and released verified-clean at
+  19:52:03Z ([receipt](m74-ci/release-receipt.json)).
+- The same admission and cleanup rules applied: load 0.06 at start, apt simulation
+  of 2 new packages with 0 upgrades, only `putgd` and `gir1.2-gtk-4.0` purged.
+- Host THP was `[madvise]`, with no allocator environment and no prctl.
+
+Runner scripts: [`lab/m74-run-ci.sh`](lab/m74-run-ci.sh) differs from `m74-run.sh`
+only in its lock session. Also used were
+[`lab/m74-memory-ci.sh`](lab/m74-memory-ci.sh),
+[`lab/functional_ci.py`](lab/functional_ci.py) and [`lab/f-run.sh`](lab/f-run.sh).
+Results are in [`m74-ci/frozen-results.json`](m74-ci/frozen-results.json) and
+[`m74-ci/functional-results.json`](m74-ci/functional-results.json).
+
+| Run | Result |
+| --- | --- |
+| e1 frozen `burst`, settle 300 | complete. Final family RSS **35,995,648 B**, PSS **24,103,936 B**: settled RSS/PSS pass. 50/50 verified, visuals 4/4, cleanup pass. Settle growth 5,271,552 B (unassessed). The 61-sample settle series stays at one process, from 36,089,856 B down to 35,995,648 B. |
+| m1 frozen `memory`, cold 300 / History 30 / closed 300 | complete, driver exit 1 because one gate fails. Cold and closed CPU/RSS/PSS pass (peak family 29,978,624 / 18,788,352 B and 30,179,328 / 18,966,528 B). **`historyOpenPss` fails**: 64,642,048 B over 30.044 s against 62,914,560 B. This is the known #558 failure; that fix is not in `98878cfe`. No waiver. `historyPaintResponse` unassessed; cleanup pass. |
+| f1 scoped, unscored functional pass | pass (details below). |
+
+f1 ran against a private profile on the physical `:0` desktop, at concurrency 1
+with a 6 s PUT delay:
+
+- Two editor uploads completed and were verified with the frozen `verify_uploaded`.
+- The third operation's fresh witness said `queued` (state `acquiring`, no items),
+  and the operation was then cancelled and settled as cancelled. f1 did not
+  inventory the fixture, so it does not prove that nothing was published.
+- History showed 2 captures and "1 cancelled capture hidden"
+  ([frame](m74-ci/f1-history.png)). Settings showed the private archive path
+  ([frame](m74-ci/f1-settings.png)).
+- The window closed through the window manager and the UI reached `stopped`.
+  `ui.quit` gave exit 0, the socket was gone, and no owned process remained.
+- **Deviation:** the default "Copy each link as it finishes" put two synthetic
+  loopback links on the desktop clipboard while the resident ran. Whether the
+  selection persisted, for example in a clipboard manager, was not checked, and the
+  clipboard was not inspected or cleared afterwards. No profile setting disables
+  automatic copying, only its format, so a future unscored run on a shared desktop
+  needs a nested display or an explicit clipboard scope.
 
 ## Headless controls (d69, not desktop acceptance)
 
-These use a private copy of the earlier #560 v7 harness, [`lab/resident_burst_o1.py`](lab/resident_burst_o1.py):
+These use a private copy of the earlier #560 v7 harness, [`lab/resident_burst_o1.py`](lab/resident_burst_o1.py).
+`resident_burst_o1.py`, [`run_o1.sh`](lab/run_o1.sh), [`campaign_o.sh`](lab/campaign_o.sh),
+[`phase2_o.sh`](lab/phase2_o.sh), [`summarize_o.py`](lab/summarize_o.py) and
+[`m74-run.sh`](lab/m74-run.sh) are kept byte-for-byte as the historical scripts that
+produced these results. They hard-code the d69/m74 working directories. To replay,
+use the revised scripts listed under [Revised scripts](#revised-scripts) instead.
+
+The o1 harness:
 
 - It runs a private Xvfb and a private D-Bus with a simulated StatusNotifier peer,
   so the X11 Core resident route is selected.
@@ -167,9 +252,19 @@ These use a private copy of the earlier #560 v7 harness, [`lab/resident_burst_o1
 
 The builds are Qt 6.8.2 Debug in one tree with the same flags
 ([base](d69/bin-base-SHA256SUMS), [candidate](d69/bin-cand-SHA256SUMS)). The S3
-module is identical in both (`ae6e0172…`). Summaries:
-[`d69/summary.jsonl`](d69/summary.jsonl), produced by
-[`lab/summarize_o.py`](lab/summarize_o.py).
+module is identical in both (`ae6e0172…`).
+
+The summaries are [`d69/summary-v2.jsonl`](d69/summary-v2.jsonl), from
+[`lab/summarize_o2.py`](lab/summarize_o2.py). The original
+[`d69/summary.jsonl`](d69/summary.jsonl) is kept, but its `last270MaxFamily` and
+`AllLast270` fields are **wrong for oa and ob**: those runs settled for only 31 s, so
+the "last 270 s" was a single sample. v2 takes the window from sample timestamps
+and reports it only after at least 300 s of observed settle. v2 reproduces the
+values for o0–o4, which settled for about 312 s.
+
+The `exit=` values in [`d69/campaign.log`](d69/campaign.log) are also wrong: they
+record `date`'s status, so a failed run would still log 0. Every run's actual
+status is in its own `wrapper-cleanup.json`: runExit 0 for o0–o4, oa and ob.
 
 | 50 uploads, 10 s PUT, 300 s closed settle | THP | Final family RSS | PSS | Non-main arenas post-score (RSS) | AnonHugePages |
 | --- | --- | --- | --- | --- | --- |
@@ -189,13 +284,45 @@ module is identical in both (`ae6e0172…`). Summaries:
 - Session call latency was the same in all five runs: p50 about 1.5 ms, p95
   49.3 ms, max about 0.57 s.
 
-**Cancellation** (oa base, ob candidate): eight uploads at concurrency 4. Two
-transferring and two queued operations were cancelled, and the other four
-completed and verified.
+**Cancellation, original control** (oa base, ob candidate): eight uploads at
+concurrency 4. Four targets were cancelled and the other four completed and
+verified. Cancel-to-settled times were 0.52 / 1.35 / 8.87 / 1.30 s for base and
+0.57 / 1.30 / 8.88 / 1.30 s for the candidate, and both drained and exited
+normally.
 
-- Cancel-to-settled times were 0.52 / 1.35 / 8.87 / 1.30 s for base and
-  0.57 / 1.30 / 8.88 / 1.30 s for the candidate.
-- Both drained to a single process and exited normally.
+**Correction (#579 review):** this does not show cancellation of *queued*
+operations. The four targets were chosen from one earlier snapshot. The two
+"transferring" targets were cancelled, and waited on, first. By the time the two
+"queued" targets were cancelled, `pump()` may already have started them; the
+8.87 s settle suggests one had. The raw `queuedCancelled` labels are kept; read them
+as "targets selected as queued in an earlier snapshot".
+
+**Cancellation, corrected control** (qa base, qb candidate):
+[`lab/resident_burst_o2.py`](lab/resident_burst_o2.py) `I560_MODE=cancel2`, run by
+[`lab/campaign_o2.sh`](lab/campaign_o2.sh), with controlled THP-disabled as above.
+Results: [`d69/cancel2-results.json`](d69/cancel2-results.json),
+[log](d69/campaign2.log).
+
+- Setup: six uploads at concurrency 2, with a 30 s PUT delay holding the two
+  transfers.
+- Queued targets go first. Each gets a fresh `operation.inspect` immediately before
+  its cancel; the cancel follows 0.4 ms later. Every witness reported `queued`
+  (state `acquiring`, no items). Then the two transfers were cancelled, each
+  witnessed as `uploading`.
+- Settle times:
+
+  | Target | Base | Candidate |
+  | --- | --- | --- |
+  | queued | 0.053 / 0.053 s | 0.005 / 0.005 s |
+  | transferring | 22.8 / 1.25 s | 22.9 / 1.25 s |
+
+- The fixture inventory afterwards shows **0 PUT requests and 0 objects** for each
+  cancelled queued target. For the transfer targets it reports 0 objects, recorded
+  but not asserted, since an in-flight PUT may take effect.
+- The two remaining uploads completed and verified. Both runs drained to one
+  process, exited 0, and left nothing.
+- The witness and the cancel are separate requests. The held transfers make a
+  promotion in between implausible, not impossible; atomicity is not claimed.
 
 **Multi-item throughput and main-loop responsiveness:** the production
 `OperationService`, `S3Provider` and `putgd-s3-worker` ran against the loopback
@@ -211,9 +338,58 @@ final trim.
 | base | 8021 / 7956 / 7990 | 38,923 / 23,245 / 52,578 | 6.31 / 5.87 / 6.71 MB |
 | candidate | 8039 / 7980 / 7956 | 35,960 / 17,727 / 28,628 | 2.27 / 2.29 / 2.03 MB |
 
-All 96 files uploaded. Mean lag was 182–249 µs for both builds. No throughput or
-responsiveness cost was observed at this scale; this is not a contention proof
-for other workloads.
+All 96 files uploaded, and mean lag was 182–249 µs for both builds. No material
+throughput or responsiveness change was observed in this one workload over three
+rounds. This is not a contention proof for other workloads.
+
+**Probe identity audit (#579 review):** [`lab/phase2_o.sh`](lab/phase2_o.sh) would
+have copied stale binaries after a failed checkout, patch or build. So the
+historical probe directories were audited before relying on them:
+
+- The build log ([`d69/phase2.log`](d69/phase2.log)) shows `operations_upload_probe`
+  and `putgd-s3-worker` linking in both builds.
+- Each worker embeds its own revision string (`g80ffa2e6c0d3` and `g98878cfe31c2`).
+- The probe binaries differ (`e73eda01…` and `0ab83a3a…`).
+- Disassembly shows one `mallopt(-8 = M_ARENA_MAX, …)` call in the candidate probe
+  and none in the base probe.
+
+The historical comparison therefore stands, and it was not rerun.
+[`lab/phase2_o2.sh`](lab/phase2_o2.sh) replaces the build stage:
+
+- Every stage fails fast, and binaries are copied only into new directories.
+- Copying happens only after the checkout matches, the patch is present, the
+  outputs are newer than the build start, and the worker embeds the intended
+  revision.
+- A trap restores the source tree.
+
+[`lab/fault-checks/`](lab/fault-checks/results.txt) drives it with fake `git` and
+`cmake`:
+
+| Injected fault | Exit | Directories copied |
+| --- | --- | --- |
+| failing checkout | 1 | none |
+| failing apply | 1 | none |
+| no-op apply | 5 | none |
+| failing build | 1 | none |
+| stale outputs | 6 | none |
+| wrong worker revision | 7 | none |
+| existing output root | 2 | none |
+| clean run | 0 | both |
+
+The source patch was restored in every case. The same results file shows
+`campaign_o2.sh` logging `exit=37` for a runner that exits 37, and
+[`lab/test_summarize_o2.py`](lab/test_summarize_o2.py) passing 6 cases: 30 s,
+300 s, a peak before and a peak inside the window, partial data and missing data.
+
+## Revised scripts
+
+| Historical | Revision | Change |
+| --- | --- | --- |
+| `resident_burst_o1.py`, `run_o1.sh` | [`resident_burst_o2.py`](lab/resident_burst_o2.py), [`run_o2.sh`](lab/run_o2.sh) | Explicit, validated `I560_SRC`/`I560_HARNESS` roots; `run_o2.sh SRC HARNESS OUT APP` rejects a bad root or an existing output and returns the harness status; corrected `cancel2` mode |
+| `campaign_o.sh` | [`campaign_o2.sh`](lab/campaign_o2.sh) | Captures the run status before logging; returns failure |
+| `phase2_o.sh` (probe stage) | [`phase2_o2.sh`](lab/phase2_o2.sh) | Fail-fast, verified build identity, new output directories, source restore |
+| `summarize_o.py` | [`summarize_o2.py`](lab/summarize_o2.py) | Timestamp-based final-270 s window, only after a full settle |
+| `m74-run.sh` | [`m74-run-v2.sh`](lab/m74-run-v2.sh) | Returns the driver status; lock session is a parameter |
 
 ## Retained evidence
 
@@ -221,6 +397,8 @@ for other workloads.
 | --- | --- | --- |
 | `evidence-m74-c1-t1-t2.tar` (1003 members, runtime sockets excluded) | `fd7cda2f062fa5eabb438eaa2304e82ab40c90af531604ce76d9b82f9b13b752` | m74 `~/work/i560o/`, workstation task `work/i560o/m74/` |
 | `i560o-d69-evidence.tar` (1909 members) | `d3c77779d5bad10ecf0135b248716df0e3bdf2ca1219008dbb04a4b2f04f88e1` | d69 `~/work/`, workstation task `work/i560o/` |
+| `evidence-m74-ci-e1-m1-f1.tar` (431 members) | `2ff4726efd80a682f03efc6272faa71ffe99ce72156a7c9ea9e376a2ff8bbd71` | m74 `~/work/i560o/`, workstation task `work/i560o/m74ci/` |
+| `i560o-h2-evidence.tar` (136 members, corrected cancel control, summary v2, full ctest log) | `b42ec747efdacc8c7e03ea53d634a91dff5f05431708c7d569b6cc9b4d31ceb5` | d69 `~/work/`, workstation task `work/i560o/` |
 | Earlier baseline/diagnostic `evidence-b1-d2.tar.gz` | `4665d849…` | m74 `~/work/i560/`, earlier task `work/i560/` |
 | Earlier d69 handoff `handoff-d69-evidence.tar` | `b458c085…` | d69 `~/work/i560/`, earlier task `work/i560/` |
 
@@ -233,10 +411,13 @@ earlier task.
 
 ## Still pending
 
-- Parallel Cinnamon/GNOME/KDE functional + memory gates on the exact candidate.
-  GNOME/KDE use the approved native matrix and scoped functional checks, plus a
-  separately identified native-Wayland burst diagnostic. The #555 burst driver
-  requires Cinnamon/X11.
+- The parallel Cinnamon/GNOME/KDE functional + memory set on the exact candidate.
+  The m74 exact-CI runs above are its Cinnamon part. GNOME and KDE use the
+  approved native matrix and scoped functional checks, plus a separately
+  identified native-Wayland burst diagnostic, because the #555 burst driver
+  requires Cinnamon/X11. The separate acceptance thread is running those and the
+  matched trunk; their results are not recorded here yet.
+- `historyOpenPss` fails on the exact candidate (m1) until #558's fix is included.
 - Published-asset gates, after a nightly containing #576 publishes.
 - `captureBurst` and `historyOpenUpperBoundMs` remain unassessed by the driver.
 - The candidate lacks the separate #558 and #254 fixes. This is not an

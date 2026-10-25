@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Per-arena malloc_info and 64 MiB-aligned anonymous heap RSS from retained #560 d2 files.
 
-usage: attribute_arenas.py DIR   (DIR holds before-workload-malloc.xml, after-complete-settle-malloc.xml
+usage: python3 attribute_arenas.py DIR   (DIR holds before-workload-malloc.xml, after-complete-settle-malloc.xml
 and the matching *-smaps.txt files from evidence-b1-d2.tar.gz, member p560d2/)
 glibc malloc_info: <total type="rest"> includes the top chunk (malloc.c 2.39 lines 5857-5860), so an
 arena with no bin chunks and rest ~= system holds an entirely free top that mtrim() never trims."""

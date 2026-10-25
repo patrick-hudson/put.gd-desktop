@@ -1,0 +1,5 @@
+2026-10-25T19:57:26Z start qa bin-base I560_MODE=cancel2
+2026-10-25T19:59:13Z end qa exit=0 {"runExit":0,"busSocketAbsent":true,"xSocketAbsent":true}
+2026-10-25T19:59:13Z start qb bin-cand I560_MODE=cancel2
+2026-10-25T20:01:01Z end qb exit=0 {"runExit":0,"busSocketAbsent":true,"xSocketAbsent":true}
+2026-10-25T20:01:01Z campaign2-done failed=0

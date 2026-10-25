@@ -1,0 +1,24 @@
+{
+  "lock": {
+    "owner": "t3-b8aac3fb-i560-opus",
+    "session": "t3-i560-opus-ci1",
+    "host": "m74",
+    "purpose": "Quiet performance #560 exact CI candidate 98878cfe DEB 5c77da8d: frozen burst, 300/30/300 memory, scoped functional; /home/patrick/work/put.gd/work/stable-triage-20261025/coordination.md",
+    "acquired": "2026-10-25T19:31:03Z",
+    "expires": "2026-10-25T20:16:03Z",
+    "heartbeat": "2026-10-25T19:45:13Z"
+  },
+  "releasedBy": "t3-i560-opus-ci1",
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651"
+  ],
+  "event": "release",
+  "host": "m74",
+  "at": "2026-10-25T19:52:03Z"
+}

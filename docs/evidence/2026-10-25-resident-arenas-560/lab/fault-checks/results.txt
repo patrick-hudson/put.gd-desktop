@@ -1,0 +1,14 @@
+checkout exit=1 probeDirsCopied=0 patchRestored=yes stderr=
+apply exit=1 probeDirsCopied=0 patchRestored=yes stderr=
+noop-apply exit=5 probeDirsCopied=0 patchRestored=yes stderr=patch not applied 
+build exit=1 probeDirsCopied=0 patchRestored=yes stderr=
+stale exit=6 probeDirsCopied=0 patchRestored=yes stderr=stale build/dev/operations_upload_probe for 80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247 
+identity exit=7 probeDirsCopied=0 patchRestored=yes stderr=worker identity is not 80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247 
+none exit=0 probeDirsCopied=2 patchRestored=yes stderr=
+existing-outroot exit=2 OUTROOT exists: /tmp/i560opus/fault/out-dup
+2026-10-25T19:56:36Z start qa bin-base I560_MODE=cancel2
+2026-10-25T19:56:36Z end qa exit=37 {"runExit":37}
+2026-10-25T19:56:36Z start qb bin-cand I560_MODE=cancel2
+2026-10-25T19:56:36Z end qb exit=37 {"runExit":37}
+2026-10-25T19:56:36Z campaign2-done failed=1
+summarize_o2 settle_window: 6 cases pass
