@@ -371,8 +371,21 @@ class Accessible:
 
     def focus(self, node):
         self.check()
-        if not self.api.Component.grab_focus(node):
+        if self.api.Component.grab_focus(node):
+            return
+        # Qt 6.4's bridge only grants GrabFocus to widgets with a SetFocus
+        # action, which item views lack. Click inside the node's own extents
+        # (our activated window) and require the focused state instead.
+        area = self.api.Component.get_extents(node, self.api.CoordType.SCREEN)
+        if area.width <= 20 or area.height <= 20:
             raise EvidenceError('accessible_focus_refused')
+        subprocess.run(['xdotool', 'mousemove', str(area.x + 10), str(area.y + 10), 'click', '1'],
+                       check=True, timeout=5, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        deadline = time.monotonic() + 2
+        while not node.get_state_set().contains(self.api.StateType.FOCUSED):
+            if time.monotonic() >= deadline:
+                raise EvidenceError('accessible_focus_refused')
+            time.sleep(.05)
 
     def search(self, text):
         node = self.find('Search history by file name')

@@ -407,5 +407,37 @@ class FramePrivacyTests(unittest.TestCase):
             self.assertEqual(list(run.root.iterdir()), [])
 
 
+class AccessibleFocusTests(unittest.TestCase):
+    def accessible(self, granted, focused_after):
+        node = mock.Mock()
+        node.get_state_set.return_value.contains.side_effect = focused_after
+        api = mock.Mock()
+        api.Component.grab_focus.return_value = granted
+        api.Component.get_extents.return_value = SimpleNamespace(x=100, y=200, width=400, height=300)
+        accessible = ui.Accessible.__new__(ui.Accessible)
+        accessible.api, accessible.check = api, mock.Mock()
+        return accessible, node
+
+    def test_qt_item_view_refusing_grab_focus_is_clicked_inside_its_extents(self):
+        accessible, node = self.accessible(False, [False, True])
+        with mock.patch.object(ui.subprocess, 'run') as run, mock.patch.object(ui.time, 'sleep'):
+            accessible.focus(node)
+        self.assertEqual(run.call_args.args[0], ['xdotool', 'mousemove', '110', '210', 'click', '1'])
+
+    def test_click_that_does_not_focus_still_fails(self):
+        accessible, node = self.accessible(False, lambda _state: False)
+        clock = iter(range(0, 100))
+        with mock.patch.object(ui.subprocess, 'run'), mock.patch.object(ui.time, 'sleep'), \
+             mock.patch.object(ui.time, 'monotonic', side_effect=lambda: next(clock)):
+            with self.assertRaisesRegex(EvidenceError, 'accessible_focus_refused'):
+                accessible.focus(node)
+
+    def test_granted_focus_sends_no_input(self):
+        accessible, node = self.accessible(True, [])
+        with mock.patch.object(ui.subprocess, 'run') as run:
+            accessible.focus(node)
+        run.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()
