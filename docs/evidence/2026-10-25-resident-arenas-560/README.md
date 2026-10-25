@@ -281,6 +281,28 @@ window, plus the Plasma panel on k72:
 - [k72 History](gnome-kde/k72-plasma-history-98878cfe.png)
 - [k72 Settings](gnome-kde/k72-plasma-settings-98878cfe.png)
 
+**d69 Debian 13, Plasma/KWin 6.3.6 Wayland.** Same protocols, using the candidate
+debian13 DEB `83e4d2cc…` from the same dispatch run 40225160437.
+
+| Check | Result |
+| --- | --- |
+| Wayland burst diagnostic db1 (r2 `3bf3ba76`) | settled RSS 39,211,008 B / PSS 14,910,464 B, both under the limits. 50/50 verified. Exit 1 only from the planned visual-attribution fail. |
+| Matrix C dc1, 180 s idle | pass: peak RSS 32,456,704 B / PSS 9,501,696 B. No GTK, native theme, libssl or QtNetwork mapped. |
+| Functional | passes, except the same in-flight cancellation mismatch as f44 and k72 |
+| Queued-cancel control dq1 (r4) | pass within the scope below: PUT attempts [1,1,1,2], no target pixels published |
+
+- **Clipboard:** "Link copied" means the d69 session clipboard was changed with
+  loopback links. It was not inspected.
+- **Pre-existing popups:** two stale put.gd popups were already on the desktop and
+  were left untouched.
+- **No d69 trunk run yet.**
+- **Frames:** [History](gnome-kde/d69-plasma-queued-cancel-history-98878cfe.png)
+  and [Settings](gnome-kde/d69-plasma-settings-98878cfe.png). They show synthetic
+  content, the put.gd window and the Plasma panel.
+- **Raw evidence:** `i560a-d69-cand1-raw.tar.gz`, SHA-256
+  `4780e44bfdf9a47aff3a0f1c7ffed2594ea26f5dd2dbe7f6ad54db8eba2c7ebf`, in the
+  acceptance task.
+
 **Native queued-cancel control, r4** (`queued_cancel.py` `b5447229…`, unscored): runs
 gq2 on f44 and kq2 on k72, with the candidate CI packages. Both **pass**. The scope
 is limited to queued-publication absence plus survivor attribution.
@@ -341,9 +363,9 @@ One diagnostic pair per desktop, using the same driver on each:
   mismatch, not as a pass.
 
 Raw evidence stays private in the acceptance task: `work/i560a/evidence/`, with
-`SHA256SUMS` `877b4b9d92211bad1ffc7c4d6b4065f766303e79655e8f4e2d99b0fb7123fa10`,
-which includes the queued-cancel control (earlier manifests: `66f3d971…` with trunk,
-`73726b51…` candidate only), and `RESTORE-INDEX.md`. Admission thumbnails and banner crops show the hosts' own
+`SHA256SUMS` `b1c2c599ddb8cdd9bd3211aa92d456ec599661011f48c1827e776a93f20826e9`,
+which includes d69 (earlier manifests: `877b4b9d…` with the queued-cancel control,
+`66f3d971…` with trunk, `73726b51…` candidate only), and `RESTORE-INDEX.md`. Admission thumbnails and banner crops show the hosts' own
 desktops, so they stay private.
 
 ## Headless controls (d69, not desktop acceptance)
@@ -681,8 +703,9 @@ earlier task.
   approved native matrix and scoped functional checks, plus a separately
   identified native-Wayland burst diagnostic, because the #555 burst driver
   requires Cinnamon/X11. The candidate GNOME and Plasma rows are recorded above.
-  Matched-trunk GNOME and Plasma rows are recorded too. Still pending: the d69
-  native row, and the native in-flight cancellation assertion. The queued-cancel
+  Matched-trunk GNOME and Plasma rows are recorded too. The candidate d69 native
+  row is recorded too. Still pending: a d69 trunk run, and the native in-flight
+  cancellation assertion. The queued-cancel
   control passes; that assertion remains a recorded mismatch.
 - `historyOpenPss` fails on the exact candidate (m1) until #558's fix is included.
 - Published-asset gates, after a nightly containing #576 publishes.
