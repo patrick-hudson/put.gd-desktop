@@ -19,6 +19,7 @@ class QPushButton;
 class QVBoxLayout;
 class QShortcut;
 class QSpinBox;
+class QScrollBar;
 class QThread;
 class QToolButton;
 namespace putgd { class FileDialog; }
@@ -73,6 +74,7 @@ private:
     QRectF toView(const QRect&) const;
     QRect bounds() const;
     void placeErrorCard();
+    void announce();
     QImage frame_;
     qint64 timeUs_ = 0;
     QSize canvas_;
@@ -106,7 +108,7 @@ public:
     void setPlayhead(qint64 us);
     qint64 playhead() const { return playhead_; }
     qint64 duration() const { return duration_; }
-    // Lanes in use (masks that overlap in time take separate lanes, up to four).
+    // Concurrent masks always have distinct lanes; one or two are visible at a time, depending on text size.
     int lanes() const { return lanes_; }
     // Geometry for tests and the review session method: the track, a time's x
     // and the bar of a mask.
@@ -128,6 +130,8 @@ protected:
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
+    void wheelEvent(QWheelEvent*) override;
 private:
     enum class Drag { None, Scrub, TrimStart, TrimEnd, MaskStart, MaskEnd, MaskMovePending, MaskMove };
     Drag handleAt(QPointF) const;
@@ -142,6 +146,7 @@ private:
     QList<RecordingMask> masks_;
     QList<int> lane_;
     int lanes_ = 0;
+    QScrollBar* laneScroll_ = nullptr;
     QString selected_;
     Drag drag_ = Drag::None;
     qint64 dragStart_ = 0, dragEnd_ = 0;
@@ -247,7 +252,7 @@ private:
     QGridLayout* footerGrid_ = nullptr;
     QWidget* outputTools_ = nullptr;
     bool destinationAbove_ = false;
-    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *strengthLabel_ = nullptr, *audio_ = nullptr;
+    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *strengthLabel_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
     // Errors, warnings and privacy guidance with their actions; shown only when there are any.
     QWidget* statusRow_ = nullptr;
     QVBoxLayout* statusLines_ = nullptr;

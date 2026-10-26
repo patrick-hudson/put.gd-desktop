@@ -297,13 +297,18 @@ int main(int argc,char** argv){
   ready.hide();
   record::ReviewWindow::Options privateOptions=o;privateOptions.destination="Proton Drive";privateOptions.sharingMode="private";privateOptions.uploadSummary="Private upload to Proton Drive";
   record::ReviewWindow privateReview(privateOptions,config);privateReview.show();if(auto* view=privateReview.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);if(!shot(privateReview,"43-review-private-destination")||!inspected(privateReview,"43-review-private-destination"))return 2;privateReview.hide();
+  record::ReviewWindow crowded(o,config);RecordingEdit many;many.revision=1;
+  for(int i=0;i<8;++i){auto m=solid;m.id=QString("lane-%1").arg(i);m.start=1000000;m.end=29000000;many.masks.append(m);}
+  crowded.setEdit(many);crowded.show();if(auto* view=crowded.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);
+  if(!shot(crowded,"48-review-many-masks")||!inspected(crowded,"48-review-many-masks"))return 2;
+  crowded.hide();
   const auto screen=QGuiApplication::primaryScreen()->geometry();
   CaptureFrame selectionFrame{"fixture",screen,screen,1,0,{}};
   RegionOverlay screenshot({selectionFrame});screenshot.start();
-  for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"){QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"44-region-keyboard"))return 2;break;}
+  for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"){if(!shot(*w,"46-region-entire-display"))return 2;QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"44-region-keyboard"))return 2;break;}
   screenshot.cancel();
   record::SelectionOverlay selector;selector.start();
-  for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-record-select"){QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"45-record-region-keyboard"))return 2;break;}
+  for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-record-select"){if(!shot(*w,"47-record-entire-display"))return 2;QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"45-record-region-keyboard"))return 2;break;}
   selector.cancel();
  }
 #endif

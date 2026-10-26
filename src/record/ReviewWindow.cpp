@@ -1,5 +1,8 @@
 #include "ReviewWindow.h"
 #include <QGridLayout>
+#include <QAccessibleWidget>
+#include <QScrollBar>
+#include <QWheelEvent>
 #include <QResizeEvent>
 #include <limits>
 #include "ClipExporter.h"
@@ -49,6 +52,12 @@ namespace {
 // content, which is as likely pale as dark (Graphite, Recording).
 const QColor mediaAccent(0xE8, 0xB6, 0x6D);
 QString clock(qint64 us) { const qint64 h = us / 10000; return QStringLiteral("%1:%2.%3").arg(h / 6000).arg((h / 100) % 60, 2, 10, QChar('0')).arg(h % 100, 2, 10, QChar('0')); }
+QString seconds(qint64 us) {
+    auto text = QString::number(double(us / 10000) / 100, 'f', 2);
+    while (text.endsWith('0')) text.chop(1);
+    if (text.endsWith('.')) text.chop(1);
+    return text;
+}
 QString maskName(const QString& kind) { return kind == "solid" ? QStringLiteral("Redaction") : QStringLiteral("Blur"); }
 // The card over the frame when a preview could not be decoded.
 class ErrorCard final : public QWidget {
@@ -96,6 +105,7 @@ FrameView::FrameView(QWidget* parent) : QWidget(parent), nudge_(this) {
 void FrameView::setFrame(const QImage& image, qint64 timeUs) { frame_ = image; timeUs_ = timeUs; setPreviewError({}); update(); }
 void FrameView::setPreviewError(const QString& message) {
     error_ = message;
+    announce();
     if (message.isEmpty()) { errorCard_->hide(); update(); return; }
     // A frame still on screen is an earlier one: say which, as well as dimming it.
     const QString text = frame_.isNull() ? message : message + QStringLiteral("\nShowing an earlier frame (%1).").arg(clock(timeUs_));
@@ -108,9 +118,22 @@ void FrameView::setPreviewError(const QString& message) {
 void FrameView::placeErrorCard() {
     if (errorCard_->isHidden()) return;
     const QRect area = (frame_.isNull() ? rect() : imageRect()).intersected(rect()).adjusted(8, 8, -8, -8);
-    const int width = std::min(area.width(), errorCard_->sizeHint().width());
-    const int height = std::min(area.height(), errorCard_->hasHeightForWidth() ? errorCard_->heightForWidth(width) : errorCard_->sizeHint().height());
+    if (area.isEmpty()) return;
+    auto* row = static_cast<QBoxLayout*>(errorCard_->layout());
+    const auto margins = row->contentsMargins();
+    const int width = std::min(area.width(), Graphite::scaled(640));
+    const int inner = std::max(1, width - margins.left() - margins.right());
+    const int buttonWidth = retry_->sizeHint().width();
+    const int textWidth = inner - buttonWidth - row->spacing();
+    // Measure the label's actual remaining width, including enlarged type.
+    const bool stacked = textWidth < errorText_->fontMetrics().horizontalAdvance(QStringLiteral("Showing an earlier frame"));
+    row->setDirection(stacked ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight);
+    row->setAlignment(retry_, stacked ? Qt::AlignLeft : Qt::AlignVCenter);
+    const int labelHeight = errorText_->heightForWidth(std::max(1, stacked ? inner : textWidth));
+    const int contentHeight = stacked ? labelHeight + row->spacing() + retry_->sizeHint().height() : std::max(labelHeight, retry_->sizeHint().height());
+    const int height = std::min(area.height(), contentHeight + margins.top() + margins.bottom());
     errorCard_->setGeometry(QRect(QPoint(area.center().x() - width / 2, area.center().y() - height / 2), QSize(width, height)));
+
 }
 void FrameView::resizeEvent(QResizeEvent* e) { QWidget::resizeEvent(e); placeErrorCard(); }
 void FrameView::setMasks(const QList<RecordingMask>& masks, const QString& selected) {
@@ -121,7 +144,23 @@ void FrameView::setMasks(const QList<RecordingMask>& masks, const QString& selec
     masks_ = masks;
     selected_ = selected;
     if (!pending.isNull()) for (auto& m : masks_) if (m.id == selected_) m.rect = pending;
+    announce();
     update();
+}
+void FrameView::announce() {
+    QString text = QStringLiteral("No mask selected. Choose one in the Masks list.");
+    for (int i = 0; i < masks_.size(); ++i) {
+        const auto& m = masks_[i];
+        if (m.id != selected_) continue;
+        text = QStringLiteral("%1 %2 selected: %3 × %4 at %5, %6. Active from %7 to %8. Arrows move, Shift+arrows resize, Ctrl+arrows 10 px; Delete removes, Escape deselects.")
+            .arg(maskName(m.kind)).arg(i + 1).arg(m.rect.width()).arg(m.rect.height()).arg(m.rect.x()).arg(m.rect.y()).arg(clock(m.start), clock(m.end));
+        break;
+    }
+    if (!error_.isEmpty()) text.prepend(error_ + QStringLiteral(". "));
+    if (accessibleDescription() == text) return;
+    setAccessibleDescription(text);
+    QAccessibleEvent event(this, QAccessible::DescriptionChanged);
+    QAccessible::updateAccessibility(&event);
 }
 QRect FrameView::imageRect() const {
     const QSize source = canvas_.isEmpty() ? frame_.size() : canvas_;
@@ -224,7 +263,7 @@ void FrameView::focusInEvent(QFocusEvent* e) { QWidget::focusInEvent(e); update(
 void FrameView::focusOutEvent(QFocusEvent* e) { commitNudge(); QWidget::focusOutEvent(e); update(); }
 void FrameView::keyPressEvent(QKeyEvent* e) {
     auto mask = std::find_if(masks_.begin(), masks_.end(), [&](const RecordingMask& m) { return m.id == selected_; });
-    if (e->key() == Qt::Key_Escape && mask != masks_.end() && armed_.isEmpty()) { commitNudge(); selected_.clear(); emit maskSelected({}); update(); return; }
+    if (e->key() == Qt::Key_Escape && mask != masks_.end() && armed_.isEmpty()) { commitNudge(); selected_.clear(); announce(); emit maskSelected({}); update(); return; }
     QPoint step;
     switch (e->key()) {
     case Qt::Key_Left: step = {-1, 0}; break;
@@ -250,6 +289,7 @@ void FrameView::keyPressEvent(QKeyEvent* e) {
         r.moveTop(std::clamp(r.top(), 0, std::max(0, all.height() - r.height())));
     }
     mask->rect = r;
+    announce();
     nudge_.start();
     update();
 }
@@ -267,9 +307,10 @@ void FrameView::mousePressEvent(QMouseEvent* e) {
     for (auto it = masks_.rbegin(); it != masks_.rend(); ++it) {
         const auto r = toView(it->rect);
         if (it->id == selected_ && QRectF(r.right() - handleSize - 2, r.bottom() - handleSize - 2, handleSize + 4, handleSize + 4).contains(p)) { drag_ = Drag::Resize; anchor_ = p; original_ = it->rect; return; }
-        if (r.contains(p)) { selected_ = it->id; emit maskSelected(it->id); drag_ = Drag::Move; anchor_ = p; original_ = it->rect; update(); return; }
+        if (r.contains(p)) { selected_ = it->id; announce(); emit maskSelected(it->id); drag_ = Drag::Move; anchor_ = p; original_ = it->rect; update(); return; }
     }
     selected_.clear();
+    announce();
     emit maskSelected({});
     update();
 }
@@ -283,6 +324,7 @@ void FrameView::mouseMoveEvent(QMouseEvent* e) {
     const QRect bounds(QPoint(0, 0), canvas_.isEmpty() ? frame_.size() : canvas_);
     if (drag_ == Drag::Move) { QRect moved = original_.translated(delta.toPoint()); moved.moveLeft(std::clamp(moved.left(), 0, std::max(0, bounds.width() - moved.width()))); moved.moveTop(std::clamp(moved.top(), 0, std::max(0, bounds.height() - moved.height()))); mask->rect = moved; }
     else { QRect resized = original_; resized.setWidth(std::max(2, original_.width() + int(delta.x()))); resized.setHeight(std::max(2, original_.height() + int(delta.y()))); mask->rect = resized.intersected(bounds); }
+    announce();
     update();
 }
 void FrameView::mouseReleaseEvent(QMouseEvent* e) {
@@ -305,13 +347,46 @@ void FrameView::mouseReleaseEvent(QMouseEvent* e) {
 
 namespace {
 // Timeline geometry (#283): the clip track, then one thin lane per row of masks.
-constexpr int trackPad = 16, trackTop = 6, trackHeight = 12, laneTop = 19, laneHeight = 9, laneGap = 3, bottomPad = 0, maxLanes = 4, grip = 16;
+constexpr int trackPad = 16, trackTop = 6, trackHeight = 12, laneTop = 19, bottomPad = 0, grip = 16;
+int visibleLanes() { return Graphite::scaled(9) > 9 ? 1 : 2; }
+int laneHeight() { return Graphite::scaled(9); }
+int laneStep() { return laneHeight() + Graphite::scaled(3); }
 constexpr qint64 minimumSpanUs = 10000;
 }
 
+namespace {
+class TimelineAccessible final : public QAccessibleWidget, public QAccessibleValueInterface {
+public:
+    explicit TimelineAccessible(ReviewTimeline* timeline) : QAccessibleWidget(timeline, QAccessible::Slider) {}
+    void* interface_cast(QAccessible::InterfaceType type) override { return type == QAccessible::ValueInterface ? static_cast<QAccessibleValueInterface*>(this) : QAccessibleWidget::interface_cast(type); }
+    QVariant currentValue() const override { return timeline()->playhead(); }
+    QVariant minimumValue() const override { return qint64(0); }
+    QVariant maximumValue() const override { return timeline()->duration() - 1; }
+    QVariant minimumStepSize() const override { return qint64(100000); }
+    void setCurrentValue(const QVariant& value) override {
+        if (!timeline()->isEnabled()) return;
+        emit timeline()->scrubStarted();
+        timeline()->setPlayhead(value.toLongLong());
+        emit timeline()->scrubbed(timeline()->playhead());
+    }
+private:
+    ReviewTimeline* timeline() const { return static_cast<ReviewTimeline*>(object()); }
+};
+QAccessibleInterface* reviewAccessible(const QString& name, QObject* object) {
+    return name == QLatin1String("putgd::record::ReviewTimeline") ? new TimelineAccessible(static_cast<ReviewTimeline*>(object)) : nullptr;
+}
+}
 ReviewTimeline::ReviewTimeline(QWidget* parent) : QWidget(parent) {
+    static const bool installed = [] { QAccessible::installFactory(reviewAccessible); return true; }();
+    Q_UNUSED(installed);
+    laneScroll_ = new QScrollBar(Qt::Vertical, this);
+    laneScroll_->setObjectName("maskLaneScroll");
+    laneScroll_->setAccessibleName("Mask lanes");
+    laneScroll_->setPageStep(visibleLanes());
+    laneScroll_->hide();
+    connect(laneScroll_, &QScrollBar::valueChanged, this, qOverload<>(&QWidget::update));
     setObjectName("timeline");
-    setAccessibleName("Timeline");
+    setAccessibleName("Timeline playhead (microseconds)");
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -323,11 +398,23 @@ void ReviewTimeline::setMasks(const QList<RecordingMask>& masks, const QString& 
     selected_ = selected;
     const int before = lanes_;
     layoutLanes();
+    laneScroll_->setRange(0, std::max(0, lanes_ - visibleLanes()));
+    laneScroll_->setVisible(lanes_ > visibleLanes());
+    for (int i = 0; i < masks_.size(); ++i) if (masks_[i].id == selected_) {
+        const int lane = lane_[i];
+        if (lane < laneScroll_->value()) laneScroll_->setValue(lane);
+        else if (lane >= laneScroll_->value() + visibleLanes()) laneScroll_->setValue(lane - visibleLanes() + 1);
+    }
     if (lanes_ != before) updateGeometry();
     update();
 }
-void ReviewTimeline::setPlayhead(qint64 us) { playhead_ = std::clamp<qint64>(us, 0, duration_ - 1); update(); }
-// Masks that overlap in time go to separate lanes; past the last lane they share it.
+void ReviewTimeline::setPlayhead(qint64 us) {
+    const auto previous = playhead_;
+    playhead_ = std::clamp<qint64>(us, 0, duration_ - 1);
+    if (previous != playhead_) { QAccessibleValueChangeEvent changed(this, playhead_); QAccessible::updateAccessibility(&changed); }
+    update();
+}
+// A concurrent mask always gets its own lane; the viewport bounds their height.
 void ReviewTimeline::layoutLanes() {
     lane_ = QList<int>(masks_.size(), 0);
     QList<int> order(masks_.size());
@@ -337,20 +424,20 @@ void ReviewTimeline::layoutLanes() {
     for (const int i : order) {
         int lane = -1;
         for (int l = 0; l < ends.size(); ++l) if (ends[l] <= masks_[i].start) { lane = l; break; }
-        if (lane < 0 && ends.size() < maxLanes) { ends.append(0); lane = int(ends.size()) - 1; }
-        if (lane < 0) lane = int(std::min_element(ends.begin(), ends.end()) - ends.begin());
+        if (lane < 0) { ends.append(0); lane = int(ends.size()) - 1; }
         ends[lane] = std::max(ends[lane], masks_[i].end);
         lane_[i] = lane;
     }
     lanes_ = int(ends.size());
 }
-QRect ReviewTimeline::trackRect() const { return QRect(trackPad, trackTop, std::max(1, width() - 2 * trackPad), trackHeight); }
-QRect ReviewTimeline::laneRect(int lane) const { const auto track = trackRect(); return QRect(track.left(), laneTop + lane * (laneHeight + laneGap), track.width(), laneHeight); }
+QRect ReviewTimeline::trackRect() const { return QRect(trackPad, trackTop, std::max(1, width() - 2 * trackPad - (laneScroll_->isHidden() ? 0 : laneScroll_->sizeHint().width())), trackHeight); }
+QRect ReviewTimeline::laneRect(int lane) const { const auto track = trackRect(); return QRect(track.left(), laneTop + (lane - laneScroll_->value()) * laneStep(), track.width(), laneHeight()); }
 int ReviewTimeline::xFor(qint64 us) const { const auto track = trackRect(); return track.left() + int(double(track.width()) * std::clamp<qint64>(us, 0, duration_) / duration_); }
 qint64 ReviewTimeline::timeAt(qreal x) const { const auto track = trackRect(); return std::clamp<qint64>(qint64((x - track.left()) * double(duration_) / track.width()), 0, duration_); }
 QRect ReviewTimeline::maskRect(const QString& id) const {
     for (int i = 0; i < masks_.size(); ++i) {
         if (masks_[i].id != id) continue;
+        if (lane_.value(i) < laneScroll_->value() || lane_.value(i) >= laneScroll_->value() + visibleLanes()) return {};
         const auto lane = laneRect(lane_.value(i));
         const int left = xFor(masks_[i].start);
         return QRect(left, lane.top(), std::max(3, xFor(masks_[i].end) - left), lane.height());
@@ -362,7 +449,7 @@ QRect ReviewTimeline::maskHitRect(const QString& id) const {
     return bar.isNull() ? QRect{} : QRect(bar.left() - 16, bar.center().y() - 16, std::max(32, bar.width() + 32), 32);
 }
 QSize ReviewTimeline::sizeHint() const { return {480, minimumSizeHint().height()}; }
-QSize ReviewTimeline::minimumSizeHint() const { return {120, std::max(32, lanes_ ? laneRect(lanes_ - 1).center().y() + 17 : trackTop + trackHeight + bottomPad)}; }
+QSize ReviewTimeline::minimumSizeHint() const { return {280, std::max(32, lanes_ ? laneTop + (std::min(lanes_, visibleLanes()) - 1) * laneStep() + laneHeight() / 2 + 17 : trackTop + trackHeight + bottomPad)}; }
 void ReviewTimeline::paintEvent(QPaintEvent*) {
     // Graphite: a quiet track, the retained interval framed in amber between
     // two grip handles, lightly dimmed trimmed-away ends, mask bars in lanes
@@ -393,6 +480,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         painter.setPen(Qt::NoPen);
     }
     for (int i = 0; i < masks_.size(); ++i) {
+        if (lane_.value(i) < laneScroll_->value() || lane_.value(i) >= laneScroll_->value() + visibleLanes()) continue;
         const auto& mask = masks_[i];
         const bool selected = mask.id == selected_;
         const bool retiming = selected && (drag_ == Drag::MaskStart || drag_ == Drag::MaskEnd || drag_ == Drag::MaskMove);
@@ -426,6 +514,16 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
     painter.setBrush(p.text);
     painter.drawPolygon(QPolygonF{QPointF(x - 4, 0), QPointF(x + 4, 0), QPointF(x, 5)});
     if (Graphite::keyboardFocus(this)) { painter.setPen(QPen(p.accent, 1)); painter.setBrush(Qt::NoBrush); painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 5, 5); }
+}
+void ReviewTimeline::resizeEvent(QResizeEvent* e) {
+    QWidget::resizeEvent(e);
+    const int width = laneScroll_->sizeHint().width();
+    laneScroll_->setGeometry(this->width() - width, laneTop, width, std::max(1, height() - laneTop));
+}
+void ReviewTimeline::wheelEvent(QWheelEvent* e) {
+    if (laneScroll_->maximum() == 0) { e->ignore(); return; }
+    laneScroll_->setValue(laneScroll_->value() + (e->angleDelta().y() < 0 ? 1 : -1));
+    e->accept();
 }
 void ReviewTimeline::seek(qint64 us) { setPlayhead(us); emit scrubbed(playhead_); }
 ReviewTimeline::Drag ReviewTimeline::handleAt(QPointF pos) const {
@@ -602,6 +700,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     for (const auto& [label, factor] : std::initializer_list<std::pair<const char*, double>>{{"0.5×", 0.5}, {"1×", 1.0}, {"2×", 2.0}, {"4×", 4.0}}) speed_->addItem(QString::fromUtf8(label), factor);
     speed_->setCurrentIndex(1);
     timeline_ = new ReviewTimeline(this);
+    timeline_->setMinimumWidth(280);
     timeline_->setDuration(options.durationUs);
     timeline_->setToolTip("Click or drag to scrub; drag the trim handles to trim. Drag a mask to move it in time, or a selected mask's ends to retime them. Arrows step, Home/End jump to the kept part.");
     time_ = new QLabel(this);
@@ -621,11 +720,18 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     playbackLabels->addWidget(time_);
     transport->addWidget(playbackInfo);
     root->addLayout(transport);
+    auto textTool = [](QToolButton* button, const QString& label) {
+        VisualStyle::role(button, "link");
+        button->setText(label);
+        button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        button->setFixedSize(std::max(32, button->fontMetrics().horizontalAdvance(label) + 12), std::max(32, button->fontMetrics().height() + 6));
+    };
     auto* tools = new QHBoxLayout;
-    tools->setSpacing(4);
+    tools->setSpacing(2);
     trimStart_ = tool("trim-in", "Set trim start", "Keep from the playhead: set the trim start here (I)");
     trimEnd_ = tool("trim-out", "Set trim end", "Keep up to the playhead: set the trim end here (O)");
     resetTrim_ = tool("trim-reset", "Reset trim", "Keep the whole recording");
+    textTool(trimStart_, "In"); textTool(trimEnd_, "Out"); textTool(resetTrim_, "Reset");
     retained_ = new QLabel(this);
     retained_->setObjectName("muted");
     VisualStyle::role(retained_, "secondary");
@@ -639,7 +745,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     maskTools_->setObjectName("maskTools");
     auto* maskRow = new QHBoxLayout(maskTools_);
     maskRow->setContentsMargins(0, 0, 0, 0);
-    maskRow->setSpacing(4);
+    maskRow->setSpacing(2);
     masks_ = new QComboBox(maskTools_);
     masks_->setObjectName("masks");
     masks_->setAccessibleName("Masks");
@@ -648,6 +754,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     masks_->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     maskStart_ = tool("mask-in", "Set mask start", "Start the selected mask at the playhead (Shift+I)");
     maskEnd_ = tool("mask-out", "Set mask end", "End the selected mask at the playhead (Shift+O)");
+    textTool(maskStart_, "Start here"); textTool(maskEnd_, "End here");
     strengthLabel_ = new QLabel("Blur", maskTools_);
     strengthLabel_->setObjectName("muted");
     VisualStyle::role(strengthLabel_, "meta");
@@ -685,6 +792,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     audio_ = new QLabel(this);
     audio_->setObjectName("audioSummary");
     VisualStyle::role(audio_, "meta");
+    exportAudio_ = new QLabel(this);
+    exportAudio_->setObjectName("exportAudioSummary");
+    VisualStyle::role(exportAudio_, "meta");
     upload_ = new QPushButton("Upload", this);
     upload_->setObjectName("upload");
     upload_->setIcon(VisualStyle::icon("upload"));
@@ -702,12 +812,11 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     draft->setToolTip("Nothing uploads until you choose Upload; Save a copy… exports locally.");
     VisualStyle::role(draft, "meta");
 
-    auto* output = new QLabel("Format", this);
-    VisualStyle::role(output, "meta");
-    output->setBuddy(format_);
-    actions->addWidget(output);
     actions->addWidget(format_);
+    actions->addWidget(exportAudio_);
+    audio_->setWordWrap(true);
     playbackLabels->addWidget(audio_);
+    playbackInfo->setMaximumWidth(std::max(190, time_->fontMetrics().horizontalAdvance(QStringLiteral("0:00.00 / 0:00.00 trimmed"))));
     outputTools_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     destination_ = new QLabel(options.uploadSummary, this);
     destination_->setObjectName("uploadDestination");
@@ -722,8 +831,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     footerGrid_->setContentsMargins(12, 2, 12, 2);
     footerGrid_->setHorizontalSpacing(6);
     footerGrid_->setVerticalSpacing(2);
-    transport->insertWidget(2, outputTools_);
-    footerGrid_->addWidget(draft, 1, 0);
+    actions->addWidget(draft);
+    footerGrid_->addWidget(outputTools_, 1, 0);
     footerGrid_->addWidget(destination_, 1, 1);
     footerGrid_->addWidget(save_, 1, 2);
     footerGrid_->addWidget(cancel_, 1, 3);
@@ -834,7 +943,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
 }
 QSize ReviewWindow::defaultSize() {
     // Enlarged controls need room too; leave the frame dominant on a laptop.
-    const int extra = std::clamp(Graphite::scaled(80) - 80, 0, 48);
+    const int extra = std::clamp(Graphite::scaled(144) - 144, 0, 72);
     return {920, (Graphite::WindowHeader::customFrame() ? 648 : 600) + extra};
 }
 RecordingMask* ReviewWindow::selectedMask() {
@@ -994,7 +1103,7 @@ void ReviewWindow::refreshLabels() {
     const bool retained = at >= edit_.trimStart && at < end;
     time_->setText(QStringLiteral("%1 / %2").arg(timeText(at), timeText(options_.durationUs)) + (retained ? QString() : QStringLiteral(" trimmed")));
     time_->setToolTip(retained ? QStringLiteral("Playhead time / recording length") : QStringLiteral("The playhead is in a trimmed-away part; it is not exported"));
-    retained_->setText(QStringLiteral("%1–%2").arg(timeText(edit_.trimStart), timeText(end)));
+    retained_->setText(QStringLiteral("%1–%2 s").arg(seconds(edit_.trimStart), seconds(end)));
     retained_->setToolTip(QStringLiteral("Keeping %1–%2 (%3 of %4)").arg(timeText(edit_.trimStart), timeText(end), timeText(end - edit_.trimStart), timeText(options_.durationUs)));
     timeline_->setAccessibleDescription(QStringLiteral("Playhead %1; keeping %2–%3; %4 masks").arg(timeText(at), timeText(edit_.trimStart), timeText(end)).arg(edit_.masks.size()));
     // Mask settings are contextual (#283): the list once masks exist, the
@@ -1005,18 +1114,15 @@ void ReviewWindow::refreshLabels() {
     strengthLabel_->setVisible(mask && mask->kind == "blur");
     strength_->setVisible(mask && mask->kind == "blur");
     if (mask) { strength_->blockSignals(true); strength_->setValue(mask->strength); strength_->blockSignals(false); }
-    // The selected mask, for screen readers on the frame (and its keyboard keys).
-    const int index = mask ? int(std::find_if(edit_.masks.cbegin(), edit_.masks.cend(), [&](const RecordingMask& m) { return m.id == mask->id; }) - edit_.masks.cbegin()) : -1;
-    QString frameState = mask ? QStringLiteral("%1 %2 selected: %3 × %4 at %5, %6, %7–%8. Arrows move it, Shift+arrows resize it, Delete removes it, Escape deselects.")
-                                    .arg(maskName(mask->kind)).arg(index + 1).arg(mask->rect.width()).arg(mask->rect.height()).arg(mask->rect.x()).arg(mask->rect.y()).arg(timeText(mask->start), timeText(mask->end))
-                              : edit_.masks.isEmpty() ? QStringLiteral("No masks. Add blur or Add redaction, then press Enter to place one in the centre.") : QStringLiteral("No mask selected; choose one in the Masks list.");
-    if (!view_->previewError().isEmpty()) frameState.prepend(view_->previewError() + QStringLiteral(". "));
-    view_->setAccessibleDescription(frameState);
-    // The audio summary: a few words beside Output, never elided.
+    // Muted playback below the timecode; the export carries its own audio label.
     const QString audio = QStringLiteral("Preview muted · ") + (!options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : QStringLiteral("System audio in export"));
-    audio_->setText(audio);
+    audio_->setText(QStringLiteral("Preview muted"));
+    audio_->setProperty("summary", audio);
     audio_->setToolTip(!options_.audioRecorded ? QStringLiteral("No system audio was recorded") : config_.silent() ? QStringLiteral("System audio was recorded; %1 exports are silent. Choose MP4 or WebM to keep it.").arg(config_.format.toUpper()) : QStringLiteral("The export keeps the recorded system audio; the preview is silent"));
     audio_->setAccessibleName(QStringLiteral("Audio: ") + audio);
+    exportAudio_->setText(!options_.audioRecorded ? QStringLiteral("No audio") : config_.silent() ? QStringLiteral("Silent export") : QStringLiteral("System audio"));
+    exportAudio_->setAccessibleName(QStringLiteral("Export audio: ") + audio.section(QStringLiteral(" · "), 1));
+    exportAudio_->setToolTip(audio_->toolTip());
     refreshStatus();
 }
 QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
@@ -1107,7 +1213,7 @@ void ReviewWindow::resizeEvent(QResizeEvent* event) {
 void ReviewWindow::placeDestination() {
     if (!footerGrid_ || options_.uploadSummary.isEmpty()) return;
     const auto margins = footerGrid_->contentsMargins();
-    int room = width() - margins.left() - margins.right() - findChild<QLabel*>("draftState")->sizeHint().width() - footerGrid_->horizontalSpacing();
+    int room = width() - margins.left() - margins.right() - outputTools_->sizeHint().width() - footerGrid_->horizontalSpacing();
     for (auto* button : {save_, cancel_, upload_}) room -= button->sizeHint().width() + footerGrid_->horizontalSpacing();
     const bool above = destination_->fontMetrics().horizontalAdvance(destination_->text()) > room;
     if (above == destinationAbove_) return;
@@ -1142,7 +1248,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"masks", masks}, {"selectedMaskId", mask ? QJsonValue(mask->id) : QJsonValue(QJsonValue::Null)},
         {"armed", view_->armed().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->armed())},
         {"maskControls", QJsonObject{{"list", maskTools_->isVisibleTo(this)}, {"times", maskStart_->isVisibleTo(this)}, {"strength", strength_->isVisibleTo(this)}, {"remove", removeMask_->isVisibleTo(this)}}},
-        {"status", status}, {"statusRow", statusRow}, {"audio", audio_->text()},
+        {"status", status}, {"statusRow", statusRow}, {"audio", audio_->property("summary").toString()},
         {"previewMuted", true}, {"destination", options_.destination}, {"sharingMode", options_.sharingMode}, {"uploadSummary", options_.uploadSummary},
         {"notice", notice_->isVisibleTo(this) ? QJsonValue(notice_->text()) : QJsonValue(QJsonValue::Null)},
         {"preview", QJsonObject{{"error", view_->previewError().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->previewError())}, {"stale", view_->stale()}, {"frameTimeUs", view_->hasFrame() ? QJsonValue(double(view_->frameTime())) : QJsonValue(QJsonValue::Null)}}},

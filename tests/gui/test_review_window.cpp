@@ -6,6 +6,7 @@
 #include "record/Overlays.h"
 #include "ui/RegionOverlay.h"
 #include <QAccessible>
+#include <QScrollBar>
 #include "ui/Graphite.h"
 #include "ui/Theme.h"
 #include <QLabel>
@@ -109,7 +110,7 @@ private slots:
             auto* accessible = QAccessible::queryAccessibleInterface(surface);
             QVERIFY(accessible);
             QCOMPARE(accessible->text(QAccessible::Description), surface->accessibleDescription());
-            QVERIFY(surface->accessibleDescription().contains("Enter captures the current screen"));
+            QVERIFY(surface->accessibleDescription().contains(recording ? "Enter: use entire display" : "Enter: capture entire display"));
             if (mode == 0) {
                 QTest::keyClick(surface, Qt::Key_Return);
                 QCOMPARE(selected, QRectF(screen));
@@ -147,6 +148,74 @@ private slots:
             QVERIFY(!surface->isVisible());
             QCOMPARE(accepted + cancelled, 1);
         }
+    }
+    void screenshotSelectorCyclesSyntheticDisplays() {
+        const QList<CaptureFrame> frames{{"Left",QRectF(-800,0,800,600),QRect(-800,0,800,600),1,0,{}},{"Right",QRectF(0,100,320,240),QRect(0,100,320,240),1,0,{}}};
+        RegionOverlay selector(frames);selector.start();QSignalSpy selected(&selector,&RegionSelector::selected);
+        QWidget* surface=nullptr;
+        for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"&&w->width()==800)surface=w;
+        QVERIFY(surface);
+        QTest::keyClick(surface,Qt::Key_Tab);
+        QVERIFY(surface->accessibleDescription().contains("Right · Enter: capture entire display"));
+        QTest::keyClick(surface,Qt::Key_Right);
+        QTest::keyClick(surface,Qt::Key_Backtab);
+        QVERIFY(surface->accessibleDescription().contains("Left · Enter: capture selected region"));
+        QTest::keyClick(surface,Qt::Key_Return);QCOMPARE(selected.size(),1);
+        QCOMPARE(qvariant_cast<QRectF>(selected.first()[0]),QRectF(-720,60,160,120));
+    }
+    void accessiblePlayheadAndLiveMaskGeometry() {
+        ReviewWindow window(options(), config());
+        window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* t = timeline(window);
+        auto* accessible = QAccessible::queryAccessibleInterface(t);
+        QVERIFY(accessible && accessible->valueInterface());
+        auto* value = accessible->valueInterface();
+        QCOMPARE(value->minimumValue().toLongLong(), 0);
+        QCOMPARE(value->maximumValue().toLongLong(), duration - 1);
+        QCOMPARE(value->minimumStepSize().toLongLong(), 100000);
+        value->setCurrentValue(2000000);
+        QCOMPARE(value->currentValue().toLongLong(), 2000000);
+        QCOMPARE(window.inspect()["playheadUs"].toDouble(), 2000000);
+        auto* frame = window.findChild<FrameView*>();
+        QVERIFY(frame->accessibleDescription().contains("Redaction 2 selected: 320 × 120 at 100, 80"));
+        QVERIFY(frame->accessibleDescription().contains("Active from 0:04.00 to 0:10.00"));
+        QTest::keyClick(frame, Qt::Key_Right);
+        QVERIFY(frame->accessibleDescription().contains("at 101, 80"));
+        frame->commitNudge();
+        auto edit = twoMasks(4); edit.masks[1].end = 11000000; window.setEdit(edit);
+        QVERIFY(frame->accessibleDescription().contains("to 0:11.00"));
+    }
+    void concurrentMasksHaveDistinctScrollableLanes() {
+        ReviewTimeline t; t.setDuration(duration);
+        QList<RecordingMask> masks;
+        for (int i = 0; i < 8; ++i) masks.append(mask(QString::number(i), "solid", 1000000, 10000000));
+        t.setMasks(masks, "0"); t.resize(600, t.sizeHint().height()); t.show();
+        QCOMPARE(t.lanes(), 8);
+        auto* scroll = t.findChild<QScrollBar*>("maskLaneScroll");
+        QVERIFY(scroll && scroll->isVisible()); QCOMPARE(scroll->maximum(), 6);
+        QVERIFY(!t.maskRect("0").intersects(t.maskRect("1")));
+        QVERIFY(t.maskRect("7").isEmpty());
+        const int boundedHeight = t.sizeHint().height();
+        t.setMasks(masks, "7"); QCOMPARE(scroll->value(), 6);
+        QVERIFY(!t.maskRect("7").isEmpty()); QVERIFY(t.maskRect("0").isEmpty());
+        QCOMPARE(t.sizeHint().height(), boundedHeight);
+        QSignalSpy selected(&t, &ReviewTimeline::maskSelected);
+        QTest::mouseClick(&t, Qt::LeftButton, {}, t.maskRect("6").center());
+        QCOMPARE(selected.size(), 1); QCOMPARE(selected.first()[0].toString(), QString("6"));
+    }
+    void previewRecoveryStacksAndMeasuresWrappedText() {
+        FrameView view; auto large = view.font(); large.setPixelSize(21); view.setFont(large); view.setCanvas({1280,720}); view.resize(360,320); view.show();
+        view.setPreviewError("The decoder could not refresh the selected frame. Try again after closing other applications.");
+        auto* label = view.findChild<QLabel*>("previewErrorText");
+        auto* retry = view.findChild<QPushButton*>("retryPreview");
+        QApplication::processEvents();
+        QVERIFY(label && retry);
+        QVERIFY(label->height() >= label->heightForWidth(label->width()));
+        QVERIFY(retry->y() >= label->y() + label->height());
+        view.resize(900,600); QApplication::processEvents();
+        QVERIFY(label->height() >= label->heightForWidth(label->width()));
+        QVERIFY(retry->x() >= label->x() + label->width());
     }
     void destinationAndMutedPreviewRemainVisible() {
         auto o = options();
@@ -535,7 +604,9 @@ private slots:
             const auto tools = window.findChildren<QToolButton*>();
             QVERIFY(tools.size() >= 9);
             for (auto* b : tools) {
-                QVERIFY2(!b->icon().isNull() && b->toolButtonStyle() == Qt::ToolButtonIconOnly, qPrintable(b->accessibleName()));
+                const bool timing = b->accessibleName().contains("trim", Qt::CaseInsensitive) || b->accessibleName().startsWith("Set mask");
+                QVERIFY2(!b->icon().isNull() && b->toolButtonStyle() == (timing ? Qt::ToolButtonTextOnly : Qt::ToolButtonIconOnly), qPrintable(b->accessibleName()));
+                if (timing) QVERIFY(b->width() >= b->fontMetrics().horizontalAdvance(b->text()) + 8);
                 QVERIFY2(!b->accessibleName().isEmpty() && !b->toolTip().isEmpty(), qPrintable(b->objectName()));
             }
             // The window background is the scheme's.
@@ -695,7 +766,9 @@ private slots:
         QVERIFY(row && audio);
         QVERIFY(!row->isVisible());
         QCOMPARE(window.inspect()["statusRow"].toArray().size(), 0);
-        QCOMPARE(audio->text(), QString("Preview muted · System audio in export"));
+        QCOMPARE(audio->text(), QString("Preview muted"));
+        QVERIFY(audio->accessibleName().contains("System audio in export"));
+        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->text(), QString("System audio"));
         QVERIFY(audio->width() >= audio->sizeHint().width());
         // H.265: a warning with its fix; the fix is the format control's own path.
         QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}}).code.isEmpty());
@@ -727,7 +800,9 @@ private slots:
         // GIF: silent, and over its length limit; the trim it needs is one click.
         window.setLimits(5000000, 4096);
         QVERIFY(window.drive({{"action", "format"}, {"format", "gif"}, {"codec", ""}}).code.isEmpty());
-        QCOMPARE(audio->text(), QString("Preview muted · No audio in GIF"));
+        QCOMPARE(audio->text(), QString("Preview muted"));
+        QVERIFY(audio->accessibleName().contains("No audio in GIF"));
+        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->text(), QString("Silent export"));
         lines = window.inspect()["statusRow"].toArray();
         QCOMPARE(lines.size(), 1);
         QVERIFY(lines[0].toObject()["text"].toString().startsWith(QStringLiteral("GIF is limited to 5 s")));
