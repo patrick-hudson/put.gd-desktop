@@ -3,8 +3,8 @@
 The [Graphite visual language](../../visual-language.md) is implemented in
 [code PR #596](https://github.com/patrick-hudson/put.gd-desktop/pull/596).
 [Documentation PR #595](https://github.com/patrick-hudson/put.gd-desktop/pull/595)
-contains the contract and this review packet and must merge after the code.
-Both remain unmerged for Patrick's review.
+contains the contract and this review packet. Code #596 merged into `nightly`
+on 2026-10-26 as `ce46cea871b41edd3753b766e8aeb43b423821e7`.
 
 This is an issue-level desktop redesign campaign, not full release acceptance.
 It uses the real resident and helpers with synthetic capture content and an
@@ -48,7 +48,9 @@ Dark review with trim and a timed blur, Ubuntu/GNOME Wayland VM, final AppImage:
 ![Dark recording review with trim and a blur interval](review-dark.png)
 
 Light review, Debian/GNOME Xorg, final DEB. Review uses the desktop title bar to
-preserve space for the frame at large text sizes.
+preserve space for the frame at large text sizes. This is the merged behavior;
+a compact shared header was requested afterward and needs its own implementation
+and native acceptance. These screenshots do not establish that follow-up.
 
 ![Light recording review with the desktop title bar](review-light.png)
 
@@ -77,6 +79,12 @@ fields stack when the text needs more room.
 | Package version | `26.1026.1408~dev+gd8a07551c456` |
 | Hosted CI | [run 40316856840](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40316856840), required `CI` passed |
 
+The early nightly was requested from the later merge `ce46cea8` in
+[run 40357122735](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40357122735).
+That merge also includes packaging PR #593 and documentation PR #594. The
+measurements below remain bound to `d8a07551`; they are not acceptance of newly
+built assets from the later merge.
+
 | Package | SHA-256 |
 | --- | --- |
 | AppImage, unchanged across all desktop rows | `2c9ddca813d0bd5b744a52a92a38ac2407e5890d63092b75d638994b16d4af04` |
@@ -87,7 +95,8 @@ fields stack when the text needs more room.
 
 Private raw evidence is retained under
 `work/graphite-production-20261026/`, principally `functional/`, `memory/`,
-`native/`, `packages-b367fe86/`, `nightly-1388/` and `stall-k72x11/`.
+`native/`, `packages-b367fe86/`, `nightly-1388/`, `stall-k72x11/` and
+`bar-stack-d69gx11/`.
 Each functional row keeps `log.json`, input steps, build/package identity,
 compositor frames, exported synthetic files and cleanup results.
 
@@ -112,7 +121,7 @@ claim all recording formats or system-audio acceptance.
 | Kubuntu 26.04.1, Plasma 6.6.6, Wayland, physical k72 | 19/19 | 19/19 | `k72-native-d8a07551-a5`, `k72-appimage-d8a07551-a1` |
 | Debian 13, Plasma, Wayland, physical d69 | 19/19 | 19/19 | `d69-native-d8a07551-a1`, `d69-appimage-d8a07551-a1` |
 | Kubuntu 26.04.1, Plasma, X11, physical k72 | 19/19 | Completed with first-upload stall, #597 | `k72x11-native-d8a07551-a3`, `k72x11-appimage-d8a07551-a3` |
-| Debian 13, GNOME 48.7, Xorg, physical d69 | 19/19 steps; bar contrast finding below | 19/19 steps; bar contrast finding below | `d69gx11-native-d8a07551-a2`, `d69gx11-appimage-d8a07551-a1` |
+| Debian 13, GNOME 48.7, Xorg, physical d69 | 19/19 steps; pre-existing bar dimming, #599 | 19/19 steps; pre-existing bar dimming, #599 | `d69gx11-native-d8a07551-a2`, `d69gx11-appimage-d8a07551-a1` |
 | Ubuntu 26.04.1, GNOME 50.1, Wayland, VM on d69 | 19/19 | 19/19 | `u26vm-native-d8a07551-a2`, `u26vm-appimage-d8a07551-a1` |
 
 The final Mint repeats identify active, unlocked session `c89` and its Cinnamon
@@ -158,10 +167,15 @@ performance promise. The four receipts are `memory/f44-ctl-*-wd/results.json`.
   fallback and exceeds the 40 MiB idle RSS budget on both builds. Earlier
   comparisons also changed the runtime directory and could not identify the
   cause. The controlled rerun rules out that directory as the explanation.
-- Final visual review found the recording control bar dimmed beneath the region
-  overlay on Debian/GNOME Xorg, in both package formats. Buttons completed their
-  functional steps, but the contrast discrepancy remains under investigation.
-  The original `record-paused.png` frames are retained in both row directories.
+- [#599](https://github.com/patrick-hudson/put.gd-desktop/issues/599): final visual
+  review found the recording bar beneath the region's dim overlay on
+  Debian/GNOME Xorg, in both package formats. Paired native runs reproduce it on
+  unchanged nightly: the bar is 56–58% of its ready-state brightness in both
+  builds, at 1 s, 3 s and while paused. X11 stacking receipts show a dim strip
+  mapped after and over the bar. Buttons complete their functional steps, but
+  these rows retain the pre-existing visual defect. The paired logs and frames
+  are under `bar-stack-d69gx11/{nightly-d7e806fd,pr-d8a07551}-{light,dark}/`;
+  the original functional `record-paused.png` frames remain unchanged.
 - Paint response, Windows desktop acceptance, fractional-DPR native coverage,
   full recording format/audio coverage, release update/feed/stable/login and
   notification-click workflows, Aurora and neon are not established here.
@@ -179,15 +193,40 @@ source manifest was independently reconstructed from the archive plus
 the same rows in C order hash to `b8e8a25f…`. Future runs retain the C sort rule.
 These preview checks are not silently relabeled as final-package measurements.
 
+The preview's maximize and restore actions are header double-clicks, confirmed
+against `native/drive.py`. A separate installed-package receipt,
+`functional/k72-chrome-d8a07551/log.json`, explicitly records double-click
+maximize/restore from 1320×880 to 1920×1026 and back. Plasma's window-menu resize
+(`Alt+F3` → More Actions → Resize, then arrow keys and Return) changes 1320×880
+to 1368×928. Saved frames accompany both actions. The retained shortcut file
+confirms that Plasma has no default key for Resize Window; Alt+F8 is not claimed
+there.
+
 ## Cleanup and retention
 
-The implementation campaign reports all four physical locks released after
-verified-clean checks at 15:51 UTC, k72 and d69 restored to Plasma Wayland with
-their VNC servers, temporary GNOME extension/SDDM changes removed, and the
-Ubuntu overlays retired through guarded `lab.py cleanup`. Two failed wrong-key
-VM launches are recorded as failures. Original failed attempts and superseded
-receipts remain private and unchanged. Final cleanup and additional chrome
-receipt locations are being reconciled into the parent review index.
+All four physical locks were released after verified-clean checks at 15:51 UTC.
+The later targeted chrome and stacking checks have additional clean releases on
+k72 at 15:55:59 UTC and d69 at 16:12:16 UTC. The parent review independently read
+these receipts in each host's `~/putgd-lab/locks/history/`. Each functional run's
+`stop-and-cleanup` step records the owned resident, cover, fixture and socket
+cleanup, including AppImage-created desktop entries. Memory runs retain their
+own `gates.cleanup` results.
+
+k72 and d69 were restored to Plasma Wayland with their own VNC servers. The
+temporary f44 GNOME extension copy was removed and GNOME re-logged in; d69's
+temporary SDDM drop-in and three TigerVNC packages were removed. These cleanup
+receipts describe this campaign, not later work on the shared hosts.
+
+On d69, `u26g596`, `u26g596b` and `u26g596c` were retired through guarded
+`lab.py cleanup`. Their completion, summary and evidence manifests remain in
+`~/putgd-lab/evidence-596/<run>/`; retirement receipts remain in
+`~/work/put.gd/work/lab-runs/<run>/overlay-cleanup.json`. The parent verified the
+manifest hashes against those receipts, the retained evidence hashes, absent
+overlay disks and the preserved base file. The first two wrong-key launches
+remain recorded as failed; only the third establishes the Ubuntu results.
+The independent verification is retained in
+`parent-closeout/d69-retirement-verification.json` under the private evidence
+root. Original failed attempts and superseded receipts remain unchanged.
 
 Keep the raw evidence and failure context under the
 [retention policy](../../evidence-retention.md). This packet does not waive the

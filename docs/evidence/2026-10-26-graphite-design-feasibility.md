@@ -102,7 +102,7 @@ as a pass.
 Production implementation is tracked in
 [code PR #596](https://github.com/patrick-hudson/put.gd-desktop/pull/596), with
 [documentation PR #595](https://github.com/patrick-hudson/put.gd-desktop/pull/595)
-to merge afterward. Native production acceptance is recorded separately from
+following the code merge. Native production acceptance is recorded separately from
 this prototype receipt in the
 [production review](2026-10-26-graphite-production/README.md).
 
@@ -117,6 +117,7 @@ not change the frozen prototype or establish production acceptance. Production
 previews, tests and PR checks must identify their own source and build rather
 than reuse this prototype's results.
 
-The implementation PR and its linked documentation PR remain unmerged for user
-review. This receipt does not waive any gate in the
+Code #596 merged into `nightly` as `ce46cea8`; its exact tested package identity
+and qualified results are in the production review above. This frozen prototype
+receipt does not waive any gate in the
 [acceptance matrix](../acceptance-matrix.md).
