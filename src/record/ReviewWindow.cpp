@@ -109,7 +109,14 @@ void FrameView::placeErrorCard() {
     const int height = std::min(area.height(), errorCard_->hasHeightForWidth() ? errorCard_->heightForWidth(width) : errorCard_->sizeHint().height());
     errorCard_->setGeometry(QRect(QPoint(area.center().x() - width / 2, area.center().y() - height / 2), QSize(width, height)));
 }
-void FrameView::resizeEvent(QResizeEvent* e) { QWidget::resizeEvent(e); placeErrorCard(); }
+void FrameView::resizeEvent(QResizeEvent* e) { QWidget::resizeEvent(e); placeErrorCard(); placeFooter(); }
+void FrameView::placeFooter() {
+    if (!footer_ || footer_->isHidden()) return;
+    const int w = std::max(0, width() - 16);
+    const int h = footer_->hasHeightForWidth() ? footer_->heightForWidth(w) : footer_->sizeHint().height();
+    footer_->setGeometry(8, height() - h - 8, w, h);
+    footer_->raise();
+}
 void FrameView::setMasks(const QList<RecordingMask>& masks, const QString& selected) {
     // A keyboard nudge not yet proposed keeps its place over the last answer.
     QRect pending;
@@ -231,7 +238,8 @@ void FrameView::keyPressEvent(QKeyEvent* e) {
     default: QWidget::keyPressEvent(e); return;
     }
     if (mask == masks_.end() || drag_ != Drag::None) { QWidget::keyPressEvent(e); return; }
-    step *= e->modifiers() & Qt::ControlModifier ? 1 : 10;
+    // The editor's steps: 1 px, 10 px with Ctrl; Shift resizes.
+    step *= e->modifiers() & Qt::ControlModifier ? 10 : 1;
     if (!nudging_) nudgeFrom_ = mask->rect;
     nudging_ = true;
     const QRect all = bounds();
@@ -628,15 +636,16 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     tools->addStretch(1);
     root->addLayout(tools);
     // The status row: errors, warnings and privacy guidance, each with the
-    // actions that resolve it. It wraps (never elides) and takes height only
-    // while it has something to say, so the frame keeps its share.
-    statusRow_ = new QWidget(this);
+    // actions that resolve it. It wraps (never elides) on a raised card pinned
+    // inside the frame's bottom edge, so it takes no height from the frame
+    // (#283's share holds) and stays readable over any video.
+    statusRow_ = new Graphite::Surface("raised", Qt::TopEdge | Qt::BottomEdge | Qt::LeftEdge | Qt::RightEdge, view_);
     statusRow_->setObjectName("statusRow");
     statusLines_ = new QVBoxLayout(statusRow_);
-    statusLines_->setContentsMargins(0, 0, 0, 0);
+    statusLines_->setContentsMargins(10, 6, 10, 6);
     statusLines_->setSpacing(2);
     statusRow_->hide();
-    root->addWidget(statusRow_);
+    view_->setFooterOverlay(statusRow_);
     auto* actions = new QHBoxLayout;
     actions->setSpacing(6);
     format_ = new QComboBox(this);
@@ -995,8 +1004,9 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
     }
     // The editor's privacy guidance, readable without hovering, whenever a blur is being placed or edited.
     const auto* mask = selectedMask();
-    if (view_->armed() == "blur" || (view_->armed().isEmpty() && mask && mask->kind == "blur"))
-        entries.append({QStringLiteral("Blur is a visual effect. Use Solid cover for private information."), QStringLiteral("warning"), {{QStringLiteral("Use Solid cover"), QJsonObject{{"action", "useSolidCover"}}}}});
+    // Once acknowledged it stays out of the way of the frame; the tooltips keep it.
+    if (!blurTipDismissed_ && (view_->armed() == "blur" || (view_->armed().isEmpty() && mask && mask->kind == "blur")))
+        entries.append({QStringLiteral("Blur is a visual effect. Use Solid cover for private information."), QStringLiteral("warning"), {{QStringLiteral("Use Solid cover"), QJsonObject{{"action", "useSolidCover"}}}, {QStringLiteral("Got it"), QJsonObject{{"action", "dismissBlurTip"}}}}});
     return entries;
 }
 void ReviewWindow::refreshStatus() {
@@ -1036,6 +1046,7 @@ void ReviewWindow::refreshStatus() {
         statusLines_->addWidget(line);
     }
     statusRow_->setVisible(!entries.isEmpty());
+    view_->placeFooter();
 }
 QJsonObject ReviewWindow::inspect() const {
     auto rect = [](const QRect& r) { return QJsonArray{r.x(), r.y(), r.width(), r.height()}; };
@@ -1095,6 +1106,7 @@ ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
     if (action == "discard") { askDiscard(); return done(); }
     if (action == "retryPreview") { frameTimer_.stop(); refreshFrame(); return done(); }
     if (action == "dismissStatus") { message_ = {}; refreshLabels(); return done(); }
+    if (action == "dismissBlurTip") { blurTipDismissed_ = true; refreshLabels(); return done(); }
     if (action == "seek") {
         const auto time = params["time"].toDouble(-1);
         if (!params["time"].isDouble() || time < 0 || time >= double(options_.durationUs) || time != std::floor(time)) return invalid("seek takes a clip time in microseconds within the recording");

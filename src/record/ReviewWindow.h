@@ -72,6 +72,13 @@ private:
     QRectF toView(const QRect&) const;
     QRect bounds() const;
     void placeErrorCard();
+public:
+    // A widget pinned inside the frame's bottom edge (the review's status
+    // row): it covers the frame only while shown and costs no layout height.
+    void setFooterOverlay(QWidget* overlay) { footer_ = overlay; placeFooter(); }
+    void placeFooter();
+private:
+    QPointer<QWidget> footer_;
     QImage frame_;
     qint64 timeUs_ = 0;
     QSize canvas_;
@@ -242,6 +249,7 @@ private:
     QWidget* statusRow_ = nullptr;
     QVBoxLayout* statusLines_ = nullptr;
     QList<StatusEntry> shownStatus_;
+    bool blurTipDismissed_ = false;  // the blur privacy guidance, acknowledged once
     StatusEntry message_;
     QPointer<QMessageBox> discard_;
     QToolButton* play_ = nullptr;

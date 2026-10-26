@@ -145,11 +145,17 @@ private slots:
         QCOMPARE(state["timeline"].toObject()["lanes"].toInt(), 2);
         qInfo("review two masks share %.3f timeline %d", state["video"].toObject()["share"].toDouble(), state["timeline"].toObject()["rect"].toArray()[3].toInt());
         QVERIFY2(state["video"].toObject()["share"].toDouble() >= 0.6, qPrintable(QString::number(state["video"].toObject()["share"].toDouble())));
-        // The status row costs height only while it shows (here, the blur guidance).
+        // The status row (here, the blur guidance) sits inside the frame's
+        // bottom edge and takes no height from it.
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QApplication::processEvents();
+        QVERIFY(window.findChild<QWidget*>("statusRow")->isVisible());
         qInfo("review with a status line share %.3f", window.inspect()["video"].toObject()["share"].toDouble());
-        QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53);
+        QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.6, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
+        // Got it hides the guidance for the rest of the review.
+        QVERIFY(window.drive({{"action", "dismissBlurTip"}}).code.isEmpty());
+        QApplication::processEvents();
+        QVERIFY(!window.findChild<QWidget*>("statusRow")->isVisible());
         window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
         QApplication::processEvents();
         QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.6);
@@ -589,7 +595,7 @@ private slots:
     }
     // Keyboard-only masks: Enter places an armed mask centred at half the
     // frame's size; with the frame focused, arrows move the selected mask,
-    // Shift+arrows resize it, Ctrl makes the step 1 px; one edit per burst.
+    // Shift+arrows resize it, Ctrl makes the step 10 px (as in the editor); one edit per burst.
     void masksByKeyboard() {
         ReviewWindow window(options(), config());
         QSignalSpy proposals(&window, &ReviewWindow::editProposed);
@@ -624,12 +630,12 @@ private slots:
         QTest::keyClick(frame, Qt::Key_Up, Qt::ControlModifier);
         QCOMPARE(proposals.size(), before);
         PUTGD_TRY_VERIFY(proposals.size() == before + 1);
-        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), QJsonArray({350, 179, 640, 360}));
+        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), QJsonArray({323, 170, 640, 360}));
         // Shift+arrows resize from the bottom-right, inside the canvas.
         QTest::keyClick(frame, Qt::Key_Down, Qt::ShiftModifier);
         QTest::keyClick(frame, Qt::Key_Left, Qt::ShiftModifier);
         frame->commitNudge();
-        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), QJsonArray({350, 179, 630, 370}));
+        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), QJsonArray({323, 170, 639, 361}));
         // Escape clears the selection; arrows then do nothing.
         QTest::keyClick(frame, Qt::Key_Escape);
         QVERIFY(window.inspect()["selectedMaskId"].isNull());
