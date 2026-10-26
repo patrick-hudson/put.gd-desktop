@@ -194,6 +194,17 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="remove") {
   fill(secondary);QPainterPath bin;bin.moveTo(5.5,8);bin.lineTo(18.5,8);bin.lineTo(17.2,21);bin.quadTo(17,22,16,22);bin.lineTo(8,22);bin.quadTo(7,22,6.8,21);bin.closeSubpath();p.drawPath(bin);
   fill(color);rounded(3,5,18,2.5,1);rounded(9,2,6,3.5,1);line(color,1.6);p.drawLine(QPointF(10,11),QPointF(10.4,19));p.drawLine(QPointF(14,11),QPointF(13.6,19));
+ } else if(name=="bucket") {
+  // Object storage (S3, Backblaze B2): a storage drum, its lid and a band.
+  fill(secondary);QPainterPath drum;drum.addRect(QRectF(4,6,16,12));drum.addEllipse(QRectF(4,14,16,8));p.drawPath(drum.simplified());
+  fill(color);p.drawEllipse(QRectF(4,2,16,8));line(color,1.8);p.drawArc(QRectF(4,9.5,16,7),180*16,180*16);
+ } else if(name=="proton") {
+  // Proton Drive: an end-to-end encrypted cloud, a cloud holding a lock.
+  fill(secondary);QPainterPath cloud;cloud.addEllipse(QPointF(8.5,13.5),5.5,5.5);cloud.addEllipse(QPointF(15,10.5),6.5,6.5);cloud.addRoundedRect(QRectF(2,13,20,8),4,4);p.drawPath(cloud.simplified());
+  fill(color);rounded(8.5,13.5,7,6,1.3);line(color,1.8);p.drawArc(QRectF(9.6,9.6,4.8,7.4),0,180*16);
+ } else if(name=="add") {
+  fill(secondary);p.drawEllipse(QRectF(2,2,20,20));
+  line(color,2.5);p.drawLine(QPointF(12,7),QPointF(12,17));p.drawLine(QPointF(7,12),QPointF(17,12));
  } else {
   fill(secondary);QPainterPath file;file.moveTo(5,2);file.lineTo(14,2);file.lineTo(20,8);file.lineTo(20,20);file.quadTo(20,22,18,22);file.lineTo(6,22);file.quadTo(4,22,4,20);file.lineTo(4,4);file.quadTo(4,2,5,2);p.drawPath(file);
   fill(color);QPainterPath fold;fold.moveTo(14,2);fold.lineTo(14,8);fold.lineTo(20,8);fold.closeSubpath();p.drawPath(fold);

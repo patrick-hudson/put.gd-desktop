@@ -88,8 +88,8 @@ QImage iconSpecimen(){
  QImage image(1200,460,QImage::Format_RGB32);image.fill(QColor("#101216"));QPainter p(&image);
  p.setPen(QColor("#e7e9ef"));p.drawText(24,28,"Lift + Duotone · production renderer · synthetic specimen");
  VisualStyle::icon("brand").paint(&p,QRect(24,57,72,72));
- const QStringList names{"region","window","desktop","clipboard","history","destinations","preferences","info","shortcuts","files"};
- for(int i=0;i<names.size();++i){const int x=135+i*105;VisualStyle::icon(names[i]).paint(&p,QRect(x,60,48,48));p.drawText(QRect(x-15,120,92,24),Qt::AlignCenter,names[i]);}
+ const QStringList names{"region","window","desktop","clipboard","history","destinations","preferences","info","shortcuts","bucket","proton","add"};
+ for(int i=0;i<names.size();++i){const int x=135+i*88;VisualStyle::icon(names[i]).paint(&p,QRect(x,60,48,48));p.drawText(QRect(x-15,120,92,24),Qt::AlignCenter,names[i]);}
  p.drawText(24,185,"Green fill");
  for(int i=0;i<5;++i){const int x=155+i*125;VisualStyle::icon("tray",QColor("#62d69b"),i*25).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x,250,72,24),Qt::AlignCenter,QString::number(i*25)+"%");}
  for(int i=0;i<2;++i){const int x=860+i*130;VisualStyle::icon("tray",QColor(i?"#9bbcff":"#ffb4ab")).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x-10,250,92,24),Qt::AlignCenter,i?"Blink off":"Blink on");}
