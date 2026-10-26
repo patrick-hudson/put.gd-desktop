@@ -124,6 +124,10 @@ def screensaver_inactive(desktop):
 
 
 def desktop_services(desktop, apply):
+    if desktop == 'Cinnamon':
+        # This service is demand-activated and may legitimately have no owner.
+        # The required GetActive call below activates it and verifies its state.
+        return
     services = (['org.kde.Solid.PowerManagement', 'org.freedesktop.ScreenSaver']
                 if desktop == 'KDE' else
                 ['org.gnome.ScreenSaver' if desktop == 'GNOME' else 'org.cinnamon.ScreenSaver'])

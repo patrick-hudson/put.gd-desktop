@@ -134,6 +134,13 @@ class GuestPolicyContracts(unittest.TestCase):
             with self.assertRaisesRegex(idle.PolicyError, 'not ready'):
                 idle.desktop_services('KDE', True)
 
+    def test_cinnamon_screensaver_can_be_demand_activated_for_state_readback(self):
+        with patch.object(idle, 'command', return_value='b false') as command:
+            idle.desktop_services('Cinnamon', True)
+            idle.screensaver_inactive('Cinnamon')
+        self.assertEqual(command.call_count, 1)
+        self.assertEqual(command.call_args.args[-1], 'GetActive')
+
     def test_locked_inactive_and_wrong_session_fail(self):
         for locked, active, kind in [('yes', 'yes', 'x11'), ('no', 'no', 'x11'), ('no', 'yes', 'wayland')]:
             values = f'User={os.getuid()}\nSeat=seat0\nType={kind}\nActive={active}\nLockedHint={locked}'
@@ -232,6 +239,42 @@ class GuestPolicyContracts(unittest.TestCase):
             with self.assertRaisesRegex(lab.LabError, 'locked'):
                 lab.start('owned')
             session.assert_not_called()
+
+    def test_failed_launch_stops_even_if_guest_sync_or_receipt_fails(self):
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.object(lab, 'ssh', side_effect=lab.LabError('guest unreachable')), \
+             patch.object(lab, 'reset') as reset:
+            lab.stop_failed_launch(directory)
+            reset.assert_called_once_with(directory)
+            self.assertEqual(json.loads((Path(directory)/'failure-shutdown.json').read_text())['guestSync'], 'failed')
+        with patch.object(lab, 'ssh'), patch.object(lab, 'write_json', side_effect=OSError('disk full')), \
+             patch.object(lab, 'reset') as reset:
+            with self.assertRaises(OSError):
+                lab.stop_failed_launch('owned')
+            reset.assert_called_once_with('owned')
+
+    def test_initial_blank_frames_are_retained_until_visible(self):
+        attempts = []
+        client = SimpleNamespace(width=2, height=1, close=lambda: None)
+        with patch.object(lab, 'screenshot', side_effect=[{'path': 'blank'}, {'path': 'visible'}]), \
+             patch.object(lab, 'ppm', side_effect=[(2, 1, b'\0'*6), (2, 1, b'\0\xff'*3)]), \
+             patch.object(lab.rfb, 'RFB', return_value=client), patch.object(lab.time, 'sleep'):
+            result = lab.visible_guest_output('owned', 'token', 0, 5900, True, attempts)
+        self.assertEqual(result['path'], 'visible')
+        self.assertEqual([x['visible'] for x in attempts], [False, True])
+
+    def test_blank_boundary_and_expired_initial_wait_fail(self):
+        for apply, clock in [(False, [0, .1]), (True, [0, 16])]:
+            attempts = []
+            with patch.object(lab, 'screenshot', return_value={'path': 'blank'}), \
+                 patch.object(lab, 'ppm', return_value=(2, 1, b'\0'*6)), \
+                 patch.object(lab.time, 'monotonic', side_effect=clock), \
+                 patch.object(lab.rfb, 'RFB') as vnc, patch.object(lab.time, 'sleep') as sleep:
+                with self.assertRaisesRegex(lab.LabError, 'witness is blank'):
+                    lab.visible_guest_output('owned', 'token', 0, 5900, apply, attempts)
+                vnc.assert_not_called()
+                sleep.assert_not_called()
+            self.assertEqual(len(attempts), 1)
 
 
 if __name__ == '__main__':

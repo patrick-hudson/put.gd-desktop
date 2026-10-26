@@ -544,6 +544,31 @@ def verify_owned_guest(run):
     return info
 
 
+def visible_guest_output(run, token, head, port, apply, attempts):
+    # A desktop shell can own its bus names before its first frame is painted.
+    # Retain every initial blank attempt; later boundary checks never wait.
+    deadline = time.monotonic() + (15 if apply else 0)
+    count = 0
+    while True:
+        witness = screenshot(run, token + '-attempt' + str(count), head)
+        width, height, pixels = ppm(witness['path'])
+        visible = width > 0 and height > 0 and len(set(pixels)) > 1
+        attempts.append(dict(witness, width=width, height=height, head=head, visible=visible))
+        if visible:
+            break
+        if time.monotonic() >= deadline:
+            raise LabError('Guest visible-output witness is blank')
+        count += 1
+        time.sleep(1)
+    client = rfb.RFB(port)
+    try:
+        if (client.width, client.height) != (width, height):
+            raise LabError('Guest VNC and QMP output extents disagree')
+    finally:
+        client.close()
+    return dict(witness, width=width, height=height, head=head)
+
+
 def guest_preflight(run, *, apply=False, stage='manual'):
     """Configure once, then fail closed on policy/session/output drift at handoffs."""
     info = verify_owned_guest(run)
@@ -561,6 +586,7 @@ def guest_preflight(run, *, apply=False, stage='manual'):
         if apply:
             arguments.append('--apply')
         result = command(ssh_args(run) + [shlex.join(arguments)], input=source.read_text(), timeout=90, check=False)
+        report['policyInvocation'] = {'exitCode': result.returncode, 'stderr': getattr(result, 'stderr', '')[:1000]}
         report['policy'] = json.loads(result.stdout)
         if result.returncode or report['policy'].get('ok') is not True:
             raise LabError('Guest idle/session preflight refused: ' + report['policy'].get('error', 'no policy receipt'))
@@ -570,22 +596,15 @@ def guest_preflight(run, *, apply=False, stage='manual'):
         if not report['outputs']['ok']:
             raise LabError('Guest outputs are not all connected and enabled')
         report['visuals'] = []
+        report['visualAttempts'] = []
         for head in range(heads):
             # QMP supplies a complete frame; RFB damage updates are not a full-frame oracle.
-            witness = screenshot(run, token, head)
-            width, height, pixels = ppm(witness['path'])
-            if width <= 0 or height <= 0 or len(set(pixels)) <= 1:
-                raise LabError('Guest visible-output witness is blank')
-            client = rfb.RFB(5900 + info['vnc_display'] + head)
-            try:
-                if (client.width, client.height) != (width, height):
-                    raise LabError('Guest VNC and QMP output extents disagree')
-            finally:
-                client.close()
-            report['visuals'].append(dict(witness, width=width, height=height, head=head))
+            report['visuals'].append(visible_guest_output(
+                run, token, head, 5900 + info['vnc_display'] + head, apply, report['visualAttempts']))
         # Recheck after output collection, using the real desktop homes again.
         checked = command(ssh_args(run) + [shlex.join([a for a in arguments if a != '--apply'])],
                           input=source.read_text(), timeout=90, check=False)
+        report['afterVisualInvocation'] = {'exitCode': checked.returncode, 'stderr': checked.stderr[:1000]}
         report['afterVisuals'] = json.loads(checked.stdout)
         if checked.returncode or report['afterVisuals'].get('ok') is not True:
             raise LabError('Guest policy/session changed while collecting visible output evidence')
@@ -687,7 +706,11 @@ def launch(args):
                     raise LabError('Guest SSH boot timeout')
                 time.sleep(2)
         public_key = (run / 'identity.pub').read_text().strip()
-        ssh(run, 'umask 077\nmkdir -p ~/.ssh\nprintf "%s\\n" ' + shlex.quote(public_key) + ' >> ~/.ssh/authorized_keys\n', bootstrap=True)
+        # Keep the run key usable when a later failed preflight stops QEMU.
+        # A guest page-cache-only append can otherwise return as a NUL-filled
+        # extent on restart. Separate it from any unterminated existing line.
+        ssh(run, 'umask 077\nmkdir -p ~/.ssh\nprintf "\\n%s\\n" ' + shlex.quote(public_key)
+            + ' >> ~/.ssh/authorized_keys\nsync ~/.ssh/authorized_keys\n', bootstrap=True)
         with QMP(run / 'qmp.sock') as qmp:
             features = qmp.execute('query-commands')
             acceleration_state = qmp.execute('query-kvm')
@@ -699,8 +722,22 @@ def launch(args):
         result['guestPreflight'] = guest_preflight(run, apply=True, stage='launch')
         return result
     except BaseException:
-        reset(run)
+        stop_failed_launch(run)
         raise
+
+
+def stop_failed_launch(run):
+    # Flush first-boot writes before QMP quit. A broken connection or inability
+    # to save the receipt must still stop the owned guest.
+    try:
+        shutdown = {'guestSync': 'completed'}
+        try:
+            ssh(run, 'sync\n', timeout=10, bootstrap=True)
+        except (LabError, OSError, subprocess.TimeoutExpired) as error:
+            shutdown = {'guestSync': 'failed', 'error': str(error)}
+        write_json(Path(run) / 'failure-shutdown.json', shutdown)
+    finally:
+        reset(run)
 
 
 def hash_file(path):
