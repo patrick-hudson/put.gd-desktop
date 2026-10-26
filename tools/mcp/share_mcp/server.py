@@ -55,7 +55,9 @@ RECORDING_CONTROLS = {'start', 'pause', 'resume', 'stop', 'cancel', 'raise'}
 RECORDING_EDIT_OPS = {'setTrim', 'resetTrim', 'addMask', 'updateMask', 'removeMask'}
 # The review window's controls (#283), one per drive_recording_review call.
 REVIEW_ACTIONS = {'inspect', 'seek', 'play', 'pause', 'speed', 'setIn', 'setOut', 'resetTrim', 'addMask', 'selectMask',
-                  'setMaskIn', 'setMaskOut', 'strength', 'removeMask', 'format', 'saveCopyDialog', 'closeFileDialog'}
+                  'setMaskIn', 'setMaskOut', 'strength', 'removeMask', 'format', 'saveCopyDialog', 'closeFileDialog',
+                  'placeMask', 'useSolidCover', 'trimToLimit', 'dismissStatus', 'retryPreview', 'discard', 'keepReviewing',
+                  'confirmDiscard'}
 REVIEW_SPEEDS = {0.5, 1, 2, 4}
 # The put.gd window's file choosers (#259) and the actions on each.
 FILE_DIALOGS = {'editImage', 'historySaveAs', 'outputFolder', 'diagnosticsFolder'}
@@ -345,7 +347,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
     async def drive_recording_review(id: str, action: str, time_us: int | None = None, speed: float | None = None,
                                      kind: str | None = None, rect: list[int] | None = None, mask_id: str | None = None,
                                      strength: int | None = None, format: str | None = None, codec: str | None = None) -> Json:
-        """Work the open Review recording window's controls as a user does, one action per call: inspect (playhead, playing, speed, trim, masks with their timeline bars, selectedMaskId, which contextual mask controls show, status, size, the video's rect and share of the window), seek {time_us}, play, pause, speed {0.5|1|2|4}, setIn / setOut (trim start/end at the playhead, keys I/O), resetTrim, addMask {kind blur|solid, rect [x,y,w,h] canvas pixels; starts at the playhead, runs to the trim end}, selectMask {mask_id, or none to clear}, setMaskIn / setMaskOut (the selected mask's start/end at the playhead, Shift+I/O), strength {2-64, selected blur}, removeMask (selected, Delete), format {format, codec}, saveCopyDialog (opens Save copy… as the button does: the desktop's file chooser through the XDG portal, or the themed fallback dialog; inspect's fileDialog shows open, backend portal|fallback, fallbackReason and the last result, and a file picked there is saved like recording.saveCopy) and closeFileDialog (closes it as a cancel). Edits go through the resident like the window's own; the reply is the window state plus the resident's edit after it. Uploads nothing; use upload_recording."""
+        """Work the open Review recording window's controls as a user does, one action per call: inspect (playhead, playing, speed, trim, masks with their timeline bars, selectedMaskId, which contextual mask controls show, status, size, the video's rect and share of the window), seek {time_us}, play, pause, speed {0.5|1|2|4}, setIn / setOut (trim start/end at the playhead, keys I/O), resetTrim, addMask {kind blur|solid, optional rect [x,y,w,h] canvas pixels, else centred at half the frame's width and height as Enter places it; starts at the playhead, runs to the trim end}, selectMask {mask_id, or none to clear}, placeMask {rect; the selected mask's rectangle, as a drag or the frame's arrow keys set it}, setMaskIn / setMaskOut (the selected mask's start/end at the playhead, Shift+I/O), strength {2-64, selected blur}, removeMask (selected, Delete), useSolidCover (turns the selected blur, or an armed Add blur, into a solid cover), format {format, codec}, trimToLimit (keeps the first part a GIF/WebP length limit allows), dismissStatus (clears an error or result in the status row; inspect's statusRow lists each line's text, tone and its actions as the drive calls they make), retryPreview (decodes the playhead frame again; inspect's preview shows error, stale and frameTimeUs), discard (asks as Discard… and the close button do; inspect's discardConfirmation), keepReviewing / confirmDiscard (answer it; control_recording cancel discards without asking), saveCopyDialog (opens Save copy… as the button does: the desktop's file chooser through the XDG portal, or the themed fallback dialog; inspect's fileDialog shows open, backend portal|fallback, fallbackReason and the last result, and a file picked there is saved like recording.saveCopy) and closeFileDialog (closes it as a cancel). Edits go through the resident like the window's own; the reply is the window state plus the resident's edit after it. Uploads nothing; use upload_recording."""
         if not identifier(id) or action not in REVIEW_ACTIONS:
             return invalid()
         params: Json = {'id': id, 'action': action}
@@ -380,8 +382,8 @@ def create_server(adapter: CliAdapter) -> FastMCP:
                 return invalid()
             params['format'] = format
             params['codec'] = codec or ''
-        required = {'seek': 'time', 'speed': 'speed', 'addMask': 'rect', 'strength': 'strength', 'format': 'format'}
-        if action in required and required[action] not in params or (action == 'addMask' and 'kind' not in params):
+        required = {'seek': 'time', 'speed': 'speed', 'addMask': 'kind', 'placeMask': 'rect', 'strength': 'strength', 'format': 'format'}
+        if action in required and required[action] not in params:
             return invalid()
         return await adapter.call('recording.review', params)
 

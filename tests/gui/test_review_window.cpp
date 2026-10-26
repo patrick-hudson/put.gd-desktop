@@ -11,6 +11,7 @@
 #include <QComboBox>
 #include <QFileDialog>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <QMouseEvent>
@@ -36,6 +37,10 @@ ReviewWindow::Options options() {
     return o;
 }
 RecordingConfig config() { RecordingConfig c; c.format = "mp4"; c.codec = "h264"; c.fps = 30; return c; }
+QPushButton* buttonNamed(QWidget& window, const QString& text) {
+    for (auto* button : window.findChildren<QPushButton*>()) if (button->text() == text && button->isVisible()) return button;
+    return nullptr;
+}
 RecordingMask mask(const QString& id, const QString& kind, qint64 start, qint64 end) {
     RecordingMask m;
     m.id = id;
@@ -140,6 +145,14 @@ private slots:
         QCOMPARE(state["timeline"].toObject()["lanes"].toInt(), 2);
         qInfo("review two masks share %.3f timeline %d", state["video"].toObject()["share"].toDouble(), state["timeline"].toObject()["rect"].toArray()[3].toInt());
         QVERIFY2(state["video"].toObject()["share"].toDouble() >= 0.6, qPrintable(QString::number(state["video"].toObject()["share"].toDouble())));
+        // The status row costs height only while it shows (here, the blur guidance).
+        window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
+        QApplication::processEvents();
+        qInfo("review with a status line share %.3f", window.inspect()["video"].toObject()["share"].toDouble());
+        QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53);
+        window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
+        QApplication::processEvents();
+        QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.6);
         // The minimum leaves the frame usable and fits a small laptop screen.
         qInfo("review minimum %dx%d", window.minimumSizeHint().width(), window.minimumSizeHint().height());
         QVERIFY(window.minimumSizeHint().width() <= 760 && window.minimumSizeHint().height() <= 420);
@@ -334,7 +347,7 @@ private slots:
             // No two shortcuts share a key; ambiguous shortcuts never fire.
             QList<QKeySequence> keys;
             for (auto* s : window.findChildren<QShortcut*>()) { QVERIFY2(!keys.contains(s->key()), qPrintable(s->key().toString())); keys.append(s->key()); }
-            for (const auto& key : {QKeySequence(Qt::Key_Space), QKeySequence(Qt::Key_I), QKeySequence(Qt::Key_O), QKeySequence(Qt::SHIFT | Qt::Key_I), QKeySequence(Qt::SHIFT | Qt::Key_O), QKeySequence(Qt::Key_Delete)}) QVERIFY2(keys.contains(key), qPrintable(key.toString()));
+            for (const auto& key : {QKeySequence(Qt::Key_I), QKeySequence(Qt::Key_O), QKeySequence(Qt::SHIFT | Qt::Key_I), QKeySequence(Qt::SHIFT | Qt::Key_O), QKeySequence(Qt::Key_Delete)}) QVERIFY2(keys.contains(key), qPrintable(key.toString()));
             // The tools are icon buttons with a name and a tooltip.
             const auto tools = window.findChildren<QToolButton*>();
             QVERIFY(tools.size() >= 9);
@@ -409,6 +422,245 @@ private slots:
         QCOMPARE(drive({{"action", "setIn"}}).code, QString("recording_state"));
         QVERIFY(drive({{"action", "inspect"}}).state["exporting"].toBool());
         QCOMPARE(proposals.size(), count);
+    }
+    // Discard…, the close button and drive's discard ask before the recording
+    // and its edits go; the safe answer is the default and Escape.
+    void discardAsksBeforeTheRecordingGoes() {
+        ReviewWindow window(options(), config());
+        QSignalSpy cancelled(&window, &ReviewWindow::cancelRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* discard = window.findChild<QPushButton*>("discard");
+        QVERIFY(discard && discard->text() == QString::fromUtf8("Discard…"));
+        discard->click();
+        QMessageBox* box = nullptr;
+        PUTGD_TRY_VERIFY((box = window.findChild<QMessageBox*>("confirmAction")) && box->isVisible());
+        QCOMPARE(cancelled.size(), 0);
+        QVERIFY(box->text().startsWith(QStringLiteral("Discard this recording and its edits?")));
+        QCOMPARE(box->button(QMessageBox::Yes)->text(), QString("Discard recording"));
+        QCOMPARE(box->defaultButton()->text(), QString("Keep reviewing"));
+        QCOMPARE(box->escapeButton(), static_cast<QAbstractButton*>(box->button(QMessageBox::Cancel)));
+        QVERIFY(window.inspect()["discardConfirmation"].toObject()["open"].toBool());
+        // While it is open, other controls wait.
+        QCOMPARE(window.drive({{"action", "setIn"}}).code, QString("recording_state"));
+        QTest::keyClick(box, Qt::Key_Escape);
+        PUTGD_TRY_VERIFY(!window.inspect()["discardConfirmation"].toObject()["open"].toBool());
+        QCOMPARE(cancelled.size(), 0);
+        QVERIFY(window.isVisible());
+        // The window's close button asks the same question and stays open.
+        window.close();
+        QVERIFY(window.isVisible());
+        QVERIFY(window.inspect()["discardConfirmation"].toObject()["open"].toBool());
+        QVERIFY(window.drive({{"action", "keepReviewing"}}).code.isEmpty());
+        QCOMPARE(cancelled.size(), 0);
+        QCOMPARE(window.drive({{"action", "confirmDiscard"}}).code, QString("recording_state"));
+        // Through drive: ask, then discard; one cancel.
+        QVERIFY(window.drive({{"action", "discard"}}).state["discardConfirmation"].toObject()["open"].toBool());
+        QVERIFY(window.drive({{"action", "confirmDiscard"}}).code.isEmpty());
+        QCOMPARE(cancelled.size(), 1);
+        // Once discarded, closing asks nothing more.
+        window.close();
+        QVERIFY(!window.isVisible());
+        QCOMPARE(cancelled.size(), 1);
+    }
+    // A frame that could not be decoded says so over the frame until a refresh
+    // succeeds; an earlier frame left on screen is marked stale.
+    void previewFailureShowsOverTheFrame() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        // The fixture's clip does not exist: the first refresh fails.
+        PUTGD_TRY_VERIFY(window.inspect()["preview"].toObject()["error"].isString());
+        auto preview = window.inspect()["preview"].toObject();
+        QCOMPARE(preview["error"].toString(), QString("Preview unavailable at 0:00.00"));
+        QVERIFY(!preview["stale"].toBool());
+        auto* card = window.findChild<QWidget*>("previewError");
+        auto* retry = window.findChild<QPushButton*>("retryPreview");
+        QVERIFY(card && card->isVisible() && retry && retry->isVisible());
+        auto* frame = window.findChild<FrameView*>();
+        QVERIFY(frame->rect().contains(card->geometry()));
+        QVERIFY(frame->accessibleDescription().startsWith(QStringLiteral("Preview unavailable")));
+        // A decoded frame clears it; the next failure marks that frame as stale.
+        QImage image(1280, 720, QImage::Format_RGB32);
+        image.fill(Qt::darkCyan);
+        frame->setFrame(image, 0);
+        QVERIFY(!card->isVisible());
+        QVERIFY(window.inspect()["preview"].toObject()["error"].isNull());
+        QVERIFY(window.drive({{"action", "seek"}, {"time", 4000000}}).code.isEmpty());
+        PUTGD_TRY_VERIFY(window.inspect()["preview"].toObject()["stale"].toBool());
+        preview = window.inspect()["preview"].toObject();
+        QCOMPARE(preview["error"].toString(), QString("Preview unavailable at 0:04.00"));
+        QCOMPARE(preview["frameTimeUs"].toDouble(), 0.0);
+        QVERIFY(window.findChild<QLabel*>("previewErrorText")->text().contains(QStringLiteral("earlier frame (0:00.00)")));
+        // Retry tries again at once and, failing, keeps the error.
+        retry->click();
+        QVERIFY(window.inspect()["preview"].toObject()["stale"].toBool());
+        QVERIFY(window.drive({{"action", "retryPreview"}}).state["preview"].toObject()["error"].isString());
+    }
+    // Errors and warnings get their own wrapping row with actions, only when
+    // needed; the audio summary beside Output stays short and whole.
+    void statusRowAndAudioSummary() {
+        auto o = options();
+        o.audioRecorded = true;
+        ReviewWindow window(o, config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        QSignalSpy configs(&window, &ReviewWindow::configChanged);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* row = window.findChild<QWidget*>("statusRow");
+        auto* audio = window.findChild<QLabel*>("audioSummary");
+        QVERIFY(row && audio);
+        QVERIFY(!row->isVisible());
+        QCOMPARE(window.inspect()["statusRow"].toArray().size(), 0);
+        QCOMPARE(audio->text(), QString("System audio"));
+        QVERIFY(audio->width() >= audio->sizeHint().width());
+        // H.265: a warning with its fix; the fix is the format control's own path.
+        QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}}).code.isEmpty());
+        auto lines = window.inspect()["statusRow"].toArray();
+        QCOMPARE(lines.size(), 1);
+        QCOMPARE(lines[0].toObject()["tone"].toString(), QString("warning"));
+        QVERIFY(row->isVisible());
+        auto* fix = buttonNamed(window, "Use MP4 (H.264)");
+        QVERIFY(fix);
+        fix->click();
+        QCOMPARE(window.inspect()["format"].toObject()["codec"].toString(), QString("h264"));
+        PUTGD_TRY_VERIFY(!row->isVisible());
+        // A long export error wraps in full at the minimum width and stays until dismissed.
+        window.resize(window.minimumSizeHint());
+        const QString failure = QStringLiteral("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
+        window.showError(failure);
+        QApplication::processEvents();
+        QVERIFY(row->isVisible());
+        QLabel* text = nullptr;
+        for (auto* label : row->findChildren<QLabel*>("status")) if (label->isVisible()) text = label;
+        QVERIFY(text && text->wordWrap() && text->text() == failure);
+        QVERIFY2(text->height() > text->fontMetrics().height() * 3 / 2, qPrintable(QString::number(text->height())));
+        QVERIFY(window.rect().contains(QRect(text->mapTo(&window, QPoint()), text->size())));
+        QCOMPARE(window.inspect()["status"].toString(), failure);
+        QVERIFY(window.drive({{"action", "seek"}, {"time", 3000000}}).code.isEmpty());
+        QCOMPARE(window.inspect()["status"].toString(), failure);
+        QVERIFY(window.drive({{"action", "dismissStatus"}}).state["statusRow"].toArray().isEmpty());
+        window.resize(ReviewWindow::defaultSize());
+        // GIF: silent, and over its length limit; the trim it needs is one click.
+        window.setLimits(5000000, 4096);
+        QVERIFY(window.drive({{"action", "format"}, {"format", "gif"}, {"codec", ""}}).code.isEmpty());
+        QCOMPARE(audio->text(), QString("No audio in GIF"));
+        lines = window.inspect()["statusRow"].toArray();
+        QCOMPARE(lines.size(), 1);
+        QVERIFY(lines[0].toObject()["text"].toString().startsWith(QStringLiteral("GIF is limited to 5 s")));
+        auto* keep = buttonNamed(window, "Keep the first 5 s");
+        QVERIFY(keep);
+        keep->click();
+        QCOMPARE(proposed(proposals), QJsonObject({{"op", "setTrim"}, {"start", 0.0}, {"end", 5000000.0}}));
+        Q_UNUSED(configs);
+    }
+    // Blur is a visual effect: the editor's guidance shows, readable without
+    // hover, while a blur is placed or selected, with a switch to Solid cover.
+    void blurGuidanceAndOneNameForSolidCover() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.setEdit(twoMasks());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        const QString guidance = QStringLiteral("Blur is a visual effect. Use Solid cover for private information.");
+        QVERIFY(!window.inspect()["status"].toString().contains(guidance));
+        auto* list = window.findChild<QComboBox*>("masks");
+        QCOMPARE(list->itemText(1), QString("Solid cover 2"));
+        QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}).state["status"].toString() == guidance);
+        auto* fix = buttonNamed(window, "Use Solid cover");
+        QVERIFY(fix);
+        fix->click();
+        const auto command = proposed(proposals);
+        QCOMPARE(command["op"].toString(), QString("updateMask"));
+        QCOMPARE(command["maskId"].toString(), QString("m-blur"));
+        QCOMPARE(command["mask"].toObject()["kind"].toString(), QString("solid"));
+        QVERIFY(!command["mask"].toObject().contains("strength"));
+        // Arming Add blur shows it too; its action arms the solid cover instead.
+        QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}).code.isEmpty());
+        QToolButton* addBlur = nullptr;
+        for (auto* b : window.findChildren<QToolButton*>()) if (b->accessibleName() == "Add blur") addBlur = b;
+        QVERIFY(addBlur);
+        addBlur->click();
+        QCOMPARE(window.inspect()["status"].toString(), guidance);
+        QVERIFY(window.drive({{"action", "useSolidCover"}}).state["armed"].toString() == "solid");
+        QVERIFY(!window.inspect()["status"].toString().contains(guidance));
+        // One name for opaque redaction across controls.
+        for (auto* b : window.findChildren<QToolButton*>()) QVERIFY2(!b->toolTip().contains(QStringLiteral("the cover")), qPrintable(b->toolTip()));
+    }
+    // Keyboard-only masks: Enter places an armed mask centred at half the
+    // frame's size; with the frame focused, arrows move the selected mask,
+    // Shift+arrows resize it, Ctrl makes the step 1 px; one edit per burst.
+    void masksByKeyboard() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.activateWindow();
+        QVERIFY(putgd::test::waitForWindowActive(&window));
+        auto* frame = window.findChild<FrameView*>();
+        QVERIFY(frame && frame->focusPolicy() == Qt::StrongFocus);
+        QToolButton* addSolid = nullptr;
+        for (auto* b : window.findChildren<QToolButton*>()) if (b->accessibleName() == "Add solid cover") addSolid = b;
+        QVERIFY(addSolid);
+        addSolid->setFocus(Qt::TabFocusReason);
+        QTest::keyClick(addSolid, Qt::Key_Space);
+        QCOMPARE(window.inspect()["armed"].toString(), QString("solid"));
+        QTest::keyClick(addSolid, Qt::Key_Return);
+        auto added = proposed(proposals);
+        QCOMPARE(added["op"].toString(), QString("addMask"));
+        QCOMPARE(added["mask"].toObject()["rect"].toArray(), QJsonArray({320, 180, 640, 360}));
+        QVERIFY(window.inspect()["armed"].isNull());
+        QVERIFY(frame->hasFocus());
+        // The resident's answer selects it; arrows nudge it as one proposal.
+        RecordingEdit edit;
+        edit.revision = 2;
+        RecordingMask m = mask("m-key", "solid", 0, duration);
+        m.rect = QRect(320, 180, 640, 360);
+        edit.masks = {m};
+        window.setEdit(edit);
+        QVERIFY(frame->accessibleDescription().startsWith(QStringLiteral("Solid cover 1 selected: 640 × 360 at 320, 180")));
+        const auto before = proposals.size();
+        for (int i = 0; i < 3; ++i) QTest::keyClick(frame, Qt::Key_Right);
+        QTest::keyClick(frame, Qt::Key_Up, Qt::ControlModifier);
+        QCOMPARE(proposals.size(), before);
+        PUTGD_TRY_VERIFY(proposals.size() == before + 1);
+        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), QJsonArray({350, 179, 640, 360}));
+        // Shift+arrows resize from the bottom-right, inside the canvas.
+        QTest::keyClick(frame, Qt::Key_Down, Qt::ShiftModifier);
+        QTest::keyClick(frame, Qt::Key_Left, Qt::ShiftModifier);
+        frame->commitNudge();
+        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), QJsonArray({350, 179, 630, 370}));
+        // Escape clears the selection; arrows then do nothing.
+        QTest::keyClick(frame, Qt::Key_Escape);
+        QVERIFY(window.inspect()["selectedMaskId"].isNull());
+        const auto after = proposals.size();
+        QTest::keyClick(frame, Qt::Key_Right);
+        frame->commitNudge();
+        QCOMPARE(proposals.size(), after);
+        // Agents: addMask without a rect is the centred mask; placeMask sets the selected one's.
+        QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
+        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), QJsonArray({320, 180, 640, 360}));
+        QCOMPARE(window.drive({{"action", "placeMask"}, {"rect", QJsonArray{0, 0, 10, 10}}}).code, QString("invalid_request"));
+        QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "m-key"}}).code.isEmpty());
+        QVERIFY(window.drive({{"action", "placeMask"}, {"rect", QJsonArray{8, 8, 100, 50}}}).code.isEmpty());
+        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), QJsonArray({8, 8, 100, 50}));
+        QCOMPARE(window.drive({{"action", "placeMask"}, {"rect", QJsonArray{1200, 8, 100, 50}}}).code, QString("invalid_request"));
+    }
+    // Timecodes in Plex Mono (as on the recording bar), and visible Trim/Mask groups.
+    void timecodesAreMonoAndGroupsAreNamed() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        for (const auto* name : {"time", "muted"}) {
+            QLabel* label = nullptr;
+            for (auto* l : window.findChildren<QLabel*>(name)) if (l->accessibleName() == "Playhead time" || l->accessibleName() == "Kept interval") label = l;
+            QVERIFY2(label, name);
+            QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont()).family());
+            QVERIFY(label->width() >= label->sizeHint().width());
+        }
+        for (const auto* name : {"trimGroup", "maskGroup"}) { auto* label = window.findChild<QLabel*>(name); QVERIFY2(label && label->isVisible(), name); }
+        QCOMPARE(window.findChild<QLabel*>("trimGroup")->text(), QString("Trim"));
+        QCOMPARE(window.findChild<QLabel*>("maskGroup")->text(), QString("Mask"));
     }
     // #259: Save copy… opens the shared chooser; this test never asks a portal.
     void saveCopyDialogIsDrivenAndSavesTheChosenPath() {

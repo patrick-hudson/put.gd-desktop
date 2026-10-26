@@ -648,7 +648,9 @@ void RecordSession::exportClip(const QJsonObject& params, Reply reply) {
         thread->deleteLater();
         if (exportThread_ == thread) exportThread_ = nullptr;
         exportCancel_.reset();
-        if (review_) review_->setExporting(false, *error ? QStringLiteral("Export failed: %1").arg(error->message) : QStringLiteral("Exported %1 (%2 KiB)").arg(request.config.format.toUpper()).arg(result->bytes / 1024));
+        // A failure is an error in the review's status row, kept until dismissed.
+        if (review_) review_->setExporting(false, *error ? QString() : QStringLiteral("Exported %1 (%2 KiB)").arg(request.config.format.toUpper()).arg(result->bytes / 1024));
+        if (review_ && *error) review_->showError(QStringLiteral("Export failed: %1").arg(error->message));
         if (*error) { QFile::remove(request.output); reply(*error, {}); return; }
         reply({}, {{"bytes", double(result->bytes)}, {"durationUs", double(result->durationUs)}, {"frames", result->frames}, {"videoEncoder", result->videoEncoder}, {"audioEncoder", result->audioEncoder}, {"size", sizeJson(result->size)}});
     });

@@ -325,6 +325,12 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'selectMask'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'selectMask', 'maskId': None}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'strength', 'strength': 24}, 'recording.review', {'id': 'synthetic-operation', 'action': 'strength', 'strength': 24}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'format', 'format': 'webm', 'codec': 'vp9'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'format', 'format': 'webm', 'codec': 'vp9'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'blur'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'blur'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'placeMask', 'rect': [8, 8, 100, 50]}, 'recording.review', {'id': 'synthetic-operation', 'action': 'placeMask', 'rect': [8, 8, 100, 50]}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'useSolidCover'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'useSolidCover'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'retryPreview'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'retryPreview'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'discard'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'discard'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'confirmDiscard'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'confirmDiscard'}),
                 ]
                 for name, args, method, params in cases:
                     await call(name, args)
@@ -366,7 +372,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'upload'}),
                                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'seek'}),
                                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'speed', 'speed': 3}),
-                                   ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'blur'}),
+                                   ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'addMask'}),
+                                   ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'placeMask'}),
                                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'pixelate', 'rect': [0, 0, 4, 4]}),
                                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'strength', 'strength': 99})]:
                     before = len(self.calls)

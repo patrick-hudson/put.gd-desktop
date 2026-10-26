@@ -13,7 +13,9 @@
 
 class QComboBox;
 class QLabel;
+class QMessageBox;
 class QPushButton;
+class QVBoxLayout;
 class QShortcut;
 class QSpinBox;
 class QThread;
@@ -23,12 +25,22 @@ namespace putgd::Graphite { class WindowHeader; }
 
 namespace putgd::record {
 // Paints the preview frame scaled to fit and lets the user create, select,
-// move and resize mask rectangles in canvas pixels.
+// move and resize mask rectangles in canvas pixels, with the pointer or, with
+// focus, the keyboard: arrows move the selected mask, Shift+arrows resize it
+// (10 px steps, 1 px with Ctrl), Escape clears the selection.
 class FrameView final : public QWidget {
     Q_OBJECT
 public:
     explicit FrameView(QWidget* parent = nullptr);
+    // A decoded frame; it also clears a preview error.
     void setFrame(const QImage&, qint64 timeUs);
+    // A failed refresh: the message over the frame with Retry preview, and a
+    // frame still shown dimmed and marked as an earlier one. Empty clears it.
+    void setPreviewError(const QString& message);
+    QString previewError() const { return error_; }
+    bool stale() const { return !error_.isEmpty() && !frame_.isNull(); }
+    bool hasFrame() const { return !frame_.isNull(); }
+    qint64 frameTime() const { return timeUs_; }
     void setCanvas(const QSize& canvas) { canvas_ = canvas; update(); }
     void setMasks(const QList<RecordingMask>& masks, const QString& selected);
     void armCreate(const QString& kind) { armed_ = kind; setCursor(Qt::CrossCursor); update(); }
@@ -36,27 +48,46 @@ public:
     const QString& armed() const { return armed_; }
     // Where the frame is drawn, in this widget's coordinates.
     QRect imageRect() const;
+    // The mask Enter places: centred, half the frame's width and height.
+    QRect defaultMaskRect() const;
+    // Proposes a keyboard nudge that is still waiting for the keys to stop.
+    void commitNudge();
     QSize sizeHint() const override { return {640, 360}; }
 signals:
     void maskCreated(const QString& kind, const QRect& rect);
     void maskMoved(const QString& id, const QRect& rect);
     void maskSelected(const QString& id);
+    void retryRequested();
 protected:
     void paintEvent(QPaintEvent*) override;
     void mousePressEvent(QMouseEvent*) override;
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
+    void keyPressEvent(QKeyEvent*) override;
+    void focusInEvent(QFocusEvent*) override;
+    void focusOutEvent(QFocusEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
 private:
     QPointF toCanvas(const QPointF&) const;
     QRectF toView(const QRect&) const;
+    QRect bounds() const;
+    void placeErrorCard();
     QImage frame_;
     qint64 timeUs_ = 0;
     QSize canvas_;
     QList<RecordingMask> masks_;
-    QString selected_, armed_;
+    QString selected_, armed_, error_;
     enum class Drag { None, Create, Move, Resize } drag_ = Drag::None;
     QPointF anchor_, current_;
     QRect original_;
+    // Keyboard nudges show at once and are proposed as one edit once the keys
+    // stop, so a held arrow never races the resident's revisions.
+    QTimer nudge_;
+    QRect nudgeFrom_;
+    bool nudging_ = false;
+    QWidget* errorCard_ = nullptr;
+    QLabel* errorText_ = nullptr;
+    QPushButton* retry_ = nullptr;
 };
 
 // #283: the one timeline under the frame. The track is the whole clip with the
@@ -112,22 +143,6 @@ private:
     qint64 dragStart_ = 0, dragEnd_ = 0;
 };
 
-// A one-line label that elides instead of widening the window; the full text
-// is its tooltip.
-class ElidedLabel final : public QWidget {
-public:
-    explicit ElidedLabel(QWidget* parent = nullptr);
-    void setText(const QString&);
-    QString text() const { return text_; }
-    void clear() { setText({}); }
-    QSize sizeHint() const override;
-    QSize minimumSizeHint() const override;
-protected:
-    void paintEvent(QPaintEvent*) override;
-private:
-    QString text_;
-};
-
 // The private review: scrub, trim, timed masks, then Upload or Save copy.
 // Edits are proposed to the resident as events and the resident's answer
 // (setEdit) is what this window displays; nothing uploads from here. Upload
@@ -141,6 +156,7 @@ public:
     void setEdit(const RecordingEdit&);
     void setConfig(const RecordingConfig&);
     void setExporting(bool exporting, const QString& label);
+    // An operational error in the status row, kept until dismissed or a new edit.
     void showError(const QString& message);
     // A standing banner above the frame (why the recording stopped); empty hides it.
     void setNotice(const QString& text);
@@ -150,8 +166,9 @@ public:
     void setLimits(qint64 animationMaxUs, int animationMaxEdge);
     // #283: the review session method (recording.review) drives the window as a
     // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|resetTrim|
-    // addMask|selectMask|setMaskIn|setMaskOut|strength|removeMask|format|
-    // saveCopyDialog|closeFileDialog, ...}.
+    // addMask|selectMask|placeMask|setMaskIn|setMaskOut|strength|removeMask|
+    // useSolidCover|format|trimToLimit|dismissStatus|retryPreview|
+    // saveCopyDialog|closeFileDialog|discard|keepReviewing|confirmDiscard, ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
     // window's state (inspect) after the action, or an error.
     struct DriveResult { QString code, message; QJsonObject state; };
@@ -171,7 +188,22 @@ signals:
 protected:
     void closeEvent(QCloseEvent*) override;
     void hideEvent(QHideEvent*) override;
+    void keyPressEvent(QKeyEvent*) override;
 private:
+    // One line of the status row: an error, warning or notice with the actions
+    // that resolve it; each action is the drive() call the button makes.
+    struct StatusEntry {
+        QString text, tone;
+        QList<QPair<QString, QJsonObject>> actions;
+        bool operator==(const StatusEntry&) const = default;
+    };
+    QList<StatusEntry> statusEntries() const;
+    void refreshStatus();
+    // Discard, the close button and the drive's discard ask before anything is
+    // lost; recording.cancel (an agent's explicit cancel) never asks.
+    void askDiscard();
+    void answerDiscard(bool discard);
+    void useSolidCover();
     // Save copy…: the desktop's chooser (#259); false while one is open or exporting.
     bool chooseCopy();
     void refreshFrame();
@@ -205,8 +237,13 @@ private:
     Graphite::WindowHeader* header_ = nullptr;
     FrameView* view_ = nullptr;
     ReviewTimeline* timeline_ = nullptr;
-    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *strengthLabel_ = nullptr;
-    ElidedLabel* status_ = nullptr;
+    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *strengthLabel_ = nullptr, *audio_ = nullptr;
+    // Errors, warnings and privacy guidance with their actions; shown only when there are any.
+    QWidget* statusRow_ = nullptr;
+    QVBoxLayout* statusLines_ = nullptr;
+    QList<StatusEntry> shownStatus_;
+    StatusEntry message_;
+    QPointer<QMessageBox> discard_;
     QToolButton* play_ = nullptr;
     QComboBox* speed_ = nullptr;
     // The worker deletes itself when it finishes; the guard forgets it then, so
@@ -218,7 +255,7 @@ private:
     QPushButton *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
     FileDialog* chooser_ = nullptr;
     QWidget *maskTools_ = nullptr;
-    QShortcut* escape_ = nullptr;
+    QShortcut *escape_ = nullptr, *place_ = nullptr, *placeEnter_ = nullptr;
     QSpinBox* strength_ = nullptr;
     QComboBox* format_ = nullptr;
     QComboBox* masks_ = nullptr;
