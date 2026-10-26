@@ -1,5 +1,6 @@
 #include "EditorCanvas.h"
 #include "ui/Theme.h"
+#include <QAccessible>
 #include <QApplication>
 #include <QFontMetrics>
 #include <QKeyEvent>
@@ -17,11 +18,30 @@ namespace putgd::editor {
 namespace {
 constexpr double minimumZoom=0.02,maximumZoom=32.0;
 constexpr int handlePixels=9;
-// The scheme's colours at paint time (#60): the canvas behind the image, the
-// accent for crop and selection, and the dimmed area outside a crop.
+// The scheme's colours at paint time (#60): the canvas behind the image and
+// the accent of the keyboard focus ring around it.
 QColor canvasBackground(){return Theme::current().bg;}
 QColor accent(){return Theme::current().accent;}
-QColor dim(){auto colour=Theme::current().bg;colour.setAlpha(170);return colour;}
+// Guides drawn over the image read on pale and dark content alike, whatever
+// the app theme: a dark under-stroke beneath an amber (or white) over-stroke,
+// as the recording review outlines its masks. Outside a crop is darkened.
+QColor dim(){return QColor(0,0,0,140);}
+QColor guide(){return Theme::brandAccent();}
+QColor underStroke(){return QColor(0,0,0,170);}
+void dualRect(QPainter& painter,const QRectF& r,const QColor& over,qreal width,Qt::PenStyle style=Qt::SolidLine){
+ painter.setBrush(Qt::NoBrush);
+ painter.setPen(QPen(underStroke(),width+2,Qt::SolidLine,Qt::SquareCap,Qt::MiterJoin));painter.drawRect(r);
+ painter.setPen(QPen(over,width,style,Qt::SquareCap,Qt::MiterJoin));painter.drawRect(r);
+}
+void dualLine(QPainter& painter,const QPointF& a,const QPointF& b,const QColor& over,Qt::PenStyle style){
+ painter.setPen(QPen(underStroke(),1));painter.drawLine(a,b);
+ painter.setPen(QPen(over,1,style));painter.drawLine(a,b);
+}
+QString kindLabel(Shape::Kind kind){
+ switch(kind){case Shape::Kind::Redact:return "Redaction";case Shape::Kind::Blur:return "Blur";case Shape::Kind::Arrow:return "Arrow";
+ case Shape::Kind::Rectangle:return "Rectangle";case Shape::Kind::Highlight:return "Highlight";case Shape::Kind::Text:return "Text label";}
+ return "Mark";
+}
 double distanceToSegment(const QPointF& p,const QPointF& a,const QPointF& b){
  const QPointF ab=b-a;const double length=QPointF::dotProduct(ab,ab);
  if(length<=0)return QLineF(p,a).length();
@@ -34,6 +54,9 @@ Qt::CursorShape resizeCursor(int handle){return handle==0||handle==4?Qt::SizeFDi
 EditorCanvas::EditorCanvas(EditDocument& doc,QWidget* parent):QWidget(parent),doc_(doc){
  setFocusPolicy(Qt::StrongFocus);setMouseTracking(true);setAttribute(Qt::WA_OpaquePaintEvent);
  setMinimumSize(320,240);setAccessibleName("Image being edited");
+ // Screen readers hear the selection, or the crop, and the keys that act on it.
+ connect(this,&EditorCanvas::selectionChanged,this,&EditorCanvas::announce);connect(this,&EditorCanvas::changed,this,&EditorCanvas::announce);
+ announce();
 }
 
 void EditorCanvas::setTool(Tool tool){
@@ -48,6 +71,7 @@ void EditorCanvas::setTool(Tool tool){
  drag_=Drag::None;
  setCursor(tool_==Tool::Select?Qt::ArrowCursor:Qt::CrossCursor);
  if(fitted_)fit();else update();
+ announce();
 }
 
 void EditorCanvas::setStyle(const ToolStyle& style){style_=style;update();}
@@ -86,6 +110,9 @@ void EditorCanvas::zoomBy(double factor,QPointF anchor){
  offset_=anchor-(image-QPointF(visibleBounds().topLeft()))*scale_;
  fitted_=false;clampOffset();update();emit viewChanged();
 }
+void EditorCanvas::setZoom(double scale){zoomBy(scale/scale_);}
+void EditorCanvas::panBy(const QPointF& delta){offset_+=delta;fitted_=false;clampOffset();update();emit viewChanged();}
+QRect EditorCanvas::visibleImageRect() const {return boxFrom(toImage(QPointF(0,0)),toImage(QPointF(width(),height()))).intersected(visibleBounds());}
 void EditorCanvas::clampOffset(){
  const auto bounds=visibleBounds();const double w=bounds.width()*scale_,h=bounds.height()*scale_;
  auto axis=[](double offset,double content,double room){return content<=room?(room-content)/2:std::clamp(offset,room-content-48,48.0);};
@@ -236,16 +263,18 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  if(tool_==Tool::Crop){
   const auto crop=toWidget(cropDraft_);QPainterPath outside;outside.addRect(target);outside.addRect(crop);
   painter.fillPath(outside,dim());
-  painter.setPen(QPen(accent(),2));painter.setBrush(Qt::NoBrush);painter.drawRect(crop);
-  painter.setPen(QPen([]{auto colour=Theme::onMedia();colour.setAlpha(90);return colour;}(),1,Qt::DashLine));
-  for(int i=1;i<3;++i){painter.drawLine(QPointF(crop.left()+crop.width()*i/3,crop.top()),QPointF(crop.left()+crop.width()*i/3,crop.bottom()));painter.drawLine(QPointF(crop.left(),crop.top()+crop.height()*i/3),QPointF(crop.right(),crop.top()+crop.height()*i/3));}
+  // Thirds: white dashes over a dark line; the frame: amber over dark.
+  const QColor thirds(255,255,255,200);
+  for(int i=1;i<3;++i){dualLine(painter,QPointF(crop.left()+crop.width()*i/3,crop.top()),QPointF(crop.left()+crop.width()*i/3,crop.bottom()),thirds,Qt::DashLine);dualLine(painter,QPointF(crop.left(),crop.top()+crop.height()*i/3),QPointF(crop.right(),crop.top()+crop.height()*i/3),thirds,Qt::DashLine);}
+  dualRect(painter,crop,guide(),2);
  }
- auto handles=[&](const QList<QPointF>& points){painter.setPen(QPen(accent(),1.5));painter.setBrush(canvasBackground());for(const auto& point:points)painter.drawRect(QRectF(point-QPointF(4,4),QSizeF(8,8)));};
+ // Handles: amber squares in a dark rim, legible on any image.
+ auto handles=[&](const QList<QPointF>& points){painter.setPen(QPen(underStroke(),2));painter.setBrush(guide());for(const auto& point:points)painter.drawRect(QRectF(point-QPointF(4,4),QSizeF(8,8)));};
  if(tool_==Tool::Crop){const auto r=toWidget(cropDraft_);handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});}
  else if(const auto* shape=doc_.find(selected_)){
   if(shape->kind==Shape::Kind::Arrow)handles({toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))});
   else{
-   const auto r=toWidget(shape->rect);painter.setPen(QPen(accent(),1,Qt::DashLine));painter.setBrush(Qt::NoBrush);painter.drawRect(r.adjusted(-2,-2,2,2));
+   const auto r=toWidget(shape->rect);dualRect(painter,r.adjusted(-2,-2,2,2),guide(),1,Qt::DashLine);
    if(shape->kind==Shape::Kind::Text)handles({r.topLeft(),r.topRight(),r.bottomRight(),r.bottomLeft()});
    else handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});
   }
@@ -368,11 +397,18 @@ void EditorCanvas::keyPressEvent(QKeyEvent* event){
   if((event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter)&&!(event->modifiers()&Qt::ControlModifier)){applyCrop();return;}
   if(event->key()==Qt::Key_Escape){cancelCrop();return;}
  }
- const int step=(event->modifiers()&Qt::ShiftModifier)?10:1;QPoint nudge;
- switch(event->key()){case Qt::Key_Left:nudge={-step,0};break;case Qt::Key_Right:nudge={step,0};break;case Qt::Key_Up:nudge={0,-step};break;case Qt::Key_Down:nudge={0,step};break;default:break;}
- if(!nudge.isNull()){
-  if(tool_==Tool::Crop){auto r=cropDraft_.translated(nudge);if(doc_.imageRect().contains(r))cropDraft_=r;update();return;}
-  if(const auto* current=doc_.find(selected_)){auto shape=*current;shape.rect.translate(nudge);shape.from+=nudge;shape.to+=nudge;if(doc_.replace(shape)){update();emit changed();}return;}
+ // Arrows move the selection or crop a pixel (Ctrl: ten); Shift+arrows
+ // resize it from its right and bottom edges (an arrow by its head, text by
+ // its size).
+ const int step=(event->modifiers()&Qt::ControlModifier)?10:1;QPoint delta;
+ switch(event->key()){case Qt::Key_Left:delta={-step,0};break;case Qt::Key_Right:delta={step,0};break;case Qt::Key_Up:delta={0,-step};break;case Qt::Key_Down:delta={0,step};break;default:break;}
+ if(!delta.isNull()&&nudge(delta,event->modifiers()&Qt::ShiftModifier))return;
+ // Without a pointer: Insert places the tool's mark, brackets cycle the marks
+ // (Tab does too, then moves on), Enter edits a selected text label.
+ if(event->key()==Qt::Key_Insert){placeMark();return;}
+ if(event->key()==Qt::Key_BracketRight||event->key()==Qt::Key_BracketLeft){selectAdjacent(event->key()==Qt::Key_BracketRight?1:-1,true);return;}
+ if((event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter)&&!(event->modifiers()&Qt::ControlModifier)){
+  if(const auto* shape=doc_.find(selected_);shape&&shape->kind==Shape::Kind::Text){beginText(QPointF(shape->rect.topLeft()),shape);return;}
  }
  if((event->key()==Qt::Key_Delete||event->key()==Qt::Key_Backspace)&&selected_){if(doc_.remove(selected_)){selected_=0;emit selectionChanged();update();emit changed();}return;}
  if(event->key()==Qt::Key_Escape&&selected_){selected_=0;emit selectionChanged();update();return;}
@@ -384,8 +420,127 @@ void EditorCanvas::keyReleaseEvent(QKeyEvent* event){
  QWidget::keyReleaseEvent(event);
 }
 
+bool EditorCanvas::nudge(const QPoint& d,bool resize){
+ if(tool_==Tool::Crop){
+  auto r=cropDraft_;
+  if(resize){r.setRight(r.right()+d.x());r.setBottom(r.bottom()+d.y());r=EditDocument::clampRect(r,doc_.imageRect());if(r.width()<1||r.height()<1)return true;}
+  else{r.translate(d);if(!doc_.imageRect().contains(r))return true;}
+  cropDraft_=r;update();announce();emit viewChanged();return true;
+ }
+ const auto* current=doc_.find(selected_);if(!current)return false;
+ auto shape=*current;using Kind=Shape::Kind;
+ if(!resize){shape.rect.translate(d);shape.from+=d;shape.to+=d;}
+ else if(shape.kind==Kind::Arrow){shape.to+=d;if(shape.to==shape.from)return true;}
+ else if(shape.kind==Kind::Text){
+  shape.fontPixels=std::clamp(shape.fontPixels+d.x()+d.y(),minimumFontPixels,maximumFontPixels);
+  const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));shape.rect.setSize(QSize(metrics.horizontalAdvance(shape.text)+1,metrics.height()));
+ }else{shape.rect.setRight(shape.rect.right()+d.x());shape.rect.setBottom(shape.rect.bottom()+d.y());if(shape.rect.width()<1||shape.rect.height()<1)return true;}
+ const auto bounds=shape.kind==Kind::Arrow?QRect(shape.from,shape.to).normalized():shape.rect;
+ if(!bounds.intersects(doc_.imageRect()))return true;
+ if(doc_.replace(shape)){update();emit changed();if(shape.kind==Kind::Text)emit selectionChanged();}
+ return true;
+}
+
+void EditorCanvas::select(quint64 id){
+ if(textEditor_)finishText(true);
+ if(id&&!doc_.find(id))return;
+ if(id&&tool_==Tool::Crop)cancelCrop();
+ if(selected_==id)return;
+ selected_=id;emit selectionChanged();update();
+}
+bool EditorCanvas::selectAdjacent(int step,bool wrap){
+ const auto& shapes=doc_.shapes();
+ if(shapes.isEmpty()||tool_==Tool::Crop||step==0)return false;
+ qsizetype index=-1;for(qsizetype i=0;i<shapes.size();++i)if(shapes[i].id==selected_)index=i;
+ qsizetype next=index<0?(step>0?0:shapes.size()-1):index+step;
+ if(next<0||next>=shapes.size()){if(!wrap)return false;next=((next%shapes.size())+shapes.size())%shapes.size();}
+ select(shapes[next].id);return true;
+}
+bool EditorCanvas::event(QEvent* event){
+ // Tab walks the marks, then leaves the canvas with nothing selected, so the
+ // keyboard is never trapped here. Only a Tab pressed on the canvas counts:
+ // Qt also moves focus on when the text field hides.
+ if(event->type()==QEvent::KeyPress&&!textEditor_&&tool_!=Tool::Crop){
+  const auto* key=static_cast<QKeyEvent*>(event);
+  const bool tab=key->key()==Qt::Key_Tab||key->key()==Qt::Key_Backtab;
+  if(tab&&!(key->modifiers()&(Qt::ControlModifier|Qt::AltModifier))){
+   const bool forward=key->key()==Qt::Key_Tab&&!(key->modifiers()&Qt::ShiftModifier);
+   if(selectAdjacent(forward?1:-1,false)){event->accept();return true;}
+   if(selected_){selected_=0;emit selectionChanged();update();}
+  }
+ }
+ return QWidget::event(event);
+}
+
+quint64 EditorCanvas::placeMark(){
+ if(textEditor_)finishText(true);
+ const auto area=doc_.crop();
+ if(tool_==Tool::Text){beginText(QPointF(area.left()+area.width()/4.0,area.center().y()-style_.fontPixels/2.0),nullptr);return 0;}
+ if(!drawingTool())return 0;
+ Shape shape;shape.kind=kindFor(tool_);shape.color=shape.kind==Shape::Kind::Redact?QColor(Qt::black):style_.color;
+ shape.width=style_.width;shape.strength=style_.strength;shape.fontPixels=style_.fontPixels;shape.fontFamily=style_.fontFamily;
+ // A quarter of the visible image, centred; another placement steps down and
+ // right rather than hiding exactly under the last one.
+ QRect box(QPoint(),QSize(std::max(1,area.width()/2),std::max(1,area.height()/2)));box.moveCenter(area.center());
+ const int offset=std::max(8,std::min(area.width(),area.height())/20);
+ auto occupied=[&](const QRect& r){for(const auto& other:doc_.shapes())if(other.kind==shape.kind&&(other.kind==Shape::Kind::Arrow?other.from==r.bottomLeft():other.rect==r))return true;return false;};
+ for(int i=0;i<16&&occupied(box);++i){const auto moved=box.translated(offset,offset);if(!area.contains(moved))break;box=moved;}
+ shape.rect=box;shape.from=box.bottomLeft();shape.to=box.topRight();
+ selected_=doc_.add(shape);emit selectionChanged();update();emit changed();
+ return selected_;
+}
+
+std::optional<QRect> EditorCanvas::selectionGeometry() const {
+ if(tool_==Tool::Crop)return cropDraft_;
+ const auto* shape=doc_.find(selected_);if(!shape)return std::nullopt;
+ if(shape->kind==Shape::Kind::Arrow)return QRect(shape->from.x(),shape->from.y(),shape->to.x()-shape->from.x(),shape->to.y()-shape->from.y());
+ return shape->rect;
+}
+bool EditorCanvas::setSelectionGeometry(const QRect& r){
+ const auto image=doc_.imageRect();
+ if(tool_==Tool::Crop){
+  const auto clamped=EditDocument::clampRect(r,image);if(r.width()<1||r.height()<1||clamped.isEmpty())return false;
+  cropDraft_=clamped;update();announce();emit viewChanged();return true;
+ }
+ const auto* current=doc_.find(selected_);if(!current)return false;
+ auto shape=*current;using Kind=Shape::Kind;
+ if(shape.kind==Kind::Arrow){shape.from=r.topLeft();shape.to=QPoint(r.x()+r.width(),r.y()+r.height());if(shape.from==shape.to)return false;}
+ else if(shape.kind==Kind::Text)shape.rect.moveTopLeft(r.topLeft());
+ else{if(r.width()<1||r.height()<1)return false;shape.rect=r;if(shape.kind==Kind::Redact||shape.kind==Kind::Blur)shape.rect=EditDocument::clampRect(r,image);}
+ const auto bounds=shape.kind==Kind::Arrow?QRect(shape.from,shape.to).normalized().adjusted(0,0,1,1):shape.rect;
+ if(!bounds.intersects(image)||!doc_.replace(shape))return false;
+ update();emit changed();return true;
+}
+
+QString EditorCanvas::selectionSummary() const {
+ auto box=[](const QRect& r){return QString("x %1, y %2, %3 × %4 px").arg(r.x()).arg(r.y()).arg(r.width()).arg(r.height());};
+ if(tool_==Tool::Crop)return QString("Crop area %1. Arrow keys move it, Shift+arrow keys resize it, Enter applies, Escape cancels.").arg(box(cropDraft_));
+ const auto& shapes=doc_.shapes();
+ for(qsizetype i=0;i<shapes.size();++i){
+  const auto& shape=shapes[i];if(shape.id!=selected_)continue;
+  const auto where=shape.kind==Shape::Kind::Arrow?QString("from %1, %2 to %3, %4").arg(shape.from.x()).arg(shape.from.y()).arg(shape.to.x()).arg(shape.to.y())
+   :shape.kind==Shape::Kind::Text?QString("\"%1\" at x %2, y %3, %4 px").arg(shape.text).arg(shape.rect.x()).arg(shape.rect.y()).arg(shape.fontPixels):box(shape.rect);
+  return QString("%1 %2 of %3 selected, %4. Arrow keys move it, Shift+arrow keys resize it, Delete removes it, Tab selects the next mark.").arg(kindLabel(shape.kind)).arg(i+1).arg(shapes.size()).arg(where);
+ }
+ QString text=shapes.isEmpty()?QString("No marks."):shapes.size()==1?QString("1 mark, none selected."):QString("%1 marks, none selected.").arg(shapes.size());
+ if(drawingTool()||tool_==Tool::Text)text+=QString(" Insert places a %1 in the middle.").arg(kindLabel(kindFor(tool_)).toLower());
+ if(!shapes.isEmpty())text+=" Tab or ] selects a mark.";
+ return text;
+}
+void EditorCanvas::announce(){
+ const auto text=selectionSummary();if(accessibleDescription()==text)return;
+ setAccessibleDescription(text);
+ QAccessibleEvent event(this,QAccessible::DescriptionChanged);QAccessible::updateAccessibility(&event);
+}
+
 bool EditorCanvas::eventFilter(QObject* watched,QEvent* event){
- if(watched==textEditor_&&event->type()==QEvent::KeyPress&&static_cast<QKeyEvent*>(event)->key()==Qt::Key_Escape){finishText(false);return true;}
+ if(watched==textEditor_&&event->type()==QEvent::KeyPress){
+  // Enter ends the label here: the field would pass it on to the canvas,
+  // where Enter on a selected label opens it again.
+  const auto key=static_cast<QKeyEvent*>(event)->key();
+  if(key==Qt::Key_Escape){finishText(false);return true;}
+  if((key==Qt::Key_Return||key==Qt::Key_Enter)&&!(static_cast<QKeyEvent*>(event)->modifiers()&Qt::ControlModifier)){finishText(true);return true;}
+ }
  return QWidget::eventFilter(watched,event);
 }
 

@@ -2,6 +2,7 @@
 #include "editor/EditDocument.h"
 #include "editor/EditorCanvas.h"
 #include "editor/EditorCommands.h"
+#include "ui/Theme.h"
 #include <QApplication>
 #include <QBuffer>
 #include <QColorSpace>
@@ -255,6 +256,92 @@ private slots:
   QTest::keyClick(&canvas,Qt::Key_Escape);QCOMPARE(doc.crop(),doc.imageRect());QCOMPARE(canvas.tool(),Tool::Select);
   canvas.setTool(Tool::Crop);QTest::mousePress(&canvas,Qt::LeftButton,{},start);QApplication::sendEvent(&canvas,&move);QTest::mouseRelease(&canvas,Qt::LeftButton,{},start+QPoint(120,80));
   QTest::keyClick(&canvas,Qt::Key_Return);QVERIFY(doc.crop()!=doc.imageRect());QVERIFY(doc.crop().width()>50);QVERIFY(doc.canUndo());
+ }
+ // A replace outside a gesture is its own undo step (it used to write
+ // through to the snapshot it had just taken, so undo skipped it).
+ void replaceIsOneUndoStep(){
+  EditDocument doc(noise({40,30},17));const auto id=doc.add(box(Shape::Kind::Rectangle,QRect(1,2,10,10)));
+  auto moved=*doc.find(id);moved.rect.translate(5,0);QVERIFY(doc.replace(moved));
+  auto recoloured=moved;recoloured.color=Qt::green;QVERIFY(doc.replace(recoloured));
+  QVERIFY(doc.undo());QCOMPARE(*doc.find(id),moved);QVERIFY(doc.undo());QCOMPARE(doc.find(id)->rect,QRect(1,2,10,10));
+  QVERIFY(doc.undo());QVERIFY(doc.shapes().isEmpty());QVERIFY(doc.redo());QVERIFY(doc.redo());QCOMPARE(*doc.find(id),moved);
+ }
+ // Keyboard-only spatial editing: Insert places the tool's mark (centred, a
+ // quarter of the image), Tab and brackets select marks, arrows move,
+ // Shift+arrows resize, Ctrl takes ten-pixel steps. Each key is one undo step.
+ void keyboardPlacesSelectsMovesAndResizesMarks(){
+  EditDocument doc(noise({400,300},15));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Redact);canvas.setFocus();
+  QTest::keyClick(&canvas,Qt::Key_Insert);QCOMPARE(doc.shapes().size(),1);
+  const auto first=doc.shapes().first();QCOMPARE(first.rect,QRect(100,75,200,150));QCOMPARE(canvas.selected(),first.id);
+  QVERIFY2(canvas.accessibleDescription().startsWith("Redaction 1 of 1 selected"),qPrintable(canvas.accessibleDescription()));
+  // Another placement does not hide under the first.
+  QTest::keyClick(&canvas,Qt::Key_Insert);QCOMPARE(doc.shapes().size(),2);QVERIFY(doc.shapes().last().rect!=first.rect);
+  const auto second=doc.shapes().last().id;QCOMPARE(canvas.selected(),second);
+  auto before=*doc.find(second);
+  QTest::keyClick(&canvas,Qt::Key_Left);QCOMPARE(doc.find(second)->rect,before.rect.translated(-1,0));
+  QTest::keyClick(&canvas,Qt::Key_Down,Qt::ControlModifier);QCOMPARE(doc.find(second)->rect,before.rect.translated(-1,10));
+  before=*doc.find(second);
+  QTest::keyClick(&canvas,Qt::Key_Right,Qt::ShiftModifier);QCOMPARE(doc.find(second)->rect,before.rect.adjusted(0,0,1,0));
+  QTest::keyClick(&canvas,Qt::Key_Up,Qt::ShiftModifier|Qt::ControlModifier);QCOMPARE(doc.find(second)->rect,before.rect.adjusted(0,0,1,-10));
+  QVERIFY(doc.undo());QCOMPARE(doc.find(second)->rect,before.rect.adjusted(0,0,1,0));QVERIFY(doc.redo());canvas.documentChanged();
+  // Brackets cycle and wrap; Tab walks forward and leaves after the last mark.
+  QTest::keyClick(&canvas,Qt::Key_BracketRight);QCOMPARE(canvas.selected(),first.id);
+  QTest::keyClick(&canvas,Qt::Key_BracketLeft);QCOMPARE(canvas.selected(),second);
+  canvas.select(0);QVERIFY(canvas.accessibleDescription().startsWith("2 marks, none selected."));
+  QVERIFY(canvas.selectAdjacent(1,false));QCOMPARE(canvas.selected(),first.id);
+  QVERIFY(canvas.selectAdjacent(1,false));QCOMPARE(canvas.selected(),second);
+  QVERIFY(!canvas.selectAdjacent(1,false));QCOMPARE(canvas.selected(),second);
+  // Geometry fields: one replace, one undo step.
+  const int undoable=doc.historyEntries();
+  QVERIFY(canvas.setSelectionGeometry(QRect(10,20,30,40)));QCOMPARE(doc.find(second)->rect,QRect(10,20,30,40));QCOMPARE(doc.historyEntries(),undoable+1);
+  QCOMPARE(*canvas.selectionGeometry(),QRect(10,20,30,40));
+  QVERIFY(!canvas.setSelectionGeometry(QRect(1000,1000,10,10)));QCOMPARE(doc.find(second)->rect,QRect(10,20,30,40));
+  // An arrow is placed tail to head and resized by its head.
+  canvas.setTool(Tool::Arrow);QTest::keyClick(&canvas,Qt::Key_Insert);const auto arrow=*doc.find(canvas.selected());
+  QCOMPARE(arrow.kind,Shape::Kind::Arrow);QVERIFY(arrow.from!=arrow.to);
+  QTest::keyClick(&canvas,Qt::Key_Right,Qt::ShiftModifier);QCOMPARE(doc.find(arrow.id)->from,arrow.from);QCOMPARE(doc.find(arrow.id)->to,arrow.to+QPoint(1,0));
+  QVERIFY(canvas.setSelectionGeometry(QRect(5,6,20,-3)));QCOMPARE(doc.find(arrow.id)->from,QPoint(5,6));QCOMPARE(doc.find(arrow.id)->to,QPoint(25,3));
+  // Select and Crop place nothing.
+  canvas.setTool(Tool::Select);QCOMPARE(canvas.placeMark(),quint64(0));
+ }
+ void keyboardCropMovesResizesAndApplies(){
+  EditDocument doc(noise({400,300},16));EditorCanvas canvas(doc);canvas.resize(600,500);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Crop);canvas.setFocus();QCOMPARE(*canvas.selectionGeometry(),doc.imageRect());
+  QVERIFY(canvas.accessibleDescription().startsWith("Crop area x 0, y 0, 400 × 300 px"));
+  for(int i=0;i<10;++i)QTest::keyClick(&canvas,Qt::Key_Left,Qt::ShiftModifier|Qt::ControlModifier);
+  QCOMPARE(canvas.cropDraft(),QRect(0,0,300,300));
+  QTest::keyClick(&canvas,Qt::Key_Right,Qt::ControlModifier);QCOMPARE(canvas.cropDraft(),QRect(10,0,300,300));
+  // Moving past the image edge is refused rather than clamped into a resize.
+  for(int i=0;i<20;++i)QTest::keyClick(&canvas,Qt::Key_Right,Qt::ControlModifier);QCOMPARE(canvas.cropDraft(),QRect(100,0,300,300));
+  QVERIFY(canvas.setSelectionGeometry(QRect(20,30,200,100)));QCOMPARE(doc.crop(),doc.imageRect());
+  QTest::keyClick(&canvas,Qt::Key_Return);QCOMPARE(doc.crop(),QRect(20,30,200,100));QCOMPARE(canvas.tool(),Tool::Select);
+ }
+ // Crop and selection guides read over pale and dark images alike: each
+ // carries a dark under-stroke and a light over-stroke, whatever the theme.
+ void guidesUseDualStrokesOverAnyImage(){
+  for(const auto& fill:{QColor(Qt::white),QColor(Qt::black),QColor("#e8b66d")}){
+   QImage plain(400,300,QImage::Format_RGB32);plain.fill(fill);
+   EditDocument doc(plain);EditorCanvas canvas(doc);canvas.resize(500,400);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+   canvas.setTool(Tool::Crop);QVERIFY(canvas.setSelectionGeometry(QRect(100,80,200,140)));
+   // A dark stroke (3:1 against white) and a light one (3:1 against black) along the edge.
+   auto strokes=[&](const QImage& shot,int x0,int y,int x1){
+    double dark=0,light=0;
+    for(int x=x0;x<=x1;++x)for(int dy=-3;dy<=3;++dy){const auto c=shot.pixelColor(x,y+dy);dark=std::max(dark,Theme::contrast(c,Qt::white));light=std::max(light,Theme::contrast(c,Qt::black));}
+    return std::pair{dark,light};
+   };
+   auto shot=canvas.grab().toImage().convertToFormat(QImage::Format_RGB32);
+   // The crop's top edge in widget pixels: the image is shown at 100%, centred.
+   const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
+   auto [dark,light]=strokes(shot,origin.x()+140,origin.y()+80,origin.x()+160);
+   QVERIFY2(dark>=3&&light>=3,qPrintable(QString("crop on %1: dark %2, light %3").arg(fill.name()).arg(dark).arg(light)));
+   // A selected blur (invisible on a flat image) shows only its outline.
+   canvas.cancelCrop();canvas.setTool(Tool::Blur);canvas.placeMark();canvas.setTool(Tool::Select);canvas.select(doc.shapes().first().id);
+   shot=canvas.grab().toImage().convertToFormat(QImage::Format_RGB32);
+   const auto box=doc.shapes().first().rect;
+   std::tie(dark,light)=strokes(shot,origin.x()+box.center().x()-10,origin.y()+box.top()-2,origin.x()+box.center().x()+10);
+   QVERIFY2(dark>=3&&light>=3,qPrintable(QString("selection on %1: dark %2, light %3").arg(fill.name()).arg(dark).arg(light)));
+  }
  }
  void blurPreviewCacheIsBounded(){
   EditDocument doc(noise({3000,2000},10));EditorCanvas canvas(doc);canvas.resize(800,600);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
