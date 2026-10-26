@@ -143,7 +143,6 @@ def recording_oracle(frames, monitors, rect, densities, motion=False):
     mapping is established. RGB tolerance is for H.264 only; still-image RGBA
     comparisons remain exact. Avoid tile edges affected by chroma subsampling.
     """
-    from PIL import Image
     x, y, width, height = rect
     targets = [(i, m) for i, m in enumerate(monitors) if
                m['x'] <= x and m['y'] <= y and x + width <= m['x'] + m['width'] and
@@ -153,9 +152,9 @@ def recording_oracle(frames, monitors, rect, densities, motion=False):
     index, monitor = targets[0]
     results = []
     for path in frames:
-        im = Image.open(path).convert('RGB')
-        if im.size != (width, height):
-            return {'ok': False, 'reason': 'video-size', 'actual': list(im.size), 'expected': [width, height]}
+        decoded_width, decoded_height, rgb = lab.ppm(path)
+        if (decoded_width, decoded_height) != (width, height):
+            return {'ok': False, 'reason': 'video-size', 'actual': [decoded_width, decoded_height], 'expected': [width, height]}
         points = []
         for py in range(8, height - 8, 8):
             for px in range(8, width - 8, 8):
@@ -163,7 +162,8 @@ def recording_oracle(frames, monitors, rect, densities, motion=False):
                 if min(gx % 128, 128 - gx % 128, gy % 128, 128 - gy % 128) < 8:
                     continue
                 color = (index * 4 + int(gx // 128) % 2 + 2 * (int(gy // 128) % 2)) % len(COLORS)
-                points.append((gx, color, im.getpixel((px, py))))
+                offset = (py * width + px) * 3
+                points.append((gx, color, tuple(rgb[offset:offset + 3])))
         candidates = []
         # Motion has a known 32px bar every 128px. Fit only its phase; don't
         # exempt arbitrary white pixels or assume a crop has the global 25%

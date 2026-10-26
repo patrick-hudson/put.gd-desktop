@@ -143,18 +143,17 @@ class InputsAndWall(unittest.TestCase):
 
 class Recording(unittest.TestCase):
     def render(self,path,index=1,size=(160,120),motion=False,offset=0,phase=120):
-        from PIL import Image
-        im=Image.new('RGB',size)
+        pixels=bytearray()
         for y in range(size[1]):
             for x in range(size[0]):
                 gx,gy=80+x+offset,80+y
                 color=driver.COLORS[(index*4+gx//128%2+2*(gy//128%2))%8]
-                im.putpixel((x,y),(255,255,255) if motion and (gx-phase)%128<32 else color)
-        im.save(path)
+                pixels.extend((255,255,255) if motion and (gx-phase)%128<32 else color)
+        path.write_bytes(b'P6\n%d %d\n255\n' % size + pixels)
 
     def test_video_size_head_and_spatial_colors_not_just_motion(self):
         with tempfile.TemporaryDirectory() as folder:
-            p=Path(folder)/'sample.png';heads=[monitor(),monitor(1920)];rect=[2000,80,160,120]
+            p=Path(folder)/'sample.ppm';heads=[monitor(),monitor(1920)];rect=[2000,80,160,120]
             self.render(p,motion=True)
             self.assertTrue(driver.recording_oracle([p]*8,heads,rect,[1,1],True)['ok'])
             self.render(p,motion=True,phase=80)  # two bars can occupy 40% of this crop
