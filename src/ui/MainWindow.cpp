@@ -159,7 +159,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  };
  connect(changeOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  connect(history_,&HistoryWindow::captureSettingsRequested,changeOutput,&QPushButton::click);
- if(history_->metaObject()->indexOfSignal("localCopySettingsRequested()")>=0)connect(history_,SIGNAL(localCopySettingsRequested()),this,SLOT(showLocalCopySettings()));
+ connect(history_,&HistoryWindow::localCopySettingsRequested,this,&MainWindow::showLocalCopySettings);
  explanation_=new QLabel("Settings save automatically");explanation_->setObjectName("autosaveExplanation");VisualStyle::role(explanation_,"meta");statusBar()->addPermanentWidget(explanation_);
  // Autosave describes the Destinations and Settings pages, not History.
  connect(tabs_,&QTabBar::currentChanged,this,[this]{updateSaveStatus();});
