@@ -1,0 +1,129 @@
+{
+  "run": "g1/adj2",
+  "ok": true,
+  "cases": [
+    {
+      "case": "inside-0",
+      "ok": true,
+      "pixels": {
+        "ok": true,
+        "pixels": 19200,
+        "mismatches": 0,
+        "transparentGapPixels": 0,
+        "firstMismatches": [],
+        "size": [
+          160,
+          120
+        ]
+      },
+      "pastePixelsEqual": true,
+      "error": null
+    },
+    {
+      "case": "inside-1",
+      "ok": true,
+      "pixels": {
+        "ok": true,
+        "pixels": 19200,
+        "mismatches": 0,
+        "transparentGapPixels": 0,
+        "firstMismatches": [],
+        "size": [
+          160,
+          120
+        ]
+      },
+      "pastePixelsEqual": true,
+      "error": null
+    },
+    {
+      "case": "span",
+      "ok": true,
+      "pixels": {
+        "ok": true,
+        "pixels": 403200,
+        "mismatches": 0,
+        "transparentGapPixels": 0,
+        "firstMismatches": [],
+        "size": [
+          2240,
+          180
+        ]
+      },
+      "pastePixelsEqual": true,
+      "error": null
+    },
+    {
+      "case": "window-0",
+      "ok": true,
+      "pixels": {
+        "ok": true,
+        "pixels": 2073600,
+        "mismatches": 0,
+        "transparentGapPixels": 0,
+        "firstMismatches": [],
+        "size": [
+          1920,
+          1080
+        ]
+      },
+      "pastePixelsEqual": true,
+      "error": null
+    },
+    {
+      "case": "window-1",
+      "ok": true,
+      "pixels": {
+        "ok": true,
+        "pixels": 3686400,
+        "mismatches": 0,
+        "transparentGapPixels": 0,
+        "firstMismatches": [],
+        "size": [
+          2560,
+          1440
+        ]
+      },
+      "pastePixelsEqual": true,
+      "error": null
+    },
+    {
+      "case": "desktop",
+      "ok": true,
+      "pixels": {
+        "ok": true,
+        "pixels": 6451200,
+        "mismatches": 0,
+        "transparentGapPixels": 691200,
+        "firstMismatches": [],
+        "size": [
+          4480,
+          1440
+        ]
+      },
+      "pastePixelsEqual": true,
+      "error": null
+    },
+    {
+      "case": "escape",
+      "ok": true,
+      "pixels": null,
+      "pastePixelsEqual": null,
+      "error": null
+    },
+    {
+      "case": "right-click",
+      "ok": true,
+      "pixels": null,
+      "pastePixelsEqual": null,
+      "error": null
+    },
+    {
+      "case": "record-region",
+      "ok": true,
+      "pixels": null,
+      "pastePixelsEqual": null,
+      "error": null
+    }
+  ]
+}
