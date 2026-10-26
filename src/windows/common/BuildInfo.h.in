@@ -1,0 +1,10 @@
+#pragma once
+// Generated at configure time; the same identity fields as the Linux build-info.
+namespace putgd::build {
+inline constexpr const char* version = "@PUTGD_VERSION@";
+inline constexpr const char* baseVersion = "@_base@";
+inline constexpr const char* commit = "@_commit@";
+inline constexpr const char* commitCount = "@_count@";
+inline constexpr const char* dirty = "@_dirty@";
+inline constexpr const char* platform = "windows";
+}

@@ -59,7 +59,7 @@ class Workflows(unittest.TestCase):
         summary = job(ci, 'ci')
         self.assertIn('name: CI', summary)
         self.assertIn('if: always()', summary)
-        self.assertIn('needs: [changes, contracts, linux, portable, packages, pipewire]', summary)
+        self.assertIn('needs: [changes, contracts, linux, portable, windows, packages, pipewire]', summary)
         self.assertIn("'packages': 'success' if selected.get('packages') == 'true' else 'skipped'", summary)
         self.assertIn("'pipewire': 'success' if selected.get('pipewire') == 'true' else 'skipped'", summary)
 

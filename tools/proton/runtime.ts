@@ -1,5 +1,6 @@
 import { constants } from 'node:fs';
-import { open } from 'node:fs/promises';
+import { lstat, open } from 'node:fs/promises';
+import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { MemberRole, NodeType, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity, type ProtonDriveClient } from '@protontech/drive-sdk';
@@ -137,17 +138,30 @@ async function nameStillFree(ctx: Context, folderUid: string, candidate: string)
     try { return await ctx.sdk.getAvailableName(folderUid, candidate) === candidate; }
     catch { return false; }
 }
+// The final path component must be a regular file, never a symbolic link. O_NOFOLLOW
+// enforces that at open on POSIX; Windows has no such flag, so the lstat check before
+// opening and the identity comparison after it reject a link or a swapped file there.
+export async function openArtifact(artifactPath: string) {
+    const linked = await lstat(artifactPath);
+    if (!linked.isFile() || linked.isSymbolicLink()) throw new ProtocolError('artifact_changed');
+    const file = await open(artifactPath, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+    try {
+        const opened = await file.stat();
+        if (!opened.isFile() || opened.dev !== linked.dev || opened.ino !== linked.ino) throw new ProtocolError('artifact_changed');
+        return file;
+    } catch (error) { await file.close(); throw error; }
+}
 export async function upload(ctx: Context, request: JsonObject): Promise<JsonObject> {
     if (request.condition !== 'absent') throw new ProtocolError('unsupported_condition');
     const artifact = object(request.artifact);
     name(request.candidate); hash(artifact.sha256); text(request.publicationId);
     text(artifact.path, 8192); text(artifact.mime, 255);
-    if (!artifact.path.startsWith('/') || !Number.isSafeInteger(artifact.bytes) || artifact.bytes < 0)
+    if (!path.isAbsolute(artifact.path) || !Number.isSafeInteger(artifact.bytes) || artifact.bytes < 0)
         throw new ProtocolError('invalid_request');
     uploadProgress = createProgressReporter();
     await uploadProgress.phase('preparing');
     const folder = await destinationFolder(ctx, request);
-    const file = await open(artifact.path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const file = await openArtifact(artifact.path);
     try {
         const initial = await file.stat();
         if (!initial.isFile() || initial.size !== artifact.bytes) throw new ProtocolError('artifact_changed');

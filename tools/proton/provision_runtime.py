@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Build the pinned bundled Proton runtime before CMake; never called by CMake."""
 import argparse
+import base64
 import hashlib
 import json
 from pathlib import Path
 import platform
 import shutil
 import subprocess
+import tarfile
 
 from audit_redistribution import inventory
 
@@ -36,6 +38,46 @@ REDISTRIBUTION_FILES = ['BUN-THIRD-PARTY-NOTICES.txt.gz', 'BUN-NOTICE-PROVENANCE
                         'BUN-LINUX-ATTRIBUTION.md', 'OPENPGP-PREBUNDLED-NOTICES.txt',
                         'LICENSE.crypto-GPL-3.0', 'LICENSE.pmcrypto-MIT', 'LICENSE.srp-MIT', 'LICENSE.boltffi-MIT', 'LICENSE.icu4c-78.3',
                         'CRYPTO-PROVENANCE.md', 'SOURCES.json', 'REBUILD.md', 'OPENPGP-REBUILD.patch']
+
+# Platform-neutral notices for the bundled JavaScript. The Bun native notices, Linux
+# attribution and the Linux helper's source catalog/rebuild notes are not reused for
+# Windows: its Bun attribution has not been collected yet.
+WINDOWS_REDISTRIBUTION_FILES = ['OPENPGP-PREBUNDLED-NOTICES.txt', 'LICENSE.crypto-GPL-3.0', 'LICENSE.pmcrypto-MIT',
+                                'LICENSE.srp-MIT', 'LICENSE.boltffi-MIT', 'CRYPTO-PROVENANCE.md', 'OPENPGP-REBUILD.patch']
+TARGETS = {'linux-x64': {'bun': 'bun-linux-x64', 'suffix': '', 'output': 'proton-runtime'},
+           'windows-x64': {'bun': 'bun-windows-x64', 'suffix': '.exe', 'output': 'proton-runtime-windows'}}
+STDOUT_FIXTURE_BYTES = b'{"synthetic":"' + b'x' * (1024 * 1024 - 256) + b'"}\n'
+REMOVE_PROBE = {'schemaVersion': 1, 'method': 'remove', 'destination': {'providerId': 'proton-drive',
+                'profileId': 'smoke', 'profileRevision': 'smoke', 'settings': {},
+                'credentials': {'mode': 'keychain', 'reference': 'smoke'}}}
+
+def windows_bun_runtime(work, output, offline):
+    """Fetch the locked Windows Bun runtime and verify it against package-lock.json."""
+    locked = json.loads((work / 'package-lock.json').read_text())['packages']['node_modules/@oven/bun-windows-x64']
+    algorithm, expected = locked['integrity'].split('-', 1)
+    if algorithm != 'sha512':
+        raise ValueError('Windows Bun runtime lock has an unexpected integrity algorithm')
+    target = output / 'bun-windows-x64'
+    if target.exists():
+        shutil.rmtree(target)
+    target.mkdir()
+    run(['npm', 'pack', f"@oven/bun-windows-x64@{locked['version']}", '--pack-destination', str(target),
+         '--silent', *(['--offline'] if offline else [])], work, True)
+    archives = list(target.glob('*.tgz'))
+    if len(archives) != 1:
+        raise ValueError('Windows Bun runtime download did not produce one archive')
+    with archives[0].open('rb') as stream:
+        if base64.b64encode(hashlib.file_digest(stream, 'sha512').digest()).decode() != expected:
+            raise ValueError('Windows Bun runtime archive does not match package-lock.json integrity')
+    with tarfile.open(archives[0]) as archive:
+        member = archive.getmember('package/bin/bun.exe')
+        if not member.isfile():
+            raise ValueError('Windows Bun runtime archive has no regular bun.exe')
+        executable = target / 'bun.exe'
+        with archive.extractfile(member) as source, executable.open('wb') as destination:
+            shutil.copyfileobj(source, destination)
+    return executable, {'package': '@oven/bun-windows-x64', 'version': locked['version'], 'resolved': locked['resolved'],
+                        'integrity': locked['integrity'], 'executableSha256': sha256(executable)}
 
 def apply_crypto_source(work, source, lock):
     commit = run(['git', 'rev-parse', 'HEAD'], source, True).strip()
@@ -103,13 +145,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, help='Use an existing clean checkout of the pinned official source')
     parser.add_argument('--crypto-source', type=Path, help='Clean checkout of the approved GPL crypto source pin')
-    parser.add_argument('--output', type=Path, default=ROOT.parents[1] / 'build/dependencies/proton-runtime')
+    parser.add_argument('--target', choices=sorted(TARGETS), default='linux-x64',
+                        help='Runtime platform; windows-x64 cross-compiles and records checks to run on Windows')
+    parser.add_argument('--output', type=Path, help='Default: build/dependencies/proton-runtime (Linux) or proton-runtime-windows')
     parser.add_argument('--offline', action='store_true', help='Require cached npm packages and an existing source checkout')
     args = parser.parse_args()
     if platform.system() != 'Linux' or platform.machine() not in ('x86_64', 'AMD64'):
-        parser.error('This runtime lock targets Linux x86-64')
+        parser.error('Provisioning runs on a Linux x86-64 build host')
     lock = json.loads((ROOT / 'runtime-lock.json').read_text())
-    output = args.output.resolve()
+    if args.target not in lock['platforms']:
+        parser.error(f'The runtime lock does not list {args.target}')
+    target = TARGETS[args.target]
+    cross = args.target != 'linux-x64'
+    output = (args.output or ROOT.parents[1] / 'build/dependencies' / target['output']).resolve()
     output.mkdir(parents=True, exist_ok=True)
     source = args.source.resolve() if args.source else output / 'sdk-source'
     if not source.exists():
@@ -182,16 +230,15 @@ def main():
               'include': ['runtime.ts', 'runtime.test.ts', 'account.ts', 'crypto-cache.ts', 'crypto-cache.test.ts', 'protocol.ts', 'protocol.test.ts', 'stdout.ts', 'progress.ts', 'progress.test.ts', 'stdout_fixture.ts']}
     (work / 'tsconfig.json').write_text(json.dumps(config, indent=2) + '\n')
     run([str(bun), 'test', './protocol.test.ts', './runtime.test.ts', './crypto-cache.test.ts', './progress.test.ts'], work)
+    if cross:
+        return provision_cross(args, lock, target, bun, work, source, output, commit, source_overrides)
     candidate = output / 'putgd-proton-runtime.new'
     run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './runtime.ts',
          f'--outfile={candidate}', f'--metafile={output / "build-metafile.json"}'], work)
     version = json.loads(run([str(candidate), '--version'], output, True))
     if version['bunVersion'] != lock['bunVersion'] or version['sdkVersion'] != 'js@' + lock['sdkVersion']:
         parser.error('Compiled runtime version check failed')
-    probe = {'schemaVersion': 1, 'method': 'remove', 'destination': {'providerId': 'proton-drive',
-             'profileId': 'smoke', 'profileRevision': 'smoke', 'settings': {},
-             'credentials': {'mode': 'keychain', 'reference': 'smoke'}}}
-    completed = subprocess.run([str(candidate), '--stdio'], input=json.dumps(probe), text=True,
+    completed = subprocess.run([str(candidate), '--stdio'], input=json.dumps(REMOVE_PROBE), text=True,
                                capture_output=True, check=True, timeout=10)
     if completed.stderr or json.loads(completed.stdout)['error']['code'] != 'unsupported_safe_removal':
         parser.error('Compiled one-request protocol smoke failed')
@@ -200,8 +247,7 @@ def main():
     run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './stdout_fixture.ts',
          f'--outfile={stdout_fixture}'], work)
     captured = subprocess.run([str(stdout_fixture)], capture_output=True, check=True, timeout=10)
-    expected_stdout = b'{"synthetic":"' + b'x' * (1024 * 1024 - 256) + b'"}\n'
-    if captured.stderr or captured.stdout != expected_stdout:
+    if captured.stderr or captured.stdout != STDOUT_FIXTURE_BYTES:
         parser.error('Compiled large stdout regression failed')
     print(f'Compiled stdout regression passed: {len(captured.stdout)} bytes drained before exit.')
     artifact = output / 'putgd-proton-runtime'
@@ -212,7 +258,7 @@ def main():
     redistribution.mkdir(exist_ok=True)
     for name in REDISTRIBUTION_FILES:
         shutil.copyfile(ROOT / 'notices' / name, redistribution / name)
-    manifest = {'schemaVersion': 1, 'artifact': artifact.name, 'sha256': sha256(artifact),
+    manifest = {'schemaVersion': 1, 'platform': 'linux-x64', 'artifact': artifact.name, 'sha256': sha256(artifact),
                 'sourceReference': commit, 'appVersion': version['appVersion'], 'sdkVersion': version['sdkVersion'],
                 'bunVersion': version['bunVersion'], 'protocolVersion': 1,
                 'cryptoVersion': lock['cryptoVersion'], 'cryptoSourceReference': lock['cryptoSourceReference'],
@@ -221,7 +267,58 @@ def main():
                 'runtimeLockSha256': sha256(ROOT / 'runtime-lock.json'),
                 'dependencyLockSha256': sha256(ROOT / 'package-lock.json'),
                 'dependencyNotices': notices.name, 'dependencyNoticesSha256': sha256(notices),
-                'helperSourceSha256': {name: sha256(ROOT / name) for name in ['runtime.ts', 'account.ts', 'crypto-cache.ts', 'protocol.ts', 'stdout.ts', 'progress.ts', 'provision_runtime.py', 'audit_redistribution.py']}}
+                'helperSourceSha256': helper_source_hashes()}
+    (output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    print(json.dumps({'artifact': str(artifact), 'manifest': str(output / 'manifest.json'), 'sha256': manifest['sha256']}))
+
+def helper_source_hashes():
+    return {name: sha256(ROOT / name) for name in ['runtime.ts', 'account.ts', 'crypto-cache.ts', 'protocol.ts', 'stdout.ts',
+                                                   'progress.ts', 'provision_runtime.py', 'audit_redistribution.py']}
+
+def provision_cross(args, lock, target, bun, work, source, output, commit, source_overrides):
+    """Cross-compile for a platform the build host cannot execute; its checks run there."""
+    executable, runtime = windows_bun_runtime(work, output, args.offline)
+    suffix = target['suffix']
+    compile_args = [str(bun), 'build', '--compile', f"--target={target['bun']}", f'--compile-executable-path={executable}', '--minify']
+    candidate = output / f'putgd-proton-runtime.new{suffix}'
+    run([*compile_args, './runtime.ts', f'--outfile={candidate}', f'--metafile={output / "build-metafile.json"}'], work)
+    stdout_fixture = output / f'stdout-fixture-test{suffix}'
+    run([*compile_args, './stdout_fixture.ts', f'--outfile={stdout_fixture}'], work)
+    artifact = output / f'putgd-proton-runtime{suffix}'
+    candidate.replace(artifact)
+    notices = write_notices(work, source, output, source_overrides)
+    redistribution = output / 'redistribution'
+    if redistribution.exists():
+        shutil.rmtree(redistribution)
+    redistribution.mkdir()
+    for name in WINDOWS_REDISTRIBUTION_FILES:
+        shutil.copyfile(ROOT / 'notices' / name, redistribution / name)
+    expected_version = {'schemaVersion': 1, 'runtime': 'putgd-proton-runtime',
+                        'appVersion': 'external-drive-put_gd@' + lock['runtimeVersion'], 'sdkVersion': 'js@' + lock['sdkVersion'],
+                        'bunVersion': lock['bunVersion'], 'protocolVersion': 1}
+    manifest = {'schemaVersion': 1, 'platform': args.target, 'artifact': artifact.name, 'sha256': sha256(artifact),
+                'sourceReference': commit, 'appVersion': expected_version['appVersion'],
+                'sdkVersion': expected_version['sdkVersion'], 'bunVersion': lock['bunVersion'], 'protocolVersion': 1,
+                'cryptoVersion': lock['cryptoVersion'], 'cryptoSourceReference': lock['cryptoSourceReference'],
+                'sourceOverrides': source_overrides, 'bunTargetRuntime': runtime,
+                'hostChecks': 'skipped: the Linux build host cannot execute this artifact; run targetChecks on the target',
+                'targetChecks': {
+                    'version': {'args': ['--version'], 'stdout': expected_version},
+                    'removeProbe': {'args': ['--stdio'], 'stdin': REMOVE_PROBE, 'errorCode': 'unsupported_safe_removal',
+                                    'stderr': ''},
+                    'smokeTest': 'python tools/proton/smoke_test.py --runtime ' + artifact.name,
+                    'stdoutRegression': {'artifact': stdout_fixture.name, 'sha256': sha256(stdout_fixture),
+                                         'stdoutBytes': len(STDOUT_FIXTURE_BYTES),
+                                         'stdoutSha256': hashlib.sha256(STDOUT_FIXTURE_BYTES).hexdigest(), 'stderr': ''}},
+                'redistributionComplete': False,
+                'redistributionNote': 'Experimental lab artifact. Windows Bun native attribution and notices, and a Windows '
+                                      'corresponding-source catalog, are still to be collected; only the platform-neutral '
+                                      'JavaScript notices below accompany it. Not for distribution.',
+                'redistributionFilesSha256': {name: sha256(redistribution / name) for name in WINDOWS_REDISTRIBUTION_FILES},
+                'runtimeLockSha256': sha256(ROOT / 'runtime-lock.json'),
+                'dependencyLockSha256': sha256(ROOT / 'package-lock.json'),
+                'dependencyNotices': notices.name, 'dependencyNoticesSha256': sha256(notices),
+                'helperSourceSha256': helper_source_hashes()}
     (output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps({'artifact': str(artifact), 'manifest': str(output / 'manifest.json'), 'sha256': manifest['sha256']}))
 
