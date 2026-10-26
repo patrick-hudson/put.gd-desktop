@@ -68,7 +68,9 @@ private slots:
     void defaultSizeFitsAndTheVideoTakesMostOfTheWindow() {
         ReviewWindow window(options(), config());
         // The one-monitor fixture is 1366×768: the default fits with room for a panel and title bar.
-        QCOMPARE(QGuiApplication::primaryScreen()->geometry().size(), QSize(1366, 768));
+        // Offscreen the fixture is 1366×768; a native run (real compositor) checks
+        // the same shares on the desktop's own screen.
+        if (QGuiApplication::platformName() == QLatin1String("offscreen")) QCOMPARE(QGuiApplication::primaryScreen()->geometry().size(), QSize(1366, 768));
         QVERIFY(ReviewWindow::defaultSize().width() <= 1366 - 24 && ReviewWindow::defaultSize().height() <= 768 - 120);
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));

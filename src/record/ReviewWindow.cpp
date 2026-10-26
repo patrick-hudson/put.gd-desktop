@@ -73,7 +73,7 @@ void FrameView::paintEvent(QPaintEvent*) {
         painter.setBrush(mask.kind == "solid" ? QBrush(QColor(0, 0, 0, active ? 0 : 60)) : QBrush(QColor(155, 188, 255, active ? 0 : 30)));
         painter.drawRect(r);
         painter.setPen(Qt::white);
-        painter.drawText(r.adjusted(4, 2, -4, -2), Qt::AlignTop | Qt::AlignLeft, mask.kind == "solid" ? QStringLiteral("solid") : QStringLiteral("blur"));
+        painter.drawText(r.adjusted(4, 2, -4, -2), Qt::AlignTop | Qt::AlignLeft, mask.kind == "solid" ? QStringLiteral("Solid cover") : QStringLiteral("Blur"));
         if (mask.id == selected_) { painter.setBrush(Theme::current().accent); painter.setPen(Qt::NoPen); painter.drawRect(QRectF(r.right() - handleSize, r.bottom() - handleSize, handleSize, handleSize)); }
     }
     if (drag_ == Drag::Create) {
@@ -240,7 +240,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
     painter.setPen(Qt::NoPen);
     painter.setBrush(p.text);
     painter.drawPolygon(QPolygonF{QPointF(x - 4, 0), QPointF(x + 4, 0), QPointF(x, 5)});
-    if (hasFocus()) { painter.setPen(QPen(p.accent, 1)); painter.setBrush(Qt::NoBrush); painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 5, 5); }
+    if (Graphite::keyboardFocus(this)) { painter.setPen(QPen(p.accent, 1)); painter.setBrush(Qt::NoBrush); painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 5, 5); }
 }
 void ReviewTimeline::seek(qint64 us) { setPlayhead(us); emit scrubbed(playhead_); }
 void ReviewTimeline::mousePressEvent(QMouseEvent* e) {
@@ -336,13 +336,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* frame = new QVBoxLayout(this);
     frame->setContentsMargins(0, 0, 0, 0);
     frame->setSpacing(0);
-    // The document header replaces the desktop's title bar when put.gd draws
-    // the frame; under a desktop frame the title bar names the window and the
-    // frame keeps that height (#283's frame share).
-    if (Graphite::WindowHeader::customFrame()) {
-        header_ = Graphite::WindowHeader::install(this, frame);
-        header_->setDocument("Review recording", "Not uploaded");
-    }
+    // The review keeps the desktop's title bar: a 56 px document header would
+    // take the frame below #283's share (60%, 45% at 150% text), measured on
+    // native GNOME Wayland. Its draft state is in the footer instead.
     auto* root = new QVBoxLayout;
     root->setContentsMargins(12, 8, 12, 6);
     root->setSpacing(6);
@@ -454,6 +450,12 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     save_->setToolTip("Export the reviewed clip to a file on this computer. Nothing is uploaded.");
     cancel_ = new QPushButton("Discard", this);
     VisualStyle::role(cancel_, "quiet");
+    auto* draft = new QLabel("Not uploaded", this);
+    draft->setObjectName("draftState");
+    draft->setToolTip("Nothing uploads until you choose Upload; Save copy… exports locally.");
+    VisualStyle::role(draft, "meta");
+    actions->addWidget(draft);
+    actions->addSpacing(8);
     auto* output = new QLabel("Output", this);
     VisualStyle::role(output, "meta");
     output->setBuddy(format_);

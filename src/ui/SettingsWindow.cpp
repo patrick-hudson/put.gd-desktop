@@ -599,7 +599,9 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
   else if(Settings::artifactByteLimitKeys().contains(key)){auto* combo=choices(this,key+"Choice",{});combo->setEditable(true);combo->setInsertPolicy(QComboBox::NoInsert);combo->addItem("Auto","Auto");combo->addItem("No limit",QString{});combo->setLineEdit(edit);edit->setPlaceholderText("No limit");editor=combo;connect(combo,&QComboBox::activated,this,[this,combo,edit](int index){edit->setText(combo->itemData(index).toString());queueEdit(edit);});}
   const bool retention=defaults["retention"].toObject().contains(key);auto* wrap=setting(form,name,editor,QString(retention?"/retention/":"/limits/")+key,{},unit);if(editor!=edit){errors_[edit]=errors_[editor];bind(edit,QString(retention?"/retention/":"/limits/")+key);}const QJsonValue value=retention?defaults["retention"].toObject()[key]:defaults["limits"].toObject()[key];const qint64 factor=displayUnit(key);const auto text=value.isNull()?QString{}:value.isString()?QStringLiteral("Auto"):ByteSize::exact(value.toInteger(),factor);edit->setProperty("defaultText",text);auto* reset=new QPushButton("Reset");reset->setAccessibleName("Reset "+name+" to default");auto* state=new QLabel("Default");VisualStyle::role(state,"muted");auto* row=qobject_cast<QHBoxLayout*>(wrap->layout()->itemAt(0)->layout());
   // What Auto resolves to on this computer (#149), from settings.get effectiveLimits.
-  if(Settings::artifactByteLimitKeys().contains(key)){auto* resolved=limitHints_[key]=new QLabel;resolved->setObjectName(key+"Resolved");VisualStyle::role(resolved,"muted");resolved->setWordWrap(true);resolved->setMinimumWidth(Graphite::scaled(80));resolved->hide();row->addWidget(resolved);connect(edit,&QLineEdit::textChanged,this,[this]{updateLimitHints();});}
+  if(Settings::artifactByteLimitKeys().contains(key)){auto* resolved=limitHints_[key]=new QLabel;resolved->setObjectName(key+"Resolved");VisualStyle::role(resolved,"muted");resolved->setWordWrap(true);resolved->hide();
+   // Below the value and its unit, so a long hint never stretches that control row.
+   qobject_cast<QVBoxLayout*>(wrap->layout())->insertWidget(1,resolved);connect(edit,&QLineEdit::textChanged,this,[this]{updateLimitHints();});}
   row->addWidget(state);row->addWidget(reset);auto update=[=,this]{const bool changed=edit->text()!=text;state->setVisible(!changed);reset->setVisible(changed);wrap->setProperty("changed",changed);wrap->style()->unpolish(wrap);wrap->style()->polish(wrap);};connect(edit,&QLineEdit::textChanged,this,update);connect(reset,&QPushButton::clicked,this,[=,this]{edit->setText(text);queueEdit(edit);});update();};
  auto* uploads=section(left,"Uploads");number(uploads,"concurrentUploads","Uploads at once",{});number(uploads,"maxFileBytes","Largest file","GiB");number(uploads,"maxBatchBytes","Largest batch","GiB");number(uploads,"pendingArtifactBytes","Waiting uploads","GiB");number(uploads,"maxFiles","Files in a batch",{});number(uploads,"pendingOperations","Waiting operations",{});
  auto* images=section(left,"Images and clipboard");number(images,"imageBytes","Largest image","MiB");number(images,"imagePixels","Largest image size","megapixels");number(images,"clipboardTextBytes","Clipboard text limit","MiB");
@@ -716,7 +718,11 @@ bool SettingsWindow::eventFilter(QObject* watched,QEvent* event){
  if(event->type()==QEvent::Hide&&watched==generalPage_&&!event->spontaneous())revealUpdates_=false;
  return RetainedWindow::eventFilter(watched,event);
 }
-void SettingsWindow::refreshMetadata(){if(configPath_)configPath_->setText(settings_.path());metadata_->setText("Configuration: "+settings_.path()+"\nAccepted revision: "+settings_.revision()+"\nObserved file revision: "+settings_.metadata()["observedRevision"].toString());}
+void SettingsWindow::refreshMetadata(){if(configPath_)configPath_->setText(settings_.path());{const auto plain="Configuration: "+settings_.path()+"\nAccepted revision: "+settings_.revision()+"\nObserved file revision: "+settings_.metadata()["observedRevision"].toString();
+  // Paths and 64-digit revisions may break at a slash or every 16 digits, so a
+  // narrow page wraps them instead of growing; the accessible name stays exact.
+  auto shown=plain;shown.replace('/',QStringLiteral("/\u200B"));static const QRegularExpression run(QStringLiteral("([0-9a-fA-F]{16})(?=[0-9a-fA-F])"));shown.replace(run,QStringLiteral("\\1\u200B"));
+  metadata_->setText(shown);metadata_->setAccessibleName(plain);metadata_->setToolTip(plain);}}
 void SettingsWindow::dirty(){if(loading_)return;dirty_=true;emit viewStateChanged();}
 void SettingsWindow::status(const Error& error){
  auto e=error;

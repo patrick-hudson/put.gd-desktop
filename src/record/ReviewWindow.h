@@ -18,7 +18,7 @@ class QShortcut;
 class QSpinBox;
 class QThread;
 class QToolButton;
-namespace putgd { class FileDialog; namespace Graphite { class WindowHeader; } }
+namespace putgd { class FileDialog; }
 
 namespace putgd::record {
 // Paints the preview frame scaled to fit and lets the user create, select,
@@ -210,7 +210,6 @@ private:
     QToolButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addBlur_ = nullptr, *addSolid_ = nullptr, *removeMask_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr;
     QPushButton *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
     FileDialog* chooser_ = nullptr;
-    Graphite::WindowHeader* header_ = nullptr;
     QWidget *maskTools_ = nullptr;
     QShortcut* escape_ = nullptr;
     QSpinBox* strength_ = nullptr;

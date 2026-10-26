@@ -1394,8 +1394,18 @@ void alignForms(QWidget* page) {
             QList<QWidget*> controls;
             if (field->widget()) controls << field->widget() << field->widget()->findChildren<QWidget*>();
             for (auto* control : controls) {
-                if (!qobject_cast<QComboBox*>(control) && !qobject_cast<QAbstractSpinBox*>(control)) continue;
-                control->setMaximumWidth(scaled(400));
+                const bool unitted = qobject_cast<QLineEdit*>(control) && control->parentWidget() && !qobject_cast<QComboBox*>(control->parentWidget())
+                    && std::any_of(control->parentWidget()->children().cbegin(), control->parentWidget()->children().cend(), [](QObject* o) { return o->property("visualRole").toString() == "unitSuffix"; });
+                if (!qobject_cast<QComboBox*>(control) && !qobject_cast<QAbstractSpinBox*>(control) && !unitted) continue;
+                // A value with its unit is one compound control: cap and align
+                // the pair, so the unit stays attached to its field.
+                QWidget* target = control;
+                if (auto* holder = control->parentWidget()) {
+                    for (auto* sibling : holder->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))
+                        if (sibling->property("visualRole").toString() == "unitSuffix") { target = holder; break; }
+                }
+                target->setMaximumWidth(scaled(400));
+                control = target;
                 // A capped control starts at the field column, never centred in it.
                 if (auto* parent = control->parentWidget()) {
                     QList<QLayout*> layouts = parent->findChildren<QLayout*>(Qt::FindDirectChildrenOnly);
