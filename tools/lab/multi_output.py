@@ -239,14 +239,17 @@ PY
             raise RuntimeError('Fixture is not native Wayland')
         if any(m['allocatedWidth'] != m['width'] or m['allocatedHeight'] != m['height'] for m in self.monitors):
             raise RuntimeError('Fullscreen fixture size differs from its actual native output')
+        if any(m['placedRect'] != [m['x'], m['y'], m['width'], m['height']] for m in self.monitors):
+            raise RuntimeError('Fullscreen fixture was placed on a different native output')
         self.shots('fixtures-ready')
 
     def setup(self):
         self.profile = lab.load_profile(lab.state(self.run)['profile'])
-        package = json.loads((self.run / 'package.json').read_text())
         if self.args.appimage:
             package = lab.install_appimage(self.run, self.args.appimage)
             save(self.run / 'package.json', package)
+        else:
+            package = json.loads((self.run / 'package.json').read_text())
         if package.get('format') == 'appimage':
             original = lab.load_profile
             lab.load_profile = lambda name: {**original(name), 'install': 'appimage'}
@@ -256,7 +259,8 @@ PY
         capabilities = self.cli('capabilities')
         running = lab.verify_running_app(self.run)
         save(self.out / 'identity.json', {'package': package, 'resident': running,
-            'capabilities': capabilities, 'run': lab.state(self.run), 'driverSha256': lab.hash_file(__file__)})
+            'capabilities': capabilities, 'run': lab.state(self.run), 'driverSha256': lab.hash_file(__file__),
+            'nativeAdapter': self.profile.get('nativeAdapter')})
         # Retain loginctl/native compositor identity independently of app capability claims.
         native = self.session('''python3 - <<'PY'
 import subprocess,os

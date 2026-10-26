@@ -45,6 +45,7 @@ def main():
     package_choice.add_argument('--native-package', type=Path, help='Already installed exact DEB/RPM; verified against its archive')
     p.add_argument('--sha256', required=True)
     p.add_argument('--vnc-port', type=int, required=True)
+    p.add_argument('--pointer-route', choices=('portal-vnc', 'uinput'), default='portal-vnc')
     p.add_argument('--case', action='append', choices=multi_output.CASES)
     p.add_argument('--change-command', type=Path)
     a = p.parse_args(); headless_output.lease(a.session)
@@ -92,6 +93,8 @@ def main():
     if desktop == 'plasmashell':
         profile['desktop'] = 'KDE'
     profile['guest_user'] = os.environ['USER']
+    profile['nativeAdapter'] = {'sha256': digest(__file__), 'pointerRoute': a.pointer_route,
+                                'fixtureSha256': digest(Path(__file__).with_name('multi_output_fixture.py'))}
     package.update(sha256=a.sha256, filename=artifact.name, installedBinarySha256=binaries,
                    version=json.loads(subprocess.check_output(version_command, env=env)))
     multi_output.save(run / 'package.json', package)
@@ -103,6 +106,7 @@ def main():
     if fixture_path.exists() or fixture_path.is_symlink():
         raise RuntimeError('Temporary fixture path already exists; preserve it')
     resident = None; wall_fixture = None; campaign = None; input_started = False; input_stopped = False
+    control = None
     def local_shell(_run, body, timeout=60, bootstrap=False):
         return subprocess.run(['sh', '-s'], input=body, env=env, capture_output=True, text=True, check=True, timeout=timeout).stdout
     def local_get(_run, source, target):
@@ -171,6 +175,25 @@ def main():
                 if time.monotonic() > deadline:
                     raise
                 time.sleep(.2)
+        # KWin can map an absolute uinput tablet to one output. The portal VNC
+        # stream's absolute pointer is explicitly in its verified combined
+        # logical coordinate space; keep one connection so a drag retains buttons.
+        control = rfb.RFB(a.vnc_port) if a.pointer_route == 'portal-vnc' else None
+        def native_pointer(_run, x, y, width, height, down=None):
+            if (width, height) != (control.width, control.height):
+                raise RuntimeError('Native pointer viewport differs from the verified combined wall stream')
+            control.pointer(x, y, down)
+        original_input = lab.input_events
+        def native_input(_run, events, head=None):
+            if all(e['type'] == 'btn' for e in events):
+                for event in events:
+                    bit = {'left': 1, 'middle': 2, 'right': 4}[event['data']['button']]
+                    control.buttons = control.buttons | bit if event['data']['down'] else control.buttons & ~bit
+                    control.pointer(40, 40)
+            else:
+                original_input(_run, events, head)
+        if control:
+            lab.pointer = native_pointer; lab.input_events = native_input
         options = SimpleNamespace(run=str(run), output=str(run / ('g' + uuid.uuid4().hex[:6])), appimage=None,
                                   change_command=a.change_command)
         campaign = multi_output.Campaign(options)
@@ -206,6 +229,8 @@ def main():
                 input_stopped = True
             except subprocess.SubprocessError as error:
                 cleanup_errors.append('input: ' + str(error))
+        if control:
+            control.close()
         if fixture_path.is_file() and digest(fixture_path) == digest(Path(__file__).with_name('multi_output_fixture.py')):
             fixture_path.unlink()
         current = {str(f): f.read_bytes() for f in applications.glob('*putgd*.desktop')}

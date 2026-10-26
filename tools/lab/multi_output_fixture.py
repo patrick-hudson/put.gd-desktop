@@ -53,7 +53,11 @@ def main():
                 cr.fill()
         if a.motion:
             cr.set_source_rgb(1, 1, 1)
-            cr.rectangle((tick[0] * 13) % max(1, w - 80), 40, 80, max(80, h - 80))
+            # Every 160px recording target sees motion, including on a wide
+            # output where a single sweeping bar can miss the sampled region.
+            phase = (tick[0] * 13) % TILE
+            for x in range(-TILE + phase, w, TILE):
+                cr.rectangle(x, 0, 32, h)
             cr.fill()
         return False
     def key(_window, event):
