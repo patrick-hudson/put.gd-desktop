@@ -50,8 +50,10 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  // and the pages in the header's navigation, once each.
  auto* menu=new QMenu(this);menu->setObjectName("applicationMenuPopup");
  auto* helpAction=menu->addAction(VisualStyle::icon("info"),"Capture and clipboard actions…");helpAction->setObjectName("captureActionsHelp");
- auto* updatesAction=menu->addAction(VisualStyle::icon("download"),"Check for updates…");updatesAction->setObjectName("checkForUpdates");
- connect(updatesAction,&QAction::triggered,this,[this]{navigate("settings");settings_->showUpdates();});
+ auto* updatesAction=menu->addAction(VisualStyle::icon("download"),"Check for updates");updatesAction->setObjectName("checkForUpdates");
+ // Opens General → Updates and starts its Check now, where checks are
+ // supported; the result shows there.
+ connect(updatesAction,&QAction::triggered,this,[this]{navigate("settings");settings_->showUpdates();if(auto* now=settings_->findChild<QPushButton*>("checkForUpdatesNow");now&&now->isEnabled())now->click();});
  connect(menu->addAction("About put.gd"),&QAction::triggered,this,&MainWindow::aboutRequested);
  menu->addSeparator();
  connect(menu->addAction("Quit put.gd"),&QAction::triggered,this,&MainWindow::quitRequested);

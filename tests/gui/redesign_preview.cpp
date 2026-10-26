@@ -5,6 +5,7 @@
 #include "ui/HistoryModel.h"
 #include "ui/SettingsWindow.h"
 #include "ui/RedesignTheme.h"
+#include "ui/Graphite.h"
 #include "ui/VisualStyle.h"
 #include "ui/EditorWindow.h"
 #include "editor/EditorCommands.h"
@@ -116,7 +117,10 @@ QJsonObject previewConfig(const QString& root){
 }
 }
 int main(int argc,char** argv){
- QApplication app(argc,argv);app.setApplicationName("putgd-redesign-preview");app.setWindowIcon(VisualStyle::icon("brand"));Native native;if(qEnvironmentVariable("PUTGD_PREVIEW_THEME")=="light")Theme::setScheme(Theme::Scheme::Light);if(app.arguments().size()!=2){qCritical("Usage: redesign_preview OUTPUT_DIRECTORY");return 2;}const auto output=QFileInfo(app.arguments().at(1)).absoluteFilePath();if(!QDir().mkpath(output)){qCritical("Cannot create preview output directory");return 2;}
+ QApplication app(argc,argv);app.setApplicationName("putgd-redesign-preview");
+ // Offscreen renders show put.gd's own frame (header window controls,
+ // Review's compact header), as on X11 and Wayland; native runs decide it.
+ if(QGuiApplication::platformName()=="offscreen")Graphite::WindowHeader::setCustomFrameOverride(1);app.setWindowIcon(VisualStyle::icon("brand"));Native native;if(qEnvironmentVariable("PUTGD_PREVIEW_THEME")=="light")Theme::setScheme(Theme::Scheme::Light);if(app.arguments().size()!=2){qCritical("Usage: redesign_preview OUTPUT_DIRECTORY");return 2;}const auto output=QFileInfo(app.arguments().at(1)).absoluteFilePath();if(!QDir().mkpath(output)){qCritical("Cannot create preview output directory");return 2;}
  if(!iconSpecimen().save(QDir(output).filePath("00-icon-specimen.png")))return 2;
  // The fixture calls the resident dispatcher directly and never opens a socket,
  // but enforce the same Linux path precondition before constructing the app.

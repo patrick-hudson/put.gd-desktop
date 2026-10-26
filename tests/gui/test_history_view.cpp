@@ -14,6 +14,7 @@
 #include <QClipboard>
 #include <QScrollArea>
 #include <QLineEdit>
+#include <QListWidget>
 #include "ui/ViewState.h"
 #include <QPushButton>
 #include <QApplication>
@@ -216,11 +217,19 @@ private slots:
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1024,700);window.show();
   auto* list=window.findChild<QListView*>("historyList");auto* inspector=window.findChild<QScrollArea*>("historyInspectorScroll");QVERIFY(list);QVERIFY(inspector);QVERIFY(!inspector->isVisible());auto* empty=window.findChild<QLabel*>("historyEmpty");PUTGD_TRY_VERIFY(empty->isVisible());
   {HistoryStore ledger(operations.databasePath());Operation op;op.id="synthetic-batch-history";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();op.destination.profileId="original-synthetic-destination";
-   for(int i=0;i<2;++i){OperationItem item;item.artifact.id=QString("batch-history-item-%1").arg(i);item.artifact.name=QString("synthetic-file-%1.txt").arg(i);item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus="local_only";op.items.append(item);}QVERIFY(!ledger.saveOperation(op));}
+   for(int i=0;i<2;++i){OperationItem item;item.artifact.id=QString("batch-history-item-%1").arg(i);item.artifact.name=QString("synthetic-file-%1.txt").arg(i);item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus=i==1?"failed":"local_only";op.items.append(item);}QVERIFY(!ledger.saveOperation(op));}
   window.refresh();PUTGD_TRY_COMPARE(list->model()->rowCount(),1);QVERIFY(!empty->isVisible());selectRow(list,0);auto* items=window.findChild<QComboBox*>("historyItems");PUTGD_TRY_COMPARE(items->count(),2);QVERIFY(items->isVisible());auto* details=window.findChild<QPlainTextEdit*>("historyDetails");auto* summary=window.findChild<QLabel*>("historySummary");
-  for(int item=0;item<items->count();++item){items->setCurrentIndex(item);PUTGD_TRY_COMPARE(QJsonDocument::fromJson(details->toPlainText().toUtf8()).object()["id"].toString(),items->currentData().toString());QVERIFY(summary->text().contains("text/plain"));QVERIFY(!summary->text().contains("original-synthetic-destination"));}
+  for(int item=0;item<items->count();++item){items->setCurrentIndex(item);PUTGD_TRY_COMPARE(QJsonDocument::fromJson(details->toPlainText().toUtf8()).object()["id"].toString(),items->currentData().toString());QVERIFY(summary->text().contains("text/plain"));QVERIFY(!summary->text().contains("original-synthetic-destination"));
+   // The line under the title describes the batch; each file shows its own upload state.
+   const bool failedItem=items->currentData().toString()=="batch-history-item-1";QVERIFY2(summary->text().contains(failedItem?"Upload failed":"Local capture"),qPrintable(summary->text()));}
   auto* gallery=window.findChild<QToolButton*>("historyGridMode");gallery->click();QCOMPARE(list->viewMode(),QListView::IconMode);QVERIFY(!inspector->isVisible());QCOMPARE(list->selectionModel()->selectedRows().size(),1);const auto saved=window.saveViewState();QVERIFY(saved["gridMode"].toBool());HistoryWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(saved));PUTGD_TRY_COMPARE(reopened.findChild<QListView*>("historyList")->selectionModel()->selectedRows().size(),1);QCOMPARE(reopened.findChild<QListView*>("historyList")->viewMode(),QListView::IconMode);QCOMPARE(reopened.saveViewState()["selectedItemId"],saved["selectedItemId"]);
   window.findChild<QToolButton*>("historyListMode")->click();QVERIFY(inspector->isVisible());for(auto size:{QSize(1024,700),QSize(1280,700),QSize(1024,700)}){window.resize(size);putgd::test::settle(20);PUTGD_TRY_VERIFY(window.width()<=size.width());PUTGD_TRY_VERIFY(window.height()<=size.height());PUTGD_TRY_COMPARE(list->selectionModel()->selectedRows().size(),1);}list->clearSelection();QVERIFY(!inspector->isVisible());QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+  // The heading names what is shown, through the filter and a restored view too.
+  {auto* heading=window.findChild<QLabel*>("historyHeading");QVERIFY(heading);QCOMPARE(heading->text(),QString("All items"));auto* state=window.findChild<QLineEdit*>("historyFilteruploadStatus");auto* apply=window.findChild<QPushButton*>("historyApplyFilters");
+   state->setText("failed");apply->click();QCOMPARE(heading->text(),QString("Failed uploads"));const auto failedView=window.saveViewState();
+   state->clear();apply->click();QCOMPARE(heading->text(),QString("All items"));
+   window.findChild<QListWidget*>("historyCategories")->setCurrentRow(1);QCOMPARE(heading->text(),QString("Images"));window.findChild<QListWidget*>("historyCategories")->setCurrentRow(0);
+   HistoryWindow restored(fixture.session);QVERIFY(restored.restoreViewState(failedView));QCOMPARE(restored.findChild<QLabel*>("historyHeading")->text(),QString("Failed uploads"));}
  }
  void groupedLocalFailureSurvivesRecentOperationEviction_data(){QTest::addColumn<bool>("evicted");QTest::newRow("recent")<<false;QTest::newRow("evicted")<<true;}
  void groupedLocalFailureSurvivesRecentOperationEviction(){
@@ -385,7 +394,7 @@ private slots:
  }
  void tenThousandEntryLedgerPagesAndFiltersOffline() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
-  {HistoryStore ledger(operations.databasePath());Operation op;op.id="synthetic-large-ledger";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();for(int i=0;i<10000;++i){OperationItem item;item.artifact.id=QString("ledger-id-%1").arg(i);item.artifact.name=QString("ledger-name-%1.txt").arg(i);item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus="local_only";op.items.append(item);}QVERIFY(!ledger.saveOperation(op));}
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="synthetic-large-ledger";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();for(int i=0;i<10000;++i){OperationItem item;item.artifact.id=QString("ledger-id-%1").arg(i);item.artifact.name=QString("ledger-name-%1.txt").arg(i);item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus=i==1?"failed":"local_only";op.items.append(item);}QVERIFY(!ledger.saveOperation(op));}
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryModel model(fixture.session);int ticks=0;QTimer pulse;pulse.setInterval(1);connect(&pulse,&QTimer::timeout,this,[&]{++ticks;});pulse.start();UiHistoryQuery page;page.offset=9950;model.setQuery(page);PUTGD_TRY_COMPARE(model.total(),qint64(10000));QCOMPARE(model.rowCount(),1);QCOMPARE(model.record(0)["records"].toArray().size(),50);QVERIFY(ticks>0);page.offset=0;page.search="ledger-name-9999.txt";model.setQuery(page);PUTGD_TRY_COMPARE(model.rowCount(),1);PUTGD_TRY_COMPARE(model.record(0)["name"].toString(),QString("ledger-name-9999.txt"));QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
  }
  void cancellingExactDeletionConfirmationSendsNoDelete() {

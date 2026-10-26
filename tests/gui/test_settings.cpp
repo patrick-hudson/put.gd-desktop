@@ -756,7 +756,7 @@ private slots:
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);
   auto* menu=window.findChild<QMenu*>("applicationMenuPopup");QVERIFY(menu);
   QStringList entries;for(auto* action:menu->actions())if(!action->isSeparator())entries<<action->text().replace("&&","&");
-  QCOMPARE(entries,QStringList({"Capture and clipboard actions…","Check for updates…","About put.gd","Quit put.gd"}));
+  QCOMPARE(entries,QStringList({"Capture and clipboard actions…","Check for updates","About put.gd","Quit put.gd"}));
   QStringList band;for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){band<<button->accessibleName();if(button->property("captureAction")!="edit")QVERIFY2(!button->menu(),qPrintable(button->accessibleName()));}
   for(const auto& entry:entries)QVERIFY2(!band.contains(entry)&&!QStringList({"History","Destinations","Settings"}).contains(entry),qPrintable(entry));
   QVERIFY(!window.findChild<QMenu*>("captureRegionMenu"));
