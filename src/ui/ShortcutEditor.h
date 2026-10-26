@@ -27,6 +27,8 @@ public:
  void setActions(const QJsonObject&);
  QJsonObject actions(const QJsonObject&) const;
  void setStatus(const QJsonObject&);
+ // Refresh desktop support beside the page status: asks the desktop again.
+ void setRefreshAction(std::function<void()> action){refreshAction_=std::move(action);}
  const QHash<QString,QLineEdit*>& editors() const{return editors_;}
 protected:
  bool eventFilter(QObject*,QEvent*) override;
@@ -35,6 +37,7 @@ private:
  void finishRecording(const QString& message);
  QHash<QString,QLineEdit*> editors_;QHash<QString,QLabel*> bindingStates_;QLabel* status_;QPlainTextEdit* details_;
  QHash<QString,QPushButton*> recordButtons_;
+ QPushButton* refresh_=nullptr;std::function<void()> refreshAction_;
  QLabel* recordingStatus_;
  RecordingControl recordingControl_;
  ChordResolver chordResolver_;

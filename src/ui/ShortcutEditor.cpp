@@ -25,16 +25,18 @@ QString actualBinding(const QJsonValue& actual) {
  for(const auto& value:actual.toArray())if(!value.toString().isEmpty())bindings.append(value.toString());
  return bindings.join(" / ");
 }
-struct BindingPresentation { QString text;const char* tone; };
+// shown is false where the page-level status already says it (nothing reported
+// yet, shortcuts unavailable on this desktop) or the field does (Disabled).
+struct BindingPresentation { QString text;const char* tone;bool shown=true; };
 BindingPresentation bindingPresentation(const QJsonObject& status,const QJsonObject& entry) {
  const auto state=entry["state"].toString();
  const auto error=entry["error"].isObject()?entry["error"].toObject()["code"].toString():entry["error"].toString();
  const auto actual=actualBinding(entry["actual"]);
  if(state=="recording")return {"Paused  ·  Recording a shortcut.","muted"};
  if(error=="disabled"||(state=="unbound"&&entry["requested"].toString().isEmpty()))
-  return {"Disabled  ·  No global shortcut is assigned.","muted"};
+  return {"Disabled  ·  No global shortcut is assigned.","muted",false};
  if(status.contains("available")&&!status["available"].toBool())
-  return {"Unavailable  ·  Set up desktop shortcut support to enable this action.","warning"};
+  return {"Unavailable  ·  Global shortcuts are unavailable on this desktop.","warning",false};
  if(state=="shortcut_conflict"||error=="shortcut_conflict")
   return {"Conflict  ·  Choose another shortcut."+(actual.isEmpty()?QString{}:" Desktop binding: "+actual),"error"};
  if(state=="shortcut_invalid"||error=="shortcut_invalid")
@@ -49,15 +51,20 @@ BindingPresentation bindingPresentation(const QJsonObject& status,const QJsonObj
  // Bound is the runtime observation, not a promise inferred from the draft.
  if(entry["bound"].toBool()&&error.isEmpty())
   return {"Active  ·  "+(actual.isEmpty()?QString("Binding confirmed by the desktop."):actual),"active"};
- if(!error.isEmpty())return {"Not bound  ·  Check desktop support for this action.","warning"};
- if(entry.isEmpty())return {"Not reported  ·  Refresh desktop support to check this action.","muted"};
- return {"Not bound  ·  Choose a shortcut or refresh desktop support.","muted"};
+ if(!error.isEmpty())return {"Not bound  ·  The desktop did not accept this shortcut.","warning"};
+ if(entry.isEmpty())return {"Not reported  ·  The desktop has not reported this shortcut.","muted",false};
+ return {"Not bound  ·  Choose another shortcut.","muted"};
 }
 }
 ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
  VisualStyle::apply(*qApp);
  auto* layout=new QVBoxLayout(this);layout->setContentsMargins(0,0,0,0);layout->setSpacing(16);
- status_=new QLabel(this);status_->setObjectName("shortcutStatus");status_->setWordWrap(true);VisualStyle::role(status_,"muted");layout->addWidget(status_);
+ // The page-level state and its one recovery action; rows add only what is
+ // specific to their action.
+ auto* statusRow=new QHBoxLayout;statusRow->setContentsMargins(0,0,0,0);statusRow->setSpacing(12);layout->addLayout(statusRow);
+ status_=new QLabel(this);status_->setObjectName("shortcutStatus");status_->setWordWrap(true);VisualStyle::role(status_,"muted");statusRow->addWidget(status_,1);
+ refresh_=new QPushButton("Refresh desktop support",this);refresh_->setObjectName("refreshShortcutSupport");refresh_->setToolTip("Ask the desktop again which shortcuts it holds.");statusRow->addWidget(refresh_,0,Qt::AlignVCenter);
+ connect(refresh_,&QPushButton::clicked,this,[this]{if(refreshAction_)refreshAction_();});
  recordingStatus_=new QLabel(this);recordingStatus_->setObjectName("shortcutRecordingStatus");recordingStatus_->setAccessibleName("Shortcut recording status");recordingStatus_->setWordWrap(true);VisualStyle::role(recordingStatus_,"status");layout->addWidget(recordingStatus_);recordingStatus_->hide();
  auto* form=new QFormLayout;VisualStyle::styleForm(form);layout->addLayout(form);
  // The command names the main window, menu and tray use.
@@ -151,18 +158,23 @@ bool ShortcutEditor::eventFilter(QObject* object,QEvent* event){
 }
 QJsonObject ShortcutEditor::actions(const QJsonObject& base) const {auto actions=base;for(auto it=editors_.begin();it!=editors_.end();++it){auto action=actions[it.key()].toObject();action["shortcut"]=it.value()->text();actions[it.key()]=action;}return actions;}
 void ShortcutEditor::setStatus(const QJsonObject& status) {
- if(!status.contains("available"))status_->setText("Desktop bindings have not been reported. Refresh desktop support to check them.");
- else if(!status["available"].toBool())status_->setText("Global shortcuts are unavailable on this desktop. Check desktop support to restore shortcut bindings.");
- else status_->setText("Changes save automatically. Choose a shortcut to record a new combination.");
- const auto bindings=status["bindings"].toObject();
+ const auto bindings=status["bindings"].toObject();bool unreported=false,attention=false;
  for(const auto& action:Settings::invocableActionNames()) {
   auto* label=bindingStates_[action];const auto presentation=bindingPresentation(status,bindings[action].toObject());label->setText(presentation.text);label->setProperty("bindingTone",presentation.tone);VisualStyle::role(label,"binding");const auto entry=bindings[action].toObject();
   // KDE registers Ctrl+Shift+1 as Ctrl+! (its "effective" chord). Hide the line
   // when the desktop holds what was asked of it, not only the literal draft.
   const auto draft=editors_[action]->text();
   const auto expected=entry["effective"].isString()&&entry["requested"].toString()==draft?entry["effective"].toString():draft;
-  label->setVisible(!(entry["bound"].toBool()&&actualBinding(entry["actual"])==expected&&entry["error"].toString().isEmpty()));
+  const bool confirmed=entry["bound"].toBool()&&actualBinding(entry["actual"])==expected&&entry["error"].toString().isEmpty();
+  label->setVisible(presentation.shown&&!confirmed);
+  unreported|=entry.isEmpty()&&!draft.isEmpty();attention|=!confirmed&&presentation.shown&&qstrcmp(presentation.tone,"muted")!=0;
  }
+ if(!status.contains("available"))status_->setText("Your desktop hasn't reported these shortcuts yet.");
+ else if(!status["available"].toBool())status_->setText("Global shortcuts are unavailable on this desktop.");
+ else if(unreported)status_->setText("Your desktop hasn't reported every shortcut yet. Changes save automatically.");
+ else if(attention)status_->setText("Changes save automatically. The notes below say what the desktop reported.");
+ else status_->setText("Your desktop holds these shortcuts. Changes save automatically.");
+ refresh_->setVisible(!status["available"].toBool()||unreported||attention);
  details_->setPlainText(QString::fromUtf8(QJsonDocument(status).toJson(QJsonDocument::Indented)));
 }
 }
