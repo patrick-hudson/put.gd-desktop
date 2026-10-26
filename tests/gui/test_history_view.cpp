@@ -285,7 +285,7 @@ private slots:
   window.findChild<QListWidget*>("historyCategories")->setCurrentRow(2);window.findChild<QCheckBox*>("historyFailedOnly")->setChecked(true);putgd::test::settle(50);
   auto* heading=window.findChild<QLabel*>("historyHeading");QCOMPARE(heading->text(),QString("Recordings · failed uploads"));
   for(const char* name:{"historySearch","historyListMode","historyGridMode","historyFiltersExpanded"}){auto* w=window.findChild<QWidget*>(name);QVERIFY2(w&&w->isVisible(),name);const QRect r(w->mapTo(&window,QPoint()),w->size());QVERIFY2(window.rect().contains(r),name);QVERIFY2(!r.intersects(QRect(heading->mapTo(&window,QPoint()),heading->size())),name);}
-  QVERIFY(window.findChild<QWidget*>("historySearch")->width()>=160);
+  QVERIFY(window.findChild<QWidget*>("historySearch")->width()>=160);auto* failed=window.findChild<QCheckBox*>("historyFailedOnly");QVERIFY2(failed->width()>=failed->sizeHint().width(),"The complete Failed uploads only label must fit at enlarged text sizes");
  }
  void batchCapturesFoldFilesAndKeepOriginalDetailsRoutedById(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1024,700);window.show();

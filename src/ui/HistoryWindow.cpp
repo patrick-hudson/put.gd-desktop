@@ -301,9 +301,10 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  categories_->setCurrentRow(0);
  // Wide enough for its labels at the current text size, never more than the
  // shared sidebar cap (the Settings rails measure the same way).
- {const QFontMetrics strong(Graphite::font(Graphite::Type::body,true));int widest=0;for(int i=0;i<categories_->count();++i)widest=qMax(widest,strong.horizontalAdvance(categories_->item(i)->text()));const int filter=QFontMetrics(Graphite::font()).horizontalAdvance("Failed uploads only")+style()->pixelMetric(QStyle::PM_IndicatorWidth)+style()->pixelMetric(QStyle::PM_CheckBoxLabelSpacing)+20;sidebar->setFixedWidth(Graphite::sidebarWidth(Graphite::Metric::historySidebar,qMax(widest+74,filter)));}
+
  categories_->setFixedHeight(4*(Graphite::scaled(Graphite::Metric::navRow))+4);side->addWidget(categories_);side->addWidget(Graphite::rule(sidebar));
  failedOnly_=new QCheckBox("Failed uploads only",sidebar);failedOnly_->setObjectName("historyFailedOnly");failedOnly_->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);failedOnly_->setAccessibleName("Failed uploads only");failedOnly_->setToolTip("Show only failed uploads (Upload state: failed)");side->addWidget(failedOnly_);
+ {const QFontMetrics strong(Graphite::font(Graphite::Type::body,true));int widest=0;for(int i=0;i<categories_->count();++i)widest=qMax(widest,strong.horizontalAdvance(categories_->item(i)->text()));const int filter=failedOnly_->sizeHint().width()+20;sidebar->setFixedWidth(Graphite::sidebarWidth(Graphite::Metric::historySidebar,qMax(widest+74,filter)));}
  side->addStretch();
  auto* content=new QWidget(this);content->setObjectName("historyContent");page->addWidget(content,1);auto* layout=new QVBoxLayout(content);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
  auto* headerBar=new QWidget(content);auto* header=new QHBoxLayout(headerBar);header->setContentsMargins(18,12,16,10);header->setSpacing(8);// The page is already named by the navigation; the heading names what is shown.
