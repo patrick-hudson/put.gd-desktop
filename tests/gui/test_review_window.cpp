@@ -3,7 +3,9 @@
 // when they apply, and recording.review drives the same controls. Not desktop
 // proof; the lab captures are in the docs.
 #include "record/ReviewWindow.h"
+#include "ui/Graphite.h"
 #include "ui/Theme.h"
+#include <QLabel>
 #include <QApplication>
 #include <QFontInfo>
 #include <QComboBox>
@@ -65,6 +67,59 @@ class ReviewWindowTest : public QObject {
     static qint64 slack(const ReviewTimeline& t) { return 2 * duration / t.trackRect().width() + 1; }
     static ReviewTimeline* timeline(ReviewWindow& w) { return w.findChild<ReviewTimeline*>("timeline"); }
 private slots:
+    // put.gd's own frame everywhere below, also offscreen: the frame share,
+    // minimum size and fit include the compact header's pixels.
+    void initTestCase() { Graphite::WindowHeader::setCustomFrameOverride(1); }
+    void cleanupTestCase() { Graphite::WindowHeader::setCustomFrameOverride(0); }
+    void compactHeaderIsOneLineNamedForTheWindow() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* header = window.findChild<Graphite::WindowHeader*>("windowHeader");
+        QVERIFY(header && header->isVisible());
+        QCOMPARE(header->density(), Graphite::WindowHeader::Density::Compact);
+        QVERIFY(window.windowFlags().testFlag(Qt::FramelessWindowHint));
+        // Its height comes from the title's line, never below a 32 px control plus padding.
+        QCOMPARE(header->height(), header->compactHeight());
+        QVERIFY2(header->height() >= 36 && header->height() <= 40, qPrintable(QString::number(header->height())));
+        QCOMPARE(window.inspect()["header"].toObject()["rect"].toArray()[3].toInt(), header->height());
+        // One line: the window's name; its draft state stays in the footer.
+        auto* name = header->findChild<QWidget*>("documentName");
+        QVERIFY(name && name->isVisible());
+        QCOMPARE(name->accessibleName(), QStringLiteral("Review recording"));
+        auto* state = header->findChild<QLabel*>("documentState");
+        QVERIFY(!state || !state->isVisible());
+        auto* draft = window.findChild<QLabel*>("draftState");
+        QVERIFY(draft && draft->isVisible() && draft->text() == QStringLiteral("Not uploaded"));
+        QVERIFY(draft->mapTo(&window, QPoint()).y() > header->height());
+        // The shared window controls, each at least a 32 px target.
+        for (const auto* name : {"windowMinimize", "windowMaximize", "windowClose"}) {
+            auto* button = header->findChild<QToolButton*>(name);
+            QVERIFY2(button && button->isVisible(), name);
+            QVERIFY(button->width() >= 32 && button->height() >= 32);
+            QVERIFY(button->y() >= 0 && button->y() + button->height() <= header->height());
+        }
+        // Double-click on the band maximizes and restores, as on every put.gd window.
+        const QPoint empty(header->width() / 4, header->height() / 2);
+        QTest::mouseDClick(header, Qt::LeftButton, {}, empty);
+        PUTGD_TRY_VERIFY(window.isMaximized());
+        QTest::mouseDClick(header, Qt::LeftButton, {}, empty);
+        PUTGD_TRY_VERIFY(!window.isMaximized());
+    }
+    void desktopDecorationsHideTheCompactHeader() {
+        Graphite::WindowHeader::setCustomFrameOverride(-1);
+        {
+            ReviewWindow window(options(), config());
+            window.show();
+            QVERIFY(putgd::test::waitForWindowExposed(&window));
+            auto* header = window.findChild<Graphite::WindowHeader*>("windowHeader");
+            QVERIFY(header && !header->isVisible());
+            QVERIFY(!window.windowFlags().testFlag(Qt::FramelessWindowHint));
+            QCOMPARE(window.windowTitle(), QStringLiteral("Review recording"));
+            QVERIFY(!window.inspect()["header"].toObject()["visible"].toBool());
+        }
+        Graphite::WindowHeader::setCustomFrameOverride(1);
+    }
     void defaultSizeFitsAndTheVideoTakesMostOfTheWindow() {
         ReviewWindow window(options(), config());
         // The one-monitor fixture is 1366×768: the default fits with room for a panel and title bar.
@@ -76,14 +131,17 @@ private slots:
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         QCOMPARE(window.size(), ReviewWindow::defaultSize());
         auto state = window.inspect();
+        qInfo("review default %dx%d header %d share %.3f", window.width(), window.height(), state["header"].toObject()["rect"].toArray()[3].toInt(), state["video"].toObject()["share"].toDouble());
         // Before #283 the frame had about 30% of a 900×700 window; now most of it.
         QVERIFY2(state["video"].toObject()["share"].toDouble() >= 0.6, qPrintable(QString::number(state["video"].toObject()["share"].toDouble())));
         window.setEdit(twoMasks());
         QApplication::processEvents();
         state = window.inspect();
         QCOMPARE(state["timeline"].toObject()["lanes"].toInt(), 2);
+        qInfo("review two masks share %.3f timeline %d", state["video"].toObject()["share"].toDouble(), state["timeline"].toObject()["rect"].toArray()[3].toInt());
         QVERIFY2(state["video"].toObject()["share"].toDouble() >= 0.6, qPrintable(QString::number(state["video"].toObject()["share"].toDouble())));
         // The minimum leaves the frame usable and fits a small laptop screen.
+        qInfo("review minimum %dx%d", window.minimumSizeHint().width(), window.minimumSizeHint().height());
         QVERIFY(window.minimumSizeHint().width() <= 760 && window.minimumSizeHint().height() <= 420);
         // The video scales with the window.
         const auto before = state["video"].toObject()["rect"].toArray();
@@ -108,7 +166,13 @@ private slots:
             const auto minimum = window.minimumSizeHint();
             QVERIFY2(minimum.width() <= 1366 - 24 && minimum.height() <= 768 - 120, qPrintable(QStringLiteral("%1x%2").arg(minimum.width()).arg(minimum.height())));
             QVERIFY(window.width() <= 1366 && window.height() <= 768);
+            qInfo("review 150%% text %dx%d minimum %dx%d share %.3f", window.width(), window.height(), minimum.width(), minimum.height(), window.inspect()["video"].toObject()["share"].toDouble());
             QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
+            // The compact header grows with the text instead of clipping it.
+            auto* header = window.findChild<Graphite::WindowHeader*>("windowHeader");
+            QVERIFY(header && header->isVisible() && header->height() == header->compactHeight());
+            auto* name = header->findChild<QWidget*>("documentName");
+            QVERIFY(name && name->height() >= name->fontMetrics().height() && name->y() >= 0 && name->y() + name->height() <= header->height());
             // Every control is inside the window.
             for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && w->isWindow() == false) QVERIFY2(window.rect().contains(QRect(w->mapTo(&window, QPoint()), w->size())), qPrintable(w->accessibleName() + w->objectName()));
         }
@@ -212,6 +276,34 @@ private slots:
         QCOMPARE(t->playhead(), at + 100000);
         QTest::keyClick(t, Qt::Key_Home);
         QCOMPARE(t->playhead(), qint64(3000000));
+    }
+    void draggingAMaskBarMovesItInTime() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.setEdit(twoMasks());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* t = timeline(window);
+        QVERIFY(t);
+        // Press inside the unselected solid cover (4 s to 10 s) and drag it 3 s
+        // earlier: it is selected and moves as a whole, keeping its 6 s length.
+        const auto bar = t->maskRect("m-solid");
+        const QPoint from(t->xFor(7000000), bar.center().y());
+        drag(t, from, QPoint(t->xFor(4000000), bar.center().y()));
+        QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m-solid"));
+        QCOMPARE(proposed(proposals)["op"].toString(), QString("updateMask"));
+        QCOMPARE(proposed(proposals)["maskId"].toString(), QString("m-solid"));
+        const auto moved = proposed(proposals)["mask"].toObject();
+        QVERIFY(std::abs(qint64(moved["start"].toDouble()) - 1000000) <= slack(*t));
+        QCOMPARE(qint64(moved["end"].toDouble() - moved["start"].toDouble()), qint64(6000000));
+        // Past the clip's end it stops there, still 6 s long.
+        RecordingEdit edit = twoMasks(4);
+        window.setEdit(edit);
+        const auto again = t->maskRect("m-solid");
+        drag(t, QPoint(again.center().x(), again.center().y()), QPoint(t->width() + 80, again.center().y()));
+        const auto clamped = proposed(proposals)["mask"].toObject();
+        QCOMPARE(qint64(clamped["end"].toDouble()), t->duration());
+        QCOMPARE(qint64(clamped["end"].toDouble() - clamped["start"].toDouble()), qint64(6000000));
     }
     void keyboardAndNamedIconControlsInBothSchemes() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {

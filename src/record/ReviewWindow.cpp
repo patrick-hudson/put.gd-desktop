@@ -160,7 +160,7 @@ void FrameView::mouseReleaseEvent(QMouseEvent* e) {
 
 namespace {
 // Timeline geometry (#283): the clip track, then one thin lane per row of masks.
-constexpr int trackPad = 8, trackTop = 5, trackHeight = 10, laneTop = 20, laneHeight = 5, laneGap = 2, bottomPad = 5, maxLanes = 4, grip = 6;
+constexpr int trackPad = 8, trackTop = 6, trackHeight = 12, laneTop = 25, laneHeight = 9, laneGap = 3, bottomPad = 6, maxLanes = 4, grip = 6;
 constexpr qint64 minimumSpanUs = 10000;
 }
 
@@ -213,7 +213,7 @@ QRect ReviewTimeline::maskRect(const QString& id) const {
     return {};
 }
 QSize ReviewTimeline::sizeHint() const { return {480, minimumSizeHint().height()}; }
-QSize ReviewTimeline::minimumSizeHint() const { return {120, std::max(28, lanes_ ? laneTop + lanes_ * (laneHeight + laneGap) - laneGap + bottomPad : trackTop + trackHeight + bottomPad)}; }
+QSize ReviewTimeline::minimumSizeHint() const { return {120, std::max(32, lanes_ ? laneTop + lanes_ * (laneHeight + laneGap) - laneGap + bottomPad : trackTop + trackHeight + bottomPad)}; }
 void ReviewTimeline::paintEvent(QPaintEvent*) {
     // Graphite: a quiet track, the retained interval framed in amber between
     // two grip handles, lightly dimmed trimmed-away ends, mask bars in lanes
@@ -246,7 +246,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
     for (int i = 0; i < masks_.size(); ++i) {
         const auto& mask = masks_[i];
         const bool selected = mask.id == selected_;
-        const bool retiming = selected && (drag_ == Drag::MaskStart || drag_ == Drag::MaskEnd);
+        const bool retiming = selected && (drag_ == Drag::MaskStart || drag_ == Drag::MaskEnd || drag_ == Drag::MaskMove);
         const auto lane = laneRect(lane_.value(i));
         const int left = xFor(retiming ? dragStart_ : mask.start), right = xFor(retiming ? dragEnd_ : mask.end);
         const QRectF bar = QRectF(left, lane.top(), std::max(3, right - left), lane.height()).adjusted(0.5, 0.5, -0.5, -0.5);
@@ -276,8 +276,8 @@ void ReviewTimeline::seek(qint64 us) { setPlayhead(us); emit scrubbed(playhead_)
 void ReviewTimeline::mousePressEvent(QMouseEvent* e) {
     if (e->button() != Qt::LeftButton) return;
     const auto pos = e->position();
-    // The selected mask's edges, then the trim handles, then a mask bar; anything
-    // else scrubs.
+    // The selected mask's edges, then the trim handles, then a mask bar (which
+    // selects it and moves the whole interval); anything else scrubs.
     if (const auto bar = maskRect(selected_); !bar.isNull() && pos.y() >= bar.top() - 3 && pos.y() <= bar.bottom() + 3) {
         const auto& mask = *std::find_if(masks_.cbegin(), masks_.cend(), [this](const RecordingMask& m) { return m.id == selected_; });
         const qreal toStart = std::abs(pos.x() - bar.left()), toEnd = std::abs(pos.x() - (bar.left() + bar.width()));
@@ -289,9 +289,15 @@ void ReviewTimeline::mousePressEvent(QMouseEvent* e) {
     } else {
         for (int i = int(masks_.size()) - 1; i >= 0; --i) {
             if (!maskRect(masks_[i].id).adjusted(-2, -2, 2, 2).contains(pos.toPoint())) continue;
-            selected_ = masks_[i].id;
+            if (selected_ != masks_[i].id) { selected_ = masks_[i].id; emit maskSelected(selected_); }
+            // Dragging the bar moves the mask in time; its length stays the same.
+            drag_ = Drag::MaskMove;
+            dragStart_ = masks_[i].start;
+            dragEnd_ = masks_[i].end;
+            moveAnchor_ = timeAt(pos.x()) - masks_[i].start;
+            setCursor(Qt::ClosedHandCursor);
             update();
-            emit maskSelected(selected_);
+            emit scrubStarted();
             return;
         }
     }
@@ -305,11 +311,22 @@ void ReviewTimeline::mouseMoveEvent(QMouseEvent* e) {
         const auto bar = maskRect(selected_);
         const bool overMask = !bar.isNull() && pos.y() >= bar.top() - 3 && pos.y() <= bar.bottom() + 3 && std::min(std::abs(pos.x() - bar.left()), std::abs(pos.x() - (bar.left() + bar.width()))) <= grip;
         const bool overTrim = pos.y() < laneTop - 1 && std::min(std::abs(pos.x() - xFor(trimStart_)), std::abs(pos.x() - xFor(trimEnd_))) <= grip;
-        setCursor(overMask || overTrim ? Qt::SizeHorCursor : Qt::ArrowCursor);
+        bool overBar = false;
+        for (const auto& mask : masks_) overBar |= maskRect(mask.id).adjusted(-2, -2, 2, 2).contains(pos.toPoint());
+        setCursor(overMask || overTrim ? Qt::SizeHorCursor : overBar ? Qt::OpenHandCursor : Qt::ArrowCursor);
         return;
     }
     const qint64 at = timeAt(pos.x());
     if (drag_ == Drag::Scrub) { seek(at); return; }
+    if (drag_ == Drag::MaskMove) {
+        // The whole interval follows the pointer, kept inside the clip; the frame
+        // at its new start shows.
+        const qint64 span = dragEnd_ - dragStart_;
+        dragStart_ = std::clamp<qint64>(at - moveAnchor_, 0, duration_ - span);
+        dragEnd_ = dragStart_ + span;
+        seek(dragStart_);
+        return;
+    }
     // Moving an edge shows the frame at it, as the in/out buttons do.
     if (drag_ == Drag::TrimStart || drag_ == Drag::MaskStart) dragStart_ = std::clamp<qint64>(at, 0, dragEnd_ - minimumSpanUs);
     else dragEnd_ = std::clamp<qint64>(at, dragStart_ + minimumSpanUs, duration_);
@@ -320,7 +337,8 @@ void ReviewTimeline::mouseReleaseEvent(QMouseEvent* e) {
     const auto drag = std::exchange(drag_, Drag::None);
     update();
     if ((drag == Drag::TrimStart || drag == Drag::TrimEnd) && (dragStart_ != trimStart_ || dragEnd_ != trimEnd_)) emit trimChanged(dragStart_, dragEnd_);
-    if (drag == Drag::MaskStart || drag == Drag::MaskEnd) {
+    if (drag == Drag::MaskMove) setCursor(Qt::OpenHandCursor);
+    if (drag == Drag::MaskStart || drag == Drag::MaskEnd || drag == Drag::MaskMove) {
         for (const auto& mask : masks_) if (mask.id == selected_ && (mask.start != dragStart_ || mask.end != dragEnd_)) emit maskRetimed(mask.id, dragStart_, dragEnd_);
     }
 }
@@ -362,16 +380,21 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) VisualStyle::apply(*app);
     setAttribute(Qt::WA_DeleteOnClose, false);
     // #283: the frame takes the window; the timeline, one row of tools and the
-    // action footer sit under it. The desktop's title bar names the window.
+    // action footer sit under it.
     auto* frame = new QVBoxLayout(this);
     frame->setContentsMargins(0, 0, 0, 0);
     frame->setSpacing(0);
-    // The review keeps the desktop's title bar: a 56 px document header would
-    // take the frame below #283's share (60%, 45% at 150% text), measured on
-    // native GNOME Wayland. Its draft state is in the footer instead.
+    // The shared header in its compact, one-line form: the 56 px document band
+    // took the frame below #283's share (60%, 45% at 150% text) natively. The
+    // draft state ("Not uploaded") stays in the footer. With the desktop's own
+    // frame (PUTGD_SYSTEM_DECORATIONS=1) the compact header hides itself.
+    header_ = Graphite::WindowHeader::install(this, frame, nullptr, Graphite::WindowHeader::Density::Compact);
+    header_->setDocument(QStringLiteral("Review recording"));
     auto* root = new QVBoxLayout;
-    root->setContentsMargins(12, 8, 12, 6);
-    root->setSpacing(6);
+    // 4 px rows: the header's hairline and the footer's separate the bands already,
+    // so the frame and a taller timeline keep the height.
+    root->setContentsMargins(12, Graphite::WindowHeader::customFrame() ? 4 : 8, 12, 4);
+    root->setSpacing(4);
     frame->addLayout(root, 1);
     // Why the capture ended when it stopped itself (#225); hidden otherwise.
     notice_ = new QLabel(this);
@@ -402,7 +425,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     play_->setObjectName("play");
     timeline_ = new ReviewTimeline(this);
     timeline_->setDuration(options.durationUs);
-    timeline_->setToolTip("Click or drag to scrub; drag the trim handles or a selected mask's ends to retime them. Arrows step, Home/End jump to the kept part.");
+    timeline_->setToolTip("Click or drag to scrub; drag the trim handles to trim. Drag a mask to move it in time, or a selected mask's ends to retime them. Arrows step, Home/End jump to the kept part.");
     time_ = new QLabel(this);
     time_->setObjectName("time");
     VisualStyle::role(time_, "secondary");
@@ -489,7 +512,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* output = new QLabel("Output", this);
     VisualStyle::role(output, "meta");
     output->setBuddy(format_);
-    actions->setContentsMargins(12, 6, 12, 6);
+    actions->setContentsMargins(12, 4, 12, 4);
     actions->addWidget(output);
     actions->addWidget(format_);
     actions->addWidget(status_, 1);
@@ -581,6 +604,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     if (const auto* screen = QGuiApplication::primaryScreen()) size = size.boundedTo(screen->availableGeometry().size() - QSize(24, 48));
     resize(size.expandedTo(minimumSizeHint()));
 }
+QSize ReviewWindow::defaultSize() { return {960, Graphite::WindowHeader::customFrame() ? 648 : 600}; }
 RecordingMask* ReviewWindow::selectedMask() {
     auto it = std::find_if(edit_.masks.begin(), edit_.masks.end(), [&](const RecordingMask& m) { return m.id == selectedMask_; });
     return it == edit_.masks.end() ? nullptr : &*it;
@@ -754,7 +778,8 @@ QJsonObject ReviewWindow::inspect() const {
         {"fileDialog", chooser_->state()},
         {"format", QJsonObject{{"format", config_.format}, {"codec", config_.codec}}},
         {"video", QJsonObject{{"rect", rect(video)}, {"share", double(video.width()) * video.height() / area}}},
-        {"timeline", QJsonObject{{"rect", rect(timeline_->geometry())}, {"lanes", timeline_->lanes()}}}};
+        {"timeline", QJsonObject{{"rect", rect(timeline_->geometry())}, {"lanes", timeline_->lanes()}}},
+        {"header", QJsonObject{{"visible", header_->isVisibleTo(this)}, {"rect", rect(header_->geometry())}, {"customFrame", Graphite::WindowHeader::customFrame()}}}};
 }
 ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
     const auto action = params["action"].toString();

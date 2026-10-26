@@ -19,6 +19,7 @@ class QSpinBox;
 class QThread;
 class QToolButton;
 namespace putgd { class FileDialog; }
+namespace putgd::Graphite { class WindowHeader; }
 
 namespace putgd::record {
 // Paints the preview frame scaled to fit and lets the user create, select,
@@ -95,12 +96,13 @@ protected:
     void mouseReleaseEvent(QMouseEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
 private:
-    enum class Drag { None, Scrub, TrimStart, TrimEnd, MaskStart, MaskEnd };
+    enum class Drag { None, Scrub, TrimStart, TrimEnd, MaskStart, MaskEnd, MaskMove };
     qint64 timeAt(qreal x) const;
     void layoutLanes();
     QRect laneRect(int lane) const;
     void seek(qint64 us);
     qint64 duration_ = 1, playhead_ = 0, trimStart_ = 0, trimEnd_ = 1;
+    qint64 moveAnchor_ = 0;  // a moved mask: the press point's offset from its start
     QList<RecordingMask> masks_;
     QList<int> lane_;
     int lanes_ = 0;
@@ -155,7 +157,10 @@ public:
     DriveResult drive(const QJsonObject& params);
     QJsonObject inspect() const;
     // The default size that fits a 1366×768 desktop with its panel and title bar.
-    static QSize defaultSize() { return {960, 600}; }
+    // 960x600 under the desktop's title bar; with put.gd's frame the window also
+    // takes the title bar's height, for its compact header (still within the
+    // 1366x768 fit: a panel plus 72 px to spare).
+    static QSize defaultSize();
 signals:
     void editProposed(quint64 revision, const QJsonArray& commands);
     void configChanged(const RecordingConfig&);
@@ -196,6 +201,7 @@ private:
     Options options_;
     RecordingConfig config_;
     RecordingEdit edit_;
+    Graphite::WindowHeader* header_ = nullptr;
     FrameView* view_ = nullptr;
     ReviewTimeline* timeline_ = nullptr;
     QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *strengthLabel_ = nullptr;

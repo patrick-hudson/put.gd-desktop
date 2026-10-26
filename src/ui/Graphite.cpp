@@ -1607,17 +1607,22 @@ QToolButton* chromeButton(const QString& glyph, const QString& name, QWidget* pa
 }
 }
 
+namespace {
+int& customFrameOverride() { static int forced = 0; return forced; }
+}
+void WindowHeader::setCustomFrameOverride(int forced) { customFrameOverride() = forced; }
 bool WindowHeader::customFrame() {
+    if (customFrameOverride()) return customFrameOverride() > 0;
     if (qEnvironmentVariable("PUTGD_SYSTEM_DECORATIONS") == QLatin1String("1")) return false;
     const auto platform = QGuiApplication::platformName();
     return platform == QLatin1String("xcb") || platform.startsWith(QLatin1String("wayland"));
 }
 
-WindowHeader::WindowHeader(QWidget* window, QMenu* menu) : QWidget(window), window_(window) {
+WindowHeader::WindowHeader(QWidget* window, QMenu* menu, Density density) : QWidget(window), density_(density), window_(window) {
     setObjectName(QStringLiteral("windowHeader"));
-    setFixedHeight(scaled(Metric::header));
+    setProperty("headerDensity", density == Density::Compact ? QStringLiteral("compact") : QStringLiteral("standard"));
     row_ = new QHBoxLayout(this);
-    row_->setContentsMargins(12, 0, 12, 0);
+    row_->setContentsMargins(density == Density::Compact ? 10 : 12, 0, density == Density::Compact ? 4 : 12, 0);
     row_->setSpacing(6);
     leading_ = new QWidget(this);
     auto* leading = new QHBoxLayout(leading_);
@@ -1632,7 +1637,8 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu) : QWidget(window), wind
     leading->addWidget(menu_);
     name_ = new QLabel(QStringLiteral("put.gd"), leading_);
     name_->setObjectName(QStringLiteral("brandName"));
-    VisualStyle::role(name_, "sectionTitle");
+    // The compact band sets the brand at the title's size, so one text line fits it.
+    VisualStyle::role(name_, density == Density::Compact ? "strong" : "sectionTitle");
     leading->addWidget(name_);
     leading->addStretch();
     row_->addWidget(leading_);
@@ -1662,7 +1668,22 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu) : QWidget(window), wind
     }
     row_->addWidget(trailing_);
     window->installEventFilter(this);
+    fitHeight();
+    // Without put.gd's frame the desktop's title bar names the window; a compact
+    // header would only repeat it and take the content's height.
+    if (density == Density::Compact && !customFrame()) hide();
     syncWindowState();
+}
+int WindowHeader::compactHeight() const {
+    const QFontMetricsF title(Graphite::font(Type::body, true));
+    const int text = int(std::ceil(title.height())) + 2 * scaled(6);
+    return std::max(Metric::iconTarget + 6, text);
+}
+void WindowHeader::fitHeight() { setFixedHeight(density_ == Density::Compact ? compactHeight() : scaled(Metric::header)); }
+void WindowHeader::changeEvent(QEvent* event) {
+    // A later application font (enlarged text) changes the line height.
+    if (event->type() == QEvent::FontChange || event->type() == QEvent::StyleChange) fitHeight();
+    QWidget::changeEvent(event);
 }
 void WindowHeader::setCentre(QWidget* centre) {
     if (centre_) { row_->removeWidget(centre_); centre_->hide(); }
@@ -1683,6 +1704,7 @@ void WindowHeader::setDocument(const QString& name, const QString& state) {
         docName_->setAlignment(Qt::AlignCenter);
         docName_->setTextFormat(Qt::PlainText);
         VisualStyle::role(docName_, "strong");
+        if (density_ == Density::Compact) docName_->setProperty("compactTitle", true);
         docState_ = new QLabel(block);
         docState_->setObjectName(QStringLiteral("documentState"));
         docState_->setAlignment(Qt::AlignCenter);
@@ -1695,7 +1717,8 @@ void WindowHeader::setDocument(const QString& name, const QString& state) {
     docName_->setText(name);
     docName_->setToolTip(name);
     docState_->setText(state);
-    docState_->setVisible(!state.isEmpty());
+    // One line in the compact band: its state belongs to the window's footer.
+    docState_->setVisible(!state.isEmpty() && density_ != Density::Compact);
 }
 void WindowHeader::addTrailing(QWidget* widget) {
     trailingRow_->insertWidget(1, widget);
@@ -1743,12 +1766,12 @@ void WindowHeader::paintEvent(QPaintEvent*) {
     p.setPen(t().border);
     p.drawLine(0, height() - 1, width(), height() - 1);
 }
-WindowHeader* WindowHeader::install(QWidget* window, QBoxLayout* rootLayout, QMenu* menu) {
+WindowHeader* WindowHeader::install(QWidget* window, QBoxLayout* rootLayout, QMenu* menu, Density density) {
     if (customFrame()) {
         window->setWindowFlag(Qt::FramelessWindowHint, true);
         new WindowEdges(window);
     }
-    auto* header = new WindowHeader(window, menu);
+    auto* header = new WindowHeader(window, menu, density);
     if (auto* main = qobject_cast<QMainWindow*>(window)) main->setMenuWidget(header);
     else if (rootLayout) rootLayout->insertWidget(0, header);
     return header;

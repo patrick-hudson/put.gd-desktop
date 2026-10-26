@@ -149,24 +149,40 @@ protected:
 class WindowHeader final : public QWidget {
     Q_OBJECT
 public:
-    explicit WindowHeader(QWidget* window, QMenu* menu = nullptr);
+    // Standard: the 56 px band of the main window and the editor. Compact: one
+    // line for windows whose content needs the height (Review); its height
+    // follows the title's text metrics with 32 px window controls, and it is
+    // hidden when the desktop draws the frame (whose title bar names the window).
+    enum class Density { Standard, Compact };
+    explicit WindowHeader(QWidget* window, QMenu* menu = nullptr, Density density = Density::Standard);
     void setCentre(QWidget*);
-    // A document's name and its truthful upload state ("Not uploaded").
-    void setDocument(const QString& name, const QString& state);
+    // A document's name and its truthful upload state ("Not uploaded"). The
+    // compact header shows the name only; keep the state elsewhere.
+    void setDocument(const QString& name, const QString& state = {});
     void addTrailing(QWidget*);
     QToolButton* menuButton() const { return menu_; }
+    Density density() const { return density_; }
+    // The compact band's height for the current fonts: the title's line height
+    // plus padding, never less than a 32 px control target plus padding.
+    int compactHeight() const;
     // Whether put.gd draws this process's window frames.
     static bool customFrame();
+    // Tests and the preview force the custom frame on or off on platforms where
+    // it is otherwise decided by the platform name (offscreen). 0: no override.
+    static void setCustomFrameOverride(int forced);
     // Makes a top-level window frameless (when customFrame()) with resize
     // edges, and puts this header above its content.
-    static WindowHeader* install(QWidget* window, QBoxLayout* rootLayout, QMenu* menu = nullptr);
+    static WindowHeader* install(QWidget* window, QBoxLayout* rootLayout, QMenu* menu = nullptr, Density density = Density::Standard);
 protected:
     void mousePressEvent(QMouseEvent*) override;
     void mouseDoubleClickEvent(QMouseEvent*) override;
     void paintEvent(QPaintEvent*) override;
+    void changeEvent(QEvent*) override;
     bool eventFilter(QObject*, QEvent*) override;
 private:
     void syncWindowState();
+    void fitHeight();
+    Density density_ = Density::Standard;
     QPointer<QWidget> window_;
     QToolButton* menu_ = nullptr;
     QLabel* name_ = nullptr;

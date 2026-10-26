@@ -57,7 +57,10 @@ struct Native {
   QPalette palette;palette.setColor(QPalette::Window,QColor(255,0,255));backdrop->setPalette(palette);backdrop->setAutoFillBackground(true);backdrop->showFullScreen();
   putgd::test::settle(800);
  }
- static QJsonObject geometry(QWidget& w){const auto f=w.frameGeometry();return {{"x",f.x()},{"y",f.y()},{"width",f.width()},{"height",f.height()},{"maximized",w.isMaximized()},{"minimized",w.isMinimized()},{"visible",w.isVisible()},{"platform",QGuiApplication::platformName()}};}
+ static QJsonObject geometry(QWidget& w){const auto f=w.frameGeometry();QJsonObject g{{"x",f.x()},{"y",f.y()},{"width",f.width()},{"height",f.height()},{"maximized",w.isMaximized()},{"minimized",w.isMinimized()},{"visible",w.isVisible()},{"platform",QGuiApplication::platformName()}};
+  // The shared header's band and window-control centres, for the chrome driver.
+  if(auto* header=w.findChild<QWidget*>("windowHeader");header&&header->isVisible()){g["header"]=header->height();QJsonObject controls;for(const auto* n:{"windowMinimize","windowMaximize","windowClose"})if(auto* b=header->findChild<QWidget*>(n)){const auto c=b->mapTo(&w,b->rect().center());controls[n]=QJsonArray{c.x(),c.y()};}g["controls"]=controls;}
+  return g;}
  bool step(QWidget& w,const QString& name,int timeoutMs=45000){
   if(!active())return true;
   w.raise();w.activateWindow();putgd::test::settle(300);
@@ -166,10 +169,15 @@ int main(int argc,char** argv){
   if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
   RecordingEdit edit;edit.revision=1;RecordingMask solid;solid.id="m-solid";solid.kind="solid";solid.rect=QRect(61,194,256,40);solid.start=8000000;solid.end=21000000;RecordingMask blur=solid;blur.id="m-blur";blur.kind="blur";blur.rect=QRect(337,194,256,130);blur.start=3000000;blur.end=12000000;edit.masks={solid,blur};edit.trimStart=2000000;edit.trimEnd=29000000;review.setEdit(edit);
   auto shot=[&](QWidget& w,const QString& name){putgd::test::settle(450);app.processEvents();const auto image=w.grab();if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
-  if(!shot(review,"30-review"))return 2;
-  review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31-review-blur-selected"))return 2;
-  review.resize(760,420);if(!shot(review,"32-review-minimum"))return 2;
-  review.hide();
+  // Each review state also keeps the window's own geometry (header, frame share).
+  auto inspected=[&](record::ReviewWindow& r,const QString& name){QSaveFile f(QDir(output).filePath(name+".json"));return f.open(QIODevice::WriteOnly)&&f.write(QJsonDocument(r.inspect()).toJson())>0&&f.commit();};
+  if(!shot(review,"30-review")||!inspected(review,"30-review"))return 2;
+  review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31-review-blur-selected")||!inspected(review,"31-review-blur-selected"))return 2;
+  review.resize(760,420);if(!shot(review,"32-review-minimum")||!inspected(review,"32-review-minimum"))return 2;
+  // The review window's own frame under real input (compact header).
+  // Alone on the backdrop, so the driver locates and drives only this window.
+  window.hide();review.resize(record::ReviewWindow::defaultSize());review.showNormal();if(!native.chrome(review,"91-review-chrome"))return 2;
+  review.hide();window.show();
   record::ControlBar::Options bar;bar.targetLabel="Region · 960 × 600";bar.formats=o.formats;bar.codecs=o.codecs;bar.audioSupported=true;
   record::ControlBar ready(bar,config);ready.show();if(!shot(ready,"33-record-ready-bar"))return 2;
   ready.setState("recording");ready.setRetained(12300000);if(!shot(ready,"34-record-recording-bar"))return 2;
