@@ -394,8 +394,8 @@ bool EditorWindow::saveCopy(){
  if(canvas_->editingText())canvas_->finishText(true);
  auto folder=QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);if(folder.isEmpty())folder=QDir::homePath();
  const auto name="put.gd-edit-"+QDateTime::currentDateTime().toString("yyyy-MM-dd-HH-mm-ss")+".png";
- return chooser_->open({FileDialog::Mode::Save,"Save a copy",folder,name,{{"PNG image",{"*.png"}}}},[this](const QString& path){
-  if(path.isEmpty()||busy_)return;
+ return chooser_->open({FileDialog::Mode::Save,"Save a copy",folder,name,{{"PNG image",{"*.png"}}}},[this](const FileDialog::Result& result){
+  if(!result.chosen()||busy_)return;const auto& path=result.path;
   // The same sanitized export as Upload; QSaveFile replaces a chosen target atomically.
   const auto png=doc_.exportPng();
   if(png.isEmpty()){showSaveFailed(path,"the edited image could not be encoded");return;}

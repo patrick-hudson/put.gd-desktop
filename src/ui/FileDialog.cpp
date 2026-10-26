@@ -255,9 +255,10 @@ void FileDialog::finish(const QString& status,const QString& path,const QString&
  qCInfo(lcFileDialog).noquote()<<"file dialog"<<status<<"via"<<backend_;
  phase_=Phase::Idle;
  auto done=std::exchange(done_,nullptr);
+ const Result result{status=="chosen"?Result::Status::Chosen:status=="failed"?Result::Status::Failed:Result::Status::Cancelled,path,error};
  QPointer<FileDialog> guard(this);
  emit stateChanged();
- if(guard&&done)done(path);
+ if(guard&&done)done(result);
 }
 void FileDialog::block(bool on){
  // Modal like the dialog it replaces: the window takes no input while the

@@ -33,8 +33,17 @@ public:
   QString name;   // Save: the suggested file name
   QList<Filter> filters;
  };
- // The chosen local path, or empty after a cancel or failure.
- using Done=std::function<void(const QString& path)>;
+ // How the chooser ended: a local path, a cancel, or a failure the person
+ // should see (it is not a cancel), with its reason.
+ struct Result {
+  enum class Status { Chosen, Cancelled, Failed };
+  Status status=Status::Cancelled;
+  QString path;  // Chosen: the local path
+  QString error; // Failed: why, in words for the person
+  bool chosen()const{return status==Status::Chosen;}
+  bool failed()const{return status==Status::Failed;}
+ };
+ using Done=std::function<void(const Result&)>;
  explicit FileDialog(QWidget* owner);
  ~FileDialog()override;
  // Opens the chooser for owner's window, modal like QFileDialog::exec; false

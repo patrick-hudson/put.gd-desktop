@@ -1287,8 +1287,10 @@ bool ReviewWindow::chooseCopy() {
     if (exporting_ || chooser_->isOpen()) return false;
     const auto extension = config_.extension();
     FileDialog::Options options{FileDialog::Mode::Save, "Save a copy", QDir::homePath(), "recording." + extension, {{config_.format.toUpper(), {"*." + extension}}}};
-    return chooser_->open(options, [this, extension](const QString& path) {
-        if (path.isEmpty() || exporting_) return;
+    return chooser_->open(options, [this, extension](const FileDialog::Result& result) {
+        if (result.failed()) { showError("Couldn't save a copy there: " + result.error); return; }
+        if (!result.chosen() || exporting_) return;
+        const auto& path = result.path;
         emit saveCopyRequested(path.endsWith("." + extension, Qt::CaseInsensitive) ? path : path + "." + extension, edit_.revision);
     });
 }

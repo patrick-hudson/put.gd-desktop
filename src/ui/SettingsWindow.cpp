@@ -311,7 +311,7 @@ public:
   custom_=folder;if(remember&&folderChosen)folderChosen(folder);refreshPreview();return {};
  }
  // Choose folder…: the desktop's folder chooser (#259); false while it is open.
- bool chooseFolder(){return chooser_->open({FileDialog::Mode::Folder,"Save diagnostics packages to",folder_->text(),{},{}},[this](const QString& path){if(!path.isEmpty())setFolder(path,true);});}
+ bool chooseFolder(){return chooser_->open({FileDialog::Mode::Folder,"Save diagnostics packages to",folder_->text(),{},{}},[this](const FileDialog::Result& result){if(result.chosen())setFolder(result.path,true);});}
  FileDialog& folderDialog(){return *chooser_;}
  // Ticks Also upload and copy a link; only a destination that passed the check can.
  Error setUpload(bool upload){
@@ -1221,7 +1221,7 @@ QJsonObject SettingsWindow::diagnosticsState()const{
  return state;
 }
 bool SettingsWindow::chooseOutputFolder(QLineEdit* field){
- return folderChooser_->open({FileDialog::Mode::Folder,"Choose output folder",field->text(),{},{}},[this,field=QPointer<QLineEdit>(field)](const QString& path){if(field&&!path.isEmpty()){field->setText(path);queueEdit(field);}});
+ return folderChooser_->open({FileDialog::Mode::Folder,"Choose output folder",field->text(),{},{}},[this,field=QPointer<QLineEdit>(field)](const FileDialog::Result& result){if(field&&result.chosen()){field->setText(result.path);queueEdit(field);}});
 }
 void SettingsWindow::fileDialogCommand(const QString& dialog,const QString& action,const QString& field,std::function<void(Error,QJsonObject)> reply){
  // #259: the folder choosers as their buttons open them; the reply is the chooser's state.

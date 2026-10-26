@@ -189,7 +189,7 @@ MainWindow::~MainWindow(){
 }
 bool MainWindow::chooseImageToEdit(){
  auto folder=QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);if(folder.isEmpty())folder=QDir::homePath();
- return chooser_->open({FileDialog::Mode::Open,"Edit an image file",folder,{},{{"Images",{"*.png","*.jpg","*.jpeg"}}}},[this](const QString& path){if(!path.isEmpty())emit editRequested("file",path);});
+ return chooser_->open({FileDialog::Mode::Open,"Edit an image file",folder,{},{{"Images",{"*.png","*.jpg","*.jpeg"}}}},[this](const FileDialog::Result& result){if(result.chosen())emit editRequested("file",result.path);});
 }
 QString MainWindow::droppedImage(const QMimeData* data){
  if(!data||data->urls().size()!=1||!data->urls().first().isLocalFile())return {};
