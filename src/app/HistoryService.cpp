@@ -41,6 +41,23 @@ void HistoryService::copyLink(const QString& id,JsonReply reply) {
   },ticket);
  });
 }
+void HistoryService::copyLinks(const QStringList& ids,JsonReply reply) {
+ if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ const auto ticket=operations_.invalidateCopyEligibility();const auto path=operations_.databasePath();
+ operations_.background([path,ids](Error& e) {
+  HistoryStore store(path);QStringList urls;
+  for(const auto& id:ids){const auto data=store.detail(id,&e);if(e)return QJsonObject{};if(!data["linkAvailable"].toBool()){e={"link_unavailable","This recorded link is no longer available",{{"historyId",id}}};return QJsonObject{};}urls.append(data["receipt"].toObject()["directUrl"].toString());}
+  return QJsonObject{{"text",urls.join('\n')}};
+ },[this,ids,reply,ticket](Error e,QJsonObject links) {
+  if(e){reply(e,{});return;}
+  operations_.copyHistoryUrl(links["text"].toString(),[this,ids,reply](Error e,QJsonObject result) {
+   if(e||!result["copied"].toBool()){reply(e,result);return;}
+   result["links"]=int(ids.size());const auto path=operations_.databasePath();
+   operations_.background([path,ids](Error& e){HistoryStore store(path);QJsonArray changed;for(const auto& id:ids){QString operationId;if((e=store.recordCopiedLink(id,operationId)))break;if(!operationId.isEmpty())changed.append(operationId);}return QJsonObject{{"operations",changed}};},
+    [this,reply,result](Error e,QJsonObject recorded){for(const auto& id:recorded["operations"].toArray())emit operations_.changed(id.toString());reply(e,result);});
+  },ticket);
+ });
+}
 QJsonObject HistoryService::prepare(const QStringList& ids,Error& e) const {
  if(ids.isEmpty()||ids.size()>1000) {e={"invalid_selection","Select between 1 and 1000 confirmed uploads",{}};return {};}
  HistoryStore store(operations_.databasePath());QJsonArray targets;QSet<QString> seen;

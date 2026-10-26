@@ -167,8 +167,8 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   auto answer=[guard=QPointer<UiApplicationController>(this),sequence](Error error,QJsonObject result){if(guard&&!guard->exiting_)guard->control_.send("commandResult",{{"replyTo",sequence},{"error",error.toJson()},{"result",result}});};
   Error error;QJsonObject result;
   if(payload["version"]!=1)error={"ui_command_unsupported","This window does not support that command version.",{{"version",payload["version"]}}};
-  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","fileDialog"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
-  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"?"Open History before driving it.":name=="fileDialog"?"Open put.gd's window (History or Settings) before driving it.":"Open Settings before driving it.",{}};
+  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","history","fileDialog"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
+  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"||name=="history"?"Open History before driving it.":name=="fileDialog"?"Open put.gd's window (History or Settings) before driving it.":"Open Settings before driving it.",{}};
   // #259: the open, save and folder choosers, as their buttons open them.
   else if(name=="fileDialog"){
    const auto dialog=params["dialog"].toString(),action=params["action"].toString();
@@ -186,6 +186,7 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   // These finish asynchronously (a session request) and answer through `answer`.
   else if(name=="diagnostics"){main_->settings()->diagnosticsCommand(params,answer);return;}
   else if(name=="historySaveDiagnostics"){main_->history()->saveDiagnosticsFor(params["id"].toString(),answer);return;}
+  else if(name=="history"){main_->history()->command(params,answer);return;}
   else error=main_->settings()->moveSelectedDestination(params["direction"].toString()=="up"?-1:1,params["profileId"].toString(),result);
   answer(error,result);return;
  }

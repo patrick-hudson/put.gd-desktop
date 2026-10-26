@@ -66,6 +66,7 @@ REVIEW_SPEEDS = {0.5, 1, 2, 4}
 # The put.gd window's file choosers (#259) and the actions on each.
 FILE_DIALOGS = {'editImage', 'historySaveAs', 'outputFolder', 'diagnosticsFolder'}
 FILE_DIALOG_ACTIONS = {'open', 'inspect', 'cancel'}
+HISTORY_ACTIONS = {'inspect', 'clearFilters', 'select', 'clearSelection', 'openDetails', 'closeDetails'}
 OUTPUT_FOLDER_FIELDS = {'root', 'images', 'videos', 'text', 'other'}
 # A backstop above the CLI's own bounded wait, whose longest case is 3 s to connect,
 # 3 s to send and 45 s for recording.stop (LocalServer::replyDeadlineMs).
@@ -518,6 +519,13 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         """Write the stored direct URL to clipboard; no upload or target reconstruction."""
         return await adapter.call('history.copyLink', {'id': id}) if identifier(id) else invalid()
 
+    @server.tool(annotations=effect)
+    async def copy_history_links(ids: list[str]) -> Json:
+        """Write several stored direct URLs to the clipboard, one per line in the order given, as History's Copy links does for a selection; link_unavailable (with historyId) copies nothing. No upload or target reconstruction."""
+        if not ids or len(ids) > 1000 or len(set(ids)) != len(ids) or any(not identifier(id, 128) for id in ids):
+            return invalid()
+        return await adapter.call('history.copyLinks', {'ids': ids})
+
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
     async def open_history_link(id: str) -> Json:
         """Open the stored direct URL in the desktop's default browser, as clicking the link-ready notification does: the XDG portal's OpenURI, else gio open with the host's environment. Returns route (portal or launcher), opened and fallbackFrom; link_not_opened when nothing could open it."""
@@ -702,6 +710,20 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         if id is not None:
             params['id'] = id
         return await adapter.call('ui.fileDialog', params)
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def drive_history(action: str, scope: str | None = None, ids: list[str] | None = None) -> Json:
+        """Drive the open History page as its controls do and read its state. action: inspect; clearFilters (Clear filters; scope all also clears the search and shows All items, as the empty view's reset does); select (ids: history, operation or row IDs on the page shown, selected together); clearSelection; openDetails or closeDetails (the inspector over the list in the compact layout). Returns the applied query, activeFilters, filtersLabel ("Filters · N"), selectedIds, selectedRows, selectionActions (copyLinks, delete, clearSelection), deletableIds, layout (split or compact), detailsOpen and inspectorVisible. Delete selected files with delete_history_uploads using deletableIds."""
+        if action not in HISTORY_ACTIONS or (scope is not None and (action != 'clearFilters' or scope not in {'filters', 'all'})):
+            return invalid()
+        if (action == 'select') != (ids is not None) or (ids is not None and (not ids or len(ids) > 1000 or any(not identifier(id, 138) for id in ids))):
+            return invalid()
+        params: Json = {'action': action}
+        if scope is not None:
+            params['scope'] = scope
+        if ids is not None:
+            params['ids'] = ids
+        return await adapter.call('ui.history', params)
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def history_save_diagnostics(id: str) -> Json:

@@ -185,6 +185,11 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="history.detail"||method=="history.preview"||method=="history.copyLink"||method=="history.copyImage"||(method.startsWith("delete.")&&method!="delete.prepare"&&method!="delete.confirm")) {
   if(!fields(p,{"id"})||!string(p,"id")) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="history.detail")history_.detail(id,reply);else if(method=="history.preview")history_.preview(id,reply);else if(method=="history.copyLink")history_.copyLink(id,reply);else if(method=="history.copyImage")history_.copyImage(id,reply);else if(method=="delete.inspect")history_.inspectDelete(id,reply);else if(method=="delete.retry")history_.retryDelete(id,reply);else if(method=="delete.cancel")history_.cancelDelete(id,reply);else reply({"unknown_method","Unknown deletion method",{}},{});return;
  }
+ if(method=="history.copyLinks") {
+  if(!fields(p,{"ids"})||!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000) {reply(invalid(),{});return;}
+  QStringList ids;for(const auto& id:p["ids"].toArray()) {if(!id.isString()||id.toString().isEmpty()||id.toString().size()>128||ids.contains(id.toString())) {reply(invalid(),{});return;}ids.append(id.toString());}
+  history_.copyLinks(ids,reply);return;
+ }
  if(method=="delete.prepare"||method=="delete.confirm") {
   if(!fields(p,method=="delete.confirm"?QStringList{"ids","acknowledgement"}:QStringList{"ids"})||!p["ids"].isArray()||p["ids"].toArray().size()>1000||(method=="delete.confirm"&&!string(p,"acknowledgement",64))) {reply(invalid(),{});return;}
   QStringList ids;for(const auto& id:p["ids"].toArray()) {if(!id.isString()||id.toString().isEmpty()||id.toString().size()>128) {reply(invalid(),{});return;}ids.append(id.toString());}
@@ -254,6 +259,15 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
      ||(p.contains("folder")&&(!string(p,"folder",4096)||!QDir::isAbsolutePath(p["folder"].toString())))||(p.contains("operation")&&!string(p,"operation",128))){reply(invalid(),{});return;}
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("diagnostics",p,std::move(reply));return;
+ }
+ // Drives the open History page: filters, selection and the compact details view.
+ if(method=="ui.history") {
+  static const QStringList actions{"inspect","clearFilters","select","clearSelection","openDetails","closeDetails"};const auto action=p["action"].toString();
+  if(!fields(p,{"action"},{"scope","ids"})||!actions.contains(action)||(p.contains("scope")&&(action!="clearFilters"||!QStringList{"filters","all"}.contains(p["scope"].toString())))
+     ||(action=="select")!=p.contains("ids")||(p.contains("ids")&&(!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000))){reply(invalid(),{});return;}
+  for(const auto& id:p["ids"].toArray())if(!id.isString()||id.toString().isEmpty()||id.toString().size()>138){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("history",p,std::move(reply));return;
  }
  if(method=="ui.historySaveDiagnostics") {
   if(!fields(p,{"id"})||!string(p,"id",128)){reply(invalid(),{});return;}
