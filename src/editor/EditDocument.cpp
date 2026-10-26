@@ -77,10 +77,12 @@ quint64 EditDocument::add(Shape shape){
  return shape.id;
 }
 bool EditDocument::replace(const Shape& changed){
- for(auto& shape:state_.shapes)if(shape.id==changed.id){
+ for(qsizetype i=0;i<state_.shapes.size();++i)if(state_.shapes.at(i).id==changed.id){
   auto next=changed;next.text.truncate(maximumTextCharacters);next.strength=std::clamp(next.strength,minimumBlur,maximumBlur);
-  if(shape==next)return false;
-  auto before=state_;shape=next;if(!gesture_)push(std::move(before));return true;
+  if(state_.shapes.at(i)==next)return false;
+  // Copy first, then write through the list: it detaches from the snapshot.
+  // (A reference taken before the copy wrote into both, losing the step.)
+  auto before=state_;state_.shapes[i]=next;if(!gesture_)push(std::move(before));return true;
  }
  return false;
 }
