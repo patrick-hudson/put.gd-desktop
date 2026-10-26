@@ -1,5 +1,6 @@
 """Synthetic policy/ownership contracts; live desktop evidence is separate."""
 import importlib.util
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -23,6 +24,20 @@ lab = module('lab_idle_contract', 'tools/lab/lab.py')
 
 
 class GuestPolicyContracts(unittest.TestCase):
+    @contextmanager
+    def disposable_account(self, home='/native/home'):
+        # Synthetic passwd/proc identities must work without USER and as root.
+        real_stat = Path.stat
+        def owned_stat(path, *args, **kwargs):
+            value = list(real_stat(path, *args, **kwargs))
+            value[4] = 1000
+            return os.stat_result(value)
+        account = SimpleNamespace(pw_uid=1000, pw_gid=1000, pw_dir=home)
+        with patch.object(idle.pwd, 'getpwnam', return_value=account), \
+             patch.object(idle.os, 'getuid', return_value=1000), \
+             patch.object(Path, 'stat', owned_stat):
+            yield
+
     def test_physical_system_refused_before_configuration_or_bus_access(self):
         with patch.object(idle, 'command', return_value='none'), \
              patch.object(idle, 'desktop_environment') as environment, \
@@ -39,8 +54,7 @@ class GuestPolicyContracts(unittest.TestCase):
             process.mkdir()
             (process / 'comm').write_text('gnome-shell\n')
             (process / 'environ').write_text('DISPLAY=:7\0XAUTHORITY=/native/auth\0')
-            account = SimpleNamespace(pw_uid=os.getuid(), pw_dir='/native/home')
-            with patch.object(idle.pwd, 'getpwnam', return_value=account), \
+            with self.disposable_account(), \
                  patch.dict(os.environ, {'XDG_CONFIG_HOME': '/app/config', 'XDG_DATA_HOME': '/app/data',
                                          'WAYLAND_DISPLAY': 'wrong-display'}):
                 env = idle.desktop_environment('gnome-shell', 'lab', root)
@@ -58,15 +72,15 @@ class GuestPolicyContracts(unittest.TestCase):
             process.mkdir()
             (process / 'comm').write_text('plasmashell\n')
             (process / 'environ').write_text('XDG_CONFIG_HOME=/native/config\0WAYLAND_DISPLAY=wayland-0\0')
-            account = SimpleNamespace(pw_uid=os.getuid(), pw_dir='/native/home')
-            with patch.object(idle.pwd, 'getpwnam', return_value=account):
+            with self.disposable_account():
                 env = idle.desktop_environment('plasmashell', 'lab', root)
             self.assertEqual(env['XDG_CONFIG_HOME'], '/native/config')
 
     def test_ambiguous_desktop_shell_refused(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, self.disposable_account(), \
+             patch.dict(os.environ, {}, clear=True):
             with self.assertRaisesRegex(idle.DesktopNotReady, 'not ready'):
-                idle.desktop_environment('gnome-shell', os.environ['USER'], Path(directory))
+                idle.desktop_environment('gnome-shell', 'lab', Path(directory))
 
     def test_provisioning_refuses_physical_before_reading_or_writing_user_home(self):
         with patch.object(idle, 'command', return_value='none'), \
@@ -77,9 +91,8 @@ class GuestPolicyContracts(unittest.TestCase):
 
     def test_provisioning_installs_idempotent_future_login_verification(self):
         with tempfile.TemporaryDirectory() as directory:
-            account = SimpleNamespace(pw_uid=os.getuid(), pw_gid=os.getgid(), pw_dir=directory)
             with patch.object(idle, 'command', return_value='kvm'), \
-                 patch.object(idle.pwd, 'getpwnam', return_value=account):
+                 self.disposable_account(directory):
                 idle.install_autostart('lab')
                 idle.install_autostart('lab')
             entry = Path(directory) / '.config/autostart/putgd-lab-visible.desktop'
@@ -218,6 +231,68 @@ class GuestPolicyContracts(unittest.TestCase):
                 with self.assertRaisesRegex(lab.LabError, 'forwarded SSH port'):
                     lab.guest_preflight(root, apply=True)
             ssh.assert_not_called()
+            receipt = json.loads(next(root.glob('guest-preflight-*.json')).read_text())
+            self.assertFalse(receipt['ok'])
+            self.assertIn('forwarded SSH port', receipt['error'])
+
+    def test_early_owned_guest_refusals_retain_receipts(self):
+        for error in ('Guest preflight requires a running VM',
+                      'Guest preflight cannot authenticate the owned QEMU/SSH endpoint'):
+            with self.subTest(error=error), tempfile.TemporaryDirectory() as directory, \
+                 patch.object(lab, 'verify_owned_guest', side_effect=lab.LabError(error)), \
+                 patch.object(lab, 'ssh_args') as ssh:
+                with self.assertRaisesRegex(lab.LabError, 'retained guest-preflight-'):
+                    lab.guest_preflight(directory)
+                receipt = json.loads(next(Path(directory).glob('guest-preflight-*.json')).read_text())
+                self.assertEqual(receipt['error'], error)
+                ssh.assert_not_called()
+
+    def test_bad_profile_or_missing_helper_retain_receipts(self):
+        for target in ('load_profile', 'hash_file'):
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as directory, \
+                 patch.object(lab, 'verify_owned_guest', return_value={'id': 'owned', 'profile': 'cinnamon-x11'}), \
+                 patch.object(lab, target, side_effect=OSError('missing input')), \
+                 patch.object(lab, 'ssh_args') as ssh:
+                with self.assertRaisesRegex(lab.LabError, 'missing input'):
+                    lab.guest_preflight(directory)
+                receipt = json.loads(next(Path(directory).glob('guest-preflight-*.json')).read_text())
+                self.assertEqual(receipt['runId'], 'owned')
+                ssh.assert_not_called()
+
+    def test_unsafe_receipt_directory_has_no_writes_or_remote_access(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            destination = root / 'destination'
+            destination.mkdir()
+            link = root / 'link'
+            link.symlink_to(destination, target_is_directory=True)
+            with patch.object(lab, 'verify_owned_guest') as verify:
+                with self.assertRaises(lab.overlay_cleanup.CleanupError):
+                    lab.guest_preflight(link)
+                destination.chmod(0o777)
+                with self.assertRaisesRegex(lab.LabError, 'receipt requires'):
+                    lab.guest_preflight(destination)
+                verify.assert_not_called()
+            self.assertEqual(list(destination.iterdir()), [])
+
+    def test_scenario_boundary_refuses_drift_without_repair_or_app_start(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            (run / 'state.json').write_text(json.dumps({'profile': 'cinnamon-x11'}))
+            args = SimpleNamespace(run=directory, scenario='region', clipboard_client='qt', timeout=3, keep=True)
+            calls = []
+            def preflight(_run, *, apply=False, stage):
+                calls.append((stage, apply))
+                if not apply:
+                    raise lab.LabError('injected policy drift')
+                return {'ok': True}
+            with patch.object(lab, 'acceptance_preflight', side_effect=preflight), \
+                 patch.object(lab, 'guest_session', side_effect=AssertionError('must not launch')), \
+                 patch.object(lab, 'screenshot', side_effect=lab.LabError('no witness')):
+                result = lab.fixture_run(args)
+            self.assertEqual(calls, [('scenario-before', False)])
+            self.assertFalse(result['ok'])
+            self.assertEqual(result['error'], 'injected policy drift')
 
     def test_failed_policy_receipt_retained_and_no_visual_or_app_work(self):
         with tempfile.TemporaryDirectory() as directory, \
@@ -275,6 +350,16 @@ class GuestPolicyContracts(unittest.TestCase):
                 vnc.assert_not_called()
                 sleep.assert_not_called()
             self.assertEqual(len(attempts), 1)
+
+    def test_uniform_rgb_and_truncated_frames_are_not_visible(self):
+        for pixels in (b'\xff\x00\x00' * 2, b'\xff\x00\xff' * 2, b'\xff\x00\x00'):
+            with self.subTest(pixels=pixels), \
+                 patch.object(lab, 'screenshot', return_value={'path': 'uniform'}), \
+                 patch.object(lab, 'ppm', return_value=(2, 1, pixels)), \
+                 patch.object(lab.rfb, 'RFB') as vnc:
+                with self.assertRaisesRegex(lab.LabError, 'witness is blank'):
+                    lab.visible_guest_output('owned', 'token', 0, 5900, False, [])
+                vnc.assert_not_called()
 
 
 if __name__ == '__main__':

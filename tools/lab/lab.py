@@ -552,7 +552,10 @@ def visible_guest_output(run, token, head, port, apply, attempts):
     while True:
         witness = screenshot(run, token + '-attempt' + str(count), head)
         width, height, pixels = ppm(witness['path'])
-        visible = width > 0 and height > 0 and len(set(pixels)) > 1
+        # A uniform non-gray RGB frame still has distinct channel bytes.
+        # Require a complete frame containing at least two different pixels.
+        visible = (width > 0 and height > 0 and len(pixels) == width * height * 3
+                   and pixels != pixels[:3] * (width * height))
         attempts.append(dict(witness, width=width, height=height, head=head, visible=visible))
         if visible:
             break
@@ -571,15 +574,21 @@ def visible_guest_output(run, token, head, port, apply, attempts):
 
 def guest_preflight(run, *, apply=False, stage='manual'):
     """Configure once, then fail closed on policy/session/output drift at handoffs."""
-    info = verify_owned_guest(run)
-    run = Path(run).absolute()
-    profile = load_profile(info['profile'])
+    # Refuse unsafe receipt destinations before writing anything. Once the
+    # directory is safe, even ownership/readiness/profile failures are evidence.
+    run = overlay_cleanup._no_symlinks(Path(run).absolute())
+    directory = run.stat()
+    if not run.is_dir() or directory.st_uid != os.getuid() or directory.st_mode & 0o022:
+        raise LabError('Guest preflight receipt requires an owned, non-writable-by-others directory')
     token = 'guest-preflight-' + uuid.uuid4().hex
-    report = {'schemaVersion': 1, 'runId': info['id'], 'stage': stage, 'apply': apply,
+    report = {'schemaVersion': 1, 'stage': stage, 'apply': apply,
               'timestampUtc': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'ok': False}
-    source = HERE / 'guest_idle.py'
-    report['helperSha256'] = hash_file(source)
     try:
+        info = verify_owned_guest(run)
+        report['runId'] = info['id']
+        profile = load_profile(info['profile'])
+        source = HERE / 'guest_idle.py'
+        report['helperSha256'] = hash_file(source)
         desktop = 'Cinnamon' if profile['desktop'] == 'X-Cinnamon' else profile['desktop']
         arguments = ['python3', '-', '--desktop', desktop, '--process', profile['session_process'],
                      '--user', info['guest_user'], '--session-type', profile['session']]
@@ -610,7 +619,8 @@ def guest_preflight(run, *, apply=False, stage='manual'):
             raise LabError('Guest policy/session changed while collecting visible output evidence')
         report['ok'] = True
         return report
-    except (OSError, ValueError, KeyError, subprocess.TimeoutExpired, LabError) as error:
+    except (OSError, ValueError, KeyError, subprocess.TimeoutExpired, LabError,
+            overlay_cleanup.CleanupError) as error:
         report['error'] = str(error)
         raise LabError('Guest preflight failed; retained ' + token + '.json: ' + str(error)) from error
     finally:
@@ -1124,7 +1134,7 @@ def fixture_run(args):
               'scenario': args.scenario + '-independent-paste', 'ok': False,
               'acceptanceScope': 'single-head named action; no full profile certification'}
     try:
-        result['guestPreflightBefore'] = acceptance_preflight(run, apply=True, stage='scenario-before')
+        result['guestPreflightBefore'] = acceptance_preflight(run, stage='scenario-before')
         guest_session(run, '''set -eu
 mkdir -p ~/putgd-lab/fixture
 pkill -x putgd-desktop-f || true
