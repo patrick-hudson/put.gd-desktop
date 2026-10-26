@@ -137,7 +137,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // The editor window's view and selection controls, one per call; the helper checks the values.
  if(method=="editor.view") {
-  static const QStringList actions{"inspect","tool","select","selectNext","selectPrevious","place","geometry","applyCrop","cancelCrop","zoom","fit","actualSize","pan","showSavedCopy"};
+  static const QStringList actions{"inspect","tool","select","selectNext","selectPrevious","place","geometry","applyCrop","cancelCrop","zoom","fit","actualSize","pan","showSavedCopy","copySavedPath","discard","keepEditing","confirmDiscard"};
   if(!fields(p,{"id"},{"action","tool","shapeId","rect","percent","delta"})||!string(p,"id")||(p.contains("action")&&(!string(p,"action",32)||!actions.contains(p["action"].toString())))
      ||(p.contains("tool")&&!string(p,"tool",16))||(p.contains("shapeId")&&!p["shapeId"].isNull()&&!p["shapeId"].isDouble())
      ||(p.contains("rect")&&(!p["rect"].isArray()||p["rect"].toArray().size()!=4))||(p.contains("percent")&&!p["percent"].isDouble())

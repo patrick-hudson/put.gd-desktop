@@ -50,7 +50,8 @@ EDITOR_SOURCES = {'region', 'window', 'desktop', 'clipboard', 'file'}
 EDITOR_OPS = {'add', 'update', 'remove', 'crop', 'resetCrop', 'undo', 'redo'}
 # The editor window's view and selection controls, one per drive_editor call.
 EDITOR_VIEW_ACTIONS = {'inspect', 'tool', 'select', 'selectNext', 'selectPrevious', 'place', 'geometry', 'applyCrop',
-                       'cancelCrop', 'zoom', 'fit', 'actualSize', 'pan', 'showSavedCopy'}
+                       'cancelCrop', 'zoom', 'fit', 'actualSize', 'pan', 'showSavedCopy', 'copySavedPath', 'discard',
+                       'keepEditing', 'confirmDiscard'}
 EDITOR_TOOLS = {'select', 'redact', 'blur', 'crop', 'arrow', 'rectangle', 'highlight', 'text'}
 RECORDING_TARGETS = {'monitor', 'desktop', 'region', 'window'}
 RECORDING_FORMATS = {'mp4', 'webm', 'gif', 'webp'}
@@ -228,12 +229,12 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=read)
     async def get_editor(id: str) -> Json:
-        """Read the open editor: image size, crop [x,y,w,h], shapes with ids/geometry/styles, undo/redo availability, phase (editing/finalizing) and the window's view (as drive_editor inspect returns it)."""
+        """Read the open editor: image size, crop [x,y,w,h], shapes with ids/geometry/styles, undo/redo availability, phase (editing/finalizing), preparation (null, or the last Upload that could not be prepared: status failed, code edit_export_failed or input_excessive, reason; editing resumed) and the window's view (as drive_editor inspect returns it)."""
         return await adapter.call('editor.inspect', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def edit_image(id: str, commands: list[Json]) -> Json:
-        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/highlight {kind, rect:[x,y,w,h]}, arrow {kind, from:[x,y], to:[x,y]}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64, strength 2-64 (blur), fontPixels 8-200 and font family name or '' for the default (text). Redact removes covered pixels; blur is only a visual effect."""
+        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/highlight {kind, rect:[x,y,w,h]}, arrow {kind, from:[x,y], to:[x,y]}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64, strength 2-64 (blur), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur is only a visual effect."""
         if not identifier(id) or not safe_commands(commands):
             return invalid()
         return await adapter.call('editor.apply', {'id': id, 'commands': commands})
@@ -286,7 +287,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
     async def drive_editor(id: str, action: str, tool: str | None = None, shape_id: int | None = None,
                            rect: list[int] | None = None, percent: float | None = None,
                            delta: list[int] | None = None) -> Json:
-        """Work the open editor window's view and selection controls as a user does, one action per call; each reply is the window's view: tool, selectedShapeId, geometry [x,y,w,h] of the selection or pending crop (an arrow's tail at x,y and head at x+w,y+h), cropPending, the accessible selection summary, zoomPercent, fitted, visibleRect (image pixels shown), canvasSize, editingText, busy, the tool style, the footer message, lastSave (saved/failed, path, reason) and lastShowInFolder. Actions: inspect, tool {tool select|redact|blur|crop|arrow|rectangle|highlight|text}, select {shape_id, or none to clear}, selectNext / selectPrevious (Tab, ] and [), place (the current drawing tool's mark centred at a quarter of the image, Insert), geometry {rect [x,y,w,h] in image pixels for the selection or the pending crop; one undo step}, applyCrop / cancelCrop, zoom {percent 2-3200}, fit, actualSize, pan {delta [dx,dy] canvas pixels} and showSavedCopy (Show in folder for the last saved copy). Shapes themselves change through edit_image; nothing uploads."""
+        """Work the open editor window's view and selection controls as a user does, one action per call; each reply is the window's view: tool, selectedShapeId, geometry [x,y,w,h] of the selection or pending crop (an arrow's tail at x,y and head at x+w,y+h), cropPending, the accessible selection summary, zoomPercent, fitted, visibleRect (image pixels shown), canvasSize, editingText, busy, the tool style, the footer message, lastSave (saved/failed, stage chooser/write, path, reason; a saved copy's current is false once the draft changed after it), lastShowInFolder, lastCopiedPath, cancelLabel (Cancel, or Discard… once there are edits), destination, preparationFailure and discardConfirmation {open, text}. Actions: inspect, tool {tool select|redact|blur|crop|arrow|rectangle|highlight|text}, select {shape_id, or none to clear}, selectNext / selectPrevious (Tab, ] and [), place (the current drawing tool's mark centred at a quarter of the image, Insert), geometry {rect [x,y,w,h] in image pixels for the selection or the pending crop; one undo step}, applyCrop / cancelCrop, zoom {percent 2-3200}, fit, actualSize, pan {delta [dx,dy] canvas pixels}, showSavedCopy (Show in folder for the last saved copy), copySavedPath (Copy path: its full path to the clipboard), discard (the Cancel / Discard… button: closes at once without edits, else opens the discard confirmation), keepEditing (answers that confirmation, or dismisses a preparation failure) and confirmDiscard (discards; nothing uploads). Other actions wait while the confirmation is open. Shapes themselves change through edit_image; nothing uploads; cancel_editor still discards without asking."""
         if not identifier(id) or action not in EDITOR_VIEW_ACTIONS:
             return invalid()
         params: Json = {'id': id, 'action': action}
