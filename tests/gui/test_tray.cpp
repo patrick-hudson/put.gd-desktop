@@ -539,6 +539,31 @@ private slots:
   QVERIFY(menu.isNull());
  }
 
+ void updateEntryOpensUpdatesWithTheDownloadGlyph() {
+  // The tray's Update available lands on Settings → Updates (not the first
+  // settings page), and its icon is the download glyph, not the generic file.
+  QTemporaryDir directory;
+  QVERIFY(directory.isValid());
+  ProviderRegistry providers;
+  SettingsService settings(directory.filePath("config.json"));
+  CaptureSource source;
+  OperationService operations(directory.filePath("data"), settings, providers, source);
+  QStringList views;
+  TrayController controller(operations, [&](const QString& view) { views.append(view); }, [] {});
+  auto* tray = controller.findChild<QSystemTrayIcon*>();
+  QVERIFY(tray);
+  controller.setUpdateStatus({{"channel", "stable"}, {"result", QJsonObject{{"updateAvailable", true}, {"latest", "0.1.2"}}}});
+  auto* update = actionNamed(tray, "Update available: 0.1.2");
+  QVERIFY(update);
+  QVERIFY(update->isVisible());
+  const auto image = [](const QIcon& icon) { return icon.pixmap(QSize(18, 18), 1.0).toImage().convertToFormat(QImage::Format_ARGB32); };
+  const auto tint = controller.trayTint()["color"].toString();
+  QCOMPARE(image(update->icon()), image(VisualStyle::icon("download", QColor(tint))));
+  QVERIFY(image(update->icon()) != image(VisualStyle::icon("update", QColor(tint))));
+  update->trigger();
+  QCOMPARE(views, QStringList({"updates"}));
+ }
+
  void everyCaptureActionWorksWithNoViewsOpen() {
   QTemporaryDir directory;
   QVERIFY(directory.isValid());

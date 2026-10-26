@@ -14,6 +14,7 @@
 #include <QPointer>
 #include <QSystemTrayIcon>
 #include <QDir>
+#include <QHash>
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <utility>
@@ -176,7 +177,7 @@ TrayController::TrayController(OperationService& operations,
    else if (action == "settings") showSettings();
    else if (action == "history") showHistory();
    else if (action == "about") showAbout();
-   else if (action == "update") showSettings();
+   else if (action == "update") showView("updates");
    else if (action == "quit") { const auto quit = quit_; quit(); }
   });
  } else
@@ -212,7 +213,8 @@ TrayController::TrayController(OperationService& operations,
  connect(history, &QAction::triggered, this, &TrayController::showHistory);
  updateAction_ = menu_->addAction("Update available");
  updateAction_->setData("update");updateAction_->setVisible(false);
- connect(updateAction_, &QAction::triggered, this, &TrayController::showSettings);
+ // Lands on Settings → Updates with its action focused, not the first settings page.
+ connect(updateAction_, &QAction::triggered, this, [this] { showView("updates"); });
  menu_->addSeparator();
  connect(menu_->addAction("About put.gd"), &QAction::triggered, this, &TrayController::showAbout);
  connect(menu_->addAction("Quit"), &QAction::triggered, this, [this] {
@@ -370,7 +372,10 @@ bool TrayController::availabilityKnown() const { return true; }
 void TrayController::retintMenu() {
  if(!menu_)return;
  const auto tint=Theme::trayTints(panel_.light()).idle;
- for(auto* action:menu_->actions())if(!action->data().toString().isEmpty())action->setIcon(VisualStyle::icon(action->data().toString(),tint));
+ // Menu entry IDs name actions, not glyphs: map each one, so an ID without its
+ // own IconArt glyph never falls back to the generic file.
+ static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"window","window"},{"desktop","desktop"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"update","download"}};
+ for(auto* action:menu_->actions())if(const auto glyph=glyphs.value(action->data().toString());!glyph.isEmpty())action->setIcon(VisualStyle::icon(glyph,tint));
 }
 QJsonObject TrayController::trayTint()const {
  return {{"panel",panel_.light()?"light":"dark"},{"source",panel_.source()},{"color",Theme::trayTints(panel_.light()).idle.name()}};
