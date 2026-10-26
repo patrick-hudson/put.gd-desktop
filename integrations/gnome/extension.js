@@ -187,25 +187,72 @@ function bytesOf(stream) {
 // screenshot UI internals or leave an upstream idle destruction callback alive.
 const RegionSelector = GObject.registerClass(class RegionSelector extends St.Widget {
     _init() {
-        super._init({reactive: true, visible: false, x: 0, y: 0});
+        super._init({reactive: true, visible: false, accessible_name: 'Capture region', x: 0, y: 0});
         this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
         this.set_cursor_type(Clutter.CursorType.CROSSHAIR);
-        this._rectangle = new St.Widget({visible: false, clip_to_allocation: true, style: 'border: 3px solid black; background-color: transparent;'});
+        this._rectangle = new St.Widget({visible: false, accessible_name: 'Capture region',
+            clip_to_allocation: true, style: 'border: 3px solid black; background-color: transparent;'});
         this.add_child(this._rectangle);
         this._contrast = new St.Widget({visible: false, clip_to_allocation: true, style: 'border: 1px solid white; background-color: transparent;'});
         this.add_child(this._contrast);
+        this._instructions = new St.Label({reactive: false,
+            text: 'Drag or arrows to select · Ctrl: 10 px · Shift: resize · Enter: capture · Esc: cancel',
+            style: 'background-color: #191919; color: #f0f0ec; border: 1px solid white; border-radius: 6px; padding: 6px 10px; font-size: 14px; text-align: center;'});
+        this._instructions.clutter_text.set_line_wrap(true);
+        this.add_child(this._instructions);
+        this._region = null;
         this._start = null;
         this._finish = null;
         this._grab = null;
         this._closed = false;
         this.connect('captured-event', (_actor, event) => this._input(event));
         Main.uiGroup.add_child(this);
+        this._describe();
+        this._placeInstructions();
     }
     _input(event) {
         const type = event.type();
         if (type === Clutter.EventType.KEY_PRESS) {
-            if (event.get_key_symbol() === Clutter.KEY_Escape)
+            const key = event.get_key_symbol();
+            if (key === Clutter.KEY_Escape) {
                 this.cancel();
+            } else if (key === Clutter.KEY_Return || key === Clutter.KEY_KP_Enter) {
+                this._settle(this._region?.width > 0 && this._region?.height > 0 ? this._region : this._monitor());
+            } else {
+                const step = new Map([[Clutter.KEY_Left, [-1, 0]], [Clutter.KEY_Right, [1, 0]],
+                    [Clutter.KEY_Up, [0, -1]], [Clutter.KEY_Down, [0, 1]]]).get(key);
+                if (step) {
+                    const monitor = this._monitor();
+                    if (!monitor)
+                        return Clutter.EVENT_STOP;
+                    let rect = this._region;
+                    // Intersect a mouse-drawn region before constraining keyboard edits.
+                    if (rect) {
+                        const x = Math.max(rect.x, monitor.x), y = Math.max(rect.y, monitor.y);
+                        rect = {x, y, width: Math.min(rect.x + rect.width, monitor.x + monitor.width) - x,
+                            height: Math.min(rect.y + rect.height, monitor.y + monitor.height) - y};
+                    }
+                    if (!rect || rect.width < 1 || rect.height < 1) {
+                        const width = Math.max(1, Math.floor(monitor.width / 2));
+                        const height = Math.max(1, Math.floor(monitor.height / 2));
+                        rect = {x: monitor.x + Math.floor((monitor.width - width) / 2),
+                            y: monitor.y + Math.floor((monitor.height - height) / 2), width, height};
+                    } else {
+                        const state = event.get_state();
+                        const amount = state & Clutter.ModifierType.CONTROL_MASK ? 10 : 1;
+                        const [dx, dy] = step.map(value => value * amount);
+                        if (state & Clutter.ModifierType.SHIFT_MASK) {
+                            rect.width = Math.max(1, Math.min(rect.width + dx, monitor.x + monitor.width - rect.x));
+                            rect.height = Math.max(1, Math.min(rect.height + dy, monitor.y + monitor.height - rect.y));
+                        } else {
+                            rect.x = Math.max(monitor.x, Math.min(rect.x + dx, monitor.x + monitor.width - rect.width));
+                            rect.y = Math.max(monitor.y, Math.min(rect.y + dy, monitor.y + monitor.height - rect.height));
+                        }
+                    }
+                    this._start = null;
+                    this._showRegion(rect);
+                }
+            }
             return Clutter.EVENT_STOP;
         }
         if (type === Clutter.EventType.BUTTON_PRESS) {
@@ -239,7 +286,33 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
             width: Math.abs(x - this._start[0]), height: Math.abs(y - this._start[1])};
     }
     _update(point) {
-        const rect = this._geometry(point);
+        this._showRegion(this._geometry(point));
+    }
+    _monitor() {
+        const [x, y] = this._region ? [this._region.x + this._region.width / 2,
+            this._region.y + this._region.height / 2] : global.get_pointer();
+        return Main.layoutManager.monitors.find(m => x >= m.x && x < m.x + m.width && y >= m.y && y < m.y + m.height)
+            ?? Main.layoutManager.primaryMonitor;
+    }
+    _placeInstructions() {
+        const monitor = this._monitor();
+        if (!monitor)
+            return;
+        this._instructions.set_width(-1);
+        this._instructions.set_width(Math.max(1, Math.min(this._instructions.get_preferred_width(-1)[1], monitor.width - 32)));
+        this._instructions.set_position(monitor.x + Math.floor((monitor.width - this._instructions.width) / 2), monitor.y + 16);
+    }
+    _describe() {
+        const rect = this._region;
+        const description = (rect && rect.width > 0 && rect.height > 0
+            ? `Region ${rect.width} × ${rect.height} at ${rect.x}, ${rect.y}.`
+            : 'No region selected. Enter captures the current screen.') +
+            ' Arrows move 1 px; Ctrl+arrows 10 px; Shift+arrows resize. Enter accepts; Esc cancels.';
+        this._rectangle.get_accessible().set_description(description);
+        this.get_accessible().set_description(description);
+    }
+    _showRegion(rect) {
+        this._region = rect;
         this._rectangle.set_position(rect.x, rect.y);
         this._rectangle.set_size(rect.width, rect.height);
         this._rectangle.show();
@@ -253,6 +326,8 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         } else {
             this._contrast.hide();
         }
+        this._describe();
+        this._placeInstructions();
     }
     selectAsync() {
         return new Promise((resolve, reject) => {

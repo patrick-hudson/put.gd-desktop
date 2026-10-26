@@ -1115,6 +1115,8 @@ if(BUILD_TESTING)
     # never introduce Node.js as a host or guest test dependency.
     find_program(PUTGD_GJS gjs)
     if(PUTGD_GJS)
+      add_test(NAME gnome_region_selection_contract COMMAND "${PUTGD_GJS}" -m "${PROJECT_SOURCE_DIR}/tests/desktop/test_gnome_region.mjs" "${PROJECT_SOURCE_DIR}/integrations/gnome/extension.js")
+      set_tests_properties(gnome_region_selection_contract PROPERTIES TIMEOUT 30)
       add_test(NAME gnome_ui_ownership_contract COMMAND "${PUTGD_GJS}" -m "${PROJECT_SOURCE_DIR}/tests/desktop/test_gnome_ownership.mjs" "${PROJECT_SOURCE_DIR}/integrations/gnome/extension.js")
       set_tests_properties(gnome_ui_ownership_contract PROPERTIES TIMEOUT 30)
     else()
