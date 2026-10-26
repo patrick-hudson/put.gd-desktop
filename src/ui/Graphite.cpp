@@ -1534,7 +1534,7 @@ void Segmented::paintEvent(QPaintEvent*) {
 
 SegmentTrack::SegmentTrack(QWidget* parent) : QWidget(parent) {
     auto* row = new QHBoxLayout(this);
-    row->setContentsMargins(3, 3, 3, 3);
+    row->setContentsMargins(2, 2, 2, 2);
     row->setSpacing(2);
 }
 void SegmentTrack::addButton(QToolButton* button) {
@@ -1542,8 +1542,9 @@ void SegmentTrack::addButton(QToolButton* button) {
     button->setCheckable(true);
     button->setAutoExclusive(true);
     button->setProperty("visualRole", "quiet");
-    // The track adds its own 3 px, so the whole control is one field high.
-    button->setFixedHeight(scaled(Metric::control) - 6);
+    // The track adds its own 2 px, so the whole control is one field high and
+    // each segment keeps a 32 px pointer target.
+    button->setFixedHeight(std::max(Metric::iconTarget, scaled(Metric::control) - 4));
     static_cast<QHBoxLayout*>(layout())->addWidget(button);
 }
 void SegmentTrack::paintEvent(QPaintEvent*) {
