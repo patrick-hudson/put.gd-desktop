@@ -149,6 +149,8 @@ def main():
                 raise RuntimeError('Moving native wall fixture did not become ready')
             time.sleep(.2)
         layout = json.loads((wall_dir / 'ready.json').read_text())['monitors']
+        if len(layout) < 2 or not all(m['fullscreen'] for m in layout):
+            raise RuntimeError('Native multi-output admission requires at least two independently fullscreen heads')
         for m in layout:
             m['name'] = 'GDK head ' + str(m['index'])
         client = rfb.RFB(a.vnc_port)
