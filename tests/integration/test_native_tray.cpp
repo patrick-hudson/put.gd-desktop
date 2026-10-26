@@ -344,7 +344,7 @@ private slots:
   const auto fired = request("ui.snapshot")["diagnostics"].toObject()["shortcuts"].toObject()["keyPaths"].toObject()["lastActivation"].toObject();
   QCOMPARE(fired["action"].toString(), QString("region"));
   QCOMPARE(fired["path"].toString(), QString(menuOpen ? "raw" : "passive"));
-  const auto body=notifications.values.first()["body"].toString();QVERIFY(body.contains("No output is enabled"));QVERIFY(body.contains("Settings → Capture"));QVERIFY(body.contains("Keep a local copy in Settings → General"));
+  const auto body=notifications.values.first()["body"].toString();QVERIFY(body.contains("No output is enabled"));QVERIFY(body.contains("Settings → Capture"));QVERIFY(body.contains("Keep a local copy in Settings → Capture"));
   for(int repeat=0;repeat<2;++repeat){
    desktop.key(XK_Control_L,true);desktop.key(XK_1,true);
    desktop.key(XK_1,false);desktop.key(XK_Control_L,false);

@@ -47,7 +47,7 @@ QString HistoryModel::failureLabel(const QJsonObject& r){
  const auto action=r["operation"].toObject()["action"].toString();
  return action=="edit"?"Edit failed":action=="clipboard"?"Upload failed":"Capture failed";
 }
-bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject()["state"];return r["uploadStatus"]=="failed"||state=="failed"||state=="partial";}
+bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return r["uploadStatus"]=="failed"||state=="failed"||state=="partial";}
 bool HistoryModel::retryUpload(const QJsonObject& r){return failed(r)&&!active(r)&&r["uploadStatus"]!="local_only"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
 // Any failed local copy can be saved again from the retained artifact,
 // including one whose upload succeeded.
