@@ -16,6 +16,7 @@
 #include <QDir>
 #include <QJsonArray>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QScopeGuard>
@@ -52,6 +53,17 @@ private slots:
                 QVERIFY2(Theme::contrast(p.accent, colour) >= 3.0, qPrintable(QString("%1 focus ring on %2").arg(Theme::name(scheme), background)));
                 QVERIFY2(Theme::contrast(p.icon, colour) >= 3.0, qPrintable(QString("%1 icon on %2").arg(Theme::name(scheme), background)));
             }
+            // Essential control boundaries and the icons' secondary tone read at
+            // 3:1 on every page surface; the two icon tones stay 3:1 apart, so a
+            // duotone glyph keeps its inner detail.
+            for (const auto& [background, colour] : backgrounds) {
+                if (QString(background) == "selected") continue;
+                QVERIFY2(Theme::contrast(p.controlOutline, colour) >= 3.0, qPrintable(QString("%1 control outline on %2: %3").arg(Theme::name(scheme), background).arg(Theme::contrast(p.controlOutline, colour))));
+                QVERIFY2(Theme::contrast(p.iconSecondary, colour) >= 3.0, qPrintable(QString("%1 secondary icon tone on %2: %3").arg(Theme::name(scheme), background).arg(Theme::contrast(p.iconSecondary, colour))));
+            }
+            QVERIFY2(Theme::contrast(p.icon, p.iconSecondary) >= 3.0, qPrintable(Theme::name(scheme) + " icon tones"));
+            // The outline is not the decorative border: section rules stay quiet.
+            QVERIFY(Theme::contrast(p.border, p.bg) < 2.0);
             QVERIFY(Theme::contrast(p.onAccent, p.accent) >= 4.5);
             QVERIFY(Theme::contrast(p.onAccent, p.accentHover) >= 4.5);
             QVERIFY(Theme::contrast(p.success, p.successSurface) >= 4.5);
@@ -59,13 +71,16 @@ private slots:
             QVERIFY(Theme::contrast(p.danger, p.dangerSurface) >= 4.5);
             // Every token is reported, as #rrggbb.
             const auto tokens = Theme::tokens(scheme);
-            QCOMPARE(tokens.size(), 23);
+            QCOMPARE(tokens.size(), 24);
+            QVERIFY(tokens.contains("controlOutline"));
             for (const auto& value : tokens) QVERIFY(QRegularExpression("^#[0-9a-f]{6}$").match(value.toString()).hasMatch());
         }
         QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["bg"].toString(), QString("#191919"));
         QCOMPARE(Theme::tokens(Theme::Scheme::Light)["bg"].toString(), QString("#eeeeeb"));
         // Graphite: amber, never blue, and a neutral primary action.
         QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["accent"].toString(), QString("#e8b66d"));
+        QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["controlOutline"].toString(), QString("#7c7c78"));
+        QCOMPARE(Theme::tokens(Theme::Scheme::Light)["controlOutline"].toString(), QString("#82827b"));
         QVERIFY(Theme::tokens(Theme::Scheme::Light)["bg"] != Theme::tokens(Theme::Scheme::Dark)["bg"]);
     }
     void trayTintsSuitTheirPanels() {
@@ -190,6 +205,39 @@ private slots:
             QCOMPARE(count(boxOff, p.textMuted, 60), 0);
             QVERIFY2(count(radioOn, p.textMuted, 60) >= 6, what("checked, disabled radio button has no dot"));
             QCOMPARE(count(radioOff, p.textMuted, 60), 0);
+        }
+    }
+    // Essential inputs are found by their painted boundary: the left edge of a
+    // text field, combo box, spin box and check box reads at 3:1 on the page
+    // in both schemes, where the mixed border used to give about 1.6:1.
+    void essentialInputBoundariesReachThreeToOne() {
+        QWidget window;
+        auto* layout = new QVBoxLayout(&window);
+        auto* edit = new QLineEdit(&window);
+        auto* combo = VisualStyle::choiceBox(&window);
+        combo->addItem("Synthetic");
+        auto* spin = new QSpinBox(&window);
+        auto* box = new QCheckBox("Synthetic", &window);
+        for (QWidget* widget : {static_cast<QWidget*>(edit), static_cast<QWidget*>(combo), static_cast<QWidget*>(spin), static_cast<QWidget*>(box)}) { widget->setMinimumWidth(160); layout->addWidget(widget); }
+        RedesignTheme::apply(window);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            const auto& p = Theme::palette(scheme);
+            for (QWidget* field : {static_cast<QWidget*>(edit), static_cast<QWidget*>(combo), static_cast<QWidget*>(spin)}) {
+                const auto shot = field->grab().toImage().convertToFormat(QImage::Format_RGB32);
+                const auto edge = shot.pixelColor(0, shot.height() / 2);
+                QVERIFY2(Theme::contrast(edge, p.bg) >= 3.0 && Theme::contrast(edge, p.surfaceRaised) >= 3.0,
+                         qPrintable(QString("%1 %2 edge %3").arg(Theme::name(scheme), field->metaObject()->className(), edge.name())));
+            }
+            QStyleOptionButton option;
+            option.initFrom(box);
+            const auto indicator = box->style()->subElementRect(QStyle::SE_CheckBoxIndicator, &option, box);
+            const auto shot = box->grab(indicator).toImage().convertToFormat(QImage::Format_RGB32);
+            double best = 0;
+            for (int x = 0; x < shot.width() / 2; ++x) best = std::max(best, Theme::contrast(shot.pixelColor(x, shot.height() / 2), p.bg));
+            QVERIFY2(best >= 3.0, qPrintable(Theme::name(scheme) + " check box edge"));
         }
     }
     // #233: spin box steps are token chevrons on the themed field, in both

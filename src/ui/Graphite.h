@@ -36,7 +36,11 @@ QFont font(int pixels = Type::body, bool strong = false);
 QFont monoFont(int pixels = Type::metadata);
 QColor mix(const QColor& a, const QColor& b, qreal amount);
 // The hairline between a raised control and its surface: quieter than border.
+// Buttons use it; their labels identify them.
 QColor controlStroke();
+// The 3:1 boundary of an essential input (Theme's controlOutline): text
+// fields, combo boxes, spin boxes, check boxes and radio buttons.
+QColor controlOutline();
 // True while the widget has focus that came from the keyboard.
 bool keyboardFocus(const QWidget*);
 

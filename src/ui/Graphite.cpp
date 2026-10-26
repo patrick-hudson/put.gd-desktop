@@ -79,15 +79,16 @@ QPainterPath partlyRounded(const QRectF& r, qreal radius, bool left, bool right)
     path.closeSubpath();
     return path;
 }
-// A text field's frame: raised fill, quiet stroke, an accent stroke while
+// A text field's frame: raised fill, the 3:1 control outline (the quiet
+// border once disabled), a stronger stroke on hover, an accent stroke while
 // focused, the danger or warning stroke when the field says so.
 void field(QPainter* p, const QRectF& rect, const QStyleOption* option, const QWidget* widget, bool focused, bool squareRight = false, bool squareLeft = false) {
     const bool enabled = option->state & QStyle::State_Enabled;
-    QColor stroke = controlStroke();
+    QColor stroke = enabled ? controlOutline() : controlStroke();
     if (widget && widget->property("invalid").toBool()) stroke = t().danger;
     else if (widget && widget->property("warning").toBool()) stroke = t().warning;
     else if (focused && enabled) stroke = t().accent;
-    else if (enabled && (option->state & QStyle::State_MouseOver)) stroke = t().borderStrong;
+    else if (enabled && (option->state & QStyle::State_MouseOver)) stroke = t().textMuted;
     p->save();
     p->setRenderHint(QPainter::Antialiasing);
     p->setPen(QPen(stroke, 1));
@@ -155,7 +156,7 @@ void check(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyb
     const bool on = option->state & QStyle::State_On, partial = option->state & QStyle::State_NoChange;
     // Checked stays visibly checked when locked: a muted fill with the tick.
     QColor fill = on || partial ? (enabled ? c.text : c.textMuted) : (enabled ? c.surfaceRaised : c.surface);
-    QColor stroke = keyboard ? c.accent : on || partial ? fill : enabled ? c.textMuted : c.textDisabled;
+    QColor stroke = keyboard ? c.accent : on || partial ? fill : enabled ? c.controlOutline : c.textDisabled;
     rounded(p, box, fill, stroke, 4, keyboard ? 1.5 : 1);
     if (!on && !partial) return;
     p->save();
@@ -178,7 +179,7 @@ void radio(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyb
     p->save();
     p->setRenderHint(QPainter::Antialiasing);
     const QRectF circle = box.adjusted(0.75, 0.75, -0.75, -0.75);
-    p->setPen(QPen(keyboard ? c.accent : on && enabled ? c.text : enabled ? c.textMuted : c.textDisabled, keyboard ? 1.5 : 1));
+    p->setPen(QPen(keyboard ? c.accent : on && enabled ? c.text : enabled ? c.controlOutline : c.textDisabled, keyboard ? 1.5 : 1));
     p->setBrush(enabled ? c.surfaceRaised : c.surface);
     p->drawEllipse(circle);
     if (on) {
@@ -276,6 +277,7 @@ QColor mix(const QColor& a, const QColor& b, qreal amount) {
                             a.blueF() + (b.blueF() - a.blueF()) * amount, a.alphaF() + (b.alphaF() - a.alphaF()) * amount);
 }
 QColor controlStroke() { return mix(t().border, t().borderStrong, 0.35); }
+QColor controlOutline() { return t().controlOutline; }
 bool keyboardFocus(const QWidget* widget) {
     return widget && widget->hasFocus() && widget->window()->testAttribute(Qt::WA_KeyboardFocusChange);
 }
@@ -1133,7 +1135,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         if (name == "unitSuffix") {
             p->save();
             p->setRenderHint(QPainter::Antialiasing);
-            p->setPen(controlStroke());
+            p->setPen(widget->isEnabled() ? controlOutline() : controlStroke());
             p->setBrush(widget->isEnabled() ? c.surfaceRaised : c.surface);
             p->drawPath(partlyRounded(r.adjusted(0.5, 0.5, -0.5, -0.5), Metric::radius, false, true));
             p->restore();

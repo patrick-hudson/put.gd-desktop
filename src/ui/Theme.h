@@ -18,6 +18,10 @@ struct Palette {
  QColor success,warning,danger,dangerHover,successSurface,warningSurface,dangerSurface;
  // IconArt glyphs: the main stroke and the darker or lighter secondary fill.
  QColor icon,iconSecondary;
+ // The boundary of an essential control (text field, combo box, spin box,
+ // check box, radio button): 3:1 against bg, surface and surfaceRaised, unlike
+ // the quiet decorative border.
+ QColor controlOutline;
 };
 const Palette& palette(Scheme);
 const Palette& current();
