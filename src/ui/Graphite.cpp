@@ -1393,8 +1393,19 @@ void alignForms(QWidget* page) {
             if (!field) continue;
             QList<QWidget*> controls;
             if (field->widget()) controls << field->widget() << field->widget()->findChildren<QWidget*>();
-            for (auto* control : controls)
-                if (qobject_cast<QComboBox*>(control) || qobject_cast<QAbstractSpinBox*>(control)) control->setMaximumWidth(scaled(400));
+            for (auto* control : controls) {
+                if (!qobject_cast<QComboBox*>(control) && !qobject_cast<QAbstractSpinBox*>(control)) continue;
+                control->setMaximumWidth(scaled(400));
+                // A capped control starts at the field column, never centred in it.
+                if (auto* parent = control->parentWidget()) {
+                    QList<QLayout*> layouts = parent->findChildren<QLayout*>(Qt::FindDirectChildrenOnly);
+                    if (parent->layout()) layouts.prepend(parent->layout());
+                    for (int i = 0; i < layouts.size(); ++i) {
+                        if (layouts[i]->setAlignment(control, Qt::AlignLeft | Qt::AlignVCenter)) break;
+                        for (int j = 0; j < layouts[i]->count(); ++j) if (auto* nested = layouts[i]->itemAt(j)->layout()) layouts << nested;
+                    }
+                }
+            }
         }
     }
 }
