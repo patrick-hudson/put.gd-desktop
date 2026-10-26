@@ -297,11 +297,12 @@ int main(int argc,char** argv){
   ready.hide();
   record::ReviewWindow::Options privateOptions=o;privateOptions.destination="Proton Drive";privateOptions.sharingMode="private";privateOptions.uploadSummary="Private upload to Proton Drive";
   record::ReviewWindow privateReview(privateOptions,config);privateReview.show();if(auto* view=privateReview.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);if(!shot(privateReview,"43-review-private-destination")||!inspected(privateReview,"43-review-private-destination"))return 2;privateReview.hide();
+  qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","60000");
   record::ReviewWindow crowded(o,config);RecordingEdit many;many.revision=1;
   for(int i=0;i<8;++i){auto m=solid;m.id=QString("lane-%1").arg(i);m.start=1000000;m.end=29000000;many.masks.append(m);}
   crowded.setEdit(many);crowded.show();if(auto* view=crowded.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);
   if(!shot(crowded,"48-review-many-masks")||!inspected(crowded,"48-review-many-masks"))return 2;
-  crowded.hide();
+  crowded.hide();qunsetenv("PUTGD_RECORD_REVIEW_DELAY_MS");
   const auto screen=QGuiApplication::primaryScreen()->geometry();
   CaptureFrame selectionFrame{"fixture",screen,screen,1,0,{}};
   RegionOverlay screenshot({selectionFrame});screenshot.start();
