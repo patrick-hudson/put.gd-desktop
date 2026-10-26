@@ -514,6 +514,98 @@ export XDG_DATA_HOME=$HOME/putgd-lab/data
     return ssh(run, script)
 
 
+def verify_owned_guest(run):
+    """Prove SSH targets this user's running overlay, never a physical desktop."""
+    run = overlay_cleanup._no_symlinks(Path(run).absolute())
+    info = state(run)
+    disk = run / 'disk.qcow2'
+    if info.get('overlay') != str(disk) or Path(info.get('golden', '')) == disk or not disk.is_file():
+        raise LabError('Guest preflight requires an owned disposable overlay')
+    overlay_cleanup._no_symlinks(disk)
+    port = info.get('ssh_port')
+    if not isinstance(port, int) or not 1024 <= port <= 65535:
+        raise LabError('Guest preflight requires a private forwarded SSH port')
+    process = Path('/proc') / str(info.get('pid'))
+    try:
+        arguments = (process / 'cmdline').read_bytes().split(b'\0')
+        forward = f'hostfwd=tcp:127.0.0.1:{port}-:22'.encode()
+        valid = (process.stat().st_uid == os.getuid()
+                 and Path(arguments[0].decode()).name.startswith('qemu-system-')
+                 and any(str(disk).encode() in value.split(b',') or
+                         b'file=' + str(disk).encode() in value.split(b',') for value in arguments)
+                 and any(forward in value.split(b',') for value in arguments))
+    except (OSError, IndexError, UnicodeError):
+        valid = False
+    if not valid:
+        raise LabError('Guest preflight cannot authenticate the owned QEMU/SSH endpoint')
+    with QMP(run / 'qmp.sock') as qmp:
+        if qmp.execute('query-status').get('running') is not True:
+            raise LabError('Guest preflight requires a running VM')
+    return info
+
+
+def guest_preflight(run, *, apply=False, stage='manual'):
+    """Configure once, then fail closed on policy/session/output drift at handoffs."""
+    info = verify_owned_guest(run)
+    run = Path(run).absolute()
+    profile = load_profile(info['profile'])
+    token = 'guest-preflight-' + uuid.uuid4().hex
+    report = {'schemaVersion': 1, 'runId': info['id'], 'stage': stage, 'apply': apply,
+              'timestampUtc': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'ok': False}
+    source = HERE / 'guest_idle.py'
+    report['helperSha256'] = hash_file(source)
+    try:
+        desktop = 'Cinnamon' if profile['desktop'] == 'X-Cinnamon' else profile['desktop']
+        arguments = ['python3', '-', '--desktop', desktop, '--process', profile['session_process'],
+                     '--user', info['guest_user'], '--session-type', profile['session']]
+        if apply:
+            arguments.append('--apply')
+        result = command(ssh_args(run) + [shlex.join(arguments)], input=source.read_text(), timeout=90, check=False)
+        report['policy'] = json.loads(result.stdout)
+        if result.returncode or report['policy'].get('ok') is not True:
+            raise LabError('Guest idle/session preflight refused: ' + report['policy'].get('error', 'no policy receipt'))
+        heads = len(info.get('heads', [])) or 1
+        outputs = guest_outputs(run, layout_backend(profile))
+        report['outputs'] = verify_outputs(outputs, heads)
+        if not report['outputs']['ok']:
+            raise LabError('Guest outputs are not all connected and enabled')
+        report['visuals'] = []
+        for head in range(heads):
+            # QMP supplies a complete frame; RFB damage updates are not a full-frame oracle.
+            witness = screenshot(run, token, head)
+            width, height, pixels = ppm(witness['path'])
+            if width <= 0 or height <= 0 or len(set(pixels)) <= 1:
+                raise LabError('Guest visible-output witness is blank')
+            client = rfb.RFB(5900 + info['vnc_display'] + head)
+            try:
+                if (client.width, client.height) != (width, height):
+                    raise LabError('Guest VNC and QMP output extents disagree')
+            finally:
+                client.close()
+            report['visuals'].append(dict(witness, width=width, height=height, head=head))
+        # Recheck after output collection, using the real desktop homes again.
+        checked = command(ssh_args(run) + [shlex.join([a for a in arguments if a != '--apply'])],
+                          input=source.read_text(), timeout=90, check=False)
+        report['afterVisuals'] = json.loads(checked.stdout)
+        if checked.returncode or report['afterVisuals'].get('ok') is not True:
+            raise LabError('Guest policy/session changed while collecting visible output evidence')
+        report['ok'] = True
+        return report
+    except (OSError, ValueError, KeyError, subprocess.TimeoutExpired, LabError) as error:
+        report['error'] = str(error)
+        raise LabError('Guest preflight failed; retained ' + token + '.json: ' + str(error)) from error
+    finally:
+        write_json(run / (token + '.json'), report)
+
+
+def acceptance_preflight(run, *, apply=False, stage='manual'):
+    # physical.py deliberately shares scenario/start logic, but its separately
+    # leased user desktop must never receive disposable-guest policy changes.
+    if state(run).get('acceleration') == 'physical':
+        return {'scope': 'physical desktop policy unchanged; managed by desktop lease'}
+    return guest_preflight(run, apply=apply, stage=stage)
+
+
 @lifecycle_operation
 def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity, firmware=None, heads=1, layout=None):
     current = golden.stat()
@@ -604,6 +696,7 @@ def launch(args):
                   'status': 'booted-not-accepted'}
         if 'heads' in info:
             result['heads'] = info['heads']
+        result['guestPreflight'] = guest_preflight(run, apply=True, stage='launch')
         return result
     except BaseException:
         reset(run)
@@ -994,6 +1087,7 @@ def fixture_run(args):
               'scenario': args.scenario + '-independent-paste', 'ok': False,
               'acceptanceScope': 'single-head named action; no full profile certification'}
     try:
+        result['guestPreflightBefore'] = acceptance_preflight(run, apply=True, stage='scenario-before')
         guest_session(run, '''set -eu
 mkdir -p ~/putgd-lab/fixture
 pkill -x putgd-desktop-f || true
@@ -1368,6 +1462,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
     finally:
         if result['ok']:
             try:
+                result['guestPreflightAfter'] = acceptance_preflight(run, stage='scenario-after')
                 expected_process = result.get('runningAppAfterRestart', result['runningApp'])
                 if verify_running_app(run) != expected_process:
                     raise LabError('Resident identity changed during the graphical scenario')
@@ -1529,6 +1624,7 @@ def install(run, deb=None, appimage=None):
 
 def start(run, timeout=30):
     """Start the installed resident in the native session and prove it is the verified build."""
+    acceptance_preflight(run, apply=True, stage='start')
     guest_session(run, 'mkdir -p ~/putgd-lab\nnohup putgd-launcher --background > ~/putgd-lab/app.log 2>&1 < /dev/null &\n')
     deadline = time.monotonic() + timeout
     while True:
@@ -1557,9 +1653,12 @@ def main():
     launch_parser.add_argument('--timeout', type=int, default=180)
     launch_parser.add_argument('--heads', type=int, help=f'Virtual monitors (1-{MAX_HEADS}); overrides the profile')
     launch_parser.add_argument('--layout', help='Per-head WxH+X+Y list in head order, e.g. 2560x1440+0+0,1920x1080-1920+0')
-    for name in ('reset', 'cleanup', 'collect', 'screenshot', 'key', 'input', 'install', 'start', 'run', 'cli', 'layout'):
+    for name in ('reset', 'cleanup', 'collect', 'screenshot', 'key', 'input', 'install', 'start', 'run', 'cli', 'layout', 'preflight'):
         child = sub.add_parser(name)
         child.add_argument('--run', required=True)
+        if name == 'preflight':
+            child.add_argument('--apply', action='store_true', help='Apply disposable guest idle policy before verifying it')
+            child.add_argument('--stage', default='manual', help='Receipt label for before/after a measurement stage')
         if name == 'cleanup':
             child.add_argument('--evidence-manifest', help='Verified completion manifest for a custom or reviewed failed run')
             child.add_argument('--dry-run', action='store_true', help='Validate retirement without removing the disk')
@@ -1623,6 +1722,8 @@ def main():
             value = install(args.run, deb=args.deb, appimage=args.appimage)
         elif args.action == 'start':
             value = start(args.run, timeout=args.timeout)
+        elif args.action == 'preflight':
+            value = guest_preflight(args.run, apply=args.apply, stage=args.stage)
         else:
             value = fixture_run(args)
         print(json.dumps(value))

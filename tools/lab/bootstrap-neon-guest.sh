@@ -96,9 +96,11 @@ case "$(systemd-detect-virt)" in qemu|kvm) ;; *) echo 'Refusing: not a QEMU/KVM 
 key=$(cat "$1")
 case "$key" in ssh-ed25519\ *) ;; *) echo 'Expected an Ed25519 public key.' >&2; exit 1 ;; esac
 id lab >/dev/null
+[ -f "$(dirname "$0")/guest_idle.py" ] || { echo 'Missing guest_idle.py companion.' >&2; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y openssh-server
+apt-get install -y openssh-server python3
+python3 "$(dirname "$0")/guest_idle.py" --install-autostart --user lab
 install -d -m 700 -o lab -g lab /home/lab/.ssh
 printf '%s\n' "$key" > /home/lab/.ssh/authorized_keys
 chown lab:lab /home/lab/.ssh/authorized_keys
@@ -114,8 +116,6 @@ printf '[Autologin]\nUser=lab\nSession=plasma.desktop\nRelogin=false\n' > /etc/p
 # neon's Calamares writes an absolute Session path into the main config, which
 # overrides the drop-in. plasmalogin 6.8.1 and master cannot resolve it (#524).
 fix_autologin /etc/plasmalogin.conf
-# Lab guests must stay visible on the display wall: no idle lock, dimming, DPMS or suspend.
-su - lab -c 'kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false; kwriteconfig6 --file kscreenlockerrc --group Daemon --key LockOnResume false; for g in AC Battery LowBattery; do kwriteconfig6 --file powerdevilrc --group $g --group Display --key DimDisplayWhenIdle false; kwriteconfig6 --file powerdevilrc --group $g --group Display --key TurnOffDisplayWhenIdle false; kwriteconfig6 --file powerdevilrc --group $g --group SuspendAndShutdown --key AutoSuspendAction 0; done'
 systemctl enable --now ssh
 echo 'Guest bootstrap complete. Verify this host key before pinning it:'
 ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
