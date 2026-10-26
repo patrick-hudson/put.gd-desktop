@@ -149,6 +149,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   label="Capture output: "+label+(exceptions?" · "+QString::number(exceptions)+(exceptions==1?" action exception":" action exceptions"):QString{});destination_->setText(label);destination_->setAccessibleName(label);destination_->setToolTip(label+"\nOutput for future captures, using your saved settings.");
  };
  connect(changeOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});
+ connect(history_,&HistoryWindow::captureSettingsRequested,changeOutput,&QPushButton::click);
  auto* explanation=new QLabel("Settings save automatically");explanation->setObjectName("autosaveExplanation");VisualStyle::role(explanation,"meta");statusBar()->addPermanentWidget(explanation);
  // Autosave describes the Destinations and Settings pages, not History.
  explanation->setVisible(tabs_->currentIndex()>0);connect(tabs_,&QTabBar::currentChanged,explanation,[explanation](int row){explanation->setVisible(row>0);});

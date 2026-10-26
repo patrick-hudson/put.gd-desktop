@@ -42,13 +42,13 @@ bool HistoryModel::linkAvailable(int row)const{return record(row)["linkAvailable
 QString HistoryModel::friendlyAction(const QString& action){if(action=="region")return "Region";if(action=="window")return "Window";if(action=="desktop")return "Full desktop";if(action=="clipboard")return "Clipboard";if(action=="edit")return "Region & edit";if(action=="record")return "Recording";if(action=="images"||action=="image")return "Image";if(action=="text")return "Text";if(action=="videos"||action=="video")return "Video";return "File";}
 bool HistoryModel::storedNothing(const QJsonObject& r){return r["records"].toArray().isEmpty()&&r["operation"].toObject()["items"].toArray().isEmpty();}
 QString HistoryModel::failureLabel(const QJsonObject& r){
- if(r["uploadStatus"]=="local_only")return "Local save failed";
+ if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
  if(!storedNothing(r))return "Upload failed";
  const auto action=r["operation"].toObject()["action"].toString();
  return action=="edit"?"Edit failed":action=="clipboard"?"Upload failed":"Capture failed";
 }
-bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return r["uploadStatus"]=="failed"||state=="failed"||state=="partial";}
-bool HistoryModel::retryUpload(const QJsonObject& r){return failed(r)&&!active(r)&&r["uploadStatus"]!="local_only"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
+bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||state=="failed"||state=="partial";}
+bool HistoryModel::retryUpload(const QJsonObject& r){return (r["uploadStatus"]=="failed"||r["operation"].toObject()["state"]=="failed"||r["operation"].toObject()["state"]=="partial")&&!active(r)&&r["uploadStatus"]!="local_only"&&r["uploadStatus"]!="uploaded"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
 // Any failed local copy can be saved again from the retained artifact,
 // including one whose upload succeeded.
 bool HistoryModel::retryLocalSave(const QJsonObject& r){return localSaveFailed(r)&&!active(r)&&!r["operationId"].toString().isEmpty();}
@@ -102,7 +102,7 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==DayRole){const auto currentDay=day(r);return i.row()==0||currentDay!=day(record(i.row()-1))?currentDay:QString{};}
  if(role==ActiveRole)return active(r);
  if(role==FailedRole)return failed(r);
- if(role==PrimaryActionRole){if(active(r))return "Cancel";if(r["uploadStatus"]=="local_only"&&retryLocalSave(r))return "Retry local save";if(copyLocalResult(r))return "Copy result";if(retryUpload(r))return "Retry upload";if(linkAvailable(i.row()))return "Copy link";return QString{};}
+ if(role==PrimaryActionRole){if(active(r))return "Cancel";if(copyLocalResult(r))return "Copy result";if(retryUpload(r))return "Retry upload";if(retryLocalSave(r))return "Retry local save";if(linkAvailable(i.row()))return "Copy link";return QString{};}
  if(role==ProgressRole)return aggregateProgress(op).percent();
  if(role==CreatedRole)return relative(r);
  if(role==OutputRole){

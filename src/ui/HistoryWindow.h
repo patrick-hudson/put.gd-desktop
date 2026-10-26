@@ -4,7 +4,7 @@
 #include <atomic>
 #include <memory>
 #include <functional>
-class QDialog;class QSplitter;class QListWidget;class QVBoxLayout;class QScrollArea;class QStackedWidget;class QResizeEvent;class QListView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;class QLineEdit;class QComboBox;class QProgressBar;class QToolButton;
+class QCheckBox;class QDialog;class QSplitter;class QListWidget;class QVBoxLayout;class QScrollArea;class QStackedWidget;class QResizeEvent;class QListView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;class QLineEdit;class QComboBox;class QProgressBar;class QToolButton;
 namespace putgd {
 class FileDialog;namespace Graphite { class ElidedLabel; }
 class HistoryWindow final:public RetainedWindow {
@@ -33,6 +33,7 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  // were not sent because they have no deletable remote target.
  static QDialog* deletionConfirmation(QWidget* parent,const QJsonObject& preparation,const QHash<QString,QString>& names,const QJsonArray& profiles,int skipped=0);
 signals:void viewStateChanged();
+ void captureSettingsRequested();
  // Edit & upload from another source: "clipboard", or "file" with a path.
  void editRequested(const QString& source,const QString& path);void chooseImageRequested();
 protected:void hideEvent(QHideEvent*) override;void showEvent(QShowEvent*) override;void resizeEvent(QResizeEvent*) override;
@@ -41,7 +42,7 @@ private:
  // #190: ask the resident for a selected image's or video's missing preview,
  // once the selection has settled, one request at a time.
  void requestPreview();bool previewMissing(const QJsonObject& detail)const;
- void updateSummary();void updateInspectorLayout();void setGridMode(bool);void applyFilters();void showRowMenu(const QModelIndex&,const QPoint&);void primaryAction(const QModelIndex&);void operationAction(const QString&);void updateActivity();void exportLocal(bool);void editAgain(const QJsonObject& record);static bool editable(const QJsonObject& record);void saveDiagnostics(const QString& operationId,std::function<void(Error,QJsonObject)> done={});bool diagnosticsAvailable(int row)const;
+ void updateSummary();void updateInspectorLayout();void setGridMode(bool);void applyFilters();void showRowMenu(const QModelIndex&,const QPoint&,bool overflow=false);void primaryAction(const QModelIndex&);void operationAction(const QString&);void updateActivity();void exportLocal(bool);void editAgain(const QJsonObject& record);static bool editable(const QJsonObject& record);void saveDiagnostics(const QString& operationId,std::function<void(Error,QJsonObject)> done={});bool diagnosticsAvailable(int row)const;
  void changeSharing(const QString&);void pollSharing();void selectionChanged();void loadSelectedItem();void prepareDelete();void prepareDelete(const QStringList& ids,int skipped);void pollDeletion();QStringList selectedIds()const;QJsonObject selectedRecord()const;QString destinationLabel(const QJsonObject&)const;
  // The stored files of the selected rows, and those delete.prepare can take.
  QList<QJsonObject> selectedFiles()const;QStringList deletableIds()const;bool selectionHasLinks()const;void copySelectedLinks();
@@ -53,14 +54,14 @@ private:
  bool compact()const{return compact_;}void setDetailsOpen(bool);void openSelectedDetails();
  void inspectSelectedDeletion();void deletionAction(const QString&);QJsonObject selectedDeletion_;QLabel* deletionStatus_=nullptr;QPushButton *deletionRetry_=nullptr,*deletionCancel_=nullptr;
  void updateHeading();Graphite::ElidedLabel* heading_=nullptr;
- UiSession& session_;HistoryModel* model_;QListView* table_;QSplitter* split_=nullptr;QScrollArea* inspectorScroll_=nullptr;QStackedWidget* list_;QLabel *status_,*count_,*preview_,*empty_,*title_,*outcome_,*cancelled_,*activeLabel_;QPlainTextEdit *details_;QLabel* summary_;QLineEdit* link_;QLabel* linkExpiry_=nullptr;QComboBox* items_;QProgressBar* progress_;QWidget* activeBanner_;QToolButton *grid_,*showCancelled_;QPushButton *copy_,*open_,*share_,*revoke_,*inspectLink_,*retry_,*cancel_,*copyImage_,*saveAs_,*editAgain_,*saveDiagnostics_;
+ UiSession& session_;HistoryModel* model_;QListView* table_;QSplitter* split_=nullptr;QScrollArea* inspectorScroll_=nullptr;QStackedWidget* list_;QLabel *status_,*count_,*preview_,*empty_,*title_,*outcome_,*cancelled_,*activeLabel_;QPlainTextEdit *details_;QWidget* summary_;QLabel* capabilityHint_;QPushButton* changeLocalCopies_;QLineEdit* link_;QLabel* linkExpiry_=nullptr;QComboBox* items_;QProgressBar* progress_;QWidget* activeBanner_;QToolButton *grid_,*showCancelled_;QPushButton *copy_,*open_,*share_,*revoke_,*inspectLink_,*retry_,*cancel_,*copyImage_,*saveAs_,*editAgain_,*saveDiagnostics_;
  QStringList restoreSelection_;QString selectedItemId_,sharingId_,sharingFeedback_,deletionId_,activeId_;QJsonObject currentDetail_;bool restoringSelection_=false,deleteAccepting_=false,sharingFeedbackError_=false,sharingStopped_=false,sharingAccepting_=false,sharingPollActive_=false,deletionPollActive_=false,awaitingInitialization_=false,previewLoading_=false;
  QTimer *sharingTimer_=nullptr,*deletionTimer_=nullptr,*searchTimer_=nullptr,*previewRequestTimer_=nullptr;QString previewRequestId_,previewCandidate_;QSet<QString> previewRefused_;quint64 selectionRequest_=0;std::shared_ptr<std::atomic_bool> previewCancelled_;QString pendingPreviewPath_,pixelDimensions_;
  // The item and preview file the inspector shows now, kept across reloads.
  QString shownItemId_,shownPreviewPath_;
  FileDialog* chooser_=nullptr;
- QToolButton *filtersToggle_=nullptr,*clearFilters_=nullptr,*detailsBack_=nullptr;QWidget *selectionBar_=nullptr,*emptyState_=nullptr;QLabel *selectionCount_=nullptr,*emptyBody_=nullptr;QPushButton *copyLinks_=nullptr,*deleteSelected_=nullptr,*resetView_=nullptr,*remove_=nullptr;bool compact_=false,detailsOpen_=false;
- QListWidget* categories_=nullptr;QToolButton* failedOnly_=nullptr;QWidget* columns_=nullptr;bool restoringCategory_=false;
+ QToolButton *filtersToggle_=nullptr,*clearFilters_=nullptr,*detailsBack_=nullptr;QWidget *selectionBar_=nullptr,*emptyState_=nullptr;QLabel *selectionCount_=nullptr,*emptyBody_=nullptr;QPushButton *copyLinks_=nullptr,*deleteSelected_=nullptr,*resetView_=nullptr,*retryLoading_=nullptr,*remove_=nullptr;bool compact_=false,detailsOpen_=false;
+ QListWidget* categories_=nullptr;QCheckBox* failedOnly_=nullptr;QWidget* columns_=nullptr;bool restoringCategory_=false;
  // Runs once the selected file's detail arrives (true) or fails (false).
  std::function<void(bool)> afterDetail_;
 };
