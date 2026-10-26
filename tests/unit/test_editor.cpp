@@ -266,6 +266,20 @@ private slots:
   QVERIFY(doc.undo());QCOMPARE(*doc.find(id),moved);QVERIFY(doc.undo());QCOMPARE(doc.find(id)->rect,QRect(1,2,10,10));
   QVERIFY(doc.undo());QVERIFY(doc.shapes().isEmpty());QVERIFY(doc.redo());QVERIFY(doc.redo());QCOMPARE(*doc.find(id),moved);
  }
+ // Every change to what export renders moves the generation, so a saved copy
+ // can tell it is out of date; refused or unchanged edits do not.
+ void generationFollowsEveryRenderedChange(){
+  EditDocument doc(noise({40,30},18));auto last=doc.generation();
+  auto moved=[&]{const bool changed=doc.generation()!=last;last=doc.generation();return changed;};
+  const auto id=doc.add(box(Shape::Kind::Redact,QRect(1,2,10,10)));QVERIFY(moved());
+  auto shape=*doc.find(id);QVERIFY(!doc.replace(shape));QVERIFY(!moved());
+  shape.rect.translate(3,0);QVERIFY(doc.replace(shape));QVERIFY(moved());
+  QVERIFY(doc.setCrop(QRect(0,0,20,20)));QVERIFY(moved());QVERIFY(!doc.setCrop(QRect(0,0,20,20)));QVERIFY(!moved());
+  // A live drag changes the render before its one undo step commits.
+  doc.beginGesture();shape.rect.translate(1,1);doc.preview(shape);QVERIFY(moved());doc.cancelGesture();QVERIFY(moved());
+  QVERIFY(doc.undo());QVERIFY(moved());QVERIFY(doc.redo());QVERIFY(moved());
+  QVERIFY(doc.remove(id));QVERIFY(moved());QVERIFY(!doc.remove(id));QVERIFY(!moved());
+ }
  // Keyboard-only spatial editing: Insert places the tool's mark (centred, a
  // quarter of the image), Tab and brackets select marks, arrows move,
  // Shift+arrows resize, Ctrl takes ten-pixel steps. Each key is one undo step.

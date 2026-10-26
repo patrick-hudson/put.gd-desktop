@@ -73,7 +73,7 @@ quint64 EditDocument::add(Shape shape){
  shape.id=nextId_++;
  shape.text.truncate(maximumTextCharacters);
  shape.strength=std::clamp(shape.strength,minimumBlur,maximumBlur);
- auto before=state_;state_.shapes.append(shape);if(!gesture_)push(std::move(before));
+ auto before=state_;state_.shapes.append(shape);++generation_;if(!gesture_)push(std::move(before));
  return shape.id;
 }
 bool EditDocument::replace(const Shape& changed){
@@ -82,32 +82,32 @@ bool EditDocument::replace(const Shape& changed){
   if(state_.shapes.at(i)==next)return false;
   // Copy first, then write through the list: it detaches from the snapshot.
   // (A reference taken before the copy wrote into both, losing the step.)
-  auto before=state_;state_.shapes[i]=next;if(!gesture_)push(std::move(before));return true;
+  auto before=state_;state_.shapes[i]=next;++generation_;if(!gesture_)push(std::move(before));return true;
  }
  return false;
 }
 void EditDocument::preview(const Shape& shape){const bool live=gesture_;gesture_=true;replace(shape);gesture_=live;}
 bool EditDocument::remove(quint64 id){
- for(qsizetype i=0;i<state_.shapes.size();++i)if(state_.shapes[i].id==id){auto before=state_;state_.shapes.removeAt(i);if(!gesture_)push(std::move(before));return true;}
+ for(qsizetype i=0;i<state_.shapes.size();++i)if(state_.shapes[i].id==id){auto before=state_;state_.shapes.removeAt(i);++generation_;if(!gesture_)push(std::move(before));return true;}
  return false;
 }
 bool EditDocument::setCrop(const QRect& requested){
  const auto crop=clampRect(requested,base_.rect());
  if(crop.width()<1||crop.height()<1||crop==state_.crop)return false;
- auto before=state_;state_.crop=crop;if(!gesture_)push(std::move(before));return true;
+ auto before=state_;state_.crop=crop;++generation_;if(!gesture_)push(std::move(before));return true;
 }
 void EditDocument::beginGesture(){if(!gesture_){gestureStart_=state_;gesture_=true;}}
 void EditDocument::commitGesture(){if(!gesture_)return;gesture_=false;push(std::exchange(gestureStart_,{}));}
-void EditDocument::cancelGesture(){if(!gesture_)return;gesture_=false;state_=std::exchange(gestureStart_,{});}
+void EditDocument::cancelGesture(){if(!gesture_)return;gesture_=false;state_=std::exchange(gestureStart_,{});++generation_;}
 bool EditDocument::undo(){
  if(gesture_||undo_.isEmpty())return false;
  historyBytes_-=bytesOf(undo_.last());auto previous=undo_.takeLast();
- historyBytes_+=bytesOf(state_);redo_.append(std::exchange(state_,std::move(previous)));return true;
+ historyBytes_+=bytesOf(state_);redo_.append(std::exchange(state_,std::move(previous)));++generation_;return true;
 }
 bool EditDocument::redo(){
  if(gesture_||redo_.isEmpty())return false;
  historyBytes_-=bytesOf(redo_.last());auto next=redo_.takeLast();
- historyBytes_+=bytesOf(state_);undo_.append(std::exchange(state_,std::move(next)));return true;
+ historyBytes_+=bytesOf(state_);undo_.append(std::exchange(state_,std::move(next)));++generation_;return true;
 }
 
 void EditDocument::blurInPlace(QImage& image,const QRect& requested,int radius){

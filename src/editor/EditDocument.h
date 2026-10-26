@@ -48,6 +48,9 @@ public:
  const QList<Shape>& shapes() const {return state_.shapes;}
  const Shape* find(quint64 id) const;
  bool modified() const {return state_.shapes.size()>0||state_.crop!=base_.rect();}
+ // Bumped by every change to what export renders (edits, live drags, undo,
+ // redo), so a saved copy can tell whether it still matches the draft.
+ quint64 generation() const {return generation_;}
 
  quint64 add(Shape);
  bool replace(const Shape&);  // same id; returns false when unknown or unchanged
@@ -89,6 +92,6 @@ private:
  bool gesture_=false,truncated_=false;
  QList<State> undo_,redo_;
  qint64 historyBytes_=0;
- quint64 nextId_=1;
+ quint64 nextId_=1,generation_=0;
 };
 }
