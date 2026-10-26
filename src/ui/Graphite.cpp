@@ -1367,8 +1367,26 @@ void alignForms(QWidget* page) {
         for (int row = 0; row < form->rowCount(); ++row)
             if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) gutter = std::max(gutter, item->widget()->sizeHint().width());
     gutter = std::min(gutter, scaled(240));
+    // Too narrow for the gutter and a usable field (large text, a small
+    // window): every form on the page puts its labels above instead.
+    class FormMode final : public QObject {
+    public:
+        FormMode(QWidget* page, QList<QFormLayout*> forms, int needed) : QObject(page), forms_(std::move(forms)), needed_(needed) { page->installEventFilter(this); apply(page->width()); }
+    protected:
+        bool eventFilter(QObject* watched, QEvent* event) override {
+            if (event->type() == QEvent::Resize) apply(static_cast<QWidget*>(watched)->width());
+            return false;
+        }
+    private:
+        void apply(int width) {
+            const auto policy = width > 0 && width < needed_ ? QFormLayout::WrapAllRows : QFormLayout::DontWrapRows;
+            for (auto* form : forms_) if (form && form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);
+        }
+        QList<QFormLayout*> forms_;
+        int needed_;
+    };
+    new FormMode(page, forms, gutter + scaled(360) + 120);
     for (auto* form : forms) {
-        form->setRowWrapPolicy(QFormLayout::DontWrapRows);
         for (int row = 0; row < form->rowCount(); ++row) {
             if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) item->widget()->setMinimumWidth(gutter);
             auto* field = form->itemAt(row, QFormLayout::FieldRole);
