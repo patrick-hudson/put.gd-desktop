@@ -20,8 +20,9 @@ class Edid(unittest.TestCase):
             self.assertEqual(sum(value[:128]) % 256, 0)
             self.assertEqual(sum(value[128:]) % 256, 0)
             self.assertEqual(int.from_bytes(value[54:56], 'little'), clock)
-            self.assertEqual(value[130], 12)
-            self.assertEqual(value[132:140], bytes.fromhex('67030c001000003c'))
+            self.assertEqual(value[130], 17)
+            self.assertEqual(value[134:142], bytes.fromhex('67030c001000003c'))
+            self.assertEqual(value[142:145], bytes.fromhex('e20040'))
             self.assertEqual(value[56] + ((value[58] >> 4) << 8), 2560)
             self.assertEqual(value[59] + ((value[61] >> 4) << 8), 1440)
 

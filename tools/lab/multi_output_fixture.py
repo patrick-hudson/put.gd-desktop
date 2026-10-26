@@ -13,6 +13,8 @@ import sys
 
 import gi
 gi.require_version('Gtk', '3.0')
+gi.require_version('Gdk', '3.0')
+gi.require_foreign('cairo')
 from gi.repository import Gdk, GLib, Gtk
 
 COLORS = [(220, 30, 40), (20, 180, 70), (35, 70, 220), (235, 190, 20),
@@ -38,8 +40,10 @@ def main():
         raise SystemExit('No native display')
     monitors = []
     windows = []
+    draws = []
     tick = [0]
     def paint(_area, cr, index):
+        draws[index] += 1
         w, h = _area.get_allocated_width(), _area.get_allocated_height()
         for y in range(0, h, TILE):
             for x in range(0, w, TILE):
@@ -69,6 +73,7 @@ def main():
             return True
         return False
     for index in range(display.get_n_monitors()):
+        draws.append(0)
         monitor = display.get_monitor(index)
         g = monitor.get_geometry()
         monitors.append({'index': index, 'x': g.x, 'y': g.y, 'width': g.width, 'height': g.height,
@@ -86,8 +91,10 @@ def main():
     def ready():
         actual = []
         for i, window in enumerate(windows):
+            placed = display.get_monitor_at_window(window.get_window()).get_geometry()
             actual.append({**monitors[i], 'allocatedWidth': window.get_allocated_width(),
                            'allocatedHeight': window.get_allocated_height(),
+                           'placedRect': [placed.x, placed.y, placed.width, placed.height],
                            'fullscreen': bool(window.get_window().get_state() & Gdk.WindowState.FULLSCREEN)})
         save(a.output / 'ready.json', {'backend': type(display).__name__, 'monitors': actual,
                                      'colors': COLORS, 'tile': TILE, 'motion': a.motion})
@@ -100,6 +107,10 @@ def main():
                 window.queue_draw()
         return True
     GLib.timeout_add(33, animate)
+    def counts():
+        save(a.output / 'frame-counts.json', {'draws': draws, 'ticks': tick[0]})
+        return True
+    GLib.timeout_add(1000, counts)
     # A normal signal handler also works when input EOF arrives during an output change.
     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, lambda: (Gtk.main_quit(), False)[1])
     Gtk.main()

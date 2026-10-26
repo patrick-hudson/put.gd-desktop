@@ -79,9 +79,10 @@ def edid(refresh=60):
     b = bytearray(256)
     b[:8] = bytes.fromhex('00ffffffffffff00')
     b[8:10] = bytes.fromhex('31d8')  # LNX, synthetic laboratory identity
-    b[10:16] = bytes.fromhex('7c017c010000')
+    b[10:16] = bytes.fromhex('7c0100000000')
     b[16:25] = bytes([1, 36, 1, 3, 0x80, 60, 34, 120, 0x0a])
     b[25:35] = bytes.fromhex('5ec0a4594a9825205054')
+    b[35] = 0x20  # mandatory 640x480p60 fallback
     b[38:54] = bytes.fromhex('d1c0' + '0101' * 7)
     b[54:72] = bytes.fromhex('565e00a0a0a029503020350055502100001a')
     b[54:56] = (24150 if refresh == 60 else 12075).to_bytes(2, 'little')
@@ -92,7 +93,7 @@ def edid(refresh=60):
     b[127] = (-sum(b[:127])) & 255
     # CTA-861 extension; HDMI OUI 000c03, physical address 1.0.0.0,
     # no deep colour/audio, max TMDS clock 300MHz (60 * 5MHz).
-    b[128:140] = bytes.fromhex('02030c0067030c001000003c')
+    b[128:145] = bytes.fromhex('02031180410167030c001000003ce20040')
     b[255] = (-sum(b[128:255])) & 255
     return decode_edid(bytes(b))
 
