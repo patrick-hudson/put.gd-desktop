@@ -69,9 +69,12 @@ struct Native {
  bool chrome(QWidget& w,const QString& name){
   if(!active())return true;
   // After a minimize the harness shows the window again (a taskbar click the
-  // driver cannot make portably), so the remaining steps can continue.
-  class Watch final:public QObject {public:QString path;QWidget* w;bool eventFilter(QObject*,QEvent* e)override{if(e->type()==QEvent::Move||e->type()==QEvent::Resize||e->type()==QEvent::WindowStateChange||e->type()==QEvent::Close||e->type()==QEvent::Hide){QSaveFile f(path);if(f.open(QIODevice::WriteOnly)){auto g=geometry(*w);g["event"]=int(e->type());f.write(QJsonDocument(g).toJson(QJsonDocument::Compact));f.commit();}if(e->type()==QEvent::WindowStateChange&&w->isMinimized())QTimer::singleShot(2500,w,[w=w]{w->showNormal();w->raise();w->activateWindow();});}return false;}};
+  // driver cannot make portably), so the remaining steps can continue. Wayland
+  // clients never learn they were minimized and cannot raise themselves, so the
+  // driver may also ask for the window to be mapped again (<name>.reshow).
+  class Watch final:public QObject {public:QString path;QWidget* w;bool eventFilter(QObject*,QEvent* e)override{if(e->type()==QEvent::Move||e->type()==QEvent::Resize||e->type()==QEvent::WindowStateChange||e->type()==QEvent::Close||e->type()==QEvent::Hide||e->type()==QEvent::Show){QSaveFile f(path);if(f.open(QIODevice::WriteOnly)){auto g=geometry(*w);g["event"]=int(e->type());f.write(QJsonDocument(g).toJson(QJsonDocument::Compact));f.commit();}if(e->type()==QEvent::WindowStateChange&&w->isMinimized())QTimer::singleShot(2500,w,[w=w]{w->showNormal();w->raise();w->activateWindow();});}return false;}};
   Watch watch;watch.path=dir+"/"+name+".geometry";watch.w=&w;w.installEventFilter(&watch);
+  QTimer reshow;reshow.setInterval(200);QObject::connect(&reshow,&QTimer::timeout,&w,[&]{if(QFile::remove(dir+"/"+name+".reshow")){w.hide();w.show();w.raise();w.activateWindow();}});reshow.start();
   const bool done=step(w,name,180000);w.removeEventFilter(&watch);return done;
  }
 };
