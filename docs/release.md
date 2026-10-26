@@ -38,10 +38,10 @@ which makes a new commit on `main` and so a new version.
 Earlier tags keep their names and stay readable: `v0.1.1-nightly.N`, the
 unpublished `v0.1.1-rc.1` draft, and before 2026-10-18
 `vBASE-dev.COUNT.UTC+gSHORT`. Every calendar version sorts after them.
-Nightlies never replace GitHub's Latest stable release. Every channel publishes
-all twenty-one individual downloads listed below, including the three raw DEBs, the RPM,
-the exact compiled curated source archive, the AppImage's complete bundled-component source and `.zsync`, the
-debug symbols and an SBOM of each package.
+Nightlies never replace GitHub's Latest stable release. New releases publish
+five installers and ten small support files. Source downloads are linked
+separately; debug files stay in CI artifacts. Older releases retain their original
+asset layouts and remain verifiable.
 
 ### Nightly
 
@@ -50,8 +50,10 @@ debug symbols and an SBOM of each package.
 this is not a delivery-time guarantee. Its `plan` job derives the nightly tag for
 `nightly` HEAD. When that exact source is already a complete, verified public
 nightly, the run stops there: nothing is built or published. Otherwise it
-creates the immutable tag, runs the full CI and package matrix on that tag in
-the same run, and publishes the collected assets as a prerelease. A tag, draft
+creates the immutable tag, reuses passing source CI for that exact commit when
+available (otherwise runs the full suite), builds and checks all tagged packages,
+and publishes the collected installers as a prerelease. [CI coverage](ci.md)
+describes the exact evidence required for reuse. A tag, draft
 or failed run alone is not a published nightly, so unchanged source whose last
 attempt failed is retried.
 
@@ -219,13 +221,15 @@ source catalog in native/AppImage audits. Windows/macOS Proton support remains
 outside this release scope. The curated source archive includes Proton build
 inputs and its production rebuild checks the extracted helper.
 
-Every Proton-enabled release also delivers `proton-source-catalog.json` and both
-`putgd-proton-corresponding-source.tar.gz.part1` / `.part2` files. The collector
-verifies the complete transport and all six original source packets, then binds
-the catalog/helper hashes to every installer. Concatenate the parts in numeric
-order and verify the combined hash before extracting. These large source parts
-are separate downloads; the combined application ZIP includes the catalog and
-instructions. Preserve them while the corresponding binary release is available.
+Every Proton-enabled release delivers the current `proton-source-catalog.json`.
+Its permanent URLs point to the unchanged corresponding-source transport parts,
+which are no longer downloaded and uploaded again for each nightly. Publication
+requires those URLs to identify public GitHub assets with the pinned sizes and
+SHA-256 digests (falling back to a byte download when the server has no digest).
+The current catalog/helper hashes must still match every installer. Concatenate
+the parts in numeric order and verify their combined hash before extracting.
+The application source overlay accompanies the AppImage sources in the linked
+source release. Preserve those sources while their binaries remain available.
 
 Native Linux packages also generate `/usr/share/doc/putgd/copyright` in DEP-5
 format and a deterministic `changelog.gz` from the source commit. The copyright
@@ -295,7 +299,7 @@ Because of x264, x265 and the GPL FFmpeg, the AppImage is a GPL-2.0-or-later
 combined work; put.gd's own code stays MIT and each component keeps its
 licence. The image carries `usr/share/doc/putgd/APPIMAGE-GPL-NOTICE.txt` and
 the licence texts under `usr/share/doc/putgd/bundled-licenses`. Every release
-publishes `putgd-VERSION-appimage-complete-source.tar.gz`, built automatically by
+links `putgd-VERSION-appimage-complete-source.tar.gz` from its source release, built automatically by
 `tools/releases/appimage_complete_sources.py` from the exact image's component
 inventory. It carries all pinned Qt module trees (including embedded third-party
 code), LayerShellQt, QtKeychain, ICU, AWS SDK/CRT submodules, FFmpeg with its
@@ -310,8 +314,8 @@ The source asset's `SOURCES.json` maps every component to its source and checksu
 `upstream/*/TREES.json` maps root and recursive submodule archives to their
 original paths. The collector rejects missing components, changed Qt/runtime
 pins, a partial media-only asset or mismatched archive contents. put.gd's own
-`-source.tar.gz` and the Proton source catalog/transport parts remain separately
-verified assets on the same release. Keep all these source assets available
+`-source.tar.gz` and the linked Proton source catalog/transport parts remain separately
+verified downloads linked from the installer release. Keep all these source assets available
 alongside the corresponding binary. No three-year written-offer process or
 separate source mirror is substituted for these automated assets (#416).
 
@@ -430,33 +434,39 @@ permalink yet): [live update](evidence/2026-10-21-appimage-live-294-296/README.m
 
 ## GitHub downloads and source
 
-The GitHub Release page publishes each installer as an individual download:
-Ubuntu 24.04, Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM, and the x86_64 AppImage. It also
-publishes `putgd-VERSION-source.tar.gz`, the AppImage's
-`putgd-VERSION-appimage-complete-source.tar.gz` and `putgd-VERSION-x86_64.AppImage.zsync`
-(see [AppImage updates](#appimage-updates)), the GNOME extension ZIP, full build
-receipts, the Proton source catalog and two source transport parts,
-`putgd-VERSION-debug-x86_64.tar.zst`, a CycloneDX SBOM of each package
-(`putgd-VERSION-LABEL.cdx.json` for `appimage`, `ubuntu24.04`, `ubuntu26.04`,
-`debian13` and `fedora44`; see [SBOMs and vulnerability scans](#sboms-and-vulnerability-scans)),
-and `SHA256SUMS`.
-`putgd-VERSION-release.zip` contains the sixteen smaller underlying
-files and an inner checksum list. The two large source parts and the debug asset
-stay separate; the outer checksum list covers them and the combined ZIP.
+The main GitHub Release page has 15 uploaded assets:
 
-The debug asset holds every build's split debug files (the four distro packages
-and the AppImage) by GNU build ID, `.build-id/<2 hex>/<rest>.debug`, the DWARF
-each build's programs share in `.dwz/<label>.debug`, and a `manifest.json`
-naming each build's programs, build IDs and shared file. It is about 213 MB
-([diagnostics.md](diagnostics.md#kept-debug-symbols)). The jobs that write it
-install `dwz`. Maintainers use it to
-symbolize crash records ([diagnostics.md](diagnostics.md)); users never need it, and
-the packages they install stay stripped. The repository is public, so the symbols
-reveal nothing the source does not. ZIP timestamps and modes are fixed from the source commit,
-so repeating collection preserves the bytes needed to resume a draft. Extract the
-combined ZIP into a new directory; its inner checksum list covers the contents,
-while the separately downloaded outer list also covers the ZIP itself. Actions artifact ZIPs are the internal build handoff;
-the final release assets are the raw files.
+- Five installers: Ubuntu 24.04, Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44
+  RPM, and the x86_64 AppImage.
+- The AppImage `.zsync`, needed by update clients.
+- Five package SBOMs (`putgd-VERSION-LABEL.cdx.json`).
+- `SHA256SUMS`, `release-builds.json`, `source-delivery.json`, and the current
+  `proton-source-catalog.json`.
+
+There is no new combined ZIP or public debug archive. GitHub's automatic source
+links remain available, and developers can clone the release tag.
+
+Release notes and `source-delivery.json` link a separate
+`sources-vVERSION-files` release containing the exact application source tarball,
+AppImage complete-source tarball, optional GNOME extension ZIP and their
+`SHA256SUMS`. The delivery manifest binds filenames, sizes and hashes to the
+installer commit. Source releases are always prereleases, never Latest, and use
+a suffix that the download site's nightly selector cannot mistake for an
+installer. Publishing installers first requires these sources to be publicly
+available and checksum-verified. Interrupted uploads resume only matching bytes;
+existing source tags/assets are never overwritten. The Proton catalog links its
+unchanged source parts at their permanent release instead of duplicating 2.5 GB
+per version.
+
+Each package job retains its checked debug tar and manifest in the separate
+`debug-symbols-LABEL` Actions artifact for 90 days. Download the artifact from the
+producer run linked in the release notes before it expires; archive it privately
+when longer retention is needed. [Diagnostics](diagnostics.md#kept-debug-symbols)
+describes extraction and build-ID lookup. Package binaries remain stripped.
+
+The installer and source handoffs are separate Actions artifacts,
+`release-assets` and `release-source-assets`, retained for 14 days. The public
+source release remains available after Actions artifacts expire.
 
 The curated source tarball exports committed files from a positive allowlist:
 the application's `src/`, CMake files/presets, native packaging, GNOME integration,
@@ -473,10 +483,10 @@ pinned AWS SDK separately. Extracted builds use the existing supplied-provenance
 CMake flags, retaining the original commit/count with a development version.
 They do not claim locally observed clean Git or an exact release-tag build.
 Official binary release assets continue to come from a clean tagged checkout.
-The Ubuntu 24.04 packaging job also compiles an extracted export with the normal
-release preset, verifying the archive contains the required compilation inputs.
-The collector requires that successful compilation receipt and publishes the exact
-archive bytes that were tested.
+On untagged runs, the Ubuntu 24.04 packaging job compiles an extracted export
+with the normal release preset. Tagged builds export the exact committed source
+without repeating that compilation. Collection always verifies its identity,
+size and checksum; a source-build receipt, when present, must match as well.
 
 ## SBOMs and vulnerability scans
 
@@ -651,23 +661,20 @@ AppImage), so the build's update check offers that same package. `native.py
 --package-target` and the AppImage build check it with `putgd-cli --update-info`
 ([updates.md](updates.md)).
 
-Each package job also stages its build's split debug files with
-`tools/releases/debug_symbols.py stage`, which checks every `.debug` file against
-the build ID of the binary the package installs. Without a tag, the
-`debug-symbols` job assembles the debug asset from those files exactly as the
-release would, as the `debug-symbols-dry-run` artifact.
+Each package job stages split debug files with `tools/releases/debug_symbols.py stage`, verifying them against the installed binary build IDs, and uploads them
+as separate CI artifacts. They are not downloaded for SBOMs or publication.
 
-With a tag, the `collect` job requires the four native assets and the AppImage
-from one clean tagged commit/tree/count/version, the debug files staged by
-all five builds from that identity, and the `sbom` job's five SBOMs, each naming
-its package's SHA-256. It recalculates each artifact's
-SHA256 against its build receipt and assigns distro-specific filenames so the
-three DEBs cannot overwrite each other. The AppImage must embed its tag's update
-information, and its `.zsync` must match the receipt and describe exactly the collected
-image at its release URL ([AppImage updates](#appimage-updates)). It uploads the verified set as the
-`release-assets` artifact. Only the nightly `publish` job and the release
-`draft` job write releases. Both run after every CI and package job in the same
-run passed, and both record that run in the release notes and their receipt.
+With a tag, `collect --installers-only` requires the four native installers and
+AppImage from one clean tagged commit/tree/count/version, the five matching
+SBOMs, the exact application source export and complete AppImage source receipt.
+It recalculates hashes and assigns distro-specific filenames. The AppImage's
+embedded update information and `.zsync` must describe this release's bytes and
+URL. The required source, SBOM and PipeWire jobs run concurrently after image
+assembly; publication waits for every selected job. Nightly source CI may be
+reused as documented in [CI coverage](ci.md), with its exact producer recorded.
+Only the nightly `publish` job and stable `draft` job write releases. They publish
+the linked source materials before exposing the installers; stable installers
+remain a draft pending exact-asset acceptance.
 
 Draft staging uses `gh release create --verify-tag`. A rerun can resume a
 partial draft: existing uploaded bytes must match exactly, and only missing
@@ -676,8 +683,9 @@ release are rejected for inspection; existing assets are never silently replaced
 For stable releases, public publication is the last step after
 actual package-specific acceptance. Nightlies use the explicit automated class
 described above; `--nightly` cannot publish stable tags.
-The publisher downloads the exact draft assets, checks every accepted checksum
-and the checksum file, and rejects missing/extra assets, a different remote tag,
+The publisher compares GitHub's SHA-256 asset digests with every collected
+checksum, downloading bytes when a digest is absent. It verifies the checksum
+file too and rejects missing/extra assets, a different remote tag,
 or assets changed during verification. GitHub does not offer an atomic lock
 across verification and publication; coordinate other release writers. The
 publication receipt retains verified remote asset identities:
