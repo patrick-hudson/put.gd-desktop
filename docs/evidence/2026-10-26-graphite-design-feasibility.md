@@ -108,9 +108,13 @@ this prototype receipt.
 The production integration must independently pass current-source widget and
 workflow tests, supported minimum sizes, large text, DPR, complete keyboard and
 popup behavior, and the declared compositor functional and memory gates with
-saved native visuals. Recording review must include its native custom header in
-geometry checks. Production previews, tests and PR checks must identify their own
-source and build rather than reuse this prototype's results.
+saved native visuals. Production recording review keeps the desktop title bar to
+preserve its frame area and enlarged-text fit; the image editor keeps the shared
+document header. Check review's fit with the actual desktop decorations while
+retaining the existing image-area share gates. This production adaptation does
+not change the frozen prototype or establish production acceptance. Production
+previews, tests and PR checks must identify their own source and build rather
+than reuse this prototype's results.
 
 The implementation PR and its linked documentation PR remain unmerged for user
 review. This receipt does not waive any gate in the

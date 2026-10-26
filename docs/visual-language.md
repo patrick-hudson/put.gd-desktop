@@ -67,7 +67,9 @@ labels vertically using the visible text's ink bounds; center an icon, its gap
 and its label as one group. Editable text retains Qt's caret and font metrics.
 Elide long document names and bounded summaries, with the full value available
 through a tooltip and accessibility text. Do not elide a failure's only recovery
-instruction.
+instruction. Display-only wrapping must not change copied values: Copy diagnostics,
+keyboard and context-menu copying, and X11 selections retain the original text,
+including any original Unicode characters.
 
 Desktop text size and display pixel ratio are separate concerns. Use
 `Graphite::font` and `Graphite::scaled` for painted type and scalable geometry;
@@ -86,14 +88,19 @@ The main header starts at 56 px, the command band at about 60 px including
 padding, and the status band at 26 px. These are component baselines, not reasons
 to break a supported small-screen or large-text layout. History uses 76 px base
 rows with 80 × 50 thumbnails, expanding for complete failure text when needed.
+Reserve space for row actions before laying out text. When an inline action
+would leave too little room for the item name, place actions in a stable footer
+below the text. Hover and selection must not change the row height.
 
 Use one hairline between adjacent regions. Prefer flat sections and aligned form
 rows to nested cards, oversized pills, gradients or ornamental shadows. Give
 ordinary choices sensible widths; let paths use available space. Forms on one
 page share a label gutter. When space requires a different layout, switch the
 whole relevant group consistently rather than wrapping unrelated rows one at a
-time. Scroll long forms and contextual properties while keeping primary actions
-reachable.
+time. A value and its unit form one joined control with aligned top and bottom
+edges and a shared text baseline, including at enlarged text sizes. Put effective
+limit hints below that control. Scroll long forms and contextual properties while
+keeping primary actions reachable.
 
 Buttons have primary, secondary, quiet, destructive and disabled states. Hover
 and press changes stay subtle. Keyboard focus is visible and distinct from
@@ -113,12 +120,16 @@ At narrower widths, Capture window and Capture desktop can fold into the
 Capture region split menu. Remaining tools can use icons with complete tooltips
 and accessible names. A compact layout must retain every action.
 
-Document windows show their title and truthful upload state, with shared
-controls around the working area. Custom Linux chrome uses `QWindow` system
-move and resize rather than compositor-specific positioning. Verify dragging,
-all resize edges, minimize, maximize/restore, double-click, close and keyboard
-window management on both X11 and native Wayland. The
-`PUTGD_SYSTEM_DECORATIONS=1` fallback uses desktop decorations.
+The image editor uses the shared document header with its title and truthful
+upload state. Recording review keeps the desktop title bar to preserve frame
+area and fit at enlarged text sizes; its Not uploaded state lives in the footer.
+Both use shared controls around the working area and the app's window identity.
+
+Custom Linux chrome uses `QWindow` system move and resize rather than
+compositor-specific positioning. Verify dragging, all resize edges, minimize,
+maximize/restore, double-click, close and keyboard window management on both X11
+and native Wayland. The `PUTGD_SYSTEM_DECORATIONS=1` fallback uses desktop
+decorations for windows that otherwise use custom chrome.
 
 Appearance remains in Settings → General → Appearance. There is one persisted
 write path for the preference; a window-specific theme control must not create a
@@ -183,10 +194,13 @@ and actions stay visible at supported sizes. Plain Enter never uploads. See
 
 **Recording.** The review remains frame-dominant with a compact transport,
 timeline, trim and mask controls. Keep every mask lane and the existing timing
-model. The preview is silent; video export retains recorded system audio where
-the format supports it. Save copy exports locally; only explicit Upload enters
-the shared pipeline. The recording bar names Start recording and Stop recording
-and exposes its actual state. See [the recording contract](recording.md).
+model. Labels and placement instructions over video need a contrasting backdrop;
+mask outlines must remain visible over both pale and dark frame content,
+independently of the app theme. The preview is silent; video export retains
+recorded system audio where the format supports it. Save a copy… exports locally;
+only explicit Upload enters the shared pipeline. The recording bar names Start
+recording and Stop recording and exposes its actual state. See
+[the recording contract](recording.md).
 
 ## Verification and evidence
 
@@ -199,8 +213,9 @@ is still enlarged after window construction.
 
 Review both themes, narrow windows, long labels, 150% text and fractional DPR.
 Include keyboard focus, menus, confirmations, disabled checked controls and live
-theme changes. Recording review geometry must be checked with the native custom
-header present; offscreen runs omit that header and cannot prove its fit.
+theme changes. Check recording review's fit with its actual desktop decorations
+on each native session, while retaining the existing image-area share gates.
+Offscreen geometry alone cannot establish decorated desktop fit.
 
 Synthetic previews and widget tests establish design and widget behavior only.
 Production acceptance needs the exact source/build on the declared desktops,
