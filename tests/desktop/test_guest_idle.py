@@ -119,6 +119,21 @@ class GuestPolicyContracts(unittest.TestCase):
             with patch.object(idle, 'command', return_value='b false'):
                 idle.screensaver_inactive(desktop)
 
+    def test_desktop_services_wait_only_at_initial_application(self):
+        with patch.object(idle, 'command', side_effect=['b false', 'b true', 'b true']), \
+             patch.object(idle.time, 'sleep') as sleep:
+            idle.desktop_services('KDE', True)
+            sleep.assert_called_once()
+        with patch.object(idle, 'command', return_value='b false'), \
+             patch.object(idle.time, 'sleep') as sleep:
+            with self.assertRaisesRegex(idle.PolicyError, 'not ready'):
+                idle.desktop_services('KDE', False)
+            sleep.assert_not_called()
+        with patch.object(idle, 'command', return_value='b false'), \
+             patch.object(idle.time, 'monotonic', side_effect=[0, 31]):
+            with self.assertRaisesRegex(idle.PolicyError, 'not ready'):
+                idle.desktop_services('KDE', True)
+
     def test_locked_inactive_and_wrong_session_fail(self):
         for locked, active, kind in [('yes', 'yes', 'x11'), ('no', 'no', 'x11'), ('no', 'yes', 'wayland')]:
             values = f'User={os.getuid()}\nSeat=seat0\nType={kind}\nActive={active}\nLockedHint={locked}'

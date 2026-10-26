@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import pwd
 import re
+import shlex
 import subprocess
 import time
 
@@ -25,7 +26,9 @@ class DesktopNotReady(PolicyError):
 def command(*args):
     result = subprocess.run(args, capture_output=True, text=True, timeout=30)
     if result.returncode:
-        raise PolicyError('Required guest policy command failed: ' + args[0])
+        # This helper's arguments are policy keys/values, never credentials.
+        raise PolicyError('Required guest policy command failed: ' + shlex.join(args)
+                          + ': ' + result.stderr.strip()[:1000])
     return result.stdout.strip()
 
 
@@ -118,6 +121,20 @@ def screensaver_inactive(desktop):
     path = '/' + service.replace('.', '/')
     if command('busctl', '--user', 'call', service, path, service, 'GetActive') != 'b false':
         raise PolicyError('Guest screensaver remains active; restore the visible console first')
+
+
+def desktop_services(desktop, apply):
+    services = (['org.kde.Solid.PowerManagement', 'org.freedesktop.ScreenSaver']
+                if desktop == 'KDE' else
+                ['org.gnome.ScreenSaver' if desktop == 'GNOME' else 'org.cinnamon.ScreenSaver'])
+    deadline = time.monotonic() + (30 if apply else 0)
+    for service in services:
+        while command('busctl', '--user', 'call', 'org.freedesktop.DBus',
+                      '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+                      'NameHasOwner', 's', service) != 'b true':
+            if time.monotonic() >= deadline:
+                raise PolicyError('Required desktop policy service is not ready: ' + service)
+            time.sleep(.25)
 
 
 def kde_policy(apply):
@@ -219,6 +236,7 @@ def preflight(desktop, process, user, session_type, apply=False):
             time.sleep(.25)
     os.environ.clear()
     os.environ.update(environment)
+    desktop_services(desktop, apply)
     policies = kde_policy(apply) if desktop == 'KDE' else apply_gsettings(desktop, apply)
     power = inhibitor(apply)
     x11 = None
