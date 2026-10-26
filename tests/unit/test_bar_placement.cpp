@@ -1,6 +1,7 @@
 #include "record/BarPlacement.h"
 #include "record/Overlays.h"
 #include "ui/Theme.h"
+#include "ui/RegionSelection.h"
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
@@ -71,6 +72,29 @@ private slots:
         // config the platform ignored would silently test one default screen.
         const int expected = qEnvironmentVariableIntValue("PUTGD_TEST_SCREENS");
         if (expected > 0) QCOMPARE(int(QGuiApplication::screens().size()), expected);
+    }
+    void recordingSelectorCyclesActualFixtureDisplays() {
+        const auto screens = QGuiApplication::screens();
+        SelectionOverlay selector; selector.start();
+        QWidget* surface = nullptr;
+        for (auto* w : QApplication::topLevelWidgets()) if (w->isVisible() && w->objectName() == "putgd-record-select" && w->screen() == screens[0]) surface = w;
+        QVERIFY(surface);
+        QSignalSpy selected(&selector, &SelectionOverlay::selected);
+        QTest::keyClick(surface, Qt::Key_Tab);
+        const int next = screens.size() > 1 ? 1 : 0;
+        QVERIFY(surface->accessibleDescription().contains(screens[next]->name()));
+        QVERIFY(surface->accessibleDescription().contains("Enter: use entire display"));
+        QTest::keyClick(surface, Qt::Key_Right);
+        QRectF expected(QPointF(screens[next]->geometry().topLeft()) + QPointF(screens[next]->geometry().width()/4.0, screens[next]->geometry().height()/4.0), QSizeF(screens[next]->geometry().size())/2);
+        QList<QRectF> logical;for(auto* output:screens)logical.append(output->geometry());int current=next;
+        putgd::switchRegionDisplay(expected,logical,current,Qt::Key_Backtab);
+        QTest::keyClick(surface, Qt::Key_Backtab);
+        QVERIFY(surface->accessibleDescription().contains(screens[0]->name()));
+        QTest::keyClick(surface, Qt::Key_Return);
+        QCOMPARE(selected.size(), 1);
+        QVERIFY(expected.toAlignedRect().width() > 0);
+        // Fixture DPR is one; root pixels and logical coordinates agree.
+        QCOMPARE(qvariant_cast<QRect>(selected.first()[0]), expected.toAlignedRect());
     }
     void fullMonitorRegionGoesToAnotherMonitor() {
         // The region from the issue: 2560x1438 on the first monitor.

@@ -10,7 +10,7 @@ namespace putgd {
 class KdeRegionOverlay final:public QObject {
  Q_OBJECT
 public:
- explicit KdeRegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr);
+ explicit KdeRegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr,bool recording=false);
  ~KdeRegionOverlay() override;
  void start();void cancel(Error={"cancelled","Region selection cancelled",{}});
  // Completes the selection with a logical rectangle, as a drag would (agent control).
@@ -23,7 +23,9 @@ private:
  void accept();
  bool eventFilter(QObject*,QEvent*) override;
  class Surface;void press(QPointF);void move(QPointF);void release(QPointF);void finish();void dismiss();
+ int keyboardScreen_=-1;
  QList<CaptureFrame> frames_;QList<Surface*> surfaces_;QRectF selection_;QPointF anchor_;bool dragging_=false,finished_=false,clearing_=false,dismissing_=false;QSet<QWindow*> awaitingFrames_;
+ bool recording_=false;
  wl_callback* dismissal_=nullptr;
 };
 }

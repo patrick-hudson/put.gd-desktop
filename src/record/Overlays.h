@@ -47,6 +47,7 @@ private:
     void move(QPointF);
     void release(QPointF);
     void finish();
+    int keyboardScreen_ = -1;
     QList<Surface*> surfaces_;
     QRectF selection_;
     QPointF anchor_;

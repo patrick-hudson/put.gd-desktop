@@ -27,7 +27,7 @@ public:
  QString text(QAccessible::Text type)const override{
   const auto* overlay=static_cast<NativeRegionOverlay*>(object());
   if(type==QAccessible::Name)return QStringLiteral("Capture region");
-  if(type==QAccessible::Description)return regionDescription(overlay->selection_);
+  if(type==QAccessible::Description)return regionDescription(overlay->selection_,false,overlay->frames_[overlay->keyboardScreen_<0?overlay->screenAt(QCursor::pos()):overlay->keyboardScreen_].identity);
   return {};
  }
  QRect rect()const override{
@@ -208,7 +208,7 @@ void NativeRegionOverlay::events(){
   else if(type==XCB_MOTION_NOTIFY){const auto event=*reinterpret_cast<xcb_motion_notify_event_t*>(raw);std::free(raw);move(logicalPoint({event.root_x,event.root_y}));}
   else if(type==XCB_BUTTON_RELEASE){const auto event=*reinterpret_cast<xcb_button_release_event_t*>(raw);std::free(raw);if(event.detail==1){release(logicalPoint({event.root_x,event.root_y}));if(!guard||finished_)return;}}
   else if(type==XCB_KEY_PRESS){const auto event=*reinterpret_cast<xcb_key_press_event_t*>(raw);std::free(raw);const auto symbol=xcb_key_symbols_get_keysym(keys_,event.detail,0);int qtKey=0;
-   switch(symbol){case XK_Escape:qtKey=Qt::Key_Escape;break;case XK_Return:case XK_KP_Enter:qtKey=Qt::Key_Return;break;
+   switch(symbol){case XK_Tab:case XK_ISO_Left_Tab:qtKey=Qt::Key_Tab;break;case XK_Escape:qtKey=Qt::Key_Escape;break;case XK_Return:case XK_KP_Enter:qtKey=Qt::Key_Return;break;
    case XK_Left:case XK_KP_Left:qtKey=Qt::Key_Left;break;case XK_Right:case XK_KP_Right:qtKey=Qt::Key_Right;break;
    case XK_Up:case XK_KP_Up:qtKey=Qt::Key_Up;break;case XK_Down:case XK_KP_Down:qtKey=Qt::Key_Down;break;default:break;}
    Qt::KeyboardModifiers modifiers;if(event.state&XCB_MOD_MASK_CONTROL)modifiers|=Qt::ControlModifier;if(event.state&XCB_MOD_MASK_SHIFT)modifiers|=Qt::ShiftModifier;
@@ -230,13 +230,15 @@ int NativeRegionOverlay::screenAt(QPoint native)const{
 }
 
 void NativeRegionOverlay::key(int key,Qt::KeyboardModifiers modifiers,QPoint native){
- const int screen=keyboardScreen_<0?screenAt(native):keyboardScreen_;
- switch(regionKey(selection_,frames_[screen].logicalRect,key,modifiers)){
+ int screen=keyboardScreen_<0?screenAt(native):keyboardScreen_;
+ QList<QRectF> screens;for(const auto& frame:frames_)screens.append(frame.logicalRect);
+ const bool switched=switchRegionDisplay(selection_,screens,screen,key,modifiers);
+ switch(switched?RegionKeyAction::Change:regionKey(selection_,frames_[screen].logicalRect,key,modifiers)){
  case RegionKeyAction::Cancel:cancel();break;
  case RegionKeyAction::Accept:{const auto result=selection_;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit selected(result);break;}
  case RegionKeyAction::Change:
   keyboardScreen_=screen;dragging_=false;describe();
-  for(auto& surface:surfaces_)draw(surface);
+  for(auto& surface:surfaces_){prepareInstructions(surface);draw(surface);}
   break;
  case RegionKeyAction::Ignore:break;
  }
@@ -244,7 +246,14 @@ void NativeRegionOverlay::key(int key,Qt::KeyboardModifiers modifiers,QPoint nat
 void NativeRegionOverlay::describe(){QAccessibleEvent changed(this,QAccessible::DescriptionChanged);QAccessible::updateAccessibility(&changed);}
 void NativeRegionOverlay::prepareInstructions(Surface& surface){
  const QRect bounds(QPoint{},surface.frame.logicalRect.size().toSize());
- const auto font=QGuiApplication::font();const auto box=regionInstructionBox(bounds,QFontMetrics(font));
+ const auto font=nativeRegionFont();
+ const auto display=frames_[keyboardScreen_<0?screenAt(QCursor::pos()):keyboardScreen_].identity;
+ if(surface.frame.identity!=display){surface.instructions={};surface.instructionsKey.clear();return;}
+ const auto instructions=regionInstructions(selection_,false,display);
+ const auto cacheKey=instructions+font.toString();
+ if(surface.instructionsKey==cacheKey&&!surface.instructions.isNull())return;
+ surface.instructionsKey=cacheKey;
+ const auto box=regionInstructionBox(bounds,QFontMetrics(font),instructions);
  if(box.isEmpty())return;
  const qreal sx=qreal(surface.frame.nativeRect.width())/surface.frame.logicalRect.width(),sy=qreal(surface.frame.nativeRect.height())/surface.frame.logicalRect.height();
  const auto native=QRectF(box.x()*sx,box.y()*sy,box.width()*sx,box.height()*sy).toAlignedRect();
@@ -252,7 +261,7 @@ void NativeRegionOverlay::prepareInstructions(Surface& surface){
  surface.instructions=QImage(native.size(),QImage::Format_ARGB32_Premultiplied);surface.instructions.fill(Qt::transparent);surface.instructionsAt=native.topLeft();
  QPainter painter(&surface.instructions);painter.scale(sx,sy);painter.translate(-box.topLeft());painter.setFont(font);
  QPalette palette;palette.setColor(QPalette::Window,Qt::black);palette.setColor(QPalette::WindowText,Qt::white);
- paintRegionInstructions(painter,bounds,palette);
+ paintRegionInstructions(painter,bounds,palette,instructions);
 }
 void NativeRegionOverlay::draw(Surface& surface){
  // The compositor can consume damage bounds before sampling this drawable's
@@ -289,7 +298,7 @@ void NativeRegionOverlay::draw(Surface& surface){
  const int inset=surface.pen;
  ring(surface.outline.adjusted(inset,inset,-inset,-inset),surface.pen,0xffffffff);
 }
-void NativeRegionOverlay::move(QPointF point){if(!dragging_||finished_)return;selection_=QRectF(anchor_,point).normalized();describe();for(auto& surface:surfaces_)if(!surface.outline.isEmpty()||!selection_.intersected(surface.frame.logicalRect).isEmpty())draw(surface);xcb_flush(connection_);}
+void NativeRegionOverlay::move(QPointF point){if(!dragging_||finished_)return;selection_=QRectF(anchor_,point).normalized();describe();for(auto& surface:surfaces_){prepareInstructions(surface);draw(surface);}xcb_flush(connection_);}
 void NativeRegionOverlay::release(QPointF point){if(!dragging_||finished_)return;move(point);if(selection_.width()<1||selection_.height()<1){cancel();return;}const auto result=selection_;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit selected(result);}
 void NativeRegionOverlay::finish(){
  if(finished_)return;

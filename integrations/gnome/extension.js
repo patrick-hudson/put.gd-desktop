@@ -185,19 +185,39 @@ function bytesOf(stream) {
 
 // Own only this selector's modal grab and actors; cleanup does not reach into
 // screenshot UI internals or leave an upstream idle destruction callback alive.
+// Pure geometry module, mirrored by RegionSelection.h and exercised without Shell.
+const RegionSelection = {
+    switchDisplay(region, monitors, current, backwards = false) {
+        const next = (current + (backwards ? -1 : 1) + monitors.length) % monitors.length;
+        if (!region || region.width < 1 || region.height < 1)
+            return {current: next, region: null};
+        const from = monitors[current], to = monitors[next];
+        const width = Math.min(region.width, to.width), height = Math.min(region.height, to.height);
+        return {current: next, region: {
+            x: Math.max(to.x, Math.min(region.x + to.x - from.x, to.x + to.width - width)),
+            y: Math.max(to.y, Math.min(region.y + to.y - from.y, to.y + to.height - height)), width, height}};
+    },
+    instructions(region, recording, display) {
+        const selected = region?.width > 0 && region?.height > 0;
+        return `${display} · Enter: ${recording ? 'use' : 'capture'} ${selected ? 'selected region' : 'entire display'} · Esc: cancel\n` +
+            'Drag or arrows to select · Shift+arrows: resize · Ctrl+arrows: 10 px · Tab / Shift+Tab: display';
+    },
+};
+
 const RegionSelector = GObject.registerClass(class RegionSelector extends St.Widget {
-    _init() {
-        super._init({reactive: true, visible: false, accessible_name: 'Capture region', x: 0, y: 0});
+    _init(recording = false) {
+        super._init({reactive: true, visible: false, accessible_name: recording ? 'Recording region' : 'Capture region', x: 0, y: 0});
         this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
         this.set_cursor_type(Clutter.CursorType.CROSSHAIR);
-        this._rectangle = new St.Widget({visible: false, accessible_name: 'Capture region',
+        this._rectangle = new St.Widget({visible: false, accessible_name: recording ? 'Recording region' : 'Capture region',
             clip_to_allocation: true, style: 'border: 3px solid black; background-color: transparent;'});
         this.add_child(this._rectangle);
         this._contrast = new St.Widget({visible: false, clip_to_allocation: true, style: 'border: 1px solid white; background-color: transparent;'});
         this.add_child(this._contrast);
-        this._instructions = new St.Label({reactive: false,
-            text: 'Drag or arrows to select · Ctrl: 10 px · Shift: resize · Enter: capture · Esc: cancel',
-            style: 'background-color: #191919; color: #f0f0ec; border: 1px solid white; border-radius: 6px; padding: 6px 10px; font-size: 14px; text-align: center;'});
+        this._recording = recording;
+        this._keyboardMonitor = null;
+        this._instructions = new St.Label({reactive: false, text: '',
+            style: 'background-color: #191919; color: #f0f0ec; border: 1px solid white; border-radius: 6px; padding: 6px 10px; font-size: 10.5pt; text-align: center;'});
         this._instructions.clutter_text.set_line_wrap(true);
         this.add_child(this._instructions);
         this._region = null;
@@ -218,6 +238,18 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
                 this.cancel();
             } else if (key === Clutter.KEY_Return || key === Clutter.KEY_KP_Enter) {
                 this._settle(this._region?.width > 0 && this._region?.height > 0 ? this._region : this._monitor());
+            } else if (key === Clutter.KEY_Tab || key === Clutter.KEY_ISO_Left_Tab) {
+                const monitors = Main.layoutManager.monitors;
+                const result = RegionSelection.switchDisplay(this._region, monitors, monitors.indexOf(this._monitor()),
+                    key === Clutter.KEY_ISO_Left_Tab || !!(event.get_state() & Clutter.ModifierType.SHIFT_MASK));
+                this._keyboardMonitor = monitors[result.current];
+                this._start = null;
+                if (result.region)
+                    this._showRegion(result.region);
+                else {
+                    this._describe();
+                    this._placeInstructions();
+                }
             } else {
                 const step = new Map([[Clutter.KEY_Left, [-1, 0]], [Clutter.KEY_Right, [1, 0]],
                     [Clutter.KEY_Up, [0, -1]], [Clutter.KEY_Down, [0, 1]]]).get(key);
@@ -261,6 +293,7 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
                 return Clutter.EVENT_STOP;
             }
             if (event.get_button() === Clutter.BUTTON_PRIMARY) {
+                this._keyboardMonitor = null;
                 this._start = event.get_coords().map(Math.floor);
                 this._update(this._start);
             }
@@ -289,6 +322,8 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         this._showRegion(this._geometry(point));
     }
     _monitor() {
+        if (this._keyboardMonitor)
+            return this._keyboardMonitor;
         const [x, y] = this._region ? [this._region.x + this._region.width / 2,
             this._region.y + this._region.height / 2] : global.get_pointer();
         return Main.layoutManager.monitors.find(m => x >= m.x && x < m.x + m.width && y >= m.y && y < m.y + m.height)
@@ -304,10 +339,14 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
     }
     _describe() {
         const rect = this._region;
+        const monitor = this._monitor();
+        const index = Main.layoutManager.monitors.indexOf(monitor);
+        const display = global.display?.get_monitor_name?.(index) ?? monitor?.connector ?? monitor?.name ?? `Display ${index + 1}`;
+        const instructions = RegionSelection.instructions(rect, this._recording, display);
+        this._instructions.text = instructions;
         const description = (rect && rect.width > 0 && rect.height > 0
             ? `Region ${rect.width} × ${rect.height} at ${rect.x}, ${rect.y}.`
-            : 'No region selected. Enter captures the current screen.') +
-            ' Arrows move 1 px; Ctrl+arrows 10 px; Shift+arrows resize. Enter accepts; Esc cancels.';
+            : 'No region selected.') + ` ${instructions}`;
         this._rectangle.get_accessible().set_description(description);
         this.get_accessible().set_description(description);
     }
@@ -1119,7 +1158,7 @@ export default class PutgdExtension extends Extension {
             const request = this._new(id, sender);
             request.action = 'select';
             request.stage = 'region-select';
-            const selector = new RegionSelector();
+            const selector = new RegionSelector(true);
             this._selector = request.selector = selector;
             const selected = await selector.selectAsync();
             request.selector = null;

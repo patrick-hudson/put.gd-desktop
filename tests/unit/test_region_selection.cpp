@@ -4,6 +4,21 @@ using namespace putgd;
 class RegionSelectionTest final:public QObject {
  Q_OBJECT
 private slots:
+ void switchesDisplaysAndClamps(){
+  const QList<QRectF> screens{QRectF(-800,100,800,600),QRectF(0,-200,320,240)};int current=0;QRectF selected;
+  QVERIFY(switchRegionDisplay(selected,screens,current,Qt::Key_Tab));QCOMPARE(current,1);QVERIFY(selected.isEmpty());
+  QVERIFY(switchRegionDisplay(selected,screens,current,Qt::Key_Tab,Qt::ShiftModifier));QCOMPARE(current,0);
+  selected=QRectF(-600,250,400,300);QVERIFY(switchRegionDisplay(selected,screens,current,Qt::Key_Tab));QCOMPARE(selected,screens[1]);
+  QVERIFY(switchRegionDisplay(selected,screens,current,Qt::Key_Backtab));QCOMPARE(selected,QRectF(-800,100,320,240));
+  QVERIFY(!switchRegionDisplay(selected,screens,current,Qt::Key_Right));
+  QVERIFY(!switchRegionDisplay(selected,{},current,Qt::Key_Tab));
+ }
+ void hintsReflectActionAndState(){
+  QVERIFY(regionInstructions().contains("Enter: capture entire display"));
+  QVERIFY(regionInstructions(QRectF(0,0,10,10)).contains("Enter: capture selected region"));
+  QVERIFY(regionInstructions({},true,"DP-2").contains("DP-2 · Enter: use entire display"));
+  QVERIFY(regionInstructions(QRectF(0,0,10,10),true).contains("Enter: use selected region"));
+ }
  void initialRegionAndSteps(){
   const QRectF screen(-800,100,800,600);QRectF selected;
   QCOMPARE(regionKey(selected,screen,Qt::Key_Right),RegionKeyAction::Change);QCOMPARE(selected,QRectF(-600,250,400,300));

@@ -26,7 +26,7 @@ private:
  void describe();
  void initializeSurfaces();
  void grabInput();
- struct Surface {CaptureFrame frame;xcb_window_t window=XCB_WINDOW_NONE;QRect outline;int pen=1;QImage instructions;QPoint instructionsAt;};
+ struct Surface {CaptureFrame frame;xcb_window_t window=XCB_WINDOW_NONE;QRect outline;int pen=1;QImage instructions;QString instructionsKey;QPoint instructionsAt;};
  void events();
  QPointF logicalPoint(QPoint)const;
  void move(QPointF);

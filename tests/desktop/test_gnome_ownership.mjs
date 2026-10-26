@@ -34,7 +34,7 @@ const source = new TextDecoder('utf-8', {fatal: true}).decode(contents)
     .replace('export default class PutgdExtension', 'globalThis.PutgdExtension = class PutgdExtension')
     .replace('function barPlacement(', 'globalThis.barPlacement = barPlacement; function barPlacement(')
     .replace('function subtract(', 'globalThis.subtract = subtract; function subtract(')
-    .replaceAll('const selector = new RegionSelector();', 'const selector = new (globalThis.RegionSelectorFixture ?? RegionSelector)();');
+    .replaceAll('new RegionSelector(', 'new (globalThis.RegionSelectorFixture ?? RegionSelector)(');
 const resident = ':1.50';
 const residentPid = 1000;
 const helperPid = 2000;

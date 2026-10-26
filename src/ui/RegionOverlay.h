@@ -16,6 +16,7 @@ private:
  void move(QPointF);
  void release(QPointF);
  void finish();
+ int keyboardScreen_=-1;
  QList<CaptureFrame> frames_;
  QList<Surface*> surfaces_;
  QRectF selection_;

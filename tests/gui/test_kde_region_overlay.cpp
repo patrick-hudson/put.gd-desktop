@@ -10,8 +10,8 @@ namespace putgd {
 class KdeRegionOverlayTest final:public QObject {
  Q_OBJECT
  QWidget* add(KdeRegionOverlay& overlay,const QRectF& logical){
-  CaptureFrame frame{"fixture",logical,logical.toAlignedRect(),1,0,{}};
-  overlay.addSurface(frame,QGuiApplication::primaryScreen());
+  CaptureFrame frame{QString("Display %1").arg(overlay.frames_.size()+1),logical,logical.toAlignedRect(),1,0,{}};
+  overlay.frames_.append(frame);overlay.addSurface(frame,QGuiApplication::primaryScreen());
   for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-kde-region-overlay"&&w->size()==logical.size().toSize())return w;
   return nullptr;
  }
@@ -20,14 +20,20 @@ private slots:
   KdeRegionOverlay overlay({});const QRectF screen(-800,100,800,600);auto* surface=add(overlay,screen);QVERIFY(surface);
   QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);QSignalSpy cancelled(&overlay,&KdeRegionOverlay::cancelled);
   auto* accessible=QAccessible::queryAccessibleInterface(surface);QVERIFY(accessible);QCOMPARE(accessible->text(QAccessible::Name),QString("Capture region"));
-  QVERIFY(accessible->text(QAccessible::Description).contains("Enter captures the current screen"));
+  QVERIFY(accessible->text(QAccessible::Description).contains("Enter: capture entire display"));
   QTest::keyClick(surface,Qt::Key_Right);QCOMPARE(overlay.selection_,QRectF(-600,250,400,300));
   QTest::keyClick(surface,Qt::Key_Right);QTest::keyClick(surface,Qt::Key_Down,Qt::ControlModifier);
   QTest::keyClick(surface,Qt::Key_Right,Qt::ShiftModifier);QTest::keyClick(surface,Qt::Key_Up,Qt::ControlModifier|Qt::ShiftModifier);
   const QRectF expected(-599,260,401,290);QCOMPARE(overlay.selection_,expected);
-  QCOMPARE(accessible->text(QAccessible::Description),regionDescription(expected));
+  QCOMPARE(accessible->text(QAccessible::Description),regionDescription(expected,false,"Display 1"));
   QTest::keyClick(surface,Qt::Key_Enter);QCOMPARE(accepted.size(),1);QCOMPARE(qvariant_cast<QRectF>(accepted.first().first()),expected);QCOMPARE(cancelled.size(),0);QVERIFY(!surface->isVisible());
   QTest::keyClick(surface,Qt::Key_Return);QCOMPARE(accepted.size(),1);
+ }
+ void recordingHintsReflectSelection(){
+  KdeRegionOverlay overlay({},nullptr,true);auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);
+  QCOMPARE(surface->accessibleName(),QString("Recording region"));QVERIFY(surface->accessibleDescription().contains("Enter: use entire display"));
+  QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().contains("Enter: use selected region"));
+  QTest::keyClick(surface,Qt::Key_Escape);
  }
  void enterUsesReceivingScreenAndEscapeCancels(){
   for(bool cancel:{false,true}){
@@ -41,7 +47,10 @@ private slots:
  void keyboardSwitchesScreenWithoutInvalidGeometry(){
   KdeRegionOverlay overlay({});auto* left=add(overlay,QRectF(-800,0,800,600));auto* right=add(overlay,QRectF(0,100,640,480));QVERIFY(left);QVERIFY(right);
   QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);QTest::keyClick(left,Qt::Key_Right);QCOMPARE(overlay.selection_,QRectF(-600,150,400,300));
-  QTest::keyClick(right,Qt::Key_Left,Qt::ShiftModifier);QCOMPARE(overlay.selection_,QRectF(160,220,320,240));
+  QTest::keyClick(left,Qt::Key_Tab);QCOMPARE(overlay.selection_,QRectF(200,250,400,300));
+  QVERIFY(left->accessibleDescription().contains("Display 2"));
+  QTest::keyClick(right,Qt::Key_Backtab);QCOMPARE(overlay.selection_,QRectF(-600,150,400,300));
+  QTest::keyClick(right,Qt::Key_Tab);QTest::keyClick(right,Qt::Key_Left,Qt::ShiftModifier);QCOMPARE(overlay.selection_,QRectF(200,250,399,300));
   QCOMPARE(left->accessibleDescription(),right->accessibleDescription());QTest::keyClick(right,Qt::Key_Return);QCOMPARE(accepted.size(),1);
  }
  void keyboardBoundsAndMouseTakeover(){
@@ -72,7 +81,7 @@ private slots:
    QPalette palette;const bool light=variant=="light";palette.setColor(QPalette::Window,light?QColor("#EEEEEB"):QColor("#191919"));palette.setColor(QPalette::WindowText,light?QColor("#292926"):QColor("#F0F0EC"));surface->setPalette(palette);
    QFont font=surface->font();font.setPixelSize(variant=="text150"?21:14);surface->setFont(font);QTest::keyClick(surface,Qt::Key_Right);
    QCOMPARE(overlay.selection_,QRectF(200,150,400,300));QVERIFY(!overlay.clearing_);QVERIFY(!overlay.finished_);
-   surface->repaint();const auto image=surface->grab().toImage();QCOMPARE(image.pixelColor(300,151),QColor(Qt::white));const auto box=regionInstructionBox(surface->rect(),QFontMetrics(font));QVERIFY(!box.isEmpty());QVERIFY(box.height()<surface->height()/3);
+   surface->repaint();const auto image=surface->grab().toImage();QCOMPARE(image.pixelColor(300,151),QColor(Qt::white));const auto box=regionInstructionBox(surface->rect(),QFontMetrics(font),regionInstructions(overlay.selection_,false,"Display 1"));QVERIFY(!box.isEmpty());QVERIFY(box.height()<surface->height()/3);
    const auto bg=palette.color(QPalette::Window);QCOMPARE(image.pixelColor(box.left()+10,box.top()+4),bg);
    int ink=0;for(int y=box.top()+6;y<box.bottom()-6;++y)for(int x=box.left()+10;x<box.right()-10;++x){const auto c=image.pixelColor(x,y);if(c.alpha()==255&&std::abs(c.lightness()-bg.lightness())>100)++ink;}
    QVERIFY(ink>100);

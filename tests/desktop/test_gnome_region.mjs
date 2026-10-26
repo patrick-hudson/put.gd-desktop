@@ -10,8 +10,8 @@ if (ARGV.length !== 1)
     throw new Error('Supply the production GNOME extension source path');
 const [, contents] = Gio.File.new_for_path(ARGV[0]).load_contents(null);
 const source = new TextDecoder().decode(contents);
-const selector = source.slice(source.indexOf('const RegionSelector ='), source.indexOf('// AppIndicators'))
-    .replace('const RegionSelector =', 'globalThis.RegionSelector =');
+const selector = source.slice(source.indexOf('const RegionSelection ='), source.indexOf('// AppIndicators'))
+    .replace('const RegionSelection =', 'globalThis.RegionSelection =').replace('const RegionSelector =', 'globalThis.RegionSelector =');
 class Widget {
     constructor(properties) {this._init(properties);}
     _init(properties) {Object.assign(this, properties); this.children = []; this.clutter_text = {set_line_wrap() {}};}
@@ -35,7 +35,7 @@ const Clutter = {
     EventType: {KEY_PRESS: 1, BUTTON_PRESS: 2, BUTTON_RELEASE: 3, MOTION: 4},
     ModifierType: {CONTROL_MASK: 1, SHIFT_MASK: 2}, BUTTON_PRIMARY: 1, BUTTON_SECONDARY: 3,
     EVENT_STOP: 1, EVENT_PROPAGATE: 0,
-    KEY_Left: 10, KEY_Right: 11, KEY_Up: 12, KEY_Down: 13, KEY_Return: 14, KEY_KP_Enter: 15, KEY_Escape: 16,
+    KEY_Left: 10, KEY_Right: 11, KEY_Up: 12, KEY_Down: 13, KEY_Return: 14, KEY_KP_Enter: 15, KEY_Escape: 16, KEY_Tab: 17, KEY_ISO_Left_Tab: 18,
 };
 let pointer = [2100, 200], grabs = 0;
 const global = {stage: {}, get_pointer: () => pointer};
@@ -134,3 +134,34 @@ print('PASS reverse mouse drag, floored edges, zero-area cancellation and second
     equal(await result, {x: 10, y: 20, width: 100, height: 100}); closed(actor);
 }
 print('PASS mouse-to-keyboard clipping and keyboard-to-mouse replacement');
+
+{
+    pointer = [2100, 200];
+    const {actor, result} = begin();
+    equal(actor._instructions.text.includes('Enter: capture entire display'), true);
+    key(actor, 'Tab');
+    equal(actor._monitor(), monitors[0]);
+    equal(actor._instructions.text.includes('Display 1'), true);
+    key(actor, 'ISO_Left_Tab');
+    key(actor, 'Right');
+    equal(actor._instructions.text.includes('Enter: capture selected region'), true);
+    key(actor, 'Tab'); rect(actor, [320, 180, 640, 360]);
+    key(actor, 'Tab', 2); rect(actor, [2240, 80, 640, 360]);
+    key(actor, 'Escape'); equal(await result, null); closed(actor);
+    equal(RegionSelection.switchDisplay({x: 0, y: 0, width: 1920, height: 1080}, monitors, 0),
+        {current: 1, region: {x: 1920, y: -100, width: 1280, height: 720}});
+    equal(RegionSelection.instructions(null, true, 'Display 2').includes('Enter: use entire display'), true);
+    equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Enter: use selected region'), true);
+}
+print('PASS display cycling, reverse cycling, clamping, display names and state-specific hints');
+
+{
+    const actor = new globalThis.RegionSelector(true);
+    const result = actor.selectAsync();
+    equal(actor.accessible_name, 'Recording region');
+    equal(actor._instructions.text.includes('Enter: use entire display'), true);
+    key(actor, 'Right');
+    equal(actor._instructions.text.includes('Enter: use selected region'), true);
+    key(actor, 'Escape'); equal(await result, null); closed(actor);
+}
+print('PASS recording selector purpose and live Enter hints');

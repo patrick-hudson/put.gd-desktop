@@ -269,7 +269,7 @@ void RecordSession::select(Reply reply) {
             frame.rotation = screen->angleBetween(screen->nativeOrientation(), screen->orientation());
             frames.append(frame);
         }
-        kdeSelection_ = new KdeRegionOverlay(frames, this);
+        kdeSelection_ = new KdeRegionOverlay(frames, this, true);
         connect(kdeSelection_, &KdeRegionOverlay::selected, this, [guard, reply](const QRectF& logical) {
             if (!guard || !guard->kdeSelection_) return;
             guard->kdeSelection_->deleteLater();

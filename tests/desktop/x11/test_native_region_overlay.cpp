@@ -111,10 +111,21 @@ private slots:
   for(const auto& frame:frames()){const auto w=at(frame.nativeRect.center());QVERIFY(w);auto g=x11::reply(xcb_get_geometry_reply(connection_,xcb_get_geometry(connection_,w),nullptr));QCOMPARE(g->depth,uint8_t(32));QCOMPARE(pixels(frame.nativeRect.bottomLeft()+QPoint(20,-20)),QByteArray(4,'\0'));}
   motion({40,40});button(1,true);motion({1200,600});PUTGD_TRY_VERIFY(white({44,41}));PUTGD_TRY_VERIFY(white({646,82}));button(1,false);PUTGD_TRY_COMPARE(selected,1);QCOMPARE(cancelled,0);QCOMPARE(selection,QRectF(40,40,880,260));PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
  }
+ void tabSwitchesDisplayAndClampsSelection(){
+  motion({100,400});NativeRegionOverlay overlay(frames());QSignalSpy selected(&overlay,&RegionSelector::selected);
+  overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
+  auto* accessible=QAccessible::queryAccessibleInterface(&overlay);QVERIFY(accessible);
+  keyClick(0xff09);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("right"));
+  keyClick(0xff09,0xffe1);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("left"));
+  keyClick(0xff53);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("320 × 400"));
+  keyClick(0xff09);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("320 × 400 at 640, 0"));
+  keyClick(0xff0d);PUTGD_TRY_COMPARE(selected.size(),1);
+  QCOMPARE(qvariant_cast<QRectF>(selected.first().first()),QRectF(640,0,320,400));availableGrabs();
+ }
  void keyboardRegionUsesPointerScreenAndSharedSteps(){
   motion({1000,200});NativeRegionOverlay overlay(frames());QSignalSpy selected(&overlay,&RegionSelector::selected);QSignalSpy cancelled(&overlay,&RegionSelector::cancelled);
   overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
-  auto* accessible=QAccessible::queryAccessibleInterface(&overlay);QVERIFY(accessible);QVERIFY(accessible->text(QAccessible::Description).contains("Enter captures the current screen"));
+  auto* accessible=QAccessible::queryAccessibleInterface(&overlay);QVERIFY(accessible);QVERIFY(accessible->text(QAccessible::Description).contains("Enter: capture entire display"));
   keyClick(0xff53); // Right: initialise on the mixed-density second monitor.
   PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("160 × 200"));
   // Pointer movement does not change the keyboard selection's monitor.
@@ -154,7 +165,7 @@ private slots:
    QImage rendered(xcb_get_image_data(image.get()),w.rect.width(),w.rect.height(),QImage::Format_ARGB32_Premultiplied);
    const auto badge=rendered.copy(0,0,w.rect.width(),160);int light=0,dark=0;
    for(int y=0;y<badge.height();++y)for(int x=0;x<badge.width();++x){const auto c=badge.pixelColor(x,y);if(c.alpha()==255){if(c.lightness()>192)++light;if(c.lightness()<64)++dark;}}
-   QVERIFY(light>100);QVERIFY(dark>100);
+   if(w.rect.x()==0){QVERIFY(light>100);QVERIFY(dark>100);}else{QCOMPARE(light,0);QCOMPARE(dark,0);}
    const auto dir=qEnvironmentVariable("PUTGD_REGION_RENDER_DIR");if(!dir.isEmpty())for(const auto& variant:{QString("dark"),QString("light")}){const auto outputVariant=large?QString("text150"):variant;QVERIFY(QDir().mkpath(dir+"/"+outputVariant));QImage composed(rendered.size(),QImage::Format_RGB32);composed.fill(variant=="dark"?QColor("#191919"):QColor("#EEEEEB"));QPainter painter(&composed);painter.drawImage(0,0,rendered);painter.end();QVERIFY(composed.save(dir+"/"+outputVariant+"/native-"+QString::number(w.rect.x())+(large?"-"+variant:QString{})+".png"));}
   }
   overlay.cancel();availableGrabs();

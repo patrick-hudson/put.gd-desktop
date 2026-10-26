@@ -143,7 +143,7 @@ public:
     Surface(SelectionOverlay& owner, QScreen* screen) : QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus), owner_(owner), logical_(screen->geometry()) {
         setObjectName("putgd-record-select");
         setAccessibleName("Recording region");
-        describeRegion(this, {});
+        describeRegion(this, {}, true, screen->name());
         setAttribute(Qt::WA_TranslucentBackground);
         setScreen(screen);
         setGeometry(logical_.toAlignedRect());
@@ -152,7 +152,7 @@ public:
         setFocusPolicy(Qt::StrongFocus);
         connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
     }
-    void refresh() { describeRegion(this, owner_.selection_); update(); }
+    void refresh() { describeRegion(this, owner_.selection_, true, QGuiApplication::screens()[activeScreen()]->name()); update(); }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
@@ -167,7 +167,8 @@ protected:
             paintLabel(painter, local.topLeft() + QPointF(6, 6), QStringLiteral("%1 × %2").arg(int(clipped.width())).arg(int(clipped.height())));
         }
         painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-        paintRegionInstructions(painter, rect(), palette());
+        if (owner_.keyboardScreen_ < 0 || screen() == QGuiApplication::screens()[activeScreen()])
+            paintRegionInstructions(painter, rect(), palette(), regionInstructions(owner_.selection_, true, QGuiApplication::screens()[activeScreen()]->name()));
     }
     void mousePressEvent(QMouseEvent* e) override {
         if (e->button() == Qt::RightButton) { owner_.cancel(); return; }
@@ -175,11 +176,24 @@ protected:
     }
     void mouseMoveEvent(QMouseEvent* e) override { owner_.move(e->globalPosition()); }
     void mouseReleaseEvent(QMouseEvent* e) override { if (e->button() == Qt::LeftButton) { releaseMouse(); owner_.release(e->globalPosition()); } }
-    void keyPressEvent(QKeyEvent* e) override {
-        if (e->key() == Qt::Key_Escape) { owner_.cancel(); return; }
-        if (e->key() == Qt::Key_Return || e->key() == Qt::Key_Enter) { owner_.complete(toRoot(owner_.selection_.isEmpty() ? logical_ : owner_.selection_)); return; }
-        if (adjustRegion(owner_.selection_, logical_, *e)) { owner_.dragging_ = false; for (auto* s : owner_.surfaces_) s->refresh(); }
+    bool event(QEvent* e) override {
+        if (e->type() == QEvent::KeyPress) { auto* key = static_cast<QKeyEvent*>(e); if (key->key() == Qt::Key_Tab || key->key() == Qt::Key_Backtab) { keyPressEvent(key); return true; } }
+        return QWidget::event(e);
     }
+    int activeScreen() const { return owner_.keyboardScreen_ >= 0 ? owner_.keyboardScreen_ : std::max(0, int(QGuiApplication::screens().indexOf(screen()))); }
+    void keyPressEvent(QKeyEvent* e) override {
+        int screen = activeScreen();
+        QList<QRectF> screens;
+        for (auto* output : QGuiApplication::screens()) screens.append(output->geometry());
+        const bool switched = switchRegionDisplay(owner_.selection_, screens, screen, e->key(), e->modifiers());
+        switch (switched ? RegionKeyAction::Change : regionKey(owner_.selection_, screens[screen], e->key(), e->modifiers())) {
+        case RegionKeyAction::Cancel: owner_.cancel(); break;
+        case RegionKeyAction::Accept: owner_.complete(toRoot(owner_.selection_)); break;
+        case RegionKeyAction::Change: owner_.keyboardScreen_ = screen; owner_.dragging_ = false; for (auto* s : owner_.surfaces_) s->refresh(); break;
+        case RegionKeyAction::Ignore: e->ignore(); break;
+        }
+    }
+
 private:
     SelectionOverlay& owner_;
     QRectF logical_;
@@ -194,7 +208,7 @@ void SelectionOverlay::start() {
     connect(qGuiApp, &QGuiApplication::screenAdded, this, [this] { cancel({"display_changed", "Display changed during region selection", {}}); });
     connect(qGuiApp, &QGuiApplication::screenRemoved, this, [this] { cancel({"display_changed", "Display changed during region selection", {}}); });
 }
-void SelectionOverlay::press(QPointF point) { if (finished_) return; anchor_ = point; dragging_ = true; selection_ = QRectF(point, QSizeF{}); }
+void SelectionOverlay::press(QPointF point) { if (finished_) return; keyboardScreen_ = -1; anchor_ = point; dragging_ = true; selection_ = QRectF(point, QSizeF{}); }
 void SelectionOverlay::move(QPointF point) { if (!dragging_ || finished_) return; selection_ = QRectF(anchor_, point).normalized(); for (auto* s : surfaces_) s->refresh(); }
 void SelectionOverlay::release(QPointF point) {
     if (!dragging_ || finished_) return;
