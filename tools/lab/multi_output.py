@@ -268,7 +268,14 @@ from pathlib import Path
 pid=subprocess.check_output(['pgrep','-u',str(os.getuid()),'-x',%s],text=True).split()[0]
 env=dict(x.split('=',1) for x in Path('/proc/'+pid+'/environ').read_bytes().decode().split('\\0') if '=' in x)
 session=env.get('XDG_SESSION_ID')
-if not session:raise RuntimeError('Native compositor process has no session identity')
+origin='compositor environment'
+if not session:
+ session=subprocess.check_output(['loginctl','show-user',str(os.getuid()),'-p','Display','--value'],text=True).strip()
+ origin='logind user display (compositor is a user service)'
+if not session:raise RuntimeError('Native compositor has no verifiable graphical session identity')
+kind=subprocess.check_output(['loginctl','show-session',session,'-p','Type','--value'],text=True).strip()
+if kind!=env.get('XDG_SESSION_TYPE'):raise RuntimeError('Logind and native compositor session types differ')
+print('SessionIdentitySource='+origin)
 subprocess.run(['loginctl','show-session',session,'-p','Type','-p','Desktop','-p','Active','-p','State'],check=True)
 print(os.uname())
 PY

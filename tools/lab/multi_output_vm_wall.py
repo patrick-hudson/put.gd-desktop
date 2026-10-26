@@ -29,7 +29,8 @@ def main():
     # A removed head has no screendump; retain that explicit result in witnesses.
     c.current = 'output-change'
     result = {'ok': False, 'heads': [], 'runId': lab.state(c.run)['id'],
-              'driverSha256': lab.hash_file(__file__)}
+              'driverSha256': lab.hash_file(__file__), 'rfbSha256': lab.hash_file(rfb.__file__),
+              'wallProbeSha256': lab.hash_file(wall_probe.__file__)}
     try:
         outputs = lab.guest_outputs(c.run, lab.layout_backend(c.profile))
         multi_output.save(c.out / 'native-outputs.json', outputs)
