@@ -241,10 +241,12 @@ public:
  QPixmap pixmap(const QSize& size,QIcon::Mode mode,QIcon::State state)override{return scaledPixmap(size,mode,state,1.0);}
  QPixmap scaledPixmap(const QSize& size,QIcon::Mode mode,QIcon::State,qreal scale)override{
   const int side=qMax(1,qRound(qMin(size.width(),size.height())*scale));
-  const auto& p=Theme::current();const bool disabled=mode==QIcon::Disabled;
-  const auto key=QStringLiteral("%1/%2/%3/%4").arg(name_,Theme::name(Theme::scheme())).arg(int(disabled)).arg(side);
+  const auto& p=Theme::current();const bool disabled=mode==QIcon::Disabled,selected=mode==QIcon::Selected;
+  const auto key=QStringLiteral("%1/%2/%3/%4").arg(name_,Theme::name(Theme::scheme())).arg(int(disabled)+2*int(selected)).arg(side);
   static QHash<QString,QPixmap> cache;if(const auto found=cache.constFind(key);found!=cache.cend())return *found;
-  const auto art=IconArt::symbol(name_,disabled?p.textDisabled:p.icon,qMax(1,(side+23)/24),disabled?p.textDisabled.darker(150):p.iconSecondary);
+  // Selected: the pair made for the selected fill, where the normal secondary
+  // tone would fall under 3:1.
+  const auto art=IconArt::symbol(name_,disabled?p.textDisabled:selected?p.iconSelected:p.icon,qMax(1,(side+23)/24),disabled?p.textDisabled.darker(150):selected?p.iconSecondarySelected:p.iconSecondary);
   auto pixmap=QPixmap::fromImage(art.scaled(side,side,Qt::KeepAspectRatio,Qt::SmoothTransformation));pixmap.setDevicePixelRatio(scale);
   if(cache.size()>512)cache.clear();cache.insert(key,pixmap);return pixmap;
  }

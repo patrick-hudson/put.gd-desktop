@@ -11,7 +11,9 @@ namespace {
 // surface, surfaceRaised and selected, and the accent (focus rings) and icons
 // meet 3:1 on them. Control outlines and the icons' secondary tone meet 3:1 on
 // bg, surface and surfaceRaised, and the two icon tones 3:1 against each other
-// so a duotone glyph keeps its inner detail; test_theme checks both schemes.
+// so a duotone glyph keeps its inner detail. Selected glyphs have their own
+// pair, held to the same rules on the selected fill; test_theme checks both
+// schemes.
 const Palette dark{
  QColor("#191919"),QColor("#222222"),QColor("#2A2A2A"),QColor("#353535"),QColor("#343434"),QColor("#515151"),
  QColor("#F0F0EC"),QColor("#D2D2CF"),QColor("#AAAAA6"),QColor("#727270"),
@@ -19,6 +21,7 @@ const Palette dark{
  QColor("#91BCA2"),QColor("#E8B66D"),QColor("#E59B93"),QColor("#EFB4AE"),QColor("#29372E"),QColor("#3A3226"),QColor("#3D2A29"),
  QColor("#D6D6D2"),QColor("#777773"),
  QColor("#7C7C78"),
+ QColor("#F0F0EC"),QColor("#848480"),
 };
 const Palette light{
  QColor("#EEEEEB"),QColor("#F8F8F5"),QColor("#FFFFFF"),QColor("#DEDEDA"),QColor("#D1D1CC"),QColor("#AAAAA3"),
@@ -27,6 +30,7 @@ const Palette light{
  QColor("#386A4B"),QColor("#80521D"),QColor("#A44139"),QColor("#8F322B"),QColor("#DFEDE3"),QColor("#EEE3D0"),QColor("#F4E0DE"),
  QColor("#383834"),QColor("#86867E"),
  QColor("#82827B"),
+ QColor("#292926"),QColor("#787874"),
 };
 struct Token {const char* name;QColor Palette::* member;};
 constexpr Token table[]{
@@ -36,7 +40,7 @@ constexpr Token table[]{
  {"onAccent",&Palette::onAccent},{"link",&Palette::link},{"success",&Palette::success},{"warning",&Palette::warning},{"danger",&Palette::danger},
  {"dangerHover",&Palette::dangerHover},{"successSurface",&Palette::successSurface},{"warningSurface",&Palette::warningSurface},
  {"dangerSurface",&Palette::dangerSurface},{"icon",&Palette::icon},{"iconSecondary",&Palette::iconSecondary},
- {"controlOutline",&Palette::controlOutline},
+ {"controlOutline",&Palette::controlOutline},{"iconSelected",&Palette::iconSelected},{"iconSecondarySelected",&Palette::iconSecondarySelected},
 };
 std::atomic<Scheme> active{Scheme::Dark};
 double channel(double c){return c<=0.03928?c/12.92:std::pow((c+0.055)/1.055,2.4);}

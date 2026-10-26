@@ -71,7 +71,7 @@ private slots:
             QVERIFY(Theme::contrast(p.danger, p.dangerSurface) >= 4.5);
             // Every token is reported, as #rrggbb.
             const auto tokens = Theme::tokens(scheme);
-            QCOMPARE(tokens.size(), 24);
+            QCOMPARE(tokens.size(), 26);
             QVERIFY(tokens.contains("controlOutline"));
             for (const auto& value : tokens) QVERIFY(QRegularExpression("^#[0-9a-f]{6}$").match(value.toString()).hasMatch());
         }
@@ -82,6 +82,66 @@ private slots:
         QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["controlOutline"].toString(), QString("#7c7c78"));
         QCOMPARE(Theme::tokens(Theme::Scheme::Light)["controlOutline"].toString(), QString("#82827b"));
         QVERIFY(Theme::tokens(Theme::Scheme::Light)["bg"] != Theme::tokens(Theme::Scheme::Dark)["bg"]);
+    }
+    // A selected row, segment or menu item draws its glyph in the selected
+    // pair: the silhouette and the inner detail each reach 3:1 on the selected
+    // fill, and stay 3:1 apart (the normal secondary tone fell to about 2.7:1).
+    void selectedIconTonesReadOnTheSelectedFill() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            const auto& p = Theme::palette(scheme);
+            const auto what = [&](const char* text, double ratio) { return qPrintable(QString("%1 %2: %3").arg(Theme::name(scheme), text).arg(ratio)); };
+            QVERIFY2(Theme::contrast(p.iconSelected, p.selected) >= 3.0, what("selected silhouette", Theme::contrast(p.iconSelected, p.selected)));
+            QVERIFY2(Theme::contrast(p.iconSecondarySelected, p.selected) >= 3.0, what("selected inner detail", Theme::contrast(p.iconSecondarySelected, p.selected)));
+            QVERIFY2(Theme::contrast(p.iconSelected, p.iconSecondarySelected) >= 3.0, what("selected tones apart", Theme::contrast(p.iconSelected, p.iconSecondarySelected)));
+            // Painted, not only declared: QIcon::Selected renders the selected pair.
+            Theme::setScheme(scheme);
+            const auto icon = VisualStyle::icon("settings");
+            const auto normal = icon.pixmap(QSize(36, 36), QIcon::Normal).toImage(), selected = icon.pixmap(QSize(36, 36), QIcon::Selected).toImage();
+            QVERIFY(normal != selected);
+            const auto near = [](const QColor& a, const QColor& b) { return std::abs(a.red() - b.red()) + std::abs(a.green() - b.green()) + std::abs(a.blue() - b.blue()) < 12; };
+            int silhouette = 0, detail = 0;
+            for (int y = 0; y < selected.height(); ++y)
+                for (int x = 0; x < selected.width(); ++x) {
+                    const auto colour = selected.pixelColor(x, y);
+                    if (colour.alpha() < 250) continue;
+                    silhouette += near(colour, p.iconSelected);
+                    detail += near(colour, p.iconSecondarySelected);
+                }
+            QVERIFY2(silhouette > 10 && detail > 4, what("selected pixels", silhouette * 1000 + detail));
+        }
+    }
+    // A locked value (Graphite::setLocked) reads as information: its text is
+    // textMuted at 4.5:1 on the page, while an unavailable control keeps the
+    // faded textDisabled. Unlocking restores the plain disabled look.
+    void lockedValuesStayReadable() {
+        QWidget window;
+        auto* layout = new QVBoxLayout(&window);
+        auto* locked = VisualStyle::choiceBox(&window);
+        auto* unavailable = VisualStyle::choiceBox(&window);
+        for (auto* combo : {locked, unavailable}) { combo->addItem("Synthetic value"); combo->setMinimumWidth(200); combo->setEnabled(false); layout->addWidget(combo); }
+        Graphite::setLocked(locked, true);
+        RedesignTheme::apply(window);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            const auto& p = Theme::palette(scheme);
+            const auto best = [&](QWidget* widget) {
+                const auto shot = window.grab(QRect(widget->mapTo(&window, QPoint()), widget->size())).toImage().convertToFormat(QImage::Format_RGB32);
+                double ratio = 0;
+                for (int y = 0; y < shot.height(); ++y)
+                    for (int x = 0; x < shot.width(); ++x) ratio = std::max(ratio, Theme::contrast(shot.pixelColor(x, y), p.bg));
+                return ratio;
+            };
+            QVERIFY2(best(locked) >= 4.5, qPrintable(Theme::name(scheme) + QString(" locked %1").arg(best(locked))));
+            QVERIFY2(best(unavailable) < 4.5, qPrintable(Theme::name(scheme) + QString(" unavailable %1").arg(best(unavailable))));
+        }
+        Graphite::setLocked(locked, false);
+        QVERIFY(!Graphite::isLocked(locked));
+        Theme::setScheme(Theme::Scheme::Dark);
+        const auto a = window.grab(QRect(locked->mapTo(&window, QPoint()), locked->size())).toImage();
+        const auto b = window.grab(QRect(unavailable->mapTo(&window, QPoint()), unavailable->size())).toImage();
+        QCOMPARE(a, b);
     }
     void trayTintsSuitTheirPanels() {
         // Typical panels: GNOME Shell's and Mint-Y-Dark's dark bars, Breeze's light one.

@@ -49,6 +49,12 @@ QString role(const QWidget* widget) { return widget ? widget->property("visualRo
 bool keyboardState(const QStyleOption* option) {
     return (option->state & QStyle::State_HasFocus) && (option->state & QStyle::State_KeyboardFocusChange);
 }
+// A disabled control marked as a locked value (setLocked), or the editor
+// inside one (an editable combo box's or a spin box's line edit).
+bool lockedLook(const QStyleOption* option, const QWidget* widget) {
+    if (option->state & QStyle::State_Enabled) return false;
+    return isLocked(widget) || (widget && (qobject_cast<const QComboBox*>(widget->parentWidget()) || qobject_cast<const QAbstractSpinBox*>(widget->parentWidget())) && isLocked(widget->parentWidget()));
+}
 void rounded(QPainter* p, const QRectF& rect, const QColor& fill, const QColor& stroke = {}, qreal radius = Metric::radius, qreal width = 1) {
     p->save();
     p->setRenderHint(QPainter::Antialiasing);
@@ -84,7 +90,8 @@ QPainterPath partlyRounded(const QRectF& r, qreal radius, bool left, bool right)
 // focused, the danger or warning stroke when the field says so.
 void field(QPainter* p, const QRectF& rect, const QStyleOption* option, const QWidget* widget, bool focused, bool squareRight = false, bool squareLeft = false) {
     const bool enabled = option->state & QStyle::State_Enabled;
-    QColor stroke = enabled ? controlOutline() : controlStroke();
+    const bool locked = lockedLook(option, widget);
+    QColor stroke = enabled ? controlOutline() : locked ? t().borderStrong : controlStroke();
     if (widget && widget->property("invalid").toBool()) stroke = t().danger;
     else if (widget && widget->property("warning").toBool()) stroke = t().warning;
     else if (focused && enabled) stroke = t().accent;
@@ -92,7 +99,8 @@ void field(QPainter* p, const QRectF& rect, const QStyleOption* option, const QW
     p->save();
     p->setRenderHint(QPainter::Antialiasing);
     p->setPen(QPen(stroke, 1));
-    p->setBrush(enabled ? t().surfaceRaised : t().surface);
+    // A locked value has no fill of its own: a read-only frame on the page.
+    p->setBrush(enabled ? QBrush(t().surfaceRaised) : locked ? QBrush(Qt::NoBrush) : QBrush(t().surface));
     p->drawPath(partlyRounded(rect.adjusted(0.5, 0.5, -0.5, -0.5), Metric::radius, !squareLeft, !squareRight));
     p->restore();
 }
@@ -102,9 +110,16 @@ struct Look {
     bool underline = false;
 };
 // The colours of a button in its role and state.
-Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat) {
+Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, const QWidget* widget = nullptr) {
     const auto& c = t();
     const bool enabled = option->state & QStyle::State_Enabled;
+    // A button that states a fact (Default) rather than offering an action.
+    if (lockedLook(option, widget)) {
+        Look look;
+        look.stroke = c.borderStrong;
+        look.text = c.textMuted;
+        return look;
+    }
     const bool hover = enabled && (option->state & QStyle::State_MouseOver);
     const bool down = enabled && (option->state & QStyle::State_Sunken);
     const bool on = option->state & QStyle::State_On;
@@ -150,13 +165,13 @@ QPixmap tinted(const QPixmap& source, const QColor& colour) {
     return result;
 }
 qreal dpr(const QWidget* widget) { return widget ? widget->devicePixelRatioF() : qApp->devicePixelRatio(); }
-void check(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyboard) {
+void check(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyboard, bool locked = false) {
     const auto& c = t();
     const bool enabled = option->state & QStyle::State_Enabled;
     const bool on = option->state & QStyle::State_On, partial = option->state & QStyle::State_NoChange;
-    // Checked stays visibly checked when locked: a muted fill with the tick.
-    QColor fill = on || partial ? (enabled ? c.text : c.textMuted) : (enabled ? c.surfaceRaised : c.surface);
-    QColor stroke = keyboard ? c.accent : on || partial ? fill : enabled ? c.controlOutline : c.textDisabled;
+    // Checked stays visibly checked when disabled: a muted fill with the tick.
+    QColor fill = on || partial ? (enabled ? c.text : c.textMuted) : (enabled ? c.surfaceRaised : locked ? QColor(Qt::transparent) : c.surface);
+    QColor stroke = keyboard ? c.accent : on || partial ? fill : enabled ? c.controlOutline : locked ? c.textMuted : c.textDisabled;
     rounded(p, box, fill, stroke, 4, keyboard ? 1.5 : 1);
     if (!on && !partial) return;
     p->save();
@@ -173,14 +188,14 @@ void check(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyb
     }
     p->restore();
 }
-void radio(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyboard) {
+void radio(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyboard, bool locked = false) {
     const auto& c = t();
     const bool enabled = option->state & QStyle::State_Enabled, on = option->state & QStyle::State_On;
     p->save();
     p->setRenderHint(QPainter::Antialiasing);
     const QRectF circle = box.adjusted(0.75, 0.75, -0.75, -0.75);
-    p->setPen(QPen(keyboard ? c.accent : on && enabled ? c.text : enabled ? c.controlOutline : c.textDisabled, keyboard ? 1.5 : 1));
-    p->setBrush(enabled ? c.surfaceRaised : c.surface);
+    p->setPen(QPen(keyboard ? c.accent : on && enabled ? c.text : enabled ? c.controlOutline : locked ? c.textMuted : c.textDisabled, keyboard ? 1.5 : 1));
+    p->setBrush(enabled ? QBrush(c.surfaceRaised) : locked ? QBrush(Qt::NoBrush) : QBrush(c.surface));
     p->drawEllipse(circle);
     if (on) {
         p->setPen(Qt::NoPen);
@@ -195,7 +210,7 @@ public:
     explicit ChromeIcon(QString name) : name_(std::move(name)) {}
     QIconEngine* clone() const override { return new ChromeIcon(name_); }
     void paint(QPainter* painter, const QRect& rect, QIcon::Mode mode, QIcon::State) override {
-        paintChromeGlyph(*painter, rect, name_, mode == QIcon::Disabled ? t().textDisabled : t().icon);
+        paintChromeGlyph(*painter, rect, name_, mode == QIcon::Disabled ? t().textDisabled : mode == QIcon::Selected ? t().iconSelected : t().icon);
     }
     QPixmap pixmap(const QSize& size, QIcon::Mode mode, QIcon::State state) override { return scaledPixmap(size, mode, state, 1.0); }
     QPixmap scaledPixmap(const QSize& size, QIcon::Mode mode, QIcon::State state, qreal scale) override {
@@ -281,6 +296,15 @@ QColor controlOutline() { return t().controlOutline; }
 bool keyboardFocus(const QWidget* widget) {
     return widget && widget->hasFocus() && widget->window()->testAttribute(Qt::WA_KeyboardFocusChange);
 }
+void setLocked(QWidget* widget, bool locked) {
+    if (!widget || isLocked(widget) == locked) return;
+    widget->setProperty("graphiteLocked", locked);
+    widget->style()->unpolish(widget);
+    widget->style()->polish(widget);
+    widget->update();
+}
+bool isLocked(const QWidget* widget) { return widget && widget->property("graphiteLocked").toBool(); }
+int sidebarWidth(int baseline, int natural) { return std::clamp(natural, baseline, std::max(baseline, int(Metric::sidebarMax))); }
 QPalette palette() {
     const auto& p = t();
     QPalette palette;
@@ -409,7 +433,8 @@ void Style::polish(QWidget* widget) {
     const auto name = role(widget);
     const auto tone = widget->property("feedbackTone").toString();
     const auto binding = widget->property("bindingTone").toString();
-    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty()) return;
+    const bool locked = isLocked(widget);
+    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty() && !locked) return;
     const auto& c = t();
     QColor colour;
     QFont f;
@@ -418,14 +443,19 @@ void Style::polish(QWidget* widget) {
     else if (name == "sectionTitle" || name == "section") f = font(Type::section, true);
     else if (name == "strong") f = font(Type::body, true);
     else if (name == "eyebrow" || name == "railHeading" || name == "micro") { f = font(Type::micro, name != "micro"); colour = c.textMuted; }
-    else if (name == "meta") { f = font(Type::metadata); colour = c.textMuted; }
+    // An error is never small print: it takes body type even in a meta slot.
+    else if (name == "meta") { f = font(tone == "error" ? Type::body : Type::metadata); colour = c.textMuted; }
     else if (name == "version") f = font(Type::micro);
     else if (name == "binding") { f = monoFont(Type::metadata); colour = c.textMuted; }
     else if (name == "mono" || name == "path" || (name == "link" && qobject_cast<QLineEdit*>(widget)) || name == "diagnostics") f = monoFont(Type::metadata);
     else if (name == "pill") { f = font(Type::micro); colour = c.textSecondary; }
     else if (name == "editableTitle") f = font(Type::page, true);
     else setFont = false;
-    if (name == "subtitle" || name == "muted" || name == "default" || name == "private") colour = c.textMuted;
+    // An outcome's tone outranks the slot's quiet colour: an error in a muted
+    // line still reads as an error.
+    if (tone == "error") colour = c.danger;
+    else if (tone == "success") colour = c.success;
+    else if (name == "subtitle" || name == "muted" || name == "default" || name == "private") colour = c.textMuted;
     else if (name == "secondary") colour = c.textSecondary;
     else if ((name == "link" && qobject_cast<QLabel*>(widget)) || binding == "active") colour = c.link;
     else if (name == "success" || tone == "success") colour = c.success;
@@ -440,14 +470,18 @@ void Style::polish(QWidget* widget) {
         widget->setFont(f);
         widget->setProperty("graphiteFont", true);
     }
-    if (colour.isValid()) {
+    if (colour.isValid() || locked) {
         // Only the text roles: everything else still follows the parent.
         QPalette palette;
         palette.setResolveMask(0);
-        for (const auto group : {QPalette::Active, QPalette::Inactive}) {
-            palette.setColor(group, QPalette::WindowText, colour);
-            palette.setColor(group, QPalette::Text, colour);
-        }
+        if (colour.isValid())
+            for (const auto group : {QPalette::Active, QPalette::Inactive}) {
+                palette.setColor(group, QPalette::WindowText, colour);
+                palette.setColor(group, QPalette::Text, colour);
+            }
+        // A locked value's text, and its editor's, is information to read.
+        if (locked)
+            for (const auto textRole : {QPalette::WindowText, QPalette::Text, QPalette::ButtonText}) palette.setColor(QPalette::Disabled, textRole, c.textMuted);
         widget->setPalette(palette);
         widget->setProperty("graphitePalette", true);
     }
@@ -715,6 +749,9 @@ QStyle::SubControl Style::hitTestComplexControl(ComplexControl control, const QS
 
 QPixmap Style::generatedIconPixmap(QIcon::Mode mode, const QPixmap& pixmap, const QStyleOption* option) const {
     if (mode == QIcon::Disabled) return tinted(pixmap, t().textDisabled);
+    // Selection is a neutral fill here, not the highlight colour: a pixmap icon
+    // without a selected variant stays as it is.
+    if (mode == QIcon::Selected) return pixmap;
     return QProxyStyle::generatedIconPixmap(mode, pixmap, option);
 }
 
@@ -725,7 +762,7 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
     case PE_FrameTabBarBase: case PE_FrameTabWidget: case PE_IndicatorButtonDropDown: case PE_PanelScrollAreaCorner: case PE_FrameDockWidget:
         return;
     case PE_PanelButtonCommand: case PE_PanelButtonBevel: case PE_PanelButtonTool: {
-        const auto look = buttonLook(buttonRole(widget, option), option, element == PE_PanelButtonTool && (option->state & State_AutoRaise));
+        const auto look = buttonLook(buttonRole(widget, option), option, element == PE_PanelButtonTool && (option->state & State_AutoRaise), widget);
         QColor stroke = keyboardState(option) ? c.accent : look.stroke;
         if (!look.fill.isValid() && !stroke.isValid()) return;
         rounded(p, option->rect, look.fill.isValid() ? look.fill : QColor(Qt::transparent), stroke, Metric::radius, keyboardState(option) ? 1.5 : 1);
@@ -782,13 +819,13 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
     case PE_IndicatorCheckBox: case PE_IndicatorItemViewItemCheck: {
         const int side = std::min({option->rect.width(), option->rect.height(), 17});
         const QRectF box(option->rect.x() + (option->rect.width() - side) / 2.0, option->rect.y() + (option->rect.height() - side) / 2.0, side, side);
-        check(p, box, option, element == PE_IndicatorCheckBox && keyboardState(option));
+        check(p, box, option, element == PE_IndicatorCheckBox && keyboardState(option), lockedLook(option, widget));
         return;
     }
     case PE_IndicatorRadioButton: {
         const int side = std::min({option->rect.width(), option->rect.height(), 18});
         const QRectF box(option->rect.x() + (option->rect.width() - side) / 2.0, option->rect.y() + (option->rect.height() - side) / 2.0, side, side);
-        radio(p, box, option, keyboardState(option));
+        radio(p, box, option, keyboardState(option), lockedLook(option, widget));
         return;
     }
     case PE_IndicatorArrowDown: case PE_IndicatorArrowUp: case PE_IndicatorArrowLeft: case PE_IndicatorArrowRight: case PE_IndicatorHeaderArrow: {
@@ -859,7 +896,7 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
 
 void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, const QIcon& icon, QSize iconSize, QPainter* p, const QWidget* widget, QRect body) const {
     const auto name = buttonRole(widget, option);
-    const auto look = buttonLook(name, option, false);
+    const auto look = buttonLook(name, option, false, widget);
     QFont f = widget ? widget->font() : QApplication::font();
     if (look.strong) f.setWeight(QFont::DemiBold);
     f.setUnderline(look.underline);
@@ -876,7 +913,9 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
     if (hasIcon) {
         const bool enabled = option->state & State_Enabled;
         const QRectF target(std::round(x), body.top() + (body.height() - iconSize.height()) / 2.0, iconSize.width(), iconSize.height());
-        auto pixmap = icon.pixmap(iconSize, dpr(widget), enabled ? QIcon::Normal : QIcon::Disabled, option->state & State_On ? QIcon::On : QIcon::Off);
+        // A checked or pressed quiet or secondary button sits on the selected fill.
+        const bool onSelected = enabled && (option->state & (State_On | State_Sunken)) && name != "primary" && name != "danger" && name != "link" && name != "version";
+        auto pixmap = icon.pixmap(iconSize, dpr(widget), !enabled ? QIcon::Disabled : onSelected ? QIcon::Selected : QIcon::Normal, option->state & State_On ? QIcon::On : QIcon::Off);
         if (name == "primary" || name == "danger") pixmap = tinted(pixmap, look.text);
         p->drawPixmap(target.topLeft(), pixmap);
         x += iconWidth + (shown.isEmpty() ? 0 : 8);
@@ -898,7 +937,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
         drawPrimitive(PE_PanelButtonCommand, option, p, widget);
         if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) {
-            const auto look = buttonLook(buttonRole(widget, option), option, false);
+            const auto look = buttonLook(buttonRole(widget, option), option, false, widget);
             paintChevron(*p, QPointF(option->rect.right() - Metric::splitZone / 2.0 + 1, option->rect.center().y() + 0.5), 8, Qt::DownArrow, look.text);
         }
         return;
@@ -932,7 +971,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
         if (!button) break;
         QStyleOptionButton copy(*button);
-        copy.palette.setColor(QPalette::WindowText, option->state & State_Enabled ? c.text : c.textDisabled);
+        copy.palette.setColor(QPalette::WindowText, option->state & State_Enabled ? c.text : lockedLook(option, widget) ? c.textMuted : c.textDisabled);
         QProxyStyle::drawControl(element, &copy, p, widget);
         return;
     }
@@ -974,7 +1013,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         }
         if (item->maxIconWidth > 0) {
             if (!item->icon.isNull()) {
-                const auto pixmap = item->icon.pixmap(QSize(Metric::icon, Metric::icon), dpr(widget), enabled ? QIcon::Normal : QIcon::Disabled);
+                const auto pixmap = item->icon.pixmap(QSize(Metric::icon, Metric::icon), dpr(widget), !enabled ? QIcon::Disabled : selected ? QIcon::Selected : QIcon::Normal);
                 p->drawPixmap(QPointF(x, r.center().y() - Metric::icon / 2.0), pixmap);
             }
             x += 28;
@@ -1170,7 +1209,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
             r.setLeft(r.left() + combo->iconSize.width() + 8);
         }
         const auto f = widget ? widget->font() : QApplication::font();
-        paintText(*p, r, combo->currentText, option->state & State_Enabled ? c.text : c.textDisabled, f, Qt::AlignLeft | Qt::AlignVCenter);
+        paintText(*p, r, combo->currentText, option->state & State_Enabled ? c.text : lockedLook(option, widget) ? c.textMuted : c.textDisabled, f, Qt::AlignLeft | Qt::AlignVCenter);
         return;
     }
     case CE_SizeGrip: return;
@@ -1192,7 +1231,7 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         if (tool->activeSubControls & SC_ToolButtonMenu) panel.state |= State_Sunken;
         if (!(tool->state & State_Enabled)) panel.state &= ~(State_MouseOver | State_Sunken);
         drawPrimitive(PE_PanelButtonTool, &panel, p, widget);
-        const auto look = buttonLook(buttonRole(widget, option), &panel, tool->state & State_AutoRaise);
+        const auto look = buttonLook(buttonRole(widget, option), &panel, tool->state & State_AutoRaise, widget);
         QStyleOptionToolButton label(*tool);
         if (split || chevron) label.rect = option->rect.adjusted(0, 0, -(Metric::splitZone - 4), 0);
         if (split) label.rect = subControlRect(CC_ToolButton, tool, SC_ToolButton, widget);
@@ -1214,6 +1253,8 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         if (!combo || !combo->frame) break;
         const bool focused = combo->editable ? (option->state & State_HasFocus) : keyboardState(option) || (option->state & State_On);
         field(p, option->rect, option, widget, focused);
+        // A locked value can't be opened: no chevron.
+        if (lockedLook(option, widget)) return;
         const auto arrow = subControlRect(CC_ComboBox, combo, SC_ComboBoxArrow, widget);
         paintChevron(*p, QRectF(arrow).center() + QPointF(-2, 0.5), 9, Qt::DownArrow, option->state & State_Enabled ? c.textSecondary : c.textDisabled);
         return;
@@ -1222,7 +1263,7 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         const auto* spin = qstyleoption_cast<const QStyleOptionSpinBox*>(option);
         if (!spin || !spin->frame) break;
         field(p, option->rect, option, widget, option->state & State_HasFocus, widget && widget->property("hasUnit").toBool());
-        if (spin->buttonSymbols == QAbstractSpinBox::NoButtons) return;
+        if (spin->buttonSymbols == QAbstractSpinBox::NoButtons || lockedLook(option, widget)) return;
         for (const auto sub : {SC_SpinBoxUp, SC_SpinBoxDown}) {
             const auto box = subControlRect(CC_SpinBox, spin, sub, widget);
             const bool enabled = (option->state & State_Enabled) && (spin->stepEnabled & (sub == SC_SpinBoxUp ? QAbstractSpinBox::StepUpEnabled : QAbstractSpinBox::StepDownEnabled));
@@ -1340,7 +1381,7 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
     const auto icon = index.data(Qt::DecorationRole).value<QIcon>();
     qreal x = box.left() + 12;
     if (!icon.isNull()) {
-        const auto pixmap = icon.pixmap(QSize(Metric::icon, Metric::icon), dpr(option.widget), enabled ? QIcon::Normal : QIcon::Disabled);
+        const auto pixmap = icon.pixmap(QSize(Metric::icon, Metric::icon), dpr(option.widget), !enabled ? QIcon::Disabled : selected ? QIcon::Selected : QIcon::Normal);
         p->drawPixmap(QPointF(x, box.center().y() - Metric::icon / 2.0), pixmap);
         x += Metric::icon + 10;
     }

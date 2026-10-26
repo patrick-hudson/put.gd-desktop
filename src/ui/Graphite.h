@@ -22,6 +22,8 @@ constexpr int space = 4, control = 36, iconTarget = 32, radius = 7, segmentRadiu
 constexpr int header = 56, commandBand = 60, statusBand = 26, icon = 18, splitZone = 26;
 constexpr int navRow = 38, destinationRow = 68, historyRow = 76, thumbWidth = 80, thumbHeight = 50;
 constexpr int historySidebar = 184, settingsSidebar = 210, destinationSidebar = 236, inspector = 300;
+// The widest a page sidebar grows for long labels or enlarged text.
+constexpr int sidebarMax = 260;
 }
 // Type sizes in pixels; weights are 400 and 600 only.
 namespace Type {
@@ -43,6 +45,14 @@ QColor controlStroke();
 QColor controlOutline();
 // True while the widget has focus that came from the keyboard.
 bool keyboardFocus(const QWidget*);
+// A locked value: a disabled control that still states something, such as a
+// setting inherited from a default or one held while setup runs. It reads as
+// information, not as an unavailable action: textMuted (4.5:1) in a quiet
+// read-only frame, without a combo box's chevron or a spin box's steps. The
+// mark applies only while the control is disabled; the caller still decides
+// that. Unavailable actions keep textDisabled.
+void setLocked(QWidget*, bool locked);
+bool isLocked(const QWidget*);
 
 // Installs the Graphite style, palette and font on the application and keeps
 // them in step with Theme scheme switches. Safe to call more than once.
@@ -61,6 +71,10 @@ qreal opticalBaseline(const QFontMetricsF&, const QString&, qreal centre);
 // control heights scale with it. See Graphite.cpp.
 qreal textScale();
 int scaled(int pixels);
+// A page sidebar's width: what its labels, icons and padding need (natural),
+// never under its baseline width and never over Metric::sidebarMax. Rows grow
+// taller with the text; the sidebar does not take the window with them.
+int sidebarWidth(int baseline, int natural);
 // Text vertically centred on its ink, elided to the rectangle.
 void paintText(QPainter&, const QRectF&, const QString&, const QColor&, const QFont&, Qt::Alignment = Qt::AlignLeft | Qt::AlignVCenter, Qt::TextElideMode = Qt::ElideRight);
 

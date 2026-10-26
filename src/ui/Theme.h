@@ -22,6 +22,10 @@ struct Palette {
  // check box, radio button): 3:1 against bg, surface and surfaceRaised, unlike
  // the quiet decorative border.
  QColor controlOutline;
+ // IconArt glyphs on the selected fill (a selected row, segment or menu
+ // item): both tones 3:1 against selected and against each other, so a
+ // selected glyph keeps its silhouette and its inner detail.
+ QColor iconSelected,iconSecondarySelected;
 };
 const Palette& palette(Scheme);
 const Palette& current();
