@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "scope": "PR review remediation: local contracts and offline saved-byte replay only; no host/desktop/acceptance rerun",
+  "originalToolHead": "0bab115c3aa53eb73b6f29e6b8fb5e3675247192",
+  "remediationHead": "e5026479539023f5601a900671dcbe12c4042ada",
+  "fixtureReadiness": "Original readiness lacked attempt/PID binding; unique archived campaign basenames and saved pixels are not retroactive execution proof of new guards. Fresh runs must use revised tools.",
+  "wallExtent": "Earlier VM gate derived extent from VNC. Saved native/QMP witnesses are retained; no old gate becomes a fresh pass under the new independent native-mode + QMP + VNC check.",
+  "wallMotionAudit": {
+    "archivedSamples": 58,
+    "oldPassingSamples": 44,
+    "minimumPassingChangedFraction": 0.015625,
+    "oldPassingSamplesBelowNewMinimum": 0,
+    "newPolicy": "at least1% of each head and at least2 pixels;99% synthetic coverage remains required"
+  },
+  "archives": {
+    "c1": "de157b5606d4fae43092e2e48f613b3e5f4f2defb0eed43c9e35d0d677fff1d3",
+    "g1": "6ab4ee3057b0c5fda703a21debe74b421caaa9d6ce5d1641c1fb403b96100806"
+  },
+  "recordingAudit": [
+    {
+      "archive": "c1",
+      "member": "c1/rot2/moving.mp4",
+      "sha256": "0be7ef8a0178a92740121dcc761f3850f4d7a5933ead4ca413097286eba7e018",
+      "decoder": "GStreamer 1.24.2",
+      "originalMotionOnlyOk": true,
+      "sampledContentOk": true,
+      "frames": 8,
+      "liveAcceptance": false
+    },
+    {
+      "archive": "c1",
+      "member": "c1/rot2/static.mp4",
+      "sha256": "c0bec33dd7af357ae4a3a8b98c94bc11bd0df5ae964f68b298e56f1c594b5e01",
+      "decoder": "GStreamer 1.24.2",
+      "originalMotionOnlyOk": true,
+      "sampledContentOk": true,
+      "frames": 8,
+      "liveAcceptance": false
+    },
+    {
+      "archive": "c1",
+      "member": "c1/rot1/moving.mp4",
+      "sha256": "1dc88f79fe824231106919d1bf9a1b29154b29bf77a0e86ccddda2d621c08820",
+      "decoder": "GStreamer 1.24.2",
+      "originalMotionOnlyOk": true,
+      "sampledContentOk": true,
+      "frames": 8,
+      "liveAcceptance": false
+    },
+    {
+      "archive": "c1",
+      "member": "c1/rot1/static.mp4",
+      "sha256": "1ef31ab7af803fa3a5836c541062c7403a9cff660d6a5fe65127fb57ac83e0de",
+      "decoder": "GStreamer 1.24.2",
+      "originalMotionOnlyOk": true,
+      "sampledContentOk": true,
+      "frames": 8,
+      "liveAcceptance": false
+    },
+    {
+      "archive": "c1",
+      "member": "c1/rec1/moving.mp4",
+      "sha256": "70e1adadce7029c97ca201fd18993fd4c5237bb67a99074006d2644d65926d03",
+      "decoder": "GStreamer 1.24.2",
+      "originalMotionOnlyOk": true,
+      "sampledContentOk": false,
+      "frames": 8,
+      "liveAcceptance": false
+    },
+    {
+      "archive": "c1",
+      "member": "c1/rec1/static.mp4",
+      "sha256": "c9f29d5bd517dcef2f872a0ec6e2c397cd44256cc67d467c052f6a396a336187",
+      "decoder": "GStreamer 1.24.2",
+      "originalMotionOnlyOk": true,
+      "sampledContentOk": true,
+      "frames": 8,
+      "liveAcceptance": false
+    },
+    {
+      "archive": "g1",
+      "member": "adj2/moving.mp4",
+      "sha256": "ff4daec521c6fc43ff02531ccead78ec96114c086b4707182dbf5959f60d0d9d",
+      "decoder": "GStreamer 1.24.2",
+      "originalMotionOnlyOk": true,
+      "sampledContentOk": true,
+      "frames": 8,
+      "liveAcceptance": false
+    },
+    {
+      "archive": "g1",
+      "member": "adj2/static.mp4",
+      "sha256": "a6009d713f786b6f66a168c61e936eea42f7f710aa7f5352fc0d301245ed2d25",
+      "decoder": "GStreamer 1.24.2",
+      "originalMotionOnlyOk": true,
+      "sampledContentOk": true,
+      "frames": 8,
+      "liveAcceptance": false
+    },
+    {
+      "archive": "g1",
+      "member": "adj3/moving.mp4",
+      "sha256": "7ba1e48f7fdbad17456a8da1c85dd231a297222bce77725a528c89bb74d6d9c2",
+      "decoder": "GStreamer 1.24.2",
+      "originalMotionOnlyOk": true,
+      "sampledContentOk": true,
+      "frames": 8,
+      "liveAcceptance": false
+    },
+    {
+      "archive": "g1",
+      "member": "adj3/static.mp4",
+      "sha256": "ad4f432674f4a085245d73c9e2dc07ee66ba6e7edf2eec5f132ae67e61e220b9",
+      "decoder": "GStreamer 1.24.2",
+      "originalMotionOnlyOk": true,
+      "sampledContentOk": true,
+      "frames": 8,
+      "liveAcceptance": false
+    }
+  ],
+  "nativeClipContentReplayed": false,
+  "limits": [
+    "Original record-region booleans measured motion/bar placement only, not exported pixels",
+    "Offline sampled-content replay never substitutes for a fresh live gate",
+    "Scaled/spanning recording references remain unsupported/fail closed",
+    "c1/rec1 moving does not satisfy the periodic-bar model; no product defect or clip-content pass inferred",
+    "Initial prototype replay and corrected periodic-bar model results both retained privately; original archives unchanged"
+  ],
+  "followupHead": "399cca65c5eb2d1c2885f32b1fee61a5aa3734b3",
+  "ciFollowup": "e502 CI contracts failed because its new test imported optional Pillow. Followup reads decoded PPM directly; all15 new regressions pass with python3 -S. No skip or threshold relaxation."
+}

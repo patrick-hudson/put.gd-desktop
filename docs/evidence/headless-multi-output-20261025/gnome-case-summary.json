@@ -1,0 +1,547 @@
+{
+  "schemaVersion": 1,
+  "profile": "Ubuntu26.04.1/GNOME50.1 native Wayland KVM guest",
+  "assessment": "Scoped geometry only; full #380 remains pending",
+  "commonHelperSha256": "a6322f30d50ba0e5c87360e8c316a4d5b6396bdccfc5b9a90a3aa37ea8594835",
+  "campaigns": [
+    {
+      "run": "g1/adj2",
+      "source": "6b7949f5",
+      "ok": true,
+      "commonPreflight": "historical manual real-home policy",
+      "cases": [
+        {
+          "case": "inside-0",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 19200,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              160,
+              120
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "26ae9f20-62b4-4048-b869-209f063da8c7",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "inside-1",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 19200,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              160,
+              120
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "628e4467-5efd-44db-8d78-31952a871a48",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "span",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 403200,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              2240,
+              180
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "8051fe3c-7adb-4af2-84be-93cf2021b6b2",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "window-0",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 2073600,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              1920,
+              1080
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "2b733bbe-102e-45e5-a85f-9c499b985ec1",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "window-1",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 3686400,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              2560,
+              1440
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "59394ec3-e0c5-4f3f-8ac1-fbd068510be8",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "desktop",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 6451200,
+            "mismatches": 0,
+            "transparentGapPixels": 691200,
+            "firstMismatches": [],
+            "size": [
+              4480,
+              1440
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "65ae7fbf-1108-458e-b8e0-549bbe1f06fe",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "escape",
+          "ok": true,
+          "operationId": "e6fb5cee-e8b9-4f92-bf85-2af20ec41055",
+          "operationState": "cancelled",
+          "operationErrorCode": "cancelled"
+        },
+        {
+          "case": "right-click",
+          "ok": true,
+          "operationId": "a75ffaf1-90f6-4a6e-a7d0-604cfcc81ce8",
+          "operationState": "cancelled",
+          "operationErrorCode": "cancelled"
+        },
+        {
+          "case": "record-region",
+          "ok": true,
+          "operationId": null,
+          "operationState": null,
+          "operationErrorCode": null,
+          "recordings": {
+            "static": {
+              "id": "bbcbfa6d-ea6b-4341-88fd-66b8adddff2d",
+              "rect": [
+                2000,
+                80,
+                160,
+                120
+              ],
+              "motion": 0.01,
+              "motionOutput": "motion=0.010 compared=7 samples=8 durationMs=5033 size=160x120\n",
+              "placementOk": true,
+              "config": {
+                "audio": {
+                  "microphone": false,
+                  "system": false
+                },
+                "budgetBytes": 399410517,
+                "codec": "h264",
+                "format": "mp4",
+                "fps": 30,
+                "mime": "video/mp4"
+              },
+              "outputSize": [
+                160,
+                120
+              ],
+              "overlayExcluded": true,
+              "overlayPlacement": "outside"
+            },
+            "moving": {
+              "id": "a0408601-c794-40b5-997b-b008e33bd24c",
+              "rect": [
+                2000,
+                80,
+                160,
+                120
+              ],
+              "motion": 75.223,
+              "motionOutput": "motion=75.223 compared=7 samples=8 durationMs=5166 size=160x120\n",
+              "placementOk": true,
+              "config": {
+                "audio": {
+                  "microphone": false,
+                  "system": false
+                },
+                "budgetBytes": 399381845,
+                "codec": "h264",
+                "format": "mp4",
+                "fps": 30,
+                "mime": "video/mp4"
+              },
+              "outputSize": [
+                160,
+                120
+              ],
+              "overlayExcluded": true,
+              "overlayPlacement": "outside"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "run": "g1/adj3",
+      "source": "6b7949f5",
+      "ok": true,
+      "commonPreflight": "v3 apply/check-only boundaries",
+      "cases": [
+        {
+          "case": "inside-0",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 19200,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              160,
+              120
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "23042e44-61db-4770-8c12-a3e6268cb807",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "inside-1",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 19200,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              160,
+              120
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "5e9405b4-36c8-4de3-a218-8bd894cb3594",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "span",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 403200,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              2240,
+              180
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "8f2a47a8-d938-4a5e-a16f-e3c680837937",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "window-0",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 2073600,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              1920,
+              1080
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "94d95874-c0cb-40a6-8935-24bb483f7c81",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "window-1",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 3686400,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              2560,
+              1440
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "bc9d0ad8-dc7e-4c4b-8270-b6691e126177",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "desktop",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 6451200,
+            "mismatches": 0,
+            "transparentGapPixels": 691200,
+            "firstMismatches": [],
+            "size": [
+              4480,
+              1440
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "2b6f99ea-6576-43fc-947c-92083764d01a",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "escape",
+          "ok": true,
+          "operationId": "c57fd626-db7d-4cc7-b942-494dfc155020",
+          "operationState": "cancelled",
+          "operationErrorCode": "cancelled"
+        },
+        {
+          "case": "right-click",
+          "ok": true,
+          "operationId": "a59285bb-60f5-41ff-a40a-ad285929fc67",
+          "operationState": "cancelled",
+          "operationErrorCode": "cancelled"
+        },
+        {
+          "case": "record-region",
+          "ok": true,
+          "operationId": null,
+          "operationState": null,
+          "operationErrorCode": null,
+          "recordings": {
+            "static": {
+              "id": "53326b86-ad7b-4003-a5b1-a22af1589faa",
+              "rect": [
+                2000,
+                80,
+                160,
+                120
+              ],
+              "motion": 0.01,
+              "motionOutput": "motion=0.010 compared=7 samples=8 durationMs=4900 size=160x120\n",
+              "placementOk": true,
+              "config": {
+                "audio": {
+                  "microphone": false,
+                  "system": false
+                },
+                "budgetBytes": 402552149,
+                "codec": "h264",
+                "format": "mp4",
+                "fps": 30,
+                "mime": "video/mp4"
+              },
+              "outputSize": [
+                160,
+                120
+              ],
+              "overlayExcluded": true,
+              "overlayPlacement": "outside"
+            },
+            "moving": {
+              "id": "7469e625-8ad1-4dcd-ae99-d3d0c41c8f0b",
+              "rect": [
+                2000,
+                80,
+                160,
+                120
+              ],
+              "motion": 61.915,
+              "motionOutput": "motion=61.915 compared=7 samples=8 durationMs=5400 size=160x120\n",
+              "placementOk": true,
+              "config": {
+                "audio": {
+                  "microphone": false,
+                  "system": false
+                },
+                "budgetBytes": 402524842,
+                "codec": "h264",
+                "format": "mp4",
+                "fps": 30,
+                "mime": "video/mp4"
+              },
+              "outputSize": [
+                160,
+                120
+              ],
+              "overlayExcluded": true,
+              "overlayPlacement": "outside"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "run": "g1/resize1",
+      "source": "6b7949f5",
+      "ok": true,
+      "commonPreflight": "v3 apply/check-only boundaries",
+      "cases": [
+        {
+          "case": "output-change",
+          "ok": true,
+          "operationId": "72c90724-8ccf-4e04-901e-79e281b0dc15",
+          "operationState": "failed",
+          "operationErrorCode": "display_changed",
+          "paste": {
+            "kind": "text",
+            "text": "putgd multi-output cancellation sentinel"
+          }
+        }
+      ]
+    },
+    {
+      "run": "g1/loss1",
+      "source": "6b7949f5",
+      "ok": true,
+      "commonPreflight": "v3 apply/check-only boundaries",
+      "cases": [
+        {
+          "case": "output-change",
+          "ok": true,
+          "operationId": "78d72549-e233-4ab2-a312-ad8cad75f9f0",
+          "operationState": "failed",
+          "operationErrorCode": "display_changed",
+          "paste": {
+            "kind": "text",
+            "text": "putgd multi-output cancellation sentinel"
+          }
+        }
+      ]
+    },
+    {
+      "run": "g1/fix1",
+      "source": "4610dda6",
+      "ok": true,
+      "commonPreflight": "v3 apply/check-only boundaries",
+      "cases": [
+        {
+          "case": "inside-0",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 19200,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              160,
+              120
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "40d1ea77-b0ed-44ee-ab94-b72a3e2bd65c",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "inside-1",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 19200,
+            "mismatches": 0,
+            "transparentGapPixels": 0,
+            "firstMismatches": [],
+            "size": [
+              160,
+              120
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "b5a4ec5e-6a6a-4cd3-9cbc-14425d291f2b",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "desktop",
+          "ok": true,
+          "pixels": {
+            "ok": true,
+            "pixels": 6451200,
+            "mismatches": 0,
+            "transparentGapPixels": 691200,
+            "firstMismatches": [],
+            "size": [
+              4480,
+              1440
+            ]
+          },
+          "pastePixelsEqual": true,
+          "operationId": "16b841e9-c60f-458e-b0d8-26d654de8977",
+          "operationState": "completed",
+          "operationErrorCode": ""
+        },
+        {
+          "case": "escape",
+          "ok": true,
+          "operationId": "4e4b38bc-d7a9-4a6a-bacc-5a9c5e636fd7",
+          "operationState": "cancelled",
+          "operationErrorCode": "cancelled"
+        },
+        {
+          "case": "right-click",
+          "ok": true,
+          "operationId": "b2d75239-70b1-4766-bcca-c131f37df9b6",
+          "operationState": "cancelled",
+          "operationErrorCode": "cancelled"
+        }
+      ]
+    }
+  ],
+  "blocked": [
+    {
+      "run": "g1/wrot1",
+      "stage": "wall frame prerequisite; no app campaign",
+      "actualLayout": "Virtual-2 (0,0,720,1280) scale2 transform1; Virtual-1 (720,100,1920,1080)"
+    },
+    {
+      "run": "g1/wscale1",
+      "stage": "wall frame prerequisite; no app campaign",
+      "actualLayout": "Virtual-2 (0,0,1280,720) scale2; Virtual-1 (1280,100,1920,1080)"
+    }
+  ],
+  "finalWall": {
+    "initial": "g1/wfix-final failed head0 synthetic coverage .5",
+    "retry": "g1/wfix-final2 passed both heads; same source/layout/thresholds"
+  }
+}
