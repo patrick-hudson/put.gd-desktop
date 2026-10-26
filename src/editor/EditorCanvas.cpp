@@ -17,7 +17,18 @@
 namespace putgd::editor {
 namespace {
 constexpr double minimumZoom=0.02,maximumZoom=32.0;
-constexpr int handlePixels=9;
+constexpr int handleTargetPixels=32;
+template<size_t N>
+int nearestHandle(const QPointF (&points)[N],const QPointF& position,int stride=1){
+ int nearest=-1;double distance=0;
+ for(size_t i=0;i<N;i+=stride){
+  const auto delta=position-points[i];
+  if(!QRectF(points[i]-QPointF(handleTargetPixels/2,handleTargetPixels/2),QSizeF(handleTargetPixels,handleTargetPixels)).contains(position))continue;
+  const double squared=QPointF::dotProduct(delta,delta);
+  if(nearest<0||squared<distance){nearest=int(i);distance=squared;}
+ }
+ return nearest;
+}
 // The scheme's colours at paint time (#60): the canvas behind the image and
 // the accent of the keyboard focus ring around it.
 QColor canvasBackground(){return Theme::current().bg;}
@@ -137,16 +148,14 @@ QRect EditorCanvas::boxFrom(const QPointF& a,const QPointF& b) const {
  return QRect(QPoint(left,top),QPoint(std::max(left,right-1),std::max(top,bottom-1)));
 }
 
-int EditorCanvas::handleAt(const QRect& rect,const QPointF& p) const {
+int EditorCanvas::handleAt(const QRect& rect,const QPointF& p,bool cornersOnly) const {
  const auto r=toWidget(rect);
  const QPointF points[8]={r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())};
- for(int i=0;i<8;++i)if(QLineF(points[i],p).length()<=handlePixels)return i;
- return -1;
+ return nearestHandle(points,p,cornersOnly?2:1);
 }
 int EditorCanvas::arrowHandleAt(const Shape& shape,const QPointF& p) const {
- if(QLineF(toWidget(QPointF(shape.from)),p).length()<=handlePixels)return 0;
- if(QLineF(toWidget(QPointF(shape.to)),p).length()<=handlePixels)return 1;
- return -1;
+ const QPointF points[]={toWidget(QPointF(shape.from)),toWidget(QPointF(shape.to))};
+ return nearestHandle(points,p);
 }
 // A drawing tool picks up what the user sees: an outlined rectangle by its
 // outline (its interior stays drawable), an arrow by its line, and filled
@@ -190,8 +199,7 @@ quint64 EditorCanvas::shapeAt(const QPointF& p) const {
 }
 int EditorCanvas::selectionHandleAt(const Shape& shape,const QPointF& p) const {
  if(shape.kind==Shape::Kind::Arrow)return arrowHandleAt(shape,p);
- const int handle=handleAt(shape.rect,p);
- return shape.kind==Shape::Kind::Text&&handle%2!=0?-1:handle;
+ return handleAt(shape.rect,p,shape.kind==Shape::Kind::Text);
 }
 // Dragging a text corner scales the font around the opposite corner, which
 // stays fixed. The scale is the drag projected onto the box's diagonal, so
@@ -407,9 +415,13 @@ void EditorCanvas::keyPressEvent(QKeyEvent* event){
  // its size).
  const int step=(event->modifiers()&Qt::ControlModifier)?10:1;QPoint delta;
  switch(event->key()){case Qt::Key_Left:delta={-step,0};break;case Qt::Key_Right:delta={step,0};break;case Qt::Key_Up:delta={0,-step};break;case Qt::Key_Down:delta={0,step};break;default:break;}
+ if(!delta.isNull()&&(event->modifiers()&Qt::AltModifier)){
+  const int pixels=(event->modifiers()&Qt::ShiftModifier)?128:32;
+  panBy(QPointF(delta.x()/step*pixels,delta.y()/step*pixels));return;
+ }
  if(!delta.isNull()&&nudge(delta,event->modifiers()&Qt::ShiftModifier))return;
  // Without a pointer: Insert places the tool's mark, brackets cycle the marks
- // (Tab does too, then moves on), Enter edits a selected text label.
+ // and Enter edits a selected text label.
  if(event->key()==Qt::Key_Insert){placeMark();return;}
  if(event->key()==Qt::Key_BracketRight||event->key()==Qt::Key_BracketLeft){selectAdjacent(event->key()==Qt::Key_BracketRight?1:-1,true);return;}
  if((event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter)&&!(event->modifiers()&Qt::ControlModifier)){
@@ -461,22 +473,6 @@ bool EditorCanvas::selectAdjacent(int step,bool wrap){
  if(next<0||next>=shapes.size()){if(!wrap)return false;next=((next%shapes.size())+shapes.size())%shapes.size();}
  select(shapes[next].id);return true;
 }
-bool EditorCanvas::event(QEvent* event){
- // Tab walks the marks, then leaves the canvas with nothing selected, so the
- // keyboard is never trapped here. Only a Tab pressed on the canvas counts:
- // Qt also moves focus on when the text field hides.
- if(event->type()==QEvent::KeyPress&&!textEditor_&&tool_!=Tool::Crop){
-  const auto* key=static_cast<QKeyEvent*>(event);
-  const bool tab=key->key()==Qt::Key_Tab||key->key()==Qt::Key_Backtab;
-  if(tab&&!(key->modifiers()&(Qt::ControlModifier|Qt::AltModifier))){
-   const bool forward=key->key()==Qt::Key_Tab&&!(key->modifiers()&Qt::ShiftModifier);
-   if(selectAdjacent(forward?1:-1,false)){event->accept();return true;}
-   if(selected_){selected_=0;emit selectionChanged();update();}
-  }
- }
- return QWidget::event(event);
-}
-
 quint64 EditorCanvas::placeMark(){
  if(textEditor_)finishText(true);
  const auto area=doc_.crop();
@@ -518,19 +514,20 @@ bool EditorCanvas::setSelectionGeometry(const QRect& r){
 }
 
 QString EditorCanvas::selectionSummary() const {
+ const QString panHelp=" Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.";
  auto box=[](const QRect& r){return QString("x %1, y %2, %3 × %4 px").arg(r.x()).arg(r.y()).arg(r.width()).arg(r.height());};
- if(tool_==Tool::Crop)return QString("Crop area %1. Arrow keys move it, Shift+arrow keys resize it, Enter applies, Escape cancels.").arg(box(cropDraft_));
+ if(tool_==Tool::Crop)return QString("Crop area %1. Arrow keys move it, Shift+arrow keys resize it, Enter applies, Escape cancels.").arg(box(cropDraft_))+panHelp;
  const auto& shapes=doc_.shapes();
  for(qsizetype i=0;i<shapes.size();++i){
   const auto& shape=shapes[i];if(shape.id!=selected_)continue;
   const auto where=shape.kind==Shape::Kind::Arrow?QString("from %1, %2 to %3, %4").arg(shape.from.x()).arg(shape.from.y()).arg(shape.to.x()).arg(shape.to.y())
    :shape.kind==Shape::Kind::Text?QString("\"%1\" at x %2, y %3, %4 px").arg(shape.text).arg(shape.rect.x()).arg(shape.rect.y()).arg(shape.fontPixels):box(shape.rect);
-  return QString("%1 %2 of %3 selected, %4. Arrow keys move it, Shift+arrow keys resize it, Delete removes it, Tab selects the next mark.").arg(kindLabel(shape.kind)).arg(i+1).arg(shapes.size()).arg(where);
+  return QString("%1 %2 of %3 selected, %4. Arrow keys move it, Shift+arrow keys resize it, Delete removes it, [ and ] cycle marks, Tab leaves the canvas for properties, Escape deselects.").arg(kindLabel(shape.kind)).arg(i+1).arg(shapes.size()).arg(where)+panHelp;
  }
  QString text=shapes.isEmpty()?QString("No marks."):shapes.size()==1?QString("1 mark, none selected."):QString("%1 marks, none selected.").arg(shapes.size());
  if(drawingTool()||tool_==Tool::Text)text+=QString(" Insert places a %1 in the middle.").arg(kindLabel(kindFor(tool_)).toLower());
- if(!shapes.isEmpty())text+=" Tab or ] selects a mark.";
- return text;
+ if(!shapes.isEmpty())text+=" [ and ] cycle marks; Escape deselects. Tab leaves the canvas.";
+ return text+panHelp;
 }
 void EditorCanvas::announce(){
  const auto text=selectionSummary();if(accessibleDescription()==text)return;

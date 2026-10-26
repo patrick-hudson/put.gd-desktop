@@ -27,7 +27,7 @@
 #include <QDir>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QMessageBox>
+#include <QDialog>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSaveFile>
@@ -118,7 +118,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  side_=side;side->installEventFilter(this);
  auto* sideLayout=new QVBoxLayout(side);sideLayout_=sideLayout;sideLayout->setContentsMargins(1,0,0,0);sideLayout->setSpacing(0);
  auto* panel=new Graphite::Surface("surface",{},side);panel->setObjectName("editorOptions");
- auto* panelScroll=new QScrollArea(side);propertiesScroll_=panelScroll;panelScroll->setObjectName("editorPropertiesScroll");panelScroll->setWidgetResizable(true);panelScroll->setFrameShape(QFrame::NoFrame);panelScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);panelScroll->setWidget(panel);sideLayout->addWidget(panelScroll,1);
+ auto* panelScroll=new QScrollArea(side);propertiesScroll_=panelScroll;panelScroll->setObjectName("editorPropertiesScroll");panelScroll->setWidgetResizable(true);panelScroll->setFocusPolicy(Qt::NoFocus);panelScroll->setFrameShape(QFrame::NoFrame);panelScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);panelScroll->setWidget(panel);sideLayout->addWidget(panelScroll,1);
  body->addWidget(side);
  auto* properties=new QVBoxLayout(panel);properties_=properties;properties->setContentsMargins(18,16,16,16);properties->setSpacing(12);
  toolTitle_=new QLabel(panel);toolTitle_->setObjectName("editorToolTitle");VisualStyle::role(toolTitle_,"sectionTitle");properties->addWidget(toolTitle_);
@@ -399,11 +399,11 @@ void EditorWindow::refresh(){
  {
   // The panel names the tool (or the selected mark) and how to use it.
   static const QStringList titles{"Select","Redact","Blur","Crop","Arrow","Rectangle","Highlight","Text"};
-  static const QStringList help{"Click a mark to select it, or press Tab. Drag it or use the arrow keys to move it; drag its handles or use Shift+arrow keys to resize.","Drag over private information to cover it with a redaction, an opaque black box.","Drag over an area to blur it.","Drag to choose the area to keep, or set it below, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it without covering it.","Click the image to place a label. Enter finishes the text."};
+  static const QStringList help{"Click a mark, or use [ and ] to cycle marks. Arrows move; Shift+arrows resize. Tab focuses properties; Escape deselects.","Drag over private information to cover it with a redaction, an opaque black box.","Drag over an area to blur it.","Drag to choose the area to keep, or set it below, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it without covering it.","Click the image to place a label. Enter finishes the text."};
   int index=int(tool);QString title=titles.value(index);
   // A selected mark names itself, whichever tool picked it up.
   if(shape){const QHash<int,QString> kinds{{int(editor::Shape::Kind::Redact),"Redaction"},{int(editor::Shape::Kind::Blur),"Blur"},{int(editor::Shape::Kind::Arrow),"Arrow"},{int(editor::Shape::Kind::Rectangle),"Rectangle"},{int(editor::Shape::Kind::Highlight),"Highlight"},{int(editor::Shape::Kind::Text),"Text"}};title=kinds.value(int(shape->kind),"Mark")+" selected";}
-  toolTitle_->setText(title);toolHelp_->setText(shape?QStringLiteral("Drag to move; use handles to resize. Arrow keys move; Shift+arrows resize."):help.value(index));
+  toolTitle_->setText(title);toolHelp_->setText(shape?QStringLiteral("Drag or use arrows to move; handles or Shift+arrows resize. Tab focuses properties; Escape deselects."):help.value(index));
   const auto bounds=doc_.crop();documentInfo_->setText(QString("%1 × %2 px · PNG output\n%3").arg(bounds.width()).arg(bounds.height()).arg(doc_.modified()?"Edited":"Unchanged"));
  }
  {
@@ -422,7 +422,7 @@ void EditorWindow::refresh(){
   cancel_->setText(edited?"Discard…":"Cancel");cancel_->setToolTip(edited?"Discard your edits and close without uploading (asks first)":"Close the editor without uploading");placeDestination();
  }
  const int percent=int(std::lround(canvas_->zoom()*100));
- status_->setText(QString("%1%").arg(percent));status_->setAccessibleName(QString("Zoom %1%").arg(percent));status_->setToolTip("Zoom");
+ status_->setText(QString("%1%").arg(percent));status_->setAccessibleName(QString("Zoom %1%").arg(percent));status_->setToolTip("Zoom: Ctrl+plus / Ctrl+minus. Fit: Ctrl+0. Actual size: Ctrl+1.\nCanvas pan: Alt+arrows; Alt+Shift+arrows pan farther.");status_->setAccessibleDescription(status_->toolTip());
 }
 
 void EditorWindow::syncGeometry(){
@@ -584,7 +584,7 @@ QJsonObject EditorWindow::viewState() const {
   {"lastShowInFolder",lastShowInFolder_.isEmpty()?QJsonValue():QJsonValue(lastShowInFolder_)},{"lastCopiedPath",lastCopiedPath_.isEmpty()?QJsonValue():QJsonValue(lastCopiedPath_)},
   {"cancelLabel",cancel_->text()},{"destination",QJsonObject{{"text",destination_->text()},{"above",destinationAbove_}}},
   {"preparationFailure",notice_->isHidden()?QJsonValue():QJsonValue(QJsonObject{{"text",noticeText_->text()}})},
-  {"discardConfirmation",QJsonObject{{"open",bool(discard_)},{"text",discard_?QJsonValue(discard_->text()):QJsonValue()}}}};
+  {"discardConfirmation",QJsonObject{{"open",bool(discard_)},{"text",discard_?QJsonValue(discard_->property("confirmationText").toString()):QJsonValue()}}}};
 }
 
 QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QString& message){
@@ -661,25 +661,27 @@ void EditorWindow::requestCancel(){
  if(busy_)return;
  if(discard_){discard_->raise();discard_->activateWindow();return;}
  if(!doc_.modified()){emit cancelRequested();return;}
- // Graphite::confirm's form, opened rather than exec'd so editor.view can
- // read and answer it: the safe choice is the default and Escape.
- auto* box=new QMessageBox(QMessageBox::NoIcon,"Discard edits?",
-  QString("Discard your edits and close the editor?\nNothing has been uploaded. Your marks and crop are lost%1.").arg(lastSave_["status"]=="saved"?"; copies you saved stay":""),QMessageBox::NoButton,this);
- box->setObjectName("confirmAction");box->setTextFormat(Qt::PlainText);
- auto* discard=box->addButton("Discard edits",QMessageBox::DestructiveRole);auto* keep=box->addButton("Keep editing",QMessageBox::RejectRole);
- discard->setObjectName("confirmDiscard");keep->setObjectName("keepEditingConfirm");
- box->setDefaultButton(keep);box->setEscapeButton(keep);VisualStyle::role(discard,"danger");
+ // An explicit footer keeps the safe choice first on every platform;
+ // open() lets editor.view inspect and answer the question asynchronously.
+ auto* box=new QDialog(this);box->setWindowTitle("Discard edits?");box->setObjectName("confirmAction");
+ const auto text=QString("Discard your edits and close the editor?\nNothing has been uploaded. Your marks and crop are lost%1.").arg(lastSave_["status"]=="saved"?"; copies you saved stay":"");
+ box->setProperty("confirmationText",text);box->setMinimumWidth(Graphite::scaled(360));
+ auto* layout=new QVBoxLayout(box);layout->setContentsMargins(24,20,24,16);layout->setSpacing(20);
+ auto* message=new QLabel(text,box);message->setTextFormat(Qt::PlainText);message->setWordWrap(true);layout->addWidget(message);
+ auto* footer=new QHBoxLayout;footer->setSpacing(8);footer->addStretch(1);
+ auto* keep=new QPushButton("Keep editing",box);auto* discard=new QPushButton("Discard edits",box);
+ keep->setObjectName("keepEditingConfirm");discard->setObjectName("confirmDiscard");footer->addWidget(keep);footer->addWidget(discard);layout->addLayout(footer);
+ keep->setDefault(true);VisualStyle::role(discard,"danger");
+ connect(keep,&QPushButton::clicked,box,&QDialog::reject);connect(discard,&QPushButton::clicked,box,&QDialog::accept);
  box->setWindowModality(Qt::WindowModal);box->setAttribute(Qt::WA_DeleteOnClose);
- connect(box,&QMessageBox::finished,this,[this,box,discard]{
-  const bool yes=box->clickedButton()==discard;
+ connect(box,&QDialog::finished,this,[this,box](int result){
   if(discard_==box)discard_=nullptr;
-  if(yes&&!busy_)emit cancelRequested();
+  if(result==QDialog::Accepted&&!busy_)emit cancelRequested();
  });
  discard_=box;box->open();keep->setFocus();
 }
 void EditorWindow::answerDiscard(bool discard){
- if(!discard_)return;
- for(auto* button:discard_->buttons())if(discard_->buttonRole(button)==(discard?QMessageBox::DestructiveRole:QMessageBox::RejectRole)){button->click();return;}
+ if(discard_)discard_->done(discard?QDialog::Accepted:QDialog::Rejected);
 }
 
 void EditorWindow::closeEvent(QCloseEvent* event){

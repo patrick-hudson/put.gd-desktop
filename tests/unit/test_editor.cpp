@@ -204,7 +204,7 @@ private slots:
   QMouseEvent move(QEvent::MouseMove,QPointF(origin+QPoint(100,90)),canvas.mapToGlobal(QPointF(origin+QPoint(100,90))),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
   QTest::mouseRelease(&canvas,Qt::LeftButton,{},origin+QPoint(100,90));
   QCOMPARE(doc.find(id)->rect.topLeft(),QPoint(90,80));QVERIFY(!canvas.editingText());
-  QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(100,90));QVERIFY(canvas.editingText());
+  QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+doc.find(id)->rect.center());QVERIFY(canvas.editingText());
   canvas.finishText(false);QCOMPARE(doc.find(id)->text,QString("Note"));
  }
  void textFontFamilyIsAgentSettableAndSizesTheBox(){
@@ -281,7 +281,7 @@ private slots:
   QVERIFY(doc.remove(id));QVERIFY(moved());QVERIFY(!doc.remove(id));QVERIFY(!moved());
  }
  // Keyboard-only spatial editing: Insert places the tool's mark (centred, a
- // quarter of the image), Tab and brackets select marks, arrows move,
+ // quarter of the image), brackets select marks, arrows move,
  // Shift+arrows resize, Ctrl takes ten-pixel steps. Each key is one undo step.
  void keyboardPlacesSelectsMovesAndResizesMarks(){
   EditDocument doc(noise({400,300},15));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
@@ -299,7 +299,7 @@ private slots:
   QTest::keyClick(&canvas,Qt::Key_Right,Qt::ShiftModifier);QCOMPARE(doc.find(second)->rect,before.rect.adjusted(0,0,1,0));
   QTest::keyClick(&canvas,Qt::Key_Up,Qt::ShiftModifier|Qt::ControlModifier);QCOMPARE(doc.find(second)->rect,before.rect.adjusted(0,0,1,-10));
   QVERIFY(doc.undo());QCOMPARE(doc.find(second)->rect,before.rect.adjusted(0,0,1,0));QVERIFY(doc.redo());canvas.documentChanged();
-  // Brackets cycle and wrap; Tab walks forward and leaves after the last mark.
+  // Brackets cycle and wrap; selection methods can also stop at either end.
   QTest::keyClick(&canvas,Qt::Key_BracketRight);QCOMPARE(canvas.selected(),first.id);
   QTest::keyClick(&canvas,Qt::Key_BracketLeft);QCOMPARE(canvas.selected(),second);
   canvas.select(0);QVERIFY(canvas.accessibleDescription().startsWith("2 marks, none selected."));
@@ -318,6 +318,61 @@ private slots:
   QVERIFY(canvas.setSelectionGeometry(QRect(5,6,20,-3)));QCOMPARE(doc.find(arrow.id)->from,QPoint(5,6));QCOMPARE(doc.find(arrow.id)->to,QPoint(25,3));
   // Select and Crop place nothing.
   canvas.setTool(Tool::Select);QCOMPARE(canvas.placeMark(),quint64(0));
+ }
+ void keyboardPansWithoutEditingMarksOrCrop(){
+  EditDocument doc(noise({400,300},17));EditorCanvas canvas(doc);canvas.resize(600,500);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  const auto id=doc.add(box(Shape::Kind::Rectangle,QRect(100,100,80,60)));canvas.documentChanged();canvas.select(id);canvas.setZoom(4);
+  const auto shape=*doc.find(id);const int history=doc.historyEntries();
+  const struct {Qt::Key key;QPoint delta;} moves[]={{Qt::Key_Left,{-32,0}},{Qt::Key_Right,{32,0}},{Qt::Key_Up,{0,-32}},{Qt::Key_Down,{0,32}}};
+  for(const auto& move:moves)for(const bool fast:{false,true}){
+   canvas.setZoom(4);canvas.panBy({100000,100000});canvas.panBy({-600,-400});
+   const auto before=canvas.visibleImageRect();
+   QTest::keyClick(&canvas,move.key,Qt::AltModifier|(fast?Qt::ShiftModifier:Qt::NoModifier));const auto actual=canvas.visibleImageRect();
+   canvas.panBy(-QPointF(move.delta)*(fast?4:1));QCOMPARE(canvas.visibleImageRect(),before);QVERIFY(actual!=before);
+   QCOMPARE(*doc.find(id),shape);QCOMPARE(canvas.selected(),id);QCOMPARE(doc.historyEntries(),history);
+  }
+  canvas.setTool(Tool::Crop);canvas.setZoom(4);const auto crop=canvas.cropDraft();
+  QTest::keyClick(&canvas,Qt::Key_Left,Qt::AltModifier|Qt::ShiftModifier);QCOMPARE(canvas.cropDraft(),crop);QCOMPARE(doc.historyEntries(),history);
+  QVERIFY(canvas.accessibleDescription().contains("Alt+arrow keys pan"));
+ }
+ void resizeHandlesUseLogicalTargetsAndNearestVisibleHandle_data(){
+  QTest::addColumn<int>("kind");QTest::addColumn<QRect>("rect");QTest::addColumn<QPoint>("press");QTest::addColumn<QPoint>("delta");QTest::addColumn<QRect>("expected");QTest::addColumn<double>("zoom");
+  QTest::newRow("box-corner-32px")<<int(Shape::Kind::Rectangle)<<QRect(100,100,100,80)<<QPoint(85,85)<<QPoint(-10,-10)<<QRect(90,90,110,90)<<1.;
+  QTest::newRow("box-edge-32px")<<int(Shape::Kind::Rectangle)<<QRect(100,100,100,80)<<QPoint(215,155)<<QPoint(10,0)<<QRect(100,100,110,80)<<1.;
+  QTest::newRow("overlapping-box-handles")<<int(Shape::Kind::Rectangle)<<QRect(100,100,20,20)<<QPoint(119,119)<<QPoint(10,10)<<QRect(100,100,30,30)<<1.;
+  QTest::newRow("arrow-end-32px")<<int(Shape::Kind::Arrow)<<QRect(100,100,100,80)<<QPoint(215,195)<<QPoint(10,10)<<QRect(100,100,110,90)<<1.;
+  QTest::newRow("overlapping-arrow-ends")<<int(Shape::Kind::Arrow)<<QRect(100,100,10,10)<<QPoint(109,109)<<QPoint(10,10)<<QRect(100,100,20,20)<<1.;
+  QTest::newRow("zoomed-out-target")<<int(Shape::Kind::Rectangle)<<QRect(100,100,100,80)<<QPoint(70,70)<<QPoint(-20,-20)<<QRect(80,80,120,100)<<.5;
+ }
+ void resizeHandlesUseLogicalTargetsAndNearestVisibleHandle(){
+  QFETCH(int,kind);QFETCH(QRect,rect);QFETCH(QPoint,press);QFETCH(QPoint,delta);QFETCH(QRect,expected);QFETCH(double,zoom);
+  EditDocument doc(noise({400,300},18));EditorCanvas canvas(doc);canvas.resize(600,500);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  auto shape=box(Shape::Kind(kind),rect);shape.from=rect.topLeft();shape.to=rect.topLeft()+QPoint(rect.width(),rect.height());const auto id=doc.add(shape);
+  canvas.setTool(Tool::Select);canvas.documentChanged();canvas.select(id);canvas.setZoom(zoom);
+  const QPointF origin((canvas.width()-400*zoom)/2,(canvas.height()-300*zoom)/2);const auto from=(origin+QPointF(press)*zoom).toPoint(),to=(origin+QPointF(press+delta)*zoom).toPoint();
+  const int history=doc.historyEntries();QTest::mousePress(&canvas,Qt::LeftButton,{},from);
+  QMouseEvent move(QEvent::MouseMove,QPointF(to),canvas.mapToGlobal(QPointF(to)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,{},to);
+  const auto* actual=doc.find(id);QVERIFY(actual);
+  if(actual->kind==Shape::Kind::Arrow){QCOMPARE(actual->from,expected.topLeft());QCOMPARE(actual->to,expected.topLeft()+QPoint(expected.width(),expected.height()));}else QCOMPARE(actual->rect,expected);
+  QCOMPARE(doc.historyEntries(),history+1);QCOMPARE(canvas.selected(),id);
+ }
+ void cropAndTextUseEnlargedVisibleHandleTargets(){
+  EditDocument doc(noise({400,300},19));EditorCanvas canvas(doc);canvas.resize(600,500);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  const QPoint origin(100,100);
+  auto drag=[&](QPoint from,QPoint to){
+   QTest::mousePress(&canvas,Qt::LeftButton,{},origin+from);
+   QMouseEvent move(QEvent::MouseMove,QPointF(origin+to),canvas.mapToGlobal(QPointF(origin+to)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+   QTest::mouseRelease(&canvas,Qt::LeftButton,{},origin+to);
+  };
+  canvas.setTool(Tool::Crop);QVERIFY(canvas.setSelectionGeometry(QRect(100,100,20,20)));
+  drag({119,119},{129,129});QCOMPARE(canvas.cropDraft(),QRect(100,100,30,30));QVERIFY(!doc.modified());canvas.cancelCrop();
+  auto text=box(Shape::Kind::Text,QRect(100,100,20,20));text.text="Label";text.fontPixels=20;const QFontMetrics metrics(textFont({},20));text.rect.setSize(QSize(metrics.horizontalAdvance(text.text)+1,metrics.height()));const auto id=doc.add(text);text=*doc.find(id);canvas.documentChanged();canvas.setTool(Tool::Select);canvas.select(id);
+  // Near the lower-left corner, the unpainted left midpoint must not steal its target.
+  drag(text.rect.bottomLeft()+QPoint(-15,-5),text.rect.bottomLeft()+QPoint(-25,5));QVERIFY(doc.find(id)->fontPixels>text.fontPixels);QVERIFY(doc.find(id)->rect.x()<text.rect.x());
+  QVERIFY(doc.undo());canvas.documentChanged();canvas.select(id);
+  // A point just outside the 32 px square does not resize or move the mark.
+  drag({83,83},{73,73});QCOMPARE(*doc.find(id),text);
  }
  void keyboardCropMovesResizesAndApplies(){
   EditDocument doc(noise({400,300},16));EditorCanvas canvas(doc);canvas.resize(600,500);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));

@@ -5,7 +5,7 @@
 #include <QJsonObject>
 #include <QPointer>
 #include <QWidget>
-class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QMessageBox;
+class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QDialog;
 
 namespace putgd {
 class FileDialog;
@@ -120,7 +120,7 @@ private:
  QWidget* notice_=nullptr;QGridLayout* footerGrid_=nullptr;
  QLabel* noticeText_=nullptr;QPushButton *keepEditing_=nullptr,*saveInstead_=nullptr;
  bool destinationAbove_=false;
- QPointer<QMessageBox> discard_;
+ QPointer<QDialog> discard_;
  FileDialog* chooser_=nullptr;
  // The last Save a copy outcome and Show in folder result, for editor.view,
  // and the document generation the saved copy holds.

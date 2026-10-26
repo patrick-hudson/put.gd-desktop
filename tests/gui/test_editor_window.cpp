@@ -9,7 +9,7 @@
 #include <QComboBox>
 #include <QFileDialog>
 #include <QImageReader>
-#include <QMessageBox>
+#include <QDialog>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QLabel>
@@ -246,15 +246,16 @@ private slots:
   state=view({{"action","inspect"}});QVERIFY(code.isEmpty());QVERIFY(state["busy"].toBool());QCOMPARE(state["message"].toObject()["text"].toString(),QString("Preparing the edited image…"));
   window.allowClose();
  }
- // Tab walks the marks and then leaves the canvas, so the keyboard is never trapped.
- void tabWalksMarksThenLeavesTheCanvas(){
+ void tabLeavesCanvasWithSelectionAndPropertiesIntact(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   add(doc,{{"kind","redact"},{"rect",QJsonArray{10,10,50,20}}});add(doc,{{"kind","blur"},{"rect",QJsonArray{100,100,50,20}}});window.documentEdited();
-  window.selectTool(Tool::Select);auto& canvas=window.canvas();
-  QTest::keyClick(&canvas,Qt::Key_Tab);QCOMPARE(canvas.selected(),doc.shapes().at(0).id);
-  QTest::keyClick(&canvas,Qt::Key_Tab);QCOMPARE(canvas.selected(),doc.shapes().at(1).id);
-  QTest::keyClick(&canvas,Qt::Key_Backtab);QCOMPARE(canvas.selected(),doc.shapes().at(0).id);
-  QTest::keyClick(&canvas,Qt::Key_Tab);QTest::keyClick(&canvas,Qt::Key_Tab);QCOMPARE(canvas.selected(),quint64(0));
+  window.selectTool(Tool::Select);auto& canvas=window.canvas();window.activateWindow();canvas.setFocus();
+  QTest::keyClick(&canvas,Qt::Key_BracketRight);const auto id=doc.shapes().at(0).id;QCOMPARE(canvas.selected(),id);
+  auto* x=window.findChild<QSpinBox*>("geometryX");QVERIFY(x&&x->isVisible());
+  QTest::keyClick(&canvas,Qt::Key_Tab);QCOMPARE(QApplication::focusWidget(),x);QCOMPARE(canvas.selected(),id);QVERIFY(x->isVisible());
+  QTest::keyClick(x,Qt::Key_Backtab);QCOMPARE(QApplication::focusWidget(),&canvas);QCOMPARE(canvas.selected(),id);
+  QTest::keyClick(&canvas,Qt::Key_BracketLeft);QCOMPARE(canvas.selected(),doc.shapes().at(1).id);
+  QTest::keyClick(&canvas,Qt::Key_Escape);QCOMPARE(canvas.selected(),quint64(0));QVERIFY(!x->isVisible());
   // The Place button is the pointer-free route for each drawing tool.
   window.selectTool(Tool::Highlight);auto* place=window.findChild<QPushButton*>("placeMark");QVERIFY(place&&place->isVisible());QCOMPARE(place->text(),QString("Place highlight"));
   place->click();QCOMPARE(doc.shapes().size(),3);QCOMPARE(doc.shapes().last().kind,Shape::Kind::Highlight);
@@ -317,16 +318,23 @@ private slots:
   QSignalSpy cancels(&window,&EditorWindow::cancelRequested);QString code,message;auto view=[&](const QJsonObject& params){code.clear();return window.viewCommand(params,code,message);};
   auto state=view({{"action","discard"}});QVERIFY2(code.isEmpty(),qPrintable(message));
   QVERIFY(state["discardConfirmation"].toObject()["open"].toBool());QVERIFY(state["discardConfirmation"].toObject()["text"].toString().contains("Discard your edits"));
-  QCOMPARE(state["cancelLabel"].toString(),QString("Discard…"));QVERIFY(window.findChild<QMessageBox*>("confirmAction"));
+  QCOMPARE(state["cancelLabel"].toString(),QString("Discard…"));auto* box=window.findChild<QDialog*>("confirmAction");QVERIFY(box);
+  auto* keep=box->findChild<QPushButton*>("keepEditingConfirm");auto* discard=box->findChild<QPushButton*>("confirmDiscard");QVERIFY(keep&&discard);
+  QApplication::processEvents();QVERIFY(keep->mapTo(box,QPoint()).x()<discard->mapTo(box,QPoint()).x());QVERIFY(keep->isDefault());QVERIFY(!discard->isDefault());QTRY_VERIFY(keep->hasFocus());
+  QTest::keyClick(keep,Qt::Key_Escape);QVERIFY(!window.viewState()["discardConfirmation"].toObject()["open"].toBool());QCOMPARE(cancels.size(),0);
+  view({{"action","discard"}});
   view({{"action","tool"},{"tool","blur"}});QCOMPARE(code,QString("editor_confirming"));
   state=view({{"action","keepEditing"}});QVERIFY(code.isEmpty());QVERIFY(!state["discardConfirmation"].toObject()["open"].toBool());QCOMPARE(cancels.size(),0);
   view({{"action","confirmDiscard"}});QCOMPARE(code,QString("invalid_request"));
   // The close button asks the same question.
   QVERIFY(!window.close());state=view({{"action","inspect"}});QVERIFY(state["discardConfirmation"].toObject()["open"].toBool());
   view({{"action","confirmDiscard"}});QVERIFY(code.isEmpty());QCOMPARE(cancels.size(),1);
+  view({{"action","discard"}});box=nullptr;for(auto* candidate:window.findChildren<QDialog*>("confirmAction"))if(candidate->isVisible())box=candidate;QVERIFY(box);
+  keep=box->findChild<QPushButton*>("keepEditingConfirm");discard=box->findChild<QPushButton*>("confirmDiscard");QTRY_VERIFY(keep->hasFocus());
+  QTest::keyClick(keep,Qt::Key_Tab);QCOMPARE(QApplication::focusWidget(),discard);QTest::keyClick(discard,Qt::Key_Return);QCOMPARE(cancels.size(),2);
   // Submitting (agents can) closes an open question without discarding.
   view({{"action","discard"}});QVERIFY(window.viewState()["discardConfirmation"].toObject()["open"].toBool());
-  window.setBusy("Preparing the edited image…");QVERIFY(!window.viewState()["discardConfirmation"].toObject()["open"].toBool());QCOMPARE(cancels.size(),1);
+  window.setBusy("Preparing the edited image…");QVERIFY(!window.viewState()["discardConfirmation"].toObject()["open"].toBool());QCOMPARE(cancels.size(),2);
   window.allowClose();
  }
  // An encoding or size failure gives the draft back with every control and

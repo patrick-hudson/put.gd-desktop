@@ -37,6 +37,7 @@
 #include <QToolButton>
 #include <QElapsedTimer>
 #include <QTimer>
+#include <QTest>
 #include "fixtures/Waits.h"
 #include "ui/Theme.h"
 #include <QFile>
@@ -45,7 +46,6 @@
 #ifdef PUTGD_PREVIEW_REVIEW
 #include "record/ReviewWindow.h"
 #include "ui/RegionOverlay.h"
-#include <QTest>
 #include "record/Overlays.h"
 #endif
 using namespace putgd;
@@ -246,12 +246,13 @@ int main(int argc,char** argv){
   editor.canvas().cancelCrop();editor.resize(900,620);if(!grab("24-editor-compact"))return 2;
   // A selected mark with its position and size fields, then Save a copy… feedback.
   editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));if(!grab("26-editor-selected"))return 2;
+  editor.activateWindow();editor.canvas().setFocus(Qt::TabFocusReason);QTest::keyClick(&editor.canvas(),Qt::Key_Tab);if(!grab("26a-editor-properties-focus"))return 2;
   editor.showSaved("/home/synthetic/Pictures/put.gd-edit-2026-10-26-14-03-22.png");if(!grab("27-editor-saved"))return 2;
   editor.showSavedCopy();if(!grab("27a-editor-folder-failed"))return 2;
   editor.showSaveFailed("/media/synthetic/readonly/put.gd-edit-2026-10-26-14-03-22.png","Permission denied");if(!grab("28-editor-save-failed"))return 2;
   editor.canvas().select(0);editor.resize(900,620);
   // Discard… asks first; the dialog alone, as the desktop shows it over the editor.
-  editor.viewCommand({{"action","discard"}},code,message);if(auto* box=editor.findChild<QMessageBox*>("confirmAction")){putgd::test::settle(450);app.processEvents();const auto image=box->grab();if(!image.save(QDir(output).filePath("19-editor-discard-confirm.png")))return 2;captures.append(QJsonObject{{"file","19-editor-discard-confirm.png"},{"width",image.width()},{"height",image.height()}});}else return 2;
+  editor.viewCommand({{"action","discard"}},code,message);if(auto* box=editor.findChild<QDialog*>("confirmAction")){putgd::test::settle(450);app.processEvents();const auto image=box->grab();if(!image.save(QDir(output).filePath("19-editor-discard-confirm.png")))return 2;captures.append(QJsonObject{{"file","19-editor-discard-confirm.png"},{"width",image.width()},{"height",image.height()}});}else return 2;
   editor.viewCommand({{"action","keepEditing"}},code,message);
   editor.setBusy("Preparing the edited image…");if(!grab("25-editor-finalizing"))return 2;
   // A result over the output's limit: editing resumes with the reason, and a

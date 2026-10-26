@@ -78,7 +78,6 @@ protected:
  void keyPressEvent(QKeyEvent*) override;
  void keyReleaseEvent(QKeyEvent*) override;
  bool eventFilter(QObject*,QEvent*) override;
- bool event(QEvent*) override;
 private:
  void announce();
  bool nudge(const QPoint& delta,bool resize);
@@ -88,7 +87,7 @@ private:
  QPointF toWidget(const QPointF&) const;
  QRectF toWidget(const QRect&) const;
  QRect boxFrom(const QPointF&,const QPointF&) const;
- int handleAt(const QRect&,const QPointF& widgetPoint) const;
+ int handleAt(const QRect&,const QPointF& widgetPoint,bool cornersOnly=false) const;
  int arrowHandleAt(const Shape&,const QPointF& widgetPoint) const;
  // The selected shape's handle under the pointer: arrow ends, a box's eight
  // handles, or a text label's four corners (text keeps its proportions).
