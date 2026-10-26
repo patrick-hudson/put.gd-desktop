@@ -808,6 +808,12 @@ if(BUILD_TESTING)
   add_executable(putgd-redesign-preview tests/gui/redesign_preview.cpp)
   target_include_directories(putgd-redesign-preview PRIVATE tests src)
   target_link_libraries(putgd-redesign-preview PRIVATE putgd_ui_application putgd_editor_window putgd_app putgd_s3 Qt6::Test)
+  if(TARGET putgd-record)
+    # The review window and control bar states (synthetic; Graphite acceptance).
+    target_sources(putgd-redesign-preview PRIVATE src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
+    target_link_libraries(putgd-redesign-preview PRIVATE putgd_fonts putgd_file_dialog Qt6::DBus PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
+    target_compile_definitions(putgd-redesign-preview PRIVATE PUTGD_PREVIEW_REVIEW=1)
+  endif()
   # #237: theme switch timing with History (gallery) and Settings open.
   add_executable(putgd-bench-theme-switch tests/performance/bench_theme_switch.cpp)
   target_include_directories(putgd-bench-theme-switch PRIVATE tests src)

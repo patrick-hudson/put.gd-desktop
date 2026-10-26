@@ -453,10 +453,11 @@ private slots:
   for (int i = 0; i < images.size(); ++i) {
    QCOMPARE(images[i].width, 24 * (i+1)); QCOMPARE(images[i].height, images[i].width);
    QCOMPARE(images[i].bytes.size(), images[i].width * images[i].height * 4);
-   int opaqueBlue = 0;
+   // The idle tray tint on a dark panel (Graphite #D6D6D2), as ARGB bytes.
+   int opaqueIdle = 0;
    for (int j = 0; j < images[i].bytes.size(); j += 4)
-    if (uchar(images[i].bytes[j]) == 255 && uchar(images[i].bytes[j+1]) == 155 && uchar(images[i].bytes[j+2]) == 188 && uchar(images[i].bytes[j+3]) == 255) ++opaqueBlue;
-   QVERIFY(opaqueBlue > 10);
+    if (uchar(images[i].bytes[j]) == 255 && uchar(images[i].bytes[j+1]) == 0xD6 && uchar(images[i].bytes[j+2]) == 0xD6 && uchar(images[i].bytes[j+3]) == 0xD2) ++opaqueIdle;
+   QVERIFY(opaqueIdle > 10);
   }
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
