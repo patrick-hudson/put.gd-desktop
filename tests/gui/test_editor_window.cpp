@@ -149,7 +149,7 @@ private slots:
  // The toolbar shows only the zoom; the size and edited state live in the
  // Document details, which stay outside the scrolling properties.
  void toolbarShowsZoomAndDocumentKeepsTheSize(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,1100);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* zoom=window.findChild<QLabel*>("editorZoom");QVERIFY(zoom);
   QVERIFY2(QRegularExpression("^\\d+%$").match(zoom->text()).hasMatch(),qPrintable(zoom->text()));QVERIFY(zoom->accessibleName().startsWith("Zoom "));
   auto* info=window.findChild<QLabel*>("editorDocumentInfo");QVERIFY(info);QVERIFY(info->text().contains("400 × 260 px"));
@@ -365,6 +365,56 @@ private slots:
   QVERIFY(destination->geometry().bottom()<upload->geometry().top());QCOMPARE(destination->text(),longName);
   QVERIFY(destination->height()>=destination->heightForWidth(destination->width()));
   window.resize(1400,700);QApplication::processEvents();QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
+ }
+ void removeMarkIsVisibleUndoableAndAgentControllable(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1100,900);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  add(doc,{{"kind","rectangle"},{"rect",QJsonArray{10,10,50,20}}});window.documentEdited();const auto original=doc.shapes().first();
+  auto* remove=window.findChild<QPushButton*>("removeMark");QVERIFY(remove);QVERIFY(!remove->isVisible());
+  window.selectTool(Tool::Select);window.canvas().select(original.id);QVERIFY(remove->isVisible());QVERIFY(!remove->icon().isNull());QVERIFY(remove->toolTip().contains("Delete"));
+  remove->click();QVERIFY(doc.shapes().isEmpty());QCOMPARE(window.canvas().selected(),quint64(0));QVERIFY(!remove->isVisible());
+  QVERIFY(doc.undo());window.documentEdited();QCOMPARE(doc.shapes().first(),original);
+  QString code,message;window.viewCommand({{"action","select"},{"shapeId",double(original.id)}},code,message);
+  window.viewCommand({{"action","removeMark"},{"extra",true}},code,message);QCOMPARE(code,QString("invalid_request"));QCOMPARE(doc.shapes().size(),1);
+  code.clear();auto state=window.viewCommand({{"action","removeMark"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(state["selectedShapeId"].isNull());QVERIFY(doc.shapes().isEmpty());
+  QVERIFY(doc.undo());window.documentEdited();QCOMPARE(doc.shapes().first(),original);
+  window.canvas().select(original.id);QTest::keyClick(&window.canvas(),Qt::Key_Delete);QVERIFY(doc.shapes().isEmpty());
+  code.clear();window.viewCommand({{"action","removeMark"}},code,message);QCOMPARE(code,QString("editor_no_selection"));
+  QVERIFY(doc.undo());window.documentEdited();window.canvas().select(original.id);window.setBusy("Preparing…");QVERIFY(!remove->isEnabled());
+  code.clear();window.viewCommand({{"action","removeMark"}},code,message);QCOMPARE(code,QString("editor_finalizing"));QCOMPARE(doc.shapes().size(),1);
+ }
+ void shortBodyScrollsDocumentAndKeepsExportAndRecoveryVisible(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Private upload to Production screenshots for customer support (EU)");window.resize(1000,1100);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* scroll=window.findChild<QScrollArea*>("editorPropertiesScroll");auto* document=window.findChild<QWidget*>("editorDocument");QVERIFY(scroll&&document);
+  PUTGD_TRY_VERIFY(!scroll->isAncestorOf(document));
+  window.showSaveFailed("/synthetic/copy.png","Permission denied");window.resize(900,620);
+  const QString reason="The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.";
+  window.showPreparationFailed(reason);PUTGD_TRY_VERIFY(scroll->isAncestorOf(document));
+  QVERIFY(scroll->viewport()->height()>=Graphite::scaled(180));
+  auto* label=window.findChild<QLabel*>("editorPreparationReason");QCOMPARE(label->text(),reason);QVERIFY(label->height()>=label->heightForWidth(label->width()));
+  const auto footer=window.findChild<QWidget*>("editorFooter");
+  for(const auto name:{"keepEditing","saveCopyInstead","editorUpload","editorCancel"}){
+   auto* button=window.findChild<QPushButton*>(name);QVERIFY(button&&button->isVisible());QVERIFY(footer->rect().contains(QRect(button->mapTo(footer,QPoint()),button->size())));
+  }
+  auto* choose=window.findChild<QPushButton*>("chooseAnotherLocation");scroll->ensureWidgetVisible(choose);QApplication::processEvents();
+  QVERIFY(scroll->viewport()->rect().contains(QRect(choose->mapTo(scroll->viewport(),QPoint()),choose->size())));
+  window.resize(1000,1100);PUTGD_TRY_VERIFY(!scroll->isAncestorOf(document));QVERIFY(choose->isVisible());
+ }
+ void failedFolderOpenShowsCopyPathRecoveryAndClearsForANewSave(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  QTemporaryDir dir;const auto path=dir.filePath("missing.png");window.showSaved(path);
+  QString code,message;auto state=window.viewCommand({{"action","showSavedCopy"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(!state["lastShowInFolder"].toObject()["opened"].toBool(true));
+  auto* error=window.findChild<QLabel*>("editorFolderError");QVERIFY(error&&error->isVisible());QVERIFY(error->text().contains("Copy its path instead"));
+  auto* copy=window.findChild<QPushButton*>("copySavedPath");QVERIFY(copy->isVisible());
+  auto* scroll=window.findChild<QScrollArea*>("editorPropertiesScroll");
+  if(scroll->isAncestorOf(error)){
+   PUTGD_TRY_VERIFY(scroll->viewport()->rect().contains(QRect(error->mapTo(scroll->viewport(),QPoint()),error->size())));
+   QVERIFY(scroll->viewport()->rect().contains(QRect(copy->mapTo(scroll->viewport(),QPoint()),copy->size())));
+  }
+  copy->click();QCOMPARE(QGuiApplication::clipboard()->text(),path);
+  QString reason;QVERIFY(!window.writeCopy(path,reason).isEmpty());QVERIFY(!error->isVisible());QVERIFY(window.viewState()["lastShowInFolder"].isNull());
+  host::setTestOpener([](const QUrl&){});auto restore=qScopeGuard([]{host::setTestOpener({});});
+  QVERIFY(window.showSavedCopy());QVERIFY(window.viewState()["lastShowInFolder"].toObject()["opened"].toBool());QVERIFY(!error->isVisible());
+  window.showSaveFailed({},"The chooser failed");QVERIFY(!error->isVisible());QVERIFY(!copy->isVisible());
  }
  void unmodifiedCancelNeedsNoConfirmation(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));

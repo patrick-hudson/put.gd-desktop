@@ -5,7 +5,7 @@
 #include <QJsonObject>
 #include <QPointer>
 #include <QWidget>
-class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QMessageBox;
+class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QMessageBox;
 
 namespace putgd {
 class FileDialog;
@@ -72,10 +72,13 @@ protected:
  void closeEvent(QCloseEvent*) override;
  void showEvent(QShowEvent*) override;
  void resizeEvent(QResizeEvent*) override;
+ bool eventFilter(QObject*,QEvent*) override;
 private:
  void refresh();
  void syncSaved();
  void placeDestination();
+ void placeDocument();
+ void revealDocument();
  // The preparation failure strip; empty hides it. While it shows, its own
  // Save a copy… stands in for the footer's.
  void setNotice(const QString& reason);
@@ -104,12 +107,14 @@ private:
  QComboBox* width_=nullptr;
  QSlider* strength_=nullptr;
  QLabel *hint_=nullptr,*status_=nullptr,*message_=nullptr,*toolTitle_=nullptr,*toolHelp_=nullptr,*documentInfo_=nullptr,*destination_=nullptr;
- QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={},*savedLabel_=nullptr,*saveError_=nullptr;
+ QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={},*savedLabel_=nullptr,*saveError_=nullptr,*folderError_=nullptr;
  QSpinBox* geometry_[4]={};
  QWidget *geometryRow_=nullptr,*placeRow_=nullptr,*sizeLabels_=nullptr,*optionsRule_=nullptr;
  bool syncingGeometry_=false;
  Graphite::WindowHeader* header_=nullptr;
- QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr;
+ QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr,*remove_=nullptr;
+ QWidget *side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;
+ QVBoxLayout *properties_=nullptr,*sideLayout_=nullptr;bool documentScrolling_=false;
  // The footer: a preparation failure, the destination (above the actions
  // when it doesn't fit beside them), then the action row.
  QWidget* notice_=nullptr;QGridLayout* footerGrid_=nullptr;
@@ -119,7 +124,7 @@ private:
  FileDialog* chooser_=nullptr;
  // The last Save a copy outcome and Show in folder result, for editor.view,
  // and the document generation the saved copy holds.
- QJsonObject lastSave_,lastShowInFolder_;QString lastCopiedPath_;quint64 savedGeneration_=0;
+ QJsonObject lastSave_,lastShowInFolder_;QString lastCopiedPath_;quint64 savedGeneration_=0,folderRequest_=0;
  QColor annotationColor_=QColor(220,38,38),highlightColor_=QColor(250,204,21);
  bool closing_=false,busy_=false,shown_=false;
 };

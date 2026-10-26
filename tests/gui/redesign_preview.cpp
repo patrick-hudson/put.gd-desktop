@@ -227,7 +227,7 @@ int main(int argc,char** argv){
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"rect",QJsonArray{61,348,180,28}}}}},
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{620,530}},{"text","New total"}}}}};
   if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
-  EditorWindow editor(doc);editor.setDestination("Upload to Project archive");editor.resize(1180,820);editor.show();
+  EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);editor.show();
   auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();const auto image=editor.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
   editor.selectTool(editor::Tool::Redact);if(!grab("20-editor-redact"))return 2;
   editor.selectTool(editor::Tool::Blur);if(!grab("21-editor-blur-warning"))return 2;
@@ -238,6 +238,7 @@ int main(int argc,char** argv){
   // A selected mark with its position and size fields, then Save a copy… feedback.
   editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));if(!grab("26-editor-selected"))return 2;
   editor.showSaved("/home/synthetic/Pictures/put.gd-edit-2026-10-26-14-03-22.png");if(!grab("27-editor-saved"))return 2;
+  editor.showSavedCopy();if(!grab("27a-editor-folder-failed"))return 2;
   editor.showSaveFailed("/media/synthetic/readonly/put.gd-edit-2026-10-26-14-03-22.png","Permission denied");if(!grab("28-editor-save-failed"))return 2;
   editor.canvas().select(0);editor.resize(900,620);
   // Discard… asks first; the dialog alone, as the desktop shows it over the editor.
@@ -246,7 +247,7 @@ int main(int argc,char** argv){
   editor.setBusy("Preparing the edited image…");if(!grab("25-editor-finalizing"))return 2;
   // A result over the output's limit: editing resumes with the reason, and a
   // destination too long to sit beside the actions wraps above them.
-  editor.setDestination("Upload to Production screenshots for customer support (EU)");
+  editor.setDestination("Upload to Production screenshots for customer support (EU) · Shared link");
   editor.showPreparationFailed("The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.");if(!grab("29-editor-preparation-failed"))return 2;
   editor.allowClose();editor.close();
  }

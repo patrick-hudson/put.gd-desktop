@@ -315,6 +315,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'geometry', 'rect': [10, 20, -30, 40]}, 'editor.view', {'id': 'synthetic-operation', 'action': 'geometry', 'rect': [10, 20, -30, 40]}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'zoom', 'percent': 150}, 'editor.view', {'id': 'synthetic-operation', 'action': 'zoom', 'percent': 150}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'pan', 'delta': [-40, 25]}, 'editor.view', {'id': 'synthetic-operation', 'action': 'pan', 'delta': [-40, 25]}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'removeMark'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'removeMark'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'copySavedPath'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'copySavedPath'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'discard'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'discard'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'keepEditing'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'keepEditing'}),

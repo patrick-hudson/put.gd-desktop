@@ -97,6 +97,28 @@ private slots:
   QCOMPARE(journal.operation(id).items.size(),cancelQueued?0:1);
   PUTGD_TRY_COMPARE(f.operations->diagnostics()["activeOperations"].toInt(),0);
  }
+ void editorSummaryUsesResolvedSharingAndTheCompleteDestination_data(){
+  QTest::addColumn<QString>("mode");QTest::addColumn<bool>("local");QTest::addColumn<QString>("prefix");QTest::addColumn<QString>("suffix");
+  QTest::newRow("private")<<QString("private")<<false<<QString("Private upload to ")<<QString();
+  QTest::newRow("shared")<<QString("share")<<false<<QString("Upload to ")<<QString(" · Shared link");
+  QTest::newRow("provider-default")<<QString("default")<<false<<QString("Upload to ")<<QString(" · Shared link");
+  QTest::newRow("local")<<QString("default")<<true<<QString("Save to the local archive")<<QString();
+ }
+ void editorSummaryUsesResolvedSharingAndTheCompleteDestination(){
+  QFETCH(QString,mode);QFETCH(bool,local);QFETCH(QString,prefix);QFETCH(QString,suffix);
+  Fixture f;PUTGD_TRY_VERIFY(f.operations->ready());auto doc=f.settings->document();auto actions=doc["actions"].toObject();auto edit=actions["edit"].toObject();
+  edit["publicationMode"]=mode;if(local){edit["destination"]="local";edit["profileId"]=QJsonValue();}actions["edit"]=edit;doc["actions"]=actions;
+  const QString label=QString(128,QChar('W'));auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["label"]=label;profiles[0]=profile;doc["profiles"]=profiles;
+  QVERIFY(f.settings->save(doc,f.settings->revision()));
+  const auto invoked=call([&](JsonReply r){f.operations->invoke("edit",r);});QVERIFY2(!invoked.error,qPrintable(invoked.error.message));
+  const auto id=invoked.result["operationId"].toString();auto state=command(*f.operations,id,"inspect");QVERIFY2(!state.error,qPrintable(state.error.message));
+  const auto expected=local?prefix:prefix+label+suffix;QCOMPARE(state.result["destination"].toString(),expected);QCOMPARE(state.result["view"].toObject()["destination"].toObject()["text"].toString(),expected);
+  // The new view action crosses the resident/helper boundary, then undo restores it.
+  QVERIFY(!command(*f.operations,id,"apply",redactSecret()).error);auto selected=command(*f.operations,id,"view",{{"action","selectNext"}});QVERIFY(!selected.error);
+  QVERIFY(!command(*f.operations,id,"view",{{"action","removeMark"}}).error);QCOMPARE(command(*f.operations,id,"inspect").result["shapes"].toArray().size(),0);
+  QVERIFY(!command(*f.operations,id,"apply",{{"commands",QJsonArray{QJsonObject{{"op","undo"}}}}}).error);QCOMPARE(command(*f.operations,id,"inspect").result["shapes"].toArray().size(),1);
+  QVERIFY(!command(*f.operations,id,"cancel").error);
+ }
  void uploadPublishesOnlyTheRedactedResult(){
   Fixture f;PUTGD_TRY_VERIFY(f.operations->ready());
   QVERIFY(f.operations->capabilities()["editor"].toObject()["available"].toBool());
@@ -104,7 +126,7 @@ private slots:
   const auto id=invoked.result["operationId"].toString();QCOMPARE(invoked.result["operation"].toObject()["action"].toString(),QString("edit"));
   HistoryStore journal(f.operations->databasePath());
   auto state=command(*f.operations,id,"inspect");QVERIFY2(!state.error,qPrintable(state.error.code));QCOMPARE(state.result["operationId"].toString(),id);
-  QCOMPARE(state.result["destination"].toString(),QString("Upload to Synthetic opaque provider"));
+  QCOMPARE(state.result["destination"].toString(),QString("Upload to Synthetic opaque provider · Shared link"));
   PUTGD_TRY_COMPARE(journal.operation(id).state,QString("editing"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),0);
   // One editor per resident: a second request raises it and names the open edit.
   auto second=call([&](JsonReply r){f.operations->invoke("edit",r);});QCOMPARE(second.error.code,QString("editor_active"));QCOMPARE(second.error.details["operationId"].toString(),id);

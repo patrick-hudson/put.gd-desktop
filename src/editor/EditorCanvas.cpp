@@ -389,6 +389,11 @@ void EditorCanvas::wheelEvent(QWheelEvent* event){
  event->accept();
 }
 
+bool EditorCanvas::removeSelected(){
+ if(!selected_||cropPending()||editingText()||!doc_.remove(selected_))return false;
+ selected_=0;emit selectionChanged();update();emit changed();return true;
+}
+
 void EditorCanvas::keyPressEvent(QKeyEvent* event){
  if(event->key()==Qt::Key_Space&&!event->isAutoRepeat()){space_=true;setCursor(Qt::OpenHandCursor);return;}
  if(event->key()==Qt::Key_Control){updateHoverCursor(mapFromGlobal(QCursor::pos()),Qt::ControlModifier);return;}
@@ -410,7 +415,7 @@ void EditorCanvas::keyPressEvent(QKeyEvent* event){
  if((event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter)&&!(event->modifiers()&Qt::ControlModifier)){
   if(const auto* shape=doc_.find(selected_);shape&&shape->kind==Shape::Kind::Text){beginText(QPointF(shape->rect.topLeft()),shape);return;}
  }
- if((event->key()==Qt::Key_Delete||event->key()==Qt::Key_Backspace)&&selected_){if(doc_.remove(selected_)){selected_=0;emit selectionChanged();update();emit changed();}return;}
+ if((event->key()==Qt::Key_Delete||event->key()==Qt::Key_Backspace)&&selected_){removeSelected();return;}
  if(event->key()==Qt::Key_Escape&&selected_){selected_=0;emit selectionChanged();update();return;}
  QWidget::keyPressEvent(event);
 }

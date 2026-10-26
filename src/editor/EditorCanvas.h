@@ -39,6 +39,8 @@ public:
  // Keyboard and agent selection: one shape (0 clears), or the next/previous
  // shape in paint order. Without wrap, stepping past either end returns false.
  void select(quint64 id);
+ // Delete, Remove mark and editor.view share this undoable operation.
+ bool removeSelected();
  bool selectAdjacent(int step,bool wrap);
  // The current drawing tool's mark, centred in the visible image at a quarter
  // of its area (Insert); Text opens a label there. Returns the new shape's id,

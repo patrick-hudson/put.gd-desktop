@@ -47,6 +47,16 @@ ActionSettings routeOf(const Operation& op) {
  if(op.action==OperationService::diagnosticsAction)return {"upload",op.destination.profileId,{},"share"};
  return op.settings.actions.value(op.action);
 }
+QJsonObject uploadReviewOptions(const Operation& op,const ProviderRegistry& providers) {
+ const auto route=op.settings.actions.value(op.action);
+ if(route.destination!="upload"||op.destination.profileId.isEmpty())return {{"destination","local"},{"sharingMode","local"},{"summary","Save to the local archive"}};
+ const auto profile=op.settings.profiles.value(op.destination.profileId);
+ auto mode=route.publicationMode;
+ if(mode=="default")if(auto provider=providers.find(op.destination.providerId))mode=provider->defaultPublicationMode(op.destination);
+ const auto label=profile["label"].toString(op.destination.profileId);
+ const auto summary=mode=="private"?QStringLiteral("Private upload to %1").arg(label):QStringLiteral("Upload to %1 · Shared link").arg(label);
+ return {{"destination",label},{"sharingMode",mode},{"summary",summary}};
+}
 // On-demand previews (#190) answer within historyPreviewReplyMs: at most this
 // long queued, then a local copy check and a decode of up to 10 s each.
 constexpr qsizetype maximumQueuedPreviews=3;
@@ -83,16 +93,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);
  connect(&settings_,&SettingsService::accepted,this,[this]{uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);pump();});
  RecordingService::Host host;
- host.reviewOptions=[this](const Operation& op){
-  const auto route=op.settings.actions.value(op.action);
-  if(route.destination!="upload"||op.destination.profileId.isEmpty())return QJsonObject{{"destination","local"},{"sharingMode","local"},{"summary","Save to the local archive"}};
-  const auto profile=op.settings.profiles.value(op.destination.profileId);
-  auto mode=route.publicationMode;
-  if(mode=="default")if(auto provider=providers_.find(op.destination.providerId))mode=provider->defaultPublicationMode(op.destination);
-  const auto label=profile["label"].toString(op.destination.profileId);
-  const auto summary=mode=="private"?QStringLiteral("Private upload to %1").arg(label):QStringLiteral("Upload to %1 · Shared link").arg(label);
-  return QJsonObject{{"destination",label},{"sharingMode",mode},{"summary",summary}};
- };
+ host.reviewOptions=[this](const Operation& op){return uploadReviewOptions(op,providers_);};
  host.settings=[this]{return settings_.snapshot();};
  host.accept=[this](Operation& op){return acceptRecording(op);};
  host.persist=[this](const Operation& op,std::function<void(Error)> done){const auto path=databasePath();background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[done](Error e,QJsonObject){done(e);});};
@@ -351,10 +352,7 @@ void OperationService::enqueue(Job job) {
  job.op.phase="queued";observe(job.op.publicJson());queue_.enqueue(std::move(job));pump();
 }
 QString OperationService::editorDestination(const Operation& op) const {
- const auto route=op.settings.actions.value(op.action);
- if(route.destination!="upload"||route.profileId.isEmpty())return "Save to the local archive";
- const auto label=op.settings.profiles.value(route.profileId)["label"].toString();
- return label.isEmpty()?QStringLiteral("Upload"):QStringLiteral("Upload to %1").arg(label.left(160));
+ return uploadReviewOptions(op,providers_)["summary"].toString();
 }
 // The acquired source stays private to the editor stage. Only the editor's
 // validated PNG becomes an artifact, preview, archive or publication input.
