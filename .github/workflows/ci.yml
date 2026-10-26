@@ -1,6 +1,7 @@
 name: CI
 # Pull requests run the jobs their changed paths can affect. Pushes to nightly,
-# manual runs and release callers run everything. The `CI` job is the single
+# manual runs and stable callers run everything. Nightlies can reuse verified
+# source checks at the exact commit. The `CI` job is the single
 # required check: it fails when any selected job did not succeed.
 on:
   pull_request:
@@ -13,6 +14,10 @@ on:
         description: Existing exact release tag to test, package and collect
         type: string
         required: true
+      reuse_source_ci:
+        description: Reuse passing source tests for this exact nightly commit, otherwise run them
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -22,6 +27,9 @@ concurrency:
 jobs:
   changes:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
     outputs:
       build: ${{ steps.select.outputs.build }}
       packages: ${{ steps.select.outputs.packages }}
@@ -34,7 +42,17 @@ jobs:
           ref: ${{ inputs.release_tag || github.sha }}
       - name: Select jobs from changed paths
         id: select
-        run: python3 tools/ci/changes.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/ci/changes.py ${{ inputs.reuse_source_ci && '--reuse-source-ci' || '' }}
+      - name: Retain exact source CI provenance
+        if: inputs.reuse_source_ci
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: source-ci-provenance
+          path: build/reused-ci.json
+          if-no-files-found: error
+          retention-days: 90
 
   contracts:
     runs-on: ubuntu-24.04
@@ -500,32 +518,21 @@ jobs:
       release_tag: ${{ inputs.release_tag || '' }}
 
   pipewire:
-    # The AppImage bundles Ubuntu 24.04's pipewiresrc; hosts run PipeWire 1.6,
-    # which refuses buffer ranges that don't overlap (#137). Link that plugin,
-    # with the recorder's properties, to KWin- and Mutter-like screen casts on
-    # Ubuntu 26.04's daemon (#144). Uses this run's AppImage when packages
-    # ran, otherwise the latest nightly's: then only src/record or the check
-    # changed, and the bundled plugin is the one nightly ships.
+    # Package runs test their own image immediately after assembly. Only
+    # recorder/check-only PRs need the last published image here.
     needs: [changes, packages]
-    if: ${{ always() && needs.changes.outputs.pipewire == 'true' && (needs.packages.result == 'success' || needs.packages.result == 'skipped') }}
+    if: ${{ always() && needs.changes.outputs.pipewire == 'true' && needs.packages.result == 'skipped' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.release_tag || github.sha }}
-      - name: This run's AppImage
-        if: needs.packages.result == 'success'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: release-appimage
-          path: build/pipewire
       - name: The latest nightly's AppImage
-        if: needs.packages.result == 'skipped'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" --jq '[.[] | select(.draft == false and (.tag_name | test("-nightly[.]")))][0].tag_name')
+          tag=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" --jq '[.[] | select(.draft == false and (.tag_name | test("-nightly($|[.])")))][0].tag_name')
           echo "Nightly $tag"
           gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir build/pipewire --pattern '*-x86_64.AppImage' --pattern SHA256SUMS
           (cd build/pipewire && grep -- '-x86_64[.]AppImage$' SHA256SUMS | sha256sum --check --strict)
@@ -559,7 +566,7 @@ jobs:
                       'linux': 'success' if selected.get('build') == 'true' else 'skipped',
                       'portable': 'success' if selected.get('build') == 'true' else 'skipped',
                       'packages': 'success' if selected.get('packages') == 'true' else 'skipped',
-                      'pipewire': 'success' if selected.get('pipewire') == 'true' else 'skipped'}
+                      'pipewire': 'success' if selected.get('pipewire') == 'true' and selected.get('packages') != 'true' else 'skipped'}
           failed = False
           for job, want in expected.items():
               got = needs[job]['result']

@@ -68,7 +68,10 @@ python3 tools/releases/appimage_notices.py --appdir "$diagnostics/squashfs-root"
   --output build/appimage-output/appimage-notices.json
 rm -rf "$diagnostics"
 # The image is a GPL-2.0-or-later combined work (bundled x264/x265 and a GPL
-# FFmpeg); its corresponding source is a release asset of its own.
-python3 tools/releases/appimage_complete_sources.py --receipt build/appimage-output/appimage-build.json \
-  --output-dir build/appimage-output \
-  --timestamp "$(git show -s --format=%ct HEAD)"
+# FFmpeg); its corresponding source is a linked download. CI collects it in a
+# separate required job so image checks do not wait on source downloads.
+if [ "${PUTGD_APPIMAGE_SOURCES:-1}" = 1 ]; then
+  python3 tools/releases/appimage_complete_sources.py --receipt build/appimage-output/appimage-build.json \
+    --output-dir build/appimage-output \
+    --timestamp "$(git show -s --format=%ct HEAD)"
+fi

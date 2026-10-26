@@ -7,7 +7,7 @@ portable compiles; `packages` selects the native/AppImage package builds;
 the AppImage pipewiresrc check against a PipeWire 1.6 daemon.
 Any path not explicitly known to be build-neutral selects `build`, so a new
 directory is tested by default. Push, schedule, dispatch and called runs
-select everything.
+select everything unless a nightly explicitly reuses successful source CI for the exact commit.
 """
 import argparse
 import json
@@ -96,11 +96,16 @@ def main():
     parser.add_argument('--event', default=os.environ.get('GITHUB_EVENT_NAME', ''))
     parser.add_argument('--base', default='HEAD^1', help='Pull request base (the merge commit\'s first parent)')
     parser.add_argument('--head', default='HEAD')
+    parser.add_argument('--reuse-source-ci', action='store_true')
     args = parser.parse_args()
     if args.event == 'pull_request':
         result = select(changed_paths(args.root, args.base, args.head))
     else:
         result = {'build': True, 'packages': True, 'sanitizers': True, 'pipewire': True, 'paths': None}
+    if args.reuse_source_ci and args.event != 'pull_request':
+        from reuse_ci import reuse
+        if reuse(args.root):
+            result.update(build=False, sanitizers=False)
     result['event'] = args.event
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:

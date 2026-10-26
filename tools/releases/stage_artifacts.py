@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 
 
-def stage(build, output, kind):
+def stage(build, output, kind, *, packages_only=False):
     output.mkdir(parents=True, exist_ok=False)
     selected = [build / 'release-tag.json', build / 'ci-sdk-environment.json']
     if kind == 'native':
@@ -19,9 +19,11 @@ def stage(build, output, kind):
         selected += [packages / 'appimage-build.json', packages / 'appimage-notices.json', build / 'appimage-dependencies.json',
                      build / 'release/build-identity/build-info.json']
         selected += list(packages.glob('*.AppImage')) + list(packages.glob('*.AppImage.zsync'))
-        selected += [packages / 'appimage-complete-source.json'] + list(packages.glob('*-appimage-complete-source.tar.gz'))
+        if not packages_only:
+            selected += [packages / 'appimage-complete-source.json'] + list(packages.glob('*-appimage-complete-source.tar.gz'))
     # Split debug files by build ID and their manifest (#124, debug_symbols.py).
-    selected += sorted((build / 'debug-symbols').glob('debug-symbols-*'))
+    if not packages_only:
+        selected += sorted((build / 'debug-symbols').glob('debug-symbols-*'))
     # Partial failed-build evidence may be uploaded; the collector still requires
     # all successful receipts and exact bytes before it can stage a release.
     for source in selected:
@@ -39,5 +41,6 @@ if __name__ == '__main__':
     parser.add_argument('--build', type=Path, default=Path('build'))
     parser.add_argument('--output', type=Path, default=Path('build/release-artifact'))
     parser.add_argument('--kind', choices=('native', 'appimage'), required=True)
+    parser.add_argument('--packages-only', action='store_true')
     args = parser.parse_args()
-    stage(args.build, args.output, args.kind)
+    stage(args.build, args.output, args.kind, packages_only=args.packages_only)

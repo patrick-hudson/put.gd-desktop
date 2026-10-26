@@ -3,7 +3,7 @@
   "materialsReady": true,
   "distributionReady": false,
   "published": true,
-  "distributionRequirement": "Deliver every listed artifact and this catalog beside the binary packages; retain corresponding-source availability. Public release URLs must be added to the release receipt at P4.",
+  "distributionRequirement": "Retain public corresponding-source availability. Deliver this current catalog beside the installers; its permanent checksum-pinned dependency URLs may be linked instead of copying unchanged transport parts to every release. Deliver the current application source overlay in the linked sources release.",
   "helperSha256": "e93b3b520d20a19e37569c7a97a1680f47bc43fcb5acaf6a5d69fa660e0a34b0",
   "sourcePins": {
     "sdk": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9",
@@ -106,7 +106,7 @@
     "baseSourceArtifactSha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
     "repository": "https://github.com/patrick-hudson/put.gd-desktop",
     "sourceCommit": "692a93265208bc6e7b5d4800e5259fa663db97d9",
-    "delivery": "Included in the current put.gd application source archive alongside these six unchanged original packets. Apply the listed files before rebuilding the current helper.",
+    "delivery": "Included in the current put.gd application source archive in the linked sources release. Fetch the six unchanged original packets from the permanent delivery URLs in this catalog, then apply the listed files before rebuilding the current helper.",
     "reason": "Return the connected account email from existing SDK root metadata (#40), and report Proton error 200003 as destination_file_too_large_for_plan instead of quota_exceeded (#147), settling it and quota refusals as failed when the name is still free afterwards (#201). Report a refused keychain session write as keychain_unavailable (#252) and return the confirmed link expiry from share create and inspect (#253). No SDK, crypto, Bun or dependency source changes.",
     "files": [
       {

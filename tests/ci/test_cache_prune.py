@@ -56,6 +56,12 @@ class Plan(unittest.TestCase):
         self.assertEqual(cache_prune.family(new), 'grype-db-v6-')
         self.assertEqual(deleted([cache(old, hour=1), cache(new, hour=2)]), {(old, NIGHTLY): 'superseded by ' + new})
 
+    def test_package_and_source_caches_keep_one_entry_per_environment(self):
+        for prefix in ('ccache-package-appimage-' + SDK + '-',
+                       'appimage-distro-sources-v1-' + 'ab' * 32 + '-'):
+            self.assertEqual(deleted([cache(prefix + '1-1', hour=1), cache(prefix + '2-1', hour=2)]),
+                             {(prefix + '1-1', NIGHTLY): 'superseded by ' + prefix + '2-1'})
+
     def test_refs_keep_their_own_newest_entry(self):
         pull = 'refs/pull/7/merge'
         caches = [cache('ctest-cost-linux-24.04-1-1', hour=1), cache('ctest-cost-linux-24.04-2-1', pull, hour=2),

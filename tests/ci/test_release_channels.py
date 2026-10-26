@@ -61,7 +61,7 @@ class Workflows(unittest.TestCase):
         self.assertIn('if: always()', summary)
         self.assertIn('needs: [changes, contracts, linux, portable, packages, pipewire]', summary)
         self.assertIn("'packages': 'success' if selected.get('packages') == 'true' else 'skipped'", summary)
-        self.assertIn("'pipewire': 'success' if selected.get('pipewire') == 'true' else 'skipped'", summary)
+        self.assertIn("'pipewire': 'success' if selected.get('pipewire') == 'true' and selected.get('packages') != 'true' else 'skipped'", summary)
 
     def test_path_selection_gates_only_the_heavy_jobs(self):
         ci = workflow('ci.yml')
@@ -75,10 +75,12 @@ class Workflows(unittest.TestCase):
         pipewire = job(workflow('ci.yml'), 'pipewire')
         self.assertIn('needs: [changes, packages]', pipewire)
         self.assertIn("needs.changes.outputs.pipewire == 'true'", pipewire)
-        # This run's AppImage when packages ran; otherwise a checksum-verified nightly's.
-        self.assertIn("if: needs.packages.result == 'success'\n        uses: actions/download-artifact@", pipewire)
-        self.assertIn('name: release-appimage', pipewire)
-        self.assertIn("if: needs.packages.result == 'skipped'", pipewire)
+        # Fresh images are checked inside Packages, concurrently with collection.
+        fresh = job(workflow('package.yml'), 'appimage-pipewire')
+        self.assertIn('needs: appimage', fresh)
+        self.assertIn('name: release-appimage', fresh)
+        self.assertIn('bash tests/desktop/pipewire/ci_check.sh --install build/pipewire/squashfs-root', fresh)
+        self.assertIn("needs.packages.result == 'skipped'", pipewire)
         self.assertIn('sha256sum --check --strict', pipewire)
         self.assertIn('--appimage-extract', pipewire)
         self.assertRegex(pipewire, r'ubuntu:26\.04@sha256:[0-9a-f]{64}')
@@ -88,14 +90,28 @@ class Workflows(unittest.TestCase):
                      'for mode in kwin mutter', 'kwin min-buffers=8'):
             self.assertIn(text, check)
 
-    def test_debug_asset_jobs_install_dwz(self):
-        # debug_symbols.write() shares each build's DWARF with dwz (#162).
+    def test_debug_files_are_kept_per_build_outside_public_downloads(self):
         package = workflow('package.yml')
-        for name, writer in (('debug-symbols', 'tools/releases/debug_symbols.py dry-run'), ('collect', 'tools/releases/collect.py')):
+        for name in ('native', 'appimage'):
             text = job(package, name)
-            self.assertIn('bash tools/ci/install-packages.sh --no-install-recommends dwz', text)
-            self.assertLess(text.index('dwz'), text.index(writer))
+            self.assertIn('tools/releases/debug_symbols.py stage', text)
+            self.assertIn('path: build/debug-symbols/', text)
+            self.assertIn('retention-days: 90', text)
+            self.assertIn('--packages-only', text)
+        self.assertNotIn('\n  debug-symbols:\n', package)
+        self.assertIn('--installers-only', job(package, 'collect'))
+        self.assertIn('name: release-source-assets', job(package, 'collect'))
+        self.assertNotIn('proton_sources.py', job(package, 'collect'))
+        # Legacy symbol-archive unit tests still exercise DWARF deduplication.
         self.assertIn('qemu-utils dwz', job(workflow('ci.yml'), 'contracts'))
+
+    def test_only_nightly_callers_opt_into_exact_source_ci_reuse(self):
+        self.assertIn('reuse_source_ci: true', job(workflow('nightly.yml'), 'ci'))
+        self.assertNotIn('reuse_source_ci: true', job(workflow('release.yml'), 'ci'))
+        changes = job(workflow('ci.yml'), 'changes')
+        self.assertIn('--reuse-source-ci', changes)
+        self.assertIn('actions: read', changes)
+        self.assertIn('name: source-ci-provenance', changes)
 
     def test_contracts_run_every_group_and_lint_workflows(self):
         contracts = job(workflow('ci.yml'), 'contracts')
@@ -224,7 +240,7 @@ class Workflows(unittest.TestCase):
             self.assertIn('bash tools/ci/sdk-source.sh', job(packages, name))
         collect = job(packages, 'collect')
         self.assertIn("if: inputs.release_tag != ''", collect)
-        self.assertIn('needs: [native, appimage, sbom]', collect)
+        self.assertIn('needs: [native, appimage, appimage-sources, sbom]', collect)
         self.assertIn('python3 tools/releases/collect.py', collect)
         self.assertIn('name: release-assets', collect)
         # Every run, tagged or not, makes the SBOMs and their vulnerability report (#420).

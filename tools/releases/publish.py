@@ -20,6 +20,8 @@ from verify_tag import verify
 from github_api import GitHub
 from nightly import published_nightly, public_inventory
 from release_identity import parse_tag, parse_version
+import support_assets
+import proton_sources
 
 # The release notes name the Qt the AppImage bundles (#418).
 APPIMAGE_QT = json.loads((Path(__file__).resolve().parents[2] / 'packaging/appimage/tools.lock.json')
@@ -28,6 +30,16 @@ APPIMAGE_QT = json.loads((Path(__file__).resolve().parents[2] / 'packaging/appim
 
 def github_json(*arguments):
     return json.loads(subprocess.check_output(['gh', 'api', *arguments], text=True))
+
+
+def verify_inventory(tag, listed, layout=None):
+    expected = public_inventory(tag, layout)
+    actual = set(listed) | {'SHA256SUMS'}
+    if actual != expected:
+        missing = ', '.join(sorted(expected - actual)) or 'none'
+        extra = ', '.join(sorted(actual - expected)) or 'none'
+        raise ValueError(f'Collected release inventory differs for {layout or "legacy"} '
+                         f'({len(expected)} assets expected): missing: {missing}; extra: {extra}')
 
 
 def remote_tag_commit(tag):
@@ -60,6 +72,8 @@ def asset_snapshot(metadata, expected, directory):
         if asset['state'] != 'uploaded' or asset['size'] != (directory / name).stat().st_size:
             raise ValueError('Remote draft asset is incomplete or has a different size')
         values[name] = {key: asset[key] for key in ('id', 'size', 'updated_at')}
+        if asset.get('digest') is not None:
+            values[name]['digest'] = asset['digest']
     return values
 
 
@@ -69,6 +83,10 @@ def verify_uploaded_assets(assets, expected):
             asset_id = asset['id']
             if type(asset_id) is not int or asset_id <= 0:
                 raise ValueError('Remote asset ID is invalid')
+            if asset.get('digest') is not None:
+                if asset['digest'] != 'sha256:' + expected[name]:
+                    raise ValueError('Remote draft digest differs from accepted assets: ' + name)
+                continue
             path = Path(temporary) / name
             with path.open('wb') as stream:
                 subprocess.run(['gh', 'api', '--method', 'GET', '-H', 'Accept: application/octet-stream',
@@ -189,10 +207,25 @@ def changes_section(tag, producer):
         return '## Changes\n\nThe changes could not be listed from this checkout; see the commit history.\n\n'
 
 
+def installer_notes(directory, release, producer):
+    delivery = json.loads((directory / 'source-delivery.json').read_text())
+    catalog = proton_sources.catalog_value(directory / proton_sources.CATALOG_NAME)
+    links = '\n'.join(f'- [{part["file"]}]({part["url"]})' for part in catalog['delivery']['parts'])
+    return ('Downloads: AppImage, Ubuntu 24.04/26.04 and Debian 13 DEBs, and Fedora 44 RPM. '
+            'Checksums, update metadata and package SBOMs accompany the installers.\n\n'
+            f'AppImage bundles dynamically linked Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
+            'Its GPL-2.0-or-later codec/runtime sources and put.gd source snapshot are available from '
+            f'[corresponding sources]({delivery["url"]}), together with the optional GNOME 50 extension. '
+            'Verify that release\'s SHA256SUMS. Developers can also clone this release tag.\n\n'
+            'Unchanged Proton dependency sources (checksums in proton-source-catalog.json; concatenate '
+            'part1 then part2 before unpacking):\n\n' + links + '\n\n'
+            f'Debug symbols are retained per build in [CI artifacts]({producer["url"]}) for 90 days.\n\n')
+
+
 def publish_nightly(args, release, listed):
     """Publish one automated nightly, retaining exact run and byte evidence."""
-    if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected nightly inventory must contain all twenty-one public assets')
+    layout = getattr(args, 'asset_layout', None)
+    verify_inventory(args.tag, listed, layout)
     producer = run_provenance()
     api = GitHub(producer['repository'])
     expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
@@ -232,6 +265,14 @@ def publish_nightly(args, release, listed):
             + 'Built, tested and packaged by ' + producer['url'] + '\n\n'
             + 'Channel/source and automated producer evidence:\n\n```json\n'
             + json.dumps(receipt, indent=2) + '\n```\n')
+        if layout == support_assets.LAYOUT:
+            notes.write_text(f'Nightly {release["version"]} from commit {release["gitCommit"]}.\n\n'
+                + changes_section(args.tag, producer) + installer_notes(args.directory, release, producer)
+                + 'Automated coverage: tagged native package audits, AppImage start/recording checks, '
+                  'PipeWire compatibility and component vulnerability scans. Source tests pass either '
+                  'in this run or in a verified CI run of this exact commit recorded by this run. '
+                  'This does not certify desktop, memory or live-service acceptance.\n\n'
+                + 'Built and packaged by ' + producer['url'] + '\n')
         stage_draft(args.tag, args.directory, listed, release, notes)
         verified = verify_remote_draft(args.tag, args.directory, listed, release['gitCommit'], nightly=True)
         final = matching_releases(args.tag)
@@ -301,8 +342,27 @@ def main():
         if name in listed:
             raise ValueError('Duplicate collected release checksum')
         listed[name] = digest
-    if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected release inventory must include all twenty-one public assets, including Proton and AppImage media sources, debug symbols and SBOMs')
+    args.asset_layout = bundle.get('assetLayout')
+    verify_inventory(args.tag, listed, args.asset_layout)
+    if args.asset_layout == support_assets.LAYOUT:
+        if args.publish:
+            # Manual acceptance runs use the same checkout/repository as the gh release commands.
+            repository = subprocess.check_output(
+                ['gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'],
+                text=True, timeout=60).strip()
+        else:
+            # Validate the automated caller before publishing any linked materials.
+            repository = run_provenance()['repository']
+        api = GitHub(repository)
+        delivery = json.loads((args.directory / 'source-delivery.json').read_text())
+        if delivery != bundle.get('sources'):
+            raise ValueError('Source delivery differs from collected release manifest')
+        support_assets.validate(delivery, release, api.repository)
+        support_assets.verify_proton(api, proton_sources.catalog_value(args.directory / proton_sources.CATALOG_NAME))
+        if args.publish:
+            support_assets.verify_public(api, delivery, release)
+        else:
+            support_assets.publish(api, delivery, release, args.directory / 'sources')
     if args.nightly:
         publish_nightly(args, release, listed)
         return
@@ -347,6 +407,11 @@ def main():
                      'Compiled source identities, dependency inventories, licenses and SHA256 checksums accompany the builds. '
                      'Package-specific acceptance is recorded before this draft is published.\n\n'
                      'Built, tested and packaged by ' + producer['url'] + '\n')
+    if args.asset_layout == support_assets.LAYOUT:
+        notes.write_text('Linux x86_64 ' + kind + '.\n\n' + changes_section(args.tag, producer)
+                         + installer_notes(args.directory, release, producer)
+                         + 'Package-specific acceptance is required before this draft is published.\n\n'
+                         + 'Built, tested and packaged by ' + producer['url'] + '\n')
     stage_draft(args.tag, args.directory, listed, release, notes)
     (args.directory / 'staging.json').write_text(json.dumps({
         'schemaVersion': 1, 'tag': args.tag, 'channel': release['channel'],

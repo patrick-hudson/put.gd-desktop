@@ -53,6 +53,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
     with:
       release_tag: ${{ needs.plan.outputs.tag }}
+      reuse_source_ci: true
 
   publish:
     needs: [plan, ci]
@@ -75,6 +76,10 @@ jobs:
         with:
           name: release-assets
           path: build/publish
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-source-assets
+          path: build/publish/sources
       - name: Publish verified nightly prerelease
         run: python3 tools/releases/publish.py --tag "$TAG" --directory build/publish --nightly
       - name: Summarize

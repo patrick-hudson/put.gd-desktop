@@ -19,6 +19,7 @@ from proton_sources import PART_NAMES
 from debug_symbols import asset_name as debug_asset_name
 from release_identity import calendar_base, parse_tag
 from verify_tag import verify
+import support_assets
 
 NIGHTLY_REF = 'refs/heads/nightly'
 
@@ -67,8 +68,12 @@ def ensure_tag(api, root, tag, source_sha):
     return verify(root, tag)
 
 
-def public_inventory(tag):
+def public_inventory(tag, layout=None):
     identity = parse_tag(tag)
+    if layout == support_assets.LAYOUT:
+        return support_assets.inventory(identity.version)
+    if layout is not None:
+        raise ValueError('Unknown release asset layout')
     return set(expected_members(identity.version) + ['putgd-' + identity.version + '-release.zip', 'SHA256SUMS', *PART_NAMES,
                                                       debug_asset_name(identity.version)])
 
@@ -90,7 +95,13 @@ def published_nightly(api, tag, release):
     if remote_tag_commit(api, tag) != release['gitCommit']:
         raise ValueError('Public tag differs from pinned source')
     assets = value['assets']
-    inventory = public_inventory(tag)
+    manifests = [a for a in assets if a['name'] == 'release-builds.json']
+    if (len(manifests) != 1 or manifests[0].get('state') != 'uploaded'
+            or type(manifests[0].get('size')) is not int or manifests[0]['size'] <= 0):
+        raise ValueError('Public nightly has no unique source manifest')
+    manifest_bytes = api.asset_bytes(manifests[0]['id'])
+    manifest = json.loads(manifest_bytes)
+    inventory = public_inventory(tag, manifest.get('assetLayout'))
     if (len(assets) != len(inventory) or {asset['name'] for asset in assets} != inventory
             or any(asset.get('state') != 'uploaded' or type(asset.get('size')) is not int
                    or asset['size'] <= 0 or type(asset.get('id')) is not int or asset['id'] <= 0 for asset in assets)):
@@ -110,7 +121,9 @@ def published_nightly(api, tag, release):
         expected[match[2]] = match[1]
     if set(expected) != inventory - {'SHA256SUMS'}:
         raise ValueError('Incomplete public nightly checksum inventory')
-    downloaded = {'SHA256SUMS': checksums, 'release-builds.json': download('release-builds.json')}
+    if len(manifest_bytes) != by_name['release-builds.json']['size']:
+        raise ValueError('Public nightly manifest size mismatch')
+    downloaded = {'SHA256SUMS': checksums, 'release-builds.json': manifest_bytes}
     expected['SHA256SUMS'] = hashlib.sha256(checksums).hexdigest()
     for name, asset in by_name.items():
         digest = asset.get('digest')
@@ -123,6 +136,15 @@ def published_nightly(api, tag, release):
     source = json.loads(downloaded['release-builds.json'])['release']
     if any(source.get(key) != val for key, val in release.items()):
         raise ValueError('Public nightly channel/source receipt differs from pinned source')
+    if manifest.get('assetLayout') == support_assets.LAYOUT:
+        linked = {name: download(name) for name in ('source-delivery.json', 'proton-source-catalog.json')}
+        if any(hashlib.sha256(data).hexdigest() != expected[name] for name, data in linked.items()):
+            raise ValueError('Linked source metadata differs from checksum')
+        delivery = json.loads(linked['source-delivery.json'])
+        if delivery != manifest.get('sources'):
+            raise ValueError('Linked source receipt differs from release manifest')
+        support_assets.verify_public(api, delivery, release)
+        support_assets.verify_proton(api, json.loads(linked['proton-source-catalog.json']))
     def snapshot(metadata):
         return {**{key: metadata.get(key) for key in ('id', 'tag_name', 'draft', 'prerelease')},
                 'assets': sorted(({key: asset.get(key) for key in
