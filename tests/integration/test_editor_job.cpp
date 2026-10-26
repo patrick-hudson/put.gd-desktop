@@ -109,6 +109,29 @@ private slots:
   QCOMPARE(filesUnder(staging),0);QCOMPARE(session->phase(),QString("closed"));
   QCOMPARE(ask(*session,"inspect").error.code,QString("editor_finalizing"));
  }
+ // An oversized result is recoverable: nothing is handed off, editing and
+ // the resident's phase resume, inspect says why, and a smaller result uploads.
+ void oversizedResultReturnsToEditing(){
+  QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::thread worker([&]{auto image=noise({320,200},5);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).run(image,"Upload to synthetic destination",4096,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  QVERIFY(!ask(*session,"submit").error);
+  Answer state;
+  for(int waited=0;waited<20000;waited+=50){state=ask(*session,"inspect");if(!state.error&&state.result["preparation"].isObject())break;QTest::qSleep(50);}
+  QVERIFY2(!state.error,qPrintable(state.error.code));
+  const auto preparation=state.result["preparation"].toObject();
+  QCOMPARE(preparation["status"].toString(),QString("failed"));QCOMPARE(preparation["code"].toString(),QString("input_excessive"));
+  QVERIFY(preparation["reason"].toString().contains("limit"));
+  QCOMPARE(state.result["phase"].toString(),QString("editing"));QCOMPARE(session->phase(),QString("editing"));
+  const auto view=state.result["view"].toObject();QVERIFY(!view["busy"].toBool());QCOMPARE(view["preparationFailure"].toObject()["text"].toString(),preparation["reason"].toString());
+  // Editing goes on: crop to something small enough, then upload it.
+  QVERIFY(!ask(*session,"apply",{{"commands",QJsonArray{QJsonObject{{"op","crop"},{"rect",QJsonArray{0,0,8,8}}}}}}).error);
+  QVERIFY(!ask(*session,"submit").error);
+  if(worker.joinable())worker.join();
+  QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));
+  QCOMPARE(QSize(result.width,result.height),QSize(8,8));QVERIFY(!inspectSanitizedPng(result.png));QCOMPARE(filesUnder(staging),0);
+ }
  void agentCancelDiscardsWithoutOutput(){
   QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;
   // Recent custom colors travel to the helper and back even when nothing is uploaded.
@@ -169,12 +192,16 @@ private slots:
   const auto result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Upload",1024*1024,session);
   QCOMPARE(result.error.code,QString("edit_input_too_large"));QVERIFY(image.isNull());QVERIFY(!QDir(root.filePath("editing")).exists());
  }
- void exportLargerThanBudgetFails(){
+ // Over the budget the edit stays open (oversizedResultReturnsToEditing);
+ // discarding it then still hands nothing off.
+ void exportLargerThanBudgetKeepsEditingUntilDiscarded(){
   QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;
   std::thread worker([&]{auto image=noise({200,200},4);result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Upload",1000,session);});
   auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
-  QVERIFY(waitPhase(*session,"editing"));QVERIFY(!ask(*session,"submit").error);if(worker.joinable())worker.join();
-  QCOMPARE(result.error.code,QString("edit_input_too_large"));QVERIFY(result.png.isEmpty());
+  QVERIFY(waitPhase(*session,"editing"));QVERIFY(!ask(*session,"submit").error);
+  bool recovered=false;for(int waited=0;waited<20000&&!recovered;waited+=50){const auto state=ask(*session,"inspect");recovered=!state.error&&state.result["preparation"].isObject();if(!recovered)QTest::qSleep(50);}
+  QVERIFY(recovered);QVERIFY(!ask(*session,"cancel").error);if(worker.joinable())worker.join();
+  QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(root.filePath("editing")),0);
  }
  void fileSourceIsDecodedOnlyByTheHelper(){
   // A JPEG carrying an EXIF 90-degree rotation opens upright, decoded in the helper.

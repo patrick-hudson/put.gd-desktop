@@ -10,7 +10,7 @@
 #include <QBuffer>
 #include <QDir>
 #include <QImageWriter>
-#include <QSaveFile>
+#include <QLocale>
 #include <QApplication>
 #include <QCryptographicHash>
 #include <QFile>
@@ -126,17 +126,33 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  };
  const auto refuse=[&](const QString& code){auto result=envelope(nonce);result["ok"]=false;result["code"]=code;finish(result);};
  bool finalizing=false;
+ // The last Upload that could not be prepared, for editor.inspect; null otherwise.
+ QJsonValue preparation=QJsonValue::Null;
+ // An encoding failure or an oversized result hands nothing off: editing
+ // resumes (the resident's phase too) with the reason in the window.
+ const auto recover=[&](const QString& code,const QString& reason){
+  finalizing=false;preparation=QJsonObject{{"status","failed"},{"code",code},{"reason",reason}};
+  if(control.send("editing",envelope(nonce)).isEmpty()){fail();return;}
+  window->showPreparationFailed(reason);
+ };
  const std::function<void()> submit=[&]{
   if(terminal||finalizing||!window)return;
-  finalizing=true;window->setBusy("Preparing the edited image…");
+  // Agents submit through here too: the same pending edits as the button.
+  window->finishPendingEdits();
+  finalizing=true;preparation=QJsonValue::Null;window->setBusy("Preparing the edited image…");
   if(control.send("finalizing",envelope(nonce)).isEmpty()){fail();return;}
   // Let the busy state paint before the single full-resolution export.
   QTimer::singleShot(0,&app,[&]{
    if(terminal)return;
    int width=0,height=0;QByteArray png;
    {const auto crop=document->crop();width=crop.width();height=crop.height();png=document->exportPng();}
-   if(png.isEmpty()){window->setFailure("The edited image could not be prepared.");refuse("edit_export_failed");return;}
-   if(png.size()>outputBytes){window->setFailure("The edited image is too large to upload.");refuse("input_excessive");return;}
+   if(png.isEmpty()){recover("edit_export_failed","The edited image could not be encoded as PNG. Your edits are kept: try again, or save a copy.");return;}
+   if(png.size()>outputBytes){
+    const QLocale locale;
+    recover("input_excessive",QString("The edited image is %1, over the %2 limit for this output. Your edits are kept: crop it and try again, or save a copy.").arg(locale.formattedDataSize(png.size(),1),locale.formattedDataSize(outputBytes,1)));
+    return;
+   }
+   // Staging that can't be written is not recoverable here: the session ends.
    const auto digest=files.write(png);const auto bytes=png.size();png.clear();png.squeeze();
    if(digest.isEmpty()){refuse("image_job_io");return;}
    auto result=envelope(nonce);result["ok"]=true;result["bytes"]=QString::number(bytes);result["sha256"]=digest;result["width"]=width;result["height"]=height;
@@ -149,7 +165,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   const bool open=!terminal&&!finalizing;
   if(name=="inspect"){
    if(!params.isEmpty())return denied("invalid_request","inspect has no parameters");
-   auto state=editor::Commands::state(*document);state["phase"]=terminal?"closing":finalizing?"finalizing":"editing";state["destination"]=destination;state["view"]=window->viewState();return state;
+   auto state=editor::Commands::state(*document);state["phase"]=terminal?"closing":finalizing?"finalizing":"editing";state["destination"]=destination;
+   state["preparation"]=preparation;state["view"]=window->viewState();return state;
   }
   if(name=="view"){
    // The window's own controls: tool, selection, crop draft, zoom and pan.
@@ -181,13 +198,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    const QFileInfo target(path);
    if(QFileInfo(target.absolutePath()).canonicalFilePath()==QFileInfo(files.directory()).canonicalFilePath())return denied("invalid_request","Choose a path outside private editor staging");
    if(target.exists()&&(!params["overwrite"].toBool()||!target.isFile()))return denied("file_exists","The file exists; pass overwrite to replace it");
-   const auto png=document->exportPng();QSaveFile file(path);file.setDirectWriteFallback(false);
-   if(png.isEmpty()||!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit()){
-    const auto reason=png.isEmpty()?QStringLiteral("the edited image could not be encoded"):file.errorString();
-    window->showSaveFailed(path,reason);return denied("save_failed","The copy could not be saved: "+reason);
-   }
-   // The window shows the copy as if its own Save a copy… had written it.
-   window->showSaved(path);
+   // The window's own Save a copy… path: pending edits, export, outcome shown.
+   QString reason;const auto png=window->writeCopy(path,reason);
+   if(png.isEmpty())return denied("save_failed","The copy could not be saved: "+reason);
    return {{"saved",true},{"path",path},{"bytes",double(png.size())},{"sha256",QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())}};
   }
   if(name=="fileDialog"){

@@ -48,7 +48,7 @@ bool shapeFrom(const QJsonObject& object,Shape& shape,const QRect& image,bool cr
  const bool arrow=shape.kind==Shape::Kind::Arrow,text=shape.kind==Shape::Kind::Text;
  if(object.contains("color")){
   static const QRegularExpression hex("^#[0-9A-Fa-f]{6}$");
-  if(shape.kind==Shape::Kind::Redact||shape.kind==Shape::Kind::Blur)return bad("Redact is always opaque black and Blur has no color");
+  if(shape.kind==Shape::Kind::Redact||shape.kind==Shape::Kind::Blur)return bad("A redaction is always opaque black and a blur has no color");
   if(!hex.match(object["color"].toString()).hasMatch())return bad("Color must be #RRGGBB");
   shape.color=QColor(object["color"].toString());
  }

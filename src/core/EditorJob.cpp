@@ -171,6 +171,9 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   if(type=="ready"&&!ready&&payload.size()==4&&payload["build"].toObject()==build()){ready=true;if(control.send("activate",envelope(nonce)).isEmpty())protocolFailed=true;return;}
   if(type=="editing"&&ready&&!editing&&!checkpoint&&payload.size()==3){editing=true;session->setPhase("editing");return;}
   if(type=="finalizing"&&editing&&!finalizing&&!checkpoint&&payload.size()==3){finalizing=true;session->setPhase("finalizing");phaseClock.restart();return;}
+  // A preparation the helper could recover from (encoding, size): it handed
+  // nothing off and editing resumes, without a deadline again.
+  if(type=="editing"&&finalizing&&!checkpoint&&payload.size()==3){finalizing=false;session->setPhase("editing");phaseClock.restart();return;}
   if(type=="commandResult"&&editing){
    const auto id=payload["requestId"].toString();const auto found=outstanding.constFind(id);
    if(found==outstanding.cend()||!payload["ok"].isBool()){protocolFailed=true;return;}

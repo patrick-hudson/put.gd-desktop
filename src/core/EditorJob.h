@@ -24,7 +24,8 @@ public:
  void request(const QString& command,const QJsonObject& params,Reply);
  void cancel() {cancelled_.store(true);}
  bool cancelled() const {return cancelled_.load();}
- // starting → editing → finalizing → closed
+ // starting → editing → finalizing → closed; a recoverable preparation
+ // failure returns finalizing → editing.
  QString phase() const;
  struct Pending {QString command;QJsonObject params;Reply reply;};
  QList<Pending> take();
