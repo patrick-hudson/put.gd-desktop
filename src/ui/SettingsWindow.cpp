@@ -62,6 +62,7 @@
 #include <QLocale>
 #include <QDateTime>
 #include <QDialog>
+#include <QContextMenuEvent>
 namespace putgd {
 namespace {
 constexpr int protonFolderNameRole=Qt::UserRole+1;
@@ -119,6 +120,34 @@ protected:
   for(auto& line:lines)line=option->fontMetrics.elidedText(line,Qt::ElideRight,width);
   option->text=lines.join(QChar::LineSeparator);
  }
+};
+// Configuration metadata: shown with display-only break points (after a slash
+// and every 16 hex digits), but anything copied from it, by keyboard, menu or
+// the X11 selection, is the exact original text.
+class MetadataLabel final:public QLabel {
+public:
+ using QLabel::QLabel;
+ void setExact(const QString& original){
+  original_=original;inserted_.clear();QString shown;static const QRegularExpression hex(QStringLiteral("[0-9a-fA-F]"));int run=0;
+  for(int i=0;i<original.size();++i){const auto c=original[i];shown+=c;inserted_.append(false);run=hex.match(QString(c)).hasMatch()?run+1:0;
+   const bool nextHex=i+1<original.size()&&hex.match(QString(original[i+1])).hasMatch();
+   if(c=='/'||(run==16&&nextHex)){shown+=QChar(0x200B);inserted_.append(true);if(run==16)run=0;}}
+  setText(shown);setAccessibleName(original);setToolTip(original);
+ }
+ QString exactSelection()const{
+  const int start=selectionStart();if(start<0)return {};const int length=selectedText().size();QString out;
+  for(int i=start;i<start+length&&i<inserted_.size();++i)if(!inserted_[i])out+=text().at(i);
+  return out;
+ }
+protected:
+ void keyPressEvent(QKeyEvent* event)override{if(event->matches(QKeySequence::Copy)&&hasSelectedText()){QApplication::clipboard()->setText(exactSelection());return;}QLabel::keyPressEvent(event);}
+ void mouseReleaseEvent(QMouseEvent* event)override{QLabel::mouseReleaseEvent(event);if(hasSelectedText()&&QApplication::clipboard()->supportsSelection())QApplication::clipboard()->setText(exactSelection(),QClipboard::Selection);}
+ void contextMenuEvent(QContextMenuEvent* event)override{
+  QMenu menu(this);auto* copy=menu.addAction("Copy",[this]{QApplication::clipboard()->setText(hasSelectedText()?exactSelection():original_);});copy->setShortcut(QKeySequence::Copy);
+  menu.addAction("Select all",[this]{setSelection(0,text().size());});menu.exec(event->globalPos());
+ }
+private:
+ QString original_;QVector<bool> inserted_;
 };
 class DestinationList final:public QListWidget {
 public:
@@ -624,7 +653,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* config=section(right,"Config file");configPath_=new QLabel;configPath_->setWordWrap(true);configPath_->setTextInteractionFlags(Qt::TextSelectableByMouse);configPath_->setProperty("visualRole","mono");config->addRow(configPath_);auto* configActions=new QHBoxLayout;auto* editor=new QPushButton("Open in editor");auto* reload=new QPushButton("Reload from file");reload->setObjectName("reloadSettings");configActions->addWidget(editor);configActions->addWidget(reload);config->addRow(configActions);connect(editor,&QPushButton::clicked,this,[this]{host::openFile(settings_.path());});connect(reload,&QPushButton::clicked,this,[this]{resetDraft(true);});
  // Cards keep their own height; the shorter column ends in space.
  left->addStretch();right->addStretch();
- auto* diagnostics=section(advancedPage,"Desktop support details");capabilities_=new QLabel;capabilities_->setAccessibleName("Desktop support diagnostics");capabilities_->setWordWrap(true);capabilities_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(capabilities_,"mono");diagnostics->addRow(capabilities_);metadata_=new QLabel;metadata_->setObjectName("settingsMetadata");metadata_->setWordWrap(true);metadata_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(metadata_,"muted");diagnostics->addRow(metadata_);auto* diagnose=new QPushButton("Refresh diagnostics");auto* copyDiagnostics=new QPushButton("Copy diagnostics");auto* diagnosticActions=new QHBoxLayout;diagnosticActions->addWidget(diagnose);diagnosticActions->addWidget(copyDiagnostics);diagnosticActions->addStretch();diagnostics->addRow(diagnosticActions);connect(diagnose,&QPushButton::clicked,this,[this]{settings_.refreshSnapshot();});connect(copyDiagnostics,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(capabilities_->text()+"\n"+metadataText_);});
+ auto* diagnostics=section(advancedPage,"Desktop support details");capabilities_=new QLabel;capabilities_->setAccessibleName("Desktop support diagnostics");capabilities_->setWordWrap(true);capabilities_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(capabilities_,"mono");diagnostics->addRow(capabilities_);metadata_=new MetadataLabel;metadata_->setObjectName("settingsMetadata");metadata_->setWordWrap(true);metadata_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(metadata_,"muted");diagnostics->addRow(metadata_);auto* diagnose=new QPushButton("Refresh diagnostics");auto* copyDiagnostics=new QPushButton("Copy diagnostics");auto* diagnosticActions=new QHBoxLayout;diagnosticActions->addWidget(diagnose);diagnosticActions->addWidget(copyDiagnostics);diagnosticActions->addStretch();diagnostics->addRow(diagnosticActions);connect(diagnose,&QPushButton::clicked,this,[this]{settings_.refreshSnapshot();});connect(copyDiagnostics,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(capabilities_->text()+"\n"+metadataText_);});
  destinationPage_=new QWidget(this);destinationPage_->setObjectName("destinationsPage");destinationPage_->installEventFilter(this);auto* destinationLayout=new QHBoxLayout(destinationPage_);destinationLayout->setContentsMargins(0,0,0,0);destinationLayout->setSpacing(0);
  auto* destinationRail=new Graphite::Surface("surface",Qt::RightEdge);destinationRail->setObjectName("destinationRail");destinationRail->setFixedWidth(Graphite::scaled(Graphite::Metric::destinationSidebar));auto* railLayout=new QVBoxLayout(destinationRail);railLayout->setContentsMargins(10,18,10,14);railLayout->setSpacing(10);auto* destinationTitle=new QLabel("Destinations");VisualStyle::role(destinationTitle,"sectionTitle");destinationTitle->setContentsMargins(8,0,0,0);railLayout->addWidget(destinationTitle);auto* destinationList=new DestinationList;destinationList_=destinationList;destinationList_->setObjectName("destinationList");destinationList_->setAccessibleName("Destinations");destinationList_->setWordWrap(false);destinationList_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);railLayout->addWidget(destinationList_,1);auto* add=new QPushButton(VisualStyle::icon("upload"),"Add destination…");add->setObjectName("addS3Destination");railLayout->addWidget(add);destinationLayout->addWidget(destinationRail);destinationList_->setFrameShape(QFrame::NoFrame);destinationList_->setMouseTracking(true);Graphite::transparentView(destinationList_);
  auto* destinationBody=new QWidget;auto* pageLayout=new QVBoxLayout(destinationBody);pageLayout->setContentsMargins(28,22,28,24);pageLayout->setSpacing(18);pageLayout->setAlignment(Qt::AlignTop);auto* destinationScroll=new QScrollArea;destinationScroll->setObjectName("destinationScroll");destinationScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);destinationScroll->setWidgetResizable(true);destinationScroll->setFrameShape(QFrame::NoFrame);destinationScroll->setWidget(destinationBody);destinationLayout->addWidget(destinationScroll,1);
@@ -721,8 +750,7 @@ bool SettingsWindow::eventFilter(QObject* watched,QEvent* event){
 void SettingsWindow::refreshMetadata(){if(configPath_)configPath_->setText(settings_.path());metadataText_="Configuration: "+settings_.path()+"\nAccepted revision: "+settings_.revision()+"\nObserved file revision: "+settings_.metadata()["observedRevision"].toString();
   // Paths and 64-digit revisions may break at a slash or every 16 digits, so a
   // narrow page wraps them instead of growing; the accessible name stays exact.
-  auto shown=metadataText_;shown.replace('/',QStringLiteral("/\u200B"));static const QRegularExpression run(QStringLiteral("([0-9a-fA-F]{16})(?=[0-9a-fA-F])"));shown.replace(run,QStringLiteral("\\1\u200B"));
-  metadata_->setText(shown);metadata_->setAccessibleName(metadataText_);metadata_->setToolTip(metadataText_);}
+  static_cast<MetadataLabel*>(metadata_)->setExact(metadataText_);}
 void SettingsWindow::dirty(){if(loading_)return;dirty_=true;emit viewStateChanged();}
 void SettingsWindow::status(const Error& error){
  auto e=error;

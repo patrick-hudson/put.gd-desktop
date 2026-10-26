@@ -89,6 +89,9 @@ private slots:
    QVERIFY2(metadata->text().count(QChar(0x200B))>plain.count(QChar(0x200B)),"Fixture must exercise display-only wrap characters");
    QApplication::clipboard()->clear();copy->click();
    QCOMPARE(QApplication::clipboard()->text(),capabilities->text()+"\n"+plain);
+   // A selection copied from the label is the exact text, not its display break points.
+   QApplication::clipboard()->clear();metadata->setSelection(0,metadata->text().size());QTest::keyClick(metadata,Qt::Key_C,Qt::ControlModifier);
+   QCOMPARE(QApplication::clipboard()->text(),plain);
    if(revision==0){auto doc=service.document();auto preferences=doc["preferences"].toObject();preferences["notifications"]=!preferences["notifications"].toBool();doc["preferences"]=preferences;QVERIFY(service.save(doc,service.revision()));}
   }
  }
