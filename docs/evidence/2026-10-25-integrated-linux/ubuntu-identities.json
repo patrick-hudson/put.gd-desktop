@@ -1,0 +1,24 @@
+{
+  "osRelease": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n",
+  "uname": [
+    "Linux",
+    "putgd-ubuntu-lab",
+    "7.0.0-38-generic",
+    "#38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026",
+    "x86_64"
+  ],
+  "sessions": "15 1000 lab -     4759  user    -    no -\n19 1000 lab seat0 6010  user    tty2 no -\n 2 1000 lab -     1310  manager -    no -\n 5 1000 lab -     2081  user    -    no -\n54 1000 lab -     20532 user    -    no -\n",
+  "session": "Desktop=\nType=wayland\n",
+  "package": "gnome-shell\t50.1-0ubuntu1.2\nlibqt6core6t64:amd64\t6.10.2+dfsg-7\nputgd\t26.1025.1362~dev+g6b7949f5cab8\n",
+  "moduleFiles": [
+    {
+      "path": "/usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so",
+      "sha256": "5f57414df6351421f7b8db979108f0042ddb9498fcd48c18e040ee0e453871c4"
+    },
+    {
+      "path": "/home/lab/work/ia25/appimage-root/squashfs-root/usr/lib/putgd/libputgd-s3.so",
+      "sha256": "a9d52ed7197b8bd3c06c95428de3c4fcc9c3e4417bceafd5f7dd5c199b620120"
+    }
+  ],
+  "appImageSha256": "b88350ff4ca89d9bba2c76769fb5a864370828b9c90a0072f58d7f7f8cb7b9f3"
+}

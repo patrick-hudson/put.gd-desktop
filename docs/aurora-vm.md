@@ -1,5 +1,12 @@
 # Aurora (Universal Blue) VM layer for AppImage and Flatpak testing
 
+The new visibility-helper provisioning below requires the companion
+[code PR #584](https://github.com/patrick-hudson/put.gd-desktop/pull/584).
+This documentation-only PR is intended to merge after that code. Stage the
+bootstrap script and `guest_idle.py` from the same code revision; the older
+nightly script does not install the new helper. Existing golden bytes are unchanged.
+
+
 Aurora is Universal Blue's KDE Plasma desktop, an image-based (bootc) Fedora
 Atomic variant: `ghcr.io/ublue-os/aurora:stable`. It installs nothing through a
 package manager, ships Flathub as its only Flatpak remote, and represents the
@@ -76,10 +83,13 @@ console before pinning. The sudo rule grants `lab` only `rpm-ostree`, `bootc`,
    `aurora-lab`, America/Chicago.
 4. A 16 MiB FAT seed (`PUTGDLAB`) carried the public key and
    [`tools/lab/bootstrap-aurora-guest.sh`](../tools/lab/bootstrap-aurora-guest.sh),
+   with the current `tools/lab/guest_idle.py` companion beside `bootstrap.sh`;
    run from Konsole as `sudo mount /dev/disk/by-label/PUTGDLAB /mnt; sudo sh /mnt/bootstrap.sh /mnt/identity.pub`.
    The generic `bootstrap-guest.sh` does not fit: Aurora has no `dnf` and its
    display manager is plasmalogin. The committed script already writes the
-   plasmalogin drop-in and the idle settings that v2 and v3 added by hand.
+   plasmalogin drop-in and installs the common visibility autostart helper.
+   Use the [verified guest preflight](vm-lab.md#visible-guest-preflight) before acceptance.
+   This describes new provisioning; existing golden bytes remain unchanged.
 5. Clean `systemctl poweroff` over SSH, `qemu-img check`, `qemu-img convert`
    to a new standalone image, `qemu-img compare` against the source, SHA-256,
    mode 0444, manifest.

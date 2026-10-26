@@ -1,0 +1,39 @@
+{
+  "source": "6b7949f5cab8ee9d9564d5ebb4f2cee81881cbf8",
+  "version": "26.1025.1362-dev+g6b7949f5cab8",
+  "ciRun": 40244194828,
+  "classification": "CI development artifacts, not published nightly or stable",
+  "assets": [
+    {
+      "path": "/home/patrick/.t3/worktrees/put.gd/acceptance-first-stable-integrated-20261025/work/integrated/assets/ubuntu24.04/putgd_26.1025.1362~dev+g6b7949f5cab8_amd64.deb",
+      "name": "putgd_26.1025.1362~dev+g6b7949f5cab8_amd64.deb",
+      "sha256": "6790fccb9bcf2b0c1a4122adb4aee19f38c784dc15f9a095aa11799b26929f02",
+      "bytes": 57591630
+    },
+    {
+      "path": "/home/patrick/.t3/worktrees/put.gd/acceptance-first-stable-integrated-20261025/work/integrated/assets/ubuntu26.04/putgd_26.1025.1362~dev+g6b7949f5cab8_amd64.deb",
+      "name": "putgd_26.1025.1362~dev+g6b7949f5cab8_amd64.deb",
+      "sha256": "0a7693ec6db528149c967f09aaae9ba49e3631d55636f5d193dd3d04db55261c",
+      "bytes": 57927354
+    },
+    {
+      "path": "/home/patrick/.t3/worktrees/put.gd/acceptance-first-stable-integrated-20261025/work/integrated/assets/debian13/putgd_26.1025.1362~dev+g6b7949f5cab8_amd64.deb",
+      "name": "putgd_26.1025.1362~dev+g6b7949f5cab8_amd64.deb",
+      "sha256": "b8709bdc4e8da0b3d2c6b23a7c66d7ac6e199b00fe218f2a2ff0ddc0cdb38878",
+      "bytes": 57471130
+    },
+    {
+      "path": "/home/patrick/.t3/worktrees/put.gd/acceptance-first-stable-integrated-20261025/work/integrated/assets/fedora44/putgd-26.1025.1362~dev+g6b7949f5cab8-1.fc44.x86_64.rpm",
+      "name": "putgd-26.1025.1362~dev+g6b7949f5cab8-1.fc44.x86_64.rpm",
+      "sha256": "97c0afa72f60075bd1348388900a28e2ab92ae6972ecf42072c4f5c68b0d7c20",
+      "bytes": 45652717
+    },
+    {
+      "path": "/home/patrick/.t3/worktrees/put.gd/acceptance-first-stable-integrated-20261025/work/integrated/assets/appimage/putgd-26.1025.1362-dev+g6b7949f5cab8-x86_64.AppImage",
+      "name": "putgd-26.1025.1362-dev+g6b7949f5cab8-x86_64.AppImage",
+      "sha256": "b88350ff4ca89d9bba2c76769fb5a864370828b9c90a0072f58d7f7f8cb7b9f3",
+      "bytes": 116558328
+    }
+  ],
+  "frozenAt": "2026-10-25T23:33:11.276822+00:00"
+}

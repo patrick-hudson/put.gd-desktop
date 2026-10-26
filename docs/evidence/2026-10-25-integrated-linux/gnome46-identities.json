@@ -1,0 +1,24 @@
+{
+  "osRelease": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+  "uname": [
+    "Linux",
+    "putgd-gnome46-lab",
+    "6.8.0-147-generic",
+    "#147-Ubuntu SMP PREEMPT_DYNAMIC Thu Sep 24 11:33:16 UTC 2026",
+    "x86_64"
+  ],
+  "sessions": "13 1000 lab -     -    active  no -\n15 1000 lab -     -    closing no -\n18 1000 lab -     -    active  no -\n 2 1000 lab seat0 tty2 active  no -\n 4 1000 lab -     -    active  no -\n",
+  "session": "Desktop=\nType=x11\n",
+  "package": "gnome-shell\t46.0-0ubuntu6~24.04.16\nlibqt6core6t64:amd64\t6.4.2+dfsg-21.1build5\nputgd\t26.1025.1362~dev+g6b7949f5cab8\n",
+  "moduleFiles": [
+    {
+      "path": "/usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so",
+      "sha256": "7fd0721fff0603770c1ee9ba1c6b68664e2e942956802d74bb6d58088619cf6f"
+    },
+    {
+      "path": "/home/lab/work/ia25/appimage-root/squashfs-root/usr/lib/putgd/libputgd-s3.so",
+      "sha256": "a9d52ed7197b8bd3c06c95428de3c4fcc9c3e4417bceafd5f7dd5c199b620120"
+    }
+  ],
+  "appImageSha256": "b88350ff4ca89d9bba2c76769fb5a864370828b9c90a0072f58d7f7f8cb7b9f3"
+}

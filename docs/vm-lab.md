@@ -163,21 +163,21 @@ ssh-keygen -q -t ed25519 -N '' -f "$provision_control/identity"
 truncate -s 16M "$provision_control/seed.img"
 mkfs.vfat -n PUTGDLAB "$provision_control/seed.img"
 mcopy -i "$provision_control/seed.img" tools/lab/bootstrap-guest.sh ::bootstrap.sh
+mcopy -i "$provision_control/seed.img" tools/lab/guest_idle.py ::guest_idle.py
 mcopy -i "$provision_control/seed.img" "$provision_control/identity.pub" ::identity.pub
 ```
 
 Shut down this new provisioning guest before restarting it. With the ISO
 detached (`-boot order=c`, remove `-cdrom`), add
 `-drive "file=$provision_control/seed.img,format=raw,if=virtio"` to the one-time
-QEMU command for this same unprovisioned disk. The seed contains the public key and
-script only. In the guest terminal:
+QEMU command for this same unprovisioned disk. The seed contains the public key, bootstrap script and visibility helper only. In the guest terminal:
 
 ```sh
 sudo mount /dev/disk/by-label/PUTGDLAB /mnt
 sudo sh /mnt/bootstrap.sh /mnt/identity.pub
 ```
 
-Copy `tools/lab/bootstrap-guest.sh` and the public key into the disposable guest. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
+Copy `tools/lab/bootstrap-guest.sh`, its companion `tools/lab/guest_idle.py` and the public key into the disposable guest, keeping the two scripts together. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
 
 Verify the SSH host fingerprint
 against the guest console before recording the host key. Keep the private key outside
@@ -603,3 +603,66 @@ On Wayland, Qt's reported window origin is not a global screen coordinate. The
 runner locates the complete synthetic four-color pattern in an independent
 pre-action QMP witness; it rejects missing, obscured or ambiguous patterns.
 Capture results are compared afterward and never determine the input coordinates.
+
+
+## Visible guest preflight
+
+[Code PR #584](https://github.com/patrick-hudson/put.gd-desktop/pull/584) adds the
+common disposable-guest visibility preflight. `lab.py launch` applies it after
+authenticated SSH and before returning; `start` also applies it. Graphical
+scenarios use check-only preflights both before and after the workload, so policy
+drift after setup is refused rather than silently repaired. Custom
+acceptance drivers must use the same boundary checks:
+
+```sh
+python3 tools/lab/lab.py preflight --run work/lab-runs/RUN --apply --stage before-campaign
+python3 tools/lab/lab.py preflight --run work/lab-runs/RUN --stage before-idle
+# Run the unchanged measurement driver, with the visible wall maintained.
+python3 tools/lab/lab.py preflight --run work/lab-runs/RUN --stage after-idle
+```
+
+The host authenticates the owned running QEMU process, disposable overlay and
+forwarded SSH endpoint before sending the helper. The guest rejects non-QEMU/KVM
+machines and derives configuration homes from the actual desktop process. Do not
+read desktop policy through `guest_session`'s product-specific XDG homes.
+
+GNOME and Cinnamon disable idle activation, locking, dimming and inactive sleep
+on both power supplies. Plasma verifies lock and all AC/Battery/LowBattery
+power profiles and reloads the live services. A user service holds a verified
+logind idle/sleep inhibitor; initial acquisition may take up to five seconds.
+Initial GNOME/Plasma service readiness is bounded to 30 seconds; Cinnamon
+ScreenSaver is demand-activated and must return inactive from `GetActive`.
+Initial complete-output readiness is bounded to 15 seconds per head, retaining
+every blank attempt. Check-only boundaries neither repair drift nor wait for
+missing services, inhibitor or visible frames.
+X11 additionally disables and reads back screen saving/DPMS. Native session type,
+active seat, unlocked state, inactive screensaver, configured outputs, complete
+QMP frames and VNC extents must agree. A uniform RGB color is not a visible
+desktop witness, even when its component channel values differ. These checks do not replace a geometry
+campaign's independent all-head fresh-motion oracle or human visual review.
+
+New provisioning seeds for generic, Aurora and neon guests must contain
+`guest_idle.py` beside `bootstrap.sh`. Bootstrap installs the helper and a desktop
+autostart entry for future disposable logins. The normal launch/start checks still
+verify the effective live policy before acceptance. Existing immutable goldens
+are never edited to retrofit it: apply the helper in the fresh owned overlay.
+For an older golden, install the companion helper with `--install-autostart
+--user lab` inside its fresh owned overlay before any planned later login;
+`launch` applies live policy but does not itself install that autostart file.
+An existing unrelated helper/unit is a collision and is preserved; inspect it
+instead of overwriting it. The user inhibitor ends when the disposable guest is
+retired through normal guarded cleanup.
+
+Any failed policy, active screensaver, locked session, missing output or blank
+witness blocks acceptance. Once the run directory is verified as owned,
+non-symlinked and not writable by other users, early ownership/readiness/profile
+failures also retain `guest-preflight-*.json`. Unsafe receipt directories are
+refused without writing or contacting a guest. Available visuals are preserved. Restore a locked or blanked guest through its visible console before
+retrying. Preserve the failed attempt. Never apply these settings to a physical
+user desktop or treat an SSH-only check as complete graphical evidence.
+
+A failed launch attempts a bounded guest `sync` before stopping its owned QEMU
+process, retaining `failure-shutdown.json`. The generated run public-key append
+is newline-separated and synced before preflight, so a failed initial launch
+does not rely on guest page-cache persistence. This does not authorize stopping
+an unrelated guest or altering existing keys.

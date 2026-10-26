@@ -1,0 +1,3 @@
+# Raised Review overlay observation
+
+Reviewed m74 mp4 private-Review frame shows the preserved Review warning and a non-recording gray control bar. The observer explicitly calls `recording.raise` before this frame. `RecordSession.cpp` handles `raise` by unconditionally showing/raising `bar_` and reopening Review. The identical raise branch exists in retained baseline 98878cfe. This explains why the raised-Review frame alone does not establish spontaneous overlay survival caused by #572. The paused frame separately witnesses the visible Resume/Stop/Cancel controls. No interaction with the gray post-review Cancel control was tested; no general overlay-lifecycle pass is inferred.
