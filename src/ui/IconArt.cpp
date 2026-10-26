@@ -143,10 +143,22 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   if(name=="redo"){p.translate(24,0);p.scale(-1,1);}
   line(secondary,2.5);QPainterPath turn;turn.moveTo(7,9);turn.lineTo(15,9);turn.quadTo(21,9,21,15);turn.quadTo(21,21,15,21);turn.lineTo(10,21);p.drawPath(turn);
   fill(color);QPainterPath tip;tip.moveTo(2,9);tip.lineTo(9,3);tip.lineTo(9,15);tip.closeSubpath();p.drawPath(tip);
- } else if(name=="zoom-fit"||name=="zoom-actual") {
-  line(secondary,2);p.drawEllipse(QRectF(3,3,14,14));line(color,3);p.drawLine(15,15,21,21);
-  if(name=="zoom-fit"){line(color,1.6);p.drawRect(QRectF(7,7,6,6));}
-  else{fill(color);rounded(9,6,2,8,0.5);}
+ } else if(name=="zoom-fit") {
+  // Fit to window: four corners turned inward around the image, unlike the
+  // outward frame corners of region capture.
+  fill(secondary);rounded(9.5,9.5,5,5,1);
+  line(color,2.4);QPainterPath corners;
+  corners.moveTo(3,7.5);corners.lineTo(7.5,7.5);corners.lineTo(7.5,3);
+  corners.moveTo(16.5,3);corners.lineTo(16.5,7.5);corners.lineTo(21,7.5);
+  corners.moveTo(3,16.5);corners.lineTo(7.5,16.5);corners.lineTo(7.5,21);
+  corners.moveTo(16.5,21);corners.lineTo(16.5,16.5);corners.lineTo(21,16.5);p.drawPath(corners);
+ } else if(name=="zoom-actual") {
+  // Actual size: "1:1" in a frame.
+  line(secondary,1.8);rounded(1.9,4.4,20.2,15.2,3);
+  line(color,2.2);QPainterPath ones;
+  ones.moveTo(6.8,9.2);ones.lineTo(9.2,7.6);ones.lineTo(9.2,16.4);
+  ones.moveTo(14.8,9.2);ones.lineTo(17.2,7.6);ones.lineTo(17.2,16.4);p.drawPath(ones);
+  fill(color);p.drawEllipse(QPointF(12.4,9.9),1.15,1.15);p.drawEllipse(QPointF(12.4,14.3),1.15,1.15);
  } else if(name=="back"||name=="forward"||name=="up") {
   // The fallback file dialog's toolbar (#259): one arrow, turned.
   if(name=="forward"){p.translate(24,0);p.scale(-1,1);}
