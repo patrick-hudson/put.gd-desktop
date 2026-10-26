@@ -103,10 +103,22 @@ QImage iconSpecimen(){
  }
  return image;
 }
+// The editor's glyphs in the current scheme: a 40 px reference row, then the
+// real 20 px rows (the editor toolbar, and Recording review's mask tools that
+// share the redact glyph) at 1:1 and magnified 3x without smoothing.
 QImage editorIcons(){
- QImage image(1060,120,QImage::Format_RGB32);image.fill(QColor("#101216"));QPainter p(&image);p.setPen(QColor("#e7e9ef"));
+ const auto& t=Theme::current();QImage image(1560,372,QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
+ QFont small=p.font();small.setPixelSize(11);p.setFont(small);p.setPen(t.textMuted);
  const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","rectangle","highlight","text","undo","redo","zoom-fit","zoom-actual","save"};
- for(int i=0;i<names.size();++i){const int x=20+i*74;VisualStyle::icon(names[i]).paint(&p,QRect(x+13,18,40,40));p.drawText(QRect(x-6,68,86,24),Qt::AlignCenter,names[i]);}
+ for(int i=0;i<names.size();++i){const int x=12+i*86;VisualStyle::icon(names[i]).paint(&p,QRect(x+23,14,40,40));p.drawText(QRect(x,60,86,20),Qt::AlignCenter,names[i]);}
+ auto row=[&](const QStringList& icons,int step){
+  QImage strip(16+icons.size()*step,36,QImage::Format_RGB32);strip.fill(t.bg);QPainter q(&strip);
+  for(int i=0;i<icons.size();++i){if(icons[i]=="|"){q.fillRect(QRect(8+i*step+step/2,7,1,22),t.border);continue;}VisualStyle::icon(icons[i]).paint(&q,QRect(8+i*step+(step-20)/2,8,20,20));}
+  return strip;
+ };
+ auto show=[&](const QString& title,const QImage& strip,int y){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));};
+ show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","redact","blur","crop","|","annotate-arrow","rectangle","highlight","text"},40),112);
+ show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32),252);
  return image;
 }
 QImage syntheticCapture(int index){

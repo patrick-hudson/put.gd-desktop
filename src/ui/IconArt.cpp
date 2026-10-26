@@ -118,8 +118,11 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="select") {
   fill(color);QPainterPath pointer;pointer.moveTo(5,2);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,22.5);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
  } else if(name=="redact") {
-  line(secondary,2);p.drawLine(3,5,21,5);p.drawLine(3,19,15,19);
-  fill(color);rounded(2,9,20,6,1.5);
+  // A line of text with its words covered: a short word on the baseline,
+  // then one solid cover bar. Lines above or below read as paragraph
+  // alignment, and fragments on both sides leave the bar too small at 20 px.
+  line(secondary,2.6);p.drawLine(QPointF(2.3,15.4),QPointF(5.9,15.4));
+  fill(color);rounded(8.6,7,13.4,10,1.8);
  } else if(name=="blur") {
   fill(secondary);for(int y:{4,12,20})for(int x:{4,12,20})p.drawEllipse(QPointF(x,y),1.6,1.6);
   fill(color);for(int y:{8,16})for(int x:{8,16})p.drawEllipse(QPointF(x,y),2.6,2.6);
@@ -130,7 +133,10 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   line(color,2.5);p.drawLine(4,20,16,8);
   fill(color);QPainterPath head;head.moveTo(21,3);head.lineTo(19,13);head.lineTo(11,5);head.closeSubpath();p.drawPath(head);
  } else if(name=="rectangle") {
-  line(secondary,2);rounded(3,5,18,14,2);line(color,2.5);rounded(6,8,12,8,1);
+  // One outline with a node at each corner; a frame in a frame reads as a
+  // button or a window.
+  line(color,2);rounded(4,5,16,14,1);
+  fill(secondary);for(const qreal x:{4.,20.})for(const qreal y:{5.,19.})rounded(x-2.5,y-2.5,5,5,1);
  } else if(name=="highlight") {
   fill(secondary);rounded(2,19,20,3,1);
   fill(color);QPainterPath marker;marker.moveTo(14,2);marker.lineTo(21,9);marker.lineTo(12,18);marker.lineTo(7,18);marker.lineTo(5,16);marker.lineTo(5,11);marker.closeSubpath();p.drawPath(marker);
