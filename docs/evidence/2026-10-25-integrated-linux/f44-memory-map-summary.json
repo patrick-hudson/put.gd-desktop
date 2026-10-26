@@ -1,0 +1,206 @@
+{
+  "scope": "readonly snapshot during settle, not an additional run",
+  "totalRss": 42610688,
+  "topMappings": [
+    {
+      "mapping": "55a385bd6000-55a3861a1000 rw-p 00000000 00:00 0                          [heap]",
+      "Rss": 5042176,
+      "Pss": 5042176,
+      "Private_Clean": 0,
+      "Private_Dirty": 5042176,
+      "Anonymous": 5042176
+    },
+    {
+      "mapping": "55a3628b4000-55a362cfa000 r-xp 00000000 00:23 560235                     /usr/bin/putgd",
+      "Rss": 3383296,
+      "Pss": 3383296,
+      "Private_Clean": 3383296,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a09e00000-7f6a0a292000 r-xp 00000000 00:23 194496                     /usr/lib64/libQt6Core.so.6.11.2",
+      "Rss": 3321856,
+      "Pss": 3321856,
+      "Private_Clean": 3321856,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a0a600000-7f6a0adec000 r-xp 00000000 00:23 198051                     /usr/lib64/libQt6Gui.so.6.11.2",
+      "Rss": 2355200,
+      "Pss": 2355200,
+      "Private_Clean": 2355200,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a08200000-7f6a08582000 r-xp 00000000 00:23 185024                     /usr/lib64/libcrypto.so.3.5.9",
+      "Rss": 2031616,
+      "Pss": 93184,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a0adec000-7f6a0b048000 r--p 007ec000 00:23 198051                     /usr/lib64/libQt6Gui.so.6.11.2",
+      "Rss": 1687552,
+      "Pss": 1687552,
+      "Private_Clean": 1687552,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a0b742000-7f6a0b9f2000 r--p 00542000 00:23 198061                     /usr/lib64/libQt6Widgets.so.6.11.2",
+      "Rss": 1638400,
+      "Pss": 1638400,
+      "Private_Clean": 1638400,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a0a292000-7f6a0a50a000 r--p 00492000 00:23 194496                     /usr/lib64/libQt6Core.so.6.11.2",
+      "Rss": 1605632,
+      "Pss": 1605632,
+      "Private_Clean": 1605632,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a09807000-7f6a09979000 r-xp 00000000 00:23 184387                     /usr/lib64/libc.so.6",
+      "Rss": 1318912,
+      "Pss": 9216,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f69f6671000-7f69f67b5000 r-xp 00000000 00:23 244406                     /usr/lib64/libsqlite3.so.3.51.2",
+      "Rss": 1261568,
+      "Pss": 110592,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a08e10000-7f6a08f8a000 r--p 00210000 00:23 393080                     /usr/lib64/libicui18n.so.77.1",
+      "Rss": 958464,
+      "Pss": 95232,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a09a00000-7f6a09b71000 r-xp 00000000 00:23 184999                     /usr/lib64/libstdc++.so.6.0.36",
+      "Rss": 847872,
+      "Pss": 108544,
+      "Private_Clean": 65536,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a09b71000-7f6a09c9c000 r--p 00171000 00:23 184999                     /usr/lib64/libstdc++.so.6.0.36",
+      "Rss": 831488,
+      "Pss": 31744,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a08582000-7f6a086ec000 r--p 00382000 00:23 185024                     /usr/lib64/libcrypto.so.3.5.9",
+      "Rss": 827392,
+      "Pss": 21504,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a0b119000-7f6a0b1be000 r-xp 00000000 00:23 194498                     /usr/lib64/libQt6DBus.so.6.11.2",
+      "Rss": 618496,
+      "Pss": 618496,
+      "Private_Clean": 618496,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "55a362cfa000-55a362df9000 r--p 00446000 00:23 560235                     /usr/bin/putgd",
+      "Rss": 585728,
+      "Pss": 585728,
+      "Private_Clean": 585728,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a0956e000-7f6a0961b000 r-xp 00000000 00:23 194353                     /usr/lib64/libglib-2.0.so.0.8800.4",
+      "Rss": 569344,
+      "Pss": 6144,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a09754000-7f6a097f2000 r--p 00084000 00:23 198059                     /usr/lib64/libQt6WaylandClient.so.6.11.2",
+      "Rss": 516096,
+      "Pss": 516096,
+      "Private_Clean": 516096,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a086ec000-7f6a08763000 r--p 004ec000 00:23 185024                     /usr/lib64/libcrypto.so.3.5.9",
+      "Rss": 487424,
+      "Pss": 487424,
+      "Private_Clean": 0,
+      "Private_Dirty": 487424,
+      "Anonymous": 487424
+    },
+    {
+      "mapping": "7f6a08b5d000-7f6a08bd1000 r-xp 00000000 00:23 36913                      /usr/lib64/libpcre2-16.so.0.15.0",
+      "Rss": 471040,
+      "Pss": 471040,
+      "Private_Clean": 471040,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f69f8000000-7f6a05e92000 r--p 00000000 00:23 184995                     /usr/lib/locale/locale-archive",
+      "Rss": 458752,
+      "Pss": 5120,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a09d78000-7f6a09dfe000 r--p 0008f000 00:23 184389                     /usr/lib64/libm.so.6",
+      "Rss": 417792,
+      "Pss": 48128,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a09ce9000-7f6a09d78000 r-xp 00000000 00:23 184389                     /usr/lib64/libm.so.6",
+      "Rss": 393216,
+      "Pss": 5120,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a0892c000-7f6a08a08000 r--p 0012c000 00:23 393088                     /usr/lib64/libicuuc.so.77.1",
+      "Rss": 376832,
+      "Pss": 33792,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    },
+    {
+      "mapping": "7f6a08fba000-7f6a0908a000 r-xp 00000000 00:23 393054                     /usr/lib64/libsystemd.so.0.42.0",
+      "Rss": 368640,
+      "Pss": 21504,
+      "Private_Clean": 0,
+      "Private_Dirty": 0,
+      "Anonymous": 0
+    }
+  ]
+}

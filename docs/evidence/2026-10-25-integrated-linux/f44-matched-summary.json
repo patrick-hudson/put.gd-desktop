@@ -1,0 +1,110 @@
+[
+  {
+    "run": "gb2",
+    "source": "6b7949f5cab8ee9d9564d5ebb4f2cee81881cbf8",
+    "rssBytes": 42532864,
+    "pssBytes": 27463680,
+    "rssExcessBytes": 589824,
+    "gates": {
+      "captureBurst": {
+        "status": "unassessed",
+        "reason": "50-upload workload uses explicit synthetic file editors; actual capture burst is not exercised"
+      },
+      "burstVisualAttribution": {
+        "status": "fail",
+        "attempted": 4,
+        "succeeded": 0,
+        "refused": 4,
+        "firstRefusalLabel": "burst-progress-4"
+      },
+      "settleGrowthBytes": {
+        "status": "unassessed",
+        "reason": "no_explicit_approved_threshold"
+      },
+      "settled-rssBytes": {
+        "status": "fail",
+        "limitBytes": 41943040
+      },
+      "settled-pssBytes": {
+        "status": "pass",
+        "limitBytes": 30408704
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    },
+    "status": "complete"
+  },
+  {
+    "run": "gbase1",
+    "source": "98878cfe31c2506d25ea6cbec97af002210319d2",
+    "rssBytes": 42192896,
+    "pssBytes": 27230208,
+    "rssExcessBytes": 249856,
+    "gates": {
+      "captureBurst": {
+        "status": "unassessed",
+        "reason": "50-upload workload uses explicit synthetic file editors; actual capture burst is not exercised"
+      },
+      "burstVisualAttribution": {
+        "status": "fail",
+        "attempted": 4,
+        "succeeded": 0,
+        "refused": 4,
+        "firstRefusalLabel": "burst-progress-4"
+      },
+      "settleGrowthBytes": {
+        "status": "unassessed",
+        "reason": "no_explicit_approved_threshold"
+      },
+      "settled-rssBytes": {
+        "status": "fail",
+        "limitBytes": 41943040
+      },
+      "settled-pssBytes": {
+        "status": "pass",
+        "limitBytes": 30408704
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    },
+    "status": "complete"
+  },
+  {
+    "run": "gb3",
+    "source": "6b7949f5cab8ee9d9564d5ebb4f2cee81881cbf8",
+    "rssBytes": 42610688,
+    "pssBytes": 27520000,
+    "rssExcessBytes": 667648,
+    "gates": {
+      "captureBurst": {
+        "status": "unassessed",
+        "reason": "50-upload workload uses explicit synthetic file editors; actual capture burst is not exercised"
+      },
+      "burstVisualAttribution": {
+        "status": "fail",
+        "attempted": 4,
+        "succeeded": 0,
+        "refused": 4,
+        "firstRefusalLabel": "burst-progress-4"
+      },
+      "settleGrowthBytes": {
+        "status": "unassessed",
+        "reason": "no_explicit_approved_threshold"
+      },
+      "settled-rssBytes": {
+        "status": "fail",
+        "limitBytes": 41943040
+      },
+      "settled-pssBytes": {
+        "status": "pass",
+        "limitBytes": 30408704
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    },
+    "status": "complete"
+  }
+]

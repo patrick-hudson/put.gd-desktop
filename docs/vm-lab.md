@@ -163,21 +163,21 @@ ssh-keygen -q -t ed25519 -N '' -f "$provision_control/identity"
 truncate -s 16M "$provision_control/seed.img"
 mkfs.vfat -n PUTGDLAB "$provision_control/seed.img"
 mcopy -i "$provision_control/seed.img" tools/lab/bootstrap-guest.sh ::bootstrap.sh
+mcopy -i "$provision_control/seed.img" tools/lab/guest_idle.py ::guest_idle.py
 mcopy -i "$provision_control/seed.img" "$provision_control/identity.pub" ::identity.pub
 ```
 
 Shut down this new provisioning guest before restarting it. With the ISO
 detached (`-boot order=c`, remove `-cdrom`), add
 `-drive "file=$provision_control/seed.img,format=raw,if=virtio"` to the one-time
-QEMU command for this same unprovisioned disk. The seed contains the public key and
-script only. In the guest terminal:
+QEMU command for this same unprovisioned disk. The seed contains the public key, bootstrap script and visibility helper only. In the guest terminal:
 
 ```sh
 sudo mount /dev/disk/by-label/PUTGDLAB /mnt
 sudo sh /mnt/bootstrap.sh /mnt/identity.pub
 ```
 
-Copy `tools/lab/bootstrap-guest.sh` and the public key into the disposable guest. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
+Copy `tools/lab/bootstrap-guest.sh`, its companion `tools/lab/guest_idle.py` and the public key into the disposable guest, keeping the two scripts together. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
 
 Verify the SSH host fingerprint
 against the guest console before recording the host key. Keep the private key outside
@@ -603,3 +603,49 @@ On Wayland, Qt's reported window origin is not a global screen coordinate. The
 runner locates the complete synthetic four-color pattern in an independent
 pre-action QMP witness; it rejects missing, obscured or ambiguous patterns.
 Capture results are compared afterward and never determine the input coordinates.
+
+
+## Visible guest preflight
+
+[Code PR #584](https://github.com/patrick-hudson/put.gd-desktop/pull/584) adds the
+common disposable-guest visibility preflight. `lab.py launch` applies it after
+authenticated SSH and before returning; `start` and graphical scenarios also
+require it, with a check-only verification after a successful scenario. Custom
+acceptance drivers must use the same boundary checks:
+
+```sh
+python3 tools/lab/lab.py preflight --run work/lab-runs/RUN --apply --stage before-campaign
+python3 tools/lab/lab.py preflight --run work/lab-runs/RUN --stage before-idle
+# Run the unchanged measurement driver, with the visible wall maintained.
+python3 tools/lab/lab.py preflight --run work/lab-runs/RUN --stage after-idle
+```
+
+The host authenticates the owned running QEMU process, disposable overlay and
+forwarded SSH endpoint before sending the helper. The guest rejects non-QEMU/KVM
+machines and derives configuration homes from the actual desktop process. Do not
+read desktop policy through `guest_session`'s product-specific XDG homes.
+
+GNOME and Cinnamon disable idle activation, locking, dimming and inactive sleep
+on both power supplies. Plasma verifies lock and all AC/Battery/LowBattery
+power profiles and reloads the live services. A user service holds a verified
+logind idle/sleep inhibitor; initial acquisition may take up to five seconds.
+Check-only boundaries neither repair drift nor wait for a missing inhibitor.
+X11 additionally disables and reads back screen saving/DPMS. Native session type,
+active seat, unlocked state, inactive screensaver, configured outputs, complete
+QMP frames and VNC extents must agree. These checks do not replace a geometry
+campaign's independent all-head fresh-motion oracle or human visual review.
+
+New provisioning seeds for generic, Aurora and neon guests must contain
+`guest_idle.py` beside `bootstrap.sh`. Bootstrap installs the helper and a desktop
+autostart entry for future disposable logins. The normal launch/start checks still
+verify the effective live policy before acceptance. Existing immutable goldens
+are never edited to retrofit it: apply the helper in the fresh owned overlay.
+An existing unrelated helper/unit is a collision and is preserved; inspect it
+instead of overwriting it. The user inhibitor ends when the disposable guest is
+retired through normal guarded cleanup.
+
+Any failed policy, active screensaver, locked session, missing output or blank
+witness blocks acceptance and retains `guest-preflight-*.json` plus available
+visuals. Restore a locked or blanked guest through its visible console before
+retrying. Preserve the failed attempt. Never apply these settings to a physical
+user desktop or treat an SSH-only check as complete graphical evidence.

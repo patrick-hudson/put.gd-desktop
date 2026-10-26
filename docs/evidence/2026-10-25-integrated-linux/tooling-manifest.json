@@ -1,0 +1,344 @@
+{
+  "scope": "Private supplemental campaign wrappers; frozen performance driver unchanged. These are not attributed to the frozen published driver.",
+  "files": [
+    {
+      "path": "work/integrated/admit-m74.py",
+      "sha256": "4599a837e9399d1cbfbe86ad67fff15e2205dc5795dd09a526fac9c234f27c00"
+    },
+    {
+      "path": "work/integrated/archive_vm_extractions.py",
+      "sha256": "0fd7192554fa044d7bd2786ccf20e5dd198ec0ba6d9108ad2df15633b71f5388"
+    },
+    {
+      "path": "work/integrated/collect.py",
+      "sha256": "d199ce943060e87b1c9854cf878b633b7ebfa0e59945c9e633ec6e2c1f0aa2af"
+    },
+    {
+      "path": "work/integrated/drivers/admit.py",
+      "sha256": "66294fce588d4b5939549c2b9d9d33eb98ea25a98f750885443769c79e556f02"
+    },
+    {
+      "path": "work/integrated/drivers/appimage_functional.py",
+      "sha256": "1cb7611b4782b013b2ddaab2655e2011deac1f641795249c11b8ddbda6ecd8f0"
+    },
+    {
+      "path": "work/integrated/drivers/appimage_functional_v2.py",
+      "sha256": "77b949f9b55638ad309a5ac2862b6bd267f9c27c5e66e4a4eb257027ec8524fa"
+    },
+    {
+      "path": "work/integrated/drivers/appimage_functional_v3.py",
+      "sha256": "365345a1c05ffbe3adb96537386cfa9ec6b363d8612a1244ce91704a5f64a278"
+    },
+    {
+      "path": "work/integrated/drivers/appimage_functional_v4.py",
+      "sha256": "cb92969d1ab8f8fbaa090c56603801bb710e5c311ee48d5b65839769ba2a5f37"
+    },
+    {
+      "path": "work/integrated/drivers/deferred_integrated.py",
+      "sha256": "38bb4727736d92f4c0c814a68af754193f82aaac7035afe24b573d7a7433de35"
+    },
+    {
+      "path": "work/integrated/drivers/deferred_integrated_v1.py",
+      "sha256": "e0f9adcf06e53ee83120da67ed0ec46400d46459272a83a2cb014c16ea25bc8c"
+    },
+    {
+      "path": "work/integrated/drivers/deferred_integrated_v3.py",
+      "sha256": "597c770b969be1e1a3ee9aa734495dc3a81acc94829957ec5c48d9efdf45403a"
+    },
+    {
+      "path": "work/integrated/drivers/deferred_prior.py",
+      "sha256": "2d57425dafd27e1d2ca060a5530ba6f3cfddb941111a478ec7f1fd0b5eedbeea"
+    },
+    {
+      "path": "work/integrated/drivers/dismiss_owned_notification.py",
+      "sha256": "1c9db6807eda2be6510abed6477e50493f6324a28be2dc2216786df06d7bac22"
+    },
+    {
+      "path": "work/integrated/drivers/dismiss_owned_notification_k72.py",
+      "sha256": "ce1bca0bf3a1a1942a8c2f8ed189dca8d0d9624db78dc0c442af23525c2f8aa9"
+    },
+    {
+      "path": "work/integrated/drivers/dismiss_owned_notification_m74.py",
+      "sha256": "c0439327c6ea9e0d1c1f594d2638da864971fb67b6edf85dd5db34f4392c0e96"
+    },
+    {
+      "path": "work/integrated/drivers/functional_v5.py",
+      "sha256": "0d70c8afb2951ba7d8e4ba0e80c2b422a8e1e8e34c694e4361c69f2447095f64"
+    },
+    {
+      "path": "work/integrated/drivers/functional_v6.py",
+      "sha256": "2d129a09e2cadefcfe51eb9b6d6403e3ba2f3511bdaf60f4bbf756f55b40cec4"
+    },
+    {
+      "path": "work/integrated/drivers/functional_v7.py",
+      "sha256": "fb02318230c7cb90e3b8f11e1bb642986b5ebecd0d896437cb2b268e1b8aa7d9"
+    },
+    {
+      "path": "work/integrated/drivers/idle_observed.py",
+      "sha256": "2b5c8e28efa096f5aa2cfc7f087f84ff1ad4f27ba006b4da610e1b726c82cfb7"
+    },
+    {
+      "path": "work/integrated/drivers/idle_observed_v2.py",
+      "sha256": "6a75184a7c37a574ef7aa700a4ebaaa1b711f9b907b6a9a4003d9408b587dc72"
+    },
+    {
+      "path": "work/integrated/drivers/idle_observed_v3.py",
+      "sha256": "0e33861efbf3f2a2847c763790eaebbaba36d526101b725487f10433d2f060be"
+    },
+    {
+      "path": "work/integrated/drivers/idle_observed_v4.py",
+      "sha256": "15496db919e9d090829738de18b8a96124d67f88f4501434e9cf47f2369a4ab4"
+    },
+    {
+      "path": "work/integrated/drivers/integrated_cf.py",
+      "sha256": "d0ebd515fc0c02d305d152d042ebab0ce868bc639fdb776d8c35bcb5e6dbbe59"
+    },
+    {
+      "path": "work/integrated/drivers/manual_views.py",
+      "sha256": "fd68ff755273e9ac1382382e41f38db8a978d986b1f82a2bd5445b0d2f20fc39"
+    },
+    {
+      "path": "work/integrated/drivers/native_burst.py",
+      "sha256": "a6273695d898738dd45372d99a457cb59f5b785239dbffe56835c324412f5d56"
+    },
+    {
+      "path": "work/integrated/drivers/native_burst_v2.py",
+      "sha256": "12f7ccd662200007bd28f4755985dd02ad994224c456630fd14285fba7352b02"
+    },
+    {
+      "path": "work/integrated/drivers/native_burst_v3.py",
+      "sha256": "ded4f4d3a0e389ff580019b5d2d23f4bad0b12585663aabc3a3f9303dedd4764"
+    },
+    {
+      "path": "work/integrated/drivers/native_burst_v4.py",
+      "sha256": "12e59da8d9c5d7c4c946be29717bedc5ff3e8902fd90da7d11ab5d7a1931729d"
+    },
+    {
+      "path": "work/integrated/drivers/native_burst_v5.py",
+      "sha256": "fc25b6495bd0b275764467d7c4050357aaad5323b56819d8b7ff5f1808fd1a58"
+    },
+    {
+      "path": "work/integrated/drivers/native_c_functional.py",
+      "sha256": "109d29ffcf2b6d9ed22ed5c01a23041c0f745884d518cacc30bea0460d164ff4"
+    },
+    {
+      "path": "work/integrated/drivers/paste_native.py",
+      "sha256": "1d6eadfb64a8a426d7d60cf5463677c1971d3edd82461c993f432b99ad785be5"
+    },
+    {
+      "path": "work/integrated/drivers/pressure_integrated.py",
+      "sha256": "70de99a1ce1036c889f20f18712572d25c230dfb2ad1732d78a039f289cfe35e"
+    },
+    {
+      "path": "work/integrated/drivers/pressure_integrated_v2.py",
+      "sha256": "9be4fe7c22878ae62c28c06432edd42301f220a70473c68348a32fd954e1829c"
+    },
+    {
+      "path": "work/integrated/drivers/pressure_integrated_v3.py",
+      "sha256": "28c7098c48b4bb6e0759ca8fdd7b0fb200f9c92c8e0926fa1b29f2617e1a7a42"
+    },
+    {
+      "path": "work/integrated/drivers/pressure_integrated_v4.py",
+      "sha256": "afcdcb4a042d7011462966ec2872fdb892499711f85adedf0a41e9b331155b1a"
+    },
+    {
+      "path": "work/integrated/drivers/queued_cancel.py",
+      "sha256": "b5447229abbab8058b37a29e450c809e8b57dbad7ea35b20b58dfd266480799e"
+    },
+    {
+      "path": "work/integrated/drivers/record_observed.py",
+      "sha256": "6f4bbc8589335dd2bdd42540c9bc2513a62e75278873eeed52ba554defd961b3"
+    },
+    {
+      "path": "work/integrated/drivers/record_observed_v2.py",
+      "sha256": "0f0dcb99ac0a4fc80acc8f8387e254145f2e5283fcb905b7fcbd85a55749c66b"
+    },
+    {
+      "path": "work/integrated/drivers/reproducer_mount.py",
+      "sha256": "3fe6e9ebaa73c5f89b048e8dd2b6af807e6a35c792ab2b6fa815a549783a3fe2"
+    },
+    {
+      "path": "work/integrated/drivers/run-desktop.sh",
+      "sha256": "c174e44118beda89d972a2260a8675183c838ebb7c9231d134695024dc422135"
+    },
+    {
+      "path": "work/integrated/drivers/run-integrated.sh",
+      "sha256": "411151b9ef9f59e5def300b5b7fd3d830f199ffc027bdb6fc4bbaffade2c7f10"
+    },
+    {
+      "path": "work/integrated/drivers/run-recording-v2.sh",
+      "sha256": "bf4614128bc14fd91009c28eb7b9c7f2635b3a1b28277f8bd4909627f3b417e3"
+    },
+    {
+      "path": "work/integrated/drivers/run-recording-v3.sh",
+      "sha256": "ca17aa0275fd138337d104570eff5bd741ec6bd057da54d083508666e00eb62d"
+    },
+    {
+      "path": "work/integrated/drivers/run-recording-v4.sh",
+      "sha256": "d1c6da81e55d5562b266e0bdc2754c73140a175973428f6e3bf3c2f9b19efe5f"
+    },
+    {
+      "path": "work/integrated/drivers/run-recording-v5.sh",
+      "sha256": "ed89d6fbe8f7111909f3ba874115a490ad1e40e61d347785984a2310abd24dc1"
+    },
+    {
+      "path": "work/integrated/drivers/run-recording.sh",
+      "sha256": "f17adf42e52119ca7e531a9eda101208c4133228ea17e37f845dbf191d3fe18a"
+    },
+    {
+      "path": "work/integrated/drivers/smoke-run.sh",
+      "sha256": "1873e2e6e2feb3dc82da87bf14cd898cf00053d5e67005bc6980f6d2da3d8296"
+    },
+    {
+      "path": "work/integrated/drivers/smoke_qc.py",
+      "sha256": "6247c110c6cec820dadadabc7cd1bf229f940b58e85bb01228c16cab66fd60d1"
+    },
+    {
+      "path": "work/integrated/drivers/summarize.py",
+      "sha256": "6b304871b254d736cbeb0b1ac9cb87917113a2def7770c2a2e4bd81eed2ccd3d"
+    },
+    {
+      "path": "work/integrated/drivers/wayland_burst_diag.py",
+      "sha256": "d40c77e44af9a7c00688f5c89466e6674619d93663091918110c765ecd73021f"
+    },
+    {
+      "path": "work/integrated/f44-launch.sh",
+      "sha256": "43f1e4368a55d27fb7568ac8fcc31b7160e9a385803d65f95471d48829a8ced3"
+    },
+    {
+      "path": "work/integrated/k72-launch.sh",
+      "sha256": "55d066141ef111c70f714f726bd9cbcf80832c45738c08e3e5dc7c8127b854d6"
+    },
+    {
+      "path": "work/integrated/lab.sh",
+      "sha256": "d6d5935728488637e3b662c03e989c2e0cafdb80a831d5dfa9d7315d36c87704"
+    },
+    {
+      "path": "work/integrated/launch.py",
+      "sha256": "e992ac257b87c94d90dcd41f530b2b5f38a3b7d611780ed617d2097f53306e5f"
+    },
+    {
+      "path": "work/integrated/launch_aurora_followup.py",
+      "sha256": "174f35b3346570b42ca7c76461f9c29971ac217ac38e3cc75e4f883241434890"
+    },
+    {
+      "path": "work/integrated/launch_vm.py",
+      "sha256": "939553f8784671781fa557494766c65b9ad69cc13996cdf5b6c2926e397bd66a"
+    },
+    {
+      "path": "work/integrated/m74-launch.sh",
+      "sha256": "7c0cc757031a726afd677e837d7735ad0e6d34c4bd77e1f7a9d1dab771c0c08d"
+    },
+    {
+      "path": "work/integrated/m74-memory.sh",
+      "sha256": "f168f9f92cf8b9c9a1f37ea5e7e1d649049a120c97317d15b63b0da2838ea91b"
+    },
+    {
+      "path": "work/integrated/make_packet.py",
+      "sha256": "84bfdf939b811f0d49ed3e9c16b18a5ea30c5213d7dfe3cdab7e4fccc30a62f4"
+    },
+    {
+      "path": "work/integrated/native-pressure-prior.py",
+      "sha256": "0ce2b5baab3a5e8a9e5960b1611c8b8a7722986e2af7d0358bd66d52cc94ffea"
+    },
+    {
+      "path": "work/integrated/prepare_vm.py",
+      "sha256": "6538b632b4d83c1ca396ac545114bcbe5b6ebae1cf84eba7ca146af12de56ddf"
+    },
+    {
+      "path": "work/integrated/provision_gnome_x11.py",
+      "sha256": "d75ac2c49b6805d306c99283ecf4b9190fa074e19295977cbcb0984044ddfc93"
+    },
+    {
+      "path": "work/integrated/retire_vm.py",
+      "sha256": "a5b96dcb1f095712c9e38355aa05e78918facda9237f4279daab22f5fe43895b"
+    },
+    {
+      "path": "work/integrated/retire_vm_duplicate.py",
+      "sha256": "e387958833667e77f22480047c8eb30e45ecc0dbc5fd47cf6bf6415587ee7587"
+    },
+    {
+      "path": "work/integrated/vm-app-idle-status.sh",
+      "sha256": "5f1dfc0b31fe9d1e59b3b0e2934dd77f69b6a440893e27be4c85e9f334d3681f"
+    },
+    {
+      "path": "work/integrated/vm-app-idle2-status.sh",
+      "sha256": "f9586b2ac90d17350c5f3a46de207359d55be062eb1a44168fb629b18b14511a"
+    },
+    {
+      "path": "work/integrated/vm-appimage-status.sh",
+      "sha256": "f7b52e3603cca1c7c123cc73e6aaf05690e942d069323ba0e0eac969e66b6fc1"
+    },
+    {
+      "path": "work/integrated/vm-functional-status.sh",
+      "sha256": "61f9bc2238b8de17e3915524a8a563c9e34c6f5eda757ec2cf67d6f4a060ae37"
+    },
+    {
+      "path": "work/integrated/vm-identities.sh",
+      "sha256": "7b2ddda71dc3989cab61f924ec8fea50bdd5575f74e046a8d3de04bf4aa0c733"
+    },
+    {
+      "path": "work/integrated/vm-idle-observation.sh",
+      "sha256": "99d55405fe2e018df52a74de54d4ef48fbce290da973242a3b36db97d63396af"
+    },
+    {
+      "path": "work/integrated/vm-idle-status.sh",
+      "sha256": "1e30b07fbeb1eced388ddb7c0147c4cdbe4ebb9a53270e2ea329ac4d420bfa76"
+    },
+    {
+      "path": "work/integrated/vm-install-cover-tool.sh",
+      "sha256": "e4f68f1df0bf0dba0d47904bf7aa0e5bd41a48420b658f7a4c838cc5743eaa8c"
+    },
+    {
+      "path": "work/integrated/vm-inventory.sh",
+      "sha256": "d96102444287e9e829780a2d27cd2748972a52331079f72d1c1f340595312229"
+    },
+    {
+      "path": "work/integrated/vm-logout.sh",
+      "sha256": "470dc9b6424db63e57d7dad89d1c94e8e2ea764ca789f1ecc32564fcd82b1c4b"
+    },
+    {
+      "path": "work/integrated/vm-record-status.sh",
+      "sha256": "a6e5224f5a3ddbf63e64c1996f9c96a82da045fb2e0a62f9d8127f855071e04b"
+    },
+    {
+      "path": "work/integrated/vm-record2-status.sh",
+      "sha256": "477326c551753c8cdc63f9b5adeb9cb6440a65a96b3fdf703df4efc7dc37ca27"
+    },
+    {
+      "path": "work/integrated/vm-start-app-idle.sh",
+      "sha256": "a30fa3578f10643b38afc805c0740814163d415dc5be544d53ead092eb3dce14"
+    },
+    {
+      "path": "work/integrated/vm-start-appimage.sh",
+      "sha256": "b0f854b579b9eb41a10bad91efdffee6e35e16e79a07bb8746d080588f1ac46b"
+    },
+    {
+      "path": "work/integrated/vm-start-functional.sh",
+      "sha256": "148c97e6d405b38c5c3972a743ca0030f2775c28b5290feb4f8fb61b49e73078"
+    },
+    {
+      "path": "work/integrated/vm-state.sh",
+      "sha256": "775d5931026c544c987daaab9cd8af43e00c1c5ff49769a6d8636ca34f552446"
+    },
+    {
+      "path": "work/integrated/vmcollect.py",
+      "sha256": "c74ea10e6a5f7b6572e350c033515af8dc2d1ef15af66e57d42c29f8e176d1b4"
+    },
+    {
+      "path": "work/integrated/vmexec.py",
+      "sha256": "c2edae0b12fd1f57b340da7dd1688c417abfda6e8cd6af84325e278436b2eeba"
+    },
+    {
+      "path": "work/integrated/vmexport.py",
+      "sha256": "f417f5f26e66fc632bdd47daae12aaf1e31af8059a814f5bbefee24c87379636"
+    }
+  ],
+  "commonPreflight": {
+    "pullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/584",
+    "commit": "0f58bafe",
+    "helperSha256": "a6322f30d50ba0e5c87360e8c316a4d5b6396bdccfc5b9a90a3aa37ea8594835",
+    "contracts": "all19 lab suites passed;19 new contract tests;CI40259632350 passed",
+    "liveValidation": "GNOME46 X11 startup/drift/check; pilot GNOME50 Wayland v2/v3; Cinnamon/Plasma pending"
+  }
+}

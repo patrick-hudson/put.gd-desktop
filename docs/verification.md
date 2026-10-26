@@ -9,6 +9,18 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Integrated Linux development campaign — 2026-10-25
+
+The [integrated evidence packet](evidence/2026-10-25-integrated-linux/README.md)
+freezes CI development source `6b7949f5` and exact assets combining #572/#574/#576.
+It records current Cinnamon/GNOME/KDE targeted functional, memory, History,
+native-capture burst, slow/stalled network and per-format media results, including
+retained failures and guest visibility corrections. Native Fedora post-burst RSS
+and GNOME46 AppImage whole-family RSS remain failures; unobserved History content
+endpoints remain unassessed despite approved thresholds. The campaign and remaining
+queued rows are still in progress. This is not published-nightly or full stable
+acceptance, and does not close #378/#380 or final exact-byte gates.
+
 ## History-open memory (#558) — 2026-10-25
 
 The History-only helper now defers hidden Settings/destination construction,

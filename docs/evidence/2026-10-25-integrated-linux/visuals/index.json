@@ -1,0 +1,62 @@
+{
+  "source": "6b7949f5cab8ee9d9564d5ebb4f2cee81881cbf8",
+  "assetDigests": "../freeze.json",
+  "visuals": [
+    {
+      "file": "m74-pressure-private-review.png",
+      "privateSource": "m74/mp4/manual-private-review-review.png",
+      "sha256": "6eef612374bd100fc8cf86cda83439fcadd0bc052118e08e23ce5ae6bd62ac3e",
+      "caption": "m74 Cinnamon/X11, frozen native Ubuntu24 DEB; preserved private Review after normal disk pressure. Explicit recording.raise also reopens the gray control bar; no spontaneous-overlay-survival inference.",
+      "reviewed": true
+    },
+    {
+      "file": "m74-pressure-paused.png",
+      "privateSource": "m74/mp5/manual-recording-paused-review.png",
+      "sha256": "71f94ab65f33511827b769419a4cbe4348b2bfeec69c17c8c4dbd11e45509f4f",
+      "caption": "m74 Cinnamon/X11, frozen native Ubuntu24 DEB; visible paused controls before bounded disk pressure.",
+      "reviewed": true
+    },
+    {
+      "file": "m74-appimage-light.png",
+      "privateSource": "m74/maf1/frames/ui-1792976193141455602-settings-light.png",
+      "sha256": "1bf91e67a05521a11b740da9d1f0e52025a02736b439020856e901e38c4b1813",
+      "caption": "m74 Cinnamon/X11, exact CI AppImage; Light appearance observed after waiting for scheme change.",
+      "reviewed": true
+    },
+    {
+      "file": "ubuntu26-native-review.png",
+      "privateSource": "ubuntu26/ugr3/frames/ui-1792977559837881266-reviewing.png",
+      "sha256": "d4918669e1c9e71e2ed68ee50db60e8bd1bad0f07e8dbc7dd9ed12415e0e0bcd",
+      "caption": "Ubuntu26.04.1 GNOME50.1 Wayland guest on f44, frozen Ubuntu26 DEB; moving MP4 exported through native Mutter capture.",
+      "reviewed": true
+    },
+    {
+      "file": "ubuntu26-appimage-review.png",
+      "privateSource": "ubuntu26/uar3/frames/ui-1792977871074724407-reviewing.png",
+      "sha256": "20be9970183762fc54e52a98e29ea29ceaabe23943f5592ca509db54983e14da",
+      "caption": "Same Ubuntu guest, exact CI AppImage; corrected moving MP4 run after retained visual-observer timeout. Exported clip remains private.",
+      "reviewed": true
+    },
+    {
+      "file": "gnome46-native-review.png",
+      "privateSource": "work/integrated/evidence/collected/gnome46/xnr3/frames/ui-1792978968122176700-reviewing.png",
+      "sha256": "aeffb208a7dc4f785f6038e31a64e4f6c33e816f368d74b5b3a4465a96f8fe58",
+      "caption": "Ubuntu24.04.5 GNOME46 native X11 guest on m74, exact Ubuntu24 DEB; moving WebP private Review and export.",
+      "reviewed": true
+    },
+    {
+      "file": "gnome46-appimage-review.png",
+      "privateSource": "work/integrated/evidence/collected/gnome46/xar3/frames/ui-1792979104046355211-reviewing.png",
+      "sha256": "d9a77bfaee843fa9568d10ffc64a430b9441e78802d819f3e5c735d319330809",
+      "caption": "Same GNOME46 X11 guest, frozen CI AppImage; moving WebP private Review/export.",
+      "reviewed": true
+    },
+    {
+      "file": "gnome46-c180-after.png",
+      "privateSource": "work/integrated/evidence/gnome46-c180-after.png",
+      "sha256": "e1ecb1852197f8df4b2768be523394199ab51d6d909b0724a63be0d22772ecf5",
+      "caption": "Corrected AppImage C180 after-window complete QMP frame. Desktop is unlocked and visible; first-login/updater dialogs remain visible, no OS upgrade performed. Whole-family RSS remains FAIL; see separate resident/FUSE scopes.",
+      "reviewed": true
+    }
+  ]
+}

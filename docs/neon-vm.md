@@ -97,7 +97,8 @@ Each in a fresh provisioning directory (`work/neon-lab/p2` on d69 for Unstable,
 3. Boot the installed disk (`-boot order=c`, no CD) with a 16 MiB FAT seed
    labelled `PUTGDLAB` holding
    [`tools/lab/bootstrap-neon-guest.sh`](../tools/lab/bootstrap-neon-guest.sh)
-   and a fresh Ed25519 public key. Log in at the greeter and in Konsole run
+   plus its current `tools/lab/guest_idle.py` companion and a fresh Ed25519
+   public key. Keep the helper beside `bootstrap.sh`. Log in at the greeter and in Konsole run
    `sudo mount /dev/vdb /mnt` and `sudo sh /mnt/bootstrap.sh /mnt/identity.pub`.
    Use `/dev/vdb`: typing through QEMU VNC drops Shift, so `PUTGDLAB` can't be
    typed. Compare the fingerprint printed on the console with `ssh-keyscan`
@@ -254,3 +255,5 @@ private data home's `applications/` to the session's
   ([#522](https://github.com/patrick-hudson/put.gd-desktop/issues/522)).
 - Report the plasmalogin absolute-session-path problem upstream, with Patrick's
   OK ([#524](https://github.com/patrick-hudson/put.gd-desktop/issues/524)).
+
+New disposable overlays use the [verified visibility preflight](vm-lab.md#visible-guest-preflight) before acceptance. Existing immutable golden contents and manifests remain historical; do not retrofit them in place.
