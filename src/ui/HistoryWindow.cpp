@@ -97,7 +97,7 @@ struct Columns {QRect item,output,created,actions;};
 // menuOnly: the inspector beside the list holds the actions, so rows keep
 // only their ⋯ menu and the action column shrinks to it.
 Columns historyColumns(const QRect& row,bool menuOnly=false){
- Columns c;const int action=row.width()>=Graphite::scaled(600)?(menuOnly?qMax(32,QFontMetrics(Graphite::font()).height()+12)+12:Graphite::scaled(180)):0;const int width=row.width()-action,minimum=Graphite::scaled(300);c.actions=action?QRect(row.right()-action+1,row.top(),action,row.height()):QRect();const int created=width-Graphite::scaled(92)>=minimum?Graphite::scaled(92):0;const int output=created&&width-created-Graphite::scaled(132)>=minimum+Graphite::scaled(20)?Graphite::scaled(132):0;
+ Columns c;const int action=row.width()>=Graphite::scaled(menuOnly?320:600)?(menuOnly?qMax(32,QFontMetrics(Graphite::font()).height()+12)+12:Graphite::scaled(180)):0;const int width=row.width()-action,minimum=Graphite::scaled(300);c.actions=action?QRect(row.right()-action+1,row.top(),action,row.height()):QRect();const int created=width-Graphite::scaled(92)>=minimum?Graphite::scaled(92):0;const int output=created&&width-created-Graphite::scaled(132)>=minimum+Graphite::scaled(20)?Graphite::scaled(132):0;
  c.created=created?QRect(row.left()+width-created,row.top(),created,row.height()):QRect();
  c.output=output?QRect(row.left()+width-created-output,row.top(),output,row.height()):QRect();
  c.item=QRect(row.left(),row.top(),width-created-output,row.height());return c;
