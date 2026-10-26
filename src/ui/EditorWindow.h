@@ -1,5 +1,6 @@
 #pragma once
 #include "editor/EditorCanvas.h"
+#include "Graphite.h"
 #include <QHash>
 #include <QWidget>
 class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;
@@ -26,6 +27,8 @@ public:
  // seeds them from settings and reports them back when the editor closes.
  void setRecentColors(const QStringList&);
  QStringList recentColors() const {return recentColors_;}
+ // The output Upload uses, as the resident phrases it, shown in the footer.
+ void setDestination(const QString&);
  // Save a copy…: the desktop's chooser (#259), then the sanitized PNG; false
  // while busy or while the chooser is already open. editor.fileDialog drives it.
  bool saveCopy();
@@ -58,7 +61,8 @@ private:
  QWidget *colorRow_=nullptr,*widthRow_=nullptr,*blurRow_=nullptr,*textRow_=nullptr,*cropRow_=nullptr;
  QComboBox* width_=nullptr;
  QSlider* strength_=nullptr;
- QLabel *hint_=nullptr,*status_=nullptr,*message_=nullptr;
+ QLabel *hint_=nullptr,*status_=nullptr,*message_=nullptr,*toolTitle_=nullptr,*toolHelp_=nullptr,*documentInfo_=nullptr,*destination_=nullptr;
+ Graphite::WindowHeader* header_=nullptr;
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr;
  FileDialog* chooser_=nullptr;
  QColor annotationColor_=QColor(220,38,38),highlightColor_=QColor(250,204,21);

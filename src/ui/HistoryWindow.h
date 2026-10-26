@@ -4,7 +4,7 @@
 #include <atomic>
 #include <memory>
 #include <functional>
-class QSplitter;class QScrollArea;class QStackedWidget;class QResizeEvent;class QListView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;class QLineEdit;class QComboBox;class QProgressBar;class QToolButton;
+class QSplitter;class QListWidget;class QVBoxLayout;class QScrollArea;class QStackedWidget;class QResizeEvent;class QListView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;class QLineEdit;class QComboBox;class QProgressBar;class QToolButton;
 namespace putgd {
 class FileDialog;
 class HistoryWindow final:public RetainedWindow {
@@ -18,6 +18,11 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  // state or cancels it; the reply is the chooser's state.
  void saveAsDialogCommand(const QString& action,const QString& id,std::function<void(Error,QJsonObject)> reply);
  FileDialog& saveAsDialog(){return *chooser_;}
+ // The sidebar's bottom: the main window puts the capture output there.
+ QVBoxLayout* sidebarFooter()const{return sidebarFooter_;}
+ // Where a row paints its complete failure text, in row coordinates: the
+ // delegate's layout, shared with its size hint and the offscreen tests.
+ static QRect failureTextArea(const QSize& row,bool gallery,bool dayHeading);
 signals:void viewStateChanged();
  // Edit & upload from another source: "clipboard", or "file" with a path.
  void editRequested(const QString& source,const QString& path);void chooseImageRequested();
@@ -35,6 +40,7 @@ private:
  // The item and preview file the inspector shows now, kept across reloads.
  QString shownItemId_,shownPreviewPath_;
  FileDialog* chooser_=nullptr;
+ QListWidget* categories_=nullptr;QToolButton* failedOnly_=nullptr;QVBoxLayout* sidebarFooter_=nullptr;QWidget* columns_=nullptr;bool restoringCategory_=false;
  // Runs once the selected file's detail arrives (true) or fails (false).
  std::function<void(bool)> afterDetail_;
 };

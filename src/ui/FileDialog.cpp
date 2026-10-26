@@ -43,41 +43,7 @@ QString modeName(FileDialog::Mode mode){return mode==FileDialog::Mode::Save?"sav
 QJsonValue text(const QString& value){return value.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(value);}
 // Qt's widget dialog in the Theme tokens: the generic platform theme gives it
 // Fusion's light palette, which the windows' own stylesheets only partly cover.
-const char* const fallbackStyle=R"QSS(
- QFileDialog { background: %bg%; color: %text%; }
- QFileDialog QWidget { color: %text%; }
- QFileDialog QLabel { color: %text%; background: transparent; }
- QFileDialog QFrame { background: transparent; }
- QFileDialog QListView, QFileDialog QTreeView { background: %surface%; alternate-background-color: %surface%; color: %text%; border: 1px solid %border%; border-radius: 6px; selection-background-color: %selected%; selection-color: %text%; outline: none; }
- QFileDialog QListView::item, QFileDialog QTreeView::item { padding: 3px 4px; border: none; }
- QFileDialog QListView::item:hover, QFileDialog QTreeView::item:hover { background: %surfaceRaised%; }
- QFileDialog QListView::item:selected, QFileDialog QTreeView::item:selected { background: %selected%; color: %text%; }
- QFileDialog QHeaderView { background: %surface%; }
- QFileDialog QHeaderView::section { background: %surfaceRaised%; color: %textSecondary%; border: none; border-bottom: 1px solid %borderStrong%; padding: 6px 8px; font-weight: 600; }
- QFileDialog QLineEdit, QFileDialog QComboBox { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 5px 8px; selection-background-color: %accent%; selection-color: %onAccent%; }
- QFileDialog QLineEdit:focus, QFileDialog QComboBox:focus { border: 1px solid %accent%; }
- QFileDialog QComboBox { padding-right: 24px; }
- QFileDialog QComboBox::drop-down { border: none; width: 22px; }
- QFileDialog QComboBox::down-arrow { image: url(%INDICATORS%/chevron.png); width: 12px; height: 12px; }
- QFileDialog QComboBox QAbstractItemView { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; selection-background-color: %selected%; selection-color: %text%; }
- QFileDialog QPushButton { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 6px 14px; }
- QFileDialog QPushButton:hover { background: %selected%; border-color: %accent%; }
- QFileDialog QPushButton:focus { border: 2px solid %accent%; padding: 5px 13px; }
- QFileDialog QPushButton:default { background: %accent%; color: %onAccent%; border-color: %accent%; font-weight: 600; }
- QFileDialog QPushButton:disabled { color: %textDisabled%; background: %surfaceRaised%; border-color: %border%; }
- QFileDialog QToolButton { background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 3px; }
- QFileDialog QToolButton:hover, QFileDialog QToolButton:checked { background: %selected%; border-color: %borderStrong%; }
- QFileDialog QToolButton:disabled { background: transparent; border-color: transparent; }
- QFileDialog QScrollBar:vertical { width: 10px; background: %bg%; margin: 2px; }
- QFileDialog QScrollBar:horizontal { height: 10px; background: %bg%; margin: 2px; }
- QFileDialog QScrollBar::handle { background: %borderStrong%; border-radius: 4px; min-height: 28px; min-width: 28px; }
- QFileDialog QScrollBar::add-line, QFileDialog QScrollBar::sub-line { width: 0; height: 0; }
- QFileDialog QScrollBar::add-page, QFileDialog QScrollBar::sub-page { background: transparent; }
- QFileDialog QMenu { background: %surface%; border: 1px solid %borderStrong%; padding: 4px; }
- QFileDialog QMenu::item { padding: 6px 20px; border-radius: 4px; }
- QFileDialog QMenu::item:selected { background: %selected%; }
- QFileDialog QSplitter::handle { background: transparent; }
-)QSS";
+
 void styleFallback(QFileDialog* dialog){
  const auto scheme=Theme::scheme();const auto& p=Theme::current();
  QPalette palette=dialog->palette();
@@ -95,10 +61,8 @@ void styleFallback(QFileDialog* dialog){
  for(const auto role:{QPalette::WindowText,QPalette::Text,QPalette::ButtonText})palette.setColor(QPalette::Disabled,role,p.textDisabled);
  dialog->setPalette(palette);
  dialog->setProperty("themeScheme",Theme::name(scheme));
- auto qss=Theme::stylesheet(QString::fromLatin1(fallbackStyle),scheme);
- const auto folder=VisualStyle::indicators(scheme);
- if(folder.isEmpty())qss.replace(QStringLiteral("QFileDialog QComboBox::down-arrow { image: url(%INDICATORS%/chevron.png); width: 12px; height: 12px; }"),QString());
- dialog->setStyleSheet(qss.replace(QStringLiteral("%INDICATORS%"),folder));
+ // Graphite paints the fallback's controls from the tokens; no stylesheet.
+ dialog->setStyleSheet({});
  // The toolbar's Fusion pixmaps are dark on dark; IconArt glyphs follow the tokens.
  const QList<std::pair<const char*,const char*>> buttons{{"backButton","back"},{"forwardButton","forward"},{"toParentButton","up"},{"newFolderButton","folder-new"},{"listModeButton","view-list"},{"detailModeButton","view-detail"}};
  for(const auto& [name,glyph]:buttons)if(auto* button=dialog->findChild<QToolButton*>(name))button->setIcon(VisualStyle::icon(glyph));

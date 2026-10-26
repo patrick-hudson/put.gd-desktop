@@ -1,7 +1,7 @@
 #pragma once
 #include <QMainWindow>
 #include <QJsonObject>
-class QListWidget;class QStackedWidget;class QLabel;class QPushButton;class QMimeData;class QScrollArea;class QSpacerItem;
+class QListWidget;class QToolButton;class QTabBar;class QStackedWidget;class QLabel;class QPushButton;class QMimeData;class QScrollArea;class QSpacerItem;
 namespace putgd {
 class UiSession;class SettingsWindow;class HistoryWindow;class FileDialog;
 class MainWindow final:public QMainWindow {
@@ -20,12 +20,12 @@ public:
  static QString droppedImage(const QMimeData*);
 signals:void settingsCreated(SettingsWindow*);void viewStateChanged();void actionRequested(const QString&);
  // Edit & upload from a source other than a region: "clipboard" or "file" with a path.
- void editRequested(const QString& source,const QString& path);void quitRequested();
+ void editRequested(const QString& source,const QString& path);void quitRequested();void aboutRequested();
 protected:
  bool eventFilter(QObject*,QEvent*)override;
 private:
- void fitRail();void setRailCompact(bool);void updateSaveStatus();
- UiSession& session_;QPushButton* editButton_=nullptr;SettingsWindow* settings_=nullptr;HistoryWindow* history_;QListWidget* navigation_;QStackedWidget* pages_;QLabel *destination_,*saveStatus_,*version_;QPushButton* versionLink_;QPushButton* updateLink_=nullptr;FileDialog* chooser_=nullptr;
- QScrollArea* railScroll_=nullptr;QList<QPushButton*> railButtons_,railLinks_;QList<QSpacerItem*> railGaps_;bool railCompact_=false,fittingRail_=false,refitRail_=false;int railSaving_=0;
+ void fitBand();void updateSaveStatus();
+ UiSession& session_;QToolButton* editButton_=nullptr;SettingsWindow* settings_=nullptr;HistoryWindow* history_;QTabBar* tabs_;QStackedWidget* pages_;QLabel *destination_,*saveStatus_,*version_;QPushButton* versionLink_;QPushButton* updateLink_=nullptr;FileDialog* chooser_=nullptr;
+ QWidget* band_=nullptr;QList<QToolButton*> actionButtons_;int bandStage_=0;bool fittingBand_=false;
 };
 }

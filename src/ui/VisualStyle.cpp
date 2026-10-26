@@ -1,6 +1,7 @@
 #include "VisualStyle.h"
 #include "IconArt.h"
 #include "Theme.h"
+#include "Graphite.h"
 #include <QApplication>
 #include <QAbstractItemView>
 #include <QFrame>
@@ -118,13 +119,6 @@ public:using QComboBox::QComboBox;
 protected:
  // Leave wheel input to the containing pane. The open popup handles its own scrolling.
  void wheelEvent(QWheelEvent* event)override {event->ignore();}
- void paintEvent(QPaintEvent* event)override {
-  QComboBox::paintEvent(event);
-  QStyleOptionComboBox option;initStyleOption(&option);
-  const auto arrow=style()->subControlRect(QStyle::CC_ComboBox,&option,QStyle::SC_ComboBoxArrow,this);
-  QPainter painter(this);painter.setRenderHint(QPainter::Antialiasing);painter.setPen(QPen(palette().color(isEnabled()?QPalette::Active:QPalette::Disabled,QPalette::Text),1.5,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
-  const QPointF center=arrow.center();QPainterPath path;path.moveTo(center+QPointF(-3.5,-1.5));path.lineTo(center+QPointF(0,2));path.lineTo(center+QPointF(3.5,-1.5));painter.drawPath(path);
- }
 };
 class StateDelegate final:public QStyledItemDelegate {
 public:StateDelegate(QList<int> columns,QObject* parent):QStyledItemDelegate(parent),columns_(std::move(columns)){}
@@ -149,7 +143,7 @@ void configureColumns(QHeaderView* header){new ColumnSizer(header);}
 QComboBox* choiceBox(QWidget* parent){return new ChoiceBox(parent);}
 void role(QWidget* widget,const char* value){widget->setProperty("visualRole",value);widget->style()->unpolish(widget);widget->style()->polish(widget);}
 namespace {
-void setFeedback(QLabel* label,const QString& text,const char* tone){label->setProperty("feedbackTone",tone);label->setText(text);label->style()->unpolish(label);label->style()->polish(label);}
+void setFeedback(QLabel* label,const QString& text,const char* tone){label->setProperty("feedbackTone",tone);label->setText(text);label->setVisible(!text.isEmpty());label->style()->unpolish(label);label->style()->polish(label);}
 }
 void feedback(QLabel* label,const QString& text,bool error){setFeedback(label,text,error?"error":"neutral");}
 void success(QLabel* label,const QString& text){setFeedback(label,text,"success");}
@@ -169,84 +163,7 @@ QWidget* settingRow(const QString& title,const QString& description,QWidget* con
  control->setAccessibleName(title);auto* row=new QWidget(parent);auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(6);layout->addWidget(control);layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
 }
 namespace {
-// The application stylesheet, in the shared Theme tokens (#60).
-const char* const applicationStyle=R"QSS(
- QWidget#putgdWindow { background: %bg%; color: %text%; }
- QWidget { color: %text%; font-size: 13px; }
- QLabel { background: transparent; }
- QLabel[visualRole="eyebrow"] { color: %accent%; font-size: 11px; font-weight: 600; }
- QLabel[visualRole="title"] { font-size: 24px; font-weight: 600; }
- QLabel[visualRole="subtitle"] { color: %textMuted%; font-size: 13px; }
- QLabel[visualRole="sectionTitle"] { font-size: 15px; font-weight: 600; }
- QLabel[visualRole="status"] { color: %textSecondary%; background: %surface%; border: 1px solid %border%; border-radius: 6px; padding: 8px 10px; }
- QLabel[visualRole="status"][feedbackTone="success"] { color: %success%; background: %successSurface%; border-color: %success%; font-weight: 600; }
- QLabel[visualRole="status"][feedbackTone="error"] { color: %danger%; background: %dangerSurface%; border-color: %danger%; }
- QLabel[visualRole="binding"] { color: %textMuted%; font-size: 12px; }
- QLabel[visualRole="binding"][bindingTone="active"] { color: %accent%; }
- QLabel[visualRole="binding"][bindingTone="warning"] { color: %warning%; }
- QLabel[visualRole="binding"][bindingTone="error"] { color: %danger%; }
- QLabel[visualRole="muted"] { color: %textMuted%; }
- QFrame[visualRole="card"] { background: %surface%; border: 1px solid %border%; border-radius: 8px; }
- QFrame[visualRole="card"] > QWidget { background: transparent; }
- QScrollArea, QStackedWidget { background: transparent; border: none; }
- QScrollArea > QWidget > QWidget { background: transparent; }
- QListWidget#settingsNavigation { background: %surface%; border: 1px solid %border%; border-radius: 8px; padding: 6px; outline: none; }
- QListWidget#settingsNavigation::item { padding: 10px 8px; border: 2px solid transparent; border-radius: 7px; margin-bottom: 3px; }
- QListWidget#settingsNavigation::item:selected { background: %selected%; color: %text%; }
- QListWidget#settingsNavigation::item:hover { background: %surfaceRaised%; }
- QListWidget#settingsNavigation:focus::item:selected { border: 2px solid %accent%; }
- QLineEdit, QComboBox, QPlainTextEdit { background: %surfaceRaised%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 6px 8px; selection-background-color: %accent%; selection-color: %onAccent%; }
- QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus { border: 1px solid %accent%; background: %surfaceRaised%; }
- QLineEdit:disabled, QComboBox:disabled, QPlainTextEdit:disabled { color: %textDisabled%; border-color: %border%; background: %surface%; }
- QComboBox { padding-right: 26px; }
- QComboBox QLineEdit { background: transparent; border: none; padding: 0; }
- QComboBox::drop-down { border: none; width: 24px; }
- QComboBox::down-arrow { image: none; }
- QComboBox QAbstractItemView { background: %surfaceRaised%; border: 1px solid %borderStrong%; selection-background-color: %selected%; selection-color: %text%; }
- QPushButton, QToolButton { background: %surfaceRaised%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 6px 11px; font-weight: 500; }
- QPushButton:hover, QToolButton:hover { background: %selected%; border-color: %accent%; }
- QPushButton:pressed, QToolButton:pressed { background: %selected%; }
- QPushButton:focus, QToolButton:focus { border: 2px solid %accent%; padding: 5px 10px; }
- QPushButton:disabled, QToolButton:disabled { color: %textDisabled%; background: %surfaceRaised%; border-color: %border%; }
- QToolButton[visualRole="info"] { background: transparent; border: 1px solid transparent; padding: 0; }
- QToolButton[visualRole="info"]:hover { background: %selected%; border-color: %borderStrong%; }
- QToolButton[visualRole="info"]:focus { border: 2px solid %accent%; padding: 0; }
- QPushButton[visualRole="primary"] { background: %accent%; color: %onAccent%; border-color: %accent%; font-weight: 600; }
- QPushButton[visualRole="primary"]:hover { background: %accentHover%; }
- QPushButton[visualRole="primary"]:focus { border: 2px solid %text%; }
- QPushButton[visualRole="primary"]:disabled { background: %selected%; color: %textMuted%; border-color: %borderStrong%; }
- QPushButton[visualRole="danger"] { color: %danger%; background: %dangerSurface%; border-color: %danger%; }
- QCheckBox { spacing: 8px; padding: 3px 0; }
- QCheckBox::indicator { width: 18px; height: 18px; border: 1px solid %borderStrong%; border-radius: 4px; background: %surfaceRaised%; }
- QCheckBox::indicator:checked { background: %accent%; border: 4px solid %selected%; }
- QCheckBox::indicator:focus { border: 2px solid %accent%; }
- QTableView, QTreeView { background: %surface%; alternate-background-color: %surface%; border: 1px solid %border%; border-radius: 8px; gridline-color: %border%; selection-background-color: %selected%; selection-color: %text%; outline: none; }
- QTableView::item, QTreeView::item { padding: 6px; border-bottom: 1px solid %border%; }
- QTableView::item:focus, QTreeView::item:focus { border: 1px solid %accent%; }
- QHeaderView { background: %surface%; }
- QHeaderView::section { background: %surfaceRaised%; color: %textSecondary%; border: none; border-bottom: 1px solid %borderStrong%; padding: 8px 9px; font-weight: 600; }
- QTableCornerButton::section { background: %surfaceRaised%; border: none; }
- QScrollBar:vertical { width: 10px; background: %bg%; margin: 2px; }
- QScrollBar:horizontal { height: 10px; background: %bg%; margin: 2px; }
- QScrollBar::handle { background: %borderStrong%; border-radius: 4px; min-height: 28px; min-width: 28px; }
- QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
- QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
- QMenu, QMessageBox { background: %surface%; }
- QMenu { border: 1px solid %borderStrong%; padding: 6px; }
- QMenu::item { padding: 10px 24px; border-radius: 5px; }
- QMenu::item:selected { background: %selected%; }
- QMenu::separator { height: 1px; background: %borderStrong%; margin: 5px 10px; }
- QToolTip { color: %text%; background: %surfaceRaised%; border: 1px solid %accent%; padding: 7px; }
- QSplitter::handle { background: %surfaceRaised%; }
- )QSS";
-void setPalette(QApplication& app){
- const auto& p=Theme::current();QPalette palette=app.palette();
- palette.setColor(QPalette::Window,p.bg);palette.setColor(QPalette::WindowText,p.text);palette.setColor(QPalette::Base,p.surfaceRaised);palette.setColor(QPalette::AlternateBase,p.surface);
- palette.setColor(QPalette::Text,p.text);palette.setColor(QPalette::Button,p.surfaceRaised);palette.setColor(QPalette::ButtonText,p.text);palette.setColor(QPalette::Highlight,p.accent);
- palette.setColor(QPalette::HighlightedText,p.onAccent);palette.setColor(QPalette::PlaceholderText,p.textMuted);palette.setColor(QPalette::Link,p.link);palette.setColor(QPalette::ToolTipBase,p.surfaceRaised);palette.setColor(QPalette::ToolTipText,p.text);
- palette.setColor(QPalette::Disabled,QPalette::Text,p.textDisabled);palette.setColor(QPalette::Disabled,QPalette::ButtonText,p.textDisabled);palette.setColor(QPalette::Disabled,QPalette::WindowText,p.textDisabled);
- app.setPalette(palette);
-}
+void setPalette(QApplication& app){app.setPalette(Graphite::palette());}
 const char* const schemeProperty="themeScheme";
 void repolish(QWidget* widget){widget->setProperty(schemeProperty,Theme::name(Theme::scheme()));widget->style()->unpolish(widget);widget->style()->polish(widget);widget->update();}
 bool stale(const QWidget* widget){return widget->property(schemeProperty).toString()!=Theme::name(Theme::scheme());}
@@ -301,7 +218,9 @@ void followScheme(QApplication& app,std::function<void()> beforeRepolishHook){
 void apply(QApplication& app){
  if(app.property("putgdVisualStyle").toBool())return;
  app.setProperty("putgdVisualStyle",true);
- setPalette(app);app.setStyleSheet(schemeScoped([](Theme::Scheme scheme){return Theme::stylesheet(QString::fromUtf8(applicationStyle),scheme);}));
+ // The Graphite style paints every control from the tokens (2026-10-26); no
+ // application stylesheet, so nothing re-parses on a scheme switch.
+ Graphite::install(app);
  // A scheme switch restyles every open window and dialog without a restart.
  followScheme(app,[&app]{setPalette(app);});
 }
@@ -350,8 +269,8 @@ QIcon icon(const QString& name,const QColor& color,int percent){
  return result;
 }
 QWidget* header(const QString& title,const QString& subtitle,QWidget* parent){auto* widget=new QWidget(parent);auto* layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,4);layout->setSpacing(4);auto* heading=new QLabel(title,widget);role(heading,"title");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,widget);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return widget;}
-QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(16,14,16,14);layout->setSpacing(10);auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
-void styleForm(QFormLayout* form){form->setContentsMargins(0,0,0,0);form->setHorizontalSpacing(16);form->setVerticalSpacing(8);form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);form->setRowWrapPolicy(QFormLayout::WrapLongRows);form->setLabelAlignment(Qt::AlignLeft|Qt::AlignVCenter);}
+QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");frame->setMaximumWidth(Graphite::scaled(880));auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(0,16,0,16);layout->setSpacing(10);auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
+void styleForm(QFormLayout* form){form->setContentsMargins(0,0,0,0);form->setHorizontalSpacing(16);form->setVerticalSpacing(8);form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);form->setRowWrapPolicy(QFormLayout::DontWrapRows);form->setLabelAlignment(Qt::AlignLeft|Qt::AlignVCenter);}
 void decorateView(QAbstractItemView* view,const QList<int>& columns){view->setItemDelegate(new StateDelegate(columns,view));view->setAlternatingRowColors(true);view->setIconSize(QSize(22,22));view->setTextElideMode(Qt::ElideMiddle);}
 QString indicators(Theme::Scheme scheme){
     static std::unique_ptr<QTemporaryDir> folder;

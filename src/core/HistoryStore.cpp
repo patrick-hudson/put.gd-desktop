@@ -240,7 +240,10 @@ HistoryPage HistoryStore::list(const HistoryQuery& query) const {
  if(query.limit<1||query.limit>200||query.offset<0||query.search.size()>256) {r.error={"invalid_query","History page must be between 1 and 200 records",{}};return r;}
  QString where=" WHERE 1=1";QVariantList values;
  auto filter=[&](QString column,const QString& value) {if(!value.isEmpty()) {where+=" AND "+column+"=?";values.append(value);}};
- filter("category",query.category);filter("mime",query.mime);filter("profile_id",query.profileId);filter("upload_status",query.uploadStatus);filter("local_status",query.localStatus);filter("remote_status",query.remoteStatus);
+ // "text+other" is an aggregate, never a stored category: clipboard text and
+ // other files together, History's "Other files" (2026-10-26). Every other
+ // value still matches one stored category exactly.
+ if(query.category=="text+other")where+=" AND category IN ('text','other')";else filter("category",query.category);filter("mime",query.mime);filter("profile_id",query.profileId);filter("upload_status",query.uploadStatus);filter("local_status",query.localStatus);filter("remote_status",query.remoteStatus);
  if(!query.from.isEmpty()) {where+=" AND created>=?";values.append(query.from);}if(!query.to.isEmpty()) {where+=" AND created<=?";values.append(query.to);}
  if(!query.search.isEmpty()) {where+=" AND name LIKE ? ESCAPE '\\'";auto escaped=query.search;escaped.replace("\\","\\\\");escaped.replace("%","\\%");escaped.replace("_","\\_");values.append("%"+escaped+"%");}
  QSqlQuery q(db_);q.prepare("SELECT count(*) FROM history"+where);for(const auto& v:values) q.addBindValue(v);

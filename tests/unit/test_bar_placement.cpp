@@ -183,8 +183,8 @@ private slots:
         for (const auto scheme : {Scheme::Light, Scheme::Dark, Scheme::Light}) {
             putgd::Theme::setScheme(scheme);
             const auto& p = putgd::Theme::palette(scheme);
-            QVERIFY2(!QRegularExpression("%[A-Za-z_]+%").match(bar.styleSheet()).hasMatch(), "a placeholder was left unreplaced");
-            QVERIFY(bar.styleSheet().contains(p.bg.name()));
+            // Graphite: painted from the tokens, no stylesheet.
+            QVERIFY(bar.styleSheet().isEmpty());
             QCOMPARE(bar.palette().color(QPalette::Window), p.bg);
             QCOMPARE(bar.property("themeScheme").toString(), putgd::Theme::name(scheme));
             // Painted: most of the bar is the scheme's background.
@@ -273,7 +273,7 @@ private slots:
             QCOMPARE(bar.geometry().right(), screens[0].right() - 10);
             QCOMPARE(bar.geometry().bottom(), screens[0].bottom() - 10);
             int visibleButtons = 0;
-            for (auto* button : bar.findChildren<QPushButton*>()) if (button->isVisible()) { ++visibleButtons; QCOMPARE(button->text(), QString("Stop")); }
+            for (auto* button : bar.findChildren<QPushButton*>()) if (button->isVisible()) { ++visibleButtons; QCOMPARE(button->text(), QString("Stop recording")); }
             QCOMPARE(visibleButtons, 1);
             bar.setState("paused");
             QVERIFY(screens[0].contains(bar.geometry()));

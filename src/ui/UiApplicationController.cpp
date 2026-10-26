@@ -83,6 +83,7 @@ QWidget* UiApplicationController::view(const QString& name){
    connect(main_.get(),&MainWindow::quitRequested,this,&UiApplicationController::requestQuit);
    connect(main_.get(),&MainWindow::actionRequested,this,&UiApplicationController::requestAction);
    connect(main_.get(),&MainWindow::editRequested,this,&UiApplicationController::requestEdit);
+   connect(main_.get(),&MainWindow::aboutRequested,this,[this]{if(auto* about=view("about")){openViews_.insert(about);about->show();about->raise();about->activateWindow();}});
   }
   // The tray's "Edit image > From a file" shows the main window, then its picker.
   if(name=="editFile"){QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->chooseImageToEdit();});return main_.get();}

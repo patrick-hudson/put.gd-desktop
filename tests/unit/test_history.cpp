@@ -9,6 +9,17 @@ using namespace putgd;
 class HistoryTest:public QObject {
  Q_OBJECT
 private slots:
+ // History's "Other files" (2026-10-26): text+other is an aggregate of the two
+ // stored categories; exact categories, including an unknown "files", match exactly.
+ void otherFilesAggregateKeepsExactCategories() {
+  QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="operation";op.created="2026-10-07T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());op.destination.profileId="test";
+  const QList<QPair<QString,QString>> files{{"image/png","images"},{"video/mp4","videos"},{"text/plain","text"},{"application/pdf","other"}};
+  for(int i=0;i<files.size();++i){OperationItem item;item.artifact.id=QString("item-%1").arg(i);item.artifact.name=QString("fixture-%1").arg(i);item.artifact.mime=files[i].first;item.artifact.category=files[i].second;item.uploadStatus="uploaded";op.items.append(item);}
+  QVERIFY(!store.saveOperation(op));
+  auto count=[&](const QString& category){HistoryQuery q;q.category=category;return store.list(q).total;};
+  QCOMPARE(count({}),4);QCOMPARE(count("images"),1);QCOMPARE(count("videos"),1);QCOMPARE(count("text"),1);QCOMPARE(count("other"),1);
+  QCOMPARE(count("text+other"),2);QCOMPARE(count("files"),0);
+ }
  void remoteMetadataReplacementDropsStaleNestedFields() {
   QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="metadata-operation";OperationItem item;item.artifact.id="metadata-item";item.uploadStatus="uploaded";op.items={item};QVERIFY(!store.saveOperation(op));
   auto deletion=[&](QString id,QString status,QJsonObject error,QJsonObject progress) {return QJsonObject{{"id",id},{"state","completed"},{"items",QJsonArray{QJsonObject{{"historyId",item.artifact.id},{"status",status},{"error",error},{"progress",progress}}}}};};

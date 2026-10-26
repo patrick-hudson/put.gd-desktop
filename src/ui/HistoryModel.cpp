@@ -10,7 +10,7 @@
 namespace putgd {
 namespace {
 QDateTime created(const QJsonObject& r){auto d=QDateTime::fromString(r["created"].toString(),Qt::ISODateWithMs);if(!d.isValid())d=QDateTime::fromString(r["created"].toString(),Qt::ISODate);return d.toLocalTime();}
-QString relativeTime(const QJsonObject& r){const auto d=created(r);if(!d.isValid())return {};const auto s=d.secsTo(QDateTime::currentDateTime());if(s<60)return "Just now";if(s<3600)return QString("%1 min ago").arg(s/60);if(d.date()==QDate::currentDate())return d.toString("HH:mm");if(d.date()==QDate::currentDate().addDays(-1))return "Yesterday";return d.toString("MMM d, yyyy");}
+QString relative(const QJsonObject& r){const auto d=created(r);if(!d.isValid())return {};const auto s=d.secsTo(QDateTime::currentDateTime());if(s<60)return "Just now";if(s<3600)return QString("%1 min ago").arg(s/60);if(d.date()==QDate::currentDate())return d.toString("HH:mm");if(d.date()==QDate::currentDate().addDays(-1))return "Yesterday";return d.toString("MMM d, yyyy");}
 QString day(const QJsonObject& r){const auto date=created(r).date();if(date==QDate::currentDate())return "TODAY";if(date==QDate::currentDate().addDays(-1))return "YESTERDAY";return date.isValid()?date.toString("MMMM d, yyyy").toUpper():QString("EARLIER");}
 struct AggregateProgress {
  qint64 sent=0,total=0;bool known=false;
@@ -32,6 +32,7 @@ bool localSaveFailed(const QJsonObject& r){
 }
 bool active(const QJsonObject& r){return Operation::activeState(r["operation"].toObject()["state"].toString());}
 }
+QString HistoryModel::relativeTime(const QJsonObject& r){return relative(r);}
 QString HistoryModel::fileSize(qint64 bytes){if(bytes<1024)return QString("%1 B").arg(bytes);if(bytes<1024*1024)return QString("%1 KiB").arg(QString::number(double(bytes)/1024,'f',bytes<10*1024?1:0));return ByteSize::summary(bytes);}
 QString HistoryModel::duration(qint64 ms){if(ms<=0)return {};const qint64 s=(ms+999)/1000;return s>=3600?QString("%1:%2:%3").arg(s/3600).arg(s/60%60,2,10,QChar('0')).arg(s%60,2,10,QChar('0')):QString("%1:%2").arg(s/60).arg(s%60,2,10,QChar('0'));}
 HistoryModel::HistoryModel(UiSession& history,QObject* parent):QAbstractListModel(parent),history_(history){}
@@ -94,7 +95,18 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==FailedRole){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);return r["uploadStatus"]=="failed"||op["state"]=="failed"||op["state"]=="partial";}
  if(role==PrimaryActionRole){if(active(r))return "Cancel";if(r["uploadStatus"]=="local_only"){if(localSaveFailed(r))return "Retry local save";if(r["local"].toObject()["status"]=="saved")return "Copy result";}if(data(i,FailedRole).toBool()&&storedNothing(r))return QString{};if(data(i,FailedRole).toBool()&&!r["operationId"].toString().isEmpty())return "Retry upload";if(linkAvailable(i.row()))return "Copy link";return QString{};}
  if(role==ProgressRole)return aggregateProgress(op).percent();
- if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled")return statusText(r);auto text=friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());const auto time=relativeTime(r);if(!time.isEmpty())text+=" · "+time;if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Link copied";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Could not copy result":" · Could not copy link";else if(op["copyStatus"]=="suppressed")text+=r["uploadStatus"]=="local_only"?" · Result not copied":" · Link not copied";if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
+ if(role==CreatedRole)return relative(r);
+ if(role==OutputRole){
+  // Where the result went: this device for a local-only result, else the
+  // destination's current name (or its provider when it was since removed).
+  if(r["uploadStatus"]=="local_only")return QStringLiteral("This device");
+  const auto profileId=r["profileId"].toString(op["destination"].toObject()["profileId"].toString());
+  for(const auto& value:history_.document()["profiles"].toArray())if(value.toObject()["id"]==profileId&&!profileId.isEmpty())return value.toObject()["label"].toString();
+  const auto provider=r["receipt"].toObject()["destination"].toObject()["providerId"].toString();
+  if(provider=="proton-drive")return QStringLiteral("Proton Drive");if(provider=="backblaze-b2")return QStringLiteral("Backblaze B2");if(provider=="s3")return QStringLiteral("S3 destination");
+  return r["local"].toObject()["status"]=="saved"?QStringLiteral("This device"):QString{};
+ }
+ if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled")return statusText(r);auto text=friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());const auto time=relative(r);if(!time.isEmpty())text+=" · "+time;if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Link copied";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Could not copy result":" · Could not copy link";else if(op["copyStatus"]=="suppressed")text+=r["uploadStatus"]=="local_only"?" · Result not copied":" · Link not copied";if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
  if(role==ThumbnailRole){const auto path=r["previewPath"].toString();if(path.isEmpty())return {};if(auto* img=thumbnails_.object(path))return *img;loadThumbnail(path);}
  return {};
 }

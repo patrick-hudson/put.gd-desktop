@@ -463,15 +463,15 @@ private slots:
   auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 14);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   // Capture entries first: region, region & edit, window, desktop, screen recording, then the editor sources and the clipboard upload.
-  const QStringList order{"Capture Region", "Capture Region & Edit", "Capture Window", "Capture Desktop", "Capture Screen Recording", "Edit Image", "Upload Clipboard"};
+  const QStringList order{"Capture region", "Capture region & edit", "Capture window", "Capture desktop", "Record screen", "Edit image", "Upload clipboard"};
   for (int i = 0; i < order.size(); ++i) QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(i).variant()).props["label"].toString(), order[i]);
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(4).variant()).id, 16);
   // Other editor sources sit in one submenu.
   const auto editImage = qdbus_cast<WireLayout>(layout.children.at(5).variant());
   QCOMPARE(editImage.id, 13); QCOMPARE(editImage.props["children-display"].toString(), QString("submenu"));
   QCOMPARE(editImage.children.size(), 2);
-  QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(0).variant()).props["label"].toString(), QString("From clipboard"));
-  QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(1).variant()).props["label"].toString(), QString("From file…"));
+  QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(0).variant()).props["label"].toString(), QString("Edit clipboard image"));
+  QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(1).variant()).props["label"].toString(), QString("Edit an image file…"));
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(7).variant()).props["type"].toString(), QString("separator"));
   // Depth 1 lists the submenu header without expanding it.
   layout = qdbus_cast<WireLayout>(call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 1, QStringList{}}).arguments().at(1));

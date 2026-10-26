@@ -4,6 +4,7 @@
 #include "StdioDevice.h"
 #include "ViewState.h"
 #include "VisualStyle.h"
+#include "Fonts.h"
 #include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
 #include "core/HostEnvironment.h"
@@ -46,7 +47,7 @@ int main(int argc,char** argv){
   putgd::StdioDevice pipes(handles.input(),handles.output());if(!pipes.isOpen())return 2;
   return putgd::runImageJob(app,pipes);
  }
- putgd::VisualStyle::apply(app);app.setWindowIcon(putgd::VisualStyle::icon("brand"));
+ putgd::Fonts::load();putgd::VisualStyle::apply(app);app.setWindowIcon(putgd::VisualStyle::icon("brand"));
  if(argc==2&&std::strcmp(argv[1],"--edit-image")==0){
   // A separate on-demand process: closing it frees the image regardless of other views.
   putgd::StdioDevice pipes(handles.input(),handles.output());if(!pipes.isOpen())return 2;

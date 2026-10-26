@@ -343,7 +343,7 @@ target_link_libraries(putgd_client PUBLIC Qt6::Core Qt6::Network putgd_build_opt
 add_library(putgd_ui_state STATIC src/ui/ViewState.cpp)
 target_include_directories(putgd_ui_state PUBLIC src)
 target_link_libraries(putgd_ui_state PUBLIC Qt6::Core putgd_build_options)
-add_library(putgd_visual STATIC src/ui/VisualStyle.cpp src/ui/IconArt.cpp src/ui/Theme.cpp)
+add_library(putgd_visual STATIC src/ui/VisualStyle.cpp src/ui/IconArt.cpp src/ui/Theme.cpp src/ui/Graphite.cpp)
 target_include_directories(putgd_visual PUBLIC src)
 target_link_libraries(putgd_visual PUBLIC Qt6::Widgets putgd_build_options)
 # Links and folders opened on the host (#326): the desktop portal and the file
@@ -389,9 +389,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_compile_definitions(putgd_shortcut_keyboard PRIVATE PUTGD_SHORTCUT_KEYBOARD=1)
   target_link_libraries(putgd_shortcut_keyboard PRIVATE putgd_keyboard_map PkgConfig::PUTGD_XKBCOMMON PkgConfig::PUTGD_WAYLAND PkgConfig::PUTGD_XCB)
 endif()
-add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/RedesignTheme.cpp src/ui/redesign.qrc src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/ShortcutEditor.cpp
+# The bundled IBM Plex fonts (OFL), for the interface and recording helper only.
+add_library(putgd_fonts STATIC src/ui/Fonts.cpp src/ui/fonts.qrc)
+target_link_libraries(putgd_fonts PUBLIC putgd_visual)
+add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/RedesignTheme.cpp src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/ShortcutEditor.cpp
   src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp)
-target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_appearance putgd_file_dialog PRIVATE putgd_s3_wire putgd_host_open putgd_shortcut_keyboard)
+target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_fonts putgd_appearance putgd_file_dialog PRIVATE putgd_s3_wire putgd_host_open putgd_shortcut_keyboard)
 # Editing model and canvas for the on-demand editor helper; no storage or IPC.
 add_library(putgd_editor STATIC src/editor/EditDocument.cpp src/editor/EditorCommands.cpp src/editor/EditorCanvas.cpp)
 target_include_directories(putgd_editor PUBLIC src)
@@ -469,7 +472,7 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   if(PUTGD_GST_FOUND AND PUTGD_AV_FOUND)
     add_executable(putgd-record src/record/main.cpp src/record/MediaProbe.cpp src/record/EncoderCheck.cpp src/record/BundledRuntime.cpp src/record/PortalScreenCast.cpp src/record/MutterScreenCast.cpp src/record/WaylandAcquisition.cpp src/record/X11Targets.cpp src/record/RecordingPipeline.cpp src/record/PauseTimeline.cpp src/record/ClipExporter.cpp src/record/Poster.cpp src/record/RecordSession.cpp src/record/Overlays.cpp src/record/record.qrc src/record/BarPlacement.cpp src/record/ReviewWindow.cpp src/record/DebugLog.cpp src/record/AvSync.cpp src/core/RecordingModel.cpp)
     target_include_directories(putgd-record PRIVATE src)
-    target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_x11_native_snapshot putgd_visual putgd_file_dialog Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
+    target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_x11_native_snapshot putgd_visual putgd_fonts putgd_file_dialog Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
     if(TARGET putgd_kde)
       # KWin's screencast protocol (vendored XML) for the dialog-free KDE path.
       set(kde_screencast_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/zkde-screencast-unstable-v1.xml")
@@ -536,7 +539,7 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       # offscreen layouts with three monitors and with one.
       add_executable(test_bar_placement tests/unit/test_bar_placement.cpp src/record/BarPlacement.cpp src/record/Overlays.cpp src/record/record.qrc)
       target_include_directories(test_bar_placement PRIVATE src tests)
-      target_link_libraries(test_bar_placement PRIVATE putgd_core putgd_build_options putgd_visual Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Test)
+      target_link_libraries(test_bar_placement PRIVATE putgd_core putgd_build_options putgd_visual putgd_fonts Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Test)
       add_test(NAME bar_placement_contract COMMAND test_bar_placement)
       set_tests_properties(bar_placement_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-three-monitors.json;PUTGD_TEST_SCREENS=3")
       add_test(NAME bar_placement_single_monitor_contract COMMAND test_bar_placement)
@@ -545,7 +548,7 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       # the controls recording.review drives, on a 1366×768 screen.
       add_executable(test_review_window tests/gui/test_review_window.cpp src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
       target_include_directories(test_review_window PRIVATE src tests)
-      target_link_libraries(test_review_window PRIVATE putgd_core putgd_build_options putgd_visual putgd_file_dialog Qt6::Widgets Qt6::Test PkgConfig::PUTGD_AV)
+      target_link_libraries(test_review_window PRIVATE putgd_core putgd_build_options putgd_visual putgd_fonts putgd_file_dialog Qt6::Widgets Qt6::Test PkgConfig::PUTGD_AV)
       add_test(NAME gui_review_window COMMAND test_review_window)
       set_tests_properties(gui_review_window PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-one-monitor.json" TIMEOUT 60)
       # #264: the helper's window icon and desktop file name, and the entry it names.

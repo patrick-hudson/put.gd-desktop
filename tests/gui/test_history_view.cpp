@@ -3,6 +3,7 @@
 #include "ui/HistoryModel.h"
 #include "ui/HistoryWindow.h"
 #include "ui/RedesignTheme.h"
+#include "ui/Graphite.h"
 #include "fixtures/UiSessionFixture.h"
 #include "app/DiagnosticsBundle.h"
 #include <QFileInfo>
@@ -111,7 +112,8 @@ private slots:
  }
  void fullFailureTextIsPaintedWithoutClipping_data(){
   QTest::addColumn<bool>("gallery");QTest::addColumn<int>("width");QTest::addColumn<bool>("longToken");
-  for(bool gallery:{false,true})for(int width:{1000,600})for(bool token:{false,true})QTest::newRow(qPrintable(QString("%1-%2-%3").arg(gallery?"gallery":"list").arg(width).arg(token?"long-token":"gnome-guide")))<<gallery<<width<<token;
+  // 760: the narrowest History page that keeps its sidebar (the main window is at least 1060 wide).
+  for(bool gallery:{false,true})for(int width:{1000,760})for(bool token:{false,true})QTest::newRow(qPrintable(QString("%1-%2-%3").arg(gallery?"gallery":"list").arg(width).arg(token?"long-token":"gnome-guide")))<<gallery<<width<<token;
  }
  void fullFailureTextIsPaintedWithoutClipping(){
   QFETCH(bool,gallery);QFETCH(int,width);QFETCH(bool,longToken);
@@ -131,15 +133,16 @@ private slots:
    PUTGD_VERIFY_STEADY(painted.paints>0&&window.width()<=target&&list->selectionModel()->selectedRows().size()==int(selected)&&list->visualRect(index).height()==list->itemDelegate()->sizeHint(layoutOption,index).height(),20);
    const auto row=list->visualRect(index);QVERIFY(row.isValid());
    const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QVERIFY(HistoryModel::storedNothing(record));QVERIFY(index.data(HistoryModel::PrimaryActionRole).toString().isEmpty());QVERIFY(index.data(Qt::AccessibleTextRole).toString().contains(message));
-   const int heading=gallery?0:34;const int left=gallery?20:107;const int top=gallery?216:heading+75;const int textWidth=row.width()-(gallery?41:128);
-   QTextDocument expected;expected.setDocumentMargin(0);expected.setDefaultFont(list->font());auto textOption=expected.defaultTextOption();textOption.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);expected.setDefaultTextOption(textOption);expected.setPlainText(message);expected.setTextWidth(textWidth);
+   // The delegate's own failure area (Graphite layout), in 12 px metadata type.
+   const auto area=HistoryWindow::failureTextArea(row.size(),gallery,!index.data(HistoryModel::DayRole).toString().isEmpty());const int left=area.left(),top=area.top(),textWidth=area.width();
+   QTextDocument expected;expected.setDocumentMargin(0);expected.setDefaultFont(Graphite::font(Graphite::Type::metadata));auto textOption=expected.defaultTextOption();textOption.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);expected.setDefaultTextOption(textOption);expected.setPlainText(message);expected.setTextWidth(textWidth);
    const int height=int(std::ceil(expected.size().height()));QVERIFY2(top+height+8<=row.height()-(gallery?48:0),qPrintable(QString("Complete error needs y%1 + %2px; row%3").arg(top).arg(height).arg(row.height())));
    for(auto block=expected.begin();block.isValid();block=block.next())for(int line=0;line<block.layout()->lineCount();++line)QVERIFY(block.layout()->lineAt(line).naturalTextWidth()<=textWidth+1);
    // Compare the actual delegate's entire painted error rectangle to complete
    // plain text, including the last command/token. A role/string assertion alone
    // would pass the old elided painter and the gallery that omitted errors.
    QImage actual(row.size(),QImage::Format_ARGB32_Premultiplied);actual.fill(Qt::transparent);QStyleOptionViewItem option;option.initFrom(list);option.font=list->font();option.rect=QRect(QPoint(),row.size());option.state=QStyle::State_Enabled|(selected?QStyle::State_Selected:QStyle::State_None);{QPainter painter(&actual);list->itemDelegate()->paint(&painter,option,index);}
-   QImage complete(QSize(textWidth,height),QImage::Format_ARGB32_Premultiplied);complete.fill(selected?RedesignTheme::selected():gallery?RedesignTheme::surface():RedesignTheme::bg());{QPainter painter(&complete);QAbstractTextDocumentLayout::PaintContext context;context.palette.setColor(QPalette::Text,RedesignTheme::danger());expected.documentLayout()->draw(&painter,context);}
+   QImage complete(QSize(textWidth,height),QImage::Format_ARGB32_Premultiplied);complete.fill(selected?RedesignTheme::selected():gallery?RedesignTheme::surface():RedesignTheme::bg());{QPainter painter(&complete);QAbstractTextDocumentLayout::PaintContext context;context.palette.setColor(QPalette::Text,RedesignTheme::textSecondary());expected.documentLayout()->draw(&painter,context);}
    QCOMPARE(actual.copy(left,top,textWidth,height),complete);
    // An oversized error remains reachable through the real pixel scroll range.
    if(row.height()>list->viewport()->height()){
@@ -194,7 +197,7 @@ private slots:
   OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.copies,1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);auto original=std::make_unique<HistoryWindow>(fixture.session);auto& window=*original;window.show();auto* table=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(table->model()->rowCount(),1);selectRow(table,0);
   auto drain=qScopeGuard([&]{released.store(true);});
-  QTimer accept;accept.setInterval(10);connect(&accept,&QTimer::timeout,this,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->windowTitle()=="Confirm exact remote deletion")box->button(QMessageBox::Yes)->click();});accept.start();
+  QTimer accept;accept.setInterval(10);connect(&accept,&QTimer::timeout,this,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->windowTitle()=="Delete from destination")box->button(QMessageBox::Yes)->click();});accept.start();
   window.findChild<QPushButton*>("deleteHistoryRemote")->click();PUTGD_TRY_VERIFY(entered.load());accept.stop();
   const auto saved=window.saveViewState();QVERIFY(!saved["deletionId"].toString().isEmpty());original.reset();HistoryWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(saved));reopened.show();PUTGD_TRY_VERIFY(!reopened.findChild<QPlainTextEdit*>("historyDetails")->toPlainText().isEmpty());QPushButton* cancel=nullptr;for(auto* button:reopened.findChildren<QPushButton*>())if(button->text()=="Cancel deletion")cancel=button;QVERIFY(cancel);
   cancel->click();QLabel* status=nullptr;for(auto* label:reopened.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;QVERIFY(status);PUTGD_TRY_VERIFY(status->text().contains("Cancellation requested"));
@@ -254,7 +257,9 @@ private slots:
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);HistoryPaintObserver paint;window.installEventFilter(&paint);window.resize(1000,700);window.show();auto* table=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(table->model()->rowCount(),1);selectRow(table,0);auto* preview=window.findChild<QLabel*>("historyPreview");QVERIFY(preview);PUTGD_TRY_VERIFY(!preview->pixmap().isNull());QVERIFY(preview->isVisible());QVERIFY(preview->height()>0);PUTGD_TRY_VERIFY(window.findChild<QLabel*>("historySummary")->text().contains("1.5 MiB"));
   QToolButton *filters=nullptr,*manage=nullptr;for(auto* button:window.findChildren<QToolButton*>()){if(button->text()=="Filters")filters=button;if(button->text()=="Manage")manage=button;}QVERIFY(filters);QVERIFY(manage);filters->setChecked(true);manage->setChecked(true);putgd::test::settle(20);
   PUTGD_TRY_VERIFY2(window.width()<=1000&&window.height()<=700,qPrintable(QString("Expanded history grew to %1×%2").arg(window.width()).arg(window.height())));
-  for(const auto& name:QStringList{"copyHistoryLink","deleteHistoryRemote"}){auto* button=window.findChild<QPushButton*>(name);window.findChild<QScrollArea*>("historyInspectorScroll")->ensureWidgetVisible(button);QVERIFY(button->isVisible());QVERIFY(window.rect().contains(button->mapTo(&window,button->rect().bottomRight())));}
+  // Graphite: an action that cannot apply is hidden, not shown disabled.
+  {auto* copy=window.findChild<QPushButton*>("copyHistoryLink");QCOMPARE(copy->isVisibleTo(&window),copy->isEnabled());}
+  for(const auto& name:QStringList{"deleteHistoryRemote"}){auto* button=window.findChild<QPushButton*>(name);window.findChild<QScrollArea*>("historyInspectorScroll")->ensureWidgetVisible(button);QVERIFY(button->isVisible());QVERIFY(window.rect().contains(button->mapTo(&window,button->rect().bottomRight())));}
   QVERIFY(window.rect().contains(manage->mapTo(&window,manage->rect().bottomRight())));QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
   for(int cycle=0;cycle<3;++cycle){
    window.hide();QVERIFY2(preview->pixmap().isNull(),"Hidden history must release its decoded thumbnail");PUTGD_TRY_VERIFY_WITH_TIMEOUT(!window.testAttribute(Qt::WA_WState_Created),500);QVERIFY(!window.backingStore());
@@ -337,7 +342,7 @@ private slots:
  }
  void cancellingExactDeletionConfirmationSendsNoDelete() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto s){return registry.validate(id,s);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());QString operationId;operations.invoke("clipboard",[&](Error e,QJsonObject data){QVERIFY(!e);operationId=data["operationId"].toString();});PUTGD_TRY_COMPARE(provider->uploads.load(),1);PUTGD_TRY_VERIFY(!operationId.isEmpty());QJsonObject completed;operations.inspect(operationId,[&](Error,QJsonObject data){completed=data;});PUTGD_TRY_VERIFY(!completed.isEmpty());
-  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);auto* table=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(table->model()->rowCount(),1);selectRow(table,0);bool confirmed=false;QTimer dismiss;dismiss.setInterval(10);connect(&dismiss,&QTimer::timeout,this,[&]{for(auto* widget:QApplication::topLevelWidgets()){auto* box=qobject_cast<QMessageBox*>(widget);if(box&&box->windowTitle()=="Confirm exact remote deletion"){confirmed=box->text().contains("Original destination / exact target")&&box->text().contains("Remove only the recorded opaque file revision");box->done(QMessageBox::Cancel);}}});dismiss.start();window.findChild<QPushButton*>("deleteHistoryRemote")->click();PUTGD_TRY_VERIFY(confirmed);QCOMPARE(provider->deletes.load(),0);QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,1);
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);auto* table=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(table->model()->rowCount(),1);selectRow(table,0);bool confirmed=false;QTimer dismiss;dismiss.setInterval(10);connect(&dismiss,&QTimer::timeout,this,[&]{for(auto* widget:QApplication::topLevelWidgets()){auto* box=qobject_cast<QMessageBox*>(widget);if(box&&box->windowTitle()=="Delete from destination"){confirmed=box->text().contains("Original destination / exact target")&&box->text().contains("Remove only the recorded opaque file revision");box->done(QMessageBox::Cancel);}}});dismiss.start();window.findChild<QPushButton*>("deleteHistoryRemote")->click();PUTGD_TRY_VERIFY(confirmed);QCOMPARE(provider->deletes.load(),0);QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,1);
  }
  void unifiedActivityCancelRetryAndCopyUseResidentActions(){
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->failUpload=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();source.defer=true;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();auto* list=window.findChild<QListView*>("historyList");
@@ -420,14 +425,8 @@ private slots:
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();
   QStringList requests;connect(&window,&HistoryWindow::editRequested,this,[&](const QString& from,const QString& path){requests.append(from+"|"+path);});int chooser=0;connect(&window,&HistoryWindow::chooseImageRequested,this,[&]{++chooser;});
-  auto* header=window.findChild<QPushButton*>("historyEditImage");QVERIFY(header);QVERIFY(header->menu());QStringList labels;for(auto* action:header->menu()->actions())labels.append(action->text());
-  QCOMPARE(labels,QStringList({"Edit clipboard image","Edit an image file…"}));
-  // The label fits in any font: the button sizes from its child row in the current font and theme.
-  RedesignTheme::apply(window);auto* text=header->findChild<QLabel*>("historyEditText");auto* chevron=header->findChild<QLabel*>("historyEditChevron");QVERIFY(text&&chevron);QCOMPARE(text->text(),QString("Edit image"));
-  for(const int extra:{0,6}){QFont font=header->font();if(font.pixelSize()>0)font.setPixelSize(font.pixelSize()+extra);else font.setPointSizeF(font.pointSizeF()+extra);header->setFont(font);header->adjustSize();header->layout()->activate();
-   QVERIFY2(text->width()>=text->fontMetrics().horizontalAdvance(text->text()),qPrintable(QString("%1 < %2").arg(text->width()).arg(text->fontMetrics().horizontalAdvance(text->text()))));
-   QVERIFY(chevron->geometry().left()>=text->geometry().right());QVERIFY(chevron->geometry().right()<header->width());}
-  header->menu()->actions()[0]->trigger();header->menu()->actions()[1]->trigger();QCOMPARE(requests,QStringList({"clipboard|"}));QCOMPARE(chooser,1);requests.clear();
+  // The other edit sources moved to the main window's Capture region & edit menu (Graphite).
+  QVERIFY(!window.findChild<QPushButton*>("historyEditImage"));Q_UNUSED(chooser);
   auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);selectRow(list,0);auto* again=window.findChild<QPushButton*>("editHistoryImage");QVERIFY(again);PUTGD_TRY_VERIFY(again->isEnabled());
   again->click();QCOMPARE(requests.size(),1);QVERIFY(requests.first().startsWith("file|"));const auto path=requests.first().section('|',1);QVERIFY(QFileInfo(path).isAbsolute());
   const QImage retained(path);QCOMPARE(retained.size(),QSize(40,30));QCOMPARE(retained.pixelColor(0,0),QColor(Qt::cyan));

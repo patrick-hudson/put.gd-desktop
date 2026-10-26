@@ -5,6 +5,7 @@
 #include "record/ReviewWindow.h"
 #include "ui/Theme.h"
 #include <QApplication>
+#include <QFontInfo>
 #include <QComboBox>
 #include <QFileDialog>
 #include <QLineEdit>
@@ -95,9 +96,13 @@ private slots:
         QApplication::setFont(large);
         {
             ReviewWindow window(options(), config());
+            // Constructing the window keeps the enlarged text (the shared style
+            // installs once and never resets the application font).
+            QVERIFY2(QFontInfo(QApplication::font()).pixelSize() >= QFontInfo(large).pixelSize() - 1, qPrintable(QString("%1 < %2").arg(QFontInfo(QApplication::font()).pixelSize()).arg(QFontInfo(large).pixelSize())));
             window.setEdit(twoMasks());
             window.show();
             QVERIFY(putgd::test::waitForWindowExposed(&window));
+            QVERIFY(QFontInfo(window.font()).pixelSize() >= QFontInfo(large).pixelSize() - 1);
             const auto minimum = window.minimumSizeHint();
             QVERIFY2(minimum.width() <= 1366 - 24 && minimum.height() <= 768 - 120, qPrintable(QStringLiteral("%1x%2").arg(minimum.width()).arg(minimum.height())));
             QVERIFY(window.width() <= 1366 && window.height() <= 768);
