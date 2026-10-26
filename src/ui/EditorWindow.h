@@ -106,7 +106,7 @@ private:
  QLabel *hint_=nullptr,*status_=nullptr,*message_=nullptr,*toolTitle_=nullptr,*toolHelp_=nullptr,*documentInfo_=nullptr,*destination_=nullptr;
  QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={},*savedLabel_=nullptr,*saveError_=nullptr;
  QSpinBox* geometry_[4]={};
- QWidget *geometryRow_=nullptr,*placeRow_=nullptr,*sizeLabels_=nullptr;
+ QWidget *geometryRow_=nullptr,*placeRow_=nullptr,*sizeLabels_=nullptr,*optionsRule_=nullptr;
  bool syncingGeometry_=false;
  Graphite::WindowHeader* header_=nullptr;
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr;

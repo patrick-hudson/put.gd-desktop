@@ -23,6 +23,7 @@
 #include <QToolButton>
 #include <QSpinBox>
 #include <QFontComboBox>
+#include <QHash>
 #include <QSignalSpy>
 #include <QTest>
 #include "fixtures/Waits.h"
@@ -178,6 +179,18 @@ private slots:
    }
    QCOMPARE(checked,6);
   }
+ }
+ // The palette and the custom picker sit in even rows, and the rule under the
+ // tool's help shows only when options follow it.
+ void propertiesPanelHasNoOrphans(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  window.selectTool(Tool::Arrow);QApplication::processEvents();
+  QHash<int,int> rows;for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName().startsWith("Color ")||button->objectName()=="customColor")++rows[button->mapTo(&window,QPoint()).y()];
+  QCOMPARE(rows.size(),2);for(const int count:rows)QCOMPARE(count,4);
+  auto* rule=window.findChild<QWidget*>("editorOptionsRule");QVERIFY(rule);QVERIFY(rule->isVisible());
+  window.selectTool(Tool::Select);QApplication::processEvents();QVERIFY(!rule->isVisible());
+  window.selectTool(Tool::Redact);QApplication::processEvents();QVERIFY(!rule->isVisible());
+  window.selectTool(Tool::Crop);QApplication::processEvents();QVERIFY(rule->isVisible());
  }
  void saveFeedbackNamesTheCopyAndOffersRecovery(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));

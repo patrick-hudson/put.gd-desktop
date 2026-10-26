@@ -126,18 +126,20 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  // Without a pointer: the tool's mark in the middle of the image (Insert).
  placeRow_=new QWidget(panel);auto* placeLayout=new QHBoxLayout(placeRow_);placeLayout->setContentsMargins(0,0,0,0);
  place_=new QPushButton(placeRow_);place_->setObjectName("placeMark");placeLayout->addWidget(place_);placeLayout->addStretch(1);properties->addWidget(placeRow_);
- properties->addWidget(Graphite::rule(panel));
+ // Divides the tool's help from its options; hidden when it has none.
+ optionsRule_=Graphite::rule(panel);optionsRule_->setObjectName("editorOptionsRule");properties->addWidget(optionsRule_);
  QVBoxLayout* layout=nullptr;
  colorRow_=column(panel,layout);layout->addWidget(fieldLabel("Color",colorRow_));
  swatchGroup_=new QButtonGroup(this);
  auto* grid=new QGridLayout;grid->setContentsMargins(0,0,0,0);grid->setSpacing(4);int cell=0;
  for(const auto& color:{QColor(220,38,38),QColor(245,158,11),QColor(250,204,21),QColor(34,197,94),QColor(59,130,246),QColor(255,255,255),QColor(17,19,23)}){
-  auto* swatch=makeSwatch(color);swatches_.append(swatch);grid->addWidget(swatch,cell/6,cell%6);++cell;
+  auto* swatch=makeSwatch(color);swatches_.append(swatch);grid->addWidget(swatch,cell/4,cell%4);++cell;
  }
- // The custom picker follows the palette; recent custom colours get their own row.
+ // The custom picker follows the palette, making two even rows of four rather
+ // than six and an orphaned pair; recent custom colours get their own row.
  customColor_=new Swatch({},colorRow_,true);customColor_->setObjectName("customColor");
- customColor_->setToolTip("Custom color…");customColor_->setAccessibleName("Custom color");grid->addWidget(customColor_,cell/6,cell%6);
- grid->setColumnStretch(6,1);layout->addLayout(grid);
+ customColor_->setToolTip("Custom color…");customColor_->setAccessibleName("Custom color");grid->addWidget(customColor_,cell/4,cell%4);
+ grid->setColumnStretch(4,1);layout->addLayout(grid);
  connect(customColor_,&QToolButton::clicked,this,&EditorWindow::pickCustomColor);
  auto* recent=new QWidget(colorRow_);recentLayout_=new QHBoxLayout(recent);recentLayout_->setContentsMargins(0,0,0,0);recentLayout_->setSpacing(4);recentLayout_->addStretch(1);recent->setObjectName("recentColors");recent->setAccessibleName("Recent custom colors");layout->addWidget(recent);
  properties->addWidget(colorRow_);
@@ -183,10 +185,12 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  saveError_=new QLabel(document);saveError_->setObjectName("editorSaveError");saveError_->setTextFormat(Qt::PlainText);saveError_->setWordWrap(true);VisualStyle::role(saveError_,"error");saveError_->hide();documentLayout->addWidget(saveError_);
  auto* copyPath=new QAction("Copy full path",savedLabel_);savedLabel_->addAction(copyPath);
  connect(copyPath,&QAction::triggered,this,&EditorWindow::copySavedPath);
- auto* savedActions=new QHBoxLayout;savedActions->setContentsMargins(0,0,0,0);savedActions->setSpacing(4);
- showFolder_=new QPushButton("Show in folder",document);showFolder_->setObjectName("showSavedCopy");VisualStyle::role(showFolder_,"quiet");showFolder_->hide();savedActions->addWidget(showFolder_);
+ auto* savedActions=new QHBoxLayout;savedActions->setContentsMargins(0,0,0,0);savedActions->setSpacing(8);
+ // Framed like Choose another location… in the same place, so the actions
+ // line up with the text above rather than floating on a quiet inset.
+ showFolder_=new QPushButton("Show in folder",document);showFolder_->setObjectName("showSavedCopy");showFolder_->hide();savedActions->addWidget(showFolder_);
  // The elided name's full path, without a pointer: a focusable button.
- copyPath_=new QPushButton("Copy path",document);copyPath_->setObjectName("copySavedPath");copyPath_->setToolTip("Copy the saved copy's full path");VisualStyle::role(copyPath_,"quiet");copyPath_->hide();savedActions->addWidget(copyPath_);
+ copyPath_=new QPushButton("Copy path",document);copyPath_->setObjectName("copySavedPath");copyPath_->setToolTip("Copy the saved copy's full path");copyPath_->hide();savedActions->addWidget(copyPath_);
  chooseAnother_=new QPushButton("Choose another location…",document);chooseAnother_->setObjectName("chooseAnotherLocation");chooseAnother_->hide();savedActions->addWidget(chooseAnother_);
  savedActions->addStretch(1);documentLayout->addLayout(savedActions);
  sideLayout->addWidget(document);
@@ -385,6 +389,8 @@ void EditorWindow::refresh(){
   if(entry.first){place_->setText(QString::fromUtf8(entry.first));place_->setIcon(VisualStyle::icon(entry.second));place_->setToolTip(QString("%1 in the middle of the image, without the pointer (Insert)").arg(QString::fromUtf8(entry.first)));}
  }
  syncGeometry();syncSaved();
+ bool options=false;for(auto* row:{colorRow_,widthRow_,blurRow_,textRow_,cropRow_,geometryRow_})options=options||!row->isHidden();
+ optionsRule_->setVisible(options);
  undo_->setEnabled(!busy_&&doc_.canUndo());redo_->setEnabled(!busy_&&doc_.canRedo());
  // Cancel asks about discarding edits once there are any; it says so.
  const bool edited=doc_.modified();
