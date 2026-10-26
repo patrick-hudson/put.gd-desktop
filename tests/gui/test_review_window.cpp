@@ -324,7 +324,7 @@ private slots:
         QCOMPARE(saved.size(), 0);
         // The button opens the same dialog; a name without the extension gets it.
         QPushButton* save = nullptr;
-        for (auto* button : window.findChildren<QPushButton*>()) if (button->text() == QString::fromUtf8("Save copy…")) save = button;
+        for (auto* button : window.findChildren<QPushButton*>()) if (button->text() == QString::fromUtf8("Save a copy…")) save = button;
         QVERIFY(save);
         save->click();
         QFileDialog* fallback = nullptr;

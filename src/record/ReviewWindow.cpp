@@ -19,6 +19,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPolygonF>
+#include <QFontMetricsF>
 #include <QPointer>
 #include <QPushButton>
 #include <QScreen>
@@ -60,6 +61,33 @@ QRectF FrameView::toView(const QRect& c) const {
     const qreal sx = qreal(r.width()) / source.width(), sy = qreal(r.height()) / source.height();
     return QRectF(r.x() + c.x() * sx, r.y() + c.y() * sy, c.width() * sx, c.height() * sy);
 }
+namespace {
+// Over arbitrary captured content: a dark scrim under light text, so labels and
+// instructions read on pale and dark frames alike.
+void mediaLabel(QPainter& painter, const QPointF& at, const QString& text, const QRectF& bounds) {
+    const auto font = Graphite::font(Graphite::Type::metadata, true);
+    const QFontMetricsF metrics(font);
+    QRectF box(at, QSizeF(metrics.horizontalAdvance(text) + 12, metrics.height() + 6));
+    if (box.right() > bounds.right()) box.moveRight(bounds.right());
+    if (box.bottom() > bounds.bottom()) box.moveBottom(bounds.bottom());
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(0, 0, 0, 175));
+    painter.drawRoundedRect(box, 4, 4);
+    Graphite::paintText(painter, box.adjusted(6, 0, -6, 0), text, Theme::onMedia(), font);
+    painter.restore();
+}
+// A mask outline readable on any content: a dark line under a light (or the
+// accent, when selected) one.
+void dualOutline(QPainter& painter, const QRectF& r, const QColor& colour, qreal width, Qt::PenStyle style) {
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(QColor(0, 0, 0, 170), width + 2, Qt::SolidLine));
+    painter.drawRect(r);
+    painter.setPen(QPen(colour, width, style));
+    painter.drawRect(r);
+}
+}
 void FrameView::paintEvent(QPaintEvent*) {
     QPainter painter(this);
     painter.fillRect(rect(), QColor("#0d0f13"));
@@ -67,23 +95,25 @@ void FrameView::paintEvent(QPaintEvent*) {
     if (!frame_.isNull()) painter.drawImage(target, frame_);
     for (const auto& mask : masks_) {
         const bool active = mask.start <= timeUs_ && timeUs_ < mask.end;
+        const bool selected = mask.id == selected_;
         const auto r = toView(mask.rect);
-        QPen pen(mask.id == selected_ ? Theme::current().accent : active ? QColor(255, 255, 255, 200) : QColor(255, 255, 255, 90), mask.id == selected_ ? 2 : 1, active ? Qt::SolidLine : Qt::DashLine);
-        painter.setPen(pen);
-        painter.setBrush(mask.kind == "solid" ? QBrush(QColor(0, 0, 0, active ? 0 : 60)) : QBrush(QColor(155, 188, 255, active ? 0 : 30)));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(mask.kind == "solid" ? QBrush(QColor(0, 0, 0, active ? 0 : 60)) : QBrush(QColor(255, 255, 255, active ? 0 : 30)));
         painter.drawRect(r);
-        painter.setPen(Qt::white);
-        painter.drawText(r.adjusted(4, 2, -4, -2), Qt::AlignTop | Qt::AlignLeft, mask.kind == "solid" ? QStringLiteral("Solid cover") : QStringLiteral("Blur"));
-        if (mask.id == selected_) { painter.setBrush(Theme::current().accent); painter.setPen(Qt::NoPen); painter.drawRect(QRectF(r.right() - handleSize, r.bottom() - handleSize, handleSize, handleSize)); }
+        dualOutline(painter, r, selected ? Theme::current().accent : active ? QColor(255, 255, 255, 230) : QColor(255, 255, 255, 150), selected ? 2 : 1, active ? Qt::SolidLine : Qt::DashLine);
+        mediaLabel(painter, r.topLeft() + QPointF(3, 3), mask.kind == "solid" ? QStringLiteral("Solid cover") : QStringLiteral("Blur"), target);
+        if (selected) { painter.setBrush(Theme::current().accent); painter.setPen(QPen(QColor(0, 0, 0, 170), 1)); painter.drawRect(QRectF(r.right() - handleSize, r.bottom() - handleSize, handleSize, handleSize)); }
     }
     if (drag_ == Drag::Create) {
         // The area being dragged, clipped to the frame like the mask it becomes.
         const auto pending = QRectF(anchor_, current_).normalized().intersected(target);
-        painter.setPen(QPen(Theme::current().accent, 1.5, Qt::DashLine));
-        painter.setBrush(armed_ == "solid" ? QBrush(QColor(0, 0, 0, 120)) : QBrush(QColor(155, 188, 255, 70)));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(armed_ == "solid" ? QBrush(QColor(0, 0, 0, 120)) : QBrush(QColor(255, 255, 255, 60)));
         painter.drawRect(pending);
+        dualOutline(painter, pending, Theme::current().accent, 1.5, Qt::DashLine);
     }
-    if (!armed_.isEmpty()) { painter.setPen(Qt::white); painter.drawText(rect().adjusted(8, 8, -8, -8), Qt::AlignTop | Qt::AlignLeft, QStringLiteral("Drag on the frame to place the %1 area").arg(armed_)); }
+    if (!armed_.isEmpty())
+        mediaLabel(painter, QPointF(target.left() + 8, target.top() + 8), armed_ == "solid" ? QStringLiteral("Drag on the frame to place the solid cover") : QStringLiteral("Drag on the frame to place the blur"), target);
 }
 void FrameView::mousePressEvent(QMouseEvent* e) {
     if (e->button() != Qt::LeftButton) return;
@@ -332,7 +362,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) VisualStyle::apply(*app);
     setAttribute(Qt::WA_DeleteOnClose, false);
     // #283: the frame takes the window; the timeline, one row of tools and the
-    // action footer sit under it, under the shared document header.
+    // action footer sit under it. The desktop's title bar names the window.
     auto* frame = new QVBoxLayout(this);
     frame->setContentsMargins(0, 0, 0, 0);
     frame->setSpacing(0);
@@ -445,14 +475,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     upload_->setIcon(VisualStyle::icon("upload"));
     VisualStyle::role(upload_, "primary");
     upload_->setToolTip("Upload the reviewed clip with its trim and masks (the preview is silent; video exports keep the recorded system audio)");
-    save_ = new QPushButton("Save copy…", this);
+    save_ = new QPushButton("Save a copy…", this);
     save_->setIcon(VisualStyle::icon("save"));
     save_->setToolTip("Export the reviewed clip to a file on this computer. Nothing is uploaded.");
     cancel_ = new QPushButton("Discard", this);
     VisualStyle::role(cancel_, "quiet");
     auto* draft = new QLabel("Not uploaded", this);
     draft->setObjectName("draftState");
-    draft->setToolTip("Nothing uploads until you choose Upload; Save copy… exports locally.");
+    draft->setToolTip("Nothing uploads until you choose Upload; Save a copy… exports locally.");
     VisualStyle::role(draft, "meta");
     actions->addWidget(draft);
     actions->addSpacing(8);
