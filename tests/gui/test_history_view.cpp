@@ -6,6 +6,7 @@
 #include "ui/Graphite.h"
 #include "fixtures/UiSessionFixture.h"
 #include "app/DiagnosticsBundle.h"
+#include <QFile>
 #include <QFileInfo>
 #include <QLayout>
 #include <QListView>
@@ -212,6 +213,30 @@ private slots:
   bool accepted=false;external.request("delete.confirm",{{"ids",QJsonArray{id}},{"acknowledgement",preview["acknowledgement"]}},this,[&](Error e,QJsonObject){QVERIFY(!e);accepted=true;});PUTGD_TRY_VERIFY(accepted);PUTGD_TRY_COMPARE(provider->deletes.load(),1);
   PUTGD_TRY_COMPARE(model->record(0)["remoteStatus"].toString(),QString("removed"));PUTGD_TRY_VERIFY(!window.findChild<QPushButton*>("copyHistoryLink")->isEnabled());PUTGD_TRY_VERIFY(window.findChild<QLabel*>("historySummary")->text().contains("Deleted from destination"));
   bool cleared=false;external.request("history.clear",{},this,[&](Error e,QJsonObject){QVERIFY(!e);cleared=true;});PUTGD_TRY_VERIFY(cleared);PUTGD_TRY_COMPARE(model->rowCount(),0);QVERIFY(window.saveViewState()["selectedIds"].toArray().isEmpty());
+ }
+ // A single file whose headline leads with another outcome (an interrupted
+ // upload that saved locally) still states its own upload outcome.
+ void singleFileKeepsItsUploadOutcomeVisible(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1024,700);window.show();
+  const auto kept=d.filePath("kept.txt");{QFile file(kept);QVERIFY(file.open(QIODevice::WriteOnly));file.write("synthetic");}
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="synthetic-interrupted";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();
+   OperationItem item;item.artifact.id="interrupted-item";item.artifact.name="interrupted.txt";item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus="unknown";item.local.status="saved";item.local.path=kept;op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
+  window.refresh();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);selectRow(list,0);
+  auto* summary=window.findChild<QLabel*>("historySummary");auto* outcome=window.findChild<QLabel*>("historyOutcome");
+  PUTGD_TRY_VERIFY((outcome->text()+" "+summary->text()).contains("Upload outcome unknown",Qt::CaseInsensitive));
+  // Stated once: the row appears only when the headline does not already say it.
+  QVERIFY(!(outcome->text().contains("Upload outcome unknown",Qt::CaseInsensitive)&&summary->text().contains("Upload outcome unknown")));
+ }
+ // The longest combined heading elides at the minimum width and 150% text;
+ // search and the view switch stay whole and inside the header.
+ void longHeadingKeepsSearchAndViewsReachable(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
+  auto font=QApplication::font();const auto original=font;font.setPixelSize(21);QApplication::setFont(font);auto restore=qScopeGuard([&]{QApplication::setFont(original);});
+  HistoryWindow window(fixture.session);window.resize(1060-184,600);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  window.findChild<QListWidget*>("historyCategories")->setCurrentRow(2);window.findChild<QToolButton*>("historyFailedOnly")->setChecked(true);putgd::test::settle(50);
+  auto* heading=window.findChild<QLabel*>("historyHeading");QCOMPARE(heading->text(),QString("Recordings · failed uploads"));
+  for(const char* name:{"historySearch","historyListMode","historyGridMode","historyFiltersExpanded"}){auto* w=window.findChild<QWidget*>(name);QVERIFY2(w&&w->isVisible(),name);const QRect r(w->mapTo(&window,QPoint()),w->size());QVERIFY2(window.rect().contains(r),name);QVERIFY2(!r.intersects(QRect(heading->mapTo(&window,QPoint()),heading->size())),name);}
+  QVERIFY(window.findChild<QWidget*>("historySearch")->width()>=160);
  }
  void batchCapturesFoldFilesAndKeepOriginalDetailsRoutedById(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1024,700);window.show();

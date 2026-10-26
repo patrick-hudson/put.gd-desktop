@@ -248,7 +248,8 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  side->addStretch();sidebarFooter_=new QVBoxLayout;sidebarFooter_->setContentsMargins(6,0,6,0);sidebarFooter_->setSpacing(4);side->addLayout(sidebarFooter_);
  auto* content=new QWidget(this);content->setObjectName("historyContent");page->addWidget(content,1);auto* layout=new QVBoxLayout(content);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
  auto* headerBar=new QWidget(content);auto* header=new QHBoxLayout(headerBar);header->setContentsMargins(18,12,16,10);header->setSpacing(8);// The page is already named by the navigation; the heading names what is shown.
- auto* heading=new QLabel("All items",this);heading->setObjectName("historyHeading");heading->setTextFormat(Qt::PlainText);VisualStyle::role(heading,"sectionTitle");header->addWidget(heading);header->addStretch();
+ // Long combined headings ("Recordings · failed uploads") elide before they crowd search.
+ auto* heading=new Graphite::ElidedLabel(this);heading->setText("All items");heading->setObjectName("historyHeading");heading->setTextFormat(Qt::PlainText);VisualStyle::role(heading,"sectionTitle");header->addWidget(heading);header->addStretch();
  auto* search=new QLineEdit(this);search->setObjectName("historySearch");search->setAccessibleName("Search history by file name");search->setPlaceholderText("Search history");search->setMaxLength(256);search->setClearButtonEnabled(true);search->setMinimumWidth(160);search->setMaximumWidth(300);header->addWidget(search,1);
  auto* advancedToggle=new QToolButton(this);advancedToggle->setObjectName("historyFiltersExpanded");advancedToggle->setText("Filters");Graphite::disclosure(advancedToggle);advancedToggle->setAccessibleName("Show advanced history filters");header->addWidget(advancedToggle);
  // List and Gallery: one segmented choice.
@@ -379,11 +380,12 @@ void HistoryWindow::updateSummary(){
  QString rows;auto row=[&](const QString& label,const QString& value){if(!value.isEmpty())rows+="<tr><td width=\"34%\" valign=\"top\"><font color=\""+muted+"\">"+escaped(label).replace(' ',"&nbsp;")+"</font></td><td valign=\"top\">"+escaped(value)+"</td></tr>";};
  row("Type",type);row("Output",destinationLabel(data));row("Created",when);row("Size",size);row("File",data["name"].toString());
  // The recorded outcomes as rows of the same table; the type row already
- // names the format. A single file's upload state is the line under the
- // title, but in a batch that line describes the whole capture, so each
- // file shows its own.
+ // names the format. The upload state is a row too unless the line under
+ // the title already says it for this file: a batch's line describes the
+ // whole capture, and a single file's line can lead with another outcome
+ // ("Saved locally" after an interrupted upload).
  const QHash<QString,QString> uploads{{"uploaded","Uploaded"},{"local_only","Local capture"},{"pending","Waiting to upload"},{"uploading","Uploading"},{"failed","Upload failed"},{"unknown","Upload outcome unknown"},{"not_requested","No upload requested"}};
- if(items_->count()>1)row("Upload",uploads.value(data["uploadStatus"].toString(),"Not recorded"));
+ {const auto upload=uploads.value(data["uploadStatus"].toString(),"Not recorded");if(items_->count()>1||!outcome_->text().contains(upload,Qt::CaseInsensitive))row("Upload",upload);}
  row("Local copy",copies.value(local["status"].toString(),"Not recorded"));row("Link",sharing.value(data["shareStatus"].toString(),"Not recorded"));row("Remote file",remote.value(data["remoteStatus"].toString(),"Not recorded"));
  if(category!="images"&&category!="videos"&&!mime.isEmpty()&&!type.contains(mime))row("Content type",mime);
  const auto html="<table width=\"100%\" cellspacing=\"0\" cellpadding=\"3\">"+rows+"</table>";
