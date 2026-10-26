@@ -454,7 +454,10 @@ void Style::polish(QWidget* widget) {
         // whatever polishes the label later.
         const QFontMetrics metrics(text->font());
         text->setAlignment(Qt::AlignCenter);
-        text->setMinimumSize(metrics.horizontalAdvance(text->text()) + (name == "pill" ? 16 : 22), name == "pill" ? metrics.height() + 6 : std::max(scaled(Metric::control), metrics.height() + 14));
+        // A unit takes its field's height from the row (its field sets it), so
+        // the joined pair shares top, bottom and baseline at any text size.
+        text->setMinimumSize(metrics.horizontalAdvance(text->text()) + (name == "pill" ? 16 : 22), name == "pill" ? metrics.height() + 6 : 0);
+        if (name == "unitSuffix") text->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
         widget->setProperty("graphiteMargin", true);
     }
 }
@@ -625,7 +628,8 @@ QRect Style::subElementRect(SubElement element, const QStyleOption* option, cons
     switch (element) {
     case SE_LineEditContents: {
         const auto* frame = qstyleoption_cast<const QStyleOptionFrame*>(option);
-        if (role(widget) == "editableTitle") return option->rect.adjusted(0, 0, 0, -2);
+        // A small inset keeps a semibold first glyph's stem clear of the clip.
+        if (role(widget) == "editableTitle") return option->rect.adjusted(3, 0, -3, -2);
         if (frame && frame->lineWidth > 0) return option->rect.adjusted(10, 1, -10, -1);
         return option->rect;
     }
@@ -1438,6 +1442,32 @@ private:
 };
 }
 void responsiveColumns(QBoxLayout* layout, QWidget* watched, int threshold) { new ColumnSwitch(layout, watched, threshold); }
+
+void fitToText(QLineEdit* edit, int maximum) {
+    class Fit final : public QObject {
+    public:
+        Fit(QLineEdit* edit, int maximum) : QObject(edit), edit_(edit), maximum_(maximum) {
+            edit->installEventFilter(this);
+            QObject::connect(edit, &QLineEdit::textChanged, this, [this] { apply(); });
+            apply();
+        }
+    protected:
+        bool eventFilter(QObject*, QEvent* event) override {
+            if (event->type() == QEvent::FontChange || event->type() == QEvent::Show || event->type() == QEvent::Polish) apply();
+            if (event->type() == QEvent::FocusOut) edit_->setCursorPosition(0);
+            return false;
+        }
+    private:
+        void apply() {
+            const int text = QFontMetrics(edit_->font()).horizontalAdvance(edit_->text().isEmpty() ? edit_->placeholderText() : edit_->text());
+            edit_->setMinimumWidth(std::min(scaled(maximum_), text + 24));
+            if (!edit_->hasFocus()) edit_->setCursorPosition(0);
+        }
+        QLineEdit* edit_;
+        int maximum_;
+    };
+    new Fit(edit, maximum);
+}
 
 void transparentView(QAbstractScrollArea* view) {
     view->setAutoFillBackground(false);

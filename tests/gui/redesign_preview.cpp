@@ -30,6 +30,7 @@
 #include <QTabWidget>
 #include <QToolButton>
 #include <QElapsedTimer>
+#include <QTimer>
 #include "fixtures/Waits.h"
 #include "ui/Theme.h"
 #include <QFile>
@@ -56,7 +57,7 @@ struct Native {
   QPalette palette;palette.setColor(QPalette::Window,QColor(255,0,255));backdrop->setPalette(palette);backdrop->setAutoFillBackground(true);backdrop->showFullScreen();
   putgd::test::settle(800);
  }
- static QJsonObject geometry(QWidget& w){const auto f=w.frameGeometry();return {{"x",f.x()},{"y",f.y()},{"width",f.width()},{"height",f.height()},{"maximized",w.isMaximized()},{"visible",w.isVisible()},{"platform",QGuiApplication::platformName()}};}
+ static QJsonObject geometry(QWidget& w){const auto f=w.frameGeometry();return {{"x",f.x()},{"y",f.y()},{"width",f.width()},{"height",f.height()},{"maximized",w.isMaximized()},{"minimized",w.isMinimized()},{"visible",w.isVisible()},{"platform",QGuiApplication::platformName()}};}
  bool step(QWidget& w,const QString& name,int timeoutMs=45000){
   if(!active())return true;
   w.raise();w.activateWindow();putgd::test::settle(300);
@@ -67,7 +68,9 @@ struct Native {
  // while the driver moves, maximizes, resizes and closes it with real input.
  bool chrome(QWidget& w,const QString& name){
   if(!active())return true;
-  class Watch final:public QObject {public:QString path;QWidget* w;bool eventFilter(QObject*,QEvent* e)override{if(e->type()==QEvent::Move||e->type()==QEvent::Resize||e->type()==QEvent::WindowStateChange||e->type()==QEvent::Close||e->type()==QEvent::Hide){QSaveFile f(path);if(f.open(QIODevice::WriteOnly)){auto g=geometry(*w);g["event"]=int(e->type());f.write(QJsonDocument(g).toJson(QJsonDocument::Compact));f.commit();}}return false;}};
+  // After a minimize the harness shows the window again (a taskbar click the
+  // driver cannot make portably), so the remaining steps can continue.
+  class Watch final:public QObject {public:QString path;QWidget* w;bool eventFilter(QObject*,QEvent* e)override{if(e->type()==QEvent::Move||e->type()==QEvent::Resize||e->type()==QEvent::WindowStateChange||e->type()==QEvent::Close||e->type()==QEvent::Hide){QSaveFile f(path);if(f.open(QIODevice::WriteOnly)){auto g=geometry(*w);g["event"]=int(e->type());f.write(QJsonDocument(g).toJson(QJsonDocument::Compact));f.commit();}if(e->type()==QEvent::WindowStateChange&&w->isMinimized())QTimer::singleShot(2500,w,[w=w]{w->showNormal();w->raise();w->activateWindow();});}return false;}};
   Watch watch;watch.path=dir+"/"+name+".geometry";watch.w=&w;w.installEventFilter(&watch);
   const bool done=step(w,name,180000);w.removeEventFilter(&watch);return done;
  }

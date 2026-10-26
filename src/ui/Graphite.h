@@ -9,7 +9,7 @@
 #include <QTabBar>
 #include <QWidget>
 
-class QApplication;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
+class QApplication;class QLineEdit;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
 
 // The Graphite visual language (2026-10-26): one painted control set for every
 // app-owned surface. Paint owns appearance; the Qt widget underneath keeps
@@ -193,6 +193,9 @@ void alignForms(QWidget* page);
 // Side by side while the watched widget is at least threshold px wide,
 // stacked below that: never two cramped columns.
 void responsiveColumns(QBoxLayout*, QWidget* watched, int threshold);
+// A line edit that is at least as wide as its text (up to maximum), so a
+// title never scrolls its first letters out of view; it shows from the start.
+void fitToText(QLineEdit*, int maximum);
 // A disclosure button: a quiet, checkable button with one chevron (right when
 // collapsed, down when expanded) whose accessible description says which.
 void disclosure(QToolButton*);
