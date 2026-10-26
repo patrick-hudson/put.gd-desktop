@@ -435,7 +435,8 @@ void HistoryWindow::updateInspectorLayout(){if(!split_)return;
  // A compact preview keeps the title and primary action above the fold.
  preview_->setMinimumHeight(compact_?Graphite::scaled(48):180);preview_->setMaximumHeight(compact_?qBound(Graphite::scaled(48),split_->height()/5,Graphite::scaled(120)):260);
  if(auto* box=inspectorScroll_->widget()->layout()){box->setContentsMargins(18,compact_?10:16,18,compact_?12:16);box->setSpacing(compact_?8:10);}if(auto* escape=findChild<QAction*>("historyDetailsEscape"))escape->setEnabled(back);
- split_->setStretchFactor(0,1);split_->setStretchFactor(1,0);if(columns_)columns_->setVisible(!gallery);detailsBack_->setText(detailsFromGallery_?"Back to gallery":"Back to list");detailsBack_->setToolTip(detailsFromGallery_?"Return to the gallery (Esc)":"Return to the list (Esc)");detailsBack_->setVisible(back);if(heading_)heading_->setVisible(!back);const bool wasDetails=list_->isHidden();list_->setVisible(!details);
+ // Hide the old navigation before showing its replacement; Qt otherwise grows the window briefly.
+ split_->setStretchFactor(0,1);split_->setStretchFactor(1,0);if(columns_)columns_->setVisible(!gallery);detailsBack_->setText(detailsFromGallery_?"Back to gallery":"Back to list");detailsBack_->setToolTip(detailsFromGallery_?"Return to the gallery (Esc)":"Return to the list (Esc)");if(!back)detailsBack_->hide();if(heading_)heading_->setVisible(!back);findChild<QWidget*>("historyViewMode")->setVisible(!back);if(back)detailsBack_->show();const bool wasDetails=list_->isHidden();list_->setVisible(!details);
  inspectorScroll_->setVisible(single&&!gallery&&(!compact_||details));
  // Opened over the list, the inspector takes the whole width; the split's
  // inspector maximum bounds it again once both panes fit.
