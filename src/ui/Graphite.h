@@ -51,7 +51,7 @@ QPalette palette();
 
 // Glyphs drawn from paths, for chrome controls IconArt has no symbol for:
 // "menu", "more", "minimize", "maximize", "restore", "close", "chevron-down",
-// "chevron-right", "check". Follows scheme switches like VisualStyle::icon.
+// "chevron-right", "chevron-left", "check". Follows scheme switches like VisualStyle::icon.
 QIcon chromeIcon(const QString& name);
 void paintChromeGlyph(QPainter&, const QRectF&, const QString& name, const QColor&);
 void paintChevron(QPainter&, const QPointF& centre, qreal size, Qt::ArrowType, const QColor&, qreal width = 1.5);

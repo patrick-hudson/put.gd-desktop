@@ -47,6 +47,15 @@ QString HistoryModel::failureLabel(const QJsonObject& r){
  const auto action=r["operation"].toObject()["action"].toString();
  return action=="edit"?"Edit failed":action=="clipboard"?"Upload failed":"Capture failed";
 }
+bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject()["state"];return r["uploadStatus"]=="failed"||state=="failed"||state=="partial";}
+bool HistoryModel::retryUpload(const QJsonObject& r){return failed(r)&&!active(r)&&r["uploadStatus"]!="local_only"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
+// Any failed local copy can be saved again from the retained artifact,
+// including one whose upload succeeded.
+bool HistoryModel::retryLocalSave(const QJsonObject& r){return localSaveFailed(r)&&!active(r)&&!r["operationId"].toString().isEmpty();}
+bool HistoryModel::copyLocalResult(const QJsonObject& r){return r["uploadStatus"]=="local_only"&&!localSaveFailed(r)&&r["local"].toObject()["status"]=="saved"&&!active(r)&&!r["operationId"].toString().isEmpty();}
+// delete.prepare accepts confirmed uploads whose remote outcome is settled;
+// a target already gone has nothing left to delete.
+bool HistoryModel::remoteDeletable(const QJsonObject& f){return f["uploadStatus"]=="uploaded"&&!QStringList{"pending","deleting","unknown","changed","hidden_version_retained","removed","already_missing"}.contains(f["remoteStatus"].toString());}
 QString HistoryModel::statusText(const QJsonObject& r){
  const auto op=r["operation"].toObject();const auto state=op["state"].toString();const auto phase=op["phase"].toString();
  if(active(r)){
@@ -92,8 +101,8 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==Qt::ToolTipRole)return r["name"].toString()+"\n"+statusText(r);
  if(role==DayRole){const auto currentDay=day(r);return i.row()==0||currentDay!=day(record(i.row()-1))?currentDay:QString{};}
  if(role==ActiveRole)return active(r);
- if(role==FailedRole){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);return r["uploadStatus"]=="failed"||op["state"]=="failed"||op["state"]=="partial";}
- if(role==PrimaryActionRole){if(active(r))return "Cancel";if(r["uploadStatus"]=="local_only"){if(localSaveFailed(r))return "Retry local save";if(r["local"].toObject()["status"]=="saved")return "Copy result";}if(data(i,FailedRole).toBool()&&storedNothing(r))return QString{};if(data(i,FailedRole).toBool()&&!r["operationId"].toString().isEmpty())return "Retry upload";if(linkAvailable(i.row()))return "Copy link";return QString{};}
+ if(role==FailedRole)return failed(r);
+ if(role==PrimaryActionRole){if(active(r))return "Cancel";if(r["uploadStatus"]=="local_only"&&retryLocalSave(r))return "Retry local save";if(copyLocalResult(r))return "Copy result";if(retryUpload(r))return "Retry upload";if(linkAvailable(i.row()))return "Copy link";return QString{};}
  if(role==ProgressRole)return aggregateProgress(op).percent();
  if(role==CreatedRole)return relative(r);
  if(role==OutputRole){

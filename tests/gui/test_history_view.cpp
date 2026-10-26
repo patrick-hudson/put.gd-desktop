@@ -20,6 +20,7 @@
 #include <QPushButton>
 #include <QApplication>
 #include <QMessageBox>
+#include <QDialog>
 #include <QTimer>
 #include <QScopeGuard>
 #include <utility>
@@ -108,6 +109,8 @@ class HistoryGui:public QObject {
   QSqlDatabase::removeDatabase(connection);return ok;
  }
 
+ // The remote-deletion confirmation, as an agent or test finds it.
+ static QDialog* deletionDialog(){for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QDialog*>(widget);dialog&&dialog->isVisible()&&dialog->objectName()=="confirmAction"&&dialog->windowTitle()=="Delete from destination")return dialog;return nullptr;}
  static void selectRow(QListView* view,int row){view->selectionModel()->select(view->model()->index(row,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);view->setCurrentIndex(view->model()->index(row,0));}
  static int operationRow(QListView* list,const QString& id){auto* model=qobject_cast<HistoryModel*>(list->model());for(int row=0;row<model->rowCount();++row)if(model->record(row)["operationId"]==id)return row;return -1;}
  static bool rowMenuAction(QListView* list,const QString& text){
@@ -279,7 +282,7 @@ private slots:
   OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.copies,1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);auto original=std::make_unique<HistoryWindow>(fixture.session);auto& window=*original;window.show();auto* table=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(table->model()->rowCount(),1);selectRow(table,0);
   auto drain=qScopeGuard([&]{released.store(true);});
-  QTimer accept;accept.setInterval(10);connect(&accept,&QTimer::timeout,this,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->windowTitle()=="Delete from destination")box->button(QMessageBox::Yes)->click();});accept.start();
+  QTimer accept;accept.setInterval(10);connect(&accept,&QTimer::timeout,this,[]{if(auto* dialog=deletionDialog())dialog->findChild<QPushButton*>("confirmActionButton")->click();});accept.start();
   window.findChild<QPushButton*>("deleteHistoryRemote")->click();PUTGD_TRY_VERIFY(entered.load());accept.stop();
   const auto saved=window.saveViewState();QVERIFY(!saved["deletionId"].toString().isEmpty());original.reset();HistoryWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(saved));reopened.show();PUTGD_TRY_VERIFY(!reopened.findChild<QPlainTextEdit*>("historyDetails")->toPlainText().isEmpty());QPushButton* cancel=nullptr;for(auto* button:reopened.findChildren<QPushButton*>())if(button->text()=="Cancel deletion")cancel=button;QVERIFY(cancel);
   cancel->click();QLabel* status=nullptr;for(auto* label:reopened.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;QVERIFY(status);PUTGD_TRY_VERIFY(status->text().contains("Cancellation requested"));
@@ -341,7 +344,9 @@ private slots:
   PUTGD_TRY_VERIFY2(window.width()<=1000&&window.height()<=700,qPrintable(QString("Expanded history grew to %1×%2").arg(window.width()).arg(window.height())));
   // Graphite: an action that cannot apply is hidden, not shown disabled.
   {auto* copy=window.findChild<QPushButton*>("copyHistoryLink");QCOMPARE(copy->isVisibleTo(&window),copy->isEnabled());}
-  for(const auto& name:QStringList{"deleteHistoryRemote"}){auto* button=window.findChild<QPushButton*>(name);window.findChild<QScrollArea*>("historyInspectorScroll")->ensureWidgetVisible(button);QVERIFY(button->isVisible());QVERIFY(window.rect().contains(button->mapTo(&window,button->rect().bottomRight())));}
+  // A local-only file has no remote target: no Delete from destination.
+  QVERIFY(window.findChild<QPushButton*>("deleteHistoryRemote")->isHidden());
+  for(const auto& name:QStringList{"historyReceiptExpanded"}){auto* button=window.findChild<QWidget*>(name);window.findChild<QScrollArea*>("historyInspectorScroll")->ensureWidgetVisible(button);QVERIFY(button->isVisible());QVERIFY(window.rect().contains(button->mapTo(&window,button->rect().bottomRight())));}
   QVERIFY(window.rect().contains(manage->mapTo(&window,manage->rect().bottomRight())));QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
   for(int cycle=0;cycle<3;++cycle){
    window.hide();QVERIFY2(preview->pixmap().isNull(),"Hidden history must release its decoded thumbnail");PUTGD_TRY_VERIFY_WITH_TIMEOUT(!window.testAttribute(Qt::WA_WState_Created),500);QVERIFY(!window.backingStore());
@@ -424,7 +429,12 @@ private slots:
  }
  void cancellingExactDeletionConfirmationSendsNoDelete() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto s){return registry.validate(id,s);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());QString operationId;operations.invoke("clipboard",[&](Error e,QJsonObject data){QVERIFY(!e);operationId=data["operationId"].toString();});PUTGD_TRY_COMPARE(provider->uploads.load(),1);PUTGD_TRY_VERIFY(!operationId.isEmpty());QJsonObject completed;operations.inspect(operationId,[&](Error,QJsonObject data){completed=data;});PUTGD_TRY_VERIFY(!completed.isEmpty());
-  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);auto* table=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(table->model()->rowCount(),1);selectRow(table,0);bool confirmed=false;QTimer dismiss;dismiss.setInterval(10);connect(&dismiss,&QTimer::timeout,this,[&]{for(auto* widget:QApplication::topLevelWidgets()){auto* box=qobject_cast<QMessageBox*>(widget);if(box&&box->windowTitle()=="Delete from destination"){confirmed=box->text().contains("Original destination / exact target")&&box->text().contains("Remove only the recorded opaque file revision");box->done(QMessageBox::Cancel);}}});dismiss.start();window.findChild<QPushButton*>("deleteHistoryRemote")->click();PUTGD_TRY_VERIFY(confirmed);QCOMPARE(provider->deletes.load(),0);QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,1);
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);auto* table=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(table->model()->rowCount(),1);selectRow(table,0);const auto name=qobject_cast<HistoryModel*>(table->model())->record(0)["name"].toString();QVERIFY(!name.isEmpty());PUTGD_TRY_VERIFY(!window.findChild<QPushButton*>("deleteHistoryRemote")->isHidden());bool confirmed=false;QTimer dismiss;dismiss.setInterval(10);connect(&dismiss,&QTimer::timeout,this,[&]{auto* dialog=deletionDialog();if(!dialog)return;
+   // The exact target in the list, the full receipt under Technical details,
+   // Cancel as the initial and Enter/Escape choice next to the named action.
+   QString shown;for(auto* label:dialog->findChild<QWidget*>("deleteConfirmationTargets")->findChildren<QLabel*>())shown+=label->text()+"\n";auto* details=dialog->findChild<QPlainTextEdit*>("deleteConfirmationDetails");auto* cancel=dialog->findChild<QPushButton*>("confirmCancel");
+   QStringList missing;if(!shown.contains("Remove only the recorded opaque file revision"))missing<<"effect";if(!shown.contains(name))missing<<"name";if(details->isVisible())missing<<"details shown";if(!details->toPlainText().contains("acknowledgement"))missing<<"receipt";if(!cancel->isDefault())missing<<"default";if(dialog->focusWidget()!=cancel)missing<<"focus";if(dialog->findChild<QPushButton*>("confirmActionButton")->text()!="Delete from destination")missing<<"action";
+   dialog->findChild<QToolButton*>("deleteConfirmationDetailsExpanded")->click();if(!details->isVisible())missing<<"disclosure";if(!missing.isEmpty())qWarning("%s",qPrintable(missing.join(", ")));confirmed=missing.isEmpty();QTest::keyClick(dialog,Qt::Key_Escape);});dismiss.start();window.findChild<QPushButton*>("deleteHistoryRemote")->click();PUTGD_TRY_VERIFY(confirmed);PUTGD_TRY_VERIFY(!deletionDialog());QCOMPARE(provider->deletes.load(),0);QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,1);
  }
  void unifiedActivityCancelRetryAndCopyUseResidentActions(){
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->failUpload=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();source.defer=true;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();auto* list=window.findChild<QListView*>("historyList");
@@ -445,7 +455,7 @@ private slots:
   auto* model=qobject_cast<HistoryModel*>(list->model());PUTGD_TRY_VERIFY(operationRow(list,id)>=0);PUTGD_TRY_VERIFY(model->data(model->index(operationRow(list,id)),HistoryModel::SubtitleRole).toString().contains("Waiting to upload"));PUTGD_TRY_VERIFY(window.findChild<QPushButton*>("cancelOperation")->isVisible());window.findChild<QPushButton*>("cancelOperation")->click();PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QCOMPARE(provider->completions.size(),1);QCOMPARE(source.reads,2);
  }
  void failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload(){
-  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));HistoryCopyFailureSource source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();QString id;operations.invoke("clipboard",[&](Error e,QJsonObject value){QVERIFY(!e);id=value["operationId"].toString();});PUTGD_TRY_COMPARE(source.copies,1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());PUTGD_TRY_COMPARE(model->rowCount(),1);selectRow(list,0);PUTGD_TRY_VERIFY(window.findChild<QLabel*>("historyOutcome")->text().contains("Could not copy"));QVERIFY(!model->data(model->index(0)).toString().contains(id));QVERIFY(!model->data(model->index(0),Qt::ToolTipRole).toString().contains(id));QVERIFY(!window.findChild<QLabel*>("historySummary")->text().contains(id));QVERIFY(!window.findChild<QPlainTextEdit*>("historyDetails")->isVisible());source.fail=false;QVERIFY(rowMenuAction(list,"Copy result"));PUTGD_TRY_COMPARE(source.copies,2);PUTGD_TRY_VERIFY(model->data(model->index(0),HistoryModel::SubtitleRole).toString().contains("Link copied"));QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,1);QVERIFY(rowMenuAction(list,"Copy details"));PUTGD_TRY_VERIFY(QApplication::clipboard()->text().contains(id));QVERIFY(!QApplication::clipboard()->text().contains("synthetic source content"));
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));HistoryCopyFailureSource source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();QString id;operations.invoke("clipboard",[&](Error e,QJsonObject value){QVERIFY(!e);id=value["operationId"].toString();});PUTGD_TRY_COMPARE(source.copies,1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());PUTGD_TRY_COMPARE(model->rowCount(),1);selectRow(list,0);PUTGD_TRY_VERIFY(window.findChild<QLabel*>("historyOutcome")->text().contains("Could not copy"));QVERIFY(!model->data(model->index(0)).toString().contains(id));QVERIFY(!model->data(model->index(0),Qt::ToolTipRole).toString().contains(id));QVERIFY(!window.findChild<QLabel*>("historySummary")->text().contains(id));QVERIFY(!window.findChild<QPlainTextEdit*>("historyDetails")->isVisible());source.fail=false;QVERIFY(rowMenuAction(list,"Copy link"));PUTGD_TRY_COMPARE(source.copies,2);PUTGD_TRY_VERIFY(model->data(model->index(0),HistoryModel::SubtitleRole).toString().contains("Link copied"));QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,1);QVERIFY(rowMenuAction(list,"Copy details"));PUTGD_TRY_VERIFY(QApplication::clipboard()->text().contains(id));QVERIFY(!QApplication::clipboard()->text().contains("synthetic source content"));
  }
   // #473: an automatic copy the clipboard change refused says so in the row,
   // the subtitle and the outcome, is not a failure, and Copy link recovers it.
@@ -557,6 +567,162 @@ private slots:
   QCOMPARE(call("removed-item").first.code,QString("link_unavailable"));QCOMPARE(opened.size(),1);
   opens=false;QCOMPARE(call("live-item").first.code,QString("link_not_opened"));
   QCOMPARE(call("missing-item").first.code.isEmpty(),false);
+ }
+
+ // Graphite design pass (2026-10-26): the selected row leaves its primary
+ // action to the inspector beside it; without that inspector (gallery,
+ // several rows) the row keeps it.
+ void selectedRowLeavesItsPrimaryActionToTheInspector(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  for(int i=0;i<2;++i){operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(provider->uploads.load(),i+1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryActionInkProbe probe;HistoryWindow window(fixture.session);window.resize(Graphite::scaled(Graphite::Metric::historySidebar)+Graphite::scaled(700)+300,700);window.show();
+  auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());PUTGD_TRY_COMPARE(model->rowCount(),2);list->setStyle(&probe);QCOMPARE(model->data(model->index(0),HistoryModel::PrimaryActionRole).toString(),QString("Copy link"));
+  auto painted=[&](int row,QStyle::State state){probe.buttons.clear();QStyleOptionViewItem option;option.initFrom(list);option.rect=list->visualRect(model->index(row));option.state=QStyle::State_Enabled|state;QImage image(option.rect.size(),QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);{QPainter painter(&image);painter.translate(-option.rect.topLeft());list->itemDelegate()->paint(&painter,option,model->index(row));}return probe.buttons.size();};
+  selectRow(list,0);PUTGD_TRY_VERIFY(window.findChild<QScrollArea*>("historyInspectorScroll")->isVisible());PUTGD_TRY_VERIFY(window.findChild<QPushButton*>("copyHistoryLink")->isVisible());
+  // Rows are laid out again for the narrower list beside the inspector.
+  PUTGD_VERIFY_STEADY(list->viewport()->width()<window.width()-Graphite::scaled(Graphite::Metric::historySidebar)-Graphite::scaled(200)&&list->visualRect(model->index(0)).width()==list->viewport()->width()-2*list->spacing()&&list->visualRect(model->index(1)).width()==list->viewport()->width()-2*list->spacing(),20);
+  QCOMPARE(painted(0,QStyle::State_Selected|QStyle::State_MouseOver),1); // the row menu only
+  QCOMPARE(painted(0,QStyle::State_Selected),0); // its columns, not actions
+  // A click where the inline action would be does not copy from the selected
+  // row; the same place in an unselected row does.
+  QCOMPARE(painted(1,QStyle::State_MouseOver),2);const auto inline1=probe.buttons.first().center()-list->visualRect(model->index(1)).topLeft();
+  auto clickAction=[&](int row){QStyleOptionViewItem option;option.initFrom(list);option.rect=list->visualRect(model->index(row));const int heading=model->data(model->index(row),HistoryModel::DayRole).toString().isEmpty()?0:Graphite::scaled(32);const QPointF at=option.rect.topLeft()+inline1+QPoint(0,heading-(model->data(model->index(1),HistoryModel::DayRole).toString().isEmpty()?0:Graphite::scaled(32)));QMouseEvent click(QEvent::MouseButtonRelease,at,list->viewport()->mapToGlobal(at),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);return list->itemDelegate()->editorEvent(&click,model,option,model->index(row));};
+  {const int copies=source.copies;QVERIFY(!clickAction(0));putgd::test::settle(50);QCOMPARE(source.copies,copies);QVERIFY(clickAction(1));PUTGD_TRY_COMPARE(source.copies,copies+1);selectRow(list,0);}
+  window.findChild<QToolButton*>("historyGridMode")->click();QCOMPARE(painted(0,QStyle::State_Selected),2);window.findChild<QToolButton*>("historyListMode")->click();
+  list->selectionModel()->select(QItemSelection(model->index(0),model->index(1)),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);PUTGD_TRY_VERIFY(!window.findChild<QScrollArea*>("historyInspectorScroll")->isVisible());QCOMPARE(painted(0,QStyle::State_Selected),2);
+ }
+ // Collapsed filters still say what restricts the list, and Clear filters,
+ // the empty view's reset and ui.history clear them through the same query.
+ void collapsedFiltersShowActiveRestrictionsAndClear(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="filter-operation";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id="filter-item";item.artifact.name="filtered.txt";item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus="local_only";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1100,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);
+  auto* toggle=window.findChild<QToolButton*>("historyFiltersExpanded");auto* clear=window.findChild<QToolButton*>("historyClearFilters");auto* failed=window.findChild<QToolButton*>("historyFailedOnly");QVERIFY(clear);
+  QCOMPARE(toggle->text(),QString("Filters"));QVERIFY(clear->isHidden());QVERIFY(toggle->accessibleDescription().contains("no active filters"));
+  failed->click();PUTGD_TRY_COMPARE(toggle->text(),QString("Filters · 1"));QVERIFY(!toggle->isChecked());QVERIFY(clear->isVisible());QVERIFY(toggle->accessibleDescription().startsWith("Collapsed"));QVERIFY(toggle->accessibleDescription().contains("Upload state: failed"));
+  // Typed but not applied restricts nothing yet.
+  window.findChild<QLineEdit*>("historyFiltermime")->setText("image/png");QCOMPARE(toggle->text(),QString("Filters · 1"));window.findChild<QPushButton*>("historyApplyFilters")->click();QCOMPARE(toggle->text(),QString("Filters · 2"));QVERIFY(toggle->toolTip().contains("Content type: image/png"));
+  toggle->click();QVERIFY(toggle->accessibleDescription().startsWith("Expanded"));QCOMPARE(toggle->text(),QString("Filters · 2"));toggle->click();
+  clear->click();QCOMPARE(toggle->text(),QString("Filters"));QVERIFY(clear->isHidden());QVERIFY(!failed->isChecked());QCOMPARE(window.findChild<QLabel*>("historyHeading")->text(),QString("All items"));
+  {const auto query=window.saveViewState()["query"].toObject();QVERIFY(query["mime"].toString().isEmpty());QVERIFY(query["uploadStatus"].toString().isEmpty());}PUTGD_TRY_COMPARE(list->model()->rowCount(),1);
+  // A search with no match says so and offers its reset; an empty history does not.
+  auto* search=window.findChild<QLineEdit*>("historySearch");search->setText("no such capture");QTest::keyClick(search,Qt::Key_Return);auto* empty=window.findChild<QLabel*>("historyEmpty");auto* reset=window.findChild<QPushButton*>("historyResetView");
+  PUTGD_TRY_VERIFY(empty->isVisible());QCOMPARE(empty->text(),QString("No matching items"));QVERIFY(reset->isVisible());reset->click();QVERIFY(search->text().isEmpty());PUTGD_TRY_COMPARE(list->model()->rowCount(),1);QVERIFY(list->isVisible());
+  // The agent path: ui.history through the session, as Clear filters and the reset do.
+  fixture.server.setUiCommand([&](const QString& name,const QJsonObject& params,JsonReply reply){QCOMPARE(name,QString("history"));window.command(params,std::move(reply));});
+  auto drive=[&](const QJsonObject& params){Error error;QJsonObject result;bool done=false;fixture.server.dispatch({{"schemaVersion",1},{"requestId","ui"},{"session",fixture.server.socketPath()},{"method","ui.history"},{"params",params}},[&](Error e,QJsonObject r){error=e;result=r;done=true;});if(!putgd::test::waitFor([&]{return done;},5000))error={"timeout","ui.history did not answer",{}};return std::pair{error,result};};
+  window.findChild<QLineEdit*>("historyFilterremoteStatus")->setText("removed");window.findChild<QPushButton*>("historyApplyFilters")->click();search->setText("filtered");QTest::keyClick(search,Qt::Key_Return);window.findChild<QListWidget*>("historyCategories")->setCurrentRow(1);
+  {auto [error,state]=drive({{"action","inspect"}});QVERIFY(!error);QCOMPARE(state["filtersLabel"].toString(),QString("Filters · 1"));QCOMPARE(state["activeFilters"].toArray().size(),1);}
+  {auto [error,state]=drive({{"action","clearFilters"}});QVERIFY(!error);QVERIFY(state["activeFilters"].toArray().isEmpty());QCOMPARE(state["query"].toObject()["search"].toString(),QString("filtered"));QCOMPARE(state["query"].toObject()["category"].toString(),QString("images"));QVERIFY(clear->isHidden());}
+  {auto [error,state]=drive({{"action","clearFilters"},{"scope","all"}});QVERIFY(!error);QVERIFY(state["query"].toObject()["search"].toString().isEmpty());QVERIFY(state["query"].toObject()["category"].toString().isEmpty());QVERIFY(search->text().isEmpty());QCOMPARE(window.findChild<QListWidget*>("historyCategories")->currentRow(),0);}
+  QCOMPARE(drive({{"action","select"}}).first.code,QString("invalid_request"));QCOMPARE(drive({{"action","clearSelection"},{"scope","all"}}).first.code,QString("invalid_request"));
+  {auto [error,state]=drive({{"action","select"},{"ids",QJsonArray{"filter-item"}}});QVERIFY(!error);QCOMPARE(state["selectedRows"].toInt(),1);QCOMPARE(list->selectionModel()->selectedRows().size(),1);}
+  QCOMPARE(drive({{"action","select"},{"ids",QJsonArray{"missing-item"}}}).first.code,QString("history_row_not_found"));
+  {auto [error,state]=drive({{"action","clearSelection"}});QVERIFY(!error);QCOMPARE(state["selectedRows"].toInt(),0);}
+  QCOMPARE(source.reads,0);
+ }
+ // Several selected rows keep their selection when a row menu opens, and the
+ // selection strip copies their links and deletes exactly those files.
+ void multiSelectionOffersBatchActionsWithExactIds(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  for(int i=0;i<3;++i){operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(provider->uploads.load(),i+1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1100,700);window.show();
+  auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());PUTGD_TRY_COMPARE(model->rowCount(),3);auto* bar=window.findChild<QWidget*>("historySelectionBar");QVERIFY(bar->isHidden());
+  const QStringList chosen{model->record(0)["id"].toString(),model->record(1)["id"].toString()};const auto kept=model->record(2)["id"].toString();QStringList links;for(int row:{0,1})links<<model->record(row)["receipt"].toObject()["directUrl"].toString();links.sort();QVERIFY(!links.first().isEmpty());
+  list->selectionModel()->select(QItemSelection(model->index(0),model->index(1)),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->selectionModel()->setCurrentIndex(model->index(1),QItemSelectionModel::NoUpdate);
+  PUTGD_TRY_VERIFY(bar->isVisible());QCOMPARE(window.findChild<QLabel*>("historySelectionCount")->text(),QString("2 selected"));QVERIFY(!window.findChild<QScrollArea*>("historyInspectorScroll")->isVisible());
+  for(const char* name:{"historyCopyLinks","historyDeleteSelected","historyClearSelection"})QVERIFY2(window.findChild<QPushButton*>(name)->isVisible(),name);QVERIFY(!window.findChild<QPushButton*>("historyShowDetails")->isVisible());
+  // A row menu on one of them keeps both selected and offers the batch.
+  QStringList offered;int selectedInMenu=0;QTimer::singleShot(0,list,[&]{for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget);menu&&menu->isVisible()){for(auto* action:menu->actions())if(!action->isSeparator())offered<<action->text();selectedInMenu=list->selectionModel()->selectedRows().size();menu->close();}});
+  emit list->customContextMenuRequested(list->visualRect(model->index(1)).center());
+  QVERIFY2(offered.contains("Copy links")&&offered.contains("Delete from destination…")&&offered.contains("Clear selection")&&!offered.contains("Copy details"),qPrintable(offered.join("|")));QCOMPARE(selectedInMenu,2);QCOMPARE(list->selectionModel()->selectedRows().size(),2);
+  const int copies=source.copies;window.findChild<QPushButton*>("historyCopyLinks")->click();PUTGD_TRY_COMPARE(source.copies,copies+1);{auto copied=source.copied.text.split('\n');copied.sort();QCOMPARE(copied,links);}
+  {DispatchSessionClient external(fixture.server);Error refused;bool done=false;external.request("history.copyLinks",{{"ids",QJsonArray{chosen[0],chosen[0]}}},this,[&](Error e,QJsonObject){refused=e;done=true;});PUTGD_TRY_VERIFY(done);QCOMPARE(refused.code,QString("invalid_request"));}
+  QStringList shown;QTimer accept;accept.setInterval(10);connect(&accept,&QTimer::timeout,this,[&]{if(auto* dialog=deletionDialog()){for(auto* label:dialog->findChildren<QLabel*>())shown<<label->text();QVERIFY(dialog->findChild<QPlainTextEdit*>("deleteConfirmationDetails")->toPlainText().contains(chosen[1]));dialog->findChild<QPushButton*>("confirmActionButton")->click();}});accept.start();
+  window.findChild<QPushButton*>("historyDeleteSelected")->click();PUTGD_TRY_COMPARE(provider->deletes.load(),2);accept.stop();QVERIFY2(shown.contains("Delete 2 files from their destinations?"),qPrintable(shown.join("|")));
+  auto remote=[&](const QString& id){for(int row=0;row<model->rowCount();++row)if(model->record(row)["id"]==id)return model->record(row)["remoteStatus"].toString();return QString{};};
+  PUTGD_TRY_VERIFY(remote(chosen[0])=="removed"&&remote(chosen[1])=="removed");QVERIFY(remote(kept)!="removed");
+  window.findChild<QPushButton*>("historyClearSelection")->click();QVERIFY(list->selectionModel()->selectedRows().isEmpty());QVERIFY(bar->isHidden());QCOMPARE(source.reads,3);
+ }
+ // The row menu lists what the row can do now, from the same state as its
+ // inline action and the inspector, and never a command the resident refuses.
+ void rowMenuOffersOnlyApplicableCommands(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  QString uploaded,failed;operations.invoke("clipboard",[&](Error e,QJsonObject v){QVERIFY(!e);uploaded=v["operationId"].toString();});PUTGD_TRY_COMPARE(provider->uploads.load(),1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  provider->failUpload=true;operations.invoke("clipboard",[&](Error e,QJsonObject v){QVERIFY(!e);failed=v["operationId"].toString();});PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);PUTGD_TRY_VERIFY(provider->uploads.load()>=1);
+  const auto kept=d.filePath("kept.txt");{QFile file(kept);QVERIFY(file.open(QIODevice::WriteOnly));file.write("synthetic");}
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="menu-local";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id="menu-local-item";item.artifact.name="local.txt";item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus="local_only";item.local.status="saved";item.local.path=kept;op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1100,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),3);auto* model=qobject_cast<HistoryModel*>(list->model());
+  auto menuFor=[&](const QString& id){selectRow(list,operationRow(list,id));window.activateWindow();list->setFocus();putgd::test::settle(20);QStringList texts;QTimer::singleShot(0,list,[&]{for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget);menu&&menu->isVisible()){for(auto* action:menu->actions())if(!action->isSeparator()){texts<<action->text();QVERIFY2(action->isEnabled(),qPrintable(action->text()));}menu->close();}});QTest::keyClick(list,Qt::Key_Menu);QCoreApplication::processEvents();return texts;};
+  const QStringList never{"Remove from history","Cancel operation"};
+  {const auto texts=menuFor(uploaded);QCOMPARE(model->data(model->index(operationRow(list,uploaded)),HistoryModel::PrimaryActionRole).toString(),QString("Copy link"));
+   for(const auto& t:QStringList{"Copy link","Open in browser","Copy details","Delete from destination…"})QVERIFY2(texts.contains(t),qPrintable(t+" in "+texts.join("|")));
+   for(const auto& t:never+QStringList{"Retry upload","Retry local save","Copy result","Save diagnostics for this upload"})QVERIFY2(!texts.contains(t),qPrintable(t+" in "+texts.join("|")));}
+  {const auto texts=menuFor(failed);QCOMPARE(model->data(model->index(operationRow(list,failed)),HistoryModel::PrimaryActionRole).toString(),QString("Retry upload"));
+   for(const auto& t:QStringList{"Retry upload","Save diagnostics for this upload","Copy details"})QVERIFY2(texts.contains(t),qPrintable(t+" in "+texts.join("|")));
+   for(const auto& t:never+QStringList{"Copy link","Open in browser","Copy result","Retry local save","Delete from destination…"})QVERIFY2(!texts.contains(t),qPrintable(t+" in "+texts.join("|")));
+   PUTGD_TRY_VERIFY(window.findChild<QPushButton*>("retryOperation")->isVisible());QCOMPARE(window.findChild<QPushButton*>("retryOperation")->text(),QString("Retry upload"));}
+  {const auto texts=menuFor("menu-local");QCOMPARE(model->data(model->index(operationRow(list,"menu-local")),HistoryModel::PrimaryActionRole).toString(),QString("Copy result"));
+   QVERIFY2(texts.contains("Copy result"),qPrintable(texts.join("|")));for(const auto& t:never+QStringList{"Retry upload","Retry local save","Copy link","Delete from destination…"})QVERIFY2(!texts.contains(t),qPrintable(t+" in "+texts.join("|")));
+   PUTGD_TRY_VERIFY(!window.findChild<QPlainTextEdit*>("historyDetails")->toPlainText().isEmpty());QVERIFY(window.findChild<QPushButton*>("deleteHistoryRemote")->isHidden());}
+ }
+ // Gallery cards measure their text: the actions follow a complete failure
+ // after a 12 px gap, and the preferred width grows with the text size.
+ void galleryCardsReserveTextBeforeTheirActions(){
+  const QString message="Synthetic upload failure. Check the destination's credentials, then retry the upload from History. "+QString("detail ").repeated(30)+"END";
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="gallery-failed";op.action="region";op.created="2020-01-01T00:00:00.000Z";op.state="failed";op.settings=settings.snapshot();OperationItem item;item.artifact.id="gallery-failed-item";item.artifact.name=QString("A long capture name for the gallery card %1.png").arg(1);item.artifact.mime="image/png";item.artifact.category="images";item.uploadStatus="failed";item.error={"synthetic_failed",message,{}};op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryActionInkProbe probe;HistoryWindow window(fixture.session);window.resize(1300,800);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);
+  window.findChild<QToolButton*>("historyGridMode")->click();list->setStyle(&probe);const auto index=list->model()->index(0,0);QCOMPARE(index.data(HistoryModel::PrimaryActionRole).toString(),QString("Retry upload"));
+  QStyleOptionViewItem option;option.initFrom(list);const auto size=list->itemDelegate()->sizeHint(option,index);
+  // Cards share each row: no wider than the viewport allows, never narrower than the scaled preference allows.
+  const int available=list->viewport()->width()-2*list->spacing();QVERIFY2(size.width()>=qMin(Graphite::scaled(248),available-list->spacing())-1,qPrintable(QString("card %1 of %2").arg(size.width()).arg(available)));QVERIFY(available/(size.width()+list->spacing())<=qMax(1,available/Graphite::scaled(248)));
+  option.rect=QRect(QPoint(),size);option.state=QStyle::State_Enabled|QStyle::State_MouseOver;QImage image(size,QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);{QPainter painter(&image);list->itemDelegate()->paint(&painter,option,index);}
+  const auto area=HistoryWindow::failureTextArea(size,true,false);QTextDocument expected;expected.setDocumentMargin(0);expected.setDefaultFont(Graphite::font(Graphite::Type::metadata));auto textOption=expected.defaultTextOption();textOption.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);expected.setDefaultTextOption(textOption);expected.setPlainText(index.data(Qt::AccessibleTextRole).toString().section(". ",1));expected.setTextWidth(area.width());
+  const int textBottom=area.top()+int(std::ceil(expected.size().height()));QCOMPARE(probe.buttons.size(),2);
+  for(const auto& button:probe.buttons){QVERIFY2(button.top()>=textBottom+12,qPrintable(QString("action at y%1, text ends y%2").arg(button.top()).arg(textBottom)));QVERIFY(QRect(QPoint(),size).contains(button));QVERIFY(button.height()>=QFontMetrics(Graphite::font()).height()+8);}
+ }
+ // Column headings and row values share one geometry: at every width, with
+ // a scrollbar, each heading is painted where its values start, and a
+ // dropped column loses its heading too.
+ void columnHeadingsMatchRowColumns(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  {HistoryStore ledger(operations.databasePath());for(int i=0;i<14;++i){Operation op;op.id=QString("column-operation-%1").arg(i);op.created=QString("2020-01-01T00:%1:00.000Z").arg(i,2,10,QChar('0'));op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id=QString("column-item-%1").arg(i);item.artifact.name=QString("Column %1.txt").arg(i);item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus="local_only";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1000,640);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());PUTGD_TRY_COMPARE(model->rowCount(),14);
+  auto* header=window.findChild<QWidget*>("historyColumns");QVERIFY(header);QCOMPARE(model->data(model->index(1),HistoryModel::DayRole).toString(),QString());
+  auto clusters=[](QList<int> xs){QList<std::pair<int,int>> out;std::sort(xs.begin(),xs.end());for(int x:xs){if(out.isEmpty()||x-out.last().second>Graphite::scaled(10))out.append({x,x});else out.last().second=x;}return out;};
+  // Ink against the fill just left of the text body, up to the band's end.
+  auto ink=[](const QImage& image,const QRect& band,int from){QList<int> xs;const auto ref=image.pixelColor(from-4,band.top());for(int x=from;x<=band.right();++x)for(int y=band.top();y<=band.bottom();++y){const auto c=image.pixelColor(x,y);if(std::abs(c.red()-ref.red())+std::abs(c.green()-ref.green())+std::abs(c.blue()-ref.blue())>60){xs.append(x);break;}}return xs;};
+  int seen[3]={0,0,0};
+  for(int width=Graphite::scaled(Graphite::Metric::historySidebar)+360;width<=1500;width+=37){
+   window.resize(width,640);PUTGD_TRY_VERIFY(list->verticalScrollBar()->isVisible()&&list->visualRect(model->index(1)).width()==list->viewport()->width()-2*list->spacing());putgd::test::settle(30);
+   const auto shot=window.grab().toImage();const QRect head(header->mapTo(&window,QPoint()),header->size());const auto row=list->visualRect(model->index(1)).translated(list->viewport()->mapTo(&window,QPoint()));
+   const int bodyLeft=row.left()+6+12+Graphite::Metric::thumbWidth+16;const int lineTop=row.top()+2+Graphite::scaled(14);
+   const auto headings=clusters(ink(shot,QRect(head.left(),head.top()+2,row.right()-head.left()-8,head.height()-5),bodyLeft));const auto values=clusters(ink(shot,QRect(row.left(),lineTop,row.width()-8,Graphite::scaled(22)),bodyLeft));
+   if(values.size()!=headings.size()+1&&!qEnvironmentVariable("PUTGD_HISTORY_COLUMN_SHOT").isEmpty())shot.save(qEnvironmentVariable("PUTGD_HISTORY_COLUMN_SHOT"));
+   QVERIFY2(values.size()==headings.size()+1,qPrintable(QString("width %1: %2 headings, %3 row clusters").arg(width).arg(headings.size()).arg(values.size())));++seen[headings.size()];
+   for(int k=0;k<headings.size();++k)QVERIFY2(std::abs(headings[k].first-values[k+1].first)<=1,qPrintable(QString("width %1: heading %2 at x%3, values at x%4").arg(width).arg(k).arg(headings[k].first).arg(values[k+1].first)));
+  }
+  QVERIFY2(seen[2]>0&&seen[1]+seen[0]>0,"The sweep crosses the column breakpoints");
+ }
+ // Below the width both panes need at this text size, the inspector opens
+ // over the list on request and returns to it, by keyboard and ui.history.
+ void compactLayoutOpensDetailsOverTheList(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(provider->uploads.load(),1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  // About the height the main window's minimum size leaves History.
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);const int both=Graphite::scaled(Graphite::Metric::historySidebar)+Graphite::scaled(700);window.resize(both-80,qMax(460,Graphite::scaled(330)));window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);auto* inspector=window.findChild<QScrollArea*>("historyInspectorScroll");auto* bar=window.findChild<QWidget*>("historySelectionBar");auto* back=window.findChild<QToolButton*>("historyDetailsBack");
+  selectRow(list,0);PUTGD_TRY_VERIFY(bar->isVisible());QVERIFY(!inspector->isVisible());QCOMPARE(window.historyState()["layout"].toString(),QString("compact"));QVERIFY(window.findChild<QPushButton*>("historyShowDetails")->isVisible());QCOMPARE(list->model()->index(0,0).data(HistoryModel::PrimaryActionRole).toString(),QString("Copy link"));
+  window.activateWindow();list->setFocus();putgd::test::settle(20);QTest::keyClick(list,Qt::Key_Return);
+  PUTGD_TRY_VERIFY(inspector->isVisible());QVERIFY(!list->isVisible());QVERIFY(back->isVisible());QVERIFY(!bar->isVisible());QVERIFY(window.historyState()["detailsOpen"].toBool());
+  // The compact preview keeps the primary action in view without scrolling.
+  auto* copy=window.findChild<QPushButton*>("copyHistoryLink");PUTGD_TRY_VERIFY(copy->isVisible());const QRect inView(copy->mapTo(inspector->viewport(),QPoint()),copy->size());QVERIFY2(inspector->viewport()->rect().contains(inView),qPrintable(QString("Copy link at %1,%2 %3x%4 in %5x%6").arg(inView.x()).arg(inView.y()).arg(inView.width()).arg(inView.height()).arg(inspector->viewport()->width()).arg(inspector->viewport()->height())));
+  back->setFocus();QTest::keyClick(back,Qt::Key_Escape);PUTGD_TRY_VERIFY(list->isVisible());QVERIFY(!inspector->isVisible());QCOMPARE(list->selectionModel()->selectedRows().size(),1);
+  bool done=false;QJsonObject state;window.command({{"action","openDetails"}},[&](Error e,QJsonObject r){QVERIFY(!e);state=r;done=true;});QVERIFY(done);QVERIFY(state["detailsOpen"].toBool());QVERIFY(inspector->isVisible());
+  done=false;window.command({{"action","closeDetails"}},[&](Error e,QJsonObject r){QVERIFY(!e);state=r;done=true;});QVERIFY(done);QVERIFY(!state["detailsOpen"].toBool());QVERIFY(list->isVisible());
+  // Wide enough for both panes: side by side again, with no Show details.
+  window.resize(both+240,qMax(460,Graphite::scaled(330)));PUTGD_TRY_VERIFY(inspector->isVisible()&&list->isVisible());QVERIFY(!bar->isVisible());QCOMPARE(window.historyState()["layout"].toString(),QString("split"));
  }
 };QTEST_MAIN(HistoryGui)
 #include "test_history_view.moc"

@@ -32,6 +32,12 @@ public:
  static bool storedNothing(const QJsonObject&);
  // Short failure label: what failed, not the error message.
  static QString failureLabel(const QJsonObject&);
+ // What a row (a capture group) can do now. The inline action, the inspector,
+ // the row menu and the selection strip all ask these, so none of them offers
+ // a command the resident would refuse for this row's state and receipts.
+ static bool failed(const QJsonObject&);static bool retryUpload(const QJsonObject&);static bool retryLocalSave(const QJsonObject&);static bool copyLocalResult(const QJsonObject&);
+ // One stored file whose original remote target delete.prepare can accept.
+ static bool remoteDeletable(const QJsonObject& file);
 signals:void loaded();void error(const QString&);
 private:
  void rebuild();void loadThumbnail(const QString&)const;void nextThumbnail()const;

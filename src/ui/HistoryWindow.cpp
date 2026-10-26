@@ -16,6 +16,8 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDateTime>
+#include <QDialog>
+#include <QScrollBar>
 #include <QDir>
 #include <QGridLayout>
 #include <QHideEvent>
@@ -86,31 +88,41 @@ std::unique_ptr<QTextDocument> failureText(const QString& text,const QFont& font
 }
 // The list's columns (Graphite): Item takes what Output and Created leave; a
 // narrow list drops Output first, then Created, and the inspector keeps both.
+// Widths follow the text size, and a column stays only while Item keeps room
+// for a readable name, so a heading and its values come and go together.
 struct Columns {QRect item,output,created;};
 Columns historyColumns(const QRect& row){
- Columns c;const int width=row.width();const int created=width>=440?92:0;const int output=width>=600?132:0;
+ Columns c;const int width=row.width(),minimum=Graphite::scaled(300);const int created=width-Graphite::scaled(92)>=minimum?Graphite::scaled(92):0;const int output=created&&width-created-Graphite::scaled(132)>=minimum+Graphite::scaled(20)?Graphite::scaled(132):0;
  c.created=created?QRect(row.right()-created+1,row.top(),created,row.height()):QRect();
  c.output=output?QRect(row.right()-created-output+1,row.top(),output,row.height()):QRect();
  c.item=QRect(row.left(),row.top(),width-created-output,row.height());return c;
 }
 int dayHeadingHeight(){return Graphite::scaled(32);}
+// Row actions are 32 px targets, taller when enlarged text needs it.
+int actionHeight(){return qMax(32,QFontMetrics(Graphite::font()).height()+12);}
+// A gallery card's picture keeps the 248 px card's proportions as cards grow.
+int galleryPicture(int cardWidth){return qMax(90,(cardWidth-2)*145/234);}
 // The row's body: right of the thumbnail in a list, under it in a gallery tile.
 QRect rowBody(const QRect& outer,bool gallery,int heading){
  const auto card=outer.adjusted(6,heading+2,-6,-2);
- if(gallery)return QRect(card.left()+14,card.top()+156,card.width()-28,card.height()-156);
+ if(gallery){const int top=card.top()+1+galleryPicture(card.width())+10;return QRect(card.left()+14,top,card.width()-28,qMax(0,card.bottom()-top+1));}
  const int left=card.left()+12+Graphite::Metric::thumbWidth+16;
  return QRect(left,card.top(),card.right()-12-left+1,Graphite::scaled(Graphite::Metric::historyRow)-4);
 }
+// A list row at the viewport's current width. The column header and every
+// row lay out their columns from this one geometry, scrollbar included.
+QRect listRow(const QListView* view,int top,int height){return QRect(view->spacing(),top,qMax(160,view->viewport()->width()-2*view->spacing()),height);}
 // Item / Output / Created above the list, on the same columns as its rows.
 class HistoryColumns final:public QWidget {
 public:
- explicit HistoryColumns(QListView* view,QWidget* parent):QWidget(parent),view_(view){setObjectName("historyColumns");setFixedHeight(Graphite::scaled(30));}
+ explicit HistoryColumns(QListView* view,QWidget* parent):QWidget(parent),view_(view){setObjectName("historyColumns");setFixedHeight(Graphite::scaled(30));view_->viewport()->installEventFilter(this);}
+ // A scrollbar narrows the viewport without resizing this header.
+ bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Resize)update();return false;}
 protected:
  void paintEvent(QPaintEvent*)override{
   QPainter p(this);const auto& t=Theme::current();const int left=view_->viewport()->mapTo(window(),QPoint(0,0)).x()-mapTo(window(),QPoint(0,0)).x();
-  // The same body rectangle the delegate lays its columns out in.
-  const int card=left+6,thumb=card+12,body=thumb+Graphite::Metric::thumbWidth+16,right=left+view_->viewport()->width()-6-12;
-  const auto c=historyColumns(QRect(body,0,right-body+1,height()));const auto f=Graphite::font(Graphite::Type::metadata);
+  const auto row=listRow(view_,0,height()).translated(left,0);const auto body=rowBody(row,false,0);
+  const auto c=historyColumns(QRect(body.left(),0,body.width(),height()));const auto f=Graphite::font(Graphite::Type::metadata);const int thumb=row.left()+6+12;
   Graphite::paintText(p,QRectF(thumb,0,qMax(0,c.item.right()-thumb-8),height()),"Item",t.textMuted,f);
   if(!c.output.isEmpty())Graphite::paintText(p,c.output.adjusted(0,0,-8,0),"Output",t.textMuted,f);
   if(!c.created.isEmpty())Graphite::paintText(p,c.created.adjusted(0,0,-8,0),"Created",t.textMuted,f);
@@ -140,33 +152,49 @@ public:
  }
  std::function<void(const QModelIndex&)> primary;
  std::function<void(const QModelIndex&,const QPoint&)> menu;
+ // True while the inspector beside the list shows the selected row. Its
+ // actions are there, so that row does not repeat the primary action.
+ std::function<bool()> inspectorBeside;
  bool grid()const{return view_->viewMode()==QListView::IconMode;}
+ bool beside(const QModelIndex& i)const{return !grid()&&inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i);}
+ bool primaryShown(const QModelIndex& i)const{return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()&&!beside(i);}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
  QRect card(QRect r,const QModelIndex& i)const{return r.adjusted(6,heading(i)+2,-6,-2);}
+ // Gallery cards share each row evenly. The preferred width grows with the
+ // text size, so enlarged text gives fewer columns, not heavily elided names.
+ // The flow layout always reserves a scrollbar's extent (QListViewPrivate::prepareItemsLayout).
+ int galleryWidth()const{const int s=view_->spacing(),reserve=view_->style()->pixelMetric(QStyle::PM_ScrollView_ScrollBarOverlap,nullptr,view_->verticalScrollBar())?0:view_->style()->pixelMetric(QStyle::PM_ScrollBarExtent,nullptr,view_->verticalScrollBar());const int available=qMax(160,view_->maximumViewportSize().width()-reserve-2*s);const int columns=qMax(1,available/(Graphite::scaled(248)+s));return qMax(160,available/columns-s);}
  // Reserve action space even while it is hidden, so hovering never changes
  // the filename. Narrow rows put actions below instead of losing the title.
  int primaryWidth(const QModelIndex& i)const{return qMax(84,QFontMetrics(Graphite::font()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())+28);}
  bool actionsBelow(const QRect& r,const QModelIndex& i)const{
   if(grid())return false;
-  const auto c=card(r,i);const int reserve=32+8+(i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()?0:primaryWidth(i)+8);
+  const auto c=card(r,i);const int reserve=actionHeight()+8+(i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()?0:primaryWidth(i)+8);
   return c.right()-12-reserve-textLeft(c)<Graphite::scaled(120);
  }
  QRect primaryRect(QRect r,const QModelIndex& i)const{
-  const auto c=card(r,i);const int h=32;const int w=qMin(primaryWidth(i),qMax(0,c.width()-12-12-h-8));
+  const auto c=card(r,i);const int h=actionHeight();const int w=qMin(primaryWidth(i),qMax(0,c.width()-12-12-h-8));
   if(grid())return QRect(c.left()+12,c.bottom()-h-11,w,h);
   return QRect(c.right()-12-h-8-w,actionsBelow(r,i)?c.bottom()-h-11:c.top()+Graphite::scaled(22)-6,w,h);
  }
- QRect menuRect(QRect r,const QModelIndex& i)const{const auto b=primaryRect(r,i);const auto c=card(r,i);return QRect(grid()?c.right()-12-32:c.right()-12-32,b.top(),32,32);}
+ QRect menuRect(QRect r,const QModelIndex& i)const{const auto b=primaryRect(r,i);const auto c=card(r,i);const int h=actionHeight();return QRect(c.right()-12-h,b.top(),h,h);}
  static QString errorText(const QModelIndex& i){return HistoryModel::statusText(i.data(HistoryModel::RecordRole).toJsonObject());}
  int textLeft(const QRect& c)const{return c.left()+12+Graphite::Metric::thumbWidth+16;}
- QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& i)const override{
-  const int available=qMax(160,view_->viewport()->width()-2*view_->spacing());const int width=grid()?qMin(248,available):available;
-  int height=grid()?268:qMax(Graphite::Metric::historyRow,Graphite::scaled(Graphite::Metric::historyRow))+heading(i);
-  if(actionsBelow(QRect(0,0,width,height),i))height+=44;
+ QSize sizeHint(const QStyleOptionViewItem&,const QModelIndex& i)const override{
+  if(grid()){
+   // Picture, the measured title, metadata and complete error, a 12 px gap,
+   // then the action row: actions never sit over the text.
+   const int width=galleryWidth();int text=Graphite::scaled(45);
+   if(i.data(HistoryModel::FailedRole).toBool()){const auto area=HistoryWindow::failureTextArea(QSize(width,0),true,false);text=Graphite::scaled(48)+int(std::ceil(failureText(errorText(i),Graphite::font(Graphite::Type::metadata),area.width())->size().height()));}
+   return {width,2+1+galleryPicture(width-12)+10+text+12+actionHeight()+12+2};
+  }
+  const int width=qMax(160,view_->viewport()->width()-2*view_->spacing());
+  int height=qMax(Graphite::Metric::historyRow,Graphite::scaled(Graphite::Metric::historyRow))+heading(i);
+  if(actionsBelow(QRect(0,0,width,height),i))height+=actionHeight()+12;
   if(i.data(HistoryModel::FailedRole).toBool()){
-   const auto area=HistoryWindow::failureTextArea(QSize(width,height),grid(),heading(i)>0);
+   const auto area=HistoryWindow::failureTextArea(QSize(width,height),false,heading(i)>0);
    const auto document=failureText(errorText(i),Graphite::font(Graphite::Type::metadata),area.width());
-   height+=int(std::ceil(document->size().height()))+(grid()?0:4);
+   height+=int(std::ceil(document->size().height()))+4;
   }
   return {width,height};
  }
@@ -180,7 +208,7 @@ public:
   else{p->setPen(Qt::NoPen);p->setBrush(chosen?t.selected:hover?t.surface:t.bg);p->drawRoundedRect(r,7,7);}
   if(chosen&&!grid()){p->setPen(Qt::NoPen);p->setBrush(t.accent);p->drawRoundedRect(QRectF(r.left()+3,r.top()+18,2.5,qMax(10,r.height()-36)),1.25,1.25);}
   const int rowTop=r.top();const int rowHeight=grid()?r.height():Graphite::scaled(Graphite::Metric::historyRow)-4;
-  QRect thumb=grid()?QRect(r.left()+1,r.top()+1,r.width()-2,145):QRect(r.left()+12,rowTop+(rowHeight-Graphite::Metric::thumbHeight)/2,Graphite::Metric::thumbWidth,Graphite::Metric::thumbHeight);
+  QRect thumb=grid()?QRect(r.left()+1,r.top()+1,r.width()-2,galleryPicture(r.width())):QRect(r.left()+12,rowTop+(rowHeight-Graphite::Metric::thumbHeight)/2,Graphite::Metric::thumbWidth,Graphite::Metric::thumbHeight);
   p->setPen(Qt::NoPen);p->setBrush(t.surfaceRaised);p->drawRoundedRect(thumb,grid()?8:5,grid()?8:5);
   const auto image=qvariant_cast<QImage>(i.data(HistoryModel::ThumbnailRole));
   if(!image.isNull()){const auto scaled=image.scaled(thumb.size(),Qt::KeepAspectRatio,Qt::SmoothTransformation);const QPoint origin(thumb.center().x()-scaled.width()/2,thumb.center().y()-scaled.height()/2);p->drawImage(origin,scaled);if(video(record))paintVideoBadge(*p,QRect(origin,scaled.size()),HistoryModel::duration(image.text(HistoryModel::durationKey).toLongLong()));}
@@ -189,13 +217,16 @@ public:
    const auto category=record["category"].toString();const int side=grid()?36:24;
    VisualStyle::icon(category=="images"?"images":category=="videos"?"record":category=="text"?"clipboard":"view-list").paint(p,QRect(thumb.center()-QPoint(side/2,side/2),QSize(side,side)));
   }
-  const auto action=i.data(HistoryModel::PrimaryActionRole).toString();const bool actionsShown=grid()||chosen||hover;
+  // The selected row beside its inspector keeps its columns; the inspector
+  // holds its actions, and hovering offers only the row menu.
+  const auto action=i.data(HistoryModel::PrimaryActionRole).toString();const bool showPrimary=primaryShown(i);const bool actionsShown=grid()||hover||(chosen&&!beside(i));
   const auto primaryBounds=primaryRect(outer,i);const auto moreBounds=menuRect(outer,i);
   const QRect body=rowBody(outer,grid(),heading(i));
   const auto columns=grid()?Columns{body,{},{}}:historyColumns(body);
   const bool below=actionsBelow(outer,i);
   int itemWidth=qMax(0,columns.item.width()-12);
-  if(!grid()&&!below){const int actionLeft=action.isEmpty()?moreBounds.left():primaryBounds.left();itemWidth=qMin(itemWidth,qMax(0,actionLeft-columns.item.left()-8));}
+  if(!grid()&&!below){const int actionLeft=showPrimary?primaryBounds.left():moreBounds.left();itemWidth=qMin(itemWidth,qMax(0,actionLeft-columns.item.left()-8));}
+  else if(grid())itemWidth=body.width();
   const auto titleFont=Graphite::font(Graphite::Type::body,true),metaFont=Graphite::font(Graphite::Type::metadata);
   const int lineTop=grid()?body.top():rowTop+Graphite::scaled(14);
   Graphite::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,Graphite::scaled(22)),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideMiddle);
@@ -217,17 +248,17 @@ public:
   }
   if(actionsShown){
    auto* style=view_->style();
-   if(!action.isEmpty()){QStyleOptionButton button;button.rect=primaryBounds;button.text=action;button.state=QStyle::State_Enabled|(option.state&QStyle::State_MouseOver&&primaryBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);button.fontMetrics=QFontMetrics(Graphite::font());p->save();p->setFont(Graphite::font());style->drawControl(QStyle::CE_PushButton,&button,p,nullptr);p->restore();}
-   QStyleOptionButton more;more.rect=moreBounds;more.state=QStyle::State_Enabled|(moreBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);style->drawPrimitive(QStyle::PE_PanelButtonCommand,&more,p,nullptr);Graphite::paintChromeGlyph(*p,QRectF(moreBounds).adjusted(7,7,-7,-7),"more",t.textSecondary);
+   if(showPrimary){QStyleOptionButton button;button.rect=primaryBounds;button.text=action;button.state=QStyle::State_Enabled|(option.state&QStyle::State_MouseOver&&primaryBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);button.fontMetrics=QFontMetrics(Graphite::font());p->save();p->setFont(Graphite::font());style->drawControl(QStyle::CE_PushButton,&button,p,nullptr);p->restore();}
+   QStyleOptionButton more;more.rect=moreBounds;more.state=QStyle::State_Enabled|(moreBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);style->drawPrimitive(QStyle::PE_PanelButtonCommand,&more,p,nullptr);const qreal inset=moreBounds.width()*7.0/32;Graphite::paintChromeGlyph(*p,QRectF(moreBounds).adjusted(inset,inset,-inset,-inset),"more",t.textSecondary);
   }
-  if(i.data(HistoryModel::ActiveRole).toBool()){const int progress=i.data(HistoryModel::ProgressRole).toInt();if(progress>=0){QRectF bar(columns.item.left(),grid()?r.bottom()-56:rowTop+rowHeight-9,qMax(20,itemWidth),3);p->setPen(Qt::NoPen);p->setBrush(t.selected);p->drawRoundedRect(bar,1.5,1.5);bar.setWidth(bar.width()*progress/100);p->setBrush(t.accent);p->drawRoundedRect(bar,1.5,1.5);}}
+  if(i.data(HistoryModel::ActiveRole).toBool()){const int progress=i.data(HistoryModel::ProgressRole).toInt();if(progress>=0){QRectF bar(columns.item.left(),grid()?primaryBounds.top()-8:rowTop+rowHeight-9,qMax(20,itemWidth),3);p->setPen(Qt::NoPen);p->setBrush(t.selected);p->drawRoundedRect(bar,1.5,1.5);bar.setWidth(bar.width()*progress/100);p->setBrush(t.accent);p->drawRoundedRect(bar,1.5,1.5);}}
   if((option.state&QStyle::State_HasFocus)&&view_->hasFocus()&&view_->window()->testAttribute(Qt::WA_KeyboardFocusChange)){p->setPen(QPen(t.accent,1));p->setBrush(Qt::NoBrush);p->drawRoundedRect(QRectF(r).adjusted(0.5,0.5,-0.5,-0.5),7,7);}
   p->restore();
  }
  bool editorEvent(QEvent* event,QAbstractItemModel*,const QStyleOptionViewItem& option,const QModelIndex& i)override{
   if(event->type()!=QEvent::MouseButtonRelease)return false;
   auto* mouse=static_cast<QMouseEvent*>(event);if(mouse->button()!=Qt::LeftButton)return false;
-  if(!i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()&&primaryRect(option.rect,i).contains(mouse->position().toPoint())){if(primary)primary(i);return true;}
+  if(primaryShown(i)&&primaryRect(option.rect,i).contains(mouse->position().toPoint())){if(primary)primary(i);return true;}
   if(menuRect(option.rect,i).contains(mouse->position().toPoint())){if(menu)menu(i,mouse->globalPosition().toPoint());return true;}return false;
  }
 private:QListView* view_;
@@ -249,9 +280,14 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  auto* content=new QWidget(this);content->setObjectName("historyContent");page->addWidget(content,1);auto* layout=new QVBoxLayout(content);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
  auto* headerBar=new QWidget(content);auto* header=new QHBoxLayout(headerBar);header->setContentsMargins(18,12,16,10);header->setSpacing(8);// The page is already named by the navigation; the heading names what is shown.
  // Long combined headings ("Recordings · failed uploads") elide before they crowd search.
+ // The compact layout opens the inspector over the list; this returns to it.
+ detailsBack_=Graphite::toolButton("Back to list",{},"quiet",this);detailsBack_->setObjectName("historyDetailsBack");detailsBack_->setIcon(Graphite::chromeIcon("chevron-left"));detailsBack_->setIconSize(QSize(14,14));detailsBack_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);detailsBack_->setToolTip("Return to the list (Esc)");detailsBack_->hide();header->addWidget(detailsBack_);connect(detailsBack_,&QToolButton::clicked,this,[this]{setDetailsOpen(false);});
+ {auto* back=new QAction(this);back->setObjectName("historyDetailsEscape");back->setShortcut(QKeySequence(Qt::Key_Escape));back->setShortcutContext(Qt::WidgetWithChildrenShortcut);back->setEnabled(false);addAction(back);connect(back,&QAction::triggered,this,[this]{setDetailsOpen(false);});}
  auto* heading=new Graphite::ElidedLabel(this);heading->setText("All items");heading->setObjectName("historyHeading");heading->setTextFormat(Qt::PlainText);VisualStyle::role(heading,"sectionTitle");header->addWidget(heading);header->addStretch();
  auto* search=new QLineEdit(this);search->setObjectName("historySearch");search->setAccessibleName("Search history by file name");search->setPlaceholderText("Search history");search->setMaxLength(256);search->setClearButtonEnabled(true);search->setMinimumWidth(160);search->setMaximumWidth(300);header->addWidget(search,1);
- auto* advancedToggle=new QToolButton(this);advancedToggle->setObjectName("historyFiltersExpanded");advancedToggle->setText("Filters");Graphite::disclosure(advancedToggle);advancedToggle->setAccessibleName("Show advanced history filters");header->addWidget(advancedToggle);
+ auto* advancedToggle=new QToolButton(this);advancedToggle->setObjectName("historyFiltersExpanded");advancedToggle->setText("Filters");Graphite::disclosure(advancedToggle);advancedToggle->setAccessibleName("Show advanced history filters");header->addWidget(advancedToggle);filtersToggle_=advancedToggle;
+ // Restrictions stay visible while the filters are collapsed: "Filters · N" and the way back.
+ clearFilters_=Graphite::toolButton("Clear filters",{},"quiet",this);clearFilters_->setObjectName("historyClearFilters");clearFilters_->setToolTip("Clear the advanced filters; search and the category stay");clearFilters_->hide();header->addWidget(clearFilters_);connect(clearFilters_,&QToolButton::clicked,this,[this]{clearFilters(false);});
  // List and Gallery: one segmented choice.
  auto* listButton=new QToolButton(this);listButton->setObjectName("historyListMode");listButton->setText("List");listButton->setCheckable(true);listButton->setChecked(true);listButton->setAccessibleName("Show history as a list");grid_=new QToolButton(this);grid_->setObjectName("historyGridMode");grid_->setText("Gallery");grid_->setCheckable(true);grid_->setAccessibleName("Show history as a thumbnail gallery");auto* views=new Graphite::SegmentTrack(this);views->setObjectName("historyViewMode");views->setAccessibleName("History view");for(auto* b:{listButton,grid_}){b->setFocusPolicy(Qt::StrongFocus);views->addButton(b);}header->addWidget(views);
  layout->addWidget(headerBar);
@@ -264,11 +300,22 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  connect(categories_,&QListWidget::currentRowChanged,this,[this]{if(restoringCategory_)return;applyFilters();});
  heading_=heading;connect(categories_,&QListWidget::currentRowChanged,this,&HistoryWindow::updateHeading);connect(failedOnly_,&QToolButton::toggled,this,&HistoryWindow::updateHeading);
  connect(failedOnly_,&QToolButton::toggled,this,[this](bool on){auto* state=findChild<QLineEdit*>("historyFilteruploadStatus");if(on)state->setText("failed");else if(state->text()=="failed")state->clear();applyFilters();});
- model_=new HistoryModel(session,this);table_=new QListView(this);table_->setObjectName("historyList");table_->setAccessibleName("Captures and upload activity");table_->setModel(model_);table_->setFrameShape(QFrame::NoFrame);Graphite::transparentView(table_);table_->setMouseTracking(true);table_->setSelectionMode(QAbstractItemView::ExtendedSelection);table_->setResizeMode(QListView::Adjust);table_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);table_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);table_->setSpacing(1);table_->setContextMenuPolicy(Qt::CustomContextMenu);auto* delegate=new HistoryDelegate(table_);table_->setItemDelegate(delegate);delegate->primary=[this](const QModelIndex& i){primaryAction(i);};delegate->menu=[this](const QModelIndex& i,const QPoint& p){showRowMenu(i,p);};connect(table_,&QWidget::customContextMenuRequested,this,[this](const QPoint& p){const auto i=table_->indexAt(p);if(i.isValid())showRowMenu(i,table_->viewport()->mapToGlobal(p));});auto* rowMenu=new QAction(this);rowMenu->setShortcuts({QKeySequence(Qt::Key_Menu),QKeySequence(Qt::SHIFT|Qt::Key_F10)});rowMenu->setShortcutContext(Qt::WidgetShortcut);table_->addAction(rowMenu);connect(rowMenu,&QAction::triggered,this,[this]{const auto i=table_->currentIndex();if(i.isValid())showRowMenu(i,table_->viewport()->mapToGlobal(table_->visualRect(i).center()));});
+ model_=new HistoryModel(session,this);table_=new QListView(this);table_->setObjectName("historyList");table_->setAccessibleName("Captures and upload activity");table_->setModel(model_);table_->setFrameShape(QFrame::NoFrame);Graphite::transparentView(table_);table_->setMouseTracking(true);table_->setSelectionMode(QAbstractItemView::ExtendedSelection);table_->setResizeMode(QListView::Adjust);table_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);table_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);table_->setSpacing(1);table_->setContextMenuPolicy(Qt::CustomContextMenu);auto* delegate=new HistoryDelegate(table_);table_->setItemDelegate(delegate);delegate->primary=[this](const QModelIndex& i){primaryAction(i);};delegate->menu=[this](const QModelIndex& i,const QPoint& p){showRowMenu(i,p);};delegate->inspectorBeside=[this]{return !compact_&&inspectorScroll_&&!inspectorScroll_->isHidden();};auto* openDetails=new QAction(this);openDetails->setShortcuts({QKeySequence(Qt::Key_Return),QKeySequence(Qt::Key_Enter)});openDetails->setShortcutContext(Qt::WidgetShortcut);table_->addAction(openDetails);connect(openDetails,&QAction::triggered,this,[this]{if(compact_&&table_->selectionModel()->selectedRows().size()==1)setDetailsOpen(true);});connect(table_,&QListView::doubleClicked,this,[this]{if(compact_&&table_->selectionModel()->selectedRows().size()==1)setDetailsOpen(true);});connect(table_,&QWidget::customContextMenuRequested,this,[this](const QPoint& p){const auto i=table_->indexAt(p);if(i.isValid())showRowMenu(i,table_->viewport()->mapToGlobal(p));});auto* rowMenu=new QAction(this);rowMenu->setShortcuts({QKeySequence(Qt::Key_Menu),QKeySequence(Qt::SHIFT|Qt::Key_F10)});rowMenu->setShortcutContext(Qt::WidgetShortcut);table_->addAction(rowMenu);connect(rowMenu,&QAction::triggered,this,[this]{const auto i=table_->currentIndex();if(i.isValid())showRowMenu(i,table_->viewport()->mapToGlobal(table_->visualRect(i).center()));});
  // Empty history and no matching items say different things (applyFilters).
- empty_=new QLabel("No captures yet\nCapture a region or upload your clipboard to get started.",this);empty_->setObjectName("historyEmpty");empty_->setWordWrap(true);empty_->setAlignment(Qt::AlignCenter);VisualStyle::role(empty_,"muted");
+ emptyState_=new QWidget(this);emptyState_->setObjectName("historyEmptyState");{auto* box=new QVBoxLayout(emptyState_);box->setContentsMargins(24,24,24,24);box->setSpacing(8);box->addStretch(2);
+  empty_=new QLabel("No captures yet",emptyState_);empty_->setObjectName("historyEmpty");empty_->setTextFormat(Qt::PlainText);empty_->setWordWrap(true);empty_->setAlignment(Qt::AlignCenter);VisualStyle::role(empty_,"sectionTitle");box->addWidget(empty_);
+  emptyBody_=new QLabel(emptyState_);emptyBody_->setObjectName("historyEmptyHint");emptyBody_->setTextFormat(Qt::PlainText);emptyBody_->setWordWrap(true);emptyBody_->setAlignment(Qt::AlignCenter);VisualStyle::role(emptyBody_,"muted");box->addWidget(emptyBody_);
+  resetView_=new QPushButton("Clear search and filters",emptyState_);resetView_->setObjectName("historyResetView");resetView_->hide();box->addSpacing(4);box->addWidget(resetView_,0,Qt::AlignHCenter);connect(resetView_,&QPushButton::clicked,this,[this]{clearFilters(true);});box->addStretch(3);}
  auto* listPane=new QWidget(this);auto* listBox=new QVBoxLayout(listPane);listBox->setContentsMargins(0,0,0,0);listBox->setSpacing(0);columns_=new HistoryColumns(table_,listPane);listBox->addWidget(columns_);listBox->addWidget(table_,1);
- list_=new QStackedWidget(this);list_->addWidget(listPane);list_->addWidget(empty_);
+ // Several selected rows (or one in the compact layout): what they can do together.
+ selectionBar_=new Graphite::Surface("surface",Qt::TopEdge,listPane);selectionBar_->setObjectName("historySelectionBar");selectionBar_->setAccessibleName("Selection actions");{auto* bar=new QHBoxLayout(selectionBar_);bar->setContentsMargins(18,8,16,8);bar->setSpacing(8);
+  selectionCount_=new QLabel(selectionBar_);selectionCount_->setObjectName("historySelectionCount");selectionCount_->setTextFormat(Qt::PlainText);VisualStyle::role(selectionCount_,"strong");bar->addWidget(selectionCount_);bar->addStretch();
+  auto* details=new QPushButton("Show details",selectionBar_);details->setObjectName("historyShowDetails");details->setToolTip("Open the selected capture's files, link and actions (Enter)");bar->addWidget(details);connect(details,&QPushButton::clicked,this,[this]{setDetailsOpen(true);});
+  copyLinks_=new QPushButton("Copy links",selectionBar_);copyLinks_->setObjectName("historyCopyLinks");copyLinks_->setToolTip("Copy the stored links of every selected file, one per line");bar->addWidget(copyLinks_);connect(copyLinks_,&QPushButton::clicked,this,&HistoryWindow::copySelectedLinks);
+  deleteSelected_=new QPushButton("Delete from destination…",selectionBar_);deleteSelected_->setObjectName("historyDeleteSelected");VisualStyle::role(deleteSelected_,"danger");bar->addWidget(deleteSelected_);connect(deleteSelected_,&QPushButton::clicked,this,[this]{const auto ids=deletableIds();prepareDelete(ids,int(selectedFiles().size())-int(ids.size()));});
+  auto* clearSelection=new QPushButton("Clear selection",selectionBar_);clearSelection->setObjectName("historyClearSelection");VisualStyle::role(clearSelection,"quiet");bar->addWidget(clearSelection);connect(clearSelection,&QPushButton::clicked,this,[this]{table_->clearSelection();table_->setFocus();});}
+ selectionBar_->hide();listBox->addWidget(selectionBar_);
+ list_=new QStackedWidget(this);list_->addWidget(listPane);list_->addWidget(emptyState_);
  split_=new QSplitter(Qt::Horizontal,this);split_->setObjectName("historySplitter");split_->setChildrenCollapsible(false);split_->addWidget(list_);inspectorScroll_=new QScrollArea(this);inspectorScroll_->setObjectName("historyInspectorScroll");inspectorScroll_->setWidgetResizable(true);inspectorScroll_->setFrameShape(QFrame::NoFrame);inspectorScroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);auto* inspector=new Graphite::Surface("surface",{},this);inspector->setObjectName("historyInspector");auto* inspect=new QVBoxLayout(inspector);inspect->setContentsMargins(18,16,18,16);inspect->setSpacing(10);
  preview_=new QLabel("Select a capture to preview",this);preview_->setObjectName("historyPreview");VisualStyle::role(preview_,"well");preview_->setAccessibleName("Selected capture preview");preview_->setAlignment(Qt::AlignCenter);preview_->setWordWrap(true);preview_->setMinimumHeight(180);preview_->setMaximumHeight(260);preview_->setMargin(8);preview_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);inspect->addWidget(preview_);
  title_=new QLabel(this);title_->setTextFormat(Qt::PlainText);title_->setObjectName("historyTitle");title_->setWordWrap(true);VisualStyle::role(title_,"sectionTitle");inspect->addWidget(title_);outcome_=new QLabel(this);outcome_->setTextFormat(Qt::PlainText);outcome_->setWordWrap(true);outcome_->setObjectName("historyOutcome");inspect->addWidget(outcome_);
@@ -282,11 +329,11 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  inspect->addWidget(Graphite::rule(inspector));
  summary_=new QLabel(this);summary_->setObjectName("historySummary");summary_->setAccessibleName("File size, pixel dimensions, destination and outcomes");summary_->setWordWrap(true);summary_->setTextFormat(Qt::RichText);summary_->setTextInteractionFlags(Qt::TextSelectableByMouse);summary_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);inspect->addWidget(summary_);
  auto* receiptToggle=new QToolButton(this);receiptToggle->setObjectName("historyReceiptExpanded");receiptToggle->setText("Advanced file details");Graphite::disclosure(receiptToggle);receiptToggle->setAccessibleName("Show advanced receipt details");inspect->addWidget(receiptToggle,0,Qt::AlignLeft);details_=new QPlainTextEdit(this);details_->setObjectName("historyDetails");details_->setReadOnly(true);VisualStyle::role(details_,"diagnostics");details_->setAccessibleName("Advanced original receipt details");details_->setMaximumHeight(180);details_->hide();inspect->addWidget(details_);connect(receiptToggle,&QToolButton::toggled,details_,&QWidget::setVisible);inspect->addStretch();
- auto* remove=new QPushButton("Delete from destination…",this);remove->setObjectName("deleteHistoryRemote");VisualStyle::role(remove,"danger");remove->setToolTip("Delete the recorded remote file. Local copies and history records remain.");inspect->addWidget(remove,0,Qt::AlignLeft);connect(remove,&QPushButton::clicked,this,&HistoryWindow::prepareDelete);
+ remove_=new QPushButton("Delete from destination…",this);remove_->setObjectName("deleteHistoryRemote");VisualStyle::role(remove_,"danger");remove_->setToolTip("Delete the recorded remote file. Local copies and history records remain.");remove_->hide();inspect->addWidget(remove_,0,Qt::AlignLeft);connect(remove_,&QPushButton::clicked,this,qOverload<>(&HistoryWindow::prepareDelete));
  inspectorScroll_->setWidget(inspector);split_->addWidget(inspectorScroll_);layout->addWidget(split_,1);inspectorScroll_->hide();
  auto* footerBar=new Graphite::Surface("bg",Qt::TopEdge,content);auto* footerBox=new QVBoxLayout(footerBar);footerBox->setContentsMargins(16,8,16,10);footerBox->setSpacing(8);
  auto* footer=new QHBoxLayout;footer->setSpacing(8);// Counts elide (full text in the tooltip) before they crowd the paging controls.
- count_=new Graphite::ElidedLabel(this);VisualStyle::role(count_,"meta");footer->addWidget(count_,2);cancelled_=new Graphite::ElidedLabel(this);VisualStyle::role(cancelled_,"meta");cancelled_->setAlignment(Qt::AlignRight|Qt::AlignVCenter);footer->addWidget(cancelled_,1);showCancelled_=new QToolButton(this);showCancelled_->setObjectName("historyShowCancelled");showCancelled_->setText("Show");showCancelled_->setCheckable(true);showCancelled_->setProperty("visualRole","quiet");showCancelled_->setAccessibleName("Show cancelled captures");footer->addWidget(showCancelled_);connect(showCancelled_,&QToolButton::toggled,this,[this](bool show){model_->setShowCancelled(show);showCancelled_->setText(show?"Hide":"Show");showCancelled_->setAccessibleName(show?"Hide cancelled captures":"Show cancelled captures");emit viewStateChanged();});auto* previous=new QPushButton("Previous",this);previous->setObjectName("historyPrevious");auto* next=new QPushButton("Next",this);next->setObjectName("historyNext");// Paging appears only when there is another page.
+ count_=new Graphite::ElidedLabel(this);count_->setObjectName("historyCount");VisualStyle::role(count_,"meta");footer->addWidget(count_,1);cancelled_=new QLabel(this);cancelled_->setObjectName("historyCancelledCount");cancelled_->setTextFormat(Qt::PlainText);VisualStyle::role(cancelled_,"meta");cancelled_->setAlignment(Qt::AlignRight|Qt::AlignVCenter);footer->addWidget(cancelled_);showCancelled_=new QToolButton(this);showCancelled_->setObjectName("historyShowCancelled");showCancelled_->setText("Show");showCancelled_->setCheckable(true);showCancelled_->setProperty("visualRole","quiet");showCancelled_->setAccessibleName("Show cancelled captures");footer->addWidget(showCancelled_);connect(showCancelled_,&QToolButton::toggled,this,[this](bool show){model_->setShowCancelled(show);showCancelled_->setText(show?"Hide":"Show");showCancelled_->setAccessibleName(show?"Hide cancelled captures":"Show cancelled captures");emit viewStateChanged();});auto* previous=new QPushButton("Previous",this);previous->setObjectName("historyPrevious");auto* next=new QPushButton("Next",this);next->setObjectName("historyNext");// Paging appears only when there is another page.
  previous->hide();next->hide();footer->addWidget(previous);footer->addWidget(next);connect(previous,&QPushButton::clicked,this,[this]{auto q=model_->query();q.offset=qMax(0,q.offset-q.limit);model_->setQuery(q);});connect(next,&QPushButton::clicked,this,[this]{auto q=model_->query();if(q.offset+q.limit<model_->total()){q.offset+=q.limit;model_->setQuery(q);}});auto* managementToggle=new QToolButton(this);managementToggle->setObjectName("historyManagementExpanded");managementToggle->setText("Manage");Graphite::disclosure(managementToggle);managementToggle->setAccessibleName("Show history management actions");footer->addWidget(managementToggle);footerBox->addLayout(footer);
  status_=new QLabel("Select a capture to inspect its files and share link.",this);status_->setTextFormat(Qt::PlainText);status_->setAccessibleName("History status");status_->setWordWrap(true);VisualStyle::role(status_,"status");footerBox->addWidget(status_);
  auto* management=new QWidget(this);auto* manage=new QHBoxLayout(management);manage->setContentsMargins(0,0,0,0);manage->setSpacing(8);auto* deletionRetry=new QPushButton("Retry deletion",this);auto* deletionCancel=new QPushButton("Cancel deletion",this);auto* clear=new QPushButton("Clear history records…",this);auto* cache=new QPushButton("Clean retry artifacts and previews…",this);for(auto* b:{deletionRetry,deletionCancel,clear,cache})manage->addWidget(b);manage->addStretch();footerBox->addWidget(management);management->hide();connect(managementToggle,&QToolButton::toggled,management,&QWidget::setVisible);layout->addWidget(footerBar);
@@ -298,28 +345,81 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
   const auto notice=result["incompleteUploadNotice"].toObject()["message"].toString();
   const auto message=kept.isEmpty()?QStringLiteral("Artifact cleanup completed."):!notice.isEmpty()?notice:QStringLiteral("Artifact cleanup completed, but %1 could not be removed. %2").arg(uploads,kept[0].toObject()["error"].toObject()["message"].toString());
   VisualStyle::feedback(g->status_,e?e.message:message,bool(e)||!kept.isEmpty());g->refresh();}});});
- connect(copy_,&QPushButton::clicked,this,[this]{const auto record=selectedRecord();if(record.isEmpty())return;if(record["uploadStatus"]=="local_only"){operationAction("operation.copy");return;}session_.request("history.copyLink",{{"id",record["id"]}},this,[g=QPointer<HistoryWindow>(this)](Error e,QJsonObject){if(g)VisualStyle::feedback(g->status_,e?e.message:"Stored link copied.",bool(e));});});connect(open_,&QPushButton::clicked,this,[this]{if(currentDetail_["linkAvailable"].toBool())host::openLink(QUrl(link_->text()));});connect(retry_,&QPushButton::clicked,this,[this]{const auto file=selectedRecord();operationAction(file["uploadStatus"]=="local_only"?"operation.retryLocalSave":"operation.retry");});connect(cancel_,&QPushButton::clicked,this,[this]{operationAction("operation.cancel");});connect(copyImage_,&QPushButton::clicked,this,[this]{exportLocal(true);});connect(saveAs_,&QPushButton::clicked,this,[this]{exportLocal(false);});
+ connect(copy_,&QPushButton::clicked,this,[this]{const auto record=selectedRecord();if(record.isEmpty())return;if(record["uploadStatus"]=="local_only"){operationAction("operation.copy");return;}session_.request("history.copyLink",{{"id",record["id"]}},this,[g=QPointer<HistoryWindow>(this)](Error e,QJsonObject){if(g)VisualStyle::feedback(g->status_,e?e.message:"Stored link copied.",bool(e));});});connect(open_,&QPushButton::clicked,this,[this]{if(currentDetail_["linkAvailable"].toBool())host::openLink(QUrl(link_->text()));});connect(retry_,&QPushButton::clicked,this,[this]{const auto rows=table_->selectionModel()->selectedRows();if(rows.size()==1)operationAction(HistoryModel::retryUpload(model_->record(rows.first().row()))?"operation.retry":"operation.retryLocalSave");});connect(cancel_,&QPushButton::clicked,this,[this]{operationAction("operation.cancel");});connect(copyImage_,&QPushButton::clicked,this,[this]{exportLocal(true);});connect(saveAs_,&QPushButton::clicked,this,[this]{exportLocal(false);});
  connect(table_->selectionModel(),&QItemSelectionModel::selectionChanged,this,[this]{if(!restoringSelection_){selectedItemId_.clear();selectionChanged();}});connect(model_,&QAbstractItemModel::modelAboutToBeReset,this,[this]{if(!restoringSelection_)restoreSelection_=selectedIds();restoringSelection_=true;});
- connect(model_,&HistoryModel::loaded,this,[this]{for(int row=0;row<model_->rowCount();++row){const auto r=model_->record(row);bool selected=restoreSelection_.contains("operation:"+r["operationId"].toString());for(auto v:r["records"].toArray())selected|=restoreSelection_.contains(v.toObject()["id"].toString());if(selected){table_->selectionModel()->select(model_->index(row),QItemSelectionModel::Select|QItemSelectionModel::Rows);if(!table_->currentIndex().isValid())table_->selectionModel()->setCurrentIndex(model_->index(row),QItemSelectionModel::NoUpdate);}}restoreSelection_.clear();restoringSelection_=false;{const auto& q=model_->query();const bool filtered=!(q.search.isEmpty()&&q.category.isEmpty()&&q.mime.isEmpty()&&q.profileId.isEmpty()&&q.uploadStatus.isEmpty()&&q.localStatus.isEmpty()&&q.remoteStatus.isEmpty()&&q.from.isEmpty()&&q.to.isEmpty());empty_->setText(filtered?QString("No matching items\nTry another search or change the filters."):QString("No captures yet\nCapture a region or upload your clipboard to get started."));}list_->setCurrentWidget(model_->rowCount()?table_->parentWidget():static_cast<QWidget*>(empty_));{const auto& q=model_->query();const bool earlier=q.offset>0,later=q.offset+q.limit<model_->total();if(auto* b=findChild<QPushButton*>("historyPrevious")){b->setVisible(earlier||later);b->setEnabled(earlier);}if(auto* b=findChild<QPushButton*>("historyNext")){b->setVisible(earlier||later);b->setEnabled(later);}}count_->setText(QString("%1 %2 · %3 %4").arg(model_->rowCount()).arg(model_->rowCount()==1?"capture":"captures").arg(model_->total()).arg(model_->total()==1?"stored file":"stored files"));count_->setToolTip(count_->text());cancelled_->setText(model_->showCancelled()?QString("Cancelled captures shown"):QString("%1 cancelled %2 hidden").arg(model_->hiddenCancelled()).arg(model_->hiddenCancelled()==1?"capture":"captures"));cancelled_->setToolTip(cancelled_->text());showCancelled_->setVisible(model_->hiddenCancelled()>0||model_->showCancelled());cancelled_->setVisible(showCancelled_->isVisible());selectionChanged();updateActivity();if(awaitingInitialization_){awaitingInitialization_=false;VisualStyle::feedback(status_,"Select a capture to inspect its files and share link.");}emit viewStateChanged();});connect(model_,&HistoryModel::error,this,[this](const QString& message){VisualStyle::feedback(status_,message,true);});
- connect(&session_,&UiSession::operationsChanged,this,&HistoryWindow::refresh);connect(&session_,&UiSession::initialized,this,&HistoryWindow::refresh);for(auto* e:findChildren<QLineEdit*>())if(!e->isReadOnly())connect(e,&QLineEdit::textChanged,this,&HistoryWindow::viewStateChanged);for(auto* t:{advancedToggle,managementToggle,receiptToggle})connect(t,&QToolButton::toggled,this,&HistoryWindow::viewStateChanged);connect(categories_,&QListWidget::currentRowChanged,this,&HistoryWindow::viewStateChanged);
+ connect(model_,&HistoryModel::loaded,this,[this]{for(int row=0;row<model_->rowCount();++row){const auto r=model_->record(row);bool selected=restoreSelection_.contains("operation:"+r["operationId"].toString());for(auto v:r["records"].toArray())selected|=restoreSelection_.contains(v.toObject()["id"].toString());if(selected){table_->selectionModel()->select(model_->index(row),QItemSelectionModel::Select|QItemSelectionModel::Rows);if(!table_->currentIndex().isValid())table_->selectionModel()->setCurrentIndex(model_->index(row),QItemSelectionModel::NoUpdate);}}restoreSelection_.clear();restoringSelection_=false;{const auto& q=model_->query();const bool filtered=!(q.search.isEmpty()&&q.category.isEmpty()&&q.mime.isEmpty()&&q.profileId.isEmpty()&&q.uploadStatus.isEmpty()&&q.localStatus.isEmpty()&&q.remoteStatus.isEmpty()&&q.from.isEmpty()&&q.to.isEmpty());const bool onlyCategory=filtered&&!q.category.isEmpty()&&q.search.isEmpty()&&activeFilters().isEmpty();const auto category=categories_->currentItem()?categories_->currentItem()->text():QString{};
+   empty_->setText(onlyCategory?"Nothing in "+category:filtered?QString("No matching items"):QString("No captures yet"));const bool searched=!q.search.isEmpty(),restricted=!activeFilters().isEmpty();const QString where=q.category.isEmpty()?QString{}:" in "+category;
+   emptyBody_->setText(onlyCategory?QString("Items of this kind appear here once you capture or upload them."):searched&&restricted?"Nothing"+where+" matches “"+q.search+"” with these filters.":searched?"Nothing"+where+" matches “"+q.search+"”.":filtered?"Nothing"+where+" matches these filters.":QString("Capture a region or upload your clipboard to get started. Captures and uploads appear here."));
+   resetView_->setText(onlyCategory?"Show all items":searched&&!restricted&&q.category.isEmpty()?"Clear search":!searched&&restricted&&q.category.isEmpty()?"Clear filters":"Show all items");resetView_->setAccessibleName(resetView_->text());resetView_->setVisible(filtered);}list_->setCurrentWidget(model_->rowCount()?table_->parentWidget():emptyState_);updateFilterSummary();{const auto& q=model_->query();const bool earlier=q.offset>0,later=q.offset+q.limit<model_->total();if(auto* b=findChild<QPushButton*>("historyPrevious")){b->setVisible(earlier||later);b->setEnabled(earlier);}if(auto* b=findChild<QPushButton*>("historyNext")){b->setVisible(earlier||later);b->setEnabled(later);}}count_->setText(QString("%1 %2 · %3 %4").arg(model_->rowCount()).arg(model_->rowCount()==1?"capture":"captures").arg(model_->total()).arg(model_->total()==1?"stored file":"stored files"));count_->setToolTip(count_->text());cancelled_->setText(model_->showCancelled()?QString("Cancelled captures shown"):QString("%1 cancelled %2 hidden").arg(model_->hiddenCancelled()).arg(model_->hiddenCancelled()==1?"capture":"captures"));cancelled_->setToolTip(cancelled_->text());showCancelled_->setVisible(model_->hiddenCancelled()>0||model_->showCancelled());cancelled_->setVisible(showCancelled_->isVisible());selectionChanged();updateActivity();if(awaitingInitialization_){awaitingInitialization_=false;VisualStyle::feedback(status_,"Select a capture to inspect its files and share link.");}emit viewStateChanged();});connect(model_,&HistoryModel::error,this,[this](const QString& message){VisualStyle::feedback(status_,message,true);});
+ connect(&session_,&UiSession::operationsChanged,this,&HistoryWindow::refresh);connect(&session_,&UiSession::initialized,this,&HistoryWindow::refresh);for(auto* e:findChildren<QLineEdit*>())if(!e->isReadOnly())connect(e,&QLineEdit::textChanged,this,&HistoryWindow::viewStateChanged);for(auto* t:{advancedToggle,managementToggle,receiptToggle})connect(t,&QToolButton::toggled,this,&HistoryWindow::viewStateChanged);connect(advancedToggle,&QToolButton::toggled,this,&HistoryWindow::updateFilterSummary);connect(categories_,&QListWidget::currentRowChanged,this,&HistoryWindow::viewStateChanged);
  for(auto* b:findChildren<QPushButton*>())if(b->accessibleName().isEmpty())b->setAccessibleName(b->text());
  // Pixmaps and the summary's HTML colours are redrawn on a scheme switch (#60).
  connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{updateSummary();columns_->update();});
  setGridMode(false);refresh();
 }
-void HistoryWindow::applyFilters(){searchTimer_->stop();auto q=model_->query();q.offset=0;if(auto* item=categories_->currentItem())q.category=item->data(Qt::UserRole).toString();{const QSignalBlocker block(failedOnly_);failedOnly_->setChecked(findChild<QLineEdit*>("historyFilteruploadStatus")->text()=="failed");}q.search=findChild<QLineEdit*>("historySearch")->text();q.from=findChild<QLineEdit*>("historyFilterfrom")->text();q.to=findChild<QLineEdit*>("historyFilterto")->text();q.mime=findChild<QLineEdit*>("historyFiltermime")->text();q.profileId=findChild<QLineEdit*>("historyFilterprofileId")->text();q.uploadStatus=findChild<QLineEdit*>("historyFilteruploadStatus")->text();q.localStatus=findChild<QLineEdit*>("historyFilterlocalStatus")->text();q.remoteStatus=findChild<QLineEdit*>("historyFilterremoteStatus")->text();updateHeading();model_->setQuery(q);emit viewStateChanged();}
+void HistoryWindow::applyFilters(){searchTimer_->stop();auto q=model_->query();q.offset=0;if(auto* item=categories_->currentItem())q.category=item->data(Qt::UserRole).toString();{const QSignalBlocker block(failedOnly_);failedOnly_->setChecked(findChild<QLineEdit*>("historyFilteruploadStatus")->text()=="failed");}q.search=findChild<QLineEdit*>("historySearch")->text();q.from=findChild<QLineEdit*>("historyFilterfrom")->text();q.to=findChild<QLineEdit*>("historyFilterto")->text();q.mime=findChild<QLineEdit*>("historyFiltermime")->text();q.profileId=findChild<QLineEdit*>("historyFilterprofileId")->text();q.uploadStatus=findChild<QLineEdit*>("historyFilteruploadStatus")->text();q.localStatus=findChild<QLineEdit*>("historyFilterlocalStatus")->text();q.remoteStatus=findChild<QLineEdit*>("historyFilterremoteStatus")->text();updateHeading();model_->setQuery(q);updateFilterSummary();emit viewStateChanged();}
 // The heading names what the list shows: the category, and failed uploads
 // when only those are shown (the sidebar toggle or the Upload state filter).
 void HistoryWindow::updateHeading(){if(!heading_)return;const auto* item=categories_->currentItem();const auto category=item?item->text():QString("All items");heading_->setText(!failedOnly_->isChecked()?category:categories_->currentRow()<=0?QString("Failed uploads"):category+" · failed uploads");}
 void HistoryWindow::setGridMode(bool grid){grid_->setChecked(grid);findChild<QToolButton*>("historyListMode")->setChecked(!grid);table_->setViewMode(grid?QListView::IconMode:QListView::ListMode);table_->setMovement(QListView::Static);table_->setWrapping(grid);table_->setGridSize(QSize());table_->setUniformItemSizes(false);table_->doItemsLayout();updateInspectorLayout();emit viewStateChanged();}
 void HistoryWindow::updateInspectorLayout(){if(!split_)return;
- // The list owns the space; the inspector keeps 280-380 px beside it, or
- // stacks below it when the page is too narrow for both.
- const bool stacked=split_->width()<640;split_->setOrientation(stacked?Qt::Vertical:Qt::Horizontal);inspectorScroll_->setMinimumWidth(stacked?0:Graphite::scaled(280));inspectorScroll_->setMaximumWidth(stacked?QWIDGETSIZE_MAX:Graphite::scaled(400));inspectorScroll_->setMaximumHeight(stacked?330:QWIDGETSIZE_MAX);split_->setStretchFactor(0,1);split_->setStretchFactor(1,0);if(columns_)columns_->setVisible(!grid_->isChecked());inspectorScroll_->setVisible(table_->selectionModel()->selectedRows().size()==1&&!grid_->isChecked());}
+ // Side by side only while both panes get what they need at this text size:
+ // the list a readable name beside its thumbnail and actions, the inspector
+ // its preview and buttons. Below that the inspector opens over the list.
+ const bool single=table_->selectionModel()->selectedRows().size()==1,gallery=grid_->isChecked();
+ compact_=split_->width()<Graphite::scaled(420)+Graphite::scaled(280);if(!compact_||!single||gallery)detailsOpen_=false;
+ const bool details=compact_&&detailsOpen_;split_->setOrientation(Qt::Horizontal);
+ inspectorScroll_->setMinimumWidth(compact_?0:Graphite::scaled(280));inspectorScroll_->setMaximumWidth(compact_?QWIDGETSIZE_MAX:Graphite::scaled(400));inspectorScroll_->setMaximumHeight(QWIDGETSIZE_MAX);
+ // A compact preview keeps the title and primary action above the fold.
+ preview_->setMinimumHeight(compact_?Graphite::scaled(48):180);preview_->setMaximumHeight(compact_?qBound(Graphite::scaled(48),split_->height()/5,Graphite::scaled(120)):260);
+ if(auto* box=inspectorScroll_->widget()->layout()){box->setContentsMargins(18,compact_?10:16,18,compact_?12:16);box->setSpacing(compact_?8:10);}if(auto* escape=findChild<QAction*>("historyDetailsEscape"))escape->setEnabled(details);
+ split_->setStretchFactor(0,1);split_->setStretchFactor(1,0);if(columns_)columns_->setVisible(!gallery);detailsBack_->setVisible(details);if(heading_)heading_->setVisible(!details);const bool wasDetails=list_->isHidden();list_->setVisible(!details);
+ inspectorScroll_->setVisible(single&&!gallery&&(!compact_||details));
+ // Opened over the list, the inspector takes the whole width; the split's
+ // inspector maximum bounds it again once both panes fit.
+ if(details&&!wasDetails)split_->setSizes({0,qMax(1,split_->width())});
+ updateSelectionBar();table_->viewport()->update();}
+void HistoryWindow::setDetailsOpen(bool open){
+ const bool focusList=!open&&detailsOpen_;detailsOpen_=open&&compact_&&table_->selectionModel()->selectedRows().size()==1&&!grid_->isChecked();updateInspectorLayout();
+ if(detailsOpen_){inspectorScroll_->verticalScrollBar()->setValue(0);detailsBack_->setFocus(Qt::OtherFocusReason);}else if(focusList){table_->setFocus(Qt::OtherFocusReason);if(table_->currentIndex().isValid())table_->scrollTo(table_->currentIndex());}
+}
+void HistoryWindow::updateSelectionBar(){if(!selectionBar_)return;
+ const int rows=table_->selectionModel()->selectedRows().size();const bool several=rows>1,single=rows==1&&compact_&&!detailsOpen_&&!grid_->isChecked();
+ selectionCount_->setText(QString("%1 selected").arg(rows));selectionCount_->setAccessibleName(selectionCount_->text());
+ findChild<QPushButton*>("historyShowDetails")->setVisible(single);copyLinks_->setVisible(several&&selectionHasLinks());
+ const auto deletable=several?deletableIds():QStringList{};const int files=several?int(selectedFiles().size()):0;deleteSelected_->setVisible(!deletable.isEmpty());
+ deleteSelected_->setToolTip(deletable.size()==files?QString("Delete the %1 selected files from their original destinations. Local copies and history records remain.").arg(files):QString("Delete %1 of the %2 selected files from their original destinations; the others have no confirmed upload to delete.").arg(deletable.size()).arg(files));
+ selectionBar_->setVisible(several||single);}
 void HistoryWindow::resizeEvent(QResizeEvent* event){RetainedWindow::resizeEvent(event);updateInspectorLayout();}
 void HistoryWindow::refresh(){if(!session_.ready()){awaitingInitialization_=true;VisualStyle::feedback(status_,"Waiting for the resident journal to initialize.");return;}model_->refresh();}
 QStringList HistoryWindow::selectedIds()const{QStringList ids;for(auto index:table_->selectionModel()->selectedRows()){auto r=model_->record(index.row());const auto records=r["records"].toArray();if(records.isEmpty())ids.append("operation:"+r["operationId"].toString());else for(auto v:records)ids.append(v.toObject()["id"].toString());}return ids;}
 QJsonObject HistoryWindow::selectedRecord()const{const auto rows=table_->selectionModel()->selectedRows();if(rows.size()!=1)return {};const auto group=model_->record(rows.first().row());for(const auto& v:group["records"].toArray())if(v.toObject()["id"]==items_->currentData().toString())return v.toObject();return group["records"].toArray().isEmpty()?QJsonObject{}:group["records"].toArray().first().toObject();}
+QList<QJsonObject> HistoryWindow::selectedFiles()const{QList<QJsonObject> files;auto rows=table_->selectionModel()->selectedRows();std::sort(rows.begin(),rows.end(),[](const QModelIndex& a,const QModelIndex& b){return a.row()<b.row();});for(const auto& index:rows)for(const auto& v:model_->record(index.row())["records"].toArray())files.append(v.toObject());return files;}
+QStringList HistoryWindow::deletableIds()const{QStringList ids;for(const auto& file:selectedFiles())if(HistoryModel::remoteDeletable(file))ids.append(file["id"].toString());return ids;}
+bool HistoryWindow::selectionHasLinks()const{const auto files=selectedFiles();return !files.isEmpty()&&std::all_of(files.cbegin(),files.cend(),[](const QJsonObject& f){return f["linkAvailable"].toBool();});}
+void HistoryWindow::copySelectedLinks(){
+ QStringList ids;for(const auto& file:selectedFiles())ids.append(file["id"].toString());if(ids.isEmpty())return;
+ session_.request("history.copyLinks",{{"ids",QJsonArray::fromStringList(ids)}},this,[g=QPointer<HistoryWindow>(this),count=ids.size()](Error e,QJsonObject){if(g)VisualStyle::feedback(g->status_,e?e.message:count==1?QString("Stored link copied."):QString("%1 stored links copied, one per line.").arg(count),bool(e));});
+}
+// The applied query's advanced restrictions, by their field labels.
+QStringList HistoryWindow::activeFilters()const{
+ const auto& q=model_->query();QStringList active;
+ for(const auto& [value,label]:QList<std::pair<QString,QString>>{{q.from,"From date"},{q.to,"To date"},{q.mime,"Content type"},{q.profileId,"Destination ID"},{q.uploadStatus,"Upload state"},{q.localStatus,"Local-copy state"},{q.remoteStatus,"Remote-deletion state"}})if(!value.isEmpty())active.append(label+": "+value);
+ return active;
+}
+void HistoryWindow::updateFilterSummary(){if(!filtersToggle_)return;
+ const auto active=activeFilters();filtersToggle_->setText(active.isEmpty()?QString("Filters"):QString("Filters · %1").arg(active.size()));
+ const auto state=filtersToggle_->isChecked()?QString("Expanded"):QString("Collapsed");
+ filtersToggle_->setAccessibleDescription(active.isEmpty()?state+", no active filters":state+QString(", %1 active: ").arg(active.size())+active.join(", "));filtersToggle_->setToolTip(active.isEmpty()?QString("Show the advanced filters"):"Active filters:\n"+active.join("\n"));
+ clearFilters_->setVisible(!active.isEmpty());clearFilters_->setAccessibleDescription(active.join(", "));
+}
+// Clear filters empties the advanced fields; the empty state's reset (all)
+// also clears the search and shows every category.
+void HistoryWindow::clearFilters(bool all){
+ for(const auto& key:QStringList{"from","to","mime","profileId","uploadStatus","localStatus","remoteStatus"})findChild<QLineEdit*>("historyFilter"+key)->clear();
+ if(all){findChild<QLineEdit*>("historySearch")->clear();restoringCategory_=true;categories_->setCurrentRow(0);restoringCategory_=false;}
+ const bool focus=clearFilters_->hasFocus()||resetView_->hasFocus();applyFilters();if(focus)(all?static_cast<QWidget*>(table_):filtersToggle_)->setFocus(Qt::OtherFocusReason);
+}
 QString HistoryWindow::destinationLabel(const QJsonObject& r)const{
  if(r["uploadStatus"]=="local_only")return "Local copy";
  const auto original=r["receipt"].toObject()["destination"].toObject();const auto settings=original["settings"].toObject();const auto provider=original["providerId"].toString();QString label=provider=="proton-drive"?"Proton Drive":provider=="s3"?"S3 destination":provider=="backblaze-b2"?"Backblaze B2":"Original destination";
@@ -328,7 +428,7 @@ QString HistoryWindow::destinationLabel(const QJsonObject& r)const{
 }
 void HistoryWindow::selectionChanged(){emit viewStateChanged();const auto rows=table_->selectionModel()->selectedRows();
  // The instruction shows only while it applies; feedback stays until replaced.
- {static const QString instruction="Select a capture to inspect its files and share link.";if(rows.size()==1&&status_->text()==instruction)VisualStyle::feedback(status_,{});else if(rows.isEmpty()&&status_->text().isEmpty())VisualStyle::feedback(status_,instruction);}{QSignalBlocker block(items_);items_->clear();if(rows.size()==1){const auto group=model_->record(rows.first().row());for(auto v:group["records"].toArray()){auto r=v.toObject();items_->addItem(r["name"].toString(),r["id"].toString());}const auto itemIndex=items_->findData(selectedItemId_);if(itemIndex>=0)items_->setCurrentIndex(itemIndex);items_->setVisible(items_->count()>1);}}loadSelectedItem();updateInspectorLayout();}
+ {static const QString instruction="Select a capture to inspect its files and share link.";if(!rows.isEmpty()||!model_->rowCount()){if(status_->text()==instruction)VisualStyle::feedback(status_,{});}else if(status_->text().isEmpty())VisualStyle::feedback(status_,instruction);}{QSignalBlocker block(items_);items_->clear();if(rows.size()==1){const auto group=model_->record(rows.first().row());for(auto v:group["records"].toArray()){auto r=v.toObject();items_->addItem(r["name"].toString(),r["id"].toString());}const auto itemIndex=items_->findData(selectedItemId_);if(itemIndex>=0)items_->setCurrentIndex(itemIndex);items_->setVisible(items_->count()>1);}}loadSelectedItem();updateInspectorLayout();}
 void HistoryWindow::loadSelectedItem(){
  if(auto next=std::exchange(afterDetail_,{}))next(false);
  // History reloads the selection whenever the resident reports a change.
@@ -337,7 +437,7 @@ void HistoryWindow::loadSelectedItem(){
  const auto next=selectedRecord()["id"].toString();const bool keepPreview=!next.isEmpty()&&next==shownItemId_;
  if(!keepPreview){if(previewCancelled_)previewCancelled_->store(true);shownItemId_.clear();shownPreviewPath_.clear();pixelDimensions_.clear();preview_->clear();}
  pendingPreviewPath_.clear();const auto seq=++selectionRequest_;currentDetail_={};details_->clear();summary_->clear();title_->clear();outcome_->clear();link_->clear();linkExpiry_->clear();linkExpiry_->hide();for(auto* b:{copy_,open_,copyImage_,saveAs_,editAgain_})b->setEnabled(false);for(auto* b:{share_,revoke_,inspectLink_,retry_,cancel_,saveDiagnostics_})b->hide();
- const auto rows=table_->selectionModel()->selectedRows();findChild<QPushButton*>("deleteHistoryRemote")->setEnabled(!rows.isEmpty());if(rows.size()!=1)return;const auto group=model_->record(rows.first().row());title_->setText(rows.first().data().toString());outcome_->setText(HistoryModel::statusText(group));VisualStyle::role(outcome_,model_->data(rows.first(),HistoryModel::FailedRole).toBool()?"danger":group["uploadStatus"]=="uploaded"?"success":"muted");retry_->setText(model_->data(rows.first(),HistoryModel::PrimaryActionRole).toString()=="Retry local save"?"Retry local save":"Retry upload");saveDiagnostics_->setVisible(diagnosticsAvailable(rows.first().row()));retry_->setVisible(model_->data(rows.first(),HistoryModel::FailedRole).toBool()&&!model_->data(rows.first(),HistoryModel::ActiveRole).toBool()&&!group["operationId"].toString().isEmpty()&&!HistoryModel::storedNothing(group));cancel_->setVisible(model_->data(rows.first(),HistoryModel::ActiveRole).toBool());
+ const auto rows=table_->selectionModel()->selectedRows();remove_->hide();if(rows.size()!=1)return;const auto group=model_->record(rows.first().row());title_->setText(rows.first().data().toString());outcome_->setText(HistoryModel::statusText(group));VisualStyle::role(outcome_,model_->data(rows.first(),HistoryModel::FailedRole).toBool()?"danger":group["uploadStatus"]=="uploaded"?"success":"muted");retry_->setText(HistoryModel::retryUpload(group)?"Retry upload":"Retry local save");retry_->setAccessibleName(retry_->text());saveDiagnostics_->setVisible(diagnosticsAvailable(rows.first().row()));retry_->setVisible(HistoryModel::retryUpload(group)||HistoryModel::retryLocalSave(group));cancel_->setVisible(model_->data(rows.first(),HistoryModel::ActiveRole).toBool());
  const auto record=selectedRecord();if(record.isEmpty()){summary_->setText("Capture in progress. File details appear after acquisition.");return;}selectedItemId_=record["id"].toString();if(!deletionTimer_->isActive())deletionId_=record["deleteOperationId"].toString();
  session_.request("history.detail",{{"id",record["id"]}},this,[g=QPointer<HistoryWindow>(this),seq](Error e,QJsonObject data){if(!g||g->selectionRequest_!=seq)return;if(e){VisualStyle::feedback(g->status_,e.message,true);if(auto next=std::exchange(g->afterDetail_,{}))next(false);return;}g->currentDetail_=data;g->details_->setPlainText(QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Indented)));g->title_->setText(g->items_->count()>1?data["name"].toString():g->table_->currentIndex().data().toString());g->link_->setText(data["receipt"].toObject()["directUrl"].toString());g->link_->setCursorPosition(0);g->link_->setToolTip(g->link_->text());g->linkExpiry_->setText(linkExpiry(data));g->linkExpiry_->setVisible(!g->linkExpiry_->text().isEmpty());auto local=data["local"].toObject();const auto localPath=local["path"].toString();const bool localAvailable=local["status"]=="saved"&&QFileInfo(localPath).isFile();g->saveAs_->setEnabled(localAvailable);g->copyImage_->setEnabled(localAvailable&&data["mime"].toString().startsWith("image/")&&data["bytes"].toInteger()<=32*1024*1024);g->saveAs_->setToolTip(localAvailable?"Save the retained local original to another file":"A retained local original is needed to save another copy");g->copyImage_->setToolTip(g->copyImage_->isEnabled()?"Copy the retained original image":"A retained local image is needed to copy image bytes");g->editAgain_->setEnabled(editable(data));g->editAgain_->setToolTip(g->editAgain_->isEnabled()?"Open the retained local image in the editor and upload the result as a new item":data["mime"]=="image/png"||data["mime"]=="image/jpeg"?"Edit again needs the local copy. Turn on Keep a local copy in Settings → General for future captures.":"Only PNG and JPEG images can be edited");if(auto next=std::exchange(g->afterDetail_,{}))next(true);
  g->updateSummary();
@@ -345,6 +445,8 @@ void HistoryWindow::loadSelectedItem(){
  // Actions come from capabilities and retained bytes: one that cannot apply
  // to this item is not shown, and a local-only result has no link field.
  for(auto* b:{g->copy_,g->open_,g->copyImage_,g->saveAs_,g->editAgain_})b->setVisible(b->isEnabled());g->link_->setVisible(data["uploadStatus"]!="local_only");
+ // Remote deletion needs a settled confirmed upload and a provider that can delete exactly that target.
+ {const auto caps=data["capabilities"].toObject();g->remove_->setVisible(HistoryModel::remoteDeletable(data)&&caps["delete"].toBool()&&caps["stat"].toBool()&&(caps["conditionalDelete"].toBool()||caps["versionAddressing"].toBool())&&!caps["deletionEffect"].toString().isEmpty());}
  if(data["superseded"].toBool()||data["remoteStatus"]=="superseded")VisualStyle::feedback(g->status_,"Superseded: this stored link may serve replacement content. Deletion still targets the original receipt.",true);else if(!g->sharingFeedback_.isEmpty())VisualStyle::feedback(g->status_,g->sharingFeedback_,g->sharingFeedbackError_);const auto previewPath=data["previewPath"].toString();
   if(g->shownItemId_!=data["id"].toString()||g->shownPreviewPath_!=previewPath||!QFileInfo(previewPath).isFile()){g->shownItemId_.clear();g->shownPreviewPath_.clear();g->preview_->setText("Preview unavailable");g->pendingPreviewPath_=previewPath;g->startPreview();}
   // History reloads the same selection whenever the resident reports a change;
@@ -364,7 +466,37 @@ void HistoryWindow::editAgain(const QJsonObject& record){
  if(!editable(record)){VisualStyle::feedback(status_,"Edit again needs a retained local PNG or JPEG copy.",true);return;}
  emit editRequested("file",record["local"].toObject()["path"].toString());
 }
-void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point){table_->selectionModel()->select(i,QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);table_->setCurrentIndex(i);const auto rowRecord=model_->record(i.row());QMenu menu(this);menu.addAction("Inspect files",this,[this]{setGridMode(false);});const bool operation=!model_->record(i.row())["operationId"].toString().isEmpty()&&!HistoryModel::storedNothing(rowRecord);auto* result=menu.addAction("Copy result",this,[this]{operationAction("operation.copy");});result->setEnabled(operation);auto* retry=menu.addAction("Retry upload",this,[this]{operationAction("operation.retry");});retry->setEnabled(operation);auto* cancel=menu.addAction("Cancel operation",this,[this]{operationAction("operation.cancel");});cancel->setEnabled(i.data(HistoryModel::ActiveRole).toBool());auto* retryLocal=menu.addAction("Retry local save",this,[this]{operationAction("operation.retryLocalSave");});retryLocal->setEnabled(operation);auto* edit=menu.addAction("Edit again",this,[this,rowRecord]{editAgain(rowRecord);});edit->setEnabled(editable(rowRecord));auto* diagnostics=menu.addAction("Save diagnostics for this upload",this,[this,rowRecord]{saveDiagnostics(rowRecord["operationId"].toString());});diagnostics->setEnabled(diagnosticsAvailable(i.row()));menu.addAction("Copy details",this,[this,rowRecord]{QJsonObject detail=rowRecord;if(currentDetail_["operationId"]==rowRecord["operationId"])detail["selectedFile"]=currentDetail_;QApplication::clipboard()->setText(QString::fromUtf8(QJsonDocument(detail).toJson(QJsonDocument::Indented)));VisualStyle::feedback(status_,"Operation and receipt details copied.");});menu.addSeparator();auto* remove=menu.addAction("Remove from history");remove->setEnabled(false);remove->setToolTip("Removing one capture is not supported by the resident. Manage → Clear history records removes all local records.");menu.setToolTipsVisible(true);menu.exec(point);}
+// The row menu offers what this row can do now, from the same state and
+// receipts as its inline action and the inspector; nothing it would refuse.
+// Opening it on a row of a multi-selection keeps the selection and offers
+// the batch actions.
+void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point){
+ auto* selection=table_->selectionModel();
+ if(selection->selectedRows().size()>1&&selection->isSelected(i)){
+  selection->setCurrentIndex(i,QItemSelectionModel::NoUpdate);QMenu menu(this);menu.setObjectName("historyRowMenu");menu.addSection(QString("%1 selected").arg(selection->selectedRows().size()));
+  if(selectionHasLinks())menu.addAction("Copy links",this,&HistoryWindow::copySelectedLinks);
+  if(const auto ids=deletableIds();!ids.isEmpty())menu.addAction(ids.size()==selectedFiles().size()?QString("Delete from destination…"):QString("Delete %1 from destination…").arg(ids.size()),this,[this]{const auto ids=deletableIds();prepareDelete(ids,int(selectedFiles().size())-int(ids.size()));});
+  menu.addSeparator();menu.addAction("Clear selection",this,[this]{table_->clearSelection();});menu.exec(point);return;
+ }
+ selection->select(i,QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);table_->setCurrentIndex(i);const auto row=model_->record(i.row());const auto files=row["records"].toArray();
+ QMenu menu(this);menu.setObjectName("historyRowMenu");
+ if(i.data(HistoryModel::ActiveRole).toBool())menu.addAction("Cancel operation",this,[this]{operationAction("operation.cancel");});
+ if(HistoryModel::retryUpload(row))menu.addAction("Retry upload",this,[this]{operationAction("operation.retry");});
+ if(HistoryModel::retryLocalSave(row))menu.addAction("Retry local save",this,[this]{operationAction("operation.retryLocalSave");});
+ // A batch's links are its result; one file's link is the stored link.
+ if(row["linkAvailable"].toBool())menu.addAction(files.size()>1?"Copy links":"Copy link",this,[this,row,files]{if(files.size()>1&&!row["operationId"].toString().isEmpty()){operationAction("operation.copy");return;}session_.request("history.copyLink",{{"id",files.first().toObject()["id"]}},this,[g=QPointer<HistoryWindow>(this)](Error e,QJsonObject){if(g)VisualStyle::feedback(g->status_,e?e.message:"Stored link copied.",bool(e));});});
+ if(HistoryModel::copyLocalResult(row))menu.addAction("Copy result",this,[this]{operationAction("operation.copy");});
+ if(files.size()==1&&row["linkAvailable"].toBool())menu.addAction("Open in browser",this,[url=files.first().toObject()["receipt"].toObject()["directUrl"].toString()]{host::openLink(QUrl(url));});
+ if(editable(row))menu.addAction("Edit again",this,[this,row]{editAgain(row);});
+ if(compact_&&!grid_->isChecked())menu.addAction("Show details",this,[this]{setDetailsOpen(true);});
+ else if(grid_->isChecked())menu.addAction("Show details",this,[this]{setGridMode(false);});
+ menu.addSeparator();
+ if(diagnosticsAvailable(i.row()))menu.addAction("Save diagnostics for this upload",this,[this,row]{saveDiagnostics(row["operationId"].toString());});
+ menu.addAction("Copy details",this,[this,row]{QJsonObject detail=row;if(currentDetail_["operationId"]==row["operationId"])detail["selectedFile"]=currentDetail_;QApplication::clipboard()->setText(QString::fromUtf8(QJsonDocument(detail).toJson(QJsonDocument::Indented)));VisualStyle::feedback(status_,"Operation and receipt details copied.");});
+ QStringList deletable;for(const auto& v:files)if(HistoryModel::remoteDeletable(v.toObject()))deletable.append(v.toObject()["id"].toString());
+ if(!deletable.isEmpty()){menu.addSeparator();menu.addAction("Delete from destination…",this,[this,deletable,count=int(files.size())]{prepareDelete(deletable,count-int(deletable.size()));});}
+ menu.exec(point);
+}
 void HistoryWindow::updateSummary(){
  if(currentDetail_.isEmpty())return;
  const auto data=currentDetail_;auto escaped=[](const QString& s){return s.toHtmlEscaped();};const auto muted=RedesignTheme::textMuted().name();
@@ -482,7 +614,61 @@ void HistoryWindow::pollSharing(){
   g->sharingTimer_->stop();const auto error=data["error"].toObject();g->sharingFeedback_="Link: "+data["status"].toString()+(error["message"].toString().isEmpty()?QString{}:" — "+error["message"].toString());g->sharingFeedbackError_=!error["code"].toString().isEmpty();VisualStyle::feedback(g->status_,g->sharingFeedback_,g->sharingFeedbackError_);g->refresh();
  });
 }
-void HistoryWindow::prepareDelete(){auto ids=selectedIds();ids.removeIf([](const QString& id){return id.startsWith("operation:");});if(table_->selectionModel()->selectedRows().size()==1&&!selectedRecord().isEmpty())ids={selectedRecord()["id"].toString()};if(ids.isEmpty())return;session_.request("delete.prepare",{{"ids",QJsonArray::fromStringList(ids)}},this,[g=QPointer<HistoryWindow>(this),ids](Error e,QJsonObject preview){if(!g)return;if(e){VisualStyle::feedback(g->status_,e.code+": "+e.message,true);return;}QString text="Delete these original recorded remote targets?\nLocal copies and history records remain. Browser/CDN caches may still serve bytes.\n";for(auto v:preview["targets"].toArray()){auto target=v.toObject();auto receipt=target["receipt"].toObject();text+="\nHistory ID: "+target["historyId"].toString()+"\nOriginal destination / exact target: "+QString::fromUtf8(QJsonDocument(receipt).toJson(QJsonDocument::Compact))+"\nEffect: "+target["effect"].toString()+"\n";}if(!Graphite::confirm(g,"Delete from destination",text,"Delete from destination",true))return;g->deleteAccepting_=true;emit g->viewStateChanged();g->session_.request("delete.confirm",{{"ids",QJsonArray::fromStringList(ids)},{"acknowledgement",preview["acknowledgement"]}},g,[g](Error failure,QJsonObject data){if(!g)return;g->deleteAccepting_=false;emit g->viewStateChanged();VisualStyle::feedback(g->status_,failure?failure.code+": "+failure.message:"Remote deletion accepted; individual outcomes will update.",bool(failure));if(!failure){g->deletionId_=data["deleteOperationId"].toString();emit g->viewStateChanged();g->deletionTimer_->start();}});});}
+void HistoryWindow::prepareDelete(){const auto file=selectedRecord();if(!file.isEmpty())prepareDelete({file["id"].toString()},0);}
+// Exact IDs go to delete.prepare; the confirmation shows its targets and
+// confirms with that preparation's own acknowledgement.
+void HistoryWindow::prepareDelete(const QStringList& ids,int skipped){
+ if(ids.isEmpty())return;QHash<QString,QString> names;for(int row=0;row<model_->rowCount();++row)for(const auto& v:model_->record(row)["records"].toArray())if(ids.contains(v.toObject()["id"].toString()))names[v.toObject()["id"].toString()]=v.toObject()["name"].toString();
+ session_.request("delete.prepare",{{"ids",QJsonArray::fromStringList(ids)}},this,[g=QPointer<HistoryWindow>(this),ids,names,skipped](Error e,QJsonObject preview){
+  if(!g)return;if(e){const auto name=names.value(e.details["historyId"].toString());VisualStyle::feedback(g->status_,e.code+": "+e.message+(name.isEmpty()?QString{}:" ("+name+")"),true);return;}
+  QPointer<QDialog> dialog=deletionConfirmation(g,preview,names,g->session_.document()["profiles"].toArray(),skipped);const bool accepted=dialog->exec()==QDialog::Accepted;if(!g)return;delete dialog.data();if(!accepted)return;
+  g->deleteAccepting_=true;emit g->viewStateChanged();g->session_.request("delete.confirm",{{"ids",QJsonArray::fromStringList(ids)},{"acknowledgement",preview["acknowledgement"]}},g,[g](Error failure,QJsonObject data){if(!g)return;g->deleteAccepting_=false;emit g->viewStateChanged();VisualStyle::feedback(g->status_,failure?failure.code+": "+failure.message:"Remote deletion accepted; individual outcomes will update.",bool(failure));if(!failure){g->deletionId_=data["deleteOperationId"].toString();emit g->viewStateChanged();g->deletionTimer_->start();}});
+ });
+}
+namespace {
+// Where a receipt's original target lives: the destination's name now, its
+// service and the bucket or folder recorded at upload.
+QString originalDestination(const QJsonObject& receipt,const QJsonArray& profiles){
+ const auto d=receipt["destination"].toObject();const auto provider=d["providerId"].toString();const auto settings=d["settings"].toObject();
+ const QString service=provider=="s3"?"S3":provider=="backblaze-b2"?"Backblaze B2":provider=="proton-drive"?"Proton Drive":provider;QString label;
+ for(const auto& v:profiles)if(v.toObject()["id"]==d["profileId"]&&!d["profileId"].toString().isEmpty())label=v.toObject()["label"].toString();
+ QStringList parts{label.isEmpty()||label==service?service:label+" ("+service+")"};
+ if(!settings["bucket"].toString().isEmpty())parts<<"bucket "+settings["bucket"].toString();if(!settings["folderName"].toString().isEmpty())parts<<"folder "+settings["folderName"].toString();
+ return parts.join(" · ");
+}
+}
+QDialog* HistoryWindow::deletionConfirmation(QWidget* parent,const QJsonObject& preparation,const QHash<QString,QString>& names,const QJsonArray& profiles,int skipped){
+ auto* dialog=new QDialog(parent);dialog->setObjectName("confirmAction");dialog->setWindowTitle("Delete from destination");dialog->setModal(true);
+ auto* box=new QVBoxLayout(dialog);box->setContentsMargins(20,18,20,16);box->setSpacing(12);const auto targets=preparation["targets"].toArray();
+ const auto first=names.value(targets.first().toObject()["historyId"].toString(),"this file");
+ auto* heading=new QLabel(targets.size()==1?QString("Delete “%1” from its destination?").arg(first):QString("Delete %1 files from their destinations?").arg(targets.size()),dialog);heading->setObjectName("deleteConfirmationHeading");heading->setTextFormat(Qt::PlainText);heading->setWordWrap(true);VisualStyle::role(heading,"sectionTitle");box->addWidget(heading);
+ QString consequence=targets.size()==1?"The original remote target below is deleted.":"Each original remote target below is deleted.";consequence+=" Local copies and history records remain.";if(preparation.contains("cacheNotice"))consequence+=" "+preparation["cacheNotice"].toString()+".";
+ if(skipped>0)consequence+=QString("\n%1 other selected %2 no confirmed upload to delete and %3 left out.").arg(skipped).arg(skipped==1?"file has":"files have").arg(skipped==1?"is":"are");
+ auto* text=new QLabel(consequence,dialog);text->setObjectName("deleteConfirmationText");text->setTextFormat(Qt::PlainText);text->setWordWrap(true);box->addWidget(text);
+ // Every exact target, scrollable so a large selection keeps the dialog bounded.
+ auto* list=new QWidget;auto* rows=new QVBoxLayout(list);rows->setContentsMargins(12,10,12,10);rows->setSpacing(10);
+ for(int index=0;index<targets.size();++index){
+  const auto target=targets[index].toObject();const auto receipt=target["receipt"].toObject();const auto reference=receipt["objectReference"].toObject();
+  if(index)rows->addWidget(Graphite::rule(list));auto* grid=new QGridLayout;grid->setHorizontalSpacing(12);grid->setVerticalSpacing(4);grid->setColumnStretch(1,1);
+  auto* name=new QLabel(names.value(target["historyId"].toString(),target["historyId"].toString()),list);name->setTextFormat(Qt::PlainText);name->setWordWrap(true);VisualStyle::role(name,"strong");grid->addWidget(name,0,0,1,2);
+  QList<std::pair<QString,QString>> fields{{"Destination",originalDestination(receipt,profiles)}};
+  if(!reference["key"].toString().isEmpty())fields.append({"Key",reference["key"].toString()});
+  for(const auto& [key,label]:QList<std::pair<QString,QString>>{{"versionId","Version"},{"fileId","File version"},{"revisionUid","Revision"},{"nodeUid","Node"}})if(!reference[key].toString().isEmpty())fields.append({label,reference[key].toString()});
+  if(reference["key"].toString().isEmpty()&&fields.size()==1)fields.append({"Target",QString::fromUtf8(QJsonDocument(reference).toJson(QJsonDocument::Compact))});
+  fields.append({"Effect",target["effect"].toString()});
+  int line=1;for(const auto& [label,value]:fields){auto* l=new QLabel(label,list);VisualStyle::role(l,"meta");auto* v=new QLabel(value,list);v->setTextFormat(Qt::PlainText);v->setWordWrap(true);v->setTextInteractionFlags(Qt::TextSelectableByMouse);if(label!="Destination"&&label!="Effect")VisualStyle::role(v,"mono");grid->addWidget(l,line,0,Qt::AlignTop);grid->addWidget(v,line,1);++line;}
+  rows->addLayout(grid);
+ }
+ rows->addStretch();auto* scroll=new QScrollArea(dialog);scroll->setObjectName("deleteConfirmationTargets");scroll->setAccessibleName("Remote targets to delete");scroll->setWidget(list);scroll->setWidgetResizable(true);scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);scroll->setFrameShape(QFrame::NoFrame);Graphite::transparentView(scroll);
+ scroll->setMinimumHeight(qMin(list->sizeHint().height(),Graphite::scaled(120)));scroll->setMaximumHeight(qMin(list->sizeHint().height()+4,Graphite::scaled(320)));box->addWidget(Graphite::rule(dialog));box->addWidget(scroll,1);box->addWidget(Graphite::rule(dialog));
+ auto* toggle=new QToolButton(dialog);toggle->setObjectName("deleteConfirmationDetailsExpanded");toggle->setText("Technical details");Graphite::disclosure(toggle);toggle->setAccessibleName("Show the full deletion preparation");box->addWidget(toggle,0,Qt::AlignLeft);
+ auto* details=new QPlainTextEdit(QString::fromUtf8(QJsonDocument(preparation).toJson(QJsonDocument::Indented)),dialog);details->setObjectName("deleteConfirmationDetails");details->setReadOnly(true);VisualStyle::role(details,"diagnostics");details->setAccessibleName("Deletion preparation receipt");details->setMaximumHeight(Graphite::scaled(200));details->hide();box->addWidget(details);
+ QObject::connect(toggle,&QToolButton::toggled,dialog,[dialog,details](bool open){details->setVisible(open);dialog->adjustSize();});
+ auto* buttons=new QHBoxLayout;buttons->setSpacing(8);buttons->addStretch();auto* cancel=new QPushButton("Cancel",dialog);cancel->setObjectName("confirmCancel");cancel->setAutoDefault(true);cancel->setDefault(true);auto* action=new QPushButton("Delete from destination",dialog);action->setObjectName("confirmActionButton");action->setAccessibleName(action->text());action->setAutoDefault(false);VisualStyle::role(action,"danger");buttons->addWidget(cancel);buttons->addWidget(action);box->addLayout(buttons);
+ QObject::connect(cancel,&QPushButton::clicked,dialog,&QDialog::reject);QObject::connect(action,&QPushButton::clicked,dialog,&QDialog::accept);
+ dialog->setMinimumWidth(Graphite::scaled(440));dialog->setMaximumWidth(Graphite::scaled(720));dialog->resize(Graphite::scaled(560),dialog->sizeHint().height());cancel->setFocus(Qt::OtherFocusReason);
+ return dialog;
+}
 void HistoryWindow::pollDeletion(){if(deletionPollActive_)return;if(deletionId_.isEmpty()){deletionTimer_->stop();return;}deletionPollActive_=true;const auto id=deletionId_;session_.request("delete.inspect",{{"id",id}},this,[g=QPointer<HistoryWindow>(this),id](Error e,QJsonObject data){if(!g)return;g->deletionPollActive_=false;if(g->deletionId_!=id)return;if(e){VisualStyle::feedback(g->status_,e.message,true);g->deletionTimer_->stop();return;}QString status="Remote deletion: "+data["state"].toString();for(auto v:data["items"].toArray()){auto item=v.toObject();status+="\n"+item["status"].toString()+" "+item["error"].toObject()["message"].toString();}g->status_->setText(status);if(data["state"]!="running"&&data["state"]!="accepted"){g->deletionTimer_->stop();g->refresh();}});}
 QJsonObject HistoryWindow::saveViewState()const{
  if(deleteAccepting_||sharingAccepting_)return {{"stateError","request_awaiting_acceptance"}};
@@ -493,6 +679,29 @@ bool HistoryWindow::restoreViewState(const QJsonObject& state){
  if(validateUiState({{"schemaVersion",1},{"history",state}}))return false;
  const QSignalBlocker stateSignals(this);searchTimer_->stop();const auto box=state["geometry"].toArray();setGeometry(box[0].toInt(),box[1].toInt(),box[2].toInt(),box[3].toInt());const auto f=state["filters"].toObject();findChild<QLineEdit*>("historySearch")->setText(f["search"].toString());for(const auto& key:QStringList{"from","to","mime","profileId","uploadStatus","localStatus","remoteStatus"})findChild<QLineEdit*>("historyFilter"+key)->setText(f[key].toString());findChild<QToolButton*>("historyFiltersExpanded")->setChecked(state["filtersExpanded"].toBool());findChild<QToolButton*>("historyManagementExpanded")->setChecked(state["managementExpanded"].toBool());findChild<QToolButton*>("historyReceiptExpanded")->setChecked(state["receiptExpanded"].toBool());setGridMode(state["gridMode"].toBool());showCancelled_->setChecked(state["showCancelled"].toBool());restoreSelection_.clear();for(auto id:state["selectedIds"].toArray())restoreSelection_.append(id.toString());selectedItemId_=state["selectedItemId"].toString();restoringSelection_=true;deletionId_=state["deletionId"].toString();if(!deletionId_.isEmpty()){deletionTimer_->start();pollDeletion();}sharingId_=state["sharingId"].toString();sharingStopped_=false;sharingFeedback_.clear();sharingTimer_->stop();if(!sharingId_.isEmpty()){sharingTimer_->start();pollSharing();}
  const auto data=state["query"].toObject();UiHistoryQuery q;q.limit=data["limit"].toInt(50);q.offset=data["offset"].toInt();q.search=data["search"].toString();q.category=data["category"].toString();q.mime=data["mime"].toString();q.profileId=data["profileId"].toString();q.uploadStatus=data["uploadStatus"].toString();q.localStatus=data["localStatus"].toString();q.remoteStatus=data["remoteStatus"].toString();q.from=data["from"].toString();q.to=data["to"].toString();{restoringCategory_=true;int row=0;for(int i=0;i<categories_->count();++i)if(categories_->item(i)->data(Qt::UserRole).toString()==q.category)row=i;categories_->setCurrentRow(row);restoringCategory_=false;const QSignalBlocker block(failedOnly_);failedOnly_->setChecked(f["uploadStatus"].toString()=="failed");}updateHeading();model_->setQuery(q);return true;
+}
+QJsonObject HistoryWindow::historyState()const{
+ const auto& q=model_->query();const int rows=table_->selectionModel()->selectedRows().size();QJsonArray actions;
+ if(rows>1){if(selectionHasLinks())actions.append("copyLinks");if(!deletableIds().isEmpty())actions.append("delete");actions.append("clearSelection");}
+ return {{"query",QJsonObject{{"limit",q.limit},{"offset",q.offset},{"search",q.search},{"category",q.category},{"mime",q.mime},{"profileId",q.profileId},{"uploadStatus",q.uploadStatus},{"localStatus",q.localStatus},{"remoteStatus",q.remoteStatus},{"from",q.from},{"to",q.to}}},
+  {"activeFilters",QJsonArray::fromStringList(activeFilters())},{"filtersLabel",filtersToggle_->text()},{"selectedIds",QJsonArray::fromStringList(selectedIds())},{"selectedRows",rows},{"selectionActions",actions},{"deletableIds",QJsonArray::fromStringList(deletableIds())},
+  {"layout",compact_?"compact":"split"},{"detailsOpen",detailsOpen_},{"inspectorVisible",!inspectorScroll_->isHidden()},{"gridMode",grid_->isChecked()},{"rows",model_->rowCount()},{"total",double(model_->total())}};
+}
+void HistoryWindow::command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply){
+ const auto action=params["action"].toString();
+ if(action=="clearFilters")clearFilters(params["scope"].toString()=="all");
+ else if(action=="select"){
+  // By history ID, operation ID or a row's own ID, on the page shown.
+  QSet<QString> wanted;for(const auto& v:params["ids"].toArray())wanted.insert(v.toString());QItemSelection chosen;QModelIndex first;
+  for(int row=0;row<model_->rowCount();++row){const auto r=model_->record(row);bool match=wanted.contains(r["operationId"].toString())||wanted.contains(r["id"].toString());for(const auto& v:r["records"].toArray())match|=wanted.contains(v.toObject()["id"].toString());if(match){chosen.select(model_->index(row),model_->index(row));if(!first.isValid())first=model_->index(row);}}
+  if(!first.isValid()){reply({"history_row_not_found","None of those items is on the History page shown; search or page to them first.",{}},historyState());return;}
+  table_->selectionModel()->select(chosen,QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);table_->selectionModel()->setCurrentIndex(first,QItemSelectionModel::NoUpdate);table_->scrollTo(first);
+ }
+ else if(action=="clearSelection")table_->clearSelection();
+ else if(action=="openDetails"){if(table_->selectionModel()->selectedRows().size()!=1){reply({"history_selection_invalid","Select exactly one row before opening its details.",{}},historyState());return;}if(grid_->isChecked())setGridMode(false);setDetailsOpen(true);}
+ else if(action=="closeDetails")setDetailsOpen(false);
+ else if(action!="inspect"){reply({"invalid_request","Unknown History action",{}},{});return;}
+ reply({},historyState());
 }
 // A failed (or partial or interrupted) upload with an operation gets a package for just
 // that operation; the resident shows "diagnostics saved" with Show in folder (#122).

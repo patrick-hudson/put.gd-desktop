@@ -366,6 +366,7 @@ void paintChromeGlyph(QPainter& painter, const QRectF& rect, const QString& name
     else if (name == "check") { QPainterPath tick; tick.moveTo(4, 10.5); tick.lineTo(8, 14.5); tick.lineTo(16, 5.5); painter.drawPath(tick); }
     else if (name == "chevron-down") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::DownArrow, colour); return; }
     else if (name == "chevron-right") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::RightArrow, colour); return; }
+    else if (name == "chevron-left") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::LeftArrow, colour); return; }
     painter.restore();
 }
 QIcon chromeIcon(const QString& name) { return QIcon(new ChromeIcon(name)); }
