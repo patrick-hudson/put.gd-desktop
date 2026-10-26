@@ -1,6 +1,7 @@
 // Offscreen widget contract for the themed editor window. Not desktop proof.
 #include "ui/EditorWindow.h"
 #include "ui/FileDialog.h"
+#include "ui/Theme.h"
 #include "editor/EditorCommands.h"
 #include "platform/HostOpen.h"
 #include <QApplication>
@@ -157,6 +158,26 @@ private slots:
   window.selectTool(Tool::Arrow);int swatches=0;
   for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName().startsWith("Color ")||button->objectName()=="customColor"){++swatches;QVERIFY(button->width()>=32&&button->height()>=32);}
   QCOMPARE(swatches,8);
+ }
+ // An unchosen swatch's painted edge holds 3:1 against the panel in both
+ // schemes, white on the light panel and near-black on the dark one included.
+ void swatchEdgesStandOutFromThePanel(){
+  const auto restore=qScopeGuard([previous=Theme::scheme()]{Theme::setScheme(previous);});
+  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+   Theme::setScheme(scheme);
+   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+   window.selectTool(Tool::Arrow);QApplication::processEvents();
+   const auto image=window.grab().toImage();int checked=0;
+   for(auto* swatch:window.findChildren<QToolButton*>()){
+    if(!swatch->accessibleName().startsWith("Color ")||swatch->isChecked())continue;++checked;
+    // The top edge's middle: the 1 px outline row, and the panel above the square.
+    const auto edge=image.pixelColor(swatch->mapTo(&window,QPoint(swatch->width()/2,5)));
+    const auto panel=image.pixelColor(swatch->mapTo(&window,QPoint(swatch->width()/2,1)));
+    const double ratio=Theme::contrast(edge,panel);
+    QVERIFY2(ratio>=3.0,qPrintable(QString("%1 %2: %3:1").arg(Theme::name(scheme),swatch->accessibleName()).arg(ratio,0,'f',2)));
+   }
+   QCOMPARE(checked,6);
+  }
  }
  void saveFeedbackNamesTheCopyAndOffersRecovery(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));

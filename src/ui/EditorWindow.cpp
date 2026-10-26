@@ -46,15 +46,17 @@ namespace {
 QFrame* separator(QWidget* parent){auto* line=Graphite::rule(parent,Qt::Vertical);line->setFixedHeight(22);return line;}
 // A colour choice: its colour in a rounded square, a ring when chosen, the
 // accent ring under keyboard focus. The custom picker shows a colour wheel.
-// The 32 px button is the hit target; the painted square stays 22 px.
+// The 32 px button is the hit target; the painted square stays 22 px. Its
+// edge is the 3:1 control outline, on whole pixels, so white stays visible
+// on the light panel and near-black on the dark one.
 class Swatch final:public QToolButton {
 public:
  Swatch(const QColor& color,QWidget* parent,bool custom=false):QToolButton(parent),color_(color),custom_(custom){setFixedSize(32,32);setFocusPolicy(Qt::StrongFocus);setCursor(Qt::PointingHandCursor);}
 protected:
  void paintEvent(QPaintEvent*)override{
-  QPainter p(this);p.setRenderHint(QPainter::Antialiasing);const auto& t=Theme::current();const QRectF box=QRectF(rect()).adjusted(5,5,-5,-5);
+  QPainter p(this);p.setRenderHint(QPainter::Antialiasing);const auto& t=Theme::current();const QRectF box=QRectF(rect()).adjusted(5.5,5.5,-5.5,-5.5);
   if(custom_){QConicalGradient wheel(box.center(),0);const QList<QColor> stops{QColor("#ef4444"),QColor("#f59e0b"),QColor("#facc15"),QColor("#22c55e"),QColor("#3b82f6"),QColor("#a855f7"),QColor("#ef4444")};for(int i=0;i<stops.size();++i)wheel.setColorAt(i/6.0,stops[i]);p.setBrush(wheel);}else p.setBrush(color_);
-  p.setPen(QPen(Graphite::mix(t.borderStrong,t.surface,0.2),1));p.drawRoundedRect(box,Graphite::Metric::swatchRadius,Graphite::Metric::swatchRadius);
+  p.setPen(QPen(t.controlOutline,1));p.drawRoundedRect(box,Graphite::Metric::swatchRadius,Graphite::Metric::swatchRadius);
   if(isChecked()){p.setPen(QPen(t.text,2));p.setBrush(Qt::NoBrush);p.drawRoundedRect(QRectF(rect()).adjusted(1,1,-1,-1),7,7);}
   else if(underMouse()){p.setPen(QPen(t.borderStrong,1));p.setBrush(Qt::NoBrush);p.drawRoundedRect(QRectF(rect()).adjusted(1.5,1.5,-1.5,-1.5),7,7);}
   if(hasFocus()&&window()->testAttribute(Qt::WA_KeyboardFocusChange)){p.setPen(QPen(t.accent,1.5));p.setBrush(Qt::NoBrush);p.drawRoundedRect(QRectF(rect()).adjusted(0.75,0.75,-0.75,-0.75),7,7);}
