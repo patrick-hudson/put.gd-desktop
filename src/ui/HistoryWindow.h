@@ -18,8 +18,6 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  // state or cancels it; the reply is the chooser's state.
  void saveAsDialogCommand(const QString& action,const QString& id,std::function<void(Error,QJsonObject)> reply);
  FileDialog& saveAsDialog(){return *chooser_;}
- // The sidebar's bottom: the main window puts the capture output there.
- QVBoxLayout* sidebarFooter()const{return sidebarFooter_;}
  // Where a row paints its complete failure text, in row coordinates: the
  // delegate's layout, shared with its size hint and the offscreen tests.
  static QRect failureTextArea(const QSize& row,bool gallery,bool dayHeading);
@@ -52,7 +50,8 @@ private:
  void updateSelectionBar();
  // Below the width both panes need at this text size, the inspector opens
  // over the list on request (Enter, Show details) instead of squeezing it.
- bool compact()const{return compact_;}void setDetailsOpen(bool);
+ bool compact()const{return compact_;}void setDetailsOpen(bool);void openSelectedDetails();
+ void inspectSelectedDeletion();void deletionAction(const QString&);QJsonObject selectedDeletion_;QLabel* deletionStatus_=nullptr;QPushButton *deletionRetry_=nullptr,*deletionCancel_=nullptr;
  void updateHeading();Graphite::ElidedLabel* heading_=nullptr;
  UiSession& session_;HistoryModel* model_;QListView* table_;QSplitter* split_=nullptr;QScrollArea* inspectorScroll_=nullptr;QStackedWidget* list_;QLabel *status_,*count_,*preview_,*empty_,*title_,*outcome_,*cancelled_,*activeLabel_;QPlainTextEdit *details_;QLabel* summary_;QLineEdit* link_;QLabel* linkExpiry_=nullptr;QComboBox* items_;QProgressBar* progress_;QWidget* activeBanner_;QToolButton *grid_,*showCancelled_;QPushButton *copy_,*open_,*share_,*revoke_,*inspectLink_,*retry_,*cancel_,*copyImage_,*saveAs_,*editAgain_,*saveDiagnostics_;
  QStringList restoreSelection_;QString selectedItemId_,sharingId_,sharingFeedback_,deletionId_,activeId_;QJsonObject currentDetail_;bool restoringSelection_=false,deleteAccepting_=false,sharingFeedbackError_=false,sharingStopped_=false,sharingAccepting_=false,sharingPollActive_=false,deletionPollActive_=false,awaitingInitialization_=false,previewLoading_=false;
@@ -61,7 +60,7 @@ private:
  QString shownItemId_,shownPreviewPath_;
  FileDialog* chooser_=nullptr;
  QToolButton *filtersToggle_=nullptr,*clearFilters_=nullptr,*detailsBack_=nullptr;QWidget *selectionBar_=nullptr,*emptyState_=nullptr;QLabel *selectionCount_=nullptr,*emptyBody_=nullptr;QPushButton *copyLinks_=nullptr,*deleteSelected_=nullptr,*resetView_=nullptr,*remove_=nullptr;bool compact_=false,detailsOpen_=false;
- QListWidget* categories_=nullptr;QToolButton* failedOnly_=nullptr;QVBoxLayout* sidebarFooter_=nullptr;QWidget* columns_=nullptr;bool restoringCategory_=false;
+ QListWidget* categories_=nullptr;QToolButton* failedOnly_=nullptr;QWidget* columns_=nullptr;bool restoringCategory_=false;
  // Runs once the selected file's detail arrives (true) or fails (false).
  std::function<void(bool)> afterDetail_;
 };
