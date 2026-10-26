@@ -1734,7 +1734,8 @@ void WindowHeader::setDocument(const QString& name, const QString& state) {
         docState_->setObjectName(QStringLiteral("documentState"));
         docState_->setAlignment(Qt::AlignCenter);
         docState_->setTextFormat(Qt::PlainText);
-        VisualStyle::role(docState_, "micro");
+        // Metadata (12 px), not micro: the state is read, not decoration.
+        VisualStyle::role(docState_, "meta");
         lines->addWidget(docName_);
         lines->addWidget(docState_);
         setCentre(block);
