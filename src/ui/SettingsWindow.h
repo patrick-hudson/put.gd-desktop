@@ -30,6 +30,9 @@ public:
  void clearCredentialInputs();
  void refreshDiagnostics();
  void activateDestinations(bool forceRefresh=false);
+ // A finished, non-error message stays with the page it is about: leaving
+ // that page clears it; errors and work still in progress stay.
+ void clearCompletedFeedback();
  // Moves the selected (or the given) destination one place; saves right away.
  Error moveSelectedDestination(int delta,const QString& profileId,QJsonObject& result);
  // Advanced → Diagnostics (#122; on General until #238): debug logging, Clear
@@ -113,8 +116,9 @@ private:
  QJsonArray setupJobs_;QTimer* setupTimer_=nullptr;bool setupPollActive_=false,testAccepting_=false,saving_=false,resetting_=false;
  QJsonArray profileEditors_;int setupAccepting_=0;
  QString baseRevision_;
+ QString metadataText_; // Canonical metadata; display-only wrap characters never enter diagnostics copies.
  QJsonObject draft_,savingDocument_;QString observed_;bool loading_=false,appearancePreviewed_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
- QLabel *status_,*metadata_,*capabilities_;QPushButton *quit_;
+ QLabel *status_=nullptr,*metadata_=nullptr,*capabilities_=nullptr;QPushButton *quit_;
  ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
  QComboBox *providerType_=nullptr,*protonFolder_=nullptr;QSpinBox* protonExpiration_=nullptr;QDoubleSpinBox* protonTimeout_=nullptr;
  QComboBox* b2LinkMode_=nullptr;QSpinBox* b2LinkDays_=nullptr;

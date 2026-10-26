@@ -84,9 +84,9 @@ private slots:
   QCOMPARE(TrayController::completionMessage(QJsonObject{{"state","completed"},{"copyStatus","no_result"},{"items",QJsonArray{QJsonObject{{"uploadStatus","uploaded"}},QJsonObject{{"uploadStatus","uploaded"}}}}},false),QString("2 files uploaded."));
   // #473: a refused automatic copy is named, with the way back; the link still opens.
   const QJsonObject suppressed{{"state","completed"},{"copyStatus","suppressed"},{"items",QJsonArray{QJsonObject{{"uploadStatus","uploaded"}}}},{"error",QJsonObject{}}};
-  QCOMPARE(TrayController::completionMessage(suppressed,true),QString("Uploaded. Link not copied: the clipboard changed during the upload. Copy it from Activity. Click to open in browser."));
+  QCOMPARE(TrayController::completionMessage(suppressed,true),QString("Uploaded. Link not copied: the clipboard changed during the upload. Copy it from History. Click to open in browser."));
   const QJsonObject suppressedLocal{{"state","completed"},{"copyStatus","suppressed"},{"items",QJsonArray{QJsonObject{{"uploadStatus","local_only"}}}},{"error",QJsonObject{}}};
-  QCOMPARE(TrayController::completionMessage(suppressedLocal,false),QString("Saved locally; not copied because the clipboard changed meanwhile. Copy it from Activity."));
+  QCOMPARE(TrayController::completionMessage(suppressedLocal,false),QString("Saved locally; not copied because the clipboard changed meanwhile. Copy it from History."));
  }
  // #152: a failed or partial upload names the failure in plain words, never a raw copyStatus code.
  void failedUploadsNameTheFailure() {
@@ -500,7 +500,7 @@ private slots:
   QPointer<QMenu> menu = tray->contextMenu();
   QVERIFY(menu);
   const auto windows = QApplication::topLevelWidgets();
-  for (const auto& name : QStringList{"Settings and setup", "Upload history", "About put.gd"}) {
+  for (const auto& name : QStringList{"Settings", "History", "About put.gd"}) {
    auto* action = actionNamed(tray, name);
    QVERIFY(action);
    action->trigger();
@@ -511,14 +511,14 @@ private slots:
   QStringList data; for (auto* action : menu->actions()) data.append(action->data().toString());
   QVERIFY(!data.contains("activity"));
   // A single & would be eaten as a mnemonic marker in the menu.
-  QVERIFY(actionNamed(tray, "Capture Region && Edit"));
+  QVERIFY(actionNamed(tray, "Capture region && edit"));
   // Capture entries come first in a fixed order, then the editor sources and the clipboard upload.
   QStringList texts; for (auto* action : menu->actions()) { if (action->isSeparator()) break; texts.append(action->text()); }
-  QCOMPARE(texts, QStringList({"Capture Region", "Capture Region && Edit", "Capture Window", "Capture Desktop", "Capture Screen Recording", "Edit Image", "Upload Clipboard"}));
+  QCOMPARE(texts, QStringList({"Capture region", "Capture region && edit", "Capture window", "Capture desktop", "Record screen", "Edit image", "Upload clipboard"}));
   // Other editor sources sit in one submenu; a file opens the main window's picker.
-  QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit Image") editImage = action->menu();
+  QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit image") editImage = action->menu();
   QVERIFY(editImage); QCOMPARE(editImage->actions().size(), 2);
-  QCOMPARE(editImage->actions().at(1)->text(), QString("From file…")); editImage->actions().at(1)->trigger();
+  QCOMPARE(editImage->actions().at(1)->text(), QString("Edit an image file…")); editImage->actions().at(1)->trigger();
   QCOMPARE(views.last(), QString("editFile"));
   QCOMPARE(QApplication::topLevelWidgets(), windows);
   QCOMPARE(quits, 0);
@@ -560,7 +560,7 @@ private slots:
    });
   });
   for (const auto& name : QStringList{"region", "window", "desktop", "clipboard"}) {
-   auto* action = actionNamed(tray, name == "clipboard" ? QString("Upload Clipboard") : "Capture " + name.left(1).toUpper() + name.mid(1));
+   auto* action = actionNamed(tray, name == "clipboard" ? QString("Upload clipboard") : "Capture " + name);
    QVERIFY(action);
    action->trigger();
    PUTGD_TRY_VERIFY(source.actions.contains(name));
@@ -636,7 +636,7 @@ private slots:
    controller.reset();
   }, [] {});
   auto* tray = controller->findChild<QSystemTrayIcon*>();
-  QPointer<QAction> action = actionNamed(tray, "Capture Region");
+  QPointer<QAction> action = actionNamed(tray, "Capture region");
   QVERIFY(action);
   action->trigger();
   QCOMPARE(opened, QString("history"));
@@ -655,7 +655,7 @@ private slots:
   QStringList views;
   TrayController controller(operations, [&](const QString& view) { views.append(view); }, [] {});
   auto* tray = controller.findChild<QSystemTrayIcon*>();
-  auto* action = actionNamed(tray, "Capture Region");
+  auto* action = actionNamed(tray, "Capture region");
   QVERIFY(action);
   action->trigger();
   PUTGD_TRY_COMPARE(views, QStringList({"history"}));
@@ -671,7 +671,7 @@ private slots:
   auto fake=std::make_unique<FakeRecordingBackend>();auto* backend=fake.get();operations.setRecordingBackend(std::move(fake));
   TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);
   auto state=[&]{QString s;bool done=false;operations.recordingCommand("inspect",{{"id",operations.recordingActiveId()}},[&](Error,QJsonObject r){s=r["state"].toString();done=true;});(void)putgd::test::waitFor([&]{return done;});return s;};
-  auto* entry=actionNamed(tray,"Capture Screen Recording");QVERIFY(entry);
+  auto* entry=actionNamed(tray,"Record screen");QVERIFY(entry);
   entry->trigger();PUTGD_TRY_VERIFY(backend->log.contains("prepare"));PUTGD_TRY_COMPARE(state(),QString("ready"));
   QCOMPARE(backend->lastConfig.format,QString("mp4"));
   entry->trigger();PUTGD_TRY_VERIFY(backend->log.contains("raise"));QCOMPARE(state(),QString("ready"));

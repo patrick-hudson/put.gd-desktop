@@ -116,6 +116,7 @@ signals:
     void configChanged(const RecordingConfig&);
 protected:
     void keyPressEvent(QKeyEvent*) override;
+    void paintEvent(QPaintEvent*) override;
     void mousePressEvent(QMouseEvent*) override;
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
@@ -136,7 +137,7 @@ private:
     int screen_ = -1, layerScreen_ = -1;
     bool outside_ = false, handle_ = false, dragged_ = false, dragging_ = false;
     QPoint dragOffset_;
-    QLabel *dot_ = nullptr, *time_ = nullptr, *target_ = nullptr;
+    QLabel *dot_ = nullptr, *state_label_ = nullptr, *time_ = nullptr, *target_ = nullptr;
     QCheckBox* audio_ = nullptr;
     QComboBox* format_ = nullptr;
     QPushButton *record_ = nullptr, *pause_ = nullptr, *resume_ = nullptr, *stop_ = nullptr, *cancel_ = nullptr;
@@ -144,7 +145,6 @@ private:
 // #198: the helper's windows in the interface's scheme. A stylesheet template
 // with %token% placeholders (and %INDICATORS% for the painted tick) becomes the
 // root's stylesheet, with a matching palette, and again on every scheme change.
-void applyTheme(QWidget& root, const QString& qssTemplate);
 QString formatLabel(const QString& format, const QString& codec);
 // Why to pick this output; shown as the combo item tooltip and in the review status.
 QString formatHint(const QString& format, const QString& codec);

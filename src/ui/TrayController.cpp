@@ -192,22 +192,22 @@ TrayController::TrayController(OperationService& operations,
   entry->setData(action);
   connect(entry, &QAction::triggered, this, [this, action] { invokeAction(action); });
  };
- capture("region", "Capture Region");
- capture("edit", "Capture Region && Edit");
- capture("window", "Capture Window");
- capture("desktop", "Capture Desktop");
- capture("record", "Capture Screen Recording");
+ capture("region", "Capture region");
+ capture("edit", "Capture region && edit");
+ capture("window", "Capture window");
+ capture("desktop", "Capture desktop");
+ capture("record", "Record screen");
  // Other editor sources stay one level down so the menu does not grow.
- auto* editImage = menu_->addMenu("Edit Image");
+ auto* editImage = menu_->addMenu("Edit image");
  editImage->menuAction()->setData("edit");
- connect(editImage->addAction("From clipboard"), &QAction::triggered, this, [this] { invokeAction("edit", false, {{"source", "clipboard"}}); });
- connect(editImage->addAction("From file…"), &QAction::triggered, this, [this] { showView("editFile"); });
- capture("clipboard", "Upload Clipboard");
+ connect(editImage->addAction("Edit clipboard image"), &QAction::triggered, this, [this] { invokeAction("edit", false, {{"source", "clipboard"}}); });
+ connect(editImage->addAction("Edit an image file…"), &QAction::triggered, this, [this] { showView("editFile"); });
+ capture("clipboard", "Upload clipboard");
  menu_->addSeparator();
- auto* preferences = menu_->addAction("Settings and setup");
+ auto* preferences = menu_->addAction("Settings");
  preferences->setData("preferences");
  connect(preferences, &QAction::triggered, this, &TrayController::showSettings);
- auto* history = menu_->addAction("Upload history");
+ auto* history = menu_->addAction("History");
  history->setData("history");
  connect(history, &QAction::triggered, this, &TrayController::showHistory);
  updateAction_ = menu_->addAction("Update available");
@@ -320,9 +320,9 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  // copy took its place, between the capture and the link. Say so, and where
  // the link still is.
  const QString copied=copy=="copied"?(localOnly?"Result copied to the clipboard.":"Link copied to the clipboard."):copy=="failed"?(localOnly?"Could not copy the result.":"Could not copy the link."):
-  copy=="suppressed"?(localOnly?"Result not copied: the clipboard changed meanwhile. Copy it from Activity.":"Link not copied: the clipboard changed during the upload. Copy it from Activity."):QString{};
+  copy=="suppressed"?(localOnly?"Result not copied: the clipboard changed meanwhile. Copy it from History.":"Link not copied: the clipboard changed during the upload. Copy it from History."):QString{};
  if(!QStringList{"failed","partial","interrupted"}.contains(state)) {
-  if(localOnly)return "Saved locally"+(copy=="copied"?QString("; copied to the clipboard."):copy=="failed"?QString("; could not copy the result."):copy=="suppressed"?QString("; not copied because the clipboard changed meanwhile. Copy it from Activity."):QString("."));
+  if(localOnly)return "Saved locally"+(copy=="copied"?QString("; copied to the clipboard."):copy=="failed"?QString("; could not copy the result."):copy=="suppressed"?QString("; not copied because the clipboard changed meanwhile. Copy it from History."):QString("."));
   QStringList parts{items.size()>1?QString("%1 files uploaded.").arg(items.size()):QString("Uploaded.")};
   if(!copied.isEmpty())parts.append(copied);
   if(hasLink)parts.append("Click to open in browser.");

@@ -56,7 +56,7 @@ private slots:
   QTemporaryDir root;const auto staging=root.filePath("editing");
   const auto original=noise({320,200},21);const QRect secret(40,30,80,40);
   auto session=std::make_shared<EditorSession>();EditorResult result;
-  std::thread worker([&]{auto image=original;result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).run(image,"Upload to synthetic destination",64*1024*1024,session);});
+  std::thread worker([&]{auto image=original;result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withAppearance("light").run(image,"Upload to synthetic destination",64*1024*1024,session);});
   auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
   QVERIFY(waitPhase(*session,"editing"));
   auto state=ask(*session,"inspect");QVERIFY2(!state.error,qPrintable(state.error.code));

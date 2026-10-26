@@ -4,6 +4,7 @@
 #include "ui/Theme.h"
 #include "ui/ViewState.h"
 #include "ui/VisualStyle.h"
+#include "ui/Graphite.h"
 #include <QApplication>
 #include <QCheckBox>
 #include <QRadioButton>
@@ -61,7 +62,10 @@ private slots:
             QCOMPARE(tokens.size(), 23);
             for (const auto& value : tokens) QVERIFY(QRegularExpression("^#[0-9a-f]{6}$").match(value.toString()).hasMatch());
         }
-        QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["bg"].toString(), QString("#111317"));
+        QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["bg"].toString(), QString("#191919"));
+        QCOMPARE(Theme::tokens(Theme::Scheme::Light)["bg"].toString(), QString("#eeeeeb"));
+        // Graphite: amber, never blue, and a neutral primary action.
+        QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["accent"].toString(), QString("#e8b66d"));
         QVERIFY(Theme::tokens(Theme::Scheme::Light)["bg"] != Theme::tokens(Theme::Scheme::Dark)["bg"]);
     }
     void trayTintsSuitTheirPanels() {
@@ -75,20 +79,55 @@ private slots:
         // The dark-panel set is the one put.gd always drew.
         QCOMPARE(Theme::trayTints(false).upload, QColor("#62d69b"));
     }
-    void stylesheetsUseOnlyTokens() {
+    // Graphite (2026-10-26): one painted style, no application stylesheet.
+    void graphiteStylePaintsWithoutStylesheets() {
         QWidget probe;
         RedesignTheme::apply(probe);
         probe.show();
+        QVERIFY(qobject_cast<Graphite::Style*>(qApp->style()));
+        QVERIFY(qApp->styleSheet().isEmpty());
+        QVERIFY(probe.styleSheet().isEmpty());
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);
-            const auto qss = probe.styleSheet();
-            QVERIFY2(!QRegularExpression("%[A-Za-z_]+%").match(qss).hasMatch(), "a placeholder was left unreplaced");
-            QVERIFY(qss.contains(Theme::current().bg.name()));
-            QVERIFY(qApp->styleSheet().contains(Theme::current().accent.name()));
-            QVERIFY(!QRegularExpression("%[A-Za-z_]+%").match(qApp->styleSheet()).hasMatch());
-            // The painted indicator images exist for this scheme.
+            QCOMPARE(qApp->palette().color(QPalette::Window), Theme::palette(scheme).bg);
+            QCOMPARE(probe.palette().color(QPalette::Window), Theme::palette(scheme).bg);
+            // The painted indicator images still exist for this scheme (record overlays' fallback).
             for (const auto* name : {"check", "check@2x", "radio", "radio-checked", "chevron", "spin-up", "spin-down", "spin-up-off", "spin-down-off", "spin-up@2x"})
                 QVERIFY2(QFile::exists(RedesignTheme::indicators(scheme) + "/" + name + ".png"), name);
+        }
+    }
+    // A primary button is the neutral text fill with background-colour ink;
+    // its label, alone or as one group with its icon, is centred.
+    void primaryButtonIsNeutralAndCentred() {
+        QWidget window;
+        auto* layout = new QVBoxLayout(&window);
+        auto* plain = new QPushButton("Upload", &window);
+        auto* withIcon = new QPushButton(VisualStyle::icon("upload"), "Upload", &window);
+        for (auto* button : {plain, withIcon}) { VisualStyle::role(button, "primary"); button->setMinimumWidth(220); layout->addWidget(button); }
+        RedesignTheme::apply(window);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            const auto& p = Theme::palette(scheme);
+            for (auto* button : {plain, withIcon}) {
+                const auto shot = button->grab().toImage().convertToFormat(QImage::Format_RGB32);
+                QCOMPARE(shot.pixelColor(shot.width() / 2, 3), p.text);
+                // Scan inside the rounded corners (radius 7) and the outline, so
+                // only label and icon ink can match.
+                const QRect inside = shot.rect().adjusted(9, 4, -9, -4);
+                int left = shot.width(), right = -1, top = shot.height(), bottom = -1;
+                for (int y = inside.top(); y <= inside.bottom(); ++y)
+                    for (int x = inside.left(); x <= inside.right(); ++x) {
+                        const auto c = shot.pixelColor(x, y);
+                        if (std::abs(c.red() - p.bg.red()) + std::abs(c.green() - p.bg.green()) + std::abs(c.blue() - p.bg.blue()) < 120) { left = std::min(left, x); right = std::max(right, x); top = std::min(top, y); bottom = std::max(bottom, y); }
+                    }
+                QVERIFY(right > left && bottom > top);
+                // The ink is a label, not the whole button: well inside the scan area.
+                QVERIFY(left > inside.left() + 20 && right < inside.right() - 20);
+                QVERIFY2(std::abs((left + right) / 2.0 - (shot.width() - 1) / 2.0) <= 2, qPrintable(QString("%1-%2 of %3").arg(left).arg(right).arg(shot.width())));
+                QVERIFY2(std::abs((top + bottom) / 2.0 - (shot.height() - 1) / 2.0) <= 2, qPrintable(QString("%1-%2 of %3").arg(top).arg(bottom).arg(shot.height())));
+            }
         }
     }
     // #300: a checked, disabled check box or radio button still looks checked:
@@ -144,12 +183,11 @@ private slots:
             QVERIFY2(differing(boxOn, boxOff) > 40, what("checked and unchecked disabled check boxes look alike"));
             QVERIFY2(differing(boxOn, boxOnEnabled) > 40, what("a disabled check box looks enabled"));
             QVERIFY2(differing(radioOn, radioOff) > 20, what("checked and unchecked disabled radio buttons look alike"));
-            // The box keeps its accent-tinted fill and a visible tick; unchecked has neither.
+            // The box keeps a muted fill and a visible tick; unchecked has neither.
             const int inside = (boxOn.width() - 4) * (boxOn.height() - 4);
-            QVERIFY2(count(boxOn, p.selected, 8) * 3 > inside, what("checked, disabled box is not on the muted accent fill"));
-            QVERIFY2(count(boxOn, p.textMuted, 60) >= 6, what("checked, disabled box has no tick"));
+            QVERIFY2(count(boxOn, p.textMuted, 8) * 3 > inside, what("checked, disabled box is not on the muted fill"));
+            QVERIFY2(count(boxOn, p.bg, 60) >= 6, what("checked, disabled box has no tick"));
             QCOMPARE(count(boxOff, p.textMuted, 60), 0);
-            QCOMPARE(count(boxOff, p.selected, 8), 0);
             QVERIFY2(count(radioOn, p.textMuted, 60) >= 6, what("checked, disabled radio button has no dot"));
             QCOMPARE(count(radioOff, p.textMuted, 60), 0);
         }
@@ -172,6 +210,7 @@ private slots:
             const auto& p = Theme::palette(scheme);
             QStyleOptionSpinBox option;
             option.initFrom(spin);
+            option.frame = true;
             option.subControls = QStyle::SC_SpinBoxUp | QStyle::SC_SpinBoxDown | QStyle::SC_SpinBoxFrame | QStyle::SC_SpinBoxEditField;
             const auto shot = spin->grab().toImage();
             for (const auto control : {QStyle::SC_SpinBoxUp, QStyle::SC_SpinBoxDown}) {
@@ -194,35 +233,30 @@ private slots:
     // #237: a switch never replaces the application stylesheet (Qt would
     // re-polish every widget); windows carry the scheme instead, and a hidden
     // window restyles when it is next shown.
-    void schemeSwitchKeepsTheApplicationStylesheet() {
+    void schemeSwitchRestylesWithoutStylesheets() {
         QWidget plain;
         auto* label = new QLabel("Synthetic", &plain);
         label->setProperty("visualRole", "status");
         new QVBoxLayout(&plain);
         plain.layout()->addWidget(label);
+        RedesignTheme::apply(plain);
         plain.show();
         QVERIFY(putgd::test::waitForWindowExposed(&plain));
         QWidget hidden;
         RedesignTheme::apply(hidden);
         hidden.resize(80, 60);
-        const auto sheet = qApp->styleSheet();
-        const auto rootSheet = hidden.styleSheet();
         QCOMPARE(plain.property("themeScheme").toString(), QString("dark"));
         const auto pixel = [&] { return plain.grab().toImage().pixelColor(label->geometry().center().x(), label->geometry().top() + 4); };
         QCOMPARE(pixel(), Theme::palette(Theme::Scheme::Dark).surface);
         QVERIFY(Theme::setScheme(Theme::Scheme::Light));
-        QCOMPARE(qApp->styleSheet(), sheet);
+        QVERIFY(qApp->styleSheet().isEmpty());
         QCOMPARE(plain.property("themeScheme").toString(), QString("light"));
-        // The application rules for the new scheme apply to the open window.
         QCOMPARE(pixel(), Theme::palette(Theme::Scheme::Light).surface);
-        // Neither stylesheet changes; the hidden window catches up when shown.
-        QCOMPARE(hidden.styleSheet(), rootSheet);
-        QVERIFY(rootSheet.contains(Theme::palette(Theme::Scheme::Dark).bg.name()) && rootSheet.contains(Theme::palette(Theme::Scheme::Light).bg.name()));
+        // The hidden window catches up when shown.
         hidden.show();
         QVERIFY(putgd::test::waitForWindowExposed(&hidden));
         QCOMPARE(hidden.property("themeScheme").toString(), QString("light"));
         QCOMPARE(hidden.grab().toImage().pixelColor(4, 4), Theme::palette(Theme::Scheme::Light).bg);
-        // A window opened later is marked with the active scheme.
         QWidget later;
         later.show();
         QCOMPARE(later.property("themeScheme").toString(), QString("light"));

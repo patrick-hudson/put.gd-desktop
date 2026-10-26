@@ -95,14 +95,14 @@ constexpr int callTimeoutMs = 1500;
 struct Entry { const char* label; const char* action; int parent; };
 constexpr int retired = -1;
 constexpr Entry entries[] {
- {"Capture Region", "region", 0}, {"Capture Window", "window", 0},
- {"Capture Desktop", "desktop", 0}, {"Upload Clipboard", "clipboard", 0},
- {"Capture Region & Edit", "edit", 0},
- {"", "", 0}, {"Settings and setup", "settings", 0}, {"Upload history", "history", 0},
+ {"Capture region", "region", 0}, {"Capture window", "window", 0},
+ {"Capture desktop", "desktop", 0}, {"Upload clipboard", "clipboard", 0},
+ {"Capture region & edit", "edit", 0},
+ {"", "", 0}, {"Settings", "settings", 0}, {"History", "history", 0},
  // 9 was "Recent activity", which opened the same History page.
  {"", "", retired}, {"", "", 0}, {"About put.gd", "about", 0}, {"Quit", "quit", 0},
- {"Edit Image", "", 0}, {"From clipboard", "edit-clipboard", 13}, {"From file…", "edit-file", 13},
- {"Capture Screen Recording", "record", 0},
+ {"Edit image", "", 0}, {"Edit clipboard image", "edit-clipboard", 13}, {"Edit an image file…", "edit-file", 13},
+ {"Record screen", "record", 0},
  // Hidden until a stable update is available; its label names the version (#293).
  {"Update available", "update", 0}
 };

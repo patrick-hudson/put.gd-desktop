@@ -5,6 +5,7 @@
 #include "record/ReviewWindow.h"
 #include "ui/Theme.h"
 #include <QApplication>
+#include <QFontInfo>
 #include <QComboBox>
 #include <QFileDialog>
 #include <QLineEdit>
@@ -67,7 +68,9 @@ private slots:
     void defaultSizeFitsAndTheVideoTakesMostOfTheWindow() {
         ReviewWindow window(options(), config());
         // The one-monitor fixture is 1366×768: the default fits with room for a panel and title bar.
-        QCOMPARE(QGuiApplication::primaryScreen()->geometry().size(), QSize(1366, 768));
+        // Offscreen the fixture is 1366×768; a native run (real compositor) checks
+        // the same shares on the desktop's own screen.
+        if (QGuiApplication::platformName() == QLatin1String("offscreen")) QCOMPARE(QGuiApplication::primaryScreen()->geometry().size(), QSize(1366, 768));
         QVERIFY(ReviewWindow::defaultSize().width() <= 1366 - 24 && ReviewWindow::defaultSize().height() <= 768 - 120);
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -95,9 +98,13 @@ private slots:
         QApplication::setFont(large);
         {
             ReviewWindow window(options(), config());
+            // Constructing the window keeps the enlarged text (the shared style
+            // installs once and never resets the application font).
+            QVERIFY2(QFontInfo(QApplication::font()).pixelSize() >= QFontInfo(large).pixelSize() - 1, qPrintable(QString("%1 < %2").arg(QFontInfo(QApplication::font()).pixelSize()).arg(QFontInfo(large).pixelSize())));
             window.setEdit(twoMasks());
             window.show();
             QVERIFY(putgd::test::waitForWindowExposed(&window));
+            QVERIFY(QFontInfo(window.font()).pixelSize() >= QFontInfo(large).pixelSize() - 1);
             const auto minimum = window.minimumSizeHint();
             QVERIFY2(minimum.width() <= 1366 - 24 && minimum.height() <= 768 - 120, qPrintable(QStringLiteral("%1x%2").arg(minimum.width()).arg(minimum.height())));
             QVERIFY(window.width() <= 1366 && window.height() <= 768);
@@ -317,7 +324,7 @@ private slots:
         QCOMPARE(saved.size(), 0);
         // The button opens the same dialog; a name without the extension gets it.
         QPushButton* save = nullptr;
-        for (auto* button : window.findChildren<QPushButton*>()) if (button->text() == QString::fromUtf8("Save copy…")) save = button;
+        for (auto* button : window.findChildren<QPushButton*>()) if (button->text() == QString::fromUtf8("Save a copy…")) save = button;
         QVERIFY(save);
         save->click();
         QFileDialog* fallback = nullptr;

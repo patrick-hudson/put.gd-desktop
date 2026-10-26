@@ -3,6 +3,9 @@
 #include "ui/SelectionOutline.h"
 #include "ui/Theme.h"
 #include "ui/VisualStyle.h"
+#include "ui/Graphite.h"
+#include "ui/Fonts.h"
+#include <QApplication>
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
@@ -98,28 +101,7 @@ QList<QRect> screenRects() {
 // The bar in the interface's scheme (#198). Its outline meets 3:1 against
 // both black and white in either scheme, so the bar's edge shows over any
 // content; Record and Stop keep their fixed green and red, white on both.
-const char* const barStyle = R"QSS(
-QWidget#putgd-record-bar { background: %bg%; border: 1px solid %textDisabled%; border-radius: 10px; }
-QLabel { color: %text%; font-size: 13px; }
-QLabel#time { font-family: "DejaVu Sans Mono", monospace; font-size: 14px; min-width: 64px; }
-QCheckBox { color: %text%; spacing: 6px; }
-QCheckBox:disabled { color: %textMuted%; }
-QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid %accent%; border-radius: 3px; background: %surfaceRaised%; }
-QCheckBox::indicator:checked { image: url(%INDICATORS%/check.png); background: %accent%; }
-QCheckBox::indicator:disabled { border-color: %border%; background: %surface%; }
-QCheckBox::indicator:checked:disabled { border-color: %textMuted%; background: %textMuted%; }
-QComboBox { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 2px 8px; }
-QComboBox:disabled { color: %textMuted%; }
-QComboBox::drop-down { border: none; width: 18px; }
-QComboBox QAbstractItemView { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; selection-background-color: %selected%; selection-color: %text%; outline: none; }
-QPushButton { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 4px 12px; }
-QPushButton:hover { background: %selected%; }
-QPushButton#record { background: #2e7d32; color: white; border-color: #43a047; }
-QPushButton#record:hover { background: #388e3c; }
-QPushButton#stop { background: #c62828; color: white; border-color: #e53935; }
-QPushButton#stop:hover { background: #d32f2f; }
-QPushButton:disabled { color: %textMuted%; background: %surface%; border-color: %border%; }
-)QSS";
+
 }
 
 QString formatHint(const QString& format, const QString& codec) {
@@ -137,11 +119,6 @@ QString formatLabel(const QString& format, const QString& codec) {
 }
 
 namespace {
-QString themedStyle(const QString& qssTemplate, Theme::Scheme scheme) {
-    auto qss = Theme::stylesheet(qssTemplate, scheme);
-    const auto folder = VisualStyle::indicators(scheme);
-    return qss.replace(QStringLiteral("%INDICATORS%"), folder.isEmpty() ? QStringLiteral(":/record") : folder);
-}
 // Text over the desktop on a label in the scheme's colours, outlined like the
 // bar, so it reads over any content: the selection hint and its size.
 void paintLabel(QPainter& painter, const QPointF& at, const QString& text) {
@@ -157,32 +134,6 @@ void paintLabel(QPainter& painter, const QPointF& at, const QString& text) {
     painter.drawText(box, Qt::AlignCenter, text);
     painter.restore();
 }
-}
-void applyTheme(QWidget& root, const QString& qssTemplate) {
-    const auto style = [&root, qssTemplate] {
-        const auto& p = Theme::current();
-        // Fusion paints the combo arrow and tooltips from the palette, not the stylesheet.
-        QPalette palette = root.palette();
-        palette.setColor(QPalette::Window, p.bg);
-        palette.setColor(QPalette::WindowText, p.text);
-        palette.setColor(QPalette::Base, p.surfaceRaised);
-        palette.setColor(QPalette::AlternateBase, p.surface);
-        palette.setColor(QPalette::Text, p.text);
-        palette.setColor(QPalette::Button, p.surfaceRaised);
-        palette.setColor(QPalette::ButtonText, p.text);
-        palette.setColor(QPalette::Highlight, p.selected);
-        palette.setColor(QPalette::HighlightedText, p.text);
-        palette.setColor(QPalette::ToolTipBase, p.surfaceRaised);
-        palette.setColor(QPalette::ToolTipText, p.text);
-        palette.setColor(QPalette::Disabled, QPalette::Text, p.textMuted);
-        palette.setColor(QPalette::Disabled, QPalette::ButtonText, p.textMuted);
-        palette.setColor(QPalette::Disabled, QPalette::WindowText, p.textMuted);
-        root.setPalette(palette);
-        root.setProperty("themeScheme", Theme::name(Theme::scheme()));
-        root.setStyleSheet(themedStyle(qssTemplate, Theme::scheme()));
-    };
-    style();
-    QObject::connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, &root, style);
 }
 
 class SelectionOverlay::Surface final : public QWidget {
@@ -346,14 +297,23 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     setObjectName("putgd-record-bar");
     setWindowTitle(QString::fromLatin1(controlBarTitle));
     setAttribute(Qt::WA_ShowWithoutActivating);
-    applyTheme(*this, QString::fromLatin1(barStyle));
+    // Graphite controls; the bar paints its own surface and outline.
+    Fonts::load();
+    if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) VisualStyle::apply(*app);
+    connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, [this] { refresh(); update(); });
     auto* layout = new QHBoxLayout(this);
     layout->setContentsMargins(12, 8, 12, 8);
     layout->setSpacing(8);
     dot_ = new QLabel(this);
     dot_->setFixedSize(12, 12);
+    // The state is written, not only coloured.
+    state_label_ = new QLabel(this);
+    state_label_->setObjectName("state");
+    VisualStyle::role(state_label_, "strong");
     time_ = new QLabel("0:00.0", this);
     time_->setObjectName("time");
+    time_->setFont(Graphite::monoFont(Graphite::Type::body));
+    time_->setMinimumWidth(QFontMetrics(time_->font()).horizontalAdvance(QStringLiteral("00:00.0")) + 4);
     target_ = new QLabel(options.targetLabel, this);
     audio_ = new QCheckBox("System audio", this);
     audio_->setChecked(config.audio.system);
@@ -364,12 +324,20 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
         for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatHint(format, codec.toString()), Qt::ToolTipRole); }
     }
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) format_->setCurrentIndex(i); }
-    record_ = new QPushButton("Record", this); record_->setObjectName("record");
+    record_ = new QPushButton("Start recording", this); record_->setObjectName("record");
+    record_->setIcon(VisualStyle::icon("record"));
+    VisualStyle::role(record_, "primary");
     pause_ = new QPushButton("Pause", this);
+    pause_->setIcon(VisualStyle::icon("pause"));
     resume_ = new QPushButton("Resume", this);
-    stop_ = new QPushButton("Stop", this); stop_->setObjectName("stop");
+    resume_->setIcon(VisualStyle::icon("play"));
+    stop_ = new QPushButton("Stop recording", this); stop_->setObjectName("stop");
+    VisualStyle::role(stop_, "danger");
     cancel_ = new QPushButton("Cancel", this);
-    for (auto* w : std::initializer_list<QWidget*>{dot_, time_, target_, audio_, format_, record_, pause_, resume_, stop_, cancel_}) layout->addWidget(w);
+    cancel_->setToolTip("Discard this recording");
+    VisualStyle::role(cancel_, "quiet");
+    VisualStyle::role(target_, "secondary");
+    for (auto* w : std::initializer_list<QWidget*>{dot_, state_label_, time_, target_, audio_, format_, record_, pause_, resume_, stop_, cancel_}) layout->addWidget(w);
     connect(record_, &QPushButton::clicked, this, &ControlBar::recordRequested);
     connect(pause_, &QPushButton::clicked, this, &ControlBar::pauseRequested);
     connect(resume_, &QPushButton::clicked, this, &ControlBar::resumeRequested);
@@ -390,14 +358,18 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
 void ControlBar::refresh() {
     const bool ready = state_ == "ready", recording = state_ == "recording", paused = state_ == "paused";
     const bool handle = handle_ && !ready;
-    dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg(recording ? "#e53935" : paused ? "#f9a825" : ready ? "#4caf50" : "#9e9e9e"));
+    const auto& tokens = Theme::current();
+    setPalette(Graphite::palette());
+    setProperty("themeScheme", Theme::name(Theme::scheme()));
+    dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg((recording ? tokens.danger : paused ? tokens.warning : ready ? tokens.success : tokens.textMuted).name()));
+    state_label_->setText(recording ? QStringLiteral("Recording") : paused ? QStringLiteral("Paused") : ready ? QStringLiteral("Ready to record") : QStringLiteral("Stopping…"));
     // Locked from Record on, the box still shows what is being recorded (#120).
     const bool withSound = config_.audio.system && !config_.silent();
     audio_->setEnabled(ready && options_.audioSupported && !config_.silent());
     audio_->setChecked(withSound);
     audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : ready ? QStringLiteral("Include the sound the computer plays") : withSound ? QStringLiteral("System audio is being recorded") : QStringLiteral("System audio is not being recorded"));
     format_->setEnabled(ready);
-    for (auto* w : std::initializer_list<QWidget*>{time_, target_, audio_, format_, cancel_}) w->setVisible(!handle);
+    for (auto* w : std::initializer_list<QWidget*>{state_label_, time_, target_, audio_, format_, cancel_}) w->setVisible(!handle);
     record_->setVisible(ready);
     pause_->setVisible(recording && !handle);
     resume_->setVisible(paused);
@@ -409,6 +381,12 @@ void ControlBar::refresh() {
     reposition();
 }
 void ControlBar::setState(const QString& state) { state_ = state; refresh(); }
+void ControlBar::paintEvent(QPaintEvent*) {
+    QPainter painter(this);
+    painter.fillRect(rect(), Theme::current().bg);
+    painter.setPen(Theme::current().borderStrong);
+    painter.drawRect(rect().adjusted(0, 0, -1, -1));
+}
 void ControlBar::setRetained(qint64 us) {
     const qint64 tenths = us / 100000;
     time_->setText(QStringLiteral("%1:%2.%3").arg(tenths / 600).arg((tenths / 10) % 60, 2, 10, QChar('0')).arg(tenths % 10));

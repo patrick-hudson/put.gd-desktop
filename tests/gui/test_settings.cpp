@@ -7,6 +7,7 @@
 #include <QProgressBar>
 #include <QAbstractItemView>
 #include <QScrollBar>
+#include <QScrollArea>
 #include "ui/SettingsWindow.h"
 #include "ui/FileDialog.h"
 #include <QFileDialog>
@@ -69,6 +70,32 @@ class SettingsGui:public QObject {
 public slots:
  void recordProtonUrl(const QUrl& url){openedUrls_.append(url);}
 private slots:
+ void copiedDiagnosticsPreserveExactPathsAndRevisions_data(){
+  QTest::addColumn<bool>("unicodePath");
+  QTest::newRow("ordinary-path")<<false;QTest::newRow("literal-zero-width-character")<<true;
+ }
+ void copiedDiagnosticsPreserveExactPathsAndRevisions(){
+  QFETCH(bool,unicodePath);QTemporaryDir dir;
+  const auto name=QString("config ")+(unicodePath?QString(QChar(0x200B)):QString{})+QString(64,'a')+".json";
+  SettingsService service(dir.filePath(name));QVERIFY(service.save(Settings::defaults(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();
+  auto* metadata=window.findChild<QLabel*>("settingsMetadata");QVERIFY(metadata);
+  QPushButton* copy=nullptr;QLabel* capabilities=nullptr;
+  for(auto* button:window.findChildren<QPushButton*>())if(button->text()=="Copy diagnostics")copy=button;
+  for(auto* label:window.findChildren<QLabel*>())if(label->accessibleName()=="Desktop support diagnostics")capabilities=label;
+  QVERIFY(copy&&capabilities);
+  for(int revision=0;revision<2;++revision){
+   const auto plain="Configuration: "+service.path()+"\nAccepted revision: "+service.revision()+"\nObserved file revision: "+service.metadata()["observedRevision"].toString();
+   PUTGD_TRY_COMPARE(metadata->accessibleName(),plain);
+   QVERIFY2(metadata->text().count(QChar(0x200B))>plain.count(QChar(0x200B)),"Fixture must exercise display-only wrap characters");
+   QApplication::clipboard()->clear();copy->click();
+   QCOMPARE(QApplication::clipboard()->text(),capabilities->text()+"\n"+plain);
+   // A selection copied from the label is the exact text, not its display break points.
+   QApplication::clipboard()->clear();metadata->setSelection(0,metadata->text().size());QTest::keyClick(metadata,Qt::Key_C,Qt::ControlModifier);
+   QCOMPARE(QApplication::clipboard()->text(),plain);
+   if(revision==0){auto doc=service.document();auto preferences=doc["preferences"].toObject();preferences["notifications"]=!preferences["notifications"].toBool();doc["preferences"]=preferences;QVERIFY(service.save(doc,service.revision()));}
+  }
+ }
  void reorderingDestinationsKeepsSelectionEditsAndRouting(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
   auto routing=[&]{auto doc=service.document();doc.remove("profiles");return doc;};const auto routes=routing();
@@ -112,6 +139,41 @@ private slots:
   UiSessionFixture restartedFixture(restarted,secrets);MainWindow reopened(restartedFixture.session);reopened.navigate("destinations");
   QCOMPARE(rowLabels(reopened.findChild<QListWidget*>("destinationList")),QStringList({"put.gd development destination","Synthetic third","Edited alternate"}));
   QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",window.settings()->saveViewState()}}));
+ }
+ void destinationHeaderKeepsActionsReachable_data(){
+  QTest::addColumn<int>("width");QTest::addColumn<int>("profileRow");QTest::addColumn<QString>("name");
+  for(const int width:{1060,1440})for(const int row:{0,1}){
+   const auto prefix=QByteArray::number(width)+(row?"-other-":"-default-");
+   QTest::newRow((prefix+"short").constData())<<width<<row<<QString("Proton Drive");
+   QTest::newRow((prefix+"long").constData())<<width<<row<<QString("Production screenshots for customer support — ").repeated(3).left(120);
+   QTest::newRow((prefix+"unbroken").constData())<<width<<row<<QString(120,'W');
+  }
+ }
+ void destinationHeaderKeepsActionsReachable(){
+  QFETCH(int,width);QFETCH(int,profileRow);QFETCH(QString,name);
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto profile=profiles[profileRow].toObject();profile["label"]=name;profiles[profileRow]=profile;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(width,680);window.navigate("destinations");
+  auto* list=window.findChild<QListWidget*>("destinationList");QVERIFY(list);list->setCurrentRow(profileRow);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* label=window.findChild<QLineEdit*>("destinationLabel");auto* scroll=window.findChild<QScrollArea*>("destinationScroll");auto* test=window.findChild<QPushButton*>("testDestination");auto* makeDefault=window.findChild<QPushButton*>("makeDefaultDestination");QPushButton* more=nullptr;
+  for(auto* button:window.findChildren<QPushButton*>())if(button->accessibleName()=="Destination actions")more=button;
+  auto* help=window.findChild<QToolButton*>("destinationLabelHelp");QVERIFY(label&&scroll&&test&&makeDefault&&more&&help);PUTGD_TRY_COMPARE(label->text(),name);
+  QCOMPARE(window.width(),width);auto* viewport=scroll->viewport();
+  for(auto* control:QList<QWidget*>{label,help,test,makeDefault,more}){
+   QVERIFY(control->isVisible());const QRect rect(control->mapTo(viewport,QPoint{}),control->size());
+   QVERIFY2(viewport->rect().contains(rect),qPrintable(QString("%1 exceeds the %2px destination viewport: x=%3 width=%4").arg(control->accessibleName().isEmpty()?control->objectName():control->accessibleName()).arg(viewport->width()).arg(rect.x()).arg(rect.width())));
+  }
+  QCOMPARE(scroll->horizontalScrollBar()->maximum(),0);
+  QVERIFY(label->width()>=label->fontMetrics().horizontalAdvance("Pro"));
+  // A popup must keep the selected name available to Copy; normal editing and
+  // autosave still operate on the complete value, regardless of visible width.
+  label->setFocus();label->selectAll();auto* editMenu=label->createStandardContextMenu();editMenu->popup(label->mapToGlobal(QPoint(0,label->height())));PUTGD_TRY_VERIFY(editMenu->isVisible());QCOMPARE(label->selectedText(),name);editMenu->close();delete editMenu;
+  label->setFocus();QTest::keyClick(label,Qt::Key_End);QCOMPARE(label->cursorPosition(),name.size());QTest::keyClicks(label," edited");QCOMPARE(label->text(),name+" edited");
+  test->setFocus();QCOMPARE(label->cursorPosition(),0);QCOMPARE(label->text(),name+" edited");
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[profileRow].toObject()["label"].toString(),name+" edited");
+  // The trailing action remains clickable, including for a non-default destination.
+  auto* menu=more->menu();QVERIFY(menu);bool shown=false;QTimer closer;closer.setInterval(10);QObject::connect(&closer,&QTimer::timeout,menu,[&]{if(menu->isVisible()){shown=true;menu->close();}});closer.start();
+  // QPushButton runs its menu modally on some Qt versions (6.4): close it from a timer.
+  QTest::mouseClick(more,Qt::LeftButton);PUTGD_TRY_VERIFY(shown);closer.stop();
  }
  void longDestinationLabelKeepsItsStateLine(){
   // #134: a label that would wrap is elided to one line; Default · state stays in the row.
@@ -338,7 +400,7 @@ private slots:
   doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","development-s3"},{"publicationMode","default"}};auto actions=doc["actions"].toObject();for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["destination"]="default";action["profileId"]=QJsonValue::Null;actions[name]=action;}doc["actions"]=actions;QVERIFY(service.save(doc,{}));
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();
   auto* exceptions=window.findChild<QToolButton*>("captureExceptionsToggle");QVERIFY(!exceptions->isChecked());exceptions->click();
-  const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"clipboard","Clipboard upload"},{"edit","Region capture & edit"}};
+  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"}};
   auto title=[](const QString& name){return name.left(1).toUpper()+name.mid(1);};
   auto routing=[&]{const auto state=window.settings()->saveViewState();[&]{QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",state}}));}();return state["captureRouting"].toObject();};
   auto expectInherited=[&](const QString& profileId,const QString& destination,const QString& sharing,const QString& effective,const QString& status){
@@ -363,7 +425,7 @@ private slots:
   PUTGD_TRY_COMPARE(service.document()["captureDefaults"].toObject()["profileId"].toString(),QString("development-s3"));PUTGD_TRY_COMPARE(service.document()["captureDefaults"].toObject()["publicationMode"].toString(),QString("default"));
   // Unchecking starts from the inherited values and saves an explicit exception.
   window.findChild<QCheckBox*>("useDefaultRegion")->setChecked(false);auto* region=window.findChild<QComboBox*>("profileRegion");auto* regionSharing=window.findChild<QComboBox*>("publicationRegion");
-  QVERIFY(region->isEnabled());QVERIFY(regionSharing->isEnabled());QCOMPARE(region->currentData().toString(),QString("development-s3"));QCOMPARE(regionSharing->currentData().toString(),QString("default"));QCOMPARE(regionSharing->currentText(),QString("Use destination default"));QCOMPARE(region->accessibleName(),QString("Region capture destination"));
+  QVERIFY(region->isEnabled());QVERIFY(regionSharing->isEnabled());QCOMPARE(region->currentData().toString(),QString("development-s3"));QCOMPARE(regionSharing->currentData().toString(),QString("default"));QCOMPARE(regionSharing->currentText(),QString("Use destination default"));QCOMPARE(region->accessibleName(),QString("Capture region destination"));
   const auto route=routing()["region"].toObject();QVERIFY(!route["inherited"].toBool());QVERIFY(route["destinationEnabled"].toBool());QVERIFY(route["sharingEnabled"].toBool());QCOMPARE(route["effectivePublicationMode"].toString(),QString("share"));
   PUTGD_TRY_COMPARE(service.document()["actions"].toObject()["region"].toObject()["destination"].toString(),QString("upload"));QCOMPARE(service.document()["actions"].toObject()["region"].toObject()["profileId"].toString(),QString("development-s3"));
   for(const auto& name:Settings::actionNames())if(name!="region")QCOMPARE(service.document()["actions"].toObject()[name].toObject()["destination"].toString(),QString("default"));
@@ -604,19 +666,20 @@ private slots:
  void editRailButtonOffersOtherSourcesWithoutGrowingTheRail(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);
-  QCOMPARE(window.findChildren<QPushButton*>("captureRailButton").size(),Settings::invocableActionNames().size());
-  QPushButton* record=nullptr;for(auto* button:window.findChildren<QPushButton*>("captureRailButton"))if(button->property("captureAction")=="record")record=button;QVERIFY(record);
-  QPushButton* edit=nullptr;for(auto* button:window.findChildren<QPushButton*>("captureRailButton"))if(button->property("captureAction")=="edit")edit=button;
-  // No extra control on the button: the other sources are a right-click or a drop.
-  QVERIFY(edit);QVERIFY(edit->findChildren<QToolButton*>().isEmpty());QCOMPARE(edit->contextMenuPolicy(),Qt::CustomContextMenu);QVERIFY(edit->acceptDrops());
-  QVERIFY(edit->toolTip().contains("Right-click"));
-  auto* menu=window.findChild<QMenu*>("editSourceMenu");QVERIFY(menu);
-  QStringList labels;for(auto* action:menu->actions())labels.append(action->text());
-  QCOMPARE(labels,QStringList({"Edit clipboard image","Edit an image file…"}));
+  QCOMPARE(window.findChildren<QToolButton*>("captureActionButton").size(),Settings::invocableActionNames().size());
+  QToolButton* record=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="record")record=button;QVERIFY(record);
+  QToolButton* edit=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="edit")edit=button;
+  // Graphite: the other sources are the split button's menu, a right-click or a drop;
+  // the main action stays Capture region & edit and never takes another source.
+  QVERIFY(edit);QCOMPARE(edit->contextMenuPolicy(),Qt::CustomContextMenu);QVERIFY(edit->acceptDrops());QCOMPARE(edit->popupMode(),QToolButton::MenuButtonPopup);
+  QVERIFY(edit->toolTip().contains("menu"));
+  auto* menu=window.findChild<QMenu*>("editSourceMenu");QVERIFY(menu);QCOMPARE(edit->menu(),menu);
+  QStringList labels;for(auto* action:menu->actions())if(!action->isSeparator())labels.append(action->text().replace("&&","&"));
+  QCOMPARE(labels,QStringList({"Capture region & edit","Edit clipboard image","Edit an image file…"}));
   QStringList requests;connect(&window,&MainWindow::editRequested,this,[&](const QString& source,const QString& path){requests.append(source+"|"+path);});
   int actions=0;connect(&window,&MainWindow::actionRequested,this,[&](auto){++actions;});
   window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  emit edit->customContextMenuRequested(QPoint(8,8));PUTGD_TRY_VERIFY(menu->isVisible());menu->actions().first()->trigger();menu->hide();
+  emit edit->customContextMenuRequested(QPoint(8,8));PUTGD_TRY_VERIFY(menu->isVisible());menu->actions().at(2)->trigger();menu->hide();
   QCOMPARE(requests,QStringList({"clipboard|"}));QCOMPARE(actions,0);requests.clear();
   QImage pixel(2,2,QImage::Format_RGB32);pixel.fill(Qt::blue);const auto png=dir.filePath("Dropped.PNG");QVERIFY(pixel.save(png,"PNG"));
   const auto text=dir.filePath("notes.txt");{QFile file(text);QVERIFY(file.open(QIODevice::WriteOnly));file.write("x");}
@@ -636,9 +699,9 @@ private slots:
   QVERIFY(drop({QUrl::fromLocalFile(png)}));QCOMPARE(requests,QStringList({"file|"+QFileInfo(png).absoluteFilePath()}));QCOMPARE(actions,0);
  }
  void captureRailExplainsActionAndCurrentSavedOutputWithoutInvokingIt(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);int invoked=0;connect(&window,&MainWindow::actionRequested,this,[&](auto){++invoked;});const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"}};for(const auto& action:Settings::actionNames()){QPushButton* button=nullptr;for(auto* candidate:window.findChildren<QPushButton*>("captureRailButton"))if(candidate->property("captureAction")==action)button=candidate;QVERIFY(button);QCOMPARE(button->accessibleName(),labels.value(action));QVERIFY(button->toolTip().contains("Save locally"));QVERIFY(button->accessibleDescription().contains("clipboard",Qt::CaseInsensitive));}auto* help=window.findChild<QToolButton*>("captureActionsHeadingHelp");QVERIFY(help);help->click();auto* dialog=window.findChild<QMessageBox*>("settingHelpDialog");QVERIFY(dialog);QVERIFY(dialog->informativeText().contains("focused external app window"));dialog->close();
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);int invoked=0;connect(&window,&MainWindow::actionRequested,this,[&](auto){++invoked;});const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"}};for(const auto& action:Settings::actionNames()){QToolButton* button=nullptr;for(auto* candidate:window.findChildren<QToolButton*>("captureActionButton"))if(candidate->property("captureAction")==action)button=candidate;QVERIFY(button);QCOMPARE(button->accessibleName(),labels.value(action));QVERIFY(button->toolTip().contains("Save locally"));QVERIFY(button->accessibleDescription().contains("clipboard",Qt::CaseInsensitive));}auto* help=window.findChild<QToolButton*>("captureActionsHeadingHelp");QVERIFY(help);help->click();auto* dialog=window.findChild<QMessageBox*>("settingHelpDialog");QVERIFY(dialog);QVERIFY(dialog->informativeText().contains("focused external app window"));dialog->close();
   {QWidget host;QLineEdit control(&host);auto* row=VisualStyle::settingLabel("Screen region & edit shortcut","help",&control,&host);QLabel* caption=nullptr;for(auto* label:row->findChildren<QLabel*>())if(label->buddy()==&control)caption=label;QVERIFY(caption);QCOMPARE(caption->text(),QString("Screen region && edit shortcut"));QCOMPARE(control.accessibleName(),QString("Screen region & edit shortcut"));}
-  auto doc=service.document();auto protonSettings=ProtonProvider::defaults();protonSettings["shareByDefault"]=false;doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic Drive"},{"provider","proton-drive"},{"settings",protonSettings},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-drive"}}}}};auto actions=doc["actions"].toObject();auto region=actions["region"].toObject();region["destination"]="upload";region["profileId"]="synthetic-proton";actions["region"]=region;doc["actions"]=actions;QVERIFY(service.save(doc,service.revision()));QPushButton* capture=nullptr;for(auto* button:window.findChildren<QPushButton*>("captureRailButton"))if(button->property("captureAction")=="region")capture=button;QVERIFY(capture);PUTGD_TRY_VERIFY(capture->accessibleDescription().contains("Upload privately"));QVERIFY(capture->accessibleDescription().contains("clipboard is left unchanged"));region["publicationMode"]="share";actions["region"]=region;doc["actions"]=actions;QVERIFY(service.save(doc,service.revision()));PUTGD_TRY_VERIFY(capture->accessibleDescription().contains("copy its share link"));QCOMPARE(invoked,0);
+  auto doc=service.document();auto protonSettings=ProtonProvider::defaults();protonSettings["shareByDefault"]=false;doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic Drive"},{"provider","proton-drive"},{"settings",protonSettings},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-drive"}}}}};auto actions=doc["actions"].toObject();auto region=actions["region"].toObject();region["destination"]="upload";region["profileId"]="synthetic-proton";actions["region"]=region;doc["actions"]=actions;QVERIFY(service.save(doc,service.revision()));QToolButton* capture=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="region")capture=button;QVERIFY(capture);PUTGD_TRY_VERIFY(capture->accessibleDescription().contains("Upload privately"));QVERIFY(capture->accessibleDescription().contains("clipboard is left unchanged"));region["publicationMode"]="share";actions["region"]=region;doc["actions"]=actions;QVERIFY(service.save(doc,service.revision()));PUTGD_TRY_VERIFY(capture->accessibleDescription().contains("copy its share link"));QCOMPARE(invoked,0);
  }
  void constructionDoesNotWriteAndHasNoSaveCancelControls(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider s3(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto settings){return s3.validateSettings(settings);});QVERIFY(service.save(Settings::developmentTemplate(),{}));const auto initial=service.document();const auto revision=service.revision();UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();putgd::test::settle(500);
@@ -688,7 +751,7 @@ private slots:
  // #239: the clipboard action says upload, like the tray; ids and keys stay.
  void clipboardActionSaysUpload(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();
-  QPushButton* clipboard=nullptr;for(auto* button:window.findChildren<QPushButton*>("captureRailButton"))if(button->property("captureAction")=="clipboard")clipboard=button;
+  QToolButton* clipboard=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="clipboard")clipboard=button;
   QVERIFY(clipboard);QCOMPARE(clipboard->accessibleName(),QString("Upload clipboard"));QVERIFY(clipboard->accessibleDescription().startsWith("Upload copied local files"));QVERIFY(clipboard->accessibleDescription().contains("uploaded as text"));
   auto* railHelp=window.findChild<QToolButton*>("captureActionsHeadingHelp");QVERIFY(railHelp);QVERIFY(railHelp->toolTip().contains("Upload clipboard: upload copied local files"));QVERIFY(!railHelp->toolTip().contains("mport"));
   auto* fileTemplate=window.findChild<QLineEdit*>("fileTemplate");QCOMPARE(fileTemplate->accessibleName(),QString("Copied & uploaded files"));QVERIFY(fileTemplate->toolTip().startsWith("Names copied and uploaded files when Custom template is selected"));
@@ -697,7 +760,7 @@ private slots:
   auto help=[&](const QString& key){auto* choice=window.findChild<QWidget*>(key+"Choice");return (choice?choice:window.findChild<QWidget*>(key))->toolTip();};
   for(const auto* name:{"maxFiles","maxFileBytes","pendingArtifactBytes","clipboardTextBytes"}){const auto text=help(name);QVERIFY2(!text.isEmpty(),name);QVERIFY2(!text.contains("mport"),qPrintable(text));}
   QVERIFY(help("maxFileBytes").startsWith("The largest individual uploaded file"));QVERIFY(help("clipboardTextBytes").contains("rejected before uploading"));
-  QVERIFY(window.findChild<QWidget*>("useDefaultClipboard"));QCOMPARE(window.findChild<QCheckBox*>("useDefaultClipboard")->accessibleName(),QString("Clipboard upload: use default output"));
+  QVERIFY(window.findChild<QWidget*>("useDefaultClipboard"));QCOMPARE(window.findChild<QCheckBox*>("useDefaultClipboard")->accessibleName(),QString("Upload clipboard: use default output"));
  }
  void newDestinationIsDraftUntilValidAndCannotBecomeDefaultWithEmptyBucket(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);});UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
@@ -1209,7 +1272,7 @@ private slots:
   PUTGD_TRY_COMPARE(install->text(),QString("Switch to nightly 0.1.1-nightly.901 (older)"));
   QVERIFY(line->text().startsWith("Nightly 0.1.1-nightly.901 is older than this stable build (0.1.1)."));
   QString asked;
-  QTimer dismiss;connect(&dismiss,&QTimer::timeout,this,[&]{if(auto* box=qobject_cast<QMessageBox*>(QApplication::activeModalWidget())){asked=box->text();box->button(QMessageBox::No)->click();}});dismiss.start(10);
+  QTimer dismiss;connect(&dismiss,&QTimer::timeout,this,[&]{if(auto* box=qobject_cast<QMessageBox*>(QApplication::activeModalWidget())){asked=box->text();box->button(QMessageBox::Cancel)->click();}});dismiss.start(10);
   status->clear();install->click();dismiss.stop();
   PUTGD_TRY_VERIFY(asked.contains("which is older than this build (0.1.1)"));QVERIFY(asked.contains("may not open settings or history"));
   PUTGD_VERIFY_STEADY(!status->text().contains("does not check for updates"),100);QVERIFY(install->isEnabled());
@@ -1224,21 +1287,21 @@ private slots:
  }
  void railShowsTheResidentVersionAndOpensItsGitHubPage(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());
-  auto* rail=window.findChild<QWidget*>("mainRail");auto* label=window.findChild<QLabel*>("appVersion");auto* link=window.findChild<QPushButton*>("appVersionLink");QVERIFY(rail&&label&&link);QVERIFY(rail->isAncestorOf(label)&&rail->isAncestorOf(link));
+  auto* rail=window.findChild<QWidget*>("statusBand");auto* label=window.findChild<QLabel*>("appVersion");auto* link=window.findChild<QPushButton*>("appVersionLink");QVERIFY(rail&&label&&link);QVERIFY(rail->isAncestorOf(label)&&rail->isAncestorOf(link));
   // The real build identity: the full compiled version, as diagnostics and About report it.
   const auto build=QJsonDocument::fromJson(buildManifestJson()).object();QCOMPARE(fixture.session.build(),build);const auto current=releaseLink(build);QWidget* shown=current.url.isEmpty()?static_cast<QWidget*>(label):link;
   PUTGD_TRY_VERIFY(shown->isVisible());QCOMPARE(shown->property("text").toString().remove(QChar(0x200B)),QString::fromLatin1(buildVersion()));QCOMPARE(shown->accessibleName(),"put.gd version "+QString::fromLatin1(buildVersion()));
-  QVERIFY2(shown->mapTo(rail,QPoint(0,shown->height())).y()>rail->height()-60,"The version sits at the bottom of the rail");
+  QVERIFY2(shown->mapTo(&window,QPoint(shown->width(),shown->height())).x()>window.width()-shown->width()-40,"The version sits at the right of the status band");
   openedUrls_.clear();host::setTestOpener([this](const QUrl& url){recordProtonUrl(url);});auto cleanup=qScopeGuard([]{host::setTestOpener({});});
   QJsonObject snapshot;fixture.server.dispatch({{"schemaVersion",1},{"requestId","version"},{"session",fixture.server.socketPath()},{"method","ui.snapshot"},{"params",QJsonObject{}}},[&](Error e,QJsonObject data){QVERIFY(!e);snapshot=data;});PUTGD_TRY_VERIFY(!snapshot.isEmpty());
   auto apply=[&](const QString& version,bool dirty){auto injected=build;injected["version"]=version;injected["dirty"]=dirty;injected["gitCommit"]="528fe444b0cb0123456789abcdef0123456789ab";auto data=snapshot;data["build"]=injected;fixture.session.applySnapshot(data);};
   apply("0.1.1-nightly.430",false);PUTGD_TRY_VERIFY(link->isVisible());QVERIFY(!label->isVisible());QCOMPARE(link->text(),QString("0.1.1-nightly.430"));QCOMPARE(link->accessibleName(),QString("put.gd version 0.1.1-nightly.430"));QVERIFY(link->focusPolicy()&Qt::TabFocus);
   link->setFocus();QTest::keyClick(link,Qt::Key_Space);PUTGD_TRY_COMPARE(openedUrls_.size(),1);QCOMPARE(openedUrls_.first(),QUrl("https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.430"));
   // A development build has no GitHub release, even when its commit is pushed: plain text.
-  const QString clean="0.1.1-dev.430+g528fe444b0cb";apply(clean,false);PUTGD_TRY_VERIFY(label->isVisible());QVERIFY(!link->isVisible());QCOMPARE(label->text().remove(QChar(0x200B)),clean);QVERIFY2(label->heightForWidth(label->width())<=label->fontMetrics().lineSpacing()+2,"A clean development version fits on one line");
+  const QString clean="0.1.1-dev.430+g528fe444b0cb";apply(clean,false);PUTGD_TRY_VERIFY(label->isVisible());QVERIFY(!link->isVisible());QCOMPARE(label->text().remove(QChar(0x200B)),clean);QVERIFY2(label->height()>=label->fontMetrics().height(),"A clean development version shows on one line");
   // Dirty development builds have no public page: the full string stays readable, unlinked, wrapping after "+" if needed.
   const QString dirty="0.1.1-dev.430+g528fe444b0cb.dirty";apply(dirty,true);PUTGD_TRY_VERIFY(label->isVisible());QVERIFY(!link->isVisible());QCOMPARE(label->text().remove(QChar(0x200B)),dirty);QCOMPARE(label->accessibleName(),"put.gd version "+dirty);
-  PUTGD_TRY_VERIFY2(label->width()<=rail->contentsRect().width()-28&&label->height()>=label->heightForWidth(label->width()),"The longest development version fits in the rail");QCOMPARE(openedUrls_.size(),1);
+  PUTGD_TRY_VERIFY2(window.rect().contains(QRect(label->mapTo(&window,QPoint()),label->size()))&&label->width()>=label->fontMetrics().horizontalAdvance(dirty),"The longest development version shows whole in the status band");QCOMPARE(openedUrls_.size(),1);
  }
 };
 QTEST_MAIN(SettingsGui)

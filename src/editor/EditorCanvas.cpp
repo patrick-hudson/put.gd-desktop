@@ -250,7 +250,8 @@ void EditorCanvas::paintEvent(QPaintEvent*){
    else handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});
   }
  }
- if(hasFocus()){painter.setPen(QPen(accent(),2));painter.setBrush(Qt::NoBrush);painter.drawRect(QRectF(rect()).adjusted(1,1,-1,-1));}
+ // The pane ring marks keyboard focus only, like every other control.
+ if(hasFocus()&&window()->testAttribute(Qt::WA_KeyboardFocusChange)){painter.setPen(QPen(accent(),2));painter.setBrush(Qt::NoBrush);painter.drawRect(QRectF(rect()).adjusted(1,1,-1,-1));}
 }
 
 void EditorCanvas::mousePressEvent(QMouseEvent* event){

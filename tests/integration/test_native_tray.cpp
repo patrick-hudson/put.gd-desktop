@@ -453,25 +453,26 @@ private slots:
   for (int i = 0; i < images.size(); ++i) {
    QCOMPARE(images[i].width, 24 * (i+1)); QCOMPARE(images[i].height, images[i].width);
    QCOMPARE(images[i].bytes.size(), images[i].width * images[i].height * 4);
-   int opaqueBlue = 0;
+   // The idle tray tint on a dark panel (Graphite #D6D6D2), as ARGB bytes.
+   int opaqueIdle = 0;
    for (int j = 0; j < images[i].bytes.size(); j += 4)
-    if (uchar(images[i].bytes[j]) == 255 && uchar(images[i].bytes[j+1]) == 155 && uchar(images[i].bytes[j+2]) == 188 && uchar(images[i].bytes[j+3]) == 255) ++opaqueBlue;
-   QVERIFY(opaqueBlue > 10);
+    if (uchar(images[i].bytes[j]) == 255 && uchar(images[i].bytes[j+1]) == 0xD6 && uchar(images[i].bytes[j+2]) == 0xD6 && uchar(images[i].bytes[j+3]) == 0xD2) ++opaqueIdle;
+   QVERIFY(opaqueIdle > 10);
   }
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
   auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 14);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   // Capture entries first: region, region & edit, window, desktop, screen recording, then the editor sources and the clipboard upload.
-  const QStringList order{"Capture Region", "Capture Region & Edit", "Capture Window", "Capture Desktop", "Capture Screen Recording", "Edit Image", "Upload Clipboard"};
+  const QStringList order{"Capture region", "Capture region & edit", "Capture window", "Capture desktop", "Record screen", "Edit image", "Upload clipboard"};
   for (int i = 0; i < order.size(); ++i) QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(i).variant()).props["label"].toString(), order[i]);
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(4).variant()).id, 16);
   // Other editor sources sit in one submenu.
   const auto editImage = qdbus_cast<WireLayout>(layout.children.at(5).variant());
   QCOMPARE(editImage.id, 13); QCOMPARE(editImage.props["children-display"].toString(), QString("submenu"));
   QCOMPARE(editImage.children.size(), 2);
-  QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(0).variant()).props["label"].toString(), QString("From clipboard"));
-  QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(1).variant()).props["label"].toString(), QString("From file…"));
+  QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(0).variant()).props["label"].toString(), QString("Edit clipboard image"));
+  QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(1).variant()).props["label"].toString(), QString("Edit an image file…"));
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(7).variant()).props["type"].toString(), QString("separator"));
   // Depth 1 lists the submenu header without expanding it.
   layout = qdbus_cast<WireLayout>(call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 1, QStringList{}}).arguments().at(1));

@@ -11,10 +11,15 @@
 #include "ui/FileDialog.h"
 #include "ui/Theme.h"
 #include "ui/VisualStyle.h"
+#include "ui/Graphite.h"
+#include "ui/Fonts.h"
+#include <QApplication>
 #include <QGuiApplication>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPolygonF>
+#include <QFontMetricsF>
 #include <QPointer>
 #include <QPushButton>
 #include <QScreen>
@@ -31,49 +36,6 @@
 
 namespace putgd::record {
 namespace {
-// The review window in the interface's scheme (#198). The frame view's
-// surround and the mask outlines sit on the recording and stay fixed.
-const char* const reviewStyle = R"QSS(
-QWidget#putgd-review { background: %bg%; color: %text%; }
-QLabel { color: %text%; }
-QLabel#muted { color: %textMuted%; }
-QWidget#status { color: %warning%; }
-QLabel#notice { background: %warningSurface%; color: %text%; border: 1px solid %warning%; border-radius: 6px; padding: 8px 10px; }
-QPushButton { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 5px 12px; }
-QPushButton:hover { background: %selected%; }
-QPushButton:disabled { color: %textMuted%; background: %surface%; border-color: %border%; }
-QPushButton#upload { background: %accent%; border-color: %accent%; color: %onAccent%; font-weight: 600; }
-QPushButton#upload:hover { background: %accentHover%; border-color: %accentHover%; }
-QPushButton#upload:disabled { background: %selected%; color: %textMuted%; border-color: %borderStrong%; }
-QSpinBox { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 2px 6px; }
-QSpinBox { padding-right: 22px; }
-QSpinBox:disabled { color: %textMuted%; background: %surface%; border-color: %border%; }
-QSpinBox::up-button, QSpinBox::down-button { subcontrol-origin: border; width: 20px; border: none; border-left: 1px solid %border%; background: transparent; }
-QSpinBox::up-button { subcontrol-position: top right; border-top-right-radius: 6px; }
-QSpinBox::down-button { subcontrol-position: bottom right; border-bottom-right-radius: 6px; }
-QSpinBox::up-button:hover, QSpinBox::down-button:hover { background: %selected%; }
-QSpinBox::up-button:pressed, QSpinBox::down-button:pressed { background: %borderStrong%; }
-QSpinBox::up-arrow { image: url(%INDICATORS%/spin-up.png); width: 10px; height: 10px; }
-QSpinBox::down-arrow { image: url(%INDICATORS%/spin-down.png); width: 10px; height: 10px; }
-QSpinBox::up-arrow:disabled, QSpinBox::up-arrow:off { image: url(%INDICATORS%/spin-up-off.png); }
-QSpinBox::down-arrow:disabled, QSpinBox::down-arrow:off { image: url(%INDICATORS%/spin-down-off.png); }
-QToolButton { background: transparent; color: %text%; border: 1px solid transparent; border-radius: 6px; padding: 3px; }
-QToolButton:hover { background: %selected%; border-color: %border%; }
-QToolButton:pressed { background: %borderStrong%; }
-QToolButton:checked { background: %selected%; border-color: %accent%; }
-QToolButton:focus { border-color: %accent%; }
-QWidget#separator { background: %border%; }
-QLabel#time { color: %textSecondary%; }
-QCheckBox { color: %text%; spacing: 6px; }
-QCheckBox:disabled { color: %textMuted%; }
-QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid %accent%; border-radius: 3px; background: %surfaceRaised%; }
-QCheckBox::indicator:checked { image: url(%INDICATORS%/check.png); background: %accent%; }
-QCheckBox::indicator:disabled { border-color: %border%; background: %surface%; }
-QComboBox { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; border-radius: 6px; padding: 2px 8px; }
-QComboBox:disabled { color: %textMuted%; }
-QComboBox::drop-down { border: none; width: 18px; }
-QComboBox QAbstractItemView { background: %surfaceRaised%; color: %text%; border: 1px solid %borderStrong%; selection-background-color: %selected%; selection-color: %text%; outline: none; }
-)QSS";
 constexpr int handleSize = 8;
 }
 
@@ -99,6 +61,33 @@ QRectF FrameView::toView(const QRect& c) const {
     const qreal sx = qreal(r.width()) / source.width(), sy = qreal(r.height()) / source.height();
     return QRectF(r.x() + c.x() * sx, r.y() + c.y() * sy, c.width() * sx, c.height() * sy);
 }
+namespace {
+// Over arbitrary captured content: a dark scrim under light text, so labels and
+// instructions read on pale and dark frames alike.
+void mediaLabel(QPainter& painter, const QPointF& at, const QString& text, const QRectF& bounds) {
+    const auto font = Graphite::font(Graphite::Type::metadata, true);
+    const QFontMetricsF metrics(font);
+    QRectF box(at, QSizeF(metrics.horizontalAdvance(text) + 12, metrics.height() + 6));
+    if (box.right() > bounds.right()) box.moveRight(bounds.right());
+    if (box.bottom() > bounds.bottom()) box.moveBottom(bounds.bottom());
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(0, 0, 0, 175));
+    painter.drawRoundedRect(box, 4, 4);
+    Graphite::paintText(painter, box.adjusted(6, 0, -6, 0), text, Theme::onMedia(), font);
+    painter.restore();
+}
+// A mask outline readable on any content: a dark line under a light (or the
+// accent, when selected) one.
+void dualOutline(QPainter& painter, const QRectF& r, const QColor& colour, qreal width, Qt::PenStyle style) {
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(QColor(0, 0, 0, 170), width + 2, Qt::SolidLine));
+    painter.drawRect(r);
+    painter.setPen(QPen(colour, width, style));
+    painter.drawRect(r);
+}
+}
 void FrameView::paintEvent(QPaintEvent*) {
     QPainter painter(this);
     painter.fillRect(rect(), QColor("#0d0f13"));
@@ -106,23 +95,25 @@ void FrameView::paintEvent(QPaintEvent*) {
     if (!frame_.isNull()) painter.drawImage(target, frame_);
     for (const auto& mask : masks_) {
         const bool active = mask.start <= timeUs_ && timeUs_ < mask.end;
+        const bool selected = mask.id == selected_;
         const auto r = toView(mask.rect);
-        QPen pen(mask.id == selected_ ? QColor("#9bbcff") : active ? QColor(255, 255, 255, 200) : QColor(255, 255, 255, 90), mask.id == selected_ ? 2 : 1, active ? Qt::SolidLine : Qt::DashLine);
-        painter.setPen(pen);
-        painter.setBrush(mask.kind == "solid" ? QBrush(QColor(0, 0, 0, active ? 0 : 60)) : QBrush(QColor(155, 188, 255, active ? 0 : 30)));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(mask.kind == "solid" ? QBrush(QColor(0, 0, 0, active ? 0 : 60)) : QBrush(QColor(255, 255, 255, active ? 0 : 30)));
         painter.drawRect(r);
-        painter.setPen(Qt::white);
-        painter.drawText(r.adjusted(4, 2, -4, -2), Qt::AlignTop | Qt::AlignLeft, mask.kind == "solid" ? QStringLiteral("solid") : QStringLiteral("blur"));
-        if (mask.id == selected_) { painter.setBrush(QColor("#9bbcff")); painter.setPen(Qt::NoPen); painter.drawRect(QRectF(r.right() - handleSize, r.bottom() - handleSize, handleSize, handleSize)); }
+        dualOutline(painter, r, selected ? Theme::current().accent : active ? QColor(255, 255, 255, 230) : QColor(255, 255, 255, 150), selected ? 2 : 1, active ? Qt::SolidLine : Qt::DashLine);
+        mediaLabel(painter, r.topLeft() + QPointF(3, 3), mask.kind == "solid" ? QStringLiteral("Solid cover") : QStringLiteral("Blur"), target);
+        if (selected) { painter.setBrush(Theme::current().accent); painter.setPen(QPen(QColor(0, 0, 0, 170), 1)); painter.drawRect(QRectF(r.right() - handleSize, r.bottom() - handleSize, handleSize, handleSize)); }
     }
     if (drag_ == Drag::Create) {
         // The area being dragged, clipped to the frame like the mask it becomes.
         const auto pending = QRectF(anchor_, current_).normalized().intersected(target);
-        painter.setPen(QPen(QColor("#9bbcff"), 1.5, Qt::DashLine));
-        painter.setBrush(armed_ == "solid" ? QBrush(QColor(0, 0, 0, 120)) : QBrush(QColor(155, 188, 255, 70)));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(armed_ == "solid" ? QBrush(QColor(0, 0, 0, 120)) : QBrush(QColor(255, 255, 255, 60)));
         painter.drawRect(pending);
+        dualOutline(painter, pending, Theme::current().accent, 1.5, Qt::DashLine);
     }
-    if (!armed_.isEmpty()) { painter.setPen(Qt::white); painter.drawText(rect().adjusted(8, 8, -8, -8), Qt::AlignTop | Qt::AlignLeft, QStringLiteral("Drag on the frame to place the %1 area").arg(armed_)); }
+    if (!armed_.isEmpty())
+        mediaLabel(painter, QPointF(target.left() + 8, target.top() + 8), armed_ == "solid" ? QStringLiteral("Drag on the frame to place the solid cover") : QStringLiteral("Drag on the frame to place the blur"), target);
 }
 void FrameView::mousePressEvent(QMouseEvent* e) {
     if (e->button() != Qt::LeftButton) return;
@@ -224,6 +215,9 @@ QRect ReviewTimeline::maskRect(const QString& id) const {
 QSize ReviewTimeline::sizeHint() const { return {480, minimumSizeHint().height()}; }
 QSize ReviewTimeline::minimumSizeHint() const { return {120, std::max(28, lanes_ ? laneTop + lanes_ * (laneHeight + laneGap) - laneGap + bottomPad : trackTop + trackHeight + bottomPad)}; }
 void ReviewTimeline::paintEvent(QPaintEvent*) {
+    // Graphite: a quiet track, the retained interval framed in amber between
+    // two grip handles, lightly dimmed trimmed-away ends, mask bars in lanes
+    // and the playhead with its marker.
     const auto& p = Theme::current();
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
@@ -231,34 +225,52 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
     const bool trimming = drag_ == Drag::TrimStart || drag_ == Drag::TrimEnd;
     const qint64 start = trimming ? dragStart_ : trimStart_, end = trimming ? dragEnd_ : trimEnd_;
     painter.setPen(QPen(p.border, 1));
-    painter.setBrush(p.surface);
+    painter.setBrush(p.surfaceRaised);
     painter.drawRoundedRect(QRectF(track).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
-    // The retained interval between the two trim handles.
+    const QColor edge = isEnabled() ? p.accent : p.borderStrong;
     QColor kept = p.accent;
-    kept.setAlpha(isEnabled() ? 110 : 50);
-    painter.setPen(Qt::NoPen);
+    kept.setAlpha(isEnabled() ? 70 : 30);
+    const QRectF retained(xFor(start), track.top() + 0.5, xFor(end) - xFor(start), track.height() - 1);
+    painter.setPen(QPen(edge, 1.5));
     painter.setBrush(kept);
-    painter.drawRect(QRectF(xFor(start), track.top() + 1, xFor(end) - xFor(start), track.height() - 2));
-    painter.setBrush(isEnabled() ? p.accent : p.borderStrong);
-    for (const qint64 at : {start, end}) painter.drawRoundedRect(QRectF(xFor(at) - 2, track.top() - 3, 4, track.height() + 6), 2, 2);
+    painter.drawRect(retained);
+    painter.setPen(Qt::NoPen);
+    for (const qint64 at : {start, end}) {
+        const QRectF grip(xFor(at) - 3.5, track.top() - 3, 7, track.height() + 6);
+        painter.setBrush(edge);
+        painter.drawRoundedRect(grip, 2.5, 2.5);
+        painter.setPen(QPen(p.onAccent, 1));
+        painter.drawLine(QPointF(grip.center().x(), grip.top() + 5), QPointF(grip.center().x(), grip.bottom() - 5));
+        painter.setPen(Qt::NoPen);
+    }
     for (int i = 0; i < masks_.size(); ++i) {
         const auto& mask = masks_[i];
         const bool selected = mask.id == selected_;
         const bool retiming = selected && (drag_ == Drag::MaskStart || drag_ == Drag::MaskEnd);
         const auto lane = laneRect(lane_.value(i));
         const int left = xFor(retiming ? dragStart_ : mask.start), right = xFor(retiming ? dragEnd_ : mask.end);
-        QColor color = mask.kind == "solid" ? p.textSecondary : p.accent;
-        color.setAlpha(selected ? 235 : 120);
-        painter.setPen(selected ? QPen(p.text, 1) : Qt::NoPen);
-        painter.setBrush(color);
-        painter.drawRoundedRect(QRectF(left, lane.top(), std::max(3, right - left), lane.height()).adjusted(0.5, 0.5, -0.5, -0.5), 2, 2);
-        if (selected) { painter.setPen(Qt::NoPen); painter.setBrush(p.text); for (const int x : {left, right}) painter.drawRoundedRect(QRectF(x - 1.5, lane.top() - 2, 3, lane.height() + 4), 1, 1); }
+        const QRectF bar = QRectF(left, lane.top(), std::max(3, right - left), lane.height()).adjusted(0.5, 0.5, -0.5, -0.5);
+        painter.setPen(selected ? QPen(p.accent, 1.5) : QPen(p.border, 1));
+        painter.setBrush(selected ? p.warningSurface : p.selected);
+        painter.drawRoundedRect(bar, 3, 3);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(selected ? p.accent : p.textMuted);
+        painter.drawRoundedRect(QRectF(bar.left(), bar.top(), 2.5, bar.height()), 1, 1);
+        if (bar.width() > 40 && lane.height() >= 12) {
+            auto font = Graphite::font(Graphite::Type::micro);
+            if (font.pixelSize() > lane.height() - 2) font.setPixelSize(std::max(8, lane.height() - 2));
+            Graphite::paintText(painter, bar.adjusted(7, 0, -4, 0), mask.kind == "solid" ? QStringLiteral("Solid cover") : QStringLiteral("Blur"), selected ? p.text : p.textSecondary, font);
+        }
+        if (selected) { painter.setBrush(p.accent); for (const int x : {left, right}) painter.drawRoundedRect(QRectF(x - 1.5, lane.top() - 2, 3, lane.height() + 4), 1, 1); }
     }
     // The playhead spans the track and the lanes.
     const int x = xFor(playhead_);
-    painter.setPen(QPen(p.text, 2));
-    painter.drawLine(QPointF(x, 1), QPointF(x, height() - 1));
-    if (hasFocus()) { painter.setPen(QPen(p.borderStrong, 1)); painter.setBrush(Qt::NoBrush); painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 5, 5); }
+    painter.setPen(QPen(p.text, 1.5));
+    painter.drawLine(QPointF(x, 3), QPointF(x, height() - 1));
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(p.text);
+    painter.drawPolygon(QPolygonF{QPointF(x - 4, 0), QPointF(x + 4, 0), QPointF(x, 5)});
+    if (Graphite::keyboardFocus(this)) { painter.setPen(QPen(p.accent, 1)); painter.setBrush(Qt::NoBrush); painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 5, 5); }
 }
 void ReviewTimeline::seek(qint64 us) { setPlayhead(us); emit scrubbed(playhead_); }
 void ReviewTimeline::mousePressEvent(QMouseEvent* e) {
@@ -345,16 +357,26 @@ void ElidedLabel::paintEvent(QPaintEvent*) {
 ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config, QWidget* parent) : QWidget(parent, Qt::Window), options_(options), config_(config), frameTimer_(this) {
     setObjectName("putgd-review");
     setWindowTitle("Review recording");
-    applyTheme(*this, QString::fromLatin1(reviewStyle));
+    // The Graphite controls (#198: in the interface's scheme).
+    Fonts::load();
+    if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) VisualStyle::apply(*app);
     setAttribute(Qt::WA_DeleteOnClose, false);
     // #283: the frame takes the window; the timeline, one row of tools and the
-    // action row sit under it.
-    auto* root = new QVBoxLayout(this);
-    root->setContentsMargins(10, 8, 10, 8);
+    // action footer sit under it. The desktop's title bar names the window.
+    auto* frame = new QVBoxLayout(this);
+    frame->setContentsMargins(0, 0, 0, 0);
+    frame->setSpacing(0);
+    // The review keeps the desktop's title bar: a 56 px document header would
+    // take the frame below #283's share (60%, 45% at 150% text), measured on
+    // native GNOME Wayland. Its draft state is in the footer instead.
+    auto* root = new QVBoxLayout;
+    root->setContentsMargins(12, 8, 12, 6);
     root->setSpacing(6);
+    frame->addLayout(root, 1);
     // Why the capture ended when it stopped itself (#225); hidden otherwise.
     notice_ = new QLabel(this);
     notice_->setObjectName("notice");
+    VisualStyle::role(notice_, "notice");
     notice_->setWordWrap(true);
     notice_->setTextFormat(Qt::PlainText);
     notice_->setAccessibleName("Why the recording stopped");
@@ -373,7 +395,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         button->setAutoRaise(true);
         return button;
     };
-    auto separator = [this] { auto* line = new QWidget(this); line->setObjectName("separator"); line->setFixedSize(1, 20); return line; };
+    auto separator = [this] { auto* line = Graphite::rule(this, Qt::Vertical); line->setObjectName("separator"); line->setFixedHeight(20); return line; };
     auto* transport = new QHBoxLayout;
     transport->setSpacing(6);
     play_ = tool("play", "Play", "Play the retained part silently (Space)");
@@ -383,6 +405,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     timeline_->setToolTip("Click or drag to scrub; drag the trim handles or a selected mask's ends to retime them. Arrows step, Home/End jump to the kept part.");
     time_ = new QLabel(this);
     time_->setObjectName("time");
+    VisualStyle::role(time_, "secondary");
     time_->setAccessibleName("Playhead time");
     time_->setMinimumWidth(time_->fontMetrics().horizontalAdvance(QStringLiteral("00:00.00 / 00:00.00 (trimmed)")));
     transport->addWidget(play_);
@@ -402,6 +425,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     resetTrim_ = tool("trim-reset", "Reset trim", "Keep the whole recording");
     retained_ = new QLabel(this);
     retained_->setObjectName("muted");
+    VisualStyle::role(retained_, "meta");
     retained_->setAccessibleName("Kept interval");
     addBlur_ = tool("blur", "Add blur", "Add a blur, then drag on the frame to place it");
     addSolid_ = tool("redact", "Add solid cover", "Add a solid cover, then drag on the frame to place it");
@@ -422,6 +446,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     maskEnd_ = tool("mask-out", "Set mask end", "End the selected mask at the playhead (Shift+O)");
     strengthLabel_ = new QLabel("Blur", maskTools_);
     strengthLabel_->setObjectName("muted");
+    VisualStyle::role(strengthLabel_, "meta");
     strength_ = new QSpinBox(maskTools_);
     strength_->setRange(2, 64);
     strength_->setValue(16);
@@ -444,19 +469,37 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     }
     status_ = new ElidedLabel(this);
     status_->setObjectName("status");
+    VisualStyle::role(status_, "warning");
     upload_ = new QPushButton("Upload", this);
     upload_->setObjectName("upload");
-    save_ = new QPushButton("Save copy…", this);
+    upload_->setIcon(VisualStyle::icon("upload"));
+    VisualStyle::role(upload_, "primary");
+    upload_->setToolTip("Upload the reviewed clip with its trim and masks (the preview is silent; video exports keep the recorded system audio)");
+    save_ = new QPushButton("Save a copy…", this);
+    save_->setIcon(VisualStyle::icon("save"));
+    save_->setToolTip("Export the reviewed clip to a file on this computer. Nothing is uploaded.");
     cancel_ = new QPushButton("Discard", this);
+    VisualStyle::role(cancel_, "quiet");
+    auto* draft = new QLabel("Not uploaded", this);
+    draft->setObjectName("draftState");
+    draft->setToolTip("Nothing uploads until you choose Upload; Save a copy… exports locally.");
+    VisualStyle::role(draft, "meta");
+    actions->addWidget(draft);
+    actions->addSpacing(8);
     auto* output = new QLabel("Output", this);
+    VisualStyle::role(output, "meta");
     output->setBuddy(format_);
+    actions->setContentsMargins(12, 6, 12, 6);
     actions->addWidget(output);
     actions->addWidget(format_);
     actions->addWidget(status_, 1);
     actions->addWidget(save_);
     actions->addWidget(cancel_);
     actions->addWidget(upload_);
-    root->addLayout(actions);
+    auto* footer = new Graphite::Surface("bg", Qt::TopEdge, this);
+    footer->setObjectName("reviewFooter");
+    footer->setLayout(actions);
+    frame->addWidget(footer);
     // Keyboard (#283): Space plays and pauses, I/O set the trim, Shift+I/O the
     // selected mask's times, Delete removes it, Escape drops an unplaced mask.
     auto shortcut = [this](const QKeySequence& key, auto slot) { auto* s = new QShortcut(key, this); s->setContext(Qt::WindowShortcut); connect(s, &QShortcut::activated, this, slot); return s; };
