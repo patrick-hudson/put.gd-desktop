@@ -40,7 +40,7 @@ public:
  // (ui.diagnostics); see docs/diagnostics.md.
  void diagnosticsCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  QJsonObject diagnosticsState()const;
- // #259: General → Local copies' Choose folder… / Browse… (dialog outputFolder,
+ // #259: Capture → Local copies' Browse… buttons (dialog outputFolder,
  // field root|images|videos|text|other) and the package dialog's Choose folder…
  // (diagnosticsFolder): action open|inspect|cancel, answered with the chooser's state.
  void fileDialogCommand(const QString& dialog,const QString& action,const QString& field,std::function<void(Error,QJsonObject)> reply);
@@ -53,6 +53,8 @@ signals:
  void viewStateChanged();
  void actionRequested(const QString&);
  void quitRequested();
+ // Capture's "Add a destination…" when none exists: the main window shows Destinations.
+ void destinationsRequested();
  // #237: the theme picked in Appearance, shown before the resident accepts it;
  // empty when the accepted setting applies again (a refused or discarded save).
  void appearancePreview(const QString& theme);
@@ -70,6 +72,8 @@ private:
  QToolButton* captureExceptions_=nullptr;QHash<QString,QCheckBox*> useCaptureDefault_;QHash<QString,QWidget*> captureEditors_;
  bool captureDefaultsEnabled_=false,captureRoutingEdited_=false;
  QLabel* captureOutputNotice_=nullptr;QHash<QString,QLabel*> captureStatus_;
+ // The no-output notice under Destination, with Keep a local copy and Choose/Add a destination.
+ QWidget* captureOutputBlock_=nullptr;QPushButton* chooseOutput_=nullptr;
  bool editChangedSinceSubmission(const QString&)const;
  void stageEdit(const QString&,const QJsonValue&,QWidget*);
  void queueEdit(QWidget*,QString path={});void persistNextEdit();void refreshDestinationList(const QJsonObject& document={});void refreshCredentialHint();void inlineError(QWidget*,const QString&);void autosaveFailure(const Error&);
@@ -78,7 +82,7 @@ private:
  bool autosaveBlocked_=false;QVector<QPushButton*> retryAutosave_;
  QTimer* autosave_=nullptr;QPointer<QWidget> destinationPage_;QTabWidget* tabs_=nullptr;QListWidget* destinationList_=nullptr;
  QWidget *linksPanel_=nullptr,*connectionPanel_=nullptr;QPushButton* defaultButton_=nullptr;
- QLabel* credentialHint_=nullptr;
+ QLabel* credentialHint_=nullptr;QFormLayout* credentialForm_=nullptr;
  QLabel *configPath_=nullptr,*endpointHint_=nullptr,*linkExample_=nullptr,*destinationStatus_=nullptr;
  void refreshEffectiveLimits();void updateLimitHints();QHash<QString,QLabel*> limitHints_;QJsonObject effectiveLimits_;
  void refreshUpdateStatus();void checkForUpdates(std::function<void(Error,QJsonObject)> done);
@@ -87,7 +91,7 @@ private:
  // channel, empty when it never checks, and the choice as shown at load.
  QString buildUpdateChannel() const;void showUpdateChannel();QString updateChannelSetting_,updateChannelShown_;
  // #348: set by showUpdates until the user scrolls or leaves the page.
- void revealUpdates();bool revealUpdates_=false;QWidget *generalPage_=nullptr,*updatesCard_=nullptr;
+ void revealUpdates();bool revealUpdates_=false;void revealAndFocus(QWidget*);QWidget *generalPage_=nullptr,*updatesCard_=nullptr;
  QCheckBox* checkUpdates_=nullptr;QComboBox* updateChannel_=nullptr;QLabel* updateStatus_=nullptr;QPushButton *checkNow_=nullptr,*downloadUpdate_=nullptr,*releaseNotes_=nullptr,*openUpdates_=nullptr;QWidget *updateActionsRow_=nullptr,*updateCommandRow_=nullptr;QLineEdit* updateCommand_=nullptr;QFormLayout* updatesForm_=nullptr;QList<QWidget*> updateRows_;
  // AppImage install (#293 phase 3): Download and install, its progress and Restart.
  QLabel *updateChannelSource_=nullptr,*otherChannelText_=nullptr,*otherChannelCommands_=nullptr;QWidget* otherChannelRow_=nullptr;
@@ -97,6 +101,8 @@ private:
  QPointer<QDialog> packageDialog_;
  void updateProtonAccountDisplay();bool applyProtonAccountResult(const QString&,const QJsonObject&);
  void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void configurationChanged();
+ // A control's own (provider) enabled state; setup in progress disables it on top.
+ void allowControl(QWidget*,bool allowed);bool setupBusy_=false;
  void setupFeedback(const QString&,bool success=false);
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
  void endAppearancePreview();

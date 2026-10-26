@@ -2,6 +2,9 @@
 #include "core/BuildInfo.h"
 #include "core/ReleaseLink.h"
 #include "ui/VisualStyle.h"
+#include "ui/Graphite.h"
+#include <QToolTip>
+#include <QSet>
 #include "ui/RedesignTheme.h"
 #include <QVBoxLayout>
 #include <QProgressBar>
@@ -359,11 +362,11 @@ private slots:
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();
   auto* file=window.findChild<QLabel*>("maxFileBytesResolved");auto* batch=window.findChild<QLabel*>("maxBatchBytesResolved");auto* waiting=window.findChild<QLabel*>("pendingArtifactBytesResolved");
   QVERIFY(file&&batch&&waiting);
-  PUTGD_TRY_COMPARE(file->text(),QString("· no limit (keeps 4 GiB free)"));QCOMPARE(batch->text(),file->text());QCOMPARE(waiting->text(),file->text());
+  PUTGD_TRY_COMPARE(file->text(),QString("No limit on this computer · keeps 4 GiB free"));QCOMPARE(batch->text(),file->text());QCOMPARE(waiting->text(),file->text());
   QVERIFY(file->toolTip().contains("keeps 4 GiB free"));
   // A typed size or No limit is its own answer.
   auto* edit=window.findChild<QLineEdit*>("maxFileBytes");edit->setText("2");QVERIFY(file->text().isEmpty());QVERIFY(!file->isVisibleTo(window.settings()));
-  edit->setText("auto");QCOMPARE(file->text(),QString("· no limit (keeps 4 GiB free)"));
+  edit->setText("auto");QCOMPARE(file->text(),QString("No limit on this computer · keeps 4 GiB free"));
  }
  void conflictingReorderRestoresThePreviousOrder(){
   QTemporaryDir dir;const auto path=dir.filePath("config.json");SettingsService service(path,[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
@@ -610,7 +613,9 @@ private slots:
   QTest::keyClick(view,Qt::Key_End);QTest::keyClick(view,Qt::Key_Return);PUTGD_TRY_COMPARE(combo->currentIndex(),59);PUTGD_TRY_VERIFY(!view->isVisible());
  }
  void protonConnectOpensSignInOnceAndShowsProgressBesideButton(){
-  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=configuration(dir.path(),true);doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic Proton"},{"provider","proton-drive"},{"settings",ProtonProvider::defaults()},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-proton"}}}}};QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);int starts=0;JsonReply complete;fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply done,auto event){QCOMPARE(kind,QString("connectAccount"));++starts;complete=done;event({{"event","auth"},{"url","https://account.proton.me/cli?synthetic=true"}});});openedUrls_.clear();host::setTestOpener([this](const QUrl& url){recordProtonUrl(url);});auto cleanup=qScopeGuard([]{host::setTestOpener({});});MainWindow window(fixture.session);window.navigate("destinations");window.show();auto* button=window.findChild<QPushButton*>("connectProtonAccount");button->click();PUTGD_TRY_COMPARE(openedUrls_.size(),1);QCOMPARE(openedUrls_.first().host(),QString("account.proton.me"));auto* account=window.findChild<QLabel*>("protonAccountStatus");QVERIFY(account);QVERIFY(account->text().contains("browser"));QVERIFY(account->isVisible());putgd::test::settle(600);PUTGD_TRY_COMPARE(openedUrls_.size(),1);PUTGD_TRY_COMPARE(starts,1);PUTGD_TRY_VERIFY(complete);complete({"proton_runtime_unavailable","Synthetic runtime unavailable",{}},{});PUTGD_TRY_VERIFY(account->text().contains("Synthetic runtime unavailable"));PUTGD_TRY_VERIFY(button->isEnabled());
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=configuration(dir.path(),true);doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic Proton"},{"provider","proton-drive"},{"settings",ProtonProvider::defaults()},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-proton"}}}}};QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);int starts=0;JsonReply complete;fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply done,auto event){QCOMPARE(kind,QString("connectAccount"));++starts;complete=done;event({{"event","auth"},{"url","https://account.proton.me/cli?synthetic=true"}});});openedUrls_.clear();host::setTestOpener([this](const QUrl& url){recordProtonUrl(url);});auto cleanup=qScopeGuard([]{host::setTestOpener({});});MainWindow window(fixture.session);window.navigate("destinations");window.show();auto* button=window.findChild<QPushButton*>("connectProtonAccount");button->click();PUTGD_TRY_COMPARE(openedUrls_.size(),1);QCOMPARE(openedUrls_.first().host(),QString("account.proton.me"));auto* account=window.findChild<QLabel*>("protonAccountStatus");QVERIFY(account);QVERIFY(account->text().contains("browser"));QVERIFY(account->isVisible());
+  // While setup runs, its actions are disabled but the account and status text stay readable.
+  QVERIFY(!button->isEnabled());QVERIFY(!window.findChild<QComboBox*>("protonFolder")->isEnabled());QVERIFY(account->isEnabled());QVERIFY(window.findChild<QLabel*>("protonFolderStatus")->isEnabled());QVERIFY(window.findChild<QLabel*>("destinationStatus")->text().contains("Connecting account"));putgd::test::settle(600);PUTGD_TRY_COMPARE(openedUrls_.size(),1);PUTGD_TRY_COMPARE(starts,1);PUTGD_TRY_VERIFY(complete);complete({"proton_runtime_unavailable","Synthetic runtime unavailable",{}},{});PUTGD_TRY_VERIFY(account->text().contains("Synthetic runtime unavailable"));PUTGD_TRY_VERIFY(button->isEnabled());
  }
 
  void protonConnectionTestAllowsMakingTheDestinationDefault_data(){
@@ -709,7 +714,7 @@ private slots:
   PUTGD_TRY_COMPARE(service.document(),initial);PUTGD_TRY_COMPARE(service.revision(),revision);PUTGD_TRY_VERIFY(!window.findChild<QPushButton*>("saveSettings"));PUTGD_TRY_VERIFY(!window.findChild<QPushButton*>("cancelSettings"));PUTGD_TRY_VERIFY(!window.findChild<QPushButton*>("setupLocal"));auto* tabs=window.findChild<QTabWidget*>("settingsTabs");QVERIFY(tabs);QCOMPARE(tabs->count(),4);QCOMPARE(tabs->tabText(0),QString("General"));QCOMPARE(tabs->tabText(3),QString("Advanced"));
  }
  void finishedFieldAutosavesAndSurvivesRestart(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));auto doc=configuration(dir.path(),true);QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();auto* root=window.findChild<QLineEdit*>("archiveRoot");QVERIFY(root);window.activateWindow();root->setFocus();PUTGD_TRY_VERIFY(root->hasFocus());root->selectAll();QTest::keyClicks(root,dir.filePath("saved-locally"));putgd::test::settle(450);PUTGD_TRY_COMPARE(service.document()["archive"].toObject()["root"],doc["archive"].toObject()["root"]);window.findChild<QCheckBox*>("launchAtLogin")->setFocus();PUTGD_TRY_COMPARE(service.document()["archive"].toObject()["root"].toString(),dir.filePath("saved-locally"));SettingsService restarted(service.path());QVERIFY(restarted.reload());QCOMPARE(restarted.document()["archive"],service.document()["archive"]);
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));auto doc=configuration(dir.path(),true);QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();auto* root=window.findChild<QLineEdit*>("archiveRoot");QVERIFY(root);window.activateWindow();root->setFocus();PUTGD_TRY_VERIFY(root->hasFocus());root->selectAll();QTest::keyClicks(root,dir.filePath("saved-locally"));putgd::test::settle(450);PUTGD_TRY_COMPARE(service.document()["archive"].toObject()["root"],doc["archive"].toObject()["root"]);window.findChild<QCheckBox*>("keepUploadCopies")->setFocus();PUTGD_TRY_COMPARE(service.document()["archive"].toObject()["root"].toString(),dir.filePath("saved-locally"));SettingsService restarted(service.path());QVERIFY(restarted.reload());QCOMPARE(restarted.document()["archive"],service.document()["archive"]);
  }
  void invalidEditStaysInlineWhileIndependentValidToggleSaves(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);auto* number=window.findChild<QLineEdit*>("maxFiles");number->setText("not a number");QMetaObject::invokeMethod(number,"editingFinished");PUTGD_TRY_VERIFY(number->property("invalid").toBool());QCOMPARE(service.document()["limits"].toObject()["maxFiles"].toInt(),100);auto* notify=window.findChild<QCheckBox*>("notifications");notify->setChecked(false);PUTGD_TRY_VERIFY(!service.document()["preferences"].toObject()["notifications"].toBool());QCOMPARE(number->text(),QString("not a number"));QVERIFY(number->property("invalid").toBool());QCOMPARE(service.document()["limits"].toObject()["maxFiles"].toInt(),100);
@@ -840,7 +845,8 @@ private slots:
   list->setCurrentRow(0);auto* label=window.findChild<QLabel*>("protonAccountStatus");QVERIFY(label->isVisible());PUTGD_TRY_VERIFY(label->text().contains("synthetic-new@example.invalid"));QCOMPARE(window.findChild<QPushButton*>("connectProtonAccount")->text(),QString("Reconnect account…"));PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["accountRootUid"].toString(),QString("synthetic-new-account"));QCOMPARE(starts,1);QVERIFY(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["folderUid"].toString().isEmpty());QCOMPARE(service.document()["profiles"].toArray()[1],other);
  }
  void storedCredentialHintsNeverExportFullKeysOrOverwriteInputs(){
-  QTemporaryDir dir;CredentialStore secrets;S3Provider s3(secrets);auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=profile;doc["profiles"]=profiles;SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return s3.validateSettings(value);});QVERIFY(service.save(doc,{}));secrets.setSession("development-s3",{"AKIA-synthetic-full-access","synthetic-full-secret","synthetic-token"});UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();auto* hint=window.findChild<QLabel*>("storedCredentialHint");PUTGD_TRY_VERIFY(hint->text().contains("AKIA"));QVERIFY(hint->text().contains("Secret key stored"));auto* access=window.findChild<QLineEdit*>("credentialAccessKey");QVERIFY(access->text().isEmpty());QVERIFY(access->placeholderText().contains("AKIA"));QVERIFY(!access->placeholderText().contains("full-access"));QCOMPARE(window.findChild<QLineEdit*>("credentialSecretKey")->echoMode(),QLineEdit::Password);const auto state=QJsonDocument(window.settings()->saveViewState()).toJson();QVERIFY(!state.contains("AKIA"));QVERIFY(!state.contains("synthetic-full-secret"));bool done=false;QJsonObject reply;fixture.session.request("setup.credentialHint",{{"profileId","development-s3"},{"expectedRevision",service.revision()}},this,[&](Error error,QJsonObject value){QVERIFY(!error);reply=value;done=true;});PUTGD_TRY_VERIFY(done);const auto encoded=QJsonDocument(reply).toJson();QVERIFY(!encoded.contains("synthetic-full-access"));QVERIFY(!encoded.contains("synthetic-full-secret"));QVERIFY(!encoded.contains("synthetic-token"));
+  QTemporaryDir dir;CredentialStore secrets;S3Provider s3(secrets);auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=profile;doc["profiles"]=profiles;SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return s3.validateSettings(value);});QVERIFY(service.save(doc,{}));secrets.setSession("development-s3",{"AKIA-synthetic-full-access","synthetic-full-secret","synthetic-token"});UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();auto* hint=window.findChild<QLabel*>("storedCredentialHint");PUTGD_TRY_VERIFY(hint->text().contains("AKIA"));QVERIFY(hint->text().contains("Secret key stored"));auto* access=window.findChild<QLineEdit*>("credentialAccessKey");QVERIFY(access->text().isEmpty());// The status row identifies the key; the field only invites a replacement.
+QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText().contains("AKIA"));QVERIFY(hint->text().contains("For this session"));QCOMPARE(window.findChild<QLineEdit*>("credentialSecretKey")->echoMode(),QLineEdit::Password);const auto state=QJsonDocument(window.settings()->saveViewState()).toJson();QVERIFY(!state.contains("AKIA"));QVERIFY(!state.contains("synthetic-full-secret"));bool done=false;QJsonObject reply;fixture.session.request("setup.credentialHint",{{"profileId","development-s3"},{"expectedRevision",service.revision()}},this,[&](Error error,QJsonObject value){QVERIFY(!error);reply=value;done=true;});PUTGD_TRY_VERIFY(done);const auto encoded=QJsonDocument(reply).toJson();QVERIFY(!encoded.contains("synthetic-full-access"));QVERIFY(!encoded.contains("synthetic-full-secret"));QVERIFY(!encoded.contains("synthetic-token"));
  }
  void connectionTestShowsItsResultOnTheDestinationPage(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
@@ -962,9 +968,103 @@ private slots:
   SettingsWindow window(fixture.session);auto state=window.saveViewState();state["setupJobs"]=jobs;QVERIFY(window.restoreViewState(state));
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(window.saveViewState()["setupJobs"].toArray().size(),1,2000);
   QVERIFY(!window.findChild<QPushButton*>("testDestination")->isEnabled());
+  // Controls are disabled one by one, not their sections: labels stay enabled.
+  QVERIFY(!window.findChild<QLineEdit*>("s3Bucket")->isEnabled());QVERIFY(!window.findChild<QPushButton*>("storeCredentials")->isEnabled());QVERIFY(window.findChild<QWidget*>("destinationEditor")->isEnabled());QVERIFY(window.findChild<QLabel*>("storedCredentialHint")->isEnabled());
   finish["second-s3"]({});
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(window.saveViewState()["setupJobs"].toArray().isEmpty(),2000);
   QVERIFY(window.findChild<QPushButton*>("testDestination")->isEnabled());QCOMPARE(starts,2);
+  // Afterwards each control returns to its provider's state.
+  QVERIFY(window.findChild<QLineEdit*>("s3Bucket")->isEnabled());QVERIFY(window.findChild<QComboBox*>("s3AclMode")->isEnabled());QVERIFY(!window.findChild<QComboBox*>("b2LinkMode")->isEnabled());
+ }
+ void localCopiesShareTheCapturePageWithTheBlockingNotice(){
+  // One output decision on one page: Local copies sit on Capture, and the
+  // no-output notice sits right under Destination with the two ways out.
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto archive=doc["archive"].toObject();archive["keepUploads"]=false;doc["archive"]=archive;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");tabs->setCurrentIndex(1);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* keep=window.findChild<QCheckBox*>("keepUploadCopies");QVERIFY(keep);QVERIFY(tabs->widget(1)->isAncestorOf(keep));QVERIFY(!tabs->widget(0)->isAncestorOf(keep));QVERIFY(tabs->widget(1)->isAncestorOf(window.findChild<QLineEdit*>("archiveRoot")));
+  auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");auto* sharing=window.findChild<QComboBox*>("defaultCaptureSharing");auto* block=window.findChild<QWidget*>("captureOutputBlock");QVERIFY(destination&&sharing&&block);
+  QVERIFY(!block->isVisible());
+  destination->setCurrentIndex(destination->findData(QString{}));PUTGD_TRY_VERIFY(block->isVisible());
+  auto* page=tabs->widget(1);const auto top=[&](QWidget* widget){return widget->mapTo(page,QPoint()).y();};QVERIFY(top(block)>top(destination));QVERIFY(top(block)<top(sharing));
+  auto* scroll=qobject_cast<QScrollArea*>(page);QVERIFY(scroll);QVERIFY(scroll->viewport()->rect().contains(QRect(block->mapTo(scroll->viewport(),QPoint()),block->size())));
+  QVERIFY(window.findChild<QLabel*>("captureOutputNotice")->text().contains("will fail"));
+  QCOMPARE(window.findChild<QPushButton*>("chooseCaptureDestination")->text(),QString("Choose a destination"));
+  window.findChild<QPushButton*>("enableLocalCopies")->click();QVERIFY(keep->isChecked());PUTGD_TRY_VERIFY(service.snapshot().archive.keepUploads);QVERIFY(!block->isVisible());
+  // With no destination at all, the notice's action goes to Destinations to add one.
+  QTemporaryDir fresh;SettingsService first(fresh.filePath("config.json"));CredentialStore none;UiSessionFixture empty(first,none);MainWindow initial(empty.session);initial.navigate("settings");initial.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);initial.show();
+  initial.findChild<QCheckBox*>("keepUploadCopies")->setChecked(false);auto* add=initial.findChild<QPushButton*>("chooseCaptureDestination");PUTGD_TRY_VERIFY(add->isVisible());QCOMPARE(add->text(),QString("Add a destination…"));
+  add->click();QCOMPARE(initial.findChild<QTabBar*>("mainNavigation")->currentIndex(),1);
+ }
+ void deepLinksRevealAndFocusTheirControl(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");tabs->setCurrentIndex(1);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* scroll=qobject_cast<QScrollArea*>(tabs->widget(1));auto* bar=scroll->verticalScrollBar();PUTGD_TRY_VERIFY(bar->maximum()>0);bar->setValue(bar->maximum());
+  // Change output… from History: Capture from its top, Destination focused.
+  window.navigate("history");window.findChild<QPushButton*>("changeCaptureOutput")->click();
+  auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");PUTGD_TRY_COMPARE(window.focusWidget(),static_cast<QWidget*>(destination));
+  QCOMPARE(tabs->currentIndex(),1);QVERIFY(scroll->viewport()->rect().contains(QRect(destination->mapTo(scroll->viewport(),QPoint()),destination->size())));
+  // Updates: without an update action or a usable Check now, the status itself takes focus.
+  window.settings()->showUpdates();auto* status=window.findChild<QLabel*>("updateStatus");PUTGD_TRY_COMPARE(window.focusWidget(),static_cast<QWidget*>(status));QCOMPARE(tabs->currentIndex(),0);
+ }
+ void storedCredentialsShowOneStatusRowAboveSpacedActions(){
+  QTemporaryDir dir;CredentialStore secrets;S3Provider s3(secrets);auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=profile;doc["profiles"]=profiles;SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return s3.validateSettings(value);});QVERIFY(service.save(doc,{}));secrets.setSession("development-s3",{"AKIA-synthetic-full-access","synthetic-full-secret",{}});
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,680);window.navigate("destinations");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* hint=window.findChild<QLabel*>("storedCredentialHint");PUTGD_TRY_VERIFY(hint->isVisible()&&hint->text().contains("AKIA"));
+  // The identification appears once: in the status row, under the heading and above the fields.
+  auto* editor=window.findChild<QWidget*>("credentialsEditor");int mentions=0;for(auto* label:editor->findChildren<QLabel*>())if(label->isVisible()&&label->text().contains("AKIA"))++mentions;QCOMPARE(mentions,1);
+  for(auto* field:editor->findChildren<QLineEdit*>())QVERIFY2(!field->placeholderText().contains("AKIA")&&!field->placeholderText().contains("Stored"),qPrintable(field->objectName()));
+  auto* access=window.findChild<QLineEdit*>("credentialAccessKey");QVERIFY(hint->mapTo(editor,QPoint()).y()<access->mapTo(editor,QPoint()).y());
+  // Store and Unlock: content-sized, in the field column, 8 px apart.
+  auto* store=window.findChild<QPushButton*>("storeCredentials");auto* unlock=window.findChild<QPushButton*>("unlockCredentials");QVERIFY(store&&unlock);
+  QCOMPARE(window.findChild<QWidget*>("credentialActions")->layout()->spacing(),8);QCOMPARE(store->width(),store->sizeHint().width());QCOMPARE(unlock->width(),unlock->sizeHint().width());
+  const QRect a(store->mapTo(editor,QPoint()),store->size()),b(unlock->mapTo(editor,QPoint()),unlock->size());QVERIFY(b.left()-a.right()-1>=8||b.top()-a.bottom()-1>=8);
+  QCOMPARE(a.left(),access->mapTo(editor,QPoint()).x());
+ }
+ void destinationTitleElidesOnlyWhileUnfocused(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();const auto name=QString("Production screenshots for customer support — ").repeated(3).left(120);profile["label"]=name;profiles[0]=profile;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,680);window.navigate("destinations");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* label=window.findChild<QLineEdit*>("destinationLabel");auto* help=window.findChild<QToolButton*>("destinationLabelHelp");window.findChild<QPushButton*>("testDestination")->setFocus();QVERIFY(!label->hasFocus());
+  QVERIFY(label->fontMetrics().horizontalAdvance(name)>label->width());
+  // The full name is in the tooltip while the title is shortened.
+  QHelpEvent tip(QEvent::ToolTip,QPoint(8,8),label->mapToGlobal(QPoint(8,8)));QApplication::sendEvent(label,&tip);PUTGD_TRY_COMPARE(QToolTip::text(),name);QToolTip::hideText();
+  // Help sits right after the title, not across the page.
+  QVERIFY(help->mapTo(&window,QPoint()).x()-(label->mapTo(&window,QPoint()).x()+label->width())<=8);
+  // A short name keeps help beside it too.
+  label->setFocus();label->selectAll();QTest::keyClicks(label,"Archive");window.findChild<QPushButton*>("testDestination")->setFocus();PUTGD_TRY_VERIFY(help->mapTo(&window,QPoint()).x()<label->mapTo(&window,QPoint()).x()+label->fontMetrics().horizontalAdvance("Archive")+64);
+ }
+ void shortcutRecoveryIsOnePageLevelAction(){
+  ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());int refreshes=0;editor.setRefreshAction([&]{++refreshes;});editor.show();
+  auto title=[](const QString& name){return name.left(1).toUpper()+name.mid(1);};
+  auto* refresh=editor.findChild<QPushButton*>("refreshShortcutSupport");QVERIFY(refresh);
+  // Nothing reported yet: one status and one Refresh, no repeated row notes.
+  editor.setStatus({});QVERIFY(refresh->isVisible());for(const auto& action:Settings::invocableActionNames())QVERIFY2(editor.findChild<QLabel*>("shortcut"+title(action)+"Status")->isHidden(),qPrintable(action));
+  refresh->click();QCOMPARE(refreshes,1);
+  // A problem specific to one action keeps its own line.
+  QJsonObject bindings;for(const auto& action:Settings::invocableActionNames()){const auto draft=editor.editors().value(action)->text();if(!draft.isEmpty())bindings[action]=QJsonObject{{"requested",draft},{"actual",QJsonArray{draft}},{"bound",true},{"state","bound"}};}
+  auto conflicted=bindings;conflicted["region"]=QJsonObject{{"requested",editor.editors().value("region")->text()},{"state","shortcut_conflict"}};
+  editor.setStatus({{"available",true},{"bindings",conflicted}});auto* region=editor.findChild<QLabel*>("shortcutRegionStatus");QVERIFY(!region->isHidden());QVERIFY(region->text().startsWith("Conflict"));QVERIFY(refresh->isVisible());
+  for(const auto& action:Settings::invocableActionNames())if(action!="region")QVERIFY2(editor.findChild<QLabel*>("shortcut"+title(action)+"Status")->isHidden(),qPrintable(action));
+  // Everything confirmed: nothing to refresh.
+  editor.setStatus({{"available",true},{"bindings",bindings}});QVERIFY(refresh->isHidden());QVERIFY(region->isHidden());
+  // In Settings, the action asks the resident again.
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);int snapshots=0;fixture.server.setUiDiagnostics([&]{++snapshots;return fixture.operations().diagnostics();});
+  MainWindow window(fixture.session);window.settings();PUTGD_TRY_VERIFY(fixture.session.ready());const int before=snapshots;window.findChild<QPushButton*>("refreshShortcutSupport")->click();PUTGD_TRY_VERIFY(snapshots>before);
+ }
+ void formsUseTheirValueTypesAndTargets(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");tabs->setCurrentIndex(3);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  // Filename templates are technical values: IBM Plex Mono (or the mono family) at body size.
+  for(const auto* key:{"fileTemplate","captureTemplate","imageTemplate","textTemplate"}){auto* field=window.findChild<QLineEdit*>(key);QCOMPARE(field->font().family(),Graphite::monoFamily());QCOMPARE(field->font().pixelSize(),Graphite::scaled(Graphite::Type::body));}
+  // The ACL choice says what the upload requests; stored values are unchanged.
+  auto* acl=window.findChild<QComboBox*>("s3AclMode");QCOMPARE(acl->itemText(acl->findData("omit")),QString("Use bucket policy"));QCOMPARE(acl->itemText(acl->findData("public-read")),QString("Request public read"));QCOMPARE(acl->accessibleName(),QString("Upload access request"));
+  // Help targets are at least 32 px around the same 18 px glyph.
+  int helps=0;for(auto* help:window.findChildren<QToolButton*>())if(help->property("visualRole").toString()=="info"){++helps;QVERIFY(help->width()>=32&&help->height()>=32);QCOMPARE(help->iconSize(),QSize(18,18));}QVERIFY(helps>20);
+  // Advanced: every value box has one width; only changed values show Reset.
+  QSet<int> widths;for(const auto* key:{"concurrentUploads","maxFileBytes","maxFiles","imageBytes","pendingImageBytes","historyRetentionDays","failedArtifactDays","recentActivityLimit"}){auto* edit=window.findChild<QLineEdit*>(key);QWidget* box=qobject_cast<QComboBox*>(edit->parentWidget())?edit->parentWidget():edit;widths.insert(box->width());}
+  QCOMPARE(widths.size(),1);
+  QPushButton* reset=nullptr;for(auto* button:window.findChildren<QPushButton*>())if(button->accessibleName()=="Reset Uploads at once to default")reset=button;QVERIFY(reset&&!reset->isVisible());
+  for(auto* label:tabs->widget(3)->findChildren<QLabel*>())QVERIFY2(!(label->isVisible()&&label->text()=="Default"),"No plain Default labels beside values");
+  window.findChild<QLineEdit*>("concurrentUploads")->setText("5");QVERIFY(reset->isVisible());
  }
  void shortcutRecordsOnReleaseAndEscapePreservesDraft(){
   ShortcutEditor editor;editor.setRecordingControl([](bool,auto reply){reply({});});editor.setActions(Settings::defaults()["actions"].toObject());editor.show();

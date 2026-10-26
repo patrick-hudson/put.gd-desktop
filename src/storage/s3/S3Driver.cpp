@@ -69,7 +69,7 @@ QString requestGuidance(const QString& name, int status, const QString& stage, i
     if (name == "NoSuchBucket") return "S3 could not find the bucket. Check the bucket name, region and endpoint; the bucket must already exist.";
     if (name == "InvalidBucketName") return "S3 rejected the bucket name. Enter only the existing bucket name, without a URL or folder path.";
     if (name == "AuthorizationHeaderMalformed" || name == "PermanentRedirect" || status == 301) return "S3 rejected the destination region or endpoint. Check that the region and endpoint match the bucket's location.";
-    if (name == "AccessControlListNotSupported") return "This bucket does not accept ACLs. Set Who can open files to Follow the bucket's policy (send no ACL), and ensure its public-read policy supports the intended links.";
+    if (name == "AccessControlListNotSupported") return "This bucket does not accept ACLs. Set Upload access request to Use bucket policy, and ensure its public-read policy supports the intended links.";
     if (name == "NoSuchUpload") return "S3 no longer has this multipart upload; it was completed, aborted or expired by a bucket lifecycle rule. Retry to upload the file again.";
     if (name == "EntityTooLarge") return "The storage service rejected the file size. Check its object and part size limits; Amazon S3 accepts objects up to 5 TiB.";
     if (name == "EntityTooSmall" || name == "InvalidPart" || name == "InvalidPartOrder") return "The storage service rejected the uploaded parts. It may not support S3 multipart uploads of 5 MiB or larger parts; check its multipart limits.";
