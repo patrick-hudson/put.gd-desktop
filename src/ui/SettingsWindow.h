@@ -26,7 +26,7 @@ public:
  QString autosaveText()const;
  // A conflict or a refused save: edits wait in this window, not in the file.
  bool changesUnsaved()const{return conflict_||autosaveBlocked_;}
- void showCaptureSettings();
+ void showCaptureSettings();void showLocalCopySettings();
  // General → Updates (#293), scrolled into view.
  void showUpdates();
  QWidget* destinationsPage()const{return destinationPage_;}
@@ -98,6 +98,7 @@ private:
  void fitRails();QWidget *settingsRail_=nullptr,*destinationRail_=nullptr;QListWidget* settingsNavigation_=nullptr;QPushButton* addDestination_=nullptr;
  QTimer* autosave_=nullptr;QPointer<QWidget> destinationPage_;QTabWidget* tabs_=nullptr;QListWidget* destinationList_=nullptr;
  QWidget *linksPanel_=nullptr,*connectionPanel_=nullptr;QPushButton* defaultButton_=nullptr;
+ QLabel *credentialStoreReason_=nullptr,*passwordStoreReason_=nullptr,*credentialStorageNotice_=nullptr;
  QLabel* credentialHint_=nullptr;QFormLayout* credentialForm_=nullptr;
  QLabel *configPath_=nullptr,*endpointHint_=nullptr,*linkExample_=nullptr,*destinationStatus_=nullptr;
  void refreshEffectiveLimits();void updateLimitHints();QHash<QString,QLabel*> limitHints_;QJsonObject effectiveLimits_;
@@ -116,7 +117,8 @@ private:
  QCheckBox* debugLogging_=nullptr;QLabel *debugLoggingStatus_=nullptr,*logSummary_=nullptr,*loggingWarning_=nullptr,*uncleanExit_=nullptr;QPushButton* clearLogs_=nullptr;
  QPointer<QDialog> packageDialog_;
  void updateProtonAccountDisplay();bool applyProtonAccountResult(const QString&,const QJsonObject&);
- void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void configurationChanged();
+ QString setupBlockedReason()const;bool admitSetup();
+ void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void updateStoreButtons();void configurationChanged();
  // A control's own (provider) enabled state; setup in progress disables it on top.
  void allowControl(QWidget*,bool allowed);bool setupBusy_=false;
  void setupFeedback(const QString&,bool success=false);
@@ -140,7 +142,7 @@ private:
  QString baseRevision_;
  QString metadataText_; // Canonical metadata; display-only wrap characters never enter diagnostics copies.
  QJsonObject draft_,savingDocument_;QString observed_;bool loading_=false,appearancePreviewed_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
- QLabel *status_=nullptr,*metadata_=nullptr,*capabilities_=nullptr;QPushButton *quit_;
+ QLabel *status_=nullptr,*metadata_=nullptr,*capabilities_=nullptr;
  ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
  QComboBox *providerType_=nullptr,*protonFolder_=nullptr;QSpinBox* protonExpiration_=nullptr;QDoubleSpinBox* protonTimeout_=nullptr;
  QComboBox* b2LinkMode_=nullptr;QSpinBox* b2LinkDays_=nullptr;

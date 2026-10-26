@@ -32,7 +32,7 @@
 #include "core/ReleaseLink.h"
 namespace putgd {
 namespace {
-// The status band: surface fill under a hairline, quiet 12 px text.
+// The status band grows with its output summary and metadata.
 class StatusBand final:public QStatusBar {
 public:
  explicit StatusBand(QWidget* parent):QStatusBar(parent){setSizeGripEnabled(false);setObjectName("statusBand");setMinimumHeight(Graphite::scaled(Graphite::Metric::statusBand));setContentsMargins(8,0,8,0);}
@@ -120,13 +120,13 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  auto* outputGroup=outputGroup_=new QWidget;outputGroup->setObjectName("captureOutputGroup");auto* outputRow=new QHBoxLayout(outputGroup);outputRow->setContentsMargins(0,0,0,0);outputRow->setSpacing(10);
  // The summary takes the room the band has left and elides only beyond it; it
  // is a tab stop whose Enter opens the full text.
- auto* summary=new Graphite::ElidedLabel(outputGroup);destination_=summary;destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"meta");summary->setRevealable(true);summary->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);outputRow->addWidget(destination_,1);
+ auto* summary=new Graphite::ElidedLabel(outputGroup);destination_=summary;destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"secondary");summary->setRevealable(true);summary->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);outputRow->addWidget(destination_,1);
  auto* changeOutput=new QPushButton("Change output…",outputGroup);changeOutput->setObjectName("changeCaptureOutput");VisualStyle::role(changeOutput,"link");changeOutput->setCursor(Qt::PointingHandCursor);outputRow->addWidget(changeOutput);outputRow->addStretch(0);
  statusBar()->addWidget(outputGroup,1);
  // The running build, from the resident identity About also shows. Stable and
  // nightly builds link to their GitHub release; development builds are text.
- version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);VisualStyle::role(version_,"version");
- versionLink_=new QPushButton;versionLink_->setObjectName("appVersionLink");VisualStyle::role(versionLink_,"version");versionLink_->setCursor(Qt::PointingHandCursor);
+ version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);VisualStyle::role(version_,"meta");
+ versionLink_=new QPushButton;versionLink_->setObjectName("appVersionLink");VisualStyle::role(versionLink_,"link");versionLink_->setFont(Graphite::font(Graphite::Type::metadata));versionLink_->setCursor(Qt::PointingHandCursor);
  connect(versionLink_,&QPushButton::clicked,this,[this]{if(const auto url=releaseLink(session_.build()).url;url.isValid())host::openLink(url);});
  auto updateVersion=[this]{
   const auto link=releaseLink(session_.build());const auto name="put.gd version "+link.version;const auto page="Open the v"+link.version+" release on GitHub";
@@ -159,6 +159,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  };
  connect(changeOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  connect(history_,&HistoryWindow::captureSettingsRequested,changeOutput,&QPushButton::click);
+ if(history_->metaObject()->indexOfSignal("localCopySettingsRequested()")>=0)connect(history_,SIGNAL(localCopySettingsRequested()),this,SLOT(showLocalCopySettings()));
  explanation_=new QLabel("Settings save automatically");explanation_->setObjectName("autosaveExplanation");VisualStyle::role(explanation_,"meta");statusBar()->addPermanentWidget(explanation_);
  // Autosave describes the Destinations and Settings pages, not History.
  connect(tabs_,&QTabBar::currentChanged,this,[this]{updateSaveStatus();});
@@ -210,6 +211,7 @@ void MainWindow::fitBand(){
  int stage=0;for(;stage<3;++stage){apply(stage);if(band_->layout()->minimumSize().width()<=band_->width()||stage==2)break;}
  bandStage_=stage;fittingBand_=false;
 }
+void MainWindow::showLocalCopySettings(){navigate("settings");settings_->showLocalCopySettings();}
 MainWindow::~MainWindow(){
  if(settings_)disconnect(settings_,nullptr,this,nullptr);disconnect(history_,nullptr,this,nullptr);disconnect(tabs_,nullptr,this,nullptr);disconnect(&session_,nullptr,this,nullptr);
 }

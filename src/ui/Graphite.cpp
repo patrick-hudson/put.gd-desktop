@@ -633,7 +633,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
     }
     case CT_CheckBox: case CT_RadioButton: {
         auto size = QProxyStyle::sizeFromContents(type, option, contents, widget);
-        return {size.width(), std::max(size.height(), 28)};
+        return {size.width(), std::max(size.height(), 32)};
     }
     case CT_MenuItem: {
         const auto* item = qstyleoption_cast<const QStyleOptionMenuItem*>(option);

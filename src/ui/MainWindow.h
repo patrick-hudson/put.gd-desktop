@@ -11,6 +11,7 @@ public:
  explicit MainWindow(UiSession&,QWidget* parent=nullptr);
  ~MainWindow()override;
  void navigate(const QString&);
+ Q_SLOT void showLocalCopySettings();
  // Asks for a PNG or JPEG to edit through the desktop's chooser (#259), then
  // emits editRequested; false while that chooser is already open.
  bool chooseImageToEdit();FileDialog& editImageDialog(){return *chooser_;}
