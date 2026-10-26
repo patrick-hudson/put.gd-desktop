@@ -951,7 +951,8 @@ def layout_backend(profile):
 
 def map_tablets_x11(run, outputs):
     """Bind each head's QEMU tablet to that head's output, so VNC input lands on the right screen."""
-    pairs = ' '.join(f'{head}:{shlex.quote(output["name"])}' for head, output in enumerate(outputs))
+    pairs = ' '.join(f'{head}:{shlex.quote(output["name"])}' for head, output in enumerate(outputs)
+                     if output.get('enabled', True))
     return guest_session(run, f'''command -v xinput >/dev/null || {{ echo unavailable; exit 0; }}
 for id in $(xinput list --id-only); do
  node=$(xinput list-props "$id" 2>/dev/null | sed -n 's/.*Device Node ([0-9]*):[[:space:]]*"\\(.*\\)"/\\1/p')
