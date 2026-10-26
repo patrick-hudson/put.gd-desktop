@@ -19,7 +19,10 @@ namespace putgd {
 class KdeRegionOverlay::Surface final:public QWidget {
 public:
  Surface(KdeRegionOverlay& owner,const CaptureFrame& frame,QScreen* screen):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint),owner_(owner),logicalRect_(frame.logicalRect){
-  setObjectName("putgd-kde-region-overlay");setAttribute(Qt::WA_TranslucentBackground);setScreen(screen);resize(frame.logicalRect.size().toSize());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);
+  setObjectName("putgd-kde-region-overlay");setAttribute(Qt::WA_TranslucentBackground);setScreen(screen);
+  // QWidget's native window must retain this output's global origin as well as
+  // its size before LayerShellQt chooses its output from the QWindow.
+  setGeometry(frame.logicalRect.toAlignedRect());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);
 #ifdef PUTGD_NATIVE_REGION
   // An individual layer role is applied before show; ordinary app windows keep
   // their normal xdg-shell integration. Never mutate QT_WAYLAND_SHELL_INTEGRATION.
