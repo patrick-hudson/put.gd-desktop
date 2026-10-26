@@ -28,6 +28,8 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QStyledItemDelegate>
+#include <QStandardItemModel>
+#include <QStyleFactory>
 #include <QTextDocument>
 #include <QAbstractTextDocumentLayout>
 #include <QTextBlock>
@@ -48,6 +50,21 @@ using namespace putgd;using namespace putgd::test;
 class HistoryPaintObserver final:public QObject {
 public:int paints=0;QRegion region;
  bool eventFilter(QObject*,QEvent* event) override {if(event->type()==QEvent::Paint){++paints;region|=static_cast<QPaintEvent*>(event)->region();}return false;}
+};
+// Leave the action backgrounds transparent: any filename/status ink underneath
+// their actual painted bounds is an overlap that an opaque button would hide.
+class HistoryActionInkProbe final:public QProxyStyle {
+public:
+ HistoryActionInkProbe():QProxyStyle(QStyleFactory::create("Fusion")){}
+ mutable QList<QRect> buttons;
+ void drawControl(ControlElement element,const QStyleOption* option,QPainter* painter,const QWidget* widget=nullptr)const override{
+  if(element==CE_PushButton){buttons.append(option->rect);return;}
+  QProxyStyle::drawControl(element,option,painter,widget);
+ }
+ void drawPrimitive(PrimitiveElement element,const QStyleOption* option,QPainter* painter,const QWidget* widget=nullptr)const override{
+  if(element==PE_PanelButtonCommand){buttons.append(option->rect);return;}
+  QProxyStyle::drawPrimitive(element,option,painter,widget);
+ }
 };
 // A real resident sharing job stays pending while this synthetic provider is
 // paused. Reopening its view may inspect the job, but must never call share again.
@@ -95,6 +112,37 @@ class HistoryGui:public QObject {
   list->window()->activateWindow();list->setFocus();putgd::test::settle(20);auto triggered=std::make_shared<bool>(false);QTimer::singleShot(0,list,[triggered,text]{for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget);menu&&menu->isVisible()){for(auto* action:menu->actions())if(action->text()==text&&action->isEnabled()){action->trigger();*triggered=true;break;}menu->close();}});list->setFocus();QTest::keyClick(list,Qt::Key_Menu);QCoreApplication::processEvents();return *triggered;
  }
 private slots:
+ void rowActionsNeverCoverFilenameOrStatus_data(){
+  QTest::addColumn<int>("width");QTest::addColumn<QString>("action");QTest::addColumn<bool>("selected");
+  for(int width:{300,430,594,840})for(const auto& action:QStringList{"Copy link","Retry local save",""})for(bool selected:{false,true})
+   QTest::newRow(qPrintable(QString("%1-%2-%3").arg(width).arg(action.isEmpty()?"menu":action).arg(selected?"selected":"hovered")))<<width<<action<<selected;
+ }
+ void rowActionsNeverCoverFilenameOrStatus(){
+  QFETCH(int,width);QFETCH(QString,action);QFETCH(bool,selected);
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
+  HistoryActionInkProbe probe;HistoryWindow window(fixture.session);auto* list=window.findChild<QListView*>("historyList");QVERIFY(list);list->setStyle(&probe);
+  QStandardItemModel model(1,1);const auto index=model.index(0,0);
+  model.setData(index,QString(160,'W')+".png",Qt::DisplayRole);
+  model.setData(index,QString(160,'W'),HistoryModel::SubtitleRole);
+  model.setData(index,action,HistoryModel::PrimaryActionRole);
+  // The actual viewport drives the delegate's size hint, including its narrow
+  // action row. Paint with that same width to test both layout and clipping.
+  list->viewport()->resize(width+2*list->spacing(),300);
+  QStyleOptionViewItem option;option.initFrom(list);option.font=list->font();
+  const auto size=list->itemDelegate()->sizeHint(option,index);QCOMPARE(size.width(),width);option.rect=QRect(QPoint(),size);
+  option.state=QStyle::State_Enabled|(selected?QStyle::State_Selected:QStyle::State_MouseOver);
+  QImage actual(size,QImage::Format_ARGB32_Premultiplied);actual.fill(Qt::transparent);
+  {QPainter painter(&actual);list->itemDelegate()->paint(&painter,option,index);}
+  QCOMPARE(probe.buttons.size(),action.isEmpty()?1:2);
+  const auto& theme=Theme::current();const auto title=theme.text.rgb(),status=theme.textMuted.rgb();int visibleInk=0;
+  for(int y=0;y<actual.height();++y)for(int x=0;x<actual.width();++x){const auto color=actual.pixelColor(x,y).rgb();if(color==title||color==status)++visibleInk;}
+  QVERIFY2(visibleInk>20,"Narrow rows must retain visible filename and status text");
+  for(const auto& bounds:probe.buttons){
+   QVERIFY2(actual.rect().contains(bounds),"Every row action must fit inside its row");int coveredInk=0;
+   for(int y=bounds.top();y<=bounds.bottom();++y)for(int x=bounds.left();x<=bounds.right();++x){const auto color=actual.pixelColor(x,y).rgb();if(color==title||color==status)++coveredInk;}
+   QVERIFY2(coveredInk==0,qPrintable(QString("Action at %1,%2 %3x%4 covers %5 text pixels").arg(bounds.x()).arg(bounds.y()).arg(bounds.width()).arg(bounds.height()).arg(coveredInk)));
+  }
+ }
  void preflightStatusDescribesDestinationCheck() {
   const QJsonObject record{{"operation",QJsonObject{{"state","running"},{"phase","preflight"},{"action","clipboard"}}}};
   QCOMPARE(HistoryModel::statusText(record),QString("Checking the destination…"));

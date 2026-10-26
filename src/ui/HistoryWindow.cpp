@@ -143,13 +143,18 @@ public:
  bool grid()const{return view_->viewMode()==QListView::IconMode;}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
  QRect card(QRect r,const QModelIndex& i)const{return r.adjusted(6,heading(i)+2,-6,-2);}
- // Row actions sit over the Output and Created columns of the selected or
- // hovered row; the inspector and the row menu offer the same actions.
+ // Reserve action space even while it is hidden, so hovering never changes
+ // the filename. Narrow rows put actions below instead of losing the title.
+ int primaryWidth(const QModelIndex& i)const{return qMax(84,QFontMetrics(Graphite::font()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())+28);}
+ bool actionsBelow(const QRect& r,const QModelIndex& i)const{
+  if(grid())return false;
+  const auto c=card(r,i);const int reserve=32+8+(i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()?0:primaryWidth(i)+8);
+  return c.right()-12-reserve-textLeft(c)<Graphite::scaled(120);
+ }
  QRect primaryRect(QRect r,const QModelIndex& i)const{
-  const auto c=card(r,i);const int h=32;const auto text=i.data(HistoryModel::PrimaryActionRole).toString();
-  const int w=qMax(84,QFontMetrics(Graphite::font()).horizontalAdvance(text)+28);
-  if(grid())return QRect(c.left()+12,c.bottom()-h-11,qMin(w,c.width()-12-12-h-8),h);
-  return QRect(c.right()-12-h-8-w,c.top()+Graphite::scaled(22)-6,w,h);
+  const auto c=card(r,i);const int h=32;const int w=qMin(primaryWidth(i),qMax(0,c.width()-12-12-h-8));
+  if(grid())return QRect(c.left()+12,c.bottom()-h-11,w,h);
+  return QRect(c.right()-12-h-8-w,actionsBelow(r,i)?c.bottom()-h-11:c.top()+Graphite::scaled(22)-6,w,h);
  }
  QRect menuRect(QRect r,const QModelIndex& i)const{const auto b=primaryRect(r,i);const auto c=card(r,i);return QRect(grid()?c.right()-12-32:c.right()-12-32,b.top(),32,32);}
  static QString errorText(const QModelIndex& i){return HistoryModel::statusText(i.data(HistoryModel::RecordRole).toJsonObject());}
@@ -157,6 +162,7 @@ public:
  QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& i)const override{
   const int available=qMax(160,view_->viewport()->width()-2*view_->spacing());const int width=grid()?qMin(248,available):available;
   int height=grid()?268:qMax(Graphite::Metric::historyRow,Graphite::scaled(Graphite::Metric::historyRow))+heading(i);
+  if(actionsBelow(QRect(0,0,width,height),i))height+=44;
   if(i.data(HistoryModel::FailedRole).toBool()){
    const auto area=HistoryWindow::failureTextArea(QSize(width,height),grid(),heading(i)>0);
    const auto document=failureText(errorText(i),Graphite::font(Graphite::Type::metadata),area.width());
@@ -187,7 +193,9 @@ public:
   const auto primaryBounds=primaryRect(outer,i);const auto moreBounds=menuRect(outer,i);
   const QRect body=rowBody(outer,grid(),heading(i));
   const auto columns=grid()?Columns{body,{},{}}:historyColumns(body);
-  const int itemWidth=qMax(20,columns.item.width()-12);
+  const bool below=actionsBelow(outer,i);
+  int itemWidth=qMax(0,columns.item.width()-12);
+  if(!grid()&&!below){const int actionLeft=action.isEmpty()?moreBounds.left():primaryBounds.left();itemWidth=qMin(itemWidth,qMax(0,actionLeft-columns.item.left()-8));}
   const auto titleFont=Graphite::font(Graphite::Type::body,true),metaFont=Graphite::font(Graphite::Type::metadata);
   const int lineTop=grid()?body.top():rowTop+Graphite::scaled(14);
   Graphite::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,Graphite::scaled(22)),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideMiddle);
@@ -203,7 +211,7 @@ public:
    const auto document=failureText(errorText(i),metaFont,area.width());
    p->save();p->translate(area.topLeft());QAbstractTextDocumentLayout::PaintContext context;context.palette.setColor(QPalette::Text,t.textSecondary);document->documentLayout()->draw(p,context);p->restore();
   }
-  if(!grid()&&!(actionsShown&&!action.isEmpty())){
+  if(!grid()&&(!actionsShown||below)){
    if(!columns.output.isEmpty())Graphite::paintText(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,Graphite::scaled(22)),i.data(HistoryModel::OutputRole).toString(),t.textSecondary,metaFont);
    if(!columns.created.isEmpty())Graphite::paintText(*p,QRectF(columns.created.left(),lineTop,columns.created.width()-8,Graphite::scaled(22)),i.data(HistoryModel::CreatedRole).toString(),t.textSecondary,metaFont);
   }
