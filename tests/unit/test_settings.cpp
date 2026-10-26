@@ -393,6 +393,28 @@ private slots:
         QCOMPARE(unchanged, bytes);
     }
 #endif
+    void recordingProjectionFollowsRegionExceptionsAndPreservesTheDocument() {
+        auto document = putgd::Settings::developmentTemplate();
+        document["captureDefaults"] = QJsonObject{{"destination", "upload"}, {"profileId", "development-s3"}, {"publicationMode", "share"}};
+        auto actions = document["actions"].toObject();
+        auto region = actions["region"].toObject();
+        region["destination"] = "local"; region["profileId"] = QJsonValue::Null; region["publicationMode"] = "private";
+        actions["region"] = region; actions["record"] = QJsonObject{{"shortcut", "Ctrl+Shift+9"}};
+        document["actions"] = actions;
+        const auto original = document;
+        auto effective = putgd::Settings::effectiveAction(document, "record");
+        QCOMPARE(effective["destination"].toString(), QString("local"));
+        QCOMPARE(effective["publicationMode"].toString(), QString("private"));
+        QCOMPARE(effective["shortcut"].toString(), QString("Ctrl+Shift+9"));
+        QCOMPARE(document, original);
+        actions["record"] = QJsonObject{{"destination", "upload"}, {"profileId", "development-s3"}, {"publicationMode", "share"}, {"shortcut", "Ctrl+Shift+9"}};
+        document["actions"] = actions;
+        QVERIFY(!putgd::Settings::validate(document, [](const QString&, const QJsonObject&){ return putgd::Error{}; }));
+        effective = putgd::Settings::effectiveAction(document, "record");
+        QCOMPARE(effective, actions["record"].toObject());
+        QCOMPARE(putgd::Settings::fromValidated(document).actions["region"].destination, QString("local"));
+        QCOMPARE(putgd::Settings::fromValidated(document).actions["record"].destination, QString("upload"));
+    }
     void absentRecordActionInheritsTheRegionRouteWithoutAShortcut() {
         auto document = putgd::Settings::defaults();
         auto actions = document["actions"].toObject();

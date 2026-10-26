@@ -8,6 +8,7 @@
 #include <QSet>
 #include "ui/RedesignTheme.h"
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QProgressBar>
 #include <QAbstractItemView>
 #include <QScrollBar>
@@ -109,7 +110,9 @@ private slots:
   fixture.client.failOnce["settings.save"]={"synthetic_save_refused","Synthetic save refusal",{}};label->setText("Retry destination");QMetaObject::invokeMethod(label,"editingFinished",Qt::DirectConnection);window.settings()->flushAutosave();PUTGD_TRY_VERIFY(window.settings()->saveViewState()["autosaveBlocked"].toBool());QVERIFY(!store->isEnabled());QVERIFY(reason->text().contains("Retry saving"));QCOMPARE(field->text(),QString("synthetic-typed-secret"));window.findChild<QPushButton*>("retryDestinationAutosave")->click();PUTGD_TRY_VERIFY(store->isEnabled());
   auto external=service.document();auto prefs=external["preferences"].toObject();prefs["notifications"]=!prefs["notifications"].toBool();external["preferences"]=prefs;QVERIFY(service.save(external,service.revision()));
   PUTGD_TRY_VERIFY(window.settings()->saveViewState()["conflict"].toBool());QVERIFY(!store->isEnabled());QVERIFY(reason->text().contains("conflict"));
+  auto* reload=window.findChild<QPushButton*>(password?"reloadPasswordConflict":"reloadCredentialConflict");QVERIFY(reload&&!reload->isHidden());auto* scroll=window.findChild<QScrollArea*>("destinationScroll");auto* banner=window.findChild<QWidget*>("destinationStatusRow");QVERIFY(!scroll->isAncestorOf(banner));scroll->verticalScrollBar()->setValue(scroll->verticalScrollBar()->maximum());PUTGD_TRY_VERIFY(banner->isVisible());QVERIFY(window.rect().contains(QRect(banner->mapTo(&window,QPoint()),banner->size())));
   QVERIFY(QMetaObject::invokeMethod(store,"clicked",Qt::DirectConnection));QCOMPARE(starts,0);QCOMPARE(field->text(),QString("synthetic-typed-secret"));QCOMPARE(access->text(),QString("synthetic-access"));QCOMPARE(token->text(),QString("synthetic-token"));
+  const auto confirmation=acceptNextConfirmation();reload->click();QVERIFY(confirmation->startsWith("Reload settings from file\n"));PUTGD_TRY_VERIFY(!window.settings()->saveViewState()["conflict"].toBool());QVERIFY(field->text().isEmpty());PUTGD_TRY_VERIFY(reload->isHidden());
  }
  void storeClearsSecretsOnlyAfterAdmission_data(){storeEligibilityPreservesTypedSecrets_data();}
  void storeClearsSecretsOnlyAfterAdmission(){
@@ -234,7 +237,7 @@ private slots:
   auto* help=window.findChild<QToolButton*>("destinationLabelHelp");QVERIFY(label&&scroll&&test&&makeDefault&&more&&help);PUTGD_TRY_COMPARE(label->text(),name);
   QCOMPARE(window.width(),width);auto* viewport=scroll->viewport();
   for(auto* control:QList<QWidget*>{label,help,test,makeDefault,more}){
-   QVERIFY(control->isVisible());const QRect rect(control->mapTo(viewport,QPoint{}),control->size());
+   if(control==makeDefault&&profileRow==0){QVERIFY(control->isHidden());continue;}QVERIFY(control->isVisible());const QRect rect(control->mapTo(viewport,QPoint{}),control->size());
    QVERIFY2(viewport->rect().contains(rect),qPrintable(QString("%1 exceeds the %2px destination viewport: x=%3 width=%4").arg(control->accessibleName().isEmpty()?control->objectName():control->accessibleName()).arg(viewport->width()).arg(rect.x()).arg(rect.width())));
   }
   QCOMPARE(scroll->horizontalScrollBar()->maximum(),0);
@@ -333,7 +336,7 @@ private slots:
   QCOMPARE(command({{"action","setPackage"},{"folder",dir.filePath("missing")}}).first.code,QString("diagnostics_output_unavailable"));
   dialog->findChild<QPushButton*>("savePackage")->click();auto* result=dialog->findChild<QLabel*>("packageResult");PUTGD_TRY_VERIFY(result->isVisibleTo(dialog));QVERIFY2(result->text().startsWith("Saved putgd-diagnostics-"),qPrintable(result->text()));
   QCOMPARE(notified.size(),1);const auto path=notified[0].toObject()["path"].toString();QCOMPARE(QFileInfo(path).absolutePath(),QFileInfo(out.path()).absoluteFilePath());QCOMPARE(notified[0].toObject()["redaction"].toString(),QString("names"));
-  auto* show=dialog->findChild<QPushButton*>("showPackageInFolder");QVERIFY(show->isVisibleTo(dialog));show->click();PUTGD_TRY_COMPARE(revealed,QStringList{path});
+  auto* show=dialog->findChild<QPushButton*>("showPackageInFolder");QVERIFY(show->isVisibleTo(dialog));auto* close=dialog->findChild<QPushButton*>("closePackage");auto* save=dialog->findChild<QPushButton*>("savePackage");PUTGD_TRY_VERIFY(save->x()-close->geometry().right()-1>=8);QVERIFY(close->x()-show->geometry().right()-1>=8);show->click();PUTGD_TRY_COMPARE(revealed,QStringList{path});
   QCOMPARE(command({{"action","savePackage"}}).first.code,QString("diagnostics_busy"));
   QCOMPARE(command({{"action","closePackage"}}).second["package"].toObject()["open"].toBool(),false);QVERIFY(!dialog->isVisible());
   QCOMPARE(command({{"action","savePackage"}}).first.code,QString("diagnostics_dialog_closed"));
@@ -415,6 +418,7 @@ private slots:
   QVERIFY2(scroll->verticalScrollBar()->maximum()>0,qPrintable(QString("body %1 in %2").arg(scroll->widget()->height()).arg(scroll->viewport()->height())));
   for(const char* name:{"closePackage","savePackage"}){auto* button=dialog->findChild<QPushButton*>(name);QVERIFY(button->isVisible());QVERIFY(!scroll->isAncestorOf(button));
    const QRect shown(button->mapTo(dialog,QPoint()),button->size());QVERIFY2(dialog->rect().contains(shown),qPrintable(QString("%1 outside the dialog").arg(name)));}
+  auto* cancel=dialog->findChild<QPushButton*>("closePackage");auto* save=dialog->findChild<QPushButton*>("savePackage");QVERIFY(save->x()-cancel->geometry().right()-1>=8);
   QCOMPARE(dialog->findChild<QLabel*>("packageFolder")->font().family(),Graphite::monoFamily());
   dialog->reject();
  }
@@ -566,10 +570,10 @@ private slots:
   }
   // Override makes the two values editable, starting from the inherited ones.
   window.findChild<QCheckBox*>("overrideRegion")->click();PUTGD_TRY_VERIFY(region->isEnabled());QVERIFY(!Graphite::isLocked(region));QVERIFY(!window.findChild<QCheckBox*>("useDefaultRegion")->isChecked());PUTGD_TRY_VERIFY(region->isVisible());
-  // On Destinations, "Default" states a fact and reads as one; Make default is an action.
+  // The sidebar states Default; the redundant header action stays hidden.
   window.navigate("destinations");auto* list=window.findChild<QListWidget*>("destinationList");auto* makeDefault=window.findChild<QPushButton*>("makeDefaultDestination");
-  list->setCurrentRow(0);PUTGD_TRY_COMPARE(makeDefault->text(),QString("Default"));QVERIFY(!makeDefault->isEnabled()&&Graphite::isLocked(makeDefault));
-  list->setCurrentRow(1);PUTGD_TRY_COMPARE(makeDefault->text(),QString("Make default…"));QVERIFY(!Graphite::isLocked(makeDefault));
+  list->setCurrentRow(0);PUTGD_TRY_VERIFY(makeDefault->isHidden());QVERIFY(list->item(0)->text().contains("Default"));
+  list->setCurrentRow(1);PUTGD_TRY_COMPARE(makeDefault->text(),QString("Make default…"));QVERIFY(makeDefault->isVisible()&&!Graphite::isLocked(makeDefault));
  }
  // Sidebars follow their labels, not the text scale: at 150% text the rows
  // grow, but neither sidebar passes the cap.
@@ -593,6 +597,25 @@ private slots:
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(2);window.show();
   auto* page=window.findChild<QTabWidget*>("settingsTabs")->currentWidget();QStringList headings,sections;for(auto* label:page->findChildren<QLabel*>()){if(!label->isVisibleTo(page))continue;const auto role=label->property("visualRole").toString();if(role=="title")headings.append(label->text());if(role=="sectionTitle"||role=="section")sections.append(label->text());}
   QCOMPARE(headings,QStringList({"Shortcuts"}));QCOMPARE(sections,QStringList());QVERIFY(window.findChild<QFrame*>("shortcutsCard")->isAncestorOf(window.findChild<QLineEdit*>("shortcutRegion")));
+ }
+ void recordingOutputPreservesInheritanceAndExplicitRoutes_data(){
+  QTest::addColumn<QString>("route");QTest::newRow("inherits-region")<<QString("inherit");QTest::newRow("explicit-upload")<<QString("upload");QTest::newRow("explicit-default")<<QString("default");
+ }
+ void recordingOutputPreservesInheritanceAndExplicitRoutes(){
+  QFETCH(QString,route);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto actions=doc["actions"].toObject();auto region=actions["region"].toObject();region["destination"]="upload";region["profileId"]="synthetic-alternate";region["publicationMode"]="private";actions["region"]=region;
+  auto record=actions["record"].toObject();record["shortcut"]="Ctrl+Shift+9";if(route!="inherit"){record["destination"]=route;record["profileId"]=route=="upload"?QJsonValue("synthetic-third"):QJsonValue(QJsonValue::Null);record["publicationMode"]=route=="upload"?"share":"default";}actions["record"]=record;doc["actions"]=actions;QVERIFY(service.save(doc,{}));const auto original=service.document();QFile stored(service.path());QVERIFY(stored.open(QIODevice::ReadOnly));const auto bytes=stored.readAll();stored.close();
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");tabs->setCurrentIndex(1);window.show();window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);
+  auto* inherit=window.findChild<QCheckBox*>("useDefaultRecord");auto* profile=window.findChild<QComboBox*>("profileRecord");auto* sharing=window.findChild<QComboBox*>("publicationRecord");auto* summary=window.findChild<QLabel*>("captureSummaryRecord");QVERIFY(inherit&&profile&&sharing&&summary);
+  QCOMPARE(inherit->isChecked(),route=="inherit");QCOMPARE(profile->currentData().toString(),route=="inherit"?QString("synthetic-alternate"):route=="upload"?QString("synthetic-third"):QString("development-s3"));QCOMPARE(sharing->currentData().toString(),route=="inherit"?QString("private"):route=="upload"?QString("share"):QString("default"));if(route=="inherit"){QVERIFY(summary->text().startsWith("Uses Capture region output"));QVERIFY(summary->text().contains("Private upload"));QVERIFY(summary->text().contains("Synthetic alternate"));}
+  QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",window.settings()->saveViewState()}}));putgd::test::settle(500);QCOMPARE(service.document(),original);QVERIFY(stored.open(QIODevice::ReadOnly));QCOMPARE(stored.readAll(),bytes);stored.close();
+  // Another capture edit must preserve the record entry, including explicit default inheritance.
+  auto* base=window.findChild<QComboBox*>("defaultCaptureDestination");base->setCurrentIndex(base->findData("synthetic-alternate"));PUTGD_TRY_COMPARE(service.document()["captureDefaults"].toObject()["profileId"].toString(),QString("synthetic-alternate"));QCOMPARE(service.document()["actions"].toObject()["record"].toObject(),record);
+  if(inherit->isChecked())window.findChild<QCheckBox*>("overrideRecord")->click();QVERIFY(profile->isEnabled());profile->setCurrentIndex(profile->findData("synthetic-third"));sharing->setCurrentIndex(sharing->findData("private"));PUTGD_TRY_COMPARE(service.snapshot().actions["record"].profileId,QString("synthetic-third"));PUTGD_TRY_COMPARE(service.snapshot().actions["record"].publicationMode,QString("private"));QCOMPARE(service.snapshot().actions["record"].shortcut,QString("Ctrl+Shift+9"));
+  inherit->setChecked(true);PUTGD_TRY_COMPARE(service.document()["actions"].toObject()["record"].toObject().keys(),QStringList{"shortcut"});QCOMPARE(service.snapshot().actions["record"].profileId,service.snapshot().actions["region"].profileId);QCOMPARE(service.snapshot().actions["record"].publicationMode,service.snapshot().actions["region"].publicationMode);
+ }
+ void clipboardLinksRevealAndFocusAfterUploading(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["provider"]="proton-drive";profile["settings"]=ProtonProvider::defaults();profiles[0]=profile;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");auto* target=window.findChild<QComboBox*>("uploadClipboardBehavior");
+  for(const auto& name:QStringList{"captureClipboardSettings","protonCopyingNote"}){window.navigate(name=="protonCopyingNote"?"destinations":"settings");tabs->setCurrentIndex(1);auto* link=window.findChild<QPushButton*>(name);QVERIFY(link);link->click();PUTGD_TRY_COMPARE(tabs->currentIndex(),0);PUTGD_TRY_VERIFY(target->hasFocus());QVERIFY(target->isVisible());auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());QVERIFY(scroll->viewport()->rect().contains(QRect(target->mapTo(scroll->viewport(),QPoint()),target->size())));}
  }
  void captureDefaultAndExplicitExceptionPersistAcrossReopen(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();

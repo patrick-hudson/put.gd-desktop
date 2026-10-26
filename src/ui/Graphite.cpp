@@ -1286,7 +1286,7 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         if (slider.isEmpty() || bar->minimum == bar->maximum) return;
         const bool active = (bar->activeSubControls & SC_ScrollBarSlider) && (option->state & (State_MouseOver | State_Sunken));
         const QRectF handle = bar->orientation == Qt::Horizontal ? QRectF(slider).adjusted(1, 2, -1, -2) : QRectF(slider).adjusted(2, 1, -2, -1);
-        rounded(p, handle, active ? c.textMuted : c.borderStrong, {}, 3);
+        rounded(p, handle, active ? c.textMuted : c.controlOutline, {}, 3);
         return;
     }
     case CC_Slider: {

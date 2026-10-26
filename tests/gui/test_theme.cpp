@@ -18,9 +18,12 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QPainter>
 #include <QRegularExpression>
 #include <QScopeGuard>
 #include <QSpinBox>
+#include <QScrollBar>
+#include <QStyleOptionSlider>
 #include <QStyleOptionSpinBox>
 #include <QVBoxLayout>
 #include <QStyleOptionToolButton>
@@ -44,6 +47,31 @@ class ThemeTest : public QObject {
     }
 private slots:
     void init() { Theme::setScheme(Theme::Scheme::Dark); }
+    void idleScrollbarsMeetContrastOnEveryScrollSurface() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            const auto& p = Theme::palette(scheme);
+            for (const auto surface : {p.bg, p.surface, p.surfaceRaised}) {
+                QScrollBar bar(Qt::Vertical);
+                bar.resize(12, 160); bar.setRange(0, 100); bar.setPageStep(30);
+                QStyleOptionSlider option;
+                option.initFrom(&bar); option.rect = bar.rect(); option.orientation = Qt::Vertical;
+                option.minimum = 0; option.maximum = 100; option.pageStep = 30;
+                option.state = QStyle::State_Enabled; option.subControls = QStyle::SC_ScrollBarSlider;
+                QImage shot(bar.size(), QImage::Format_RGB32); shot.fill(surface);
+                QPainter painter(&shot); bar.style()->drawComplexControl(QStyle::CC_ScrollBar, &option, &painter, &bar); painter.end();
+                const auto handle = bar.style()->subControlRect(QStyle::CC_ScrollBar, &option, QStyle::SC_ScrollBarSlider, &bar);
+                const auto thumb = shot.pixelColor(handle.center());
+                QCOMPARE(thumb, p.controlOutline);
+                QVERIFY2(Theme::contrast(thumb, surface) >= 3.0, qPrintable(Theme::name(scheme) + " scrollbar on " + surface.name()));
+                for (const auto state : {QStyle::State_MouseOver, QStyle::State_Sunken}) {
+                    option.state = QStyle::State_Enabled | state; option.activeSubControls = QStyle::SC_ScrollBarSlider;
+                    shot.fill(surface); painter.begin(&shot); bar.style()->drawComplexControl(QStyle::CC_ScrollBar, &option, &painter, &bar); painter.end();
+                    QVERIFY(Theme::contrast(shot.pixelColor(handle.center()), surface) > Theme::contrast(thumb, surface));
+                }
+            }
+        }
+    }
     void textAndFocusMeetAaInBothSchemes() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             const auto& p = Theme::palette(scheme);

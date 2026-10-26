@@ -77,7 +77,7 @@ private:
  QString destinationDefaultSharing(const QString& profileId)const;QJsonObject captureRoutingState()const;QString outputSummary(QComboBox* profile,QComboBox* sharing)const;
  QComboBox *captureProfile_=nullptr,*captureSharing_=nullptr;
  QToolButton* captureExceptions_=nullptr;QHash<QString,QCheckBox*> useCaptureDefault_;QHash<QString,QWidget*> captureEditors_;
- bool captureDefaultsEnabled_=false,captureRoutingEdited_=false;
+ bool captureDefaultsEnabled_=false,captureRoutingEdited_=false,recordingRoutingEdited_=false;
  QLabel* captureOutputNotice_=nullptr;QHash<QString,QLabel*> captureStatus_,captureSummary_;QHash<QString,QCheckBox*> captureOverride_;
  // The no-output notice under Destination, with Keep a local copy and Choose/Add a destination.
  QWidget* captureOutputBlock_=nullptr;QPushButton* chooseOutput_=nullptr;

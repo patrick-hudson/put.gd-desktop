@@ -3,6 +3,8 @@
 #include <QApplication>
 #include <QJsonDocument>
 #include <QPointer>
+#include <QPushButton>
+#include <QTextEdit>
 #include <QTest>
 #include <QTimer>
 #include <memory>
@@ -40,6 +42,7 @@ private slots:
   QVERIFY(!QApplication::activeModalWidget());
   QCOMPARE(dialog->text(), QString("put.gd %1").arg(manifest["version"].toString()));
   QCOMPARE(QJsonDocument::fromJson(dialog->detailedText().toUtf8()).object(), manifest);
+  QVERIFY(dialog->button(QMessageBox::Close));QVERIFY(!dialog->button(QMessageBox::Ok));auto* details=dialog->findChild<QPushButton*>("buildDetails");QVERIFY(details);QCOMPARE(details->text(),QString("Build details"));details->click();QCOMPARE(details->text(),QString("Hide build details"));auto* data=dialog->findChild<QTextEdit*>();QVERIFY(data&&data->isVisible()&&data->isReadOnly());data->selectAll();QCOMPARE(QJsonDocument::fromJson(data->textCursor().selectedText().replace(QChar::ParagraphSeparator,'\n').toUtf8()).object(),manifest);details->click();QCOMPARE(details->text(),QString("Build details"));
   QCOMPARE(dialog->informativeText(), QString("Screen capture and file sharing"));
   QVERIFY(!dialog->testAttribute(Qt::WA_DeleteOnClose));
   dialog->close();
