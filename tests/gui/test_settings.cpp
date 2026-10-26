@@ -171,7 +171,9 @@ private slots:
   test->setFocus();QCOMPARE(label->cursorPosition(),0);QCOMPARE(label->text(),name+" edited");
   PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[profileRow].toObject()["label"].toString(),name+" edited");
   // The trailing action remains clickable, including for a non-default destination.
-  auto* menu=more->menu();QVERIFY(menu);QTest::mouseClick(more,Qt::LeftButton);PUTGD_TRY_VERIFY(menu->isVisible());menu->close();
+  auto* menu=more->menu();QVERIFY(menu);bool shown=false;QTimer closer;closer.setInterval(10);QObject::connect(&closer,&QTimer::timeout,menu,[&]{if(menu->isVisible()){shown=true;menu->close();}});closer.start();
+  // QPushButton runs its menu modally on some Qt versions (6.4): close it from a timer.
+  QTest::mouseClick(more,Qt::LeftButton);PUTGD_TRY_VERIFY(shown);closer.stop();
  }
  void longDestinationLabelKeepsItsStateLine(){
   // #134: a label that would wrap is elided to one line; Default · state stays in the row.
