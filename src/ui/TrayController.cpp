@@ -213,7 +213,7 @@ TrayController::TrayController(OperationService& operations,
  connect(history, &QAction::triggered, this, &TrayController::showHistory);
  updateAction_ = menu_->addAction("Update available");
  updateAction_->setData("update");updateAction_->setVisible(false);
- // Lands on Settings → Updates with its action focused, not the first settings page.
+ // Lands on Settings → General → Updates with its action focused, not the first settings page.
  connect(updateAction_, &QAction::triggered, this, [this] { showView("updates"); });
  menu_->addSeparator();
  connect(menu_->addAction("About put.gd"), &QAction::triggered, this, &TrayController::showAbout);
@@ -516,7 +516,7 @@ void TrayController::setUpdateStatus(const QJsonObject& status) {
 }
 void TrayController::notifyUpdate(const QJsonObject& result) {
  if(!available())return;
- notifyMessage("update_available","put.gd — update available","put.gd "+result["latest"].toString()+" is available. Settings → Updates has the download.",false,QUrl(result["notesUrl"].toString()));
+ notifyMessage("update_available","put.gd — update available","put.gd "+result["latest"].toString()+" is available. Settings → General → Updates has the download.",false,QUrl(result["notesUrl"].toString()));
 }
 void TrayController::notifyFailure(const Error& error) {
  if(error)flashError();
