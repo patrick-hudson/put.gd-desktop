@@ -424,8 +424,16 @@ PY
             # Paste into the independent GTK app with real keyboard input.
             self.session('rm -f ' + shlex.quote(self.fixture_remote + '/paste.json') + ' ' + shlex.quote(self.fixture_remote + '/paste.png') + '\n')
             self.click(self.monitors[0]['x'] + 40, self.monitors[0]['y'] + 40)
-            lab.key(self.run, ['ctrl', 'v']); time.sleep(.5)
-            paste = self.fetch_json(self.fixture_remote + '/paste.json', self.out / (name + '-paste.json'))
+            lab.key(self.run, ['ctrl', 'v'])
+            deadline = time.monotonic() + 5
+            while True:
+                try:
+                    paste = self.fetch_json(self.fixture_remote + '/paste.json', self.out / (name + '-paste.json'))
+                    break
+                except (lab.LabError, ValueError, OSError):
+                    if time.monotonic() > deadline:
+                        raise RuntimeError('Focused independent GTK paste did not produce a witness')
+                    time.sleep(.2)
             result['paste'] = paste
             if cancel:
                 result['ok'] = result['ok'] and paste == {'kind': 'text', 'text': 'putgd multi-output cancellation sentinel'}
