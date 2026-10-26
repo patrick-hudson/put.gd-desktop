@@ -94,8 +94,10 @@ std::unique_ptr<QTextDocument> failureText(const QString& text,const QFont& font
 // Widths follow the text size, and a column stays only while Item keeps room
 // for a readable name, so a heading and its values come and go together.
 struct Columns {QRect item,output,created,actions;};
-Columns historyColumns(const QRect& row){
- Columns c;const int action=row.width()>=Graphite::scaled(600)?Graphite::scaled(180):0;const int width=row.width()-action,minimum=Graphite::scaled(300);c.actions=action?QRect(row.right()-action+1,row.top(),action,row.height()):QRect();const int created=width-Graphite::scaled(92)>=minimum?Graphite::scaled(92):0;const int output=created&&width-created-Graphite::scaled(132)>=minimum+Graphite::scaled(20)?Graphite::scaled(132):0;
+// menuOnly: the inspector beside the list holds the actions, so rows keep
+// only their ⋯ menu and the action column shrinks to it.
+Columns historyColumns(const QRect& row,bool menuOnly=false){
+ Columns c;const int action=row.width()>=Graphite::scaled(600)?(menuOnly?qMax(32,QFontMetrics(Graphite::font()).height()+12)+12:Graphite::scaled(180)):0;const int width=row.width()-action,minimum=Graphite::scaled(300);c.actions=action?QRect(row.right()-action+1,row.top(),action,row.height()):QRect();const int created=width-Graphite::scaled(92)>=minimum?Graphite::scaled(92):0;const int output=created&&width-created-Graphite::scaled(132)>=minimum+Graphite::scaled(20)?Graphite::scaled(132):0;
  c.created=created?QRect(row.left()+width-created,row.top(),created,row.height()):QRect();
  c.output=output?QRect(row.left()+width-created-output,row.top(),output,row.height()):QRect();
  c.item=QRect(row.left(),row.top(),width-created-output,row.height());return c;
@@ -118,6 +120,7 @@ QRect listRow(const QListView* view,int top,int height){return QRect(view->spaci
 // Item / Output / Created above the list, on the same columns as its rows.
 class HistoryColumns final:public QWidget {
 public:
+ std::function<bool()> menuOnly;
  explicit HistoryColumns(QListView* view,QWidget* parent):QWidget(parent),view_(view){setObjectName("historyColumns");setFixedHeight(Graphite::scaled(30));view_->viewport()->installEventFilter(this);}
  // A scrollbar narrows the viewport without resizing this header.
  bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Resize)update();return false;}
@@ -125,7 +128,7 @@ protected:
  void paintEvent(QPaintEvent*)override{
   QPainter p(this);const auto& t=Theme::current();const int left=view_->viewport()->mapTo(window(),QPoint(0,0)).x()-mapTo(window(),QPoint(0,0)).x();
   const auto row=listRow(view_,0,height()).translated(left,0);const auto body=rowBody(row,false,0);
-  const auto c=historyColumns(QRect(body.left(),0,body.width(),height()));const auto f=Graphite::font(Graphite::Type::metadata);const int thumb=row.left()+6+12;
+  const auto c=historyColumns(QRect(body.left(),0,body.width(),height()),menuOnly&&menuOnly());const auto f=Graphite::font(Graphite::Type::metadata);const int thumb=row.left()+6+12;
   Graphite::paintText(p,QRectF(thumb,0,qMax(0,c.item.right()-thumb-8),height()),"Item",t.textMuted,f);
   if(!c.output.isEmpty())Graphite::paintText(p,c.output.adjusted(0,0,-8,0),"Output",t.textMuted,f);
   if(!c.created.isEmpty())Graphite::paintText(p,c.created.adjusted(0,0,-8,0),"Created",t.textMuted,f);
@@ -155,11 +158,12 @@ public:
  }
  std::function<void(const QModelIndex&)> primary;
  std::function<void(const QModelIndex&,const QPoint&)> menu;
- // True while the inspector beside the list shows the selected row. Its
- // actions are there, so that row does not repeat the primary action.
+ // True while the inspector sits beside the list. It holds the selected
+ // row's actions, so rows keep only their ⋯ menu (which also has them).
  std::function<bool()> inspectorBeside;
  bool grid()const{return view_->viewMode()==QListView::IconMode;}
- bool beside(const QModelIndex& i)const{return !grid()&&inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i);}
+ bool menuOnly()const{return !grid()&&inspectorBeside&&inspectorBeside();}
+ bool beside(const QModelIndex&)const{return menuOnly();}
  bool primaryShown(const QModelIndex& i)const{return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()&&!beside(i);}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
  QRect card(QRect r,const QModelIndex& i)const{return r.adjusted(6,heading(i)+2,-6,-2);}
@@ -171,7 +175,7 @@ public:
  // the filename. Narrow rows put actions below instead of losing the title.
  int primaryWidth(const QModelIndex& i)const{return qMax(84,QFontMetrics(Graphite::font()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())+28);}
  bool actionsBelow(const QRect& r,const QModelIndex& i)const{
-  return !grid()&&historyColumns(rowBody(r,false,heading(i))).actions.isEmpty();
+  return !grid()&&historyColumns(rowBody(r,false,heading(i)),menuOnly()).actions.isEmpty();
  }
  QRect primaryRect(QRect r,const QModelIndex& i)const{
   const auto c=card(r,i);const int h=actionHeight();const int w=qMin(primaryWidth(i),qMax(0,c.width()-12-12-h-8));
@@ -223,7 +227,7 @@ public:
   const auto action=i.data(HistoryModel::PrimaryActionRole).toString();const bool showPrimary=primaryShown(i);const bool actionsShown=grid()||hover||(chosen&&!beside(i));
   const auto primaryBounds=primaryRect(outer,i);const auto moreBounds=menuRect(outer,i);
   const QRect body=rowBody(outer,grid(),heading(i));
-  const auto columns=grid()?Columns{body,{},{},{}}:historyColumns(body);
+  const auto columns=grid()?Columns{body,{},{},{}}:historyColumns(body,menuOnly());
   const bool below=actionsBelow(outer,i);
   int itemWidth=qMax(0,columns.item.width()-12);
   if(!grid()&&!below){const int actionLeft=showPrimary?primaryBounds.left():moreBounds.left();itemWidth=qMin(itemWidth,qMax(0,actionLeft-columns.item.left()-8));}
@@ -274,7 +278,11 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  categories_=new QListWidget(sidebar);categories_->setObjectName("historyCategories");categories_->setAccessibleName("Show history items");categories_->setFrameShape(QFrame::NoFrame);categories_->setIconSize(QSize(18,18));categories_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);categories_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);categories_->setItemDelegate(new Graphite::NavigationDelegate(categories_));Graphite::transparentView(categories_);categories_->setMouseTracking(true);
  for(const auto& [glyph,label,category]:QList<std::tuple<QString,QString,QString>>{{"history","All items",""},{"images","Images","images"},{"record","Recordings","videos"},{"view-list","Other files","text+other"}}){auto* item=new QListWidgetItem(VisualStyle::icon(glyph),label,categories_);item->setData(Qt::UserRole,category);}
  categories_->setToolTip("Other files includes clipboard text and any file that is not an image or a recording.");
- categories_->setCurrentRow(0);categories_->setFixedHeight(4*(Graphite::scaled(Graphite::Metric::navRow))+4);side->addWidget(categories_);side->addWidget(Graphite::rule(sidebar));
+ categories_->setCurrentRow(0);
+ // Wide enough for its labels at the current text size, never more than the
+ // shared sidebar cap (the Settings rails measure the same way).
+ {const QFontMetrics strong(Graphite::font(Graphite::Type::body,true));int widest=strong.horizontalAdvance("Failed uploads");for(int i=0;i<categories_->count();++i)widest=qMax(widest,strong.horizontalAdvance(categories_->item(i)->text()));sidebar->setFixedWidth(Graphite::sidebarWidth(Graphite::Metric::historySidebar,widest+74));}
+ categories_->setFixedHeight(4*(Graphite::scaled(Graphite::Metric::navRow))+4);side->addWidget(categories_);side->addWidget(Graphite::rule(sidebar));
  failedOnly_=new QToolButton(sidebar);failedOnly_->setObjectName("historyFailedOnly");failedOnly_->setText("Failed uploads");failedOnly_->setIcon(VisualStyle::icon("alert"));failedOnly_->setIconSize(QSize(18,18));failedOnly_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);failedOnly_->setCheckable(true);failedOnly_->setProperty("visualRole","quiet");failedOnly_->setProperty("alignLeft",true);failedOnly_->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);failedOnly_->setAccessibleName("Show only failed uploads");failedOnly_->setToolTip("Show only failed uploads (Upload state: failed)");side->addWidget(failedOnly_);
  side->addStretch();
  auto* content=new QWidget(this);content->setObjectName("historyContent");page->addWidget(content,1);auto* layout=new QVBoxLayout(content);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
@@ -332,7 +340,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
   empty_=new QLabel("No captures yet",emptyState_);empty_->setObjectName("historyEmpty");empty_->setTextFormat(Qt::PlainText);empty_->setWordWrap(true);empty_->setAlignment(Qt::AlignCenter);VisualStyle::role(empty_,"sectionTitle");box->addWidget(empty_);
   emptyBody_=new QLabel(emptyState_);emptyBody_->setObjectName("historyEmptyHint");emptyBody_->setTextFormat(Qt::PlainText);emptyBody_->setWordWrap(true);emptyBody_->setAlignment(Qt::AlignCenter);VisualStyle::role(emptyBody_,"muted");box->addWidget(emptyBody_);
   resetView_=new QPushButton("Clear search and filters",emptyState_);resetView_->setObjectName("historyResetView");resetView_->hide();box->addSpacing(4);box->addWidget(resetView_,0,Qt::AlignHCenter);connect(resetView_,&QPushButton::clicked,this,[this]{clearFilters(true);});box->addStretch(3);}
- auto* listPane=new QWidget(this);auto* listBox=new QVBoxLayout(listPane);listBox->setContentsMargins(0,0,0,0);listBox->setSpacing(0);columns_=new HistoryColumns(table_,listPane);listBox->addWidget(columns_);listBox->addWidget(table_,1);
+ auto* listPane=new QWidget(this);auto* listBox=new QVBoxLayout(listPane);listBox->setContentsMargins(0,0,0,0);listBox->setSpacing(0);auto* columnHeader=new HistoryColumns(table_,listPane);columns_=columnHeader;columnHeader->menuOnly=[this]{return table_->viewMode()!=QListView::IconMode&&!compact_&&inspectorScroll_&&!inspectorScroll_->isHidden();};listBox->addWidget(columns_);listBox->addWidget(table_,1);
  // Several selected rows (or one in the compact layout): what they can do together.
  selectionBar_=new Graphite::Surface("surface",Qt::TopEdge,listPane);selectionBar_->setObjectName("historySelectionBar");selectionBar_->setAccessibleName("Selection actions");{auto* bar=new QHBoxLayout(selectionBar_);bar->setContentsMargins(18,8,16,8);bar->setSpacing(8);
   selectionCount_=new QLabel(selectionBar_);selectionCount_->setObjectName("historySelectionCount");selectionCount_->setTextFormat(Qt::PlainText);VisualStyle::role(selectionCount_,"strong");bar->addWidget(selectionCount_);bar->addStretch();

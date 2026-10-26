@@ -107,11 +107,11 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  pages_->addWidget(new QWidget(pages_));pages_->addWidget(new QWidget(pages_));
  connect(tabs_,&QTabBar::currentChanged,this,[this](int row){if(settings_)settings_->clearCompletedFeedback();if(row>0)settings();pages_->setCurrentIndex(row);if(row==1)settings_->activateDestinations();emit viewStateChanged();});
  connect(history_,&HistoryWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(history_,&HistoryWindow::editRequested,this,&MainWindow::editRequested);connect(history_,&HistoryWindow::chooseImageRequested,this,&MainWindow::chooseImageToEdit);
- // Future capture output stays beside the command band across every page.
- auto* outputBand=new Graphite::Surface("bg",Qt::BottomEdge,center);outputBand->setObjectName("captureOutputBand");auto* outputRow=new QHBoxLayout(outputBand);outputRow->setContentsMargins(18,0,16,10);outputRow->setSpacing(12);layout->insertWidget(1,outputBand);
- destination_=new QLabel(outputBand);destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);destination_->setWordWrap(true);destination_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);VisualStyle::role(destination_,"meta");outputRow->addWidget(destination_,1);
- auto* changeOutput=new QPushButton("Change output…",outputBand);changeOutput->setObjectName("changeCaptureOutput");VisualStyle::role(changeOutput,"link");outputRow->addWidget(changeOutput);
  setStatusBar(new StatusBand(this));
+ // Future capture output, on every page: one line at the left of the status
+ // band (where the eye checks state), with the way to change it beside it.
+ auto* summary=new Graphite::ElidedLabel;destination_=summary;destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"meta");statusBar()->addWidget(destination_,1);
+ auto* changeOutput=new QPushButton("Change output…");changeOutput->setObjectName("changeCaptureOutput");VisualStyle::role(changeOutput,"link");changeOutput->setCursor(Qt::PointingHandCursor);statusBar()->addWidget(changeOutput);
  // The running build, from the resident identity About also shows. Stable and
  // nightly builds link to their GitHub release; development builds are text.
  version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);VisualStyle::role(version_,"version");
@@ -130,7 +130,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  auto updateAvailable=[this]{
   const auto update=session_.diagnostics()["update"].toObject();const auto result=update["result"].toObject();
   const bool available=update["supported"].toBool()&&result["updateAvailable"].toBool();
-  updateLink_->setToolTip("put.gd "+result["latest"].toString()+" is available. Open Settings → Updates.");
+  updateLink_->setToolTip("put.gd "+result["latest"].toString()+" is available. Open Settings → General → Updates.");
   updateLink_->setAccessibleName("Update available: put.gd "+result["latest"].toString());updateLink_->setVisible(available);
  };
  connect(&session_,&UiSession::statusChanged,this,updateAvailable);updateAvailable();
@@ -144,10 +144,10 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    const auto first=Settings::effectiveAction(document,"region");bool same=true;for(const auto& name:Settings::actionNames()){const auto action=Settings::effectiveAction(document,name);if(action["destination"]!=first["destination"]||action["profileId"]!=first["profileId"]||action["publicationMode"].toString("default")!=first["publicationMode"].toString("default")){same=false;++exceptions;}}
    label=same?outputName(first):QString("Different for each action");
   }
-  label="Capture output: "+label+"\n"+QString::number(exceptions)+(exceptions==1?" action exception":" action exceptions");destination_->setText(label);destination_->setAccessibleName(label);destination_->setToolTip(label+"\nOutput for future captures, using your saved settings.");
+  label="Capture output: "+label+(exceptions?" · "+QString::number(exceptions)+(exceptions==1?" action exception":" action exceptions"):QString{});destination_->setText(label);destination_->setAccessibleName(label);destination_->setToolTip(label+"\nOutput for future captures, using your saved settings.");
  };
  connect(changeOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});
- auto* explanation=new QLabel("Settings save automatically");explanation->setObjectName("autosaveExplanation");VisualStyle::role(explanation,"meta");statusBar()->addWidget(explanation);
+ auto* explanation=new QLabel("Settings save automatically");explanation->setObjectName("autosaveExplanation");VisualStyle::role(explanation,"meta");statusBar()->addPermanentWidget(explanation);
  // Autosave describes the Destinations and Settings pages, not History.
  explanation->setVisible(tabs_->currentIndex()>0);connect(tabs_,&QTabBar::currentChanged,explanation,[explanation](int row){explanation->setVisible(row>0);});
  saveStatus_=new QLabel;saveStatus_->setObjectName("autosaveStatus");saveStatus_->setAccessibleName("Settings save status");saveStatus_->setTextFormat(Qt::PlainText);statusBar()->addPermanentWidget(saveStatus_);
