@@ -54,6 +54,32 @@ struct Harness {
 class RecordingServiceContract:public QObject {
  Q_OBJECT
 private slots:
+ void reviewDestinationUsesTheAcceptedSnapshot_data(){
+  QTest::addColumn<QString>("mode");
+  for(const auto* mode:{"default","share","private","local"})QTest::newRow(mode)<<QString(mode);
+ }
+ void reviewDestinationUsesTheAcceptedSnapshot(){
+  QFETCH(QString,mode);Harness h(mode=="local");PUTGD_TRY_VERIFY(h.operations->ready());
+  if(mode!="local"){
+   auto doc=h.settings.snapshot().document;auto actions=doc["actions"].toObject();auto route=actions["region"].toObject();route["publicationMode"]=mode;route["shortcut"]="";actions["record"]=route;doc["actions"]=actions;
+   QVERIFY(h.settings.save(doc,h.settings.revision()));
+  }
+  h.backend->deferPrepare=true;
+  const auto prepared=h.rec("prepare",{{"target",region()},{"format","mp4"}});QVERIFY(!prepared.error);
+  PUTGD_TRY_VERIFY(bool(h.backend->pendingPrepare));
+  const auto snapshot=h.backend->lastReviewOptions;
+  QCOMPARE(snapshot["sharingMode"].toString(),mode=="default"?QString("share"):mode);
+  if(mode=="local")QCOMPARE(snapshot["summary"].toString(),QString("Save to the local archive"));
+  else {
+   QCOMPARE(snapshot["destination"].toString(),QString("Synthetic opaque provider"));
+   QVERIFY(snapshot["summary"].toString().contains(mode=="private"?"Private upload to":"Shared link"));
+   auto doc=h.settings.snapshot().document;auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["label"]="Changed after acceptance";profiles[0]=profile;doc["profiles"]=profiles;QVERIFY(h.settings.save(doc,h.settings.revision()));
+  }
+  auto ready=std::move(h.backend->pendingPrepare);ready({},{});
+  const auto id=prepared.result["recordingId"].toString();PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
+  QCOMPARE(h.backend->lastReviewOptions,snapshot);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
  void unavailableBackendReportsCapabilitiesAndRefusesRecording(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);PUTGD_TRY_VERIFY(operations.ready());
   const auto caps=call(server,"recording.capabilities",{});QVERIFY(!caps.error);QVERIFY(!caps.result["available"].toBool());QCOMPARE(caps.result["reason"].toString(),QString("recording_helper_missing"));QCOMPARE(caps.result["timeUnit"].toString(),QString("microseconds"));QVERIFY(caps.result["active"].isNull());

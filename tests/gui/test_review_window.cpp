@@ -3,6 +3,9 @@
 // when they apply, and recording.review drives the same controls. Not desktop
 // proof; the lab captures are in the docs.
 #include "record/ReviewWindow.h"
+#include "record/Overlays.h"
+#include "ui/RegionOverlay.h"
+#include <QAccessible>
 #include "ui/Graphite.h"
 #include "ui/Theme.h"
 #include <QLabel>
@@ -32,6 +35,9 @@ ReviewWindow::Options options() {
     ReviewWindow::Options o;
     o.workingClip = QStringLiteral("/nonexistent/putgd-review-test.mkv");
     o.durationUs = duration;
+    o.destination = "Project archive";
+    o.sharingMode = "share";
+    o.uploadSummary = "Upload to Project archive · Shared link";
     o.canvas = QSize(1280, 720);
     o.formats = QStringList{"mp4", "webm", "gif"};
     o.codecs = QJsonObject{{"mp4", QJsonArray{"h264", "h265"}}, {"webm", QJsonArray{"vp9"}}};
@@ -77,6 +83,132 @@ private slots:
     // minimum size and fit include the compact header's pixels.
     void initTestCase() { Graphite::WindowHeader::setCustomFrameOverride(1); }
     void cleanupTestCase() { Graphite::WindowHeader::setCustomFrameOverride(0); }
+    void liveSelectorsSupportKeyboard_data() {
+        QTest::addColumn<bool>("recording");
+        QTest::newRow("screenshot") << false;
+        QTest::newRow("recording") << true;
+    }
+    void liveSelectorsSupportKeyboard() {
+        QFETCH(bool, recording);
+        for (int mode = 0; mode < 5; ++mode) {
+            const auto screen = QGuiApplication::primaryScreen()->geometry();
+            CaptureFrame frame{"fixture", screen, screen, 1, 0, {}};
+            RegionOverlay screenshot({frame});
+            SelectionOverlay record;
+            QRectF selected;
+            int cancelled = 0, accepted = 0;
+            connect(&screenshot, &RegionSelector::selected, this, [&](const QRectF& r) { selected = r; ++accepted; });
+            connect(&record, &SelectionOverlay::selected, this, [&](const QRect& r) { selected = r; ++accepted; });
+            connect(&screenshot, &RegionSelector::cancelled, this, [&](const Error&) { ++cancelled; });
+            connect(&record, &SelectionOverlay::cancelled, this, [&](const Error&) { ++cancelled; });
+            if (recording) record.start(); else screenshot.start();
+            QWidget* surface = nullptr;
+            for (auto* w : QApplication::topLevelWidgets())
+                if (w->isVisible() && w->objectName() == (recording ? "putgd-record-select" : "putgd-region-overlay")) surface = w;
+            QVERIFY(surface);
+            auto* accessible = QAccessible::queryAccessibleInterface(surface);
+            QVERIFY(accessible);
+            QCOMPARE(accessible->text(QAccessible::Description), surface->accessibleDescription());
+            QVERIFY(surface->accessibleDescription().contains("Enter captures the current screen"));
+            if (mode == 0) {
+                QTest::keyClick(surface, Qt::Key_Return);
+                QCOMPARE(selected, QRectF(screen));
+            } else if (mode == 4) {
+                drag(surface, {100, 100}, {300, 280});
+                QCOMPARE(selected, QRectF(QPointF(screen.topLeft()) + QPointF(100, 100), QSizeF(200, 180)));
+            } else {
+                QTest::keyClick(surface, Qt::Key_Right);
+                QRectF expected(QPointF(screen.topLeft()) + QPointF(screen.width() / 4.0, screen.height() / 4.0), QSizeF(screen.size()) / 2);
+                QVERIFY(accessible->text(QAccessible::Description).contains(QString::number(expected.width())));
+                QTest::keyClick(surface, Qt::Key_Right);
+                expected.translate(1, 0);
+                QTest::keyClick(surface, Qt::Key_Down, Qt::ControlModifier);
+                expected.translate(0, 10);
+                QTest::keyClick(surface, Qt::Key_Right, Qt::ShiftModifier);
+                expected.setWidth(expected.width() + 1);
+                QTest::keyClick(surface, Qt::Key_Up, Qt::ShiftModifier | Qt::ControlModifier);
+                expected.setHeight(expected.height() - 10);
+                if (mode == 1) {
+                    QTest::keyClick(surface, Qt::Key_Enter);
+                    QCOMPARE(selected, recording ? QRectF(expected.toAlignedRect()) : expected);
+                } else if (mode == 2) {
+                    QTest::keyClick(surface, Qt::Key_Escape);
+                    QCOMPARE(cancelled, 1);
+                    QCOMPARE(accepted, 0);
+                } else {
+                    // Oversized keyboard moves and resizes stay on the active screen.
+                    for (int i = 0; i < 200; ++i) QTest::keyClick(surface, Qt::Key_Right, Qt::ControlModifier);
+                    for (int i = 0; i < 200; ++i) QTest::keyClick(surface, Qt::Key_Down, Qt::ShiftModifier | Qt::ControlModifier);
+                    QTest::keyClick(surface, Qt::Key_Return);
+                    QVERIFY(QRectF(screen).contains(selected));
+                    QVERIFY(selected.width() > 0 && selected.height() > 0);
+                }
+            }
+            QVERIFY(!surface->isVisible());
+            QCOMPARE(accepted + cancelled, 1);
+        }
+    }
+    void destinationAndMutedPreviewRemainVisible() {
+        auto o = options();
+        o.audioRecorded = true;
+        o.destination = "Project archive for customer support in the European Union";
+        o.uploadSummary = "Upload to " + o.destination + " · Shared link";
+        ReviewWindow window(o, config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.resize(760, 420);
+        QApplication::processEvents();
+        const auto state = window.inspect();
+        QCOMPARE(state["destination"].toString(), o.destination);
+        QCOMPARE(state["sharingMode"].toString(), QString("share"));
+        QCOMPARE(state["uploadSummary"].toString(), o.uploadSummary);
+        QVERIFY(state["previewMuted"].toBool());
+        auto* target = window.findChild<QLabel*>("uploadDestination");
+        auto* upload = window.findChild<QPushButton*>("upload");
+        QVERIFY(target && target->isVisible() && target->wordWrap());
+        QVERIFY(target->mapTo(&window, target->rect().bottomLeft()).y() < upload->mapTo(&window, QPoint()).y());
+        QVERIFY(window.rect().contains(QRect(target->mapTo(&window, QPoint()), target->size())));
+        QVERIFY(window.findChild<QLabel*>("audioSummary")->isVisible());
+    }
+    void stoppingKeepsTheClipAndDiscardStillAsks() {
+        ControlBar::Options o;
+        o.targetLabel = "Region"; o.formats = {"mp4"}; o.codecs = {{"mp4", QJsonArray{"h264"}}};
+        ControlBar bar(o, config());
+        bar.setState("recording"); bar.show();
+        auto* stop = bar.findChild<QPushButton*>("stop");
+        auto* discard = bar.findChild<QPushButton*>("cancel");
+        QVERIFY(stop && discard);
+        QCOMPARE(stop->property("visualRole").toString(), QString("primary"));
+        QCOMPARE(discard->property("visualRole").toString(), QString("quiet"));
+        QSignalSpy stopped(&bar, &ControlBar::stopRequested), cancelled(&bar, &ControlBar::cancelRequested);
+        stop->click(); QCOMPARE(stopped.size(), 1); QCOMPARE(cancelled.size(), 0);
+        discard->click(); QVERIFY(bar.confirming()); QCOMPARE(cancelled.size(), 0);
+        bar.findChild<QPushButton*>("keepRecording")->click(); QVERIFY(!bar.confirming());
+    }
+    void timelineTargetsAre32PixelsAndNearestHandleWins() {
+        ReviewTimeline t;
+        t.setDuration(duration);
+        t.setTrim(5000000, 5200000);
+        t.setMasks({mask("one", "solid", 1000000, 2000000), mask("two", "solid", 1500000, 1900000)}, "one");
+        t.resize(600, t.sizeHint().height());
+        t.show();
+        const auto first = t.maskHitRect("one"), second = t.maskHitRect("two");
+        QCOMPARE(first.height(), 32);
+        QCOMPARE(second.height(), 32);
+        QVERIFY(first.intersects(second));
+        QSignalSpy trim(&t, &ReviewTimeline::trimChanged);
+        drag(&t, QPoint(t.xFor(5200000) + 12, 2), QPoint(t.xFor(7000000), 2));
+        QCOMPARE(trim.size(), 1);
+        QCOMPARE(trim.last()[0].toLongLong(), 5000000);
+        QVERIFY(trim.last()[1].toLongLong() > 6000000);
+        drag(&t, QPoint(t.xFor(5200000) + 12, 31), QPoint(t.xFor(7000000), 31));
+        QCOMPARE(trim.size(), 2);
+        QSignalSpy retimed(&t, &ReviewTimeline::maskRetimed);
+        const auto bar = t.maskRect("one");
+        drag(&t, QPoint(bar.left() - 12, first.bottom()), QPoint(t.xFor(500000), first.bottom()));
+        QCOMPARE(retimed.size(), 1);
+        QCOMPARE(retimed.last()[0].toString(), QString("one"));
+    }
     void compactHeaderIsOneLineNamedForTheWindow() {
         ReviewWindow window(options(), config());
         window.show();
@@ -531,7 +663,7 @@ private slots:
         QVERIFY(row && audio);
         QVERIFY(!row->isVisible());
         QCOMPARE(window.inspect()["statusRow"].toArray().size(), 0);
-        QCOMPARE(audio->text(), QString("System audio"));
+        QCOMPARE(audio->text(), QString("Preview muted · System audio in export"));
         QVERIFY(audio->width() >= audio->sizeHint().width());
         // H.265: a warning with its fix; the fix is the format control's own path.
         QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}}).code.isEmpty());
@@ -563,7 +695,7 @@ private slots:
         // GIF: silent, and over its length limit; the trim it needs is one click.
         window.setLimits(5000000, 4096);
         QVERIFY(window.drive({{"action", "format"}, {"format", "gif"}, {"codec", ""}}).code.isEmpty());
-        QCOMPARE(audio->text(), QString("No audio in GIF"));
+        QCOMPARE(audio->text(), QString("Preview muted · No audio in GIF"));
         lines = window.inspect()["statusRow"].toArray();
         QCOMPARE(lines.size(), 1);
         QVERIFY(lines[0].toObject()["text"].toString().startsWith(QStringLiteral("GIF is limited to 5 s")));

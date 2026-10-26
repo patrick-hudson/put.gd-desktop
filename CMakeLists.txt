@@ -546,9 +546,9 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       set_tests_properties(bar_placement_single_monitor_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-one-monitor.json;PUTGD_TEST_SCREENS=1")
       # #283: the review window's layout, timeline, contextual mask controls and
       # the controls recording.review drives, on a 1366×768 screen.
-      add_executable(test_review_window tests/gui/test_review_window.cpp src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
+      add_executable(test_review_window tests/gui/test_review_window.cpp src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
       target_include_directories(test_review_window PRIVATE src tests)
-      target_link_libraries(test_review_window PRIVATE putgd_core putgd_build_options putgd_visual putgd_fonts putgd_file_dialog Qt6::Widgets Qt6::Test PkgConfig::PUTGD_AV)
+      target_link_libraries(test_review_window PRIVATE putgd_core putgd_build_options putgd_visual putgd_fonts putgd_file_dialog Qt6::Widgets Qt6::Test PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
       add_test(NAME gui_review_window COMMAND test_review_window)
       set_tests_properties(gui_review_window PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-one-monitor.json" TIMEOUT 60)
       # #264: the helper's window icon and desktop file name, and the entry it names.
@@ -810,7 +810,7 @@ if(BUILD_TESTING)
   target_link_libraries(putgd-redesign-preview PRIVATE putgd_ui_application putgd_editor_window putgd_app putgd_s3 Qt6::Test)
   if(TARGET putgd-record)
     # The review window and control bar states (synthetic; Graphite acceptance).
-    target_sources(putgd-redesign-preview PRIVATE src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
+    target_sources(putgd-redesign-preview PRIVATE src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
     target_link_libraries(putgd-redesign-preview PRIVATE putgd_fonts putgd_file_dialog Qt6::DBus PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
     target_compile_definitions(putgd-redesign-preview PRIVATE PUTGD_PREVIEW_REVIEW=1)
   endif()

@@ -434,7 +434,7 @@ void RecordingService::beginPrepare(quint64 generation) {
 }
 void RecordingService::prepareBackend(quint64 generation) {
     auto& s = *session_;
-    backend_->prepare(s.op.id, s.target, s.config, s.staging, marshal(generation, [this](Error error, QJsonObject result) { prepared(error, result); }));
+    backend_->prepare(s.op.id, s.target, s.config, s.staging, marshal(generation, [this](Error error, QJsonObject result) { prepared(error, result); }), host_.reviewOptions ? host_.reviewOptions(s.op) : QJsonObject{});
 }
 void RecordingService::prepared(Error error, const QJsonObject& result) {
     auto& s = *session_;

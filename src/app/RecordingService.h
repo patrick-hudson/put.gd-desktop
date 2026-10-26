@@ -22,6 +22,7 @@ public:
         std::function<Settings()> settings;
         // Fills identity, settings snapshot, destination and ownership; rejects when busy.
         std::function<Error(Operation&)> accept;
+        std::function<QJsonObject(const Operation&)> reviewOptions;
         std::function<void(const Operation&, std::function<void(Error)>)> persist;
         std::function<void(const Operation&)> observe;
         // Hands the validated export file to the immutable artifact pipeline.

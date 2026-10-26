@@ -1,4 +1,7 @@
 #include "ReviewWindow.h"
+#include <QGridLayout>
+#include <QResizeEvent>
+#include <limits>
 #include "ClipExporter.h"
 #include "DebugLog.h"
 #include "Overlays.h"
@@ -302,7 +305,7 @@ void FrameView::mouseReleaseEvent(QMouseEvent* e) {
 
 namespace {
 // Timeline geometry (#283): the clip track, then one thin lane per row of masks.
-constexpr int trackPad = 8, trackTop = 6, trackHeight = 12, laneTop = 25, laneHeight = 9, laneGap = 3, bottomPad = 6, maxLanes = 4, grip = 6;
+constexpr int trackPad = 16, trackTop = 6, trackHeight = 12, laneTop = 19, laneHeight = 9, laneGap = 3, bottomPad = 0, maxLanes = 4, grip = 16;
 constexpr qint64 minimumSpanUs = 10000;
 }
 
@@ -354,8 +357,12 @@ QRect ReviewTimeline::maskRect(const QString& id) const {
     }
     return {};
 }
+QRect ReviewTimeline::maskHitRect(const QString& id) const {
+    const auto bar = maskRect(id);
+    return bar.isNull() ? QRect{} : QRect(bar.left() - 16, bar.center().y() - 16, std::max(32, bar.width() + 32), 32);
+}
 QSize ReviewTimeline::sizeHint() const { return {480, minimumSizeHint().height()}; }
-QSize ReviewTimeline::minimumSizeHint() const { return {120, std::max(32, lanes_ ? laneTop + lanes_ * (laneHeight + laneGap) - laneGap + bottomPad : trackTop + trackHeight + bottomPad)}; }
+QSize ReviewTimeline::minimumSizeHint() const { return {120, std::max(32, lanes_ ? laneRect(lanes_ - 1).center().y() + 17 : trackTop + trackHeight + bottomPad)}; }
 void ReviewTimeline::paintEvent(QPaintEvent*) {
     // Graphite: a quiet track, the retained interval framed in amber between
     // two grip handles, lightly dimmed trimmed-away ends, mask bars in lanes
@@ -421,34 +428,62 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
     if (Graphite::keyboardFocus(this)) { painter.setPen(QPen(p.accent, 1)); painter.setBrush(Qt::NoBrush); painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 5, 5); }
 }
 void ReviewTimeline::seek(qint64 us) { setPlayhead(us); emit scrubbed(playhead_); }
+ReviewTimeline::Drag ReviewTimeline::handleAt(QPointF pos) const {
+    Drag result = Drag::None;
+    qreal nearest = std::numeric_limits<qreal>::max();
+    const auto offer = [&](int x, int y, Drag kind) {
+        const auto delta = pos - QPointF(x, y);
+        const QRectF target(x - grip, std::clamp(y - 16, 0, std::max(0, height() - 32)), 32, 32);
+        if (!target.contains(pos)) return;
+        const auto distance = delta.x() * delta.x() + delta.y() * delta.y();
+        if (distance < nearest) { nearest = distance; result = kind; }
+    };
+    // Full-size targets overlap; the nearest grip wins, including between rows.
+    const auto row = maskAt(pos);
+    if (row.isEmpty()) {
+        offer(xFor(trimStart_), trackRect().center().y(), Drag::TrimStart);
+        offer(xFor(trimEnd_), trackRect().center().y(), Drag::TrimEnd);
+    }
+    if (const auto bar = maskRect(selected_); !bar.isNull() && row == selected_) {
+        offer(bar.left(), bar.center().y(), Drag::MaskStart);
+        offer(bar.left() + bar.width(), bar.center().y(), Drag::MaskEnd);
+    }
+    return result;
+}
+QString ReviewTimeline::maskAt(QPointF pos) const {
+    QString result;
+    qreal nearest = std::numeric_limits<qreal>::max();
+    for (const auto& mask : masks_) {
+        if (!maskHitRect(mask.id).contains(pos.toPoint())) continue;
+        const auto distance = std::abs(pos.y() - maskRect(mask.id).center().y());
+        if (std::abs(pos.y() - trackRect().center().y()) < distance) continue;
+        if (distance <= nearest) { nearest = distance; result = mask.id; }
+    }
+    return result;
+}
 void ReviewTimeline::mousePressEvent(QMouseEvent* e) {
     if (e->button() != Qt::LeftButton) return;
     const auto pos = e->position();
-    // The selected mask's edges, then the trim handles, then a mask bar (which
-    // selects it and moves the whole interval); anything else scrubs.
-    if (const auto bar = maskRect(selected_); !bar.isNull() && pos.y() >= bar.top() - 3 && pos.y() <= bar.bottom() + 3) {
-        const auto& mask = *std::find_if(masks_.cbegin(), masks_.cend(), [this](const RecordingMask& m) { return m.id == selected_; });
-        const qreal toStart = std::abs(pos.x() - bar.left()), toEnd = std::abs(pos.x() - (bar.left() + bar.width()));
-        if (std::min(toStart, toEnd) <= grip) { drag_ = toStart <= toEnd ? Drag::MaskStart : Drag::MaskEnd; dragStart_ = mask.start; dragEnd_ = mask.end; emit scrubStarted(); return; }
+    const auto handle = handleAt(pos);
+    if (handle != Drag::None) {
+        drag_ = handle;
+        if (handle == Drag::MaskStart || handle == Drag::MaskEnd) {
+            const auto& mask = *std::find_if(masks_.cbegin(), masks_.cend(), [this](const RecordingMask& m) { return m.id == selected_; });
+            dragStart_ = mask.start; dragEnd_ = mask.end;
+        } else { dragStart_ = trimStart_; dragEnd_ = trimEnd_; }
+        emit scrubStarted();
+        return;
     }
-    if (pos.y() < laneTop - 1) {
-        const qreal toStart = std::abs(pos.x() - xFor(trimStart_)), toEnd = std::abs(pos.x() - xFor(trimEnd_));
-        if (std::min(toStart, toEnd) <= grip) { drag_ = toStart < toEnd ? Drag::TrimStart : Drag::TrimEnd; dragStart_ = trimStart_; dragEnd_ = trimEnd_; emit scrubStarted(); return; }
-    } else {
-        for (int i = int(masks_.size()) - 1; i >= 0; --i) {
-            if (!maskRect(masks_[i].id).adjusted(-2, -2, 2, 2).contains(pos.toPoint())) continue;
-            if (selected_ != masks_[i].id) { selected_ = masks_[i].id; emit maskSelected(selected_); }
-            // Dragging the bar moves the mask in time; its length stays the same.
-            // Until the pointer passes the drag distance this is only a
-            // selecting click: no move, no seek, no retime, playback continues.
-            drag_ = Drag::MaskMovePending;
-            dragStart_ = masks_[i].start;
-            dragEnd_ = masks_[i].end;
-            moveAnchor_ = timeAt(pos.x()) - masks_[i].start;
-            pressX_ = pos.x();
-            update();
-            return;
-        }
+    const auto hit = maskAt(pos);
+    if (!hit.isEmpty()) {
+        const auto& mask = *std::find_if(masks_.cbegin(), masks_.cend(), [&](const RecordingMask& m) { return m.id == hit; });
+        if (selected_ != hit) { selected_ = hit; emit maskSelected(selected_); }
+        drag_ = Drag::MaskMovePending;
+        dragStart_ = mask.start; dragEnd_ = mask.end;
+        moveAnchor_ = timeAt(pos.x()) - mask.start;
+        pressX_ = pos.x();
+        update();
+        return;
     }
     drag_ = Drag::Scrub;
     emit scrubStarted();
@@ -457,12 +492,7 @@ void ReviewTimeline::mousePressEvent(QMouseEvent* e) {
 void ReviewTimeline::mouseMoveEvent(QMouseEvent* e) {
     const auto pos = e->position();
     if (drag_ == Drag::None) {
-        const auto bar = maskRect(selected_);
-        const bool overMask = !bar.isNull() && pos.y() >= bar.top() - 3 && pos.y() <= bar.bottom() + 3 && std::min(std::abs(pos.x() - bar.left()), std::abs(pos.x() - (bar.left() + bar.width()))) <= grip;
-        const bool overTrim = pos.y() < laneTop - 1 && std::min(std::abs(pos.x() - xFor(trimStart_)), std::abs(pos.x() - xFor(trimEnd_))) <= grip;
-        bool overBar = false;
-        for (const auto& mask : masks_) overBar |= maskRect(mask.id).adjusted(-2, -2, 2, 2).contains(pos.toPoint());
-        setCursor(overMask || overTrim ? Qt::SizeHorCursor : overBar ? Qt::OpenHandCursor : Qt::ArrowCursor);
+        setCursor(handleAt(pos) != Drag::None ? Qt::SizeHorCursor : !maskAt(pos).isEmpty() ? Qt::OpenHandCursor : Qt::ArrowCursor);
         return;
     }
     const qint64 at = timeAt(pos.x());
@@ -579,11 +609,17 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     VisualStyle::role(time_, "secondary");
     mono(time_, Graphite::Type::body);
     time_->setAccessibleName("Playhead time");
-    time_->setMinimumWidth(time_->fontMetrics().horizontalAdvance(QStringLiteral("00:00.00 / 00:00.00 trimmed")) + 2);
+    time_->setMinimumWidth(0);
+    time_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     transport->addWidget(play_);
-    transport->addWidget(speed_, 0, Qt::AlignVCenter);
+    transport->addWidget(speed_);
     transport->addWidget(timeline_, 1);
-    transport->addWidget(time_);
+    auto* playbackInfo = new QWidget(this);
+    auto* playbackLabels = new QVBoxLayout(playbackInfo);
+    playbackLabels->setContentsMargins(0, 0, 0, 0);
+    playbackLabels->setSpacing(2);
+    playbackLabels->addWidget(time_);
+    transport->addWidget(playbackInfo);
     root->addLayout(transport);
     auto* tools = new QHBoxLayout;
     tools->setSpacing(4);
@@ -634,7 +670,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     statusLines_->setSpacing(2);
     statusRow_->hide();
     root->insertWidget(root->indexOf(view_) + 1, statusRow_);
-    auto* actions = new QHBoxLayout;
+    outputTools_ = new QWidget(this);
+    auto* actions = new QHBoxLayout(outputTools_);
+    actions->setContentsMargins(0, 0, 0, 0);
     actions->setSpacing(6);
     format_ = new QComboBox(this);
     format_->setAccessibleName("Output format");
@@ -663,27 +701,40 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     draft->setObjectName("draftState");
     draft->setToolTip("Nothing uploads until you choose Upload; Save a copy… exports locally.");
     VisualStyle::role(draft, "meta");
-    actions->addWidget(draft);
-    actions->addSpacing(8);
-    auto* output = new QLabel("Output", this);
+
+    auto* output = new QLabel("Format", this);
     VisualStyle::role(output, "meta");
     output->setBuddy(format_);
-    actions->setContentsMargins(12, 2, 12, 2);
     actions->addWidget(output);
     actions->addWidget(format_);
-    actions->addWidget(audio_);
-    actions->addStretch(1);
-    actions->addWidget(save_);
-    actions->addWidget(cancel_);
-    actions->addWidget(upload_);
+    playbackLabels->addWidget(audio_);
+    outputTools_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    destination_ = new QLabel(options.uploadSummary, this);
+    destination_->setObjectName("uploadDestination");
+    destination_->setTextFormat(Qt::PlainText);
+    destination_->setAccessibleName(options.uploadSummary);
+    destination_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    VisualStyle::role(destination_, "meta");
+    destination_->setVisible(!options.uploadSummary.isEmpty());
     auto* footer = new Graphite::Surface("bg", Qt::TopEdge, this);
     footer->setObjectName("reviewFooter");
-    footer->setLayout(actions);
+    footerGrid_ = new QGridLayout(footer);
+    footerGrid_->setContentsMargins(12, 2, 12, 2);
+    footerGrid_->setHorizontalSpacing(6);
+    footerGrid_->setVerticalSpacing(2);
+    transport->insertWidget(2, outputTools_);
+    footerGrid_->addWidget(draft, 1, 0);
+    footerGrid_->addWidget(destination_, 1, 1);
+    footerGrid_->addWidget(save_, 1, 2);
+    footerGrid_->addWidget(cancel_, 1, 3);
+    footerGrid_->addWidget(upload_, 1, 4);
+    footerGrid_->setColumnStretch(1, 1);
     frame->addWidget(footer);
+    placeDestination();
     // Text stays enlarged; the review's fields need less vertical padding than forms.
-    for (auto* field : std::initializer_list<QWidget*>{speed_, masks_, strength_})
+    for (auto* field : std::initializer_list<QWidget*>{speed_, masks_, strength_, format_})
         field->setFixedHeight(std::max(32, field->fontMetrics().height() + 6));
-    for (auto* action : std::initializer_list<QWidget*>{format_, upload_, save_, cancel_})
+    for (auto* action : std::initializer_list<QWidget*>{upload_, save_, cancel_})
         action->setFixedHeight(std::max(36, action->fontMetrics().height() + 8));
     // Keyboard (#283): Space plays and pauses (keyPressEvent, so a focused
     // button or list still takes its own Space), I/O set the trim, Shift+I/O the
@@ -781,7 +832,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     if (const auto* screen = QGuiApplication::primaryScreen()) size = size.boundedTo(screen->availableGeometry().size() - QSize(24, 48));
     resize(size.expandedTo(minimumSizeHint()));
 }
-QSize ReviewWindow::defaultSize() { return {960, Graphite::WindowHeader::customFrame() ? 648 : 600}; }
+QSize ReviewWindow::defaultSize() { return {920, Graphite::WindowHeader::customFrame() ? 648 : 600}; }
 RecordingMask* ReviewWindow::selectedMask() {
     auto it = std::find_if(edit_.masks.begin(), edit_.masks.end(), [&](const RecordingMask& m) { return m.id == selectedMask_; });
     return it == edit_.masks.end() ? nullptr : &*it;
@@ -958,7 +1009,7 @@ void ReviewWindow::refreshLabels() {
     if (!view_->previewError().isEmpty()) frameState.prepend(view_->previewError() + QStringLiteral(". "));
     view_->setAccessibleDescription(frameState);
     // The audio summary: a few words beside Output, never elided.
-    const QString audio = !options_.audioRecorded ? QStringLiteral("No audio") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : QStringLiteral("System audio");
+    const QString audio = QStringLiteral("Preview muted · ") + (!options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : QStringLiteral("System audio in export"));
     audio_->setText(audio);
     audio_->setToolTip(!options_.audioRecorded ? QStringLiteral("No system audio was recorded") : config_.silent() ? QStringLiteral("System audio was recorded; %1 exports are silent. Choose MP4 or WebM to keep it.").arg(config_.format.toUpper()) : QStringLiteral("The export keeps the recorded system audio; the preview is silent"));
     audio_->setAccessibleName(QStringLiteral("Audio: ") + audio);
@@ -975,7 +1026,7 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
         return std::nullopt;
     };
     if (config_.format == "mp4" && config_.codec == "h265") {
-        StatusEntry codec{QStringLiteral("H.265 does not play in Firefox or Chrome on Linux. Use H.264 for a link anyone can open."), QStringLiteral("warning"), {}};
+        StatusEntry codec{QStringLiteral("Use MP4 (H.264) for broader playback compatibility."), QStringLiteral("warning"), {}};
         if (const auto h264 = offer("mp4", "h264")) codec.actions.append(*h264);
         entries.append(codec);
     }
@@ -1045,13 +1096,30 @@ void ReviewWindow::refreshStatus() {
     statusLines_->activate();
     layout()->activate();
 }
+void ReviewWindow::resizeEvent(QResizeEvent* event) {
+    QWidget::resizeEvent(event);
+    placeDestination();
+}
+void ReviewWindow::placeDestination() {
+    if (!footerGrid_ || options_.uploadSummary.isEmpty()) return;
+    const auto margins = footerGrid_->contentsMargins();
+    int room = width() - margins.left() - margins.right() - findChild<QLabel*>("draftState")->sizeHint().width() - footerGrid_->horizontalSpacing();
+    for (auto* button : {save_, cancel_, upload_}) room -= button->sizeHint().width() + footerGrid_->horizontalSpacing();
+    const bool above = destination_->fontMetrics().horizontalAdvance(destination_->text()) > room;
+    if (above == destinationAbove_) return;
+    destinationAbove_ = above;
+    destination_->setWordWrap(above);
+    footerGrid_->removeWidget(destination_);
+    if (above) footerGrid_->addWidget(destination_, 0, 0, 1, 5);
+    else footerGrid_->addWidget(destination_, 1, 1);
+}
 QJsonObject ReviewWindow::inspect() const {
     auto rect = [](const QRect& r) { return QJsonArray{r.x(), r.y(), r.width(), r.height()}; };
     const auto* mask = selectedMask();
     const QRect video(view_->mapTo(this, view_->imageRect().topLeft()), view_->imageRect().size());
     const double area = double(std::max(1, width())) * std::max(1, height());
     QJsonArray masks;
-    for (const auto& m : edit_.masks) masks.append(QJsonObject{{"id", m.id}, {"kind", m.kind}, {"timeline", rect(timeline_->maskRect(m.id).translated(timeline_->mapTo(this, QPoint())))}});
+    for (const auto& m : edit_.masks) masks.append(QJsonObject{{"id", m.id}, {"kind", m.kind}, {"timeline", rect(timeline_->maskRect(m.id).translated(timeline_->mapTo(this, QPoint())))}, {"timelineTarget", rect(timeline_->maskHitRect(m.id).translated(timeline_->mapTo(this, QPoint())))}});
     // The status row as shown: each line's words, tone and its actions as drive() calls.
     QJsonArray statusRow;
     QStringList lines;
@@ -1071,6 +1139,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"armed", view_->armed().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->armed())},
         {"maskControls", QJsonObject{{"list", maskTools_->isVisibleTo(this)}, {"times", maskStart_->isVisibleTo(this)}, {"strength", strength_->isVisibleTo(this)}, {"remove", removeMask_->isVisibleTo(this)}}},
         {"status", status}, {"statusRow", statusRow}, {"audio", audio_->text()},
+        {"previewMuted", true}, {"destination", options_.destination}, {"sharingMode", options_.sharingMode}, {"uploadSummary", options_.uploadSummary},
         {"notice", notice_->isVisibleTo(this) ? QJsonValue(notice_->text()) : QJsonValue(QJsonValue::Null)},
         {"preview", QJsonObject{{"error", view_->previewError().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->previewError())}, {"stale", view_->stale()}, {"frameTimeUs", view_->hasFrame() ? QJsonValue(double(view_->frameTime())) : QJsonValue(QJsonValue::Null)}}},
         {"frameFocus", view_->hasFocus()},
@@ -1078,7 +1147,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"fileDialog", chooser_->state()},
         {"format", QJsonObject{{"format", config_.format}, {"codec", config_.codec}}},
         {"video", QJsonObject{{"rect", rect(video)}, {"share", double(video.width()) * video.height() / area}}},
-        {"timeline", QJsonObject{{"rect", rect(timeline_->geometry())}, {"lanes", timeline_->lanes()}}},
+        {"timeline", QJsonObject{{"rect", rect(timeline_->geometry())}, {"lanes", timeline_->lanes()}, {"interactionRowHeight", 32}, {"gripTargetSize", 32}}},
         {"header", QJsonObject{{"visible", header_->isVisibleTo(this)}, {"rect", rect(header_->geometry())}, {"customFrame", Graphite::WindowHeader::customFrame()}}}};
 }
 ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {

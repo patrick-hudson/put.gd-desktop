@@ -12,6 +12,7 @@
 #include <memory>
 
 class QComboBox;
+class QGridLayout;
 class QLabel;
 class QMessageBox;
 class QPushButton;
@@ -27,7 +28,7 @@ namespace putgd::record {
 // Paints the preview frame scaled to fit and lets the user create, select,
 // move and resize mask rectangles in canvas pixels, with the pointer or, with
 // focus, the keyboard: arrows move the selected mask, Shift+arrows resize it
-// (10 px steps, 1 px with Ctrl), Escape clears the selection.
+// (1 px steps, 10 px with Ctrl), Escape clears the selection.
 class FrameView final : public QWidget {
     Q_OBJECT
 public:
@@ -112,6 +113,7 @@ public:
     QRect trackRect() const;
     int xFor(qint64 us) const;
     QRect maskRect(const QString& id) const;
+    QRect maskHitRect(const QString& id) const;
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
 signals:
@@ -128,6 +130,8 @@ protected:
     void keyPressEvent(QKeyEvent*) override;
 private:
     enum class Drag { None, Scrub, TrimStart, TrimEnd, MaskStart, MaskEnd, MaskMovePending, MaskMove };
+    Drag handleAt(QPointF) const;
+    QString maskAt(QPointF) const;
     qint64 timeAt(qreal x) const;
     void layoutLanes();
     QRect laneRect(int lane) const;
@@ -151,7 +155,7 @@ private:
 class ReviewWindow final : public QWidget {
     Q_OBJECT
 public:
-    struct Options { QString workingClip; qint64 durationUs = 0; QSize canvas; QStringList formats; QJsonObject codecs; bool audioRecorded = false; };
+    struct Options { QString workingClip; QString destination, sharingMode, uploadSummary; qint64 durationUs = 0; QSize canvas; QStringList formats; QJsonObject codecs; bool audioRecorded = false; };
     ReviewWindow(const Options&, const RecordingConfig&, QWidget* parent = nullptr);
     void setEdit(const RecordingEdit&);
     void setConfig(const RecordingConfig&);
@@ -188,6 +192,7 @@ signals:
 protected:
     void closeEvent(QCloseEvent*) override;
     void hideEvent(QHideEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
 private:
     // One line of the status row: an error, warning or notice with the actions
@@ -199,6 +204,7 @@ private:
     };
     QList<StatusEntry> statusEntries() const;
     void refreshStatus();
+    void placeDestination();
     // Discard, the close button and the drive's discard ask before anything is
     // lost; recording.cancel (an agent's explicit cancel) never asks.
     void askDiscard();
@@ -237,6 +243,10 @@ private:
     Graphite::WindowHeader* header_ = nullptr;
     FrameView* view_ = nullptr;
     ReviewTimeline* timeline_ = nullptr;
+    QLabel* destination_ = nullptr;
+    QGridLayout* footerGrid_ = nullptr;
+    QWidget* outputTools_ = nullptr;
+    bool destinationAbove_ = false;
     QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *strengthLabel_ = nullptr, *audio_ = nullptr;
     // Errors, warnings and privacy guidance with their actions; shown only when there are any.
     QWidget* statusRow_ = nullptr;

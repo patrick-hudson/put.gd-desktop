@@ -42,6 +42,8 @@
 #include <QWindow>
 #ifdef PUTGD_PREVIEW_REVIEW
 #include "record/ReviewWindow.h"
+#include "ui/RegionOverlay.h"
+#include <QTest>
 #include "record/Overlays.h"
 #endif
 using namespace putgd;
@@ -230,7 +232,7 @@ int main(int argc,char** argv){
 #ifdef PUTGD_PREVIEW_REVIEW
  {
   // The private review and the ready control bar, over a synthetic frame.
-  record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.durationUs=32000000;o.canvas=QSize(960,600);o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
+  record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.destination="Project archive";o.sharingMode="share";o.uploadSummary="Upload to Project archive · Shared link";o.durationUs=32000000;o.canvas=QSize(960,600);o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
   RecordingConfig config;config.format="mp4";config.codec="h264";config.fps=30;o.audioRecorded=true;
   // No clip exists: hold the frame refresh so the synthetic frame stays until a state asks for one.
   qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","3600000");
@@ -267,6 +269,17 @@ int main(int argc,char** argv){
   ready.setState("recording");if(auto* cancel=ready.findChild<QPushButton*>("cancel"))cancel->click();if(!ready.confirming()||!shot(ready,"36-record-discard-confirm"))return 2;
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("paused");if(auto* cancel=ready.findChild<QPushButton*>("cancel"))cancel->click();if(!ready.confirming()||!shot(ready,"42-record-paused-discard-confirm"))return 2;
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("ready");ready.setRetained(0);ready.fitTo(QRect(0,0,1024,768));if(!ready.twoRows()||!shot(ready,"37-record-ready-narrow"))return 2;
+  ready.hide();
+  record::ReviewWindow::Options privateOptions=o;privateOptions.destination="Proton Drive";privateOptions.sharingMode="private";privateOptions.uploadSummary="Private upload to Proton Drive";
+  record::ReviewWindow privateReview(privateOptions,config);privateReview.show();if(auto* view=privateReview.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);if(!shot(privateReview,"43-review-private-destination")||!inspected(privateReview,"43-review-private-destination"))return 2;privateReview.hide();
+  const auto screen=QGuiApplication::primaryScreen()->geometry();
+  CaptureFrame selectionFrame{"fixture",screen,screen,1,0,{}};
+  RegionOverlay screenshot({selectionFrame});screenshot.start();
+  for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"){QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"44-region-keyboard"))return 2;break;}
+  screenshot.cancel();
+  record::SelectionOverlay selector;selector.start();
+  for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-record-select"){QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"45-record-region-keyboard"))return 2;break;}
+  selector.cancel();
  }
 #endif
  // The custom frame under real input: the driver moves, maximizes, restores,

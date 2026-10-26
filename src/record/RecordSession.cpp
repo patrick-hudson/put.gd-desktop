@@ -213,6 +213,7 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     if (staging.isEmpty() || !QFileInfo(staging).isDir()) { reply({"recording_io", "The staging directory is missing", {}}, {}); return; }
     id_ = params["id"].toString();
     target_ = target;
+    reviewOptions_ = params["reviewOptions"].toObject();
     config_ = config;
     staging_ = staging;
     workingClip_ = staging + "/working.mkv";
@@ -547,6 +548,9 @@ void RecordSession::openReview() {
     delete review_;
     ReviewWindow::Options options;
     options.workingClip = workingClip_;
+    options.destination = reviewOptions_["destination"].toString();
+    options.sharingMode = reviewOptions_["sharingMode"].toString();
+    options.uploadSummary = reviewOptions_["summary"].toString();
     options.durationUs = durationUs_;
     options.canvas = resolved_.canvas;
     for (const auto& value : capabilities_["formats"].toArray()) options.formats.append(value.toString());

@@ -55,6 +55,7 @@ private slots:
   const auto stopped=h.rec("stop",{{"id",id}});QVERIFY2(!stopped.error,qPrintable(stopped.error.message));QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["durationUs"].toDouble(),12000000.0);
   QCOMPARE(stopped.result["stopReason"].toString(),QString("user"));
   QCOMPARE(h.rec("inspect",{{"id",id}}).result,stopped.result);
+  const auto reviewed=h.rec("review",{{"id",id},{"action","inspect"}});QVERIFY(!reviewed.error);QCOMPARE(reviewed.result["reviewOptions"].toObject()["summary"].toString(),QString("Save to the local archive"));
   const auto preview=h.rec("preview",{{"id",id},{"time",2000000}});QVERIFY2(!preview.error,qPrintable(preview.error.message));QVERIFY(preview.result["png"].isString());QCOMPARE(preview.result["timeUs"].toDouble(),2000000.0);
   QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",1000000},{"end",7000000}}}}}).error);
   const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["state"].toString(),QString("exporting"));

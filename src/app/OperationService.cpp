@@ -83,6 +83,16 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);
  connect(&settings_,&SettingsService::accepted,this,[this]{uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);pump();});
  RecordingService::Host host;
+ host.reviewOptions=[this](const Operation& op){
+  const auto route=op.settings.actions.value(op.action);
+  if(route.destination!="upload"||op.destination.profileId.isEmpty())return QJsonObject{{"destination","local"},{"sharingMode","local"},{"summary","Save to the local archive"}};
+  const auto profile=op.settings.profiles.value(op.destination.profileId);
+  auto mode=route.publicationMode;
+  if(mode=="default")if(auto provider=providers_.find(op.destination.providerId))mode=provider->defaultPublicationMode(op.destination);
+  const auto label=profile["label"].toString(op.destination.profileId);
+  const auto summary=mode=="private"?QStringLiteral("Private upload to %1").arg(label):QStringLiteral("Upload to %1 · Shared link").arg(label);
+  return QJsonObject{{"destination",label},{"sharingMode",mode},{"summary",summary}};
+ };
  host.settings=[this]{return settings_.snapshot();};
  host.accept=[this](Operation& op){return acceptRecording(op);};
  host.persist=[this](const Operation& op,std::function<void(Error)> done){const auto path=databasePath();background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[done](Error e,QJsonObject){done(e);});};
