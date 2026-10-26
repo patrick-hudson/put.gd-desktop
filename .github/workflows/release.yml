@@ -78,6 +78,10 @@ jobs:
         with:
           name: release-assets
           path: build/publish
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-source-assets
+          path: build/publish/sources
       - name: Stage verified GitHub draft
         run: python3 tools/releases/publish.py --tag "$TAG" --directory build/publish
       - name: Summarize next steps

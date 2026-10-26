@@ -175,6 +175,36 @@ class ReleaseCollection(unittest.TestCase):
     def run_collection(self):
         return collect.collect(self.root, self.inputs, self.output, TAG)
 
+    def test_installer_layout_links_sources_and_keeps_debug_out_of_public_assets(self):
+        import support_assets
+        # Tagged builds do not recompile the source export or carry unchanged
+        # Proton archives/debug payloads through the collection job.
+        (self.inputs / 'release-native-ubuntu24.04/source-build-results.json').unlink()
+        shutil.rmtree(self.inputs / 'proton-sources')
+        for path in self.inputs.glob('release-*/debug-symbols-*'):
+            path.unlink()
+        collect.collect(self.root, self.inputs, self.output, TAG, installers_only=True)
+        files = {p.name for p in self.output.iterdir() if p.is_file()}
+        self.assertEqual(files, support_assets.inventory(self.release['version']))
+        self.assertEqual(len(files), 15)
+        self.assertFalse(any(name.endswith(('.tar.gz', '.zip', '.part1', '.part2', '.tar.zst')) for name in files))
+        delivery = json.loads((self.output / 'source-delivery.json').read_text())
+        support_assets.validate(delivery, self.release, appimage_update.REPOSITORY)
+        for name, item in delivery['assets'].items():
+            path = self.output / 'sources' / name
+            self.assertEqual(collect.sha256(path), item['sha256'])
+            self.assertEqual(path.stat().st_size, item['bytes'])
+        manifest = json.loads((self.output / 'release-builds.json').read_text())
+        self.assertEqual(manifest['assetLayout'], support_assets.LAYOUT)
+        self.assertEqual(manifest['sources'], delivery)
+
+    def test_installer_layout_still_requires_exact_appimage_source_bytes(self):
+        path = next((self.inputs / 'release-appimage').glob('*-appimage-complete-source.tar.gz'))
+        path.write_bytes(b'corrupt sources')
+        with self.assertRaisesRegex(ValueError, 'source bytes'):
+            collect.collect(self.root, self.inputs, self.output, TAG, installers_only=True)
+        self.assertFalse(self.output.exists())
+
     def test_collects_unique_distro_assets_and_checksums(self):
         self.assertEqual(self.run_collection(), self.release)
         files = {path.name for path in self.output.iterdir()}

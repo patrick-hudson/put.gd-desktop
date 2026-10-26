@@ -357,6 +357,25 @@ class RemoteDraftTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'bytes differ'):
             self.verify()
 
+    def test_server_sha256_verifies_uploaded_bytes_without_downloading_them_again(self):
+        for asset in self.metadata['assets']:
+            asset['digest'] = 'sha256:' + hashlib.sha256(self.remote_files[asset['name']]).hexdigest()
+        with patch.object(publish, 'github_json', side_effect=self.api), \
+                patch.object(publish.subprocess, 'run') as download:
+            publish.verify_remote_draft('v0.1.1-rc.1', self.directory, self.listed, 'a' * 40)
+        download.assert_not_called()
+        self.metadata['assets'][0]['digest'] = 'sha256:' + 'f' * 64
+        with self.assertRaisesRegex(ValueError, 'digest differs'):
+            self.verify()
+
+    def test_server_digest_changes_during_verification_are_rejected(self):
+        for asset in self.metadata['assets']:
+            asset['digest'] = 'sha256:' + hashlib.sha256(self.remote_files[asset['name']]).hexdigest()
+        self.after = copy.deepcopy(self.metadata)
+        self.after['assets'][0]['digest'] = 'sha256:' + 'e' * 64
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            self.verify()
+
 
 class NightlyPublicationTest(unittest.TestCase):
     """Drive the CLI against synthetic GitHub protocol state, without live mutations."""
@@ -440,6 +459,47 @@ class NightlyPublicationTest(unittest.TestCase):
         self.assertEqual(publish.release_title({'version': '26.1022.42-nightly'}), 'put.gd 26.1022.42 nightly')
         self.assertEqual(publish.release_title({'version': '26.1101.960'}), 'put.gd 26.1101.960')
         self.assertEqual(publish.release_title({'version': '0.1.1-nightly.42'}), 'put.gd 0.1.1 nightly 42')
+
+    def installer_fixture(self):
+        sources = self.directory / 'sources'
+        sources.mkdir()
+        for name in (f'putgd-{self.release["version"]}-source.tar.gz',
+                     f'putgd-{self.release["version"]}-appimage-complete-source.tar.gz',
+                     f'putgd-gnome50-{self.release["version"]}.zip'):
+            (sources / name).write_bytes(b'synthetic source fixture')
+        delivery = publish.support_assets.describe(sources, self.release, 'fixture/putgd')
+        self.files = {name: ('synthetic ' + name).encode() for name in
+                      publish.support_assets.inventory(self.release['version']) - {'SHA256SUMS'}}
+        self.files['release-builds.json'] = json.dumps({'release': self.release, 'sources': delivery,
+            'schemaVersion': 2, 'assetLayout': publish.support_assets.LAYOUT}).encode()
+        self.files['source-delivery.json'] = json.dumps(delivery).encode()
+        self.files['proton-source-catalog.json'] = (ROOT / 'tools/proton/notices/SOURCES.json').read_bytes()
+        self.listed = {name: hashlib.sha256(data).hexdigest() for name, data in self.files.items()}
+        self.files['SHA256SUMS'] = ''.join(d + '  ' + n + '\n' for n, d in sorted(self.listed.items())).encode()
+        for name, data in self.files.items():
+            (self.directory / name).write_bytes(data)
+
+    def test_installer_release_publishes_only_installers_and_support_files(self):
+        self.installer_fixture()
+        with patch.object(publish.support_assets, 'publish') as linked, \
+                patch.object(publish.support_assets, 'verify_public'), \
+                patch.object(publish.support_assets, 'verify_proton'):
+            self.invoke()
+        linked.assert_called_once()
+        self.assertEqual(set(self.remote_files), publish.support_assets.inventory(self.release['version']))
+        self.assertEqual(len(self.remote_files), 15)
+        notes = (self.directory / 'release-notes.md').read_text()
+        self.assertIn('/releases/tag/sources-' + self.tag, notes)
+        self.assertIn('CI artifacts', notes)
+        self.assertNotIn('combined ZIP', notes)
+
+    def test_missing_linked_sources_block_installer_publication(self):
+        self.installer_fixture()
+        with patch.object(publish.support_assets, 'verify_proton'), \
+                patch.object(publish.support_assets, 'publish', side_effect=ValueError('source unavailable')):
+            with self.assertRaisesRegex(ValueError, 'source unavailable'):
+                self.invoke()
+        self.assertFalse(self.commands)
 
     def changes(self, root, tag, repository, server, released=None):
         self.assertEqual((tag, repository, server), (self.tag, 'fixture/putgd', 'https://github.com'))

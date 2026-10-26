@@ -13,6 +13,7 @@ import proton_sources
 import appimage_complete_sources
 import appimage_update
 import debug_symbols
+import support_assets
 from release_bundle import create_gnome_zip, create_release_bundle
 
 # Package matrix names in .github/workflows/package.yml, each built on its own distro.
@@ -53,7 +54,7 @@ def verified_sboms(directory, release, packages):
     return selected, receipts
 
 
-def verified_source(directory, release):
+def verified_source(directory, release, *, require_build=True):
     receipt = json.loads((directory / 'source-archive.json').read_text())
     if receipt.get('format') != 'source.tar.gz' or not identity_matches(receipt['identity'], release):
         raise ValueError('Source archive identity differs from release')
@@ -61,7 +62,10 @@ def verified_source(directory, release):
     archive = asset_path(directory, artifact['file'], '-source.tar.gz')
     if sha256(archive) != artifact['sha256'] or archive.stat().st_size != artifact['bytes']:
         raise ValueError('Source archive bytes differ from compiled receipt')
-    build = json.loads((directory / 'source-build-results.json').read_text())
+    build_path = directory / 'source-build-results.json'
+    if not require_build and not build_path.exists():
+        return archive, receipt, None
+    build = json.loads(build_path.read_text())
     version_suffix = f"dev+g{release['gitCommit'][:12]}"
     expected = {'schemaVersion': 1, 'version': release['baseVersion'] + '-' + version_suffix,
                 'baseVersion': release['baseVersion'], 'packageVersion': release['baseVersion'] + '~' + version_suffix,
@@ -97,7 +101,7 @@ def verified_zsync(directory, receipt, image, name, release, repository):
     return path
 
 
-def collect(root, inputs, output, tag, repository=appimage_update.REPOSITORY):
+def collect(root, inputs, output, tag, repository=appimage_update.REPOSITORY, *, installers_only=False):
     release = verify(root, tag)
     timestamp = int(subprocess.check_output(['git', '-C', str(root), 'show', '-s', '--format=%ct',
                                              release['gitCommit']], text=True).strip())
@@ -139,22 +143,24 @@ def collect(root, inputs, output, tag, repository=appimage_update.REPOSITORY):
     media_source = appimage_complete_sources.verify(directory, media_receipt, receipt)
     selected.append((media_source, appimage_complete_sources.archive_name(release['version'])))
     receipts['appimageCompleteSource'] = media_receipt
-    source, source_receipt, source_build = verified_source(inputs / 'release-native-ubuntu24.04', release)
+    source, source_receipt, source_build = verified_source(inputs / 'release-native-ubuntu24.04', release,
+                                                         require_build=not installers_only)
     selected.append((source, 'putgd-' + release['version'] + '-source.tar.gz'))
     receipts['source'] = source_receipt
     receipts['sourceBuild'] = source_build
     source_directory = inputs / 'proton-sources'
-    catalog_path = source_directory / proton_sources.CATALOG_NAME
     current_catalog = root / 'tools/proton/notices/SOURCES.json'
+    catalog_path = current_catalog if installers_only else source_directory / proton_sources.CATALOG_NAME
     if (catalog_path.is_symlink() or not catalog_path.is_file()
             or catalog_path.read_bytes() != current_catalog.read_bytes()):
         raise ValueError('Proton source catalog differs from current release source')
     catalog = proton_sources.catalog_value(catalog_path)
-    proton_sources.verify(source_directory, catalog)
+    if not installers_only:
+        proton_sources.verify(source_directory, catalog)
     catalog_sha = sha256(catalog_path)
-    rebuilt = source_build.get('rebuiltProton', {})
-    if (rebuilt.get('sha256') != catalog['helperSha256']
-            or rebuilt.get('bundledSha256') != catalog['helperSha256']):
+    rebuilt = (source_build or {}).get('rebuiltProton', {})
+    if (source_build is not None and (rebuilt.get('sha256') != catalog['helperSha256']
+            or rebuilt.get('bundledSha256') != catalog['helperSha256'])):
         raise ValueError('Source build has no matching rebuilt Proton helper')
     for kind in (*(distro for distro, _, _ in NATIVE_TARGETS), 'appimage'):
         inventory = (receipts[kind].get('postDeploymentAudit', {}).get('proton', {}) if kind == 'appimage'
@@ -162,10 +168,32 @@ def collect(root, inputs, output, tag, repository=appimage_update.REPOSITORY):
         if (inventory.get('runtimeSha256') != catalog['helperSha256']
                 or inventory.get('sourceCatalogSha256') != catalog_sha):
             raise ValueError('Proton package runtime/source catalog differs from delivered source: ' + kind)
-    for name in (*proton_sources.PART_NAMES, proton_sources.CATALOG_NAME):
-        selected.append((source_directory / name, name))
+    if installers_only:
+        selected.append((catalog_path, proton_sources.CATALOG_NAME))
+    else:
+        for name in (*proton_sources.PART_NAMES, proton_sources.CATALOG_NAME):
+            selected.append((source_directory / name, name))
     receipts['protonSource'] = {'helperSha256': catalog['helperSha256'],
         'sourceCatalogSha256': catalog_sha, 'delivery': catalog['delivery']}
+    if installers_only:
+        output.mkdir(parents=True, exist_ok=False)
+        sources = output / 'sources'
+        sources.mkdir()
+        for path, name in selected:
+            shutil.copy2(path, (sources if name.endswith('-source.tar.gz') else output) / name)
+        create_gnome_zip(root, sources / ('putgd-gnome50-' + release['version'] + '.zip'), timestamp)
+        delivery = support_assets.describe(sources, release, repository)
+        support_assets.validate(delivery, release, repository)
+        (output / 'source-delivery.json').write_text(json.dumps(delivery, indent=2) + '\n')
+        (output / 'release-builds.json').write_text(json.dumps({
+            'schemaVersion': 2, 'assetLayout': support_assets.LAYOUT, 'release': release,
+            'receipts': receipts, 'sources': delivery}, indent=2) + '\n')
+        names = {p.name for p in output.iterdir() if p.is_file()}
+        if names | {'SHA256SUMS'} != support_assets.inventory(release['version']):
+            raise ValueError('Installer release inventory differs from expected assets')
+        (output / 'SHA256SUMS').write_text(''.join(sha256(output / name) + '  ' + name + '\n'
+                                                 for name in sorted(names)), encoding='ascii')
+        return release
     # Every build's split debug files, checked against its packaged binaries'
     # build IDs when it was staged (#124).
     debug = debug_symbols.prepare({label: inputs / debug_symbols._artifact(label) for label in debug_symbols.LABELS},
@@ -193,10 +221,13 @@ def main():
     parser.add_argument('--inputs', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--root', type=Path, default=Path.cwd())
+    parser.add_argument('--installers-only', action='store_true',
+                        help='Publish installers/support metadata; link sources and retain debug files in CI')
     parser.add_argument('--repository', default=os.environ.get('GITHUB_REPOSITORY') or appimage_update.REPOSITORY,
                         help='GitHub OWNER/NAME whose release serves the assets')
     args = parser.parse_args()
-    print(json.dumps(collect(args.root, args.inputs, args.output, args.tag, args.repository)))
+    print(json.dumps(collect(args.root, args.inputs, args.output, args.tag, args.repository,
+                             installers_only=args.installers_only)))
 
 
 if __name__ == '__main__':

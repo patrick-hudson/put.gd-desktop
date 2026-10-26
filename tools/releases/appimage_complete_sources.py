@@ -311,7 +311,8 @@ def build(receipt_path, output, timestamp, cache, runtime_lock, *, git=git_sourc
         (stage / 'README.txt').write_text(
             'Complete bundled-component source for put.gd AppImage ' + receipt['build']['version'] + '.\n'
             'SOURCES.json binds every component to its exact image/source and lists file checksums.\n'
-            'put.gd itself and the Proton source parts/catalog are separate assets on the SAME release.\n'
+            'put.gd itself accompanies this archive in the linked sources release. The installer\n'
+            'release carries proton-source-catalog.json with permanent, checksum-pinned Proton links.\n'
             'upstream/*/TREES.json maps each git archive to its original submodule path; extract each\n'
             'archive there (root first). Ubuntu .dsc + orig/debian archives unpack with dpkg-source -x.\n'
             'Build the image with the exact scripts/configure options in build-recipes; Qt modules\n'
@@ -319,7 +320,7 @@ def build(receipt_path, output, timestamp, cache, runtime_lock, *, git=git_sourc
             'libfuse patch, static-library sources and Alpine packaging recipes/patches. See runtime/\n'
             'source-lock.json for the upstream binary identity and version/provenance evidence.\n')
         archive = output / archive_name(receipt['build']['version'])
-        with archive.open('wb') as stream, gzip.GzipFile(filename='', fileobj=stream, mode='wb', mtime=0) as zipped:
+        with archive.open('wb') as stream, gzip.GzipFile(filename='', fileobj=stream, mode='wb', mtime=0, compresslevel=1) as zipped:
             with tarfile.open(fileobj=zipped, mode='w|', format=tarfile.PAX_FORMAT) as packed:
                 for path in sorted(stage.rglob('*')):
                     if path.is_file():

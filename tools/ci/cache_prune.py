@@ -27,6 +27,7 @@ FAMILIES = (
     re.compile(r'^(putgd-pkgs-v\d+-.+-[0-9a-f]{64}-)\d{4}-W\d{2}$'),
     # The Grype database archive by its SHA-256 (tools/releases/sbom.py, #420).
     re.compile(r'^(grype-db-v\d+-)[0-9a-f]{64}$'),
+    re.compile(r'^(appimage-distro-sources-v\d+-[0-9a-f]{64}-)\d+-\d+$'),
 )
 
 
