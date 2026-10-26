@@ -12,6 +12,7 @@
 #include <QCursor>
 #include <QGuiApplication>
 #include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QJsonArray>
 #include <QKeyEvent>
 #include <QLabel>
@@ -301,9 +302,12 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     Fonts::load();
     if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) VisualStyle::apply(*app);
     connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, [this] { refresh(); update(); });
-    auto* layout = new QHBoxLayout(this);
-    layout->setContentsMargins(12, 8, 12, 8);
-    layout->setSpacing(8);
+    auto* rows = new QVBoxLayout(this);
+    rows->setContentsMargins(12, 8, 12, 8);
+    rows->setSpacing(6);
+    top_ = new QHBoxLayout;
+    top_->setSpacing(8);
+    rows->addLayout(top_);
     dot_ = new QLabel(this);
     dot_->setFixedSize(12, 12);
     // The state is written, not only coloured.
@@ -314,16 +318,26 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     time_->setObjectName("time");
     time_->setFont(Graphite::monoFont(Graphite::Type::body));
     time_->setMinimumWidth(QFontMetrics(time_->font()).horizontalAdvance(QStringLiteral("00:00.0")) + 4);
-    target_ = new QLabel(options.targetLabel, this);
-    audio_ = new QCheckBox("System audio", this);
+    choices_ = new QWidget(this);
+    choices_->setObjectName("choices");
+    auto* choices = new QHBoxLayout(choices_);
+    choices->setContentsMargins(0, 0, 0, 0);
+    choices->setSpacing(8);
+    target_ = new QLabel(options.targetLabel, choices_);
+    target_->setObjectName("target");
+    audio_ = new QCheckBox("System audio", choices_);
     audio_->setChecked(config.audio.system);
-    format_ = new QComboBox(this);
+    format_ = new QComboBox(choices_);
+    format_->setObjectName("format");
+    format_->setAccessibleName("Recording format");
+    format_->setToolTip("The format the recording is reviewed and exported in");
     for (const auto& format : options.formats) {
         const auto codecs = options.codecs[format].toArray();
         if (codecs.isEmpty()) format_->addItem(formatLabel(format, {}), QStringList{format, QString()});
         for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatHint(format, codec.toString()), Qt::ToolTipRole); }
     }
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) format_->setCurrentIndex(i); }
+    for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_}) choices->addWidget(w);
     record_ = new QPushButton("Start recording", this); record_->setObjectName("record");
     record_->setIcon(VisualStyle::icon("record"));
     VisualStyle::role(record_, "primary");
@@ -334,15 +348,30 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     stop_ = new QPushButton("Stop recording", this); stop_->setObjectName("stop");
     VisualStyle::role(stop_, "danger");
     cancel_ = new QPushButton("Cancel", this);
+    cancel_->setObjectName("cancel");
     cancel_->setToolTip("Discard this recording");
     VisualStyle::role(cancel_, "quiet");
     VisualStyle::role(target_, "secondary");
-    for (auto* w : std::initializer_list<QWidget*>{dot_, state_label_, time_, target_, audio_, format_, record_, pause_, resume_, stop_, cancel_}) layout->addWidget(w);
+    // The discard question, in the bar so it stays where the bar may be (never over the clip).
+    question_ = new QLabel("Discard this recording?", this);
+    question_->setObjectName("discardQuestion");
+    VisualStyle::role(question_, "strong");
+    keep_ = new QPushButton("Keep recording", this);
+    keep_->setObjectName("keepRecording");
+    discard_ = new QPushButton("Discard recording", this);
+    discard_->setObjectName("discardRecording");
+    VisualStyle::role(discard_, "danger");
+    for (auto* w : std::initializer_list<QWidget*>{dot_, state_label_, time_, choices_, question_}) top_->addWidget(w);
+    top_->addStretch(1);
+    for (auto* w : std::initializer_list<QWidget*>{record_, pause_, resume_, stop_, keep_, discard_, cancel_}) top_->addWidget(w);
     connect(record_, &QPushButton::clicked, this, &ControlBar::recordRequested);
     connect(pause_, &QPushButton::clicked, this, &ControlBar::pauseRequested);
     connect(resume_, &QPushButton::clicked, this, &ControlBar::resumeRequested);
     connect(stop_, &QPushButton::clicked, this, &ControlBar::stopRequested);
-    connect(cancel_, &QPushButton::clicked, this, &ControlBar::cancelRequested);
+    // Before Record there is nothing to lose; after it, Cancel asks first.
+    connect(cancel_, &QPushButton::clicked, this, [this] { if (state_ == "ready") emit cancelRequested(); else askDiscard(); });
+    connect(keep_, &QPushButton::clicked, this, &ControlBar::keepRecording);
+    connect(discard_, &QPushButton::clicked, this, [this] { confirming_ = false; refresh(); emit cancelRequested(); });
     connect(audio_, &QCheckBox::toggled, this, [this](bool on) { if (config_.audio.system == on) return; config_.audio.system = on; emit configChanged(config_); });
     connect(format_, &QComboBox::currentIndexChanged, this, [this](int index) {
         const auto value = format_->itemData(index).toStringList();
@@ -353,11 +382,37 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
         refresh();
         emit configChanged(config_);
     });
+    const QScreen* primary = QGuiApplication::primaryScreen();
+    fitTo(primary ? primary->geometry() : QRect());
+}
+void ControlBar::arrange(bool twoRows) {
+    twoRows_ = twoRows;
+    auto* rows = static_cast<QVBoxLayout*>(layout());
+    top_->removeWidget(choices_);
+    rows->removeWidget(choices_);
+    if (twoRows) rows->addWidget(choices_, 0, Qt::AlignLeft);
+    else top_->insertWidget(top_->indexOf(time_) + 1, choices_);
     refresh();
 }
+void ControlBar::fitTo(const QRect& screen) {
+    // Two rows when one would take most of the screen's width: a 150% text
+    // size on a 1366 px laptop, or a narrow portrait monitor.
+    arrange(false);
+    if (screen.width() > 0 && widestSize().width() > screen.width() * 7 / 10) arrange(true);
+}
+void ControlBar::askDiscard() {
+    if (state_ != "recording" && state_ != "paused") return;
+    confirming_ = true;
+    refresh();
+    keep_->setFocus();
+}
+void ControlBar::keepRecording() { confirming_ = false; refresh(); }
 void ControlBar::refresh() {
     const bool ready = state_ == "ready", recording = state_ == "recording", paused = state_ == "paused";
     const bool handle = handle_ && !ready;
+    // The question belongs to a recording that can still be discarded.
+    if (!recording && !paused) confirming_ = false;
+    const bool asking = confirming_ && !handle;
     const auto& tokens = Theme::current();
     setPalette(Graphite::palette());
     setProperty("themeScheme", Theme::name(Theme::scheme()));
@@ -369,13 +424,17 @@ void ControlBar::refresh() {
     audio_->setChecked(withSound);
     audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : ready ? QStringLiteral("Include the sound the computer plays") : withSound ? QStringLiteral("System audio is being recorded") : QStringLiteral("System audio is not being recorded"));
     format_->setEnabled(ready);
-    for (auto* w : std::initializer_list<QWidget*>{state_label_, time_, target_, audio_, format_, cancel_}) w->setVisible(!handle);
+    for (auto* w : std::initializer_list<QWidget*>{state_label_, time_}) w->setVisible(!handle);
+    choices_->setVisible(!handle && !asking);
+    cancel_->setVisible(!handle && !asking);
     record_->setVisible(ready);
-    pause_->setVisible(recording && !handle);
-    resume_->setVisible(paused);
-    stop_->setVisible(recording || paused);
+    pause_->setVisible(recording && !handle && !asking);
+    resume_->setVisible(paused && !asking);
+    stop_->setVisible((recording || paused) && !asking);
+    for (auto* w : std::initializer_list<QWidget*>{question_, keep_, discard_}) w->setVisible(asking);
     stop_->setEnabled(state_ != "stopping");
     cancel_->setEnabled(state_ != "stopping");
+    cancel_->setToolTip(ready ? QStringLiteral("Close without recording") : QStringLiteral("Discard this recording (asks first)"));
     layout()->setContentsMargins(handle ? QMargins(8, 4, 8, 4) : QMargins(12, 8, 12, 8));
     adjustSize();
     reposition();
@@ -397,8 +456,13 @@ QSize ControlBar::widestSize() {
     const Placed placed = std::exchange(placed_, Placed::None);
     handle_ = false;
     QSize widest;
-    for (const char* each : {"ready", "recording", "paused", "stopping"}) { state_ = QString::fromLatin1(each); refresh(); widest = widest.expandedTo(size()); }
+    const bool asking = std::exchange(confirming_, false);
+    for (const char* each : {"ready", "recording", "paused", "stopping"}) {
+        state_ = QString::fromLatin1(each);
+        for (const bool question : {false, true}) { confirming_ = question; refresh(); widest = widest.expandedTo(size()); }
+    }
     state_ = state;
+    confirming_ = asking;
     handle_ = handle;
     refresh();
     placed_ = placed;
@@ -406,6 +470,7 @@ QSize ControlBar::widestSize() {
 }
 bool ControlBar::placeAround(const QRect& root) {
     recorded_ = fromRootSpan(root);
+    if (const auto screens = screenRects(); !screens.isEmpty()) fitTo(screens.value(std::max(0, homeScreen(recorded_, screens))));
     outside_ = placeBar(widestSize(), recorded_, screenRects()).outside;
     placed_ = Placed::Root;
     dragged_ = false;
@@ -414,6 +479,7 @@ bool ControlBar::placeAround(const QRect& root) {
 }
 bool ControlBar::placeOnLayer(const QRect& logical) {
     recorded_ = logical;
+    if (const auto screens = screenRects(); !screens.isEmpty()) fitTo(screens.value(std::max(0, homeScreen(recorded_, screens))));
     outside_ = placeBar(widestSize(), recorded_, screenRects()).outside;
 #ifdef PUTGD_RECORD_LAYER_SHELL
     placed_ = Placed::Layer;
@@ -485,7 +551,8 @@ void ControlBar::mouseReleaseEvent(QMouseEvent* e) {
     QWidget::mouseReleaseEvent(e);
 }
 void ControlBar::keyPressEvent(QKeyEvent* e) {
-    if (e->key() == Qt::Key_Escape) { if (state_ == "ready") emit cancelRequested(); return; }
+    // Escape is the safe answer to the discard question; before Record it cancels.
+    if (e->key() == Qt::Key_Escape) { if (confirming_) keepRecording(); else if (state_ == "ready") emit cancelRequested(); return; }
     QWidget::keyPressEvent(e);
 }
 }

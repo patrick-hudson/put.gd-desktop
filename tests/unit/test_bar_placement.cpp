@@ -3,6 +3,9 @@
 #include "ui/Theme.h"
 #include <QApplication>
 #include <QCheckBox>
+#include <QComboBox>
+#include <QLabel>
+#include <QSignalSpy>
 #include <QJsonArray>
 #include <QPushButton>
 #include <QRandomGenerator>
@@ -278,6 +281,79 @@ private slots:
             bar.setState("paused");
             QVERIFY(screens[0].contains(bar.geometry()));
         }
+    }
+    // Cancel before Record closes at once; once frames exist it asks in the
+    // bar, Keep recording first and on Escape, and the bar stays out of the clip.
+    void cancelAsksOnlyOnceRecording() {
+        const auto screens = qtScreens();
+        const QRect region(screens[0].left() + 200, screens[0].top() + 200, 600, 300);
+        ControlBar bar(barOptions(), putgd::RecordingConfig{});
+        QSignalSpy cancelled(&bar, &ControlBar::cancelRequested);
+        QVERIFY(bar.placeAround(region));
+        bar.show();
+        auto* cancel = bar.findChild<QPushButton*>("cancel");
+        auto* keep = bar.findChild<QPushButton*>("keepRecording");
+        auto* discard = bar.findChild<QPushButton*>("discardRecording");
+        QVERIFY(cancel && keep && discard);
+        cancel->click();
+        QCOMPARE(cancelled.size(), 1);
+        for (const char* state : {"recording", "paused"}) {
+            bar.setState(QString::fromLatin1(state));
+            cancel->click();
+            QCOMPARE(cancelled.size(), 1);
+            QVERIFY(bar.confirming());
+            QVERIFY(keep->isVisible() && discard->isVisible() && !cancel->isVisible());
+            QVERIFY(!bar.findChild<QPushButton*>("stop")->isVisible());
+            QVERIFY(bar.findChild<QLabel*>("discardQuestion")->isVisible());
+            QVERIFY2(!bar.geometry().intersects(region) && screenHolding(bar.geometry()) >= 0, state);
+            QTest::keyClick(&bar, Qt::Key_Escape);
+            QVERIFY(!bar.confirming());
+            QVERIFY(bar.findChild<QPushButton*>("stop")->isVisible());
+            QCOMPARE(cancelled.size(), 1);
+        }
+        cancel->click();
+        keep->click();
+        QVERIFY(!bar.confirming());
+        cancel->click();
+        discard->click();
+        QCOMPARE(cancelled.size(), 2);
+        // A stop elsewhere drops the question.
+        cancel->click();
+        bar.setState("stopping");
+        QVERIFY(!bar.confirming());
+    }
+    // A narrow screen (or large text) takes two rows: Start/Pause/Stop on the
+    // first, target, audio and format together on the second.
+    void narrowScreensTakeTwoRows() {
+        ControlBar bar(barOptions(), putgd::RecordingConfig{});
+        auto* format = bar.findChild<QComboBox*>("format");
+        QVERIFY(format);
+        QCOMPARE(format->accessibleName(), QString("Recording format"));
+        bar.fitTo(QRect(0, 0, 2560, 1440));
+        QVERIFY(!bar.twoRows());
+        bar.show();
+        const QSize wide = bar.size();
+        bar.fitTo(QRect(0, 0, 1024, 768));
+        QVERIFY(bar.twoRows());
+        QVERIFY(bar.width() < wide.width());
+        QVERIFY(bar.width() <= 1024 * 7 / 10);
+        auto* record = bar.findChild<QPushButton*>("record");
+        auto* target = bar.findChild<QLabel*>("target");
+        auto* audio = bar.findChild<QCheckBox*>();
+        auto rowOf = [&](QWidget* w) { return w->mapTo(&bar, QPoint(0, w->height() / 2)).y(); };
+        QVERIFY(record->isVisible() && rowOf(record) < rowOf(format));
+        QCOMPARE(rowOf(target), rowOf(audio));
+        QVERIFY(std::abs(rowOf(audio) - rowOf(format)) <= 4);
+        bar.setState("recording");
+        auto* stop = bar.findChild<QPushButton*>("stop");
+        QVERIFY(stop->isVisible() && rowOf(stop) < rowOf(format));
+        // Placement decides from the recorded area's own screen.
+        const auto screens = qtScreens();
+        const QRect region(screens[0].left() + 200, screens[0].top() + 200, 600, 300);
+        bar.setState("ready");
+        QVERIFY(bar.placeAround(region));
+        QCOMPARE(bar.twoRows(), wide.width() > screens[0].width() * 7 / 10);
+        QVERIFY(!bar.geometry().intersects(region));
     }
     void dragKeepsTheBarOutOfTheClip() {
         const auto screens = qtScreens();
