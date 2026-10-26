@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 1,
+  "limitations": [
+    "Scoped AppImage geometry evidence; no native DEB/RPM recording row",
+    "Native-session text and fixture backends distinguish real Wayland/X11 from XWayland",
+    "Capability snapshots at startup can be deferred; per-operation results establish actual success"
+  ],
+  "runs": [
+    {
+      "run": "k72/n7",
+      "os": "Kubuntu26.04",
+      "compositor": "Plasma6.6.6",
+      "nativeSession": "wayland",
+      "qtPlatformRequested": "wayland",
+      "nativeSessionReadback": [
+        "Desktop=KDE",
+        "Type=wayland",
+        "Active=yes",
+        "State=active",
+        "posix.uname_result(sysname='Linux', nodename='kubuntu', release='7.0.0-38-generic', version='#38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026', machine='x86_64')"
+      ],
+      "sourceAdapter": "kde-wayland",
+      "package": {
+        "format": "appimage",
+        "filename": "putgd-26.1026.1364-dev+g4610dda66a9d-x86_64.AppImage",
+        "sha256": "94a3015b33ba7eb21d26038f93d21e9309ecc9441cd9bd692446984d2ed305af",
+        "version": {
+          "schemaVersion": 1,
+          "version": "26.1026.1364-dev+g4610dda66a9d",
+          "baseVersion": "26.1026.1364",
+          "packageVersion": "26.1026.1364~dev+g4610dda66a9d",
+          "gitCommit": "4610dda66a9d8eb30ff8f2b583ebd2c88fea2e0d",
+          "gitTree": "880b394b51a09211b53105039ed9c7bf8039de8f",
+          "commitCount": 1364,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "installedBinarySha256": {
+          "/usr/bin/putgd-record": "c900b79b0c0d36282624d2cf6e7875efe2ad35f8e145645c6f3a7296e3d8ee92",
+          "/usr/bin/putgd-launcher": "16cd129d55f6e9f2cdc5fac7fef7b3d23cfcf9e26631f9cefef6a8d251a95517",
+          "/usr/bin/putgd-capture": "131ad1d143f36491fc16d28e1f025139d8cba7e96eee4f78b5d682968760de0c",
+          "/usr/bin/putgd-kde-region": "d225c668cf29537cdde9ff3f20d8330708409a9c3d330e28bd965327a4e36184",
+          "/usr/bin/putgd-cli": "ae0672ac004de3c461432ec6a9ddc117fc2f2c63221ec70d099b77b8a00c77af",
+          "/usr/bin/putgd-ui": "beccba4685756f3b47753b97660a399fa295db5caf03c648104ffb01a9f8a7ab",
+          "/usr/bin/putgd-b2-worker": "0a917d65ea583d115d4af3a3566cdeec34ab3f932bff5868c0abfd6a6b966700",
+          "/usr/bin/putgd-s3-worker": "d448d7691be562a5c16b0f8498c3e47df10b4d3619c63c6a265a97efcd92b92c",
+          "/usr/bin/putgd": "695e8a4d4b83b4ebd51600c9eb55e9debd59914cabe63a8ac7abe525f3ef02c7"
+        }
+      },
+      "resident": {
+        "pid": 481167,
+        "startTicks": 18643695,
+        "sha256": "695e8a4d4b83b4ebd51600c9eb55e9debd59914cabe63a8ac7abe525f3ef02c7"
+      },
+      "fixtureBackend": "GdkWaylandDisplay",
+      "nativeOutputs": [
+        {
+          "name": "HDMI-A-1",
+          "enabled": true,
+          "connected": true,
+          "pos": {
+            "x": 0,
+            "y": 0
+          },
+          "size": {
+            "height": 1080,
+            "width": 1920
+          },
+          "scale": 1,
+          "rotation": 1
+        },
+        {
+          "name": "HDMI-A-2",
+          "enabled": true,
+          "connected": true,
+          "pos": {
+            "x": 1920,
+            "y": 0
+          },
+          "size": {
+            "height": 1440,
+            "width": 2560
+          },
+          "scale": 1.5,
+          "rotation": 1
+        }
+      ],
+      "driverSha256": "67a8335e9c9214369cf46f7a9e582a60e6e2721333958a642beb79071c094818",
+      "nativeAdapter": {
+        "sha256": "40127bf02e13c6a2c00abd669062173e9e606cf687a7b7e8deb3d05f6cb418d4",
+        "pointerRoute": "portal-vnc",
+        "fixtureSha256": "2c64020280a6953fdb1e5f562cf606c512cd882516f07cc5a59ebf9893de3e8c"
+      }
+    },
+    {
+      "run": "m74/n3",
+      "os": "Mint22.3",
+      "compositor": "Cinnamon6.6.4",
+      "nativeSession": "x11",
+      "qtPlatformRequested": "xcb",
+      "nativeSessionReadback": [
+        "Desktop=cinnamon",
+        "Type=x11",
+        "Active=yes",
+        "State=active",
+        "posix.uname_result(sysname='Linux', nodename='mint-builder', release='6.14.0-37-generic', version='#37~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Thu Nov 20 10:25:38 UTC 2', machine='x86_64')"
+      ],
+      "sourceAdapter": "cinnamon-core-x11",
+      "package": {
+        "format": "appimage",
+        "filename": "putgd-26.1025.1362-dev+g6b7949f5cab8-x86_64.AppImage",
+        "sha256": "b88350ff4ca89d9bba2c76769fb5a864370828b9c90a0072f58d7f7f8cb7b9f3",
+        "version": {
+          "schemaVersion": 1,
+          "version": "26.1025.1362-dev+g6b7949f5cab8",
+          "baseVersion": "26.1025.1362",
+          "packageVersion": "26.1025.1362~dev+g6b7949f5cab8",
+          "gitCommit": "6b7949f5cab8ee9d9564d5ebb4f2cee81881cbf8",
+          "gitTree": "2911da34467c4d0b062a9c79d72baa39a79d7640",
+          "commitCount": 1362,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "installedBinarySha256": {
+          "/usr/bin/putgd-kde-region": "6eb751ac785695ff36deb52c67682797b121e164c82a2d504e474c9173ff67ef",
+          "/usr/bin/putgd-b2-worker": "aafcae0dd2572c28328cfc62868d2df1902fae06ca32285dc51e57706e200746",
+          "/usr/bin/putgd-ui": "db5858fbe24dbb17dd0b15226d1230e7b125c3f0188ce7ba199b1d7b4b9230a3",
+          "/usr/bin/putgd-record": "04e411075bb4a2781e25386123915dd83e99190347720de56712b5e0e5eafbcc",
+          "/usr/bin/putgd-launcher": "16cd129d55f6e9f2cdc5fac7fef7b3d23cfcf9e26631f9cefef6a8d251a95517",
+          "/usr/bin/putgd-cli": "8074481e0337d591362d26406fb242164cb88265890f37e2e7ba7b2f6d0a075c",
+          "/usr/bin/putgd": "5e8206e9792c48d5283b59e63c774b2c62a1f157d433b61c5830f922ad77c226",
+          "/usr/bin/putgd-capture": "7f77baa7cd6e94f39fb3f05d5bb203314d258ed2336c22f497a1c4a4838de219",
+          "/usr/bin/putgd-s3-worker": "1fe37b5a0051d3b992af3769fcb60b7acbc5e0b099001fb44dc431908b04673f"
+        }
+      },
+      "resident": {
+        "pid": 804909,
+        "startTicks": 37512668,
+        "sha256": "5e8206e9792c48d5283b59e63c774b2c62a1f157d433b61c5830f922ad77c226"
+      },
+      "fixtureBackend": "X11Display",
+      "nativeOutputs": [
+        {
+          "name": "HDMI-1",
+          "enabled": true,
+          "connected": true,
+          "primary": true,
+          "x": 1560,
+          "y": 100,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "name": "HDMI-2",
+          "enabled": true,
+          "connected": true,
+          "primary": false,
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 2560
+        }
+      ],
+      "driverSha256": "67a8335e9c9214369cf46f7a9e582a60e6e2721333958a642beb79071c094818",
+      "nativeAdapter": {
+        "sha256": "cbf40e2b6a9d6995b5a61d17ee3800f5eebaeb40e514f43fc601eb10ba973e8e",
+        "pointerRoute": "portal-vnc",
+        "fixtureSha256": "2c64020280a6953fdb1e5f562cf606c512cd882516f07cc5a59ebf9893de3e8c"
+      }
+    },
+    {
+      "run": "g1/adj3",
+      "os": "Ubuntu26.04.1",
+      "compositor": "GNOME50.1",
+      "nativeSession": "wayland",
+      "qtPlatformRequested": "wayland",
+      "nativeSessionReadback": [
+        "Desktop=",
+        "Type=wayland",
+        "Active=yes",
+        "State=active",
+        "SessionIdentitySource=logind user display (compositor is a user service)",
+        "posix.uname_result(sysname='Linux', nodename='putgd-ubuntu-lab', release='7.0.0-38-generic', version='#38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026', machine='x86_64')"
+      ],
+      "sourceAdapter": "gnome-wayland",
+      "package": {
+        "format": "appimage",
+        "filename": "putgd-26.1025.1362-dev+g6b7949f5cab8-x86_64.AppImage",
+        "sha256": "b88350ff4ca89d9bba2c76769fb5a864370828b9c90a0072f58d7f7f8cb7b9f3",
+        "version": {
+          "schemaVersion": 1,
+          "version": "26.1025.1362-dev+g6b7949f5cab8",
+          "baseVersion": "26.1025.1362",
+          "packageVersion": "26.1025.1362~dev+g6b7949f5cab8",
+          "gitCommit": "6b7949f5cab8ee9d9564d5ebb4f2cee81881cbf8",
+          "gitTree": "2911da34467c4d0b062a9c79d72baa39a79d7640",
+          "commitCount": 1362,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "installedBinarySha256": {
+          "/usr/bin/putgd": "5e8206e9792c48d5283b59e63c774b2c62a1f157d433b61c5830f922ad77c226",
+          "/usr/bin/putgd-b2-worker": "aafcae0dd2572c28328cfc62868d2df1902fae06ca32285dc51e57706e200746",
+          "/usr/bin/putgd-capture": "7f77baa7cd6e94f39fb3f05d5bb203314d258ed2336c22f497a1c4a4838de219",
+          "/usr/bin/putgd-cli": "8074481e0337d591362d26406fb242164cb88265890f37e2e7ba7b2f6d0a075c",
+          "/usr/bin/putgd-kde-region": "6eb751ac785695ff36deb52c67682797b121e164c82a2d504e474c9173ff67ef",
+          "/usr/bin/putgd-launcher": "16cd129d55f6e9f2cdc5fac7fef7b3d23cfcf9e26631f9cefef6a8d251a95517",
+          "/usr/bin/putgd-record": "04e411075bb4a2781e25386123915dd83e99190347720de56712b5e0e5eafbcc",
+          "/usr/bin/putgd-s3-worker": "1fe37b5a0051d3b992af3769fcb60b7acbc5e0b099001fb44dc431908b04673f",
+          "/usr/bin/putgd-ui": "db5858fbe24dbb17dd0b15226d1230e7b125c3f0188ce7ba199b1d7b4b9230a3"
+        }
+      },
+      "resident": {
+        "pid": 6915,
+        "startTicks": 83166,
+        "sha256": "5e8206e9792c48d5283b59e63c774b2c62a1f157d433b61c5830f922ad77c226"
+      },
+      "fixtureBackend": "GdkWaylandDisplay",
+      "nativeOutputs": [
+        {
+          "name": "Virtual-1",
+          "x": 0,
+          "y": 0,
+          "scale": 1.0,
+          "pixelWidth": 1920,
+          "pixelHeight": 1080
+        },
+        {
+          "name": "Virtual-2",
+          "x": 1920,
+          "y": 0,
+          "scale": 1.0,
+          "pixelWidth": 2560,
+          "pixelHeight": 1440
+        }
+      ],
+      "driverSha256": "6b6ed0a94e99beac7b50c010cf5e08a382cc97196b2cc7fe0cb3f4a0a89c319c",
+      "nativeAdapter": null
+    },
+    {
+      "run": "g1/fix1",
+      "os": "Ubuntu26.04.1",
+      "compositor": "GNOME50.1",
+      "nativeSession": "wayland",
+      "qtPlatformRequested": "wayland",
+      "nativeSessionReadback": [
+        "Desktop=",
+        "Type=wayland",
+        "Active=yes",
+        "State=active",
+        "SessionIdentitySource=logind user display (compositor is a user service)",
+        "posix.uname_result(sysname='Linux', nodename='putgd-ubuntu-lab', release='7.0.0-38-generic', version='#38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026', machine='x86_64')"
+      ],
+      "sourceAdapter": "gnome-wayland",
+      "package": {
+        "format": "appimage",
+        "filename": "fix4610.AppImage",
+        "sha256": "94a3015b33ba7eb21d26038f93d21e9309ecc9441cd9bd692446984d2ed305af",
+        "version": {
+          "schemaVersion": 1,
+          "version": "26.1026.1364-dev+g4610dda66a9d",
+          "baseVersion": "26.1026.1364",
+          "packageVersion": "26.1026.1364~dev+g4610dda66a9d",
+          "gitCommit": "4610dda66a9d8eb30ff8f2b583ebd2c88fea2e0d",
+          "gitTree": "880b394b51a09211b53105039ed9c7bf8039de8f",
+          "commitCount": 1364,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "installedBinarySha256": {
+          "/usr/bin/putgd": "695e8a4d4b83b4ebd51600c9eb55e9debd59914cabe63a8ac7abe525f3ef02c7",
+          "/usr/bin/putgd-b2-worker": "0a917d65ea583d115d4af3a3566cdeec34ab3f932bff5868c0abfd6a6b966700",
+          "/usr/bin/putgd-capture": "131ad1d143f36491fc16d28e1f025139d8cba7e96eee4f78b5d682968760de0c",
+          "/usr/bin/putgd-cli": "ae0672ac004de3c461432ec6a9ddc117fc2f2c63221ec70d099b77b8a00c77af",
+          "/usr/bin/putgd-kde-region": "d225c668cf29537cdde9ff3f20d8330708409a9c3d330e28bd965327a4e36184",
+          "/usr/bin/putgd-launcher": "16cd129d55f6e9f2cdc5fac7fef7b3d23cfcf9e26631f9cefef6a8d251a95517",
+          "/usr/bin/putgd-record": "c900b79b0c0d36282624d2cf6e7875efe2ad35f8e145645c6f3a7296e3d8ee92",
+          "/usr/bin/putgd-s3-worker": "d448d7691be562a5c16b0f8498c3e47df10b4d3619c63c6a265a97efcd92b92c",
+          "/usr/bin/putgd-ui": "beccba4685756f3b47753b97660a399fa295db5caf03c648104ffb01a9f8a7ab"
+        }
+      },
+      "resident": {
+        "pid": 31472,
+        "startTicks": 648245,
+        "sha256": "695e8a4d4b83b4ebd51600c9eb55e9debd59914cabe63a8ac7abe525f3ef02c7"
+      },
+      "fixtureBackend": "GdkWaylandDisplay",
+      "nativeOutputs": [
+        {
+          "name": "Virtual-1",
+          "x": 0,
+          "y": 0,
+          "scale": 1.0,
+          "pixelWidth": 1920,
+          "pixelHeight": 1080
+        },
+        {
+          "name": "Virtual-2",
+          "x": 1920,
+          "y": 0,
+          "scale": 1.0,
+          "pixelWidth": 2560,
+          "pixelHeight": 1440
+        }
+      ],
+      "driverSha256": "6b6ed0a94e99beac7b50c010cf5e08a382cc97196b2cc7fe0cb3f4a0a89c319c",
+      "nativeAdapter": null
+    }
+  ]
+}

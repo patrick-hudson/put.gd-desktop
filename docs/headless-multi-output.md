@@ -139,12 +139,25 @@ classify an oracle mismatch as a product failure without resolving the mapping.
 ## Disposable guests and cleanup
 
 Use immutable remote goldens and fresh overlays through [VM lab](vm-lab.md).
-Apply the acceptance lane's common guest idle/lock/blanking/suspend preflight
+Apply the acceptance lane's [common guest preflight](https://github.com/patrick-hudson/put.gd-desktop/pull/584)
+for idle/lock/blanking/suspend
 before the first acceptance stage; use check-only mode between stages and fail
 on drift. Verify actual ScreenSaver state, logind state, an unlocked active
 console and fresh output frames. Session-policy checks must derive the real
 desktop homes; the app's isolated `XDG_CONFIG_HOME` is unsuitable. Never apply
 guest policy changes to a physical desktop or golden image.
+
+With that helper available, apply once and check without `--apply` at later
+stage boundaries:
+
+```sh
+python3 tools/lab/lab.py preflight --run RUN --apply --stage before-geometry
+python3 tools/lab/lab.py preflight --run RUN --stage after-geometry
+```
+
+Keep its helper hash and failed readiness attempts. The pilot's settled GNOME
+stage used v3; later helper startup changes do not retroactively replace that
+receipt. A preflight pass establishes session readiness, not product correctness.
 
 `multi_output_vm_wall.py RUN --output NEW_DIRECTORY` checks every enabled
 per-head VNC listener against native inventory and motion after a topology

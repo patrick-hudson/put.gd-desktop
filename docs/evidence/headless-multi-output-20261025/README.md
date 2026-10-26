@@ -18,6 +18,9 @@ The fix merge has parents frozen nightly `6b7949f5` and PR head `2f5a5d6a`.
 Its tree `880b394b51a09211b53105039ed9c7bf8039de8f` equals the product-only PR
 head's tree. Both are development CI artifacts, distinct from published nightly
 or stable assets. Native-host AppImage results below are not DEB/RPM results.
+The [identity summary](identity-summary.json) records representative exact package,
+resident PID/start/hash, helper hashes, native-session readback, GTK backend and
+actual output geometry for the native Mint/KDE and both GNOME artifact stages.
 
 The private remote C++ build at source `687f17d6` (same product patch plus then-current
 lab sources) passed all 110 CTests. The new three-screen widget regression fails
@@ -33,7 +36,7 @@ PR #582's CI summary passed on its exact CI merge.
 | Kubuntu 26.04 / Plasma 6.6.6 Wayland, Intel i915 | FHD + QHD at 1.5; both heads fresh on combined wall | Frozen build reproduced wrong-head selection; fixed build primary region/paste and MP4 motion/bar pass. Full fractional native-grid/reference comparison remains pending. |
 | Mint 22.3 / Cinnamon 6.6.4 X11, HD 530 / Mesa 25.2.8 | FHD + QHD, both fresh; rotated left/up/gap profile fresh | Frozen AppImage integral-density region/window/desktop, independent paste and MP4 static/moving/bar checks pass as scoped below. |
 | Fedora 44 / native GNOME Wayland, Intel i915 | FHD + QHD on independent pipes; original first-head stream plus separate native second-head portal stream both fresh | No put.gd process launched in this bounded feasibility slot. |
-| Ubuntu 26.04.1 / GNOME 50.1 Wayland, fresh KVM overlay | Two separate virtio scanouts and per-head wall listeners | Frozen AppImage adjacent regions/span/windows/desktop/paste/Escape/right-click/MP4 passed. Common guest-preflight correction and remaining profiles are tracked separately. |
+| Ubuntu 26.04.1 / GNOME 50.1 Wayland, fresh KVM overlay | Two separate virtio scanouts and per-head wall listeners | Frozen AppImage adjacent regions/span/windows/desktop/paste/Escape/right-click/MP4 passed after common v3 preflight; resize/disable during selection passed. Separate fix artifact passed five targeted regression cases. Scaled/rotated stages failed their wall prerequisite before app cases. |
 
 The current fractional oracle limitation is documented in the lab guide. The
 remaining matrix includes complete scaled/rotated pixel attribution, actual
@@ -41,6 +44,14 @@ focus-loss coverage, topology changes on each required compositor and a supporte
 retained-negative-coordinate profile. No incomplete cell is waived here.
 
 ## Saved visual annotations
+
+The annotated overview boxes each native Mint output and separates the original
+and fixed KDE captures. Its labels name each tested build. Annotations are a
+separate browser-rendered layout; the original images below retain their exact
+saved pixels and hashes. The 110 remote CTests used the same product patch at
+`687f17d6`; the exact fix AppImage identity is the CI merge listed above.
+
+![Annotated native Mint geometry and original/fixed KDE capture comparison](annotated-pilot.png)
 
 Mint native rotated arrangement: requested secondary origin `(-1560,-100)`;
 XRandR actually placed the rotated QHD head at `(0,0,1440,2560)` and FHD primary
@@ -78,6 +89,35 @@ physical panels or a cable removal.
 
 ## Failure context and restoration
 
+GNOME guest `g1/adj3` repeated all nine adjacent-layout cases on original
+`6b7949f5` after the common disposable-guest preflight from
+[#584](https://github.com/patrick-hudson/put.gd-desktop/pull/584). Helper v3 SHA-256
+was `a6322f30d50ba0e5c87360e8c316a4d5b6396bdccfc5b9a90a3aa37ea8594835`.
+Apply/check-only receipts verify real desktop configuration homes, policy values,
+an actual logind inhibitor, ScreenSaver inactive, unlocked active Wayland session,
+native output inventory and full QMP witnesses. The first helper's inhibitor
+startup race is retained; the corrected bounded readiness check passed. Historical
+`adj2` results remain separate from this corrected stage.
+
+Original-build `resize1` and `loss1` changed the disposable secondary output
+while selection was active. Both ended with `display_changed`, no stale artifact
+and unchanged text pasted into the independent application. This is software
+output reconfiguration, not a physical cable removal. The original two-output
+layout was restored, followed by policy and all-head freshness checks.
+
+Separate `g1/fix1` used the exact `4610dda66a9d` CI AppImage. Regions inside each
+head and desktop capture had zero pixel mismatches and byte-identical independent
+paste; Escape and right-click preserved the sentinel. This five-case regression
+does not establish all-desktop acceptance of the new build. Both source/package
+receipts are archived. The first final wall check failed at head-0 synthetic
+coverage 0.5; an identical-source/layout bounded retry passed both heads with
+unchanged thresholds. Both attempts remain in the evidence.
+
+GNOME accepted a rotated secondary output at scale 2 and a separate unrotated
+scale-2 left/up layout, but their per-head VNC frame prerequisites failed before
+app campaigns. No geometry or recording pass is inferred for either profile.
+The original adjacent layout was restored and its fresh frames re-established.
+
 The [Mint](mint-case-summary.json), [KDE](kde-case-summary.json) and
 [GNOME](gnome-case-summary.json) summaries preserve individual case outcomes.
 Mint's first whole-window/desktop mismatch was visibly its preceding success
@@ -114,8 +154,15 @@ original-service preservation remain in the private coordination receipts.
 The Cinnamon VM archive is 17,254,183 bytes, SHA-256
 `de157b5606d4fae43092e2e48f613b3e5f4f2defb0eed43c9e35d0d677fff1d3`;
 all 647 archived members were verified before guarded overlay retirement.
-Its original and corrected post-reset manifests remain preserved. The active
-GNOME campaign has not yet received a completion/retirement claim in this draft.
+Its original and corrected post-reset manifests remain preserved. The GNOME
+archive is 110,236,106 bytes, SHA-256
+`6ab4ee3057b0c5fda703a21debe74b421caaa9d6ce5d1641c1fb403b96100806`;
+all 620 archived evidence members were verified on the workstation before guarded
+retirement completed at `2026-10-26T03:17:41.980201Z`. Its completion manifest
+records a failed/partial campaign, preserving the unproved matrix cells.
+The owned QEMU, SSH/VNC listeners, two guest wall tiles and tunnel were removed;
+the Debian signer and shared collector remained. A fresh physical desktop visual
+and `status --check` preceded explicit physical/quiet-heavy handback to acceptance.
 
 Original evidence and cleanup receipts remain in private coordinated builder
 runs. Curated PNGs here are unmodified saved evidence;
