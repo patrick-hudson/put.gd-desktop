@@ -82,14 +82,14 @@ private:
 
 // The floating controls: state dot and retained time, target and output,
 // system-audio and format choices before Record, and Record / Pause / Resume /
-// Stop / Cancel. It is placed outside the recorded rectangle when it fits
+// Stop / Discard…. It is placed outside the recorded rectangle when it fits
 // (placeBar) and placed again whenever its size changes, so it never leaves its
 // screen. When it has to sit inside, it collapses to a handle (state dot,
 // Resume while paused, Stop) from Record on. On X11 it can be dragged; a bar
 // outside the rectangle cannot be dragged into it. On a narrow screen (or at
-// a large text size) it takes two rows: state and Start/Pause/Stop/Cancel on
-// the first, target, audio and format on the second. Cancel once recording
-// has begun asks in the bar itself (Keep recording first) before discarding.
+// a large text size) it takes two rows: state and Start/Pause/Stop/Discard on
+// the first, target, audio and format on the second. Discard… once recording
+// has begun asks in the bar itself, with Keep recording or Keep paused first.
 class ControlBar final : public QWidget {
     Q_OBJECT
 public:
@@ -114,7 +114,7 @@ public:
     // for the recorded area's screen, construction for the primary screen.
     void fitTo(const QRect& screen);
     bool twoRows() const { return twoRows_; }
-    // The in-bar discard question is showing (Cancel while recording or paused).
+    // The in-bar discard question is showing (Discard… while recording or paused).
     bool confirming() const { return confirming_; }
     RecordingConfig config() const { return config_; }
 signals:
@@ -150,6 +150,7 @@ private:
     int screen_ = -1, layerScreen_ = -1;
     bool outside_ = false, handle_ = false, dragged_ = false, dragging_ = false, twoRows_ = false, confirming_ = false;
     QPoint dragOffset_;
+    QLabel *lockedAudio_ = nullptr, *lockedFormat_ = nullptr;
     QLabel *dot_ = nullptr, *state_label_ = nullptr, *time_ = nullptr, *target_ = nullptr, *question_ = nullptr;
     QCheckBox* audio_ = nullptr;
     QComboBox* format_ = nullptr;

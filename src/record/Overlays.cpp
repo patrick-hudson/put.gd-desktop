@@ -337,7 +337,12 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
         for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatHint(format, codec.toString()), Qt::ToolTipRole); }
     }
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) format_->setCurrentIndex(i); }
-    for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_}) choices->addWidget(w);
+    lockedAudio_ = new QLabel(choices_);
+    lockedAudio_->setObjectName("lockedAudio");
+    lockedFormat_ = new QLabel(choices_);
+    lockedFormat_->setObjectName("lockedFormat");
+    for (auto* label : {target_, lockedAudio_, lockedFormat_}) VisualStyle::role(label, "muted");
+    for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_, lockedAudio_, lockedFormat_}) choices->addWidget(w);
     record_ = new QPushButton("Start recording", this); record_->setObjectName("record");
     record_->setIcon(VisualStyle::icon("record"));
     VisualStyle::role(record_, "primary");
@@ -351,7 +356,6 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     cancel_->setObjectName("cancel");
     cancel_->setToolTip("Discard this recording");
     VisualStyle::role(cancel_, "quiet");
-    VisualStyle::role(target_, "secondary");
     // The discard question, in the bar so it stays where the bar may be (never over the clip).
     question_ = new QLabel("Discard this recording?", this);
     question_->setObjectName("discardQuestion");
@@ -368,7 +372,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     connect(pause_, &QPushButton::clicked, this, &ControlBar::pauseRequested);
     connect(resume_, &QPushButton::clicked, this, &ControlBar::resumeRequested);
     connect(stop_, &QPushButton::clicked, this, &ControlBar::stopRequested);
-    // Before Record there is nothing to lose; after it, Cancel asks first.
+    // Before Record there is nothing to lose; after it, Discard… asks first.
     connect(cancel_, &QPushButton::clicked, this, [this] { if (state_ == "ready") emit cancelRequested(); else askDiscard(); });
     connect(keep_, &QPushButton::clicked, this, &ControlBar::keepRecording);
     connect(discard_, &QPushButton::clicked, this, [this] { confirming_ = false; refresh(); emit cancelRequested(); });
@@ -418,12 +422,24 @@ void ControlBar::refresh() {
     setProperty("themeScheme", Theme::name(Theme::scheme()));
     dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg((recording ? tokens.danger : paused ? tokens.warning : ready ? tokens.success : tokens.textMuted).name()));
     state_label_->setText(recording ? QStringLiteral("Recording") : paused ? QStringLiteral("Paused") : ready ? QStringLiteral("Ready to record") : QStringLiteral("Stopping…"));
-    // Locked from Record on, the box still shows what is being recorded (#120).
+    // Once recording starts these are information, not disabled choices.
     const bool withSound = config_.audio.system && !config_.silent();
     audio_->setEnabled(ready && options_.audioSupported && !config_.silent());
     audio_->setChecked(withSound);
     audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : ready ? QStringLiteral("Include the sound the computer plays") : withSound ? QStringLiteral("System audio is being recorded") : QStringLiteral("System audio is not being recorded"));
     format_->setEnabled(ready);
+    audio_->setVisible(ready);
+    format_->setVisible(ready);
+    lockedAudio_->setVisible(!ready);
+    lockedFormat_->setVisible(!ready);
+    lockedAudio_->setText(withSound ? QStringLiteral("System audio") : QStringLiteral("No audio"));
+    lockedAudio_->setToolTip(audio_->toolTip());
+    lockedAudio_->setAccessibleName(QStringLiteral("Audio: ") + lockedAudio_->text());
+    lockedFormat_->setText(format_->currentText());
+    lockedFormat_->setAccessibleName(QStringLiteral("Recording format: ") + lockedFormat_->text());
+    lockedFormat_->setToolTip(QStringLiteral("Recording format; choose the export format in review"));
+    cancel_->setText(ready ? QStringLiteral("Cancel") : QStringLiteral("Discard…"));
+    keep_->setText(paused ? QStringLiteral("Keep paused") : QStringLiteral("Keep recording"));
     for (auto* w : std::initializer_list<QWidget*>{state_label_, time_}) w->setVisible(!handle);
     choices_->setVisible(!handle && !asking);
     cancel_->setVisible(!handle && !asking);

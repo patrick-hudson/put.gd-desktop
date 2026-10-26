@@ -148,33 +148,39 @@ private slots:
         }
     }
 
-    // #120: from Record on the System audio box is locked, and it still shows
-    // whether the sound is recorded: filled with the theme's tick, or empty.
-    // The disabled rule used to repaint a checked box as an unchecked one.
-    void lockedAudioBoxShowsTheRecordedSound() {
-        auto barWith = [](bool sound) { putgd::RecordingConfig config; config.audio.system = sound; return std::make_unique<ControlBar>(barOptions(), config); };
-        const auto withSound = barWith(true), silent = barWith(false);
-        auto* on = withSound->findChild<QCheckBox*>();
-        auto* off = silent->findChild<QCheckBox*>();
-        QVERIFY(on && off);
-        // Before Record the box is live and ticked.
-        QVERIFY(on->isChecked() && on->isEnabled());
-        const auto [readyDarkest, readyMean] = greyLevels(audioIndicator(on));
-        QVERIFY2(readyDarkest < 70 && readyMean > 120, qPrintable(QStringLiteral("ready: darkest %1 mean %2").arg(readyDarkest).arg(readyMean)));
-        for (const char* state : {"recording", "paused", "stopping"}) {
-            withSound->setState(QString::fromLatin1(state));
-            silent->setState(QString::fromLatin1(state));
-            QVERIFY(on->isChecked() && !on->isEnabled());
-            QVERIFY(!off->isChecked() && !off->isEnabled());
-            QCOMPARE(on->toolTip(), QStringLiteral("System audio is being recorded"));
-            QCOMPARE(off->toolTip(), QStringLiteral("System audio is not being recorded"));
-            const QImage ticked = audioIndicator(on), empty = audioIndicator(off);
-            QVERIFY(ticked.width() >= 8 && ticked.height() >= 8 && ticked.size() == empty.size());
-            const auto [tickedDarkest, tickedMean] = greyLevels(ticked);
-            const auto [emptyDarkest, emptyMean] = greyLevels(empty);
-            // A light fill behind a dark tick, against an empty dark box.
-            QVERIFY2(tickedMean - emptyMean > 40, qPrintable(QStringLiteral("%1: mean %2 vs %3").arg(state).arg(tickedMean).arg(emptyMean)));
-            QVERIFY2(tickedDarkest < 70, qPrintable(QStringLiteral("%1: no tick, darkest %2 (empty %3)").arg(state).arg(tickedDarkest).arg(emptyDarkest)));
+    // Locked capture values remain readable information in both schemes.
+    void lockedValuesAreReadableLabels() {
+        const auto restore = qScopeGuard([] { putgd::Theme::setScheme(putgd::Theme::Scheme::Dark); });
+        for (const auto scheme : {putgd::Theme::Scheme::Dark, putgd::Theme::Scheme::Light}) {
+            putgd::Theme::setScheme(scheme);
+            for (const bool sound : {false, true}) {
+                putgd::RecordingConfig config;
+                config.audio.system = sound;
+                ControlBar bar(barOptions(), config);
+                bar.show();
+                auto* audio = bar.findChild<QCheckBox*>();
+                auto* format = bar.findChild<QComboBox*>("format");
+                auto* audioValue = bar.findChild<QLabel*>("lockedAudio");
+                auto* formatValue = bar.findChild<QLabel*>("lockedFormat");
+                QVERIFY(audio && format && audioValue && formatValue);
+                QVERIFY(audio->isVisible() && format->isVisible());
+                QVERIFY(!audioValue->isVisible() && !formatValue->isVisible());
+                for (const char* state : {"recording", "paused", "stopping"}) {
+                    bar.setState(QString::fromLatin1(state));
+                    QVERIFY(!audio->isVisible() && !format->isVisible());
+                    QCOMPARE(audio->isChecked(), sound);
+                    QCOMPARE(audioValue->text(), sound ? QStringLiteral("System audio") : QStringLiteral("No audio"));
+                    QCOMPARE(formatValue->text(), format->currentText());
+                    for (auto* label : {bar.findChild<QLabel*>("target"), audioValue, formatValue}) {
+                        QVERIFY(label && label->isVisible() && label->isEnabled());
+                        QCOMPARE(label->palette().color(QPalette::WindowText), putgd::Theme::current().textMuted);
+                        QVERIFY(putgd::Theme::contrast(label->palette().color(QPalette::WindowText), putgd::Theme::current().bg) >= 4.5);
+                    }
+                }
+                bar.setState("ready");
+                QVERIFY(audio->isVisible() && format->isVisible());
+                QVERIFY(!audioValue->isVisible() && !formatValue->isVisible());
+            }
         }
     }
     // #198: the bar uses the interface's scheme, from the same tokens, and a
@@ -227,7 +233,7 @@ private slots:
         auto* off = silent->findChild<QCheckBox*>();
         QVERIFY(on && off);
         auto brightest = [](const QImage& image) { int value = 0; for (int y = 2; y < image.height() - 2; ++y) for (int x = 2; x < image.width() - 2; ++x) value = std::max(value, qGray(image.pixel(x, y))); return value; };
-        for (const char* state : {"ready", "recording", "paused", "stopping"}) {
+        for (const char* state : {"ready"}) {
             withSound->setState(QString::fromLatin1(state));
             silent->setState(QString::fromLatin1(state));
             const QImage ticked = audioIndicator(on), empty = audioIndicator(off);
@@ -295,11 +301,15 @@ private slots:
         auto* keep = bar.findChild<QPushButton*>("keepRecording");
         auto* discard = bar.findChild<QPushButton*>("discardRecording");
         QVERIFY(cancel && keep && discard);
+        QCOMPARE(cancel->text(), QStringLiteral("Cancel"));
         cancel->click();
         QCOMPARE(cancelled.size(), 1);
+        QSignalSpy resumed(&bar, &ControlBar::resumeRequested);
         for (const char* state : {"recording", "paused"}) {
             bar.setState(QString::fromLatin1(state));
+            QCOMPARE(cancel->text(), QStringLiteral("Discard…"));
             cancel->click();
+            QCOMPARE(keep->text(), QString::fromLatin1(state) == "paused" ? QStringLiteral("Keep paused") : QStringLiteral("Keep recording"));
             QCOMPARE(cancelled.size(), 1);
             QVERIFY(bar.confirming());
             QVERIFY(keep->isVisible() && discard->isVisible() && !cancel->isVisible());
@@ -314,6 +324,8 @@ private slots:
         cancel->click();
         keep->click();
         QVERIFY(!bar.confirming());
+        QCOMPARE(bar.findChild<QLabel*>("state")->text(), QStringLiteral("Paused"));
+        QCOMPARE(resumed.size(), 0);
         cancel->click();
         discard->click();
         QCOMPARE(cancelled.size(), 2);
