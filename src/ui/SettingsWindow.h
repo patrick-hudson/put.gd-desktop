@@ -116,6 +116,7 @@ private:
  QJsonArray setupJobs_;QTimer* setupTimer_=nullptr;bool setupPollActive_=false,testAccepting_=false,saving_=false,resetting_=false;
  QJsonArray profileEditors_;int setupAccepting_=0;
  QString baseRevision_;
+ QString metadataText_; // Canonical metadata; display-only wrap characters never enter diagnostics copies.
  QJsonObject draft_,savingDocument_;QString observed_;bool loading_=false,appearancePreviewed_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
  QLabel *status_=nullptr,*metadata_=nullptr,*capabilities_=nullptr;QPushButton *quit_;
  ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;

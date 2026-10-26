@@ -69,6 +69,29 @@ class SettingsGui:public QObject {
 public slots:
  void recordProtonUrl(const QUrl& url){openedUrls_.append(url);}
 private slots:
+ void copiedDiagnosticsPreserveExactPathsAndRevisions_data(){
+  QTest::addColumn<bool>("unicodePath");
+  QTest::newRow("ordinary-path")<<false;QTest::newRow("literal-zero-width-character")<<true;
+ }
+ void copiedDiagnosticsPreserveExactPathsAndRevisions(){
+  QFETCH(bool,unicodePath);QTemporaryDir dir;
+  const auto name=QString("config ")+(unicodePath?QString(QChar(0x200B)):QString{})+QString(64,'a')+".json";
+  SettingsService service(dir.filePath(name));QVERIFY(service.save(Settings::defaults(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();
+  auto* metadata=window.findChild<QLabel*>("settingsMetadata");QVERIFY(metadata);
+  QPushButton* copy=nullptr;QLabel* capabilities=nullptr;
+  for(auto* button:window.findChildren<QPushButton*>())if(button->text()=="Copy diagnostics")copy=button;
+  for(auto* label:window.findChildren<QLabel*>())if(label->accessibleName()=="Desktop support diagnostics")capabilities=label;
+  QVERIFY(copy&&capabilities);
+  for(int revision=0;revision<2;++revision){
+   const auto plain="Configuration: "+service.path()+"\nAccepted revision: "+service.revision()+"\nObserved file revision: "+service.metadata()["observedRevision"].toString();
+   PUTGD_TRY_COMPARE(metadata->accessibleName(),plain);
+   QVERIFY2(metadata->text().count(QChar(0x200B))>plain.count(QChar(0x200B)),"Fixture must exercise display-only wrap characters");
+   QApplication::clipboard()->clear();copy->click();
+   QCOMPARE(QApplication::clipboard()->text(),capabilities->text()+"\n"+plain);
+   if(revision==0){auto doc=service.document();auto preferences=doc["preferences"].toObject();preferences["notifications"]=!preferences["notifications"].toBool();doc["preferences"]=preferences;QVERIFY(service.save(doc,service.revision()));}
+  }
+ }
  void reorderingDestinationsKeepsSelectionEditsAndRouting(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
   auto routing=[&]{auto doc=service.document();doc.remove("profiles");return doc;};const auto routes=routing();
