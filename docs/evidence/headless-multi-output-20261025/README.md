@@ -95,7 +95,7 @@ physical panels or a cable removal.
 
 ## Failure context and restoration
 
-Review remediation in tooling `e5026479` addresses colliding guest basenames and
+Review remediation in tooling `e5026479` (dependency follow-up `399cca65`) addresses colliding guest basenames and
 stale readiness, delayed fullscreen acknowledgement, diagonal drag endpoints,
 right-click placement, custom native data homes, native artifact containment,
 rollback timer coalescing, final saved-frame validation and weak wall/recording

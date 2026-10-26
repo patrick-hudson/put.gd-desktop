@@ -125,5 +125,7 @@
     "Scaled/spanning recording references remain unsupported/fail closed",
     "c1/rec1 moving does not satisfy the periodic-bar model; no product defect or clip-content pass inferred",
     "Initial prototype replay and corrected periodic-bar model results both retained privately; original archives unchanged"
-  ]
+  ],
+  "followupHead": "399cca65c5eb2d1c2885f32b1fee61a5aa3734b3",
+  "ciFollowup": "e502 CI contracts failed because its new test imported optional Pillow. Followup reads decoded PPM directly; all15 new regressions pass with python3 -S. No skip or threshold relaxation."
 }
