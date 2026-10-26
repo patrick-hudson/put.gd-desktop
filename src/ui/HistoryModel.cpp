@@ -59,6 +59,16 @@ bool HistoryModel::remoteDeletable(const QJsonObject& f){return f["uploadStatus"
 QString HistoryModel::statusText(const QJsonObject& r){
  const auto op=r["operation"].toObject();const auto state=op["state"].toString();const auto phase=op["phase"].toString();
  if(active(r)){
+  if(op["action"]=="record"){
+   if(phase=="preparing")return "Setting up the recording…";
+   if(phase=="ready")return "Ready to record";
+   if(phase=="recording")return "Recording";
+   if(phase=="paused")return "Recording paused";
+   if(phase=="stopping")return "Stopping the recording…";
+   if(phase=="reviewing")return "Review recording";
+   if(phase=="exporting")return "Saving a recording copy…";
+   if(phase=="encoding")return "Encoding recording…";
+  }
   if(phase=="queued")return "Waiting to upload…";
   if(state=="editing"||phase=="editing")return "Editing · Upload or cancel in the editor window";
   if(op["action"]=="edit"&&(state=="acquiring"||phase=="acquiring"))return "Choose what to edit… · Press Esc to cancel";
