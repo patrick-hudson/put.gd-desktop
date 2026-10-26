@@ -32,6 +32,16 @@ def github_json(*arguments):
     return json.loads(subprocess.check_output(['gh', 'api', *arguments], text=True))
 
 
+def verify_inventory(tag, listed, layout=None):
+    expected = public_inventory(tag, layout)
+    actual = set(listed) | {'SHA256SUMS'}
+    if actual != expected:
+        missing = ', '.join(sorted(expected - actual)) or 'none'
+        extra = ', '.join(sorted(actual - expected)) or 'none'
+        raise ValueError(f'Collected release inventory differs for {layout or "legacy"} '
+                         f'({len(expected)} assets expected): missing: {missing}; extra: {extra}')
+
+
 def remote_tag_commit(tag):
     value = github_json('repos/{owner}/{repo}/git/ref/tags/' + tag)['object']
     # Annotated tags may reference other tags. Bound traversal and require a commit.
@@ -215,8 +225,7 @@ def installer_notes(directory, release, producer):
 def publish_nightly(args, release, listed):
     """Publish one automated nightly, retaining exact run and byte evidence."""
     layout = getattr(args, 'asset_layout', None)
-    if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag, layout):
-        raise ValueError('Collected nightly inventory must contain all twenty-one public assets')
+    verify_inventory(args.tag, listed, layout)
     producer = run_provenance()
     api = GitHub(producer['repository'])
     expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
@@ -334,13 +343,17 @@ def main():
             raise ValueError('Duplicate collected release checksum')
         listed[name] = digest
     args.asset_layout = bundle.get('assetLayout')
-    if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag, args.asset_layout):
-        raise ValueError('Collected release inventory must include all twenty-one public assets, including Proton and AppImage media sources, debug symbols and SBOMs')
+    verify_inventory(args.tag, listed, args.asset_layout)
     if args.asset_layout == support_assets.LAYOUT:
-        # Validate the automated caller before publishing any linked materials.
-        if not args.publish:
-            run_provenance()
-        api = GitHub(os.environ['GITHUB_REPOSITORY'])
+        if args.publish:
+            # Manual acceptance runs use the same checkout/repository as the gh release commands.
+            repository = subprocess.check_output(
+                ['gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'],
+                text=True, timeout=60).strip()
+        else:
+            # Validate the automated caller before publishing any linked materials.
+            repository = run_provenance()['repository']
+        api = GitHub(repository)
         delivery = json.loads((args.directory / 'source-delivery.json').read_text())
         if delivery != bundle.get('sources'):
             raise ValueError('Source delivery differs from collected release manifest')

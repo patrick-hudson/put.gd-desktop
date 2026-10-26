@@ -501,6 +501,64 @@ class NightlyPublicationTest(unittest.TestCase):
                 self.invoke()
         self.assertFalse(self.commands)
 
+    def test_manual_installer_publication_resolves_repository_without_actions_environment(self):
+        self.tag = 'v26.1022.42'
+        self.release.update(tag=self.tag, version=self.tag[1:], packageVersion=self.tag[1:],
+                            channel='stable', prerelease=False)
+        self.installer_fixture()
+        self.metadata = self.metadata_for(True)
+        self.remote_files = dict(self.files)
+        acceptance = self.directory / 'acceptance.json'
+        acceptance.write_text(json.dumps({'tag': self.tag, 'gitCommit': self.commit,
+            'status': 'passed', 'assetSha256': self.listed}))
+        argv = ['publish.py', '--tag', self.tag, '--directory', str(self.directory),
+                '--publish', '--acceptance', str(acceptance)]
+        lookup = ['gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']
+
+        def output(command, **kwargs):
+            return 'fixture/putgd\n' if command == lookup else self.output(command, **kwargs)
+
+        with patch.object(sys, 'argv', argv), patch.dict(os.environ, {}, clear=True), \
+                patch.object(publish, 'verify', return_value=self.release), \
+                patch.object(publish, 'run_provenance') as provenance, \
+                patch.object(subprocess, 'check_output', side_effect=output) as reads, \
+                patch.object(subprocess, 'run', side_effect=self.command), \
+                patch.object(publish.support_assets, 'verify_proton') as proton, \
+                patch.object(publish.support_assets, 'verify_public') as linked, \
+                patch.object(publish.support_assets, 'publish') as stage_sources, \
+                patch.object(publish, 'notify_site', return_value=True):
+            publish.main()
+        reads.assert_any_call(lookup, text=True, timeout=60)
+        provenance.assert_not_called()
+        stage_sources.assert_not_called()
+        proton.assert_called_once()
+        linked.assert_called_once()
+        self.assertEqual(linked.call_args.args[0].repository, 'fixture/putgd')
+        self.assertEqual(self.commands, [['gh', 'release', 'edit', self.tag, '--draft=false']])
+        self.assertTrue(json.loads((self.directory / 'publication.json').read_text())['published'])
+
+    def test_installer_inventory_error_names_missing_and_extra_files_before_mutation(self):
+        self.installer_fixture()
+        installer = f'putgd-{self.release["version"]}-x86_64.AppImage'
+        extra = 'unexpected.zip'
+        (self.directory / extra).write_bytes(b'unexpected archive')
+        for problem in ('missing', 'extra'):
+            with self.subTest(problem=problem):
+                listed = dict(self.listed)
+                if problem == 'missing':
+                    del listed[installer]
+                else:
+                    listed[extra] = publish.sha256(self.directory / extra)
+                (self.directory / 'SHA256SUMS').write_text(
+                    ''.join(d + '  ' + n + '\n' for n, d in sorted(listed.items())))
+                with self.assertRaises(ValueError) as error:
+                    self.invoke()
+                message = str(error.exception)
+                self.assertIn('installers-v1 (15 assets expected)', message)
+                self.assertIn('missing: ' + installer if problem == 'missing' else 'extra: ' + extra,
+                              message)
+                self.assertFalse(self.commands)
+
     def changes(self, root, tag, repository, server, released=None):
         self.assertEqual((tag, repository, server), (self.tag, 'fixture/putgd', 'https://github.com'))
         # Only published releases start the changes (#373): the reader is passed, not called here.
@@ -628,7 +686,7 @@ class NightlyPublicationTest(unittest.TestCase):
     def test_positive_inventory_is_required_before_any_remote_mutation(self):
         checksums = (self.directory / 'SHA256SUMS').read_text().splitlines()
         (self.directory / 'SHA256SUMS').write_text('\n'.join(checksums[:-1]) + '\n')
-        with self.assertRaisesRegex(ValueError, 'all twenty-one'):
+        with self.assertRaisesRegex(ValueError, '21 assets expected'):
             self.invoke()
         self.assertEqual(self.commands, [])
 
