@@ -1435,7 +1435,8 @@ void SettingsWindow::updateCaptureInheritance(){
   sharing->setItemText(sharing->findData("default"),resolved.isEmpty()?sharingLabel("default"):sharingLabel(resolved)+" (destination default)");
   const auto inherited=[inherit](QComboBox* combo){return inherit?": inherited from default, "+combo->currentText():QString{};};
   profile->setAccessibleName(actionLabel(name)+" destination"+inherited(profile));sharing->setAccessibleName(actionLabel(name)+" sharing"+inherited(sharing));
-  describe(captureStatus_[name],actionUpload);
+  // The status line feeds view state and agents; the row's summary shows it.
+  describe(captureStatus_[name],actionUpload);captureStatus_[name]->hide();
   // The compact row: what this action produces, "Default ·" while it inherits;
   // only an overridden action shows its two fields.
   {const QSignalBlocker block(captureOverride_[name]);captureOverride_[name]->setChecked(!inherit);}captureEditors_[name]->setVisible(!inherit);
