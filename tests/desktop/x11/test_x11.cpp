@@ -194,7 +194,7 @@ private slots:
   }
  }
  void regionCancellationAndExactSelection() {
-  CaptureFrame frame{"fixture",QRectF(0,0,100,100),QRect(0,0,100,100),1,0,QImage(100,100,QImage::Format_ARGB32)};frame.pixels.fill(Qt::red);
+  CaptureFrame frame{"fixture",QRectF(0,0,1000,1000),QRect(0,0,1000,1000),1,0,QImage(1000,1000,QImage::Format_ARGB32)};frame.pixels.fill(Qt::red);
   auto surface=[]()->QWidget*{for(auto* w:QApplication::topLevelWidgets())if(w->objectName()=="putgd-region-overlay"&&w->isVisible())return w;return nullptr;};
   {RegionOverlay overlay({frame});bool cancelled=false;connect(&overlay,&RegionOverlay::cancelled,this,[&](const Error& e){cancelled=e.code=="cancelled";});overlay.start();QVERIFY(surface());QTest::keyClick(surface(),Qt::Key_Escape);QVERIFY(cancelled);}
   {RegionOverlay overlay({frame});bool cancelled=false;connect(&overlay,&RegionOverlay::cancelled,this,[&](const Error& e){cancelled=e.code=="cancelled";});overlay.start();QVERIFY(surface());QTest::mouseClick(surface(),Qt::RightButton);QVERIFY(cancelled);}

@@ -1,6 +1,7 @@
 #include "Overlays.h"
 #include "BarPlacement.h"
 #include "ui/SelectionOutline.h"
+#include "ui/RegionSelection.h"
 #include "ui/Theme.h"
 #include "ui/VisualStyle.h"
 #include "ui/Graphite.h"
@@ -101,13 +102,13 @@ QList<QRect> screenRects() {
 }
 // The bar in the interface's scheme (#198). Its outline meets 3:1 against
 // both black and white in either scheme, so the bar's edge shows over any
-// content; Record and Stop keep their fixed green and red, white on both.
+// content; the primary actions use the shared neutral role.
 
 }
 
 QString formatHint(const QString& format, const QString& codec) {
-    if (format == "mp4" && codec == "h265") return QStringLiteral("Smaller files, but Firefox and Chrome on Linux cannot play H.265 links; Safari and Edge can. Choose H.264 for a link anyone can open.");
-    if (format == "mp4") return QStringLiteral("Plays everywhere.");
+    if (format == "mp4" && codec == "h265") return QStringLiteral("Smaller files, but Firefox and Chrome on Linux cannot play H.265 links; Safari and Edge can. Use MP4 (H.264) for broader playback compatibility.");
+    if (format == "mp4") return QStringLiteral("Recommended for browser sharing.");
     if (format == "webm") return QStringLiteral("VP9 with Opus audio; plays in browsers except older Safari.");
     if (format == "gif") return QStringLiteral("Silent animation, at most 60 s and 1280 px.");
     return QStringLiteral("Silent animated WebP, at most 60 s and 1280 px.");
@@ -141,6 +142,8 @@ class SelectionOverlay::Surface final : public QWidget {
 public:
     Surface(SelectionOverlay& owner, QScreen* screen) : QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus), owner_(owner), logical_(screen->geometry()) {
         setObjectName("putgd-record-select");
+        setAccessibleName("Recording region");
+        describeRegion(this, {});
         setAttribute(Qt::WA_TranslucentBackground);
         setScreen(screen);
         setGeometry(logical_.toAlignedRect());
@@ -149,7 +152,7 @@ public:
         setFocusPolicy(Qt::StrongFocus);
         connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
     }
-    void refresh() { update(); }
+    void refresh() { describeRegion(this, owner_.selection_); update(); }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
@@ -162,10 +165,9 @@ protected:
             painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
             paintSelectionOutline(painter, local);
             paintLabel(painter, local.topLeft() + QPointF(6, 6), QStringLiteral("%1 × %2").arg(int(clipped.width())).arg(int(clipped.height())));
-        } else {
-            painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-            paintLabel(painter, QPointF(24, 24), QStringLiteral("Drag to choose the area to record. Esc cancels."));
         }
+        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        paintRegionInstructions(painter, rect(), palette());
     }
     void mousePressEvent(QMouseEvent* e) override {
         if (e->button() == Qt::RightButton) { owner_.cancel(); return; }
@@ -173,7 +175,11 @@ protected:
     }
     void mouseMoveEvent(QMouseEvent* e) override { owner_.move(e->globalPosition()); }
     void mouseReleaseEvent(QMouseEvent* e) override { if (e->button() == Qt::LeftButton) { releaseMouse(); owner_.release(e->globalPosition()); } }
-    void keyPressEvent(QKeyEvent* e) override { if (e->key() == Qt::Key_Escape) owner_.cancel(); }
+    void keyPressEvent(QKeyEvent* e) override {
+        if (e->key() == Qt::Key_Escape) { owner_.cancel(); return; }
+        if (e->key() == Qt::Key_Return || e->key() == Qt::Key_Enter) { owner_.complete(toRoot(owner_.selection_.isEmpty() ? logical_ : owner_.selection_)); return; }
+        if (adjustRegion(owner_.selection_, logical_, *e)) { owner_.dragging_ = false; for (auto* s : owner_.surfaces_) s->refresh(); }
+    }
 private:
     SelectionOverlay& owner_;
     QRectF logical_;
@@ -351,7 +357,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     resume_ = new QPushButton("Resume", this);
     resume_->setIcon(VisualStyle::icon("play"));
     stop_ = new QPushButton("Stop recording", this); stop_->setObjectName("stop");
-    VisualStyle::role(stop_, "danger");
+    VisualStyle::role(stop_, "primary");
     cancel_ = new QPushButton("Cancel", this);
     cancel_->setObjectName("cancel");
     cancel_->setToolTip("Discard this recording");

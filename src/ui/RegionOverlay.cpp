@@ -1,4 +1,5 @@
 #include "ui/SelectionOutline.h"
+#include "ui/RegionSelection.h"
 #include "RegionOverlay.h"
 #include <QPainter>
 #include <QMouseEvent>
@@ -34,16 +35,21 @@ void skipCloseAnimation(QWidget* surface){
 }
 class RegionOverlay::Surface final:public QWidget {
 public:
- Surface(RegionOverlay& owner,const CaptureFrame& frame):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint|Qt::X11BypassWindowManagerHint|Qt::WindowDoesNotAcceptFocus),owner_(owner),logicalRect_(frame.logicalRect){setObjectName("putgd-region-overlay");setAttribute(Qt::WA_TranslucentBackground);for(auto* screen:QGuiApplication::screens())if(screen->name()==frame.identity){setScreen(screen);break;}setGeometry(frame.logicalRect.toAlignedRect());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);}
+ Surface(RegionOverlay& owner,const CaptureFrame& frame):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint|Qt::X11BypassWindowManagerHint|Qt::WindowDoesNotAcceptFocus),owner_(owner),logicalRect_(frame.logicalRect){setObjectName("putgd-region-overlay");setAccessibleName("Capture region");describeRegion(this,{});setAttribute(Qt::WA_TranslucentBackground);for(auto* screen:QGuiApplication::screens())if(screen->name()==frame.identity){setScreen(screen);break;}setGeometry(frame.logicalRect.toAlignedRect());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);}
  // X11 compositors can sample newer pixels using an earlier damage clip.
  // Full-surface damage keeps an outward-moving edge inside that clip.
- void updateSelection(const QRectF& previous){if(!previous.intersected(logicalRect_).isEmpty()||!owner_.selection_.intersected(logicalRect_).isEmpty())update();}
+ void updateSelection(const QRectF& previous){describeRegion(this,owner_.selection_);if(!previous.intersected(logicalRect_).isEmpty()||!owner_.selection_.intersected(logicalRect_).isEmpty())update();}
 protected:
- void paintEvent(QPaintEvent*) override {QPainter painter(this);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(rect(),Qt::transparent);painter.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!clipped.isEmpty()){const QRectF local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(painter,local);}}
+ void paintEvent(QPaintEvent*) override {QPainter painter(this);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(rect(),Qt::transparent);painter.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!clipped.isEmpty()){const QRectF local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(painter,local);}paintRegionInstructions(painter,rect(),palette());}
  void mousePressEvent(QMouseEvent* e) override {if(e->button()==Qt::RightButton){owner_.cancel();return;}if(e->button()==Qt::LeftButton){owner_.press(e->globalPosition());grabMouse();}}
  void mouseMoveEvent(QMouseEvent* e) override {owner_.move(e->globalPosition());}
  void mouseReleaseEvent(QMouseEvent* e) override {if(e->button()==Qt::LeftButton){releaseMouse();owner_.release(e->globalPosition());}}
- void keyPressEvent(QKeyEvent* e) override {if(e->key()==Qt::Key_Escape)owner_.cancel();}
+ void keyPressEvent(QKeyEvent* e) override {
+  if(e->key()==Qt::Key_Escape){owner_.cancel();return;}
+  if(e->key()==Qt::Key_Return||e->key()==Qt::Key_Enter){const auto selected=owner_.selection_.isEmpty()?logicalRect_:owner_.selection_;owner_.finish();emit owner_.selected(selected);return;}
+  const auto previous=owner_.selection_;
+  if(adjustRegion(owner_.selection_,logicalRect_,*e)){owner_.dragging_=false;for(auto* s:owner_.surfaces_)s->updateSelection(previous);}
+ }
 private:
  RegionOverlay& owner_;
  QRectF logicalRect_;
