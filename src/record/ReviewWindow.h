@@ -72,13 +72,6 @@ private:
     QRectF toView(const QRect&) const;
     QRect bounds() const;
     void placeErrorCard();
-public:
-    // A widget pinned inside the frame's bottom edge (the review's status
-    // row): it covers the frame only while shown and costs no layout height.
-    void setFooterOverlay(QWidget* overlay) { footer_ = overlay; placeFooter(); }
-    void placeFooter();
-private:
-    QPointer<QWidget> footer_;
     QImage frame_;
     qint64 timeUs_ = 0;
     QSize canvas_;
@@ -174,7 +167,7 @@ public:
     // #283: the review session method (recording.review) drives the window as a
     // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|resetTrim|
     // addMask|selectMask|placeMask|setMaskIn|setMaskOut|strength|removeMask|
-    // useSolidCover|format|trimToLimit|dismissStatus|retryPreview|
+    // useSolidCover|format|trimToLimit|dismissStatus|dismissBlurTip|retryPreview|
     // saveCopyDialog|closeFileDialog|discard|keepReviewing|confirmDiscard, ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
     // window's state (inspect) after the action, or an error.

@@ -46,7 +46,7 @@ namespace {
 // content, which is as likely pale as dark (Graphite, Recording).
 const QColor mediaAccent(0xE8, 0xB6, 0x6D);
 QString clock(qint64 us) { const qint64 h = us / 10000; return QStringLiteral("%1:%2.%3").arg(h / 6000).arg((h / 100) % 60, 2, 10, QChar('0')).arg(h % 100, 2, 10, QChar('0')); }
-QString maskName(const QString& kind) { return kind == "solid" ? QStringLiteral("Solid cover") : QStringLiteral("Blur"); }
+QString maskName(const QString& kind) { return kind == "solid" ? QStringLiteral("Redaction") : QStringLiteral("Blur"); }
 // The card over the frame when a preview could not be decoded.
 class ErrorCard final : public QWidget {
 public:
@@ -109,14 +109,7 @@ void FrameView::placeErrorCard() {
     const int height = std::min(area.height(), errorCard_->hasHeightForWidth() ? errorCard_->heightForWidth(width) : errorCard_->sizeHint().height());
     errorCard_->setGeometry(QRect(QPoint(area.center().x() - width / 2, area.center().y() - height / 2), QSize(width, height)));
 }
-void FrameView::resizeEvent(QResizeEvent* e) { QWidget::resizeEvent(e); placeErrorCard(); placeFooter(); }
-void FrameView::placeFooter() {
-    if (!footer_ || footer_->isHidden()) return;
-    const int w = std::max(0, width() - 16);
-    const int h = footer_->hasHeightForWidth() ? footer_->heightForWidth(w) : footer_->sizeHint().height();
-    footer_->setGeometry(8, height() - h - 8, w, h);
-    footer_->raise();
-}
+void FrameView::resizeEvent(QResizeEvent* e) { QWidget::resizeEvent(e); placeErrorCard(); }
 void FrameView::setMasks(const QList<RecordingMask>& masks, const QString& selected) {
     // A keyboard nudge not yet proposed keeps its place over the last answer.
     QRect pending;
@@ -221,7 +214,7 @@ void FrameView::paintEvent(QPaintEvent*) {
         dualOutline(painter, pending, mediaAccent, 1.5, Qt::DashLine);
     }
     if (!armed_.isEmpty())
-        mediaLabel(painter, QPointF(target.left() + 8, target.top() + 8), armed_ == "solid" ? QStringLiteral("Drag on the frame to place the solid cover, or press Enter for a centred one") : QStringLiteral("Drag on the frame to place the blur, or press Enter for a centred one"), target);
+        mediaLabel(painter, QPointF(target.left() + 8, target.top() + 8), armed_ == "solid" ? QStringLiteral("Drag on the frame to place the redaction, or press Enter for a centred one") : QStringLiteral("Drag on the frame to place the blur, or press Enter for a centred one"), target);
     if (Graphite::keyboardFocus(this)) { painter.setPen(QPen(Theme::current().accent, 2)); painter.setBrush(Qt::NoBrush); painter.drawRect(QRectF(rect()).adjusted(1, 1, -1, -1)); }
 }
 void FrameView::focusInEvent(QFocusEvent* e) { QWidget::focusInEvent(e); update(); }
@@ -529,17 +522,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* frame = new QVBoxLayout(this);
     frame->setContentsMargins(0, 0, 0, 0);
     frame->setSpacing(0);
-    // The shared header in its compact, one-line form: the 56 px document band
-    // took the frame below #283's share (60%, 45% at 150% text) natively. The
-    // draft state ("Not uploaded") stays in the footer. With the desktop's own
-    // frame (PUTGD_SYSTEM_DECORATIONS=1) the compact header hides itself.
+    // A one-line title preserves the frame area; the draft state stays in the
+    // footer. With desktop decorations the compact header hides itself.
     header_ = Graphite::WindowHeader::install(this, frame, nullptr, Graphite::WindowHeader::Density::Compact);
     header_->setDocument(QStringLiteral("Review recording"));
     auto* root = new QVBoxLayout;
-    // 4 px rows: the header's hairline and the footer's separate the bands already,
-    // so the frame and a taller timeline keep the height.
-    root->setContentsMargins(12, Graphite::WindowHeader::customFrame() ? 4 : 8, 12, 4);
-    root->setSpacing(4);
+    // Compact bands leave room for the video even with enlarged text and status.
+    root->setContentsMargins(12, 2, 12, 2);
+    root->setSpacing(0);
     frame->addLayout(root, 1);
     // Why the capture ended when it stopped itself (#225); hidden otherwise.
     notice_ = new QLabel(this);
@@ -562,6 +552,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         button->setToolTip(tip);
         button->setAccessibleName(name);
         button->setAutoRaise(true);
+        button->setFixedSize(32, 32);
         return button;
     };
     auto separator = [this] { auto* line = Graphite::rule(this, Qt::Vertical); line->setObjectName("separator"); line->setFixedHeight(20); return line; };
@@ -604,8 +595,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     VisualStyle::role(retained_, "secondary");
     mono(retained_, Graphite::Type::metadata);
     retained_->setAccessibleName("Kept interval");
-    addBlur_ = tool("blur", "Add blur", "Add a blur, then drag on the frame to place it or press Enter for a centred one. Blur is a visual effect; use Solid cover for private information.");
-    addSolid_ = tool("redact", "Add solid cover", "Add a solid cover, then drag on the frame to place it or press Enter for a centred one");
+    addBlur_ = tool("blur", "Add blur", "Add a blur, then drag on the frame to place it or press Enter for a centred one. Blur is a visual effect; use Redact for private information.");
+    addSolid_ = tool("redact", "Add redaction", "Redact: add a redaction, then drag on the frame to place it or press Enter for a centred one");
     for (auto* button : {addBlur_, addSolid_}) button->setCheckable(true);
     // The selected mask's settings; the whole group shows only once masks exist.
     maskTools_ = new QWidget(this);
@@ -635,17 +626,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     for (auto* w : std::initializer_list<QWidget*>{groupLabel("Trim", "trimGroup"), trimStart_, trimEnd_, resetTrim_, retained_, separator(), groupLabel("Mask", "maskGroup"), addBlur_, addSolid_, maskTools_}) tools->addWidget(w);
     tools->addStretch(1);
     root->addLayout(tools);
-    // The status row: errors, warnings and privacy guidance, each with the
-    // actions that resolve it. It wraps (never elides) on a raised card pinned
-    // inside the frame's bottom edge, so it takes no height from the frame
-    // (#283's share holds) and stays readable over any video.
-    statusRow_ = new Graphite::Surface("raised", Qt::TopEdge | Qt::BottomEdge | Qt::LeftEdge | Qt::RightEdge, view_);
+    // Status belongs below the frame, so no guidance or recovery action hides video.
+    statusRow_ = new Graphite::Surface("raised", Qt::TopEdge | Qt::BottomEdge, this);
     statusRow_->setObjectName("statusRow");
     statusLines_ = new QVBoxLayout(statusRow_);
-    statusLines_->setContentsMargins(10, 6, 10, 6);
+    statusLines_->setContentsMargins(10, 2, 10, 2);
     statusLines_->setSpacing(2);
     statusRow_->hide();
-    view_->setFooterOverlay(statusRow_);
+    root->insertWidget(root->indexOf(view_) + 1, statusRow_);
     auto* actions = new QHBoxLayout;
     actions->setSpacing(6);
     format_ = new QComboBox(this);
@@ -680,7 +668,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* output = new QLabel("Output", this);
     VisualStyle::role(output, "meta");
     output->setBuddy(format_);
-    actions->setContentsMargins(12, 4, 12, 4);
+    actions->setContentsMargins(12, 2, 12, 2);
     actions->addWidget(output);
     actions->addWidget(format_);
     actions->addWidget(audio_);
@@ -692,6 +680,11 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     footer->setObjectName("reviewFooter");
     footer->setLayout(actions);
     frame->addWidget(footer);
+    // Text stays enlarged; the review's fields need less vertical padding than forms.
+    for (auto* field : std::initializer_list<QWidget*>{speed_, masks_, strength_})
+        field->setFixedHeight(std::max(32, field->fontMetrics().height() + 6));
+    for (auto* action : std::initializer_list<QWidget*>{format_, upload_, save_, cancel_})
+        action->setFixedHeight(std::max(36, action->fontMetrics().height() + 8));
     // Keyboard (#283): Space plays and pauses (keyPressEvent, so a focused
     // button or list still takes its own Space), I/O set the trim, Shift+I/O the
     // selected mask's times, Delete removes it, Escape drops an unplaced mask
@@ -961,7 +954,7 @@ void ReviewWindow::refreshLabels() {
     const int index = mask ? int(std::find_if(edit_.masks.cbegin(), edit_.masks.cend(), [&](const RecordingMask& m) { return m.id == mask->id; }) - edit_.masks.cbegin()) : -1;
     QString frameState = mask ? QStringLiteral("%1 %2 selected: %3 × %4 at %5, %6, %7–%8. Arrows move it, Shift+arrows resize it, Delete removes it, Escape deselects.")
                                     .arg(maskName(mask->kind)).arg(index + 1).arg(mask->rect.width()).arg(mask->rect.height()).arg(mask->rect.x()).arg(mask->rect.y()).arg(timeText(mask->start), timeText(mask->end))
-                              : edit_.masks.isEmpty() ? QStringLiteral("No masks. Add blur or Add solid cover, then press Enter to place one in the centre.") : QStringLiteral("No mask selected; choose one in the Masks list.");
+                              : edit_.masks.isEmpty() ? QStringLiteral("No masks. Add blur or Add redaction, then press Enter to place one in the centre.") : QStringLiteral("No mask selected; choose one in the Masks list.");
     if (!view_->previewError().isEmpty()) frameState.prepend(view_->previewError() + QStringLiteral(". "));
     view_->setAccessibleDescription(frameState);
     // The audio summary: a few words beside Output, never elided.
@@ -1006,7 +999,7 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
     const auto* mask = selectedMask();
     // Once acknowledged it stays out of the way of the frame; the tooltips keep it.
     if (!blurTipDismissed_ && (view_->armed() == "blur" || (view_->armed().isEmpty() && mask && mask->kind == "blur")))
-        entries.append({QStringLiteral("Blur is a visual effect. Use Solid cover for private information."), QStringLiteral("warning"), {{QStringLiteral("Use Solid cover"), QJsonObject{{"action", "useSolidCover"}}}, {QStringLiteral("Got it"), QJsonObject{{"action", "dismissBlurTip"}}}}});
+        entries.append({QStringLiteral("Blur is a visual effect. Use Redact for private information."), QStringLiteral("warning"), {{QStringLiteral("Use Redact"), QJsonObject{{"action", "useSolidCover"}}}, {QStringLiteral("Got it"), QJsonObject{{"action", "dismissBlurTip"}}}}});
     return entries;
 }
 void ReviewWindow::refreshStatus() {
@@ -1036,17 +1029,21 @@ void ReviewWindow::refreshStatus() {
             auto* button = new QPushButton(label, line);
             button->setObjectName("statusAction");
             VisualStyle::role(button, "link");
-            // As tall as the line it acts on: the row costs the frame one text line.
-            button->setFixedHeight(text->fontMetrics().height() + 4);
+            // Compact link painting inside a full pointer target.
+            button->setMinimumSize(32, 32);
             button->setProperty("driveAction", params);
             connect(button, &QPushButton::clicked, this, [this, params] { drive(params); });
             row->addWidget(button, 0, Qt::AlignVCenter);
         }
         row->addStretch(0);
         statusLines_->addWidget(line);
+        line->show();
+        row->activate();
     }
     statusRow_->setVisible(!entries.isEmpty());
-    view_->placeFooter();
+    statusLines_->invalidate();
+    statusLines_->activate();
+    layout()->activate();
 }
 QJsonObject ReviewWindow::inspect() const {
     auto rect = [](const QRect& r) { return QJsonArray{r.x(), r.y(), r.width(), r.height()}; };

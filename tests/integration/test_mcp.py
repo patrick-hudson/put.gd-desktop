@@ -182,6 +182,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'open_software_updates', 'install_update', 'restart_after_update', 'drive_file_dialog', 'editor_file_dialog',
                             'drive_editor'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
+                review = next(tool for tool in discovered if tool.name == 'drive_recording_review')
+                self.assertIn('Use Redact', review.description)
+                self.assertIn('serialized kind stays solid', review.description)
                 for tool in discovered:
                     self.assertEqual(tool.inputSchema['type'], 'object')
                     self.assertFalse(tool.inputSchema['additionalProperties'])
@@ -353,6 +356,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'blur'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'addMask', 'kind': 'blur'}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'placeMask', 'rect': [8, 8, 100, 50]}, 'recording.review', {'id': 'synthetic-operation', 'action': 'placeMask', 'rect': [8, 8, 100, 50]}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'useSolidCover'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'useSolidCover'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'dismissBlurTip'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'dismissBlurTip'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'dismissStatus'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'dismissStatus'}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'retryPreview'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'retryPreview'}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'discard'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'discard'}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'confirmDiscard'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'confirmDiscard'}),

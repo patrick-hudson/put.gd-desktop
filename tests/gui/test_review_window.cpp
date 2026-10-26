@@ -16,6 +16,7 @@
 #include <QTemporaryDir>
 #include <QMouseEvent>
 #include <QScreen>
+#include <QScopeGuard>
 #include <QShortcut>
 #include <QSignalSpy>
 #include <QSpinBox>
@@ -145,13 +146,15 @@ private slots:
         QCOMPARE(state["timeline"].toObject()["lanes"].toInt(), 2);
         qInfo("review two masks share %.3f timeline %d", state["video"].toObject()["share"].toDouble(), state["timeline"].toObject()["rect"].toArray()[3].toInt());
         QVERIFY2(state["video"].toObject()["share"].toDouble() >= 0.6, qPrintable(QString::number(state["video"].toObject()["share"].toDouble())));
-        // The status row (here, the blur guidance) sits inside the frame's
-        // bottom edge and takes no height from it.
+        // Transient guidance sits below the frame, leaving the video unobscured.
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QApplication::processEvents();
         QVERIFY(window.findChild<QWidget*>("statusRow")->isVisible());
         qInfo("review with a status line share %.3f", window.inspect()["video"].toObject()["share"].toDouble());
-        QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.6, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
+        QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
+        auto* row = window.findChild<QWidget*>("statusRow");
+        auto* frame = window.findChild<FrameView*>();
+        QVERIFY(row->mapTo(&window, QPoint()).y() >= frame->mapTo(&window, frame->rect().bottomLeft()).y());
         // Got it hides the guidance for the rest of the review.
         QVERIFY(window.drive({{"action", "dismissBlurTip"}}).code.isEmpty());
         QApplication::processEvents();
@@ -169,6 +172,7 @@ private slots:
     }
     void largeTextStillFitsA1366x768Desktop() {
         const auto font = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(font); });
         auto large = font;
         if (font.pointSizeF() > 0) large.setPointSizeF(font.pointSizeF() * 1.5);
         else large.setPixelSize(font.pixelSize() * 3 / 2);
@@ -186,7 +190,17 @@ private slots:
             QVERIFY2(minimum.width() <= 1366 - 24 && minimum.height() <= 768 - 120, qPrintable(QStringLiteral("%1x%2").arg(minimum.width()).arg(minimum.height())));
             QVERIFY(window.width() <= 1366 && window.height() <= 768);
             qInfo("review 150%% text %dx%d minimum %dx%d share %.3f", window.width(), window.height(), minimum.width(), minimum.height(), window.inspect()["video"].toObject()["share"].toDouble());
-            QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
+            QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
+            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
+            QApplication::processEvents();
+            qInfo("review 150%% text transient %dx%d share %.3f", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble());
+            QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
+            auto* status = window.findChild<QWidget*>("statusRow");
+            auto* frame = window.findChild<FrameView*>();
+            QVERIFY(status->isVisible() && !frame->geometry().intersects(status->geometry()));
+            QVERIFY(window.drive({{"action", "dismissBlurTip"}}).code.isEmpty());
+            QApplication::processEvents();
+            QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60);
             // The compact header grows with the text instead of clipping it.
             auto* header = window.findChild<Graphite::WindowHeader*>("windowHeader");
             QVERIFY(header && header->isVisible() && header->height() == header->compactHeight());
@@ -195,7 +209,6 @@ private slots:
             // Every control is inside the window.
             for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && w->isWindow() == false) QVERIFY2(window.rect().contains(QRect(w->mapTo(&window, QPoint()), w->size())), qPrintable(w->accessibleName() + w->objectName()));
         }
-        QApplication::setFont(font);
     }
     void maskControlsShowOnlyWhenTheyApply() {
         ReviewWindow window(options(), config());
@@ -304,7 +317,7 @@ private slots:
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto* t = timeline(window);
         QVERIFY(t);
-        // Press inside the unselected solid cover (4 s to 10 s) and drag it 3 s
+        // Press inside the unselected redaction (4 s to 10 s) and drag it 3 s
         // earlier: it is selected and moves as a whole, keeping its 6 s length.
         const auto bar = t->maskRect("m-solid");
         const QPoint from(t->xFor(7000000), bar.center().y());
@@ -560,20 +573,60 @@ private slots:
         QCOMPARE(proposed(proposals), QJsonObject({{"op", "setTrim"}, {"start", 0.0}, {"end", 5000000.0}}));
         Q_UNUSED(configs);
     }
+    void replacingVisibleStatusShowsTextAndRecoveryActions() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.showError("First export failed");
+        auto* row = window.findChild<QWidget*>("statusRow");
+        QVERIFY(row && row->isVisible());
+        // Replace a row that is already visible, then add a second line.
+        const QString failure = QStringLiteral("Export failed: free disk space and try again");
+        window.showError(failure);
+        QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}}).code.isEmpty());
+        QApplication::processEvents();
+        int lines = 0;
+        for (auto* line : row->findChildren<QWidget*>("statusLine", Qt::FindDirectChildrenOnly)) {
+            if (line->isHidden()) continue;
+            ++lines;
+            QVERIFY(line->isVisible() && !line->visibleRegion().isEmpty());
+            auto* text = line->findChild<QLabel*>("status");
+            QVERIFY(text && text->isVisible() && !text->visibleRegion().isEmpty());
+            QVERIFY(text->height() >= text->fontMetrics().height());
+            QVERIFY(row->rect().contains(QRect(text->mapTo(row, QPoint()), text->size())));
+            for (auto* button : line->findChildren<QPushButton*>("statusAction")) {
+                QVERIFY(button->isVisible() && !button->visibleRegion().isEmpty());
+                QVERIFY(button->height() >= 32 && button->width() >= 32);
+                QVERIFY(row->rect().contains(QRect(button->mapTo(row, QPoint()), button->size())));
+            }
+        }
+        QCOMPARE(lines, 2);
+        auto* dismiss = buttonNamed(window, "Dismiss");
+        auto* fix = buttonNamed(window, "Use MP4 (H.264)");
+        QVERIFY(dismiss && fix);
+        dismiss->click();
+        QVERIFY(!window.inspect()["status"].toString().contains(failure));
+        QApplication::processEvents();
+        fix = buttonNamed(window, "Use MP4 (H.264)");
+        QVERIFY(fix);
+        fix->click();
+        QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
+        QVERIFY(!row->isVisible());
+    }
     // Blur is a visual effect: the editor's guidance shows, readable without
-    // hover, while a blur is placed or selected, with a switch to Solid cover.
-    void blurGuidanceAndOneNameForSolidCover() {
+    // hover, while a blur is placed or selected, with a switch to Redaction.
+    void blurGuidanceAndRedactionNames() {
         ReviewWindow window(options(), config());
         QSignalSpy proposals(&window, &ReviewWindow::editProposed);
         window.setEdit(twoMasks());
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        const QString guidance = QStringLiteral("Blur is a visual effect. Use Solid cover for private information.");
+        const QString guidance = QStringLiteral("Blur is a visual effect. Use Redact for private information.");
         QVERIFY(!window.inspect()["status"].toString().contains(guidance));
         auto* list = window.findChild<QComboBox*>("masks");
-        QCOMPARE(list->itemText(1), QString("Solid cover 2"));
+        QCOMPARE(list->itemText(1), QString("Redaction 2"));
         QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}).state["status"].toString() == guidance);
-        auto* fix = buttonNamed(window, "Use Solid cover");
+        auto* fix = buttonNamed(window, "Use Redact");
         QVERIFY(fix);
         fix->click();
         const auto command = proposed(proposals);
@@ -581,7 +634,7 @@ private slots:
         QCOMPARE(command["maskId"].toString(), QString("m-blur"));
         QCOMPARE(command["mask"].toObject()["kind"].toString(), QString("solid"));
         QVERIFY(!command["mask"].toObject().contains("strength"));
-        // Arming Add blur shows it too; its action arms the solid cover instead.
+        // Arming Add blur shows it too; its action arms the redaction instead.
         QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}).code.isEmpty());
         QToolButton* addBlur = nullptr;
         for (auto* b : window.findChildren<QToolButton*>()) if (b->accessibleName() == "Add blur") addBlur = b;
@@ -606,7 +659,7 @@ private slots:
         auto* frame = window.findChild<FrameView*>();
         QVERIFY(frame && frame->focusPolicy() == Qt::StrongFocus);
         QToolButton* addSolid = nullptr;
-        for (auto* b : window.findChildren<QToolButton*>()) if (b->accessibleName() == "Add solid cover") addSolid = b;
+        for (auto* b : window.findChildren<QToolButton*>()) if (b->accessibleName() == "Add redaction") addSolid = b;
         QVERIFY(addSolid);
         addSolid->setFocus(Qt::TabFocusReason);
         QTest::keyClick(addSolid, Qt::Key_Space);
@@ -624,7 +677,7 @@ private slots:
         m.rect = QRect(320, 180, 640, 360);
         edit.masks = {m};
         window.setEdit(edit);
-        QVERIFY(frame->accessibleDescription().startsWith(QStringLiteral("Solid cover 1 selected: 640 × 360 at 320, 180")));
+        QVERIFY(frame->accessibleDescription().startsWith(QStringLiteral("Redaction 1 selected: 640 × 360 at 320, 180")));
         const auto before = proposals.size();
         for (int i = 0; i < 3; ++i) QTest::keyClick(frame, Qt::Key_Right);
         QTest::keyClick(frame, Qt::Key_Up, Qt::ControlModifier);
