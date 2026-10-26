@@ -32,6 +32,7 @@ class RFB:
         self.sock.sendall(struct.pack('>BxxxBBBBHHHBBBxxx', 0, 32, 24, 0, 1, 255, 255, 255, 16, 8, 0))
         self.sock.sendall(struct.pack('>BxHi', 2, 1, 0))  # raw encoding only
         self.buttons = 0
+        self.pixels = bytearray(self.width * self.height * 4)
 
     def _read(self, n):
         data = b''
@@ -72,7 +73,10 @@ class RFB:
 
     def frame(self):
         self.sock.sendall(struct.pack('>BBHHHH', 3, 0, 0, 0, self.width, self.height))
-        pixels = bytearray(self.width * self.height * 4)
+        # Framebuffer updates may contain only damaged rectangles, including
+        # updates already queued before this nonincremental request. Retain the
+        # pixels outside those rectangles just as a normal VNC viewer does.
+        pixels = self.pixels
         while True:
             kind = self._read(1)[0]
             if kind == 0:
@@ -80,7 +84,9 @@ class RFB:
                 for _ in range(rects):
                     x, y, w, h, enc = struct.unpack('>HHHHi', self._read(12))
                     if enc == -223:  # DesktopSize
-                        self.width, self.height = w, h; pixels = bytearray(w * h * 4); continue
+                        self.width, self.height = w, h
+                        self.pixels = pixels = bytearray(w * h * 4)
+                        continue
                     if enc != 0:
                         raise RuntimeError(f'unexpected encoding {enc}')
                     data = self._read(w * h * 4)
