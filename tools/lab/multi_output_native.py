@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run multi_output.py directly on a locked physical builder with a private AppImage.
+"""Run multi_output.py on a locked builder with a private AppImage or installed native package.
 
   multi_output_native.py --session LEASE --run NEW_SHORT_DIR --appimage FILE
                          --sha256 SHA --vnc-port 5902 [--case NAME ...]
@@ -40,7 +40,10 @@ def digest(path):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--session', required=True); p.add_argument('--run', type=Path, required=True)
-    p.add_argument('--appimage', type=Path, required=True); p.add_argument('--sha256', required=True)
+    package_choice = p.add_mutually_exclusive_group(required=True)
+    package_choice.add_argument('--appimage', type=Path)
+    package_choice.add_argument('--native-package', type=Path, help='Already installed exact DEB/RPM; verified against its archive')
+    p.add_argument('--sha256', required=True)
     p.add_argument('--vnc-port', type=int, required=True)
     p.add_argument('--case', action='append', choices=multi_output.CASES)
     p.add_argument('--change-command', type=Path)
@@ -49,8 +52,9 @@ def main():
     paths = [run / 'qmp.sock', run / 'runtime/putgd/session.sock']
     if any(len(str(s).encode()) > 107 for s in paths):
         raise RuntimeError('Resolved control socket exceeds 107 UTF-8 bytes')
-    if digest(a.appimage) != a.sha256:
-        raise RuntimeError('Frozen AppImage checksum mismatch')
+    artifact = a.appimage or a.native_package
+    if digest(artifact) != a.sha256:
+        raise RuntimeError('Frozen package checksum mismatch')
     if subprocess.run(['pgrep', '-u', str(os.getuid()), '-x', 'putgd'], capture_output=True).returncode == 0:
         raise RuntimeError('An existing resident must be preserved; choose a clean authorized slot')
     run.mkdir(mode=0o700, exist_ok=False)
@@ -67,19 +71,29 @@ def main():
     applications.mkdir(parents=True, exist_ok=True)
     before_entries = {str(f): f.read_bytes() for f in applications.glob('*putgd*.desktop')}
     (run / 'data/applications').symlink_to(applications)
-    build = record_run.Build('frozen', a.appimage, run)
-    appdir = Path(build.cli).parents[2]
-    cli_env = dict(env, APPDIR=str(appdir), LD_LIBRARY_PATH=str(appdir / 'usr/lib') + ':' + str(appdir / 'usr/lib/putgd'),
-                   QT_PLUGIN_PATH=str(appdir / 'usr/plugins'))
+    if a.appimage:
+        build = record_run.Build('frozen', a.appimage, run)
+        appdir = Path(build.cli).parents[2]
+        cli_env = dict(env, APPDIR=str(appdir), LD_LIBRARY_PATH=str(appdir / 'usr/lib') + ':' + str(appdir / 'usr/lib/putgd'),
+                       QT_PLUGIN_PATH=str(appdir / 'usr/plugins'))
+        binaries = {'/usr/bin/' + f.name: digest(f) for f in (appdir / 'usr/bin').glob('putgd*') if f.is_file() and os.access(f, os.X_OK)}
+        package = {'format': 'appimage', 'analysisRoot': str(appdir)}
+        version_command = [str(a.appimage.resolve()), '--version-json']
+    else:
+        build = SimpleNamespace(launcher=['/usr/bin/putgd-launcher', '--background'], cli='/usr/bin/putgd-cli')
+        cli_env = dict(env)
+        # Reuse the package-versus-running-files verifier on the actual builder.
+        lab.ssh = lambda _run, body, **_kw: subprocess.run(['sh', '-s'], input=body, env=env, text=True, capture_output=True, check=True).stdout
+        binaries = lab.verify_installed_binaries(run, a.native_package)
+        package = {'format': 'rpm' if a.native_package.suffix == '.rpm' else 'deb'}
+        version_command = ['/usr/bin/putgd', '--version-json']
     profile = {'name': 'native-multi-output', 'desktop': env['XDG_CURRENT_DESKTOP'], 'session': env['XDG_SESSION_TYPE'],
                'qt_platform': env['QT_QPA_PLATFORM'], 'session_process': desktop}
     if desktop == 'plasmashell':
         profile['desktop'] = 'KDE'
     profile['guest_user'] = os.environ['USER']
-    binaries = {'/usr/bin/' + f.name: digest(f) for f in (appdir / 'usr/bin').glob('putgd*') if f.is_file() and os.access(f, os.X_OK)}
-    package = {'format': 'appimage', 'sha256': a.sha256, 'filename': a.appimage.name,
-               'installedBinarySha256': binaries, 'analysisRoot': str(appdir),
-               'version': json.loads(subprocess.check_output([str(a.appimage.resolve()), '--version-json'], env=env))}
+    package.update(sha256=a.sha256, filename=artifact.name, installedBinarySha256=binaries,
+                   version=json.loads(subprocess.check_output(version_command, env=env)))
     multi_output.save(run / 'package.json', package)
     multi_output.save(run / 'state.json', {'id': str(uuid.uuid4()), 'profile': profile['name'], 'guest_user': profile['guest_user'],
                                          'acceleration': 'physical', 'host': os.uname().nodename,
