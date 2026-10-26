@@ -1,0 +1,618 @@
+#!/usr/bin/env python3
+"""Policy, proxy and external-observation contracts, without a product or GUI."""
+import asyncio
+import base64
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import tempfile
+import unittest
+from unittest import mock
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'performance'))
+import campaign_proxy
+import build_current_capture
+import campaign_workloads as workloads
+import campaign_fixture
+import physical_campaign
+from bench_ui_process import EvidenceError
+
+
+class ThresholdTests(unittest.TestCase):
+    def test_no_policy_does_not_pass_a_measured_response(self):
+        run = mock.Mock()
+        run.args.threshold_policy = None
+        run.result = {'metrics': {}, 'gates': {}}
+        workloads.assess(run, 'historySearchP95UpperBoundMs', 10)
+        self.assertEqual(run.result['metrics']['historySearchP95UpperBoundMs'], 10)
+        self.assertEqual(run.result['gates']['historySearchP95UpperBoundMs']['status'], 'unassessed')
+
+    def test_explicit_policy_requires_attribution_and_does_not_pass_missing_measurements(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'policy.json'
+            value = {'schemaVersion': 1, 'approvedBy': 'test-only attribution', 'approvalReference': 'synthetic-unit-test',
+                     'maximums': {'historySearchP95UpperBoundMs': 250}}
+            path.write_text(json.dumps(value)); path.chmod(0o600)
+            run = mock.Mock()
+            run.args.threshold_policy = str(path)
+            run.result = {'metrics': {}, 'gates': {}}
+            workloads.assess(run, 'historySearchP95UpperBoundMs', None)
+            self.assertEqual(run.result['gates']['historySearchP95UpperBoundMs']['status'], 'unassessed')
+            value['approvedBy'] = ''
+            path.write_text(json.dumps(value))
+            with self.assertRaisesRegex(EvidenceError, 'attribution_required'):
+                workloads.policy(path)
+
+    def test_nan_or_unknown_numerical_budget_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'policy.json'
+            for maximums in ({'historySearchP95UpperBoundMs': float('nan')}, {'newInventedGate': 1}):
+                path.write_text(json.dumps({'schemaVersion': 1, 'approvedBy': 'unit-test',
+                                           'approvalReference': 'test-only', 'maximums': maximums}))
+                path.chmod(0o600)
+                with self.assertRaisesRegex(EvidenceError, 'invalid_threshold_policy_maximums'):
+                    workloads.policy(path)
+
+    def test_uploaded_link_is_rejected_before_external_http_request(self):
+        run = mock.Mock()
+        run.args.endpoint = 'http://127.0.0.1:12345'
+        run.call.return_value = {'operationId': 'operation', 'uploadStatus': 'uploaded'}
+        operation = {'id': 'operation', 'state': 'completed', 'items': [{'uploadStatus': 'uploaded',
+            'artifact': {'id': 'item', 'sha256': 'a' * 64}, 'receipt': {'directUrl': 'https://example.com/payload'}}]}
+        with mock.patch('urllib.request.build_opener') as opener:
+            with self.assertRaisesRegex(EvidenceError, 'non_loopback_result_link'):
+                workloads.verify_uploaded(run, operation)
+            opener.return_value.open.assert_not_called()
+
+
+class FileUploadSafetyTests(unittest.TestCase):
+    def prepare(self, root):
+        media = root / 'burst-media'
+        media.mkdir(mode=0o700)
+        path = media / 'queue-00-synthetic.png'
+        campaign_fixture.png(path, 100, 320, 180)
+        path.chmod(0o400)
+        return path, workloads.upload_source(path, root)
+
+    def backend(self, root, path, change=None):
+        run = mock.Mock()
+        run.root = root
+        state = {'phase': 'editing', 'width': 320, 'height': 180, 'crop': [0, 0, 320, 180],
+                 'shapes': [], 'modified': False}
+        def call(method, params):
+            if method == 'editor.open':
+                self.assertEqual(params, {'source': 'file', 'path': str(path)})
+                if change:
+                    change()
+                return {'operationId': 'edit-1'}
+            if method == 'editor.inspect':
+                return state
+            if method == 'editor.preview':
+                return {'mime': 'image/png', 'png': base64.b64encode(path.read_bytes()).decode(),
+                        'width': 320, 'height': 180, 'sourceWidth': 320, 'sourceHeight': 180}
+            if method == 'editor.submit':
+                return {'submitted': True}
+            if method == 'operation.inspect':
+                return {'state': 'running', 'items': [{'artifact': {'sha256': 'b' * 64}}]}
+            if method == 'editor.cancel':
+                return {'cancelled': True}
+            self.fail('Unsafe/unexpected production method: ' + method)
+        run.call.side_effect = call
+        return run
+
+    def test_explicit_file_preview_is_attributed_before_upload_and_no_capture_is_invoked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path, source = self.prepare(root)
+            run = self.backend(root, path)
+            self.assertEqual(workloads.submit_file_upload(run, source), 'edit-1')
+            methods = [call.args[0] for call in run.call.call_args_list]
+            self.assertEqual(methods, ['editor.open', 'editor.inspect', 'editor.preview',
+                                      'editor.inspect', 'editor.submit', 'operation.inspect'])
+            calls = run.mock_calls
+            proof = next(i for i, call in enumerate(calls) if call[0] == 'event' and
+                         call.args[0] == 'burst-file-source-attributed-before-submit')
+            submit = next(i for i, call in enumerate(calls) if call[0] == 'call' and call.args[0] == 'editor.submit')
+            self.assertLess(proof, submit)
+            for call in run.event.call_args_list:
+                self.assertNotIn('png', call.kwargs, 'Preview payload must never be logged')
+
+    def test_changed_preview_pixels_cancel_without_upload_even_if_cover_would_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path, source = self.prepare(root)
+            def replace():
+                path.chmod(0o600)
+                campaign_fixture.png(path, 101, 320, 180)
+                path.chmod(0o400)
+            run = self.backend(root, path, replace)
+            with self.assertRaisesRegex(EvidenceError, 'preview_content_mismatch'):
+                workloads.submit_file_upload(run, source)
+            methods = [call.args[0] for call in run.call.call_args_list]
+            self.assertNotIn('editor.submit', methods)
+            self.assertEqual(methods[-1], 'editor.cancel')
+
+    def test_same_pixels_replaced_inode_is_rejected_before_submit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path, source = self.prepare(root)
+            def replace():
+                replacement = path.with_suffix('.replacement')
+                replacement.write_bytes(path.read_bytes())
+                replacement.chmod(0o400)
+                replacement.replace(path)
+            run = self.backend(root, path, replace)
+            with self.assertRaisesRegex(EvidenceError, 'identity_changed_before_submit'):
+                workloads.submit_file_upload(run, source)
+            self.assertNotIn('editor.submit', [call.args[0] for call in run.call.call_args_list])
+
+    def test_symlink_and_writable_source_refused_before_any_product_call(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path, source = self.prepare(root)
+            run = self.backend(root, path)
+            path.chmod(0o600)
+            with self.assertRaisesRegex(EvidenceError, 'not_owned_immutable_png'):
+                workloads.submit_file_upload(run, source)
+            run.call.assert_not_called()
+            path.chmod(0o400)
+            link = path.with_name('linked.png')
+            link.symlink_to(path)
+            with self.assertRaisesRegex(EvidenceError, 'outside_private_media'):
+                workloads.submit_file_upload(run, {**source, 'path': str(link)})
+            run.call.assert_not_called()
+
+    def test_independent_upload_with_correct_hash_but_wrong_known_pixels_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path, source = self.prepare(root)
+            other = root / 'different.png'
+            campaign_fixture.png(other, 200, 320, 180)
+            data = other.read_bytes()
+            link = 'http://127.0.0.1:12345/fixture/upload.png'
+            operation = {'id': 'op', 'state': 'completed', 'items': [{'uploadStatus': 'uploaded',
+                'artifact': {'id': 'item', 'sha256': hashlib.sha256(data).hexdigest()},
+                'receipt': {'directUrl': link}}]}
+            run = mock.Mock()
+            run.args.endpoint = 'http://127.0.0.1:12345'
+            run.call.return_value = {'operationId': 'op', 'uploadStatus': 'uploaded'}
+            response = mock.MagicMock()
+            response.geturl.return_value = link
+            response.read.side_effect = [data, b'']
+            response.__enter__.return_value = response
+            with mock.patch('urllib.request.build_opener') as opener:
+                opener.return_value.open.return_value = response
+                with self.assertRaisesRegex(EvidenceError, 'uploaded_pixels_differ'):
+                    workloads.verify_uploaded(run, operation, source)
+
+    def test_queued_without_items_admits_50_files_and_observes_real_backlog(self):
+        self.queue_protocol(wait_for_items=False)
+
+    def test_waiting_for_worker_created_items_drains_backlog_and_fails_queue_gate(self):
+        self.queue_protocol(wait_for_items=True)
+
+    def test_visual_refusals_retain_all50_and_settle_but_main_exits_one(self):
+        for failures in (('burst-progress-4',), ('burst-completed',),
+                ('burst-progress-4', 'burst-progress-24', 'burst-progress-49', 'burst-completed')):
+            with self.subTest(failures=failures):
+                self.queue_protocol(False, visual_failures=failures, via_main=True)
+
+    def test_visual_identity_or_read_failure_aborts_before50_and_settle(self):
+        for code in ('history_visual_owner_changed', 'visibility_target_not_mapped', 'drawable_pixels_unavailable'):
+            with self.subTest(code=code):
+                self.queue_protocol(False, visual_fatal=EvidenceError(code))
+
+    def test_refusal_persistence_failure_preserves_original_and_aborts(self):
+        self.queue_protocol(False, visual_failures=('burst-progress-4',), persistence_failure=True)
+
+    def queue_protocol(self, wait_for_items, visual_failures=(), visual_fatal=None,
+                       via_main=False, persistence_failure=False):
+        # Production ordering: editor release enqueues empty-item operations;
+        # only four workers dequeue/create artifacts/upload. Synthetic time
+        # keeps both the correct and original blocked-admission cases bounded.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = mock.Mock()
+            run.root = root
+            run.result = {'metrics': {}, 'gates': {}, 'limitations': []}
+            run.started = 0
+            run.stop.return_value = run.close_fixtures.return_value = True
+            if persistence_failure:
+                run.persist.side_effect = OSError('synthetic-persistence-failure')
+            run.sample.return_value = {'totals': {}}
+            sources, operations = {}, {}
+            pending, active, clock = [], {}, [0.]
+            peak_active = 0
+            current = None
+            state = {'phase': 'editing', 'width': 320, 'height': 180, 'crop': [0, 0, 320, 180],
+                     'shapes': [], 'modified': False}
+            def advance(seconds):
+                nonlocal peak_active
+                clock[0] += seconds
+                for key in list(active):
+                    if active[key] <= clock[0]:
+                        del active[key]
+                        operations[key].update(state='completed', phase='completed')
+                        operations[key]['items'][0]['uploadStatus'] = 'uploaded'
+                while pending and len(active) < 4:
+                    key = pending.pop(0)
+                    active[key] = clock[0] + 10
+                    operations[key].update(state='running', phase='uploading', items=[{
+                        'uploadStatus': 'uploading', 'artifact': {'id': key, 'sha256': 'b' * 64},
+                        'receipt': {'directUrl': 'http://127.0.0.1:12345/fixture/' + key}}])
+                peak_active = max(peak_active, len(active))
+            def call(method, params):
+                nonlocal current
+                advance(.05)
+                if method == 'editor.open':
+                    self.assertEqual(params['source'], 'file')
+                    current = 'operation-' + str(len(sources))
+                    sources[current] = Path(params['path'])
+                    operations[current] = {'id': current, 'state': 'editing', 'phase': 'editing', 'items': []}
+                    return {'operationId': current}
+                if method == 'editor.inspect':
+                    return state
+                if method == 'editor.preview':
+                    return {'mime': 'image/png', 'png': base64.b64encode(sources[current].read_bytes()).decode(),
+                            'width': 320, 'height': 180, 'sourceWidth': 320, 'sourceHeight': 180}
+                if method == 'editor.submit':
+                    operations[current]['phase'] = 'queued'
+                    pending.append(current)
+                    advance(0)
+                    return {'submitted': True}
+                if method == 'operation.inspect':
+                    return operations[params['id']]
+                self.fail('Unexpected method: ' + method)
+            run.call.side_effect = call
+            def wait_operation(key):
+                while operations[key]['state'] != 'completed':
+                    advance(.2)
+                return operations[key]
+            run.wait_operation.side_effect = wait_operation
+            original_submit = workloads.submit_file_upload
+            def admit(run, source):
+                key = original_submit(run, source)
+                if wait_for_items:
+                    while not operations[key]['items']:
+                        advance(.05)
+                return key
+            tray_states = iter([{'IconPixmap': 'idle', 'ToolTip': 'idle'}] +
+                [{'IconPixmap': 'working', 'ToolTip': 'working'}] * 10 +
+                [{'Status': 'Active', 'workingTitleObserved': False}])
+            with mock.patch.object(workloads, 'tray', side_effect=lambda *args: next(tray_states)), \
+                 mock.patch.object(workloads, 'UI') as ui_factory, \
+                 mock.patch.object(workloads, 'verify_uploaded') as verify, \
+                 mock.patch.object(workloads, 'settle') as settle, \
+                 mock.patch.object(workloads, 'submit_file_upload', side_effect=admit), \
+                 mock.patch.object(workloads.subprocess, 'run'), \
+                 mock.patch.object(workloads.time, 'monotonic', side_effect=lambda: clock[0]), \
+                 mock.patch.object(workloads.time, 'sleep', side_effect=advance):
+                original_refusals = []
+                def checkpoint(label):
+                    if visual_fatal is not None:
+                        raise visual_fatal
+                    if label in visual_failures:
+                        error = EvidenceError('no_owned_ui_proven_visible_on_wall')
+                        error.visibility_diagnostics = {'attemptCount': 12, 'nativeChangedCount': 12}
+                        original_refusals.append(error)
+                        raise error
+                ui_factory.return_value.save_history.side_effect = checkpoint
+                fatal = visual_fatal is not None or persistence_failure
+                if fatal:
+                    with self.assertRaises(EvidenceError) as failure:
+                        workloads.burst(run)
+                    self.assertIs(failure.exception, visual_fatal or original_refusals[0])
+                    self.assertEqual(len(sources), 5)
+                    verify.assert_not_called(); settle.assert_not_called()
+                    if persistence_failure:
+                        self.assertTrue(failure.exception.visibility_abort)
+                        self.assertIn('visual_diagnostics_export: OSError', failure.exception.__notes__)
+                    return
+                if wait_for_items:
+                    with self.assertRaisesRegex(EvidenceError, 'did_not_demonstrate_concurrent_queued_uploads'):
+                        workloads.burst(run)
+                elif via_main:
+                    arguments = ['burst', '--output', '/not-created', '--package', '/not-opened',
+                        '--package-sha256', 'a' * 64, '--source-revision', 'b' * 40, '--version', 'test',
+                        '--desktop-session', 'unused', '--lock-session', 'unused', '--native-driver', '/not-opened',
+                        '--native-driver-revision', 'c' * 40, '--native-driver-sha256', 'd' * 64]
+                    with mock.patch.object(physical_campaign, 'Campaign', return_value=run), \
+                         mock.patch.object(physical_campaign.signal, 'signal'), \
+                         mock.patch.object(physical_campaign.os, 'umask'), \
+                         mock.patch.object(workloads, 'policy', return_value=None):
+                        self.assertEqual(physical_campaign.main(arguments), 1)
+                else:
+                    workloads.burst(run)
+            self.assertEqual(len(sources), 50)
+            self.assertEqual(len({hashlib.sha256(path.read_bytes()).hexdigest() for path in sources.values()}), 50)
+            self.assertEqual([call.args[0] for call in run.call.call_args_list].count('editor.submit'), 50)
+            self.assertEqual(peak_active, 4)
+            queue_observations = [call.kwargs['queued'] for call in run.event.call_args_list
+                                  if call.args[0] == 'burst-queue-observation']
+            self.assertEqual(len(queue_observations), 10)
+            if wait_for_items:
+                self.assertEqual(queue_observations, [0] * 10)
+                verify.assert_not_called()
+                settle.assert_not_called()
+                return
+            self.assertGreater(max(queue_observations), 0)
+            self.assertEqual(verify.call_count, 50)
+            settle.assert_called_once_with(run, {})
+            self.assertEqual(run.result['metrics']['burst']['acceptedFileEditorUploads'], 50)
+            self.assertEqual(run.result['metrics']['burst']['nativeCapturesExercised'], 0)
+            self.assertEqual(run.result['gates']['captureBurst']['status'], 'unassessed')
+            self.assertEqual(ui_factory.return_value.save_history.call_args_list, [
+                mock.call('burst-progress-4'), mock.call('burst-progress-24'),
+                mock.call('burst-progress-49'), mock.call('burst-completed')])
+            ui_factory.return_value.save.assert_not_called()
+            visual = run.result['gates']['burstVisualAttribution']
+            self.assertEqual(visual['attempted'], 4)
+            self.assertEqual(visual['refused'], len(visual_failures))
+            self.assertEqual(visual['succeeded'], 4 - len(visual_failures))
+            self.assertEqual(visual['status'], 'fail' if visual_failures else 'pass')
+            self.assertEqual([v['label'] for v in run.result.get('burstVisualRefusals', [])], list(visual_failures))
+
+
+class BurstHistoryVisualTests(unittest.TestCase):
+    """Owned-window protocol controls only; no display, product or pixels read."""
+    def setup_ui(self, root):
+        ui = workloads.UI.__new__(workloads.UI)
+        ui.owner = {'pid': 123, 'startTicks': 456, 'uid': os.getuid(), 'device': 7,
+                    'inode': 8, 'executable': '/not-executed/putgd-ui'}
+        ui.window = '0x2'
+        ui.run = mock.Mock()
+        ui.run.root = root
+        ui.run.args.vnc_port = 5900
+        ui.run.call.side_effect = [{'shown': 'history'},
+            {'diagnostics': {'ui': {'pid': 123, 'state': 'ready'}}}]
+        return ui
+
+    def test_editor_handoff_checkpoint_reactivates_history_before_pinned_window_save(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ui = self.setup_ui(Path(directory))
+            focused = ['editor']
+            order = []
+            def call(method, params=None):
+                order.append(method)
+                if method == 'ui.show':
+                    self.assertEqual(params, {'view': 'history'})
+                    focused[0] = 'history'
+                    return {'shown': 'history'}
+                self.assertEqual(method, 'ui.snapshot')
+                return {'diagnostics': {'ui': {'pid': 123, 'state': 'ready'}}}
+            ui.run.call.side_effect = call
+            def save(window, owner, path, port, **kwargs):
+                self.assertEqual(focused[0], 'history')
+                self.assertEqual(order, ['ui.show', 'ui.snapshot'])
+                self.assertEqual((window, owner, port), ('0x2', ui.owner, 5900))
+                path.write_bytes(b'synthetic unit crop; no desktop access')
+                return {'equalsStableOwnedDrawable': True}
+            with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                 mock.patch.object(workloads, 'owned_windows', return_value=['0x2', '0x9']), \
+                 mock.patch('campaign_ui.save_visible_window', side_effect=save) as guard:
+                ui.save_history('burst-progress-4')
+            guard.assert_called_once()
+            events = ui.run.event.call_args_list
+            self.assertEqual(events[0].args[0], 'history-visual-presentation-requested')
+            self.assertFalse(events[0].kwargs['provesPaint'])
+            self.assertEqual(events[1].args[0], 'history-visual-comparison-diagnostics')
+            self.assertEqual(events[2].args[0], 'owned-ui-visual')
+
+    def test_bad_activation_ack_cannot_reach_snapshot_or_visual_guard(self):
+        for reply in (None, {}, {'shown': 'settings'}):
+            with self.subTest(reply=reply), tempfile.TemporaryDirectory() as directory:
+                ui = self.setup_ui(Path(directory))
+                ui.run.call.side_effect = [reply]
+                with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                     mock.patch('campaign_ui.save_visible_window') as guard:
+                    with self.assertRaisesRegex(EvidenceError, 'history_show_ack_mismatch'):
+                        ui.save_history('burst-progress-4')
+                guard.assert_not_called()
+                ui.run.call.assert_called_once_with('ui.show', {'view': 'history'})
+
+    def test_wrong_or_missing_common_ui_identity_cannot_adopt_an_editor_or_replacement(self):
+        for snapshot in (None, {}, {'diagnostics': None}, {'diagnostics': {'ui': None}},
+                {'diagnostics': {'ui': {'pid': 999, 'state': 'ready'}}},
+                {'diagnostics': {'ui': {'pid': 123, 'state': 'starting'}}}):
+            with self.subTest(snapshot=snapshot), tempfile.TemporaryDirectory() as directory:
+                ui = self.setup_ui(Path(directory))
+                ui.run.call.side_effect = [{'shown': 'history'}, snapshot]
+                with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                     mock.patch('campaign_ui.save_visible_window') as guard:
+                    with self.assertRaisesRegex(EvidenceError, 'history_visual_helper_changed'):
+                        ui.save_history('burst-progress-4')
+                guard.assert_not_called()
+
+    def test_original_generation_uid_and_executable_must_survive_activation(self):
+        for key, value in (('startTicks', 457), ('uid', os.getuid() + 1),
+                           ('executable', '/not-executed/other'), ('device', 9), ('inode', 10)):
+            with self.subTest(changed=key), tempfile.TemporaryDirectory() as directory:
+                ui = self.setup_ui(Path(directory))
+                with mock.patch.object(workloads, 'identity', side_effect=[ui.owner, {**ui.owner, key: value}]), \
+                     mock.patch('campaign_ui.save_visible_window') as guard:
+                    with self.assertRaisesRegex(EvidenceError, 'history_visual_owner_changed'):
+                        ui.save_history('burst-progress-4')
+                guard.assert_not_called()
+
+    def test_missing_pinned_window_cannot_fall_back_to_other_owned_windows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ui = self.setup_ui(Path(directory))
+            with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                 mock.patch.object(workloads, 'owned_windows', return_value=['0x9']), \
+                 mock.patch('campaign_ui.save_visible_window') as guard:
+                with self.assertRaisesRegex(EvidenceError, 'history_visual_window_not_mapped'):
+                    ui.save_history('burst-progress-4')
+            guard.assert_not_called()
+
+    def test_refused_composite_keeps_no_frame_and_cannot_try_another_owned_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ui = self.setup_ui(root)
+            refusal = EvidenceError('owned_ui_not_proven_visible_on_physical_wall')
+            with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                 mock.patch.object(workloads, 'owned_windows', return_value=['0x2', '0x9']), \
+                 mock.patch('campaign_ui.save_visible_window', side_effect=refusal) as guard:
+                with self.assertRaisesRegex(EvidenceError, 'no_owned_ui_proven_visible_on_wall') as failure:
+                    ui.save_history('burst-progress-4')
+            guard.assert_called_once_with('0x2', ui.owner, root / 'burst-progress-4-0.png', 5900,
+                                          diagnostics_out=mock.ANY)
+            self.assertIs(failure.exception.__cause__, refusal)
+            self.assertEqual(list(root.iterdir()), [])
+            self.assertNotIn('owned-ui-visual', [call.args[0] for call in ui.run.event.call_args_list])
+            self.assertEqual(ui.run.event.call_args_list[-1].args[0], 'owned-window-occluded-no-visual-retained')
+
+    def test_diagnostic_export_fault_keeps_original_refusal_and_forces_abort(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ui = self.setup_ui(Path(directory))
+            original = EvidenceError('owned_ui_not_proven_visible_on_physical_wall')
+            def export(kind, **values):
+                if kind == 'history-visual-comparison-diagnostics':
+                    raise OSError('never replace the comparison refusal')
+            ui.run.event.side_effect = export
+            with mock.patch.object(workloads, 'identity', return_value=ui.owner), \
+                 mock.patch.object(workloads, 'owned_windows', return_value=['0x2']), \
+                 mock.patch('campaign_ui.save_visible_window', side_effect=original):
+                with self.assertRaisesRegex(EvidenceError, 'no_owned_ui_proven_visible_on_wall') as failure:
+                    ui.save_history('burst-progress-4')
+            self.assertIs(failure.exception.__cause__, original)
+            self.assertTrue(failure.exception.visibility_abort)
+            self.assertIn('visual_diagnostics_export: OSError', failure.exception.__notes__)
+            run = ui.run
+            run.result = {'gates': {}}
+            ui.save_history = mock.Mock(side_effect=failure.exception)
+            with self.assertRaises(EvidenceError) as again:
+                workloads._burst_visual_checkpoint(run, ui, 'burst-progress-4')
+            self.assertIs(again.exception, failure.exception)
+            self.assertNotIn('burstVisualRefusals', run.result)
+
+
+class ProxyStartupTests(unittest.TestCase):
+    def test_readiness_failure_and_interrupt_terminate_close_and_reap_owned_child(self):
+        # Real synthetic children, never the proxy/product/desktop/network.
+        for mode in ('timeout', 'interrupt', 'malformed_port'):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                script = 'import time;time.sleep(30)'
+                if mode == 'malformed_port':
+                    script = 'import time;print("not-a-port",flush=True);time.sleep(30)'
+                child = subprocess.Popen([sys.executable, '-c', script], stdout=subprocess.PIPE,
+                                         text=True, start_new_session=True)
+                try:
+                    run = mock.Mock()
+                    run.root = Path(directory)
+                    run.repo = Path(__file__).resolve().parents[2]
+                    run.result = {}
+                    run.args.endpoint = 'http://127.0.0.1:12345'
+                    run.sample.return_value = {'totals': {}}
+                    interrupted = KeyboardInterrupt('synthetic-startup-interrupt')
+                    expected = KeyboardInterrupt if mode == 'interrupt' else ValueError if mode == 'malformed_port' else EvidenceError
+                    with mock.patch.object(workloads.subprocess, 'Popen', return_value=child) as spawn, \
+                         mock.patch('selectors.DefaultSelector') as selector, \
+                         mock.patch('observe_idle.os.killpg', wraps=os.killpg) as kill_group, \
+                         mock.patch.object(child, 'wait', wraps=child.wait) as wait:
+                        selected = selector.return_value.__enter__.return_value.select
+                        if mode == 'interrupt':
+                            selected.side_effect = interrupted
+                        else:
+                            selected.return_value = [object()] if mode == 'malformed_port' else []
+                        with self.assertRaises(expected) as failure:
+                            workloads.slow(run)
+                        if mode == 'interrupt':
+                            self.assertIs(failure.exception, interrupted)
+                        elif mode == 'timeout':
+                            self.assertEqual(str(failure.exception), 'proxy_readiness_timeout')
+                        self.assertTrue(spawn.call_args.kwargs['start_new_session'])
+                        kill_group.assert_called_once_with(child.pid, signal.SIGTERM)
+                        self.assertEqual(wait.call_args.kwargs, {'timeout': 5})
+                        self.assertTrue(child.stdout.closed)
+                        self.assertIsNotNone(child.poll())
+                        with self.assertRaises(ChildProcessError):
+                            os.waitpid(child.pid, os.WNOHANG)
+                finally:
+                    if child.poll() is None:
+                        os.killpg(child.pid, signal.SIGKILL)
+                    child.wait(timeout=5)
+                    child.stdout.close()
+
+    def test_startup_failure_remains_original_when_termination_cleanup_raises(self):
+        run = mock.Mock()
+        run.repo = Path(__file__).resolve().parents[2]
+        run.result = {}
+        run.args.endpoint = 'http://127.0.0.1:12345'
+        run.sample.return_value = {'totals': {}}
+        child = mock.Mock()
+        interrupted = KeyboardInterrupt('synthetic-startup-interrupt')
+        with mock.patch.object(workloads.subprocess, 'Popen', return_value=child), \
+             mock.patch('selectors.DefaultSelector') as selector, \
+             mock.patch.object(workloads, 'stop_owned_process_group', side_effect=OSError('synthetic-cleanup-error')):
+            selector.return_value.__enter__.return_value.select.side_effect = interrupted
+            with self.assertRaises(KeyboardInterrupt) as failure:
+                workloads.slow(run)
+        self.assertIs(failure.exception, interrupted)
+        child.stdout.close.assert_called_once()
+        child.wait.assert_called_once_with(timeout=5)
+        self.assertIn('proxy_start_cleanup_terminate: OSError', interrupted.__notes__)
+
+
+class ProxyTests(unittest.IsolatedAsyncioTestCase):
+    async def test_original_16k_chunk_deadlocks_at_256k_but_wrapper_makes_progress(self):
+        source = Path(__file__).resolve().parents[2] / 'docs/evidence/2026-10-20-round9-storage/scripts/throttle_proxy.py'
+        before = source.read_bytes()
+        original, digest = campaign_proxy.load_original(source, 0, 12345, 262144)
+        self.assertEqual(source.read_bytes(), before)
+        self.assertEqual(len(digest), 64)
+        with self.assertRaises(asyncio.TimeoutError):
+            await asyncio.wait_for(original['bucket'].take(16384), .1)
+        bucket = campaign_proxy.BoundedBucket(262144)
+        await asyncio.wait_for(bucket.take(16384), 2)
+        self.assertLess(bucket.tokens, 1)
+
+    async def test_shared_rate_is_accounted_across_concurrent_connections(self):
+        bucket = campaign_proxy.BoundedBucket(262144)
+        await asyncio.wait_for(asyncio.gather(*(bucket.take(8192) for _ in range(4))), 2)
+        self.assertGreaterEqual(bucket.tokens, 0)
+        with self.assertRaises(ValueError):
+            await bucket.take(16385)
+
+    async def test_changed_frozen_entrypoint_is_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'proxy.py'
+            path.write_text('raise RuntimeError("must never execute")\n')
+            with self.assertRaisesRegex(ValueError, 'unrecognized_frozen_proxy_startup'):
+                campaign_proxy.load_original(path, 0, 12345, 262144)
+
+
+class CurrentWitnessTests(unittest.TestCase):
+    def test_all_headless_socket_paths_are_precomputed_including_abstract_x11(self):
+        paths = build_current_capture.test_socket_paths(Path('/tmp/p379-test/r'), 379)
+        self.assertEqual(len(paths), 4)
+        self.assertIn('/tmp/.X11-unix/X379', [row.get('path') for row in paths])
+        self.assertEqual(paths[-1]['utf8Bytes'], len(b'\0/tmp/.X11-unix/X379'))
+        with self.assertRaisesRegex(ValueError, 'socket_path_too_long'):
+            build_current_capture.test_socket_paths(Path('/tmp/' + 'x' * 100), 379)
+
+    def test_derivative_retains_frozen_ownership_timer_inputs_samples_and_budget(self):
+        source = (build_current_capture.REPO / 'tests/performance/bench_capture.cpp').read_bytes()
+        current, difference = build_current_capture.generate(source)
+        original = source.decode()
+        before = original[:original.index('bool outlinePainted(')]
+        self.assertEqual(current[:current.index('bool outlinePainted(')], before)
+        tail = original[original.index('bool visibleCanvas('):]
+        tail = tail.replace('result["schemaVersion"]=3;', 'result["schemaVersion"]=4;result["frozenSourceSha256"]="' + build_current_capture.FROZEN_SHA256 + '";')
+        tail = tail.replace('result["witnessMode"]="live-outline";', 'result["witnessMode"]="current-contrast";result["paintCriterion"]="scale1 black outer edge plus white inset edge at the original top-edge position";')
+        self.assertEqual(current[current.index('bool visibleCanvas('):], tail)
+        self.assertIn('1,2,~0u)', current)
+        self.assertIn('qRound(local.y())', difference)
+        self.assertEqual((build_current_capture.REPO / 'tests/performance/bench_capture.cpp').read_bytes(), source)
+
+    def test_unknown_or_changed_frozen_source_is_not_rewritten(self):
+        source = (build_current_capture.REPO / 'tests/performance/bench_capture.cpp').read_bytes()
+        with self.assertRaisesRegex(ValueError, 'frozen_source_hash_mismatch'):
+            build_current_capture.generate(source + b'// changed\n')
+
+
+if __name__ == '__main__':
+    unittest.main()
