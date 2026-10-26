@@ -99,6 +99,12 @@ as a pass.
 
 ## Production acceptance boundary
 
+Production implementation is tracked in
+[code PR #596](https://github.com/patrick-hudson/put.gd-desktop/pull/596), with
+[documentation PR #595](https://github.com/patrick-hudson/put.gd-desktop/pull/595)
+to merge afterward. Native production acceptance is recorded separately from
+this prototype receipt.
+
 The production integration must independently pass current-source widget and
 workflow tests, supported minimum sizes, large text, DPR, complete keyboard and
 popup behavior, and the declared compositor functional and memory gates with

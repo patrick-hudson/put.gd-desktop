@@ -60,7 +60,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `retry_operation` | id; stage upload/local_save/delete | operation.retry, operation.retryLocalSave, delete.retry; explicit stage effects |
 | `copy_result` | id → operation.copy | Copies retained result/receipt; no upload |
 | `cancel_operation` | id; kind operation/delete; optional item_id | Requests cancellation; sent remote mutations cannot be rolled back. With item_id (an operation item's `artifact.id`), only that file stops and the batch continues |
-| `list_history` | optional pagination/filters → history.list | Offline local metadata |
+| `list_history` | optional pagination/filters → history.list | Offline local metadata. `category: "text+other"` selects History's **Other files** aggregate (stored `text` and `other`); every other category keeps exact matching ([CLI semantics](cli.md)) |
 | `get_history_entry` | id → history.detail | Original receipt/local-copy/deletion state |
 | `make_history_preview` | id → history.preview | Makes a missing image preview or video poster (never made, failed or cleaned up) from the retained file or an unchanged local copy; returns `previewPath` and `state` `ready`/`made`, or why there is none ([recording.md](recording.md#previews-made-on-selection)) |
 | `copy_history_link` | id → history.copyLink | Writes stored direct URL to clipboard |

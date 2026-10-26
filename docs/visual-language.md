@@ -153,7 +153,9 @@ completed feedback on an unrelated page.
 
 **History.** All items, Images, Recordings and Other files are content categories.
 Other files includes clipboard text and arbitrary files; its aggregate filter
-must not redefine existing exact category values. Item, Output and Created
+uses the new `history.list` category value `text+other`, matching stored `text`
+and `other` rows. All other category values, including `files`, retain exact
+matching; no stored category is renamed. Item, Output and Created
 describe list columns. Capture output in the sidebar describes saved routing for
 future captures. It is not a destination filter or an active-transfer indicator.
 
