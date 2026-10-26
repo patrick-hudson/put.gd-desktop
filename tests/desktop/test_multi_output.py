@@ -17,9 +17,11 @@ class PixelOracle(unittest.TestCase):
             self.skipTest('Pillow unavailable')
         with tempfile.TemporaryDirectory() as folder:
             p = Path(folder) / 'result.png'
-            Image.new('RGBA', (15, 15), (*campaign.COLORS[0], 255)).save(p)
-            m = [{'x': -100, 'y': -100, 'width': 128, 'height': 128}]
-            self.assertTrue(campaign.pixel_oracle(p, m, [-90, -90, 10, 10], [1.5])['ok'])
+            # -91*1.5=-136.5 and -81*1.5=-121.5: floor/ceil give 16,
+            # while int() truncation of the negative origin incorrectly gives 15.
+            Image.new('RGBA', (16, 16), (*campaign.COLORS[0], 255)).save(p)
+            m = [{'x': -101, 'y': -101, 'width': 128, 'height': 128}]
+            self.assertTrue(campaign.pixel_oracle(p, m, [-91, -91, 10, 10], [1.5])['ok'])
 
     def test_one_wrong_rgb_pixel_fails_even_when_alpha_is_equal(self):
         try:
@@ -65,10 +67,10 @@ class AllHeadsWall(unittest.TestCase):
         return (20, 10, bytes(data))
 
     def test_one_fresh_head_does_not_certify_the_other(self):
-        result = wall_probe.check_frames(self.frame(), self.frame([1]), self.layout())
+        result = wall_probe.check_frames(self.frame(), self.frame([1, 2]), self.layout())
         self.assertFalse(result['ok'])
         self.assertTrue(result['heads'][0]['ok']); self.assertFalse(result['heads'][1]['ok'])
-        self.assertTrue(wall_probe.check_frames(self.frame(), self.frame([1, 11]), self.layout())['ok'])
+        self.assertTrue(wall_probe.check_frames(self.frame(), self.frame([1, 2, 11, 12]), self.layout())['ok'])
 
     def test_old_w0_stream_extent_fails_after_output_change(self):
         result = wall_probe.check_frames((10, 10, b''), self.frame([1, 11]), self.layout())

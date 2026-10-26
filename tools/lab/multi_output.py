@@ -27,9 +27,11 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import lab
+from multi_output_fixture import geometry_ready
 
 COLORS = [(220, 30, 40), (20, 180, 70), (35, 70, 220), (235, 190, 20),
           (30, 200, 210), (180, 40, 200), (230, 110, 30), (70, 90, 110)]
@@ -66,16 +68,32 @@ def bounds(monitors):
     return left, top, right - left, bottom - top
 
 
-def selection(case, monitors):
+def drag_points(case, monitors):
     if case.startswith('inside-'):
         m = monitors[int(case[-1])]
-        return [m['x'] + 80, m['y'] + 80, 160, 120]
-    a, b = monitors[:2]
-    # Select between interior points, so all four corners are reachable even
-    # when the bounding rectangle includes a real gap or a head left/up.
-    points = [(m['x'] + m['width'] // 2, m['y'] + m['height'] // 2) for m in (a, b)]
-    x, y = min(p[0] for p in points), min(p[1] for p in points)
-    return [x, y, max(80, abs(points[1][0] - points[0][0])), max(60, abs(points[1][1] - points[0][1]))]
+        return [(m['x'] + 80, m['y'] + 80), (m['x'] + 240, m['y'] + 200)]
+    # Preserve direction: independently taking min(x), min(y) can place both
+    # endpoints in gaps on diagonally staggered outputs.
+    points = [(m['x'] + m['width'] // 2, m['y'] + m['height'] // 2) for m in monitors[:2]]
+    if points[0][0] == points[1][0]:
+        points[1] = (points[1][0] + 40, points[1][1])
+    if points[0][1] == points[1][1]:
+        points[1] = (points[1][0], points[1][1] + 40)
+    return points
+
+
+def selection(case, monitors):
+    (x0, y0), (x1, y1) = drag_points(case, monitors)
+    return [min(x0, x1), min(y0, y1), abs(x1 - x0), abs(y1 - y0)]
+
+
+def fixture_ready(ready, attempt, pid, minimum_heads, session):
+    if ready.get('attempt') != attempt or ready.get('pid') != pid:
+        raise RuntimeError('Fixture readiness belongs to a different attempt/process')
+    monitors = ready.get('monitors', [])
+    if session == 'wayland' and 'Wayland' not in ready.get('backend', ''):
+        raise RuntimeError('Fixture is not native Wayland')
+    return len(monitors) >= minimum_heads and geometry_ready(monitors)
 
 
 def pixel_oracle(image, monitors, rect, densities):
@@ -118,6 +136,62 @@ def pixel_oracle(image, monitors, rect, densities):
             'transparentGapPixels': gaps, 'firstMismatches': first, 'size': list(im.size)}
 
 
+def recording_oracle(frames, monitors, rect, densities, motion=False):
+    """Lossy-video samples: dimensions plus head-specific spatial checker colors.
+
+    This deliberately refuses scaled profiles until the native-grid/reference
+    mapping is established. RGB tolerance is for H.264 only; still-image RGBA
+    comparisons remain exact. Avoid tile edges affected by chroma subsampling.
+    """
+    from PIL import Image
+    x, y, width, height = rect
+    targets = [(i, m) for i, m in enumerate(monitors) if
+               m['x'] <= x and m['y'] <= y and x + width <= m['x'] + m['width'] and
+               y + height <= m['y'] + m['height']]
+    if len(targets) != 1 or densities[targets[0][0]] != 1:
+        return {'ok': False, 'reason': 'scaled-or-spanning-video-reference-unproved'}
+    index, monitor = targets[0]
+    results = []
+    for path in frames:
+        im = Image.open(path).convert('RGB')
+        if im.size != (width, height):
+            return {'ok': False, 'reason': 'video-size', 'actual': list(im.size), 'expected': [width, height]}
+        points = []
+        for py in range(8, height - 8, 8):
+            for px in range(8, width - 8, 8):
+                gx, gy = x + px - monitor['x'], y + py - monitor['y']
+                if min(gx % 128, 128 - gx % 128, gy % 128, 128 - gy % 128) < 8:
+                    continue
+                color = (index * 4 + int(gx // 128) % 2 + 2 * (int(gy // 128) % 2)) % len(COLORS)
+                points.append((gx, color, im.getpixel((px, py))))
+        candidates = []
+        # Motion has a known 32px bar every 128px. Fit only its phase; don't
+        # exempt arbitrary white pixels or assume a crop has the global 25%
+        # white coverage (a 160px crop can contain two bars, up to 40%).
+        for phase in range(128) if motion else (None,):
+            tested = white = matches = colored = 0
+            colors = set()
+            for gx, color, rgb in points:
+                offset = (gx - phase) % 128 if phase is not None else 64
+                if phase is not None and min(offset, 128 - offset, abs(offset - 32)) < 4:
+                    continue  # chroma/codec mixing only at predicted bar edges
+                is_white = phase is not None and offset < 32
+                expected = (255, 255, 255) if is_white else COLORS[color]
+                tested += 1
+                white += is_white
+                if max(abs(a - b) for a, b in zip(rgb, expected)) <= 18:
+                    matches += 1
+                    if not is_white:
+                        colors.add(color)
+                        colored += 1
+            candidates.append({'tested': tested, 'predictedWhite': white, 'coloredMatches': colored,
+                'matched': matches, 'colors': sorted(colors), 'phase': phase,
+                'ok': tested >= 64 and colored >= 32 and len(colors) >= 2 and matches >= tested * .99})
+        results.append(max(candidates, key=lambda r: (r['ok'], r['matched'] / max(1, r['tested']), r['tested'])))
+    return {'ok': len(results) == 8 and all(r['ok'] for r in results), 'frames': results,
+            'expected': [width, height], 'head': index, 'rgbTolerance': 18, 'scope': 'eight decoded samples, not every frame'}
+
+
 class Campaign:
     def __init__(self, args):
         self.args = args; self.run = Path(args.run).resolve()
@@ -125,13 +199,18 @@ class Campaign:
         if self.out.exists():
             raise RuntimeError('Output directory must be new')
         self.out.mkdir(mode=0o700)
-        self.remote = '/home/' + lab.state(self.run)['guest_user'] + '/putgd-lab/mh-' + self.out.name
+        self.attempt = uuid.uuid4().hex
         # Resolve all control socket paths before launching any isolated app/fixture.
         resolved = json.loads(lab.ssh(self.run, '''python3 - <<'PY'
 import json,os
-print(json.dumps([os.environ.get('XDG_RUNTIME_DIR','/run/user/%d'%os.getuid())+'/putgd/session.sock']))
+from pathlib import Path
+print(json.dumps({'home':str(Path.home()),'sockets':[os.environ.get('XDG_RUNTIME_DIR','/run/user/%d'%os.getuid())+'/putgd/session.sock']}))
 PY
 '''))
+        self.remote = str(Path(getattr(args, 'remote_root', Path(resolved['home']) / 'putgd-lab')) / ('mh-' + self.attempt))
+        self.fixture_script = '/tmp/putgd-multi-output-fixture-' + self.attempt + '.py'
+        resolved = resolved['sockets']
+        save(self.out / 'attempt.json', {'attempt': self.attempt, 'remote': self.remote})
         for value in [str(self.run / 'qmp.sock'), *resolved]:
             if len(value.encode('utf-8')) > 107:
                 raise RuntimeError('Unix socket exceeds 107 UTF-8 bytes: ' + value)
@@ -155,7 +234,7 @@ PY
         result = []
         for i in range(len(lab.state(self.run).get('heads', [0]))):
             try:
-                shot = lab.screenshot(self.run, 'mh-' + self.out.name + '-' + label, i)
+                shot = lab.screenshot(self.run, 'mh-' + self.attempt + '-' + label, i)
             except lab.LabError as error:
                 if getattr(self, 'current', None) == 'output-change':
                     result.append({'head': i, 'noFrameAfterOutputChange': True, 'error': str(error)})
@@ -173,9 +252,10 @@ PY
             lab.pointer(self.run, x - left, y - top, width, height, down)
             time.sleep(.1)
 
-    def drag(self, rect):
+    def drag(self, points):
         left, top, width, height = bounds(self.monitors)
-        x, y, w, h = rect
+        (x, y), (end_x, end_y) = points
+        w, h = end_x - x, end_y - y
         try:
             lab.pointer(self.run, x - left, y - top, width, height, True); time.sleep(.15)
             for i in range(1, 9):
@@ -205,43 +285,55 @@ pid=%d
 p=Path('/proc')/str(pid)
 if p.exists():
  args=(p/'cmdline').read_bytes().split(b'\0')
- assert b'/tmp/putgd-multi-output-fixture.py' in args, 'Recorded PID no longer belongs to fixture'
+ assert %r.encode() in args and %r.encode() in args, 'Recorded PID no longer belongs to this fixture attempt'
+ assert (p/'stat').read_text().rsplit(')',1)[1].split()[19] == %r, 'Fixture PID was reused'
  os.kill(pid,signal.SIGTERM)
  deadline=time.monotonic()+5
  while p.exists() and time.monotonic()<deadline:time.sleep(.1)
- if p.exists() and (p/'stat').read_text().rpartition(')')[2].split()[0]!='Z':os.kill(pid,signal.SIGKILL)
+ if p.exists() and (p/'stat').read_text().rpartition(')')[2].split()[0]!='Z':
+  assert (p/'stat').read_text().rsplit(')',1)[1].split()[19] == %r, 'Fixture PID changed during stop'
+  os.kill(pid,signal.SIGKILL)
 print(json.dumps({'pid':pid,'stopped':True}))
 PY
-''' % self.fixture_pid
+''' % (self.fixture_pid, self.fixture_script, self.fixture_attempt, self.fixture_start, self.fixture_start)
         self.session(script)
         self.fixture_pid = None
 
     def fixture(self, motion=False, minimum_heads=2):
         self.stop_fixture()
-        self.fixture_remote = self.remote + ('-motion' if motion else '')
+        self.fixture_attempt = uuid.uuid4().hex
+        self.fixture_remote = self.remote + '-fixture-' + self.fixture_attempt
         source = Path(__file__).with_name('multi_output_fixture.py')
-        lab.put(self.run, source, '/tmp/putgd-multi-output-fixture.py')
-        self.fixture_pid = int(self.session('nohup python3 /tmp/putgd-multi-output-fixture.py --output ' + shlex.quote(self.fixture_remote) +
-                                           (' --motion' if motion else '') + ' > ' + shlex.quote(self.fixture_remote + '.log') + ' 2>&1 < /dev/null & echo $!\n').strip().splitlines()[-1])
+        lab.put(self.run, source, self.fixture_script)
+        command = ('nohup python3 ' + shlex.quote(self.fixture_script) + ' --output ' + shlex.quote(self.fixture_remote) +
+                   ' --attempt ' + self.fixture_attempt + (' --motion' if motion else '') +
+                   ' > ' + shlex.quote(self.fixture_remote + '.log') + ' 2>&1 < /dev/null & pid=$!\n' +
+                   "python3 - \"$pid\" <<'PY'\nimport json,sys\nfrom pathlib import Path\n" +
+                   'p=Path("/proc")/sys.argv[1]\nprint(json.dumps({"pid":int(sys.argv[1]),"start":(p/"stat").read_text().rsplit(")",1)[1].split()[19]}))\nPY\n')
+        launched = json.loads(self.session(command))
+        self.fixture_pid, self.fixture_start = launched['pid'], launched['start']
         deadline = time.monotonic() + 12
         while True:
+            alive = self.session("python3 - <<'PY'\nfrom pathlib import Path\np=Path(\"/proc\")/str(%d)\n" % self.fixture_pid +
+                                 'print(p.exists() and (p/"stat").read_text().rsplit(")",1)[1].split()[19] == %r and (p/"stat").read_text().rsplit(")",1)[1].split()[0] != "Z")\nPY\n' % self.fixture_start)
+            if alive.strip() != 'True':
+                raise RuntimeError('New native checkerboard process exited before readiness')
             try:
-                ready = self.fetch_json(self.fixture_remote + '/ready.json', self.out / ('fixture-motion.json' if motion else 'fixture.json'))
-                break
+                path = self.out / ('fixture-' + self.fixture_attempt + '.json')
+                ready = self.fetch_json(self.fixture_remote + '/ready.json', path)
             except (lab.LabError, ValueError, OSError):
-                if time.monotonic() > deadline:
-                    raise RuntimeError('Native checkerboard readiness timeout')
-                time.sleep(.2)
+                ready = None
+            if ready is not None and fixture_ready(ready, self.fixture_attempt, self.fixture_pid,
+                                                   minimum_heads, self.profile['session']):
+                alias = self.out / ('fixture-motion.json' if motion else 'fixture.json')
+                if not alias.exists():
+                    shutil.copyfile(path, alias)
+                break
+            if time.monotonic() > deadline:
+                raise RuntimeError('Native checkerboard readiness timeout')
+            time.sleep(.2)
         self.monitors = ready['monitors']
-        if len(self.monitors) < minimum_heads or not all(m['fullscreen'] for m in self.monitors):
-            raise RuntimeError('Separately fullscreen native output fixtures required on every enabled head')
-        if self.profile['session'] == 'wayland' and 'Wayland' not in ready['backend']:
-            raise RuntimeError('Fixture is not native Wayland')
-        if any(m['allocatedWidth'] != m['width'] or m['allocatedHeight'] != m['height'] for m in self.monitors):
-            raise RuntimeError('Fullscreen fixture size differs from its actual native output')
-        if any(m['placedRect'] != [m['x'], m['y'], m['width'], m['height']] for m in self.monitors):
-            raise RuntimeError('Fullscreen fixture was placed on a different native output')
-        self.shots('fixtures-ready')
+        self.shots('fixtures-ready-' + self.fixture_attempt)
 
     def setup(self):
         self.profile = lab.load_profile(lab.state(self.run)['profile'])
@@ -350,6 +442,24 @@ PY
                     raise RuntimeError('Recording export timeout')
                 time.sleep(.2)
             lab.get(self.run, path, self.out / (label + '.mp4'))
+            decoder = Path(__file__).with_name('multi_output_media.py')
+            remote_decoder = self.remote + '-media.py'
+            remote_frames = self.remote + '-' + label + '-frames'
+            lab.put(self.run, decoder, remote_decoder)
+            probe = json.loads(self.session('python3 ' + shlex.quote(remote_decoder) + ' ' + shlex.quote(path) +
+                                           ' --output ' + shlex.quote(remote_frames) + '\n'))
+            probe['helperSha256'] = lab.hash_file(decoder)
+            save(self.out / (label + '-media.json'), probe)
+            frames = []
+            for i, frame in enumerate(probe['samples']):
+                if frame['file'] != 'frame-%d.ppm' % i:
+                    raise RuntimeError('Unexpected decoded frame filename')
+                target = self.out / (label + '-frame-%d.ppm' % i)
+                lab.get(self.run, remote_frames + '/' + frame['file'], target)
+                if lab.hash_file(target) != frame['sha256']:
+                    raise RuntimeError('Decoded recording witness checksum mismatch')
+                frames.append(target)
+            result['content'] = recording_oracle(frames, self.monitors, rect, self.densities, label == 'moving')
             prefix = ''
             helper = 'putgd-record'
             if self.package.get('format') == 'appimage':
@@ -371,11 +481,17 @@ PY
             result['static'] = self.record_clip('static')
             self.fixture(motion=True)
             result['moving'] = self.record_clip('moving')
-            result['ok'] = result['static']['motion'] < .5 and result['moving']['motion'] > max(1, result['static']['motion'] * 5) and result['moving']['placementOk']
+            result['ok'] = (result['static']['motion'] < .5 and
+                result['moving']['motion'] > max(1, result['static']['motion'] * 5) and
+                all(result[k]['placementOk'] and result[k]['content']['ok'] for k in ('static', 'moving')))
         except Exception as error:
             result['error'] = str(error)
             result['failureWitnesses'] = self.shots('recording-failure')
         finally:
+            try:
+                self.fixture()
+            except Exception as error:
+                result.update(ok=False, staticFixtureRestoreError=str(error))
             save(self.out / 'record-region.json', result)
 
     def one(self, name):
@@ -421,7 +537,9 @@ PY
                 if action == 'region':
                     rect = selection(name, self.monitors)
                     result['selection'] = rect
-                    self.drag(rect)
+                    points = drag_points(name, self.monitors)
+                    result['dragEndpoints'] = points
+                    self.drag(points)
                 settled = self.wait_operation(ident)
                 result['operation'] = settled
                 if settled['state'] != 'completed' or len(settled.get('items', [])) != 1:
@@ -486,6 +604,14 @@ PY
             self.stop_fixture()
         except Exception as error:
             errors.append('fixture: ' + str(error))
+        if not errors:
+            try:
+                self.session("python3 - <<'PY'\nimport hashlib,os\nfrom pathlib import Path\n" +
+                    'p=Path(%r)\n' % self.fixture_script +
+                    'if p.exists():\n assert not p.is_symlink() and p.stat().st_uid == os.getuid()\n' +
+                    ' assert hashlib.sha256(p.read_bytes()).hexdigest() == %r\n p.unlink()\nPY\n' % lab.hash_file(Path(__file__).with_name('multi_output_fixture.py')))
+            except Exception as error:
+                errors.append('fixture script: ' + str(error))
         save(self.out / 'cleanup.json', {'ok': not errors, 'errors': errors})
         save(self.out / 'results.json', {'ok': not errors and bool(self.results) and all(r['ok'] for r in self.results),
                                        'results': self.results})

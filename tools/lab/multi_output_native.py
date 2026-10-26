@@ -37,6 +37,35 @@ def digest(path):
         return hashlib.file_digest(f, 'sha256').hexdigest()
 
 
+def applications_directory(session_env):
+    data = Path(session_env.get('XDG_DATA_HOME', Path.home() / '.local/share'))
+    if not data.is_absolute():
+        raise RuntimeError('Native desktop XDG_DATA_HOME must be absolute')
+    return data / 'applications'
+
+
+class PortalPointer:
+    def __init__(self, control, other_input):
+        self.control, self.other_input = control, other_input
+        self.last = None
+
+    def pointer(self, _run, x, y, width, height, down=None):
+        if (width, height) != (self.control.width, self.control.height):
+            raise RuntimeError('Native pointer viewport differs from the verified combined wall stream')
+        self.control.pointer(x, y, down)
+        self.last = (x, y)
+
+    def input_events(self, run, events, head=None):
+        if not all(e['type'] == 'btn' for e in events):
+            return self.other_input(run, events, head)
+        if self.last is None:
+            raise RuntimeError('Portal button event has no verified preceding pointer position')
+        for event in events:
+            bit = {'left': 1, 'middle': 2, 'right': 4}[event['data']['button']]
+            self.control.buttons = self.control.buttons | bit if event['data']['down'] else self.control.buttons & ~bit
+            self.control.pointer(*self.last)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--session', required=True); p.add_argument('--run', type=Path, required=True)
@@ -68,7 +97,7 @@ def main():
                XDG_CACHE_HOME=str(run / 'cache'), XDG_STATE_HOME=str(run / 'state'),
                XDG_RUNTIME_DIR=str(run / 'runtime'), PIPEWIRE_RUNTIME_DIR=session_env['XDG_RUNTIME_DIR'])
     # AppRun's KWin permission desktop entries must be visible to the compositor.
-    applications = Path.home() / '.local/share/applications'
+    applications = applications_directory(session_env)
     applications.mkdir(parents=True, exist_ok=True)
     before_entries = {str(f): f.read_bytes() for f in applications.glob('*putgd*.desktop')}
     (run / 'data/applications').symlink_to(applications)
@@ -102,9 +131,6 @@ def main():
                                          'acceleration': 'physical', 'host': os.uname().nodename,
                                          'visuals': 'combined VNC stream, every head independently freshness-gated'})
     unit = 'headless-input-' + uuid.uuid4().hex[:12]
-    fixture_path = Path('/tmp/putgd-multi-output-fixture.py')
-    if fixture_path.exists() or fixture_path.is_symlink():
-        raise RuntimeError('Temporary fixture path already exists; preserve it')
     resident = None; wall_fixture = None; campaign = None; input_started = False; input_stopped = False
     control = None
     def local_shell(_run, body, timeout=60, bootstrap=False):
@@ -141,14 +167,20 @@ def main():
     try:
         # Probe coverage/freshness before starting the app or keeping any host pixels.
         wall_dir = run / 'wall-fixture'
+        wall_attempt = uuid.uuid4().hex
         wall_fixture = subprocess.Popen([sys.executable, str(Path(__file__).with_name('multi_output_fixture.py')),
-            '--output', str(wall_dir), '--motion'], env=env, stdout=(run / 'wall-fixture.log').open('w'), stderr=subprocess.STDOUT)
+            '--output', str(wall_dir), '--motion', '--attempt', wall_attempt], env=env,
+            stdout=(run / 'wall-fixture.log').open('w'), stderr=subprocess.STDOUT)
         deadline = time.monotonic() + 12
-        while not (wall_dir / 'ready.json').exists():
+        while True:
             if wall_fixture.poll() is not None or time.monotonic() > deadline:
                 raise RuntimeError('Moving native wall fixture did not become ready')
+            if (wall_dir / 'ready.json').exists():
+                ready = json.loads((wall_dir / 'ready.json').read_text())
+                if multi_output.fixture_ready(ready, wall_attempt, wall_fixture.pid, 2, profile['session']):
+                    break
             time.sleep(.2)
-        layout = json.loads((wall_dir / 'ready.json').read_text())['monitors']
+        layout = ready['monitors']
         if len(layout) < 2 or not all(m['fullscreen'] for m in layout):
             raise RuntimeError('Native multi-output admission requires at least two independently fullscreen heads')
         for m in layout:
@@ -160,7 +192,12 @@ def main():
             multi_output.save(run / 'wall-freshness.json', checked)
             if not checked['ok']:
                 raise RuntimeError('Every head must be fresh on the wall; renew pilot-owned w0 stream when extent is stale')
-            client.screenshot(run / 'wall-all-heads.png')
+            gate = wall_probe.save_checked_frame(client, second, layout, run / 'wall-all-heads.png')
+            checked['finalFrameGate'] = gate
+            checked['ok'] = checked['ok'] and gate['ok']
+            multi_output.save(run / 'wall-freshness.json', checked)
+            if not checked['ok']:
+                raise RuntimeError('Saved native wall frame failed the full synthetic/freshness gate')
         finally:
             client.close()
         wall_fixture.terminate(); wall_fixture.wait(5); wall_fixture = None
@@ -181,23 +218,12 @@ def main():
         # stream's absolute pointer is explicitly in its verified combined
         # logical coordinate space; keep one connection so a drag retains buttons.
         control = rfb.RFB(a.vnc_port) if a.pointer_route == 'portal-vnc' else None
-        def native_pointer(_run, x, y, width, height, down=None):
-            if (width, height) != (control.width, control.height):
-                raise RuntimeError('Native pointer viewport differs from the verified combined wall stream')
-            control.pointer(x, y, down)
-        original_input = lab.input_events
-        def native_input(_run, events, head=None):
-            if all(e['type'] == 'btn' for e in events):
-                for event in events:
-                    bit = {'left': 1, 'middle': 2, 'right': 4}[event['data']['button']]
-                    control.buttons = control.buttons | bit if event['data']['down'] else control.buttons & ~bit
-                    control.pointer(40, 40)
-            else:
-                original_input(_run, events, head)
         if control:
-            lab.pointer = native_pointer; lab.input_events = native_input
+            portal = PortalPointer(control, lab.input_events)
+            lab.pointer = portal.pointer; lab.input_events = portal.input_events
+        (run / 'campaign-data').mkdir(mode=0o700)
         options = SimpleNamespace(run=str(run), output=str(run / ('g' + uuid.uuid4().hex[:6])), appimage=None,
-                                  change_command=a.change_command)
+                                  change_command=a.change_command, remote_root=run / 'campaign-data')
         campaign = multi_output.Campaign(options)
         campaign.setup()
         for name in a.case or multi_output.CASES:
@@ -233,15 +259,13 @@ def main():
                 cleanup_errors.append('input: ' + str(error))
         if control:
             control.close()
-        if fixture_path.is_file() and digest(fixture_path) == digest(Path(__file__).with_name('multi_output_fixture.py')):
-            fixture_path.unlink()
         current = {str(f): f.read_bytes() for f in applications.glob('*putgd*.desktop')}
         # AppRun owns its generated entries; preserve baseline entries byte-for-byte.
         remaining = [name for name in current if name not in before_entries]
         baseline_same = all(Path(name).exists() and Path(name).read_bytes() == data for name, data in before_entries.items())
         multi_output.save(run / 'cleanup.json', {'inputUnit': unit, 'inputStarted': input_started, 'inputStopped': input_stopped,
             'residentExited': resident is None or resident.poll() is not None, 'baselineDesktopEntriesPreserved': baseline_same,
-            'newDesktopEntriesRemaining': remaining, 'temporaryFixtureRemoved': not fixture_path.exists(), 'errors': cleanup_errors})
+            'newDesktopEntriesRemaining': remaining, 'campaignArtifactsRoot': str(run / 'campaign-data'), 'errors': cleanup_errors})
         if remaining or not baseline_same or cleanup_errors:
             raise RuntimeError('Desktop entry cleanup differs from baseline; inspect before handoff')
     return 0 if campaign and campaign.results and all(r['ok'] for r in campaign.results) else 1

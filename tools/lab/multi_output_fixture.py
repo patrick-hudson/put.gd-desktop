@@ -7,20 +7,23 @@ The JSON output records actual GDK monitor geometry, never a requested layout.
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import signal
 import sys
-
-import gi
-gi.require_version('Gtk', '3.0')
-gi.require_version('Gdk', '3.0')
-gi.require_foreign('cairo')
-from gi.repository import Gdk, GLib, Gtk
+import time
+import uuid
 
 COLORS = [(220, 30, 40), (20, 180, 70), (35, 70, 220), (235, 190, 20),
           (30, 200, 210), (180, 40, 200), (230, 110, 30), (70, 90, 110)]
 TILE = 128
 SENTINEL = 'putgd multi-output cancellation sentinel'
+
+
+def geometry_ready(monitors):
+    return bool(monitors) and all(m.get('fullscreen') and m.get('draws', 0) > 0 and
+        (m.get('allocatedWidth'), m.get('allocatedHeight')) == (m['width'], m['height']) and
+        m.get('placedRect') == [m[k] for k in ('x', 'y', 'width', 'height')] for m in monitors)
 
 
 def save(path, value):
@@ -30,9 +33,15 @@ def save(path, value):
 
 
 def main():
+    import gi
+    gi.require_version('Gtk', '3.0')
+    gi.require_version('Gdk', '3.0')
+    gi.require_foreign('cairo')
+    from gi.repository import Gdk, GLib, Gtk
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--motion', action='store_true')
+    p.add_argument('--attempt', default=uuid.uuid4().hex)
     a = p.parse_args()
     a.output.mkdir(mode=0o700, parents=True, exist_ok=False)
     display = Gdk.Display.get_default()
@@ -92,18 +101,36 @@ def main():
         window.show_all()
         window.fullscreen_on_monitor(Gdk.Screen.get_default(), index)
         windows.append(window)
+    deadline = time.monotonic() + 10
+    failure = []
     def ready():
         actual = []
         for i, window in enumerate(windows):
+            if window.get_window() is None:
+                if time.monotonic() < deadline:
+                    return True
+                failure.append('Compositor did not map the fixture before deadline')
+                Gtk.main_quit()
+                return False
             placed = display.get_monitor_at_window(window.get_window()).get_geometry()
             actual.append({**monitors[i], 'allocatedWidth': window.get_allocated_width(),
                            'allocatedHeight': window.get_allocated_height(),
                            'placedRect': [placed.x, placed.y, placed.width, placed.height],
+                           'draws': draws[i],
                            'fullscreen': bool(window.get_window().get_state() & Gdk.WindowState.FULLSCREEN)})
+        complete = geometry_ready(actual)
+        if not complete:
+            if time.monotonic() < deadline:
+                return True
+            save(a.output / 'readiness-failure.json', {'attempt': a.attempt, 'pid': os.getpid(), 'monitors': actual})
+            failure.append('Compositor did not acknowledge separately drawn fullscreen windows before deadline')
+            Gtk.main_quit()
+            return False
         save(a.output / 'ready.json', {'backend': type(display).__name__, 'monitors': actual,
+                                     'attempt': a.attempt, 'pid': os.getpid(),
                                      'colors': COLORS, 'tile': TILE, 'motion': a.motion})
         return False
-    GLib.timeout_add(700, ready)
+    GLib.timeout_add(100, ready)
     def animate():
         tick[0] += 1
         if a.motion:
@@ -118,6 +145,8 @@ def main():
     # A normal signal handler also works when input EOF arrives during an output change.
     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, lambda: (Gtk.main_quit(), False)[1])
     Gtk.main()
+    if failure:
+        raise SystemExit(failure[0])
 
 
 if __name__ == '__main__':

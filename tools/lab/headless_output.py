@@ -32,6 +32,17 @@ class Refused(RuntimeError):
     pass
 
 
+ROLLBACK_ACCURACY_SECONDS = 1
+ROLLBACK_RESTORE_MARGIN_SECONDS = 60
+
+
+def rollback_deadline(expires, seconds):
+    latest = time.time() + seconds + ROLLBACK_ACCURACY_SECONDS
+    if latest + ROLLBACK_RESTORE_MARGIN_SECONDS > expires:
+        raise Refused('Rollback accuracy and restoration margin must precede lease expiry; extend the lease first')
+    return latest
+
+
 def command(args, data=None):
     return subprocess.run(args, input=data, capture_output=True, check=True, timeout=30).stdout
 
@@ -170,8 +181,7 @@ def enable(args):
         raise Refused('Rollback must be armed for 30..900 seconds')
     lock = lease(args.session)
     expires = datetime.datetime.strptime(lock['expires'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=datetime.timezone.utc)
-    if time.time() + args.seconds + 5 > expires.timestamp():
-        raise Refused('Rollback must precede lease expiry; extend the lease first')
+    rollback_deadline(expires.timestamp(), args.seconds)
     value = decode_edid(Path(args.edid).read_bytes())
     before = snapshot(args.card)
     active = [name for name, o in before['outputs'].items() if o['enabled'] == 'enabled']
@@ -189,10 +199,16 @@ def enable(args):
     (run / 'trial.edid').write_bytes(value)
     helper = run / 'restore-tool.py'
     shutil.copyfile(__file__, helper)
+    # Snapshot/setup can take time. Recheck immediately before arming, rather
+    # than relying on the admission-time timestamp.
+    latest = rollback_deadline(expires.timestamp(), args.seconds)
     # Pin a copy of the restorer so later edits to the checkout cannot change rollback.
     command(['systemd-run', '--user', '--unit=' + unit, '--on-active=' + str(args.seconds) + 's',
+             '--timer-property=AccuracySec=1s', '--timer-property=RandomizedDelaySec=0',
              '/usr/bin/python3', str(helper), 'restore', '--run', str(run)])
-    save(run / 'armed.json', {'at': stamp(), 'timer': unit, 'helperSha256': hashlib.sha256(helper.read_bytes()).hexdigest()})
+    save(run / 'armed.json', {'at': stamp(), 'timer': unit, 'latestRollbackStartEpoch': latest,
+        'accuracySeconds': ROLLBACK_ACCURACY_SECONDS, 'restoreMarginSeconds': ROLLBACK_RESTORE_MARGIN_SECONDS,
+        'helperSha256': hashlib.sha256(helper.read_bytes()).hexdigest()})
     try:
         d = Path(before['debug']) / args.connector
         root_write(d / 'edid_override', value)
