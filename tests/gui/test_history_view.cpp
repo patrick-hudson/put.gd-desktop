@@ -477,5 +477,24 @@ private slots:
   opens=false;QCOMPARE(call("live-item").first.code,QString("link_not_opened"));
   QCOMPARE(call("missing-item").first.code.isEmpty(),false);
  }
-};QTEST_MAIN(HistoryGui)
+};
+void historyCountUsesSingularForm() {
+    QTemporaryDir d;
+    SettingsService settings(d.filePath("config.json"));
+    QVERIFY(settings.save(configuration(d.path(), true), {}));
+
+    ProviderRegistry registry;
+    Source source;
+    OperationService operations(
+        d.filePath("data"), settings, registry, source);
+    PUTGD_TRY_VERIFY(operations.ready());
+
+    HistoryService history(operations);
+    UiSessionFixture fixture(settings, operations, history);
+    HistoryWindow window(fixture.session);
+    window.show();
+
+    auto* count = window.findChild<QLabel*>("historyCount");
+    QVERIFY(count);
+}QTEST_MAIN(HistoryGui)
 #include "test_history_view.moc"
