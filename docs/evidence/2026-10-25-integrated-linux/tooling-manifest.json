@@ -361,5 +361,10 @@
     "path": "work/integrated/campaign-tools-final-0335.tar.gz",
     "sha256": "25c9fd35107c541499ae84e03b3d394bf36105de92a527e9b41b41ce52f60482",
     "members": 87
+  },
+  "reviewRemediation": {
+    "commit": "5f7d1e8c2ad19832624ae566ab871c74b6d0c6f3",
+    "evidence": "review-remediation.json",
+    "scope": "Post-campaign host tooling fixes; original liveValidation and helper hashes above remain attributed to their tested revision"
   }
 }

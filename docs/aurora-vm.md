@@ -1,5 +1,12 @@
 # Aurora (Universal Blue) VM layer for AppImage and Flatpak testing
 
+The new visibility-helper provisioning below requires the companion
+[code PR #584](https://github.com/patrick-hudson/put.gd-desktop/pull/584).
+This documentation-only PR is intended to merge after that code. Stage the
+bootstrap script and `guest_idle.py` from the same code revision; the older
+nightly script does not install the new helper. Existing golden bytes are unchanged.
+
+
 Aurora is Universal Blue's KDE Plasma desktop, an image-based (bootc) Fedora
 Atomic variant: `ghcr.io/ublue-os/aurora:stable`. It installs nothing through a
 package manager, ships Flathub as its only Flatpak remote, and represents the

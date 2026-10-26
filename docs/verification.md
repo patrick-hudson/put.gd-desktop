@@ -21,7 +21,7 @@ endpoints remain unassessed despite approved thresholds. The targeted campaign i
 complete: remaining Debian/Aurora media and Cinnamon guest-helper validation are
 recorded, evidence exported, overlays retired and host slots handed back. This is
 not published-nightly or full stable
-acceptance, and does not close #378/#380 or final exact-byte gates.
+acceptance, and does not close #378/#380/#381 or final exact-byte gates.
 
 ## History-open memory (#558) — 2026-10-25
 

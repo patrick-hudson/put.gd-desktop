@@ -10356,5 +10356,28 @@
       "bytes": 159,
       "sha256": "92cfefa6e5bcb39da38aef9482bc439e76a5730c78923bf39cfea0d8137ecac9"
     }
+  ],
+  "additionalPrivateRoot": "work/integrated/evidence",
+  "additionalFiles": [
+    {
+      "path": "gnome46-c180-after.png",
+      "bytes": 197378,
+      "sha256": "e1ecb1852197f8df4b2768be523394199ab51d6d909b0724a63be0d22772ecf5"
+    },
+    {
+      "path": "gnome46-c180-after.ppm",
+      "bytes": 3072016,
+      "sha256": "c5710e3a93b520f4d22aa87f306f649474213755db96b42c0db565e494738745"
+    },
+    {
+      "path": "cinnamon-preflight/cinnamon-after-reset.png",
+      "bytes": 466510,
+      "sha256": "8371cd12eb9fd21540631bfb808784723314e47f58860e9fe935724af2e97716"
+    },
+    {
+      "path": "cinnamon-preflight/guest-preflight-e0b53d2379d24249bc671f09ef16ef5c-attempt0-head0.ppm",
+      "bytes": 3072016,
+      "sha256": "17ae92f075edb3366bc28b6a172245818e7c7f311a2ec71f70591af4d1118633"
+    }
   ]
 }

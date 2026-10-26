@@ -1,5 +1,12 @@
 # KDE neon VMs: released Plasma and Plasma master
 
+The new visibility-helper provisioning below requires the companion
+[code PR #584](https://github.com/patrick-hudson/put.gd-desktop/pull/584).
+This documentation-only PR is intended to merge after that code. Stage the
+bootstrap script and `guest_idle.py` from the same code revision; the older
+nightly script does not install the new helper. Existing golden bytes are unchanged.
+
+
 KDE neon is KDE's own packaging of Plasma, Frameworks and Gear on an Ubuntu LTS
 base. The lab keeps two neon goldens for catching KDE bugs before the required
 distros ship them:

@@ -7,80 +7,147 @@
       "privateSource": "m74/mp4/manual-private-review-review.png",
       "sha256": "6eef612374bd100fc8cf86cda83439fcadd0bc052118e08e23ce5ae6bd62ac3e",
       "caption": "m74 Cinnamon/X11, frozen native Ubuntu24 DEB; preserved private Review after normal disk pressure. Explicit recording.raise also reopens the gray control bar; no spontaneous-overlay-survival inference.",
-      "reviewed": true
+      "reviewed": true,
+      "privateRoot": "work/integrated/evidence/collected",
+      "privateIndex": {
+        "file": "../private-evidence-index.json",
+        "section": "files"
+      }
     },
     {
       "file": "m74-pressure-paused.png",
       "privateSource": "m74/mp5/manual-recording-paused-review.png",
       "sha256": "71f94ab65f33511827b769419a4cbe4348b2bfeec69c17c8c4dbd11e45509f4f",
       "caption": "m74 Cinnamon/X11, frozen native Ubuntu24 DEB; visible paused controls before bounded disk pressure.",
-      "reviewed": true
+      "reviewed": true,
+      "privateRoot": "work/integrated/evidence/collected",
+      "privateIndex": {
+        "file": "../private-evidence-index.json",
+        "section": "files"
+      }
     },
     {
       "file": "m74-appimage-light.png",
       "privateSource": "m74/maf1/frames/ui-1792976193141455602-settings-light.png",
       "sha256": "1bf91e67a05521a11b740da9d1f0e52025a02736b439020856e901e38c4b1813",
       "caption": "m74 Cinnamon/X11, exact CI AppImage; Light appearance observed after waiting for scheme change.",
-      "reviewed": true
+      "reviewed": true,
+      "privateRoot": "work/integrated/evidence/collected",
+      "privateIndex": {
+        "file": "../private-evidence-index.json",
+        "section": "files"
+      }
     },
     {
       "file": "ubuntu26-native-review.png",
       "privateSource": "ubuntu26/ugr3/frames/ui-1792977559837881266-reviewing.png",
       "sha256": "d4918669e1c9e71e2ed68ee50db60e8bd1bad0f07e8dbc7dd9ed12415e0e0bcd",
       "caption": "Ubuntu26.04.1 GNOME50.1 Wayland guest on f44, frozen Ubuntu26 DEB; moving MP4 exported through native Mutter capture.",
-      "reviewed": true
+      "reviewed": true,
+      "privateRoot": "work/integrated/evidence/collected",
+      "privateIndex": {
+        "file": "../private-evidence-index.json",
+        "section": "files"
+      }
     },
     {
       "file": "ubuntu26-appimage-review.png",
       "privateSource": "ubuntu26/uar3/frames/ui-1792977871074724407-reviewing.png",
       "sha256": "20be9970183762fc54e52a98e29ea29ceaabe23943f5592ca509db54983e14da",
       "caption": "Same Ubuntu guest, exact CI AppImage; corrected moving MP4 run after retained visual-observer timeout. Exported clip remains private.",
-      "reviewed": true
+      "reviewed": true,
+      "privateRoot": "work/integrated/evidence/collected",
+      "privateIndex": {
+        "file": "../private-evidence-index.json",
+        "section": "files"
+      }
     },
     {
       "file": "gnome46-native-review.png",
-      "privateSource": "work/integrated/evidence/collected/gnome46/xnr3/frames/ui-1792978968122176700-reviewing.png",
+      "privateSource": "gnome46/xnr3/frames/ui-1792978968122176700-reviewing.png",
       "sha256": "aeffb208a7dc4f785f6038e31a64e4f6c33e816f368d74b5b3a4465a96f8fe58",
       "caption": "Ubuntu24.04.5 GNOME46 native X11 guest on m74, exact Ubuntu24 DEB; moving WebP private Review and export.",
-      "reviewed": true
+      "reviewed": true,
+      "privateRoot": "work/integrated/evidence/collected",
+      "privateIndex": {
+        "file": "../private-evidence-index.json",
+        "section": "files"
+      }
     },
     {
       "file": "gnome46-appimage-review.png",
-      "privateSource": "work/integrated/evidence/collected/gnome46/xar3/frames/ui-1792979104046355211-reviewing.png",
+      "privateSource": "gnome46/xar3/frames/ui-1792979104046355211-reviewing.png",
       "sha256": "d9a77bfaee843fa9568d10ffc64a430b9441e78802d819f3e5c735d319330809",
       "caption": "Same GNOME46 X11 guest, frozen CI AppImage; moving WebP private Review/export.",
-      "reviewed": true
+      "reviewed": true,
+      "privateRoot": "work/integrated/evidence/collected",
+      "privateIndex": {
+        "file": "../private-evidence-index.json",
+        "section": "files"
+      }
     },
     {
       "file": "gnome46-c180-after.png",
-      "privateSource": "work/integrated/evidence/gnome46-c180-after.png",
+      "privateSource": "gnome46-c180-after.png",
       "sha256": "e1ecb1852197f8df4b2768be523394199ab51d6d909b0724a63be0d22772ecf5",
       "caption": "Corrected AppImage C180 after-window complete QMP frame. Desktop is unlocked and visible; first-login/updater dialogs remain visible, no OS upgrade performed. Whole-family RSS remains FAIL; see separate resident/FUSE scopes.",
-      "reviewed": true
+      "reviewed": true,
+      "derivedFrom": {
+        "privateRoot": "work/integrated/evidence",
+        "path": "gnome46-c180-after.ppm",
+        "sha256": "c5710e3a93b520f4d22aa87f306f649474213755db96b42c0db565e494738745",
+        "conversion": "Lossless PPM to PNG; decoded RGB dimensions and bytes verified equal during review remediation. No new live acceptance run."
+      },
+      "privateRoot": "work/integrated/evidence",
+      "privateIndex": {
+        "file": "../private-evidence-index.json",
+        "section": "additionalFiles"
+      }
     },
     {
       "file": "aurora45-appimage-review.png",
-      "privateSource": "work/integrated/evidence/collected/aurora45/aar5/frames/ui-1792983231189536070-reviewing.png",
+      "privateSource": "aurora45/aar5/frames/ui-1792983231189536070-reviewing.png",
       "sha256": "5390ac5d4a6e0a9912f1541fb11b662bccba3035ab5041defcc57ba726d1822c",
       "caption": "Aurora45 Plasma6.7.5 Wayland guest on f44, exact frozen CI AppImage; moving WebP local export in private Review.",
       "reviewed": true,
-      "scope": "frozen-product"
+      "scope": "frozen-product",
+      "privateRoot": "work/integrated/evidence/collected",
+      "privateIndex": {
+        "file": "../private-evidence-index.json",
+        "section": "files"
+      }
     },
     {
       "file": "debian13-native-review.png",
-      "privateSource": "work/integrated/evidence/collected/d69/dnr2/frames/ui-1792984935007316670-reviewing.png",
+      "privateSource": "d69/dnr2/frames/ui-1792984935007316670-reviewing.png",
       "sha256": "f9dad2ede7051f1c971bdef6e3f19337327b8ef9e8a4d0b549be725d9ba4dad2",
       "caption": "d69 Debian13 Plasma Wayland, exact frozen native DEB; moving GIF exported locally in private Review.",
       "reviewed": true,
-      "scope": "frozen-product"
+      "scope": "frozen-product",
+      "privateRoot": "work/integrated/evidence/collected",
+      "privateIndex": {
+        "file": "../private-evidence-index.json",
+        "section": "files"
+      }
     },
     {
       "file": "cinnamon-preflight-after-reset.png",
-      "privateSource": "work/integrated/evidence/cinnamon-preflight/cinnamon-after-reset.png",
+      "privateSource": "cinnamon-preflight/cinnamon-after-reset.png",
       "sha256": "8371cd12eb9fd21540631bfb808784723314e47f58860e9fe935724af2e97716",
       "caption": "Cinnamon X11 disposable guest on f44 after synced owned QMP reset; helper c53ce0bd restored policy at startup. Active unlocked complete desktop; tooling validation only, no product result.",
       "reviewed": true,
-      "scope": "tooling-only"
+      "scope": "tooling-only",
+      "derivedFrom": {
+        "privateRoot": "work/integrated/evidence",
+        "path": "cinnamon-preflight/guest-preflight-e0b53d2379d24249bc671f09ef16ef5c-attempt0-head0.ppm",
+        "sha256": "17ae92f075edb3366bc28b6a172245818e7c7f311a2ec71f70591af4d1118633",
+        "conversion": "Lossless PPM to PNG; decoded RGB dimensions and bytes verified equal during review remediation. No new live acceptance run."
+      },
+      "privateRoot": "work/integrated/evidence",
+      "privateIndex": {
+        "file": "../private-evidence-index.json",
+        "section": "additionalFiles"
+      }
     }
   ]
 }

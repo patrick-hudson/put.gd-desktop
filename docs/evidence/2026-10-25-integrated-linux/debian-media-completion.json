@@ -437,5 +437,10 @@
     ]
   },
   "release": "d69 (Debian 13 Plasma Wayland): released\n  integrated-acceptance (acceptance-d69-media-20261026), acquired 2026-10-26T03:18:52Z\n  purpose: Exact CI6b Debian native four-format moving and static media after clean pilot handback\n  1 item(s) that were there before the lock stay\n  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 978298\n  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-26T03-29-32Z-release.json\n  Tell the next session in the queue and your coordinator\n",
-  "finalStatus": "d69 (Debian 13 Plasma Wayland): free\n  last: release of integrated-acceptance's lock by acceptance-d69-media-20261026 at 2026-10-26T03:29:32Z\n  on the host now:\n    process 2008860: gpg-agent --homedir /home/patrick/.local/share/putgd-signer/gnupg --use-standard-socket --daemon\n  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 978298\n"
+  "finalStatus": "d69 (Debian 13 Plasma Wayland): free\n  last: release of integrated-acceptance's lock by acceptance-d69-media-20261026 at 2026-10-26T03:29:32Z\n  on the host now:\n    process 2008860: preserved pre-existing signer (command/home omitted from public summary)\n  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 978298\n",
+  "finalStatusProvenance": {
+    "privateSource": "work/integrated/evidence/d69-native-media/final-status.txt",
+    "sha256": "3a520da763b2142f59994bfffac8f281c4c73acc56953432651339a53c8ce6e7",
+    "publicOmission": "Unrelated signer command line/home only; original raw receipt, process identity and cleanup outcome retained."
+  }
 }

@@ -742,556 +742,6 @@
     {
       "schemaVersion": 1,
       "runId": "cfbad63b-a163-454b-8d36-2e438e5d079c",
-      "stage": "after-moving-static",
-      "apply": false,
-      "timestampUtc": "2026-10-26T02:56:37.877290+00:00",
-      "ok": true,
-      "helperSha256": "99052aeb253d373bd8973ea06901ccdce34874cd4cb5b1bbf64654abfa3bb6e9",
-      "policy": {
-        "ok": true,
-        "desktop": "KDE",
-        "session": {
-          "User": "1000",
-          "Seat": "seat0",
-          "Type": "wayland",
-          "Active": "yes",
-          "State": "active",
-          "LockedHint": "no",
-          "id": "3"
-        },
-        "configurationHome": "/var/home/lab/.config",
-        "policy": [
-          {
-            "file": "kscreenlockerrc",
-            "groups": [
-              "Daemon"
-            ],
-            "key": "Autolock",
-            "value": "false"
-          },
-          {
-            "file": "kscreenlockerrc",
-            "groups": [
-              "Daemon"
-            ],
-            "key": "LockOnResume",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          }
-        ],
-        "inhibitor": {
-          "what": "sleep:idle",
-          "who": "putgd-lab-guest",
-          "mode": "block",
-          "uid": 1000,
-          "pid": 1929
-        },
-        "x11": null
-      },
-      "outputs": {
-        "ok": true,
-        "errors": [],
-        "outputs": [
-          {
-            "name": "Virtual-1",
-            "enabled": true,
-            "primary": false,
-            "width": 1280,
-            "height": 800,
-            "x": 0,
-            "y": 0
-          }
-        ]
-      },
-      "visuals": [
-        {
-          "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-414f9f0530124f81becc69f97ada5843-head0.ppm",
-          "sha256": "d96dea1d2ebf14091035ae4bf70b4dd8bffdaf408dac28da4d1bc8ea3392f3a0",
-          "width": 1280,
-          "height": 800,
-          "head": 0
-        }
-      ],
-      "afterVisuals": {
-        "ok": true,
-        "desktop": "KDE",
-        "session": {
-          "User": "1000",
-          "Seat": "seat0",
-          "Type": "wayland",
-          "Active": "yes",
-          "State": "active",
-          "LockedHint": "no",
-          "id": "3"
-        },
-        "configurationHome": "/var/home/lab/.config",
-        "policy": [
-          {
-            "file": "kscreenlockerrc",
-            "groups": [
-              "Daemon"
-            ],
-            "key": "Autolock",
-            "value": "false"
-          },
-          {
-            "file": "kscreenlockerrc",
-            "groups": [
-              "Daemon"
-            ],
-            "key": "LockOnResume",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          }
-        ],
-        "inhibitor": {
-          "what": "sleep:idle",
-          "who": "putgd-lab-guest",
-          "mode": "block",
-          "uid": 1000,
-          "pid": 1929
-        },
-        "x11": null
-      }
-    },
-    {
-      "schemaVersion": 1,
-      "runId": "cfbad63b-a163-454b-8d36-2e438e5d079c",
-      "stage": "after-real-reboot-startup",
-      "apply": false,
-      "timestampUtc": "2026-10-26T02:48:35.470657+00:00",
-      "ok": true,
-      "helperSha256": "99052aeb253d373bd8973ea06901ccdce34874cd4cb5b1bbf64654abfa3bb6e9",
-      "policy": {
-        "ok": true,
-        "desktop": "KDE",
-        "session": {
-          "User": "1000",
-          "Seat": "seat0",
-          "Type": "wayland",
-          "Active": "yes",
-          "State": "active",
-          "LockedHint": "no",
-          "id": "3"
-        },
-        "configurationHome": "/var/home/lab/.config",
-        "policy": [
-          {
-            "file": "kscreenlockerrc",
-            "groups": [
-              "Daemon"
-            ],
-            "key": "Autolock",
-            "value": "false"
-          },
-          {
-            "file": "kscreenlockerrc",
-            "groups": [
-              "Daemon"
-            ],
-            "key": "LockOnResume",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          }
-        ],
-        "inhibitor": {
-          "what": "sleep:idle",
-          "who": "putgd-lab-guest",
-          "mode": "block",
-          "uid": 1000,
-          "pid": 1929
-        },
-        "x11": null
-      },
-      "outputs": {
-        "ok": true,
-        "errors": [],
-        "outputs": [
-          {
-            "name": "Virtual-1",
-            "enabled": true,
-            "primary": false,
-            "width": 1280,
-            "height": 800,
-            "x": 0,
-            "y": 0
-          }
-        ]
-      },
-      "visuals": [
-        {
-          "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-6544393202144786aff940e84d811300-head0.ppm",
-          "sha256": "8b470e123930d2281c22e5f94c80414b1a18d2e5a3544764b564a7f22dc3e3ae",
-          "width": 1280,
-          "height": 800,
-          "head": 0
-        }
-      ],
-      "afterVisuals": {
-        "ok": true,
-        "desktop": "KDE",
-        "session": {
-          "User": "1000",
-          "Seat": "seat0",
-          "Type": "wayland",
-          "Active": "yes",
-          "State": "active",
-          "LockedHint": "no",
-          "id": "3"
-        },
-        "configurationHome": "/var/home/lab/.config",
-        "policy": [
-          {
-            "file": "kscreenlockerrc",
-            "groups": [
-              "Daemon"
-            ],
-            "key": "Autolock",
-            "value": "false"
-          },
-          {
-            "file": "kscreenlockerrc",
-            "groups": [
-              "Daemon"
-            ],
-            "key": "LockOnResume",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "AC",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "Battery",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "Display"
-            ],
-            "key": "DimDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "Display"
-            ],
-            "key": "TurnOffDisplayWhenIdle",
-            "value": "false"
-          },
-          {
-            "file": "powerdevilrc",
-            "groups": [
-              "LowBattery",
-              "SuspendAndShutdown"
-            ],
-            "key": "AutoSuspendAction",
-            "value": "0"
-          }
-        ],
-        "inhibitor": {
-          "what": "sleep:idle",
-          "who": "putgd-lab-guest",
-          "mode": "block",
-          "uid": 1000,
-          "pid": 1929
-        },
-        "x11": null
-      }
-    },
-    {
-      "schemaVersion": 1,
-      "runId": "cfbad63b-a163-454b-8d36-2e438e5d079c",
       "stage": "after-dbus-introspection",
       "apply": true,
       "timestampUtc": "2026-10-26T02:47:04.818643+00:00",
@@ -1842,9 +1292,9 @@
     {
       "schemaVersion": 1,
       "runId": "cfbad63b-a163-454b-8d36-2e438e5d079c",
-      "stage": "between-moving-static",
+      "stage": "after-real-reboot-startup",
       "apply": false,
-      "timestampUtc": "2026-10-26T02:55:00.230960+00:00",
+      "timestampUtc": "2026-10-26T02:48:35.470657+00:00",
       "ok": true,
       "helperSha256": "99052aeb253d373bd8973ea06901ccdce34874cd4cb5b1bbf64654abfa3bb6e9",
       "policy": {
@@ -1985,8 +1435,8 @@
       },
       "visuals": [
         {
-          "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-e40e2fcee9cb46f2b7ddc6f701fc0888-head0.ppm",
-          "sha256": "987ffe2e850dd348fdf603bd5b4aae6c7073ccf1b43a3276c69b45f703ad109e",
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-6544393202144786aff940e84d811300-head0.ppm",
+          "sha256": "8b470e123930d2281c22e5f94c80414b1a18d2e5a3544764b564a7f22dc3e3ae",
           "width": 1280,
           "height": 800,
           "head": 0
@@ -2262,6 +1712,556 @@
         {
           "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-f3611e9bb1f24e1cb793060e56fc2479-head0.ppm",
           "sha256": "41d9a31d50514d564f2ca806278e5464e1431e69b05247f856e7d58f49aa506a",
+          "width": 1280,
+          "height": 800,
+          "head": 0
+        }
+      ],
+      "afterVisuals": {
+        "ok": true,
+        "desktop": "KDE",
+        "session": {
+          "User": "1000",
+          "Seat": "seat0",
+          "Type": "wayland",
+          "Active": "yes",
+          "State": "active",
+          "LockedHint": "no",
+          "id": "3"
+        },
+        "configurationHome": "/var/home/lab/.config",
+        "policy": [
+          {
+            "file": "kscreenlockerrc",
+            "groups": [
+              "Daemon"
+            ],
+            "key": "Autolock",
+            "value": "false"
+          },
+          {
+            "file": "kscreenlockerrc",
+            "groups": [
+              "Daemon"
+            ],
+            "key": "LockOnResume",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          }
+        ],
+        "inhibitor": {
+          "what": "sleep:idle",
+          "who": "putgd-lab-guest",
+          "mode": "block",
+          "uid": 1000,
+          "pid": 1929
+        },
+        "x11": null
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "runId": "cfbad63b-a163-454b-8d36-2e438e5d079c",
+      "stage": "between-moving-static",
+      "apply": false,
+      "timestampUtc": "2026-10-26T02:55:00.230960+00:00",
+      "ok": true,
+      "helperSha256": "99052aeb253d373bd8973ea06901ccdce34874cd4cb5b1bbf64654abfa3bb6e9",
+      "policy": {
+        "ok": true,
+        "desktop": "KDE",
+        "session": {
+          "User": "1000",
+          "Seat": "seat0",
+          "Type": "wayland",
+          "Active": "yes",
+          "State": "active",
+          "LockedHint": "no",
+          "id": "3"
+        },
+        "configurationHome": "/var/home/lab/.config",
+        "policy": [
+          {
+            "file": "kscreenlockerrc",
+            "groups": [
+              "Daemon"
+            ],
+            "key": "Autolock",
+            "value": "false"
+          },
+          {
+            "file": "kscreenlockerrc",
+            "groups": [
+              "Daemon"
+            ],
+            "key": "LockOnResume",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          }
+        ],
+        "inhibitor": {
+          "what": "sleep:idle",
+          "who": "putgd-lab-guest",
+          "mode": "block",
+          "uid": 1000,
+          "pid": 1929
+        },
+        "x11": null
+      },
+      "outputs": {
+        "ok": true,
+        "errors": [],
+        "outputs": [
+          {
+            "name": "Virtual-1",
+            "enabled": true,
+            "primary": false,
+            "width": 1280,
+            "height": 800,
+            "x": 0,
+            "y": 0
+          }
+        ]
+      },
+      "visuals": [
+        {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-e40e2fcee9cb46f2b7ddc6f701fc0888-head0.ppm",
+          "sha256": "987ffe2e850dd348fdf603bd5b4aae6c7073ccf1b43a3276c69b45f703ad109e",
+          "width": 1280,
+          "height": 800,
+          "head": 0
+        }
+      ],
+      "afterVisuals": {
+        "ok": true,
+        "desktop": "KDE",
+        "session": {
+          "User": "1000",
+          "Seat": "seat0",
+          "Type": "wayland",
+          "Active": "yes",
+          "State": "active",
+          "LockedHint": "no",
+          "id": "3"
+        },
+        "configurationHome": "/var/home/lab/.config",
+        "policy": [
+          {
+            "file": "kscreenlockerrc",
+            "groups": [
+              "Daemon"
+            ],
+            "key": "Autolock",
+            "value": "false"
+          },
+          {
+            "file": "kscreenlockerrc",
+            "groups": [
+              "Daemon"
+            ],
+            "key": "LockOnResume",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          }
+        ],
+        "inhibitor": {
+          "what": "sleep:idle",
+          "who": "putgd-lab-guest",
+          "mode": "block",
+          "uid": 1000,
+          "pid": 1929
+        },
+        "x11": null
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "runId": "cfbad63b-a163-454b-8d36-2e438e5d079c",
+      "stage": "after-moving-static",
+      "apply": false,
+      "timestampUtc": "2026-10-26T02:56:37.877290+00:00",
+      "ok": true,
+      "helperSha256": "99052aeb253d373bd8973ea06901ccdce34874cd4cb5b1bbf64654abfa3bb6e9",
+      "policy": {
+        "ok": true,
+        "desktop": "KDE",
+        "session": {
+          "User": "1000",
+          "Seat": "seat0",
+          "Type": "wayland",
+          "Active": "yes",
+          "State": "active",
+          "LockedHint": "no",
+          "id": "3"
+        },
+        "configurationHome": "/var/home/lab/.config",
+        "policy": [
+          {
+            "file": "kscreenlockerrc",
+            "groups": [
+              "Daemon"
+            ],
+            "key": "Autolock",
+            "value": "false"
+          },
+          {
+            "file": "kscreenlockerrc",
+            "groups": [
+              "Daemon"
+            ],
+            "key": "LockOnResume",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "AC",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "Battery",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "Display"
+            ],
+            "key": "DimDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "Display"
+            ],
+            "key": "TurnOffDisplayWhenIdle",
+            "value": "false"
+          },
+          {
+            "file": "powerdevilrc",
+            "groups": [
+              "LowBattery",
+              "SuspendAndShutdown"
+            ],
+            "key": "AutoSuspendAction",
+            "value": "0"
+          }
+        ],
+        "inhibitor": {
+          "what": "sleep:idle",
+          "who": "putgd-lab-guest",
+          "mode": "block",
+          "uid": 1000,
+          "pid": 1929
+        },
+        "x11": null
+      },
+      "outputs": {
+        "ok": true,
+        "errors": [],
+        "outputs": [
+          {
+            "name": "Virtual-1",
+            "enabled": true,
+            "primary": false,
+            "width": 1280,
+            "height": 800,
+            "x": 0,
+            "y": 0
+          }
+        ]
+      },
+      "visuals": [
+        {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-414f9f0530124f81becc69f97ada5843-head0.ppm",
+          "sha256": "d96dea1d2ebf14091035ae4bf70b4dd8bffdaf408dac28da4d1bc8ea3392f3a0",
           "width": 1280,
           "height": 800,
           "head": 0

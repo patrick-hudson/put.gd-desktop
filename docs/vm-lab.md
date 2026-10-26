@@ -609,8 +609,9 @@ Capture results are compared afterward and never determine the input coordinates
 
 [Code PR #584](https://github.com/patrick-hudson/put.gd-desktop/pull/584) adds the
 common disposable-guest visibility preflight. `lab.py launch` applies it after
-authenticated SSH and before returning; `start` and graphical scenarios also
-require it, with a check-only verification after a successful scenario. Custom
+authenticated SSH and before returning; `start` also applies it. Graphical
+scenarios use check-only preflights both before and after the workload, so policy
+drift after setup is refused rather than silently repaired. Custom
 acceptance drivers must use the same boundary checks:
 
 ```sh
@@ -636,7 +637,8 @@ every blank attempt. Check-only boundaries neither repair drift nor wait for
 missing services, inhibitor or visible frames.
 X11 additionally disables and reads back screen saving/DPMS. Native session type,
 active seat, unlocked state, inactive screensaver, configured outputs, complete
-QMP frames and VNC extents must agree. These checks do not replace a geometry
+QMP frames and VNC extents must agree. A uniform RGB color is not a visible
+desktop witness, even when its component channel values differ. These checks do not replace a geometry
 campaign's independent all-head fresh-motion oracle or human visual review.
 
 New provisioning seeds for generic, Aurora and neon guests must contain
@@ -652,8 +654,10 @@ instead of overwriting it. The user inhibitor ends when the disposable guest is
 retired through normal guarded cleanup.
 
 Any failed policy, active screensaver, locked session, missing output or blank
-witness blocks acceptance and retains `guest-preflight-*.json` plus available
-visuals. Restore a locked or blanked guest through its visible console before
+witness blocks acceptance. Once the run directory is verified as owned,
+non-symlinked and not writable by other users, early ownership/readiness/profile
+failures also retain `guest-preflight-*.json`. Unsafe receipt directories are
+refused without writing or contacting a guest. Available visuals are preserved. Restore a locked or blanked guest through its visible console before
 retrying. Preserve the failed attempt. Never apply these settings to a physical
 user desktop or treat an SSH-only check as complete graphical evidence.
 

@@ -46,7 +46,8 @@ Physical Mint/Cinnamon native DEB:
 Patrick explicitly approved **open ≤1,000 ms, scroll p95 ≤100 ms, search p95
 ≤250 ms, preview p95 ≤1,000 ms**, replying “Approve these limits” to the quoted
 proposal in the integrated acceptance thread. The canonical shared decision is
-`history-thresholds-approved.json` and the quote is in `COORDINATION.md`. Approval
+[history-thresholds-approved.json](history-thresholds-approved.json); its
+[approval-source quote](history-thresholds-approval.md) is retained here. Approval
 does not convert generic repaint timing into content-response evidence.
 
 GNOME native file-editor burst has an unresolved **40 MiB RSS budget failure**.
@@ -321,3 +322,30 @@ failure, GNOME46 AppImage's whole-family RSS failure and accounting scope, witne
 History open/scroll/search content responses under the approved limits, complete
 #378/#380/#381 requirements and the final published/stable exact-asset gates.
 No further identical memory repeats, threshold changes or waivers are implied.
+
+
+## PR review remediation (after campaign completion)
+
+Review of #584 found that the shared fixture runner's entry boundary used apply
+mode, potentially repairing drift. It now checks without repair. The complete-frame
+visibility test now compares RGB pixels rather than individual channel bytes, and
+early refusals retain a receipt once the local run directory is safe to write.
+Unsafe directories still fail without writes or guest access. Deterministic account
+fixtures remove dependence on an exported `USER` or a non-root test runner.
+All 29 focused guest contracts pass with `USER` unset.
+
+These changes belong to the subsequent PR-review phase at code `5f7d1e8c`.
+They do not replace the campaign's tested host-tool revisions or alter original
+run bytes. A read-only audit of eight retained successful Cinnamon/Aurora QMP
+frames finds no uniform-RGB witness among them; this is not a fresh acceptance
+run. [Remediation and offline check receipt](review-remediation.json).
+All 113 original run-result digests, saved visuals, failure objects and completion
+receipts remain retained; no completed watchdog or guest was restarted.
+
+The visual index now names its source root and digest-index section explicitly,
+including the two lossless PPM-to-PNG derivatives outside the collected-run tree.
+The approval receipt is copied unchanged, and preflight collections are sorted by
+their actual timestamps without changing any attempt. The public Debian status
+summary omits the unrelated signer's command/home and retains its raw-receipt
+hash. Declared non-secret host labels, lab paths and run/process identities remain
+for provenance, consistent with the repository's documented lab inventory.

@@ -1,0 +1,74 @@
+{
+  "scope": "Offline read-only classification of saved successful preflight QMP frames, not a new live acceptance run or retroactive execution of revised host code",
+  "productSourceUnchanged": "6b7949f5cab8ee9d9564d5ebb4f2cee81881cbf8",
+  "hostCodeBefore": "c53ce0bd181b521abba0ca3e2e2744d3a0c70d78",
+  "reviewRemediationCode": "5f7d1e8c2ad19832624ae566ab871c74b6d0c6f3",
+  "focusedGuestContracts": 29,
+  "userEnvironmentUnset": true,
+  "savedSuccessfulFramesChecked": [
+    {
+      "receipt": "cinnamon-preflight-completion.json",
+      "stage": "v6-cinnamon-recovered-visible",
+      "timestampUtc": "2026-10-26T03:12:34.612421+00:00",
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ia25c/guest-preflight-eb2e80e9b5eb48eeb2360f4fe7fc240e-attempt0-head0.ppm",
+      "sha256": "eddf7758d624fbe0b7acc0c68fa459f708ba7d3f4c062ca85830325db5fa48c9",
+      "completeRgbPixelsNonuniform": true
+    },
+    {
+      "receipt": "cinnamon-preflight-completion.json",
+      "stage": "after-reset-autostart-check",
+      "timestampUtc": "2026-10-26T03:27:12.209540+00:00",
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ia25c/guest-preflight-e0b53d2379d24249bc671f09ef16ef5c-attempt0-head0.ppm",
+      "sha256": "17ae92f075edb3366bc28b6a172245818e7c7f311a2ec71f70591af4d1118633",
+      "completeRgbPixelsNonuniform": true
+    },
+    {
+      "receipt": "aurora-followup-completion.json",
+      "stage": "after-dbus-introspection",
+      "timestampUtc": "2026-10-26T02:47:04.818643+00:00",
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-7e71d62f9be745218c93d307bc14b400-head0.ppm",
+      "sha256": "a5197d4567f5aa8e7775b7aa85cd93cfc7e18a1635e497b2050a2e27899cca05",
+      "completeRgbPixelsNonuniform": true
+    },
+    {
+      "receipt": "aurora-followup-completion.json",
+      "stage": "v4-before-reboot",
+      "timestampUtc": "2026-10-26T02:47:35.536869+00:00",
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-8693f2ccde4f4ab6b103ee68e49c3f54-head0.ppm",
+      "sha256": "a5197d4567f5aa8e7775b7aa85cd93cfc7e18a1635e497b2050a2e27899cca05",
+      "completeRgbPixelsNonuniform": true
+    },
+    {
+      "receipt": "aurora-followup-completion.json",
+      "stage": "after-real-reboot-startup",
+      "timestampUtc": "2026-10-26T02:48:35.470657+00:00",
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-6544393202144786aff940e84d811300-head0.ppm",
+      "sha256": "8b470e123930d2281c22e5f94c80414b1a18d2e5a3544764b564a7f22dc3e3ae",
+      "completeRgbPixelsNonuniform": true
+    },
+    {
+      "receipt": "aurora-followup-completion.json",
+      "stage": "before-moving-media",
+      "timestampUtc": "2026-10-26T02:52:26.309050+00:00",
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-f3611e9bb1f24e1cb793060e56fc2479-head0.ppm",
+      "sha256": "41d9a31d50514d564f2ca806278e5464e1431e69b05247f856e7d58f49aa506a",
+      "completeRgbPixelsNonuniform": true
+    },
+    {
+      "receipt": "aurora-followup-completion.json",
+      "stage": "between-moving-static",
+      "timestampUtc": "2026-10-26T02:55:00.230960+00:00",
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-e40e2fcee9cb46f2b7ddc6f701fc0888-head0.ppm",
+      "sha256": "987ffe2e850dd348fdf603bd5b4aae6c7073ccf1b43a3276c69b45f703ad109e",
+      "completeRgbPixelsNonuniform": true
+    },
+    {
+      "receipt": "aurora-followup-completion.json",
+      "stage": "after-moving-static",
+      "timestampUtc": "2026-10-26T02:56:37.877290+00:00",
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ia25a2/guest-preflight-414f9f0530124f81becc69f97ada5843-head0.ppm",
+      "sha256": "d96dea1d2ebf14091035ae4bf70b4dd8bffdaf408dac28da4d1bc8ea3392f3a0",
+      "completeRgbPixelsNonuniform": true
+    }
+  ]
+}
