@@ -160,6 +160,8 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   if(document.contains("captureDefaults")){
    label=outputName(document["captureDefaults"].toObject());
    for(const auto& name:Settings::actionNames())if(document["actions"].toObject()[name].toObject()["destination"]!="default")++exceptions;
+   // Record screen counts only when it has a route of its own; inherited, it follows Capture region.
+   {const auto record=document["actions"].toObject()[Settings::recordingActionName()].toObject();if(record.contains("destination")&&record["destination"]!="default")++exceptions;}
   }else{
    const auto first=Settings::effectiveAction(document,"region");bool same=true;for(const auto& name:Settings::actionNames()){const auto action=Settings::effectiveAction(document,name);if(action["destination"]!=first["destination"]||action["profileId"]!=first["profileId"]||action["publicationMode"].toString("default")!=first["publicationMode"].toString("default")){same=false;++exceptions;}}
    label=same?outputName(first):QString("Different for each action");

@@ -125,7 +125,8 @@ public:
  // never made, failed or was removed by cleanup, made from the retained
  // artifact or a verified local copy through the one-at-a-time poster queue.
  // Answers with the preview path, or why there is none.
- void makePreview(const QString& historyId,JsonReply);
+ // retry: an explicit Retry preview forgets an earlier failure for this item.
+ void makePreview(const QString& historyId,JsonReply,bool retry=false);
  quint64 invalidateCopyEligibility();
  void cleanup(JsonReply);
  // Applies retention.failedArtifactDays without the user (#202): a minute after

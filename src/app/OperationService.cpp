@@ -754,11 +754,12 @@ void OperationService::queuePosters(const Operation& op) {
  }
  pumpPosters();
 }
-void OperationService::makePreview(const QString& id,JsonReply reply) {
+void OperationService::makePreview(const QString& id,JsonReply reply,bool retry) {
  if(!ready_){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
  if(stopping_){reply({"cancelled","The resident is stopping",{}},{});return;}
  const auto snapshot=settings_.snapshot();
  if(snapshot.previewCacheBytes<=0){reply({"previews_disabled","Previews are turned off (retention.previewCacheBytes is 0)",{}},{});return;}
+ if(retry)previewFailures_.remove(id);
  if(const auto failed=previewFailures_.find(id);failed!=previewFailures_.end()){reply(failed.value(),{});return;}
  // Asked for again (or already queued after its operation): answer both when it is made.
  for(auto& task:posterQueue_)if(task.itemId==id&&task.onDemand){task.replies.append(std::move(reply));return;}
