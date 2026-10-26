@@ -385,33 +385,36 @@ only the stripped binaries, with their GNU build IDs.
 Each package job then runs `tools/releases/debug_symbols.py stage`, which checks
 every product binary's `.debug` file (same build ID, a debug link, debug sections
 only in the `.debug` file) against the binary the package installs, and stages the
-files by build ID. The release collects all five builds (four distro packages and
-the AppImage) into one asset, `putgd-<version>-debug-x86_64.tar.zst`, laid out like
-a debuginfod cache (`.build-id/<2 hex>/<rest>.debug`) with a `manifest.json` that
-names each build's programs and build IDs. Pull requests build the same asset as
-the `debug-symbols-dry-run` artifact. See [release.md](release.md).
+files by build ID. Each build uploads `debug-symbols-LABEL` as a separate Actions
+artifact for 90 days, with `debug-symbols-LABEL.tar` and its JSON manifest.
+The tar contains `.build-id/<2 hex>/<rest>.debug`; the manifest binds each file
+to the installed binary, source identity and checksum. The release notes link
+the exact producer run. These symbols are not copied into the public release or
+downloaded by downstream package jobs.
 
-The builds split with zlib-compressed debug sections, which keeps the staged files
-and the jobs' artifacts small, but leaves a compressor nothing to find. The asset
-is about half that size, around 213 MB instead of 433 MB for five builds (#162).
-`debug_symbols.py` decompresses the sections and runs `dwz` on each build's files.
-The DWARF its programs share moves into `.dwz/<label>.debug`, which each file's
-`.gnu_debugaltlink` names relative to itself (`../../.dwz/<label>.debug`). Then
-`zstd -19 --long=27` compresses the whole tar. That window still unpacks with
-plain `tar --zstd -xf`. Keep the extracted tree together: a `.debug` file read
-without its `.dwz` file is missing the shared types and some names.
+Older releases retain their combined `putgd-VERSION-debug-x86_64.tar.zst` assets,
+including their `.dwz` shared files. Keep those extracted trees together. New
+per-build archives retain their compressed debug sections and need no cross-build
+DWARF deduplication. Export symbols privately before the 90-day artifact expiry
+when they need to be retained longer.
 
 ## Symbolizing a crash record (maintainers)
 
 1. Get the records: the package itself, a log file, `running.crash`, or helper
    stderr all work.
 2. Get the debug files for the build in the record (`version`, and each module's
-   build ID): download and extract that release's debug asset.
+   build ID): use the exact producer run linked in the release notes, selecting
+   the package label (`appimage`, `ubuntu24.04`, `ubuntu26.04`, `debian13`, `fedora44`).
 
    ```sh
-   gh release download v0.1.1-nightly.312 -p 'putgd-*-debug-x86_64.tar.zst'
-   mkdir debug && tar --zstd -xf putgd-0.1.1-nightly.312-debug-x86_64.tar.zst -C debug
+   gh run download RUN_ID --name debug-symbols-appimage --dir debug-artifact
+   mkdir debug
+   tar -xf debug-artifact/debug-symbols-appimage.tar -C debug
    ```
+
+   Check the accompanying JSON manifest against the package/source identity.
+   For older releases, download their `putgd-*-debug-x86_64.tar.zst` release asset
+   and extract it with `tar --zstd -xf` instead.
 
    For a local build, the build tree itself holds `<binary>.debug` files
    (configure with `-DPUTGD_SPLIT_DEBUG=ON`, or use a Debug build's binaries).

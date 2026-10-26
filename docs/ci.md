@@ -1,15 +1,16 @@
 # CI coverage and runtime
 
 Five workflows cover every event. Jobs that gate one another run in the same
-workflow run and are linked with `needs:`; nothing waits on another workflow
-through the Actions API.
+workflow run and are linked with `needs:`. Nightlies can reuse completed source
+checks for their exact commit; an absent or failed lookup runs the tests again.
+No job waits for another workflow to finish.
 
 | Workflow | Runs on | Does |
 | --- | --- | --- |
 | `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, Windows compile, packages, the AppImage's pipewiresrc on PipeWire 1.6; on `nightly` pushes, cache pruning |
 | `package.yml` | called by `ci.yml` | four native packages, AppImage, their SBOMs and vulnerability scan, and with a tag the collected `release-assets` |
 | `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site; re-scan the latest stable release's SBOMs |
-| `release.yml` | pushes to `main` and manual | cut a candidate (or stable on request), test, package and stage a draft |
+| `release.yml` | pushes to `main` and manual | tag the stable merge commit, test, package and stage a draft |
 | `renovate.yml` | 04:17 UTC Mondays and manual; pull requests that change it | open dependency-update pull requests against `nightly`; on pull requests, a read-only lookup ([dependency updates](#dependency-updates)) |
 
 The single required status check is the `CI` job. It fails when any job the
@@ -19,7 +20,15 @@ job skipped because the change cannot affect it is.
 ## Job selection
 
 `tools/ci/changes.py` classifies a pull request's changed paths. Pushes, the
-schedule, manual runs and release callers always select everything.
+schedule, manual runs and stable release callers select everything by default.
+The nightly caller sets `reuse_source_ci: true`: `tools/ci/reuse_ci.py` looks for
+a successful `ci.yml` push run on `nightly` at the exact commit. It requires
+contracts, both Linux test jobs, the Windows compile, sanitizers and `CI` to
+have succeeded in that run's successful attempt. Only then are source builds
+and sanitizers skipped. Contracts, tagged packages, AppImage checks, source
+delivery and scans still run. Missing, cancelled, incomplete, unrelated or
+unavailable evidence falls back to the full suite. The producer run, attempt,
+commit and job IDs are saved in `source-ci-provenance` for 90 days.
 
 | Changed paths | contracts | linux, portable | packages |
 | --- | --- | --- | --- |
@@ -122,7 +131,11 @@ snapshots and dependency pins are unchanged. See the
 [independent mirror and journal-retry evidence](evidence/2026-10-24-ci-mirror-journal/README.md)
 for targeted checks and the outstanding hosted-run/stress gates.
 
-**pipewire** checks the AppImage's bundled GStreamer `pipewiresrc` against a PipeWire
+**appimage-pipewire** in `package.yml` checks each new image as soon as its
+build finishes, alongside the SBOM and corresponding-source jobs. It remains
+a required part of the package workflow. The outer **pipewire** job runs only
+for recorder/check changes that did not build packages, using a checksum-verified
+published nightly. Both check the AppImage's bundled GStreamer `pipewiresrc` against a PipeWire
 1.6 daemon (issue #144). The AppImage bundles Ubuntu 24.04's PipeWire 1.0.5 plugin,
 while hosts run their own daemon, and PipeWire 1.5.81 and later refuse a link whose
 buffer-count ranges don't overlap. That mismatch broke recording on Plasma 6.6 (#137)
@@ -143,6 +156,39 @@ checks it against that release's `SHA256SUMS`. It takes about two minutes, most 
 it installing the container's packages. A branch that drops `min-buffers=1` fails
 it with the #137 error, `error alloc buffers: Invalid argument (-22)`. The job is
 part of the required `CI` summary when selected.
+
+## Nightly runtime and artifact transfers
+
+The 2026-10-26 baseline [nightly run](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40275032192)
+took 54 minutes 33 seconds. Its AppImage job took 23.75 minutes, collection 7.88,
+the subsequent PipeWire check 4.12, and publication 15.78. Source test jobs
+finished in 4.5–5.6 minutes in parallel. Removing those tests alone would not
+remove the observed bottleneck.
+
+Package compiler caches are separate per distro/AppImage and dependency
+fingerprint, capped at 256 MiB each. Only `nightly` pushes save them; other runs
+restore them. Superseded entries are pruned by the existing cache maintenance.
+No application build directory or version manifest is reused. AppImage's required
+`appimage-sources` job caches exact Ubuntu source downloads and revalidates their
+source identity and checksums. It runs alongside image checks and SBOM generation.
+Its tarball uses gzip level 1; installers keep their existing compression.
+
+Downstream package checks download installers and receipts only. Debug symbols
+are separate per-build artifacts retained for 90 days. The source archive is
+compiled on untagged package runs, avoiding another production compilation for
+each tagged nightly. Already compressed package/source handoffs use artifact
+compression level 0. Collection no longer runs cross-build DWARF deduplication
+or makes a duplicate all-in-one release ZIP.
+
+The main release carries installers and small support metadata. Sources and the
+optional GNOME extension have a linked source release; the unchanged 2.5 GB of
+Proton source parts stay at their permanent URLs. Publication checks GitHub's
+SHA-256 asset digest, downloading bytes only when that digest is absent. It still
+rejects missing assets, checksum mismatches, replaced tags and changed metadata.
+
+These changes need a new hosted run to establish their actual elapsed-time
+improvement. Cache warm-up, source changes and mirror availability affect it.
+They do not replace stable-release desktop or memory acceptance.
 
 ## Dependency updates
 

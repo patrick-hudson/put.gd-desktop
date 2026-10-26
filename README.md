@@ -191,10 +191,10 @@ Every build, nightly or stable, ships the same fourteen files. Grab the one for 
 | Debian 13 | `putgd-VERSION-debian13-x86_64.deb` | distro Qt 6.8 + LayerShellQt |
 | Fedora 44 | `putgd-VERSION-fedora44-x86_64.rpm` | distro Qt + LayerShellQt |
 | Anything else with glibc 2.39+ | `putgd-VERSION-x86_64.AppImage` | bundled Qt 6.12.0, dynamically linked |
-| GNOME 50 (any of the above) | `putgd-gnome50-VERSION.zip` | host Shell extension; the DEB/RPM already install it |
-| Building it yourself | `putgd-VERSION-source.tar.gz` | curated source with `source-info.json` |
+| GNOME 50 (any of the above) | ZIP in the linked sources/integration release | host Shell extension; the DEB/RPM already install it |
+| Building it yourself | clone the release tag, or use the linked source snapshot | CMake/Ninja build instructions included |
 
-Plus `SHA256SUMS`, `release-builds.json` (full build receipts), a combined `putgd-VERSION-release.zip`, the AppImage's media source, and the Proton helper's corresponding source in two parts. Each DEB installs only on the release it names, because it links that release's FFmpeg.
+Plus checksums, update metadata, package SBOMs and source-delivery links. Corresponding sources are separate linked downloads; debug symbols stay in CI artifacts. Each DEB installs only on the release it names, because it links that release's FFmpeg.
 
 <details open>
 <summary><b>Fetch the newest nightly from the terminal</b></summary>
@@ -223,7 +223,7 @@ gnome-extensions enable putgd@put.gd
 
 **Updating.** Once a day put.gd asks app.put.gd for the newest version on its channel: one request with nothing identifying, on by default, off in **Settings → General → Updates**. Nothing installs on its own. A DEB or RPM updates through the apt or dnf repository it added, like any other package, and Settings opens your system's software updater when there is something new. An AppImage offers **Download and install**: put.gd verifies the release against its signed checksums, replaces the file in place and keeps the old version as a hidden backup. [updates.md](docs/updates.md) covers the channels, switching between them and going back if a new version will not start.
 
-> **Nightlies are build-tested, not desktop-certified.** Each one passed the full Linux test suites, the Windows compile, package audits and a production build of its own source tarball. Graphical, memory and live-S3 acceptance are recorded separately per candidate in [verification.md](docs/verification.md). Candidates and stable releases land on the same page once their exact packages pass acceptance on real desktops; a published stable becomes GitHub's *Latest*.
+> **Nightlies are build-tested, not desktop-certified.** Each one has passing source CI for its exact commit and fresh tagged-package audits, AppImage recording/start checks and a component scan. Nightly reuses the source tests when that exact commit already passed CI. Graphical, memory and live-S3 acceptance are recorded separately per candidate in [verification.md](docs/verification.md). Candidates and stable releases land on the same page once their exact packages pass acceptance on real desktops; a published stable becomes GitHub's *Latest*.
 
 ## <img src="docs/readme/icons/quickstart.svg" width="28" height="28" align="absmiddle" alt=""> Quickstart
 
@@ -343,7 +343,7 @@ gitGraph
 
 | Channel | Tag | When | What you get |
 | --- | --- | --- | --- |
-| **Nightly** | `vYY.MDD.N-nightly` | 05:23 UTC daily, only if `nightly` changed | automatic prerelease after the full CI and package matrix passed on that exact tag |
+| **Nightly** | `vYY.MDD.N-nightly` | 05:23 UTC daily, only if `nightly` changed | automatic prerelease after source CI for the exact commit and fresh tagged-package checks pass |
 | **Stable** | `vYY.MDD.N` | every push to `main` (a promotion PR or a hotfix) | draft, published after exact-asset acceptance on real desktops; becomes GitHub's *Latest* |
 
 `YY.MDD` is the tagged commit's UTC date and `N` its commit count, so versions only go up and sort by when they were made, across channels. There is no release-candidate channel: the stable draft is what acceptance runs on. Every release carries a `release-builds.json` with the producing workflow run, commit, tree and the SHA-256 of each asset, and the publisher refuses to replace bytes that are already public. The daily pipeline, job selection by changed paths and the SDK prefix caches are described in [ci.md](docs/ci.md); the promotion runbook in [release.md](docs/release.md).
@@ -356,7 +356,7 @@ gitGraph
 - The Debug `dev` build and the full CTest suite on Ubuntu 24.04 (minimum Qt API) and Ubuntu 26.04 (LayerShellQt), as an unprivileged user with private socket paths.
 - The shared production code compiled on Windows with the official Qt.
 - Ubuntu 24.04 and 26.04 DEBs, the Fedora 44 RPM and the AppImage, each built in a pinned container and audited for ownership, modes, ELF resolution, helper identities and SDK hashes.
-- A production compile of the exact curated source tarball that gets published.
+- Exact source delivery and checksum verification. The source archive is compiled on untagged packaging runs; nightlies do not repeat that compilation.
 
 It does **not** certify compositor behaviour, memory on a real desktop or a live bucket. Those are separate, recorded gates.
 </details>

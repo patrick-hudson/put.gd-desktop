@@ -74,9 +74,11 @@ tag=$(gh release list --limit 5 --json tagName,isDraft --jq '[.[] | select(.isDr
 gh release view "$tag" --json isDraft,isPrerelease,assets --jq '{draft: .isDraft, prerelease: .isPrerelease, assets: (.assets | length)}'
 ```
 
-Expect a draft for `vYY.MDD.N` that is not a prerelease, with the 16 assets
+Expect a draft for `vYY.MDD.N` that is not a prerelease, with the 15 installer/support assets
 listed in [Releases](release.md#github-downloads-and-source), tagged on `main`
-HEAD. Check that `vYY.MDD.N` is exactly `main` HEAD's date and count:
+HEAD. Check the linked `sources-vYY.MDD.N-files` release and the pinned Proton
+source links too; missing corresponding sources block publication. Check that
+`vYY.MDD.N` is exactly `main` HEAD's date and count:
 `git rev-parse "$tag^{commit}"` must equal `git ls-remote origin refs/heads/main`.
 If a job fails for an infrastructure reason, use "Re-run failed jobs" on that
 run. If the source is at fault, fix it on `nightly` and promote again; the next
