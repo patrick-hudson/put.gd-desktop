@@ -23,6 +23,10 @@
 #include <QSpinBox>
 #include <QStyleOptionSpinBox>
 #include <QVBoxLayout>
+#include <QStyleOptionToolButton>
+#include <QHBoxLayout>
+#include <QToolButton>
+#include <QMenu>
 #include <QtTest>
 #include "fixtures/Waits.h"
 
@@ -204,6 +208,105 @@ private slots:
                 QVERIFY2(std::abs((top + bottom) / 2.0 - (shot.height() - 1) / 2.0) <= 2, qPrintable(QString("%1-%2 of %3").arg(top).arg(bottom).arg(shot.height())));
             }
         }
+    }
+    // A split button's menu half is a full 32 px target; its small chevron sits
+    // centred in it, and clicking anywhere in it opens the menu.
+    void splitButtonArrowZoneIsAFullTarget() {
+        QWidget window;
+        auto* layout = new QHBoxLayout(&window);
+        auto* split = Graphite::toolButton("Capture region & edit", "edit", "quiet", &window);
+        auto* menu = new QMenu(split);
+        menu->addAction("Edit clipboard image");
+        split->setMenu(menu);
+        split->setPopupMode(QToolButton::MenuButtonPopup);
+        auto* iconOnly = Graphite::toolButton("Capture region & edit", "edit", "quiet", &window);
+        iconOnly->setMenu(menu);
+        iconOnly->setPopupMode(QToolButton::MenuButtonPopup);
+        iconOnly->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        layout->addWidget(split);
+        layout->addWidget(iconOnly);
+        RedesignTheme::apply(window);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        for (auto* button : {split, iconOnly}) {
+            QStyleOptionToolButton option;
+            option.initFrom(button);
+            option.rect = button->rect();
+            option.features = QStyleOptionToolButton::MenuButtonPopup | QStyleOptionToolButton::HasMenu;
+            const auto arrow = button->style()->subControlRect(QStyle::CC_ToolButton, &option, QStyle::SC_ToolButtonMenu, button);
+            QVERIFY2(arrow.width() >= Graphite::Metric::iconTarget, qPrintable(QString("arrow zone %1 px").arg(arrow.width())));
+            QCOMPARE(arrow.right(), button->rect().right());
+            // The action half keeps its own room beside it.
+            const auto action = button->style()->subControlRect(QStyle::CC_ToolButton, &option, QStyle::SC_ToolButton, button);
+            QVERIFY(!action.intersects(arrow));
+            QVERIFY(action.width() >= Graphite::Metric::iconTarget);
+            // The chevron's ink is small and centred in the zone, not stretched across it.
+            const auto shot = button->grab().toImage().convertToFormat(QImage::Format_RGB32);
+            const auto& p = Theme::current();
+            int left = shot.width(), right = -1;
+            for (int y = 8; y < shot.height() - 8; ++y)
+                for (int x = arrow.left() + 2; x <= arrow.right() - 2; ++x)
+                    if (Theme::contrast(shot.pixelColor(x, y), p.bg) > 3) { left = std::min(left, x); right = std::max(right, x); }
+            QVERIFY(right > left);
+            QVERIFY2(right - left <= 12, qPrintable(QString("chevron %1 px wide").arg(right - left)));
+            QVERIFY2(std::abs((left + right) / 2.0 - (arrow.left() + arrow.right()) / 2.0) <= 2.5, qPrintable(QString("chevron %1-%2 in %3-%4").arg(left).arg(right).arg(arrow.left()).arg(arrow.right())));
+        }
+    }
+    // Technical values (paths, URLs, identifiers) use Plex Mono at body size.
+    void technicalValuesUseMonoAtBodySize() {
+        QWidget window;
+        auto* layout = new QVBoxLayout(&window);
+        auto* field = new QLineEdit("screenshots/", &window);
+        auto* value = new QLabel("https://captures.example.invalid/screenshots/Screenshot.png", &window);
+        auto* name = new QLabel("Project archive", &window);
+        for (QWidget* w : std::initializer_list<QWidget*>{field, value}) VisualStyle::role(w, "technical");
+        for (QWidget* w : std::initializer_list<QWidget*>{field, value, name}) layout->addWidget(w);
+        RedesignTheme::apply(window);
+        for (QWidget* w : std::initializer_list<QWidget*>{field, value}) {
+            QCOMPARE(w->font().family(), Graphite::monoFamily());
+            QCOMPARE(w->font().pixelSize(), Graphite::scaled(Graphite::Type::body));
+        }
+        QVERIFY(name->font().family() != Graphite::monoFamily());
+        // A technical label states a value; it is not painted as a link.
+        QVERIFY(value->palette().color(QPalette::WindowText) != Theme::current().link);
+    }
+    // A revealable summary is a tab stop whose Enter shows its full plain text;
+    // headings built on the same label stay out of the tab order.
+    void revealableSummaryReadsFromTheKeyboard() {
+        QWidget window;
+        auto* layout = new QHBoxLayout(&window);
+        auto* before = new QPushButton("Before", &window);
+        auto* summary = new Graphite::ElidedLabel(&window);
+        const QString full = "Capture output: Shared link · Production screenshots for customer support + local copy · 2 action exceptions";
+        summary->setText(full);
+        summary->setRevealable(true);
+        auto* heading = new Graphite::ElidedLabel(&window);
+        heading->setText("All items");
+        layout->addWidget(before);
+        layout->addWidget(summary, 1);
+        layout->addWidget(heading);
+        window.resize(360, 60);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowActive(&window));
+        QVERIFY(summary->elided());
+        QCOMPARE(heading->focusPolicy(), Qt::NoFocus);
+        before->setFocus(Qt::TabFocusReason);
+        QTest::keyClick(before, Qt::Key_Tab);
+        QCOMPARE(QApplication::focusWidget(), summary);
+        QTest::keyClick(summary, Qt::Key_Return);
+        QWidget* popup = summary->fullTextPopup();
+        QVERIFY(popup && popup->isVisible());
+        auto* text = popup->findChild<QLabel*>("elidedLabelFullTextValue");
+        QVERIFY(text);
+        QCOMPARE(text->text(), full);
+        QCOMPARE(text->textFormat(), Qt::PlainText);
+        QVERIFY(text->textInteractionFlags() & Qt::TextSelectableByKeyboard);
+        QTest::keyClick(QApplication::focusWidget(), Qt::Key_Escape);
+        PUTGD_TRY_VERIFY(!summary->fullTextPopup());
+        // A click opens it too.
+        QTest::mouseClick(summary, Qt::LeftButton);
+        QVERIFY(summary->fullTextPopup() && summary->fullTextPopup()->isVisible());
+        summary->fullTextPopup()->close();
     }
     // #300: a checked, disabled check box or radio button still looks checked:
     // a muted tick or dot on the accent-tinted fill, not an empty box.

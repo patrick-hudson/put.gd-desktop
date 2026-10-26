@@ -13,6 +13,9 @@
 #include <QFontMetricsF>
 #include <QHash>
 #include <QIconEngine>
+#include <QKeyEvent>
+#include <QScreen>
+#include <QGuiApplication>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMainWindow>
@@ -448,6 +451,8 @@ void Style::polish(QWidget* widget) {
     else if (name == "version") f = font(Type::micro);
     else if (name == "binding") { f = monoFont(Type::metadata); colour = c.textMuted; }
     else if (name == "mono" || name == "path" || (name == "link" && qobject_cast<QLineEdit*>(widget)) || name == "diagnostics") f = monoFont(Type::metadata);
+    // Editable paths, URLs, prefixes, bucket names and identifiers: Mono at body size.
+    else if (name == "technical") f = monoFont(Type::technical);
     else if (name == "pill") { f = font(Type::micro); colour = c.textSecondary; }
     else if (name == "editableTitle") f = font(Type::page, true);
     else setFont = false;
@@ -599,13 +604,14 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         }
         if (!text) {
             const int side = std::max(Metric::iconTarget, (icon ? tool->iconSize.height() : 16) + 14);
-            return {side + (split ? Metric::splitZone : 0), side};
+            return {side + (split ? Metric::splitArrow : 0), side};
         }
         QFont f = widget ? widget->font() : QApplication::font();
         if (name == "primary") f.setWeight(QFont::DemiBold);
         const QFontMetrics metrics(f);
         int w = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + 2 * 14 + 2 + (icon ? tool->iconSize.width() + 8 : 0);
-        if (split || menu) w += Metric::splitZone - 6;
+        if (split) w += Metric::splitArrow - 6;
+        else if (menu) w += Metric::splitZone - 6;
         return {w, std::max(Metric::control, metrics.height() + 14)};
     }
     case CT_LineEdit: {
@@ -734,8 +740,8 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* o
     case CC_ToolButton: {
         const auto* tool = qstyleoption_cast<const QStyleOptionToolButton*>(option);
         if (!tool || !(tool->features & QStyleOptionToolButton::MenuButtonPopup)) break;
-        if (sub == SC_ToolButtonMenu) return visualRect(option->direction, r, QRect(r.right() - Metric::splitZone + 1, r.top(), Metric::splitZone, r.height()));
-        if (sub == SC_ToolButton) return visualRect(option->direction, r, r.adjusted(0, 0, -Metric::splitZone, 0));
+        if (sub == SC_ToolButtonMenu) return visualRect(option->direction, r, QRect(r.right() - Metric::splitArrow + 1, r.top(), Metric::splitArrow, r.height()));
+        if (sub == SC_ToolButton) return visualRect(option->direction, r, r.adjusted(0, 0, -Metric::splitArrow, 0));
         break;
     }
     default: break;
@@ -1350,6 +1356,37 @@ QToolButton* toolButton(const QString& text, const QString& glyph, const char* r
     return button;
 }
 
+namespace {
+// The full text of a revealable label: a raised panel with a hairline, the
+// text selectable by mouse and keyboard, closed by Escape or a click outside.
+class FullTextPopup final : public Surface {
+public:
+    FullTextPopup(const QString& text, QWidget* owner) : Surface("raised", Qt::TopEdge | Qt::BottomEdge | Qt::LeftEdge | Qt::RightEdge, owner) {
+        setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
+        setAttribute(Qt::WA_DeleteOnClose);
+        setObjectName("elidedLabelFullText");
+        auto* layout = new QVBoxLayout(this);
+        layout->setContentsMargins(12, 10, 12, 10);
+        label_ = new QLabel(text, this);
+        label_->setObjectName("elidedLabelFullTextValue");
+        label_->setTextFormat(Qt::PlainText);
+        label_->setWordWrap(true);
+        label_->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+        label_->setFocusPolicy(Qt::StrongFocus);
+        label_->setAccessibleName(text);
+        layout->addWidget(label_);
+        setAccessibleName(text);
+    }
+    QLabel* label() const { return label_; }
+protected:
+    void keyPressEvent(QKeyEvent* event) override {
+        if (event->key() == Qt::Key_Escape || event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) { close(); return; }
+        Surface::keyPressEvent(event);
+    }
+private:
+    QLabel* label_;
+};
+}
 ElidedLabel::ElidedLabel(QWidget* parent) : QLabel(parent) { setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred); }
 QSize ElidedLabel::minimumSizeHint() const { return {std::min(QLabel::minimumSizeHint().width(), fontMetrics().averageCharWidth() * 8), QLabel::minimumSizeHint().height()}; }
 void ElidedLabel::setText(const QString& text) {
@@ -1357,8 +1394,56 @@ void ElidedLabel::setText(const QString& text) {
     setToolTip(text);
     setAccessibleName(text);
 }
+void ElidedLabel::setRevealable(bool on) {
+    revealable_ = on;
+    // Headings stay out of the tab order; an actionable summary is a stop.
+    setFocusPolicy(on ? Qt::StrongFocus : Qt::NoFocus);
+    setCursor(on ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    setAccessibleDescription(on ? QStringLiteral("Press Enter to show the full text.") : QString());
+    update();
+}
+bool ElidedLabel::elided() const { return QFontMetricsF(font()).horizontalAdvance(text()) > contentsRect().width(); }
+void ElidedLabel::reveal() {
+    if (!revealable_ || text().isEmpty()) return;
+    if (popup_) popup_->close();
+    auto* popup = new FullTextPopup(text(), this);
+    popup_ = popup;
+    const auto screen = (window() && window()->screen() ? window()->screen() : QGuiApplication::primaryScreen())->availableGeometry();
+    const int width = std::min(std::max(this->width(), scaled(320)), std::min(scaled(560), screen.width() - 16));
+    popup->setFixedWidth(width);
+    popup->adjustSize();
+    // Above a label in the lower half of its window (the status band), below
+    // one higher up; the other side when the screen has no room.
+    const QPoint above = mapToGlobal(QPoint(0, -popup->height() - 4)), below = mapToGlobal(QPoint(0, height() + 4));
+    const bool lower = window() && mapTo(window(), QPoint(0, 0)).y() > window()->height() / 2;
+    QPoint at = lower ? above : below;
+    if (lower && at.y() < screen.top()) at = below;
+    else if (!lower && at.y() + popup->height() > screen.bottom()) at = above;
+    at.setX(std::clamp(at.x(), screen.left() + 8, std::max(screen.left() + 8, screen.right() - width - 8)));
+    at.setY(std::max(at.y(), screen.top() + 8));
+    popup->move(at);
+    popup->show();
+    popup->label()->setFocus(Qt::PopupFocusReason);
+}
+void ElidedLabel::keyPressEvent(QKeyEvent* event) {
+    if (revealable_ && (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter || event->key() == Qt::Key_Space)) { reveal(); return; }
+    QLabel::keyPressEvent(event);
+}
+void ElidedLabel::mouseReleaseEvent(QMouseEvent* event) {
+    if (revealable_ && event->button() == Qt::LeftButton && rect().contains(event->position().toPoint())) { reveal(); return; }
+    QLabel::mouseReleaseEvent(event);
+}
+void ElidedLabel::focusInEvent(QFocusEvent* event) { QLabel::focusInEvent(event); update(); }
+void ElidedLabel::focusOutEvent(QFocusEvent* event) { QLabel::focusOutEvent(event); update(); }
 void ElidedLabel::paintEvent(QPaintEvent*) {
     QPainter p(this);
+    // A revealable summary's keyboard focus: the amber ring around its text.
+    if (revealable_ && keyboardFocus(this)) {
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setPen(QPen(t().accent, 1));
+        p.setBrush(Qt::NoBrush);
+        p.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
+    }
     paintText(p, contentsRect(), text(), palette().color(isEnabled() ? QPalette::Normal : QPalette::Disabled, foregroundRole()), font(),
               alignment(), Qt::ElideMiddle);
 }

@@ -20,14 +20,19 @@ namespace putgd::Graphite {
 namespace Metric {
 constexpr int space = 4, control = 36, iconTarget = 32, radius = 7, segmentRadius = 6, trackRadius = 8, swatchRadius = 5;
 constexpr int header = 56, commandBand = 60, statusBand = 26, icon = 18, splitZone = 26;
+// A split button's menu half: a full 32 px pointer target with the same small
+// chevron (combo boxes and menu buttons keep splitZone for their chevron).
+constexpr int splitArrow = 32;
 constexpr int navRow = 38, destinationRow = 68, historyRow = 76, thumbWidth = 80, thumbHeight = 50;
 constexpr int historySidebar = 184, settingsSidebar = 210, destinationSidebar = 236, inspector = 300;
 // The widest a page sidebar grows for long labels or enlarged text.
 constexpr int sidebarMax = 260;
 }
-// Type sizes in pixels; weights are 400 and 600 only.
+// Type sizes in pixels; weights are 400 and 600 only. Technical values (paths,
+// URLs, prefixes, bucket names, identifiers) use Plex Mono at body size: the
+// "technical" type role.
 namespace Type {
-constexpr int body = 14, metadata = 12, micro = 11, section = 17, page = 23;
+constexpr int body = 14, metadata = 12, micro = 11, section = 17, page = 23, technical = 14;
 }
 // Families registered by Fonts::load (IBM Plex) in processes that bundle them;
 // the system families elsewhere.
@@ -132,16 +137,32 @@ private:
 };
 
 // One line of text that elides in the middle instead of widening its window;
-// the full text stays in its tooltip and accessible name.
+// the full text stays in its tooltip and accessible name. A revealable label
+// (an actionable summary, not a heading) is also a tab stop: Enter, Space or a
+// click opens its full plain text in a small popup a keyboard can read, select
+// and close with Escape.
 class ElidedLabel final : public QLabel {
     Q_OBJECT
 public:
     explicit ElidedLabel(QWidget* parent = nullptr);
     void setText(const QString&);
+    void setRevealable(bool);
+    bool revealable() const { return revealable_; }
+    bool elided() const;
+    // Opens the full text popup (revealable labels); the popup while it is open.
+    void reveal();
+    QWidget* fullTextPopup() const { return popup_; }
     QSize minimumSizeHint() const override;
     QSize sizeHint() const override { return {QLabel::sizeHint().width(), QLabel::sizeHint().height()}; }
 protected:
     void paintEvent(QPaintEvent*) override;
+    void keyPressEvent(QKeyEvent*) override;
+    void mouseReleaseEvent(QMouseEvent*) override;
+    void focusInEvent(QFocusEvent*) override;
+    void focusOutEvent(QFocusEvent*) override;
+private:
+    bool revealable_ = false;
+    QPointer<QWidget> popup_;
 };
 
 // The segmented control: one track, a raised selected segment, labels centred
