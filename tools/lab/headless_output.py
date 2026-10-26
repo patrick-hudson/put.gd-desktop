@@ -159,7 +159,7 @@ def snapshot(card):
 
 
 def notify(card):
-    root_write(Path('/sys/class/drm') / card / 'uevent', b'change HOTPLUG=1')
+    root_write(Path('/sys/class/drm') / card / 'uevent', b'change')
 
 
 def enable(args):

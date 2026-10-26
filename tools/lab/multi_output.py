@@ -98,9 +98,9 @@ def pixel_oracle(image, monitors, rect, densities):
         return {'ok': False, 'actualSize': list(im.size), 'expectedSize': list(expected_size), 'reason': 'pixel-size'}
     pixels = im.load(); mismatches = 0; first = []; gaps = 0
     for py in range(im.height):
-        gy = y + (py + .5) / density
+        gy = (math.floor(y * density) + py + .5) / density
         for px in range(im.width):
-            gx = x + (px + .5) / density
+            gx = (math.floor(x * density) + px + .5) / density
             expected = (0, 0, 0, 0)
             for i, m in participating:
                 if m['x'] <= gx < m['x'] + m['width'] and m['y'] <= gy < m['y'] + m['height']:

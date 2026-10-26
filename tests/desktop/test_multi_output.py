@@ -10,6 +10,17 @@ import wall_probe
 
 
 class PixelOracle(unittest.TestCase):
+    def test_fractional_density_and_actual_negative_screen_coordinates(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest('Pillow unavailable')
+        with tempfile.TemporaryDirectory() as folder:
+            p = Path(folder) / 'result.png'
+            Image.new('RGBA', (15, 15), (*campaign.COLORS[0], 255)).save(p)
+            m = [{'x': -100, 'y': -100, 'width': 128, 'height': 128}]
+            self.assertTrue(campaign.pixel_oracle(p, m, [-90, -90, 10, 10], [1.5])['ok'])
+
     def test_one_wrong_rgb_pixel_fails_even_when_alpha_is_equal(self):
         try:
             from PIL import Image
