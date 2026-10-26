@@ -32,9 +32,9 @@ LABELS = {'preflight': 'Checking destination', 'saving_local': 'Saving local cop
 # theme, picks the set (#60). uploadDim is IconArt's unfilled remainder of the
 # progress fill, upload.darker(230).
 TRAY_TINTS = {
-    'dark': {'idle': '#9bbcff', 'upload': '#62d69b', 'uploadDim': '#2b5d43',
+    'dark': {'idle': '#d6d6d2', 'upload': '#62d69b', 'uploadDim': '#2b5d43',
              'encoding': '#f3c66f', 'error': '#ffb4ab'},
-    'light': {'idle': '#2759b8', 'upload': '#146c42', 'uploadDim': '#092f1d',
+    'light': {'idle': '#454540', 'upload': '#146c42', 'uploadDim': '#092f1d',
               'encoding': '#8a5300', 'error': '#b4312a'},
 }
 

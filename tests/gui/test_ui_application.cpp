@@ -225,7 +225,7 @@ private slots:
  void allMainPagesRemainVisibleWithNativeStyleRowMetrics(){
   // Graphite: the pages are one centred segmented control in the header.
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);auto* navigation=window.findChild<QTabBar*>("mainNavigation");QVERIFY(navigation);window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  for(int row=0;row<navigation->count();++row){navigation->setCurrentIndex(row);putgd::test::settle(50);QVERIFY(navigation->rect().contains(navigation->tabRect(row)));QCOMPARE(window.findChild<QStackedWidget*>("mainPages")->currentIndex(),row);}
+  for(int row=0;row<navigation->count();++row){navigation->setCurrentIndex(row);PUTGD_TRY_VERIFY(navigation->rect().contains(navigation->tabRect(row)));PUTGD_TRY_COMPARE(window.findChild<QStackedWidget*>("mainPages")->currentIndex(),row);}
   QCOMPARE(QStringList({navigation->tabText(0),navigation->tabText(1),navigation->tabText(2)}),QStringList({"History","Destinations","Settings"}));
   // Centred in the window header.
   const int centre=navigation->mapTo(&window,navigation->rect().center()).x();QVERIFY2(std::abs(centre-window.width()/2)<=4,qPrintable(QString::number(centre)));
