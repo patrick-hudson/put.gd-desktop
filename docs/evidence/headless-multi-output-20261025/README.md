@@ -30,13 +30,19 @@ PR #582's CI summary passed on its exact CI merge.
 
 ## Observed profiles
 
+Historical `record-region` pass booleans below and in the JSON summaries mean
+motion/recording-bar controls only. The original oracle did not validate exported
+dimensions or head-specific clip pixels. The [review audit](review-audit.json)
+qualifies those results; neither native recording geometry nor a fresh run of the
+strengthened tooling is established by those booleans.
+
 | Profile | Native GPU/wall feasibility | App geometry scope |
 | --- | --- | --- |
 | Debian 13 / Plasma 6.3.6 Wayland, Intel HD 530 | Independent pipes, QHD30/60, scale 1.5, rotation and gaps observed; restored | App launch blocked by the then-current wall gate. Earlier secondary-stream attribution needs a retest with the RFB fix. |
 | Kubuntu 26.04 / Plasma 6.6.6 Wayland, Intel i915 | FHD + QHD at 1.5; both heads fresh on combined wall | Frozen build reproduced wrong-head selection; fixed build primary region/paste and MP4 motion/bar pass. Full fractional native-grid/reference comparison remains pending. |
-| Mint 22.3 / Cinnamon 6.6.4 X11, HD 530 / Mesa 25.2.8 | FHD + QHD, both fresh; rotated left/up/gap profile fresh | Frozen AppImage integral-density region/window/desktop, independent paste and MP4 static/moving/bar checks pass as scoped below. |
+| Mint 22.3 / Cinnamon 6.6.4 X11, HD 530 / Mesa 25.2.8 | FHD + QHD, both fresh; rotated left/up/gap profile fresh | Frozen AppImage integral-density region/window/desktop and independent paste pass. Historical MP4 motion/bar controls pass; native clip pixels were not replayed. |
 | Fedora 44 / native GNOME Wayland, Intel i915 | FHD + QHD on independent pipes; original first-head stream plus separate native second-head portal stream both fresh | No put.gd process launched in this bounded feasibility slot. |
-| Ubuntu 26.04.1 / GNOME 50.1 Wayland, fresh KVM overlay | Two separate virtio scanouts and per-head wall listeners | Frozen AppImage adjacent regions/span/windows/desktop/paste/Escape/right-click/MP4 passed after common v3 preflight; resize/disable during selection passed. Separate fix artifact passed five targeted regression cases. Scaled/rotated stages failed their wall prerequisite before app cases. |
+| Ubuntu 26.04.1 / GNOME 50.1 Wayland, fresh KVM overlay | Two separate virtio scanouts and per-head wall listeners | Frozen AppImage adjacent regions/span/windows/desktop/paste/Escape/right-click and historical MP4 controls passed after common v3 preflight; resize/disable during selection passed. Separate fix artifact passed five targeted regression cases. Scaled/rotated stages failed their wall prerequisite before app cases. |
 
 The current fractional oracle limitation is documented in the lab guide. The
 remaining matrix includes complete scaled/rotated pixel attribution, actual
@@ -88,6 +94,33 @@ physical panels or a cable removal.
 ![Fedora native second head](fedora-native-head1.png)
 
 ## Failure context and restoration
+
+Review remediation in tooling `e5026479` addresses colliding guest basenames and
+stale readiness, delayed fullscreen acknowledgement, diagonal drag endpoints,
+right-click placement, custom native data homes, native artifact containment,
+rollback timer coalescing, final saved-frame validation and weak wall/recording
+oracles. These are helper defects, not authority to waive a product gate.
+The original archives, helper identities, failed attempts and completed cleanup
+markers remain unchanged. No builder or desktop was contacted for this remediation.
+
+New fixture attempts/generations use UUID paths and PID/start identity; readiness
+requires actual drawing, fullscreen acknowledgement and placement. The VM wall
+extent must agree with native mode/rotation and an independent QMP frame before
+VNC pixels are checked. Motion now requires at least 1% of every head (and at least
+two pixels). Of 58 inspected archived sample entries, all 44 previously labelled
+passing exceeded that minimum; this offline count audit does not supply the new
+extent/readiness proof.
+
+The new recording oracle decodes eight half-second samples, checks dimensions
+and head-specific spatial colors, and fits the known periodic white-bar phase.
+RGB tolerance 18 is limited to lossy video; still-image RGBA remains exact.
+Scaled/spanning recording references fail closed. Local replay of unchanged
+archived clips passed sampled content for GNOME `adj2`/`adj3` and Cinnamon
+`rot1`/`rot2`, both static and moving, and the earlier Cinnamon `rec1` static clip.
+The `rec1` moving clip did not satisfy the periodic-bar model; it retains only
+its historical motion/bar result. No product failure is inferred from that model
+mismatch. Native clips were not replayed, and none of these offline results is a
+fresh acceptance run or changes the existing rotation/frame-gate blocks.
 
 GNOME guest `g1/adj3` repeated all nine adjacent-layout cases on original
 `6b7949f5` after the common disposable-guest preflight from

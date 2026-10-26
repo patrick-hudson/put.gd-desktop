@@ -56,6 +56,11 @@ is copied into the run so a later checkout edit cannot change rollback behavior.
 The deadline must precede lease expiry. It does not take DRM master or edit boot
 configuration.
 
+The revised timer explicitly sets `AccuracySec=1s` and `RandomizedDelaySec=0`.
+Admission reserves that accuracy plus 60 seconds for restoration and repeats its
+deadline check after setup. This bounds configured timer coalescing, not host
+scheduler delays; heartbeat and verified restoration still control handoff.
+
 ```sh
 python3 tools/lab/headless_output.py inspect --card card0 --output before1
 python3 tools/lab/headless_output.py edid --output qhd60.edid --refresh 60
@@ -81,7 +86,9 @@ Use [the wall workflow](remote-vm-displays.md). Retain the original VNC server;
 renew only a pilot-owned stream after topology changes. A combined stream must
 match the **actual** logical bounding rectangle. `tools/lab/wall_probe.py`
 requires known synthetic coverage and independently changing pixels on every
-head. A stale size or one frozen head blocks admission.
+head: at least 99% coverage and at least 1% changed pixels (minimum two). A stale
+size or one mostly frozen head blocks admission. The native adapter also checks
+the actual saved final frame and deletes it if that gate fails.
 
 The native adapter also requires at least two fullscreen heads before launching
 put.gd. Its `--vnc-port` currently requires one verified combined stream. GNOME
@@ -89,6 +96,12 @@ can instead expose individual monitors: the Fedora pilot retained the original
 head-0 stream and selected head 1 through a second native portal session, with
 both streams visible on separate wall tiles. That proves native GPU/display
 feasibility; it does not exercise the combined-stream app adapter.
+
+Campaign attempts and fixture generations use unique IDs, not local basenames.
+Readiness is bound to the launched PID/attempt and a still-live process identity;
+actual drawing, compositor fullscreen acknowledgement, dimensions and placement
+are required within a deadline. Native fixture/capture artifacts stay inside the
+owned run tree, and permission entries follow the compositor's `XDG_DATA_HOME`.
 
 The RFB reader must retain pixels outside partial update rectangles. Fix
 `421214b4` adds this behavior and resize invalidation, with wire-level regression
@@ -121,8 +134,16 @@ archive; it does not install one. An AppImage running on a native desktop is
 still AppImage evidence, not a native-package media row.
 
 `record-region` compares private MP4 static/moving controls and recording-bar
-placement. Motion repeats across the whole fixture so a narrow region cannot
-miss a single sweeping bar. It saves copies and never invokes Upload.
+placement. The revised helper additionally uses distro GStreamer Python
+introspection/decoders to decode eight half-second RGB samples and checks exported
+dimensions, head-specific spatial checker colors and the known moving-bar phase.
+Missing decoder prerequisites fail the case. Lossy-video RGB tolerance does not
+change the exact still-image oracle. Scaled/spanning video references currently
+fail closed. Motion repeats across the whole fixture so a narrow region cannot
+miss a single sweeping bar. A new static fixture is restored even on a recording
+error, so later still-image cases remain meaningful. It saves copies and never
+invokes Upload. Historical motion-only results are qualified in the evidence
+review audit; they are not new-helper live passes.
 `output-change` accepts a reviewed native-session command file, retains its
 bytes/result and checks cancellation, no artifacts and the clipboard sentinel.
 Restore and refresh inventory/wall evidence outside that case before continuing.
@@ -161,8 +182,10 @@ receipt. A preflight pass establishes session readiness, not product correctness
 
 `multi_output_vm_wall.py RUN --output NEW_DIRECTORY` checks every enabled
 per-head VNC listener against native inventory and motion after a topology
-change. Disabled heads are explicit; X11 tablet mappings are refreshed only for
-enabled outputs. Keep all workstation tunnels/tiles throughout graphical work.
+change. Expected extent comes from current native mode/rotation plus an independent
+QMP scanout frame; the VNC stream cannot choose its own expected rectangle.
+Disabled heads are explicit; X11 tablet mappings are refreshed only for enabled
+outputs. Keep all workstation tunnels/tiles throughout graphical work.
 
 Restore native compositor settings **and** kernel state, then prove cleanup:
 
