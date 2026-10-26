@@ -29,10 +29,10 @@ signals:void settingsCreated(SettingsWindow*);void viewStateChanged();void actio
 protected:
  bool eventFilter(QObject*,QEvent*)override;
 private:
- void fitBand();void updateSaveStatus();
+ void fitBand();void updateSaveStatus();void updateAvailability();
  UiSession& session_;QToolButton* editButton_=nullptr;SettingsWindow* settings_=nullptr;HistoryWindow* history_;QTabBar* tabs_;QStackedWidget* pages_;QLabel *destination_=nullptr,*saveStatus_=nullptr,*version_=nullptr;QPushButton* versionLink_;QPushButton* updateLink_=nullptr;FileDialog* chooser_=nullptr;QLabel* explanation_=nullptr;QWidget* outputGroup_=nullptr;
  // Edit an image file… whose chooser failed: its reason and Try again, under the command band.
  QWidget* chooserFailure_=nullptr;QLabel* chooserError_=nullptr;
- QWidget* band_=nullptr;QList<QToolButton*> actionButtons_;int bandStage_=0;bool fittingBand_=false;
+ QWidget* outputWarning_=nullptr;QLabel* outputWarningText_=nullptr;QWidget* band_=nullptr;QList<QToolButton*> actionButtons_;int bandStage_=0;bool fittingBand_=false;
 };
 }

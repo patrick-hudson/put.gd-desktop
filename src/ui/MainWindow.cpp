@@ -32,6 +32,14 @@
 #include "core/ReleaseLink.h"
 namespace putgd {
 namespace {
+QString unavailableOutput(const QJsonObject& document,const QString& action){
+ const auto route=Settings::effectiveAction(document,action);const bool local=document["archive"].toObject()["keepUploads"].toBool();
+ if(route["destination"]!="upload"||route["profileId"].toString().isEmpty())return local?QString{}:QString("No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.");
+ QJsonObject profile;for(const auto& value:document["profiles"].toArray())if(value.toObject()["id"]==route["profileId"])profile=value.toObject();
+ if(profile.isEmpty())return "The upload destination is unavailable. Choose an output in Settings → Capture.";
+ if(route["publicationMode"]=="private"&&profile["provider"]!="proton-drive")return "This destination does not support private uploads. Choose sharing in Settings → Capture.";
+ return {};
+}
 // The status band grows with its output summary and metadata.
 class StatusBand final:public QStatusBar {
 public:
@@ -96,11 +104,12 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    if(local&&saved["destination"]=="upload"&&!saved["profileId"].toString().isEmpty())output+=" Also keep a local copy in your folders.";
    if(saved["destination"]=="local"||saved["profileId"].toString().isEmpty()){if(local)output="Local only. "+output;}else{QJsonObject profile;for(const auto& v:document["profiles"].toArray())if(v.toObject()["id"]==saved["profileId"])profile=v.toObject();const auto mode=saved["publicationMode"].toString("default");const bool privateUpload=mode=="private"||(mode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));output=(privateUpload?QString("Private upload. "):QString("Shared link. "))+output;}
    const auto description=explanations.value(action)+"\n\n"+output+"\n\nUses saved settings. Review results in History."+(key.isEmpty()?"\nNo global shortcut assigned.":"\nShortcut: "+key);
-   button->setAccessibleDescription(description);auto tooltip=description.toHtmlEscaped();tooltip.replace('\n',"<br>");button->setToolTip("<qt>"+tooltip+"</qt>");
+   const auto unavailable=unavailableOutput(document,action);button->setEnabled(unavailable.isEmpty());if(action=="region")VisualStyle::role(button,unavailable.isEmpty()?"primary":"quiet");button->setAccessibleDescription(unavailable.isEmpty()?description:"Unavailable: "+unavailable+"\n\n"+description);auto tooltip=button->accessibleDescription().toHtmlEscaped();tooltip.replace('\n',"<br>");button->setToolTip("<qt>"+tooltip+"</qt>");
   };
   connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QToolButton::clicked,this,[this,action]{emit actionRequested(action);});bandRow->addWidget(button);actionButtons_<<button;
  }
  connect(helpAction,&QAction::triggered,this,[this,actionHelp]{VisualStyle::showHelp("Capture and clipboard actions",actionHelp,this);});
+ outputWarning_=new Graphite::Surface("surface",Qt::BottomEdge,center);outputWarning_->setObjectName("commandOutputWarning");auto* warningRow=new QHBoxLayout(outputWarning_);warningRow->setContentsMargins(16,6,12,8);warningRow->setSpacing(12);outputWarningText_=new QLabel(outputWarning_);outputWarningText_->setObjectName("commandOutputWarningText");outputWarningText_->setTextFormat(Qt::PlainText);outputWarningText_->setWordWrap(true);VisualStyle::role(outputWarningText_,"warning");warningRow->addWidget(outputWarningText_,1);auto* chooseOutput=new QPushButton("Choose output…",outputWarning_);chooseOutput->setObjectName("chooseCommandOutput");chooseOutput->setToolTip("Open Settings → Capture to choose the output");warningRow->addWidget(chooseOutput);connect(chooseOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});layout->addWidget(outputWarning_);connect(&session_,&UiSession::accepted,this,&MainWindow::updateAvailability);updateAvailability();
  // Edit an image file… whose chooser could not open: the reason under the band
  // that holds the action, with Try again. A cancel shows nothing.
  chooserFailure_=new Graphite::Surface("surface",Qt::BottomEdge,center);chooserFailure_->setObjectName("editImageChooserFailure");{auto* row=new QHBoxLayout(chooserFailure_);row->setContentsMargins(16,6,12,6);row->setSpacing(12);
@@ -210,6 +219,10 @@ void MainWindow::fitBand(){
  auto apply=[this](int stage){for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();const bool compact=action!="region"&&(stage>=2||(stage==1&&(action=="window"||action=="desktop")));button->setToolButtonStyle(compact?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);}band_->layout()->invalidate();band_->layout()->activate();};
  int stage=0;for(;stage<3;++stage){apply(stage);if(band_->layout()->minimumSize().width()<=band_->width()||stage==2)break;}
  bandStage_=stage;fittingBand_=false;
+}
+void MainWindow::updateAvailability(){
+ QStringList unavailable,reasons;for(auto* button:actionButtons_){const auto reason=unavailableOutput(session_.document(),button->property("captureAction").toString());if(reason.isEmpty())continue;unavailable<<button->accessibleName();if(!reasons.contains(reason))reasons<<reason;}
+ const auto message=unavailable.isEmpty()?QString{}:unavailable.size()==actionButtons_.size()?(reasons.size()==1&&reasons.first().startsWith("No output")?QString("No output is enabled. Choose a destination or enable local copies."):reasons.join(" ")):"Choose an output for: "+unavailable.join(", ")+".";outputWarningText_->setText(message);outputWarningText_->setAccessibleDescription(message+" Opens Settings → Capture.");outputWarning_->setVisible(!unavailable.isEmpty());
 }
 void MainWindow::showLocalCopySettings(){navigate("settings");settings_->showLocalCopySettings();}
 MainWindow::~MainWindow(){

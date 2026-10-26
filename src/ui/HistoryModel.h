@@ -20,6 +20,7 @@ public:
  bool busy()const{return queryBusy_;}
  qint64 total()const{return total_;}const UiHistoryQuery& query()const{return query_;}
  void setShowCancelled(bool);bool showCancelled()const{return showCancelled_;}int hiddenCancelled()const{return hiddenCancelled_;}
+ QJsonArray activeOperations()const;static int operationProgress(const QJsonObject&);
  void releaseThumbnails();
  // Reads a preview again once it has been made (#190) at a path whose earlier read failed.
  void reloadThumbnail(const QString& path);
@@ -39,7 +40,7 @@ public:
  static bool failed(const QJsonObject&);static bool retryUpload(const QJsonObject&);static bool retryLocalSave(const QJsonObject&);static bool copyLocalResult(const QJsonObject&);
  // One stored file whose original remote target delete.prepare can accept.
  static bool remoteDeletable(const QJsonObject& file);
-signals:void busyChanged(bool);void loaded();void error(const QString&);
+signals:void activityChanged();void busyChanged(bool);void loaded();void error(const QString&);
 private:
  void rebuild();void loadThumbnail(const QString&)const;void nextThumbnail()const;
  UiSession& history_;UiHistoryQuery query_;QList<QJsonObject> rows_;QJsonArray records_,operations_;qint64 total_=0;quint64 request_=0;

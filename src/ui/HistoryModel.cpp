@@ -38,6 +38,8 @@ QString HistoryModel::duration(qint64 ms){if(ms<=0)return {};const qint64 s=(ms+
 HistoryModel::HistoryModel(UiSession& history,QObject* parent):QAbstractListModel(parent),history_(history){}
 int HistoryModel::rowCount(const QModelIndex& parent)const{return parent.isValid()?0:rows_.size();}
 QJsonObject HistoryModel::record(int row)const{return row>=0&&row<rows_.size()?rows_.at(row):QJsonObject{};}
+QJsonArray HistoryModel::activeOperations()const{QJsonArray result;for(const auto& v:operations_)if(Operation::activeState(v.toObject()["state"].toString()))result.append(v);return result;}
+int HistoryModel::operationProgress(const QJsonObject& operation){return aggregateProgress(operation).percent();}
 bool HistoryModel::linkAvailable(int row)const{return record(row)["linkAvailable"].toBool();}
 QString HistoryModel::friendlyAction(const QString& action){if(action=="region")return "Region";if(action=="window")return "Window";if(action=="desktop")return "Full desktop";if(action=="clipboard")return "Clipboard";if(action=="edit")return "Region & edit";if(action=="record")return "Recording";if(action=="images"||action=="image")return "Image";if(action=="text")return "Text";if(action=="videos"||action=="video")return "Video";return "File";}
 bool HistoryModel::storedNothing(const QJsonObject& r){return r["records"].toArray().isEmpty()&&r["operation"].toObject()["items"].toArray().isEmpty();}
@@ -129,7 +131,7 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==ThumbnailRole){const auto path=r["previewPath"].toString();if(path.isEmpty())return {};if(auto* img=thumbnails_.object(path))return *img;loadThumbnail(path);}
  return {};
 }
-void HistoryModel::setQuery(const UiHistoryQuery& query){query_=query;query_.limit=qBound(1,query.limit,200);query_.offset=qMax(0,query.offset);++request_;if(!queryBusy_){queryBusy_=true;emit busyChanged(true);}beginResetModel();rows_.clear();records_={};operations_={};total_=0;endResetModel();refresh();}
+void HistoryModel::setQuery(const UiHistoryQuery& query){query_=query;query_.limit=qBound(1,query.limit,200);query_.offset=qMax(0,query.offset);++request_;if(!queryBusy_){queryBusy_=true;emit busyChanged(true);}beginResetModel();rows_.clear();records_={};total_=0;endResetModel();refresh();}
 void HistoryModel::setShowCancelled(bool show){if(showCancelled_==show)return;showCancelled_=show;if(!queryBusy_)rebuild();}
 void HistoryModel::refresh(){
  if(loadInFlight_){loadPending_=true;return;}const auto seq=request_;loadInFlight_=true;
@@ -138,11 +140,12 @@ void HistoryModel::refresh(){
  // briefly erase an acquiring row as its new operation became terminal.
  history_.request("operation.recent",{},this,[g=QPointer<HistoryModel>(this),seq](Error operationError,QJsonObject recent){
   if(!g)return;
+  if(!operationError){g->operations_=recent["operations"].toArray();emit g->activityChanged();}
   const auto query=g->query_;
-  g->history_.request("history.list",{{"limit",query.limit},{"offset",query.offset},{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",query.uploadStatus},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to}},g,[g,seq,recent,operationError](Error e,QJsonObject data){
+  g->history_.request("history.list",{{"limit",query.limit},{"offset",query.offset},{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",query.uploadStatus},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to}},g,[g,seq,operationError](Error e,QJsonObject data){
    if(!g)return;
    g->loadInFlight_=false;const bool again=std::exchange(g->loadPending_,false);
-   if(g->request_==seq){if(g->queryBusy_){g->queryBusy_=false;emit g->busyChanged(false);}if(e)emit g->error(e.message);else{g->records_=data["records"].toArray();g->total_=data["total"].toInteger();g->operations_=recent["operations"].toArray();g->rebuild();if(operationError)emit g->error("Recent captures unavailable: "+operationError.message);}}
+   if(g->request_==seq){if(g->queryBusy_){g->queryBusy_=false;emit g->busyChanged(false);}if(e)emit g->error(e.message);else{g->records_=data["records"].toArray();g->total_=data["total"].toInteger();g->rebuild();if(operationError)emit g->error("Recent captures unavailable: "+operationError.message);}}
    if(again)g->refresh();
   });
  });

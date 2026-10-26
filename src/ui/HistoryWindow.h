@@ -4,7 +4,7 @@
 #include <atomic>
 #include <memory>
 #include <functional>
-class QCheckBox;class QDialog;class QSplitter;class QListWidget;class QVBoxLayout;class QScrollArea;class QStackedWidget;class QResizeEvent;class QListView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;class QLineEdit;class QComboBox;class QProgressBar;class QToolButton;
+class QGridLayout;class QCheckBox;class QDialog;class QSplitter;class QListWidget;class QVBoxLayout;class QScrollArea;class QStackedWidget;class QResizeEvent;class QListView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;class QLineEdit;class QComboBox;class QProgressBar;class QToolButton;
 namespace putgd {
 class FileDialog;namespace Graphite { class ElidedLabel; }
 class HistoryWindow final:public RetainedWindow {
@@ -38,7 +38,8 @@ signals:void viewStateChanged();
  void editRequested(const QString& source,const QString& path);void chooseImageRequested();
 protected:void hideEvent(QHideEvent*) override;void showEvent(QShowEvent*) override;void resizeEvent(QResizeEvent*) override;
 private:
- void startPreview();
+ void startPreview();void previewFailure(const Error&);void updatePreviewState();void updateActions();
+ QGridLayout* actions_=nullptr;QWidget* browserAction_=nullptr;QLabel* previewStatus_=nullptr;QPushButton* retryPreview_=nullptr;QHash<QString,Error> previewErrors_;
  // #190: ask the resident for a selected image's or video's missing preview,
  // once the selection has settled, one request at a time.
  void requestPreview();bool previewMissing(const QJsonObject& detail)const;
