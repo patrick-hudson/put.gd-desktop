@@ -1,6 +1,6 @@
 # Integrated Linux development acceptance, 2026-10-25
 
-**Campaign in progress. No full-profile or stable acceptance is claimed.**
+**Targeted campaign completed and cleaned up on 2026-10-26. No full-profile or stable acceptance is claimed.**
 The frozen source is `6b7949f5cab8ee9d9564d5ebb4f2cee81881cbf8`, tree
 `2911da34467c4d0b062a9c79d72baa39a79d7640`, version
 `26.1025.1362-dev+g6b7949f5cab8`. The assets are CI development artifacts from
@@ -116,7 +116,7 @@ not claimed. Completion accounting includes the separately authorized RSS
 investigation, so the two original lane markers cannot stop it prematurely.
 
 #378 fresh-agent/parity, #380 geometry (owned by the pilot), #381 physical-display
-limits, missing declared distro/package rows and final stable exact-byte gates
+limits, remaining full-profile requirements and final stable exact-byte gates
 remain explicit. Neither this CI build nor an earlier-build pass certifies the
 published nightly or a future stable draft. No merge, promotion, publication,
 tag change or acceptance waiver is authorized.
@@ -212,12 +212,29 @@ status check. [Completion, scope and policy receipts](gnome46-completion.json).
 Aurora testing-45.20261022.1 / Plasma and KWin 6.7.5 / native Wayland on
 f44 passed exact-AppImage deferred Settings, synthetic editor Upload and focused
 GTK4 paste. Whole-family C180 peak RSS 39,424,000 B / PSS 32,271,360 B passes
-40 MiB. Static four-format capture/export passes; the moving fixture refused
-before product recording because its host GTK GStreamer sink was missing.
+40 MiB. The first static four-format capture/export passed; the initial moving
+fixture refused before product recording because its GTK GStreamer sink was missing.
 The initial reverse-VNC port refusal and subsequent corrected 45901 forward are
 retained without attributing the failure to SELinux. All 96 exported synthetic
-files verified before guarded retirement. A fresh overlay for the queued moving
-fixture followup is still in progress; the missing moving row is not a pass.
+files verified before guarded retirement. The completed fresh-overlay followup
+installed `gstreamer1-plugins-good-gtk` 1.28.7-2.fc45.x86_64 through normal
+`rpm-ostree install --apply-live --idempotent`. A setup observer timed out while
+that transaction continued; its log is retained and completion was checked before
+recording. Base version stayed testing-45.20261022.1. Moving export scores were
+26.855 / 26.830 / 26.877 / 31.630 for MP4/WebM/GIF/WebP; the same-environment
+static controls were all zero. Policy and unlocked visible-output checks passed
+before, between and after the runs. The earlier C180 retains its original
+pre-GTK environment; it was not rerun after fixture installation.
+
+The first common-helper launch on that overlay failed before product work with a
+generic DBus command error. The exact failed method was not recorded. Both methods
+were later present and unchanged helper behavior passed after readiness, supporting
+startup ordering as an inference, not a proven original method failure. The revised
+helper adds bounded initial service readiness and exact command diagnostics.
+A real guest reboot then exercised login autostart, followed by a full check-only
+visible/unlocked preflight. All 102 followup archive members verified on host and
+workstation before guarded retirement; only the owned 6084 tile/tunnel were removed.
+[Environment, startup, retained attempts and cleanup](aurora-followup-completion.json).
 
 The separately scheduled Fedora RSS diagnostic pair used the same absent
 running-Shell extension for both builds, unlike the original extension-active
@@ -232,3 +249,75 @@ slot or waiver.
 Selected saved frames are indexed with exact source, asset reference, original
 private path, digest and scope in [visuals/index.json](visuals/index.json).
 They were reviewed; live wall presence alone is not used as saved evidence.
+
+
+## Completed remaining media and common guest startup validation
+
+The installed Debian13 DEB on d69 completed native Plasma/Wayland MP4, WebM, GIF
+and WebP capture with pause/resume, private Review and local export. Moving export
+scores were 7.850 / 7.162 / 6.677 / 8.160; all four static scores were zero.
+The initial wrapper path did not exist and exited before product recording;
+the corrected, digest-retained wrapper was then used. All 102 archive members
+verified on the workstation. Removing only putgd restored the exact 3,697 package
+names. An initial malformed shell-expanded package query is retained as invalid;
+the corrected argv-based comparison was byte-exact. The verified-clean lease
+release was 03:29:32Z, followed by `status --check`; signer and collector remained.
+[Native binary identity, archive and cleanup](debian-media-completion.json).
+
+The fresh Cinnamon/X11 overlay on f44 tested the common helper only. It did not
+run another product acceptance workload. Initial failures exposed a blank first
+frame, Cinnamon's demand-activated ScreenSaver service, and failed-launch writes
+that had not reached the guest disk. The updated lab code retains every initial
+frame attempt while waiting at most 15 seconds for initial visible output; later
+check-only boundaries still fail immediately. Cinnamon's actual `GetActive`
+result is required instead of requiring an already-owned bus name. The generated
+run public key is newline-separated and synced; failed launch attempts a bounded
+guest sync before stopping the owned QEMU process.
+
+Recovery preserved the malformed authorized-key line and renamed the exact empty
+owned inhibitor unit before repairing them. No existing keys or unrelated files
+were removed. Check-only preflight rejected a deliberate idle-delay of 600 seconds.
+SSH reboot requested interactive authorization and visible terminal/session attempts
+did not change uptime; no password was entered. After authenticated guest sync,
+a recorded QMP `system_reset` restarted only the disposable guest. Its new boot ID
+and startup receipt show timeout zero, lock/blanking/suspend disabled, the actual
+idle/sleep inhibitor, X11 DPMS disabled and an active unlocked Cinnamon session.
+The final complete desktop frame was reviewed and the full check-only preflight
+passed. This is an owned guest reset test, not a graceful reboot claim.
+All 23 exported evidence members verified before guarded overlay retirement;
+SSH22445/VNC5945 closed and only its 6085 tile/tunnel were removed.
+[All helper attempts, startup and cleanup](cinnamon-preflight-completion.json).
+
+The final tooling head is `c53ce0bd181b521abba0ca3e2e2744d3a0c70d78` in #584;
+24 focused guest tests and 32 lab tests pass, with the required
+[CI summary](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40263621820)
+successful. These tooling changes do not alter the frozen product or performance
+harness. GNOME46, Cinnamon and Plasma live policy/startup checks are complete;
+Plasma5 has contract coverage but was not a live campaign target. Existing immutable
+goldens and physical desktop policies are unchanged. Fresh bootstrap media installs
+the future-login helper; launch/start and campaign boundaries verify effective live
+state. Older goldens need the helper installed in their owned overlay if later
+logins are part of the campaign.
+
+| Target | Native functional / memory scope | Exact native / AppImage four-format moving + static |
+| --- | --- | --- |
+| m74 Mint22.3 Cinnamon X11 | Integrated functional, physical CPU/RSS/PSS, seeded History and native capture burst pass; History content endpoints partly unassessed | Both pass |
+| f44 Fedora44 GNOME Wayland | Functional and C180 pass; post-burst RSS remains FAIL | Both pass |
+| k72 Kubuntu26.04 Plasma Wayland | Functional, idle and file burst pass | Both pass; native actual X11 also passes, with the return-inventory procedural gap retained |
+| d69 Debian13 Plasma Wayland | Functional, idle and file burst pass | Both pass |
+| f44 guest Ubuntu26.04.1 GNOME50.1 Wayland | Native/AppImage functional and scoped C180 pass | Both pass |
+| m74 guest Ubuntu24.04.5 GNOME46.0 X11 | Native functional/C180 pass; AppImage functional pass, corrected whole-family RSS FAIL | Both pass |
+| f44 guest Aurora45 Plasma6.7.5 Wayland | Exact-AppImage functional/C180 pass | AppImage passes; no native package row claimed |
+
+These entries are targeted checks with the parameters and exclusions above, not
+complete package profiles. All 113 retained run results remain indexed, including
+refusals and superseded observers. Every acceptance-owned guest is stopped and
+retired, physical packages and owned UI processes cleaned, and all desktop/heavy
+slots explicitly handed to the authorized screenshot inventory lane after checks.
+The separate pilot's geometry and RSS investigation remain separately attributed.
+
+Outstanding acceptance work is concrete: native Fedora's original 40 MiB RSS
+failure, GNOME46 AppImage's whole-family RSS failure and accounting scope, witnessed
+History open/scroll/search content responses under the approved limits, complete
+#378/#380/#381 requirements and the final published/stable exact-asset gates.
+No further identical memory repeats, threshold changes or waivers are implied.

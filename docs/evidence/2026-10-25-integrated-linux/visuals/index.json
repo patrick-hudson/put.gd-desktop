@@ -57,6 +57,30 @@
       "sha256": "e1ecb1852197f8df4b2768be523394199ab51d6d909b0724a63be0d22772ecf5",
       "caption": "Corrected AppImage C180 after-window complete QMP frame. Desktop is unlocked and visible; first-login/updater dialogs remain visible, no OS upgrade performed. Whole-family RSS remains FAIL; see separate resident/FUSE scopes.",
       "reviewed": true
+    },
+    {
+      "file": "aurora45-appimage-review.png",
+      "privateSource": "work/integrated/evidence/collected/aurora45/aar5/frames/ui-1792983231189536070-reviewing.png",
+      "sha256": "5390ac5d4a6e0a9912f1541fb11b662bccba3035ab5041defcc57ba726d1822c",
+      "caption": "Aurora45 Plasma6.7.5 Wayland guest on f44, exact frozen CI AppImage; moving WebP local export in private Review.",
+      "reviewed": true,
+      "scope": "frozen-product"
+    },
+    {
+      "file": "debian13-native-review.png",
+      "privateSource": "work/integrated/evidence/collected/d69/dnr2/frames/ui-1792984935007316670-reviewing.png",
+      "sha256": "f9dad2ede7051f1c971bdef6e3f19337327b8ef9e8a4d0b549be725d9ba4dad2",
+      "caption": "d69 Debian13 Plasma Wayland, exact frozen native DEB; moving GIF exported locally in private Review.",
+      "reviewed": true,
+      "scope": "frozen-product"
+    },
+    {
+      "file": "cinnamon-preflight-after-reset.png",
+      "privateSource": "work/integrated/evidence/cinnamon-preflight/cinnamon-after-reset.png",
+      "sha256": "8371cd12eb9fd21540631bfb808784723314e47f58860e9fe935724af2e97716",
+      "caption": "Cinnamon X11 disposable guest on f44 after synced owned QMP reset; helper c53ce0bd restored policy at startup. Active unlocked complete desktop; tooling validation only, no product result.",
+      "reviewed": true,
+      "scope": "tooling-only"
     }
   ]
 }

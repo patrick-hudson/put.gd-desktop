@@ -629,7 +629,11 @@ GNOME and Cinnamon disable idle activation, locking, dimming and inactive sleep
 on both power supplies. Plasma verifies lock and all AC/Battery/LowBattery
 power profiles and reloads the live services. A user service holds a verified
 logind idle/sleep inhibitor; initial acquisition may take up to five seconds.
-Check-only boundaries neither repair drift nor wait for a missing inhibitor.
+Initial GNOME/Plasma service readiness is bounded to 30 seconds; Cinnamon
+ScreenSaver is demand-activated and must return inactive from `GetActive`.
+Initial complete-output readiness is bounded to 15 seconds per head, retaining
+every blank attempt. Check-only boundaries neither repair drift nor wait for
+missing services, inhibitor or visible frames.
 X11 additionally disables and reads back screen saving/DPMS. Native session type,
 active seat, unlocked state, inactive screensaver, configured outputs, complete
 QMP frames and VNC extents must agree. These checks do not replace a geometry
@@ -640,6 +644,9 @@ New provisioning seeds for generic, Aurora and neon guests must contain
 autostart entry for future disposable logins. The normal launch/start checks still
 verify the effective live policy before acceptance. Existing immutable goldens
 are never edited to retrofit it: apply the helper in the fresh owned overlay.
+For an older golden, install the companion helper with `--install-autostart
+--user lab` inside its fresh owned overlay before any planned later login;
+`launch` applies live policy but does not itself install that autostart file.
 An existing unrelated helper/unit is a collision and is preserved; inspect it
 instead of overwriting it. The user inhibitor ends when the disposable guest is
 retired through normal guarded cleanup.
@@ -649,3 +656,9 @@ witness blocks acceptance and retains `guest-preflight-*.json` plus available
 visuals. Restore a locked or blanked guest through its visible console before
 retrying. Preserve the failed attempt. Never apply these settings to a physical
 user desktop or treat an SSH-only check as complete graphical evidence.
+
+A failed launch attempts a bounded guest `sync` before stopping its owned QEMU
+process, retaining `failure-shutdown.json`. The generated run public-key append
+is newline-separated and synced before preflight, so a failed initial launch
+does not rely on guest page-cache persistence. This does not authorize stopping
+an unrelated guest or altering existing keys.

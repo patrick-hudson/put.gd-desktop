@@ -1267,6 +1267,612 @@
       "runnerExit": "0"
     },
     {
+      "host": "aurora45",
+      "run": "aar5",
+      "resultSha256": "dcb53a3f29c8f1e1ff82c9d0b9b830d86b8cc5def5952469a5ecb4919dec1c4d",
+      "scenario": "recording",
+      "status": null,
+      "gates": {},
+      "metrics": {},
+      "elapsedSeconds": null,
+      "recording": {
+        "host": "aurora-lab",
+        "kernel": "7.2.11-300.fc45.x86_64",
+        "desktop": "plasmashell",
+        "session": "wayland",
+        "target": "region",
+        "rect": [
+          0,
+          0,
+          960,
+          540
+        ],
+        "formats": [
+          "mp4",
+          "webm",
+          "gif",
+          "webp"
+        ],
+        "video": "pattern",
+        "timing": {
+          "lead": 2,
+          "pauseAt": 3.0,
+          "pauseFor": 1.0,
+          "after": 3.0
+        },
+        "builds": {
+          "ci": {
+            "kind": "appimage",
+            "file": "putgd-26.1025.1362-dev+g6b7949f5cab8-x86_64.AppImage",
+            "sha256": "b88350ff4ca89d9bba2c76769fb5a864370828b9c90a0072f58d7f7f8cb7b9f3"
+          }
+        },
+        "rounds": [
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "mp4",
+            "started": "2026-10-26T02:52:39Z",
+            "acquisition": "portal",
+            "liveEncoders": [
+              "x264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.601,
+            "load": 1.86376953125,
+            "durationUs": 7266666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "02f77abb-8e75-487d-a1e6-fce026accd5c.mkv",
+                "bytes": 193291,
+                "motion": 26.973
+              },
+              "export": {
+                "file": "ci-mp4-1.mp4",
+                "bytes": 59889,
+                "motion": 26.855
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 0.6049,
+              "kept": "/var/home/lab/iaaar5/frames/ci-mp4-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "9e239a0eda0c774fe56b0fbedcbbc99cff9a3976c832d3b4ad78ebb91f130314",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "webm",
+            "started": "2026-10-26T02:52:57Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "x264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.571,
+            "load": 1.73388671875,
+            "durationUs": 7300000,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "4cd1607a-a339-4afe-85b8-43cd98d8dbed.mkv",
+                "bytes": 196342,
+                "motion": 26.969
+              },
+              "export": {
+                "file": "ci-webm-1.webm",
+                "bytes": 67008,
+                "motion": 26.83
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 0.6049,
+              "kept": "/var/home/lab/iaaar5/frames/ci-webm-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "346114bdf70fa71a90ab2ac4646a23166c401f11954babdec4164edf3a63ffd2",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "gif",
+            "started": "2026-10-26T02:53:15Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "x264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.649,
+            "load": 1.52490234375,
+            "durationUs": 7266666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "389fa9dc-2d4c-43cb-be08-21ecae6d4f13.mkv",
+                "bytes": 77307,
+                "motion": 26.937
+              },
+              "export": {
+                "file": "ci-gif-1.gif",
+                "bytes": 911140,
+                "motion": 26.877
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 0.6049,
+              "kept": "/var/home/lab/iaaar5/frames/ci-gif-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "68863f95d9392b71d02a9639ac1e3e4864481f75f60f18752e8d8ea8d51a3b15",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "webp",
+            "started": "2026-10-26T02:53:33Z",
+            "acquisition": "portal",
+            "liveEncoders": [
+              "x264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.552,
+            "load": 1.4208984375,
+            "durationUs": 7333333,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "f2ba25c8-f322-445f-bbec-549ca98cf892.mkv",
+                "bytes": 75995,
+                "motion": 27.214
+              },
+              "export": {
+                "file": "ci-webp-1.webp",
+                "bytes": 141766,
+                "motion": 31.63
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 0.6034,
+              "kept": "/var/home/lab/iaaar5/frames/ci-webp-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "14f69a7bb5936c07ffa4e09223f6385f86c6edb0087871f24224d32735b6ccde",
+              "size": [
+                960,
+                540
+              ]
+            }
+          }
+        ],
+        "cover": {
+          "placed": {
+            "monitorIndex": 0,
+            "ok": true,
+            "output": [
+              "Virtual-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1280,
+              800
+            ],
+            "state": "covered"
+          },
+          "precheck": {
+            "check": "precheck",
+            "fraction": 0.9999,
+            "framebuffer": [
+              1280,
+              800
+            ],
+            "minFraction": 0.98,
+            "ok": true,
+            "output": [
+              "Virtual-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1280,
+              800
+            ]
+          },
+          "video": "pattern"
+        },
+        "gpuHangs": []
+      },
+      "runnerExit": "0"
+    },
+    {
+      "host": "aurora45",
+      "run": "aar6",
+      "resultSha256": "94714d112bd94df01aacab7b1ca16ad1237ec62249f83710455caf934ae2bdfb",
+      "scenario": "recording",
+      "status": null,
+      "gates": {},
+      "metrics": {},
+      "elapsedSeconds": null,
+      "recording": {
+        "host": "aurora-lab",
+        "kernel": "7.2.11-300.fc45.x86_64",
+        "desktop": "plasmashell",
+        "session": "wayland",
+        "target": "region",
+        "rect": [
+          0,
+          0,
+          960,
+          540
+        ],
+        "formats": [
+          "mp4",
+          "webm",
+          "gif",
+          "webp"
+        ],
+        "video": "still",
+        "timing": {
+          "lead": 2,
+          "pauseAt": 3.0,
+          "pauseFor": 1.0,
+          "after": 3.0
+        },
+        "builds": {
+          "ci": {
+            "kind": "appimage",
+            "file": "putgd-26.1025.1362-dev+g6b7949f5cab8-x86_64.AppImage",
+            "sha256": "b88350ff4ca89d9bba2c76769fb5a864370828b9c90a0072f58d7f7f8cb7b9f3"
+          }
+        },
+        "rounds": [
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "mp4",
+            "started": "2026-10-26T02:55:10Z",
+            "acquisition": "portal",
+            "liveEncoders": [
+              "x264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.508,
+            "load": 0.81591796875,
+            "durationUs": 6666666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "d79f0d9f-ac2c-45ed-af10-fdac1427837a.mkv",
+                "bytes": 146162,
+                "motion": 0.0
+              },
+              "export": {
+                "file": "ci-mp4-1.mp4",
+                "bytes": 15627,
+                "motion": 0.0
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 1.0,
+              "kept": "/var/home/lab/iaaar6/frames/ci-mp4-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "f1f5919b2e945014b0014bb20c8b3e2b7662002fe5ac7210c3647a6a83aa75b1",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "webm",
+            "started": "2026-10-26T02:55:28Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "x264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.527,
+            "load": 0.7705078125,
+            "durationUs": 6666666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "3ebbfedb-41e2-413b-b558-179a27dc2210.mkv",
+                "bytes": 146510,
+                "motion": 0.0
+              },
+              "export": {
+                "file": "ci-webm-1.webm",
+                "bytes": 11194,
+                "motion": 0.0
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 1.0,
+              "kept": "/var/home/lab/iaaar6/frames/ci-webm-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "76b88476a3e774f1a601cef56641dbcdeb2f1badf2d0d1a2e6f43486551de05b",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "gif",
+            "started": "2026-10-26T02:55:45Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "x264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.523,
+            "load": 0.92529296875,
+            "durationUs": 6666666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "b5dc3fb2-ddd3-4200-9631-da4139e17d5c.mkv",
+                "bytes": 14351,
+                "motion": 0.0
+              },
+              "export": {
+                "file": "ci-gif-1.gif",
+                "bytes": 4582,
+                "motion": 0.0
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 1.0,
+              "kept": "/var/home/lab/iaaar6/frames/ci-gif-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "0a6c456158e4c03cd6628b258132876d777029cb781d75a0569e4787093c3929",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "webp",
+            "started": "2026-10-26T02:56:03Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "x264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.525,
+            "load": 0.85595703125,
+            "durationUs": 6666666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "68d840e9-0445-4752-a75a-80306bb18db6.mkv",
+                "bytes": 14351,
+                "motion": 0.0
+              },
+              "export": {
+                "file": "ci-webp-1.webp",
+                "bytes": 1082,
+                "motion": 0.0
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 1.0,
+              "kept": "/var/home/lab/iaaar6/frames/ci-webp-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "d90c81981a353b39d6065e6c240555d3633d2732872adc82205b939f08a8af82",
+              "size": [
+                960,
+                540
+              ]
+            }
+          }
+        ],
+        "cover": {
+          "placed": {
+            "monitorIndex": 0,
+            "ok": true,
+            "output": [
+              "Virtual-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1280,
+              800
+            ],
+            "state": "covered"
+          },
+          "precheck": {
+            "check": "precheck",
+            "fraction": 0.9999,
+            "framebuffer": [
+              1280,
+              800
+            ],
+            "minFraction": 0.98,
+            "ok": true,
+            "output": [
+              "Virtual-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1280,
+              800
+            ]
+          },
+          "video": "still"
+        },
+        "gpuHangs": []
+      },
+      "runnerExit": "0"
+    },
+    {
       "host": "d69",
       "run": "daf1",
       "resultSha256": "4c9bd38cd1c866664c675cdc8aeef33b0b5398d6ae2ae90a39a05d7f73d45050",
@@ -2591,6 +3197,636 @@
         "version": "putgd-record 26.1025.1362-dev+g6b7949f5cab8"
       },
       "scope": "targeted native"
+    },
+    {
+      "host": "d69",
+      "run": "dnr2",
+      "resultSha256": "8702ff4fb68dfadb33c9f5dc6271633aac4b6b06c9f05cf0895d0878a8c56eaa",
+      "scenario": "recording",
+      "status": null,
+      "gates": {},
+      "metrics": {},
+      "elapsedSeconds": null,
+      "recording": {
+        "host": "debian",
+        "kernel": "6.12.107+deb13-amd64",
+        "desktop": "plasmashell",
+        "session": "wayland",
+        "target": "region",
+        "rect": [
+          0,
+          0,
+          960,
+          540
+        ],
+        "formats": [
+          "mp4",
+          "webm",
+          "gif",
+          "webp"
+        ],
+        "video": "pattern",
+        "timing": {
+          "lead": 2,
+          "pauseAt": 3.0,
+          "pauseFor": 1.0,
+          "after": 3.0
+        },
+        "builds": {
+          "ci": {
+            "kind": "installed",
+            "dir": "/usr/bin",
+            "version": "putgd-record 26.1025.1362-dev+g6b7949f5cab8"
+          }
+        },
+        "rounds": [
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "mp4",
+            "started": "2026-10-26T03:21:34Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "vah264lpenc",
+              "vaapih264enc",
+              "x264enc",
+              "openh264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.212,
+            "load": 0.2314453125,
+            "durationUs": 6600000,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "c68279dd-4bb3-4790-adef-0646bc1fcc70.mkv",
+                "bytes": 30606,
+                "motion": 7.901
+              },
+              "export": {
+                "file": "ci-mp4-1.mp4",
+                "bytes": 37283,
+                "motion": 7.85
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 0.8889,
+              "kept": "/home/patrick/iadnr2/frames/ci-mp4-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "d7765c435f608db4577c617b4ae190a053804d2349f6fd711ddab04e9c6aae15",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "webm",
+            "started": "2026-10-26T03:21:48Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "vah264lpenc",
+              "vaapih264enc",
+              "x264enc",
+              "openh264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.214,
+            "load": 0.537109375,
+            "durationUs": 6566666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "4e7780f4-77bf-4070-9579-3e83c90c406d.mkv",
+                "bytes": 30237,
+                "motion": 7.222
+              },
+              "export": {
+                "file": "ci-webm-1.webm",
+                "bytes": 40679,
+                "motion": 7.162
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 0.8889,
+              "kept": "/home/patrick/iadnr2/frames/ci-webm-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "a35f1c0e0db9a6cd1ebd630ac93bd2fd27388dd31f50a3d7162032f6f48676af",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "gif",
+            "started": "2026-10-26T03:22:02Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "vah264lpenc",
+              "vaapih264enc",
+              "x264enc",
+              "openh264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.213,
+            "load": 1.00341796875,
+            "durationUs": 6566666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "9572fd24-622d-4d83-9237-049b0e17f768.mkv",
+                "bytes": 26562,
+                "motion": 6.925
+              },
+              "export": {
+                "file": "ci-gif-1.gif",
+                "bytes": 699896,
+                "motion": 6.677
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 0.8889,
+              "kept": "/home/patrick/iadnr2/frames/ci-gif-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "899bd61a07849da6309b933d94f84d74c9ffdec665e94588e69c385138ad2af0",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "webp",
+            "started": "2026-10-26T03:22:16Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "vah264lpenc",
+              "vaapih264enc",
+              "x264enc",
+              "openh264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.218,
+            "load": 0.92236328125,
+            "durationUs": 6566666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "d06e70ea-4f8c-49a0-a3e7-b1ac593e10ae.mkv",
+                "bytes": 27101,
+                "motion": 6.387
+              },
+              "export": {
+                "file": "ci-webp-1.webp",
+                "bytes": 64818,
+                "motion": 8.16
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 0.8883,
+              "kept": "/home/patrick/iadnr2/frames/ci-webp-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "32bfb86460a7e20ed9c17fe7979e3c360c7bda66c35b77348931929cd06db173",
+              "size": [
+                960,
+                540
+              ]
+            }
+          }
+        ],
+        "cover": {
+          "placed": {
+            "monitorIndex": 0,
+            "ok": true,
+            "output": [
+              "HDMI-A-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1920,
+              1080
+            ],
+            "state": "covered"
+          },
+          "precheck": {
+            "check": "precheck",
+            "fraction": 0.9999,
+            "framebuffer": [
+              1920,
+              1080
+            ],
+            "minFraction": 0.98,
+            "ok": true,
+            "output": [
+              "HDMI-A-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1920,
+              1080
+            ]
+          },
+          "video": "pattern"
+        },
+        "gpuHangs": []
+      },
+      "runnerExit": "0"
+    },
+    {
+      "host": "d69",
+      "run": "dnr3",
+      "resultSha256": "d9080c4767cef32fb813e412b149365062937ccfa5c0bbdfb374f6e99d9ecd86",
+      "scenario": "recording",
+      "status": null,
+      "gates": {},
+      "metrics": {},
+      "elapsedSeconds": null,
+      "recording": {
+        "host": "debian",
+        "kernel": "6.12.107+deb13-amd64",
+        "desktop": "plasmashell",
+        "session": "wayland",
+        "target": "region",
+        "rect": [
+          0,
+          0,
+          960,
+          540
+        ],
+        "formats": [
+          "mp4",
+          "webm",
+          "gif",
+          "webp"
+        ],
+        "video": "still",
+        "timing": {
+          "lead": 2,
+          "pauseAt": 3.0,
+          "pauseFor": 1.0,
+          "after": 3.0
+        },
+        "builds": {
+          "ci": {
+            "kind": "installed",
+            "dir": "/usr/bin",
+            "version": "putgd-record 26.1025.1362-dev+g6b7949f5cab8"
+          }
+        },
+        "rounds": [
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "mp4",
+            "started": "2026-10-26T03:27:09Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "vah264lpenc",
+              "vaapih264enc",
+              "x264enc",
+              "openh264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.209,
+            "load": 0.68896484375,
+            "durationUs": 7300000,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "f3732ea7-d4f2-4c3b-98da-76ccbcc2156e.mkv",
+                "bytes": 13072,
+                "motion": 0.0
+              },
+              "export": {
+                "file": "ci-mp4-1.mp4",
+                "bytes": 16438,
+                "motion": 0.0
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 1.0,
+              "kept": "/home/patrick/iadnr3/frames/ci-mp4-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "2e12b150138f0a3cc129457a901cdf1d71f90529fb28c19a43f8efde0f6f1883",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "webm",
+            "started": "2026-10-26T03:27:23Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "vah264lpenc",
+              "vaapih264enc",
+              "x264enc",
+              "openh264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.2,
+            "load": 0.60400390625,
+            "durationUs": 7266666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "ba519da5-1921-4b33-a7d2-d9f29028ef8e.mkv",
+                "bytes": 13100,
+                "motion": 0.0
+              },
+              "export": {
+                "file": "ci-webm-1.webm",
+                "bytes": 12256,
+                "motion": 0.0
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 1.0,
+              "kept": "/home/patrick/iadnr3/frames/ci-webm-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "85939ec7ff4af675b7c4045d0fcb4845026656fb03289d01a68325e4f898c60d",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "gif",
+            "started": "2026-10-26T03:27:37Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "vah264lpenc",
+              "vaapih264enc",
+              "x264enc",
+              "openh264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.2,
+            "load": 0.60546875,
+            "durationUs": 7366666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "0a28e3fe-08f2-4534-9c45-9c830a7eeb31.mkv",
+                "bytes": 8774,
+                "motion": 0.0
+              },
+              "export": {
+                "file": "ci-gif-1.gif",
+                "bytes": 7507,
+                "motion": 0.0
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 1.0,
+              "kept": "/home/patrick/iadnr3/frames/ci-gif-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "66bbb3a39628b941143de4387ba508d2afcad59daaf9482d392399820f606eac",
+              "size": [
+                960,
+                540
+              ]
+            }
+          },
+          {
+            "build": "ci",
+            "round": 1,
+            "format": "webp",
+            "started": "2026-10-26T03:27:52Z",
+            "acquisition": "kde-screencast",
+            "liveEncoders": [
+              "vah264lpenc",
+              "vaapih264enc",
+              "x264enc",
+              "openh264enc"
+            ],
+            "canvas": [
+              960,
+              540
+            ],
+            "overlay": {
+              "excluded": true,
+              "placement": "outside"
+            },
+            "pauseClipS": 3.193,
+            "load": 0.470703125,
+            "durationUs": 7266666,
+            "export": "saved",
+            "clips": {
+              "working": {
+                "file": "88e64312-637d-4a16-9d19-86dd05bac119.mkv",
+                "bytes": 8678,
+                "motion": 0.0
+              },
+              "export": {
+                "file": "ci-webp-1.webp",
+                "bytes": 1142,
+                "motion": 0.0
+              }
+            },
+            "frame": {
+              "edges": {
+                "left": 1.0,
+                "top": 1.0
+              },
+              "fraction": 1.0,
+              "kept": "/home/patrick/iadnr3/frames/ci-webp-1.png",
+              "minFraction": 0.5,
+              "ok": true,
+              "rect": [
+                0,
+                0,
+                960,
+                540
+              ],
+              "sha256": "db3f4560d4417ef571d43b0ed621a09c8d7fd2f39e337a36e7e6f714a911bb68",
+              "size": [
+                960,
+                540
+              ]
+            }
+          }
+        ],
+        "cover": {
+          "placed": {
+            "monitorIndex": 0,
+            "ok": true,
+            "output": [
+              "HDMI-A-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1920,
+              1080
+            ],
+            "state": "covered"
+          },
+          "precheck": {
+            "check": "precheck",
+            "fraction": 0.9999,
+            "framebuffer": [
+              1920,
+              1080
+            ],
+            "minFraction": 0.98,
+            "ok": true,
+            "output": [
+              "HDMI-A-1"
+            ],
+            "rect": [
+              0,
+              0,
+              1920,
+              1080
+            ]
+          },
+          "video": "still"
+        },
+        "gpuHangs": []
+      },
+      "runnerExit": "0"
     },
     {
       "host": "d69",

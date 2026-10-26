@@ -206,6 +206,10 @@
       "sha256": "43f1e4368a55d27fb7568ac8fcc31b7160e9a385803d65f95471d48829a8ced3"
     },
     {
+      "path": "work/integrated/finalize_packet.py",
+      "sha256": "df3afeb87213c55217cbd475a8ddea73591f1227c9fe94fdf99c6ceebdf6e66f"
+    },
+    {
       "path": "work/integrated/k72-launch.sh",
       "sha256": "55d066141ef111c70f714f726bd9cbcf80832c45738c08e3e5dc7c8127b854d6"
     },
@@ -220,6 +224,10 @@
     {
       "path": "work/integrated/launch_aurora_followup.py",
       "sha256": "174f35b3346570b42ca7c76461f9c29971ac217ac38e3cc75e4f883241434890"
+    },
+    {
+      "path": "work/integrated/launch_cinnamon_preflight.py",
+      "sha256": "f6a0639c71482609aab4914269bd03a448c451b517b6497649a1077f83bdd1e7"
     },
     {
       "path": "work/integrated/launch_vm.py",
@@ -250,12 +258,20 @@
       "sha256": "d75ac2c49b6805d306c99283ecf4b9190fa074e19295977cbcb0984044ddfc93"
     },
     {
+      "path": "work/integrated/retire_cinnamon.py",
+      "sha256": "3fd166ac43875a753851bb4c557feb6f40177ddfd48072eef39bcb8953baa32e"
+    },
+    {
       "path": "work/integrated/retire_vm.py",
       "sha256": "a5b96dcb1f095712c9e38355aa05e78918facda9237f4279daab22f5fe43895b"
     },
     {
       "path": "work/integrated/retire_vm_duplicate.py",
       "sha256": "e387958833667e77f22480047c8eb30e45ecc0dbc5fd47cf6bf6415587ee7587"
+    },
+    {
+      "path": "work/integrated/update_final_docs.py",
+      "sha256": "98c58a96ade366a2eb681181097b354cab34a220868e673cf6df8a090e65d7fa"
     },
     {
       "path": "work/integrated/vm-app-idle-status.sh",
@@ -336,9 +352,14 @@
   ],
   "commonPreflight": {
     "pullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/584",
-    "commit": "0f58bafe",
-    "helperSha256": "a6322f30d50ba0e5c87360e8c316a4d5b6396bdccfc5b9a90a3aa37ea8594835",
-    "contracts": "all19 lab suites passed;19 new contract tests;CI40259632350 passed",
-    "liveValidation": "GNOME46 X11 startup/drift/check; pilot GNOME50 Wayland v2/v3; Cinnamon/Plasma pending"
+    "commit": "c53ce0bd181b521abba0ca3e2e2744d3a0c70d78",
+    "helperSha256": "1e074f7c34708af97a18a9949499942ec583804d510729619de0d966683959e6",
+    "contracts": "24 focused guest tests and32 lab tests passed; all19 lab contract suites passed; final required CI40263621820 SUCCESS",
+    "liveValidation": "GNOME46 X11 startup/drift/check and corrected C180; Aurora45 Plasma6.7.5 Wayland reboot/startup/check and moving/static media; Cinnamon X11 fresh boot/startup/drift/visible check; pilot GNOME50 v2/v3 separately attributed"
+  },
+  "privateArchive": {
+    "path": "work/integrated/campaign-tools-final-0335.tar.gz",
+    "sha256": "25c9fd35107c541499ae84e03b3d394bf36105de92a527e9b41b41ce52f60482",
+    "members": 87
   }
 }

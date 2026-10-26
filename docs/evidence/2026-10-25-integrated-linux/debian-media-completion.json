@@ -1,0 +1,441 @@
+{
+  "scope": "Exact native Debian13 four-format moving/static private Review/export only",
+  "identity": {
+    "source": "6b7949f5cab8ee9d9564d5ebb4f2cee81881cbf8",
+    "package": "26.1025.1362~dev+g6b7949f5cab8",
+    "binaries": {
+      "/usr/bin/putgd": "5a083cc79125b069cee70d6136e18d8c56568df464d6a1e8ed9b2c129c6c963d",
+      "/usr/bin/putgd-record": "2241fac42f977a3bb796b7f26b139b07107d562cc650217ec28a035d32122db7",
+      "/usr/bin/putgd-cli": "f8d4d2ad3aadca0a84ce6eebc979dca374295063b6a54e33f039acdeb5d1475b"
+    },
+    "kernel": "6.12.107+deb13-amd64"
+  },
+  "packageRestoration": {
+    "identical": true,
+    "count": 3697,
+    "sha256": "3d93804f85c76740d48d33597eaec0a989679592aed8286eaa86d3eadfcd0deb",
+    "priorAttempt": "Shell expanded dpkg format variable to blank; invalid observer retained; corrected subprocess argv query compared byte-for-byte"
+  },
+  "setupAttempts": {
+    "firstCommand": "run-recording-v3.sh dnr1 pattern native",
+    "exitCode": 127,
+    "error": "wrapper absent on host; product recording not started",
+    "correction": "copied exact supplemental v5 wrapper and v2 observer; same production record_run.py and thresholds; new dnr2 moving and dnr3 static"
+  },
+  "bulk": {
+    "archive": "dnr2-dnr3.tar.gz",
+    "sha256": "db25d0999e5074ba8320150ebc8d7e0ada9deeb0a1556986c4c0fc5f4ebb595c",
+    "members": [
+      {
+        "path": "dnr2/asset.sha256",
+        "sha256": "4f7e547890c06f71168e3420a99104197ee849797e5cfe9f0b0a5af502596e15"
+      },
+      {
+        "path": "dnr2/driver.sha256",
+        "sha256": "c47cf41c05b0525e9b04ca552cb6dd9dbdf740e6eaabc5b344b0cda5bcfcbcb7"
+      },
+      {
+        "path": "dnr2/exit-code",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "path": "dnr2/frames/ci-gif-1.png",
+        "sha256": "899bd61a07849da6309b933d94f84d74c9ffdec665e94588e69c385138ad2af0"
+      },
+      {
+        "path": "dnr2/frames/ci-mp4-1.png",
+        "sha256": "d7765c435f608db4577c617b4ae190a053804d2349f6fd711ddab04e9c6aae15"
+      },
+      {
+        "path": "dnr2/frames/ci-webm-1.png",
+        "sha256": "a35f1c0e0db9a6cd1ebd630ac93bd2fd27388dd31f50a3d7162032f6f48676af"
+      },
+      {
+        "path": "dnr2/frames/ci-webp-1.png",
+        "sha256": "32bfb86460a7e20ed9c17fe7979e3c360c7bda66c35b77348931929cd06db173"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984896019437911-ready.png",
+        "sha256": "3dd837e6b4d968b7c13be8f82167fbe3dbeec06773a34d9bbbd3d4a235e79ae3"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984898481783041-start.png",
+        "sha256": "fdf9fe32af096166526d157a83c4ed21934f18e7ce8ee0b16d06ba8d3d97cd1e"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984901694197008-pause.png",
+        "sha256": "02939cf37bb4d3d4c991b7a452b4d0994a76b999280c5b57af2d6b6422a195d6"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984902880812859-resume.png",
+        "sha256": "e5075a117485f588211beef07e0c2a13988ac97013a8caea936f43c5291fc8eb"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984906114217050-stop.png",
+        "sha256": "329b1dad8d7976f6330427c8bf84b784fe12d723f8e6fa90e7fb9a0075b6c2e8"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984907191707459-reviewing.png",
+        "sha256": "0876fef86f5776474861f5c1f0ce32732078214a976089e6b1cf9c4a9174a0b2"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984909846111265-ready.png",
+        "sha256": "56590194f3d3e0e8329f44d103fec813feb120a91ba109b764ed816893df68d6"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984912272576493-start.png",
+        "sha256": "7a89d905b545207fe64396b696053ae1a1c0748f0be9e58952929a99fb03496b"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984915485975221-pause.png",
+        "sha256": "791a24323042f4d234ad4077be37eceb555c4729a2ee5a152ab7e180962aa51a"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984916679631686-resume.png",
+        "sha256": "fc17c65f89f815d5a5a6a2b6ff414d2e1150e33230f6a7115974e5f89fccd42a"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984919914952270-stop.png",
+        "sha256": "eb758a2658b2a04ba67adc11b7afbe2bf5386a39581109757a96d954684ffbe2"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984921275599927-reviewing.png",
+        "sha256": "95992ada40293e722b00d525f464b67b024a060019af37acb5143b8009d2b601"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984923909998685-ready.png",
+        "sha256": "48f05f52c548861e270bf53caf7be5525fa6128447903e3ddbd8d4bfe92b3250"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984926304257258-start.png",
+        "sha256": "faea3c46c74fa26f9a8a17db6af3fc954a7810d8a7bbc7c182e72838522eb9e8"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984929518290257-pause.png",
+        "sha256": "6d83acdbc9f83d6ec23bba222f97831cf3cd895198ce3bc1b463b37e92872d34"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984930699481886-resume.png",
+        "sha256": "6525527ad70c1730bae2dd571a574347864ae5d275aa98779f4bda16307ff78b"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984933927065794-stop.png",
+        "sha256": "29222f8628d898832484550482b9af917b1a4844f878400af8deb201ccc1f8e9"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984935007316670-reviewing.png",
+        "sha256": "f9dad2ede7051f1c971bdef6e3f19337327b8ef9e8a4d0b549be725d9ba4dad2"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984937710157190-ready.png",
+        "sha256": "1f2b990c4119018f8fdca00557f4f2a6eab3528d6d74458a79468964dc8235ff"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984940115198471-start.png",
+        "sha256": "8db10541e74d98fa6fbbbc6307b4da2088258de1733e05ae760f064e867b63d8"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984943334892580-pause.png",
+        "sha256": "e61e7faae4166a253c2e6ec286ec771d908a7af2c13bb189daea72e5a17c6444"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984944520652720-resume.png",
+        "sha256": "d471553d84a599a70e1f7a20a34050b4bf8e2adcf4ba183d9af0d74b2e7319d8"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984947788640696-stop.png",
+        "sha256": "d8e815026e8776a77286b3da3e4a09ac5ec16911f5837286266c0c1bf4e9265a"
+      },
+      {
+        "path": "dnr2/frames/ui-1792984949143887306-reviewing.png",
+        "sha256": "fb3e2480252528dedfa7fc072199c2fc61f5ae022fc37674f31e14056b96fb02"
+      },
+      {
+        "path": "dnr2/logs/cover.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "dnr2/logs/resident-ci.log",
+        "sha256": "55b5cfc07494bf19cf5540b52f20417abdd06b3c1d073af516a48d2c931903e9"
+      },
+      {
+        "path": "dnr2/observations.jsonl",
+        "sha256": "3cc4383416c45863f06b6db824aefe4041ecf50d35fd751066c484286d22b0a5"
+      },
+      {
+        "path": "dnr2/out/ci-gif-1.gif",
+        "sha256": "d2d6e52dc30d36ae10915bf6584c0c01074fa34f040bfe1b4312aae9469f42d9"
+      },
+      {
+        "path": "dnr2/out/ci-mp4-1.mp4",
+        "sha256": "4b7bddf20262364b40656ecfe4e1d02749f05b254c6a9a9213f44dcdda781cd9"
+      },
+      {
+        "path": "dnr2/out/ci-webm-1.webm",
+        "sha256": "ad5e9de09cfab5b4b5529c9efac5707074fce9a4bf8c13c5b8e42133c3fc4663"
+      },
+      {
+        "path": "dnr2/out/ci-webp-1.webp",
+        "sha256": "3ba03e37b5d6040bde23292f6405e9215ae06d8eaf7a8adfcec70fe2887dc40a"
+      },
+      {
+        "path": "dnr2/real-data-putgd/history.sqlite",
+        "sha256": "af50a9a43b200653fc4dd696ad28cba73bf258b306a3df6c291ff8257f5509be"
+      },
+      {
+        "path": "dnr2/results.json",
+        "sha256": "8702ff4fb68dfadb33c9f5dc6271633aac4b6b06c9f05cf0895d0878a8c56eaa"
+      },
+      {
+        "path": "dnr2/runner.log",
+        "sha256": "8eb8f704622c46f2eff121831242a2432d9a7893dc5e02855bfadf38d5484947"
+      },
+      {
+        "path": "dnr2/socket-preflight.json",
+        "sha256": "92cfefa6e5bcb39da38aef9482bc439e76a5730c78923bf39cfea0d8137ecac9"
+      },
+      {
+        "path": "dnr2/state/putgd/logs/putgd-20261026T032129820Z-3030566-1.jsonl",
+        "sha256": "1c5f814693d16338308728d94c9f701f8302116ff1e9f9da1552c4b5f7651935"
+      },
+      {
+        "path": "dnr2/state/putgd/logs/putgd-20261026T032134485Z-3030671-1.jsonl",
+        "sha256": "20c1ed4f5ddf53393fcf4545ee08c7ba5a0f0bcf2d48c89f4b7bf8123716d59c"
+      },
+      {
+        "path": "dnr2/state/putgd/logs/putgd-20261026T032148332Z-3030968-1.jsonl",
+        "sha256": "5c4d28450aa13b640fa05b8a5bd4e88576fd15c4b9b0cbc76ba53142ee8264dd"
+      },
+      {
+        "path": "dnr2/state/putgd/logs/putgd-20261026T032202385Z-3031227-1.jsonl",
+        "sha256": "68daa85025295812d77e4b968d8f66112a186819fafdd88eacb0ee93a182bf72"
+      },
+      {
+        "path": "dnr2/state/putgd/logs/putgd-20261026T032216174Z-3031469-1.jsonl",
+        "sha256": "0994882689a11738425e10df5844aeeca8c6c3f328c5efa6ba58e8e2cd962cec"
+      },
+      {
+        "path": "dnr2/working/4e7780f4-77bf-4070-9579-3e83c90c406d.mkv",
+        "sha256": "b42660123c7685dbd7f07a78153f75acfad211c295ead8a9d7102c03cea73c1b"
+      },
+      {
+        "path": "dnr2/working/9572fd24-622d-4d83-9237-049b0e17f768.mkv",
+        "sha256": "0edab32555b4cd1706ced0e1c46d683ed757ea0c1a65bbdc321b0124a28a3592"
+      },
+      {
+        "path": "dnr2/working/c68279dd-4bb3-4790-adef-0646bc1fcc70.mkv",
+        "sha256": "de4c645d0afd47d784de67c38401ee1d52b23dc811ff39e54549224570673cc6"
+      },
+      {
+        "path": "dnr2/working/d06e70ea-4f8c-49a0-a3e7-b1ac593e10ae.mkv",
+        "sha256": "4f6d2741eeaba4a8cf003004bcb0d2de740f1083bc406126beca2b7ae5ec3f77"
+      },
+      {
+        "path": "dnr3/asset.sha256",
+        "sha256": "4f7e547890c06f71168e3420a99104197ee849797e5cfe9f0b0a5af502596e15"
+      },
+      {
+        "path": "dnr3/driver.sha256",
+        "sha256": "c47cf41c05b0525e9b04ca552cb6dd9dbdf740e6eaabc5b344b0cda5bcfcbcb7"
+      },
+      {
+        "path": "dnr3/exit-code",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "path": "dnr3/frames/ci-gif-1.png",
+        "sha256": "66bbb3a39628b941143de4387ba508d2afcad59daaf9482d392399820f606eac"
+      },
+      {
+        "path": "dnr3/frames/ci-mp4-1.png",
+        "sha256": "2e12b150138f0a3cc129457a901cdf1d71f90529fb28c19a43f8efde0f6f1883"
+      },
+      {
+        "path": "dnr3/frames/ci-webm-1.png",
+        "sha256": "85939ec7ff4af675b7c4045d0fcb4845026656fb03289d01a68325e4f898c60d"
+      },
+      {
+        "path": "dnr3/frames/ci-webp-1.png",
+        "sha256": "db3f4560d4417ef571d43b0ed621a09c8d7fd2f39e337a36e7e6f714a911bb68"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985230749642403-ready.png",
+        "sha256": "8f97e0fd4401f167939a7e95d6442c5f13d767c747f5ecc79fba7a42b8a2a91a"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985234105521309-start.png",
+        "sha256": "7fcc55068ddf90512e5a6814cf862130109045a9d1ccca76a0ea662352a81973"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985237317629049-pause.png",
+        "sha256": "d417dc63330391f4b9e2a8b039ed12196ab006699f464d4e8d9f3126c6f23300"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985238490285606-resume.png",
+        "sha256": "7102eb39fc3aaf77a4bb7fe04e05da584506a3f601aba5753e6cee16870f3573"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985241726241962-stop.png",
+        "sha256": "b493b8032267fa42b38e9301d903792921885acdf5ab28a16f8d301cbab49f61"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985242515766518-reviewing.png",
+        "sha256": "d087f85e8eab042072fea13afc8d73cc1b3403b07585221dace7d7faa4ecad1d"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985244985731546-ready.png",
+        "sha256": "ee4283a57dc138b9d4d5d7ee19e9bf19f986c25659595d4b5b11090cf5fe0d44"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985248337734305-start.png",
+        "sha256": "b601ff43c7a1941f6968c65563a89d22729faefb04f27088c93bfc8f33f23256"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985251537773100-pause.png",
+        "sha256": "466f21dbc4ec93f0ca1323514de4cf99b90a782a3d79c1785df9db3104c4afee"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985252718095780-resume.png",
+        "sha256": "114a2ec80a8fc57dc305de579ebca3e34d12e22cd81715bc81e21c81ff5b6b86"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985255973701671-stop.png",
+        "sha256": "2f9c9540a35dbc2c6cefe9408b6acfadc3eb69e58cca06fe30031941abcea5af"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985257047292502-reviewing.png",
+        "sha256": "6140f66cc9a5923c13213c8e1f3a4d6a2f78122fd6446f981abd6fe8b0708d4c"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985259513591732-ready.png",
+        "sha256": "727f134efaec3903aa72c066336397691a5894acc503c7c3ba9a7d0f7b20c8e0"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985262777128524-start.png",
+        "sha256": "702a3cd9f6ed99dbb649a2a4fe7ce9ac14e4164f53e151a9a60c3c297df02f62"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985265977748902-pause.png",
+        "sha256": "31a0d69ce025ca58a4e64e56fb242a3f57e4ece27033537982a17bc3fdf12769"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985267151826148-resume.png",
+        "sha256": "579adf90c534fdcbc035e83dae36f9d6c0712ef961831db6a808b191a780065f"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985270376543676-stop.png",
+        "sha256": "e4cadd6ae3e997e5550848486df34ffd98673a7dd8ff313b9dc45953c2b3b4d1"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985271175301825-reviewing.png",
+        "sha256": "cb23d203cd3e1cce441a55537abe8535248985dbdd369c65b4de21fd993ad939"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985273601211848-ready.png",
+        "sha256": "04fa725607e249503c8dbdd99a8106d84b7ef5af754c27c4ef53349d9885c886"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985276858141123-start.png",
+        "sha256": "fb16a07edae2b717fc1cd2c761cdfdf293b29ef37d9fbce6ac5fab05a817f3aa"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985280052005868-pause.png",
+        "sha256": "4e35f0874b243d3daca829a8da699b317b3f9c54313e27fbe125b8baed895c6a"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985281222479752-resume.png",
+        "sha256": "72d39df3497b5d2fe7f739b444e54477975aeaf3199b9d5a4c3c3996049214ed"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985284461631251-stop.png",
+        "sha256": "4c96eaace245a84ec993941e27a5e5c460d69444508ee9fd28215f9ba2e7fa30"
+      },
+      {
+        "path": "dnr3/frames/ui-1792985285255899218-reviewing.png",
+        "sha256": "dfc4e7012bb0f4c48ff725336f91555e8def5e82e4e6c2a95f078f1c4906ede5"
+      },
+      {
+        "path": "dnr3/logs/cover.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "dnr3/logs/resident-ci.log",
+        "sha256": "55b5cfc07494bf19cf5540b52f20417abdd06b3c1d073af516a48d2c931903e9"
+      },
+      {
+        "path": "dnr3/observations.jsonl",
+        "sha256": "127e55e3f4589e847a42319548927b56dec219338fc70ec9c2c8655482d85e39"
+      },
+      {
+        "path": "dnr3/out/ci-gif-1.gif",
+        "sha256": "e43d49b6efa53dad7e239d6bf11a4c974c4f2da12a1bf05d771c3a1a15c05137"
+      },
+      {
+        "path": "dnr3/out/ci-mp4-1.mp4",
+        "sha256": "3d74e5524813f568f3d9e16b42a350c8c12e4361ac3c2db1d46a64a0a7b992e3"
+      },
+      {
+        "path": "dnr3/out/ci-webm-1.webm",
+        "sha256": "368093ae0ee2ea4aca4f5407e578bd22e513fd6a7ab78a007964a3649390e96c"
+      },
+      {
+        "path": "dnr3/out/ci-webp-1.webp",
+        "sha256": "a5f1e0c6742957cc5c7b22ac9bf07ea7f98e9f10ecc6a55bc7cddcfedc6bb44f"
+      },
+      {
+        "path": "dnr3/real-data-putgd/history.sqlite",
+        "sha256": "803aec428fc722067afb247615b88cb3eaa1afe9d8469d494ac9e80773e6e36e"
+      },
+      {
+        "path": "dnr3/results.json",
+        "sha256": "d9080c4767cef32fb813e412b149365062937ccfa5c0bbdfb374f6e99d9ecd86"
+      },
+      {
+        "path": "dnr3/runner.log",
+        "sha256": "f59c417048bc4791dd5f9f75a5c3823693da7cb0fc2c1cb782c552dc35382dde"
+      },
+      {
+        "path": "dnr3/socket-preflight.json",
+        "sha256": "92cfefa6e5bcb39da38aef9482bc439e76a5730c78923bf39cfea0d8137ecac9"
+      },
+      {
+        "path": "dnr3/state/putgd/logs/putgd-20261026T032704669Z-3031885-1.jsonl",
+        "sha256": "5b197fcfc625e6dd2607d8585ae1e213cffd77d2576774662c739e8d86254f10"
+      },
+      {
+        "path": "dnr3/state/putgd/logs/putgd-20261026T032709267Z-3031985-1.jsonl",
+        "sha256": "9809f63305f97402848ae7b94311db7491beb630e35a9d48802d48441db127c6"
+      },
+      {
+        "path": "dnr3/state/putgd/logs/putgd-20261026T032723492Z-3032262-1.jsonl",
+        "sha256": "ad05261e21feecb23c44f910106b835a0be9582817cf3e42b160727480c89dc7"
+      },
+      {
+        "path": "dnr3/state/putgd/logs/putgd-20261026T032738030Z-3032519-1.jsonl",
+        "sha256": "92a6b4cb1bcfda401d302258160e275d3ef73c001eeb339a1bf71b0307b5e6ea"
+      },
+      {
+        "path": "dnr3/state/putgd/logs/putgd-20261026T032752112Z-3032783-1.jsonl",
+        "sha256": "d3132b82226b3c9544ec78656019895e08bb0c734a17fbfd7f80b84b998b33e1"
+      },
+      {
+        "path": "dnr3/working/0a28e3fe-08f2-4534-9c45-9c830a7eeb31.mkv",
+        "sha256": "3648e7c25c24bd2fdda6f5673b59e29aae9cf19671f52c32a4337dc37cb390c5"
+      },
+      {
+        "path": "dnr3/working/88e64312-637d-4a16-9d19-86dd05bac119.mkv",
+        "sha256": "1710bec78f584178539064dafa7e47d8db4a8c25e789a553a2b26a165570de0d"
+      },
+      {
+        "path": "dnr3/working/ba519da5-1921-4b33-a7d2-d9f29028ef8e.mkv",
+        "sha256": "a56a96f1c15c5eb9cc55e452e3b51f386ce2960fb91cde2d428ff427db2301bd"
+      },
+      {
+        "path": "dnr3/working/f3732ea7-d4f2-4c3b-98da-76ccbcc2156e.mkv",
+        "sha256": "301fe9ea84b558e8bf0a2eb345a22e34bafaa9ab3bf76df82ccc7e411289ae01"
+      }
+    ]
+  },
+  "release": "d69 (Debian 13 Plasma Wayland): released\n  integrated-acceptance (acceptance-d69-media-20261026), acquired 2026-10-26T03:18:52Z\n  purpose: Exact CI6b Debian native four-format moving and static media after clean pilot handback\n  1 item(s) that were there before the lock stay\n  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 978298\n  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-26T03-29-32Z-release.json\n  Tell the next session in the queue and your coordinator\n",
+  "finalStatus": "d69 (Debian 13 Plasma Wayland): free\n  last: release of integrated-acceptance's lock by acceptance-d69-media-20261026 at 2026-10-26T03:29:32Z\n  on the host now:\n    process 2008860: gpg-agent --homedir /home/patrick/.local/share/putgd-signer/gnupg --use-standard-socket --daemon\n  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 978298\n"
+}
