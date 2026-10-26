@@ -275,9 +275,14 @@ PY
 ''' % repr(self.profile['session_process']))
         (self.out / 'native-session.txt').write_text(native)
         settings = self.cli('settings.get')
-        self.cli('settings.patch', {'expectedRevision': settings['metadata']['acceptedRevision'],
+        request = {'expectedRevision': settings['metadata']['acceptedRevision'],
             'patch': {'actions': {action: {'destination': 'local', 'shortcut': ''} for action in ('region', 'window', 'desktop')},
-                      'archive': {'root': self.remote + '-archive', 'keepUploads': True}}})
+                      'archive': {'root': self.remote + '-archive', 'keepUploads': True},
+                      # Success toasts from the preceding capture otherwise
+                      # contaminate whole-window/desktop pixel oracles.
+                      'preferences': {'notifications': False, 'launchAtLogin': False}}}
+        applied = self.cli('settings.patch', request)
+        save(self.out / 'settings-applied.json', {'request': request, 'result': applied})
         # Fullscreen readiness and the independent witnesses establish coverage.
         self.fixture()
         if self.profile['session'] == 'x11':
