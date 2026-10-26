@@ -202,10 +202,13 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    nonce=object["nonce"].toString();const auto limits=object["limits"].toObject();destination=object["destination"].toString();
    const QUuid id(nonce);
    if(!recentColorList(object["recentColors"],recentColors)){fail();return;}
-   if(object.size()!=9||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
+   const auto scheme=object["appearance"].toString();
+   if(object.size()!=10||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
       ||limits.size()!=2||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes
       ||!object["destination"].isString()||destination.isEmpty()||destination.size()>200||!object["input"].isObject()||!object["output"].isObject()
       ||!files.open(object["input"].toObject(),object["output"].toObject(),maxPixels*8+64*1024*1024)){fail();return;}
+   // The interface's resolved scheme, before any window exists.
+   putgd::Theme::setScheme(scheme=="light"?putgd::Theme::Scheme::Light:putgd::Theme::Scheme::Dark);
    bootstrapped=true;auto ready=envelope(nonce);ready["build"]=build;
    if(control.send("ready",ready).isEmpty())fail();
    return;

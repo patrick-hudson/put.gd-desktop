@@ -91,6 +91,9 @@ public:
  QString recordingActiveId() const;
  // Tests inject a fake backend; production installs the helper supervisor.
  void setRecordingBackend(std::unique_ptr<RecordingBackend> backend) {recording_->setBackend(std::move(backend));}
+ // The interface's resolved scheme ("dark" or "light"), passed to each editor
+ // helper so Edit image matches the other windows (#198's rule for putgd-record).
+ void setEditorAppearance(const QString& scheme) {editorAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");}
  RecordingService& recording() {return *recording_;}
  // Tests may run a fixture helper; production always uses the sibling putgd-ui.
  void setEditorHelper(QString path) {editorHelper_=std::move(path);}
@@ -287,7 +290,7 @@ private:
  quint64 invocation_=0;
  QString selectingId_;
  // At most one editor session exists; it holds no pixels on the session thread.
- QString editingId_,editorHelper_;std::shared_ptr<EditorSession> editor_;
+ QString editingId_,editorHelper_,editorAppearance_=QStringLiteral("dark");std::shared_ptr<EditorSession> editor_;
  Error acceptRecording(Operation&);
  std::unique_ptr<RecordingService> recording_;
  QSet<QString> preparedOwners_,finishedPrepared_;
