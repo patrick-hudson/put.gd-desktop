@@ -342,6 +342,38 @@ private slots:
             for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && w->isWindow() == false) QVERIFY2(window.rect().contains(QRect(w->mapTo(&window, QPoint()), w->size())), qPrintable(w->accessibleName() + w->objectName()));
         }
     }
+    void frameGatesCoverThePreviewAspectRatio_data() {
+        QTest::addColumn<QSize>("canvas");
+        QTest::addColumn<double>("scale");
+        QTest::newRow("16:9") << QSize(1280, 720) << 1.0;
+        QTest::newRow("16:10") << QSize(960, 600) << 1.0;
+        QTest::newRow("16:9 large text") << QSize(1280, 720) << 1.5;
+        QTest::newRow("16:10 large text") << QSize(960, 600) << 1.5;
+    }
+    void frameGatesCoverThePreviewAspectRatio() {
+        QFETCH(QSize, canvas); QFETCH(double, scale);
+        const auto font = QApplication::font();
+        const auto scheme = Theme::scheme();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(font); Theme::setScheme(scheme); });
+        auto enlarged = font;
+        if (font.pointSizeF() > 0) enlarged.setPointSizeF(font.pointSizeF() * scale);
+        else enlarged.setPixelSize(qRound(font.pixelSize() * scale));
+        QApplication::setFont(enlarged);
+        for (const auto theme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(theme);
+            auto o = options(); o.canvas = canvas; o.audioRecorded = true;
+            ReviewWindow window(o, config()); window.setEdit(twoMasks()); window.show();
+            QVERIFY(putgd::test::waitForWindowExposed(&window));
+            QVERIFY(window.height() <= 720 && window.width() <= 1342);
+            const auto steady = window.inspect()["video"].toObject()["share"].toDouble();
+            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
+            QApplication::processEvents();
+            const auto transient = window.inspect()["video"].toObject()["share"].toDouble();
+            qInfo("review %dx%d text %.1f %s steady %.3f transient %.3f", canvas.width(), canvas.height(), scale, qPrintable(Theme::name(theme)), steady, transient);
+            QVERIFY2(steady >= 0.60, qPrintable(QString::number(steady)));
+            QVERIFY2(transient >= 0.53, qPrintable(QString::number(transient)));
+        }
+    }
     void maskControlsShowOnlyWhenTheyApply() {
         ReviewWindow window(options(), config());
         window.show();

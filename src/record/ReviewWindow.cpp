@@ -832,7 +832,11 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     if (const auto* screen = QGuiApplication::primaryScreen()) size = size.boundedTo(screen->availableGeometry().size() - QSize(24, 48));
     resize(size.expandedTo(minimumSizeHint()));
 }
-QSize ReviewWindow::defaultSize() { return {920, Graphite::WindowHeader::customFrame() ? 648 : 600}; }
+QSize ReviewWindow::defaultSize() {
+    // Enlarged controls need room too; leave the frame dominant on a laptop.
+    const int extra = std::clamp(Graphite::scaled(80) - 80, 0, 48);
+    return {920, (Graphite::WindowHeader::customFrame() ? 648 : 600) + extra};
+}
 RecordingMask* ReviewWindow::selectedMask() {
     auto it = std::find_if(edit_.masks.begin(), edit_.masks.end(), [&](const RecordingMask& m) { return m.id == selectedMask_; });
     return it == edit_.masks.end() ? nullptr : &*it;
