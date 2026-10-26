@@ -7,6 +7,7 @@
 #include <QProgressBar>
 #include <QAbstractItemView>
 #include <QScrollBar>
+#include <QScrollArea>
 #include "ui/SettingsWindow.h"
 #include "ui/FileDialog.h"
 #include <QFileDialog>
@@ -138,6 +139,39 @@ private slots:
   UiSessionFixture restartedFixture(restarted,secrets);MainWindow reopened(restartedFixture.session);reopened.navigate("destinations");
   QCOMPARE(rowLabels(reopened.findChild<QListWidget*>("destinationList")),QStringList({"put.gd development destination","Synthetic third","Edited alternate"}));
   QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",window.settings()->saveViewState()}}));
+ }
+ void destinationHeaderKeepsActionsReachable_data(){
+  QTest::addColumn<int>("width");QTest::addColumn<int>("profileRow");QTest::addColumn<QString>("name");
+  for(const int width:{1060,1440})for(const int row:{0,1}){
+   const auto prefix=QByteArray::number(width)+(row?"-other-":"-default-");
+   QTest::newRow((prefix+"short").constData())<<width<<row<<QString("Proton Drive");
+   QTest::newRow((prefix+"long").constData())<<width<<row<<QString("Production screenshots for customer support — ").repeated(3).left(120);
+   QTest::newRow((prefix+"unbroken").constData())<<width<<row<<QString(120,'W');
+  }
+ }
+ void destinationHeaderKeepsActionsReachable(){
+  QFETCH(int,width);QFETCH(int,profileRow);QFETCH(QString,name);
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto profile=profiles[profileRow].toObject();profile["label"]=name;profiles[profileRow]=profile;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(width,680);window.navigate("destinations");
+  auto* list=window.findChild<QListWidget*>("destinationList");QVERIFY(list);list->setCurrentRow(profileRow);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* label=window.findChild<QLineEdit*>("destinationLabel");auto* scroll=window.findChild<QScrollArea*>("destinationScroll");auto* test=window.findChild<QPushButton*>("testDestination");auto* makeDefault=window.findChild<QPushButton*>("makeDefaultDestination");QPushButton* more=nullptr;
+  for(auto* button:window.findChildren<QPushButton*>())if(button->accessibleName()=="Destination actions")more=button;
+  auto* help=window.findChild<QToolButton*>("destinationLabelHelp");QVERIFY(label&&scroll&&test&&makeDefault&&more&&help);PUTGD_TRY_COMPARE(label->text(),name);
+  QCOMPARE(window.width(),width);auto* viewport=scroll->viewport();
+  for(auto* control:QList<QWidget*>{label,help,test,makeDefault,more}){
+   QVERIFY(control->isVisible());const QRect rect(control->mapTo(viewport,QPoint{}),control->size());
+   QVERIFY2(viewport->rect().contains(rect),qPrintable(QString("%1 exceeds the %2px destination viewport: x=%3 width=%4").arg(control->accessibleName().isEmpty()?control->objectName():control->accessibleName()).arg(viewport->width()).arg(rect.x()).arg(rect.width())));
+  }
+  QCOMPARE(scroll->horizontalScrollBar()->maximum(),0);
+  QVERIFY(label->width()>=label->fontMetrics().horizontalAdvance("Pro"));
+  // A popup must keep the selected name available to Copy; normal editing and
+  // autosave still operate on the complete value, regardless of visible width.
+  label->setFocus();label->selectAll();auto* editMenu=label->createStandardContextMenu();editMenu->popup(label->mapToGlobal(QPoint(0,label->height())));PUTGD_TRY_VERIFY(editMenu->isVisible());QCOMPARE(label->selectedText(),name);editMenu->close();delete editMenu;
+  label->setFocus();QTest::keyClick(label,Qt::Key_End);QCOMPARE(label->cursorPosition(),name.size());QTest::keyClicks(label," edited");QCOMPARE(label->text(),name+" edited");
+  test->setFocus();QCOMPARE(label->cursorPosition(),0);QCOMPARE(label->text(),name+" edited");
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[profileRow].toObject()["label"].toString(),name+" edited");
+  // The trailing action remains clickable, including for a non-default destination.
+  auto* menu=more->menu();QVERIFY(menu);QTest::mouseClick(more,Qt::LeftButton);PUTGD_TRY_VERIFY(menu->isVisible());menu->close();
  }
  void longDestinationLabelKeepsItsStateLine(){
   // #134: a label that would wrap is elided to one line; Default · state stays in the row.

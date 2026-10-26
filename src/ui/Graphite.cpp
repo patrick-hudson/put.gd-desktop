@@ -8,6 +8,7 @@
 #include <QComboBox>
 #include <QCursor>
 #include <QEvent>
+#include <QFocusEvent>
 #include <QFontDatabase>
 #include <QFontMetricsF>
 #include <QHash>
@@ -1401,6 +1402,11 @@ void alignForms(QWidget* page) {
                 const bool unitted = qobject_cast<QLineEdit*>(control) && control->parentWidget() && !qobject_cast<QComboBox*>(control->parentWidget())
                     && std::any_of(control->parentWidget()->children().cbegin(), control->parentWidget()->children().cend(), [](QObject* o) { return o->property("visualRole").toString() == "unitSuffix"; });
                 if (!qobject_cast<QComboBox*>(control) && !qobject_cast<QAbstractSpinBox*>(control) && !unitted) continue;
+                // A long choice is a preferred width, not the form's minimum.
+                // Keep its natural size when there is room and let the style
+                // elide the closed value when an enlarged-text form is narrow.
+                if (qobject_cast<QComboBox*>(control) && !control->minimumWidth())
+                    control->setMinimumWidth(std::min(control->minimumSizeHint().width(), scaled(160)));
                 // A value with its unit is one compound control: cap and align
                 // the pair, so the unit stays attached to its field.
                 QWidget* target = control;
@@ -1443,30 +1449,28 @@ private:
 }
 void responsiveColumns(QBoxLayout* layout, QWidget* watched, int threshold) { new ColumnSwitch(layout, watched, threshold); }
 
-void fitToText(QLineEdit* edit, int maximum) {
-    class Fit final : public QObject {
+void showTextStartWhenUnfocused(QLineEdit* edit) {
+    class TextStart final : public QObject {
     public:
-        Fit(QLineEdit* edit, int maximum) : QObject(edit), edit_(edit), maximum_(maximum) {
+        explicit TextStart(QLineEdit* edit) : QObject(edit), edit_(edit) {
             edit->installEventFilter(this);
             QObject::connect(edit, &QLineEdit::textChanged, this, [this] { apply(); });
             apply();
         }
     protected:
         bool eventFilter(QObject*, QEvent* event) override {
-            if (event->type() == QEvent::FontChange || event->type() == QEvent::Show || event->type() == QEvent::Polish) apply();
-            if (event->type() == QEvent::FocusOut) edit_->setCursorPosition(0);
+            if (event->type() == QEvent::FontChange || event->type() == QEvent::Show || event->type() == QEvent::Polish || event->type() == QEvent::Resize) apply();
+            // A context menu is still part of editing: preserve its selection.
+            if (event->type() == QEvent::FocusOut && static_cast<QFocusEvent*>(event)->reason() != Qt::PopupFocusReason) edit_->setCursorPosition(0);
             return false;
         }
     private:
         void apply() {
-            const int text = QFontMetrics(edit_->font()).horizontalAdvance(edit_->text().isEmpty() ? edit_->placeholderText() : edit_->text());
-            edit_->setMinimumWidth(std::min(scaled(maximum_), text + 24));
             if (!edit_->hasFocus()) edit_->setCursorPosition(0);
         }
         QLineEdit* edit_;
-        int maximum_;
     };
-    new Fit(edit, maximum);
+    new TextStart(edit);
 }
 
 void transparentView(QAbstractScrollArea* view) {

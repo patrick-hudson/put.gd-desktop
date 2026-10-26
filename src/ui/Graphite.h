@@ -193,9 +193,9 @@ void alignForms(QWidget* page);
 // Side by side while the watched widget is at least threshold px wide,
 // stacked below that: never two cramped columns.
 void responsiveColumns(QBoxLayout*, QWidget* watched, int threshold);
-// A line edit that is at least as wide as its text (up to maximum), so a
-// title never scrolls its first letters out of view; it shows from the start.
-void fitToText(QLineEdit*, int maximum);
+// Show a title from its beginning when it is not being edited. Keep the normal
+// shrinkable line-edit geometry so long names cannot displace adjacent actions.
+void showTextStartWhenUnfocused(QLineEdit*);
 // A disclosure button: a quiet, checkable button with one chevron (right when
 // collapsed, down when expanded) whose accessible description says which.
 void disclosure(QToolButton*);
