@@ -715,6 +715,11 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     speed_->setAccessibleName("Playback speed");
     for (const auto& [label, factor] : std::initializer_list<std::pair<const char*, double>>{{"0.5×", 0.5}, {"1×", 1.0}, {"2×", 2.0}, {"4×", 4.0}}) speed_->addItem(QString::fromUtf8(label), factor);
     speed_->setCurrentIndex(1);
+    formatAdvice_ = tool("info", "Format tips", "Use MP4 (H.264) for broader playback compatibility. Show format tips.");
+    formatAdvice_->setObjectName("formatAdvice");
+    formatAdvice_->setProperty("driveAction", QJsonObject{{"action", "showAdvice"}});
+    formatAdvice_->hide();
+    connect(formatAdvice_, &QToolButton::clicked, this, [this] { drive({{"action", "showAdvice"}}); });
     timeline_ = new ReviewTimeline(this, maskNames_);
     timeline_->setMinimumWidth(280);
     timeline_->setDuration(options.durationUs);
@@ -728,6 +733,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     time_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     transport->addWidget(play_);
     transport->addWidget(speed_);
+    transport->addWidget(formatAdvice_);
     transport->addWidget(timeline_, 1);
     auto* playbackInfo = new QWidget(this);
     auto* playbackLabels = new QVBoxLayout(playbackInfo);
@@ -961,7 +967,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     setConfig(config);
     setEdit({});
     // Top to bottom: the frame (keyboard mask editing), the transport, the tools, the footer.
-    const QList<QWidget*> order{view_, play_, speed_, timeline_, trimStart_, trimEnd_, resetTrim_, addBlur_, addSolid_, masks_, maskStart_, maskEnd_, strength_, removeMask_, format_, save_, cancel_, upload_};
+    const QList<QWidget*> order{view_, play_, speed_, formatAdvice_, timeline_, trimStart_, trimEnd_, resetTrim_, addBlur_, addSolid_, masks_, maskStart_, maskEnd_, strength_, removeMask_, format_, save_, cancel_, upload_};
     for (int i = 1; i < order.size(); ++i) setTabOrder(order[i - 1], order[i]);
     timeline_->setFocus();
     // The default fits a 1366×768 desktop; a smaller screen gets what it has.
@@ -1103,6 +1109,7 @@ void ReviewWindow::setSavedCopy(const QString& path, quint64 revision, const Rec
     refreshLabels();
 }
 void ReviewWindow::showError(const QString& message) {
+    adviceExpanded_ = false;
     message_ = message.isEmpty() ? StatusEntry{} : StatusEntry{message, QStringLiteral("error"), {{QStringLiteral("Dismiss"), QJsonObject{{"action", "dismissStatus"}}}}};
     refreshLabels();
 }
@@ -1165,6 +1172,7 @@ void ReviewWindow::refreshLabels() {
     exportAudio_->setText(!options_.audioRecorded ? QStringLiteral("No audio") : config_.silent() ? QStringLiteral("Silent export") : QStringLiteral("System audio"));
     exportAudio_->setAccessibleName(QStringLiteral("Export audio: ") + audio.section(QStringLiteral(" · "), 1));
     exportAudio_->setToolTip(audio_->toolTip());
+    formatAdvice_->setVisible(config_.format == "mp4" && config_.codec == "h265" && message_.tone == "error" && !adviceExpanded_);
     placeTools();
     refreshStatus();
 }
@@ -1185,9 +1193,7 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
     if (config_.format == "mp4" && config_.codec == "h265") {
         StatusEntry codec{QStringLiteral("Use MP4 (H.264) for broader playback compatibility."), QStringLiteral("warning"), {}};
         if (const auto h264 = offer("mp4", "h264")) codec.actions.append(*h264);
-        if (message_.tone == "error" && !adviceExpanded_)
-            entries.first().actions.append({QStringLiteral("Format tips"), {{"action", "showAdvice"}}});
-        else entries.append(codec);
+        if (message_.tone != "error" || adviceExpanded_) entries.append(codec);
     }
     const auto end = edit_.exportEnd(options_.durationUs);
     if (config_.animation() && animationMaxUs_ > 0 && end - edit_.trimStart > animationMaxUs_) {
@@ -1360,6 +1366,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"masks", masks}, {"selectedMaskId", mask ? QJsonValue(mask->id) : QJsonValue(QJsonValue::Null)},
         {"armed", view_->armed().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->armed())},
         {"maskControls", QJsonObject{{"list", maskTools_->isVisibleTo(this)}, {"times", maskStart_->isVisibleTo(this)}, {"strength", strength_->isVisibleTo(this)}, {"remove", removeMask_->isVisibleTo(this)}}},
+        {"formatAdvice", QJsonObject{{"visible", formatAdvice_->isVisibleTo(this)}, {"drive", QJsonObject{{"action", "showAdvice"}}}}},
         {"savedCopy", QJsonObject{{"path", savedPath_}, {"revision", double(savedRevision_)}, {"current", !savedPath_.isEmpty() && savedCurrent()}, {"showInFolder", lastShowInFolder_}}},
         {"selectedMaskName", mask ? QJsonValue(maskNames_->name(*mask)) : QJsonValue(QJsonValue::Null)},
         {"status", status}, {"statusRow", statusRow}, {"audio", audio_->property("summary").toString()},

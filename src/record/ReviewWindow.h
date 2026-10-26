@@ -278,7 +278,7 @@ private:
     bool blurTipDismissed_ = false;  // the blur privacy guidance, acknowledged once
     StatusEntry message_;
     QPointer<QMessageBox> discard_;
-    QToolButton* play_ = nullptr;
+    QToolButton *play_ = nullptr, *formatAdvice_ = nullptr;
     QComboBox* speed_ = nullptr;
     // The worker deletes itself when it finishes; the guard forgets it then, so
     // closing the window after a preview ended never waits on a freed thread.

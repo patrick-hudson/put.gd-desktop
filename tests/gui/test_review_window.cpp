@@ -520,7 +520,8 @@ private slots:
             window.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
             PUTGD_TRY_VERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53);
             window.resize(ReviewWindow::defaultSize());
-            PUTGD_TRY_VERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53);
+            PUTGD_TRY_VERIFY2(window.height() <= 768 && window.inspect()["video"].toObject()["share"].toDouble() >= 0.53,
+                qPrintable(QString("Window %1x%2 minimum %3x%4 frame %5 status %6 share %7").arg(window.width()).arg(window.height()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()).arg(window.findChild<FrameView*>()->height()).arg(window.findChild<QWidget*>("statusRow")->height()).arg(window.inspect()["video"].toObject()["share"].toDouble())));
         }
     }
     void maskControlsShowOnlyWhenTheyApply() {
@@ -904,8 +905,10 @@ private slots:
         const QString failure = QStringLiteral("Export failed: free disk space and try again");
         window.showError(failure);
         QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}}).code.isEmpty());
-        QVERIFY(buttonNamed(window, "Format tips"));
-        QVERIFY(window.drive({{"action", "showAdvice"}}).code.isEmpty());
+        auto* tips = window.findChild<QToolButton*>("formatAdvice");
+        QVERIFY(tips && tips->isVisible());
+        QVERIFY(window.inspect()["formatAdvice"].toObject()["visible"].toBool());
+        tips->click();
         QApplication::processEvents();
         int lines = 0;
         for (auto* line : row->findChildren<QWidget*>("statusLine", Qt::FindDirectChildrenOnly)) {
