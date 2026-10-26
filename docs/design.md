@@ -1,5 +1,10 @@
 # put.gd visual design
 
+This is the historical design record preceding Graphite. Its blue palette,
+setup flow and window structure describe earlier iterations. The current design
+contract is [Graphite visual language](visual-language.md); retain the evidence
+and verification boundaries below as historical context.
+
 The native Qt interface uses a neutral charcoal canvas and surfaces with a restrained blue accent. Blue marks the primary action and keyboard focus; red marks destructive actions and errors. Text uses the desktop's installed sans-serif font. There are no downloadable fonts, web views or raster decoration assets.
 
 Window headings name the task: Settings, Activity and History. Help describes an action or consequence in one short sentence. Routine status uses a neutral surface; errors retain their code and diagnostic text. Titles, section headings and controls use a consistent hierarchy, with 20-pixel window margins, 12-pixel gaps between sections and compact form rows.
