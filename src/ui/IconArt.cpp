@@ -170,15 +170,27 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   fill(color);QPainterPath play;play.moveTo(8,4.5);play.lineTo(20,12);play.lineTo(8,19.5);play.closeSubpath();p.drawPath(play);
  } else if(name=="pause") {
   fill(color);rounded(6,4.5,4,15,1.2);rounded(14,4.5,4,15,1.2);
- } else if(name=="trim-in"||name=="trim-out"||name=="mask-in"||name=="mask-out") {
-  // A bracket at the playhead: on the clip track (trim) or on a mask's span.
-  if(name.endsWith("-out")){p.translate(24,0);p.scale(-1,1);}
-  fill(secondary);if(name.startsWith("trim"))rounded(9,10.5,13,3,1.5);else rounded(10,7,11,10,2);
-  line(color,2.5);QPainterPath bracket;bracket.moveTo(10,3.5);bracket.lineTo(5.5,3.5);bracket.lineTo(5.5,20.5);bracket.lineTo(10,20.5);p.drawPath(bracket);
- } else if(name=="trim-reset") {
-  fill(secondary);rounded(6,10.5,12,3,1.5);
-  line(color,2.5);QPainterPath brackets;brackets.moveTo(7,3.5);brackets.lineTo(3,3.5);brackets.lineTo(3,20.5);brackets.lineTo(7,20.5);
-  brackets.moveTo(17,3.5);brackets.lineTo(21,3.5);brackets.lineTo(21,20.5);brackets.lineTo(17,20.5);p.drawPath(brackets);
+ } else if(name=="trim-in"||name=="trim-out"||name=="trim-reset") {
+  // Trim: a long clip strip cut by a bracket at the playhead; the cut-away
+  // end is only outlined, the kept part is solid.
+  const bool reset=name=="trim-reset";
+  if(name=="trim-out"){p.translate(24,0);p.scale(-1,1);}
+  if(!reset){line(secondary,1.3);p.drawRoundedRect(QRectF(1.2,9.2,4.6,5.6),1.2,1.2);}
+  fill(secondary);rounded(reset?6:9,9,reset?12:13.5,6,1.5);
+  line(color,2.5);QPainterPath bracket;
+  const auto cut=[&](qreal x,qreal dir){bracket.moveTo(x+3.5*dir,3.5);bracket.lineTo(x,3.5);bracket.lineTo(x,20.5);bracket.lineTo(x+3.5*dir,20.5);};
+  if(reset){cut(3,1);cut(21,-1);}else cut(7.5,1);
+  p.drawPath(bracket);
+ } else if(name=="mask-in"||name=="mask-out") {
+  // Mask timing: the same bracket at the playhead, on a covered region (a
+  // hatched block) instead of the clip strip.
+  if(name=="mask-out"){p.translate(24,0);p.scale(-1,1);}
+  const QRectF block(9.5,4.5,12,15);
+  fill(secondary);p.drawRoundedRect(block,2,2);
+  p.save();p.setClipRect(block.adjusted(1,1,-1,-1));line(color,1.6);
+  for(qreal d=-8;d<16;d+=4.5)p.drawLine(QPointF(block.left()+d,block.bottom()),QPointF(block.left()+d+15,block.top()));
+  p.restore();
+  line(color,2.5);QPainterPath bracket;bracket.moveTo(7,3.5);bracket.lineTo(3.5,3.5);bracket.lineTo(3.5,20.5);bracket.lineTo(7,20.5);p.drawPath(bracket);
  } else if(name=="remove") {
   fill(secondary);QPainterPath bin;bin.moveTo(5.5,8);bin.lineTo(18.5,8);bin.lineTo(17.2,21);bin.quadTo(17,22,16,22);bin.lineTo(8,22);bin.quadTo(7,22,6.8,21);bin.closeSubpath();p.drawPath(bin);
   fill(color);rounded(3,5,18,2.5,1);rounded(9,2,6,3.5,1);line(color,1.6);p.drawLine(QPointF(10,11),QPointF(10.4,19));p.drawLine(QPointF(14,11),QPointF(13.6,19));
