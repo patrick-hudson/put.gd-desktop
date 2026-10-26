@@ -172,7 +172,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'save_recording_copy', 'upload_recording', 'reorder_destinations', 'move_destination',
                             'clear_logs', 'create_diagnostics_bundle', 'get_diagnostics_upload_target', 'show_diagnostics_package',
                             'settings_diagnostics', 'history_save_diagnostics', 'get_update_status', 'check_for_updates',
-                            'open_software_updates', 'install_update', 'restart_after_update', 'drive_file_dialog', 'editor_file_dialog'}
+                            'open_software_updates', 'install_update', 'restart_after_update', 'drive_file_dialog', 'editor_file_dialog',
+                            'drive_editor'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
                 for tool in discovered:
                     self.assertEqual(tool.inputSchema['type'], 'object')
@@ -194,6 +195,12 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': False}),
                     ('cancel_operation', {'id': 'synthetic-delete', 'kind': 'delete', 'item_id': 'synthetic-item'}),
                     ('cancel_operation', {'id': 'synthetic-operation', 'item_id': ''}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'submit'}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'tool', 'tool': 'lasso'}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'zoom', 'percent': 1}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'geometry', 'rect': [1, 2, 3]}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'select', 'shape_id': 0}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'pan', 'delta': [1.5, 2]}),
                 ]:
                     rejected = await session.call_tool(name, args)
                     self.assertTrue(rejected.isError or (
@@ -287,6 +294,13 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('cancel_editor', {'id': 'synthetic-operation'}, 'editor.cancel', {'id': 'synthetic-operation'}),
                     ('raise_editor', {'id': 'synthetic-operation'}, 'editor.raise', {'id': 'synthetic-operation'}),
                     ('editor_file_dialog', {'id': 'synthetic-operation', 'action': 'inspect'}, 'editor.fileDialog', {'id': 'synthetic-operation', 'action': 'inspect'}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'inspect'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'inspect'}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'tool', 'tool': 'crop'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'tool', 'tool': 'crop'}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'select', 'shape_id': 3}, 'editor.view', {'id': 'synthetic-operation', 'action': 'select', 'shapeId': 3}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'select'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'select', 'shapeId': None}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'geometry', 'rect': [10, 20, -30, 40]}, 'editor.view', {'id': 'synthetic-operation', 'action': 'geometry', 'rect': [10, 20, -30, 40]}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'zoom', 'percent': 150}, 'editor.view', {'id': 'synthetic-operation', 'action': 'zoom', 'percent': 150}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'pan', 'delta': [-40, 25]}, 'editor.view', {'id': 'synthetic-operation', 'action': 'pan', 'delta': [-40, 25]}),
                     ('get_recording_capabilities', {}, 'recording.capabilities', {}),
                     ('prepare_recording', {'target': {'kind': 'region', 'rect': [100, 100, 1280, 720]}, 'format': 'mp4', 'system_audio': True, 'fps': 24},
                      'recording.prepare', {'target': {'kind': 'region', 'rect': [100, 100, 1280, 720]}, 'format': 'mp4', 'audio': {'system': True}, 'fps': 24}),

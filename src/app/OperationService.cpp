@@ -1011,7 +1011,7 @@ QJsonObject OperationService::capabilities() const {
   {"editor",QJsonObject{{"available",editor},{"admissionPixels",double(EditorJob::admissionPixels)},{"open",!editingId_.isEmpty()},
    {"sources",QJsonArray{"region","window","desktop","clipboard","file"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
    {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight"}},
-   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","fileDialog","submit","cancel","raise"}}}},
+   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","fileDialog","view","submit","cancel","raise"}}}},
   {"recording",recording_->capabilities()}};
 }
 QJsonObject OperationService::diagnostics() const {

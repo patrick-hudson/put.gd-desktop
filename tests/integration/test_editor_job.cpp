@@ -2,6 +2,7 @@
 #include "core/SanitizedPng.h"
 #include <QDir>
 #include <QDirIterator>
+#include <QFileInfo>
 #include <QImage>
 #include <QImageWriter>
 #include <QJsonArray>
@@ -74,12 +75,24 @@ private slots:
   auto bad=ask(*session,"apply",{{"commands",QJsonArray{QJsonObject{{"op","remove"},{"shapeId",999}}}}});QCOMPARE(bad.error.code,QString("edit_shape_missing"));
   QCOMPARE(ask(*session,"inspect").result["shapes"].toArray().size(),6);
   auto undo=ask(*session,"apply",{{"commands",QJsonArray{QJsonObject{{"op","undo"}},QJsonObject{{"op","redo"}}}}});QVERIFY(!undo.error);
+  // editor.view drives the window's own tool, zoom and crop controls; inspect reports them.
+  auto view=ask(*session,"view",{{"action","tool"},{"tool","crop"}});QVERIFY2(!view.error,qPrintable(view.error.message));
+  QCOMPARE(view.result["tool"].toString(),QString("crop"));QVERIFY(view.result["cropPending"].toBool());QCOMPARE(view.result["geometry"].toArray(),QJsonArray({10,10,300,180}));
+  QVERIFY(!ask(*session,"view",{{"action","cancelCrop"}}).error);
+  auto zoomed=ask(*session,"view",{{"action","zoom"},{"percent",200}});QVERIFY(!zoomed.error);QCOMPARE(zoomed.result["zoomPercent"].toDouble(),200.0);
+  QCOMPARE(ask(*session,"inspect").result["view"].toObject()["zoomPercent"].toDouble(),200.0);
+  QCOMPARE(ask(*session,"view",{{"action","explode"}}).error.code,QString("invalid_request"));
+  QCOMPARE(ask(*session,"view",{{"action","select"},{"shapeId",999}}).error.code,QString("edit_shape_missing"));
+  // A failed copy names its reason and the window offers another location; the draft stays.
+  auto refused=ask(*session,"saveCopy",{{"path",root.filePath("missing-folder/copy.png")}});QCOMPARE(refused.error.code,QString("save_failed"));
+  QCOMPARE(ask(*session,"view").result["lastSave"].toObject()["status"].toString(),QString("failed"));
   auto preview=ask(*session,"preview",{{"maxEdge",150}});QVERIFY2(!preview.error,qPrintable(preview.error.code));
   const auto previewImage=QImage::fromData(QByteArray::fromBase64(preview.result["png"].toString().toLatin1()),"PNG");
   QCOMPARE(previewImage.width(),150);QCOMPARE(preview.result["sourceWidth"].toInt(),300);
   QCOMPARE(ask(*session,"preview",{{"maxEdge",10}}).error.code,QString("invalid_request"));
   const auto copy=root.filePath("copy.png");
   auto saved=ask(*session,"saveCopy",{{"path",copy}});QVERIFY2(!saved.error,qPrintable(saved.error.message));
+  QCOMPARE(ask(*session,"view").result["lastSave"].toObject()["path"].toString(),QFileInfo(copy).absoluteFilePath());
   QCOMPARE(ask(*session,"saveCopy",{{"path",copy}}).error.code,QString("file_exists"));
   QCOMPARE(ask(*session,"saveCopy",{{"path","relative.png"}}).error.code,QString("invalid_request"));
   QCOMPARE(ask(*session,"shell").error.code,QString("invalid_request"));

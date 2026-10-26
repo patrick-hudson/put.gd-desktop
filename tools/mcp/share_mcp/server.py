@@ -48,6 +48,10 @@ def safe_patch(value: Any) -> bool:
 
 EDITOR_SOURCES = {'region', 'window', 'desktop', 'clipboard', 'file'}
 EDITOR_OPS = {'add', 'update', 'remove', 'crop', 'resetCrop', 'undo', 'redo'}
+# The editor window's view and selection controls, one per drive_editor call.
+EDITOR_VIEW_ACTIONS = {'inspect', 'tool', 'select', 'selectNext', 'selectPrevious', 'place', 'geometry', 'applyCrop',
+                       'cancelCrop', 'zoom', 'fit', 'actualSize', 'pan', 'showSavedCopy'}
+EDITOR_TOOLS = {'select', 'redact', 'blur', 'crop', 'arrow', 'rectangle', 'highlight', 'text'}
 RECORDING_TARGETS = {'monitor', 'desktop', 'region', 'window'}
 RECORDING_FORMATS = {'mp4', 'webm', 'gif', 'webp'}
 RECORDING_CODECS = {'h264', 'h265', 'vp9'}
@@ -223,7 +227,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=read)
     async def get_editor(id: str) -> Json:
-        """Read the open editor: image size, crop [x,y,w,h], shapes with ids/geometry/styles, undo/redo availability and phase (editing/finalizing)."""
+        """Read the open editor: image size, crop [x,y,w,h], shapes with ids/geometry/styles, undo/redo availability, phase (editing/finalizing) and the window's view (as drive_editor inspect returns it)."""
         return await adapter.call('editor.inspect', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
@@ -276,6 +280,38 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         if not identifier(id) or action not in FILE_DIALOG_ACTIONS:
             return invalid()
         return await adapter.call('editor.fileDialog', {'id': id, 'action': action})
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def drive_editor(id: str, action: str, tool: str | None = None, shape_id: int | None = None,
+                           rect: list[int] | None = None, percent: float | None = None,
+                           delta: list[int] | None = None) -> Json:
+        """Work the open editor window's view and selection controls as a user does, one action per call; each reply is the window's view: tool, selectedShapeId, geometry [x,y,w,h] of the selection or pending crop (an arrow's tail at x,y and head at x+w,y+h), cropPending, the accessible selection summary, zoomPercent, fitted, visibleRect (image pixels shown), canvasSize, editingText, busy, the tool style, the footer message, lastSave (saved/failed, path, reason) and lastShowInFolder. Actions: inspect, tool {tool select|redact|blur|crop|arrow|rectangle|highlight|text}, select {shape_id, or none to clear}, selectNext / selectPrevious (Tab, ] and [), place (the current drawing tool's mark centred at a quarter of the image, Insert), geometry {rect [x,y,w,h] in image pixels for the selection or the pending crop; one undo step}, applyCrop / cancelCrop, zoom {percent 2-3200}, fit, actualSize, pan {delta [dx,dy] canvas pixels} and showSavedCopy (Show in folder for the last saved copy). Shapes themselves change through edit_image; nothing uploads."""
+        if not identifier(id) or action not in EDITOR_VIEW_ACTIONS:
+            return invalid()
+        params: Json = {'id': id, 'action': action}
+        if tool is not None:
+            if tool not in EDITOR_TOOLS:
+                return invalid()
+            params['tool'] = tool
+        if shape_id is not None:
+            if type(shape_id) is not int or shape_id < 1:
+                return invalid()
+            params['shapeId'] = shape_id
+        elif action == 'select':
+            params['shapeId'] = None
+        if rect is not None:
+            if not (isinstance(rect, list) and len(rect) == 4 and all(type(value) is int and abs(value) <= 1000000 for value in rect)):
+                return invalid()
+            params['rect'] = rect
+        if percent is not None:
+            if type(percent) not in (int, float) or not math.isfinite(percent) or not 2 <= percent <= 3200:
+                return invalid()
+            params['percent'] = percent
+        if delta is not None:
+            if not (isinstance(delta, list) and len(delta) == 2 and all(type(value) is int and abs(value) <= 100000 for value in delta)):
+                return invalid()
+            params['delta'] = delta
+        return await adapter.call('editor.view', params)
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def raise_editor(id: str) -> Json:

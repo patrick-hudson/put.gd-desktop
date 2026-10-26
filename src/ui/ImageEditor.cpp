@@ -149,7 +149,12 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   const bool open=!terminal&&!finalizing;
   if(name=="inspect"){
    if(!params.isEmpty())return denied("invalid_request","inspect has no parameters");
-   auto state=editor::Commands::state(*document);state["phase"]=terminal?"closing":finalizing?"finalizing":"editing";state["destination"]=destination;return state;
+   auto state=editor::Commands::state(*document);state["phase"]=terminal?"closing":finalizing?"finalizing":"editing";state["destination"]=destination;state["view"]=window->viewState();return state;
+  }
+  if(name=="view"){
+   // The window's own controls: tool, selection, crop draft, zoom and pan.
+   if(!open&&params["action"].toString("inspect")!="inspect")return denied("editor_finalizing","The edit was already submitted or discarded");
+   return window->viewCommand(params,code,message);
   }
   if(name=="raise"){if(!params.isEmpty())return denied("invalid_request","raise has no parameters");window->showNormal();window->raise();window->activateWindow();return {{"raised",true}};}
   if(name=="apply"){
@@ -177,7 +182,12 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(QFileInfo(target.absolutePath()).canonicalFilePath()==QFileInfo(files.directory()).canonicalFilePath())return denied("invalid_request","Choose a path outside private editor staging");
    if(target.exists()&&(!params["overwrite"].toBool()||!target.isFile()))return denied("file_exists","The file exists; pass overwrite to replace it");
    const auto png=document->exportPng();QSaveFile file(path);file.setDirectWriteFallback(false);
-   if(png.isEmpty()||!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit())return denied("save_failed","The copy could not be saved");
+   if(png.isEmpty()||!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit()){
+    const auto reason=png.isEmpty()?QStringLiteral("the edited image could not be encoded"):file.errorString();
+    window->showSaveFailed(path,reason);return denied("save_failed","The copy could not be saved: "+reason);
+   }
+   // The window shows the copy as if its own Save a copy… had written it.
+   window->showSaved(path);
    return {{"saved",true},{"path",path},{"bytes",double(png.size())},{"sha256",QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())}};
   }
   if(name=="fileDialog"){
