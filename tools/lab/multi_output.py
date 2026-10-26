@@ -216,7 +216,7 @@ PY
         self.session(script)
         self.fixture_pid = None
 
-    def fixture(self, motion=False):
+    def fixture(self, motion=False, minimum_heads=2):
         self.stop_fixture()
         self.fixture_remote = self.remote + ('-motion' if motion else '')
         source = Path(__file__).with_name('multi_output_fixture.py')
@@ -233,8 +233,8 @@ PY
                     raise RuntimeError('Native checkerboard readiness timeout')
                 time.sleep(.2)
         self.monitors = ready['monitors']
-        if len(self.monitors) < 2 or not all(m['fullscreen'] for m in self.monitors):
-            raise RuntimeError('Two separately fullscreen native output fixtures required')
+        if len(self.monitors) < minimum_heads or not all(m['fullscreen'] for m in self.monitors):
+            raise RuntimeError('Separately fullscreen native output fixtures required on every enabled head')
         if self.profile['session'] == 'wayland' and 'Wayland' not in ready['backend']:
             raise RuntimeError('Fixture is not native Wayland')
         if any(m['allocatedWidth'] != m['width'] or m['allocatedHeight'] != m['height'] for m in self.monitors):
