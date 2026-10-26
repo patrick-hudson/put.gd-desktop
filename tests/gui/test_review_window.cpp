@@ -11,9 +11,13 @@
 #include "ui/Theme.h"
 #include <QLabel>
 #include <QApplication>
+#include <QClipboard>
+#include <QWheelEvent>
+#include "platform/HostOpen.h"
 #include <QFontInfo>
 #include <QComboBox>
 #include <QFileDialog>
+#include <QFile>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
@@ -80,6 +84,66 @@ class ReviewWindowTest : public QObject {
     static qint64 slack(const ReviewTimeline& t) { return 2 * duration / t.trackRect().width() + 1; }
     static ReviewTimeline* timeline(ReviewWindow& w) { return w.findChild<ReviewTimeline*>("timeline"); }
 private slots:
+    void stableMaskNamesSurviveRemoval() {
+        ReviewWindow window(options(), config());
+        window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QCOMPARE(window.inspect()["selectedMaskName"].toString(), QString("Redaction 2"));
+        auto edit = twoMasks(4); edit.masks.removeFirst(); window.setEdit(edit);
+        QCOMPARE(window.findChild<QComboBox*>("masks")->currentText(), QString("Redaction 2"));
+        QCOMPARE(window.inspect()["masks"].toArray().first().toObject()["name"].toString(), QString("Redaction 2"));
+        QVERIFY(window.findChild<FrameView*>()->accessibleDescription().startsWith("Redaction 2 selected"));
+        edit.revision++; edit.masks.append(mask("third", "blur", 0, duration)); window.setEdit(edit);
+        QCOMPARE(window.inspect()["selectedMaskName"].toString(), QString("Blur 3"));
+    }
+    void closedChoicesIgnoreWheel() {
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        for (auto* combo : window.findChildren<QComboBox*>()) {
+            const int index = combo->currentIndex();
+            QWheelEvent event(QPointF(5, 5), combo->mapToGlobal(QPoint(5, 5)), {}, QPoint(0, -120), Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+            QApplication::sendEvent(combo, &event);
+            QCOMPARE(combo->currentIndex(), index);
+            QVERIFY(!event.isAccepted());
+            QTest::keyClick(combo, Qt::Key_Down);
+            QVERIFY(combo->currentIndex() != index || index == combo->count() - 1);
+        }
+    }
+    void savedCopyIdentifiesFileAndBecomesEarlier() {
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QCOMPARE(window.drive({{"action", "copyPath"}}).code, QString("invalid_request"));
+        QTemporaryDir dir; QVERIFY(dir.isValid());
+        const QString saved = dir.filePath("review copy.mp4");
+        QFile file(saved); QVERIFY(file.open(QIODevice::WriteOnly)); file.close();
+        window.setSavedCopy(saved, 3, config());
+        QVERIFY(window.inspect()["status"].toString().contains("Saved review copy.mp4"));
+        QVERIFY(window.inspect()["savedCopy"].toObject()["current"].toBool());
+        QVERIFY(window.drive({{"action", "copyPath"}}).code.isEmpty());
+        QCOMPARE(QApplication::clipboard()->text(), saved);
+        QUrl opened; host::setTestOpener([&](const QUrl& url) { opened = url; });
+        const auto restore = qScopeGuard([] { host::setTestOpener({}); });
+        QVERIFY(window.drive({{"action", "showInFolder"}}).code.isEmpty());
+        QCOMPARE(opened.toLocalFile(), dir.path());
+        window.setEdit(twoMasks(4));
+        QVERIFY(window.inspect()["status"].toString().contains("Earlier copy saved: review copy.mp4"));
+        QVERIFY(!window.inspect()["savedCopy"].toObject()["current"].toBool());
+        window.setSavedCopy("/tmp/new.mp4", 4, config());
+        window.drive({{"action", "format"}, {"format", "webm"}, {"codec", "vp9"}});
+        QVERIFY(!window.inspect()["savedCopy"].toObject()["current"].toBool());
+    }
+    void resizeCornerUsesFullTargetAndNearestMask() {
+        FrameView frame; frame.resize(640, 360); frame.setCanvas({640, 360});
+        auto one = mask("one", "solid", 0, duration); one.rect = QRect(20, 20, 100, 100);
+        auto two = one; two.id = "two"; two.rect.translate(20, 0);
+        frame.setMasks({one, two}, "one"); frame.show();
+        QSignalSpy moved(&frame, &FrameView::maskMoved);
+        // Twelve pixels beyond the painted corner is still in its 32 px target.
+        drag(&frame, QPoint(148, 116), QPoint(158, 126));
+        QCOMPARE(moved.size(), 1);
+        QCOMPARE(moved.first()[0].toString(), QString("two"));
+        QCOMPARE(moved.first()[1].toRect().size(), QSize(110, 110));
+    }
     // put.gd's own frame everywhere below, also offscreen: the frame share,
     // minimum size and fit include the compact header's pixels.
     void initTestCase() { Graphite::WindowHeader::setCustomFrameOverride(1); }
@@ -110,7 +174,7 @@ private slots:
             auto* accessible = QAccessible::queryAccessibleInterface(surface);
             QVERIFY(accessible);
             QCOMPARE(accessible->text(QAccessible::Description), surface->accessibleDescription());
-            QVERIFY(surface->accessibleDescription().contains(recording ? "Enter: use entire display" : "Enter: capture entire display"));
+            QVERIFY(surface->accessibleDescription().contains(recording ? "Drag and release to use a region" : "Drag and release to capture"));
             if (mode == 0) {
                 QTest::keyClick(surface, Qt::Key_Return);
                 QCOMPARE(selected, QRectF(screen));
@@ -156,10 +220,10 @@ private slots:
         for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"&&w->width()==800)surface=w;
         QVERIFY(surface);
         QTest::keyClick(surface,Qt::Key_Tab);
-        QVERIFY(surface->accessibleDescription().contains("Right · Enter: capture entire display"));
+        QVERIFY(surface->accessibleDescription().contains("Right · Drag and release to capture"));
         QTest::keyClick(surface,Qt::Key_Right);
         QTest::keyClick(surface,Qt::Key_Backtab);
-        QVERIFY(surface->accessibleDescription().contains("Left · Enter: capture selected region"));
+        QVERIFY(surface->accessibleDescription().contains("Left · Drag and release to capture"));
         QTest::keyClick(surface,Qt::Key_Return);QCOMPARE(selected.size(),1);
         QCOMPARE(qvariant_cast<QRectF>(selected.first()[0]),QRectF(-720,60,160,120));
     }
@@ -365,7 +429,9 @@ private slots:
         QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.6);
         // The minimum leaves the frame usable and fits a small laptop screen.
         qInfo("review minimum %dx%d", window.minimumSizeHint().width(), window.minimumSizeHint().height());
-        QVERIFY(window.minimumSizeHint().width() <= 760 && window.minimumSizeHint().height() <= 420);
+        window.resize(window.minimumSizeHint());
+        QApplication::processEvents();
+        QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60);
         // The video scales with the window.
         const auto before = state["video"].toObject()["rect"].toArray();
         window.resize(1280, 760);
@@ -441,6 +507,20 @@ private slots:
             qInfo("review %dx%d text %.1f %s steady %.3f transient %.3f", canvas.width(), canvas.height(), scale, qPrintable(Theme::name(theme)), steady, transient);
             QVERIFY2(steady >= 0.60, qPrintable(QString::number(steady)));
             QVERIFY2(transient >= 0.53, qPrintable(QString::number(transient)));
+            window.resize(window.minimumSizeHint()); QApplication::processEvents();
+            PUTGD_TRY_VERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53);
+            const auto transientMinimum = window.inspect()["video"].toObject()["share"].toDouble();
+            window.drive({{"action", "dismissBlurTip"}}); QApplication::processEvents();
+            window.resize(window.minimumSizeHint()); QApplication::processEvents();
+            PUTGD_TRY_VERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60);
+            const auto steadyMinimum = window.inspect()["video"].toObject()["share"].toDouble();
+            qInfo("review minimum %dx%d steady %.3f transient %.3f", window.width(), window.height(), steadyMinimum, transientMinimum);
+            QVERIFY2(steadyMinimum >= 0.60, qPrintable(QString::number(steadyMinimum)));
+            window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
+            window.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
+            PUTGD_TRY_VERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53);
+            window.resize(ReviewWindow::defaultSize());
+            PUTGD_TRY_VERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53);
         }
     }
     void maskControlsShowOnlyWhenTheyApply() {
@@ -691,9 +771,10 @@ private slots:
         PUTGD_TRY_VERIFY((box = window.findChild<QMessageBox*>("confirmAction")) && box->isVisible());
         QCOMPARE(cancelled.size(), 0);
         QVERIFY(box->text().startsWith(QStringLiteral("Discard this recording and its edits?")));
-        QCOMPARE(box->button(QMessageBox::Yes)->text(), QString("Discard recording"));
+        QCOMPARE(box->findChild<QPushButton*>("confirmDiscard")->text(), QString("Discard recording"));
         QCOMPARE(box->defaultButton()->text(), QString("Keep reviewing"));
-        QCOMPARE(box->escapeButton(), static_cast<QAbstractButton*>(box->button(QMessageBox::Cancel)));
+        QCOMPARE(box->escapeButton(), static_cast<QAbstractButton*>(box->findChild<QPushButton*>("keepReviewing")));
+        QVERIFY(box->findChild<QPushButton*>("keepReviewing")->x() < box->findChild<QPushButton*>("confirmDiscard")->x());
         QVERIFY(window.inspect()["discardConfirmation"].toObject()["open"].toBool());
         // While it is open, other controls wait.
         QCOMPARE(window.drive({{"action", "setIn"}}).code, QString("recording_state"));
@@ -726,14 +807,14 @@ private slots:
         // The fixture's clip does not exist: the first refresh fails.
         PUTGD_TRY_VERIFY(window.inspect()["preview"].toObject()["error"].isString());
         auto preview = window.inspect()["preview"].toObject();
-        QCOMPARE(preview["error"].toString(), QString("Preview unavailable at 0:00.00"));
+        QCOMPARE(preview["error"].toString(), QString("The frame at 0:00.00 couldn't be decoded (the private recording file is missing)."));
         QVERIFY(!preview["stale"].toBool());
         auto* card = window.findChild<QWidget*>("previewError");
         auto* retry = window.findChild<QPushButton*>("retryPreview");
         QVERIFY(card && card->isVisible() && retry && retry->isVisible());
         auto* frame = window.findChild<FrameView*>();
         QVERIFY(frame->rect().contains(card->geometry()));
-        QVERIFY(frame->accessibleDescription().startsWith(QStringLiteral("Preview unavailable")));
+        QVERIFY(frame->accessibleDescription().startsWith(QStringLiteral("The frame at")));
         // A decoded frame clears it; the next failure marks that frame as stale.
         QImage image(1280, 720, QImage::Format_RGB32);
         image.fill(Qt::darkCyan);
@@ -743,7 +824,7 @@ private slots:
         QVERIFY(window.drive({{"action", "seek"}, {"time", 4000000}}).code.isEmpty());
         PUTGD_TRY_VERIFY(window.inspect()["preview"].toObject()["stale"].toBool());
         preview = window.inspect()["preview"].toObject();
-        QCOMPARE(preview["error"].toString(), QString("Preview unavailable at 0:04.00"));
+        QCOMPARE(preview["error"].toString(), QString("The frame at 0:04.00 couldn't be decoded (the private recording file is missing)."));
         QCOMPARE(preview["frameTimeUs"].toDouble(), 0.0);
         QVERIFY(window.findChild<QLabel*>("previewErrorText")->text().contains(QStringLiteral("earlier frame (0:00.00)")));
         // Retry tries again at once and, failing, keeps the error.
@@ -823,6 +904,8 @@ private slots:
         const QString failure = QStringLiteral("Export failed: free disk space and try again");
         window.showError(failure);
         QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}}).code.isEmpty());
+        QVERIFY(buttonNamed(window, "Format tips"));
+        QVERIFY(window.drive({{"action", "showAdvice"}}).code.isEmpty());
         QApplication::processEvents();
         int lines = 0;
         for (auto* line : row->findChildren<QWidget*>("statusLine", Qt::FindDirectChildrenOnly)) {
@@ -864,7 +947,8 @@ private slots:
         QVERIFY(!window.inspect()["status"].toString().contains(guidance));
         auto* list = window.findChild<QComboBox*>("masks");
         QCOMPARE(list->itemText(1), QString("Redaction 2"));
-        QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}).state["status"].toString() == guidance);
+        QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}).code.isEmpty());
+        QVERIFY(window.drive({{"action", "showAdvice"}}).state["status"].toString() == guidance);
         auto* fix = buttonNamed(window, "Use Redact");
         QVERIFY(fix);
         fix->click();

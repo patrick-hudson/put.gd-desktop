@@ -138,20 +138,20 @@ print('PASS mouse-to-keyboard clipping and keyboard-to-mouse replacement');
 {
     pointer = [2100, 200];
     const {actor, result} = begin();
-    equal(actor._instructions.text.includes('Enter: capture entire display'), true);
+    equal(actor._instructions.text.includes('Drag and release to capture'), true);
     key(actor, 'Tab');
     equal(actor._monitor(), monitors[0]);
     equal(actor._instructions.text.includes('Display 1'), true);
     key(actor, 'ISO_Left_Tab');
     key(actor, 'Right');
-    equal(actor._instructions.text.includes('Enter: capture selected region'), true);
+    equal(actor._instructions.text.includes('Drag and release to capture'), true);
     key(actor, 'Tab'); rect(actor, [320, 180, 640, 360]);
     key(actor, 'Tab', 2); rect(actor, [2240, 80, 640, 360]);
     key(actor, 'Escape'); equal(await result, null); closed(actor);
     equal(RegionSelection.switchDisplay({x: 0, y: 0, width: 1920, height: 1080}, monitors, 0),
         {current: 1, region: {x: 1920, y: -100, width: 1280, height: 720}});
-    equal(RegionSelection.instructions(null, true, 'Display 2').includes('Enter: use entire display'), true);
-    equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Enter: use selected region'), true);
+    equal(RegionSelection.instructions(null, true, 'Display 2').includes('Drag and release to use a region'), true);
+    equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Drag and release to use a region'), true);
 }
 print('PASS display cycling, reverse cycling, clamping, display names and state-specific hints');
 
@@ -159,9 +159,9 @@ print('PASS display cycling, reverse cycling, clamping, display names and state-
     const actor = new globalThis.RegionSelector(true);
     const result = actor.selectAsync();
     equal(actor.accessible_name, 'Recording region');
-    equal(actor._instructions.text.includes('Enter: use entire display'), true);
+    equal(actor._instructions.text.includes('Drag and release to use a region'), true);
     key(actor, 'Right');
-    equal(actor._instructions.text.includes('Enter: use selected region'), true);
+    equal(actor._instructions.text.includes('Drag and release to use a region'), true);
     key(actor, 'Escape'); equal(await result, null); closed(actor);
 }
 print('PASS recording selector purpose and live Enter hints');

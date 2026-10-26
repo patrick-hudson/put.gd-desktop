@@ -151,6 +151,19 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         reply({}, {});
         return;
     }
+    if (command == "savedCopy") {
+        auto json = params["config"].toObject();
+        for (const auto* key : {"mime", "budgetBytes"}) json.remove(key);
+        RecordingConfig config;
+        qint64 revision = 0;
+        const QString path = params["path"].toString();
+        if (!QDir::isAbsolutePath(path) || !integer(params["revision"], 1, 1LL << 52, &revision) || recording::parseConfig(json, config)) {
+            reply({"invalid_request", "Invalid saved-copy result", {}}, {}); return;
+        }
+        if (review_) review_->setSavedCopy(path, quint64(revision), config);
+        reply({}, {});
+        return;
+    }
     if (command == "notice") {
         // The resident's account of a stop the helper made itself (#225).
         if (review_) review_->setNotice(params["text"].toString().left(1000));
@@ -653,7 +666,7 @@ void RecordSession::exportClip(const QJsonObject& params, Reply reply) {
         if (exportThread_ == thread) exportThread_ = nullptr;
         exportCancel_.reset();
         // A failure is an error in the review's status row, kept until dismissed.
-        if (review_) review_->setExporting(false, *error ? QString() : QStringLiteral("Exported %1 (%2 KiB)").arg(request.config.format.toUpper()).arg(result->bytes / 1024));
+        if (review_) review_->setExporting(false, {});
         if (review_ && *error) review_->showError(QStringLiteral("Export failed: %1").arg(error->message));
         if (*error) { QFile::remove(request.output); reply(*error, {}); return; }
         reply({}, {{"bytes", double(result->bytes)}, {"durationUs", double(result->durationUs)}, {"frames", result->frames}, {"videoEncoder", result->videoEncoder}, {"audioEncoder", result->audioEncoder}, {"size", sizeJson(result->size)}});

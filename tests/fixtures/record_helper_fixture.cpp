@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
             result(requestId, {{"bytes", double(bytes.size())}, {"durationUs", 6000000.0}});
             return;
         }
-        if (QStringList{"pause", "resume", "cancel", "raise", "overlay", "notice"}.contains(command)) { result(requestId, {}); return; }
+        if (QStringList{"pause", "resume", "cancel", "raise", "overlay", "notice", "savedCopy"}.contains(command)) { result(requestId, {}); return; }
         if (command == "review") { result(requestId, {{"action", params["action"]}, {"visible", true}}); return; }
         auto frame = envelope;
         frame["requestId"] = requestId;

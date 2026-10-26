@@ -14,10 +14,11 @@ private slots:
   QVERIFY(!switchRegionDisplay(selected,{},current,Qt::Key_Tab));
  }
  void hintsReflectActionAndState(){
-  QVERIFY(regionInstructions().contains("Enter: capture entire display"));
-  QVERIFY(regionInstructions(QRectF(0,0,10,10)).contains("Enter: capture selected region"));
-  QVERIFY(regionInstructions({},true,"DP-2").contains("DP-2 · Enter: use entire display"));
-  QVERIFY(regionInstructions(QRectF(0,0,10,10),true).contains("Enter: use selected region"));
+  QVERIFY(regionInstructions().startsWith("Drag and release to capture\nKeyboard:"));
+  QVERIFY(regionInstructions().section('\n',1).contains("Enter confirms · Esc cancels"));
+  QVERIFY(regionInstructions(QRectF(0,0,10,10)).contains("Drag and release to capture"));
+  QVERIFY(regionInstructions({},true,"DP-2").contains("DP-2 · Drag and release to use a region"));
+  QVERIFY(regionInstructions(QRectF(0,0,10,10),true).contains("Drag and release to use a region"));
  }
  void initialRegionAndSteps(){
   const QRectF screen(-800,100,800,600);QRectF selected;

@@ -283,7 +283,7 @@ int main(int argc,char** argv){
   review.drive({{"action","selectMask"},{"maskId","m-solid"}});
   if(!shot(review,"30-review")||!inspected(review,"30-review"))return 2;
   review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31-review-blur-selected")||!inspected(review,"31-review-blur-selected"))return 2;
-  review.resize(760,420);if(!shot(review,"32-review-minimum")||!inspected(review,"32-review-minimum"))return 2;
+  review.resize(review.minimumSizeHint());if(!shot(review,"32-review-minimum")||!inspected(review,"32-review-minimum"))return 2;
   review.resize(record::ReviewWindow::defaultSize());
   // Keyboard mask editing: the frame focused by Tab, the selected cover's ring.
   review.drive({{"action","selectMask"},{"maskId","m-solid"}});review.activateWindow();putgd::test::waitForWindowActive(&review);if(auto* view=review.findChild<record::FrameView*>())view->setFocus(Qt::TabFocusReason);if(!shot(review,"38-review-keyboard-mask")||!inspected(review,"38-review-keyboard-mask"))return 2;
@@ -292,6 +292,10 @@ int main(int argc,char** argv){
   review.drive({{"action","dismissStatus"}});review.drive({{"action","format"},{"format","mp4"},{"codec","h264"}});
   // A refresh that fails (there is no clip): the earlier frame is dimmed and named.
   review.drive({{"action","seek"},{"time",16000000}});review.drive({{"action","retryPreview"}});if(!shot(review,"40-review-preview-error")||!inspected(review,"40-review-preview-error"))return 2;
+  if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),16000000);
+  review.setSavedCopy("/tmp/product-walkthrough.mp4",edit.revision,config);if(!shot(review,"49-review-saved-copy")||!inspected(review,"49-review-saved-copy"))return 2;
+  auto later=edit;later.revision++;review.setEdit(later);if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),16000000);if(!shot(review,"50-review-earlier-copy")||!inspected(review,"50-review-earlier-copy"))return 2;
+  review.drive({{"action","dismissSavedCopy"}});
   // Discard… asks first; the dialog alone, as the desktop shows it over the review.
   review.drive({{"action","discard"}});if(auto* box=review.findChild<QMessageBox*>("confirmAction")){if(!shot(*box,"41-review-discard-confirm"))return 2;}else return 2;review.drive({{"action","keepReviewing"}});
   qunsetenv("PUTGD_RECORD_REVIEW_DELAY_MS");

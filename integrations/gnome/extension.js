@@ -198,9 +198,8 @@ const RegionSelection = {
             y: Math.max(to.y, Math.min(region.y + to.y - from.y, to.y + to.height - height)), width, height}};
     },
     instructions(region, recording, display) {
-        const selected = region?.width > 0 && region?.height > 0;
-        return `${display} · Enter: ${recording ? 'use' : 'capture'} ${selected ? 'selected region' : 'entire display'} · Esc: cancel\n` +
-            'Drag or arrows to select · Shift+arrows: resize · Ctrl+arrows: 10 px · Tab / Shift+Tab: display';
+        return `${display ? display + ' · ' : ''}${recording ? 'Drag and release to use a region' : 'Drag and release to capture'}\n` +
+            'Keyboard: arrows select · Shift+arrows resize · Ctrl+arrows 10 px · Tab display · Enter confirms · Esc cancels';
     },
 };
 

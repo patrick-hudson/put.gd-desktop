@@ -160,7 +160,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="recording.preview") {if(!fields(p,{"id","time"},{"maxEdge"})||!string(p,"id")||!p["time"].isDouble()||(p.contains("maxEdge")&&!p["maxEdge"].isDouble())){reply(invalid(),{});return;}operations_.recordingCommand("preview",p,reply);return;}
  if(method=="recording.review") {
   // #283: one review-window control per call; the helper checks the values.
-  static const QStringList actions{"inspect","seek","play","pause","speed","setIn","setOut","resetTrim","addMask","selectMask","setMaskIn","setMaskOut","strength","removeMask","format","saveCopyDialog","closeFileDialog","placeMask","useSolidCover","trimToLimit","dismissStatus","dismissBlurTip","retryPreview","discard","keepReviewing","confirmDiscard"};
+  static const QStringList actions{"inspect","seek","play","pause","speed","setIn","setOut","resetTrim","addMask","selectMask","setMaskIn","setMaskOut","strength","removeMask","format","saveCopyDialog","closeFileDialog","placeMask","useSolidCover","trimToLimit","dismissStatus","dismissBlurTip","showAdvice","showInFolder","copyPath","dismissSavedCopy","retryPreview","discard","keepReviewing","confirmDiscard"};
   if(!fields(p,{"id","action"},{"time","speed","kind","rect","maskId","strength","format","codec"})||!string(p,"id")||!string(p,"action",32)||!actions.contains(p["action"].toString())
      ||(p.contains("time")&&!p["time"].isDouble())||(p.contains("speed")&&!p["speed"].isDouble())||(p.contains("kind")&&!string(p,"kind",8))
      ||(p.contains("rect")&&(!p["rect"].isArray()||p["rect"].toArray().size()!=4))||(p.contains("maskId")&&!p["maskId"].isNull()&&!string(p,"maskId"))

@@ -472,7 +472,7 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   if(PUTGD_GST_FOUND AND PUTGD_AV_FOUND)
     add_executable(putgd-record src/record/main.cpp src/record/MediaProbe.cpp src/record/EncoderCheck.cpp src/record/BundledRuntime.cpp src/record/PortalScreenCast.cpp src/record/MutterScreenCast.cpp src/record/WaylandAcquisition.cpp src/record/X11Targets.cpp src/record/RecordingPipeline.cpp src/record/PauseTimeline.cpp src/record/ClipExporter.cpp src/record/Poster.cpp src/record/RecordSession.cpp src/record/Overlays.cpp src/record/record.qrc src/record/BarPlacement.cpp src/record/ReviewWindow.cpp src/record/DebugLog.cpp src/record/AvSync.cpp src/core/RecordingModel.cpp)
     target_include_directories(putgd-record PRIVATE src)
-    target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_x11_native_snapshot putgd_visual putgd_fonts putgd_file_dialog Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
+    target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_x11_native_snapshot putgd_host_open putgd_visual putgd_fonts putgd_file_dialog Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
     if(TARGET putgd_kde)
       # KWin's screencast protocol (vendored XML) for the dialog-free KDE path.
       set(kde_screencast_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/zkde-screencast-unstable-v1.xml")
@@ -548,7 +548,7 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       # the controls recording.review drives, on a 1366×768 screen.
       add_executable(test_review_window tests/gui/test_review_window.cpp src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
       target_include_directories(test_review_window PRIVATE src tests)
-      target_link_libraries(test_review_window PRIVATE putgd_core putgd_build_options putgd_visual putgd_fonts putgd_file_dialog Qt6::Widgets Qt6::Test PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
+      target_link_libraries(test_review_window PRIVATE putgd_core putgd_build_options putgd_host_open putgd_visual putgd_fonts putgd_file_dialog Qt6::Widgets Qt6::Test PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
       add_test(NAME gui_review_window COMMAND test_review_window)
       set_tests_properties(gui_review_window PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-one-monitor.json" TIMEOUT 60)
       # #264: the helper's window icon and desktop file name, and the entry it names.

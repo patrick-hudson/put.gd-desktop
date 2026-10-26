@@ -655,6 +655,8 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
             s.lastExport["status"] = "saved";
             s.lastExport["bytes"] = double(file.size());
             s.lastExport["durationUs"] = result.value("durationUs");
+            // Only the completed local copy is a saved result; output is disposable staging.
+            backend_->control(s.op.id, "savedCopy", {{"path", destination}, {"revision", double(edit.revision)}, {"config", config.toJson()}}, [](Error, QJsonObject) {});
             transition(s, "reviewing");
             if (done) done({}, publicJson(s));
             return;

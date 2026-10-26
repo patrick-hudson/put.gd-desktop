@@ -83,7 +83,7 @@ private slots:
         QTest::keyClick(surface, Qt::Key_Tab);
         const int next = screens.size() > 1 ? 1 : 0;
         QVERIFY(surface->accessibleDescription().contains(screens[next]->name()));
-        QVERIFY(surface->accessibleDescription().contains("Enter: use entire display"));
+        QVERIFY(surface->accessibleDescription().contains("Drag and release to use a region"));
         QTest::keyClick(surface, Qt::Key_Right);
         QRectF expected(QPointF(screens[next]->geometry().topLeft()) + QPointF(screens[next]->geometry().width()/4.0, screens[next]->geometry().height()/4.0), QSizeF(screens[next]->geometry().size())/2);
         QList<QRectF> logical;for(auto* output:screens)logical.append(output->geometry());int current=next;
@@ -337,6 +337,7 @@ private slots:
             QCOMPARE(cancelled.size(), 1);
             QVERIFY(bar.confirming());
             QVERIFY(keep->isVisible() && discard->isVisible() && !cancel->isVisible());
+            QVERIFY(keep->x() < discard->x());QCOMPARE(bar.focusWidget(),keep);
             QVERIFY(!bar.findChild<QPushButton*>("stop")->isVisible());
             QVERIFY(bar.findChild<QLabel*>("discardQuestion")->isVisible());
             QVERIFY2(!bar.geometry().intersects(region) && screenHolding(bar.geometry()) >= 0, state);

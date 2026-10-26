@@ -137,6 +137,7 @@ private slots:
   {const auto last=h.rec("inspect",{{"id",id}}).result["lastExport"].toObject();QCOMPARE(last["command"].toString(),QString("saveCopy"));QCOMPARE(last["status"].toString(),QString("saved"));QCOMPARE(last["path"].toString(),copyPath);
    QCOMPARE(last["revision"].toDouble(),2.0);QCOMPARE(last["bytes"].toDouble(),double(h.backend->exportBytes.size()));QCOMPARE(last["durationUs"].toDouble(),6000000.0);}
   {QFile copy(copyPath);QVERIFY(copy.open(QIODevice::ReadOnly));QCOMPARE(copy.readAll(),h.backend->exportBytes);}
+  QVERIFY(h.backend->log.contains("savedCopy"));QCOMPARE(h.backend->lastControlParams["path"].toString(),copyPath);QCOMPARE(h.backend->lastControlParams["revision"].toDouble(),2.0);
   QCOMPARE(h.backend->exports,1);QCOMPARE(h.backend->lastEdit.trimStart,qint64(2000000));QCOMPARE(*h.backend->lastEdit.trimEnd,qint64(8000000));QCOMPARE(h.backend->lastEdit.masks.size(),1);QVERIFY(h.backend->lastConfig.audio.system);QCOMPARE(h.backend->lastConfig.fps,24);
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",copyPath}}).error.code,QString("file_exists"));
   QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",copyPath},{"overwrite",true}}).error);
@@ -336,6 +337,7 @@ private slots:
   QCOMPARE(in.result["state"].toString(),QString("reviewing"));QCOMPARE(in.result["edit"].toObject()["trimStart"].toDouble(),3000000.0);QCOMPARE(in.result["edit"].toObject()["revision"].toDouble(),2.0);
   QCOMPARE(h.backend->pushedEdit.trimStart,qint64(3000000));
   QCOMPARE(h.rec("inspect",{{"id",id}}).result["retainedUs"].toDouble(),9000000.0);
+  for(const auto* action:{"showAdvice","showInFolder","copyPath","dismissSavedCopy"}){reviews.clear();QVERIFY(!h.rec("review",{{"id",id},{"action",action}}).error);QCOMPARE(reviews.first()["action"].toString(),QString(action));}
   h.backend->deferExports=true;
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("review-driven.mp4")}}).result["state"].toString(),QString("exporting"));
   const int before=h.backend->log.count("review");
@@ -509,7 +511,7 @@ private slots:
  // accepted export instead of transport_failed, and inspect carries the outcome.
  void slowExportsAnswerAtOnceAndReportThroughInspect(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
-  QVERIFY(h.server->listen(h.dir.filePath("runtime")));QVERIFY(h.server->socketPath().toUtf8().size()<=107);
+  QVERIFY((h.dir.filePath("runtime/session.sock")).toUtf8().size()<=107);QVERIFY(h.server->listen(h.dir.filePath("runtime")));
   auto cli=[&](const QString& method,const QJsonObject& params){
    QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",h.server->socketPath(),method,QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact))});
    [&]{PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);}();
@@ -524,7 +526,7 @@ private slots:
   const auto [savedExit,saved]=cli("recording.saveCopy",{{"id",id},{"path",copyPath}});
   QVERIFY2(saved["ok"].toBool(),QJsonDocument(saved).toJson().constData());QCOMPARE(savedExit,0);
   QCOMPARE(saved["result"].toObject()["state"].toString(),QString("exporting"));QCOMPARE(saved["result"].toObject()["lastExport"].toObject()["status"].toString(),QString("exporting"));
-  QCOMPARE(h.backend->pendingExports.size(),1);QVERIFY(!QFileInfo::exists(copyPath));
+  QCOMPARE(h.backend->pendingExports.size(),1);QVERIFY(!QFileInfo::exists(copyPath));QVERIFY(!h.backend->log.contains("savedCopy"));
   auto inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["state"].toString(),QString("exporting"));QCOMPARE(inspected["pending"].toString(),QString("saveCopy"));
   QCOMPARE(inspected["lastExport"].toObject()["path"].toString(),copyPath);QCOMPARE(inspected["lastExport"].toObject()["revision"].toDouble(),1.0);
   QCOMPARE(call(*h.server,"operation.inspect",{{"id",id}}).result["phase"].toString(),QString("exporting"));
@@ -538,12 +540,13 @@ private slots:
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   inspected=h.rec("inspect",{{"id",id}}).result;QVERIFY(inspected["pending"].isNull());QCOMPARE(inspected["lastExport"].toObject()["status"].toString(),QString("saved"));QCOMPARE(inspected["lastExport"].toObject()["bytes"].toDouble(),double(h.backend->exportBytes.size()));
   {QFile copy(copyPath);QVERIFY(copy.open(QIODevice::ReadOnly));QCOMPARE(copy.readAll(),h.backend->exportBytes);}
+  QVERIFY(h.backend->log.contains("savedCopy"));QCOMPARE(h.backend->lastControlParams["path"].toString(),copyPath);QCOMPARE(h.backend->lastControlParams["revision"].toDouble(),1.0);
   // A failed slow export is reported the same way and writes nothing.
   const auto failedPath=h.dir.filePath("failed-copy.mp4");h.backend->failExport=true;
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",failedPath}}).result["state"].toString(),QString("exporting"));
   h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["lastExport"].toObject()["status"].toString(),QString("failed"));QCOMPARE(inspected["lastExport"].toObject()["error"].toObject()["code"].toString(),QString("recording_export_failed"));
-  QVERIFY(!QFileInfo::exists(failedPath));h.backend->failExport=false;
+  QVERIFY(!QFileInfo::exists(failedPath));QCOMPARE(h.backend->log.count("savedCopy"),1);h.backend->failExport=false;
   // Upload: acknowledged at the start of its export; the operation then carries the outcome.
   const auto [uploadExit,uploaded]=cli("recording.upload",{{"id",id},{"revision",1}});
   QVERIFY2(uploaded["ok"].toBool(),QJsonDocument(uploaded).toJson().constData());QCOMPARE(uploadExit,0);

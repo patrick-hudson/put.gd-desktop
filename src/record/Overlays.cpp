@@ -347,7 +347,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     target_->setObjectName("target");
     audio_ = new QCheckBox("System audio", choices_);
     audio_->setChecked(config.audio.system);
-    format_ = new QComboBox(choices_);
+    format_ = VisualStyle::choiceBox(choices_);
     format_->setObjectName("format");
     format_->setAccessibleName("Recording format");
     format_->setToolTip("The format the recording is reviewed and exported in");
@@ -394,6 +394,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     connect(stop_, &QPushButton::clicked, this, &ControlBar::stopRequested);
     // Before Record there is nothing to lose; after it, Discard… asks first.
     connect(cancel_, &QPushButton::clicked, this, [this] { if (state_ == "ready") emit cancelRequested(); else askDiscard(); });
+    setTabOrder(keep_, discard_);
     connect(keep_, &QPushButton::clicked, this, &ControlBar::keepRecording);
     connect(discard_, &QPushButton::clicked, this, [this] { confirming_ = false; refresh(); emit cancelRequested(); });
     connect(audio_, &QCheckBox::toggled, this, [this](bool on) { if (config_.audio.system == on) return; config_.audio.system = on; emit configChanged(config_); });

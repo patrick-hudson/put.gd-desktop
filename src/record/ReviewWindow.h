@@ -1,5 +1,6 @@
 #pragma once
 #include "core/RecordingModel.h"
+#include "MaskNames.h"
 #include <QImage>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -33,7 +34,7 @@ namespace putgd::record {
 class FrameView final : public QWidget {
     Q_OBJECT
 public:
-    explicit FrameView(QWidget* parent = nullptr);
+    explicit FrameView(QWidget* parent = nullptr, std::shared_ptr<MaskNames> names = {});
     // A decoded frame; it also clears a preview error.
     void setFrame(const QImage&, qint64 timeUs);
     // A failed refresh: the message over the frame with Retry preview, and a
@@ -79,6 +80,7 @@ private:
     qint64 timeUs_ = 0;
     QSize canvas_;
     QList<RecordingMask> masks_;
+    std::shared_ptr<MaskNames> maskNames_;
     QString selected_, armed_, error_;
     enum class Drag { None, Create, Move, Resize } drag_ = Drag::None;
     QPointF anchor_, current_;
@@ -101,7 +103,7 @@ private:
 class ReviewTimeline final : public QWidget {
     Q_OBJECT
 public:
-    explicit ReviewTimeline(QWidget* parent = nullptr);
+    explicit ReviewTimeline(QWidget* parent = nullptr, std::shared_ptr<MaskNames> names = {});
     void setDuration(qint64 us);
     void setTrim(qint64 start, qint64 end);
     void setMasks(const QList<RecordingMask>& masks, const QString& selected);
@@ -144,6 +146,7 @@ private:
     qint64 moveAnchor_ = 0;  // a moved mask: the press point's offset from its start
     qreal pressX_ = 0;       // where a mask-bar press began, for the drag distance
     QList<RecordingMask> masks_;
+    std::shared_ptr<MaskNames> maskNames_;
     QList<int> lane_;
     int lanes_ = 0;
     QScrollBar* laneScroll_ = nullptr;
@@ -165,6 +168,8 @@ public:
     void setEdit(const RecordingEdit&);
     void setConfig(const RecordingConfig&);
     void setExporting(bool exporting, const QString& label);
+    void setSavedCopy(const QString& path, quint64 revision, const RecordingConfig& config);
+    QSize minimumSizeHint() const override;
     // An operational error in the status row, kept until dismissed or a new edit.
     void showError(const QString& message);
     // A standing banner above the frame (why the recording stopped); empty hides it.
@@ -176,7 +181,8 @@ public:
     // #283: the review session method (recording.review) drives the window as a
     // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|resetTrim|
     // addMask|selectMask|placeMask|setMaskIn|setMaskOut|strength|removeMask|
-    // useSolidCover|format|trimToLimit|dismissStatus|dismissBlurTip|retryPreview|
+    // useSolidCover|format|trimToLimit|dismissStatus|dismissBlurTip|showAdvice|
+    // showInFolder|copyPath|dismissSavedCopy|retryPreview|
     // saveCopyDialog|closeFileDialog|discard|keepReviewing|confirmDiscard, ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
     // window's state (inspect) after the action, or an error.
@@ -245,6 +251,18 @@ private:
     Options options_;
     RecordingConfig config_;
     RecordingEdit edit_;
+    std::shared_ptr<MaskNames> maskNames_ = std::make_shared<MaskNames>();
+    QString savedPath_;
+    quint64 savedRevision_ = 0;
+    RecordingConfig savedConfig_;
+    bool savedDismissed_ = false, adviceExpanded_ = false;
+    QJsonObject lastShowInFolder_;
+    bool savedCurrent() const;
+    void placeTools();
+    void updateMinimum();
+    bool minimumPending_ = false;
+    QWidget *trimGroup_ = nullptr, *maskGroup_ = nullptr;
+    QGridLayout* toolsGrid_ = nullptr;
     Graphite::WindowHeader* header_ = nullptr;
     FrameView* view_ = nullptr;
     ReviewTimeline* timeline_ = nullptr;
