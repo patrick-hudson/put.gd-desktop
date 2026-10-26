@@ -217,7 +217,7 @@ TrayController::TrayController(OperationService& operations,
  connect(updateAction_, &QAction::triggered, this, [this] { showView("updates"); });
  menu_->addSeparator();
  connect(menu_->addAction("About put.gd"), &QAction::triggered, this, &TrayController::showAbout);
- connect(menu_->addAction("Quit"), &QAction::triggered, this, [this] {
+ connect(menu_->addAction("Quit put.gd"), &QAction::triggered, this, [this] {
   const auto quit = quit_;
   quit();
  });

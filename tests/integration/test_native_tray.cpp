@@ -463,6 +463,7 @@ private slots:
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
   auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 14);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
+  bool quitLabel=false;for(const auto& child:layout.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==12){QCOMPARE(item.props["label"].toString(),QString("Quit put.gd"));quitLabel=true;}}QVERIFY(quitLabel);
   // Capture entries first: region, region & edit, window, desktop, screen recording, then the editor sources and the clipboard upload.
   const QStringList order{"Capture region", "Capture region & edit", "Capture window", "Capture desktop", "Record screen", "Edit image", "Upload clipboard"};
   for (int i = 0; i < order.size(); ++i) QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(i).variant()).props["label"].toString(), order[i]);

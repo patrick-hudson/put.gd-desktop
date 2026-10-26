@@ -527,7 +527,7 @@ private slots:
   QVERIFY(QMetaObject::invokeMethod(tray, "activated", Qt::DirectConnection,
                                    Q_ARG(QSystemTrayIcon::ActivationReason, QSystemTrayIcon::Trigger)));
   QCOMPARE(views.last(), QString("history"));
-  auto* quit = actionNamed(tray, "Quit");
+  auto* quit = actionNamed(tray, "Quit put.gd");
   QVERIFY(quit);
   quit->trigger();
   QCOMPARE(quits, 1);

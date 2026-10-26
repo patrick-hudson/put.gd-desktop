@@ -100,7 +100,7 @@ constexpr Entry entries[] {
  {"Capture region & edit", "edit", 0},
  {"", "", 0}, {"Settings", "settings", 0}, {"History", "history", 0},
  // 9 was "Recent activity", which opened the same History page.
- {"", "", retired}, {"", "", 0}, {"About put.gd", "about", 0}, {"Quit", "quit", 0},
+ {"", "", retired}, {"", "", 0}, {"About put.gd", "about", 0}, {"Quit put.gd", "quit", 0},
  {"Edit image", "", 0}, {"Edit clipboard image", "edit-clipboard", 13}, {"Edit an image file…", "edit-file", 13},
  {"Record screen", "record", 0},
  // Hidden until a stable update is available; its label names the version (#293).
