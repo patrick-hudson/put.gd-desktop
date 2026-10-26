@@ -4,15 +4,25 @@
 #include "RedesignTheme.h"
 #include "VisualStyle.h"
 #include "Graphite.h"
+#include "platform/HostOpen.h"
+#include <QAction>
+#include <QClipboard>
+#include <QFileInfo>
 #include <QGridLayout>
+#include <QGuiApplication>
+#include <QJsonArray>
+#include <cmath>
 #include <QPainter>
 #include <QScrollArea>
+#include <QScrollBar>
 #include "core/Settings.h"
 #include <QButtonGroup>
 #include <QCloseEvent>
 #include <QColorDialog>
 #include <QComboBox>
 #include <QFontComboBox>
+#include <QPointer>
+#include <QAbstractSpinBox>
 #include <QDateTime>
 #include <QDir>
 #include <QHBoxLayout>
@@ -35,12 +45,13 @@ namespace {
 QFrame* separator(QWidget* parent){auto* line=Graphite::rule(parent,Qt::Vertical);line->setFixedHeight(22);return line;}
 // A colour choice: its colour in a rounded square, a ring when chosen, the
 // accent ring under keyboard focus. The custom picker shows a colour wheel.
+// The 32 px button is the hit target; the painted square stays 22 px.
 class Swatch final:public QToolButton {
 public:
- Swatch(const QColor& color,QWidget* parent,bool custom=false):QToolButton(parent),color_(color),custom_(custom){setFixedSize(30,30);setFocusPolicy(Qt::StrongFocus);setCursor(Qt::PointingHandCursor);}
+ Swatch(const QColor& color,QWidget* parent,bool custom=false):QToolButton(parent),color_(color),custom_(custom){setFixedSize(32,32);setFocusPolicy(Qt::StrongFocus);setCursor(Qt::PointingHandCursor);}
 protected:
  void paintEvent(QPaintEvent*)override{
-  QPainter p(this);p.setRenderHint(QPainter::Antialiasing);const auto& t=Theme::current();const QRectF box=QRectF(rect()).adjusted(4,4,-4,-4);
+  QPainter p(this);p.setRenderHint(QPainter::Antialiasing);const auto& t=Theme::current();const QRectF box=QRectF(rect()).adjusted(5,5,-5,-5);
   if(custom_){QConicalGradient wheel(box.center(),0);const QList<QColor> stops{QColor("#ef4444"),QColor("#f59e0b"),QColor("#facc15"),QColor("#22c55e"),QColor("#3b82f6"),QColor("#a855f7"),QColor("#ef4444")};for(int i=0;i<stops.size();++i)wheel.setColorAt(i/6.0,stops[i]);p.setBrush(wheel);}else p.setBrush(color_);
   p.setPen(QPen(Graphite::mix(t.borderStrong,t.surface,0.2),1));p.drawRoundedRect(box,Graphite::Metric::swatchRadius,Graphite::Metric::swatchRadius);
   if(isChecked()){p.setPen(QPen(t.text,2));p.setBrush(Qt::NoBrush);p.drawRoundedRect(QRectF(rect()).adjusted(1,1,-1,-1),7,7);}
@@ -51,6 +62,14 @@ private:QColor color_;bool custom_;
 };
 QLabel* fieldLabel(const QString& text,QWidget* parent){auto* label=new QLabel(text,parent);VisualStyle::role(label,"meta");return label;}
 QWidget* column(QWidget* parent,QVBoxLayout*& layout){auto* widget=new QWidget(parent);layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,0);layout->setSpacing(8);return widget;}
+// Tool names in editor.view, in Tool order.
+const QStringList toolNames{"select","redact","blur","crop","arrow","rectangle","highlight","text"};
+QJsonValue rectValue(const std::optional<QRect>& r){if(!r)return QJsonValue();return QJsonArray{r->x(),r->y(),r->width(),r->height()};}
+bool integerIn(const QJsonValue& value,double minimum,double maximum,int& out){
+ if(!value.isDouble())return false;const double number=value.toDouble();
+ if(!std::isfinite(number)||std::floor(number)!=number||number<minimum||number>maximum)return false;
+ out=int(number);return true;
+}
 }
 
 EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(parent),doc_(doc){
@@ -80,19 +99,28 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  undo_=toolButton("undo","Undo (Ctrl+Z)");redo_=toolButton("redo","Redo (Ctrl+Shift+Z)");
  tools->addSpacing(4);tools->addWidget(separator(toolbar));tools->addSpacing(4);
  auto* fit=toolButton("zoom-fit","Fit to window (Ctrl+0)");auto* actual=toolButton("zoom-actual","Actual size, 100% (Ctrl+1)");
- tools->addSpacing(8);status_=new QLabel(toolbar);VisualStyle::role(status_,"meta");tools->addWidget(status_);
+ // Only the zoom sits beside the zoom controls; the size is in Document.
+ tools->addSpacing(6);status_=new QLabel(toolbar);status_->setObjectName("editorZoom");status_->setMinimumWidth(Graphite::scaled(40));VisualStyle::role(status_,"meta");tools->addWidget(status_);
  root->addWidget(toolbar);
 
  // The canvas owns the space; the properties panel beside it keeps one width
  // whatever the tool, so the canvas never moves under the pointer.
  auto* body=new QHBoxLayout;body->setContentsMargins(0,0,0,0);body->setSpacing(0);
  canvas_=new editor::EditorCanvas(doc_,this);body->addWidget(canvas_,1);
- auto* panel=new Graphite::Surface("surface",Qt::LeftEdge,this);panel->setObjectName("editorOptions");
- auto* panelScroll=new QScrollArea(this);panelScroll->setObjectName("editorPropertiesScroll");panelScroll->setWidgetResizable(true);panelScroll->setFrameShape(QFrame::NoFrame);panelScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);panelScroll->setWidget(panel);panelScroll->setFixedWidth(Graphite::scaled(256));body->addWidget(panelScroll);
+ // The side column: scrolling tool properties above the Document details,
+ // which stay pinned just above the footer's Save a copy… and Upload.
+ auto* side=new Graphite::Surface("surface",Qt::LeftEdge,this);side->setObjectName("editorSide");side->setFixedWidth(Graphite::scaled(256));
+ auto* sideLayout=new QVBoxLayout(side);sideLayout->setContentsMargins(1,0,0,0);sideLayout->setSpacing(0);
+ auto* panel=new Graphite::Surface("surface",{},side);panel->setObjectName("editorOptions");
+ auto* panelScroll=new QScrollArea(side);panelScroll->setObjectName("editorPropertiesScroll");panelScroll->setWidgetResizable(true);panelScroll->setFrameShape(QFrame::NoFrame);panelScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);panelScroll->setWidget(panel);sideLayout->addWidget(panelScroll,1);
+ body->addWidget(side);
  auto* properties=new QVBoxLayout(panel);properties->setContentsMargins(18,16,16,16);properties->setSpacing(12);
  toolTitle_=new QLabel(panel);toolTitle_->setObjectName("editorToolTitle");VisualStyle::role(toolTitle_,"sectionTitle");properties->addWidget(toolTitle_);
  toolHelp_=new QLabel(panel);toolHelp_->setObjectName("editorToolHelp");toolHelp_->setWordWrap(true);VisualStyle::role(toolHelp_,"muted");properties->addWidget(toolHelp_);
  hint_=new QLabel(panel);hint_->setWordWrap(true);VisualStyle::role(hint_,"warning");properties->addWidget(hint_);
+ // Without a pointer: the tool's mark in the middle of the image (Insert).
+ placeRow_=new QWidget(panel);auto* placeLayout=new QHBoxLayout(placeRow_);placeLayout->setContentsMargins(0,0,0,0);
+ place_=new QPushButton(placeRow_);place_->setObjectName("placeMark");placeLayout->addWidget(place_);placeLayout->addStretch(1);properties->addWidget(placeRow_);
  properties->addWidget(Graphite::rule(panel));
  QVBoxLayout* layout=nullptr;
  colorRow_=column(panel,layout);layout->addWidget(fieldLabel("Color",colorRow_));
@@ -125,9 +153,36 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* applyCrop=new QPushButton("Apply crop",cropRow_);applyCrop->setObjectName("applyCrop");applyCrop->setToolTip("Apply crop (Enter)");layout->addWidget(applyCrop);
  auto* cancelCrop=new QPushButton("Cancel crop",cropRow_);cancelCrop->setObjectName("cancelCrop");cancelCrop->setToolTip("Cancel crop (Esc)");VisualStyle::role(cancelCrop,"quiet");layout->addWidget(cancelCrop);
  properties->addWidget(cropRow_);
+ // Position and size of the selected mark or the pending crop, in image
+ // pixels; each committed value is one undoable step.
+ geometryRow_=column(panel,layout);geometryRow_->setObjectName("editorGeometry");
+ geometryTitle_=fieldLabel("Position and size",geometryRow_);layout->addWidget(geometryTitle_);
+ auto* fields=new QGridLayout;fields->setContentsMargins(0,0,0,0);fields->setHorizontalSpacing(8);fields->setVerticalSpacing(4);
+ const char* names[4]={"geometryX","geometryY","geometryWidth","geometryHeight"};
+ for(int i=0;i<4;++i){
+  geometryLabels_[i]=fieldLabel({},geometryRow_);
+  auto* box=new QSpinBox(geometryRow_);box->setObjectName(names[i]);box->setSuffix(" px");box->setKeyboardTracking(false);box->setMinimumWidth(Graphite::scaled(64));
+  geometryLabels_[i]->setBuddy(box);geometry_[i]=box;
+  fields->addWidget(geometryLabels_[i],(i/2)*2,i%2);fields->addWidget(box,(i/2)*2+1,i%2);
+  connect(box,&QSpinBox::valueChanged,this,&EditorWindow::applyGeometry);
+ }
+ layout->addLayout(fields);properties->addWidget(geometryRow_);
  properties->addStretch(1);
- auto* documentHeading=new QLabel("Document",panel);VisualStyle::role(documentHeading,"micro");properties->addWidget(documentHeading);
- documentInfo_=new QLabel(panel);documentInfo_->setObjectName("editorDocumentInfo");documentInfo_->setWordWrap(true);VisualStyle::role(documentInfo_,"secondary");properties->addWidget(documentInfo_);
+ auto* document=new Graphite::Surface("surface",Qt::TopEdge,side);document->setObjectName("editorDocument");
+ auto* documentLayout=new QVBoxLayout(document);documentLayout->setContentsMargins(18,12,16,14);documentLayout->setSpacing(6);
+ documentLayout->addWidget(fieldLabel("Document",document));
+ documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");documentInfo_->setWordWrap(true);VisualStyle::role(documentInfo_,"secondary");documentLayout->addWidget(documentInfo_);
+ // Save a copy… feedback, next to the button that made it.
+ savedLabel_=new Graphite::ElidedLabel(document);savedLabel_->setObjectName("editorSaved");savedLabel_->setTextFormat(Qt::PlainText);savedLabel_->setContextMenuPolicy(Qt::ActionsContextMenu);savedLabel_->hide();documentLayout->addWidget(savedLabel_);
+ // A failure wraps rather than elides: its reason is what the user needs.
+ saveError_=new QLabel(document);saveError_->setObjectName("editorSaveError");saveError_->setTextFormat(Qt::PlainText);saveError_->setWordWrap(true);VisualStyle::role(saveError_,"error");saveError_->hide();documentLayout->addWidget(saveError_);
+ auto* copyPath=new QAction("Copy full path",savedLabel_);savedLabel_->addAction(copyPath);
+ connect(copyPath,&QAction::triggered,this,[this]{const auto path=lastSave_["path"].toString();if(!path.isEmpty())QGuiApplication::clipboard()->setText(path);});
+ auto* savedActions=new QHBoxLayout;savedActions->setContentsMargins(0,0,0,0);savedActions->setSpacing(8);
+ showFolder_=new QPushButton("Show in folder",document);showFolder_->setObjectName("showSavedCopy");VisualStyle::role(showFolder_,"quiet");showFolder_->hide();savedActions->addWidget(showFolder_);
+ chooseAnother_=new QPushButton("Choose another location…",document);chooseAnother_->setObjectName("chooseAnotherLocation");chooseAnother_->hide();savedActions->addWidget(chooseAnother_);
+ savedActions->addStretch(1);documentLayout->addLayout(savedActions);
+ sideLayout->addWidget(document);
  root->addLayout(body,1);
 
  auto* footer=new Graphite::Surface("bg",Qt::TopEdge,this);footer->setObjectName("editorFooter");
@@ -165,6 +220,9 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  connect(strength_,&QSlider::sliderReleased,this,[this]{syncStyle(true);});
  connect(strength_,&QSlider::valueChanged,this,[this]{if(!strength_->isSliderDown())syncStyle(true);});
  connect(applyCrop,&QPushButton::clicked,this,[this]{canvas_->applyCrop();});
+ connect(place_,&QPushButton::clicked,this,[this]{if(!busy_)canvas_->placeMark();});
+ connect(showFolder_,&QPushButton::clicked,this,&EditorWindow::showSavedCopy);
+ connect(chooseAnother_,&QPushButton::clicked,this,&EditorWindow::saveCopy);
  connect(cancelCrop,&QPushButton::clicked,this,[this]{canvas_->cancelCrop();});
  auto undo=[this]{if(busy_||canvas_->editingText())return;if(doc_.undo()){canvas_->documentChanged();refresh();}};
  auto redo=[this]{if(busy_||canvas_->editingText())return;if(doc_.redo()){canvas_->documentChanged();refresh();}};
@@ -280,15 +338,55 @@ void EditorWindow::refresh(){
  {
   // The panel names the tool (or the selected mark) and how to use it.
   static const QStringList titles{"Select","Redact","Blur","Crop","Arrow","Rectangle","Highlight","Text"};
-  static const QStringList help{"Click a mark to select it. Drag to move it; drag its handles to resize.","Drag over private information to cover it with an opaque box.","Drag over an area to blur it.","Drag to choose the area to keep, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it without covering it.","Click the image to place a label. Enter finishes the text."};
+  static const QStringList help{"Click a mark to select it, or press Tab. Drag it or use the arrow keys to move it; drag its handles or use Shift+arrow keys to resize.","Drag over private information to cover it with an opaque box.","Drag over an area to blur it.","Drag to choose the area to keep, or set it below, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it without covering it.","Click the image to place a label. Enter finishes the text."};
   int index=int(tool);QString title=titles.value(index);
   if(shape&&tool==Tool::Select){const QHash<int,QString> kinds{{int(editor::Shape::Kind::Redact),"Redaction"},{int(editor::Shape::Kind::Blur),"Blur"},{int(editor::Shape::Kind::Arrow),"Arrow"},{int(editor::Shape::Kind::Rectangle),"Rectangle"},{int(editor::Shape::Kind::Highlight),"Highlight"},{int(editor::Shape::Kind::Text),"Text"}};title=kinds.value(int(shape->kind),"Mark")+" selected";}
   toolTitle_->setText(title);toolHelp_->setText(help.value(index));
-  const auto bounds=doc_.crop();documentInfo_->setText(QString("%1 × %2 px\nPNG output · %3").arg(bounds.width()).arg(bounds.height()).arg(doc_.modified()?"Edited":"Unchanged"));
+  const auto bounds=doc_.crop();documentInfo_->setText(QString("%1 × %2 px · PNG output\n%3").arg(bounds.width()).arg(bounds.height()).arg(doc_.modified()?"Edited":"Unchanged"));
  }
+ {
+  static const QHash<int,QPair<const char*,const char*>> placing{{int(Tool::Redact),{"Place redaction","redact"}},{int(Tool::Blur),{"Place blur","blur"}},{int(Tool::Arrow),{"Place arrow","annotate-arrow"}},
+   {int(Tool::Rectangle),{"Place rectangle","rectangle"}},{int(Tool::Highlight),{"Place highlight","highlight"}},{int(Tool::Text),{"Place text label","text"}}};
+  const auto entry=placing.value(int(tool));placeRow_->setVisible(entry.first);
+  if(entry.first){place_->setText(QString::fromUtf8(entry.first));place_->setIcon(VisualStyle::icon(entry.second));place_->setToolTip(QString("%1 in the middle of the image, without the pointer (Insert)").arg(QString::fromUtf8(entry.first)));}
+ }
+ syncGeometry();
  undo_->setEnabled(!busy_&&doc_.canUndo());redo_->setEnabled(!busy_&&doc_.canRedo());
- const auto crop=doc_.crop();
- status_->setText(QString("%1 × %2 px · %3%").arg(crop.width()).arg(crop.height()).arg(int(std::lround(canvas_->zoom()*100))));
+ const int percent=int(std::lround(canvas_->zoom()*100));
+ status_->setText(QString("%1%").arg(percent));status_->setAccessibleName(QString("Zoom %1%").arg(percent));status_->setToolTip("Zoom");
+}
+
+void EditorWindow::syncGeometry(){
+ const auto geometry=canvas_->selectionGeometry();geometryRow_->setVisible(geometry.has_value());
+ if(!geometry)return;
+ const auto* shape=canvas_->cropPending()?nullptr:doc_.find(canvas_->selected());
+ const bool arrow=shape&&shape->kind==editor::Shape::Kind::Arrow,text=shape&&shape->kind==editor::Shape::Kind::Text;
+ geometryTitle_->setText(canvas_->cropPending()?"Crop area":arrow?"Tail and head":"Position and size");
+ static const QStringList boxLabels{"X","Y","Width","Height"},arrowLabels{"Tail X","Tail Y","Head X","Head Y"};
+ static const QStringList boxNames{"X position","Y position","Width","Height"},arrowNames{"Arrow tail X","Arrow tail Y","Arrow head X","Arrow head Y"};
+ const auto r=*geometry;const int values[4]={r.x(),r.y(),arrow?r.x()+r.width():r.width(),arrow?r.y()+r.height():r.height()};
+ const auto image=doc_.size();const int extent=std::max(image.width(),image.height());
+ syncingGeometry_=true;
+ for(int i=0;i<4;++i){
+  auto* box=geometry_[i];
+  geometryLabels_[i]->setText((arrow?arrowLabels:boxLabels)[i]);box->setAccessibleName((arrow?arrowNames:boxNames)[i]+" in image pixels");
+  // Text follows its size control; only its position is edited here.
+  const bool shown=i<2||!text;geometryLabels_[i]->setVisible(shown);box->setVisible(shown);
+  // The range always holds the true value, even for marks partly off the image.
+  const int low=(i<2||arrow)?-extent:1,high=2*extent;
+  box->setRange(std::min(low,values[i]),std::max(high,values[i]));
+  if(box->value()!=values[i])box->setValue(values[i]);
+ }
+ syncingGeometry_=false;
+}
+
+void EditorWindow::applyGeometry(){
+ if(syncingGeometry_||busy_)return;
+ const auto* shape=canvas_->cropPending()?nullptr:doc_.find(canvas_->selected());
+ const bool arrow=shape&&shape->kind==editor::Shape::Kind::Arrow;
+ const int x=geometry_[0]->value(),y=geometry_[1]->value(),a=geometry_[2]->value(),b=geometry_[3]->value();
+ // A refused value (empty, or off the image) snaps back to the current one.
+ if(!canvas_->setSelectionGeometry(arrow?QRect(x,y,a-x,b-y):QRect(x,y,a,b)))syncGeometry();
 }
 
 bool EditorWindow::saveCopy(){
@@ -300,17 +398,124 @@ bool EditorWindow::saveCopy(){
   if(path.isEmpty()||busy_)return;
   // The same sanitized export as Upload; QSaveFile replaces a chosen target atomically.
   const auto png=doc_.exportPng();
+  if(png.isEmpty()){showSaveFailed(path,"the edited image could not be encoded");return;}
   QSaveFile file(path);file.setDirectWriteFallback(false);
-  if(png.isEmpty()||!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit()){setFailure("The copy could not be saved.");return;}
-  message_->setText("Saved a copy.");VisualStyle::role(message_,"success");message_->show();
+  if(!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit()){showSaveFailed(path,file.errorString());return;}
+  showSaved(path);
  });
 }
 
+void EditorWindow::showSaved(const QString& path){
+ const QFileInfo file(path);
+ lastSave_={{"status","saved"},{"path",file.absoluteFilePath()},{"name",file.fileName()}};
+ savedLabel_->setText("Saved "+file.fileName());VisualStyle::role(savedLabel_,"success");
+ savedLabel_->setToolTip(file.absoluteFilePath());savedLabel_->setAccessibleName("Saved a copy");savedLabel_->setAccessibleDescription(file.absoluteFilePath());savedLabel_->show();
+ saveError_->hide();showFolder_->show();chooseAnother_->hide();
+ header_->setDocument("Edit image","Not uploaded · Copy saved");
+}
+void EditorWindow::showSaveFailed(const QString& path,const QString& reason){
+ // The draft is untouched; the reason and a way on sit beside Save a copy….
+ const QFileInfo file(path);
+ lastSave_={{"status","failed"},{"path",file.absoluteFilePath()},{"name",file.fileName()},{"reason",reason}};
+ // Short enough for the pinned Document block at large text; the file and
+ // the kept draft are in the tooltip and accessible description.
+ saveError_->setText(QString("Couldn't save the copy: %1.").arg(reason));
+ saveError_->setToolTip(QString("%1\nYour edits are kept.").arg(file.absoluteFilePath()));saveError_->setAccessibleName("Save a copy failed");
+ saveError_->setAccessibleDescription(QString("Couldn't save %1: %2. Your edits are kept.").arg(file.absoluteFilePath(),reason));
+ saveError_->show();savedLabel_->hide();showFolder_->hide();chooseAnother_->show();
+ header_->setDocument("Edit image","Not uploaded");
+}
+bool EditorWindow::showSavedCopy(){
+ if(lastSave_["status"]!="saved")return false;
+ QPointer<EditorWindow> self(this);
+ host::showInFolder(lastSave_["path"].toString(),[self](const QJsonObject& result){if(self)self->lastShowInFolder_=result;});
+ return true;
+}
+
+QList<QWidget*> EditorWindow::actionable() const {
+ // Controls that act: tool and action buttons, fields, the canvas. Labels,
+ // the header and its window controls are left alone.
+ QList<QWidget*> result{canvas_};
+ for(auto* widget:findChildren<QWidget*>()){
+  if(header_->isAncestorOf(widget)||canvas_->isAncestorOf(widget))continue;
+  if(qobject_cast<QAbstractButton*>(widget)||qobject_cast<QAbstractSpinBox*>(widget)||qobject_cast<QComboBox*>(widget)||(qobject_cast<QAbstractSlider*>(widget)&&!qobject_cast<QScrollBar*>(widget)))result.append(widget);
+ }
+ return result;
+}
 void EditorWindow::setBusy(const QString& message){
- chooser_->cancel();busy_=true;for(auto* widget:findChildren<QWidget*>())if(widget!=message_&&widget!=status_)widget->setEnabled(widget==this);
- message_->setText(message);VisualStyle::role(message_,"secondary");message_->show();setCursor(Qt::BusyCursor);
+ chooser_->cancel();busy_=true;
+ // Each control is disabled on its own, so the document details, the header
+ // and this message keep full contrast while the image is prepared.
+ for(auto* widget:actionable())widget->setEnabled(false);
+ destination_->hide();message_->setText(message);VisualStyle::role(message_,"secondary");message_->show();setCursor(Qt::BusyCursor);
 }
 void EditorWindow::setFailure(const QString& message){message_->setText(message);VisualStyle::role(message_,"error");message_->show();}
+
+QJsonObject EditorWindow::viewState() const {
+ const auto& style=canvas_->style();const auto selected=canvas_->selected();
+ QJsonObject message;if(!message_->isHidden())message={{"text",message_->text()},{"tone",message_->property("visualRole").toString()}};
+ return {{"tool",toolNames.value(int(canvas_->tool()))},{"selectedShapeId",selected?QJsonValue(double(selected)):QJsonValue()},
+  {"geometry",rectValue(canvas_->selectionGeometry())},{"cropPending",canvas_->cropPending()},{"selection",canvas_->selectionSummary()},
+  {"zoomPercent",std::round(canvas_->zoom()*1000)/10},{"fitted",canvas_->fitted()},{"visibleRect",rectValue(canvas_->visibleImageRect())},
+  {"canvasSize",QJsonArray{canvas_->width(),canvas_->height()}},{"editingText",canvas_->editingText()},{"busy",busy_},
+  {"style",QJsonObject{{"color",style.color.name()},{"width",style.width},{"strength",style.strength},{"fontPixels",style.fontPixels},{"font",style.fontFamily}}},
+  {"message",message.isEmpty()?QJsonValue():QJsonValue(message)},{"lastSave",lastSave_.isEmpty()?QJsonValue():QJsonValue(lastSave_)},
+  {"lastShowInFolder",lastShowInFolder_.isEmpty()?QJsonValue():QJsonValue(lastShowInFolder_)}};
+}
+
+QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QString& message){
+ auto fail=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
+ auto only=[&](QStringList keys){keys<<"action";for(auto it=params.begin();it!=params.end();++it)if(!keys.contains(it.key()))return false;return true;};
+ if(params.contains("action")&&!params["action"].isString())return fail("invalid_request","action must be a string");
+ const auto action=params["action"].toString("inspect");
+ if(action=="inspect"){if(!only({}))return fail("invalid_request","inspect has no other parameters");return viewState();}
+ if(busy_)return fail("editor_finalizing","The edit was already submitted or discarded");
+ // Each action is the window's own control, so the user sees the same change.
+ if(action=="tool"){
+  if(!only({"tool"})||!toolNames.contains(params["tool"].toString()))return fail("invalid_request","tool must be select, redact, blur, crop, arrow, rectangle, highlight or text");
+  selectTool(Tool(toolNames.indexOf(params["tool"].toString())));
+ }else if(action=="select"){
+  if(!only({"shapeId"})||!params.contains("shapeId"))return fail("invalid_request","select needs shapeId, or null to clear the selection");
+  int id=0;if(!params["shapeId"].isNull()&&!integerIn(params["shapeId"],1,INT_MAX,id))return fail("invalid_request","shapeId must be a shape id or null");
+  if(id&&!doc_.find(quint64(id)))return fail("edit_shape_missing","No shape has this id");
+  if(id&&canvas_->cropPending())selectTool(Tool::Select);
+  canvas_->select(quint64(id));
+ }else if(action=="selectNext"||action=="selectPrevious"){
+  if(!only({}))return fail("invalid_request",action+" has no other parameters");
+  if(!canvas_->selectAdjacent(action=="selectNext"?1:-1,true))return fail("edit_shape_missing","There is no mark to select");
+ }else if(action=="place"){
+  if(!only({}))return fail("invalid_request","place has no other parameters");
+  // Text needs typing; agents add labels with editor.apply.
+  const auto tool=canvas_->tool();
+  if(tool==Tool::Select||tool==Tool::Crop||tool==Tool::Text)return fail("invalid_request","Choose redact, blur, arrow, rectangle or highlight first; add text with editor.apply");
+  canvas_->placeMark();
+ }else if(action=="geometry"){
+  const auto r=params["rect"].toArray();int v[4]={};
+  if(!only({"rect"})||!params["rect"].isArray()||r.size()!=4)return fail("invalid_request","geometry needs rect [x, y, width, height]");
+  for(int i=0;i<4;++i)if(!integerIn(r[i],-1000000,1000000,v[i]))return fail("invalid_request","rect values must be integers");
+  if(!canvas_->selectionGeometry())return fail("editor_no_selection","Select a mark or choose Crop first");
+  if(!canvas_->setSelectionGeometry(QRect(v[0],v[1],v[2],v[3])))return fail("invalid_request","That geometry is empty, unchanged or outside the image");
+ }else if(action=="applyCrop"||action=="cancelCrop"){
+  if(!only({}))return fail("invalid_request",action+" has no other parameters");
+  if(!canvas_->cropPending())return fail("invalid_request","Choose the Crop tool first");
+  if(action=="applyCrop")canvas_->applyCrop();else canvas_->cancelCrop();
+ }else if(action=="zoom"){
+  const double percent=params["percent"].toDouble();
+  if(!only({"percent"})||!params["percent"].isDouble()||!std::isfinite(percent)||percent<2||percent>3200)return fail("invalid_request","zoom needs percent from 2 to 3200");
+  canvas_->setZoom(percent/100);
+ }else if(action=="fit"||action=="actualSize"){
+  if(!only({}))return fail("invalid_request",action+" has no other parameters");
+  if(action=="fit")canvas_->fit();else canvas_->actualSize();
+ }else if(action=="pan"){
+  const auto d=params["delta"].toArray();int dx=0,dy=0;
+  if(!only({"delta"})||!params["delta"].isArray()||d.size()!=2||!integerIn(d[0],-100000,100000,dx)||!integerIn(d[1],-100000,100000,dy))return fail("invalid_request","pan needs delta [dx, dy] in canvas pixels");
+  canvas_->panBy(QPointF(dx,dy));
+ }else if(action=="showSavedCopy"){
+  if(!only({}))return fail("invalid_request","showSavedCopy has no other parameters");
+  if(!showSavedCopy())return fail("editor_no_saved_copy","Save a copy first");
+ }else return fail("invalid_request","action must be inspect, tool, select, selectNext, selectPrevious, place, geometry, applyCrop, cancelCrop, zoom, fit, actualSize, pan or showSavedCopy");
+ refresh();return viewState();
+}
 
 void EditorWindow::requestCancel(){
  if(busy_)return;

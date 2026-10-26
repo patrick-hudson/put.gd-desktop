@@ -1,7 +1,16 @@
 // Offscreen widget contract for the themed editor window. Not desktop proof.
 #include "ui/EditorWindow.h"
 #include "editor/EditorCommands.h"
+#include "platform/HostOpen.h"
 #include <QApplication>
+#include <QComboBox>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QLabel>
+#include <QRegularExpression>
+#include <QScopeGuard>
+#include <QScrollArea>
+#include <QTemporaryDir>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QShortcut>
@@ -114,6 +123,103 @@ private slots:
   QVERIFY(upload);QVERIFY(!upload->isEnabled());QTest::keyClick(&window,Qt::Key_Return,Qt::ControlModifier);QTest::keyClick(&window,Qt::Key_Z,Qt::ControlModifier);
   QCOMPARE(uploads.size(),0);QCOMPARE(doc.shapes().size(),1);window.requestCancel();QCOMPARE(cancels.size(),0);
   window.allowClose();QVERIFY(window.close());
+ }
+ // Finalizing disables each control that acts, not whole containers: the
+ // header, the Document details and the progress message keep full contrast.
+ void busyStateDisablesActionsButKeepsStatusReadable(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Upload to synthetic destination");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  window.setBusy("Preparing the edited image…");
+  auto* header=window.findChild<QWidget*>("windowHeader");QVERIFY(header);
+  for(auto* label:window.findChildren<QLabel*>())QVERIFY2(label->isEnabled(),qPrintable(label->objectName()+": "+label->text()));
+  for(auto* button:window.findChildren<QAbstractButton*>())QVERIFY2(button->isEnabled()==header->isAncestorOf(button),qPrintable(button->objectName()+" "+button->text()+" "+button->accessibleName()));
+  for(auto* field:window.findChildren<QAbstractSpinBox*>())QVERIFY(!field->isEnabled());
+  for(auto* field:window.findChildren<QComboBox*>())QVERIFY(!field->isEnabled());
+  QVERIFY(!window.canvas().isEnabled());
+  QLabel* message=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->text()=="Preparing the edited image…")message=label;
+  QVERIFY(message);QVERIFY(message->isVisible());
+  window.allowClose();
+ }
+ // The toolbar shows only the zoom; the size and edited state live in the
+ // Document details, which stay outside the scrolling properties.
+ void toolbarShowsZoomAndDocumentKeepsTheSize(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* zoom=window.findChild<QLabel*>("editorZoom");QVERIFY(zoom);
+  QVERIFY2(QRegularExpression("^\\d+%$").match(zoom->text()).hasMatch(),qPrintable(zoom->text()));QVERIFY(zoom->accessibleName().startsWith("Zoom "));
+  auto* info=window.findChild<QLabel*>("editorDocumentInfo");QVERIFY(info);QVERIFY(info->text().contains("400 × 260 px"));
+  for(auto* label:window.findChildren<QLabel*>())if(label!=info)QVERIFY2(!label->text().contains("400 × 260"),qPrintable(label->objectName()));
+  QVERIFY(!window.findChild<QScrollArea*>("editorPropertiesScroll")->isAncestorOf(info));
+  // Every colour target is at least 32 px; the painted swatch stays inside it.
+  window.selectTool(Tool::Arrow);int swatches=0;
+  for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName().startsWith("Color ")||button->objectName()=="customColor"){++swatches;QVERIFY(button->width()>=32&&button->height()>=32);}
+  QCOMPARE(swatches,8);
+ }
+ void saveFeedbackNamesTheCopyAndOffersRecovery(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  add(doc,{{"kind","redact"},{"rect",QJsonArray{10,10,50,20}}});window.documentEdited();
+  QList<QUrl> opened;host::setTestOpener([&](const QUrl& url){opened.append(url);});auto restore=qScopeGuard([]{host::setTestOpener({});});
+  QTemporaryDir dir;const auto path=dir.filePath("synthetic copy.png");{QFile file(path);QVERIFY(file.open(QIODevice::WriteOnly));file.write("synthetic");}
+  window.showSaved(path);
+  auto* saved=window.findChild<QLabel*>("editorSaved");QVERIFY(saved);QVERIFY(saved->isVisible());
+  QVERIFY(saved->text().contains("synthetic copy.png"));QCOMPARE(saved->accessibleDescription(),QFileInfo(path).absoluteFilePath());QCOMPARE(saved->toolTip(),QFileInfo(path).absoluteFilePath());
+  auto* show=window.findChild<QPushButton*>("showSavedCopy");auto* another=window.findChild<QPushButton*>("chooseAnotherLocation");QVERIFY(show&&another);
+  QVERIFY(show->isVisible());QVERIFY(!another->isVisible());
+  show->click();PUTGD_TRY_COMPARE(opened.size(),1);QCOMPARE(opened.first(),QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
+  auto state=window.viewState();QCOMPARE(state["lastSave"].toObject()["status"].toString(),QString("saved"));QCOMPARE(state["lastShowInFolder"].toObject()["opened"].toBool(),true);
+  // A failure names the reason, keeps the draft and offers another location.
+  window.showSaveFailed(dir.filePath("denied.png"),"Permission denied");
+  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error);QVERIFY(error->isVisible());QVERIFY(error->wordWrap());QVERIFY(!saved->isVisible());
+  QVERIFY(error->text().contains("Permission denied"));QVERIFY(error->accessibleDescription().contains(QFileInfo(dir.filePath("denied.png")).absoluteFilePath()));
+  QVERIFY(another->isVisible());QVERIFY(!show->isVisible());QCOMPARE(doc.shapes().size(),1);
+  QCOMPARE(window.viewState()["lastSave"].toObject()["reason"].toString(),QString("Permission denied"));
+  QString code,message;window.viewCommand({{"action","showSavedCopy"}},code,message);QCOMPARE(code,QString("editor_no_saved_copy"));
+ }
+ // Agents drive the window's own view and selection controls (editor.view).
+ void viewCommandsDriveTheWindowControls(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  QString code,message;auto view=[&](const QJsonObject& params){code.clear();return window.viewCommand(params,code,message);};
+  auto state=view({{"action","tool"},{"tool","rectangle"}});QVERIFY2(code.isEmpty(),qPrintable(message));QCOMPARE(state["tool"].toString(),QString("rectangle"));QCOMPARE(window.canvas().tool(),Tool::Rectangle);
+  state=view({{"action","place"}});QCOMPARE(doc.shapes().size(),1);const auto id=doc.shapes().first().id;
+  QCOMPARE(quint64(state["selectedShapeId"].toDouble()),id);QCOMPARE(state["geometry"].toArray(),QJsonArray({100,65,200,130}));
+  // The geometry fields show the selection and edit it as one undo step.
+  auto* x=window.findChild<QSpinBox*>("geometryX");auto* width=window.findChild<QSpinBox*>("geometryWidth");QVERIFY(x&&width);QVERIFY(x->isVisible());
+  QCOMPARE(x->value(),100);QCOMPARE(width->value(),200);
+  x->setValue(12);QCOMPARE(doc.find(id)->rect,QRect(12,65,200,130));QVERIFY(doc.undo());window.documentEdited();QCOMPARE(doc.find(id)->rect,QRect(100,65,200,130));QCOMPARE(x->value(),100);
+  state=view({{"action","geometry"},{"rect",QJsonArray{5,6,70,80}}});QCOMPARE(doc.find(id)->rect,QRect(5,6,70,80));QCOMPARE(width->value(),70);
+  view({{"action","select"},{"shapeId",999}});QCOMPARE(code,QString("edit_shape_missing"));
+  state=view({{"action","select"},{"shapeId",QJsonValue()}});QVERIFY(state["selectedShapeId"].isNull());QVERIFY(!x->isVisible());
+  view({{"action","geometry"},{"rect",QJsonArray{1,1,5,5}}});QCOMPARE(code,QString("editor_no_selection"));
+  state=view({{"action","selectNext"}});QCOMPARE(quint64(state["selectedShapeId"].toDouble()),id);
+  QVERIFY(state["selection"].toString().startsWith("Rectangle 1 of 1 selected"));QCOMPARE(window.canvas().accessibleDescription(),state["selection"].toString());
+  // Zoom and pan move the view; fit restores it.
+  state=view({{"action","zoom"},{"percent",400}});QCOMPARE(state["zoomPercent"].toDouble(),400.0);QVERIFY(!state["fitted"].toBool());
+  const auto shown=state["visibleRect"].toArray();state=view({{"action","pan"},{"delta",QJsonArray{-200,0}}});QVERIFY(state["visibleRect"].toArray()!=shown);
+  QCOMPARE(window.findChild<QLabel*>("editorZoom")->text(),QString("400%"));
+  state=view({{"action","fit"}});QVERIFY(state["fitted"].toBool());
+  // Crop through the same draft as the keyboard and fields, applied once.
+  state=view({{"action","tool"},{"tool","crop"}});QVERIFY(state["cropPending"].toBool());
+  view({{"action","geometry"},{"rect",QJsonArray{20,30,200,100}}});QCOMPARE(doc.crop(),doc.imageRect());
+  state=view({{"action","applyCrop"}});QCOMPARE(doc.crop(),QRect(20,30,200,100));QCOMPARE(state["tool"].toString(),QString("select"));
+  view({{"action","explode"}});QCOMPARE(code,QString("invalid_request"));
+  view({{"action","zoom"},{"percent",1}});QCOMPARE(code,QString("invalid_request"));
+  view({{"action","tool"},{"tool","text"}});view({{"action","place"}});QCOMPARE(code,QString("invalid_request"));
+  window.setBusy("Preparing the edited image…");
+  view({{"action","tool"},{"tool","blur"}});QCOMPARE(code,QString("editor_finalizing"));
+  state=view({{"action","inspect"}});QVERIFY(code.isEmpty());QVERIFY(state["busy"].toBool());QCOMPARE(state["message"].toObject()["text"].toString(),QString("Preparing the edited image…"));
+  window.allowClose();
+ }
+ // Tab walks the marks and then leaves the canvas, so the keyboard is never trapped.
+ void tabWalksMarksThenLeavesTheCanvas(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  add(doc,{{"kind","redact"},{"rect",QJsonArray{10,10,50,20}}});add(doc,{{"kind","blur"},{"rect",QJsonArray{100,100,50,20}}});window.documentEdited();
+  window.selectTool(Tool::Select);auto& canvas=window.canvas();
+  QTest::keyClick(&canvas,Qt::Key_Tab);QCOMPARE(canvas.selected(),doc.shapes().at(0).id);
+  QTest::keyClick(&canvas,Qt::Key_Tab);QCOMPARE(canvas.selected(),doc.shapes().at(1).id);
+  QTest::keyClick(&canvas,Qt::Key_Backtab);QCOMPARE(canvas.selected(),doc.shapes().at(0).id);
+  QTest::keyClick(&canvas,Qt::Key_Tab);QTest::keyClick(&canvas,Qt::Key_Tab);QCOMPARE(canvas.selected(),quint64(0));
+  // The Place button is the pointer-free route for each drawing tool.
+  window.selectTool(Tool::Highlight);auto* place=window.findChild<QPushButton*>("placeMark");QVERIFY(place&&place->isVisible());QCOMPARE(place->text(),QString("Place highlight"));
+  place->click();QCOMPARE(doc.shapes().size(),3);QCOMPARE(doc.shapes().last().kind,Shape::Kind::Highlight);
+  window.selectTool(Tool::Select);QVERIFY(!place->isVisible());
  }
  void unmodifiedCancelNeedsNoConfirmation(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
