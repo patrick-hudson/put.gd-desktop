@@ -303,7 +303,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  // shared sidebar cap (the Settings rails measure the same way).
 
  categories_->setFixedHeight(4*(Graphite::scaled(Graphite::Metric::navRow))+4);side->addWidget(categories_);side->addWidget(Graphite::rule(sidebar));
- failedOnly_=new QCheckBox("Failed uploads only",sidebar);failedOnly_->setObjectName("historyFailedOnly");failedOnly_->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);failedOnly_->setAccessibleName("Failed uploads only");failedOnly_->setToolTip("Show only failed uploads (Upload state: failed)");side->addWidget(failedOnly_);
+ failedOnly_=new QCheckBox("Failed uploads only",sidebar);failedOnly_->setFont(Graphite::font());failedOnly_->setObjectName("historyFailedOnly");failedOnly_->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);failedOnly_->setAccessibleName("Failed uploads only");failedOnly_->setToolTip("Show only failed uploads (Upload state: failed)");side->addWidget(failedOnly_);
  {const QFontMetrics strong(Graphite::font(Graphite::Type::body,true));int widest=0;for(int i=0;i<categories_->count();++i)widest=qMax(widest,strong.horizontalAdvance(categories_->item(i)->text()));const int filter=failedOnly_->sizeHint().width()+20;sidebar->setFixedWidth(Graphite::sidebarWidth(Graphite::Metric::historySidebar,qMax(widest+74,filter)));}
  side->addStretch();
  auto* content=new QWidget(this);content->setObjectName("historyContent");page->addWidget(content,1);auto* layout=new QVBoxLayout(content);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
