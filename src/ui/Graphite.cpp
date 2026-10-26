@@ -211,12 +211,14 @@ private:
 }
 
 qreal opticalBaseline(const QFontMetricsF& metrics, const QString& text, qreal centre) {
-    // The prototype's rule: centre the ink of the text actually shown, so a
-    // label sits optically in the middle whatever the platform font padding.
-    // Editable text keeps Qt's own metrics; this is for painted labels only.
-    const auto ink = metrics.tightBoundingRect(text);
-    if (ink.isEmpty()) return centre + (metrics.ascent() - metrics.descent()) / 2;
-    return centre - ink.center().y();
+    // Centre the font's capital height, not each string's own ink: labels
+    // side by side then share one baseline whether or not they have
+    // descenders ("Capture window" beside "Record screen"), and still sit
+    // optically in the middle whatever the platform font padding. Editable
+    // text keeps Qt's own metrics; this is for painted labels only.
+    if (text.trimmed().isEmpty()) return centre + (metrics.ascent() - metrics.descent()) / 2;
+    const qreal cap = metrics.capHeight() > 0 ? metrics.capHeight() : metrics.tightBoundingRect(QStringLiteral("H")).height();
+    return centre + cap / 2;
 }
 qreal textScale() {
     // Pixel sizes do not follow the desktop's text size, so the language
@@ -1528,6 +1530,26 @@ void Segmented::paintEvent(QPaintEvent*) {
         const QColor ink = !isTabEnabled(i) ? c.textDisabled : on ? c.text : i == hovered ? c.textSecondary : c.textMuted;
         paintText(p, r, tabText(i), ink, Graphite::font(Type::body, on), Qt::AlignCenter);
     }
+}
+
+SegmentTrack::SegmentTrack(QWidget* parent) : QWidget(parent) {
+    auto* row = new QHBoxLayout(this);
+    row->setContentsMargins(3, 3, 3, 3);
+    row->setSpacing(2);
+}
+void SegmentTrack::addButton(QToolButton* button) {
+    button->setParent(this);
+    button->setCheckable(true);
+    button->setAutoExclusive(true);
+    button->setProperty("visualRole", "quiet");
+    // The track adds its own 3 px, so the whole control is one field high.
+    button->setFixedHeight(scaled(Metric::control) - 6);
+    static_cast<QHBoxLayout*>(layout())->addWidget(button);
+}
+void SegmentTrack::paintEvent(QPaintEvent*) {
+    QPainter p(this);
+    const auto& c = t();
+    rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), mix(c.bg, c.surface, 0.6), c.border, Metric::trackRadius);
 }
 
 // ---------------------------------------------------------------- Window chrome

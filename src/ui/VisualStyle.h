@@ -35,6 +35,8 @@ void role(QWidget*,const char*);
 void feedback(QLabel*,const QString&,bool error=false);
 void success(QLabel*,const QString&);
 QToolButton* helpButton(const QString& title,const QString& description,QWidget* control,QWidget* parent);
+// The same help dialog without a button (a menu entry opens it).
+void showHelp(const QString& title,const QString& description,QWidget* parent);
 QWidget* settingLabel(const QString& title,const QString& description,QWidget* control,QWidget* parent);
 QWidget* settingRow(const QString& title,const QString& description,QWidget* control,QWidget* parent);
 }

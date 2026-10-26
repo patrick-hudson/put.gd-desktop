@@ -150,9 +150,10 @@ void success(QLabel* label,const QString& text){setFeedback(label,text,"success"
 QToolButton* helpButton(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setToolTip(description);control->setAccessibleDescription(description);
  auto* button=new QToolButton(parent);button->setObjectName(control->objectName()+"Help");button->setProperty("settingHelpFor",control->objectName());button->setProperty("visualRole","info");button->setIcon(icon("info"));button->setIconSize(QSize(18,18));button->setFixedSize(26,26);button->setFocusPolicy(Qt::StrongFocus);button->setAccessibleName("Help for "+title);button->setAccessibleDescription(description);button->setToolTip(description);
- QObject::connect(button,&QToolButton::clicked,button,[button,title,description]{
-  auto* dialog=new QMessageBox(QMessageBox::NoIcon,title,title,QMessageBox::Close,button->window());dialog->setObjectName("settingHelpDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->setTextFormat(Qt::PlainText);dialog->setInformativeText(description);dialog->open();
- });return button;
+ QObject::connect(button,&QToolButton::clicked,button,[button,title,description]{showHelp(title,description,button->window());});return button;
+}
+void showHelp(const QString& title,const QString& description,QWidget* parent){
+ auto* dialog=new QMessageBox(QMessageBox::NoIcon,title,title,QMessageBox::Close,parent);dialog->setObjectName("settingHelpDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->setTextFormat(Qt::PlainText);dialog->setInformativeText(description);dialog->open();
 }
 QWidget* settingLabel(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setAccessibleName(title);auto* row=new QWidget(parent);auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(6);

@@ -85,7 +85,15 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   folder.lineTo(12,7);folder.lineTo(19,7);folder.quadTo(22,7,22,10);folder.lineTo(22,18);
   folder.quadTo(22,21,19,21);folder.lineTo(5,21);folder.quadTo(2,21,2,18);folder.closeSubpath();p.drawPath(folder);
   line(color,2.5);p.drawLine(13,18,13,10);p.drawLine(9,14,13,10);p.drawLine(13,10,17,14);
- } else if(name=="preferences"||name=="settings") {
+ } else if(name=="settings") {
+  // A gear: Advanced, distinct from General's sliders.
+  fill(secondary);p.save();p.translate(12,12);for(int i=0;i<8;++i){p.drawRoundedRect(QRectF(-2.2,-11,4.4,6),1.2,1.2);p.rotate(45);}p.restore();
+  p.drawEllipse(QPointF(12,12),7.6,7.6);line(color,2.6);p.drawEllipse(QPointF(12,12),3.2,3.2);
+ } else if(name=="alert") {
+  // A failure: a rounded warning triangle with its mark.
+  fill(secondary);QPainterPath triangle;triangle.moveTo(10.3,3.2);triangle.quadTo(12,0.8,13.7,3.2);triangle.lineTo(22,18.6);triangle.quadTo(23.2,21,20.6,21);triangle.lineTo(3.4,21);triangle.quadTo(0.8,21,2,18.6);triangle.closeSubpath();p.drawPath(triangle);
+  fill(color);rounded(10.9,7.5,2.2,7.5,1.1);p.drawEllipse(QPointF(12,17.6),1.35,1.35);
+ } else if(name=="preferences") {
   line(secondary,3);for(int y:{6,12,18})p.drawLine(3,y,21,y);
   fill(color);p.drawEllipse(QPointF(8,6),3,3);p.drawEllipse(QPointF(16,12),3,3);p.drawEllipse(QPointF(10,18),3,3);
  } else if(name=="info") {

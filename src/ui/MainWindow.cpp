@@ -45,45 +45,38 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  setObjectName("putgdMainWindow");setWindowTitle("put.gd");setWindowIcon(VisualStyle::icon("brand"));resize(1320,880);setMinimumSize(1060,680);
  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"record","Record screen"}};
  const QHash<QString,QString> glyphs{{"region","region"},{"window","window"},{"desktop","desktop"},{"clipboard","clipboard"},{"edit","edit"},{"record","record"}};
- // The application menu: every capture command, the pages, help and quit.
+ // The application menu holds only what the window does not already show:
+ // help, updates, About and Quit. Capture commands live in the command band
+ // and the pages in the header's navigation, once each.
  auto* menu=new QMenu(this);menu->setObjectName("applicationMenuPopup");
- for(const auto& action:Settings::invocableActionNames()){auto* item=menu->addAction(VisualStyle::icon(glyphs.value(action)),QString(labels.value(action)).replace('&',QLatin1String("&&")));item->setProperty("captureAction",action);connect(item,&QAction::triggered,this,[this,action]{emit actionRequested(action);});}
- menu->addSeparator();
- connect(menu->addAction(VisualStyle::icon("clipboard"),"Edit clipboard image"),&QAction::triggered,this,[this]{emit editRequested("clipboard",{});});
- connect(menu->addAction(VisualStyle::icon("images"),"Edit an image file…"),&QAction::triggered,this,&MainWindow::chooseImageToEdit);
- menu->addSeparator();
- for(const auto& [name,label]:QList<QPair<QString,QString>>{{"history","History"},{"destinations","Destinations"},{"settings","Settings"}})connect(menu->addAction(label),&QAction::triggered,this,[this,name]{navigate(name);});
- menu->addSeparator();
- auto* helpAction=menu->addAction("Capture and clipboard actions…");
+ auto* helpAction=menu->addAction(VisualStyle::icon("info"),"Capture and clipboard actions…");helpAction->setObjectName("captureActionsHelp");
+ auto* updatesAction=menu->addAction(VisualStyle::icon("download"),"Check for updates…");updatesAction->setObjectName("checkForUpdates");
+ connect(updatesAction,&QAction::triggered,this,[this]{navigate("settings");settings_->showUpdates();});
  connect(menu->addAction("About put.gd"),&QAction::triggered,this,&MainWindow::aboutRequested);
  menu->addSeparator();
  connect(menu->addAction("Quit put.gd"),&QAction::triggered,this,&MainWindow::quitRequested);
- // Menu shortcut labels follow the saved global shortcuts (shown, not bound here).
- auto shortcutLabels=[this,menu,labels]{const auto document=session_.document();for(auto* item:menu->actions()){const auto action=item->property("captureAction").toString();if(action.isEmpty())continue;const auto key=QKeySequence(Settings::effectiveAction(document,action)["shortcut"].toString()).toString(QKeySequence::NativeText);item->setText(QString(labels.value(action)).replace('&',QLatin1String("&&"))+(key.isEmpty()?QString{}:"\t"+key));}};
- connect(&session_,&UiSession::accepted,menu,shortcutLabels);shortcutLabels();
  auto* header=Graphite::WindowHeader::install(this,nullptr,menu);
  tabs_=new Graphite::Segmented(header);tabs_->setObjectName("mainNavigation");tabs_->setAccessibleName("Main navigation");for(const auto* label:{"History","Destinations","Settings"})tabs_->addTab(label);header->setCentre(tabs_);
  auto* center=new QWidget;setCentralWidget(center);auto* layout=new QVBoxLayout(center);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
  // The command band: capture and upload actions, primary first.
  band_=new Graphite::Surface("bg",Qt::BottomEdge,center);band_->setObjectName("commandBand");band_->setAccessibleName("Capture and upload actions");band_->installEventFilter(this);auto* bandRow=new QHBoxLayout(band_);bandRow->setContentsMargins(12,10,12,11);bandRow->setSpacing(6);layout->addWidget(band_);
- const QString actionHelp="Capture region: drag to select a screen area; Escape cancels. Its menu also offers Capture window and Capture desktop.\n\nCapture window: capture the focused external app window, including its frame where supported.\n\nCapture desktop: capture every enabled monitor, including desktop panels.\n\nUpload clipboard: upload copied local files, an image, or plain text, in that order. URLs copied as text are uploaded as text.\n\nCapture region & edit: select a region, then redact, blur, crop or annotate it in the editor. Nothing uploads until you choose Upload. Its menu edits the clipboard image or an image file instead; you can also drop a PNG or JPEG on it.\n\nEach button starts that action after finished settings edits are saved. Screen captures close this window to keep it out of the capture; clipboard uploads keep it open. Store or clear unfinished credentials before a screen capture. Settings → Capture selects the upload destination. Keep a local copy in Settings → General independently enables local saving. Both can be enabled. With neither enabled, the action fails before capturing. Shared uploads copy a link; private uploads create no link. Hover a button for its current output behavior. Results and recovery actions appear in History.";
- const QHash<QString,QString> explanations{{"region","Drag to select an area of your screen. Press Escape to cancel."},{"window","Capture the focused external app window, including its frame where supported."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Upload copied local files, an image, or plain text, in that order. Text URLs are uploaded as text."},{"edit","Select a region, then redact, blur, crop or annotate it. Nothing uploads until you choose Upload.\n\nUse its menu to edit the clipboard image or an image file instead, or drop a PNG or JPEG on this button."},{"record","Drag to select an area, then use the floating bar to record, pause and stop. Stop opens a review window; nothing uploads until you choose Upload there."}};
- // Region first (primary), its window and desktop variants, then edit, record and clipboard.
- QStringList bandOrder{"region","window","desktop","edit","record","clipboard"};for(const auto& action:Settings::invocableActionNames())if(!bandOrder.contains(action))bandOrder<<action;bandOrder.removeIf([](const QString& a){return !Settings::invocableActionNames().contains(a);});
+ const QString actionHelp="Capture region: drag to select a screen area; Escape cancels.\n\nCapture window: capture the focused external app window, including its frame where supported.\n\nCapture desktop: capture every enabled monitor, including desktop panels.\n\nUpload clipboard: upload copied local files, an image, or plain text, in that order. URLs copied as text are uploaded as text.\n\nCapture region & edit: select a region, then redact, blur, crop or annotate it in the editor. Nothing uploads until you choose Upload. Its menu edits the clipboard image or an image file instead; you can also drop a PNG or JPEG on it.\n\nEach button starts that action after finished settings edits are saved. Screen captures close this window to keep it out of the capture; clipboard uploads keep it open. Store or clear unfinished credentials before a screen capture. Settings → Capture selects the upload destination. Keep a local copy in Settings → General independently enables local saving. Both can be enabled. With neither enabled, the action fails before capturing. Shared uploads copy a link; private uploads create no link. Hover a button for its current output behavior. Results and recovery actions appear in History.";
+ const QHash<QString,QString> explanations{{"region","Drag to select an area of your screen. Press Escape to cancel."},{"window","Capture the focused external app window, including its frame where supported."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Upload copied local files, an image, or plain text, in that order. Text URLs are uploaded as text."},{"edit","Select a region, then redact, blur, crop or annotate it. Nothing uploads until you choose Upload.\n\nUse its arrow to edit the clipboard image or an image file instead, or drop a PNG or JPEG on this button."},{"record","Drag to select an area, then use the floating bar to record, pause and stop. Stop opens a review window; nothing uploads until you choose Upload there."}};
+ // Three groups, each action once: the screenshots (Capture region is the
+ // primary), then editing and recording, and at the far end the clipboard
+ // upload, which captures nothing. Hairlines separate the groups.
+ const QList<QStringList> groups{{"region","window","desktop"},{"edit","record"},{"clipboard"}};QStringList bandOrder;for(const auto& group:groups)bandOrder<<group;
+ for(const auto& action:Settings::invocableActionNames())if(!bandOrder.contains(action))bandOrder<<action;bandOrder.removeIf([](const QString& a){return !Settings::invocableActionNames().contains(a);});
  for(const auto& action:bandOrder){
+  if(action=="edit"){auto* divider=Graphite::rule(band_,Qt::Vertical);divider->setObjectName("commandBandDivider");divider->setFixedHeight(Graphite::scaled(20));bandRow->addSpacing(6);bandRow->addWidget(divider,0,Qt::AlignVCenter);bandRow->addSpacing(6);}
+  if(action=="clipboard")bandRow->addStretch();
   auto* button=Graphite::toolButton(labels.value(action),glyphs.value(action),action=="region"?"primary":"quiet",band_);button->setObjectName("captureActionButton");button->setProperty("captureAction",action);button->setAccessibleName(labels.value(action));
-  if(action=="region"){
-   // Window and desktop are also in the split menu, so a narrow band can
-   // fold their own buttons away without losing them.
-   auto* sources=new QMenu(button);sources->setObjectName("captureRegionMenu");for(const auto& choice:QStringList{"region","window","desktop"})connect(sources->addAction(VisualStyle::icon(glyphs.value(choice)),labels.value(choice)),&QAction::triggered,this,[this,choice]{emit actionRequested(choice);});
-   button->setMenu(sources);button->setPopupMode(QToolButton::MenuButtonPopup);
-  }
   if(action=="edit"){
-   // A separate source never starts a region capture: the menu's other
-   // entries, a right-click or a dropped PNG or JPEG edit that image instead.
+   // The button captures a region to edit; its menu edits an image that
+   // already exists instead and never starts a capture. A right-click or a
+   // dropped PNG or JPEG does the same.
    editButton_=button;button->setContextMenuPolicy(Qt::CustomContextMenu);button->setAcceptDrops(true);button->installEventFilter(this);
    auto* sources=new QMenu(this);sources->setObjectName("editSourceMenu");
-   connect(sources->addAction(VisualStyle::icon("edit"),"Capture region && edit"),&QAction::triggered,this,[this]{emit actionRequested("edit");});sources->addSeparator();
    connect(sources->addAction(VisualStyle::icon("clipboard"),"Edit clipboard image"),&QAction::triggered,this,[this]{emit editRequested("clipboard",{});});
    connect(sources->addAction(VisualStyle::icon("images"),"Edit an image file…"),&QAction::triggered,this,&MainWindow::chooseImageToEdit);
    button->setMenu(sources);button->setPopupMode(QToolButton::MenuButtonPopup);
@@ -104,9 +97,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   };
   connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QToolButton::clicked,this,[this,action]{emit actionRequested(action);});bandRow->addWidget(button);actionButtons_<<button;
  }
- bandRow->addStretch();
- auto* helpTarget=new QLabel("Capture and upload",band_);helpTarget->setObjectName("captureActionsHeading");helpTarget->hide();
- auto* captureHelp=VisualStyle::helpButton("Capture and clipboard actions",actionHelp,helpTarget,band_);bandRow->addWidget(captureHelp);connect(helpAction,&QAction::triggered,captureHelp,&QToolButton::click);
+ connect(helpAction,&QAction::triggered,this,[this,actionHelp]{VisualStyle::showHelp("Capture and clipboard actions",actionHelp,this);});
  pages_=new QStackedWidget;pages_->setObjectName("mainPages");layout->addWidget(pages_,1);history_=new HistoryWindow(session_,pages_);pages_->addWidget(history_);
  // Keep the navigation indexes stable without constructing hidden Settings and
  // destination controls for a History-only visit (#558).
@@ -156,6 +147,8 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  };
  connect(changeOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  auto* explanation=new QLabel("Settings save automatically");explanation->setObjectName("autosaveExplanation");VisualStyle::role(explanation,"meta");statusBar()->addWidget(explanation);
+ // Autosave describes the Destinations and Settings pages, not History.
+ explanation->setVisible(tabs_->currentIndex()>0);connect(tabs_,&QTabBar::currentChanged,explanation,[explanation](int row){explanation->setVisible(row>0);});
  saveStatus_=new QLabel;saveStatus_->setObjectName("autosaveStatus");saveStatus_->setAccessibleName("Settings save status");saveStatus_->setTextFormat(Qt::PlainText);statusBar()->addPermanentWidget(saveStatus_);
  statusBar()->addPermanentWidget(updateLink_);statusBar()->addPermanentWidget(version_);statusBar()->addPermanentWidget(versionLink_);
  connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});
@@ -180,12 +173,12 @@ SettingsWindow* MainWindow::settings(){
 void MainWindow::updateSaveStatus(){
  const auto text=settings_?settings_->autosaveText():QString();saveStatus_->setVisible(!text.isEmpty());VisualStyle::feedback(saveStatus_,text,!text.isEmpty()&&text!="Use Store to save credentials");
 }
-// A band narrower than its buttons first folds Capture window and Capture
-// desktop into Capture region's menu, then shows the quiet actions as icons
-// with their names in tooltips and accessible names; nothing disappears.
+// A band narrower than its buttons first shows Capture window and Capture
+// desktop as icons, then every quiet action; names stay in tooltips and
+// accessible names. Every action keeps its own button at every width.
 void MainWindow::fitBand(){
  if(!band_||fittingBand_)return;fittingBand_=true;
- auto apply=[this](int stage){for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setVisible(stage<1||(action!="window"&&action!="desktop"));if(action!="region")button->setToolButtonStyle(stage>=2?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);}band_->layout()->invalidate();band_->layout()->activate();};
+ auto apply=[this](int stage){for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();const bool compact=action!="region"&&(stage>=2||(stage==1&&(action=="window"||action=="desktop")));button->setToolButtonStyle(compact?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);}band_->layout()->invalidate();band_->layout()->activate();};
  int stage=0;for(;stage<3;++stage){apply(stage);if(band_->layout()->minimumSize().width()<=band_->width()||stage==2)break;}
  bandStage_=stage;fittingBand_=false;
 }

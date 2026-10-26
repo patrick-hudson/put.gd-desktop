@@ -140,6 +140,17 @@ protected:
     void paintEvent(QPaintEvent*) override;
 };
 
+// The segmented track for a few checkable quiet buttons (List / Gallery):
+// the same track as Segmented behind them; each button stays a real button.
+class SegmentTrack final : public QWidget {
+    Q_OBJECT
+public:
+    explicit SegmentTrack(QWidget* parent = nullptr);
+    void addButton(QToolButton*);
+protected:
+    void paintEvent(QPaintEvent*) override;
+};
+
 // The window header shared by the main window and document windows: the
 // application menu and name at the left, a centred slot (navigation or a
 // document title), and window controls at the right when put.gd draws its own
