@@ -9,7 +9,7 @@ class RegionSelector:public QObject {
 public:
  using QObject::QObject;
  virtual void start()=0;
- virtual void cancel(Error error={"cancelled","Region selection cancelled",{}})=0;
+ virtual void cancel(Error error={"cancelled","Region selection canceled",{}})=0;
 signals:
  void selected(const QRectF&);
  void cancelled(const putgd::Error&);

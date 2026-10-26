@@ -256,7 +256,7 @@ void FrameView::paintEvent(QPaintEvent*) {
         dualOutline(painter, pending, mediaAccent, 1.5, Qt::DashLine);
     }
     if (!armed_.isEmpty())
-        mediaLabel(painter, QPointF(target.left() + 8, target.top() + 8), armed_ == "solid" ? QStringLiteral("Drag on the frame to place the redaction, or press Enter for a centred one") : QStringLiteral("Drag on the frame to place the blur, or press Enter for a centred one"), target);
+        mediaLabel(painter, QPointF(target.left() + 8, target.top() + 8), armed_ == "solid" ? QStringLiteral("Drag on the frame to place the redaction, or press Enter for a centered one") : QStringLiteral("Drag on the frame to place the blur, or press Enter for a centered one"), target);
     if (Graphite::keyboardFocus(this)) { painter.setPen(QPen(Theme::current().accent, 2)); painter.setBrush(Qt::NoBrush); painter.drawRect(QRectF(rect()).adjusted(1, 1, -1, -1)); }
 }
 void FrameView::focusInEvent(QFocusEvent* e) { QWidget::focusInEvent(e); update(); }
@@ -737,8 +737,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     VisualStyle::role(retained_, "secondary");
     mono(retained_, Graphite::Type::metadata);
     retained_->setAccessibleName("Kept interval");
-    addBlur_ = tool("blur", "Add blur", "Add a blur, then drag on the frame to place it or press Enter for a centred one. Blur is a visual effect; use Redact for private information.");
-    addSolid_ = tool("redact", "Add redaction", "Redact: add a redaction, then drag on the frame to place it or press Enter for a centred one");
+    addBlur_ = tool("blur", "Add blur", "Add a blur, then drag on the frame to place it or press Enter for a centered one. Blur is a visual effect; use Redact for private information.");
+    addSolid_ = tool("redact", "Add redaction", "Redact: add a redaction, then drag on the frame to place it or press Enter for a centered one");
     for (auto* button : {addBlur_, addSolid_}) button->setCheckable(true);
     // The selected mask's settings; the whole group shows only once masks exist.
     maskTools_ = new QWidget(this);

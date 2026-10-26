@@ -93,7 +93,7 @@ void MutterScreenCast::close() {
     debugLog("mutter screencast: session stopped");
     session_.clear();
     stream_.clear();
-    if (auto done = std::exchange(done_, {})) done({"cancelled", "Screen cast cancelled", {}}, {});
+    if (auto done = std::exchange(done_, {})) done({"cancelled", "Screen cast canceled", {}}, {});
 }
 }
 #include "MutterScreenCast.moc"

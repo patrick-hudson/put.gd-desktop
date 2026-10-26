@@ -148,6 +148,6 @@ void KdeScreencast::close() {
     // `close` is the protocol's destructor request: it ends the stream and frees
     // the proxy, so the proxy must not be destroyed a second time.
     if (d_->stream) { zkde_screencast_stream_unstable_v1_close(d_->stream); d_->stream = nullptr; if (d_->display) wl_display_flush(d_->display); debugLog("kde screencast: stream closed"); }
-    if (auto done = std::exchange(d_->done, {})) done({"cancelled", "Screen cast cancelled", {}}, {});
+    if (auto done = std::exchange(d_->done, {})) done({"cancelled", "Screen cast canceled", {}}, {});
 }
 }

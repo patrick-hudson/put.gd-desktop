@@ -34,7 +34,7 @@ public:
     explicit SelectionOverlay(QObject* parent = nullptr);
     ~SelectionOverlay() override;
     void start();
-    void cancel(Error error = {"cancelled", "Region selection cancelled", {}});
+    void cancel(Error error = {"cancelled", "Region selection canceled", {}});
     // Completes the selection with root pixels, as a drag release would.
     void complete(const QRect& rootRect);
 signals:

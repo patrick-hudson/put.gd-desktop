@@ -81,7 +81,7 @@ QString HistoryModel::statusText(const QJsonObject& r){
    if(items.size()>1){int running=0,waiting=0,done=0,failed=0,cancelled=0;
     for(const auto& value:items){const auto item=value.toObject();const auto status=item["uploadStatus"].toString(),itemPhase=item["phase"].toString();
      if(status=="cancelled")++cancelled;else if(status=="failed"||status=="unknown")++failed;else if(QStringList{"uploaded","skipped","conflict"}.contains(status))++done;else if(itemPhase=="queued")++waiting;else if(status=="uploading")++running;}
-    QStringList parts;if(running)parts<<QString("%1 uploading").arg(running);if(waiting)parts<<QString("%1 waiting").arg(waiting);if(done)parts<<QString("%1 done").arg(done);if(failed)parts<<QString("%1 failed").arg(failed);if(cancelled)parts<<QString("%1 cancelled").arg(cancelled);
+    QStringList parts;if(running)parts<<QString("%1 uploading").arg(running);if(waiting)parts<<QString("%1 waiting").arg(waiting);if(done)parts<<QString("%1 done").arg(done);if(failed)parts<<QString("%1 failed").arg(failed);if(cancelled)parts<<QString("%1 canceled").arg(cancelled);
     if(!parts.isEmpty())files=" · "+parts.join(", ");}
    const auto progress=aggregateProgress(op);if(progress.total>0)return QString("Uploading · %1%").arg(progress.percent())+files;if(progress.known)return "Uploading · "+ByteSize::summary(progress.sent)+" transferred"+files;return "Uploading…"+files;}
   if(phase=="preflight")return "Checking the destination…";
@@ -93,7 +93,7 @@ QString HistoryModel::statusText(const QJsonObject& r){
  if(r["uploadStatus"]=="uploaded"&&QStringList{"failed","unknown","changed"}.contains(r["shareStatus"].toString()))return message.isEmpty()?QString("Share link needs attention"):message;
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
  if(r["uploadStatus"]=="failed"||state=="failed"||state=="partial")return (message.isEmpty()?failureLabel(r):message)+(r["local"].toObject()["status"]=="saved"?" · Saved locally":QString{});
- if(state=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled")return "Cancelled";
+ if(state=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled")return "Canceled";
  if(r["remoteStatus"]=="removed"||r["remoteStatus"]=="already_missing")return "Deleted from destination";
  if(r["remoteStatus"]=="changed"||r["remoteStatus"]=="unknown")return "Remote outcome needs inspection";
  if(r["shareStatus"]=="revoked")return "Share link revoked";

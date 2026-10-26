@@ -108,12 +108,12 @@ void PortalScreenCast::start(quint32 sourceTypes, const QString& restoreToken, D
         debugLog("portal: SelectSources");
         guard->request("SelectSources", {QVariant::fromValue(QDBusObjectPath(guard->session_))}, options, [guard](quint32 code, QVariantMap) {
             if (!guard) return;
-            if (code == 1) { guard->fail({"cancelled", "Screen sharing was cancelled; nothing was recorded", {}}); return; }
+            if (code == 1) { guard->fail({"cancelled", "Screen sharing was canceled; nothing was recorded", {}}); return; }
             if (code != 0) { guard->fail({"recording_portal_failed", "The portal refused the requested sources", {{"code", int(code)}}}); return; }
             debugLog("portal: Start (the compositor shows its picker)");
             guard->request("Start", {QVariant::fromValue(QDBusObjectPath(guard->session_)), QString()}, {}, [guard](quint32 code, QVariantMap results) {
                 if (!guard) return;
-                if (code == 1) { guard->fail({"cancelled", "Screen sharing was cancelled; nothing was recorded", {}}); return; }
+                if (code == 1) { guard->fail({"cancelled", "Screen sharing was canceled; nothing was recorded", {}}); return; }
                 if (code != 0) { guard->fail({"recording_portal_failed", "Screen sharing did not start", {{"code", int(code)}}}); return; }
                 Result result;
                 result.streams = parseStreams(results.value("streams"));
@@ -137,7 +137,7 @@ void PortalScreenCast::close() {
     QDBusConnection::sessionBus().asyncCall(call, 5000);
     debugLog("portal: session closed");
     session_.clear();
-    if (auto done = std::exchange(done_, {})) done({"cancelled", "Screen sharing was cancelled; nothing was recorded", {}}, {});
+    if (auto done = std::exchange(done_, {})) done({"cancelled", "Screen sharing was canceled; nothing was recorded", {}}, {});
 }
 
 QList<PortalScreenCast::Stream> PortalScreenCast::parseStreams(const QVariant& value) {

@@ -223,7 +223,7 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
 }
 void RecordSession::acquire(Reply reply) {
     // A cancel that arrived while the selector was closing opens nothing.
-    if (cancelled_) { reply({"cancelled", "Recording cancelled before the source opened", {}}, {}); return; }
+    if (cancelled_) { reply({"cancelled", "Recording canceled before the source opened", {}}, {}); return; }
     const auto acquisition = capabilities_["acquisition"].toString();
     if (acquisition == "kde-screencast" || acquisition == "mutter-screencast") { prepareNative(std::move(reply)); return; }
     if (acquisition == "portal") { preparePortal(std::move(reply)); return; }
@@ -235,7 +235,7 @@ void RecordSession::select(Reply reply) {
     QPointer<RecordSession> guard(this);
     auto cancelled = [guard, reply](const Error& error) {
         if (!guard) return;
-        reply(error.code == "cancelled" ? Error{"cancelled", "Region selection cancelled; nothing was recorded", {}} : error, {});
+        reply(error.code == "cancelled" ? Error{"cancelled", "Region selection canceled; nothing was recorded", {}} : error, {});
     };
     const auto mode = surfaceMode();
     if (mode == SurfaceMode::X11) {
@@ -499,7 +499,7 @@ void RecordSession::start(Reply reply) {
     QTimer::singleShot(handleSettleMs, this, [guard, reply = std::move(reply)]() mutable {
         if (!guard) return;
         guard->starting_ = false;
-        if (guard->cancelled_) { reply({"cancelled", "Recording cancelled before it started", {}}, {}); return; }
+        if (guard->cancelled_) { reply({"cancelled", "Recording canceled before it started", {}}, {}); return; }
         guard->begin(std::move(reply));
     });
 }

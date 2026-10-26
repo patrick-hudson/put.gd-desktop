@@ -109,7 +109,7 @@ void ShortcutEditor::startRecording(const QString& action){
   guard->recordingStatus_->setText("Press shortcut… Release all keys to keep it. Escape cancels.");
  });
 }
-void ShortcutEditor::cancelRecording(){if(!recordingAction_.isEmpty())finishRecording("Recording cancelled. The draft shortcut is unchanged.");}
+void ShortcutEditor::cancelRecording(){if(!recordingAction_.isEmpty())finishRecording("Recording canceled. The draft shortcut is unchanged.");}
 void ShortcutEditor::finishRecording(const QString& message){
  if(recordingAction_.isEmpty())return;
  ++recordingGeneration_;recordingReady_=false;qApp->removeEventFilter(this);
