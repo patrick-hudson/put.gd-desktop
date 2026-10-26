@@ -10,20 +10,22 @@ esac
 key=$(cat "$1")
 case "$key" in ssh-ed25519\ *) ;; *) echo 'Expected an Ed25519 public key.' >&2; exit 1 ;; esac
 id lab >/dev/null
+[ -f "$(dirname "$0")/guest_idle.py" ] || { echo 'Missing guest_idle.py companion.' >&2; exit 1; }
 if command -v apt-get >/dev/null; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
-  apt-get install -y openssh-server
+  apt-get install -y openssh-server python3
   package_manager=/usr/bin/apt-get
   ssh_service=ssh
 elif command -v dnf >/dev/null; then
-  dnf install -y openssh-server
+  dnf install -y openssh-server python3
   package_manager=/usr/bin/dnf
   ssh_service=sshd
 else
   echo 'Guest requires apt-get or dnf.' >&2
   exit 1
 fi
+python3 "$(dirname "$0")/guest_idle.py" --install-autostart --user lab
 install -d -m 700 -o lab -g lab /home/lab/.ssh
 printf '%s\n' "$key" > /home/lab/.ssh/authorized_keys
 chown lab:lab /home/lab/.ssh/authorized_keys

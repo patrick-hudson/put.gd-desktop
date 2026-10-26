@@ -26,6 +26,11 @@ class LabContracts(unittest.TestCase):
         lock_root = patch.object(lab.overlay_cleanup, 'ROOT', Path(temporary.name))
         lock_root.start()
         self.addCleanup(lock_root.stop)
+        # These tests supply synthetic QMP/session fixtures. The real endpoint,
+        # policy and fail-closed checks have their own guest-preflight suite.
+        preflight = patch.object(lab, 'guest_preflight', return_value={'ok': True, 'synthetic': True})
+        preflight.start()
+        self.addCleanup(preflight.stop)
 
     def test_guest_session_recovers_gnome_wayland_display_from_session_manager(self):
         # gnome-shell's own environment lacks WAYLAND_DISPLAY; without it the
