@@ -47,6 +47,7 @@
 #include <QTabWidget>
 #include <QToolButton>
 #include <QMessageBox>
+#include <memory>
 #include <QInputDialog>
 #include <QMenu>
 #include <QTabBar>
@@ -66,6 +67,16 @@ QJsonObject threeDestinations(){
 }
 QStringList profileIds(const QJsonObject& document){QStringList ids;for(const auto& p:document["profiles"].toArray())ids.append(p.toObject()["id"].toString());return ids;}
 QStringList rowLabels(QListWidget* list){QStringList labels;for(int i=0;i<list->count();++i)labels.append(list->item(i)->text().section('\n',0,0));return labels;}
+// Chooses the named action of the next confirmation (Graphite::confirm) and
+// keeps the text it showed.
+std::shared_ptr<QString> acceptNextConfirmation(){
+ auto shown=std::make_shared<QString>();
+ QTimer::singleShot(0,[shown]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->objectName()=="confirmAction"&&box->isVisible()){*shown=box->windowTitle()+"\n"+box->text();box->button(QMessageBox::Yes)->click();return;}});
+ return shown;
+}
+// The code behind the Settings status line: people read the message, the code
+// stays in a property and the accessible description.
+QString statusCode(QWidget& window){return window.findChild<QLabel*>("settingsStatus")->property("errorCode").toString();}
 }
 class SettingsGui:public QObject {
  Q_OBJECT
@@ -377,16 +388,89 @@ private slots:
   window.findChild<QAction*>("moveDestinationDown")->trigger();
   QCOMPARE(rowLabels(list),QStringList({"Synthetic alternate","put.gd development destination","Synthetic third"}));
   QLabel* status=window.findChild<QLabel*>("settingsStatus");QVERIFY(status);
-  PUTGD_TRY_VERIFY2(status->text().contains("config_conflict"),qPrintable(status->text()));QVERIFY(status->text().contains("previous destination order is restored"));
+  PUTGD_TRY_VERIFY2(statusCode(window)=="config_conflict",qPrintable(status->text()));QVERIFY(status->text().contains("previous destination order is restored"));QVERIFY(!status->text().contains("config_conflict"));
   QCOMPARE(rowLabels(list),QStringList({"put.gd development destination","Synthetic alternate","Synthetic third"}));QCOMPARE(list->currentRow(),0);
   QCOMPARE(window.findChild<QLineEdit*>("destinationId")->text(),QString("development-s3"));
   QFile file(path);QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),external);
   QVERIFY(window.settings()->autosaveText().contains("changed elsewhere"));
   // Further moves wait for a reload instead of saving over the other writer.
   QJsonObject result;QCOMPARE(window.settings()->moveSelectedDestination(1,{},result).code,QString("config_conflict"));
-  window.findChild<QPushButton*>("reloadSettings")->click();PUTGD_TRY_VERIFY(!window.settings()->autosaveText().contains("changed elsewhere"));
+  acceptNextConfirmation();window.findChild<QPushButton*>("reloadSettings")->click();PUTGD_TRY_VERIFY(!window.settings()->autosaveText().contains("changed elsewhere"));
   QVERIFY(!window.settings()->moveSelectedDestination(1,"development-s3",result));
   PUTGD_TRY_COMPARE(profileIds(service.document()),QStringList({"synthetic-alternate","development-s3","synthetic-third"}));QVERIFY(!service.snapshot().notifications);
+ }
+ // A conflict offers its recovery where it is reported, on Settings and on
+ // Destinations, and the confirmation names the edits a reload discards, not
+ // what the other writer changed.
+ void conflictOffersReloadBesideTheMessage(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();window.navigate("destinations");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* settingsReload=window.findChild<QPushButton*>("reloadConflict");auto* destinationReload=window.findChild<QPushButton*>("reloadDestinationConflict");QVERIFY(settingsReload&&destinationReload);QVERIFY(settingsReload->isHidden()&&destinationReload->isHidden());
+  auto* number=window.findChild<QLineEdit*>("maxFiles");const auto saved=number->text();number->setText("invalid");PUTGD_TRY_VERIFY(number->property("invalid").toBool());
+  auto external=service.document();auto prefs=external["preferences"].toObject();QVERIFY(prefs["notifications"].toBool());prefs["notifications"]=false;external["preferences"]=prefs;QVERIFY(service.save(external,service.revision()));
+  PUTGD_TRY_VERIFY(window.settings()->saveViewState()["conflict"].toBool());
+  auto* status=window.findChild<QLabel*>("settingsStatus");auto* destinationStatus=window.findChild<QLabel*>("destinationStatus");
+  QCOMPARE(statusCode(window),QString("config_conflict"));QVERIFY(!status->text().contains("config_conflict"));
+  QVERIFY(destinationStatus->isVisible());QVERIFY(destinationReload->isVisible());QCOMPARE(destinationReload->parentWidget(),destinationStatus->parentWidget());
+  QVERIFY(!settingsReload->isHidden());QCOMPARE(settingsReload->parentWidget(),status->parentWidget());QCOMPARE(settingsReload->text(),QString("Reload from file…"));
+  // An error is body text, not small print.
+  QCOMPARE(status->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());
+  // Cancel keeps the draft.
+  QString shown;QTimer::singleShot(0,[&shown]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->objectName()=="confirmAction"&&box->isVisible()){shown=box->text();box->button(QMessageBox::Cancel)->click();return;}});
+  destinationReload->click();
+  QVERIFY2(shown.contains("Advanced → Files in a batch"),qPrintable(shown));QVERIFY2(!shown.contains("Notifications")&&!shown.contains("notifications"),qPrintable(shown));
+  QCOMPARE(number->text(),QString("invalid"));QVERIFY(window.settings()->saveViewState()["conflict"].toBool());QVERIFY(destinationReload->isVisible());
+  // Reload from file replaces the draft with the file and clears the conflict.
+  acceptNextConfirmation();destinationReload->click();
+  PUTGD_TRY_COMPARE(number->text(),saved);QVERIFY(!window.settings()->saveViewState()["conflict"].toBool());QVERIFY(destinationReload->isHidden());QVERIFY(settingsReload->isHidden());
+  QVERIFY(!window.findChild<QCheckBox*>("notifications")->isChecked());
+  // Passive save information stays meta type.
+  PUTGD_TRY_COMPARE(status->text(),QString("Settings reloaded from file."));QCOMPARE(status->font().pixelSize(),Graphite::font(Graphite::Type::metadata).pixelSize());QVERIFY(statusCode(window).isEmpty());
+ }
+ // Inherited values are locked values: disabled, but painted as information
+ // (textMuted in a read-only frame), unlike an unavailable action.
+ void inheritedValuesAreLockedNotUnavailable(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto restore=qScopeGuard([]{Theme::setScheme(Theme::Scheme::Dark);});
+  window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);
+  auto* region=window.findChild<QComboBox*>("profileRegion");auto* sharing=window.findChild<QComboBox*>("publicationRegion");auto* clipboard=window.findChild<QComboBox*>("profileClipboard");
+  QVERIFY(!region->isEnabled()&&Graphite::isLocked(region));QVERIFY(!sharing->isEnabled()&&Graphite::isLocked(sharing));QVERIFY(clipboard->isEnabled()&&!Graphite::isLocked(clipboard));
+  window.findChild<QScrollArea*>()->ensureWidgetVisible(region);
+  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+   Theme::setScheme(scheme);putgd::test::settle(20);const auto& p=Theme::palette(scheme);
+   const auto shot=window.grab(QRect(region->mapTo(&window,QPoint()),region->size())).toImage().convertToFormat(QImage::Format_RGB32);
+   // The value's text reaches 4.5:1 against the page (textDisabled reached about 3:1).
+   double best=0;for(int y=0;y<shot.height();++y)for(int x=0;x<shot.width();++x)best=std::max(best,Theme::contrast(shot.pixelColor(x,y),p.bg));
+   QVERIFY2(best>=4.5,qPrintable(Theme::name(scheme)+QString(" locked value contrast %1").arg(best)));
+  }
+  // Unticking Use default makes the value editable again.
+  window.findChild<QCheckBox*>("useDefaultRegion")->setChecked(false);PUTGD_TRY_VERIFY(region->isEnabled());QVERIFY(!Graphite::isLocked(region));
+  // On Destinations, "Default" states a fact and reads as one; Make default is an action.
+  window.navigate("destinations");auto* list=window.findChild<QListWidget*>("destinationList");auto* makeDefault=window.findChild<QPushButton*>("makeDefaultDestination");
+  list->setCurrentRow(0);PUTGD_TRY_COMPARE(makeDefault->text(),QString("Default"));QVERIFY(!makeDefault->isEnabled()&&Graphite::isLocked(makeDefault));
+  list->setCurrentRow(1);PUTGD_TRY_COMPARE(makeDefault->text(),QString("Make default"));QVERIFY(!Graphite::isLocked(makeDefault));
+ }
+ // Sidebars follow their labels, not the text scale: at 150% text the rows
+ // grow, but neither sidebar passes the cap.
+ void sidebarsFollowTheirLabelsAtLargeText(){
+  auto font=QApplication::font();const auto original=font;auto restore=qScopeGuard([&]{QApplication::setFont(original);});
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  int baseRow=0;{MainWindow window(fixture.session);window.navigate("settings");window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+   QCOMPARE(window.findChild<QWidget*>("settingsRail")->width(),Graphite::Metric::settingsSidebar);auto* nav=window.findChild<QListWidget*>("settingsNavigation");baseRow=nav->visualItemRect(nav->item(0)).height();}
+  font.setPixelSize(21);QApplication::setFont(font);
+  MainWindow window(fixture.session);window.navigate("settings");window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* nav=window.findChild<QListWidget*>("settingsNavigation");QVERIFY(nav->visualItemRect(nav->item(0)).height()>baseRow);
+  for(const char* name:{"settingsRail","destinationRail"}){auto* rail=window.findChild<QWidget*>(name);QVERIFY2(rail->width()<=Graphite::Metric::sidebarMax,qPrintable(QString("%1 %2").arg(name).arg(rail->width())));}
+  QVERIFY(window.findChild<QWidget*>("settingsRail")->width()<Graphite::scaled(Graphite::Metric::settingsSidebar));
+  // Every rail label still fits: the widest is measured, not guessed.
+  const QFontMetrics strong(Graphite::font(Graphite::Type::body,true));for(int i=0;i<nav->count();++i)QVERIFY(strong.horizontalAdvance(nav->item(i)->text())+74<=window.findChild<QWidget*>("settingsRail")->width());
+  // The Add destination… button keeps its whole label.
+  window.navigate("destinations");auto* add=window.findChild<QPushButton*>("addS3Destination");PUTGD_TRY_VERIFY(add->isVisible());QVERIFY2(add->width()>=add->sizeHint().width(),qPrintable(QString("%1 < %2").arg(add->width()).arg(add->sizeHint().width())));
+ }
+ // Shortcuts is named by the rail and its page heading only.
+ void shortcutsPageHasNoNestedHeading(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(2);window.show();
+  auto* page=window.findChild<QTabWidget*>("settingsTabs")->currentWidget();QStringList headings,sections;for(auto* label:page->findChildren<QLabel*>()){if(!label->isVisibleTo(page))continue;const auto role=label->property("visualRole").toString();if(role=="title")headings.append(label->text());if(role=="sectionTitle"||role=="section")sections.append(label->text());}
+  QCOMPARE(headings,QStringList({"Shortcuts"}));QCOMPARE(sections,QStringList());QVERIFY(window.findChild<QFrame*>("shortcutsCard")->isAncestorOf(window.findChild<QLineEdit*>("shortcutRegion")));
  }
  void captureDefaultAndExplicitExceptionPersistAcrossReopen(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();
@@ -724,16 +808,16 @@ private slots:
  }
  void resetOneAndResetAllUseRealDefaults(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));auto doc=configuration(dir.path(),true);auto limits=doc["limits"].toObject();limits["concurrentUploads"]=4;doc["limits"]=limits;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);QPushButton* reset=nullptr;for(auto* button:window.findChildren<QPushButton*>())if(button->accessibleName()=="Reset Uploads at once to default")reset=button;QVERIFY(reset);QVERIFY(reset->isVisible());reset->click();PUTGD_TRY_COMPARE(service.document()["limits"].toObject()["concurrentUploads"].toInt(),3);window.findChild<QLineEdit*>("maxFiles")->setText("25");PUTGD_TRY_COMPARE(service.document()["limits"].toObject()["maxFiles"].toInt(),25);
-  // #238: Diagnostics now shares the tab; Reset all to defaults still resets only the limits.
+  // #238: Diagnostics now shares the tab; Reset limits to defaults resets only the limits.
   auto* debug=window.findChild<QCheckBox*>("debugLogging");debug->setChecked(true);PUTGD_TRY_VERIFY(service.snapshot().debugLogging);
-  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QMessageBox*>(widget))dialog->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("resetAdvancedDefaults")->click();PUTGD_TRY_COMPARE(service.document()["limits"].toObject()["maxFiles"].toInt(),100);
+  auto* resetAll=window.findChild<QPushButton*>("resetAdvancedDefaults");QCOMPARE(resetAll->text(),QString("Reset limits to defaults…"));const auto confirmation=acceptNextConfirmation();resetAll->click();QVERIFY2(confirmation->startsWith("Reset limits to defaults\n")&&confirmation->contains("Debug logging")&&!confirmation->contains("Reset all"),qPrintable(*confirmation));PUTGD_TRY_COMPARE(service.document()["limits"].toObject()["maxFiles"].toInt(),100);
   putgd::test::settle(500);PUTGD_TRY_VERIFY(debug->isChecked());PUTGD_TRY_VERIFY(service.snapshot().debugLogging);
  }
  void externalEditsPreserveInvalidDraftAndReloadRecovers(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();auto* number=window.findChild<QLineEdit*>("maxFiles");number->setText("invalid");PUTGD_TRY_VERIFY(number->property("invalid").toBool());auto external=service.document();auto prefs=external["preferences"].toObject();prefs["notifications"]=false;external["preferences"]=prefs;QVERIFY(service.save(external,service.revision()));PUTGD_TRY_VERIFY(window.settings()->saveViewState()["conflict"].toBool());QCOMPARE(number->text(),QString("invalid"));window.findChild<QPushButton*>("reloadSettings")->click();PUTGD_TRY_COMPARE(number->text(),QString("100"));QVERIFY(!window.settings()->saveViewState()["conflict"].toBool());QVERIFY(!window.findChild<QCheckBox*>("notifications")->isChecked());
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();auto* number=window.findChild<QLineEdit*>("maxFiles");number->setText("invalid");PUTGD_TRY_VERIFY(number->property("invalid").toBool());auto external=service.document();auto prefs=external["preferences"].toObject();prefs["notifications"]=false;external["preferences"]=prefs;QVERIFY(service.save(external,service.revision()));PUTGD_TRY_VERIFY(window.settings()->saveViewState()["conflict"].toBool());QCOMPARE(number->text(),QString("invalid"));acceptNextConfirmation();window.findChild<QPushButton*>("reloadSettings")->click();PUTGD_TRY_COMPARE(number->text(),QString("100"));QVERIFY(!window.settings()->saveViewState()["conflict"].toBool());QVERIFY(!window.findChild<QCheckBox*>("notifications")->isChecked());
  }
  void malformedExternalReloadPreservesAcceptedSettingsAndBlocksStaleOverwrite(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));const auto original=service.document();const auto revision=service.revision();CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();auto* field=window.findChild<QLineEdit*>("maxFiles");field->setText("invalid draft");PUTGD_TRY_VERIFY(field->property("invalid").toBool());QFile external(service.path());QVERIFY(external.open(QIODevice::WriteOnly|QIODevice::Truncate));QCOMPARE(external.write("{malformed"),qint64(10));external.close();window.findChild<QPushButton*>("reloadSettings")->click();auto* status=window.findChild<QLabel*>("settingsStatus");PUTGD_TRY_VERIFY(status->text().contains("config_invalid"));PUTGD_TRY_VERIFY(!window.settings()->saveViewState().contains("stateError"));QCOMPARE(service.document(),original);QCOMPARE(service.revision(),revision);QVERIFY(!service.save(original,revision));QVERIFY(external.open(QIODevice::ReadOnly));QCOMPARE(external.readAll(),QByteArray("{malformed"));external.close();QVERIFY(external.open(QIODevice::WriteOnly|QIODevice::Truncate));const auto valid=QJsonDocument(original).toJson(QJsonDocument::Indented);QCOMPARE(external.write(valid),qint64(valid.size()));external.close();window.findChild<QPushButton*>("reloadSettings")->click();PUTGD_TRY_COMPARE(field->text(),QString("100"));QCOMPARE(service.document(),original);
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));const auto original=service.document();const auto revision=service.revision();CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();auto* field=window.findChild<QLineEdit*>("maxFiles");field->setText("invalid draft");PUTGD_TRY_VERIFY(field->property("invalid").toBool());QFile external(service.path());QVERIFY(external.open(QIODevice::WriteOnly|QIODevice::Truncate));QCOMPARE(external.write("{malformed"),qint64(10));external.close();acceptNextConfirmation();window.findChild<QPushButton*>("reloadSettings")->click();auto* status=window.findChild<QLabel*>("settingsStatus");PUTGD_TRY_VERIFY(status->property("errorCode").toString()=="config_invalid");PUTGD_TRY_VERIFY(!window.settings()->saveViewState().contains("stateError"));QCOMPARE(service.document(),original);QCOMPARE(service.revision(),revision);QVERIFY(!service.save(original,revision));QVERIFY(external.open(QIODevice::ReadOnly));QCOMPARE(external.readAll(),QByteArray("{malformed"));external.close();QVERIFY(external.open(QIODevice::WriteOnly|QIODevice::Truncate));const auto valid=QJsonDocument(original).toJson(QJsonDocument::Indented);QCOMPARE(external.write(valid),qint64(valid.size()));external.close();acceptNextConfirmation();window.findChild<QPushButton*>("reloadSettings")->click();PUTGD_TRY_COMPARE(field->text(),QString("100"));QCOMPARE(service.document(),original);
  }
  void destinationsUseFriendlyEnumsAndKeepCredentialsOutOfConfigAndCheckpoint(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(dir.filePath("config.json"),[&](auto id,auto settings){return id=="s3"?s3.validateSettings(settings):proton.validateSettings(settings);});QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();QVERIFY(!window.findChild<QLineEdit*>("destinationId")->isVisible());auto* acl=window.findChild<QComboBox*>("s3AclMode");QCOMPARE(acl->currentData().toString(),QString("public-read"));QVERIFY(!acl->currentText().contains("public-read"));window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-never-export-me");window.findChild<QLineEdit*>("credentialAccessKey")->setText("synthetic-access");const auto encoded=QJsonDocument(window.settings()->saveViewState()).toJson();QVERIFY(!encoded.contains("synthetic-never-export-me"));QVERIFY(!encoded.contains("synthetic-access"));QVERIFY(!QJsonDocument(service.document()).toJson().contains("synthetic-never-export-me"));
@@ -898,14 +982,14 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   QVERIFY(secret->text().isEmpty());QCOMPARE(show->text(),QString("Show"));QVERIFY(!show->isChecked());QVERIFY(!secret->isReadOnly());
   show->click();window.navigate("settings");putgd::test::settle(250);PUTGD_TRY_VERIFY(secret->text().isEmpty());window.navigate("destinations");
   secrets.forget("development-s3",profile["credentials"].toObject());show->click();
-  PUTGD_TRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("credential_setup_required"));
+  PUTGD_TRY_COMPARE(statusCode(window),QString("credential_setup_required"));
   QVERIFY(secret->text().isEmpty());QVERIFY(!show->isChecked());QVERIFY(!secret->isReadOnly());
  }
  void uiStateStrictlyRejectsUnexpectedAndSecretFields(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);auto state=QJsonObject{{"schemaVersion",1},{"settings",window.settings()->saveViewState()},{"main",window.saveViewState()}};QVERIFY(!validateUiState(state));auto main=state["main"].toObject();main["secretKey"]="synthetic-secret";state["main"]=main;auto error=validateUiState(state);QVERIFY(error);QVERIFY(!QJsonDocument(error.toJson()).toJson().contains("synthetic-secret"));
  }
  void acceptedSetupIdSurvivesAnUncertainInspectionReply(){
-  QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(d.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);});QVERIFY(service.save(Settings::developmentTemplate(),{}));int starts=0;std::function<void(Error)> finish;UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++starts;finish=reply;});fixture.client.failOnce["setup.inspect"]={"client_unavailable","Synthetic lost inspection reply",{}};SettingsWindow window(fixture.session);window.findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("client_unavailable"));const auto saved=window.saveViewState();QCOMPARE(saved["setupJobs"].toArray().size(),1);SettingsWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(saved));QVERIFY(finish);finish({});PUTGD_TRY_VERIFY(reopened.findChild<QLabel*>("settingsStatus")->text().contains("Connection successful"));QCOMPARE(starts,1);
+  QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(d.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);});QVERIFY(service.save(Settings::developmentTemplate(),{}));int starts=0;std::function<void(Error)> finish;UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++starts;finish=reply;});fixture.client.failOnce["setup.inspect"]={"client_unavailable","Synthetic lost inspection reply",{}};SettingsWindow window(fixture.session);window.findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(statusCode(window)=="client_unavailable");const auto saved=window.saveViewState();QCOMPARE(saved["setupJobs"].toArray().size(),1);SettingsWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(saved));QVERIFY(finish);finish({});PUTGD_TRY_VERIFY(reopened.findChild<QLabel*>("settingsStatus")->text().contains("Connection successful"));QCOMPARE(starts,1);
  }
  void transientSetupInspectionRecoversWithoutReplayingAcceptedWork(){
   QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);
@@ -918,7 +1002,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   auto* test=window.findChild<QPushButton*>("testDestination");
   auto* status=window.findChild<QLabel*>("settingsStatus");
   test->click();
-  PUTGD_TRY_VERIFY(status->text().contains("client_unavailable"));
+  PUTGD_TRY_COMPARE(status->property("errorCode").toString(),QString("client_unavailable"));
   QCOMPARE(starts,1);QVERIFY(finish);QVERIFY(!test->isEnabled());
   window.findChild<QLineEdit*>("s3Bucket")->setText("unsaved-bucket");
   window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-unsubmitted-secret");
@@ -947,7 +1031,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   state["setupJobs"]=QJsonArray{QJsonObject{{"setupId",expired},{"kind","testDestination"},{"profileId","development-s3"}},QJsonObject{{"setupId",pending},{"kind","testDestination"},{"profileId","development-s3"}}};
   QVERIFY(window.restoreViewState(state));
   auto* test=window.findChild<QPushButton*>("testDestination");
-  PUTGD_TRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("setup_not_found"));
+  PUTGD_TRY_COMPARE(statusCode(window),QString("setup_not_found"));
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(window.saveViewState()["setupJobs"].toArray().size(),1,2000);
   QCOMPARE(window.saveViewState()["setupJobs"].toArray().first().toObject()["setupId"].toString(),pending);
   QVERIFY(!test->isEnabled());

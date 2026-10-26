@@ -73,9 +73,11 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
  for(const auto& action:Settings::invocableActionNames()) {
   auto* field=new QWidget(this);auto* fieldLayout=new QVBoxLayout(field);fieldLayout->setContentsMargins(0,0,0,0);fieldLayout->setSpacing(6);
   auto* row=new QHBoxLayout;fieldLayout->addLayout(row);
-  auto* input=new QLineEdit(field);input->setObjectName("shortcut"+title(action));input->setAccessibleName(action+" shortcut");input->setReadOnly(true);input->setPlaceholderText("Disabled");input->setAccessibleDescription("Choose Record shortcut, press one key with modifiers, then release all keys. Escape cancels. Changes save automatically.");editors_[action]=input;row->addWidget(input,1);
+  auto* input=new QLineEdit(field);input->setObjectName("shortcut"+title(action));input->setAccessibleName(action+" shortcut");input->setReadOnly(true);input->setPlaceholderText("Disabled");input->setAccessibleDescription("Choose Record shortcut, press one key with modifiers, then release all keys. Escape cancels. Changes save automatically.");editors_[action]=input;
+  // A key combination is short: a bounded field keeps Record and Clear beside it.
+  input->setMaximumWidth(Graphite::scaled(260));row->addWidget(input,1);
   auto* record=new QPushButton("Record shortcut",field);record->setObjectName("record"+title(action)+"Shortcut");record->setAccessibleName("Record "+labels.value(action).toLower()+" shortcut");recordButtons_[action]=record;row->addWidget(record);
-  auto* clear=new QPushButton("Clear",field);clear->setObjectName("clear"+title(action)+"Shortcut");clear->setAccessibleName("Clear "+labels.value(action).toLower()+" shortcut");clear->setToolTip("Disable this shortcut.");row->addWidget(clear);
+  auto* clear=new QPushButton("Clear",field);clear->setObjectName("clear"+title(action)+"Shortcut");clear->setAccessibleName("Clear "+labels.value(action).toLower()+" shortcut");clear->setToolTip("Disable this shortcut.");row->addWidget(clear);row->addStretch();
   connect(record,&QPushButton::clicked,this,[this,action]{if(recordingAction_==action)cancelRecording();else startRecording(action);});
   connect(clear,&QPushButton::clicked,this,[this,input]{cancelRecording();input->clear();});
   auto* binding=new QLabel(field);binding->setObjectName("shortcut"+title(action)+"Status");binding->setAccessibleName(action+" actual shortcut status");binding->setWordWrap(true);VisualStyle::role(binding,"binding");bindingStates_[action]=binding;fieldLayout->addWidget(binding);

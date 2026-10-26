@@ -80,6 +80,15 @@ private:
  QMap<QString,QJsonValue> pendingEdits_;QHash<QString,quint64> pendingEditSerials_,submittedEditSerials_;quint64 editSerial_=0;QHash<QString,QPointer<QWidget>> editControls_;
  QHash<QWidget*,QLabel*> errors_;QHash<QString,QJsonObject> testedDestinations_;QSet<QString> requestedFolders_;
  bool autosaveBlocked_=false;QVector<QPushButton*> retryAutosave_;
+ // Reload from file…, beside the conflict on Settings and on Destinations, and
+ // in Advanced → Config file: one confirmation naming the unsaved edits it
+ // discards, then the same reload (resetDraft(true)).
+ QVector<QPushButton*> reloadConflict_;void reloadFromFile();QStringList draftEdits()const;void showConflictActions();
+ // The accepted document the draft started from, to tell its edits apart
+ // from changes another writer made.
+ QJsonObject baseDocument_;
+ // Sidebars as wide as their labels need, between the baseline and the cap.
+ void fitRails();QWidget *settingsRail_=nullptr,*destinationRail_=nullptr;QListWidget* settingsNavigation_=nullptr;QPushButton* addDestination_=nullptr;
  QTimer* autosave_=nullptr;QPointer<QWidget> destinationPage_;QTabWidget* tabs_=nullptr;QListWidget* destinationList_=nullptr;
  QWidget *linksPanel_=nullptr,*connectionPanel_=nullptr;QPushButton* defaultButton_=nullptr;
  QLabel* credentialHint_=nullptr;QFormLayout* credentialForm_=nullptr;

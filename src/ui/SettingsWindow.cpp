@@ -106,7 +106,7 @@ public:
   p->save();p->setRenderHint(QPainter::Antialiasing);const QRectF box=QRectF(option.rect).adjusted(2,2,-2,-2);
   if(selected||hover){p->setPen(Qt::NoPen);p->setBrush(selected?t.selected:Graphite::mix(t.surface,t.surfaceRaised,0.7));p->drawRoundedRect(box,7,7);}
   if(selected&&option.widget&&Graphite::keyboardFocus(option.widget)){p->setPen(QPen(t.accent,1));p->setBrush(Qt::NoBrush);p->drawRoundedRect(box.adjusted(0.5,0.5,-0.5,-0.5),7,7);}
-  qreal x=box.left()+12;if(!option.icon.isNull()){option.icon.paint(p,QRect(int(x),int(box.center().y())-9,18,18),Qt::AlignCenter,enabled?QIcon::Normal:QIcon::Disabled);x+=28;}
+  qreal x=box.left()+12;if(!option.icon.isNull()){option.icon.paint(p,QRect(int(x),int(box.center().y())-9,18,18),Qt::AlignCenter,!enabled?QIcon::Disabled:selected?QIcon::Selected:QIcon::Normal);x+=28;}
   const QRectF text(x,box.top(),box.right()-10-x,box.height());const qreal h=box.height();
   Graphite::paintText(*p,QRectF(text.left(),box.top()+h*0.16,text.width(),h*0.38),lines.value(0),enabled?(selected?t.text:t.textSecondary):t.textDisabled,Graphite::font(Graphite::Type::body,selected),Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideRight);
   if(lines.size()>1)Graphite::paintText(*p,QRectF(text.left(),box.top()+h*0.52,text.width(),h*0.32),lines.value(1),enabled?t.textMuted:t.textDisabled,Graphite::font(Graphite::Type::metadata),Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideRight);
@@ -429,6 +429,19 @@ private:
  QCheckBox* upload_;QLabel* uploadNote_;QJsonObject target_;bool checkingTarget_=false,uploadRequested_=false;quint64 targetSequence_=0;
  QString operation_,custom_;QJsonObject preview_,saved_;Error error_;bool previewing_=false,saving_=false;quint64 previewSequence_=0;QList<Reply> previewReplies_;
 };
+// A status set directly, not from an Error: no error code behind it.
+QLabel* plain(QLabel* label){label->setProperty("errorCode",{});label->setToolTip({});label->setAccessibleDescription({});return label;}
+// Shows a status row only while its message or one of its actions is shown,
+// so an empty row leaves no gap in the page's spacing.
+class VisibleWithParts final:public QObject {
+public:
+ VisibleWithParts(QWidget* row,QList<QWidget*> parts):QObject(row),row_(row),parts_(std::move(parts)){for(auto* part:parts_)part->installEventFilter(this);update();}
+protected:
+ bool eventFilter(QObject* watched,QEvent* event)override{if(event->type()==QEvent::ShowToParent||event->type()==QEvent::HideToParent)update();return QObject::eventFilter(watched,event);}
+private:
+ void update(){bool shown=false;for(auto* part:parts_)shown|=part->isVisibleTo(row_);row_->setVisible(shown);}
+ QWidget* row_;QList<QWidget*> parts_;
+};
 QString settingHelp(const QString& path,const QString& objectName){
  static const QHash<QString,QString> s3Help{
   {"bucket","The existing S3 bucket that receives uploads. Enter only the bucket name, without a URL or folder path. This field starts empty. Saving settings does not create a bucket or change its access policy; the saved credentials must have access to this bucket."},
@@ -514,10 +527,10 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // stay one QTabWidget (its tab bar hidden) so state, agents and tests keep
  // the same section indexes.
  auto* outer=new QHBoxLayout(this);outer->setContentsMargins(0,0,0,0);outer->setSpacing(0);
- auto* rail=new Graphite::Surface("surface",Qt::RightEdge,this);rail->setObjectName("settingsRail");rail->setFixedWidth(Graphite::scaled(Graphite::Metric::settingsSidebar));auto* railBox=new QVBoxLayout(rail);railBox->setContentsMargins(10,16,10,14);railBox->setSpacing(10);
+ auto* rail=new Graphite::Surface("surface",Qt::RightEdge,this);rail->setObjectName("settingsRail");settingsRail_=rail;auto* railBox=new QVBoxLayout(rail);railBox->setContentsMargins(10,16,10,14);railBox->setSpacing(10);
  // No title: the header navigation already names the page.
  
- auto* navigation=new QListWidget(rail);navigation->setObjectName("settingsNavigation");navigation->setAccessibleName("Settings categories");navigation->setFrameShape(QFrame::NoFrame);navigation->setItemDelegate(new Graphite::NavigationDelegate(navigation));navigation->setMouseTracking(true);navigation->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);navigation->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+ auto* navigation=new QListWidget(rail);settingsNavigation_=navigation;navigation->setObjectName("settingsNavigation");navigation->setAccessibleName("Settings categories");navigation->setFrameShape(QFrame::NoFrame);navigation->setItemDelegate(new Graphite::NavigationDelegate(navigation));navigation->setMouseTracking(true);navigation->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);navigation->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
  for(const auto& [glyph,label]:QList<QPair<QString,QString>>{{"preferences","General"},{"region","Capture"},{"shortcuts","Shortcuts"},{"settings","Advanced"}})new QListWidgetItem(VisualStyle::icon(glyph),label,navigation);
  navigation->setFixedHeight(4*Graphite::scaled(Graphite::Metric::navRow)+4);Graphite::transparentView(navigation);railBox->addWidget(navigation);railBox->addStretch();outer->addWidget(rail);
  auto* content=new QWidget(this);outer->addWidget(content,1);auto* layout=new QVBoxLayout(content);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
@@ -665,10 +678,12 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* namingForm=section(capture,"File names");naming_=choices(this,"namingMode",{});naming_->addItem("Keep original names","original");naming_->addItem("Random names","generated");naming_->addItem("Custom template","template");setting(namingForm,"Naming",naming_,"/naming/mode");
  collision_=choices(this,"collisionPolicy",{"rename","skip","overwrite"});for(int i=0;i<collision_->count();++i)collision_->setItemData(i,collision_->itemText(i));collision_->setItemText(0,"Add a unique suffix");collision_->setItemText(1,"Skip duplicate names");collision_->setItemText(2,"Replace the checked object");setting(namingForm,"When a name exists",collision_,"/naming/collisionPolicy");
  for(const auto& key:QStringList{"fileTemplate","captureTemplate","imageTemplate","textTemplate"}){templates_[key]=input(this,key);templates_[key]->setFont(Graphite::monoFont(Graphite::Type::body));setting(namingForm,key=="fileTemplate"?"Copied & uploaded files":key=="captureTemplate"?"Screen captures":key=="imageTemplate"?"Clipboard images":"Clipboard text",templates_[key],"/naming/"+key);}
- auto* shortcutForm=section(shortcutsPage,"Global shortcuts");shortcuts_=new ShortcutEditor(this);shortcutForm->addRow(shortcuts_);shortcuts_->findChild<QToolButton*>("shortcutDetailsToggle")->hide();shortcuts_->setRecordingControl([session=&settings_,editor=shortcuts_](bool active,std::function<void(Error)> reply){session->setShortcutRecording(active,editor,std::move(reply));});shortcuts_->setRefreshAction([this]{settings_.refreshSnapshot();});
+ // The rail, the page heading and its intro already name the place: the
+// editor follows under one rule, without a nested "Global shortcuts" heading.
+ auto* shortcutCard=new QFrame;VisualStyle::role(shortcutCard,"card");shortcutCard->setObjectName("shortcutsCard");shortcutCard->setMaximumWidth(Graphite::scaled(880));auto* shortcutBox=new QVBoxLayout(shortcutCard);shortcutBox->setContentsMargins(0,16,0,16);shortcutsPage->addWidget(shortcutCard);shortcuts_=new ShortcutEditor(this);shortcutBox->addWidget(shortcuts_);shortcuts_->findChild<QToolButton*>("shortcutDetailsToggle")->hide();shortcuts_->setRecordingControl([session=&settings_,editor=shortcuts_](bool active,std::function<void(Error)> reply){session->setShortcutRecording(active,editor,std::move(reply));});shortcuts_->setRefreshAction([this]{settings_.refreshSnapshot();});
  for(const auto& action:Settings::invocableActionNames()){auto* edit=shortcuts_->findChild<QLineEdit*>("shortcut"+title(action));bind(edit,"/actions/"+action+"/shortcut");}
- // Within the cards' width, so Reset all lines up with the values it resets.
- auto* introRow=new QWidget;introRow->setMaximumWidth(Graphite::scaled(880));auto* intro=new QHBoxLayout(introRow);intro->setContentsMargins(0,0,0,0);intro->setSpacing(16);auto* introText=new QLabel("Defaults suit almost everyone. A changed value shows Reset beside it.");introText->setWordWrap(true);VisualStyle::role(introText,"muted");intro->addWidget(introText,1);auto* resetAll=new QPushButton("Reset all to defaults");resetAll->setObjectName("resetAdvancedDefaults");intro->addWidget(resetAll);advancedPage->addWidget(introRow);
+ // Within the cards' width, so Reset limits lines up with the values it resets.
+ auto* introRow=new QWidget;introRow->setMaximumWidth(Graphite::scaled(880));auto* intro=new QHBoxLayout(introRow);intro->setContentsMargins(0,0,0,0);intro->setSpacing(16);auto* introText=new QLabel("Defaults suit almost everyone. A changed value shows Reset beside it.");introText->setWordWrap(true);VisualStyle::role(introText,"muted");intro->addWidget(introText,1);auto* resetAll=new QPushButton("Reset limits to defaults…");resetAll->setObjectName("resetAdvancedDefaults");resetAll->setToolTip("Resets the upload, image, memory, cache and history limits below. Diagnostics and the config file are unchanged.");intro->addWidget(resetAll);advancedPage->addWidget(introRow);
  // One column, like the other pages: two narrow columns crowded labels and values.
  auto* left=advancedPage;auto* right=advancedPage;
  const auto defaults=Settings::defaults();
@@ -688,9 +703,9 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* images=section(left,"Images and clipboard");number(images,"imageBytes","Largest image","MiB");number(images,"imagePixels","Largest image size","megapixels");number(images,"clipboardTextBytes","Clipboard text limit","MiB");
  auto* memory=section(right,"Memory and cache");number(memory,"pendingImageBytes","Memory for queued images","MiB");number(memory,"previewCacheBytes","Thumbnail cache","MiB");
  auto* retention=section(right,"History");number(retention,"historyRetentionDays","Keep history for","days");numbers_["historyRetentionDays"]->setPlaceholderText("Forever");number(retention,"failedArtifactDays","Keep failed uploads for","days");number(retention,"recentActivityLimit","Items in recent list",{});
- connect(resetAll,&QPushButton::clicked,this,[this]{if(!Graphite::confirm(this,"Reset advanced settings","Reset upload, image, memory, cache and history limits to their defaults?","Reset to defaults"))return;for(auto* field:numbers_){field->setText(field->property("defaultText").toString());queueEdit(field);}});
+ connect(resetAll,&QPushButton::clicked,this,[this]{if(!Graphite::confirm(this,"Reset limits to defaults","Reset the limits on this page to their defaults: uploads, images and clipboard, memory and cache, and history retention?\n\nDebug logging, diagnostics, the config file and every other setting stay as they are.","Reset limits"))return;for(auto* field:numbers_){field->setText(field->property("defaultText").toString());queueEdit(field);}});
  // Diagnostics (#122): what the persistent log holds and the package a maintainer needs.
- // Advanced, above Config file (#238); Reset all to defaults leaves it alone.
+ // Advanced, above Config file (#238); Reset limits to defaults leaves it alone.
  auto* diagnosticsForm=section(right,"Diagnostics","Logs and diagnostics packages stay on this computer. A package is a redacted .zip you can send to a maintainer.");
  debugLogging_=new QCheckBox("Keep detailed debug logs for 24 hours");debugLogging_->setObjectName("debugLogging");auto* debugRow=setting(diagnosticsForm,"Debug logging",debugLogging_,"/preferences/diagnostics/debugLogging");
  debugLoggingStatus_=new QLabel;debugLoggingStatus_->setObjectName("debugLoggingStatus");debugLoggingStatus_->setWordWrap(true);VisualStyle::role(debugLoggingStatus_,"muted");qobject_cast<QVBoxLayout*>(debugRow->layout())->addWidget(debugLoggingStatus_);
@@ -702,10 +717,10 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* createPackage=new QPushButton(VisualStyle::icon("save"),"Create diagnostics package…");createPackage->setObjectName("createDiagnosticsPackage");createPackage->setToolTip("Preview and save a redacted .zip of recent failures, settings and logs. Nothing is uploaded.");diagnosticsForm->addRow(createPackage);
  connect(clearLogs_,&QPushButton::clicked,this,[this]{if(!Graphite::confirm(this,"Clear logs","Delete every put.gd log file? Uploads, history, settings and saved diagnostics packages stay.","Clear logs",true))return;clearLogs({});});
  connect(createPackage,&QPushButton::clicked,this,[this]{openDiagnosticsPackage();});
- auto* config=section(right,"Config file");configPath_=new QLabel;configPath_->setWordWrap(true);configPath_->setTextInteractionFlags(Qt::TextSelectableByMouse);configPath_->setProperty("visualRole","mono");config->addRow(configPath_);auto* configActions=new QHBoxLayout;auto* editor=new QPushButton("Open in editor");auto* reload=new QPushButton("Reload from file");reload->setObjectName("reloadSettings");configActions->addWidget(editor);configActions->addWidget(reload);config->addRow(configActions);connect(editor,&QPushButton::clicked,this,[this]{host::openFile(settings_.path());});connect(reload,&QPushButton::clicked,this,[this]{resetDraft(true);});
+ auto* config=section(right,"Config file");configPath_=new QLabel;configPath_->setWordWrap(true);configPath_->setTextInteractionFlags(Qt::TextSelectableByMouse);configPath_->setProperty("visualRole","mono");config->addRow(configPath_);auto* configActions=new QHBoxLayout;auto* editor=new QPushButton("Open in editor");auto* reload=new QPushButton("Reload from file…");reload->setObjectName("reloadSettings");reload->setToolTip("Replace this window's settings with the configuration file as it is now.");configActions->addWidget(editor);configActions->addWidget(reload);configActions->addStretch();config->addRow(configActions);connect(editor,&QPushButton::clicked,this,[this]{host::openFile(settings_.path());});connect(reload,&QPushButton::clicked,this,&SettingsWindow::reloadFromFile);
   auto* diagnostics=section(advancedPage,"Desktop support details");capabilities_=new QLabel;capabilities_->setAccessibleName("Desktop support diagnostics");capabilities_->setWordWrap(true);capabilities_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(capabilities_,"mono");diagnostics->addRow(capabilities_);metadata_=new MetadataLabel;metadata_->setObjectName("settingsMetadata");metadata_->setWordWrap(true);metadata_->setTextInteractionFlags(Qt::TextSelectableByMouse);VisualStyle::role(metadata_,"muted");diagnostics->addRow(metadata_);auto* diagnose=new QPushButton("Refresh desktop support");diagnose->setObjectName("refreshDesktopSupport");auto* copyDiagnostics=new QPushButton("Copy diagnostics");auto* diagnosticActions=new QHBoxLayout;diagnosticActions->addWidget(diagnose);diagnosticActions->addWidget(copyDiagnostics);diagnosticActions->addStretch();diagnostics->addRow(diagnosticActions);connect(diagnose,&QPushButton::clicked,this,[this]{settings_.refreshSnapshot();});connect(copyDiagnostics,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(capabilities_->text()+"\n"+metadataText_);});
  destinationPage_=new QWidget(this);destinationPage_->setObjectName("destinationsPage");destinationPage_->installEventFilter(this);auto* destinationLayout=new QHBoxLayout(destinationPage_);destinationLayout->setContentsMargins(0,0,0,0);destinationLayout->setSpacing(0);
- auto* destinationRail=new Graphite::Surface("surface",Qt::RightEdge);destinationRail->setObjectName("destinationRail");destinationRail->setFixedWidth(Graphite::scaled(Graphite::Metric::destinationSidebar));auto* railLayout=new QVBoxLayout(destinationRail);railLayout->setContentsMargins(10,16,10,14);railLayout->setSpacing(10);auto* destinationList=new DestinationList;destinationList_=destinationList;destinationList_->setObjectName("destinationList");destinationList_->setAccessibleName("Destinations");destinationList_->setWordWrap(false);destinationList_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);railLayout->addWidget(destinationList_,1);auto* add=new QPushButton(VisualStyle::icon("add"),"Add destination…");add->setObjectName("addS3Destination");railLayout->addWidget(add);destinationLayout->addWidget(destinationRail);destinationList_->setFrameShape(QFrame::NoFrame);destinationList_->setMouseTracking(true);Graphite::transparentView(destinationList_);
+ auto* destinationRail=new Graphite::Surface("surface",Qt::RightEdge);destinationRail->setObjectName("destinationRail");destinationRail_=destinationRail;auto* railLayout=new QVBoxLayout(destinationRail);railLayout->setContentsMargins(10,16,10,14);railLayout->setSpacing(10);auto* destinationList=new DestinationList;destinationList_=destinationList;destinationList_->setObjectName("destinationList");destinationList_->setAccessibleName("Destinations");destinationList_->setWordWrap(false);destinationList_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);railLayout->addWidget(destinationList_,1);auto* add=new QPushButton(VisualStyle::icon("add"),"Add destination…");addDestination_=add;add->setObjectName("addS3Destination");railLayout->addWidget(add);destinationLayout->addWidget(destinationRail);destinationList_->setFrameShape(QFrame::NoFrame);destinationList_->setMouseTracking(true);Graphite::transparentView(destinationList_);
  auto* destinationBody=new QWidget;auto* pageLayout=new QVBoxLayout(destinationBody);pageLayout->setContentsMargins(28,22,28,24);pageLayout->setSpacing(18);pageLayout->setAlignment(Qt::AlignTop);auto* destinationScroll=new QScrollArea;destinationScroll->setObjectName("destinationScroll");destinationScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);destinationScroll->setWidgetResizable(true);destinationScroll->setFrameShape(QFrame::NoFrame);destinationScroll->setWidget(destinationBody);destinationLayout->addWidget(destinationScroll,1);
  auto* emptyDestinations=new QLabel("No destinations yet\nAdd a destination to start uploading.");emptyDestinations->setObjectName("destinationsEmpty");emptyDestinations->setWordWrap(true);emptyDestinations->setAlignment(Qt::AlignCenter);VisualStyle::role(emptyDestinations,"muted");destinationLayout->addWidget(emptyDestinations,1);
  profile_=choices(this,"destinationProfile",{});profile_->hide();profileId_=input(this,"destinationId");profileId_->hide();providerJson_=new QPlainTextEdit(this);providerJson_->setObjectName("providerSettingsJson");providerJson_->hide();
@@ -769,8 +784,15 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(dev,&QPushButton::clicked,this,&SettingsWindow::importDevelopmentProfile);
  connect(s3_["region"],&QLineEdit::textChanged,this,[this](const QString& region){if(loading_)return;auto* endpoint=s3_["endpoint"];const auto previous=s3_["region"]->property("previousRegion").toString();if(endpoint->text()=="https://s3."+previous+".amazonaws.com")endpoint->setText("https://s3."+region+".amazonaws.com");s3_["region"]->setProperty("previousRegion",region);updateProviderVisibility_();});
  connect(credentials,&QPushButton::clicked,this,[this]{resetCredentialSecretDisplay();QJsonObject value{{"accessKey",access_->text()},{"secretKey",secret_->text()},{"sessionToken",token_->text()}};clearCurrentCredentialInputs();beginSetup("storeCredentials",value);});connect(unlock,&QPushButton::clicked,this,[this]{beginSetup("unlockCredentials");});connect(test,&QPushButton::clicked,this,[this]{beginSetup("testDestination");});
- status_=new QLabel;status_->setObjectName("settingsStatus");status_->setAccessibleName("Settings status");status_->setWordWrap(true);VisualStyle::role(status_,"meta");status_->setContentsMargins(28,6,28,8);layout->addWidget(status_);destinationStatus_=new QLabel;destinationStatus_->setObjectName("destinationStatus");destinationStatus_->setWordWrap(true);destinationStatus_->setAccessibleName("Destination status");VisualStyle::role(destinationStatus_,"muted");pageLayout->insertWidget(1,destinationStatus_);
- for(int i=0;i<2;++i){auto* retry=new QPushButton("Retry saving");retry->setObjectName(i?"retryDestinationAutosave":"retryAutosave");retry->hide();retryAutosave_.append(retry);if(i)pageLayout->addWidget(retry,0,Qt::AlignLeft);else layout->addWidget(retry,0,Qt::AlignLeft);connect(retry,&QPushButton::clicked,this,[this,retry]{autosaveBlocked_=false;for(auto* button:retryAutosave_)button->hide();if(pendingEdits_.isEmpty()){for(const auto& group:QStringList{"archive","preferences","naming","limits","retention","actions","profiles","captureDefaults"})if((group!="profiles"||!initialProfile_)&&(group!="captureDefaults"||captureDefaultsEnabled_))queueEdit(retry,"/"+group);}save();});}
+ // Each page's status line carries its recovery actions beside the message:
+ // Reload from file… for a conflict, Retry saving for a refused save. Saved
+ // notes stay meta type; errors take body type (Graphite's meta role).
+ status_=new QLabel;status_->setObjectName("settingsStatus");status_->setAccessibleName("Settings status");status_->setWordWrap(true);VisualStyle::role(status_,"meta");destinationStatus_=new QLabel;destinationStatus_->setObjectName("destinationStatus");destinationStatus_->setWordWrap(true);destinationStatus_->setAccessibleName("Destination status");VisualStyle::role(destinationStatus_,"muted");
+ // Settings' status is a footer under the scrolling page, set off by a hairline.
+ QList<QHBoxLayout*> statusRows;for(int i=0;i<2;++i){QWidget* row=i?new QWidget:new Graphite::Surface("bg",Qt::TopEdge);row->setObjectName(i?"destinationStatusRow":"settingsStatusRow");auto* line=new QHBoxLayout(row);line->setContentsMargins(i?0:28,i?0:6,i?0:28,i?0:8);line->setSpacing(12);line->addWidget(i?destinationStatus_:status_,1);statusRows.append(line);if(i)pageLayout->insertWidget(1,row);else layout->addWidget(row);}
+ for(int i=0;i<2;++i){auto* reload=new QPushButton("Reload from file…");reload->setObjectName(i?"reloadDestinationConflict":"reloadConflict");reload->setAccessibleName("Reload settings from file");reload->setToolTip("Replace this window's settings with the configuration file as it is now. Asks first, naming the unsaved edits it discards.");reload->hide();reloadConflict_.append(reload);statusRows[i]->addWidget(reload,0,Qt::AlignTop);connect(reload,&QPushButton::clicked,this,&SettingsWindow::reloadFromFile);}
+ for(int i=0;i<2;++i){auto* retry=new QPushButton("Retry saving");retry->setObjectName(i?"retryDestinationAutosave":"retryAutosave");retry->hide();retryAutosave_.append(retry);statusRows[i]->addWidget(retry,0,Qt::AlignTop);connect(retry,&QPushButton::clicked,this,[this,retry]{autosaveBlocked_=false;for(auto* button:retryAutosave_)button->hide();if(pendingEdits_.isEmpty()){for(const auto& group:QStringList{"archive","preferences","naming","limits","retention","actions","profiles","captureDefaults"})if((group!="profiles"||!initialProfile_)&&(group!="captureDefaults"||captureDefaultsEnabled_))queueEdit(retry,"/"+group);}save();});}
+ for(int i=0;i<2;++i)new VisibleWithParts(statusRows[i]->parentWidget(),{i?destinationStatus_:status_,reloadConflict_[i],retryAutosave_[i]});
  quit_=new QPushButton("Quit put.gd");quit_->setObjectName("quitApplication");general->addWidget(quit_,0,Qt::AlignLeft);connect(quit_,&QPushButton::clicked,this,&SettingsWindow::quitRequested);
  autosave_=new QTimer(this);autosave_->setSingleShot(true);autosave_->setInterval(400);connect(autosave_,&QTimer::timeout,this,&SettingsWindow::save);
  for(auto* edit:findChildren<QLineEdit*>()){if(edit==access_||edit==secret_||edit==token_||edit==protonPassword_||edit->property("configPath").toString().isEmpty())continue;connect(edit,&QLineEdit::textChanged,this,[this,edit]{dirty();if(!edit->hasFocus()||edit->isReadOnly())queueEdit(edit);});connect(edit,&QLineEdit::editingFinished,this,[this,edit]{queueEdit(edit);});}
@@ -799,7 +821,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  }
  setupTimer_=new QTimer(this);setupTimer_->setInterval(500);connect(setupTimer_,&QTimer::timeout,this,&SettingsWindow::pollSetup);
  for(auto* label:findChildren<QLabel*>())label->setTextFormat(Qt::PlainText);
- refresh();refreshDiagnostics();refreshDestinationList();updateProviderVisibility_();refreshEffectiveLimits();
+ refresh();refreshDiagnostics();refreshDestinationList();updateProviderVisibility_();refreshEffectiveLimits();fitRails();
 }
 SettingsWindow::~SettingsWindow(){
  revealUpdates_=false;
@@ -828,16 +850,20 @@ void SettingsWindow::status(const Error& error){
   else if(bucket.toUtf8().size()<3||bucket.toUtf8().size()>63)reason="Bucket names must contain 3–63 characters.";
   if(!reason.isEmpty()){e.message="Invalid S3 settings: "+reason;inlineError(s3_["bucket"],reason);}
  }
+ // People read the message; the code and path go to the tooltip, the
+ // accessible description and errorCode, for a report or an agent.
+ const auto detail=e?(e.code+(e.details["path"].toString().isEmpty()?QString{}:" · "+e.details["path"].toString())):QString{};
+ for(auto* label:{status_,destinationStatus_}){if(!label)continue;label->setProperty("errorCode",e?e.code:QString{});label->setToolTip(detail);label->setAccessibleDescription(detail);}
  if(destinationStatus_)VisualStyle::feedback(destinationStatus_,e.message,bool(e));
  if(e.code=="config_missing"&&settings_.revision().isEmpty()){VisualStyle::feedback(status_,"Changes save automatically when valid.");return;}
- VisualStyle::feedback(status_,e?e.code+": "+e.message+" "+e.details["path"].toString():"Done.",bool(e));
+ VisualStyle::feedback(status_,e?e.message:"Done.",bool(e));
 }
 void SettingsWindow::refreshDiagnostics(){refreshLoggingStatus();refreshUpdateStatus();auto data=settings_.diagnostics();quit_->setVisible(data["trayAvailable"].isBool()&&!data["trayAvailable"].toBool());capabilities_->setText(QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Indented)));shortcuts_->setStatus(data["shortcuts"].toObject());}
 void SettingsWindow::refresh(bool preserveDrafts){
  if(preserveDrafts)rememberCredentialInputs();else{clearCredentialInputs();profileEditors_={};provisionalProfile_={};}
  autosaveBlocked_=false;for(auto* button:retryAutosave_)button->hide();reorderBaseline_.clear();
- loading_=true;draft_=settings_.document().isEmpty()?Settings::defaults():settings_.document();baseRevision_=settings_.revision();observed_=settings_.metadata()["observedRevision"].toString();dirty_=conflict_=false;refreshMetadata();
- status_->clear();
+ loading_=true;draft_=settings_.document().isEmpty()?Settings::defaults():settings_.document();baseDocument_=draft_;baseRevision_=settings_.revision();observed_=settings_.metadata()["observedRevision"].toString();dirty_=conflict_=false;refreshMetadata();
+ VisualStyle::feedback(plain(status_),{});plain(destinationStatus_);showConflictActions();
  // Destinations are created only by an explicit Add action. Keep the legacy
  // first-launch draft flag only for restoring an older UI checkpoint.
  initialProfile_=false;
@@ -902,14 +928,14 @@ void SettingsWindow::resetDraft(bool reloadFile){
   g->resetting_=false;g->setEnabled(true);g->destinationPage_->setEnabled(true);
   if(error){g->configurationChanged();g->status(error);emit g->viewStateChanged();return;}
   g->refresh();emit g->viewStateChanged();
-  if(reloadFile)VisualStyle::feedback(g->status_,"Settings reloaded from file.");else g->close();
+  if(reloadFile)VisualStyle::feedback(plain(g->status_),"Settings reloaded from file.");else g->close();
  };
  if(reloadFile)settings_.reloadAsync([finish](Result result){finish(result.error);});
  else settings_.refreshSnapshot(finish);
 }
 
 void SettingsWindow::rebuildProfiles(int selected,const QString& defaultProfile){const auto captureProfile=captureProfile_->currentData().toString();const bool previous=loading_;loading_=true;const auto profiles=draft_["profiles"].toArray();profileIndex_=-1;profile_->clear();for(auto p:profiles)profile_->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());profile_->setCurrentIndex(selected);loadProfile();for(auto* combo:actionProfiles_){auto id=combo->currentData().toString();combo->clear();combo->addItem("No destination (uploads off)",QString{});for(auto p:profiles)combo->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());int index=combo->findData(id.isEmpty()?defaultProfile:id);combo->setCurrentIndex(index<0?0:index);}captureProfile_->setCurrentIndex(captureProfile_->findData(captureProfile.isEmpty()?defaultProfile:captureProfile));if(!defaultProfile.isEmpty()){captureDefaultsEnabled_=true;captureRoutingEdited_=true;}updateCaptureInheritance();loading_=previous;}
-void SettingsWindow::loadProfile(){if(destinationStatus_)VisualStyle::feedback(destinationStatus_,{});bool previous=loading_;loading_=true;profileIndex_=profile_->currentIndex();auto profiles=draft_["profiles"].toArray();auto p=profileIndex_>=0&&profileIndex_<profiles.size()?profiles[profileIndex_].toObject():QJsonObject{};profileId_->setText(p["id"].toString());profileLabel_->setText(p["label"].toString());const auto s=p["settings"].toObject();bool s3=p["provider"]=="s3";const bool b2=p["provider"]=="backblaze-b2";const bool storage=s3||b2;
+void SettingsWindow::loadProfile(){if(destinationStatus_&&!conflict_)VisualStyle::feedback(destinationStatus_,{});bool previous=loading_;loading_=true;profileIndex_=profile_->currentIndex();auto profiles=draft_["profiles"].toArray();auto p=profileIndex_>=0&&profileIndex_<profiles.size()?profiles[profileIndex_].toObject():QJsonObject{};profileId_->setText(p["id"].toString());profileLabel_->setText(p["label"].toString());const auto s=p["settings"].toObject();bool s3=p["provider"]=="s3";const bool b2=p["provider"]=="backblaze-b2";const bool storage=s3||b2;
  providerType_->setCurrentIndex(providerType_->findData(p["provider"].toString()));const bool proton=p["provider"]=="proton-drive";protonPanel_->setVisible(proton);protonAccountUid_=s["accountRootUid"].toString();protonAccountEmail_.clear();protonShare_->setChecked(s["shareByDefault"].toBool(true));protonExpiration_->setValue(s["linkExpirationDays"].toInt());protonTimeout_->setValue(s["requestTimeoutMs"].toInt(120000)/1000.0);protonFolder_->clear();addProtonFolder(protonFolder_,s["folderUid"].toString(),s["folderName"].toString());
  findControl<QPushButton*>("storeCredentials")->setVisible(storage);findControl<QPushButton*>("testDestination")->setVisible(storage||proton);access_->setVisible(storage);secret_->setVisible(storage);token_->setVisible(s3);for(auto it=s3_.begin();it!=s3_.end();++it){auto v=s[it.key()];it.value()->setText(v.isDouble()?ByteSize::exact(v.toInteger(),it.key().endsWith("Ms")?1000:1):v.toString());allowControl(it.value(),s3||(b2&&b2SharedKeys().contains(it.key())));}allowControl(b2LinkMode_,b2);allowControl(b2LinkDays_,b2);b2LinkMode_->setCurrentIndex(qMax(0,b2LinkMode_->findData(s["linkMode"].toString("public"))));b2LinkDays_->setValue(s["linkValidityDays"].toInt(b2::maximumLinkDays));s3_["region"]->setProperty("previousRegion",s["region"].toString());allowControl(regionChoices_,s3);allowControl(acl_,s3);allowControl(addressing_,s3);acl_->setCurrentIndex(acl_->findData(s["aclMode"].toString()));addressing_->setCurrentIndex(addressing_->findData(s["addressing"].toString()));allowControl(providerJson_,!storage);providerJson_->setPlainText(proton||b2?QString{}:QString::fromUtf8(QJsonDocument(s).toJson(QJsonDocument::Indented)));auto ref=p["credentials"].toObject();credentialMode_->setCurrentIndex(credentialMode_->findData(ref["mode"].toString()));reference_->setText(ref["reference"].toString());if(profileIndex_>=0&&profileIndex_<profileEditors_.size()&&profileEditors_[profileIndex_].toObject().contains("id"))applyProfileEditor(profileEditors_[profileIndex_].toObject());restoreCredentialInputs();if(updateProviderVisibility_)updateProviderVisibility_();loading_=previous;updateProtonAccountDisplay();updateSetupButton();refreshDestinationList();refreshCredentialHint();}
 QJsonObject SettingsWindow::editedProfile()const{auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return {};auto p=profiles[profileIndex_].toObject();p["id"]=profileId_->text();p["label"]=profileLabel_->text();auto s=p["settings"].toObject();if(p["provider"]=="s3"){for(auto it=s3_.begin();it!=s3_.end();++it){if(it.key().endsWith("Ms")||it.key().startsWith("lowSpeed")){auto value=ByteSize::fromDecimal(it.value()->text(),it.key().endsWith("Ms")?1000:1);s[it.key()]=value;}else if(it.key()=="publicUrlBase"&&it.value()->text().isEmpty())s[it.key()]=QJsonValue::Null;else s[it.key()]=it.value()->text();}s["aclMode"]=acl_->currentData().toString();s["addressing"]=addressing_->currentData().toString();}else if(p["provider"]=="proton-drive"){s["accountRootUid"]=protonAccountUid_;s["folderUid"]=protonFolder_->currentData().toString();const auto folderName=protonFolder_->currentData(protonFolderNameRole).toString();if(folderName.isEmpty())s.remove("folderName");else s["folderName"]=folderName;s["shareByDefault"]=protonShare_->isChecked();s["linkExpirationDays"]=protonExpiration_->hasAcceptableInput()?QJsonValue(protonExpiration_->value()):QJsonValue(protonExpiration_->text());s["requestTimeoutMs"]=protonTimeout_->hasAcceptableInput()?QJsonValue(qRound64(protonTimeout_->value()*1000)):QJsonValue(protonTimeout_->text());}else if(p["provider"]=="backblaze-b2"){for(const auto& key:b2SharedKeys()){auto* field=s3_.value(key);if(key.endsWith("Ms"))s[key]=ByteSize::fromDecimal(field->text(),1000);else if(key=="publicUrlBase"&&field->text().isEmpty())s[key]=QJsonValue::Null;else s[key]=field->text();}s["linkMode"]=b2LinkMode_->currentData().toString();s["linkValidityDays"]=b2LinkDays_->value();if(s["linkMode"]=="authorized")s["publicUrlBase"]=QJsonValue::Null;}else {auto parsed=QJsonDocument::fromJson(providerJson_->toPlainText().toUtf8());if(parsed.isObject())s=parsed.object();else s={{"invalidJson",true}};}p["settings"]=s;p["credentials"]=QJsonObject{{"mode",credentialMode_->currentData().toString()},{"reference",credentialMode_->currentData().toString()=="session"?QJsonValue(QJsonValue::Null):QJsonValue(reference_->text())}};return p;}
@@ -1189,7 +1215,7 @@ void SettingsWindow::clearLogs(std::function<void(Error,QJsonObject)> done){
  settings_.request("logs.clear",{},this,[g=QPointer<SettingsWindow>(this),done](Error error,QJsonObject result){
   if(g){
    g->clearLogs_->setEnabled(true);
-   if(error)g->status(error);else VisualStyle::feedback(g->status_,QString("Logs cleared: %1 files, %2 removed.").arg(result["removedFiles"].toInt()).arg(ByteSize::summary(result["removedBytes"].toInteger())));
+   if(error)g->status(error);else VisualStyle::feedback(plain(g->status_),QString("Logs cleared: %1 files, %2 removed.").arg(result["removedFiles"].toInt()).arg(ByteSize::summary(result["removedBytes"].toInteger())));
    // The log's new figures come with the next snapshot.
    g->settings_.refreshSnapshot([g,done,error,result](Error){if(g)g->refreshLoggingStatus();if(done)done(error,result);});return;
   }
@@ -1337,7 +1363,9 @@ void SettingsWindow::updateCaptureInheritance(){
   // An inherited card stays visible: its disabled controls show the default output.
   const bool inherit=useCaptureDefault_[name]->isChecked();
   if(inherit){const QSignalBlocker a(profile),b(sharing);profile->setCurrentIndex(profile->findData(captureProfile_->currentData()));sharing->setCurrentIndex(sharing->findData(captureSharing_->currentData()));}
-  const bool actionUpload=!profile->currentData().toString().isEmpty();profile->setEnabled(!inherit);sharing->setEnabled(!inherit&&actionUpload);
+  // Inherited values are locked (readable, quietly framed); sharing without an
+  // upload is unavailable.
+  const bool actionUpload=!profile->currentData().toString().isEmpty();profile->setEnabled(!inherit);Graphite::setLocked(profile,inherit);sharing->setEnabled(!inherit&&actionUpload);Graphite::setLocked(sharing,inherit&&actionUpload);
   const auto resolved=inherit&&actionUpload?destinationDefaultSharing(profile->currentData().toString()):QString{};
   sharing->setItemText(sharing->findData("default"),resolved.isEmpty()?sharingLabel("default"):sharingLabel(resolved)+" (destination default)");
   const auto inherited=[inherit](QComboBox* combo){return inherit?": inherited from default, "+combo->currentText():QString{};};
@@ -1389,7 +1417,7 @@ QString SettingsWindow::autosaveText()const{
 void SettingsWindow::clearCompletedFeedback(){
  if(!status_)return;
  if(status_->property("feedbackTone").toString()=="error"||!setupJobs_.isEmpty()||saving_||conflict_||autosaveBlocked_)return;
- status_->clear();
+ VisualStyle::feedback(plain(status_),{});
 }
 // Deep links finish the move: the page from its top, then the control in view
 // and focused once the page has laid out.
@@ -1417,7 +1445,7 @@ void SettingsWindow::revealUpdates(){
  // The status, then its actions and an install's progress below it (#293 phase 3).
  if(auto* scroll=qobject_cast<QScrollArea*>(generalPage_)){scroll->ensureWidgetVisible(updateStatus_);for(auto* row:{updateActionsRow_,installRow_})if(row&&row->isVisible())scroll->ensureWidgetVisible(row);}
 }
-bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosaveBlocked_&&!pendingEdits_.isEmpty()&&!conflict_&&(setupAccepting_||!setupJobs_.isEmpty())){const auto waiting=QStringLiteral("Waiting for destination setup to finish before saving your edits.");if(status_->text()!=waiting||status_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(status_,waiting);return false;}if(!saving_&&!pendingEdits_.isEmpty()&&!conflict_)save();return !saving_;}
+bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosaveBlocked_&&!pendingEdits_.isEmpty()&&!conflict_&&(setupAccepting_||!setupJobs_.isEmpty())){const auto waiting=QStringLiteral("Waiting for destination setup to finish before saving your edits.");if(status_->text()!=waiting||status_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(plain(status_),waiting);return false;}if(!saving_&&!pendingEdits_.isEmpty()&&!conflict_)save();return !saving_;}
 void SettingsWindow::save(){
  if(autosaveBlocked_||conflict_||saving_||resetting_||setupAccepting_||!setupJobs_.isEmpty())return;
  if(pendingEdits_.isEmpty())return;
@@ -1427,12 +1455,12 @@ void SettingsWindow::save(){
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this)](Result result){
   if(!g)return;
   if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"){g->autosaveFailure(result.error);return;}g->persistNextEdit();return;}
-  g->saving_=false;g->autosaveBlocked_=false;for(auto* button:g->retryAutosave_)button->hide();g->baseRevision_=g->settings_.revision();g->observed_=g->settings_.metadata()["observedRevision"].toString();if(!g->settings_.document()["profiles"].toArray().isEmpty())g->initialProfile_=false;g->draft_=g->candidate();
+  g->saving_=false;g->autosaveBlocked_=false;for(auto* button:g->retryAutosave_)button->hide();g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();if(!g->settings_.document()["profiles"].toArray().isEmpty())g->initialProfile_=false;g->draft_=g->candidate();
   for(auto it=g->submittedEditSerials_.cbegin();it!=g->submittedEditSerials_.cend();++it)if(g->pendingEdits_.contains(it.key())&&g->pendingEditSerials_.value(it.key())==it.value()){g->pendingEdits_.remove(it.key());g->pendingEditSerials_.remove(it.key());g->inlineError(g->editControls_.take(it.key()),{});}
   g->submittedEditSerials_.clear();g->dirty_=g->candidate()!=g->settings_.document();if(!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();
   if(!g->pendingEdits_.contains(themePath))g->endAppearancePreview();
   if(!g->pendingEdits_.isEmpty())g->autosave_->start();
-  else if(!g->dirty_){g->status_->clear();g->destinationStatus_->clear();}
+  else if(!g->dirty_){VisualStyle::feedback(plain(g->status_),{});VisualStyle::feedback(plain(g->destinationStatus_),{});}
   g->refreshMetadata();g->refreshDestinationList();g->refreshCredentialHint();emit g->viewStateChanged();
  });
 }
@@ -1446,8 +1474,8 @@ void SettingsWindow::autosaveFailure(const Error& error){
  endAppearancePreview();
  // A conflicting reorder is not kept: the list goes back to the saved order.
  const bool reordered=conflict_&&!reorderBaseline_.isEmpty();if(reordered)restoreReorderBaseline();
- auto message=error;message.message+=" Your edits remain in this draft. "+QString(reordered?"The previous destination order is restored. ":"")+QString(conflict_?"Reload from file to resolve the conflict.":"Use Retry saving when ready; the request will not repeat automatically.");status(message);
- for(auto* button:retryAutosave_)button->setVisible(!conflict_);
+ auto message=error;message.message+=" Your edits remain in this window. "+QString(reordered?"The previous destination order is restored. ":"")+QString(conflict_?"Reload from file to continue; it discards those edits.":"Retry saving when ready; the request will not repeat automatically.");status(message);
+ for(auto* button:retryAutosave_)button->setVisible(!conflict_);showConflictActions();
  emit viewStateChanged();
 }
 void SettingsWindow::persistNextEdit(){
@@ -1458,7 +1486,7 @@ void SettingsWindow::persistNextEdit(){
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),control,path,value](Result result){
   if(!g)return;
   if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}g->inlineError(control,result.error.message);g->status(result.error);g->persistNextEdit();return;}
-  g->baseRevision_=g->settings_.revision();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
+  g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
  });
 }
 void SettingsWindow::refreshCredentialHint(){
@@ -1486,6 +1514,9 @@ void SettingsWindow::refreshDestinationList(const QJsonObject& document){
  while(destinationList_->count()>profiles.size())delete destinationList_->takeItem(destinationList_->count()-1);int row=0;const auto actions=doc["actions"].toObject();bool selectedDefault=false;
  for(const auto& value:profiles){const auto profile=value.toObject();bool isDefault=true;if(doc.contains("captureDefaults")){const auto capture=doc["captureDefaults"].toObject();isDefault=capture["destination"]=="upload"&&capture["profileId"]==profile["id"];}else for(const auto& action:Settings::actionNames())if(actions[action].toObject()["profileId"]!=profile["id"]||actions[action].toObject()["destination"]!="upload")isDefault=false;const auto s=profile["settings"].toObject();const bool proton=profile["provider"]=="proton-drive";QString state=proton?(s["accountRootUid"].toString().isEmpty()?"Signed out":s["folderUid"].toString().isEmpty()?"Choose a folder":"Connected"):(s["bucket"].toString().isEmpty()?"Needs a bucket":testedDestinations_.value(profile["id"].toString())==profile?"Connection tested":"Ready to test");if(isDefault)state="Default · "+state;auto* item=row<destinationList_->count()?destinationList_->item(row):new QListWidgetItem(destinationList_);++row;item->setIcon(VisualStyle::icon(proton?"proton":"bucket"));item->setText(profile["label"].toString()+"\n"+state);item->setSizeHint(QSize(0,76));item->setToolTip(profile["label"].toString()+"\n"+state);if(profile["id"]==profileId_->text()){selectedDefault=isDefault;defaultButton_->setText(isDefault?"Default":"Make default");}}
  destinationList_->setCurrentRow(profileIndex_);const bool has=profileIndex_>=0;if(moveUp_){moveUp_->setEnabled(profileIndex_>0);moveDown_->setEnabled(has&&profileIndex_<int(profiles.size())-1);}defaultButton_->setEnabled(has&&!selectedDefault&&!(providerType_->currentData()=="s3"&&s3_["bucket"]->text().isEmpty()));
+ // "Default" states a fact, so it reads as one; Make default is an action.
+ Graphite::setLocked(defaultButton_,has&&selectedDefault);defaultButton_->setToolTip(selectedDefault?"Captures and clipboard uploads use this destination by default.":"Use this destination for captures and clipboard uploads by default.");
+ fitRails();
 }
 QJsonObject SettingsWindow::profileEditorState()const{
  QJsonObject s3;for(auto it=s3_.begin();it!=s3_.end();++it)s3[it.key()]=it.value()->text();
@@ -1519,7 +1550,7 @@ bool SettingsWindow::restoreViewState(const QJsonObject& state){
  QSignalBlocker stateSignals(this);clearCredentialInputs();loading_=true;draft_=state["draft"].toObject();profileEditors_=state["profileEditors"].toArray();provisionalProfile_=state["provisionalProfile"].toObject();baseRevision_=state["baseRevision"].toString();observed_=state["observedRevision"].toString();initialProfile_=state["initialProfile"].toBool();
  populate();loading_=true;profile_->setCurrentIndex(state["profileIndex"].toInt(-1));loadProfile();const auto numbers=state["numbers"].toObject();for(auto it=numbers_.begin();it!=numbers_.end();++it)it.value()->setText(numbers[it.key()].toString());
  findControl<QToolButton*>("advancedSettings")->setChecked(state["advanced"].toBool());tabs_->setCurrentIndex(state["section"].toInt());const auto box=state["geometry"].toArray();setGeometry(box[0].toInt(),box[1].toInt(),box[2].toInt(),box[3].toInt());
- dirty_=state["dirty"].toBool();autosaveBlocked_=state["autosaveBlocked"].toBool();for(auto* button:retryAutosave_)button->setVisible(autosaveBlocked_&&!state["conflict"].toBool());conflict_=state["conflict"].toBool();loading_=false;setupJobs_=state["setupJobs"].toArray();updateSetupButton();if(!setupJobs_.isEmpty()){setupTimer_->start();pollSetup();}
+ dirty_=state["dirty"].toBool();autosaveBlocked_=state["autosaveBlocked"].toBool();for(auto* button:retryAutosave_)button->setVisible(autosaveBlocked_&&!state["conflict"].toBool());conflict_=state["conflict"].toBool();baseDocument_=settings_.document();showConflictActions();loading_=false;setupJobs_=state["setupJobs"].toArray();updateSetupButton();if(!setupJobs_.isEmpty()){setupTimer_->start();pollSetup();}
  configurationChanged();stateSignals.unblock();emit viewStateChanged();return true;
 }
 
@@ -1654,7 +1685,7 @@ void SettingsWindow::configurationChanged(){
  refreshMetadata();if(saving_||resetting_)return;
  if(conflict_||((dirty_||hasRetainedDrafts())&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))){
   // Keep a conflict message that is already shown, such as a restored destination order.
-  const bool shown=conflict_&&!status_->text().isEmpty();conflict_=true;if(!shown)VisualStyle::feedback(status_,"config_conflict: The configuration changed elsewhere. Your draft is preserved. Reload from file before saving.",true);emit viewStateChanged();return;}
+  const bool shown=conflict_&&!status_->text().isEmpty();conflict_=true;if(!shown)status({"config_conflict","The configuration file changed outside this window. Your unsaved edits are kept here; reload from file to continue, which discards them.",{}});showConflictActions();emit viewStateChanged();return;}
  if(!dirty_&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))refresh();
  auto error=settings_.metadata()["validation"].toObject()["error"].toObject();if(!error["code"].toString().isEmpty())status({error["code"].toString(),error["message"].toString(),error["details"].toObject()});
 }
@@ -1700,7 +1731,7 @@ void SettingsWindow::activateDestinations(bool forceRefresh){
 }
 void SettingsWindow::setupFeedback(const QString& message,bool success){
  for(auto* label:{status_,destinationStatus_}){
-  if(success)VisualStyle::success(label,message);else VisualStyle::feedback(label,message);
+  plain(label);if(success)VisualStyle::success(label,message);else VisualStyle::feedback(label,message);
  }
 }
 void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
@@ -1736,7 +1767,9 @@ void SettingsWindow::updateSetupButton(){
  for(auto* container:{findControl<QWidget*>("destinationEditor"),findControl<QWidget*>("credentialsEditor"),static_cast<QWidget*>(protonPanel_)})
   for(auto* control:container->findChildren<QWidget*>()){
    const bool editor=qobject_cast<QAbstractButton*>(control)||qobject_cast<QComboBox*>(control)||qobject_cast<QAbstractSpinBox*>(control)||qobject_cast<QPlainTextEdit*>(control)||(qobject_cast<QLineEdit*>(control)&&!qobject_cast<QComboBox*>(control->parentWidget())&&!qobject_cast<QAbstractSpinBox*>(control->parentWidget()));
-   if(editor&&control->property("visualRole").toString()!="info"){const auto allowed=control->property("providerEnabled");control->setEnabled(!busy&&(!allowed.isValid()||allowed.toBool()));}
+   if(editor&&control->property("visualRole").toString()!="info"){const auto allowed=control->property("providerEnabled");const bool applies=!allowed.isValid()||allowed.toBool();control->setEnabled(!busy&&applies);
+    // A value held while setup runs stays readable; its actions are unavailable.
+    Graphite::setLocked(control,busy&&applies&&!qobject_cast<QPushButton*>(control)&&!qobject_cast<QToolButton*>(control));}
   }
  allowControl(findControl<QPushButton*>("inspectProtonAccount"),!protonAccountUid_.isEmpty());
  if(!busy&&autosave_&&!pendingEdits_.isEmpty()&&!conflict_&&!resetting_)autosave_->start();
@@ -1764,13 +1797,13 @@ void SettingsWindow::pollSetup(){
     const auto result=data["result"].toObject();const auto kind=data["kind"].toString();
     if(kind=="connectAccount"||kind=="inspectAccount"){
      const auto revision=job["revision"].toString();
-     if(conflict_||(!revision.isEmpty()&&revision!=settings_.revision())||!applyProtonAccountResult(data["profileId"].toString(),result)){VisualStyle::feedback(status_,"Account details changed while loading. Refresh the original destination to continue.",true);emit viewStateChanged();return;}
+     if(conflict_||(!revision.isEmpty()&&revision!=settings_.revision())||!applyProtonAccountResult(data["profileId"].toString(),result)){VisualStyle::feedback(plain(status_),"Account details changed while loading. Refresh the original destination to continue.",true);emit viewStateChanged();return;}
      requestedFolders_.insert(data["profileId"].toString()+"/"+result["accountRootUid"].toString());
-     if(kind=="connectAccount")setupFeedback("Account connected. Folders loaded.",true);else{VisualStyle::success(status_,"Folders loaded.");VisualStyle::feedback(destinationStatus_,{});}emit viewStateChanged();
+     if(kind=="connectAccount")setupFeedback("Account connected. Folders loaded.",true);else{VisualStyle::success(plain(status_),"Folders loaded.");VisualStyle::feedback(destinationStatus_,{});}emit viewStateChanged();
      if(data["profileId"]!=profileId_->text()&&destinationPage_->isVisible())activateDestinations();
      return;
     }
-    if(QStringList{"createFolder","storeSharePassword"}.contains(kind)&&(data["profileId"]!=profileId_->text()||providerType_->currentData()!="proton-drive"||conflict_)){VisualStyle::feedback(status_,"Setup completed for the original destination. Refresh that destination before applying its result.",true);emit viewStateChanged();return;}
+    if(QStringList{"createFolder","storeSharePassword"}.contains(kind)&&(data["profileId"]!=profileId_->text()||providerType_->currentData()!="proton-drive"||conflict_)){VisualStyle::feedback(plain(status_),"Setup completed for the original destination. Refresh that destination before applying its result.",true);emit viewStateChanged();return;}
 
     if(kind=="createFolder"){protonAccountUid_=result["accountRootUid"].toString();addProtonFolder(protonFolder_,result["uid"].toString(),result["name"].toString());protonFolder_->setCurrentIndex(protonFolder_->count()-1);dirty();queueEdit(protonFolder_);}
     else if(kind=="storeSharePassword"){auto profiles=draft_["profiles"].toArray();if(profileIndex_>=0&&profileIndex_<profiles.size()){auto p=profiles[profileIndex_].toObject();auto s=p["settings"].toObject();s["sharePasswordReference"]=result["reference"];p["settings"]=s;profiles[profileIndex_]=p;draft_["profiles"]=profiles;dirty();queueEdit(protonFolder_);}}
@@ -1784,5 +1817,52 @@ void SettingsWindow::pollSetup(){
    if(setupJobs_.size()>1){const QJsonValue pending=setupJobs_[index];setupJobs_.removeAt(index);setupJobs_.append(pending);}
   }
  });
+}
+void SettingsWindow::showConflictActions(){for(auto* button:reloadConflict_)button->setVisible(conflict_);}
+// What a reload discards, in the words of the page that shows it.
+QStringList SettingsWindow::draftEdits()const{
+ QStringList edits;const auto add=[&edits](const QString& text){if(!edits.contains(text))edits.append(text);};
+ const auto draft=candidate();auto base=baseDocument_.isEmpty()?settings_.document():baseDocument_;if(base.isEmpty())base=Settings::defaults();
+ // Settings controls by their bound path; their accessible names are the visible labels.
+ QHash<QString,QString> names;QList<QWidget*> controls=findChildren<QWidget*>();if(destinationPage_)controls+=destinationPage_->findChildren<QWidget*>();
+ for(auto* control:controls){const auto path=control->property("configPath").toString();if(path.isEmpty()||path.contains("{profile}")||names.contains(path)||(qobject_cast<QLineEdit*>(control)&&qobject_cast<QComboBox*>(control->parentWidget())))continue;auto name=qobject_cast<QAbstractButton*>(control)?qobject_cast<QAbstractButton*>(control)->text():control->accessibleName();name=name.section(':',0,0);if(!name.isEmpty())names.insert(path,name);}
+ const auto describe=[&](const QString& path)->QString{
+  const auto parts=path.split('/',Qt::SkipEmptyParts);const auto group=parts.value(0);
+  if(group=="actions"&&parts.size()>2&&parts[2]=="shortcut")return "Shortcuts → "+actionLabel(parts[1]);
+  if(group=="actions")return "Capture → "+actionLabel(parts.value(1))+" output";
+  if(group=="captureDefaults")return QString("Capture → Default capture output");
+  for(auto prefix=path;!prefix.isEmpty();prefix=prefix.left(qMax(0,int(prefix.lastIndexOf('/'))))){
+   if(names.contains(prefix)){const auto page=group=="limits"||group=="retention"||path.startsWith("/preferences/diagnostics")?QString("Advanced"):group=="archive"||group=="naming"?QString("Capture"):QString("General");return page+" → "+names.value(prefix);}
+  }
+  return "Settings → "+parts.join(" › ");
+ };
+ // Leaf differences, outside the destination list.
+ std::function<void(const QJsonValue&,const QJsonValue&,const QString&)> compare=[&](const QJsonValue& now,const QJsonValue& before,const QString& path){
+  if(now==before)return;
+  if(now.isObject()&&before.isObject()){const auto a=now.toObject(),b=before.toObject();auto keys=a.keys();for(const auto& key:b.keys())if(!a.contains(key))keys.append(key);for(const auto& key:keys)compare(a.value(key),b.value(key),path+"/"+key);return;}
+  add(describe(path));
+ };
+ for(const auto& key:draft.keys())if(key!="profiles")compare(draft.value(key),base.value(key),"/"+key);
+ for(const auto& key:base.keys())if(key!="profiles"&&!draft.contains(key))compare({},base.value(key),"/"+key);
+ // Destinations by name: new, changed, removed, reordered.
+ const auto now=draft["profiles"].toArray(),before=base["profiles"].toArray();QStringList nowIds,beforeIds;QHash<QString,QJsonObject> previous;
+ for(const auto& value:before){const auto profile=value.toObject();beforeIds.append(profile["id"].toString());previous.insert(profile["id"].toString(),profile);}
+ for(const auto& value:now){const auto profile=value.toObject();const auto id=profile["id"].toString();nowIds.append(id);const QString label="Destinations → “"+profile["label"].toString()+"”";if(!previous.contains(id))add(label+" (new)");else if(previous.value(id)!=profile)add(label);}
+ for(const auto& id:beforeIds)if(!nowIds.contains(id))add("Destinations → “"+previous.value(id)["label"].toString()+"” (removed)");
+ QStringList kept;for(const auto& id:nowIds)if(beforeIds.contains(id))kept.append(id);QStringList was;for(const auto& id:beforeIds)if(nowIds.contains(id))was.append(id);if(kept!=was)add("Destinations → order");
+ if(hasCredentialInputs())add("Credentials typed but not stored");
+ return edits;
+}
+void SettingsWindow::reloadFromFile(){
+ const auto edits=draftEdits();
+ const QString text="Replace this window's settings with the configuration file as it is now?\n\n"+(edits.isEmpty()?QString("There are no unsaved edits to discard."):"These unsaved edits are discarded:\n• "+edits.join("\n• "));
+ if(!Graphite::confirm(this,"Reload settings from file",text,"Reload from file",!edits.isEmpty()))return;
+ resetDraft(true);
+}
+void SettingsWindow::fitRails(){
+ // Bold labels (the selected row's weight), the icon and the row padding.
+ const QFontMetrics strong(Graphite::font(Graphite::Type::body,true)),meta(Graphite::font(Graphite::Type::metadata));const int padding=10+2+12+Graphite::Metric::icon+10+10+2+10;
+ if(settingsRail_){int widest=0;for(int i=0;i<settingsNavigation_->count();++i)widest=qMax(widest,strong.horizontalAdvance(settingsNavigation_->item(i)->text()));settingsRail_->setFixedWidth(Graphite::sidebarWidth(Graphite::Metric::settingsSidebar,widest+padding));}
+ if(destinationRail_&&destinationList_){int widest=addDestination_?addDestination_->sizeHint().width()+20-padding:0;for(int i=0;i<destinationList_->count();++i){const auto lines=destinationList_->item(i)->text().split('\n');widest=std::max({widest,strong.horizontalAdvance(lines.value(0)),meta.horizontalAdvance(lines.value(1))});}destinationRail_->setFixedWidth(Graphite::sidebarWidth(Graphite::Metric::destinationSidebar,widest+padding));}
 }
 }
