@@ -1,7 +1,6 @@
 #include "NativeRegionOverlay.h"
 #include "ui/RegionSelection.h"
 #include <QAccessibleObject>
-#include <QCursor>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QSocketNotifier>
@@ -27,7 +26,7 @@ public:
  QString text(QAccessible::Text type)const override{
   const auto* overlay=static_cast<NativeRegionOverlay*>(object());
   if(type==QAccessible::Name)return QStringLiteral("Capture region");
-  if(type==QAccessible::Description)return regionDescription(overlay->selection_,false,overlay->frames_[overlay->keyboardScreen_<0?overlay->screenAt(QCursor::pos()):overlay->keyboardScreen_].identity);
+  if(type==QAccessible::Description)return regionDescription(overlay->selection_,false,(overlay->keyboardScreen_<0?QString():overlay->frames_[overlay->keyboardScreen_].identity));
   return {};
  }
  QRect rect()const override{
@@ -247,7 +246,7 @@ void NativeRegionOverlay::describe(){QAccessibleEvent changed(this,QAccessible::
 void NativeRegionOverlay::prepareInstructions(Surface& surface){
  const QRect bounds(QPoint{},surface.frame.logicalRect.size().toSize());
  const auto font=nativeRegionFont();
- const auto display=frames_[keyboardScreen_<0?screenAt(QCursor::pos()):keyboardScreen_].identity;
+ const auto display=keyboardScreen_<0?surface.frame.identity:frames_[keyboardScreen_].identity;
  if(surface.frame.identity!=display){surface.instructions={};surface.instructionsKey.clear();return;}
  const auto instructions=regionInstructions(selection_,false,display);
  const auto cacheKey=instructions+font.toString();
