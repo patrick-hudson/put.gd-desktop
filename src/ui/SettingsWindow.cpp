@@ -73,7 +73,8 @@ QString title(const QString& s){return s.left(1).toUpper()+s.mid(1);}
 // Settings tabs, in order: General, Capture, Shortcuts, Advanced.
 constexpr int advancedTab=3;
 const QString themePath=QStringLiteral("/preferences/appearance/theme");
-QString actionLabel(const QString& action){static const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"clipboard","Clipboard upload"},{"edit","Region capture & edit"}};return labels.value(action);}
+// The shared command names (main window, menu, tray and shortcuts).
+QString actionLabel(const QString& action){static const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"record","Record screen"}};return labels.value(action);}
 QString sharingLabel(const QString& mode){return mode=="share"?QString("Share and copy a link"):mode=="private"?QString("Keep private, copy nothing"):QString("Use destination default");}
 QComboBox* choices(QWidget* parent,const QString& name,const QStringList& values){auto* c=VisualStyle::choiceBox(parent);c->setObjectName(name);c->setAccessibleName(name);c->addItems(values);return c;}
 QLineEdit* input(QWidget* parent,const QString& name){auto* e=new QLineEdit(parent);e->setObjectName(name);e->setAccessibleName(name);return e;}
