@@ -1726,7 +1726,6 @@ void WindowHeader::setDocument(const QString& name, const QString& state) {
         docName_->setAlignment(Qt::AlignCenter);
         docName_->setTextFormat(Qt::PlainText);
         VisualStyle::role(docName_, "strong");
-        if (density_ == Density::Compact) docName_->setProperty("compactTitle", true);
         docState_ = new QLabel(block);
         docState_->setObjectName(QStringLiteral("documentState"));
         docState_->setAlignment(Qt::AlignCenter);

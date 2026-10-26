@@ -305,6 +305,25 @@ private slots:
         QCOMPARE(qint64(clamped["end"].toDouble()), t->duration());
         QCOMPARE(qint64(clamped["end"].toDouble() - clamped["start"].toDouble()), qint64(6000000));
     }
+    // A click that wobbles less than the drag distance only selects the mask:
+    // no retime (no edit, no undo step) and the playhead stays where it was.
+    void clickingAMaskBarWithJitterOnlySelectsIt() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.setEdit(twoMasks());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* t = timeline(window);
+        QVERIFY(t);
+        const auto before = proposals.size();
+        const auto playhead = t->playhead();
+        const auto bar = t->maskRect("m-solid");
+        const QPoint from(t->xFor(7000000), bar.center().y());
+        drag(t, from, from + QPoint(QApplication::startDragDistance() - 1, 0));
+        QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m-solid"));
+        QCOMPARE(proposals.size(), before);
+        QCOMPARE(t->playhead(), playhead);
+    }
     void keyboardAndNamedIconControlsInBothSchemes() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);

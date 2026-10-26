@@ -96,13 +96,14 @@ protected:
     void mouseReleaseEvent(QMouseEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
 private:
-    enum class Drag { None, Scrub, TrimStart, TrimEnd, MaskStart, MaskEnd, MaskMove };
+    enum class Drag { None, Scrub, TrimStart, TrimEnd, MaskStart, MaskEnd, MaskMovePending, MaskMove };
     qint64 timeAt(qreal x) const;
     void layoutLanes();
     QRect laneRect(int lane) const;
     void seek(qint64 us);
     qint64 duration_ = 1, playhead_ = 0, trimStart_ = 0, trimEnd_ = 1;
     qint64 moveAnchor_ = 0;  // a moved mask: the press point's offset from its start
+    qreal pressX_ = 0;       // where a mask-bar press began, for the drag distance
     QList<RecordingMask> masks_;
     QList<int> lane_;
     int lanes_ = 0;

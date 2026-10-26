@@ -374,7 +374,7 @@ void HistoryWindow::updateSummary(){
  const QString type=category=="images"?mime.mid(6).toUpper()+" image":category=="videos"?mime.mid(6).toUpper()+" recording":category=="text"?QString("Text"):QString("File")+(mime.isEmpty()?QString{}:" ("+mime+")");
  auto created=QDateTime::fromString(data["created"].toString(),Qt::ISODateWithMs);if(!created.isValid())created=QDateTime::fromString(data["created"].toString(),Qt::ISODate);
  const auto when=created.isValid()?QLocale().toString(created.toLocalTime(),QLocale::ShortFormat):QString{};
- QString rows;auto row=[&](const QString& label,const QString& value){if(!value.isEmpty())rows+="<tr><td width=\"34%\" valign=\"top\"><font color=\""+muted+"\">"+escaped(label)+"</font></td><td valign=\"top\">"+escaped(value)+"</td></tr>";};
+ QString rows;auto row=[&](const QString& label,const QString& value){if(!value.isEmpty())rows+="<tr><td width=\"34%\" valign=\"top\" nowrap><font color=\""+muted+"\">"+escaped(label)+"</font></td><td valign=\"top\">"+escaped(value)+"</td></tr>";};
  row("Type",type);row("Output",destinationLabel(data));row("Created",when);row("Size",size);row("File",data["name"].toString());
  // The recorded outcomes as rows of the same table; the upload state is the
  // line under the title, and the type row already names the format.

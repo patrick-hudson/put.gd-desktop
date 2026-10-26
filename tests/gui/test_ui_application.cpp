@@ -128,9 +128,9 @@ private slots:
    }
    return rows;
   };
-  // The heading's help button holds the focus, as in putgd-ui: its focus
-  // border must not change its height.
-  const auto focusHelp=[](MainWindow& window){if(auto* help=window.findChild<QWidget*>("captureActionsHeadingHelp"))help->setFocus();};
+  // A band button holds the focus, as in putgd-ui: its focus border must not
+  // change its height.
+  const auto focusHelp=[](MainWindow& window){if(auto* button=window.findChild<QWidget*>("captureActionButton"))button->setFocus();};
   Theme::setScheme(Theme::Scheme(to));
   MainWindow fresh(fixture.session);fresh.resize(1320,880);fresh.show();QVERIFY(putgd::test::waitForWindowExposed(&fresh));focusHelp(fresh);putgd::test::settle(50);
   const auto expected=layout(fresh);fresh.hide();QVERIFY(!expected.isEmpty());
@@ -414,11 +414,12 @@ private slots:
   auto* update=window.findChild<QPushButton*>("updateAvailable");auto* output=window.findChild<QLabel*>("captureOutputSummary");auto* navigation=window.findChild<QTabBar*>("mainNavigation");auto* band=window.findChild<QWidget*>("commandBand");
   QVERIFY(update&&output&&navigation&&band);PUTGD_TRY_VERIFY(update->isVisible());PUTGD_TRY_COMPARE(window.size(),size);QCOMPARE(output->text().count('\n'),1);
   Q_UNUSED(scrolls);
-  // Every capture action stays reachable: its own button, or Capture region's menu.
+  // Every capture action keeps its own visible button at every width (narrow
+  // bands show icons, named in tooltips); Capture region has no duplicate menu.
   QStringList reachable;QToolButton* region=nullptr;
-  for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){if(button->isVisible())reachable<<button->property("captureAction").toString();if(button->property("captureAction")=="region")region=button;}
-  QVERIFY(region&&region->menu());for(auto* action:region->menu()->actions())reachable<<QString(action->text()).toLower();
-  for(const auto& name:Settings::invocableActionNames())QVERIFY2(reachable.contains(name)||reachable.contains("capture "+name),qPrintable(name+" unreachable at "+QString::number(size.width())));
+  for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){if(button->isVisible())reachable<<button->property("captureAction").toString();if(button->property("captureAction")=="region")region=button;if(button->toolButtonStyle()==Qt::ToolButtonIconOnly)QVERIFY(!button->accessibleName().isEmpty()&&!button->toolTip().isEmpty());}
+  QVERIFY(region&&!region->menu());QCOMPARE(region->toolButtonStyle(),Qt::ToolButtonTextBesideIcon);
+  for(const auto& name:Settings::invocableActionNames())QVERIFY2(reachable.contains(name),qPrintable(name+" unreachable at "+QString::number(size.width())));
   // The band's controls neither overlap nor leave it; the status band shows the whole version line.
   const auto problem=[&]()->QString{
    QWidgetList items;for(auto* child:band->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(child->isVisible()&&!child->isWindow())items<<child;

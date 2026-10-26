@@ -675,11 +675,12 @@ private slots:
   QVERIFY(edit->toolTip().contains("menu"));
   auto* menu=window.findChild<QMenu*>("editSourceMenu");QVERIFY(menu);QCOMPARE(edit->menu(),menu);
   QStringList labels;for(auto* action:menu->actions())if(!action->isSeparator())labels.append(action->text().replace("&&","&"));
-  QCOMPARE(labels,QStringList({"Capture region & edit","Edit clipboard image","Edit an image file…"}));
+  // The menu holds only the other sources; the button itself is Capture region & edit.
+  QCOMPARE(labels,QStringList({"Edit clipboard image","Edit an image file…"}));
   QStringList requests;connect(&window,&MainWindow::editRequested,this,[&](const QString& source,const QString& path){requests.append(source+"|"+path);});
   int actions=0;connect(&window,&MainWindow::actionRequested,this,[&](auto){++actions;});
   window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  emit edit->customContextMenuRequested(QPoint(8,8));PUTGD_TRY_VERIFY(menu->isVisible());menu->actions().at(2)->trigger();menu->hide();
+  emit edit->customContextMenuRequested(QPoint(8,8));PUTGD_TRY_VERIFY(menu->isVisible());menu->actions().at(0)->trigger();menu->hide();
   QCOMPARE(requests,QStringList({"clipboard|"}));QCOMPARE(actions,0);requests.clear();
   QImage pixel(2,2,QImage::Format_RGB32);pixel.fill(Qt::blue);const auto png=dir.filePath("Dropped.PNG");QVERIFY(pixel.save(png,"PNG"));
   const auto text=dir.filePath("notes.txt");{QFile file(text);QVERIFY(file.open(QIODevice::WriteOnly));file.write("x");}
@@ -699,7 +700,7 @@ private slots:
   QVERIFY(drop({QUrl::fromLocalFile(png)}));QCOMPARE(requests,QStringList({"file|"+QFileInfo(png).absoluteFilePath()}));QCOMPARE(actions,0);
  }
  void captureRailExplainsActionAndCurrentSavedOutputWithoutInvokingIt(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);int invoked=0;connect(&window,&MainWindow::actionRequested,this,[&](auto){++invoked;});const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"}};for(const auto& action:Settings::actionNames()){QToolButton* button=nullptr;for(auto* candidate:window.findChildren<QToolButton*>("captureActionButton"))if(candidate->property("captureAction")==action)button=candidate;QVERIFY(button);QCOMPARE(button->accessibleName(),labels.value(action));QVERIFY(button->toolTip().contains("Save locally"));QVERIFY(button->accessibleDescription().contains("clipboard",Qt::CaseInsensitive));}auto* help=window.findChild<QToolButton*>("captureActionsHeadingHelp");QVERIFY(help);help->click();auto* dialog=window.findChild<QMessageBox*>("settingHelpDialog");QVERIFY(dialog);QVERIFY(dialog->informativeText().contains("focused external app window"));dialog->close();
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);int invoked=0;connect(&window,&MainWindow::actionRequested,this,[&](auto){++invoked;});const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"}};for(const auto& action:Settings::actionNames()){QToolButton* button=nullptr;for(auto* candidate:window.findChildren<QToolButton*>("captureActionButton"))if(candidate->property("captureAction")==action)button=candidate;QVERIFY(button);QCOMPARE(button->accessibleName(),labels.value(action));QVERIFY(button->toolTip().contains("Save locally"));QVERIFY(button->accessibleDescription().contains("clipboard",Qt::CaseInsensitive));}auto* help=window.findChild<QAction*>("captureActionsHelp");QVERIFY(help);help->trigger();auto* dialog=window.findChild<QMessageBox*>("settingHelpDialog");QVERIFY(dialog);QVERIFY(dialog->informativeText().contains("focused external app window"));dialog->close();
   {QWidget host;QLineEdit control(&host);auto* row=VisualStyle::settingLabel("Screen region & edit shortcut","help",&control,&host);QLabel* caption=nullptr;for(auto* label:row->findChildren<QLabel*>())if(label->buddy()==&control)caption=label;QVERIFY(caption);QCOMPARE(caption->text(),QString("Screen region && edit shortcut"));QCOMPARE(control.accessibleName(),QString("Screen region & edit shortcut"));}
   auto doc=service.document();auto protonSettings=ProtonProvider::defaults();protonSettings["shareByDefault"]=false;doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic Drive"},{"provider","proton-drive"},{"settings",protonSettings},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-drive"}}}}};auto actions=doc["actions"].toObject();auto region=actions["region"].toObject();region["destination"]="upload";region["profileId"]="synthetic-proton";actions["region"]=region;doc["actions"]=actions;QVERIFY(service.save(doc,service.revision()));QToolButton* capture=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="region")capture=button;QVERIFY(capture);PUTGD_TRY_VERIFY(capture->accessibleDescription().contains("Upload privately"));QVERIFY(capture->accessibleDescription().contains("clipboard is left unchanged"));region["publicationMode"]="share";actions["region"]=region;doc["actions"]=actions;QVERIFY(service.save(doc,service.revision()));PUTGD_TRY_VERIFY(capture->accessibleDescription().contains("copy its share link"));QCOMPARE(invoked,0);
  }
@@ -748,12 +749,24 @@ private slots:
   auto doc=service.document();auto preferences=doc["preferences"].toObject();preferences["appearance"]=QJsonObject{{"theme","dark"}};doc["preferences"]=preferences;QVERIFY(service.save(doc,service.revision()));
   fixture.session.invalidate();PUTGD_TRY_COMPARE(theme->currentData().toString(),QString("dark"));
  }
+ // Each command appears once: the application menu repeats neither the
+ // command band nor the header's navigation, and Capture region has no menu
+ // of the window and desktop buttons beside it.
+ void applicationMenuDoesNotRepeatTheWindow(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);
+  auto* menu=window.findChild<QMenu*>("applicationMenuPopup");QVERIFY(menu);
+  QStringList entries;for(auto* action:menu->actions())if(!action->isSeparator())entries<<action->text().replace("&&","&");
+  QCOMPARE(entries,QStringList({"Capture and clipboard actions…","Check for updates…","About put.gd","Quit put.gd"}));
+  QStringList band;for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){band<<button->accessibleName();if(button->property("captureAction")!="edit")QVERIFY2(!button->menu(),qPrintable(button->accessibleName()));}
+  for(const auto& entry:entries)QVERIFY2(!band.contains(entry)&&!QStringList({"History","Destinations","Settings"}).contains(entry),qPrintable(entry));
+  QVERIFY(!window.findChild<QMenu*>("captureRegionMenu"));
+ }
  // #239: the clipboard action says upload, like the tray; ids and keys stay.
  void clipboardActionSaysUpload(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();
   QToolButton* clipboard=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="clipboard")clipboard=button;
   QVERIFY(clipboard);QCOMPARE(clipboard->accessibleName(),QString("Upload clipboard"));QVERIFY(clipboard->accessibleDescription().startsWith("Upload copied local files"));QVERIFY(clipboard->accessibleDescription().contains("uploaded as text"));
-  auto* railHelp=window.findChild<QToolButton*>("captureActionsHeadingHelp");QVERIFY(railHelp);QVERIFY(railHelp->toolTip().contains("Upload clipboard: upload copied local files"));QVERIFY(!railHelp->toolTip().contains("mport"));
+  auto* helpAction=window.findChild<QAction*>("captureActionsHelp");QVERIFY(helpAction);helpAction->trigger();auto* helpDialog=window.findChild<QMessageBox*>("settingHelpDialog");QVERIFY(helpDialog);QVERIFY(helpDialog->informativeText().contains("Upload clipboard: upload copied local files"));QVERIFY(!helpDialog->informativeText().contains("mport"));helpDialog->close();
   auto* fileTemplate=window.findChild<QLineEdit*>("fileTemplate");QCOMPARE(fileTemplate->accessibleName(),QString("Copied & uploaded files"));QVERIFY(fileTemplate->toolTip().startsWith("Names copied and uploaded files when Custom template is selected"));
   QCOMPARE(fileTemplate->property("configPath").toString(),QString("/naming/fileTemplate"));
   // The size limits' help sits on their Auto / No limit choice.

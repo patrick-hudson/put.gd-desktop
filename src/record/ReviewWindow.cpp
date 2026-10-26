@@ -291,13 +291,14 @@ void ReviewTimeline::mousePressEvent(QMouseEvent* e) {
             if (!maskRect(masks_[i].id).adjusted(-2, -2, 2, 2).contains(pos.toPoint())) continue;
             if (selected_ != masks_[i].id) { selected_ = masks_[i].id; emit maskSelected(selected_); }
             // Dragging the bar moves the mask in time; its length stays the same.
-            drag_ = Drag::MaskMove;
+            // Until the pointer passes the drag distance this is only a
+            // selecting click: no move, no seek, no retime, playback continues.
+            drag_ = Drag::MaskMovePending;
             dragStart_ = masks_[i].start;
             dragEnd_ = masks_[i].end;
             moveAnchor_ = timeAt(pos.x()) - masks_[i].start;
-            setCursor(Qt::ClosedHandCursor);
+            pressX_ = pos.x();
             update();
-            emit scrubStarted();
             return;
         }
     }
@@ -318,6 +319,12 @@ void ReviewTimeline::mouseMoveEvent(QMouseEvent* e) {
     }
     const qint64 at = timeAt(pos.x());
     if (drag_ == Drag::Scrub) { seek(at); return; }
+    if (drag_ == Drag::MaskMovePending) {
+        if (std::abs(pos.x() - pressX_) < QApplication::startDragDistance()) return;
+        drag_ = Drag::MaskMove;
+        setCursor(Qt::ClosedHandCursor);
+        emit scrubStarted();
+    }
     if (drag_ == Drag::MaskMove) {
         // The whole interval follows the pointer, kept inside the clip; the frame
         // at its new start shows.
@@ -337,7 +344,7 @@ void ReviewTimeline::mouseReleaseEvent(QMouseEvent* e) {
     const auto drag = std::exchange(drag_, Drag::None);
     update();
     if ((drag == Drag::TrimStart || drag == Drag::TrimEnd) && (dragStart_ != trimStart_ || dragEnd_ != trimEnd_)) emit trimChanged(dragStart_, dragEnd_);
-    if (drag == Drag::MaskMove) setCursor(Qt::OpenHandCursor);
+    if (drag == Drag::MaskMove || drag == Drag::MaskMovePending) setCursor(Qt::OpenHandCursor);
     if (drag == Drag::MaskStart || drag == Drag::MaskEnd || drag == Drag::MaskMove) {
         for (const auto& mask : masks_) if (mask.id == selected_ && (mask.start != dragStart_ || mask.end != dragEnd_)) emit maskRetimed(mask.id, dragStart_, dragEnd_);
     }
