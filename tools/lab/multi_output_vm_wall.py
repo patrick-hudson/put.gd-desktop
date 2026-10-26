@@ -36,6 +36,8 @@ def main():
         heads = lab.state(c.run)['heads']
         if len(outputs['outputs']) != len(heads):
             raise RuntimeError('Native output inventory does not uniquely map to the configured wall heads')
+        if c.profile['session'] == 'x11':
+            result['tabletMappingsRefreshed'] = lab.map_tablets_x11(c.run, outputs['outputs'])
         c.fixture(motion=True, minimum_heads=1)
         for index, (head, output) in enumerate(zip(heads, outputs['outputs'])):
             item = {'head': index, 'port': head['port'], 'nativeOutput': output}
