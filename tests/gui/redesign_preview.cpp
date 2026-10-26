@@ -25,6 +25,7 @@
 #include <QScrollBar>
 #include <QLineEdit>
 #include <QLabel>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QStandardPaths>
 #include <QStatusBar>
@@ -168,24 +169,41 @@ int main(int argc,char** argv){
  {
   // The private review and the ready control bar, over a synthetic frame.
   record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.durationUs=32000000;o.canvas=QSize(960,600);o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
-  RecordingConfig config;config.format="mp4";config.codec="h264";config.fps=30;
+  RecordingConfig config;config.format="mp4";config.codec="h264";config.fps=30;o.audioRecorded=true;
+  // No clip exists: hold the frame refresh so the synthetic frame stays until a state asks for one.
+  qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","3600000");
   record::ReviewWindow review(o,config);review.resize(record::ReviewWindow::defaultSize());review.show();
   if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
   RecordingEdit edit;edit.revision=1;RecordingMask solid;solid.id="m-solid";solid.kind="solid";solid.rect=QRect(61,194,256,40);solid.start=8000000;solid.end=21000000;RecordingMask blur=solid;blur.id="m-blur";blur.kind="blur";blur.rect=QRect(337,194,256,130);blur.start=3000000;blur.end=12000000;edit.masks={solid,blur};edit.trimStart=2000000;edit.trimEnd=29000000;review.setEdit(edit);
   auto shot=[&](QWidget& w,const QString& name){putgd::test::settle(450);app.processEvents();const auto image=w.grab();if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
   // Each review state also keeps the window's own geometry (header, frame share).
   auto inspected=[&](record::ReviewWindow& r,const QString& name){QSaveFile f(QDir(output).filePath(name+".json"));return f.open(QIODevice::WriteOnly)&&f.write(QJsonDocument(r.inspect()).toJson())>0&&f.commit();};
+  review.drive({{"action","selectMask"},{"maskId","m-solid"}});
   if(!shot(review,"30-review")||!inspected(review,"30-review"))return 2;
   review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31-review-blur-selected")||!inspected(review,"31-review-blur-selected"))return 2;
   review.resize(760,420);if(!shot(review,"32-review-minimum")||!inspected(review,"32-review-minimum"))return 2;
+  review.resize(record::ReviewWindow::defaultSize());
+  // Keyboard mask editing: the frame focused by Tab, the selected cover's ring.
+  review.drive({{"action","selectMask"},{"maskId","m-solid"}});review.activateWindow();putgd::test::waitForWindowActive(&review);if(auto* view=review.findChild<record::FrameView*>())view->setFocus(Qt::TabFocusReason);if(!shot(review,"38-review-keyboard-mask")||!inspected(review,"38-review-keyboard-mask"))return 2;
+  // An export failure and a codec warning, each with its actions, in the status row.
+  review.drive({{"action","format"},{"format","mp4"},{"codec","h265"}});review.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");if(!shot(review,"39-review-status-errors")||!inspected(review,"39-review-status-errors"))return 2;
+  review.drive({{"action","dismissStatus"}});review.drive({{"action","format"},{"format","mp4"},{"codec","h264"}});
+  // A refresh that fails (there is no clip): the earlier frame is dimmed and named.
+  review.drive({{"action","seek"},{"time",16000000}});review.drive({{"action","retryPreview"}});if(!shot(review,"40-review-preview-error")||!inspected(review,"40-review-preview-error"))return 2;
+  // Discard… asks first; the dialog alone, as the desktop shows it over the review.
+  review.drive({{"action","discard"}});if(auto* box=review.findChild<QMessageBox*>("confirmAction")){if(!shot(*box,"41-review-discard-confirm"))return 2;}else return 2;review.drive({{"action","keepReviewing"}});
+  qunsetenv("PUTGD_RECORD_REVIEW_DELAY_MS");
   // The review window's own frame under real input (compact header).
   // Alone on the backdrop, so the driver locates and drives only this window.
   window.hide();review.resize(record::ReviewWindow::defaultSize());review.showNormal();if(!native.chrome(review,"91-review-chrome"))return 2;
   review.hide();window.show();
   record::ControlBar::Options bar;bar.targetLabel="Region · 960 × 600";bar.formats=o.formats;bar.codecs=o.codecs;bar.audioSupported=true;
-  record::ControlBar ready(bar,config);ready.show();if(!shot(ready,"33-record-ready-bar"))return 2;
+  // A 1366×768 laptop decides one row or two (two at 150% text).
+  record::ControlBar ready(bar,config);ready.fitTo(QRect(0,0,1366,768));ready.show();if(!shot(ready,"33-record-ready-bar"))return 2;
   ready.setState("recording");ready.setRetained(12300000);if(!shot(ready,"34-record-recording-bar"))return 2;
   ready.setState("paused");if(!shot(ready,"35-record-paused-bar"))return 2;
+  ready.setState("recording");if(auto* cancel=ready.findChild<QPushButton*>("cancel"))cancel->click();if(!ready.confirming()||!shot(ready,"36-record-discard-confirm"))return 2;
+  ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("ready");ready.setRetained(0);ready.fitTo(QRect(0,0,1024,768));if(!ready.twoRows()||!shot(ready,"37-record-ready-narrow"))return 2;
  }
 #endif
  // The custom frame under real input: the driver moves, maximizes, restores,
