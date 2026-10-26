@@ -124,6 +124,8 @@ The image editor uses the shared document header with its title and truthful
 upload state. Recording review keeps the desktop title bar to preserve frame
 area and fit at enlarged text sizes; its Not uploaded state lives in the footer.
 Both use shared controls around the working area and the app's window identity.
+The editor helper receives the resident's resolved light/dark scheme so opening
+it does not unexpectedly change appearance.
 
 Custom Linux chrome uses `QWindow` system move and resize rather than
 compositor-specific positioning. Verify dragging, all resize edges, minimize,
@@ -181,6 +183,11 @@ history and a search with no matches are different states.
 **Destinations and Settings.** Use aligned, scrollable forms and restrained
 section dividers. S3, native Backblaze B2 and Proton Drive retain their distinct
 fields and capabilities. Fresh configuration does not create a destination.
+An editable destination name must remain shrinkable; never set its minimum width
+from the entire value. Show its beginning when unfocused, while preserving normal
+selection, context-menu copying and editing. Keep help and trailing actions
+reachable by moving the action group below the name when needed. Stack credential
+actions at narrow widths or enlarged text sizes without adding horizontal scroll.
 Settings continue to autosave through the existing revision-checked path;
 credentials require explicit Store and never enter configuration, autosave or
 view checkpoints. Keep errors, conflicts, draft preservation and reload behavior.
@@ -225,6 +232,9 @@ Prototype evidence never establishes production or release acceptance. Retain
 failures and the corrected attempts under the [evidence retention rules](evidence-retention.md).
 The [2026-10-26 feasibility receipt](evidence/2026-10-26-graphite-design-feasibility.md)
 records the prototype's exact scope, identities, results and preserved failures.
+The separate [production review](evidence/2026-10-26-graphite-production/README.md)
+records the implemented screens, package identities, desktop workflows, memory
+measurements and remaining limitations for code PR #596.
 
 The previous blue design notes remain in [design.md](design.md); the earlier
 redesign experiment remains [a historical record](ui-redesign-experiment.md).

@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| Graphite desktop visual language (PRs #596, #595) | [Implemented dark/light screens, exact CI packages, Linux functional and memory evidence, preserved findings and scope limits](2026-10-26-graphite-production/README.md); [separate frozen prototype](2026-10-26-graphite-design-feasibility.md) |
 | Resident memory after a 50-upload burst (issue #560) | [Stranded glibc arena tops attributed from physical malloc_info/smaps, single-arena policy, matched headless controls (env, THP, cancellation, throughput) and the frozen m74 Cinnamon burst for candidate and trunk](2026-10-25-resident-arenas-560/README.md) |
 | Stalled destination preflight cancellation (issue #561) | [Provider-neutral cancellation, stalled HEAD regression and retry; exact-source native Cinnamon/GNOME/Plasma X11/Wayland evidence, approved slow measurements and cleanup](2026-10-25-preflight-cancellation-561/README.md) |
 | Suppressed automatic link copy made visible (issue #473, PR #477) | [Nightly 1019 before vs the #477 merge's CI AppImage after on an Aurora Fedora 45 Plasma Wayland VM: another app copies during a throttled upload, both end `suppressed`; notification and Activity before/after (annotated), one-click **Copy link** recovery, the `putgd.clipboard` record naming `clipboard_changed` with revisions 1 and 2, both uploads in a diagnostics package preview](2026-10-23-suppressed-link-copy-473/README.md) |
