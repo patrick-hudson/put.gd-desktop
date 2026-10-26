@@ -315,23 +315,47 @@ private slots:
   auto [local,localState]=command({{"action","savePackage"}});QVERIFY2(!local,qPrintable(local.message));
   QVERIFY(localState["package"].toObject()["saved"].toObject()["path"].toString().endsWith(".zip"));QVERIFY(!localState["package"].toObject()["saved"].toObject().contains("upload"));
   command({{"action","closePackage"}});PUTGD_TRY_VERIFY(heldTest);std::exchange(heldTest,{})({});holdTest=false;
-  // A working destination: checked by default, named, with its warning; the upload links and copies.
-  const int uploadsBefore=provider->uploads.load();
+  // A working destination: offered, named and with its warning, but never ticked
+  // by the check; only ticking it makes Save upload, link and copy.
+  const int uploadsBefore=provider->uploads.load();auto* save=dialog->findChild<QPushButton*>("savePackage");
   command({{"action","openPackage"}});PUTGD_TRY_VERIFY(package()["uploadTarget"].toObject()["available"].toBool());
-  QVERIFY(upload->isVisibleTo(dialog));QVERIFY(upload->isChecked());QVERIFY2(upload->text().contains("Synthetic opaque provider"),qPrintable(upload->text()));
-  QVERIFY(note->text().contains("anyone with the link"));QCOMPARE(dialog->findChild<QPushButton*>("savePackage")->text(),QString("Save and upload"));QVERIFY(package()["upload"].toBool());
+  QVERIFY(upload->isVisibleTo(dialog));QVERIFY(upload->isEnabled());QVERIFY(!upload->isChecked());QVERIFY2(upload->text().contains("Synthetic opaque provider"),qPrintable(upload->text()));
+  QVERIFY(note->text().contains("anyone with the link"));QCOMPARE(save->text(),QString("Save package"));QVERIFY(!package()["upload"].toBool());
+  upload->setChecked(true);QCOMPARE(save->text(),QString("Save and upload"));QVERIFY(package()["upload"].toBool());
+  upload->setChecked(false);QCOMPARE(save->text(),QString("Save package"));upload->click();QCOMPARE(save->text(),QString("Save and upload"));
   auto [started,startedState]=command({{"action","savePackage"}});QVERIFY2(!started,qPrintable(started.message));
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(package().contains("saved"),20000);
   const auto saved=package()["saved"].toObject();QVERIFY2(saved["link"].toString().startsWith("https://"),QJsonDocument(saved).toJson().constData());
   QVERIFY(saved["linkCopied"].toBool());QCOMPARE(source.copied.text,saved["link"].toString());QCOMPARE(provider->uploads.load(),uploadsBefore+1);QVERIFY(QFileInfo(saved["path"].toString()).isFile());
   auto* result=dialog->findChild<QLabel*>("packageResult");QVERIFY2(result->text().contains("Uploaded to Synthetic opaque provider. Link copied: https://"),qPrintable(result->text()));
   command({{"action","closePackage"}});
-  // An agent can leave it unticked: the package stays local.
+  // Every opening starts unticked again; an agent can leave it so: the package stays local.
   command({{"action","openPackage"}});PUTGD_TRY_VERIFY(package()["uploadTarget"].toObject()["available"].toBool());
+  QVERIFY(!upload->isChecked());QVERIFY(!package()["upload"].toBool());QCOMPARE(save->text(),QString("Save package"));
   auto [cleared,clearedState]=command({{"action","setPackage"},{"upload",false}});QVERIFY(!cleared);QVERIFY(!clearedState["package"].toObject()["upload"].toBool());
   auto [plain,plainState]=command({{"action","savePackage"}});QVERIFY(!plain);QVERIFY(!plainState["package"].toObject()["saved"].toObject().contains("link"));QCOMPARE(provider->uploads.load(),uploadsBefore+1);
   command({{"action","closePackage"}});
   operations.shutdown();
+ }
+ // At 150% text the package dialog stays inside the screen: its body scrolls and
+ // Cancel and Save stay pinned and whole below it.
+ void diagnosticsPackageDialogFitsTheScreenAtLargeText(){
+  auto font=QApplication::font();const auto original=font;auto restore=qScopeGuard([&]{QApplication::setFont(original);});font.setPixelSize(21);QApplication::setFont(font);
+  QTemporaryDir dir;logging::open(dir.filePath("state/logs"),{},"putgd-test");auto closeLog=qScopeGuard([]{logging::close();});logging::info(logApp(),"Synthetic diagnostics record");logging::flush();
+  SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto archive=doc["archive"].toObject();archive["root"]=dir.filePath("archive");doc["archive"]=archive;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);DiagnosticsBundles bundles(fixture.operations(),dir.filePath("state"));fixture.server.setDiagnosticsBundles(&bundles);
+  MainWindow window(fixture.session);window.navigate("settings");window.show();fixture.session.refreshSnapshot();auto* settings=window.settings();
+  bool opened=false;settings->diagnosticsCommand({{"action","openPackage"}},[&](Error,QJsonObject){opened=true;});PUTGD_TRY_VERIFY(opened);
+  auto* dialog=settings->findChild<QDialog*>("diagnosticsPackageDialog");QVERIFY(dialog&&dialog->isVisible());QVERIFY(putgd::test::waitForWindowExposed(dialog));
+  PUTGD_TRY_VERIFY(!settings->diagnosticsState()["package"].toObject()["uploadTarget"].toObject()["checking"].toBool());putgd::test::settle(100);
+  const auto screen=dialog->screen()->availableGeometry();QVERIFY2(dialog->height()<=screen.height(),qPrintable(QString("dialog %1 px on a %2 px screen").arg(dialog->height()).arg(screen.height())));
+  auto* scroll=dialog->findChild<QScrollArea*>("diagnosticsPackageScroll");QVERIFY(scroll);QVERIFY(scroll->widget()->isAncestorOf(dialog->findChild<QLabel*>("packageContents")));
+  // Large text needs more than the screen holds: the body scrolls, the buttons stay outside it.
+  QVERIFY2(scroll->verticalScrollBar()->maximum()>0,qPrintable(QString("body %1 in %2").arg(scroll->widget()->height()).arg(scroll->viewport()->height())));
+  for(const char* name:{"closePackage","savePackage"}){auto* button=dialog->findChild<QPushButton*>(name);QVERIFY(button->isVisible());QVERIFY(!scroll->isAncestorOf(button));
+   const QRect shown(button->mapTo(dialog,QPoint()),button->size());QVERIFY2(dialog->rect().contains(shown),qPrintable(QString("%1 outside the dialog").arg(name)));}
+  QCOMPARE(dialog->findChild<QLabel*>("packageFolder")->font().family(),Graphite::monoFamily());
+  dialog->reject();
  }
  // #149: what Auto resolves to, from settings.get effectiveLimits.
  void fileDialogsOpenTheSharedChooser(){
@@ -366,6 +390,38 @@ private slots:
   auto opened=call({{"dialog","editImage"},{"action","open"}});QVERIFY(opened.second["open"].toBool());QCOMPARE(opened.second["mode"].toString(),QString("open"));
   PUTGD_TRY_VERIFY((chooser=window.findChild<QFileDialog*>("putgdFileDialog"))&&chooser->isVisible());QCOMPARE(chooser->nameFilters(),QStringList{"Images (*.png *.jpg *.jpeg)"});
   auto cancelled=call({{"dialog","editImage"},{"action","cancel"}});QVERIFY(!cancelled.second["open"].toBool());QCOMPARE(cancelled.second["last"].toObject()["status"].toString(),QString("cancelled"));
+  QVERIFY(window.findChild<QWidget*>("editImageChooserFailure")->isHidden());
+ }
+ // A chooser that fails is not a cancel: its reason shows beside the action that
+ // opened it, what was there stays, and Try again opens the chooser again. A
+ // cancel stays silent.
+ void chooserFailuresShowBesideTheirActionWithTryAgain(){
+  qputenv("PUTGD_FILE_DIALOG","fallback");auto restore=qScopeGuard([]{qunsetenv("PUTGD_FILE_DIALOG");});
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto archive=doc["archive"].toObject();archive["root"]=dir.filePath("archive");doc["archive"]=archive;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();fixture.session.refreshSnapshot();
+  const FileDialog::Result failed{FileDialog::Result::Status::Failed,{},"The chosen location is not a local file."},cancelled{};
+  // Local copies → Images.
+  auto* images=window.findChild<QLineEdit*>("folderImages");images->setText(dir.filePath("kept"));auto* failure=window.findChild<QWidget*>("folderImagesChooserFailure");QVERIFY(failure&&failure->isHidden());
+  window.settings()->folderChooserFinished("outputFolder","images",failed);QVERIFY(failure->isVisibleTo(window.settings()));
+  auto* message=window.findChild<QLabel*>("folderImagesChooserError");QVERIFY2(message->text().contains("not a local file")&&message->text().contains("unchanged"),qPrintable(message->text()));QCOMPARE(images->text(),dir.filePath("kept"));
+  QVERIFY(window.findChild<QWidget*>("archiveRootChooserFailure")->isHidden());
+  window.findChild<QPushButton*>("folderImagesChooserRetry")->click();QVERIFY(window.settings()->findChild<QFileDialog*>("putgdFileDialog"));
+  window.settings()->fileDialogCommand("outputFolder","cancel",{},[](Error,QJsonObject){});PUTGD_TRY_VERIFY(failure->isHidden());QCOMPARE(images->text(),dir.filePath("kept"));
+  window.settings()->folderChooserFinished("outputFolder","images",cancelled);QVERIFY(failure->isHidden());
+  // Edit an image file…: under the command band, nothing opened.
+  QSignalSpy edits(&window,&MainWindow::editRequested);auto* banner=window.findChild<QWidget*>("editImageChooserFailure");QVERIFY(banner->isHidden());
+  window.imageChooserFinished(cancelled);QVERIFY(banner->isHidden());
+  window.imageChooserFinished(failed);QVERIFY(banner->isVisible());QVERIFY(window.findChild<QLabel*>("editImageChooserError")->text().contains("not a local file"));QCOMPARE(edits.count(),0);
+  auto* band=window.findChild<QWidget*>("commandBand");PUTGD_TRY_COMPARE(banner->geometry().top(),band->geometry().bottom()+1);
+  window.findChild<QPushButton*>("retryEditImageChooser")->click();QVERIFY(window.editImageDialog().isOpen());window.editImageDialog().cancel();PUTGD_TRY_VERIFY(banner->isHidden());QCOMPARE(edits.count(),0);
+  window.imageChooserFinished(failed);window.findChild<QToolButton*>("dismissEditImageChooserFailure")->click();QVERIFY(banner->isHidden());
+  // The package dialog's Choose folder…
+  DiagnosticsBundles bundles(fixture.operations(),dir.filePath("state"));fixture.server.setDiagnosticsBundles(&bundles);
+  bool opened=false;window.settings()->diagnosticsCommand({{"action","openPackage"}},[&](Error,QJsonObject){opened=true;});PUTGD_TRY_VERIFY(opened);auto* dialog=window.settings()->findChild<QDialog*>("diagnosticsPackageDialog");
+  auto* packageFailure=dialog->findChild<QWidget*>("packageFolderChooserFailure");QVERIFY(packageFailure->isHidden());const auto folder=dialog->findChild<QLabel*>("packageFolder")->text();
+  window.settings()->folderChooserFinished("diagnosticsFolder",{},failed);QVERIFY(packageFailure->isVisible());QCOMPARE(dialog->findChild<QLabel*>("packageFolder")->text(),folder);QVERIFY(dialog->findChild<QLabel*>("packageFolderChooserError")->text().contains("not a local file"));
+  window.settings()->folderChooserFinished("diagnosticsFolder",{},cancelled);QVERIFY(packageFailure->isHidden());
+  dialog->reject();
  }
  void autoLimitsShowWhatTheyResolveTo(){
   constexpr qint64 gib=1LL<<30;ArtifactStore::setDiskForTesting(60*gib,100*gib);auto resetDisk=qScopeGuard([]{ArtifactStore::setDiskForTesting(-1,-1);});
@@ -410,6 +466,9 @@ private slots:
   PUTGD_TRY_VERIFY(window.settings()->saveViewState()["conflict"].toBool());
   auto* status=window.findChild<QLabel*>("settingsStatus");auto* destinationStatus=window.findChild<QLabel*>("destinationStatus");
   QCOMPARE(statusCode(window),QString("config_conflict"));QVERIFY(!status->text().contains("config_conflict"));
+  // The band carries one bounded indicator; the explanation and Reload stay in the page.
+  auto* bandStatus=window.findChild<QLabel*>("autosaveStatus");QCOMPARE(bandStatus->text(),QString("Changes not saved"));QVERIFY(bandStatus->isVisible());QVERIFY(window.findChild<QLabel*>("autosaveExplanation")->isHidden());
+  auto* summary=window.findChild<Graphite::ElidedLabel*>("captureOutputSummary");QVERIFY2(!summary->elided(),qPrintable(summary->text()));
   QVERIFY(destinationStatus->isVisible());QVERIFY(destinationReload->isVisible());QCOMPARE(destinationReload->parentWidget(),destinationStatus->parentWidget());
   QVERIFY(!settingsReload->isHidden());QCOMPARE(settingsReload->parentWidget(),status->parentWidget());QCOMPARE(settingsReload->text(),QString("Reload from file…"));
   // An error is body text, not small print.
@@ -434,16 +493,18 @@ private slots:
   window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);
   auto* region=window.findChild<QComboBox*>("profileRegion");auto* sharing=window.findChild<QComboBox*>("publicationRegion");auto* clipboard=window.findChild<QComboBox*>("profileClipboard");
   QVERIFY(!region->isEnabled()&&Graphite::isLocked(region));QVERIFY(!sharing->isEnabled()&&Graphite::isLocked(sharing));QVERIFY(clipboard->isEnabled()&&!Graphite::isLocked(clipboard));
-  window.findChild<QScrollArea*>()->ensureWidgetVisible(region);
+  // An inherited action is one compact row: its output in words, no fields.
+  auto* summary=window.findChild<QLabel*>("captureSummaryRegion");QVERIFY(summary->isVisible());QVERIFY(!region->isVisible());QVERIFY(clipboard->isVisible());
+  window.findChild<QScrollArea*>()->ensureWidgetVisible(summary);
   for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
    Theme::setScheme(scheme);putgd::test::settle(20);const auto& p=Theme::palette(scheme);
-   const auto shot=window.grab(QRect(region->mapTo(&window,QPoint()),region->size())).toImage().convertToFormat(QImage::Format_RGB32);
-   // The value's text reaches 4.5:1 against the page (textDisabled reached about 3:1).
+   const auto shot=window.grab(QRect(summary->mapTo(&window,QPoint()),summary->size())).toImage().convertToFormat(QImage::Format_RGB32);
+   // The inherited output reads at 4.5:1 against the page.
    double best=0;for(int y=0;y<shot.height();++y)for(int x=0;x<shot.width();++x)best=std::max(best,Theme::contrast(shot.pixelColor(x,y),p.bg));
-   QVERIFY2(best>=4.5,qPrintable(Theme::name(scheme)+QString(" locked value contrast %1").arg(best)));
+   QVERIFY2(best>=4.5,qPrintable(Theme::name(scheme)+QString(" inherited summary contrast %1").arg(best)));
   }
-  // Unticking Use default makes the value editable again.
-  window.findChild<QCheckBox*>("useDefaultRegion")->setChecked(false);PUTGD_TRY_VERIFY(region->isEnabled());QVERIFY(!Graphite::isLocked(region));
+  // Override makes the two values editable, starting from the inherited ones.
+  window.findChild<QCheckBox*>("overrideRegion")->click();PUTGD_TRY_VERIFY(region->isEnabled());QVERIFY(!Graphite::isLocked(region));QVERIFY(!window.findChild<QCheckBox*>("useDefaultRegion")->isChecked());PUTGD_TRY_VERIFY(region->isVisible());
   // On Destinations, "Default" states a fact and reads as one; Make default is an action.
   window.navigate("destinations");auto* list=window.findChild<QListWidget*>("destinationList");auto* makeDefault=window.findChild<QPushButton*>("makeDefaultDestination");
   list->setCurrentRow(0);PUTGD_TRY_COMPARE(makeDefault->text(),QString("Default"));QVERIFY(!makeDefault->isEnabled()&&Graphite::isLocked(makeDefault));
@@ -490,33 +551,38 @@ private slots:
   const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"}};
   auto title=[](const QString& name){return name.left(1).toUpper()+name.mid(1);};
   auto routing=[&]{const auto state=window.settings()->saveViewState();[&]{QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",state}}));}();return state["captureRouting"].toObject();};
+  QString rowSummary;
   auto expectInherited=[&](const QString& profileId,const QString& destination,const QString& sharing,const QString& effective,const QString& status){
    const auto routes=routing();
    for(const auto& name:Settings::actionNames()){
     auto* profile=window.findChild<QComboBox*>("profile"+title(name));auto* publication=window.findChild<QComboBox*>("publication"+title(name));auto* line=window.findChild<QLabel*>("captureStatus"+title(name));
-    QVERIFY2(window.findChild<QCheckBox*>("useDefault"+title(name))->isChecked(),qPrintable(name));QVERIFY2(window.findChild<QWidget*>("captureEditor"+title(name))->isVisible(),qPrintable(name));QVERIFY(line->isVisible());QVERIFY2(line->text().contains(status),qPrintable(line->text()));
+    QVERIFY2(window.findChild<QCheckBox*>("useDefault"+title(name))->isChecked(),qPrintable(name));QVERIFY(!window.findChild<QCheckBox*>("override"+title(name))->isChecked());QVERIFY2(line->text().contains(status),qPrintable(line->text()));
+    // One compact row: the fields stay hidden, the summary says what the action gets.
+    QVERIFY2(window.findChild<QWidget*>("captureEditor"+title(name))->isHidden(),qPrintable(name));auto* summary=window.findChild<QLabel*>("captureSummary"+title(name));QVERIFY(summary->isVisible());QVERIFY2(summary->text().startsWith("Default · ")&&summary->text().contains(rowSummary),qPrintable(summary->text()));
     QVERIFY(!profile->isEnabled());QVERIFY(!publication->isEnabled());QCOMPARE(profile->currentData().toString(),profileId);QCOMPARE(profile->currentText(),destination);QCOMPARE(publication->currentText(),sharing);
     QCOMPARE(profile->accessibleName(),labels[name]+" destination: inherited from default, "+destination);QCOMPARE(publication->accessibleName(),labels[name]+" sharing: inherited from default, "+sharing);
     const auto route=routes[name].toObject();QVERIFY(route["inherited"].toBool());QVERIFY(!route["destinationEnabled"].toBool());QVERIFY(!route["sharingEnabled"].toBool());
     QCOMPARE(route["profileId"].toString(),profileId);QCOMPARE(route["destination"].toString(),destination);QCOMPARE(route["sharing"].toString(),sharing);QCOMPARE(route["effectivePublicationMode"].toString(),effective);QCOMPARE(route["status"].toString(),line->text());
    }
   };
-  expectInherited("development-s3","put.gd development destination","Share and copy a link (destination default)","share","Uploads to the selected destination");
+  rowSummary="Shared link · put.gd development destination";expectInherited("development-s3","put.gd development destination","Create a share link (destination default)","share","Uploads to the selected destination");
   QCOMPARE(routing()["default"].toObject()["publicationMode"].toString(),QString("default"));QVERIFY(routing()["default"].toObject()["sharingEnabled"].toBool());
   // Editing the default output updates every inheriting card at once.
   auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");auto* sharing=window.findChild<QComboBox*>("defaultCaptureSharing");
-  destination->setCurrentIndex(destination->findData("synthetic-proton"));expectInherited("synthetic-proton","Synthetic Drive","Keep private, copy nothing (destination default)","private","Uploads to the selected destination");
-  sharing->setCurrentIndex(sharing->findData("share"));expectInherited("synthetic-proton","Synthetic Drive","Share and copy a link","share","Uploads to the selected destination");
-  destination->setCurrentIndex(destination->findData(QString{}));expectInherited(QString{},"No destination (uploads off)","Share and copy a link","","will fail");
-  destination->setCurrentIndex(destination->findData("development-s3"));sharing->setCurrentIndex(sharing->findData("default"));expectInherited("development-s3","put.gd development destination","Share and copy a link (destination default)","share","Uploads to the selected destination");
+  rowSummary="Private upload · Synthetic Drive";destination->setCurrentIndex(destination->findData("synthetic-proton"));expectInherited("synthetic-proton","Synthetic Drive","Keep private (destination default)","private","Uploads to the selected destination");
+  rowSummary="Shared link · Synthetic Drive";sharing->setCurrentIndex(sharing->findData("share"));expectInherited("synthetic-proton","Synthetic Drive","Create a share link","share","Uploads to the selected destination");
+  rowSummary="fails before capturing";destination->setCurrentIndex(destination->findData(QString{}));expectInherited(QString{},"No destination (uploads off)","Create a share link","","will fail");
+  QCOMPARE(window.findChild<QLabel*>("captureSummaryRegion")->property("feedbackTone").toString(),QString("error"));
+  rowSummary="Shared link · put.gd development destination";destination->setCurrentIndex(destination->findData("development-s3"));sharing->setCurrentIndex(sharing->findData("default"));expectInherited("development-s3","put.gd development destination","Create a share link (destination default)","share","Uploads to the selected destination");
   PUTGD_TRY_COMPARE(service.document()["captureDefaults"].toObject()["profileId"].toString(),QString("development-s3"));PUTGD_TRY_COMPARE(service.document()["captureDefaults"].toObject()["publicationMode"].toString(),QString("default"));
   // Unchecking starts from the inherited values and saves an explicit exception.
   window.findChild<QCheckBox*>("useDefaultRegion")->setChecked(false);auto* region=window.findChild<QComboBox*>("profileRegion");auto* regionSharing=window.findChild<QComboBox*>("publicationRegion");
+  QVERIFY(window.findChild<QCheckBox*>("overrideRegion")->isChecked());QVERIFY(window.findChild<QWidget*>("captureEditorRegion")->isVisible());QCOMPARE(window.findChild<QLabel*>("captureSummaryRegion")->text(),QString("Shared link · put.gd development destination"));
   QVERIFY(region->isEnabled());QVERIFY(regionSharing->isEnabled());QCOMPARE(region->currentData().toString(),QString("development-s3"));QCOMPARE(regionSharing->currentData().toString(),QString("default"));QCOMPARE(regionSharing->currentText(),QString("Use destination default"));QCOMPARE(region->accessibleName(),QString("Capture region destination"));
   const auto route=routing()["region"].toObject();QVERIFY(!route["inherited"].toBool());QVERIFY(route["destinationEnabled"].toBool());QVERIFY(route["sharingEnabled"].toBool());QCOMPARE(route["effectivePublicationMode"].toString(),QString("share"));
   PUTGD_TRY_COMPARE(service.document()["actions"].toObject()["region"].toObject()["destination"].toString(),QString("upload"));QCOMPARE(service.document()["actions"].toObject()["region"].toObject()["profileId"].toString(),QString("development-s3"));
   for(const auto& name:Settings::actionNames())if(name!="region")QCOMPARE(service.document()["actions"].toObject()[name].toObject()["destination"].toString(),QString("default"));
-  MainWindow reopened(fixture.session);reopened.settings();QVERIFY(!reopened.findChild<QCheckBox*>("useDefaultRegion")->isChecked());QVERIFY(reopened.findChild<QComboBox*>("profileRegion")->isEnabled());QVERIFY(reopened.findChild<QCheckBox*>("useDefaultEdit")->isChecked());QVERIFY(!reopened.findChild<QComboBox*>("profileEdit")->isEnabled());QCOMPARE(reopened.findChild<QComboBox*>("publicationEdit")->currentText(),QString("Share and copy a link (destination default)"));
+  MainWindow reopened(fixture.session);reopened.settings();QVERIFY(!reopened.findChild<QCheckBox*>("useDefaultRegion")->isChecked());QVERIFY(reopened.findChild<QComboBox*>("profileRegion")->isEnabled());QVERIFY(reopened.findChild<QCheckBox*>("useDefaultEdit")->isChecked());QVERIFY(!reopened.findChild<QComboBox*>("profileEdit")->isEnabled());QCOMPARE(reopened.findChild<QComboBox*>("publicationEdit")->currentText(),QString("Create a share link (destination default)"));
   // The readable projection is strictly typed.
   auto state=window.settings()->saveViewState();auto routes=state["captureRouting"].toObject();auto edit=routes["edit"].toObject();edit["destinationEnabled"]="false";routes["edit"]=edit;state["captureRouting"]=routes;QVERIFY(validateUiState({{"schemaVersion",1},{"settings",state}}));
   edit["destinationEnabled"]=false;edit["draft"]="unexpected";routes["edit"]=edit;state["captureRouting"]=routes;QVERIFY(validateUiState({{"schemaVersion",1},{"settings",state}}));
@@ -622,7 +688,7 @@ private slots:
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();window.show();auto* status=window.findChild<QLabel*>("autosaveStatus");QVERIFY(status);QVERIFY(status->text().isEmpty());
   auto* field=window.findChild<QLineEdit*>("maxFiles");field->setText("invalid");QVERIFY(status->text().isEmpty());PUTGD_TRY_VERIFY(field->property("invalid").toBool());QVERIFY(!window.findChild<QLabel*>("maxFilesError")->text().isEmpty());QVERIFY(status->text().isEmpty());
   field->setText("250");PUTGD_TRY_COMPARE(service.snapshot().limits.maxFiles,250);PUTGD_TRY_VERIFY(status->text().isEmpty());
-  fixture.client.failOnce["settings.save"]={"client_unavailable","Synthetic lost reply",{}};field->setText("251");PUTGD_TRY_VERIFY(status->text().contains("Couldn’t save"));QCOMPARE(service.snapshot().limits.maxFiles,250);window.findChild<QPushButton*>("retryAutosave")->click();PUTGD_TRY_COMPARE(service.snapshot().limits.maxFiles,251);PUTGD_TRY_VERIFY(status->text().isEmpty());
+  fixture.client.failOnce["settings.save"]={"client_unavailable","Synthetic lost reply",{}};field->setText("251");PUTGD_TRY_COMPARE(status->text(),QString("Changes not saved"));QVERIFY(status->toolTip().contains("Couldn’t save"));QVERIFY(window.findChild<QLabel*>("autosaveExplanation")->isHidden());QCOMPARE(service.snapshot().limits.maxFiles,250);window.findChild<QPushButton*>("retryAutosave")->click();PUTGD_TRY_COMPARE(service.snapshot().limits.maxFiles,251);PUTGD_TRY_VERIFY(status->text().isEmpty());
  }
 
  void redesignedShortDropdownShowsEveryOptionWithoutScrolling_data(){
@@ -661,8 +727,9 @@ private slots:
   QStringList items;for(int i=0;i<picker->count();++i)items<<picker->itemText(i);
   QCOMPARE(items,QStringList({"Amazon S3","Cloudflare R2","Other S3-compatible"}));
   PUTGD_TRY_COMPARE(picker->currentText(),QString("Other S3-compatible"));
-  bool explained=false;for(auto* label:window.findChildren<QLabel*>())if(label->text().startsWith("Endpoint: https://s3.us-west-004.backblazeb2.com")&&label->text().contains("lacks the conditional writes"))explained=true;
-  QVERIFY(explained);QCOMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["endpoint"].toString(),QString("https://s3.us-west-004.backblazeb2.com"));
+  auto* endpoint=window.findChild<QLabel*>("s3EndpointValue");auto* warning=window.findChild<QLabel*>("s3EndpointWarning");
+  PUTGD_TRY_COMPARE(endpoint->text(),QString("https://s3.us-west-004.backblazeb2.com"));QCOMPARE(endpoint->font().family(),Graphite::monoFamily());
+  QVERIFY(warning->isVisible());QVERIFY(warning->text().contains("lacks the conditional writes"));QCOMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["endpoint"].toString(),QString("https://s3.us-west-004.backblazeb2.com"));
  }
  // #282: a Backblaze B2 destination edits its own fields and saves settings the B2 provider accepts.
  void backblazeDestinationUsesItsOwnFieldsAndSavesValidSettings(){

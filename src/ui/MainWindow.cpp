@@ -101,18 +101,27 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QToolButton::clicked,this,[this,action]{emit actionRequested(action);});bandRow->addWidget(button);actionButtons_<<button;
  }
  connect(helpAction,&QAction::triggered,this,[this,actionHelp]{VisualStyle::showHelp("Capture and clipboard actions",actionHelp,this);});
+ // Edit an image file… whose chooser could not open: the reason under the band
+ // that holds the action, with Try again. A cancel shows nothing.
+ chooserFailure_=new Graphite::Surface("surface",Qt::BottomEdge,center);chooserFailure_->setObjectName("editImageChooserFailure");{auto* row=new QHBoxLayout(chooserFailure_);row->setContentsMargins(16,6,12,6);row->setSpacing(12);
+  chooserError_=new QLabel(chooserFailure_);chooserError_->setObjectName("editImageChooserError");chooserError_->setTextFormat(Qt::PlainText);chooserError_->setWordWrap(true);row->addWidget(chooserError_,1);
+  auto* retry=new QPushButton("Try again",chooserFailure_);retry->setObjectName("retryEditImageChooser");row->addWidget(retry);connect(retry,&QPushButton::clicked,this,[this]{chooseImageToEdit();});
+  auto* dismiss=Graphite::toolButton({},{},"quiet",chooserFailure_);dismiss->setObjectName("dismissEditImageChooserFailure");dismiss->setIcon(Graphite::chromeIcon("close"));dismiss->setAccessibleName("Dismiss");dismiss->setToolTip("Dismiss");row->addWidget(dismiss);connect(dismiss,&QToolButton::clicked,chooserFailure_,&QWidget::hide);}
+ layout->addWidget(chooserFailure_);chooserFailure_->hide();
  pages_=new QStackedWidget;pages_->setObjectName("mainPages");layout->addWidget(pages_,1);history_=new HistoryWindow(session_,pages_);pages_->addWidget(history_);
  // Keep the navigation indexes stable without constructing hidden Settings and
  // destination controls for a History-only visit (#558).
  pages_->addWidget(new QWidget(pages_));pages_->addWidget(new QWidget(pages_));
  connect(tabs_,&QTabBar::currentChanged,this,[this](int row){if(settings_)settings_->clearCompletedFeedback();if(row>0)settings();pages_->setCurrentIndex(row);if(row==1)settings_->activateDestinations();emit viewStateChanged();});
  connect(history_,&HistoryWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(history_,&HistoryWindow::editRequested,this,&MainWindow::editRequested);connect(history_,&HistoryWindow::chooseImageRequested,this,&MainWindow::chooseImageToEdit);
- setStatusBar(new StatusBand(this));
+ setStatusBar(new StatusBand(this));statusBar()->installEventFilter(this);
  // Future capture output, on every page: one line at the left of the status
  // band (where the eye checks state), with the way to change it beside it.
- auto* outputGroup=new QWidget;outputGroup->setObjectName("captureOutputGroup");auto* outputRow=new QHBoxLayout(outputGroup);outputRow->setContentsMargins(0,0,0,0);outputRow->setSpacing(10);
- auto* summary=new Graphite::ElidedLabel(outputGroup);destination_=summary;destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"meta");outputRow->addWidget(destination_,0);
- auto* changeOutput=new QPushButton("Change output…",outputGroup);changeOutput->setObjectName("changeCaptureOutput");VisualStyle::role(changeOutput,"link");changeOutput->setCursor(Qt::PointingHandCursor);outputRow->addWidget(changeOutput);outputRow->addStretch(1);
+ auto* outputGroup=outputGroup_=new QWidget;outputGroup->setObjectName("captureOutputGroup");auto* outputRow=new QHBoxLayout(outputGroup);outputRow->setContentsMargins(0,0,0,0);outputRow->setSpacing(10);
+ // The summary takes the room the band has left and elides only beyond it; it
+ // is a tab stop whose Enter opens the full text.
+ auto* summary=new Graphite::ElidedLabel(outputGroup);destination_=summary;destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"meta");summary->setRevealable(true);summary->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);outputRow->addWidget(destination_,1);
+ auto* changeOutput=new QPushButton("Change output…",outputGroup);changeOutput->setObjectName("changeCaptureOutput");VisualStyle::role(changeOutput,"link");changeOutput->setCursor(Qt::PointingHandCursor);outputRow->addWidget(changeOutput);outputRow->addStretch(0);
  statusBar()->addWidget(outputGroup,1);
  // The running build, from the resident identity About also shows. Stable and
  // nightly builds link to their GitHub release; development builds are text.
@@ -146,14 +155,14 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    const auto first=Settings::effectiveAction(document,"region");bool same=true;for(const auto& name:Settings::actionNames()){const auto action=Settings::effectiveAction(document,name);if(action["destination"]!=first["destination"]||action["profileId"]!=first["profileId"]||action["publicationMode"].toString("default")!=first["publicationMode"].toString("default")){same=false;++exceptions;}}
    label=same?outputName(first):QString("Different for each action");
   }
-  label="Capture output: "+label+(exceptions?" · "+QString::number(exceptions)+(exceptions==1?" action exception":" action exceptions"):QString{});destination_->setText(label);destination_->setAccessibleName(label);destination_->setToolTip(label+"\nOutput for future captures, using your saved settings.");
+  label="Capture output: "+label+(exceptions?" · "+QString::number(exceptions)+(exceptions==1?" action exception":" action exceptions"):QString{});destination_->setText(label);destination_->setAccessibleName(label);destination_->setToolTip(label+"\nOutput for future captures, using your saved settings.");updateSaveStatus();
  };
  connect(changeOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  connect(history_,&HistoryWindow::captureSettingsRequested,changeOutput,&QPushButton::click);
- auto* explanation=new QLabel("Settings save automatically");explanation->setObjectName("autosaveExplanation");VisualStyle::role(explanation,"meta");statusBar()->addPermanentWidget(explanation);
+ explanation_=new QLabel("Settings save automatically");explanation_->setObjectName("autosaveExplanation");VisualStyle::role(explanation_,"meta");statusBar()->addPermanentWidget(explanation_);
  // Autosave describes the Destinations and Settings pages, not History.
- explanation->setVisible(tabs_->currentIndex()>0);connect(tabs_,&QTabBar::currentChanged,explanation,[explanation](int row){explanation->setVisible(row>0);});
- saveStatus_=new QLabel;saveStatus_->setObjectName("autosaveStatus");saveStatus_->setAccessibleName("Settings save status");saveStatus_->setTextFormat(Qt::PlainText);statusBar()->addPermanentWidget(saveStatus_);
+ connect(tabs_,&QTabBar::currentChanged,this,[this]{updateSaveStatus();});
+ saveStatus_=new QLabel;saveStatus_->setObjectName("autosaveStatus");saveStatus_->setAccessibleName("Settings save status");saveStatus_->setTextFormat(Qt::PlainText);VisualStyle::role(saveStatus_,"meta");statusBar()->addPermanentWidget(saveStatus_);
  statusBar()->addPermanentWidget(updateLink_);statusBar()->addPermanentWidget(version_);statusBar()->addPermanentWidget(versionLink_);
  connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});
  updateDestination();updateSaveStatus();tabs_->setCurrentIndex(0);RedesignTheme::apply(*this);
@@ -175,8 +184,22 @@ SettingsWindow* MainWindow::settings(){
  emit settingsCreated(settings_);
  updateSaveStatus();return settings_;
 }
+// One bounded line: a conflict or a refused save reads "Changes not saved" (the
+// page's banner explains it and offers Reload or Retry), and the band never
+// says settings save automatically while they don't.
 void MainWindow::updateSaveStatus(){
- const auto text=settings_?settings_->autosaveText():QString();saveStatus_->setVisible(!text.isEmpty());VisualStyle::feedback(saveStatus_,text,!text.isEmpty()&&text!="Use Store to save credentials");
+ if(!saveStatus_||!explanation_)return;
+ const auto text=settings_?settings_->autosaveText():QString();const bool unsaved=settings_&&settings_->changesUnsaved();
+ VisualStyle::feedback(saveStatus_,unsaved?QString("Changes not saved"):text,unsaved);saveStatus_->setToolTip(unsaved?text:QString());saveStatus_->setAccessibleDescription(unsaved?text:QString());
+ // "Settings save automatically" is the band's least important line: it gives
+ // way before the output summary has to elide (narrow windows, large text).
+ bool room=true;
+ if(tabs_->currentIndex()>0&&!unsaved){
+  const int gap=statusBar()->style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing,nullptr,statusBar());int needed=outputGroup_->sizeHint().width()+explanation_->sizeHint().width()+qMax(gap,6)+24;
+  for(auto* widget:statusBar()->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(widget!=outputGroup_&&widget!=explanation_&&!widget->isWindow()&&widget->isVisibleTo(statusBar()))needed+=widget->sizeHint().width()+qMax(gap,6);
+  room=needed<=statusBar()->width();
+ }
+ explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&room);
 }
 // A band narrower than its buttons first shows Capture window and Capture
 // desktop as icons, then every quiet action; names stay in tooltips and
@@ -192,7 +215,12 @@ MainWindow::~MainWindow(){
 }
 bool MainWindow::chooseImageToEdit(){
  auto folder=QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);if(folder.isEmpty())folder=QDir::homePath();
- return chooser_->open({FileDialog::Mode::Open,"Edit an image file",folder,{},{{"Images",{"*.png","*.jpg","*.jpeg"}}}},[this](const FileDialog::Result& result){if(result.chosen())emit editRequested("file",result.path);});
+ return chooser_->open({FileDialog::Mode::Open,"Edit an image file",folder,{},{{"Images",{"*.png","*.jpg","*.jpeg"}}}},[this](const FileDialog::Result& result){imageChooserFinished(result);});
+}
+void MainWindow::imageChooserFinished(const FileDialog::Result& result){
+ chooserFailure_->setVisible(result.failed());
+ if(result.failed())VisualStyle::feedback(chooserError_,"Edit an image file: the file chooser couldn't open"+(result.error.isEmpty()?QString("."):": "+result.error.left(1).toLower()+result.error.mid(1)+(result.error.endsWith('.')?"":"."))+" Nothing was opened.",true);
+ if(result.chosen())emit editRequested("file",result.path);
 }
 QString MainWindow::droppedImage(const QMimeData* data){
  if(!data||data->urls().size()!=1||!data->urls().first().isLocalFile())return {};
@@ -201,6 +229,7 @@ QString MainWindow::droppedImage(const QMimeData* data){
 }
 bool MainWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched==band_&&event->type()==QEvent::Resize)fitBand();
+ if(watched==statusBar()&&event->type()==QEvent::Resize)updateSaveStatus();
  if(watched!=editButton_)return QMainWindow::eventFilter(watched,event);
  auto highlight=[this](bool on){editButton_->setProperty("dropTarget",on);editButton_->style()->unpolish(editButton_);editButton_->style()->polish(editButton_);};
  switch(event->type()){

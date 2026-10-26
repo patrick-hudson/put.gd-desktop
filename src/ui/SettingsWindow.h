@@ -3,6 +3,7 @@
 #include <functional>
 #include "core/Settings.h"
 #include "RetainedWindow.h"
+#include "FileDialog.h"
 #include <QHash>
 #include <QJsonArray>
 #include <QVector>
@@ -12,7 +13,7 @@
 #include <QPixmap>
 class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;class QProgressBar;
 namespace putgd {
-class ShortcutEditor;class FileDialog;
+class ShortcutEditor;
 class SettingsWindow final:public RetainedWindow {
  Q_OBJECT
 public:
@@ -23,6 +24,8 @@ public:
  bool flushAutosave();
  Error actionSaveError()const;bool hasCredentialInputs()const;
  QString autosaveText()const;
+ // A conflict or a refused save: edits wait in this window, not in the file.
+ bool changesUnsaved()const{return conflict_||autosaveBlocked_;}
  void showCaptureSettings();
  // General → Updates (#293), scrolled into view.
  void showUpdates();
@@ -44,6 +47,10 @@ public:
  // field root|images|videos|text|other) and the package dialog's Choose folder…
  // (diagnosticsFolder): action open|inspect|cancel, answered with the chooser's state.
  void fileDialogCommand(const QString& dialog,const QString& action,const QString& field,std::function<void(Error,QJsonObject)> reply);
+ // How those choosers ended, as their buttons handle it: a chosen folder is
+ // used, a cancel changes nothing, a failure shows its reason beside the
+ // originating row with Try again (tests drive failures through here).
+ void folderChooserFinished(const QString& dialog,const QString& field,const FileDialog::Result&);
  void openDiagnosticsPackage(const QString& operationId={});
  // The two lines a destination row shows, as painted (elided, never wrapped).
  QStringList destinationRowLines(int row)const;
@@ -64,14 +71,14 @@ protected:
 private:
  template<class T>T findControl(const QString& name)const{auto value=findChild<T>(name);return value?value:destinationPage_->findChild<T>(name);}
  static qint64 displayUnit(const QString&);
- bool chooseOutputFolder(QLineEdit* field);
- FileDialog* folderChooser_=nullptr;
+ bool chooseOutputFolder(QLineEdit* field);void outputFolderChosen(QLineEdit* field,const FileDialog::Result&);
+ FileDialog* folderChooser_=nullptr;QHash<QLineEdit*,QWidget*> chooserFailures_;
  void queueCaptureEdit(QWidget*);void updateCaptureInheritance();
- QString destinationDefaultSharing(const QString& profileId)const;QJsonObject captureRoutingState()const;
+ QString destinationDefaultSharing(const QString& profileId)const;QJsonObject captureRoutingState()const;QString outputSummary(QComboBox* profile,QComboBox* sharing)const;
  QComboBox *captureProfile_=nullptr,*captureSharing_=nullptr;
  QToolButton* captureExceptions_=nullptr;QHash<QString,QCheckBox*> useCaptureDefault_;QHash<QString,QWidget*> captureEditors_;
  bool captureDefaultsEnabled_=false,captureRoutingEdited_=false;
- QLabel* captureOutputNotice_=nullptr;QHash<QString,QLabel*> captureStatus_;
+ QLabel* captureOutputNotice_=nullptr;QHash<QString,QLabel*> captureStatus_,captureSummary_;QHash<QString,QCheckBox*> captureOverride_;
  // The no-output notice under Destination, with Keep a local copy and Choose/Add a destination.
  QWidget* captureOutputBlock_=nullptr;QPushButton* chooseOutput_=nullptr;
  bool editChangedSinceSubmission(const QString&)const;

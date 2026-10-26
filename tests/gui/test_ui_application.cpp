@@ -25,6 +25,9 @@
 #include <QStyledItemDelegate>
 #include <QtTest>
 #include <QTimer>
+#include <QStatusBar>
+#include <QStyleOptionToolButton>
+#include "ui/Graphite.h"
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::test;
 class ControlDevice:public QIODevice {
@@ -429,6 +432,35 @@ private slots:
   QString found;QVERIFY2(putgd::test::waitFor([&]{found=problem();return found.isEmpty();}),qPrintable(found));
   QVERIFY2(version->height()>=version->fontMetrics().lineSpacing(),qPrintable(QString("version link %1 px for a %2 px line").arg(version->height()).arg(version->fontMetrics().lineSpacing())));
   QVERIFY(window.rect().contains(QRect(version->mapTo(&window,QPoint()),version->size())));
+ }
+ // The status band at the minimum width and 150% text, with an update offered and
+ // unsaved settings: one bounded "Changes not saved", no "save automatically",
+ // and the summary, Change output…, update link and version neither overlap
+ // nor leave the band. The split button keeps its 32 px arrow zone in the band.
+ void statusBandFitsAtLargeTextWhileChangesWait(){
+  auto font=QApplication::font();const auto original=font;auto restore=qScopeGuard([&]{QApplication::setFont(original);});font.setPixelSize(21);QApplication::setFont(font);
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=QJsonObject{{"supported",true},{"result",QJsonObject{{"updateAvailable",true},{"latest","26.1231.99999-nightly"}}}};return data;});
+  MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));fixture.session.refreshSnapshot();
+  auto* update=window.findChild<QPushButton*>("updateAvailable");PUTGD_TRY_VERIFY(update->isVisible());
+  auto* explanation=window.findChild<QLabel*>("autosaveExplanation");auto* status=window.findChild<QLabel*>("autosaveStatus");
+  // "Settings save automatically" gives way before the summary has to elide.
+  auto* elided=window.findChild<Graphite::ElidedLabel*>("captureOutputSummary");PUTGD_TRY_VERIFY(explanation->isHidden()||!elided->elided());
+  fixture.client.failOnce["settings.save"]={"client_unavailable","Synthetic lost reply",{}};window.findChild<QLineEdit*>("maxFiles")->setText("251");
+  PUTGD_TRY_COMPARE(status->text(),QString("Changes not saved"));QVERIFY(status->isVisible());QVERIFY(explanation->isHidden());QVERIFY(!status->text().contains('\n'));
+  auto* band=window.statusBar();auto* summary=window.findChild<QLabel*>("captureOutputSummary");auto* change=window.findChild<QPushButton*>("changeCaptureOutput");
+  const auto rectIn=[&](QWidget* w){return QRect(w->mapTo(band,QPoint()),w->size());};
+  QString found;QVERIFY2(putgd::test::waitFor([&]{
+   found.clear();QWidgetList shown{summary,change,status,update};for(auto* w:band->findChildren<QWidget*>()){if((w->objectName()=="appVersion"||w->objectName()=="appVersionLink")&&w->isVisible())shown<<w;}
+   for(int i=0;i<shown.size()&&found.isEmpty();++i){if(!band->rect().contains(rectIn(shown[i])))found=shown[i]->objectName()+" leaves the band";for(int j=i+1;j<shown.size()&&found.isEmpty();++j)if(rectIn(shown[i]).intersects(rectIn(shown[j])))found=shown[i]->objectName()+" overlaps "+shown[j]->objectName();}
+   if(found.isEmpty()&&change->width()<change->sizeHint().width())found="Change output… is cut";
+   if(found.isEmpty()&&summary->width()<summary->minimumSizeHint().width())found="the summary is under its minimum";
+   return found.isEmpty();}),qPrintable(found));
+  // The summary is a tab stop whatever its width.
+  QCOMPARE(summary->focusPolicy(),Qt::StrongFocus);
+  for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->popupMode()==QToolButton::MenuButtonPopup){
+   QStyleOptionToolButton option;option.initFrom(button);option.rect=button->rect();option.features=QStyleOptionToolButton::MenuButtonPopup|QStyleOptionToolButton::HasMenu;
+   QVERIFY(button->style()->subControlRect(QStyle::CC_ToolButton,&option,QStyle::SC_ToolButtonMenu,button).width()>=32);}
  }
 };
 QTEST_MAIN(UiApplicationTest)
