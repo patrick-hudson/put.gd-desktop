@@ -96,7 +96,7 @@ int main(int argc,char** argv){
  }
  if(argc==2&&(std::strcmp(argv[1],"--version")==0||std::strcmp(argv[1],"-v")==0)){std::printf("putgd-capture %s\n",putgd::buildVersion());return 0;}
  putgd::UiControlPipes handles;if(!handles.valid())return 2;
- // This text-free X11 helper paints raster overlays only. Avoid initializing
+ // This X11 helper paints native overlays and a compact instruction badge. Avoid initializing
  // GTK/style plugins on every screenshot; the separate
  // settings/history process keeps its native fonts and dialogs. Leave cursor,
  // display identity and all DPI/scaling settings unchanged.

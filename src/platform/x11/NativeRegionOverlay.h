@@ -22,14 +22,19 @@ public:
  void start() override;
  void cancel(Error error={"cancelled","Region selection cancelled",{}}) override;
 private:
+ friend class NativeRegionAccessible;
+ void describe();
  void initializeSurfaces();
  void grabInput();
- struct Surface {CaptureFrame frame;xcb_window_t window=XCB_WINDOW_NONE;QRect outline;int pen=1;};
+ struct Surface {CaptureFrame frame;xcb_window_t window=XCB_WINDOW_NONE;QRect outline;int pen=1;QImage instructions;QPoint instructionsAt;};
  void events();
  QPointF logicalPoint(QPoint)const;
  void move(QPointF);
  void release(QPointF);
  void draw(Surface&);
+ void key(int,Qt::KeyboardModifiers,QPoint);
+ int screenAt(QPoint)const;
+ void prepareInstructions(Surface&);
  void finish();
  bool checked(xcb_void_cookie_t);
  QList<CaptureFrame> frames_;
@@ -50,6 +55,6 @@ private:
  bool pointerGrabbed_=false,keyboardGrabbed_=false;
  bool initialized_=false;
  QElapsedTimer grabClock_;
- int grabAttempts_=0;
+ int grabAttempts_=0,keyboardScreen_=-1;
 };
 }

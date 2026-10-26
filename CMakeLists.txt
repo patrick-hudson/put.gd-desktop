@@ -1241,6 +1241,22 @@ if(BUILD_TESTING)
   endforeach()
 endif()
 
+if(BUILD_TESTING)
+  add_executable(test_region_selection tests/unit/test_region_selection.cpp)
+  target_include_directories(test_region_selection PRIVATE src)
+  target_link_libraries(test_region_selection PRIVATE putgd_build_options Qt6::Widgets Qt6::Test)
+  add_test(NAME region_selection_contract COMMAND test_region_selection)
+endif()
+
+if(BUILD_TESTING AND TARGET putgd_kde_region_process)
+  # Exercise the production QWidget without a native layer role. Real KWin
+  # keyboard focus and transparent-frame dismissal remain desktop gates.
+  add_executable(test_kde_region_overlay tests/gui/test_kde_region_overlay.cpp src/platform/kde/KdeRegionOverlay.cpp)
+  target_link_libraries(test_kde_region_overlay PRIVATE putgd_kde_region_process Qt6::Widgets Qt6::Test)
+  add_test(NAME kde_region_overlay COMMAND test_kde_region_overlay)
+  set_tests_properties(kde_region_overlay PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()
+
 if(BUILD_TESTING AND TARGET putgd_x11)
   add_executable(test_native_region_overlay tests/desktop/x11/test_native_region_overlay.cpp)
   target_link_libraries(test_native_region_overlay PRIVATE putgd_x11 putgd_capture_cursor Qt6::Test PkgConfig::PUTGD_XTEST PkgConfig::PUTGD_XCB)
