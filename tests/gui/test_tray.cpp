@@ -97,7 +97,7 @@ private slots:
  }
  void errorRecoveryKeepsItsCategory(){
   QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));Source source;OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());QStringList views;TrayController controller(operations,[&](const QString& view){views<<view;},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
-  controller.notifyFailure({"archive_failed","Synthetic local-save failure",{}});QVERIFY(tray->toolTip().contains("Local save needs attention"));auto* recovery=tray->contextMenu()->findChild<QAction*>("trayFailedUploads");recovery->trigger();QVERIFY(views.last().startsWith("actionRecovery:"));QVERIFY(views.last().contains("archive_failed"));controller.notifyFailure({"output_required","Choose an output",{}});QVERIFY(tray->toolTip().contains("Destination needs attention"));recovery->trigger();QVERIFY(views.last().contains("output_required"));controller.notifyFailure({"unknown_failure","Synthetic error",{}});QVERIFY(tray->toolTip().contains("Action needs attention"));recovery->trigger();QCOMPARE(views.last(),QString("history"));controller.invokeShortcut("synthetic-unknown-action");PUTGD_TRY_VERIFY(tray->toolTip().contains("Action needs attention"));
+  controller.notifyFailure({"archive_failed","Synthetic local-save failure",{}});QVERIFY(tray->toolTip().contains("Local save needs attention"));QVERIFY(tray->toolTip().startsWith("Needs attention"));auto* recovery=tray->contextMenu()->findChild<QAction*>("trayFailedUploads");recovery->trigger();QVERIFY(views.last().startsWith("actionRecovery:"));QVERIFY(views.last().contains("archive_failed"));controller.notifyFailure({"output_required","Choose an output",{}});QVERIFY(tray->toolTip().contains("Destination needs attention"));recovery->trigger();QVERIFY(views.last().contains("output_required"));controller.notifyFailure({"unknown_failure","Synthetic error",{}});QVERIFY(tray->toolTip().contains("Action needs attention"));recovery->trigger();QCOMPARE(views.last(),QString("history"));controller.invokeShortcut("synthetic-unknown-action");PUTGD_TRY_VERIFY(tray->toolTip().contains("Action needs attention"));
  }
  void failedOperationsWithoutItemsShowTheirError() {
   const QJsonObject tooLarge{{"state","failed"},{"copyStatus","no_result"},{"items",QJsonArray{}},{"error",QJsonObject{{"code","edit_input_too_large"},{"message","This image is too large to edit; use a smaller copy"}}}};
@@ -182,7 +182,7 @@ private slots:
   operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});PUTGD_TRY_COMPARE(provider->requests.size(),1);
   provider->requests.first().progress({"uploading",1,2});PUTGD_TRY_VERIFY(tray->icon().pixmap(24,24).toImage()!=idle);QElapsedTimer visible;visible.start();
   bool idleGap=false;QTimer sampler;sampler.setInterval(1);connect(&sampler,&QTimer::timeout,this,[&]{idleGap=idleGap||tray->icon().pixmap(24,24).toImage()==idle;});sampler.start();
-  provider->completions.takeFirst()();PUTGD_TRY_VERIFY(tray->toolTip().contains("Upload complete"));
+  provider->completions.takeFirst()();PUTGD_TRY_VERIFY(tray->toolTip().startsWith("Upload complete"));
   putgd::test::settle(qMax(0,450-int(visible.elapsed())));PUTGD_TRY_VERIFY2(!idleGap,"Visible progress must keep its active frame through receipt lookup and completion");sampler.stop();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idle);
  }
@@ -278,7 +278,7 @@ private slots:
   PUTGD_TRY_VERIFY(tray->toolTip().contains("Estimated 50%"));
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),half);
   provider->completions.takeFirst()();
-  PUTGD_TRY_VERIFY(tray->toolTip().contains("Upload complete"));
+  PUTGD_TRY_VERIFY(tray->toolTip().startsWith("Upload complete"));
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).upload).pixmap(24,24).toImage());
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
  }
@@ -352,7 +352,7 @@ private slots:
   operations.invalidateCopyEligibility();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   HistoryStore store(operations.databasePath());QCOMPARE(store.operation(id).copyStatus,QString("suppressed"));QCOMPARE(store.operation(id).state,QString("completed"));
   const auto success=VisualStyle::icon("tray",Theme::trayTints(false).upload).pixmap(24,24).toImage();
-  QElapsedTimer watch;watch.start();while(watch.elapsed()<1000){const auto current=tray->icon().pixmap(24,24).toImage();QVERIFY(current==blue||(current==success&&tray->toolTip().contains("Upload complete")));putgd::test::settle(20);}
+  QElapsedTimer watch;watch.start();while(watch.elapsed()<1000){const auto current=tray->icon().pixmap(24,24).toImage();QVERIFY(current==blue||(current==success&&tray->toolTip().startsWith("Upload complete")));putgd::test::settle(20);}
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),blue);
  }
 
@@ -758,7 +758,7 @@ private slots:
   provider->requests.first().progress({"finalizing",4*1024*1024,4*1024*1024});
   std::exchange(provider->completions,{}).first()();
   const auto success=VisualStyle::icon("tray",Theme::trayTints(false).upload).pixmap(24,24).toImage();
-  PUTGD_TRY_VERIFY(tray->icon().pixmap(24,24).toImage()==success&&tray->toolTip().contains("Upload complete"));
+  PUTGD_TRY_VERIFY(tray->icon().pixmap(24,24).toImage()==success&&tray->toolTip().startsWith("Upload complete"));
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idle);
  }
 };

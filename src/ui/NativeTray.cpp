@@ -194,7 +194,7 @@ public:
  QVariantMap properties(bool menu) const;
  void dispatch(const QString& action);
  void aboutToShow(){emit q_->menuAboutToShow();}
- void setActivity(const QColor& color,const QString& description,int percent,int recording);
+ void setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title);
  void notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions);
  // The update entry's label, empty while it is hidden, and the layout revision
  // that changes with it.
@@ -233,7 +233,7 @@ private:
  int percent_ = -1;
  int recording_ = 0;
  QString recordingText_;
- QString activityText_;
+ QString activityText_,activityTitle_="put.gd";
  QTimer retry_;
  quint64 generation_ = 0, hostQuery_ = 0;
  int attempts_ = 0, notificationsInFlight_ = 0;
@@ -430,12 +430,13 @@ void NativeTrayPrivate::notificationActivated(uint id,const QString& action) {
  });
 }
 void NativeTrayPrivate::notificationClosed(uint id,uint) {notificationLinks_.remove(id);notificationActions_.remove(id);residentNotifications_.remove(id);}
-void NativeTrayPrivate::setActivity(const QColor& color,const QString& description,int percent,int recording) {
+void NativeTrayPrivate::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title) {
  percent=qBound(-2,percent,100);
  const bool iconChanged=color!=color_||percent!=percent_||recording!=recording_;
- const bool textChanged=description!=activityText_;
+ const auto tooltipTitle=title.isEmpty()?(percent==-2?QString("Needs attention"):percent>=0?QString("Uploading"):QString("put.gd")):title;
+ const bool textChanged=description!=activityText_||tooltipTitle!=activityTitle_;
  if(!iconChanged&&!textChanged)return;
- color_=color;activityText_=description;percent_=percent;recording_=recording;
+ color_=color;activityText_=description;activityTitle_=tooltipTitle;percent_=percent;recording_=recording;
  if(iconChanged)icons_=brandIcon(color,percent,recording);
  const auto props=properties(false);QVariantMap changed;
  if(textChanged)changed.insert("ToolTip",props["ToolTip"]);
@@ -452,7 +453,7 @@ QVariantMap NativeTrayPrivate::properties(bool menu) const {
   {"IconName", ""}, {"IconPixmap", QVariant::fromValue(icons_)},
   {"OverlayIconName", ""}, {"OverlayIconPixmap", QVariant::fromValue(NativeImages{})},
   {"AttentionIconName", ""}, {"AttentionIconPixmap", QVariant::fromValue(NativeImages{})}, {"AttentionMovieName", ""},
-  {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, activityText_.isEmpty()?QString("put.gd — Screen capture and file sharing"):QString("put.gd — Working"), activityText_})}};
+  {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, activityTitle_, activityText_})}};
 }
 QString TrayExport::introspect(const QString&) const {
  QString xml = "<interface name=\"org.freedesktop.DBus.Properties\">"
@@ -587,7 +588,7 @@ NativeTray::NativeTray(const QDBusConnection& bus, QObject* parent): QObject(par
 NativeTray::~NativeTray() = default;
 bool NativeTray::available() const { return d_->available(); }
 bool NativeTray::availabilityKnown() const { return d_->availabilityKnown(); }
-void NativeTray::setActivity(const QColor& color,const QString& description,int percent,int recording) {d_->setActivity(color,description,percent,recording);}
+void NativeTray::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title) {d_->setActivity(color,description,percent,recording,title);}
 void NativeTray::setUpdateLabel(const QString& label) {d_->setUpdateLabel(label);}
 void NativeTray::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {d_->setCommands(shortcuts,upload,uploads,failed,recording,attention);}
 void NativeTrayPrivate::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {

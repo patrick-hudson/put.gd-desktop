@@ -27,7 +27,7 @@ namespace {
 bool meaningfulError(const QJsonObject& error) {
  const auto code=error["code"].toString();return !code.isEmpty()&&code!="copy_suppressed";
 }
-const QString idleTooltip = "put.gd — Screen capture and file sharing";
+const QString idleTooltip = "put.gd";
 // Which way a link or folder opened on the host (#326), never the target itself.
 void logOpened(const QString& target,const QJsonObject& result) {
  auto fields=result;fields["target"]=target;
@@ -450,18 +450,19 @@ void TrayController::refreshActivity() {
   else if(operations_.storageActive())percent=uploadPercent(observations);
   else percent=iconPercent_;
  }
- if(color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_)return;
+ const auto tooltipTitle=errorPending_?QString("Needs attention"):uploadCompleted_?QString("Upload complete"):uploadVisible_||operations_.storageActive()?QString("Uploading"):idleTooltip;
+ if(tooltipTitle==activityTitle_&&color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_)return;
 #ifdef Q_OS_LINUX
- if(native_)native_->setActivity(color,text,percent,recording);
+ if(native_)native_->setActivity(color,text,percent,recording,tooltipTitle);
  else
 #endif
  if(tray_) {
   if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_)tray_->setIcon(VisualStyle::icon("tray",color,percent,recording));
-  if(text!=activityText_)tray_->setToolTip(text.isEmpty()?idleTooltip:QString("put.gd — Working\n")+text);
+  if(text!=activityText_||tooltipTitle!=activityTitle_)tray_->setToolTip(tooltipTitle+(text.isEmpty()||text==tooltipTitle?QString{}:QString("\n")+text));
  }
  // The tooltip's title and activity lines as the tray now shows them (#250).
- if(text!=activityText_)logging::debug(logUi(),"Tray tooltip changed",{{"title",text.isEmpty()?idleTooltip:QString("put.gd — Working")},{"activity",text}});
- iconColor_=color;iconPercent_=percent;iconRecording_=recording;activityText_=text;
+ if(text!=activityText_||tooltipTitle!=activityTitle_)logging::debug(logUi(),"Tray tooltip changed",{{"title",tooltipTitle},{"activity",text}});
+ iconColor_=color;iconPercent_=percent;iconRecording_=recording;activityText_=text;activityTitle_=tooltipTitle;
 }
 void TrayController::latchFailure(const Error& error,const QJsonObject& operation) {
  auto cause=error;bool uploadFailed=false,localFailed=error.code=="archive_failed";

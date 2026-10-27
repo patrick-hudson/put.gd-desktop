@@ -414,10 +414,15 @@ private slots:
    if(record["message"]=="Tray tooltip changed") {
     QCOMPARE(record["level"].toString(),QString("debug"));
     progress=progress||fields["activity"].toString().contains("2 MiB of 4 MiB");
-    idleAgain=idleAgain||(fields["activity"].toString().isEmpty()&&fields["title"]=="put.gd — Screen capture and file sharing");
+    idleAgain=idleAgain||(fields["activity"].toString().isEmpty()&&fields["title"]=="put.gd");
    }
   }
   QVERIFY(toast);QVERIFY(progress);QVERIFY(idleAgain);
+ }
+ void tooltipTitlesFollowActivityState(){
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());
+  const auto title=[&]{const auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});return qdbus_cast<WireTooltip>(qdbus_cast<QVariantMap>(result.arguments().first())["ToolTip"]).title;};
+  QCOMPARE(title(),QString("put.gd"));tray.setActivity(Theme::trayTints(false).idle,"Transfer progress",50);QCOMPARE(title(),QString("Uploading"));tray.setActivity(Theme::trayTints(false).upload,"Finished",-1,0,"Upload complete");QCOMPARE(title(),QString("Upload complete"));tray.setActivity(Theme::trayTints(false).error,"Failure",-2);QCOMPARE(title(),QString("Needs attention"));tray.setActivity(Theme::trayTints(false).idle,{});QCOMPARE(title(),QString("put.gd"));
  }
  void activitySignalsChangeOnlyTheAffectedPropertiesAndSurviveHostRestart() {
   NativeTray tray;PUTGD_TRY_VERIFY(tray.available());ActivitySignalPeer observer;
@@ -436,7 +441,7 @@ private slots:
   for(int index=0;index<pixels.size();index+=4)if(uchar(pixels[index])==255&&uchar(pixels[index+1])==amber.red()&&uchar(pixels[index+2])==amber.green()&&uchar(pixels[index+3])==amber.blue())++opaqueAmber;
   QVERIFY(opaqueAmber>10);
   const auto tooltips=observer.tooltips;
-  tray.setActivity(Theme::trayTints(false).error,"Finalizing: 4 MiB of 4 MiB (100%)");PUTGD_TRY_COMPARE(observer.icons,4);
+  tray.setActivity(Theme::trayTints(false).error,"Finalizing: 4 MiB of 4 MiB (100%)",100);PUTGD_TRY_COMPARE(observer.icons,4);
   QCOMPARE(observer.tooltips,tooltips);
   tray.setActivity(QColor("#9bbcff"),{});PUTGD_TRY_COMPARE(observer.icons,5);
  }
