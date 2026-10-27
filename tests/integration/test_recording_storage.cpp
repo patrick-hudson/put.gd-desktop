@@ -74,9 +74,17 @@ private slots:
         session.openReview();
         QVERIFY(session.review_->drive({{"action", "format"}, {"format", "gif"}}).code.isEmpty());
         QVERIFY(!session.config_.audio.system); QCOMPARE(session.audioCaptured_, captured);
+        QCOMPARE(session.config_.toJson()["format"].toString(), QString("gif"));
+        QVERIFY(!session.config_.toJson()["audio"].toObject()["system"].toBool());
         QVERIFY(session.review_->drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}}).code.isEmpty());
         QCOMPARE(session.config_.audio.system, captured); QCOMPARE(session.audioCaptured_, captured);
-        QCOMPARE(session.review_->findChild<QLabel*>("exportAudioSummary")->text(), captured ? QString("Silent preview · Export includes system audio") : QString("Silent preview · No audio recorded"));
+        const auto config = session.config_.toJson();
+        QCOMPARE(config["format"].toString(), QString("mp4"));
+        QCOMPARE(config["codec"].toString(), QString("h264"));
+        QCOMPARE(config["audio"].toObject()["system"].toBool(), captured);
+        const auto audio = session.review_->findChild<QLabel*>("exportAudioSummary")->text();
+        QVERIFY(audio.contains(captured ? QString("System audio included") : QString("No audio recorded")));
+        QVERIFY(audio.contains("Preview muted"));
     }
     void automaticStop_data() {
         QTest::addColumn<bool>("paused");
