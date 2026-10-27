@@ -13,7 +13,7 @@
 #include <QWidget>
 
 class QPushButton;class QApplication;class QLineEdit;class QMessageBox;
-class QFormLayout;class QAbstractButton;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
+class QGridLayout;class QFormLayout;class QAbstractButton;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
 
 // The Graphite visual language (2026-10-26): one painted control set for every
 // app-owned surface. Paint owns appearance; the Qt widget underneath keeps
@@ -126,6 +126,38 @@ QFrame* rule(QWidget* parent = nullptr, Qt::Orientation = Qt::Horizontal);
 // A label in a type role: "page", "section", "body", "strong", "meta",
 // "micro", "muted" and the status roles "success", "warning", "danger".
 QLabel* label(const QString& text, const char* role = "body", QWidget* parent = nullptr);
+// Shared inline notice. Text wraps; actions move below it when space is short.
+// Hosts own visibility and connect the buttons to existing session commands.
+class Banner final : public QWidget {
+    Q_OBJECT
+public:
+    enum class Tone { Info, Warning, Error, Success };
+    explicit Banner(Tone tone, const QString& text = {}, QWidget* parent = nullptr);
+    void setTone(Tone);
+    Tone tone() const { return tone_; }
+    void setText(const QString&);
+    void setIcon(const QIcon&); // Null restores the tone's glyph.
+    void setAction(const QString& text); // Empty hides the action.
+    void setDismissible(bool, const QString& name = QStringLiteral("Dismiss notice"));
+    QLabel* textLabel() const { return text_; }
+    QPushButton* actionButton() const { return action_; }
+    QToolButton* dismissButton() const { return dismiss_; }
+    // Complex feedback can retain its existing accessible controls and IDs.
+    void setContentWidget(QWidget*);
+protected:
+    void paintEvent(QPaintEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
+private:
+    void placeAction();
+    Tone tone_;
+    QIcon icon_;
+    QGridLayout* row_;
+    QLabel* text_;
+    QWidget* content_;
+    QPushButton* action_;
+    QToolButton* dismiss_;
+    bool stacked_ = false;
+};
 // Normal readable text with an amber alert glyph; include a word naming the problem.
 QLabel* warningLabel(const QString& text, QWidget* parent = nullptr);
 // One privacy warning for image and recording blur; the action uses the host

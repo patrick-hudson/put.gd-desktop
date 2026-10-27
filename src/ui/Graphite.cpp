@@ -1715,6 +1715,76 @@ QLabel* warningLabel(const QString& text, QWidget* parent) {
     VisualStyle::role(label, "warning");
     return label;
 }
+Banner::Banner(Tone tone, const QString& text, QWidget* parent) : QWidget(parent), tone_(tone) {
+    row_ = new QGridLayout(this);
+    row_->setContentsMargins(scaled(12) + scaled(Metric::icon) + 8, 8, 12, 8);
+    row_->setHorizontalSpacing(8);
+    row_->setVerticalSpacing(4);
+    row_->setColumnStretch(0, 1);
+    text_ = label(text, "body", this);
+    text_->setTextFormat(Qt::PlainText);
+    text_->setWordWrap(true);
+    text_->setMinimumWidth(0);
+    content_ = text_;
+    row_->addWidget(content_, 0, 0);
+    action_ = new QPushButton(this);
+    VisualStyle::role(action_, "quiet");
+    row_->addWidget(action_, 0, 1, Qt::AlignTop);
+    action_->hide();
+    dismiss_ = toolButton({}, {}, "quiet", this);
+    dismiss_->setIcon(chromeIcon("close"));
+    dismiss_->setFixedSize(scaled(Metric::iconTarget), scaled(Metric::iconTarget));
+    row_->addWidget(dismiss_, 0, 2, Qt::AlignTop);
+    setDismissible(false);
+    connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
+}
+void Banner::setTone(Tone tone) { tone_ = tone; update(); }
+void Banner::setText(const QString& text) { text_->setText(text); placeAction(); }
+void Banner::setIcon(const QIcon& icon) { icon_ = icon; update(); }
+void Banner::setAction(const QString& text) {
+    action_->setText(text);
+    action_->setVisible(!text.isEmpty());
+    placeAction();
+}
+void Banner::setDismissible(bool visible, const QString& name) {
+    dismiss_->setAccessibleName(name);
+    dismiss_->setToolTip(name);
+    dismiss_->setVisible(visible);
+    placeAction();
+}
+void Banner::setContentWidget(QWidget* widget) {
+    if (!widget || widget == content_) return;
+    row_->removeWidget(content_);
+    content_->hide();
+    content_ = widget;
+    row_->addWidget(content_, 0, 0);
+    content_->show();
+    placeAction();
+}
+void Banner::placeAction() {
+    const auto margins = row_->contentsMargins();
+    const int available = width() - margins.left() - margins.right() - (dismiss_->isHidden() ? 0 : dismiss_->sizeHint().width() + 8);
+    const bool stacked = !action_->isHidden() && content_->sizeHint().width() + action_->sizeHint().width() + 8 > available;
+    if (stacked == stacked_) return;
+    stacked_ = stacked;
+    row_->removeWidget(action_);
+    row_->addWidget(action_, stacked ? 1 : 0, stacked ? 0 : 1, Qt::AlignLeft | Qt::AlignTop);
+    row_->invalidate();
+}
+void Banner::resizeEvent(QResizeEvent* event) { QWidget::resizeEvent(event); placeAction(); }
+void Banner::paintEvent(QPaintEvent*) {
+    const auto& colors = t();
+    const QColor tone = tone_ == Tone::Warning ? colors.warning : tone_ == Tone::Error ? colors.danger : tone_ == Tone::Success ? colors.success : colors.textSecondary;
+    QPainter painter(this);
+    painter.fillRect(rect(), colors.surface);
+    painter.setPen(colors.borderStrong);
+    painter.drawRect(rect().adjusted(0, 0, -1, -1));
+    const int side = scaled(Metric::icon);
+    const QRect glyph(scaled(12), 8 + std::max(0, (fontMetrics().height() - side) / 2), side, side);
+    if (!icon_.isNull()) icon_.paint(&painter, glyph);
+    else if (tone_ == Tone::Success) paintChromeGlyph(painter, glyph, "check", tone);
+    else painter.drawImage(glyph, IconArt::symbol(tone_ == Tone::Info ? "info" : "alert", colors.surface, std::max(1, (side + 23) / 24), tone));
+}
 QString blurWarningText() {
     return QStringLiteral("Blur may be reversible. Use Redact for private information.");
 }
