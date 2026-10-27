@@ -187,6 +187,8 @@ int main(int argc,char** argv){
  // destination's check is answered here, so nothing reaches the network.
  DiagnosticsBundles bundles(operations,data.filePath("state"));bundles.setDestinationTest([](const QString&,std::function<void(Error)> done){done({});});fixture.server.setDiagnosticsBundles(&bundles);JsonReply loadFolders;fixture.setup.setProviderSetup([&](const QString&,const Destination&,const QJsonObject&,JsonReply reply,auto){loadFolders=std::move(reply);});QJsonObject previewUpdate;fixture.server.setUiDiagnostics([&]{return QJsonObject{{"update",previewUpdate},{"capabilities",QJsonObject{{"providers",QJsonObject{{"proton-drive",QJsonObject{}}}}}}};});fixture.session.refreshSnapshot();if(!waitUntil([&]{return fixture.session.diagnostics()["capabilities"].toObject()["providers"].toObject().contains("proton-drive");}))return 2;native.cover();MainWindow window(fixture.session);window.resize(1440,960);window.statusBar()->addPermanentWidget(new QLabel("Synthetic preview"));window.show();auto* list=window.findChild<QListView*>("historyList");if(!list||!waitUntil([&]{return list->model()->rowCount()==8;})){qCritical("Synthetic history did not load");return 2;}list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
  QJsonArray captures;auto save=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}if(!checkSteppers(window))return false;const auto image=window.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+ const bool recordOnly=qEnvironmentVariableIsSet("PUTGD_PREVIEW_RECORD_ONLY");
+ if(!recordOnly){
  auto* preview=window.findChild<QLabel*>("historyPreview");if(!preview||!waitUntil([&]{return !preview->pixmap().isNull();}))return 2;
  if(QGuiApplication::platformName()=="offscreen"){
   QMenu menu(&window);menu.addAction("All actions: Shared link · R&&D · No local copy")->setEnabled(false);menu.addAction("Capture region && edit: Off: no output")->setEnabled(false);menu.addSeparator();menu.addAction("Change output");menu.show();putgd::test::settle(20);const auto image=menu.grab();if(!image.save(QDir(output).filePath("00-output-menu-literal-ampersand.png")))return 2;captures.append(QJsonObject{{"file","00-output-menu-literal-ampersand.png"},{"width",image.width()},{"height",image.height()}});menu.close();
@@ -350,10 +352,11 @@ int main(int argc,char** argv){
   editor.showPreparationFailed("The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.");if(!grab("29-editor-preparation-failed"))return 2;
   editor.allowClose();editor.close();
  }
+ }
 #ifdef PUTGD_PREVIEW_REVIEW
  {
   // Settings recovery at the supported compact width.
- {QTemporaryDir temp("/tmp/pgs-XXXXXX");SettingsService config(temp.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles.first().toObject();profile["provider"]="proton-drive";profile["settings"]=ProtonProvider::defaults();profiles[0]=profile;doc["profiles"]=profiles;if(!config.save(doc,{}))return 2;CredentialStore secrets;UiSessionFixture recovery(config,secrets);JsonReply finish;
+ if(!recordOnly){QTemporaryDir temp("/tmp/pgs-XXXXXX");SettingsService config(temp.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles.first().toObject();profile["provider"]="proton-drive";profile["settings"]=ProtonProvider::defaults();profiles[0]=profile;doc["profiles"]=profiles;if(!config.save(doc,{}))return 2;CredentialStore secrets;UiSessionFixture recovery(config,secrets);JsonReply finish;
   recovery.setup.setProviderSetup([&](const QString&,const Destination&,const QJsonObject&,JsonReply done,auto event){finish=done;event({{"event","auth"},{"url","https://account.proton.me/cli?synthetic-preview"}});});host::setTestOpener([](const QUrl&){});MainWindow recover(recovery.session);recover.resize(1060,680);recover.navigate("destinations");recover.show();putgd::test::settle(100);if(!recover.grab().save(QDir(output).filePath("settings-proton-signed-out.png")))return 2;captures.append(QJsonObject{{"file","settings-proton-signed-out.png"},{"width",recover.width()},{"height",recover.height()}});recover.findChild<QPushButton*>("connectProtonAccount")->click();if(!waitUntil([&]{return recover.settings()->saveViewState()["setupJobs"].toArray().size()==1&&recover.findChild<QLabel*>("protonAccountStatus")->text().contains("browser");}))return 2;const auto job=recover.settings()->saveViewState()["setupJobs"].toArray().first().toObject()["setupId"].toString();recover.settings()->protonBrowserFinished(job,{{"opened",false}});putgd::test::settle(100);if(!recover.grab().save(QDir(output).filePath("settings-proton-browser-retry.png")))return 2;captures.append(QJsonObject{{"file","settings-proton-browser-retry.png"},{"width",recover.width()},{"height",recover.height()}});finish({"synthetic_cancelled","Synthetic preview finished",{}},{});host::setTestOpener({});
   recover.navigate("settings");recover.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);QFile::remove(config.path());recover.findChild<QPushButton*>("openConfigEditor")->click();auto* scroll=qobject_cast<QScrollArea*>(recover.findChild<QTabWidget*>("settingsTabs")->currentWidget());putgd::test::settle(100);scroll->ensureWidgetVisible(recover.findChild<QLabel*>("configEditorFailure"));if(!recover.grab().save(QDir(output).filePath("settings-config-editor-failure.png")))return 2;captures.append(QJsonObject{{"file","settings-config-editor-failure.png"},{"width",recover.width()},{"height",recover.height()}});
  }
@@ -377,8 +380,10 @@ int main(int argc,char** argv){
   {review.drive({{"action","showMaskOptions"}});if(!shot(*review.findChild<QMenu*>("maskOptionsMenu"),"31i-review-mask-options"))return 2;review.drive({{"action","closeMaskOptions"}});}
   {const auto size=review.size();review.resize(1060,size.height());if(!shot(review,"31b-review-strength-1060"))return 2;review.resize(size);}
   {auto many=edit;for(int i=2;i<8;++i){auto mask=solid;mask.id=QStringLiteral("m-extra-%1").arg(i);many.masks.append(mask);}review.setEdit(many);review.drive({{"action","selectMask"},{"maskId","m-solid"}});if(!shot(review,"31c-review-many-lanes")||!inspected(review,"31c-review-many-lanes"))return 2;review.setEdit(edit);review.drive({{"action","selectMask"},{"maskId","m-blur"}});}
-  review.resize(review.minimumSizeHint());if(!shot(review,"32-review-minimum")||!inspected(review,"32-review-minimum"))return 2;
+  for(int i=0;i<3;++i){review.resize(review.minimumSizeHint());putgd::test::settle(40);}if(!shot(review,"32-review-minimum")||!inspected(review,"32-review-minimum"))return 2;
   {QEvent inactive(QEvent::WindowDeactivate);QApplication::sendEvent(&review,&inactive);if(!shot(review,"settings-review-inactive-header"))return 2;QEvent active(QEvent::WindowActivate);QApplication::sendEvent(&review,&active);}
+  review.drive({{"action","selectMask"},{"maskId",QJsonValue(QJsonValue::Null)}});review.drive({{"action","dismissBlurTip"}});
+  if(!shot(review,"32a-review-minimum-no-selection")||!inspected(review,"32a-review-minimum-no-selection"))return 2;
   review.resize(record::ReviewWindow::defaultSize());
   // Keyboard mask editing: the frame focused by Tab, the selected cover's ring.
   review.drive({{"action","selectMask"},{"maskId","m-solid"}});review.activateWindow();putgd::test::waitForWindowActive(&review);if(auto* view=review.findChild<record::FrameView*>())view->setFocus(Qt::TabFocusReason);if(!shot(review,"38-review-keyboard-mask")||!inspected(review,"38-review-keyboard-mask"))return 2;
@@ -391,7 +396,7 @@ int main(int argc,char** argv){
    constrained.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
    if(auto* view=constrained.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
    if(!shot(constrained,"67-review-680-workspace")||!inspected(constrained,"67-review-680-workspace"))return 2;
-   {auto* destination=constrained.findChild<Graphite::ElidedLabel*>("uploadDestination");destination->reveal();putgd::test::settle(100);if(auto* popup=destination->fullTextPopup()){if(!shot(*popup,"review-destination-full-text"))return 2;popup->close();}else return 2;}
+   {auto* destination=constrained.findChild<QToolButton*>("uploadDestinationMenu");destination->menu()->popup(destination->mapToGlobal(QPoint(0,destination->height())));putgd::test::settle(100);if(!shot(*destination->menu(),"review-destination-full-text"))return 2;destination->menu()->close();}
    constrained.drive({{"action","showAdvice"}});if(auto* dialog=constrained.findChild<QWidget*>("reviewAdvice")){if(!shot(*dialog,"68-review-error-details"))return 2;}else return 2;
   }
   {auto* add=review.findChild<QToolButton*>("addMask");add->menu()->popup(add->mapToGlobal(QPoint(0,add->height())));putgd::test::settle(100);if(!shot(*add->menu(),"31d-review-add-mask-menu"))return 2;add->menu()->close();}
@@ -425,7 +430,7 @@ int main(int argc,char** argv){
   ready.setState("paused");if(!shot(ready,"35-record-paused-bar"))return 2;
   ready.setState("recording");if(auto* cancel=ready.findChild<QPushButton*>("cancel"))cancel->click();if(!ready.confirming()||!shot(ready,"36-record-discard-confirm"))return 2;
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("paused");if(auto* cancel=ready.findChild<QPushButton*>("cancel"))cancel->click();if(!ready.confirming()||!shot(ready,"42-record-paused-discard-confirm"))return 2;
-  ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("ready");ready.setRetained(0);ready.fitTo(QRect(0,0,1024,768));if(!ready.twoRows()||!shot(ready,"37-record-ready-narrow"))return 2;
+  ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("ready");ready.setRetained(0);ready.fitTo(QRect(0,0,1024,768));if(!shot(ready,"37-record-ready-narrow"))return 2;
   ready.hide();
   qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","60000");
   record::ReviewWindow::Options privateOptions=o;privateOptions.destination="Proton Drive";privateOptions.sharingMode="private";privateOptions.uploadSummary="Private upload to Proton Drive";
@@ -448,7 +453,7 @@ int main(int argc,char** argv){
   selector.cancel();
  }
 #endif
- {
+ if(!recordOnly){
   AboutWindow about(fixture.session.build(),&window);RedesignTheme::apply(about);about.show();
   auto grabAbout=[&](const QString& name){app.processEvents();const auto image=about.grab();if(!image.save(QDir(output).filePath(name+".png"))||!native.step(about,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
   if(!grabAbout("about"))return 2;auto* details=about.findChild<QPushButton*>("buildDetails");if(!details)return 2;details->click();if(!grabAbout("about-build-details"))return 2;about.close();

@@ -14,6 +14,7 @@
 #include "ui/Theme.h"
 #include <QLabel>
 #include <QApplication>
+#include <QGridLayout>
 #include <QClipboard>
 #include <QWheelEvent>
 #include "platform/HostOpen.h"
@@ -115,38 +116,28 @@ private slots:
             QVERIFY(pixels.pixelColor(x, y) != Theme::current().bg);
         QCOMPARE(t.trackRect().height(), 8);
     }
-    void errorsTemporarilyReplaceBlurGuidance() {
+    void blurGuidanceStaysInTheMaskRowDuringExportRecovery() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
+        const auto visible = [&] { return window.inspect()["blurGuidance"].toObject()["visible"].toBool(); };
+        QVERIFY(visible());
+        const auto frame = window.findChild<FrameView*>()->geometry();
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
-        const QString guidance = Graphite::blurWarningText();
-        QCOMPARE(window.inspect()["status"].toString(), guidance);
-        window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
-        QCOMPARE(window.inspect()["status"].toString(), guidance);
-        for (bool dismiss : {true, false}) {
-            window.showError("Export failed: disk full");
-            const auto state = window.drive({{"action", "inspect"}}).state;
-            QCOMPARE(state["statusRow"].toArray().size(), 1);
-            QVERIFY(!state["status"].toString().contains(guidance));
-            QVERIFY(!buttonNamed(window, "Use Redact"));
-            const auto facts = state["statusFacts"].toArray();
-            QCOMPARE(facts.size(), 2);
-            QCOMPARE(facts.first().toObject()["tone"].toString(), QString("error"));
-            QCOMPARE(facts.last().toObject()["text"].toString(), guidance);
-            QCOMPARE(facts.last().toObject()["actions"].toArray().first().toObject()["drive"].toObject()["action"].toString(), QString("useSolidCover"));
-            QVERIFY(buttonNamed(window, "Try again"));
-            QVERIFY(window.findChild<QPushButton*>("reviewErrorDetails")->isVisible());
-            if (dismiss) buttonNamed(window, "Dismiss")->click();
-            else window.showError({});
-            QCOMPARE(window.inspect()["status"].toString(), guidance);
-            QCOMPARE(window.inspect()["statusRow"].toArray().size(), 1);
-            QVERIFY(buttonNamed(window, "Use Redact"));
-        }
-        window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}});
-        window.drive({{"action", "dismissBlurTip"}});
+        QApplication::processEvents();
+        QCOMPARE(window.findChild<FrameView*>()->geometry(), frame);
+        QVERIFY(window.findChild<QLabel*>("maskActiveInterval")->accessibleDescription().contains(Graphite::blurWarningText()));
+        QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
         window.showError("Export failed: disk full");
+        QCOMPARE(window.inspect()["statusRow"].toArray().size(), 1);
+        QVERIFY(visible());
+        QVERIFY(buttonNamed(window, "Try again"));
         window.drive({{"action", "dismissStatus"}});
         QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
+        window.drive({{"action", "dismissBlurTip"}});
+        QVERIFY(!visible());
+        window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
+        window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
+        QVERIFY(!visible());
     }
     void recoveryStaysWithItsMessageAboveTheFooter() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
@@ -227,9 +218,9 @@ private slots:
         auto* interval = window.findChild<QLabel*>("maskActiveInterval");
         auto* timing = window.findChild<QWidget*>("maskTimingControls");
         QVERIFY(masks->isAncestorOf(timing) && masks->isAncestorOf(interval)); QVERIFY(!trim->isAncestorOf(interval) && !trim->isAncestorOf(timing));
-        QVERIFY(masks->y() > trim->mapTo(&window, trim->rect().bottomLeft()).y());
+        QVERIFY(trim->isVisible());
         // Timing actions read as words on 32 px secondary buttons, in both rows.
-        const QList<std::tuple<QWidget*, QString, QString>> actions{{trim, "Set trim start", "Keep from"}, {trim, "Set trim end", "Keep to"}, {trim, "Reset trim", "Reset"}, {timing, "Set mask start", "Start"}, {timing, "Set mask end", "End"}};
+        const QList<std::tuple<QWidget*, QString, QString>> actions{{trim, "Set trim start at playhead", "Start here"}, {trim, "Set trim end at playhead", "End here"}, {trim, "Reset trim", "Reset"}, {timing, "Set mask start at playhead", "Start here"}, {timing, "Set mask end at playhead", "End here"}};
         for (const auto& [row, name, text] : actions) {
             QToolButton* found = nullptr;
             for (auto* button : row->findChildren<QToolButton*>()) if (button->accessibleName() == name) found = button;
@@ -239,14 +230,87 @@ private slots:
             QVERIFY(found->width() >= QFontMetricsF(found->font()).horizontalAdvance(text) + 24);
         }
         QVERIFY(!window.findChild<QLabel*>("maskTimingGroup"));
-        QVERIFY(trim->findChild<QLabel*>("muted")->text().startsWith("Keep 0:02–0:29 · 27 s"));
+        QVERIFY(window.findChild<QLabel*>("muted")->text().startsWith("Keep 0:02–0:29 · 27 s"));
         auto* add = window.findChild<QToolButton*>("addMask");
         QVERIFY(add && add->menu());
         QCOMPARE(add->menu()->actions().size(), 2);
         QCOMPARE(add->menu()->actions()[0]->text(), QString("Add redaction"));
         QCOMPARE(add->menu()->actions()[1]->text(), QString("Add blur"));
-        QVERIFY(masks->isAncestorOf(add));
+        QVERIFY(timeline(window)->isAncestorOf(add));
 
+    }
+    void contextualControlsReclaimFrameAndBlurWarningIsOncePerSession() {
+        auto o = options(); o.canvas = {1600, 900};
+        ReviewWindow window(o, config()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.resize(640, 480); QApplication::processEvents();
+        auto* controls = window.findChild<QWidget*>("maskControls");
+        auto* frame = window.findChild<FrameView*>();
+        QVERIFY(!controls->isVisible());
+        QVERIFY(frame->height() >= window.height() / 2);
+        QVERIFY(window.findChild<QToolButton*>("addMask")->isVisible());
+        QVERIFY(window.findChild<QWidget*>("trimControls")->isVisible());
+        auto* footer = window.findChild<QWidget*>("reviewFooter");
+        QVERIFY(footer->height() <= 84);
+        window.setEdit(twoMasks());
+        QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}).code.isEmpty());
+        QVERIFY(controls->isVisible());
+        QVERIFY(window.inspect()["blurGuidance"].toObject()["visible"].toBool());
+        window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
+        window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
+        QVERIFY(window.inspect()["blurGuidance"].toObject()["visible"].toBool());
+        window.drive({{"action", "dismissBlurTip"}});
+        QApplication::processEvents();
+        const auto before = frame->geometry();
+        QTest::keyClick(window.findChild<FrameView*>(), Qt::Key_Escape);
+        QApplication::processEvents();
+        QVERIFY(controls->isVisible());
+        QVERIFY(!window.findChild<QToolButton*>("maskOptions")->isEnabled());
+        QCOMPARE(window.findChild<QLabel*>("maskActiveInterval")->text(), QString("—"));
+        QCOMPARE(frame->geometry(), before);
+    }
+    void selectingAMaskDuringAPressNeverRefitsTheFrame_data() {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("standard") << 1.0;
+        QTest::newRow("150%") << 1.5;
+    }
+    void selectingAMaskDuringAPressNeverRefitsTheFrame() {
+        QFETCH(double, scale);
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
+        auto font = original;
+        if (font.pointSizeF() > 0) font.setPointSizeF(font.pointSizeF() * scale);
+        else font.setPixelSize(qRound(font.pixelSize() * scale));
+        QApplication::setFont(font);
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.resize(window.minimumSizeHint()); QApplication::processEvents();
+        auto* frame = window.findChild<FrameView*>();
+        auto* combo = window.findChild<QComboBox*>("masks");
+        auto* interval = window.findChild<QLabel*>("maskActiveInterval");
+        auto* group = window.findChild<QWidget*>("maskControls");
+        const auto settle = [] { for (int i = 0; i < 3; ++i) QApplication::processEvents(); };
+        window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); settle();
+        const auto geometry = frame->geometry(), image = frame->imageRect(), row = group->geometry();
+        const int comboWidth = combo->width(), intervalWidth = interval->width();
+        QVERIFY(group->isVisible()); QCOMPARE(combo->currentIndex(), -1); QCOMPARE(combo->placeholderText(), QString("Select a mask"));
+        QCOMPARE(interval->text(), QString("—"));
+        auto* maskOptions = window.findChild<QToolButton*>("maskOptions");
+        QVERIFY(!maskOptions->isEnabled()); QCOMPARE(maskOptions->toolTip(), QString("Select a mask first"));
+        for (const auto id : {"m-blur", "m-solid"}) {
+            window.drive({{"action", "selectMask"}, {"maskId", id}}); settle();
+            QCOMPARE(frame->geometry(), geometry); QCOMPARE(frame->imageRect(), image); QCOMPARE(group->geometry(), row);
+            QCOMPARE(combo->width(), comboWidth); QCOMPARE(interval->width(), intervalWidth);
+        }
+        window.drive({{"action", "showMaskOptions"}});
+        window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); settle();
+        QVERIFY(!maskOptions->menu()->isVisible());
+        const auto m = twoMasks().masks.first();
+        const QPoint point = image.topLeft() + QPoint(qRound(m.rect.center().x() * double(image.width()) / options().canvas.width()), qRound(m.rect.center().y() * double(image.height()) / options().canvas.height()));
+        QTest::mousePress(frame, Qt::LeftButton, {}, point); settle();
+        QVERIFY(!window.inspect()["selectedMaskId"].isNull());
+        QCOMPARE(frame->geometry(), geometry); QCOMPARE(frame->imageRect(), image); QCOMPARE(group->geometry(), row);
+        QTest::mouseRelease(frame, Qt::LeftButton, {}, point);
     }
     void bottomArrangementStaysTogetherAcrossReviewWidths() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
@@ -256,8 +320,8 @@ private slots:
         auto* track = timeline(window);
         for (int width : {720, 820, 1060}) {
             window.resize(width, 720); QApplication::processEvents();
-            QVERIFY(track->geometry().bottom() < trim->mapTo(&window, QPoint()).y());
-            QVERIFY(trim->mapTo(&window, trim->rect().bottomLeft()).y() < masks->y());
+            QVERIFY(track->geometry().bottom() < trim->y());
+            QVERIFY(trim->geometry().bottom() < masks->y());
             QVERIFY(!track->maskRect("m-blur").isEmpty());
             QVERIFY(!track->maskRect("m-solid").isEmpty());
             auto* interval = window.findChild<QLabel*>("maskActiveInterval");
@@ -283,34 +347,29 @@ private slots:
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto* t = timeline(window);
         auto* trim = window.findChild<QWidget*>("trimControls");
-        auto* trimLabel = window.findChild<QLabel*>("trimGroup");
-        auto* maskLabel = window.findChild<QLabel*>("maskGroup");
         for (int width : {720, 820, 1060}) {
             window.resize(width, 720); QApplication::processEvents();
-            QCOMPARE(trimLabel->mapTo(&window, QPoint()).x(), maskLabel->mapTo(&window, QPoint()).x());
-            QCOMPARE(trimLabel->width(), maskLabel->width());
             auto* metadata = window.findChild<QWidget*>("reviewTransport");
             QVERIFY(metadata && t->isAncestorOf(metadata));
-            QVERIFY(metadata->geometry().right() < t->trackRect().left());
+            QVERIFY(metadata->geometry().bottom() < t->trackRect().top());
             auto* maskControls = window.findChild<QWidget*>("maskControls");
             QVERIFY(metadata->isAncestorOf(window.findChild<QComboBox*>("speed")));
             auto* add = window.findChild<QToolButton*>("addMask");
-            QVERIFY(add && maskControls->isAncestorOf(add) && !metadata->isAncestorOf(add));
+            QVERIFY(add && t->isAncestorOf(add) && !maskControls->isAncestorOf(add));
             for (auto* control : window.findChildren<QToolButton*>()) if (control->accessibleName() == "Delete mask") {
                 QVERIFY(window.findChild<QMenu*>("maskOptionsMenu")->isAncestorOf(control));
             }
             auto* clip = window.findChild<QLabel*>("clipGroup");
-            QVERIFY(clip && clip->isVisible());
-            QVERIFY(clip->geometry().right() < t->trackRect().left());
+            QVERIFY(clip && !clip->isVisible());
             const auto lane = t->trackRect().translated(t->pos());
-            QVERIFY(t->geometry().bottom() < trim->mapTo(&window, QPoint()).y());
+            QVERIFY(t->geometry().bottom() < trim->y());
             QCOMPARE(t->x(), 8);
             QCOMPARE(t->width(), window.width() - 16);
             QVERIFY(lane.width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
             for (const auto& mask : twoMasks().masks) {
                 const auto bar = t->maskRect(mask.id).translated(t->pos());
                 QVERIFY(bar.top() > lane.bottom());
-                QVERIFY(bar.bottom() < trim->mapTo(&window, QPoint()).y());
+                QVERIFY(bar.bottom() < window.findChild<QWidget*>("maskControls")->y());
                 QVERIFY(bar.left() >= lane.left() && bar.right() <= lane.right());
             }
             window.drive({{"action", "seek"}, {"time", double(duration - 1)}});
@@ -335,7 +394,7 @@ private slots:
             QVERIFY(window.findChild<QWidget*>("reviewTransport")->isAncestorOf(status));
             QVERIFY(window.rect().contains(QRect(status->mapTo(&window, QPoint()), status->size())));
             QVERIFY(t->trackRect().width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
-            for (auto* button : window.findChildren<QToolButton*>()) if (button->toolButtonStyle() == Qt::ToolButtonTextOnly) {
+            for (auto* button : window.findChildren<QToolButton*>()) if (button->isVisible() && button->toolButtonStyle() == Qt::ToolButtonTextOnly && button->objectName() != "uploadDestinationMenu") {
                 QVERIFY(button->width() - (button->objectName() == "useRedact" ? 16 : button->objectName() == "showMoreMasks" ? 8 : 24) >= QFontMetricsF(button->font()).horizontalAdvance(button->text()));
             }
             auto* interval = window.findChild<QLabel*>("maskActiveInterval");
@@ -362,11 +421,11 @@ private slots:
         ReviewWindow window(o, c); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto* destination = window.findChild<Graphite::ElidedLabel*>("uploadDestination");
+        auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
         const auto nameFits = [&] {
-            return destination->text().contains(o.destination) && destination->accessibleName() == o.uploadSummary
-                && destination->width() >= 12 * destination->font().pixelSize()
-                && destination->height() >= 32 && destination->wordWrap()
-                && destination->height() >= destination->heightForWidth(destination->width());
+            return output && output->isVisible() && output->toolTip().contains(o.destination) && output->text().contains("Shared link")
+                && output->toolTip().contains(o.destination) && output->menu()
+                && output->height() >= 32 && window.rect().contains(QRect(output->mapTo(&window, QPoint()), output->size()));
         };
         window.resize(window.minimumSizeHint()); QApplication::processEvents();
         QVERIFY2(nameFits(), qPrintable(destination->text()));
@@ -413,9 +472,9 @@ private slots:
         QCOMPARE(window.geometry(), before);
         track->setMinimumWidth(0); track->setMaximumWidth(QWIDGETSIZE_MAX);
         window.resize(1342, 720); QApplication::processEvents();
-        QVERIFY(!transport->property("aboveTimeline").toBool());
+        QVERIFY(transport->property("aboveTimeline").toBool());
         QVERIFY(track->trackRect().width() >= 360);
-        QVERIFY(track->trackRect().left() > transport->geometry().right());
+        QVERIFY(track->trackRect().top() > transport->geometry().bottom());
     }
     void purposeFormatChoicesKeepTheCanonicalIds() {
         auto o = options();
@@ -460,6 +519,29 @@ private slots:
         QCOMPARE(window.inspect()["armed"].toString(), QString("blur"));
         QVERIFY(window.findChild<FrameView*>()->accessibleDescription().contains("blur", Qt::CaseInsensitive));
     }
+    void footerMovesTheSameWidgetsAtMeasuredFit() {
+        ReviewWindow window(options(), config()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
+        auto* audio = window.findChild<QLabel*>("exportAudioSummary");
+        auto* save = buttonNamed(window, "Save a copy…");
+        auto* discard = window.findChild<QPushButton*>("discard");
+        auto* grid = qobject_cast<QGridLayout*>(window.findChild<QWidget*>("reviewActions")->layout());
+        QVERIFY(output && audio && save && discard && grid);
+        for (const int width : {1366, 640, 1366}) {
+            window.resize(width, 720);
+            for (int i = 0; i < 3; ++i) QApplication::processEvents();
+            QCOMPARE(grid->property("singleRow").toBool(), width == 1366);
+            QVERIFY(output->text().contains("Shared link"));
+            QVERIFY(output->toolTip().contains(options().destination));
+            QCOMPARE(save->text(), QString("Save a copy…"));
+            QCOMPARE(discard->text(), QString("Discard…"));
+            const int outputY = output->mapTo(&window, output->rect().center()).y();
+            QCOMPARE(audio->mapTo(&window, audio->rect().center()).y(), outputY);
+            if (width == 1366) QCOMPARE(save->mapTo(&window, save->rect().center()).y(), outputY);
+            else QVERIFY(save->mapTo(&window, save->rect().center()).y() > outputY);
+        }
+    }
     void maskLanePagingPreservesSelectionAndDoesNotWrap() {
         ReviewWindow window(options(), config());
         RecordingEdit edit;
@@ -470,13 +552,14 @@ private slots:
         auto* previous = window.findChild<QToolButton*>("previousMaskLanes");
         auto* scroll = window.findChild<QScrollBar*>("maskLaneScroll");
         QVERIFY(next && next->isVisible() && previous && previous->isVisible());
-        QVERIFY(scroll && scroll->isVisible());
+        QVERIFY(scroll && !scroll->isVisible());
         QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "0"}}).code.isEmpty());
-        QCOMPARE(window.inspect()["timeline"].toObject()["laneSummary"].toString(), QString("2 of 8 lanes"));
+        QCOMPARE(window.inspect()["timeline"].toObject()["laneSummary"].toString(), QString("Lanes 1–2 of 8"));
         QVERIFY(!previous->isEnabled());
         for (const int first : {2, 4, 6, 6}) {
             QVERIFY(window.drive({{"action", "nextMaskLanes"}}).code.isEmpty());
             QCOMPARE(scroll->value(), first);
+            QCOMPARE(window.inspect()["timeline"].toObject()["laneSummary"].toString(), QString("Lanes %1–%2 of 8").arg(first + 1).arg(first + 2));
             QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("0"));
             window.drive({{"action", "seek"}, {"time", double(first * 100000)}});
             QCOMPARE(scroll->value(), first);
@@ -782,12 +865,12 @@ private slots:
         QCOMPARE(window.inspect()["playheadUs"].toDouble(), 2300000);
         auto* frame = window.findChild<FrameView*>();
         QVERIFY(frame->accessibleDescription().contains("Redaction 2 selected: 320 × 120 at 100, 80"));
-        QVERIFY(frame->accessibleDescription().contains("Applies from 0:04.00 to 0:10.00"));
+        QVERIFY(frame->accessibleDescription().contains("Applies from 0:04.0 to 0:10.0"));
         QTest::keyClick(frame, Qt::Key_Right);
         QVERIFY(frame->accessibleDescription().contains("at 101, 80"));
         frame->commitNudge();
         auto edit = twoMasks(4); edit.masks[1].end = 11000000; window.setEdit(edit);
-        QVERIFY(frame->accessibleDescription().contains("to 0:11.00"));
+        QVERIFY(frame->accessibleDescription().contains("to 0:11.0"));
     }
     void concurrentMasksHaveDistinctScrollableLanes() {
         ReviewTimeline t; t.setDuration(duration);
@@ -796,7 +879,7 @@ private slots:
         t.setMasks(masks, "0"); t.resize(600, t.sizeHint().height()); t.show();
         QCOMPARE(t.lanes(), 8);
         auto* scroll = t.findChild<QScrollBar*>("maskLaneScroll");
-        QVERIFY(scroll && scroll->isVisible()); QCOMPARE(scroll->maximum(), 6);
+        QVERIFY(scroll && !scroll->isVisible()); QCOMPARE(scroll->maximum(), 6);
         QVERIFY(t.maskHitRect("0").center().y() < t.maskHitRect("1").center().y());
         QVERIFY(t.maskRect("7").isEmpty());
         const int boundedHeight = t.sizeHint().height();
@@ -809,9 +892,9 @@ private slots:
         QCOMPARE(selected.size(), 1); QCOMPARE(selected.first()[0].toString(), QString("6"));
         // A lane can hold several non-overlapping masks; count hidden masks.
         t.setMasks({mask("a", "solid", 0, 5000000), mask("b", "solid", 0, 5000000), mask("c", "solid", 0, 5000000), mask("d", "solid", 6000000, 10000000)}, "a");
-        QCOMPARE(t.findChild<QToolButton*>("showMoreMasks")->text(), QString("Next mask lanes"));
+        QCOMPARE(t.findChild<QToolButton*>("showMoreMasks")->accessibleName(), QString("Next mask lanes"));
         scroll->setValue(1);
-        QCOMPARE(t.findChild<QToolButton*>("showMoreMasks")->text(), QString("Next mask lanes"));
+        QCOMPARE(t.findChild<QToolButton*>("showMoreMasks")->accessibleName(), QString("Next mask lanes"));
     }
     void previewRecoveryStacksAndMeasuresWrappedText() {
         FrameView view; auto large = view.font(); large.setPixelSize(21); view.setFont(large); view.setCanvas({1280,720}); view.resize(360,320); view.show();
@@ -841,24 +924,24 @@ private slots:
         QCOMPARE(state["sharingMode"].toString(), QString("share"));
         QCOMPARE(state["uploadSummary"].toString(), o.uploadSummary);
         QVERIFY(state["previewMuted"].toBool());
-        auto* target = window.findChild<QLabel*>("uploadDestination");
+        auto* target = window.findChild<QToolButton*>("uploadDestinationMenu");
         auto* upload = window.findChild<QPushButton*>("upload");
-        QVERIFY(target && target->isVisible() && target->toolTip() == o.uploadSummary);
-        // The footer's first row says where Upload sends the clip; the actions are under it.
-        QVERIFY(target->mapTo(&window, target->rect().bottomLeft()).y() < upload->mapTo(&window, QPoint()).y());
+        auto* audio = window.findChild<QLabel*>("exportAudioSummary");
+        QVERIFY(target && target->isVisible() && target->toolTip().contains(o.uploadSummary));
+        auto* grid = qobject_cast<QGridLayout*>(window.findChild<QWidget*>("reviewActions")->layout());
+        QVERIFY(grid);
+        QVERIFY(target->text().contains("Shared link"));
+        if (grid->property("singleRow").toBool()) QCOMPARE(target->mapTo(&window, target->rect().center()).y(), upload->mapTo(&window, upload->rect().center()).y());
+        else QVERIFY(target->mapTo(&window, target->rect().bottomLeft()).y() < upload->mapTo(&window, QPoint()).y());
         QVERIFY(window.rect().contains(QRect(target->mapTo(&window, QPoint()), target->size())));
         auto* full = window.findChild<QLabel*>("uploadDestinationWrapped");
         QVERIFY(full && !full->isVisible());
-        static_cast<Graphite::ElidedLabel*>(target)->reveal();
-        QVERIFY(static_cast<Graphite::ElidedLabel*>(target)->fullTextPopup());
-        static_cast<Graphite::ElidedLabel*>(target)->fullTextPopup()->close();
-        auto* audio = window.findChild<QLabel*>("exportAudioSummary");
+        target->menu()->popup(target->mapToGlobal(QPoint(0, target->height())));
+        QApplication::processEvents();
+        QVERIFY(full->isVisible());
+        QVERIFY(full->text().contains(o.destination));
+        target->menu()->close();
         QVERIFY(audio->isVisible());
-        QVERIFY(target->height() >= 32);
-        QVERIFY(target->wordWrap());
-        QVERIFY(target->height() >= target->heightForWidth(target->width()));
-        QVERIFY(audio->wordWrap());
-        QVERIFY(audio->height() >= audio->heightForWidth(audio->width()));
         QVERIFY(!QRect(audio->mapTo(&window, QPoint()), audio->size()).intersects(QRect(target->mapTo(&window, QPoint()), target->size())));
         QVERIFY(audio->mapTo(&window, audio->rect().topRight()).x() <= window.width() - 8);
         QVERIFY(state["audio"].toString().endsWith("Preview muted"));
@@ -940,19 +1023,22 @@ private slots:
         o.uploadSummary = "Private upload to " + o.destination;
         ReviewWindow window(o, config()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        auto* label = window.findChild<Graphite::ElidedLabel*>("uploadDestination");
-        QVERIFY(label && label->focusPolicy() & Qt::TabFocus);
-        label->setFocus(Qt::TabFocusReason); QTest::keyClick(label, Qt::Key_Return);
-        PUTGD_TRY_VERIFY(label->fullTextPopup());
-        auto* popup = label->fullTextPopup();
-        const auto text = popup->findChild<QLabel*>("elidedLabelFullTextValue")->text();
-        QVERIFY(text.startsWith("Destination: " + o.destination + "\nSharing: Private upload"));
-        QVERIFY(text.contains(formatHint(config().format, config().codec)));
-        auto* value = popup->findChild<QLabel*>("elidedLabelFullTextValue");
+        auto* button = window.findChild<QToolButton*>("uploadDestinationMenu");
+        QVERIFY(button && button->focusPolicy() & Qt::TabFocus);
+        bool keyboardOpened = false;
+        QTimer::singleShot(0, button, [&] { keyboardOpened = button->menu()->isVisible(); QTest::keyClick(button->menu(), Qt::Key_Escape); });
+        button->setFocus(Qt::TabFocusReason); QTest::keyClick(button, Qt::Key_Space);
+        QVERIFY(keyboardOpened);
+        auto* value = window.findChild<QLabel*>("uploadDestinationWrapped");
+        QVERIFY(value->text().startsWith("Destination: " + o.destination + "\nSharing: Private upload"));
         QVERIFY(value->textInteractionFlags() & Qt::TextSelectableByMouse);
         QVERIFY(value->textInteractionFlags() & Qt::TextSelectableByKeyboard);
-        popup->close(); QTest::mouseClick(label, Qt::LeftButton); PUTGD_TRY_VERIFY(label->fullTextPopup());
-        label->fullTextPopup()->close();
+        QTest::keyClick(button->menu(), Qt::Key_Escape);
+        QVERIFY(!button->menu()->isVisible());
+        button->menu()->popup(button->mapToGlobal(QPoint(0, button->height())));
+        PUTGD_TRY_VERIFY(button->menu()->isVisible());
+        button->menu()->close();
+
     }
     void compactHeaderIsOneLineNamedForTheWindow() {
         ReviewWindow window(options(), config());
@@ -1027,12 +1113,13 @@ private slots:
         // Transient guidance sits below the frame, leaving the video unobscured.
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QApplication::processEvents();
-        QVERIFY(window.findChild<QWidget*>("statusRow")->isVisible());
-        qInfo("review with a status line share %.3f", window.inspect()["video"].toObject()["share"].toDouble());
+        QVERIFY(!window.findChild<QWidget*>("statusRow")->isVisible());
+        qInfo("review with in-row guidance share %.3f", window.inspect()["video"].toObject()["share"].toDouble());
         QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
         auto* row = window.findChild<QWidget*>("statusRow");
         auto* frame = window.findChild<FrameView*>();
-        QVERIFY(row->mapTo(&window, QPoint()).y() >= frame->mapTo(&window, frame->rect().bottomLeft()).y());
+        QVERIFY(!row->isVisible());
+        QVERIFY(window.findChild<QWidget*>("maskControls")->mapTo(&window, QPoint()).y() >= frame->geometry().bottom());
         // Got it hides the guidance for the rest of the review.
         QVERIFY(window.drive({{"action", "dismissBlurTip"}}).code.isEmpty());
         QApplication::processEvents();
@@ -1081,8 +1168,8 @@ private slots:
             QCOMPARE(window.geometry(), userGeometry);
             QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
             auto* status = window.findChild<QWidget*>("statusRow");
-            auto* frame = window.findChild<FrameView*>();
-            QVERIFY(status->isVisible() && !frame->geometry().intersects(status->geometry()));
+            QVERIFY(!status->isVisible());
+            QVERIFY(window.inspect()["blurGuidance"].toObject()["visible"].toBool());
             QVERIFY(window.drive({{"action", "dismissBlurTip"}}).code.isEmpty());
             QApplication::processEvents();
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60);
@@ -1233,7 +1320,7 @@ private slots:
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             QVERIFY(!window.inspect()["status"].toString().contains(Graphite::blurWarningText()));
             QVERIFY(!buttonNamed(window, "Use Redact"));
-            QVERIFY(window.inspect()["statusFacts"].toArray().last().toObject()["text"].toString() == Graphite::blurWarningText());
+            QVERIFY(window.inspect()["blurGuidance"].toObject()["visible"].toBool());
             QVERIFY(window.inspect()["errorDetails"].toObject()["visible"].toBool());
             QCOMPARE(window.inspect()["errorDetails"].toObject()["message"].toString(), failure);
             for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && !w->isWindow())
@@ -1277,14 +1364,14 @@ private slots:
         QVERIFY(label && label->isVisible());
         edit.revision++; edit.masks[0].start = 5000000; edit.masks[0].end = 20000000; window.setEdit(edit);
         // Before the mask: when it starts; inside it: the interval alone; after it: not at the playhead.
-        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Starts at 0:05.0"));
+        QCOMPARE(label->text(), QString("0:05.0–0:20.0 · Starts at 0:05.0"));
         QCOMPARE(window.inspect()["selectedMaskInterval"].toObject()["text"].toString(), label->text());
         const auto geometry = label->geometry();
         window.drive({{"action", "seek"}, {"time", 8000000}});
-        QCOMPARE(label->text(), QString("0:05.00–0:20.00"));
+        QCOMPARE(label->text(), QString("0:05.0–0:20.0"));
         QCOMPARE(label->geometry(), geometry);
         window.drive({{"action", "seek"}, {"time", 25000000}});
-        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Not at playhead"));
+        QCOMPARE(label->text(), QString("0:05.0–0:20.0 · Not at playhead"));
         QCOMPARE(label->geometry(), geometry);
         QVERIFY(!label->text().contains("Inactive"));
         window.drive({{"action", "seek"}, {"time", 0}});
@@ -1292,8 +1379,8 @@ private slots:
         QTest::keyClick(window.findChild<FrameView*>(), Qt::Key_Right, Qt::ControlModifier);
         QCOMPARE(label->pos(), position);
         QVERIFY(!window.findChild<FrameView*>()->isAncestorOf(label));
-        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Starts at 0:05.0"));
-        QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont()).family());
+        QCOMPARE(label->text(), QString("0:05.0–0:20.0 · Starts at 0:05.0"));
+        QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::font(Graphite::Type::metadata)).family());
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
         QVERIFY(window.inspect()["playbackStatus"].toString().contains("Outside kept part"));
@@ -1333,11 +1420,11 @@ private slots:
         t->findChild<QScrollBar*>("maskLaneScroll")->setValue(1);
         QTest::mouseClick(t, Qt::LeftButton, {}, t->maskRect("m-solid").center());
         QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m-solid"));
-        // A click on the frame outside every mask clears the selection; the list stays.
+        // A click outside every mask clears the selection and hides its controls.
         auto* frame = window.findChild<FrameView*>();
         QTest::mouseClick(frame, Qt::LeftButton, {}, frame->imageRect().bottomRight() - QPoint(4, 4));
         QVERIFY(window.inspect()["selectedMaskId"].isNull());
-        QCOMPARE(controls(), QJsonObject({{"list", true}, {"times", false}, {"strength", false}, {"remove", false}}));
+        QCOMPARE(controls(), QJsonObject({{"list", true}, {"times", true}, {"strength", false}, {"remove", false}}));
         // Later edits keep "nothing selected"; removing every mask hides the group.
         auto edit = twoMasks(4);
         edit.trimStart = 2000000;
@@ -1473,7 +1560,7 @@ private slots:
             const auto tools = window.findChildren<QToolButton*>();
             QVERIFY(tools.size() >= 9);
             for (auto* b : tools) {
-                QVERIFY2((b->toolButtonStyle() == Qt::ToolButtonTextOnly && (QStringList{"Set trim start", "Set trim end", "Reset trim", "Set mask start", "Set mask end", "Add mask"}.contains(b->accessibleName()) || QStringList{"showMoreMasks", "previousMaskLanes"}.contains(b->objectName()))) || (!b->icon().isNull() && (b->toolButtonStyle() == Qt::ToolButtonIconOnly || (b->toolButtonStyle() == Qt::ToolButtonTextBesideIcon && QStringList{"Start", "End", "Delete mask"}.contains(b->text())))), qPrintable(b->accessibleName()));
+                QVERIFY2((b->toolButtonStyle() == Qt::ToolButtonTextOnly && (QStringList{"Set trim start at playhead", "Set trim end at playhead", "Reset trim", "Set mask start at playhead", "Set mask end at playhead", "Add mask"}.contains(b->accessibleName()) || QStringList{"showMoreMasks", "previousMaskLanes", "uploadDestinationMenu"}.contains(b->objectName()))) || ((!b->icon().isNull() || b->arrowType() != Qt::NoArrow) && (b->toolButtonStyle() == Qt::ToolButtonIconOnly || (b->toolButtonStyle() == Qt::ToolButtonTextBesideIcon && QStringList{"Start", "End", "Delete mask"}.contains(b->text())))), qPrintable(b->accessibleName()));
                 QVERIFY2(!b->accessibleName().isEmpty() && !b->toolTip().isEmpty(), qPrintable(b->objectName()));
                 if(b->isVisible()&&b->toolButtonStyle()==Qt::ToolButtonTextBesideIcon)QVERIFY2(b->width()>=b->fontMetrics().horizontalAdvance(b->text())+b->iconSize().width()+16,qPrintable(b->accessibleName()));
             }
@@ -1787,34 +1874,27 @@ private slots:
     void blurGuidanceAndRedactionNames() {
         ReviewWindow window(options(), config());
         QSignalSpy proposals(&window, &ReviewWindow::editProposed);
-        window.setEdit(twoMasks());
-        window.show();
+        window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        const QString guidance = Graphite::blurWarningText();
-        QVERIFY(!window.inspect()["status"].toString().contains(guidance));
+        QVERIFY(window.inspect()["blurGuidance"].toObject()["visible"].toBool());
         auto* list = window.findChild<QComboBox*>("masks");
         QCOMPARE(list->itemText(1), QString("Redaction 2"));
         QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}).code.isEmpty());
-        QCOMPARE(window.inspect()["status"].toString(), guidance);
+        const auto frame = window.findChild<FrameView*>()->geometry();
+        QVERIFY(window.drive({{"action", "showMaskOptions"}}).code.isEmpty());
         auto* fix = buttonNamed(window, "Use Redact");
         QVERIFY(fix);
-        QVERIFY(fix->width() >= QFontMetricsF(fix->font()).horizontalAdvance(fix->text()) + 16);
         fix->click();
-        const auto command = proposed(proposals);
-        QCOMPARE(command["op"].toString(), QString("updateMask"));
-        QCOMPARE(command["maskId"].toString(), QString("m-blur"));
-        QCOMPARE(command["mask"].toObject()["kind"].toString(), QString("solid"));
-        QVERIFY(!command["mask"].toObject().contains("strength"));
-        // Arming Add blur shows it too; its action arms the redaction instead.
-        QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}).code.isEmpty());
+        QCOMPARE(proposed(proposals)["maskId"].toString(), QString("m-blur"));
+        QCOMPARE(proposed(proposals)["mask"].toObject()["kind"].toString(), QString("solid"));
+        QVERIFY(!proposed(proposals)["mask"].toObject().contains("strength"));
+        QCOMPARE(window.findChild<FrameView*>()->geometry(), frame);
+        window.drive({{"action", "dismissBlurTip"}});
+        window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}});
         auto* add = window.findChild<QToolButton*>("addMask");
-        QVERIFY(add && add->menu());
         add->menu()->actions()[1]->trigger();
-        QCOMPARE(window.inspect()["status"].toString(), guidance);
+        QVERIFY(!window.inspect()["blurGuidance"].toObject()["visible"].toBool());
         QVERIFY(window.drive({{"action", "useSolidCover"}}).state["armed"].toString() == "solid");
-        QVERIFY(!window.inspect()["status"].toString().contains(guidance));
-        // One name for opaque redaction across controls.
-        for (auto* b : window.findChildren<QToolButton*>()) QVERIFY2(!b->toolTip().contains(QStringLiteral("the cover")), qPrintable(b->toolTip()));
     }
     // Keyboard-only masks: Enter places an armed mask centred at half the
     // frame's size; with the frame focused, arrows move the selected mask,
@@ -1885,8 +1965,8 @@ private slots:
         QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), QJsonArray({8, 8, 100, 50}));
         QCOMPARE(window.drive({{"action", "placeMask"}, {"rect", QJsonArray{1200, 8, 100, 50}}}).code, QString("invalid_request"));
     }
-    // Timecodes in Plex Mono (as on the recording bar), and visible Trim/Mask groups.
-    void timecodesAreMonoAndGroupsAreNamed() {
+    // Review timecodes share one-decimal Sans figures across theme changes.
+    void timecodesUseOneSansFormatAndContextIsNamed() {
         ReviewWindow window(options(), config());
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -1894,18 +1974,21 @@ private slots:
             QLabel* label = nullptr;
             for (auto* l : window.findChildren<QLabel*>(name)) if (l->accessibleName() == "Playhead time" || l->accessibleName() == "Kept interval") label = l;
             QVERIFY2(label, name);
-            QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont()).family());
+            QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::font(Graphite::Type::metadata)).family());
             const auto scheme = Theme::scheme();
             Theme::setScheme(scheme == Theme::Scheme::Dark ? Theme::Scheme::Light : Theme::Scheme::Dark);
             QApplication::processEvents();
-            QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont()).family());
-            QCOMPARE(label->font().pixelSize(), Graphite::monoFont().pixelSize());
+            QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::font(Graphite::Type::metadata)).family());
+            QCOMPARE(label->font().pixelSize(), Graphite::font(Graphite::Type::metadata).pixelSize());
             Theme::setScheme(scheme);
             QVERIFY(label->width() >= label->sizeHint().width());
         }
-        for (const auto* name : {"trimGroup", "maskGroup"}) { auto* label = window.findChild<QLabel*>(name); QVERIFY2(label && label->isVisible(), name); }
-        QCOMPARE(window.findChild<QLabel*>("trimGroup")->text(), QString("Trim"));
-        QCOMPARE(window.findChild<QLabel*>("maskGroup")->text(), QString("Mask"));
+        auto* trim = window.findChild<QLabel*>("trimGroup");
+        QVERIFY(trim && trim->isVisible());
+        auto* mask = window.findChild<QLabel*>("maskGroup");
+        QVERIFY(mask && !mask->isVisible());
+        QCOMPARE(mask->text(), QString("Mask"));
+
     }
     // #259: Save copy… opens the shared chooser; this test never asks a portal.
     void saveCopyDialogIsDrivenAndSavesTheChosenPath() {

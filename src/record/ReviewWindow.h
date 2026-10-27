@@ -117,13 +117,14 @@ public:
     void showPreviousMasks();
     int firstLane() const;
     QString laneSummary() const;
-    // Embeds playback beside the lane-label gutter and time axis.
+    // Embeds playback above the time axis.
     void setTransport(QWidget* transport);
+    void setLaneHeader(QWidget* header);
     qint64 playhead() const { return playhead_; }
     qint64 duration() const { return duration_; }
     // Concurrent masks always have distinct lanes; two are visible at a time.
     int lanes() const { return lanes_; }
-    // Every lane has a shared names-width gutter after the optional transport.
+    // The lane header leaves the bars and ruler on one time axis.
     static int gutterWidth();
     // Geometry for tests and the review session method: the track, a time's x
     // and the bar of a mask.
@@ -175,6 +176,7 @@ private:
     QToolButton* previousMasks_ = nullptr;
     QLabel* laneSummary_ = nullptr;
     QWidget* transport_ = nullptr;
+    QWidget* laneHeader_ = nullptr;
     Graphite::ElidedLabel* clipLabel_ = nullptr;
     QString selected_;
     Drag drag_ = Drag::None;
@@ -243,6 +245,7 @@ private:
     QList<StatusEntry> statusEntries() const;
     void refreshStatus();
     void placeDestination();
+    bool footerFits(int width) const;
     // Discard, the close button and the drive's discard ask before anything is
     // lost; recording.cancel (an agent's explicit cancel) never asks.
     void askDiscard();
@@ -305,6 +308,7 @@ private:
     QWidget* statusRow_ = nullptr;
     QVBoxLayout* statusLines_ = nullptr;
     QList<StatusEntry> shownStatus_;
+    bool blurTipShown_ = false;
     bool blurTipDismissed_ = false;  // the blur privacy guidance, acknowledged once
     StatusEntry message_;
     QPointer<QMessageBox> discard_;
@@ -316,6 +320,7 @@ private:
     std::shared_ptr<std::atomic_bool> playStop_;
     bool playing_ = false;
     QAction *addBlur_ = nullptr, *addSolid_ = nullptr;
+    QToolButton *destinationMenu_ = nullptr;
     QToolButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addMask_ = nullptr, *removeMask_ = nullptr, *maskOptions_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr;
     QPushButton *errorDetails_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
     FileDialog* chooser_ = nullptr;

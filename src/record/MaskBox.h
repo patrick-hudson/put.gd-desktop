@@ -13,7 +13,7 @@ public:
     using QComboBox::QComboBox;
     QSize sizeHint() const override {
         auto size = QComboBox::sizeHint();
-        int width = fontMetrics().horizontalAdvance(QStringLiteral("88"));
+        int width = fontMetrics().horizontalAdvance(placeholderText());
         for (int i = 0; i < count(); ++i) width = std::max(width, fontMetrics().horizontalAdvance(itemData(i).toString()));
         size.setWidth(width + 44);
         return size;
@@ -29,7 +29,7 @@ protected:
     void paintEvent(QPaintEvent*) override {
         QStyleOptionComboBox option;
         initStyleOption(&option);
-        option.currentText = currentIndex() < 0 ? QStringLiteral("—") : currentData().toString();
+        option.currentText = currentIndex() < 0 ? placeholderText() : currentData().toString();
         QPainter painter(this);
         style()->drawComplexControl(QStyle::CC_ComboBox, &option, &painter, this);
         style()->drawControl(QStyle::CE_ComboBoxLabel, &option, &painter, this);
