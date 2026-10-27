@@ -1,12 +1,15 @@
 #include "core/BuildInfo.h"
 #include "ui/AboutWindow.h"
+#include "ui/VisualStyle.h"
 #include <QApplication>
 #include <QJsonDocument>
 #include <QPointer>
 #include <QPushButton>
+#include <QStyle>
 #include <QTextEdit>
 #include <QTest>
 #include <QTimer>
+#include <QScopeGuard>
 #include <memory>
 
 using namespace putgd;
@@ -51,6 +54,12 @@ private slots:
   dialog->show();details->click();QCOMPARE(details->text(),QString("Hide build details"));QVERIFY(data->isVisible());details->click();QCOMPARE(details->text(),QString("Build details"));QVERIFY(!data->isVisible());dialog->close();
   owner.reset();
   QVERIFY(dialog.isNull());
+ }
+
+ void disclosureLabelsFitAtLargeText() {
+  VisualStyle::apply(*qApp);const auto oldFont=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(oldFont);});auto font=oldFont;font.setPixelSize(21);qApp->setFont(font);
+  AboutWindow dialog({{"version","26.1027.1543-dev+g0123456789ab"}});dialog.show();auto* details=dialog.findChild<QPushButton*>("buildDetails");QVERIFY(details);
+  for(int i=0;i<2;++i){details->click();QApplication::processEvents();const int padding=2*details->style()->pixelMetric(QStyle::PM_ButtonMargin,nullptr,details);QCOMPARE(details->fontMetrics().elidedText(details->text(),Qt::ElideRight,details->width()-padding),details->text());}
  }
 
  void aboutFollowsItsOwnerLifetime() {

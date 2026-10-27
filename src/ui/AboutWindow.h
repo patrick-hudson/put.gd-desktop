@@ -8,5 +8,7 @@ public:
  explicit AboutWindow(const QJsonObject& residentBuild, QWidget* parent = nullptr);
 protected:
  void showEvent(QShowEvent*)override;
+private:
+ void updateDetailsButton();
 };
 }
