@@ -470,7 +470,7 @@ void TrayController::latchFailure(const Error& error,const QJsonObject& operatio
  const bool setup=QStringList{"output_required","profile_not_found","provider_unavailable","invalid_destination","destination_unavailable","s3_settings_invalid","b2_settings_invalid","config_invalid","credential_setup_required"}.contains(cause.code);
  if(uploadFailed){attentionLabel_="Failed uploads";attentionView_="historyFailed";}
  else if(localFailed||setup){attentionLabel_=localFailed?"Local save needs attention":"Destination needs attention";const QJsonObject recovery{{"action",operation["action"].toString("region")},{"code",localFailed?"archive_failed":cause.code},{"message",localFailed&&cause.message.isEmpty()?"Couldn't save a local copy. Review the local-copy folder.":cause.message}};attentionView_="actionRecovery:"+QString::fromUtf8(QJsonDocument(recovery).toJson(QJsonDocument::Compact));}
- else if(!operation.isEmpty()&&operation["items"].toArray().isEmpty())attentionLabel_="Capture needs attention";
+ else if(!operation["id"].toString().isEmpty()&&operation["items"].toArray().isEmpty()&&QStringList{"region","window","desktop","edit","record"}.contains(operation["action"].toString()))attentionLabel_="Capture needs attention";
  flashError();
 }
 void TrayController::flashError() {
