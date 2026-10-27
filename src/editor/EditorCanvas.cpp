@@ -1,6 +1,7 @@
 #include "EditorCanvas.h"
 #include "ui/Theme.h"
 #include "ui/Graphite.h"
+#include "ui/VisualStyle.h"
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QPushButton>
