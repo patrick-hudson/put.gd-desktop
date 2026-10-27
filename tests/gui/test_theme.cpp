@@ -292,6 +292,20 @@ private slots:
         }
         QCOMPARE(Graphite::Metric::trackRadius - Graphite::Metric::segmentInset, Graphite::Metric::segmentRadius);
     }
+    void liveIndicatorsMeetContrastWithoutReusingDanger() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            const auto& p=Theme::palette(scheme);
+            QVERIFY(p.live!=p.danger);
+            for (const auto& background : {p.bg,p.surface,p.surfaceRaised,p.selected}) QVERIFY(Theme::contrast(p.live,background)>=3.0);
+            const bool light=scheme==Theme::Scheme::Light;
+            const auto& tints=Theme::trayTints(light);
+            for (const auto& tint : {tints.idle,tints.upload,tints.encoding,tints.error}) {
+                const auto badge=IconArt::liftTray(tint,-1,2,1);
+                QCOMPARE(badge.pixelColor(10,10),tints.live);
+            }
+            for (const auto& panel : {light?QColor("#ffffff"):QColor("#141414"),light?QColor("#dedee2"):QColor("#3b3b3f")}) QVERIFY(Theme::contrast(tints.live,panel)>=3.0);
+        }
+    }
     void textAndFocusMeetAaInBothSchemes() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             const auto& p = Theme::palette(scheme);
@@ -323,7 +337,7 @@ private slots:
             QVERIFY(Theme::contrast(p.danger, p.dangerSurface) >= 4.5);
             // Every token is reported, as #rrggbb.
             const auto tokens = Theme::tokens(scheme);
-            QCOMPARE(tokens.size(), 29);
+            QCOMPARE(tokens.size(), 30);
             QVERIFY(tokens.contains("controlOutline"));
             for (const auto& value : tokens) QVERIFY(QRegularExpression("^#[0-9a-f]{6}$").match(value.toString()).hasMatch());
         }

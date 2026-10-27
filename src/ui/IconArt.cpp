@@ -26,17 +26,18 @@ QImage canvas(int scale) {
 }
 QImage liftTray(const QColor& color,int percent,int scale,int recording) {
  auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
+ const auto& light=Theme::trayTints(true);const auto& tints=Theme::trayTints(color==light.idle||color==light.upload||color==light.encoding||color==light.error);
  const auto shape=arrow().united(tray());
  if(percent<0) p.fillPath(shape,color);
  else {
   p.fillPath(shape,color);
   p.save();const auto fill=qBound(0,percent,100)/100.0;
-  p.setClipRect(QRectF(0,23-21*fill,24,21*fill));p.fillPath(shape,Theme::trayTints(color==Theme::trayTints(true).idle).encoding);p.restore();
+  p.setClipRect(QRectF(0,23-21*fill,24,21*fill));p.fillPath(shape,tints.encoding);p.restore();
  }
  p.setPen(QPen(Theme::trayOutline(),0.65,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
  p.setBrush(Qt::NoBrush);p.drawPath(shape);
  if(percent==-2){p.setPen(QPen(Theme::trayOutline(),1));p.setBrush(color);p.drawEllipse(QRectF(14,0,10,10));p.setPen(QPen(Theme::trayOutline(),1.5,Qt::SolidLine,Qt::RoundCap));p.drawLine(QPointF(19,2),QPointF(19,5));p.drawPoint(QPointF(19,7));}
- if(recording){p.setPen(QPen(Theme::trayOutline(),1));p.setBrush(recording==2?Theme::trayTints(color==Theme::trayTints(true).idle).idle:Theme::trayTints(color==Theme::trayTints(true).idle).error);p.drawEllipse(QRectF(0,0,10,10));if(recording==2){p.setPen(QPen(Theme::trayOutline(),1.8,Qt::SolidLine,Qt::FlatCap));p.drawLine(QPointF(3.5,2.5),QPointF(3.5,7.5));p.drawLine(QPointF(6.5,2.5),QPointF(6.5,7.5));}}
+ if(recording){p.setPen(QPen(Theme::trayOutline(),1));p.setBrush(recording==2?tints.idle:tints.live);p.drawEllipse(QRectF(0,0,10,10));if(recording==2){p.setPen(QPen(Theme::trayOutline(),1.8,Qt::SolidLine,Qt::FlatCap));p.drawLine(QPointF(3.5,2.5),QPointF(3.5,7.5));p.drawLine(QPointF(6.5,2.5),QPointF(6.5,7.5));}}
  return image;
 }
 QImage liftApp(const QColor& color,int scale) {

@@ -26,7 +26,7 @@ struct Palette {
  // item): both tones 3:1 against selected and against each other, so a
  // selected glyph keeps its silhouette and its inner detail.
  QColor iconSelected,iconSecondarySelected;
- QColor lead,leadOutline;
+ QColor lead,leadOutline,live;
 };
 const Palette& palette(Scheme);
 const Palette& current();
@@ -50,7 +50,7 @@ inline QColor trayOutline(){return QColor("#182126");}
 // Tray glyph tints (#60 item 5). The panel's colour, not the app theme,
 // decides which set is readable: a light app on a dark panel, or the
 // reverse, keeps a visible icon. Each meets 3:1 on its kind of panel.
-struct TrayTints {QColor idle,upload,encoding,error;};
+struct TrayTints {QColor idle,upload,encoding,error,live;};
 const TrayTints& trayTints(bool lightPanel);
 // WCAG 2.x contrast ratio of two opaque colours (1 to 21).
 double contrast(const QColor&,const QColor&);

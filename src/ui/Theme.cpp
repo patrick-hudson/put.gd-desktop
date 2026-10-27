@@ -22,7 +22,7 @@ const Palette dark{
  QColor("#D6D6D2"),QColor("#777773"),
  QColor("#7C7C78"),
  QColor("#F0F0EC"),QColor("#848480"),
- QColor("#2E2E2C"),QColor("#4A4A46"),
+ QColor("#2E2E2C"),QColor("#4A4A46"),QColor("#F0524F"),
 };
 const Palette light{
  QColor("#E6E6E2"),QColor("#F3F3F0"),QColor("#FAFAF8"),QColor("#FFFFFF"),QColor("#E5E4DF"),QColor("#E2E2DD"),QColor("#AAAAA3"),
@@ -32,7 +32,7 @@ const Palette light{
  QColor("#383834"),QColor("#86867E"),
  QColor("#82827B"),
  QColor("#292926"),QColor("#787874"),
- QColor("#FFFFFF"),QColor("#C9C9C3"),
+ QColor("#FFFFFF"),QColor("#C9C9C3"),QColor("#C8302B"),
 };
 struct Token {const char* name;QColor Palette::* member;};
 constexpr Token table[]{
@@ -42,7 +42,7 @@ constexpr Token table[]{
  {"onAccent",&Palette::onAccent},{"link",&Palette::link},{"success",&Palette::success},{"warning",&Palette::warning},{"danger",&Palette::danger},
  {"dangerHover",&Palette::dangerHover},{"successSurface",&Palette::successSurface},{"warningSurface",&Palette::warningSurface},
  {"dangerSurface",&Palette::dangerSurface},{"icon",&Palette::icon},{"iconSecondary",&Palette::iconSecondary},
- {"lead",&Palette::lead},{"leadOutline",&Palette::leadOutline},
+ {"lead",&Palette::lead},{"leadOutline",&Palette::leadOutline},{"live",&Palette::live},
  {"controlOutline",&Palette::controlOutline},{"iconSelected",&Palette::iconSelected},{"iconSecondarySelected",&Palette::iconSecondarySelected},
 };
 QColor tokenColor(const QColor& color,const Palette& values){
@@ -72,7 +72,7 @@ const TrayTints& trayTints(bool lightPanel){
   const auto& p=palette(scheme);const bool lightPanel=scheme==Scheme::Light;
   const QColor panels[]= {lightPanel?QColor("#ffffff"):QColor("#141414"),lightPanel?QColor("#dedee2"):QColor("#3b3b3f")};
   const auto readable=[&](QColor color){for(int step=0;step<100&&(contrast(color,panels[0])<3.0||contrast(color,panels[1])<3.0);++step)color=lightPanel?color.darker(105):color.lighter(105);return color;};
-  return TrayTints{readable(p.icon),readable(p.success),readable(p.accent),readable(p.danger)};
+  return TrayTints{readable(p.icon),readable(p.success),readable(p.accent),readable(p.danger),readable(p.live)};
  };
  static const auto dark=adjusted(Scheme::Dark),light=adjusted(Scheme::Light);
  return lightPanel?light:dark;
