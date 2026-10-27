@@ -1248,6 +1248,8 @@ if(BUILD_TESTING)
   target_include_directories(test_region_selection PRIVATE src)
   target_link_libraries(test_region_selection PRIVATE putgd_build_options Qt6::Widgets Qt6::Test)
   add_test(NAME region_selection_contract COMMAND test_region_selection)
+  # The hint placement measures text, so the test needs a (headless) GUI platform.
+  set_tests_properties(region_selection_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()
 
 if(BUILD_TESTING AND TARGET putgd_kde_region_process)
