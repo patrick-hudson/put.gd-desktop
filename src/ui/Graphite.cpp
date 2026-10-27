@@ -706,7 +706,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         auto text = item->text;
         QString shortcut;
         if (const int tab = text.indexOf('\t'); tab >= 0) { shortcut = text.mid(tab + 1); text = text.left(tab); }
-        int w = 12 + (item->menuHasCheckableItems ? 26 : 0) + (item->maxIconWidth > 0 ? scaled(Metric::icon) + 10 : 0) + metrics.horizontalAdvance(QString(text).remove('&')) + 16;
+        int w = 12 + (item->menuHasCheckableItems ? 26 : 0) + (item->maxIconWidth > 0 ? scaled(Metric::icon) + 10 : 0) + metrics.size(Qt::TextSingleLine | Qt::TextShowMnemonic, text).width() + 16;
         if (!shortcut.isEmpty()) w += 28 + int(std::ceil(QFontMetricsF(font(Type::metadata)).horizontalAdvance(shortcut)));
         else if (item->reservedShortcutWidth > 0) w += 28 + item->reservedShortcutWidth;
         if (item->menuItemType == QStyleOptionMenuItem::SubMenu) w += 20;

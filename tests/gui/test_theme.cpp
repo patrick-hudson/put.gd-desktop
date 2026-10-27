@@ -83,6 +83,17 @@ private slots:
             }
         }
     }
+    void menuLiteralAmpersandsReserveTheirVisibleWidth() {
+        for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);const auto& c=Theme::current();
+            const QString display="Capture region & edit: No output enabled · No local copy";auto encoded=display;encoded.replace("&","&&");
+            QMenu menu;QStyleOptionMenuItem option;option.state=QStyle::State_None;option.font=Graphite::font();option.text=encoded;option.menuItemType=QStyleOptionMenuItem::Normal;option.menuHasCheckableItems=false;
+            const auto size=menu.style()->sizeFromContents(QStyle::CT_MenuItem,&option,{},&menu);QVERIFY(size.width()>=QFontMetrics(option.font).horizontalAdvance(display)+28);option.rect=QRect(QPoint(),size);
+            QImage actual(size,QImage::Format_RGB32);actual.fill(c.bg);{QPainter painter(&actual);menu.style()->drawControl(QStyle::CE_MenuItem,&option,&painter,&menu);}
+            QImage expected(size,QImage::Format_RGB32);expected.fill(c.bg);{QPainter painter(&expected);painter.setFont(option.font);painter.setPen(c.textDisabled);painter.drawText(QRect(12,0,size.width()-25,size.height()),Qt::AlignVCenter|Qt::AlignLeft|Qt::TextSingleLine,display);}
+            QCOMPARE(actual,expected);
+        }
+    }
     void menuShortcutsKeepTheirCompleteInk() {
         for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}) {
             Theme::setScheme(scheme);const auto& c=Theme::current();
