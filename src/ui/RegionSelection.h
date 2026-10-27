@@ -27,14 +27,13 @@ inline void paintRegionScrim(QPainter& painter, const QRect& bounds, const QRect
 inline QString regionInstructions(const QRectF& selection = {}, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}) {
     const auto bounds = displayBounds.isEmpty() && QGuiApplication::primaryScreen() ? QRectF(QGuiApplication::primaryScreen()->geometry()) : displayBounds;
     const auto size = selection.isEmpty() ? bounds.size() : selection.size();
-    const QString context = (display.isEmpty() ? QStringLiteral("Display") : display)
-        + QStringLiteral(" · %1 × %2").arg(qRound(size.width())).arg(qRound(size.height()));
-    return (context.isEmpty() ? QString() : context + QStringLiteral("\n"))
-        // Enter with nothing selected takes the whole display; say so.
-        + (recording ? (selection.isEmpty() ? QStringLiteral("Drag to select · Enter chooses this entire display · Esc to cancel")
-                                            : QStringLiteral("Drag to select · Enter chooses this region · Esc to cancel"))
-                     : (selection.isEmpty() ? QStringLiteral("Drag to select · Enter captures this entire display · Esc to cancel")
-                                            : QStringLiteral("Drag to select · Enter to capture · Esc to cancel")))
+    const bool selected = !selection.isEmpty();
+    const QString context = (display.isEmpty() ? QStringLiteral("Display 1") : display)
+        + (selected ? QStringLiteral(" · Selection %1 × %2 px · ") : QStringLiteral(" · Entire display %1 × %2 px · "))
+            .arg(qRound(size.width())).arg(qRound(size.height()));
+    const QString accept = recording ? (selected ? QStringLiteral("Enter to choose") : QStringLiteral("Enter chooses this entire display"))
+                                     : (selected ? QStringLiteral("Enter to capture") : QStringLiteral("Enter captures this entire display"));
+    return context + accept + QStringLiteral("\nDrag to select · Esc to cancel")
         + QStringLiteral("\nArrows move · Shift+arrows resize · Tab next display")
         + (recording ? QStringLiteral("\nStart recording comes next") : QString());
 }

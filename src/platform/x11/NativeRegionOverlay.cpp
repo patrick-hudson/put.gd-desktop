@@ -26,7 +26,7 @@ public:
  QString text(QAccessible::Text type)const override{
   const auto* overlay=static_cast<NativeRegionOverlay*>(object());
   if(type==QAccessible::Name)return QStringLiteral("Capture region");
-  if(type==QAccessible::Description)return regionDescription(overlay->selection_,false,(overlay->keyboardScreen_<0?QString():overlay->frames_[overlay->keyboardScreen_].identity),overlay->frames_[std::max(0,overlay->keyboardScreen_)].logicalRect);
+  if(type==QAccessible::Description)return regionDescription(overlay->selection_,false,QStringLiteral("Display %1").arg(std::max(0,overlay->keyboardScreen_)+1),overlay->frames_[std::max(0,overlay->keyboardScreen_)].logicalRect);
   return {};
  }
  QRect rect()const override{
@@ -250,7 +250,9 @@ void NativeRegionOverlay::prepareInstructions(Surface& surface){
  const auto font=nativeRegionFont();
  const auto display=keyboardScreen_<0?surface.frame.identity:frames_[keyboardScreen_].identity;
  if(surface.frame.identity!=display){surface.instructions={};surface.instructionsKey.clear();return;}
- const auto instructions=regionInstructions(selection_,false,display,frames_[std::max(0,keyboardScreen_)].logicalRect);
+ const auto it=std::find_if(frames_.cbegin(),frames_.cend(),[&](const auto& frame){return frame.identity==display;});
+ const int index=it==frames_.cend()?0:int(std::distance(frames_.cbegin(),it));
+ const auto instructions=regionInstructions(selection_,false,QStringLiteral("Display %1").arg(index+1),frames_[index].logicalRect);
  const auto local=selection_.translated(-surface.frame.logicalRect.topLeft());
  const auto pointer=dragging_?std::optional<QPointF>(pointer_-surface.frame.logicalRect.topLeft()):std::nullopt;
  const auto box=regionInstructionBox(bounds,QFontMetrics(font),instructions,local,pointer);

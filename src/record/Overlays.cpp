@@ -1,3 +1,4 @@
+#include "Duration.h"
 #include <QCursor>
 #include "Overlays.h"
 #include "BarPlacement.h"
@@ -123,7 +124,7 @@ QString formatLabel(const QString& format, const QString& codec) {
 
 namespace {
 QString displayName(QScreen* screen) {
-    return screen->name().isEmpty() ? QStringLiteral("Display %1").arg(QGuiApplication::screens().indexOf(screen) + 1) : screen->name();
+    return QStringLiteral("Display %1").arg(QGuiApplication::screens().indexOf(screen) + 1);
 }
 }
 
@@ -429,7 +430,7 @@ void ControlBar::refresh() {
     const auto& tokens = Theme::current();
     setPalette(Graphite::palette());
     setProperty("themeScheme", Theme::name(Theme::scheme()));
-    dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg((recording ? tokens.danger : paused ? tokens.textMuted : ready ? tokens.success : tokens.textMuted).name()));
+    dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg((recording ? tokens.danger : paused ? tokens.textMuted : tokens.textSecondary).name()));
     state_label_->setText(recording ? QStringLiteral("Recording") : paused ? QStringLiteral("Paused") : ready ? QStringLiteral("Ready to record") : QStringLiteral("Stopping…"));
     // Once recording starts these are information, not disabled choices.
     const bool withSound = config_.audio.system && !config_.silent();
@@ -482,8 +483,7 @@ void ControlBar::paintEvent(QPaintEvent*) {
     painter.drawRect(rect().adjusted(0, 0, -1, -1));
 }
 void ControlBar::setRetained(qint64 us) {
-    const qint64 tenths = us / 100000;
-    time_->setText(QStringLiteral("%1:%2.%3").arg(tenths / 600).arg((tenths / 10) % 60, 2, 10, QChar('0')).arg(tenths % 10));
+    time_->setText(durationText(us));
 }
 QSize ControlBar::widestSize() {
     const QString state = state_;

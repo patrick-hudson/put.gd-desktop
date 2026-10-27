@@ -63,7 +63,7 @@ function closed(actor) {equal([actor.destroyed, grabs], [true, 0]);}
 {
     const {actor, result} = begin();
     equal(actor._instructions.text.includes('Enter captures this entire display'), true);
-    equal(actor._instructions.text.includes('Display 2 · 1280 × 720'), true);
+    equal(actor._instructions.text.includes('Display 2 · Entire display 1280 × 720 px'), true);
     equal([actor._rectangle.x, actor._rectangle.y, actor._rectangle.width, actor._rectangle.height], [1920, -100, 1280, 720]);
     key(actor, 'Left', 3);
     equal(actor._instructions.text.includes('Enter to capture'), true);
@@ -158,7 +158,7 @@ print('PASS mouse-to-keyboard clipping and keyboard-to-mouse replacement');
         {current: 1, region: {x: 1920, y: -100, width: 1280, height: 720}});
     equal(RegionSelection.instructions(null, true, 'Display 2').includes('Drag to select'), true);
     equal(RegionSelection.instructions(null, true, 'Display 2').includes('Enter chooses this entire display'), true);
-    equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Enter chooses this region'), true);
+    equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Enter to choose'), true);
     equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('2 × 2'), true);
     equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Drag to select'), true);
 }

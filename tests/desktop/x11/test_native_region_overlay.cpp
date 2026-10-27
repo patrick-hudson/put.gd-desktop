@@ -115,8 +115,8 @@ private slots:
   motion({100,400});NativeRegionOverlay overlay(frames());QSignalSpy selected(&overlay,&RegionSelector::selected);
   overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
   auto* accessible=QAccessible::queryAccessibleInterface(&overlay);QVERIFY(accessible);
-  keyClick(0xff09);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("right"));
-  keyClick(0xff09,0xffe1);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("left"));
+  keyClick(0xff09);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("Display 2"));
+  keyClick(0xff09,0xffe1);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("Display 1"));
   keyClick(0xff53);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("320 × 400"));
   keyClick(0xff09);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("320 × 400 at 640, 0"));
   keyClick(0xff0d);PUTGD_TRY_COMPARE(selected.size(),1);

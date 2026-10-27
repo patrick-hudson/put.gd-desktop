@@ -35,7 +35,7 @@ private slots:
   KdeRegionOverlay overlay({},nullptr,true);auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);
   QCOMPARE(surface->accessibleName(),QString("Recording region"));QVERIFY(surface->accessibleDescription().contains("Enter chooses this entire display"));
   QVERIFY(surface->accessibleDescription().contains("Enter chooses this entire display"));
-  QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().contains("Enter chooses this region"));QVERIFY(surface->accessibleDescription().contains("320 × 240"));
+  QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().contains("Enter to choose"));QVERIFY(surface->accessibleDescription().contains("320 × 240"));
   QTest::keyClick(surface,Qt::Key_Escape);
  }
  void enterUsesReceivingScreenAndEscapeCancels(){

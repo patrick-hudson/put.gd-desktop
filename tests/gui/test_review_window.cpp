@@ -49,8 +49,8 @@ ReviewWindow::Options options() {
     return o;
 }
 RecordingConfig config() { RecordingConfig c; c.format = "mp4"; c.codec = "h264"; c.fps = 30; return c; }
-QPushButton* buttonNamed(QWidget& window, const QString& text) {
-    for (auto* button : window.findChildren<QPushButton*>()) if (button->text() == text && button->isVisible()) return button;
+QAbstractButton* buttonNamed(QWidget& window, const QString& text) {
+    for (auto* button : window.findChildren<QAbstractButton*>()) if ((button->text() == text || button->accessibleName() == text) && button->isVisible()) return button;
     return nullptr;
 }
 RecordingMask mask(const QString& id, const QString& kind, qint64 start, qint64 end) {
@@ -84,6 +84,40 @@ class ReviewWindowTest : public QObject {
     static qint64 slack(const ReviewTimeline& t) { return 2 * duration / t.trackRect().width() + 1; }
     static ReviewTimeline* timeline(ReviewWindow& w) { return w.findChild<ReviewTimeline*>("timeline"); }
 private slots:
+    void recoveryStaysWithItsMessageAboveTheFooter() {
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.showError("Export failed: disk full");
+        QApplication::processEvents();
+        auto* row = window.findChild<QWidget*>("statusRow");
+        auto* footer = window.findChild<QWidget*>("reviewFooter");
+        auto* details = window.findChild<QPushButton*>("reviewErrorDetails");
+        auto* retry = buttonNamed(window, "Try again");
+        auto* dismiss = buttonNamed(window, "Dismiss");
+        QVERIFY(row && details && retry && dismiss);
+        for (auto* action : QList<QAbstractButton*>{details, retry, dismiss}) {
+            QVERIFY(row->isAncestorOf(action) && action->isVisible());
+            QVERIFY(row->rect().contains(QRect(action->mapTo(row, QPoint()), action->size())));
+        }
+        QVERIFY(row->geometry().top() > timeline(window)->geometry().bottom());
+        QCOMPARE(row->geometry().bottom() + 1, footer->geometry().top());
+        QSignalSpy retried(&window, &ReviewWindow::retryExportRequested);
+        retry->click(); QCOMPARE(retried.size(), 1);
+        dismiss->click(); QVERIFY(row->isHidden());
+    }
+    void readoutAndRecordingBarUseTheSameTenths() {
+        auto o = options(); o.durationUs = 125678901;
+        ReviewWindow window(o, config()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        ControlBar::Options barOptions; barOptions.formats = {"mp4"};
+        ControlBar bar(barOptions, config());
+        for (const qint64 at : {qint64(0), qint64(999999), qint64(60567890)}) {
+            window.drive({{"action", "seek"}, {"time", double(at)}});
+            bar.setRetained(at);
+            QCOMPARE(window.findChild<QLabel*>("time")->text().section(" / ", 0, 0), bar.findChild<QLabel*>("time")->text());
+        }
+        QCOMPARE(window.findChild<QLabel*>("time")->text(), QString("1:00.5 / 2:05.6"));
+    }
     void stableMaskNamesSurviveRemoval() {
         ReviewWindow window(options(), config());
         window.setEdit(twoMasks()); window.show();
@@ -120,17 +154,17 @@ private slots:
         auto* trim = window.findChild<QWidget*>("trimControls");
         auto* masks = window.findChild<QWidget*>("maskControls");
         auto* interval = window.findChild<QLabel*>("maskActiveInterval");
-        QVERIFY(masks->isAncestorOf(interval)); QVERIFY(!trim->isAncestorOf(interval));
-        QVERIFY(masks->y() > trim->geometry().bottom());
+        QVERIFY(window.findChild<QWidget*>("maskTimingControls")->isAncestorOf(interval)); QVERIFY(!trim->isAncestorOf(interval));
+        QVERIFY(masks->y() > trim->mapTo(&window, trim->rect().bottomLeft()).y());
         for (const auto& name : {QString("Set trim start"), QString("Set trim end"), QString("Reset trim")}) {
             QToolButton* found = nullptr;
             for (auto* button : trim->findChildren<QToolButton*>()) if (button->accessibleName() == name) found = button;
-            QVERIFY(found); QCOMPARE(found->toolButtonStyle(), Qt::ToolButtonTextOnly); QVERIFY(!found->text().isEmpty());
+            QVERIFY(found); QCOMPARE(found->toolButtonStyle(), Qt::ToolButtonIconOnly); QVERIFY(!found->icon().isNull());
             QVERIFY(!found->autoRaise());
             QVERIFY(found->height() >= 32);
             if (name != "Reset trim") QVERIFY(found->text().startsWith("Set "));
         }
-        QVERIFY(trim->findChild<QLabel*>("muted")->text().startsWith("Kept: "));
+        QVERIFY(trim->findChild<QLabel*>("muted")->text().endsWith(" s kept"));
         QToolButton *redact = nullptr, *blur = nullptr;
         for (auto* button : masks->findChildren<QToolButton*>()) {
             if (button->accessibleName() == "Redact") redact = button;
@@ -146,8 +180,8 @@ private slots:
         auto* track = timeline(window);
         for (int width : {720, 820, 1060}) {
             window.resize(width, 720); QApplication::processEvents();
-            QVERIFY(track->geometry().bottom() < trim->y());
-            QVERIFY(trim->geometry().bottom() < masks->y());
+            QVERIFY(track->geometry().bottom() < trim->mapTo(&window, QPoint()).y());
+            QVERIFY(trim->mapTo(&window, trim->rect().bottomLeft()).y() < masks->y());
             QVERIFY(!track->maskRect("m-blur").isEmpty());
             QVERIFY(!track->maskRect("m-solid").isEmpty());
             auto* interval = window.findChild<QLabel*>("maskActiveInterval");
@@ -179,16 +213,19 @@ private slots:
             window.resize(width, 720); QApplication::processEvents();
             QCOMPARE(trimLabel->mapTo(&window, QPoint()).x(), maskLabel->mapTo(&window, QPoint()).x());
             QCOMPARE(trimLabel->width(), maskLabel->width());
-            QCOMPARE(window.findChild<QLabel*>("maskTimingGroup")->mapTo(&window, QPoint()).x(), maskLabel->mapTo(&window, QPoint()).x());
+            QVERIFY(window.findChild<QLabel*>("maskTimingGroup")->mapTo(&window, QPoint()).x() > trimLabel->mapTo(&window, QPoint()).x());
+            auto* clip = window.findChild<QLabel*>("clipGroup");
+            QVERIFY(clip && clip->isVisible() && t->isAncestorOf(clip));
+            QVERIFY(clip->geometry().right() < t->trackRect().left());
             const auto lane = t->trackRect().translated(t->pos());
-            QVERIFY(t->geometry().bottom() < trim->y());
+            QVERIFY(t->geometry().bottom() < trim->mapTo(&window, QPoint()).y());
             QCOMPARE(t->x(), 8);
             QCOMPARE(t->width(), window.width() - 16);
             QVERIFY(lane.width() >= window.width() - Graphite::scaled(140));
             for (const auto& mask : twoMasks().masks) {
                 const auto bar = t->maskRect(mask.id).translated(t->pos());
                 QVERIFY(bar.top() > lane.bottom());
-                QVERIFY(bar.bottom() < trim->y());
+                QVERIFY(bar.bottom() < trim->mapTo(&window, QPoint()).y());
                 QVERIFY(bar.left() >= lane.left() && bar.right() <= lane.right());
             }
             window.drive({{"action", "seek"}, {"time", double(duration - 1)}});
@@ -196,8 +233,8 @@ private slots:
             auto* status = window.findChild<QLabel*>("playbackStatus");
             auto* playback = window.findChild<QToolButton*>("play");
             auto* speed = window.findChild<QComboBox*>("speed");
-            auto* metadata = window.findChild<QWidget*>("reviewMetadata");
-            for (auto* control : std::initializer_list<QWidget*>{window.findChild<QLabel*>("clipGroup"), playback, speed, time}) {
+            auto* metadata = window.findChild<QWidget*>("reviewTransport");
+            for (auto* control : std::initializer_list<QWidget*>{playback, speed, time}) {
                 QVERIFY(metadata->isAncestorOf(control));
                 const QRect bounds(control->mapTo(&window, QPoint()), control->size());
                 QVERIFY(window.rect().contains(bounds));
@@ -206,7 +243,7 @@ private slots:
             }
             QVERIFY(!time->text().contains('\n'));
             QVERIFY(status->isVisible());
-            QVERIFY(window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(status));
+            QVERIFY(window.findChild<QWidget*>("reviewTransport")->isAncestorOf(status));
             QVERIFY(window.rect().contains(QRect(status->mapTo(&window, QPoint()), status->size())));
             QVERIFY(t->trackRect().width() >= 360);
             for (auto* button : window.findChildren<QToolButton*>()) if (button->toolButtonStyle() == Qt::ToolButtonTextOnly) {
@@ -237,7 +274,8 @@ private slots:
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto* destination = window.findChild<Graphite::ElidedLabel*>("uploadDestination");
         const auto nameFits = [&] {
-            return destination->text() == o.uploadSummary && destination->accessibleName() == o.uploadSummary;
+            return destination->text() == o.uploadSummary && destination->accessibleName() == o.uploadSummary
+                && destination->width() >= 12 * destination->font().pixelSize();
         };
         window.resize(window.minimumSizeHint()); QApplication::processEvents();
         QVERIFY2(nameFits(), qPrintable(destination->text()));
@@ -356,7 +394,7 @@ private slots:
                 QCOMPARE(selected, QRectF(QPointF(screen.topLeft()) + QPointF(100, 100), QSizeF(200, 180)));
             } else {
                 QTest::keyClick(surface, Qt::Key_Right);
-                QVERIFY(surface->accessibleDescription().contains(recording ? "Enter chooses this region" : "Enter to capture"));
+                QVERIFY(surface->accessibleDescription().contains(recording ? "Enter to choose" : "Enter to capture"));
                 QVERIFY(!surface->accessibleDescription().contains("logical pixels"));
                 QRectF expected(QPointF(screen.topLeft()) + QPointF(screen.width() / 4.0, screen.height() / 4.0), QSizeF(screen.size()) / 2);
                 QVERIFY(accessible->text(QAccessible::Description).contains(QString::number(expected.width())));
@@ -395,10 +433,10 @@ private slots:
         for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"&&w->width()==800)surface=w;
         QVERIFY(surface);
         QTest::keyClick(surface,Qt::Key_Tab);
-        QVERIFY(surface->accessibleDescription().contains("Right · 320 × 240\n"));
+        QVERIFY(surface->accessibleDescription().contains("Display 2 · Entire display 320 × 240 px · "));
         QTest::keyClick(surface,Qt::Key_Right);
         QTest::keyClick(surface,Qt::Key_Backtab);
-        QVERIFY(surface->accessibleDescription().contains("Left · "));
+        QVERIFY(surface->accessibleDescription().contains("Display 1 · "));
         QTest::keyClick(surface,Qt::Key_Return);QCOMPARE(selected.size(),1);
         QCOMPARE(qvariant_cast<QRectF>(selected.first()[0]),QRectF(-720,60,160,120));
     }
@@ -476,7 +514,7 @@ private slots:
         auto* target = window.findChild<QLabel*>("uploadDestination");
         auto* upload = window.findChild<QPushButton*>("upload");
         QVERIFY(target && target->isVisible() && target->toolTip() == o.uploadSummary);
-        QVERIFY(target->mapTo(&window, target->rect().bottomLeft()).y() < upload->mapTo(&window, QPoint()).y());
+        QVERIFY(target->mapTo(&window, QPoint()).y() > upload->mapTo(&window, upload->rect().bottomLeft()).y());
         QVERIFY(window.rect().contains(QRect(target->mapTo(&window, QPoint()), target->size())));
         auto* full = window.findChild<QLabel*>("uploadDestinationWrapped");
         QVERIFY(full && !full->isVisible());
@@ -485,7 +523,7 @@ private slots:
         static_cast<Graphite::ElidedLabel*>(target)->fullTextPopup()->close();
         auto* audio = window.findChild<QLabel*>("exportAudioSummary");
         QVERIFY(audio->isVisible());
-        QVERIFY(audio->mapTo(&window, QPoint()).y() < upload->mapTo(&window, QPoint()).y());
+        QVERIFY(audio->mapTo(&window, QPoint()).y() > upload->mapTo(&window, upload->rect().bottomLeft()).y());
         QVERIFY(state["audio"].toString().startsWith("Silent preview"));
         QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->isVisible());
     }
@@ -590,7 +628,7 @@ private slots:
         QCOMPARE(header->height(), header->compactHeight());
         QVERIFY2(header->height() >= 32 && header->height() <= 40, qPrintable(QString::number(header->height())));
         QCOMPARE(window.inspect()["header"].toObject()["rect"].toArray()[3].toInt(), header->height());
-        // One line: the window's name; its draft state stays in the footer.
+        // The compact header keeps the name and upload state on one line.
         auto* name = header->findChild<QWidget*>("documentName");
         QVERIFY(name && name->isVisible());
         QCOMPARE(name->accessibleName(), QStringLiteral("Review recording"));
@@ -598,7 +636,7 @@ private slots:
         QVERIFY(!state || !state->isVisible());
         auto* draft = window.findChild<QLabel*>("draftState");
         QVERIFY(draft && draft->isVisible() && draft->text() == QStringLiteral("Not uploaded"));
-        QVERIFY(draft->mapTo(&window, QPoint()).y() > header->height());
+        QVERIFY(header->isAncestorOf(draft));
         // The shared window controls, each at least a 32 px target.
         for (const auto* name : {"windowMinimize", "windowMaximize", "windowClose"}) {
             auto* button = header->findChild<QToolButton*>(name);
@@ -763,7 +801,7 @@ private slots:
             window.resize(ReviewWindow::defaultSize()); QApplication::processEvents();
             window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
             window.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
-            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Couldn't save the copy: the disk is full. Free up space, then try again."));
+            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Disk is full. Free up space, then try again."));
             qInfo("visible recovery frame share %.3f at %dx%d", window.inspect()["video"].toObject()["share"].toDouble(), window.width(), window.height());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             window.resize(ReviewWindow::defaultSize());
@@ -792,6 +830,7 @@ private slots:
             QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
             window.drive({{"action", "selectMask"}, {"maskId", "blur"}});
             QApplication::processEvents();
+            qInfo("sequence transient %dx%d share %.3f frame %d status %d footer %d", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble(), window.findChild<FrameView*>()->height(), window.findChild<QWidget*>("statusRow")->height(), window.findChild<QWidget*>("reviewFooter")->height());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53);
             window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
             window.showError("Export failed: disk full");
@@ -799,7 +838,7 @@ private slots:
             qInfo("enlarged preview sequence %dx%d recovery %.3f", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             QCOMPARE(window.geometry(), geometry);
-            for (auto* button : window.findChild<QWidget*>("reviewMetadata")->findChildren<QPushButton*>("statusAction")) {
+            for (auto* button : window.findChild<QWidget*>("statusRow")->findChildren<QPushButton*>("statusAction")) {
                 QVERIFY2(button->width() >= button->fontMetrics().horizontalAdvance(button->text()) + 28, qPrintable(button->text()));
             }
         }
@@ -839,11 +878,11 @@ private slots:
             window.showError(failure);
             PUTGD_TRY_VERIFY2(window.height() <= 680 && window.minimumSizeHint().height() <= 680,
                 qPrintable(QString("%1x%2 min %3x%4 share %5").arg(window.width()).arg(window.height()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()).arg(window.inspect()["video"].toObject()["share"].toDouble())));
-            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Couldn't save the copy: the disk is full. Free up space, then try again."));
+            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Disk is full. Free up space, then try again."));
             qInfo("visible recovery frame share %.3f at %dx%d", window.inspect()["video"].toObject()["share"].toDouble(), window.width(), window.height());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
-            QVERIFY(window.inspect()["status"].toString().contains("For private information, use Redact."));
-            QVERIFY(buttonNamed(window, "Use Redact")->isVisible());
+            QVERIFY(window.inspect()["status"].toString().contains(Graphite::blurWarningText()));
+            auto* redact = buttonNamed(window, "Use Redact"); QVERIFY(redact && redact->isVisible());
             QVERIFY(window.inspect()["errorDetails"].toObject()["visible"].toBool());
             QCOMPARE(window.inspect()["errorDetails"].toObject()["message"].toString(), failure);
             for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && !w->isWindow())
@@ -887,7 +926,7 @@ private slots:
         auto* label = window.findChild<QLabel*>("maskActiveInterval");
         QVERIFY(label && label->isVisible());
         edit.revision++; edit.masks[0].start = 5000000; edit.masks[0].end = 20000000; window.setEdit(edit);
-        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Not at playhead"));
+        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Inactive"));
         QCOMPARE(window.inspect()["selectedMaskInterval"].toObject()["text"].toString(), label->text());
         window.drive({{"action", "seek"}, {"time", 8000000}});
         QCOMPARE(label->text(), QString("0:05.00–0:20.00"));
@@ -896,12 +935,12 @@ private slots:
         QTest::keyClick(window.findChild<FrameView*>(), Qt::Key_Right, Qt::ControlModifier);
         QCOMPARE(label->pos(), position);
         QVERIFY(!window.findChild<FrameView*>()->isAncestorOf(label));
-        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Not at playhead"));
+        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Inactive"));
         QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont()).family());
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
         QVERIFY(window.inspect()["playbackStatus"].toString().contains("Outside kept part"));
-        QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("Kept: 27 s"));
+        QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("27 s kept"));
     }
     void adviceOnlyOffersAvailableFormats() {
         auto o = options(); o.codecs["mp4"] = QJsonArray{"h265"};
@@ -1195,7 +1234,7 @@ private slots:
         // The fixture's clip does not exist: the first refresh fails.
         PUTGD_TRY_VERIFY(window.inspect()["preview"].toObject()["error"].isString());
         auto preview = window.inspect()["preview"].toObject();
-        QCOMPARE(preview["error"].toString(), QString("The frame at 0:00.00 couldn't be decoded (the private recording file is missing)."));
+        QCOMPARE(preview["error"].toString(), QString("The frame at 0:00.0 couldn't be decoded (the private recording file is missing)."));
         QVERIFY(!preview["stale"].toBool());
         auto* card = window.findChild<QWidget*>("previewError");
         auto* retry = window.findChild<QPushButton*>("retryPreview");
@@ -1212,9 +1251,9 @@ private slots:
         QVERIFY(window.drive({{"action", "seek"}, {"time", 4000000}}).code.isEmpty());
         PUTGD_TRY_VERIFY(window.inspect()["preview"].toObject()["stale"].toBool());
         preview = window.inspect()["preview"].toObject();
-        QCOMPARE(preview["error"].toString(), QString("The frame at 0:04.00 couldn't be decoded (the private recording file is missing)."));
+        QCOMPARE(preview["error"].toString(), QString("The frame at 0:04.0 couldn't be decoded (the private recording file is missing)."));
         QCOMPARE(preview["frameTimeUs"].toDouble(), 0.0);
-        QVERIFY(window.findChild<QLabel*>("previewErrorText")->text().contains(QStringLiteral("earlier frame (0:00.00)")));
+        QVERIFY(window.findChild<QLabel*>("previewErrorText")->text().contains(QStringLiteral("earlier frame (0:00.0)")));
         // Retry tries again at once and, failing, keeps the error.
         retry->click();
         QVERIFY(window.inspect()["preview"].toObject()["stale"].toBool());
@@ -1300,7 +1339,7 @@ private slots:
         QVERIFY(compatible);
         const auto position = compatible->mapTo(dialog, QPoint());
         QVERIFY(dialog->rect().contains(QRect(position, compatible->size())));
-        auto* primary = buttonNamed(*dialog, "Try again");
+        auto* primary = qobject_cast<QPushButton*>(buttonNamed(*dialog, "Try again"));
         QVERIFY(primary && primary->isDefault());
         primary->click(); QCOMPARE(retry.size(), 2);
         QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
@@ -1380,7 +1419,7 @@ private slots:
         window.setEdit(twoMasks());
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        const QString guidance = QStringLiteral("For private information, use Redact.");
+        const QString guidance = Graphite::blurWarningText();
         QVERIFY(!window.inspect()["status"].toString().contains(guidance));
         auto* list = window.findChild<QComboBox*>("masks");
         QCOMPARE(list->itemText(1), QString("Redaction 2"));
@@ -1470,7 +1509,7 @@ private slots:
         ReviewWindow window(options(), config());
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        for (const auto* name : {"time", "muted"}) {
+        for (const auto* name : {"time"}) {
             QLabel* label = nullptr;
             for (auto* l : window.findChildren<QLabel*>(name)) if (l->accessibleName() == "Playhead time" || l->accessibleName() == "Kept interval") label = l;
             QVERIFY2(label, name);

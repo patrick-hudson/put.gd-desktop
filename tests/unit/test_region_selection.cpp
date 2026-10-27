@@ -33,11 +33,11 @@ private slots:
    QRectF selected;const QRectF screen(0,0,800,600);
    const auto initial=regionInstructions(selected,recording,"DP-2",screen);
    QVERIFY(initial.contains(recording?"Enter chooses this entire display":"Enter captures this entire display"));
-   QVERIFY(initial.contains("Drag to select · "));
-   QVERIFY(initial.startsWith("DP-2 · 800 × 600\n"));QVERIFY(!initial.contains("logical pixels"));
+   QVERIFY(initial.contains("Drag to select · Esc to cancel"));
+   QVERIFY(initial.startsWith("DP-2 · Entire display 800 × 600 px · "));QVERIFY(!initial.contains("logical pixels"));
    QCOMPARE(regionKey(selected,screen,Qt::Key_Right),RegionKeyAction::Change);
    const auto changed=regionInstructions(selected,recording,"DP-2",screen);
-   QVERIFY(changed.contains(recording?"Enter chooses this region":"Enter to capture"));
+   QVERIFY(changed.contains(recording?"Enter to choose":"Enter to capture"));
    QVERIFY(!changed.contains("entire display"));QVERIFY(changed.contains("400 × 300"));
   }
  }

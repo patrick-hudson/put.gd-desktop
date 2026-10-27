@@ -216,10 +216,10 @@ const RegionSelection = {
     instructions(region, recording, display, bounds) {
         const selected = region?.width > 0 && region?.height > 0;
         const size = selected ? region : bounds;
-        const context = `${display || 'Display'} · ${Math.round(size?.width ?? 0)} × ${Math.round(size?.height ?? 0)}`;
-        return (context ? context + '\n' : '') +
-            `Drag to select · ${recording ? (selected ? 'Enter chooses this region' : 'Enter chooses this entire display')
-                : (selected ? 'Enter to capture' : 'Enter captures this entire display')} · Esc to cancel` +
+        const context = `${display || 'Display 1'} · ${selected ? 'Selection' : 'Entire display'} ${Math.round(size?.width ?? 0)} × ${Math.round(size?.height ?? 0)} px · `;
+        const accept = recording ? (selected ? 'Enter to choose' : 'Enter chooses this entire display')
+            : (selected ? 'Enter to capture' : 'Enter captures this entire display');
+        return context + accept + '\nDrag to select · Esc to cancel' +
             '\nArrows move · Shift+arrows resize · Tab next display' +
             (recording ? '\nStart recording comes next' : '');
     },
@@ -373,7 +373,7 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         const rect = this._region;
         const monitor = this._monitor();
         const index = Main.layoutManager.monitors.indexOf(monitor);
-        const display = global.display?.get_monitor_name?.(index) ?? monitor?.connector ?? monitor?.name ?? `Display ${index + 1}`;
+        const display = `Display ${index + 1}`;
         const instructions = RegionSelection.instructions(rect, this._recording, display, monitor);
         this._instructions.text = instructions;
         const description = (rect && rect.width > 0 && rect.height > 0

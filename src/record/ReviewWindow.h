@@ -151,6 +151,7 @@ private:
     QList<int> lane_;
     int lanes_ = 0;
     QScrollBar* laneScroll_ = nullptr;
+    Graphite::ElidedLabel* clipLabel_ = nullptr;
     QString selected_;
     Drag drag_ = Drag::None;
     qint64 dragStart_ = 0, dragEnd_ = 0;
@@ -284,7 +285,6 @@ private:
     QLabel *notice_ = nullptr, *time_ = nullptr, *playbackStatus_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
     // Errors, warnings and privacy guidance with their actions; shown only when there are any.
     QWidget* statusRow_ = nullptr;
-    QWidget* errorActions_ = nullptr;
     QVBoxLayout* statusLines_ = nullptr;
     QList<StatusEntry> shownStatus_;
     bool blurTipDismissed_ = false;  // the blur privacy guidance, acknowledged once
