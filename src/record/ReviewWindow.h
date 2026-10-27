@@ -284,6 +284,7 @@ private:
     QLabel *notice_ = nullptr, *time_ = nullptr, *playbackStatus_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
     // Errors, warnings and privacy guidance with their actions; shown only when there are any.
     QWidget* statusRow_ = nullptr;
+    QWidget* errorActions_ = nullptr;
     QVBoxLayout* statusLines_ = nullptr;
     QList<StatusEntry> shownStatus_;
     bool blurTipDismissed_ = false;  // the blur privacy guidance, acknowledged once

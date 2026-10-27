@@ -126,6 +126,9 @@ private slots:
             QToolButton* found = nullptr;
             for (auto* button : trim->findChildren<QToolButton*>()) if (button->accessibleName() == name) found = button;
             QVERIFY(found); QCOMPARE(found->toolButtonStyle(), Qt::ToolButtonTextOnly); QVERIFY(!found->text().isEmpty());
+            QVERIFY(!found->autoRaise());
+            QVERIFY(found->height() >= 32);
+            if (name != "Reset trim") QVERIFY(found->text().startsWith("Set "));
         }
         QVERIFY(trim->findChild<QLabel*>("muted")->text().startsWith("Kept: "));
         QToolButton *redact = nullptr, *blur = nullptr;
@@ -141,12 +144,10 @@ private slots:
         auto* trim = window.findChild<QWidget*>("trimControls");
         auto* masks = window.findChild<QWidget*>("maskControls");
         auto* track = timeline(window);
-        QList<int> offsets;
         for (int width : {720, 820, 1060}) {
             window.resize(width, 720); QApplication::processEvents();
-            const QList<int> current{trim->y() - track->y(), masks->y() - track->y(), track->height()};
-            if (offsets.isEmpty()) offsets = current;
-            else QCOMPARE(current, offsets);
+            QVERIFY(track->geometry().bottom() < trim->y());
+            QVERIFY(trim->geometry().bottom() < masks->y());
             QVERIFY(!track->maskRect("m-blur").isEmpty());
             QVERIFY(!track->maskRect("m-solid").isEmpty());
             auto* interval = window.findChild<QLabel*>("maskActiveInterval");
@@ -154,12 +155,12 @@ private slots:
             QVERIFY(interval->mapTo(&window, interval->rect().bottomLeft()).y() < footer->y());
         }
     }
-    void lanesStayBesideTheirControlsAndTransportStaysOnOneLine_data() {
+    void lanesSpanReviewAboveControlsAndTransportStaysOnOneLine_data() {
         QTest::addColumn<double>("scale");
         QTest::newRow("standard") << 1.0;
         QTest::newRow("150%") << 1.5;
     }
-    void lanesStayBesideTheirControlsAndTransportStaysOnOneLine() {
+    void lanesSpanReviewAboveControlsAndTransportStaysOnOneLine() {
         QFETCH(double, scale);
         const auto original = QApplication::font();
         const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
@@ -172,7 +173,6 @@ private slots:
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto* t = timeline(window);
         auto* trim = window.findChild<QWidget*>("trimControls");
-        auto* masks = window.findChild<QWidget*>("maskControls");
         auto* trimLabel = window.findChild<QLabel*>("trimGroup");
         auto* maskLabel = window.findChild<QLabel*>("maskGroup");
         for (int width : {720, 820, 1060}) {
@@ -180,12 +180,15 @@ private slots:
             QCOMPARE(trimLabel->mapTo(&window, QPoint()).x(), maskLabel->mapTo(&window, QPoint()).x());
             QCOMPARE(trimLabel->width(), maskLabel->width());
             const auto lane = t->trackRect().translated(t->pos());
-            QVERIFY(lane.center().y() >= trim->y() && lane.center().y() <= trim->geometry().bottom());
+            QVERIFY(t->geometry().bottom() < trim->y());
+            QCOMPARE(t->x(), 8);
+            QCOMPARE(t->width(), window.width() - 16);
+            QVERIFY(lane.width() >= window.width() - Graphite::scaled(140));
             for (const auto& mask : twoMasks().masks) {
                 const auto bar = t->maskRect(mask.id).translated(t->pos());
-                QVERIFY(bar.top() > trim->geometry().bottom());
-                QVERIFY(bar.center().y() >= masks->y());
-                QVERIFY(bar.left() > masks->geometry().right());
+                QVERIFY(bar.top() > lane.bottom());
+                QVERIFY(bar.bottom() < trim->y());
+                QVERIFY(bar.left() >= lane.left() && bar.right() <= lane.right());
             }
             window.drive({{"action", "seek"}, {"time", double(duration - 1)}});
             auto* time = window.findChild<QLabel*>("time");
@@ -193,7 +196,7 @@ private slots:
             QVERIFY(!time->text().contains('\n'));
             QVERIFY(status->isVisible());
             QCOMPARE(time->geometry().center().y(), status->geometry().center().y());
-            QVERIFY(t->trackRect().width() >= 80);
+            QVERIFY(t->trackRect().width() >= 360);
             for (auto* button : window.findChildren<QToolButton*>()) if (button->toolButtonStyle() == Qt::ToolButtonTextOnly) {
                 QVERIFY(button->width() - 8 >= QFontMetricsF(button->font()).horizontalAdvance(button->text()));
             }
@@ -222,7 +225,7 @@ private slots:
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto* destination = window.findChild<Graphite::ElidedLabel*>("uploadDestination");
         const auto nameFits = [&] {
-            return destination->text().contains(o.destination) && !destination->elided() && destination->accessibleName() == o.uploadSummary;
+            return destination->text() == o.uploadSummary && destination->accessibleName() == o.uploadSummary;
         };
         window.resize(window.minimumSizeHint()); QApplication::processEvents();
         QVERIFY2(nameFits(), qPrintable(destination->text()));
@@ -234,6 +237,24 @@ private slots:
             QApplication::processEvents();
             QVERIFY2(nameFits(), qPrintable(destination->text()));
         }
+    }
+    void formatAdviceSitsBesideTheFormatAndRecoveryIsBordered() {
+        ReviewWindow window(options(), config()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
+        auto* advice = window.findChild<QToolButton*>("formatAdvice");
+        QComboBox* format = nullptr;
+        for (auto* combo : window.findChildren<QComboBox*>()) if (combo->accessibleName() == "Output format") format = combo;
+        QVERIFY(advice && format);
+        QVERIFY(advice->isVisible());
+        QCOMPARE(advice->mapTo(&window, advice->rect().center()).y(), format->mapTo(&window, format->rect().center()).y());
+        QVERIFY(advice->mapTo(&window, QPoint()).x() > format->mapTo(&window, format->rect().topRight()).x());
+        window.showError("No space left on device");
+        auto* retry = buttonNamed(window, "Try again");
+        QVERIFY(retry && retry->isVisible());
+        QVERIFY(retry->property("visualRole").toString() != "link");
+        QSignalSpy retried(&window, &ReviewWindow::retryExportRequested);
+        retry->click(); QCOMPARE(retried.size(), 1);
     }
     void closedChoicesIgnoreWheel() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
@@ -362,7 +383,7 @@ private slots:
         for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"&&w->width()==800)surface=w;
         QVERIFY(surface);
         QTest::keyClick(surface,Qt::Key_Tab);
-        QVERIFY(surface->accessibleDescription().contains("Right\n"));
+        QVERIFY(surface->accessibleDescription().contains("Right · 320 × 240\n"));
         QTest::keyClick(surface,Qt::Key_Right);
         QTest::keyClick(surface,Qt::Key_Backtab);
         QVERIFY(surface->accessibleDescription().contains("Left · "));
@@ -401,7 +422,7 @@ private slots:
         QCOMPARE(t.lanes(), 8);
         auto* scroll = t.findChild<QScrollBar*>("maskLaneScroll");
         QVERIFY(scroll && scroll->isHidden()); QCOMPARE(scroll->maximum(), 6);
-        QVERIFY(!t.maskHitRect("0").intersects(t.maskHitRect("1")));
+        QVERIFY(t.maskHitRect("0").center().y() < t.maskHitRect("1").center().y());
         QVERIFY(t.maskRect("7").isEmpty());
         const int boundedHeight = t.sizeHint().height();
         t.setMasks(masks, "7"); QCOMPARE(scroll->value(), 6);
@@ -471,7 +492,19 @@ private slots:
         discard->click(); QVERIFY(bar.confirming()); QCOMPARE(cancelled.size(), 0);
         bar.findChild<QPushButton*>("keepRecording")->click(); QVERIFY(!bar.confirming());
     }
+    void timelineTargetsAre32PixelsAndNearestHandleWins_data() {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("standard") << 1.0;
+        QTest::newRow("150%") << 1.5;
+    }
     void timelineTargetsAre32PixelsAndNearestHandleWins() {
+        QFETCH(double, scale);
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
+        auto font = original;
+        if (font.pointSizeF() > 0) font.setPointSizeF(font.pointSizeF() * scale);
+        else font.setPixelSize(qRound(font.pixelSize() * scale));
+        QApplication::setFont(font);
         ReviewTimeline t;
         t.setDuration(duration);
         t.setTrim(5000000, 5200000);
@@ -481,25 +514,37 @@ private slots:
         const auto first = t.maskHitRect("one"), second = t.maskHitRect("two");
         QCOMPARE(first.height(), 32);
         QCOMPARE(second.height(), 32);
-        QVERIFY(!first.intersects(second));
+        QVERIFY(t.rect().contains(first));
+        QVERIFY(t.rect().contains(second));
+        // Compact lanes retain 32 px targets; the nearest lane wins where they overlap.
+        QSignalSpy selected(&t, &ReviewTimeline::maskSelected);
+        QTest::mouseClick(&t, Qt::LeftButton, {}, second.center());
+        QCOMPARE(selected.size(), 1);
+        QCOMPARE(selected.last().first().toString(), QString("two"));
+        const auto overlap = first.intersected(second);
+        QVERIFY(!overlap.isEmpty());
+        QTest::mouseClick(&t, Qt::LeftButton, {}, QPoint(overlap.center().x(), overlap.top()));
+        QCOMPARE(selected.last().first().toString(), QString("one"));
+        QTest::mouseClick(&t, Qt::LeftButton, {}, QPoint(overlap.center().x(), overlap.bottom()));
+        QCOMPARE(selected.last().first().toString(), QString("two"));
         auto* scroll = t.findChild<QScrollBar*>("maskLaneScroll");
         QVERIFY(scroll->isHidden());
         const auto secondTarget = t.maskHitRect("two");
         QCOMPARE(secondTarget.height(), 32);
         QVERIFY(!t.maskHitRect("one").isEmpty());
-        QVERIFY(secondTarget.top() >= 32);
+        QVERIFY(secondTarget.top() > t.trackRect().center().y());
         scroll->setValue(0);
-        QVERIFY(first.top() >= 32);
+        QVERIFY(first.top() >= 0);
         QSignalSpy trim(&t, &ReviewTimeline::trimChanged);
         drag(&t, QPoint(t.xFor(5200000) + 12, 2), QPoint(t.xFor(7000000), 2));
         QCOMPARE(trim.size(), 1);
         QCOMPARE(trim.last()[0].toLongLong(), 5000000);
         QVERIFY(trim.last()[1].toLongLong() > 6000000);
-        drag(&t, QPoint(t.xFor(5200000) + 12, 31), QPoint(t.xFor(7000000), 31));
-        QCOMPARE(trim.size(), 2);
+
+        t.setMasks({mask("one", "solid", 1000000, 2000000), mask("two", "solid", 1500000, 1900000)}, "one");
         QSignalSpy retimed(&t, &ReviewTimeline::maskRetimed);
         const auto bar = t.maskRect("one");
-        drag(&t, QPoint(bar.left() - 12, first.bottom()), QPoint(t.xFor(500000), first.bottom()));
+        drag(&t, QPoint(bar.left() - 12, bar.center().y()), QPoint(t.xFor(500000), bar.center().y()));
         QCOMPARE(retimed.size(), 1);
         QCOMPARE(retimed.last()[0].toString(), QString("one"));
     }
@@ -706,11 +751,11 @@ private slots:
             window.resize(ReviewWindow::defaultSize()); QApplication::processEvents();
             window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
             window.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
-            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Disk full. Free up space."));
+            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Couldn't save the copy: the disk is full. Free up space, then try again."));
             qInfo("visible recovery frame share %.3f at %dx%d", window.inspect()["video"].toObject()["share"].toDouble(), window.width(), window.height());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             window.resize(ReviewWindow::defaultSize());
-            PUTGD_TRY_VERIFY2(window.height() <= 768 && window.inspect()["status"].toString().contains("Free up space."),
+            PUTGD_TRY_VERIFY2(window.height() <= 768 && window.inspect()["status"].toString().contains("Free up space, then try again."),
                 qPrintable(QString("Window %1x%2 minimum %3x%4 frame %5 status %6 share %7").arg(window.width()).arg(window.height()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()).arg(window.findChild<FrameView*>()->height()).arg(window.findChild<QWidget*>("statusRow")->height()).arg(window.inspect()["video"].toObject()["share"].toDouble())));
         }
     }
@@ -749,7 +794,7 @@ private slots:
             window.showError(failure);
             PUTGD_TRY_VERIFY2(window.height() <= 680 && window.minimumSizeHint().height() <= 680,
                 qPrintable(QString("%1x%2 min %3x%4 share %5").arg(window.width()).arg(window.height()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()).arg(window.inspect()["video"].toObject()["share"].toDouble())));
-            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Disk full. Free up space."));
+            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Couldn't save the copy: the disk is full. Free up space, then try again."));
             qInfo("visible recovery frame share %.3f at %dx%d", window.inspect()["video"].toObject()["share"].toDouble(), window.width(), window.height());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             QVERIFY(window.inspect()["status"].toString().contains("For private information, use Redact."));
@@ -797,16 +842,16 @@ private slots:
         auto* label = window.findChild<QLabel*>("maskActiveInterval");
         QVERIFY(label && label->isVisible());
         edit.revision++; edit.masks[0].start = 5000000; edit.masks[0].end = 20000000; window.setEdit(edit);
-        QCOMPARE(label->text(), QString("Applies 0:05.00–0:20.00 · Inactive"));
+        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Not at playhead"));
         QCOMPARE(window.inspect()["selectedMaskInterval"].toObject()["text"].toString(), label->text());
         window.drive({{"action", "seek"}, {"time", 8000000}});
-        QCOMPARE(label->text(), QString("Applies 0:05.00–0:20.00"));
+        QCOMPARE(label->text(), QString("0:05.00–0:20.00"));
         window.drive({{"action", "seek"}, {"time", 0}});
         const auto position = label->pos();
         QTest::keyClick(window.findChild<FrameView*>(), Qt::Key_Right, Qt::ControlModifier);
         QCOMPARE(label->pos(), position);
         QVERIFY(!window.findChild<FrameView*>()->isAncestorOf(label));
-        QCOMPARE(label->text(), QString("Applies 0:05.00–0:20.00 · Inactive"));
+        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Not at playhead"));
         QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont()).family());
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
