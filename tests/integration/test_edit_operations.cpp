@@ -71,6 +71,18 @@ private slots:
   }
   QVERIFY(!command(*f.operations,id,"cancel").error);PUTGD_TRY_VERIFY(f.operations->editingOperation().isEmpty());QCOMPARE(f.provider->uploads.load(),0);
  }
+ void existingImagesWithoutOutput_data(){QTest::addColumn<QString>("source");QTest::newRow("clipboard")<<QString("clipboard");QTest::newRow("file")<<QString("file");}
+ void existingImagesWithoutOutput(){
+  QFETCH(QString,source);Fixture f(false);auto doc=Settings::defaults();QVERIFY(f.settings->save(doc,f.settings->revision()));PUTGD_TRY_VERIFY(f.operations->ready());
+  QJsonObject options{{"source",source}};if(source=="file"){const auto path=f.dir.filePath("input.png");QVERIFY(capture().save(path));options["path"]=path;}
+  const auto opened=call([&](JsonReply r){f.operations->invoke("edit",r,options);});QVERIFY2(!opened.error,qPrintable(opened.error.message));const auto id=opened.result["operationId"].toString();QVERIFY(!id.isEmpty());
+  QVERIFY(!command(*f.operations,id,"inspect").error);const auto refused=command(*f.operations,id,"submit");QCOMPARE(refused.error.code,QString("output_required"));QCOMPARE(refused.error.message,QString("No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture."));
+  const auto state=command(*f.operations,id,"inspect");QVERIFY(!state.error);QCOMPARE(state.result["phase"].toString(),QString("editing"));QCOMPARE(state.result["preparation"].toObject()["code"].toString(),QString("output_required"));QCOMPARE(state.result["view"].toObject()["preparationFailure"].toObject()["text"].toString(),refused.error.message);
+  const auto copy=f.dir.filePath("saved-copy.png");const auto saved=command(*f.operations,id,"saveCopy",{{"path",copy}});QVERIFY2(!saved.error,qPrintable(saved.error.message));QVERIFY(QFileInfo(copy).isFile());QCOMPARE(QImage(copy).size(),capture().size());QCOMPARE(f.provider->uploads.load(),0);QVERIFY(!command(*f.operations,id,"cancel").error);PUTGD_TRY_COMPARE(f.operations->diagnostics()["activeOperations"].toInt(),0);
+ }
+ void capturesWithoutOutputStayGated(){
+  Fixture f(false);QVERIFY(f.settings->save(Settings::defaults(),f.settings->revision()));PUTGD_TRY_VERIFY(f.operations->ready());for(const auto& action:Settings::actionNames()){const auto result=call([&](JsonReply r){f.operations->invoke(action,r);});QCOMPARE(result.error.code,QString("output_required"));}QCOMPARE(f.source.reads,0);QCOMPARE(f.provider->uploads.load(),0);
+ }
  void submittedEditorWaitsOutsideEditing_data(){
   QTest::addColumn<bool>("cancelQueued");
   QTest::newRow("drain")<<false;

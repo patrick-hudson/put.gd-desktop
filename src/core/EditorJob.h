@@ -51,6 +51,8 @@ public:
  EditorJob(QString stagingRoot,QString helperPath={},int startupTimeoutMs=20000,int finalizeTimeoutMs=120000,int commandTimeoutMs=8000);
  // Custom colors the editor offers as quick picks; it reports them back.
  EditorJob& withRecentColors(QStringList colors){recentColors_=std::move(colors);return *this;}
+ // An existing image can be edited and saved without a submission output.
+ EditorJob& withSubmissionError(Error error){submissionError_=std::move(error);return *this;}
  // "dark" or "light": the helper's scheme, the interface's resolved one.
  EditorJob& withAppearance(QString scheme){appearance_=std::move(scheme);return *this;}
  // Writes `image` to private staging, then releases it before the helper
@@ -63,6 +65,7 @@ public:
 private:
  EditorResult supervise(const std::function<bool(QFile&)>& stage,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
  QString root_,helperPath_,appearance_=QStringLiteral("dark");QStringList recentColors_;
+ Error submissionError_;
  int startupTimeoutMs_,finalizeTimeoutMs_,commandTimeoutMs_;
 };
 }
