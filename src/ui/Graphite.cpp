@@ -1533,7 +1533,7 @@ public:
         return actions;
     }
     QString localizedActionName(const QString& action) const override {
-        return action == QAccessibleActionInterface::pressAction() && label()->revealable() ? QStringLiteral("Show output details") : QAccessibleWidget::localizedActionName(action);
+        return action == QAccessibleActionInterface::pressAction() && label()->revealable() ? label()->revealActionName() : QAccessibleWidget::localizedActionName(action);
     }
     void doAction(const QString& action) override {
         if (label()->revealable() && action == QAccessibleActionInterface::pressAction()) label()->reveal();

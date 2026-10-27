@@ -369,7 +369,9 @@ private slots:
         auto* actions = interface->actionInterface();
         QVERIFY(actions);
         QVERIFY(actions->actionNames().contains(QAccessibleActionInterface::pressAction()));
-        QCOMPARE(actions->localizedActionName(QAccessibleActionInterface::pressAction()), QString("Show output details"));
+        QCOMPARE(actions->localizedActionName(QAccessibleActionInterface::pressAction()), QString("Show full text"));
+        summary->setRevealActionName("Show full save path");
+        QCOMPARE(actions->localizedActionName(QAccessibleActionInterface::pressAction()), QString("Show full save path"));
         QVERIFY(actions->actionNames().contains(QAccessibleActionInterface::setFocusAction()));
         auto* heading = new Graphite::ElidedLabel(&window);
         heading->setText("All items");

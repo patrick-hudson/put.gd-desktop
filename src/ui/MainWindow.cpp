@@ -149,7 +149,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  auto* outputGroup=outputGroup_=new QWidget;outputGroup->setObjectName("captureOutputGroup");auto* outputRow=new QHBoxLayout(outputGroup);outputRow->setContentsMargins(0,0,0,0);outputRow->setSpacing(10);
  // The summary takes the room the band has left and elides only beyond it; it
  // is a tab stop whose Enter opens the full text.
- auto* summary=new Graphite::ElidedLabel(outputGroup);destination_=summary;destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"secondary");summary->setRevealable(true);summary->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);outputRow->addWidget(destination_,1);
+ auto* summary=new Graphite::ElidedLabel(outputGroup);destination_=summary;destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"secondary");summary->setRevealable(true);summary->setRevealActionName("Show capture output details");summary->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);outputRow->addWidget(destination_,1);
  auto* changeOutput=new QPushButton("Change output…",outputGroup);changeOutput->setObjectName("changeCaptureOutput");VisualStyle::role(changeOutput,"link");changeOutput->setCursor(Qt::PointingHandCursor);outputRow->addWidget(changeOutput);outputRow->addStretch(0);
  statusBar()->addWidget(outputGroup,1);updateAvailability();
  // The running build, from the resident identity About also shows. Stable and

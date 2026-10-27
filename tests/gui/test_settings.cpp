@@ -586,11 +586,13 @@ private slots:
   PUTGD_TRY_VERIFY(window.settings()->saveViewState()["conflict"].toBool());
   auto* status=window.findChild<QLabel*>("settingsStatus");auto* destinationStatus=window.findChild<QLabel*>("destinationStatus");
   QCOMPARE(statusCode(window),QString("config_conflict"));QVERIFY(!status->text().contains("config_conflict"));
+  QCOMPARE(status->text(),QString("Settings changed elsewhere. Your edits are kept here. Reload discards them."));
+  window.resize(800,700);putgd::test::settle(30);QVERIFY(window.findChild<QWidget*>("destinationStatusRow")->property("stacked").toBool());QVERIFY(destinationReload->mapTo(&window,QPoint()).y()>destinationStatus->mapTo(&window,QPoint()).y()+destinationStatus->height());
   // The band carries one bounded indicator; the explanation and Reload stay in the page.
   auto* bandStatus=window.findChild<QLabel*>("autosaveStatus");QCOMPARE(bandStatus->text(),QString("Changes not saved"));QVERIFY(bandStatus->isVisible());QVERIFY(window.findChild<QLabel*>("autosaveExplanation")->isHidden());
   auto* summary=window.findChild<Graphite::ElidedLabel*>("captureOutputSummary");QVERIFY2(!summary->elided(),qPrintable(summary->text()));
-  QVERIFY(destinationStatus->isVisible());QVERIFY(destinationReload->isVisible());QCOMPARE(destinationReload->parentWidget(),destinationStatus->parentWidget());
-  QVERIFY(!settingsReload->isHidden());QCOMPARE(settingsReload->parentWidget(),status->parentWidget());QCOMPARE(settingsReload->text(),QString("Reload from file…"));
+  QVERIFY(destinationStatus->isVisible());QVERIFY(destinationReload->isVisible());QCOMPARE(destinationReload->parentWidget()->parentWidget(),destinationStatus->parentWidget()->parentWidget());
+  QVERIFY(!settingsReload->isHidden());QCOMPARE(settingsReload->parentWidget()->parentWidget(),status->parentWidget()->parentWidget());QCOMPARE(settingsReload->text(),QString("Reload from file…"));
   // An error is body text, not small print.
   QCOMPARE(status->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());
   // Cancel keeps the draft.
@@ -1160,10 +1162,15 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   complete({});PUTGD_TRY_VERIFY(test->isEnabled());PUTGD_TRY_VERIFY(status->text().contains("Connection successful"));
   QVERIFY(status->isVisible());QCOMPARE(status->property("feedbackTone").toString(),QString("success"));
   auto* destinations=window.findChild<QListWidget*>("destinationList");destinations->setCurrentRow(1);QVERIFY(status->text().isEmpty());destinations->setCurrentRow(0);
-  complete={};test->click();PUTGD_TRY_VERIFY(bool(complete));QVERIFY(status->text().contains("Testing connection"));
+  complete={};test->click();PUTGD_TRY_VERIFY(bool(complete));QVERIFY(status->text().contains("Testing upload"));
   complete({"s3_permission_denied","S3 denied the test upload. Check IAM and bucket policy permissions.",{}});
   PUTGD_TRY_VERIFY(test->isEnabled());PUTGD_TRY_VERIFY(status->text().contains("IAM and bucket policy"));
   QCOMPARE(status->property("feedbackTone").toString(),QString("error"));
+ }
+ void destinationActionsDescribeTheActiveProvider(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto b2=profiles[1].toObject();b2["provider"]="backblaze-b2";b2["settings"]=b2::defaults();profiles[1]=b2;auto proton=profiles[2].toObject();proton["provider"]="proton-drive";proton["settings"]=ProtonProvider::defaults();profiles[2]=proton;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();auto* list=window.findChild<QListWidget*>("destinationList");auto* test=window.findChild<QPushButton*>("testDestination");auto* secret=window.findChild<QLineEdit*>("credentialSecretKey");QPushButton* show=nullptr;for(auto* button:window.findChildren<QPushButton*>())if(button->accessibleName()=="Show secret access key")show=button;QVERIFY(show);auto* scope=window.findChild<QLabel*>("destinationTestScope");QVERIFY(scope&&scope->isVisible());QCOMPARE(test->text(),QString("Test upload and link"));
+  list->setCurrentRow(1);QCOMPARE(secret->accessibleName(),QString("Application key"));QCOMPARE(show->accessibleName(),QString("Show application key"));secret->setText("synthetic-input");show->click();QCOMPARE(show->accessibleName(),QString("Hide application key"));show->click();QCOMPARE(show->accessibleName(),QString("Show application key"));
+  list->setCurrentRow(2);QCOMPARE(test->text(),QString("Check account and folder"));QCOMPARE(test->accessibleName(),test->text());QVERIFY(scope->isVisible());QVERIFY(scope->text().contains("Upload and sharing are not tested"));
  }
  void savedSecretCanBeShownHiddenAndNeverRetainedAsAnInput(){
   QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});

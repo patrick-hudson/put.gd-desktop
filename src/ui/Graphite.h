@@ -154,6 +154,8 @@ public:
     void setText(const QString&);
     void setRevealable(bool);
     void setRevealText(const QString& text) { revealText_ = text; }
+    void setRevealActionName(const QString& name) { revealActionName_ = name; }
+    QString revealActionName() const { return revealActionName_; }
     bool revealable() const { return revealable_; }
     bool elided() const;
     // Opens the full text popup (revealable labels); the popup while it is open.
@@ -172,6 +174,7 @@ private:
     QRect textRect() const;
     bool revealable_ = false;
     QString revealText_;
+    QString revealActionName_ = QStringLiteral("Show full text");
     QPointer<QWidget> popup_;
 };
 

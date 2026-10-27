@@ -195,7 +195,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");documentInfo_->setWordWrap(true);VisualStyle::role(documentInfo_,"secondary");documentLayout->addWidget(documentInfo_);
  // Save a copy… feedback, next to the button that made it.
  savedLabel_=new Graphite::ElidedLabel(document);savedLabel_->setObjectName("editorSaved");savedLabel_->setTextFormat(Qt::PlainText);savedLabel_->setContextMenuPolicy(Qt::ActionsContextMenu);savedLabel_->hide();documentLayout->addWidget(savedLabel_);
- saveTarget_=new Graphite::ElidedLabel(document);saveTarget_->setObjectName("editorSaveTarget");saveTarget_->setTextFormat(Qt::PlainText);saveTarget_->setRevealable(true);VisualStyle::role(saveTarget_,"error");saveTarget_->hide();documentLayout->addWidget(saveTarget_);
+ saveTarget_=new Graphite::ElidedLabel(document);saveTarget_->setObjectName("editorSaveTarget");saveTarget_->setTextFormat(Qt::PlainText);saveTarget_->setRevealable(true);saveTarget_->setRevealActionName("Show full save path");VisualStyle::role(saveTarget_,"error");saveTarget_->hide();documentLayout->addWidget(saveTarget_);
  // A failure wraps rather than elides: its reason is what the user needs.
  saveError_=new QLabel(document);saveError_->setObjectName("editorSaveError");saveError_->setTextFormat(Qt::PlainText);saveError_->setWordWrap(true);VisualStyle::role(saveError_,"error");saveError_->hide();documentLayout->addWidget(saveError_);
  auto* copyPath=new QAction("Copy full path",savedLabel_);savedLabel_->addAction(copyPath);
