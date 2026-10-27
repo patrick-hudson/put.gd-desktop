@@ -127,8 +127,7 @@ private:
  QSplitter* splitter_=nullptr;int propertiesWidth_=260;
  QWidget *side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;
  QVBoxLayout *properties_=nullptr,*sideLayout_=nullptr;bool documentScrolling_=false;
- // Save results sit above the footer: a preparation failure, the destination (above the actions
- // when it doesn't fit beside them), then the action row.
+ // A reserved, single-height save row keeps feedback from moving the canvas.
  QWidget* saveFeedback_=nullptr;bool saveFeedbackVisible_=false;
  QWidget* notice_=nullptr;QGridLayout* footerGrid_=nullptr;
  QLabel* noticeText_=nullptr;QPushButton *keepEditing_=nullptr,*saveInstead_=nullptr;

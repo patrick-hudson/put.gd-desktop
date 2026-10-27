@@ -34,6 +34,8 @@ public:
  bool editingText() const {return textEditor_!=nullptr;}
  void finishText(bool commit);
  bool textOutsideImage() const;
+ // Cycles clipped text in paint order; a pending crop stays a draft.
+ bool selectAffectedText();
  // Documents can change outside the canvas (undo/redo); drop stale UI state.
  void documentChanged();
  quint64 selected() const {return selected_;}

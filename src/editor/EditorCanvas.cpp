@@ -3,6 +3,7 @@
 #include "ui/Graphite.h"
 #include <QLabel>
 #include <QVBoxLayout>
+#include <QPushButton>
 #include <QAccessible>
 #include <QApplication>
 #include <QFontMetrics>
@@ -70,9 +71,11 @@ EditorCanvas::EditorCanvas(EditDocument& doc,QWidget* parent):QWidget(parent),do
  setMinimumSize(320,240);setAccessibleName("Image being edited");
  // Screen readers hear the selection, or the crop, and the keys that act on it.
  connect(this,&EditorCanvas::selectionChanged,this,&EditorCanvas::announce);connect(this,&EditorCanvas::changed,this,&EditorCanvas::announce);
- textWarning_=new Graphite::Surface("surface",{},this);textWarning_->setObjectName("annotationTextWarning");textWarning_->setAttribute(Qt::WA_TransparentForMouseEvents);
- auto* warningLayout=new QVBoxLayout(textWarning_);warningLayout->setContentsMargins(8,8,8,8);
- auto* warning=Graphite::warningLabel("Text extends beyond the image",textWarning_);warning->setObjectName("annotationTextWarningText");warningLayout->addWidget(warning);textWarning_->hide();
+ textWarning_=new Graphite::Surface("surface",{},this);textWarning_->setObjectName("annotationTextWarning");
+ auto* warningLayout=new QBoxLayout(QBoxLayout::LeftToRight,textWarning_);warningLayout->setContentsMargins(8,8,8,8);warningLayout->setSpacing(8);
+ auto* warning=Graphite::warningLabel("Some annotation text will be clipped in the saved image",textWarning_);warning->setObjectName("annotationTextWarningText");warningLayout->addWidget(warning);
+ auto* affected=new QPushButton("Select affected text",textWarning_);affected->setObjectName("selectAffectedText");VisualStyle::role(affected,"quiet");warningLayout->addWidget(affected,0,Qt::AlignLeft);
+ connect(affected,&QPushButton::clicked,this,[this]{selectAffectedText();});textWarning_->hide();
  announce();
 }
 
@@ -284,6 +287,7 @@ void EditorCanvas::paintEvent(QPaintEvent*){
   for(int i=1;i<3;++i){dualLine(painter,QPointF(crop.left()+crop.width()*i/3,crop.top()),QPointF(crop.left()+crop.width()*i/3,crop.bottom()),thirds,Qt::DashLine);dualLine(painter,QPointF(crop.left(),crop.top()+crop.height()*i/3),QPointF(crop.right(),crop.top()+crop.height()*i/3),thirds,Qt::DashLine);}
   dualRect(painter,crop,guide(),2);
  }
+ if(tool_==Tool::Crop)if(const auto* shape=doc_.find(selected_);shape&&shape->kind==Shape::Kind::Text)dualRect(painter,toWidget(shape->rect).adjusted(-2,-2,2,2),guide(),1,Qt::DashLine);
  // Handles: amber squares in a dark rim, legible on any image.
  auto handles=[&](const QList<QPointF>& points){painter.setPen(QPen(underStroke(),2));painter.setBrush(guide());for(const auto& point:points)painter.drawRect(QRectF(point-QPointF(4,4),QSizeF(8,8)));};
  if(tool_==Tool::Crop){const auto r=toWidget(cropDraft_);handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});}
@@ -532,7 +536,11 @@ bool EditorCanvas::setSelectionGeometry(const QRect& r){
 QString EditorCanvas::selectionSummary() const {
  const QString panHelp=" Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.";
  auto box=[](const QRect& r){return QString("x %1, y %2, %3 × %4 px").arg(r.x()).arg(r.y()).arg(r.width()).arg(r.height());};
- if(tool_==Tool::Crop)return QString("Crop area %1. Arrow keys move it, Shift+arrow keys resize it, Enter applies, Escape cancels.").arg(box(cropDraft_))+panHelp;
+ if(tool_==Tool::Crop){
+  const auto* affected=doc_.find(selected_);
+  const auto selection=affected?QString(" Affected text selected: \"%1\". The crop is still pending.").arg(affected->text):QString{};
+  return QString("Crop area %1. Arrow keys move it, Shift+arrow keys resize it, Enter applies, Escape cancels.").arg(box(cropDraft_))+selection+panHelp;
+ }
  const auto& shapes=doc_.shapes();
  for(qsizetype i=0;i<shapes.size();++i){
   const auto& shape=shapes[i];if(shape.id!=selected_)continue;
@@ -587,12 +595,27 @@ bool EditorCanvas::textOutsideImage() const {
  for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Text&&!(textEditor_&&shape.id==textShape_)&&outside(shape))return true;
  return false;
 }
+bool EditorCanvas::selectAffectedText(){
+ if(textEditor_)finishText(true);
+ const QRectF bounds(tool_==Tool::Crop?cropDraft_:doc_.crop());
+ QList<quint64> affected;
+ for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Text){const auto ink=textOutputBounds(shape);if(!ink.isEmpty()&&!bounds.contains(ink))affected.append(shape.id);}
+ if(affected.isEmpty())return false;
+ const auto id=affected[(affected.indexOf(selected_)+1)%affected.size()];
+ // Identifying a clipped mark must not apply or discard the crop being reviewed.
+ if(tool_!=Tool::Crop){setTool(Tool::Select);emit toolRequested(Tool::Select);}
+ selected_=id;emit selectionChanged();setFocus(Qt::OtherFocusReason);update();return true;
+}
 void EditorCanvas::placeTextWarning(){
  const bool outside=textOutsideImage();textWarning_->setVisible(outside);if(!outside)return;
  const auto* label=textWarning_->findChild<QLabel*>("annotationTextWarningText");
  const auto margins=label->contentsMargins();
- const int w=std::min(width()-16,label->fontMetrics().horizontalAdvance(label->text())+margins.left()+margins.right()+16);
- textWarning_->setGeometry(8,8,w,textWarning_->heightForWidth(w));textWarning_->raise();
+ const int textWidth=label->fontMetrics().horizontalAdvance(label->text())+margins.left()+margins.right();
+ auto* layout=qobject_cast<QBoxLayout*>(textWarning_->layout());const int actionWidth=textWarning_->findChild<QPushButton*>("selectAffectedText")->sizeHint().width();
+ const bool stacked=textWidth+actionWidth+24>width()-16;
+ layout->setDirection(stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);
+ const int w=std::min(width()-16,stacked?std::max(textWidth,actionWidth)+16:textWidth+actionWidth+24);
+ textWarning_->setGeometry(8,8,w,std::max(textWarning_->minimumSizeHint().height(),textWarning_->heightForWidth(w)));textWarning_->raise();
 }
 void EditorCanvas::placeTextEditor(){
  if(!textEditor_)return;
@@ -607,7 +630,7 @@ void EditorCanvas::placeTextEditor(){
  placeTextWarning();
  if(textWarning_->isVisible()&&field.intersects(textWarning_->geometry()))field.moveTop(std::min(bounds.bottom()-h+1,textWarning_->geometry().bottom()+8));
  textEditor_->setGeometry(field);
- textEditor_->setAccessibleDescription(QString("Image anchor: x %1, y %2 px.%3").arg(int(textAnchor_.x())).arg(int(textAnchor_.y())).arg(textOutsideImage()?" Text extends beyond the image.":""));
+ textEditor_->setAccessibleDescription(QString("Image anchor: x %1, y %2 px.%3").arg(int(textAnchor_.x())).arg(int(textAnchor_.y())).arg(textOutsideImage()?" Some annotation text will be clipped in the saved image.":""));
  update();
 }
 

@@ -30,6 +30,8 @@ private slots:
   QVERIFY(request("editor.view",{{"id",id},{"action","geometryDetails"}})["ok"].toBool());
   const auto panel=request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",220}});QVERIFY2(panel["ok"].toBool(),QJsonDocument(panel).toJson().constData());QCOMPARE(panel["result"].toObject()["propertiesWidth"].toInt(),220);
   QVERIFY(!request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",199}})["ok"].toBool());
+  const auto applied=request("editor.apply",{{"id",id},{"commands",QJsonArray{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{310,190}},{"text","Clipped annotation"}}}}}}});QVERIFY2(applied["ok"].toBool(),QJsonDocument(applied).toJson().constData());
+  const auto affected=request("editor.view",{{"id",id},{"action","selectAffectedText"}});QVERIFY2(affected["ok"].toBool(),QJsonDocument(affected).toJson().constData());QVERIFY(affected["result"].toObject()["selectedShapeId"].toDouble()>0);QVERIFY(affected["result"].toObject()["textOutsideImage"].toBool());
   const auto saved=request("editor.saveCopy",{{"id",id},{"path",d.filePath("synthetic-copy.png")}});QVERIFY2(saved["ok"].toBool(),QJsonDocument(saved).toJson().constData());
   QVERIFY(request("editor.view",{{"id",id}})["result"].toObject()["saveFeedbackVisible"].toBool());
   const auto failed=request("editor.saveCopy",{{"id",id},{"path",d.filePath("missing/denied.png")}});QVERIFY(!failed["ok"].toBool());
