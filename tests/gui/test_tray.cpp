@@ -412,7 +412,7 @@ private slots:
   auto before=prior.items[0].toJson(),after=retried.items[0].toJson();before.remove("local");after.remove("local");QCOMPARE(after,before);
   QString code;operations.retryLocalSave("missing-operation",[&](Error e,QJsonObject){code=e.code;});
   QVERIFY(tray->toolTip().contains("Saving local copy"));PUTGD_TRY_VERIFY(!code.isEmpty());
-  QCOMPARE(tray->toolTip(),idleTooltip);QVERIFY(operations.activeObservations().isEmpty());
+  QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);QVERIFY(tray->contextMenu()->findChild<QAction*>("trayFailedUploads")->isVisible());QVERIFY(operations.activeObservations().isEmpty());
  }
 
  void acquisitionAndPreparationErrorsPersistWithoutNotifications_data() {
