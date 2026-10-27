@@ -3,6 +3,6 @@
   "name": "put.gd native capture",
   "description": "Native GNOME 50 capture, global actions and bounded background CLIPBOARD transfer for put.gd.",
   "shell-version": ["50"],
-  "version": 11,
+  "version": 12,
   "url": "https://put.gd"
 }

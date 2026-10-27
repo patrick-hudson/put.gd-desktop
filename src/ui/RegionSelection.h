@@ -56,7 +56,7 @@ inline QList<CaptureFrame> regionScreenFrames() {
     }
     return frames;
 }
-inline QString regionInstructions(const QRectF& selection = {}, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}, const QList<CaptureFrame>& frames = regionScreenFrames()) {
+inline QString regionInstructions(const QRectF& selection = {}, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}, const QList<CaptureFrame>& frames = regionScreenFrames(), bool dragging = false) {
     const auto bounds = displayBounds.isEmpty() && QGuiApplication::primaryScreen() ? QRectF(QGuiApplication::primaryScreen()->geometry()) : displayBounds;
     const auto logical = selection.isEmpty() ? bounds : selection;
     const auto output = regionOutputSize(logical, frames);
@@ -66,16 +66,16 @@ inline QString regionInstructions(const QRectF& selection = {}, bool recording =
     const QString context = (display.isEmpty() ? QStringLiteral("Display 1") : display)
         + (selected ? QStringLiteral(" · Selection %1 × %2 %3 · ") : QStringLiteral(" · Entire display %1 × %2 %3 · "))
             .arg(qRound(size.width())).arg(qRound(size.height())).arg(unit);
-    const QString accept = recording ? (selected ? QStringLiteral("Enter to choose") : QStringLiteral("Enter chooses this entire display"))
+    const QString accept = dragging ? (recording ? QStringLiteral("Release to choose recording area") : QStringLiteral("Release to capture")) : recording ? (selected ? QStringLiteral("Enter to choose") : QStringLiteral("Enter chooses this entire display"))
                                      : (selected ? QStringLiteral("Enter to capture") : QStringLiteral("Enter captures this entire display"));
-    return context + accept + QStringLiteral("\nDrag to select · Esc to cancel")
+    return context + accept + (dragging ? QStringLiteral("\nEsc to cancel") : QStringLiteral("\nDrag to select · Esc to cancel"))
         + QStringLiteral("\nArrows move · Shift+arrows resize · Tab next display")
         + (recording ? QStringLiteral("\nStart recording comes next") : QString());
 }
-inline QString regionDescription(const QRectF& selection, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}, const QList<CaptureFrame>& frames = regionScreenFrames()) {
+inline QString regionDescription(const QRectF& selection, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}, const QList<CaptureFrame>& frames = regionScreenFrames(), bool dragging = false) {
     return (selection.isEmpty() ? QStringLiteral("No region selected.")
         : QStringLiteral("Region %1 × %2 at %3, %4.").arg(selection.width()).arg(selection.height()).arg(selection.x()).arg(selection.y()))
-        + QStringLiteral(" ") + regionInstructions(selection, recording, display, displayBounds, frames);
+        + QStringLiteral(" ") + regionInstructions(selection, recording, display, displayBounds, frames, dragging);
 }
 // Transfer the region's size and relative position, then clamp to the new display.
 inline bool switchRegionDisplay(QRectF& selection, const QList<QRectF>& screens, int& current, int key, Qt::KeyboardModifiers modifiers = {}) {
@@ -132,8 +132,8 @@ inline RegionKeyAction regionKey(QRectF& selection, const QRectF& screen, int ke
     }
     return adjustRegion(selection, screen, key, modifiers) ? RegionKeyAction::Change : RegionKeyAction::Ignore;
 }
-inline void describeRegion(QWidget* surface, const QRectF& selection, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}, const QList<CaptureFrame>& frames = regionScreenFrames()) {
-    const auto description = regionDescription(selection, recording, display, displayBounds, frames);
+inline void describeRegion(QWidget* surface, const QRectF& selection, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}, const QList<CaptureFrame>& frames = regionScreenFrames(), bool dragging = false) {
+    const auto description = regionDescription(selection, recording, display, displayBounds, frames, dragging);
     if (surface->accessibleDescription() == description) return;
     surface->setAccessibleDescription(description);
     QAccessibleEvent changed(surface, QAccessible::DescriptionChanged);

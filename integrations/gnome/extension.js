@@ -227,15 +227,15 @@ const RegionSelection = {
         return {width: Math.ceil((region.x + region.width) * density) - Math.floor(region.x * density),
             height: Math.ceil((region.y + region.height) * density) - Math.floor(region.y * density)};
     },
-    instructions(region, recording, display, bounds, outputs = []) {
+    instructions(region, recording, display, bounds, outputs = [], dragging = false) {
         const selected = region?.width > 0 && region?.height > 0;
         const logical = selected ? region : bounds;
         const output = logical ? this.outputSize(logical, outputs) : null;
         const size = output || logical;
         const context = `${display || 'Display 1'} · ${selected ? 'Selection' : 'Entire display'} ${Math.round(size?.width ?? 0)} × ${Math.round(size?.height ?? 0)} ${output ? 'px' : 'logical px'} · `;
-        const accept = recording ? (selected ? 'Enter to choose' : 'Enter chooses this entire display')
+        const accept = dragging ? (recording ? 'Release to choose recording area' : 'Release to capture') : recording ? (selected ? 'Enter to choose' : 'Enter chooses this entire display')
             : (selected ? 'Enter to capture' : 'Enter captures this entire display');
-        return context + accept + '\nDrag to select · Esc to cancel' +
+        return context + accept + (dragging ? '\nEsc to cancel' : '\nDrag to select · Esc to cancel') +
             '\nArrows move · Shift+arrows resize · Tab next display' +
             (recording ? '\nStart recording comes next' : '');
     },
@@ -392,7 +392,7 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         const index = Main.layoutManager.monitors.indexOf(monitor);
         const display = `Display ${index + 1}`;
         const outputs = this._outputs || Main.layoutManager.monitors.map((m, i) => ({...m, density: global.display.get_monitor_scale(i)}));
-        const instructions = RegionSelection.instructions(rect, this._recording, display, monitor, outputs);
+        const instructions = RegionSelection.instructions(rect, this._recording, display, monitor, outputs, !!this._start);
         this._instructions.text = instructions;
         const description = (rect && rect.width > 0 && rect.height > 0
             ? `Region ${rect.width} × ${rect.height} at ${rect.x}, ${rect.y}.`

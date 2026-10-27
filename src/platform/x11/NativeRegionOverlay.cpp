@@ -26,7 +26,7 @@ public:
  QString text(QAccessible::Text type)const override{
   const auto* overlay=static_cast<NativeRegionOverlay*>(object());
   if(type==QAccessible::Name)return QStringLiteral("Capture region");
-  if(type==QAccessible::Description)return regionDescription(overlay->selection_,false,QStringLiteral("Display %1").arg(std::max(0,overlay->keyboardScreen_)+1),overlay->frames_[std::max(0,overlay->keyboardScreen_)].logicalRect,overlay->frames_);
+  if(type==QAccessible::Description)return regionDescription(overlay->selection_,false,QStringLiteral("Display %1").arg(std::max(0,overlay->keyboardScreen_)+1),overlay->frames_[std::max(0,overlay->keyboardScreen_)].logicalRect,overlay->frames_,overlay->dragging_);
   return {};
  }
  QRect rect()const override{
@@ -205,7 +205,7 @@ void NativeRegionOverlay::events(){
  while(connection_&&!finished_){
   auto* raw=xcb_poll_for_event(connection_);if(!raw)break;
   const auto type=raw->response_type&127;
-  if(type==XCB_BUTTON_PRESS){const auto event=*reinterpret_cast<xcb_button_press_event_t*>(raw);std::free(raw);if(event.detail==3){cancel();return;}if(event.detail==1){keyboardScreen_=-1;anchor_=logicalPoint({event.root_x,event.root_y});selection_=QRectF(anchor_,QSizeF{});dragging_=true;}}
+  if(type==XCB_BUTTON_PRESS){const auto event=*reinterpret_cast<xcb_button_press_event_t*>(raw);std::free(raw);if(event.detail==3){cancel();return;}if(event.detail==1){keyboardScreen_=-1;anchor_=logicalPoint({event.root_x,event.root_y});selection_=QRectF(anchor_,QSizeF{});dragging_=true;move(anchor_);}}
   else if(type==XCB_MOTION_NOTIFY){const auto event=*reinterpret_cast<xcb_motion_notify_event_t*>(raw);std::free(raw);move(logicalPoint({event.root_x,event.root_y}));}
   else if(type==XCB_BUTTON_RELEASE){const auto event=*reinterpret_cast<xcb_button_release_event_t*>(raw);std::free(raw);if(event.detail==1){release(logicalPoint({event.root_x,event.root_y}));if(!guard||finished_)return;}}
   else if(type==XCB_KEY_PRESS){const auto event=*reinterpret_cast<xcb_key_press_event_t*>(raw);std::free(raw);const auto symbol=xcb_key_symbols_get_keysym(keys_,event.detail,0);int qtKey=0;
@@ -252,7 +252,7 @@ void NativeRegionOverlay::prepareInstructions(Surface& surface){
  if(surface.frame.identity!=display){surface.instructions={};surface.instructionsKey.clear();return;}
  const auto it=std::find_if(frames_.cbegin(),frames_.cend(),[&](const auto& frame){return frame.identity==display;});
  const int index=it==frames_.cend()?0:int(std::distance(frames_.cbegin(),it));
- const auto instructions=regionInstructions(selection_,false,QStringLiteral("Display %1").arg(index+1),frames_[index].logicalRect,frames_);
+ const auto instructions=regionInstructions(selection_,false,QStringLiteral("Display %1").arg(index+1),frames_[index].logicalRect,frames_,dragging_);
  const auto local=selection_.translated(-surface.frame.logicalRect.topLeft());
  const auto pointer=dragging_?std::optional<QPointF>(pointer_-surface.frame.logicalRect.topLeft()):std::nullopt;
  const auto box=regionInstructionBox(bounds,QFontMetrics(font),instructions,local,pointer);

@@ -142,7 +142,7 @@ public:
         setFocusPolicy(Qt::StrongFocus);
         connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
     }
-    void refresh() { describeRegion(this, owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()]), QGuiApplication::screens()[activeScreen()]->geometry()); update(); }
+    void refresh() { describeRegion(this, owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()]), QGuiApplication::screens()[activeScreen()]->geometry(), regionScreenFrames(), owner_.dragging_); update(); }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
@@ -152,7 +152,7 @@ protected:
         if (!clipped.isEmpty()) paintSelectionOutline(painter, local);
         painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
         if (owner_.keyboardScreen_ < 0 || screen() == QGuiApplication::screens()[activeScreen()])
-            paintRegionInstructions(painter, rect(), palette(), regionInstructions(owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()]), QGuiApplication::screens()[activeScreen()]->geometry()), owner_.selection_.translated(-logical_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);
+            paintRegionInstructions(painter, rect(), palette(), regionInstructions(owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()]), QGuiApplication::screens()[activeScreen()]->geometry(), regionScreenFrames(), owner_.dragging_), owner_.selection_.translated(-logical_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);
     }
     void mousePressEvent(QMouseEvent* e) override {
         if (e->button() == Qt::RightButton) { owner_.cancel(); return; }
@@ -192,7 +192,7 @@ void SelectionOverlay::start() {
     connect(qGuiApp, &QGuiApplication::screenAdded, this, [this] { cancel({"display_changed", "Display changed during region selection", {}}); });
     connect(qGuiApp, &QGuiApplication::screenRemoved, this, [this] { cancel({"display_changed", "Display changed during region selection", {}}); });
 }
-void SelectionOverlay::press(QPointF point) { if (finished_) return; keyboardScreen_ = -1; anchor_ = point; dragging_ = true; selection_ = QRectF(point, QSizeF{}); }
+void SelectionOverlay::press(QPointF point) { if (finished_) return; keyboardScreen_ = -1; anchor_ = point; dragging_ = true; selection_ = QRectF(point, QSizeF{}); for (auto* surface : surfaces_) surface->refresh(); }
 void SelectionOverlay::move(QPointF point) { if (!dragging_ || finished_) return; selection_ = QRectF(anchor_, point).normalized(); for (auto* s : surfaces_) s->refresh(); }
 void SelectionOverlay::release(QPointF point) {
     if (!dragging_ || finished_) return;

@@ -35,7 +35,8 @@ private slots:
   KdeRegionOverlay overlay({},nullptr,true);auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);
   QCOMPARE(surface->accessibleName(),QString("Recording region"));QVERIFY(surface->accessibleDescription().contains("Enter chooses this entire display"));
   QVERIFY(surface->accessibleDescription().contains("Enter chooses this entire display"));
-  QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().contains("Enter to choose"));QVERIFY(surface->accessibleDescription().contains("320 × 240"));
+  QTest::mousePress(surface,Qt::LeftButton,{},QPoint(40,40));QTest::mouseMove(surface,QPoint(200,200));QVERIFY(surface->accessibleDescription().contains("Release to choose recording area"));
+  QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().contains("Enter to choose"));QVERIFY(surface->accessibleDescription().contains("160 × 160"));
   QTest::keyClick(surface,Qt::Key_Escape);
  }
  void enterUsesReceivingScreenAndEscapeCancels(){
@@ -61,7 +62,7 @@ private slots:
   QTest::keyClick(surface,Qt::Key_Left);for(int i=0;i<100;++i)QTest::keyClick(surface,Qt::Key_Left,Qt::ControlModifier);
   QCOMPARE(overlay.selection_.left(),100.0);for(int i=0;i<100;++i)QTest::keyClick(surface,Qt::Key_Up,Qt::ShiftModifier|Qt::ControlModifier);
   QCOMPARE(overlay.selection_.height(),1.0);
-  QTest::mousePress(surface,Qt::LeftButton,{},QPoint(80,100));QTest::mouseMove(surface,QPoint(300,320));QTest::mouseRelease(surface,Qt::LeftButton,{},QPoint(300,320));
+  QTest::mousePress(surface,Qt::LeftButton,{},QPoint(80,100));QTest::mouseMove(surface,QPoint(300,320));QVERIFY(surface->accessibleDescription().contains("Release to capture"));QTest::mouseRelease(surface,Qt::LeftButton,{},QPoint(300,320));
   QCOMPARE(accepted.size(),1);QCOMPARE(qvariant_cast<QRectF>(accepted.first().first()),QRectF(180,-100,220,220));
  }
  void keyboardStopsDragAndEscapeStillWorks(){

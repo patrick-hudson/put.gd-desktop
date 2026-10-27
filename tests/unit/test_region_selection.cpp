@@ -39,6 +39,10 @@ private slots:
    QCOMPARE(regionKey(selected,screen,Qt::Key_Right),RegionKeyAction::Change);
    const auto changed=regionInstructions(selected,recording,"DP-2",screen,frames);
    QVERIFY(changed.contains(recording?"Enter to choose":"Enter to capture"));
+   const auto dragging=regionInstructions(selected,recording,"DP-2",screen,frames,true);
+   QVERIFY(dragging.contains(recording?"Release to choose recording area":"Release to capture"));
+   QVERIFY(!dragging.contains("Enter to")&&!dragging.contains("Drag to select"));
+   QCOMPARE(regionDescription(selected,recording,"DP-2",screen,frames,true).contains("Release to"),true);
    QVERIFY(!changed.contains("entire display"));QVERIFY(changed.contains("400 × 300"));
   }
  }

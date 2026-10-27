@@ -114,6 +114,9 @@ print('PASS Enter captures pointer monitor, falling back to primary outside moni
     const {actor, result} = begin();
     mouse(actor, 'BUTTON_PRESS', [350.9, 450.8]);
     mouse(actor, 'MOTION', [100.9, 150.9]); rect(actor, [100, 150, 250, 300]);
+    equal(actor._instructions.text.includes('Release to capture'), true);
+    equal(actor._instructions.text.includes('Enter to capture'), false);
+    equal(actor.description.includes('Release to capture'), true);
     mouse(actor, 'BUTTON_RELEASE', [90.1, 140.1]);
     equal(await result, {x: 90, y: 140, width: 260, height: 310}); closed(actor);
 }
@@ -203,3 +206,15 @@ for (const scheme of ['prefer-dark', 'prefer-light', 'default']) {
 }
 equal(RegionSelection.scrimAlpha, 70);
 print('PASS native scheme badge with independent black/white selection outline');
+
+{
+    const actor = new globalThis.RegionSelector(true);
+    const result = actor.selectAsync();
+    mouse(actor, 'BUTTON_PRESS', [100, 100]);
+    mouse(actor, 'MOTION', [200, 200]);
+    equal(actor._instructions.text.includes('Release to choose recording area'), true);
+    equal(actor.description.includes('Release to choose recording area'), true);
+    mouse(actor, 'BUTTON_RELEASE', [200, 200]);
+    equal(await result, {x: 100, y: 100, width: 100, height: 100}); closed(actor);
+}
+print('PASS release instructions match the actual mouse commit for capture and recording');

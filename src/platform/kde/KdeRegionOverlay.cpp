@@ -34,9 +34,9 @@ public:
   layer->setExclusiveZone(-1);layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
 #endif
  }
- void updateSelection(){describeRegion(this,owner_.selection_,owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),owner_.frames_[activeScreen()].logicalRect,owner_.frames_);update();}
+ void updateSelection(){describeRegion(this,owner_.selection_,owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),owner_.frames_[activeScreen()].logicalRect,owner_.frames_,owner_.dragging_);update();}
 protected:
- void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));if(!owner_.clearing_){const auto local=clipped.translated(-logicalRect_.topLeft());paintRegionScrim(p,rect(),local);if(!clipped.isEmpty())paintSelectionOutline(p,local);}if(!owner_.clearing_&&(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_))paintRegionInstructions(p,rect(),palette(),regionInstructions(owner_.selection_,owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),owner_.frames_[activeScreen()].logicalRect,owner_.frames_), owner_.selection_.translated(-logicalRect_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);}
+ void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));if(!owner_.clearing_){const auto local=clipped.translated(-logicalRect_.topLeft());paintRegionScrim(p,rect(),local);if(!clipped.isEmpty())paintSelectionOutline(p,local);}if(!owner_.clearing_&&(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_))paintRegionInstructions(p,rect(),palette(),regionInstructions(owner_.selection_,owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),owner_.frames_[activeScreen()].logicalRect,owner_.frames_,owner_.dragging_), owner_.selection_.translated(-logicalRect_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);}
  void mousePressEvent(QMouseEvent* e) override{if(e->button()==Qt::RightButton)owner_.cancel();else if(e->button()==Qt::LeftButton)owner_.press(logicalRect_.topLeft()+e->position());}
  void mouseMoveEvent(QMouseEvent* e) override{owner_.move(logicalRect_.topLeft()+e->position());}
  void mouseReleaseEvent(QMouseEvent* e) override{if(e->button()==Qt::LeftButton)owner_.release(logicalRect_.topLeft()+e->position());}
@@ -79,7 +79,7 @@ void KdeRegionOverlay::start(){
 }
 void KdeRegionOverlay::addSurface(const CaptureFrame& frame,QScreen* screen){auto* surface=new Surface(*this,frame,screen);surfaces_.append(surface);surface->show();}
 void KdeRegionOverlay::select(const QRectF& logical){if(finished_||logical.isEmpty())return;press(logical.topLeft());release(logical.bottomRight());}
-void KdeRegionOverlay::press(QPointF p){if(finished_)return;keyboardScreen_=-1;anchor_=kdeRegionEdge(p);dragging_=true;selection_=QRectF(anchor_,QSizeF{});}
+void KdeRegionOverlay::press(QPointF p){if(finished_)return;keyboardScreen_=-1;anchor_=kdeRegionEdge(p);dragging_=true;selection_=QRectF(anchor_,QSizeF{});for(auto* surface:surfaces_)surface->updateSelection();}
 void KdeRegionOverlay::move(QPointF p){if(!dragging_||finished_)return;const auto endpoint=kdeRegionEdge(p);selection_=QRectF(anchor_,endpoint).normalized();for(auto* surface:surfaces_)surface->updateSelection();}
 void KdeRegionOverlay::release(QPointF p){if(!dragging_||finished_)return;move(p);if(selection_.width()<1||selection_.height()<1){cancel();return;}accept();
 }

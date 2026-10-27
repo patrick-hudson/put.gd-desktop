@@ -109,7 +109,7 @@ private slots:
  void transparentDrawablesAndLogicalSelection(){
   motion({100,400});NativeRegionOverlay overlay(frames());int selected=0,cancelled=0;QRectF selection;connect(&overlay,&RegionSelector::selected,this,[&](const QRectF& r){selection=r;++selected;});connect(&overlay,&RegionSelector::cancelled,this,[&](const Error&){++cancelled;});overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);QCOMPARE(cancelled,0);
   for(const auto& frame:frames()){const auto w=at(frame.nativeRect.center());QVERIFY(w);auto g=x11::reply(xcb_get_geometry_reply(connection_,xcb_get_geometry(connection_,w),nullptr));QCOMPARE(g->depth,uint8_t(32));const auto value=pixels(frame.nativeRect.bottomLeft()+QPoint(20,-20));QCOMPARE(value.size(),4);QCOMPARE(quint8(value[3]),frame.identity=="left"?uint8_t(0):uint8_t(70));}
-  motion({40,40});button(1,true);motion({1200,600});PUTGD_TRY_VERIFY(white({44,41}));PUTGD_TRY_VERIFY(white({646,82}));button(1,false);PUTGD_TRY_COMPARE(selected,1);QCOMPARE(cancelled,0);QCOMPARE(selection,QRectF(40,40,880,260));PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
+  motion({40,40});button(1,true);motion({1200,600});auto* accessible=QAccessible::queryAccessibleInterface(&overlay);QVERIFY(accessible);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("Release to capture"));PUTGD_TRY_VERIFY(white({44,41}));PUTGD_TRY_VERIFY(white({646,82}));button(1,false);PUTGD_TRY_COMPARE(selected,1);QCOMPARE(cancelled,0);QCOMPARE(selection,QRectF(40,40,880,260));PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
  }
  void tabSwitchesDisplayAndClampsSelection(){
   motion({100,400});NativeRegionOverlay overlay(frames());QSignalSpy selected(&overlay,&RegionSelector::selected);
