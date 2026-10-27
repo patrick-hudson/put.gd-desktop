@@ -22,7 +22,7 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  // The compact failure metadata line in row coordinates, shared with tests.
  static QRect failureTextArea(const QSize& row,bool gallery,bool dayHeading);
  // ui.history: drive the open page as its controls do. Actions: inspect,
- // clearFilters (scope "filters" or "all"), select (ids), clearSelection,
+ // retryLoading, copyDeletionDetails, clearFilters (scope "filters" or "all"), select (ids), clearSelection,
  // openDetails, closeDetails, expandPreview, closePreview, showSavedCopy and
  // copySavedPath and dismissSavedCopy. The reply includes copyJob and
  // savedCopyVisible alongside the page state (historyState).
@@ -70,6 +70,6 @@ private:
  QToolButton *filtersToggle_=nullptr,*clearFilters_=nullptr,*detailsBack_=nullptr,*detailsClose_=nullptr;QWidget *selectionBar_=nullptr,*emptyState_=nullptr;QLabel *selectionCount_=nullptr,*emptyBody_=nullptr;QPushButton *copyLinks_=nullptr,*deleteSelected_=nullptr,*resetView_=nullptr,*retryLoading_=nullptr,*remove_=nullptr;bool compact_=false,detailsOpen_=false,detailsFromGallery_=false,restoreDetailsOpen_=false,restoreScroll_=false;int galleryScroll_=0,listScroll_=0;
  QListWidget* categories_=nullptr;QWidget *footerBar_=nullptr,*footerRow_=nullptr;QWidget* columns_=nullptr;bool restoringCategory_=false;
  // Runs once the selected file's detail arrives (true) or fails (false).
- std::function<void(bool)> afterDetail_;
+ std::function<void(bool)> afterDetail_;std::function<void()> fitFilters_;
 };
 }

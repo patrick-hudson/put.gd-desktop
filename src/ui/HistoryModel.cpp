@@ -112,7 +112,7 @@ QString HistoryModel::statusText(const QJsonObject& r){
   auto text=failureLabel(r);if(!message.isEmpty()&&message!=text)text+=" · "+message;if(r["local"].toObject()["status"]=="saved")text+=" · Saved locally";return text;
  }
  if(state=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled")return "Canceled";
- if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="failed")return "Uploaded · Could not copy link. Copy it again.";
+ if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="failed")return "Uploaded · Couldn't copy link. Copy it again.";
  // The automatic copy was refused because the clipboard moved on (#473); Copy link is the way back.
  if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="suppressed")return "Uploaded · Link not copied (clipboard changed). Copy it again.";
  if(r["uploadStatus"]=="uploaded")return op["copyStatus"]=="copied"?"Uploaded · Link copied":"Uploaded";
@@ -129,7 +129,7 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==DayRole){const auto currentDay=day(r);return i.row()==0||currentDay!=day(record(i.row()-1))?currentDay:QString{};}
  if(role==ActiveRole)return active(r);
  if(role==FailedRole)return failed(r);
- if(role==PrimaryActionRole){if(active(r))return "Cancel upload";if(copyLocalResult(r))return "Copy result";if(retryUpload(r))return "Retry upload";if(retryLocalSave(r))return "Retry local save";if(linkAvailable(i.row()))return "Copy link";return QString{};}
+ if(role==PrimaryActionRole){if(active(r))return QString{};if(r["remoteStatus"]=="failed"&&!r["deleteOperationId"].toString().isEmpty())return "Retry deletion";if(copyLocalResult(r))return "Copy result";if(retryUpload(r))return "Retry upload";if(retryLocalSave(r))return "Retry local save";if(linkAvailable(i.row()))return "Copy link";return QString{};}
  if(role==ProgressRole)return aggregateProgress(op).percent();
  if(role==CreatedRole)return relative(r);
  if(role==OutputRole){
@@ -142,7 +142,7 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
   if(provider=="proton-drive")return QStringLiteral("Proton Drive");if(provider=="backblaze-b2")return QStringLiteral("Backblaze B2");if(provider=="s3")return QStringLiteral("S3 destination");
   return r["local"].toObject()["status"]=="saved"?QStringLiteral("This device"):QString{};
  }
- if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled")return statusText(r);const auto remote=remoteStateText(r);auto text=(remote.isEmpty()?QString{}:remote+" · ")+friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());const auto time=relative(r);if(!time.isEmpty())text+=" · "+time;if(remote.isEmpty()){if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Link copied";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Could not copy result":" · Could not copy link";else if(op["copyStatus"]=="suppressed")text+=r["uploadStatus"]=="local_only"?" · Result not copied":" · Link not copied";}if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
+ if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled")return statusText(r);const auto remote=remoteStateText(r);auto text=(remote.isEmpty()?QString{}:remote+" · ")+friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());const auto time=relative(r);if(!time.isEmpty())text+=" · "+time;if(remote.isEmpty()){if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Link copied";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Couldn't copy result":" · Couldn't copy link";else if(op["copyStatus"]=="suppressed")text+=r["uploadStatus"]=="local_only"?" · Result not copied":" · Link not copied";}if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
  if(role==ThumbnailRole){const auto path=r["previewPath"].toString();if(path.isEmpty())return {};if(auto* img=thumbnails_.object(path))return *img;loadThumbnail(path);}
  return {};
 }

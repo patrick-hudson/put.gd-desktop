@@ -55,6 +55,8 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  auto rounded=[&](qreal x,qreal y,qreal w,qreal h,qreal radius=2){p.drawRoundedRect(QRectF(x,y,w,h),radius,radius);};
  if(name=="upload") {
   p.fillPath(tray(),secondary);p.fillPath(arrow(),color);
+ } else if(name=="failed-uploads") {
+  p.fillPath(tray(),secondary);p.fillPath(arrow(),color);fill(color);p.drawEllipse(QPointF(19,18),4.5,4.5);line(secondary,1.7);p.drawLine(QPointF(19,15.6),QPointF(19,18.2));fill(secondary);p.drawEllipse(QPointF(19,20.2),0.8,0.8);
  } else if(name=="download") {
   // The upload arrow turned to point into the tray (#293).
   p.fillPath(tray(),secondary);p.fillPath(QTransform(1,0,0,-1,0,18).map(arrow()),color);

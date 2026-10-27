@@ -283,6 +283,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('history_save_diagnostics', {'id': 'synthetic-operation'}, 'ui.historySaveDiagnostics', {'id': 'synthetic-operation'}),
                     ('drive_history', {'action': 'inspect'}, 'ui.history', {'action': 'inspect'}),
                     ('drive_history', {'action': 'retryPreview'}, 'ui.history', {'action': 'retryPreview'}),
+                    ('drive_history', {'action': 'retryLoading'}, 'ui.history', {'action': 'retryLoading'}),
+                    ('drive_history', {'action': 'copyDeletionDetails'}, 'ui.history', {'action': 'copyDeletionDetails'}),
                     ('drive_history', {'action': 'expandPreview'}, 'ui.history', {'action': 'expandPreview'}),
                     ('drive_history', {'action': 'closePreview'}, 'ui.history', {'action': 'closePreview'}),
                     ('drive_history', {'action': 'showSavedCopy'}, 'ui.history', {'action': 'showSavedCopy'}),

@@ -28,7 +28,7 @@ constexpr int header = 56, commandBand = 60, statusBand = 26, icon = 18, splitZo
 // chevron (combo boxes and menu buttons keep splitZone for their chevron).
 constexpr int splitArrow = 32;
 constexpr int navRow = 38, destinationRow = 68, historyRow = 76, thumbWidth = 80, thumbHeight = 50;
-constexpr int sidebar = 216, historySidebar = sidebar, settingsSidebar = sidebar, destinationSidebar = sidebar, inspector = 300;
+constexpr int sidebar = 216, historySidebar = sidebar, settingsSidebar = sidebar, destinationSidebar = sidebar, inspector = 340;
 // All page sidebars use the same scaled width; their rows elide long names.
 constexpr int sidebarMax = sidebar;
 }
