@@ -25,7 +25,8 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  // ui.history: drive the open page as its controls do. Actions: inspect,
  // clearFilters (scope "filters" or "all"), select (ids), clearSelection,
  // openDetails, closeDetails, expandPreview, closePreview, showSavedCopy and
- // copySavedPath. The reply is the page's state (historyState).
+ // copySavedPath and dismissSavedCopy. The reply includes copyJob and
+ // savedCopyVisible alongside the page state (historyState).
  void command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  QJsonObject historyState()const;
  // The remote-deletion confirmation for a delete.prepare reply: each exact
@@ -41,8 +42,9 @@ signals:void viewStateChanged();
 protected:bool eventFilter(QObject*,QEvent*) override;void hideEvent(QHideEvent*) override;void showEvent(QShowEvent*) override;void resizeEvent(QResizeEvent*) override;
 private:
  void startPreview();void previewFailure(const Error&);void updatePreviewState();void updateActions();
- bool expandPreview();void updateSavedCopy();void showSavedCopy();void copySavedPath();
+ bool expandPreview();void updateSavedCopy();void showSavedCopy();void copySavedPath();void dismissSavedCopy();
  QPointer<QDialog> expandedPreview_;QPushButton* expandPreview_=nullptr;
+ QJsonObject copyJob_;bool savedCopyDismissed_=false;
  QString savedPath_;QJsonObject savedFolderResult_;QWidget* savedCopy_=nullptr;Graphite::ElidedLabel* savedLabel_=nullptr;
  QGridLayout* actions_=nullptr;QWidget* browserAction_=nullptr;QLabel* previewStatus_=nullptr;QPushButton* retryPreview_=nullptr;QHash<QString,Error> previewErrors_;
  // #190: ask the resident for a selected image's or video's missing preview,
@@ -66,7 +68,7 @@ private:
  // The item and preview file the inspector shows now, kept across reloads.
  QString shownItemId_,shownPreviewPath_;
  FileDialog* chooser_=nullptr;
- QToolButton *filtersToggle_=nullptr,*clearFilters_=nullptr,*detailsBack_=nullptr;QWidget *selectionBar_=nullptr,*emptyState_=nullptr;QLabel *selectionCount_=nullptr,*emptyBody_=nullptr;QPushButton *copyLinks_=nullptr,*deleteSelected_=nullptr,*resetView_=nullptr,*retryLoading_=nullptr,*remove_=nullptr;bool compact_=false,detailsOpen_=false,detailsFromGallery_=false,restoreDetailsOpen_=false,restoreScroll_=false;int galleryScroll_=0,listScroll_=0;
+ QToolButton *filtersToggle_=nullptr,*clearFilters_=nullptr,*detailsBack_=nullptr,*detailsClose_=nullptr;QWidget *selectionBar_=nullptr,*emptyState_=nullptr;QLabel *selectionCount_=nullptr,*emptyBody_=nullptr;QPushButton *copyLinks_=nullptr,*deleteSelected_=nullptr,*resetView_=nullptr,*retryLoading_=nullptr,*remove_=nullptr;bool compact_=false,detailsOpen_=false,detailsFromGallery_=false,restoreDetailsOpen_=false,restoreScroll_=false;int galleryScroll_=0,listScroll_=0;
  QListWidget* categories_=nullptr;QCheckBox* failedOnly_=nullptr;QWidget* columns_=nullptr;bool restoringCategory_=false;
  // Runs once the selected file's detail arrives (true) or fails (false).
  std::function<void(bool)> afterDetail_;

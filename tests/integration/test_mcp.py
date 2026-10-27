@@ -287,6 +287,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_history', {'action': 'closePreview'}, 'ui.history', {'action': 'closePreview'}),
                     ('drive_history', {'action': 'showSavedCopy'}, 'ui.history', {'action': 'showSavedCopy'}),
                     ('drive_history', {'action': 'copySavedPath'}, 'ui.history', {'action': 'copySavedPath'}),
+                    ('drive_history', {'action': 'dismissSavedCopy'}, 'ui.history', {'action': 'dismissSavedCopy'}),
                     ('drive_history', {'action': 'clearFilters', 'scope': 'all'}, 'ui.history', {'action': 'clearFilters', 'scope': 'all'}),
                     ('drive_history', {'action': 'select', 'ids': ['synthetic-entry', 'operation:synthetic-operation']}, 'ui.history', {'action': 'select', 'ids': ['synthetic-entry', 'operation:synthetic-operation']}),
                     ('drive_file_dialog', {'dialog': 'editImage', 'action': 'open'}, 'ui.fileDialog', {'dialog': 'editImage', 'action': 'open'}),

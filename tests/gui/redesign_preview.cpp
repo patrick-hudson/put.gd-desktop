@@ -44,6 +44,9 @@
 #include <QElapsedTimer>
 #include <QTimer>
 #include <QTest>
+#include <atomic>
+#include <thread>
+#include <QScopeGuard>
 #include "fixtures/Waits.h"
 #include "ui/Theme.h"
 #include <QFile>
@@ -219,7 +222,7 @@ int main(int argc,char** argv){
   }
   window.resize(size);}
  {auto* page=window.history();auto* model=qobject_cast<HistoryModel*>(list->model());int row=-1;for(int r=0;r<model->rowCount();++r)if(model->record(r)["operationId"]=="synthetic-preview-operation-0")row=r;if(row<0)return 2;list->selectionModel()->select(model->index(row),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(model->index(row));if(!waitUntil([&]{return window.findChild<QPushButton*>("saveHistoryAs")->isEnabled();}))return 2;
-  const auto previousDialog=qgetenv("PUTGD_FILE_DIALOG");qputenv("PUTGD_FILE_DIALOG","fallback");page->saveAsDialogCommand("open",{},[](Error,QJsonObject){});QFileDialog* chooser=nullptr;if(!waitUntil([&]{return (chooser=page->saveAsDialog().fallbackDialog())&&chooser->isVisible();}))return 2;chooser->selectFile(data.filePath("Design review copy.png"));QMetaObject::invokeMethod(chooser,"accept");if(!waitUntil([&]{return !page->historyState()["savedPath"].toString().isEmpty();})||!save("69-history-saved-copy"))return 2;if(previousDialog.isNull())qunsetenv("PUTGD_FILE_DIALOG");else qputenv("PUTGD_FILE_DIALOG",previousDialog);
+  const auto previousDialog=qgetenv("PUTGD_FILE_DIALOG");qputenv("PUTGD_FILE_DIALOG","fallback");page->saveAsDialogCommand("open",{},[](Error,QJsonObject){});QFileDialog* chooser=nullptr;if(!waitUntil([&]{return (chooser=page->saveAsDialog().fallbackDialog())&&chooser->isVisible();}))return 2;auto copyReleased=std::make_shared<std::atomic_bool>(false);auto releaseCopy=qScopeGuard([copyReleased]{copyReleased->store(true);});fixture.session.background([copyReleased](Error&){while(!copyReleased->load())std::this_thread::sleep_for(std::chrono::milliseconds(1));return QJsonObject{};},page,[](Error,QJsonObject){});chooser->selectFile(data.filePath("Design review copy.png"));QMetaObject::invokeMethod(chooser,"accept");if(!waitUntil([&]{return page->historyState()["copyJob"].toObject()["status"]=="saving";})||!save("69a-history-saving-copy"))return 2;copyReleased->store(true);if(!waitUntil([&]{return !page->historyState()["savedPath"].toString().isEmpty();})||!save("69-history-saved-copy"))return 2;page->command({{"action","dismissSavedCopy"}},[](Error,QJsonObject){});if(!save("69b-history-dismissed-copy"))return 2;if(previousDialog.isNull())qunsetenv("PUTGD_FILE_DIALOG");else qputenv("PUTGD_FILE_DIALOG",previousDialog);
  }
 
  window.navigate("destinations");{auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("backblaze-b2"));putgd::test::settle(100);destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-b2-compact"))return 2;auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("authorized"));putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("b2LinkDays"),0,40);if(!save("settings-b2-stepper-1060"))return 2;mode->setCurrentIndex(mode->findData("public"));provider->setCurrentIndex(provider->findData("s3"));}
