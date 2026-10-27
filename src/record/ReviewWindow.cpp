@@ -445,7 +445,7 @@ ReviewTimeline::ReviewTimeline(QWidget* parent, std::shared_ptr<MaskNames> names
     laneScroll_->hide();
     connect(laneScroll_, &QScrollBar::valueChanged, this, qOverload<>(&QWidget::update));
     setObjectName("timeline");
-    setAccessibleName("Timeline playhead (seconds)");
+    setAccessibleName("Clip timeline playhead (seconds)");
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -542,8 +542,6 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         painter.drawLine(QPointF(grip.center().x(), grip.top() + 5), QPointF(grip.center().x(), grip.bottom() - 5));
         painter.setPen(Qt::NoPen);
     }
-    // The track row is named like the mask lanes, in the same label column.
-    if (track.left() > 8) Graphite::paintText(painter, QRect(0, track.center().y() - 16, track.left() - 8, 32), QStringLiteral("Clip"), p.textSecondary, Graphite::font(Graphite::Type::metadata), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideRight);
     for (int lane = laneScroll_->value(); lane < std::min(lanes_, laneScroll_->value() + visibleLanes()); ++lane) {
         QStringList names;
         for (int i = 0; i < masks_.size(); ++i) if (lane_.value(i) == lane) names.append(maskNames_->name(masks_[i]));
@@ -793,14 +791,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     playbackStatus_->setObjectName("playbackStatus");
     VisualStyle::role(playbackStatus_, "meta");
     playbackStatus_->hide();
-    time_->setMinimumWidth(time_->fontMetrics().horizontalAdvance(QStringLiteral("0:00.00")) + 4);
+    time_->setMinimumWidth(time_->fontMetrics().horizontalAdvance(QStringLiteral("0:00")) + 4);
     time_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    transport->addWidget(groupLabel("Clip", "clipGroup"));
     transport->addWidget(play_);
     transport->addWidget(speed_);
 
-    transport->insertWidget(2, time_);
+    transport->addWidget(time_);
     transport->addStretch();
-    transportGrid_->addLayout(transport, 0, 0, 1, 2);
     root->addLayout(transportGrid_);
     toolsGrid_ = new QGridLayout;
     toolsGrid_->setContentsMargins(0, 0, 0, 0);
@@ -903,7 +901,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     outputTools_ = new QWidget(this);
     auto* actions = new QHBoxLayout(outputTools_);
     actions->setContentsMargins(0, 0, 0, 0);
-    actions->setSpacing(8);
+    actions->setSpacing(4);
     format_ = VisualStyle::choiceBox(this);
     format_->setAccessibleName("Output format");
     for (const auto& format : options.formats) {
@@ -955,8 +953,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* footer = new Graphite::Surface("bg", Qt::TopEdge, this);
     footer->setObjectName("reviewFooter");
     footerGrid_ = new QGridLayout(footer);
-    footerGrid_->setContentsMargins(8, 0, 8, 0);
-    footerGrid_->setHorizontalSpacing(8);
+    footerGrid_->setContentsMargins(4, 0, 4, 0);
+    footerGrid_->setHorizontalSpacing(4);
     footerGrid_->setVerticalSpacing(0);
     destinationRow_ = new QWidget(footer);
     auto* destinationLayout = new QHBoxLayout(destinationRow_);
@@ -976,7 +974,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     facts->setObjectName("reviewMetadata");
     auto* factsRow = new QHBoxLayout(facts);
     factsRow->setContentsMargins(0, 0, 0, 0);
-    factsRow->setSpacing(8);
+    factsRow->setSpacing(4);
+    // Playback shares the metadata band, outside the trim and mask controls.
+    factsRow->addLayout(transportRow_);
     factsRow->addWidget(destinationRow_, 1);
     factsRow->addWidget(playbackStatus_);
     factsRow->addWidget(exportAudio_);
@@ -1106,7 +1106,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(cancel_, &QPushButton::clicked, this, &ReviewWindow::askDiscard);
     setConfig(config);
     setEdit({});
-    // Top to bottom: the frame (keyboard mask editing), the transport, the tools, the footer.
+    // Editing order: frame, playback, timeline, tools, then export actions.
     const QList<QWidget*> order{view_, play_, speed_, timeline_, trimStart_, trimEnd_, resetTrim_, addSolid_, addBlur_, masks_, maskStart_, maskEnd_, strength_, removeMask_, format_, formatAdvice_, save_, cancel_, upload_, destination_};
     for (int i = 1; i < order.size(); ++i) setTabOrder(order[i - 1], order[i]);
     timeline_->setFocus();
@@ -1572,7 +1572,7 @@ void ReviewWindow::updateMinimum() {
             // Guidance can be present on first show, then dismissed. Reserve
             // enough width for the steady frame without refitting later edits.
             const int steadyWidth = int(std::ceil(height * aspect * 0.62)) + 16;
-            const int packedWidth = trimGroup_->minimumSizeHint().width() + transportRow_->minimumSize().width() + 24;
+            const int packedWidth = std::max(trimGroup_->minimumSizeHint().width(), transportRow_->minimumSize().width()) + 16;
             const int width = std::min({defaultSize().width(), available.width(), std::max({steadyWidth, packedWidth, int(std::round((height - controls) * aspect)) + 16})});
             resize(std::max(width, minimumWidth()), height);
             initialFitDone_ = true;
@@ -1607,27 +1607,15 @@ void ReviewWindow::updateMinimum() {
 void ReviewWindow::placeTools() {
     if (!toolsGrid_) return;
     for (auto* widget : {maskTools_, trimGroup_, maskGroup_}) widget->layout()->invalidate();
-    const int transportWidth = transportRow_->minimumSize().width();
-    // Playback is not part of trimming: transport keeps its own line above the lanes.
-    const bool together = false;
-    Q_UNUSED(transportWidth);
-    const bool placedTogether = property("reviewTransportWithTrim").toBool();
-    if (toolsPlaced_ && placedTogether == together) return;
+    if (toolsPlaced_) return;
     toolsPlaced_ = true;
-    setProperty("reviewTransportWithTrim", together);
+    setProperty("reviewTransportWithTrim", false);
     toolsGrid_->removeWidget(maskGroup_);
     toolsGrid_->removeWidget(trimGroup_);
-    transportGrid_->removeWidget(trimGroup_);
-    transportGrid_->removeWidget(maskGroup_);
-    transportGrid_->removeWidget(timeline_);
-    transportGrid_->removeItem(transportRow_);
-    // The lanes always keep the full width.
-    transportGrid_->addWidget(timeline_, together ? 0 : 1, 0, 1, 2);
-    transportGrid_->addWidget(trimGroup_, 2, 0, 1, together ? 1 : 2);
-    transportGrid_->addLayout(transportRow_, together ? 2 : 0, together ? 1 : 0, 1, together ? 1 : 2);
-    transportGrid_->addWidget(maskGroup_, 3, 0, 1, 2);
-    transportGrid_->setHorizontalSpacing(8);
-    transportGrid_->setColumnStretch(1, 1);
+    // The lanes keep the full width; playback lives in the footer metadata band.
+    transportGrid_->addWidget(timeline_, 0, 0);
+    transportGrid_->addWidget(trimGroup_, 1, 0);
+    transportGrid_->addWidget(maskGroup_, 2, 0);
     transportGrid_->setContentsMargins(0, 0, 0, 0);
     // One gutter, with each label beside its own controls and lanes.
     auto* trimLabel = findChild<QLabel*>("trimGroup");
@@ -1658,7 +1646,9 @@ void ReviewWindow::placeDestination() {
     int available = facts->contentsRect().width(), count = 1;
     // Measure the full facts, independently of the previous compact layout.
     for (int i = 0; i < row->count(); ++i) {
-        const auto* widget = row->itemAt(i)->widget();
+        auto* item = row->itemAt(i);
+        if (item->layout()) { available -= item->minimumSize().width(); ++count; continue; }
+        const auto* widget = item->widget();
         if (!widget || widget == destinationRow_ || widget->isHidden()) continue;
         available -= widget == exportAudio_ ? exportAudio_->fontMetrics().horizontalAdvance(fullAudio) : std::max(widget->minimumWidth(), widget->sizeHint().width());
         ++count;

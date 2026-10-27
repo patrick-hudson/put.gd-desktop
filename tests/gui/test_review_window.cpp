@@ -194,6 +194,16 @@ private slots:
             window.drive({{"action", "seek"}, {"time", double(duration - 1)}});
             auto* time = window.findChild<QLabel*>("time");
             auto* status = window.findChild<QLabel*>("playbackStatus");
+            auto* playback = window.findChild<QToolButton*>("play");
+            auto* speed = window.findChild<QComboBox*>("speed");
+            auto* metadata = window.findChild<QWidget*>("reviewMetadata");
+            for (auto* control : std::initializer_list<QWidget*>{window.findChild<QLabel*>("clipGroup"), playback, speed, time}) {
+                QVERIFY(metadata->isAncestorOf(control));
+                const QRect bounds(control->mapTo(&window, QPoint()), control->size());
+                QVERIFY(window.rect().contains(bounds));
+                QVERIFY(!bounds.intersects(QRect(trim->mapTo(&window, QPoint()), trim->size())));
+                QCOMPARE(control->mapTo(&window, control->rect().center()).y(), playback->mapTo(&window, playback->rect().center()).y());
+            }
             QVERIFY(!time->text().contains('\n'));
             QVERIFY(status->isVisible());
             QVERIFY(window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(status));
