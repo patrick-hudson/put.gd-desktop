@@ -564,6 +564,7 @@ private slots:
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.selectTool(Tool::Blur);
   add(doc,{{"kind","blur"},{"rect",QJsonArray{10,10,50,20}},{"strength",24}});window.documentEdited();window.canvas().select(doc.shapes().last().id);const auto original=doc.shapes().last();
   auto* warning=window.findChild<QLabel*>("editorToolWarning");auto* redact=window.findChild<QToolButton*>("useRedact");QVERIFY(warning&&warning->isVisible());QVERIFY(redact&&redact->isVisible());
+  QCOMPARE(warning->text(),Graphite::blurWarningText());
   redact->click();QCOMPARE(window.canvas().tool(),Tool::Redact);QCOMPARE(doc.shapes().last(),original);QVERIFY(!warning->isVisible());
   QString code,message;window.viewCommand({{"action","tool"},{"tool","blur"}},code,message);QVERIFY(code.isEmpty());QVERIFY(warning->isVisible());
   window.viewCommand({{"action","tool"},{"tool","redact"}},code,message);QVERIFY(code.isEmpty());QCOMPARE(window.canvas().tool(),Tool::Redact);QCOMPARE(doc.shapes().last(),original);QVERIFY(!warning->isVisible());

@@ -1668,8 +1668,10 @@ public:
     WarningLabel(const QString& text, QWidget* parent) : QLabel(text, parent) { setWordWrap(true); }
 protected:
     bool event(QEvent* event) override {
-        if (event->type() == QEvent::DynamicPropertyChange || event->type() == QEvent::FontChange)
-            setContentsMargins(role(this) == "warning" ? scaled(Metric::icon) + 8 : 0, 0, 0, 0);
+        if (event->type() == QEvent::DynamicPropertyChange || event->type() == QEvent::FontChange) {
+            const int gap = property("graphiteWarningGap").isValid() ? property("graphiteWarningGap").toInt() : 8;
+            setContentsMargins(role(this) == "warning" ? scaled(Metric::icon) + gap : 0, 0, 0, 0);
+        }
         return QLabel::event(event);
     }
     void paintEvent(QPaintEvent* event) override {
@@ -1688,7 +1690,7 @@ QLabel* warningLabel(const QString& text, QWidget* parent) {
     return label;
 }
 QString blurWarningText() {
-    return QStringLiteral("Blur is a visual effect. Use Redact for passwords and private information.");
+    return QStringLiteral("Blur may be reversible. Use Redact for private information.");
 }
 QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
     auto* warning = new QWidget(parent);

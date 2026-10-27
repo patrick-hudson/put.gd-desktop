@@ -104,7 +104,7 @@ private:
 // for one line. Every control keeps its full size; the row grows instead.
 class FlowRow final : public QWidget {
 public:
-    static constexpr int groupGap = 16, lineGap = 2;
+    static constexpr int groupGap = 8, lineGap = 0;
     explicit FlowRow(QWidget* parent) : QWidget(parent) {}
     void setGutter(QWidget* label, int indent) { label->setParent(this); label_ = label; indent_ = indent; relayout(); }
     void addGroup(QWidget* group) { group->setParent(this); group->installEventFilter(this); groups_.append(group); }
@@ -476,7 +476,7 @@ namespace {
 constexpr int trackPad = 16, trackHeight = 4, grip = 16;
 int visibleLanes() { return 2; }
 QFont gutterFont() { return Graphite::font(Graphite::Type::metadata); }
-int rowHeight() { return std::max(16, QFontMetrics(gutterFont()).tightBoundingRect(QStringLiteral("Redaction 8")).height() + 4); }
+int rowHeight() { return std::max(16, QFontMetrics(gutterFont()).tightBoundingRect(QStringLiteral("Redaction 8")).height() + 3); }
 int laneHeight() { return rowHeight() - 6; }
 constexpr qint64 minimumSpanUs = 10000;
 }
@@ -849,19 +849,19 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         button->setAccessibleName(name);
         button->setToolTip(tip);
         button->setFont(Graphite::font(Graphite::Type::metadata));
-        button->setFixedSize(int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(text))) + 28, 32);
+        button->setFixedSize(int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(text))) + 24, 32);
         return button;
     };
     // A row's name in the shared gutter, beside its controls and level with the lanes' names.
     const int gutter = ReviewTimeline::gutterWidth();
     auto groupLabel = [this, gutter](const QString& text, const QString& name) { auto* label = new QLabel(text, this); label->setObjectName(name); VisualStyle::role(label, "meta"); label->setFixedWidth(gutter - 8); return label; };
-    // A group of controls 8 px apart; groups sit 16 px apart.
+    // Compact groups keep mask timing and its interval on the same line.
     auto group = [this](const QString& name, std::initializer_list<QWidget*> widgets) {
         auto* box = new QWidget(this);
         box->setObjectName(name);
         auto* row = new QHBoxLayout(box);
         row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(8);
+        row->setSpacing(4);
         for (auto* w : widgets) row->addWidget(w);
         return box;
     };
@@ -870,7 +870,6 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     timeline_->setMinimumWidth(220);
     timeline_->setDuration(options.durationUs);
     timeline_->setToolTip("Click or drag to scrub; drag the trim handles to trim. Drag a mask to move it in time, or a selected mask's ends to retime them. Arrows step, Home/End jump to the kept part.");
-    root->addSpacing(2);
     root->addWidget(timeline_);
     // Trim: Set start, Set end, Reset and what is kept.
     trimStart_ = action("Set start", "Set trim start", "Keep from the playhead: set the trim start here (I)");
@@ -969,11 +968,10 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     statusRow_ = new Graphite::Surface("raised", Qt::TopEdge | Qt::BottomEdge, this);
     statusRow_->setObjectName("statusRow");
     statusLines_ = new QVBoxLayout(statusRow_);
-    statusLines_->setContentsMargins(10, 0, 10, 0);
+    statusLines_->setContentsMargins(4, 0, 4, 0);
     statusLines_->setSpacing(0);
     statusRow_->hide();
-    root->addSpacing(2);
-    root->addWidget(statusRow_);
+    frame->addWidget(statusRow_);
     // The footer: where Upload sends the clip and what it carries for sound,
     // then the format and the actions.
     format_ = VisualStyle::choiceBox(this);
@@ -1030,7 +1028,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* footer = new Graphite::Surface("bg", Qt::TopEdge, this);
     footer->setObjectName("reviewFooter");
     auto* footerRows = new QVBoxLayout(footer);
-    footerRows->setContentsMargins(8, 1, 8, 1);
+    footerRows->setContentsMargins(8, 0, 8, 0);
     footerRows->setSpacing(0);
     auto* facts = new QWidget(footer);
     facts->setObjectName("reviewMetadata");
@@ -1068,6 +1066,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     errorDetails_->setProperty("driveAction", QJsonObject{{"action", "showAdvice"}});
     VisualStyle::role(errorDetails_, "quiet");
     errorDetails_->setFont(Graphite::font(Graphite::Type::metadata));
+    errorDetails_->setFixedWidth(int(std::ceil(QFontMetricsF(errorDetails_->font()).horizontalAdvance(errorDetails_->text()))) + 28);
     errorDetails_->setFixedHeight(32);
     errorDetails_->hide();
     connect(errorDetails_, &QPushButton::clicked, this, [this] { drive({{"action", "showAdvice"}}); });
@@ -1458,11 +1457,17 @@ void ReviewWindow::refreshStatus() {
                 entry.text.prepend(QStringLiteral("Couldn't export the recording: "));
         }
     }
-    if (compactStatus_) {
+    const bool blurGuidance = std::any_of(entries.cbegin(), entries.cend(), [](const auto& entry) { return entry.text == Graphite::blurWarningText(); });
+    if (compactStatus_ || blurGuidance) {
         if (config_.format == "mp4" && config_.codec == "h265") {
             entries.erase(std::remove_if(entries.begin(), entries.end(), [](const auto& entry) { return entry.text.startsWith("Use MP4 (H.264)"); }), entries.end());
             formatAdvice_->show();
         }
+    }
+    // One notice at a time; retain the other facts for agents and later recovery.
+    if (!entries.isEmpty()) {
+        const auto error = std::find_if(entries.cbegin(), entries.cend(), [](const auto& entry) { return entry.tone == "error"; });
+        entries = {error == entries.cend() ? entries.first() : *error};
     }
     if (entries == shownStatus_) { updateMinimum(); return; }
     shownStatus_ = entries;
@@ -1476,13 +1481,17 @@ void ReviewWindow::refreshStatus() {
             warning->setObjectName("statusLine");
             auto* row = static_cast<QBoxLayout*>(warning->layout());
             row->setDirection(QBoxLayout::LeftToRight);
+            row->setSpacing(0);
             auto* text = warning->findChild<QLabel*>("blurWarningText");
             text->setObjectName("status");
             text->setWordWrap(true);
             text->setFont(Graphite::font(Graphite::Type::metadata));
+            text->setProperty("graphiteWarningGap", 4);
+            text->setMinimumHeight(Graphite::scaled(Graphite::Metric::icon));
+            row->setAlignment(text, Qt::AlignVCenter);
             auto* useRedact = warning->findChild<QToolButton*>("useRedact");
             useRedact->setFont(Graphite::font(Graphite::Type::metadata));
-            useRedact->setFixedSize(useRedact->fontMetrics().horizontalAdvance(useRedact->text()) + 28, 32);
+            useRedact->setFixedSize(int(std::ceil(QFontMetricsF(useRedact->font()).horizontalAdvance(useRedact->text()))) + 24, 32);
             useRedact->setProperty("driveAction", QJsonObject{{"action", "useSolidCover"}});
             auto* dismiss = new QPushButton(warning);
             dismiss->setIcon(Graphite::chromeIcon("close"));
@@ -1508,7 +1517,7 @@ void ReviewWindow::refreshStatus() {
         line->setObjectName("statusLine");
         auto* row = new QHBoxLayout(line);
         row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(8);
+        row->setSpacing(4);
         // The words carry the tone; colour only repeats it.
         const bool saved = std::any_of(entry.actions.cbegin(), entry.actions.cend(), [](const auto& action) { return action.second["action"] == "copyPath"; });
         QLabel* text;
@@ -1553,7 +1562,8 @@ void ReviewWindow::refreshStatus() {
             }
             if (params["action"] != "retryExport") VisualStyle::role(button, "quiet");
             // Compact action painting inside a full pointer target.
-            button->setMinimumSize(params["action"] == "dismissStatus" ? 32 : button->sizeHint().width(), 32);
+            button->setFixedWidth(params["action"] == "dismissStatus" ? 32 : int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(label))) + 28);
+            button->setMinimumHeight(32);
             button->setFixedHeight(std::max(32, button->fontMetrics().height() + 4));
             button->setProperty("driveAction", params);
             connect(button, &QPushButton::clicked, this, [this, params] { drive(params); });
@@ -1732,10 +1742,10 @@ QSize ReviewWindow::minimumSizeHint() const {
     // wrapped at that width (with a blur's radius) sets the height.
     const auto* flow = static_cast<const FlowRow*>(maskGroup_);
     const auto rows = layout()->minimumSize();
-    const int width = std::max({680, rows.width(), flow->minimumSizeHint().width() + 16});
+    const int width = std::max({640, rows.width(), flow->minimumSizeHint().width() + 16});
     int height = rows.height() - flow->minimumSizeHint().height() + flow->heightFor(width - 16, true);
     // Status lines wrap at a narrow width; count them as they are laid out.
-    if (statusRow_->isVisibleTo(this) && statusRow_->hasHeightForWidth()) height += std::max(0, statusRow_->heightForWidth(width - 16) - statusRow_->minimumSizeHint().height());
+    if (statusRow_->isVisibleTo(this) && statusRow_->hasHeightForWidth()) height += std::max(0, statusRow_->heightForWidth(width) - statusRow_->minimumSizeHint().height());
     return {width, std::max(480, height)};
 }
 // Keep the full destination available while the visible summary elides right.
@@ -1749,7 +1759,7 @@ void ReviewWindow::placeDestination() {
     exportAudio_->setText(summary);
     exportAudio_->setMinimumWidth(exportAudio_->fontMetrics().horizontalAdvance(summary) + 2);
     // One line of metadata at its ink height, so the footer stays compact with enlarged text.
-    const int height = std::max(destination_->fontMetrics().tightBoundingRect(options_.uploadSummary).height(), exportAudio_->fontMetrics().tightBoundingRect(summary).height()) + 2;
+    const int height = std::max(destination_->fontMetrics().tightBoundingRect(options_.uploadSummary).height(), exportAudio_->fontMetrics().tightBoundingRect(summary).height());
     destination_->setFixedHeight(height);
     exportAudio_->setFixedHeight(height);
 }
@@ -1770,8 +1780,15 @@ QJsonObject ReviewWindow::inspect() const {
         lines.append(entry.text);
     }
     const QString status = lines.join('\n');
+    QJsonArray statusFacts;
+    for (const auto& entry : statusEntries()) {
+        QJsonArray actions;
+        for (const auto& [label, params] : entry.actions) actions.append(QJsonObject{{"label", label}, {"drive", params}});
+        statusFacts.append(QJsonObject{{"text", entry.text}, {"tone", entry.tone}, {"actions", actions}});
+    }
     return QJsonObject{
         {"visible", isVisible()}, {"size", QJsonArray{width(), height()}}, {"minimumSize", QJsonArray{minimumSizeHint().expandedTo(minimumSize()).width(), minimumSizeHint().expandedTo(minimumSize()).height()}},
+        {"statusFacts", statusFacts},
         {"scheme", Theme::name(Theme::scheme())}, {"exporting", exporting_},
         {"playbackStatus", playhead() < edit_.trimStart || playhead() >= edit_.exportEnd(options_.durationUs) ? QStringLiteral("Outside kept part") : QString()},
         {"playheadUs", double(playhead())}, {"playing", playing_}, {"speed", speed_->currentData().toDouble()},

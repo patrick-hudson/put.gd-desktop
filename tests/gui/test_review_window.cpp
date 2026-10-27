@@ -8,6 +8,7 @@
 #include <QAccessible>
 #include <QScrollBar>
 #include "ui/Graphite.h"
+#include "ui/Fonts.h"
 #include "ui/Theme.h"
 #include <QLabel>
 #include <QApplication>
@@ -81,10 +82,45 @@ void drag(QWidget* w, QPoint from, QPoint to) {
 
 class ReviewWindowTest : public QObject {
     Q_OBJECT
+    QFont baselineFont_;
+    Theme::Scheme baselineScheme_;
     // One pixel of the timeline is duration / track width; edges land within two.
     static qint64 slack(const ReviewTimeline& t) { return 2 * duration / t.trackRect().width() + 1; }
     static ReviewTimeline* timeline(ReviewWindow& w) { return w.findChild<ReviewTimeline*>("timeline"); }
 private slots:
+    void errorsTemporarilyReplaceBlurGuidance() {
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
+        const QString guidance = Graphite::blurWarningText();
+        QCOMPARE(window.inspect()["status"].toString(), guidance);
+        window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
+        QCOMPARE(window.inspect()["status"].toString(), guidance);
+        for (bool dismiss : {true, false}) {
+            window.showError("Export failed: disk full");
+            const auto state = window.drive({{"action", "inspect"}}).state;
+            QCOMPARE(state["statusRow"].toArray().size(), 1);
+            QVERIFY(!state["status"].toString().contains(guidance));
+            QVERIFY(!buttonNamed(window, "Use Redact"));
+            const auto facts = state["statusFacts"].toArray();
+            QCOMPARE(facts.size(), 2);
+            QCOMPARE(facts.first().toObject()["tone"].toString(), QString("error"));
+            QCOMPARE(facts.last().toObject()["text"].toString(), guidance);
+            QCOMPARE(facts.last().toObject()["actions"].toArray().first().toObject()["drive"].toObject()["action"].toString(), QString("useSolidCover"));
+            QVERIFY(buttonNamed(window, "Try again"));
+            QVERIFY(window.findChild<QPushButton*>("reviewErrorDetails")->isVisible());
+            if (dismiss) buttonNamed(window, "Dismiss")->click();
+            else window.showError({});
+            QCOMPARE(window.inspect()["status"].toString(), guidance);
+            QCOMPARE(window.inspect()["statusRow"].toArray().size(), 1);
+            QVERIFY(buttonNamed(window, "Use Redact"));
+        }
+        window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}});
+        window.drive({{"action", "dismissBlurTip"}});
+        window.showError("Export failed: disk full");
+        window.drive({{"action", "dismissStatus"}});
+        QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
+    }
     void recoveryStaysWithItsMessageAboveTheFooter() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -428,7 +464,25 @@ private slots:
     }
     // put.gd's own frame everywhere below, also offscreen: the frame share,
     // minimum size and fit include the compact header's pixels.
-    void initTestCase() { Graphite::WindowHeader::setCustomFrameOverride(1); }
+    void initTestCase() {
+        // A case must never restore Qt's pre-install font after Graphite's lazy
+        // install: later data rows would then measure smaller text.
+        Fonts::load();
+        Graphite::install(*qApp);
+        baselineFont_ = QApplication::font();
+        baselineScheme_ = Theme::scheme();
+    }
+    void init() {
+        QApplication::setFont(baselineFont_);
+        Theme::setScheme(baselineScheme_);
+        Graphite::WindowHeader::setCustomFrameOverride(1);
+    }
+    void cleanup() {
+        QApplication::setFont(baselineFont_);
+        Theme::setScheme(baselineScheme_);
+        Graphite::WindowHeader::setCustomFrameOverride(1);
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    }
     void cleanupTestCase() { Graphite::WindowHeader::setCustomFrameOverride(0); }
     void liveSelectorsSupportKeyboard_data() {
         QTest::addColumn<bool>("recording");
@@ -812,6 +866,8 @@ private slots:
             window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
             QApplication::processEvents();
             qInfo("review 150%% text transient %dx%d share %.3f", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble());
+            for (auto* label : window.findChild<QWidget*>("statusRow")->findChildren<QLabel*>("status")) if (label->isVisible())
+                QVERIFY2(label->contentsRect().width() >= label->fontMetrics().horizontalAdvance(label->text()), qPrintable(QString("Blur guidance wraps: %1 < %2").arg(label->contentsRect().width()).arg(label->fontMetrics().horizontalAdvance(label->text()))));
             QCOMPARE(window.geometry(), userGeometry);
             QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
             auto* status = window.findChild<QWidget*>("statusRow");
@@ -870,6 +926,8 @@ private slots:
             QApplication::processEvents();
             const auto transient = window.inspect()["video"].toObject()["share"].toDouble();
             qInfo("review %dx%d text %.1f %s steady %.3f transient %.3f", canvas.width(), canvas.height(), scale, qPrintable(Theme::name(theme)), steady, transient);
+            for (auto* label : window.findChild<QWidget*>("statusRow")->findChildren<QLabel*>("status")) if (label->isVisible())
+                qInfo("blur copy %d px in %d px; status %d px, frame %d px, window %dx%d", label->fontMetrics().horizontalAdvance(label->text()), label->contentsRect().width(), window.findChild<QWidget*>("statusRow")->height(), window.findChild<FrameView*>()->height(), window.width(), window.height());
             QVERIFY2(steady >= 0.60, qPrintable(QString::number(steady)));
             QVERIFY2(transient >= 0.53, qPrintable(QString::number(transient)));
             // Small user-chosen windows retain their geometry; frame gates apply at defaults.
@@ -878,6 +936,7 @@ private slots:
             window.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
             PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Disk is full. Free up space, then try again."));
             qInfo("visible recovery frame share %.3f at %dx%d", window.inspect()["video"].toObject()["share"].toDouble(), window.width(), window.height());
+            qInfo("recovery status %d px, frame %d px", window.findChild<QWidget*>("statusRow")->height(), window.findChild<FrameView*>()->height());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             window.resize(ReviewWindow::defaultSize());
             PUTGD_TRY_VERIFY2(window.height() <= 768 && window.inspect()["status"].toString().contains("Free up space, then try again."),
@@ -902,10 +961,16 @@ private slots:
             const auto geometry = window.geometry();
             window.drive({{"action", "selectMask"}, {"maskId", "solid"}});
             QApplication::processEvents();
+            qInfo("sequence steady %dx%d share %.3f frame %d mask %d status %d timeline %d", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble(), window.findChild<FrameView*>()->height(), window.findChild<QWidget*>("maskControls")->height(), window.findChild<QWidget*>("statusRow")->height(), timeline(window)->height());
             QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
             window.drive({{"action", "selectMask"}, {"maskId", "blur"}});
             QApplication::processEvents();
             qInfo("sequence transient %dx%d share %.3f frame %d status %d footer %d", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble(), window.findChild<FrameView*>()->height(), window.findChild<QWidget*>("statusRow")->height(), window.findChild<QWidget*>("reviewFooter")->height());
+            for (auto* group : window.findChild<QWidget*>("maskControls")->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly)) if (group->isVisible())
+                qInfo("mask group %s %dx%d at %d,%d", qPrintable(group->objectName()), group->width(), group->height(), group->x(), group->y());
+            qInfo("mask row %d; desired %d", window.findChild<QWidget*>("maskControls")->height(), window.findChild<QWidget*>("maskControls")->heightForWidth(window.findChild<QWidget*>("maskControls")->width()));
+            for (auto* label : window.findChild<QWidget*>("statusRow")->findChildren<QLabel*>("status")) if (label->isVisible())
+                QVERIFY2(label->contentsRect().width() >= QFontMetricsF(label->font()).horizontalAdvance(label->text()), "Blur guidance must stay on one line in a constrained workspace");
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53);
             window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
             window.showError("Export failed: disk full");
@@ -956,8 +1021,9 @@ private slots:
             PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Disk is full. Free up space, then try again."));
             qInfo("visible recovery frame share %.3f at %dx%d", window.inspect()["video"].toObject()["share"].toDouble(), window.width(), window.height());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
-            QVERIFY(window.inspect()["status"].toString().contains(Graphite::blurWarningText()));
-            auto* redact = buttonNamed(window, "Use Redact"); QVERIFY(redact && redact->isVisible());
+            QVERIFY(!window.inspect()["status"].toString().contains(Graphite::blurWarningText()));
+            QVERIFY(!buttonNamed(window, "Use Redact"));
+            QVERIFY(window.inspect()["statusFacts"].toArray().last().toObject()["text"].toString() == Graphite::blurWarningText());
             QVERIFY(window.inspect()["errorDetails"].toObject()["visible"].toBool());
             QCOMPARE(window.inspect()["errorDetails"].toObject()["message"].toString(), failure);
             for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && !w->isWindow())
@@ -1611,6 +1677,8 @@ private slots:
     }
     // #259: Save copy… opens the shared chooser; this test never asks a portal.
     void saveCopyDialogIsDrivenAndSavesTheChosenPath() {
+        const auto previous = qgetenv("PUTGD_FILE_DIALOG");
+        const auto restore = qScopeGuard([&] { if (previous.isNull()) qunsetenv("PUTGD_FILE_DIALOG"); else qputenv("PUTGD_FILE_DIALOG", previous); });
         qputenv("PUTGD_FILE_DIALOG", "fallback");
         QTemporaryDir folder;
         QVERIFY(folder.isValid());
@@ -1652,7 +1720,6 @@ private slots:
         QVERIFY(window.drive({{"action", "saveCopyDialog"}}).code.isEmpty());
         window.setExporting(true, "Exporting MP4…");
         QVERIFY(!window.inspect()["fileDialog"].toObject()["open"].toBool());
-        qunsetenv("PUTGD_FILE_DIALOG");
     }
 };
 
