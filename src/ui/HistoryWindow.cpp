@@ -552,7 +552,7 @@ void HistoryWindow::setDetailsOpen(bool open){
  if(detailsOpen_){inspectorScroll_->verticalScrollBar()->setValue(0);(compact_?detailsBack_:detailsClose_)->setFocus(Qt::OtherFocusReason);QTimer::singleShot(0,this,[this]{if(detailsOpen_)(compact_?detailsBack_:detailsClose_)->setFocus(Qt::OtherFocusReason);});}else if(wasOpen){table_->doItemsLayout();table_->verticalScrollBar()->setValue(gallery?galleryScroll_:listScroll_);table_->setFocus(Qt::OtherFocusReason);QTimer::singleShot(0,this,[this,gallery]{table_->verticalScrollBar()->setValue(gallery?galleryScroll_:listScroll_);});}emit viewStateChanged();
 }
 void HistoryWindow::updateFooterLayout(){
- if(!footerRow_||!columns_)return;const bool several=table_->selectionModel()->selectedRows().size()>1;const bool enlarged=Graphite::scaled(100)>125&&!grid_->isChecked();
+ if(!footerRow_||!columns_)return;const bool several=table_->selectionModel()->selectedRows().size()>1;const bool enlarged=Graphite::scaled(100)>125&&!grid_->isChecked()&&model_->rowCount()>0&&!detailsOpen_;
  auto* header=static_cast<HistoryColumns*>(columns_);header->counts=enlarged;header->update();
  if(enlarged){if(count_->parentWidget()!=columns_){static_cast<QHBoxLayout*>(footerRow_->layout())->removeWidget(count_);count_->setParent(columns_);}count_->setGeometry(18,0,qMax(0,columns_->width()-36),columns_->height());count_->show();}
  else if(count_->parentWidget()!=footerRow_){count_->setParent(footerRow_);static_cast<QHBoxLayout*>(footerRow_->layout())->insertWidget(0,count_,1);count_->show();}
