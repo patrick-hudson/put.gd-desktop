@@ -127,7 +127,7 @@ bool validNames(const QStringList& names) {
  for (const auto& name : names) if (name.size() > 128) return false;
  return true;
 }
-QVariantMap menuProperties(int id, const QStringList& names = {}, const QString& update = {}, const QHash<QString,QString>& shortcuts = {}, const QString& upload = {},int uploads=1,bool failed=false,const QString& recording={}) {
+QVariantMap menuProperties(int id, const QStringList& names = {}, const QString& update = {}, const QHash<QString,QString>& shortcuts = {}, const QString& upload = {},int uploads=1,bool failed=false,const QString& recording={},const QString& attention="Failed uploads") {
  QVariantMap props;
  if (id == 0 || !childrenOf(id).isEmpty()) props.insert("children-display", "submenu");
  if (id != 0) {
@@ -140,7 +140,7 @@ QVariantMap menuProperties(int id, const QStringList& names = {}, const QString&
   if(id==uploadStatusId||id==cancelUploadId||id==uploadSeparatorId)props.insert("visible",!upload.isEmpty());
   if(id==uploadStatusId){props.insert("label",upload);props.insert("enabled",false);}
   if(id==cancelUploadId){props.insert("enabled",!upload.isEmpty());props.insert("label",uploads>1?"Cancel all uploads…":"Cancel upload");}
-  if(id==22)props.insert("visible",failed);
+  if(id==22){props.insert("visible",failed);props.insert("label",attention);}
   if(id==16&&!recording.isEmpty())props.insert("label","Record screen — "+recording);
   const QKeySequence shortcut(shortcuts.value(QString::fromLatin1(e.action)));
   if(Settings::presentationOrder().contains(QString::fromLatin1(e.action))){
@@ -152,11 +152,11 @@ QVariantMap menuProperties(int id, const QStringList& names = {}, const QString&
  }
  return props;
 }
-NativeLayout menuLayout(int id, int depth, const QStringList& names, const QString& update,const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording) {
- NativeLayout result{id, menuProperties(id, names, update, shortcuts, upload,uploads,failed,recording), {}};
+NativeLayout menuLayout(int id, int depth, const QStringList& names, const QString& update,const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {
+ NativeLayout result{id, menuProperties(id, names, update, shortcuts, upload,uploads,failed,recording,attention), {}};
  // depth -1 expands every level; 0 returns this item alone.
  if (depth != 0) for (int child : childrenOf(id))
-  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names, update, shortcuts, upload,uploads,failed,recording))));
+  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names, update, shortcuts, upload,uploads,failed,recording,attention))));
  return result;
 }
 NativeImages brandIcon(const QColor& color=Theme::trayTints(false).idle,int percent=-1,int recording=0) {
@@ -201,8 +201,8 @@ public:
  const QString& updateLabel() const { return updateLabel_; }
  uint menuRevision() const { return menuRevision_; }
  void setUpdateLabel(const QString& label);
- void setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording);
- int uploadCount()const{return uploads_;}bool failed()const{return failed_;}const QString& recordingText()const{return recordingText_;}
+ void setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention);
+ int uploadCount()const{return uploads_;}bool failed()const{return failed_;}const QString& recordingText()const{return recordingText_;}const QString& attentionLabel()const{return attentionLabel_;}
  const QHash<QString,QString>& shortcuts()const{return shortcuts_;}
  const QString& uploadStatus()const{return uploadStatus_;}
 private slots:
@@ -224,7 +224,7 @@ private:
  quint64 notificationGeneration_ = 0;
  QString notificationServer_; // GetServerInformation's name, empty until it answers
  QSet<uint> residentNotifications_; // sent resident (#151): put.gd closes them once used
- int uploads_=0;bool failed_=false;QString updateLabel_,uploadStatus_;QHash<QString,QString> shortcuts_;
+ int uploads_=0;bool failed_=false;QString updateLabel_,uploadStatus_,attentionLabel_="Failed uploads";QHash<QString,QString> shortcuts_;
  uint menuRevision_ = 1;
  void closeNotification(uint id);
  std::unique_ptr<TrayExport> item_, menu_;
@@ -531,19 +531,19 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
   const int id = args.at(0).toInt(), depth = args.at(1).toInt();
   const auto names = qdbus_cast<QStringList>(args.at(2));
   if (!knownId(id) || depth < -1 || !validNames(names)) return error();
-  return reply({owner_->menuRevision(), QVariant::fromValue(menuLayout(id, depth, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText()))});
+  return reply({owner_->menuRevision(), QVariant::fromValue(menuLayout(id, depth, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel()))});
  }
  if (member == "GetGroupProperties" && sig == "aias") {
   auto ids = qdbus_cast<QList<int>>(args.at(0)); const auto names = qdbus_cast<QStringList>(args.at(1));
   if (ids.size() > 64 || !validNames(names)) return error();
   if (ids.isEmpty()) for (int id = 0; id <= entryCount; ++id) ids.append(id);
   NativePropertyList values;
-  for (int id : ids) if (knownId(id)) values.append({id, menuProperties(id, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText())});
+  for (int id : ids) if (knownId(id)) values.append({id, menuProperties(id, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel())});
   return reply({QVariant::fromValue(values)});
  }
  if (member == "GetProperty" && sig == "is") {
   int id = args.at(0).toInt(); if (!knownId(id)) return error();
-  const auto name = args.at(1).toString(); if (name.size() > 128) return error(); auto props = menuProperties(id, {}, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText());
+  const auto name = args.at(1).toString(); if (name.size() > 128) return error(); auto props = menuProperties(id, {}, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel());
   // Defaults are omitted from layouts but must resolve for explicit queries.
   const QVariantMap defaults{{"type", "standard"}, {"label", ""}, {"enabled", true}, {"visible", true},
    {"icon-name", ""}, {"icon-data", QByteArray{}}, {"shortcut", QVariant::fromValue(QList<QStringList>{})},
@@ -589,10 +589,10 @@ bool NativeTray::available() const { return d_->available(); }
 bool NativeTray::availabilityKnown() const { return d_->availabilityKnown(); }
 void NativeTray::setActivity(const QColor& color,const QString& description,int percent,int recording) {d_->setActivity(color,description,percent,recording);}
 void NativeTray::setUpdateLabel(const QString& label) {d_->setUpdateLabel(label);}
-void NativeTray::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording) {d_->setCommands(shortcuts,upload,uploads,failed,recording);}
-void NativeTrayPrivate::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording) {
- if(shortcuts_==shortcuts&&uploadStatus_==upload&&uploads_==uploads&&failed_==failed&&recordingText_==recording)return;shortcuts_=shortcuts;uploadStatus_=upload;uploads_=uploads;failed_=failed;recordingText_=recording;++menuRevision_;
- NativePropertyList changed;for(int id=1;id<=entryCount;++id)if(knownId(id))changed.append({id,menuProperties(id,{"label","visible","enabled","shortcut"},updateLabel_,shortcuts_,uploadStatus_,uploads_,failed_,recordingText_)});
+void NativeTray::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {d_->setCommands(shortcuts,upload,uploads,failed,recording,attention);}
+void NativeTrayPrivate::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {
+ if(shortcuts_==shortcuts&&uploadStatus_==upload&&uploads_==uploads&&failed_==failed&&recordingText_==recording&&attentionLabel_==attention)return;shortcuts_=shortcuts;uploadStatus_=upload;uploads_=uploads;failed_=failed;recordingText_=recording;attentionLabel_=attention;++menuRevision_;
+ NativePropertyList changed;for(int id=1;id<=entryCount;++id)if(knownId(id))changed.append({id,menuProperties(id,{"label","visible","enabled","shortcut"},updateLabel_,shortcuts_,uploadStatus_,uploads_,failed_,recordingText_,attentionLabel_)});
  auto properties=QDBusMessage::createSignal("/Menu",menuInterface,"ItemsPropertiesUpdated");properties.setArguments({QVariant::fromValue(changed),QVariant::fromValue(NativeRemovedList{})});bus_.send(properties);
  auto signal=QDBusMessage::createSignal("/Menu",menuInterface,"LayoutUpdated");signal.setArguments({menuRevision_,0});bus_.send(signal);
 }

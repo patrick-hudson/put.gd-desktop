@@ -905,7 +905,7 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
  },[this,id,reply](Error e,QJsonObject r) {
   clearObservation(id);emit changed(id);emit observationsChanged();releaseActive(id);
   bool failed=bool(e);for(const auto& value:r["items"].toArray())failed=failed||value.toObject()["local"].toObject()["status"]=="failed";
-  if(failed)emit operationError();
+  if(failed)emit operationError(id);
   reply(e,r);
  });
 }

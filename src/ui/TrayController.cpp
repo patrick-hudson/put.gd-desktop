@@ -244,7 +244,7 @@ TrayController::TrayController(OperationService& operations,
  // The panel's colour, not the app theme, picks the tint (#60): re-tint the
  // icon and its menu glyphs when the desktop switches.
  connect(&panel_,&PanelTone::changed,this,[this]{iconColor_=QColor();retintMenu();refreshActivity();});
- connect(&operations_,&OperationService::operationError,this,&TrayController::flashError);
+ connect(&operations_,&OperationService::operationError,this,[this](const QString& id){operations_.inspect(id,[guard=QPointer<TrayController>(this),id](Error,QJsonObject operation){if(guard){operation["id"]=id;guard->latchFailure({"archive_failed","Local save failed",{}},operation);}});});
  connect(&operations_,&OperationService::storageActivityChanged,this,&TrayController::refreshActivity);
  connect(&operations_, &OperationService::observationsChanged, this, &TrayController::refreshActivity);
  refreshActivity();
@@ -257,7 +257,7 @@ TrayController::TrayController(OperationService& operations,
     const auto item=value.toObject();
     failed=failed||meaningfulError(item["error"].toObject())||meaningfulError(item["local"].toObject()["error"].toObject());
    }
-   if(failed&&state!="cancelled")guard->flashError();
+   if(failed&&state!="cancelled"){const auto error=operation["error"].toObject();guard->latchFailure({error["code"].toString(),error["message"].toString(),error["details"].toObject()},operation);}
    if(!guard->available()||!guard->operations_.settingsSnapshot().notifications)return;
    if ((state == "completed" || state == "partial") && operation["copyStatus"] == "pending")
     return;
@@ -272,7 +272,7 @@ TrayController::TrayController(OperationService& operations,
    // A failed upload offers a diagnostics package for just that operation (#122).
    const auto diagnostics=state!="completed"&&guard->saveDiagnostics_?operation["id"].toString():QString{};
    if (QStringList{"completed", "partial", "failed", "interrupted"}.contains(state))
-    guard->notifyMessage("operation_" + state,QHash<QString,QString>{{"completed","Upload complete"},{"partial","Some uploads failed"},{"interrupted","Upload interrupted"},{"failed","Upload failed"}}.value(state),completionMessage(operation,!link.isEmpty()),state != "completed",link,diagnostics);
+    guard->notifyMessage("operation_" + state,completionTitle(operation),completionMessage(operation,!link.isEmpty()),failed,link,diagnostics);
   });
  });
 }
@@ -300,6 +300,13 @@ QString TrayController::failureReason(const QJsonObject& error) {
  while(message.endsWith('.'))message.chop(1);
  if(message.isEmpty())return {};
  return message.left(1).toLower()+message.mid(1);
+}
+QString TrayController::completionTitle(const QJsonObject& operation) {
+ const auto items=operation["items"].toArray();bool localOnly=!items.isEmpty(),problem=operation["state"]!="completed"||meaningfulError(operation["error"].toObject()),localFailed=false,uploaded=false;
+ for(const auto& value:items){const auto item=value.toObject();const auto local=item["local"].toObject();localOnly&=item["uploadStatus"]=="local_only";uploaded|=item["uploadStatus"]=="uploaded";localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());problem|=meaningfulError(item["error"].toObject())||localFailed;}
+ if(!problem)return localOnly?QString("Saved locally"):QString("Upload complete");
+ if((localFailed&&!uploaded)||operation["error"].toObject()["code"]=="archive_failed")return "Local save failed";
+ return "Completed with a problem";
 }
 QString TrayController::completionMessage(const QJsonObject& operation,bool hasLink) {
  const auto error=operation["error"].toObject();const auto items=operation["items"].toArray();const auto state=operation["state"].toString();
@@ -376,7 +383,7 @@ void TrayController::cancelUploads() {
  if(ids.size()>1){showView("historyCancelAll:"+QString::fromUtf8(QJsonDocument(QJsonArray::fromStringList(ids)).toJson(QJsonDocument::Compact)));return;}
  if(ids.size()==1)operations_.cancel(ids.first(),[guard=QPointer<TrayController>(this)](Error error,QJsonObject){if(guard&&error)guard->notifyFailure(error);});
 }
-void TrayController::acknowledgeFailures(){errorPending_=false;refreshActivity();showView("historyFailed");}
+void TrayController::acknowledgeFailures(){const auto view=attentionView_;errorPending_=false;attentionOperation_.clear();refreshActivity();showView(view);}
 void TrayController::refreshMenu() {
  QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();for(const auto& action:Settings::presentationOrder())shortcuts.insert(action,settings.actions.value(action).shortcut);
  int files=0,uploads=0;bool uploading=false;for(const auto& value:operations_.activeObservations()){
@@ -386,12 +393,12 @@ void TrayController::refreshMenu() {
  QString recording;for(const auto& value:operations_.activeObservations()){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording")recording=phaseLabel(op);}
  const auto status=!uploading?QString{}:files?QString("Uploading %1 %2…").arg(files).arg(files==1?"file":"files"):QString("Preparing upload…");
 #ifdef Q_OS_LINUX
- if(native_){native_->setCommands(shortcuts,status,uploads,errorPending_,recording);return;}
+ if(native_){native_->setCommands(shortcuts,status,uploads,errorPending_,recording,attentionLabel_);return;}
 #endif
  if(!menu_)return;
  for(auto* entry:menu_->actions())if(entry->property("commandLabel").isValid()&&shortcuts.contains(entry->data().toString())){const auto key=QKeySequence(shortcuts.value(entry->data().toString())).toString(QKeySequence::NativeText);entry->setText(entry->property("commandLabel").toString()+(entry->data()=="record"&&!recording.isEmpty()?" — "+recording:QString{})+(key.isEmpty()?QString{}:"\t"+key));}
  // Tab-separated menu text displays a shortcut without registering another key handler.
- failedUploads_->setVisible(errorPending_);cancelUpload_->setText(uploads>1?"Cancel all uploads…":"Cancel upload");
+ failedUploads_->setProperty("operationId",attentionOperation_);failedUploads_->setText(attentionLabel_);failedUploads_->setVisible(errorPending_);cancelUpload_->setText(uploads>1?"Cancel all uploads…":"Cancel upload");
  uploadStatus_->setText(status);for(auto* entry:{uploadStatus_,cancelUpload_,uploadSeparator_})entry->setVisible(uploading);
 }
 void TrayController::refreshActivity() {
@@ -430,7 +437,7 @@ void TrayController::refreshActivity() {
   uploadCompleteTimer_.start(int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())));
  QString recordingStatus;int recording=0;for(const auto& value:observations){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording"){recordingStatus=phaseLabel(op);if(op["phase"]=="recording")recording=1;else if(op["phase"]=="paused")recording=2;}}
  auto activity=activityText(observations);if(!recordingStatus.isEmpty()&&!activity.contains(recordingStatus))activity+=(activity.isEmpty()?QString{}:"\n")+recordingStatus;
- const auto text=errorPending_?QString("Failed uploads — open Failed uploads to review")+(activity.isEmpty()?QString{}:"\n"+activity):
+ const auto text=errorPending_?attentionLabel_+QString(" — open the tray menu to review")+(activity.isEmpty()?QString{}:"\n"+activity):
                  uploadCompleted_?QString("Upload complete"):
                  uploadVisible_&&!working?QString("Finishing upload"):activity;
  // Active work keeps the idle glyph; only a confirmed completion turns green.
@@ -455,6 +462,16 @@ void TrayController::refreshActivity() {
  // The tooltip's title and activity lines as the tray now shows them (#250).
  if(text!=activityText_)logging::debug(logUi(),"Tray tooltip changed",{{"title",text.isEmpty()?idleTooltip:QString("put.gd — Working")},{"activity",text}});
  iconColor_=color;iconPercent_=percent;iconRecording_=recording;activityText_=text;
+}
+void TrayController::latchFailure(const Error& error,const QJsonObject& operation) {
+ auto cause=error;bool uploadFailed=false,localFailed=error.code=="archive_failed";
+ for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();const auto itemError=item["error"].toObject(),local=item["local"].toObject();uploadFailed|=(item["uploadStatus"]=="failed"||meaningfulError(itemError)||operation["state"]=="interrupted")&&!operation["destination"].toObject()["providerId"].toString().isEmpty();localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());if(!cause&&meaningfulError(itemError))cause={itemError["code"].toString(),itemError["message"].toString(),itemError["details"].toObject()};}
+ attentionOperation_=operation["id"].toString();attentionLabel_="Action needs attention";attentionView_="history";
+ const bool setup=QStringList{"output_required","profile_not_found","provider_unavailable","invalid_destination","destination_unavailable","s3_settings_invalid","b2_settings_invalid","config_invalid","credential_setup_required"}.contains(cause.code);
+ if(uploadFailed){attentionLabel_="Failed uploads";attentionView_="historyFailed";}
+ else if(localFailed||setup){attentionLabel_=localFailed?"Local save needs attention":"Destination needs attention";const QJsonObject recovery{{"action",operation["action"].toString("region")},{"code",localFailed?"archive_failed":cause.code},{"message",localFailed&&cause.message.isEmpty()?"Couldn't save a local copy. Review the local-copy folder.":cause.message}};attentionView_="actionRecovery:"+QString::fromUtf8(QJsonDocument(recovery).toJson(QJsonDocument::Compact));}
+ else if(!operation.isEmpty()&&operation["items"].toArray().isEmpty())attentionLabel_="Capture needs attention";
+ flashError();
 }
 void TrayController::flashError() {
  uploadCompleteTimer_.stop();
@@ -491,7 +508,7 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
    const bool configuration=QStringList{"output_required","profile_not_found","provider_unavailable","invalid_destination","destination_unavailable","s3_settings_invalid","b2_settings_invalid","config_invalid","archive_failed"}.contains(error.code);
    if(configuration&&!fromShortcut){const QJsonObject recovery{{"action",action},{"code",error.code},{"message",error.message}};guard->showView("actionRecovery:"+QString::fromUtf8(QJsonDocument(recovery).toJson(QJsonDocument::Compact)));}
    else if (!fromShortcut) guard->showHistory();
-   if (guard) guard->notifyFailure(error);
+   if (guard){guard->notifyFailure(error);guard->latchFailure(error,{{"action",action}});}
   }
  }, effective);
 }
@@ -538,7 +555,7 @@ void TrayController::notifyUpdate(const QJsonObject& result) {
  notifyMessage("update_available","put.gd — update available","put.gd "+result["latest"].toString()+" is available. Settings → General → Updates has the download.",false,QUrl(result["notesUrl"].toString()));
 }
 void TrayController::notifyFailure(const Error& error) {
- if(error)flashError();
+ if(error)latchFailure(error);
  if (error && available()) notifyMessage(error.code,"put.gd", error.message, true);
 }
 void TrayController::saveDiagnostics(const QString& operationId) {

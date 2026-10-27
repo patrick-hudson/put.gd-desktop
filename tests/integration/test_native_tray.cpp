@@ -397,7 +397,7 @@ private slots:
   const auto error=Theme::trayTints(false).error;int opaqueRed=0;for(int index=0;index<redIcon.size();index+=4)
    if(uchar(redIcon[index])==255&&uchar(redIcon[index+1])==error.red()&&uchar(redIcon[index+2])==error.green()&&uchar(redIcon[index+3])==error.blue())++opaqueRed;
   QVERIFY(opaqueRed>10);
-  putgd::test::settle(3400);QCOMPARE(pixels(),redIcon);click(22);PUTGD_TRY_VERIFY(views.contains("historyFailed"));PUTGD_TRY_COMPARE(pixels(),activeIcon);
+  putgd::test::settle(3400);QCOMPARE(pixels(),redIcon);click(22);PUTGD_TRY_VERIFY(views.contains("history"));PUTGD_TRY_COMPARE(pixels(),activeIcon);
   provider->completions.takeFirst()();
   PUTGD_TRY_COMPARE(qdbus_cast<WireTooltip>(properties()["ToolTip"]).title,qdbus_cast<WireTooltip>(idle["ToolTip"]).title);
   QCOMPARE(qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes,idleIcon);
@@ -449,7 +449,7 @@ private slots:
   tray.setActivity(Theme::trayTints(false).error,"Failed uploads\nRecording paused",-2,2);const auto failed=pixels();tray.setActivity(Theme::trayTints(false).error,"Failed uploads\nRecording paused",-2);QVERIFY(failed!=pixels());QVERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Recording paused"));
   tray.setCommands({},"Uploading a file",1,true,"Recording paused");
   auto property=[&](int id,const QString& name){return qdbus_cast<QDBusVariant>(call("/Menu","com.canonical.dbusmenu","GetProperty",{id,name}).arguments().first()).variant();};
-  QVERIFY(property(16,"label").toString().contains("Recording paused"));QVERIFY(property(22,"visible").toBool());QVERIFY(property(19,"visible").toBool());
+  tray.setCommands({},"Uploading a file",1,true,"Recording paused","Local save needs attention");QCOMPARE(property(22,"label").toString(),QString("Local save needs attention"));QVERIFY(property(16,"label").toString().contains("Recording paused"));QVERIFY(property(22,"visible").toBool());QVERIFY(property(19,"visible").toBool());
   const auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}});const auto layout=qdbus_cast<WireLayout>(reply.arguments().at(1));bool found=false;for(const auto& child:layout.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==16){found=true;QVERIFY(item.props["label"].toString().contains("Recording paused"));}}QVERIFY(found);
  }
  void coreOnlyBrandPropertiesAndActualLayoutWire() {
@@ -679,7 +679,7 @@ private slots:
   const auto package=directory.filePath("putgd-diagnostics-20261020-010203Z.zip");{QFile file(package);QVERIFY(file.open(QIODevice::WriteOnly));file.write("PK");}
   QStringList requested;controller.setDiagnosticsSaver([&](const QString& id,JsonReply reply){requested.append(id);reply({},{{"path",package},{"bytes",2048}});});
   QString id;operations.invoke("clipboard",[&](Error error,QJsonObject value){QVERIFY(!error);id=value["operationId"].toString();});
-  PUTGD_TRY_COMPARE(notifications.values.size(),1);QVERIFY2(QRegularExpression("^(Some uploads failed|Upload failed)$").match(notifications.values[0]["summary"].toString()).hasMatch(),qPrintable(notifications.values[0]["summary"].toString()+" / "+notifications.values[0]["body"].toString()));
+  PUTGD_TRY_COMPARE(notifications.values.size(),1);QVERIFY2(notifications.values[0]["summary"].toString()=="Completed with a problem",qPrintable(notifications.values[0]["summary"].toString()+" / "+notifications.values[0]["body"].toString()));
   QCOMPARE(notifications.values[0]["actions"].toStringList(),QStringList({"save-diagnostics","Save diagnostics for this upload"}));
   // #152: the body names the failure, not a clipboard code; #151: it stays until used.
   QVERIFY2(notifications.values[0]["body"].toString().startsWith("Upload failed: "),qPrintable(notifications.values[0]["body"].toString()));
@@ -774,7 +774,7 @@ private slots:
   for (int id : {7,8,11}) QCOMPARE(click(id).type(), QDBusMessage::ReplyMessage);
   PUTGD_TRY_COMPARE(views, QStringList({"settings","history","about"}));
   QCOMPARE(click(4).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(source.copies, 1); PUTGD_TRY_COMPARE(notifications.values.size(), 1);
-  QVERIFY(notifications.values.first()["summary"].toString().contains("Upload complete"));
+  QCOMPARE(notifications.values.first()["summary"].toString(),QString("Saved locally"));
   QVERIFY(notifications.values.first()["body"].toString().contains("copied"));
   putgd::test::settle(100); PUTGD_TRY_COMPARE(notifications.values.size(), 1);
   auto updated = settings.document();

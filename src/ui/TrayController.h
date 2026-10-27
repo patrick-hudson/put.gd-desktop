@@ -33,6 +33,7 @@ public:
  // Completion toast text: the operation's own error when it failed before any
  // item; for a failed or partial upload, the failure in plain words, whether a
  // local copy was kept and what was copied (#152).
+ static QString completionTitle(const QJsonObject& operation);
  static QString completionMessage(const QJsonObject& operation,bool hasLink);
  // A provider or operation error as a short lower-case phrase.
  static QString failureReason(const QJsonObject& error);
@@ -78,6 +79,8 @@ private:
  std::function<void(const QString&,JsonReply)> saveDiagnostics_;
  void refreshActivity();void refreshMenu();void cancelUploads();
  void flashError();void acknowledgeFailures();
+ void latchFailure(const Error&,const QJsonObject& operation = {});
+ QString attentionLabel_="Action needs attention",attentionView_="history",attentionOperation_;
  QTimer uploadRevealTimer_,uploadCompleteTimer_;
  QElapsedTimer uploadVisibleClock_;
  bool uploadVisible_=false,uploadCompleted_=false;
