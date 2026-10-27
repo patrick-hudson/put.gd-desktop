@@ -213,6 +213,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'geometry', 'rect': [1, 2, 3]}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'select', 'shape_id': 0}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'pan', 'delta': [1.5, 2]}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'propertiesWidth', 'pixels': 199}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'propertiesWidth', 'pixels': 10001}),
                 ]:
                     rejected = await session.call_tool(name, args)
                     self.assertTrue(rejected.isError or (
@@ -330,6 +332,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'geometry', 'rect': [10, 20, -30, 40]}, 'editor.view', {'id': 'synthetic-operation', 'action': 'geometry', 'rect': [10, 20, -30, 40]}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'zoom', 'percent': 150}, 'editor.view', {'id': 'synthetic-operation', 'action': 'zoom', 'percent': 150}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'pan', 'delta': [-40, 25]}, 'editor.view', {'id': 'synthetic-operation', 'action': 'pan', 'delta': [-40, 25]}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'propertiesWidth', 'pixels': 240}, 'editor.view', {'id': 'synthetic-operation', 'action': 'propertiesWidth', 'pixels': 240}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'removeMark'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'removeMark'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'saveDetails'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'saveDetails'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'copySavedPath'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'copySavedPath'}),

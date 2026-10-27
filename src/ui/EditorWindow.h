@@ -6,7 +6,7 @@
 #include <QPointer>
 #include <QWidget>
 #include <functional>
-class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QDialog;
+class QSplitter;class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QDialog;
 
 namespace putgd {
 class FileDialog;
@@ -52,7 +52,7 @@ public:
  bool savingCopy() const {return savingCopy_;}
  static QString pngCopyPath(const QString& path);
  // A copy written by the window or by editor.saveCopy: its name, Show in
- // folder and Copy path in the footer, the full path in the
+ // folder and Copy path above the footer, the full path in the
  // tooltip and accessible description. It is recorded against the
  // document's generation: after another edit it reads "Earlier copy saved"
  // and the header no longer claims a copy. A failure (an empty path: the
@@ -84,6 +84,7 @@ private:
  void syncSaved();
  void placeDestination();
  void placeDocument();
+ void placeProperties();
  // The preparation failure strip; empty hides it. While it shows, its own
  // Save a copy… stands in for the footer's.
  void setNotice(const QString& reason);
@@ -122,9 +123,10 @@ private:
  bool syncingGeometry_=false;
  Graphite::WindowHeader* header_=nullptr;
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr,*remove_=nullptr;
+ QSplitter* splitter_=nullptr;int propertiesWidth_=260;
  QWidget *side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;
  QVBoxLayout *properties_=nullptr,*sideLayout_=nullptr;bool documentScrolling_=false;
- // The footer: a preparation failure, the destination (above the actions
+ // Save results sit above the footer: a preparation failure, the destination (above the actions
  // when it doesn't fit beside them), then the action row.
  QWidget* saveFeedback_=nullptr;bool saveFeedbackVisible_=false;
  QWidget* notice_=nullptr;QGridLayout* footerGrid_=nullptr;
