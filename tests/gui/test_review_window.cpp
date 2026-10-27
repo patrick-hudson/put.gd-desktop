@@ -36,6 +36,7 @@
 #include <QTest>
 #include <QToolButton>
 #include <tuple>
+#include <cmath>
 #include "fixtures/Waits.h"
 using namespace putgd;
 using namespace putgd::record;
@@ -489,7 +490,19 @@ private slots:
         QVERIFY(!timeline(window)->maskRect("7").isEmpty());
         QVERIFY(timeline(window)->maskRect("7").height() >= 20);
     }
+    void maskOptionsExposeRadiusAndDeletionThroughTheSameDrive_data() {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("standard") << 1.0;
+        QTest::newRow("150%") << 1.5;
+    }
     void maskOptionsExposeRadiusAndDeletionThroughTheSameDrive() {
+        QFETCH(double, scale);
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
+        auto font = original;
+        if (font.pointSizeF() > 0) font.setPointSizeF(font.pointSizeF() * scale);
+        else font.setPixelSize(qRound(font.pixelSize() * scale));
+        QApplication::setFont(font);
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         const auto geometry = window.geometry();
@@ -498,6 +511,10 @@ private slots:
         auto* menu = window.findChild<QMenu*>("maskOptionsMenu");
         QVERIFY(menu && menu->isVisible());
         auto* radius = menu->findChild<QSpinBox*>(); QVERIFY(radius && radius->isVisible());
+        QToolButton* remove = nullptr;
+        for (auto* button : menu->findChildren<QToolButton*>()) if (button->accessibleName() == "Delete mask") remove = button;
+        QVERIFY(remove && remove->isVisible());
+        QVERIFY(remove->width() - remove->iconSize().width() - 32 >= std::ceil(QFontMetricsF(remove->font()).horizontalAdvance(remove->text())));
         QSignalSpy edits(&window, &ReviewWindow::editProposed);
         QVERIFY(window.drive({{"action", "strength"}, {"strength", 24}}).code.isEmpty());
         QCOMPARE(edits.size(), 1);
@@ -1296,17 +1313,21 @@ private slots:
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto controls = [&] { return window.inspect()["maskControls"].toObject(); };
         QCOMPARE(controls(), QJsonObject({{"list", false}, {"times", false}, {"strength", false}, {"remove", false}}));
-        // Two masks arrive (the last added is selected): the list, times and Remove; a cover has no strength.
+        // Two masks arrive: the list and timing stay inline; secondary controls live in Mask options.
         window.setEdit(twoMasks());
         QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m-solid"));
-        QCOMPARE(controls(), QJsonObject({{"list", true}, {"times", true}, {"strength", false}, {"remove", true}}));
+        QCOMPARE(controls(), QJsonObject({{"list", true}, {"times", true}, {"strength", false}, {"remove", false}}));
         auto* list = window.findChild<QComboBox*>("masks");
         QVERIFY(list);
         QCOMPARE(list->count(), 2);
         QCOMPARE(list->itemText(0), QString("Blur 1"));
         list->setCurrentIndex(0);
         QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m-blur"));
+        QCOMPARE(controls()["strength"].toBool(), false);
+        QVERIFY(window.inspect()["maskOptions"].toObject()["blurRadiusAvailable"].toBool());
+        QVERIFY(window.drive({{"action", "showMaskOptions"}}).code.isEmpty());
         QCOMPARE(controls()["strength"].toBool(), true);
+        QVERIFY(window.drive({{"action", "closeMaskOptions"}}).code.isEmpty());
         // A click on a mask's bar on the timeline selects it.
         auto* t = timeline(window);
         t->findChild<QScrollBar*>("maskLaneScroll")->setValue(1);
@@ -1503,7 +1524,8 @@ private slots:
         edit.masks = {mask("m-blur", "blur", 2000000, duration)};
         window.setEdit(edit);
         auto selected = drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
-        QCOMPARE(selected.state["maskControls"].toObject()["strength"].toBool(), true);
+        QCOMPARE(selected.state["maskControls"].toObject()["strength"].toBool(), false);
+        QVERIFY(selected.state["maskOptions"].toObject()["blurRadiusAvailable"].toBool());
         QVERIFY(drive({{"action", "strength"}, {"strength", 30}}).code.isEmpty());
         QCOMPARE(proposed(proposals)["mask"].toObject()["strength"].toInt(), 30);
         QVERIFY(drive({{"action", "seek"}, {"time", 7000000}}).code.isEmpty());

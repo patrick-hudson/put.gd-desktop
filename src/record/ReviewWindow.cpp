@@ -1068,8 +1068,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     maskEnd_ = action("End", "Set mask end", "End the selected mask at the playhead (Shift+O)");
     removeMask_ = tool("remove", "Delete mask", "Delete the selected mask (Delete)");
     removeMask_->setText("Delete mask");
+    removeMask_->setFont(Graphite::font(Graphite::Type::body));
     removeMask_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    removeMask_->setFixedSize(removeMask_->fontMetrics().horizontalAdvance(removeMask_->text()) + removeMask_->iconSize().width() + 32, textControlHeight(removeMask_));
+    removeMask_->setFixedSize(int(std::ceil(QFontMetricsF(removeMask_->font()).horizontalAdvance(removeMask_->text()))) + removeMask_->iconSize().width() + 40, textControlHeight(removeMask_));
     maskOptions_ = tool("settings", "Mask options", "Mask options: blur radius and Delete mask");
     maskOptions_->setObjectName("maskOptions");
     maskOptions_->setFixedHeight(maskStart_->height());
@@ -2026,8 +2027,8 @@ QJsonObject ReviewWindow::inspect() const {
         {"revision", double(edit_.revision)}, {"trim", QJsonObject{{"start", double(edit_.trimStart)}, {"end", double(edit_.exportEnd(options_.durationUs))}}},
         {"masks", masks}, {"selectedMaskId", mask ? QJsonValue(mask->id) : QJsonValue(QJsonValue::Null)},
         {"armed", view_->armed().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->armed())},
-        {"maskControls", QJsonObject{{"list", masks_->isVisibleTo(this)}, {"times", maskStart_->isVisibleTo(this)}, {"strength", mask && mask->kind == "blur"}, {"remove", mask != nullptr}}},
-        {"maskOptions", QJsonObject{{"open", maskOptions_->menu()->isVisible()}, {"drive", QJsonObject{{"action", "showMaskOptions"}}}}},
+        {"maskControls", QJsonObject{{"list", masks_->isVisibleTo(this)}, {"times", maskStart_->isVisibleTo(this)}, {"strength", strength_->isVisibleTo(this)}, {"remove", removeMask_->isVisibleTo(this)}}},
+        {"maskOptions", QJsonObject{{"available", mask != nullptr}, {"blurRadiusAvailable", mask && mask->kind == "blur"}, {"deleteAvailable", mask != nullptr}, {"open", maskOptions_->menu()->isVisible()}, {"drive", QJsonObject{{"action", "showMaskOptions"}}}}},
         {"formatAdvice", QJsonObject{{"visible", formatAdvice_->isVisibleTo(this)}, {"drive", QJsonObject{{"action", "showFormatTips"}}}}},
         {"savedCopy", QJsonObject{{"path", savedPath_}, {"revision", double(savedRevision_)}, {"current", !savedPath_.isEmpty() && savedCurrent()}, {"showInFolder", lastShowInFolder_}}},
         {"selectedMaskName", mask ? QJsonValue(maskNames_->name(*mask)) : QJsonValue(QJsonValue::Null)},
