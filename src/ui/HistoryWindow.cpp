@@ -76,11 +76,15 @@ QString linkExpiry(const QJsonObject& detail){
  if(expires<=QDateTime::currentDateTimeUtc())return "Link expired on "+when;
  return detail["linkAvailable"].toBool()?"Link expires on "+when:QString{};
 }
+// Keep status labels together; diagnostic prose retains its natural wrapping.
+QString statusPhrases(QString text,bool failed=false){
+ auto tokens=text.split(" · ");for(int i=0;i<tokens.size();++i)if(!failed||i!=1||tokens[i]=="Saved locally")tokens[i].replace(' ',QChar(0x00a0));return tokens.join(" · ");
+}
 void setHistoryOutcome(QLabel* label,const QJsonObject& group){
  const auto remote=HistoryModel::remoteStateText(group);const bool failed=HistoryModel::failed(group);auto text=HistoryModel::statusText(group);
  label->setTextFormat(Qt::PlainText);VisualStyle::role(label,failed||remote=="Deletion failed"||remote=="Sharing failed"?"danger":!remote.isEmpty()?"muted":group["uploadStatus"]=="uploaded"?"success":"muted");
- if(failed){const bool saved=text.endsWith(" · Saved locally");if(saved)text.chop(QString(" · Saved locally").size());label->setTextFormat(Qt::RichText);text="<span style=\"color:"+Theme::current().danger.name()+"\">"+text.toHtmlEscaped()+"</span>"+(saved?"<span style=\"color:"+Theme::current().textSecondary.name()+"\"> · Saved locally</span>":QString{});}
- label->setText(text);
+ if(failed){const bool saved=text.endsWith(" · Saved locally");if(saved)text.chop(QString(" · Saved locally").size());label->setTextFormat(Qt::RichText);text="<span style=\"color:"+Theme::current().danger.name()+"\">"+statusPhrases(text,true).toHtmlEscaped()+"</span>"+(saved?"<span style=\"color:"+Theme::current().textSecondary.name()+"\"> · Saved locally</span>":QString{});}
+ label->setText(failed?text:statusPhrases(text));
 }
 // A video's poster carries a play glyph and its length, so a still is never
 // mistaken for a screenshot (#112).
@@ -186,10 +190,6 @@ int rowTextInset(){return Graphite::scaled(100)>125?5:10;}
 int rowContentHeight(){return qMax(Graphite::Metric::historyRow,qMax(Graphite::Metric::thumbHeight,QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+6)+2*rowTextInset()+4);}
 // A gallery card's picture keeps the 248 px card's proportions as cards grow.
 int galleryPicture(int cardWidth){return qMax(90,(cardWidth-2)*145/234);}
-// Keep status labels together; diagnostic prose retains its natural wrapping.
-QString statusPhrases(QString text,bool failed=false){
- auto tokens=text.split(" · ");for(int i=0;i<tokens.size();++i)if(!failed||i!=1||tokens[i]=="Saved locally")tokens[i].replace(' ',QChar(0x00a0));return tokens.join(" · ");
-}
 void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded=false){
  document.setDocumentMargin(0);document.setDefaultFont(Graphite::font(Graphite::Type::metadata));QTextOption option;option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);document.setDefaultTextOption(option);
  const auto record=index.data(HistoryModel::RecordRole).toJsonObject();const auto& t=Theme::current();auto text=HistoryModel::failed(record)?HistoryModel::statusText(record):index.data(HistoryModel::SubtitleRole).toString();if(createdColumn&&!HistoryModel::failed(record)){const auto created=index.data(HistoryModel::CreatedRole).toString();if(!created.isEmpty())text.remove(" · "+created);}
