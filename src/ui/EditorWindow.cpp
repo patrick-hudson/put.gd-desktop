@@ -93,7 +93,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  header_=Graphite::WindowHeader::install(this,root);header_->setDocument("Edit image","Not uploaded");
 
  auto* toolbar=new Graphite::Surface("bg",Qt::BottomEdge,this);toolbar->setObjectName("editorToolbar");
- auto* tools=new QHBoxLayout(toolbar);tools->setContentsMargins(12,8,12,8);tools->setSpacing(4);
+ auto* tools=new QHBoxLayout(toolbar);tools->setContentsMargins(12,8,12,8);tools->setSpacing(2);
  tools_=new QButtonGroup(this);tools_->setExclusive(true);
  // The tool is Redact; the marks it makes are redactions.
  struct Entry{Tool tool;const char* icon;const char* label;const char* key;const char* detail;};
