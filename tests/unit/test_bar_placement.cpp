@@ -133,14 +133,14 @@ private slots:
         QSignalSpy selected(&selector, &SelectionOverlay::selected);
         QTest::keyClick(surface, Qt::Key_Tab);
         const int next = screens.size() > 1 ? 1 : 0;
-        QVERIFY(surface->accessibleDescription().contains(screens[next]->name()));
+        QVERIFY(surface->accessibleDescription().contains(QStringLiteral("Display %1").arg(next + 1)));
         QVERIFY(surface->accessibleDescription().contains("Drag to select"));
         QTest::keyClick(surface, Qt::Key_Right);
         QRectF expected(QPointF(screens[next]->geometry().topLeft()) + QPointF(screens[next]->geometry().width()/4.0, screens[next]->geometry().height()/4.0), QSizeF(screens[next]->geometry().size())/2);
         QList<QRectF> logical;for(auto* output:screens)logical.append(output->geometry());int current=next;
         putgd::switchRegionDisplay(expected,logical,current,Qt::Key_Backtab);
         QTest::keyClick(surface, Qt::Key_Backtab);
-        QVERIFY(surface->accessibleDescription().contains(screens[0]->name()));
+        QVERIFY(surface->accessibleDescription().contains(QStringLiteral("Display 1")));
         QTest::keyClick(surface, Qt::Key_Return);
         QCOMPARE(selected.size(), 1);
         QVERIFY(expected.toAlignedRect().width() > 0);

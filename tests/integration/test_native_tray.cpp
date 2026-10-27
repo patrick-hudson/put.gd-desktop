@@ -415,7 +415,7 @@ private slots:
    if(record["message"]=="Tray tooltip changed") {
     QCOMPARE(record["level"].toString(),QString("debug"));
     progress=progress||fields["activity"].toString().contains("2 MiB of 4 MiB");
-    idleAgain=idleAgain||(fields["activity"].toString().isEmpty()&&fields["title"]=="put.gd — Share and local capture");
+    idleAgain=idleAgain||(fields["activity"].toString().isEmpty()&&fields["title"]=="put.gd — Screen capture and file sharing");
    }
   }
   QVERIFY(toast);QVERIFY(progress);QVERIFY(idleAgain);
@@ -668,7 +668,7 @@ private slots:
   const auto package=directory.filePath("putgd-diagnostics-20261020-010203Z.zip");{QFile file(package);QVERIFY(file.open(QIODevice::WriteOnly));file.write("PK");}
   QStringList requested;controller.setDiagnosticsSaver([&](const QString& id,JsonReply reply){requested.append(id);reply({},{{"path",package},{"bytes",2048}});});
   QString id;operations.invoke("clipboard",[&](Error error,QJsonObject value){QVERIFY(!error);id=value["operationId"].toString();});
-  PUTGD_TRY_COMPARE(notifications.values.size(),1);QVERIFY2(QRegularExpression("put.gd — (failed|partial)").match(notifications.values[0]["summary"].toString()).hasMatch(),qPrintable(notifications.values[0]["summary"].toString()+" / "+notifications.values[0]["body"].toString()));
+  PUTGD_TRY_COMPARE(notifications.values.size(),1);QVERIFY2(QRegularExpression("^(Some uploads failed|Upload failed)$").match(notifications.values[0]["summary"].toString()).hasMatch(),qPrintable(notifications.values[0]["summary"].toString()+" / "+notifications.values[0]["body"].toString()));
   QCOMPARE(notifications.values[0]["actions"].toStringList(),QStringList({"save-diagnostics","Save diagnostics for this upload"}));
   // #152: the body names the failure, not a clipboard code; #151: it stays until used.
   QVERIFY2(notifications.values[0]["body"].toString().startsWith("Upload failed: "),qPrintable(notifications.values[0]["body"].toString()));
@@ -763,7 +763,7 @@ private slots:
   for (int id : {7,8,11}) QCOMPARE(click(id).type(), QDBusMessage::ReplyMessage);
   PUTGD_TRY_COMPARE(views, QStringList({"settings","history","about"}));
   QCOMPARE(click(4).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(source.copies, 1); PUTGD_TRY_COMPARE(notifications.values.size(), 1);
-  QVERIFY(notifications.values.first()["summary"].toString().contains("completed"));
+  QVERIFY(notifications.values.first()["summary"].toString().contains("Upload complete"));
   QVERIFY(notifications.values.first()["body"].toString().contains("copied"));
   putgd::test::settle(100); PUTGD_TRY_COMPARE(notifications.values.size(), 1);
   auto updated = settings.document();
