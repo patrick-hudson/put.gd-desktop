@@ -121,8 +121,8 @@ private slots:
   const auto canvas=window.canvas().geometry();
   for(const auto tool:{Tool::Blur,Tool::Crop,Tool::Text,Tool::Select,Tool::Arrow}){window.selectTool(tool);QApplication::processEvents();QCOMPARE(side->width(),240);QCOMPARE(window.canvas().geometry(),canvas);}
   window.resize(900,620);QApplication::processEvents();QCOMPARE(side->width(),240);
-  window.viewCommand({{"action","propertiesWidth"},{"pixels",600}},code,message);QApplication::processEvents();QCOMPARE(side->width(),window.width()/3);
-  window.resize(1180,820);QApplication::processEvents();QCOMPARE(side->width(),window.width()/3);
+  window.viewCommand({{"action","propertiesWidth"},{"pixels",600}},code,message);QApplication::processEvents();QCOMPARE(side->width()+splitter->handleWidth(),window.width()/3);
+  window.resize(1180,820);QApplication::processEvents();QCOMPARE(side->width()+splitter->handleWidth(),window.width()/3);
   window.viewCommand({{"action","propertiesWidth"},{"pixels",199}},code,message);QCOMPARE(code,QString("invalid_request"));
  }
  void saveFeedbackKeepsDestinationAndUploadVisibleUntilDismissed(){
