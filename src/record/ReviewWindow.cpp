@@ -2005,7 +2005,8 @@ void ReviewWindow::placeDestination() {
         grid->setProperty("singleRow", single);
         grid->invalidate();
     }
-    const int destinationWidth = std::min(naturalDestination, single ? destinationMenu_->width() : std::max(modeWidth, available - exportAudio_->sizeHint().width() - 16));
+    grid->activate();
+    const int destinationWidth = destinationMenu_->width();
     const int nameWidth = std::max(0, destinationWidth - destinationMenu_->fontMetrics().horizontalAdvance(QStringLiteral(" · ") + mode) - Graphite::Metric::splitZone - 24);
     destinationMenu_->setText(destinationMenu_->fontMetrics().elidedText(options_.destination, Qt::ElideMiddle, nameWidth) + QStringLiteral(" · ") + mode);
 }

@@ -425,7 +425,8 @@ private slots:
         const auto nameFits = [&] {
             return output && output->isVisible() && output->toolTip().contains(o.destination) && output->text().contains("Shared link")
                 && output->toolTip().contains(o.destination) && output->menu()
-                && output->height() >= 32 && window.rect().contains(QRect(output->mapTo(&window, QPoint()), output->size()));
+                && output->height() >= 32 && window.rect().contains(QRect(output->mapTo(&window, QPoint()), output->size()))
+                && output->fontMetrics().horizontalAdvance(output->text()) + Graphite::Metric::splitZone + 24 <= output->width();
         };
         window.resize(window.minimumSizeHint()); QApplication::processEvents();
         QVERIFY2(nameFits(), qPrintable(destination->text()));
