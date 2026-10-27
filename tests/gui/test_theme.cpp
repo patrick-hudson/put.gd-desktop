@@ -64,6 +64,11 @@ class ThemeTest : public QObject {
     }
 private slots:
     void init() { Theme::setScheme(Theme::Scheme::Dark); }
+    void chromeTargetsAndTitleFitFollowTextSize() {
+        const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);Graphite::WindowHeader::setCustomFrameOverride(0);});Graphite::WindowHeader::setCustomFrameOverride(1);
+        QVERIFY(qApp->style()->pixelMetric(QStyle::PM_ScrollBarExtent)>=12);QCOMPARE(qApp->style()->pixelMetric(QStyle::PM_SplitterWidth),8);auto enlarged=original;enlarged.setPixelSize(21);qApp->setFont(enlarged);QVERIFY(qApp->style()->pixelMetric(QStyle::PM_ScrollBarExtent)>=16);
+        QWidget window;QVBoxLayout layout(&window);layout.setContentsMargins(0,0,0,0);auto* header=Graphite::WindowHeader::install(&window,&layout,nullptr,Graphite::WindowHeader::Density::Compact);header->setDocument("Review recording");auto* state=new QLabel("Not uploaded");header->addTrailing(state);window.resize(680,200);window.show();putgd::test::settle(20);auto* title=header->findChild<QLabel*>("documentName");QVERIFY(title);QVERIFY(title->width()>=title->fontMetrics().horizontalAdvance(title->text()));QEvent inactive(QEvent::WindowDeactivate);QApplication::sendEvent(&window,&inactive);QVERIFY(title->property("headerInactive").toBool());QVERIFY(header->findChild<QToolButton*>("windowClose")->isEnabled());QEvent active(QEvent::WindowActivate);QApplication::sendEvent(&window,&active);QVERIFY(!title->property("headerInactive").toBool());window.resize(1200,200);putgd::test::settle(20);QVERIFY(header->property("balancedTitle").toBool());
+    }
     void customHeaderOffersWindowActions() {
         Graphite::WindowHeader::setCustomFrameOverride(1);
         auto restore=qScopeGuard([]{Graphite::WindowHeader::setCustomFrameOverride(0);});

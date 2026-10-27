@@ -586,14 +586,14 @@ int Style::pixelMetric(PixelMetric metric, const QStyleOption* option, const QWi
     case PM_IndicatorWidth: case PM_IndicatorHeight: return 17;
     case PM_ExclusiveIndicatorWidth: case PM_ExclusiveIndicatorHeight: return 18;
     case PM_CheckBoxLabelSpacing: case PM_RadioButtonLabelSpacing: return 9;
-    case PM_ScrollBarExtent: return 10;
+    case PM_ScrollBarExtent: return std::max(12, int(std::lround(12 + 8 * (textScale() * applicationScale() - 1))));
     case PM_ScrollBarSliderMin: return 28;
     case PM_MenuPanelWidth: return 1;
     case PM_MenuHMargin: case PM_MenuVMargin: return 5;
     case PM_MenuButtonIndicator: return Metric::splitZone;
     case PM_SubMenuOverlap: return 2;
     case PM_ToolTipLabelFrameWidth: return 7;
-    case PM_SplitterWidth: return 3;
+    case PM_SplitterWidth: return 8;
     case PM_TabBarTabShiftVertical: case PM_TabBarTabShiftHorizontal: case PM_TabBarBaseOverlap: case PM_TabBarBaseHeight: return 0;
     case PM_TabBarTabHSpace: return 40;
     case PM_TabBarTabVSpace: return 16;
@@ -1006,6 +1006,7 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
         const bool onSelected = enabled && ((option->state & State_Sunken) || ((option->state & State_On) && !(widget && widget->property("graphiteDisclosure").toBool()))) && name != "primary" && name != "danger" && name != "link" && name != "version";
         auto pixmap = icon.pixmap(iconSize, dpr(widget), !enabled ? QIcon::Disabled : onSelected ? QIcon::Selected : QIcon::Normal, option->state & State_On ? QIcon::On : QIcon::Off);
         if (name == "primary" || name == "danger") pixmap = tinted(pixmap, look.text);
+        if (widget && widget->property("headerInactive").toBool()) pixmap = tinted(pixmap, t().textMuted);
         p->drawPixmap(target.topLeft(), pixmap);
         x += iconWidth + (shown.isEmpty() ? 0 : 8);
     }
@@ -1665,7 +1666,7 @@ void ElidedLabel::paintEvent(QPaintEvent*) {
         p.setBrush(Qt::NoBrush);
         p.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
     }
-    paintText(p, textRect(), text(), palette().color(isEnabled() ? QPalette::Normal : QPalette::Disabled, foregroundRole()), font(),
+    paintText(p, textRect(), text(), property("headerInactive").toBool() ? t().textMuted : palette().color(isEnabled() ? QPalette::Normal : QPalette::Disabled, foregroundRole()), font(),
               alignment(), elideMode_);
 }
 
@@ -1873,7 +1874,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
             }
         }
     }
-    // Settings and Destinations can share their gutter across hidden pages.
+    // Share within one form family, excluding hidden provider fields.
     // Measure fields after their control sizing, and watch reflow and visibility.
     class FormMode final : public QObject {
     public:
@@ -1900,13 +1901,19 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
             pending_ = true;
             QTimer::singleShot(0, this, [this] { apply(); pending_ = false; });
         }
+        bool measured(QFormLayout* form, int row) const {
+            QWidget* body = form->parentWidget();
+            for (auto* widget = body; widget; widget = widget->parentWidget())
+                if (auto* scroll = qobject_cast<QScrollArea*>(widget)) { body = scroll->widget(); break; }
+            return form->isRowVisible(row) && form->parentWidget()->isVisibleTo(body);
+        }
         void apply() {
             QString measurement;
             for (auto* form : sharedForms_)
                 for (int row = 0; row < form->rowCount(); ++row)
                     if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) {
                         auto* label = item->widget();
-                        measurement += QString::number(shared_ || (form->parentWidget()->isVisibleTo(page_) && form->isRowVisible(row))) + label->font().key();
+                        measurement += QString::number(measured(form, row)) + label->font().key();
                         for (auto* text : label->findChildren<QLabel*>()) measurement += text->text();
                         for (auto* text : label->findChildren<QAbstractButton*>()) measurement += text->text();
                         if (auto* text = qobject_cast<QLabel*>(label)) measurement += text->text();
@@ -1920,7 +1927,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
                             auto* label = item->widget();
                             label->setFixedHeight(scaled(Metric::control));
                             label->setMinimumWidth(0);
-                            if (shared_ || (form->parentWidget()->isVisibleTo(page_) && form->isRowVisible(row))) gutter = std::max(gutter, label->sizeHint().width());
+                            if (measured(form, row)) gutter = std::max(gutter, label->sizeHint().width());
                         }
                 gutter_ = std::min(gutter, scaled(240));
                 for (auto* form : sharedForms_)
@@ -1950,8 +1957,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
                     if (widget == page_) break;
                 }
                 const int available = pageWidth - margins;
-                // Shared Settings/Destinations forms switch at the same useful
-                // control width, independent of which provider is visible.
+                // A family shares a useful minimum control width.
                 stack |= available < gutter_ + std::max(0, form->horizontalSpacing()) + (shared_ ? std::max(240, std::min(320, fieldWidth)) : fieldWidth);
             }
             const auto policy = stack ? QFormLayout::WrapAllRows : QFormLayout::DontWrapRows;
@@ -2260,6 +2266,11 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu, Density density) : QWid
     }
     row_->addWidget(trailing_);
     window->installEventFilter(this);
+    connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, [this] {
+        auto palette = name_->palette();
+        palette.setColor(QPalette::WindowText, property("headerInactive").toBool() ? t().textMuted : t().text);
+        name_->setPalette(palette);
+    });
     fitHeight();
     // Without put.gd's frame the desktop's title bar names the window; a compact
     // header would only repeat it and take the content's height.
@@ -2273,6 +2284,7 @@ int WindowHeader::compactHeight() const {
     return std::max(Metric::iconTarget, text);
 }
 void WindowHeader::fitHeight() { setFixedHeight(density_ == Density::Compact ? compactHeight() : scaled(Metric::header)); }
+void WindowHeader::resizeEvent(QResizeEvent* event) { QWidget::resizeEvent(event); syncWindowState(); }
 void WindowHeader::changeEvent(QEvent* event) {
     // A later application font (enlarged text) changes the line height.
     if (event->type() == QEvent::FontChange || event->type() == QEvent::StyleChange) fitHeight();
@@ -2284,6 +2296,7 @@ void WindowHeader::setCentre(QWidget* centre) {
     centre->setParent(this);
     row_->insertWidget(2, centre, 0, Qt::AlignCenter);
     centre->show();
+    syncWindowState();
 }
 void WindowHeader::setDocument(const QString& name, const QString& state) {
     if (!docName_) {
@@ -2312,6 +2325,7 @@ void WindowHeader::setDocument(const QString& name, const QString& state) {
     docState_->setText(state);
     // One line in the compact band: its state belongs to the window's footer.
     docState_->setVisible(!state.isEmpty() && density_ != Density::Compact);
+    syncWindowState();
 }
 void WindowHeader::addTrailing(QWidget* widget) {
     trailingRow_->insertWidget(1, widget);
@@ -2324,15 +2338,27 @@ void WindowHeader::syncWindowState() {
         maximize_->setAccessibleName(maximized ? QStringLiteral("Restore") : QStringLiteral("Maximize"));
         maximize_->setToolTip(maximize_->accessibleName());
     }
-    // The centre stays centred: both sides take the wider side's width.
     leading_->setMinimumWidth(0);
     trailing_->setMinimumWidth(0);
     const int side = std::max(leading_->sizeHint().width(), trailing_->sizeHint().width());
-    leading_->setMinimumWidth(side);
-    trailing_->setMinimumWidth(side);
+    const auto margins = row_->contentsMargins();
+    const int titleWidth = docName_ ? docName_->fontMetrics().horizontalAdvance(docName_->text()) : centre_ ? centre_->sizeHint().width() : 0;
+    const bool balanced = width() >= margins.left() + margins.right() + 2 * side + titleWidth + 4 * row_->spacing();
+    if (balanced) { leading_->setMinimumWidth(side); trailing_->setMinimumWidth(side); }
+    if (docName_) { docName_->setAlignment(balanced ? Qt::AlignCenter : Qt::AlignLeft | Qt::AlignVCenter); docState_->setAlignment(docName_->alignment()); }
+    row_->setStretch(1, balanced ? 1 : 0);
+    row_->setStretch(3, 1);
+    setProperty("balancedTitle", balanced);
 }
 bool WindowHeader::eventFilter(QObject* watched, QEvent* event) {
-    if (watched == window_ && (event->type() == QEvent::WindowStateChange || event->type() == QEvent::Show)) syncWindowState();
+    if (watched == window_ && (event->type() == QEvent::WindowStateChange || event->type() == QEvent::Show || event->type() == QEvent::Resize)) syncWindowState();
+    if (watched == window_ && (event->type() == QEvent::WindowActivate || event->type() == QEvent::WindowDeactivate)) {
+        const bool inactive = event->type() == QEvent::WindowDeactivate;
+        setProperty("headerInactive", inactive);
+        for (auto* child : findChildren<QWidget*>()) { child->setProperty("headerInactive", inactive); child->update(); }
+        auto palette = name_->palette(); palette.setColor(QPalette::WindowText, inactive ? t().textMuted : t().text); name_->setPalette(palette);
+        update();
+    }
     if (watched == window_ && event->type() == QEvent::WindowTitleChange && !docName_) name_->setToolTip(window_->windowTitle());
     return QWidget::eventFilter(watched, event);
 }

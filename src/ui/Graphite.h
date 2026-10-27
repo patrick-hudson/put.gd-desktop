@@ -269,6 +269,7 @@ protected:
     void contextMenuEvent(QContextMenuEvent*) override;
     void paintEvent(QPaintEvent*) override;
     void changeEvent(QEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
     bool eventFilter(QObject*, QEvent*) override;
 private:
     void syncWindowState();
@@ -295,7 +296,7 @@ void transparentView(QAbstractScrollArea*);
 bool confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, bool destructive = false);
 // The same component for asynchronous session control; caller opens and owns it.
 QMessageBox* confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, const QString& safe, bool destructive);
-// One gutter for a page, or a shared set of forms including hidden pages
+// One gutter for a page, or a family of forms including hidden pages
 // (widest label, capped at 240 scaled px). Choices cap at 400 scaled px;
 // text and path fields grow. Call once a page's forms are built.
 void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms = {});
