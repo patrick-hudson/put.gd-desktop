@@ -121,7 +121,7 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="redact") {
   line(color,1.8);rounded(3,7,18,10,1);
   p.drawLine(5,3,11,3);p.drawLine(15,3,19,3);p.drawLine(5,21,9,21);p.drawLine(13,21,19,21);
-  for(int x:{7,12,17})p.drawLine(x,10,x,14);
+  for(int x:{6,11,16})p.drawLine(x,14,x+3,10);
  } else if(name=="blur") {
   line(color,1.8);for(int y:{4,12,20})for(int x:{4,12,20})p.drawEllipse(QPointF(x,y),1.3,1.3);
  } else if(name=="crop") {

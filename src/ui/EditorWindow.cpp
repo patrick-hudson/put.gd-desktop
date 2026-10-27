@@ -420,7 +420,7 @@ void EditorWindow::refresh(){
   int index=int(tool);QString title=titles.value(index);
   // A selected mark names itself, whichever tool picked it up.
   if(shape){const QHash<int,QString> kinds{{int(editor::Shape::Kind::Redact),"Redaction"},{int(editor::Shape::Kind::Blur),"Blur"},{int(editor::Shape::Kind::Arrow),"Arrow"},{int(editor::Shape::Kind::Rectangle),"Rectangle"},{int(editor::Shape::Kind::Highlight),"Highlight"},{int(editor::Shape::Kind::Text),"Text"}};title=kinds.value(int(shape->kind),"Mark")+" selected";}
-  toolTitle_->setText(title);toolHelp_->setText(shape?QStringLiteral("Drag or use arrow keys to move."):help.value(index));
+  toolTitle_->setText(title);toolHelp_->setText(shape?QStringLiteral("Drag the mark to move it."):help.value(index));
   const auto bounds=doc_.crop();documentInfo_->setText(QString("%1 × %2 px · PNG output\n%3").arg(bounds.width()).arg(bounds.height()).arg(doc_.modified()?"Edited":"Unchanged"));
  }
  {
