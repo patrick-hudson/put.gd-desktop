@@ -216,7 +216,7 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="proton") {
   // Places and objects share a filled secondary silhouette and main detail.
   fill(secondary);QPainterPath cloud;cloud.moveTo(6,20);cloud.cubicTo(-1,20,0,10,6,10);cloud.cubicTo(6,1,18,1,19,10);cloud.cubicTo(25,11,24,20,19,20);cloud.closeSubpath();p.drawPath(cloud);
-  fill(color);rounded(8,13,8,8,1.5);line(color,2);p.drawArc(QRectF(9,8,6,9),0,180*16);
+  line(color,1.8);p.drawArc(QRectF(5,8,14,11),195*16,150*16);
  } else if(name=="add") {
   fill(secondary);p.drawEllipse(QRectF(2,2,20,20));
   line(color,2.5);p.drawLine(QPointF(12,7),QPointF(12,17));p.drawLine(QPointF(7,12),QPointF(17,12));

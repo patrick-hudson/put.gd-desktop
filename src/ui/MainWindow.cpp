@@ -1,6 +1,5 @@
 #include "MainWindow.h"
 #include <QDir>
-#include <QStyleOptionToolButton>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QClipboard>
@@ -59,7 +58,6 @@ class EditSourceButton final:public QToolButton {
 public:using QToolButton::QToolButton;
 protected:
  void keyPressEvent(QKeyEvent* event)override{if(event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter){click();event->accept();return;}QToolButton::keyPressEvent(event);}
- void paintEvent(QPaintEvent*)override{QStyleOptionToolButton option;initStyleOption(&option);QPainter p(this);if(!property("captureUnavailable").toBool()){style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);return;}const auto main=menu()?style()->subControlRect(QStyle::CC_ToolButton,&option,QStyle::SC_ToolButton,this):rect();p.save();p.setClipRect(main);auto disabled=option;disabled.state&=~(QStyle::State_Enabled|QStyle::State_MouseOver|QStyle::State_Sunken);style()->drawComplexControl(QStyle::CC_ToolButton,&disabled,&p,this);p.restore();p.setClipRegion(QRegion(rect()).subtracted(QRegion(main)));style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);}
 };
 QString unavailableOutput(const QJsonObject& document,const QString& action){
  const auto route=Settings::effectiveAction(document,action);const bool local=document["archive"].toObject()["keepUploads"].toBool();
@@ -125,11 +123,11 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    button->setMenu(sources);button->setPopupMode(QToolButton::MenuButtonPopup);
    connect(button,&QWidget::customContextMenuRequested,sources,[sources,button](const QPoint& at){sources->popup(button->mapToGlobal(at));});
   }
-  auto update=[this,button,action,explanations]{
+  auto update=[this,button,action,explanations,glyphs]{
    const auto saved=Settings::effectiveAction(session_.document(),action);const auto key=QKeySequence(saved["shortcut"].toString()).toString(QKeySequence::NativeText);
-   const auto unavailable=unavailableOutput(session_.document(),action);button->setEnabled(true);button->setProperty("captureUnavailable",!unavailable.isEmpty());if(action=="region")VisualStyle::role(button,unavailable.isEmpty()?"primary":"quiet");
+   const auto unavailable=unavailableOutput(session_.document(),action);button->setEnabled(true);button->setProperty("captureUnavailable",!unavailable.isEmpty());if(action=="region")VisualStyle::role(button,"primary");button->setIcon(VisualStyle::icon(unavailable.isEmpty()?glyphs.value(action):QString("alert")));
    button->setAccessibleDescription(unavailable.isEmpty()?explanations.value(action):(action=="edit"?"Region capture unavailable: "+unavailable+" Existing images can still be edited.":"Unavailable: "+unavailable));
-   button->setToolTip(button->accessibleName()+(key.isEmpty()?QString{}:QString(" · ")+key));
+   button->setToolTip(button->accessibleName()+(key.isEmpty()?QString{}:QString(" · ")+key)+(unavailable.isEmpty()?QString{}:QString("\n")+unavailable));
   };
   connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QToolButton::clicked,this,[this,action]{const auto reason=unavailableOutput(session_.document(),action);if(reason.isEmpty())emit actionRequested(action);else showActionFailure(action,{"output_required",reason,{}});});bandRow->addWidget(button,0,action=="region"?0:action=="window"?1:action=="desktop"?2:action=="edit"?4:action=="record"?5:7,Qt::AlignLeft);actionButtons_<<button;
  }

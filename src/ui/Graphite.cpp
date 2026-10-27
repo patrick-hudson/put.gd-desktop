@@ -583,9 +583,9 @@ int Style::pixelMetric(PixelMetric metric, const QStyleOption* option, const QWi
     case PM_ButtonDefaultIndicator: case PM_ButtonShiftHorizontal: case PM_ButtonShiftVertical: return 0;
     case PM_DefaultFrameWidth: return 1;
     case PM_ComboBoxFrameWidth: case PM_SpinBoxFrameWidth: return 1;
-    case PM_IndicatorWidth: case PM_IndicatorHeight: return 17;
-    case PM_ExclusiveIndicatorWidth: case PM_ExclusiveIndicatorHeight: return 18;
-    case PM_CheckBoxLabelSpacing: case PM_RadioButtonLabelSpacing: return 9;
+    case PM_IndicatorWidth: case PM_IndicatorHeight: return scaled(17);
+    case PM_ExclusiveIndicatorWidth: case PM_ExclusiveIndicatorHeight: return scaled(18);
+    case PM_CheckBoxLabelSpacing: case PM_RadioButtonLabelSpacing: return scaled(9);
     case PM_ScrollBarExtent: return std::max(12, int(std::lround(12 + 8 * (textScale() * applicationScale() - 1))));
     case PM_ScrollBarSliderMin: return 28;
     case PM_MenuPanelWidth: return 1;
@@ -906,13 +906,13 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
         p->restore();
         return;
     case PE_IndicatorCheckBox: case PE_IndicatorItemViewItemCheck: {
-        const int side = std::min({option->rect.width(), option->rect.height(), 17});
+        const int side = std::min({option->rect.width(), option->rect.height(), scaled(17)});
         const QRectF box(option->rect.x() + (option->rect.width() - side) / 2.0, option->rect.y() + (option->rect.height() - side) / 2.0, side, side);
         check(p, box, option, element == PE_IndicatorCheckBox && keyboardState(option), lockedLook(option, widget));
         return;
     }
     case PE_IndicatorRadioButton: {
-        const int side = std::min({option->rect.width(), option->rect.height(), 18});
+        const int side = std::min({option->rect.width(), option->rect.height(), scaled(18)});
         const QRectF box(option->rect.x() + (option->rect.width() - side) / 2.0, option->rect.y() + (option->rect.height() - side) / 2.0, side, side);
         radio(p, box, option, keyboardState(option), lockedLook(option, widget));
         return;
@@ -1006,6 +1006,7 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
         const bool onSelected = enabled && ((option->state & State_Sunken) || ((option->state & State_On) && !(widget && widget->property("graphiteDisclosure").toBool()))) && name != "primary" && name != "danger" && name != "link" && name != "version";
         auto pixmap = icon.pixmap(iconSize, dpr(widget), !enabled ? QIcon::Disabled : onSelected ? QIcon::Selected : QIcon::Normal, option->state & State_On ? QIcon::On : QIcon::Off);
         if (name == "primary" || name == "danger") pixmap = tinted(pixmap, look.text);
+        if (widget && widget->property("captureUnavailable").toBool()) pixmap = tinted(pixmap, t().warning);
         if (widget && widget->property("headerInactive").toBool()) pixmap = tinted(pixmap, t().textMuted);
         p->drawPixmap(target.topLeft(), pixmap);
         x += iconWidth + (shown.isEmpty() ? 0 : 8);

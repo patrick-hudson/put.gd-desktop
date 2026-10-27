@@ -69,6 +69,7 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
  auto* form=new QFormLayout;VisualStyle::styleForm(form);layout->addLayout(form);
  // The command names the main window, menu and tray use.
  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"record","Record screen"}};
+ auto* helpToggle=new QToolButton(this);helpToggle->setObjectName("shortcutHelpToggle");helpToggle->setText("How shortcuts work");Graphite::disclosure(helpToggle);helpToggle->setProperty("graphiteFlush",true);layout->insertWidget(0,helpToggle,0,Qt::AlignLeft);auto* help=new QLabel("Choose Change…, press one key with optional modifiers, then release all keys. Escape cancels; Clear turns the shortcut off. Changes save automatically. Your desktop confirms each binding and reports conflicts below.",this);help->setObjectName("shortcutHelp");help->setWordWrap(true);VisualStyle::role(help,"muted");layout->insertWidget(1,help);help->hide();connect(helpToggle,&QToolButton::toggled,this,[help,helpToggle](bool open){help->setVisible(open);helpToggle->setArrowType(open?Qt::DownArrow:Qt::RightArrow);});
  const auto defaultActions=Settings::defaults()["actions"].toObject();
  for(const auto& action:Settings::presentationOrder()) {
   auto* field=new QWidget(this);auto* fieldLayout=new QVBoxLayout(field);fieldLayout->setContentsMargins(0,0,0,0);fieldLayout->setSpacing(6);
@@ -83,7 +84,7 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
   auto* binding=new QLabel(field);binding->setObjectName("shortcut"+title(action)+"Status");binding->setAccessibleName(action+" actual shortcut status");binding->setWordWrap(true);VisualStyle::role(binding,"binding");bindingStates_[action]=binding;fieldLayout->addWidget(binding);
   const auto defaultShortcut=defaultActions[action].toObject()["shortcut"].toString();
   const auto label=labels.value(action);
-  form->addRow(VisualStyle::settingLabel(label,"The global key combination for the "+labels.value(action).toLower()+" action. The default is "+(defaultShortcut.isEmpty()?QString("unassigned"):defaultShortcut)+". Choose Change…, press one key with optional modifiers, then release all keys to keep it in the draft. Escape or Cancel stops recording without changing the draft. Clear disables the shortcut. Completed edits save automatically; the desktop applies the new shortcut. The status below reports the actual binding, including conflicts or unsupported keys. JSON configuration still accepts portable text such as Ctrl+Shift+1.",input,this),field);
+  form->addRow(VisualStyle::settingLabel(label,{},input,this),field);input->setAccessibleDescription(input->accessibleDescription()+" Default: "+(defaultShortcut.isEmpty()?QString("unassigned"):defaultShortcut)+".");
   input->setAccessibleName(labels.value(action)+" shortcut");
  }
  auto* toggle=new QToolButton(this);toggle->setObjectName("shortcutDetailsToggle");toggle->setAccessibleName("Show exact desktop shortcut diagnostics");toggle->setText("Advanced binding details");Graphite::disclosure(toggle);toggle->setProperty("graphiteFlush",true);layout->addWidget(toggle);

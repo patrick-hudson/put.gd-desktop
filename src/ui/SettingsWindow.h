@@ -12,7 +12,7 @@
 #include <QSet>
 #include <QPixmap>
 #include <QUrl>
-class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;class QProgressBar;
+class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;class QGridLayout;class QProgressBar;
 namespace putgd {
 class ShortcutEditor;
 class SettingsWindow final:public RetainedWindow {
@@ -79,7 +79,7 @@ private:
  void queueCaptureEdit(QWidget*);void updateCaptureInheritance();
  QString destinationDefaultSharing(const QString& profileId)const;QJsonObject captureRoutingState()const;QString outputSummary(QComboBox* profile,QComboBox* sharing)const;
  QComboBox *captureProfile_=nullptr,*captureSharing_=nullptr;
- QHash<QString,bool> credentialAvailability_;QStringList outputRecoveryActions_;QFormLayout* captureExceptionRows_=nullptr;
+ QHash<QString,bool> credentialAvailability_;QStringList outputRecoveryActions_;QGridLayout* captureExceptionRows_=nullptr;
  QToolButton* captureExceptions_=nullptr;QHash<QString,QCheckBox*> useCaptureDefault_;QHash<QString,QWidget*> captureEditors_;
  bool captureDefaultsEnabled_=false,captureRoutingEdited_=false,recordingRoutingEdited_=false;
  QLabel* captureOutputNotice_=nullptr;QHash<QString,QLabel*> captureStatus_,captureSummary_;QHash<QString,QCheckBox*> captureOverride_;

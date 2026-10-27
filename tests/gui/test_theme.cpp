@@ -600,6 +600,14 @@ private slots:
     }
     // #300: a checked, disabled check box or radio button still looks checked:
     // a muted tick or dot on the accent-tinted fill, not an empty box.
+    void familiarIndicatorsScaleWithText() {
+        QCheckBox check("Synthetic");QRadioButton radio("Synthetic");
+        QCOMPARE(check.style()->pixelMetric(QStyle::PM_IndicatorWidth),Graphite::scaled(17));
+        QCOMPARE(radio.style()->pixelMetric(QStyle::PM_ExclusiveIndicatorWidth),Graphite::scaled(18));
+        QCOMPARE(check.style()->pixelMetric(QStyle::PM_CheckBoxLabelSpacing),Graphite::scaled(9));
+        check.ensurePolished();radio.ensurePolished();
+        QVERIFY(check.sizeHint().height()>=Graphite::scaled(17));QVERIFY(radio.sizeHint().height()>=Graphite::scaled(18));
+    }
     void checkedDisabledIndicatorsStayChecked() {
         QWidget window;
         auto* layout = new QVBoxLayout(&window);
