@@ -90,7 +90,9 @@ private slots:
             QVERIFY(bar.requestedAudio()); QVERIFY(!bar.effectiveAudio());
             QCOMPARE(bar.audioState(), QJsonObject({{"requested", true}, {"effective", false}}));
             QVERIFY(audio->isChecked() && !audio->isEnabled());
-            QVERIFY(audio->text().contains("Unavailable in " + format.toUpper()));
+            QCOMPARE(audio->text(), QString("System audio — used for video formats"));
+            const auto* hint = bar.findChild<QLabel*>("formatAudio");
+            QVERIFY(hint && hint->isVisible() && hint->text() == (format == "gif" ? "GIF has no audio" : "WebP has no audio"));
             QVERIFY(!bar.config().audio.system);
             choose("mp4");
             QVERIFY(bar.requestedAudio() && bar.effectiveAudio());

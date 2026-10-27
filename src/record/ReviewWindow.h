@@ -108,11 +108,15 @@ public:
     void setTrim(qint64 start, qint64 end);
     void setMasks(const QList<RecordingMask>& masks, const QString& selected);
     void setPlayhead(qint64 us);
+    void showMoreMasks();
+    // Embeds the review's transport and tools beside the time axis.
+    void setTransport(QWidget* transport);
     qint64 playhead() const { return playhead_; }
     qint64 duration() const { return duration_; }
     // Concurrent masks always have distinct lanes; two are visible at a time.
     int lanes() const { return lanes_; }
-    // The names column left of the track; the review's control rows share it.
+    // Standalone timelines reserve a names-width gutter; the review embeds
+    // its transport in that column.
     static int gutterWidth();
     // Geometry for tests and the review session method: the track, a time's x
     // and the bar of a mask.
@@ -142,6 +146,7 @@ private:
     QString maskAt(QPointF) const;
     qint64 timeAt(qreal x) const;
     void layoutLanes();
+    void placeNavigation();
     QRect laneRect(int lane) const;
     int lanesBottom() const;
     void seek(qint64 us);
@@ -153,6 +158,8 @@ private:
     QList<int> lane_;
     int lanes_ = 0;
     QScrollBar* laneScroll_ = nullptr;
+    QToolButton* moreMasks_ = nullptr;
+    QWidget* transport_ = nullptr;
     Graphite::ElidedLabel* clipLabel_ = nullptr;
     QString selected_;
     Drag drag_ = Drag::None;

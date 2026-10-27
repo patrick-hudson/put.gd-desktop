@@ -155,7 +155,7 @@ private:
     int screen_ = -1, layerScreen_ = -1;
     bool outside_ = false, handle_ = false, dragged_ = false, dragging_ = false, twoRows_ = false, confirming_ = false;
     QPoint dragOffset_;
-    QLabel *lockedAudio_ = nullptr, *lockedFormat_ = nullptr, *lockedFacts_ = nullptr;
+    QLabel *formatAudio_ = nullptr, *lockedAudio_ = nullptr, *lockedFormat_ = nullptr, *lockedFacts_ = nullptr;
     QLabel *dot_ = nullptr, *state_label_ = nullptr, *time_ = nullptr, *target_ = nullptr, *question_ = nullptr;
     QCheckBox* audio_ = nullptr;
     QComboBox* format_ = nullptr;

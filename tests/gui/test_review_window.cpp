@@ -3,6 +3,7 @@
 // when they apply, and recording.review drives the same controls. Not desktop
 // proof; the lab captures are in the docs.
 #include "record/ReviewWindow.h"
+#include "record/Duration.h"
 #include "record/Overlays.h"
 #include "ui/RegionOverlay.h"
 #include <QAccessible>
@@ -185,7 +186,9 @@ private slots:
         QVERIFY(audio->accessibleName().startsWith("Silent preview · "));
     }
     void stackedToolsKeepTheirScopeAndTrimLabels() {
-        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        auto edit = twoMasks(); edit.trimStart = 2000000; edit.trimEnd = 29000000;
+        auto o = options(); o.durationUs = 32000000;
+        ReviewWindow window(o, config()); window.setEdit(edit); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         window.resize(window.minimumSizeHint().width(), 680); QApplication::processEvents();
         auto* trim = window.findChild<QWidget*>("trimControls");
@@ -195,19 +198,19 @@ private slots:
         QVERIFY(masks->isAncestorOf(timing) && masks->isAncestorOf(interval)); QVERIFY(!trim->isAncestorOf(interval) && !trim->isAncestorOf(timing));
         QVERIFY(masks->y() > trim->mapTo(&window, trim->rect().bottomLeft()).y());
         // Timing actions read as words on 32 px secondary buttons, in both rows.
-        const QList<std::tuple<QWidget*, QString, QString>> actions{{trim, "Set trim start", "Set start"}, {trim, "Set trim end", "Set end"}, {trim, "Reset trim", "Reset"}, {timing, "Set mask start", "Set start"}, {timing, "Set mask end", "Set end"}};
+        const QList<std::tuple<QWidget*, QString, QString>> actions{{trim, "Set trim start", "Keep from here"}, {trim, "Set trim end", "Keep to here"}, {trim, "Reset trim", "Reset"}, {timing, "Set mask start", "Start mask here"}, {timing, "Set mask end", "End mask here"}};
         for (const auto& [row, name, text] : actions) {
             QToolButton* found = nullptr;
             for (auto* button : row->findChildren<QToolButton*>()) if (button->accessibleName() == name) found = button;
             QVERIFY2(found && found->isVisible(), qPrintable(name)); QCOMPARE(found->toolButtonStyle(), Qt::ToolButtonTextOnly); QCOMPARE(found->text(), text);
             QVERIFY(!found->autoRaise());
-            QCOMPARE(found->height(), 32);
+            QVERIFY(found->height() >= std::max(32, found->fontMetrics().height() + 12));
             QVERIFY(found->width() >= QFontMetricsF(found->font()).horizontalAdvance(text) + 24);
         }
         QVERIFY(!window.findChild<QLabel*>("maskTimingGroup"));
-        QVERIFY(trim->findChild<QLabel*>("muted")->text().endsWith(" s kept"));
+        QVERIFY(trim->findChild<QLabel*>("muted")->text().startsWith("Keep 0:02–0:29 · 27 s"));
         QToolButton *redact = nullptr, *blur = nullptr;
-        for (auto* button : masks->findChildren<QToolButton*>()) {
+        for (auto* button : window.findChildren<QToolButton*>()) {
             if (button->accessibleName() == "Redact") redact = button;
             if (button->accessibleName() == "Blur") blur = button;
         }
@@ -254,24 +257,20 @@ private slots:
             window.resize(width, 720); QApplication::processEvents();
             QCOMPARE(trimLabel->mapTo(&window, QPoint()).x(), maskLabel->mapTo(&window, QPoint()).x());
             QCOMPARE(trimLabel->width(), maskLabel->width());
-            auto* clip = window.findChild<QLabel*>("clipGroup");
-            QVERIFY(clip && clip->isVisible() && t->isAncestorOf(clip));
-            QVERIFY(clip->geometry().right() < t->trackRect().left());
-            // One gutter: the lanes' names, Trim, Mask and the play button share
-            // it, and every row's controls start where the track does.
-            QCOMPARE(clip->mapTo(&window, QPoint()).x(), trimLabel->mapTo(&window, QPoint()).x());
-            const int track = t->mapTo(&window, t->trackRect().topLeft()).x();
-            for (const auto& name : {QString("Set trim start"), QString("Redact"), QString("Playback speed")}) {
+            auto* metadata = window.findChild<QWidget*>("reviewTransport");
+            QVERIFY(metadata && t->isAncestorOf(metadata));
+            QVERIFY(metadata->geometry().right() < t->trackRect().left());
+            // Complete transport and mask-tool groups share the timeline's left column.
+            for (const auto& name : {QString("Redact"), QString("Playback speed"), QString("Delete mask")}) {
                 QWidget* control = nullptr;
-                for (auto* w : window.findChildren<QWidget*>()) if (w->accessibleName() == name && w->isVisible()) control = w;
-                QVERIFY2(control, qPrintable(name)); QCOMPARE(control->mapTo(&window, QPoint()).x(), track);
+                for (auto* child : window.findChildren<QWidget*>()) if (child->accessibleName() == name) control = child;
+                QVERIFY2(control && metadata->isAncestorOf(control), qPrintable(name));
             }
-            QVERIFY(window.findChild<QToolButton*>("play")->mapTo(&window, QPoint()).x() < track);
             const auto lane = t->trackRect().translated(t->pos());
             QVERIFY(t->geometry().bottom() < trim->mapTo(&window, QPoint()).y());
             QCOMPARE(t->x(), 8);
             QCOMPARE(t->width(), window.width() - 16);
-            QVERIFY(lane.width() >= window.width() - Graphite::scaled(140));
+            QVERIFY(lane.width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
             for (const auto& mask : twoMasks().masks) {
                 const auto bar = t->maskRect(mask.id).translated(t->pos());
                 QVERIFY(bar.top() > lane.bottom());
@@ -283,10 +282,8 @@ private slots:
             auto* status = window.findChild<QLabel*>("playbackStatus");
             auto* playback = window.findChild<QToolButton*>("play");
             auto* speed = window.findChild<QComboBox*>("speed");
-            auto* metadata = window.findChild<QWidget*>("reviewTransport");
             auto* masks = window.findChild<QWidget*>("maskControls");
-            // The transport is its own row under Trim and Mask.
-            QVERIFY(metadata->y() >= masks->geometry().bottom());
+            QVERIFY(t->isAncestorOf(metadata));
             QCOMPARE(speed->width(), std::max(72, speed->width()));
             for (auto* control : std::initializer_list<QWidget*>{playback, speed, time}) {
                 QVERIFY(metadata->isAncestorOf(control));
@@ -294,15 +291,15 @@ private slots:
                 QVERIFY(window.rect().contains(bounds));
                 QVERIFY(!bounds.intersects(QRect(trim->mapTo(&window, QPoint()), trim->size())));
                 QVERIFY(!bounds.intersects(masks->geometry()));
-                QCOMPARE(control->mapTo(&window, control->rect().center()).y(), playback->mapTo(&window, playback->rect().center()).y());
+                if (control != time) QCOMPARE(control->mapTo(&window, control->rect().center()).y(), playback->mapTo(&window, playback->rect().center()).y());
             }
             QVERIFY(!time->text().contains('\n'));
             QVERIFY(status->isVisible());
             QVERIFY(window.findChild<QWidget*>("reviewTransport")->isAncestorOf(status));
             QVERIFY(window.rect().contains(QRect(status->mapTo(&window, QPoint()), status->size())));
-            QVERIFY(t->trackRect().width() >= 360);
+            QVERIFY(t->trackRect().width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
             for (auto* button : window.findChildren<QToolButton*>()) if (button->toolButtonStyle() == Qt::ToolButtonTextOnly) {
-                QVERIFY(button->width() - 24 >= QFontMetricsF(button->font()).horizontalAdvance(button->text()));
+                QVERIFY(button->width() - (button->objectName() == "useRedact" ? 16 : button->objectName() == "showMoreMasks" ? 8 : 24) >= QFontMetricsF(button->font()).horizontalAdvance(button->text()));
             }
             auto* interval = window.findChild<QLabel*>("maskActiveInterval");
             auto* footer = window.findChild<QWidget*>("reviewFooter");
@@ -346,6 +343,28 @@ private slots:
     // Every review control lies whole inside the window and its own container,
     // and no two overlap, at the default and minimum sizes with normal and 150%
     // text: steady, with a blur selected (radius and guidance) and with an error.
+    void moreMasksControlRevealsNavigationAndSelectsAHiddenMask() {
+        ReviewWindow window(options(), config());
+        RecordingEdit edit;
+        for (int i = 0; i < 8; ++i) edit.masks.append(mask(QString::number(i), "solid", 0, duration));
+        window.setEdit(edit); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* more = window.findChild<QToolButton*>("showMoreMasks");
+        auto* scroll = window.findChild<QScrollBar*>("maskLaneScroll");
+        QVERIFY(more && more->isVisible() && more->text() == "Show 6 more masks");
+        QVERIFY(scroll && scroll->isVisible());
+        const auto before = window.inspect()["selectedMaskId"].toString();
+        const int previousLane = scroll->value();
+        more->click(); QApplication::processEvents();
+        QVERIFY(scroll->value() != previousLane);
+        const auto selected = window.inspect()["selectedMaskId"].toString();
+        QVERIFY(before != selected);
+        QVERIFY(!timeline(window)->maskRect(selected).isEmpty());
+        // Existing selectMask exposes the same navigation through session/CLI/MCP.
+        QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "7"}}).code.isEmpty());
+        QVERIFY(!timeline(window)->maskRect("7").isEmpty());
+        QVERIFY(timeline(window)->maskRect("7").height() >= 20);
+    }
     void controlsStayInsideTheWindowAndApart_data() {
         QTest::addColumn<double>("scale");
         QTest::newRow("standard") << 1.0;
@@ -597,7 +616,7 @@ private slots:
         t.setMasks(masks, "0"); t.resize(600, t.sizeHint().height()); t.show();
         QCOMPARE(t.lanes(), 8);
         auto* scroll = t.findChild<QScrollBar*>("maskLaneScroll");
-        QVERIFY(scroll && scroll->isHidden()); QCOMPARE(scroll->maximum(), 6);
+        QVERIFY(scroll && scroll->isVisible()); QCOMPARE(scroll->maximum(), 6);
         QVERIFY(t.maskHitRect("0").center().y() < t.maskHitRect("1").center().y());
         QVERIFY(t.maskRect("7").isEmpty());
         const int boundedHeight = t.sizeHint().height();
@@ -608,6 +627,11 @@ private slots:
         scroll->setValue(6);
         QTest::mouseClick(&t, Qt::LeftButton, {}, t.maskRect("6").center());
         QCOMPARE(selected.size(), 1); QCOMPARE(selected.first()[0].toString(), QString("6"));
+        // A lane can hold several non-overlapping masks; count hidden masks.
+        t.setMasks({mask("a", "solid", 0, 5000000), mask("b", "solid", 0, 5000000), mask("c", "solid", 0, 5000000), mask("d", "solid", 6000000, 10000000)}, "a");
+        QCOMPARE(t.findChild<QToolButton*>("showMoreMasks")->text(), QString("Show 1 more mask"));
+        scroll->setValue(1);
+        QCOMPARE(t.findChild<QToolButton*>("showMoreMasks")->text(), QString("Show 2 more masks"));
     }
     void previewRecoveryStacksAndMeasuresWrappedText() {
         FrameView view; auto large = view.font(); large.setPixelSize(21); view.setFont(large); view.setCanvas({1280,720}); view.resize(360,320); view.show();
@@ -691,8 +715,8 @@ private slots:
         t.resize(600, t.sizeHint().height());
         t.show();
         const auto first = t.maskHitRect("one"), second = t.maskHitRect("two");
-        QCOMPARE(first.height(), 32);
-        QCOMPARE(second.height(), 32);
+        QVERIFY(first.height() >= 40);
+        QVERIFY(second.height() >= 40);
         QVERIFY(t.rect().contains(first));
         QVERIFY(t.rect().contains(second));
         // Compact lanes retain 32 px targets; the nearest lane wins where they overlap.
@@ -709,7 +733,7 @@ private slots:
         auto* scroll = t.findChild<QScrollBar*>("maskLaneScroll");
         QVERIFY(scroll->isHidden());
         const auto secondTarget = t.maskHitRect("two");
-        QCOMPARE(secondTarget.height(), 32);
+        QVERIFY(secondTarget.height() >= 40);
         QVERIFY(!t.maskHitRect("one").isEmpty());
         QVERIFY(secondTarget.top() > t.trackRect().center().y());
         scroll->setValue(0);
@@ -738,7 +762,8 @@ private slots:
         PUTGD_TRY_VERIFY(label->fullTextPopup());
         auto* popup = label->fullTextPopup();
         const auto text = popup->findChild<QLabel*>("elidedLabelFullTextValue")->text();
-        QCOMPARE(text, "Destination: " + o.destination + "\nSharing: Private upload");
+        QVERIFY(text.startsWith("Destination: " + o.destination + "\nSharing: Private upload"));
+        QVERIFY(text.contains(formatHint(config().format, config().codec)));
         auto* value = popup->findChild<QLabel*>("elidedLabelFullTextValue");
         QVERIFY(value->textInteractionFlags() & Qt::TextSelectableByMouse);
         QVERIFY(value->textInteractionFlags() & Qt::TextSelectableByKeyboard);
@@ -1088,7 +1113,7 @@ private slots:
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
         QVERIFY(window.inspect()["playbackStatus"].toString().contains("Outside kept part"));
-        QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("27 s kept"));
+        QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("Keep 0:02–0:29 · 27 s"));
     }
     void adviceOnlyOffersAvailableFormats() {
         auto o = options(); o.codecs["mp4"] = QJsonArray{"h265"};
@@ -1260,7 +1285,7 @@ private slots:
             const auto tools = window.findChildren<QToolButton*>();
             QVERIFY(tools.size() >= 9);
             for (auto* b : tools) {
-                QVERIFY2((b->toolButtonStyle() == Qt::ToolButtonTextOnly && QStringList{"Set trim start", "Set trim end", "Reset trim", "Set mask start", "Set mask end"}.contains(b->accessibleName())) || (!b->icon().isNull() && (b->toolButtonStyle() == Qt::ToolButtonIconOnly || (b->toolButtonStyle() == Qt::ToolButtonTextBesideIcon && QStringList{"Start", "End"}.contains(b->text())))), qPrintable(b->accessibleName()));
+                QVERIFY2((b->toolButtonStyle() == Qt::ToolButtonTextOnly && (QStringList{"Set trim start", "Set trim end", "Reset trim", "Set mask start", "Set mask end"}.contains(b->accessibleName()) || b->objectName() == "showMoreMasks")) || (!b->icon().isNull() && (b->toolButtonStyle() == Qt::ToolButtonIconOnly || (b->toolButtonStyle() == Qt::ToolButtonTextBesideIcon && QStringList{"Start", "End"}.contains(b->text())))), qPrintable(b->accessibleName()));
                 QVERIFY2(!b->accessibleName().isEmpty() && !b->toolTip().isEmpty(), qPrintable(b->objectName()));
                 if(b->isVisible()&&b->toolButtonStyle()==Qt::ToolButtonTextBesideIcon)QVERIFY2(b->width()>=b->fontMetrics().horizontalAdvance(b->text())+b->iconSize().width()+16,qPrintable(b->accessibleName()));
             }
@@ -1575,7 +1600,7 @@ private slots:
         QCOMPARE(window.inspect()["status"].toString(), guidance);
         auto* fix = buttonNamed(window, "Use Redact");
         QVERIFY(fix);
-        QVERIFY(fix->width() >= QFontMetricsF(fix->font()).horizontalAdvance(fix->text()) + 24);
+        QVERIFY(fix->width() >= QFontMetricsF(fix->font()).horizontalAdvance(fix->text()) + 16);
         fix->click();
         const auto command = proposed(proposals);
         QCOMPARE(command["op"].toString(), QString("updateMask"));

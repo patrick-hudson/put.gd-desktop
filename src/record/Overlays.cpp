@@ -342,6 +342,9 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
         for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatHint(format, codec.toString()), Qt::ToolTipRole); }
     }
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) format_->setCurrentIndex(i); }
+    formatAudio_ = new QLabel(choices_);
+    formatAudio_->setObjectName("formatAudio");
+    VisualStyle::role(formatAudio_, "muted");
     lockedAudio_ = new QLabel(choices_);
     lockedAudio_->setObjectName("lockedAudio");
     lockedFormat_ = new QLabel(choices_);
@@ -350,7 +353,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     lockedFacts_->setObjectName("recordingFacts");
     choices->addWidget(lockedFacts_);
     for (auto* label : {target_, lockedAudio_, lockedFormat_, lockedFacts_}) VisualStyle::role(label, "muted");
-    for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_, lockedAudio_, lockedFormat_}) choices->addWidget(w);
+    for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_, formatAudio_, lockedAudio_, lockedFormat_}) choices->addWidget(w);
     record_ = new QPushButton("Start recording", this); record_->setObjectName("record");
     record_->setIcon(VisualStyle::icon("record"));
     VisualStyle::role(record_, "primary");
@@ -439,11 +442,13 @@ void ControlBar::refresh() {
     audio_->blockSignals(true);
     audio_->setChecked(audioIntent_);
     audio_->blockSignals(false);
-    audio_->setText(config_.silent() ? QStringLiteral("System audio · Unavailable in %1").arg(config_.format.toUpper()) : QStringLiteral("System audio"));
+    audio_->setText(config_.silent() ? QStringLiteral("System audio — used for video formats") : QStringLiteral("System audio"));
     audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : ready ? QStringLiteral("Include the sound the computer plays") : withSound ? QStringLiteral("System audio is being recorded") : QStringLiteral("System audio is not being recorded"));
     format_->setEnabled(ready);
     audio_->setVisible(ready);
     format_->setVisible(ready);
+    formatAudio_->setText(QStringLiteral("%1 has no audio").arg(config_.format == "gif" ? QStringLiteral("GIF") : QStringLiteral("WebP")));
+    formatAudio_->setVisible(ready && config_.silent());
     target_->setVisible(ready);
     lockedFacts_->setVisible(!ready);
     lockedAudio_->hide();
