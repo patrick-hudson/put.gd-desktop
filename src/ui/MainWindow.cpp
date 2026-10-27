@@ -45,9 +45,14 @@ void orderNavigation(Graphite::WindowHeader* header,QWidget* tabs_,const QList<Q
  for(auto* control:content){QWidget::setTabOrder(last,control);last=control;}header->chromeAfter(last);
 }
 class OutputButton final:public QToolButton {
-public:using QToolButton::QToolButton;
- QSize minimumSizeHint()const override{return {Graphite::scaled(120),QToolButton::minimumSizeHint().height()};}
-protected:void keyPressEvent(QKeyEvent* event)override{if(menu()&&(event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter)){menu()->popup(mapToGlobal(QPoint(0,-menu()->sizeHint().height())));event->accept();return;}QToolButton::keyPressEvent(event);}
+public:
+ explicit OutputButton(QWidget* parent):QToolButton(parent){setMinimumHeight(qMax(32,fontMetrics().height()+4));}
+ // The status band keeps a 32 px target and the full body font without form padding.
+ QSize sizeHint()const override{auto size=QToolButton::sizeHint();size.setHeight(qMax(32,fontMetrics().height()+4));return size;}
+ QSize minimumSizeHint()const override{return {Graphite::scaled(120),sizeHint().height()};}
+protected:
+ void changeEvent(QEvent* event)override{QToolButton::changeEvent(event);if(event->type()==QEvent::FontChange)setMinimumHeight(qMax(32,fontMetrics().height()+4));}
+ void keyPressEvent(QKeyEvent* event)override{if(menu()&&(event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter)){menu()->popup(mapToGlobal(QPoint(0,-menu()->sizeHint().height())));event->accept();return;}QToolButton::keyPressEvent(event);}
 };
 class EditSourceButton final:public QToolButton {
 public:using QToolButton::QToolButton;
