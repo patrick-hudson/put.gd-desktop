@@ -100,7 +100,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  const Entry entries[]={{Tool::Select,"select","Select and move","V",""},{Tool::Redact,"redact","Redact","X","covers with an opaque redaction"},{Tool::Blur,"blur","Blur","B","a visual effect only"},{Tool::Crop,"crop","Crop","C",""},
   {Tool::Arrow,"annotate-arrow","Arrow","A",""},{Tool::Rectangle,"rectangle","Rectangle","R",""},{Tool::Highlight,"highlight","Highlight","H",""},{Tool::Text,"text","Text","T",""}};
  for(const auto& entry:entries){
-  auto* button=new QToolButton(toolbar);button->setCheckable(true);button->setIcon(VisualStyle::icon(entry.icon));button->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));button->setFixedHeight(Graphite::scaled(36));button->setFocusPolicy(Qt::StrongFocus);
+  auto* button=new QToolButton(toolbar);button->setCheckable(true);button->setIcon(VisualStyle::icon(entry.icon));button->setProperty("graphiteIconBase",QSize(20,20));button->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));button->setFixedHeight(Graphite::scaled(36));button->setFocusPolicy(Qt::StrongFocus);
   const auto label=QString::fromUtf8(entry.label),detail=QString::fromUtf8(entry.detail);
   if(entry.tool==Tool::Redact||entry.tool==Tool::Blur){button->setText(label);button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);button->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);}else button->setFixedWidth(Graphite::scaled(36));
   button->setToolTip(detail.isEmpty()?QString("%1 (%2)").arg(label,entry.key):QString("%1 (%2) — %3").arg(label,entry.key,detail));button->setAccessibleName(label);button->setAccessibleDescription(detail);
@@ -110,7 +110,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   if(entry.tool==Tool::Crop){tools->addSpacing(4);tools->addWidget(separator(toolbar));tools->addSpacing(4);}
  }
  tools->addStretch(1);
- auto toolButton=[&](const char* icon,const QString& tip){auto* button=new QToolButton(toolbar);button->setIcon(VisualStyle::icon(icon));button->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));button->setFixedSize(Graphite::scaled(36),Graphite::scaled(36));button->setFocusPolicy(Qt::StrongFocus);button->setToolTip(tip);button->setAccessibleName(tip);VisualStyle::role(button,"quiet");tools->addWidget(button);return button;};
+ auto toolButton=[&](const char* icon,const QString& tip){auto* button=new QToolButton(toolbar);button->setIcon(VisualStyle::icon(icon));button->setProperty("graphiteIconBase",QSize(20,20));button->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));button->setFixedSize(Graphite::scaled(36),Graphite::scaled(36));button->setFocusPolicy(Qt::StrongFocus);button->setToolTip(tip);button->setAccessibleName(tip);VisualStyle::role(button,"quiet");tools->addWidget(button);return button;};
  undo_=toolButton("undo","Undo (Ctrl+Z)");redo_=toolButton("redo","Redo (Ctrl+Shift+Z)");
  tools->addSpacing(4);tools->addWidget(separator(toolbar));tools->addSpacing(4);
  // One zoom menu reports the live percentage; document size stays in Document.
@@ -146,7 +146,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  hint_=Graphite::label({},"secondary",panel);hint_->setWordWrap(true);properties->addWidget(hint_);
  // Without a pointer: the tool's mark in the middle of the image (Insert).
  placeRow_=new QWidget(panel);auto* placeLayout=new QHBoxLayout(placeRow_);placeLayout->setContentsMargins(0,0,0,0);
- place_=new QPushButton(placeRow_);place_->setObjectName("placeMark");place_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));placeLayout->addWidget(place_);placeLayout->addStretch(1);properties->addWidget(placeRow_);
+ place_=new QPushButton(placeRow_);place_->setObjectName("placeMark");place_->setProperty("graphiteIconBase",QSize(20,20));place_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));placeLayout->addWidget(place_);placeLayout->addStretch(1);properties->addWidget(placeRow_);
  // Divides the tool's help from its options; hidden when it has none.
  optionsRule_=Graphite::rule(panel);optionsRule_->setObjectName("editorOptionsRule");properties->addWidget(optionsRule_);
  QVBoxLayout* layout=nullptr;
@@ -198,7 +198,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  }
  layout->addWidget(geometryFields_);properties->addWidget(geometryRow_);properties->addWidget(cropRow_);
  connect(geometryDisclosure_,&QToolButton::toggled,this,[this]{syncGeometry();});
- remove_=new QPushButton("Remove mark",panel);remove_->setObjectName("removeMark");remove_->setProperty("graphiteFlush",true);remove_->setIcon(VisualStyle::icon("remove"));remove_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");properties->addWidget(remove_,0,Qt::AlignLeft);
+ remove_=new QPushButton("Remove mark",panel);remove_->setObjectName("removeMark");remove_->setProperty("graphiteFlush",true);remove_->setIcon(VisualStyle::icon("remove"));remove_->setProperty("graphiteIconBase",QSize(20,20));remove_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");properties->addWidget(remove_,0,Qt::AlignLeft);
  auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setProperty("graphiteFlush",true);keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Graphite::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
  auto* keyboardText=new QWidget(panel);keyboardText->setObjectName("editorKeyboardHelpText");
  auto* keyboardGrid=new QGridLayout(keyboardText);keyboardGrid->setContentsMargins(0,0,0,0);keyboardGrid->setHorizontalSpacing(8);keyboardGrid->setVerticalSpacing(4);
@@ -240,13 +240,13 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  showFolder_=new QPushButton("Show in folder",saveFeedback_);showFolder_->setObjectName("showSavedCopy");showFolder_->hide();VisualStyle::role(showFolder_,"quiet");recoveryRow->addWidget(showFolder_);
  copyPath_=new QPushButton("Copy path",saveFeedback_);copyPath_->setObjectName("copySavedPath");copyPath_->setToolTip("Copy the saved copy's full path");copyPath_->hide();VisualStyle::role(copyPath_,"quiet");recoveryRow->addWidget(copyPath_);
  chooseAnother_=new QPushButton("Choose another location…",saveFeedback_);chooseAnother_->setObjectName("chooseAnotherLocation");chooseAnother_->hide();VisualStyle::role(chooseAnother_,"quiet");recoveryRow->addWidget(chooseAnother_);
- auto* dismiss=Graphite::toolButton({}, {},"quiet",saveFeedback_);dismiss->setObjectName("dismissEditorSavedCopy");dismiss->setIcon(Graphite::chromeIcon("close"));dismiss->setIconSize(QSize(Graphite::scaled(18),Graphite::scaled(18)));dismiss->setAccessibleName("Dismiss save feedback");dismiss->setToolTip("Dismiss save feedback");dismiss->setFixedSize(Graphite::scaled(32),Graphite::scaled(32));recoveryRow->addWidget(dismiss,0,Qt::AlignTop);connect(dismiss,&QToolButton::clicked,this,&EditorWindow::dismissSavedCopy);
+ auto* dismiss=Graphite::toolButton({}, {},"quiet",saveFeedback_);dismiss->setObjectName("dismissEditorSavedCopy");dismiss->setIcon(Graphite::chromeIcon("close"));dismiss->setProperty("graphiteIconBase",QSize(18,18));dismiss->setIconSize(QSize(Graphite::scaled(18),Graphite::scaled(18)));dismiss->setAccessibleName("Dismiss save feedback");dismiss->setToolTip("Dismiss save feedback");dismiss->setFixedSize(Graphite::scaled(32),Graphite::scaled(32));recoveryRow->addWidget(dismiss,0,Qt::AlignTop);connect(dismiss,&QToolButton::clicked,this,&EditorWindow::dismissSavedCopy);
  folderError_=new Graphite::ElidedLabel(saveFeedback_);folderError_->setText("Couldn't open the folder. Use Copy path instead.");folderError_->setObjectName("editorFolderError");folderError_->setTextFormat(Qt::PlainText);VisualStyle::role(folderError_,"error");folderError_->hide();resultRow->addWidget(folderError_,1);feedback->addWidget(result,0,0);feedback->addWidget(actions,0,1);
  root->addWidget(saveFeedback_);
  message_=new QLabel(result);message_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);message_->hide();resultRow->insertWidget(0,message_,1);
- save_=new QPushButton("Save a copy…",footer);save_->setObjectName("editorSaveCopy");save_->setIcon(VisualStyle::icon("save"));save_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));save_->setToolTip("Save the edited image to a file (Ctrl+S)");footerGrid_->addWidget(save_,2,1);
+ save_=new QPushButton("Save a copy…",footer);save_->setObjectName("editorSaveCopy");save_->setIcon(VisualStyle::icon("save"));save_->setProperty("graphiteIconBase",QSize(20,20));save_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));save_->setToolTip("Save the edited image to a file (Ctrl+S)");footerGrid_->addWidget(save_,2,1);
  cancel_=new QPushButton("Cancel",footer);cancel_->setObjectName("editorCancel");VisualStyle::role(cancel_,"quiet");footerGrid_->addWidget(cancel_,2,2);
- upload_=new QPushButton("Upload",footer);upload_->setObjectName("editorUpload");upload_->setIcon(VisualStyle::icon("upload"));upload_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));VisualStyle::role(upload_,"primary");upload_->setToolTip("Upload the finished, sanitized image (Ctrl+Enter). The source file is not uploaded.");upload_->setAutoDefault(false);footerGrid_->addWidget(upload_,2,3);
+ upload_=new QPushButton("Upload",footer);upload_->setObjectName("editorUpload");upload_->setIcon(VisualStyle::icon("upload"));upload_->setProperty("graphiteIconBase",QSize(20,20));upload_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));VisualStyle::role(upload_,"primary");upload_->setToolTip("Upload the finished, sanitized image (Ctrl+Enter). The source file is not uploaded.");upload_->setAutoDefault(false);footerGrid_->addWidget(upload_,2,3);
  root->addWidget(footer);
 
  RedesignTheme::apply(*this);
