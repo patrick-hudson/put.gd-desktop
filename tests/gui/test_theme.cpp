@@ -113,7 +113,7 @@ private slots:
             QCOMPARE(warning->palette().color(QPalette::WindowText),c.textSecondary);QVERIFY(warning->contentsMargins().left()>=Graphite::scaled(Graphite::Metric::icon));
             const auto image=warning->grab().toImage();int amber=0;for(int y=0;y<image.height();++y)for(int x=0;x<warning->contentsMargins().left();++x)if(image.pixelColor(x,y)==c.accent)++amber;QVERIFY(amber>0);
             VisualStyle::role(warning.get(),"secondary");QCOMPARE(warning->contentsMargins().left(),0);
-            QImage neutral(80,40,QImage::Format_RGB32);neutral.fill(c.bg);{QPainter painter(&neutral);Graphite::paintSelection(painter,QRectF(0,0,80,40));}QCOMPARE(neutral.pixelColor(40,20),c.selected);QCOMPARE(neutral.pixelColor(40,0),c.borderStrong);
+            QImage neutral(80,40,QImage::Format_RGB32);neutral.fill(c.bg);{QPainter painter(&neutral);Graphite::paintSelection(painter,QRectF(0,0,80,40));}QCOMPARE(neutral.pixelColor(40,20),c.selected);QCOMPARE(neutral.pixelColor(40,0),c.selected);
             QImage focused=neutral;{QPainter painter(&focused);Graphite::paintSelection(painter,QRectF(0,0,80,40),true);}QCOMPARE(focused.pixelColor(40,0),c.accent);
         }
     }
@@ -270,6 +270,28 @@ private slots:
             }
         }
     }
+    void segmentFillKeepsItsInsetInsideThePointerTarget() {
+        Graphite::SegmentTrack track;
+        auto* list=Graphite::toolButton("List"); auto* gallery=Graphite::toolButton("Gallery");
+        track.addButton(list); track.addButton(gallery); list->setChecked(true);
+        track.resize(track.sizeHint()); track.show(); putgd::test::settle(10);
+        QVERIFY(list->height()>=Graphite::Metric::iconTarget);
+        QCOMPARE(track.height(),Graphite::scaled(Graphite::Metric::control));
+        const auto shot=track.grab().toImage(); const int x=list->geometry().center().x();
+        QCOMPARE(shot.pixelColor(x,Graphite::Metric::segmentInset),Theme::current().selected);
+        QVERIFY(shot.pixelColor(x,Graphite::Metric::segmentInset-1)!=Theme::current().selected);
+    }
+    void recessedMediaKeepsAnEdgeInBothSchemes() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme); const auto& c = Theme::current();
+            QImage image(100, 80, QImage::Format_RGB32); image.fill(c.well);
+            { QPainter p(&image); Graphite::paintImageShadow(p, QRectF(20,20,60,40)); p.fillRect(QRectF(20,20,60,40), c.well); Graphite::paintImageEdge(p, QRectF(20,20,60,40)); }
+            QVERIFY(image.pixelColor(50,20) != c.well);
+            QCOMPARE(image.pixelColor(50,40), c.well);
+            QCOMPARE(image.pixelColor(50,65) != c.well, scheme == Theme::Scheme::Dark);
+        }
+        QCOMPARE(Graphite::Metric::trackRadius - Graphite::Metric::segmentInset, Graphite::Metric::segmentRadius);
+    }
     void textAndFocusMeetAaInBothSchemes() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             const auto& p = Theme::palette(scheme);
@@ -293,7 +315,7 @@ private slots:
             }
             QVERIFY2(Theme::contrast(p.icon, p.iconSecondary) >= 3.0, qPrintable(Theme::name(scheme) + " icon tones"));
             // The outline is not the decorative border: section rules stay quiet.
-            QVERIFY(Theme::contrast(p.border, p.bg) < 2.0);
+            QVERIFY(Theme::contrast(Graphite::mix(p.bg, p.border, p.border.alphaF()), p.bg) < 2.0);
             QVERIFY(Theme::contrast(p.onAccent, p.accent) >= 4.5);
             QVERIFY(Theme::contrast(p.onAccent, p.accentHover) >= 4.5);
             QVERIFY(Theme::contrast(p.success, p.successSurface) >= 4.5);
@@ -301,12 +323,12 @@ private slots:
             QVERIFY(Theme::contrast(p.danger, p.dangerSurface) >= 4.5);
             // Every token is reported, as #rrggbb.
             const auto tokens = Theme::tokens(scheme);
-            QCOMPARE(tokens.size(), 26);
+            QCOMPARE(tokens.size(), 27);
             QVERIFY(tokens.contains("controlOutline"));
             for (const auto& value : tokens) QVERIFY(QRegularExpression("^#[0-9a-f]{6}$").match(value.toString()).hasMatch());
         }
         QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["bg"].toString(), QString("#191919"));
-        QCOMPARE(Theme::tokens(Theme::Scheme::Light)["bg"].toString(), QString("#eeeeeb"));
+        QCOMPARE(Theme::tokens(Theme::Scheme::Light)["bg"].toString(), QString("#f3f3f0"));
         // Graphite: amber, never blue, and a neutral primary action.
         QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["accent"].toString(), QString("#e8b66d"));
         QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["controlOutline"].toString(), QString("#7c7c78"));

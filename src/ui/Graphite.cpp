@@ -871,9 +871,12 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
         const auto look = buttonLook(buttonRole(widget, option), option, element == PE_PanelButtonTool && (option->state & State_AutoRaise), widget);
         QColor stroke = keyboardState(option) ? c.accent : look.stroke;
         if (!look.fill.isValid() && !stroke.isValid()) return;
-        rounded(p, option->rect, look.fill.isValid() ? look.fill : QColor(Qt::transparent), stroke, Metric::radius, keyboardState(option) ? 1.5 : 1);
-        if (widget && qobject_cast<SegmentTrack*>(widget->parentWidget()) && (option->state & State_On))
-            p->fillRect(QRectF(option->rect.center().x() - 12, option->rect.bottom() - 3, 24, 2), c.accent);
+        const bool segment = widget && qobject_cast<SegmentTrack*>(widget->parentWidget());
+        const int inset = segment ? Metric::segmentInset / 2 : 0;
+        const QRectF box = QRectF(option->rect).adjusted(inset, inset, -inset, -inset);
+        rounded(p, box, look.fill.isValid() ? look.fill : QColor(Qt::transparent), stroke, Metric::radius, keyboardState(option) ? 1.5 : 1);
+        if (segment && (option->state & State_On))
+            p->fillRect(QRectF(box.center().x() - 12, box.bottom() - 3, 24, 2), c.accent);
         return;
     }
     case PE_PanelLineEdit: {
@@ -916,7 +919,7 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
         p->restore();
         return;
     }
-    case PE_PanelMenu: p->fillRect(option->rect, c.surfaceRaised); return;
+    case PE_PanelMenu: rounded(p, option->rect, c.surfaceRaised, c.border, Metric::containerRadius); return;
     case PE_PanelTipLabel:
         p->fillRect(option->rect, c.surfaceRaised);
         p->save();
@@ -1187,9 +1190,9 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         p->drawPath(partlyRounded(r, Metric::trackRadius, first, last));
         p->restore();
         if (option->state & State_Selected) {
-            rounded(p, r.adjusted(3, 3, -3, -3), c.selected, keyboardState(option) ? c.accent : mix(c.borderStrong, c.selected, 0.7), Metric::segmentRadius);
+            rounded(p, r.adjusted(Metric::segmentInset, Metric::segmentInset, -Metric::segmentInset, -Metric::segmentInset), c.selected, keyboardState(option) ? c.accent : mix(c.borderStrong, c.selected, 0.7), Metric::segmentRadius);
         } else if (option->state & State_MouseOver) {
-            rounded(p, r.adjusted(3, 3, -3, -3), mix(c.surface, c.surfaceRaised, 0.6), {}, Metric::segmentRadius);
+            rounded(p, r.adjusted(Metric::segmentInset, Metric::segmentInset, -Metric::segmentInset, -Metric::segmentInset), mix(c.surface, c.surfaceRaised, 0.6), {}, Metric::segmentRadius);
         }
         return;
     }
@@ -1305,11 +1308,11 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
             const auto tone = widget->property("feedbackTone").toString();
             const QColor fill = tone == "success" ? c.successSurface : tone == "error" ? c.dangerSurface : c.surface;
             const QColor stroke = tone == "success" ? mix(c.success, c.successSurface, 0.45) : tone == "error" ? mix(c.danger, c.dangerSurface, 0.45) : c.border;
-            rounded(p, r, fill, stroke, Metric::radius);
+            rounded(p, r, fill, stroke, Metric::containerRadius);
             return;
         }
         if (name == "notice") {
-            rounded(p, r, c.surfaceRaised, c.borderStrong, Metric::radius);
+            rounded(p, r, c.surfaceRaised, c.borderStrong, Metric::containerRadius);
             return;
         }
         if (name == "card") {
@@ -1321,8 +1324,8 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         }
         if (name == "separator") { p->fillRect(option->rect, c.border); return; }
         // A recessed area for media: previews and thumbnails sit on it.
-        if (name == "well") { rounded(p, r, c.bg, c.border, Metric::radius); return; }
-        if (name == "pill") { rounded(p, r, c.selected, c.borderStrong, std::min<qreal>(11, r.height() / 2)); return; }
+        if (name == "well") { rounded(p, r, c.well, c.border, Metric::containerRadius); return; }
+        if (name == "pill") { rounded(p, r, c.selected, c.borderStrong, Metric::smallRadius); return; }
         if (name == "unitSuffix") {
             p->save();
             p->setRenderHint(QPainter::Antialiasing);
@@ -1506,12 +1509,34 @@ std::function<void(const QJsonObject&)> BrowserFeedback::opening(const QUrl& url
     };
 }
 
+void paintImageShadow(QPainter& painter, const QRectF& image) {
+    if (Theme::scheme() != Theme::Scheme::Dark || image.isEmpty()) return;
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setBrush(Qt::NoBrush);
+    // A bounded 12 px falloff: no full-frame image or effect allocation.
+    for (int spread = 12; spread >= 0; --spread) {
+        const int alpha = int(std::lround(89 * std::exp(-spread * spread / 32.0)));
+        painter.setPen(QPen(QColor(0, 0, 0, alpha), 1));
+        painter.drawRoundedRect(image.translated(0, 2).adjusted(-spread, -spread, spread, spread), spread, spread);
+    }
+    painter.restore();
+}
+void paintImageEdge(QPainter& painter, const QRectF& image) {
+    if (image.isEmpty()) return;
+    painter.save();
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(Theme::scheme() == Theme::Scheme::Dark ? QColor(255, 255, 255, 26) : QColor(0, 0, 0, 31), 1));
+    painter.drawRect(image.adjusted(0.5, 0.5, -0.5, -0.5));
+    painter.restore();
+}
+
 // ---------------------------------------------------------------- Widgets
 Surface::Surface(const char* role, Qt::Edges hairlines, QWidget* parent) : QWidget(parent), role_(role), edges_(hairlines) {}
 void Surface::paintEvent(QPaintEvent*) {
     QPainter p(this);
     const auto& c = t();
-    p.fillRect(rect(), role_ == "surface" ? c.surface : role_ == "raised" ? c.surfaceRaised : c.bg);
+    p.fillRect(rect(), role_ == "well" ? c.well : role_ == "surface" ? c.surface : role_ == "raised" ? c.surfaceRaised : c.bg);
     p.setPen(c.border);
     if (edges_ & Qt::TopEdge) p.drawLine(0, 0, width(), 0);
     if (edges_ & Qt::BottomEdge) p.drawLine(0, height() - 1, width(), height() - 1);
@@ -1803,9 +1828,8 @@ void Banner::paintEvent(QPaintEvent*) {
     const auto& colors = t();
     const QColor tone = tone_ == Tone::Warning ? colors.warning : tone_ == Tone::Error ? colors.danger : tone_ == Tone::Success ? colors.success : colors.textSecondary;
     QPainter painter(this);
-    painter.fillRect(rect(), colors.surface);
-    painter.setPen(colors.borderStrong);
-    painter.drawRect(rect().adjusted(0, 0, -1, -1));
+    painter.fillRect(rect(), colors.bg);
+    rounded(&painter, rect(), colors.surface, colors.borderStrong, Metric::containerRadius);
     const int side = scaled(Metric::icon);
     QRect firstRow = row_->cellRect(0, 0);
     if (content_ != text_ && content_->layout() && content_->layout()->count())
@@ -1833,7 +1857,7 @@ QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
     return warning;
 }
 void paintSelection(QPainter& painter, const QRectF& rect, bool keyboardFocused, qreal radius) {
-    rounded(&painter, rect, t().selected, keyboardFocused ? t().accent : t().borderStrong, radius);
+    rounded(&painter, rect, t().selected, keyboardFocused ? t().accent : QColor(), radius);
 }
 
 NavigationDelegate::NavigationDelegate(QObject* parent, int rowHeight) : QStyledItemDelegate(parent), rowHeight_(rowHeight) {}
@@ -2223,10 +2247,10 @@ void Segmented::paintEvent(QPaintEvent*) {
     const auto& c = t();
     QRectF track;
     for (int i = 0; i < count(); ++i) track |= QRectF(tabRect(i));
-    rounded(&p, track.adjusted(0.5, 2.5, -0.5, -2.5), mix(c.bg, c.surface, 0.6), c.border, Metric::trackRadius);
+    rounded(&p, track.adjusted(0, 2, 0, -2), mix(c.bg, c.surface, 0.6), c.border, Metric::trackRadius);
     const int hovered = underMouse() ? tabAt(mapFromGlobal(QCursor::pos())) : -1;
     for (int i = 0; i < count(); ++i) {
-        const QRectF r = QRectF(tabRect(i)).adjusted(3, 5, -3, -5);
+        const QRectF r = QRectF(tabRect(i)).adjusted(Metric::segmentInset, Metric::segmentInset + 2, -Metric::segmentInset, -Metric::segmentInset - 2);
         const bool on = i == currentIndex();
         if (on) rounded(&p, r, c.selected, mix(c.borderStrong, c.selected, 0.6), Metric::segmentRadius);
         if (on) p.fillRect(QRectF(r.center().x() - 12, r.bottom() - 3, 24, 2), c.accent);
@@ -2238,7 +2262,7 @@ void Segmented::paintEvent(QPaintEvent*) {
 
 SegmentTrack::SegmentTrack(QWidget* parent) : QWidget(parent) {
     auto* row = new QHBoxLayout(this);
-    row->setContentsMargins(2, 2, 2, 2);
+    row->setContentsMargins(Metric::segmentInset / 2, Metric::segmentInset / 2, Metric::segmentInset / 2, Metric::segmentInset / 2);
     row->setSpacing(2);
 }
 void SegmentTrack::addButton(QToolButton* button) {
@@ -2246,15 +2270,15 @@ void SegmentTrack::addButton(QToolButton* button) {
     button->setCheckable(true);
     button->setAutoExclusive(true);
     button->setProperty("visualRole", "quiet");
-    // The track adds its own 2 px, so the whole control is one field high and
-    // each segment keeps a 32 px pointer target.
-    button->setFixedHeight(std::max(Metric::iconTarget, scaled(Metric::control) - 4));
+    // Split the visual inset between layout and paint; the target remains
+    // 32 px inside a 36 px track, with 4 px around the selected fill.
+    button->setFixedHeight(std::max(Metric::iconTarget, scaled(Metric::control) - Metric::segmentInset));
     static_cast<QHBoxLayout*>(layout())->addWidget(button);
 }
 void SegmentTrack::paintEvent(QPaintEvent*) {
     QPainter p(this);
     const auto& c = t();
-    rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), mix(c.bg, c.surface, 0.6), c.border, Metric::trackRadius);
+    rounded(&p, QRectF(rect()), mix(c.bg, c.surface, 0.6), c.border, Metric::trackRadius);
 }
 
 // ---------------------------------------------------------------- Window chrome

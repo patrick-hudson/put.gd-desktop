@@ -353,10 +353,12 @@ void dualOutline(QPainter& painter, const QRectF& r, const QColor& colour, qreal
 }
 void FrameView::paintEvent(QPaintEvent*) {
     QPainter painter(this);
-    painter.fillRect(rect(), Theme::current().bg);
-    painter.fillRect(imageRect(), Qt::black);
+    painter.fillRect(rect(), Theme::current().well);
     const auto target = imageRect();
+    Graphite::paintImageShadow(painter, target);
+    painter.fillRect(target, Qt::black);
     if (!frame_.isNull()) painter.drawImage(target, frame_);
+    Graphite::paintImageEdge(painter, target);
     // An earlier frame under a preview error is dimmed so it never reads as current.
     if (stale()) painter.fillRect(target, QColor(0, 0, 0, 140));
     const QRectF selectedView = [&] { for (const auto& m : masks_) if (m.id == selected_) return toView(m.rect); return QRectF(); }();

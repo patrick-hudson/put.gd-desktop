@@ -12,7 +12,7 @@ namespace putgd::Theme {
 // per-token overrides) supplies user values for these same tokens.
 enum class Scheme { Dark, Light };
 struct Palette {
- QColor bg,surface,surfaceRaised,selected,border,borderStrong;
+ QColor well,bg,surface,surfaceRaised,selected,border,borderStrong;
  QColor text,textSecondary,textMuted,textDisabled;
  QColor accent,accentHover,onAccent,link;
  QColor success,warning,danger,dangerHover,successSurface,warningSurface,dangerSurface;

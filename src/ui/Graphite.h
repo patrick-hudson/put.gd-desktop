@@ -22,7 +22,7 @@ class QGridLayout;class QFormLayout;class QAbstractButton;class QAbstractScrollA
 namespace putgd::Graphite {
 // Geometry in logical pixels at the default text scale.
 namespace Metric {
-constexpr int space = 4, control = 36, iconTarget = 32, radius = 7, segmentRadius = 6, trackRadius = 8, swatchRadius = 5;
+constexpr int space = 4, control = 36, iconTarget = 32, radius = 6, segmentRadius = 6, trackRadius = 10, swatchRadius = 4, smallRadius = 4, containerRadius = 10, segmentInset = 4;
 constexpr int header = 56, commandBand = 60, statusBand = 26, icon = 18, splitZone = 26;
 // A split button's menu half: a full 32 px pointer target with the same small
 // chevron (combo boxes and menu buttons keep splitZone for their chevron).
@@ -115,8 +115,12 @@ private:
     void drawButtonLabel(const QStyleOption*, const QString& text, const QIcon&, QSize iconSize, QPainter*, const QWidget*, QRect body) const;
 };
 
+// Recessed media only: shadow before the image, one-pixel edge after it.
+void paintImageShadow(QPainter&, const QRectF&);
+void paintImageEdge(QPainter&, const QRectF&);
+
 // A region of the window: its fill token and the hairlines on its edges.
-// role: "bg" (default), "surface" or "raised".
+// role: "bg" (default), "well", "surface" or "raised".
 class Surface : public QWidget {
     Q_OBJECT
 public:
@@ -173,7 +177,7 @@ QLabel* warningLabel(const QString& text, QWidget* parent = nullptr);
 QString blurWarningText();
 QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent = nullptr);
 // Neutral item selection, distinct from the keyboard focus ring and navigation markers.
-void paintSelection(QPainter&, const QRectF&, bool keyboardFocused = false, qreal radius = Metric::radius);
+void paintSelection(QPainter&, const QRectF&, bool keyboardFocused = false, qreal radius = 8);
 
 // Rows of a page's sidebar: icon, label and an optional second line (role
 // SecondLineRole), with the shared hover, selected fill and focus ring.

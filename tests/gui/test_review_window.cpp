@@ -103,7 +103,7 @@ private slots:
         frame.setMasks({small}, small.id); frame.show(); QApplication::processEvents();
         const auto image = frame.grab().toImage();
         const QRect permitted(155, 115, 110, 58);
-        for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x)
+        for (int y = 1; y < image.height() - 1; ++y) for (int x = 1; x < image.width() - 1; ++x)
             if (!permitted.contains(x, y)) QCOMPARE(image.pixelColor(x, y), media.pixelColor(0, 0));
         ReviewTimeline t;
         t.setDuration(duration); t.setTrim(0, duration); t.setPlayhead(duration - 1);
@@ -621,7 +621,7 @@ private slots:
         const auto hovered = frame.grab().toImage().convertToFormat(media.format());
         QVERIFY(hovered.copy(afterNumber) != idle.copy(afterNumber));
         frame.setPlaying(true);
-        QCOMPARE(frame.grab().toImage().convertToFormat(media.format()), media);
+        QCOMPARE(frame.grab().toImage().convertToFormat(media.format()).copy(media.rect().adjusted(1,1,-1,-1)), media.copy(media.rect().adjusted(1,1,-1,-1)));
         frame.setPlaying(false);
         QVERIFY(frame.grab().toImage().convertToFormat(media.format()) != media);
     }
@@ -1821,7 +1821,7 @@ private slots:
             QImage image(160, 90, QImage::Format_RGB32); image.fill(Qt::red);
             frame.setFrame(image, 0); frame.show();
             const auto rendered = frame.grab().toImage();
-            QCOMPARE(rendered.pixelColor(0, 0), Theme::current().bg);
+            QCOMPARE(rendered.pixelColor(0, 0), Theme::current().well);
             QCOMPARE(rendered.pixelColor(100, 100), QColor(Qt::red));
         }
     }

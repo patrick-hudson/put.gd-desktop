@@ -36,7 +36,7 @@ int nearestHandle(const QPointF (&points)[N],const QPointF& position,int stride=
 }
 // The scheme's colours at paint time (#60): the canvas behind the image and
 // the accent of the keyboard focus ring around it.
-QColor canvasBackground(){return Theme::current().bg;}
+QColor canvasBackground(){return Theme::current().well;}
 QColor accent(){return Theme::current().accent;}
 // Guides drawn over the image read on pale and dark content alike, whatever
 // the app theme: a dark under-stroke beneath an amber (or white) over-stroke,
@@ -263,6 +263,7 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  placeTextWarning();
  QPainter painter(this);painter.fillRect(rect(),canvasBackground());
  const auto bounds=visibleBounds();const auto target=toWidget(bounds);
+ Graphite::paintImageShadow(painter,target);
  // Paint only the visible source rectangle; never allocate a scaled full frame.
  const QRectF visible=target.intersected(QRectF(rect()));
  if(!visible.isEmpty()){
@@ -279,7 +280,7 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  }
  if(textEditor_)EditDocument::paintAnnotation(painter,pendingText());
  painter.restore();
- if(Theme::scheme()==Theme::Scheme::Light){painter.setPen(QPen(Theme::current().borderStrong,1));painter.setBrush(Qt::NoBrush);painter.drawRect(target.adjusted(-0.5,-0.5,0.5,0.5));}
+ Graphite::paintImageEdge(painter,target);
  if(tool_==Tool::Crop){
   const auto crop=toWidget(cropDraft_);QPainterPath outside;outside.addRect(target);outside.addRect(crop);
   painter.fillPath(outside,dim());

@@ -89,11 +89,15 @@ private slots:
    }
   }
  }
- void lightCanvasDrawsAnEdgeAroundPaleImages(){
-  const auto previous=Theme::scheme();auto restore=qScopeGuard([previous]{Theme::setScheme(previous);});Theme::setScheme(Theme::Scheme::Light);
-  QImage image(400,260,QImage::Format_RGB32);image.fill(Qt::white);EditDocument doc(image);EditorCanvas canvas(doc);canvas.resize(500,360);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));canvas.fit();
-  const auto rendered=canvas.grab().toImage();QCOMPARE(rendered.pixelColor(250,100),QColor(Qt::white));
-  bool edge=false;for(int y=49;y<=51;++y)edge=edge||rendered.pixelColor(250,y)==Theme::current().borderStrong;QVERIFY(edge);
+ void canvasDrawsAnEdgeAroundImagesInBothSchemes(){
+  const auto previous=Theme::scheme();auto restore=qScopeGuard([previous]{Theme::setScheme(previous);});
+  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+   Theme::setScheme(scheme);const auto fill=Theme::current().well;
+   QImage image(400,260,QImage::Format_RGB32);image.fill(fill);EditDocument doc(image);EditorCanvas canvas(doc);canvas.resize(500,360);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));canvas.fit();
+   const auto rendered=canvas.grab().toImage();QCOMPARE(rendered.pixelColor(250,100),fill);
+   bool edge=false;for(int y=49;y<=51;++y)edge=edge||rendered.pixelColor(250,y)!=fill;QVERIFY(edge);
+   QCOMPARE(rendered.pixelColor(250,0),Theme::current().well);
+  }
  }
  void sharedBannerActionsWrapAndUseHostCommands(){
   QWidget host;auto* layout=new QVBoxLayout(&host);auto* banner=new Graphite::Banner(Graphite::Banner::Tone::Warning,"A warning that needs room to explain what happened",&host);layout->addWidget(banner);

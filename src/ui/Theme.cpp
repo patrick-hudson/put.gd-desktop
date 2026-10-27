@@ -15,7 +15,7 @@ namespace {
 // pair, held to the same rules on the selected fill; test_theme checks both
 // schemes.
 const Palette dark{
- QColor("#191919"),QColor("#222222"),QColor("#2A2A2A"),QColor("#353535"),QColor("#343434"),QColor("#515151"),
+ QColor("#121212"),QColor("#191919"),QColor("#202020"),QColor("#2A2A2A"),QColor("#333230"),QColor(255,255,255,18),QColor("#515151"),
  QColor("#F0F0EC"),QColor("#D2D2CF"),QColor("#AAAAA6"),QColor("#9F9F9B"),
  QColor("#E8B66D"),QColor("#F0C887"),QColor("#24201A"),QColor("#E8C591"),
  QColor("#91BCA2"),QColor("#E8B66D"),QColor("#E59B93"),QColor("#EFB4AE"),QColor("#29372E"),QColor("#332C22"),QColor("#3D2A29"),
@@ -24,7 +24,7 @@ const Palette dark{
  QColor("#F0F0EC"),QColor("#848480"),
 };
 const Palette light{
- QColor("#EEEEEB"),QColor("#F8F8F5"),QColor("#FFFFFF"),QColor("#DEDEDA"),QColor("#D1D1CC"),QColor("#AAAAA3"),
+ QColor("#E6E6E2"),QColor("#F3F3F0"),QColor("#FAFAF8"),QColor("#FFFFFF"),QColor("#E5E4DF"),QColor("#E2E2DD"),QColor("#AAAAA3"),
  QColor("#292926"),QColor("#484844"),QColor("#62625B"),QColor("#62625B"),
  QColor("#8F5B20"),QColor("#774816"),QColor("#FFFFFF"),QColor("#80521D"),
  QColor("#386A4B"),QColor("#8F5B20"),QColor("#A44139"),QColor("#8F322B"),QColor("#DFEDE3"),QColor("#EEE5D8"),QColor("#F4E0DE"),
@@ -34,7 +34,7 @@ const Palette light{
 };
 struct Token {const char* name;QColor Palette::* member;};
 constexpr Token table[]{
- {"bg",&Palette::bg},{"surface",&Palette::surface},{"surfaceRaised",&Palette::surfaceRaised},{"selected",&Palette::selected},
+ {"well",&Palette::well},{"bg",&Palette::bg},{"surface",&Palette::surface},{"surfaceRaised",&Palette::surfaceRaised},{"selected",&Palette::selected},
  {"border",&Palette::border},{"borderStrong",&Palette::borderStrong},{"text",&Palette::text},{"textSecondary",&Palette::textSecondary},
  {"textMuted",&Palette::textMuted},{"textDisabled",&Palette::textDisabled},{"accent",&Palette::accent},{"accentHover",&Palette::accentHover},
  {"onAccent",&Palette::onAccent},{"link",&Palette::link},{"success",&Palette::success},{"warning",&Palette::warning},{"danger",&Palette::danger},
@@ -42,6 +42,10 @@ constexpr Token table[]{
  {"dangerSurface",&Palette::dangerSurface},{"icon",&Palette::icon},{"iconSecondary",&Palette::iconSecondary},
  {"controlOutline",&Palette::controlOutline},{"iconSelected",&Palette::iconSelected},{"iconSecondarySelected",&Palette::iconSecondarySelected},
 };
+QColor tokenColor(const QColor& color,const Palette& values){
+ if(color.alpha()==255)return color;
+ const auto a=color.alphaF();return QColor::fromRgbF(color.redF()*a+values.bg.redF()*(1-a),color.greenF()*a+values.bg.greenF()*(1-a),color.blueF()*a+values.bg.blueF()*(1-a));
+}
 std::atomic<Scheme> active{Scheme::Dark};
 double channel(double c){return c<=0.03928?c/12.92:std::pow((c+0.055)/1.055,2.4);}
 double luminance(const QColor& c){return 0.2126*channel(c.redF())+0.7152*channel(c.greenF())+0.0722*channel(c.blueF());}
@@ -52,12 +56,12 @@ Scheme scheme(){return active.load();}
 QString name(Scheme scheme){return scheme==Scheme::Light?QStringLiteral("light"):QStringLiteral("dark");}
 QJsonObject tokens(Scheme scheme){
  QJsonObject result;const auto& values=palette(scheme);
- for(const auto& token:table)result[token.name]=(values.*token.member).name(QColor::HexRgb);
+ for(const auto& token:table)result[token.name]=tokenColor(values.*token.member,values).name(QColor::HexRgb);
  return result;
 }
 QString stylesheet(QString qss,Scheme scheme){
  const auto& values=palette(scheme);
- for(const auto& token:table)qss.replace(QLatin1Char('%')+QLatin1String(token.name)+QLatin1Char('%'),(values.*token.member).name(QColor::HexRgb));
+ for(const auto& token:table)qss.replace(QLatin1Char('%')+QLatin1String(token.name)+QLatin1Char('%'),tokenColor(values.*token.member,values).name(QColor::HexRgb));
  return qss;
 }
 const TrayTints& trayTints(bool lightPanel){
