@@ -264,9 +264,9 @@ QIcon icon(const QString& name){
  if(name=="brand")return icon(name,Theme::brandAccent());
  return QIcon(new ThemedIcon(name));
 }
-QIcon icon(const QString& name,const QColor& color,int percent){
+QIcon icon(const QString& name,const QColor& color,int percent,int recording){
  static QHash<QString,QIcon> cache;const auto key=name+color.name(QColor::HexArgb);
- const bool progress=name=="tray"&&percent!=-1;
+ const bool progress=name=="tray"&&(percent!=-1||recording);
  if(!progress&&cache.contains(key))return cache.value(key);
  QIcon result;
  if(name=="brand") {
@@ -274,7 +274,7 @@ QIcon icon(const QString& name,const QColor& color,int percent){
    auto image=IconArt::liftApp(color,scale);image.setDevicePixelRatio(1);
    result.addPixmap(QPixmap::fromImage(image));
   }
- } else for(int scale:{1,2,3})result.addPixmap(QPixmap::fromImage(progress?IconArt::liftTray(color,percent,scale):IconArt::symbol(name,color,scale)));
+ } else for(int scale:{1,2,3})result.addPixmap(QPixmap::fromImage(progress?IconArt::liftTray(color,percent,scale,recording):IconArt::symbol(name,color,scale)));
  if(!progress)cache.insert(key,result);
  return result;
 }

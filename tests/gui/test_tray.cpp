@@ -712,9 +712,9 @@ private slots:
   const int raises=backend->log.count("raise");controller.invokeShortcut("record");PUTGD_TRY_COMPARE(backend->log.count("raise"),raises+1);QCOMPARE(state(),QString("reviewing"));
  }
 
- // Recording and encoding keep the idle glyph; transfer fills amber and only
+ // Recording and pause have independent overlays; transfer fills amber and only
  // a confirmed upload turns the glyph green.
- void recordingKeepsIdleColorUntilTransferThenAmberFillThenGreen() {
+ void recordingOverlayPersistsAlongsideFailuresUntilTransfer() {
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
   QVERIFY(settings.save(configuration(directory.path()),{}));
@@ -727,8 +727,8 @@ private slots:
   auto command=[&](const QString& name,const QJsonObject& params){QJsonObject out;bool done=false;operations.recordingCommand(name,params,[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(name+": "+e.message));out=r;done=true;});(void)putgd::test::waitFor([&]{return done;});return out;};
   const auto id=command("prepare",{{"target",QJsonObject{{"kind","region"},{"rect",QJsonArray{100,100,1280,720}}}},{"format","mp4"}})["recordingId"].toString();QVERIFY(!id.isEmpty());
   PUTGD_TRY_VERIFY(tray->toolTip().contains("Ready to record"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
-  command("start",{{"id",id}});PUTGD_TRY_VERIFY(tray->toolTip().contains("Recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
-  command("pause",{{"id",id}});PUTGD_TRY_VERIFY(tray->toolTip().contains("Recording paused"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
+  command("start",{{"id",id}});PUTGD_TRY_VERIFY(tray->toolTip().contains("Recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,-1,1).pixmap(24,24).toImage());QVERIFY(actionNamed(tray,"Record screen — Recording"));
+  command("pause",{{"id",id}});PUTGD_TRY_VERIFY(tray->toolTip().contains("Recording paused"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,-1,2).pixmap(24,24).toImage());controller.notifyFailure({"synthetic_failure","Synthetic failed upload",{}});QVERIFY(tray->toolTip().contains("Failed uploads"));QVERIFY(tray->toolTip().contains("Recording paused"));QVERIFY(actionNamed(tray,"Record screen — Recording paused"));QVERIFY(actionNamed(tray,"Failed uploads"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).error,-2,2).pixmap(24,24).toImage());actionNamed(tray,"Failed uploads")->trigger();
   command("resume",{{"id",id}});command("stop",{{"id",id}});PUTGD_TRY_VERIFY(tray->toolTip().contains("Reviewing the recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
   bool saved=false;operations.recordingCommand("saveCopy",{{"id",id},{"path",directory.filePath("copy.mp4")}},[&](Error e,QJsonObject){QVERIFY(!e);saved=true;});
   PUTGD_TRY_VERIFY(tray->toolTip().contains("Saving a copy of the recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);

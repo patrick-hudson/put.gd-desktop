@@ -383,12 +383,13 @@ void TrayController::refreshMenu() {
   const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;uploading=true;++uploads;
   for(const auto& v:op["items"].toArray()){const auto item=v.toObject();if(item["uploadStatus"]=="uploading"||item["uploadStatus"]=="pending")++files;}
  }
+ QString recording;for(const auto& value:operations_.activeObservations()){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording")recording=phaseLabel(op);}
  const auto status=!uploading?QString{}:files?QString("Uploading %1 %2…").arg(files).arg(files==1?"file":"files"):QString("Preparing upload…");
 #ifdef Q_OS_LINUX
- if(native_){native_->setCommands(shortcuts,status,uploads,errorPending_);return;}
+ if(native_){native_->setCommands(shortcuts,status,uploads,errorPending_,recording);return;}
 #endif
  if(!menu_)return;
- for(auto* entry:menu_->actions())if(entry->property("commandLabel").isValid()&&shortcuts.contains(entry->data().toString())){const auto key=QKeySequence(shortcuts.value(entry->data().toString())).toString(QKeySequence::NativeText);entry->setText(entry->property("commandLabel").toString()+(key.isEmpty()?QString{}:"\t"+key));}
+ for(auto* entry:menu_->actions())if(entry->property("commandLabel").isValid()&&shortcuts.contains(entry->data().toString())){const auto key=QKeySequence(shortcuts.value(entry->data().toString())).toString(QKeySequence::NativeText);entry->setText(entry->property("commandLabel").toString()+(entry->data()=="record"&&!recording.isEmpty()?" — "+recording:QString{})+(key.isEmpty()?QString{}:"\t"+key));}
  // Tab-separated menu text displays a shortcut without registering another key handler.
  failedUploads_->setVisible(errorPending_);cancelUpload_->setText(uploads>1?"Cancel all uploads…":"Cancel upload");
  uploadStatus_->setText(status);for(auto* entry:{uploadStatus_,cancelUpload_,uploadSeparator_})entry->setVisible(uploading);
@@ -427,9 +428,11 @@ void TrayController::refreshActivity() {
  }
  if(uploadVisible_&&!working&&pendingUploadFinishes_==0&&!uploadCompleteTimer_.isActive())
   uploadCompleteTimer_.start(int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())));
- const auto text=errorPending_?QString("Failed uploads — open Failed uploads to review"):
+ QString recordingStatus;int recording=0;for(const auto& value:observations){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording"){recordingStatus=phaseLabel(op);if(op["phase"]=="recording")recording=1;else if(op["phase"]=="paused")recording=2;}}
+ auto activity=activityText(observations);if(!recordingStatus.isEmpty()&&!activity.contains(recordingStatus))activity+=(activity.isEmpty()?QString{}:"\n")+recordingStatus;
+ const auto text=errorPending_?QString("Failed uploads — open Failed uploads to review")+(activity.isEmpty()?QString{}:"\n"+activity):
                  uploadCompleted_?QString("Upload complete"):
-                 uploadVisible_&&!working?QString("Finishing upload"):activityText(observations);
+                 uploadVisible_&&!working?QString("Finishing upload"):activity;
  // Active work keeps the idle glyph; only a confirmed completion turns green.
  const auto& tints=Theme::trayTints(panel_.light());
  const auto color=errorPending_?tints.error:
@@ -440,18 +443,18 @@ void TrayController::refreshActivity() {
   else if(operations_.storageActive())percent=uploadPercent(observations);
   else percent=iconPercent_;
  }
- if(color==iconColor_&&percent==iconPercent_&&text==activityText_)return;
+ if(color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_)return;
 #ifdef Q_OS_LINUX
- if(native_)native_->setActivity(color,text,percent);
+ if(native_)native_->setActivity(color,text,percent,recording);
  else
 #endif
  if(tray_) {
-  if(color!=iconColor_||percent!=iconPercent_)tray_->setIcon(VisualStyle::icon("tray",color,percent));
+  if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_)tray_->setIcon(VisualStyle::icon("tray",color,percent,recording));
   if(text!=activityText_)tray_->setToolTip(text.isEmpty()?idleTooltip:QString("put.gd — Working\n")+text);
  }
  // The tooltip's title and activity lines as the tray now shows them (#250).
  if(text!=activityText_)logging::debug(logUi(),"Tray tooltip changed",{{"title",text.isEmpty()?idleTooltip:QString("put.gd — Working")},{"activity",text}});
- iconColor_=color;iconPercent_=percent;activityText_=text;
+ iconColor_=color;iconPercent_=percent;iconRecording_=recording;activityText_=text;
 }
 void TrayController::flashError() {
  uploadCompleteTimer_.stop();

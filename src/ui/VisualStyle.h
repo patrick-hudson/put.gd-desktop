@@ -22,7 +22,7 @@ QComboBox* choiceBox(QWidget* parent);
 // new colours after a scheme switch (#60); a pixmap taken from it does not.
 QIcon icon(const QString& name);
 // A glyph in a fixed colour: tray tints, glyphs drawn on the accent.
-QIcon icon(const QString& name,const QColor& color,int percent=-1);
+QIcon icon(const QString& name,const QColor& color,int percent=-1,int recording=0);
 // Folder of the check, radio, chevron and spin step images painted from the
 // scheme's tokens (1x and @2x) in a private temporary folder for this process,
 // for stylesheets' image urls; empty when it cannot be written.

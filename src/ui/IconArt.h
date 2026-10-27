@@ -6,7 +6,8 @@
 namespace putgd::IconArt {
 // Software rendering also serves the Core-only StatusNotifier resident.
 // -1 is solid, -2 adds a static error badge; 0..100 fills bottom to top.
-QImage liftTray(const QColor& color, int percent = -1, int scale = 1);
+// recording: 0 none, 1 recording dot, 2 paused bars; independent of progress/error.
+QImage liftTray(const QColor& color, int percent = -1, int scale = 1, int recording = 0);
 QImage liftApp(const QColor& color, int scale = 1);
 // secondary: the glyph's second tone; invalid means a darker shade of color.
 QImage symbol(const QString& name, const QColor& color, int scale = 1, const QColor& secondary = {});

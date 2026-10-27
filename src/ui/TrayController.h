@@ -88,6 +88,7 @@ private:
  PanelTone panel_;
  void retintMenu();
  int iconPercent_=-1;
+ int iconRecording_=0;
  QString activityText_;
  QAction *uploadStatus_=nullptr,*cancelUpload_=nullptr,*uploadSeparator_=nullptr,*failedUploads_=nullptr;
  QSet<QString> activeUploads_;

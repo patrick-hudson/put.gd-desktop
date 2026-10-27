@@ -440,6 +440,18 @@ private slots:
   QCOMPARE(observer.tooltips,tooltips);
   tray.setActivity(QColor("#9bbcff"),{});PUTGD_TRY_COMPARE(observer.icons,5);
  }
+ void recordingOverlayKeepsUploadProgressAndFailure() {
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());
+  auto properties=[&]{return qdbus_cast<QVariantMap>(call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")}).arguments().first());};
+  auto pixels=[&]{return qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes;};
+  tray.setActivity(Theme::trayTints(false).idle,"Recording",50);const auto progress=pixels();tray.setActivity(Theme::trayTints(false).idle,"Recording",50,1);const auto recording=pixels();QVERIFY(progress!=recording);
+  tray.setActivity(Theme::trayTints(false).idle,"Recording paused",50,2);QVERIFY(recording!=pixels());const auto paused=pixels();tray.setActivity(Theme::trayTints(false).idle,"Recording paused",75,2);QVERIFY(paused!=pixels());
+  tray.setActivity(Theme::trayTints(false).error,"Failed uploads\nRecording paused",-2,2);const auto failed=pixels();tray.setActivity(Theme::trayTints(false).error,"Failed uploads\nRecording paused",-2);QVERIFY(failed!=pixels());QVERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Recording paused"));
+  tray.setCommands({},"Uploading a file",1,true,"Recording paused");
+  auto property=[&](int id,const QString& name){return qdbus_cast<QDBusVariant>(call("/Menu","com.canonical.dbusmenu","GetProperty",{id,name}).arguments().first()).variant();};
+  QVERIFY(property(16,"label").toString().contains("Recording paused"));QVERIFY(property(22,"visible").toBool());QVERIFY(property(19,"visible").toBool());
+  const auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}});const auto layout=qdbus_cast<WireLayout>(reply.arguments().at(1));bool found=false;for(const auto& child:layout.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==16){found=true;QVERIFY(item.props["label"].toString().contains("Recording paused"));}}QVERIFY(found);
+ }
  void coreOnlyBrandPropertiesAndActualLayoutWire() {
   NativeTray tray; QVERIFY(!tray.availabilityKnown()); PUTGD_TRY_VERIFY(tray.availabilityKnown()); PUTGD_TRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 1);
   auto reply = call("/StatusNotifierItem", "org.freedesktop.DBus.Properties", "GetAll", {QString("org.kde.StatusNotifierItem")});
