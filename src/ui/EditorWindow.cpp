@@ -207,7 +207,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  // the actions; then the destination (or progress) and the actions. Column
  // 0 is the one stretch, so a destination that fits there is never elided.
  auto* footer=new Graphite::Surface("bg",Qt::TopEdge,this);footer->setObjectName("editorFooter");
- footerGrid_=new QGridLayout(footer);footerGrid_->setContentsMargins(14,10,14,10);footerGrid_->setHorizontalSpacing(8);footerGrid_->setVerticalSpacing(8);footerGrid_->setColumnStretch(0,1);
+ footerGrid_=new QGridLayout(footer);footerGrid_->setContentsMargins(14,8,14,8);footerGrid_->setHorizontalSpacing(8);footerGrid_->setVerticalSpacing(4);footerGrid_->setColumnStretch(0,1);
  notice_=new QWidget(footer);notice_->setObjectName("editorPreparationFailure");
  auto* noticeLayout=new QGridLayout(notice_);noticeLayout->setContentsMargins(0,0,0,0);noticeLayout->setSpacing(8);
  noticeText_=new QLabel(notice_);noticeText_->setObjectName("editorPreparationReason");noticeText_->setTextFormat(Qt::PlainText);noticeText_->setWordWrap(true);VisualStyle::role(noticeText_,"error");noticeLayout->addWidget(noticeText_,0,0,1,3);noticeLayout->setColumnStretch(2,1);

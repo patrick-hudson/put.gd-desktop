@@ -560,8 +560,8 @@ private slots:
   window.showSaveFailed("/synthetic/copy.png","Permission denied");window.resize(900,620);
   const QString reason="The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.";
   window.showPreparationFailed(reason);PUTGD_TRY_VERIFY(scroll->isAncestorOf(document));
-  // A useful viewport in window coordinates; enlarged content scrolls within it.
-  PUTGD_TRY_VERIFY(scroll->viewport()->height()>=180);
+  // Document reparenting finishes before its viewport can be measured.
+  PUTGD_TRY_VERIFY(scroll->viewport()->height()>=Graphite::scaled(180));
   auto* label=window.findChild<QLabel*>("editorPreparationReason");QCOMPARE(label->text(),reason);QVERIFY(label->height()>=label->heightForWidth(label->width()));
   const auto footer=window.findChild<QWidget*>("editorFooter");
   for(const auto name:{"keepEditing","saveCopyInstead","editorUpload","editorCancel"}){
