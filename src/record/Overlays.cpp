@@ -132,7 +132,7 @@ public:
     Surface(SelectionOverlay& owner, QScreen* screen) : QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus), owner_(owner), logical_(screen->geometry()) {
         setObjectName("putgd-record-select");
         setAccessibleName("Recording region");
-        describeRegion(this, {}, true, displayName(screen));
+        describeRegion(this, {}, true, displayName(screen), screen->geometry());
         setAttribute(Qt::WA_TranslucentBackground);
         setScreen(screen);
         setGeometry(logical_.toAlignedRect());
@@ -141,22 +141,17 @@ public:
         setFocusPolicy(Qt::StrongFocus);
         connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
     }
-    void refresh() { describeRegion(this, owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()])); update(); }
+    void refresh() { describeRegion(this, owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()]), QGuiApplication::screens()[activeScreen()]->geometry()); update(); }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
-        painter.setCompositionMode(QPainter::CompositionMode_Source);
-        painter.fillRect(rect(), QColor(0, 0, 0, 70));
         const auto clipped = owner_.selection_.isEmpty() && screen() == QGuiApplication::screens()[activeScreen()] ? logical_ : owner_.selection_.intersected(logical_);
-        if (!clipped.isEmpty()) {
-            const QRectF local = clipped.translated(-logical_.topLeft());
-            painter.fillRect(local, Qt::transparent);
-            painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-            paintSelectionOutline(painter, local);
-        }
+        const QRectF local = clipped.translated(-logical_.topLeft());
+        paintRegionScrim(painter, rect(), local);
+        if (!clipped.isEmpty()) paintSelectionOutline(painter, local);
         painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
         if (owner_.keyboardScreen_ < 0 || screen() == QGuiApplication::screens()[activeScreen()])
-            paintRegionInstructions(painter, rect(), palette(), regionInstructions(owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()])), owner_.selection_.translated(-logical_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);
+            paintRegionInstructions(painter, rect(), palette(), regionInstructions(owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()]), QGuiApplication::screens()[activeScreen()]->geometry()), owner_.selection_.translated(-logical_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);
     }
     void mousePressEvent(QMouseEvent* e) override {
         if (e->button() == Qt::RightButton) { owner_.cancel(); return; }
@@ -350,7 +345,10 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     lockedAudio_->setObjectName("lockedAudio");
     lockedFormat_ = new QLabel(choices_);
     lockedFormat_->setObjectName("lockedFormat");
-    for (auto* label : {target_, lockedAudio_, lockedFormat_}) VisualStyle::role(label, "muted");
+    lockedFacts_ = new QLabel(choices_);
+    lockedFacts_->setObjectName("recordingFacts");
+    choices->addWidget(lockedFacts_);
+    for (auto* label : {target_, lockedAudio_, lockedFormat_, lockedFacts_}) VisualStyle::role(label, "muted");
     for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_, lockedAudio_, lockedFormat_}) choices->addWidget(w);
     record_ = new QPushButton("Start recording", this); record_->setObjectName("record");
     record_->setIcon(VisualStyle::icon("record"));
@@ -360,6 +358,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     resume_ = new QPushButton("Resume", this);
     resume_->setIcon(VisualStyle::icon("play"));
     stop_ = new QPushButton("Stop recording", this); stop_->setObjectName("stop");
+    stop_->setIcon(VisualStyle::icon("stop"));
     VisualStyle::role(stop_, "primary");
     cancel_ = new QPushButton("Cancel", this);
     cancel_->setObjectName("cancel");
@@ -444,12 +443,18 @@ void ControlBar::refresh() {
     format_->setEnabled(ready);
     audio_->setVisible(ready);
     format_->setVisible(ready);
-    lockedAudio_->setVisible(!ready);
-    lockedFormat_->setVisible(!ready);
-    lockedAudio_->setText(withSound ? QStringLiteral("With system audio ·") : QStringLiteral("No audio ·"));
+    target_->setVisible(ready);
+    lockedFacts_->setVisible(!ready);
+    lockedAudio_->hide();
+    lockedFormat_->hide();
+    lockedAudio_->setText(withSound ? QStringLiteral("With system audio") : QStringLiteral("No audio"));
     lockedAudio_->setToolTip(audio_->toolTip());
     lockedAudio_->setAccessibleName(QStringLiteral("Audio: ") + lockedAudio_->text());
     lockedFormat_->setText(format_->currentText());
+    QStringList facts;
+    for (const auto& fact : {options_.targetLabel, lockedAudio_->text(), lockedFormat_->text()}) if (!fact.isEmpty()) facts.append(fact);
+    lockedFacts_->setText(facts.join(QStringLiteral(" · ")));
+    lockedFacts_->setAccessibleName(lockedFacts_->text());
     lockedFormat_->setAccessibleName(QStringLiteral("Recording format: ") + lockedFormat_->text());
     lockedFormat_->setToolTip(QStringLiteral("Recording format; choose the export format in review"));
     cancel_->setText(ready ? QStringLiteral("Cancel") : QStringLiteral("Discard…"));

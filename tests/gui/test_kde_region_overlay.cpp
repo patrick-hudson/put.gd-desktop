@@ -84,7 +84,7 @@ private slots:
    QPalette palette;const bool light=variant=="light";palette.setColor(QPalette::Window,light?QColor("#EEEEEB"):QColor("#191919"));palette.setColor(QPalette::WindowText,light?QColor("#292926"):QColor("#F0F0EC"));surface->setPalette(palette);
    QFont font=surface->font();font.setPixelSize(variant=="text150"?21:14);surface->setFont(font);QTest::keyClick(surface,Qt::Key_Right);
    QCOMPARE(overlay.selection_,QRectF(200,150,400,300));QVERIFY(!overlay.clearing_);QVERIFY(!overlay.finished_);
-   surface->repaint();const auto image=surface->grab().toImage();QCOMPARE(image.pixelColor(300,151),QColor(Qt::white));const auto box=regionInstructionBox(surface->rect(),QFontMetrics(font),regionInstructions(overlay.selection_,false,"Display 1"));QVERIFY(!box.isEmpty());QVERIFY(box.height()<surface->height()/3);
+   surface->repaint();const auto image=surface->grab().toImage();QCOMPARE(image.pixelColor(300,151),QColor(Qt::white));QCOMPARE(image.pixelColor(5,500),QColor(0,0,0,70));QCOMPARE(image.pixelColor(400,300).alpha(),0);const auto box=regionInstructionBox(surface->rect(),QFontMetrics(font),regionInstructions(overlay.selection_,false,"Display 1"));QVERIFY(!box.isEmpty());QVERIFY(box.height()<surface->height()/3);
    const auto bg=palette.color(QPalette::Window);QCOMPARE(image.pixelColor(box.left()+10,box.top()+4),bg);
    int ink=0;for(int y=box.top()+6;y<box.bottom()-6;++y)for(int x=box.left()+10;x<box.right()-10;++x){const auto c=image.pixelColor(x,y);if(c.alpha()==255&&std::abs(c.lightness()-bg.lightness())>100)++ink;}
    QVERIFY(ink>100);

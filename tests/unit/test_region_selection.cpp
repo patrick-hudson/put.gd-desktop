@@ -12,6 +12,13 @@ private slots:
   QCOMPARE(regionInstructionBox(bounds,metrics,text,{},QPointF(top.center())),bottom);
   QCOMPARE(regionInstructionBox(bounds,metrics,text,{},QPointF(bottom.center())),top);
  }
+ void scrimLeavesSelectionClear(){
+  QImage image(100,80,QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);
+  QPainter painter(&image);paintRegionScrim(painter,image.rect(),QRectF(20,15,60,50));painter.end();
+  QCOMPARE(image.pixelColor(5,5),QColor(0,0,0,70));
+  QCOMPARE(image.pixelColor(25,20).alpha(),0);
+  QCOMPARE(image.pixelColor(85,70),QColor(0,0,0,70));
+ }
  void switchesDisplaysAndClamps(){
   const QList<QRectF> screens{QRectF(-800,100,800,600),QRectF(0,-200,320,240)};int current=0;QRectF selected;
   QVERIFY(switchRegionDisplay(selected,screens,current,Qt::Key_Tab));QCOMPARE(current,1);QVERIFY(selected.isEmpty());
@@ -24,12 +31,12 @@ private slots:
  void hintsReflectActionAndState(){
   for(bool recording:{false,true}){
    QRectF selected;const QRectF screen(0,0,800,600);
-   const auto initial=regionInstructions(selected,recording,"DP-2");
+   const auto initial=regionInstructions(selected,recording,"DP-2",screen);
    QVERIFY(initial.contains(recording?"Enter chooses this entire display":"Enter captures this entire display"));
    QVERIFY(initial.contains("Drag to select · "));
-   QVERIFY(initial.startsWith("DP-2\n"));QVERIFY(!initial.contains("logical pixels"));
+   QVERIFY(initial.startsWith("DP-2 · 800 × 600\n"));QVERIFY(!initial.contains("logical pixels"));
    QCOMPARE(regionKey(selected,screen,Qt::Key_Right),RegionKeyAction::Change);
-   const auto changed=regionInstructions(selected,recording,"DP-2");
+   const auto changed=regionInstructions(selected,recording,"DP-2",screen);
    QVERIFY(changed.contains(recording?"Enter chooses this region":"Enter to capture"));
    QVERIFY(!changed.contains("entire display"));QVERIFY(changed.contains("400 × 300"));
   }

@@ -212,9 +212,11 @@ const RegionSelection = {
         };
         return [x, score(bottom) < score(top) ? bottom : top];
     },
-    instructions(region, recording, display) {
+    scrimAlpha: 70,
+    instructions(region, recording, display, bounds) {
         const selected = region?.width > 0 && region?.height > 0;
-        const context = `${display || ''}${display && selected ? ' · ' : ''}${selected ? `${region.width} × ${region.height}` : ''}`;
+        const size = selected ? region : bounds;
+        const context = `${display || 'Display'} · ${Math.round(size?.width ?? 0)} × ${Math.round(size?.height ?? 0)}`;
         return (context ? context + '\n' : '') +
             `Drag to select · ${recording ? (selected ? 'Enter chooses this region' : 'Enter chooses this entire display')
                 : (selected ? 'Enter to capture' : 'Enter captures this entire display')} · Esc to cancel` +
@@ -228,6 +230,11 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         super._init({reactive: true, visible: false, accessible_name: recording ? 'Recording region' : 'Capture region', x: 0, y: 0});
         this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
         this.set_cursor_type(Clutter.CursorType.CROSSHAIR);
+        this._scrims = Array.from({length: 4}, () => {
+            const scrim = new St.Widget({reactive: false, style: `background-color: rgba(0, 0, 0, ${RegionSelection.scrimAlpha / 255});`});
+            this.add_child(scrim);
+            return scrim;
+        });
         this._rectangle = new St.Widget({visible: false, accessible_name: recording ? 'Recording region' : 'Capture region',
             clip_to_allocation: true, style: 'border: 3px solid black; background-color: transparent;'});
         this.add_child(this._rectangle);
@@ -367,7 +374,7 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         const monitor = this._monitor();
         const index = Main.layoutManager.monitors.indexOf(monitor);
         const display = global.display?.get_monitor_name?.(index) ?? monitor?.connector ?? monitor?.name ?? `Display ${index + 1}`;
-        const instructions = RegionSelection.instructions(rect, this._recording, display);
+        const instructions = RegionSelection.instructions(rect, this._recording, display, monitor);
         this._instructions.text = instructions;
         const description = (rect && rect.width > 0 && rect.height > 0
             ? `Region ${rect.width} × ${rect.height} at ${rect.x}, ${rect.y}.`
@@ -382,6 +389,17 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         this._placeInstructions();
     }
     _outline(rect) {
+        const width = global.stage.width, height = global.stage.height;
+        const left = Math.max(0, rect.x), top = Math.max(0, rect.y);
+        const right = Math.min(width, rect.x + rect.width), bottom = Math.min(height, rect.y + rect.height);
+        const strips = [[0, 0, width, top], [0, bottom, width, height - bottom],
+            [0, top, left, bottom - top], [right, top, width - right, bottom - top]];
+        this._scrims.forEach((scrim, i) => {
+            const [x, y, w, h] = strips[i];
+            scrim.set_position(x, y);
+            scrim.set_size(Math.max(0, w), Math.max(0, h));
+            scrim.show();
+        });
         this._rectangle.set_position(rect.x, rect.y);
         this._rectangle.set_size(rect.width, rect.height);
         this._rectangle.show();

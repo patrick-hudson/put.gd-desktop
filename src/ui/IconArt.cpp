@@ -115,6 +115,8 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   corners.moveTo(3,16);corners.lineTo(3,21);corners.lineTo(8,21);
   corners.moveTo(16,3);corners.lineTo(21,3);corners.lineTo(21,8);p.drawPath(corners);
   fill(color);QPainterPath pencil;pencil.moveTo(19,10);pencil.lineTo(22,13);pencil.lineTo(13,22);pencil.lineTo(9,23);pencil.lineTo(10,19);pencil.closeSubpath();p.drawPath(pencil);
+ } else if(name=="stop") {
+  fill(color);rounded(5,5,14,14,1.5);
  } else if(name=="record") {
   line(secondary,2.2);rounded(2,4,20,16,3);
   fill(color);p.drawEllipse(QPointF(12,12),4.8,4.8);

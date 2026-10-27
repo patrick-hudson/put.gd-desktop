@@ -39,7 +39,7 @@ const Clutter = {
     KEY_Left: 10, KEY_Right: 11, KEY_Up: 12, KEY_Down: 13, KEY_Return: 14, KEY_KP_Enter: 15, KEY_Escape: 16, KEY_Tab: 17, KEY_ISO_Left_Tab: 18,
 };
 let pointer = [2100, 200], grabs = 0;
-const global = {stage: {}, get_pointer: () => pointer};
+const global = {stage: {width: 3200, height: 1080}, get_pointer: () => pointer};
 const monitors = [{x: 0, y: 0, width: 1920, height: 1080}, {x: 1920, y: -100, width: 1280, height: 720}];
 const Main = {uiGroup: new Widget(), layoutManager: {monitors, primaryMonitor: monitors[0]},
     pushModal() {grabs++; return {is_revoked: () => false};}, popModal() {grabs--;}};
@@ -63,6 +63,7 @@ function closed(actor) {equal([actor.destroyed, grabs], [true, 0]);}
 {
     const {actor, result} = begin();
     equal(actor._instructions.text.includes('Enter captures this entire display'), true);
+    equal(actor._instructions.text.includes('Display 2 · 1280 × 720'), true);
     equal([actor._rectangle.x, actor._rectangle.y, actor._rectangle.width, actor._rectangle.height], [1920, -100, 1280, 720]);
     key(actor, 'Left', 3);
     equal(actor._instructions.text.includes('Enter to capture'), true);
@@ -194,4 +195,5 @@ for (const scheme of ['prefer-dark', 'prefer-light', 'default']) {
     equal(actor._contrast.style.includes('1px solid white'), true);
     key(actor, 'Escape'); equal(await result, null); closed(actor);
 }
+equal(RegionSelection.scrimAlpha, 70);
 print('PASS native scheme badge with independent black/white selection outline');

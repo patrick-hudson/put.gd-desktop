@@ -22,7 +22,7 @@ namespace putgd {
 class KdeRegionOverlay::Surface final:public QWidget {
 public:
  Surface(KdeRegionOverlay& owner,const CaptureFrame& frame,QScreen* screen):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint),owner_(owner),logicalRect_(frame.logicalRect),identity_(frame.identity){
-  setFont(nativeRegionFont());setObjectName("putgd-kde-region-overlay");setAccessibleName(owner_.recording_?"Recording region":"Capture region");describeRegion(this,{},owner_.recording_,identity_);setAttribute(Qt::WA_TranslucentBackground);setScreen(screen);resize(frame.logicalRect.size().toSize());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);
+  setFont(nativeRegionFont());setObjectName("putgd-kde-region-overlay");setAccessibleName(owner_.recording_?"Recording region":"Capture region");describeRegion(this,{},owner_.recording_,identity_,logicalRect_);setAttribute(Qt::WA_TranslucentBackground);setScreen(screen);resize(frame.logicalRect.size().toSize());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);
 #ifdef PUTGD_NATIVE_REGION
   // An individual layer role is applied before show; ordinary app windows keep
   // their normal xdg-shell integration. Never mutate QT_WAYLAND_SHELL_INTEGRATION.
@@ -34,9 +34,9 @@ public:
   layer->setExclusiveZone(-1);layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
 #endif
  }
- void updateSelection(){describeRegion(this,owner_.selection_,owner_.recording_,owner_.frames_[activeScreen()].identity);update();}
+ void updateSelection(){describeRegion(this,owner_.selection_,owner_.recording_,owner_.frames_[activeScreen()].identity,owner_.frames_[activeScreen()].logicalRect);update();}
 protected:
- void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));if(!owner_.clearing_&&!clipped.isEmpty()){const auto local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(p,local);}if(!owner_.clearing_&&(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_))paintRegionInstructions(p,rect(),palette(),regionInstructions(owner_.selection_,owner_.recording_,owner_.frames_[activeScreen()].identity), owner_.selection_.translated(-logicalRect_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);}
+ void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));if(!owner_.clearing_){const auto local=clipped.translated(-logicalRect_.topLeft());paintRegionScrim(p,rect(),local);if(!clipped.isEmpty())paintSelectionOutline(p,local);}if(!owner_.clearing_&&(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_))paintRegionInstructions(p,rect(),palette(),regionInstructions(owner_.selection_,owner_.recording_,owner_.frames_[activeScreen()].identity,owner_.frames_[activeScreen()].logicalRect), owner_.selection_.translated(-logicalRect_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);}
  void mousePressEvent(QMouseEvent* e) override{if(e->button()==Qt::RightButton)owner_.cancel();else if(e->button()==Qt::LeftButton)owner_.press(logicalRect_.topLeft()+e->position());}
  void mouseMoveEvent(QMouseEvent* e) override{owner_.move(logicalRect_.topLeft()+e->position());}
  void mouseReleaseEvent(QMouseEvent* e) override{if(e->button()==Qt::LeftButton)owner_.release(logicalRect_.topLeft()+e->position());}

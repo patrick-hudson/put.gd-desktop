@@ -4,6 +4,7 @@
 #include <QKeyEvent>
 #include <QPainter>
 #include <QPalette>
+#include <QScreen>
 #include <QWidget>
 #include <algorithm>
 #include <optional>
@@ -16,9 +17,18 @@ inline QFont nativeRegionFont() {
     else font.setPixelSize(std::max(14, font.pixelSize()));
     return font;
 }
-inline QString regionInstructions(const QRectF& selection = {}, bool recording = false, const QString& display = {}) {
-    const QString context = display + (display.isEmpty() || selection.isEmpty() ? QString() : QStringLiteral(" · "))
-        + (selection.isEmpty() ? QString() : QStringLiteral("%1 × %2").arg(qRound(selection.width())).arg(qRound(selection.height())));
+inline constexpr int regionScrimAlpha = 70;
+inline void paintRegionScrim(QPainter& painter, const QRect& bounds, const QRectF& selection) {
+    painter.setCompositionMode(QPainter::CompositionMode_Source);
+    painter.fillRect(bounds, QColor(0, 0, 0, regionScrimAlpha));
+    if (!selection.isEmpty()) painter.fillRect(selection, Qt::transparent);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+}
+inline QString regionInstructions(const QRectF& selection = {}, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}) {
+    const auto bounds = displayBounds.isEmpty() && QGuiApplication::primaryScreen() ? QRectF(QGuiApplication::primaryScreen()->geometry()) : displayBounds;
+    const auto size = selection.isEmpty() ? bounds.size() : selection.size();
+    const QString context = (display.isEmpty() ? QStringLiteral("Display") : display)
+        + QStringLiteral(" · %1 × %2").arg(qRound(size.width())).arg(qRound(size.height()));
     return (context.isEmpty() ? QString() : context + QStringLiteral("\n"))
         // Enter with nothing selected takes the whole display; say so.
         + (recording ? (selection.isEmpty() ? QStringLiteral("Drag to select · Enter chooses this entire display · Esc to cancel")
@@ -28,10 +38,10 @@ inline QString regionInstructions(const QRectF& selection = {}, bool recording =
         + QStringLiteral("\nArrows move · Shift+arrows resize · Tab next display")
         + (recording ? QStringLiteral("\nStart recording comes next") : QString());
 }
-inline QString regionDescription(const QRectF& selection, bool recording = false, const QString& display = {}) {
+inline QString regionDescription(const QRectF& selection, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}) {
     return (selection.isEmpty() ? QStringLiteral("No region selected.")
         : QStringLiteral("Region %1 × %2 at %3, %4.").arg(selection.width()).arg(selection.height()).arg(selection.x()).arg(selection.y()))
-        + QStringLiteral(" ") + regionInstructions(selection, recording, display);
+        + QStringLiteral(" ") + regionInstructions(selection, recording, display, displayBounds);
 }
 // Transfer the region's size and relative position, then clamp to the new display.
 inline bool switchRegionDisplay(QRectF& selection, const QList<QRectF>& screens, int& current, int key, Qt::KeyboardModifiers modifiers = {}) {
@@ -88,8 +98,8 @@ inline RegionKeyAction regionKey(QRectF& selection, const QRectF& screen, int ke
     }
     return adjustRegion(selection, screen, key, modifiers) ? RegionKeyAction::Change : RegionKeyAction::Ignore;
 }
-inline void describeRegion(QWidget* surface, const QRectF& selection, bool recording = false, const QString& display = {}) {
-    const auto description = regionDescription(selection, recording, display);
+inline void describeRegion(QWidget* surface, const QRectF& selection, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}) {
+    const auto description = regionDescription(selection, recording, display, displayBounds);
     if (surface->accessibleDescription() == description) return;
     surface->setAccessibleDescription(description);
     QAccessibleEvent changed(surface, QAccessible::DescriptionChanged);

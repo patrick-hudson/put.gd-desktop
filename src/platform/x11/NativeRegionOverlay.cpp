@@ -26,7 +26,7 @@ public:
  QString text(QAccessible::Text type)const override{
   const auto* overlay=static_cast<NativeRegionOverlay*>(object());
   if(type==QAccessible::Name)return QStringLiteral("Capture region");
-  if(type==QAccessible::Description)return regionDescription(overlay->selection_,false,(overlay->keyboardScreen_<0?QString():overlay->frames_[overlay->keyboardScreen_].identity));
+  if(type==QAccessible::Description)return regionDescription(overlay->selection_,false,(overlay->keyboardScreen_<0?QString():overlay->frames_[overlay->keyboardScreen_].identity),overlay->frames_[std::max(0,overlay->keyboardScreen_)].logicalRect);
   return {};
  }
  QRect rect()const override{
@@ -250,7 +250,7 @@ void NativeRegionOverlay::prepareInstructions(Surface& surface){
  const auto font=nativeRegionFont();
  const auto display=keyboardScreen_<0?surface.frame.identity:frames_[keyboardScreen_].identity;
  if(surface.frame.identity!=display){surface.instructions={};surface.instructionsKey.clear();return;}
- const auto instructions=regionInstructions(selection_,false,display);
+ const auto instructions=regionInstructions(selection_,false,display,frames_[std::max(0,keyboardScreen_)].logicalRect);
  const auto local=selection_.translated(-surface.frame.logicalRect.topLeft());
  const auto pointer=dragging_?std::optional<QPointF>(pointer_-surface.frame.logicalRect.topLeft()):std::nullopt;
  const auto box=regionInstructionBox(bounds,QFontMetrics(font),instructions,local,pointer);
@@ -273,6 +273,16 @@ void NativeRegionOverlay::draw(Surface& surface){
  // repaint area, even when several pointer events arrive before presentation.
  // Core X clears allocate no client-side monitor-sized backing image.
  xcb_clear_area(connection_,false,surface.window,0,0,0,0);
+ const auto clipped=selection_.isEmpty()&&surface.frame.identity==frames_[std::max(0,keyboardScreen_)].identity?surface.frame.logicalRect:selection_.intersected(surface.frame.logicalRect);
+ const auto local=clipped.translated(-surface.frame.logicalRect.topLeft());const qreal sx=qreal(surface.frame.nativeRect.width())/surface.frame.logicalRect.width(),sy=qreal(surface.frame.nativeRect.height())/surface.frame.logicalRect.height();
+ const QRect bounds(QPoint{},surface.frame.nativeRect.size());
+ surface.outline=clipped.isEmpty()?QRect{}:QRectF(local.x()*sx,local.y()*sy,local.width()*sx,local.height()*sy).toAlignedRect().intersected(bounds);
+ // Native ARGB strips dim only the outside; no desktop-sized backing image.
+ const uint32_t scrim=uint32_t(regionScrimAlpha)<<24;
+ xcb_change_gc(connection_,gc_,XCB_GC_FOREGROUND,&scrim);
+ const auto dim=[&](QRect r){if(r.isEmpty())return;const xcb_rectangle_t strip{int16_t(r.x()),int16_t(r.y()),uint16_t(r.width()),uint16_t(r.height())};xcb_poly_fill_rectangle(connection_,surface.window,gc_,1,&strip);};
+ if(surface.outline.isEmpty())dim(bounds);
+ else {const auto r=surface.outline;dim(QRect(0,0,bounds.width(),r.top()));dim(QRect(0,r.bottom()+1,bounds.width(),bounds.height()-r.bottom()-1));dim(QRect(0,r.top(),r.left(),r.height()));dim(QRect(r.right()+1,r.top(),bounds.width()-r.right()-1,r.height()));}
  const auto& badge=surface.instructions;
  if(!badge.isNull()){
   // Bound each request even on servers without a large BIG-REQUESTS limit.
@@ -281,10 +291,7 @@ void NativeRegionOverlay::draw(Surface& surface){
    xcb_put_image(connection_,XCB_IMAGE_FORMAT_Z_PIXMAP,surface.window,gc_,uint16_t(badge.width()),uint16_t(count),int16_t(surface.instructionsAt.x()),int16_t(surface.instructionsAt.y()+y),0,32,uint32_t(count*badge.bytesPerLine()),badge.constScanLine(y));
   }
  }
- const auto clipped=selection_.isEmpty()&&surface.frame.identity==frames_[std::max(0,keyboardScreen_)].identity?surface.frame.logicalRect:selection_.intersected(surface.frame.logicalRect);
- if(clipped.isEmpty()){surface.outline={};return;}
- const auto local=clipped.translated(-surface.frame.logicalRect.topLeft());const qreal sx=qreal(surface.frame.nativeRect.width())/surface.frame.logicalRect.width(),sy=qreal(surface.frame.nativeRect.height())/surface.frame.logicalRect.height();
- surface.outline=QRectF(local.x()*sx,local.y()*sy,local.width()*sx,local.height()*sy).toAlignedRect().intersected(QRect(QPoint{},surface.frame.nativeRect.size()));
+ if(surface.outline.isEmpty())return;
  // Integer filled strips stay within the selection even for one-pixel drags.
  auto ring=[&](QRect r,int width,uint32_t color){
   if(r.isEmpty())return;

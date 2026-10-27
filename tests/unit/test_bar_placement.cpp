@@ -244,9 +244,14 @@ private slots:
                     bar.setState(QString::fromLatin1(state));
                     QVERIFY(!audio->isVisible() && !format->isVisible());
                     QCOMPARE(audio->isChecked(), sound);
-                    QCOMPARE(audioValue->text(), sound ? QStringLiteral("With system audio ·") : QStringLiteral("No audio ·"));
+                    QCOMPARE(audioValue->text(), sound ? QStringLiteral("With system audio") : QStringLiteral("No audio"));
                     QCOMPARE(formatValue->text(), format->currentText());
-                    for (auto* label : {bar.findChild<QLabel*>("target"), audioValue, formatValue}) {
+                    auto* facts = bar.findChild<QLabel*>("recordingFacts");
+                    QVERIFY(facts);
+                    const auto expected = QStringList{barOptions().targetLabel, audioValue->text(), formatValue->text()}.join(" · ");
+                    QCOMPARE(facts->text(), expected);
+                    QVERIFY(!bar.findChild<QPushButton*>("stop")->icon().isNull());
+                    for (auto* label : {facts}) {
                         QVERIFY(label && label->isVisible() && label->isEnabled());
                         QCOMPARE(label->palette().color(QPalette::WindowText), putgd::Theme::current().textMuted);
                         QVERIFY(putgd::Theme::contrast(label->palette().color(QPalette::WindowText), putgd::Theme::current().bg) >= 4.5);
