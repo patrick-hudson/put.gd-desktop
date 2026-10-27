@@ -391,6 +391,9 @@ int main(int argc,char** argv){
   {auto* add=review.findChild<QToolButton*>("addMask");add->menu()->popup(add->mapToGlobal(QPoint(0,add->height())));putgd::test::settle(100);if(!shot(*add->menu(),"31d-review-add-mask-menu"))return 2;add->menu()->close();}
   {QComboBox* formats=nullptr;for(auto* combo:review.findChildren<QComboBox*>())if(combo->accessibleName()=="Output format")formats=combo;if(!formats)return 2;formats->showPopup();putgd::test::settle(100);if(!shot(*formats->view()->window(),"31e-review-format-menu"))return 2;formats->hidePopup();}
   review.drive({{"action","dismissStatus"}});review.drive({{"action","format"},{"format","mp4"},{"codec","h264"}});
+  review.drive({{"action","format"},{"format","gif"}});if(!shot(review,"31f-review-gif-audio")||!inspected(review,"31f-review-gif-audio"))return 2;
+  review.drive({{"action","format"},{"format","mp4"},{"codec","h264"}});if(!shot(review,"31g-review-restored-audio")||!inspected(review,"31g-review-restored-audio"))return 2;
+  {auto silentOptions=o;silentOptions.audioRecorded=false;record::ReviewWindow silent(silentOptions,config);silent.show();if(!shot(silent,"31h-review-no-audio")||!inspected(silent,"31h-review-no-audio"))return 2;}
   // A refresh that fails (there is no clip): the earlier frame is dimmed and named.
   review.drive({{"action","seek"},{"time",16000000}});review.drive({{"action","retryPreview"}});if(!shot(review,"40-review-preview-error")||!inspected(review,"40-review-preview-error"))return 2;
   if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),16000000);
