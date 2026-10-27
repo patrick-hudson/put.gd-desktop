@@ -1,5 +1,6 @@
 #include <QDateTime>
 #include <QAccessible>
+#include <QCursor>
 #include <QAction>
 #include "platform/HostOpen.h"
 #include <QDateEdit>
@@ -788,6 +789,7 @@ private slots:
   emit list->customContextMenuRequested(list->visualRect(model->index(1)).center());
   QVERIFY2(offered.contains("Copy links")&&offered.contains("Delete from destination…")&&offered.contains("Clear selection")&&offered.contains("Copy details"),qPrintable(offered.join("|")));QCOMPARE(selectedInMenu,2);QCOMPARE(list->selectionModel()->selectedRows().size(),2);
   auto* collective=window.findChild<QToolButton*>("historySelectionMore");QVERIFY(collective->isVisible());QCOMPARE(collective->text(),QString("Copy details"));collective->click();QCOMPARE(QJsonDocument::fromJson(QApplication::clipboard()->text().toUtf8()).array().size(),2);QCOMPARE(list->selectionModel()->selectedRows().size(),2);
+  const auto previousCursor=QCursor::pos();auto restoreCursor=qScopeGuard([previousCursor]{QCursor::setPos(previousCursor);});const auto hover=list->visualRect(model->index(1)).center();QCursor::setPos(list->viewport()->mapToGlobal(hover));QTest::mouseMove(list->viewport(),hover);list->viewport()->update();
   auto* rowMore=window.findChild<QToolButton*>("historyRowMore");PUTGD_TRY_VERIFY(rowMore->isVisible());QVERIFY(rowMore->accessibleName().startsWith("More actions for "));QTimer::singleShot(0,list,[&]{for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget);menu&&menu->isVisible()){QCOMPARE(list->selectionModel()->selectedRows().size(),1);menu->close();}});rowMore->click();QCOMPARE(list->selectionModel()->selectedRows().size(),1);
   list->selectionModel()->select(QItemSelection(model->index(0),model->index(1)),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->selectionModel()->setCurrentIndex(model->index(1),QItemSelectionModel::NoUpdate);
   const int copies=source.copies;window.findChild<QPushButton*>("historyCopyLinks")->click();PUTGD_TRY_COMPARE(source.copies,copies+1);{auto copied=source.copied.text.split('\n');copied.sort();QCOMPARE(copied,links);}
