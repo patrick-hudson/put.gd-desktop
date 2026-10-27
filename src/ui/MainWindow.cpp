@@ -151,7 +151,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  // is a tab stop whose Enter opens the full text.
  auto* summary=new Graphite::ElidedLabel(outputGroup);destination_=summary;destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"secondary");summary->setRevealable(true);summary->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);outputRow->addWidget(destination_,1);
  auto* changeOutput=new QPushButton("Change output…",outputGroup);changeOutput->setObjectName("changeCaptureOutput");VisualStyle::role(changeOutput,"link");changeOutput->setCursor(Qt::PointingHandCursor);outputRow->addWidget(changeOutput);outputRow->addStretch(0);
- statusBar()->addWidget(outputGroup,1);
+ statusBar()->addWidget(outputGroup,1);updateAvailability();
  // The running build, from the resident identity About also shows. Stable and
  // nightly builds link to their GitHub release; development builds are text.
  version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);VisualStyle::role(version_,"meta");
@@ -190,7 +190,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    details<<labels.value(action,action)+": "+output+(document["archive"].toObject()["keepUploads"].toBool()?QString{}:QString(" · No local copy"));
   }
   label=mixed?QString("Outputs vary by action…"):"Default output: "+defaultName;
-  destination_->setText(label);static_cast<Graphite::ElidedLabel*>(destination_)->setRevealText(details.join("\n\n"));destination_->setAccessibleName(label);destination_->setAccessibleDescription("Press Enter to show each action's destination, sharing and local copy behavior.");destination_->setToolTip(details.join("\n"));updateSaveStatus();
+  destination_->setText(label);static_cast<Graphite::ElidedLabel*>(destination_)->setRevealText(details.join("\n\n"));destination_->setAccessibleName("Show output details");destination_->setAccessibleDescription(details.join("\n")+"\nPress Enter to show each action's destination, sharing and local copy behavior.");destination_->setToolTip(details.join("\n"));updateSaveStatus();
  };
  connect(changeOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  connect(history_,&HistoryWindow::captureSettingsRequested,changeOutput,&QPushButton::click);
@@ -250,7 +250,7 @@ void MainWindow::fitBand(){
 }
 void MainWindow::updateAvailability(){
  QStringList unavailable,reasons;for(auto* button:actionButtons_){const auto reason=unavailableOutput(session_.document(),button->property("captureAction").toString());if(reason.isEmpty())continue;unavailable<<button->accessibleName();if(!reasons.contains(reason))reasons<<reason;}
- const auto message=unavailable.isEmpty()?QString{}:unavailable.size()==actionButtons_.size()?(reasons.size()==1&&reasons.first().startsWith("No output")?QString("No output is enabled. Choose a destination or enable local copies."):reasons.join(" ")):"Choose an output for: "+unavailable.join(", ")+".";outputWarningText_->setText(message);outputWarningText_->setAccessibleDescription(message+" Opens Settings → Capture.");const auto* recovery=findChild<QWidget*>("actionRecoveryNotification");outputWarning_->setVisible(!unavailable.isEmpty()&&!(recovery&&!recovery->isHidden()&&recovery->property("outputRecovery").toBool()));
+ const auto message=unavailable.isEmpty()?QString{}:unavailable.size()==actionButtons_.size()?(reasons.size()==1&&reasons.first().startsWith("No output")?QString("No output is enabled. Choose a destination or enable local copies."):reasons.join(" ")):"Choose an output for: "+unavailable.join(", ")+".";outputWarningText_->setText(message);outputWarningText_->setAccessibleDescription(message+" Opens Settings → Capture.");const auto* recovery=findChild<QWidget*>("actionRecoveryNotification");outputWarning_->setVisible(!unavailable.isEmpty()&&!(recovery&&!recovery->isHidden()&&recovery->property("outputRecovery").toBool()));if(auto* change=findChild<QPushButton*>("changeCaptureOutput"))change->setVisible(outputWarning_->isHidden()&&!(recovery&&!recovery->isHidden()&&recovery->property("outputRecovery").toBool()));
 }
 void MainWindow::showActionFailure(const QString& action,const Error& error){
  const bool output=error.code=="output_required",local=error.code=="archive_failed";
