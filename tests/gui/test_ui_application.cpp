@@ -417,7 +417,7 @@ private slots:
   auto build=snapshot["build"].toObject();build["version"]="26.1231.99999-nightly";build["dirty"]=false;snapshot["build"]=build;fixture.session.applySnapshot(snapshot);
   auto* version=window.findChild<QPushButton*>("appVersionLink");QVERIFY(version);PUTGD_TRY_VERIFY(version->isVisible());
   auto* update=window.findChild<QPushButton*>("updateAvailable");auto* output=window.findChild<QLabel*>("captureOutputSummary");auto* navigation=window.findChild<QTabBar*>("mainNavigation");auto* band=window.findChild<QWidget*>("commandBand");
-  QVERIFY(update&&output&&navigation&&band);PUTGD_TRY_VERIFY(update->isVisible());PUTGD_TRY_COMPARE(window.size(),size);QVERIFY2(!output->text().contains('\n')&&output->text().contains("1 action exception"),qPrintable(output->text()));
+  QVERIFY(update&&output&&navigation&&band);PUTGD_TRY_VERIFY(update->isVisible());PUTGD_TRY_COMPARE(window.size(),size);QVERIFY2(!output->text().contains('\n')&&output->text()=="Outputs vary by action…",qPrintable(output->text()));
   Q_UNUSED(scrolls);
   // Every capture action keeps its own visible button at every width (narrow
   // bands show icons, named in tooltips); Capture region has no duplicate menu.
@@ -432,6 +432,7 @@ private slots:
    return {};
   };
   QString found;QVERIFY2(putgd::test::waitFor([&]{found=problem();return found.isEmpty();}),qPrintable(found));
+  QVERIFY(version->height()>=32);QVERIFY(window.findChild<QPushButton*>("changeCaptureOutput")->height()>=32);
   QVERIFY2(version->height()>=version->fontMetrics().lineSpacing(),qPrintable(QString("version link %1 px for a %2 px line").arg(version->height()).arg(version->fontMetrics().lineSpacing())));
   QVERIFY(window.rect().contains(QRect(version->mapTo(&window,QPoint()),version->size())));
  }

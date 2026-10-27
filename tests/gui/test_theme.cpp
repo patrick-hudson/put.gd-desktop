@@ -6,6 +6,9 @@
 #include "ui/VisualStyle.h"
 #include "ui/Graphite.h"
 #include <QApplication>
+#include <QAccessible>
+#include <QClipboard>
+#include "platform/HostOpen.h"
 #include <QCheckBox>
 #include <QRadioButton>
 #include <QStyleOptionButton>
@@ -308,6 +311,12 @@ private slots:
         const QString full = "Capture output: Shared link · Production screenshots for customer support + local copy · 2 action exceptions";
         summary->setText(full);
         summary->setRevealable(true);
+        auto* interface = QAccessible::queryAccessibleInterface(summary);
+        QVERIFY(interface);
+        QCOMPARE(interface->role(), QAccessible::Button);
+        auto* actions = interface->actionInterface();
+        QVERIFY(actions);
+        QVERIFY(actions->actionNames().contains(QAccessibleActionInterface::pressAction()));
         auto* heading = new Graphite::ElidedLabel(&window);
         heading->setText("All items");
         layout->addWidget(before);
@@ -335,6 +344,47 @@ private slots:
         QTest::mouseClick(summary, Qt::LeftButton);
         QVERIFY(summary->fullTextPopup() && summary->fullTextPopup()->isVisible());
         summary->fullTextPopup()->close();
+        putgd::test::settle(20);
+        summary->setRevealText("Resolved action outputs");
+        actions->doAction(QAccessibleActionInterface::pressAction());
+        QVERIFY(summary->fullTextPopup());
+        QCOMPARE(summary->fullTextPopup()->findChild<QLabel*>("elidedLabelFullTextValue")->text(), QString("Resolved action outputs"));
+        summary->fullTextPopup()->close();
+        QCOMPARE(QAccessible::queryAccessibleInterface(heading)->role(), QAccessible::StaticText);
+    }
+    void browserFailureCopiesExactLinkAndRetryClearsIt() {
+        QWidget window;
+        auto* layout = new QVBoxLayout(&window);
+        auto* feedback = new Graphite::BrowserFeedback(&window);
+        layout->addWidget(feedback);
+        window.show();
+        const QUrl refused("unsupported://synthetic-browser-link/path?value=one%20two");
+        host::openLink(refused, feedback->opening(refused));
+        QVERIFY(feedback->isVisible());
+        QVERIFY(feedback->findChild<QLabel*>()->text().contains("Couldn't open the browser"));
+        auto* copy = feedback->findChild<QPushButton*>();
+        QCOMPARE(copy->text(), QString("Copy link"));
+        copy->click();
+        QCOMPARE(qApp->clipboard()->text(), refused.toString(QUrl::FullyEncoded));
+        auto earlier = feedback->opening(QUrl("https://example.invalid/earlier"));
+        const QUrl latest("https://example.invalid/latest");
+        auto current = feedback->opening(latest);
+        earlier({{"opened", false}});
+        QVERIFY(feedback->isHidden());
+        current({{"opened", false}});
+        QVERIFY(feedback->isVisible());
+        copy->click();
+        QCOMPARE(qApp->clipboard()->text(), latest.toString(QUrl::FullyEncoded));
+        feedback->clear();
+        current({{"opened", false}});
+        QVERIFY(feedback->isHidden());
+        QUrl opened;
+        host::setTestOpener([&](const QUrl& url) { opened = url; });
+        auto restore = qScopeGuard([] { host::setTestOpener({}); });
+        const QUrl accepted("https://example.invalid/release");
+        host::openLink(accepted, feedback->opening(accepted));
+        QCOMPARE(opened, accepted);
+        QVERIFY(feedback->isHidden());
     }
     // #300: a checked, disabled check box or radio button still looks checked:
     // a muted tick or dot on the accent-tinted fill, not an empty box.

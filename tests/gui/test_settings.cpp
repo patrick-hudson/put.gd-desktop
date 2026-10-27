@@ -86,6 +86,35 @@ class SettingsGui:public QObject {
 public slots:
  void recordProtonUrl(const QUrl& url){openedUrls_.append(url);}
 private slots:
+ void outputSummaryDescribesDefaultAndResolvedExceptions(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();
+  auto archive=doc["archive"].toObject();archive["keepUploads"]=false;doc["archive"]=archive;doc["captureDefaults"]=QJsonObject{{"destination","local"},{"profileId",QJsonValue::Null},{"publicationMode","default"}};
+  auto actions=doc["actions"].toObject();for(const auto& name:Settings::actionNames()){auto a=actions[name].toObject();a["destination"]="default";a["profileId"]=QJsonValue::Null;actions[name]=a;}doc["actions"]=actions;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.show();
+  auto* summary=window.findChild<Graphite::ElidedLabel*>("captureOutputSummary");QCOMPARE(summary->text(),QString("Default output: No output enabled"));
+  auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["provider"]="proton-drive";profile["settings"]=ProtonProvider::defaults();profiles[0]=profile;doc["profiles"]=profiles;
+  auto region=actions["region"].toObject();region["destination"]="upload";region["profileId"]=profile["id"];region["publicationMode"]="private";actions["region"]=region;doc["actions"]=actions;QVERIFY(service.save(doc,service.revision()));
+  PUTGD_TRY_COMPARE(summary->text(),QString("Outputs vary by action…"));summary->reveal();auto* popup=summary->fullTextPopup();QVERIFY(popup);const auto text=popup->findChild<QLabel*>("elidedLabelFullTextValue")->text();
+  QVERIFY(text.contains("Default output: No output enabled"));QVERIFY(text.contains("Capture region: Private upload · "+profile["label"].toString()));QVERIFY(text.contains("Record screen: Private upload · "+profile["label"].toString()));QVERIFY(text.contains("Upload clipboard: No output enabled"));QCOMPARE(text.count("No local copy"),Settings::invocableActionNames().size());popup->close();
+ }
+ void outputRecoveryRevealsAffectedOverrides(){
+  for(const int count:{1,2}){
+   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto archive=doc["archive"].toObject();archive["keepUploads"]=false;doc["archive"]=archive;auto actions=doc["actions"].toObject();const QStringList affected=count==1?QStringList{"clipboard"}:QStringList{"clipboard","window"};
+   for(const auto& name:affected){auto a=actions[name].toObject();a["destination"]="local";a["profileId"]=QJsonValue::Null;actions[name]=a;}doc["actions"]=actions;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.show();
+   auto* choose=window.findChild<QPushButton*>("chooseCommandOutput");QVERIFY(choose->isVisible());choose->click();PUTGD_TRY_VERIFY(window.findChild<QToolButton*>("captureExceptionsToggle")->isChecked());
+   auto* focused=qobject_cast<QComboBox*>(QApplication::focusWidget());PUTGD_TRY_VERIFY(focused=qobject_cast<QComboBox*>(QApplication::focusWidget()));QVERIFY(affected.contains(focused->objectName().mid(7).toLower()));QVERIFY(focused->isEnabled());QVERIFY(focused->isVisible());
+   for(const auto& action:Settings::invocableActionNames()){const auto title=action.left(1).toUpper()+action.mid(1);QCOMPARE(window.findChild<QLabel*>("captureSummary"+title)->property("outputNeedsAttention").toBool(),affected.contains(action));}
+   focused->setCurrentIndex(focused->findData("development-s3"));PUTGD_TRY_VERIFY(!window.findChild<QLabel*>("captureSummary"+focused->objectName().mid(7))->property("outputNeedsAttention").toBool());
+  }
+ }
+ void checkboxAccessibilityKeepsActionAndCategory(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();
+  for(const auto& [name,category]:QList<QPair<QString,QString>>{{"launchAtLogin","Startup"},{"keepUploadCopies","Each capture"},{"notifications","Notifications"}}){auto* check=window.findChild<QCheckBox*>(name);QCOMPARE(check->accessibleName(),check->text());QVERIFY(check->accessibleDescription().startsWith(category+". "));QVERIFY(check->accessibleDescription().size()>category.size()+3);}
+  QWidget host;QCheckBox check("Do the action",&host);VisualStyle::settingRow("Category","Help text",&check,&host);QCOMPARE(check.accessibleName(),check.text());QCOMPARE(check.accessibleDescription(),QString("Category. Help text"));
+ }
+ void renameDestinationSelectsInlineTitleAndAutosaves(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* title=window.findChild<QLineEdit*>("destinationLabel");auto* rename=window.findChild<QAction*>("renameDestination");QVERIFY(rename);rename->trigger();PUTGD_TRY_COMPARE(QApplication::focusWidget(),title);QCOMPARE(title->selectedText(),title->text());QTest::keyClicks(title,"Renamed destination");QTest::keyClick(title,Qt::Key_Tab);PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[0].toObject()["label"].toString(),QString("Renamed destination"));
+ }
  void storeEligibilityPreservesTypedSecrets_data(){
   QTest::addColumn<bool>("password");QTest::newRow("credentials")<<false;QTest::newRow("link-password")<<true;
  }
@@ -110,7 +139,7 @@ private slots:
   fixture.client.failOnce["settings.save"]={"synthetic_save_refused","Synthetic save refusal",{}};label->setText("Retry destination");QMetaObject::invokeMethod(label,"editingFinished",Qt::DirectConnection);window.settings()->flushAutosave();PUTGD_TRY_VERIFY(window.settings()->saveViewState()["autosaveBlocked"].toBool());QVERIFY(!store->isEnabled());QVERIFY(reason->text().contains("Retry saving"));QCOMPARE(field->text(),QString("synthetic-typed-secret"));window.findChild<QPushButton*>("retryDestinationAutosave")->click();PUTGD_TRY_VERIFY(store->isEnabled());
   auto external=service.document();auto prefs=external["preferences"].toObject();prefs["notifications"]=!prefs["notifications"].toBool();external["preferences"]=prefs;QVERIFY(service.save(external,service.revision()));
   PUTGD_TRY_VERIFY(window.settings()->saveViewState()["conflict"].toBool());QVERIFY(!store->isEnabled());QVERIFY(reason->text().contains("conflict"));
-  auto* reload=window.findChild<QPushButton*>(password?"reloadPasswordConflict":"reloadCredentialConflict");QVERIFY(reload&&!reload->isHidden());auto* scroll=window.findChild<QScrollArea*>("destinationScroll");auto* banner=window.findChild<QWidget*>("destinationStatusRow");QVERIFY(!scroll->isAncestorOf(banner));scroll->verticalScrollBar()->setValue(scroll->verticalScrollBar()->maximum());PUTGD_TRY_VERIFY(banner->isVisible());QVERIFY(window.rect().contains(QRect(banner->mapTo(&window,QPoint()),banner->size())));
+  QVERIFY(!window.findChild<QPushButton*>("reloadCredentialConflict"));QVERIFY(!window.findChild<QPushButton*>("reloadPasswordConflict"));QVERIFY(reason->text().contains("unavailable until this conflict is resolved"));auto* reload=window.findChild<QPushButton*>("reloadDestinationConflict");QVERIFY(reload&&!reload->isHidden());auto* scroll=window.findChild<QScrollArea*>("destinationScroll");auto* banner=window.findChild<QWidget*>("destinationStatusRow");QVERIFY(!scroll->isAncestorOf(banner));scroll->verticalScrollBar()->setValue(scroll->verticalScrollBar()->maximum());PUTGD_TRY_VERIFY(banner->isVisible());QVERIFY(window.rect().contains(QRect(banner->mapTo(&window,QPoint()),banner->size())));
   QVERIFY(QMetaObject::invokeMethod(store,"clicked",Qt::DirectConnection));QCOMPARE(starts,0);QCOMPARE(field->text(),QString("synthetic-typed-secret"));QCOMPARE(access->text(),QString("synthetic-access"));QCOMPARE(token->text(),QString("synthetic-token"));
   const auto confirmation=acceptNextConfirmation();reload->click();QVERIFY(confirmation->startsWith("Reload settings from file\n"));PUTGD_TRY_VERIFY(!window.settings()->saveViewState()["conflict"].toBool());QVERIFY(field->text().isEmpty());PUTGD_TRY_VERIFY(reload->isHidden());
  }
@@ -145,6 +174,14 @@ private slots:
   const auto original=QApplication::font();auto restore=qScopeGuard([&]{QApplication::setFont(original);});
   for(const int pixels:{14,21}){auto font=original;font.setPixelSize(pixels);QApplication::setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
    QCOMPARE(window.findChild<QLabel*>("appVersion")->font().pixelSize(),Graphite::font(Graphite::Type::metadata).pixelSize());QCOMPARE(window.findChild<QPushButton*>("appVersionLink")->font().pixelSize(),Graphite::font(Graphite::Type::metadata).pixelSize());auto* summary=window.findChild<Graphite::ElidedLabel*>("captureOutputSummary");QCOMPARE(summary->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());QVERIFY(summary->font().pixelSize()>=pixels);auto* band=window.findChild<QStatusBar*>("statusBand");QVERIFY(band);QVERIFY(summary->height()>=summary->fontMetrics().height());QVERIFY(band->rect().contains(QRect(summary->mapTo(band,QPoint()),summary->size())));QCOMPARE(window.width(),1060);
+   auto* change=window.findChild<QPushButton*>("changeCaptureOutput");QVERIFY(change->height()>=32);QVERIFY(summary->height()>=32);QVERIFY(band->height()>=change->height());
+   window.settings()->showCaptureSettings();window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);
+   const auto scheme=Theme::scheme();Theme::setScheme(Theme::Scheme::Light);
+   for(const auto& action:Settings::invocableActionNames()){
+    auto name=action.left(1).toUpper()+action.mid(1);auto* override=window.findChild<QCheckBox*>("override"+name);if(!override->isChecked())override->click();
+    for(const auto& prefix:QStringList{"profile","publication"}){auto* control=window.findChild<QComboBox*>(prefix+name);control->ensurePolished();QCOMPARE(control->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());Graphite::setLocked(control,true);Graphite::setLocked(control,false);QCOMPARE(control->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());QCOMPARE(control->sizeHint().height(),window.findChild<QComboBox*>("defaultCaptureDestination")->sizeHint().height());}
+   }
+   Theme::setScheme(scheme);
    auto* check=window.findChild<QCheckBox*>("notifications");QVERIFY(check->sizeHint().height()>=32);QCOMPARE(check->style()->pixelMetric(QStyle::PM_IndicatorWidth),17);
   }
  }
