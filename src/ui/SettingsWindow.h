@@ -11,6 +11,7 @@
 #include <QPointer>
 #include <QSet>
 #include <QPixmap>
+#include <QUrl>
 class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;class QProgressBar;
 namespace putgd {
 class ShortcutEditor;
@@ -31,6 +32,8 @@ public:
  void showUpdates();
  QWidget* destinationsPage()const{return destinationPage_;}
  void clearCredentialInputs();
+ void retryProtonBrowser();
+ void protonBrowserFinished(const QString& setupId,const QJsonObject& result);
  void refreshDiagnostics();
  void activateDestinations(bool forceRefresh=false);
  // A finished, non-error message stays with the page it is about: leaving
@@ -150,6 +153,7 @@ private:
  QCheckBox* protonShare_=nullptr;QLineEdit* protonPassword_=nullptr;
  QWidget* protonPanel_=nullptr;QLabel *protonAccount_=nullptr,*protonFolderStatus_=nullptr;
  QHash<QString,QComboBox*> publicationModes_;
+ QUrl pendingProtonUrl_;QString pendingProtonSetup_;QPushButton* protonBrowserRetry_=nullptr;bool protonBrowserOpening_=false;
  QString protonAccountUid_,protonAccountEmail_;QSet<QString> folderRequests_;bool protonBrowserOpened_=false;
  std::function<void()> updateProviderVisibility_;
  QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_,*uploadClipboard_,*appearance_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_,*unlockAtStartup_;

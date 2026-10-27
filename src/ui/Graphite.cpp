@@ -1654,25 +1654,6 @@ void alignForms(QWidget* page) {
         for (int row = 0; row < form->rowCount(); ++row)
             if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) gutter = std::max(gutter, item->widget()->sizeHint().width());
     gutter = std::min(gutter, scaled(240));
-    // Too narrow for the gutter and a usable field (large text, a small
-    // window): every form on the page puts its labels above instead.
-    class FormMode final : public QObject {
-    public:
-        FormMode(QWidget* page, QList<QFormLayout*> forms, int needed) : QObject(page), forms_(std::move(forms)), needed_(needed) { page->installEventFilter(this); apply(page->width()); }
-    protected:
-        bool eventFilter(QObject* watched, QEvent* event) override {
-            if (event->type() == QEvent::Resize) apply(static_cast<QWidget*>(watched)->width());
-            return false;
-        }
-    private:
-        void apply(int width) {
-            const auto policy = width > 0 && width < needed_ ? QFormLayout::WrapAllRows : QFormLayout::DontWrapRows;
-            for (auto* form : forms_) if (form && form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);
-        }
-        QList<QFormLayout*> forms_;
-        int needed_;
-    };
-    new FormMode(page, forms, gutter + scaled(360) + 120);
     for (auto* form : forms) {
         for (int row = 0; row < form->rowCount(); ++row) {
             if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) item->widget()->setMinimumWidth(gutter);
@@ -1710,6 +1691,67 @@ void alignForms(QWidget* page) {
             }
         }
     }
+    // A page is one related group, but only visible rows set its requirement.
+    // Measure fields after their control sizing, and watch reflow and visibility.
+    class FormMode final : public QObject {
+    public:
+        FormMode(QWidget* page, const QList<QFormLayout*>& forms, int gutter)
+            : QObject(page), page_(page), forms_(forms), gutter_(gutter) {
+            page->installEventFilter(this);
+            if (page->parentWidget()) page->parentWidget()->installEventFilter(this);
+            for (auto* form : forms_) {
+                form->parentWidget()->installEventFilter(this);
+                form->setRowWrapPolicy(QFormLayout::WrapAllRows);
+            }
+            schedule();
+        }
+    protected:
+        bool eventFilter(QObject*, QEvent* event) override {
+            if (event->type() == QEvent::Resize || event->type() == QEvent::LayoutRequest || event->type() == QEvent::Show)
+                schedule();
+            return false;
+        }
+    private:
+        void schedule() {
+            if (pending_) return;
+            pending_ = true;
+            QTimer::singleShot(0, this, [this] { pending_ = false; apply(); });
+        }
+        void apply() {
+            bool stack = false;
+            const int pageWidth = page_->parentWidget() ? std::min(page_->width(), page_->parentWidget()->width()) : page_->width();
+            for (auto* form : forms_) {
+                if (!form->parentWidget()->isVisibleTo(page_)) continue;
+                int fieldWidth = 0;
+                bool labelled = false;
+                for (int row = 0; row < form->rowCount(); ++row) {
+                    if (!form->isRowVisible(row)) continue;
+                    auto* label = form->itemAt(row, QFormLayout::LabelRole);
+                    auto* field = form->itemAt(row, QFormLayout::FieldRole);
+                    if (!label || !field) continue;
+                    labelled = true;
+                    fieldWidth = std::max(fieldWidth, field->minimumSize().width());
+                }
+                if (!labelled) continue;
+                int margins = 0;
+                for (auto* owner = static_cast<QObject*>(form); owner && !qobject_cast<QWidget*>(owner); owner = owner->parent())
+                    if (auto* layout = qobject_cast<QLayout*>(owner)) margins += layout->contentsMargins().left() + layout->contentsMargins().right();
+                for (auto* widget = form->parentWidget()->parentWidget(); widget; widget = widget->parentWidget()) {
+                    if (auto* layout = widget->layout()) margins += layout->contentsMargins().left() + layout->contentsMargins().right();
+                    if (widget == page_) break;
+                }
+                const int available = std::min(form->geometry().width(), pageWidth - margins);
+                stack |= available < gutter_ + std::max(0, form->horizontalSpacing()) + fieldWidth;
+            }
+            const auto policy = stack ? QFormLayout::WrapAllRows : QFormLayout::DontWrapRows;
+            for (auto* form : forms_) if (form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);
+        }
+        QWidget* page_;
+        QList<QFormLayout*> forms_;
+        int gutter_;
+        bool pending_ = false;
+    };
+    new FormMode(page, forms, gutter);
 }
 namespace {
 class ColumnSwitch final : public QObject {
