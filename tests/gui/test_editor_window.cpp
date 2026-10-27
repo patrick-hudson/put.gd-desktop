@@ -49,10 +49,30 @@ private slots:
  void zoomMenuAndAgentCommandsShareTheSameView(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* zoom=window.findChild<QToolButton*>("editorZoom");QVERIFY(zoom&&zoom->menu());QCOMPARE(zoom->accessibleName(),QString("Zoom"));
-  const auto choices=zoom->menu()->actions();QCOMPARE(choices.size(),4);
+  const auto choices=zoom->menu()->actions();QCOMPARE(choices.size(),7);
   for(int i=1;i<4;++i){choices[i]->trigger();const auto percent=choices[i]->data().toInt();QCOMPARE(window.viewState()["zoomPercent"].toInt(),percent);QVERIFY(!window.viewState()["fitted"].toBool());QVERIFY(choices[i]->isChecked());}
   QString code,message;window.viewCommand({{"action","zoom"},{"percent",50}},code,message);QVERIFY(code.isEmpty());QVERIFY(choices[1]->isChecked());
-  choices[0]->trigger();QVERIFY(window.viewState()["fitted"].toBool());QCOMPARE(zoom->text(),QString("Fit"));QVERIFY(choices[0]->isChecked());
+  choices[0]->trigger();QVERIFY(window.viewState()["fitted"].toBool());QVERIFY(zoom->text().startsWith("Fit · "));QVERIFY(zoom->text().endsWith(QString::number(qRound(window.canvas().zoom()*100))+"%"));QVERIFY(choices[0]->isChecked());
+  const auto fitted=window.canvas().zoom();choices[5]->trigger();QVERIFY(window.canvas().zoom()>fitted);QVERIFY(!window.viewState()["fitted"].toBool());choices[6]->trigger();QVERIFY(qAbs(window.canvas().zoom()-fitted)<0.0001);
+  QVERIFY(!choices[0]->shortcut().isEmpty());QVERIFY(!choices[2]->shortcut().isEmpty());QVERIFY(!choices[5]->shortcut().isEmpty());QVERIFY(!choices[6]->shortcut().isEmpty());
+  const auto buttons=window.findChild<QWidget*>("editorToolbar")->findChildren<QToolButton*>();for(auto* button:buttons){QVERIFY(!button->toolTip().startsWith("Fit to window"));QVERIFY(!button->toolTip().startsWith("Actual size"));}
+ }
+ void compactLargeTextKeepsCanvasShareAndStableFeedback(){
+  // Install the style first, then simulate a desktop's enlarged application font.
+  {EditDocument doc(canvasImage());EditorWindow window(doc);}
+  const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});auto larger=previous;larger.setPixelSize(qRound(Graphite::font().pixelSize()*1.5));QApplication::setFont(larger);
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Private upload to Project archive");window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  QVERIFY(window.canvas().width()>=window.width()*0.6);QVERIFY(window.findChild<QWidget*>("editorSide")->width()<=Graphite::scaled(320));
+  const auto canvas=window.canvas().geometry();
+  for(const auto tool:{Tool::Blur,Tool::Crop,Tool::Text,Tool::Select}){window.selectTool(tool);QApplication::processEvents();QCOMPARE(window.canvas().geometry(),canvas);}
+  window.showSaveFailed("/synthetic/denied.png",QString("Permission denied. ")+QString("Your edits are kept. ").repeated(12));QApplication::processEvents();QCOMPARE(window.canvas().geometry(),canvas);
+  const auto footer=window.findChild<QWidget*>("editorFooter");auto* choose=window.findChild<QPushButton*>("chooseAnotherLocation");QVERIFY(choose->isVisible());QVERIFY(footer->rect().contains(QRect(choose->mapTo(footer,QPoint()),choose->size())));
+  window.findChild<QToolButton*>("editorSaveDetails")->click();auto* error=window.findChild<Graphite::ElidedLabel*>("editorSaveError");QVERIFY(error->fullTextPopup());QVERIFY(error->fullTextPopup()->isVisible());QCOMPARE(window.canvas().geometry(),canvas);error->fullTextPopup()->close();
+  window.dismissSavedCopy();QApplication::processEvents();QCOMPARE(window.canvas().geometry(),canvas);
+ }
+ void cropFieldsPrecedeThePrimaryAction(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1100,1000);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.selectTool(Tool::Crop);QApplication::processEvents();
+  auto* fields=window.findChild<QWidget*>("editorGeometry");auto* apply=window.findChild<QPushButton*>("applyCrop");auto* cancel=window.findChild<QPushButton*>("cancelCrop");QVERIFY(fields&&apply&&cancel);QCOMPARE(apply->property("visualRole").toString(),QString("primary"));QVERIFY(fields->mapTo(&window,fields->rect().bottomLeft()).y()<apply->mapTo(&window,QPoint()).y());QCOMPARE(apply->mapTo(&window,QPoint()).y(),cancel->mapTo(&window,QPoint()).y());
  }
  void geometryAndBlurUseTheWholePropertiesColumn(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1100,1000);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -61,15 +81,15 @@ private slots:
   QCOMPARE(x->y(),y->y());QCOMPARE(w->y(),h->y());QVERIFY(x->x()<y->x());QVERIFY(x->geometry().bottom()<w->y());
   for(auto* label:window.findChild<QWidget*>("editorGeometry")->findChildren<QLabel*>())if(label->buddy()){QVERIFY(label->geometry().bottom()<label->buddy()->y());QCOMPARE(label->x(),label->buddy()->x());}
   window.selectTool(Tool::Blur);QApplication::processEvents();auto* slider=window.findChild<QSlider*>("blurStrength");auto* value=window.findChild<QSpinBox*>("blurStrengthValue");
-  QVERIFY(slider->y()>value->geometry().bottom());QVERIFY(slider->width()>=slider->parentWidget()->width()-2);QVERIFY(window.findChild<QPushButton*>("removeMark")->property("graphiteFlush").toBool());QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("graphiteFlush").toBool());
+  QCOMPARE(slider->geometry().center().y(),value->geometry().center().y());QVERIFY(slider->x()>value->geometry().right());QVERIFY(slider->width()>0);auto* blurLabel=slider->parentWidget()->findChild<QLabel*>();QVERIFY(blurLabel->geometry().bottom()<value->y());QVERIFY(window.findChild<QPushButton*>("removeMark")->property("graphiteFlush").toBool());QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("graphiteFlush").toBool());
  }
  void footerFeedbackReplacesDestinationUntilDismissed(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Upload to Synthetic");window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* destination=window.findChild<QLabel*>("editorDestination");auto* feedback=window.findChild<QWidget*>("editorSaveFeedback");auto* footer=window.findChild<QWidget*>("editorFooter");
-  window.showSaved("/synthetic/copy.png");QApplication::processEvents();QVERIFY(!destination->isVisible());QVERIFY(feedback->isVisible());QVERIFY(footer->isAncestorOf(feedback));
+  const auto canvas=window.canvas().geometry();window.showSaved("/synthetic/copy.png");QApplication::processEvents();QCOMPARE(window.canvas().geometry(),canvas);QVERIFY(!destination->isVisible());QVERIFY(feedback->isVisible());QVERIFY(footer->isAncestorOf(feedback));
   window.findChild<QToolButton*>("dismissEditorSavedCopy")->click();QVERIFY(destination->isVisible());QVERIFY(!window.viewState()["saveFeedbackVisible"].toBool());QCOMPARE(window.viewState()["lastSave"].toObject()["status"].toString(),QString("saved"));
   window.showSaveFailed("/synthetic/copy.png",QString("Disk full. ")+QString("Free enough space, then try again. ").repeated(5));QApplication::processEvents();
-  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QVERIFY(!destination->isVisible());QVERIFY(error->text().startsWith("Couldn't save: Disk full."));PUTGD_TRY_VERIFY(error->height()>=error->heightForWidth(error->width()));
+  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QVERIFY(!destination->isVisible());QVERIFY(error->text().startsWith("Couldn't save: Disk full."));QVERIFY(!error->wordWrap());QCOMPARE(window.canvas().geometry(),canvas);
   QString code,message;window.viewCommand({{"action","dismissSavedCopy"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(destination->isVisible());QVERIFY(!feedback->isVisible());
  }
  void keyboardHelpIsBelowPropertiesAndAgentControllable(){
@@ -285,7 +305,7 @@ private slots:
  void toolbarShowsZoomAndDocumentKeepsTheSize(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,1100);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* zoom=window.findChild<QToolButton*>("editorZoom");QVERIFY(zoom);
-  QVERIFY(zoom->text()=="Fit"||QRegularExpression("^\\d+%$").match(zoom->text()).hasMatch());QCOMPARE(zoom->accessibleName(),QString("Zoom"));
+  QVERIFY(zoom->text().startsWith("Fit · ")||QRegularExpression("^\\d+%$").match(zoom->text()).hasMatch());QCOMPARE(zoom->accessibleName(),QString("Zoom"));
   auto* info=window.findChild<QLabel*>("editorDocumentInfo");QVERIFY(info);QVERIFY(info->text().contains("400 × 260 px"));
   for(auto* label:window.findChildren<QLabel*>())if(label!=info)QVERIFY2(!label->text().contains("400 × 260"),qPrintable(label->objectName()));
   QVERIFY(!window.findChild<QScrollArea*>("editorPropertiesScroll")->isAncestorOf(info));
@@ -340,11 +360,13 @@ private slots:
   auto state=window.viewState();QCOMPARE(state["lastSave"].toObject()["status"].toString(),QString("saved"));QCOMPARE(state["lastShowInFolder"].toObject()["opened"].toBool(),true);
   // A failure names the reason, keeps the draft and offers another location.
   window.showSaveFailed(dir.filePath("denied.png"),"Permission denied");
-  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error);QVERIFY(error->isVisible());QVERIFY(error->wordWrap());QVERIFY(!saved->isVisible());
+  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error);QVERIFY(error->isVisible());QVERIFY(!error->wordWrap());QVERIFY(!saved->isVisible());
   QVERIFY(error->text().contains("Permission denied",Qt::CaseInsensitive));QVERIFY(error->accessibleDescription().contains(QFileInfo(dir.filePath("denied.png")).absoluteFilePath()));
-  auto* target=window.findChild<Graphite::ElidedLabel*>("editorSaveTarget");QVERIFY(target&&target->isVisible());QVERIFY(target->text().contains("denied.png"));QVERIFY(target->revealable());
-  target->setFocus(Qt::TabFocusReason);QTest::keyClick(target,Qt::Key_Return);auto* popup=target->fullTextPopup();QVERIFY(popup&&popup->isVisible());
-  auto* full=popup->findChild<QLabel*>();QVERIFY(full);QCOMPARE(full->text(),QFileInfo(dir.filePath("denied.png")).absoluteFilePath());QVERIFY(full->textInteractionFlags()&Qt::TextSelectableByKeyboard);popup->close();
+  auto* target=window.findChild<Graphite::ElidedLabel*>("editorSaveTarget");QVERIFY(target&&target->isVisible());QVERIFY(target->text().contains("denied.png"));QVERIFY(!target->revealable());
+  auto* details=window.findChild<QToolButton*>("editorSaveDetails");QVERIFY(details&&details->isVisible());details->click();auto* popup=window.findChild<Graphite::ElidedLabel*>("editorSaveError")->fullTextPopup();QVERIFY(popup&&popup->isVisible());
+  auto* full=popup->findChild<QLabel*>("elidedLabelFullTextValue");QVERIFY(full);QVERIFY(full->text().contains(QFileInfo(dir.filePath("denied.png")).absoluteFilePath()));QVERIFY(full->text().contains("Permission denied"));QVERIFY(full->textInteractionFlags()&Qt::TextSelectableByKeyboard);QCOMPARE(popup->layout()->contentsMargins(),QMargins(8,8,8,8));popup->close();
+  QString detailsCode,detailsMessage;auto detailsState=window.viewCommand({{"action","saveDetails"}},detailsCode,detailsMessage);QVERIFY2(detailsCode.isEmpty(),qPrintable(detailsMessage));QVERIFY(detailsState["saveDetailsOpen"].toBool());
+  detailsState=window.viewCommand({{"action","saveDetails"}},detailsCode,detailsMessage);QVERIFY(detailsCode.isEmpty());QVERIFY(!detailsState["saveDetailsOpen"].toBool());
   QVERIFY(another->isVisible());QVERIFY(!show->isVisible());QCOMPARE(doc.shapes().size(),1);
   QCOMPARE(window.viewState()["lastSave"].toObject()["reason"].toString(),QString("Permission denied"));
   QString code,message;window.viewCommand({{"action","showSavedCopy"}},code,message);QCOMPARE(code,QString("editor_no_saved_copy"));
@@ -519,23 +541,22 @@ private slots:
   QVERIFY(window.findChild<QPushButton*>("editorSaveCopy")->isVisible());
   QCOMPARE(doc.shapes().size(),1);
  }
- // The footer never elides the destination: it fits beside the actions or
- // wraps on its own line above them, and it takes keyboard focus.
+ // The reserved footer slot keeps the whole destination above the actions.
  void footerKeepsTheWholeDestinationReadable(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Upload to Project archive");window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* destination=window.findChild<QLabel*>("editorDestination");QVERIFY(destination);QVERIFY(destination->focusPolicy()&Qt::TabFocus);
   QApplication::processEvents();
-  QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
+  QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());
   QVERIFY2(destination->width()>=destination->fontMetrics().horizontalAdvance(destination->text()),qPrintable(QString::number(destination->width())));
   const auto upload=window.findChild<QPushButton*>("editorUpload");
-  QCOMPARE(destination->geometry().center().y()/4,upload->geometry().center().y()/4);
+  QVERIFY(destination->geometry().bottom()<upload->geometry().top());
   const QString longName="Upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams";
   window.setDestination(longName);window.resize(760,560);QApplication::processEvents();
   QVERIFY2(destination->fontMetrics().horizontalAdvance(longName)>window.width()-400,qPrintable(QString::number(window.width())));
   QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());QVERIFY(destination->wordWrap());QVERIFY(destination->isVisible());
   QVERIFY(destination->geometry().bottom()<upload->geometry().top());QCOMPARE(destination->text(),longName);
   QVERIFY(destination->height()>=destination->heightForWidth(destination->width()));
-  window.resize(1400,700);QApplication::processEvents();QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
+  window.resize(1400,700);QApplication::processEvents();QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());
  }
  void removeMarkIsVisibleUndoableAndAgentControllable(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1100,900);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -575,7 +596,7 @@ private slots:
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   QTemporaryDir dir;const auto path=dir.filePath("missing.png");window.showSaved(path);
   QString code,message;auto state=window.viewCommand({{"action","showSavedCopy"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(!state["lastShowInFolder"].toObject()["opened"].toBool(true));
-  auto* error=window.findChild<QLabel*>("editorFolderError");QVERIFY(error&&error->isVisible());QVERIFY(error->text().contains("Copy its path instead"));
+  auto* error=window.findChild<QLabel*>("editorFolderError");QVERIFY(error&&error->isVisible());QVERIFY(error->text().contains("Use Copy path instead."));
   auto* copy=window.findChild<QPushButton*>("copySavedPath");QVERIFY(copy->isVisible());
   auto* scroll=window.findChild<QScrollArea*>("editorPropertiesScroll");
   if(scroll->isAncestorOf(error)){

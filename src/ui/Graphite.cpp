@@ -453,7 +453,11 @@ void Style::polish(QWidget* widget) {
         focusTooltips(button);
         if (!button->icon().isNull()) {
             auto base = button->property("graphiteIconBase").toSize();
-            if (!base.isValid()) { base = button->iconSize(); if (base == QSize(scaled(Metric::icon), scaled(Metric::icon))) base = QSize(Metric::icon, Metric::icon); button->setProperty("graphiteIconBase", base); }
+            if (!base.isValid()) {
+                base = button->iconSize();
+                if (base == QSize(scaled(Metric::icon), scaled(Metric::icon))) base = QSize(Metric::icon, Metric::icon);
+                button->setProperty("graphiteIconBase", base);
+            }
             button->setIconSize(QSize(scaled(base.width()), scaled(base.height())));
         }
     }
@@ -1763,7 +1767,7 @@ QMessageBox* confirm(QWidget* parent, const QString& title, const QString& text,
         QCoreApplication::sendEvent(buttons, &change);
     }
     box->setTextFormat(Qt::PlainText);
-    if (split >= 0) box->setInformativeText(text.mid(split + 1));
+    if (split >= 0) box->setInformativeText(text.mid(split + 1).trimmed());
     if (auto* question = box->findChild<QLabel*>("qt_msgbox_label")) VisualStyle::role(question, "strong");
     if (auto* consequence = box->findChild<QLabel*>("qt_msgbox_informativelabel")) VisualStyle::role(consequence, "secondary");
     if (auto* grid = qobject_cast<QGridLayout*>(box->layout())) grid->setVerticalSpacing(4);

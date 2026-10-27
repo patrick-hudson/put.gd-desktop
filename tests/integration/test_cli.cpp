@@ -28,7 +28,10 @@ private slots:
   const auto closed=request("editor.view",{{"id",id},{"action","keyboardHelp"}});QVERIFY(closed["ok"].toBool());QVERIFY(!closed["result"].toObject()["keyboardHelp"].toObject()["open"].toBool());QCOMPARE(source.reads,1);
   const auto saved=request("editor.saveCopy",{{"id",id},{"path",d.filePath("synthetic-copy.png")}});QVERIFY2(saved["ok"].toBool(),QJsonDocument(saved).toJson().constData());
   QVERIFY(request("editor.view",{{"id",id}})["result"].toObject()["saveFeedbackVisible"].toBool());
-  const auto dismissed=request("editor.view",{{"id",id},{"action","dismissSavedCopy"}});QVERIFY2(dismissed["ok"].toBool(),QJsonDocument(dismissed).toJson().constData());QVERIFY(!dismissed["result"].toObject()["saveFeedbackVisible"].toBool());QCOMPARE(dismissed["result"].toObject()["lastSave"].toObject()["status"].toString(),QString("saved"));
+  const auto failed=request("editor.saveCopy",{{"id",id},{"path",d.filePath("missing/denied.png")}});QVERIFY(!failed["ok"].toBool());
+  auto details=request("editor.view",{{"id",id},{"action","saveDetails"}});QVERIFY2(details["ok"].toBool(),QJsonDocument(details).toJson().constData());QVERIFY(details["result"].toObject()["saveDetailsOpen"].toBool());
+  details=request("editor.view",{{"id",id},{"action","saveDetails"}});QVERIFY(details["ok"].toBool());QVERIFY(!details["result"].toObject()["saveDetailsOpen"].toBool());
+  const auto dismissed=request("editor.view",{{"id",id},{"action","dismissSavedCopy"}});QVERIFY2(dismissed["ok"].toBool(),QJsonDocument(dismissed).toJson().constData());QVERIFY(!dismissed["result"].toObject()["saveFeedbackVisible"].toBool());QCOMPARE(dismissed["result"].toObject()["lastSave"].toObject()["status"].toString(),QString("failed"));
 
  }
  void recordToggleWaitsForASlowStopThroughTheRealClient(){

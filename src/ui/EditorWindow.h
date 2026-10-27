@@ -115,7 +115,7 @@ private:
  Graphite::ElidedLabel* saveTarget_=nullptr;
  QSpinBox* strengthValue_=nullptr;
  QLabel *hint_=nullptr,*message_=nullptr,*toolTitle_=nullptr,*toolHelp_=nullptr,*documentInfo_=nullptr,*destination_=nullptr;
- QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={},*savedLabel_=nullptr,*saveError_=nullptr,*folderError_=nullptr;
+ QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={},*savedLabel_=nullptr;Graphite::ElidedLabel *saveError_=nullptr,*folderError_=nullptr;
  QSpinBox* geometry_[4]={};
  QWidget *geometryRow_=nullptr,*placeRow_=nullptr,*sizeLabels_=nullptr,*optionsRule_=nullptr;
  bool syncingGeometry_=false;

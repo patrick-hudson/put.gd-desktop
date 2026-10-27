@@ -83,7 +83,7 @@ private slots:
         }
     }
     void confirmationsSeparateQuestionFromConsequence() {
-        std::unique_ptr<QMessageBox> box(Graphite::confirm(nullptr,"Discard edits","Discard your edits?\nYour marks will be lost.","Discard","Keep editing",true));
+        std::unique_ptr<QMessageBox> box(Graphite::confirm(nullptr,"Discard edits","Discard your edits?\n\nYour marks will be lost.","Discard","Keep editing",true));
         box->show();putgd::test::settle(10);
         auto* question=box->findChild<QLabel*>("qt_msgbox_label");auto* consequence=box->findChild<QLabel*>("qt_msgbox_informativelabel");
         QVERIFY(question&&consequence);QCOMPARE(question->font(),Graphite::font(Graphite::Type::body,true));

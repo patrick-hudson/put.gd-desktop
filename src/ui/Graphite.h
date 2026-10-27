@@ -164,7 +164,7 @@ public:
     QString revealActionName() const { return revealActionName_; }
     bool revealable() const { return revealable_; }
     bool elided() const;
-    // Opens the full text popup (revealable labels); the popup while it is open.
+    // Opens full text for a revealable label or a separately titled Details action.
     void reveal();
     QWidget* fullTextPopup() const { return popup_; }
     QSize minimumSizeHint() const override;

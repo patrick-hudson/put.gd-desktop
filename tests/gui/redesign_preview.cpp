@@ -118,6 +118,7 @@ QImage iconSpecimen(){
  const QStringList names{"region","window","desktop","record","clipboard","history","destinations","preferences","info","shortcuts","bucket","proton","add"};
  for(int i=0;i<names.size();++i){const int x=115+i*80;VisualStyle::icon(names[i]).paint(&p,QRect(x,60,48,48));p.drawText(QRect(x-15,120,92,24),Qt::AlignCenter,names[i]);}
  p.drawText(24,185,"Green fill");
+ VisualStyle::icon("proton").paint(&p,QRect(1090,174,Graphite::scaled(16),Graphite::scaled(16)));
  for(int i=0;i<5;++i){const int x=155+i*125;VisualStyle::icon("tray",QColor("#62d69b"),i*25).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x,250,72,24),Qt::AlignCenter,QString::number(i*25)+"%");}
  for(int i=0;i<2;++i){const int x=860+i*130;VisualStyle::icon("tray",QColor(i?"#9bbcff":"#ffb4ab")).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x-10,250,92,24),Qt::AlignCenter,i?"Blink off":"Blink on");}
  p.drawText(24,308,"Actual tray sizes: 16 / 22 / 24 / 32 px");
@@ -132,18 +133,18 @@ QImage iconSpecimen(){
 // real 20 px rows (the editor toolbar, and Recording review's mask tools that
 // share the redact glyph) at 1:1 and magnified 3x without smoothing.
 QImage editorIcons(){
- const auto& t=Theme::current();QImage image(1560,512,QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
+ const auto& t=Theme::current();QImage image(1800,560,QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
  QFont small=p.font();small.setPixelSize(11);p.setFont(small);p.setPen(t.textMuted);
- const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","rectangle","highlight","text","undo","redo","zoom-fit","zoom-actual","save"};
+ const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","rectangle","highlight","text","undo","redo","remove","save"};
  for(int i=0;i<names.size();++i){const int x=12+i*86;VisualStyle::icon(names[i]).paint(&p,QRect(x+23,14,40,40));p.drawText(QRect(x,60,86,20),Qt::AlignCenter,names[i]);}
  auto row=[&](const QStringList& icons,int step){
-  QImage strip(16+icons.size()*step,36,QImage::Format_RGB32);strip.fill(t.bg);QPainter q(&strip);
-  for(int i=0;i<icons.size();++i){if(icons[i]=="|"){q.fillRect(QRect(8+i*step+step/2,7,1,22),t.border);continue;}VisualStyle::icon(icons[i]).paint(&q,QRect(8+i*step+(step-20)/2,8,20,20));}
+  const int glyph=Graphite::scaled(20);step=std::max(step,glyph+12);QImage strip(16+icons.size()*step,glyph+16,QImage::Format_RGB32);strip.fill(t.bg);QPainter q(&strip);
+  for(int i=0;i<icons.size();++i){if(icons[i]=="|"){q.fillRect(QRect(8+i*step+step/2,7,1,22),t.border);continue;}VisualStyle::icon(icons[i]).paint(&q,QRect(8+i*step+(step-glyph)/2,8,glyph,glyph));}
   return strip;
  };
  auto show=[&](const QString& title,const QImage& strip,int y){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));};
  show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","redact","blur","crop","|","annotate-arrow","rectangle","highlight","text"},40),112);
- show("Editor view and save tools, 20 px",row({"undo","redo","zoom-fit","zoom-actual","save"},32),252);
+ show("Editor view and save tools",row({"undo","redo","remove","save"},32),252);
  show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32),392);
  return image;
 }
@@ -312,7 +313,7 @@ int main(int argc,char** argv){
   editor.showSaved("/home/synthetic/Pictures/put.gd-edit-2026-10-26-14-03-22.png");if(!grab("27-editor-saved"))return 2;
   editor.showSavedCopy();if(!grab("27a-editor-folder-failed"))return 2;
   editor.showSaveFailed("/media/synthetic/readonly/put.gd-edit-2026-10-26-14-03-22.png","Permission denied");if(!grab("28-editor-save-failed"))return 2;
-  {auto* target=editor.findChild<Graphite::ElidedLabel*>("editorSaveTarget");target->reveal();if(!target->fullTextPopup())return 2;if(!grab("28a-editor-save-path"))return 2;const auto popup=target->fullTextPopup()->grab();if(!popup.save(QDir(output).filePath("28b-editor-save-path-popup.png")))return 2;captures.append(QJsonObject{{"file","28b-editor-save-path-popup.png"},{"width",popup.width()},{"height",popup.height()}});target->fullTextPopup()->close();}
+  {auto* target=editor.findChild<Graphite::ElidedLabel*>("editorSaveError");editor.findChild<QToolButton*>("editorSaveDetails")->click();if(!target->fullTextPopup())return 2;if(!grab("28a-editor-save-path"))return 2;const auto popup=target->fullTextPopup()->grab();if(!popup.save(QDir(output).filePath("28b-editor-save-path-popup.png")))return 2;captures.append(QJsonObject{{"file","28b-editor-save-path-popup.png"},{"width",popup.width()},{"height",popup.height()}});target->fullTextPopup()->close();}
   editor.canvas().select(0);editor.resize(900,620);
   // Discard… asks first; the dialog alone, as the desktop shows it over the editor.
   editor.viewCommand({{"action","discard"}},code,message);if(auto* box=editor.findChild<QDialog*>("confirmAction")){putgd::test::settle(450);app.processEvents();const auto image=box->grab();if(!image.save(QDir(output).filePath("19-editor-discard-confirm.png")))return 2;captures.append(QJsonObject{{"file","19-editor-discard-confirm.png"},{"width",image.width()},{"height",image.height()}});}else return 2;
