@@ -1033,7 +1033,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         action->setFont(font);
         if (action == upload_) font.setWeight(QFont::DemiBold);
         const int icon = action->icon().isNull() ? 0 : action->iconSize().width() + 8;
-        action->setMinimumWidth(int(std::ceil(QFontMetricsF(font).horizontalAdvance(action->text()))) + icon + 20);
+        action->setMinimumWidth(int(std::ceil(QFontMetricsF(font).horizontalAdvance(action->text()))) + icon + 28);
         action->setFixedHeight(std::max(32, action->fontMetrics().height() + 2));
     }
     // Keyboard (#283): Space plays and pauses (keyPressEvent, so a focused
@@ -1432,7 +1432,7 @@ void ReviewWindow::refreshStatus() {
             text->setFont(Graphite::font(Graphite::Type::metadata));
             auto* useRedact = warning->findChild<QToolButton*>("useRedact");
             useRedact->setFont(Graphite::font(Graphite::Type::metadata));
-            useRedact->setFixedSize(useRedact->fontMetrics().horizontalAdvance(useRedact->text()) + 16, 32);
+            useRedact->setFixedSize(useRedact->fontMetrics().horizontalAdvance(useRedact->text()) + 28, 32);
             useRedact->setProperty("driveAction", QJsonObject{{"action", "useSolidCover"}});
             auto* dismiss = new QPushButton(warning);
             dismiss->setIcon(Graphite::chromeIcon("close"));

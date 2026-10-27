@@ -1427,6 +1427,7 @@ private slots:
         QCOMPARE(window.inspect()["status"].toString(), guidance);
         auto* fix = buttonNamed(window, "Use Redact");
         QVERIFY(fix);
+        QVERIFY(fix->width() >= QFontMetricsF(fix->font()).horizontalAdvance(fix->text()) + 24);
         fix->click();
         const auto command = proposed(proposals);
         QCOMPARE(command["op"].toString(), QString("updateMask"));
