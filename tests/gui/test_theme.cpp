@@ -29,6 +29,7 @@
 #include <QScopeGuard>
 #include <QSpinBox>
 #include <QScrollBar>
+#include <QSlider>
 #include <QScrollArea>
 #include <QStyleOptionSlider>
 #include <QStyleOptionSpinBox>
@@ -102,6 +103,18 @@ private slots:
                     shot.fill(surface); painter.begin(&shot); bar.style()->drawComplexControl(QStyle::CC_ScrollBar, &option, &painter, &bar); painter.end();
                     QVERIFY(Theme::contrast(shot.pixelColor(handle.center()), surface) > Theme::contrast(thumb, surface));
                 }
+            }
+        }
+    }
+    void sliderTroughMeetsContrastOnEverySurface() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);const auto& c=Theme::current();
+            for (const auto surface : {c.bg, c.surface, c.surfaceRaised}) for (const auto orientation : {Qt::Horizontal, Qt::Vertical}) {
+                QSlider slider(orientation);slider.resize(orientation==Qt::Horizontal?QSize(180,36):QSize(36,180));
+                QStyleOptionSlider option;option.initFrom(&slider);option.rect=slider.rect();option.orientation=orientation;option.minimum=0;option.maximum=100;option.sliderPosition=0;option.sliderValue=0;option.state=QStyle::State_Enabled;option.subControls=QStyle::SC_SliderGroove|QStyle::SC_SliderHandle;
+                QImage shot(slider.size(),QImage::Format_RGB32);shot.fill(surface);{QPainter painter(&shot);slider.style()->drawComplexControl(QStyle::CC_Slider,&option,&painter,&slider);}
+                const auto groove=slider.style()->subControlRect(QStyle::CC_Slider,&option,QStyle::SC_SliderGroove,&slider);const auto trough=shot.pixelColor(groove.center());
+                QCOMPARE(trough,c.controlOutline);QVERIFY2(Theme::contrast(trough,surface)>=3.0,qPrintable(Theme::name(scheme)+" slider on "+surface.name()));
             }
         }
     }
@@ -331,6 +344,15 @@ private slots:
         // A technical label states a value; it is not painted as a link.
         QVERIFY(value->palette().color(QPalette::WindowText) != Theme::current().link);
     }
+    void revealableSummaryHasPersistentDisclosureAndHover() {
+        Graphite::ElidedLabel label;label.resize(220,36);label.setRevealable(true);label.show();label.clearFocus();putgd::test::settle(10);
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);label.setAttribute(Qt::WA_UnderMouse,false);const auto idle=label.grab().toImage();
+            label.setRevealable(false);const auto plain=label.grab().toImage();QVERIFY(idle!=plain);label.setRevealable(true);
+            label.setAttribute(Qt::WA_UnderMouse,true);const auto hover=label.grab().toImage();QVERIFY(hover!=idle);
+            label.setAttribute(Qt::WA_UnderMouse,false);
+        }
+    }
     // A revealable summary is a tab stop whose Enter shows its full plain text;
     // headings built on the same label stay out of the tab order.
     void revealableSummaryReadsFromTheKeyboard() {
@@ -347,6 +369,7 @@ private slots:
         auto* actions = interface->actionInterface();
         QVERIFY(actions);
         QVERIFY(actions->actionNames().contains(QAccessibleActionInterface::pressAction()));
+        QCOMPARE(actions->localizedActionName(QAccessibleActionInterface::pressAction()), QString("Show output details"));
         QVERIFY(actions->actionNames().contains(QAccessibleActionInterface::setFocusAction()));
         auto* heading = new Graphite::ElidedLabel(&window);
         heading->setText("All items");

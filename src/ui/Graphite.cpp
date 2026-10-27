@@ -1375,12 +1375,12 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         const bool enabled = option->state & State_Enabled;
         if (horizontal) {
             const qreal y = groove.center().y() - 1.5;
-            rounded(p, QRectF(groove.left() + 2, y, groove.width() - 4, 3), c.borderStrong, {}, 1.5);
+            rounded(p, QRectF(groove.left() + 2, y, groove.width() - 4, 3), c.controlOutline, {}, 1.5);
             const qreal filled = slider->upsideDown ? groove.right() - handle.center().x() : handle.center().x() - groove.left();
             rounded(p, QRectF(slider->upsideDown ? handle.center().x() : groove.left() + 2, y, std::max<qreal>(0, filled - 2), 3), enabled ? c.accent : c.textDisabled, {}, 1.5);
         } else {
             const qreal x = groove.center().x() - 1.5;
-            rounded(p, QRectF(x, groove.top() + 2, 3, groove.height() - 4), c.borderStrong, {}, 1.5);
+            rounded(p, QRectF(x, groove.top() + 2, 3, groove.height() - 4), c.controlOutline, {}, 1.5);
         }
         p->save();
         p->setRenderHint(QPainter::Antialiasing);
@@ -1517,6 +1517,9 @@ public:
         if (label()->revealable() && !actions.contains(QAccessibleActionInterface::pressAction())) actions.prepend(QAccessibleActionInterface::pressAction());
         return actions;
     }
+    QString localizedActionName(const QString& action) const override {
+        return action == QAccessibleActionInterface::pressAction() && label()->revealable() ? QStringLiteral("Show output details") : QAccessibleWidget::localizedActionName(action);
+    }
     void doAction(const QString& action) override {
         if (label()->revealable() && action == QAccessibleActionInterface::pressAction()) label()->reveal();
         else QAccessibleWidget::doAction(action);
@@ -1539,7 +1542,13 @@ ElidedLabel::ElidedLabel(QWidget* parent) : QLabel(parent) {
     Q_UNUSED(factory);
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 }
-QSize ElidedLabel::minimumSizeHint() const { return {std::min(QLabel::minimumSizeHint().width(), fontMetrics().averageCharWidth() * 8), QLabel::minimumSizeHint().height()}; }
+QSize ElidedLabel::sizeHint() const { return QLabel::sizeHint() + QSize(revealable_ ? scaled(12) + 18 : 0, 0); }
+QSize ElidedLabel::minimumSizeHint() const { return {std::min(QLabel::minimumSizeHint().width(), fontMetrics().averageCharWidth() * 8) + (revealable_ ? scaled(12) + 18 : 0), QLabel::minimumSizeHint().height()}; }
+QRect ElidedLabel::textRect() const { return revealable_ ? contentsRect().adjusted(6, 0, -scaled(12) - 12, 0) : contentsRect(); }
+bool ElidedLabel::event(QEvent* event) {
+    if (revealable_ && (event->type() == QEvent::HoverEnter || event->type() == QEvent::HoverLeave)) update();
+    return QLabel::event(event);
+}
 void ElidedLabel::setText(const QString& text) {
     QLabel::setText(text);
     setToolTip(text);
@@ -1550,12 +1559,13 @@ void ElidedLabel::setRevealable(bool on) {
     // Headings stay out of the tab order; an actionable summary is a stop.
     setFocusPolicy(on ? Qt::StrongFocus : Qt::NoFocus);
     setCursor(on ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    setAttribute(Qt::WA_Hover, on);
     setAccessibleDescription(on ? QStringLiteral("Press Enter to show the full text.") : QString());
     setMinimumHeight(on ? 32 : 0);
     updateGeometry();
     update();
 }
-bool ElidedLabel::elided() const { return QFontMetricsF(font()).horizontalAdvance(text()) > contentsRect().width(); }
+bool ElidedLabel::elided() const { return QFontMetricsF(font()).horizontalAdvance(text()) > textRect().width(); }
 void ElidedLabel::reveal() {
     if (!revealable_ || text().isEmpty()) return;
     if (popup_) popup_->close();
@@ -1592,6 +1602,12 @@ void ElidedLabel::focusInEvent(QFocusEvent* event) { QLabel::focusInEvent(event)
 void ElidedLabel::focusOutEvent(QFocusEvent* event) { QLabel::focusOutEvent(event); update(); }
 void ElidedLabel::paintEvent(QPaintEvent*) {
     QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+    if (revealable_) {
+        if (isEnabled() && underMouse()) rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), t().surfaceRaised, {}, 4);
+        const auto box = contentsRect();
+        paintChevron(p, QPointF(box.right() - 6 - scaled(12) / 2.0, box.center().y()), scaled(12), Qt::DownArrow, isEnabled() ? t().textMuted : t().textDisabled);
+    }
     // A revealable summary's keyboard focus: the amber ring around its text.
     if (revealable_ && keyboardFocus(this)) {
         p.setRenderHint(QPainter::Antialiasing);
@@ -1599,7 +1615,7 @@ void ElidedLabel::paintEvent(QPaintEvent*) {
         p.setBrush(Qt::NoBrush);
         p.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
     }
-    paintText(p, contentsRect(), text(), palette().color(isEnabled() ? QPalette::Normal : QPalette::Disabled, foregroundRole()), font(),
+    paintText(p, textRect(), text(), palette().color(isEnabled() ? QPalette::Normal : QPalette::Disabled, foregroundRole()), font(),
               alignment(), Qt::ElideMiddle);
 }
 

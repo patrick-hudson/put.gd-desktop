@@ -158,14 +158,16 @@ public:
     void reveal();
     QWidget* fullTextPopup() const { return popup_; }
     QSize minimumSizeHint() const override;
-    QSize sizeHint() const override { return {QLabel::sizeHint().width(), QLabel::sizeHint().height()}; }
+    QSize sizeHint() const override;
 protected:
+    bool event(QEvent*) override;
     void paintEvent(QPaintEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
     void focusInEvent(QFocusEvent*) override;
     void focusOutEvent(QFocusEvent*) override;
 private:
+    QRect textRect() const;
     bool revealable_ = false;
     QString revealText_;
     QPointer<QWidget> popup_;
