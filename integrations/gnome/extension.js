@@ -198,8 +198,11 @@ const RegionSelection = {
             y: Math.max(to.y, Math.min(region.y + to.y - from.y, to.y + to.height - height)), width, height}};
     },
     instructions(region, recording, display) {
+        const selected = region?.width > 0 && region?.height > 0;
         return `${display ? display + ' · ' : ''}${recording ? 'Drag and release to use a region' : 'Drag and release to capture'}\n` +
-            'Keyboard: arrows select · Shift+arrows resize · Ctrl+arrows 10 px · Tab display · Enter confirms · Esc cancels';
+            `Enter ${recording ? 'records' : 'captures'} ${selected ? 'the selected region' : 'this entire display'} · Esc cancels\n` +
+            'Arrows select · Shift+arrows resize · Ctrl+arrows 10 px · Tab display' +
+            (selected ? `\n${region.width} × ${region.height} logical pixels` : '');
     },
 };
 
@@ -214,7 +217,7 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         this._contrast = new St.Widget({visible: false, clip_to_allocation: true, style: 'border: 1px solid white; background-color: transparent;'});
         this.add_child(this._contrast);
         this._recording = recording;
-        this._keyboardMonitor = null;
+        this._keyboardMonitor = this._monitor();
         this._instructions = new St.Label({reactive: false, text: '',
             style: 'background-color: #191919; color: #f0f0ec; border: 1px solid white; border-radius: 6px; padding: 6px 10px; font-size: 10.5pt; text-align: center;'});
         this._instructions.clutter_text.set_line_wrap(true);
@@ -332,6 +335,8 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         const monitor = this._monitor();
         if (!monitor)
             return;
+        if (!this._region || this._region.width < 1 || this._region.height < 1)
+            this._outline(monitor);
         this._instructions.set_width(-1);
         this._instructions.set_width(Math.max(1, Math.min(this._instructions.get_preferred_width(-1)[1], monitor.width - 32)));
         this._instructions.set_position(monitor.x + Math.floor((monitor.width - this._instructions.width) / 2), monitor.y + 16);
@@ -351,6 +356,11 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
     }
     _showRegion(rect) {
         this._region = rect;
+        this._outline(rect);
+        this._describe();
+        this._placeInstructions();
+    }
+    _outline(rect) {
         this._rectangle.set_position(rect.x, rect.y);
         this._rectangle.set_size(rect.width, rect.height);
         this._rectangle.show();
@@ -364,8 +374,6 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         } else {
             this._contrast.hide();
         }
-        this._describe();
-        this._placeInstructions();
     }
     selectAsync() {
         return new Promise((resolve, reject) => {

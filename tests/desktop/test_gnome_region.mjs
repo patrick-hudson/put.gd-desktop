@@ -61,7 +61,11 @@ function closed(actor) {equal([actor.destroyed, grabs], [true, 0]);}
 
 {
     const {actor, result} = begin();
+    equal(actor._instructions.text.includes('Enter captures this entire display'), true);
+    equal([actor._rectangle.x, actor._rectangle.y, actor._rectangle.width, actor._rectangle.height], [1920, -100, 1280, 720]);
     key(actor, 'Left', 3);
+    equal(actor._instructions.text.includes('Enter captures the selected region'), true);
+    equal(actor._instructions.text.includes('640 × 360 logical pixels'), true);
     rect(actor, [2240, 80, 640, 360]); // First arrow initializes, ignoring modifiers.
     key(actor, 'Right'); rect(actor, [2241, 80, 640, 360]);
     key(actor, 'Down', 1); rect(actor, [2241, 90, 640, 360]);
@@ -151,6 +155,9 @@ print('PASS mouse-to-keyboard clipping and keyboard-to-mouse replacement');
     equal(RegionSelection.switchDisplay({x: 0, y: 0, width: 1920, height: 1080}, monitors, 0),
         {current: 1, region: {x: 1920, y: -100, width: 1280, height: 720}});
     equal(RegionSelection.instructions(null, true, 'Display 2').includes('Drag and release to use a region'), true);
+    equal(RegionSelection.instructions(null, true, 'Display 2').includes('Enter records this entire display'), true);
+    equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Enter records the selected region'), true);
+    equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('2 × 2 logical pixels'), true);
     equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Drag and release to use a region'), true);
 }
 print('PASS display cycling, reverse cycling, clamping, display names and state-specific hints');

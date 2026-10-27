@@ -11,6 +11,7 @@
 #include <QtMath>
 #include <QWindow>
 #include <QTimer>
+#include <QCursor>
 #if defined(PUTGD_HAVE_LAYER_SHELL) && QT_VERSION >= QT_VERSION_CHECK(6,5,0)
 #include <LayerShellQt/Window>
 #include <wayland-client.h>
@@ -34,7 +35,7 @@ public:
  }
  void updateSelection(){describeRegion(this,owner_.selection_,owner_.recording_,owner_.frames_[activeScreen()].identity);update();}
 protected:
- void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!owner_.clearing_&&!clipped.isEmpty()){const auto local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(p,local);}if(!owner_.clearing_&&(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_))paintRegionInstructions(p,rect(),palette(),regionInstructions(owner_.selection_,owner_.recording_,owner_.frames_[activeScreen()].identity));}
+ void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));if(!owner_.clearing_&&!clipped.isEmpty()){const auto local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(p,local);}if(!owner_.clearing_&&(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_))paintRegionInstructions(p,rect(),palette(),regionInstructions(owner_.selection_,owner_.recording_,owner_.frames_[activeScreen()].identity));}
  void mousePressEvent(QMouseEvent* e) override{if(e->button()==Qt::RightButton)owner_.cancel();else if(e->button()==Qt::LeftButton)owner_.press(logicalRect_.topLeft()+e->position());}
  void mouseMoveEvent(QMouseEvent* e) override{owner_.move(logicalRect_.topLeft()+e->position());}
  void mouseReleaseEvent(QMouseEvent* e) override{if(e->button()==Qt::LeftButton)owner_.release(logicalRect_.topLeft()+e->position());}
@@ -68,6 +69,7 @@ void KdeRegionOverlay::start(){
  cancel({"region_unavailable","Native region selection requires current distro Qt and per-window LayerShellQt",{}});return;
 #else
  connect(qGuiApp,&QGuiApplication::screenAdded,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});connect(qGuiApp,&QGuiApplication::screenRemoved,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});
+ keyboardScreen_=0;for(int i=0;i<frames_.size();++i)if(frames_[i].logicalRect.contains(QCursor::pos()))keyboardScreen_=i;
  for(const auto& frame:frames_){QScreen* match=nullptr;for(auto* screen:QGuiApplication::screens())if(screen->name()==frame.identity){match=screen;break;}if(!match){cancel({"display_changed","Capture output disappeared before selection",{}});return;}
   connect(match,&QScreen::geometryChanged,this,[this]{cancel({"display_changed","Display geometry changed during region selection",{}});});connect(match,&QScreen::logicalDotsPerInchChanged,this,[this]{cancel({"display_changed","Display scale changed during region selection",{}});});connect(match,&QScreen::physicalDotsPerInchChanged,this,[this]{cancel({"display_changed","Display density changed during region selection",{}});});connect(match,&QScreen::orientationChanged,this,[this]{cancel({"display_changed","Display rotation changed during region selection",{}});});
   addSurface(frame,match);

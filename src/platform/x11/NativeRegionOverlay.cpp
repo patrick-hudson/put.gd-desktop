@@ -120,6 +120,8 @@ void NativeRegionOverlay::initializeSurfaces(){
  if(!visualOk){cancel(unavailable());return;}
  colormap_=xcb_generate_id(connection_);
  if(!checked(xcb_create_colormap_checked(connection_,XCB_COLORMAP_ALLOC_NONE,colormap_,root_,visual))){cancel(unavailable());return;}
+ auto* pointer=xcb_query_pointer_reply(connection_,xcb_query_pointer(connection_,root_),nullptr);
+ keyboardScreen_=pointer?screenAt({pointer->root_x,pointer->root_y}):0;std::free(pointer);
  const auto pidCookie=xcb_intern_atom(connection_,false,11,"_NET_WM_PID");
  auto* pidAtom=xcb_intern_atom_reply(connection_,pidCookie,nullptr);
  if(!pidAtom){cancel(unavailable());return;}
@@ -277,7 +279,7 @@ void NativeRegionOverlay::draw(Surface& surface){
    xcb_put_image(connection_,XCB_IMAGE_FORMAT_Z_PIXMAP,surface.window,gc_,uint16_t(badge.width()),uint16_t(count),int16_t(surface.instructionsAt.x()),int16_t(surface.instructionsAt.y()+y),0,32,uint32_t(count*badge.bytesPerLine()),badge.constScanLine(y));
   }
  }
- const auto clipped=selection_.intersected(surface.frame.logicalRect);
+ const auto clipped=selection_.isEmpty()&&surface.frame.identity==frames_[std::max(0,keyboardScreen_)].identity?surface.frame.logicalRect:selection_.intersected(surface.frame.logicalRect);
  if(clipped.isEmpty()){surface.outline={};return;}
  const auto local=clipped.translated(-surface.frame.logicalRect.topLeft());const qreal sx=qreal(surface.frame.nativeRect.width())/surface.frame.logicalRect.width(),sy=qreal(surface.frame.nativeRect.height())/surface.frame.logicalRect.height();
  surface.outline=QRectF(local.x()*sx,local.y()*sy,local.width()*sx,local.height()*sy).toAlignedRect().intersected(QRect(QPoint{},surface.frame.nativeRect.size()));

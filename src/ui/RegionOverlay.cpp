@@ -40,7 +40,7 @@ public:
  // Full-surface damage keeps an outward-moving edge inside that clip.
  void updateSelection(const QRectF& previous){describeRegion(this,owner_.selection_,false,owner_.frames_[activeScreen()].identity);Q_UNUSED(previous);update();}
 protected:
- void paintEvent(QPaintEvent*) override {QPainter painter(this);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(rect(),Qt::transparent);painter.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!clipped.isEmpty()){const QRectF local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(painter,local);}if(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_)paintRegionInstructions(painter,rect(),palette(),regionInstructions(owner_.selection_,false,owner_.frames_[activeScreen()].identity));}
+ void paintEvent(QPaintEvent*) override {QPainter painter(this);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(rect(),Qt::transparent);painter.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));if(!clipped.isEmpty()){const QRectF local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(painter,local);}if(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_)paintRegionInstructions(painter,rect(),palette(),regionInstructions(owner_.selection_,false,owner_.frames_[activeScreen()].identity));}
  void mousePressEvent(QMouseEvent* e) override {if(e->button()==Qt::RightButton){owner_.cancel();return;}if(e->button()==Qt::LeftButton){owner_.press(e->globalPosition());grabMouse();}}
  void mouseMoveEvent(QMouseEvent* e) override {owner_.move(e->globalPosition());}
  void mouseReleaseEvent(QMouseEvent* e) override {if(e->button()==Qt::LeftButton){releaseMouse();owner_.release(e->globalPosition());}}
@@ -69,7 +69,7 @@ RegionOverlay::~RegionOverlay(){finish();for(auto* s:surfaces_)delete s;}
 void RegionOverlay::start(){
  for(const auto& frame:frames_){auto* surface=new Surface(*this,frame);surfaces_.append(surface);skipCloseAnimation(surface);surface->show();surface->raise();}
  Surface* focus=surfaces_.isEmpty()?nullptr:surfaces_.first();for(auto* s:surfaces_)if(s->geometry().contains(QCursor::pos()))focus=s;
- if(focus)focus->grabKeyboard();
+ if(focus){keyboardScreen_=surfaces_.indexOf(focus);focus->grabKeyboard();for(auto* surface:surfaces_)surface->updateSelection({});}
  connect(qGuiApp,&QGuiApplication::screenAdded,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});connect(qGuiApp,&QGuiApplication::screenRemoved,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});
  for(auto* screen:QGuiApplication::screens()) {connect(screen,&QScreen::geometryChanged,this,[this]{cancel({"display_changed","Display geometry changed during region selection",{}});});connect(screen,&QScreen::logicalDotsPerInchChanged,this,[this]{cancel({"display_changed","Display scale changed during region selection",{}});});connect(screen,&QScreen::orientationChanged,this,[this]{cancel({"display_changed","Display rotation changed during region selection",{}});});}
 }

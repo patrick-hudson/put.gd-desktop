@@ -16,10 +16,11 @@ inline QFont nativeRegionFont() {
     return font;
 }
 inline QString regionInstructions(const QRectF& selection = {}, bool recording = false, const QString& display = {}) {
-    Q_UNUSED(selection);
     return (display.isEmpty() ? QString() : display + QStringLiteral(" · "))
         + (recording ? QStringLiteral("Drag and release to use a region") : QStringLiteral("Drag and release to capture"))
-        + QStringLiteral("\nKeyboard: arrows select · Shift+arrows resize · Ctrl+arrows 10 px · Tab display · Enter confirms · Esc cancels");
+        + QStringLiteral("\nEnter %1 %2 · Esc cancels").arg(recording ? QStringLiteral("records") : QStringLiteral("captures"), selection.isEmpty() ? QStringLiteral("this entire display") : QStringLiteral("the selected region"))
+        + QStringLiteral("\nArrows select · Shift+arrows resize · Ctrl+arrows 10 px · Tab display")
+        + (selection.isEmpty() ? QString() : QStringLiteral("\n%1 × %2 logical pixels").arg(qRound(selection.width())).arg(qRound(selection.height())));
 }
 inline QString regionDescription(const QRectF& selection, bool recording = false, const QString& display = {}) {
     return (selection.isEmpty() ? QStringLiteral("No region selected.")

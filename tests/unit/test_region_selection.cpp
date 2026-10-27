@@ -14,11 +14,17 @@ private slots:
   QVERIFY(!switchRegionDisplay(selected,{},current,Qt::Key_Tab));
  }
  void hintsReflectActionAndState(){
-  QVERIFY(regionInstructions().startsWith("Drag and release to capture\nKeyboard:"));
-  QVERIFY(regionInstructions().section('\n',1).contains("Enter confirms · Esc cancels"));
-  QVERIFY(regionInstructions(QRectF(0,0,10,10)).contains("Drag and release to capture"));
-  QVERIFY(regionInstructions({},true,"DP-2").contains("DP-2 · Drag and release to use a region"));
-  QVERIFY(regionInstructions(QRectF(0,0,10,10),true).contains("Drag and release to use a region"));
+  for(bool recording:{false,true}){
+   QRectF selected;const QRectF screen(0,0,800,600);
+   const auto initial=regionInstructions(selected,recording,"DP-2");
+   QVERIFY(initial.contains(recording?"Enter records this entire display":"Enter captures this entire display"));
+   QVERIFY(initial.contains(recording?"Drag and release to use a region":"Drag and release to capture"));
+   QVERIFY(initial.startsWith("DP-2 · "));QVERIFY(!initial.contains("logical pixels"));
+   QCOMPARE(regionKey(selected,screen,Qt::Key_Right),RegionKeyAction::Change);
+   const auto changed=regionInstructions(selected,recording,"DP-2");
+   QVERIFY(changed.contains(recording?"Enter records the selected region":"Enter captures the selected region"));
+   QVERIFY(!changed.contains("entire display"));QVERIFY(changed.contains("400 × 300 logical pixels"));
+  }
  }
  void initialRegionAndSteps(){
   const QRectF screen(-800,100,800,600);QRectF selected;

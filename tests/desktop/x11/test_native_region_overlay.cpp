@@ -126,8 +126,10 @@ private slots:
   motion({1000,200});NativeRegionOverlay overlay(frames());QSignalSpy selected(&overlay,&RegionSelector::selected);QSignalSpy cancelled(&overlay,&RegionSelector::cancelled);
   overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
   auto* accessible=QAccessible::queryAccessibleInterface(&overlay);QVERIFY(accessible);QVERIFY(accessible->text(QAccessible::Description).contains("Drag and release to capture"));
+  QVERIFY(accessible->text(QAccessible::Description).contains("Enter captures this entire display"));
   keyClick(0xff53); // Right: initialise on the mixed-density second monitor.
-  PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("160 × 200"));
+  PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("160 × 200 logical pixels"));
+  QVERIFY(accessible->text(QAccessible::Description).contains("Enter captures the selected region"));
   // Pointer movement does not change the keyboard selection's monitor.
   motion({100,700});keyClick(0xff53);keyClick(0xff54,0xffe3);keyClick(0xff53,0xffe1);
   key(0xffe3,true);keyClick(0xff52,0xffe1);key(0xffe3,false);
