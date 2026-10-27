@@ -1090,6 +1090,14 @@ private slots:
  void failedAutosaveKeepsDraftAcrossReopenAndRequiresExplicitRetry(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));const auto before=service.document();CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();fixture.client.failOnce["settings.save"]={"client_unavailable","Synthetic lost save reply",{}};window.findChild<QLineEdit*>("archiveRoot")->setText(dir.filePath("retry-output"));PUTGD_TRY_VERIFY(window.settings()->saveViewState()["autosaveBlocked"].toBool());putgd::test::settle(600);PUTGD_TRY_COMPARE(service.document(),before);const auto state=window.settings()->saveViewState();MainWindow reopened(fixture.session);QVERIFY(reopened.settings()->restoreViewState(state));QVERIFY(reopened.findChild<QPushButton*>("retryAutosave")->isHidden()==false);reopened.findChild<QPushButton*>("retryAutosave")->click();PUTGD_TRY_COMPARE(service.document()["archive"].toObject()["root"].toString(),dir.filePath("retry-output"));QVERIFY(!reopened.settings()->saveViewState()["autosaveBlocked"].toBool());
  }
+ void symbolicLimitsHideUnitsAndNumericLimitsKeepThem(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.show();
+  for(const auto& key:QStringList{"maxFileBytes","maxBatchBytes","pendingArtifactBytes","historyRetentionDays"}){
+   auto* edit=window.findChild<QLineEdit*>(key);auto* suffix=window.findChild<QLabel*>(key+"Unit");auto* editor=key=="historyRetentionDays"?window.findChild<QComboBox*>("historyRetentionChoice"):window.findChild<QComboBox*>(key+"Choice");QVERIFY(edit&&suffix&&editor);
+   const auto values=key=="historyRetentionDays"?QStringList{"","12","","30"}:QStringList{"Auto","","12","auto","3.5"};for(const auto& value:values){edit->setText(value);bool numeric=false;value.toDouble(&numeric);QCOMPARE(!suffix->isHidden(),numeric);QCOMPARE(editor->property("hasUnit").toBool(),numeric);}
+  }
+  QVERIFY(window.findChild<QLineEdit*>("pendingArtifactBytes"));QCOMPARE(window.findChild<QComboBox*>("pendingArtifactBytesChoice")->accessibleName(),QString("Space for queued files"));QCOMPARE(window.findChild<QLineEdit*>("pendingOperations")->accessibleName(),QString("Queued operations"));
+ }
  void artifactLimitsOfferAutoAndNoLimit(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();
   auto limit=[&](const QString& key)->QJsonValue{return service.document()["limits"].toObject().value(key);};
