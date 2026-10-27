@@ -174,7 +174,7 @@ private:Graphite::NavigationDelegate navigation_;
 // for a readable name, so a heading and its values come and go together.
 struct Columns {QRect item,output,created,actions;};
 Columns historyColumns(const QRect& row,bool =false){
- Columns c;const int action=qMin(Graphite::scaled(190),qMax(0,row.width()-Graphite::scaled(180))),width=qMax(0,row.width()-action),minimum=Graphite::scaled(180);c.actions=action?QRect(row.right()-action+1,row.top(),action,row.height()):QRect();const int created=width-Graphite::scaled(104)>=minimum?Graphite::scaled(104):0;const int output=created&&width-created-Graphite::scaled(132)>=minimum?Graphite::scaled(132):0;
+ Columns c;const int action=qMin(QFontMetrics(Graphite::font()).horizontalAdvance("Retry local save")+28+qMax(32,QFontMetrics(Graphite::font()).height()+12)+8,qMax(0,row.width()-Graphite::scaled(180))),width=qMax(0,row.width()-action),minimum=Graphite::scaled(180);c.actions=action?QRect(row.right()-action+1,row.top(),action,row.height()):QRect();const int created=width-Graphite::scaled(104)>=minimum?Graphite::scaled(104):0;const int output=created&&width-created-Graphite::scaled(132)>=minimum?Graphite::scaled(132):0;
  c.created=created?QRect(row.left()+width-created,row.top(),created,row.height()):QRect();
  c.output=output?QRect(row.left()+width-created-output,row.top(),output,row.height()):QRect();
  c.item=QRect(row.left(),row.top(),width-created-output,row.height());return c;
@@ -586,7 +586,7 @@ void HistoryWindow::updateInspectorLayout(){if(!split_)return;updateFooterLayout
  expandPreview_->setVisible(shortPreview&&ready);preview_->setVisible((ready||(!currentDetail_.isEmpty()&&(currentDetail_["category"]=="images"||video(currentDetail_))))&&previewErrors_.value(currentDetail_["id"].toString()).code!="preview_unsupported"&&!(shortPreview&&ready));
  if(auto* box=singleInspector_->layout()){box->setContentsMargins(18,compact_?10:16,18,compact_?12:16);box->setSpacing(compact_?8:10);}if(auto* escape=findChild<QAction*>("historyDetailsEscape"))escape->setEnabled(detailsOpen_);
  // Hide the old navigation before showing its replacement; Qt otherwise grows the window briefly.
- split_->setStretchFactor(0,1);split_->setStretchFactor(1,0);if(columns_)columns_->setVisible(!gallery);detailsBack_->setText(detailsFromGallery_?"Back to gallery":"Back to list");detailsBack_->setToolTip(detailsFromGallery_?"Return to the gallery (Esc)":"Return to the list (Esc)");if(!back)detailsBack_->hide();if(heading_)heading_->setVisible(!details&&!property("denseHistory").toBool());findChild<QWidget*>("historyViewMode")->setVisible(!details);if(back)detailsBack_->show();const bool wasDetails=list_->isHidden();list_->setVisible(!details);findChild<QWidget*>("historyListColumn")->setVisible(!details);
+ split_->setStretchFactor(0,1);split_->setStretchFactor(1,0);if(columns_)columns_->setVisible(!gallery);detailsBack_->setText(detailsFromGallery_?"Back to gallery":"Back to list");detailsBack_->setToolTip(detailsFromGallery_?"Return to the gallery (Esc)":"Return to the list (Esc)");if(!back)detailsBack_->hide();if(heading_)heading_->setVisible(!details&&!property("denseHistory").toBool());findChild<QWidget*>("historyViewMode")->setVisible(!details);if(auto* searchRow=findChild<QWidget*>("historySidebarSearch"))searchRow->setVisible(property("denseHistory").toBool()&&!details);if(back)detailsBack_->show();const bool wasDetails=list_->isHidden();list_->setVisible(!details);findChild<QWidget*>("historyListColumn")->setVisible(!details);
  inspectorScroll_->setVisible(selected>0&&(!gallery||detailsOpen_)&&(!compact_||details));singleInspector_->setVisible(single);selectionInspector_->setVisible(selected>1);
  // Opened over the list, the inspector takes the whole width; the split's
  // inspector maximum bounds it again once both panes fit.
@@ -602,12 +602,14 @@ void HistoryWindow::updateFooterLayout(){
  if(!footerRow_||!columns_)return;
  // At the minimum window height, use the rail's spare space for controls so
  // the list still fits six whole base rows, including its day heading.
- const bool dense=Graphite::scaled(100)<=100&&height()<600;auto* header=findChild<QWidget*>("historyHeader");
+ const bool dense=Graphite::scaled(100)<=150&&height()<600;auto* header=findChild<QWidget*>("historyHeader");
  if(dense!=property("denseHistory").toBool()){
   setProperty("denseHistory",dense);auto* content=qobject_cast<QVBoxLayout*>(findChild<QWidget*>("historyContent")->layout());auto* rail=qobject_cast<QVBoxLayout*>(findChild<QWidget*>("historySidebar")->layout());auto* tools=qobject_cast<QBoxLayout*>(header->layout());auto* footer=qobject_cast<QBoxLayout*>(footerRow_->layout());auto* box=qobject_cast<QVBoxLayout*>(footerBar_->layout());
-  tools->setDirection(dense?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);tools->setContentsMargins(dense?0:18,dense?0:12,dense?0:16,dense?0:10);tools->setStretch(3,dense?0:1);footer->setDirection(dense?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);box->setContentsMargins(dense?0:16,8,dense?0:16,dense?0:10);
+  tools->setDirection(dense?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);tools->setContentsMargins(dense?0:18,dense?0:12,dense?0:16,dense?0:10);footer->setDirection(QBoxLayout::LeftToRight);box->setContentsMargins(dense?0:16,8,dense?0:16,dense?0:10);
   header->setSizePolicy(QSizePolicy::Preferred,dense?QSizePolicy::Maximum:QSizePolicy::Preferred);footerBar_->setSizePolicy(QSizePolicy::Preferred,dense?QSizePolicy::Maximum:QSizePolicy::Preferred);
-  if(dense){rail->insertWidget(1,header);rail->addWidget(footerBar_);}else{content->insertWidget(0,header);content->addWidget(footerBar_);}header->show();
+  auto* search=findChild<QLineEdit*>("historySearch");auto* filters=findChild<QToolButton*>("historyFiltersExpanded");auto* management=findChild<QToolButton*>("historyManagementExpanded");auto* searchRow=findChild<QWidget*>("historySidebarSearch");if(!searchRow){searchRow=new QWidget(header);searchRow->setObjectName("historySidebarSearch");auto* line=new QHBoxLayout(searchRow);line->setContentsMargins(0,0,0,0);line->setSpacing(8);}
+  search->setMinimumWidth(dense?Graphite::scaled(120):160);management->setIcon(Graphite::chromeIcon("more"));management->setToolButtonStyle(dense?Qt::ToolButtonIconOnly:Qt::ToolButtonTextOnly);rail->setContentsMargins(10,dense?8:16,10,dense?8:14);
+  if(dense){searchRow->layout()->addWidget(search);searchRow->layout()->addWidget(filters);tools->insertWidget(3,searchRow);rail->insertWidget(1,header);rail->addWidget(footerBar_);searchRow->show();}else{tools->insertWidget(3,search,1);tools->insertWidget(4,filters);tools->removeWidget(searchRow);searchRow->hide();content->insertWidget(0,header);content->addWidget(footerBar_);}header->show();
  }
  if(!dense)header->layout()->setContentsMargins(18,height()<600?2:12,16,height()<600?2:10);
  footerRow_->show();footerBar_->show();columns_->update();
