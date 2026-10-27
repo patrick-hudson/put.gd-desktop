@@ -158,13 +158,13 @@ private slots:
     }
     void flushButtonsPaintTheirContentAtTheColumnEdge() {
         QPixmap glyph(12,12);glyph.fill(Qt::cyan);
-        for(const bool tool:{false,true}){
+        for(const auto* role:{"quiet","link"})for(const bool tool:{false,true}){
             QPushButton push("Remove mark");QToolButton button;button.setText("Keyboard help");button.setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-            QAbstractButton* widget=tool?static_cast<QAbstractButton*>(&button):&push;VisualStyle::role(widget,"quiet");widget->setIcon(QIcon(glyph));widget->setIconSize(QSize(12,12));
+            QAbstractButton* widget=tool?static_cast<QAbstractButton*>(&button):&push;VisualStyle::role(widget,role);widget->setIcon(QIcon(glyph));widget->setIconSize(QSize(12,12));
             const int padded=widget->sizeHint().width();widget->setProperty("graphiteFlush",true);
             // Ask the style directly: dynamic properties need no widget recreation.
             QImage shot(220,36,QImage::Format_RGB32);shot.fill(Qt::black);QPainter p(&shot);
-            if(tool){QStyleOptionToolButton option;option.rect=shot.rect();option.state=QStyle::State_Enabled;option.text=button.text();option.icon=button.icon();option.iconSize=button.iconSize();option.toolButtonStyle=button.toolButtonStyle();QCOMPARE(button.style()->sizeFromContents(QStyle::CT_ToolButton,&option,{},&button).width(),padded-14);button.style()->drawControl(QStyle::CE_ToolButtonLabel,&option,&p,&button);}
+            if(tool){QStyleOptionToolButton option;option.rect=shot.rect();option.state=QStyle::State_Enabled;option.text=button.text();option.icon=button.icon();option.iconSize=button.iconSize();option.toolButtonStyle=button.toolButtonStyle();if(QString(role)=="quiet")QCOMPARE(button.style()->sizeFromContents(QStyle::CT_ToolButton,&option,{},&button).width(),padded-14);button.style()->drawControl(QStyle::CE_ToolButtonLabel,&option,&p,&button);}
             else{QStyleOptionButton option;option.rect=shot.rect();option.state=QStyle::State_Enabled;option.text=push.text();option.icon=push.icon();option.iconSize=push.iconSize();push.style()->drawControl(QStyle::CE_PushButtonLabel,&option,&p,&push);}
             p.end();QCOMPARE(shot.pixelColor(0,18),QColor(Qt::cyan));
         }
@@ -192,13 +192,13 @@ private slots:
             shot=button->grab().toImage();QCOMPARE(shot.pixelColor(button->rect().center().x(),button->rect().bottom()-3),c.accent);
         }
     }
-    void formGutterTracksOnlyVisibleLabels() {
+    void formFamilyGutterStaysStableWhenLabelsHide() {
         QWidget page;auto* box=new QVBoxLayout(&page);auto* shortSection=new QWidget(&page);auto* longSection=new QWidget(&page);box->addWidget(shortSection);box->addWidget(longSection);
         auto* shortForm=new QFormLayout(shortSection);auto* longForm=new QFormLayout(longSection);auto* shortLabel=new QLabel("Folder");auto* longLabel=new QLabel("Very long credential identification");shortForm->addRow(shortLabel,new QLineEdit);longForm->addRow(longLabel,new QLineEdit);
         Graphite::alignForms(&page);page.resize(700,300);page.show();PUTGD_TRY_VERIFY(shortLabel->minimumWidth()>shortLabel->fontMetrics().horizontalAdvance(shortLabel->text()));
-        const int expanded=shortLabel->minimumWidth();longSection->hide();PUTGD_TRY_VERIFY(shortLabel->minimumWidth()<expanded);const int collapsed=shortLabel->minimumWidth();
-        longSection->show();PUTGD_TRY_COMPARE(shortLabel->minimumWidth(),expanded);longForm->setRowVisible(0,false);PUTGD_TRY_COMPARE(shortLabel->minimumWidth(),collapsed);
-        shortLabel->setText("Upload folder");PUTGD_TRY_VERIFY(shortLabel->minimumWidth()>collapsed);
+        const int expanded=shortLabel->minimumWidth();QVERIFY(expanded+16<=Graphite::Metric::labelGutter);QVERIFY(longLabel->wordWrap());QVERIFY(longLabel->height()>=longLabel->heightForWidth(longLabel->width()));longSection->hide();putgd::test::settle(30);QCOMPARE(shortLabel->minimumWidth(),expanded);
+        longSection->show();PUTGD_TRY_COMPARE(shortLabel->minimumWidth(),expanded);longForm->setRowVisible(0,false);putgd::test::settle(30);QCOMPARE(shortLabel->minimumWidth(),expanded);
+        shortLabel->setText("Upload folder");putgd::test::settle(30);QCOMPARE(shortLabel->minimumWidth(),expanded);
     }
     void iconButtonsNameThemselvesOnKeyboardFocus() {
         QWidget page;auto* row=new QHBoxLayout(&page);auto* first=Graphite::toolButton("First","images","quiet",&page);auto* icon=Graphite::toolButton("Edit an image","edit","quiet",&page);icon->setToolButtonStyle(Qt::ToolButtonIconOnly);icon->setToolTip("Edit an image");row->addWidget(first);row->addWidget(icon);page.show();page.activateWindow();first->setFocus();putgd::test::settle(10);
