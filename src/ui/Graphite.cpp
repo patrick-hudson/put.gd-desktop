@@ -35,6 +35,8 @@
 #include <QPushButton>
 #include <QScrollBar>
 #include <QScrollArea>
+#include <QShowEvent>
+#include <QTimer>
 #include <QSlider>
 #include <QStatusBar>
 #include <QStyleFactory>
@@ -1348,6 +1350,17 @@ BrowserFeedback::BrowserFeedback(QWidget* parent) : QWidget(parent) {
     connect(copy_, &QPushButton::clicked, this, [this] { qApp->clipboard()->setText(url_.toString(QUrl::FullyEncoded)); });
     hide();
 }
+void BrowserFeedback::showEvent(QShowEvent* event) {
+    QWidget::showEvent(event);
+    QTimer::singleShot(0, this, [this] {
+        if (!isVisible()) return;
+        for (auto* owner = parentWidget(); owner; owner = owner->parentWidget()) if (auto* scroll = qobject_cast<QScrollArea*>(owner)) {
+            if (auto* layout = scroll->widget()->layout()) layout->activate();
+            scroll->ensureWidgetVisible(this, 24, 24);
+            break;
+        }
+    });
+}
 void BrowserFeedback::clear() { ++request_; hide(); }
 std::function<void(const QJsonObject&)> BrowserFeedback::opening(const QUrl& url) {
     hide();
@@ -1438,9 +1451,18 @@ class AccessibleElidedLabel final : public QAccessibleWidget {
 public:
     explicit AccessibleElidedLabel(ElidedLabel* label) : QAccessibleWidget(label) {}
     QAccessible::Role role() const override { return label()->revealable() ? QAccessible::Button : QAccessible::StaticText; }
-    QStringList actionNames() const override { return label()->revealable() ? QStringList{QAccessibleActionInterface::pressAction()} : QStringList{}; }
-    void doAction(const QString& action) override { if (label()->revealable() && action == QAccessibleActionInterface::pressAction()) label()->reveal(); }
-    QStringList keyBindingsForAction(const QString& action) const override { return action == QAccessibleActionInterface::pressAction() && label()->revealable() ? QStringList{"Enter", "Space"} : QStringList{}; }
+    QStringList actionNames() const override {
+        auto actions = QAccessibleWidget::actionNames();
+        if (label()->revealable() && !actions.contains(QAccessibleActionInterface::pressAction())) actions.prepend(QAccessibleActionInterface::pressAction());
+        return actions;
+    }
+    void doAction(const QString& action) override {
+        if (label()->revealable() && action == QAccessibleActionInterface::pressAction()) label()->reveal();
+        else QAccessibleWidget::doAction(action);
+    }
+    QStringList keyBindingsForAction(const QString& action) const override {
+        return action == QAccessibleActionInterface::pressAction() && label()->revealable() ? QStringList{"Enter", "Space"} : QAccessibleWidget::keyBindingsForAction(action);
+    }
 private:
     ElidedLabel* label() const { return static_cast<ElidedLabel*>(widget()); }
 };

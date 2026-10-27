@@ -176,6 +176,8 @@ public:
     explicit BrowserFeedback(QWidget* parent = nullptr);
     std::function<void(const QJsonObject&)> opening(const QUrl&);
     void clear();
+protected:
+    void showEvent(QShowEvent*) override;
 private:
     QLabel* message_;
     QPushButton* copy_;

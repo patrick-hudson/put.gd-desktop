@@ -691,7 +691,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // default box stays the model that tests, view state and agents read.
  auto* exceptionBody=new QWidget;exceptionBody->setObjectName("captureExceptions");exceptionBody->setMaximumWidth(Graphite::scaled(880));auto* exceptionBox=new QVBoxLayout(exceptionBody);exceptionBox->setContentsMargins(0,0,0,0);exceptionBox->setSpacing(12);capture->addWidget(exceptionBody);exceptionBody->hide();
  auto* exceptionIntro=new QLabel("Actions use the default output above. Record screen follows Capture region unless you override it.");exceptionIntro->setWordWrap(true);VisualStyle::role(exceptionIntro,"muted");exceptionBox->addWidget(exceptionIntro);
- auto* exceptionRows=new QFormLayout;VisualStyle::styleForm(exceptionRows);exceptionRows->setVerticalSpacing(10);exceptionBox->addLayout(exceptionRows);
+ auto* exceptionRows=captureExceptionRows_=new QFormLayout;VisualStyle::styleForm(exceptionRows);exceptionRows->setVerticalSpacing(10);exceptionBox->addLayout(exceptionRows);
  connect(captureExceptions_,&QToolButton::toggled,this,[=,this](bool open){exceptionBody->setVisible(open);captureExceptions_->setArrowType(open?Qt::DownArrow:Qt::RightArrow);emit viewStateChanged();});
  for(const auto& action:Settings::invocableActionNames()){
   auto* inherit=useCaptureDefault_[action]=new QCheckBox(action=="record"?"Use Capture region output":"Use default",exceptionBody);inherit->setObjectName("useDefault"+title(action));inherit->setAccessibleName(actionLabel(action)+(action=="record"?": use Capture region output":": use default output"));inherit->hide();
@@ -1443,7 +1443,7 @@ void SettingsWindow::updateCaptureInheritance(){
   describe(captureStatus_[name],actionUpload);captureStatus_[name]->hide();
   // Inherited rows defer to the default; errors belong to real overrides.
   // Only an overridden action shows its two fields.
-  {const QSignalBlocker block(captureOverride_[name]);captureOverride_[name]->setChecked(!inherit);}captureEditors_[name]->setVisible(!inherit);captureEditors_[name]->layout()->invalidate();captureEditors_[name]->updateGeometry();
+  {const QSignalBlocker block(captureOverride_[name]);captureOverride_[name]->setChecked(!inherit);}captureEditors_[name]->setVisible(!inherit);captureEditors_[name]->layout()->invalidate();captureEditors_[name]->setMinimumHeight(captureEditors_[name]->layout()->minimumSize().height());captureEditors_[name]->updateGeometry();
   bool unsupportedPrivate=false;
   if(actionUpload&&sharing->currentData()=="private")for(const auto& value:draft_["profiles"].toArray())if(value.toObject()["id"].toString()==profile->currentData().toString())unsupportedPrivate=value.toObject()["provider"]!="proton-drive";
   const bool fails=(!actionUpload&&!keep_->isChecked())||unsupportedPrivate;
@@ -1452,6 +1452,7 @@ void SettingsWindow::updateCaptureInheritance(){
   captureSummary_[name]->setProperty("outputNeedsAttention",needsOutput);
   VisualStyle::feedback(captureSummary_[name],(needsOutput?QString("Needs an output · "):QString{})+(inherit?(name=="record"?QString("Uses Capture region output · ")+outputSummary(profile,sharing):QString("Uses default output")):outputSummary(profile,sharing)),!inherit&&fails);
  }
+ captureExceptionRows_->invalidate();captureExceptionRows_->parentWidget()->layout()->invalidate();captureExceptionRows_->parentWidget()->updateGeometry();
 }
 // The output a capture gets, in the status band's words: Shared link or Private
 // upload · destination, + local copy; Local only; or why the action fails.
@@ -1539,7 +1540,7 @@ void SettingsWindow::showUpdates(){
 }
 void SettingsWindow::revealUpdates(){
  // The status, then its actions and an install's progress below it (#293 phase 3).
- if(auto* scroll=qobject_cast<QScrollArea*>(generalPage_)){scroll->ensureWidgetVisible(updateStatus_);for(auto* row:{updateActionsRow_,installRow_})if(row&&row->isVisible())scroll->ensureWidgetVisible(row);}
+ if(auto* scroll=qobject_cast<QScrollArea*>(generalPage_)){scroll->ensureWidgetVisible(updateStatus_);for(auto* row:{updateActionsRow_,installRow_,findChild<QWidget*>("updateBrowserFeedback")})if(row&&row->isVisible())scroll->ensureWidgetVisible(row);}
 }
 bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosaveBlocked_&&!pendingEdits_.isEmpty()&&!conflict_&&(setupAccepting_||!setupJobs_.isEmpty())){const auto waiting=QStringLiteral("Waiting for destination setup to finish before saving your edits.");if(status_->text()!=waiting||status_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(plain(status_),waiting);return false;}if(!saving_&&!pendingEdits_.isEmpty()&&!conflict_)save();return !saving_;}
 void SettingsWindow::save(){

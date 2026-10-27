@@ -26,6 +26,7 @@
 #include <QScopeGuard>
 #include <QSpinBox>
 #include <QScrollBar>
+#include <QScrollArea>
 #include <QStyleOptionSlider>
 #include <QStyleOptionSpinBox>
 #include <QVBoxLayout>
@@ -317,6 +318,7 @@ private slots:
         auto* actions = interface->actionInterface();
         QVERIFY(actions);
         QVERIFY(actions->actionNames().contains(QAccessibleActionInterface::pressAction()));
+        QVERIFY(actions->actionNames().contains(QAccessibleActionInterface::setFocusAction()));
         auto* heading = new Graphite::ElidedLabel(&window);
         heading->setText("All items");
         layout->addWidget(before);
@@ -355,12 +357,23 @@ private slots:
     void browserFailureCopiesExactLinkAndRetryClearsIt() {
         QWidget window;
         auto* layout = new QVBoxLayout(&window);
-        auto* feedback = new Graphite::BrowserFeedback(&window);
-        layout->addWidget(feedback);
+        auto* scroll = new QScrollArea(&window);
+        scroll->setWidgetResizable(true);
+        auto* body = new QWidget;
+        auto* column = new QVBoxLayout(body);
+        auto* preceding = new QWidget(body);
+        preceding->setFixedHeight(300);
+        column->addWidget(preceding);
+        auto* feedback = new Graphite::BrowserFeedback(body);
+        column->addWidget(feedback);
+        scroll->setWidget(body);
+        layout->addWidget(scroll);
+        window.resize(400, 220);
         window.show();
         const QUrl refused("unsupported://synthetic-browser-link/path?value=one%20two");
         host::openLink(refused, feedback->opening(refused));
         QVERIFY(feedback->isVisible());
+        PUTGD_TRY_VERIFY(scroll->viewport()->rect().contains(QRect(feedback->mapTo(scroll->viewport(), QPoint()), feedback->size())));
         QVERIFY(feedback->findChild<QLabel*>()->text().contains("Couldn't open the browser"));
         auto* copy = feedback->findChild<QPushButton*>();
         QCOMPARE(copy->text(), QString("Copy link"));
