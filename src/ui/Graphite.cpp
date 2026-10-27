@@ -713,6 +713,19 @@ QRect Style::subElementRect(SubElement element, const QStyleOption* option, cons
 QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* option, SubControl sub, const QWidget* widget) const {
     const QRect r = option->rect;
     switch (control) {
+    case CC_Slider: {
+        const auto* slider = qstyleoption_cast<const QStyleOptionSlider*>(option);
+        if (!slider) break;
+        const bool horizontal = slider->orientation == Qt::Horizontal;
+        const int length = pixelMetric(PM_SliderLength, option, widget);
+        const int thickness = pixelMetric(PM_SliderControlThickness, option, widget);
+        const int position = sliderPositionFromValue(slider->minimum, slider->maximum, slider->sliderPosition, std::max(0, (horizontal ? r.width() : r.height()) - length), slider->upsideDown);
+        if (sub == SC_SliderHandle)
+            return horizontal ? QRect(r.left() + position, r.top() + (r.height() - thickness) / 2, length, thickness)
+                              : QRect(r.left() + (r.width() - thickness) / 2, r.top() + position, thickness, length);
+        if (sub == SC_SliderGroove) return r;
+        break;
+    }
     case CC_ComboBox: {
         const auto* combo = qstyleoption_cast<const QStyleOptionComboBox*>(option);
         if (combo && !combo->frame) break;
@@ -775,6 +788,11 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* o
 }
 
 QStyle::SubControl Style::hitTestComplexControl(ComplexControl control, const QStyleOptionComplex* option, const QPoint& point, const QWidget* widget) const {
+    if (control == CC_Slider) {
+        if (subControlRect(control, option, SC_SliderHandle, widget).contains(point)) return SC_SliderHandle;
+        if (subControlRect(control, option, SC_SliderGroove, widget).contains(point)) return SC_SliderGroove;
+        return SC_None;
+    }
     return QProxyStyle::hitTestComplexControl(control, option, point, widget);
 }
 
@@ -1345,9 +1363,11 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
     case CC_Slider: {
         const auto* slider = qstyleoption_cast<const QStyleOptionSlider*>(option);
         if (!slider) break;
-        const auto groove = subControlRect(CC_Slider, slider, SC_SliderGroove, widget);
+        const auto track = subControlRect(CC_Slider, slider, SC_SliderGroove, widget);
         const auto handle = subControlRect(CC_Slider, slider, SC_SliderHandle, widget);
         const bool horizontal = slider->orientation == Qt::Horizontal;
+        const auto groove = horizontal ? track.adjusted((handle.width() - 1) / 2, 0, -handle.width() / 2, 0)
+                                       : track.adjusted(0, (handle.height() - 1) / 2, 0, -handle.height() / 2);
         const bool enabled = option->state & State_Enabled;
         if (horizontal) {
             const qreal y = groove.center().y() - 1.5;

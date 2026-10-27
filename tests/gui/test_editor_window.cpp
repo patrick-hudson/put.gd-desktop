@@ -47,7 +47,7 @@ private slots:
    const QString text(180,'W');field->setText(text);QVERIFY(canvas.rect().contains(field->geometry()));
    canvas.resize(320,220);QApplication::processEvents();QVERIFY(canvas.rect().contains(field->geometry()));
    field->setCursorPosition(text.size());QTest::keyClick(field,Qt::Key_End);QTest::keyClick(field,Qt::Key_Return);
-   QCOMPARE(doc.shapes().last().rect.topLeft(),anchor);QCOMPARE(doc.shapes().last().text,text);
+   QCOMPARE(doc.shapes().last().rect.topLeft(),anchor);QCOMPARE(doc.shapes().last().text,text);doc.remove(doc.shapes().last().id);canvas.documentChanged();
    QApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);canvas.resize(440,300);QApplication::processEvents();
   }
  }
@@ -57,18 +57,23 @@ private slots:
   QCOMPARE(value->accessibleDescription(),slider->accessibleDescription());
   for(const int strength:{slider->minimum(),18,slider->maximum()}){slider->setValue(strength);QCOMPARE(value->text(),QString::number(strength));QCOMPARE(window.canvas().style().strength,strength);}
   add(doc,{{"kind","blur"},{"rect",QJsonArray{10,10,50,20}},{"strength",24}});window.documentEdited();window.canvas().select(doc.shapes().last().id);QCOMPARE(value->text(),QString("24"));
-  for(const auto orientation:{Qt::Horizontal,Qt::Vertical})for(const bool inverted:{false,true}){
-   QSlider control(orientation);control.setRange(0,100);control.setValue(50);control.setInvertedAppearance(inverted);control.resize(orientation==Qt::Horizontal?QSize(260,32):QSize(32,260));control.show();QVERIFY(putgd::test::waitForWindowExposed(&control));
-   QStyleOptionSlider option;option.initFrom(&control);option.orientation=orientation;option.minimum=0;option.maximum=100;option.sliderPosition=50;option.sliderValue=50;option.upsideDown=orientation==Qt::Horizontal?inverted:!inverted;
+  class Slider final:public QSlider {public:using QSlider::QSlider;QStyleOptionSlider option()const{QStyleOptionSlider value;initStyleOption(&value);return value;}};
+  for(const auto orientation:{Qt::Horizontal,Qt::Vertical})for(const bool inverted:{false,true})for(const auto direction:{Qt::LeftToRight,Qt::RightToLeft}){
+   Slider control(orientation);control.setLayoutDirection(direction);control.setRange(0,100);control.setValue(50);control.setInvertedAppearance(inverted);control.resize(orientation==Qt::Horizontal?QSize(260,32):QSize(32,260));control.show();QVERIFY(putgd::test::waitForWindowExposed(&control));
+   const auto option=control.option();
    const auto handle=control.style()->subControlRect(QStyle::CC_Slider,&option,QStyle::SC_SliderHandle,&control);
-   QVERIFY(handle.width()>=32&&handle.height()>=32);QVERIFY(control.rect().contains(handle));
+   QVERIFY(handle.width()>=32&&handle.height()>=32);QVERIFY2(control.rect().contains(handle),qPrintable(QString("handle %1,%2 %3x%4 in %5x%6").arg(handle.x()).arg(handle.y()).arg(handle.width()).arg(handle.height()).arg(control.width()).arg(control.height())));
    QVERIFY((orientation==Qt::Horizontal?control.sizeHint().height():control.sizeHint().width())>=32);
    const QPoint press=handle.center()+(orientation==Qt::Horizontal?QPoint(0,14):QPoint(14,0));
    QCOMPARE(control.style()->hitTestComplexControl(QStyle::CC_Slider,&option,press,&control),QStyle::SC_SliderHandle);
    QTest::mousePress(&control,Qt::LeftButton,{},press);QCOMPARE(control.value(),50);QVERIFY(control.isSliderDown());
    const QPoint end=press+(orientation==Qt::Horizontal?QPoint(28,0):QPoint(0,28));
    QMouseEvent move(QEvent::MouseMove,QPointF(end),control.mapToGlobal(QPointF(end)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&control,&move);
-   QVERIFY(control.value()!=50);QTest::mouseRelease(&control,Qt::LeftButton,{},end);
+   QVERIFY(control.value()!=50);
+   const QPoint edge=orientation==Qt::Horizontal?QPoint(control.width()-1,press.y()):QPoint(press.x(),control.height()-1);
+   QMouseEvent toEdge(QEvent::MouseMove,QPointF(edge),control.mapToGlobal(QPointF(edge)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&control,&toEdge);
+   QCOMPARE(control.value(),option.upsideDown?control.minimum():control.maximum());QTest::mouseRelease(&control,Qt::LeftButton,{},edge);
+   for(const int position:{control.minimum(),control.maximum()}){control.setValue(position);const auto atEnd=control.option();QVERIFY(control.rect().contains(control.style()->subControlRect(QStyle::CC_Slider,&atEnd,QStyle::SC_SliderHandle,&control)));}
   }
  }
  void indeterminateProgressPaintsAndAnimatesInBothSchemes(){
