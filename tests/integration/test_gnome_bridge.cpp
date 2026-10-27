@@ -85,7 +85,7 @@ class GnomeHelperFixture final:public QObject,protected QDBusContext {
  Q_OBJECT
  Q_CLASSINFO("D-Bus Interface","org.putgd.Gnome50")
  uint currentPid_=0,failPid_=0,failures_=0;
- QJsonArray registrations_,lastAcquireMimes_;
+ QJsonArray registrations_,lastAcquireMimes_;QString lastOutcome_;
  int hellos_=0,binds_=0,commits_=0;
  QJsonObject lastBindings_;
  QString helloError_=qEnvironmentVariable("PUTGD_TEST_HELLO_ERROR"),prepareError_=qEnvironmentVariable("PUTGD_TEST_PREPARE_ERROR");
@@ -120,7 +120,7 @@ public slots:
  void SetErrors(const QString& hello,const QString& prepare){helloError_=hello;prepareError_=prepare;}
  QString Prepare(const QString& id,const QString&){if(!prepareError_.isEmpty()){sendErrorReply(prepareError_,"Synthetic preparation failure");return {};}return json({{"version",1},{"requestId",id}});}
  QString Acquire(const QString& id,const QString& encoded){
-  const auto mimes=QJsonDocument::fromJson(encoded.toUtf8()).object()["imageMimes"].toArray();lastAcquireMimes_=mimes;
+  const auto bounds=QJsonDocument::fromJson(encoded.toUtf8()).object();lastOutcome_=bounds["outcome"].toString();const auto mimes=bounds["imageMimes"].toArray();lastAcquireMimes_=mimes;
   for(const auto& mime:mimes)
    if(!mime.isString()||!mime.toString().startsWith("image/"))
     return json({{"error",QJsonObject{{"code","bridge_protocol"},{"message","Invalid supported image MIME list"}}}});
@@ -129,7 +129,7 @@ public slots:
  QString Read(const QString& id,qulonglong offset,uint){return json({{"version",1},{"requestId",id},{"offset",double(offset)},{"data","eA=="}});}
  QString Release(const QString&){return json({});}
  void FailRegistration(uint pid,uint count){failPid_=pid;failures_=count;}
- QString State(){return json({{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
+ QString State(){return json({{"outcome",lastOutcome_},{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
  void TriggerWindow(const QString& ticket){emit Action("window",ticket);}
  signals:
  void Action(const QString& action,const QString& ticket);
@@ -213,6 +213,14 @@ private slots:
   const auto mimes=state()["imageMimes"].toArray();
   QVERIFY(mimes.contains("image/x-putgd-gnome-mime"));
   QVERIFY(!mimes.contains("application/x-putgd-gnome-mime"));
+ }
+ void outcomeIsFrozenWithThePreparedCapture(){
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
+  source.setCaptureOutcome("Uploads immediately to Proton Drive");
+  auto prepared=source.prepareAcquisition("region");
+  source.setCaptureOutcome("Opens the image editor");
+  bool completed=false;prepared({},[&](PayloadResult){completed=true;});PUTGD_TRY_VERIFY(completed);
+  QCOMPARE(state()["outcome"].toString(),QString("Uploads immediately to Proton Drive"));
  }
  void screenCapturesSendOnlyPngWithoutListingImagePlugins(){
   // Listing image types instantiates every installed Qt image plugin; only a

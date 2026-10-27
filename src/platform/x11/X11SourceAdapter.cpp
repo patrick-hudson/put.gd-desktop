@@ -52,7 +52,7 @@ QJsonObject X11SourceAdapter::capabilities()const {
 SourceAdapter::PreparedAcquisition X11SourceAdapter::prepareAcquisition(const QString& action) {
  QPointer<X11SourceAdapter> guard(this);
  if(action=="clipboard"){const auto revision=clipboard_.revision();return [guard,revision](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(guard)guard->clipboard_.acquire(limits,std::move(cb),revision);else cb({{},{"source_unavailable","Desktop adapter closed",{}}});};}
- Error error;const auto target=capture_.freeze(action,error);
+ Error error;auto target=capture_.freeze(action,error);target.outcome=captureOutcome_;
  return [guard,target,error](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(error){cb({{},error});return;}if(guard)guard->capture(target,limits,std::move(cb));else cb({{},{"source_unavailable","Desktop adapter closed",{}}});};
 }
 void X11SourceAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){prepareAcquisition(action)(limits,std::move(cb));}
@@ -74,7 +74,7 @@ void X11SourceAdapter::selectRegionFrozen(const X11Target& target,const Resource
  Error error;if(!capture_.unchanged(target,error)){cb({{},0,error});return;}
  // A fresh selection invalidates older geometry, without reading any pixels.
  selectedGeneration_=0;selectedTarget_={};const auto generation=++generation_;
- RegionSelector* overlay=nativeRegionSelector_&&NativeRegionOverlay::supportsLayout(target.layout)?static_cast<RegionSelector*>(new NativeRegionOverlay(target.layout,this,residentRegionCursor_)):static_cast<RegionSelector*>(new RegionOverlay(target.layout,this));overlay_=overlay;
+ RegionSelector* overlay=nativeRegionSelector_&&NativeRegionOverlay::supportsLayout(target.layout)?static_cast<RegionSelector*>(new NativeRegionOverlay(target.layout,this,residentRegionCursor_,target.outcome)):static_cast<RegionSelector*>(new RegionOverlay(target.layout,this,target.outcome));overlay_=overlay;
  auto callback=std::make_shared<std::function<void(RegionSelectionResult)>>(std::move(cb));
  connect(overlay,&RegionSelector::selected,this,[this,overlay,target,limits,callback,generation](const QRectF& rectangle){
   // Both selector implementations withdraw before emitting; wait for object

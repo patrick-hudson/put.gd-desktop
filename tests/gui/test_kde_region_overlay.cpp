@@ -16,6 +16,16 @@ class KdeRegionOverlayTest final:public QObject {
   return nullptr;
  }
 private slots:
+ void resolvedOutcomeIsVisibleAndAccessible(){
+  for(const QString outcome:{QString("Uploads immediately to Proton Drive"),QString("Saves locally"),QString("Opens the image editor")}){
+   KdeRegionOverlay overlay({},nullptr,false,outcome);auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
+   QVERIFY(surface->accessibleDescription().endsWith(outcome));
+   QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().endsWith(outcome));
+   QTest::mousePress(surface,Qt::LeftButton,{},QPoint(30,40));QTest::mouseMove(surface,QPoint(200,160));
+   QVERIFY(surface->accessibleDescription().contains("Release to capture"));QVERIFY(surface->accessibleDescription().endsWith(outcome));
+   QVERIFY(!surface->grab().isNull());overlay.cancel();
+  }
+ }
  void keyboardStepsAndAccessibleGeometry(){
   KdeRegionOverlay overlay({});const QRectF screen(-800,100,800,600);auto* surface=add(overlay,screen);QVERIFY(surface);
   QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);QSignalSpy cancelled(&overlay,&KdeRegionOverlay::cancelled);

@@ -190,6 +190,13 @@ private slots:
   QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),2);
   for(const auto& frame:frames){QVERIFY(!frame["cache"].toBool());QCOMPARE(frame["cursorId"].toString(),QString("0"));}
  }
+ void captureOutcomeTravelsOutsideTheFrozenTarget(){
+  QTemporaryDir dir;const auto trace=dir.filePath("outcome.jsonl");QFile file(trace);QVERIFY(file.open(QIODevice::WriteOnly));QVERIFY(file.setPermissions(QFile::ReadOwner|QFile::WriteOwner));file.close();
+  qputenv("PUTGD_TEST_CAPTURE_TRACE",trace.toUtf8());
+  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);bool done=false;
+  const auto frozen=snapshot();controller.start(frozen,{},[&](putgd::PayloadResult result){QVERIFY(!result.error);done=true;},"Opens the image editor");
+  PUTGD_TRY_VERIFY(done);const auto frames=cursorTrace(trace);QVERIFY(!frames.isEmpty());QCOMPARE(frames.first()["outcome"].toString(),QString("Opens the image editor"));QCOMPARE(frozen,snapshot());
+ }
  void genuinePngValidatedOnlyAfterNormalChildExit(){putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int completed=0;putgd::PayloadResult result;controller.start(snapshot(),{},[&](putgd::PayloadResult r){result=std::move(r);++completed;});PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.payload.image.size(),QSize(3,2));QCOMPARE(result.payload.image.pixelColor(1,1),QColor(Qt::blue));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);QVERIFY(exit["processId"].toInteger()>0);QVERIFY(exit["startTicks"].toString().toULongLong()>0);}
  void preparedHelperStaysIdleUntilBegin(){
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);

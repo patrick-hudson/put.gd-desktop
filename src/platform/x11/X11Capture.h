@@ -9,6 +9,7 @@ struct X11Target {
  QRect nativeWindowRect;
  QList<CaptureFrame> layout;
  QRectF logicalSelection;
+ QString outcome;
 };
 class X11Capture final:public QObject {
  Q_OBJECT

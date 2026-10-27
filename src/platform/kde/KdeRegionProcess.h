@@ -15,7 +15,7 @@ public:
  explicit KdeRegionProcess(QObject* parent=nullptr);
  explicit KdeRegionProcess(QString helperPath,QObject* parent=nullptr);
  ~KdeRegionProcess() override;
- void start(const QList<CaptureFrame>&,std::function<void(QRectF,Error)>);
+ void start(const QList<CaptureFrame>&,std::function<void(QRectF,Error)>,QString outcome={});
  void cancel(Error={"cancelled","Region selection cancelled",{}});
  // Permanently stop this request owner without calling into its dying caller.
  void shutdown();

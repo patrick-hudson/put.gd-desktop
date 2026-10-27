@@ -279,7 +279,12 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
   // A file is read and decoded by the editor stage; no native source is involved.
   acquisition=[sourcePath](const ResourceLimits&,std::function<void(PayloadResult)> deliver){ClipboardPayload payload;payload.kind="files";payload.files={sourcePath};deliver({payload,{}});};
   released();
- }else acquisition=source_.prepareAcquisition(source,snapshot.limits,std::move(earlyTerminal),std::move(released));
+ }else {
+  const auto provider=op.destination.providerId;
+  const auto providerName=provider=="proton-drive"?QStringLiteral("Proton Drive"):provider=="backblaze-b2"?QStringLiteral("Backblaze B2"):provider=="s3"?QStringLiteral("S3"):snapshot.profiles.value(route.profileId)["label"].toString(provider);
+  source_.setCaptureOutcome(action=="edit"?QStringLiteral("Opens the image editor"):upload?QStringLiteral("Uploads immediately to %1").arg(providerName):QStringLiteral("Saves locally"));
+  acquisition=source_.prepareAcquisition(source,snapshot.limits,std::move(earlyTerminal),std::move(released));
+ }
  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition,earlyError](Error e,QJsonObject result) mutable {
   if(e) {abandonUploadCopies(op.id);releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();if(editingId_==op.id){editor_.reset();editingId_.clear();}reply(e,{});return;}
   observe(op.publicJson());reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);emit observationsChanged();

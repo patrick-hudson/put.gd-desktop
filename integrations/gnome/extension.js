@@ -69,6 +69,8 @@ function limitsFrom(json) {
     check(Array.isArray(value.imageMimes) && value.imageMimes.length <= 128 &&
         value.imageMimes.every(m => typeof m === 'string' && m.length <= 128 && m.startsWith('image/')),
     'bridge_protocol', 'Invalid supported image MIME list');
+    check(value.outcome === undefined || (typeof value.outcome === 'string' && value.outcome.length <= 256),
+        'bridge_protocol', 'Invalid capture outcome');
     return value;
 }
 // The recording helper's control bar, a frameless Qt window the Shell places.
@@ -227,7 +229,7 @@ const RegionSelection = {
         return {width: Math.ceil((region.x + region.width) * density) - Math.floor(region.x * density),
             height: Math.ceil((region.y + region.height) * density) - Math.floor(region.y * density)};
     },
-    instructions(region, recording, display, bounds, outputs = [], dragging = false) {
+    instructions(region, recording, display, bounds, outputs = [], dragging = false, outcome = '') {
         const selected = region?.width > 0 && region?.height > 0;
         const logical = selected ? region : bounds;
         const output = logical ? this.outputSize(logical, outputs) : null;
@@ -237,14 +239,15 @@ const RegionSelection = {
             : (selected ? 'Enter to capture' : 'Enter captures this entire display');
         return context + accept + (dragging ? '\nEsc to cancel' : '\nDrag to select · Esc to cancel') +
             '\nArrows move · Shift+arrows resize · Tab next display' +
-            (recording ? '\nStart recording comes next' : '');
+            (recording ? '\nStart recording comes next' : outcome ? `\n${outcome}` : '');
     },
 };
 
 const RegionSelector = GObject.registerClass(class RegionSelector extends St.Widget {
-    _init(recording = false, outputs = null) {
+    _init(recording = false, outputs = null, outcome = '') {
         super._init({reactive: true, visible: false, accessible_name: recording ? 'Recording region' : 'Capture region', x: 0, y: 0});
         this._outputs = outputs;
+        this._outcome = outcome;
         this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
         this.set_cursor_type(Clutter.CursorType.CROSSHAIR);
         this._scrims = Array.from({length: 4}, () => {
@@ -392,7 +395,7 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         const index = Main.layoutManager.monitors.indexOf(monitor);
         const display = `Display ${index + 1}`;
         const outputs = this._outputs || Main.layoutManager.monitors.map((m, i) => ({...m, density: global.display.get_monitor_scale(i)}));
-        const instructions = RegionSelection.instructions(rect, this._recording, display, monitor, outputs, !!this._start);
+        const instructions = RegionSelection.instructions(rect, this._recording, display, monitor, outputs, !!this._start, this._outcome);
         this._instructions.text = instructions;
         const description = (rect && rect.width > 0 && rect.height > 0
             ? `Region ${rect.width} × ${rect.height} at ${rect.x}, ${rect.y}.`
@@ -1028,7 +1031,7 @@ export default class PutgdExtension extends Extension {
             selection = [Math.min(...xs), Math.min(...ys), Math.max(...right) - Math.min(...xs), Math.max(...bottom) - Math.min(...ys)];
             if (request.action === 'region') {
                 check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
-                const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: m.density})));
+                const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: m.density})), request.limits.outcome);
                 this._selector = request.selector = selector;
                 request.stage = 'region-select';
                 const selected = await selector.selectAsync();

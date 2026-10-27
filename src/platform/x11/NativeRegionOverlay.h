@@ -13,7 +13,7 @@ namespace putgd {
 class NativeRegionOverlay final:public RegionSelector {
  Q_OBJECT
 public:
- explicit NativeRegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr,xcb_cursor_t residentCursor=XCB_CURSOR_NONE);
+ explicit NativeRegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr,xcb_cursor_t residentCursor=XCB_CURSOR_NONE,QString outcome={});
  ~NativeRegionOverlay() override;
  static bool supportsLayout(const QList<CaptureFrame>&);
  // How long selection waits for another client's grab, such as an open
@@ -38,6 +38,7 @@ private:
  void finish();
  bool checked(xcb_void_cookie_t);
  QList<CaptureFrame> frames_;
+ QString outcome_;
  QList<Surface> surfaces_;
  xcb_connection_t* connection_=nullptr;
  xcb_window_t root_=XCB_WINDOW_NONE;

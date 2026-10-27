@@ -29,6 +29,7 @@ public:
  // The resident supervisor sets the one live UI helper before it can show a
  // window, and clears it on exit. Native adapters exclude it at invocation.
  virtual void setUiProcess(qint64) {}
+ void setCaptureOutcome(const QString& outcome) { captureOutcome_=outcome; }
  virtual quint64 clipboardRevision() const=0;
  virtual QJsonObject capabilities() const=0;
  // Freeze native target identity/layout on the session thread before persistence
@@ -67,6 +68,9 @@ public:
  // cancelled, or shut down. Report copy_suppressed only when no write committed.
  virtual void invalidateCopyEligibility() {}
  virtual void copy(const CopyPayload&,std::function<void(Error)>)=0;
+protected:
+ // Non-secret presentation context; adapters copy it when freezing each request.
+ QString captureOutcome_;
 };
 class UnavailableSource final:public SourceAdapter {
 public:

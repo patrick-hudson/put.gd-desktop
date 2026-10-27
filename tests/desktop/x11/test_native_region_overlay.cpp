@@ -46,6 +46,14 @@ class NativeRegionTest final:public QObject {
  QByteArray cursor(){auto image=x11::reply(xcb_xfixes_get_cursor_image_reply(connection_,xcb_xfixes_get_cursor_image(connection_),nullptr));if(!image)return {};QByteArray data;for(const auto n:{image->width,image->height,image->xhot,image->yhot}){const uint16_t v=n;data.append(reinterpret_cast<const char*>(&v),sizeof(v));}data.append(reinterpret_cast<const char*>(xcb_xfixes_get_cursor_image_cursor_image(image.get())),xcb_xfixes_get_cursor_image_cursor_image_length(image.get())*4);return QCryptographicHash::hash(data,QCryptographicHash::Sha256);}
  void availableGrabs(){auto pointer=x11::reply(xcb_grab_pointer_reply(connection_,xcb_grab_pointer(connection_,0,root_,XCB_EVENT_MASK_BUTTON_PRESS,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_NONE,XCB_NONE,XCB_CURRENT_TIME),nullptr));const int pointerStatus=pointer?pointer->status:-1;if(pointerStatus==XCB_GRAB_STATUS_SUCCESS)xcb_ungrab_pointer(connection_,XCB_CURRENT_TIME);auto keyboard=x11::reply(xcb_grab_keyboard_reply(connection_,xcb_grab_keyboard(connection_,0,root_,XCB_CURRENT_TIME,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC),nullptr));const int keyboardStatus=keyboard?keyboard->status:-1;if(keyboardStatus==XCB_GRAB_STATUS_SUCCESS)xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);xcb_flush(connection_);QCOMPARE(pointerStatus,int(XCB_GRAB_STATUS_SUCCESS));QCOMPARE(keyboardStatus,int(XCB_GRAB_STATUS_SUCCESS));}
 private slots:
+ void resolvedOutcomeSurvivesNativeSelection(){
+  for(const QString outcome:{QString("Uploads immediately to Proton Drive"),QString("Saves locally"),QString("Opens the image editor")}){
+   NativeRegionOverlay overlay(frames(),nullptr,XCB_CURSOR_NONE,outcome);overlay.start();PUTGD_TRY_VERIFY(!drawables().isEmpty());
+   auto* accessible=QAccessible::queryAccessibleInterface(&overlay);QVERIFY(accessible);QVERIFY(accessible->text(QAccessible::Description).endsWith(outcome));
+   keyClick(0xff53);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("Enter to capture"));
+   QVERIFY(accessible->text(QAccessible::Description).endsWith(outcome));overlay.cancel();PUTGD_TRY_VERIFY(drawables().isEmpty());
+  }
+ }
  void initTestCase(){connection_=xcb_connect(nullptr,nullptr);QVERIFY(!xcb_connection_has_error(connection_));root_=xcb_setup_roots_iterator(xcb_get_setup(connection_)).data->root;auto fixes=x11::reply(xcb_xfixes_query_version_reply(connection_,xcb_xfixes_query_version(connection_,5,0),nullptr));QVERIFY(fixes&&fixes->major_version>=2);keys_=xcb_key_symbols_alloc(connection_);QVERIFY(keys_);}
  void cleanupTestCase(){xcb_key_symbols_free(keys_);xcb_disconnect(connection_);}
  void cachedCursorSurvivesSourceClientExit(){

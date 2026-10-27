@@ -28,6 +28,20 @@ private slots:
   QVERIFY(!switchRegionDisplay(selected,screens,current,Qt::Key_Right));
   QVERIFY(!switchRegionDisplay(selected,{},current,Qt::Key_Tab));
  }
+ void screenshotOutcomeSurvivesKeyboardAndMouseSelection(){
+  const QRectF bounds(0,0,800,600);const QList<CaptureFrame> frames{{"Display 1",bounds,bounds.toRect(),1,0,{}}};
+  for(const QString outcome:{QString("Uploads immediately to Proton Drive"),QString("Saves locally"),QString("Opens the image editor")}){
+   for(bool dragging:{false,true})for(const QRectF selection:{QRectF(),QRectF(20,30,400,200)}){
+    const auto text=regionInstructions(selection,false,"Display 1",bounds,frames,dragging,outcome);
+    QVERIFY(text.endsWith("\n"+outcome));QCOMPARE(text.count(outcome),1);
+    QVERIFY(regionDescription(selection,false,"Display 1",bounds,frames,dragging,outcome).contains(outcome));
+    const auto box=regionInstructionBox(bounds.toRect(),QFontMetrics(QFont{}),text,selection);
+    QVERIFY(bounds.contains(box));
+   }
+   const auto recording=regionInstructions({},true,"Display 1",bounds,frames,false,outcome);
+   QVERIFY(!recording.contains(outcome));QVERIFY(recording.endsWith("Start recording comes next"));
+  }
+ }
  void hintsReflectActionAndState(){
   for(bool recording:{false,true}){
    QRectF selected;const QRectF screen(0,0,800,600);

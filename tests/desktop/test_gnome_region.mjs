@@ -13,7 +13,7 @@ const source = new TextDecoder().decode(contents);
 const selector = source.slice(source.indexOf('const RegionSelection ='), source.indexOf('// AppIndicators'))
     .replace('const RegionSelection =', 'globalThis.RegionSelection =').replace('const RegionSelector =', 'globalThis.RegionSelector =');
 class Widget {
-    constructor(properties) {this._init(properties);}
+    constructor(...args) {this._init(...args);}
     _init(properties) {Object.assign(this, properties); this.children = []; this.clutter_text = {set_line_wrap() {}};}
     add_constraint() {}
     set_cursor_type() {}
@@ -51,6 +51,17 @@ equal(RegionSelection.outputSize({x: -100, y: 100, width: 200, height: 100}, sca
 equal(RegionSelection.instructions(null, false, 'Left', scaledOutputs[0], scaledOutputs).includes('Entire display 1000 × 750 px'), true);
 equal(RegionSelection.instructions({x: 0, y: 0, width: 50, height: 30}, false, 'Unknown', null).includes('50 × 30 logical px'), true);
 print('PASS output pixel sizes on fractional, mixed-density and unknown outputs');
+for (const outcome of ['Uploads immediately to Proton Drive', 'Saves locally', 'Opens the image editor']) {
+    const actor = new globalThis.RegionSelector(false, null, outcome);
+    const result = actor.selectAsync();
+    equal(actor._instructions.text.endsWith(`\n${outcome}`), true);
+    actor._input({type: () => Clutter.EventType.KEY_PRESS, get_key_symbol: () => Clutter.KEY_Right, get_state: () => 0});
+    equal(actor._instructions.text.endsWith(`\n${outcome}`), true);
+    actor.cancel();
+    await result;
+    equal(RegionSelection.instructions(null, true, 'Display 1', null, [], false, outcome).includes(outcome), false);
+}
+print('PASS resolved screenshot outcomes survive keyboard selection without changing recording guidance');
 function begin() {
     const actor = new globalThis.RegionSelector();
     const result = actor.selectAsync();
