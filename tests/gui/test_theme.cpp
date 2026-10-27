@@ -5,6 +5,7 @@
 #include "ui/ViewState.h"
 #include "ui/VisualStyle.h"
 #include "ui/Graphite.h"
+#include "ui/BlurRadius.h"
 #include <QApplication>
 #include <QFormLayout>
 #include <QListWidget>
@@ -103,6 +104,22 @@ private slots:
             QImage expected(option.rect.size(),QImage::Format_RGB32);expected.fill(c.bg);{QPainter painter(&expected);Graphite::paintText(painter,text,"Ctrl+-",c.textMuted,font,Qt::AlignRight|Qt::AlignVCenter,Qt::ElideNone);}
             QCOMPARE(actual.copy(text),expected.copy(text));
         }
+    }
+    void blurRadiusSharesJoinedUnitAndLinkedSlider() {
+        for (const bool compact : {false, true}) {
+            BlurRadius radius(2,64,12,compact);radius.resize(compact?QSize(360,50):QSize(360,90));radius.show();putgd::test::settle(10);
+            auto* spin=radius.spinBox();auto* unit=radius.unitLabel();QVERIFY(radius.label()->buddy()==spin);QCOMPARE(spin->suffix(),QString());
+            QCOMPARE(unit->x(),spin->geometry().right()+1);QCOMPARE(unit->y(),spin->y());QCOMPARE(unit->height(),spin->height());
+            spin->setFocus(Qt::TabFocusReason);spin->setValue(63);QTest::keyClick(spin,Qt::Key_Up);QCOMPARE(spin->value(),64);QTest::keyClick(spin,Qt::Key_Up);QCOMPARE(spin->value(),64);
+            if (compact) QVERIFY(!radius.slider());
+            else {QCOMPARE(radius.slider()->value(),64);radius.slider()->setValue(2);QCOMPARE(spin->value(),2);}
+        }
+    }
+    void sharedBlurWarningInvokesTheHostsRedactAction() {
+        int calls=0;std::unique_ptr<QWidget> warning(Graphite::blurWarning([&]{++calls;}));warning->resize(300,150);warning->show();putgd::test::settle(10);
+        auto* action=warning->findChild<QToolButton*>("useRedact");auto* text=warning->findChild<QLabel*>("blurWarningText");QVERIFY(action&&text);QCOMPARE(text->text(),Graphite::blurWarningText());
+        action->setFocus(Qt::TabFocusReason);QTest::keyClick(action,Qt::Key_Space);QCOMPARE(calls,1);QVERIFY(text->geometry().bottom()<action->y());
+        warning->setEnabled(false);QTest::mouseClick(action,Qt::LeftButton);QCOMPARE(calls,1);
     }
     void confirmationsSeparateQuestionFromConsequence() {
         std::unique_ptr<QMessageBox> box(Graphite::confirm(nullptr,"Discard edits","Discard your edits?\n\nYour marks will be lost.","Discard","Keep editing",true));

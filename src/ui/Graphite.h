@@ -128,6 +128,10 @@ QFrame* rule(QWidget* parent = nullptr, Qt::Orientation = Qt::Horizontal);
 QLabel* label(const QString& text, const char* role = "body", QWidget* parent = nullptr);
 // Normal readable text with an amber alert glyph; include a word naming the problem.
 QLabel* warningLabel(const QString& text, QWidget* parent = nullptr);
+// One privacy warning for image and recording blur; the action uses the host
+// editor's existing Redact command. The host decides when it is visible.
+QString blurWarningText();
+QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent = nullptr);
 // Neutral item selection, distinct from the keyboard focus ring and navigation markers.
 void paintSelection(QPainter&, const QRectF&, bool keyboardFocused = false, qreal radius = Metric::radius);
 

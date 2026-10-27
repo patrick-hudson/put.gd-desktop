@@ -1687,6 +1687,23 @@ QLabel* warningLabel(const QString& text, QWidget* parent) {
     VisualStyle::role(label, "warning");
     return label;
 }
+QString blurWarningText() {
+    return QStringLiteral("Blur is a visual effect. Use Redact for passwords and private information.");
+}
+QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
+    auto* warning = new QWidget(parent);
+    auto* layout = new QVBoxLayout(warning);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(8);
+    auto* text = warningLabel(blurWarningText(), warning);
+    text->setObjectName("blurWarningText");
+    layout->addWidget(text);
+    auto* action = toolButton("Use Redact", {}, "quiet", warning);
+    action->setObjectName("useRedact");
+    layout->addWidget(action, 0, Qt::AlignLeft);
+    QObject::connect(action, &QToolButton::clicked, warning, useRedact);
+    return warning;
+}
 void paintSelection(QPainter& painter, const QRectF& rect, bool keyboardFocused, qreal radius) {
     rounded(&painter, rect, t().selected, keyboardFocused ? t().accent : t().borderStrong, radius);
 }

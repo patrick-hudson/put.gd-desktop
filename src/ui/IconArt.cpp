@@ -166,20 +166,18 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   if(name=="up"){p.translate(12,12);p.rotate(90);p.translate(-12,-12);}
   line(secondary,2.5);p.drawLine(QPointF(7,12),QPointF(20,12));
   line(color,2.5);QPainterPath head;head.moveTo(11,5);head.lineTo(4,12);head.lineTo(11,19);p.drawPath(head);
- } else if(name=="folder-new") {
+ } else if(name=="folder-new"||name=="save") {
   fill(secondary);QPainterPath folder;folder.moveTo(2,6);folder.quadTo(2,4,4,4);folder.lineTo(9,4);folder.lineTo(11,6);folder.lineTo(20,6);folder.quadTo(22,6,22,8);
   folder.lineTo(22,18);folder.quadTo(22,20,20,20);folder.lineTo(4,20);folder.quadTo(2,20,2,18);folder.closeSubpath();p.drawPath(folder);
-  line(color,2.5);p.drawLine(QPointF(12,9),QPointF(12,17));p.drawLine(QPointF(8,13),QPointF(16,13));
+  line(color,2.5);p.drawLine(QPointF(12,9),QPointF(12,17));
+  if(name=="save"){p.drawLine(QPointF(8,13),QPointF(12,17));p.drawLine(QPointF(12,17),QPointF(16,13));}
+  else p.drawLine(QPointF(8,13),QPointF(16,13));
  } else if(name=="view-list") {
   fill(color);for(const qreal y:{5.,12.,19.})p.drawEllipse(QPointF(4.5,y),1.8,1.8);
   line(secondary,2.5);for(const qreal y:{5.,12.,19.})p.drawLine(QPointF(9,y),QPointF(21,y));
  } else if(name=="view-detail") {
   line(secondary,2);rounded(2,3,20,18,2);p.drawLine(QPointF(2,9),QPointF(22,9));p.drawLine(QPointF(2,15),QPointF(22,15));
   line(color,2);p.drawLine(QPointF(10,3),QPointF(10,21));
- } else if(name=="save") {
-  line(color,1.8);QPainterPath save;
-  save.moveTo(12,2);save.lineTo(12,14);save.moveTo(7,9);save.lineTo(12,14);save.lineTo(17,9);
-  save.moveTo(3,13);save.lineTo(3,21);save.lineTo(21,21);save.lineTo(21,13);p.drawPath(save);
  } else if(name=="play") {
   fill(color);QPainterPath play;play.moveTo(8,4.5);play.lineTo(20,12);play.lineTo(8,19.5);play.closeSubpath();p.drawPath(play);
  } else if(name=="pause") {
@@ -214,9 +212,9 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   fill(secondary);QPainterPath drum;drum.addRect(QRectF(4,6,16,12));drum.addEllipse(QRectF(4,14,16,8));p.drawPath(drum.simplified());
   fill(color);p.drawEllipse(QRectF(4,2,16,8));line(color,1.8);p.drawArc(QRectF(4,9.5,16,7),180*16,180*16);
  } else if(name=="proton") {
-  // A lock inside an open cloud outline stays legible at 16 px.
-  line(secondary,1.8);QPainterPath cloud;cloud.moveTo(6,20);cloud.cubicTo(-1,20,0,10,6,10);cloud.cubicTo(6,1,18,1,19,10);cloud.cubicTo(25,11,24,20,19,20);p.drawPath(cloud);
-  line(color,1.8);rounded(8,13,8,8,1);p.drawArc(QRectF(9,8,6,9),0,180*16);
+  // Places and objects share a filled secondary silhouette and main detail.
+  fill(secondary);QPainterPath cloud;cloud.moveTo(6,20);cloud.cubicTo(-1,20,0,10,6,10);cloud.cubicTo(6,1,18,1,19,10);cloud.cubicTo(25,11,24,20,19,20);cloud.closeSubpath();p.drawPath(cloud);
+  fill(color);rounded(8,13,8,8,1.5);line(color,2);p.drawArc(QRectF(9,8,6,9),0,180*16);
  } else if(name=="add") {
   fill(secondary);p.drawEllipse(QRectF(2,2,20,20));
   line(color,2.5);p.drawLine(QPointF(12,7),QPointF(12,17));p.drawLine(QPointF(7,12),QPointF(17,12));

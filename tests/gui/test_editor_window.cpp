@@ -2,6 +2,7 @@
 #include "ui/EditorWindow.h"
 #include "ui/FileDialog.h"
 #include "ui/Theme.h"
+#include "ui/BlurRadius.h"
 #include "editor/EditorCommands.h"
 #include "platform/HostOpen.h"
 #include <QApplication>
@@ -81,7 +82,8 @@ private slots:
   QCOMPARE(x->y(),y->y());QCOMPARE(w->y(),h->y());QVERIFY(x->x()<y->x());QVERIFY(x->geometry().bottom()<w->y());
   for(auto* label:window.findChild<QWidget*>("editorGeometry")->findChildren<QLabel*>())if(label->buddy()){QVERIFY(label->geometry().bottom()<label->buddy()->y());QCOMPARE(label->x(),label->buddy()->x());}
   window.selectTool(Tool::Blur);QApplication::processEvents();auto* slider=window.findChild<QSlider*>("blurStrength");auto* value=window.findChild<QSpinBox*>("blurStrengthValue");
-  QCOMPARE(slider->geometry().center().y(),value->geometry().center().y());QVERIFY(slider->x()>value->geometry().right());QVERIFY(slider->width()>0);auto* blurLabel=slider->parentWidget()->findChild<QLabel*>();QVERIFY(blurLabel->geometry().bottom()<value->y());QVERIFY(window.findChild<QPushButton*>("removeMark")->property("graphiteFlush").toBool());QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("graphiteFlush").toBool());
+  auto* radius=static_cast<BlurRadius*>(slider->parentWidget());const auto spinPosition=value->mapTo(radius,QPoint());
+  QCOMPARE(slider->geometry().center().y(),value->mapTo(radius,value->rect().center()).y());QVERIFY(slider->x()>spinPosition.x()+value->width());QVERIFY(slider->width()>0);QVERIFY(radius->label()->geometry().bottom()<spinPosition.y());QVERIFY(window.findChild<QPushButton*>("removeMark")->property("graphiteFlush").toBool());QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("graphiteFlush").toBool());
  }
  void footerFeedbackReplacesDestinationUntilDismissed(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Upload to Synthetic");window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -311,8 +313,9 @@ private slots:
   QVERIFY(!window.findChild<QScrollArea*>("editorPropertiesScroll")->isAncestorOf(info));
   // Every colour target is at least 32 px; the painted swatch stays inside it.
   window.selectTool(Tool::Arrow);int swatches=0;
-  for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName().startsWith("Color ")||button->objectName()=="customColor"){++swatches;QVERIFY(button->width()>=32&&button->height()>=32);}
+  for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName().startsWith("Color ")||button->objectName()=="customColor"){++swatches;QVERIFY(button->width()>=Graphite::scaled(32)&&button->height()>=Graphite::scaled(32));}
   QCOMPARE(swatches,8);
+  for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName()=="Color Orange"){QTest::mouseClick(button,Qt::LeftButton,{},QPoint(1,1));QCOMPARE(window.canvas().style().color,QColor(245,158,11));}
  }
  // An unchosen swatch's painted edge holds 3:1 against the panel in both
  // schemes, white on the light panel and near-black on the dark one included.
@@ -326,7 +329,7 @@ private slots:
    for(auto* swatch:window.findChildren<QToolButton*>()){
     if(!swatch->accessibleName().startsWith("Color ")||swatch->isChecked())continue;++checked;
     // The top edge's middle: the 1 px outline row, and the panel above the square.
-    const auto edge=image.pixelColor(swatch->mapTo(&window,QPoint(swatch->width()/2,5)));
+    const auto edge=image.pixelColor(swatch->mapTo(&window,QPoint(swatch->width()/2,Graphite::scaled(4))));
     const auto panel=image.pixelColor(swatch->mapTo(&window,QPoint(swatch->width()/2,1)));
     const double ratio=Theme::contrast(edge,panel);
     QVERIFY2(ratio>=3.0,qPrintable(QString("%1 %2: %3:1").arg(Theme::name(scheme),swatch->accessibleName()).arg(ratio,0,'f',2)));
@@ -541,22 +544,30 @@ private slots:
   QVERIFY(window.findChild<QPushButton*>("editorSaveCopy")->isVisible());
   QCOMPARE(doc.shapes().size(),1);
  }
- // The reserved footer slot keeps the whole destination above the actions.
- void footerKeepsTheWholeDestinationReadable(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Upload to Project archive");window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  auto* destination=window.findChild<QLabel*>("editorDestination");QVERIFY(destination);QVERIFY(destination->focusPolicy()&Qt::TabFocus);
-  QApplication::processEvents();
-  QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());
-  QVERIFY2(destination->width()>=destination->fontMetrics().horizontalAdvance(destination->text()),qPrintable(QString::number(destination->width())));
-  const auto upload=window.findChild<QPushButton*>("editorUpload");
-  QVERIFY(destination->geometry().bottom()<upload->geometry().top());
-  const QString longName="Upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams";
+ // Summary and actions share the 56 px band until the summary needs its own row.
+ void footerOnlyWrapsWhenTheDestinationCannotFit(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Upload to Project archive");window.resize(1100,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* destination=window.findChild<Graphite::ElidedLabel*>("editorDestination");auto* footer=window.findChild<QWidget*>("editorFooter");const auto upload=window.findChild<QPushButton*>("editorUpload");
+  QVERIFY(destination);QVERIFY(destination->focusPolicy()&Qt::TabFocus);QApplication::processEvents();
+  QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
+  QCOMPARE(destination->geometry().center().y(),upload->geometry().center().y());QVERIFY(destination->geometry().right()<window.findChild<QPushButton*>("editorSaveCopy")->x());
+  QCOMPARE(footer->height(),Graphite::scaled(36)+20);
+  const QString longName="Upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams, release readiness and accessibility reviews";
   window.setDestination(longName);window.resize(760,560);QApplication::processEvents();
-  QVERIFY2(destination->fontMetrics().horizontalAdvance(longName)>window.width()-400,qPrintable(QString::number(window.width())));
-  QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());QVERIFY(destination->wordWrap());QVERIFY(destination->isVisible());
-  QVERIFY(destination->geometry().bottom()<upload->geometry().top());QCOMPARE(destination->text(),longName);
-  QVERIFY(destination->height()>=destination->heightForWidth(destination->width()));
-  window.resize(1400,700);QApplication::processEvents();QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());
+  QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());QVERIFY(destination->isVisible());
+  QVERIFY(destination->geometry().bottom()<upload->geometry().top());QCOMPARE(destination->text(),longName);QCOMPARE(destination->toolTip(),longName);QVERIFY(destination->elided());
+  destination->setFocus(Qt::TabFocusReason);QTest::keyClick(destination,Qt::Key_Return);QVERIFY(destination->fullTextPopup());QVERIFY(destination->fullTextPopup()->isVisible());destination->fullTextPopup()->close();
+  window.setDestination("Upload to Project archive");window.resize(1400,700);QApplication::processEvents();QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
+  QCOMPARE(footer->height(),Graphite::scaled(36)+20);
+ }
+ void blurWarningUsesTheExistingRedactToolWithoutChangingMarks(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.selectTool(Tool::Blur);
+  add(doc,{{"kind","blur"},{"rect",QJsonArray{10,10,50,20}},{"strength",24}});window.documentEdited();window.canvas().select(doc.shapes().last().id);const auto original=doc.shapes().last();
+  auto* warning=window.findChild<QLabel*>("editorToolWarning");auto* redact=window.findChild<QToolButton*>("useRedact");QVERIFY(warning&&warning->isVisible());QVERIFY(redact&&redact->isVisible());
+  redact->click();QCOMPARE(window.canvas().tool(),Tool::Redact);QCOMPARE(doc.shapes().last(),original);QVERIFY(!warning->isVisible());
+  QString code,message;window.viewCommand({{"action","tool"},{"tool","blur"}},code,message);QVERIFY(code.isEmpty());QVERIFY(warning->isVisible());
+  window.viewCommand({{"action","tool"},{"tool","redact"}},code,message);QVERIFY(code.isEmpty());QCOMPARE(window.canvas().tool(),Tool::Redact);QCOMPARE(doc.shapes().last(),original);QVERIFY(!warning->isVisible());
+  window.selectTool(Tool::Blur);window.setBusy("Preparing…");QVERIFY(!redact->isEnabled());
  }
  void removeMarkIsVisibleUndoableAndAgentControllable(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1100,900);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));

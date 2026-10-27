@@ -113,20 +113,21 @@ struct Native {
 };
 bool waitUntil(const std::function<bool()>& condition){return putgd::test::waitFor(condition,8000);}
 QImage iconSpecimen(){
- QImage image(1200,460,QImage::Format_RGB32);image.fill(QColor("#101216"));QPainter p(&image);
- p.setPen(QColor("#e7e9ef"));p.drawText(24,28,"Lift + Duotone · production renderer · synthetic specimen");
+ const auto& theme=Theme::current();const auto& tints=Theme::trayTints(Theme::scheme()==Theme::Scheme::Light);
+ QImage image(1200,460,QImage::Format_RGB32);image.fill(theme.bg);QPainter p(&image);
+ p.setPen(theme.text);p.drawText(24,28,"Lift + Duotone · production renderer · synthetic specimen");
  VisualStyle::icon("brand").paint(&p,QRect(24,57,72,72));
  const QStringList names{"region","window","desktop","record","clipboard","history","destinations","preferences","info","shortcuts","bucket","proton","add"};
  for(int i=0;i<names.size();++i){const int x=115+i*80;VisualStyle::icon(names[i]).paint(&p,QRect(x,60,48,48));p.drawText(QRect(x-15,120,92,24),Qt::AlignCenter,names[i]);}
- p.drawText(24,185,"Green fill");
+ p.drawText(24,185,"Encoding fill");
  VisualStyle::icon("proton").paint(&p,QRect(1090,174,Graphite::scaled(16),Graphite::scaled(16)));
- for(int i=0;i<5;++i){const int x=155+i*125;VisualStyle::icon("tray",QColor("#62d69b"),i*25).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x,250,72,24),Qt::AlignCenter,QString::number(i*25)+"%");}
- for(int i=0;i<2;++i){const int x=860+i*130;VisualStyle::icon("tray",QColor(i?"#9bbcff":"#ffb4ab")).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x-10,250,92,24),Qt::AlignCenter,i?"Blink off":"Blink on");}
+ for(int i=0;i<5;++i){const int x=155+i*125;VisualStyle::icon("tray",tints.idle,i*25).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x,250,72,24),Qt::AlignCenter,QString::number(i*25)+"%");}
+ for(int i=0;i<2;++i){const int x=860+i*130;VisualStyle::icon("tray",i?tints.idle:tints.error).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x-10,250,92,24),Qt::AlignCenter,i?"Blink off":"Blink on");}
  p.drawText(24,308,"Actual tray sizes: 16 / 22 / 24 / 32 px");
  for(int row=0;row<2;++row){const int y=330+row*56;p.fillRect(QRect(24,y,1152,48),QColor(row?"#e4e5e9":"#20242d"));
-  int x=44;for(int size:{16,22,24,32}){VisualStyle::icon("tray").paint(&p,QRect(x,y+(48-size)/2,size,size));x+=60;}
-  for(int i=0;i<5;++i)VisualStyle::icon("tray",QColor("#62d69b"),i*25).paint(&p,QRect(300+i*130,y+12,24,24));
-  for(int i=0;i<2;++i)VisualStyle::icon("tray",QColor(i?"#9bbcff":"#ffb4ab")).paint(&p,QRect(980+i*80,y+12,24,24));
+  int x=44;for(int size:{16,22,24,32}){VisualStyle::icon("tray",Theme::trayTints(row).idle).paint(&p,QRect(x,y+(48-size)/2,size,size));x+=60;}
+  for(int i=0;i<5;++i)VisualStyle::icon("tray",Theme::trayTints(row).idle,i*25).paint(&p,QRect(300+i*130,y+12,24,24));
+  for(int i=0;i<2;++i)VisualStyle::icon("tray",i?Theme::trayTints(row).idle:Theme::trayTints(row).error).paint(&p,QRect(980+i*80,y+12,24,24));
  }
  return image;
 }
@@ -145,7 +146,7 @@ QImage editorIcons(){
  };
  auto show=[&](const QString& title,const QImage& strip,int y){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));};
  show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","redact","blur","crop","|","annotate-arrow","rectangle","highlight","text"},40),112);
- show("Editor view and save tools",row({"undo","redo","remove","save"},32),252);
+ show("Editor view tools | document actions",row({"undo","redo","remove","|","save","upload"},32),252);
  show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32),392);
  return image;
 }
@@ -309,6 +310,8 @@ int main(int argc,char** argv){
   editor.canvas().cancelCrop();editor.resize(900,620);if(!grab("24-editor-compact"))return 2;
   // A selected mark with its position and size fields, then Save a copy… feedback.
   editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));if(!grab("26-editor-selected"))return 2;
+  editor.setDestination("Private upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams, release readiness and accessibility reviews");editor.resize(900,620);if(!grab("26g-editor-long-destination"))return 2;
+  editor.setDestination("Private upload to Project archive");
   editor.resize(1060,820);if(!grab("26c-editor-1060"))return 2;
   editor.viewCommand({{"action","keyboardHelp"}},code,message);putgd::test::settle(100);editor.findChild<QScrollArea*>("editorPropertiesScroll")->ensureWidgetVisible(editor.findChild<QWidget*>("editorKeyboardHelpText"),0,12);if(!grab("26d-editor-keyboard-help"))return 2;editor.viewCommand({{"action","keyboardHelp"}},code,message);editor.selectTool(editor::Tool::Text);if(!grab("26e-editor-text-stepper-1060"))return 2;editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));editor.resize(1180,820);
   {auto* zoom=editor.findChild<QToolButton*>("editorZoom");zoom->menu()->popup(zoom->mapToGlobal(QPoint(0,zoom->height())));putgd::test::settle(100);if(!zoom->menu()->grab().save(QDir(output).filePath("26f-editor-zoom-menu.png")))return 2;zoom->menu()->close();}

@@ -8,7 +8,8 @@
 #include <QVBoxLayout>
 
 namespace putgd {
-// Image-pixel radius in both editors; review can keep only the precise field.
+// The same joined image-pixel stepper in both editors; compact only changes
+// label placement and omits the optional linked slider.
 class BlurRadius final : public QWidget {
 public:
     BlurRadius(int minimum, int maximum, int value, bool compact, QWidget* parent = nullptr) : QWidget(parent) {
@@ -24,7 +25,7 @@ public:
         else layout->addWidget(label_);
         value_ = new QSpinBox(this);
         value_->setRange(minimum, maximum);
-        value_->setSuffix(" px");
+        value_->setProperty("hasUnit", true);
         value_->setValue(value);
         value_->setKeyboardTracking(false);
         value_->setAccessibleName("Blur radius");
@@ -32,7 +33,17 @@ public:
         value_->setAccessibleDescription(description);
         value_->setToolTip(description);
         label_->setBuddy(value_);
-        row->addWidget(value_);
+        auto* field = new QWidget(this);
+        field->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+        auto* joined = new QHBoxLayout(field);
+        joined->setContentsMargins(0, 0, 0, 0);
+        joined->setSpacing(0);
+        joined->addWidget(value_);
+        unit_ = new QLabel("px", field);
+        unit_->setObjectName("blurRadiusUnit");
+        VisualStyle::role(unit_, "unitSuffix");
+        joined->addWidget(unit_);
+        row->addWidget(field);
         if (!compact) {
             slider_ = new QSlider(Qt::Horizontal, this);
             slider_->setRange(minimum, maximum);
@@ -45,10 +56,13 @@ public:
         }
         layout->addLayout(row);
     }
+    QLabel* label() const { return label_; }
+    QLabel* unitLabel() const { return unit_; }
     QSlider* slider() const { return slider_; }
     QSpinBox* spinBox() const { return value_; }
 private:
     QLabel* label_ = nullptr;
+    QLabel* unit_ = nullptr;
     QSlider* slider_ = nullptr;
     QSpinBox* value_ = nullptr;
 };
