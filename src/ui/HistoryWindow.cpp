@@ -48,6 +48,7 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStyledItemDelegate>
+#include <QStyleOptionToolButton>
 #include <QTextDocument>
 #include <QAbstractTextDocumentLayout>
 #include <cmath>
@@ -220,7 +221,7 @@ public:
  int galleryWidth()const{const int s=view_->spacing(),reserve=view_->style()->pixelMetric(QStyle::PM_ScrollView_ScrollBarOverlap,nullptr,view_->verticalScrollBar())?0:view_->style()->pixelMetric(QStyle::PM_ScrollBarExtent,nullptr,view_->verticalScrollBar());const int available=qMax(160,view_->maximumViewportSize().width()-reserve-2*s);int minimum=Graphite::scaled(248);for(int row=0;row<view_->model()->rowCount();++row)minimum=qMax(minimum,primaryWidth(view_->model()->index(row,0))+detailsWidth()+actionHeight()+52);const int columns=qMax(1,available/(minimum+s));return qMax(160,available/columns-s);}
  // Reserve action space even while it is hidden, so hovering never changes
  // the filename. Narrow rows put actions below instead of losing the title.
- int detailsWidth()const{return QFontMetrics(Graphite::font()).horizontalAdvance("Details")+16;}
+ int detailsWidth()const{QStyleOptionToolButton option;option.initFrom(details_);option.text="Details";option.toolButtonStyle=Qt::ToolButtonTextOnly;return details_->style()->sizeFromContents(QStyle::CT_ToolButton,&option,{},details_).width();}
  QRect detailsRect(QRect r,const QModelIndex& i)const{const auto b=menuRect(r,i);const int w=grid()?detailsWidth():qBound(32,actionHeight(),36);const int h=grid()?b.height():w;return QRect(b.left()-8-w,b.top()+(b.height()-h)/2,w,h);}
  int primaryWidth(const QModelIndex& i)const{return qMax(84,QFontMetrics(Graphite::font()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())+28);}
  bool actionsBelow(const QRect& r,const QModelIndex& i)const{
