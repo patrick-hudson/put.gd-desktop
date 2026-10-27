@@ -55,7 +55,7 @@ public:
  // originating row with Try again (tests drive failures through here).
  void folderChooserFinished(const QString& dialog,const QString& field,const FileDialog::Result&);
  void openDiagnosticsPackage(const QString& operationId={});
- // The two lines a destination row shows, as painted (elided, never wrapped).
+ // The painted destination name (up to two lines) and its separate status.
  QStringList destinationRowLines(int row)const;
  // The image a drag of that row carries, and its hot spot (#133).
  QPixmap destinationDragImage(int row,QPoint* hotSpot=nullptr)const;

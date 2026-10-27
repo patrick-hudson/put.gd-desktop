@@ -189,13 +189,13 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   for(const auto& action:Settings::presentationOrder()){
    const auto route=Settings::effectiveAction(document,action);const auto output=outputName(route);
    const bool differs=output!=defaultName||route["profileId"].toString()!=defaults["profileId"].toString();mixed|=differs;
-   auto* entry=destination_->menu()->findChild<QAction*>("captureOutputDetail"+action);entry->setVisible(differs);
-   const auto detail=labels.value(action,action)+": "+output+(!document["archive"].toObject()["keepUploads"].toBool()&&route["destination"]=="upload"&&!route["profileId"].toString().isEmpty()?QString(" · No local copy"):QString{});entry->setText(QString(detail).replace('&',QStringLiteral("&&")));if(differs)details<<detail;
+   auto* entry=destination_->menu()->findChild<QAction*>("captureOutputDetail"+action);entry->setVisible(true);
+   const bool upload=route["destination"]=="upload"&&!route["profileId"].toString().isEmpty();const auto timing=output=="Off: no output"?QString("No output"):action=="edit"||action=="record"?(upload?QString("Upload when you choose"):QString("Save when you choose")):upload?QString("Uploads right away"):QString("Saves locally");const auto detail=labels.value(action,action)+": "+timing+" · "+output+(!document["archive"].toObject()["keepUploads"].toBool()&&route["destination"]=="upload"&&!route["profileId"].toString().isEmpty()?QString(" · No local copy"):QString{});entry->setText(QString(detail).replace('&',QStringLiteral("&&")));details<<detail;
    for(auto* button:actionButtons_)if(button->property("captureAction")==action){QString suffix;if(differs){suffix=route["destination"]!="upload"||route["profileId"].toString().isEmpty()?(document["archive"].toObject()["keepUploads"].toBool()?"Local":"Off"):output.startsWith("Private")?"Private":"Shared";}button->setProperty("outputSuffix",suffix);button->setProperty("commandLabel",labels.value(action)+(suffix.isEmpty()?QString{}:" · "+suffix));button->setToolTip(button->toolTip().section('\n',0,0)+"\n"+detail);button->setAccessibleDescription(button->accessibleDescription().section("\nOutput: ",0,0)+"\nOutput: "+output);}
 
   }
   if(!mixed)details[0].replace(0,QString("Default output").size(),"All actions");
-  label=mixed?QString("Mixed outputs"):"Default output: "+defaultName;
+  label=mixed?QString("Mixed outputs"):defaultName=="Local only"?QString("Captures save locally"):defaultName=="Off: no output"?QString("Captures have no output"):"Captures upload right away · "+defaultName;
   fitBand();destination_->setProperty("fullOutputSummary",label);updateOutputSummary();destination_->menu()->findChild<QAction*>("captureOutputDefault")->setText(QString(details.first()).replace('&',QStringLiteral("&&")));destination_->setAccessibleName(label);destination_->setAccessibleDescription(details.join("\n"));destination_->setToolTip(details.join("\n"));updateSaveStatus();
  };
  connect(changeOutput,&QAction::triggered,this,[this]{navigate("settings");settings_->showCaptureSettings();});
@@ -249,10 +249,10 @@ void MainWindow::updateSaveStatus(){
  version_->setVisible(versionRoom&&!link.version.isEmpty()&&link.url.isEmpty());versionGroup->setVisible(versionRoom&&!link.url.isEmpty());
  explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&needed+(versionRoom?versionWidth+gap:0)+explanation_->sizeHint().width()+gap<=statusBar()->width());
 }
-// Compact commands stay on one line; the edit action keeps its full accessible name.
+// Compact commands keep their task labels; output details stay in the status menu.
 void MainWindow::fitBand(){
  if(!band_||fittingBand_)return;fittingBand_=true;auto* grid=static_cast<QGridLayout*>(band_->layout());
- auto apply=[this,grid](int stage){grid->setHorizontalSpacing(stage==2?2:6);grid->setContentsMargins(stage==2?4:12,10,stage==2?4:12,11);for(auto* button:actionButtons_){button->setMinimumWidth(0);}for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setToolButtonStyle(stage&&(action=="window"||action=="desktop")?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);const auto suffix=button->property("outputSuffix").toString();const auto label=stage==2&&action=="edit"?QString("Edit")+(suffix.isEmpty()?QString{}:" · "+suffix):button->property("commandLabel").toString();if(!label.isEmpty())button->setText(QString(label).replace('&',QStringLiteral("&&")));}grid->invalidate();grid->activate();};
+ auto apply=[this,grid](int stage){grid->setHorizontalSpacing(stage==2?2:6);grid->setContentsMargins(stage==2?4:12,10,stage==2?4:12,11);for(auto* button:actionButtons_){button->setMinimumWidth(0);}for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setToolButtonStyle(stage&&(action=="window"||action=="desktop")?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);const auto label=stage==2?button->property("commandLabel").toString().section(" · ",0,0):button->property("commandLabel").toString();if(!label.isEmpty())button->setText(QString(label).replace('&',QStringLiteral("&&")));}grid->invalidate();grid->activate();};
  int stage=0;for(;stage<3;++stage){apply(stage);if(grid->sizeHint().width()<=band_->width()||stage==2)break;}
  for(auto* button:actionButtons_)button->setMinimumWidth(button->sizeHint().width());bandStage_=stage;fittingBand_=false;
 }
