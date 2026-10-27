@@ -286,6 +286,8 @@ int main(int argc,char** argv){
   editor.canvas().cancelCrop();editor.resize(900,620);if(!grab("24-editor-compact"))return 2;
   // A selected mark with its position and size fields, then Save a copy… feedback.
   editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));if(!grab("26-editor-selected"))return 2;
+  editor.resize(1060,820);if(!grab("26c-editor-1060"))return 2;
+  editor.viewCommand({{"action","keyboardHelp"}},code,message);if(!grab("26d-editor-keyboard-help"))return 2;editor.viewCommand({{"action","keyboardHelp"}},code,message);editor.resize(1180,820);
   editor.activateWindow();editor.canvas().setFocus(Qt::TabFocusReason);QTest::keyClick(&editor.canvas(),Qt::Key_Tab);if(!grab("26a-editor-properties-focus"))return 2;
   {editor::Shape label;label.kind=editor::Shape::Kind::Text;label.rect=QRect(940,580,20,20);label.text="Edge label";const auto id=doc.add(label);editor.documentEdited();editor.canvas().select(id);editor.canvas().setFocus();QTest::keyClick(&editor.canvas(),Qt::Key_Return);auto* field=editor.canvas().findChild<QLineEdit*>("annotationText");if(!field||!field->isVisible())return 2;field->setText("Long annotation text stays inside the canvas while the field scrolls");if(!grab("26b-editor-text-edge"))return 2;editor.canvas().finishText(false);doc.remove(id);editor.documentEdited();editor.canvas().select(quint64(created[3].toDouble()));}
   editor.showSaved("/home/synthetic/Pictures/put.gd-edit-2026-10-26-14-03-22.png");if(!grab("27-editor-saved"))return 2;
@@ -363,6 +365,11 @@ int main(int argc,char** argv){
   record::ControlBar::Options bar;bar.targetLabel="Region · 960 × 600";bar.formats=o.formats;bar.codecs=o.codecs;bar.audioSupported=true;
   // A 1366×768 laptop decides one row or two (two at 150% text).
   record::ControlBar ready(bar,config);ready.fitTo(QRect(0,0,1366,768));ready.show();if(!shot(ready,"33-record-ready-bar"))return 2;
+  auto* barFormats=ready.findChild<QComboBox*>("format");if(!barFormats)return 2;
+  for(int i=0;i<barFormats->count();++i)if(barFormats->itemData(i).toStringList().first()=="gif"){barFormats->setCurrentIndex(i);break;}
+  if(!shot(ready,"33a-record-gif-requested-audio"))return 2;
+  for(int i=0;i<barFormats->count();++i)if(barFormats->itemData(i).toStringList()==QStringList{"mp4","h264"}){barFormats->setCurrentIndex(i);break;}
+  if(!shot(ready,"33b-record-restored-audio"))return 2;
   ready.setState("recording");ready.setRetained(12300000);if(!shot(ready,"34-record-recording-bar"))return 2;
   ready.setState("paused");if(!shot(ready,"35-record-paused-bar"))return 2;
   ready.setState("recording");if(auto* cancel=ready.findChild<QPushButton*>("cancel"))cancel->click();if(!ready.confirming()||!shot(ready,"36-record-discard-confirm"))return 2;
