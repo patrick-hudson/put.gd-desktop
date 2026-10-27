@@ -48,6 +48,7 @@ private slots:
   dialog->close();
   QVERIFY(dialog);
   QVERIFY(!dialog->isVisible());
+  dialog->show();details->click();QCOMPARE(details->text(),QString("Hide build details"));QVERIFY(data->isVisible());details->click();QCOMPARE(details->text(),QString("Build details"));QVERIFY(!data->isVisible());dialog->close();
   owner.reset();
   QVERIFY(dialog.isNull());
  }

@@ -1,6 +1,7 @@
 // Synthetic visual verification only. This does not establish desktop support.
 #include "fixtures/UiSessionFixture.h"
 #include "ui/MainWindow.h"
+#include "ui/AboutWindow.h"
 #include "ui/HistoryWindow.h"
 #include "ui/HistoryModel.h"
 #include "ui/FileDialog.h"
@@ -412,6 +413,11 @@ int main(int argc,char** argv){
   selector.cancel();
  }
 #endif
+ {
+  AboutWindow about(fixture.session.build(),&window);RedesignTheme::apply(about);about.show();
+  auto grabAbout=[&](const QString& name){app.processEvents();const auto image=about.grab();if(!image.save(QDir(output).filePath(name+".png"))||!native.step(about,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+  if(!grabAbout("about"))return 2;auto* details=about.findChild<QPushButton*>("buildDetails");if(!details)return 2;details->click();if(!grabAbout("about-build-details"))return 2;about.close();
+ }
  // The custom frame under real input: the driver moves, maximizes, restores,
  // resizes and finally closes the main window.
  window.resize(1060,680);window.showNormal();if(!native.chrome(window,"90-chrome"))return 2;
