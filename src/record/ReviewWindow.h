@@ -272,7 +272,7 @@ private:
     QGridLayout* toolsGrid_ = nullptr;
     QGridLayout* transportGrid_ = nullptr;
     QHBoxLayout* transportRow_ = nullptr;
-    bool toolsPlaced_ = false, toolsStacked_ = false;
+    bool toolsPlaced_ = false;
     Graphite::WindowHeader* header_ = nullptr;
     FrameView* view_ = nullptr;
     ReviewTimeline* timeline_ = nullptr;

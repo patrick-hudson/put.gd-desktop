@@ -111,7 +111,7 @@ private slots:
         QVERIFY(metadata->mapTo(&window, QPoint()).y() >= window.findChild<FrameView*>()->geometry().bottom());
         auto* audio = window.findChild<QLabel*>("exportAudioSummary");
         QVERIFY(audio && audio->isVisible());
-        QVERIFY(audio->text().startsWith("Silent preview · "));
+        QVERIFY(audio->accessibleName().startsWith("Silent preview · "));
     }
     void stackedToolsKeepTheirScopeAndTrimLabels() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
@@ -125,7 +125,7 @@ private slots:
         for (const auto& name : {QString("Set trim start"), QString("Set trim end"), QString("Reset trim")}) {
             QToolButton* found = nullptr;
             for (auto* button : trim->findChildren<QToolButton*>()) if (button->accessibleName() == name) found = button;
-            QVERIFY(found); QCOMPARE(found->toolButtonStyle(), Qt::ToolButtonTextBesideIcon); QVERIFY(!found->text().isEmpty());
+            QVERIFY(found); QCOMPARE(found->toolButtonStyle(), Qt::ToolButtonTextOnly); QVERIFY(!found->text().isEmpty());
         }
         QVERIFY(trim->findChild<QLabel*>("muted")->text().startsWith("Kept: "));
         QToolButton *redact = nullptr, *blur = nullptr;
@@ -152,6 +152,87 @@ private slots:
             auto* interval = window.findChild<QLabel*>("maskActiveInterval");
             auto* footer = window.findChild<QWidget*>("reviewFooter");
             QVERIFY(interval->mapTo(&window, interval->rect().bottomLeft()).y() < footer->y());
+        }
+    }
+    void lanesStayBesideTheirControlsAndTransportStaysOnOneLine_data() {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("standard") << 1.0;
+        QTest::newRow("150%") << 1.5;
+    }
+    void lanesStayBesideTheirControlsAndTransportStaysOnOneLine() {
+        QFETCH(double, scale);
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
+        auto font = original;
+        if (font.pointSizeF() > 0) font.setPointSizeF(font.pointSizeF() * scale);
+        else font.setPixelSize(qRound(font.pixelSize() * scale));
+        QApplication::setFont(font);
+        auto edit = twoMasks(); edit.trimEnd = duration - 1000;
+        ReviewWindow window(options(), config()); window.setEdit(edit); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* t = timeline(window);
+        auto* trim = window.findChild<QWidget*>("trimControls");
+        auto* masks = window.findChild<QWidget*>("maskControls");
+        auto* trimLabel = window.findChild<QLabel*>("trimGroup");
+        auto* maskLabel = window.findChild<QLabel*>("maskGroup");
+        for (int width : {720, 820, 1060}) {
+            window.resize(width, 720); QApplication::processEvents();
+            QCOMPARE(trimLabel->mapTo(&window, QPoint()).x(), maskLabel->mapTo(&window, QPoint()).x());
+            QCOMPARE(trimLabel->width(), maskLabel->width());
+            const auto lane = t->trackRect().translated(t->pos());
+            QVERIFY(lane.center().y() >= trim->y() && lane.center().y() <= trim->geometry().bottom());
+            for (const auto& mask : twoMasks().masks) {
+                const auto bar = t->maskRect(mask.id).translated(t->pos());
+                QVERIFY(bar.top() > trim->geometry().bottom());
+                QVERIFY(bar.center().y() >= masks->y());
+                QVERIFY(bar.left() > masks->geometry().right());
+            }
+            window.drive({{"action", "seek"}, {"time", double(duration - 1)}});
+            auto* time = window.findChild<QLabel*>("time");
+            auto* status = window.findChild<QLabel*>("playbackStatus");
+            QVERIFY(!time->text().contains('\n'));
+            QVERIFY(status->isVisible());
+            QCOMPARE(time->geometry().center().y(), status->geometry().center().y());
+            QVERIFY(t->trackRect().width() >= 80);
+            for (auto* button : window.findChildren<QToolButton*>()) if (button->toolButtonStyle() == Qt::ToolButtonTextOnly) {
+                QVERIFY(button->width() - 8 >= QFontMetricsF(button->font()).horizontalAdvance(button->text()));
+            }
+            auto* interval = window.findChild<QLabel*>("maskActiveInterval");
+            auto* footer = window.findChild<QWidget*>("reviewFooter");
+            const int inkPadding = (interval->height() - interval->fontMetrics().tightBoundingRect(interval->text()).height()) / 2;
+            QVERIFY(footer->y() - interval->mapTo(&window, interval->rect().bottomLeft()).y() + inkPadding >= 4);
+        }
+    }
+    void compactFooterPrioritizesDestinationName_data() {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("standard") << 1.0;
+        QTest::newRow("150%") << 1.5;
+    }
+    void compactFooterPrioritizesDestinationName() {
+        QFETCH(double, scale);
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
+        auto font = original;
+        if (font.pointSizeF() > 0) font.setPointSizeF(font.pointSizeF() * scale);
+        else font.setPixelSize(qRound(font.pixelSize() * scale));
+        QApplication::setFont(font);
+        auto o = options(); o.audioRecorded = true;
+        auto c = config(); c.audio.system = true;
+        ReviewWindow window(o, c); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* destination = window.findChild<Graphite::ElidedLabel*>("uploadDestination");
+        const auto nameFits = [&] {
+            return destination->text().contains(o.destination) && !destination->elided() && destination->accessibleName() == o.uploadSummary;
+        };
+        window.resize(window.minimumSizeHint()); QApplication::processEvents();
+        QVERIFY2(nameFits(), qPrintable(destination->text()));
+        window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
+        window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
+        window.showError("Export failed: disk full. Free up space and try again.");
+        for (int i = 0; i < 3; ++i) {
+            window.resize(window.minimumSizeHint().width() + i, 680);
+            QApplication::processEvents();
+            QVERIFY2(nameFits(), qPrintable(destination->text()));
         }
     }
     void closedChoicesIgnoreWheel() {
@@ -695,10 +776,10 @@ private slots:
         for (const auto& format : {"gif", "webp"}) {
             QVERIFY(window.drive({{"action", "format"}, {"format", format}}).code.isEmpty());
             QVERIFY(!qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
-            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->text(), QString("Silent preview · No audio in %1").arg(QString(format).toUpper()));
+            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("Silent preview · No audio in %1").arg(QString(format).toUpper()));
             QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}}).code.isEmpty());
             QVERIFY(qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
-            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->text(), QString("Silent preview · Export includes system audio"));
+            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("Silent preview · Export includes system audio"));
             QVERIFY(qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
         }
     }
@@ -716,7 +797,7 @@ private slots:
         auto* label = window.findChild<QLabel*>("maskActiveInterval");
         QVERIFY(label && label->isVisible());
         edit.revision++; edit.masks[0].start = 5000000; edit.masks[0].end = 20000000; window.setEdit(edit);
-        QCOMPARE(label->text(), QString("Applies 0:05.00–0:20.00 · Inactive at playhead"));
+        QCOMPARE(label->text(), QString("Applies 0:05.00–0:20.00 · Inactive"));
         QCOMPARE(window.inspect()["selectedMaskInterval"].toObject()["text"].toString(), label->text());
         window.drive({{"action", "seek"}, {"time", 8000000}});
         QCOMPARE(label->text(), QString("Applies 0:05.00–0:20.00"));
@@ -725,7 +806,7 @@ private slots:
         QTest::keyClick(window.findChild<FrameView*>(), Qt::Key_Right, Qt::ControlModifier);
         QCOMPARE(label->pos(), position);
         QVERIFY(!window.findChild<FrameView*>()->isAncestorOf(label));
-        QCOMPARE(label->text(), QString("Applies 0:05.00–0:20.00 · Inactive at playhead"));
+        QCOMPARE(label->text(), QString("Applies 0:05.00–0:20.00 · Inactive"));
         QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont()).family());
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
@@ -898,11 +979,11 @@ private slots:
             QList<QKeySequence> keys;
             for (auto* s : window.findChildren<QShortcut*>()) { QVERIFY2(!keys.contains(s->key()), qPrintable(s->key().toString())); keys.append(s->key()); }
             for (const auto& key : {QKeySequence(Qt::Key_I), QKeySequence(Qt::Key_O), QKeySequence(Qt::SHIFT | Qt::Key_I), QKeySequence(Qt::SHIFT | Qt::Key_O), QKeySequence(Qt::Key_Delete)}) QVERIFY2(keys.contains(key), qPrintable(key.toString()));
-            // The tools are icon buttons with a name and a tooltip.
+            // Timing actions use words; the remaining tools retain their named glyphs.
             const auto tools = window.findChildren<QToolButton*>();
             QVERIFY(tools.size() >= 9);
             for (auto* b : tools) {
-                QVERIFY2(!b->icon().isNull() && (b->toolButtonStyle() == Qt::ToolButtonIconOnly || (b->toolButtonStyle() == Qt::ToolButtonTextBesideIcon && QStringList{"Start", "End", "Reset"}.contains(b->text()))), qPrintable(b->accessibleName()));
+                QVERIFY2((b->toolButtonStyle() == Qt::ToolButtonTextOnly && QStringList{"Set trim start", "Set trim end", "Reset trim", "Set mask start", "Set mask end"}.contains(b->accessibleName())) || (!b->icon().isNull() && (b->toolButtonStyle() == Qt::ToolButtonIconOnly || (b->toolButtonStyle() == Qt::ToolButtonTextBesideIcon && QStringList{"Start", "End"}.contains(b->text())))), qPrintable(b->accessibleName()));
                 QVERIFY2(!b->accessibleName().isEmpty() && !b->toolTip().isEmpty(), qPrintable(b->objectName()));
                 if(b->isVisible()&&b->toolButtonStyle()==Qt::ToolButtonTextBesideIcon)QVERIFY2(b->width()>=b->fontMetrics().horizontalAdvance(b->text())+b->iconSize().width()+16,qPrintable(b->accessibleName()));
             }
@@ -1067,7 +1148,7 @@ private slots:
         QCOMPARE(window.inspect()["statusRow"].toArray().size(), 0);
         QCOMPARE(audio->text(), QString("Silent preview"));
         QVERIFY(audio->accessibleName().contains("Export includes system audio"));
-        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->text(), QString("Silent preview · Export includes system audio"));
+        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("Silent preview · Export includes system audio"));
         QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->isVisible());
         // H.265: a warning with its fix; the fix is the format control's own path.
         QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}}).code.isEmpty());
@@ -1099,7 +1180,7 @@ private slots:
         QVERIFY(window.drive({{"action", "format"}, {"format", "gif"}, {"codec", ""}}).code.isEmpty());
         QCOMPARE(audio->text(), QString("Silent preview"));
         QVERIFY(audio->accessibleName().contains("No audio in GIF"));
-        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->text(), QString("Silent preview · No audio in GIF"));
+        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("Silent preview · No audio in GIF"));
         lines = window.inspect()["statusRow"].toArray();
         QCOMPARE(lines.size(), 1);
         QVERIFY(lines[0].toObject()["text"].toString().startsWith(QStringLiteral("GIF is limited to 5 s")));
