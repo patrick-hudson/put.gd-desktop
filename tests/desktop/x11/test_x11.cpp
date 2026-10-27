@@ -24,6 +24,7 @@
 #include <QKeySequence>
 #include <QPaintEvent>
 #include "ui/RegionOverlay.h"
+#include "ui/RegionSelection.h"
 #include "ui/SelectionOutline.h"
 #include "../../fixtures/X11SelectionFixture.h"
 #include "../../fixtures/X11DesktopFixture.h"
@@ -202,7 +203,7 @@ private slots:
    auto rendered=[w]{QImage image(w->size(),QImage::Format_ARGB32);image.fill(Qt::transparent);w->render(&image);return image;};
    QCOMPARE(rendered().pixelColor(30,40).alpha(),0);
    QTest::mousePress(w,Qt::LeftButton,Qt::NoModifier,QPoint(10,20));QTest::mouseMove(w,QPoint(60,70));
-   const auto dragging=rendered();QCOMPARE(dragging.pixelColor(30,40).alpha(),0);QCOMPARE(dragging.pixelColor(80,80).alpha(),0);QCOMPARE(dragging.pixelColor(10,20),QColor(Qt::black));QCOMPARE(dragging.pixelColor(11,21),QColor(Qt::white));
+   const auto dragging=rendered();QCOMPARE(dragging.pixelColor(30,40).alpha(),0);QCOMPARE(dragging.pixelColor(80,80),QColor(0,0,0,regionScrimAlpha));QCOMPARE(dragging.pixelColor(10,20),QColor(Qt::black));QCOMPARE(dragging.pixelColor(11,21),QColor(Qt::white));
    // Observe actual queued paints and backing pixels: render() would repaint
    // the full widget and hide stale strokes or incomplete damage. Full damage
    // is intentional: the compositor may sample a newer, larger outline.
@@ -216,7 +217,8 @@ private slots:
    QImage grown;PUTGD_TRY_VERIFY(!(grown=backing()).isNull()&&grown.pixelColor(59,40).alpha()==0);QCOMPARE(grown.pixelColor(30,69).alpha(),0);QCOMPARE(grown.pixelColor(89,40),QColor(Qt::black));QCOMPARE(grown.pixelColor(88,40),QColor(Qt::white));
    paints.painted={};paints.count=0;QTest::mouseMove(w,QPoint(60,70));PUTGD_TRY_VERIFY(paints.count>0);
    QVERIFY(paints.painted.contains(w->rect()));QVERIFY(paints.painted.contains(QPoint(89,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));
-   QImage shrunk;PUTGD_TRY_VERIFY(!(shrunk=backing()).isNull()&&shrunk.pixelColor(89,40).alpha()==0);QCOMPARE(shrunk.pixelColor(30,89).alpha(),0);QCOMPARE(shrunk.pixelColor(59,40),QColor(Qt::black));QCOMPARE(shrunk.pixelColor(58,40),QColor(Qt::white));
+   // The old edge is replaced with the shared scrim, while the kept pixels stay clear.
+   QImage shrunk;PUTGD_TRY_VERIFY(!(shrunk=backing()).isNull()&&shrunk.pixelColor(89,40).alpha()==regionScrimAlpha);QCOMPARE(shrunk.pixelColor(30,89),QColor(0,0,0,regionScrimAlpha));QCOMPARE(shrunk.pixelColor(59,40),QColor(Qt::black));QCOMPARE(shrunk.pixelColor(58,40),QColor(Qt::white));
    w->removeEventFilter(&paints);xcb_disconnect(connection);
    QTest::mouseRelease(w,Qt::LeftButton,Qt::NoModifier,QPoint(60,70));QCOMPARE(selected,QRectF(10,20,50,50));QVERIFY(!surface());Error error;auto image=composeFrames({frame},selected,100000,error);QVERIFY(!error);QCOMPARE(image.size(),QSize(50,50));QCOMPARE(image.pixelColor(2,2),QColor(Qt::red));}
   const CaptureFrame native{"fixture",QRectF(30,40,10,8),QRect(30,40,10,8),1,0,{}};

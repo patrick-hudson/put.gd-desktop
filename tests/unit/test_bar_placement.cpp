@@ -290,13 +290,20 @@ private slots:
     // Over any content: the text reads on the bar, and the bar's outline
     // (3:1 against black and white) shows where it ends, in both schemes.
     void barReadsOverAnyContent() {
+        const auto previous = putgd::Theme::scheme();
+        const auto restore = qScopeGuard([previous] { putgd::Theme::setScheme(previous); });
         for (const auto scheme : {putgd::Theme::Scheme::Dark, putgd::Theme::Scheme::Light}) {
             const auto& p = putgd::Theme::palette(scheme);
             QVERIFY(putgd::Theme::contrast(p.text, p.bg) >= 4.5);
             QVERIFY(putgd::Theme::contrast(p.text, p.surfaceRaised) >= 4.5);
             QVERIFY(putgd::Theme::contrast(p.textMuted, p.bg) >= 4.5);
-            QVERIFY(putgd::Theme::contrast(p.textDisabled, Qt::black) >= 3.0);
-            QVERIFY(putgd::Theme::contrast(p.textDisabled, Qt::white) >= 3.0);
+            // ControlBar paints this boundary token; disabled text stays readable on bg.
+            QVERIFY(putgd::Theme::contrast(p.textDisabled, p.bg) >= 4.5);
+            QVERIFY(putgd::Theme::contrast(p.controlOutline, Qt::black) >= 3.0);
+            QVERIFY(putgd::Theme::contrast(p.controlOutline, Qt::white) >= 3.0);
+            putgd::Theme::setScheme(scheme);
+            ControlBar bar(barOptions(), putgd::RecordingConfig{});
+            QCOMPARE(bar.grab().toImage().pixelColor(0, 0), p.controlOutline);
             // Record and Stop keep white on green and red.
             QVERIFY(putgd::Theme::contrast(Qt::white, QColor("#2e7d32")) >= 4.5);
             QVERIFY(putgd::Theme::contrast(Qt::white, QColor("#c62828")) >= 4.5);
