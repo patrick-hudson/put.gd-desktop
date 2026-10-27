@@ -6,6 +6,7 @@
 #include "editor/EditorCommands.h"
 #include "platform/HostOpen.h"
 #include <QApplication>
+#include <algorithm>
 #include <QClipboard>
 #include <QComboBox>
 #include <QFileDialog>
@@ -16,6 +17,7 @@
 #include <QLabel>
 #include <QMenu>
 #include <QGridLayout>
+#include <QVBoxLayout>
 #include <QRegularExpression>
 #include <QScopeGuard>
 #include <QScrollArea>
@@ -60,16 +62,48 @@ private slots:
   QVERIFY(!choices[0]->shortcut().isEmpty());QVERIFY(!choices[2]->shortcut().isEmpty());QVERIFY(!choices[5]->shortcut().isEmpty());QVERIFY(!choices[6]->shortcut().isEmpty());
   const auto buttons=window.findChild<QWidget*>("editorToolbar")->findChildren<QToolButton*>();for(auto* button:buttons){QVERIFY(!button->toolTip().startsWith("Fit to window"));QVERIFY(!button->toolTip().startsWith("Actual size"));}
  }
- void privacyToolsHaveMeasuredLabels(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1060,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  int labeled=0;
-  for(auto* button:window.findChild<QWidget*>("editorToolbar")->findChildren<QToolButton*>()){
-   if(!button->isCheckable())continue;
-   const bool privacy=button->accessibleName()=="Redact"||button->accessibleName()=="Blur";
-   QCOMPARE(button->toolButtonStyle(),privacy?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonIconOnly);
-   if(privacy){++labeled;QCOMPARE(button->text(),button->accessibleName());QVERIFY(button->width()>=button->fontMetrics().horizontalAdvance(button->text())+button->iconSize().width()+Graphite::scaled(8)+24);QTest::mouseClick(button,Qt::LeftButton);QCOMPARE(window.viewState()["tool"].toString(),button->text().toLower());}
+ void toolsFoldFromMeasuredWidthAndKeepPrivacyLabels(){
+  {EditDocument doc(canvasImage());EditorWindow window(doc);}
+  const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});const auto base=Graphite::font();
+  for(const bool enlarged:{false,true}){
+   auto current=base;if(enlarged)current.setPixelSize(qRound(base.pixelSize()*1.5));QApplication::setFont(current);
+   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1800,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+   auto* toolbar=window.findChild<QWidget*>("editorToolbar");const int fullWidth=toolbar->layout()->sizeHint().width();
+   for(const int width:{1800,fullWidth,fullWidth-1,900}){
+    window.resize(width,820);QApplication::processEvents();int tools=0;
+    const bool allLabels=width>=fullWidth;
+    for(auto* button:toolbar->findChildren<QToolButton*>()){
+     QVERIFY(toolbar->rect().contains(button->geometry()));
+     if(!button->isCheckable())continue;++tools;
+     const bool privacy=button->accessibleName()=="Redact"||button->accessibleName()=="Blur";
+     QCOMPARE(button->toolButtonStyle(),allLabels||privacy?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonIconOnly);
+     QVERIFY(!button->text().isEmpty());QVERIFY(!button->accessibleName().isEmpty());QVERIFY(!button->toolTip().isEmpty());
+     if(allLabels||privacy)QVERIFY(button->width()>=button->sizeHint().width());
+    }
+    QCOMPARE(tools,8);
+    QList<QToolButton*> ordered;for(auto* button:toolbar->findChildren<QToolButton*>())if(button->isCheckable())ordered.append(button);
+    std::sort(ordered.begin(),ordered.end(),[](auto* left,auto* right){return left->x()<right->x();});
+    QCOMPARE(ordered.at(6)->accessibleName(),QString("Redact"));QCOMPARE(ordered.at(7)->accessibleName(),QString("Blur"));
+    QVERIFY(ordered.at(6)->x()>ordered.at(5)->geometry().right()+8);
+   }
   }
-  QCOMPARE(labeled,2);
+ }
+ void lightCanvasDrawsAnEdgeAroundPaleImages(){
+  const auto previous=Theme::scheme();auto restore=qScopeGuard([previous]{Theme::setScheme(previous);});Theme::setScheme(Theme::Scheme::Light);
+  QImage image(400,260,QImage::Format_RGB32);image.fill(Qt::white);EditDocument doc(image);EditorCanvas canvas(doc);canvas.resize(500,360);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));canvas.fit();
+  const auto rendered=canvas.grab().toImage();QCOMPARE(rendered.pixelColor(250,100),QColor(Qt::white));
+  bool edge=false;for(int y=49;y<=51;++y)edge=edge||rendered.pixelColor(250,y)==Theme::current().borderStrong;QVERIFY(edge);
+ }
+ void sharedBannerActionsWrapAndUseHostCommands(){
+  QWidget host;auto* layout=new QVBoxLayout(&host);auto* banner=new Graphite::Banner(Graphite::Banner::Tone::Warning,"A warning that needs room to explain what happened",&host);layout->addWidget(banner);
+  banner->setAction("Recover");banner->setDismissible(true);bool recovered=false,dismissed=false;
+  connect(banner->actionButton(),&QPushButton::clicked,&host,[&]{recovered=true;});
+  connect(banner->dismissButton(),&QToolButton::clicked,&host,[&]{dismissed=true;banner->hide();});
+  host.resize(360,180);host.show();QVERIFY(putgd::test::waitForWindowExposed(&host));QApplication::processEvents();
+  QVERIFY(banner->actionButton()->y()>banner->textLabel()->y());QVERIFY(banner->textLabel()->wordWrap());
+  banner->actionButton()->click();QVERIFY(recovered);QVERIFY(banner->isVisible());
+  for(const auto tone:{Graphite::Banner::Tone::Info,Graphite::Banner::Tone::Warning,Graphite::Banner::Tone::Error,Graphite::Banner::Tone::Success}){banner->setTone(tone);QCOMPARE(banner->tone(),tone);QVERIFY(!banner->grab().isNull());}
+  banner->dismissButton()->click();QVERIFY(dismissed);QVERIFY(!banner->isVisible());
  }
  void annotationGeometryStartsCollapsedAndCropStaysVisible(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1060,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -129,30 +163,31 @@ private slots:
   EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Private upload to Synthetic");window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* destination=window.findChild<QLabel*>("editorDestination");auto* feedback=window.findChild<QWidget*>("editorSaveFeedback");auto* footer=window.findChild<QWidget*>("editorFooter");auto* upload=window.findChild<QPushButton*>("editorUpload");
   const auto geometry=window.canvas().geometry();const auto zoom=window.canvas().zoom();const auto visible=window.canvas().visibleImageRect();
-  window.showSaved("/synthetic/copy.png");QApplication::processEvents();QCOMPARE(window.canvas().geometry(),geometry);QVERIFY(destination->isVisible());QVERIFY(feedback->isVisible());QVERIFY(feedback->geometry().bottom()<footer->y());QVERIFY(upload->isEnabled());
+  QVERIFY(!feedback->isVisible());QCOMPARE(window.canvas().mapTo(&window,QPoint(0,window.canvas().height())).y(),footer->y());
+  window.showSaved("/synthetic/copy.png");QApplication::processEvents();QCOMPARE(window.canvas().geometry(),geometry);QVERIFY(destination->isVisible());QVERIFY(feedback->isVisible());QCOMPARE(feedback->parentWidget(),&window);QVERIFY(window.canvas().rect().contains(QRect(window.canvas().mapFrom(&window,feedback->pos()),feedback->size())));QVERIFY(feedback->geometry().bottom()<footer->y());QVERIFY(upload->isEnabled());
   for(const auto name:{"showSavedCopy","copySavedPath"}){auto* button=window.findChild<QPushButton*>(name);QVERIFY(button->isVisible());QVERIFY(button->width()>=button->sizeHint().width());}
   window.findChild<QToolButton*>("dismissEditorSavedCopy")->click();QApplication::processEvents();QVERIFY(destination->isVisible());QVERIFY(!window.viewState()["saveFeedbackVisible"].toBool());QCOMPARE(window.viewState()["lastSave"].toObject()["status"].toString(),QString("saved"));
   window.showSaveFailed("/synthetic/copy.png",QString("Disk full. ")+QString("Free enough space, then try again. ").repeated(5));QApplication::processEvents();
-  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QVERIFY(destination->isVisible());QVERIFY(error->text().startsWith("Couldn't save: Disk full."));QVERIFY(!error->wordWrap());QCOMPARE(window.canvas().geometry(),geometry);QVERIFY(feedback->geometry().bottom()<footer->y());QVERIFY(upload->isEnabled());
+  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QVERIFY(destination->isVisible());QVERIFY(error->text().startsWith("Couldn't save: Disk full."));QVERIFY(!error->wordWrap());QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(feedback->parentWidget(),&window);QVERIFY(window.canvas().rect().contains(QRect(window.canvas().mapFrom(&window,feedback->pos()),feedback->size())));QVERIFY(feedback->geometry().bottom()<footer->y());QVERIFY(upload->isEnabled());
   auto* retry=window.findChild<QPushButton*>("chooseAnotherLocation");QVERIFY(retry->isVisible());QVERIFY(retry->width()>=retry->sizeHint().width());
   QString code,message;window.viewCommand({{"action","dismissSavedCopy"}},code,message);QApplication::processEvents();QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(destination->isVisible());QVERIFY(!feedback->isVisible());
   QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(window.canvas().zoom(),zoom);QCOMPARE(window.canvas().visibleImageRect(),visible);
 
  }
- void saveFeedbackHasOneRowAndPreservesTheImageAtLargeText(){
+ void saveFeedbackOverlayPreservesTheImageAtLargeText(){
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
   const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});
   auto larger=previous;larger.setPixelSize(qRound(Graphite::font().pixelSize()*1.5));QApplication::setFont(larger);
   EditDocument doc(QImage(1600,1000,QImage::Format_RGB32));EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  auto* feedback=window.findChild<QWidget*>("editorSaveFeedback");const int height=feedback->height();
+  auto* feedback=window.findChild<QWidget*>("editorSaveFeedback");QCOMPARE(feedback->parentWidget(),&window);QVERIFY(!feedback->sizePolicy().retainSizeWhenHidden());
   for(const bool fitted:{true,false}){
    if(fitted)window.canvas().fit();else{window.canvas().setZoom(2);window.canvas().panBy({-90,-60});}
    const auto geometry=window.canvas().geometry();const auto zoom=window.canvas().zoom();const auto visible=window.canvas().visibleImageRect();
-   auto stable=[&]{QApplication::processEvents();QCOMPARE(feedback->height(),height);QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(window.canvas().zoom(),zoom);QCOMPARE(window.canvas().visibleImageRect(),visible);QCOMPARE(window.canvas().fitted(),fitted);};
+   auto stable=[&]{QApplication::processEvents();if(feedback->isVisible())QVERIFY(window.canvas().rect().contains(QRect(window.canvas().mapFrom(&window,feedback->pos()),feedback->size())));QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(window.canvas().zoom(),zoom);QCOMPARE(window.canvas().visibleImageRect(),visible);QCOMPARE(window.canvas().fitted(),fitted);};
    window.showSaved("/synthetic/long saved image name.png");stable();
    window.showSaveFailed("/synthetic/long failed image name.png",QString("Permission denied. ").repeated(20));stable();
    auto* details=window.findChild<QToolButton*>("editorSaveDetails");auto* retry=window.findChild<QPushButton*>("chooseAnotherLocation");
-   QVERIFY(details->isVisible());QVERIFY(retry->isVisible());QCOMPARE(details->mapTo(feedback,QPoint()).y(),retry->mapTo(feedback,QPoint()).y());
+   QVERIFY(details->isVisible());QVERIFY(retry->isVisible());
    for(auto* button:{static_cast<QWidget*>(details),static_cast<QWidget*>(retry)})QVERIFY(feedback->rect().contains(QRect(button->mapTo(feedback,QPoint()),button->size())));
    window.dismissSavedCopy();stable();
    QTemporaryDir dir;QVERIFY(window.writeCopy(dir.filePath("copy.png")));stable();PUTGD_TRY_VERIFY(!window.savingCopy());stable();
@@ -181,7 +216,7 @@ private slots:
    auto* field=canvas.findChild<QLineEdit*>("annotationText");QVERIFY(field&&field->isVisible());
    const QString text(180,'W');field->setText(text);QVERIFY(canvas.rect().contains(field->geometry()));
    QVERIFY(canvas.textOutsideImage());QApplication::processEvents();
-   auto* warning=canvas.findChild<QWidget*>("annotationTextWarning");QVERIFY(warning&&warning->isVisible());QVERIFY(canvas.rect().contains(warning->geometry()));
+   auto* warning=canvas.findChild<QWidget*>("annotationTextWarning");QVERIFY(warning&&warning->isVisible());QVERIFY(canvas.rect().contains(warning->geometry()));QCOMPARE(warning->x(),16);QCOMPARE(warning->width(),canvas.width()-32);
    const auto at=origin+anchor;QVERIFY(!field->geometry().contains(at));
    QCOMPARE(canvas.grab().toImage().pixelColor(at),Theme::brandAccent());
    QVERIFY(field->accessibleDescription().contains(QString("x %1, y %2").arg(anchor.x()).arg(anchor.y())));
@@ -601,13 +636,13 @@ private slots:
   QCOMPARE(uploads.size(),1);QCOMPARE(doc.crop(),QRect(25,35,30,20));
  }
  // The saved copy is tied to the draft it holds: another edit makes it an
- // earlier copy, and the header stops claiming one.
+ // earlier copy; the header always keeps the upload state.
  void savedCopyGoesStaleAfterAnotherEditAndCopiesItsPath(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   QTemporaryDir dir;const auto path=dir.filePath("synthetic copy.png");
   QString reason;QVERIFY2(!writeCopy(window,path,reason).isEmpty(),qPrintable(reason));
   auto* state=window.findChild<QLabel*>("documentState");auto* saved=window.findChild<QLabel*>("editorSaved");QVERIFY(state&&saved);
-  QCOMPARE(state->text(),QString("Not uploaded · Copy saved"));QCOMPARE(saved->text(),QString("Saved synthetic copy.png"));
+  QCOMPARE(state->text(),QString("Not uploaded"));QCOMPARE(saved->text(),QString("Saved synthetic copy.png"));
   QVERIFY(window.viewState()["lastSave"].toObject()["current"].toBool());
   // Copy path sits beside Show in folder and takes keyboard focus.
   auto* copy=window.findChild<QPushButton*>("copySavedPath");QVERIFY(copy&&copy->isVisible());QVERIFY(copy->focusPolicy()&Qt::TabFocus);
@@ -619,7 +654,7 @@ private slots:
   QGuiApplication::clipboard()->clear();QString code,message;window.viewCommand({{"action","copySavedPath"}},code,message);QVERIFY(code.isEmpty());
   QCOMPARE(QGuiApplication::clipboard()->text(),QFileInfo(path).absoluteFilePath());
   // Saving again makes the copy current.
-  QVERIFY(!writeCopy(window,path,reason).isEmpty());QCOMPARE(state->text(),QString("Not uploaded · Copy saved"));
+  QVERIFY(!writeCopy(window,path,reason).isEmpty());QCOMPARE(state->text(),QString("Not uploaded"));
   // A chooser that failed (no file named yet) is shown as a failure, not a cancel.
   window.showSaveFailed({},"The chosen location is not a local file.");
   auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QCOMPARE(error->text(),QString("Couldn't save: The chosen location is not a local file."));

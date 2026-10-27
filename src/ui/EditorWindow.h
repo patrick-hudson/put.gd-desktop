@@ -52,10 +52,10 @@ public:
  bool savingCopy() const {return savingCopy_;}
  static QString pngCopyPath(const QString& path);
  // A copy written by the window or by editor.saveCopy: its name, Show in
- // folder and Copy path above the footer, the full path in the
+ // folder and Copy path over the canvas, the full path in the
  // tooltip and accessible description. It is recorded against the
  // document's generation: after another edit it reads "Earlier copy saved"
- // and the header no longer claims a copy. A failure (an empty path: the
+ // while the header keeps "Not uploaded". A failure (an empty path: the
  // chooser itself failed) keeps the draft and offers Choose another location….
  void showSaved(const QString& path);
  void showSaveFailed(const QString& path,const QString& reason);
@@ -83,6 +83,8 @@ private:
  void refresh();
  void syncSaved();
  void placeDestination();
+ void placeSaveFeedback();
+ void placeTools();
  void placeDocument();
  void placeProperties();
  // The preparation failure strip; empty hides it. While it shows, its own
@@ -127,8 +129,8 @@ private:
  QSplitter* splitter_=nullptr;int propertiesWidth_=260;
  QWidget *side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;
  QVBoxLayout *properties_=nullptr,*sideLayout_=nullptr;bool documentScrolling_=false;
- // A reserved, single-height save row keeps feedback from moving the canvas.
- QWidget* saveFeedback_=nullptr;bool saveFeedbackVisible_=false;
+ // Feedback overlays the canvas without changing its geometry or zoom.
+ Graphite::Banner* saveFeedback_=nullptr;bool saveFeedbackVisible_=false;
  QWidget* notice_=nullptr;QGridLayout* footerGrid_=nullptr;
  QLabel* noticeText_=nullptr;QPushButton *keepEditing_=nullptr,*saveInstead_=nullptr;
  bool destinationAbove_=false;

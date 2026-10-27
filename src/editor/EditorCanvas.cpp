@@ -72,11 +72,10 @@ EditorCanvas::EditorCanvas(EditDocument& doc,QWidget* parent):QWidget(parent),do
  setMinimumSize(320,240);setAccessibleName("Image being edited");
  // Screen readers hear the selection, or the crop, and the keys that act on it.
  connect(this,&EditorCanvas::selectionChanged,this,&EditorCanvas::announce);connect(this,&EditorCanvas::changed,this,&EditorCanvas::announce);
- textWarning_=new Graphite::Surface("surface",{},this);textWarning_->setObjectName("annotationTextWarning");
- auto* warningLayout=new QBoxLayout(QBoxLayout::LeftToRight,textWarning_);warningLayout->setContentsMargins(8,8,8,8);warningLayout->setSpacing(8);
- auto* warning=Graphite::warningLabel("Some annotation text will be clipped in the saved image",textWarning_);warning->setObjectName("annotationTextWarningText");warningLayout->addWidget(warning);
- auto* affected=new QPushButton("Select affected text",textWarning_);affected->setObjectName("selectAffectedText");VisualStyle::role(affected,"quiet");warningLayout->addWidget(affected,0,Qt::AlignLeft);
- connect(affected,&QPushButton::clicked,this,[this]{selectAffectedText();});textWarning_->hide();
+ auto* warning=new Graphite::Banner(Graphite::Banner::Tone::Warning,{},this);textWarning_=warning;textWarning_->setObjectName("annotationTextWarning");
+ warning->textLabel()->setObjectName("annotationTextWarningText");warning->setAction("Select affected text");
+ warning->actionButton()->setObjectName("selectAffectedText");
+ connect(warning->actionButton(),&QPushButton::clicked,this,[this]{selectAffectedText();});textWarning_->hide();
  announce();
 }
 
@@ -280,6 +279,7 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  }
  if(textEditor_)EditDocument::paintAnnotation(painter,pendingText());
  painter.restore();
+ if(Theme::scheme()==Theme::Scheme::Light){painter.setPen(QPen(Theme::current().borderStrong,1));painter.setBrush(Qt::NoBrush);painter.drawRect(target.adjusted(-0.5,-0.5,0.5,0.5));}
  if(tool_==Tool::Crop){
   const auto crop=toWidget(cropDraft_);QPainterPath outside;outside.addRect(target);outside.addRect(crop);
   painter.fillPath(outside,dim());
@@ -609,14 +609,10 @@ bool EditorCanvas::selectAffectedText(){
 }
 void EditorCanvas::placeTextWarning(){
  const bool outside=textOutsideImage();textWarning_->setVisible(outside);if(!outside)return;
- const auto* label=textWarning_->findChild<QLabel*>("annotationTextWarningText");
- const auto margins=label->contentsMargins();
- const int textWidth=label->fontMetrics().horizontalAdvance(label->text())+margins.left()+margins.right();
- auto* layout=qobject_cast<QBoxLayout*>(textWarning_->layout());const int actionWidth=textWarning_->findChild<QPushButton*>("selectAffectedText")->sizeHint().width();
- const bool stacked=textWidth+actionWidth+24>width()-16;
- layout->setDirection(stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);
- const int w=std::min(width()-16,stacked?std::max(textWidth,actionWidth)+16:textWidth+actionWidth+24);
- textWarning_->setGeometry(8,8,w,std::max(textWarning_->minimumSizeHint().height(),textWarning_->heightForWidth(w)));textWarning_->raise();
+ auto* banner=static_cast<Graphite::Banner*>(textWarning_);
+ banner->setText(tool_==Tool::Crop?"Some text will be cut off by this crop":"Some text will be cut off in the saved image");
+ const int w=std::max(0,width()-32);banner->resize(w,banner->height());banner->layout()->activate();
+ banner->setGeometry(16,16,w,std::max(banner->minimumSizeHint().height(),banner->heightForWidth(w)));banner->raise();
 }
 void EditorCanvas::placeTextEditor(){
  if(!textEditor_)return;
