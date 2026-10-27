@@ -180,3 +180,18 @@ print('PASS recording selector purpose and live Enter hints');
     equal(RegionSelection.instructionPosition(monitor, 400, 100, null, [-400, 640]), [-600, 116]);
 }
 print('PASS instruction badge avoids selection and drag pointer on offset monitors');
+
+for (const scheme of ['prefer-dark', 'prefer-light', 'default']) {
+    const style = RegionSelection.instructionStyle(scheme);
+    equal(style.includes(scheme === 'prefer-dark' ? '#191919' : '#eeeeeb'), true);
+    equal(style.includes(scheme === 'prefer-dark' ? '#f0f0ec' : '#292926'), true);
+}
+{
+    const {actor, result} = begin();
+    const settings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
+    equal(actor._instructions.style, RegionSelection.instructionStyle(settings.get_string('color-scheme')));
+    equal(actor._rectangle.style.includes('3px solid black'), true);
+    equal(actor._contrast.style.includes('1px solid white'), true);
+    key(actor, 'Escape'); equal(await result, null); closed(actor);
+}
+print('PASS native scheme badge with independent black/white selection outline');

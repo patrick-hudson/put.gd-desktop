@@ -187,6 +187,10 @@ function bytesOf(stream) {
 // screenshot UI internals or leave an upstream idle destruction callback alive.
 // Pure geometry module, mirrored by RegionSelection.h and exercised without Shell.
 const RegionSelection = {
+    instructionStyle(scheme) {
+        const dark = scheme === 'prefer-dark';
+        return `background-color: ${dark ? '#191919' : '#eeeeeb'}; color: ${dark ? '#f0f0ec' : '#292926'}; border: 1px solid ${dark ? '#515151' : '#aaaaa3'}; border-radius: 6px; padding: 6px 10px; font-size: 10.5pt; text-align: center;`;
+    },
     switchDisplay(region, monitors, current, backwards = false) {
         const next = (current + (backwards ? -1 : 1) + monitors.length) % monitors.length;
         if (!region || region.width < 1 || region.height < 1)
@@ -230,8 +234,10 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         this.add_child(this._contrast);
         this._recording = recording;
         this._keyboardMonitor = this._monitor();
+        // The capture bridge has no app scheme field; use the native preference.
+        const settings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
         this._instructions = new St.Label({reactive: false, text: '',
-            style: 'background-color: #191919; color: #f0f0ec; border: 1px solid white; border-radius: 6px; padding: 6px 10px; font-size: 10.5pt; text-align: center;'});
+            style: RegionSelection.instructionStyle(settings.get_string('color-scheme'))});
         this._instructions.clutter_text.set_line_wrap(true);
         this.add_child(this._instructions);
         this._region = null;
