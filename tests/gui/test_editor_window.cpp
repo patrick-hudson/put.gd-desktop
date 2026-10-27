@@ -49,8 +49,9 @@ private slots:
   QString code,message;auto state=window.viewCommand({{"action","keyboardHelp"}},code,message);
   QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(state["keyboardHelp"].toObject()["open"].toBool());
   auto* help=window.findChild<QToolButton*>("editorKeyboardHelp");auto* text=window.findChild<QLabel*>("editorKeyboardHelpText");
-  QVERIFY(help&&text&&text->isVisible());QVERIFY(text->text().contains("Shift+arrows"));
-  help->setFocus();QTest::keyClick(help,Qt::Key_Space);QVERIFY(!window.viewState()["keyboardHelp"].toObject()["open"].toBool());
+  QVERIFY(help&&text&&text->isVisible());QVERIFY(text->text().contains("Shift+arrows"));QCOMPARE(help->accessibleDescription(),QString("Expanded"));
+  QApplication::processEvents();auto* scroll=window.findChild<QScrollArea*>("editorPropertiesScroll");QVERIFY(scroll->viewport()->rect().contains(QRect(text->mapTo(scroll->viewport(),QPoint()),text->size())));
+  help->setFocus();QTest::keyClick(help,Qt::Key_Space);QVERIFY(!window.viewState()["keyboardHelp"].toObject()["open"].toBool());QCOMPARE(help->accessibleDescription(),QString("Collapsed"));
   window.allowClose();
  }
 
