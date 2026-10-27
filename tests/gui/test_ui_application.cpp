@@ -12,6 +12,7 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QJsonDocument>
+#include <QClipboard>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QTabBar>
@@ -47,6 +48,16 @@ class UiApplicationTest:public QObject {
 private slots:
  // #558: opening and checkpointing History must not construct the hidden
  // Settings tree; explicit navigation and agent commands still initialize it.
+ void editSourcesStayAvailableWithoutOutput(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);window.show();QToolButton* edit=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="edit")edit=button;QVERIFY(edit);QVERIFY(edit->isEnabled());QVERIFY(edit->property("captureUnavailable").toBool());QVERIFY(edit->menu());for(auto* action:edit->menu()->actions())QVERIFY(action->isEnabled());QSignalSpy capture(&window,&MainWindow::actionRequested),existing(&window,&MainWindow::editRequested);edit->click();QCOMPARE(capture.size(),0);edit->menu()->actions().first()->trigger();QCOMPARE(existing.size(),1);QCOMPARE(existing.first().first().toString(),QString("clipboard"));window.imageChooserFinished({FileDialog::Result::Status::Chosen,d.filePath("test.png"),{}});QCOMPARE(existing.size(),2);
+ }
+ void actionRecoveryOpensTheRelevantControl_data(){QTest::addColumn<QString>("code");QTest::addColumn<QString>("control");QTest::addColumn<int>("page");QTest::newRow("output")<<QString("output_required")<<QString("defaultCaptureDestination")<<2;QTest::newRow("destination")<<QString("s3_settings_invalid")<<QString("s3Bucket")<<1;QTest::newRow("local-copy")<<QString("archive_failed")<<QString("keepUploadCopies")<<2;}
+ void actionRecoveryOpensTheRelevantControl(){
+  QFETCH(QString,code);QFETCH(QString,control);QFETCH(int,page);QTemporaryDir d;SettingsService settings(d.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl ui(device);UiApplicationController controller(fixture.session,ui,{});const auto view="actionRecovery:"+QString::fromUtf8(QJsonDocument(QJsonObject{{"action","region"},{"code",code},{"message","Synthetic specific failure"}}).toJson(QJsonDocument::Compact));device.send("activate",{{"view",view}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);QCOMPARE(window->saveViewState()["page"].toInt(),page);QCOMPARE(window->findChild<QLabel*>("actionRecoveryError")->text(),QString("Synthetic specific failure"));auto* recovery=window->findChild<QPushButton*>("actionRecoveryLink");QVERIFY(recovery->isVisible());auto* target=window->findChild<QWidget*>(control);QVERIFY(target);PUTGD_TRY_VERIFY(window->focusWidget()==target);recovery->click();PUTGD_TRY_VERIFY(window->focusWidget()==target);
+ }
+ void releaseBrowserFailureStaysOutsideStatusBand(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);QJsonObject snapshot;fixture.server.dispatch({{"schemaVersion",1},{"requestId","version"},{"session",fixture.server.socketPath()},{"method","ui.snapshot"},{"params",QJsonObject{}}},[&](Error e,QJsonObject data){QVERIFY(!e);snapshot=data;});PUTGD_TRY_VERIFY(!snapshot.isEmpty());auto build=snapshot["build"].toObject();build["version"]="26.1026.12345-nightly";build["dirty"]=false;snapshot["build"]=build;fixture.session.applySnapshot(snapshot);window.resize(1060,680);window.show();putgd::test::settle(30);const int before=window.statusBar()->height();auto* failure=static_cast<Graphite::BrowserFeedback*>(window.findChild<QWidget*>("appVersionBrowserFeedback"));QVERIFY(failure);failure->opening(QUrl("https://example.invalid/release"))({{"opened",false}});auto* notice=window.findChild<QWidget*>("appVersionNotification");PUTGD_TRY_VERIFY(notice->isVisible());QVERIFY(!window.statusBar()->isAncestorOf(notice));QCOMPARE(window.statusBar()->height(),before);window.findChild<QPushButton*>("copyReleaseLink")->click();QCOMPARE(QApplication::clipboard()->text(),QString("https://example.invalid/release"));window.findChild<QToolButton*>("dismissVersionNotification")->click();PUTGD_TRY_VERIFY(!notice->isVisible());
+ }
  void historyDefersCleanSettingsAndUsesCurrentConfiguration(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();QVERIFY(settings.save(document,{}));
   CredentialStore secrets;UiSessionFixture fixture(settings,secrets);QJsonObject saved;

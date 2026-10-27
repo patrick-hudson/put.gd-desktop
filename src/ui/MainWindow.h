@@ -2,6 +2,7 @@
 #include <QMainWindow>
 #include <QJsonObject>
 #include "FileDialog.h"
+#include "core/Error.h"
 class QListWidget;class QToolButton;class QTabBar;class QStackedWidget;class QLabel;class QPushButton;class QMimeData;class QScrollArea;class QSpacerItem;
 namespace putgd {
 class UiSession;class SettingsWindow;class HistoryWindow;
@@ -11,7 +12,7 @@ public:
  explicit MainWindow(UiSession&,QWidget* parent=nullptr);
  ~MainWindow()override;
  void navigate(const QString&);
- Q_SLOT void showLocalCopySettings();
+ Q_SLOT void showLocalCopySettings();void showCaptureSettings(const QStringList& actions={});void showActionFailure(const QString& action,const Error&);
  // Asks for a PNG or JPEG to edit through the desktop's chooser (#259), then
  // emits editRequested; false while that chooser is already open.
  bool chooseImageToEdit();FileDialog& editImageDialog(){return *chooser_;}

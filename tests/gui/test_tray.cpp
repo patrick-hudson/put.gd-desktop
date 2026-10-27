@@ -6,6 +6,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QMenu>
+#include <QJsonDocument>
 #include <QPointer>
 #include <QSignalSpy>
 #include <QScopeGuard>
@@ -664,12 +665,12 @@ private slots:
   QPointer<QAction> action = actionNamed(tray, "Capture region");
   QVERIFY(action);
   action->trigger();
-  QCOMPARE(opened, QString("history"));
+  QVERIFY(opened.startsWith("actionRecovery:"));
   QVERIFY(!controller);
   QVERIFY(action.isNull());
  }
 
- void rejectedCaptureOpensHistoryWithoutOwningAWindow() {
+ void missingOutputOpensCaptureRecoveryWithoutOwningAWindow() {
   QTemporaryDir directory;
   QVERIFY(directory.isValid());
   ProviderRegistry providers;
@@ -683,7 +684,7 @@ private slots:
   auto* action = actionNamed(tray, "Capture region");
   QVERIFY(action);
   action->trigger();
-  PUTGD_TRY_COMPARE(views, QStringList({"history"}));
+  PUTGD_TRY_COMPARE(views.size(),1);QVERIFY(views.first().startsWith("actionRecovery:"));const auto recovery=QJsonDocument::fromJson(views.first().mid(15).toUtf8()).object();QCOMPARE(recovery["code"].toString(),QString("output_required"));QCOMPARE(recovery["action"].toString(),QString("region"));
   QVERIFY(source.actions.isEmpty());
  }
  // The tray entry opens a recording (a dragged region) and raises it while one is

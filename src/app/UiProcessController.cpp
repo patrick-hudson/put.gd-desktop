@@ -34,7 +34,8 @@ UiProcessController::~UiProcessController(){
 }
 void UiProcessController::activate(const QString& view,Reply reply){
  if(stopping_){if(reply)reply(unavailable("ui_stopping"));return;}
- if(!QStringList{"settings","updates","history","activity","about","editFile"}.contains(view)){
+ // Internal tray recovery carries the specific error to its settings control.
+ if(!view.startsWith("actionRecovery:")&&!QStringList{"settings","updates","history","activity","about","editFile"}.contains(view)){
   if(reply)reply(unavailable("ui_view"));
   return;
  }

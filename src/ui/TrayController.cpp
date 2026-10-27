@@ -1,4 +1,5 @@
 #include "TrayController.h"
+#include <QJsonDocument>
 #include "VisualStyle.h"
 #include "Theme.h"
 #include "ByteSize.h"
@@ -460,7 +461,7 @@ void TrayController::invokeShortcut(const QString& action) {
 void TrayController::invokeAction(const QString& action, bool fromShortcut, const QJsonObject& options) {
  // The tray opens or raises a recording; its shortcut toggles it.
  const auto effective = action == Settings::recordingActionName() && options.isEmpty() ? QJsonObject{{"mode", fromShortcut ? "toggle" : "open"}} : options;
- operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut](Error error, QJsonObject) {
+ operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action](Error error, QJsonObject) {
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));
    if (fromShortcut) {
@@ -471,7 +472,9 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
     guard->lastShortcutError_ = error.code;
     guard->shortcutFeedbackClock_.start();
    }
-   if (!fromShortcut) guard->showHistory();
+   const bool configuration=QStringList{"output_required","profile_not_found","provider_unavailable","invalid_destination","destination_unavailable","s3_settings_invalid","b2_settings_invalid","config_invalid","archive_failed"}.contains(error.code);
+   if(configuration&&!fromShortcut){const QJsonObject recovery{{"action",action},{"code",error.code},{"message",error.message}};guard->showView("actionRecovery:"+QString::fromUtf8(QJsonDocument(recovery).toJson(QJsonDocument::Compact)));}
+   else if (!fromShortcut) guard->showHistory();
    if (guard) guard->notifyFailure(error);
   }
  }, effective);
