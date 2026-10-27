@@ -399,7 +399,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
   auto* details=new QAction("Show details",this);details->setObjectName("historyShowDetails");details->setToolTip("Open the selected capture's files, link and actions (Enter)");connect(details,&QAction::triggered,this,[this]{openSelectedDetails();});
   copyLinks_=new QPushButton("Copy links",selectionBar_);copyLinks_->setObjectName("historyCopyLinks");copyLinks_->setToolTip("Copy the stored links of every selected file, one per line");bar->addWidget(copyLinks_);connect(copyLinks_,&QPushButton::clicked,this,&HistoryWindow::copySelectedLinks);
   deleteSelected_=new QPushButton("Delete from destination…",selectionBar_);deleteSelected_->setObjectName("historyDeleteSelected");VisualStyle::role(deleteSelected_,"danger");bar->addWidget(deleteSelected_);connect(deleteSelected_,&QPushButton::clicked,this,[this]{const auto ids=deletableIds();prepareDelete(ids,int(selectedFiles().size())-int(ids.size()));});
-  auto* more=Graphite::toolButton({}, {},"quiet",selectionBar_);more->setObjectName("historySelectionMore");more->setIcon(Graphite::chromeIcon("more"));more->setAccessibleName("Actions for selected captures");more->setToolTip("Actions for selected captures");bar->addWidget(more);connect(more,&QToolButton::clicked,this,[this,more]{showRowMenu(table_->currentIndex(),more->mapToGlobal(QPoint(0,more->height())));});
+  auto* more=Graphite::toolButton({}, {},"quiet",selectionBar_);more->setObjectName("historySelectionMore");more->setIcon(Graphite::chromeIcon("more"));more->setAccessibleName("Actions for selected captures");more->setToolTip("Actions for selected captures");bar->addWidget(more);connect(more,&QToolButton::clicked,this,[this,more]{showRowMenu(table_->currentIndex(),more->mapToGlobal(QPoint(0,more->height())),true,true);});
   auto* clearSelection=new QPushButton("Clear selection",selectionBar_);clearSelection->setObjectName("historyClearSelection");VisualStyle::role(clearSelection,"quiet");bar->addWidget(clearSelection);connect(clearSelection,&QPushButton::clicked,this,[this]{table_->clearSelection();table_->setFocus();});}
  selectionBar_->hide();listBox->addWidget(selectionBar_);
  list_=new QStackedWidget(this);list_->addWidget(listPane);list_->addWidget(emptyState_);
@@ -588,10 +588,10 @@ void HistoryWindow::editAgain(const QJsonObject& record){
 // receipts as its inline action and the inspector; nothing it would refuse.
 // Opening it on a row of a multi-selection keeps the selection and offers
 // the batch actions.
-void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point,bool overflow){
+void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point,bool overflow,bool collective){
  if(model_->busy())return;
  auto* selection=table_->selectionModel();
- if(!overflow&&selection->selectedRows().size()>1&&selection->isSelected(i)){
+ if((collective||!overflow)&&selection->selectedRows().size()>1&&selection->isSelected(i)){
   selection->setCurrentIndex(i,QItemSelectionModel::NoUpdate);QMenu menu(this);menu.setObjectName("historyRowMenu");menu.addSection(QString("%1 selected").arg(selection->selectedRows().size()));
   if(!overflow&&selectionHasLinks())menu.addAction("Copy links",this,&HistoryWindow::copySelectedLinks);
   if(const auto ids=deletableIds();!overflow&&!ids.isEmpty())menu.addAction(ids.size()==selectedFiles().size()?QString("Delete from destination…"):QString("Delete %1 from destination…").arg(ids.size()),this,[this]{const auto ids=deletableIds();prepareDelete(ids,int(selectedFiles().size())-int(ids.size()));});
