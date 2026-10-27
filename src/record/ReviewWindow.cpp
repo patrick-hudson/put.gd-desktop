@@ -1980,7 +1980,7 @@ void ReviewWindow::placeDestination() {
     destination_->setToolTip(options_.uploadSummary);
     destination_->setAccessibleName(options_.uploadSummary);
     const auto summary = audio_->property("summary").toString();
-    exportAudio_->setText(effectiveAudio(config_, options_.audioRecorded, audioIntent_) ? QStringLiteral("System audio included") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : QStringLiteral("No audio"));
+    exportAudio_->setText(effectiveAudio(config_, options_.audioRecorded, audioIntent_) ? QStringLiteral("System audio included") : !options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : QStringLiteral("Audio off in export"));
     auto* facts = destination_->parentWidget();
     const int width = std::max(1, facts->width());
     const int naturalAudio = exportAudio_->fontMetrics().horizontalAdvance(exportAudio_->text()) + 2;
