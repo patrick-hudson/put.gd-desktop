@@ -27,7 +27,7 @@ namespace {
 bool meaningfulError(const QJsonObject& error) {
  const auto code=error["code"].toString();return !code.isEmpty()&&code!="copy_suppressed";
 }
-const QString idleTooltip = "put.gd — Share and local capture";
+const QString idleTooltip = "put.gd — Screen capture and file sharing";
 // Which way a link or folder opened on the host (#326), never the target itself.
 void logOpened(const QString& target,const QJsonObject& result) {
  auto fields=result;fields["target"]=target;
@@ -282,7 +282,7 @@ TrayController::TrayController(OperationService& operations,
    // A failed upload offers a diagnostics package for just that operation (#122).
    const auto diagnostics=state!="completed"&&guard->saveDiagnostics_?operation["id"].toString():QString{};
    if (QStringList{"completed", "partial", "failed", "interrupted"}.contains(state))
-    guard->notifyMessage("operation_" + state,"put.gd — " + state,completionMessage(operation,!link.isEmpty()),state != "completed",link,diagnostics);
+    guard->notifyMessage("operation_" + state,QHash<QString,QString>{{"completed","Upload complete"},{"partial","Some uploads failed"},{"interrupted","Upload interrupted"},{"failed","Upload failed"}}.value(state),completionMessage(operation,!link.isEmpty()),state != "completed",link,diagnostics);
   });
  });
 }
@@ -294,7 +294,7 @@ QString TrayController::failureReason(const QJsonObject& error) {
  auto has=[&](std::initializer_list<const char*> parts){for(const auto* part:parts)if(code.contains(QLatin1String(part)))return true;return false;};
  if(code=="diagnostics_no_destination")return "no upload destination is set up";
  if(code=="diagnostics_destination_failing")return "the last upload to the destination failed with a credential or configuration error";
- if(code=="diagnostics_destination_unavailable")return "Test connection to the destination failed";
+ if(code=="diagnostics_destination_unavailable")return "the destination's connection test failed";
  if(has({"permission_denied","access_denied","multipart_permission"}))return "access denied by the destination";
  if(has({"authentication_failed","credentials_invalid","credential_invalid"}))return "the destination did not accept the saved credentials";
  if(has({"setup_required","account_changed"}))return "the destination needs to be set up again in Settings";

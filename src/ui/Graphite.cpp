@@ -491,7 +491,7 @@ void Style::polish(QWidget* widget) {
     QColor colour;
     QFont f;
     bool setFont = true;
-    if (name == "title" || name == "page") f = font(Type::page, true);
+    if (name == "title" || name == "page") f = font(widget->property("compactHeading").toBool() ? Type::section : Type::page, true);
     else if (name == "sectionTitle" || name == "section") f = font(Type::section, true);
     else if (name == "strong") f = font(Type::body, true);
     else if (name == "eyebrow" || name == "railHeading" || name == "micro") { f = font(Type::micro, name != "micro"); colour = c.textMuted; }
@@ -503,7 +503,7 @@ void Style::polish(QWidget* widget) {
     // Editable paths, URLs, prefixes, bucket names and identifiers: Mono at body size.
     else if (name == "technical") f = monoFont(Type::technical);
     else if (name == "pill") { f = font(Type::micro); colour = c.textSecondary; }
-    else if (name == "editableTitle") f = font(Type::page, true);
+    else if (name == "editableTitle") f = font(widget->property("compactHeading").toBool() ? Type::section : Type::page, true);
     else if (bodyControl) f = font(Type::body);
     else setFont = false;
     if (monoPixels) { f = monoFont(monoPixels); setFont = true; }
@@ -1924,8 +1924,10 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
                     if (auto* layout = widget->layout()) margins += layout->contentsMargins().left() + layout->contentsMargins().right();
                     if (widget == page_) break;
                 }
-                const int available = std::min(form->geometry().width(), pageWidth - margins);
-                stack |= available < gutter_ + std::max(0, form->horizontalSpacing()) + fieldWidth;
+                const int available = pageWidth - margins;
+                // Shared Settings/Destinations forms switch at the same useful
+                // control width, independent of which provider is visible.
+                stack |= available < gutter_ + std::max(0, form->horizontalSpacing()) + (shared_ ? scaled(320) : fieldWidth);
             }
             const auto policy = stack ? QFormLayout::WrapAllRows : QFormLayout::DontWrapRows;
             for (auto* form : forms_) if (form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);

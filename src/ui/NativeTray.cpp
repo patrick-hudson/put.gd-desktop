@@ -447,7 +447,7 @@ QVariantMap NativeTrayPrivate::properties(bool menu) const {
   {"IconName", ""}, {"IconPixmap", QVariant::fromValue(icons_)},
   {"OverlayIconName", ""}, {"OverlayIconPixmap", QVariant::fromValue(NativeImages{})},
   {"AttentionIconName", ""}, {"AttentionIconPixmap", QVariant::fromValue(NativeImages{})}, {"AttentionMovieName", ""},
-  {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, activityText_.isEmpty()?QString("put.gd — Share and local capture"):QString("put.gd — Working"), activityText_})}};
+  {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, activityText_.isEmpty()?QString("put.gd — Screen capture and file sharing"):QString("put.gd — Working"), activityText_})}};
 }
 QString TrayExport::introspect(const QString&) const {
  QString xml = "<interface name=\"org.freedesktop.DBus.Properties\">"

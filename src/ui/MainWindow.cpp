@@ -56,11 +56,11 @@ protected:
 };
 class EditSourceButton final:public QToolButton {
 public:using QToolButton::QToolButton;
-protected:void paintEvent(QPaintEvent*)override{QStyleOptionToolButton option;initStyleOption(&option);QPainter p(this);if(!property("captureUnavailable").toBool()){style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);return;}const auto main=style()->subControlRect(QStyle::CC_ToolButton,&option,QStyle::SC_ToolButton,this);p.save();p.setClipRect(main);auto disabled=option;disabled.state&=~(QStyle::State_Enabled|QStyle::State_MouseOver|QStyle::State_Sunken);style()->drawComplexControl(QStyle::CC_ToolButton,&disabled,&p,this);p.restore();p.setClipRegion(QRegion(rect()).subtracted(QRegion(main)));style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);}
+protected:void paintEvent(QPaintEvent*)override{QStyleOptionToolButton option;initStyleOption(&option);QPainter p(this);if(!property("captureUnavailable").toBool()){style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);return;}const auto main=menu()?style()->subControlRect(QStyle::CC_ToolButton,&option,QStyle::SC_ToolButton,this):rect();p.save();p.setClipRect(main);auto disabled=option;disabled.state&=~(QStyle::State_Enabled|QStyle::State_MouseOver|QStyle::State_Sunken);style()->drawComplexControl(QStyle::CC_ToolButton,&disabled,&p,this);p.restore();p.setClipRegion(QRegion(rect()).subtracted(QRegion(main)));style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);}
 };
 QString unavailableOutput(const QJsonObject& document,const QString& action){
  const auto route=Settings::effectiveAction(document,action);const bool local=document["archive"].toObject()["keepUploads"].toBool();
- if(route["destination"]!="upload"||route["profileId"].toString().isEmpty())return local?QString{}:QString("No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.");
+ if(route["destination"]!="upload"||route["profileId"].toString().isEmpty())return local?QString{}:QString("Nothing is saved or uploaded. Choose a destination or turn on Keep a local copy.");
  QJsonObject profile;for(const auto& value:document["profiles"].toArray())if(value.toObject()["id"]==route["profileId"])profile=value.toObject();
  if(profile.isEmpty())return "The upload destination is unavailable. Choose an output in Settings → Capture.";
  if(route["publicationMode"]=="private"&&profile["provider"]!="proton-drive")return "This destination doesn't support private uploads. Choose sharing in Settings → Capture.";
@@ -88,8 +88,8 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  // help, updates, About and Quit. Capture commands live in the command band
  // and the pages in the header's navigation, once each.
  auto* menu=new QMenu(this);menu->setObjectName("applicationMenuPopup");
- auto* helpAction=menu->addAction(VisualStyle::icon("info"),"Capture actions help");helpAction->setObjectName("captureActionsHelp");
- auto* updatesAction=menu->addAction(VisualStyle::icon("download"),"Check for updates");updatesAction->setObjectName("checkForUpdates");
+ auto* helpAction=menu->addAction("Capture actions");helpAction->setObjectName("captureActionsHelp");
+ auto* updatesAction=menu->addAction("Check for updates");updatesAction->setObjectName("checkForUpdates");
  // Opens General → Updates and starts its Check now, where checks are
  // supported; the result shows there.
  connect(updatesAction,&QAction::triggered,this,[this]{navigate("settings");settings_->showUpdates();if(auto* now=settings_->findChild<QPushButton*>("checkForUpdatesNow");now&&now->isEnabled())now->click();});
@@ -102,7 +102,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  // The command band: capture and upload actions, primary first.
  band_=new Graphite::Surface("bg",{},center);band_->setObjectName("commandBand");band_->setAccessibleName("Capture and upload actions");band_->installEventFilter(this);auto* bandRow=new QHBoxLayout(band_);bandRow->setContentsMargins(12,10,12,11);bandRow->setSpacing(6);layout->addWidget(band_);
  const QHash<QString,QString> explanations{{"region","Drag to select an area of your screen. Press Escape to cancel."},{"window","Capture the focused external app window, including its frame where supported."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Upload copied local files, an image, or plain text, in that order. Text URLs are uploaded as text."},{"edit","Select a region, then redact, blur, crop or annotate it. Nothing uploads until you choose Upload.\n\nUse its menu to edit the clipboard image or an image file instead, or drop a PNG or JPEG on this button."},{"record","Drag to select an area, then use the floating bar to record, pause and stop. Stop opens a review window; nothing uploads until you choose Upload there."}};
- const auto actionHelp=[&]{QStringList help;for(const auto& action:Settings::presentationOrder())help<<labels.value(action)+": "+explanations.value(action);help<<"Each button starts that action after finished settings edits are saved. Screen captures close this window to keep it out of the capture; clipboard uploads keep it open. Store or clear unfinished credentials before a screen capture. Settings → Capture selects the upload destination, and Keep a local copy independently enables local saving. Both can be enabled. With neither enabled, the action fails before capturing. Shared uploads copy a link; private uploads create no link. Select the output summary in the status bar to see each action's output behavior. Results and recovery actions appear in History.";return help.join("\n\n");}();
+ const auto actionHelp=[&]{QStringList help;for(const auto& action:Settings::presentationOrder())help<<labels.value(action)+": "+explanations.value(action);help<<"Each button starts that action after finished settings edits are saved. Screen captures close this window to keep it out of the capture; clipboard uploads keep it open. Store or clear unfinished credentials before a screen capture. Settings → Capture selects the upload destination, and Keep a local copy independently enables local saving. Both can be enabled. With neither enabled, capture actions are unavailable. Shared uploads copy a link; private uploads create no link. Select the output summary in the status bar to see each action's output behavior. Results and recovery actions appear in History.";return help.join("\n\n");}();
  // Three groups, each action once: the screenshots (Capture region is the
  // primary), then editing and recording, and at the far end the clipboard
  // upload, which captures nothing. Hairlines separate the groups.
@@ -110,7 +110,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  for(const auto& action:bandOrder){
   if(action=="edit"){auto* divider=Graphite::rule(band_,Qt::Vertical);divider->setObjectName("commandBandDivider");divider->setFixedHeight(Graphite::scaled(20));bandRow->addSpacing(6);bandRow->addWidget(divider,0,Qt::AlignVCenter);bandRow->addSpacing(6);}
   if(action=="clipboard")bandRow->addStretch();
-  auto* button=action=="edit"?static_cast<QToolButton*>(new EditSourceButton(band_)):Graphite::toolButton(labels.value(action),glyphs.value(action),action=="region"?"primary":"quiet",band_);if(action=="edit"){button->setText(QString(labels.value(action)).replace('&',QStringLiteral("&&")));button->setFocusPolicy(Qt::StrongFocus);button->setIconSize(QSize(Graphite::Metric::icon,Graphite::Metric::icon));button->setIcon(VisualStyle::icon(glyphs.value(action)));button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);VisualStyle::role(button,"quiet");}button->setObjectName("captureActionButton");button->setProperty("captureAction",action);button->setAccessibleName(labels.value(action));
+  auto* button=new EditSourceButton(band_);button->setText(QString(labels.value(action)).replace('&',QStringLiteral("&&")));button->setFocusPolicy(Qt::StrongFocus);button->setIconSize(QSize(Graphite::scaled(Graphite::Metric::icon),Graphite::scaled(Graphite::Metric::icon)));button->setIcon(VisualStyle::icon(glyphs.value(action)));button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);VisualStyle::role(button,action=="region"?"primary":"quiet");button->setObjectName("captureActionButton");button->setProperty("captureAction",action);button->setAccessibleName(labels.value(action));
   if(action=="edit"){
    // The button captures a region to edit; its menu edits an image that
    // already exists instead and never starts a capture. A right-click or a
@@ -124,13 +124,13 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   }
   auto update=[this,button,action,explanations]{
    const auto saved=Settings::effectiveAction(session_.document(),action);const auto key=QKeySequence(saved["shortcut"].toString()).toString(QKeySequence::NativeText);
-   const auto unavailable=unavailableOutput(session_.document(),action);button->setEnabled(action=="edit"||unavailable.isEmpty());button->setProperty("captureUnavailable",!unavailable.isEmpty());if(action=="region")VisualStyle::role(button,unavailable.isEmpty()?"primary":"quiet");
+   const auto unavailable=unavailableOutput(session_.document(),action);button->setEnabled(true);button->setProperty("captureUnavailable",!unavailable.isEmpty());if(action=="region")VisualStyle::role(button,unavailable.isEmpty()?"primary":"quiet");
    button->setAccessibleDescription(unavailable.isEmpty()?explanations.value(action):(action=="edit"?"Region capture unavailable: "+unavailable+" Existing images can still be edited.":"Unavailable: "+unavailable));
    button->setToolTip(button->accessibleName()+(key.isEmpty()?QString{}:QString(" · ")+key));
   };
   connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QToolButton::clicked,this,[this,action]{if(unavailableOutput(session_.document(),action).isEmpty())emit actionRequested(action);});bandRow->addWidget(button);actionButtons_<<button;
  }
- connect(helpAction,&QAction::triggered,this,[this,actionHelp]{VisualStyle::showHelp("Capture and clipboard actions",actionHelp,this);});
+ connect(helpAction,&QAction::triggered,this,[this,actionHelp]{VisualStyle::showHelp("Capture actions",actionHelp,this);});
  outputWarning_=new Graphite::Surface("surface",Qt::BottomEdge,center);outputWarning_->setObjectName("commandOutputWarning");auto* warningRow=new QHBoxLayout(outputWarning_);warningRow->setContentsMargins(16,6,12,8);warningRow->setSpacing(12);outputWarningText_=new QLabel(outputWarning_);outputWarningText_->setObjectName("commandOutputWarningText");outputWarningText_->setTextFormat(Qt::PlainText);outputWarningText_->setWordWrap(true);VisualStyle::role(outputWarningText_,"warning");warningRow->addWidget(outputWarningText_,1);auto* chooseOutput=new QPushButton("Change output",outputWarning_);chooseOutput->setObjectName("chooseCommandOutput");chooseOutput->setToolTip("Open Settings → Capture to choose the output");warningRow->addWidget(chooseOutput);connect(chooseOutput,&QPushButton::clicked,this,[this]{navigate("settings");QStringList affected;for(const auto& action:Settings::presentationOrder())if(!unavailableOutput(session_.document(),action).isEmpty())affected<<action;settings_->showCaptureSettings(affected);});layout->addWidget(outputWarning_);connect(&session_,&UiSession::accepted,this,&MainWindow::updateAvailability);updateAvailability();
  // Edit an image file… whose chooser could not open: the reason under the band
  // that holds the action, with Try again. A cancel shows nothing.
@@ -149,13 +149,13 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  // One output control; the popup owns the per-action details and navigation.
  auto* outputGroup=outputGroup_=new QWidget;outputGroup->setObjectName("captureOutputGroup");auto* outputRow=new QHBoxLayout(outputGroup);outputRow->setContentsMargins(0,0,0,0);outputRow->setSpacing(0);
  destination_=new OutputButton(outputGroup);destination_->setFocusPolicy(Qt::StrongFocus);VisualStyle::role(destination_,"quiet");destination_->setObjectName("captureOutputSummary");destination_->setToolButtonStyle(Qt::ToolButtonTextOnly);destination_->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);destination_->setMinimumWidth(Graphite::scaled(120));destination_->setPopupMode(QToolButton::InstantPopup);outputRow->addWidget(destination_,1);outputRow->addStretch(0);
- auto* outputMenu=new QMenu(destination_);outputMenu->setObjectName("captureOutputMenu");destination_->setMenu(outputMenu);for(const auto& action:Settings::presentationOrder()){auto* detail=outputMenu->addAction(QString{});detail->setObjectName("captureOutputDetail"+action);detail->setEnabled(false);}outputMenu->addSeparator();auto* changeOutput=outputMenu->addAction("Change output");changeOutput->setObjectName("changeCaptureOutput");
+ auto* outputMenu=new QMenu(destination_);outputMenu->setObjectName("captureOutputMenu");destination_->setMenu(outputMenu);auto* allOutputs=outputMenu->addAction(QString{});allOutputs->setObjectName("captureOutputDefault");allOutputs->setEnabled(false);for(const auto& action:Settings::presentationOrder()){auto* detail=outputMenu->addAction(QString{});detail->setObjectName("captureOutputDetail"+action);detail->setEnabled(false);}outputMenu->addSeparator();auto* changeOutput=outputMenu->addAction("Change output");changeOutput->setObjectName("changeCaptureOutput");
  statusBar()->addWidget(outputGroup,1);updateAvailability();
  // The running build, from the resident identity About also shows. Stable and
  // nightly builds link to their GitHub release; development builds are text.
  version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);VisualStyle::role(version_,"meta");
  versionLink_=new QPushButton;versionLink_->setObjectName("appVersionLink");VisualStyle::role(versionLink_,"link");versionLink_->setFont(Graphite::font(Graphite::Type::metadata));versionLink_->setCursor(Qt::PointingHandCursor);
- auto* versionGroup=new QWidget;auto* versionLayout=new QHBoxLayout(versionGroup);versionLayout->setContentsMargins(0,0,0,0);versionLayout->addWidget(versionLink_);
+ auto* versionGroup=new QWidget;versionGroup->setObjectName("appVersionGroup");auto* versionLayout=new QHBoxLayout(versionGroup);versionLayout->setContentsMargins(0,0,0,0);versionLayout->addWidget(versionLink_);
  auto* versionNotice=new Graphite::Surface("surface",Qt::BottomEdge,center);versionNotice->setObjectName("appVersionNotification");auto* noticeRow=new QHBoxLayout(versionNotice);noticeRow->setContentsMargins(16,6,12,6);noticeRow->setSpacing(12);
  auto* versionBrowser=new Graphite::BrowserFeedback(versionNotice);versionBrowser->setObjectName("appVersionBrowserFeedback");auto* feedbackLayout=versionBrowser->layout();delete feedbackLayout;auto* feedbackRow=new QHBoxLayout(versionBrowser);feedbackRow->setContentsMargins(0,0,0,0);feedbackRow->setSpacing(12);feedbackRow->addWidget(versionBrowser->findChild<QLabel*>(),1);auto* copyRelease=versionBrowser->findChild<QPushButton*>();copyRelease->setText("Copy release link");copyRelease->setObjectName("copyReleaseLink");feedbackRow->addWidget(copyRelease);noticeRow->addWidget(versionBrowser,1);
  auto* dismissVersion=Graphite::toolButton({},{},"quiet",versionNotice);dismissVersion->setObjectName("dismissVersionNotification");dismissVersion->setIcon(Graphite::chromeIcon("close"));dismissVersion->setAccessibleName("Dismiss release link notification");dismissVersion->setToolTip("Dismiss");noticeRow->addWidget(dismissVersion);connect(dismissVersion,&QToolButton::clicked,versionBrowser,&Graphite::BrowserFeedback::clear);versionBrowser->installEventFilter(this);versionNotice->hide();layout->insertWidget(layout->indexOf(pages_),versionNotice);
@@ -179,17 +179,18 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  connect(&session_,&UiSession::statusChanged,this,updateAvailable);updateAvailable();
  auto updateDestination=[this]{
   const auto document=session_.document();QString label;
-  auto outputName=[&](const QJsonObject& output){const bool local=document["archive"].toObject()["keepUploads"].toBool();if(output["destination"]=="local"||output["profileId"].toString().isEmpty())return local?QString("Local only"):QString("No output enabled");for(const auto& value:document["profiles"].toArray()){const auto profile=value.toObject();if(profile["id"]!=output["profileId"])continue;const auto mode=output["publicationMode"].toString("default");const bool privateUpload=mode=="private"||(mode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return (privateUpload?(profile["provider"]=="proton-drive"?QString("Private upload"):QString("Private upload unavailable")):QString("Shared link"))+" · "+profile["label"].toString()+(local?QString(" + local copy"):QString{});}return QString("Choose a destination");};
+  auto outputName=[&](const QJsonObject& output){const bool local=document["archive"].toObject()["keepUploads"].toBool();if(output["destination"]=="local"||output["profileId"].toString().isEmpty())return local?QString("Local only"):QString("Off: no output");for(const auto& value:document["profiles"].toArray()){const auto profile=value.toObject();if(profile["id"]!=output["profileId"])continue;const auto mode=output["publicationMode"].toString("default");const bool privateUpload=mode=="private"||(mode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return (privateUpload?(profile["provider"]=="proton-drive"?QString("Private upload"):QString("Private upload unavailable")):QString("Shared link"))+" · "+profile["label"].toString()+(local?QString(" + local copy"):QString{});}return QString("Choose a destination");};
   const auto defaults=document.contains("captureDefaults")?document["captureDefaults"].toObject():Settings::effectiveAction(document,"region");
-  const auto defaultName=outputName(defaults);QStringList details{"Default output: "+defaultName};bool mixed=false;
+  const auto defaultName=outputName(defaults);QStringList details{"All actions: "+defaultName+(!document["archive"].toObject()["keepUploads"].toBool()&&defaults["destination"]=="upload"&&!defaults["profileId"].toString().isEmpty()?QString(" · No local copy"):QString{})};bool mixed=false;
   const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"clipboard","Upload clipboard"},{"record","Record screen"}};
   for(const auto& action:Settings::presentationOrder()){
    const auto route=Settings::effectiveAction(document,action);const auto output=outputName(route);
-   if(output!=defaultName||route["profileId"].toString()!=defaults["profileId"].toString())mixed=true;
-   details<<labels.value(action,action)+": "+output+(document["archive"].toObject()["keepUploads"].toBool()?QString{}:QString(" · No local copy"));
+   const bool differs=output!=defaultName||route["profileId"].toString()!=defaults["profileId"].toString();mixed|=differs;
+   auto* entry=destination_->menu()->findChild<QAction*>("captureOutputDetail"+action);entry->setVisible(differs);
+   const auto detail=labels.value(action,action)+": "+output+(!document["archive"].toObject()["keepUploads"].toBool()&&route["destination"]=="upload"&&!route["profileId"].toString().isEmpty()?QString(" · No local copy"):QString{});entry->setText(QString(detail).replace('&',QStringLiteral("&&")));if(differs)details<<detail;
   }
   label="Default output: "+defaultName+(mixed?QString(" · Exceptions set"):QString{});
-  destination_->setProperty("fullOutputSummary",label);updateOutputSummary();for(int i=0;i<Settings::presentationOrder().size();++i)destination_->menu()->actions()[i]->setText(QString(details[i+1]).replace('&',QStringLiteral("&&")));destination_->setAccessibleName(label);destination_->setAccessibleDescription(details.join("\n"));destination_->setToolTip(details.join("\n"));updateSaveStatus();
+  destination_->setProperty("fullOutputSummary",label);updateOutputSummary();destination_->menu()->findChild<QAction*>("captureOutputDefault")->setText(QString(details.first()).replace('&',QStringLiteral("&&")));destination_->setAccessibleName(label);destination_->setAccessibleDescription(details.join("\n"));destination_->setToolTip(details.join("\n"));updateSaveStatus();
  };
  connect(changeOutput,&QAction::triggered,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  connect(history_,&HistoryWindow::captureSettingsRequested,changeOutput,&QAction::trigger);
@@ -233,13 +234,14 @@ void MainWindow::updateSaveStatus(){
  VisualStyle::feedback(saveStatus_,unsaved?QString("Changes not saved"):text,unsaved);saveStatus_->setToolTip(unsaved?text:QString());saveStatus_->setAccessibleDescription(unsaved?text:QString());
  // "Settings save automatically" is the band's least important line: it gives
  // way before the output summary has to elide (narrow windows, large text).
- bool room=true;
- if(tabs_->currentIndex()>0&&!unsaved){
-  const int gap=statusBar()->style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing,nullptr,statusBar());int needed=qMax(outputGroup_->sizeHint().width(),destination_->sizeHint().width())+explanation_->sizeHint().width()+qMax(gap,6)+24;
-  for(auto* widget:statusBar()->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(widget!=outputGroup_&&widget!=explanation_&&!widget->isWindow()&&widget->isVisibleTo(statusBar()))needed+=widget->sizeHint().width()+qMax(gap,6);
-  room=needed<=statusBar()->width();
- }
- explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&room);
+ const int gap=qMax(statusBar()->style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing,nullptr,statusBar()),6);
+ const auto link=releaseLink(session_.build());auto* versionGroup=findChild<QWidget*>("appVersionGroup");
+ int needed=(outputGroup_->isHidden()?0:destination_->sizeHint().width()+gap)+24;
+ for(auto* widget:statusBar()->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(widget!=outputGroup_&&widget!=explanation_&&widget!=version_&&widget!=versionGroup&&!widget->isWindow()&&widget->isVisibleTo(statusBar()))needed+=widget->sizeHint().width()+gap;
+ const int versionWidth=link.url.isEmpty()?version_->sizeHint().width():versionGroup->sizeHint().width();
+ const bool versionRoom=needed+versionWidth+gap<=statusBar()->width();
+ version_->setVisible(versionRoom&&!link.version.isEmpty()&&link.url.isEmpty());versionGroup->setVisible(versionRoom&&!link.url.isEmpty());
+ explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&needed+(versionRoom?versionWidth+gap:0)+explanation_->sizeHint().width()+gap<=statusBar()->width());
 }
 // A band narrower than its buttons first shows Capture window and Capture
 // desktop as icons, then every quiet action; names stay in tooltips and
@@ -252,7 +254,7 @@ void MainWindow::fitBand(){
 }
 void MainWindow::updateAvailability(){
  QStringList unavailable,reasons;for(auto* button:actionButtons_){const auto reason=unavailableOutput(session_.document(),button->property("captureAction").toString());if(reason.isEmpty())continue;unavailable<<button->accessibleName();if(!reasons.contains(reason))reasons<<reason;}
- const auto message=unavailable.isEmpty()?QString{}:unavailable.size()==actionButtons_.size()?(reasons.size()==1&&reasons.first().startsWith("No output")?QString("No output is enabled. Choose a destination or enable local copies."):reasons.join(" ")):"Choose an output for: "+unavailable.join(", ")+".";outputWarningText_->setText(message);outputWarningText_->setAccessibleDescription(message+" Opens Settings → Capture.");const auto* recovery=findChild<QWidget*>("actionRecoveryNotification");const bool capture=tabs_&&tabs_->currentIndex()==2&&settings_&&settings_->findChild<QTabWidget*>("settingsTabs")->currentIndex()==1;outputWarning_->setVisible(!capture&&!unavailable.isEmpty()&&!(recovery&&!recovery->isHidden()&&recovery->property("outputRecovery").toBool()));if(outputGroup_)outputGroup_->setVisible(!capture);
+ const auto message=unavailable.isEmpty()?QString{}:unavailable.size()==actionButtons_.size()?reasons.join(" "):"Choose an output for: "+unavailable.join(", ")+".";outputWarningText_->setText(message);outputWarningText_->setAccessibleDescription(message+" Opens Settings → Capture.");const auto* recovery=findChild<QWidget*>("actionRecoveryNotification");const bool capture=tabs_&&tabs_->currentIndex()==2&&settings_&&settings_->findChild<QTabWidget*>("settingsTabs")->currentIndex()==1;outputWarning_->setVisible(!(settings_&&settings_->changesUnsaved())&&!capture&&!unavailable.isEmpty()&&!(recovery&&!recovery->isHidden()&&recovery->property("outputRecovery").toBool()));if(outputGroup_)outputGroup_->setVisible(!capture);
 }
 void MainWindow::showActionFailure(const QString& action,const Error& error){
  const bool output=error.code=="output_required",local=error.code=="archive_failed";
@@ -286,8 +288,8 @@ bool MainWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched!=editButton_)return QMainWindow::eventFilter(watched,event);
  auto highlight=[this](bool on){editButton_->setProperty("dropTarget",on);editButton_->style()->unpolish(editButton_);editButton_->style()->polish(editButton_);};
  if(editButton_->property("captureUnavailable").toBool()){
-  if(event->type()==QEvent::MouseButtonPress||event->type()==QEvent::MouseButtonRelease){auto* mouse=static_cast<QMouseEvent*>(event);QStyleOptionToolButton option;option.initFrom(editButton_);option.features=QStyleOptionToolButton::MenuButtonPopup;const auto arrow=editButton_->style()->subControlRect(QStyle::CC_ToolButton,&option,QStyle::SC_ToolButtonMenu,editButton_);if(mouse->button()==Qt::LeftButton&&!arrow.contains(mouse->position().toPoint())){if(event->type()==QEvent::MouseButtonRelease)showCaptureSettings({"edit"});return true;}}
-  if(event->type()==QEvent::KeyPress){auto* key=static_cast<QKeyEvent*>(event);if(key->key()==Qt::Key_Space||key->key()==Qt::Key_Return||key->key()==Qt::Key_Enter){showCaptureSettings({"edit"});return true;}}
+  if(event->type()==QEvent::MouseButtonPress||event->type()==QEvent::MouseButtonRelease){auto* mouse=static_cast<QMouseEvent*>(event);QStyleOptionToolButton option;option.initFrom(editButton_);option.features=QStyleOptionToolButton::MenuButtonPopup;const auto arrow=editButton_->style()->subControlRect(QStyle::CC_ToolButton,&option,QStyle::SC_ToolButtonMenu,editButton_);if(mouse->button()==Qt::LeftButton&&!arrow.contains(mouse->position().toPoint())){return true;}}
+  if(event->type()==QEvent::KeyPress){auto* key=static_cast<QKeyEvent*>(event);if(key->key()==Qt::Key_Space||key->key()==Qt::Key_Return||key->key()==Qt::Key_Enter){return true;}}
  }
  switch(event->type()){
  case QEvent::DragEnter:case QEvent::DragMove:{auto* drag=static_cast<QDragMoveEvent*>(event);const bool image=!droppedImage(drag->mimeData()).isEmpty();if(image)drag->acceptProposedAction();else drag->ignore();if(event->type()==QEvent::DragEnter)highlight(image);return true;}

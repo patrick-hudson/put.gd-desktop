@@ -151,9 +151,9 @@ void feedback(QLabel* label,const QString& text,bool error){setFeedback(label,te
 void success(QLabel* label,const QString& text){setFeedback(label,text,"success");}
 QToolButton* helpButton(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setToolTip(description);control->setAccessibleDescription(qobject_cast<QCheckBox*>(control)?title+". "+description:description);control->setProperty("settingDescription",control->accessibleDescription());
- auto* button=new QToolButton(parent);button->setObjectName(control->objectName()+"Help");button->setProperty("settingHelpFor",control->objectName());button->setProperty("visualRole","info");button->setIcon(icon("info"));button->setIconSize(QSize(18,18));
+ auto* button=new QToolButton(parent);button->setObjectName(control->objectName()+"Help");button->setProperty("settingHelpFor",control->objectName());button->setProperty("visualRole","info");button->setIcon(icon("info"));button->setIconSize(QSize(Graphite::scaled(18),Graphite::scaled(18)));
  // A 32 px pointer target around the same small glyph (Graphite: 32–36 px targets).
- button->setFixedSize(32,32);button->setFocusPolicy(Qt::StrongFocus);button->setAccessibleName("Help for "+title);button->setAccessibleDescription(description);button->setToolTip(description);
+ button->setFixedSize(Graphite::scaled(32),Graphite::scaled(32));button->setFocusPolicy(Qt::StrongFocus);button->setAccessibleName("Help for "+title);button->setAccessibleDescription(description);button->setToolTip(description);
  QObject::connect(button,&QToolButton::clicked,button,[button,title,description]{showHelp(title,description,button->window());});return button;
 }
 void showHelp(const QString& title,const QString& description,QWidget* parent){
@@ -162,18 +162,13 @@ void showHelp(const QString& title,const QString& description,QWidget* parent){
 QWidget* settingLabel(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  if(!qobject_cast<QLabel*>(control))control->setMinimumHeight(qMax(control->minimumHeight(),Graphite::scaled(Graphite::Metric::control)));
  control->setAccessibleName(qobject_cast<QCheckBox*>(control)?static_cast<QCheckBox*>(control)->text():title);auto* row=new QWidget(parent);row->setFixedHeight(Graphite::scaled(Graphite::Metric::control));auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);
- auto* help=helpButton(title,description,control,row);
- if(title=="Uploads at once"||title=="Session token"||title=="Sharing"){
-  auto* label=new QLabel(QString(title).replace('&',QLatin1String("&&")),row);label->setBuddy(control);layout->addWidget(label);layout->addWidget(help);
- }else{
-  // The label reveals the longer explanation without repeating an info glyph.
-  help->setText(QString(title).replace('&',QLatin1String("&&")));help->setIcon({});help->setToolButtonStyle(Qt::ToolButtonTextOnly);help->setMinimumSize(0,0);help->setMaximumSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX);help->setFixedHeight(Graphite::scaled(Graphite::Metric::control));help->setProperty("graphiteFlush",true);role(help,"quiet");layout->addWidget(help);
- }
+ auto* label=new QLabel(QString(title).replace('&',QLatin1String("&&")),row);label->setBuddy(control);layout->addWidget(label);
+ if(!description.trimmed().isEmpty()&&description.simplified()!=title.simplified())layout->addWidget(helpButton(title,description,control,row));
  layout->addStretch();return row;
 }
 QWidget* settingRow(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setAccessibleName(qobject_cast<QCheckBox*>(control)?static_cast<QCheckBox*>(control)->text():title);control->setToolTip(description);control->setAccessibleDescription(qobject_cast<QCheckBox*>(control)?title+". "+description:description);control->setProperty("settingDescription",control->accessibleDescription());
- auto* row=new QWidget(parent);row->setMinimumHeight(Graphite::scaled(32));auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);layout->addWidget(control);layout->addStretch();return row;
+ auto* row=new QWidget(parent);row->setMinimumHeight(Graphite::scaled(32));auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);layout->addWidget(control);if(!description.trimmed().isEmpty()&&description.simplified()!=title.simplified())layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
 }
 namespace {
 void setPalette(QApplication& app){app.setPalette(Graphite::palette());}
