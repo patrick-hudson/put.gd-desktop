@@ -1376,6 +1376,9 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
 void ReviewWindow::refreshStatus() {
     footerError_ = message_.tone == "error";
     errorDetails_->setVisible(footerError_);
+    // Recovery actions take precedence; Recording details keeps the audio facts.
+    exportAudio_->setVisible(!footerError_);
+    playbackStatus_->setVisible(!footerError_ && (playhead() < edit_.trimStart || playhead() >= edit_.exportEnd(options_.durationUs)));
     placeDestination();
     auto entries = statusEntries();
     for (auto& entry : entries) {
@@ -1442,7 +1445,7 @@ void ReviewWindow::refreshStatus() {
             button->setObjectName("statusAction");
             if (params["action"] != "retryExport") VisualStyle::role(button, "quiet");
             // Compact action painting inside a full pointer target.
-            button->setMinimumSize(32, 32);
+            button->setMinimumSize(inFooter ? button->sizeHint().width() : 32, 32);
             button->setFixedHeight(std::max(32, button->fontMetrics().height() + 4));
             button->setProperty("driveAction", params);
             connect(button, &QPushButton::clicked, this, [this, params] { drive(params); });

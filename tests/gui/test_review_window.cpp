@@ -799,6 +799,9 @@ private slots:
             qInfo("enlarged preview sequence %dx%d recovery %.3f", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             QCOMPARE(window.geometry(), geometry);
+            for (auto* button : window.findChild<QWidget*>("reviewMetadata")->findChildren<QPushButton*>("statusAction")) {
+                QVERIFY2(button->width() >= button->fontMetrics().horizontalAdvance(button->text()) + 28, qPrintable(button->text()));
+            }
         }
     }
     void constrainedWorkspaceKeepsWarningsAndActionsReachable_data() {
