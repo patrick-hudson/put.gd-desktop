@@ -25,7 +25,7 @@ private slots:
   for(bool recording:{false,true}){
    QRectF selected;const QRectF screen(0,0,800,600);
    const auto initial=regionInstructions(selected,recording,"DP-2");
-   QVERIFY(initial.contains(recording?"Enter chooses this region":"Enter to capture"));
+   QVERIFY(initial.contains(recording?"Enter chooses this entire display":"Enter captures this entire display"));
    QVERIFY(initial.contains("Drag to select · "));
    QVERIFY(initial.startsWith("DP-2\n"));QVERIFY(!initial.contains("logical pixels"));
    QCOMPARE(regionKey(selected,screen,Qt::Key_Right),RegionKeyAction::Change);

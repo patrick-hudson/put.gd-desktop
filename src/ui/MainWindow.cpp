@@ -114,7 +114,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   auto update=[this,button,action,explanations]{
    const auto saved=Settings::effectiveAction(session_.document(),action);const auto key=QKeySequence(saved["shortcut"].toString()).toString(QKeySequence::NativeText);
    const auto unavailable=unavailableOutput(session_.document(),action);button->setEnabled(action=="edit"||unavailable.isEmpty());button->setProperty("captureUnavailable",!unavailable.isEmpty());if(action=="region")VisualStyle::role(button,unavailable.isEmpty()?"primary":"quiet");
-   button->setAccessibleDescription(unavailable.isEmpty()?explanations.value(action):(action=="edit"?QString("Region capture needs an output. Existing images can still be edited."):QString("Needs an output. Select the output summary in the status bar.")));
+   button->setAccessibleDescription(unavailable.isEmpty()?explanations.value(action):(action=="edit"?"Region capture unavailable: "+unavailable+" Existing images can still be edited.":"Unavailable: "+unavailable));
    button->setToolTip(button->accessibleName()+(key.isEmpty()?QString{}:QString(" · ")+key));
   };
   connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QToolButton::clicked,this,[this,action]{if(unavailableOutput(session_.document(),action).isEmpty())emit actionRequested(action);});bandRow->addWidget(button);actionButtons_<<button;

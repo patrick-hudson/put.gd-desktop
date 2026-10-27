@@ -216,7 +216,8 @@ const RegionSelection = {
         const selected = region?.width > 0 && region?.height > 0;
         const context = `${display || ''}${display && selected ? ' · ' : ''}${selected ? `${region.width} × ${region.height}` : ''}`;
         return (context ? context + '\n' : '') +
-            (recording ? 'Drag to select · Enter chooses this region · Esc to cancel' : 'Drag to select · Enter to capture · Esc to cancel') +
+            `Drag to select · ${recording ? (selected ? 'Enter chooses this region' : 'Enter chooses this entire display')
+                : (selected ? 'Enter to capture' : 'Enter captures this entire display')} · Esc to cancel` +
             '\nArrows move · Shift+arrows resize · Tab next display' +
             (recording ? '\nStart recording comes next' : '');
     },

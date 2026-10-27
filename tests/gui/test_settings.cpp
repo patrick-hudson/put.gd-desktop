@@ -78,7 +78,7 @@ QStringList rowLabels(QListWidget* list){QStringList labels;for(int i=0;i<list->
 // keeps the text it showed.
 std::shared_ptr<QString> acceptNextConfirmation(){
  auto shown=std::make_shared<QString>();
- QTimer::singleShot(0,[shown]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->objectName()=="confirmAction"&&box->isVisible()){*shown=box->windowTitle()+"\n"+box->text();box->button(QMessageBox::Yes)->click();return;}});
+ QTimer::singleShot(0,[shown]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->objectName()=="confirmAction"&&box->isVisible()){*shown=box->windowTitle()+"\n"+box->property("confirmationText").toString();box->button(QMessageBox::Yes)->click();return;}});
  return shown;
 }
 // The code behind the Settings status line: people read the message, the code
@@ -622,7 +622,7 @@ private slots:
   // An error is body text, not small print.
   QCOMPARE(status->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());
   // Cancel keeps the draft.
-  QString shown;QTimer::singleShot(0,[&shown]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->objectName()=="confirmAction"&&box->isVisible()){shown=box->text();box->button(QMessageBox::Cancel)->click();return;}});
+  QString shown;QTimer::singleShot(0,[&shown]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->objectName()=="confirmAction"&&box->isVisible()){shown=box->property("confirmationText").toString();box->button(QMessageBox::Cancel)->click();return;}});
   destinationReload->click();
   QVERIFY2(shown.contains("Advanced → Files in a batch"),qPrintable(shown));QVERIFY2(!shown.contains("Notifications")&&!shown.contains("notifications"),qPrintable(shown));
   QCOMPARE(number->text(),QString("invalid"));QVERIFY(window.settings()->saveViewState()["conflict"].toBool());QVERIFY(destinationReload->isVisible());
@@ -1747,7 +1747,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   PUTGD_TRY_COMPARE(install->text(),QString("Switch to nightly 0.1.1-nightly.901 (older)"));
   QVERIFY(line->text().startsWith("Nightly 0.1.1-nightly.901 is older than this stable build (0.1.1)."));
   QString asked;
-  QTimer dismiss;connect(&dismiss,&QTimer::timeout,this,[&]{if(auto* box=qobject_cast<QMessageBox*>(QApplication::activeModalWidget())){asked=box->text();box->button(QMessageBox::Cancel)->click();}});dismiss.start(10);
+  QTimer dismiss;connect(&dismiss,&QTimer::timeout,this,[&]{if(auto* box=qobject_cast<QMessageBox*>(QApplication::activeModalWidget())){asked=box->property("confirmationText").toString();box->button(QMessageBox::Cancel)->click();}});dismiss.start(10);
   status->clear();install->click();dismiss.stop();
   PUTGD_TRY_VERIFY(asked.contains("which is older than this build (0.1.1)"));QVERIFY(asked.contains("may not open settings or history"));
   PUTGD_VERIFY_STEADY(!status->text().contains("does not check for updates"),100);QVERIFY(install->isEnabled());

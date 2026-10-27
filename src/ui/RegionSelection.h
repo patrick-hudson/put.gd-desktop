@@ -20,8 +20,11 @@ inline QString regionInstructions(const QRectF& selection = {}, bool recording =
     const QString context = display + (display.isEmpty() || selection.isEmpty() ? QString() : QStringLiteral(" · "))
         + (selection.isEmpty() ? QString() : QStringLiteral("%1 × %2").arg(qRound(selection.width())).arg(qRound(selection.height())));
     return (context.isEmpty() ? QString() : context + QStringLiteral("\n"))
-        + (recording ? QStringLiteral("Drag to select · Enter chooses this region · Esc to cancel")
-                     : QStringLiteral("Drag to select · Enter to capture · Esc to cancel"))
+        // Enter with nothing selected takes the whole display; say so.
+        + (recording ? (selection.isEmpty() ? QStringLiteral("Drag to select · Enter chooses this entire display · Esc to cancel")
+                                            : QStringLiteral("Drag to select · Enter chooses this region · Esc to cancel"))
+                     : (selection.isEmpty() ? QStringLiteral("Drag to select · Enter captures this entire display · Esc to cancel")
+                                            : QStringLiteral("Drag to select · Enter to capture · Esc to cancel")))
         + QStringLiteral("\nArrows move · Shift+arrows resize · Tab next display")
         + (recording ? QStringLiteral("\nStart recording comes next") : QString());
 }

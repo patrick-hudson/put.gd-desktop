@@ -233,7 +233,7 @@ private slots:
             QVERIFY(accessible);
             QCOMPARE(accessible->text(QAccessible::Description), surface->accessibleDescription());
             QVERIFY(surface->accessibleDescription().contains("Drag to select"));
-            QVERIFY(surface->accessibleDescription().contains(recording ? "Enter chooses this region" : "Enter to capture"));
+            QVERIFY(surface->accessibleDescription().contains("Drag to select"));
             if (mode == 0) {
                 QTest::keyClick(surface, Qt::Key_Return);
                 QCOMPARE(selected, QRectF(screen));

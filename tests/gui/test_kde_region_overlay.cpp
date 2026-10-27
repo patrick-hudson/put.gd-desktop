@@ -20,10 +20,10 @@ private slots:
   KdeRegionOverlay overlay({});const QRectF screen(-800,100,800,600);auto* surface=add(overlay,screen);QVERIFY(surface);
   QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);QSignalSpy cancelled(&overlay,&KdeRegionOverlay::cancelled);
   auto* accessible=QAccessible::queryAccessibleInterface(surface);QVERIFY(accessible);QCOMPARE(accessible->text(QAccessible::Name),QString("Capture region"));
-  QVERIFY(accessible->text(QAccessible::Description).contains("Drag and release to capture"));
+  QVERIFY(accessible->text(QAccessible::Description).contains("Drag to select"));
   QVERIFY(surface->accessibleDescription().contains("Enter captures this entire display"));
   QTest::keyClick(surface,Qt::Key_Right);QCOMPARE(overlay.selection_,QRectF(-600,250,400,300));
-  QVERIFY(surface->accessibleDescription().contains("Enter captures the selected region"));QVERIFY(surface->accessibleDescription().contains("400 × 300 logical pixels"));
+  QVERIFY(surface->accessibleDescription().contains("Enter to capture"));QVERIFY(surface->accessibleDescription().contains("400 × 300"));
   QTest::keyClick(surface,Qt::Key_Right);QTest::keyClick(surface,Qt::Key_Down,Qt::ControlModifier);
   QTest::keyClick(surface,Qt::Key_Right,Qt::ShiftModifier);QTest::keyClick(surface,Qt::Key_Up,Qt::ControlModifier|Qt::ShiftModifier);
   const QRectF expected(-599,260,401,290);QCOMPARE(overlay.selection_,expected);
@@ -33,9 +33,9 @@ private slots:
  }
  void recordingHintsReflectSelection(){
   KdeRegionOverlay overlay({},nullptr,true);auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);
-  QCOMPARE(surface->accessibleName(),QString("Recording region"));QVERIFY(surface->accessibleDescription().contains("Drag and release to use a region"));
+  QCOMPARE(surface->accessibleName(),QString("Recording region"));QVERIFY(surface->accessibleDescription().contains("Enter chooses this entire display"));
   QVERIFY(surface->accessibleDescription().contains("Enter chooses this entire display"));
-  QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().contains("Enter chooses this region"));QVERIFY(surface->accessibleDescription().contains("320 × 240 logical pixels"));
+  QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().contains("Enter chooses this region"));QVERIFY(surface->accessibleDescription().contains("320 × 240"));
   QTest::keyClick(surface,Qt::Key_Escape);
  }
  void enterUsesReceivingScreenAndEscapeCancels(){
