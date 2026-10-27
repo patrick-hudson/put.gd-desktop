@@ -44,7 +44,6 @@ public:
     bool stale() const { return !error_.isEmpty() && !frame_.isNull(); }
     bool hasFrame() const { return !frame_.isNull(); }
     qint64 frameTime() const { return timeUs_; }
-    void setPlayhead(qint64 us) { playheadUs_ = us; placeMaskMetadata(); }
     void setCanvas(const QSize& canvas) { canvas_ = canvas; update(); }
     void setMasks(const QList<RecordingMask>& masks, const QString& selected);
     void armCreate(const QString& kind) { armed_ = kind; setCursor(Qt::CrossCursor); update(); }
@@ -76,10 +75,9 @@ private:
     QRectF toView(const QRect&) const;
     QRect bounds() const;
     void placeErrorCard();
-    void placeMaskMetadata();
     void announce();
     QImage frame_;
-    qint64 timeUs_ = 0, playheadUs_ = 0;
+    qint64 timeUs_ = 0;
     QSize canvas_;
     QList<RecordingMask> masks_;
     std::shared_ptr<MaskNames> maskNames_;
@@ -94,7 +92,6 @@ private:
     bool nudging_ = false;
     QWidget* errorCard_ = nullptr;
     QLabel* errorText_ = nullptr;
-    QLabel* maskMetadata_ = nullptr;
     QPushButton* retry_ = nullptr;
 };
 

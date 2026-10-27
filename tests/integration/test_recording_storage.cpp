@@ -76,7 +76,7 @@ private slots:
         QVERIFY(!session.config_.audio.system); QCOMPARE(session.audioCaptured_, captured);
         QVERIFY(session.review_->drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}}).code.isEmpty());
         QCOMPARE(session.config_.audio.system, captured); QCOMPARE(session.audioCaptured_, captured);
-        QCOMPARE(session.review_->findChild<QLabel*>("exportAudioSummary")->text(), captured ? QString("System audio") : QString("No audio"));
+        QCOMPARE(session.review_->findChild<QLabel*>("exportAudioSummary")->text(), captured ? QString("Silent preview · Export includes system audio") : QString("Silent preview · No audio recorded"));
     }
     void automaticStop_data() {
         QTest::addColumn<bool>("paused");
