@@ -295,6 +295,7 @@ private slots:
             }
             QVERIFY(!time->text().contains('\n'));
             QVERIFY(status->isVisible());
+            QVERIFY(status->width() >= QFontMetricsF(status->font()).horizontalAdvance(status->text()) + 2);
             QVERIFY(window.findChild<QWidget*>("reviewTransport")->isAncestorOf(status));
             QVERIFY(window.rect().contains(QRect(status->mapTo(&window, QPoint()), status->size())));
             QVERIFY(t->trackRect().width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);

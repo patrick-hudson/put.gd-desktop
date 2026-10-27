@@ -1006,6 +1006,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     playbackStatus_->hide();
     time_->setFixedHeight(time_->fontMetrics().tightBoundingRect(QStringLiteral("0:00.0 / 0:00.0")).height() + 2);
     playbackStatus_->setFixedHeight(playbackStatus_->fontMetrics().tightBoundingRect(playbackStatus_->text()).height() + 2);
+    playbackStatus_->setMinimumWidth(int(std::ceil(QFontMetricsF(playbackStatus_->font()).horizontalAdvance(playbackStatus_->text()))) + 2);
     transport_ = new QWidget(this);
     transport_->setObjectName("reviewTransport");
     auto* transport = new QVBoxLayout(transport_);
