@@ -68,6 +68,19 @@ std::pair<int, double> greyLevels(const QImage& indicator) {
 class BarPlacement : public QObject {
     Q_OBJECT
 private slots:
+    void timerOnlyAppearsAfterRecordingStarts() {
+        ControlBar::Options options;
+        options.formats = {"mp4"};
+        options.codecs = {{"mp4", QJsonArray{"h264"}}};
+        ControlBar bar(options, putgd::RecordingConfig{});
+        bar.show(); QApplication::processEvents();
+        auto* time = bar.findChild<QLabel*>("time");
+        QVERIFY(time && !time->isVisible());
+        bar.setState("recording"); QVERIFY(time->isVisible());
+        bar.setState("paused"); QVERIFY(time->isVisible());
+        bar.setState("ready"); QVERIFY(!time->isVisible());
+    }
+
     void initTestCase() {
         // ctest names the layout it loaded into the offscreen platform; a
         // config the platform ignored would silently test one default screen.
@@ -135,14 +148,16 @@ private slots:
         QSignalSpy selected(&selector, &SelectionOverlay::selected);
         QTest::keyClick(surface, Qt::Key_Tab);
         const int next = screens.size() > 1 ? 1 : 0;
-        QVERIFY(surface->accessibleDescription().contains(QStringLiteral("Display %1").arg(next + 1)));
+        if (screens.size() > 1) QVERIFY(surface->accessibleDescription().contains(QStringLiteral("Display %1").arg(next + 1)));
+        else QVERIFY(!surface->accessibleDescription().contains("Display 1"));
         QVERIFY(surface->accessibleDescription().contains("Drag to select"));
         QTest::keyClick(surface, Qt::Key_Right);
         QRectF expected(QPointF(screens[next]->geometry().topLeft()) + QPointF(screens[next]->geometry().width()/4.0, screens[next]->geometry().height()/4.0), QSizeF(screens[next]->geometry().size())/2);
         QList<QRectF> logical;for(auto* output:screens)logical.append(output->geometry());int current=next;
         putgd::switchRegionDisplay(expected,logical,current,Qt::Key_Backtab);
         QTest::keyClick(surface, Qt::Key_Backtab);
-        QVERIFY(surface->accessibleDescription().contains(QStringLiteral("Display 1")));
+        if (screens.size() > 1) QVERIFY(surface->accessibleDescription().contains(QStringLiteral("Display 1")));
+        else QVERIFY(!surface->accessibleDescription().contains("Display 1"));
         QTest::keyClick(surface, Qt::Key_Return);
         QCOMPARE(selected.size(), 1);
         QVERIFY(expected.toAlignedRect().width() > 0);

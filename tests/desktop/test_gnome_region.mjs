@@ -1,6 +1,7 @@
 // Synthetic actors prove the production selector's geometry and lifecycle.
 // Native input routing and rendering require a separate Shell session.
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 
 function equal(actual, expected) {
     if (JSON.stringify(actual) !== JSON.stringify(expected))
@@ -14,7 +15,7 @@ const selector = source.slice(source.indexOf('const RegionSelection ='), source.
     .replace('const RegionSelection =', 'globalThis.RegionSelection =').replace('const RegionSelector =', 'globalThis.RegionSelector =');
 class Widget {
     constructor(...args) {this._init(...args);}
-    _init(properties) {Object.assign(this, properties); this.children = []; this.clutter_text = {set_line_wrap() {}};}
+    _init(properties) {Object.assign(this, properties); this.children = []; this.clutter_text = {set_line_wrap() {}, set_markup(value) {this.markup = value;}};}
     add_constraint() {}
     set_cursor_type() {}
     add_child(child) {this.children.push(child);}
@@ -50,6 +51,11 @@ equal(RegionSelection.outputSize({x: -799, y: 101, width: 101, height: 51}, scal
 equal(RegionSelection.outputSize({x: -100, y: 100, width: 200, height: 100}, scaledOutputs), {width: 400, height: 200});
 equal(RegionSelection.instructions(null, false, 'Left', scaledOutputs[0], scaledOutputs).includes('Entire display 1000 × 750 px'), true);
 equal(RegionSelection.instructions({x: 0, y: 0, width: 50, height: 30}, false, 'Unknown', null).includes('50 × 30 logical px'), true);
+const oneOutput = [{x: 0, y: 0, width: 800, height: 600, density: 1}];
+const oneHint = RegionSelection.instructions({x: 0, y: 0, width: 400, height: 400}, false, 'Display 1', oneOutput[0], oneOutput, false, 'Saves locally');
+equal(oneHint.split('\n').length, 3);
+equal(oneHint.split('\n')[0], '400 × 400 px · Enter to capture · Esc to cancel');
+equal(oneHint.includes('Display 1'), false);
 print('PASS output pixel sizes on fractional, mixed-density and unknown outputs');
 for (const outcome of ['Uploads immediately to Proton Drive', 'Saves locally', 'Opens the image editor']) {
     const actor = new globalThis.RegionSelector(false, null, outcome);

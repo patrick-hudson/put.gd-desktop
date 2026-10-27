@@ -63,14 +63,17 @@ inline QString regionInstructions(const QRectF& selection = {}, bool recording =
     const auto size = output.isEmpty() ? logical.size() : QSizeF(output);
     const auto unit = output.isEmpty() ? QStringLiteral("logical px") : QStringLiteral("px");
     const bool selected = !selection.isEmpty();
-    const QString context = (display.isEmpty() ? QStringLiteral("Display 1") : display)
-        + (selected ? QStringLiteral(" · Selection %1 × %2 %3 · ") : QStringLiteral(" · Entire display %1 × %2 %3 · "))
+    const bool multipleDisplays = frames.size() > 1;
+    const QString context = (multipleDisplays ? (display.isEmpty() ? QStringLiteral("Display 1") : display) + QStringLiteral(" · ") : QString())
+        + (selected ? QStringLiteral("%1 × %2 %3 · ") : QStringLiteral("Entire display %1 × %2 %3 · "))
             .arg(qRound(size.width())).arg(qRound(size.height())).arg(unit);
     const QString accept = dragging ? (recording ? QStringLiteral("Release to choose recording area") : QStringLiteral("Release to capture")) : recording ? (selected ? QStringLiteral("Enter to choose") : QStringLiteral("Enter chooses this entire display"))
                                      : (selected ? QStringLiteral("Enter to capture") : QStringLiteral("Enter captures this entire display"));
-    return context + accept + (dragging ? QStringLiteral("\nEsc to cancel") : QStringLiteral("\nDrag to select · Esc to cancel"))
-        + QStringLiteral("\nArrows move · Shift+arrows resize · Tab next display")
+    const QString help = (dragging ? QString() : QStringLiteral("Drag to select · ")) + QStringLiteral("Arrows move · Shift+arrows resize")
+        + (multipleDisplays ? QStringLiteral(" · Tab next display") : QString());
+    return context + accept + QStringLiteral(" · Esc to cancel\n") + help
         + (recording ? QStringLiteral("\nStart recording comes next") : outcome.isEmpty() ? QString() : QStringLiteral("\n") + outcome);
+
 }
 inline QString regionDescription(const QRectF& selection, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}, const QList<CaptureFrame>& frames = regionScreenFrames(), bool dragging = false, const QString& outcome = {}) {
     return (selection.isEmpty() ? QStringLiteral("No region selected.")
@@ -139,12 +142,20 @@ inline void describeRegion(QWidget* surface, const QRectF& selection, bool recor
     QAccessibleEvent changed(surface, QAccessible::DescriptionChanged);
     QAccessible::updateAccessibility(&changed);
 }
-inline QRect regionInstructionBox(const QRect& bounds, const QFontMetrics& metrics, const QString& instructions = regionInstructions(), const QRectF& selection = {}, const std::optional<QPointF>& pointer = {}) {
+inline QRect regionInstructionBox(const QRect& bounds, const QFontMetrics& metrics, const QString& instructions = regionInstructions(), const QRectF& selection = {}, const std::optional<QPointF>& pointer = {}, const QFont& font = nativeRegionFont()) {
     const QRect available = bounds.adjusted(16, 16, -16, -16);
     if (available.width() <= 20 || available.height() <= 12) return {};
-    const auto measured = metrics.boundingRect(available.adjusted(10, 6, -10, -6), Qt::TextWordWrap | Qt::AlignCenter, instructions);
-    const int width = std::min(available.width(), measured.width() + 20);
-    const int height = std::min(available.height(), measured.height() + 12);
+    auto strong = font;
+    strong.setWeight(QFont::DemiBold);
+    const QFontMetrics titleMetrics(strong);
+    const auto lines = instructions.split('\n');
+    int naturalWidth = 0;
+    for (int i = 0; i < lines.size(); ++i) naturalWidth = std::max(naturalWidth, (i == 0 ? titleMetrics : metrics).horizontalAdvance(lines[i]));
+    const int width = std::min(available.width(), naturalWidth + 20);
+    int textHeight = 0;
+    for (int i = 0; i < lines.size(); ++i)
+        textHeight += (i == 0 ? titleMetrics : metrics).boundingRect(QRect(0, 0, width - 20, available.height()), Qt::TextWordWrap | Qt::AlignCenter, lines[i]).height();
+    const int height = std::min(available.height(), textHeight + 12);
     const QRect top(bounds.center().x() - width / 2, available.top(), width, height);
     const QRect bottom(top.x(), available.bottom() - height + 1, width, height);
     // Prefer clear content; near the drag pointer, avoid covering its next move.
@@ -156,15 +167,27 @@ inline QRect regionInstructionBox(const QRect& bounds, const QFontMetrics& metri
 }
 // An opaque, outlined backdrop stays legible over a live desktop in either theme.
 inline void paintRegionInstructions(QPainter& painter, const QRect& bounds, const QPalette& palette, const QString& instructions = regionInstructions(), const QRectF& selection = {}, const std::optional<QPointF>& pointer = {}) {
-    const QRect box = regionInstructionBox(bounds, painter.fontMetrics(), instructions, selection, pointer);
+    const QRect box = regionInstructionBox(bounds, painter.fontMetrics(), instructions, selection, pointer, painter.font());
     if (box.isEmpty()) return;
     painter.save();
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setBrush(palette.color(QPalette::Window));
     painter.setPen(QPen(palette.color(QPalette::WindowText), 1));
     painter.drawRoundedRect(box.adjusted(0, 0, -1, -1), 6, 6);
-    painter.setPen(palette.color(QPalette::WindowText));
-    painter.drawText(box.adjusted(10, 6, -10, -6), Qt::TextWordWrap | Qt::AlignCenter, instructions);
+    const auto base = painter.font();
+    const auto lines = instructions.split('\n');
+    int top = box.top() + 6;
+    for (int i = 0; i < lines.size(); ++i) {
+        auto font = base;
+        font.setWeight(i == 0 ? QFont::DemiBold : QFont::Normal);
+        painter.setFont(font);
+        const auto ink = palette.color(QPalette::WindowText), background = palette.color(QPalette::Window);
+        painter.setPen(i == 0 ? ink : QColor((ink.red() * 4 + background.red()) / 5, (ink.green() * 4 + background.green()) / 5, (ink.blue() * 4 + background.blue()) / 5));
+        const QRect area(box.left() + 10, top, box.width() - 20, box.bottom() - top - 5);
+        const int height = QFontMetrics(font).boundingRect(area, Qt::TextWordWrap | Qt::AlignCenter, lines[i]).height();
+        painter.drawText(QRect(area.left(), top, area.width(), height), Qt::TextWordWrap | Qt::AlignCenter, lines[i]);
+        top += height;
+    }
     painter.restore();
 }
 }

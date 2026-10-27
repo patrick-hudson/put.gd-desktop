@@ -234,11 +234,11 @@ const RegionSelection = {
         const logical = selected ? region : bounds;
         const output = logical ? this.outputSize(logical, outputs) : null;
         const size = output || logical;
-        const context = `${display || 'Display 1'} · ${selected ? 'Selection' : 'Entire display'} ${Math.round(size?.width ?? 0)} × ${Math.round(size?.height ?? 0)} ${output ? 'px' : 'logical px'} · `;
+        const context = `${outputs.length > 1 ? `${display || 'Display 1'} · ` : ''}${selected ? '' : 'Entire display '}${Math.round(size?.width ?? 0)} × ${Math.round(size?.height ?? 0)} ${output ? 'px' : 'logical px'} · `;
         const accept = dragging ? (recording ? 'Release to choose recording area' : 'Release to capture') : recording ? (selected ? 'Enter to choose' : 'Enter chooses this entire display')
             : (selected ? 'Enter to capture' : 'Enter captures this entire display');
-        return context + accept + (dragging ? '\nEsc to cancel' : '\nDrag to select · Esc to cancel') +
-            '\nArrows move · Shift+arrows resize · Tab next display' +
+        return context + accept + ' · Esc to cancel\n' + (dragging ? '' : 'Drag to select · ') +
+            'Arrows move · Shift+arrows resize' + (outputs.length > 1 ? ' · Tab next display' : '') +
             (recording ? '\nStart recording comes next' : outcome ? `\n${outcome}` : '');
     },
 };
@@ -264,6 +264,7 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         this._keyboardMonitor = this._monitor();
         // The capture bridge has no app scheme field; use the native preference.
         const settings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
+        this._instructionDark = settings.get_string('color-scheme') === 'prefer-dark';
         this._instructions = new St.Label({reactive: false, text: '',
             style: RegionSelection.instructionStyle(settings.get_string('color-scheme'))});
         this._instructions.clutter_text.set_line_wrap(true);
@@ -397,6 +398,11 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         const outputs = this._outputs || Main.layoutManager.monitors.map((m, i) => ({...m, density: global.display.get_monitor_scale(i)}));
         const instructions = RegionSelection.instructions(rect, this._recording, display, monitor, outputs, !!this._start, this._outcome);
         this._instructions.text = instructions;
+        const dark = this._instructionDark;
+        const escape = text => GLib.markup_escape_text(text, -1);
+        this._instructions.clutter_text.set_markup(instructions.split('\n').map((line, i) => i === 0
+            ? `<span weight="semibold">${escape(line)}</span>`
+            : `<span foreground="${dark ? '#aaaaa6' : '#62625b'}">${escape(line)}</span>`).join('\n'));
         const description = (rect && rect.width > 0 && rect.height > 0
             ? `Region ${rect.width} × ${rect.height} at ${rect.x}, ${rect.y}.`
             : 'No region selected.') + ` ${instructions}`;

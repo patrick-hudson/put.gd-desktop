@@ -255,7 +255,7 @@ void NativeRegionOverlay::prepareInstructions(Surface& surface){
  const auto instructions=regionInstructions(selection_,false,QStringLiteral("Display %1").arg(index+1),frames_[index].logicalRect,frames_,dragging_,outcome_);
  const auto local=selection_.translated(-surface.frame.logicalRect.topLeft());
  const auto pointer=dragging_?std::optional<QPointF>(pointer_-surface.frame.logicalRect.topLeft()):std::nullopt;
- const auto box=regionInstructionBox(bounds,QFontMetrics(font),instructions,local,pointer);
+ const auto box=regionInstructionBox(bounds,QFontMetrics(font),instructions,local,pointer,font);
  const auto cacheKey=instructions+font.toString()+QString("/%1/%2").arg(box.x()).arg(box.y());
  if(surface.instructionsKey==cacheKey&&!surface.instructions.isNull())return;
  surface.instructionsKey=cacheKey;

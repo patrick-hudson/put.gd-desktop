@@ -468,7 +468,8 @@ void ControlBar::refresh() {
     lockedFormat_->setToolTip(format_->currentText() + QStringLiteral("\nRecording format; choose the export format in review"));
     cancel_->setText(ready ? QStringLiteral("Cancel") : QStringLiteral("Discard…"));
     keep_->setText(paused ? QStringLiteral("Keep paused") : QStringLiteral("Keep recording"));
-    for (auto* w : std::initializer_list<QWidget*>{state_label_, time_}) w->setVisible(!handle);
+    state_label_->setVisible(!handle);
+    time_->setVisible(!handle && !ready);
     choices_->setVisible(!handle && !asking);
     cancel_->setVisible(!handle && !asking);
     record_->setVisible(ready);
