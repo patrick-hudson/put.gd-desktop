@@ -389,7 +389,8 @@ void EditorWindow::placeDestination(){
 }
 void EditorWindow::placeProperties(){
  if(!splitter_)return;
- side_->setMaximumWidth(std::max(side_->minimumWidth(),width()/3));
+ // The splitter's hit area belongs to the properties share, not the canvas.
+ side_->setMaximumWidth(std::max(side_->minimumWidth(),width()/3-splitter_->handleWidth()));
  const int panel=std::clamp(propertiesWidth_,side_->minimumWidth(),side_->maximumWidth());
  splitter_->setSizes({std::max(0,splitter_->width()-splitter_->handleWidth()-panel),panel});
 }
