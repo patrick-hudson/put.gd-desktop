@@ -96,7 +96,7 @@ private slots:
  void formsShareGutterAndAlignToFirstControlLine(){
   QFETCH(int,pixels);Fonts::load();VisualStyle::apply(*qApp);const auto oldFont=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(oldFont);});auto font=oldFont;font.setPixelSize(pixels);qApp->setFont(font);
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");
-  auto* notifications=window.findChild<QCheckBox*>("notifications");auto* notificationLabel=window.findChild<QToolButton*>("notificationsHelp");putgd::test::settle(30);QCOMPARE(notificationLabel->mapTo(&window,QPoint(0,notificationLabel->height()/2)).y(),notifications->mapTo(&window,QPoint(0,notifications->height()/2)).y());
+  auto* notifications=window.findChild<QCheckBox*>("notifications");QLabel* notificationLabel=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->buddy()==notifications)notificationLabel=label;QVERIFY(notificationLabel);putgd::test::settle(30);QCOMPARE(notificationLabel->mapTo(&window,QPoint(0,notificationLabel->height()/2)).y(),notifications->mapTo(&window,QPoint(0,notifications->height()/2)).y());
   int gutter=0;
   const auto check=[&](QWidget* page){for(auto* form:page->findChildren<QFormLayout*>())for(int row=0;row<form->rowCount();++row){auto* item=form->itemAt(row,QFormLayout::LabelRole);if(!item||!item->widget())continue;auto* label=item->widget();PUTGD_TRY_VERIFY(label->minimumWidth()>0);if(!gutter)gutter=label->minimumWidth();QCOMPARE(label->minimumWidth(),gutter);QVERIFY(gutter<=Graphite::scaled(240));QCOMPARE(label->height(),Graphite::scaled(Graphite::Metric::control));QVERIFY(form->labelAlignment().testFlag(Qt::AlignTop));}};
   for(int page=0;page<tabs->count();++page){tabs->setCurrentIndex(page);putgd::test::settle(30);check(tabs->currentWidget());}
@@ -167,7 +167,7 @@ private slots:
  }
  void checkboxAccessibilityKeepsActionAndCategory(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();
-  for(const auto& [name,category]:QList<QPair<QString,QString>>{{"launchAtLogin","Startup"},{"keepUploadCopies","Each capture"},{"notifications","Notifications"}}){auto* check=window.findChild<QCheckBox*>(name);QCOMPARE(check->accessibleName(),check->text());QVERIFY(check->accessibleDescription().startsWith(category+". "));QVERIFY(check->accessibleDescription().size()>category.size()+3);}
+  for(const auto& [name,category]:QList<QPair<QString,QString>>{{"launchAtLogin","Startup"},{"keepUploadCopies","Each capture"},{"notifications","Notifications"}}){auto* check=window.findChild<QCheckBox*>(name);QCOMPARE(check->accessibleName(),check->text());auto* hint=window.findChild<QLabel*>(name+"Hint");QCOMPARE(check->accessibleDescription(),category+(hint?". "+hint->text():QString{}));}
   QWidget host;QCheckBox check("Do the action",&host);VisualStyle::settingRow("Category","Help text",&check,&host);QCOMPARE(check.accessibleName(),check.text());QCOMPARE(check.accessibleDescription(),QString("Category. Help text"));
  }
  void renameDestinationSelectsInlineTitleAndAutosaves(){
@@ -1787,6 +1787,18 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
  void settingLabelsUseBuddiesAndOnlyUsefulHelpButtons(){
   QWidget host;QLineEdit field(&host);field.setObjectName("syntheticValue");auto* label=VisualStyle::settingLabel("Value","A longer explanation",&field,&host);QVERIFY(label->findChild<QLabel*>());QCOMPARE(label->findChild<QLabel*>()->buddy(),&field);QCOMPARE(label->findChildren<QToolButton*>().size(),1);auto* help=label->findChild<QToolButton*>();QVERIFY(help->text().isEmpty());QCOMPARE(help->size(),QSize(Graphite::scaled(32),Graphite::scaled(32)));QCOMPARE(label->findChild<QLabel*>()->focusPolicy(),Qt::NoFocus);
   auto* plain=VisualStyle::settingLabel("Value","Value",&field,&host);QVERIFY(plain->findChildren<QToolButton*>().isEmpty());auto* empty=VisualStyle::settingLabel("Value",{},&field,&host);QVERIFY(empty->findChildren<QToolButton*>().isEmpty());
+ }
+ void settingsKeepHelpForDetailsBeyondLabelsAndHints(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();
+  for(const auto& key:QStringList{"launchAtLogin","appearanceTheme","notifications","keepUploadCopies","archiveRoot","folderImages","folderVideos","folderText","folderOther","s3ObjectPrefix","b2LinkDays","protonFolder","storedCredentialHint","updateCommand"}){
+   auto* control=window.findChild<QWidget*>(key);QVERIFY2(control,qPrintable(key));QVERIFY2(!window.findChild<QToolButton*>(key+"Help"),qPrintable(key));QLabel* caption=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->buddy()==control)caption=label;QVERIFY2(caption,qPrintable(key));QCOMPARE(caption->focusPolicy(),Qt::NoFocus);
+  }
+  for(const auto& key:QStringList{"appearanceTheme","notifications","keepUploadCopies","archiveRoot","s3ObjectPrefix","b2LinkDays","protonFolder"}){
+   auto* hint=window.findChild<QLabel*>(key+"Hint");auto* control=window.findChild<QWidget*>(key);QVERIFY2(hint&&!hint->text().isEmpty(),qPrintable(key));QVERIFY(control->accessibleDescription().endsWith(hint->text()));
+  }
+  for(const auto& key:QStringList{"unlockCredentialsAtStartup","uploadClipboardBehavior","namingMode","collisionPolicy","captureTemplate","s3Bucket","s3AclMode","credentialSecretKey","protonExpiration","maxFileBytesChoice"}){
+   auto* help=window.findChild<QToolButton*>(key+"Help");QVERIFY2(help,qPrintable(key));QCOMPARE(help->focusPolicy(),Qt::StrongFocus);QVERIFY(!help->accessibleDescription().isEmpty());
+  }
  }
  void sharedFormsUseOneMinimumControlWidth(){
   QWidget host;QVBoxLayout outer(&host);QList<QWidget*> pages;QList<QFormLayout*> forms;
