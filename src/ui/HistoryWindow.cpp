@@ -358,7 +358,7 @@ public:
   if(i.data(HistoryModel::FailedRole).toBool()&&!actionsBelow(outer,i))height=qMax(rowContentHeight(),2*rowTextInset()+4+qMax(actionHeight(),QFontMetrics(Graphite::font(Graphite::Type::body,true)).height())+4+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height())+heading(i);
   if(actionsBelow(outer,i)){
    const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,i.data(HistoryModel::FailedRole).toBool()?body.width():historyColumns(body).item.width()-12,!historyColumns(body).created.isEmpty());
-   const int text=2*rowTextInset()+4+QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+int(std::ceil(metadata.size().height()));
+   const int text=rowTextInset()+qMax(8,rowTextInset())+4+QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+int(std::ceil(metadata.size().height()));
    height=qMax(rowContentHeight(),text)+heading(i)+actionHeight()+12;
   }
   return {width,height};

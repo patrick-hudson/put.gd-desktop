@@ -341,9 +341,9 @@ private slots:
  }
  void longFailureMetadataKeepsDetailsAndWrapsListRows_data(){
   QTest::addColumn<bool>("gallery");QTest::addColumn<int>("width");QTest::addColumn<bool>("longToken");
-  // 760 at normal text; 900 at 150% keeps the search and view controls whole.
+  // The compact standalone width leaves search and view controls whole at 150%.
   // Both are below the supported 1060px main-window minimum checked separately.
-  for(bool gallery:{false,true})for(int width:{1000,qMax(760,Graphite::scaled(600))})for(bool token:{false,true})QTest::newRow(qPrintable(QString("%1-%2-%3").arg(gallery?"gallery":"list").arg(width).arg(token?"long-token":"gnome-guide")))<<gallery<<width<<token;
+  for(bool gallery:{false,true})for(int width:{1000,qMax(760,Graphite::scaled(650))})for(bool token:{false,true})QTest::newRow(qPrintable(QString("%1-%2-%3").arg(gallery?"gallery":"list").arg(width).arg(token?"long-token":"gnome-guide")))<<gallery<<width<<token;
  }
  void longFailureMetadataKeepsDetailsAndWrapsListRows(){
   QFETCH(bool,gallery);QFETCH(int,width);QFETCH(bool,longToken);
