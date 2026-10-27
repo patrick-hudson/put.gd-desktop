@@ -24,7 +24,7 @@ class QScrollBar;
 class QThread;
 class QToolButton;
 namespace putgd { class FileDialog; }
-namespace putgd::Graphite { class WindowHeader; }
+namespace putgd::Graphite { class ElidedLabel; class WindowHeader; }
 
 namespace putgd::record {
 // Paints the preview frame scaled to fit and lets the user create, select,
@@ -112,7 +112,7 @@ public:
     void setPlayhead(qint64 us);
     qint64 playhead() const { return playhead_; }
     qint64 duration() const { return duration_; }
-    // Concurrent masks always have distinct lanes; one or two are visible at a time, depending on text size.
+    // Concurrent masks always have distinct lanes; one is visible at a time, in its own 32 px interaction row.
     int lanes() const { return lanes_; }
     // Geometry for tests and the review session method: the track, a time's x
     // and the bar of a mask.
@@ -273,7 +273,7 @@ private:
     Graphite::WindowHeader* header_ = nullptr;
     FrameView* view_ = nullptr;
     ReviewTimeline* timeline_ = nullptr;
-    QLabel* destination_ = nullptr;
+    Graphite::ElidedLabel* destination_ = nullptr;
     QWidget* audioDivider_ = nullptr;  // the audio fact's hairline, hidden with it on a narrow footer
     QGridLayout* footerGrid_ = nullptr;
     QWidget* outputTools_ = nullptr;

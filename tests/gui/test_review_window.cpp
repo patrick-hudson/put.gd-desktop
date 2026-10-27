@@ -260,14 +260,15 @@ private slots:
         t.setMasks(masks, "0"); t.resize(600, t.sizeHint().height()); t.show();
         QCOMPARE(t.lanes(), 8);
         auto* scroll = t.findChild<QScrollBar*>("maskLaneScroll");
-        QVERIFY(scroll && scroll->isVisible()); QCOMPARE(scroll->maximum(), 6);
-        QVERIFY(!t.maskRect("0").intersects(t.maskRect("1")));
+        QVERIFY(scroll && scroll->isVisible()); QCOMPARE(scroll->maximum(), 7);
+        QVERIFY(!t.maskHitRect("0").intersects(t.maskHitRect("1")));
         QVERIFY(t.maskRect("7").isEmpty());
         const int boundedHeight = t.sizeHint().height();
-        t.setMasks(masks, "7"); QCOMPARE(scroll->value(), 6);
+        t.setMasks(masks, "7"); QCOMPARE(scroll->value(), 7);
         QVERIFY(!t.maskRect("7").isEmpty()); QVERIFY(t.maskRect("0").isEmpty());
         QCOMPARE(t.sizeHint().height(), boundedHeight);
         QSignalSpy selected(&t, &ReviewTimeline::maskSelected);
+        scroll->setValue(6);
         QTest::mouseClick(&t, Qt::LeftButton, {}, t.maskRect("6").center());
         QCOMPARE(selected.size(), 1); QCOMPARE(selected.first()[0].toString(), QString("6"));
     }
@@ -330,8 +331,15 @@ private slots:
         t.show();
         const auto first = t.maskHitRect("one"), second = t.maskHitRect("two");
         QCOMPARE(first.height(), 32);
-        QCOMPARE(second.height(), 32);
-        QVERIFY(first.intersects(second));
+        QVERIFY(second.isEmpty());
+        auto* scroll = t.findChild<QScrollBar*>("maskLaneScroll");
+        scroll->setValue(1);
+        const auto secondTarget = t.maskHitRect("two");
+        QCOMPARE(secondTarget.height(), 32);
+        QVERIFY(t.maskHitRect("one").isEmpty());
+        QVERIFY(secondTarget.top() >= 32);
+        scroll->setValue(0);
+        QVERIFY(first.top() >= 32);
         QSignalSpy trim(&t, &ReviewTimeline::trimChanged);
         drag(&t, QPoint(t.xFor(5200000) + 12, 2), QPoint(t.xFor(7000000), 2));
         QCOMPARE(trim.size(), 1);
@@ -344,6 +352,21 @@ private slots:
         drag(&t, QPoint(bar.left() - 12, first.bottom()), QPoint(t.xFor(500000), first.bottom()));
         QCOMPARE(retimed.size(), 1);
         QCOMPARE(retimed.last()[0].toString(), QString("one"));
+    }
+    void destinationCanBeRevealedByKeyboardAndClick() {
+        auto o = options(); o.destination = QString("Long project archive ").repeated(12); o.sharingMode = "private";
+        o.uploadSummary = "Private upload to " + o.destination;
+        ReviewWindow window(o, config()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* label = window.findChild<Graphite::ElidedLabel*>("uploadDestination");
+        QVERIFY(label && label->focusPolicy() & Qt::TabFocus);
+        label->setFocus(Qt::TabFocusReason); QTest::keyClick(label, Qt::Key_Return);
+        PUTGD_TRY_VERIFY(label->fullTextPopup());
+        auto* popup = label->fullTextPopup();
+        const auto text = popup->findChild<QLabel*>("elidedLabelFullTextValue")->text();
+        QVERIFY(text.contains(o.destination)); QVERIFY(text.contains("Sharing: Private upload"));
+        popup->close(); QTest::mouseClick(label, Qt::LeftButton); PUTGD_TRY_VERIFY(label->fullTextPopup());
+        label->fullTextPopup()->close();
     }
     void compactHeaderIsOneLineNamedForTheWindow() {
         ReviewWindow window(options(), config());
@@ -594,7 +617,7 @@ private slots:
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
         QVERIFY(window.findChild<QLabel*>("time")->text().contains("Outside kept part"));
-        QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("Keep 2–29 s · 27 s"));
+        QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("27 s"));
     }
     void adviceOnlyOffersAvailableFormats() {
         auto o = options(); o.codecs["mp4"] = QJsonArray{"h265"};
@@ -623,6 +646,7 @@ private slots:
         QCOMPARE(controls()["strength"].toBool(), true);
         // A click on a mask's bar on the timeline selects it.
         auto* t = timeline(window);
+        t->findChild<QScrollBar*>("maskLaneScroll")->setValue(1);
         QTest::mouseClick(t, Qt::LeftButton, {}, t->maskRect("m-solid").center());
         QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("m-solid"));
         // A click on the frame outside every mask clears the selection; the list stays.
@@ -765,9 +789,7 @@ private slots:
             const auto tools = window.findChildren<QToolButton*>();
             QVERIFY(tools.size() >= 9);
             for (auto* b : tools) {
-                const bool timing = b->accessibleName().contains("trim", Qt::CaseInsensitive) || b->accessibleName().startsWith("Set mask");
-                QVERIFY2(!b->icon().isNull() && b->toolButtonStyle() == (timing ? Qt::ToolButtonTextOnly : Qt::ToolButtonIconOnly), qPrintable(b->accessibleName()));
-                if (timing) QVERIFY(b->width() >= b->fontMetrics().horizontalAdvance(b->text()) + 8);
+                QVERIFY2(!b->icon().isNull() && b->toolButtonStyle() == Qt::ToolButtonIconOnly, qPrintable(b->accessibleName()));
                 QVERIFY2(!b->accessibleName().isEmpty() && !b->toolTip().isEmpty(), qPrintable(b->objectName()));
             }
             // The window background is the scheme's.

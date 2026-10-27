@@ -6,6 +6,8 @@
 #include "ui/FileDialog.h"
 #include <QFileDialog>
 #include "ui/SettingsWindow.h"
+#include "platform/HostOpen.h"
+#include "storage/proton/ProtonProvider.h"
 #include "ui/RedesignTheme.h"
 #include "ui/Graphite.h"
 #include "ui/VisualStyle.h"
@@ -199,8 +201,9 @@ int main(int argc,char** argv){
   const auto previousDialog=qgetenv("PUTGD_FILE_DIALOG");qputenv("PUTGD_FILE_DIALOG","fallback");page->saveAsDialogCommand("open",{},[](Error,QJsonObject){});QFileDialog* chooser=nullptr;if(!waitUntil([&]{return (chooser=page->saveAsDialog().fallbackDialog())&&chooser->isVisible();}))return 2;chooser->selectFile(data.filePath("Design review copy.png"));QMetaObject::invokeMethod(chooser,"accept");if(!waitUntil([&]{return !page->historyState()["savedPath"].toString().isEmpty();})||!save("69-history-saved-copy"))return 2;if(previousDialog.isNull())qunsetenv("PUTGD_FILE_DIALOG");else qputenv("PUTGD_FILE_DIALOG",previousDialog);
  }
 
- window.navigate("settings");tabs->setCurrentIndex(3);if(!save("11-advanced-compact"))return 2;window.navigate("destinations");destinations->setCurrentRow(0);destinationScroll->verticalScrollBar()->setValue(0);if(!save("12-proton-compact"))return 2;destinations->setCurrentRow(1);{auto* label=window.findChild<QLineEdit*>("destinationLabel");if(!label)return 2;const auto original=label->text();label->selectAll();label->insert(QString("Production screenshots for customer support — ").repeated(3).left(120));destinationScroll->verticalScrollBar()->setValue(0);if(!save("17-destination-long-name-compact"))return 2;destinationScroll->verticalScrollBar()->setValue(destinationScroll->verticalScrollBar()->maximum());if(!save("18-destination-credentials-compact"))return 2;label->selectAll();label->insert(original);destinationScroll->verticalScrollBar()->setValue(0);}
- window.navigate("settings");tabs->setCurrentIndex(1);if(!save("13-capture-compact"))return 2;window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);if(!save("14-capture-exceptions-compact"))return 2;
+ window.navigate("destinations");{auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("backblaze-b2"));putgd::test::settle(100);destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-b2-compact"))return 2;provider->setCurrentIndex(provider->findData("s3"));}
+ window.navigate("settings");tabs->setCurrentIndex(0);if(!save("settings-general-compact"))return 2;tabs->setCurrentIndex(2);if(!save("settings-shortcuts-compact"))return 2;tabs->setCurrentIndex(3);if(!save("11-advanced-compact"))return 2;window.navigate("destinations");destinations->setCurrentRow(0);destinationScroll->verticalScrollBar()->setValue(0);if(!save("12-proton-compact"))return 2;destinations->setCurrentRow(1);{auto* label=window.findChild<QLineEdit*>("destinationLabel");if(!label)return 2;const auto original=label->text();label->selectAll();label->insert(QString("Production screenshots for customer support — ").repeated(3).left(120));destinationScroll->verticalScrollBar()->setValue(0);if(!save("17-destination-long-name-compact"))return 2;destinationScroll->verticalScrollBar()->setValue(destinationScroll->verticalScrollBar()->maximum());if(!save("18-destination-credentials-compact"))return 2;label->selectAll();label->insert(original);destinationScroll->verticalScrollBar()->setValue(0);}
+ window.navigate("settings");tabs->setCurrentIndex(1);if(!save("13-capture-compact"))return 2;window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);if(!save("14-capture-exceptions-compact"))return 2;{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(100);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureRowRegion"),0,80);if(!save("settings-exceptions-compact"))return 2;scroll->verticalScrollBar()->setValue(0);}
  window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(false);auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");destination->setCurrentIndex(destination->findData(QString{}));window.findChild<QCheckBox*>("keepUploadCopies")->setChecked(false);if(!waitUntil([&]{return !settings.snapshot().archive.keepUploads&&settings.snapshot().actions["region"].destination=="local";}))return 2;if(!save("15-capture-no-output"))return 2;
  {auto* menu=window.findChild<QMenu*>("editSourceMenu");menu->popup(window.findChild<QWidget*>("commandBand")->mapToGlobal(QPoint(220,50)));putgd::test::settle(100);const auto image=menu->grab();if(!image.save(QDir(output).filePath("history-edit-sources-no-output.png")))return 2;captures.append(QJsonObject{{"file","history-edit-sources-no-output.png"},{"width",image.width()},{"height",image.height()}});menu->close();}
  // Locked values: the inherited per-action outputs, scrolled into view.
@@ -294,7 +297,12 @@ int main(int argc,char** argv){
  }
 #ifdef PUTGD_PREVIEW_REVIEW
  {
-  // The private review and the ready control bar, over a synthetic frame.
+  // Settings recovery at the supported compact width.
+ {QTemporaryDir temp("/tmp/pgs-XXXXXX");SettingsService config(temp.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles.first().toObject();profile["provider"]="proton-drive";profile["settings"]=ProtonProvider::defaults();profiles[0]=profile;doc["profiles"]=profiles;if(!config.save(doc,{}))return 2;CredentialStore secrets;UiSessionFixture recovery(config,secrets);JsonReply finish;
+  recovery.setup.setProviderSetup([&](const QString&,const Destination&,const QJsonObject&,JsonReply done,auto event){finish=done;event({{"event","auth"},{"url","https://account.proton.me/cli?synthetic-preview"}});});host::setTestOpener([](const QUrl&){});MainWindow recover(recovery.session);recover.resize(1060,680);recover.navigate("destinations");recover.show();recover.findChild<QPushButton*>("connectProtonAccount")->click();if(!waitUntil([&]{return recover.settings()->saveViewState()["setupJobs"].toArray().size()==1&&recover.findChild<QLabel*>("protonAccountStatus")->text().contains("browser");}))return 2;const auto job=recover.settings()->saveViewState()["setupJobs"].toArray().first().toObject()["setupId"].toString();recover.settings()->protonBrowserFinished(job,{{"opened",false}});putgd::test::settle(100);if(!recover.grab().save(QDir(output).filePath("settings-proton-browser-retry.png")))return 2;captures.append(QJsonObject{{"file","settings-proton-browser-retry.png"},{"width",recover.width()},{"height",recover.height()}});finish({"synthetic_cancelled","Synthetic preview finished",{}},{});host::setTestOpener({});
+  recover.navigate("settings");recover.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);QFile::remove(config.path());recover.findChild<QPushButton*>("openConfigEditor")->click();auto* scroll=qobject_cast<QScrollArea*>(recover.findChild<QTabWidget*>("settingsTabs")->currentWidget());putgd::test::settle(100);scroll->ensureWidgetVisible(recover.findChild<QLabel*>("configEditorFailure"));if(!recover.grab().save(QDir(output).filePath("settings-config-editor-failure.png")))return 2;captures.append(QJsonObject{{"file","settings-config-editor-failure.png"},{"width",recover.width()},{"height",recover.height()}});
+ }
+ // The private review and the ready control bar, over a synthetic frame.
   record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.destination="Project archive";o.sharingMode="share";o.uploadSummary="Upload to Project archive · Shared link";o.durationUs=32000000;o.canvas=QSize(960,600);o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
   RecordingConfig config;config.format="mp4";config.codec="h264";config.fps=30;o.audioRecorded=true;
   // No clip exists: hold the frame refresh so the synthetic frame stays until a state asks for one.
@@ -321,6 +329,7 @@ int main(int argc,char** argv){
    constrained.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
    if(auto* view=constrained.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
    if(!shot(constrained,"67-review-680-workspace")||!inspected(constrained,"67-review-680-workspace"))return 2;
+   {auto* destination=constrained.findChild<Graphite::ElidedLabel*>("uploadDestination");destination->reveal();putgd::test::settle(100);if(auto* popup=destination->fullTextPopup()){if(!shot(*popup,"review-destination-full-text"))return 2;popup->close();}else return 2;}
    constrained.drive({{"action","showAdvice"}});if(auto* dialog=constrained.findChild<QWidget*>("reviewAdvice")){if(!shot(*dialog,"68-review-error-details"))return 2;}else return 2;
   }
   review.drive({{"action","dismissStatus"}});review.drive({{"action","format"},{"format","mp4"},{"codec","h264"}});
@@ -346,9 +355,9 @@ int main(int argc,char** argv){
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("paused");if(auto* cancel=ready.findChild<QPushButton*>("cancel"))cancel->click();if(!ready.confirming()||!shot(ready,"42-record-paused-discard-confirm"))return 2;
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("ready");ready.setRetained(0);ready.fitTo(QRect(0,0,1024,768));if(!ready.twoRows()||!shot(ready,"37-record-ready-narrow"))return 2;
   ready.hide();
+  qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","60000");
   record::ReviewWindow::Options privateOptions=o;privateOptions.destination="Proton Drive";privateOptions.sharingMode="private";privateOptions.uploadSummary="Private upload to Proton Drive";
   record::ReviewWindow privateReview(privateOptions,config);privateReview.show();if(auto* view=privateReview.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);if(!shot(privateReview,"43-review-private-destination")||!inspected(privateReview,"43-review-private-destination"))return 2;privateReview.hide();
-  qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","60000");
   record::ReviewWindow crowded(o,config);RecordingEdit many;many.revision=1;
   for(int i=0;i<8;++i){auto m=solid;m.id=QString("lane-%1").arg(i);m.start=1000000;m.end=29000000;many.masks.append(m);}
   crowded.setEdit(many);crowded.show();if(auto* view=crowded.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);
