@@ -5,6 +5,10 @@
 #include "ui/ViewState.h"
 #include "ui/VisualStyle.h"
 #include "ui/Graphite.h"
+#include "ui/Fonts.h"
+#include "ui/IconArt.h"
+#include <QFontInfo>
+#include <QFontDatabase>
 #include "ui/BlurRadius.h"
 #include <QApplication>
 #include <cmath>
@@ -64,6 +68,30 @@ class ThemeTest : public QObject {
     }
 private slots:
     void init() { Theme::setScheme(Theme::Scheme::Dark); }
+    void sharedTypeRolesKeepTheirWeightsAndHeadingScale() {
+        Fonts::load();
+        QVERIFY(QFontDatabase::styles(Graphite::uiFamily()).contains("Medium"));
+        const auto original = qApp->font();
+        auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        const int baseline = QFontInfo(original).pixelSize();
+        for (const int body : {14, 21}) {
+            auto appFont = original; appFont.setPixelSize(qRound(baseline * body / 14.0)); qApp->setFont(appFont);
+            QCOMPARE(Graphite::font().pixelSize(), body);
+            QCOMPARE(Graphite::font(Graphite::Type::caption).pixelSize(), body == 14 ? 12 : 18);
+            QCOMPARE(Graphite::font(Graphite::Type::section, true).pixelSize(), body == 14 ? 16 : 21);
+            QCOMPARE(Graphite::font(Graphite::Type::page, true).pixelSize(), body == 14 ? 22 : 29);
+            QCOMPARE(Graphite::font(Graphite::Type::compactPage, true).pixelSize(), body == 14 ? 20 : 26);
+            QVERIFY2(std::abs(Graphite::font(Graphite::Type::page, true).letterSpacing() + 0.2) <= 1.0 / 64, qPrintable(QString::number(Graphite::font(Graphite::Type::page, true).letterSpacing())));
+            QCOMPARE(Graphite::labelFont().weight(), QFont::Medium);
+            QCOMPARE(Graphite::font(Graphite::Type::caption, true).weight(), QFont::Normal);
+            QCOMPARE(Graphite::font(Graphite::Type::section, true).weight(), QFont::DemiBold);
+            std::unique_ptr<QLabel> section(Graphite::label("Appearance", "section"));
+            QCOMPARE(section->contentsMargins().top(), Graphite::scaled(24));
+            QCOMPARE(section->contentsMargins().bottom(), Graphite::scaled(8));
+            QVERIFY(section->minimumHeight() >= Graphite::lineHeight(Graphite::Type::section) + Graphite::scaled(32));
+            QCOMPARE(Graphite::space(Graphite::Space::l), Graphite::scaled(16));
+        }
+    }
     void chromeTargetsAndTitleFitFollowTextSize() {
         const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);Graphite::WindowHeader::setCustomFrameOverride(0);});Graphite::WindowHeader::setCustomFrameOverride(1);
         QVERIFY(qApp->style()->pixelMetric(QStyle::PM_ScrollBarExtent)>=12);QCOMPARE(qApp->style()->pixelMetric(QStyle::PM_SplitterWidth),8);auto enlarged=original;enlarged.setPixelSize(21);qApp->setFont(enlarged);QVERIFY(qApp->style()->pixelMetric(QStyle::PM_ScrollBarExtent)>=16);
@@ -453,8 +481,8 @@ private slots:
             QVERIFY2(std::abs((left + right) / 2.0 - (arrow.left() + arrow.right()) / 2.0) <= 2.5, qPrintable(QString("chevron %1-%2 in %3-%4").arg(left).arg(right).arg(arrow.left()).arg(arrow.right())));
         }
     }
-    // Technical values (paths, URLs, identifiers) use Plex Mono at body size.
-    void technicalValuesUseMonoAtBodySize() {
+    // Technical values use the 13 px Plex Mono role.
+    void technicalValuesUseTheirMonoRole() {
         QWidget window;
         auto* layout = new QVBoxLayout(&window);
         auto* field = new QLineEdit("screenshots/", &window);
@@ -465,7 +493,7 @@ private slots:
         RedesignTheme::apply(window);
         for (QWidget* w : std::initializer_list<QWidget*>{field, value}) {
             QCOMPARE(w->font().family(), Graphite::monoFamily());
-            QCOMPARE(w->font().pixelSize(), Graphite::scaled(Graphite::Type::body));
+            QCOMPARE(w->font().pixelSize(), Graphite::scaled(Graphite::Type::technical));
         }
         QVERIFY(name->font().family() != Graphite::monoFamily());
         // A technical label states a value; it is not painted as a link.

@@ -290,13 +290,11 @@ QIcon icon(const QString& name,const QColor& color,int percent,int recording){
 QWidget* header(const QString& title,const QString& subtitle,QWidget* parent){auto* widget=new QWidget(parent);auto* layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,4);layout->setSpacing(4);auto* heading=new QLabel(title,widget);role(heading,"title");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,widget);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return widget;}
 QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");frame->setMaximumWidth(Graphite::scaled(880));auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(0,16,0,16);layout->setSpacing(10);auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
 void alignFormValue(QLabel* caption,QLabel* value){
- class ValueBaseline final:public QObject {
- public:ValueBaseline(QLabel* caption,QLabel* value):QObject(value),caption_(caption),value_(value){caption_->installEventFilter(this);value_->installEventFilter(this);align();}
- protected:bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::FontChange||event->type()==QEvent::Resize||event->type()==QEvent::Show)align();return false;}
- private:void align(){if(!caption_)return;const auto label=caption_->fontMetrics(),field=value_->fontMetrics();const int top=qMax(0,(Graphite::scaled(Graphite::Metric::control)-label.height())/2+label.ascent()-field.ascent());value_->setAlignment(Qt::AlignLeft|Qt::AlignTop);value_->setMinimumHeight(Graphite::scaled(Graphite::Metric::control));if(value_->contentsMargins().top()!=top)value_->setContentsMargins(0,top,0,0);}
- QPointer<QLabel> caption_;QLabel* value_;
- };
- new ValueBaseline(caption,value);
+ caption->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);value->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);value->setMinimumHeight(Graphite::scaled(Graphite::Metric::control));
+ if(auto* parent=value->parentWidget())for(auto* form:parent->findChildren<QFormLayout*>()){
+  int row=-1;QFormLayout::ItemRole role;form->getWidgetPosition(value,&row,&role);if(row<0)continue;
+  form->setLabelAlignment(Qt::AlignLeft|Qt::AlignBaseline);form->setAlignment(caption,Qt::AlignLeft|Qt::AlignBaseline);form->setAlignment(value,Qt::AlignLeft|Qt::AlignBaseline);
+ }
 }
 void styleForm(QFormLayout* form){form->setContentsMargins(0,0,0,0);form->setHorizontalSpacing(16);form->setVerticalSpacing(8);form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);form->setRowWrapPolicy(QFormLayout::DontWrapRows);form->setLabelAlignment(Qt::AlignLeft|Qt::AlignTop);}
 void decorateView(QAbstractItemView* view,const QList<int>& columns){view->setItemDelegate(new StateDelegate(columns,view));view->setAlternatingRowColors(true);view->setIconSize(QSize(22,22));view->setTextElideMode(Qt::ElideMiddle);}

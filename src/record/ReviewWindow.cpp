@@ -62,7 +62,7 @@ namespace putgd::record {
 namespace {
 constexpr int handleSize = 8;
 constexpr int compactReviewHeight = 648;
-int textControlHeight(const QWidget* widget) { return std::max(32, widget->fontMetrics().height() + 8); }
+int textControlHeight(const QWidget* widget) { return std::max(32, widget->fontMetrics().height() + 4); }
 int iconTarget() { return std::max(Graphite::Metric::iconTarget, Graphite::scaled(Graphite::Metric::icon) + 14); }
 }
 
@@ -324,14 +324,14 @@ namespace {
 // Over arbitrary captured content: a dark scrim under light text, so labels and
 // instructions read on pale and dark frames alike.
 QRectF mediaLabelRect(const QPointF& at, const QString& text, const QRectF& bounds, bool badge = false) {
-    const QFontMetricsF metrics(Graphite::font(badge ? Graphite::Type::micro : Graphite::Type::metadata, true));
+    const QFontMetricsF metrics(Graphite::font(badge ? Graphite::Type::maskBadge : Graphite::Type::metadata, true));
     QRectF box(at, QSizeF(std::min(metrics.horizontalAdvance(text) + (badge ? 8 : 12), bounds.width()), (badge ? metrics.tightBoundingRect(text).height() : metrics.height()) + 6));
     if (box.right() > bounds.right()) box.moveRight(bounds.right());
     if (box.bottom() > bounds.bottom()) box.moveBottom(bounds.bottom());
     return box;
 }
 void mediaLabel(QPainter& painter, const QPointF& at, const QString& text, const QRectF& bounds, bool badge = false) {
-    const auto font = Graphite::font(badge ? Graphite::Type::micro : Graphite::Type::metadata, true);
+    const auto font = Graphite::font(badge ? Graphite::Type::maskBadge : Graphite::Type::metadata, true);
     const QRectF box = mediaLabelRect(at, text, bounds, badge);
     painter.save();
     painter.setRenderHint(QPainter::Antialiasing);
@@ -996,7 +996,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         button->setToolButtonStyle(Qt::ToolButtonTextOnly);
         button->setAccessibleName(name);
         button->setToolTip(tip);
-        button->setFont(Graphite::font(Graphite::Type::body));
+        button->setFont(Graphite::labelFont());
         button->setFixedSize(int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(text))) + 24, std::max(32, button->fontMetrics().height() + 4));
         return button;
     };
@@ -1038,7 +1038,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // Mask: the kinds to add, the mask to edit, its blur radius, its timing and
     // its interval, wrapping as whole groups when the row is too narrow.
     addMask_ = action("Add mask", "Add mask", "Add a redaction or blur to the frame");
-    addMask_->setFont(Graphite::font(Graphite::Type::metadata));
+    addMask_->setFont(Graphite::labelFont());
     addMask_->setFixedSize(int(std::ceil(QFontMetricsF(addMask_->font()).horizontalAdvance(addMask_->text()))) + 24, textControlHeight(addMask_));
     addMask_->setObjectName("addMask");
     addMask_->setPopupMode(QToolButton::InstantPopup);
@@ -1066,7 +1066,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     maskEnd_ = action("End here", "Set mask end at playhead", "End the selected mask at the playhead (Shift+O)");
     removeMask_ = tool("remove", "Delete mask", "Delete the selected mask (Delete)");
     removeMask_->setText("Delete mask");
-    removeMask_->setFont(Graphite::font(Graphite::Type::body));
+    removeMask_->setFont(Graphite::labelFont());
     removeMask_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     removeMask_->setFixedSize(int(std::ceil(QFontMetricsF(removeMask_->font()).horizontalAdvance(removeMask_->text()))) + removeMask_->iconSize().width() + 40, textControlHeight(removeMask_));
     maskOptions_ = tool("settings", "Mask options", "Mask options: blur radius and Delete mask");
@@ -1219,13 +1219,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     actions->setObjectName("reviewActions");
     auto* actionsRow = new QGridLayout(actions);
     actionsRow->setContentsMargins(0, 0, 0, 0);
-    actionsRow->setSpacing(4);
+    actionsRow->setHorizontalSpacing(4);
+    actionsRow->setVerticalSpacing(2);
     destinationMenu_ = new QToolButton(actions);
     destinationMenu_->setObjectName("uploadDestinationMenu");
     destinationMenu_->setAutoRaise(true);
     destinationMenu_->setPopupMode(QToolButton::InstantPopup);
     destinationMenu_->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    destinationMenu_->setFont(Graphite::font(Graphite::Type::metadata));
+    VisualStyle::role(destinationMenu_, "meta");
     destinationMenu_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
     destinationMenu_->setMinimumWidth(60);
     destinationMenu_->setFixedHeight(32);
@@ -1258,7 +1259,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     errorDetails_->setObjectName("reviewErrorDetails");
     errorDetails_->setProperty("driveAction", QJsonObject{{"action", "showAdvice"}});
     VisualStyle::role(errorDetails_, "quiet");
-    errorDetails_->setFont(Graphite::font(Graphite::Type::metadata));
+    errorDetails_->setFont(Graphite::labelFont());
     errorDetails_->setFixedWidth(int(std::ceil(QFontMetricsF(errorDetails_->font()).horizontalAdvance(errorDetails_->text()))) + 28);
     errorDetails_->setFixedHeight(textControlHeight(errorDetails_));
     errorDetails_->hide();
@@ -1275,12 +1276,11 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     formatAdvice_->setFixedHeight(format_->height());
     for (auto* action : {upload_, save_, cancel_}) {
         action->ensurePolished();
-        auto font = Graphite::font(Graphite::Type::metadata);
+        auto font = Graphite::labelFont();
         action->setFont(font);
-        if (action == upload_) font.setWeight(QFont::DemiBold);
         const int icon = action->icon().isNull() ? 0 : action->iconSize().width() + 8;
         action->setFixedWidth(int(std::ceil(QFontMetricsF(font).horizontalAdvance(action->text()))) + icon + 24);
-        action->setFixedHeight(std::max(32, action->fontMetrics().height() + 8));
+        action->setFixedHeight(textControlHeight(action));
     }
     // Keyboard (#283): Space plays and pauses (keyPressEvent, so a focused
     // button or list still takes its own Space), I/O set the trim, Shift+I/O the
@@ -1730,7 +1730,7 @@ void ReviewWindow::refreshStatus() {
             }
             auto* button = new QPushButton(label, line);
             button->setObjectName(params["action"] == "useSolidCover" ? "useRedact" : "statusAction");
-            button->setFont(Graphite::font(Graphite::Type::metadata));
+            button->setFont(Graphite::labelFont());
             if (params["action"] == "dismissStatus" || params["action"] == "dismissBlurTip") {
                 button->setText({});
                 button->setIcon(Graphite::chromeIcon("close"));

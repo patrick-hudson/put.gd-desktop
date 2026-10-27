@@ -1181,7 +1181,7 @@ private slots:
             QVERIFY(name && name->height() >= name->fontMetrics().height() && name->y() >= 0 && name->y() + name->height() <= header->height());
             for (const auto& text : {QString("Save a copy…"), QString("Discard…"), QString("Upload")}) {
                 auto* action = buttonNamed(window, text); QVERIFY(action);
-                auto font = action->font(); if (text == "Upload") font.setWeight(QFont::DemiBold);
+                const auto font = action->font(); QCOMPARE(font.weight(), QFont::Medium);
                 const int icon = action->icon().isNull() ? 0 : action->iconSize().width() + 8;
                 QVERIFY(action->width() >= QFontMetrics(font).horizontalAdvance(text) + icon + 24);
             }
@@ -1260,6 +1260,7 @@ private slots:
             window.drive({{"action", "selectMask"}, {"maskId", "solid"}});
             QApplication::processEvents();
             qInfo("sequence steady %dx%d share %.3f frame %d mask %d status %d timeline %d", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble(), window.findChild<FrameView*>()->height(), window.findChild<QWidget*>("maskControls")->height(), window.findChild<QWidget*>("statusRow")->height(), timeline(window)->height());
+
             QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
             window.drive({{"action", "selectMask"}, {"maskId", "blur"}});
             QApplication::processEvents();

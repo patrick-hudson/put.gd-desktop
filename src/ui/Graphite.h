@@ -34,18 +34,23 @@ constexpr int sidebarMax = 240;
 // Each form family measures its labels up to this bound.
 constexpr int labelGutter = 220;
 }
-// Type sizes in pixels; weights are 400 and 600 only. Technical values (paths,
-// URLs, prefixes, bucket names, identifiers) use Plex Mono at body size: the
-// "technical" type role.
+// Type sizes and minimum line boxes in logical pixels.
 namespace Type {
-constexpr int body = 14, metadata = 12, micro = 11, section = 17, page = 23, technical = 14;
+constexpr int caption = 12, metadata = caption, micro = caption, maskBadge = 11;
+constexpr int body = 14, label = 14, section = 16, page = 22, compactPage = 20, technical = 13;
+constexpr int captionLine = 16, bodyLine = 20, sectionLine = 22, pageLine = 28;
+constexpr int sectionAbove = 24, sectionBelow = 8;
 }
+enum class Space { xs = 4, s = 8, m = 12, l = 16, xl = 24, xxl = 32 };
+int space(Space);
+int lineHeight(int pixels);
 // Families registered by Fonts::load (IBM Plex) in processes that bundle them;
 // the system families elsewhere.
 QString uiFamily();
 QString monoFamily();
 void setFamilies(const QString& ui, const QString& mono);
 QFont font(int pixels = Type::body, bool strong = false);
+QFont labelFont();
 QFont monoFont(int pixels = Type::metadata);
 // Orthogonal to colour roles; restored on every polish.
 void setMono(QWidget*, int pixels = Type::metadata);

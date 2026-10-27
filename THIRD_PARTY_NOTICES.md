@@ -6,6 +6,12 @@ distribution packages. Their exact installed versions and package identities bel
 in each acceptance manifest; their source and license records come from that distro.
 No Qt or compiler runtime is privately bundled by the Linux package.
 
+The interface and recording helper embed unmodified IBM Plex Sans Regular,
+Medium and SemiBold and IBM Plex Mono Regular, copyright IBM Corp., Reserved
+Font Name Plex, under SIL OFL 1.1. The sources and original per-family licences
+are in `src/ui/fonts`; packages install `OFL-sans.txt` and `OFL-mono.txt` beside
+their runtime notices.
+
 The package privately includes the official AWS SDK for C++ and its CRT shared
 libraries. `cmake/dependency-lock.json` identifies SDK 1.11.907 and all 15 pinned
 submodules. `tools/verify_dependencies.py` checks the actual source tree. Packaging

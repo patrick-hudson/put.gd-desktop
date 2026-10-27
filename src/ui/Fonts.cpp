@@ -13,6 +13,7 @@ struct Families {
     Families() {
         initializeFontResources();
         const int regular = QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/IBMPlexSans-Regular.ttf"));
+        QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/IBMPlexSans-Medium.ttf"));
         QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/IBMPlexSans-SemiBold.ttf"));
         const int fixed = QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/IBMPlexMono-Regular.ttf"));
         const auto sans = QFontDatabase::applicationFontFamilies(regular), monos = QFontDatabase::applicationFontFamilies(fixed);
