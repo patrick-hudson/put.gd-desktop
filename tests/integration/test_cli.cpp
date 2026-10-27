@@ -28,7 +28,7 @@ private slots:
   const auto closed=request("editor.view",{{"id",id},{"action","keyboardHelp"}});QVERIFY(closed["ok"].toBool());QVERIFY(!closed["result"].toObject()["keyboardHelp"].toObject()["open"].toBool());QCOMPARE(source.reads,1);
   const auto geometry=request("editor.view",{{"id",id},{"action","geometryDetails"}});QVERIFY2(geometry["ok"].toBool(),QJsonDocument(geometry).toJson().constData());QVERIFY(geometry["result"].toObject()["geometryDetails"].toObject()["open"].toBool());
   QVERIFY(request("editor.view",{{"id",id},{"action","geometryDetails"}})["ok"].toBool());
-  const auto panel=request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",240}});QVERIFY2(panel["ok"].toBool(),QJsonDocument(panel).toJson().constData());QCOMPARE(panel["result"].toObject()["propertiesWidth"].toInt(),240);
+  const auto panel=request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",220}});QVERIFY2(panel["ok"].toBool(),QJsonDocument(panel).toJson().constData());QCOMPARE(panel["result"].toObject()["propertiesWidth"].toInt(),220);
   QVERIFY(!request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",199}})["ok"].toBool());
   const auto saved=request("editor.saveCopy",{{"id",id},{"path",d.filePath("synthetic-copy.png")}});QVERIFY2(saved["ok"].toBool(),QJsonDocument(saved).toJson().constData());
   QVERIFY(request("editor.view",{{"id",id}})["result"].toObject()["saveFeedbackVisible"].toBool());
