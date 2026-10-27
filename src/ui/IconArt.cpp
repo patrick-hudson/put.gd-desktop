@@ -180,9 +180,9 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="bucket") {
   p.drawEllipse(QRectF(4,3,16,6));QPainterPath body;body.moveTo(4,6);body.lineTo(4,18);body.cubicTo(4,22,20,22,20,18);body.lineTo(20,6);p.drawPath(body);p.drawArc(QRectF(4,9,16,6),180*16,180*16);
  } else if(name=="proton") {
-  // Cloud storage with a distinct folder front, readable at sidebar sizes.
-  fill(secondary);QPainterPath cloud;cloud.moveTo(5,15);cloud.cubicTo(-1,15,0,7,6,7);cloud.cubicTo(7,0,17,0,19,7);cloud.cubicTo(25,8,24,15,19,15);cloud.closeSubpath();p.drawPath(cloud);
-  fill(color);QPainterPath folder;folder.moveTo(4,12);folder.lineTo(10,12);folder.lineTo(12,14);folder.lineTo(21,14);folder.lineTo(20,22);folder.lineTo(4,22);folder.closeSubpath();p.drawPath(folder);
+  // The 3-unit drive-tab notch survives 16 px without a second folder shape.
+  QPainterPath cloud;cloud.moveTo(7,19);cloud.cubicTo(1.5,19,1.5,10,6.5,10);cloud.cubicTo(6.5,3,16.5,2,18,9);cloud.cubicTo(23,9,23,19,18,19);
+  cloud.lineTo(14,19);cloud.lineTo(14,16);cloud.lineTo(11,16);cloud.lineTo(11,19);cloud.closeSubpath();p.drawPath(cloud);
  } else if(name=="add") {
   p.drawEllipse(QRectF(2.4,2.4,19.2,19.2));p.drawLine(12,7,12,17);p.drawLine(7,12,17,12);
  } else {

@@ -358,7 +358,7 @@ private slots:
         }
     }
     void outlineIconsKeepSecondaryColourInsideOptionalWashes() {
-        const QStringList outlines{"upload","failed-uploads","download","region","window","desktop","clipboard","history","destinations","settings","preferences","info","shortcuts","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","bucket","add","file","video"};
+        const QStringList outlines{"upload","failed-uploads","download","region","window","desktop","clipboard","history","destinations","settings","preferences","info","shortcuts","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","bucket","proton","add","file","video"};
         for (const auto& name : outlines) {
             const auto art = IconArt::symbol(name, Qt::white, 4, Qt::red);
             QVERIFY2(art == IconArt::symbol(name, Qt::white, 4, Qt::blue), qPrintable(name));
@@ -400,6 +400,19 @@ private slots:
         for(const auto& name:{"image","stop","rectangle","zoom-fit"})QVERIFY2(std::abs(extent(name)-18)<=0.5,name);
         for(const auto& name:{"window","desktop","shortcuts","save"})QVERIFY2(std::abs(extent(name)-20)<=0.5,name);
         QVERIFY(std::abs(extent("add")-21)<=0.5);
+    }
+    void providerOutlinesStayDistinctAtSidebarSize() {
+        for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            for(const int size:{16,24}) {
+                const auto cloud=VisualStyle::icon("proton").pixmap(size,size).toImage();
+                QVERIFY(cloud!=VisualStyle::icon("destinations").pixmap(size,size).toImage());
+                QVERIFY(cloud!=VisualStyle::icon("bucket").pixmap(size,size).toImage());
+                QCOMPARE(cloud.pixelColor(size/2,size/2).alpha(),0);
+                int ink=0;for(int y=0;y<size;++y)for(int x=0;x<size;++x)ink+=cloud.pixelColor(x,y).alpha()>128;
+                QVERIFY(ink>size*2);QVERIFY(ink<size*size/2);
+            }
+        }
     }
     void helpGlyphStaysMutedAcrossSchemesAndKeepsKeyboardDisclosure() {
         const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});
