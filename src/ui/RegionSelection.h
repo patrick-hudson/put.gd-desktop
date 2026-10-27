@@ -17,12 +17,13 @@ inline QFont nativeRegionFont() {
     return font;
 }
 inline QString regionInstructions(const QRectF& selection = {}, bool recording = false, const QString& display = {}) {
-    return (display.isEmpty() ? QString() : display + QStringLiteral(" · "))
-        + (recording ? QStringLiteral("Drag and release to use a region") : QStringLiteral("Drag and release to capture"))
-        + (recording ? QStringLiteral("\nEnter chooses %1 · Esc cancels\nStart recording comes next").arg(selection.isEmpty() ? QStringLiteral("this entire display") : QStringLiteral("this region"))
-            : QStringLiteral("\nEnter captures %1 · Esc cancels").arg(selection.isEmpty() ? QStringLiteral("this entire display") : QStringLiteral("the selected region")))
-        + QStringLiteral("\nArrows select · Shift+arrows resize · Ctrl+arrows 10 px · Tab display")
-        + (selection.isEmpty() ? QString() : QStringLiteral("\n%1 × %2 logical pixels").arg(qRound(selection.width())).arg(qRound(selection.height())));
+    const QString context = display + (display.isEmpty() || selection.isEmpty() ? QString() : QStringLiteral(" · "))
+        + (selection.isEmpty() ? QString() : QStringLiteral("%1 × %2").arg(qRound(selection.width())).arg(qRound(selection.height())));
+    return (context.isEmpty() ? QString() : context + QStringLiteral("\n"))
+        + (recording ? QStringLiteral("Drag to select · Enter chooses this region · Esc to cancel")
+                     : QStringLiteral("Drag to select · Enter to capture · Esc to cancel"))
+        + QStringLiteral("\nArrows move · Shift+arrows resize · Tab next display")
+        + (recording ? QStringLiteral("\nStart recording comes next") : QString());
 }
 inline QString regionDescription(const QRectF& selection, bool recording = false, const QString& display = {}) {
     return (selection.isEmpty() ? QStringLiteral("No region selected.")

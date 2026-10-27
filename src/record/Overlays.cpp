@@ -446,7 +446,7 @@ void ControlBar::refresh() {
     format_->setVisible(ready);
     lockedAudio_->setVisible(!ready);
     lockedFormat_->setVisible(!ready);
-    lockedAudio_->setText(withSound ? QStringLiteral("System audio") : QStringLiteral("No audio"));
+    lockedAudio_->setText(withSound ? QStringLiteral("With system audio ·") : QStringLiteral("No audio ·"));
     lockedAudio_->setToolTip(audio_->toolTip());
     lockedAudio_->setAccessibleName(QStringLiteral("Audio: ") + lockedAudio_->text());
     lockedFormat_->setText(format_->currentText());

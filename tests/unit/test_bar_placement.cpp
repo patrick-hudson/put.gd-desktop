@@ -134,7 +134,7 @@ private slots:
         QTest::keyClick(surface, Qt::Key_Tab);
         const int next = screens.size() > 1 ? 1 : 0;
         QVERIFY(surface->accessibleDescription().contains(screens[next]->name()));
-        QVERIFY(surface->accessibleDescription().contains("Drag and release to use a region"));
+        QVERIFY(surface->accessibleDescription().contains("Drag to select"));
         QTest::keyClick(surface, Qt::Key_Right);
         QRectF expected(QPointF(screens[next]->geometry().topLeft()) + QPointF(screens[next]->geometry().width()/4.0, screens[next]->geometry().height()/4.0), QSizeF(screens[next]->geometry().size())/2);
         QList<QRectF> logical;for(auto* output:screens)logical.append(output->geometry());int current=next;
@@ -244,7 +244,7 @@ private slots:
                     bar.setState(QString::fromLatin1(state));
                     QVERIFY(!audio->isVisible() && !format->isVisible());
                     QCOMPARE(audio->isChecked(), sound);
-                    QCOMPARE(audioValue->text(), sound ? QStringLiteral("System audio") : QStringLiteral("No audio"));
+                    QCOMPARE(audioValue->text(), sound ? QStringLiteral("With system audio ·") : QStringLiteral("No audio ·"));
                     QCOMPARE(formatValue->text(), format->currentText());
                     for (auto* label : {bar.findChild<QLabel*>("target"), audioValue, formatValue}) {
                         QVERIFY(label && label->isVisible() && label->isEnabled());

@@ -214,11 +214,11 @@ const RegionSelection = {
     },
     instructions(region, recording, display) {
         const selected = region?.width > 0 && region?.height > 0;
-        return `${display ? display + ' · ' : ''}${recording ? 'Drag and release to use a region' : 'Drag and release to capture'}\n` +
-            (recording ? `Enter chooses ${selected ? 'this region' : 'this entire display'} · Esc cancels\nStart recording comes next\n`
-                : `Enter captures ${selected ? 'the selected region' : 'this entire display'} · Esc cancels\n`) +
-            'Arrows select · Shift+arrows resize · Ctrl+arrows 10 px · Tab display' +
-            (selected ? `\n${region.width} × ${region.height} logical pixels` : '');
+        const context = `${display || ''}${display && selected ? ' · ' : ''}${selected ? `${region.width} × ${region.height}` : ''}`;
+        return (context ? context + '\n' : '') +
+            (recording ? 'Drag to select · Enter chooses this region · Esc to cancel' : 'Drag to select · Enter to capture · Esc to cancel') +
+            '\nArrows move · Shift+arrows resize · Tab next display' +
+            (recording ? '\nStart recording comes next' : '');
     },
 };
 

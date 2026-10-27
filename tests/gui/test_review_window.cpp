@@ -213,8 +213,8 @@ private slots:
             auto* accessible = QAccessible::queryAccessibleInterface(surface);
             QVERIFY(accessible);
             QCOMPARE(accessible->text(QAccessible::Description), surface->accessibleDescription());
-            QVERIFY(surface->accessibleDescription().contains(recording ? "Drag and release to use a region" : "Drag and release to capture"));
-            QVERIFY(surface->accessibleDescription().contains(recording ? "Enter chooses this entire display" : "Enter captures this entire display"));
+            QVERIFY(surface->accessibleDescription().contains("Drag to select"));
+            QVERIFY(surface->accessibleDescription().contains(recording ? "Enter chooses this region" : "Enter to capture"));
             if (mode == 0) {
                 QTest::keyClick(surface, Qt::Key_Return);
                 QCOMPARE(selected, QRectF(screen));
@@ -223,8 +223,8 @@ private slots:
                 QCOMPARE(selected, QRectF(QPointF(screen.topLeft()) + QPointF(100, 100), QSizeF(200, 180)));
             } else {
                 QTest::keyClick(surface, Qt::Key_Right);
-                QVERIFY(surface->accessibleDescription().contains(recording ? "Enter chooses this region" : "Enter captures the selected region"));
-                QVERIFY(surface->accessibleDescription().contains("logical pixels"));
+                QVERIFY(surface->accessibleDescription().contains(recording ? "Enter chooses this region" : "Enter to capture"));
+                QVERIFY(!surface->accessibleDescription().contains("logical pixels"));
                 QRectF expected(QPointF(screen.topLeft()) + QPointF(screen.width() / 4.0, screen.height() / 4.0), QSizeF(screen.size()) / 2);
                 QVERIFY(accessible->text(QAccessible::Description).contains(QString::number(expected.width())));
                 QTest::keyClick(surface, Qt::Key_Right);
@@ -262,10 +262,10 @@ private slots:
         for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"&&w->width()==800)surface=w;
         QVERIFY(surface);
         QTest::keyClick(surface,Qt::Key_Tab);
-        QVERIFY(surface->accessibleDescription().contains("Right · Drag and release to capture"));
+        QVERIFY(surface->accessibleDescription().contains("Right\n"));
         QTest::keyClick(surface,Qt::Key_Right);
         QTest::keyClick(surface,Qt::Key_Backtab);
-        QVERIFY(surface->accessibleDescription().contains("Left · Drag and release to capture"));
+        QVERIFY(surface->accessibleDescription().contains("Left · "));
         QTest::keyClick(surface,Qt::Key_Return);QCOMPARE(selected.size(),1);
         QCOMPARE(qvariant_cast<QRectF>(selected.first()[0]),QRectF(-720,60,160,120));
     }
