@@ -461,7 +461,7 @@ private slots:
   }
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
-  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 15);
+  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 18);for(int i=0;i<3;++i){QVERIFY(!qdbus_cast<WireLayout>(layout.children[i].variant()).props["visible"].toBool());}layout.children.erase(layout.children.begin(),layout.children.begin()+3);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   bool quitLabel=false;for(const auto& child:layout.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==12){QCOMPARE(item.props["label"].toString(),QString("Quit put.gd"));quitLabel=true;}}QVERIFY(quitLabel);
   // Capture entries first: region, region & edit, window, desktop, screen recording, then the editor sources and the clipboard upload.
@@ -478,7 +478,7 @@ private slots:
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(7).variant()).props["type"].toString(), QString("separator"));
   // Depth 1 lists the submenu header without expanding it.
   layout = qdbus_cast<WireLayout>(call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 1, QStringList{}}).arguments().at(1));
-  QVERIFY(qdbus_cast<WireLayout>(layout.children.at(6).variant()).children.isEmpty());
+  QVERIFY(qdbus_cast<WireLayout>(layout.children.at(9).variant()).children.isEmpty());
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 0, QStringList{"label"}});
   layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QVERIFY(layout.children.isEmpty()); QVERIFY(layout.props.isEmpty());
   QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "AboutToShow", {0}).arguments().at(0).toBool(), false);
@@ -506,6 +506,9 @@ private slots:
   auto reply = call("/Menu", "com.canonical.dbusmenu", "EventGroup", {QVariant::fromValue(events)});
   QCOMPARE(reply.type(), QDBusMessage::ReplyMessage); QCOMPARE(qdbus_cast<QList<int>>(reply.arguments().at(0)), QList<int>{99});
   PUTGD_TRY_COMPARE(actions.size(), ids.size()+2); QCOMPARE(actions.last().at(0).toString(), QString("region"));
+ }
+ void shortcutsAndLiveUploadEntriesUseStableIds(){
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy actions(&tray,&NativeTray::actionActivated);tray.setCommands({{"region","Ctrl+Shift+R"}},"Uploading 2 files…");auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}});auto root=qdbus_cast<WireLayout>(reply.arguments().at(1));auto status=qdbus_cast<WireLayout>(root.children[0].variant());QCOMPARE(status.id,19);QCOMPARE(status.props["label"].toString(),QString("Uploading 2 files…"));QVERIFY(status.props["visible"].toBool());QVERIFY(!status.props["enabled"].toBool());auto cancel=qdbus_cast<WireLayout>(root.children[1].variant());QCOMPARE(cancel.id,20);QVERIFY(cancel.props["enabled"].toBool());auto region=qdbus_cast<WireLayout>(root.children[3].variant());QCOMPARE(region.id,1);QCOMPARE(qdbus_cast<QList<QStringList>>(region.props["shortcut"]),QList<QStringList>({{"Control","Shift","R"}}));click(19);putgd::test::settle(30);QVERIFY(actions.isEmpty());click(20);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("cancel-upload"));tray.setCommands({},{});click(20);putgd::test::settle(30);QCOMPARE(actions.size(),1);
  }
  void updateEntryShowsItsVersionAndBumpsTheLayout() {
   // #293: hidden until a stable update is available, then labelled with it.

@@ -1,6 +1,7 @@
 #include "NativeTray.h"
 #include "core/Settings.h"
 #include <QSet>
+#include <QKeySequence>
 #include "IconArt.h"
 #include "Theme.h"
 #include <QCoreApplication>
@@ -105,13 +106,15 @@ constexpr Entry entries[] {
  {"Edit image", "", 0}, {"Edit clipboard image", "edit-clipboard", 13}, {"Edit an image file…", "edit-file", 13},
  {"Record screen", "record", 0},
  // Hidden until a stable update is available; its label names the version (#293).
- {"Update available", "update", 0}, {"Destinations", "destinations", 0}
+ {"Update available", "update", 0}, {"Destinations", "destinations", 0},
+ {"Upload status", "", 0}, {"Cancel upload", "cancel-upload", 0}, {"", "", 0}
 };
-constexpr int updateId = 17;
+constexpr int updateId = 17, uploadStatusId = 19, cancelUploadId = 20, uploadSeparatorId = 21;
 constexpr int entryCount = sizeof(entries) / sizeof(entries[0]);
 QList<int> childrenOf(int id) {
  QList<int> result;
  if (id == 0) {
+  result.append({uploadStatusId,cancelUploadId,uploadSeparatorId});
   for(const auto& action:Settings::presentationOrder())for(int child=1;child<=entryCount;++child)if(QLatin1String(entries[child-1].action)==action)result.append(child);
   result.append({13,6,8,18,7,17,10,11,12});
  }
@@ -124,7 +127,7 @@ bool validNames(const QStringList& names) {
  for (const auto& name : names) if (name.size() > 128) return false;
  return true;
 }
-QVariantMap menuProperties(int id, const QStringList& names = {}, const QString& update = {}) {
+QVariantMap menuProperties(int id, const QStringList& names = {}, const QString& update = {}, const QHash<QString,QString>& shortcuts = {}, const QString& upload = {}) {
  QVariantMap props;
  if (id == 0 || !childrenOf(id).isEmpty()) props.insert("children-display", "submenu");
  if (id != 0) {
@@ -134,17 +137,24 @@ QVariantMap menuProperties(int id, const QStringList& names = {}, const QString&
   // Always explicit: Plasma's and GNOME's hosts update a known item only with the
   // properties a layout carries, so an omitted default would keep it hidden (#304).
   if (id == updateId) props.insert("visible", !update.isEmpty());
+  if(id==uploadStatusId||id==cancelUploadId||id==uploadSeparatorId)props.insert("visible",!upload.isEmpty());
+  if(id==uploadStatusId){props.insert("label",upload);props.insert("enabled",false);}
+  if(id==cancelUploadId)props.insert("enabled",!upload.isEmpty());
+  const QKeySequence shortcut(shortcuts.value(QString::fromLatin1(e.action)));
+  if(Settings::presentationOrder().contains(QString::fromLatin1(e.action))){
+   QList<QStringList> keys;for(int i=0;i<shortcut.count();++i){const auto chord=shortcut[i];const auto modifiers=chord.keyboardModifiers();QStringList parts;if(modifiers&Qt::ControlModifier)parts<<"Control";if(modifiers&Qt::AltModifier)parts<<"Alt";if(modifiers&Qt::ShiftModifier)parts<<"Shift";if(modifiers&Qt::MetaModifier)parts<<"Super";parts<<QKeySequence(chord.key()).toString(QKeySequence::PortableText);keys.append(parts);}props.insert("shortcut",QVariant::fromValue(keys));
+  }
  }
  if (!names.isEmpty()) for (auto it = props.begin(); it != props.end();) {
   if (!names.contains(it.key())) it = props.erase(it); else ++it;
  }
  return props;
 }
-NativeLayout menuLayout(int id, int depth, const QStringList& names, const QString& update) {
- NativeLayout result{id, menuProperties(id, names, update), {}};
+NativeLayout menuLayout(int id, int depth, const QStringList& names, const QString& update,const QHash<QString,QString>& shortcuts,const QString& upload) {
+ NativeLayout result{id, menuProperties(id, names, update, shortcuts, upload), {}};
  // depth -1 expands every level; 0 returns this item alone.
  if (depth != 0) for (int child : childrenOf(id))
-  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names, update))));
+  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names, update, shortcuts, upload))));
  return result;
 }
 NativeImages brandIcon(const QColor& color=Theme::trayTints(false).idle,int percent=-1) {
@@ -181,6 +191,7 @@ public:
  bool availabilityKnown() const { return availabilityKnown_; }
  QVariantMap properties(bool menu) const;
  void dispatch(const QString& action);
+ void aboutToShow(){emit q_->menuAboutToShow();}
  void setActivity(const QColor& color,const QString& description,int percent);
  void notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions);
  // The update entry's label, empty while it is hidden, and the layout revision
@@ -188,6 +199,9 @@ public:
  const QString& updateLabel() const { return updateLabel_; }
  uint menuRevision() const { return menuRevision_; }
  void setUpdateLabel(const QString& label);
+ void setCommands(const QHash<QString,QString>& shortcuts,const QString& upload);
+ const QHash<QString,QString>& shortcuts()const{return shortcuts_;}
+ const QString& uploadStatus()const{return uploadStatus_;}
 private slots:
  void hostChanged();
  void notificationActivated(uint id, const QString& action);
@@ -207,7 +221,7 @@ private:
  quint64 notificationGeneration_ = 0;
  QString notificationServer_; // GetServerInformation's name, empty until it answers
  QSet<uint> residentNotifications_; // sent resident (#151): put.gd closes them once used
- QString updateLabel_;
+ QString updateLabel_,uploadStatus_;QHash<QString,QString> shortcuts_;
  uint menuRevision_ = 1;
  void closeNotification(uint id);
  std::unique_ptr<TrayExport> item_, menu_;
@@ -479,7 +493,7 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
   return bus.send(m.createErrorReply(QString::fromLatin1(name), "Invalid or unsupported tray request"));
  };
  auto dispatchId = [this](int id) {
-  if (id > 0 && knownId(id) && *entries[id-1].action)
+  if (id > 0 && knownId(id) && id!=uploadStatusId && (id!=cancelUploadId||!owner_->uploadStatus().isEmpty()) && *entries[id-1].action)
    owner_->dispatch(QString::fromLatin1(entries[id-1].action));
  };
  const QString expected = QString::fromLatin1(menu_ ? menuInterface : itemInterface);
@@ -512,19 +526,19 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
   const int id = args.at(0).toInt(), depth = args.at(1).toInt();
   const auto names = qdbus_cast<QStringList>(args.at(2));
   if (!knownId(id) || depth < -1 || !validNames(names)) return error();
-  return reply({owner_->menuRevision(), QVariant::fromValue(menuLayout(id, depth, names, owner_->updateLabel()))});
+  return reply({owner_->menuRevision(), QVariant::fromValue(menuLayout(id, depth, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus()))});
  }
  if (member == "GetGroupProperties" && sig == "aias") {
   auto ids = qdbus_cast<QList<int>>(args.at(0)); const auto names = qdbus_cast<QStringList>(args.at(1));
   if (ids.size() > 64 || !validNames(names)) return error();
   if (ids.isEmpty()) for (int id = 0; id <= entryCount; ++id) ids.append(id);
   NativePropertyList values;
-  for (int id : ids) if (knownId(id)) values.append({id, menuProperties(id, names, owner_->updateLabel())});
+  for (int id : ids) if (knownId(id)) values.append({id, menuProperties(id, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus())});
   return reply({QVariant::fromValue(values)});
  }
  if (member == "GetProperty" && sig == "is") {
   int id = args.at(0).toInt(); if (!knownId(id)) return error();
-  const auto name = args.at(1).toString(); if (name.size() > 128) return error(); auto props = menuProperties(id, {}, owner_->updateLabel());
+  const auto name = args.at(1).toString(); if (name.size() > 128) return error(); auto props = menuProperties(id, {}, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus());
   // Defaults are omitted from layouts but must resolve for explicit queries.
   const QVariantMap defaults{{"type", "standard"}, {"label", ""}, {"enabled", true}, {"visible", true},
    {"icon-name", ""}, {"icon-data", QByteArray{}}, {"shortcut", QVariant::fromValue(QList<QStringList>{})},
@@ -550,7 +564,7 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
  }
  if (member == "AboutToShow" && sig == "i") {
   if (!knownId(args.at(0).toInt())) return error();
-  return reply({false});
+  const auto revision=owner_->menuRevision();owner_->aboutToShow();return reply({revision!=owner_->menuRevision()});
  }
  if (member == "AboutToShowGroup" && sig == "ai") {
   const auto ids = qdbus_cast<QList<int>>(args.at(0)); if (ids.size() > 64) return error();
@@ -570,6 +584,13 @@ bool NativeTray::available() const { return d_->available(); }
 bool NativeTray::availabilityKnown() const { return d_->availabilityKnown(); }
 void NativeTray::setActivity(const QColor& color,const QString& description,int percent) {d_->setActivity(color,description,percent);}
 void NativeTray::setUpdateLabel(const QString& label) {d_->setUpdateLabel(label);}
+void NativeTray::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload) {d_->setCommands(shortcuts,upload);}
+void NativeTrayPrivate::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload) {
+ if(shortcuts_==shortcuts&&uploadStatus_==upload)return;shortcuts_=shortcuts;uploadStatus_=upload;++menuRevision_;
+ NativePropertyList changed;for(int id=1;id<=entryCount;++id)if(knownId(id))changed.append({id,menuProperties(id,{"label","visible","enabled","shortcut"},updateLabel_,shortcuts_,uploadStatus_)});
+ auto properties=QDBusMessage::createSignal("/Menu",menuInterface,"ItemsPropertiesUpdated");properties.setArguments({QVariant::fromValue(changed),QVariant::fromValue(NativeRemovedList{})});bus_.send(properties);
+ auto signal=QDBusMessage::createSignal("/Menu",menuInterface,"LayoutUpdated");signal.setArguments({menuRevision_,0});bus_.send(signal);
+}
 void NativeTrayPrivate::setUpdateLabel(const QString& label) {
  if (label == updateLabel_) return;
  updateLabel_ = label; ++menuRevision_;

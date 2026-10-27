@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QColor>
 #include <QUrl>
+#include <QHash>
 #include <memory>
 
 namespace putgd {
@@ -23,12 +24,14 @@ public:
  void setActivity(const QColor& color, const QString& description, int percent = -1);
  // Shows the "update" menu entry with this label; empty hides it (#293).
  void setUpdateLabel(const QString& label);
+ void setCommands(const QHash<QString,QString>& shortcuts,const QString& uploadStatus);
  void notify(const QString& title, const QString& message, bool warning = false, const QUrl& link = {},
              const QList<NotificationAction>& actions = {});
  // expire_timeout for a notification on this server (GetServerInformation name):
  // 10 s, or 0 (until used or dismissed) for buttons the server would otherwise lose.
  static int notificationTimeoutMs(const QString& server, bool actions);
 signals:
+ void menuAboutToShow();
  void notificationActivated(const QUrl& link);
  void notificationAction(const QString& key, const QString& value);
  void actionActivated(const QString& action);

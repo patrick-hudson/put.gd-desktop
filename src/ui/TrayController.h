@@ -76,7 +76,7 @@ private:
  void notifyMessage(const QString& code, const QString& title, const QString& message, bool warning, const QUrl& link = {}, const QString& diagnosticsOperation = {}, const QString& revealPath = {});
  quint64 notifications_ = 0;
  std::function<void(const QString&,JsonReply)> saveDiagnostics_;
- void refreshActivity();
+ void refreshActivity();void refreshMenu();void cancelUploads();
  void flashError();
  QTimer errorFlashTimer_,errorRecoveryTimer_,uploadRevealTimer_,uploadCompleteTimer_;
  QElapsedTimer uploadVisibleClock_;
@@ -89,6 +89,7 @@ private:
  void retintMenu();
  int iconPercent_=-1;
  QString activityText_;
+ QAction *uploadStatus_=nullptr,*cancelUpload_=nullptr,*uploadSeparator_=nullptr;
  QSet<QString> activeUploads_;
  void showAbout();
  void showView(const QString&);

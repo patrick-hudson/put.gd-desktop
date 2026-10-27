@@ -20,7 +20,7 @@ namespace {
 QAction* actionNamed(QSystemTrayIcon* tray, const QString& text) {
  if (!tray || !tray->contextMenu()) return nullptr;
  for (auto* action : tray->contextMenu()->actions())
-  if (action->text() == text) return action;
+  if (action->text().section('\t',0,0) == text) return action;
  return nullptr;
 }
 
@@ -76,6 +76,11 @@ private slots:
   {GenericResidentTheme theme;QCOMPARE(qgetenv("QT_QPA_PLATFORMTHEME"),QByteArray("generic"));}
   QVERIFY(!qEnvironmentVariableIsSet("QT_QPA_PLATFORMTHEME"));
   QGuiApplication::setDesktopSettingsAware(aware);
+ }
+ void menuShowsDisplayOnlyShortcutsAndCancelsUploads(){
+  QTemporaryDir dir;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);SettingsService settings(dir.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});auto doc=configuration(dir.path());auto actions=doc["actions"].toObject();for(const auto& name:Settings::presentationOrder()){auto action=actions[name].toObject();action["shortcut"]="Ctrl+Shift+R";actions[name]=action;}doc["actions"]=actions;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService operations(dir.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);auto* menu=tray->contextMenu();
+  for(auto* entry:menu->actions())if(entry->property("commandLabel").isValid()){QVERIFY(entry->text().contains('\t'));QVERIFY(entry->shortcut().isEmpty());}
+  auto* status=menu->findChild<QAction*>("trayUploadStatus");auto* cancel=menu->findChild<QAction*>("trayCancelUpload");QVERIFY(status&&cancel);QVERIFY(!status->isVisible());QString id;operations.invoke("clipboard",[&](Error error,QJsonObject value){QVERIFY(!error);id=value["operationId"].toString();});auto drain=qScopeGuard([provider]{provider->deferUploads=false;for(auto complete:std::exchange(provider->completions,{}))complete();});PUTGD_TRY_COMPARE(provider->requests.size(),1);PUTGD_TRY_VERIFY(cancel->isVisible());QCOMPARE(menu->actions()[0],status);QCOMPARE(menu->actions()[1],cancel);QVERIFY(!status->isEnabled());QCOMPARE(status->text(),QString("Uploading 1 file…"));cancel->trigger();provider->completions.takeFirst()();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);PUTGD_TRY_VERIFY(!status->isVisible());bool canceled=false;operations.inspect(id,[&](Error error,QJsonObject op){QVERIFY(!error);canceled=op["state"]=="cancelled";});PUTGD_TRY_VERIFY(canceled);
  }
  void failedOperationsWithoutItemsShowTheirError() {
   const QJsonObject tooLarge{{"state","failed"},{"copyStatus","no_result"},{"items",QJsonArray{}},{"error",QJsonObject{{"code","edit_input_too_large"},{"message","This image is too large to edit; use a smaller copy"}}}};
@@ -515,7 +520,7 @@ private slots:
   // A single & would be eaten as a mnemonic marker in the menu.
   QVERIFY(actionNamed(tray, "Capture region && edit"));
   // Capture entries come first in a fixed order, then the editor sources and the clipboard upload.
-  QStringList texts; for (auto* action : menu->actions()) { if (action->isSeparator()) break; texts.append(action->text()); }
+  QStringList texts; for (auto* action : menu->actions()) { if(!action->isVisible())continue;if (action->isSeparator()) break; texts.append(action->text().section('\t',0,0)); }
   QCOMPARE(texts, QStringList({"Capture region", "Capture window", "Capture desktop", "Capture region && edit", "Record screen", "Upload clipboard", "Edit image"}));
   // Other editor sources sit in one submenu; a file opens the main window's picker.
   QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit image") editImage = action->menu();

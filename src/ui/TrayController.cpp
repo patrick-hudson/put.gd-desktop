@@ -11,6 +11,7 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QAction>
+#include <QKeySequence>
 #include <QMenu>
 #include <QPointer>
 #include <QSystemTrayIcon>
@@ -170,9 +171,11 @@ TrayController::TrayController(OperationService& operations,
    if(key=="save-diagnostics")saveDiagnostics(value);
    else if(key=="show-in-folder")showSavedPackage(value);
   });
+  connect(native_.get(), &NativeTray::menuAboutToShow,this,&TrayController::refreshMenu);
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
   connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action) {
    if (Settings::invocableActionNames().contains(action)) invokeAction(action);
+   else if (action == "cancel-upload") cancelUploads();
    else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
    else if (action == "edit-file") showView("editFile");
    else if (action == "settings") showSettings();
@@ -188,11 +191,12 @@ TrayController::TrayController(OperationService& operations,
  tray_ = new QSystemTrayIcon(VisualStyle::icon("tray",Theme::trayTints(panel_.light()).idle), this);
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
+ uploadStatus_=menu_->addAction(QString{});uploadStatus_->setObjectName("trayUploadStatus");uploadStatus_->setEnabled(false);cancelUpload_=menu_->addAction("Cancel upload");cancelUpload_->setObjectName("trayCancelUpload");connect(cancelUpload_,&QAction::triggered,this,&TrayController::cancelUploads);uploadSeparator_=menu_->addSeparator();connect(menu_.get(),&QMenu::aboutToShow,this,&TrayController::refreshMenu);
  // Capture entries first, in the order people reach for them; QAction text
  // treats a single & as a mnemonic marker, so && shows one &.
  const auto capture = [this](const QString& action, const QString& label) {
   auto* entry = menu_->addAction(label);
-  entry->setData(action);
+  entry->setData(action);entry->setProperty("commandLabel",label);
   connect(entry, &QAction::triggered, this, [this, action] { invokeAction(action); });
  };
  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
@@ -375,7 +379,30 @@ void TrayController::retintMenu() {
 QJsonObject TrayController::trayTint()const {
  return {{"panel",panel_.light()?"light":"dark"},{"source",panel_.source()},{"color",Theme::trayTints(panel_.light()).idle.name()}};
 }
+void TrayController::cancelUploads() {
+ // The same cancellation path as History and operation.cancel; local-only jobs stay alone.
+ for(const auto& value:operations_.activeObservations()){
+  const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;
+  operations_.cancel(op["id"].toString(),[guard=QPointer<TrayController>(this)](Error error,QJsonObject){if(guard&&error)guard->notifyFailure(error);});
+ }
+}
+void TrayController::refreshMenu() {
+ QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();for(const auto& action:Settings::presentationOrder())shortcuts.insert(action,settings.actions.value(action).shortcut);
+ int files=0;bool uploading=false;for(const auto& value:operations_.activeObservations()){
+  const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;uploading=true;
+  for(const auto& v:op["items"].toArray()){const auto item=v.toObject();if(item["uploadStatus"]=="uploading"||item["uploadStatus"]=="pending")++files;}
+ }
+ const auto status=!uploading?QString{}:files?QString("Uploading %1 %2…").arg(files).arg(files==1?"file":"files"):QString("Preparing upload…");
+#ifdef Q_OS_LINUX
+ if(native_){native_->setCommands(shortcuts,status);return;}
+#endif
+ if(!menu_)return;
+ for(auto* entry:menu_->actions())if(entry->property("commandLabel").isValid()&&shortcuts.contains(entry->data().toString())){const auto key=QKeySequence(shortcuts.value(entry->data().toString())).toString(QKeySequence::NativeText);entry->setText(entry->property("commandLabel").toString()+(key.isEmpty()?QString{}:"\t"+key));}
+ // Tab-separated menu text displays a shortcut without registering another key handler.
+ uploadStatus_->setText(status);for(auto* entry:{uploadStatus_,cancelUpload_,uploadSeparator_})entry->setVisible(uploading);
+}
 void TrayController::refreshActivity() {
+ refreshMenu();
  const auto observations=operations_.activeObservations();
  QSet<QString> activeIds;
  for(const auto& value:observations) {
