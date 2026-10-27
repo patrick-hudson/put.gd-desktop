@@ -22,6 +22,7 @@ public:
  void setShowCancelled(bool);bool showCancelled()const{return showCancelled_;}int hiddenCancelled()const{return hiddenCancelled_;}
  QJsonArray activeOperations()const;static int operationProgress(const QJsonObject&);
  void releaseThumbnails();
+ bool multipleDestinations()const;QString commonDestination()const;
  // Reads a preview again once it has been made (#190) at a path whose earlier read failed.
  void reloadThumbnail(const QString& path);
  // A video poster's length (#112): the PNG text key the helper writes, and m:ss.
