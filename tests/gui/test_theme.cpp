@@ -358,7 +358,7 @@ private slots:
         }
     }
     void outlineIconsKeepSecondaryColourInsideOptionalWashes() {
-        const QStringList outlines{"upload","failed-uploads","download","region","window","desktop","clipboard","history","destinations","settings","preferences","shortcuts","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","bucket","add","file","video"};
+        const QStringList outlines{"upload","failed-uploads","download","region","window","desktop","clipboard","history","destinations","settings","preferences","info","shortcuts","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","bucket","add","file","video"};
         for (const auto& name : outlines) {
             const auto art = IconArt::symbol(name, Qt::white, 4, Qt::red);
             QVERIFY2(art == IconArt::symbol(name, Qt::white, 4, Qt::blue), qPrintable(name));
@@ -379,7 +379,7 @@ private slots:
             QVERIFY2(wash.alpha() >= 45 && wash.alpha() <= 47, name);
             QCOMPARE(wash.red(), 255);QCOMPARE(wash.blue(), 0);
         }
-        for (const auto& name : {"window", "desktop", "clipboard", "shortcuts", "stop", "save", "play", "pause", "bucket", "file"}) {
+        for (const auto& name : {"window", "desktop", "clipboard", "info", "shortcuts", "stop", "save", "play", "pause", "bucket", "file"}) {
             const auto art = IconArt::symbol(name, Qt::white, 4);
             int solid = 0;
             for (int y = 0; y < art.height(); ++y) for (int x = 0; x < art.width(); ++x) solid += art.pixelColor(x,y).alpha() > 128;
@@ -400,6 +400,21 @@ private slots:
         for(const auto& name:{"image","stop","rectangle","zoom-fit"})QVERIFY2(std::abs(extent(name)-18)<=0.5,name);
         for(const auto& name:{"window","desktop","shortcuts","save"})QVERIFY2(std::abs(extent(name)-20)<=0.5,name);
         QVERIFY(std::abs(extent("add")-21)<=0.5);
+    }
+    void helpGlyphStaysMutedAcrossSchemesAndKeepsKeyboardDisclosure() {
+        const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) for (const int pixels : {14,21}) {
+            auto font=original;font.setPixelSize(pixels);qApp->setFont(font);Theme::setScheme(scheme);
+            QWidget page;auto* layout=new QVBoxLayout(&page);page.setProperty("inlineHelpRow",true);
+            auto* control=new QLineEdit(&page);control->setObjectName("testHelp");layout->addWidget(control);
+            auto* help=VisualStyle::helpButton("Term","An explanation.",control,&page);layout->addWidget(help);page.show();putgd::test::settle(10);
+            QCOMPARE(help->size(),QSize(Graphite::scaled(24),Graphite::scaled(24)));
+            QCOMPARE(help->iconSize(),QSize(Graphite::scaled(14),Graphite::scaled(14)));
+            const auto art=help->icon().pixmap(48,48).toImage();int ink=0;
+            for(int y=0;y<art.height();++y)for(int x=0;x<art.width();++x){const auto pixel=art.pixelColor(x,y);if(pixel.alpha()<255)continue;QCOMPARE(pixel,Theme::current().textMuted);++ink;}
+            QVERIFY(ink>10);QCOMPARE(art.pixelColor(16,24).alpha(),0);
+            help->setFocus();QTest::keyClick(help,Qt::Key_Space);auto* note=page.findChild<QLabel*>("testHelpHelpText");QVERIFY(note&&note->isVisible());QTest::keyClick(help,Qt::Key_Space);QVERIFY(note->isHidden());
+        }
     }
     void selectedOutlineIconsReadOnTheSelectedFill() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
@@ -617,7 +632,7 @@ private slots:
                 if (summary.pixel(x, y) != plain.pixel(x, y)) {++changed;right = std::max(right, x);}
             }
             QVERIFY(changed > 0);
-            QVERIFY(right <= end + 6 + Graphite::scaled(12));
+            QVERIFY(right <= end + 6 + Graphite::scaled(14));
         }
     }
     // A revealable summary is a tab stop whose Enter shows its full plain text;

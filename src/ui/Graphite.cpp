@@ -1647,11 +1647,11 @@ ElidedLabel::ElidedLabel(QWidget* parent) : QLabel(parent) {
     Q_UNUSED(factory);
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 }
-QSize ElidedLabel::sizeHint() const { return QLabel::sizeHint() + QSize(revealable_ ? scaled(12) + 18 : 0, 0); }
-QSize ElidedLabel::minimumSizeHint() const { return {std::min(QLabel::minimumSizeHint().width(), fontMetrics().averageCharWidth() * 8) + (revealable_ ? scaled(12) + 18 : 0), QLabel::minimumSizeHint().height()}; }
+QSize ElidedLabel::sizeHint() const { return QLabel::sizeHint() + QSize(revealable_ ? scaled(14) + 18 : 0, 0); }
+QSize ElidedLabel::minimumSizeHint() const { return {std::min(QLabel::minimumSizeHint().width(), fontMetrics().averageCharWidth() * 8) + (revealable_ ? scaled(14) + 18 : 0), QLabel::minimumSizeHint().height()}; }
 QRect ElidedLabel::textRect() const {
     if (!revealable_) return contentsRect();
-    auto box = contentsRect().adjusted(6, 0, -scaled(12) - 12, 0);
+    auto box = contentsRect().adjusted(6, 0, -scaled(14) - 12, 0);
     // Keep the summary and its disclosure together even in a stretching footer.
     if (!wordWrap()) box.setWidth(std::min(box.width(), int(std::ceil(QFontMetricsF(font()).horizontalAdvance(text())))));
     return box;
@@ -1676,7 +1676,7 @@ void ElidedLabel::setRevealable(bool on) {
     updateGeometry();
     update();
 }
-int ElidedLabel::heightForWidth(int width) const { return QLabel::heightForWidth(width - (revealable_ ? scaled(12) + 18 : 0)); }
+int ElidedLabel::heightForWidth(int width) const { return QLabel::heightForWidth(width - (revealable_ ? scaled(14) + 18 : 0)); }
 bool ElidedLabel::elided() const { return QFontMetricsF(font()).horizontalAdvance(text()) > textRect().width(); }
 void ElidedLabel::reveal() {
     if ((!revealable_ && revealTitle_.isEmpty()) || text().isEmpty()) return;
@@ -1719,8 +1719,8 @@ void ElidedLabel::paintEvent(QPaintEvent*) {
         if (isEnabled() && underMouse()) rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), t().surfaceRaised, {}, 4);
         const auto box = textRect();
         if (wordWrap()) {
-            paintChevron(p, QPointF(box.right() + 7 + scaled(12) / 2.0, box.center().y()), 8, Qt::DownArrow, isEnabled() ? t().textSecondary : t().textDisabled);
-        } else VisualStyle::icon("info").paint(&p, QRect(box.right() + 7, box.center().y() - scaled(12) / 2, scaled(12), scaled(12)), Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
+            paintChevron(p, QPointF(box.right() + 7 + scaled(14) / 2.0, box.center().y()), 8, Qt::DownArrow, isEnabled() ? t().textSecondary : t().textDisabled);
+        } else VisualStyle::icon("info").paint(&p, QRect(box.right() + 7, box.center().y() - scaled(14) / 2, scaled(14), scaled(14)), Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
     }
     // A revealable summary's keyboard focus: the amber ring around its text.
     if (revealable_ && keyboardFocus(this)) {
@@ -1830,7 +1830,7 @@ void Banner::placeAction() {
 void Banner::resizeEvent(QResizeEvent* event) { QWidget::resizeEvent(event); placeAction(); }
 void Banner::paintEvent(QPaintEvent*) {
     const auto& colors = t();
-    const QColor tone = tone_ == Tone::Warning ? colors.warning : tone_ == Tone::Error ? colors.danger : tone_ == Tone::Success ? colors.success : colors.textSecondary;
+    const QColor tone = tone_ == Tone::Warning ? colors.warning : tone_ == Tone::Error ? colors.danger : tone_ == Tone::Success ? colors.success : colors.textMuted;
     QPainter painter(this);
     painter.fillRect(rect(), colors.bg);
     rounded(&painter, rect(), colors.surface, colors.borderStrong, Metric::containerRadius);
@@ -1841,7 +1841,10 @@ void Banner::paintEvent(QPaintEvent*) {
     const QRect glyph(scaled(12), firstRow.y() + std::max(0, (firstRow.height() - side) / 2), side, side);
     if (!icon_.isNull()) icon_.paint(&painter, glyph);
     else if (tone_ == Tone::Success) paintChromeGlyph(painter, glyph, "check", tone);
-    else painter.drawImage(glyph, IconArt::symbol(tone_ == Tone::Info ? "info" : "alert", tone, std::max(1, (side + 23) / 24), tone));
+    else if (tone_ == Tone::Info) {
+        const int helpSide = scaled(14);
+        painter.drawImage(QRect(glyph.center() - QPoint(helpSide / 2, helpSide / 2), QSize(helpSide, helpSide)), IconArt::symbol("info", colors.textMuted, std::max(1, (helpSide + 23) / 24)));
+    } else painter.drawImage(glyph, IconArt::symbol("alert", tone, std::max(1, (side + 23) / 24), tone));
 }
 QString blurWarningText() {
     return QStringLiteral("Blur may be reversible. Use Redact for private information.");

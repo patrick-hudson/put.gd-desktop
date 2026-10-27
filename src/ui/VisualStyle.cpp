@@ -151,9 +151,9 @@ void feedback(QLabel* label,const QString& text,bool error){setFeedback(label,te
 void success(QLabel* label,const QString& text){setFeedback(label,text,"success");}
 QToolButton* helpButton(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setToolTip(description);control->setAccessibleDescription(qobject_cast<QCheckBox*>(control)?title+". "+description:description);control->setProperty("settingDescription",control->accessibleDescription());
- auto* button=new QToolButton(parent);button->setObjectName(control->objectName()+"Help");button->setProperty("settingHelpFor",control->objectName());button->setProperty("visualRole","quiet");button->setCheckable(true);button->setIcon(icon("info"));button->setIconSize(QSize(Graphite::scaled(18),Graphite::scaled(18)));
- // A 32 px pointer target around the same small glyph (Graphite: 32–36 px targets).
- button->setFixedSize(Graphite::scaled(32),Graphite::scaled(32));button->setFocusPolicy(Qt::StrongFocus);button->setAccessibleName("Help for "+title);button->setAccessibleDescription(description);button->setToolTip(description);
+ auto* button=new QToolButton(parent);button->setObjectName(control->objectName()+"Help");button->setProperty("settingHelpFor",control->objectName());button->setProperty("visualRole","quiet");button->setCheckable(true);button->setIcon(icon("info"));button->setProperty("graphiteIconBase",QSize(14,14));button->setIconSize(QSize(Graphite::scaled(14),Graphite::scaled(14)));
+ // A quiet 14 px help glyph inside its 24 px pointer target.
+ button->setFixedSize(Graphite::scaled(24),Graphite::scaled(24));button->setFocusPolicy(Qt::StrongFocus);button->setAccessibleName("Help for "+title);button->setAccessibleDescription(description);button->setToolTip(description);
  QObject::connect(button,&QToolButton::toggled,button,[button,control,description](bool open){
   auto* note=button->property("inlineHelp").value<QLabel*>();
   if(!note){note=new QLabel(description);note->setObjectName(control->objectName()+"HelpText");note->setTextFormat(Qt::PlainText);note->setWordWrap(true);note->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);role(note,"muted");bool placed=false;for(auto* row=control->parentWidget();row&&!placed;row=row->parentWidget())if(row->property("inlineHelpRow").toBool()){qobject_cast<QVBoxLayout*>(row->layout())->addWidget(note);placed=true;}
@@ -256,9 +256,8 @@ public:
   const auto& p=Theme::current();const bool disabled=mode==QIcon::Disabled,selected=mode==QIcon::Selected;
   const auto key=QStringLiteral("%1/%2/%3/%4").arg(name_,Theme::name(Theme::scheme())).arg(int(disabled)+2*int(selected)).arg(side);
   static QHash<QString,QPixmap> cache;if(const auto found=cache.constFind(key);found!=cache.cend())return *found;
-  // Selected: the pair made for the selected fill, where the normal secondary
-  // tone would fall under 3:1.
-  const auto art=IconArt::symbol(name_,disabled?p.textDisabled:selected?p.iconSelected:p.icon,qMax(1,(side+23)/24),disabled?p.textDisabled.darker(150):selected?p.iconSecondarySelected:p.iconSecondary);
+  // Help stays muted; action outlines use the foreground for their state.
+  const auto art=IconArt::symbol(name_,disabled?p.textDisabled:name_=="info"?p.textMuted:selected?p.iconSelected:p.icon,qMax(1,(side+23)/24),disabled?p.textDisabled.darker(150):selected?p.iconSecondarySelected:p.iconSecondary);
   auto pixmap=QPixmap::fromImage(art.scaled(side,side,Qt::KeepAspectRatio,Qt::SmoothTransformation));pixmap.setDevicePixelRatio(scale);
   if(cache.size()>512)cache.clear();cache.insert(key,pixmap);return pixmap;
  }

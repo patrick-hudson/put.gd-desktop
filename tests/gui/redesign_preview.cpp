@@ -120,7 +120,7 @@ QImage iconSpecimen(){
  QImage image(1280,identityY+340,QImage::Format_RGB32);image.fill(theme.bg);QPainter p(&image);p.setPen(theme.text);p.setFont(Graphite::font(Graphite::Type::body));
  p.drawText(24,28,"Outline family · 40 px reference + actual 20 px (text-scaled) · production renderer");
  auto caption=p.font();caption.setPixelSize(11);p.setFont(caption);
- for(int i=0;i<names.size();++i){const int x=24+(i%8)*156,y=52+(i/8)*94;VisualStyle::icon(names[i]).paint(&p,QRect(x+12,y,40,40));const int side=Graphite::scaled(Graphite::Metric::icon);VisualStyle::icon(names[i]).paint(&p,QRect(x+88,y+(40-side)/2,side,side));p.drawText(QRect(x,y+48,144,22),Qt::AlignCenter,names[i]);}
+ for(int i=0;i<names.size();++i){const int x=24+(i%8)*156,y=52+(i/8)*94;VisualStyle::icon(names[i]).paint(&p,QRect(x+12,y,40,40));const int side=Graphite::scaled(names[i]=="info"?14:Graphite::Metric::icon);VisualStyle::icon(names[i]).paint(&p,QRect(x+88,y+(40-side)/2,side,side));p.drawText(QRect(x,y+48,144,22),Qt::AlignCenter,names[i]);}
  p.drawText(24,identityY,"Solid identity artwork · encoding fill");VisualStyle::icon("brand").paint(&p,QRect(24,identityY+20,64,64));
  for(int i=0;i<5;++i){const int x=155+i*125;VisualStyle::icon("tray",tints.idle,i*25).paint(&p,QRect(x,identityY+20,64,64));p.drawText(QRect(x,identityY+94,64,24),Qt::AlignCenter,QString::number(i*25)+"%");}
  for(int i=0;i<2;++i){const int x=860+i*130;VisualStyle::icon("tray",i?tints.idle:tints.error).paint(&p,QRect(x,identityY+20,64,64));p.drawText(QRect(x-10,identityY+94,92,24),Qt::AlignCenter,i?"Blink off":"Blink on");}

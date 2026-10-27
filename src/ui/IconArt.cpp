@@ -95,7 +95,8 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="preferences") {
   for(const auto& pair:{QPoint(8,6),QPoint(16,12),QPoint(10,18)}){p.drawLine(3,pair.y(),pair.x()-3,pair.y());p.drawLine(pair.x()+3,pair.y(),21,pair.y());p.drawEllipse(QPointF(pair),2.5,2.5);}
  } else if(name=="info") {
-  fill(secondary);p.drawEllipse(QRectF(2,2,20,20));fill(color);p.drawEllipse(QPointF(12,7.5),1.25,1.25);rounded(11,11,2,6,1);
+  // Help uses a 14 px glyph: retain a 1.5 px ring at that size.
+  line(color,1.5*24/14);p.drawEllipse(QRectF(3,3,18,18));line(color,2.1);p.drawPoint(QPointF(12,7.5));p.drawLine(12,11,12,17);
  } else if(name=="shortcuts") {
   rounded(2.9,5,18.2,14);for(int y:{9,12})for(int x:{7,12,17})p.drawPoint(QPointF(x,y));p.drawLine(8,16,16,16);
  } else if(name=="images"||name=="image") {
