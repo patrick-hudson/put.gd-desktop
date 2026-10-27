@@ -44,6 +44,16 @@ class EditorWindowTest:public QObject {
  static QImage canvasImage(){QImage image(400,260,QImage::Format_RGB32);image.fill(QColor("#20242c"));return image;}
  static void add(EditDocument& doc,const QJsonObject& shape){QJsonArray created;QString code,message;QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",shape}}},created,code,message),qPrintable(message));}
 private slots:
+ void keyboardHelpIsBelowPropertiesAndAgentControllable(){
+  editor::EditDocument doc(QImage(400,260,QImage::Format_RGB32));EditorWindow window(doc);window.show();
+  QString code,message;auto state=window.viewCommand({{"action","keyboardHelp"}},code,message);
+  QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(state["keyboardHelp"].toObject()["open"].toBool());
+  auto* help=window.findChild<QToolButton*>("editorKeyboardHelp");auto* text=window.findChild<QLabel*>("editorKeyboardHelpText");
+  QVERIFY(help&&text&&text->isVisible());QVERIFY(text->text().contains("Shift+arrows"));
+  help->setFocus();QTest::keyClick(help,Qt::Key_Space);QVERIFY(!window.viewState()["keyboardHelp"].toObject()["open"].toBool());
+  window.allowClose();
+ }
+
  void textEntryStaysInsideCanvasWithoutMovingTheAnnotation(){
   EditDocument doc(canvasImage());EditorCanvas canvas(doc);canvas.resize(440,300);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));canvas.setTool(Tool::Text);
   for(const QPoint anchor:{QPoint(390,80),QPoint(150,250),QPoint(390,250)}){

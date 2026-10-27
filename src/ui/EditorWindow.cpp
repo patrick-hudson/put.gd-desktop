@@ -28,6 +28,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QDialog>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSaveFile>
@@ -179,11 +180,14 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   geometryLabels_[i]=fieldLabel({},geometryRow_);
   auto* box=new QSpinBox(geometryRow_);box->setObjectName(names[i]);box->setSuffix(" px");box->setKeyboardTracking(false);box->setMinimumWidth(Graphite::scaled(64));
   geometryLabels_[i]->setBuddy(box);geometry_[i]=box;
-  fields->addWidget(geometryLabels_[i],(i/2)*2,i%2);fields->addWidget(box,(i/2)*2+1,i%2);
+  fields->addWidget(geometryLabels_[i],i,0);fields->addWidget(box,i,1);
   connect(box,&QSpinBox::valueChanged,this,&EditorWindow::applyGeometry);
  }
  layout->addLayout(fields);properties->addWidget(geometryRow_);
  remove_=new QPushButton("Remove mark",panel);remove_->setObjectName("removeMark");remove_->setIcon(VisualStyle::icon("remove"));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");properties->addWidget(remove_,0,Qt::AlignLeft);
+ auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");keyboardHelp->setCheckable(true);keyboardHelp->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);keyboardHelp->setArrowType(Qt::RightArrow);keyboardHelp->setFocusPolicy(Qt::StrongFocus);VisualStyle::role(keyboardHelp,"link");properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
+ auto* keyboardText=new QLabel("Click a mark, or use [ and ] to cycle marks. Arrows move; Shift+arrows resize; Ctrl uses 10 px steps. Tab focuses properties; Delete removes; Escape deselects. Insert places a mark. Ctrl+Z undoes; Ctrl+Shift+Z redoes.",panel);keyboardText->setObjectName("editorKeyboardHelpText");keyboardText->setWordWrap(true);keyboardText->setTextFormat(Qt::PlainText);VisualStyle::role(keyboardText,"secondary");keyboardText->hide();properties->addWidget(keyboardText);
+ connect(keyboardHelp,&QToolButton::toggled,this,[keyboardHelp,keyboardText](bool open){keyboardHelp->setArrowType(open?Qt::DownArrow:Qt::RightArrow);keyboardText->setVisible(open);});
  properties->addStretch(1);
  auto* document=new Graphite::Surface("surface",Qt::TopEdge,side);document->setObjectName("editorDocument");document_=document;
  auto* documentLayout=new QVBoxLayout(document);documentLayout->setContentsMargins(18,12,16,14);documentLayout->setSpacing(6);
@@ -413,7 +417,7 @@ void EditorWindow::refresh(){
   int index=int(tool);QString title=titles.value(index);
   // A selected mark names itself, whichever tool picked it up.
   if(shape){const QHash<int,QString> kinds{{int(editor::Shape::Kind::Redact),"Redaction"},{int(editor::Shape::Kind::Blur),"Blur"},{int(editor::Shape::Kind::Arrow),"Arrow"},{int(editor::Shape::Kind::Rectangle),"Rectangle"},{int(editor::Shape::Kind::Highlight),"Highlight"},{int(editor::Shape::Kind::Text),"Text"}};title=kinds.value(int(shape->kind),"Mark")+" selected";}
-  toolTitle_->setText(title);toolHelp_->setText(shape?QStringLiteral("Drag or use arrows to move; handles or Shift+arrows resize. Tab focuses properties; Escape deselects."):help.value(index));
+  toolTitle_->setText(title);toolHelp_->setText(shape?QStringLiteral("Drag or use arrow keys to move."):help.value(index));
   const auto bounds=doc_.crop();documentInfo_->setText(QString("%1 × %2 px · PNG output\n%3").arg(bounds.width()).arg(bounds.height()).arg(doc_.modified()?"Edited":"Unchanged"));
  }
  {
@@ -629,6 +633,7 @@ QJsonObject EditorWindow::viewState() const {
   {"lastShowInFolder",lastShowInFolder_.isEmpty()?QJsonValue():QJsonValue(lastShowInFolder_)},{"lastCopiedPath",lastCopiedPath_.isEmpty()?QJsonValue():QJsonValue(lastCopiedPath_)},
   {"cancelLabel",cancel_->text()},{"destination",QJsonObject{{"text",destination_->text()},{"above",destinationAbove_}}},
   {"preparationFailure",notice_->isHidden()?QJsonValue():QJsonValue(QJsonObject{{"text",noticeText_->text()}})},
+  {"keyboardHelp",QJsonObject{{"open",findChild<QToolButton*>("editorKeyboardHelp")->isChecked()},{"text",findChild<QLabel*>("editorKeyboardHelpText")->text()}}},
   {"discardConfirmation",QJsonObject{{"open",bool(discard_)},{"text",discard_?QJsonValue(discard_->property("confirmationText").toString()):QJsonValue()}}}};
 }
 
@@ -649,7 +654,10 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
  }
  if(discard_)return fail("editor_confirming","The discard confirmation is open; answer it first (keepEditing or confirmDiscard)");
  // Each action is the window's own control, so the user sees the same change.
- if(action=="tool"){
+ if(action=="keyboardHelp"){
+  if(!only({}))return fail("invalid_request","keyboardHelp has no other parameters");
+  findChild<QToolButton*>("editorKeyboardHelp")->toggle();
+ }else if(action=="tool"){
   if(!only({"tool"})||!toolNames.contains(params["tool"].toString()))return fail("invalid_request","tool must be select, redact, blur, crop, arrow, rectangle, highlight or text");
   selectTool(Tool(toolNames.indexOf(params["tool"].toString())));
  }else if(action=="select"){
@@ -698,7 +706,7 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
   // As Cancel / Discard… does: asks first when there are edits.
   if(!only({}))return fail("invalid_request","discard has no other parameters");
   requestCancel();if(busy_)return viewState();
- }else return fail("invalid_request","action must be inspect, tool, select, removeMark, selectNext, selectPrevious, place, geometry, applyCrop, cancelCrop, zoom, fit, actualSize, pan, showSavedCopy, copySavedPath, discard, keepEditing or confirmDiscard");
+ }else return fail("invalid_request","action must be inspect, tool, select, removeMark, selectNext, selectPrevious, place, geometry, applyCrop, cancelCrop, zoom, fit, actualSize, pan, keyboardHelp, showSavedCopy, copySavedPath, discard, keepEditing or confirmDiscard");
  refresh();return viewState();
 }
 
@@ -706,27 +714,18 @@ void EditorWindow::requestCancel(){
  if(busy_||savingCopy_)return;
  if(discard_){discard_->raise();discard_->activateWindow();return;}
  if(!doc_.modified()){emit cancelRequested();return;}
- // An explicit footer keeps the safe choice first on every platform;
- // open() lets editor.view inspect and answer the question asynchronously.
- auto* box=new QDialog(this);box->setWindowTitle("Discard edits?");box->setObjectName("confirmAction");
  const auto text=QString("Discard your edits and close the editor?\nNothing has been uploaded. Your marks and crop are lost%1.").arg(lastSave_["status"]=="saved"?"; copies you saved stay":"");
- box->setProperty("confirmationText",text);box->setMinimumWidth(Graphite::scaled(360));
- auto* layout=new QVBoxLayout(box);layout->setContentsMargins(24,20,24,16);layout->setSpacing(20);
- auto* message=new QLabel(text,box);message->setTextFormat(Qt::PlainText);message->setWordWrap(true);layout->addWidget(message);
- auto* footer=new QHBoxLayout;footer->setSpacing(8);footer->addStretch(1);
- auto* keep=new QPushButton("Keep editing",box);auto* discard=new QPushButton("Discard edits",box);
- keep->setObjectName("keepEditingConfirm");discard->setObjectName("confirmDiscard");footer->addWidget(keep);footer->addWidget(discard);layout->addLayout(footer);
- keep->setDefault(true);VisualStyle::role(discard,"danger");
- connect(keep,&QPushButton::clicked,box,&QDialog::reject);connect(discard,&QPushButton::clicked,box,&QDialog::accept);
+ auto* box=Graphite::confirm(this,"Discard edits?",text,"Discard edits",QStringLiteral("Keep editing"),true);
+ auto* keep=box->button(QMessageBox::Cancel);keep->setObjectName("keepEditingConfirm");
  box->setWindowModality(Qt::WindowModal);box->setAttribute(Qt::WA_DeleteOnClose);
  connect(box,&QDialog::finished,this,[this,box](int result){
   if(discard_==box)discard_=nullptr;
-  if(result==QDialog::Accepted&&!busy_)emit cancelRequested();
+  if(result==QMessageBox::Yes&&!busy_)emit cancelRequested();
  });
  discard_=box;box->open();keep->setFocus();
 }
 void EditorWindow::answerDiscard(bool discard){
- if(discard_)discard_->done(discard?QDialog::Accepted:QDialog::Rejected);
+ if(discard_)static_cast<QMessageBox*>(discard_.data())->button(discard?QMessageBox::Yes:QMessageBox::Cancel)->click();
 }
 
 void EditorWindow::closeEvent(QCloseEvent* event){

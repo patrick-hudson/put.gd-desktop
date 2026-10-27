@@ -118,8 +118,8 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="select") {
   fill(color);QPainterPath pointer;pointer.moveTo(5,2);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,22.5);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
  } else if(name=="redact") {
-  line(secondary,2);p.drawLine(QPointF(3,5),QPointF(20,5));p.drawLine(QPointF(3,12),QPointF(21,12));p.drawLine(QPointF(3,19),QPointF(16,19));
-  fill(color);rounded(7,8.5,15,7,1);
+  line(secondary,1.5);p.drawLine(QPointF(4,4),QPointF(11,4));p.drawLine(QPointF(15,4),QPointF(19,4));p.drawLine(QPointF(4,20),QPointF(9,20));p.drawLine(QPointF(13,20),QPointF(17,20));
+  fill(color);rounded(2.5,7.5,19,9,1);
  } else if(name=="blur") {
   fill(secondary);for(int y:{4,12,20})for(int x:{4,12,20})p.drawEllipse(QPointF(x,y),1.6,1.6);
   fill(color);for(int y:{8,16})for(int x:{8,16})p.drawEllipse(QPointF(x,y),2.6,2.6);
