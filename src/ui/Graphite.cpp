@@ -2137,8 +2137,9 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu, Density density) : QWid
 }
 int WindowHeader::compactHeight() const {
     const QFontMetricsF title(Graphite::font(Type::body, true));
-    const int text = int(std::ceil(title.height())) + 2 * scaled(6);
-    return std::max(Metric::iconTarget + 6, text);
+    // Compact review chrome keeps the full text line and 32 px targets.
+    const int text = int(std::ceil(title.height())) + 4;
+    return std::max(Metric::iconTarget, text);
 }
 void WindowHeader::fitHeight() { setFixedHeight(density_ == Density::Compact ? compactHeight() : scaled(Metric::header)); }
 void WindowHeader::changeEvent(QEvent* event) {

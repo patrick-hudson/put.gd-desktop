@@ -135,6 +135,25 @@ private slots:
         }
         QVERIFY(redact && blur); QVERIFY(redact->x() < blur->x());
     }
+    void bottomArrangementStaysTogetherAcrossReviewWidths() {
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* trim = window.findChild<QWidget*>("trimControls");
+        auto* masks = window.findChild<QWidget*>("maskControls");
+        auto* track = timeline(window);
+        QList<int> offsets;
+        for (int width : {720, 820, 1060}) {
+            window.resize(width, 720); QApplication::processEvents();
+            const QList<int> current{trim->y() - track->y(), masks->y() - track->y(), track->height()};
+            if (offsets.isEmpty()) offsets = current;
+            else QCOMPARE(current, offsets);
+            QVERIFY(!track->maskRect("m-blur").isEmpty());
+            QVERIFY(!track->maskRect("m-solid").isEmpty());
+            auto* interval = window.findChild<QLabel*>("maskActiveInterval");
+            auto* footer = window.findChild<QWidget*>("reviewFooter");
+            QVERIFY(interval->mapTo(&window, interval->rect().bottomLeft()).y() < footer->y());
+        }
+    }
     void closedChoicesIgnoreWheel() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -300,11 +319,11 @@ private slots:
         t.setMasks(masks, "0"); t.resize(600, t.sizeHint().height()); t.show();
         QCOMPARE(t.lanes(), 8);
         auto* scroll = t.findChild<QScrollBar*>("maskLaneScroll");
-        QVERIFY(scroll && scroll->isVisible()); QCOMPARE(scroll->maximum(), 7);
+        QVERIFY(scroll && scroll->isHidden()); QCOMPARE(scroll->maximum(), 6);
         QVERIFY(!t.maskHitRect("0").intersects(t.maskHitRect("1")));
         QVERIFY(t.maskRect("7").isEmpty());
         const int boundedHeight = t.sizeHint().height();
-        t.setMasks(masks, "7"); QCOMPARE(scroll->value(), 7);
+        t.setMasks(masks, "7"); QCOMPARE(scroll->value(), 6);
         QVERIFY(!t.maskRect("7").isEmpty()); QVERIFY(t.maskRect("0").isEmpty());
         QCOMPARE(t.sizeHint().height(), boundedHeight);
         QSignalSpy selected(&t, &ReviewTimeline::maskSelected);
@@ -346,11 +365,13 @@ private slots:
         QVERIFY(target->mapTo(&window, target->rect().bottomLeft()).y() < upload->mapTo(&window, QPoint()).y());
         QVERIFY(window.rect().contains(QRect(target->mapTo(&window, QPoint()), target->size())));
         auto* full = window.findChild<QLabel*>("uploadDestinationWrapped");
-        QVERIFY(full && full->isVisible() && full->wordWrap());
-        QCOMPARE(full->text(), o.uploadSummary);
-        QVERIFY(full->width() > window.width() - 100);
+        QVERIFY(full && !full->isVisible());
+        static_cast<Graphite::ElidedLabel*>(target)->reveal();
+        QVERIFY(static_cast<Graphite::ElidedLabel*>(target)->fullTextPopup());
+        static_cast<Graphite::ElidedLabel*>(target)->fullTextPopup()->close();
         auto* audio = window.findChild<QLabel*>("exportAudioSummary");
-        QVERIFY(audio->mapTo(&window, QPoint()).y() >= full->mapTo(&window, full->rect().bottomLeft()).y());
+        QVERIFY(audio->isVisible());
+        QVERIFY(audio->mapTo(&window, QPoint()).y() < upload->mapTo(&window, QPoint()).y());
         QVERIFY(state["audio"].toString().startsWith("Silent preview"));
         QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->isVisible());
     }
@@ -378,12 +399,13 @@ private slots:
         t.show();
         const auto first = t.maskHitRect("one"), second = t.maskHitRect("two");
         QCOMPARE(first.height(), 32);
-        QVERIFY(second.isEmpty());
+        QCOMPARE(second.height(), 32);
+        QVERIFY(!first.intersects(second));
         auto* scroll = t.findChild<QScrollBar*>("maskLaneScroll");
-        scroll->setValue(1);
+        QVERIFY(scroll->isHidden());
         const auto secondTarget = t.maskHitRect("two");
         QCOMPARE(secondTarget.height(), 32);
-        QVERIFY(t.maskHitRect("one").isEmpty());
+        QVERIFY(!t.maskHitRect("one").isEmpty());
         QVERIFY(secondTarget.top() >= 32);
         scroll->setValue(0);
         QVERIFY(first.top() >= 32);
@@ -426,9 +448,9 @@ private slots:
         QVERIFY(header && header->isVisible());
         QCOMPARE(header->density(), Graphite::WindowHeader::Density::Compact);
         QVERIFY(window.windowFlags().testFlag(Qt::FramelessWindowHint));
-        // Its height comes from the title's line, never below a 32 px control plus padding.
+        // Its height keeps the full title line and the 32 px control targets.
         QCOMPARE(header->height(), header->compactHeight());
-        QVERIFY2(header->height() >= 36 && header->height() <= 40, qPrintable(QString::number(header->height())));
+        QVERIFY2(header->height() >= 32 && header->height() <= 40, qPrintable(QString::number(header->height())));
         QCOMPARE(window.inspect()["header"].toObject()["rect"].toArray()[3].toInt(), header->height());
         // One line: the window's name; its draft state stays in the footer.
         auto* name = header->findChild<QWidget*>("documentName");
@@ -597,10 +619,11 @@ private slots:
             window.resize(ReviewWindow::defaultSize()); QApplication::processEvents();
             window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
             window.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
-            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Export failed: disk full. Free space, then retry."));
+            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Disk full. Free up space."));
             qInfo("visible recovery frame share %.3f at %dx%d", window.inspect()["video"].toObject()["share"].toDouble(), window.width(), window.height());
+            QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             window.resize(ReviewWindow::defaultSize());
-            PUTGD_TRY_VERIFY2(window.height() <= 768 && window.inspect()["status"].toString().contains("Free space, then retry."),
+            PUTGD_TRY_VERIFY2(window.height() <= 768 && window.inspect()["status"].toString().contains("Free up space."),
                 qPrintable(QString("Window %1x%2 minimum %3x%4 frame %5 status %6 share %7").arg(window.width()).arg(window.height()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()).arg(window.findChild<FrameView*>()->height()).arg(window.findChild<QWidget*>("statusRow")->height()).arg(window.inspect()["video"].toObject()["share"].toDouble())));
         }
     }
@@ -639,8 +662,9 @@ private slots:
             window.showError(failure);
             PUTGD_TRY_VERIFY2(window.height() <= 680 && window.minimumSizeHint().height() <= 680,
                 qPrintable(QString("%1x%2 min %3x%4 share %5").arg(window.width()).arg(window.height()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()).arg(window.inspect()["video"].toObject()["share"].toDouble())));
-            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Export failed: disk full. Free space, then retry."));
+            PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Disk full. Free up space."));
             qInfo("visible recovery frame share %.3f at %dx%d", window.inspect()["video"].toObject()["share"].toDouble(), window.width(), window.height());
+            QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             QVERIFY(window.inspect()["status"].toString().contains("For private information, use Redact."));
             QVERIFY(buttonNamed(window, "Use Redact")->isVisible());
             QVERIFY(window.inspect()["errorDetails"].toObject()["visible"].toBool());
@@ -697,7 +721,7 @@ private slots:
         QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont()).family());
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
-        QVERIFY(window.findChild<QLabel*>("time")->text().contains("Outside kept part"));
+        QVERIFY(window.inspect()["playbackStatus"].toString().contains("Outside kept part"));
         QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("Kept: 27 s"));
     }
     void adviceOnlyOffersAvailableFormats() {
@@ -1077,6 +1101,45 @@ private slots:
         QCOMPARE(proposed(proposals), QJsonObject({{"op", "setTrim"}, {"start", 0.0}, {"end", 5000000.0}}));
         Q_UNUSED(configs);
     }
+    void exportRecoveryUsesTheSameRetryAction() {
+        ReviewWindow window(options(), config()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QSignalSpy retry(&window, &ReviewWindow::retryExportRequested);
+        QVERIFY(!window.drive({{"action", "retryExport"}}).code.isEmpty());
+        window.showError("Export failed: disk full");
+        QApplication::processEvents();
+        auto* again = buttonNamed(window, "Try again");
+        auto* dismiss = buttonNamed(window, "Dismiss");
+        QVERIFY(again && dismiss && again->isVisible());
+        QVERIFY(again->mapTo(&window, QPoint()).x() < dismiss->mapTo(&window, QPoint()).x());
+        again->click(); QCOMPARE(retry.size(), 1);
+        window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
+        window.drive({{"action", "showAdvice"}});
+        auto* dialog = window.findChild<QDialog*>("reviewAdvice");
+        QVERIFY(dialog); QCOMPARE(dialog->windowTitle(), QString("Export failed"));
+        auto* primary = buttonNamed(*dialog, "Try again");
+        QVERIFY(primary && primary->isDefault());
+        primary->click(); QCOMPARE(retry.size(), 2);
+        QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        window.drive({{"action", "showAdvice"}});
+        dialog = window.findChild<QDialog*>("reviewAdvice"); QVERIFY(dialog);
+        auto* close = buttonNamed(*dialog, "Close"); QVERIFY(close); close->click();
+        QVERIFY(!window.inspect()["status"].toString().contains("Export failed"));
+        QVERIFY(!window.inspect()["adviceDialog"].toObject()["open"].toBool());
+    }
+    void letterboxFollowsThePalette() {
+        const auto scheme = Theme::scheme();
+        const auto restore = qScopeGuard([&] { Theme::setScheme(scheme); });
+        for (const auto theme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(theme);
+            FrameView frame; frame.setCanvas({160, 90}); frame.resize(200, 200);
+            QImage image(160, 90, QImage::Format_RGB32); image.fill(Qt::red);
+            frame.setFrame(image, 0); frame.show();
+            const auto rendered = frame.grab().toImage();
+            QCOMPARE(rendered.pixelColor(0, 0), Theme::current().bg);
+            QCOMPARE(rendered.pixelColor(100, 100), QColor(Qt::red));
+        }
+    }
     void replacingVisibleStatusShowsTextAndRecoveryActions() {
         ReviewWindow window(options(), config());
         window.show();
@@ -1115,12 +1178,11 @@ private slots:
         auto* dismiss = buttonNamed(window, "Dismiss");
         auto* fix = buttonNamed(window, "Use MP4 (H.264)");
         QVERIFY(dismiss && fix);
-        dismiss->click();
+        fix->click();
+        QVERIFY(!window.inspect()["adviceDialog"].toObject()["open"].toBool());
+        dismiss = buttonNamed(window, "Dismiss"); QVERIFY(dismiss); dismiss->click();
         QVERIFY(!window.inspect()["status"].toString().contains(failure));
         QApplication::processEvents();
-        fix = buttonNamed(window, "Use MP4 (H.264)");
-        QVERIFY(fix);
-        fix->click();
         QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
         QVERIFY(!row->isVisible());
     }

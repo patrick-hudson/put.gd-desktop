@@ -352,6 +352,7 @@ int main(int argc,char** argv){
   review.drive({{"action","seek"},{"time",10000000}});
   review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31-review-blur-selected")||!inspected(review,"31-review-blur-selected"))return 2;
   {const auto size=review.size();review.resize(1060,size.height());if(!shot(review,"31b-review-strength-1060"))return 2;review.resize(size);}
+  {auto many=edit;for(int i=2;i<8;++i){auto mask=solid;mask.id=QStringLiteral("m-extra-%1").arg(i);many.masks.append(mask);}review.setEdit(many);review.drive({{"action","selectMask"},{"maskId","m-solid"}});if(!shot(review,"31c-review-many-lanes")||!inspected(review,"31c-review-many-lanes"))return 2;review.setEdit(edit);review.drive({{"action","selectMask"},{"maskId","m-blur"}});}
   review.resize(review.minimumSizeHint());if(!shot(review,"32-review-minimum")||!inspected(review,"32-review-minimum"))return 2;
   review.resize(record::ReviewWindow::defaultSize());
   // Keyboard mask editing: the frame focused by Tab, the selected cover's ring.

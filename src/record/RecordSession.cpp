@@ -585,6 +585,7 @@ void RecordSession::openReview() {
         emit guard->event({{"event", "configChanged"}, {"config", config.toJson()}});
     });
     connect(review_, &ReviewWindow::uploadRequested, this, [guard](quint64 revision) { if (guard) emit guard->event({{"event", "uploadRequested"}, {"revision", double(revision)}}); });
+    connect(review_, &ReviewWindow::retryExportRequested, this, [guard] { if (guard) emit guard->event({{"event", "retryExportRequested"}}); });
     connect(review_, &ReviewWindow::saveCopyRequested, this, [guard](const QString& path, quint64 revision) { if (guard) emit guard->event({{"event", "saveCopyRequested"}, {"path", path}, {"revision", double(revision)}}); });
     connect(review_, &ReviewWindow::cancelRequested, this, [guard] { if (!guard) return; guard->cancelLocal(); emit guard->event({{"event", "cancelled"}}); });
     review_->show();

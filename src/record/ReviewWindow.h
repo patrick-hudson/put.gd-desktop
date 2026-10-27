@@ -111,7 +111,7 @@ public:
     void setPlayhead(qint64 us);
     qint64 playhead() const { return playhead_; }
     qint64 duration() const { return duration_; }
-    // Concurrent masks always have distinct lanes; one is visible at a time, in its own 32 px interaction row.
+    // Concurrent masks always have distinct lanes; two are visible at a time, in its own 32 px interaction row.
     int lanes() const { return lanes_; }
     // Geometry for tests and the review session method: the track, a time's x
     // and the bar of a mask.
@@ -184,7 +184,7 @@ public:
     // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|resetTrim|
     // addMask|selectMask|placeMask|setMaskIn|setMaskOut|strength|removeMask|
     // useSolidCover|format|trimToLimit|dismissStatus|dismissBlurTip|showAdvice|
-    // showInFolder|copyPath|dismissSavedCopy|retryPreview|
+    // showInFolder|copyPath|dismissSavedCopy|retryExport|retryPreview|
     // saveCopyDialog|closeFileDialog|discard|keepReviewing|confirmDiscard, ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
     // window's state (inspect) after the action, or an error.
@@ -199,6 +199,7 @@ signals:
     void editProposed(quint64 revision, const QJsonArray& commands);
     void configChanged(const RecordingConfig&);
     void uploadRequested(quint64 revision);
+    void retryExportRequested();
     void saveCopyRequested(const QString& path, quint64 revision);
     void cancelRequested();
 protected:
@@ -278,10 +279,9 @@ private:
     Graphite::ElidedLabel* destination_ = nullptr;
     QWidget* destinationRow_ = nullptr;
     QLabel* destinationFull_ = nullptr;
-    bool destinationAbove_ = false;
     QGridLayout* footerGrid_ = nullptr;
     QWidget* outputTools_ = nullptr;
-    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
+    QLabel *notice_ = nullptr, *time_ = nullptr, *playbackStatus_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
     // Errors, warnings and privacy guidance with their actions; shown only when there are any.
     QWidget* statusRow_ = nullptr;
     QVBoxLayout* statusLines_ = nullptr;

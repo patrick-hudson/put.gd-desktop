@@ -69,6 +69,7 @@ private:
         QJsonObject progress;
         // The latest saveCopy/upload export: {command, status, revision, path?, bytes?, durationUs?, error?}.
         QJsonObject lastExport;
+        QJsonObject lastExportRequest;
         std::optional<bool> overlayExcluded;
         // outside | inside | hidden | compositor: where the control bar ended up.
         QString overlayPlacement;
@@ -111,6 +112,7 @@ private:
     void commandSession(const QString& command, const QJsonObject& params, JsonReply);
     // `reply` answers once the export starts (or is refused); `done`, when
     // given, runs with the export's outcome.
+    void retryExport(JsonReply reply, JsonReply done = {});
     void exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done = {});
     RecordingBackend::Reply marshal(quint64 generation, std::function<void(Error, QJsonObject)>);
     QString stagingRoot_;

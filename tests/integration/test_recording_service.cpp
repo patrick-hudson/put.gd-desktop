@@ -373,6 +373,18 @@ private slots:
   h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",3}});
   PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(h.backend->exports,2);QCOMPARE(journal.operation(id).items.first().artifact.mime,QString("video/mp4"));
  }
+ void retryFromReviewRepeatsOnlyTheFailedUpload(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  QCOMPARE(journal.operation(id).items.size(),0);
+  h.backend->failExport=false;
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
+  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));
+  QCOMPARE(h.backend->exports,2);QCOMPARE(journal.operation(id).items.size(),1);
+ }
  void serverRejectsMalformedRequestsBeforeTheBackend(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
   const QList<QPair<QString,QJsonObject>> bad{
@@ -547,6 +559,13 @@ private slots:
   h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["lastExport"].toObject()["status"].toString(),QString("failed"));QCOMPARE(inspected["lastExport"].toObject()["error"].toObject()["code"].toString(),QString("recording_export_failed"));
   QVERIFY(!QFileInfo::exists(failedPath));QCOMPARE(h.backend->log.count("savedCopy"),1);h.backend->failExport=false;
+  // Retry through the production CLI keeps the failed local target and cannot publish it.
+  const auto [retryExit,retried]=cli("recording.review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(retryExit,0);QVERIFY(retried["ok"].toBool());
+  QCOMPARE(retried["result"].toObject()["lastExport"].toObject()["path"].toString(),failedPath);
+  h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  QVERIFY(QFileInfo::exists(failedPath));QCOMPARE(journal.operation(id).items.size(),0);
+  QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
   // Upload: acknowledged at the start of its export; the operation then carries the outcome.
   const auto [uploadExit,uploaded]=cli("recording.upload",{{"id",id},{"revision",1}});
   QVERIFY2(uploaded["ok"].toBool(),QJsonDocument(uploaded).toJson().constData());QCOMPARE(uploadExit,0);
