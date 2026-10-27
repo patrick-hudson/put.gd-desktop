@@ -244,13 +244,15 @@ private slots:
   if(setupPending){window->findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(bool(complete));}const auto output=dir.filePath("saved-before-quit");fixture.client.replyDelayMs["settings.save"]=350;bool quit=false;QString savedAtQuit;fixture.server.setUiQuit([&]{quit=true;savedAtQuit=settings.document()["archive"].toObject()["root"].toString();});window->findChild<QLineEdit*>("archiveRoot")->setText(output);window->findChild<QAction*>("quitApplication")->trigger();
   if(setupPending){putgd::test::settle(500);PUTGD_TRY_VERIFY(!quit);complete({});}PUTGD_TRY_VERIFY(quit);QCOMPARE(savedAtQuit,output);
  }
+ void allMainPagesRemainVisibleWithNativeStyleRowMetrics_data(){QTest::addColumn<int>("frame");QTest::newRow("native")<<-1;QTest::newRow("custom")<<1;}
  void allMainPagesRemainVisibleWithNativeStyleRowMetrics(){
+  QFETCH(int,frame);Graphite::WindowHeader::setCustomFrameOverride(frame);auto restore=qScopeGuard([]{Graphite::WindowHeader::setCustomFrameOverride(0);});
   // Graphite: the pages are one centred segmented control in the header.
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);auto* navigation=window.findChild<QTabBar*>("mainNavigation");QVERIFY(navigation);window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   for(int row=0;row<navigation->count();++row){navigation->setCurrentIndex(row);PUTGD_TRY_VERIFY(navigation->rect().contains(navigation->tabRect(row)));PUTGD_TRY_COMPARE(window.findChild<QStackedWidget*>("mainPages")->currentIndex(),row);}
   QCOMPARE(QStringList({navigation->tabText(0),navigation->tabText(1),navigation->tabText(2)}),QStringList({"History","Destinations","Settings"}));
   // Centred in the window header.
-  const int centre=navigation->mapTo(&window,navigation->rect().center()).x();QVERIFY2(std::abs(centre-window.width()/2)<=4,qPrintable(QString::number(centre)));
+  for(const int width:{1060,900,1300,1060}){window.resize(width,680);QApplication::processEvents();const int centre=navigation->mapTo(&window,navigation->rect().center()).x();QVERIFY2(std::abs(centre-window.width()/2)<=4,qPrintable(QString("centre %1 in %2").arg(centre).arg(window.width())));}
  }
  void railActionsFlushSettingsAndHideScreenWindowsBeforeDispatch_data(){QTest::addColumn<QString>("action");for(const auto& name:Settings::actionNames())QTest::newRow(qPrintable(name))<<name;}
  void railActionsFlushSettingsAndHideScreenWindowsBeforeDispatch(){

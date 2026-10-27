@@ -2354,7 +2354,9 @@ void WindowHeader::syncWindowState() {
     if (balanced) { leading_->setMinimumWidth(side); trailing_->setMinimumWidth(side); }
     if (docName_) { docName_->setAlignment(balanced ? Qt::AlignCenter : Qt::AlignLeft | Qt::AlignVCenter); docState_->setAlignment(docName_->alignment()); }
     row_->setStretch(1, balanced ? 1 : 0);
-    row_->setStretch(3, 1);
+    // Before setCentre() there are only four items; the trailing widget
+    // must never inherit the stretch intended for the spacer before it.
+    row_->setStretch(row_->count() - 2, 1);
     setProperty("balancedTitle", balanced);
 }
 bool WindowHeader::eventFilter(QObject* watched, QEvent* event) {
