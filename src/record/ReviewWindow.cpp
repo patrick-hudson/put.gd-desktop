@@ -923,6 +923,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     for (auto* fact : {exportAudio_, draft}) {
         auto* divider = new Graphite::Surface("bg", Qt::LeftEdge, facts);
         divider->setFixedWidth(1);
+        if (fact == exportAudio_) audioDivider_ = divider;
         factsRow->addWidget(divider);
         factsRow->addWidget(fact);
     }
@@ -1291,6 +1292,7 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
 void ReviewWindow::refreshStatus() {
     if (message_.tone != "error") footerError_ = false;
     errorDetails_->setVisible(footerError_);
+    placeDestination();
     auto entries = statusEntries();
     if (footerError_) entries.erase(std::remove_if(entries.begin(), entries.end(), [this](const auto& entry) { return entry.tone == "error" && entry.text == message_.text; }), entries.end());
     if (compactStatus_) {
@@ -1479,8 +1481,25 @@ QSize ReviewWindow::minimumSizeHint() const {
         width += 8;
     }
 }
+// Where Upload sends the clip must stay readable: on a narrow footer the
+// audio fact steps aside (Format's tooltip still says it) and the error link
+// shortens before the destination would elide.
 void ReviewWindow::placeDestination() {
-    if (destination_) destination_->setToolTip(options_.uploadSummary);
+    if (!destination_) return;
+    destination_->setToolTip(options_.uploadSummary);
+    if (!audioDivider_ || !errorDetails_) return;
+    const auto* facts = destination_->parentWidget();
+    const int need = destination_->fontMetrics().horizontalAdvance(options_.uploadSummary) + 8;
+    const auto errorWidth = [this](const QString& text) { return errorDetails_->isVisibleTo(this) ? errorDetails_->fontMetrics().horizontalAdvance(text) + 32 : 0; };
+    const int draftWidth = 1 + 16 + exportAudio_->fontMetrics().horizontalAdvance(QStringLiteral("Not uploaded"));
+    const int audioWidth = 1 + 16 + exportAudio_->fontMetrics().horizontalAdvance(exportAudio_->text());
+    const int room = facts->width() - draftWidth;
+    const bool full = room - audioWidth - errorWidth(QStringLiteral("Recording error · Details…")) >= need;
+    const bool shortError = !full && room - audioWidth - errorWidth(QStringLiteral("Error details…")) >= need;
+    exportAudio_->setVisible(full || shortError);
+    audioDivider_->setVisible(full || shortError);
+    errorDetails_->setText(full ? QStringLiteral("Recording error · Details…") : QStringLiteral("Error details…"));
+    format_->setToolTip(format_->currentData(Qt::ToolTipRole).toString() + (exportAudio_->isVisible() ? QString{} : QStringLiteral("\n") + exportAudio_->text()));
 }
 QJsonObject ReviewWindow::inspect() const {
     auto rect = [](const QRect& r) { return QJsonArray{r.x(), r.y(), r.width(), r.height()}; };

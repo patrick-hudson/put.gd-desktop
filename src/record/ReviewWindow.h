@@ -274,6 +274,7 @@ private:
     FrameView* view_ = nullptr;
     ReviewTimeline* timeline_ = nullptr;
     QLabel* destination_ = nullptr;
+    QWidget* audioDivider_ = nullptr;  // the audio fact's hairline, hidden with it on a narrow footer
     QGridLayout* footerGrid_ = nullptr;
     QWidget* outputTools_ = nullptr;
     QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *strengthLabel_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
