@@ -358,6 +358,7 @@ int main(int argc,char** argv){
   review.drive({{"action","selectMask"},{"maskId","m-solid"}});
   if(!shot(review,"30-review")||!inspected(review,"30-review"))return 2;
   review.drive({{"action","seek"},{"time",1000000}});if(!shot(review,"30a-review-mask-inactive")||!inspected(review,"30a-review-mask-inactive"))return 2;
+  review.drive({{"action","seek"},{"time",25000000}});if(!shot(review,"30b-review-mask-ended")||!inspected(review,"30b-review-mask-ended"))return 2;
   review.drive({{"action","seek"},{"time",10000000}});
   review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31-review-blur-selected")||!inspected(review,"31-review-blur-selected"))return 2;
   {const auto size=review.size();review.resize(1060,size.height());if(!shot(review,"31b-review-strength-1060"))return 2;review.resize(size);}
