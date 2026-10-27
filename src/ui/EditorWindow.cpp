@@ -4,6 +4,7 @@
 #include "RedesignTheme.h"
 #include "VisualStyle.h"
 #include "Graphite.h"
+#include "BlurRadius.h"
 #include "platform/HostOpen.h"
 #include <QAction>
 #include <QClipboard>
@@ -152,12 +153,8 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  widthRow_=column(panel,layout);layout->addWidget(fieldLabel("Line width",widthRow_));
  width_=VisualStyle::choiceBox(widthRow_);width_->addItem("Thin · 2 px",2);width_->addItem("Medium · 4 px",4);width_->addItem("Thick · 8 px",8);width_->setCurrentIndex(1);width_->setAccessibleName("Line width");layout->addWidget(width_);
  properties->addWidget(widthRow_);
- blurRow_=column(panel,layout);auto* blurLabelRow=new QHBoxLayout;blurLabelRow->setContentsMargins(0,0,0,0);blurLabelRow->addWidget(fieldLabel("Blur radius —",blurRow_));layout->addLayout(blurLabelRow);
- strength_=new QSlider(Qt::Horizontal,blurRow_);strength_->setRange(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur);strength_->setValue(12);strength_->setAccessibleName("Blur radius");strength_->setObjectName("blurStrength");
- const auto strengthDescription=QString("Blur radius in image pixels, %1 to %2").arg(strength_->minimum()).arg(strength_->maximum());strength_->setAccessibleDescription(strengthDescription);
- auto* strengthRow=new QHBoxLayout;strengthRow->setContentsMargins(0,0,0,0);strengthRow->setSpacing(8);strengthRow->addWidget(strength_,1);
- strengthValue_=new QLabel(QString("%1 px").arg(strength_->value()),blurRow_);strengthValue_->setObjectName("blurStrengthValue");strengthValue_->setAccessibleName("Blur radius value");strengthValue_->setAccessibleDescription(strengthDescription);strengthValue_->setAlignment(Qt::AlignRight|Qt::AlignVCenter);strengthValue_->setMinimumWidth(strengthValue_->fontMetrics().horizontalAdvance(QString("%1 px").arg(strength_->maximum())));blurLabelRow->addWidget(strengthValue_);layout->addLayout(strengthRow);
- connect(strength_,&QSlider::valueChanged,strengthValue_,[this](int value){strengthValue_->setText(QString("%1 px").arg(value));});
+ auto* blurRadius=new BlurRadius(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur,12,false,panel);blurRow_=blurRadius;
+ strength_=blurRadius->slider();strength_->setObjectName("blurStrength");strengthValue_=blurRadius->spinBox();strengthValue_->setObjectName("blurStrengthValue");
  properties->addWidget(blurRow_);
  textRow_=column(panel,layout);layout->addWidget(fieldLabel("Font",textRow_));
  font_=new QFontComboBox(textRow_);font_->setObjectName("textFont");font_->setAccessibleName("Font");font_->setCurrentFont(QFont());font_->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);font_->setMinimumContentsLength(8);layout->addWidget(font_);
@@ -186,7 +183,12 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  layout->addLayout(fields);properties->addWidget(geometryRow_);
  remove_=new QPushButton("Remove mark",panel);remove_->setObjectName("removeMark");remove_->setIcon(VisualStyle::icon("remove"));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");properties->addWidget(remove_,0,Qt::AlignLeft);
  auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Graphite::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
- auto* keyboardText=new QLabel("Click a mark, or use [ and ] to cycle marks. Arrows move; Shift+arrows resize; Ctrl uses 10 px steps. Tab focuses properties; Delete removes; Escape deselects. Insert places a mark. Ctrl+Z undoes; Ctrl+Shift+Z redoes.",panel);keyboardText->setObjectName("editorKeyboardHelpText");keyboardText->setWordWrap(true);keyboardText->setTextFormat(Qt::PlainText);VisualStyle::role(keyboardText,"secondary");keyboardText->hide();properties->addWidget(keyboardText);
+ auto* keyboardText=new QWidget(panel);keyboardText->setObjectName("editorKeyboardHelpText");
+ auto* keyboardGrid=new QGridLayout(keyboardText);keyboardGrid->setContentsMargins(0,0,0,0);keyboardGrid->setHorizontalSpacing(8);keyboardGrid->setVerticalSpacing(4);
+ const QList<QPair<QString,QString>> shortcuts{{"[ / ]","Cycle marks"},{"Arrows","Move"},{"Shift+arrows","Resize"},{"Ctrl","Use 10 px steps"},{"Tab","Focus properties"},{"Delete","Remove mark"},{"Escape","Deselect"},{"Insert","Place mark"},{"Ctrl+Z","Undo"},{"Ctrl+Shift+Z","Redo"}};
+ QStringList keyboardSummary;int shortcutRow=0;
+ for(const auto& [keys,description]:shortcuts){auto* key=new QLabel(keys,keyboardText);Graphite::setMono(key);VisualStyle::role(key,"secondary");auto* meaning=new QLabel(description,keyboardText);meaning->setWordWrap(true);VisualStyle::role(meaning,"secondary");keyboardGrid->addWidget(key,shortcutRow,0,Qt::AlignTop);keyboardGrid->addWidget(meaning,shortcutRow++,1,Qt::AlignTop);keyboardSummary.append(keys+": "+description);}
+ keyboardGrid->setColumnStretch(1,1);keyboardText->setAccessibleName("Keyboard help");keyboardText->setProperty("text",keyboardSummary.join('\n'));keyboardText->hide();properties->addWidget(keyboardText);
  connect(keyboardHelp,&QToolButton::toggled,this,[this,keyboardText](bool open){keyboardText->setVisible(open);if(open)QTimer::singleShot(0,this,[this,keyboardText]{if(!keyboardText->isHidden())propertiesScroll_->ensureWidgetVisible(keyboardText,0,12);});});
  properties->addStretch(1);
  auto* document=new Graphite::Surface("surface",Qt::TopEdge,side);document->setObjectName("editorDocument");document_=document;
@@ -243,7 +245,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   if(const auto* shape=doc_.find(canvas_->selected())){
    if(shape->kind==editor::Shape::Kind::Highlight)highlightColor_=shape->color;else if(shape->kind!=editor::Shape::Kind::Redact&&shape->kind!=editor::Shape::Kind::Blur)annotationColor_=shape->color;
    width_->blockSignals(true);textSize_->blockSignals(true);font_->blockSignals(true);strength_->blockSignals(true);
-   width_->setCurrentIndex(std::max(0,width_->findData(shape->width)));textSize_->setValue(shape->fontPixels);strength_->setValue(shape->strength);strengthValue_->setText(QString("%1 px").arg(shape->strength));
+   width_->setCurrentIndex(std::max(0,width_->findData(shape->width)));textSize_->setValue(shape->fontPixels);strength_->setValue(shape->strength);strengthValue_->setValue(shape->strength);
    if(shape->kind==editor::Shape::Kind::Text)font_->setCurrentFont(shape->fontFamily.isEmpty()?QFont():QFont(shape->fontFamily));
    width_->blockSignals(false);textSize_->blockSignals(false);font_->blockSignals(false);strength_->blockSignals(false);
    syncStyle(false);return;
@@ -633,7 +635,7 @@ QJsonObject EditorWindow::viewState() const {
   {"lastShowInFolder",lastShowInFolder_.isEmpty()?QJsonValue():QJsonValue(lastShowInFolder_)},{"lastCopiedPath",lastCopiedPath_.isEmpty()?QJsonValue():QJsonValue(lastCopiedPath_)},
   {"cancelLabel",cancel_->text()},{"destination",QJsonObject{{"text",destination_->text()},{"above",destinationAbove_}}},
   {"preparationFailure",notice_->isHidden()?QJsonValue():QJsonValue(QJsonObject{{"text",noticeText_->text()}})},
-  {"keyboardHelp",QJsonObject{{"open",findChild<QToolButton*>("editorKeyboardHelp")->isChecked()},{"text",findChild<QLabel*>("editorKeyboardHelpText")->text()}}},
+  {"keyboardHelp",QJsonObject{{"open",findChild<QToolButton*>("editorKeyboardHelp")->isChecked()},{"text",findChild<QWidget*>("editorKeyboardHelpText")->property("text").toString()}}},
   {"discardConfirmation",QJsonObject{{"open",bool(discard_)},{"text",discard_?QJsonValue(discard_->property("confirmationText").toString()):QJsonValue()}}}};
 }
 

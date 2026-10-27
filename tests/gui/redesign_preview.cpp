@@ -396,6 +396,7 @@ int main(int argc,char** argv){
   qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","60000");
   record::ReviewWindow::Options privateOptions=o;privateOptions.destination="Proton Drive";privateOptions.sharingMode="private";privateOptions.uploadSummary="Private upload to Proton Drive";
   record::ReviewWindow privateReview(privateOptions,config);privateReview.show();if(auto* view=privateReview.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);if(!shot(privateReview,"43-review-private-destination")||!inspected(privateReview,"43-review-private-destination"))return 2;privateReview.hide();
+  {auto longOptions=o;longOptions.destination="Project archive for customer support in the European Union";longOptions.uploadSummary="Upload to "+longOptions.destination+" · Shared link";record::ReviewWindow longReview(longOptions,config);longReview.setEdit(edit);longReview.show();if(auto* view=longReview.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);if(!shot(longReview,"43a-review-long-destination")||!inspected(longReview,"43a-review-long-destination"))return 2;longReview.hide();}
   record::ReviewWindow crowded(o,config);RecordingEdit many;many.revision=1;
   for(int i=0;i<8;++i){auto m=solid;m.id=QString("lane-%1").arg(i);m.start=1000000;m.end=29000000;many.masks.append(m);}
   crowded.setEdit(many);crowded.show();if(auto* view=crowded.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);

@@ -13,6 +13,7 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QLabel>
+#include <QGridLayout>
 #include <QRegularExpression>
 #include <QScopeGuard>
 #include <QScrollArea>
@@ -48,8 +49,9 @@ private slots:
   editor::EditDocument doc(QImage(400,260,QImage::Format_RGB32));EditorWindow window(doc);window.show();
   QString code,message;auto state=window.viewCommand({{"action","keyboardHelp"}},code,message);
   QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(state["keyboardHelp"].toObject()["open"].toBool());
-  auto* help=window.findChild<QToolButton*>("editorKeyboardHelp");auto* text=window.findChild<QLabel*>("editorKeyboardHelpText");
-  QVERIFY(help&&text&&text->isVisible());QVERIFY(text->text().contains("Shift+arrows"));QCOMPARE(help->accessibleDescription(),QString("Expanded"));
+  auto* help=window.findChild<QToolButton*>("editorKeyboardHelp");auto* text=window.findChild<QWidget*>("editorKeyboardHelpText");
+  QVERIFY(help&&text&&text->isVisible());QVERIFY(text->property("text").toString().contains("Shift+arrows"));auto* grid=qobject_cast<QGridLayout*>(text->layout());QVERIFY(grid);QCOMPARE(grid->columnCount(),2);QCOMPARE(grid->verticalSpacing(),4);QCOMPARE(grid->rowCount(),10);
+  for(int row=0;row<grid->rowCount();++row){auto* key=qobject_cast<QLabel*>(grid->itemAtPosition(row,0)->widget());auto* meaning=qobject_cast<QLabel*>(grid->itemAtPosition(row,1)->widget());QVERIFY(key&&meaning);QCOMPARE(key->font().family(),Graphite::monoFamily());QCOMPARE(meaning->font().family(),Graphite::uiFamily());}QCOMPARE(help->accessibleDescription(),QString("Expanded"));
   QApplication::processEvents();auto* scroll=window.findChild<QScrollArea*>("editorPropertiesScroll");QVERIFY(scroll->viewport()->rect().contains(QRect(text->mapTo(scroll->viewport(),QPoint()),text->size())));
   help->setFocus();QTest::keyClick(help,Qt::Key_Space);QVERIFY(!window.viewState()["keyboardHelp"].toObject()["open"].toBool());QCOMPARE(help->accessibleDescription(),QString("Collapsed"));
   window.allowClose();
@@ -70,10 +72,11 @@ private slots:
  }
  void blurValueAndHandleFollowTheActualSlider(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.selectTool(Tool::Blur);
-  auto* slider=window.findChild<QSlider*>("blurStrength");auto* value=window.findChild<QLabel*>("blurStrengthValue");QVERIFY(slider&&value);
+  auto* slider=window.findChild<QSlider*>("blurStrength");auto* value=window.findChild<QSpinBox*>("blurStrengthValue");QVERIFY(slider&&value);
   QCOMPARE(value->accessibleDescription(),slider->accessibleDescription());
-  for(const int strength:{slider->minimum(),18,slider->maximum()}){slider->setValue(strength);QCOMPARE(value->text(),QString("%1 px").arg(strength));QCOMPARE(window.canvas().style().strength,strength);}
-  add(doc,{{"kind","blur"},{"rect",QJsonArray{10,10,50,20}},{"strength",24}});window.documentEdited();window.canvas().select(doc.shapes().last().id);QCOMPARE(value->text(),QString("24 px"));
+  for(const int strength:{slider->minimum(),18,slider->maximum()}){slider->setValue(strength);QCOMPARE(value->value(),strength);QCOMPARE(window.canvas().style().strength,strength);}
+  value->setValue(22);QCOMPARE(slider->value(),22);QCOMPARE(window.canvas().style().strength,22);
+  add(doc,{{"kind","blur"},{"rect",QJsonArray{10,10,50,20}},{"strength",24}});window.documentEdited();window.canvas().select(doc.shapes().last().id);QCOMPARE(value->value(),24);
   class Slider final:public QSlider {public:using QSlider::QSlider;QStyleOptionSlider option()const{QStyleOptionSlider value;initStyleOption(&value);return value;}};
   for(const auto orientation:{Qt::Horizontal,Qt::Vertical})for(const bool inverted:{false,true})for(const auto direction:{Qt::LeftToRight,Qt::RightToLeft}){
    Slider control(orientation);control.setLayoutDirection(direction);control.setRange(0,100);control.setValue(50);control.setInvertedAppearance(inverted);control.resize(orientation==Qt::Horizontal?QSize(260,32):QSize(32,260));control.show();QVERIFY(putgd::test::waitForWindowExposed(&control));

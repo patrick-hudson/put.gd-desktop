@@ -1,6 +1,7 @@
 #include "record/BarPlacement.h"
 #include "record/Overlays.h"
 #include "ui/Theme.h"
+#include "ui/Graphite.h"
 #include "ui/RegionSelection.h"
 #include <QApplication>
 #include <QCheckBox>
@@ -100,6 +101,28 @@ private slots:
         audio->click(); QVERIFY(!bar.requestedAudio() && !bar.effectiveAudio());
         choose("gif"); choose("mp4");
         QVERIFY(!audio->isChecked() && !bar.effectiveAudio());
+    }
+    void unavailableAudioRemainsReadableInBothSchemes() {
+        const auto previous = putgd::Theme::scheme();
+        const auto restore = qScopeGuard([previous] { putgd::Theme::setScheme(previous); });
+        for (const auto scheme : {putgd::Theme::Scheme::Dark, putgd::Theme::Scheme::Light}) {
+            putgd::Theme::setScheme(scheme);
+            putgd::RecordingConfig config; config.audio.system = true;
+            ControlBar bar(barOptions(), config); bar.show();
+            auto* audio = bar.findChild<QCheckBox*>();
+            auto* formats = bar.findChild<QComboBox*>("format");
+            QVERIFY(audio && formats);
+            for (int index = 0; index < formats->count(); ++index) {
+                formats->setCurrentIndex(index);
+                const bool silent = formats->itemData(index).toStringList().first() == "gif" || formats->itemData(index).toStringList().first() == "webp";
+                QCOMPARE(putgd::Graphite::isLocked(audio), silent);
+                QVERIFY(audio->isChecked() && bar.requestedAudio());
+                if (silent) {
+                    QCOMPARE(audio->palette().color(QPalette::Disabled, QPalette::WindowText), putgd::Theme::current().textMuted);
+                    QVERIFY(putgd::Theme::contrast(audio->palette().color(QPalette::Disabled, QPalette::WindowText), putgd::Theme::current().bg) >= 4.5);
+                }
+            }
+        }
     }
     void recordingSelectorCyclesActualFixtureDisplays() {
         const auto screens = QGuiApplication::screens();

@@ -435,6 +435,7 @@ void ControlBar::refresh() {
     // Once recording starts these are information, not disabled choices.
     const bool withSound = config_.audio.system && !config_.silent();
     audio_->setEnabled(ready && options_.audioSupported && !config_.silent());
+    Graphite::setLocked(audio_, !audio_->isEnabled());
     audio_->blockSignals(true);
     audio_->setChecked(audioIntent_);
     audio_->blockSignals(false);

@@ -14,6 +14,7 @@
 
 class QComboBox;
 class QGridLayout;
+class QHBoxLayout;
 class QLabel;
 class QMessageBox;
 class QPushButton;
@@ -268,14 +269,19 @@ private:
     bool minimumPending_ = false, initialFitDone_ = false;
     QWidget *trimGroup_ = nullptr, *maskGroup_ = nullptr;
     QGridLayout* toolsGrid_ = nullptr;
+    QGridLayout* transportGrid_ = nullptr;
+    QHBoxLayout* transportRow_ = nullptr;
+    bool toolsPlaced_ = false, toolsStacked_ = false;
     Graphite::WindowHeader* header_ = nullptr;
     FrameView* view_ = nullptr;
     ReviewTimeline* timeline_ = nullptr;
     Graphite::ElidedLabel* destination_ = nullptr;
-    QWidget* audioDivider_ = nullptr;  // the audio fact's hairline, hidden with it on a narrow footer
+    QWidget* destinationRow_ = nullptr;
+    QLabel* destinationFull_ = nullptr;
+    bool destinationAbove_ = false;
     QGridLayout* footerGrid_ = nullptr;
     QWidget* outputTools_ = nullptr;
-    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *strengthLabel_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
+    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
     // Errors, warnings and privacy guidance with their actions; shown only when there are any.
     QWidget* statusRow_ = nullptr;
     QVBoxLayout* statusLines_ = nullptr;
@@ -293,7 +299,7 @@ private:
     QToolButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addBlur_ = nullptr, *addSolid_ = nullptr, *removeMask_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr;
     QPushButton *errorDetails_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
     FileDialog* chooser_ = nullptr;
-    QWidget *maskTools_ = nullptr;
+    QWidget *maskTools_ = nullptr, *strengthControl_ = nullptr;
     QShortcut *escape_ = nullptr, *place_ = nullptr, *placeEnter_ = nullptr;
     QSpinBox* strength_ = nullptr;
     QComboBox* format_ = nullptr;

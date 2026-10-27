@@ -113,6 +113,28 @@ private slots:
         QVERIFY(audio && audio->isVisible());
         QVERIFY(audio->text().startsWith("Silent preview · "));
     }
+    void stackedToolsKeepTheirScopeAndTrimLabels() {
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.resize(window.minimumSizeHint().width(), 680); QApplication::processEvents();
+        auto* trim = window.findChild<QWidget*>("trimControls");
+        auto* masks = window.findChild<QWidget*>("maskControls");
+        auto* interval = window.findChild<QLabel*>("maskActiveInterval");
+        QVERIFY(masks->isAncestorOf(interval)); QVERIFY(!trim->isAncestorOf(interval));
+        QVERIFY(masks->y() > trim->geometry().bottom());
+        for (const auto& name : {QString("Set trim start"), QString("Set trim end"), QString("Reset trim")}) {
+            QToolButton* found = nullptr;
+            for (auto* button : trim->findChildren<QToolButton*>()) if (button->accessibleName() == name) found = button;
+            QVERIFY(found); QCOMPARE(found->toolButtonStyle(), Qt::ToolButtonTextBesideIcon); QVERIFY(!found->text().isEmpty());
+        }
+        QVERIFY(trim->findChild<QLabel*>("muted")->text().startsWith("Kept: "));
+        QToolButton *redact = nullptr, *blur = nullptr;
+        for (auto* button : masks->findChildren<QToolButton*>()) {
+            if (button->accessibleName() == "Redact") redact = button;
+            if (button->accessibleName() == "Blur") blur = button;
+        }
+        QVERIFY(redact && blur); QVERIFY(redact->x() < blur->x());
+    }
     void closedChoicesIgnoreWheel() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -323,6 +345,12 @@ private slots:
         QVERIFY(target && target->isVisible() && target->toolTip() == o.uploadSummary);
         QVERIFY(target->mapTo(&window, target->rect().bottomLeft()).y() < upload->mapTo(&window, QPoint()).y());
         QVERIFY(window.rect().contains(QRect(target->mapTo(&window, QPoint()), target->size())));
+        auto* full = window.findChild<QLabel*>("uploadDestinationWrapped");
+        QVERIFY(full && full->isVisible() && full->wordWrap());
+        QCOMPARE(full->text(), o.uploadSummary);
+        QVERIFY(full->width() > window.width() - 100);
+        auto* audio = window.findChild<QLabel*>("exportAudioSummary");
+        QVERIFY(audio->mapTo(&window, QPoint()).y() >= full->mapTo(&window, full->rect().bottomLeft()).y());
         QVERIFY(state["audio"].toString().startsWith("Silent preview"));
         QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->isVisible());
     }
@@ -383,7 +411,10 @@ private slots:
         PUTGD_TRY_VERIFY(label->fullTextPopup());
         auto* popup = label->fullTextPopup();
         const auto text = popup->findChild<QLabel*>("elidedLabelFullTextValue")->text();
-        QVERIFY(text.contains(o.destination)); QVERIFY(text.contains("Sharing: Private upload"));
+        QCOMPARE(text, "Destination: " + o.destination + "\nSharing: Private upload");
+        auto* value = popup->findChild<QLabel*>("elidedLabelFullTextValue");
+        QVERIFY(value->textInteractionFlags() & Qt::TextSelectableByMouse);
+        QVERIFY(value->textInteractionFlags() & Qt::TextSelectableByKeyboard);
         popup->close(); QTest::mouseClick(label, Qt::LeftButton); PUTGD_TRY_VERIFY(label->fullTextPopup());
         label->fullTextPopup()->close();
     }
@@ -586,6 +617,7 @@ private slots:
             auto edit = twoMasks(); edit.trimStart = 2000000; edit.trimEnd = 29000000;
             ReviewWindow window(o, config()); window.setEdit(edit); window.show();
             QVERIFY(putgd::test::waitForWindowExposed(&window));
+            QCOMPARE(window.inspect()["playheadUs"].toDouble(), double(edit.trimStart));
             if (window.height() > 680 || window.inspect()["video"].toObject()["share"].toDouble() < 0.60) {
                 const auto render = qEnvironmentVariable("PUTGD_REVIEW_FAILURE_IMAGE");
                 if (!render.isEmpty()) window.grab().save(render);
@@ -659,7 +691,7 @@ private slots:
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
         QVERIFY(window.findChild<QLabel*>("time")->text().contains("Outside kept part"));
-        QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("27 s"));
+        QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("Kept: 27 s"));
     }
     void adviceOnlyOffersAvailableFormats() {
         auto o = options(); o.codecs["mp4"] = QJsonArray{"h265"};
@@ -1110,7 +1142,7 @@ private slots:
         // Arming Add blur shows it too; its action arms the redaction instead.
         QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}).code.isEmpty());
         QToolButton* addBlur = nullptr;
-        for (auto* b : window.findChildren<QToolButton*>()) if (b->accessibleName() == "Add blur") addBlur = b;
+        for (auto* b : window.findChildren<QToolButton*>()) if (b->accessibleName() == "Blur") addBlur = b;
         QVERIFY(addBlur);
         addBlur->click();
         QCOMPARE(window.inspect()["status"].toString(), guidance);
@@ -1132,7 +1164,7 @@ private slots:
         auto* frame = window.findChild<FrameView*>();
         QVERIFY(frame && frame->focusPolicy() == Qt::StrongFocus);
         QToolButton* addSolid = nullptr;
-        for (auto* b : window.findChildren<QToolButton*>()) if (b->accessibleName() == "Add redaction") addSolid = b;
+        for (auto* b : window.findChildren<QToolButton*>()) if (b->accessibleName() == "Redact") addSolid = b;
         QVERIFY(addSolid);
         addSolid->setFocus(Qt::TabFocusReason);
         QTest::keyClick(addSolid, Qt::Key_Space);
