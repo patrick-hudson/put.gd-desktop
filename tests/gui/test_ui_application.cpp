@@ -435,7 +435,7 @@ private slots:
   auto build=snapshot["build"].toObject();build["version"]="26.1231.99999-nightly";build["dirty"]=false;snapshot["build"]=build;fixture.session.applySnapshot(snapshot);
   auto* version=window.findChild<QPushButton*>("appVersionLink");QVERIFY(version);PUTGD_TRY_VERIFY(version->isVisible());
   auto* update=window.findChild<QPushButton*>("updateAvailable");auto* output=window.findChild<QToolButton*>("captureOutputSummary");auto* navigation=window.findChild<QTabBar*>("mainNavigation");auto* band=window.findChild<QWidget*>("commandBand");
-  QVERIFY(update&&output&&navigation&&band);PUTGD_TRY_VERIFY(update->isVisible());PUTGD_TRY_COMPARE(window.size(),size);QVERIFY2(!output->text().contains('\n')&&output->text().startsWith("Default output: ")&&output->text().contains("Exceptions set"),qPrintable(output->text()));
+  QVERIFY(update&&output&&navigation&&band);PUTGD_TRY_VERIFY(update->isVisible());PUTGD_TRY_COMPARE(window.size(),size);QCOMPARE(output->text(),QString("Mixed outputs"));
   Q_UNUSED(scrolls);
   // Every capture action keeps its own visible button at every width (narrow
   // bands show icons, named in tooltips); Capture region has no duplicate menu.

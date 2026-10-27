@@ -102,10 +102,11 @@ private:
  void fitRails();QWidget *settingsRail_=nullptr,*destinationRail_=nullptr;QListWidget* settingsNavigation_=nullptr;QPushButton* addDestination_=nullptr;
  QTimer* autosave_=nullptr;QPointer<QWidget> destinationPage_;QTabWidget* tabs_=nullptr;QListWidget* destinationList_=nullptr;
  QWidget *linksPanel_=nullptr,*connectionPanel_=nullptr;QPushButton* defaultButton_=nullptr;
+ QPushButton* credentialStoreButton_=nullptr;
  QLabel *credentialStoreReason_=nullptr,*passwordStoreReason_=nullptr,*credentialStorageNotice_=nullptr;
  QLabel* credentialHint_=nullptr;QFormLayout* credentialForm_=nullptr;
  QLabel *configPath_=nullptr,*endpointHint_=nullptr,*linkExample_=nullptr,*destinationStatus_=nullptr;
- void refreshEffectiveLimits();void updateLimitHints();QHash<QString,QLabel*> limitHints_;QJsonObject effectiveLimits_;
+ QToolButton* resourceLimitsToggle_=nullptr;QWidget* resourceLimits_=nullptr;QLabel* uploadReserveHint_=nullptr;void updateResourceLimits();void refreshEffectiveLimits();void updateLimitHints();QHash<QString,QLabel*> limitHints_;QJsonObject effectiveLimits_;
  void refreshUpdateStatus();void checkForUpdates(std::function<void(Error,QJsonObject)> done);
  // The Channel choice (#344): Stable or Nightly, showing this build's own
  // channel while the stored setting is "build" (the default); the build's
