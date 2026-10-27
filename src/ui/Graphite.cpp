@@ -413,6 +413,7 @@ void paintChromeGlyph(QPainter& painter, const QRectF& rect, const QString& name
     else if (name == "restore") { painter.drawRoundedRect(QRectF(3, 7, 10, 10), 1.5, 1.5); painter.drawLine(QPointF(7, 3), QPointF(17, 3)); painter.drawLine(QPointF(17, 3), QPointF(17, 13)); }
     else if (name == "close") { painter.drawLine(QPointF(5, 5), QPointF(15, 15)); painter.drawLine(QPointF(15, 5), QPointF(5, 15)); }
     else if (name == "check") { QPainterPath tick; tick.moveTo(4, 10.5); tick.lineTo(8, 14.5); tick.lineTo(16, 5.5); painter.drawPath(tick); }
+    else if (name == "chevron-up") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::UpArrow, colour); return; }
     else if (name == "chevron-down") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::DownArrow, colour); return; }
     else if (name == "chevron-right") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::RightArrow, colour); return; }
     else if (name == "chevron-left") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::LeftArrow, colour); return; }
