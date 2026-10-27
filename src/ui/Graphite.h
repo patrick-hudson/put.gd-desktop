@@ -28,9 +28,9 @@ constexpr int header = 56, commandBand = 60, statusBand = 26, icon = 18, splitZo
 // chevron (combo boxes and menu buttons keep splitZone for their chevron).
 constexpr int splitArrow = 32;
 constexpr int navRow = 38, destinationRow = 68, historyRow = 76, thumbWidth = 80, thumbHeight = 50;
-constexpr int historySidebar = 184, settingsSidebar = 210, destinationSidebar = 236, inspector = 300;
-// The widest a page sidebar grows for long labels or enlarged text.
-constexpr int sidebarMax = 260;
+constexpr int sidebar = 216, historySidebar = sidebar, settingsSidebar = sidebar, destinationSidebar = sidebar, inspector = 300;
+// All page sidebars use the same scaled width; their rows elide long names.
+constexpr int sidebarMax = sidebar;
 }
 // Type sizes in pixels; weights are 400 and 600 only. Technical values (paths,
 // URLs, prefixes, bucket names, identifiers) use Plex Mono at body size: the
@@ -82,9 +82,7 @@ qreal opticalBaseline(const QFontMetricsF&, const QString&, qreal centre);
 // control heights scale with it. See Graphite.cpp.
 qreal textScale();
 int scaled(int pixels);
-// A page sidebar's width: what its labels, icons and padding need (natural),
-// never under its baseline width and never over Metric::sidebarMax. Rows grow
-// taller with the text; the sidebar does not take the window with them.
+// Fixed scaled sidebar width. Legacy arguments keep existing callers compatible.
 int sidebarWidth(int baseline, int natural);
 // Text vertically centred on its ink, elided to the rectangle.
 void paintText(QPainter&, const QRectF&, const QString&, const QColor&, const QFont&, Qt::Alignment = Qt::AlignLeft | Qt::AlignVCenter, Qt::TextElideMode = Qt::ElideRight);

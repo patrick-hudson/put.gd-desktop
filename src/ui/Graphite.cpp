@@ -327,7 +327,7 @@ void setLocked(QWidget* widget, bool locked) {
     widget->update();
 }
 bool isLocked(const QWidget* widget) { return widget && widget->property("graphiteLocked").toBool(); }
-int sidebarWidth(int baseline, int natural) { return std::clamp(natural, baseline, std::max(baseline, int(Metric::sidebarMax))); }
+int sidebarWidth(int, int) { return scaled(Metric::sidebar); }
 QPalette palette() {
     const auto& p = t();
     QPalette palette;

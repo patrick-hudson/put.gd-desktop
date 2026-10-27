@@ -42,9 +42,9 @@ BindingPresentation bindingPresentation(const QJsonObject& status,const QJsonObj
  if(state=="shortcut_invalid"||error=="shortcut_invalid")
   return {"Invalid shortcut  ·  Enter a single key combination.","error"};
  if(state=="shortcut_unsupported"||error=="shortcut_unsupported")
-  return {"Unsupported shortcut  ·  Your desktop cannot use this key combination.","warning"};
+  return {"Unsupported shortcut  ·  Your desktop can't use this key combination.","warning"};
  if(state=="shortcut_unmapped"||error=="shortcut_unmapped")
-  return {"Unavailable  ·  Your desktop cannot map this key combination.","warning"};
+  return {"Unavailable  ·  Your desktop can't map this key combination.","warning"};
  if(state=="shortcut_unavailable"||error=="shortcut_unavailable"||error=="helper_unavailable")
   return {"Unavailable  ·  Enable your desktop shortcut service or helper.","warning"};
  if(state=="pending")return {"Binding  ·  Waiting for the desktop to confirm.","muted"};
@@ -104,7 +104,7 @@ void ShortcutEditor::startRecording(const QString& action){
  QPointer<ShortcutEditor> guard(this);
  recordingControl_(true,[guard,generation](Error error){
   if(!guard||generation!=guard->recordingGeneration_)return;
-  if(error){guard->finishRecording("Cannot record: "+error.message);return;}
+  if(error){guard->finishRecording("Can't record: "+error.message);return;}
   guard->recordingReady_=true;
   guard->recordingStatus_->setText("Press shortcut… Release all keys to keep it. Escape cancels.");
  });
@@ -118,7 +118,7 @@ void ShortcutEditor::finishRecording(const QString& message){
  if(recordingControl_){QPointer<ShortcutEditor> guard(this);const auto generation=recordingGeneration_;recordingControl_(false,[guard,generation](Error error){
   // Saving settings can supersede this restore. The newer binding request owns
   // its result, which is reported by the actual desktop binding labels.
-  if(guard&&generation==guard->recordingGeneration_&&error&&error.code!="shortcut_recording_interrupted")guard->recordingStatus_->setText("Could not restore shortcuts: "+error.message);
+  if(guard&&generation==guard->recordingGeneration_&&error&&error.code!="shortcut_recording_interrupted")guard->recordingStatus_->setText("Couldn't restore shortcuts: "+error.message);
  });}
 }
 bool ShortcutEditor::eventFilter(QObject* object,QEvent* event){
