@@ -44,6 +44,7 @@ public:
     bool stale() const { return !error_.isEmpty() && !frame_.isNull(); }
     bool hasFrame() const { return !frame_.isNull(); }
     qint64 frameTime() const { return timeUs_; }
+    void setPlayhead(qint64 us) { playheadUs_ = us; placeMaskMetadata(); }
     void setCanvas(const QSize& canvas) { canvas_ = canvas; update(); }
     void setMasks(const QList<RecordingMask>& masks, const QString& selected);
     void armCreate(const QString& kind) { armed_ = kind; setCursor(Qt::CrossCursor); update(); }
@@ -78,7 +79,7 @@ private:
     void placeMaskMetadata();
     void announce();
     QImage frame_;
-    qint64 timeUs_ = 0;
+    qint64 timeUs_ = 0, playheadUs_ = 0;
     QSize canvas_;
     QList<RecordingMask> masks_;
     std::shared_ptr<MaskNames> maskNames_;
@@ -192,10 +193,9 @@ public:
     struct DriveResult { QString code, message; QJsonObject state; };
     DriveResult drive(const QJsonObject& params);
     QJsonObject inspect() const;
-    // The default size that fits a 1366×768 desktop with its panel and title bar.
-    // 960x600 under the desktop's title bar; with put.gd's frame the window also
-    // takes the title bar's height, for its compact header (still within the
-    // 1366x768 fit: a panel plus 72 px to spare).
+    // Fits a 1366×768 workspace, reserving mask lanes and transient guidance.
+    // First presentation adapts to the canvas aspect and available workspace;
+    // subsequent changes preserve the user's geometry. Minimums ensure usability.
     static QSize defaultSize();
 signals:
     void editProposed(quint64 revision, const QJsonArray& commands);
@@ -253,6 +253,7 @@ private:
     QString timeText(qint64 us) const;
     Options options_;
     RecordingConfig config_;
+    bool audioIntent_ = false;
     RecordingEdit edit_;
     std::shared_ptr<MaskNames> maskNames_ = std::make_shared<MaskNames>();
     QString savedPath_;
@@ -267,7 +268,7 @@ private:
     void showAdvice();
     bool compactStatus_ = false, footerError_ = false;
     QPointer<QWidget> adviceDialog_;
-    bool minimumPending_ = false;
+    bool minimumPending_ = false, initialFitDone_ = false;
     QWidget *trimGroup_ = nullptr, *maskGroup_ = nullptr;
     QGridLayout* toolsGrid_ = nullptr;
     Graphite::WindowHeader* header_ = nullptr;

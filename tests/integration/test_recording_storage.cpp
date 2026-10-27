@@ -1,6 +1,7 @@
 #include "record/RecordSession.h"
 #include "fixtures/Waits.h"
 #include <QFileInfo>
+#include <QLabel>
 #include <QProcess>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -58,6 +59,24 @@ private slots:
         if (pattern_) { gst_element_set_state(pattern_, GST_STATE_NULL); gst_object_unref(pattern_); }
         display_.terminate();
         if (!display_.waitForFinished(3000)) { display_.kill(); display_.waitForFinished(); }
+    }
+    void capturedAudioAvailabilitySurvivesReviewConfigurationChanges_data() {
+        QTest::addColumn<bool>("captured");
+        QTest::newRow("captured") << true;
+        QTest::newRow("not captured") << false;
+    }
+    void capturedAudioAvailabilitySurvivesReviewConfigurationChanges() {
+        QFETCH(bool, captured);
+        QTemporaryDir dir; RecordSession session; setup(session, dir);
+        session.config_.codec = "h264"; session.config_.audio.system = true;
+        session.audioCaptured_ = captured; session.recorded_ = true; session.durationUs_ = 12000000;
+        session.capabilities_ = {{"formats", QJsonArray{"mp4", "gif"}}, {"codecs", QJsonObject{{"mp4", QJsonArray{"h264"}}}}};
+        session.openReview();
+        QVERIFY(session.review_->drive({{"action", "format"}, {"format", "gif"}}).code.isEmpty());
+        QVERIFY(!session.config_.audio.system); QCOMPARE(session.audioCaptured_, captured);
+        QVERIFY(session.review_->drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}}).code.isEmpty());
+        QCOMPARE(session.config_.audio.system, captured); QCOMPARE(session.audioCaptured_, captured);
+        QCOMPARE(session.review_->findChild<QLabel*>("exportAudioSummary")->text(), captured ? QString("System audio") : QString("No audio"));
     }
     void automaticStop_data() {
         QTest::addColumn<bool>("paused");

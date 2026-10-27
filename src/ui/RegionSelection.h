@@ -6,6 +6,7 @@
 #include <QPalette>
 #include <QWidget>
 #include <algorithm>
+#include <optional>
 
 namespace putgd {
 // Native capture helpers keep the desktop family and its text enlargement.
@@ -18,7 +19,8 @@ inline QFont nativeRegionFont() {
 inline QString regionInstructions(const QRectF& selection = {}, bool recording = false, const QString& display = {}) {
     return (display.isEmpty() ? QString() : display + QStringLiteral(" · "))
         + (recording ? QStringLiteral("Drag and release to use a region") : QStringLiteral("Drag and release to capture"))
-        + QStringLiteral("\nEnter %1 %2 · Esc cancels").arg(recording ? QStringLiteral("records") : QStringLiteral("captures"), selection.isEmpty() ? QStringLiteral("this entire display") : QStringLiteral("the selected region"))
+        + (recording ? QStringLiteral("\nEnter chooses %1 · Esc cancels\nStart recording comes next").arg(selection.isEmpty() ? QStringLiteral("this entire display") : QStringLiteral("this region"))
+            : QStringLiteral("\nEnter captures %1 · Esc cancels").arg(selection.isEmpty() ? QStringLiteral("this entire display") : QStringLiteral("the selected region")))
         + QStringLiteral("\nArrows select · Shift+arrows resize · Ctrl+arrows 10 px · Tab display")
         + (selection.isEmpty() ? QString() : QStringLiteral("\n%1 × %2 logical pixels").arg(qRound(selection.width())).arg(qRound(selection.height())));
 }
@@ -89,16 +91,24 @@ inline void describeRegion(QWidget* surface, const QRectF& selection, bool recor
     QAccessibleEvent changed(surface, QAccessible::DescriptionChanged);
     QAccessible::updateAccessibility(&changed);
 }
-inline QRect regionInstructionBox(const QRect& bounds, const QFontMetrics& metrics, const QString& instructions = regionInstructions()) {
+inline QRect regionInstructionBox(const QRect& bounds, const QFontMetrics& metrics, const QString& instructions = regionInstructions(), const QRectF& selection = {}, const std::optional<QPointF>& pointer = {}) {
     const QRect available = bounds.adjusted(16, 16, -16, -16);
     if (available.width() <= 20 || available.height() <= 12) return {};
     const auto measured = metrics.boundingRect(available.adjusted(10, 6, -10, -6), Qt::TextWordWrap | Qt::AlignCenter, instructions);
     const int width = std::min(available.width(), measured.width() + 20);
-    return {bounds.center().x() - width / 2, available.top(), width, std::min(available.height(), measured.height() + 12)};
+    const int height = std::min(available.height(), measured.height() + 12);
+    const QRect top(bounds.center().x() - width / 2, available.top(), width, height);
+    const QRect bottom(top.x(), available.bottom() - height + 1, width, height);
+    // Prefer clear content; near the drag pointer, avoid covering its next move.
+    auto score = [&](const QRect& box) {
+        const auto overlap = QRectF(box).intersected(selection);
+        return overlap.width() * overlap.height() + (pointer && QRectF(box).adjusted(-24, -24, 24, 24).contains(*pointer) ? qreal(bounds.width()) * bounds.height() : 0);
+    };
+    return score(bottom) < score(top) ? bottom : top;
 }
 // An opaque, outlined backdrop stays legible over a live desktop in either theme.
-inline void paintRegionInstructions(QPainter& painter, const QRect& bounds, const QPalette& palette, const QString& instructions = regionInstructions()) {
-    const QRect box = regionInstructionBox(bounds, painter.fontMetrics(), instructions);
+inline void paintRegionInstructions(QPainter& painter, const QRect& bounds, const QPalette& palette, const QString& instructions = regionInstructions(), const QRectF& selection = {}, const std::optional<QPointF>& pointer = {}) {
+    const QRect box = regionInstructionBox(bounds, painter.fontMetrics(), instructions, selection, pointer);
     if (box.isEmpty()) return;
     painter.save();
     painter.setRenderHint(QPainter::Antialiasing);

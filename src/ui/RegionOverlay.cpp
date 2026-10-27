@@ -1,3 +1,4 @@
+#include <QCursor>
 #include "ui/SelectionOutline.h"
 #include "ui/RegionSelection.h"
 #include "RegionOverlay.h"
@@ -40,7 +41,7 @@ public:
  // Full-surface damage keeps an outward-moving edge inside that clip.
  void updateSelection(const QRectF& previous){describeRegion(this,owner_.selection_,false,owner_.frames_[activeScreen()].identity);Q_UNUSED(previous);update();}
 protected:
- void paintEvent(QPaintEvent*) override {QPainter painter(this);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(rect(),Qt::transparent);painter.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));if(!clipped.isEmpty()){const QRectF local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(painter,local);}if(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_)paintRegionInstructions(painter,rect(),palette(),regionInstructions(owner_.selection_,false,owner_.frames_[activeScreen()].identity));}
+ void paintEvent(QPaintEvent*) override {QPainter painter(this);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(rect(),Qt::transparent);painter.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));if(!clipped.isEmpty()){const QRectF local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(painter,local);}if(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_)paintRegionInstructions(painter,rect(),palette(),regionInstructions(owner_.selection_,false,owner_.frames_[activeScreen()].identity), owner_.selection_.translated(-logicalRect_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);}
  void mousePressEvent(QMouseEvent* e) override {if(e->button()==Qt::RightButton){owner_.cancel();return;}if(e->button()==Qt::LeftButton){owner_.press(e->globalPosition());grabMouse();}}
  void mouseMoveEvent(QMouseEvent* e) override {owner_.move(e->globalPosition());}
  void mouseReleaseEvent(QMouseEvent* e) override {if(e->button()==Qt::LeftButton){releaseMouse();owner_.release(e->globalPosition());}}

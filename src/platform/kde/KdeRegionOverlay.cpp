@@ -1,3 +1,4 @@
+#include <QCursor>
 #include "ui/SelectionOutline.h"
 #include "ui/RegionSelection.h"
 #include "KdeRegionOverlay.h"
@@ -35,7 +36,7 @@ public:
  }
  void updateSelection(){describeRegion(this,owner_.selection_,owner_.recording_,owner_.frames_[activeScreen()].identity);update();}
 protected:
- void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));if(!owner_.clearing_&&!clipped.isEmpty()){const auto local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(p,local);}if(!owner_.clearing_&&(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_))paintRegionInstructions(p,rect(),palette(),regionInstructions(owner_.selection_,owner_.recording_,owner_.frames_[activeScreen()].identity));}
+ void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));if(!owner_.clearing_&&!clipped.isEmpty()){const auto local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(p,local);}if(!owner_.clearing_&&(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_))paintRegionInstructions(p,rect(),palette(),regionInstructions(owner_.selection_,owner_.recording_,owner_.frames_[activeScreen()].identity), owner_.selection_.translated(-logicalRect_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);}
  void mousePressEvent(QMouseEvent* e) override{if(e->button()==Qt::RightButton)owner_.cancel();else if(e->button()==Qt::LeftButton)owner_.press(logicalRect_.topLeft()+e->position());}
  void mouseMoveEvent(QMouseEvent* e) override{owner_.move(logicalRect_.topLeft()+e->position());}
  void mouseReleaseEvent(QMouseEvent* e) override{if(e->button()==Qt::LeftButton)owner_.release(logicalRect_.topLeft()+e->position());}

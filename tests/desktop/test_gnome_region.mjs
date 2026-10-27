@@ -23,6 +23,7 @@ class Widget {
     set_size(width, height) {Object.assign(this, {width, height});}
     set_width(width) {this.width = width;}
     get_preferred_width() {return [0, 650];}
+    get_preferred_height() {return [0, 112];}
     show() {this.visible = true;}
     hide() {this.visible = false;}
     destroy() {this.destroyed = true;}
@@ -155,8 +156,8 @@ print('PASS mouse-to-keyboard clipping and keyboard-to-mouse replacement');
     equal(RegionSelection.switchDisplay({x: 0, y: 0, width: 1920, height: 1080}, monitors, 0),
         {current: 1, region: {x: 1920, y: -100, width: 1280, height: 720}});
     equal(RegionSelection.instructions(null, true, 'Display 2').includes('Drag and release to use a region'), true);
-    equal(RegionSelection.instructions(null, true, 'Display 2').includes('Enter records this entire display'), true);
-    equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Enter records the selected region'), true);
+    equal(RegionSelection.instructions(null, true, 'Display 2').includes('Enter chooses this entire display'), true);
+    equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Enter chooses this region'), true);
     equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('2 × 2 logical pixels'), true);
     equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Drag and release to use a region'), true);
 }
@@ -172,3 +173,10 @@ print('PASS display cycling, reverse cycling, clamping, display names and state-
     key(actor, 'Escape'); equal(await result, null); closed(actor);
 }
 print('PASS recording selector purpose and live Enter hints');
+{
+    const monitor = {x: -800, y: 100, width: 800, height: 600};
+    equal(RegionSelection.instructionPosition(monitor, 400, 100, {x: -600, y: 100, width: 400, height: 200}, null), [-600, 584]);
+    equal(RegionSelection.instructionPosition(monitor, 400, 100, null, [-400, 140]), [-600, 584]);
+    equal(RegionSelection.instructionPosition(monitor, 400, 100, null, [-400, 640]), [-600, 116]);
+}
+print('PASS instruction badge avoids selection and drag pointer on offset monitors');

@@ -72,6 +72,7 @@ private:
     QJsonObject capabilities_, reviewOptions_;
     QString staging_, workingClip_;
     qint64 durationUs_ = 0;
+    bool audioCaptured_ = false;
     bool prepared_ = false, recorded_ = false, overlayExcluded_ = true, cancelled_ = false, starting_ = false;
     // recording.overlay {visible: false} keeps the bar hidden across state changes until raise.
     bool barHidden_ = false;

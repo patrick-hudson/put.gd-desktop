@@ -1,4 +1,5 @@
 #include "ReviewWindow.h"
+#include "EffectiveAudio.h"
 #include <QGridLayout>
 #include <QAccessibleWidget>
 #include <QScrollBar>
@@ -181,7 +182,7 @@ void FrameView::announce() {
     for (int i = 0; i < masks_.size(); ++i) {
         const auto& m = masks_[i];
         if (m.id != selected_) continue;
-        text = QStringLiteral("%1 selected: %2 × %3 at %4, %5. Active from %6 to %7. Arrows move, Shift+arrows resize, Ctrl+arrows 10 px; Delete removes, Escape deselects.")
+        text = QStringLiteral("%1 selected: %2 × %3 at %4, %5. Applies from %6 to %7. Arrows move, Shift+arrows resize, Ctrl+arrows 10 px; Delete removes, Escape deselects.")
             .arg(maskNames_->name(m)).arg(m.rect.width()).arg(m.rect.height()).arg(m.rect.x()).arg(m.rect.y()).arg(clock(m.start), clock(m.end));
         break;
     }
@@ -253,7 +254,7 @@ void FrameView::placeMaskMetadata() {
     const auto selected = std::find_if(masks_.cbegin(), masks_.cend(), [this](const auto& mask) { return mask.id == selected_; });
     maskMetadata_->setVisible(selected != masks_.cend());
     if (selected == masks_.cend()) return;
-    maskMetadata_->setText(QStringLiteral("Active %1–%2").arg(clock(selected->start), clock(selected->end)));
+    maskMetadata_->setText(QStringLiteral("Applies %1–%2%3").arg(clock(selected->start), clock(selected->end), playheadUs_ >= selected->start && playheadUs_ < selected->end ? QString() : QStringLiteral(" · Inactive at playhead")));
     const auto area = imageRect().adjusted(3, 3, -3, -3);
     const auto name = mediaLabelRect(toView(selected->rect).topLeft() + QPointF(3, 3), maskNames_->name(*selected), area);
     const auto size = maskMetadata_->sizeHint().boundedTo(area.size());
@@ -697,6 +698,8 @@ void ReviewTimeline::keyPressEvent(QKeyEvent* e) {
 }
 
 ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config, QWidget* parent) : QWidget(parent, Qt::Window), options_(options), config_(config), frameTimer_(this) {
+    audioIntent_ = config_.audio.system;
+    config_.audio.system = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
     setObjectName("putgd-review");
     setWindowTitle("Review recording");
     // The Graphite controls (#198: in the interface's scheme).
@@ -706,6 +709,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // #283: the frame takes the window; the timeline, one row of tools and the
     // action footer sit under it.
     auto* frame = new QVBoxLayout(this);
+    frame->setSizeConstraint(QLayout::SetNoConstraint);
     frame->setContentsMargins(0, 0, 0, 0);
     frame->setSpacing(0);
     // A one-line title preserves the frame area; the draft state stays in the
@@ -714,7 +718,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     header_->setDocument(QStringLiteral("Review recording"));
     auto* root = new QVBoxLayout;
     // Compact bands leave room for the video even with enlarged text and status.
-    root->setContentsMargins(12, 2, 12, 2);
+    root->setContentsMargins(12, 0, 12, 0);
     root->setSpacing(0);
     frame->addLayout(root, 1);
     // Why the capture ended when it stopped itself (#225); hidden otherwise.
@@ -728,6 +732,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     root->addWidget(notice_);
     view_ = new FrameView(this, maskNames_);
     view_->setObjectName("frame");
+    view_->setMinimumHeight(180);
     view_->setCanvas(options.canvas);
     view_->setAccessibleName("Recording frame");
     root->addWidget(view_, 1);
@@ -792,8 +797,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     maskGroup_->setObjectName("maskControls");
     auto* trimRow = new QHBoxLayout(trimGroup_);
     auto* maskGroupRow = new QHBoxLayout(maskGroup_);
-    for (auto* row : {trimRow, maskGroupRow}) { row->setContentsMargins(0, 0, 0, 0); row->setSpacing(8); }
-    maskGroupRow->setContentsMargins(16, 0, 0, 0);
+    for (auto* row : {trimRow, maskGroupRow}) { row->setContentsMargins(0, 0, 0, 0); row->setSpacing(4); }
+    maskGroupRow->setContentsMargins(8, 0, 0, 0);
     trimStart_ = tool("trim-in", "Set trim start", "Keep from the playhead: set the trim start here (I)");
     trimEnd_ = tool("trim-out", "Set trim end", "Keep up to the playhead: set the trim end here (O)");
     resetTrim_ = tool("trim-reset", "Reset trim", "Keep the whole recording");
@@ -819,19 +824,28 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     maskTools_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     maskStart_ = tool("mask-in", "Set mask start", "Start the selected mask at the playhead (Shift+I)");
     maskEnd_ = tool("mask-out", "Set mask end", "End the selected mask at the playhead (Shift+O)");
-    strengthLabel_ = new QLabel("Blur", maskTools_);
+    for (auto* button : {trimStart_, trimEnd_, resetTrim_, maskStart_, maskEnd_}) {
+        button->setText(button == resetTrim_ ? "Reset" : button == trimStart_ || button == maskStart_ ? "Start" : "End");
+        button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        button->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+        VisualStyle::role(button, "link");
+        button->setMinimumSize((button->sizeHint() + QSize(4, 0)).expandedTo(QSize(32, 32)));
+        button->setFixedHeight(std::max(32, button->fontMetrics().height() + 4));
+    }
+    strengthLabel_ = new QLabel("Blur radius —", maskTools_);
     strengthLabel_->setObjectName("muted");
     VisualStyle::role(strengthLabel_, "meta");
     strength_ = new QSpinBox(maskTools_);
     strength_->setRange(2, 64);
+    strength_->setSuffix(" px");
     strength_->setValue(16);
-    strength_->setAccessibleName("Blur strength");
-    strength_->setToolTip("Blur strength of the selected blur");
+    strength_->setAccessibleName("Blur radius");
+    strength_->setToolTip("Blur radius in image pixels of the selected blur");
     strengthLabel_->setBuddy(strength_);
     removeMask_ = tool("remove", "Remove mask", "Remove the selected mask (Delete)");
     auto* maskRow = new QHBoxLayout(maskTools_);
     maskRow->setContentsMargins(0, 0, 0, 0);
-    maskRow->setSpacing(8);
+    maskRow->setSpacing(4);
     maskActive_ = view_->findChild<QLabel*>("maskActiveInterval");
     maskRow->addWidget(masks_, 1);
     for (auto* w : std::initializer_list<QWidget*>{maskStart_, maskEnd_, strengthLabel_, strength_, removeMask_}) maskRow->addWidget(w);
@@ -847,7 +861,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     statusRow_ = new Graphite::Surface("raised", Qt::TopEdge | Qt::BottomEdge, this);
     statusRow_->setObjectName("statusRow");
     statusLines_ = new QVBoxLayout(statusRow_);
-    statusLines_->setContentsMargins(10, 2, 10, 2);
+    statusLines_->setContentsMargins(10, 0, 10, 0);
     statusLines_->setSpacing(2);
     statusRow_->hide();
     root->insertWidget(root->indexOf(view_) + 1, statusRow_);
@@ -904,9 +918,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* footer = new Graphite::Surface("bg", Qt::TopEdge, this);
     footer->setObjectName("reviewFooter");
     footerGrid_ = new QGridLayout(footer);
-    footerGrid_->setContentsMargins(12, 2, 12, 2);
+    footerGrid_->setContentsMargins(12, 0, 12, 0);
     footerGrid_->setHorizontalSpacing(8);
-    footerGrid_->setVerticalSpacing(2);
+    footerGrid_->setVerticalSpacing(0);
     auto* facts = new QWidget(footer);
     facts->setObjectName("reviewMetadata");
     auto* factsRow = new QHBoxLayout(facts);
@@ -924,7 +938,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     errorDetails_->setObjectName("reviewErrorDetails");
     errorDetails_->setProperty("driveAction", QJsonObject{{"action", "showAdvice"}});
     VisualStyle::role(errorDetails_, "link");
-    errorDetails_->setFixedHeight(std::max(32, errorDetails_->fontMetrics().height() + 6));
+    errorDetails_->setFixedHeight(std::max(32, errorDetails_->fontMetrics().height() + 4));
     errorDetails_->hide();
     connect(errorDetails_, &QPushButton::clicked, this, [this] { drive({{"action", "showAdvice"}}); });
     factsRow->addWidget(errorDetails_);
@@ -1011,7 +1025,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         if (value.size() != 2 || (value[0] == config_.format && value[1] == config_.codec)) return;
         config_.format = value[0];
         config_.codec = value[1];
-        if (config_.silent()) config_.audio.system = false;
+        config_.audio.system = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
         emit configChanged(config_);
         refreshLabels();
     });
@@ -1039,10 +1053,10 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     updateMinimum();
 }
 QSize ReviewWindow::defaultSize() {
-    // Enlarged controls need room too; leave the frame dominant on a laptop.
-    const int extra = std::clamp(Graphite::scaled(144) - 144, 0, 72);
-    return {920, (Graphite::WindowHeader::customFrame() ? compactReviewHeight : 600) + extra};
+    // Reserve the mask lane and transient guidance on first presentation.
+    return {820, Graphite::WindowHeader::customFrame() ? 720 : 672};
 }
+
 RecordingMask* ReviewWindow::selectedMask() {
     auto it = std::find_if(edit_.masks.begin(), edit_.masks.end(), [&](const RecordingMask& m) { return m.id == selectedMask_; });
     return it == edit_.masks.end() ? nullptr : &*it;
@@ -1143,7 +1157,9 @@ void ReviewWindow::setEdit(const RecordingEdit& edit) {
     frameTimer_.start();
 }
 void ReviewWindow::setConfig(const RecordingConfig& config) {
+    if (!config.silent()) audioIntent_ = config.audio.system;
     config_ = config;
+    config_.audio.system = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) { format_->blockSignals(true); format_->setCurrentIndex(i); format_->blockSignals(false); } }
     refreshLabels();
 }
@@ -1211,6 +1227,7 @@ void ReviewWindow::refreshTimeline() {
 void ReviewWindow::refreshLabels() {
     const qint64 at = playhead();
     const auto end = edit_.exportEnd(options_.durationUs);
+    view_->setPlayhead(at);
     const bool retained = at >= edit_.trimStart && at < end;
     time_->setText(QStringLiteral("%1 / %2").arg(timeText(at), timeText(options_.durationUs)) + (retained ? QString() : QStringLiteral("\nOutside kept part")));
     if (compactStatus_) time_->parentWidget()->setMaximumHeight(time_->sizeHint().height());
@@ -1227,12 +1244,13 @@ void ReviewWindow::refreshLabels() {
     strength_->setVisible(mask && mask->kind == "blur");
     if (mask) { strength_->blockSignals(true); strength_->setValue(mask->strength); strength_->blockSignals(false); }
     // Muted playback below the timecode; the export carries its own audio label.
-    const QString audio = QStringLiteral("Preview muted · ") + (!options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : QStringLiteral("System audio in export"));
+    const bool includesAudio = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
+    const QString audio = QStringLiteral("Preview muted · ") + (!options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : includesAudio ? QStringLiteral("System audio in export") : QStringLiteral("Audio off in export"));
     audio_->setText(QStringLiteral("Preview muted"));
     audio_->setProperty("summary", audio);
-    audio_->setToolTip(!options_.audioRecorded ? QStringLiteral("No system audio was recorded") : config_.silent() ? QStringLiteral("System audio was recorded; %1 exports are silent. Choose MP4 or WebM to keep it.").arg(config_.format.toUpper()) : QStringLiteral("The export keeps the recorded system audio; the preview is silent"));
+    audio_->setToolTip(!options_.audioRecorded ? QStringLiteral("No system audio was recorded") : config_.silent() ? QStringLiteral("System audio was recorded; %1 exports are silent. Choose MP4 or WebM to keep it.").arg(config_.format.toUpper()) : includesAudio ? QStringLiteral("The export keeps the recorded system audio; the preview is silent") : QStringLiteral("System audio is turned off for this export"));
     audio_->setAccessibleName(QStringLiteral("Audio: ") + audio);
-    exportAudio_->setText(!options_.audioRecorded ? QStringLiteral("No audio") : config_.silent() ? QStringLiteral("Silent export") : QStringLiteral("System audio"));
+    exportAudio_->setText(!options_.audioRecorded ? QStringLiteral("No audio") : config_.silent() ? QStringLiteral("Silent export") : includesAudio ? QStringLiteral("System audio") : QStringLiteral("Audio off"));
     exportAudio_->setAccessibleName(QStringLiteral("Export audio: ") + audio.section(QStringLiteral(" · "), 1));
     exportAudio_->setToolTip(audio_->toolTip());
     formatAdvice_->setVisible(compactStatus_ || (config_.format == "mp4" && config_.codec == "h265" && message_.tone == "error"));
@@ -1334,6 +1352,7 @@ void ReviewWindow::refreshStatus() {
             VisualStyle::role(button, "link");
             // Compact link painting inside a full pointer target.
             button->setMinimumSize(32, 32);
+            button->setFixedHeight(std::max(32, button->fontMetrics().height() + 4));
             button->setProperty("driveAction", params);
             connect(button, &QPushButton::clicked, this, [this, params] { drive(params); });
             row->addWidget(button, 0, Qt::AlignVCenter);
@@ -1404,7 +1423,25 @@ void ReviewWindow::updateMinimum() {
         placeTools();
         layout()->activate();
         const auto available = availableReviewSize();
-        if (!compactStatus_ && minimumSizeHint().height() > std::min(compactReviewHeight, available.height())) {
+        setMinimumSize(minimumSizeHint());
+        if (isVisible() && !initialFitDone_) {
+            const double aspect = options_.canvas.isEmpty() ? 16.0 / 9 : double(options_.canvas.width()) / options_.canvas.height();
+            const int height = std::min(defaultSize().height(), available.height());
+            // Fit the initial frame with room for the controls and one status row.
+            // Later edits reflow inside the user's geometry instead of refitting it.
+            const int width = std::min({defaultSize().width(), available.width(), int(std::round(height * aspect * 0.65))});
+            resize(std::max(width, minimumWidth()), height);
+            initialFitDone_ = true;
+            placeTools();
+            layout()->activate();
+            updateMinimum();
+        }
+        const auto tight = [this] {
+            const auto frame = view_->imageRect();
+            const double share = double(frame.width()) * frame.height() / std::max(1, width() * height());
+            return share < (shownStatus_.isEmpty() && !footerError_ ? 0.60 : 0.53);
+        };
+        if (!compactStatus_ && (minimumSizeHint().height() > std::min(compactReviewHeight, available.height()) || (isVisible() && tight()))) {
             compactStatus_ = true;
             audio_->hide();
             time_->parentWidget()->setMaximumHeight(time_->sizeHint().height());
@@ -1414,49 +1451,29 @@ void ReviewWindow::updateMinimum() {
             refreshStatus();
             layout()->activate();
         }
-        if (!footerError_ && message_.tone == "error" && minimumSizeHint().height() > available.height()) {
+        if (!footerError_ && message_.tone == "error" && (minimumSizeHint().height() > available.height() || (isVisible() && tight()))) {
             footerError_ = true;
             refreshStatus();
             layout()->activate();
         }
         placeTools();
         layout()->activate();
-        const auto minimum = minimumSizeHint();
-        setMinimumSize(minimum);
-        if (height() > available.height()) resize(std::max(width(), minimum.width()), available.height());
-        if (isVisible()) {
-            const double aspect = options_.canvas.isEmpty() ? 16.0 / 9 : double(options_.canvas.width()) / options_.canvas.height();
-            const int chrome = height() - view_->height();
-            const double area = (shownStatus_.isEmpty() && !footerError_ ? 0.61 : 0.54) * width();
-            const int videoHeight = int(std::ceil((area + std::sqrt(area * area + 4 * aspect * area * chrome)) / (2 * aspect))) + 2;
-            // A wider window needs more video too, including the actual wrapped
-            // status height at that width, not just its minimum-width estimate.
-            if (videoHeight + chrome > available.height() && width() > minimum.width())
-                resize(minimum.width(), std::min(available.height(), minimum.height()));
-            else if (view_->height() < videoHeight && videoHeight * aspect <= width() - 24)
-                resize(width(), std::min(available.height(), videoHeight + chrome));
-        }
+        setMinimumSize(minimumSizeHint());
+
     });
 }
 void ReviewWindow::placeTools() {
     if (!toolsGrid_) return;
-    const int maskWidth = maskGroup_->minimumSizeHint().width() + (maskGroup_->layout()->contentsMargins().left() ? 0 : 16);
+    // Visibility changes invalidate nested hints on the next layout event. Measure
+    // them now, before Qt could grow the window around a stale one-row layout.
+    for (auto* widget : {maskTools_, trimGroup_, maskGroup_}) widget->layout()->invalidate();
+    toolsGrid_->invalidate();
+    const int maskWidth = maskGroup_->minimumSizeHint().width() + (maskGroup_->layout()->contentsMargins().left() ? 0 : 8);
     const int naturalWidth = trimGroup_->minimumSizeHint().width() + maskWidth + 24;
-    const int chrome = layout()->minimumSize().height() - view_->minimumHeight() - toolsGrid_->minimumSize().height()
-        + std::max(trimGroup_->minimumSizeHint().height(), maskGroup_->minimumSizeHint().height());
-    const double aspect = options_.canvas.isEmpty() ? 16.0 / 9 : double(options_.canvas.width()) / options_.canvas.height();
-    const double area = (shownStatus_.isEmpty() && !footerError_ ? 0.61 : 0.54) * naturalWidth;
-    const int videoHeight = int(std::ceil((area + std::sqrt(area * area + 4 * aspect * area * chrome)) / (2 * aspect))) + 2;
-    const int heightBudget = shownStatus_.isEmpty() && !footerError_ ? compactReviewHeight : availableReviewSize().height();
-    const auto available = availableReviewSize();
-    const bool fitsRow = naturalWidth <= available.width() && videoHeight + chrome <= std::min(heightBudget, available.height());
-    // After compacting guidance, a wider tool row can recover a short workspace.
-    const bool grow = fitsRow && naturalWidth > width() && minimumSizeHint().height() > available.height();
-    if (grow) resize(naturalWidth, height());
-    const bool stack = (!grow && naturalWidth > width()) || !fitsRow;
+    const bool stack = naturalWidth > width();
     if (toolsGrid_->itemAtPosition(stack ? 1 : 0, stack ? 0 : 1) && toolsGrid_->itemAtPosition(stack ? 1 : 0, stack ? 0 : 1)->widget() == maskGroup_) return;
     static_cast<Graphite::Surface*>(maskGroup_)->setHairlines(stack ? Qt::TopEdge : Qt::LeftEdge);
-    maskGroup_->layout()->setContentsMargins(stack ? 0 : 16, stack ? 4 : 0, 0, 0);
+    maskGroup_->layout()->setContentsMargins(stack ? 0 : 8, 0, 0, 0);
     toolsGrid_->removeWidget(maskGroup_);
     toolsGrid_->addWidget(maskGroup_, stack ? 1 : 0, stack ? 0 : 1);
     toolsGrid_->setColumnStretch(0, stack ? 1 : 0);
@@ -1464,23 +1481,12 @@ void ReviewWindow::placeTools() {
     updateGeometry();
 }
 QSize ReviewWindow::minimumSizeHint() const {
-    if (!view_ || !layout()) return QWidget::minimumSizeHint();
-    const QSize controls = layout()->minimumSize();
-    const int baseChrome = controls.height() - view_->minimumHeight();
-    const double aspect = options_.canvas.isEmpty() ? 16.0 / 9 : double(options_.canvas.width()) / options_.canvas.height();
-    // Solve for usable video area with the measured controls. Transient status
-    // keeps its own gate; it needn't force a full-aspect frame and a taller window.
-    const double share = shownStatus_.isEmpty() && !footerError_ ? 0.61 : 0.54;
-    int width = std::max(640, controls.width());
-    for (;;) {
-        int chrome = baseChrome;
-        if (!statusRow_->isHidden() && statusRow_->hasHeightForWidth())
-            chrome += std::max(0, statusRow_->heightForWidth(width - 24) - statusRow_->minimumSizeHint().height());
-        const double area = share * width;
-        const int videoHeight = std::max(280, int(std::ceil((area + std::sqrt(area * area + 4 * aspect * area * chrome)) / (2 * aspect))) + 2);
-        if (videoHeight * aspect <= width - 24) return {width, videoHeight + chrome};
-        width += 8;
-    }
+    if (!view_ || !maskGroup_ || !trimGroup_ || !outputTools_ || !layout()) return QWidget::minimumSizeHint();
+    // Groups may stack: their sum must never become the window's hard minimum.
+    const auto* footer = outputTools_->parentWidget();
+    const int width = std::max({720, maskGroup_->minimumSizeHint().width() + 24,
+        trimGroup_->minimumSizeHint().width() + 24, footer && footer != this ? footer->minimumSizeHint().width() : 0});
+    return {width, std::max(480, layout()->minimumSize().height())};
 }
 // Where Upload sends the clip must stay readable: on a narrow footer the
 // audio fact steps aside (Format's tooltip still says it) and the error link

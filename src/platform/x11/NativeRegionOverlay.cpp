@@ -251,10 +251,12 @@ void NativeRegionOverlay::prepareInstructions(Surface& surface){
  const auto display=keyboardScreen_<0?surface.frame.identity:frames_[keyboardScreen_].identity;
  if(surface.frame.identity!=display){surface.instructions={};surface.instructionsKey.clear();return;}
  const auto instructions=regionInstructions(selection_,false,display);
- const auto cacheKey=instructions+font.toString();
+ const auto local=selection_.translated(-surface.frame.logicalRect.topLeft());
+ const auto pointer=dragging_?std::optional<QPointF>(pointer_-surface.frame.logicalRect.topLeft()):std::nullopt;
+ const auto box=regionInstructionBox(bounds,QFontMetrics(font),instructions,local,pointer);
+ const auto cacheKey=instructions+font.toString()+QString("/%1/%2").arg(box.x()).arg(box.y());
  if(surface.instructionsKey==cacheKey&&!surface.instructions.isNull())return;
  surface.instructionsKey=cacheKey;
- const auto box=regionInstructionBox(bounds,QFontMetrics(font),instructions);
  if(box.isEmpty())return;
  const qreal sx=qreal(surface.frame.nativeRect.width())/surface.frame.logicalRect.width(),sy=qreal(surface.frame.nativeRect.height())/surface.frame.logicalRect.height();
  const auto native=QRectF(box.x()*sx,box.y()*sy,box.width()*sx,box.height()*sy).toAlignedRect();
@@ -262,7 +264,7 @@ void NativeRegionOverlay::prepareInstructions(Surface& surface){
  surface.instructions=QImage(native.size(),QImage::Format_ARGB32_Premultiplied);surface.instructions.fill(Qt::transparent);surface.instructionsAt=native.topLeft();
  QPainter painter(&surface.instructions);painter.scale(sx,sy);painter.translate(-box.topLeft());painter.setFont(font);
  QPalette palette;palette.setColor(QPalette::Window,Qt::black);palette.setColor(QPalette::WindowText,Qt::white);
- paintRegionInstructions(painter,bounds,palette,instructions);
+ paintRegionInstructions(painter,bounds,palette,instructions,local,pointer);
 }
 void NativeRegionOverlay::draw(Surface& surface){
  // The compositor can consume damage bounds before sampling this drawable's
@@ -299,7 +301,8 @@ void NativeRegionOverlay::draw(Surface& surface){
  const int inset=surface.pen;
  ring(surface.outline.adjusted(inset,inset,-inset,-inset),surface.pen,0xffffffff);
 }
-void NativeRegionOverlay::move(QPointF point){if(!dragging_||finished_)return;selection_=QRectF(anchor_,point).normalized();describe();for(auto& surface:surfaces_){prepareInstructions(surface);draw(surface);}xcb_flush(connection_);}
+void NativeRegionOverlay::move(QPointF point){
+ pointer_=point;if(!dragging_||finished_)return;selection_=QRectF(anchor_,point).normalized();describe();for(auto& surface:surfaces_){prepareInstructions(surface);draw(surface);}xcb_flush(connection_);}
 void NativeRegionOverlay::release(QPointF point){if(!dragging_||finished_)return;move(point);if(selection_.width()<1||selection_.height()<1){cancel();return;}const auto result=selection_;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit selected(result);}
 void NativeRegionOverlay::finish(){
  if(finished_)return;

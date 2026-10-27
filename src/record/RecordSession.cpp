@@ -1,4 +1,5 @@
 #include "RecordSession.h"
+#include "EffectiveAudio.h"
 #include "DebugLog.h"
 #include "MediaProbe.h"
 #include <QBuffer>
@@ -91,6 +92,7 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
             }
             durationUs_ = durationUs;
             recorded_ = true;
+            audioCaptured_ = !pipeline_.audioEncoder().isEmpty();
             openReview();
             emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"reason", "budget"}, {"stopDetails", details}});
         });
@@ -550,6 +552,7 @@ void RecordSession::stop(Reply reply) {
         if (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile()) { reply({"recording_failed", "The recording produced no retained frames", {}}, {}); return; }
         guard->durationUs_ = durationUs;
         guard->recorded_ = true;
+        guard->audioCaptured_ = !guard->pipeline_.audioEncoder().isEmpty();
         // Lab diagnostics only: keep a private copy of the working clip for inspection.
         if (const auto keep = qEnvironmentVariable("PUTGD_RECORD_KEEP_WORKING"); !keep.isEmpty()) QFile::copy(guard->workingClip_, keep + "/" + guard->id_ + ".mkv");
         guard->openReview();
@@ -568,7 +571,7 @@ void RecordSession::openReview() {
     options.canvas = resolved_.canvas;
     for (const auto& value : capabilities_["formats"].toArray()) options.formats.append(value.toString());
     options.codecs = capabilities_["codecs"].toObject();
-    options.audioRecorded = config_.audio.system && !pipeline_.audioEncoder().isEmpty();
+    options.audioRecorded = audioCaptured_;
     review_ = new ReviewWindow(options, config_);
     QPointer<RecordSession> guard(this);
     connect(review_, &ReviewWindow::editProposed, this, [guard](quint64 revision, const QJsonArray& commands) { if (guard) emit guard->event({{"event", "edit"}, {"revision", double(revision)}, {"commands", commands}}); });
@@ -642,7 +645,7 @@ void RecordSession::exportClip(const QJsonObject& params, Reply reply) {
     auto configJson = params["config"].toObject();
     for (const auto* key : {"mime", "budgetBytes"}) configJson.remove(key);
     if (!parseEdit(params["edit"].toObject(), request.edit) || request.output.isEmpty() || recording::parseConfig(configJson, request.config)) { reply({"invalid_request", "Invalid export request", {}}, {}); return; }
-    request.config.audio.system = request.config.audio.system && config_.audio.system;
+    request.config.audio.system = effectiveAudio(request.config, audioCaptured_, request.config.audio.system);
     auto cancel = std::make_shared<std::atomic_bool>(false);
     exportCancel_ = cancel;
     auto result = std::make_shared<ExportResult>();

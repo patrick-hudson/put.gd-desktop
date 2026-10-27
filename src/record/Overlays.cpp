@@ -1,3 +1,4 @@
+#include <QCursor>
 #include "Overlays.h"
 #include "BarPlacement.h"
 #include "ui/SelectionOutline.h"
@@ -155,7 +156,7 @@ protected:
         }
         painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
         if (owner_.keyboardScreen_ < 0 || screen() == QGuiApplication::screens()[activeScreen()])
-            paintRegionInstructions(painter, rect(), palette(), regionInstructions(owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()])));
+            paintRegionInstructions(painter, rect(), palette(), regionInstructions(owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()])), owner_.selection_.translated(-logical_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);
     }
     void mousePressEvent(QMouseEvent* e) override {
         if (e->button() == Qt::RightButton) { owner_.cancel(); return; }

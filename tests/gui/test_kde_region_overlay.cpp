@@ -34,8 +34,8 @@ private slots:
  void recordingHintsReflectSelection(){
   KdeRegionOverlay overlay({},nullptr,true);auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);
   QCOMPARE(surface->accessibleName(),QString("Recording region"));QVERIFY(surface->accessibleDescription().contains("Drag and release to use a region"));
-  QVERIFY(surface->accessibleDescription().contains("Enter records this entire display"));
-  QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().contains("Enter records the selected region"));QVERIFY(surface->accessibleDescription().contains("320 × 240 logical pixels"));
+  QVERIFY(surface->accessibleDescription().contains("Enter chooses this entire display"));
+  QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().contains("Enter chooses this region"));QVERIFY(surface->accessibleDescription().contains("320 × 240 logical pixels"));
   QTest::keyClick(surface,Qt::Key_Escape);
  }
  void enterUsesReceivingScreenAndEscapeCancels(){

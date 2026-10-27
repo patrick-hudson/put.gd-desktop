@@ -50,7 +50,7 @@ private:
  QWindow* foreignParent_=nullptr;
  xcb_connection_t* qtConnection_=nullptr;
  QRectF selection_;
- QPointF anchor_;
+ QPointF anchor_, pointer_;
  bool dragging_=false,started_=false,finished_=false;
  bool pointerGrabbed_=false,keyboardGrabbed_=false;
  bool initialized_=false;

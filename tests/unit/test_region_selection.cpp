@@ -4,6 +4,14 @@ using namespace putgd;
 class RegionSelectionTest final:public QObject {
  Q_OBJECT
 private slots:
+ void badgeAvoidsSelectionAndDragPointer(){
+  const QRect bounds(0,0,800,600);const QFontMetrics metrics(QFont{});const auto text=regionInstructions({},true);
+  const auto top=regionInstructionBox(bounds,metrics,text);QVERIFY(top.top()<100);
+  const QRectF selected(200,0,400,220);
+  const auto bottom=regionInstructionBox(bounds,metrics,text,selected);QVERIFY(!QRectF(bottom).intersects(selected));QVERIFY(bottom.top()>300);
+  QCOMPARE(regionInstructionBox(bounds,metrics,text,{},QPointF(top.center())),bottom);
+  QCOMPARE(regionInstructionBox(bounds,metrics,text,{},QPointF(bottom.center())),top);
+ }
  void switchesDisplaysAndClamps(){
   const QList<QRectF> screens{QRectF(-800,100,800,600),QRectF(0,-200,320,240)};int current=0;QRectF selected;
   QVERIFY(switchRegionDisplay(selected,screens,current,Qt::Key_Tab));QCOMPARE(current,1);QVERIFY(selected.isEmpty());
@@ -17,12 +25,12 @@ private slots:
   for(bool recording:{false,true}){
    QRectF selected;const QRectF screen(0,0,800,600);
    const auto initial=regionInstructions(selected,recording,"DP-2");
-   QVERIFY(initial.contains(recording?"Enter records this entire display":"Enter captures this entire display"));
+   QVERIFY(initial.contains(recording?"Enter chooses this entire display":"Enter captures this entire display"));
    QVERIFY(initial.contains(recording?"Drag and release to use a region":"Drag and release to capture"));
    QVERIFY(initial.startsWith("DP-2 · "));QVERIFY(!initial.contains("logical pixels"));
    QCOMPARE(regionKey(selected,screen,Qt::Key_Right),RegionKeyAction::Change);
    const auto changed=regionInstructions(selected,recording,"DP-2");
-   QVERIFY(changed.contains(recording?"Enter records the selected region":"Enter captures the selected region"));
+   QVERIFY(changed.contains(recording?"Enter chooses this region":"Enter captures the selected region"));
    QVERIFY(!changed.contains("entire display"));QVERIFY(changed.contains("400 × 300 logical pixels"));
   }
  }
@@ -61,5 +69,5 @@ private slots:
   QCOMPARE(regionKey(selected,screen,Qt::Key_Enter),RegionKeyAction::Accept);QCOMPARE(selected,before);
  }
 };
-QTEST_GUILESS_MAIN(RegionSelectionTest)
+QTEST_MAIN(RegionSelectionTest)
 #include "test_region_selection.moc"

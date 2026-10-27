@@ -197,10 +197,22 @@ const RegionSelection = {
             x: Math.max(to.x, Math.min(region.x + to.x - from.x, to.x + to.width - width)),
             y: Math.max(to.y, Math.min(region.y + to.y - from.y, to.y + to.height - height)), width, height}};
     },
+    instructionPosition(monitor, width, height, region, pointer) {
+        const x = monitor.x + Math.floor((monitor.width - width) / 2);
+        const top = monitor.y + 16, bottom = monitor.y + monitor.height - 16 - height;
+        const score = y => {
+            const overlap = region ? Math.max(0, Math.min(x + width, region.x + region.width) - Math.max(x, region.x)) *
+                Math.max(0, Math.min(y + height, region.y + region.height) - Math.max(y, region.y)) : 0;
+            return overlap + (pointer && pointer[0] >= x - 24 && pointer[0] <= x + width + 24 &&
+                pointer[1] >= y - 24 && pointer[1] <= y + height + 24 ? monitor.width * monitor.height : 0);
+        };
+        return [x, score(bottom) < score(top) ? bottom : top];
+    },
     instructions(region, recording, display) {
         const selected = region?.width > 0 && region?.height > 0;
         return `${display ? display + ' · ' : ''}${recording ? 'Drag and release to use a region' : 'Drag and release to capture'}\n` +
-            `Enter ${recording ? 'records' : 'captures'} ${selected ? 'the selected region' : 'this entire display'} · Esc cancels\n` +
+            (recording ? `Enter chooses ${selected ? 'this region' : 'this entire display'} · Esc cancels\nStart recording comes next\n`
+                : `Enter captures ${selected ? 'the selected region' : 'this entire display'} · Esc cancels\n`) +
             'Arrows select · Shift+arrows resize · Ctrl+arrows 10 px · Tab display' +
             (selected ? `\n${region.width} × ${region.height} logical pixels` : '');
     },
@@ -321,6 +333,7 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
             width: Math.abs(x - this._start[0]), height: Math.abs(y - this._start[1])};
     }
     _update(point) {
+        this._pointer = point;
         this._showRegion(this._geometry(point));
     }
     _monitor() {
@@ -339,7 +352,8 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
             this._outline(monitor);
         this._instructions.set_width(-1);
         this._instructions.set_width(Math.max(1, Math.min(this._instructions.get_preferred_width(-1)[1], monitor.width - 32)));
-        this._instructions.set_position(monitor.x + Math.floor((monitor.width - this._instructions.width) / 2), monitor.y + 16);
+        const height = this._instructions.get_preferred_height(this._instructions.width)[1];
+        this._instructions.set_position(...RegionSelection.instructionPosition(monitor, this._instructions.width, height, this._region, this._start ? this._pointer : null));
     }
     _describe() {
         const rect = this._region;
