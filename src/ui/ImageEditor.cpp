@@ -236,7 +236,13 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(control.send("ready",ready).isEmpty())fail();
    return;
   }
-  if(!bootstrapped||!validEnvelope(object,nonce)||(type!="command"&&object.size()!=3)){fail();return;}
+  if(!bootstrapped||!validEnvelope(object,nonce)){fail();return;}
+  if(type=="appearance"){
+   const auto scheme=object["scheme"].toString();
+   if(object.size()!=4||(scheme!="dark"&&scheme!="light")){fail();return;}
+   Theme::setScheme(scheme=="light"?Theme::Scheme::Light:Theme::Scheme::Dark);return;
+  }
+  if(type!="command"&&object.size()!=3){fail();return;}
   if(type=="activate"&&!active&&!terminal){
    active=true;
    if(!files.intact()||!files.checkInput()){refuse("image_job_io");return;}

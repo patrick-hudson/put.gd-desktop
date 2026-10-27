@@ -22,6 +22,8 @@ public:
  using Reply=std::function<void(Error,QJsonObject)>;
  // Replies run on the editor worker thread; callers marshal them.
  void request(const QString& command,const QJsonObject& params,Reply);
+ void setAppearance(const QString&);
+ QString takeAppearance();
  void cancel() {cancelled_.store(true);}
  bool cancelled() const {return cancelled_.load();}
  // starting → editing → finalizing → closed; a recoverable preparation
@@ -33,7 +35,7 @@ public:
 private:
  mutable std::mutex mutex_;
  QList<Pending> queue_;
- QString phase_="starting";
+ QString phase_="starting",pendingAppearance_;
  std::atomic_bool cancelled_{false};
 };
 

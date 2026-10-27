@@ -37,6 +37,8 @@ void EditorSession::request(const QString& command,const QJsonObject& params,Rep
  else if(phase()=="starting")reply({"editor_starting","The editor window is still opening",{}},{});
  else reply({"editor_finalizing","The edit was already submitted or discarded",{}},{});
 }
+void EditorSession::setAppearance(const QString& scheme){std::lock_guard lock(mutex_);pendingAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");}
+QString EditorSession::takeAppearance(){std::lock_guard lock(mutex_);return std::exchange(pendingAppearance_,{});}
 QString EditorSession::phase() const {std::lock_guard lock(mutex_);return phase_;}
 void EditorSession::setPhase(const QString& phase){std::lock_guard lock(mutex_);phase_=phase;}
 QList<EditorSession::Pending> EditorSession::take(){std::lock_guard lock(mutex_);return std::exchange(queue_,{});}
@@ -213,6 +215,10 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   if(!editing&&!checkpoint&&phaseClock.elapsed()>startupTimeoutMs_){error="editor_timeout";break;}
   if(finalizing&&!checkpoint&&phaseClock.elapsed()>finalizeTimeoutMs_){error="editor_timeout";break;}
   if(checkpoint&&phaseClock.elapsed()>5000){error="editor_exit";break;}
+  if(ready&&!checkpoint){
+   const auto scheme=session->takeAppearance();
+   if(!scheme.isEmpty()){auto frame=envelope(nonce);frame["scheme"]=scheme;if(control.send("appearance",frame).isEmpty()){protocolFailed=true;break;}}
+  }
   for(auto& pending:session->take()){
    if(!editing||finalizing||checkpoint){pending.reply(failure("editor_finalizing"),{});continue;}
    const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);

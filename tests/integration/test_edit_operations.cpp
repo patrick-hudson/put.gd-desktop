@@ -60,6 +60,17 @@ class EditOperationsTest:public QObject {
 private slots:
  // Like the resident's main(), fix the allocator policy before any work runs.
  void initTestCase(){QVERIFY(applyResidentAllocatorPolicy());}
+ void appearanceChangesReachTheAlreadyOpenEditor(){
+  Fixture f;PUTGD_TRY_VERIFY(f.operations->ready());f.operations->setEditorAppearance("light");
+  const auto id=call([&](JsonReply r){f.operations->invoke("edit",r);}).result["operationId"].toString();QVERIFY(!id.isEmpty());
+  // A change during startup must survive the captured bootstrap preference.
+  f.operations->setEditorAppearance("dark");
+  auto state=command(*f.operations,id,"inspect");QVERIFY(!state.error);QCOMPARE(state.result["view"].toObject()["scheme"].toString(),QString("dark"));
+  for(const auto& scheme:{QStringLiteral("light"),QStringLiteral("dark")}){
+   f.operations->setEditorAppearance(scheme);PUTGD_TRY_COMPARE(command(*f.operations,id,"inspect").result["view"].toObject()["scheme"].toString(),scheme);
+  }
+  QVERIFY(!command(*f.operations,id,"cancel").error);PUTGD_TRY_VERIFY(f.operations->editingOperation().isEmpty());QCOMPARE(f.provider->uploads.load(),0);
+ }
  void submittedEditorWaitsOutsideEditing_data(){
   QTest::addColumn<bool>("cancelQueued");
   QTest::newRow("drain")<<false;

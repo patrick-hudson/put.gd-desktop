@@ -93,7 +93,7 @@ public:
  void setRecordingBackend(std::unique_ptr<RecordingBackend> backend) {recording_->setBackend(std::move(backend));}
  // The interface's resolved scheme ("dark" or "light"), passed to each editor
  // helper so Edit image matches the other windows (#198's rule for putgd-record).
- void setEditorAppearance(const QString& scheme) {editorAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");}
+ void setEditorAppearance(const QString& scheme) {editorAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");if(editor_)editor_->setAppearance(editorAppearance_);}
  RecordingService& recording() {return *recording_;}
  // Tests may run a fixture helper; production always uses the sibling putgd-ui.
  void setEditorHelper(QString path) {editorHelper_=std::move(path);}
