@@ -16,18 +16,18 @@ namespace {
 // schemes.
 const Palette dark{
  QColor("#191919"),QColor("#222222"),QColor("#2A2A2A"),QColor("#353535"),QColor("#343434"),QColor("#515151"),
- QColor("#F0F0EC"),QColor("#D2D2CF"),QColor("#AAAAA6"),QColor("#727270"),
+ QColor("#F0F0EC"),QColor("#D2D2CF"),QColor("#AAAAA6"),QColor("#9F9F9B"),
  QColor("#E8B66D"),QColor("#F0C887"),QColor("#24201A"),QColor("#E8C591"),
- QColor("#91BCA2"),QColor("#D6B5DE"),QColor("#E59B93"),QColor("#EFB4AE"),QColor("#29372E"),QColor("#322B36"),QColor("#3D2A29"),
+ QColor("#91BCA2"),QColor("#E8B66D"),QColor("#E59B93"),QColor("#EFB4AE"),QColor("#29372E"),QColor("#332C22"),QColor("#3D2A29"),
  QColor("#D6D6D2"),QColor("#777773"),
  QColor("#7C7C78"),
  QColor("#F0F0EC"),QColor("#848480"),
 };
 const Palette light{
  QColor("#EEEEEB"),QColor("#F8F8F5"),QColor("#FFFFFF"),QColor("#DEDEDA"),QColor("#D1D1CC"),QColor("#AAAAA3"),
- QColor("#292926"),QColor("#484844"),QColor("#62625B"),QColor("#91918A"),
+ QColor("#292926"),QColor("#484844"),QColor("#62625B"),QColor("#62625B"),
  QColor("#8F5B20"),QColor("#774816"),QColor("#FFFFFF"),QColor("#80521D"),
- QColor("#386A4B"),QColor("#75417F"),QColor("#A44139"),QColor("#8F322B"),QColor("#DFEDE3"),QColor("#EDE1F0"),QColor("#F4E0DE"),
+ QColor("#386A4B"),QColor("#8F5B20"),QColor("#A44139"),QColor("#8F322B"),QColor("#DFEDE3"),QColor("#EEE5D8"),QColor("#F4E0DE"),
  QColor("#383834"),QColor("#86867E"),
  QColor("#82827B"),
  QColor("#292926"),QColor("#787874"),

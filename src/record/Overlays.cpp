@@ -430,7 +430,7 @@ void ControlBar::refresh() {
     const auto& tokens = Theme::current();
     setPalette(Graphite::palette());
     setProperty("themeScheme", Theme::name(Theme::scheme()));
-    dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg((recording ? tokens.danger : paused ? tokens.warning : ready ? tokens.success : tokens.textMuted).name()));
+    dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg((recording ? tokens.danger : paused ? tokens.textMuted : ready ? tokens.success : tokens.textMuted).name()));
     state_label_->setText(recording ? QStringLiteral("Recording") : paused ? QStringLiteral("Paused") : ready ? QStringLiteral("Ready to record") : QStringLiteral("Stopping…"));
     // Once recording starts these are information, not disabled choices.
     const bool withSound = config_.audio.system && !config_.silent();

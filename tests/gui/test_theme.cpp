@@ -39,6 +39,7 @@
 #include <QToolButton>
 #include <QMenu>
 #include <QMessageBox>
+#include <QDialogButtonBox>
 #include <QProgressBar>
 #include <QGridLayout>
 #include <memory>
@@ -59,13 +60,36 @@ class ThemeTest : public QObject {
     }
 private slots:
     void init() { Theme::setScheme(Theme::Scheme::Dark); }
+    void warningTextAndNeutralSelectionFollowThePalette() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);const auto& c=Theme::current();
+            std::unique_ptr<QLabel> warning(Graphite::warningLabel("Warning: Blur is a visual effect."));warning->resize(320,72);warning->show();putgd::test::settle(10);
+            QCOMPARE(warning->palette().color(QPalette::WindowText),c.textSecondary);QVERIFY(warning->contentsMargins().left()>=Graphite::scaled(Graphite::Metric::icon));
+            const auto image=warning->grab().toImage();int amber=0;for(int y=0;y<image.height();++y)for(int x=0;x<warning->contentsMargins().left();++x)if(image.pixelColor(x,y)==c.accent)++amber;QVERIFY(amber>0);
+            VisualStyle::role(warning.get(),"secondary");QCOMPARE(warning->contentsMargins().left(),0);
+            QImage neutral(80,40,QImage::Format_RGB32);neutral.fill(c.bg);{QPainter painter(&neutral);Graphite::paintSelection(painter,QRectF(0,0,80,40));}QCOMPARE(neutral.pixelColor(40,20),c.selected);QCOMPARE(neutral.pixelColor(40,0),c.borderStrong);
+            QImage focused=neutral;{QPainter painter(&focused);Graphite::paintSelection(painter,QRectF(0,0,80,40),true);}QCOMPARE(focused.pixelColor(40,0),c.accent);
+        }
+    }
+    void quietAndDisabledButtonsKeepReadableNeutralText() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);const auto& c=Theme::current();
+            for(const auto* role:{"link","quiet"}){
+                QPushButton button("Change output");VisualStyle::role(&button,role);QStyleOptionButton option;option.rect=QRect(0,0,200,48);option.text=button.text();
+                auto render=[&](QStyle::State state){option.state=state;QImage image(option.rect.size(),QImage::Format_RGB32);image.fill(c.bg);QPainter painter(&image);button.style()->drawControl(QStyle::CE_PushButton,&option,&painter,&button);return image;};
+                for(const auto state:{QStyle::State(QStyle::State_Enabled),QStyle::State(QStyle::State_Enabled|QStyle::State_MouseOver),QStyle::State(QStyle::State_None)}){const auto image=render(state);int ink=0,amber=0;for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x){ink+=image.pixelColor(x,y)==(state&QStyle::State_Enabled?c.textSecondary:c.textDisabled);amber+=image.pixelColor(x,y)==c.accent;}QVERIFY(ink>0);QCOMPARE(amber,0);}
+                QCOMPARE(render(QStyle::State_None),render(QStyle::State_MouseOver|QStyle::State_Sunken));
+            }
+        }
+    }
     void confirmationsSeparateQuestionFromConsequence() {
         std::unique_ptr<QMessageBox> box(Graphite::confirm(nullptr,"Discard edits","Discard your edits?\nYour marks will be lost.","Discard","Keep editing",true));
         box->show();putgd::test::settle(10);
         auto* question=box->findChild<QLabel*>("qt_msgbox_label");auto* consequence=box->findChild<QLabel*>("qt_msgbox_informativelabel");
         QVERIFY(question&&consequence);QCOMPARE(question->font(),Graphite::font(Graphite::Type::body,true));
         QCOMPARE(consequence->palette().color(QPalette::WindowText),Theme::current().textSecondary);
-        QCOMPARE(consequence->y()-question->geometry().bottom()-1,4);
+        QCOMPARE(consequence->y()-question->geometry().bottom()-1,12);
+        const auto* buttons=box->findChild<QDialogButtonBox*>();QVERIFY(buttons);QCOMPARE(buttons->y()-consequence->geometry().bottom()-1,16);
         QCOMPARE(box->defaultButton(),box->button(QMessageBox::Cancel));QCOMPARE(box->escapeButton(),box->button(QMessageBox::Cancel));
     }
     void disclosuresOnlyChangeTheirChevronWhenExpanded() {
@@ -97,7 +121,7 @@ private slots:
             {QPainter p(&shot);danger.style()->drawControl(QStyle::CE_PushButton,&option,&p,&danger);}QCOMPARE(shot.pixelColor(120,0),c.danger);QVERIFY(Theme::contrast(c.danger,c.surfaceRaised)>=4.5);
             QProgressBar bar;QStyleOptionProgressBar progress;progress.rect=QRect(0,0,100,8);progress.state=QStyle::State_Enabled;progress.minimum=0;progress.maximum=100;progress.progress=50;
             shot=QImage(100,8,QImage::Format_RGB32);shot.fill(c.bg);{QPainter p(&shot);bar.style()->drawControl(QStyle::CE_ProgressBarGroove,&progress,&p,&bar);bar.style()->drawControl(QStyle::CE_ProgressBarContents,&progress,&p,&bar);}
-            QCOMPARE(shot.pixelColor(20,4),c.text);QCOMPARE(shot.pixelColor(80,4),c.surfaceRaised);QVERIFY(c.warning!=c.accent);
+            QCOMPARE(shot.pixelColor(20,4),c.text);QCOMPARE(shot.pixelColor(80,4),c.surfaceRaised);QCOMPARE(c.warning,c.accent);
         }
     }
     void selectedNavigationHasPersistentContrastingMarkers() {
@@ -166,8 +190,8 @@ private slots:
     void textAndFocusMeetAaInBothSchemes() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             const auto& p = Theme::palette(scheme);
-            const QList<QPair<const char*, QColor>> texts{{"text", p.text}, {"textSecondary", p.textSecondary}, {"textMuted", p.textMuted}, {"link", p.link},
-                                                          {"success", p.success}, {"warning", p.warning}, {"danger", p.danger}};
+            const QList<QPair<const char*, QColor>> texts{{"text", p.text}, {"textSecondary", p.textSecondary}, {"textMuted", p.textMuted}, {"textDisabled", p.textDisabled}, {"link", p.link},
+                                                          {"success", p.success}, {"danger", p.danger}};
             const QList<QPair<const char*, QColor>> backgrounds{{"bg", p.bg}, {"surface", p.surface}, {"surfaceRaised", p.surfaceRaised}, {"selected", p.selected}};
             for (const auto& [name, text] : texts)
                 for (const auto& [background, colour] : backgrounds)
@@ -234,8 +258,8 @@ private slots:
         }
     }
     // A locked value (Graphite::setLocked) reads as information: its text is
-    // textMuted at 4.5:1 on the page, while an unavailable control keeps the
-    // faded textDisabled. Unlocking restores the plain disabled look.
+    // textMuted at 4.5:1 on the page. Unavailable controls keep readable
+    // textDisabled and omit interaction. Unlocking restores their shared look.
     void lockedValuesStayReadable() {
         QWidget window;
         auto* layout = new QVBoxLayout(&window);
@@ -257,7 +281,7 @@ private slots:
                 return ratio;
             };
             QVERIFY2(best(locked) >= 4.5, qPrintable(Theme::name(scheme) + QString(" locked %1").arg(best(locked))));
-            QVERIFY2(best(unavailable) < 4.5, qPrintable(Theme::name(scheme) + QString(" unavailable %1").arg(best(unavailable))));
+            QVERIFY2(best(unavailable) >= 4.5, qPrintable(Theme::name(scheme) + QString(" unavailable %1").arg(best(unavailable))));
         }
         Graphite::setLocked(locked, false);
         QVERIFY(!Graphite::isLocked(locked));
@@ -558,9 +582,9 @@ private slots:
             const int inside = (boxOn.width() - 4) * (boxOn.height() - 4);
             QVERIFY2(count(boxOn, p.textMuted, 8) * 3 > inside, what("checked, disabled box is not on the muted fill"));
             QVERIFY2(count(boxOn, p.bg, 60) >= 6, what("checked, disabled box has no tick"));
-            QCOMPARE(count(boxOff, p.textMuted, 60), 0);
+            QCOMPARE(count(boxOff.copy(4,4,boxOff.width()-8,boxOff.height()-8), p.textMuted, 60), 0);
             QVERIFY2(count(radioOn, p.textMuted, 60) >= 6, what("checked, disabled radio button has no dot"));
-            QCOMPARE(count(radioOff, p.textMuted, 60), 0);
+            QCOMPARE(count(radioOff.copy(4,4,radioOff.width()-8,radioOff.height()-8), p.textMuted, 60), 0);
         }
     }
     // Essential inputs are found by their painted boundary: the left edge of a

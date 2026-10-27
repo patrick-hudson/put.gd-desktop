@@ -117,39 +117,41 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   line(secondary,2.2);rounded(2,4,20,16,3);
   fill(color);p.drawEllipse(QPointF(12,12),4.8,4.8);
  } else if(name=="select") {
-  line(color,1.8);QPainterPath pointer;pointer.moveTo(5,2);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,22.5);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
+  line(color,1.5);QPainterPath pointer;pointer.moveTo(5,2);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,22.5);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
  } else if(name=="redact") {
-  line(color,1.8);rounded(3,7,18,10,1);
+  line(color,1.5);rounded(3,7,18,10,1);
   p.drawLine(5,3,11,3);p.drawLine(15,3,19,3);p.drawLine(5,21,9,21);p.drawLine(13,21,19,21);
   for(int x:{6,11,16})p.drawLine(x,14,x+3,10);
  } else if(name=="blur") {
-  line(color,1.8);for(int y:{4,12,20})for(int x:{4,12,20})p.drawEllipse(QPointF(x,y),1.3,1.3);
+  // A soft droplet, distinct from an app grid or pixelation.
+  line(color,1.5);QPainterPath drop;drop.moveTo(12,2);drop.cubicTo(9,7,5,10,5,15);drop.cubicTo(5,24,19,24,19,15);drop.cubicTo(19,10,15,7,12,2);p.drawPath(drop);
+  auto soft=color;soft.setAlpha(100);line(soft,1.5);p.drawArc(QRectF(8,11,8,8),195*16,150*16);
  } else if(name=="crop") {
-  line(color,1.8);p.drawLine(7,2,7,17);p.drawLine(7,17,22,17);
+  line(color,1.5);p.drawLine(7,2,7,17);p.drawLine(7,17,22,17);
   p.drawLine(2,7,17,7);p.drawLine(17,7,17,22);
  } else if(name=="annotate-arrow") {
-  line(color,1.8);p.drawLine(4,20,20,4);p.drawLine(11,4,20,4);p.drawLine(20,4,20,13);
+  line(color,1.5);p.drawLine(4,20,20,4);p.drawLine(11,4,20,4);p.drawLine(20,4,20,13);
  } else if(name=="rectangle") {
-  line(color,1.8);rounded(4,5,16,14,1);
+  line(color,1.5);rounded(4,5,16,14,1);
  } else if(name=="highlight") {
-  line(color,1.8);QPainterPath marker;
+  line(color,1.5);QPainterPath marker;
   marker.moveTo(16,2);marker.lineTo(22,8);marker.lineTo(12,18);marker.lineTo(6,12);marker.closeSubpath();
   marker.moveTo(14,4);marker.lineTo(20,10);marker.moveTo(7,13);marker.lineTo(3,19);marker.lineTo(9,19);marker.lineTo(11,17);p.drawPath(marker);
   p.drawLine(2,23,21,23);
  } else if(name=="chevron-down") {
   line(color,2.5);QPainterPath chevron;chevron.moveTo(6,9);chevron.lineTo(12,15);chevron.lineTo(18,9);p.drawPath(chevron);
  } else if(name=="text") {
-  line(color,1.8);p.drawLine(5,5,19,5);p.drawLine(5,5,5,8);p.drawLine(19,5,19,8);p.drawLine(12,5,12,20);p.drawLine(8,20,16,20);
+  line(color,1.5);p.drawLine(5,5,19,5);p.drawLine(5,5,5,8);p.drawLine(19,5,19,8);p.drawLine(12,5,12,20);p.drawLine(8,20,16,20);
  } else if(name=="undo"||name=="redo") {
   if(name=="redo"){p.translate(24,0);p.scale(-1,1);}
-  line(color,1.8);QPainterPath turn;turn.moveTo(4,9);turn.lineTo(15,9);turn.quadTo(21,9,21,15);turn.quadTo(21,21,15,21);turn.lineTo(10,21);
+  line(color,1.5);QPainterPath turn;turn.moveTo(4,9);turn.lineTo(15,9);turn.quadTo(21,9,21,15);turn.quadTo(21,21,15,21);turn.lineTo(10,21);
   turn.moveTo(9,4);turn.lineTo(4,9);turn.lineTo(9,14);p.drawPath(turn);
  } else if(name=="zoom-fit") {
-  line(color,1.8);rounded(2,3,20,18,2);
+  line(color,1.5);rounded(2,3,20,18,2);
   QPainterPath arrows;arrows.moveTo(10,10);arrows.lineTo(6,6);arrows.lineTo(6,10);arrows.moveTo(6,6);arrows.lineTo(10,6);
   arrows.moveTo(14,14);arrows.lineTo(18,18);arrows.lineTo(14,18);arrows.moveTo(18,18);arrows.lineTo(18,14);p.drawPath(arrows);
  } else if(name=="zoom-actual") {
-  line(color,1.8);rounded(1.9,4.4,20.2,15.2,3);
+  line(color,1.5);rounded(1.9,4.4,20.2,15.2,3);
   QPainterPath ones;ones.moveTo(6.8,9.2);ones.lineTo(9.2,7.6);ones.lineTo(9.2,16.4);
   ones.moveTo(14.8,9.2);ones.lineTo(17.2,7.6);ones.lineTo(17.2,16.4);p.drawPath(ones);
   fill(color);p.drawEllipse(QPointF(12.4,9.9),0.9,0.9);p.drawEllipse(QPointF(12.4,14.3),0.9,0.9);
@@ -170,7 +172,7 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   line(secondary,2);rounded(2,3,20,18,2);p.drawLine(QPointF(2,9),QPointF(22,9));p.drawLine(QPointF(2,15),QPointF(22,15));
   line(color,2);p.drawLine(QPointF(10,3),QPointF(10,21));
  } else if(name=="save") {
-  line(color,1.8);QPainterPath save;
+  line(color,1.5);QPainterPath save;
   save.moveTo(12,2);save.lineTo(12,14);save.moveTo(7,9);save.lineTo(12,14);save.lineTo(17,9);
   save.moveTo(3,13);save.lineTo(3,21);save.lineTo(21,21);save.lineTo(21,13);p.drawPath(save);
  } else if(name=="play") {
@@ -199,16 +201,17 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   p.restore();
   line(color,2.5);QPainterPath bracket;bracket.moveTo(7,3.5);bracket.lineTo(3.5,3.5);bracket.lineTo(3.5,20.5);bracket.lineTo(7,20.5);p.drawPath(bracket);
  } else if(name=="remove") {
-  fill(secondary);QPainterPath bin;bin.moveTo(5.5,8);bin.lineTo(18.5,8);bin.lineTo(17.2,21);bin.quadTo(17,22,16,22);bin.lineTo(8,22);bin.quadTo(7,22,6.8,21);bin.closeSubpath();p.drawPath(bin);
-  fill(color);rounded(3,5,18,2.5,1);rounded(9,2,6,3.5,1);line(color,1.6);p.drawLine(QPointF(10,11),QPointF(10.4,19));p.drawLine(QPointF(14,11),QPointF(13.6,19));
+  line(color,1.5);QPainterPath bin;bin.moveTo(6,8);bin.lineTo(7.5,21);bin.lineTo(16.5,21);bin.lineTo(18,8);p.drawPath(bin);
+  p.drawLine(4,5,20,5);p.drawLine(9,2,15,2);p.drawLine(9,2,9,5);p.drawLine(15,2,15,5);
+  p.drawLine(10,9,10,17);p.drawLine(14,9,14,17);
  } else if(name=="bucket") {
   // Object storage (S3, Backblaze B2): a storage drum, its lid and a band.
   fill(secondary);QPainterPath drum;drum.addRect(QRectF(4,6,16,12));drum.addEllipse(QRectF(4,14,16,8));p.drawPath(drum.simplified());
   fill(color);p.drawEllipse(QRectF(4,2,16,8));line(color,1.8);p.drawArc(QRectF(4,9.5,16,7),180*16,180*16);
  } else if(name=="proton") {
-  // Proton Drive: an end-to-end encrypted cloud, a cloud holding a lock.
-  fill(secondary);QPainterPath cloud;cloud.addEllipse(QPointF(8.5,13.5),5.5,5.5);cloud.addEllipse(QPointF(15,10.5),6.5,6.5);cloud.addRoundedRect(QRectF(2,13,20,8),4,4);p.drawPath(cloud.simplified());
-  fill(color);rounded(8.5,13.5,7,6,1.3);line(color,1.8);p.drawArc(QRectF(9.6,9.6,4.8,7.4),0,180*16);
+  // A lock inside an open cloud outline stays legible at 16 px.
+  line(secondary,1.8);QPainterPath cloud;cloud.moveTo(6,20);cloud.cubicTo(-1,20,0,10,6,10);cloud.cubicTo(6,1,18,1,19,10);cloud.cubicTo(25,11,24,20,19,20);p.drawPath(cloud);
+  line(color,1.8);rounded(8,13,8,8,1);p.drawArc(QRectF(9,8,6,9),0,180*16);
  } else if(name=="add") {
   fill(secondary);p.drawEllipse(QRectF(2,2,20,20));
   line(color,2.5);p.drawLine(QPointF(12,7),QPointF(12,17));p.drawLine(QPointF(7,12),QPointF(17,12));

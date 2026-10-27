@@ -128,6 +128,10 @@ QFrame* rule(QWidget* parent = nullptr, Qt::Orientation = Qt::Horizontal);
 // A label in a type role: "page", "section", "body", "strong", "meta",
 // "micro", "muted" and the status roles "success", "warning", "danger".
 QLabel* label(const QString& text, const char* role = "body", QWidget* parent = nullptr);
+// Normal readable text with an amber alert glyph; include a word naming the problem.
+QLabel* warningLabel(const QString& text, QWidget* parent = nullptr);
+// Neutral item selection, distinct from the keyboard focus ring and navigation markers.
+void paintSelection(QPainter&, const QRectF&, bool keyboardFocused = false, qreal radius = Metric::radius);
 
 // Rows of a page's sidebar: icon, label and an optional second line (role
 // SecondLineRole), with the shared hover, selected fill and focus ring.
@@ -155,6 +159,7 @@ public:
     void setRevealable(bool);
     void setElideMode(Qt::TextElideMode mode) { elideMode_ = mode; update(); }
     void setRevealText(const QString& text) { revealText_ = text; }
+    void setRevealTitle(const QString& title) { revealTitle_ = title; }
     void setRevealActionName(const QString& name) { revealActionName_ = name; }
     QString revealActionName() const { return revealActionName_; }
     bool revealable() const { return revealable_; }
@@ -176,6 +181,7 @@ private:
     QRect textRect() const;
     bool revealable_ = false;
     QString revealText_;
+    QString revealTitle_;
     QString revealActionName_ = QStringLiteral("Show full text");
     QPointer<QWidget> popup_;
 };

@@ -110,13 +110,12 @@ QPainterPath partlyRounded(const QRectF& r, qreal radius, bool left, bool right)
 }
 // A text field's frame: raised fill, the 3:1 control outline (the quiet
 // border once disabled), a stronger stroke on hover, an accent stroke while
-// focused, the danger or warning stroke when the field says so.
+// focused, or the danger stroke when the field is invalid.
 void field(QPainter* p, const QRectF& rect, const QStyleOption* option, const QWidget* widget, bool focused, bool squareRight = false, bool squareLeft = false) {
     const bool enabled = option->state & QStyle::State_Enabled;
     const bool locked = lockedLook(option, widget);
     QColor stroke = enabled ? controlOutline() : locked ? t().borderStrong : controlStroke();
     if (widget && widget->property("invalid").toBool()) stroke = t().danger;
-    else if (widget && widget->property("warning").toBool()) stroke = t().warning;
     else if (focused && enabled) stroke = t().accent;
     else if (enabled && (option->state & QStyle::State_MouseOver)) stroke = t().textMuted;
     p->save();
@@ -148,7 +147,7 @@ Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, 
     const bool on = (option->state & QStyle::State_On) && !(widget && widget->property("graphiteDisclosure").toBool());
     Look look;
     if (roleName == "link" || roleName == "version") {
-        look.text = enabled ? (roleName == "version" && !hover ? c.textMuted : c.link) : c.textDisabled;
+        look.text = enabled ? (roleName == "version" && !hover ? c.textMuted : c.textSecondary) : c.textDisabled;
         look.underline = hover;
     } else if (roleName == "primary") {
         look.fill = enabled ? (down ? c.textSecondary : hover ? mix(c.text, c.textSecondary, 0.55) : c.text) : c.surfaceRaised;
@@ -450,7 +449,14 @@ void Style::polish(QWidget* widget) {
     if (qobject_cast<QAbstractButton*>(widget) || qobject_cast<QComboBox*>(widget) || qobject_cast<QAbstractSpinBox*>(widget) || qobject_cast<QTabBar*>(widget)
         || qobject_cast<QScrollBar*>(widget) || qobject_cast<QSlider*>(widget) || qobject_cast<QLineEdit*>(widget))
         widget->setAttribute(Qt::WA_Hover);
-    if (auto* button = qobject_cast<QAbstractButton*>(widget)) focusTooltips(button);
+    if (auto* button = qobject_cast<QAbstractButton*>(widget)) {
+        focusTooltips(button);
+        if (!button->icon().isNull()) {
+            auto base = button->property("graphiteIconBase").toSize();
+            if (!base.isValid()) { base = button->iconSize(); if (base == QSize(scaled(Metric::icon), scaled(Metric::icon))) base = QSize(Metric::icon, Metric::icon); button->setProperty("graphiteIconBase", base); }
+            button->setIconSize(QSize(scaled(base.width()), scaled(base.height())));
+        }
+    }
     if (auto* edit = qobject_cast<QLineEdit*>(widget); edit && !edit->property("graphitePlaceholderFont").toBool()) {
         edit->setProperty("graphitePlaceholderFont", true);
         QObject::connect(edit, &QLineEdit::textChanged, edit, [edit, empty = edit->text().isEmpty()](const QString& text) mutable {
@@ -504,9 +510,9 @@ void Style::polish(QWidget* widget) {
     else if (tone == "success") colour = c.success;
     else if (name == "subtitle" || name == "muted" || name == "default" || name == "private") colour = c.textMuted;
     else if (name == "secondary") colour = c.textSecondary;
-    else if ((name == "link" && qobject_cast<QLabel*>(widget)) || binding == "active") colour = c.link;
+    else if ((name == "link" && qobject_cast<QLabel*>(widget)) || binding == "active") colour = c.textSecondary;
     else if (name == "success" || tone == "success") colour = c.success;
-    else if (name == "warning" || binding == "warning") colour = c.warning;
+    else if (name == "warning" || binding == "warning") colour = c.textSecondary;
     else if (name == "danger" || name == "error" || tone == "error" || binding == "error") colour = c.danger;
     else if (name == "status") colour = c.textSecondary;
     else if (name == "notice") colour = c.text;
@@ -587,7 +593,7 @@ int Style::pixelMetric(PixelMetric metric, const QStyleOption* option, const QWi
     case PM_TabBarTabHSpace: return 40;
     case PM_TabBarTabVSpace: return 16;
     case PM_SliderLength: case PM_SliderControlThickness: case PM_SliderThickness: return 32;
-    case PM_ToolBarIconSize: case PM_ButtonIconSize: case PM_SmallIconSize: return Metric::icon;
+    case PM_ToolBarIconSize: case PM_ButtonIconSize: case PM_SmallIconSize: return scaled(Metric::icon);
     case PM_FocusFrameHMargin: case PM_FocusFrameVMargin: return 0;
     case PM_HeaderMargin: return 8;
     case PM_ProgressBarChunkWidth: return 1;
@@ -874,7 +880,7 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
             p->restore();
             return;
         }
-        if (qobject_cast<const QPlainTextEdit*>(widget) || qobject_cast<const QTextEdit*>(widget)) {
+        if (qobject_cast<const QPlainTextEdit*>(widget) || qobject_cast<const QTextEdit*>(widget) || (widget && widget->property("graphiteFieldFrame").toBool())) {
             if (widget->objectName() == "historySummary") return;
             field(p, option->rect, option, widget, widget->hasFocus());
             return;
@@ -1093,10 +1099,10 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         }
         if (item->maxIconWidth > 0) {
             if (!item->icon.isNull()) {
-                const auto pixmap = item->icon.pixmap(QSize(Metric::icon, Metric::icon), dpr(widget), !enabled ? QIcon::Disabled : selected ? QIcon::Selected : QIcon::Normal);
-                p->drawPixmap(QPointF(x, r.center().y() - Metric::icon / 2.0), pixmap);
+                const auto pixmap = item->icon.pixmap(QSize(scaled(Metric::icon), scaled(Metric::icon)), dpr(widget), !enabled ? QIcon::Disabled : selected ? QIcon::Selected : QIcon::Normal);
+                p->drawPixmap(QPointF(x, r.center().y() - scaled(Metric::icon) / 2.0), pixmap);
             }
-            x += 28;
+            x += scaled(Metric::icon) + 10;
         }
         auto text = item->text;
         QString shortcut;
@@ -1266,7 +1272,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
             return;
         }
         if (name == "notice") {
-            rounded(p, r, c.warningSurface, mix(c.warning, c.warningSurface, 0.45), Metric::radius);
+            rounded(p, r, c.surfaceRaised, c.borderStrong, Metric::radius);
             return;
         }
         if (name == "card") {
@@ -1505,12 +1511,14 @@ namespace {
 // text selectable by mouse and keyboard, closed by Escape or a click outside.
 class FullTextPopup final : public Surface {
 public:
-    FullTextPopup(const QString& text, QWidget* owner) : Surface("raised", Qt::TopEdge | Qt::BottomEdge | Qt::LeftEdge | Qt::RightEdge, owner) {
+    FullTextPopup(const QString& text, const QString& title, QWidget* owner) : Surface("raised", Qt::TopEdge | Qt::BottomEdge | Qt::LeftEdge | Qt::RightEdge, owner) {
         setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
         setAttribute(Qt::WA_DeleteOnClose);
         setObjectName("elidedLabelFullText");
         auto* layout = new QVBoxLayout(this);
-        layout->setContentsMargins(12, 10, 12, 10);
+        layout->setContentsMargins(8, 8, 8, 8);
+        layout->setSpacing(8);
+        if (!title.isEmpty()) layout->addWidget(Graphite::label(title, "meta", this));
         label_ = new QLabel(text, this);
         label_->setObjectName("elidedLabelFullTextValue");
         label_->setTextFormat(Qt::PlainText);
@@ -1523,6 +1531,7 @@ public:
         scroll->setWidgetResizable(true);
         scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         scroll->setWidget(label_);
+        if (!title.isEmpty()) { scroll->setProperty("graphiteFieldFrame", true); scroll->setFrameShape(QFrame::StyledPanel); label_->setMargin(8); }
         layout->addWidget(scroll);
         label_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
         setAccessibleName(text);
@@ -1597,16 +1606,16 @@ void ElidedLabel::setRevealable(bool on) {
 }
 bool ElidedLabel::elided() const { return QFontMetricsF(font()).horizontalAdvance(text()) > textRect().width(); }
 void ElidedLabel::reveal() {
-    if (!revealable_ || text().isEmpty()) return;
+    if ((!revealable_ && revealTitle_.isEmpty()) || text().isEmpty()) return;
     if (popup_) popup_->close();
-    auto* popup = new FullTextPopup(revealText_.isEmpty() ? text() : revealText_, this);
+    auto* popup = new FullTextPopup(revealText_.isEmpty() ? text() : revealText_, revealTitle_, this);
     popup_ = popup;
     const auto screen = (window() && window()->screen() ? window()->screen() : QGuiApplication::primaryScreen())->availableGeometry();
     const int width = std::min(std::max(this->width(), scaled(320)), std::min(scaled(560), screen.width() - 16));
     popup->setFixedWidth(width);
     const int maxHeight = std::min(screen.height() - 16, window() ? window()->height() - 16 : screen.height() - 16);
     popup->label()->setMinimumHeight(popup->label()->heightForWidth(width - 36));
-    popup->resize(width, std::min(maxHeight, popup->label()->minimumHeight() + 20));
+    popup->resize(width, std::min(maxHeight, popup->label()->minimumHeight() + (revealTitle_.isEmpty() ? 20 : scaled(48))));
     // Above a label in the lower half of its window (the status band), below
     // one higher up; the other side when the screen has no room.
     const QPoint above = mapToGlobal(QPoint(0, -popup->height() - 4)), below = mapToGlobal(QPoint(0, height() + 4));
@@ -1649,6 +1658,35 @@ void ElidedLabel::paintEvent(QPaintEvent*) {
               alignment(), elideMode_);
 }
 
+namespace {
+class WarningLabel final : public QLabel {
+public:
+    WarningLabel(const QString& text, QWidget* parent) : QLabel(text, parent) { setWordWrap(true); }
+protected:
+    bool event(QEvent* event) override {
+        if (event->type() == QEvent::DynamicPropertyChange || event->type() == QEvent::FontChange)
+            setContentsMargins(role(this) == "warning" ? scaled(Metric::icon) + 8 : 0, 0, 0, 0);
+        return QLabel::event(event);
+    }
+    void paintEvent(QPaintEvent* event) override {
+        QLabel::paintEvent(event);
+        if (role(this) != "warning") return;
+        QPainter p(this);
+        const int side = scaled(Metric::icon);
+        const auto glyph = IconArt::symbol("alert", t().bg, std::max(1, (side + 23) / 24), t().accent);
+        p.drawImage(QRect(0, std::max(0, (fontMetrics().height() - side) / 2), side, side), glyph);
+    }
+};
+}
+QLabel* warningLabel(const QString& text, QWidget* parent) {
+    auto* label = new WarningLabel(text, parent);
+    VisualStyle::role(label, "warning");
+    return label;
+}
+void paintSelection(QPainter& painter, const QRectF& rect, bool keyboardFocused, qreal radius) {
+    rounded(&painter, rect, t().selected, keyboardFocused ? t().accent : t().borderStrong, radius);
+}
+
 NavigationDelegate::NavigationDelegate(QObject* parent, int rowHeight) : QStyledItemDelegate(parent), rowHeight_(rowHeight) {}
 QSize NavigationDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
     const bool two = !index.data(SecondLineRole).toString().isEmpty();
@@ -1668,9 +1706,9 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
     const auto icon = index.data(Qt::DecorationRole).value<QIcon>();
     qreal x = box.left() + 12;
     if (!icon.isNull()) {
-        const auto pixmap = icon.pixmap(QSize(Metric::icon, Metric::icon), dpr(option.widget), !enabled ? QIcon::Disabled : selected ? QIcon::Selected : QIcon::Normal);
-        p->drawPixmap(QPointF(x, box.center().y() - Metric::icon / 2.0), pixmap);
-        x += Metric::icon + 10;
+        const auto pixmap = icon.pixmap(QSize(scaled(Metric::icon), scaled(Metric::icon)), dpr(option.widget), !enabled ? QIcon::Disabled : selected ? QIcon::Selected : QIcon::Normal);
+        p->drawPixmap(QPointF(x, box.center().y() - scaled(Metric::icon) / 2.0), pixmap);
+        x += scaled(Metric::icon) + 10;
     }
     const auto first = index.data(Qt::DisplayRole).toString(), second = index.data(SecondLineRole).toString();
     const QColor ink = !enabled ? c.textDisabled : selected ? c.text : c.textSecondary;
@@ -1683,9 +1721,40 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
     }
 }
 
+namespace {
+class Confirmation final : public QMessageBox {
+public:
+    using QMessageBox::QMessageBox;
+protected:
+    void showEvent(QShowEvent* event) override {
+        QMessageBox::showEvent(event);
+        auto* grid = qobject_cast<QGridLayout*>(layout());
+        auto* title = findChild<QLabel*>("qt_msgbox_label");
+        auto* body = findChild<QLabel*>("qt_msgbox_informativelabel");
+        auto* buttons = findChild<QDialogButtonBox*>();
+        if (!grid || !title || !buttons) return;
+        while (auto* item = grid->takeAt(0)) delete item;
+        for (int row = 0; row < grid->rowCount(); ++row) { grid->setRowMinimumHeight(row, 0); grid->setRowStretch(row, 0); }
+        grid->setSpacing(0);
+        for (int column = 0; column < grid->columnCount(); ++column) { grid->setColumnMinimumWidth(column, 0); grid->setColumnStretch(column, 0); }
+        title->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+        grid->addWidget(title, 0, 0);
+        if (body) {
+            body->setContentsMargins(0, 0, 0, 0);
+            body->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+            grid->setRowMinimumHeight(1, 12);
+            grid->addWidget(body, 2, 0);
+        }
+        grid->setRowMinimumHeight(3, 16);
+        grid->addWidget(buttons, 4, 0);
+        grid->activate();
+        adjustSize();
+    }
+};
+}
 QMessageBox* confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, const QString& safe, bool destructive) {
     const int split = text.indexOf('\n');
-    auto* box = new QMessageBox(QMessageBox::NoIcon, title, split < 0 ? text : text.left(split), QMessageBox::Yes | QMessageBox::Cancel, parent);
+    auto* box = new Confirmation(QMessageBox::NoIcon, title, split < 0 ? text : text.left(split), QMessageBox::Yes | QMessageBox::Cancel, parent);
     box->setObjectName(QStringLiteral("confirmAction"));
     box->setProperty("confirmationText", text);
     // QMessageBox constructed its button box before it had our component name.
