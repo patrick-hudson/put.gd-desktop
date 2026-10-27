@@ -132,7 +132,6 @@ FrameView::FrameView(QWidget* parent, std::shared_ptr<MaskNames> names) : QWidge
 void FrameView::setFrame(const QImage& image, qint64 timeUs) { frame_ = image; timeUs_ = timeUs; setPreviewError({}); update(); }
 void FrameView::setPreviewError(const QString& message) {
     error_ = message;
-    placeMaskMetadata();
     announce();
     if (message.isEmpty()) { errorCard_->hide(); update(); return; }
     // A frame still on screen is an earlier one: say which, as well as dimming it.
@@ -173,11 +172,11 @@ void FrameView::setMasks(const QList<RecordingMask>& masks, const QString& selec
     masks_ = masks;
     selected_ = selected;
     if (!pending.isNull()) for (auto& m : masks_) if (m.id == selected_) m.rect = pending;
-    placeMaskMetadata();
     announce();
     update();
 }
 void FrameView::announce() {
+    placeMaskMetadata();
     QString text = QStringLiteral("No mask selected. Choose one in the Masks list.");
     for (int i = 0; i < masks_.size(); ++i) {
         const auto& m = masks_[i];
@@ -1379,7 +1378,9 @@ void ReviewWindow::showAdvice() {
     text->setPlainText((message_.text.isEmpty() ? QString() : message_.text + "\n\n") + audio_->property("summary").toString() + "\n\n" + formatHint(config_.format, config_.codec));
     text->setAccessibleName("Recording details");
     layout->addWidget(text);
-    if (config_.format == "mp4" && config_.codec == "h265") {
+    bool h264Available = false;
+    for (int i = 0; i < format_->count(); ++i) h264Available |= format_->itemData(i).toStringList() == QStringList{"mp4", "h264"};
+    if (config_.format == "mp4" && config_.codec == "h265" && h264Available) {
         auto* compatible = new QPushButton("Use MP4 (H.264)", dialog);
         connect(compatible, &QPushButton::clicked, this, [this, dialog] {
             drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}});

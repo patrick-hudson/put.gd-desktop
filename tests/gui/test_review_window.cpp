@@ -586,11 +586,23 @@ private slots:
         edit.revision++; edit.masks[0].start = 5000000; edit.masks[0].end = 20000000; window.setEdit(edit);
         QCOMPARE(label->text(), QString("Active 0:05.00–0:20.00"));
         QCOMPARE(window.inspect()["selectedMaskInterval"].toObject()["text"].toString(), label->text());
+        const auto position = label->pos();
+        QTest::keyClick(window.findChild<FrameView*>(), Qt::Key_Right, Qt::ControlModifier);
+        QVERIFY(label->x() > position.x());
+        QCOMPARE(label->text(), QString("Active 0:05.00–0:20.00"));
         QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont()).family());
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
         QVERIFY(window.findChild<QLabel*>("time")->text().contains("Outside kept part"));
         QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("Keep 2–29 s · 27 s"));
+    }
+    void adviceOnlyOffersAvailableFormats() {
+        auto o = options(); o.codecs["mp4"] = QJsonArray{"h265"};
+        auto c = config(); c.codec = "h265";
+        ReviewWindow window(o, c); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QVERIFY(window.drive({{"action", "showAdvice"}}).state["adviceDialog"].toObject()["open"].toBool());
+        QVERIFY(!buttonNamed(window, "Use MP4 (H.264)"));
     }
     void maskControlsShowOnlyWhenTheyApply() {
         ReviewWindow window(options(), config());
