@@ -298,6 +298,15 @@ int main(int argc,char** argv){
   review.drive({{"action","selectMask"},{"maskId","m-solid"}});review.activateWindow();putgd::test::waitForWindowActive(&review);if(auto* view=review.findChild<record::FrameView*>())view->setFocus(Qt::TabFocusReason);if(!shot(review,"38-review-keyboard-mask")||!inspected(review,"38-review-keyboard-mask"))return 2;
   // An export failure and a codec warning, each with its actions, in the status row.
   review.drive({{"action","format"},{"format","mp4"},{"codec","h265"}});review.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");if(!shot(review,"39-review-status-errors")||!inspected(review,"39-review-status-errors"))return 2;
+  {
+   auto constrainedOptions=o;constrainedOptions.availableSize=QSize(1366,680);
+   record::ReviewWindow constrained(constrainedOptions,config);constrained.setEdit(edit);constrained.show();
+   constrained.drive({{"action","selectMask"},{"maskId","m-blur"}});constrained.drive({{"action","format"},{"format","mp4"},{"codec","h265"}});
+   constrained.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
+   if(auto* view=constrained.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
+   if(!shot(constrained,"67-review-680-workspace")||!inspected(constrained,"67-review-680-workspace"))return 2;
+   constrained.drive({{"action","showAdvice"}});if(auto* dialog=constrained.findChild<QWidget*>("reviewAdvice")){if(!shot(*dialog,"68-review-error-details"))return 2;}else return 2;
+  }
   review.drive({{"action","dismissStatus"}});review.drive({{"action","format"},{"format","mp4"},{"codec","h264"}});
   // A refresh that fails (there is no clip): the earlier frame is dimmed and named.
   review.drive({{"action","seek"},{"time",16000000}});review.drive({{"action","retryPreview"}});if(!shot(review,"40-review-preview-error")||!inspected(review,"40-review-preview-error"))return 2;

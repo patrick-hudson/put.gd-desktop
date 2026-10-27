@@ -121,20 +121,8 @@ QString formatLabel(const QString& format, const QString& codec) {
 }
 
 namespace {
-// Text over the desktop on a label in the scheme's colours, outlined like the
-// bar, so it reads over any content: the selection hint and its size.
-void paintLabel(QPainter& painter, const QPointF& at, const QString& text) {
-    const auto& p = Theme::current();
-    const QFontMetricsF metrics(painter.font());
-    const QRectF box(at, QSizeF(metrics.horizontalAdvance(text) + 16, metrics.height() + 8));
-    painter.save();
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(p.textDisabled, 1));
-    painter.setBrush(p.bg);
-    painter.drawRoundedRect(box.adjusted(0.5, 0.5, -0.5, -0.5), 6, 6);
-    painter.setPen(p.text);
-    painter.drawText(box, Qt::AlignCenter, text);
-    painter.restore();
+QString displayName(QScreen* screen) {
+    return screen->name().isEmpty() ? QStringLiteral("Display %1").arg(QGuiApplication::screens().indexOf(screen) + 1) : screen->name();
 }
 }
 
@@ -143,7 +131,7 @@ public:
     Surface(SelectionOverlay& owner, QScreen* screen) : QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus), owner_(owner), logical_(screen->geometry()) {
         setObjectName("putgd-record-select");
         setAccessibleName("Recording region");
-        describeRegion(this, {}, true, screen->name());
+        describeRegion(this, {}, true, displayName(screen));
         setAttribute(Qt::WA_TranslucentBackground);
         setScreen(screen);
         setGeometry(logical_.toAlignedRect());
@@ -152,23 +140,22 @@ public:
         setFocusPolicy(Qt::StrongFocus);
         connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
     }
-    void refresh() { describeRegion(this, owner_.selection_, true, QGuiApplication::screens()[activeScreen()]->name()); update(); }
+    void refresh() { describeRegion(this, owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()])); update(); }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
         painter.setCompositionMode(QPainter::CompositionMode_Source);
         painter.fillRect(rect(), QColor(0, 0, 0, 70));
-        const auto clipped = owner_.selection_.intersected(logical_);
+        const auto clipped = owner_.selection_.isEmpty() && screen() == QGuiApplication::screens()[activeScreen()] ? logical_ : owner_.selection_.intersected(logical_);
         if (!clipped.isEmpty()) {
             const QRectF local = clipped.translated(-logical_.topLeft());
             painter.fillRect(local, Qt::transparent);
             painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
             paintSelectionOutline(painter, local);
-            paintLabel(painter, local.topLeft() + QPointF(6, 6), QStringLiteral("%1 × %2").arg(int(clipped.width())).arg(int(clipped.height())));
         }
         painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
         if (owner_.keyboardScreen_ < 0 || screen() == QGuiApplication::screens()[activeScreen()])
-            paintRegionInstructions(painter, rect(), palette(), regionInstructions(owner_.selection_, true, QGuiApplication::screens()[activeScreen()]->name()));
+            paintRegionInstructions(painter, rect(), palette(), regionInstructions(owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()])));
     }
     void mousePressEvent(QMouseEvent* e) override {
         if (e->button() == Qt::RightButton) { owner_.cancel(); return; }
@@ -204,7 +191,7 @@ void SelectionOverlay::start() {
     for (QScreen* screen : QGuiApplication::screens()) { auto* surface = new Surface(*this, screen); surfaces_.append(surface); surface->show(); surface->raise(); }
     Surface* focus = surfaces_.isEmpty() ? nullptr : surfaces_.first();
     for (auto* s : surfaces_) if (s->geometry().contains(QCursor::pos())) focus = s;
-    if (focus) focus->grabKeyboard();
+    if (focus) { keyboardScreen_ = QGuiApplication::screens().indexOf(focus->screen()); focus->grabKeyboard(); for (auto* surface : surfaces_) surface->refresh(); }
     connect(qGuiApp, &QGuiApplication::screenAdded, this, [this] { cancel({"display_changed", "Display changed during region selection", {}}); });
     connect(qGuiApp, &QGuiApplication::screenRemoved, this, [this] { cancel({"display_changed", "Display changed during region selection", {}}); });
 }
@@ -480,7 +467,7 @@ void ControlBar::setState(const QString& state) { state_ = state; refresh(); }
 void ControlBar::paintEvent(QPaintEvent*) {
     QPainter painter(this);
     painter.fillRect(rect(), Theme::current().bg);
-    painter.setPen(Theme::current().borderStrong);
+    painter.setPen(Theme::current().controlOutline);
     painter.drawRect(rect().adjusted(0, 0, -1, -1));
 }
 void ControlBar::setRetained(qint64 us) {

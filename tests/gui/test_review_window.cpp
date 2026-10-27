@@ -175,6 +175,7 @@ private slots:
             QVERIFY(accessible);
             QCOMPARE(accessible->text(QAccessible::Description), surface->accessibleDescription());
             QVERIFY(surface->accessibleDescription().contains(recording ? "Drag and release to use a region" : "Drag and release to capture"));
+            QVERIFY(surface->accessibleDescription().contains(recording ? "Enter records this entire display" : "Enter captures this entire display"));
             if (mode == 0) {
                 QTest::keyClick(surface, Qt::Key_Return);
                 QCOMPARE(selected, QRectF(screen));
@@ -183,6 +184,8 @@ private slots:
                 QCOMPARE(selected, QRectF(QPointF(screen.topLeft()) + QPointF(100, 100), QSizeF(200, 180)));
             } else {
                 QTest::keyClick(surface, Qt::Key_Right);
+                QVERIFY(surface->accessibleDescription().contains(recording ? "Enter records the selected region" : "Enter captures the selected region"));
+                QVERIFY(surface->accessibleDescription().contains("logical pixels"));
                 QRectF expected(QPointF(screen.topLeft()) + QPointF(screen.width() / 4.0, screen.height() / 4.0), QSizeF(screen.size()) / 2);
                 QVERIFY(accessible->text(QAccessible::Description).contains(QString::number(expected.width())));
                 QTest::keyClick(surface, Qt::Key_Right);
@@ -298,7 +301,7 @@ private slots:
         QVERIFY(state["previewMuted"].toBool());
         auto* target = window.findChild<QLabel*>("uploadDestination");
         auto* upload = window.findChild<QPushButton*>("upload");
-        QVERIFY(target && target->isVisible() && target->wordWrap());
+        QVERIFY(target && target->isVisible() && target->toolTip() == o.uploadSummary);
         QVERIFY(target->mapTo(&window, target->rect().bottomLeft()).y() < upload->mapTo(&window, QPoint()).y());
         QVERIFY(window.rect().contains(QRect(target->mapTo(&window, QPoint()), target->size())));
         QVERIFY(window.findChild<QLabel*>("audioSummary")->isVisible());
@@ -439,7 +442,8 @@ private slots:
     }
     void largeTextStillFitsA1366x768Desktop() {
         const auto font = QApplication::font();
-        const auto restore = qScopeGuard([&] { QApplication::setFont(font); });
+        const auto scheme = Theme::scheme();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(font); Theme::setScheme(scheme); });
         auto large = font;
         if (font.pointSizeF() > 0) large.setPointSizeF(font.pointSizeF() * 1.5);
         else large.setPixelSize(font.pixelSize() * 3 / 2);
@@ -523,6 +527,70 @@ private slots:
             PUTGD_TRY_VERIFY2(window.height() <= 768 && window.inspect()["video"].toObject()["share"].toDouble() >= 0.53,
                 qPrintable(QString("Window %1x%2 minimum %3x%4 frame %5 status %6 share %7").arg(window.width()).arg(window.height()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()).arg(window.findChild<FrameView*>()->height()).arg(window.findChild<QWidget*>("statusRow")->height()).arg(window.inspect()["video"].toObject()["share"].toDouble())));
         }
+    }
+    void constrainedWorkspaceKeepsWarningsAndActionsReachable_data() {
+        QTest::addColumn<QSize>("canvas");
+        QTest::newRow("16:9") << QSize(1280, 720);
+        QTest::newRow("16:10") << QSize(960, 600);
+    }
+    void constrainedWorkspaceKeepsWarningsAndActionsReachable() {
+        QFETCH(QSize, canvas);
+        const auto font = QApplication::font();
+        const auto scheme = Theme::scheme();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(font); Theme::setScheme(scheme); });
+        auto large = font;
+        if (font.pointSizeF() > 0) large.setPointSizeF(font.pointSizeF() * 1.5);
+        else large.setPixelSize(font.pixelSize() * 3 / 2);
+        QApplication::setFont(large);
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            auto o = options(); o.availableSize = QSize(1366, 680); o.canvas = canvas; o.durationUs = 32000000;
+            auto edit = twoMasks(); edit.trimStart = 2000000; edit.trimEnd = 29000000;
+            ReviewWindow window(o, config()); window.setEdit(edit); window.show();
+            QVERIFY(putgd::test::waitForWindowExposed(&window));
+            if (window.height() > 680 || window.inspect()["video"].toObject()["share"].toDouble() < 0.60) {
+                const auto render = qEnvironmentVariable("PUTGD_REVIEW_FAILURE_IMAGE");
+                if (!render.isEmpty()) window.grab().save(render);
+                for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && !w->isWindow())
+                    qInfo() << w->metaObject()->className() << w->objectName() << w->accessibleName() << w->geometry() << w->minimumSizeHint() << w->sizeHint();
+            }
+            PUTGD_TRY_VERIFY(window.height() <= 680);
+            QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60);
+            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
+            window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
+            const QString failure = "Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again";
+            window.showError(failure);
+            PUTGD_TRY_VERIFY2(window.height() <= 680 && window.minimumSizeHint().height() <= 680,
+                qPrintable(QString("%1x%2 min %3x%4 share %5").arg(window.width()).arg(window.height()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()).arg(window.inspect()["video"].toObject()["share"].toDouble())));
+            QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53);
+            QVERIFY(window.inspect()["status"].toString().contains("For private information, use Redact."));
+            QVERIFY(buttonNamed(window, "Use Redact")->isVisible());
+            QVERIFY(window.inspect()["errorDetails"].toObject()["visible"].toBool());
+            QCOMPARE(window.inspect()["errorDetails"].toObject()["message"].toString(), failure);
+            for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && !w->isWindow())
+                QVERIFY2(window.rect().contains(QRect(w->mapTo(&window, QPoint()), w->size())), qPrintable(w->accessibleName() + w->objectName()));
+            QVERIFY(window.drive({{"action", "showAdvice"}}).state["adviceDialog"].toObject()["open"].toBool());
+            auto* details = window.findChild<QWidget*>("reviewAdviceText");
+            QVERIFY(details);
+            PUTGD_TRY_VERIFY(details->hasFocus());
+            QVERIFY(details->property("plainText").toString().contains(failure));
+            QVERIFY(!window.drive({{"action", "showAdvice"}}).state["adviceDialog"].toObject()["open"].toBool());
+        }
+    }
+    void selectedMaskTimingStaysVisibleAfterEdits() {
+        auto o = options(); o.durationUs = 32000000;
+        ReviewWindow window(o, config()); auto edit = twoMasks(); window.setEdit(edit); window.show();
+        window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
+        auto* label = window.findChild<QLabel*>("maskActiveInterval");
+        QVERIFY(label && label->isVisible());
+        edit.revision++; edit.masks[0].start = 5000000; edit.masks[0].end = 20000000; window.setEdit(edit);
+        QCOMPARE(label->text(), QString("Active 0:05.00–0:20.00"));
+        QCOMPARE(window.inspect()["selectedMaskInterval"].toObject()["text"].toString(), label->text());
+        QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont()).family());
+        edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
+        window.drive({{"action", "seek"}, {"time", 0}});
+        QVERIFY(window.findChild<QLabel*>("time")->text().contains("Outside kept part"));
+        QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("Keep 2–29 s · 27 s"));
     }
     void maskControlsShowOnlyWhenTheyApply() {
         ReviewWindow window(options(), config());
@@ -925,7 +993,10 @@ private slots:
                 QVERIFY(row->rect().contains(QRect(button->mapTo(row, QPoint()), button->size())));
             }
         }
-        QCOMPARE(lines, 2);
+        QCOMPARE(lines, 1);
+        QVERIFY(window.inspect()["adviceDialog"].toObject()["open"].toBool());
+        auto* advice = window.findChild<QWidget*>("reviewAdviceText");
+        QVERIFY(advice && advice->property("plainText").toString().contains("MP4 (H.264)"));
         auto* dismiss = buttonNamed(window, "Dismiss");
         auto* fix = buttonNamed(window, "Use MP4 (H.264)");
         QVERIFY(dismiss && fix);
@@ -946,12 +1017,12 @@ private slots:
         window.setEdit(twoMasks());
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        const QString guidance = QStringLiteral("Blur is a visual effect. Use Redact for private information.");
+        const QString guidance = QStringLiteral("For private information, use Redact.");
         QVERIFY(!window.inspect()["status"].toString().contains(guidance));
         auto* list = window.findChild<QComboBox*>("masks");
         QCOMPARE(list->itemText(1), QString("Redaction 2"));
         QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}).code.isEmpty());
-        QVERIFY(window.drive({{"action", "showAdvice"}}).state["status"].toString() == guidance);
+        QCOMPARE(window.inspect()["status"].toString(), guidance);
         auto* fix = buttonNamed(window, "Use Redact");
         QVERIFY(fix);
         fix->click();

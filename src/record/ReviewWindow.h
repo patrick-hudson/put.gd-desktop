@@ -75,6 +75,7 @@ private:
     QRectF toView(const QRect&) const;
     QRect bounds() const;
     void placeErrorCard();
+    void placeMaskMetadata();
     void announce();
     QImage frame_;
     qint64 timeUs_ = 0;
@@ -92,6 +93,7 @@ private:
     bool nudging_ = false;
     QWidget* errorCard_ = nullptr;
     QLabel* errorText_ = nullptr;
+    QLabel* maskMetadata_ = nullptr;
     QPushButton* retry_ = nullptr;
 };
 
@@ -163,7 +165,8 @@ private:
 class ReviewWindow final : public QWidget {
     Q_OBJECT
 public:
-    struct Options { QString workingClip; QString destination, sharingMode, uploadSummary; qint64 durationUs = 0; QSize canvas; QStringList formats; QJsonObject codecs; bool audioRecorded = false; };
+    // availableSize optionally supplies the embedding host's workspace; otherwise use QScreen.
+    struct Options { QString workingClip; QString destination, sharingMode, uploadSummary; qint64 durationUs = 0; QSize canvas; QStringList formats; QJsonObject codecs; bool audioRecorded = false; QSize availableSize; };
     ReviewWindow(const Options&, const RecordingConfig&, QWidget* parent = nullptr);
     void setEdit(const RecordingEdit&);
     void setConfig(const RecordingConfig&);
@@ -255,11 +258,15 @@ private:
     QString savedPath_;
     quint64 savedRevision_ = 0;
     RecordingConfig savedConfig_;
-    bool savedDismissed_ = false, adviceExpanded_ = false;
+    bool savedDismissed_ = false;
     QJsonObject lastShowInFolder_;
     bool savedCurrent() const;
     void placeTools();
     void updateMinimum();
+    QSize availableReviewSize() const;
+    void showAdvice();
+    bool compactStatus_ = false, footerError_ = false;
+    QPointer<QWidget> adviceDialog_;
     bool minimumPending_ = false;
     QWidget *trimGroup_ = nullptr, *maskGroup_ = nullptr;
     QGridLayout* toolsGrid_ = nullptr;
@@ -269,8 +276,7 @@ private:
     QLabel* destination_ = nullptr;
     QGridLayout* footerGrid_ = nullptr;
     QWidget* outputTools_ = nullptr;
-    bool destinationAbove_ = false;
-    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *strengthLabel_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
+    QLabel *notice_ = nullptr, *time_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *strengthLabel_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
     // Errors, warnings and privacy guidance with their actions; shown only when there are any.
     QWidget* statusRow_ = nullptr;
     QVBoxLayout* statusLines_ = nullptr;
@@ -286,7 +292,7 @@ private:
     std::shared_ptr<std::atomic_bool> playStop_;
     bool playing_ = false;
     QToolButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addBlur_ = nullptr, *addSolid_ = nullptr, *removeMask_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr;
-    QPushButton *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
+    QPushButton *errorDetails_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
     FileDialog* chooser_ = nullptr;
     QWidget *maskTools_ = nullptr;
     QShortcut *escape_ = nullptr, *place_ = nullptr, *placeEnter_ = nullptr;
