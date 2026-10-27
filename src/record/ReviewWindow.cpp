@@ -1447,6 +1447,7 @@ void ReviewWindow::showAdvice() {
     layout->addWidget(text);
     auto* form = new QFormLayout;
     VisualStyle::styleForm(form);
+    form->setLabelAlignment(Qt::AlignLeft | Qt::AlignTop);
     layout->addLayout(form);
     auto fact = [body](const QString& value) { auto* label = new QLabel(value, body); label->setTextFormat(Qt::PlainText); label->setWordWrap(true); return label; };
     form->addRow("Audio", fact(audio_->property("summary").toString()));
@@ -1485,7 +1486,7 @@ void ReviewWindow::showAdvice() {
     connect(close, &QPushButton::clicked, this, [this, dialog, failed] { if (failed) drive({{"action", "dismissStatus"}}); dialog->close(); });
     actions->addWidget(close);
     root->addWidget(footer);
-    dialog->resize(QSize(640, 360).boundedTo(availableReviewSize()));
+    dialog->resize(QSize(640, Graphite::scaled(360)).boundedTo(availableReviewSize()));
     dialog->show();
     if (!message_.text.isEmpty()) text->setFocus();
 }

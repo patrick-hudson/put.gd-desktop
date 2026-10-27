@@ -676,6 +676,8 @@ private slots:
             QVERIFY(details);
             PUTGD_TRY_VERIFY(details->hasFocus());
             QVERIFY(details->property("plainText").toString().contains(failure));
+            auto* compatible = buttonNamed(window, "Use MP4 (H.264)");
+            QVERIFY(compatible && !compatible->visibleRegion().isEmpty());
             QVERIFY(!window.drive({{"action", "showAdvice"}}).state["adviceDialog"].toObject()["open"].toBool());
         }
     }
@@ -1117,6 +1119,10 @@ private slots:
         window.drive({{"action", "showAdvice"}});
         auto* dialog = window.findChild<QDialog*>("reviewAdvice");
         QVERIFY(dialog); QCOMPARE(dialog->windowTitle(), QString("Export failed"));
+        auto* compatible = buttonNamed(*dialog, "Use MP4 (H.264)");
+        QVERIFY(compatible);
+        const auto position = compatible->mapTo(dialog, QPoint());
+        QVERIFY(dialog->rect().contains(QRect(position, compatible->size())));
         auto* primary = buttonNamed(*dialog, "Try again");
         QVERIFY(primary && primary->isDefault());
         primary->click(); QCOMPARE(retry.size(), 2);
