@@ -8,6 +8,7 @@
 #include "ui/BlurRadius.h"
 #include <QApplication>
 #include <cmath>
+#include <QContextMenuEvent>
 #include <QFormLayout>
 #include <QListWidget>
 #include <QToolTip>
@@ -63,6 +64,15 @@ class ThemeTest : public QObject {
     }
 private slots:
     void init() { Theme::setScheme(Theme::Scheme::Dark); }
+    void customHeaderOffersWindowActions() {
+        Graphite::WindowHeader::setCustomFrameOverride(1);
+        auto restore=qScopeGuard([]{Graphite::WindowHeader::setCustomFrameOverride(0);});
+        QWidget window;QVBoxLayout layout(&window);auto* header=Graphite::WindowHeader::install(&window,&layout);window.show();
+        auto popup=[&]{QContextMenuEvent event(QContextMenuEvent::Mouse,QPoint(8,8),header->mapToGlobal(QPoint(8,8)));QApplication::sendEvent(header,&event);return header->findChild<QMenu*>("windowContextMenu");};
+        auto* menu=popup();QVERIFY(menu);QCOMPARE(menu->actions().first()->text(),QString("Minimize"));QCOMPARE(menu->actions()[1]->text(),QString("Maximize"));menu->actions()[1]->trigger();menu->close();QVERIFY(window.isMaximized());QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);
+        menu=popup();QVERIFY(menu);QCOMPARE(menu->actions()[1]->text(),QString("Restore"));menu->actions()[1]->trigger();menu->close();QVERIFY(!window.isMaximized());QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);
+        menu=popup();QVERIFY(menu);QCOMPARE(menu->actions().last()->text(),QString("Close"));menu->actions().last()->trigger();QVERIFY(!window.isVisible());
+    }
     void warningTextAndNeutralSelectionFollowThePalette() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);const auto& c=Theme::current();

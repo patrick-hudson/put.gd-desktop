@@ -24,6 +24,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QContextMenuEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPlainTextEdit>
@@ -2335,6 +2336,21 @@ void WindowHeader::mouseDoubleClickEvent(QMouseEvent* event) {
         return;
     }
     QWidget::mouseDoubleClickEvent(event);
+}
+void WindowHeader::contextMenuEvent(QContextMenuEvent* event) {
+    if (!customFrame() || !window_) { QWidget::contextMenuEvent(event); return; }
+    auto* menu = new QMenu(this);
+    menu->setObjectName("windowContextMenu");
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+    menu->addAction("Minimize", window_, &QWidget::showMinimized);
+    menu->addAction(window_->isMaximized() ? "Restore" : "Maximize", this, [this] {
+        if (window_->isMaximized()) window_->showNormal();
+        else window_->showMaximized();
+    });
+    menu->addSeparator();
+    menu->addAction("Close", window_, &QWidget::close);
+    menu->popup(event->globalPos());
+    event->accept();
 }
 void WindowHeader::paintEvent(QPaintEvent*) {
     QPainter p(this);

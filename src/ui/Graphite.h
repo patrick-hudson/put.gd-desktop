@@ -265,6 +265,7 @@ public:
 protected:
     void mousePressEvent(QMouseEvent*) override;
     void mouseDoubleClickEvent(QMouseEvent*) override;
+    void contextMenuEvent(QContextMenuEvent*) override;
     void paintEvent(QPaintEvent*) override;
     void changeEvent(QEvent*) override;
     bool eventFilter(QObject*, QEvent*) override;
