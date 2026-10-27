@@ -1603,7 +1603,7 @@ void ElidedLabel::setRevealable(bool on) {
     setFocusPolicy(on ? Qt::StrongFocus : Qt::NoFocus);
     setCursor(on ? Qt::PointingHandCursor : Qt::ArrowCursor);
     setAttribute(Qt::WA_Hover, on);
-    setAccessibleDescription(on ? QStringLiteral("Press Enter to show the full text.") : QString());
+    setAccessibleDescription(on ? QStringLiteral("Output details. Press Enter to show the full text.") : QString());
     setMinimumHeight(on ? 32 : 0);
     updateGeometry();
     update();
@@ -1649,7 +1649,7 @@ void ElidedLabel::paintEvent(QPaintEvent*) {
     if (revealable_) {
         if (isEnabled() && underMouse()) rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), t().surfaceRaised, {}, 4);
         const auto box = contentsRect();
-        paintChevron(p, QPointF(box.right() - 6 - scaled(12) / 2.0, box.center().y()), scaled(12), Qt::DownArrow, isEnabled() ? t().textMuted : t().textDisabled);
+        VisualStyle::icon("info").paint(&p, QRect(box.right() - 6 - scaled(12), box.center().y() - scaled(12) / 2, scaled(12), scaled(12)), Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
     }
     // A revealable summary's keyboard focus: the amber ring around its text.
     if (revealable_ && keyboardFocus(this)) {
