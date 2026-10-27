@@ -333,7 +333,7 @@ public:
    if(grid()&&detailsShown(i)&&(!details_->isVisible()||i!=view_->currentIndex()))Graphite::paintText(*p,detailsRect(outer,i),"Details",t.textSecondary,Graphite::font(),Qt::AlignCenter);
    QStyleOptionButton more;more.rect=moreBounds;more.state=QStyle::State_Enabled|(moreBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);style->drawPrimitive(QStyle::PE_PanelButtonCommand,&more,p,nullptr);const qreal inset=moreBounds.width()*7.0/32;Graphite::paintChromeGlyph(*p,QRectF(moreBounds).adjusted(inset,inset,-inset,-inset),"more",t.textSecondary);
   }
-  if(i.data(HistoryModel::ActiveRole).toBool()){const int progress=i.data(HistoryModel::ProgressRole).toInt();if(progress>=0){QRectF bar(columns.item.left(),grid()?primaryBounds.top()-8:rowTop+rowHeight-9,qMax(20,itemWidth),3);p->setPen(Qt::NoPen);p->setBrush(t.selected);p->drawRoundedRect(bar,1.5,1.5);bar.setWidth(bar.width()*progress/100);p->setBrush(t.accent);p->drawRoundedRect(bar,1.5,1.5);}}
+  if(i.data(HistoryModel::ActiveRole).toBool()){const int progress=i.data(HistoryModel::ProgressRole).toInt();if(progress>=0){QRectF bar(columns.item.left(),grid()?primaryBounds.top()-8:rowTop+rowHeight-9,qMax(20,itemWidth),3);p->setPen(Qt::NoPen);p->setBrush(t.surfaceRaised);p->drawRoundedRect(bar,1.5,1.5);bar.setWidth(bar.width()*progress/100);p->setBrush(t.text);p->drawRoundedRect(bar,1.5,1.5);}}
   if((option.state&QStyle::State_HasFocus)&&view_->hasFocus()&&view_->window()->testAttribute(Qt::WA_KeyboardFocusChange)){p->setPen(QPen(t.accent,1));p->setBrush(Qt::NoBrush);p->drawRoundedRect(QRectF(r).adjusted(0.5,0.5,-0.5,-0.5),7,7);}
   p->restore();
  }

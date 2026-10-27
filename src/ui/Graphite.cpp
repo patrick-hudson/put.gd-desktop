@@ -32,6 +32,7 @@
 #include <QVBoxLayout>
 #include <QFrame>
 #include <QFormLayout>
+#include <QGridLayout>
 #include <QDialogButtonBox>
 #include <QPushButton>
 #include <QScrollBar>
@@ -61,6 +62,7 @@ QString& uiFamilyName() { static QString name; return name; }
 QString& monoFamilyName() { static QString name; return name; }
 const Theme::Palette& t() { return Theme::current(); }
 QString role(const QWidget* widget) { return widget ? widget->property("visualRole").toString() : QString(); }
+bool flushButton(const QWidget* widget) { return widget && role(widget) == "quiet" && widget->property("graphiteFlush").toBool(); }
 bool progressAnimationEnabled(const QWidget* widget, const QStyleOption* option = nullptr) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
     if (QGuiApplication::styleHints()->accessibility()->motionPreference() == Qt::MotionPreference::ReducedMotion) return false;
@@ -143,7 +145,7 @@ Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, 
     }
     const bool hover = enabled && (option->state & QStyle::State_MouseOver);
     const bool down = enabled && (option->state & QStyle::State_Sunken);
-    const bool on = option->state & QStyle::State_On;
+    const bool on = (option->state & QStyle::State_On) && !(widget && widget->property("graphiteDisclosure").toBool());
     Look look;
     if (roleName == "link" || roleName == "version") {
         look.text = enabled ? (roleName == "version" && !hover ? c.textMuted : c.link) : c.textDisabled;
@@ -154,7 +156,7 @@ Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, 
         look.strong = true;
     } else if (roleName == "danger") {
         look.fill = enabled ? (down || hover ? c.dangerSurface : c.surfaceRaised) : c.surface;
-        look.stroke = enabled && hover ? mix(c.danger, c.dangerSurface, 0.5) : controlStroke();
+        look.stroke = enabled ? c.danger : controlStroke();
         look.text = enabled ? (hover ? c.dangerHover : c.danger) : c.textDisabled;
     } else if (roleName == "info" || roleName == "quiet" || flat) {
         look.fill = down || on ? c.selected : hover ? mix(c.surface, c.surfaceRaised, 0.8) : QColor(Qt::transparent);
@@ -626,6 +628,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         }
         if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) w += Metric::splitZone - 8;
         if (button && button->text.isEmpty()) return {std::max(Metric::control, contents.width() + 18), std::max(Metric::control, contents.height() + 14)};
+        if (flushButton(widget)) w -= 14;
         if (button && !button->text.isEmpty()) w = std::max(w, 64);
         return {w, std::max(Metric::control, contents.height() + 14)};
     }
@@ -652,6 +655,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         int w = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + 2 * 14 + 2 + (icon ? tool->iconSize.width() + 8 : 0);
         if (split) w += Metric::splitArrow - 6;
         else if (menu) w += Metric::splitZone - 6;
+        if (flushButton(widget)) w -= 14;
         return {w, std::max(Metric::control, metrics.height() + 14)};
     }
     case CT_LineEdit: {
@@ -973,13 +977,13 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
     const QString shown = metrics.elidedText(plain, Qt::ElideRight, available);
     const qreal textWidth = shown.isEmpty() ? 0 : metrics.horizontalAdvance(shown);
     const qreal group = iconWidth + (hasIcon && !shown.isEmpty() ? 8 : 0) + textWidth;
-    const bool leftAligned = name == "link" || name == "version" || (widget && widget->property("alignLeft").toBool());
+    const bool leftAligned = flushButton(widget) || name == "link" || name == "version" || (widget && widget->property("alignLeft").toBool());
     qreal x = leftAligned ? body.left() : body.left() + (body.width() - group) / 2.0;
     if (hasIcon) {
         const bool enabled = option->state & State_Enabled;
         const QRectF target(std::round(x), body.top() + (body.height() - iconSize.height()) / 2.0, iconSize.width(), iconSize.height());
         // A checked or pressed quiet or secondary button sits on the selected fill.
-        const bool onSelected = enabled && (option->state & (State_On | State_Sunken)) && name != "primary" && name != "danger" && name != "link" && name != "version";
+        const bool onSelected = enabled && ((option->state & State_Sunken) || ((option->state & State_On) && !(widget && widget->property("graphiteDisclosure").toBool()))) && name != "primary" && name != "danger" && name != "link" && name != "version";
         auto pixmap = icon.pixmap(iconSize, dpr(widget), !enabled ? QIcon::Disabled : onSelected ? QIcon::Selected : QIcon::Normal, option->state & State_On ? QIcon::On : QIcon::Off);
         if (name == "primary" || name == "danger") pixmap = tinted(pixmap, look.text);
         p->drawPixmap(target.topLeft(), pixmap);
@@ -1017,6 +1021,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         if (!button) break;
         const auto name = buttonRole(widget, option);
         QRect body = (name == "link" || name == "version") ? option->rect.adjusted(4, 0, -4, 0) : option->rect.adjusted(12, 0, -12, 0);
+        if (flushButton(widget)) body.setLeft(option->rect.left());
         if ((button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) body.setRight(option->rect.right() - Metric::splitZone);
         drawButtonLabel(option, button->text, button->icon, button->iconSize, p, widget, body);
         return;
@@ -1029,6 +1034,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const bool textShown = tool->toolButtonStyle != Qt::ToolButtonIconOnly && !tool->text.isEmpty();
         const bool iconShown = tool->toolButtonStyle != Qt::ToolButtonTextOnly && !tool->icon.isNull();
         QRect body = textShown ? option->rect.adjusted(name == "link" || name == "version" ? 4 : 12, 0, name == "link" || name == "version" ? -4 : -12, 0) : option->rect;
+        if (flushButton(widget)) body.setLeft(option->rect.left());
         drawButtonLabel(option, textShown ? tool->text : QString(), iconShown ? tool->icon : QIcon(), tool->iconSize, p, widget, body);
         return;
     }
@@ -1182,7 +1188,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
     case CE_ProgressBarGroove: {
         const QRectF r = option->rect;
         const qreal h = std::min<qreal>(r.height(), 8);
-        rounded(p, QRectF(r.left(), r.center().y() - h / 2, r.width(), h), c.selected, {}, h / 2);
+        rounded(p, QRectF(r.left(), r.center().y() - h / 2, r.width(), h), c.surfaceRaised, {}, h / 2);
         return;
     }
     case CE_ProgressBarContents: {
@@ -1214,14 +1220,14 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
             const qreal h = std::min<qreal>(r.height(), 8), length = std::min(r.width(), std::max(h, r.width() * 0.28));
             const qreal position = animate ? (1 - std::cos(phase * 2 * 3.141592653589793)) / 2 : 0.5;
             const qreal x = r.left() + (r.width() - length) * (bar->invertedAppearance ? 1 - position : position);
-            rounded(p, QRectF(x, r.center().y() - h / 2, length, h), option->state & State_Enabled ? c.accent : c.textDisabled, {}, h / 2);
+            rounded(p, QRectF(x, r.center().y() - h / 2, length, h), option->state & State_Enabled ? c.text : c.textDisabled, {}, h / 2);
             return;
         }
         const QRectF r = option->rect;
         const qreal h = std::min<qreal>(r.height(), 8);
         const qreal fraction = std::clamp(double(qint64(bar->progress) - bar->minimum) / std::max<qint64>(1, qint64(bar->maximum) - bar->minimum), 0.0, 1.0);
         if (fraction <= 0) return;
-        rounded(p, QRectF(r.left(), r.center().y() - h / 2, std::max(h, r.width() * fraction), h), option->state & State_Enabled ? c.accent : c.textDisabled, {}, h / 2);
+        rounded(p, QRectF(r.left(), r.center().y() - h / 2, std::max(h, r.width() * fraction), h), option->state & State_Enabled ? c.text : c.textDisabled, {}, h / 2);
         return;
     }
     case CE_ProgressBarLabel: {
@@ -1669,7 +1675,8 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
 }
 
 QMessageBox* confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, const QString& safe, bool destructive) {
-    auto* box = new QMessageBox(QMessageBox::NoIcon, title, text, QMessageBox::Yes | QMessageBox::Cancel, parent);
+    const int split = text.indexOf('\n');
+    auto* box = new QMessageBox(QMessageBox::NoIcon, title, split < 0 ? text : text.left(split), QMessageBox::Yes | QMessageBox::Cancel, parent);
     box->setObjectName(QStringLiteral("confirmAction"));
     box->setProperty("confirmationText", text);
     // QMessageBox constructed its button box before it had our component name.
@@ -1678,6 +1685,10 @@ QMessageBox* confirm(QWidget* parent, const QString& title, const QString& text,
         QCoreApplication::sendEvent(buttons, &change);
     }
     box->setTextFormat(Qt::PlainText);
+    if (split >= 0) box->setInformativeText(text.mid(split + 1));
+    if (auto* question = box->findChild<QLabel*>("qt_msgbox_label")) VisualStyle::role(question, "strong");
+    if (auto* consequence = box->findChild<QLabel*>("qt_msgbox_informativelabel")) VisualStyle::role(consequence, "secondary");
+    if (auto* grid = qobject_cast<QGridLayout*>(box->layout())) grid->setVerticalSpacing(4);
     auto* yes = box->button(QMessageBox::Yes);
     yes->setObjectName("confirmDiscard");
     yes->setText(action);
@@ -1905,6 +1916,7 @@ void transparentView(QAbstractScrollArea* view) {
 
 void disclosure(QToolButton* button) {
     button->setCheckable(true);
+    button->setProperty("graphiteDisclosure", true);
     button->setProperty("visualRole", "quiet");
     button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     button->setIconSize(QSize(14, 14));

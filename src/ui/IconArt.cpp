@@ -49,6 +49,7 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  if(name=="tray")return liftTray(color,-1,scale);
  auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
  const auto secondary=secondaryColor.isValid()?secondaryColor:color.darker(190);
+ // The 24-unit artwork scales to a 1.5 px tool stroke at 20 px.
  auto fill=[&](const QColor& c){p.setPen(Qt::NoPen);p.setBrush(c);};
  auto line=[&](const QColor& c,qreal width=2){p.setBrush(Qt::NoBrush);p.setPen(QPen(c,width,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));};
  auto rounded=[&](qreal x,qreal y,qreal w,qreal h,qreal radius=2){p.drawRoundedRect(QRectF(x,y,w,h),radius,radius);};
@@ -113,60 +114,45 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   corners.moveTo(16,3);corners.lineTo(21,3);corners.lineTo(21,8);p.drawPath(corners);
   fill(color);QPainterPath pencil;pencil.moveTo(19,10);pencil.lineTo(22,13);pencil.lineTo(13,22);pencil.lineTo(9,23);pencil.lineTo(10,19);pencil.closeSubpath();p.drawPath(pencil);
  } else if(name=="record") {
-  line(secondary,2.2);p.drawEllipse(QRectF(3.5,3.5,17,17));
-  fill(color);p.drawEllipse(QPointF(12,12),5,5);
+  line(secondary,2.2);rounded(2,4,20,16,3);
+  fill(color);p.drawEllipse(QPointF(12,12),4.8,4.8);
  } else if(name=="select") {
-  fill(color);QPainterPath pointer;pointer.moveTo(5,2);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,22.5);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
+  line(color,1.8);QPainterPath pointer;pointer.moveTo(5,2);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,22.5);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
  } else if(name=="redact") {
-  line(secondary,1.5);p.drawLine(QPointF(4,4),QPointF(11,4));p.drawLine(QPointF(15,4),QPointF(19,4));p.drawLine(QPointF(4,20),QPointF(9,20));p.drawLine(QPointF(13,20),QPointF(17,20));
-  fill(color);rounded(2.5,7.5,19,9,1);
+  line(color,1.8);rounded(3,7,18,10,1);
+  p.drawLine(5,3,11,3);p.drawLine(15,3,19,3);p.drawLine(5,21,9,21);p.drawLine(13,21,19,21);
+  for(int x:{7,12,17})p.drawLine(x,10,x,14);
  } else if(name=="blur") {
-  fill(secondary);for(int y:{4,12,20})for(int x:{4,12,20})p.drawEllipse(QPointF(x,y),1.6,1.6);
-  fill(color);for(int y:{8,16})for(int x:{8,16})p.drawEllipse(QPointF(x,y),2.6,2.6);
+  line(color,1.8);for(int y:{4,12,20})for(int x:{4,12,20})p.drawEllipse(QPointF(x,y),1.3,1.3);
  } else if(name=="crop") {
-  line(secondary,2.5);p.drawLine(7,2,7,17);p.drawLine(7,17,22,17);
-  line(color,2.5);p.drawLine(2,7,17,7);p.drawLine(17,7,17,22);
+  line(color,1.8);p.drawLine(7,2,7,17);p.drawLine(7,17,22,17);
+  p.drawLine(2,7,17,7);p.drawLine(17,7,17,22);
  } else if(name=="annotate-arrow") {
-  line(color,2.5);p.drawLine(4,20,16,8);
-  fill(color);QPainterPath head;head.moveTo(21,3);head.lineTo(19,13);head.lineTo(11,5);head.closeSubpath();p.drawPath(head);
+  line(color,1.8);p.drawLine(4,20,20,4);p.drawLine(11,4,20,4);p.drawLine(20,4,20,13);
  } else if(name=="rectangle") {
-  // One outline with a node at each corner; a frame in a frame reads as a
-  // button or a window.
-  line(color,2);rounded(4,5,16,14,1);
-  fill(secondary);for(const qreal x:{4.,20.})for(const qreal y:{5.,19.})rounded(x-2.5,y-2.5,5,5,1);
+  line(color,1.8);rounded(4,5,16,14,1);
  } else if(name=="highlight") {
-  fill(secondary);rounded(2,20,20,3,1);
-  fill(color);QPainterPath body;body.moveTo(17,2);body.lineTo(22,7);body.lineTo(12,17);body.lineTo(7,12);body.closeSubpath();p.drawPath(body);
-  // A stepped cap and its clip distinguish the long marker from an eraser.
-  fill(secondary);QPainterPath cap;cap.moveTo(17,1);cap.lineTo(23,7);cap.lineTo(20,10);cap.lineTo(14,4);cap.closeSubpath();p.drawPath(cap);
-  line(color,1.3);p.drawLine(QPointF(18,3.5),QPointF(21,6.5));
-  // A narrow neck and a flat chisel nib, separated from the highlight stroke.
-  fill(secondary);QPainterPath nib;nib.moveTo(7,13);nib.lineTo(11,17);nib.lineTo(10,18);nib.lineTo(3,18);nib.lineTo(5,15);nib.closeSubpath();p.drawPath(nib);
+  line(color,1.8);QPainterPath marker;
+  marker.moveTo(16,2);marker.lineTo(22,8);marker.lineTo(12,18);marker.lineTo(6,12);marker.closeSubpath();
+  marker.moveTo(14,4);marker.lineTo(20,10);marker.moveTo(7,13);marker.lineTo(3,19);marker.lineTo(9,19);marker.lineTo(11,17);p.drawPath(marker);
+  p.drawLine(2,23,21,23);
  } else if(name=="chevron-down") {
   line(color,2.5);QPainterPath chevron;chevron.moveTo(6,9);chevron.lineTo(12,15);chevron.lineTo(18,9);p.drawPath(chevron);
  } else if(name=="text") {
-  fill(secondary);rounded(2,2,20,20,3);
-  line(color,3);p.drawLine(7,7,17,7);p.drawLine(12,7,12,18);
+  line(color,1.8);p.drawLine(5,5,19,5);p.drawLine(5,5,5,8);p.drawLine(19,5,19,8);p.drawLine(12,5,12,20);p.drawLine(8,20,16,20);
  } else if(name=="undo"||name=="redo") {
   if(name=="redo"){p.translate(24,0);p.scale(-1,1);}
-  line(secondary,2.5);QPainterPath turn;turn.moveTo(7,9);turn.lineTo(15,9);turn.quadTo(21,9,21,15);turn.quadTo(21,21,15,21);turn.lineTo(10,21);p.drawPath(turn);
-  fill(color);QPainterPath tip;tip.moveTo(2,9);tip.lineTo(9,3);tip.lineTo(9,15);tip.closeSubpath();p.drawPath(tip);
+  line(color,1.8);QPainterPath turn;turn.moveTo(4,9);turn.lineTo(15,9);turn.quadTo(21,9,21,15);turn.quadTo(21,21,15,21);turn.lineTo(10,21);
+  turn.moveTo(9,4);turn.lineTo(4,9);turn.lineTo(9,14);p.drawPath(turn);
  } else if(name=="zoom-fit") {
-  // Fit to window: four corners turned inward around the image, unlike the
-  // outward frame corners of region capture.
-  fill(secondary);rounded(9.5,9.5,5,5,1);
-  line(color,2.4);QPainterPath corners;
-  corners.moveTo(3,7.5);corners.lineTo(7.5,7.5);corners.lineTo(7.5,3);
-  corners.moveTo(16.5,3);corners.lineTo(16.5,7.5);corners.lineTo(21,7.5);
-  corners.moveTo(3,16.5);corners.lineTo(7.5,16.5);corners.lineTo(7.5,21);
-  corners.moveTo(16.5,21);corners.lineTo(16.5,16.5);corners.lineTo(21,16.5);p.drawPath(corners);
+  line(color,1.8);rounded(2,3,20,18,2);
+  QPainterPath arrows;arrows.moveTo(10,10);arrows.lineTo(6,6);arrows.lineTo(6,10);arrows.moveTo(6,6);arrows.lineTo(10,6);
+  arrows.moveTo(14,14);arrows.lineTo(18,18);arrows.lineTo(14,18);arrows.moveTo(18,18);arrows.lineTo(18,14);p.drawPath(arrows);
  } else if(name=="zoom-actual") {
-  // Actual size: "1:1" in a frame.
-  line(secondary,1.8);rounded(1.9,4.4,20.2,15.2,3);
-  line(color,2.2);QPainterPath ones;
-  ones.moveTo(6.8,9.2);ones.lineTo(9.2,7.6);ones.lineTo(9.2,16.4);
+  line(color,1.8);rounded(1.9,4.4,20.2,15.2,3);
+  QPainterPath ones;ones.moveTo(6.8,9.2);ones.lineTo(9.2,7.6);ones.lineTo(9.2,16.4);
   ones.moveTo(14.8,9.2);ones.lineTo(17.2,7.6);ones.lineTo(17.2,16.4);p.drawPath(ones);
-  fill(color);p.drawEllipse(QPointF(12.4,9.9),1.15,1.15);p.drawEllipse(QPointF(12.4,14.3),1.15,1.15);
+  fill(color);p.drawEllipse(QPointF(12.4,9.9),0.9,0.9);p.drawEllipse(QPointF(12.4,14.3),0.9,0.9);
  } else if(name=="back"||name=="forward"||name=="up") {
   // The fallback file dialog's toolbar (#259): one arrow, turned.
   if(name=="forward"){p.translate(24,0);p.scale(-1,1);}
@@ -184,8 +170,9 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   line(secondary,2);rounded(2,3,20,18,2);p.drawLine(QPointF(2,9),QPointF(22,9));p.drawLine(QPointF(2,15),QPointF(22,15));
   line(color,2);p.drawLine(QPointF(10,3),QPointF(10,21));
  } else if(name=="save") {
-  fill(secondary);rounded(3,3,18,18,3);
-  fill(color);rounded(7,3,9,6,1);rounded(6,13,12,8,1.5);
+  line(color,1.8);QPainterPath save;
+  save.moveTo(12,2);save.lineTo(12,14);save.moveTo(7,9);save.lineTo(12,14);save.lineTo(17,9);
+  save.moveTo(3,13);save.lineTo(3,21);save.lineTo(21,21);save.lineTo(21,13);p.drawPath(save);
  } else if(name=="play") {
   fill(color);QPainterPath play;play.moveTo(8,4.5);play.lineTo(20,12);play.lineTo(8,19.5);play.closeSubpath();p.drawPath(play);
  } else if(name=="pause") {

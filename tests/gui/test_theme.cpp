@@ -38,6 +38,10 @@
 #include <QHBoxLayout>
 #include <QToolButton>
 #include <QMenu>
+#include <QMessageBox>
+#include <QProgressBar>
+#include <QGridLayout>
+#include <memory>
 #include <QtTest>
 #include "fixtures/Waits.h"
 
@@ -55,6 +59,47 @@ class ThemeTest : public QObject {
     }
 private slots:
     void init() { Theme::setScheme(Theme::Scheme::Dark); }
+    void confirmationsSeparateQuestionFromConsequence() {
+        std::unique_ptr<QMessageBox> box(Graphite::confirm(nullptr,"Discard edits","Discard your edits?\nYour marks will be lost.","Discard","Keep editing",true));
+        box->show();putgd::test::settle(10);
+        auto* question=box->findChild<QLabel*>("qt_msgbox_label");auto* consequence=box->findChild<QLabel*>("qt_msgbox_informativelabel");
+        QVERIFY(question&&consequence);QCOMPARE(question->font(),Graphite::font(Graphite::Type::body,true));
+        QCOMPARE(consequence->palette().color(QPalette::WindowText),Theme::current().textSecondary);
+        QCOMPARE(consequence->y()-question->geometry().bottom()-1,4);
+        QCOMPARE(box->defaultButton(),box->button(QMessageBox::Cancel));QCOMPARE(box->escapeButton(),box->button(QMessageBox::Cancel));
+    }
+    void disclosuresOnlyChangeTheirChevronWhenExpanded() {
+        for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+            Theme::setScheme(scheme);QToolButton button;button.setText("Keyboard help");Graphite::disclosure(&button);button.resize(button.sizeHint());
+            auto render=[&](bool open){button.setChecked(open);QStyleOptionToolButton option;option.initFrom(&button);option.rect=button.rect();option.state=QStyle::State_Enabled|(open?QStyle::State_On:QStyle::State_Off);option.text=button.text();option.icon=button.icon();option.iconSize=button.iconSize();option.toolButtonStyle=button.toolButtonStyle();QImage shot(button.size(),QImage::Format_RGB32);shot.fill(Theme::current().surface);{QPainter p(&shot);button.style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,&button);}return shot;};
+            const auto closed=render(false),open=render(true);QVERIFY(closed!=open);
+            QCOMPARE(closed.copy(36,0,closed.width()-36,closed.height()),open.copy(36,0,open.width()-36,open.height()));
+            QCOMPARE(open.pixelColor(open.width()/2,2),Theme::current().surface);
+        }
+    }
+    void flushButtonsPaintTheirContentAtTheColumnEdge() {
+        QPixmap glyph(12,12);glyph.fill(Qt::cyan);
+        for(const bool tool:{false,true}){
+            QPushButton push("Remove mark");QToolButton button;button.setText("Keyboard help");button.setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+            QAbstractButton* widget=tool?static_cast<QAbstractButton*>(&button):&push;VisualStyle::role(widget,"quiet");widget->setIcon(QIcon(glyph));widget->setIconSize(QSize(12,12));
+            const int padded=widget->sizeHint().width();widget->setProperty("graphiteFlush",true);
+            // Ask the style directly: dynamic properties need no widget recreation.
+            QImage shot(220,36,QImage::Format_RGB32);shot.fill(Qt::black);QPainter p(&shot);
+            if(tool){QStyleOptionToolButton option;option.rect=shot.rect();option.state=QStyle::State_Enabled;option.text=button.text();option.icon=button.icon();option.iconSize=button.iconSize();option.toolButtonStyle=button.toolButtonStyle();QCOMPARE(button.style()->sizeFromContents(QStyle::CT_ToolButton,&option,{},&button).width(),padded-14);button.style()->drawControl(QStyle::CE_ToolButtonLabel,&option,&p,&button);}
+            else{QStyleOptionButton option;option.rect=shot.rect();option.state=QStyle::State_Enabled;option.text=push.text();option.icon=push.icon();option.iconSize=push.iconSize();push.style()->drawControl(QStyle::CE_PushButtonLabel,&option,&p,&push);}
+            p.end();QCOMPARE(shot.pixelColor(0,18),QColor(Qt::cyan));
+        }
+    }
+    void dangerBordersAndNeutralProgressUseSemanticColours() {
+        for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+            Theme::setScheme(scheme);const auto& c=Theme::current();QPushButton danger("Delete from destination");VisualStyle::role(&danger,"danger");
+            QStyleOptionButton option;option.rect=QRect(0,0,240,36);option.state=QStyle::State_Enabled;option.text=danger.text();QImage shot(option.rect.size(),QImage::Format_RGB32);shot.fill(c.bg);
+            {QPainter p(&shot);danger.style()->drawControl(QStyle::CE_PushButton,&option,&p,&danger);}QCOMPARE(shot.pixelColor(120,0),c.danger);QVERIFY(Theme::contrast(c.danger,c.surfaceRaised)>=4.5);
+            QProgressBar bar;QStyleOptionProgressBar progress;progress.rect=QRect(0,0,100,8);progress.state=QStyle::State_Enabled;progress.minimum=0;progress.maximum=100;progress.progress=50;
+            shot=QImage(100,8,QImage::Format_RGB32);shot.fill(c.bg);{QPainter p(&shot);bar.style()->drawControl(QStyle::CE_ProgressBarGroove,&progress,&p,&bar);bar.style()->drawControl(QStyle::CE_ProgressBarContents,&progress,&p,&bar);}
+            QCOMPARE(shot.pixelColor(20,4),c.text);QCOMPARE(shot.pixelColor(80,4),c.surfaceRaised);QVERIFY(c.warning!=c.accent);
+        }
+    }
     void selectedNavigationHasPersistentContrastingMarkers() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);const auto& c=Theme::current();
