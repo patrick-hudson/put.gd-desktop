@@ -1443,7 +1443,7 @@ void SettingsWindow::updateCaptureInheritance(){
   describe(captureStatus_[name],actionUpload);captureStatus_[name]->hide();
   // Inherited rows defer to the default; errors belong to real overrides.
   // Only an overridden action shows its two fields.
-  {const QSignalBlocker block(captureOverride_[name]);captureOverride_[name]->setChecked(!inherit);}captureEditors_[name]->setVisible(!inherit);
+  {const QSignalBlocker block(captureOverride_[name]);captureOverride_[name]->setChecked(!inherit);}captureEditors_[name]->setVisible(!inherit);captureEditors_[name]->layout()->invalidate();captureEditors_[name]->updateGeometry();
   bool unsupportedPrivate=false;
   if(actionUpload&&sharing->currentData()=="private")for(const auto& value:draft_["profiles"].toArray())if(value.toObject()["id"].toString()==profile->currentData().toString())unsupportedPrivate=value.toObject()["provider"]!="proton-drive";
   const bool fails=(!actionUpload&&!keep_->isChecked())||unsupportedPrivate;

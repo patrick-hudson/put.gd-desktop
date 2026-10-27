@@ -3,6 +3,7 @@
 #include "core/ReleaseLink.h"
 #include "ui/VisualStyle.h"
 #include "ui/Graphite.h"
+#include "ui/Fonts.h"
 #include <QToolTip>
 #include <QStatusBar>
 #include <QSet>
@@ -171,6 +172,7 @@ private slots:
   window.findChild<QCheckBox*>("overrideRegion")->click();QVERIFY(inherited->text().contains("fails"));QCOMPARE(inherited->property("feedbackTone").toString(),QString("error"));
  }
  void statusBandUsesBodySummaryAtNarrowAndLargeText(){
+  Fonts::load();VisualStyle::apply(*qApp);
   const auto original=QApplication::font();auto restore=qScopeGuard([&]{QApplication::setFont(original);});
   for(const int pixels:{14,21}){auto font=original;font.setPixelSize(pixels);QApplication::setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
    QCOMPARE(window.findChild<QLabel*>("appVersion")->font().pixelSize(),Graphite::font(Graphite::Type::metadata).pixelSize());QCOMPARE(window.findChild<QPushButton*>("appVersionLink")->font().pixelSize(),Graphite::font(Graphite::Type::metadata).pixelSize());auto* summary=window.findChild<Graphite::ElidedLabel*>("captureOutputSummary");QCOMPARE(summary->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());QVERIFY(summary->font().pixelSize()>=pixels);auto* band=window.findChild<QStatusBar*>("statusBand");QVERIFY(band);QVERIFY(summary->height()>=summary->fontMetrics().height());QVERIFY(band->rect().contains(QRect(summary->mapTo(band,QPoint()),summary->size())));QCOMPARE(window.width(),1060);
@@ -179,7 +181,7 @@ private slots:
    const auto scheme=Theme::scheme();Theme::setScheme(Theme::Scheme::Light);
    for(const auto& action:Settings::invocableActionNames()){
     auto name=action.left(1).toUpper()+action.mid(1);auto* override=window.findChild<QCheckBox*>("override"+name);if(!override->isChecked())override->click();
-    for(const auto& prefix:QStringList{"profile","publication"}){auto* control=window.findChild<QComboBox*>(prefix+name);control->ensurePolished();QCOMPARE(control->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());Graphite::setLocked(control,true);Graphite::setLocked(control,false);QCOMPARE(control->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());QCOMPARE(control->sizeHint().height(),window.findChild<QComboBox*>("defaultCaptureDestination")->sizeHint().height());}
+    for(const auto& prefix:QStringList{"profile","publication"}){auto* control=window.findChild<QComboBox*>(prefix+name);control->ensurePolished();QCOMPARE(control->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());Graphite::setLocked(control,true);Graphite::setLocked(control,false);QCOMPARE(control->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());QCOMPARE(control->sizeHint().height(),window.findChild<QComboBox*>("defaultCaptureDestination")->sizeHint().height());PUTGD_TRY_COMPARE(control->height(),window.findChild<QComboBox*>("defaultCaptureDestination")->height());}
    }
    Theme::setScheme(scheme);
    auto* check=window.findChild<QCheckBox*>("notifications");QVERIFY(check->sizeHint().height()>=32);QCOMPARE(check->style()->pixelMetric(QStyle::PM_IndicatorWidth),17);
