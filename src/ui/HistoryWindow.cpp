@@ -16,6 +16,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDateTime>
+#include <QFontMetricsF>
 #include <QDateEdit>
 #include <QCheckBox>
 #include <QScreen>
@@ -165,6 +166,12 @@ QRect rowBody(const QRect& outer,bool gallery,int heading){
 // A list row at the viewport's current width. The column header and every
 // row lay out their columns from this one geometry, scrollbar included.
 QRect listRow(const QListView* view,int top,int height){return QRect(view->spacing(),top,qMax(160,view->viewport()->width()-2*view->spacing()),height);}
+// Align the visible ink too: C and J can have different (even negative)
+// bearings in distro fonts. Header and values use this same column painter.
+void paintHistoryColumn(QPainter& painter,const QRectF& rect,const QString& text,const QColor& color){
+ const auto font=Graphite::font(Graphite::Type::metadata);const QFontMetricsF metrics(font);const auto shown=metrics.elidedText(text,Qt::ElideRight,rect.width());
+ Graphite::paintText(painter,rect.translated(-metrics.tightBoundingRect(shown).left(),0),shown,color,font,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideNone);
+}
 // Item / Output / Created above the list, on the same columns as its rows.
 class HistoryColumns final:public QWidget {
 public:
@@ -178,8 +185,8 @@ protected:
   const auto row=listRow(view_,0,height()).translated(left,0);const auto body=rowBody(row,false,0);
   const auto c=historyColumns(QRect(body.left(),0,body.width(),height()),menuOnly&&menuOnly());const auto f=Graphite::font(Graphite::Type::metadata);const int thumb=row.left()+6+12;
   Graphite::paintText(p,QRectF(thumb,0,qMax(0,c.item.right()-thumb-8),height()),"Item",t.textMuted,f);
-  if(!c.output.isEmpty())Graphite::paintText(p,c.output.adjusted(0,0,-8,0),"Output",t.textMuted,f);
-  if(!c.created.isEmpty())Graphite::paintText(p,c.created.adjusted(0,0,-8,0),"Created",t.textMuted,f);
+  if(!c.output.isEmpty())paintHistoryColumn(p,c.output.adjusted(0,0,-8,0),"Output",t.textMuted);
+  if(!c.created.isEmpty())paintHistoryColumn(p,c.created.adjusted(0,0,-8,0),"Created",t.textMuted);
   p.setPen(t.border);p.drawLine(0,height()-1,width(),height()-1);
  }
 private:QListView* view_;
@@ -317,8 +324,8 @@ public:
    p->save();p->translate(area.topLeft());QAbstractTextDocumentLayout::PaintContext context;context.palette.setColor(QPalette::Text,t.textSecondary);document->documentLayout()->draw(p,context);p->restore();
   }
   if(!grid()){
-   if(!columns.output.isEmpty())Graphite::paintText(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,Graphite::scaled(22)),i.data(HistoryModel::OutputRole).toString(),t.textSecondary,metaFont);
-   if(!columns.created.isEmpty())Graphite::paintText(*p,QRectF(columns.created.left(),lineTop,columns.created.width()-8,Graphite::scaled(22)),i.data(HistoryModel::CreatedRole).toString(),t.textSecondary,metaFont);
+   if(!columns.output.isEmpty())paintHistoryColumn(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,Graphite::scaled(22)),i.data(HistoryModel::OutputRole).toString(),t.textSecondary);
+   if(!columns.created.isEmpty())paintHistoryColumn(*p,QRectF(columns.created.left(),lineTop,columns.created.width()-8,Graphite::scaled(22)),i.data(HistoryModel::CreatedRole).toString(),t.textSecondary);
   }
   if(actionsShown){
    auto* style=view_->style();
