@@ -5,6 +5,8 @@
 #include "ui/Graphite.h"
 #include "ui/Fonts.h"
 #include <QToolTip>
+#include <QPainter>
+#include <QStyleOptionViewItem>
 #include <QStatusBar>
 #include <QSet>
 #include "ui/RedesignTheme.h"
@@ -89,6 +91,17 @@ class SettingsGui:public QObject {
 public slots:
  void recordProtonUrl(const QUrl& url){openedUrls_.append(url);}
 private slots:
+ void destinationSelectionMarkerHasContrast(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");auto* list=window.findChild<QListWidget*>("destinationList");QVERIFY(list);const auto original=Theme::scheme();auto restore=qScopeGuard([&]{Theme::setScheme(original);});
+  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){Theme::setScheme(scheme);QStyleOptionViewItem option;option.widget=list;option.rect=QRect(0,0,240,76);option.state=QStyle::State_Selected|QStyle::State_Enabled;QImage image(option.rect.size(),QImage::Format_RGB32);image.fill(Theme::current().surface);{QPainter p(&image);list->itemDelegate()->paint(&p,option,list->model()->index(0,0));}QCOMPARE(image.pixelColor(3,38),Theme::current().accent);QVERIFY(Theme::contrast(image.pixelColor(3,38),Theme::current().selected)>=3.0);}
+ }
+ void destinationSetupOrderKeepsCredentialsBeforeLinks(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.show();window.navigate("destinations");putgd::test::settle(30);window.settings();
+  auto* credentials=window.findChild<QWidget*>("credentialsEditor");auto* where=window.findChild<QWidget*>("destinationEditor");auto* access=window.findChild<QLineEdit*>("credentialAccessKey");auto* link=window.findChild<QLineEdit*>("s3PublicUrlBase");auto* test=window.findChild<QPushButton*>("testDestination");QVERIFY(credentials&&where&&access&&link&&test);
+  PUTGD_TRY_VERIFY(credentials->isVisible());QVERIFY(where->mapTo(&window,QPoint()).y()<credentials->mapTo(&window,QPoint()).y());QVERIFY(access->mapTo(&window,QPoint()).y()<link->mapTo(&window,QPoint()).y());QVERIFY(window.findChild<QWidget*>("destinationStatusRow")->isAncestorOf(test));QVERIFY(test->isVisible());QVERIFY(test->width()<=test->sizeHint().width()+4);
+  auto* advanced=window.findChild<QToolButton*>("advancedSettings");advanced->setChecked(true);PUTGD_TRY_VERIFY(window.findChild<QLineEdit*>("s3StorageClass")->isVisible());QVERIFY(link->mapTo(&window,QPoint()).y()<advanced->mapTo(&window,QPoint()).y());
+  advanced->setChecked(false);auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("proton-drive"));putgd::test::settle(30);auto* folder=window.findChild<QComboBox*>("protonFolder");QWidget* folderLabel=nullptr;for(auto* form:window.findChildren<QFormLayout*>())for(int row=0;row<form->rowCount();++row){auto* field=form->itemAt(row,QFormLayout::FieldRole);auto* label=form->itemAt(row,QFormLayout::LabelRole);if(field&&label&&field->widget()&&label->widget()&&field->widget()->isAncestorOf(folder))folderLabel=label->widget();}QVERIFY(folderLabel);PUTGD_TRY_VERIFY(folderLabel->minimumWidth()<Graphite::scaled(200));const int gutter=folderLabel->minimumWidth();advanced->setChecked(true);putgd::test::settle(30);PUTGD_TRY_VERIFY(folderLabel->minimumWidth()>=gutter);advanced->setChecked(false);PUTGD_TRY_COMPARE(folderLabel->minimumWidth(),gutter);
+ }
  void outputSummaryDescribesDefaultAndResolvedExceptions(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();
   auto archive=doc["archive"].toObject();archive["keepUploads"]=false;doc["archive"]=archive;doc["captureDefaults"]=QJsonObject{{"destination","local"},{"profileId",QJsonValue::Null},{"publicationMode","default"}};
@@ -278,8 +291,8 @@ private slots:
   auto* help=window.findChild<QToolButton*>("destinationLabelHelp");QVERIFY(label&&scroll&&test&&makeDefault&&more&&help);PUTGD_TRY_COMPARE(label->text(),name);
   QCOMPARE(window.width(),width);auto* viewport=scroll->viewport();
   for(auto* control:QList<QWidget*>{label,help,test,makeDefault,more}){
-   if(control==makeDefault&&profileRow==0){QVERIFY(control->isHidden());continue;}QVERIFY(control->isVisible());const QRect rect(control->mapTo(viewport,QPoint{}),control->size());
-   QVERIFY2(viewport->rect().contains(rect),qPrintable(QString("%1 exceeds the %2px destination viewport: x=%3 width=%4").arg(control->accessibleName().isEmpty()?control->objectName():control->accessibleName()).arg(viewport->width()).arg(rect.x()).arg(rect.width())));
+   if(control==makeDefault&&profileRow==0){QVERIFY(control->isHidden());continue;}QVERIFY(control->isVisible());QWidget* available=control==test?static_cast<QWidget*>(&window):viewport;const QRect rect(control->mapTo(available,QPoint{}),control->size());
+   QVERIFY2(available->rect().contains(rect),qPrintable(QString("%1 exceeds the %2px destination viewport: x=%3 width=%4").arg(control->accessibleName().isEmpty()?control->objectName():control->accessibleName()).arg(viewport->width()).arg(rect.x()).arg(rect.width())));
   }
   QCOMPARE(scroll->horizontalScrollBar()->maximum(),0);
   QVERIFY(label->width()>=label->fontMetrics().horizontalAdvance("Pro"));
