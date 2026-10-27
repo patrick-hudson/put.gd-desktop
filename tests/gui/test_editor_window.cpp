@@ -69,7 +69,7 @@ private slots:
   window.showSaved("/synthetic/copy.png");QApplication::processEvents();QVERIFY(!destination->isVisible());QVERIFY(feedback->isVisible());QVERIFY(footer->isAncestorOf(feedback));
   window.findChild<QToolButton*>("dismissEditorSavedCopy")->click();QVERIFY(destination->isVisible());QVERIFY(!window.viewState()["saveFeedbackVisible"].toBool());QCOMPARE(window.viewState()["lastSave"].toObject()["status"].toString(),QString("saved"));
   window.showSaveFailed("/synthetic/copy.png",QString("Disk full. ")+QString("Free enough space, then try again. ").repeated(5));QApplication::processEvents();
-  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QVERIFY(!destination->isVisible());QVERIFY(error->text().startsWith("Couldn't save: Disk full."));QVERIFY(error->height()>=error->heightForWidth(error->width()));
+  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QVERIFY(!destination->isVisible());QVERIFY(error->text().startsWith("Couldn't save: Disk full."));PUTGD_TRY_VERIFY(error->height()>=error->heightForWidth(error->width()));
   QString code,message;window.viewCommand({{"action","dismissSavedCopy"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(destination->isVisible());QVERIFY(!feedback->isVisible());
  }
  void keyboardHelpIsBelowPropertiesAndAgentControllable(){
@@ -128,7 +128,7 @@ private slots:
   for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
    Theme::setScheme(scheme);QProgressBar bar;bar.setTextVisible(false);bar.resize(240,20);bar.setRange(0,100);bar.setValue(0);bar.show();QVERIFY(putgd::test::waitForWindowExposed(&bar));
    const auto zero=bar.grab().toImage();bar.setRange(0,0);const auto busy=bar.grab().toImage();QVERIFY(busy!=zero);
-   int accent=0;for(int y=0;y<busy.height();++y)for(int x=0;x<busy.width();++x)if(busy.pixelColor(x,y)==Theme::current().accent)++accent;QVERIFY(accent>100);
+   int fill=0;for(int y=0;y<busy.height();++y)for(int x=0;x<busy.width();++x)if(busy.pixelColor(x,y)==Theme::current().text)++fill;QVERIFY(fill>100);
    auto* timer=bar.findChild<QTimer*>("graphiteBusyTimer");QVERIFY(timer);QVERIFY(timer->isActive());
    PUTGD_TRY_VERIFY(bar.property("graphiteBusyPhase").toDouble()>0.08);QVERIFY(bar.grab().toImage()!=busy);
    bar.setRange(0,100);bar.setValue(0);PUTGD_TRY_VERIFY(!timer->isActive());QCOMPARE(bar.grab().toImage(),zero);
@@ -142,7 +142,7 @@ private slots:
   } style;
   QProgressBar bar;bar.setStyle(&style);bar.setTextVisible(false);bar.resize(240,20);bar.setRange(0,0);bar.show();QVERIFY(putgd::test::waitForWindowExposed(&bar));
   const auto still=bar.grab().toImage();auto* timer=bar.findChild<QTimer*>("graphiteBusyTimer");QVERIFY(timer&&!timer->isActive());
-  QCOMPARE(still.pixelColor(still.width()/2,still.height()/2),Theme::current().accent);QCOMPARE(bar.grab().toImage(),still);
+  QCOMPARE(still.pixelColor(still.width()/2,still.height()/2),Theme::current().text);QCOMPARE(bar.grab().toImage(),still);
  }
  void liveSchemeAlsoUpdatesTheOpenFallbackChooser(){
   const auto restore=qScopeGuard([previous=Theme::scheme()]{Theme::setScheme(previous);qunsetenv("PUTGD_FILE_DIALOG");});qputenv("PUTGD_FILE_DIALOG","fallback");

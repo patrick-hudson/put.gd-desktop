@@ -219,16 +219,18 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  destination_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);destination_->setFocusPolicy(Qt::StrongFocus);destination_->hide();footerGrid_->addWidget(destination_,2,0);
  // Save feedback occupies the destination's footer slot until dismissed.
  saveFeedback_=new QWidget(footer);saveFeedback_->setObjectName("editorSaveFeedback");saveFeedback_->hide();
- auto* feedback=new QGridLayout(saveFeedback_);feedback->setContentsMargins(0,0,0,0);feedback->setHorizontalSpacing(8);feedback->setVerticalSpacing(4);feedback->setColumnStretch(0,1);
- savedLabel_=new Graphite::ElidedLabel(saveFeedback_);savedLabel_->setObjectName("editorSaved");savedLabel_->setTextFormat(Qt::PlainText);savedLabel_->setContextMenuPolicy(Qt::ActionsContextMenu);savedLabel_->hide();feedback->addWidget(savedLabel_,0,0);
- saveTarget_=new Graphite::ElidedLabel(saveFeedback_);saveTarget_->setObjectName("editorSaveTarget");saveTarget_->setTextFormat(Qt::PlainText);saveTarget_->setRevealable(true);saveTarget_->setRevealActionName("Show full save path");VisualStyle::role(saveTarget_,"secondary");saveTarget_->hide();feedback->addWidget(saveTarget_,2,0);
- saveError_=new QLabel(saveFeedback_);saveError_->setObjectName("editorSaveError");saveError_->setTextFormat(Qt::PlainText);saveError_->setWordWrap(true);VisualStyle::role(saveError_,"error");saveError_->hide();feedback->addWidget(saveError_,1,0,1,3);
+ auto* feedback=new QVBoxLayout(saveFeedback_);feedback->setContentsMargins(0,0,0,0);feedback->setSpacing(4);
+ auto* resultRow=new QHBoxLayout;resultRow->setSpacing(8);feedback->addLayout(resultRow);
+ auto* recoveryRow=new QHBoxLayout;recoveryRow->setSpacing(8);feedback->addLayout(recoveryRow);
+ savedLabel_=new Graphite::ElidedLabel(saveFeedback_);savedLabel_->setObjectName("editorSaved");savedLabel_->setTextFormat(Qt::PlainText);savedLabel_->setContextMenuPolicy(Qt::ActionsContextMenu);savedLabel_->hide();resultRow->addWidget(savedLabel_,1);
+ saveTarget_=new Graphite::ElidedLabel(saveFeedback_);saveTarget_->setObjectName("editorSaveTarget");saveTarget_->setTextFormat(Qt::PlainText);saveTarget_->setRevealable(true);saveTarget_->setRevealActionName("Show full save path");VisualStyle::role(saveTarget_,"secondary");saveTarget_->hide();recoveryRow->addWidget(saveTarget_,1);
+ saveError_=new QLabel(saveFeedback_);saveError_->setObjectName("editorSaveError");saveError_->setTextFormat(Qt::PlainText);saveError_->setWordWrap(true);VisualStyle::role(saveError_,"error");saveError_->hide();resultRow->addWidget(saveError_,1);
  auto* copyPath=new QAction("Copy full path",savedLabel_);savedLabel_->addAction(copyPath);connect(copyPath,&QAction::triggered,this,&EditorWindow::copySavedPath);
- showFolder_=new QPushButton("Show in folder",saveFeedback_);showFolder_->setObjectName("showSavedCopy");showFolder_->hide();VisualStyle::role(showFolder_,"quiet");feedback->addWidget(showFolder_,0,1);
- copyPath_=new QPushButton("Copy path",saveFeedback_);copyPath_->setObjectName("copySavedPath");copyPath_->setToolTip("Copy the saved copy's full path");copyPath_->hide();VisualStyle::role(copyPath_,"quiet");feedback->addWidget(copyPath_,0,2);
- chooseAnother_=new QPushButton("Choose another location…",saveFeedback_);chooseAnother_->setObjectName("chooseAnotherLocation");chooseAnother_->hide();VisualStyle::role(chooseAnother_,"quiet");feedback->addWidget(chooseAnother_,2,1,1,2);
- auto* dismiss=Graphite::toolButton({}, {},"quiet",saveFeedback_);dismiss->setObjectName("dismissEditorSavedCopy");dismiss->setIcon(Graphite::chromeIcon("close"));dismiss->setAccessibleName("Dismiss save feedback");dismiss->setToolTip("Dismiss save feedback");dismiss->setFixedSize(32,32);feedback->addWidget(dismiss,0,3,3,1);connect(dismiss,&QToolButton::clicked,this,&EditorWindow::dismissSavedCopy);
- folderError_=new QLabel("Couldn't open the folder. Copy its path instead",saveFeedback_);folderError_->setObjectName("editorFolderError");folderError_->setTextFormat(Qt::PlainText);folderError_->setWordWrap(true);VisualStyle::role(folderError_,"error");folderError_->hide();feedback->addWidget(folderError_,3,0,1,4);
+ showFolder_=new QPushButton("Show in folder",saveFeedback_);showFolder_->setObjectName("showSavedCopy");showFolder_->hide();VisualStyle::role(showFolder_,"quiet");resultRow->addWidget(showFolder_);
+ copyPath_=new QPushButton("Copy path",saveFeedback_);copyPath_->setObjectName("copySavedPath");copyPath_->setToolTip("Copy the saved copy's full path");copyPath_->hide();VisualStyle::role(copyPath_,"quiet");resultRow->addWidget(copyPath_);
+ chooseAnother_=new QPushButton("Choose another location…",saveFeedback_);chooseAnother_->setObjectName("chooseAnotherLocation");chooseAnother_->hide();VisualStyle::role(chooseAnother_,"quiet");recoveryRow->addWidget(chooseAnother_);
+ auto* dismiss=Graphite::toolButton({}, {},"quiet",saveFeedback_);dismiss->setObjectName("dismissEditorSavedCopy");dismiss->setIcon(Graphite::chromeIcon("close"));dismiss->setAccessibleName("Dismiss save feedback");dismiss->setToolTip("Dismiss save feedback");dismiss->setFixedSize(32,32);resultRow->addWidget(dismiss,0,Qt::AlignTop);connect(dismiss,&QToolButton::clicked,this,&EditorWindow::dismissSavedCopy);
+ folderError_=new QLabel("Couldn't open the folder. Copy its path instead",saveFeedback_);folderError_->setObjectName("editorFolderError");folderError_->setTextFormat(Qt::PlainText);folderError_->setWordWrap(true);VisualStyle::role(folderError_,"error");folderError_->hide();feedback->addWidget(folderError_);
  footerGrid_->addWidget(saveFeedback_,2,0);
  message_=new QLabel(footer);message_->setWordWrap(true);message_->hide();footerGrid_->addWidget(message_,2,0);
  save_=new QPushButton("Save a copy…",footer);save_->setObjectName("editorSaveCopy");save_->setIcon(VisualStyle::icon("save"));save_->setToolTip("Save the edited image to a file (Ctrl+S)");footerGrid_->addWidget(save_,2,1);
@@ -357,7 +359,7 @@ void EditorWindow::placeDestination(){
  for(auto* button:{save_,cancel_,upload_})if(!button->isHidden())room-=button->sizeHint().width()+spacing;
  const bool feedback=saveFeedbackVisible_&&!busy_&&!savingCopy_;
  saveFeedback_->setVisible(feedback);destination_->setVisible(!feedback&&!busy_&&!savingCopy_&&!destination_->text().isEmpty());
- const bool above=feedback?saveFeedback_->sizeHint().width()>room:destination_->fontMetrics().horizontalAdvance(destination_->text())>room;
+ const bool above=feedback?(!saveError_->isHidden()||!folderError_->isHidden()||saveFeedback_->sizeHint().width()>room):destination_->fontMetrics().horizontalAdvance(destination_->text())>room;
  destinationAbove_=above;destination_->setWordWrap(above);
  footerGrid_->removeWidget(destination_);footerGrid_->removeWidget(saveFeedback_);
  if(above){footerGrid_->addWidget(destination_,1,0,1,4);footerGrid_->addWidget(saveFeedback_,1,0,1,4);}
