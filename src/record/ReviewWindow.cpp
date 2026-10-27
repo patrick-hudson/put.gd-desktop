@@ -1119,7 +1119,7 @@ void ReviewWindow::addMaskAt(const QString& kind, const QRect& r) {
 }
 QString ReviewWindow::setTrimAt(bool start) {
     const qint64 at = playhead();
-    const auto refuse = [this](const QString& message) { showError(message); return message; };
+    const auto refuse = [this](const QString& message) { showError(message, false); return message; };
     if (start) {
         if (at >= edit_.exportEnd(options_.durationUs)) return refuse("Trim start must be before the trim end");
         propose(QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", double(at)}, {"end", edit_.trimEnd ? QJsonValue(double(*edit_.trimEnd)) : QJsonValue(QJsonValue::Null)}}});
@@ -1130,7 +1130,7 @@ QString ReviewWindow::setTrimAt(bool start) {
     return {};
 }
 QString ReviewWindow::setMaskAt(bool start) {
-    const auto refuse = [this](const QString& message) { showError(message); return message; };
+    const auto refuse = [this](const QString& message) { showError(message, false); return message; };
     auto* mask = selectedMask();
     if (!mask) return refuse("Select a mask to set its times");
     const qint64 at = playhead();
@@ -1212,8 +1212,9 @@ void ReviewWindow::setSavedCopy(const QString& path, quint64 revision, const Rec
     lastShowInFolder_ = {};
     refreshLabels();
 }
-void ReviewWindow::showError(const QString& message) {
-    message_ = message.isEmpty() ? StatusEntry{} : StatusEntry{message, QStringLiteral("error"), {{QStringLiteral("Try again"), QJsonObject{{"action", "retryExport"}}}, {QStringLiteral("Dismiss"), QJsonObject{{"action", "dismissStatus"}}}}};
+void ReviewWindow::showError(const QString& message, bool retryExport) {
+    message_ = message.isEmpty() ? StatusEntry{} : StatusEntry{message, QStringLiteral("error"), {{QStringLiteral("Dismiss"), QJsonObject{{"action", "dismissStatus"}}}}};
+    if (!message.isEmpty() && retryExport) message_.actions.prepend({QStringLiteral("Try again"), QJsonObject{{"action", "retryExport"}}});
     refreshLabels();
 }
 void ReviewWindow::setNotice(const QString& text) {
@@ -1412,7 +1413,8 @@ QSize ReviewWindow::availableReviewSize() const {
 }
 void ReviewWindow::showAdvice() {
     if (adviceDialog_) { auto* dialog = adviceDialog_.data(); adviceDialog_.clear(); dialog->close(); return; }
-    const bool failed = footerError_;
+    const bool hasError = footerError_;
+    const bool failed = hasError && std::any_of(message_.actions.cbegin(), message_.actions.cend(), [](const auto& action) { return action.second["action"] == "retryExport"; });
     auto* dialog = new QDialog(this);
     adviceDialog_ = dialog;
     dialog->setObjectName("reviewAdvice");
@@ -1483,7 +1485,7 @@ void ReviewWindow::showAdvice() {
         actions->addWidget(retry);
     }
     auto* close = new QPushButton("Close", footer);
-    connect(close, &QPushButton::clicked, this, [this, dialog, failed] { if (failed) drive({{"action", "dismissStatus"}}); dialog->close(); });
+    connect(close, &QPushButton::clicked, this, [this, dialog, hasError] { if (hasError) drive({{"action", "dismissStatus"}}); dialog->close(); });
     actions->addWidget(close);
     root->addWidget(footer);
     dialog->resize(QSize(640, Graphite::scaled(360)).boundedTo(availableReviewSize()));
@@ -1664,7 +1666,7 @@ ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
     if (action == "saveCopyDialog") { chooseCopy(); return done(); }
     if (action == "discard") { askDiscard(); return done(); }
     if (action == "retryExport") {
-        if (message_.tone != "error") return invalid("There is no failed export to retry");
+        if (std::none_of(message_.actions.cbegin(), message_.actions.cend(), [](const auto& action) { return action.second["action"] == "retryExport"; })) return invalid("There is no failed export to retry");
         stopPlayback();
         emit retryExportRequested();
         return done();
@@ -1680,7 +1682,7 @@ ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
             host::showInFolder(savedPath_, [guard](const QJsonObject& result) {
                 if (!guard) return;
                 guard->lastShowInFolder_ = result;
-                if (!result["opened"].toBool()) guard->showError(QStringLiteral("Couldn't open the folder. Copy the path and open it in your file manager."));
+                if (!result["opened"].toBool()) guard->showError(QStringLiteral("Couldn't open the folder. Copy the path and open it in your file manager."), false);
             });
         }
         return done();
@@ -1884,7 +1886,7 @@ bool ReviewWindow::chooseCopy() {
     const auto extension = config_.extension();
     FileDialog::Options options{FileDialog::Mode::Save, "Save a copy", QDir::homePath(), "recording." + extension, {{config_.format.toUpper(), {"*." + extension}}}};
     return chooser_->open(options, [this, extension](const FileDialog::Result& result) {
-        if (result.failed()) { showError("Couldn't save a copy there: " + result.error); return; }
+        if (result.failed()) { showError("Couldn't save a copy there: " + result.error, false); return; }
         if (!result.chosen() || exporting_) return;
         const auto& path = result.path;
         emit saveCopyRequested(path.endsWith("." + extension, Qt::CaseInsensitive) ? path : path + "." + extension, edit_.revision);

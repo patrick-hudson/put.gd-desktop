@@ -1132,6 +1132,9 @@ private slots:
         auto* close = buttonNamed(*dialog, "Close"); QVERIFY(close); close->click();
         QVERIFY(!window.inspect()["status"].toString().contains("Export failed"));
         QVERIFY(!window.inspect()["adviceDialog"].toObject()["open"].toBool());
+        window.showError("Couldn't open the folder. Copy the path and open it in your file manager.", false);
+        QVERIFY(!buttonNamed(window, "Try again"));
+        QVERIFY(!window.drive({{"action", "retryExport"}}).code.isEmpty());
     }
     void letterboxFollowsThePalette() {
         const auto scheme = Theme::scheme();

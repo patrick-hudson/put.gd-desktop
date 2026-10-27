@@ -173,7 +173,7 @@ public:
     void setSavedCopy(const QString& path, quint64 revision, const RecordingConfig& config);
     QSize minimumSizeHint() const override;
     // An operational error in the status row, kept until dismissed or a new edit.
-    void showError(const QString& message);
+    void showError(const QString& message, bool retryExport = true);
     // A standing banner above the frame (why the recording stopped); empty hides it.
     void setNotice(const QString& text);
     // Upload closes the window; a refused export brings it back with the reason.
