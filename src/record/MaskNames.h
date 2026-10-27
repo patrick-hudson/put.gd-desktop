@@ -13,6 +13,7 @@ public:
             names_.insert(mask.id, QStringLiteral("%1 %2").arg(kind).arg(numbers_.value(mask.id)));
         }
     }
+    int number(const RecordingMask& mask) const { return numbers_.value(mask.id); }
     QString name(const RecordingMask& mask) const {
         return names_.value(mask.id);
     }

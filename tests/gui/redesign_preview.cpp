@@ -380,6 +380,7 @@ int main(int argc,char** argv){
    {auto* destination=constrained.findChild<Graphite::ElidedLabel*>("uploadDestination");destination->reveal();putgd::test::settle(100);if(auto* popup=destination->fullTextPopup()){if(!shot(*popup,"review-destination-full-text"))return 2;popup->close();}else return 2;}
    constrained.drive({{"action","showAdvice"}});if(auto* dialog=constrained.findChild<QWidget*>("reviewAdvice")){if(!shot(*dialog,"68-review-error-details"))return 2;}else return 2;
   }
+  {auto* add=review.findChild<QToolButton*>("addMask");add->menu()->popup(add->mapToGlobal(QPoint(0,add->height())));putgd::test::settle(100);if(!shot(*add->menu(),"31d-review-add-mask-menu"))return 2;add->menu()->close();}
   review.drive({{"action","dismissStatus"}});review.drive({{"action","format"},{"format","mp4"},{"codec","h264"}});
   // A refresh that fails (there is no clip): the earlier frame is dimmed and named.
   review.drive({{"action","seek"},{"time",16000000}});review.drive({{"action","retryPreview"}});if(!shot(review,"40-review-preview-error")||!inspected(review,"40-review-preview-error"))return 2;

@@ -337,7 +337,7 @@ private slots:
   QCOMPARE(in.result["state"].toString(),QString("reviewing"));QCOMPARE(in.result["edit"].toObject()["trimStart"].toDouble(),3000000.0);QCOMPARE(in.result["edit"].toObject()["revision"].toDouble(),2.0);
   QCOMPARE(h.backend->pushedEdit.trimStart,qint64(3000000));
   QCOMPARE(h.rec("inspect",{{"id",id}}).result["retainedUs"].toDouble(),9000000.0);
-  for(const auto* action:{"showAdvice","showInFolder","copyPath","dismissSavedCopy"}){reviews.clear();QVERIFY(!h.rec("review",{{"id",id},{"action",action}}).error);QCOMPARE(reviews.first()["action"].toString(),QString(action));}
+  for(const auto* action:{"showAdvice","showFormatTips","showInFolder","copyPath","dismissSavedCopy"}){reviews.clear();QVERIFY(!h.rec("review",{{"id",id},{"action",action}}).error);QCOMPARE(reviews.first()["action"].toString(),QString(action));}
   h.backend->deferExports=true;
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("review-driven.mp4")}}).result["state"].toString(),QString("exporting"));
   const int before=h.backend->log.count("review");

@@ -12,6 +12,7 @@
 #include <functional>
 #include <memory>
 
+class QAction;
 class QComboBox;
 class QHBoxLayout;
 class QLabel;
@@ -109,14 +110,13 @@ public:
     void setMasks(const QList<RecordingMask>& masks, const QString& selected);
     void setPlayhead(qint64 us);
     void showMoreMasks();
-    // Embeds the review's transport and tools beside the time axis.
+    // Embeds playback beside the lane-label gutter and time axis.
     void setTransport(QWidget* transport);
     qint64 playhead() const { return playhead_; }
     qint64 duration() const { return duration_; }
     // Concurrent masks always have distinct lanes; two are visible at a time.
     int lanes() const { return lanes_; }
-    // Standalone timelines reserve a names-width gutter; the review embeds
-    // its transport in that column.
+    // Every lane has a shared names-width gutter after the optional transport.
     static int gutterWidth();
     // Geometry for tests and the review session method: the track, a time's x
     // and the bar of a mask.
@@ -140,6 +140,7 @@ protected:
     void keyPressEvent(QKeyEvent*) override;
     void resizeEvent(QResizeEvent*) override;
     void wheelEvent(QWheelEvent*) override;
+    bool event(QEvent*) override;
 private:
     enum class Drag { None, Scrub, TrimStart, TrimEnd, MaskStart, MaskEnd, MaskMovePending, MaskMove };
     Drag handleAt(QPointF) const;
@@ -193,7 +194,7 @@ public:
     // #283: the review session method (recording.review) drives the window as a
     // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|resetTrim|
     // addMask|selectMask|placeMask|setMaskIn|setMaskOut|strength|removeMask|
-    // useSolidCover|format|trimToLimit|dismissStatus|dismissBlurTip|showAdvice|
+    // useSolidCover|format|trimToLimit|dismissStatus|dismissBlurTip|showAdvice|showFormatTips|
     // showInFolder|copyPath|dismissSavedCopy|retryExport|retryPreview|
     // saveCopyDialog|closeFileDialog|discard|keepReviewing|confirmDiscard, ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
@@ -274,7 +275,7 @@ private:
     void placeTools();
     void updateMinimum();
     QSize availableReviewSize() const;
-    void showAdvice();
+    void showAdvice(bool formatTips = false);
     bool compactStatus_ = false, footerError_ = false;
     QPointer<QWidget> adviceDialog_;
     bool minimumPending_ = false, initialFitDone_ = false;
@@ -300,7 +301,8 @@ private:
     QPointer<QThread> playThread_;
     std::shared_ptr<std::atomic_bool> playStop_;
     bool playing_ = false;
-    QToolButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addBlur_ = nullptr, *addSolid_ = nullptr, *removeMask_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr;
+    QAction *addBlur_ = nullptr, *addSolid_ = nullptr;
+    QToolButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addMask_ = nullptr, *removeMask_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr;
     QPushButton *errorDetails_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
     FileDialog* chooser_ = nullptr;
     QWidget *maskTools_ = nullptr, *strengthControl_ = nullptr;

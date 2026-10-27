@@ -386,6 +386,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'dismissBlurTip'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'dismissBlurTip'}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'dismissStatus'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'dismissStatus'}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'showAdvice'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'showAdvice'}),
+                    ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'showFormatTips'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'showFormatTips'}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'copyPath'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'copyPath'}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'showInFolder'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'showInFolder'}),
                     ('drive_recording_review', {'id': 'synthetic-operation', 'action': 'dismissSavedCopy'}, 'recording.review', {'id': 'synthetic-operation', 'action': 'dismissSavedCopy'}),

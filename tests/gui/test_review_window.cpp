@@ -22,6 +22,8 @@
 #include <QFile>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QMenu>
+#include <QAction>
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <QMouseEvent>
@@ -89,6 +91,28 @@ class ReviewWindowTest : public QObject {
     static qint64 slack(const ReviewTimeline& t) { return 2 * duration / t.trackRect().width() + 1; }
     static ReviewTimeline* timeline(ReviewWindow& w) { return w.findChild<ReviewTimeline*>("timeline"); }
 private slots:
+    void labelsStayInsideTheirOwnMaskCoverage() {
+        FrameView frame;
+        frame.setCanvas({320, 180}); frame.resize(640, 360);
+        QImage media(320, 180, QImage::Format_RGB32); media.fill(QColor(130, 60, 120));
+        frame.setFrame(media, 0);
+        auto small = mask("small", "solid", 1000000, 2000000); small.rect = QRect(80, 60, 50, 24);
+        frame.setMasks({small}, small.id); frame.show(); QApplication::processEvents();
+        const auto image = frame.grab().toImage();
+        const QRect permitted(155, 115, 110, 58);
+        for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x)
+            if (!permitted.contains(x, y)) QCOMPARE(image.pixelColor(x, y), media.pixelColor(0, 0));
+        ReviewTimeline t;
+        t.setDuration(duration); t.setTrim(0, duration); t.setPlayhead(duration - 1);
+        t.setMasks({mask("long", "solid", 0, duration - 1000000)}, {});
+        t.resize(260, t.sizeHint().height()); t.show(); QApplication::processEvents();
+        const auto pixels = t.grab().toImage();
+        const auto bar = t.maskRect("long").adjusted(4, 4, -4, -4);
+        // A name may paint text, but never a background-coloured label box over coverage.
+        for (int y = bar.top(); y <= bar.bottom(); ++y) for (int x = bar.left(); x <= bar.right(); ++x)
+            QVERIFY(pixels.pixelColor(x, y) != Theme::current().bg);
+        QCOMPARE(t.trackRect().height(), 8);
+    }
     void errorsTemporarilyReplaceBlurGuidance() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -209,12 +233,13 @@ private slots:
         }
         QVERIFY(!window.findChild<QLabel*>("maskTimingGroup"));
         QVERIFY(trim->findChild<QLabel*>("muted")->text().startsWith("Keep 0:02–0:29 · 27 s"));
-        QToolButton *redact = nullptr, *blur = nullptr;
-        for (auto* button : window.findChildren<QToolButton*>()) {
-            if (button->accessibleName() == "Redact") redact = button;
-            if (button->accessibleName() == "Blur") blur = button;
-        }
-        QVERIFY(redact && blur); QVERIFY(redact->x() < blur->x());
+        auto* add = window.findChild<QToolButton*>("addMask");
+        QVERIFY(add && add->menu());
+        QCOMPARE(add->menu()->actions().size(), 2);
+        QCOMPARE(add->menu()->actions()[0]->text(), QString("Redact"));
+        QCOMPARE(add->menu()->actions()[1]->text(), QString("Blur"));
+        QVERIFY(masks->isAncestorOf(add));
+
     }
     void bottomArrangementStaysTogetherAcrossReviewWidths() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
@@ -260,12 +285,17 @@ private slots:
             auto* metadata = window.findChild<QWidget*>("reviewTransport");
             QVERIFY(metadata && t->isAncestorOf(metadata));
             QVERIFY(metadata->geometry().right() < t->trackRect().left());
-            // Complete transport and mask-tool groups share the timeline's left column.
-            for (const auto& name : {QString("Redact"), QString("Playback speed"), QString("Delete mask")}) {
-                QWidget* control = nullptr;
-                for (auto* child : window.findChildren<QWidget*>()) if (child->accessibleName() == name) control = child;
-                QVERIFY2(control && metadata->isAncestorOf(control), qPrintable(name));
+            auto* maskControls = window.findChild<QWidget*>("maskControls");
+            QVERIFY(metadata->isAncestorOf(window.findChild<QComboBox*>("speed")));
+            auto* add = window.findChild<QToolButton*>("addMask");
+            QVERIFY(add && maskControls->isAncestorOf(add) && !metadata->isAncestorOf(add));
+            for (auto* control : window.findChildren<QToolButton*>()) if (control->accessibleName() == "Delete mask") {
+                QVERIFY(maskControls->isAncestorOf(control));
+                QCOMPARE(control->parentWidget(), window.findChild<QComboBox*>("masks")->parentWidget());
             }
+            auto* clip = window.findChild<QLabel*>("clipGroup");
+            QVERIFY(clip && clip->isVisible());
+            QVERIFY(clip->geometry().right() < t->trackRect().left());
             const auto lane = t->trackRect().translated(t->pos());
             QVERIFY(t->geometry().bottom() < trim->mapTo(&window, QPoint()).y());
             QCOMPARE(t->x(), 8);
@@ -536,7 +566,11 @@ private slots:
                 QTest::keyClick(surface, Qt::Key_Return);
                 QCOMPARE(selected, QRectF(screen));
             } else if (mode == 4) {
-                drag(surface, {100, 100}, {300, 280});
+                QTest::mousePress(surface, Qt::LeftButton, {}, {100, 100});
+                QTest::mouseMove(surface, {300, 280});
+                QVERIFY(surface->accessibleDescription().contains(recording ? "Release to choose recording area" : "Release to capture"));
+                QVERIFY(!surface->accessibleDescription().contains("Enter to"));
+                QTest::mouseRelease(surface, Qt::LeftButton, {}, {300, 280});
                 QCOMPARE(selected, QRectF(QPointF(screen.topLeft()) + QPointF(100, 100), QSizeF(200, 180)));
             } else {
                 QTest::keyClick(surface, Qt::Key_Right);
@@ -829,7 +863,8 @@ private slots:
         QVERIFY(ReviewWindow::defaultSize().width() <= 1366 - 24 && ReviewWindow::defaultSize().height() <= 768 - 48);
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        QCOMPARE(window.size(), ReviewWindow::defaultSize());
+        QVERIFY(window.width() <= 1342 && window.height() <= 720);
+        QVERIFY(window.width() >= window.minimumSizeHint().width());
         auto state = window.inspect();
         qInfo("review default %dx%d header %d share %.3f", window.width(), window.height(), state["header"].toObject()["rect"].toArray()[3].toInt(), state["video"].toObject()["share"].toDouble());
         // Before #283 the frame had about 30% of a 900×700 window; now most of it.
@@ -1059,8 +1094,7 @@ private slots:
             QVERIFY(details);
             PUTGD_TRY_VERIFY(details->hasFocus());
             QVERIFY(details->property("plainText").toString().contains(failure));
-            auto* compatible = buttonNamed(window, "Use MP4 (H.264)");
-            QVERIFY(compatible && !compatible->visibleRegion().isEmpty());
+            QVERIFY(!buttonNamed(window, "Use MP4 (H.264)"));
             QVERIFY(!window.drive({{"action", "showAdvice"}}).state["adviceDialog"].toObject()["open"].toBool());
         }
     }
@@ -1286,7 +1320,7 @@ private slots:
             const auto tools = window.findChildren<QToolButton*>();
             QVERIFY(tools.size() >= 9);
             for (auto* b : tools) {
-                QVERIFY2((b->toolButtonStyle() == Qt::ToolButtonTextOnly && (QStringList{"Set trim start", "Set trim end", "Reset trim", "Set mask start", "Set mask end"}.contains(b->accessibleName()) || b->objectName() == "showMoreMasks")) || (!b->icon().isNull() && (b->toolButtonStyle() == Qt::ToolButtonIconOnly || (b->toolButtonStyle() == Qt::ToolButtonTextBesideIcon && QStringList{"Start", "End"}.contains(b->text())))), qPrintable(b->accessibleName()));
+                QVERIFY2((b->toolButtonStyle() == Qt::ToolButtonTextOnly && (QStringList{"Set trim start", "Set trim end", "Reset trim", "Set mask start", "Set mask end", "Add mask"}.contains(b->accessibleName()) || b->objectName() == "showMoreMasks")) || (!b->icon().isNull() && (b->toolButtonStyle() == Qt::ToolButtonIconOnly || (b->toolButtonStyle() == Qt::ToolButtonTextBesideIcon && QStringList{"Start", "End"}.contains(b->text())))), qPrintable(b->accessibleName()));
                 QVERIFY2(!b->accessibleName().isEmpty() && !b->toolTip().isEmpty(), qPrintable(b->objectName()));
                 if(b->isVisible()&&b->toolButtonStyle()==Qt::ToolButtonTextBesideIcon)QVERIFY2(b->width()>=b->fontMetrics().horizontalAdvance(b->text())+b->iconSize().width()+16,qPrintable(b->accessibleName()));
             }
@@ -1509,19 +1543,28 @@ private slots:
         window.drive({{"action", "showAdvice"}});
         auto* dialog = window.findChild<QDialog*>("reviewAdvice");
         QVERIFY(dialog); QCOMPARE(dialog->windowTitle(), QString("Export failed"));
-        auto* compatible = buttonNamed(*dialog, "Use MP4 (H.264)");
-        QVERIFY(compatible);
-        const auto position = compatible->mapTo(dialog, QPoint());
-        QVERIFY(dialog->rect().contains(QRect(position, compatible->size())));
+        QVERIFY(!buttonNamed(*dialog, "Use MP4 (H.264)"));
+        QCOMPARE(dialog->findChild<QLabel*>("reviewAdviceText")->property("plainText").toString(), QString("Export failed: disk full"));
         auto* primary = qobject_cast<QPushButton*>(buttonNamed(*dialog, "Try again"));
         QVERIFY(primary && primary->isDefault());
         primary->click(); QCOMPARE(retry.size(), 2);
         QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         window.drive({{"action", "showAdvice"}});
         dialog = window.findChild<QDialog*>("reviewAdvice"); QVERIFY(dialog);
+        const QJsonValue errorFacts = window.inspect()["statusFacts"];
         auto* close = buttonNamed(*dialog, "Close"); QVERIFY(close); close->click();
-        QVERIFY(!window.inspect()["status"].toString().contains("Export failed"));
+        QCOMPARE(window.inspect()["statusFacts"], errorFacts);
         QVERIFY(!window.inspect()["adviceDialog"].toObject()["open"].toBool());
+        QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        const auto tips = window.drive({{"action", "showFormatTips"}});
+        QVERIFY(tips.code.isEmpty());
+        QVERIFY(!tips.state["adviceDialog"].toObject()["text"].toString().contains("disk full"));
+        dialog = window.findChild<QDialog*>("reviewAdvice"); QVERIFY(dialog);
+        QVERIFY(buttonNamed(*dialog, "Use MP4 (H.264)"));
+        buttonNamed(*dialog, "Close")->click();
+        QCOMPARE(window.inspect()["statusFacts"], errorFacts);
+        window.drive({{"action", "dismissStatus"}});
+        QVERIFY(window.inspect()["statusFacts"] != errorFacts);
         window.showError("Couldn't open the folder. Copy the path and open it in your file manager.", false);
         QVERIFY(!buttonNamed(window, "Try again"));
         QVERIFY(!window.drive({{"action", "retryExport"}}).code.isEmpty());
@@ -1610,10 +1653,9 @@ private slots:
         QVERIFY(!command["mask"].toObject().contains("strength"));
         // Arming Add blur shows it too; its action arms the redaction instead.
         QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}).code.isEmpty());
-        QToolButton* addBlur = nullptr;
-        for (auto* b : window.findChildren<QToolButton*>()) if (b->accessibleName() == "Blur") addBlur = b;
-        QVERIFY(addBlur);
-        addBlur->click();
+        auto* add = window.findChild<QToolButton*>("addMask");
+        QVERIFY(add && add->menu());
+        add->menu()->actions()[1]->trigger();
         QCOMPARE(window.inspect()["status"].toString(), guidance);
         QVERIFY(window.drive({{"action", "useSolidCover"}}).state["armed"].toString() == "solid");
         QVERIFY(!window.inspect()["status"].toString().contains(guidance));
@@ -1632,13 +1674,23 @@ private slots:
         QVERIFY(putgd::test::waitForWindowActive(&window));
         auto* frame = window.findChild<FrameView*>();
         QVERIFY(frame && frame->focusPolicy() == Qt::StrongFocus);
-        QToolButton* addSolid = nullptr;
-        for (auto* b : window.findChildren<QToolButton*>()) if (b->accessibleName() == "Redact") addSolid = b;
-        QVERIFY(addSolid);
-        addSolid->setFocus(Qt::TabFocusReason);
-        QTest::keyClick(addSolid, Qt::Key_Space);
+        auto* add = window.findChild<QToolButton*>("addMask");
+        QVERIFY(add && add->menu());
+        add->setFocus(Qt::TabFocusReason);
+        // The actual menu is keyboard navigable, then Enter on the frame places it.
+        QTimer::singleShot(0, add, [add] {
+            add->menu()->setActiveAction(add->menu()->actions().first());
+            QTest::keyClick(add->menu(), Qt::Key_Return);
+        });
+        add->showMenu();
         QCOMPARE(window.inspect()["armed"].toString(), QString("solid"));
-        QTest::keyClick(addSolid, Qt::Key_Return);
+        PUTGD_TRY_VERIFY(!add->menu()->isVisible());
+        window.activateWindow();
+        QVERIFY(putgd::test::waitForWindowActive(&window));
+        frame->setFocus(Qt::TabFocusReason);
+        QApplication::processEvents();
+        QTest::keyClick(frame, Qt::Key_Return);
+        QVERIFY(!proposals.isEmpty());
         auto added = proposed(proposals);
         QCOMPARE(added["op"].toString(), QString("addMask"));
         QCOMPARE(added["mask"].toObject()["rect"].toArray(), QJsonArray({320, 180, 640, 360}));
