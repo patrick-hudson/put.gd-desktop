@@ -161,9 +161,10 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   });
  };
  // Agent commands arrive from the resident's editor.* session methods.
- const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message)->QJsonObject{
+ const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message,bool& deferred,std::function<void(QJsonObject,QString,QString)> done)->QJsonObject{
   auto denied=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
   const bool open=!terminal&&!finalizing;
+  if(window->savingCopy()&&QStringList{"saveCopy","submit","cancel"}.contains(name))return denied("editor_busy","A copy is still being saved");
   if(name=="inspect"){
    if(!params.isEmpty())return denied("invalid_request","inspect has no parameters");
    auto state=editor::Commands::state(*document);state["phase"]=terminal?"closing":finalizing?"finalizing":"editing";state["destination"]=destination;
@@ -200,9 +201,12 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(QFileInfo(target.absolutePath()).canonicalFilePath()==QFileInfo(files.directory()).canonicalFilePath())return denied("invalid_request","Choose a path outside private editor staging");
    if(target.exists()&&(!params["overwrite"].toBool()||!target.isFile()))return denied("file_exists","The file exists; pass overwrite to replace it");
    // The window's own Save a copy… path: pending edits, export, outcome shown.
-   QString reason;const auto png=window->writeCopy(path,reason);
-   if(png.isEmpty())return denied("save_failed","The copy could not be saved: "+reason);
-   return {{"saved",true},{"path",path},{"bytes",double(png.size())},{"sha256",QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())}};
+   deferred=window->writeCopy(path,[path,done](const QByteArray& png,const QString& reason){
+    if(png.isEmpty()){done({},"save_failed","The copy could not be saved: "+reason);return;}
+    done({{"saved",true},{"path",path},{"bytes",double(png.size())},{"sha256",QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())}},{},{});
+   });
+   if(!deferred)return denied("editor_busy","A copy is still being saved");
+   return {};
   }
   if(name=="fileDialog"){
    // #259: Save a copy… as the button opens it (the desktop's chooser, or the
@@ -274,10 +278,14 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(type=="command"&&active&&window){
    const auto requestId=object["requestId"].toString();
    if(object.size()!=6||requestId.isEmpty()||requestId.size()>64||!object["command"].isString()||!object["params"].isObject()){fail();return;}
-   QString code,message;auto result=command(object["command"].toString(),object["params"].toObject(),code,message);
-   auto reply=envelope(nonce);reply["requestId"]=requestId;reply["ok"]=code.isEmpty();
-   if(code.isEmpty())reply["result"]=result;else{reply["code"]=code;reply["message"]=message.left(512);}
-   if(control.send("commandResult",reply).isEmpty())fail();
+   const auto done=[&,requestId](QJsonObject result,QString code,QString message){
+    auto reply=envelope(nonce);reply["requestId"]=requestId;reply["ok"]=code.isEmpty();
+    if(code.isEmpty())reply["result"]=result;else{reply["code"]=code;reply["message"]=message.left(512);}
+    if(control.send("commandResult",reply).isEmpty())fail();
+   };
+   QString code,message;bool deferred=false;
+   auto result=command(object["command"].toString(),object["params"].toObject(),code,message,deferred,done);
+   if(!deferred)done(result,code,message);
    return;
   }
   if(type=="checkpointAccepted"&&active&&terminal){

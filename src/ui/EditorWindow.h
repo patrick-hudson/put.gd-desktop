@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QPointer>
 #include <QWidget>
+#include <functional>
 class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QDialog;
 
 namespace putgd {
@@ -44,10 +45,12 @@ public:
  // while busy or while the chooser is already open. editor.fileDialog drives it.
  bool saveCopy();
  FileDialog& fileDialog() {return *chooser_;}
- // Writes the sanitized PNG to path as Save a copy… does (pending edits
- // first) and shows the outcome; editor.saveCopy uses it too. Returns the
- // bytes written, or empty with reason set.
- QByteArray writeCopy(const QString& path,QString& reason);
+ // Snapshots pending edits, then renders and writes off the GUI thread.
+ // Completion preserves editor.saveCopy's saved bytes/digest reply.
+ using CopyDone=std::function<void(const QByteArray&,const QString&)>;
+ bool writeCopy(const QString& path,CopyDone done={});
+ bool savingCopy() const {return savingCopy_;}
+ static QString pngCopyPath(const QString& path);
  // A copy written by the window or by editor.saveCopy: its name, Show in
  // folder and Copy path beside the Document details, the full path in the
  // tooltip and accessible description. It is recorded against the
@@ -74,6 +77,8 @@ protected:
  void resizeEvent(QResizeEvent*) override;
  bool eventFilter(QObject*,QEvent*) override;
 private:
+ void chooseCopy(const QString& path);
+ void setSavingCopy(bool saving);
  void refresh();
  void syncSaved();
  void placeDestination();
@@ -128,6 +133,6 @@ private:
  // and the document generation the saved copy holds.
  QJsonObject lastSave_,lastShowInFolder_;QString lastCopiedPath_;quint64 savedGeneration_=0,folderRequest_=0;
  QColor annotationColor_=QColor(220,38,38),highlightColor_=QColor(250,204,21);
- bool closing_=false,busy_=false,shown_=false;
+ bool closing_=false,busy_=false,shown_=false,savingCopy_=false;
 };
 }

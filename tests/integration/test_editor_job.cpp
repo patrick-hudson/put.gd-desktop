@@ -1,6 +1,7 @@
 #include "core/EditorJob.h"
 #include "core/SanitizedPng.h"
 #include <QDir>
+#include <QCryptographicHash>
 #include <QDirIterator>
 #include <QFileInfo>
 #include <QImage>
@@ -53,6 +54,21 @@ int filesUnder(const QString& root){int count=0;QDirIterator it(root,QDir::Files
 class EditorJobTest:public QObject {
  Q_OBJECT
 private slots:
+ void saveCopyRepliesAfterWorkerCompletionWhileViewStaysAvailable(){
+  QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;auto image=noise({3000,2000},37);
+  std::thread worker([&]{result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Synthetic local copy",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});QVERIFY(waitPhase(*session,"editing"));
+  QSemaphore finished;Answer saved;const auto path=root.filePath("worker.png");
+  session->request("saveCopy",{{"path",path}},[&](Error error,QJsonObject reply){saved={error,reply};finished.release();});
+  const auto view=ask(*session,"view");QVERIFY2(!view.error,qPrintable(view.error.message));QVERIFY(view.result["savingCopy"].toBool());
+  QCOMPARE(view.result["lastSave"].toObject()["status"].toString(),QString("saving"));
+  QCOMPARE(ask(*session,"saveCopy",{{"path",root.filePath("overlap.png")}}).error.code,QString("editor_busy"));
+  QVERIFY(finished.tryAcquire(1,15000));QVERIFY2(!saved.error,qPrintable(saved.error.message));QVERIFY(saved.result["saved"].toBool());QCOMPARE(saved.result["path"].toString(),path);
+  QFile file(path);QVERIFY(file.open(QIODevice::ReadOnly));const auto bytes=file.readAll();QCOMPARE(saved.result["bytes"].toDouble(),double(bytes.size()));
+  QCOMPARE(saved.result["sha256"].toString(),QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex()));
+  QVERIFY(!ask(*session,"view").result["savingCopy"].toBool());QVERIFY(!ask(*session,"cancel").error);
+  worker.join();QCOMPARE(result.error.code,QString("cancelled"));
+ }
  void agentEditsPreviewSaveAndSubmitSanitizedResult(){
   QTemporaryDir root;const auto staging=root.filePath("editing");
   const auto original=noise({320,200},21);const QRect secret(40,30,80,40);

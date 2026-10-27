@@ -31,6 +31,9 @@
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QThread>
+#include <memory>
+#include <QFileDialog>
 #include <QScreen>
 #include <QShortcut>
 #include <QSlider>
@@ -146,14 +149,14 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* recent=new QWidget(colorRow_);recentLayout_=new QHBoxLayout(recent);recentLayout_->setContentsMargins(0,0,0,0);recentLayout_->setSpacing(4);recentLayout_->addStretch(1);recent->setObjectName("recentColors");recent->setAccessibleName("Recent custom colors");layout->addWidget(recent);
  properties->addWidget(colorRow_);
  widthRow_=column(panel,layout);layout->addWidget(fieldLabel("Line width",widthRow_));
- width_=VisualStyle::choiceBox(widthRow_);width_->addItem("Thin",2);width_->addItem("Medium",4);width_->addItem("Thick",8);width_->setCurrentIndex(1);width_->setAccessibleName("Line width");layout->addWidget(width_);
+ width_=VisualStyle::choiceBox(widthRow_);width_->addItem("Thin · 2 px",2);width_->addItem("Medium · 4 px",4);width_->addItem("Thick · 8 px",8);width_->setCurrentIndex(1);width_->setAccessibleName("Line width");layout->addWidget(width_);
  properties->addWidget(widthRow_);
- blurRow_=column(panel,layout);layout->addWidget(fieldLabel("Blur strength",blurRow_));
- strength_=new QSlider(Qt::Horizontal,blurRow_);strength_->setRange(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur);strength_->setValue(12);strength_->setAccessibleName("Blur strength");strength_->setObjectName("blurStrength");
+ blurRow_=column(panel,layout);auto* blurLabelRow=new QHBoxLayout;blurLabelRow->setContentsMargins(0,0,0,0);blurLabelRow->addWidget(fieldLabel("Blur radius —",blurRow_));layout->addLayout(blurLabelRow);
+ strength_=new QSlider(Qt::Horizontal,blurRow_);strength_->setRange(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur);strength_->setValue(12);strength_->setAccessibleName("Blur radius");strength_->setObjectName("blurStrength");
  const auto strengthDescription=QString("Blur radius in image pixels, %1 to %2").arg(strength_->minimum()).arg(strength_->maximum());strength_->setAccessibleDescription(strengthDescription);
  auto* strengthRow=new QHBoxLayout;strengthRow->setContentsMargins(0,0,0,0);strengthRow->setSpacing(8);strengthRow->addWidget(strength_,1);
- strengthValue_=new QLabel(QString::number(strength_->value()),blurRow_);strengthValue_->setObjectName("blurStrengthValue");strengthValue_->setAccessibleName("Blur strength value");strengthValue_->setAccessibleDescription(strengthDescription);strengthValue_->setAlignment(Qt::AlignRight|Qt::AlignVCenter);strengthValue_->setMinimumWidth(strengthValue_->fontMetrics().horizontalAdvance(QString::number(strength_->maximum())));strengthRow->addWidget(strengthValue_);layout->addLayout(strengthRow);
- connect(strength_,&QSlider::valueChanged,strengthValue_,[this](int value){strengthValue_->setText(QString::number(value));});
+ strengthValue_=new QLabel(QString("%1 px").arg(strength_->value()),blurRow_);strengthValue_->setObjectName("blurStrengthValue");strengthValue_->setAccessibleName("Blur radius value");strengthValue_->setAccessibleDescription(strengthDescription);strengthValue_->setAlignment(Qt::AlignRight|Qt::AlignVCenter);strengthValue_->setMinimumWidth(strengthValue_->fontMetrics().horizontalAdvance(QString("%1 px").arg(strength_->maximum())));blurLabelRow->addWidget(strengthValue_);layout->addLayout(strengthRow);
+ connect(strength_,&QSlider::valueChanged,strengthValue_,[this](int value){strengthValue_->setText(QString("%1 px").arg(value));});
  properties->addWidget(blurRow_);
  textRow_=column(panel,layout);layout->addWidget(fieldLabel("Font",textRow_));
  font_=new QFontComboBox(textRow_);font_->setObjectName("textFont");font_->setAccessibleName("Font");font_->setCurrentFont(QFont());font_->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);font_->setMinimumContentsLength(8);layout->addWidget(font_);
@@ -236,7 +239,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   if(const auto* shape=doc_.find(canvas_->selected())){
    if(shape->kind==editor::Shape::Kind::Highlight)highlightColor_=shape->color;else if(shape->kind!=editor::Shape::Kind::Redact&&shape->kind!=editor::Shape::Kind::Blur)annotationColor_=shape->color;
    width_->blockSignals(true);textSize_->blockSignals(true);font_->blockSignals(true);strength_->blockSignals(true);
-   width_->setCurrentIndex(std::max(0,width_->findData(shape->width)));textSize_->setValue(shape->fontPixels);strength_->setValue(shape->strength);strengthValue_->setText(QString::number(shape->strength));
+   width_->setCurrentIndex(std::max(0,width_->findData(shape->width)));textSize_->setValue(shape->fontPixels);strength_->setValue(shape->strength);strengthValue_->setText(QString("%1 px").arg(shape->strength));
    if(shape->kind==editor::Shape::Kind::Text)font_->setCurrentFont(shape->fontFamily.isEmpty()?QFont():QFont(shape->fontFamily));
    width_->blockSignals(false);textSize_->blockSignals(false);font_->blockSignals(false);strength_->blockSignals(false);
    syncStyle(false);return;
@@ -275,10 +278,11 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  bind(standard(QKeySequence::ZoomIn,{QKeySequence("Ctrl+=")}),[this]{canvas_->zoomBy(1.25);});bind(standard(QKeySequence::ZoomOut),[this]{canvas_->zoomBy(0.8);});
  bind(standard(QKeySequence::Save),[this]{if(!busy_)saveCopy();});
  // Upload is never plain Enter, which completes text entry and crops.
- auto submit=[this]{if(busy_)return;finishPendingEdits();emit uploadRequested();};
+ auto submit=[this]{if(busy_||savingCopy_)return;finishPendingEdits();emit uploadRequested();};
  bind({QKeySequence("Ctrl+Return"),QKeySequence("Ctrl+Enter")},submit);
  connect(upload_,&QPushButton::clicked,this,submit);
  connect(save_,&QPushButton::clicked,this,&EditorWindow::saveCopy);
+ connect(chooser_,&FileDialog::stateChanged,this,[this]{if(auto* dialog=chooser_->fallbackDialog())dialog->setDefaultSuffix("png");});
  connect(cancel_,&QPushButton::clicked,this,&EditorWindow::requestCancel);
 
  resize(initialSize(doc_.size(),screen()?screen()->availableGeometry().size():QSize(1280,800)));
@@ -336,7 +340,7 @@ void EditorWindow::rebuildRecentColors(){
 }
 
 void EditorWindow::setDestination(const QString& destination){// The resident phrases it: "Upload to <destination>" or "Save to the local archive".
- destination_->setText(destination);destination_->setAccessibleName(destination);destination_->setVisible(!destination.isEmpty()&&!busy_);placeDestination();}
+ destination_->setText(destination);destination_->setAccessibleName(destination);destination_->setVisible(!destination.isEmpty()&&!busy_&&!savingCopy_);placeDestination();}
 
 void EditorWindow::placeDestination(){
  if(!footerGrid_||destination_->text().isEmpty())return;
@@ -399,7 +403,7 @@ void EditorWindow::refresh(){
  cropRow_->setVisible(tool==Tool::Crop);
  if(tool==Tool::Blur||kind(editor::Shape::Kind::Blur))hint_->setText("Blur is a visual effect. Use Redact for passwords and private information.");
  else hint_->setText({});
- if(tool==Tool::Redact&&!shape){hint_->setText("A redaction removes the covered pixels from the uploaded image.");VisualStyle::role(hint_,"secondary");}
+ if(tool==Tool::Redact&&!shape){hint_->setText("The covered pixels are removed from saved and uploaded images.");VisualStyle::role(hint_,"secondary");}
  else VisualStyle::role(hint_,"warning");
  hint_->setVisible(!hint_->text().isEmpty());
  {
@@ -469,30 +473,62 @@ void EditorWindow::finishPendingEdits(){
  if(canvas_->cropPending())canvas_->applyCrop();
 }
 
+QString EditorWindow::pngCopyPath(const QString& path){
+ return path.endsWith(".png",Qt::CaseInsensitive)?path:path+".png";
+}
 bool EditorWindow::saveCopy(){
- if(busy_||chooser_->isOpen())return false;
- // The chooser shows the result Upload would send: finish pending edits first.
+ if(busy_||savingCopy_||chooser_->isOpen())return false;
  finishPendingEdits();
  auto folder=QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);if(folder.isEmpty())folder=QDir::homePath();
- const auto name="put.gd-edit-"+QDateTime::currentDateTime().toString("yyyy-MM-dd-HH-mm-ss")+".png";
- return chooser_->open({FileDialog::Mode::Save,"Save a copy",folder,name,{{"PNG image",{"*.png"}}}},[this](const FileDialog::Result& result){
-  if(busy_)return;
-  // A chooser that failed is not a cancel: say so beside Save a copy….
+ chooseCopy(QDir(folder).filePath("put.gd-edit-"+QDateTime::currentDateTime().toString("yyyy-MM-dd-HH-mm-ss")+".png"));
+ return true;
+}
+void EditorWindow::chooseCopy(const QString& path){
+ const QFileInfo target(path);
+ chooser_->open({FileDialog::Mode::Save,"Save a copy",target.absolutePath(),target.fileName(),{{"PNG image",{"*.png"}}}},[this](const FileDialog::Result& result){
+  if(busy_||savingCopy_)return;
   if(result.failed()){showSaveFailed({},result.error);return;}
   if(!result.chosen())return;
-  QString reason;writeCopy(result.path,reason);
+  const auto normalized=pngCopyPath(result.path);
+  // A native chooser confirmed its chosen name. Confirm a changed target there too.
+  if(normalized!=result.path&&QFileInfo::exists(normalized)){chooseCopy(normalized);return;}
+  writeCopy(normalized);
  });
+ if(auto* dialog=chooser_->fallbackDialog())dialog->setDefaultSuffix("png");
 }
-
-QByteArray EditorWindow::writeCopy(const QString& path,QString& reason){
- // Agents can draft a crop while the chooser is open: finish it again.
+void EditorWindow::setSavingCopy(bool saving){
+ savingCopy_=saving;
+ for(auto* button:{save_,saveInstead_,chooseAnother_})button->setEnabled(!saving&&!busy_);
+ upload_->setEnabled(!saving&&!busy_);cancel_->setEnabled(!saving&&!busy_);
+ if(saving){
+  for(auto* widget:std::initializer_list<QWidget*>{destination_,saveError_,folderError_,savedLabel_,saveTarget_,showFolder_,copyPath_,chooseAnother_})widget->hide();
+  message_->setText("Saving a copy…");VisualStyle::role(message_,"secondary");message_->show();
+ }else{message_->hide();destination_->setVisible(!busy_&&!destination_->text().isEmpty());}
+ placeDestination();
+}
+bool EditorWindow::writeCopy(const QString& path,CopyDone done){
+ if(busy_||savingCopy_)return false;
  finishPendingEdits();
- // The same sanitized export as Upload; QSaveFile replaces a chosen target atomically.
- const auto png=doc_.exportPng();
- if(png.isEmpty()){reason="the edited image could not be encoded";showSaveFailed(path,reason);return {};}
- QSaveFile file(path);file.setDirectWriteFallback(false);
- if(!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit()){reason=file.errorString();showSaveFailed(path,reason);return {};}
- showSaved(path);return png;
+ const auto target=pngCopyPath(path);const auto generation=doc_.generation();
+ // Qt's image/list copies detach on mutation; no live document reaches the worker.
+ auto snapshot=doc_;
+ setSavingCopy(true);lastSave_={{"status","saving"},{"path",target}};
+ struct Result {QByteArray png;QString reason;};
+ auto result=std::make_shared<Result>();
+ auto* thread=QThread::create([snapshot=std::move(snapshot),target,result]{
+  result->png=snapshot.exportPng();
+  if(result->png.isEmpty()){result->reason="the edited image could not be encoded";return;}
+  QSaveFile file(target);file.setDirectWriteFallback(false);
+  if(!file.open(QIODevice::WriteOnly)||file.write(result->png)!=result->png.size()||!file.commit()){result->reason=file.errorString();result->png.clear();}
+ });
+ connect(thread,&QThread::finished,this,[this,target,generation,result,done=std::move(done)]{
+  setSavingCopy(false);
+  if(result->png.isEmpty())showSaveFailed(target,result->reason);
+  else{showSaved(target);savedGeneration_=generation;syncSaved();}
+  if(done)done(result->png,result->reason);
+ });
+ connect(thread,&QThread::finished,thread,&QObject::deleteLater);
+ thread->start();return true;
 }
 
 void EditorWindow::showSaved(const QString& path){
@@ -587,7 +623,7 @@ QJsonObject EditorWindow::viewState() const {
  return {{"scheme",Theme::name(Theme::scheme())},{"tool",toolNames.value(int(canvas_->tool()))},{"selectedShapeId",selected?QJsonValue(double(selected)):QJsonValue()},
   {"geometry",rectValue(canvas_->selectionGeometry())},{"cropPending",canvas_->cropPending()},{"selection",canvas_->selectionSummary()},
   {"zoomPercent",std::round(canvas_->zoom()*1000)/10},{"fitted",canvas_->fitted()},{"visibleRect",rectValue(canvas_->visibleImageRect())},
-  {"canvasSize",QJsonArray{canvas_->width(),canvas_->height()}},{"editingText",canvas_->editingText()},{"busy",busy_},
+  {"canvasSize",QJsonArray{canvas_->width(),canvas_->height()}},{"editingText",canvas_->editingText()},{"busy",busy_},{"savingCopy",savingCopy_},
   {"style",QJsonObject{{"color",style.color.name()},{"width",style.width},{"strength",style.strength},{"fontPixels",style.fontPixels},{"font",style.fontFamily}}},
   {"message",message.isEmpty()?QJsonValue():QJsonValue(message)},{"lastSave",save.isEmpty()?QJsonValue():QJsonValue(save)},
   {"lastShowInFolder",lastShowInFolder_.isEmpty()?QJsonValue():QJsonValue(lastShowInFolder_)},{"lastCopiedPath",lastCopiedPath_.isEmpty()?QJsonValue():QJsonValue(lastCopiedPath_)},
@@ -667,7 +703,7 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
 }
 
 void EditorWindow::requestCancel(){
- if(busy_)return;
+ if(busy_||savingCopy_)return;
  if(discard_){discard_->raise();discard_->activateWindow();return;}
  if(!doc_.modified()){emit cancelRequested();return;}
  // An explicit footer keeps the safe choice first on every platform;

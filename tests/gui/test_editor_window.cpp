@@ -33,6 +33,12 @@
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::editor;
 
+static QByteArray writeCopy(EditorWindow& window,const QString& path,QString& reason){
+ QByteArray png;bool finished=false;
+ if(!window.writeCopy(path,[&](const QByteArray& bytes,const QString& error){png=bytes;reason=error;finished=true;})){reason="save not started";return {};}
+ if(!putgd::test::waitFor([&]{return finished;},10000))reason="save timed out";
+ return png;
+}
 class EditorWindowTest:public QObject {
  Q_OBJECT
  static QImage canvasImage(){QImage image(400,260,QImage::Format_RGB32);image.fill(QColor("#20242c"));return image;}
@@ -55,8 +61,8 @@ private slots:
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.selectTool(Tool::Blur);
   auto* slider=window.findChild<QSlider*>("blurStrength");auto* value=window.findChild<QLabel*>("blurStrengthValue");QVERIFY(slider&&value);
   QCOMPARE(value->accessibleDescription(),slider->accessibleDescription());
-  for(const int strength:{slider->minimum(),18,slider->maximum()}){slider->setValue(strength);QCOMPARE(value->text(),QString::number(strength));QCOMPARE(window.canvas().style().strength,strength);}
-  add(doc,{{"kind","blur"},{"rect",QJsonArray{10,10,50,20}},{"strength",24}});window.documentEdited();window.canvas().select(doc.shapes().last().id);QCOMPARE(value->text(),QString("24"));
+  for(const int strength:{slider->minimum(),18,slider->maximum()}){slider->setValue(strength);QCOMPARE(value->text(),QString("%1 px").arg(strength));QCOMPARE(window.canvas().style().strength,strength);}
+  add(doc,{{"kind","blur"},{"rect",QJsonArray{10,10,50,20}},{"strength",24}});window.documentEdited();window.canvas().select(doc.shapes().last().id);QCOMPARE(value->text(),QString("24 px"));
   class Slider final:public QSlider {public:using QSlider::QSlider;QStyleOptionSlider option()const{QStyleOptionSlider value;initStyleOption(&value);return value;}};
   for(const auto orientation:{Qt::Horizontal,Qt::Vertical})for(const bool inverted:{false,true})for(const auto direction:{Qt::LeftToRight,Qt::RightToLeft}){
    Slider control(orientation);control.setLayoutDirection(direction);control.setRange(0,100);control.setValue(50);control.setInvertedAppearance(inverted);control.resize(orientation==Qt::Horizontal?QSize(260,32):QSize(32,260));control.show();QVERIFY(putgd::test::waitForWindowExposed(&control));
@@ -350,6 +356,32 @@ private slots:
  }
  // Save a copy… and Upload export the same thing: a pending crop is applied
  // before the chooser opens, and again before writing.
+ void copyChooserNormalizesPngAndConfirmsTheFinalTarget(){
+  qputenv("PUTGD_FILE_DIALOG","fallback");auto restore=qScopeGuard([]{qunsetenv("PUTGD_FILE_DIALOG");});
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));QTemporaryDir dir;
+  QVERIFY(window.saveCopy());auto* chooser=window.fileDialog().fallbackDialog();QVERIFY(chooser);QCOMPARE(chooser->defaultSuffix(),QString("png"));
+  const auto path=dir.filePath("without-extension");chooser->selectFile(path);QMetaObject::invokeMethod(chooser,"accept");
+  PUTGD_TRY_COMPARE(window.viewState()["lastSave"].toObject()["status"].toString(),QString("saved"));QVERIFY(QFileInfo::exists(path+".png"));QVERIFY(!QFileInfo::exists(path));
+  const auto final=dir.filePath("existing.jpg.png");QFile file(final);QVERIFY(file.open(QIODevice::WriteOnly));file.write("keep existing");file.close();
+  QVERIFY(window.saveCopy());chooser=window.fileDialog().fallbackDialog();QVERIFY(chooser);chooser->selectFile(dir.filePath("existing.jpg"));QMetaObject::invokeMethod(chooser,"accept");
+  PUTGD_TRY_VERIFY(window.fileDialog().isOpen());auto* confirm=window.fileDialog().fallbackDialog();QVERIFY(confirm&&confirm!=chooser);QCOMPARE(confirm->selectedFiles().first(),final);
+  QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),QByteArray("keep existing"));file.close();
+  window.fileDialog().cancel();QVERIFY(!window.savingCopy());
+ }
+ void copyWorkerKeepsTheWindowResponsiveAndSnapshotsTheDocument(){
+  QImage image(2400,1800,QImage::Format_ARGB32);image.fill(Qt::white);
+  EditDocument doc(image);EditorWindow window(doc);window.setDestination("Private upload to synthetic archive");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  QTemporaryDir dir;const auto path=dir.filePath("copy.jpg");bool done=false,tick=false;QByteArray saved;
+  QVERIFY(window.writeCopy(path,[&](const QByteArray& png,const QString& error){QVERIFY(error.isEmpty());saved=png;done=true;}));
+  QVERIFY(window.viewState()["savingCopy"].toBool());QVERIFY(!window.findChild<QLabel*>("editorDestination")->isVisible());QCOMPARE(window.viewState()["message"].toObject()["text"].toString(),QString("Saving a copy…"));
+  QVERIFY(!window.writeCopy(dir.filePath("overlap.png")));QVERIFY(!window.saveCopy());
+  QTimer::singleShot(0,&window,[&]{tick=window.savingCopy();});
+  add(doc,{{"kind","redact"},{"rect",QJsonArray{0,0,200,200}}});window.documentEdited();
+  PUTGD_TRY_VERIFY(tick);PUTGD_TRY_VERIFY(done);
+  QVERIFY(!window.viewState()["savingCopy"].toBool());QVERIFY(window.findChild<QLabel*>("editorDestination")->isVisible());QVERIFY(!window.viewState()["lastSave"].toObject()["current"].toBool());
+  QCOMPARE(window.viewState()["lastSave"].toObject()["path"].toString(),path+".png");
+  QCOMPARE(QImage::fromData(saved).pixelColor(10,10),QColor(Qt::white));QVERIFY(QFileInfo::exists(path+".png"));QVERIFY(!QFileInfo::exists(path));
+ }
  void saveCopyFinishesThePendingCropLikeUpload(){
   qputenv("PUTGD_FILE_DIALOG","fallback");auto restore=qScopeGuard([]{qunsetenv("PUTGD_FILE_DIALOG");});
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -360,10 +392,10 @@ private slots:
   QTemporaryDir dir;const auto path=dir.filePath("copy.png");
   QFileDialog* chooser=nullptr;PUTGD_TRY_VERIFY((chooser=window.fileDialog().fallbackDialog())&&chooser->isVisible());
   chooser->selectFile(path);QMetaObject::invokeMethod(chooser,"accept");
-  PUTGD_TRY_VERIFY(QFileInfo::exists(path));QCOMPARE(QImageReader(path).size(),QSize(200,100));
+  PUTGD_TRY_VERIFY(QFileInfo::exists(path));PUTGD_TRY_VERIFY(!window.savingCopy());QCOMPARE(QImageReader(path).size(),QSize(200,100));
   // An agent's crop draft made while the chooser was open is finished too.
   window.viewCommand({{"action","tool"},{"tool","crop"}},code,message);window.viewCommand({{"action","geometry"},{"rect",QJsonArray{20,30,50,40}}},code,message);
-  QString reason;const auto png=window.writeCopy(dir.filePath("second.png"),reason);QVERIFY2(!png.isEmpty(),qPrintable(reason));
+  QString reason;const auto png=writeCopy(window,dir.filePath("second.png"),reason);QVERIFY2(!png.isEmpty(),qPrintable(reason));
   QCOMPARE(QImage::fromData(png,"PNG").size(),QSize(50,40));QCOMPARE(png,doc.exportPng());
   // Upload runs the same finalizer before it asks for the export.
   window.viewCommand({{"action","tool"},{"tool","crop"}},code,message);window.viewCommand({{"action","geometry"},{"rect",QJsonArray{25,35,30,20}}},code,message);
@@ -375,7 +407,7 @@ private slots:
  void savedCopyGoesStaleAfterAnotherEditAndCopiesItsPath(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   QTemporaryDir dir;const auto path=dir.filePath("synthetic copy.png");
-  QString reason;QVERIFY2(!window.writeCopy(path,reason).isEmpty(),qPrintable(reason));
+  QString reason;QVERIFY2(!writeCopy(window,path,reason).isEmpty(),qPrintable(reason));
   auto* state=window.findChild<QLabel*>("documentState");auto* saved=window.findChild<QLabel*>("editorSaved");QVERIFY(state&&saved);
   QCOMPARE(state->text(),QString("Not uploaded · Copy saved"));QCOMPARE(saved->text(),QString("Saved synthetic copy.png"));
   QVERIFY(window.viewState()["lastSave"].toObject()["current"].toBool());
@@ -389,7 +421,7 @@ private slots:
   QGuiApplication::clipboard()->clear();QString code,message;window.viewCommand({{"action","copySavedPath"}},code,message);QVERIFY(code.isEmpty());
   QCOMPARE(QGuiApplication::clipboard()->text(),QFileInfo(path).absoluteFilePath());
   // Saving again makes the copy current.
-  QVERIFY(!window.writeCopy(path,reason).isEmpty());QCOMPARE(state->text(),QString("Not uploaded · Copy saved"));
+  QVERIFY(!writeCopy(window,path,reason).isEmpty());QCOMPARE(state->text(),QString("Not uploaded · Copy saved"));
   // A chooser that failed (no file named yet) is shown as a failure, not a cancel.
   window.showSaveFailed({},"The chosen location is not a local file.");
   auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QCOMPARE(error->text(),QString("Couldn't save the copy: the chosen location is not a local file."));
@@ -407,7 +439,7 @@ private slots:
   QVERIFY(state["discardConfirmation"].toObject()["open"].toBool());QVERIFY(state["discardConfirmation"].toObject()["text"].toString().contains("Discard your edits"));
   QCOMPARE(state["cancelLabel"].toString(),QString("Discard…"));auto* box=window.findChild<QDialog*>("confirmAction");QVERIFY(box);
   auto* keep=box->findChild<QPushButton*>("keepEditingConfirm");auto* discard=box->findChild<QPushButton*>("confirmDiscard");QVERIFY(keep&&discard);
-  QApplication::processEvents();QVERIFY(keep->mapTo(box,QPoint()).x()<discard->mapTo(box,QPoint()).x());QVERIFY(keep->isDefault());QVERIFY(!discard->isDefault());QTRY_VERIFY(keep->hasFocus());
+  QApplication::processEvents();QVERIFY(keep->mapTo(box,QPoint()).x()<discard->mapTo(box,QPoint()).x());QVERIFY(keep->isDefault());QVERIFY(!discard->isDefault());PUTGD_TRY_VERIFY(keep->hasFocus());
   QTest::keyClick(keep,Qt::Key_Escape);QVERIFY(!window.viewState()["discardConfirmation"].toObject()["open"].toBool());QCOMPARE(cancels.size(),0);
   view({{"action","discard"}});
   view({{"action","tool"},{"tool","blur"}});QCOMPARE(code,QString("editor_confirming"));
@@ -417,7 +449,7 @@ private slots:
   QVERIFY(!window.close());state=view({{"action","inspect"}});QVERIFY(state["discardConfirmation"].toObject()["open"].toBool());
   view({{"action","confirmDiscard"}});QVERIFY(code.isEmpty());QCOMPARE(cancels.size(),1);
   view({{"action","discard"}});box=nullptr;for(auto* candidate:window.findChildren<QDialog*>("confirmAction"))if(candidate->isVisible())box=candidate;QVERIFY(box);
-  keep=box->findChild<QPushButton*>("keepEditingConfirm");discard=box->findChild<QPushButton*>("confirmDiscard");QTRY_VERIFY(keep->hasFocus());
+  keep=box->findChild<QPushButton*>("keepEditingConfirm");discard=box->findChild<QPushButton*>("confirmDiscard");PUTGD_TRY_VERIFY(keep->hasFocus());
   QTest::keyClick(keep,Qt::Key_Tab);QCOMPARE(QApplication::focusWidget(),discard);QTest::keyClick(discard,Qt::Key_Return);QCOMPARE(cancels.size(),2);
   // Submitting (agents can) closes an open question without discarding.
   view({{"action","discard"}});QVERIFY(window.viewState()["discardConfirmation"].toObject()["open"].toBool());
@@ -506,7 +538,7 @@ private slots:
    QVERIFY(scroll->viewport()->rect().contains(QRect(copy->mapTo(scroll->viewport(),QPoint()),copy->size())));
   }
   copy->click();QCOMPARE(QGuiApplication::clipboard()->text(),path);
-  QString reason;QVERIFY(!window.writeCopy(path,reason).isEmpty());QVERIFY(!error->isVisible());QVERIFY(window.viewState()["lastShowInFolder"].isNull());
+  QString reason;QVERIFY(!writeCopy(window,path,reason).isEmpty());QVERIFY(!error->isVisible());QVERIFY(window.viewState()["lastShowInFolder"].isNull());
   host::setTestOpener([](const QUrl&){});auto restore=qScopeGuard([]{host::setTestOpener({});});
   QVERIFY(window.showSavedCopy());QVERIFY(window.viewState()["lastShowInFolder"].toObject()["opened"].toBool());QVERIFY(!error->isVisible());
   window.showSaveFailed({},"The chooser failed");QVERIFY(!error->isVisible());QVERIFY(!copy->isVisible());
