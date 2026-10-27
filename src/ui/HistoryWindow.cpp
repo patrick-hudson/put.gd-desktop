@@ -56,6 +56,8 @@
 #include <QStackedWidget>
 #include <QStyledItemDelegate>
 #include <QTextDocument>
+#include <QTextBlock>
+#include <QTextLayout>
 #include <QAbstractTextDocumentLayout>
 #include <cmath>
 #include <QTimer>
@@ -193,7 +195,7 @@ int galleryPicture(int cardWidth){return qMax(90,(cardWidth-2)*145/234);}
 void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded=false){
  document.setDocumentMargin(0);document.setDefaultFont(Graphite::font(Graphite::Type::metadata));QTextOption option;option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);document.setDefaultTextOption(option);
  const auto record=index.data(HistoryModel::RecordRole).toJsonObject();const auto& t=Theme::current();auto text=HistoryModel::failed(record)?HistoryModel::statusText(record):index.data(HistoryModel::SubtitleRole).toString();if(createdColumn&&!HistoryModel::failed(record)){const auto created=index.data(HistoryModel::CreatedRole).toString();if(!created.isEmpty())text.remove(" · "+created);}
- if(bounded)text=QFontMetrics(document.defaultFont()).elidedText(text,Qt::ElideRight,qMax(20,width));
+ if(bounded&&!HistoryModel::failed(record))text=QFontMetrics(document.defaultFont()).elidedText(text,Qt::ElideRight,qMax(20,width));
  if(HistoryModel::failed(record)){const auto fullLabel=HistoryModel::failureLabel(record),label=text.startsWith(fullLabel)?fullLabel:text;auto detail=text;if(detail.startsWith(label))detail.remove(0,label.size());document.setHtml("<span style=\"color:"+t.danger.name()+"\">"+statusPhrases(label).toHtmlEscaped()+"</span><span style=\"color:"+t.textSecondary.name()+"\">"+statusPhrases(detail,true).toHtmlEscaped()+"</span>");}
  else{const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();const auto color=remote=="Deletion failed"||remote=="Sharing failed"?t.danger:!remote.isEmpty()||copy=="suppressed"?t.textSecondary:copy=="copied"?t.success:t.textMuted;document.setHtml("<span style=\"color:"+color.name()+"\">"+statusPhrases(text).toHtmlEscaped()+"</span>");}document.setTextWidth(qMax(20,width));
 }
@@ -238,7 +240,7 @@ private:QListView* view_;
 QRect HistoryWindow::failureTextArea(const QSize& row,bool gallery,bool dayHeading){
  const auto body=rowBody(QRect(QPoint(),row),gallery,gallery||!dayHeading?0:dayHeadingHeight());
  const auto title=Graphite::font(Graphite::Type::body,true),meta=Graphite::font(Graphite::Type::metadata);
- return {body.left(),(gallery?body.top():body.top()+rowTextInset())+QFontMetrics(title).height()+6,gallery?body.width():qMax(20,historyColumns(body).item.width()-12),QFontMetrics(meta).height()};
+ return {body.left(),(gallery?body.top():body.top()+rowTextInset())+QFontMetrics(title).height()+6,qMax(20,body.width()),QFontMetrics(meta).height()};
 }
 namespace {
 // Painted rows retain native selection and expose their commands to assistive technology.
@@ -322,8 +324,8 @@ public:
  // text size, so enlarged text gives fewer columns, not heavily elided names.
  // The flow layout always reserves a scrollbar's extent (QListViewPrivate::prepareItemsLayout).
  int galleryWidth()const{const int s=view_->spacing(),reserve=view_->style()->pixelMetric(QStyle::PM_ScrollView_ScrollBarOverlap,nullptr,view_->verticalScrollBar())?0:view_->style()->pixelMetric(QStyle::PM_ScrollBarExtent,nullptr,view_->verticalScrollBar());const int available=qMax(160,view_->maximumViewportSize().width()-reserve-2*s);int minimum=Graphite::scaled(248);for(int row=0;row<view_->model()->rowCount();++row)minimum=qMax(minimum,primaryWidth(view_->model()->index(row,0))+detailsWidth()+actionHeight()+52);const int columns=qMax(1,available/(minimum+s));return qMax(160,available/columns-s);}
- // Reserve each row's actions before laying out text. Only compact metadata
- // that cannot fit beside them needs a footer; hover never changes its height.
+ // Failures use the full body width; wrapped explanations get a stable
+ // action footer. Hover and selection never change the reserved height.
  int detailsWidth()const{return qMax(details_->sizeHint().width(),QFontMetrics(Graphite::font()).horizontalAdvance("Details")+30);}
  QRect detailsRect(QRect r,const QModelIndex& i)const{const auto b=menuRect(r,i);const int w=grid()?detailsWidth():qBound(32,actionHeight(),36);const int h=grid()?b.height():w;return QRect(b.left()-8-w,b.top()+(b.height()-h)/2,w,h);}
  int primaryWidth(const QModelIndex& i)const{return qMax(84,QFontMetrics(Graphite::font()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())+28);}
@@ -332,6 +334,7 @@ public:
   return qMax(20,qMin(historyColumns(body).item.width()-12,left-body.left()-8));
  }
  bool actionsBelow(const QRect& r,const QModelIndex& i)const{
+  if(!grid()&&i.data(HistoryModel::FailedRole).toBool()){QTextDocument metadata;historyMetadata(metadata,i,rowBody(r,false,heading(i)).width(),false);metadata.size();return metadata.begin().layout()->lineCount()>1;}
   if(grid()||(compactList&&!compactList()))return false;
   const auto body=rowBody(r,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,inlineTextWidth(r,i),!historyColumns(body).created.isEmpty());
   return std::ceil(metadata.size().height())>rowContentHeight()-4-2*rowTextInset()-QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-6;
@@ -339,6 +342,7 @@ public:
  QRect primaryRect(QRect r,const QModelIndex& i)const{
   const auto c=card(r,i);const int h=actionHeight();const int w=qMin(primaryWidth(i),qMax(0,c.width()-12-12-h-8-(grid()?detailsWidth()+8:!menuOnly()?qBound(32,h,36)+8:0)));
   if(grid())return QRect(c.left()+12,c.bottom()-h-11,w,h);
+  if(i.data(HistoryModel::FailedRole).toBool()&&!actionsBelow(r,i))return QRect(c.right()-12-h-8-w,c.top()+rowTextInset(),w,h);
   return QRect(c.right()-12-h-8-w-(!menuOnly()?qBound(32,h,36)+8:0),actionsBelow(r,i)?c.bottom()-h-11:c.top()+(rowContentHeight()-4-h)/2,w,h);
  }
  QRect menuRect(QRect r,const QModelIndex& i)const{const auto b=primaryRect(r,i);const auto c=card(r,i);const int h=actionHeight();return QRect(c.right()-12-h,b.top(),h,h);}
@@ -351,8 +355,9 @@ public:
   }
   const int width=qMax(160,view_->viewport()->width()-2*view_->spacing());
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
+  if(i.data(HistoryModel::FailedRole).toBool()&&!actionsBelow(outer,i))height=qMax(rowContentHeight(),2*rowTextInset()+4+qMax(actionHeight(),QFontMetrics(Graphite::font(Graphite::Type::body,true)).height())+4+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height())+heading(i);
   if(actionsBelow(outer,i)){
-   const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,historyColumns(body).item.width()-12,!historyColumns(body).created.isEmpty());
+   const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,i.data(HistoryModel::FailedRole).toBool()?body.width():historyColumns(body).item.width()-12,!historyColumns(body).created.isEmpty());
    const int text=2*rowTextInset()+4+QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+int(std::ceil(metadata.size().height()));
    height=qMax(rowContentHeight(),text)+heading(i)+actionHeight()+12;
   }
@@ -395,8 +400,10 @@ public:
   if(failed)subtitle=HistoryModel::failureLabel(record);
   else if(!grid()){const auto created=i.data(HistoryModel::CreatedRole).toString();if(!columns.created.isEmpty()&&!created.isEmpty())subtitle.remove(" · "+created);}
   const auto remote=HistoryModel::remoteStateText(record);const QColor subtitleColour=failed||remote=="Deletion failed"||remote=="Sharing failed"?t.danger:!remote.isEmpty()?t.textSecondary:suppressed?t.textSecondary:copied?t.success:t.textMuted;
-  const QRectF metadata(columns.item.left(),lineTop+QFontMetrics(titleFont).height()+6,itemWidth,QFontMetrics(metaFont).height());
-  if(!grid()){QTextDocument document;historyMetadata(document,i,itemWidth,!columns.created.isEmpty(),compactList&&!compactList());p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:rowContentHeight()-4-rowTextInset()-QFontMetrics(titleFont).height()-6-rowTextInset();p->setClipRect(QRectF(0,0,itemWidth,available));document.drawContents(p);p->restore();}
+  const int metadataWidth=!grid()&&failed?body.width():itemWidth;
+  const int metadataTop=!grid()&&failed&&!below?lineTop+qMax(actionHeight(),QFontMetrics(titleFont).height())+4:lineTop+QFontMetrics(titleFont).height()+6;
+  const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
+  if(!grid()){QTextDocument document;historyMetadata(document,i,metadataWidth,!columns.created.isEmpty(),compactList&&!compactList());p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
   else if(failed){
    const int labelWidth=QFontMetrics(metaFont).horizontalAdvance(subtitle);Graphite::paintText(*p,metadata,subtitle,t.danger,metaFont);
    auto detail=errorText(i);if(detail.startsWith(subtitle))detail.remove(0,subtitle.size());
@@ -435,6 +442,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  // Sidebar: categories and failed uploads.
  auto* sidebar=new Graphite::Surface("surface",Qt::RightEdge,this);sidebar->setObjectName("historySidebar");sidebar->setFixedWidth(Graphite::scaled(Graphite::Metric::historySidebar));page->addWidget(sidebar);
  auto* side=new QVBoxLayout(sidebar);side->setContentsMargins(10,16,10,14);side->setSpacing(8);
+ auto* navigationScroll=new QScrollArea(sidebar);navigationScroll->setObjectName("historyNavigationScroll");navigationScroll->setFrameShape(QFrame::NoFrame);navigationScroll->setWidgetResizable(true);navigationScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);Graphite::transparentView(navigationScroll);side->addWidget(navigationScroll,1);auto* navigation=new Graphite::Surface("surface",{},navigationScroll);navigation->setObjectName("historyNavigation");auto* navigationBox=new QVBoxLayout(navigation);navigationBox->setContentsMargins(0,0,0,0);navigationBox->setSpacing(8);navigationScroll->setWidget(navigation);
  categories_=new QListWidget(sidebar);categories_->setObjectName("historyCategories");categories_->setAccessibleName("Show history items");categories_->setFrameShape(QFrame::NoFrame);categories_->setIconSize(QSize(18,18));categories_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);categories_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);categories_->setItemDelegate(new HistoryCategoryDelegate(categories_));Graphite::transparentView(categories_);categories_->setMouseTracking(true);
  for(const auto& [glyph,label,category]:QList<std::tuple<QString,QString,QString>>{{"history","All items",""},{"images","Images","images"},{"record","Recordings","videos"},{"document","Other files","text+other"}}){auto* item=new QListWidgetItem(VisualStyle::icon(glyph),label,categories_);item->setData(Qt::UserRole,category);}
  categories_->setToolTip("Other files includes clipboard text and any file that is not an image or a recording.");
@@ -443,9 +451,9 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  // shared sidebar cap (the Settings rails measure the same way).
 
  {auto* separator=new QListWidgetItem(categories_);separator->setFlags(Qt::NoItemFlags);separator->setSizeHint(QSize(0,9));auto* failed=new QListWidgetItem(VisualStyle::icon("failed-uploads"),"Failed uploads",categories_);failed->setData(Qt::UserRole,"failed");}
- categories_->setFixedHeight(5*Graphite::scaled(Graphite::Metric::navRow)+13);side->addWidget(categories_);
+ categories_->setFixedHeight(5*Graphite::scaled(Graphite::Metric::navRow)+13);navigationBox->addWidget(categories_);
  {const QFontMetrics strong(Graphite::font(Graphite::Type::body,true));int widest=0;for(int i=0;i<categories_->count();++i)widest=qMax(widest,strong.horizontalAdvance(categories_->item(i)->text()));sidebar->setFixedWidth(Graphite::sidebarWidth(Graphite::Metric::historySidebar,widest+74));}
- side->addStretch();
+ navigationBox->addStretch();
  auto* content=new QWidget(this);content->setObjectName("historyContent");page->addWidget(content,1);auto* layout=new QVBoxLayout(content);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
  auto* headerBar=new QWidget(content);headerBar->setObjectName("historyHeader");auto* header=new QHBoxLayout(headerBar);header->setContentsMargins(18,12,16,10);header->setSpacing(8);// The page is already named by the navigation; the heading names what is shown.
  // Long combined headings ("Recordings · failed uploads") elide before they crowd search.
@@ -543,7 +551,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  count_=new Graphite::ElidedLabel(this);count_->setObjectName("historyCount");VisualStyle::role(count_,"meta");footer->addWidget(count_,1);auto* previous=new QPushButton("Previous",this);previous->setObjectName("historyPrevious");auto* next=new QPushButton("Next",this);next->setObjectName("historyNext");// Paging appears only when there is another page.
  previous->hide();next->hide();footer->addWidget(previous);footer->addWidget(next);connect(previous,&QPushButton::clicked,this,[this]{auto q=model_->query();q.offset=qMax(0,q.offset-q.limit);model_->setQuery(q);});connect(next,&QPushButton::clicked,this,[this]{auto q=model_->query();if(q.offset+q.limit<model_->total()){q.offset+=q.limit;model_->setQuery(q);}});auto* managementToggle=new QToolButton(this);managementToggle->setObjectName("historyManagementExpanded");managementToggle->setText("Manage history");managementToggle->setToolButtonStyle(Qt::ToolButtonTextOnly);managementToggle->setProperty("visualRole","quiet");managementToggle->setCheckable(true);managementToggle->setAccessibleName("Manage history");managementToggle->setToolTip("Manage history");footer->addWidget(managementToggle);footerBox->addWidget(footerRow_);footerBox->addWidget(selectionBar_);
  status_=new QLabel("Select an item to inspect its files and share link.",this);status_->setTextFormat(Qt::PlainText);status_->setAccessibleName("History status");status_->setWordWrap(true);VisualStyle::role(status_,"status");footerBox->addWidget(status_);status_->hide();
- savedCopy_=new QWidget(footerBar);savedCopy_->setObjectName("historySavedCopy");{auto* saved=new QHBoxLayout(savedCopy_);saved->setContentsMargins(0,0,0,0);saved->setSpacing(8);savedLabel_=new Graphite::ElidedLabel(savedCopy_);savedLabel_->setObjectName("historySavedLabel");VisualStyle::role(savedLabel_,"success");saved->addWidget(savedLabel_,1);auto* show=new QPushButton("Show in folder",savedCopy_);show->setObjectName("showHistorySavedCopy");saved->addWidget(show);connect(show,&QPushButton::clicked,this,&HistoryWindow::showSavedCopy);auto* path=new QPushButton("Copy path",savedCopy_);path->setObjectName("copyHistorySavedPath");saved->addWidget(path);connect(path,&QPushButton::clicked,this,&HistoryWindow::copySavedPath);auto* dismiss=Graphite::toolButton({}, {},"quiet",savedCopy_);dismiss->setObjectName("dismissHistorySavedCopy");dismiss->setIcon(Graphite::chromeIcon("close"));dismiss->setAccessibleName("Dismiss saved copy");dismiss->setToolTip("Dismiss");dismiss->setFixedSize(32,32);saved->addWidget(dismiss);connect(dismiss,&QToolButton::clicked,this,&HistoryWindow::dismissSavedCopy);}savedCopy_->hide();footerBox->addWidget(savedCopy_);
+ savedCopy_=new QWidget(footerBar);savedCopy_->setObjectName("historySavedCopy");{auto* saved=new QHBoxLayout(savedCopy_);saved->setContentsMargins(0,0,0,0);saved->setSpacing(8);savedLabel_=new Graphite::ElidedLabel(savedCopy_);savedLabel_->setObjectName("historySavedLabel");VisualStyle::role(savedLabel_,"success");saved->addWidget(savedLabel_,1);auto* show=new QPushButton("Show in folder",savedCopy_);show->setObjectName("showHistorySavedCopy");show->setMinimumWidth(show->sizeHint().width());saved->addWidget(show);connect(show,&QPushButton::clicked,this,&HistoryWindow::showSavedCopy);auto* path=new QPushButton("Copy path",savedCopy_);path->setObjectName("copyHistorySavedPath");path->setMinimumWidth(path->sizeHint().width());saved->addWidget(path);connect(path,&QPushButton::clicked,this,&HistoryWindow::copySavedPath);auto* dismiss=Graphite::toolButton({}, {},"quiet",savedCopy_);dismiss->setObjectName("dismissHistorySavedCopy");dismiss->setIcon(Graphite::chromeIcon("close"));dismiss->setAccessibleName("Dismiss saved copy");dismiss->setToolTip("Dismiss");dismiss->setFixedSize(32,32);saved->addWidget(dismiss);connect(dismiss,&QToolButton::clicked,this,&HistoryWindow::dismissSavedCopy);}savedCopy_->hide();footerBox->addWidget(savedCopy_);
  auto* management=new QMenu(this);management->setObjectName("historyManagementMenu");managementToggle->setMenu(management);managementToggle->setPopupMode(QToolButton::DelayedPopup);auto* clear=management->addAction("Clear history records…");auto* cache=management->addAction("Clear temporary files…");connect(managementToggle,&QToolButton::toggled,this,[management,managementToggle](bool on){if(on)management->popup(managementToggle->mapToGlobal(QPoint(0,managementToggle->height())));else management->hide();});connect(management,&QMenu::aboutToHide,this,[managementToggle]{managementToggle->setChecked(false);});layout->addWidget(footerBar);
  sharingTimer_=new QTimer(this);sharingTimer_->setInterval(500);connect(sharingTimer_,&QTimer::timeout,this,&HistoryWindow::pollSharing);deletionTimer_=new QTimer(this);deletionTimer_->setInterval(500);connect(deletionTimer_,&QTimer::timeout,this,&HistoryWindow::pollDeletion);
 
@@ -566,7 +574,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  for(auto* b:findChildren<QPushButton*>())if(b->accessibleName().isEmpty())b->setAccessibleName(b->text());
  // Pixmaps and property values follow a scheme switch (#60).
  connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{const auto rows=table_->selectionModel()->selectedRows();if(rows.size()==1)setHistoryOutcome(outcome_,model_->record(rows.first().row()));updateSummary();columns_->update();});
- split_->installEventFilter(this);setGridMode(false);refresh();
+ split_->installEventFilter(this);status_->installEventFilter(this);savedCopy_->installEventFilter(this);setGridMode(false);refresh();
 }
 void HistoryWindow::applyFilters(){searchTimer_->stop();{const QSignalBlocker block(categories_);const bool failed=findChild<QLineEdit*>("historyFilteruploadStatus")->text()=="failed";if(categories_->currentRow()==5)findChild<QLineEdit*>("historyFilteruploadStatus")->setText("failed");else if(categories_->currentRow()==0&&failed)categories_->setCurrentRow(5);}auto q=model_->query();q.offset=0;if(auto* item=categories_->currentItem())q.category=categories_->currentRow()==5?QString{}:item->data(Qt::UserRole).toString();q.search=findChild<QLineEdit*>("historySearch")->text();q.from=findChild<QLineEdit*>("historyFilterfrom")->text();q.to=findChild<QLineEdit*>("historyFilterto")->text();q.mime=findChild<QLineEdit*>("historyFiltermime")->text();q.profileId=findChild<QLineEdit*>("historyFilterprofileId")->text();q.uploadStatus=findChild<QLineEdit*>("historyFilteruploadStatus")->text();q.localStatus=findChild<QLineEdit*>("historyFilterlocalStatus")->text();q.remoteStatus=findChild<QLineEdit*>("historyFilterremoteStatus")->text();updateHeading();model_->setQuery(q);updateFilterSummary();emit viewStateChanged();}
 // The heading names what the list shows: the category, and failed uploads
@@ -600,19 +608,24 @@ void HistoryWindow::setDetailsOpen(bool open){
 }
 void HistoryWindow::updateFooterLayout(){
  if(!footerRow_||!columns_)return;
- // At the minimum window height, use the rail's spare space for controls so
- // the list still fits six whole base rows, including its day heading.
+ // Compact navigation scrolls as a unit when banners reduce the rail's height.
+ // Feedback keeps the content width; only the count/paging row uses rail space.
  const bool dense=Graphite::scaled(100)<=150&&height()<600;auto* header=findChild<QWidget*>("historyHeader");
+ if(status_->text()=="Select an item to inspect its files and share link.")status_->setVisible(!dense);
  if(dense!=property("denseHistory").toBool()){
-  setProperty("denseHistory",dense);auto* content=qobject_cast<QVBoxLayout*>(findChild<QWidget*>("historyContent")->layout());auto* rail=qobject_cast<QVBoxLayout*>(findChild<QWidget*>("historySidebar")->layout());auto* tools=qobject_cast<QBoxLayout*>(header->layout());auto* footer=qobject_cast<QBoxLayout*>(footerRow_->layout());auto* box=qobject_cast<QVBoxLayout*>(footerBar_->layout());
+  setProperty("denseHistory",dense);auto* content=qobject_cast<QVBoxLayout*>(findChild<QWidget*>("historyContent")->layout());auto* rail=qobject_cast<QVBoxLayout*>(findChild<QWidget*>("historySidebar")->layout());auto* navigation=qobject_cast<QVBoxLayout*>(findChild<QWidget*>("historyNavigation")->layout());auto* tools=qobject_cast<QBoxLayout*>(header->layout());auto* footer=qobject_cast<QBoxLayout*>(footerRow_->layout());auto* box=qobject_cast<QVBoxLayout*>(footerBar_->layout());
   tools->setDirection(dense?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);tools->setContentsMargins(dense?0:18,dense?0:12,dense?0:16,dense?0:10);footer->setDirection(QBoxLayout::LeftToRight);box->setContentsMargins(dense?0:16,8,dense?0:16,dense?0:10);
   header->setSizePolicy(QSizePolicy::Preferred,dense?QSizePolicy::Maximum:QSizePolicy::Preferred);footerBar_->setSizePolicy(QSizePolicy::Preferred,dense?QSizePolicy::Maximum:QSizePolicy::Preferred);
   auto* search=findChild<QLineEdit*>("historySearch");auto* filters=findChild<QToolButton*>("historyFiltersExpanded");auto* management=findChild<QToolButton*>("historyManagementExpanded");auto* searchRow=findChild<QWidget*>("historySidebarSearch");if(!searchRow){searchRow=new QWidget(header);searchRow->setObjectName("historySidebarSearch");auto* line=new QHBoxLayout(searchRow);line->setContentsMargins(0,0,0,0);line->setSpacing(8);}
-  search->setMinimumWidth(dense?Graphite::scaled(120):160);management->setIcon(Graphite::chromeIcon("more"));management->setToolButtonStyle(dense?Qt::ToolButtonIconOnly:Qt::ToolButtonTextOnly);rail->setContentsMargins(10,dense?8:16,10,dense?8:14);
-  if(dense){searchRow->layout()->addWidget(search);searchRow->layout()->addWidget(filters);tools->insertWidget(3,searchRow);rail->insertWidget(1,header);rail->addWidget(footerBar_);searchRow->show();}else{tools->insertWidget(3,search,1);tools->insertWidget(4,filters);tools->removeWidget(searchRow);searchRow->hide();content->insertWidget(0,header);content->addWidget(footerBar_);}header->show();
+  search->setMinimumWidth(dense?0:160);management->setIcon(Graphite::chromeIcon("more"));management->setToolButtonStyle(dense?Qt::ToolButtonIconOnly:Qt::ToolButtonTextOnly);rail->setContentsMargins(10,dense?8:16,10,dense?8:14);
+  if(dense){searchRow->layout()->addWidget(search);searchRow->layout()->addWidget(filters);tools->insertWidget(3,searchRow);navigation->insertWidget(1,header);searchRow->show();}else{tools->insertWidget(3,search,1);tools->insertWidget(4,filters);tools->removeWidget(searchRow);searchRow->hide();content->insertWidget(0,header);}header->show();
  }
  if(!dense)header->layout()->setContentsMargins(18,height()<600?2:12,16,height()<600?2:10);
- footerRow_->show();footerBar_->show();columns_->update();
+ auto* sidebar=findChild<QWidget*>("historySidebar");auto* rail=qobject_cast<QVBoxLayout*>(sidebar->layout());auto* box=qobject_cast<QVBoxLayout*>(footerBar_->layout());
+ const bool railFooter=dense&&footerRow_->minimumSizeHint().width()<=sidebar->width()-rail->contentsMargins().left()-rail->contentsMargins().right();
+ if(footerRow_->parentWidget()!=(railFooter?sidebar:footerBar_)){if(railFooter)rail->addWidget(footerRow_);else box->insertWidget(0,footerRow_);}footerRow_->show();
+ auto* navigation=findChild<QWidget*>("historyNavigation");navigation->layout()->invalidate();navigation->setMinimumHeight(navigation->layout()->minimumSize().height());
+ footerBar_->setVisible(!railFooter||!status_->isHidden()||!savedCopy_->isHidden()||(selectionBar_->parentWidget()==footerBar_&&!selectionBar_->isHidden()));columns_->update();
 }
 void HistoryWindow::updateMultiSummary(){
  const auto rows=table_->selectionModel()->selectedRows();qint64 bytes=0;QStringList destinations;QMap<QString,int> states;const auto files=selectedFiles();
@@ -638,7 +651,7 @@ void HistoryWindow::updateSelectionBar(){if(!selectionBar_)return;
  const auto deletable=several?deletableIds():QStringList{};const int files=several?int(selectedFiles().size()):0;deleteSelected_->setVisible(!deletable.isEmpty());
  deleteSelected_->setToolTip(deletable.size()==files?QString("Delete the %1 selected files from their original destinations. Local copies and history records remain.").arg(files):QString("Delete %1 of the %2 selected files from their original destinations; the others have no confirmed upload to delete.").arg(deletable.size()).arg(files));
  const bool inInspector=several&&!inspectorScroll_->isHidden();auto* owner=inInspector?selectionInspector_:footerBar_;if(selectionBar_->parentWidget()!=owner){if(inInspector)static_cast<QVBoxLayout*>(owner->layout())->insertWidget(2,selectionBar_);else static_cast<QVBoxLayout*>(owner->layout())->insertWidget(1,selectionBar_);}auto* bar=static_cast<QBoxLayout*>(selectionBar_->layout());bar->setDirection(inInspector?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);bar->setStretch(1,inInspector?0:1);bar->itemAt(1)->spacerItem()->changeSize(0,0,inInspector?QSizePolicy::Fixed:QSizePolicy::Expanding,QSizePolicy::Fixed);selectionBar_->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Maximum);bar->invalidate();selectionCount_->setVisible(!inInspector);selectionBar_->setVisible(several);updateFooterLayout();table_->viewport()->update();}
-bool HistoryWindow::eventFilter(QObject* object,QEvent* event){if(object==split_&&event->type()==QEvent::Resize)QTimer::singleShot(0,this,&HistoryWindow::updateInspectorLayout);if(object->objectName()=="historyFiltersScroll"&&event->type()==QEvent::Resize&&fitFilters_)QTimer::singleShot(0,this,fitFilters_);return RetainedWindow::eventFilter(object,event);}
+bool HistoryWindow::eventFilter(QObject* object,QEvent* event){if((object==status_||object==savedCopy_)&&(event->type()==QEvent::ShowToParent||event->type()==QEvent::HideToParent||event->type()==QEvent::LayoutRequest))QTimer::singleShot(0,this,&HistoryWindow::updateFooterLayout);if(object==split_&&event->type()==QEvent::Resize)QTimer::singleShot(0,this,&HistoryWindow::updateInspectorLayout);if(object->objectName()=="historyFiltersScroll"&&event->type()==QEvent::Resize&&fitFilters_)QTimer::singleShot(0,this,fitFilters_);return RetainedWindow::eventFilter(object,event);}
 void HistoryWindow::resizeEvent(QResizeEvent* event){RetainedWindow::resizeEvent(event);updateInspectorLayout();if(fitFilters_)QTimer::singleShot(0,this,fitFilters_);if(activeBanner_)updateActivityLayout();}
 void HistoryWindow::refresh(){if(!session_.ready()){awaitingInitialization_=true;VisualStyle::feedback(status_,"Waiting for the resident journal to initialize.");return;}model_->refresh();}
 QStringList HistoryWindow::selectedIds()const{QStringList ids;for(auto index:table_->selectionModel()->selectedRows()){auto r=model_->record(index.row());const auto records=r["records"].toArray();if(records.isEmpty())ids.append("operation:"+r["operationId"].toString());else for(auto v:records)ids.append(v.toObject()["id"].toString());}return ids;}
