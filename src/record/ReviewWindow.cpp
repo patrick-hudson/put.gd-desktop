@@ -542,6 +542,8 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         painter.drawLine(QPointF(grip.center().x(), grip.top() + 5), QPointF(grip.center().x(), grip.bottom() - 5));
         painter.setPen(Qt::NoPen);
     }
+    // The track row is named like the mask lanes, in the same label column.
+    if (track.left() > 8) Graphite::paintText(painter, QRect(0, track.center().y() - 16, track.left() - 8, 32), QStringLiteral("Clip"), p.textSecondary, Graphite::font(Graphite::Type::metadata), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideRight);
     for (int lane = laneScroll_->value(); lane < std::min(lanes_, laneScroll_->value() + visibleLanes()); ++lane) {
         QStringList names;
         for (int i = 0; i < masks_.size(); ++i) if (lane_.value(i) == lane) names.append(maskNames_->name(masks_[i]));
@@ -1606,7 +1608,9 @@ void ReviewWindow::placeTools() {
     if (!toolsGrid_) return;
     for (auto* widget : {maskTools_, trimGroup_, maskGroup_}) widget->layout()->invalidate();
     const int transportWidth = transportRow_->minimumSize().width();
-    const bool together = trimGroup_->minimumSizeHint().width() + transportWidth + 8 <= width() - 16;
+    // Playback is not part of trimming: transport keeps its own line above the lanes.
+    const bool together = false;
+    Q_UNUSED(transportWidth);
     const bool placedTogether = property("reviewTransportWithTrim").toBool();
     if (toolsPlaced_ && placedTogether == together) return;
     toolsPlaced_ = true;
@@ -1617,8 +1621,7 @@ void ReviewWindow::placeTools() {
     transportGrid_->removeWidget(maskGroup_);
     transportGrid_->removeWidget(timeline_);
     transportGrid_->removeItem(transportRow_);
-    // At normal widths transport and trim share a row; the lanes always keep
-    // the full width. Narrower windows give transport its own line.
+    // The lanes always keep the full width.
     transportGrid_->addWidget(timeline_, together ? 0 : 1, 0, 1, 2);
     transportGrid_->addWidget(trimGroup_, 2, 0, 1, together ? 1 : 2);
     transportGrid_->addLayout(transportRow_, together ? 2 : 0, together ? 1 : 0, 1, together ? 1 : 2);
