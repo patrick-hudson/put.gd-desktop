@@ -13,7 +13,6 @@
 #include <memory>
 
 class QComboBox;
-class QGridLayout;
 class QHBoxLayout;
 class QLabel;
 class QMessageBox;
@@ -111,8 +110,10 @@ public:
     void setPlayhead(qint64 us);
     qint64 playhead() const { return playhead_; }
     qint64 duration() const { return duration_; }
-    // Concurrent masks always have distinct lanes; two are visible at a time, in its own 32 px interaction row.
+    // Concurrent masks always have distinct lanes; two are visible at a time.
     int lanes() const { return lanes_; }
+    // The names column left of the track; the review's control rows share it.
+    static int gutterWidth();
     // Geometry for tests and the review session method: the track, a time's x
     // and the bar of a mask.
     QRect trackRect() const;
@@ -142,6 +143,7 @@ private:
     qint64 timeAt(qreal x) const;
     void layoutLanes();
     QRect laneRect(int lane) const;
+    int lanesBottom() const;
     void seek(qint64 us);
     qint64 duration_ = 1, playhead_ = 0, trimStart_ = 0, trimEnd_ = 1;
     qint64 moveAnchor_ = 0;  // a moved mask: the press point's offset from its start
@@ -269,19 +271,13 @@ private:
     bool compactStatus_ = false, footerError_ = false;
     QPointer<QWidget> adviceDialog_;
     bool minimumPending_ = false, initialFitDone_ = false;
-    QWidget *trimGroup_ = nullptr, *maskGroup_ = nullptr;
-    QGridLayout* toolsGrid_ = nullptr;
-    QGridLayout* transportGrid_ = nullptr;
-    QHBoxLayout* transportRow_ = nullptr;
-    bool toolsPlaced_ = false;
+    // The Trim row, the wrapping Mask row (its kinds, timing) and the transport row.
+    QWidget *trimGroup_ = nullptr, *maskGroup_ = nullptr, *maskTiming_ = nullptr, *transport_ = nullptr;
     Graphite::WindowHeader* header_ = nullptr;
     FrameView* view_ = nullptr;
     ReviewTimeline* timeline_ = nullptr;
     Graphite::ElidedLabel* destination_ = nullptr;
-    QWidget* destinationRow_ = nullptr;
     QLabel* destinationFull_ = nullptr;
-    QGridLayout* footerGrid_ = nullptr;
-    QWidget* outputTools_ = nullptr;
     QLabel *notice_ = nullptr, *time_ = nullptr, *playbackStatus_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
     // Errors, warnings and privacy guidance with their actions; shown only when there are any.
     QWidget* statusRow_ = nullptr;

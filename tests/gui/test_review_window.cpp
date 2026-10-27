@@ -30,6 +30,7 @@
 #include <QSpinBox>
 #include <QTest>
 #include <QToolButton>
+#include <tuple>
 #include "fixtures/Waits.h"
 using namespace putgd;
 using namespace putgd::record;
@@ -154,16 +155,20 @@ private slots:
         auto* trim = window.findChild<QWidget*>("trimControls");
         auto* masks = window.findChild<QWidget*>("maskControls");
         auto* interval = window.findChild<QLabel*>("maskActiveInterval");
-        QVERIFY(window.findChild<QWidget*>("maskTimingControls")->isAncestorOf(interval)); QVERIFY(!trim->isAncestorOf(interval));
+        auto* timing = window.findChild<QWidget*>("maskTimingControls");
+        QVERIFY(masks->isAncestorOf(timing) && masks->isAncestorOf(interval)); QVERIFY(!trim->isAncestorOf(interval) && !trim->isAncestorOf(timing));
         QVERIFY(masks->y() > trim->mapTo(&window, trim->rect().bottomLeft()).y());
-        for (const auto& name : {QString("Set trim start"), QString("Set trim end"), QString("Reset trim")}) {
+        // Timing actions read as words on 32 px secondary buttons, in both rows.
+        const QList<std::tuple<QWidget*, QString, QString>> actions{{trim, "Set trim start", "Set start"}, {trim, "Set trim end", "Set end"}, {trim, "Reset trim", "Reset"}, {timing, "Set mask start", "Set start"}, {timing, "Set mask end", "Set end"}};
+        for (const auto& [row, name, text] : actions) {
             QToolButton* found = nullptr;
-            for (auto* button : trim->findChildren<QToolButton*>()) if (button->accessibleName() == name) found = button;
-            QVERIFY(found); QCOMPARE(found->toolButtonStyle(), Qt::ToolButtonIconOnly); QVERIFY(!found->icon().isNull());
+            for (auto* button : row->findChildren<QToolButton*>()) if (button->accessibleName() == name) found = button;
+            QVERIFY2(found && found->isVisible(), qPrintable(name)); QCOMPARE(found->toolButtonStyle(), Qt::ToolButtonTextOnly); QCOMPARE(found->text(), text);
             QVERIFY(!found->autoRaise());
-            QVERIFY(found->height() >= 32);
-            if (name != "Reset trim") QVERIFY(found->text().startsWith("Set "));
+            QCOMPARE(found->height(), 32);
+            QVERIFY(found->width() >= QFontMetricsF(found->font()).horizontalAdvance(text) + 24);
         }
+        QVERIFY(!window.findChild<QLabel*>("maskTimingGroup"));
         QVERIFY(trim->findChild<QLabel*>("muted")->text().endsWith(" s kept"));
         QToolButton *redact = nullptr, *blur = nullptr;
         for (auto* button : masks->findChildren<QToolButton*>()) {
@@ -213,10 +218,19 @@ private slots:
             window.resize(width, 720); QApplication::processEvents();
             QCOMPARE(trimLabel->mapTo(&window, QPoint()).x(), maskLabel->mapTo(&window, QPoint()).x());
             QCOMPARE(trimLabel->width(), maskLabel->width());
-            QVERIFY(window.findChild<QLabel*>("maskTimingGroup")->mapTo(&window, QPoint()).x() > trimLabel->mapTo(&window, QPoint()).x());
             auto* clip = window.findChild<QLabel*>("clipGroup");
             QVERIFY(clip && clip->isVisible() && t->isAncestorOf(clip));
             QVERIFY(clip->geometry().right() < t->trackRect().left());
+            // One gutter: the lanes' names, Trim, Mask and the play button share
+            // it, and every row's controls start where the track does.
+            QCOMPARE(clip->mapTo(&window, QPoint()).x(), trimLabel->mapTo(&window, QPoint()).x());
+            const int track = t->mapTo(&window, t->trackRect().topLeft()).x();
+            for (const auto& name : {QString("Set trim start"), QString("Redact"), QString("Playback speed")}) {
+                QWidget* control = nullptr;
+                for (auto* w : window.findChildren<QWidget*>()) if (w->accessibleName() == name && w->isVisible()) control = w;
+                QVERIFY2(control, qPrintable(name)); QCOMPARE(control->mapTo(&window, QPoint()).x(), track);
+            }
+            QVERIFY(window.findChild<QToolButton*>("play")->mapTo(&window, QPoint()).x() < track);
             const auto lane = t->trackRect().translated(t->pos());
             QVERIFY(t->geometry().bottom() < trim->mapTo(&window, QPoint()).y());
             QCOMPARE(t->x(), 8);
@@ -234,11 +248,16 @@ private slots:
             auto* playback = window.findChild<QToolButton*>("play");
             auto* speed = window.findChild<QComboBox*>("speed");
             auto* metadata = window.findChild<QWidget*>("reviewTransport");
+            auto* masks = window.findChild<QWidget*>("maskControls");
+            // The transport is its own row under Trim and Mask.
+            QVERIFY(metadata->y() >= masks->geometry().bottom());
+            QCOMPARE(speed->width(), std::max(72, speed->width()));
             for (auto* control : std::initializer_list<QWidget*>{playback, speed, time}) {
                 QVERIFY(metadata->isAncestorOf(control));
                 const QRect bounds(control->mapTo(&window, QPoint()), control->size());
                 QVERIFY(window.rect().contains(bounds));
                 QVERIFY(!bounds.intersects(QRect(trim->mapTo(&window, QPoint()), trim->size())));
+                QVERIFY(!bounds.intersects(masks->geometry()));
                 QCOMPARE(control->mapTo(&window, control->rect().center()).y(), playback->mapTo(&window, playback->rect().center()).y());
             }
             QVERIFY(!time->text().contains('\n'));
@@ -286,6 +305,59 @@ private slots:
             window.resize(window.minimumSizeHint().width() + i, 680);
             QApplication::processEvents();
             QVERIFY2(nameFits(), qPrintable(destination->text()));
+        }
+    }
+    // Every review control lies whole inside the window and its own container,
+    // and no two overlap, at the default and minimum sizes with normal and 150%
+    // text: steady, with a blur selected (radius and guidance) and with an error.
+    void controlsStayInsideTheWindowAndApart_data() {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("standard") << 1.0;
+        QTest::newRow("150%") << 1.5;
+    }
+    void controlsStayInsideTheWindowAndApart() {
+        QFETCH(double, scale);
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
+        auto font = original;
+        if (font.pointSizeF() > 0) font.setPointSizeF(font.pointSizeF() * scale);
+        else font.setPixelSize(qRound(font.pixelSize() * scale));
+        QApplication::setFont(font);
+        auto o = options(); o.audioRecorded = true; o.durationUs = 32000000;
+        auto edit = twoMasks(); edit.trimStart = 2000000; edit.trimEnd = 29000000;
+        ReviewWindow window(o, config()); window.setEdit(edit); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        const auto settle = [&] { for (int i = 0; i < 3; ++i) { QApplication::processEvents(); QApplication::sendPostedEvents(); } };
+        const auto check = [&](const QString& state) {
+            settle();
+            const auto where = [&](QWidget* w) { return QStringLiteral("(min %1x%2 hint %3x%4) ").arg(window.minimumWidth()).arg(window.minimumHeight()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()) + QStringLiteral("%1 %2 %3 at %4x%5: %6,%7 %8x%9").arg(state, QString::fromLatin1(w->metaObject()->className()), w->objectName() + "/" + w->accessibleName()).arg(window.width()).arg(window.height()).arg(w->mapTo(&window, QPoint()).x()).arg(w->mapTo(&window, QPoint()).y()).arg(w->width()).arg(w->height()); };
+            // The frameless window's resize edges lie over its border by design.
+            const auto edge = [&](QWidget* w) { return w->parentWidget() == &window && QList<Qt::CursorShape>{Qt::SizeHorCursor, Qt::SizeVerCursor, Qt::SizeFDiagCursor, Qt::SizeBDiagCursor}.contains(w->cursor().shape()); };
+            QList<QWidget*> shown;
+            for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && !w->isWindow() && !edge(w)) shown.append(w);
+            for (auto* w : shown) {
+                QVERIFY2(window.contentsRect().contains(QRect(w->mapTo(&window, QPoint()), w->size())), qPrintable(where(w)));
+                QVERIFY2(w->parentWidget()->rect().contains(w->geometry()), qPrintable(where(w)));
+            }
+            for (int i = 0; i < shown.size(); ++i) for (int j = i + 1; j < shown.size(); ++j) {
+                auto *a = shown[i], *b = shown[j];
+                if (a->isAncestorOf(b) || b->isAncestorOf(a)) continue;
+                const QRect first(a->mapTo(&window, QPoint()), a->size()), second(b->mapTo(&window, QPoint()), b->size());
+                QVERIFY2(!first.intersects(second), qPrintable(where(a) + " overlaps " + where(b)));
+            }
+        };
+        for (const bool minimum : {false, true}) {
+            if (minimum) { for (int i = 0; i < 3; ++i) { window.resize(window.minimumSizeHint()); settle(); } }
+            const QString size = minimum ? QStringLiteral("minimum") : QStringLiteral("default");
+            window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
+            check(size + " steady");
+            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
+            check(size + " blur");
+            window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
+            window.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
+            check(size + " error");
+            window.drive({{"action", "dismissStatus"}});
+            window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}});
         }
     }
     void formatAdviceSitsBesideTheFormatAndRecoveryIsBordered() {
@@ -514,7 +586,8 @@ private slots:
         auto* target = window.findChild<QLabel*>("uploadDestination");
         auto* upload = window.findChild<QPushButton*>("upload");
         QVERIFY(target && target->isVisible() && target->toolTip() == o.uploadSummary);
-        QVERIFY(target->mapTo(&window, QPoint()).y() > upload->mapTo(&window, upload->rect().bottomLeft()).y());
+        // The footer's first row says where Upload sends the clip; the actions are under it.
+        QVERIFY(target->mapTo(&window, target->rect().bottomLeft()).y() < upload->mapTo(&window, QPoint()).y());
         QVERIFY(window.rect().contains(QRect(target->mapTo(&window, QPoint()), target->size())));
         auto* full = window.findChild<QLabel*>("uploadDestinationWrapped");
         QVERIFY(full && !full->isVisible());
@@ -523,7 +596,9 @@ private slots:
         static_cast<Graphite::ElidedLabel*>(target)->fullTextPopup()->close();
         auto* audio = window.findChild<QLabel*>("exportAudioSummary");
         QVERIFY(audio->isVisible());
-        QVERIFY(audio->mapTo(&window, QPoint()).y() > upload->mapTo(&window, upload->rect().bottomLeft()).y());
+        QCOMPARE(audio->mapTo(&window, audio->rect().center()).y(), target->mapTo(&window, target->rect().center()).y());
+        QVERIFY(audio->mapTo(&window, QPoint()).x() > target->mapTo(&window, target->rect().topRight()).x());
+        QVERIFY(audio->mapTo(&window, audio->rect().topRight()).x() <= window.width() - 8);
         QVERIFY(state["audio"].toString().startsWith("Silent preview"));
         QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->isVisible());
     }
@@ -926,16 +1001,23 @@ private slots:
         auto* label = window.findChild<QLabel*>("maskActiveInterval");
         QVERIFY(label && label->isVisible());
         edit.revision++; edit.masks[0].start = 5000000; edit.masks[0].end = 20000000; window.setEdit(edit);
-        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Inactive"));
+        // Before the mask: when it starts; inside it: the interval alone; after it: not at the playhead.
+        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Starts at 0:05.0"));
         QCOMPARE(window.inspect()["selectedMaskInterval"].toObject()["text"].toString(), label->text());
+        const auto geometry = label->geometry();
         window.drive({{"action", "seek"}, {"time", 8000000}});
         QCOMPARE(label->text(), QString("0:05.00–0:20.00"));
+        QCOMPARE(label->geometry(), geometry);
+        window.drive({{"action", "seek"}, {"time", 25000000}});
+        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Not at playhead"));
+        QCOMPARE(label->geometry(), geometry);
+        QVERIFY(!label->text().contains("Inactive"));
         window.drive({{"action", "seek"}, {"time", 0}});
         const auto position = label->pos();
         QTest::keyClick(window.findChild<FrameView*>(), Qt::Key_Right, Qt::ControlModifier);
         QCOMPARE(label->pos(), position);
         QVERIFY(!window.findChild<FrameView*>()->isAncestorOf(label));
-        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Inactive"));
+        QCOMPARE(label->text(), QString("0:05.00–0:20.00 · Starts at 0:05.0"));
         QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont()).family());
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
