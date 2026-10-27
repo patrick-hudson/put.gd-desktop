@@ -1010,7 +1010,8 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
         if (name == "primary" || name == "danger") pixmap = tinted(pixmap, look.text);
         if (widget && widget->property("headerInactive").toBool()) pixmap = tinted(pixmap, t().textMuted);
         p->drawPixmap(target.topLeft(), pixmap);
-        if (widget && widget->property("captureUnavailable").toBool()) {
+        // Only an action whose own output is broken is badged; a global gap is the banner's job.
+        if (widget && widget->property("captureBadge").toBool()) {
             const int side = scaled(12);
             const QRect badge(qRound(target.right()) - side + 3, qRound(target.bottom()) - side + 3, side, side);
             p->save();
