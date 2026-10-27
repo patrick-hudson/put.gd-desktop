@@ -266,7 +266,7 @@ QIcon icon(const QString& name){
 }
 QIcon icon(const QString& name,const QColor& color,int percent){
  static QHash<QString,QIcon> cache;const auto key=name+color.name(QColor::HexArgb);
- const bool progress=name=="tray"&&percent>=0;
+ const bool progress=name=="tray"&&percent!=-1;
  if(!progress&&cache.contains(key))return cache.value(key);
  QIcon result;
  if(name=="brand") {

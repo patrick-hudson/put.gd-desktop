@@ -82,6 +82,10 @@ private slots:
   for(auto* entry:menu->actions())if(entry->property("commandLabel").isValid()){QVERIFY(entry->text().contains('\t'));QVERIFY(entry->shortcut().isEmpty());}
   auto* status=menu->findChild<QAction*>("trayUploadStatus");auto* cancel=menu->findChild<QAction*>("trayCancelUpload");QVERIFY(status&&cancel);QVERIFY(!status->isVisible());QString id;operations.invoke("clipboard",[&](Error error,QJsonObject value){QVERIFY(!error);id=value["operationId"].toString();});auto drain=qScopeGuard([provider]{provider->deferUploads=false;for(auto complete:std::exchange(provider->completions,{}))complete();});PUTGD_TRY_COMPARE(provider->requests.size(),1);PUTGD_TRY_VERIFY(cancel->isVisible());QCOMPARE(menu->actions()[0],status);QCOMPARE(menu->actions()[1],cancel);QVERIFY(!status->isEnabled());QCOMPARE(status->text(),QString("Uploading 1 file…"));cancel->trigger();provider->completions.takeFirst()();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);PUTGD_TRY_VERIFY(!status->isVisible());bool canceled=false;operations.inspect(id,[&](Error error,QJsonObject op){QVERIFY(!error);canceled=op["state"]=="cancelled";});PUTGD_TRY_VERIFY(canceled);
  }
+ void multipleUploadsDelegateBoundedConfirmation(){
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->concurrency=8;provider->dispatcher=this;providers.add("opaque",provider);SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});auto doc=configuration(directory.path());auto naming=doc["naming"].toObject();naming["mode"]="generated";doc["naming"]=naming;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());QStringList views;TrayController controller(operations,[&](const QString& view){views<<view;},[]{});auto drain=qScopeGuard([provider]{for(auto complete:std::exchange(provider->completions,{}))complete();});QStringList ids;for(int i=0;i<2;++i){operations.invoke("clipboard",[&](Error error,QJsonObject value){QVERIFY(!error);ids<<value["operationId"].toString();});PUTGD_TRY_COMPARE(ids.size(),i+1);}auto* tray=controller.findChild<QSystemTrayIcon*>();auto* cancel=tray->contextMenu()->findChild<QAction*>("trayCancelUpload");PUTGD_TRY_COMPARE(cancel->text(),QString("Cancel all uploads…"));cancel->trigger();QCOMPARE(views.size(),1);QVERIFY(views[0].startsWith("historyCancelAll:"));QStringList bounded;for(const auto& value:QJsonDocument::fromJson(views[0].mid(17).toUtf8()).array())bounded<<value.toString();QCOMPARE(bounded.size(),2);for(const auto& id:ids)QVERIFY(bounded.contains(id));QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),2);
+ }
+
  void failedOperationsWithoutItemsShowTheirError() {
   const QJsonObject tooLarge{{"state","failed"},{"copyStatus","no_result"},{"items",QJsonArray{}},{"error",QJsonObject{{"code","edit_input_too_large"},{"message","This image is too large to edit; use a smaller copy"}}}};
   QCOMPARE(TrayController::completionMessage(tooLarge,false),QString("This image is too large to edit; use a smaller copy"));
@@ -282,13 +286,10 @@ private slots:
   provider->completions.takeFirst()();PUTGD_TRY_COMPARE(provider->requests.size(),2);
   QVERIFY(tray->toolTip()!=idleTooltip);
   provider->failUpload=true;provider->completions.takeFirst()();
-  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error).pixmap(24,24).toImage();
+  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error,-2).pixmap(24,24).toImage();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  putgd::test::settle(3100);
-  PUTGD_TRY_COMPARE(tray->toolTip(),idleTooltip);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
+  putgd::test::settle(400);QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
+  QVERIFY(tray->contextMenu()->findChild<QAction*>("trayFailedUploads")->isVisible());
  }
  void preparingAndQueuedOperationsStayBlueBeforeStorageDispatch() {
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
@@ -315,7 +316,7 @@ private slots:
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
   QVERIFY(settings.save(configuration(directory.path()),{}));Source source;source.payload=textPayload();
   OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
-  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
+  QStringList views;TrayController controller(operations,[&](const QString& view){views<<view;},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
   const auto blue=tray->icon().pixmap(24,24).toImage();const auto progressIcon=VisualStyle::icon("tray",Theme::trayTints(false).idle,0).pixmap(24,24).toImage();
   auto drain=qScopeGuard([provider]{provider->deferChecks=false;provider->deferUploads=false;for(auto complete:std::exchange(provider->checkCompletions,{}))complete();for(auto complete:std::exchange(provider->completions,{}))complete();});
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(provider->checkCompletions.size(),1);
@@ -389,18 +390,18 @@ private slots:
   const auto blocker=fixture(directory.path(),"blocked","synthetic");archive["root"]=blocker;document["archive"]=archive;
   QVERIFY(settings.save(document,{}));Source source;source.payload=textPayload();
   OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
-  TrayController controller(operations,[](const QString&){QFAIL("Retry progress must not open a view");},[]{});
+  TrayController controller(operations,[](const QString&){},[]{});
   auto* tray=controller.findChild<QSystemTrayIcon*>();const auto idleTooltip=tray->toolTip();const auto idleIcon=tray->icon().pixmap(24,24).toImage();
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
   PUTGD_TRY_COMPARE(source.copies,1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   HistoryStore store(operations.databasePath());const auto prior=store.operation(id);QCOMPARE(prior.items[0].local.status,QString("failed"));
-  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error).pixmap(24,24).toImage();
+  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error,-2).pixmap(24,24).toImage();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
   putgd::test::settle(3100);
   bool failedRetryDone=false;operations.retryLocalSave(id,[&](Error e,QJsonObject){QVERIFY(!e);failedRetryDone=true;});PUTGD_TRY_VERIFY(failedRetryDone);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
   QVERIFY(QFile::remove(blocker));QVERIFY(QDir().mkpath(blocker));
-  putgd::test::settle(3100);
+  tray->contextMenu()->findChild<QAction*>("trayFailedUploads")->trigger();
   bool done=false;operations.retryLocalSave(id,[&](Error e,QJsonObject){QVERIFY(!e);done=true;});
   QVERIFY(tray->toolTip().contains("Saving local copy"));
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
@@ -414,12 +415,12 @@ private slots:
   QCOMPARE(tray->toolTip(),idleTooltip);QVERIFY(operations.activeObservations().isEmpty());
  }
 
- void acquisitionAndPreparationErrorsFlashWithoutNotifications_data() {
+ void acquisitionAndPreparationErrorsPersistWithoutNotifications_data() {
   QTest::addColumn<bool>("preparation");
   QTest::newRow("capture-failure") << false;
   QTest::newRow("preparation-failure") << true;
  }
- void acquisitionAndPreparationErrorsFlashWithoutNotifications() {
+ void acquisitionAndPreparationErrorsPersistWithoutNotifications() {
   QFETCH(bool,preparation);
   QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));
   auto doc=configuration(directory.path(),true);auto preferences=doc["preferences"].toObject();preferences["notifications"]=false;doc["preferences"]=preferences;
@@ -432,11 +433,9 @@ private slots:
   // An unsupported payload exercises ArtifactStore's preparation error.
   ClipboardPayload payload;payload.kind="unsupported";
   source.acquisitions.takeFirst()({payload,preparation?Error{}:Error{"fixture_capture_failed","Synthetic capture failure",{}}});
-  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error).pixmap(24,24).toImage();
+  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error,-2).pixmap(24,24).toImage();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),blue);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  putgd::test::settle(3100);PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),blue);
+  putgd::test::settle(3400);QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);QVERIFY(tray->contextMenu()->findChild<QAction*>("trayFailedUploads")->isVisible());
  }
 
  void errorRecoveryResumesAnotherActiveStorageRequest_data() {
@@ -456,7 +455,7 @@ private slots:
   TrayController controller(operations,[](const QString&){QFAIL("Feedback must not open a view");},[]{});
   auto* tray=controller.findChild<QSystemTrayIcon*>();const auto blue=tray->icon().pixmap(24,24).toImage();
   const auto progressIcon=VisualStyle::icon("tray",Theme::trayTints(false).idle,0).pixmap(24,24).toImage();
-  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error).pixmap(24,24).toImage();
+  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error,-2).pixmap(24,24).toImage();
   auto drain=qScopeGuard([provider]{for(auto complete:std::exchange(provider->completions,{}))complete();});
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(provider->requests.size(),1);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),progressIcon);
@@ -471,21 +470,19 @@ private slots:
   // Progress from the successful request must not mask the error pulse.
   provider->requests.first().progress({"uploading",1,100});
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),blue);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  putgd::test::settle(3100);PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,1).pixmap(24,24).toImage());
-  provider->completions.takeFirst()();PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),blue);
+  putgd::test::settle(400);QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
+  provider->completions.takeFirst()();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
  }
 
- void aNewErrorRestartsTheFeedbackInterval() {
+ void failuresStayBadgedUntilAcknowledged() {
   QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));Source source;
   OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
-  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
-  const auto blue=tray->icon().pixmap(24,24).toImage();const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error).pixmap(24,24).toImage();
+  QStringList views;TrayController controller(operations,[&](const QString& view){views<<view;},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
+  const auto blue=tray->icon().pixmap(24,24).toImage();const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error,-2).pixmap(24,24).toImage();
   controller.notifyFailure({"fixture_failed","Synthetic first error",{}});QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
   putgd::test::settle(2100);controller.notifyFailure({"fixture_failed","Synthetic second error",{}});
   putgd::test::settle(1100);PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  putgd::test::settle(3100);PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),blue);
+  putgd::test::settle(3100);QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);auto* failed=tray->contextMenu()->findChild<QAction*>("trayFailedUploads");QVERIFY(failed->isVisible());failed->trigger();QCOMPARE(views,QStringList{"historyFailed"});QVERIFY(!failed->isVisible());QCOMPARE(tray->icon().pixmap(24,24).toImage(),blue);
  }
 
  void delegatesEveryViewAndExplicitQuitWithoutConstructingViews() {

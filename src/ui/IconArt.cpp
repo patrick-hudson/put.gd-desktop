@@ -35,6 +35,7 @@ QImage liftTray(const QColor& color,int percent,int scale) {
  }
  p.setPen(QPen(Theme::trayOutline(),0.65,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
  p.setBrush(Qt::NoBrush);p.drawPath(shape);
+ if(percent==-2){p.setPen(QPen(Theme::trayOutline(),1));p.setBrush(color);p.drawEllipse(QRectF(14,0,10,10));p.setPen(QPen(Theme::trayOutline(),1.5,Qt::SolidLine,Qt::RoundCap));p.drawLine(QPointF(19,2),QPointF(19,5));p.drawPoint(QPointF(19,7));}
  return image;
 }
 QImage liftApp(const QColor& color,int scale) {

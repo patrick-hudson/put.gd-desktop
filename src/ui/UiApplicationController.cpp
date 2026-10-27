@@ -61,7 +61,7 @@ UiApplicationController::~UiApplicationController(){
   if(window){window->removeEventFilter(this);disconnect(window,nullptr,this,nullptr);}
 }
 QWidget* UiApplicationController::view(const QString& name){
- if(name.startsWith("actionRecovery:")||QStringList{"settings","updates","history","activity","destinations","editFile"}.contains(name)){
+ if(name.startsWith("historyCancelAll:")||name=="historyFailed"||name.startsWith("actionRecovery:")||QStringList{"settings","updates","history","activity","destinations","editFile"}.contains(name)){
   if(!main_){
    main_=std::make_unique<MainWindow>(session_);
    connect(main_.get(),&MainWindow::settingsCreated,this,[this](SettingsWindow* settings){
@@ -90,6 +90,8 @@ QWidget* UiApplicationController::view(const QString& name){
   if(name=="editFile"){QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->chooseImageToEdit();});return main_.get();}
   // Scrolled once the window is shown and laid out, as editFile opens its picker.
   if(name=="updates"){main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->settings()->showUpdates();});return main_.get();}
+  if(name=="historyFailed"){main_->navigate("history");main_->history()->showFailedUploads();return main_.get();}
+  if(name.startsWith("historyCancelAll:")){QStringList ids;for(const auto& id:QJsonDocument::fromJson(name.mid(17).toUtf8()).array())if(id.isString())ids<<id.toString();main_->navigate("history");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get()),ids]{if(main)main->history()->confirmUploads(ids);});return main_.get();}
   if(name.startsWith("actionRecovery:")){const auto data=QJsonDocument::fromJson(name.mid(15).toUtf8()).object();main_->showActionFailure(data["action"].toString(),{data["code"].toString(),data["message"].toString(),{}});return main_.get();}
   main_->navigate(name);return main_.get();
  }

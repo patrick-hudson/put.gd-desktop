@@ -77,19 +77,19 @@ private:
  quint64 notifications_ = 0;
  std::function<void(const QString&,JsonReply)> saveDiagnostics_;
  void refreshActivity();void refreshMenu();void cancelUploads();
- void flashError();
- QTimer errorFlashTimer_,errorRecoveryTimer_,uploadRevealTimer_,uploadCompleteTimer_;
+ void flashError();void acknowledgeFailures();
+ QTimer uploadRevealTimer_,uploadCompleteTimer_;
  QElapsedTimer uploadVisibleClock_;
  bool uploadVisible_=false,uploadCompleted_=false;
  int pendingUploadFinishes_=0;
- bool errorRed_=false;
+ bool errorPending_=false;
  // Unset until the first refresh, which tints for the panel.
  QColor iconColor_;
  PanelTone panel_;
  void retintMenu();
  int iconPercent_=-1;
  QString activityText_;
- QAction *uploadStatus_=nullptr,*cancelUpload_=nullptr,*uploadSeparator_=nullptr;
+ QAction *uploadStatus_=nullptr,*cancelUpload_=nullptr,*uploadSeparator_=nullptr,*failedUploads_=nullptr;
  QSet<QString> activeUploads_;
  void showAbout();
  void showView(const QString&);

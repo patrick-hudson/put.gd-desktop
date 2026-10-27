@@ -176,6 +176,7 @@ TrayController::TrayController(OperationService& operations,
   connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action) {
    if (Settings::invocableActionNames().contains(action)) invokeAction(action);
    else if (action == "cancel-upload") cancelUploads();
+   else if (action == "failed-uploads") acknowledgeFailures();
    else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
    else if (action == "edit-file") showView("editFile");
    else if (action == "settings") showSettings();
@@ -210,6 +211,7 @@ TrayController::TrayController(OperationService& operations,
  for(const auto& name:QStringList{"History","Destinations","Settings"}){
   auto* entry=menu_->addAction(name);const auto view=name.toLower();entry->setData(view=="settings"?"preferences":view);connect(entry,&QAction::triggered,this,[this,view]{showView(view);});
  }
+ failedUploads_=menu_->addAction("Failed uploads");failedUploads_->setObjectName("trayFailedUploads");failedUploads_->setData("failed-uploads");failedUploads_->setVisible(false);connect(failedUploads_,&QAction::triggered,this,&TrayController::acknowledgeFailures);
  updateAction_ = menu_->addAction("Update available");
  updateAction_->setData("update");updateAction_->setVisible(false);
  // Lands on Settings → General → Updates with its action focused, not the first settings page.
@@ -229,27 +231,15 @@ TrayController::TrayController(OperationService& operations,
  // Qt registers a visible icon when a desktop tray becomes available later.
  tray_->show();
  }
- errorFlashTimer_.setInterval(300);
- errorFlashTimer_.setTimerType(Qt::PreciseTimer);
- errorRecoveryTimer_.setSingleShot(true);
- errorRecoveryTimer_.setInterval(3000);
- errorRecoveryTimer_.setTimerType(Qt::PreciseTimer);
  uploadRevealTimer_.setSingleShot(true);uploadRevealTimer_.setInterval(200);
  uploadRevealTimer_.setTimerType(Qt::PreciseTimer);
  connect(&uploadRevealTimer_,&QTimer::timeout,this,[this] {
-  if(operations_.storageActive()&&!errorFlashTimer_.isActive()) {uploadVisible_=true;uploadVisibleClock_.start();}
+  if(operations_.storageActive()&&!errorPending_) {uploadVisible_=true;uploadVisibleClock_.start();}
   refreshActivity();
  });
  uploadCompleteTimer_.setSingleShot(true);uploadCompleteTimer_.setTimerType(Qt::PreciseTimer);
  connect(&uploadCompleteTimer_,&QTimer::timeout,this,[this] {
   uploadVisible_=false;uploadCompleted_=false;uploadVisibleClock_.invalidate();refreshActivity();
- });
- connect(&errorFlashTimer_,&QTimer::timeout,this,[this] {
-  errorRed_=!errorRed_;
-  refreshActivity();
- });
- connect(&errorRecoveryTimer_,&QTimer::timeout,this,[this] {
-  errorFlashTimer_.stop();errorRed_=false;refreshActivity();
  });
  // The panel's colour, not the app theme, picks the tint (#60): re-tint the
  // icon and its menu glyphs when the desktop switches.
@@ -380,25 +370,27 @@ QJsonObject TrayController::trayTint()const {
  return {{"panel",panel_.light()?"light":"dark"},{"source",panel_.source()},{"color",Theme::trayTints(panel_.light()).idle.name()}};
 }
 void TrayController::cancelUploads() {
- // The same cancellation path as History and operation.cancel; local-only jobs stay alone.
- for(const auto& value:operations_.activeObservations()){
-  const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;
-  operations_.cancel(op["id"].toString(),[guard=QPointer<TrayController>(this)](Error error,QJsonObject){if(guard&&error)guard->notifyFailure(error);});
+ QStringList ids;for(const auto& value:operations_.activeObservations()){
+  const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;ids<<op["id"].toString();
  }
+ if(ids.size()>1){showView("historyCancelAll:"+QString::fromUtf8(QJsonDocument(QJsonArray::fromStringList(ids)).toJson(QJsonDocument::Compact)));return;}
+ if(ids.size()==1)operations_.cancel(ids.first(),[guard=QPointer<TrayController>(this)](Error error,QJsonObject){if(guard&&error)guard->notifyFailure(error);});
 }
+void TrayController::acknowledgeFailures(){errorPending_=false;refreshActivity();showView("historyFailed");}
 void TrayController::refreshMenu() {
  QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();for(const auto& action:Settings::presentationOrder())shortcuts.insert(action,settings.actions.value(action).shortcut);
- int files=0;bool uploading=false;for(const auto& value:operations_.activeObservations()){
-  const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;uploading=true;
+ int files=0,uploads=0;bool uploading=false;for(const auto& value:operations_.activeObservations()){
+  const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;uploading=true;++uploads;
   for(const auto& v:op["items"].toArray()){const auto item=v.toObject();if(item["uploadStatus"]=="uploading"||item["uploadStatus"]=="pending")++files;}
  }
  const auto status=!uploading?QString{}:files?QString("Uploading %1 %2…").arg(files).arg(files==1?"file":"files"):QString("Preparing upload…");
 #ifdef Q_OS_LINUX
- if(native_){native_->setCommands(shortcuts,status);return;}
+ if(native_){native_->setCommands(shortcuts,status,uploads,errorPending_);return;}
 #endif
  if(!menu_)return;
  for(auto* entry:menu_->actions())if(entry->property("commandLabel").isValid()&&shortcuts.contains(entry->data().toString())){const auto key=QKeySequence(shortcuts.value(entry->data().toString())).toString(QKeySequence::NativeText);entry->setText(entry->property("commandLabel").toString()+(key.isEmpty()?QString{}:"\t"+key));}
  // Tab-separated menu text displays a shortcut without registering another key handler.
+ failedUploads_->setVisible(errorPending_);cancelUpload_->setText(uploads>1?"Cancel all uploads…":"Cancel upload");
  uploadStatus_->setText(status);for(auto* entry:{uploadStatus_,cancelUpload_,uploadSeparator_})entry->setVisible(uploading);
 }
 void TrayController::refreshActivity() {
@@ -412,7 +404,7 @@ void TrayController::refreshActivity() {
  }
  auto finished=activeUploads_;finished.subtract(activeIds);activeUploads_.intersect(activeIds);
  const bool working=operations_.storageActive()||!activeUploads_.isEmpty();
- if(errorFlashTimer_.isActive()) {
+ if(errorPending_) {
   uploadRevealTimer_.stop();uploadCompleteTimer_.stop();
   uploadVisible_=false;uploadCompleted_=false;uploadVisibleClock_.invalidate();
  } else if(working) {
@@ -424,7 +416,7 @@ void TrayController::refreshActivity() {
   operations_.inspect(id,[guard=QPointer<TrayController>(this)](Error error,QJsonObject operation) {
    if(!guard)return;
    --guard->pendingUploadFinishes_;
-   if(!error&&operation["state"]=="completed"&&guard->uploadVisible_&&!guard->errorFlashTimer_.isActive()&&
+   if(!error&&operation["state"]=="completed"&&guard->uploadVisible_&&!guard->errorPending_&&
       !guard->operations_.storageActive()&&guard->operations_.activeObservations().isEmpty()) {
     for(const auto& value:operation["items"].toArray())if(value.toObject()["uploadStatus"]=="uploaded") {
      guard->uploadCompleted_=true;break;
@@ -435,14 +427,15 @@ void TrayController::refreshActivity() {
  }
  if(uploadVisible_&&!working&&pendingUploadFinishes_==0&&!uploadCompleteTimer_.isActive())
   uploadCompleteTimer_.start(int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())));
- const auto text=uploadCompleted_?QString("Upload complete"):
+ const auto text=errorPending_?QString("Failed uploads — open Failed uploads to review"):
+                 uploadCompleted_?QString("Upload complete"):
                  uploadVisible_&&!working?QString("Finishing upload"):activityText(observations);
  // Active work keeps the idle glyph; only a confirmed completion turns green.
  const auto& tints=Theme::trayTints(panel_.light());
- const auto color=errorFlashTimer_.isActive()?(errorRed_?tints.error:tints.idle):
+ const auto color=errorPending_?tints.error:
                   uploadCompleted_?tints.upload:tints.idle;
- int percent=-1;
- if(uploadVisible_&&!errorFlashTimer_.isActive()) {
+ int percent=errorPending_?-2:-1;
+ if(uploadVisible_&&!errorPending_) {
   if(uploadCompleted_)percent=-1;
   else if(operations_.storageActive())percent=uploadPercent(observations);
   else percent=iconPercent_;
@@ -462,7 +455,7 @@ void TrayController::refreshActivity() {
 }
 void TrayController::flashError() {
  uploadCompleteTimer_.stop();
- errorRed_=true;errorFlashTimer_.start();errorRecoveryTimer_.start();refreshActivity();
+ errorPending_=true;refreshActivity();
 }
 void TrayController::activate() { showSettings(); }
 void TrayController::showSettings() { showView("settings"); }

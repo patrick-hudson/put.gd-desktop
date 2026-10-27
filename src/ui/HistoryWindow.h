@@ -28,6 +28,7 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  // savedCopyVisible alongside the page state (historyState).
  void command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  QJsonObject historyState()const;
+ void confirmUploads(const QStringList& ids);void showFailedUploads();
  // The remote-deletion confirmation for a delete.prepare reply: each exact
  // target by file name, then the full preparation under Technical details.
  // Cancel is the default and Escape choice; accepting is the named action.
