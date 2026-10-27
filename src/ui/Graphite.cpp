@@ -1721,7 +1721,8 @@ NavigationDelegate::NavigationDelegate(QObject* parent, int rowHeight) : QStyled
 QSize NavigationDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
     const bool two = !index.data(SecondLineRole).toString().isEmpty();
     const QFontMetrics metrics(Graphite::font());
-    const int natural = two ? metrics.height() + QFontMetrics(Graphite::font(Type::metadata)).height() + 22 : metrics.height() + 16;
+    const bool wrap = index.data(WrapLabelRole).toBool() && QFontMetrics(Graphite::font(Type::body, true)).horizontalAdvance(index.data().toString()) > option.rect.width() - scaled(Metric::icon) - 38;
+    const int natural = wrap ? 2 * metrics.height() + 16 : two ? metrics.height() + QFontMetrics(Graphite::font(Type::metadata)).height() + 22 : metrics.height() + 16;
     return {option.rect.width(), std::max(scaled(two && rowHeight_ < Metric::destinationRow ? Metric::destinationRow : rowHeight_), natural)};
 }
 void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, const QModelIndex& index) const {
@@ -1743,7 +1744,22 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
     const auto first = index.data(Qt::DisplayRole).toString(), second = index.data(SecondLineRole).toString();
     const QColor ink = !enabled ? c.textDisabled : selected ? c.text : c.textSecondary;
     const QRectF text(x, box.top(), box.right() - 10 - x, box.height());
-    if (second.isEmpty()) paintText(*p, text, first, ink, Graphite::font(Type::body, selected));
+    if (second.isEmpty() && index.data(WrapLabelRole).toBool()) {
+        const auto labelFont = Graphite::font(Type::body, selected);
+        const QFontMetrics metrics(labelFont);
+        if (metrics.horizontalAdvance(first) <= text.width()) paintText(*p, text, first, ink, labelFont);
+        else {
+            int split = first.lastIndexOf(' ');
+            for (int i = first.indexOf(' '); i >= 0; i = first.indexOf(' ', i + 1)) {
+                if (metrics.horizontalAdvance(first.left(i)) > text.width()) break;
+                split = i;
+            }
+            const qreal top = text.center().y() - metrics.height();
+            paintText(*p, QRectF(text.left(), top, text.width(), metrics.height()), first.left(split), ink, labelFont, Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
+            paintText(*p, QRectF(text.left(), top + metrics.height(), text.width(), metrics.height()), first.mid(split + 1), ink, labelFont, Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
+        }
+    }
+    else if (second.isEmpty()) paintText(*p, text, first, ink, Graphite::font(Type::body, selected));
     else {
         const qreal h = box.height();
         paintText(*p, QRectF(text.left(), box.top() + h * 0.18, text.width(), h * 0.36), first, ink, Graphite::font(Type::body, selected));

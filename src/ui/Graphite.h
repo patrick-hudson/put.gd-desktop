@@ -141,6 +141,7 @@ class NavigationDelegate final : public QStyledItemDelegate {
     Q_OBJECT
 public:
     static constexpr int SecondLineRole = Qt::UserRole + 40;
+    static constexpr int WrapLabelRole = Qt::UserRole + 41;
     explicit NavigationDelegate(QObject* parent, int rowHeight = Metric::navRow);
     QSize sizeHint(const QStyleOptionViewItem&, const QModelIndex&) const override;
     void paint(QPainter*, const QStyleOptionViewItem&, const QModelIndex&) const override;
