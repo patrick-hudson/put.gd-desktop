@@ -912,6 +912,7 @@ private slots:
  // Below the width both panes need at this text size, the inspector opens
  // over the list on request and returns to it, by keyboard and ui.history.
  void enlargedHistoryKeepsFourRowsAtMinimumSize(){
+  QWidget themed;RedesignTheme::apply(themed);
   const auto original=QApplication::font();auto font=original;font.setPixelSize(21);QApplication::setFont(font);auto restore=qScopeGuard([&]{QApplication::setFont(original);});
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   {HistoryStore ledger(operations.databasePath());for(int i=0;i<8;++i){Operation op;op.id=QString("large-text-%1").arg(i);op.created=QString("2020-01-01T12:%1:00.000Z").arg(i,2,10,QChar('0'));op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id=op.id+"-file";item.artifact.name="Synthetic.txt";item.artifact.mime="text/plain";item.uploadStatus="local_only";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}}
