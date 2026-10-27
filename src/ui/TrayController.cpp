@@ -302,10 +302,10 @@ QString TrayController::failureReason(const QJsonObject& error) {
  return message.left(1).toLower()+message.mid(1);
 }
 QString TrayController::completionTitle(const QJsonObject& operation) {
- const auto items=operation["items"].toArray();bool localOnly=!items.isEmpty(),problem=operation["state"]!="completed"||meaningfulError(operation["error"].toObject()),localFailed=false,uploaded=false;
- for(const auto& value:items){const auto item=value.toObject();const auto local=item["local"].toObject();localOnly&=item["uploadStatus"]=="local_only";uploaded|=item["uploadStatus"]=="uploaded";localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());problem|=meaningfulError(item["error"].toObject())||localFailed;}
+ const auto items=operation["items"].toArray();bool localOnly=!items.isEmpty(),problem=operation["state"]!="completed"||meaningfulError(operation["error"].toObject()),localFailed=false;
+ for(const auto& value:items){const auto item=value.toObject();const auto local=item["local"].toObject();localOnly&=item["uploadStatus"]=="local_only";localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());problem|=item["uploadStatus"]=="failed"||meaningfulError(item["error"].toObject())||localFailed;}
  if(!problem)return localOnly?QString("Saved locally"):QString("Upload complete");
- if((localFailed&&!uploaded)||operation["error"].toObject()["code"]=="archive_failed")return "Local save failed";
+ if((localFailed&&localOnly)||operation["error"].toObject()["code"]=="archive_failed")return "Local save failed";
  return "Completed with a problem";
 }
 QString TrayController::completionMessage(const QJsonObject& operation,bool hasLink) {
