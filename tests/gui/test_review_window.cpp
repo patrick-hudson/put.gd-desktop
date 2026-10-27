@@ -179,6 +179,7 @@ private slots:
             window.resize(width, 720); QApplication::processEvents();
             QCOMPARE(trimLabel->mapTo(&window, QPoint()).x(), maskLabel->mapTo(&window, QPoint()).x());
             QCOMPARE(trimLabel->width(), maskLabel->width());
+            QCOMPARE(window.findChild<QLabel*>("maskTimingGroup")->mapTo(&window, QPoint()).x(), maskLabel->mapTo(&window, QPoint()).x());
             const auto lane = t->trackRect().translated(t->pos());
             QVERIFY(t->geometry().bottom() < trim->y());
             QCOMPARE(t->x(), 8);
@@ -198,7 +199,7 @@ private slots:
             QCOMPARE(time->geometry().center().y(), status->geometry().center().y());
             QVERIFY(t->trackRect().width() >= 360);
             for (auto* button : window.findChildren<QToolButton*>()) if (button->toolButtonStyle() == Qt::ToolButtonTextOnly) {
-                QVERIFY(button->width() - 8 >= QFontMetricsF(button->font()).horizontalAdvance(button->text()));
+                QVERIFY(button->width() - 24 >= QFontMetricsF(button->font()).horizontalAdvance(button->text()));
             }
             auto* interval = window.findChild<QLabel*>("maskActiveInterval");
             auto* footer = window.findChild<QWidget*>("reviewFooter");

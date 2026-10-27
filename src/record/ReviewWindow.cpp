@@ -763,7 +763,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     transportGrid_->setSpacing(0);
     transportRow_ = new QHBoxLayout;
     auto* transport = transportRow_;
-    transport->setSpacing(6);
+    transport->setSpacing(4);
     play_ = tool("play", "Play", "Play the retained part silently (Space)");
     play_->setObjectName("play");
     speed_ = VisualStyle::choiceBox(this);
@@ -772,7 +772,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     speed_->setAccessibleName("Playback speed");
     for (const auto& [label, factor] : std::initializer_list<std::pair<const char*, double>>{{"0.5×", 0.5}, {"1×", 1.0}, {"2×", 2.0}, {"4×", 4.0}}) speed_->addItem(QString::fromUtf8(label), factor);
     speed_->setCurrentIndex(1);
-    speed_->setFixedWidth(Graphite::scaled(72));
+    speed_->setFixedWidth(std::max(Graphite::scaled(48), speed_->sizeHint().width()));
     formatAdvice_ = tool("info", "Format tips", "Use MP4 (H.264) for broader playback compatibility. Show format tips.");
     formatAdvice_->setObjectName("formatAdvice");
     formatAdvice_->setProperty("driveAction", QJsonObject{{"action", "showAdvice"}});
@@ -843,7 +843,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         button->setToolButtonStyle(Qt::ToolButtonTextOnly);
         button->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
         button->setAutoRaise(false);
-        const int textWidth = int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(button->text()))) + 16;
+        const int textWidth = int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(button->text()))) + 28;
         button->setMinimumSize(QSize(textWidth, 32).expandedTo(QSize(32, 32)));
         button->setFixedHeight(std::max(32, button->fontMetrics().height() + 2));
     }
@@ -875,12 +875,17 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     timingRow->setSpacing(4);
     maskLayout->addLayout(timingRow);
     auto* timingLabel = groupLabel("Timing", "maskTimingGroup");
-    timingRow->addWidget(timingLabel);
     for (auto* w : {maskStart_, maskEnd_, removeMask_}) timingRow->addWidget(w);
     timingRow->addWidget(maskActive_, 1);
     for (auto* w : std::initializer_list<QWidget*>{groupLabel("Trim", "trimGroup"), trimStart_, trimEnd_, resetTrim_, retained_}) trimRow->addWidget(w);
     trimRow->addStretch();
-    for (auto* w : std::initializer_list<QWidget*>{groupLabel("Mask", "maskGroup"), maskTools_}) maskGroupRow->addWidget(w);
+    auto* maskGutter = new QWidget(maskGroup_);
+    auto* labels = new QVBoxLayout(maskGutter);
+    labels->setContentsMargins(0, 0, 0, 0);
+    labels->setSpacing(0);
+    auto* maskLabel = groupLabel("Mask", "maskGroup");
+    for (auto* label : {maskLabel, timingLabel}) { label->setFixedHeight(32); labels->addWidget(label); }
+    for (auto* w : {maskGutter, maskTools_}) maskGroupRow->addWidget(w);
     maskGroupRow->setStretchFactor(maskTools_, 1);
 
     toolsGrid_->addWidget(trimGroup_, 0, 0);
@@ -1620,11 +1625,11 @@ void ReviewWindow::placeTools() {
     // One gutter, with each label beside its own controls and lanes.
     auto* trimLabel = findChild<QLabel*>("trimGroup");
     auto* maskLabel = findChild<QLabel*>("maskGroup");
-    const int gutter = std::max(trimLabel->sizeHint().width(), maskLabel->sizeHint().width());
+    auto* timingLabel = findChild<QLabel*>("maskTimingGroup");
+    const int gutter = std::max({trimLabel->sizeHint().width(), maskLabel->sizeHint().width(), timingLabel->sizeHint().width()});
     trimLabel->setFixedWidth(gutter);
     maskLabel->setFixedWidth(gutter);
-    maskLabel->setFixedHeight(32);
-    static_cast<QHBoxLayout*>(maskGroup_->layout())->setAlignment(maskLabel, Qt::AlignTop);
+    timingLabel->setFixedWidth(gutter);
     updateGeometry();
 }
 QSize ReviewWindow::minimumSizeHint() const {
