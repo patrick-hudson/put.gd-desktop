@@ -4,6 +4,7 @@
 #include <atomic>
 #include <memory>
 #include <functional>
+#include <QPointer>
 class QGridLayout;class QCheckBox;class QDialog;class QSplitter;class QListWidget;class QVBoxLayout;class QScrollArea;class QStackedWidget;class QResizeEvent;class QListView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;class QLineEdit;class QComboBox;class QProgressBar;class QToolButton;
 namespace putgd {
 class FileDialog;namespace Graphite { class ElidedLabel; }
@@ -23,7 +24,8 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  static QRect failureTextArea(const QSize& row,bool gallery,bool dayHeading);
  // ui.history: drive the open page as its controls do. Actions: inspect,
  // clearFilters (scope "filters" or "all"), select (ids), clearSelection,
- // openDetails and closeDetails. The reply is the page's state (historyState).
+ // openDetails, closeDetails, expandPreview, closePreview, showSavedCopy and
+ // copySavedPath. The reply is the page's state (historyState).
  void command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  QJsonObject historyState()const;
  // The remote-deletion confirmation for a delete.prepare reply: each exact
@@ -36,9 +38,12 @@ signals:void viewStateChanged();
  void captureSettingsRequested();void localCopySettingsRequested();
  // Edit & upload from another source: "clipboard", or "file" with a path.
  void editRequested(const QString& source,const QString& path);void chooseImageRequested();
-protected:void hideEvent(QHideEvent*) override;void showEvent(QShowEvent*) override;void resizeEvent(QResizeEvent*) override;
+protected:bool eventFilter(QObject*,QEvent*) override;void hideEvent(QHideEvent*) override;void showEvent(QShowEvent*) override;void resizeEvent(QResizeEvent*) override;
 private:
  void startPreview();void previewFailure(const Error&);void updatePreviewState();void updateActions();
+ bool expandPreview();void updateSavedCopy();void showSavedCopy();void copySavedPath();
+ QPointer<QDialog> expandedPreview_;QPushButton* expandPreview_=nullptr;
+ QString savedPath_;QJsonObject savedFolderResult_;QWidget* savedCopy_=nullptr;Graphite::ElidedLabel* savedLabel_=nullptr;
  QGridLayout* actions_=nullptr;QWidget* browserAction_=nullptr;QLabel* previewStatus_=nullptr;QPushButton* retryPreview_=nullptr;QHash<QString,Error> previewErrors_;
  // #190: ask the resident for a selected image's or video's missing preview,
  // once the selection has settled, one request at a time.

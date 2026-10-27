@@ -29,6 +29,7 @@ public:
  static QString duration(qint64 milliseconds);
  static QString relativeTime(const QJsonObject&);
  static QString fileSize(qint64);static QString friendlyAction(const QString&);static QString statusText(const QJsonObject&);
+ static QString remoteStateText(const QJsonObject&);
  // A failure that stored no file, such as an image too large to edit. There is
  // nothing to upload, save or copy again; only a new capture can follow.
  static bool storedNothing(const QJsonObject&);
