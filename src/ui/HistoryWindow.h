@@ -19,8 +19,7 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  // state or cancels it; the reply is the chooser's state.
  void saveAsDialogCommand(const QString& action,const QString& id,std::function<void(Error,QJsonObject)> reply);
  FileDialog& saveAsDialog(){return *chooser_;}
- // Where a row paints its complete failure text, in row coordinates: the
- // delegate's layout, shared with its size hint and the offscreen tests.
+ // The compact failure metadata line in row coordinates, shared with tests.
  static QRect failureTextArea(const QSize& row,bool gallery,bool dayHeading);
  // ui.history: drive the open page as its controls do. Actions: inspect,
  // clearFilters (scope "filters" or "all"), select (ids), clearSelection,
@@ -56,20 +55,20 @@ private:
  QList<QJsonObject> selectedFiles()const;QStringList deletableIds()const;bool selectionHasLinks()const;void copySelectedLinks();
  // Filters · N, its description and Clear filters follow the applied query.
  void updateFilterSummary();QStringList activeFilters()const;void clearFilters(bool all);
- void updateSelectionBar();void openBrowser(const QString& url);
+ void updateSelectionBar();void updateFooterLayout();void openBrowser(const QString& url);
  // Below the width both panes need at this text size, the inspector opens
  // over the list on request (Enter, Show details) instead of squeezing it.
  bool compact()const{return compact_;}void setDetailsOpen(bool);void openSelectedDetails();
  void inspectSelectedDeletion();void deletionAction(const QString&);QJsonObject selectedDeletion_;QHash<QString,QString> deletionNames_;QLabel* deletionStatus_=nullptr;QPushButton *deletionRetry_=nullptr,*deletionCancel_=nullptr;
  void updateHeading();bool previewRetry_=false;Graphite::ElidedLabel* heading_=nullptr;
- UiSession& session_;HistoryModel* model_;QListView* table_;QSplitter* split_=nullptr;QScrollArea* inspectorScroll_=nullptr;QStackedWidget* list_;QLabel *status_,*count_,*preview_,*empty_,*title_,*outcome_,*cancelled_,*activeLabel_;QPlainTextEdit *details_;QWidget* summary_;QLabel* capabilityHint_;QPushButton* changeLocalCopies_;QLineEdit* link_;QLabel* linkExpiry_=nullptr;QLabel* browserFeedback_=nullptr;QWidget* previousLink_=nullptr;QLineEdit* previousUrl_=nullptr;QComboBox* items_;QProgressBar* progress_;QWidget* activeBanner_;QToolButton *grid_,*showCancelled_;QPushButton *copy_,*open_,*share_,*revoke_,*inspectLink_,*retry_,*cancel_,*copyImage_,*saveAs_,*editAgain_,*saveDiagnostics_;
+ UiSession& session_;HistoryModel* model_=nullptr;QListView* table_;QSplitter* split_=nullptr;QScrollArea* inspectorScroll_=nullptr;QStackedWidget* list_;QLabel *status_,*count_,*preview_,*empty_,*title_,*outcome_,*activeLabel_;QPlainTextEdit *details_;QWidget* summary_;QLabel* capabilityHint_;QPushButton* changeLocalCopies_;QLineEdit* link_;QLabel* linkExpiry_=nullptr;QLabel* browserFeedback_=nullptr;QWidget* previousLink_=nullptr;QLineEdit* previousUrl_=nullptr;QComboBox* items_;QProgressBar* progress_;QWidget* activeBanner_;QToolButton *grid_;QCheckBox* showCancelled_;QPushButton *copy_,*open_,*share_,*revoke_,*inspectLink_,*retry_,*cancel_,*copyImage_,*saveAs_,*editAgain_,*saveDiagnostics_;
  QStringList restoreSelection_;QString selectedItemId_,sharingId_,sharingFeedback_,deletionId_,activeId_;QJsonObject currentDetail_;bool restoringSelection_=false,deleteAccepting_=false,sharingFeedbackError_=false,sharingStopped_=false,sharingAccepting_=false,sharingPollActive_=false,deletionPollActive_=false,awaitingInitialization_=false,previewLoading_=false;
  QTimer *sharingTimer_=nullptr,*deletionTimer_=nullptr,*searchTimer_=nullptr,*previewRequestTimer_=nullptr;QString previewRequestId_,previewCandidate_;QSet<QString> previewRefused_;quint64 selectionRequest_=0;std::shared_ptr<std::atomic_bool> previewCancelled_;QString pendingPreviewPath_,pixelDimensions_;
  // The item and preview file the inspector shows now, kept across reloads.
  QString shownItemId_,shownPreviewPath_;
  FileDialog* chooser_=nullptr;
  QToolButton *filtersToggle_=nullptr,*clearFilters_=nullptr,*detailsBack_=nullptr,*detailsClose_=nullptr;QWidget *selectionBar_=nullptr,*emptyState_=nullptr;QLabel *selectionCount_=nullptr,*emptyBody_=nullptr;QPushButton *copyLinks_=nullptr,*deleteSelected_=nullptr,*resetView_=nullptr,*retryLoading_=nullptr,*remove_=nullptr;bool compact_=false,detailsOpen_=false,detailsFromGallery_=false,restoreDetailsOpen_=false,restoreScroll_=false;int galleryScroll_=0,listScroll_=0;
- QListWidget* categories_=nullptr;QCheckBox* failedOnly_=nullptr;QWidget* columns_=nullptr;bool restoringCategory_=false;
+ QListWidget* categories_=nullptr;QWidget *footerBar_=nullptr,*footerRow_=nullptr;QWidget* columns_=nullptr;bool restoringCategory_=false;
  // Runs once the selected file's detail arrives (true) or fails (false).
  std::function<void(bool)> afterDetail_;
 };

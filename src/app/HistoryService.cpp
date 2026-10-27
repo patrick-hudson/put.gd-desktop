@@ -72,7 +72,7 @@ QJsonObject HistoryService::prepare(const QStringList& ids,Error& e) const {
   targets.append(QJsonObject{{"historyId",id},{"receipt",receipt.toJson()},{"effect",caps.deletionEffect}});
  }
  const auto digest=QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(targets).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
- return {{"targets",targets},{"acknowledgement",digest},{"localCopiesPreserved",true},{"cacheNotice","Origin deletion does not invalidate browser or CDN caches"}};
+ return {{"targets",targets},{"acknowledgement",digest},{"localCopiesPreserved",true},{"cacheNotice","Copies already cached by browsers or a CDN can stay visible for a while"}};
 }
 void HistoryService::prepareDelete(const QStringList& ids,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}operations_.background([this,ids](Error& e) {return prepare(ids,e);},reply);}
 void HistoryService::deleteConfirmed(const QStringList& ids,const QString& acknowledgement,JsonReply reply) {

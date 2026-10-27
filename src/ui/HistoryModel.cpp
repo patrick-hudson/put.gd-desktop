@@ -46,7 +46,7 @@ QString HistoryModel::friendlyAction(const QString& action){if(action=="region")
 bool HistoryModel::storedNothing(const QJsonObject& r){return r["records"].toArray().isEmpty()&&r["operation"].toObject()["items"].toArray().isEmpty();}
 QString HistoryModel::failureLabel(const QJsonObject& r){
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
- if(!storedNothing(r))return "Upload failed";
+ if(!storedNothing(r)||r["operation"].toObject().isEmpty())return "Upload failed";
  const auto action=r["operation"].toObject()["action"].toString();
  return action=="edit"?"Edit failed":action=="clipboard"?"Upload failed":"Capture failed";
 }
@@ -107,7 +107,10 @@ QString HistoryModel::statusText(const QJsonObject& r){
  const auto remote=remoteStateText(r);if(!remote.isEmpty())return remote;
  if(r["uploadStatus"]=="local_only")return localSaveFailed(r)?QString("Local save failed"):op["copyStatus"]=="copied"?QString("Saved locally · Copied to clipboard"):op["copyStatus"]=="suppressed"?QString("Saved locally · Not copied (clipboard changed). Copy it again."):QString("Saved locally");
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
- if(r["uploadStatus"]=="failed"||state=="failed"||state=="partial"){auto text=message.isEmpty()?failureLabel(r):message;if(r["local"].toObject()["status"]=="saved"){text=text.trimmed();while(!text.isEmpty()&&QStringLiteral(".!?…").contains(text.back()))text.chop(1);text+=" · Saved locally";}return text;}
+ if(r["uploadStatus"]=="failed"||state=="failed"||state=="partial"){
+  message.replace(" Try again.","").replace(" Try again","");message=message.trimmed();while(!message.isEmpty()&&QStringLiteral(".!?…").contains(message.back()))message.chop(1);
+  auto text=failureLabel(r);if(!message.isEmpty()&&message!=text)text+=" · "+message;if(r["local"].toObject()["status"]=="saved")text+=" · Saved locally";return text;
+ }
  if(state=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled")return "Canceled";
  if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="failed")return "Uploaded · Could not copy link. Copy it again.";
  // The automatic copy was refused because the clipboard moved on (#473); Copy link is the way back.
@@ -126,7 +129,7 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==DayRole){const auto currentDay=day(r);return i.row()==0||currentDay!=day(record(i.row()-1))?currentDay:QString{};}
  if(role==ActiveRole)return active(r);
  if(role==FailedRole)return failed(r);
- if(role==PrimaryActionRole){if(active(r))return "Cancel";if(copyLocalResult(r))return "Copy result";if(retryUpload(r))return "Retry upload";if(retryLocalSave(r))return "Retry local save";if(linkAvailable(i.row()))return "Copy link";return QString{};}
+ if(role==PrimaryActionRole){if(active(r))return "Cancel upload";if(copyLocalResult(r))return "Copy result";if(retryUpload(r))return "Retry upload";if(retryLocalSave(r))return "Retry local save";if(linkAvailable(i.row()))return "Copy link";return QString{};}
  if(role==ProgressRole)return aggregateProgress(op).percent();
  if(role==CreatedRole)return relative(r);
  if(role==OutputRole){
@@ -165,11 +168,12 @@ void HistoryModel::refresh(){
 void HistoryModel::rebuild(){
  QList<QJsonObject> groups;QHash<QString,int> grouped;
  for(const auto& v:records_){const auto r=v.toObject();const auto key=r["operationId"].toString(r["id"].toString());if(grouped.contains(key)){auto& group=groups[grouped[key]];auto children=group["records"].toArray();children.append(r);group["records"]=children;group["bytes"]=double(group["bytes"].toInteger()+r["bytes"].toInteger());if(r["uploadStatus"]=="failed")group["error"]=r["error"],group["uploadStatus"]="failed";}else{auto group=r;group["records"]=QJsonArray{r};grouped[key]=groups.size();groups.append(group);}}
- const bool specific=!query_.category.isEmpty()||!query_.mime.isEmpty()||!query_.profileId.isEmpty()||!query_.uploadStatus.isEmpty()||!query_.localStatus.isEmpty()||!query_.remoteStatus.isEmpty()||!query_.from.isEmpty()||!query_.to.isEmpty();
+ const bool specific=!query_.category.isEmpty()||!query_.mime.isEmpty()||!query_.profileId.isEmpty()||!query_.localStatus.isEmpty()||!query_.remoteStatus.isEmpty()||!query_.from.isEmpty()||!query_.to.isEmpty();
  for(const auto& v:operations_){const auto op=v.toObject();const auto id=op["id"].toString();if(grouped.contains(id)){groups[grouped[id]]["operation"]=op;continue;}
   // A cleared history stays clear. Only a live or no-file failed/cancelled capture
   // needs an activity-only row; completed captures come from the durable ledger.
-  if(query_.offset||specific||(!Operation::activeState(op["state"].toString())&&!op["items"].toArray().isEmpty()))continue;
+  const bool uploading=query_.uploadStatus=="uploading"&&Operation::activeState(op["state"].toString())&&op["phase"]=="uploading";
+  if(query_.offset||specific||(!query_.uploadStatus.isEmpty()&&!uploading)||(!Operation::activeState(op["state"].toString())&&!op["items"].toArray().isEmpty()))continue;
   if(!Operation::activeState(op["state"].toString())&&!QStringList{"failed","cancelled"}.contains(op["state"].toString()))continue;
   QJsonObject group{{"id","operation:"+id},{"operationId",id},{"created",op["created"]},{"operation",op},{"name",friendlyAction(op["action"].toString())+" capture"},{"records",QJsonArray{}}};
   if(!query_.search.isEmpty()&&!group["name"].toString().contains(query_.search,Qt::CaseInsensitive))continue;
