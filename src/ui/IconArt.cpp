@@ -27,11 +27,11 @@ QImage canvas(int scale) {
 QImage liftTray(const QColor& color,int percent,int scale) {
  auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
  const auto shape=arrow().united(tray());
- if(percent<0||percent>=100) p.fillPath(shape,color);
+ if(percent<0) p.fillPath(shape,color);
  else {
-  p.fillPath(shape,color.darker(230));
+  p.fillPath(shape,color);
   p.save();const auto fill=qBound(0,percent,100)/100.0;
-  p.setClipRect(QRectF(0,23-21*fill,24,21*fill));p.fillPath(shape,color);p.restore();
+  p.setClipRect(QRectF(0,23-21*fill,24,21*fill));p.fillPath(shape,Theme::trayTints(color==Theme::trayTints(true).idle).encoding);p.restore();
  }
  p.setPen(QPen(Theme::trayOutline(),0.65,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
  p.setBrush(Qt::NoBrush);p.drawPath(shape);

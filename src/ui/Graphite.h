@@ -13,7 +13,7 @@
 #include <QWidget>
 
 class QPushButton;class QApplication;class QLineEdit;class QMessageBox;
-class QAbstractButton;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
+class QFormLayout;class QAbstractButton;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
 
 // The Graphite visual language (2026-10-26): one painted control set for every
 // app-owned surface. Paint owns appearance; the Qt widget underneath keeps
@@ -153,6 +153,7 @@ public:
     explicit ElidedLabel(QWidget* parent = nullptr);
     void setText(const QString&);
     void setRevealable(bool);
+    void setElideMode(Qt::TextElideMode mode) { elideMode_ = mode; update(); }
     void setRevealText(const QString& text) { revealText_ = text; }
     void setRevealActionName(const QString& name) { revealActionName_ = name; }
     QString revealActionName() const { return revealActionName_; }
@@ -171,6 +172,7 @@ protected:
     void focusInEvent(QFocusEvent*) override;
     void focusOutEvent(QFocusEvent*) override;
 private:
+    Qt::TextElideMode elideMode_ = Qt::ElideMiddle;
     QRect textRect() const;
     bool revealable_ = false;
     QString revealText_;
@@ -283,10 +285,10 @@ void transparentView(QAbstractScrollArea*);
 bool confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, bool destructive = false);
 // The same component for asynchronous session control; caller opens and owns it.
 QMessageBox* confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, const QString& safe, bool destructive);
-// One label gutter for every form on a page (the widest label, at most
-// 240 px), and choice controls at a natural width (at most 400 px); text and
-// path fields keep growing. Call once a page's forms are built.
-void alignForms(QWidget* page);
+// One gutter for a page, or a shared set of forms including hidden pages
+// (widest label, capped at 240 scaled px). Choices cap at 400 scaled px;
+// text and path fields grow. Call once a page's forms are built.
+void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms = {});
 // Side by side while the watched widget is at least threshold px wide,
 // stacked below that: never two cramped columns.
 void responsiveColumns(QBoxLayout*, QWidget* watched, int threshold);

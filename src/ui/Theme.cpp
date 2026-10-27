@@ -61,8 +61,13 @@ QString stylesheet(QString qss,Scheme scheme){
  return qss;
 }
 const TrayTints& trayTints(bool lightPanel){
- static const TrayTints dark{QColor("#D6D6D2"),QColor("#62D69B"),QColor("#F3C66F"),QColor("#FFB4AB")};
- static const TrayTints light{QColor("#454540"),QColor("#146C42"),QColor("#8A5300"),QColor("#B4312A")};
+ const auto adjusted=[](Scheme scheme){
+  const auto& p=palette(scheme);const bool lightPanel=scheme==Scheme::Light;
+  const QColor panels[]= {lightPanel?QColor("#ffffff"):QColor("#141414"),lightPanel?QColor("#dedee2"):QColor("#3b3b3f")};
+  const auto readable=[&](QColor color){for(int step=0;step<100&&(contrast(color,panels[0])<3.0||contrast(color,panels[1])<3.0);++step)color=lightPanel?color.darker(105):color.lighter(105);return color;};
+  return TrayTints{readable(p.icon),readable(p.success),readable(p.accent),readable(p.danger)};
+ };
+ static const auto dark=adjusted(Scheme::Dark),light=adjusted(Scheme::Light);
  return lightPanel?light:dark;
 }
 bool setScheme(Scheme scheme){

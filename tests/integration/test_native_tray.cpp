@@ -1,4 +1,5 @@
 #include "ui/NativeTray.h"
+#include "ui/Theme.h"
 #include "ui/TrayController.h"
 #include "fixtures/U2Fixtures.h"
 #include "core/Log.h"
@@ -377,25 +378,24 @@ private slots:
   struct Drain {std::shared_ptr<OpaqueProvider> provider;~Drain(){for(auto complete:std::exchange(provider->completions,{}))complete();}} drain{provider};
   PUTGD_TRY_COMPARE(provider->requests.size(),1);
   auto pixels=[&]{return qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes;};
-  auto green=[](const QByteArray& bytes){int count=0;for(int i=0;i<bytes.size();i+=4)if(uchar(bytes[i])==255&&uchar(bytes[i+1])==98&&uchar(bytes[i+2])==214&&uchar(bytes[i+3])==155)++count;return count;};
+  auto amber=[](const QByteArray& bytes){const auto color=Theme::trayTints(false).encoding;int count=0;for(int i=0;i<bytes.size();i+=4)if(uchar(bytes[i])==255&&uchar(bytes[i+1])==color.red()&&uchar(bytes[i+2])==color.green()&&uchar(bytes[i+3])==color.blue())++count;return count;};
   provider->requests.first().progress({"uploading",0,4*1024*1024});
   PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(0%)"));
   const auto emptyIcon=pixels();
   provider->requests.first().progress({"uploading",2*1024*1024,4*1024*1024});
   PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("2 MiB of 4 MiB"));
-  const auto activeIcon=qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes;QVERIFY(activeIcon!=idleIcon);
-  QVERIFY(green(activeIcon)>green(emptyIcon));
+  PUTGD_TRY_VERIFY(amber(pixels())>amber(emptyIcon));const auto activeIcon=pixels();QVERIFY(activeIcon!=idleIcon);
   provider->requests.first().progress({"uploading",4*1024*1024,4*1024*1024});
   PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(100%)"));
-  QVERIFY(green(pixels())>green(activeIcon));
+  QVERIFY(amber(pixels())>amber(activeIcon));
   provider->requests.first().progress({"uploading",2*1024*1024,{}});
   PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Estimated 50%"));
   QCOMPARE(pixels(),activeIcon);
   QVERIFY(views.isEmpty());QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
   controller.notifyFailure({"fixture_failed","Synthetic error",{}});
   const auto redIcon=pixels();QVERIFY(redIcon!=idleIcon);QVERIFY(redIcon!=activeIcon);
-  int opaqueRed=0;for(int index=0;index<redIcon.size();index+=4)
-   if(uchar(redIcon[index])==255&&uchar(redIcon[index+1])==255&&uchar(redIcon[index+2])==180&&uchar(redIcon[index+3])==171)++opaqueRed;
+  const auto error=Theme::trayTints(false).error;int opaqueRed=0;for(int index=0;index<redIcon.size();index+=4)
+   if(uchar(redIcon[index])==255&&uchar(redIcon[index+1])==error.red()&&uchar(redIcon[index+2])==error.green()&&uchar(redIcon[index+3])==error.blue())++opaqueRed;
   QVERIFY(opaqueRed>10);
   PUTGD_TRY_COMPARE(pixels(),idleIcon);PUTGD_TRY_COMPARE(pixels(),redIcon);
   putgd::test::settle(3100);PUTGD_TRY_COMPARE(pixels(),activeIcon);
@@ -425,19 +425,19 @@ private slots:
   const auto service=watcher.registrations.last();
   QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewIcon",&observer,SLOT(iconChanged())));
   QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewToolTip",&observer,SLOT(tooltipChanged())));
-  tray.setActivity(QColor("#62d69b"),"Uploading: 2 MiB of 4 MiB (50%)",50);PUTGD_TRY_COMPARE(observer.icons,1);PUTGD_TRY_COMPARE(observer.tooltips,1);
-  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)",75);PUTGD_TRY_COMPARE(observer.tooltips,2);PUTGD_TRY_COMPARE(observer.icons,2);
-  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)",75);putgd::test::settle(50);PUTGD_TRY_COMPARE(observer.tooltips,2);PUTGD_TRY_COMPARE(observer.icons,2);
-  changeHost(false);PUTGD_TRY_VERIFY(!tray.available());tray.setActivity(QColor("#62d69b"),"Finalizing: 4 MiB of 4 MiB (100%)",100);
+  tray.setActivity(Theme::trayTints(false).idle,"Uploading: 2 MiB of 4 MiB (50%)",50);PUTGD_TRY_COMPARE(observer.icons,1);PUTGD_TRY_COMPARE(observer.tooltips,1);
+  tray.setActivity(Theme::trayTints(false).idle,"Uploading: 3 MiB of 4 MiB (75%)",75);PUTGD_TRY_COMPARE(observer.tooltips,2);PUTGD_TRY_COMPARE(observer.icons,2);
+  tray.setActivity(Theme::trayTints(false).idle,"Uploading: 3 MiB of 4 MiB (75%)",75);putgd::test::settle(50);PUTGD_TRY_COMPARE(observer.tooltips,2);PUTGD_TRY_COMPARE(observer.icons,2);
+  changeHost(false);PUTGD_TRY_VERIFY(!tray.available());tray.setActivity(Theme::trayTints(false).idle,"Finalizing: 4 MiB of 4 MiB (100%)",100);
   changeHost(true);PUTGD_TRY_VERIFY(tray.available());
   auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});
   const auto props=qdbus_cast<QVariantMap>(result.arguments().first());
   QCOMPARE(qdbus_cast<WireTooltip>(props["ToolTip"]).description,QString("Finalizing: 4 MiB of 4 MiB (100%)"));
-  const auto pixels=qdbus_cast<WireImages>(props["IconPixmap"]).first().bytes;int opaqueGreen=0;
-  for(int index=0;index<pixels.size();index+=4)if(uchar(pixels[index])==255&&uchar(pixels[index+1])==98&&uchar(pixels[index+2])==214&&uchar(pixels[index+3])==155)++opaqueGreen;
-  QVERIFY(opaqueGreen>10);
+  const auto pixels=qdbus_cast<WireImages>(props["IconPixmap"]).first().bytes;const auto amber=Theme::trayTints(false).encoding;int opaqueAmber=0;
+  for(int index=0;index<pixels.size();index+=4)if(uchar(pixels[index])==255&&uchar(pixels[index+1])==amber.red()&&uchar(pixels[index+2])==amber.green()&&uchar(pixels[index+3])==amber.blue())++opaqueAmber;
+  QVERIFY(opaqueAmber>10);
   const auto tooltips=observer.tooltips;
-  tray.setActivity(QColor("#ffb4ab"),"Finalizing: 4 MiB of 4 MiB (100%)");PUTGD_TRY_COMPARE(observer.icons,4);
+  tray.setActivity(Theme::trayTints(false).error,"Finalizing: 4 MiB of 4 MiB (100%)");PUTGD_TRY_COMPARE(observer.icons,4);
   QCOMPARE(observer.tooltips,tooltips);
   tray.setActivity(QColor("#9bbcff"),{});PUTGD_TRY_COMPARE(observer.icons,5);
  }
@@ -461,15 +461,16 @@ private slots:
   }
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
-  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 14);
+  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 15);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   bool quitLabel=false;for(const auto& child:layout.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==12){QCOMPARE(item.props["label"].toString(),QString("Quit put.gd"));quitLabel=true;}}QVERIFY(quitLabel);
   // Capture entries first: region, region & edit, window, desktop, screen recording, then the editor sources and the clipboard upload.
-  const QStringList order{"Capture region", "Capture region & edit", "Capture window", "Capture desktop", "Record screen", "Edit image", "Upload clipboard"};
+  const QStringList order{"Capture region", "Capture window", "Capture desktop", "Capture region & edit", "Record screen", "Upload clipboard", "Edit image"};
   for (int i = 0; i < order.size(); ++i) QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(i).variant()).props["label"].toString(), order[i]);
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(4).variant()).id, 16);
+  for(int i=0;i<3;++i)QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(8+i).variant()).props["label"].toString(),QStringList({"History","Destinations","Settings"})[i]);
   // Other editor sources sit in one submenu.
-  const auto editImage = qdbus_cast<WireLayout>(layout.children.at(5).variant());
+  const auto editImage = qdbus_cast<WireLayout>(layout.children.at(6).variant());
   QCOMPARE(editImage.id, 13); QCOMPARE(editImage.props["children-display"].toString(), QString("submenu"));
   QCOMPARE(editImage.children.size(), 2);
   QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(0).variant()).props["label"].toString(), QString("Edit clipboard image"));
@@ -477,7 +478,7 @@ private slots:
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(7).variant()).props["type"].toString(), QString("separator"));
   // Depth 1 lists the submenu header without expanding it.
   layout = qdbus_cast<WireLayout>(call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 1, QStringList{}}).arguments().at(1));
-  QVERIFY(qdbus_cast<WireLayout>(layout.children.at(5).variant()).children.isEmpty());
+  QVERIFY(qdbus_cast<WireLayout>(layout.children.at(6).variant()).children.isEmpty());
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 0, QStringList{"label"}});
   layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QVERIFY(layout.children.isEmpty()); QVERIFY(layout.props.isEmpty());
   QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "AboutToShow", {0}).arguments().at(0).toBool(), false);
@@ -488,8 +489,8 @@ private slots:
  }
  void everyActionAndActivationUsesFixedIds() {
   NativeTray tray; PUTGD_TRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated);
-  const QList<int> ids{1,2,3,4,5,7,8,11,12,14,15};
-  const QStringList expected{"region","window","desktop","clipboard","edit","settings","history","about","quit","edit-clipboard","edit-file"};
+  const QList<int> ids{1,2,3,4,5,7,8,11,12,14,15,18};
+  const QStringList expected{"region","window","desktop","clipboard","edit","settings","history","about","quit","edit-clipboard","edit-file","destinations"};
   for (int i = 0; i < ids.size(); ++i) { QCOMPARE(click(ids[i]).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), i+1); QCOMPARE(actions.at(i).at(0).toString(), expected[i]); }
   // Separators and the submenu header dispatch nothing.
   QCOMPARE(click(6).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(10).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(13).type(), QDBusMessage::ReplyMessage);
@@ -497,14 +498,14 @@ private slots:
   // 9 was "Recent activity": its ID stays retired rather than shifting the others.
   QCOMPARE(click(9).type(), QDBusMessage::ErrorMessage);
   QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "GetProperty", {9, QString("label")}).type(), QDBusMessage::ErrorMessage);
-  QCOMPARE(actions.size(), 11);
+  QCOMPARE(actions.size(), ids.size());
   // Left-click opens History.
   QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "Activate", {0,0}).type(), QDBusMessage::ReplyMessage);
-  PUTGD_TRY_COMPARE(actions.size(), 12); QCOMPARE(actions.last().at(0).toString(), QString("history"));
+  PUTGD_TRY_COMPARE(actions.size(), ids.size()+1); QCOMPARE(actions.last().at(0).toString(), QString("history"));
   WireEvents events{{1,"clicked",QDBusVariant(0),0},{99,"clicked",QDBusVariant(0),0}};
   auto reply = call("/Menu", "com.canonical.dbusmenu", "EventGroup", {QVariant::fromValue(events)});
   QCOMPARE(reply.type(), QDBusMessage::ReplyMessage); QCOMPARE(qdbus_cast<QList<int>>(reply.arguments().at(0)), QList<int>{99});
-  PUTGD_TRY_COMPARE(actions.size(), 13); QCOMPARE(actions.last().at(0).toString(), QString("region"));
+  PUTGD_TRY_COMPARE(actions.size(), ids.size()+2); QCOMPARE(actions.last().at(0).toString(), QString("region"));
  }
  void updateEntryShowsItsVersionAndBumpsTheLayout() {
   // #293: hidden until a stable update is available, then labelled with it.
@@ -514,7 +515,7 @@ private slots:
   auto entry = [&] {
    const auto reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
    const auto root = qdbus_cast<WireLayout>(reply.arguments().at(1));
-   return std::pair(reply.arguments().at(0).toUInt(), qdbus_cast<WireLayout>(root.children.at(10).variant()));
+   for(const auto& child:root.children){const auto entry=qdbus_cast<WireLayout>(child.variant());if(entry.id==17)return std::pair(reply.arguments().at(0).toUInt(),entry);}return std::pair(reply.arguments().at(0).toUInt(),WireLayout{});
   };
   auto [revision, update] = entry();
   QCOMPARE(revision, uint(1)); QCOMPARE(update.id, 17); QCOMPARE(update.props["visible"].toBool(), false);

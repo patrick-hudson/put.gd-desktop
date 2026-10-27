@@ -1,6 +1,10 @@
 #include "core/BuildInfo.h"
 #include "ui/AboutWindow.h"
 #include "ui/VisualStyle.h"
+#include "ui/Graphite.h"
+#include "platform/HostOpen.h"
+#include <QLabel>
+#include <QUrl>
 #include <QApplication>
 #include <QJsonDocument>
 #include <QPointer>
@@ -43,10 +47,10 @@ private slots:
   QVERIFY(!dialog->isModal());
   QCOMPARE(dialog->windowModality(), Qt::NonModal);
   QVERIFY(!QApplication::activeModalWidget());
-  QCOMPARE(dialog->text(), QString("put.gd %1").arg(manifest["version"].toString()));
+  QCOMPARE(dialog->text(), QString("put.gd"));QVERIFY(dialog->findChild<QLabel*>("qt_msgbox_informativelabel")->text().contains(manifest["version"].toString()));auto* name=dialog->findChild<QLabel*>("qt_msgbox_label");QCOMPARE(name->font().pixelSize(),Graphite::scaled(Graphite::Type::section));QCOMPARE(name->font().weight(),QFont::DemiBold);auto* website=dialog->findChild<QPushButton*>("putgdWebsite");QVERIFY(website);QVERIFY(website->isVisibleTo(dialog));QUrl opened;host::setTestOpener([&](const QUrl& url){opened=url;});website->click();host::setTestOpener({});QCOMPARE(opened,QUrl("https://put.gd"));QVERIFY(dialog->isVisible());
   QCOMPARE(QJsonDocument::fromJson(dialog->detailedText().toUtf8()).object(), manifest);
   QVERIFY(dialog->button(QMessageBox::Close));QVERIFY(!dialog->button(QMessageBox::Ok));auto* details=dialog->findChild<QPushButton*>("buildDetails");QVERIFY(details);QCOMPARE(details->text(),QString("Build details"));details->click();QCOMPARE(details->text(),QString("Hide build details"));auto* data=dialog->findChild<QTextEdit*>();QVERIFY(data&&data->isVisible()&&data->isReadOnly());data->selectAll();QCOMPARE(QJsonDocument::fromJson(data->textCursor().selectedText().replace(QChar::ParagraphSeparator,'\n').toUtf8()).object(),manifest);details->click();QCOMPARE(details->text(),QString("Build details"));
-  QCOMPARE(dialog->informativeText(), QString("Screen capture and file sharing"));
+  QVERIFY(dialog->informativeText().contains("Screen capture and file sharing"));
   QVERIFY(!dialog->testAttribute(Qt::WA_DeleteOnClose));
   dialog->close();
   QVERIFY(dialog);

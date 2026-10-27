@@ -97,6 +97,7 @@ struct Settings {
     // Everything the tray, the dashboard rail and a global shortcut can start:
     // the sharing actions plus the screen-recording action.
     static QStringList invocableActionNames();
+    static QStringList presentationOrder();
     // Actions a schema-1 document must define; "edit" may be absent.
     static QStringList requiredActionNames();
     // The optional recording route; absent documents inherit the region route.

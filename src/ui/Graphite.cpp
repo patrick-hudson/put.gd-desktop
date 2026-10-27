@@ -451,6 +451,14 @@ void Style::polish(QWidget* widget) {
         || qobject_cast<QScrollBar*>(widget) || qobject_cast<QSlider*>(widget) || qobject_cast<QLineEdit*>(widget))
         widget->setAttribute(Qt::WA_Hover);
     if (auto* button = qobject_cast<QAbstractButton*>(widget)) focusTooltips(button);
+    if (auto* edit = qobject_cast<QLineEdit*>(widget); edit && !edit->property("graphitePlaceholderFont").toBool()) {
+        edit->setProperty("graphitePlaceholderFont", true);
+        QObject::connect(edit, &QLineEdit::textChanged, edit, [edit, empty = edit->text().isEmpty()](const QString& text) mutable {
+            if (empty == text.isEmpty()) return;
+            empty = text.isEmpty();
+            edit->style()->polish(edit);
+        });
+    }
     if (auto* view = qobject_cast<QAbstractItemView*>(widget)) view->viewport()->setAttribute(Qt::WA_Hover);
     if (auto* combo = qobject_cast<QComboBox*>(widget)) {
         // The popup list paints its rows like every other list.
@@ -489,6 +497,7 @@ void Style::polish(QWidget* widget) {
     else if (bodyControl) f = font(Type::body);
     else setFont = false;
     if (monoPixels) { f = monoFont(monoPixels); setFont = true; }
+    if (auto* edit = qobject_cast<QLineEdit*>(widget); setFont && edit && edit->text().isEmpty()) f.setFamily(uiFamily());
     // An outcome's tone outranks the slot's quiet colour: an error in a muted
     // line still reads as an error.
     if (tone == "error") colour = c.danger;
@@ -719,7 +728,7 @@ QRect Style::subElementRect(SubElement element, const QStyleOption* option, cons
     case SE_LineEditContents: {
         const auto* frame = qstyleoption_cast<const QStyleOptionFrame*>(option);
         // A small inset keeps a semibold first glyph's stem clear of the clip.
-        if (role(widget) == "editableTitle") return option->rect.adjusted(3, 0, -3, -2);
+        if (role(widget) == "editableTitle") return option->rect.adjusted(widget->hasFocus() ? 3 : -2, 0, -3, -2);
         if (frame && frame->lineWidth > 0) return option->rect.adjusted(10, 1, -10, -1);
         return option->rect;
     }
@@ -1637,7 +1646,7 @@ void ElidedLabel::paintEvent(QPaintEvent*) {
         p.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
     }
     paintText(p, textRect(), text(), palette().color(isEnabled() ? QPalette::Normal : QPalette::Disabled, foregroundRole()), font(),
-              alignment(), Qt::ElideMiddle);
+              alignment(), elideMode_);
 }
 
 NavigationDelegate::NavigationDelegate(QObject* parent, int rowHeight) : QStyledItemDelegate(parent), rowHeight_(rowHeight) {}
@@ -1709,10 +1718,12 @@ bool confirm(QWidget* parent, const QString& title, const QString& text, const Q
     return box->exec() == QMessageBox::Yes;
 }
 
-void alignForms(QWidget* page) {
+void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
     const auto forms = page->findChildren<QFormLayout*>();
     for (auto* form : forms) {
+        form->setLabelAlignment(Qt::AlignLeft | Qt::AlignTop);
         for (int row = 0; row < form->rowCount(); ++row) {
+            if (auto* label = form->itemAt(row, QFormLayout::LabelRole); label && label->widget()) label->widget()->setFixedHeight(scaled(Metric::control));
             auto* field = form->itemAt(row, QFormLayout::FieldRole);
             if (!field) continue;
             QList<QWidget*> controls;
@@ -1747,12 +1758,12 @@ void alignForms(QWidget* page) {
             }
         }
     }
-    // A page is one related group, but only visible rows set its requirement.
+    // Settings and Destinations can share their gutter across hidden pages.
     // Measure fields after their control sizing, and watch reflow and visibility.
     class FormMode final : public QObject {
     public:
-        FormMode(QWidget* page, const QList<QFormLayout*>& forms)
-            : QObject(page), page_(page), forms_(forms) {
+        FormMode(QWidget* page, const QList<QFormLayout*>& forms, const QList<QFormLayout*>& sharedForms)
+            : QObject(page), page_(page), forms_(forms), sharedForms_(sharedForms.isEmpty() ? forms : sharedForms), shared_(!sharedForms.isEmpty()) {
             page->installEventFilter(this);
             if (page->parentWidget()) page->parentWidget()->installEventFilter(this);
             for (auto* form : forms_) {
@@ -1776,26 +1787,28 @@ void alignForms(QWidget* page) {
         }
         void apply() {
             QString measurement;
-            for (auto* form : forms_)
+            for (auto* form : sharedForms_)
                 for (int row = 0; row < form->rowCount(); ++row)
                     if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) {
                         auto* label = item->widget();
-                        measurement += QString::number(form->parentWidget()->isVisibleTo(page_) && form->isRowVisible(row)) + label->font().key();
+                        measurement += QString::number(shared_ || (form->parentWidget()->isVisibleTo(page_) && form->isRowVisible(row))) + label->font().key();
                         for (auto* text : label->findChildren<QLabel*>()) measurement += text->text();
+                        for (auto* text : label->findChildren<QAbstractButton*>()) measurement += text->text();
                         if (auto* text = qobject_cast<QLabel*>(label)) measurement += text->text();
                     }
             if (measurement != measurement_) {
                 measurement_ = measurement;
                 int gutter = 0;
-                for (auto* form : forms_)
+                for (auto* form : sharedForms_)
                     for (int row = 0; row < form->rowCount(); ++row)
                         if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) {
                             auto* label = item->widget();
+                            label->setFixedHeight(scaled(Metric::control));
                             label->setMinimumWidth(0);
-                            if (form->parentWidget()->isVisibleTo(page_) && form->isRowVisible(row)) gutter = std::max(gutter, label->sizeHint().width());
+                            if (shared_ || (form->parentWidget()->isVisibleTo(page_) && form->isRowVisible(row))) gutter = std::max(gutter, label->sizeHint().width());
                         }
                 gutter_ = std::min(gutter, scaled(240));
-                for (auto* form : forms_)
+                for (auto* form : sharedForms_)
                     for (int row = 0; row < form->rowCount(); ++row)
                         if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) item->widget()->setMinimumWidth(gutter_);
             }
@@ -1828,12 +1841,13 @@ void alignForms(QWidget* page) {
             for (auto* form : forms_) if (form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);
         }
         QWidget* page_;
-        QList<QFormLayout*> forms_;
+        QList<QFormLayout*> forms_, sharedForms_;
+        bool shared_;
         int gutter_ = 0;
         QString measurement_;
         bool pending_ = false;
     };
-    new FormMode(page, forms);
+    new FormMode(page, forms, sharedForms);
 }
 namespace {
 class ColumnSwitch final : public QObject {

@@ -274,8 +274,11 @@ private slots:
         for (const auto& panel : {QColor("#ffffff"), QColor("#dee0e2"), QColor("#eff0f1")})
             for (const auto& tint : {Theme::trayTints(true).idle, Theme::trayTints(true).upload, Theme::trayTints(true).encoding, Theme::trayTints(true).error})
                 QVERIFY2(Theme::contrast(tint, panel) >= 3.0, qPrintable(tint.name() + " on " + panel.name()));
-        // The dark-panel set is the one put.gd always drew.
-        QCOMPARE(Theme::trayTints(false).upload, QColor("#62d69b"));
+        // Status hues come from the same semantic palette as the windows.
+        for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+            const auto& p=Theme::palette(scheme);const auto& t=Theme::trayTints(scheme==Theme::Scheme::Light);
+            QVERIFY(std::abs(t.upload.hsvHue()-p.success.hsvHue())<3);QVERIFY(std::abs(t.encoding.hsvHue()-p.accent.hsvHue())<3);QVERIFY(std::abs(t.error.hsvHue()-p.danger.hsvHue())<3);
+        }
     }
     // Graphite (2026-10-26): one painted style, no application stylesheet.
     void graphiteStylePaintsWithoutStylesheets() {

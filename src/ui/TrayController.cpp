@@ -176,6 +176,7 @@ TrayController::TrayController(OperationService& operations,
    else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
    else if (action == "edit-file") showView("editFile");
    else if (action == "settings") showSettings();
+   else if (action == "destinations") showView("destinations");
    else if (action == "history") showHistory();
    else if (action == "about") showAbout();
    else if (action == "update") showView("updates");
@@ -194,24 +195,17 @@ TrayController::TrayController(OperationService& operations,
   entry->setData(action);
   connect(entry, &QAction::triggered, this, [this, action] { invokeAction(action); });
  };
- capture("region", "Capture region");
- capture("edit", "Capture region && edit");
- capture("window", "Capture window");
- capture("desktop", "Capture desktop");
- capture("record", "Record screen");
+ const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
+ for(const auto& action:Settings::presentationOrder())capture(action,labels.value(action));
  // Other editor sources stay one level down so the menu does not grow.
  auto* editImage = menu_->addMenu("Edit image");
  editImage->menuAction()->setData("edit");
  connect(editImage->addAction("Edit clipboard image"), &QAction::triggered, this, [this] { invokeAction("edit", false, {{"source", "clipboard"}}); });
  connect(editImage->addAction("Edit an image file…"), &QAction::triggered, this, [this] { showView("editFile"); });
- capture("clipboard", "Upload clipboard");
  menu_->addSeparator();
- auto* preferences = menu_->addAction("Settings");
- preferences->setData("preferences");
- connect(preferences, &QAction::triggered, this, &TrayController::showSettings);
- auto* history = menu_->addAction("History");
- history->setData("history");
- connect(history, &QAction::triggered, this, &TrayController::showHistory);
+ for(const auto& name:QStringList{"History","Destinations","Settings"}){
+  auto* entry=menu_->addAction(name);const auto view=name.toLower();entry->setData(view=="settings"?"preferences":view);connect(entry,&QAction::triggered,this,[this,view]{showView(view);});
+ }
  updateAction_ = menu_->addAction("Update available");
  updateAction_->setData("update");updateAction_->setVisible(false);
  // Lands on Settings → General → Updates with its action focused, not the first settings page.
@@ -375,7 +369,7 @@ void TrayController::retintMenu() {
  const auto tint=Theme::trayTints(panel_.light()).idle;
  // Menu entry IDs name actions, not glyphs: map each one, so an ID without its
  // own IconArt glyph never falls back to the generic file.
- static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"window","window"},{"desktop","desktop"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"update","download"}};
+ static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"window","window"},{"desktop","desktop"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"destinations","destinations"},{"update","download"}};
  for(auto* action:menu_->actions())if(const auto glyph=glyphs.value(action->data().toString());!glyph.isEmpty())action->setIcon(VisualStyle::icon(glyph,tint));
 }
 QJsonObject TrayController::trayTint()const {
@@ -383,11 +377,10 @@ QJsonObject TrayController::trayTint()const {
 }
 void TrayController::refreshActivity() {
  const auto observations=operations_.activeObservations();
- QSet<QString> activeIds;bool encoding=false;
+ QSet<QString> activeIds;
  for(const auto& value:observations) {
   const auto op=value.toObject();
   activeIds.insert(op["id"].toString());
-  encoding=encoding||recordingHandedOver(op);
   if(!op["destination"].toObject()["providerId"].toString().isEmpty())activeUploads_.insert(op["id"].toString());
  }
  auto finished=activeUploads_;finished.subtract(activeIds);activeUploads_.intersect(activeIds);
@@ -417,13 +410,13 @@ void TrayController::refreshActivity() {
   uploadCompleteTimer_.start(int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())));
  const auto text=uploadCompleted_?QString("Upload complete"):
                  uploadVisible_&&!working?QString("Finishing upload"):activityText(observations);
- // Amber covers encoding and saving after Upload until storage traffic reveals the green fill.
+ // Active work keeps the idle glyph; only a confirmed completion turns green.
  const auto& tints=Theme::trayTints(panel_.light());
  const auto color=errorFlashTimer_.isActive()?(errorRed_?tints.error:tints.idle):
-                  uploadVisible_?tints.upload:encoding?tints.encoding:tints.idle;
+                  uploadCompleted_?tints.upload:tints.idle;
  int percent=-1;
  if(uploadVisible_&&!errorFlashTimer_.isActive()) {
-  if(uploadCompleted_)percent=100;
+  if(uploadCompleted_)percent=-1;
   else if(operations_.storageActive())percent=uploadPercent(observations);
   else percent=iconPercent_;
  }

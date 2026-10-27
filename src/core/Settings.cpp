@@ -54,6 +54,7 @@ QStringList Settings::actionNames() { return {"region", "window", "desktop", "cl
 QStringList Settings::requiredActionNames() { return {"region", "window", "desktop", "clipboard"}; }
 QString Settings::recordingActionName() { return QStringLiteral("record"); }
 QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName(); }
+QStringList Settings::presentationOrder() { return {"region", "window", "desktop", "edit", "record", "clipboard"}; }
 
 QJsonObject Settings::normalized(const QJsonObject& original) {
     auto doc = original;

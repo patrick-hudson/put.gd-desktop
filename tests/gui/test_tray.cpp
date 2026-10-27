@@ -24,10 +24,10 @@ QAction* actionNamed(QSystemTrayIcon* tray, const QString& text) {
  return nullptr;
 }
 
-int greenPixels(const QImage& image) {
+int amberPixels(const QImage& image) {
  int count=0;
  for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x)
-  if(image.pixelColor(x,y)==QColor("#62d69b"))++count;
+  if(image.pixelColor(x,y)==Theme::trayTints(false).encoding)++count;
  return count;
 }
 
@@ -158,10 +158,10 @@ private slots:
   TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();const auto idle=tray->icon().pixmap(24,24).toImage();
   auto drain=qScopeGuard([provider]{provider->deferUploads=false;for(auto complete:std::exchange(provider->completions,{}))complete();});
   operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});PUTGD_TRY_COMPARE(provider->requests.size(),1);
-  PUTGD_TRY_VERIFY(tray->icon().pixmap(24,24).toImage()!=idle);QElapsedTimer visible;visible.start();
+  provider->requests.first().progress({"uploading",1,2});PUTGD_TRY_VERIFY(tray->icon().pixmap(24,24).toImage()!=idle);QElapsedTimer visible;visible.start();
   bool idleGap=false;QTimer sampler;sampler.setInterval(1);connect(&sampler,&QTimer::timeout,this,[&]{idleGap=idleGap||tray->icon().pixmap(24,24).toImage()==idle;});sampler.start();
   provider->completions.takeFirst()();PUTGD_TRY_VERIFY(tray->toolTip().contains("Upload complete"));
-  putgd::test::settle(qMax(0,450-int(visible.elapsed())));PUTGD_TRY_VERIFY2(!idleGap,"Visible progress must hold green through receipt lookup and completion");sampler.stop();
+  putgd::test::settle(qMax(0,450-int(visible.elapsed())));PUTGD_TRY_VERIFY2(!idleGap,"Visible progress must keep its active frame through receipt lookup and completion");sampler.stop();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idle);
  }
 
@@ -177,7 +177,7 @@ private slots:
   source.payload.bytes=QByteArray(9*1024*1024,'x');operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});PUTGD_TRY_COMPARE(provider->requests.size(),2);
   provider->requests[0].progress({"uploading",1024*1024,1024*1024});provider->requests[1].progress({"uploading",0,9*1024*1024});
   PUTGD_TRY_VERIFY(tray->toolTip().contains("(100%)")&&tray->toolTip().contains("(0%)"));
-  QCOMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",QColor("#62d69b"),10).pixmap(24,24).toImage());
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,10).pixmap(24,24).toImage());
  }
 
  void uploadProgressAndActiveColorWithoutOpeningViews() {
@@ -198,24 +198,25 @@ private slots:
   source.acquisitions.takeFirst()({source.payload,{}});
   struct Drain {std::shared_ptr<OpaqueProvider> provider;~Drain(){for(auto complete:std::exchange(provider->completions,{}))complete();}} drain{provider};
   PUTGD_TRY_COMPARE(provider->requests.size(),1);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",QColor("#62d69b"),0).pixmap(24,24).toImage());
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,0).pixmap(24,24).toImage());
   provider->requests.first().progress({"uploading",2*1024*1024,4*1024*1024});
   PUTGD_TRY_VERIFY(tray->toolTip().contains("2 MiB of 4 MiB"));
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,50).pixmap(24,24).toImage());
   const auto half=tray->icon().pixmap(24,24).toImage();
   provider->requests.first().progress({"uploading",0,4*1024*1024});
   PUTGD_TRY_VERIFY(tray->toolTip().contains("(0%)"));
   const auto empty=tray->icon().pixmap(24,24).toImage();
-  QVERIFY2(greenPixels(empty)<greenPixels(half),"The green glyph must fill as transferred bytes increase");
-  int previous=greenPixels(empty);
+  QVERIFY2(amberPixels(empty)<amberPixels(half),"The amber fill must grow as transferred bytes increase");
+  int previous=amberPixels(empty);
   for(int percent:{25,50,75,100}) {
    provider->requests.first().progress({"uploading",qint64(percent)*4*1024*1024/100,4*1024*1024});
    PUTGD_TRY_VERIFY(tray->toolTip().contains(QString("(%1%)").arg(percent)));
    const auto current=tray->icon().pixmap(24,24).toImage();
-   QVERIFY(greenPixels(current)>previous);previous=greenPixels(current);
+   QVERIFY(amberPixels(current)>previous);previous=amberPixels(current);
    if(percent==50) {
     QCOMPARE(current,half);
-    QVERIFY(current.pixelColor(12,5)!=QColor("#62d69b"));
-    QCOMPARE(current.pixelColor(12,20),QColor("#62d69b"));
+    QVERIFY(current.pixelColor(12,5)!=Theme::trayTints(false).encoding);
+    QCOMPARE(current.pixelColor(12,20),Theme::trayTints(false).encoding);
    }
   }
   // A provider retry restarts its reported transfer; never retain a stale fill.
@@ -234,7 +235,7 @@ private slots:
   provider->requests.first().progress({"finalizing",4*1024*1024,4*1024*1024});
   PUTGD_TRY_VERIFY(tray->toolTip().contains("Finalizing"));
   const auto full=tray->icon().pixmap(24,24).toImage();
-  QCOMPARE(full,VisualStyle::icon("tray",QColor("#62d69b")).pixmap(24,24).toImage());
+  QCOMPARE(full,VisualStyle::icon("tray",Theme::trayTints(false).idle,100).pixmap(24,24).toImage());
   provider->completions.takeFirst()();
   PUTGD_TRY_COMPARE(tray->toolTip(),idleTooltip);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
@@ -256,7 +257,7 @@ private slots:
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),half);
   provider->completions.takeFirst()();
   PUTGD_TRY_VERIFY(tray->toolTip().contains("Upload complete"));
-  QCOMPARE(tray->icon().pixmap(24,24).toImage(),full);
+  QCOMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).upload).pixmap(24,24).toImage());
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
  }
 
@@ -272,11 +273,11 @@ private slots:
   struct Drain {std::shared_ptr<OpaqueProvider> provider;~Drain(){for(auto complete:std::exchange(provider->completions,{}))complete();}} drain{provider};
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(provider->requests.size(),1);
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.reads,2);
-  PUTGD_TRY_VERIFY(tray->toolTip().contains("Queued"));PUTGD_TRY_VERIFY(tray->icon().pixmap(24,24).toImage()!=idleIcon);
+  provider->requests.first().progress({"uploading",1,2});PUTGD_TRY_VERIFY(tray->toolTip().contains("Queued"));PUTGD_TRY_VERIFY(tray->icon().pixmap(24,24).toImage()!=idleIcon);
   provider->completions.takeFirst()();PUTGD_TRY_COMPARE(provider->requests.size(),2);
   QVERIFY(tray->toolTip()!=idleTooltip);
   provider->failUpload=true;provider->completions.takeFirst()();
-  const auto red=VisualStyle::icon("tray",QColor("#ffb4ab")).pixmap(24,24).toImage();
+  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error).pixmap(24,24).toImage();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
@@ -310,15 +311,15 @@ private slots:
   QVERIFY(settings.save(configuration(directory.path()),{}));Source source;source.payload=textPayload();
   OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
-  const auto blue=tray->icon().pixmap(24,24).toImage();const auto green=VisualStyle::icon("tray",QColor("#62d69b"),0).pixmap(24,24).toImage();
+  const auto blue=tray->icon().pixmap(24,24).toImage();const auto progressIcon=VisualStyle::icon("tray",Theme::trayTints(false).idle,0).pixmap(24,24).toImage();
   auto drain=qScopeGuard([provider]{provider->deferChecks=false;provider->deferUploads=false;for(auto complete:std::exchange(provider->checkCompletions,{}))complete();for(auto complete:std::exchange(provider->completions,{}))complete();});
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(provider->checkCompletions.size(),1);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),green);
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),progressIcon);
   QList<bool> transitions;connect(&operations,&OperationService::storageActivityChanged,this,[&]{transitions.append(operations.storageActive());});
   provider->checkCompletions.takeFirst()();PUTGD_TRY_COMPARE(provider->requests.size(),1);
   QVERIFY2(!transitions.contains(true),"An upload still preparing must not produce even a transient green event");
-  QCOMPARE(tray->icon().pixmap(24,24).toImage(),green);
-  provider->requests.first().progress({"uploading",0,provider->requests.first().artifact.bytes});PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),green);
+  QCOMPARE(tray->icon().pixmap(24,24).toImage(),progressIcon);
+  provider->requests.first().progress({"uploading",0,provider->requests.first().artifact.bytes});PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),progressIcon);
   provider->completions.takeFirst()();PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),blue);
  }
 
@@ -331,7 +332,7 @@ private slots:
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(source.copies,1);
   operations.invalidateCopyEligibility();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   HistoryStore store(operations.databasePath());QCOMPARE(store.operation(id).copyStatus,QString("suppressed"));QCOMPARE(store.operation(id).state,QString("completed"));
-  const auto success=VisualStyle::icon("tray",QColor("#62d69b")).pixmap(24,24).toImage();
+  const auto success=VisualStyle::icon("tray",Theme::trayTints(false).upload).pixmap(24,24).toImage();
   QElapsedTimer watch;watch.start();while(watch.elapsed()<1000){const auto current=tray->icon().pixmap(24,24).toImage();QVERIFY(current==blue||(current==success&&tray->toolTip().contains("Upload complete")));putgd::test::settle(20);}
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),blue);
  }
@@ -370,7 +371,7 @@ private slots:
   QVERIFY(tooltip.contains("1 MiB of 8 MiB"));QVERIFY(tooltip.contains("2 MiB of 8 MiB"));QVERIFY(tooltip.contains("3 MiB of 8 MiB"));QVERIFY(!tooltip.contains("4 MiB of 8 MiB"));
   QVERIFY(tooltip.indexOf("1 MiB")<tooltip.indexOf("2 MiB"));QVERIFY(tooltip.indexOf("2 MiB")<tooltip.indexOf("3 MiB"));
   putgd::test::settle(300);PUTGD_TRY_COMPARE(batches.size(),1);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",QColor("#62d69b"),31).pixmap(24,24).toImage());
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,31).pixmap(24,24).toImage());
   for(auto complete:std::exchange(provider->completions,{}))complete();
   PUTGD_TRY_VERIFY(!tray->toolTip().contains("Working"));
  }
@@ -388,7 +389,7 @@ private slots:
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
   PUTGD_TRY_COMPARE(source.copies,1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   HistoryStore store(operations.databasePath());const auto prior=store.operation(id);QCOMPARE(prior.items[0].local.status,QString("failed"));
-  const auto red=VisualStyle::icon("tray",QColor("#ffb4ab")).pixmap(24,24).toImage();
+  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error).pixmap(24,24).toImage();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
   putgd::test::settle(3100);
   bool failedRetryDone=false;operations.retryLocalSave(id,[&](Error e,QJsonObject){QVERIFY(!e);failedRetryDone=true;});PUTGD_TRY_VERIFY(failedRetryDone);
@@ -426,7 +427,7 @@ private slots:
   // An unsupported payload exercises ArtifactStore's preparation error.
   ClipboardPayload payload;payload.kind="unsupported";
   source.acquisitions.takeFirst()({payload,preparation?Error{}:Error{"fixture_capture_failed","Synthetic capture failure",{}}});
-  const auto red=VisualStyle::icon("tray",QColor("#ffb4ab")).pixmap(24,24).toImage();
+  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error).pixmap(24,24).toImage();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),blue);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
@@ -449,11 +450,11 @@ private slots:
   OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){QFAIL("Feedback must not open a view");},[]{});
   auto* tray=controller.findChild<QSystemTrayIcon*>();const auto blue=tray->icon().pixmap(24,24).toImage();
-  const auto green=VisualStyle::icon("tray",QColor("#62d69b"),0).pixmap(24,24).toImage();
-  const auto red=VisualStyle::icon("tray",QColor("#ffb4ab")).pixmap(24,24).toImage();
+  const auto progressIcon=VisualStyle::icon("tray",Theme::trayTints(false).idle,0).pixmap(24,24).toImage();
+  const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error).pixmap(24,24).toImage();
   auto drain=qScopeGuard([provider]{for(auto complete:std::exchange(provider->completions,{}))complete();});
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(provider->requests.size(),1);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),green);
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),progressIcon);
   if(storageFailure) {
    controller.invokeShortcut("clipboard");PUTGD_TRY_COMPARE(provider->requests.size(),2);
    provider->failUpload=true;provider->completions.takeLast()();provider->failUpload=false;
@@ -467,7 +468,7 @@ private slots:
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),blue);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  putgd::test::settle(3100);PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",QColor("#62d69b"),1).pixmap(24,24).toImage());
+  putgd::test::settle(3100);PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,1).pixmap(24,24).toImage());
   provider->completions.takeFirst()();PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),blue);
  }
 
@@ -475,7 +476,7 @@ private slots:
   QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));Source source;
   OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
-  const auto blue=tray->icon().pixmap(24,24).toImage();const auto red=VisualStyle::icon("tray",QColor("#ffb4ab")).pixmap(24,24).toImage();
+  const auto blue=tray->icon().pixmap(24,24).toImage();const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error).pixmap(24,24).toImage();
   controller.notifyFailure({"fixture_failed","Synthetic first error",{}});QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
   putgd::test::settle(2100);controller.notifyFailure({"fixture_failed","Synthetic second error",{}});
   putgd::test::settle(1100);PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
@@ -501,12 +502,12 @@ private slots:
   QPointer<QMenu> menu = tray->contextMenu();
   QVERIFY(menu);
   const auto windows = QApplication::topLevelWidgets();
-  for (const auto& name : QStringList{"Settings", "History", "About put.gd"}) {
+  for (const auto& name : QStringList{"History", "Destinations", "Settings", "About put.gd"}) {
    auto* action = actionNamed(tray, name);
    QVERIFY(action);
    action->trigger();
   }
-  QCOMPARE(views, QStringList({"settings", "history", "about"}));
+  QCOMPARE(views, QStringList({"history", "destinations", "settings", "about"}));
   // "Recent activity" opened the same History page, so it is gone.
   QVERIFY(!actionNamed(tray, "Recent activity"));
   QStringList data; for (auto* action : menu->actions()) data.append(action->data().toString());
@@ -515,7 +516,7 @@ private slots:
   QVERIFY(actionNamed(tray, "Capture region && edit"));
   // Capture entries come first in a fixed order, then the editor sources and the clipboard upload.
   QStringList texts; for (auto* action : menu->actions()) { if (action->isSeparator()) break; texts.append(action->text()); }
-  QCOMPARE(texts, QStringList({"Capture region", "Capture region && edit", "Capture window", "Capture desktop", "Record screen", "Edit image", "Upload clipboard"}));
+  QCOMPARE(texts, QStringList({"Capture region", "Capture window", "Capture desktop", "Capture region && edit", "Record screen", "Upload clipboard", "Edit image"}));
   // Other editor sources sit in one submenu; a file opens the main window's picker.
   QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit image") editImage = action->menu();
   QVERIFY(editImage); QCOMPARE(editImage->actions().size(), 2);
@@ -706,10 +707,9 @@ private slots:
   const int raises=backend->log.count("raise");controller.invokeShortcut("record");PUTGD_TRY_COMPARE(backend->log.count("raise"),raises+1);QCOMPARE(state(),QString("reviewing"));
  }
 
- // A recording keeps the idle icon through capture, review and Save copy; Upload
- // turns it amber while the clip is encoded and saved, then the ordinary upload
- // feedback takes over: dark green filling up, bright green on completion.
- void recordingKeepsIdleColorUntilUploadThenAmberThenGreen() {
+ // Recording and encoding keep the idle glyph; transfer fills amber and only
+ // a confirmed upload turns the glyph green.
+ void recordingKeepsIdleColorUntilTransferThenAmberFillThenGreen() {
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
   QVERIFY(settings.save(configuration(directory.path()),{}));
@@ -717,9 +717,8 @@ private slots:
   auto fake=std::make_unique<FakeRecordingBackend>();auto* backend=fake.get();backend->deferExports=true;backend->exportBytes=QByteArray("\0\0\0\x18" "ftypisom",12)+QByteArray(4*1024*1024,'r');operations.setRecordingBackend(std::move(fake));
   TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);
   const auto idle=tray->icon().pixmap(24,24).toImage();
-  const auto amber=VisualStyle::icon("tray",QColor("#f3c66f")).pixmap(24,24).toImage();
-  const auto green=VisualStyle::icon("tray",QColor("#62d69b"),0).pixmap(24,24).toImage();
-  QVERIFY(amber!=idle&&green!=idle);
+  const auto progressIcon=VisualStyle::icon("tray",Theme::trayTints(false).idle,0).pixmap(24,24).toImage();
+  QCOMPARE(progressIcon,idle);
   auto command=[&](const QString& name,const QJsonObject& params){QJsonObject out;bool done=false;operations.recordingCommand(name,params,[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(name+": "+e.message));out=r;done=true;});(void)putgd::test::waitFor([&]{return done;});return out;};
   const auto id=command("prepare",{{"target",QJsonObject{{"kind","region"},{"rect",QJsonArray{100,100,1280,720}}}},{"format","mp4"}})["recordingId"].toString();QVERIFY(!id.isEmpty());
   PUTGD_TRY_VERIFY(tray->toolTip().contains("Ready to record"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
@@ -731,17 +730,18 @@ private slots:
   PUTGD_TRY_COMPARE(backend->pendingExports.size(),1);backend->pendingExports.takeFirst()();PUTGD_TRY_VERIFY(saved);
   PUTGD_TRY_VERIFY(tray->toolTip().contains("Reviewing the recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
   bool uploaded=false;operations.recordingCommand("upload",{{"id",id},{"revision",1}},[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.message));uploaded=true;});
-  PUTGD_TRY_VERIFY(tray->toolTip().contains("Encoding the recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),amber);
+  PUTGD_TRY_VERIFY(tray->toolTip().contains("Encoding the recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
   PUTGD_TRY_COMPARE(backend->pendingExports.size(),1);backend->pendingExports.takeFirst()();PUTGD_TRY_VERIFY(uploaded);
   struct Drain {std::shared_ptr<OpaqueProvider> provider;~Drain(){for(auto complete:std::exchange(provider->completions,{}))complete();}} drain{provider};
   PUTGD_TRY_COMPARE(provider->requests.size(),1);
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),green);
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),progressIcon);
   provider->requests.first().progress({"uploading",2*1024*1024,4*1024*1024});
   PUTGD_TRY_VERIFY(tray->toolTip().contains("(50%)"));
-  const auto half=tray->icon().pixmap(24,24).toImage();QVERIFY(half.pixelColor(12,5)!=QColor("#62d69b"));QCOMPARE(half.pixelColor(12,20),QColor("#62d69b"));
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,50).pixmap(24,24).toImage());
+  const auto half=tray->icon().pixmap(24,24).toImage();QVERIFY(half.pixelColor(12,5)!=Theme::trayTints(false).encoding);QCOMPARE(half.pixelColor(12,20),Theme::trayTints(false).encoding);
   provider->requests.first().progress({"finalizing",4*1024*1024,4*1024*1024});
   std::exchange(provider->completions,{}).first()();
-  const auto success=VisualStyle::icon("tray",QColor("#62d69b")).pixmap(24,24).toImage();
+  const auto success=VisualStyle::icon("tray",Theme::trayTints(false).upload).pixmap(24,24).toImage();
   PUTGD_TRY_VERIFY(tray->icon().pixmap(24,24).toImage()==success&&tray->toolTip().contains("Upload complete"));
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idle);
  }

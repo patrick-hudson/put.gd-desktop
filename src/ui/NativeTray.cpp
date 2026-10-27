@@ -1,4 +1,5 @@
 #include "NativeTray.h"
+#include "core/Settings.h"
 #include <QSet>
 #include "IconArt.h"
 #include "Theme.h"
@@ -104,14 +105,16 @@ constexpr Entry entries[] {
  {"Edit image", "", 0}, {"Edit clipboard image", "edit-clipboard", 13}, {"Edit an image file…", "edit-file", 13},
  {"Record screen", "record", 0},
  // Hidden until a stable update is available; its label names the version (#293).
- {"Update available", "update", 0}
+ {"Update available", "update", 0}, {"Destinations", "destinations", 0}
 };
 constexpr int updateId = 17;
-constexpr int rootOrder[] {1, 5, 2, 3, 16, 13, 4, 6, 7, 8, 17, 10, 11, 12};
 constexpr int entryCount = sizeof(entries) / sizeof(entries[0]);
 QList<int> childrenOf(int id) {
  QList<int> result;
- if (id == 0) for (int child : rootOrder) result.append(child);
+ if (id == 0) {
+  for(const auto& action:Settings::presentationOrder())for(int child=1;child<=entryCount;++child)if(QLatin1String(entries[child-1].action)==action)result.append(child);
+  result.append({13,6,8,18,7,17,10,11,12});
+ }
  else for (int i = 1; i <= entryCount; ++i) if (entries[i-1].parent == id) result.append(i);
  return result;
 }
