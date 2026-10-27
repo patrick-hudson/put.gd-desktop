@@ -30,9 +30,10 @@ AboutWindow::AboutWindow(const QJsonObject& residentBuild, QWidget* parent)
  setIconPixmap(VisualStyle::icon("brand").pixmap(48,48));
  auto* website=new QPushButton("put.gd website",this);website->setObjectName("putgdWebsite");VisualStyle::role(website,"link");website->setProperty("graphiteFlush",true);
  auto* browser=new Graphite::BrowserFeedback(this);browser->setObjectName("aboutWebsiteFeedback");
- auto* version=new Graphite::ElidedLabel(this);version->setObjectName("aboutVersion");version->setText(residentBuild["version"].toString());version->setFont(Graphite::monoFont(Graphite::Type::metadata));Graphite::setMono(version,Graphite::Type::metadata);version->setMinimumWidth(Graphite::scaled(220));version->setMaximumWidth(Graphite::scaled(320));
+ setMinimumWidth(Graphite::scaled(380));
+ auto* version=new QLabel(this);version->setTextFormat(Qt::PlainText);version->setWordWrap(true);version->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);version->setObjectName("aboutVersion");version->setText(residentBuild["version"].toString());version->setFont(Graphite::monoFont(Graphite::Type::metadata));Graphite::setMono(version,Graphite::Type::metadata);version->setMinimumWidth(Graphite::scaled(220));version->setMaximumWidth(Graphite::scaled(280));
  if(auto* grid=qobject_cast<QGridLayout*>(layout())){
-  auto* info=findChild<QLabel*>("qt_msgbox_informativelabel");auto* content=new QWidget(this);auto* column=new QVBoxLayout(content);column->setContentsMargins(0,0,0,0);column->setSpacing(8);grid->removeWidget(info);column->addWidget(info);column->addWidget(website,0,Qt::AlignLeft);column->addWidget(version);column->addWidget(browser);grid->addWidget(content,1,2);
+  auto* info=findChild<QLabel*>("qt_msgbox_informativelabel");auto* content=new QWidget(this);content->setMinimumWidth(Graphite::scaled(300));auto* column=new QVBoxLayout(content);column->setContentsMargins(0,0,0,0);column->setSpacing(8);grid->removeWidget(info);column->addWidget(info);column->addWidget(website,0,Qt::AlignLeft);column->addWidget(version);column->addWidget(browser);grid->addWidget(content,1,2);
  }
  if(auto* buttons=findChild<QDialogButtonBox*>()){buttons->setCenterButtons(false);if(auto* grid=qobject_cast<QGridLayout*>(layout()))grid->setAlignment(buttons,Qt::AlignRight);}
  VisualStyle::role(button(QMessageBox::Close),"primary");setDefaultButton(QMessageBox::Close);

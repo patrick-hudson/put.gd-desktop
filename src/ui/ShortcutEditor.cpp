@@ -69,16 +69,14 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
  auto* form=new QFormLayout;VisualStyle::styleForm(form);layout->addLayout(form);
  // The command names the main window, menu and tray use.
  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"record","Record screen"}};
- auto* helpToggle=new QToolButton(this);helpToggle->setObjectName("shortcutHelpToggle");helpToggle->setText("How shortcuts work");Graphite::disclosure(helpToggle);helpToggle->setProperty("graphiteFlush",true);layout->insertWidget(0,helpToggle,0,Qt::AlignLeft);auto* help=new QLabel("Choose Change…, press one key with optional modifiers, then release all keys. Escape cancels; Clear turns the shortcut off. Changes save automatically. Your desktop confirms each binding and reports conflicts below.",this);help->setObjectName("shortcutHelp");help->setWordWrap(true);VisualStyle::role(help,"muted");layout->insertWidget(1,help);help->hide();connect(helpToggle,&QToolButton::toggled,this,[help,helpToggle](bool open){help->setVisible(open);helpToggle->setArrowType(open?Qt::DownArrow:Qt::RightArrow);});
+ auto* helpToggle=new QToolButton(this);helpToggle->setObjectName("shortcutHelpToggle");helpToggle->setText("How shortcuts work");Graphite::disclosure(helpToggle);helpToggle->setProperty("graphiteFlush",true);layout->insertWidget(0,helpToggle,0,Qt::AlignLeft);auto* help=new QLabel("Click a shortcut field, press one key with optional modifiers, then release all keys. Escape cancels; × turns the shortcut off. Changes save automatically. Your desktop confirms each binding and reports conflicts below.",this);help->setObjectName("shortcutHelp");help->setWordWrap(true);VisualStyle::role(help,"muted");layout->insertWidget(1,help);help->hide();connect(helpToggle,&QToolButton::toggled,this,[help,helpToggle](bool open){help->setVisible(open);helpToggle->setArrowType(open?Qt::DownArrow:Qt::RightArrow);});
  const auto defaultActions=Settings::defaults()["actions"].toObject();
  for(const auto& action:Settings::presentationOrder()) {
   auto* field=new QWidget(this);auto* fieldLayout=new QVBoxLayout(field);fieldLayout->setContentsMargins(0,0,0,0);fieldLayout->setSpacing(6);
   auto* row=new QHBoxLayout;fieldLayout->addLayout(row);
-  auto* input=new QLineEdit(field);input->setObjectName("shortcut"+title(action));input->setAccessibleName(action+" shortcut");input->setReadOnly(true);input->setFrame(false);input->setPlaceholderText("Not set");input->setAccessibleDescription("Choose Change…, press one key with modifiers, then release all keys. Escape cancels. Changes save automatically.");editors_[action]=input;
-  // A key combination is short: a bounded display keeps Change and Clear beside it.
-  input->setMaximumWidth(Graphite::scaled(260));row->addWidget(input,1);
-  auto* record=new QPushButton("Change…",field);record->setObjectName("record"+title(action)+"Shortcut");record->setAccessibleName("Change "+labels.value(action).toLower()+" shortcut");recordButtons_[action]=record;row->addWidget(record);
-  auto* clear=new QPushButton("Clear",field);clear->setObjectName("clear"+title(action)+"Shortcut");clear->setAccessibleName("Clear "+labels.value(action).toLower()+" shortcut");clear->setToolTip("Disable this shortcut.");clear->setEnabled(false);connect(input,&QLineEdit::textChanged,clear,[clear](const QString& text){clear->setEnabled(!text.isEmpty());});row->addWidget(clear);row->addStretch();
+  auto* input=new QLineEdit(field);input->setObjectName("shortcut"+title(action));input->setAccessibleName(action+" shortcut");input->setReadOnly(true);input->setFrame(false);input->setPlaceholderText("Not set");input->setAccessibleDescription("Click a shortcut field, press one key with modifiers, then release all keys. Escape cancels. Changes save automatically.");editors_[action]=input;
+  auto* record=new QPushButton(field);record->setObjectName("record"+title(action)+"Shortcut");record->setAccessibleName("Change "+labels.value(action).toLower()+" shortcut");record->setMaximumWidth(Graphite::scaled(280));record->setMinimumHeight(Graphite::scaled(Graphite::Metric::control));recordButtons_[action]=record;row->addWidget(record,1);auto* keycap=new QHBoxLayout(record);keycap->setContentsMargins(10,0,2,0);keycap->setSpacing(4);input->setParent(record);input->setAttribute(Qt::WA_TransparentForMouseEvents);input->setFocusPolicy(Qt::NoFocus);keycap->addWidget(input,1);
+  auto* clear=new QPushButton("×",record);clear->setObjectName("clear"+title(action)+"Shortcut");clear->setAccessibleName("Clear "+labels.value(action).toLower()+" shortcut");clear->setToolTip("Disable this shortcut.");VisualStyle::role(clear,"quiet");clear->setFixedWidth(Graphite::scaled(32));clear->setEnabled(false);connect(input,&QLineEdit::textChanged,clear,[clear](const QString& text){clear->setEnabled(!text.isEmpty());});keycap->addWidget(clear);row->addStretch();
   connect(record,&QPushButton::clicked,this,[this,action]{if(recordingAction_==action)cancelRecording();else startRecording(action);});
   connect(clear,&QPushButton::clicked,this,[this,input]{cancelRecording();input->clear();});
   auto* binding=new QLabel(field);binding->setObjectName("shortcut"+title(action)+"Status");binding->setAccessibleName(action+" actual shortcut status");binding->setWordWrap(true);VisualStyle::role(binding,"binding");bindingStates_[action]=binding;fieldLayout->addWidget(binding);
@@ -97,7 +95,7 @@ void ShortcutEditor::setActions(const QJsonObject& actions){cancelRecording();fo
 void ShortcutEditor::startRecording(const QString& action){
  cancelRecording();recordingAction_=action;recordingReady_=false;chord_={};pressed_.clear();
  const auto generation=++recordingGeneration_;
- recordButtons_[action]->setText("Cancel");recordButtons_[action]->setFocusPolicy(Qt::NoFocus);
+ editors_[action]->setPlaceholderText("Press shortcut…");recordButtons_[action]->setFocusPolicy(Qt::NoFocus);
  recordingStatus_->setText("Preparing to record… Escape cancels.");recordingStatus_->show();
  editors_[action]->setFocus();qApp->installEventFilter(this);
  if(!chordResolver_)keyboard_=std::make_unique<ShortcutKeyboard>();
@@ -114,7 +112,7 @@ void ShortcutEditor::cancelRecording(){if(!recordingAction_.isEmpty())finishReco
 void ShortcutEditor::finishRecording(const QString& message){
  if(recordingAction_.isEmpty())return;
  ++recordingGeneration_;recordingReady_=false;qApp->removeEventFilter(this);
- recordButtons_[recordingAction_]->setText("Change…");recordButtons_[recordingAction_]->setFocusPolicy(Qt::StrongFocus);recordingAction_.clear();pressed_.clear();chord_={};keyboard_.reset();
+ editors_[recordingAction_]->setPlaceholderText("Not set");recordButtons_[recordingAction_]->setFocusPolicy(Qt::StrongFocus);recordingAction_.clear();pressed_.clear();chord_={};keyboard_.reset();
  recordingStatus_->setText(message);
  if(recordingControl_){QPointer<ShortcutEditor> guard(this);const auto generation=recordingGeneration_;recordingControl_(false,[guard,generation](Error error){
   // Saving settings can supersede this restore. The newer binding request owns

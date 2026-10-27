@@ -151,10 +151,19 @@ void feedback(QLabel* label,const QString& text,bool error){setFeedback(label,te
 void success(QLabel* label,const QString& text){setFeedback(label,text,"success");}
 QToolButton* helpButton(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setToolTip(description);control->setAccessibleDescription(qobject_cast<QCheckBox*>(control)?title+". "+description:description);control->setProperty("settingDescription",control->accessibleDescription());
- auto* button=new QToolButton(parent);button->setObjectName(control->objectName()+"Help");button->setProperty("settingHelpFor",control->objectName());button->setProperty("visualRole","info");button->setIcon(icon("info"));button->setIconSize(QSize(Graphite::scaled(18),Graphite::scaled(18)));
+ auto* button=new QToolButton(parent);button->setObjectName(control->objectName()+"Help");button->setProperty("settingHelpFor",control->objectName());button->setProperty("visualRole","quiet");button->setCheckable(true);button->setIcon(icon("info"));button->setIconSize(QSize(Graphite::scaled(18),Graphite::scaled(18)));
  // A 32 px pointer target around the same small glyph (Graphite: 32–36 px targets).
  button->setFixedSize(Graphite::scaled(32),Graphite::scaled(32));button->setFocusPolicy(Qt::StrongFocus);button->setAccessibleName("Help for "+title);button->setAccessibleDescription(description);button->setToolTip(description);
- QObject::connect(button,&QToolButton::clicked,button,[button,title,description]{showHelp(title,description,button->window());});return button;
+ QObject::connect(button,&QToolButton::toggled,button,[button,control,description](bool open){
+  auto* note=button->property("inlineHelp").value<QLabel*>();
+  if(!note){note=new QLabel(description);note->setObjectName(control->objectName()+"HelpText");note->setTextFormat(Qt::PlainText);note->setWordWrap(true);note->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);role(note,"muted");bool placed=false;for(auto* row=control->parentWidget();row&&!placed;row=row->parentWidget())if(row->property("inlineHelpRow").toBool()){qobject_cast<QVBoxLayout*>(row->layout())->addWidget(note);placed=true;}
+   // Follow the field's layout so help appears below the value, not in the label gutter.
+   for(auto* form:control->window()->findChildren<QFormLayout*>())for(int row=0;row<form->rowCount()&&!placed;++row){auto* item=form->itemAt(row,QFormLayout::FieldRole);if(!item||!item->widget())continue;auto* field=item->widget();if(field!=control&&!field->isAncestorOf(control))continue;if(auto* column=qobject_cast<QVBoxLayout*>(field->layout()))column->addWidget(note);else form->insertRow(row+1,QString{},note);placed=true;}
+   if(!placed){auto* field=control->parentWidget();while(field&&field->layout()&&!qobject_cast<QVBoxLayout*>(field->layout()))field=field->parentWidget();if(field&&qobject_cast<QVBoxLayout*>(field->layout()))qobject_cast<QVBoxLayout*>(field->layout())->addWidget(note);else{delete note;button->setChecked(false);return;}}
+   button->setProperty("inlineHelp",QVariant::fromValue(note));
+  }
+  note->setVisible(open);button->setAccessibleDescription(open?"Explanation shown. "+description:description);
+ });return button;
 }
 void showHelp(const QString& title,const QString& description,QWidget* parent){
  auto* dialog=new QMessageBox(QMessageBox::NoIcon,title,title,QMessageBox::Close,parent);dialog->setObjectName("settingHelpDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->setTextFormat(Qt::PlainText);dialog->setInformativeText(description);dialog->open();
@@ -168,7 +177,7 @@ QWidget* settingLabel(const QString& title,const QString& description,QWidget* c
 }
 QWidget* settingRow(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setAccessibleName(qobject_cast<QCheckBox*>(control)?static_cast<QCheckBox*>(control)->text():title);control->setToolTip(description);control->setAccessibleDescription(qobject_cast<QCheckBox*>(control)?title+". "+description:description);control->setProperty("settingDescription",control->accessibleDescription());
- auto* row=new QWidget(parent);row->setMinimumHeight(Graphite::scaled(32));auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);layout->addWidget(control);if(!description.trimmed().isEmpty()&&description.simplified()!=title.simplified())layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
+ auto* row=new QWidget(parent);row->setProperty("inlineHelpRow",true);row->setMinimumHeight(Graphite::scaled(32));auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);column->setSpacing(6);auto* layout=new QHBoxLayout;column->addLayout(layout);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);layout->addWidget(control);if(!description.trimmed().isEmpty()&&description.simplified()!=title.simplified())layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
 }
 namespace {
 void setPalette(QApplication& app){app.setPalette(Graphite::palette());}

@@ -214,9 +214,9 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   fill(secondary);QPainterPath drum;drum.addRect(QRectF(4,6,16,12));drum.addEllipse(QRectF(4,14,16,8));p.drawPath(drum.simplified());
   fill(color);p.drawEllipse(QRectF(4,2,16,8));line(color,1.8);p.drawArc(QRectF(4,9.5,16,7),180*16,180*16);
  } else if(name=="proton") {
-  // Places and objects share a filled secondary silhouette and main detail.
-  fill(secondary);QPainterPath cloud;cloud.moveTo(6,20);cloud.cubicTo(-1,20,0,10,6,10);cloud.cubicTo(6,1,18,1,19,10);cloud.cubicTo(25,11,24,20,19,20);cloud.closeSubpath();p.drawPath(cloud);
-  line(color,1.8);p.drawArc(QRectF(5,8,14,11),195*16,150*16);
+  // Cloud storage with a distinct folder front, readable at sidebar sizes.
+  fill(secondary);QPainterPath cloud;cloud.moveTo(5,15);cloud.cubicTo(-1,15,0,7,6,7);cloud.cubicTo(7,0,17,0,19,7);cloud.cubicTo(25,8,24,15,19,15);cloud.closeSubpath();p.drawPath(cloud);
+  fill(color);QPainterPath folder;folder.moveTo(4,12);folder.lineTo(10,12);folder.lineTo(12,14);folder.lineTo(21,14);folder.lineTo(20,22);folder.lineTo(4,22);folder.closeSubpath();p.drawPath(folder);
  } else if(name=="add") {
   fill(secondary);p.drawEllipse(QRectF(2,2,20,20));
   line(color,2.5);p.drawLine(QPointF(12,7),QPointF(12,17));p.drawLine(QPointF(7,12),QPointF(17,12));

@@ -31,6 +31,8 @@ constexpr int navRow = 38, destinationRow = 68, historyRow = 76, thumbWidth = 80
 constexpr int sidebar = 216, historySidebar = sidebar, settingsSidebar = sidebar, destinationSidebar = sidebar, inspector = 340;
 // Text enlarges inside a measured rail; horizontal space stays bounded.
 constexpr int sidebarMax = 240;
+// Each form family measures its labels up to this bound.
+constexpr int labelGutter = 220;
 }
 // Type sizes in pixels; weights are 400 and 600 only. Technical values (paths,
 // URLs, prefixes, bucket names, identifiers) use Plex Mono at body size: the

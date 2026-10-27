@@ -1973,7 +1973,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
             }
         }
     }
-    // Share within one form family, excluding hidden provider fields.
+    // Share within one form family, including its other provider forms.
     // Measure fields after their control sizing, and watch reflow and visibility.
     class FormMode final : public QObject {
     public:
@@ -2026,12 +2026,20 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
                             auto* label = item->widget();
                             label->setFixedHeight(scaled(Metric::control));
                             label->setMinimumWidth(0);
-                            if (measured(form, row)) gutter = std::max(gutter, label->sizeHint().width());
+                            int intrinsic = 0, parts = 0;
+                            if (auto* text = qobject_cast<QLabel*>(label)) intrinsic = text->fontMetrics().horizontalAdvance(QString(text->text()).replace("&&", "&"));
+                            else {
+                                for (auto* text : label->findChildren<QLabel*>(Qt::FindDirectChildrenOnly)) { intrinsic += text->fontMetrics().horizontalAdvance(QString(text->text()).replace("&&", "&")); ++parts; }
+                                for (auto* button : label->findChildren<QAbstractButton*>(Qt::FindDirectChildrenOnly)) { intrinsic += button->sizeHint().width(); ++parts; }
+                                if (parts > 1 && label->layout()) intrinsic += (parts - 1) * label->layout()->spacing();
+                            }
+                            gutter = std::max(gutter, intrinsic);
                         }
-                gutter_ = std::min(gutter, scaled(240));
+                // The 16 px gap is included in the unscaled cap.
+                gutter_ = std::max(0, std::min(gutter + 16, Metric::labelGutter) - 16);
                 for (auto* form : sharedForms_)
                     for (int row = 0; row < form->rowCount(); ++row)
-                        if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) item->widget()->setMinimumWidth(gutter_);
+                        if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) { item->widget()->setFixedWidth(gutter_); for (auto* text : item->widget()->findChildren<QLabel*>()) text->setWordWrap(true); if (auto* text = qobject_cast<QLabel*>(item->widget())) text->setWordWrap(true); item->widget()->setFixedHeight(std::max(scaled(Metric::control), item->widget()->heightForWidth(gutter_))); }
             }
             bool stack = false;
             const int pageWidth = page_->parentWidget() ? std::min(page_->width(), page_->parentWidget()->width()) : page_->width();
@@ -2153,6 +2161,7 @@ void transparentView(QAbstractScrollArea* view) {
 void disclosure(QToolButton* button) {
     button->setCheckable(true);
     button->setProperty("graphiteDisclosure", true);
+    button->setProperty("graphiteFlush", true);
     button->setProperty("visualRole", "quiet");
     button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     button->setIconSize(QSize(14, 14));
