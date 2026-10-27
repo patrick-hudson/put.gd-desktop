@@ -327,7 +327,7 @@ void setLocked(QWidget* widget, bool locked) {
     widget->update();
 }
 bool isLocked(const QWidget* widget) { return widget && widget->property("graphiteLocked").toBool(); }
-int sidebarWidth(int, int) { return scaled(Metric::sidebar); }
+int sidebarWidth(int baseline, int natural) { return std::clamp(natural, baseline, Metric::sidebarMax); }
 QPalette palette() {
     const auto& p = t();
     QPalette palette;
@@ -1929,7 +1929,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
                 const int available = pageWidth - margins;
                 // Shared Settings/Destinations forms switch at the same useful
                 // control width, independent of which provider is visible.
-                stack |= available < gutter_ + std::max(0, form->horizontalSpacing()) + (shared_ ? scaled(320) : fieldWidth);
+                stack |= available < gutter_ + std::max(0, form->horizontalSpacing()) + (shared_ ? std::max(240, std::min(320, fieldWidth)) : fieldWidth);
             }
             const auto policy = stack ? QFormLayout::WrapAllRows : QFormLayout::DontWrapRows;
             for (auto* form : forms_) if (form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);

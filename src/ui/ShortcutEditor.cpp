@@ -63,7 +63,7 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
  // specific to their action.
  auto* statusRow=new QHBoxLayout;statusRow->setContentsMargins(0,0,0,0);statusRow->setSpacing(12);layout->addLayout(statusRow);
  status_=new QLabel(this);status_->setObjectName("shortcutStatus");status_->setWordWrap(true);VisualStyle::role(status_,"muted");statusRow->addWidget(status_,1);
- refresh_=new QPushButton("Refresh desktop support",this);refresh_->setObjectName("refreshShortcutSupport");refresh_->setToolTip("Ask the desktop again which shortcuts it holds.");statusRow->addWidget(refresh_,0,Qt::AlignVCenter);
+ refresh_=new QPushButton("Check shortcuts again",this);refresh_->setObjectName("refreshShortcutSupport");refresh_->setToolTip("Ask the desktop again which shortcuts it holds.");statusRow->addWidget(refresh_,0,Qt::AlignVCenter);
  connect(refresh_,&QPushButton::clicked,this,[this]{if(refreshAction_)refreshAction_();});
  recordingStatus_=new QLabel(this);recordingStatus_->setObjectName("shortcutRecordingStatus");recordingStatus_->setAccessibleName("Shortcut recording status");recordingStatus_->setWordWrap(true);VisualStyle::role(recordingStatus_,"status");layout->addWidget(recordingStatus_);recordingStatus_->hide();
  auto* form=new QFormLayout;VisualStyle::styleForm(form);layout->addLayout(form);
@@ -171,9 +171,9 @@ void ShortcutEditor::setStatus(const QJsonObject& status) {
   label->setVisible(presentation.shown&&!confirmed);
   unreported|=entry.isEmpty()&&!draft.isEmpty();attention|=!confirmed&&presentation.shown&&qstrcmp(presentation.tone,"muted")!=0;
  }
- if(!status.contains("available"))status_->setText("Your desktop hasn't reported these shortcuts yet.");
+ if(!status.contains("available"))status_->setText("Waiting for the desktop to confirm these shortcuts");
  else if(!status["available"].toBool())status_->setText("Global shortcuts are unavailable on this desktop.");
- else if(unreported)status_->setText("Your desktop hasn't reported every shortcut yet. Changes save automatically.");
+ else if(unreported)status_->setText("Waiting for the desktop to confirm these shortcuts");
  else if(attention)status_->setText("Changes save automatically. The notes below say what the desktop reported.");
  else status_->setText("Your desktop holds these shortcuts. Changes save automatically.");
  refresh_->setVisible(!status["available"].toBool()||unreported||attention);

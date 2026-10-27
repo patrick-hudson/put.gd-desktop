@@ -22,6 +22,7 @@
 #include <QPainter>
 #include <QMenu>
 #include <QHBoxLayout>
+#include <QGridLayout>
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -56,7 +57,9 @@ protected:
 };
 class EditSourceButton final:public QToolButton {
 public:using QToolButton::QToolButton;
-protected:void paintEvent(QPaintEvent*)override{QStyleOptionToolButton option;initStyleOption(&option);QPainter p(this);if(!property("captureUnavailable").toBool()){style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);return;}const auto main=menu()?style()->subControlRect(QStyle::CC_ToolButton,&option,QStyle::SC_ToolButton,this):rect();p.save();p.setClipRect(main);auto disabled=option;disabled.state&=~(QStyle::State_Enabled|QStyle::State_MouseOver|QStyle::State_Sunken);style()->drawComplexControl(QStyle::CC_ToolButton,&disabled,&p,this);p.restore();p.setClipRegion(QRegion(rect()).subtracted(QRegion(main)));style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);}
+protected:
+ void keyPressEvent(QKeyEvent* event)override{if(event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter){click();event->accept();return;}QToolButton::keyPressEvent(event);}
+ void paintEvent(QPaintEvent*)override{QStyleOptionToolButton option;initStyleOption(&option);QPainter p(this);if(!property("captureUnavailable").toBool()){style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);return;}const auto main=menu()?style()->subControlRect(QStyle::CC_ToolButton,&option,QStyle::SC_ToolButton,this):rect();p.save();p.setClipRect(main);auto disabled=option;disabled.state&=~(QStyle::State_Enabled|QStyle::State_MouseOver|QStyle::State_Sunken);style()->drawComplexControl(QStyle::CC_ToolButton,&disabled,&p,this);p.restore();p.setClipRegion(QRegion(rect()).subtracted(QRegion(main)));style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);}
 };
 QString unavailableOutput(const QJsonObject& document,const QString& action){
  const auto route=Settings::effectiveAction(document,action);const bool local=document["archive"].toObject()["keepUploads"].toBool();
@@ -100,7 +103,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  tabs_=new Graphite::Segmented(header);tabs_->setObjectName("mainNavigation");tabs_->setAccessibleName("Main navigation");for(const auto* label:{"History","Destinations","Settings"})tabs_->addTab(label);header->setCentre(tabs_);
  auto* center=new QWidget;setCentralWidget(center);auto* layout=new QVBoxLayout(center);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
  // The command band: capture and upload actions, primary first.
- band_=new Graphite::Surface("bg",{},center);band_->setObjectName("commandBand");band_->setAccessibleName("Capture and upload actions");band_->installEventFilter(this);auto* bandRow=new QHBoxLayout(band_);bandRow->setContentsMargins(12,10,12,11);bandRow->setSpacing(6);layout->addWidget(band_);
+ band_=new Graphite::Surface("bg",{},center);band_->setObjectName("commandBand");band_->setAccessibleName("Capture and upload actions");band_->installEventFilter(this);auto* bandRow=new QGridLayout(band_);bandRow->setContentsMargins(12,10,12,11);bandRow->setSpacing(6);layout->addWidget(band_);
  const QHash<QString,QString> explanations{{"region","Drag to select an area of your screen. Press Escape to cancel."},{"window","Capture the focused external app window, including its frame where supported."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Upload copied local files, an image, or plain text, in that order. Text URLs are uploaded as text."},{"edit","Select a region, then redact, blur, crop or annotate it. Nothing uploads until you choose Upload.\n\nUse its menu to edit the clipboard image or an image file instead, or drop a PNG or JPEG on this button."},{"record","Drag to select an area, then use the floating bar to record, pause and stop. Stop opens a review window; nothing uploads until you choose Upload there."}};
  const auto actionHelp=[&]{QStringList help;for(const auto& action:Settings::presentationOrder())help<<labels.value(action)+": "+explanations.value(action);help<<"Each button starts that action after finished settings edits are saved. Screen captures close this window to keep it out of the capture; clipboard uploads keep it open. Store or clear unfinished credentials before a screen capture. Settings → Capture selects the upload destination, and Keep a local copy independently enables local saving. Both can be enabled. With neither enabled, capture actions are unavailable. Shared uploads copy a link; private uploads create no link. Select the output summary in the status bar to see each action's output behavior. Results and recovery actions appear in History.";return help.join("\n\n");}();
  // Three groups, each action once: the screenshots (Capture region is the
@@ -108,8 +111,8 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  // upload, which captures nothing. Hairlines separate the groups.
  const auto bandOrder=Settings::presentationOrder();
  for(const auto& action:bandOrder){
-  if(action=="edit"){auto* divider=Graphite::rule(band_,Qt::Vertical);divider->setObjectName("commandBandDivider");divider->setFixedHeight(Graphite::scaled(20));bandRow->addSpacing(6);bandRow->addWidget(divider,0,Qt::AlignVCenter);bandRow->addSpacing(6);}
-  if(action=="clipboard")bandRow->addStretch();
+  if(action=="edit"){auto* divider=Graphite::rule(band_,Qt::Vertical);divider->setObjectName("commandBandDivider");divider->setFixedHeight(Graphite::scaled(20));bandRow->addWidget(divider,0,3,Qt::AlignCenter);}
+  if(action=="clipboard")bandRow->setColumnStretch(6,1);
   auto* button=new EditSourceButton(band_);button->setText(QString(labels.value(action)).replace('&',QStringLiteral("&&")));button->setFocusPolicy(Qt::StrongFocus);button->setIconSize(QSize(Graphite::scaled(Graphite::Metric::icon),Graphite::scaled(Graphite::Metric::icon)));button->setIcon(VisualStyle::icon(glyphs.value(action)));button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);VisualStyle::role(button,action=="region"?"primary":"quiet");button->setObjectName("captureActionButton");button->setProperty("captureAction",action);button->setAccessibleName(labels.value(action));
   if(action=="edit"){
    // The button captures a region to edit; its menu edits an image that
@@ -128,7 +131,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    button->setAccessibleDescription(unavailable.isEmpty()?explanations.value(action):(action=="edit"?"Region capture unavailable: "+unavailable+" Existing images can still be edited.":"Unavailable: "+unavailable));
    button->setToolTip(button->accessibleName()+(key.isEmpty()?QString{}:QString(" · ")+key));
   };
-  connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QToolButton::clicked,this,[this,action]{if(unavailableOutput(session_.document(),action).isEmpty())emit actionRequested(action);});bandRow->addWidget(button);actionButtons_<<button;
+  connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QToolButton::clicked,this,[this,action]{const auto reason=unavailableOutput(session_.document(),action);if(reason.isEmpty())emit actionRequested(action);else showActionFailure(action,{"output_required",reason,{}});});bandRow->addWidget(button,0,action=="region"?0:action=="window"?1:action=="desktop"?2:action=="edit"?4:action=="record"?5:7,Qt::AlignLeft);actionButtons_<<button;
  }
  connect(helpAction,&QAction::triggered,this,[this,actionHelp]{VisualStyle::showHelp("Capture actions",actionHelp,this);});
  outputWarning_=new Graphite::Surface("surface",Qt::BottomEdge,center);outputWarning_->setObjectName("commandOutputWarning");auto* warningRow=new QHBoxLayout(outputWarning_);warningRow->setContentsMargins(16,6,12,8);warningRow->setSpacing(12);outputWarningText_=new QLabel(outputWarning_);outputWarningText_->setObjectName("commandOutputWarningText");outputWarningText_->setTextFormat(Qt::PlainText);outputWarningText_->setWordWrap(true);VisualStyle::role(outputWarningText_,"warning");warningRow->addWidget(outputWarningText_,1);auto* chooseOutput=new QPushButton("Change output",outputWarning_);chooseOutput->setObjectName("chooseCommandOutput");chooseOutput->setToolTip("Open Settings → Capture to choose the output");warningRow->addWidget(chooseOutput);connect(chooseOutput,&QPushButton::clicked,this,[this]{navigate("settings");QStringList affected;for(const auto& action:Settings::presentationOrder())if(!unavailableOutput(session_.document(),action).isEmpty())affected<<action;settings_->showCaptureSettings(affected);});layout->addWidget(outputWarning_);connect(&session_,&UiSession::accepted,this,&MainWindow::updateAvailability);updateAvailability();
@@ -181,7 +184,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   const auto document=session_.document();QString label;
   auto outputName=[&](const QJsonObject& output){const bool local=document["archive"].toObject()["keepUploads"].toBool();if(output["destination"]=="local"||output["profileId"].toString().isEmpty())return local?QString("Local only"):QString("Off: no output");for(const auto& value:document["profiles"].toArray()){const auto profile=value.toObject();if(profile["id"]!=output["profileId"])continue;const auto mode=output["publicationMode"].toString("default");const bool privateUpload=mode=="private"||(mode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return (privateUpload?(profile["provider"]=="proton-drive"?QString("Private upload"):QString("Private upload unavailable")):QString("Shared link"))+" · "+profile["label"].toString()+(local?QString(" + local copy"):QString{});}return QString("Choose a destination");};
   const auto defaults=document.contains("captureDefaults")?document["captureDefaults"].toObject():Settings::effectiveAction(document,"region");
-  const auto defaultName=outputName(defaults);QStringList details{"All actions: "+defaultName+(!document["archive"].toObject()["keepUploads"].toBool()&&defaults["destination"]=="upload"&&!defaults["profileId"].toString().isEmpty()?QString(" · No local copy"):QString{})};bool mixed=false;
+  const auto defaultName=outputName(defaults);QStringList details{"Default output: "+defaultName+(!document["archive"].toObject()["keepUploads"].toBool()&&defaults["destination"]=="upload"&&!defaults["profileId"].toString().isEmpty()?QString(" · No local copy"):QString{})};bool mixed=false;
   const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"clipboard","Upload clipboard"},{"record","Record screen"}};
   for(const auto& action:Settings::presentationOrder()){
    const auto route=Settings::effectiveAction(document,action);const auto output=outputName(route);
@@ -189,6 +192,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    auto* entry=destination_->menu()->findChild<QAction*>("captureOutputDetail"+action);entry->setVisible(differs);
    const auto detail=labels.value(action,action)+": "+output+(!document["archive"].toObject()["keepUploads"].toBool()&&route["destination"]=="upload"&&!route["profileId"].toString().isEmpty()?QString(" · No local copy"):QString{});entry->setText(QString(detail).replace('&',QStringLiteral("&&")));if(differs)details<<detail;
   }
+  if(!mixed)details[0].replace(0,QString("Default output").size(),"All actions");
   label="Default output: "+defaultName+(mixed?QString(" · Exceptions set"):QString{});
   destination_->setProperty("fullOutputSummary",label);updateOutputSummary();destination_->menu()->findChild<QAction*>("captureOutputDefault")->setText(QString(details.first()).replace('&',QStringLiteral("&&")));destination_->setAccessibleName(label);destination_->setAccessibleDescription(details.join("\n"));destination_->setToolTip(details.join("\n"));updateSaveStatus();
  };
@@ -243,13 +247,12 @@ void MainWindow::updateSaveStatus(){
  version_->setVisible(versionRoom&&!link.version.isEmpty()&&link.url.isEmpty());versionGroup->setVisible(versionRoom&&!link.url.isEmpty());
  explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&needed+(versionRoom?versionWidth+gap:0)+explanation_->sizeHint().width()+gap<=statusBar()->width());
 }
-// A band narrower than its buttons first shows Capture window and Capture
-// desktop as icons, then every quiet action; names stay in tooltips and
-// accessible names. Every action keeps its own button at every width.
+// Only window/desktop can lose their labels. A second row keeps the remaining
+// commands complete when larger text needs more space.
 void MainWindow::fitBand(){
- if(!band_||fittingBand_)return;fittingBand_=true;
- auto apply=[this](int stage){for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();const bool compact=action!="region"&&(stage>=2||(stage==1&&(action=="window"||action=="desktop")));button->setToolButtonStyle(compact?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);}band_->layout()->invalidate();band_->layout()->activate();};
- int stage=0;for(;stage<3;++stage){apply(stage);if(band_->layout()->minimumSize().width()<=band_->width()||stage==2)break;}
+ if(!band_||fittingBand_)return;fittingBand_=true;auto* grid=static_cast<QGridLayout*>(band_->layout());
+ auto apply=[this,grid](int stage){grid->setColumnStretch(4,stage==2?1:0);grid->setColumnStretch(6,stage==2?0:1);for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setToolButtonStyle(stage&&(action=="window"||action=="desktop")?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);grid->removeWidget(button);const int column=action=="region"?0:action=="window"?1:action=="desktop"?2:action=="edit"?4:action=="record"?5:7;if(stage==2&&(action=="record"||action=="clipboard"))grid->addWidget(button,1,action=="record"?0:4,1,action=="record"?3:1,action=="record"?Qt::AlignLeft:Qt::AlignRight);else grid->addWidget(button,0,column,Qt::AlignLeft);}grid->invalidate();grid->activate();};
+ int stage=0;for(;stage<3;++stage){apply(stage);if(grid->minimumSize().width()<=band_->width()||stage==2)break;}
  bandStage_=stage;fittingBand_=false;
 }
 void MainWindow::updateAvailability(){
@@ -287,10 +290,6 @@ bool MainWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched==statusBar()&&event->type()==QEvent::Resize){updateOutputSummary();updateSaveStatus();}
  if(watched!=editButton_)return QMainWindow::eventFilter(watched,event);
  auto highlight=[this](bool on){editButton_->setProperty("dropTarget",on);editButton_->style()->unpolish(editButton_);editButton_->style()->polish(editButton_);};
- if(editButton_->property("captureUnavailable").toBool()){
-  if(event->type()==QEvent::MouseButtonPress||event->type()==QEvent::MouseButtonRelease){auto* mouse=static_cast<QMouseEvent*>(event);QStyleOptionToolButton option;option.initFrom(editButton_);option.features=QStyleOptionToolButton::MenuButtonPopup;const auto arrow=editButton_->style()->subControlRect(QStyle::CC_ToolButton,&option,QStyle::SC_ToolButtonMenu,editButton_);if(mouse->button()==Qt::LeftButton&&!arrow.contains(mouse->position().toPoint())){return true;}}
-  if(event->type()==QEvent::KeyPress){auto* key=static_cast<QKeyEvent*>(event);if(key->key()==Qt::Key_Space||key->key()==Qt::Key_Return||key->key()==Qt::Key_Enter){return true;}}
- }
  switch(event->type()){
  case QEvent::DragEnter:case QEvent::DragMove:{auto* drag=static_cast<QDragMoveEvent*>(event);const bool image=!droppedImage(drag->mimeData()).isEmpty();if(image)drag->acceptProposedAction();else drag->ignore();if(event->type()==QEvent::DragEnter)highlight(image);return true;}
  case QEvent::DragLeave:highlight(false);return true;

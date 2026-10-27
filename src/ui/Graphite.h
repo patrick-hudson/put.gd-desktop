@@ -29,8 +29,8 @@ constexpr int header = 56, commandBand = 60, statusBand = 26, icon = 18, splitZo
 constexpr int splitArrow = 32;
 constexpr int navRow = 38, destinationRow = 68, historyRow = 76, thumbWidth = 80, thumbHeight = 50;
 constexpr int sidebar = 216, historySidebar = sidebar, settingsSidebar = sidebar, destinationSidebar = sidebar, inspector = 340;
-// All page sidebars use the same scaled width; their rows elide long names.
-constexpr int sidebarMax = sidebar;
+// Text enlarges inside a measured rail; horizontal space stays bounded.
+constexpr int sidebarMax = 240;
 }
 // Type sizes in pixels; weights are 400 and 600 only. Technical values (paths,
 // URLs, prefixes, bucket names, identifiers) use Plex Mono at body size: the
@@ -82,7 +82,7 @@ qreal opticalBaseline(const QFontMetricsF&, const QString&, qreal centre);
 // control heights scale with it. See Graphite.cpp.
 qreal textScale();
 int scaled(int pixels);
-// Fixed scaled sidebar width. Legacy arguments keep existing callers compatible.
+// Label and icon measurements include text enlargement; the cap is logical pixels.
 int sidebarWidth(int baseline, int natural);
 // Text vertically centred on its ink, elided to the rectangle.
 void paintText(QPainter&, const QRectF&, const QString&, const QColor&, const QFont&, Qt::Alignment = Qt::AlignLeft | Qt::AlignVCenter, Qt::TextElideMode = Qt::ElideRight);
