@@ -29,6 +29,7 @@
 #include <QSlider>
 #include <QProgressBar>
 #include <QStyleOptionSlider>
+#include <QStyleOptionComboBox>
 #include <QTimer>
 #include <QFontComboBox>
 #include <QHash>
@@ -157,10 +158,55 @@ private slots:
    QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+anchor);
    auto* field=canvas.findChild<QLineEdit*>("annotationText");QVERIFY(field&&field->isVisible());
    const QString text(180,'W');field->setText(text);QVERIFY(canvas.rect().contains(field->geometry()));
+   QVERIFY(canvas.textOutsideImage());QApplication::processEvents();
+   auto* warning=canvas.findChild<QWidget*>("annotationTextWarning");QVERIFY(warning&&warning->isVisible());QVERIFY(canvas.rect().contains(warning->geometry()));
+   const auto at=origin+anchor;QVERIFY(!field->geometry().contains(at));
+   QCOMPARE(canvas.grab().toImage().pixelColor(at),Theme::brandAccent());
+   QVERIFY(field->accessibleDescription().contains(QString("x %1, y %2").arg(anchor.x()).arg(anchor.y())));
    canvas.resize(320,220);QApplication::processEvents();QVERIFY(canvas.rect().contains(field->geometry()));
    field->setCursorPosition(text.size());QTest::keyClick(field,Qt::Key_End);QTest::keyClick(field,Qt::Key_Return);
    QCOMPARE(doc.shapes().last().rect.topLeft(),anchor);QCOMPARE(doc.shapes().last().text,text);doc.remove(doc.shapes().last().id);canvas.documentChanged();
    QApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);canvas.resize(440,300);QApplication::processEvents();
+  }
+ }
+ void textOverflowFollowsGlyphsCropAndDraftWithoutChangingTheDocument(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  add(doc,{{"kind","text"},{"at",QJsonArray{100,100}},{"text","Note"},{"fontPixels",28}});window.documentEdited();
+  const auto id=doc.shapes().first().id;window.canvas().select(id);QVERIFY(!window.canvas().textOutsideImage());
+  const auto original=*doc.find(id);
+  for(const QPoint shift:{QPoint(-103,0),QPoint(0,-110),QPoint(295,0),QPoint(0,150)}){
+   auto edge=original;edge.rect.translate(shift);doc.replace(edge);window.documentEdited();QVERIFY(window.canvas().textOutsideImage());
+   doc.replace(original);window.documentEdited();QVERIFY(!window.canvas().textOutsideImage());
+  }
+  QTest::keyClick(&window.canvas(),Qt::Key_Return);
+  auto* field=window.canvas().findChild<QLineEdit*>("annotationText");QVERIFY(field);
+  field->setText(QString(100,'W'));QVERIFY(window.viewState()["textOutsideImage"].toBool());QCOMPARE(*doc.find(id),original);
+  field->setText("Note");QVERIFY(!window.canvas().textOutsideImage());
+  window.canvas().finishText(false);doc.setCrop(QRect(110,90,150,100));window.documentEdited();QVERIFY(window.canvas().textOutsideImage());
+  // Zoom and panning cannot turn an output warning into a viewport warning.
+  window.canvas().setZoom(4);window.canvas().panBy({-200,-100});QVERIFY(window.canvas().textOutsideImage());
+  doc.setCrop(doc.imageRect());window.documentEdited();QVERIFY(!window.canvas().textOutsideImage());
+  window.selectTool(Tool::Crop);window.canvas().setSelectionGeometry(QRect(110,90,150,100));QVERIFY(window.canvas().textOutsideImage());
+  window.canvas().cancelCrop();QVERIFY(!window.canvas().textOutsideImage());
+  auto changed=*doc.find(id);changed.rect.moveLeft(390);doc.replace(changed);window.documentEdited();window.canvas().select(0);
+  QApplication::processEvents();QVERIFY(window.canvas().findChild<QWidget*>("annotationTextWarning")->isVisible());
+  QVERIFY(doc.undo());window.documentEdited();QApplication::processEvents();QVERIFY(!window.canvas().findChild<QWidget*>("annotationTextWarning")->isVisible());
+ }
+ void largeTextEditorChoicesKeepTheirCompleteLabels(){
+  {EditDocument doc(canvasImage());EditorWindow window(doc);}
+  const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});
+  auto larger=previous;larger.setPixelSize(qRound(Graphite::font().pixelSize()*1.5));QApplication::setFont(larger);
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  QVERIFY(Graphite::font().pixelSize()>=21);
+  for(const auto tool:{Tool::Rectangle,Tool::Text,Tool::Crop}){
+   window.selectTool(tool);QApplication::processEvents();
+   for(auto* combo:window.findChildren<QComboBox*>())if(combo->isVisible()){
+    QStyleOptionComboBox option;option.initFrom(combo);option.currentText=combo->currentText();
+    const auto room=combo->style()->subControlRect(QStyle::CC_ComboBox,&option,QStyle::SC_ComboBoxEditField,combo);
+    QVERIFY2(room.width()>=combo->fontMetrics().horizontalAdvance(combo->currentText()),qPrintable(combo->accessibleName()+": "+combo->currentText()));
+   }
+   for(auto* button:window.findChildren<QAbstractButton*>())if(button->isVisible()&&!button->text().isEmpty())
+    QVERIFY2(button->width()>=button->sizeHint().width(),qPrintable(button->objectName()+": "+button->text()));
   }
  }
  void blurValueAndHandleFollowTheActualSlider(){
@@ -334,7 +380,10 @@ private slots:
   EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Upload to synthetic destination");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   window.setBusy("Preparing the edited image…");
   auto* header=window.findChild<QWidget*>("windowHeader");QVERIFY(header);
-  for(auto* label:window.findChildren<QLabel*>())QVERIFY2(label->isEnabled(),qPrintable(label->objectName()+": "+label->text()));
+  for(auto* label:window.findChildren<QLabel*>()){
+   if(label->objectName()=="annotationTextWarningText")QVERIFY(Theme::contrast(label->palette().color(QPalette::Disabled,QPalette::WindowText),Theme::current().surface)>=4.5);
+   else QVERIFY2(label->isEnabled(),qPrintable(label->objectName()+": "+label->text()));
+  }
   for(auto* button:window.findChildren<QAbstractButton*>())QVERIFY2(button->isEnabled()==header->isAncestorOf(button),qPrintable(button->objectName()+" "+button->text()+" "+button->accessibleName()));
   for(auto* field:window.findChildren<QAbstractSpinBox*>())QVERIFY(!field->isEnabled());
   for(auto* field:window.findChildren<QComboBox*>())QVERIFY(!field->isEnabled());

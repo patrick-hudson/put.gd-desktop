@@ -7,6 +7,7 @@
 #include <QBuffer>
 #include <QColorSpace>
 #include <QImageWriter>
+#include <QPainter>
 #include <QRandomGenerator>
 #include <QTest>
 #include <QScopeGuard>
@@ -40,6 +41,18 @@ QByteArray insertBeforeIend(QByteArray png,const QByteArray& extra){return png.i
 class EditorTest:public QObject {
  Q_OBJECT
 private slots:
+ void textOutputBoundsMeasureExportInkInsteadOfTheEditableBox(){
+  Shape text;text.kind=Shape::Kind::Text;text.rect={60,60,1,1};text.text="jWé";text.fontPixels=60;
+  const auto bounds=textOutputBounds(text);QVERIFY(bounds.width()>text.rect.width());QVERIFY(bounds.height()>text.rect.height());
+  QImage image(400,250,QImage::Format_ARGB32);image.fill(Qt::transparent);
+  {QPainter painter(&image);EditDocument::paintAnnotation(painter,text);}
+  QRect ink;
+  for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x)if(qAlpha(image.pixel(x,y)))ink=ink.united(QRect(x,y,1,1));
+  QVERIFY(!ink.isEmpty());QVERIFY(bounds.adjusted(-1,-1,1,1).contains(QRectF(ink)));
+  QVERIFY(qAbs(ink.left()-bounds.left())<=1);QVERIFY(qAbs(ink.top()-bounds.top())<=1);
+  QVERIFY(qAbs(ink.right()+1-bounds.right())<=1);QVERIFY(qAbs(ink.bottom()+1-bounds.bottom())<=1);
+  text.text="   ";QVERIFY(textOutputBounds(text).isEmpty());
+ }
  void exportSnapshotKeepsGuiTextOutlinesOnTheWorker(){
   const auto font=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(font);});
   EditDocument document(noise({320,200},21));Shape text;text.kind=Shape::Kind::Text;text.rect={10,40,200,40};text.text="synthetic";document.add(text);

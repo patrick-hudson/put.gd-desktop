@@ -30,6 +30,8 @@ struct Shape {
 
 // Bold text font shared by the canvas, export and agent commands.
 QFont textFont(const QString& family,int pixels);
+// Exact glyph outline plus the contrast stroke used by export, in image pixels.
+QRectF textOutputBounds(const Shape&);
 constexpr int minimumFontPixels=8,maximumFontPixels=200,maximumFontFamilyCharacters=100;
 
 // Undo history stores geometry snapshots, never pixel copies. The bounded base

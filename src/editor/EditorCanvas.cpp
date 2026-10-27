@@ -1,5 +1,8 @@
 #include "EditorCanvas.h"
 #include "ui/Theme.h"
+#include "ui/Graphite.h"
+#include <QLabel>
+#include <QVBoxLayout>
 #include <QAccessible>
 #include <QApplication>
 #include <QFontMetrics>
@@ -67,6 +70,9 @@ EditorCanvas::EditorCanvas(EditDocument& doc,QWidget* parent):QWidget(parent),do
  setMinimumSize(320,240);setAccessibleName("Image being edited");
  // Screen readers hear the selection, or the crop, and the keys that act on it.
  connect(this,&EditorCanvas::selectionChanged,this,&EditorCanvas::announce);connect(this,&EditorCanvas::changed,this,&EditorCanvas::announce);
+ textWarning_=new Graphite::Surface("surface",{},this);textWarning_->setObjectName("annotationTextWarning");textWarning_->setAttribute(Qt::WA_TransparentForMouseEvents);
+ auto* warningLayout=new QVBoxLayout(textWarning_);warningLayout->setContentsMargins(8,8,8,8);
+ auto* warning=Graphite::warningLabel("Text extends beyond the image",textWarning_);warning->setObjectName("annotationTextWarningText");warningLayout->addWidget(warning);textWarning_->hide();
  announce();
 }
 
@@ -251,6 +257,7 @@ void EditorCanvas::documentChanged(){
 }
 
 void EditorCanvas::paintEvent(QPaintEvent*){
+ placeTextWarning();
  QPainter painter(this);painter.fillRect(rect(),canvasBackground());
  const auto bounds=visibleBounds();const auto target=toWidget(bounds);
  // Paint only the visible source rectangle; never allocate a scaled full frame.
@@ -267,6 +274,7 @@ void EditorCanvas::paintEvent(QPaintEvent*){
   else if(shape.kind==Shape::Kind::Blur){const auto& tile=blurTile(shape);const auto area=shape.rect.intersected(doc_.crop());if(!tile.isNull())painter.drawImage(QRectF(area),tile);}
   else if(!(textEditor_&&shape.id==textShape_))EditDocument::paintAnnotation(painter,shape);
  }
+ if(textEditor_)EditDocument::paintAnnotation(painter,pendingText());
  painter.restore();
  if(tool_==Tool::Crop){
   const auto crop=toWidget(cropDraft_);QPainterPath outside;outside.addRect(target);outside.addRect(crop);
@@ -279,13 +287,21 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  // Handles: amber squares in a dark rim, legible on any image.
  auto handles=[&](const QList<QPointF>& points){painter.setPen(QPen(underStroke(),2));painter.setBrush(guide());for(const auto& point:points)painter.drawRect(QRectF(point-QPointF(4,4),QSizeF(8,8)));};
  if(tool_==Tool::Crop){const auto r=toWidget(cropDraft_);handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});}
- else if(const auto* shape=doc_.find(selected_)){
+ else if(const auto* shape=doc_.find(selected_);shape&&!textEditor_){
   if(shape->kind==Shape::Kind::Arrow)handles({toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))});
   else{
    const auto r=toWidget(shape->rect);dualRect(painter,r.adjusted(-2,-2,2,2),guide(),1,Qt::DashLine);
    if(shape->kind==Shape::Kind::Text)handles({r.topLeft(),r.topRight(),r.bottomRight(),r.bottomLeft()});
    else handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});
   }
+ }
+ if(textEditor_){
+  const auto anchor=toWidget(textAnchor_);const QRectF field(textEditor_->geometry());
+  const QPointF end(std::clamp(anchor.x(),field.left(),field.right()),std::clamp(anchor.y(),field.top(),field.bottom()));
+  dualLine(painter,anchor,end,guide(),Qt::DashLine);
+  dualLine(painter,anchor-QPointF(7,0),anchor+QPointF(7,0),guide(),Qt::SolidLine);
+  dualLine(painter,anchor-QPointF(0,7),anchor+QPointF(0,7),guide(),Qt::SolidLine);
+  painter.setBrush(guide());painter.setPen(QPen(underStroke(),1));painter.drawEllipse(anchor,3,3);
  }
  // The pane ring marks keyboard focus only, like every other control.
  if(hasFocus()&&window()->testAttribute(Qt::WA_KeyboardFocusChange)){painter.setPen(QPen(accent(),2));painter.setBrush(Qt::NoBrush);painter.drawRect(QRectF(rect()).adjusted(1,1,-1,-1));}
@@ -347,7 +363,7 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
  // A press that has not travelled the platform drag distance is a click:
  // it selects (or, for text, edits) without nudging the shape.
  if(drag_==Drag::Move&&!moved_){if(QLineF(press_,position).length()<QGuiApplication::styleHints()->startDragDistance())return;moved_=true;}
- if(drag_==Drag::Pan){offset_+=position-last_;last_=position;fitted_=false;clampOffset();update();emit viewChanged();return;}
+ if(drag_==Drag::Pan){offset_+=position-last_;last_=position;fitted_=false;clampOffset();placeTextEditor();update();emit viewChanged();return;}
  const auto start=toImage(press_),now=toImage(position);
  const QPoint delta(int(std::lround(now.x()-start.x())),int(std::lround(now.y()-start.y())));
  last_=position;
@@ -557,6 +573,27 @@ void EditorCanvas::cancelCrop(){
  cropDraft_=doc_.crop();tool_=Tool::Select;setCursor(Qt::ArrowCursor);emit toolRequested(Tool::Select);fit();
 }
 
+Shape EditorCanvas::pendingText() const {
+ const auto* existing=doc_.find(textShape_);Shape shape=existing?*existing:Shape{};
+ if(!existing){shape.kind=Shape::Kind::Text;shape.color=style_.color;shape.fontPixels=style_.fontPixels;shape.fontFamily=style_.fontFamily;shape.width=style_.width;}
+ shape.text=textEditor_?textEditor_->text().trimmed():QString{};
+ const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));
+ shape.rect=QRect(textAnchor_.toPoint(),QSize(metrics.horizontalAdvance(shape.text)+1,metrics.height()));return shape;
+}
+bool EditorCanvas::textOutsideImage() const {
+ const QRectF bounds(tool_==Tool::Crop?cropDraft_:doc_.crop());
+ auto outside=[&](const Shape& shape){const auto ink=textOutputBounds(shape);return !ink.isEmpty()&&!bounds.contains(ink);};
+ if(textEditor_&&outside(pendingText()))return true;
+ for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Text&&!(textEditor_&&shape.id==textShape_)&&outside(shape))return true;
+ return false;
+}
+void EditorCanvas::placeTextWarning(){
+ const bool outside=textOutsideImage();textWarning_->setVisible(outside);if(!outside)return;
+ const auto* label=textWarning_->findChild<QLabel*>("annotationTextWarningText");
+ const auto margins=label->contentsMargins();
+ const int w=std::min(width()-16,label->fontMetrics().horizontalAdvance(label->text())+margins.left()+margins.right()+16);
+ textWarning_->setGeometry(8,8,w,textWarning_->heightForWidth(w));textWarning_->raise();
+}
 void EditorCanvas::placeTextEditor(){
  if(!textEditor_)return;
  // Moving the field to keep it readable never moves the image-space anchor.
@@ -564,7 +601,14 @@ void EditorCanvas::placeTextEditor(){
  const auto at=toWidget(textAnchor_);const QFontMetrics metrics(textEditor_->font());
  const int w=std::min(bounds.width(),std::max(220,metrics.horizontalAdvance(textEditor_->text())+48));
  const int h=std::min(bounds.height(),metrics.height()+12);
- textEditor_->setGeometry(std::clamp(int(at.x())-4,bounds.left(),bounds.right()-w+1),std::clamp(int(at.y())-4,bounds.top(),bounds.bottom()-h+1),w,h);
+ const int below=int(std::ceil(at.y()+pendingText().rect.height()*scale_))+12;
+ const int y=below+h<=bounds.bottom()?below:int(at.y())-h-12;
+ QRect field(std::clamp(int(at.x())-4,bounds.left(),bounds.right()-w+1),std::clamp(y,bounds.top(),bounds.bottom()-h+1),w,h);
+ placeTextWarning();
+ if(textWarning_->isVisible()&&field.intersects(textWarning_->geometry()))field.moveTop(std::min(bounds.bottom()-h+1,textWarning_->geometry().bottom()+8));
+ textEditor_->setGeometry(field);
+ textEditor_->setAccessibleDescription(QString("Image anchor: x %1, y %2 px.%3").arg(int(textAnchor_.x())).arg(int(textAnchor_.y())).arg(textOutsideImage()?" Text extends beyond the image.":""));
+ update();
 }
 
 void EditorCanvas::beginText(const QPointF& image,const Shape* existing){
@@ -582,13 +626,10 @@ void EditorCanvas::beginText(const QPointF& image,const Shape* existing){
 
 void EditorCanvas::finishText(bool commit){
  if(!textEditor_)return;
- const auto text=textEditor_->text().trimmed();auto* editor=textEditor_.data();textEditor_=nullptr;editor->hide();editor->deleteLater();
+ const auto pending=pendingText();const auto text=pending.text;auto* editor=textEditor_.data();textEditor_=nullptr;editor->hide();editor->deleteLater();
  const auto* existing=doc_.find(textShape_);
  if(commit){
-  Shape shape=existing?*existing:Shape{};
-  if(!existing){shape.kind=Shape::Kind::Text;shape.color=style_.color;shape.fontPixels=style_.fontPixels;shape.fontFamily=style_.fontFamily;shape.width=style_.width;}
-  shape.text=text;const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));
-  shape.rect=QRect(QPoint(int(textAnchor_.x()),int(textAnchor_.y())),QSize(metrics.horizontalAdvance(text)+1,metrics.height()));
+  const auto shape=pending;
   if(text.isEmpty()){if(existing&&doc_.remove(existing->id))emit changed();selected_=0;}
   else if(existing){if(doc_.replace(shape))emit changed();}
   else{selected_=doc_.add(shape);emit changed();}

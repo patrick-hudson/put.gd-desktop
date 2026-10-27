@@ -33,6 +33,7 @@ public:
  bool cropPending() const {return tool_==Tool::Crop;}
  bool editingText() const {return textEditor_!=nullptr;}
  void finishText(bool commit);
+ bool textOutsideImage() const;
  // Documents can change outside the canvas (undo/redo); drop stale UI state.
  void documentChanged();
  quint64 selected() const {return selected_;}
@@ -98,7 +99,9 @@ private:
  void updateHoverCursor(const QPointF& widgetPoint,Qt::KeyboardModifiers);
  QRect resized(QRect,int handle,const QPoint& delta) const;
  void clampOffset();
+ Shape pendingText() const;
  void placeTextEditor();
+ void placeTextWarning();
  void beginText(const QPointF& imagePoint,const Shape* existing);
  const QImage& blurTile(const Shape&);
  Shape::Kind kindFor(Tool) const;
@@ -114,6 +117,7 @@ private:
  quint64 selected_=0;
  struct Tile {QString key;QImage image;quint64 used=0;};
  QHash<quint64,Tile> tiles_;qint64 cacheBytes_=0;quint64 tick_=0;
+ QWidget* textWarning_=nullptr;
  QPointer<QLineEdit> textEditor_;QPointF textAnchor_;quint64 textShape_=0;
 };
 }

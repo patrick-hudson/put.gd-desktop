@@ -6,6 +6,7 @@
 #include <QImageWriter>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPainterPathStroker>
 #include <QtMath>
 #include <algorithm>
 #include <cstring>
@@ -57,6 +58,11 @@ QRect EditDocument::clampRect(const QRect& rect,const QRect& bounds){return rect
 QFont textFont(const QString& family,int pixels){
  QFont font;if(!family.isEmpty())font.setFamily(family);
  font.setPixelSize(std::max(4,pixels));font.setBold(true);return font;
+}
+QRectF textOutputBounds(const Shape& shape){
+ const auto path=textPath(shape);if(path.isEmpty())return {};
+ QPainterPathStroker stroke;stroke.setWidth(std::max(2.0,shape.fontPixels/7.0));stroke.setCapStyle(Qt::RoundCap);stroke.setJoinStyle(Qt::RoundJoin);
+ return path.boundingRect().united(stroke.createStroke(path).boundingRect());
 }
 qint64 EditDocument::bytesOf(const State& state){
  qint64 total=qint64(sizeof(State))+qint64(state.shapes.size())*qint64(sizeof(Shape));
