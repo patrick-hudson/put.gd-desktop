@@ -111,7 +111,7 @@ void EditorCanvas::fit(){
  const auto bounds=visibleBounds();const QSizeF room=QSizeF(size())-QSizeF(32,32);
  scale_=std::clamp(std::min({1.0,room.width()/bounds.width(),room.height()/bounds.height()}),minimumZoom,maximumZoom);
  offset_=QPointF((width()-bounds.width()*scale_)/2,(height()-bounds.height()*scale_)/2);
- fitted_=true;update();emit viewChanged();
+ fitted_=true;placeTextEditor();update();emit viewChanged();
 }
 void EditorCanvas::actualSize(){zoomBy(1.0/scale_,QPointF(width()/2.0,height()/2.0));}
 void EditorCanvas::zoomBy(double factor,QPointF anchor){
@@ -119,10 +119,10 @@ void EditorCanvas::zoomBy(double factor,QPointF anchor){
  const auto image=toImage(anchor);
  scale_=std::clamp(scale_*factor,minimumZoom,maximumZoom);
  offset_=anchor-(image-QPointF(visibleBounds().topLeft()))*scale_;
- fitted_=false;clampOffset();update();emit viewChanged();
+ fitted_=false;clampOffset();placeTextEditor();update();emit viewChanged();
 }
 void EditorCanvas::setZoom(double scale){zoomBy(scale/scale_);}
-void EditorCanvas::panBy(const QPointF& delta){offset_+=delta;fitted_=false;clampOffset();update();emit viewChanged();}
+void EditorCanvas::panBy(const QPointF& delta){offset_+=delta;fitted_=false;clampOffset();placeTextEditor();update();emit viewChanged();}
 QRect EditorCanvas::visibleImageRect() const {return boxFrom(toImage(QPointF(0,0)),toImage(QPointF(width(),height()))).intersected(visibleBounds());}
 void EditorCanvas::clampOffset(){
  const auto bounds=visibleBounds();const double w=bounds.width()*scale_,h=bounds.height()*scale_;
@@ -132,7 +132,7 @@ void EditorCanvas::clampOffset(){
 void EditorCanvas::resizeEvent(QResizeEvent*){
  // Never move the image while a gesture maps pointer positions through it.
  if(drag_!=Drag::None){update();return;}
- if(fitted_)fit();else{clampOffset();update();}
+ if(fitted_)fit();else{clampOffset();placeTextEditor();update();}
 }
 
 Shape::Kind EditorCanvas::kindFor(Tool tool) const {
@@ -247,7 +247,7 @@ void EditorCanvas::documentChanged(){
  if(!doc_.find(selected_)){selected_=0;emit selectionChanged();}
  QSet<quint64> live;for(const auto& shape:doc_.shapes())live.insert(shape.id);
  for(auto it=tiles_.begin();it!=tiles_.end();){if(!live.contains(it.key())){cacheBytes_-=it->image.sizeInBytes();it=tiles_.erase(it);}else ++it;}
- if(fitted_)fit();else{clampOffset();update();}
+ if(fitted_)fit();else{clampOffset();placeTextEditor();update();}
 }
 
 void EditorCanvas::paintEvent(QPaintEvent*){
@@ -557,6 +557,16 @@ void EditorCanvas::cancelCrop(){
  cropDraft_=doc_.crop();tool_=Tool::Select;setCursor(Qt::ArrowCursor);emit toolRequested(Tool::Select);fit();
 }
 
+void EditorCanvas::placeTextEditor(){
+ if(!textEditor_)return;
+ // Moving the field to keep it readable never moves the image-space anchor.
+ const auto bounds=rect().adjusted(4,4,-4,-4);if(bounds.isEmpty())return;
+ const auto at=toWidget(textAnchor_);const QFontMetrics metrics(textEditor_->font());
+ const int w=std::min(bounds.width(),std::max(220,metrics.horizontalAdvance(textEditor_->text())+48));
+ const int h=std::min(bounds.height(),metrics.height()+12);
+ textEditor_->setGeometry(std::clamp(int(at.x())-4,bounds.left(),bounds.right()-w+1),std::clamp(int(at.y())-4,bounds.top(),bounds.bottom()-h+1),w,h);
+}
+
 void EditorCanvas::beginText(const QPointF& image,const Shape* existing){
  textAnchor_=QPointF(std::floor(image.x()),std::floor(image.y()));textShape_=existing?existing->id:0;
  const int pixels=existing?existing->fontPixels:style_.fontPixels;const auto family=existing?existing->fontFamily:style_.fontFamily;
@@ -564,11 +574,9 @@ void EditorCanvas::beginText(const QPointF& image,const Shape* existing){
  editor->setPlaceholderText("Type, then press Enter");editor->setAccessibleName("Annotation text");
  QFont font=textFont(family,std::clamp(int(std::lround(pixels*scale_)),12,96));editor->setFont(font);
  if(existing)editor->setText(existing->text);
- const auto at=toWidget(textAnchor_);editor->move(int(at.x())-4,int(at.y())-4);
- editor->resize(std::max(220,QFontMetrics(font).horizontalAdvance(editor->text())+48),QFontMetrics(font).height()+12);
  connect(editor,&QLineEdit::returnPressed,this,[this]{finishText(true);});
- connect(editor,&QLineEdit::textChanged,editor,[editor](const QString& text){editor->resize(std::max(220,QFontMetrics(editor->font()).horizontalAdvance(text)+48),editor->height());});
- editor->installEventFilter(this);textEditor_=editor;editor->show();editor->setFocus();
+ connect(editor,&QLineEdit::textChanged,this,[this]{placeTextEditor();});
+ editor->installEventFilter(this);textEditor_=editor;placeTextEditor();editor->show();editor->setFocus();
  selected_=textShape_;emit selectionChanged();update();
 }
 

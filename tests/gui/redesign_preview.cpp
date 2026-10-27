@@ -262,6 +262,7 @@ int main(int argc,char** argv){
   auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();const auto image=editor.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
   editor.selectTool(editor::Tool::Redact);if(!grab("20-editor-redact"))return 2;
   editor.selectTool(editor::Tool::Blur);if(!grab("21-editor-blur-warning"))return 2;
+  editor.findChild<QWidget*>("blurStrength")->setFocus(Qt::TabFocusReason);if(!grab("21a-editor-blur-focus"))return 2;
   editor.selectTool(editor::Tool::Arrow);if(!grab("22-editor-arrow-style"))return 2;
   // A crop draft over mixed content shows the dual-stroke guides and the crop fields.
   editor.selectTool(editor::Tool::Crop);editor.viewCommand({{"action","geometry"},{"rect",QJsonArray{40,150,640,420}}},code,message);if(!grab("23-editor-crop"))return 2;
@@ -269,9 +270,11 @@ int main(int argc,char** argv){
   // A selected mark with its position and size fields, then Save a copy… feedback.
   editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));if(!grab("26-editor-selected"))return 2;
   editor.activateWindow();editor.canvas().setFocus(Qt::TabFocusReason);QTest::keyClick(&editor.canvas(),Qt::Key_Tab);if(!grab("26a-editor-properties-focus"))return 2;
+  {editor::Shape label;label.kind=editor::Shape::Kind::Text;label.rect=QRect(940,580,20,20);label.text="Edge label";const auto id=doc.add(label);editor.documentEdited();editor.canvas().select(id);editor.canvas().setFocus();QTest::keyClick(&editor.canvas(),Qt::Key_Return);auto* field=editor.canvas().findChild<QLineEdit*>("annotationText");if(!field||!field->isVisible())return 2;field->setText("Long annotation text stays inside the canvas while the field scrolls");if(!grab("26b-editor-text-edge"))return 2;editor.canvas().finishText(false);doc.remove(id);editor.documentEdited();}
   editor.showSaved("/home/synthetic/Pictures/put.gd-edit-2026-10-26-14-03-22.png");if(!grab("27-editor-saved"))return 2;
   editor.showSavedCopy();if(!grab("27a-editor-folder-failed"))return 2;
   editor.showSaveFailed("/media/synthetic/readonly/put.gd-edit-2026-10-26-14-03-22.png","Permission denied");if(!grab("28-editor-save-failed"))return 2;
+  {auto* target=editor.findChild<Graphite::ElidedLabel*>("editorSaveTarget");target->reveal();if(!target->fullTextPopup())return 2;if(!grab("28a-editor-save-path"))return 2;const auto popup=target->fullTextPopup()->grab();if(!popup.save(QDir(output).filePath("28b-editor-save-path-popup.png")))return 2;captures.append(QJsonObject{{"file","28b-editor-save-path-popup.png"},{"width",popup.width()},{"height",popup.height()}});target->fullTextPopup()->close();}
   editor.canvas().select(0);editor.resize(900,620);
   // Discard… asks first; the dialog alone, as the desktop shows it over the editor.
   editor.viewCommand({{"action","discard"}},code,message);if(auto* box=editor.findChild<QDialog*>("confirmAction")){putgd::test::settle(450);app.processEvents();const auto image=box->grab();if(!image.save(QDir(output).filePath("19-editor-discard-confirm.png")))return 2;captures.append(QJsonObject{{"file","19-editor-discard-confirm.png"},{"width",image.width()},{"height",image.height()}});}else return 2;

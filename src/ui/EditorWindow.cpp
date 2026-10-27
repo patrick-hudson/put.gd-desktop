@@ -133,8 +133,9 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  colorRow_=column(panel,layout);layout->addWidget(fieldLabel("Color",colorRow_));
  swatchGroup_=new QButtonGroup(this);
  auto* grid=new QGridLayout;grid->setContentsMargins(0,0,0,0);grid->setSpacing(4);int cell=0;
+ const QStringList colorNames{"Red","Orange","Yellow","Green","Blue","White","Black"};
  for(const auto& color:{QColor(220,38,38),QColor(245,158,11),QColor(250,204,21),QColor(34,197,94),QColor(59,130,246),QColor(255,255,255),QColor(17,19,23)}){
-  auto* swatch=makeSwatch(color);swatches_.append(swatch);grid->addWidget(swatch,cell/4,cell%4);++cell;
+  auto* swatch=makeSwatch(color);swatch->setAccessibleName("Color "+colorNames[cell]);swatch->setAccessibleDescription(color.name());swatch->setToolTip(colorNames[cell]+" ("+color.name()+")");swatches_.append(swatch);grid->addWidget(swatch,cell/4,cell%4);++cell;
  }
  // The custom picker follows the palette, making two even rows of four rather
  // than six and an orphaned pair; recent custom colours get their own row.
@@ -148,7 +149,11 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  width_=VisualStyle::choiceBox(widthRow_);width_->addItem("Thin",2);width_->addItem("Medium",4);width_->addItem("Thick",8);width_->setCurrentIndex(1);width_->setAccessibleName("Line width");layout->addWidget(width_);
  properties->addWidget(widthRow_);
  blurRow_=column(panel,layout);layout->addWidget(fieldLabel("Blur strength",blurRow_));
- strength_=new QSlider(Qt::Horizontal,blurRow_);strength_->setRange(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur);strength_->setValue(12);strength_->setAccessibleName("Blur strength");layout->addWidget(strength_);
+ strength_=new QSlider(Qt::Horizontal,blurRow_);strength_->setRange(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur);strength_->setValue(12);strength_->setAccessibleName("Blur strength");strength_->setObjectName("blurStrength");
+ const auto strengthDescription=QString("Blur radius in image pixels, %1 to %2").arg(strength_->minimum()).arg(strength_->maximum());strength_->setAccessibleDescription(strengthDescription);
+ auto* strengthRow=new QHBoxLayout;strengthRow->setContentsMargins(0,0,0,0);strengthRow->setSpacing(8);strengthRow->addWidget(strength_,1);
+ strengthValue_=new QLabel(QString::number(strength_->value()),blurRow_);strengthValue_->setObjectName("blurStrengthValue");strengthValue_->setAccessibleName("Blur strength value");strengthValue_->setAccessibleDescription(strengthDescription);strengthValue_->setAlignment(Qt::AlignRight|Qt::AlignVCenter);strengthValue_->setMinimumWidth(strengthValue_->fontMetrics().horizontalAdvance(QString::number(strength_->maximum())));strengthRow->addWidget(strengthValue_);layout->addLayout(strengthRow);
+ connect(strength_,&QSlider::valueChanged,strengthValue_,[this](int value){strengthValue_->setText(QString::number(value));});
  properties->addWidget(blurRow_);
  textRow_=column(panel,layout);layout->addWidget(fieldLabel("Font",textRow_));
  font_=new QFontComboBox(textRow_);font_->setObjectName("textFont");font_->setAccessibleName("Font");font_->setCurrentFont(QFont());font_->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);font_->setMinimumContentsLength(8);layout->addWidget(font_);
@@ -183,6 +188,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");documentInfo_->setWordWrap(true);VisualStyle::role(documentInfo_,"secondary");documentLayout->addWidget(documentInfo_);
  // Save a copy… feedback, next to the button that made it.
  savedLabel_=new Graphite::ElidedLabel(document);savedLabel_->setObjectName("editorSaved");savedLabel_->setTextFormat(Qt::PlainText);savedLabel_->setContextMenuPolicy(Qt::ActionsContextMenu);savedLabel_->hide();documentLayout->addWidget(savedLabel_);
+ saveTarget_=new Graphite::ElidedLabel(document);saveTarget_->setObjectName("editorSaveTarget");saveTarget_->setTextFormat(Qt::PlainText);saveTarget_->setRevealable(true);VisualStyle::role(saveTarget_,"error");saveTarget_->hide();documentLayout->addWidget(saveTarget_);
  // A failure wraps rather than elides: its reason is what the user needs.
  saveError_=new QLabel(document);saveError_->setObjectName("editorSaveError");saveError_->setTextFormat(Qt::PlainText);saveError_->setWordWrap(true);VisualStyle::role(saveError_,"error");saveError_->hide();documentLayout->addWidget(saveError_);
  auto* copyPath=new QAction("Copy full path",savedLabel_);savedLabel_->addAction(copyPath);
@@ -230,7 +236,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   if(const auto* shape=doc_.find(canvas_->selected())){
    if(shape->kind==editor::Shape::Kind::Highlight)highlightColor_=shape->color;else if(shape->kind!=editor::Shape::Kind::Redact&&shape->kind!=editor::Shape::Kind::Blur)annotationColor_=shape->color;
    width_->blockSignals(true);textSize_->blockSignals(true);font_->blockSignals(true);strength_->blockSignals(true);
-   width_->setCurrentIndex(std::max(0,width_->findData(shape->width)));textSize_->setValue(shape->fontPixels);strength_->setValue(shape->strength);
+   width_->setCurrentIndex(std::max(0,width_->findData(shape->width)));textSize_->setValue(shape->fontPixels);strength_->setValue(shape->strength);strengthValue_->setText(QString::number(shape->strength));
    if(shape->kind==editor::Shape::Kind::Text)font_->setCurrentFont(shape->fontFamily.isEmpty()?QFont():QFont(shape->fontFamily));
    width_->blockSignals(false);textSize_->blockSignals(false);font_->blockSignals(false);strength_->blockSignals(false);
    syncStyle(false);return;
@@ -494,7 +500,7 @@ void EditorWindow::showSaved(const QString& path){
  ++folderRequest_;lastShowInFolder_={};folderError_->hide();
  lastSave_={{"status","saved"},{"path",file.absoluteFilePath()},{"name",file.fileName()}};savedGeneration_=doc_.generation();
  savedLabel_->setToolTip(file.absoluteFilePath());savedLabel_->setAccessibleDescription(file.absoluteFilePath());savedLabel_->show();
- saveError_->hide();showFolder_->show();copyPath_->show();chooseAnother_->hide();
+ saveError_->hide();saveTarget_->hide();showFolder_->show();copyPath_->show();chooseAnother_->hide();
  syncSaved();revealDocument();
 }
 void EditorWindow::syncSaved(){
@@ -513,8 +519,11 @@ void EditorWindow::showSaveFailed(const QString& path,const QString& reason){
  lastSave_={{"status","failed"},{"stage",path.isEmpty()?"chooser":"write"},{"path",path.isEmpty()?QJsonValue():QJsonValue(file.absoluteFilePath())},{"name",path.isEmpty()?QJsonValue():QJsonValue(file.fileName())},{"reason",reason}};
  ++folderRequest_;lastShowInFolder_={};folderError_->hide();
  // The file and kept draft are also in the accessible description.
- saveError_->setText(QString("Couldn't save the copy: %1.").arg(why));
+ saveTarget_->setText(path.isEmpty()?QStringLiteral("Couldn't save the copy"):QString("Couldn't save ‹%1›").arg(file.fileName()));
+ saveTarget_->setRevealText(path.isEmpty()?QStringLiteral("Couldn't save the copy"):file.absoluteFilePath());saveTarget_->setVisible(!path.isEmpty());
+ saveError_->setText(path.isEmpty()?QString("Couldn't save the copy: %1.").arg(why):reason.trimmed());
  const auto where=path.isEmpty()?QStringLiteral("the copy"):file.absoluteFilePath();
+ saveTarget_->setToolTip(where);saveTarget_->setAccessibleDescription(where+". Press Enter to show the full path.");
  saveError_->setToolTip(path.isEmpty()?QStringLiteral("Your edits are kept."):QString("%1\nYour edits are kept.").arg(where));saveError_->setAccessibleName("Save a copy failed");
  saveError_->setAccessibleDescription(QString("Couldn't save %1: %2. Your edits are kept.").arg(where,why));
  saveError_->show();savedLabel_->hide();showFolder_->hide();copyPath_->hide();chooseAnother_->show();

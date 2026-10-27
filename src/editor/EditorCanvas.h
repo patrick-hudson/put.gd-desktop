@@ -98,6 +98,7 @@ private:
  void updateHoverCursor(const QPointF& widgetPoint,Qt::KeyboardModifiers);
  QRect resized(QRect,int handle,const QPoint& delta) const;
  void clampOffset();
+ void placeTextEditor();
  void beginText(const QPointF& imagePoint,const Shape* existing);
  const QImage& blurTile(const Shape&);
  Shape::Kind kindFor(Tool) const;

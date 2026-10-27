@@ -41,6 +41,10 @@
 #include <QStatusBar>
 #include <QStyleFactory>
 #include <QStyleOption>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
+#include <QAccessibilityHints>
+#include <QStyleHints>
+#endif
 #include <QStyledItemDelegate>
 #include <QTextEdit>
 #include <QToolButton>
@@ -54,6 +58,12 @@ QString& uiFamilyName() { static QString name; return name; }
 QString& monoFamilyName() { static QString name; return name; }
 const Theme::Palette& t() { return Theme::current(); }
 QString role(const QWidget* widget) { return widget ? widget->property("visualRole").toString() : QString(); }
+bool progressAnimationEnabled(const QWidget* widget, const QStyleOption* option = nullptr) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
+    if (QGuiApplication::styleHints()->accessibility()->motionPreference() == Qt::MotionPreference::ReducedMotion) return false;
+#endif
+    return (widget ? widget->style() : QApplication::style())->styleHint(QStyle::SH_Widget_Animate, option, widget);
+}
 bool keyboardState(const QStyleOption* option) {
     return (option->state & QStyle::State_HasFocus) && (option->state & QStyle::State_KeyboardFocusChange);
 }
@@ -553,8 +563,7 @@ int Style::pixelMetric(PixelMetric metric, const QStyleOption* option, const QWi
     case PM_TabBarTabShiftVertical: case PM_TabBarTabShiftHorizontal: case PM_TabBarBaseOverlap: case PM_TabBarBaseHeight: return 0;
     case PM_TabBarTabHSpace: return 40;
     case PM_TabBarTabVSpace: return 16;
-    case PM_SliderLength: case PM_SliderControlThickness: return 14;
-    case PM_SliderThickness: return 18;
+    case PM_SliderLength: case PM_SliderControlThickness: case PM_SliderThickness: return 32;
     case PM_ToolBarIconSize: case PM_ButtonIconSize: case PM_SmallIconSize: return Metric::icon;
     case PM_FocusFrameHMargin: case PM_FocusFrameVMargin: return 0;
     case PM_HeaderMargin: return 8;
@@ -1145,7 +1154,35 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
     case CE_ProgressBarContents: {
         const auto* bar = qstyleoption_cast<const QStyleOptionProgressBar*>(option);
         if (!bar) break;
-        if (bar->minimum == 0 && bar->maximum == 0) break;
+        if (bar->minimum == 0 && bar->maximum == 0) {
+            auto* progress = qobject_cast<QProgressBar*>(const_cast<QWidget*>(widget));
+            const bool animate = progressAnimationEnabled(widget, option);
+            qreal phase = progress ? progress->property("graphiteBusyPhase").toDouble() : 0;
+            if (progress) {
+                auto* timer = progress->findChild<QTimer*>("graphiteBusyTimer", Qt::FindDirectChildrenOnly);
+                if (!timer) {
+                    timer = new QTimer(progress);
+                    timer->setObjectName("graphiteBusyTimer");
+                    timer->setInterval(60);
+                    QObject::connect(timer, &QTimer::timeout, progress, [progress, timer] {
+                        if (!progress->isVisible() || !progress->isEnabled() || progress->minimum() != 0 || progress->maximum() != 0
+                            || !progressAnimationEnabled(progress)) { timer->stop(); return; }
+                        progress->setProperty("graphiteBusyPhase", std::fmod(progress->property("graphiteBusyPhase").toDouble() + 0.015, 1.0));
+                        progress->update();
+                    });
+                }
+                if (animate && progress->isVisible() && progress->isEnabled()) { if (!timer->isActive()) timer->start(); }
+                else timer->stop();
+            }
+            // Qt 6.4 has no reduced-motion preference API. Honour disabled style
+            // animation; otherwise a quiet four-second sweep avoids flashing.
+            const QRectF r = option->rect;
+            const qreal h = std::min<qreal>(r.height(), 8), length = std::min(r.width(), std::max(h, r.width() * 0.28));
+            const qreal position = animate ? (1 - std::cos(phase * 2 * 3.141592653589793)) / 2 : 0.5;
+            const qreal x = r.left() + (r.width() - length) * (bar->invertedAppearance ? 1 - position : position);
+            rounded(p, QRectF(x, r.center().y() - h / 2, length, h), option->state & State_Enabled ? c.accent : c.textDisabled, {}, h / 2);
+            return;
+        }
         const QRectF r = option->rect;
         const qreal h = std::min<qreal>(r.height(), 8);
         const qreal fraction = std::clamp(double(qint64(bar->progress) - bar->minimum) / std::max<qint64>(1, qint64(bar->maximum) - bar->minimum), 0.0, 1.0);

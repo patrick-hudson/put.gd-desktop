@@ -22,6 +22,10 @@
 #include <QShortcut>
 #include <QToolButton>
 #include <QSpinBox>
+#include <QSlider>
+#include <QProgressBar>
+#include <QStyleOptionSlider>
+#include <QTimer>
 #include <QFontComboBox>
 #include <QHash>
 #include <QSignalSpy>
@@ -34,6 +38,70 @@ class EditorWindowTest:public QObject {
  static QImage canvasImage(){QImage image(400,260,QImage::Format_RGB32);image.fill(QColor("#20242c"));return image;}
  static void add(EditDocument& doc,const QJsonObject& shape){QJsonArray created;QString code,message;QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",shape}}},created,code,message),qPrintable(message));}
 private slots:
+ void textEntryStaysInsideCanvasWithoutMovingTheAnnotation(){
+  EditDocument doc(canvasImage());EditorCanvas canvas(doc);canvas.resize(440,300);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));canvas.setTool(Tool::Text);
+  for(const QPoint anchor:{QPoint(390,80),QPoint(150,250),QPoint(390,250)}){
+   canvas.fit();const QPoint origin((canvas.width()-400)/2,(canvas.height()-260)/2);
+   QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+anchor);
+   auto* field=canvas.findChild<QLineEdit*>("annotationText");QVERIFY(field&&field->isVisible());
+   const QString text(180,'W');field->setText(text);QVERIFY(canvas.rect().contains(field->geometry()));
+   canvas.resize(320,220);QApplication::processEvents();QVERIFY(canvas.rect().contains(field->geometry()));
+   field->setCursorPosition(text.size());QTest::keyClick(field,Qt::Key_End);QTest::keyClick(field,Qt::Key_Return);
+   QCOMPARE(doc.shapes().last().rect.topLeft(),anchor);QCOMPARE(doc.shapes().last().text,text);
+   QApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);canvas.resize(440,300);QApplication::processEvents();
+  }
+ }
+ void blurValueAndHandleFollowTheActualSlider(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.selectTool(Tool::Blur);
+  auto* slider=window.findChild<QSlider*>("blurStrength");auto* value=window.findChild<QLabel*>("blurStrengthValue");QVERIFY(slider&&value);
+  QCOMPARE(value->accessibleDescription(),slider->accessibleDescription());
+  for(const int strength:{slider->minimum(),18,slider->maximum()}){slider->setValue(strength);QCOMPARE(value->text(),QString::number(strength));QCOMPARE(window.canvas().style().strength,strength);}
+  add(doc,{{"kind","blur"},{"rect",QJsonArray{10,10,50,20}},{"strength",24}});window.documentEdited();window.canvas().select(doc.shapes().last().id);QCOMPARE(value->text(),QString("24"));
+  for(const auto orientation:{Qt::Horizontal,Qt::Vertical})for(const bool inverted:{false,true}){
+   QSlider control(orientation);control.setRange(0,100);control.setValue(50);control.setInvertedAppearance(inverted);control.resize(orientation==Qt::Horizontal?QSize(260,32):QSize(32,260));control.show();QVERIFY(putgd::test::waitForWindowExposed(&control));
+   QStyleOptionSlider option;option.initFrom(&control);option.orientation=orientation;option.minimum=0;option.maximum=100;option.sliderPosition=50;option.sliderValue=50;option.upsideDown=orientation==Qt::Horizontal?inverted:!inverted;
+   const auto handle=control.style()->subControlRect(QStyle::CC_Slider,&option,QStyle::SC_SliderHandle,&control);
+   QVERIFY(handle.width()>=32&&handle.height()>=32);QVERIFY(control.rect().contains(handle));
+   QVERIFY((orientation==Qt::Horizontal?control.sizeHint().height():control.sizeHint().width())>=32);
+   const QPoint press=handle.center()+(orientation==Qt::Horizontal?QPoint(0,14):QPoint(14,0));
+   QCOMPARE(control.style()->hitTestComplexControl(QStyle::CC_Slider,&option,press,&control),QStyle::SC_SliderHandle);
+   QTest::mousePress(&control,Qt::LeftButton,{},press);QCOMPARE(control.value(),50);QVERIFY(control.isSliderDown());
+   const QPoint end=press+(orientation==Qt::Horizontal?QPoint(28,0):QPoint(0,28));
+   QMouseEvent move(QEvent::MouseMove,QPointF(end),control.mapToGlobal(QPointF(end)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&control,&move);
+   QVERIFY(control.value()!=50);QTest::mouseRelease(&control,Qt::LeftButton,{},end);
+  }
+ }
+ void indeterminateProgressPaintsAndAnimatesInBothSchemes(){
+  const auto restore=qScopeGuard([previous=Theme::scheme()]{Theme::setScheme(previous);});
+  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+   Theme::setScheme(scheme);QProgressBar bar;bar.setTextVisible(false);bar.resize(240,20);bar.setRange(0,100);bar.setValue(0);bar.show();QVERIFY(putgd::test::waitForWindowExposed(&bar));
+   const auto zero=bar.grab().toImage();bar.setRange(0,0);const auto busy=bar.grab().toImage();QVERIFY(busy!=zero);
+   int accent=0;for(int y=0;y<busy.height();++y)for(int x=0;x<busy.width();++x)if(busy.pixelColor(x,y)==Theme::current().accent)++accent;QVERIFY(accent>100);
+   auto* timer=bar.findChild<QTimer*>("graphiteBusyTimer");QVERIFY(timer);QVERIFY(timer->isActive());
+   PUTGD_TRY_VERIFY(bar.property("graphiteBusyPhase").toDouble()>0.08);QVERIFY(bar.grab().toImage()!=busy);
+   bar.setRange(0,100);bar.setValue(0);PUTGD_TRY_VERIFY(!timer->isActive());QCOMPARE(bar.grab().toImage(),zero);
+  }
+ }
+ void disabledStyleAnimationKeepsAVisibleBusySegment(){
+  class QuietStyle final:public QProxyStyle {
+  public:
+   QuietStyle():QProxyStyle(new Graphite::Style){}
+   int styleHint(StyleHint hint,const QStyleOption* option=nullptr,const QWidget* widget=nullptr,QStyleHintReturn* data=nullptr)const override{return hint==SH_Widget_Animate?0:QProxyStyle::styleHint(hint,option,widget,data);}
+  } style;
+  QProgressBar bar;bar.setStyle(&style);bar.setTextVisible(false);bar.resize(240,20);bar.setRange(0,0);bar.show();QVERIFY(putgd::test::waitForWindowExposed(&bar));
+  const auto still=bar.grab().toImage();auto* timer=bar.findChild<QTimer*>("graphiteBusyTimer");QVERIFY(timer&&!timer->isActive());
+  QCOMPARE(still.pixelColor(still.width()/2,still.height()/2),Theme::current().accent);QCOMPARE(bar.grab().toImage(),still);
+ }
+ void liveSchemeAlsoUpdatesTheOpenFallbackChooser(){
+  const auto restore=qScopeGuard([previous=Theme::scheme()]{Theme::setScheme(previous);qunsetenv("PUTGD_FILE_DIALOG");});qputenv("PUTGD_FILE_DIALOG","fallback");
+  Theme::setScheme(Theme::Scheme::Dark);EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));QVERIFY(window.saveCopy());
+  auto* chooser=window.fileDialog().fallbackDialog();QVERIFY(chooser&&chooser->isVisible());
+  for(const auto scheme:{Theme::Scheme::Light,Theme::Scheme::Dark}){
+   Theme::setScheme(scheme);QApplication::processEvents();QCOMPARE(window.viewState()["scheme"].toString(),Theme::name(scheme));QCOMPARE(chooser->property("themeScheme").toString(),Theme::name(scheme));
+   QCOMPARE(chooser->palette().color(QPalette::Window),Theme::current().bg);QCOMPARE(window.palette().color(QPalette::Window),Theme::current().bg);
+  }
+  window.fileDialog().cancel();
+ }
  void keyboardContractNeverUploadsOnPlainEnter(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   QSignalSpy uploads(&window,&EditorWindow::uploadRequested);
@@ -64,11 +132,22 @@ private slots:
   QTest::mouseRelease(&canvas,Qt::LeftButton,{},end);
   QCOMPARE(doc.shapes().size(),1);const auto id=doc.shapes().first().id;QCOMPARE(canvas.selected(),id);
   // A style control edits the selection.
-  QToolButton* green=nullptr;for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName()=="Color #22c55e")green=button;
+  QToolButton* green=nullptr;for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName()=="Color Green")green=button;
   QVERIFY(green);green->click();QCOMPARE(doc.find(id)->color,QColor("#22c55e"));
   const auto shape=*doc.find(id);
   for(auto tool:{Tool::Highlight,Tool::Arrow,Tool::Text,Tool::Blur,Tool::Redact,Tool::Rectangle,Tool::Select}){window.selectTool(tool);QCOMPARE(*doc.find(id),shape);}
   QCOMPARE(canvas.selected(),quint64(0));
+ }
+ void builtInSwatchesHaveColorNamesAndCustomSwatchesKeepHexNames(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.setRecentColors({"#123456"});
+  QStringList names;
+  for(auto* swatch:window.findChildren<QToolButton*>()){
+   if(!swatch->property("swatchColor").isValid())continue;
+   const auto color=swatch->property("swatchColor").value<QColor>();
+   if(color==QColor("#123456")){QCOMPARE(swatch->accessibleName(),QString("Color #123456"));continue;}
+   names.append(swatch->accessibleName());QCOMPARE(swatch->accessibleDescription(),color.name());QVERIFY(swatch->toolTip().contains(color.name()));
+  }
+  names.sort();QStringList expected{"Color Red","Color Orange","Color Yellow","Color Green","Color Blue","Color White","Color Black"};expected.sort();QCOMPARE(names,expected);
  }
  void recentColorsAndTextControlsEditTheSelection(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -208,6 +287,9 @@ private slots:
   window.showSaveFailed(dir.filePath("denied.png"),"Permission denied");
   auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error);QVERIFY(error->isVisible());QVERIFY(error->wordWrap());QVERIFY(!saved->isVisible());
   QVERIFY(error->text().contains("Permission denied",Qt::CaseInsensitive));QVERIFY(error->accessibleDescription().contains(QFileInfo(dir.filePath("denied.png")).absoluteFilePath()));
+  auto* target=window.findChild<Graphite::ElidedLabel*>("editorSaveTarget");QVERIFY(target&&target->isVisible());QVERIFY(target->text().contains("denied.png"));QVERIFY(target->revealable());
+  target->setFocus(Qt::TabFocusReason);QTest::keyClick(target,Qt::Key_Return);auto* popup=target->fullTextPopup();QVERIFY(popup&&popup->isVisible());
+  auto* full=popup->findChild<QLabel*>();QVERIFY(full);QCOMPARE(full->text(),QFileInfo(dir.filePath("denied.png")).absoluteFilePath());QVERIFY(full->textInteractionFlags()&Qt::TextSelectableByKeyboard);popup->close();
   QVERIFY(another->isVisible());QVERIFY(!show->isVisible());QCOMPARE(doc.shapes().size(),1);
   QCOMPARE(window.viewState()["lastSave"].toObject()["reason"].toString(),QString("Permission denied"));
   QString code,message;window.viewCommand({{"action","showSavedCopy"}},code,message);QCOMPARE(code,QString("editor_no_saved_copy"));

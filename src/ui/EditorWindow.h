@@ -106,6 +106,8 @@ private:
  QWidget *colorRow_=nullptr,*widthRow_=nullptr,*blurRow_=nullptr,*textRow_=nullptr,*cropRow_=nullptr;
  QComboBox* width_=nullptr;
  QSlider* strength_=nullptr;
+ Graphite::ElidedLabel* saveTarget_=nullptr;
+ QLabel* strengthValue_=nullptr;
  QLabel *hint_=nullptr,*status_=nullptr,*message_=nullptr,*toolTitle_=nullptr,*toolHelp_=nullptr,*documentInfo_=nullptr,*destination_=nullptr;
  QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={},*savedLabel_=nullptr,*saveError_=nullptr,*folderError_=nullptr;
  QSpinBox* geometry_[4]={};
