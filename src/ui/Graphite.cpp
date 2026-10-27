@@ -64,7 +64,7 @@ QString& uiFamilyName() { static QString name; return name; }
 QString& monoFamilyName() { static QString name; return name; }
 const Theme::Palette& t() { return Theme::current(); }
 QString role(const QWidget* widget) { return widget ? widget->property("visualRole").toString() : QString(); }
-bool flushButton(const QWidget* widget) { return widget && role(widget) == "quiet" && widget->property("graphiteFlush").toBool(); }
+bool flushButton(const QWidget* widget) { return widget && (role(widget) == "quiet" || role(widget) == "link") && widget->property("graphiteFlush").toBool(); }
 bool progressAnimationEnabled(const QWidget* widget, const QStyleOption* option = nullptr) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
     if (QGuiApplication::styleHints()->accessibility()->motionPreference() == Qt::MotionPreference::ReducedMotion) return false;
