@@ -115,17 +115,17 @@ struct Native {
 bool waitUntil(const std::function<bool()>& condition){return putgd::test::waitFor(condition,8000);}
 QImage iconSpecimen(){
  const auto& theme=Theme::current();const auto& tints=Theme::trayTints(Theme::scheme()==Theme::Scheme::Light);
- QImage image(1200,460,QImage::Format_RGB32);image.fill(theme.bg);QPainter p(&image);
- p.setPen(theme.text);p.drawText(24,28,"Lift + Duotone · production renderer · synthetic specimen");
- VisualStyle::icon("brand").paint(&p,QRect(24,57,72,72));
- const QStringList names{"region","window","desktop","record","clipboard","history","destinations","preferences","info","shortcuts","bucket","proton","add"};
- for(int i=0;i<names.size();++i){const int x=115+i*80;VisualStyle::icon(names[i]).paint(&p,QRect(x,60,48,48));p.drawText(QRect(x-15,120,92,24),Qt::AlignCenter,names[i]);}
- p.drawText(24,185,"Encoding fill");
- VisualStyle::icon("proton").paint(&p,QRect(1090,174,Graphite::scaled(16),Graphite::scaled(16)));
- for(int i=0;i<5;++i){const int x=155+i*125;VisualStyle::icon("tray",tints.idle,i*25).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x,250,72,24),Qt::AlignCenter,QString::number(i*25)+"%");}
- for(int i=0;i<2;++i){const int x=860+i*130;VisualStyle::icon("tray",i?tints.idle:tints.error).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x-10,250,92,24),Qt::AlignCenter,i?"Blink off":"Blink on");}
- p.drawText(24,308,"Actual tray sizes: 16 / 22 / 24 / 32 px");
- for(int row=0;row<2;++row){const int y=330+row*56;p.fillRect(QRect(24,y,1152,48),QColor(row?"#e4e5e9":"#20242d"));
+ const QStringList names{"region","window","desktop","record","alert","clipboard","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
+ const int rows=(names.size()+7)/8,identityY=64+rows*94;
+ QImage image(1280,identityY+340,QImage::Format_RGB32);image.fill(theme.bg);QPainter p(&image);p.setPen(theme.text);p.setFont(Graphite::font(Graphite::Type::body));
+ p.drawText(24,28,"Outline family · 40 px reference + actual 20 px (text-scaled) · production renderer");
+ auto caption=p.font();caption.setPixelSize(11);p.setFont(caption);
+ for(int i=0;i<names.size();++i){const int x=24+(i%8)*156,y=52+(i/8)*94;VisualStyle::icon(names[i]).paint(&p,QRect(x+12,y,40,40));const int side=Graphite::scaled(Graphite::Metric::icon);VisualStyle::icon(names[i]).paint(&p,QRect(x+88,y+(40-side)/2,side,side));p.drawText(QRect(x,y+48,144,22),Qt::AlignCenter,names[i]);}
+ p.drawText(24,identityY,"Solid identity artwork · encoding fill");VisualStyle::icon("brand").paint(&p,QRect(24,identityY+20,64,64));
+ for(int i=0;i<5;++i){const int x=155+i*125;VisualStyle::icon("tray",tints.idle,i*25).paint(&p,QRect(x,identityY+20,64,64));p.drawText(QRect(x,identityY+94,64,24),Qt::AlignCenter,QString::number(i*25)+"%");}
+ for(int i=0;i<2;++i){const int x=860+i*130;VisualStyle::icon("tray",i?tints.idle:tints.error).paint(&p,QRect(x,identityY+20,64,64));p.drawText(QRect(x-10,identityY+94,92,24),Qt::AlignCenter,i?"Blink off":"Blink on");}
+ p.drawText(24,identityY+152,"Actual tray sizes: 16 / 22 / 24 / 32 px");
+ for(int row=0;row<2;++row){const int y=identityY+170+row*56;p.fillRect(QRect(24,y,1232,48),QColor(row?"#e4e5e9":"#20242d"));
   int x=44;for(int size:{16,22,24,32}){VisualStyle::icon("tray",Theme::trayTints(row).idle).paint(&p,QRect(x,y+(48-size)/2,size,size));x+=60;}
   for(int i=0;i<5;++i)VisualStyle::icon("tray",Theme::trayTints(row).idle,i*25).paint(&p,QRect(300+i*130,y+12,24,24));
   for(int i=0;i<2;++i)VisualStyle::icon("tray",i?Theme::trayTints(row).idle:Theme::trayTints(row).error).paint(&p,QRect(980+i*80,y+12,24,24));
@@ -167,7 +167,7 @@ int main(int argc,char** argv){
  // Review's compact header), as on X11 and Wayland; native runs decide it.
  if(QGuiApplication::platformName()=="offscreen")Graphite::WindowHeader::setCustomFrameOverride(1);app.setWindowIcon(VisualStyle::icon("brand"));Native native;if(qEnvironmentVariable("PUTGD_PREVIEW_THEME")=="light")Theme::setScheme(Theme::Scheme::Light);if(app.arguments().size()!=2){qCritical("Usage: redesign_preview OUTPUT_DIRECTORY");return 2;}const auto output=QFileInfo(app.arguments().at(1)).absoluteFilePath();if(!QDir().mkpath(output)){qCritical("Cannot create preview output directory");return 2;}
  if(!iconSpecimen().save(QDir(output).filePath("00-icon-specimen.png")))return 2;
- {QImage providers(280,64,QImage::Format_RGB32);providers.fill(Theme::current().bg);QPainter painter(&providers);painter.setPen(Theme::current().textSecondary);int x=12;for(const auto& name:QStringList{"destinations","bucket","proton"}){VisualStyle::icon(name).paint(&painter,QRect(x,8,16,16));painter.drawText(QRect(x,30,88,24),name);x+=92;}painter.end();if(!providers.save(QDir(output).filePath("provider-icons-16.png")))return 2;}
+ {const int side=Graphite::scaled(16);QImage providers(360,140,QImage::Format_RGB32);providers.fill(Theme::current().bg);QPainter painter(&providers);painter.setPen(Theme::current().textSecondary);painter.setFont(Graphite::font(Graphite::Type::metadata));int x=12;for(const auto& name:QStringList{"destinations","bucket","proton"}){const auto glyph=VisualStyle::icon(name).pixmap(side,side).toImage();painter.drawImage(QPoint(x,8),glyph);painter.drawImage(QPoint(x+36,8),glyph.scaled(side*3,side*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));painter.drawText(QRect(x,100,112,32),name);x+=120;}painter.end();if(!providers.save(QDir(output).filePath("provider-icons-16.png")))return 2;}
  // The fixture calls the resident dispatcher directly and never opens a socket,
  // but enforce the same Linux path precondition before constructing the app.
  const auto socket=QDir(QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation)).filePath("putgd/session.sock");if(socket.toUtf8().size()>107){qCritical("Resolved Unix socket exceeds 107 UTF-8 bytes");return 2;}

@@ -23,7 +23,7 @@ namespace putgd::Graphite {
 // Geometry in logical pixels at the default text scale.
 namespace Metric {
 constexpr int space = 4, control = 36, iconTarget = 32, radius = 6, segmentRadius = 6, trackRadius = 10, swatchRadius = 4, smallRadius = 4, containerRadius = 10, segmentInset = 4;
-constexpr int header = 56, commandBand = 60, statusBand = 26, icon = 18, splitZone = 26;
+constexpr int header = 56, commandBand = 60, statusBand = 26, icon = 20, splitZone = 26;
 // A split button's menu half: a full 32 px pointer target with the same small
 // chevron (combo boxes and menu buttons keep splitZone for their chevron).
 constexpr int splitArrow = 32;

@@ -111,7 +111,7 @@ private slots:
             Theme::setScheme(scheme);const auto& c=Theme::current();
             std::unique_ptr<QLabel> warning(Graphite::warningLabel("Warning: Blur is a visual effect."));warning->resize(320,72);warning->show();putgd::test::settle(10);
             QCOMPARE(warning->palette().color(QPalette::WindowText),c.textSecondary);QVERIFY(warning->contentsMargins().left()>=Graphite::scaled(Graphite::Metric::icon));
-            const auto image=warning->grab().toImage();int amber=0;for(int y=0;y<image.height();++y)for(int x=0;x<warning->contentsMargins().left();++x)if(image.pixelColor(x,y)==c.accent)++amber;QVERIFY(amber>0);
+            const auto image=warning->grab().toImage();int amber=0;for(int y=0;y<image.height();++y)for(int x=0;x<warning->contentsMargins().left();++x){const auto pixel=image.pixelColor(x,y);if(pixel.red()-pixel.blue()>20&&Theme::contrast(pixel,c.bg)>=3.0)++amber;}QVERIFY(amber>0);
             VisualStyle::role(warning.get(),"secondary");QCOMPARE(warning->contentsMargins().left(),0);
             QImage neutral(80,40,QImage::Format_RGB32);neutral.fill(c.bg);{QPainter painter(&neutral);Graphite::paintSelection(painter,QRectF(0,0,80,40));}QCOMPARE(neutral.pixelColor(40,20),c.selected);QCOMPARE(neutral.pixelColor(40,0),c.selected);
             QImage focused=neutral;{QPainter painter(&focused);Graphite::paintSelection(painter,QRectF(0,0,80,40),true);}QCOMPARE(focused.pixelColor(40,0),c.accent);
@@ -349,31 +349,75 @@ private slots:
         QCOMPARE(Theme::tokens(Theme::Scheme::Light)["controlOutline"].toString(), QString("#82827b"));
         QVERIFY(Theme::tokens(Theme::Scheme::Light)["bg"] != Theme::tokens(Theme::Scheme::Dark)["bg"]);
     }
-    // A selected row, segment or menu item draws its glyph in the selected
-    // pair: the silhouette and the inner detail each reach 3:1 on the selected
-    // fill, and stay 3:1 apart (the normal secondary tone fell to about 2.7:1).
-    void selectedIconTonesReadOnTheSelectedFill() {
+    void bannerGlyphsRemainVisibleOnTheirSurface() {
+        for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}) for(const auto tone:{Graphite::Banner::Tone::Info,Graphite::Banner::Tone::Warning,Graphite::Banner::Tone::Error,Graphite::Banner::Tone::Success}) {
+            Theme::setScheme(scheme);Graphite::Banner banner(tone,"A readable explanation.");banner.resize(420,90);banner.show();putgd::test::settle(10);
+            const auto image=banner.grab().toImage();int readable=0;
+            for(int y=2;y<image.height()-2;++y)for(int x=Graphite::scaled(12);x<Graphite::scaled(12+Graphite::Metric::icon);++x)readable+=Theme::contrast(image.pixelColor(x,y),Theme::current().surface)>=3.0;
+            QVERIFY(readable>0);
+        }
+    }
+    void outlineIconsKeepSecondaryColourInsideOptionalWashes() {
+        const QStringList outlines{"upload","failed-uploads","download","region","window","desktop","clipboard","history","destinations","settings","preferences","shortcuts","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","bucket","add","file","video"};
+        for (const auto& name : outlines) {
+            const auto art = IconArt::symbol(name, Qt::white, 4, Qt::red);
+            QVERIFY2(art == IconArt::symbol(name, Qt::white, 4, Qt::blue), qPrintable(name));
+            int ink = 0;
+            for (int y = 0; y < art.height(); ++y) for (int x = 0; x < art.width(); ++x) {
+                const auto alpha = art.pixelColor(x, y).alpha();
+                ink += alpha > 0;
+                if (x < 4 || y < 4 || x >= art.width()-4 || y >= art.height()-4) QVERIFY2(alpha == 0, qPrintable(name));
+            }
+            QVERIFY2(ink > 100, qPrintable(name));
+        }
+        for (const auto& name : {"record", "alert", "image"}) {
+            const auto art = IconArt::symbol(name, Qt::white, 4, Qt::red);
+            QVERIFY(art != IconArt::symbol(name, Qt::white, 4, Qt::blue));
+            // Sample empty interior, away from the antialiased outline.
+            const auto interior = QString(name)=="record" ? QPoint(12,12) : QString(name)=="alert" ? QPoint(7,17) : QPoint(9,9);
+            const auto wash = art.pixelColor(interior*4);
+            QVERIFY2(wash.alpha() >= 45 && wash.alpha() <= 47, name);
+            QCOMPARE(wash.red(), 255);QCOMPARE(wash.blue(), 0);
+        }
+        for (const auto& name : {"window", "desktop", "clipboard", "shortcuts", "stop", "save", "play", "pause", "bucket", "file"}) {
+            const auto art = IconArt::symbol(name, Qt::white, 4);
+            int solid = 0;
+            for (int y = 0; y < art.height(); ++y) for (int x = 0; x < art.width(); ++x) solid += art.pixelColor(x,y).alpha() > 128;
+            QVERIFY2(solid < art.width()*art.height()/2, name);
+        }
+        const auto gear=IconArt::symbol("settings",Qt::white,4);
+        QVERIFY(gear.pixelColor(48,10).alpha()>200);
+        QCOMPARE(gear.pixelColor(48,48).alpha(),0);
+        QCOMPARE(IconArt::symbol("brand", Qt::white), IconArt::liftApp(Qt::white));
+        QCOMPARE(IconArt::symbol("tray", Qt::white), IconArt::liftTray(Qt::white));
+    }
+    void outlinesUseOpticalSizingForTheirShape() {
+        const auto extent=[](const QString& name) {
+            const auto art=IconArt::symbol(name,Qt::white,4);QRect ink;
+            for(int y=0;y<art.height();++y)for(int x=0;x<art.width();++x)if(art.pixelColor(x,y).alpha()>127)ink=ink.united(QRect(x,y,1,1));
+            return std::max(ink.width(),ink.height())/4.0;
+        };
+        for(const auto& name:{"image","stop","rectangle","zoom-fit"})QVERIFY2(std::abs(extent(name)-18)<=0.5,name);
+        for(const auto& name:{"window","desktop","shortcuts","save"})QVERIFY2(std::abs(extent(name)-20)<=0.5,name);
+        QVERIFY(std::abs(extent("add")-21)<=0.5);
+    }
+    void selectedOutlineIconsReadOnTheSelectedFill() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
-            const auto& p = Theme::palette(scheme);
-            const auto what = [&](const char* text, double ratio) { return qPrintable(QString("%1 %2: %3").arg(Theme::name(scheme), text).arg(ratio)); };
-            QVERIFY2(Theme::contrast(p.iconSelected, p.selected) >= 3.0, what("selected silhouette", Theme::contrast(p.iconSelected, p.selected)));
-            QVERIFY2(Theme::contrast(p.iconSecondarySelected, p.selected) >= 3.0, what("selected inner detail", Theme::contrast(p.iconSecondarySelected, p.selected)));
-            QVERIFY2(Theme::contrast(p.iconSelected, p.iconSecondarySelected) >= 3.0, what("selected tones apart", Theme::contrast(p.iconSelected, p.iconSecondarySelected)));
-            // Painted, not only declared: QIcon::Selected renders the selected pair.
             Theme::setScheme(scheme);
+            const auto& p = Theme::current();
+            QVERIFY(Theme::contrast(p.iconSelected, p.selected) >= 3.0);
             const auto icon = VisualStyle::icon("settings");
-            const auto normal = icon.pixmap(QSize(36, 36), QIcon::Normal).toImage(), selected = icon.pixmap(QSize(36, 36), QIcon::Selected).toImage();
+            const auto normal = icon.pixmap(QSize(36,36), QIcon::Normal).toImage(), selected = icon.pixmap(QSize(36,36), QIcon::Selected).toImage();
             QVERIFY(normal != selected);
-            const auto near = [](const QColor& a, const QColor& b) { return std::abs(a.red() - b.red()) + std::abs(a.green() - b.green()) + std::abs(a.blue() - b.blue()) < 12; };
-            int silhouette = 0, detail = 0;
-            for (int y = 0; y < selected.height(); ++y)
-                for (int x = 0; x < selected.width(); ++x) {
-                    const auto colour = selected.pixelColor(x, y);
-                    if (colour.alpha() < 250) continue;
-                    silhouette += near(colour, p.iconSelected);
-                    detail += near(colour, p.iconSecondarySelected);
-                }
-            QVERIFY2(silhouette > 10 && detail > 4, what("selected pixels", silhouette * 1000 + detail));
+            int stroke = 0;
+            for (int y = 0; y < selected.height(); ++y) for (int x = 0; x < selected.width(); ++x) {
+                const auto colour = selected.pixelColor(x,y);
+                if (colour.alpha() < 250) continue;
+                QVERIFY(std::abs(colour.red()-p.iconSelected.red()) + std::abs(colour.green()-p.iconSelected.green()) + std::abs(colour.blue()-p.iconSelected.blue()) < 12);
+                ++stroke;
+            }
+            QVERIFY(stroke > 10);
+            QCOMPARE(selected.pixelColor(18,18).alpha(), 0);
         }
     }
     // A locked value (Graphite::setLocked) reads as information: its text is

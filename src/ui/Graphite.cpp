@@ -1754,7 +1754,7 @@ protected:
         if (role(this) != "warning") return;
         QPainter p(this);
         const int side = scaled(Metric::icon);
-        const auto glyph = IconArt::symbol("alert", t().bg, std::max(1, (side + 23) / 24), t().accent);
+        const auto glyph = IconArt::symbol("alert", t().accent, std::max(1, (side + 23) / 24), t().accent);
         p.drawImage(QRect(0, std::max(0, (fontMetrics().height() - side) / 2), side, side), glyph);
     }
 };
@@ -1841,7 +1841,7 @@ void Banner::paintEvent(QPaintEvent*) {
     const QRect glyph(scaled(12), firstRow.y() + std::max(0, (firstRow.height() - side) / 2), side, side);
     if (!icon_.isNull()) icon_.paint(&painter, glyph);
     else if (tone_ == Tone::Success) paintChromeGlyph(painter, glyph, "check", tone);
-    else painter.drawImage(glyph, IconArt::symbol(tone_ == Tone::Info ? "info" : "alert", colors.surface, std::max(1, (side + 23) / 24), tone));
+    else painter.drawImage(glyph, IconArt::symbol(tone_ == Tone::Info ? "info" : "alert", tone, std::max(1, (side + 23) / 24), tone));
 }
 QString blurWarningText() {
     return QStringLiteral("Blur may be reversible. Use Redact for private information.");
