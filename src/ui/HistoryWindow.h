@@ -53,7 +53,7 @@ private:
  void updateSummary();void updateInspectorLayout();void setGridMode(bool);void applyFilters();void showRowMenu(const QModelIndex&,const QPoint&,bool overflow=false,bool collective=false);void primaryAction(const QModelIndex&);void operationAction(const QString&);void updateActivity();void updateActivityLayout();void exportLocal(bool);void editAgain(const QJsonObject& record);static bool editable(const QJsonObject& record);void saveDiagnostics(const QString& operationId,std::function<void(Error,QJsonObject)> done={});bool diagnosticsAvailable(int row)const;
  void changeSharing(const QString&);void pollSharing();void selectionChanged();void loadSelectedItem();void prepareDelete();void prepareDelete(const QStringList& ids,int skipped);void pollDeletion();QStringList selectedIds()const;QJsonObject selectedRecord()const;QString destinationLabel(const QJsonObject&)const;
  // The stored files of the selected rows, and those delete.prepare can take.
- QList<QJsonObject> selectedFiles()const;QStringList deletableIds()const;bool selectionHasLinks()const;void copySelectedLinks();
+ QList<QJsonObject> selectedFiles()const;QStringList deletableIds()const;QStringList selectedLinkIds()const;bool selectionHasLinks()const;void copySelectedLinks();
  // Filters · N, its description and Clear filters follow the applied query.
  void updateFilterSummary();QStringList activeFilters()const;void clearFilters(bool all);
  void updateMultiSummary();void prepareCancelAll();void confirmCancelAll();
@@ -70,7 +70,7 @@ private:
  // The item and preview file the inspector shows now, kept across reloads.
  QString shownItemId_,shownPreviewPath_;
  FileDialog* chooser_=nullptr;
- QToolButton *filtersToggle_=nullptr,*clearFilters_=nullptr,*detailsBack_=nullptr,*detailsClose_=nullptr;QWidget *selectionBar_=nullptr,*emptyState_=nullptr;QLabel *selectionCount_=nullptr,*emptyBody_=nullptr;QPushButton *copyLinks_=nullptr,*deleteSelected_=nullptr,*resetView_=nullptr,*retryLoading_=nullptr,*remove_=nullptr;bool compact_=false,detailsOpen_=false,detailsFromGallery_=false,restoreDetailsOpen_=false,restoreScroll_=false;int galleryScroll_=0,listScroll_=0;
+ QToolButton *filtersToggle_=nullptr,*clearFilters_=nullptr,*detailsBack_=nullptr,*detailsClose_=nullptr;QWidget *selectionBar_=nullptr,*emptyState_=nullptr;QLabel *selectionCount_=nullptr,*selectionLinkHint_=nullptr,*emptyBody_=nullptr;QPushButton *copyLinks_=nullptr,*deleteSelected_=nullptr,*resetView_=nullptr,*retryLoading_=nullptr,*remove_=nullptr;bool compact_=false,detailsOpen_=false,detailsFromGallery_=false,restoreDetailsOpen_=false,restoreScroll_=false;int galleryScroll_=0,listScroll_=0;
  QListWidget* categories_=nullptr;QWidget *footerBar_=nullptr,*footerRow_=nullptr;QWidget* columns_=nullptr;bool restoringCategory_=false;
  // Runs once the selected file's detail arrives (true) or fails (false).
  std::function<void(bool)> afterDetail_;std::function<void()> fitFilters_;
