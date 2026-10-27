@@ -2039,7 +2039,13 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
                 gutter_ = std::max(0, std::min(gutter + 16, Metric::labelGutter) - 16);
                 for (auto* form : sharedForms_)
                     for (int row = 0; row < form->rowCount(); ++row)
-                        if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) { item->widget()->setFixedWidth(gutter_); for (auto* text : item->widget()->findChildren<QLabel*>()) text->setWordWrap(true); if (auto* text = qobject_cast<QLabel*>(item->widget())) text->setWordWrap(true); item->widget()->setFixedHeight(std::max(scaled(Metric::control), item->widget()->heightForWidth(gutter_))); }
+                        if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) {
+                            auto* label = item->widget();
+                            label->setFixedWidth(gutter_);
+                            for (auto* text : label->findChildren<QLabel*>()) text->setWordWrap(true);
+                            if (auto* text = qobject_cast<QLabel*>(label)) text->setWordWrap(true);
+                            label->setFixedHeight(std::max(scaled(Metric::control), label->heightForWidth(gutter_)));
+                        }
             }
             bool stack = false;
             const int pageWidth = page_->parentWidget() ? std::min(page_->width(), page_->parentWidget()->width()) : page_->width();

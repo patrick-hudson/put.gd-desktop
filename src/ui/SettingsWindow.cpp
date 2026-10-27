@@ -544,8 +544,7 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"linkMode","Backblaze B2 only. Public bucket gives each upload a link that never expires; the bucket must be public in B2 (allPublic), which needs payment history on the account. Private bucket keeps files private and gives each upload a link with a download token for exactly that file, which stops working after the chosen number of days."},
   {"customEndpoint","Show and edit the S3 service endpoint. An unchanged AWS endpoint follows the selected region; custom endpoints are preserved. Unchecking hides this editor without changing an existing custom endpoint."}};
  const auto key=path.section('/',-1);
- // Familiar labels and the visible hints already explain these controls.
- if(QStringList{"maxFileBytes","maxBatchBytes","maxFiles","pendingOperations","imageBytes","imagePixels","clipboardTextBytes","concurrentUploads"}.contains(key))return {};
+
 
  if(objectName.startsWith("proton"))return descriptions.value(objectName);
  if(s3Help.contains(key))return s3Help.value(key);
@@ -584,9 +583,9 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
   else{auto* unitField=new QWidget;auto* unitLayout=new QHBoxLayout(unitField);unitLayout->setContentsMargins(0,0,0,0);unitLayout->setSpacing(0);control->setProperty("hasUnit",true);unitLayout->addWidget(control,1);auto* suffix=new QLabel(unit);suffix->setProperty("visualRole","unitSuffix");unitLayout->addWidget(suffix);row->addWidget(unitField,1);}
   row->addStrut(Graphite::scaled(Graphite::Metric::control));column->addLayout(row);auto* error=new QLabel;error->setWordWrap(true);error->setObjectName(control->objectName()+"Error");error->setProperty("visualRole","error");error->hide();column->addWidget(error);errors_[control]=error;
   if(!hint.isEmpty()){auto* text=new QLabel(hint);text->setObjectName(control->objectName()+"Hint");text->setWordWrap(true);VisualStyle::role(text,"muted");column->addWidget(text);}
-  const auto help=settingHelp(path,control->objectName());if(auto* check=qobject_cast<QCheckBox*>(control)){
+  const auto help=settingHelp(path,control->objectName());const bool routine=QStringList{"maxFileBytes","maxBatchBytes","maxFiles","pendingOperations","imageBytes","imagePixels","clipboardTextBytes","concurrentUploads"}.contains(path.section('/',-1));if(auto* check=qobject_cast<QCheckBox*>(control)){
    form->addRow(wrapper);check->setAccessibleName(check->text());if(!help.isEmpty())row->addWidget(VisualStyle::helpButton(check->text(),help,control,wrapper),0,Qt::AlignLeft);check->setAccessibleDescription(help.isEmpty()?hint:help+(hint.isEmpty()?QString{}:" "+hint));check->setProperty("settingDescription",check->accessibleDescription());row->setStretchFactor(check,0);row->addStretch(1);
-  }else form->addRow(VisualStyle::settingLabel(label,help,control,this),wrapper);if(help.isEmpty()){const auto description=qobject_cast<QCheckBox*>(control)?label+(hint.isEmpty()?QString{}:". "+hint):hint;control->setAccessibleDescription(description);control->setProperty("settingDescription",description);}return wrapper;
+  }else form->addRow(VisualStyle::settingLabel(label,routine?QString{}:help,control,this),wrapper);if(routine){control->setToolTip(help);control->setAccessibleDescription(help);control->setProperty("settingDescription",help);}if(help.isEmpty()){const auto description=qobject_cast<QCheckBox*>(control)?label+(hint.isEmpty()?QString{}:". "+hint):hint;control->setAccessibleDescription(description);control->setProperty("settingDescription",description);}return wrapper;
  };
  auto* preferences=section(general,"Startup and notifications");
  login_=new QCheckBox("Launch at login");login_->setObjectName("launchAtLogin");setting(preferences,"Startup",login_,"/preferences/launchAtLogin");
@@ -696,9 +695,8 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  captureSharing_=choices(this,"defaultCaptureSharing",{});for(const auto& mode:QStringList{"default","share","private"})captureSharing_->addItem(sharingLabel(mode),mode);setting(captureDefaults,"Sharing",captureSharing_,{});
  uploadClipboard_=choices(this,"uploadClipboardBehavior",{});uploadClipboard_->addItem("Copy each link as it finishes","each_link");uploadClipboard_->addItem("Copy a list when uploads finish","list");setting(captureDefaults,"After uploading",uploadClipboard_,"/preferences/uploadClipboardBehavior");
  captureExceptions_=new QToolButton;captureExceptions_->setObjectName("captureExceptionsToggle");captureExceptions_->setText("Different output for some actions");Graphite::disclosure(captureExceptions_);captureExceptions_->setProperty("graphiteFlush",true);capture->addWidget(captureExceptions_,0,Qt::AlignLeft);
- // One compact row per action: its name, the output it gets and Override. Only
- // an overridden action shows its Destination and Sharing. The hidden Use
- // default box stays the model that tests, view state and agents read.
+ // Only exceptions occupy rows; the hidden inheritance boxes keep the existing
+ // config, view-state and agent paths.
  auto* exceptionBody=new QWidget;exceptionBody->setObjectName("captureExceptions");exceptionBody->setMaximumWidth(Graphite::scaled(880));auto* exceptionBox=new QVBoxLayout(exceptionBody);exceptionBox->setContentsMargins(0,0,0,0);exceptionBox->setSpacing(12);capture->addWidget(exceptionBody);exceptionBody->hide();
  auto* exceptionRows=captureExceptionRows_=new QGridLayout;exceptionRows->setContentsMargins(0,0,0,0);exceptionRows->setHorizontalSpacing(12);exceptionRows->setVerticalSpacing(8);exceptionBox->addLayout(exceptionRows);auto* addException=new QToolButton(exceptionBody);addException->setObjectName("addCaptureException");addException->setText("Add an exception…");addException->setPopupMode(QToolButton::InstantPopup);auto* exceptionMenu=new QMenu(addException);addException->setMenu(exceptionMenu);exceptionBox->addWidget(addException,0,Qt::AlignLeft);
  connect(captureExceptions_,&QToolButton::toggled,this,[=,this](bool open){exceptionBody->setVisible(open);captureExceptions_->setArrowType(open?Qt::DownArrow:Qt::RightArrow);emit viewStateChanged();});
@@ -1459,7 +1457,7 @@ void SettingsWindow::updateCaptureInheritance(){
  chooseOutput_->setText(captureProfile_->count()>1?"Choose a destination":"Add a destination…");
  for(const auto& name:Settings::presentationOrder()){
   auto *profile=actionProfiles_[name],*sharing=publicationModes_[name];
-  // An inherited card stays visible: its disabled controls show the default output.
+  // Hidden inherited controls retain the resolved values for agents.
   const bool inherit=useCaptureDefault_[name]->isChecked();
   if(inherit||(name=="record"&&!recordingRoutingEdited_&&draft_["actions"].toObject()[name].toObject()["destination"]=="default")){const QSignalBlocker a(profile),b(sharing);auto* sourceProfile=inherit&&name=="record"?actionProfiles_["region"]:captureProfile_;auto* sourceSharing=inherit&&name=="record"?publicationModes_["region"]:captureSharing_;profile->setCurrentIndex(profile->findData(sourceProfile->currentData()));sharing->setCurrentIndex(sharing->findData(sourceSharing->currentData()));}
   // Inherited values are locked (readable, quietly framed); sharing without an
