@@ -31,15 +31,27 @@ private slots:
  void hintsReflectActionAndState(){
   for(bool recording:{false,true}){
    QRectF selected;const QRectF screen(0,0,800,600);
-   const auto initial=regionInstructions(selected,recording,"DP-2",screen);
+   const QList<CaptureFrame> frames{{"DP-2",screen,QRect(0,0,800,600),1,0,{}}};
+   const auto initial=regionInstructions(selected,recording,"DP-2",screen,frames);
    QVERIFY(initial.contains(recording?"Enter chooses this entire display":"Enter captures this entire display"));
    QVERIFY(initial.contains("Drag to select · Esc to cancel"));
    QVERIFY(initial.startsWith("DP-2 · Entire display 800 × 600 px · "));QVERIFY(!initial.contains("logical pixels"));
    QCOMPARE(regionKey(selected,screen,Qt::Key_Right),RegionKeyAction::Change);
-   const auto changed=regionInstructions(selected,recording,"DP-2",screen);
+   const auto changed=regionInstructions(selected,recording,"DP-2",screen,frames);
    QVERIFY(changed.contains(recording?"Enter to choose":"Enter to capture"));
    QVERIFY(!changed.contains("entire display"));QVERIFY(changed.contains("400 × 300"));
   }
+ }
+ void outputPixelSizesUseTheCaptureGrid() {
+  const QList<CaptureFrame> frames{{"Left",QRectF(-800,100,800,600),QRect(0,0,1000,750),1.25,0,{}},
+   {"Right",QRectF(0,-200,800,600),QRect(0,0,1600,1200),2,0,{}}};
+  QCOMPARE(regionOutputSize(QRectF(-799,101,101,51),frames),QSize(127,64));
+  QCOMPARE(regionOutputSize(QRectF(-100,100,200,100),frames),QSize(400,200));
+  QCOMPARE(regionOutputSize(QRectF(-800,100,800,600),frames),QSize(1000,750));
+  const auto hint=regionInstructions({},false,"Left",frames[0].logicalRect,frames);
+  QVERIFY(hint.contains("Entire display 1000 × 750 px"));
+  QVERIFY(regionInstructions(QRectF(-799,101,101,51),true,"Left",frames[0].logicalRect,frames).contains("Selection 127 × 64 px"));
+  QVERIFY(regionInstructions(QRectF(0,0,50,30),false,"Unknown",QRectF(0,0,800,600),{}).contains("50 × 30 logical px"));
  }
  void initialRegionAndSteps(){
   const QRectF screen(-800,100,800,600);QRectF selected;

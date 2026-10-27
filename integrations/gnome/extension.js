@@ -213,10 +213,26 @@ const RegionSelection = {
         return [x, score(bottom) < score(top) ? bottom : top];
     },
     scrimAlpha: 70,
-    instructions(region, recording, display, bounds) {
+    outputSize(region, outputs) {
+        const frames = outputs.filter(f => region.x < f.x + f.width && region.x + region.width > f.x && region.y < f.y + f.height && region.y + region.height > f.y);
+        if (!frames.length || frames.some(f => !Number.isFinite(f.density) || f.density <= 0))
+            return null;
+        const single = frames[0];
+        if (frames.length === 1 && region.x >= single.x && region.y >= single.y && region.x + region.width <= single.x + single.width && region.y + region.height <= single.y + single.height) {
+            const x = region.x - single.x, y = region.y - single.y;
+            return {width: Math.ceil((x + region.width) * single.density) - Math.floor(x * single.density),
+                height: Math.ceil((y + region.height) * single.density) - Math.floor(y * single.density)};
+        }
+        const density = Math.max(...frames.map(f => f.density));
+        return {width: Math.ceil((region.x + region.width) * density) - Math.floor(region.x * density),
+            height: Math.ceil((region.y + region.height) * density) - Math.floor(region.y * density)};
+    },
+    instructions(region, recording, display, bounds, outputs = []) {
         const selected = region?.width > 0 && region?.height > 0;
-        const size = selected ? region : bounds;
-        const context = `${display || 'Display 1'} · ${selected ? 'Selection' : 'Entire display'} ${Math.round(size?.width ?? 0)} × ${Math.round(size?.height ?? 0)} px · `;
+        const logical = selected ? region : bounds;
+        const output = logical ? this.outputSize(logical, outputs) : null;
+        const size = output || logical;
+        const context = `${display || 'Display 1'} · ${selected ? 'Selection' : 'Entire display'} ${Math.round(size?.width ?? 0)} × ${Math.round(size?.height ?? 0)} ${output ? 'px' : 'logical px'} · `;
         const accept = recording ? (selected ? 'Enter to choose' : 'Enter chooses this entire display')
             : (selected ? 'Enter to capture' : 'Enter captures this entire display');
         return context + accept + '\nDrag to select · Esc to cancel' +
@@ -226,8 +242,9 @@ const RegionSelection = {
 };
 
 const RegionSelector = GObject.registerClass(class RegionSelector extends St.Widget {
-    _init(recording = false) {
+    _init(recording = false, outputs = null) {
         super._init({reactive: true, visible: false, accessible_name: recording ? 'Recording region' : 'Capture region', x: 0, y: 0});
+        this._outputs = outputs;
         this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
         this.set_cursor_type(Clutter.CursorType.CROSSHAIR);
         this._scrims = Array.from({length: 4}, () => {
@@ -374,7 +391,8 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         const monitor = this._monitor();
         const index = Main.layoutManager.monitors.indexOf(monitor);
         const display = `Display ${index + 1}`;
-        const instructions = RegionSelection.instructions(rect, this._recording, display, monitor);
+        const outputs = this._outputs || Main.layoutManager.monitors.map((m, i) => ({...m, density: global.display.get_monitor_scale(i)}));
+        const instructions = RegionSelection.instructions(rect, this._recording, display, monitor, outputs);
         this._instructions.text = instructions;
         const description = (rect && rect.width > 0 && rect.height > 0
             ? `Region ${rect.width} × ${rect.height} at ${rect.x}, ${rect.y}.`
@@ -1010,7 +1028,7 @@ export default class PutgdExtension extends Extension {
             selection = [Math.min(...xs), Math.min(...ys), Math.max(...right) - Math.min(...xs), Math.max(...bottom) - Math.min(...ys)];
             if (request.action === 'region') {
                 check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
-                const selector = new RegionSelector();
+                const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: m.density})));
                 this._selector = request.selector = selector;
                 request.stage = 'region-select';
                 const selected = await selector.selectAsync();

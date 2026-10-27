@@ -27,7 +27,7 @@ private slots:
   QTest::keyClick(surface,Qt::Key_Right);QTest::keyClick(surface,Qt::Key_Down,Qt::ControlModifier);
   QTest::keyClick(surface,Qt::Key_Right,Qt::ShiftModifier);QTest::keyClick(surface,Qt::Key_Up,Qt::ControlModifier|Qt::ShiftModifier);
   const QRectF expected(-599,260,401,290);QCOMPARE(overlay.selection_,expected);
-  QCOMPARE(accessible->text(QAccessible::Description),regionDescription(expected,false,"Display 1"));
+  QCOMPARE(accessible->text(QAccessible::Description),regionDescription(expected,false,"Display 1",overlay.frames_.first().logicalRect,overlay.frames_));
   QTest::keyClick(surface,Qt::Key_Enter);QCOMPARE(accepted.size(),1);QCOMPARE(qvariant_cast<QRectF>(accepted.first().first()),expected);QCOMPARE(cancelled.size(),0);QVERIFY(!surface->isVisible());
   QTest::keyClick(surface,Qt::Key_Return);QCOMPARE(accepted.size(),1);
  }

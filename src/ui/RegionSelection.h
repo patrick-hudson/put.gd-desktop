@@ -1,4 +1,6 @@
 #pragma once
+#include "platform/Geometry.h"
+#include <cmath>
 #include <QAccessible>
 #include <QGuiApplication>
 #include <QKeyEvent>
@@ -24,23 +26,56 @@ inline void paintRegionScrim(QPainter& painter, const QRect& bounds, const QRect
     if (!selection.isEmpty()) painter.fillRect(selection, Qt::transparent);
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 }
-inline QString regionInstructions(const QRectF& selection = {}, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}) {
+// Match composeFrames: preserve a single output's pixel grid; compose spans at
+// the highest participating density, rounding boundaries outwards once.
+inline QSize regionOutputSize(const QRectF& selection, const QList<CaptureFrame>& frames) {
+    const CaptureFrame* single = nullptr;
+    qreal density = 0;
+    int count = 0;
+    for (const auto& frame : frames) if (frame.logicalRect.intersects(selection)) {
+        if (frame.logicalRect.isEmpty() || frame.nativeRect.isEmpty() || !std::isfinite(frame.density) || frame.density <= 0) return {};
+        single = &frame;
+        ++count;
+        density = std::max(density, frame.density);
+    }
+    if (!count) return {};
+    QRectF rect = selection;
+    if (count == 1 && single->logicalRect.contains(selection)) {
+        rect.translate(-single->logicalRect.topLeft());
+        const qreal sx = single->nativeRect.width() / single->logicalRect.width(), sy = single->nativeRect.height() / single->logicalRect.height();
+        return {int(std::ceil(rect.right() * sx) - std::floor(rect.left() * sx)), int(std::ceil(rect.bottom() * sy) - std::floor(rect.top() * sy))};
+    }
+    return {int(std::ceil(rect.right() * density) - std::floor(rect.left() * density)), int(std::ceil(rect.bottom() * density) - std::floor(rect.top() * density))};
+}
+inline QList<CaptureFrame> regionScreenFrames() {
+    QList<CaptureFrame> frames;
+    for (auto* screen : QGuiApplication::screens()) {
+        const auto bounds = screen->geometry();
+        const auto density = screen->devicePixelRatio();
+        frames.append({screen->name(), bounds, QRect(QPoint(), QSizeF(bounds.size() * density).toSize()), density, 0, {}});
+    }
+    return frames;
+}
+inline QString regionInstructions(const QRectF& selection = {}, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}, const QList<CaptureFrame>& frames = regionScreenFrames()) {
     const auto bounds = displayBounds.isEmpty() && QGuiApplication::primaryScreen() ? QRectF(QGuiApplication::primaryScreen()->geometry()) : displayBounds;
-    const auto size = selection.isEmpty() ? bounds.size() : selection.size();
+    const auto logical = selection.isEmpty() ? bounds : selection;
+    const auto output = regionOutputSize(logical, frames);
+    const auto size = output.isEmpty() ? logical.size() : QSizeF(output);
+    const auto unit = output.isEmpty() ? QStringLiteral("logical px") : QStringLiteral("px");
     const bool selected = !selection.isEmpty();
     const QString context = (display.isEmpty() ? QStringLiteral("Display 1") : display)
-        + (selected ? QStringLiteral(" · Selection %1 × %2 px · ") : QStringLiteral(" · Entire display %1 × %2 px · "))
-            .arg(qRound(size.width())).arg(qRound(size.height()));
+        + (selected ? QStringLiteral(" · Selection %1 × %2 %3 · ") : QStringLiteral(" · Entire display %1 × %2 %3 · "))
+            .arg(qRound(size.width())).arg(qRound(size.height())).arg(unit);
     const QString accept = recording ? (selected ? QStringLiteral("Enter to choose") : QStringLiteral("Enter chooses this entire display"))
                                      : (selected ? QStringLiteral("Enter to capture") : QStringLiteral("Enter captures this entire display"));
     return context + accept + QStringLiteral("\nDrag to select · Esc to cancel")
         + QStringLiteral("\nArrows move · Shift+arrows resize · Tab next display")
         + (recording ? QStringLiteral("\nStart recording comes next") : QString());
 }
-inline QString regionDescription(const QRectF& selection, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}) {
+inline QString regionDescription(const QRectF& selection, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}, const QList<CaptureFrame>& frames = regionScreenFrames()) {
     return (selection.isEmpty() ? QStringLiteral("No region selected.")
         : QStringLiteral("Region %1 × %2 at %3, %4.").arg(selection.width()).arg(selection.height()).arg(selection.x()).arg(selection.y()))
-        + QStringLiteral(" ") + regionInstructions(selection, recording, display, displayBounds);
+        + QStringLiteral(" ") + regionInstructions(selection, recording, display, displayBounds, frames);
 }
 // Transfer the region's size and relative position, then clamp to the new display.
 inline bool switchRegionDisplay(QRectF& selection, const QList<QRectF>& screens, int& current, int key, Qt::KeyboardModifiers modifiers = {}) {
@@ -97,8 +132,8 @@ inline RegionKeyAction regionKey(QRectF& selection, const QRectF& screen, int ke
     }
     return adjustRegion(selection, screen, key, modifiers) ? RegionKeyAction::Change : RegionKeyAction::Ignore;
 }
-inline void describeRegion(QWidget* surface, const QRectF& selection, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}) {
-    const auto description = regionDescription(selection, recording, display, displayBounds);
+inline void describeRegion(QWidget* surface, const QRectF& selection, bool recording = false, const QString& display = {}, const QRectF& displayBounds = {}, const QList<CaptureFrame>& frames = regionScreenFrames()) {
+    const auto description = regionDescription(selection, recording, display, displayBounds, frames);
     if (surface->accessibleDescription() == description) return;
     surface->setAccessibleDescription(description);
     QAccessibleEvent changed(surface, QAccessible::DescriptionChanged);

@@ -39,12 +39,18 @@ const Clutter = {
     KEY_Left: 10, KEY_Right: 11, KEY_Up: 12, KEY_Down: 13, KEY_Return: 14, KEY_KP_Enter: 15, KEY_Escape: 16, KEY_Tab: 17, KEY_ISO_Left_Tab: 18,
 };
 let pointer = [2100, 200], grabs = 0;
-const global = {stage: {width: 3200, height: 1080}, get_pointer: () => pointer};
+const global = {display: {get_monitor_scale: () => 1}, stage: {width: 3200, height: 1080}, get_pointer: () => pointer};
 const monitors = [{x: 0, y: 0, width: 1920, height: 1080}, {x: 1920, y: -100, width: 1280, height: 720}];
 const Main = {uiGroup: new Widget(), layoutManager: {monitors, primaryMonitor: monitors[0]},
     pushModal() {grabs++; return {is_revoked: () => false};}, popModal() {grabs--;}};
 function check(condition, _code, message) {if (!condition) throw new Error(message);}
 eval(selector);
+const scaledOutputs = [{x: -800, y: 100, width: 800, height: 600, density: 1.25}, {x: 0, y: -200, width: 800, height: 600, density: 2}];
+equal(RegionSelection.outputSize({x: -799, y: 101, width: 101, height: 51}, scaledOutputs), {width: 127, height: 64});
+equal(RegionSelection.outputSize({x: -100, y: 100, width: 200, height: 100}, scaledOutputs), {width: 400, height: 200});
+equal(RegionSelection.instructions(null, false, 'Left', scaledOutputs[0], scaledOutputs).includes('Entire display 1000 × 750 px'), true);
+equal(RegionSelection.instructions({x: 0, y: 0, width: 50, height: 30}, false, 'Unknown', null).includes('50 × 30 logical px'), true);
+print('PASS output pixel sizes on fractional, mixed-density and unknown outputs');
 function begin() {
     const actor = new globalThis.RegionSelector();
     const result = actor.selectAsync();
