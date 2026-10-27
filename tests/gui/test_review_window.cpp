@@ -7,6 +7,7 @@
 #include "record/Overlays.h"
 #include "ui/RegionOverlay.h"
 #include <QAccessible>
+#include <QAbstractItemView>
 #include <QScrollBar>
 #include "ui/Graphite.h"
 #include "ui/Fonts.h"
@@ -192,7 +193,7 @@ private slots:
         edit.revision++; edit.masks.append(mask("third", "blur", 0, duration)); window.setEdit(edit);
         QCOMPARE(window.inspect()["selectedMaskName"].toString(), QString("Blur 3"));
     }
-    void maskNamesKeepTheirMeasuredWidth() {
+    void maskChooserKeepsFullNamesInItsPopup() {
         ReviewWindow window(options(), config());
         RecordingEdit edit;
         for (int i = 0; i < 12; ++i) edit.masks.append(mask(QString::number(i), "solid", 0, duration));
@@ -201,7 +202,12 @@ private slots:
         auto* chooser = window.findChild<QComboBox*>("masks");
         QVERIFY(chooser);
         for (int i = 0; i < chooser->count(); ++i)
-            QVERIFY(chooser->width() >= chooser->fontMetrics().horizontalAdvance(chooser->itemText(i)) + Graphite::Metric::splitZone + 18);
+            QVERIFY(chooser->width() >= chooser->fontMetrics().horizontalAdvance(chooser->itemData(i).toString()) + Graphite::Metric::splitZone + 18);
+        chooser->showPopup(); QApplication::processEvents();
+        for (int i = 0; i < chooser->count(); ++i)
+            QVERIFY(chooser->view()->width() >= chooser->fontMetrics().horizontalAdvance(chooser->itemText(i)) + 32);
+        chooser->hidePopup();
+        QVERIFY(chooser->accessibleDescription().contains(chooser->currentText()));
         auto* metadata = window.findChild<QLabel*>("maskActiveInterval");
         QVERIFY(metadata && metadata->isVisible());
         QVERIFY(metadata->mapTo(&window, QPoint()).y() >= window.findChild<FrameView*>()->geometry().bottom());
@@ -222,7 +228,7 @@ private slots:
         QVERIFY(masks->isAncestorOf(timing) && masks->isAncestorOf(interval)); QVERIFY(!trim->isAncestorOf(interval) && !trim->isAncestorOf(timing));
         QVERIFY(masks->y() > trim->mapTo(&window, trim->rect().bottomLeft()).y());
         // Timing actions read as words on 32 px secondary buttons, in both rows.
-        const QList<std::tuple<QWidget*, QString, QString>> actions{{trim, "Set trim start", "Keep from here"}, {trim, "Set trim end", "Keep to here"}, {trim, "Reset trim", "Reset"}, {timing, "Set mask start", "Start mask here"}, {timing, "Set mask end", "End mask here"}};
+        const QList<std::tuple<QWidget*, QString, QString>> actions{{trim, "Set trim start", "Keep from"}, {trim, "Set trim end", "Keep to"}, {trim, "Reset trim", "Reset"}, {timing, "Set mask start", "Start"}, {timing, "Set mask end", "End"}};
         for (const auto& [row, name, text] : actions) {
             QToolButton* found = nullptr;
             for (auto* button : row->findChildren<QToolButton*>()) if (button->accessibleName() == name) found = button;
@@ -290,8 +296,7 @@ private slots:
             auto* add = window.findChild<QToolButton*>("addMask");
             QVERIFY(add && maskControls->isAncestorOf(add) && !metadata->isAncestorOf(add));
             for (auto* control : window.findChildren<QToolButton*>()) if (control->accessibleName() == "Delete mask") {
-                QVERIFY(maskControls->isAncestorOf(control));
-                QCOMPARE(control->parentWidget(), window.findChild<QComboBox*>("masks")->parentWidget());
+                QVERIFY(window.findChild<QMenu*>("maskOptionsMenu")->isAncestorOf(control));
             }
             auto* clip = window.findChild<QLabel*>("clipGroup");
             QVERIFY(clip && clip->isVisible());
@@ -454,27 +459,70 @@ private slots:
         QCOMPARE(window.inspect()["armed"].toString(), QString("blur"));
         QVERIFY(window.findChild<FrameView*>()->accessibleDescription().contains("blur", Qt::CaseInsensitive));
     }
-    void moreMasksControlRevealsNavigationAndSelectsAHiddenMask() {
+    void maskLanePagingPreservesSelectionAndDoesNotWrap() {
         ReviewWindow window(options(), config());
         RecordingEdit edit;
         for (int i = 0; i < 8; ++i) edit.masks.append(mask(QString::number(i), "solid", 0, duration));
         window.setEdit(edit); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        auto* more = window.findChild<QToolButton*>("showMoreMasks");
+        auto* next = window.findChild<QToolButton*>("showMoreMasks");
+        auto* previous = window.findChild<QToolButton*>("previousMaskLanes");
         auto* scroll = window.findChild<QScrollBar*>("maskLaneScroll");
-        QVERIFY(more && more->isVisible() && more->text() == "Show 6 more masks");
+        QVERIFY(next && next->isVisible() && previous && previous->isVisible());
         QVERIFY(scroll && scroll->isVisible());
-        const auto before = window.inspect()["selectedMaskId"].toString();
-        const int previousLane = scroll->value();
-        more->click(); QApplication::processEvents();
-        QVERIFY(scroll->value() != previousLane);
-        const auto selected = window.inspect()["selectedMaskId"].toString();
-        QVERIFY(before != selected);
-        QVERIFY(!timeline(window)->maskRect(selected).isEmpty());
-        // Existing selectMask exposes the same navigation through session/CLI/MCP.
+        QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "0"}}).code.isEmpty());
+        QCOMPARE(window.inspect()["timeline"].toObject()["laneSummary"].toString(), QString("2 of 8 lanes"));
+        QVERIFY(!previous->isEnabled());
+        for (const int first : {2, 4, 6, 6}) {
+            QVERIFY(window.drive({{"action", "nextMaskLanes"}}).code.isEmpty());
+            QCOMPARE(scroll->value(), first);
+            QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("0"));
+            window.drive({{"action", "seek"}, {"time", double(first * 100000)}});
+            QCOMPARE(scroll->value(), first);
+        }
+        QVERIFY(!next->isEnabled());
+        previous->click(); QCOMPARE(scroll->value(), 4);
+        QVERIFY(window.drive({{"action", "previousMaskLanes"}}).code.isEmpty()); QCOMPARE(scroll->value(), 2);
+        QCOMPARE(window.inspect()["selectedMaskId"].toString(), QString("0"));
+        // Selecting a different mask still reveals its lane through session/CLI/MCP.
         QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "7"}}).code.isEmpty());
         QVERIFY(!timeline(window)->maskRect("7").isEmpty());
         QVERIFY(timeline(window)->maskRect("7").height() >= 20);
+    }
+    void maskOptionsExposeRadiusAndDeletionThroughTheSameDrive() {
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        const auto geometry = window.geometry();
+        QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}).code.isEmpty());
+        QVERIFY(window.drive({{"action", "showMaskOptions"}}).state["maskOptions"].toObject()["open"].toBool());
+        auto* menu = window.findChild<QMenu*>("maskOptionsMenu");
+        QVERIFY(menu && menu->isVisible());
+        auto* radius = menu->findChild<QSpinBox*>(); QVERIFY(radius && radius->isVisible());
+        QSignalSpy edits(&window, &ReviewWindow::editProposed);
+        QVERIFY(window.drive({{"action", "strength"}, {"strength", 24}}).code.isEmpty());
+        QCOMPARE(edits.size(), 1);
+        QVERIFY(!window.drive({{"action", "closeMaskOptions"}}).state["maskOptions"].toObject()["open"].toBool());
+        QCOMPARE(window.geometry(), geometry);
+    }
+    void maskBadgesFollowHoverSelectionAndPlayback() {
+        FrameView frame;
+        frame.setCanvas({640, 360}); frame.resize(640, 360);
+        QImage media(640, 360, QImage::Format_RGB32); media.fill(QColor(130, 60, 120));
+        frame.setFrame(media, 0);
+        auto first = mask("first", "solid", 0, duration); first.rect = QRect(30, 60, 230, 140);
+        auto second = first; second.id = "second"; second.rect.moveLeft(350);
+        frame.setMasks({first, second}, first.id); frame.show(); QApplication::processEvents();
+        QTest::mouseMove(&frame, QPoint(10, 10));
+        const auto idle = frame.grab().toImage().convertToFormat(media.format());
+        const QRect afterNumber(390, 66, 60, 10);
+        QCOMPARE(idle.copy(afterNumber), media.copy(afterNumber));
+        QTest::mouseMove(&frame, second.rect.center());
+        const auto hovered = frame.grab().toImage().convertToFormat(media.format());
+        QVERIFY(hovered.copy(afterNumber) != idle.copy(afterNumber));
+        frame.setPlaying(true);
+        QCOMPARE(frame.grab().toImage().convertToFormat(media.format()), media);
+        frame.setPlaying(false);
+        QVERIFY(frame.grab().toImage().convertToFormat(media.format()) != media);
     }
     void controlsStayInsideTheWindowAndApart_data() {
         QTest::addColumn<double>("scale");
@@ -624,7 +672,7 @@ private slots:
         for (int mode = 0; mode < 5; ++mode) {
             const auto screen = QGuiApplication::primaryScreen()->geometry();
             CaptureFrame frame{"fixture", screen, screen, 1, 0, {}};
-            RegionOverlay screenshot({frame});
+            RegionOverlay screenshot({frame}, nullptr, "Uploads immediately to Proton Drive");
             SelectionOverlay record;
             QRectF selected;
             int cancelled = 0, accepted = 0;
@@ -641,7 +689,7 @@ private slots:
             QVERIFY(accessible);
             QCOMPARE(accessible->text(QAccessible::Description), surface->accessibleDescription());
             QVERIFY(surface->accessibleDescription().contains("Drag to select"));
-            QVERIFY(surface->accessibleDescription().contains("Drag to select"));
+            if (!recording) QVERIFY(surface->accessibleDescription().endsWith("Uploads immediately to Proton Drive"));
             if (mode == 0) {
                 QTest::keyClick(surface, Qt::Key_Return);
                 QCOMPARE(selected, QRectF(screen));
@@ -744,9 +792,9 @@ private slots:
         QCOMPARE(selected.size(), 1); QCOMPARE(selected.first()[0].toString(), QString("6"));
         // A lane can hold several non-overlapping masks; count hidden masks.
         t.setMasks({mask("a", "solid", 0, 5000000), mask("b", "solid", 0, 5000000), mask("c", "solid", 0, 5000000), mask("d", "solid", 6000000, 10000000)}, "a");
-        QCOMPARE(t.findChild<QToolButton*>("showMoreMasks")->text(), QString("Show 1 more mask"));
+        QCOMPARE(t.findChild<QToolButton*>("showMoreMasks")->text(), QString("Next mask lanes"));
         scroll->setValue(1);
-        QCOMPARE(t.findChild<QToolButton*>("showMoreMasks")->text(), QString("Show 2 more masks"));
+        QCOMPARE(t.findChild<QToolButton*>("showMoreMasks")->text(), QString("Next mask lanes"));
     }
     void previewRecoveryStacksAndMeasuresWrappedText() {
         FrameView view; auto large = view.font(); large.setPixelSize(21); view.setFont(large); view.setCanvas({1280,720}); view.resize(360,320); view.show();
@@ -1404,7 +1452,7 @@ private slots:
             const auto tools = window.findChildren<QToolButton*>();
             QVERIFY(tools.size() >= 9);
             for (auto* b : tools) {
-                QVERIFY2((b->toolButtonStyle() == Qt::ToolButtonTextOnly && (QStringList{"Set trim start", "Set trim end", "Reset trim", "Set mask start", "Set mask end", "Add mask"}.contains(b->accessibleName()) || b->objectName() == "showMoreMasks")) || (!b->icon().isNull() && (b->toolButtonStyle() == Qt::ToolButtonIconOnly || (b->toolButtonStyle() == Qt::ToolButtonTextBesideIcon && QStringList{"Start", "End"}.contains(b->text())))), qPrintable(b->accessibleName()));
+                QVERIFY2((b->toolButtonStyle() == Qt::ToolButtonTextOnly && (QStringList{"Set trim start", "Set trim end", "Reset trim", "Set mask start", "Set mask end", "Add mask"}.contains(b->accessibleName()) || QStringList{"showMoreMasks", "previousMaskLanes"}.contains(b->objectName()))) || (!b->icon().isNull() && (b->toolButtonStyle() == Qt::ToolButtonIconOnly || (b->toolButtonStyle() == Qt::ToolButtonTextBesideIcon && QStringList{"Start", "End", "Delete mask"}.contains(b->text())))), qPrintable(b->accessibleName()));
                 QVERIFY2(!b->accessibleName().isEmpty() && !b->toolTip().isEmpty(), qPrintable(b->objectName()));
                 if(b->isVisible()&&b->toolButtonStyle()==Qt::ToolButtonTextBesideIcon)QVERIFY2(b->width()>=b->fontMetrics().horizontalAdvance(b->text())+b->iconSize().width()+16,qPrintable(b->accessibleName()));
             }

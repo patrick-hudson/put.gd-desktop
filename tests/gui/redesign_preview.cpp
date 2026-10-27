@@ -373,6 +373,7 @@ int main(int argc,char** argv){
   review.drive({{"action","seek"},{"time",25000000}});if(!shot(review,"30b-review-mask-ended")||!inspected(review,"30b-review-mask-ended"))return 2;
   review.drive({{"action","seek"},{"time",10000000}});
   review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31-review-blur-selected")||!inspected(review,"31-review-blur-selected"))return 2;
+  {review.drive({{"action","showMaskOptions"}});if(!shot(*review.findChild<QMenu*>("maskOptionsMenu"),"31i-review-mask-options"))return 2;review.drive({{"action","closeMaskOptions"}});}
   {const auto size=review.size();review.resize(1060,size.height());if(!shot(review,"31b-review-strength-1060"))return 2;review.resize(size);}
   {auto many=edit;for(int i=2;i<8;++i){auto mask=solid;mask.id=QStringLiteral("m-extra-%1").arg(i);many.masks.append(mask);}review.setEdit(many);review.drive({{"action","selectMask"},{"maskId","m-solid"}});if(!shot(review,"31c-review-many-lanes")||!inspected(review,"31c-review-many-lanes"))return 2;review.setEdit(edit);review.drive({{"action","selectMask"},{"maskId","m-blur"}});}
   review.resize(review.minimumSizeHint());if(!shot(review,"32-review-minimum")||!inspected(review,"32-review-minimum"))return 2;
@@ -433,10 +434,12 @@ int main(int argc,char** argv){
   for(int i=0;i<8;++i){auto m=solid;m.id=QString("lane-%1").arg(i);m.start=1000000;m.end=29000000;many.masks.append(m);}
   crowded.setEdit(many);crowded.show();if(auto* view=crowded.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);
   if(!shot(crowded,"48-review-many-masks")||!inspected(crowded,"48-review-many-masks"))return 2;
+  crowded.drive({{"action","selectMask"},{"maskId","lane-0"}});crowded.drive({{"action","nextMaskLanes"}});
+  if(!shot(crowded,"48a-review-next-mask-lanes")||!inspected(crowded,"48a-review-next-mask-lanes"))return 2;
   crowded.hide();qunsetenv("PUTGD_RECORD_REVIEW_DELAY_MS");
   const auto screen=QGuiApplication::primaryScreen()->geometry();
   CaptureFrame selectionFrame{"fixture",screen,screen,1,0,{}};
-  RegionOverlay screenshot({selectionFrame});screenshot.start();
+  RegionOverlay screenshot({selectionFrame},nullptr,"Uploads immediately to Proton Drive");screenshot.start();
   for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"){if(!shot(*w,"46-region-entire-display"))return 2;QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"44-region-keyboard"))return 2;QTest::mousePress(w,Qt::LeftButton,{},QPoint(w->width()/2-200,8));QTest::mouseMove(w,QPoint(w->width()/2+200,220));if(!shot(*w,"44a-region-badge-outside-selection"))return 2;break;}
   screenshot.cancel();
   record::SelectionOverlay selector;selector.start();

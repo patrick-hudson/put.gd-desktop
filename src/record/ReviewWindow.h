@@ -52,6 +52,8 @@ public:
     const QString& armed() const { return armed_; }
     // Where the frame is drawn, in this widget's coordinates.
     QRect imageRect() const;
+    void setPlaying(bool playing) { playing_ = playing; update(); }
+    bool playing() const { return playing_; }
     // The mask Enter places: centred, half the frame's width and height.
     QRect defaultMaskRect() const;
     // Proposes a keyboard nudge that is still waiting for the keys to stop.
@@ -71,6 +73,7 @@ protected:
     void focusInEvent(QFocusEvent*) override;
     void focusOutEvent(QFocusEvent*) override;
     void resizeEvent(QResizeEvent*) override;
+    void leaveEvent(QEvent*) override;
 private:
     QPointF toCanvas(const QPointF&) const;
     QRectF toView(const QRect&) const;
@@ -82,7 +85,8 @@ private:
     QSize canvas_;
     QList<RecordingMask> masks_;
     std::shared_ptr<MaskNames> maskNames_;
-    QString selected_, armed_, error_;
+    QString selected_, hovered_, armed_, error_;
+    bool playing_ = false;
     enum class Drag { None, Create, Move, Resize } drag_ = Drag::None;
     QPointF anchor_, current_;
     QRect original_;
@@ -107,9 +111,12 @@ public:
     explicit ReviewTimeline(QWidget* parent = nullptr, std::shared_ptr<MaskNames> names = {});
     void setDuration(qint64 us);
     void setTrim(qint64 start, qint64 end);
-    void setMasks(const QList<RecordingMask>& masks, const QString& selected);
+    void setMasks(const QList<RecordingMask>& masks, const QString& selected, bool reveal = false);
     void setPlayhead(qint64 us);
     void showMoreMasks();
+    void showPreviousMasks();
+    int firstLane() const;
+    QString laneSummary() const;
     // Embeds playback beside the lane-label gutter and time axis.
     void setTransport(QWidget* transport);
     qint64 playhead() const { return playhead_; }
@@ -165,6 +172,8 @@ private:
     int lanes_ = 0;
     QScrollBar* laneScroll_ = nullptr;
     QToolButton* moreMasks_ = nullptr;
+    QToolButton* previousMasks_ = nullptr;
+    QLabel* laneSummary_ = nullptr;
     QWidget* transport_ = nullptr;
     Graphite::ElidedLabel* clipLabel_ = nullptr;
     QString selected_;
@@ -198,7 +207,7 @@ public:
     void setLimits(qint64 animationMaxUs, int animationMaxEdge);
     // #283: the review session method (recording.review) drives the window as a
     // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|resetTrim|
-    // addMask|selectMask|placeMask|setMaskIn|setMaskOut|strength|removeMask|
+    // addMask|showMaskOptions|closeMaskOptions|nextMaskLanes|previousMaskLanes|selectMask|placeMask|setMaskIn|setMaskOut|strength|removeMask|
     // useSolidCover|format|trimToLimit|dismissStatus|dismissBlurTip|showAdvice|showFormatTips|
     // showInFolder|copyPath|dismissSavedCopy|retryExport|retryPreview|
     // saveCopyDialog|closeFileDialog|discard|keepReviewing|confirmDiscard, ...}.
@@ -307,7 +316,7 @@ private:
     std::shared_ptr<std::atomic_bool> playStop_;
     bool playing_ = false;
     QAction *addBlur_ = nullptr, *addSolid_ = nullptr;
-    QToolButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addMask_ = nullptr, *removeMask_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr;
+    QToolButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addMask_ = nullptr, *removeMask_ = nullptr, *maskOptions_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr;
     QPushButton *errorDetails_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
     FileDialog* chooser_ = nullptr;
     QWidget *maskTools_ = nullptr, *strengthControl_ = nullptr;
