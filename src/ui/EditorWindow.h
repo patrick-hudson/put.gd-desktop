@@ -6,7 +6,7 @@
 #include <QPointer>
 #include <QWidget>
 #include <functional>
-class QSplitter;class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QDialog;
+class QTimer;class QSplitter;class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QDialog;
 
 namespace putgd {
 class FileDialog;
@@ -127,10 +127,10 @@ private:
  Graphite::WindowHeader* header_=nullptr;
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr,*remove_=nullptr;
  QSplitter* splitter_=nullptr;int propertiesWidth_=260;
- QWidget *side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;
+ QWidget *canvasViewport_=nullptr,*side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;
  QVBoxLayout *properties_=nullptr,*sideLayout_=nullptr;bool documentScrolling_=false;
  // Feedback overlays the canvas without changing its geometry or zoom.
- Graphite::Banner* saveFeedback_=nullptr;bool saveFeedbackVisible_=false;
+ Graphite::Banner* saveFeedback_=nullptr;QTimer* saveFeedbackTimer_=nullptr;bool saveFeedbackVisible_=false;
  QWidget* notice_=nullptr;QGridLayout* footerGrid_=nullptr;
  QLabel* noticeText_=nullptr;QPushButton *keepEditing_=nullptr,*saveInstead_=nullptr;
  bool destinationAbove_=false;

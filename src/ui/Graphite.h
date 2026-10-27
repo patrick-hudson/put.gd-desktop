@@ -144,6 +144,7 @@ public:
     QToolButton* dismissButton() const { return dismiss_; }
     // Complex feedback can retain its existing accessible controls and IDs.
     void setContentWidget(QWidget*);
+    void announce(const QString& message = {}); // QAccessible::Alert for a new failure.
 protected:
     void paintEvent(QPaintEvent*) override;
     void resizeEvent(QResizeEvent*) override;

@@ -2,6 +2,7 @@
 #include "IconArt.h"
 #include "VisualStyle.h"
 #include <QAccessibleWidget>
+#include <QAccessible>
 #include <QClipboard>
 #include <QAbstractItemView>
 #include <QAbstractSpinBox>
@@ -1716,6 +1717,8 @@ QLabel* warningLabel(const QString& text, QWidget* parent) {
     return label;
 }
 Banner::Banner(Tone tone, const QString& text, QWidget* parent) : QWidget(parent), tone_(tone) {
+    setAttribute(Qt::WA_OpaquePaintEvent);
+    setAccessibleName(text);
     row_ = new QGridLayout(this);
     row_->setContentsMargins(scaled(12) + scaled(Metric::icon) + 8, 8, 12, 8);
     row_->setHorizontalSpacing(8);
@@ -1739,7 +1742,7 @@ Banner::Banner(Tone tone, const QString& text, QWidget* parent) : QWidget(parent
     connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
 }
 void Banner::setTone(Tone tone) { tone_ = tone; update(); }
-void Banner::setText(const QString& text) { text_->setText(text); placeAction(); }
+void Banner::setText(const QString& text) { text_->setText(text); setAccessibleName(text); placeAction(); }
 void Banner::setIcon(const QIcon& icon) { icon_ = icon; update(); }
 void Banner::setAction(const QString& text) {
     action_->setText(text);
@@ -1761,6 +1764,11 @@ void Banner::setContentWidget(QWidget* widget) {
     content_->show();
     placeAction();
 }
+void Banner::announce(const QString& message) {
+    if (!message.isEmpty()) setAccessibleName(message);
+    QAccessibleEvent event(this, QAccessible::Alert);
+    QAccessible::updateAccessibility(&event);
+}
 void Banner::placeAction() {
     const auto margins = row_->contentsMargins();
     const int available = width() - margins.left() - margins.right() - (dismiss_->isHidden() ? 0 : dismiss_->sizeHint().width() + 8);
@@ -1780,7 +1788,10 @@ void Banner::paintEvent(QPaintEvent*) {
     painter.setPen(colors.borderStrong);
     painter.drawRect(rect().adjusted(0, 0, -1, -1));
     const int side = scaled(Metric::icon);
-    const QRect glyph(scaled(12), 8 + std::max(0, (fontMetrics().height() - side) / 2), side, side);
+    QRect firstRow = row_->cellRect(0, 0);
+    if (content_ != text_ && content_->layout() && content_->layout()->count())
+        firstRow = content_->layout()->itemAt(0)->geometry().translated(content_->pos());
+    const QRect glyph(scaled(12), firstRow.y() + std::max(0, (firstRow.height() - side) / 2), side, side);
     if (!icon_.isNull()) icon_.paint(&painter, glyph);
     else if (tone_ == Tone::Success) paintChromeGlyph(painter, glyph, "check", tone);
     else painter.drawImage(glyph, IconArt::symbol(tone_ == Tone::Info ? "info" : "alert", colors.surface, std::max(1, (side + 23) / 24), tone));
