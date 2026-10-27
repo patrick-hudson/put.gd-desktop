@@ -136,9 +136,12 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   fill(secondary);for(const qreal x:{4.,20.})for(const qreal y:{5.,19.})rounded(x-2.5,y-2.5,5,5,1);
  } else if(name=="highlight") {
   fill(secondary);rounded(2,20,20,3,1);
-  fill(color);QPainterPath body;body.moveTo(15,1);body.lineTo(22,8);body.lineTo(14,16);body.lineTo(7,9);body.closeSubpath();p.drawPath(body);
+  fill(color);QPainterPath body;body.moveTo(17,2);body.lineTo(22,7);body.lineTo(12,17);body.lineTo(7,12);body.closeSubpath();p.drawPath(body);
+  // A stepped cap and its clip distinguish the long marker from an eraser.
+  fill(secondary);QPainterPath cap;cap.moveTo(17,1);cap.lineTo(23,7);cap.lineTo(20,10);cap.lineTo(14,4);cap.closeSubpath();p.drawPath(cap);
+  line(color,1.3);p.drawLine(QPointF(18,3.5),QPointF(21,6.5));
   // A narrow neck and a flat chisel nib, separated from the highlight stroke.
-  fill(secondary);QPainterPath nib;nib.moveTo(7,11);nib.lineTo(12,16);nib.lineTo(10,18);nib.lineTo(3,18);nib.lineTo(5,13);nib.closeSubpath();p.drawPath(nib);
+  fill(secondary);QPainterPath nib;nib.moveTo(7,13);nib.lineTo(11,17);nib.lineTo(10,18);nib.lineTo(3,18);nib.lineTo(5,15);nib.closeSubpath();p.drawPath(nib);
  } else if(name=="chevron-down") {
   line(color,2.5);QPainterPath chevron;chevron.moveTo(6,9);chevron.lineTo(12,15);chevron.lineTo(18,9);p.drawPath(chevron);
  } else if(name=="text") {
