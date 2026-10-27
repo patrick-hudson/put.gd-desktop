@@ -32,6 +32,7 @@
 #include <QVBoxLayout>
 #include <QFrame>
 #include <QFormLayout>
+#include <QDialogButtonBox>
 #include <QPushButton>
 #include <QScrollBar>
 #include <QScrollArea>
@@ -51,6 +52,7 @@
 #include <QToolTip>
 #include <QWindow>
 #include <algorithm>
+#include <memory>
 #include <cmath>
 
 namespace putgd::Graphite {
@@ -433,6 +435,12 @@ void paintText(QPainter& p, const QRectF& rect, const QString& text, const QColo
 // ---------------------------------------------------------------- Style
 Style::Style() : QProxyStyle(QStyleFactory::create(QStringLiteral("Fusion"))) { setObjectName(QStringLiteral("graphite")); }
 
+void setMono(QWidget* widget, int pixels) {
+    widget->setProperty("graphiteMonoPixels", pixels);
+    widget->style()->unpolish(widget);
+    widget->style()->polish(widget);
+}
+
 void Style::polish(QPalette& palette) { palette = Graphite::palette(); }
 
 void Style::polish(QWidget* widget) {
@@ -457,7 +465,8 @@ void Style::polish(QWidget* widget) {
     const auto binding = widget->property("bindingTone").toString();
     const bool locked = isLocked(widget);
     const bool bodyControl = qobject_cast<QComboBox*>(widget);
-    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty() && !locked && !bodyControl) return;
+    const int monoPixels = widget->property("graphiteMonoPixels").toInt();
+    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty() && !locked && !bodyControl && !monoPixels) return;
     const auto& c = t();
     QColor colour;
     QFont f;
@@ -477,6 +486,7 @@ void Style::polish(QWidget* widget) {
     else if (name == "editableTitle") f = font(Type::page, true);
     else if (bodyControl) f = font(Type::body);
     else setFont = false;
+    if (monoPixels) { f = monoFont(monoPixels); setFont = true; }
     // An outcome's tone outranks the slot's quiet colour: an error in a muted
     // line still reads as an error.
     if (tone == "error") colour = c.danger;
@@ -591,6 +601,9 @@ int Style::styleHint(StyleHint hint, const QStyleOption* option, const QWidget* 
     case SH_DialogButtonBox_ButtonsHaveIcons: return 0;
     case SH_ScrollBar_Transient: return 0;
     case SH_Widget_Animation_Duration: return 110;
+    case SH_DialogButtonLayout:
+        if (widget && widget->window()->objectName() == "confirmAction") return QDialogButtonBox::GnomeLayout;
+        return QProxyStyle::styleHint(hint, option, widget, data);
     default: return QProxyStyle::styleHint(hint, option, widget, data);
     }
 }
@@ -655,7 +668,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
     case CT_SpinBox: {
         const auto* spin = qstyleoption_cast<const QStyleOptionSpinBox*>(option);
         if (spin && !spin->frame) break;
-        const int buttons = spin && spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 24;
+        const int buttons = spin && spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 64;
         return {contents.width() + 12 + buttons + 4, std::max(Metric::control, contents.height() + 14)};
     }
     case CT_CheckBox: case CT_RadioButton: {
@@ -742,13 +755,12 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* o
     case CC_SpinBox: {
         const auto* spin = qstyleoption_cast<const QStyleOptionSpinBox*>(option);
         if (!spin || !spin->frame) break;
-        const int buttons = spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 24;
-        const int half = r.height() / 2;
+        const int buttons = spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 64;
         switch (sub) {
         case SC_SpinBoxFrame: return r;
         case SC_SpinBoxEditField: return visualRect(option->direction, r, r.adjusted(11, 1, -(buttons + 3), -1));
-        case SC_SpinBoxUp: return buttons ? visualRect(option->direction, r, QRect(r.right() - buttons, r.top() + 3, buttons - 2, half - 3)) : QRect();
-        case SC_SpinBoxDown: return buttons ? visualRect(option->direction, r, QRect(r.right() - buttons, r.top() + half, buttons - 2, r.height() - half - 3)) : QRect();
+        case SC_SpinBoxUp: return buttons ? visualRect(option->direction, r, QRect(r.right() - 32, r.top(), 32, r.height())) : QRect();
+        case SC_SpinBoxDown: return buttons ? visualRect(option->direction, r, QRect(r.right() - 64, r.top(), 32, r.height())) : QRect();
         default: break;
         }
         break;
@@ -1350,7 +1362,10 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
             const bool enabled = (option->state & State_Enabled) && (spin->stepEnabled & (sub == SC_SpinBoxUp ? QAbstractSpinBox::StepUpEnabled : QAbstractSpinBox::StepDownEnabled));
             if (enabled && (spin->activeSubControls & sub) && (option->state & (State_MouseOver | State_Sunken)))
                 rounded(p, QRectF(box).adjusted(2, 0, 0, 0), mix(c.surfaceRaised, c.selected, (option->state & State_Sunken) ? 1.0 : 0.5), {}, 4);
-            paintChevron(*p, QRectF(box).center() + QPointF(0, sub == SC_SpinBoxUp ? 1 : -1), 8, sub == SC_SpinBoxUp ? Qt::UpArrow : Qt::DownArrow, enabled ? c.textSecondary : c.textDisabled, 1.4);
+            p->setPen(QPen(enabled ? c.textSecondary : c.textDisabled, 1.5, Qt::SolidLine, Qt::RoundCap));
+            const QPointF centre = QRectF(box).center();
+            p->drawLine(centre + QPointF(-4, 0), centre + QPointF(4, 0));
+            if (sub == SC_SpinBoxUp) p->drawLine(centre + QPointF(0, -4), centre + QPointF(0, 4));
         }
         return;
     }
@@ -1653,19 +1668,34 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
     }
 }
 
-bool confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, bool destructive) {
-    QMessageBox box(QMessageBox::Question, title, text, QMessageBox::Yes | QMessageBox::Cancel, parent);
-    box.setObjectName(QStringLiteral("confirmAction"));
-    box.setTextFormat(Qt::PlainText);
-    box.setIcon(QMessageBox::NoIcon);
-    auto* yes = box.button(QMessageBox::Yes);
+QMessageBox* confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, const QString& safe, bool destructive) {
+    auto* box = new QMessageBox(QMessageBox::NoIcon, title, text, QMessageBox::Yes | QMessageBox::Cancel, parent);
+    box->setObjectName(QStringLiteral("confirmAction"));
+    box->setProperty("confirmationText", text);
+    // QMessageBox constructed its button box before it had our component name.
+    if (auto* buttons = box->findChild<QDialogButtonBox*>()) {
+        QEvent change(QEvent::StyleChange);
+        QCoreApplication::sendEvent(buttons, &change);
+    }
+    box->setTextFormat(Qt::PlainText);
+    auto* yes = box->button(QMessageBox::Yes);
+    yes->setObjectName("confirmDiscard");
     yes->setText(action);
     yes->setAccessibleName(action);
     yes->setProperty("visualRole", destructive ? "danger" : "primary");
-    box.setDefaultButton(QMessageBox::Cancel);
-    box.setEscapeButton(QMessageBox::Cancel);
-    box.button(QMessageBox::Cancel)->setFocus();
-    return box.exec() == QMessageBox::Yes;
+    auto* keep = box->button(QMessageBox::Cancel);
+    keep->setText(safe);
+    keep->setAccessibleName(safe);
+    box->setDefaultButton(QMessageBox::Cancel);
+    box->setEscapeButton(QMessageBox::Cancel);
+    box->setWindowModality(Qt::WindowModal);
+    keep->setFocus();
+    return box;
+}
+
+bool confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, bool destructive) {
+    std::unique_ptr<QMessageBox> box(confirm(parent, title, text, action, QStringLiteral("Cancel"), destructive));
+    return box->exec() == QMessageBox::Yes;
 }
 
 void alignForms(QWidget* page) {

@@ -12,7 +12,7 @@
 #include <QTabBar>
 #include <QWidget>
 
-class QPushButton;class QApplication;class QLineEdit;
+class QPushButton;class QApplication;class QLineEdit;class QMessageBox;
 class QAbstractButton;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
 
 // The Graphite visual language (2026-10-26): one painted control set for every
@@ -45,6 +45,8 @@ QString monoFamily();
 void setFamilies(const QString& ui, const QString& mono);
 QFont font(int pixels = Type::body, bool strong = false);
 QFont monoFont(int pixels = Type::metadata);
+// Orthogonal to colour roles; restored on every polish.
+void setMono(QWidget*, int pixels = Type::metadata);
 QColor mix(const QColor& a, const QColor& b, qreal amount);
 // The hairline between a raised control and its surface: quieter than border.
 // Buttons use it; their labels identify them.
@@ -276,6 +278,8 @@ void transparentView(QAbstractScrollArea*);
 // action. The action is QMessageBox::Yes underneath and window titles stay as
 // they were, so agents and tests that find a dialog and press Yes keep working. True when the action was chosen.
 bool confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, bool destructive = false);
+// The same component for asynchronous session control; caller opens and owns it.
+QMessageBox* confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, const QString& safe, bool destructive);
 // One label gutter for every form on a page (the widest label, at most
 // 240 px), and choice controls at a natural width (at most 400 px); text and
 // path fields keep growing. Call once a page's forms are built.

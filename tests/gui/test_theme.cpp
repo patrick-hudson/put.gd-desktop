@@ -546,9 +546,8 @@ private slots:
             QVERIFY2(best >= 3.0, qPrintable(Theme::name(scheme) + " check box edge"));
         }
     }
-    // #233: spin box steps are token chevrons on the themed field, in both
-    // schemes, not Fusion's default sub-controls.
-    void spinBoxStepsUseTokenChevrons() {
+    // Shared minus/plus targets retain native editing and keyboard stepping.
+    void spinBoxStepsUseAdjacentTargets() {
         QWidget window;
         auto* layout = new QVBoxLayout(&window);
         auto* spin = new QSpinBox(&window);
@@ -569,16 +568,19 @@ private slots:
             const auto shot = spin->grab().toImage();
             for (const auto control : {QStyle::SC_SpinBoxUp, QStyle::SC_SpinBoxDown}) {
                 const auto box = spin->style()->subControlRect(QStyle::CC_SpinBox, &option, control, spin) & shot.rect();
-                QVERIFY2(!box.isEmpty(), "no step button");
-                int chevron = 0, field = 0;
+                QVERIFY2(box.width() >= 32 && box.height() >= 32, "step target smaller than 32 px");
+                const int before = spin->value();
+                QTest::mouseClick(spin, Qt::LeftButton, {}, box.center());
+                QCOMPARE(spin->value(), before + (control == QStyle::SC_SpinBoxUp ? 1 : -1));
+                int glyph = 0, field = 0;
                 for (int y = box.top(); y <= box.bottom(); ++y)
                     for (int x = box.left(); x <= box.right(); ++x) {
                         const auto c = shot.pixelColor(x, y);
                         const auto near = [&](const QColor& t, int d) { return std::abs(c.red() - t.red()) + std::abs(c.green() - t.green()) + std::abs(c.blue() - t.blue()) < d; };
-                        if (near(p.textSecondary, 90)) ++chevron;
+                        if (near(p.textSecondary, 90)) ++glyph;
                         if (near(p.surfaceRaised, 12)) ++field;
                     }
-                QVERIFY2(chevron >= 4, qPrintable(Theme::name(scheme) + ": no chevron in a step button"));
+                QVERIFY2(glyph >= 4, qPrintable(Theme::name(scheme) + ": no step glyph"));
                 // The button shows the field behind it, not a bevel of its own.
                 QVERIFY2(field * 2 > box.width() * box.height(), qPrintable(Theme::name(scheme) + ": step button is not on the field colour"));
             }
