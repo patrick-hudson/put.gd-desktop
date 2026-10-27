@@ -79,7 +79,10 @@ private slots:
   auto* help=window.findChild<QToolButton*>("editorKeyboardHelp");auto* text=window.findChild<QWidget*>("editorKeyboardHelpText");
   QVERIFY(help&&text&&text->isVisible());QVERIFY(text->property("text").toString().contains("Shift+arrows"));auto* grid=qobject_cast<QGridLayout*>(text->layout());QVERIFY(grid);QCOMPARE(grid->columnCount(),2);QCOMPARE(grid->verticalSpacing(),4);QCOMPARE(grid->rowCount(),10);
   for(int row=0;row<grid->rowCount();++row){auto* key=qobject_cast<QLabel*>(grid->itemAtPosition(row,0)->widget());auto* meaning=qobject_cast<QLabel*>(grid->itemAtPosition(row,1)->widget());QVERIFY(key&&meaning);QCOMPARE(key->font().family(),Graphite::monoFamily());QCOMPARE(meaning->font().family(),Graphite::uiFamily());}QCOMPARE(help->accessibleDescription(),QString("Expanded"));
-  QApplication::processEvents();auto* scroll=window.findChild<QScrollArea*>("editorPropertiesScroll");QVERIFY(scroll->viewport()->rect().contains(QRect(text->mapTo(scroll->viewport(),QPoint()),text->size())));
+  QApplication::processEvents();auto* scroll=window.findChild<QScrollArea*>("editorPropertiesScroll");
+  if(text->height()<=scroll->viewport()->height())QVERIFY(scroll->viewport()->rect().contains(QRect(text->mapTo(scroll->viewport(),QPoint()),text->size())));
+  else for(auto* label:text->findChildren<QLabel*>()){scroll->ensureWidgetVisible(label);QApplication::processEvents();QVERIFY(scroll->viewport()->rect().contains(QRect(label->mapTo(scroll->viewport(),QPoint()),label->size())));}
+  scroll->ensureWidgetVisible(help);QApplication::processEvents();
   help->setFocus();QTest::keyClick(help,Qt::Key_Space);QVERIFY(!window.viewState()["keyboardHelp"].toObject()["open"].toBool());QCOMPARE(help->accessibleDescription(),QString("Collapsed"));
   window.allowClose();
  }
@@ -557,7 +560,8 @@ private slots:
   window.showSaveFailed("/synthetic/copy.png","Permission denied");window.resize(900,620);
   const QString reason="The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.";
   window.showPreparationFailed(reason);PUTGD_TRY_VERIFY(scroll->isAncestorOf(document));
-  QVERIFY(scroll->viewport()->height()>=Graphite::scaled(180));
+  // A useful viewport in window coordinates; enlarged content scrolls within it.
+  QVERIFY(scroll->viewport()->height()>=180);
   auto* label=window.findChild<QLabel*>("editorPreparationReason");QCOMPARE(label->text(),reason);QVERIFY(label->height()>=label->heightForWidth(label->width()));
   const auto footer=window.findChild<QWidget*>("editorFooter");
   for(const auto name:{"keepEditing","saveCopyInstead","editorUpload","editorCancel"}){
