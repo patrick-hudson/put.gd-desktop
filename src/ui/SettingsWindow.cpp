@@ -1434,7 +1434,7 @@ void SettingsWindow::updateCaptureInheritance(){
   if(inherit||(name=="record"&&!recordingRoutingEdited_&&draft_["actions"].toObject()[name].toObject()["destination"]=="default")){const QSignalBlocker a(profile),b(sharing);auto* sourceProfile=inherit&&name=="record"?actionProfiles_["region"]:captureProfile_;auto* sourceSharing=inherit&&name=="record"?publicationModes_["region"]:captureSharing_;profile->setCurrentIndex(profile->findData(sourceProfile->currentData()));sharing->setCurrentIndex(sharing->findData(sourceSharing->currentData()));}
   // Inherited values are locked (readable, quietly framed); sharing without an
   // upload is unavailable.
-  const bool actionUpload=!profile->currentData().toString().isEmpty();profile->setEnabled(!inherit);Graphite::setLocked(profile,inherit);sharing->setEnabled(!inherit&&actionUpload);Graphite::setLocked(sharing,inherit&&actionUpload);
+  const bool actionUpload=!profile->currentData().toString().isEmpty();profile->setEnabled(!inherit);Graphite::setLocked(profile,inherit);sharing->setEnabled(!inherit&&actionUpload);Graphite::setLocked(sharing,inherit&&actionUpload);for(auto* control:{profile,sharing})control->setMinimumHeight(control->sizeHint().height());
   const auto resolved=inherit&&actionUpload?destinationDefaultSharing(profile->currentData().toString()):QString{};
   sharing->setItemText(sharing->findData("default"),resolved.isEmpty()?sharingLabel("default"):sharingLabel(resolved)+" (destination default)");
   const auto inherited=[inherit,name](QComboBox* combo){return inherit?(name=="record"?": inherited from Capture region, ":": inherited from default, ")+combo->currentText():QString{};};
