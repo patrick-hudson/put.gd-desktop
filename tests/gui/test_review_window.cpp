@@ -574,6 +574,12 @@ private slots:
             QVERIFY(header && header->isVisible() && header->height() == header->compactHeight());
             auto* name = header->findChild<QWidget*>("documentName");
             QVERIFY(name && name->height() >= name->fontMetrics().height() && name->y() >= 0 && name->y() + name->height() <= header->height());
+            for (const auto& text : {QString("Save a copy…"), QString("Discard…"), QString("Upload")}) {
+                auto* action = buttonNamed(window, text); QVERIFY(action);
+                auto font = action->font(); if (text == "Upload") font.setWeight(QFont::DemiBold);
+                const int icon = action->icon().isNull() ? 0 : action->iconSize().width() + 8;
+                QVERIFY(action->width() >= QFontMetrics(font).horizontalAdvance(text) + icon + 24);
+            }
             // Every control is inside the window.
             for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && w->isWindow() == false) QVERIFY2(window.rect().contains(QRect(w->mapTo(&window, QPoint()), w->size())), qPrintable(w->accessibleName() + w->objectName()));
         }

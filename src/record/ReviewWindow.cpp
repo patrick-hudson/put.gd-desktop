@@ -488,7 +488,11 @@ void ReviewTimeline::layoutLanes() {
     }
     lanes_ = int(ends.size());
 }
-QRect ReviewTimeline::trackRect() const { return QRect(trackPad + Graphite::scaled(36), trackTop, std::max(1, width() - 2 * trackPad - Graphite::scaled(36)), trackHeight); }
+QRect ReviewTimeline::trackRect() const {
+    int label = Graphite::scaled(36);
+    if (lanes_ > visibleLanes()) label = std::max(label, QFontMetrics(Graphite::font(Graphite::Type::micro)).horizontalAdvance(QStringLiteral("+%1 more").arg(lanes_ - visibleLanes())) + 8);
+    return QRect(trackPad + label, trackTop, std::max(1, width() - 2 * trackPad - label), trackHeight);
+}
 QRect ReviewTimeline::laneRect(int lane) const { const auto track = trackRect(); return QRect(track.left(), laneTop + (lane - laneScroll_->value()) * laneStep() + laneStep() / 2 - (laneHeight() - 1) / 2, track.width(), laneHeight()); }
 int ReviewTimeline::xFor(qint64 us) const { const auto track = trackRect(); return track.left() + int(double(track.width()) * std::clamp<qint64>(us, 0, duration_) / duration_); }
 qint64 ReviewTimeline::timeAt(qreal x) const { const auto track = trackRect(); return std::clamp<qint64>(qint64((x - track.left()) * double(duration_) / track.width()), 0, duration_); }
@@ -975,8 +979,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // Text stays enlarged; the review's fields need less vertical padding than forms.
     for (auto* field : std::initializer_list<QWidget*>{speed_, masks_, strength_, format_})
         field->setFixedHeight(std::max(32, field->fontMetrics().height() + 2));
-    for (auto* action : std::initializer_list<QWidget*>{upload_, save_, cancel_})
+    for (auto* action : {upload_, save_, cancel_}) {
+        action->ensurePolished();
+        auto font = action->font();
+        if (action == upload_) font.setWeight(QFont::DemiBold);
+        const int icon = action->icon().isNull() ? 0 : action->iconSize().width() + 8;
+        action->setMinimumWidth(int(std::ceil(QFontMetricsF(font).horizontalAdvance(action->text()))) + icon + 40);
         action->setFixedHeight(std::max(32, action->fontMetrics().height() + 2));
+    }
     // Keyboard (#283): Space plays and pauses (keyPressEvent, so a focused
     // button or list still takes its own Space), I/O set the trim, Shift+I/O the
     // selected mask's times, Delete removes it, Escape drops an unplaced mask
