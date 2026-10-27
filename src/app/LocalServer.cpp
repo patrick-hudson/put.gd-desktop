@@ -263,7 +263,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // Drives the open History page: filters, selection and the compact details view.
  if(method=="ui.history") {
-  static const QStringList actions{"inspect","clearFilters","select","clearSelection","openDetails","closeDetails","expandPreview","closePreview","showSavedCopy","copySavedPath"};const auto action=p["action"].toString();
+  static const QStringList actions{"inspect","clearFilters","select","clearSelection","openDetails","closeDetails","expandPreview","closePreview","retryPreview","showSavedCopy","copySavedPath"};const auto action=p["action"].toString();
   if(!fields(p,{"action"},{"scope","ids"})||!actions.contains(action)||(p.contains("scope")&&(action!="clearFilters"||!QStringList{"filters","all"}.contains(p["scope"].toString())))
      ||(action=="select")!=p.contains("ids")||(p.contains("ids")&&(!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000))){reply(invalid(),{});return;}
   for(const auto& id:p["ids"].toArray())if(!id.isString()||id.toString().isEmpty()||id.toString().size()>138){reply(invalid(),{});return;}

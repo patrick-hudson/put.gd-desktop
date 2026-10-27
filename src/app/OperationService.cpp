@@ -5,6 +5,7 @@
 #include "core/RunMarker.h"
 #include "core/ReleaseLink.h"
 #include <QElapsedTimer>
+#include <QImageReader>
 #ifdef __GLIBC__
 #include <malloc.h>
 #endif
@@ -63,8 +64,8 @@ constexpr qsizetype maximumQueuedPreviews=3;
 constexpr qint64 maximumPreviewWaitMs=20000;
 constexpr int maximumPreviewVerifyMs=10000;
 static_assert(maximumPreviewWaitMs+maximumPreviewVerifyMs+10000<historyPreviewReplyMs);
-// A local copy stands in for a cleaned-up artifact only while it is the same
-// file: a regular file with the artifact's size and SHA-256.
+// Regeneration uses a retained artifact or local copy only while its size
+// and SHA-256 still match the stored file.
 Error sameFile(const Artifact& copy,const std::shared_ptr<std::atomic_bool>& cancelled,int deadlineMs) {
  const Error missing{"preview_source_missing","Neither the stored file nor a local copy is available",{}};
  const QFileInfo info(copy.path);if(!info.isFile()||info.isSymLink()||info.size()!=copy.bytes||copy.sha256.isEmpty())return missing;
@@ -72,11 +73,11 @@ Error sameFile(const Artifact& copy,const std::shared_ptr<std::atomic_bool>& can
  QCryptographicHash hash(QCryptographicHash::Sha256);QByteArray chunk(1<<20,Qt::Uninitialized);QElapsedTimer clock;clock.start();
  for(;;) {
   if(cancelled->load())return {"cancelled","Preview cancelled",{}};
-  if(clock.elapsed()>deadlineMs)return {"preview_timeout","The local copy took too long to check",{}};
+  if(clock.elapsed()>deadlineMs)return {"preview_timeout","The retained file took too long to check",{}};
   const auto read=file.read(chunk.data(),chunk.size());if(read<0)return missing;if(read==0)break;
   hash.addData(QByteArrayView(chunk.constData(),read));
  }
- if(QString::fromLatin1(hash.result().toHex())!=copy.sha256)return {"preview_source_changed","The local copy is no longer the stored file",{}};
+ if(QString::fromLatin1(hash.result().toHex())!=copy.sha256)return {"preview_source_changed","The retained file no longer matches the stored file",{}};
  return {};
 }
 }
@@ -792,12 +793,19 @@ void OperationService::pumpPosters() {
   const auto& item=*found;const auto category=item.artifact.category;
   if(category!="videos"&&category!="images"){e={"preview_unsupported","Previews are made for images and videos only",{}};return QJsonObject{};}
   QJsonObject result{{"id",task.itemId},{"operationId",operationId}};
-  if(!item.artifact.previewPath.isEmpty()&&QFileInfo(item.artifact.previewPath).isFile()){result["state"]="ready";result["previewPath"]=item.artifact.previewPath;return result;}
+  const auto cached=item.artifact.previewPath;
+  if(!cached.isEmpty()&&(QFileInfo(cached).exists()||QFileInfo(cached).isSymLink())){
+   const QFileInfo file(cached);QImageReader reader(cached,"png");reader.setAutoDetectImageFormat(false);const auto size=reader.size();
+   if(!file.isSymLink()&&file.size()<=8*1024*1024&&size.isValid()&&qint64(size.width())*size.height()<=16000000&&!reader.read().isNull()){result["state"]="ready";result["previewPath"]=cached;return result;}
+   // Only this item's cache entry belongs to us; never remove a source or a foreign path.
+   const auto expected=QDir(root+"/previews").absoluteFilePath(task.itemId+".png");
+   if(QUuid(task.itemId).isNull()||QDir::cleanPath(file.absoluteFilePath())!=QDir::cleanPath(expected)||file.isSymLink()||QFileInfo(file.path()).isSymLink()||file.canonicalFilePath()==QFileInfo(item.artifact.path).canonicalFilePath()||file.canonicalFilePath()==QFileInfo(item.local.path).canonicalFilePath()||!QFile::remove(cached)){e={"preview_cache_invalid","The cached preview is invalid and could not be safely removed",{}};return QJsonObject{};}
+  }
   if(Operation::activeState(op.state)){e={"operation_active","The preview is made when the operation finishes",{}};return QJsonObject{};}
   // The retained artifact, or else the local copy when it is still the same file.
   Artifact source=item.artifact;QString from;
   const QFileInfo stored(source.path);
-  if(stored.isFile()&&!stored.isSymLink()&&stored.size()==source.bytes)from="artifact";
+  if(stored.isFile()&&!stored.isSymLink()&&stored.size()==source.bytes){if(auto mismatch=sameFile(source,cancelled,maximumPreviewVerifyMs)){e=mismatch;return QJsonObject{};}from="artifact";}
   else if(item.local.status=="saved"&&!item.local.path.isEmpty()) {
    source.path=item.local.path;
    if(auto mismatch=sameFile(source,cancelled,maximumPreviewVerifyMs)){e=mismatch;return QJsonObject{};}

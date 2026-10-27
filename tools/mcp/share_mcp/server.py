@@ -67,7 +67,7 @@ REVIEW_SPEEDS = {0.5, 1, 2, 4}
 # The put.gd window's file choosers (#259) and the actions on each.
 FILE_DIALOGS = {'editImage', 'historySaveAs', 'outputFolder', 'diagnosticsFolder'}
 FILE_DIALOG_ACTIONS = {'open', 'inspect', 'cancel'}
-HISTORY_ACTIONS = {'inspect', 'clearFilters', 'select', 'clearSelection', 'openDetails', 'closeDetails', 'expandPreview', 'closePreview', 'showSavedCopy', 'copySavedPath'}
+HISTORY_ACTIONS = {'inspect', 'clearFilters', 'select', 'clearSelection', 'openDetails', 'closeDetails', 'expandPreview', 'closePreview', 'retryPreview', 'showSavedCopy', 'copySavedPath'}
 OUTPUT_FOLDER_FIELDS = {'root', 'images', 'videos', 'text', 'other'}
 # A backstop above the CLI's own bounded wait, whose longest case is 3 s to connect,
 # 3 s to send and 45 s for recording.stop (LocalServer::replyDeadlineMs).
@@ -511,9 +511,14 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         return await adapter.call('history.detail', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
-    async def make_history_preview(id: str) -> Json:
-        """Make a missing image/video preview (never made, failed or cleaned up) from the retained file or verified local copy; returns previewPath and state ready/made, or why there is none."""
-        return await adapter.call('history.preview', {'id': id}) if identifier(id) else invalid()
+    async def make_history_preview(id: str, retry: bool | None = None) -> Json:
+        """Make a missing image/video preview (never made, failed or cleaned up) from the retained file or verified local copy; returns previewPath and state ready/made, or why there is none. retry=True clears an earlier refusal and regenerates an invalid app-owned cache entry."""
+        if not identifier(id) or (retry is not None and type(retry) is not bool):
+            return invalid()
+        params: Json = {'id': id}
+        if retry is not None:
+            params['retry'] = retry
+        return await adapter.call('history.preview', params)
 
     @server.tool(annotations=effect)
     async def copy_history_link(id: str) -> Json:
@@ -714,7 +719,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def drive_history(action: str, scope: str | None = None, ids: list[str] | None = None) -> Json:
-        """Drive the open History page as its controls do and read its state. action: inspect; clearFilters (Clear filters; scope all also clears the search and shows All items, as the empty view's reset does); select (ids: history, operation or row IDs on the page shown, selected together); clearSelection; openDetails or closeDetails (the inspector over the list in the compact layout). Returns the applied query, activeFilters, filtersLabel ("Filters · N"), selectedIds, selectedRows, selectionActions (copyLinks, delete, clearSelection), deletableIds, layout (split or compact), detailsOpen and inspectorVisible. expandPreview/closePreview open or close the selected image or recording poster in a larger dialog; canExpandPreview and previewExpanded report availability and state. showSavedCopy/copySavedPath reveal or copy the last saved copy path (savedPath; savedCopyFolder reports the folder result). Delete selected files with delete_history_uploads using deletableIds."""
+        """Drive the open History page as its controls do and read its state. action: inspect; clearFilters (Clear filters; scope all also clears the search and shows All items, as the empty view's reset does); select (ids: history, operation or row IDs on the page shown, selected together); clearSelection; openDetails or closeDetails (the inspector over the list in the compact layout). Returns the applied query, activeFilters, filtersLabel ("Filters · N"), selectedIds, selectedRows, selectionActions (copyLinks, delete, clearSelection), deletableIds, layout (split or compact), detailsOpen and inspectorVisible. retryPreview retries a failed preview from retained source (canRetryPreview reports availability). expandPreview/closePreview open or close the selected image or recording poster in a larger dialog; canExpandPreview and previewExpanded report availability and state. showSavedCopy/copySavedPath reveal or copy the last saved copy path (savedPath; savedCopyFolder reports the folder result). Delete selected files with delete_history_uploads using deletableIds."""
         if action not in HISTORY_ACTIONS or (scope is not None and (action != 'clearFilters' or scope not in {'filters', 'all'})):
             return invalid()
         if (action == 'select') != (ids is not None) or (ids is not None and (not ids or len(ids) > 1000 or any(not identifier(id, 138) for id in ids))):

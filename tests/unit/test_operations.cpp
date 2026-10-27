@@ -462,6 +462,18 @@ private slots:
   QCOMPARE(journal.operation(id).items[0].artifact.previewPath,preview);QCOMPARE(journal.detail(item)["previewPath"].toString(),preview);QVERIFY(changes.contains(id));
   QCOMPARE(QImage(preview).text("putgd-duration-ms"),QString("4200"));
   std::tie(error,result)=ask(item);QVERIFY(!error);QCOMPARE(result["state"].toString(),QString("ready"));QCOMPARE(result["previewPath"].toString(),preview);
+  // Corrupt app-owned cache entries regenerate, while unrelated cache entries survive.
+  const auto unrelated=QFileInfo(preview).dir().filePath(QUuid::createUuid().toString(QUuid::WithoutBraces)+".png");QVERIFY(QFile::copy(preview,unrelated));
+  {QFile broken(preview);QVERIFY(broken.open(QIODevice::WriteOnly|QIODevice::Truncate));broken.write("broken png");}
+  {bool done=false;operations.makePreview(item,[&](Error e,QJsonObject r){error=e;result=r;done=true;},true);PUTGD_TRY_VERIFY_WITH_TIMEOUT(done,15000);}
+  QVERIFY2(!error,qPrintable(error.code));QCOMPARE(result["state"].toString(),QString("made"));QVERIFY(!QImage(preview).isNull());QVERIFY(QFileInfo(unrelated).isFile());
+  // A corrupt path outside our cache is refused without deleting that file.
+  const auto foreign=d.filePath("foreign.png");{QFile file(foreign);QVERIFY(file.open(QIODevice::WriteOnly));file.write("foreign bytes");}
+  {auto changed=journal.operation(id);changed.items[0].artifact.previewPath=foreign;QVERIFY(!journal.saveOperation(changed));}
+  {bool done=false;operations.makePreview(item,[&](Error e,QJsonObject r){error=e;result=r;done=true;},true);PUTGD_TRY_VERIFY(done);}
+  QCOMPARE(error.code,QString("preview_cache_invalid"));QVERIFY(QFileInfo(foreign).isFile());
+  {auto changed=journal.operation(id);changed.items[0].artifact.previewPath=preview;QVERIFY(!journal.saveOperation(changed));}
+  {bool done=false;operations.makePreview(item,[&](Error e,QJsonObject r){error=e;result=r;done=true;},true);PUTGD_TRY_VERIFY(done);QVERIFY(!error);}
   // Cleanup removed the preview and the artifact: the local copy stands in.
   QVERIFY(QFile::remove(preview));QVERIFY(QFile::remove(op.items[0].artifact.path));
   std::tie(error,result)=ask(item);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(result["state"].toString(),QString("made"));QCOMPARE(result["source"].toString(),QString("local"));QVERIFY(QFileInfo(preview).isFile());
