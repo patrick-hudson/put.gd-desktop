@@ -188,7 +188,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   connect(box,&QSpinBox::valueChanged,this,&EditorWindow::applyGeometry);
  }
  layout->addLayout(fields);properties->addWidget(geometryRow_);properties->addWidget(cropRow_);
- remove_=new QPushButton("Remove mark",panel);remove_->setObjectName("removeMark");remove_->setProperty("graphiteFlush",true);remove_->setIcon(VisualStyle::icon("remove"));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");properties->addWidget(remove_,0,Qt::AlignLeft);
+ remove_=new QPushButton("Remove mark",panel);remove_->setObjectName("removeMark");remove_->setProperty("graphiteFlush",true);remove_->setIcon(VisualStyle::icon("remove"));remove_->setIconSize(QSize(20,20));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");properties->addWidget(remove_,0,Qt::AlignLeft);
  auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setProperty("graphiteFlush",true);keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Graphite::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
  auto* keyboardText=new QWidget(panel);keyboardText->setObjectName("editorKeyboardHelpText");
  auto* keyboardGrid=new QGridLayout(keyboardText);keyboardGrid->setContentsMargins(0,0,0,0);keyboardGrid->setHorizontalSpacing(8);keyboardGrid->setVerticalSpacing(4);
