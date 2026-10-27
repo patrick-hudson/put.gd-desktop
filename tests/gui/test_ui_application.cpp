@@ -46,6 +46,10 @@ public:
 class UiApplicationTest:public QObject {
  Q_OBJECT
 private slots:
+ void keyboardOrderPutsChromeAfterContent(){
+  Graphite::WindowHeader::setCustomFrameOverride(1);auto restore=qScopeGuard([]{Graphite::WindowHeader::setCustomFrameOverride(0);});QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);window.show();window.activateWindow();auto* menu=window.findChild<QToolButton*>("applicationMenu");auto* navigation=window.findChild<QTabBar*>("mainNavigation");QVERIFY(menu&&navigation);menu->setFocus();QTest::keyClick(menu,Qt::Key_Tab);PUTGD_TRY_VERIFY(navigation->hasFocus());QTest::keyClick(navigation,Qt::Key_Tab);QCOMPARE(window.focusWidget()->objectName(),QString("captureActionButton"));
+  QStringList order;QWidget* next=menu;do{if(next->isVisibleTo(&window)&&next->isEnabled()&&(next->focusPolicy()&Qt::TabFocus))order.append(next->objectName());next=next->nextInFocusChain();}while(next!=menu);QVERIFY(order.indexOf("historyCategories")>order.indexOf("captureActionButton"));QVERIFY(order.indexOf("windowMinimize")>order.indexOf("historyList"));QCOMPARE(order.last(),QString("windowClose"));window.navigate("settings");order.clear();next=menu;do{if(next->isVisibleTo(&window)&&next->isEnabled()&&(next->focusPolicy()&Qt::TabFocus))order.append(next->objectName());next=next->nextInFocusChain();}while(next!=menu);QVERIFY(order.indexOf("appearanceTheme")>order.indexOf("captureActionButton"));QCOMPARE(order.last(),QString("windowClose"));
+ }
  // #558: opening and checkpointing History must not construct the hidden
  // Settings tree; explicit navigation and agent commands still initialize it.
  void editSourcesStayAvailableWithoutOutput(){

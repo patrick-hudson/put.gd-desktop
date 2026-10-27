@@ -6,6 +6,9 @@
 #include "ui/VisualStyle.h"
 #include "ui/Graphite.h"
 #include <QApplication>
+#include <QFormLayout>
+#include <QListWidget>
+#include <QToolTip>
 #include <QAccessible>
 #include <QClipboard>
 #include "platform/HostOpen.h"
@@ -51,6 +54,32 @@ class ThemeTest : public QObject {
     }
 private slots:
     void init() { Theme::setScheme(Theme::Scheme::Dark); }
+    void selectedNavigationHasPersistentContrastingMarkers() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);const auto& c=Theme::current();
+            QListWidget rows;rows.addItem("History");Graphite::NavigationDelegate delegate(nullptr);
+            QStyleOptionViewItem option;option.rect=QRect(0,0,200,44);option.state=QStyle::State_Selected|QStyle::State_Enabled;
+            QImage image(200,44,QImage::Format_RGB32);image.fill(c.surface);{QPainter p(&image);delegate.paint(&p,option,rows.model()->index(0,0));}
+            QCOMPARE(image.pixelColor(3,22),c.accent);QVERIFY(Theme::contrast(image.pixelColor(3,22),c.selected)>=3.0);QVERIFY(Theme::contrast(c.accent,c.surface)>=3.0);
+            Graphite::Segmented tabs;tabs.addTab("History");tabs.addTab("Settings");tabs.resize(tabs.sizeHint());tabs.show();tabs.clearFocus();putgd::test::settle(10);
+            auto shot=tabs.grab().toImage();const auto r=tabs.tabRect(0);QCOMPARE(shot.pixelColor(r.center().x(),r.bottom()-7),c.accent);
+            Graphite::SegmentTrack track;auto* button=Graphite::toolButton("List",{},"quiet",&track);track.addButton(button);button->setChecked(true);track.resize(track.sizeHint());track.show();putgd::test::settle(10);
+            shot=button->grab().toImage();QCOMPARE(shot.pixelColor(button->rect().center().x(),button->rect().bottom()-3),c.accent);
+        }
+    }
+    void formGutterTracksOnlyVisibleLabels() {
+        QWidget page;auto* box=new QVBoxLayout(&page);auto* shortSection=new QWidget(&page);auto* longSection=new QWidget(&page);box->addWidget(shortSection);box->addWidget(longSection);
+        auto* shortForm=new QFormLayout(shortSection);auto* longForm=new QFormLayout(longSection);auto* shortLabel=new QLabel("Folder");auto* longLabel=new QLabel("Very long credential identification");shortForm->addRow(shortLabel,new QLineEdit);longForm->addRow(longLabel,new QLineEdit);
+        Graphite::alignForms(&page);page.resize(700,300);page.show();PUTGD_TRY_VERIFY(shortLabel->minimumWidth()>shortLabel->fontMetrics().horizontalAdvance(shortLabel->text()));
+        const int expanded=shortLabel->minimumWidth();longSection->hide();PUTGD_TRY_VERIFY(shortLabel->minimumWidth()<expanded);const int collapsed=shortLabel->minimumWidth();
+        longSection->show();PUTGD_TRY_COMPARE(shortLabel->minimumWidth(),expanded);longForm->setRowVisible(0,false);PUTGD_TRY_COMPARE(shortLabel->minimumWidth(),collapsed);
+        shortLabel->setText("Upload folder");PUTGD_TRY_VERIFY(shortLabel->minimumWidth()>collapsed);
+    }
+    void iconButtonsNameThemselvesOnKeyboardFocus() {
+        QWidget page;auto* row=new QHBoxLayout(&page);auto* first=Graphite::toolButton("First","images","quiet",&page);auto* icon=Graphite::toolButton("Edit an image","edit","quiet",&page);icon->setToolButtonStyle(Qt::ToolButtonIconOnly);icon->setToolTip("Edit an image");row->addWidget(first);row->addWidget(icon);page.show();page.activateWindow();first->setFocus();putgd::test::settle(10);
+        QTest::keyClick(first,Qt::Key_Tab);PUTGD_TRY_VERIFY(icon->hasFocus());PUTGD_TRY_COMPARE(QToolTip::text(),QString("Edit an image"));
+        QTest::keyClick(icon,Qt::Key_Backtab);PUTGD_TRY_VERIFY(first->hasFocus());PUTGD_TRY_VERIFY(!QToolTip::isVisible());
+    }
     void idleScrollbarsMeetContrastOnEveryScrollSurface() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);

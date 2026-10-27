@@ -48,6 +48,7 @@
 #include <QStyledItemDelegate>
 #include <QTextEdit>
 #include <QToolButton>
+#include <QToolTip>
 #include <QWindow>
 #include <algorithm>
 #include <cmath>
@@ -439,6 +440,7 @@ void Style::polish(QWidget* widget) {
     if (qobject_cast<QAbstractButton*>(widget) || qobject_cast<QComboBox*>(widget) || qobject_cast<QAbstractSpinBox*>(widget) || qobject_cast<QTabBar*>(widget)
         || qobject_cast<QScrollBar*>(widget) || qobject_cast<QSlider*>(widget) || qobject_cast<QLineEdit*>(widget))
         widget->setAttribute(Qt::WA_Hover);
+    if (auto* button = qobject_cast<QAbstractButton*>(widget)) focusTooltips(button);
     if (auto* view = qobject_cast<QAbstractItemView*>(widget)) view->viewport()->setAttribute(Qt::WA_Hover);
     if (auto* combo = qobject_cast<QComboBox*>(widget)) {
         // The popup list paints its rows like every other list.
@@ -815,6 +817,8 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
         QColor stroke = keyboardState(option) ? c.accent : look.stroke;
         if (!look.fill.isValid() && !stroke.isValid()) return;
         rounded(p, option->rect, look.fill.isValid() ? look.fill : QColor(Qt::transparent), stroke, Metric::radius, keyboardState(option) ? 1.5 : 1);
+        if (widget && qobject_cast<SegmentTrack*>(widget->parentWidget()) && (option->state & State_On))
+            p->fillRect(QRectF(option->rect.center().x() - 12, option->rect.bottom() - 3, 24, 2), c.accent);
         return;
     }
     case PE_PanelLineEdit: {
@@ -1612,6 +1616,7 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
     const bool enabled = option.state & QStyle::State_Enabled;
     const QRectF box = QRectF(option.rect).adjusted(2, 2, -2, -2);
     if (selected || hover) rounded(p, box, selected ? c.selected : mix(c.surface, c.surfaceRaised, 0.7), {}, 6);
+    if (selected) p->fillRect(QRectF(box.left(), box.top() + 8, 2, box.height() - 16), c.accent);
     const auto* view = qobject_cast<const QAbstractItemView*>(option.widget);
     if (selected && view && keyboardFocus(view)) rounded(p, box, {}, c.accent, 6);
     const auto icon = index.data(Qt::DecorationRole).value<QIcon>();
@@ -1649,14 +1654,8 @@ bool confirm(QWidget* parent, const QString& title, const QString& text, const Q
 
 void alignForms(QWidget* page) {
     const auto forms = page->findChildren<QFormLayout*>();
-    int gutter = 0;
-    for (auto* form : forms)
-        for (int row = 0; row < form->rowCount(); ++row)
-            if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) gutter = std::max(gutter, item->widget()->sizeHint().width());
-    gutter = std::min(gutter, scaled(240));
     for (auto* form : forms) {
         for (int row = 0; row < form->rowCount(); ++row) {
-            if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) item->widget()->setMinimumWidth(gutter);
             auto* field = form->itemAt(row, QFormLayout::FieldRole);
             if (!field) continue;
             QList<QWidget*> controls;
@@ -1695,19 +1694,20 @@ void alignForms(QWidget* page) {
     // Measure fields after their control sizing, and watch reflow and visibility.
     class FormMode final : public QObject {
     public:
-        FormMode(QWidget* page, const QList<QFormLayout*>& forms, int gutter)
-            : QObject(page), page_(page), forms_(forms), gutter_(gutter) {
+        FormMode(QWidget* page, const QList<QFormLayout*>& forms)
+            : QObject(page), page_(page), forms_(forms) {
             page->installEventFilter(this);
             if (page->parentWidget()) page->parentWidget()->installEventFilter(this);
             for (auto* form : forms_) {
                 form->parentWidget()->installEventFilter(this);
+                for (auto* child : form->parentWidget()->findChildren<QWidget*>()) child->installEventFilter(this);
                 form->setRowWrapPolicy(QFormLayout::WrapAllRows);
             }
             schedule();
         }
     protected:
         bool eventFilter(QObject*, QEvent* event) override {
-            if (event->type() == QEvent::Resize || event->type() == QEvent::LayoutRequest || event->type() == QEvent::Show)
+            if (event->type() == QEvent::Resize || event->type() == QEvent::LayoutRequest || event->type() == QEvent::Show || event->type() == QEvent::Hide || event->type() == QEvent::FontChange)
                 schedule();
             return false;
         }
@@ -1715,9 +1715,33 @@ void alignForms(QWidget* page) {
         void schedule() {
             if (pending_) return;
             pending_ = true;
-            QTimer::singleShot(0, this, [this] { pending_ = false; apply(); });
+            QTimer::singleShot(0, this, [this] { apply(); pending_ = false; });
         }
         void apply() {
+            QString measurement;
+            for (auto* form : forms_)
+                for (int row = 0; row < form->rowCount(); ++row)
+                    if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) {
+                        auto* label = item->widget();
+                        measurement += QString::number(form->parentWidget()->isVisibleTo(page_) && form->isRowVisible(row)) + label->font().key();
+                        for (auto* text : label->findChildren<QLabel*>()) measurement += text->text();
+                        if (auto* text = qobject_cast<QLabel*>(label)) measurement += text->text();
+                    }
+            if (measurement != measurement_) {
+                measurement_ = measurement;
+                int gutter = 0;
+                for (auto* form : forms_)
+                    for (int row = 0; row < form->rowCount(); ++row)
+                        if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) {
+                            auto* label = item->widget();
+                            label->setMinimumWidth(0);
+                            if (form->parentWidget()->isVisibleTo(page_) && form->isRowVisible(row)) gutter = std::max(gutter, label->sizeHint().width());
+                        }
+                gutter_ = std::min(gutter, scaled(240));
+                for (auto* form : forms_)
+                    for (int row = 0; row < form->rowCount(); ++row)
+                        if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) item->widget()->setMinimumWidth(gutter_);
+            }
             bool stack = false;
             const int pageWidth = page_->parentWidget() ? std::min(page_->width(), page_->parentWidget()->width()) : page_->width();
             for (auto* form : forms_) {
@@ -1748,10 +1772,11 @@ void alignForms(QWidget* page) {
         }
         QWidget* page_;
         QList<QFormLayout*> forms_;
-        int gutter_;
+        int gutter_ = 0;
+        QString measurement_;
         bool pending_ = false;
     };
-    new FormMode(page, forms, gutter);
+    new FormMode(page, forms);
 }
 namespace {
 class ColumnSwitch final : public QObject {
@@ -1772,6 +1797,34 @@ private:
 };
 }
 void responsiveColumns(QBoxLayout* layout, QWidget* watched, int threshold) { new ColumnSwitch(layout, watched, threshold); }
+
+void focusTooltips(QAbstractButton* button) {
+    if (button->property("graphiteFocusTooltip").toBool()) return;
+    button->setProperty("graphiteFocusTooltip", true);
+    class FocusTooltip final : public QObject {
+    public:
+        explicit FocusTooltip(QAbstractButton* button) : QObject(button), button_(button) { button->installEventFilter(this); }
+    protected:
+        bool eventFilter(QObject*, QEvent* event) override {
+            if (event->type() == QEvent::FocusIn) {
+                const auto reason = static_cast<QFocusEvent*>(event)->reason();
+                const auto* tool = qobject_cast<QToolButton*>(button_);
+                const bool iconOnly = tool ? tool->toolButtonStyle() == Qt::ToolButtonIconOnly : button_->text().isEmpty();
+                if (iconOnly && (reason == Qt::TabFocusReason || reason == Qt::BacktabFocusReason || reason == Qt::ShortcutFocusReason)) {
+                    const auto text = button_->toolTip().isEmpty() ? button_->accessibleName() : button_->toolTip();
+                    if (!text.isEmpty()) { shown_ = true; QToolTip::showText(button_->mapToGlobal(QPoint(button_->width() / 2, button_->height())), text, button_); }
+                }
+            } else if (shown_ && (event->type() == QEvent::FocusOut || event->type() == QEvent::Hide || event->type() == QEvent::MouseButtonPress)) {
+                QToolTip::hideText(); shown_ = false;
+            }
+            return false;
+        }
+    private:
+        QAbstractButton* button_;
+        bool shown_ = false;
+    };
+    new FocusTooltip(button);
+}
 
 void showTextStartWhenUnfocused(QLineEdit* edit) {
     class TextStart final : public QObject {
@@ -1848,6 +1901,7 @@ void Segmented::paintEvent(QPaintEvent*) {
         const QRectF r = QRectF(tabRect(i)).adjusted(3, 5, -3, -5);
         const bool on = i == currentIndex();
         if (on) rounded(&p, r, c.selected, mix(c.borderStrong, c.selected, 0.6), Metric::segmentRadius);
+        if (on) p.fillRect(QRectF(r.center().x() - 12, r.bottom() - 3, 24, 2), c.accent);
         if (on && keyboardFocus(this)) rounded(&p, r, {}, c.accent, Metric::segmentRadius, 1.5);
         const QColor ink = !isTabEnabled(i) ? c.textDisabled : on ? c.text : i == hovered ? c.textSecondary : c.textMuted;
         paintText(p, r, tabText(i), ink, Graphite::font(Type::body, on), Qt::AlignCenter);
@@ -1954,6 +2008,10 @@ QToolButton* chromeButton(const QString& glyph, const QString& name, QWidget* pa
 
 namespace {
 int& customFrameOverride() { static int forced = 0; return forced; }
+}
+void WindowHeader::chromeAfter(QWidget* last) {
+    for (auto* button : {minimize_, maximize_, close_}) if (button) { QWidget::setTabOrder(last, button); last = button; }
+    if (menu_) QWidget::setTabOrder(last, menu_);
 }
 void WindowHeader::setCustomFrameOverride(int forced) { customFrameOverride() = forced; }
 bool WindowHeader::customFrame() {

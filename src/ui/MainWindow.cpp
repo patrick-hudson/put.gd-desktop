@@ -37,6 +37,12 @@
 #include "core/ReleaseLink.h"
 namespace putgd {
 namespace {
+void orderNavigation(Graphite::WindowHeader* header,QWidget* tabs_,const QList<QToolButton*>& actionButtons_,QWidget* band_){
+ QWidget* last=header->menuButton();QWidget::setTabOrder(last,tabs_);last=tabs_;for(auto* button:actionButtons_){QWidget::setTabOrder(last,button);last=button;}
+ // Preserve each page's internal order, after the persistent commands; chrome is last.
+ QList<QWidget*> content;auto* next=last->nextInFocusChain();while(next!=last){if(next!=header->menuButton()&&next!=tabs_&&!header->isAncestorOf(next)&&!band_->isAncestorOf(next)&&next->focusPolicy()!=Qt::NoFocus)content.append(next);next=next->nextInFocusChain();}
+ for(auto* control:content){QWidget::setTabOrder(last,control);last=control;}header->chromeAfter(last);
+}
 class EditSourceButton final:public QToolButton {
 public:using QToolButton::QToolButton;
 protected:void paintEvent(QPaintEvent*)override{QStyleOptionToolButton option;initStyleOption(&option);QPainter p(this);if(!property("captureUnavailable").toBool()){style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);return;}const auto main=style()->subControlRect(QStyle::CC_ToolButton,&option,QStyle::SC_ToolButton,this);p.save();p.setClipRect(main);auto disabled=option;disabled.state&=~(QStyle::State_Enabled|QStyle::State_MouseOver|QStyle::State_Sunken);style()->drawComplexControl(QStyle::CC_ToolButton,&disabled,&p,this);p.restore();p.setClipRegion(QRegion(rect()).subtracted(QRegion(main)));style()->drawComplexControl(QStyle::CC_ToolButton,&option,&p,this);}
@@ -196,6 +202,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  statusBar()->addPermanentWidget(updateLink_);statusBar()->addPermanentWidget(version_);statusBar()->addPermanentWidget(versionGroup);
  connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});
  updateDestination();updateSaveStatus();tabs_->setCurrentIndex(0);RedesignTheme::apply(*this);
+ orderNavigation(header,tabs_,actionButtons_,band_);
  connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{QTimer::singleShot(0,this,[this]{fitBand();});});
 }
 SettingsWindow* MainWindow::settings(){
@@ -204,6 +211,7 @@ SettingsWindow* MainWindow::settings(){
  auto* destinations=pages_->widget(1);auto* preferences=pages_->widget(2);
  pages_->removeWidget(destinations);pages_->removeWidget(preferences);delete destinations;delete preferences;
  pages_->addWidget(settings_->destinationsPage());pages_->addWidget(settings_);
+ orderNavigation(findChild<Graphite::WindowHeader*>("windowHeader"),tabs_,actionButtons_,band_);
  // New combo popup containers need the same themed delegate/margin refresh
  // that the original eager tree received when the main style was applied.
  RedesignTheme::apply(*this);

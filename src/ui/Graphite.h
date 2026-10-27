@@ -12,7 +12,8 @@
 #include <QTabBar>
 #include <QWidget>
 
-class QPushButton;class QApplication;class QLineEdit;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
+class QPushButton;class QApplication;class QLineEdit;
+class QAbstractButton;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
 
 // The Graphite visual language (2026-10-26): one painted control set for every
 // app-owned surface. Paint owns appearance; the Qt widget underneath keeps
@@ -232,6 +233,7 @@ public:
     void addTrailing(QWidget*);
     QToolButton* menuButton() const { return menu_; }
     Density density() const { return density_; }
+    void chromeAfter(QWidget* last);
     // The compact band's height for the current fonts: the title's line height
     // plus padding, never less than a 32 px control target plus padding.
     int compactHeight() const;
@@ -282,6 +284,8 @@ void responsiveColumns(QBoxLayout*, QWidget* watched, int threshold);
 // Show a title from its beginning when it is not being edited. Keep the normal
 // shrinkable line-edit geometry so long names cannot displace adjacent actions.
 void showTextStartWhenUnfocused(QLineEdit*);
+// Icon-only controls also name themselves when reached by keyboard.
+void focusTooltips(QAbstractButton*);
 // A disclosure button: a quiet, checkable button with one chevron (right when
 // collapsed, down when expanded) whose accessible description says which.
 void disclosure(QToolButton*);
