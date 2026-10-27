@@ -295,6 +295,7 @@ private slots:
    QVERIFY2(available->rect().contains(rect),qPrintable(QString("%1 exceeds the %2px destination viewport: x=%3 width=%4").arg(control->accessibleName().isEmpty()?control->objectName():control->accessibleName()).arg(viewport->width()).arg(rect.x()).arg(rect.width())));
   }
   QCOMPARE(scroll->horizontalScrollBar()->maximum(),0);
+  if(viewport->width()>=Graphite::scaled(400))QVERIFY(qAbs(label->mapTo(viewport,label->rect().center()).y()-more->mapTo(viewport,more->rect().center()).y())<=Graphite::scaled(8));
   QVERIFY(label->width()>=label->fontMetrics().horizontalAdvance("Pro"));
   // A popup must keep the selected name available to Copy; normal editing and
   // autosave still operate on the complete value, regardless of visible width.
