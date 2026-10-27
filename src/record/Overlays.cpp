@@ -302,7 +302,8 @@ void BoundsOverlay::hideAll() {
     rect_ = {};
 }
 
-ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QWidget* parent) : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint), config_(config), options_(options) {
+ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QWidget* parent) : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint), config_(config), audioIntent_(config.audio.system), options_(options) {
+    config_.audio.system = audioIntent_ && options_.audioSupported && !config_.silent();
     setObjectName("putgd-record-bar");
     setWindowTitle(QString::fromLatin1(controlBarTitle));
     setAttribute(Qt::WA_ShowWithoutActivating);
@@ -385,13 +386,13 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     setTabOrder(keep_, discard_);
     connect(keep_, &QPushButton::clicked, this, &ControlBar::keepRecording);
     connect(discard_, &QPushButton::clicked, this, [this] { confirming_ = false; refresh(); emit cancelRequested(); });
-    connect(audio_, &QCheckBox::toggled, this, [this](bool on) { if (config_.audio.system == on) return; config_.audio.system = on; emit configChanged(config_); });
+    connect(audio_, &QCheckBox::toggled, this, [this](bool on) { if (audioIntent_ == on) return; audioIntent_ = on; config_.audio.system = on && options_.audioSupported && !config_.silent(); emit configChanged(config_); });
     connect(format_, &QComboBox::currentIndexChanged, this, [this](int index) {
         const auto value = format_->itemData(index).toStringList();
         if (value.size() != 2 || (value[0] == config_.format && value[1] == config_.codec)) return;
         config_.format = value[0];
         config_.codec = value[1];
-        if (config_.silent()) config_.audio.system = false;
+        config_.audio.system = audioIntent_ && options_.audioSupported && !config_.silent();
         refresh();
         emit configChanged(config_);
     });
@@ -434,7 +435,10 @@ void ControlBar::refresh() {
     // Once recording starts these are information, not disabled choices.
     const bool withSound = config_.audio.system && !config_.silent();
     audio_->setEnabled(ready && options_.audioSupported && !config_.silent());
-    audio_->setChecked(withSound);
+    audio_->blockSignals(true);
+    audio_->setChecked(audioIntent_);
+    audio_->blockSignals(false);
+    audio_->setText(config_.silent() ? QStringLiteral("System audio · Unavailable in %1").arg(config_.format.toUpper()) : QStringLiteral("System audio"));
     audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : ready ? QStringLiteral("Include the sound the computer plays") : withSound ? QStringLiteral("System audio is being recorded") : QStringLiteral("System audio is not being recorded"));
     format_->setEnabled(ready);
     audio_->setVisible(ready);

@@ -449,6 +449,7 @@ void RecordSession::finishPrepare(Reply reply) {
         guard->config_ = config;
         guard->config_.budgetBytes = budget;
         emit guard->event({{"event", "configChanged"}, {"config", config.toJson()}});
+        emit guard->event({{"event", "progress"}, {"recordingAudio", guard->bar_->audioState()}});
     });
     connect(bar_, &ControlBar::recordRequested, this, [guard] {
         if (!guard || guard->pipeline_.running() || guard->recorded_) return;
@@ -498,6 +499,7 @@ void RecordSession::finishPrepare(Reply reply) {
         overlayPlacement_ = QStringLiteral("compositor");
     }
     showBar("ready");
+    emit event({{"event", "progress"}, {"recordingAudio", bar_->audioState()}});
     reply({}, {{"canvas", sizeJson(resolved_.canvas)}, {"rect", rectJson(resolved_.rect)}, {"window", double(resolved_.window)}, {"overlayExcluded", overlayExcluded_}, {"overlayPlacement", overlayPlacement_}});
 }
 void RecordSession::start(Reply reply) {
@@ -594,6 +596,7 @@ void RecordSession::emitProgress() {
     if (!pipeline_.running()) return;
     auto status = pipeline_.status();
     status["event"] = "progress";
+    if (bar_) status["recordingAudio"] = bar_->audioState();
     emit event(status);
 }
 bool RecordSession::parseEdit(const QJsonObject& json, RecordingEdit& edit) const {

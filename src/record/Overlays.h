@@ -118,6 +118,9 @@ public:
     // The in-bar discard question is showing (Discard… while recording or paused).
     bool confirming() const { return confirming_; }
     RecordingConfig config() const { return config_; }
+    bool requestedAudio() const { return audioIntent_; }
+    bool effectiveAudio() const { return config_.audio.system; }
+    QJsonObject audioState() const { return {{"requested", requestedAudio()}, {"effective", effectiveAudio()}}; }
 signals:
     void recordRequested();
     void pauseRequested();
@@ -144,6 +147,7 @@ private:
     // The largest size the full bar takes in any state; placement decides with it.
     QSize widestSize();
     RecordingConfig config_;
+    bool audioIntent_ = false;
     Options options_;
     QString state_ = "ready";
     Placed placed_ = Placed::None;

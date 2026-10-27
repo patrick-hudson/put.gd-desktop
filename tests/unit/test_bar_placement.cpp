@@ -73,6 +73,34 @@ private slots:
         const int expected = qEnvironmentVariableIntValue("PUTGD_TEST_SCREENS");
         if (expected > 0) QCOMPARE(int(QGuiApplication::screens().size()), expected);
     }
+    void requestedAudioSurvivesSilentFormats() {
+        putgd::RecordingConfig config; config.audio.system = true;
+        ControlBar bar(barOptions(), config); bar.show();
+        auto* audio = bar.findChild<QCheckBox*>();
+        auto* formats = bar.findChild<QComboBox*>("format");
+        QVERIFY(audio && formats);
+        QSignalSpy changes(&bar, &ControlBar::configChanged);
+        const auto choose = [&](const QString& format) {
+            for (int i = 0; i < formats->count(); ++i)
+                if (formats->itemData(i).toStringList().first() == format) { formats->setCurrentIndex(i); return; }
+        };
+        for (const auto& format : {QString("gif"), QString("webp")}) {
+            choose(format);
+            QVERIFY(bar.requestedAudio()); QVERIFY(!bar.effectiveAudio());
+            QCOMPARE(bar.audioState(), QJsonObject({{"requested", true}, {"effective", false}}));
+            QVERIFY(audio->isChecked() && !audio->isEnabled());
+            QVERIFY(audio->text().contains("Unavailable in " + format.toUpper()));
+            QVERIFY(!bar.config().audio.system);
+            choose("mp4");
+            QVERIFY(bar.requestedAudio() && bar.effectiveAudio());
+            QVERIFY(audio->isChecked() && audio->isEnabled());
+            QVERIFY(bar.config().audio.system);
+        }
+        QCOMPARE(changes.size(), 4);
+        audio->click(); QVERIFY(!bar.requestedAudio() && !bar.effectiveAudio());
+        choose("gif"); choose("mp4");
+        QVERIFY(!audio->isChecked() && !bar.effectiveAudio());
+    }
     void recordingSelectorCyclesActualFixtureDisplays() {
         const auto screens = QGuiApplication::screens();
         SelectionOverlay selector; selector.start();
