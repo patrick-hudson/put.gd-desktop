@@ -356,7 +356,7 @@ void focusTooltips(QAbstractButton*);
 // A disclosure button: a quiet, checkable button with one chevron (right when
 // collapsed, down when expanded) whose accessible description says which.
 void disclosure(QToolButton*);
-// Builds a button in a role (see Style): "primary", "secondary" (default),
+// Builds a button in a role (see Style): "primary", "lead", "secondary" (default),
 // "quiet", "danger", "link". glyph is an IconArt name, or empty.
 QToolButton* toolButton(const QString& text, const QString& glyph = {}, const char* role = nullptr, QWidget* parent = nullptr);
 }

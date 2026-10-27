@@ -26,6 +26,7 @@ struct Palette {
  // item): both tones 3:1 against selected and against each other, so a
  // selected glyph keeps its silhouette and its inner detail.
  QColor iconSelected,iconSecondarySelected;
+ QColor lead,leadOutline;
 };
 const Palette& palette(Scheme);
 const Palette& current();

@@ -323,7 +323,7 @@ private slots:
             QVERIFY(Theme::contrast(p.danger, p.dangerSurface) >= 4.5);
             // Every token is reported, as #rrggbb.
             const auto tokens = Theme::tokens(scheme);
-            QCOMPARE(tokens.size(), 27);
+            QCOMPARE(tokens.size(), 29);
             QVERIFY(tokens.contains("controlOutline"));
             for (const auto& value : tokens) QVERIFY(QRegularExpression("^#[0-9a-f]{6}$").match(value.toString()).hasMatch());
         }
@@ -428,6 +428,20 @@ private slots:
     }
     // A primary button is the neutral text fill with background-colour ink;
     // its label, alone or as one group with its icon, is centred.
+    void leadButtonKeepsTheContentActionProminent() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme); const auto& c = Theme::current();
+            QPushButton lead("Capture region"); VisualStyle::role(&lead, "lead");
+            QStyleOptionButton option; option.rect=QRect(0,0,200,40); option.state=QStyle::State_Enabled; option.text=lead.text();
+            QImage image(option.rect.size(),QImage::Format_RGB32); image.fill(c.bg);
+            { QPainter p(&image); lead.style()->drawControl(QStyle::CE_PushButton,&option,&p,&lead); }
+            QCOMPARE(image.pixelColor(100,3),c.lead);
+            QCOMPARE(image.pixelColor(100,0),c.leadOutline);
+            QCOMPARE(lead.font().weight(),QFont::Medium);
+            QVERIFY(Theme::contrast(c.text,c.lead)>=4.5);
+            QVERIFY(c.lead!=c.text);
+        }
+    }
     void primaryButtonIsNeutralAndCentred() {
         QWidget window;
         auto* layout = new QVBoxLayout(&window);

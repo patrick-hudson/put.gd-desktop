@@ -153,6 +153,10 @@ Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, 
     } else if (roleName == "primary") {
         look.fill = enabled ? (down ? c.textSecondary : hover ? mix(c.text, c.textSecondary, 0.55) : c.text) : c.surfaceRaised;
         look.text = enabled ? c.bg : c.textDisabled;
+    } else if (roleName == "lead") {
+        look.fill = !enabled ? c.surfaceRaised : down ? c.selected : hover ? mix(c.lead, c.selected, 0.35) : c.lead;
+        look.stroke = enabled ? c.leadOutline : controlStroke();
+        look.text = enabled ? c.text : c.textDisabled;
     } else if (roleName == "danger") {
         look.fill = enabled ? (down || hover ? c.dangerSurface : c.surfaceRaised) : c.surface;
         look.stroke = enabled ? c.danger : controlStroke();
