@@ -1593,7 +1593,7 @@ QRect ElidedLabel::textRect() const {
     if (!revealable_) return contentsRect();
     auto box = contentsRect().adjusted(6, 0, -scaled(12) - 12, 0);
     // Keep the summary and its disclosure together even in a stretching footer.
-    box.setWidth(std::min(box.width(), int(std::ceil(QFontMetricsF(font()).horizontalAdvance(text())))));
+    if (!wordWrap()) box.setWidth(std::min(box.width(), int(std::ceil(QFontMetricsF(font()).horizontalAdvance(text())))));
     return box;
 }
 bool ElidedLabel::event(QEvent* event) {
@@ -1616,6 +1616,7 @@ void ElidedLabel::setRevealable(bool on) {
     updateGeometry();
     update();
 }
+int ElidedLabel::heightForWidth(int width) const { return QLabel::heightForWidth(width - (revealable_ ? scaled(12) + 18 : 0)); }
 bool ElidedLabel::elided() const { return QFontMetricsF(font()).horizontalAdvance(text()) > textRect().width(); }
 void ElidedLabel::reveal() {
     if ((!revealable_ && revealTitle_.isEmpty()) || text().isEmpty()) return;
@@ -1657,7 +1658,9 @@ void ElidedLabel::paintEvent(QPaintEvent*) {
     if (revealable_) {
         if (isEnabled() && underMouse()) rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), t().surfaceRaised, {}, 4);
         const auto box = textRect();
-        VisualStyle::icon("info").paint(&p, QRect(box.right() + 7, box.center().y() - scaled(12) / 2, scaled(12), scaled(12)), Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
+        if (wordWrap()) {
+            paintChevron(p, QPointF(box.right() + 7 + scaled(12) / 2.0, box.center().y()), 8, Qt::DownArrow, isEnabled() ? t().textSecondary : t().textDisabled);
+        } else VisualStyle::icon("info").paint(&p, QRect(box.right() + 7, box.center().y() - scaled(12) / 2, scaled(12), scaled(12)), Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
     }
     // A revealable summary's keyboard focus: the amber ring around its text.
     if (revealable_ && keyboardFocus(this)) {
@@ -1666,8 +1669,12 @@ void ElidedLabel::paintEvent(QPaintEvent*) {
         p.setBrush(Qt::NoBrush);
         p.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
     }
-    paintText(p, textRect(), text(), property("headerInactive").toBool() ? t().textMuted : palette().color(isEnabled() ? QPalette::Normal : QPalette::Disabled, foregroundRole()), font(),
-              alignment(), elideMode_);
+    const QColor ink = property("headerInactive").toBool() ? t().textMuted : palette().color(isEnabled() ? QPalette::Normal : QPalette::Disabled, foregroundRole());
+    if (wordWrap()) {
+        p.setFont(font());
+        p.setPen(ink);
+        p.drawText(textRect(), alignment() | Qt::TextWordWrap, text());
+    } else paintText(p, textRect(), text(), ink, font(), alignment(), elideMode_);
 }
 
 namespace {

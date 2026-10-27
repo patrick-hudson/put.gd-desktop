@@ -149,7 +149,7 @@ private:
     int rowHeight_;
 };
 
-// One line of text that elides in the middle instead of widening its window;
+// Text that elides in the middle unless word wrapping is requested;
 // the full text stays in its tooltip and accessible name. A revealable label
 // (an actionable summary, not a heading) is also a tab stop: Enter, Space or a
 // click opens its full plain text in a small popup a keyboard can read, select
@@ -167,6 +167,7 @@ public:
     QString revealActionName() const { return revealActionName_; }
     bool revealable() const { return revealable_; }
     bool elided() const;
+    int heightForWidth(int) const override;
     // Opens full text for a revealable label or a separately titled Details action.
     void reveal();
     QWidget* fullTextPopup() const { return popup_; }

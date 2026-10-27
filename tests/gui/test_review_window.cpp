@@ -176,9 +176,9 @@ private slots:
         for (const qint64 at : {qint64(0), qint64(999999), qint64(60567890)}) {
             window.drive({{"action", "seek"}, {"time", double(at)}});
             bar.setRetained(at);
-            QCOMPARE(window.findChild<QLabel*>("time")->text().section(" / ", 0, 0), bar.findChild<QLabel*>("time")->text());
+            QCOMPARE(window.findChild<QLabel*>("time")->text().section("/", 0, 0), bar.findChild<QLabel*>("time")->text());
         }
-        QCOMPARE(window.findChild<QLabel*>("time")->text(), QString("1:00.5 / 2:05.6"));
+        QCOMPARE(window.findChild<QLabel*>("time")->text(), QString("1:00.5/2:05.6"));
     }
     void stableMaskNamesSurviveRemoval() {
         ReviewWindow window(options(), config());
@@ -188,7 +188,7 @@ private slots:
         auto edit = twoMasks(4); edit.masks.removeFirst(); window.setEdit(edit);
         QCOMPARE(window.findChild<QComboBox*>("masks")->currentText(), QString("Redaction 2"));
         QCOMPARE(window.inspect()["masks"].toArray().first().toObject()["name"].toString(), QString("Redaction 2"));
-        QVERIFY(window.findChild<FrameView*>()->accessibleDescription().startsWith("Redaction 2 selected"));
+        QVERIFY(window.findChild<FrameView*>()->accessibleDescription().contains("Redaction 2 selected"));
         edit.revision++; edit.masks.append(mask("third", "blur", 0, duration)); window.setEdit(edit);
         QCOMPARE(window.inspect()["selectedMaskName"].toString(), QString("Blur 3"));
     }
@@ -207,7 +207,7 @@ private slots:
         QVERIFY(metadata->mapTo(&window, QPoint()).y() >= window.findChild<FrameView*>()->geometry().bottom());
         auto* audio = window.findChild<QLabel*>("exportAudioSummary");
         QVERIFY(audio && audio->isVisible());
-        QVERIFY(audio->accessibleName().startsWith("Silent preview · "));
+        QVERIFY(audio->accessibleName().endsWith(" · Preview muted"));
     }
     void stackedToolsKeepTheirScopeAndTrimLabels() {
         auto edit = twoMasks(); edit.trimStart = 2000000; edit.trimEnd = 29000000;
@@ -236,8 +236,8 @@ private slots:
         auto* add = window.findChild<QToolButton*>("addMask");
         QVERIFY(add && add->menu());
         QCOMPARE(add->menu()->actions().size(), 2);
-        QCOMPARE(add->menu()->actions()[0]->text(), QString("Redact"));
-        QCOMPARE(add->menu()->actions()[1]->text(), QString("Blur"));
+        QCOMPARE(add->menu()->actions()[0]->text(), QString("Add redaction"));
+        QCOMPARE(add->menu()->actions()[1]->text(), QString("Add blur"));
         QVERIFY(masks->isAncestorOf(add));
 
     }
@@ -357,8 +357,10 @@ private slots:
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto* destination = window.findChild<Graphite::ElidedLabel*>("uploadDestination");
         const auto nameFits = [&] {
-            return destination->text() == o.uploadSummary && destination->accessibleName() == o.uploadSummary
-                && destination->width() >= 12 * destination->font().pixelSize();
+            return destination->text().contains(o.destination) && destination->accessibleName() == o.uploadSummary
+                && destination->width() >= 12 * destination->font().pixelSize()
+                && destination->height() >= 32 && destination->wordWrap()
+                && destination->height() >= destination->heightForWidth(destination->width());
         };
         window.resize(window.minimumSizeHint()); QApplication::processEvents();
         QVERIFY2(nameFits(), qPrintable(destination->text()));
@@ -374,6 +376,84 @@ private slots:
     // Every review control lies whole inside the window and its own container,
     // and no two overlap, at the default and minimum sizes with normal and 150%
     // text: steady, with a blur selected (radius and guidance) and with an error.
+    void narrowTimelineUsesTheFullRowAndStatusDoesNotShiftIt_data() {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("standard") << 1.0;
+        QTest::newRow("150%") << 1.5;
+    }
+    void narrowTimelineUsesTheFullRowAndStatusDoesNotShiftIt() {
+        QFETCH(double, scale);
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
+        auto font = original;
+        if (font.pointSizeF() > 0) font.setPointSizeF(font.pointSizeF() * scale);
+        else font.setPixelSize(qRound(font.pixelSize() * scale));
+        QApplication::setFont(font);
+        auto edit = twoMasks(); edit.trimStart = 2000000;
+        ReviewWindow window(options(), config()); window.setEdit(edit); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* track = timeline(window);
+        auto* transport = window.findChild<QWidget*>("reviewTransport");
+        track->setFixedWidth(520); QApplication::processEvents();
+        QVERIFY(transport->property("aboveTimeline").toBool());
+        QCOMPARE(track->trackRect().left(), ReviewTimeline::gutterWidth());
+        QVERIFY(track->trackRect().width() >= 360);
+        QVERIFY(track->trackRect().top() >= transport->geometry().bottom());
+        const auto axis = track->trackRect();
+        const auto before = window.geometry();
+        QVERIFY(window.drive({{"action", "seek"}, {"time", 0}}).code.isEmpty()); QApplication::processEvents();
+        QVERIFY(window.findChild<QLabel*>("playbackStatus")->isVisible());
+        QCOMPARE(track->trackRect(), axis);
+        QCOMPARE(window.geometry(), before);
+        track->setMinimumWidth(0); track->setMaximumWidth(QWIDGETSIZE_MAX);
+        window.resize(1342, 720); QApplication::processEvents();
+        QVERIFY(!transport->property("aboveTimeline").toBool());
+        QVERIFY(track->trackRect().width() >= 360);
+        QVERIFY(track->trackRect().left() > transport->geometry().right());
+    }
+    void purposeFormatChoicesKeepTheCanonicalIds() {
+        auto o = options();
+        ReviewWindow window(o, config()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QComboBox* formats = nullptr;
+        for (auto* combo : window.findChildren<QComboBox*>()) if (combo->accessibleName() == "Output format") formats = combo;
+        QVERIFY(formats);
+        const auto choose = [&](QComboBox* combo, const QStringList& id) {
+            const int index = combo->findData(id);
+            QVERIFY(index >= 0);
+            combo->setCurrentIndex(index);
+            QCOMPARE(combo->currentData().toStringList(), id);
+            QVERIFY(!combo->itemData(index, Qt::ToolTipRole).toString().isEmpty());
+            QCOMPARE(combo->toolTip(), combo->itemData(index, Qt::ToolTipRole).toString());
+        };
+        choose(formats, {"mp4", "h265"});
+        QCOMPARE(window.inspect()["format"].toObject()["codec"].toString(), QString("h265"));
+        choose(formats, {"mp4", "h264"});
+        QVERIFY(formats->currentText().contains("Recommended"));
+        ControlBar::Options b; b.formats = o.formats; b.codecs = o.codecs;
+        ControlBar bar(b, config());
+        QSignalSpy changed(&bar, &ControlBar::configChanged);
+        auto* barFormats = bar.findChild<QComboBox*>("format");
+        QVERIFY(barFormats);
+        choose(barFormats, {"webm", "vp9"});
+        QVERIFY(!changed.isEmpty());
+        QCOMPARE(qvariant_cast<RecordingConfig>(changed.last().first()).format, QString("webm"));
+        QCOMPARE(qvariant_cast<RecordingConfig>(changed.last().first()).codec, QString("vp9"));
+    }
+    void maskPlacementCommandsArePlainActions() {
+        ReviewWindow window(options(), config()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* add = window.findChild<QToolButton*>("addMask");
+        const auto entries = add->menu()->actions();
+        QCOMPARE(entries.size(), 2);
+        for (auto* entry : entries) QVERIFY(!entry->isCheckable());
+        entries[0]->trigger();
+        QCOMPARE(window.inspect()["armed"].toString(), QString("solid"));
+        QVERIFY(window.findChild<FrameView*>()->accessibleDescription().contains("redaction", Qt::CaseInsensitive));
+        entries[1]->trigger();
+        QCOMPARE(window.inspect()["armed"].toString(), QString("blur"));
+        QVERIFY(window.findChild<FrameView*>()->accessibleDescription().contains("blur", Qt::CaseInsensitive));
+    }
     void moreMasksControlRevealsNavigationAndSelectsAHiddenMask() {
         ReviewWindow window(options(), config());
         RecordingEdit edit;
@@ -709,10 +789,14 @@ private slots:
         static_cast<Graphite::ElidedLabel*>(target)->fullTextPopup()->close();
         auto* audio = window.findChild<QLabel*>("exportAudioSummary");
         QVERIFY(audio->isVisible());
-        QCOMPARE(audio->mapTo(&window, audio->rect().center()).y(), target->mapTo(&window, target->rect().center()).y());
-        QVERIFY(audio->mapTo(&window, QPoint()).x() > target->mapTo(&window, target->rect().topRight()).x());
+        QVERIFY(target->height() >= 32);
+        QVERIFY(target->wordWrap());
+        QVERIFY(target->height() >= target->heightForWidth(target->width()));
+        QVERIFY(audio->wordWrap());
+        QVERIFY(audio->height() >= audio->heightForWidth(audio->width()));
+        QVERIFY(!QRect(audio->mapTo(&window, QPoint()), audio->size()).intersects(QRect(target->mapTo(&window, QPoint()), target->size())));
         QVERIFY(audio->mapTo(&window, audio->rect().topRight()).x() <= window.width() - 8);
-        QVERIFY(state["audio"].toString().startsWith("Silent preview"));
+        QVERIFY(state["audio"].toString().endsWith("Preview muted"));
         QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->isVisible());
     }
     void stoppingKeepsTheClipAndDiscardStillAsks() {
@@ -1106,10 +1190,10 @@ private slots:
         for (const auto& format : {"gif", "webp"}) {
             QVERIFY(window.drive({{"action", "format"}, {"format", format}}).code.isEmpty());
             QVERIFY(!qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
-            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("Silent preview · No audio in %1").arg(QString(format).toUpper()));
+            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("No audio in %1 · Preview muted").arg(QString(format).toUpper()));
             QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}}).code.isEmpty());
             QVERIFY(qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
-            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("Silent preview · Export includes system audio"));
+            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("System audio included · Preview muted"));
             QVERIFY(qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
         }
     }
@@ -1484,8 +1568,8 @@ private slots:
         QVERIFY(!row->isVisible());
         QCOMPARE(window.inspect()["statusRow"].toArray().size(), 0);
         QCOMPARE(audio->text(), QString("Silent preview"));
-        QVERIFY(audio->accessibleName().contains("Export includes system audio"));
-        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("Silent preview · Export includes system audio"));
+        QVERIFY(audio->accessibleName().contains("System audio included"));
+        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("System audio included · Preview muted"));
         QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->isVisible());
         // H.265: a warning with its fix; the fix is the format control's own path.
         QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}}).code.isEmpty());
@@ -1517,7 +1601,7 @@ private slots:
         QVERIFY(window.drive({{"action", "format"}, {"format", "gif"}, {"codec", ""}}).code.isEmpty());
         QCOMPARE(audio->text(), QString("Silent preview"));
         QVERIFY(audio->accessibleName().contains("No audio in GIF"));
-        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("Silent preview · No audio in GIF"));
+        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("No audio in GIF · Preview muted"));
         lines = window.inspect()["statusRow"].toArray();
         QCOMPARE(lines.size(), 1);
         QVERIFY(lines[0].toObject()["text"].toString().startsWith(QStringLiteral("GIF is limited to 5 s")));
@@ -1703,7 +1787,7 @@ private slots:
         m.rect = QRect(320, 180, 640, 360);
         edit.masks = {m};
         window.setEdit(edit);
-        QVERIFY(frame->accessibleDescription().startsWith(QStringLiteral("Redaction 1 selected: 640 × 360 at 320, 180")));
+        QVERIFY(frame->accessibleDescription().contains(QStringLiteral("Redaction 1 selected: 640 × 360 at 320, 180")));
         const auto before = proposals.size();
         for (int i = 0; i < 3; ++i) QTest::keyClick(frame, Qt::Key_Right);
         QTest::keyClick(frame, Qt::Key_Up, Qt::ControlModifier);

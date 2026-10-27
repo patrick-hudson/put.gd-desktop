@@ -1,4 +1,5 @@
 #include "Duration.h"
+#include "FormatBox.h"
 #include <QCursor>
 #include "Overlays.h"
 #include "BarPlacement.h"
@@ -116,10 +117,10 @@ QString formatHint(const QString& format, const QString& codec) {
     return QStringLiteral("Silent animated WebP, at most 60 s and 1280 px.");
 }
 QString formatLabel(const QString& format, const QString& codec) {
-    if (format == "mp4") return codec == "h265" ? QStringLiteral("MP4 (H.265)") : QStringLiteral("MP4 (H.264)");
-    if (format == "webm") return QStringLiteral("WebM (VP9)");
-    if (format == "gif") return QStringLiteral("GIF (silent)");
-    return QStringLiteral("WebP (silent)");
+    if (format == "mp4") return codec == "h265" ? QStringLiteral("Smaller video — MP4 (H.265)") : QStringLiteral("Compatible video — MP4 (H.264) · Recommended");
+    if (format == "webm") return QStringLiteral("Browser video — WebM (VP9)");
+    if (format == "gif") return QStringLiteral("Animated GIF — silent");
+    return QStringLiteral("Animated WebP — silent");
 }
 
 namespace {
@@ -332,15 +333,16 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     target_->setObjectName("target");
     audio_ = new QCheckBox("System audio", choices_);
     audio_->setChecked(config.audio.system);
-    format_ = VisualStyle::choiceBox(choices_);
+    format_ = new FormatBox(choices_);
     format_->setObjectName("format");
     format_->setAccessibleName("Recording format");
     format_->setToolTip("The format the recording is reviewed and exported in");
     for (const auto& format : options.formats) {
         const auto codecs = options.codecs[format].toArray();
-        if (codecs.isEmpty()) format_->addItem(formatLabel(format, {}), QStringList{format, QString()});
-        for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatHint(format, codec.toString()), Qt::ToolTipRole); }
+        if (codecs.isEmpty()) { format_->addItem(formatLabel(format, {}), QStringList{format, QString()}); format_->setItemData(format_->count() - 1, formatLabel(format, {}) + "\n" + formatHint(format, {}), Qt::ToolTipRole); }
+        for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatLabel(format, codec.toString()) + "\n" + formatHint(format, codec.toString()), Qt::ToolTipRole); }
     }
+    format_->setToolTip(format_->currentData(Qt::ToolTipRole).toString());
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) format_->setCurrentIndex(i); }
     formatAudio_ = new QLabel(choices_);
     formatAudio_->setObjectName("formatAudio");
@@ -415,7 +417,7 @@ void ControlBar::fitTo(const QRect& screen) {
     // Two rows when one would take most of the screen's width: a 150% text
     // size on a 1366 px laptop, or a narrow portrait monitor.
     arrange(false);
-    if (screen.width() > 0 && widestSize().width() > screen.width() * 7 / 10) arrange(true);
+    if (screen.width() > 0 && widestSize().width() > screen.width() * 3 / 4) arrange(true);
 }
 void ControlBar::askDiscard() {
     if (state_ != "recording" && state_ != "paused") return;
@@ -456,13 +458,14 @@ void ControlBar::refresh() {
     lockedAudio_->setText(withSound ? QStringLiteral("With system audio") : QStringLiteral("No audio"));
     lockedAudio_->setToolTip(audio_->toolTip());
     lockedAudio_->setAccessibleName(QStringLiteral("Audio: ") + lockedAudio_->text());
-    lockedFormat_->setText(format_->currentText());
+    lockedFormat_->setText(format_->currentText().section(QStringLiteral(" — "), 0, 0));
+    lockedFacts_->setToolTip(options_.targetLabel + " · " + lockedAudio_->text() + " · " + format_->currentText());
     QStringList facts;
     for (const auto& fact : {options_.targetLabel, lockedAudio_->text(), lockedFormat_->text()}) if (!fact.isEmpty()) facts.append(fact);
     lockedFacts_->setText(facts.join(QStringLiteral(" · ")));
     lockedFacts_->setAccessibleName(lockedFacts_->text());
     lockedFormat_->setAccessibleName(QStringLiteral("Recording format: ") + lockedFormat_->text());
-    lockedFormat_->setToolTip(QStringLiteral("Recording format; choose the export format in review"));
+    lockedFormat_->setToolTip(format_->currentText() + QStringLiteral("\nRecording format; choose the export format in review"));
     cancel_->setText(ready ? QStringLiteral("Cancel") : QStringLiteral("Discard…"));
     keep_->setText(paused ? QStringLiteral("Keep paused") : QStringLiteral("Keep recording"));
     for (auto* w : std::initializer_list<QWidget*>{state_label_, time_}) w->setVisible(!handle);

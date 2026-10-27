@@ -47,8 +47,8 @@ public:
     qint64 frameTime() const { return timeUs_; }
     void setCanvas(const QSize& canvas) { canvas_ = canvas; update(); }
     void setMasks(const QList<RecordingMask>& masks, const QString& selected);
-    void armCreate(const QString& kind) { armed_ = kind; setCursor(Qt::CrossCursor); update(); }
-    void disarm() { armed_.clear(); unsetCursor(); update(); }
+    void armCreate(const QString& kind) { armed_ = kind; setCursor(Qt::CrossCursor); announce(); update(); }
+    void disarm() { armed_.clear(); unsetCursor(); announce(); update(); }
     const QString& armed() const { return armed_; }
     // Where the frame is drawn, in this widget's coordinates.
     QRect imageRect() const;
@@ -126,6 +126,7 @@ public:
     QRect maskHitRect(const QString& id) const;
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
+    int heightForLanes(int width, int lanes) const;
 signals:
     void scrubbed(qint64 us);
     void scrubStarted();
@@ -150,6 +151,10 @@ private:
     void placeNavigation();
     QRect laneRect(int lane) const;
     int lanesBottom() const;
+    bool transportAbove(int width) const;
+    bool transportAbove() const { return transportAbove(width()); }
+    int timelineTop() const;
+    int inlineTransportWidth_ = 0, inlineTransportHeight_ = 0, rowTransportHeight_ = 0;
     void seek(qint64 us);
     qint64 duration_ = 1, playhead_ = 0, trimStart_ = 0, trimEnd_ = 1;
     qint64 moveAnchor_ = 0;  // a moved mask: the press point's offset from its start

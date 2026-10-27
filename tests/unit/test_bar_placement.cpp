@@ -247,7 +247,8 @@ private slots:
                     QVERIFY(!audio->isVisible() && !format->isVisible());
                     QCOMPARE(audio->isChecked(), sound);
                     QCOMPARE(audioValue->text(), sound ? QStringLiteral("With system audio") : QStringLiteral("No audio"));
-                    QCOMPARE(formatValue->text(), format->currentText());
+                    QCOMPARE(formatValue->text(), format->currentText().section(QStringLiteral(" — "), 0, 0));
+                    QVERIFY(formatValue->toolTip().contains(format->currentText()));
                     auto* facts = bar.findChild<QLabel*>("recordingFacts");
                     QVERIFY(facts);
                     const auto expected = QStringList{barOptions().targetLabel, audioValue->text(), formatValue->text()}.join(" · ");
