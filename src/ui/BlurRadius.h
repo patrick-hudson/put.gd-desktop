@@ -20,8 +20,8 @@ public:
         row->setSpacing(8);
         label_ = new QLabel("Blur radius", this);
         VisualStyle::role(label_, "meta");
-        if (compact) row->addWidget(label_);
-        else layout->addWidget(label_);
+        row->addWidget(label_);
+        row->addStretch(1);
         value_ = new QSpinBox(this);
         value_->setRange(minimum, maximum);
         value_->setSuffix(" px");
@@ -32,18 +32,18 @@ public:
         value_->setAccessibleDescription(description);
         value_->setToolTip(description);
         label_->setBuddy(value_);
+        row->addWidget(value_);
+        layout->addLayout(row);
         if (!compact) {
             slider_ = new QSlider(Qt::Horizontal, this);
             slider_->setRange(minimum, maximum);
             slider_->setValue(value);
             slider_->setAccessibleName("Blur radius");
             slider_->setAccessibleDescription(description);
-            row->addWidget(slider_, 1);
+            layout->addWidget(slider_);
             connect(slider_, &QSlider::valueChanged, value_, &QSpinBox::setValue);
             connect(value_, &QSpinBox::valueChanged, slider_, &QSlider::setValue);
         }
-        row->addWidget(value_);
-        layout->addLayout(row);
     }
     QSlider* slider() const { return slider_; }
     QSpinBox* spinBox() const { return value_; }

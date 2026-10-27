@@ -30,6 +30,8 @@
 #include <QLabel>
 #include <QDialog>
 #include <QMessageBox>
+#include <QMenu>
+#include <QActionGroup>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSaveFile>
@@ -110,7 +112,10 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  tools->addSpacing(4);tools->addWidget(separator(toolbar));tools->addSpacing(4);
  auto* fit=toolButton("zoom-fit","Fit to window (Ctrl+0)");auto* actual=toolButton("zoom-actual","Actual size, 100% (Ctrl+1)");
  // Only the zoom sits beside the zoom controls; the size is in Document.
- tools->addSpacing(6);status_=new QLabel(toolbar);status_->setObjectName("editorZoom");status_->setMinimumWidth(Graphite::scaled(40));VisualStyle::role(status_,"meta");tools->addWidget(status_);
+ tools->addSpacing(6);status_=new QToolButton(toolbar);status_->setObjectName("editorZoom");status_->setAccessibleName("Zoom");status_->setToolButtonStyle(Qt::ToolButtonTextOnly);status_->setPopupMode(QToolButton::InstantPopup);status_->setFocusPolicy(Qt::StrongFocus);VisualStyle::role(status_,"quiet");tools->addWidget(status_);
+ auto* zoomMenu=new QMenu(status_);auto* zoomChoices=new QActionGroup(zoomMenu);zoomChoices->setExclusive(true);
+ for(const int percent:{0,50,100,200}){auto* action=zoomMenu->addAction(percent?QString("%1%").arg(percent):QStringLiteral("Fit"));action->setCheckable(true);action->setData(percent);zoomChoices->addAction(action);connect(action,&QAction::triggered,this,[this,percent]{if(percent)canvas_->setZoom(percent/100.0);else canvas_->fit();});}
+ status_->setMenu(zoomMenu);
  root->addWidget(toolbar);
 
  // The canvas owns the space; the properties panel beside it keeps one width
@@ -119,7 +124,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  canvas_=new editor::EditorCanvas(doc_,this);body->addWidget(canvas_,1);
  // Document stays pinned while there is room; short bodies scroll it with
  // the properties so the footer never squeezes them out.
- auto* side=new Graphite::Surface("surface",Qt::LeftEdge,this);side->setObjectName("editorSide");side->setFixedWidth(Graphite::scaled(256));
+ auto* side=new Graphite::Surface("surface",Qt::LeftEdge,this);side->setObjectName("editorSide");side->setFixedWidth(Graphite::scaled(320));
  side_=side;side->installEventFilter(this);
  auto* sideLayout=new QVBoxLayout(side);sideLayout_=sideLayout;sideLayout->setContentsMargins(1,0,0,0);sideLayout->setSpacing(0);
  auto* panel=new Graphite::Surface("surface",{},side);panel->setObjectName("editorOptions");
@@ -177,12 +182,12 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   geometryLabels_[i]=fieldLabel({},geometryRow_);
   auto* box=new QSpinBox(geometryRow_);box->setObjectName(names[i]);box->setSuffix(" px");box->setKeyboardTracking(false);box->setMinimumWidth(Graphite::scaled(64));
   geometryLabels_[i]->setBuddy(box);geometry_[i]=box;
-  fields->addWidget(geometryLabels_[i],i,0);fields->addWidget(box,i,1);
+  fields->addWidget(geometryLabels_[i],(i/2)*2,i%2);fields->addWidget(box,(i/2)*2+1,i%2);
   connect(box,&QSpinBox::valueChanged,this,&EditorWindow::applyGeometry);
  }
  layout->addLayout(fields);properties->addWidget(geometryRow_);
- remove_=new QPushButton("Remove mark",panel);remove_->setObjectName("removeMark");remove_->setIcon(VisualStyle::icon("remove"));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");properties->addWidget(remove_,0,Qt::AlignLeft);
- auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Graphite::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
+ remove_=new QPushButton("Remove mark",panel);remove_->setObjectName("removeMark");remove_->setProperty("graphiteFlush",true);remove_->setIcon(VisualStyle::icon("remove"));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");properties->addWidget(remove_,0,Qt::AlignLeft);
+ auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setProperty("graphiteFlush",true);keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Graphite::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
  auto* keyboardText=new QWidget(panel);keyboardText->setObjectName("editorKeyboardHelpText");
  auto* keyboardGrid=new QGridLayout(keyboardText);keyboardGrid->setContentsMargins(0,0,0,0);keyboardGrid->setHorizontalSpacing(8);keyboardGrid->setVerticalSpacing(4);
  const QList<QPair<QString,QString>> shortcuts{{"[ / ]","Cycle marks"},{"Arrows","Move"},{"Shift+arrows","Resize"},{"Ctrl","Use 10 px steps"},{"Tab","Focus properties"},{"Delete","Remove mark"},{"Escape","Deselect"},{"Insert","Place mark"},{"Ctrl+Z","Undo"},{"Ctrl+Shift+Z","Redo"}};
@@ -195,22 +200,6 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* documentLayout=new QVBoxLayout(document);documentLayout->setContentsMargins(18,12,16,14);documentLayout->setSpacing(6);
  documentLayout->addWidget(fieldLabel("Document",document));
  documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");documentInfo_->setWordWrap(true);VisualStyle::role(documentInfo_,"secondary");documentLayout->addWidget(documentInfo_);
- // Save a copy… feedback, next to the button that made it.
- savedLabel_=new Graphite::ElidedLabel(document);savedLabel_->setObjectName("editorSaved");savedLabel_->setTextFormat(Qt::PlainText);savedLabel_->setContextMenuPolicy(Qt::ActionsContextMenu);savedLabel_->hide();documentLayout->addWidget(savedLabel_);
- saveTarget_=new Graphite::ElidedLabel(document);saveTarget_->setObjectName("editorSaveTarget");saveTarget_->setTextFormat(Qt::PlainText);saveTarget_->setRevealable(true);saveTarget_->setRevealActionName("Show full save path");VisualStyle::role(saveTarget_,"error");saveTarget_->hide();documentLayout->addWidget(saveTarget_);
- // A failure wraps rather than elides: its reason is what the user needs.
- saveError_=new QLabel(document);saveError_->setObjectName("editorSaveError");saveError_->setTextFormat(Qt::PlainText);saveError_->setWordWrap(true);VisualStyle::role(saveError_,"error");saveError_->hide();documentLayout->addWidget(saveError_);
- auto* copyPath=new QAction("Copy full path",savedLabel_);savedLabel_->addAction(copyPath);
- connect(copyPath,&QAction::triggered,this,&EditorWindow::copySavedPath);
- auto* savedActions=new QHBoxLayout;savedActions->setContentsMargins(0,0,0,0);savedActions->setSpacing(8);
- // Framed like Choose another location… in the same place, so the actions
- // line up with the text above rather than floating on a quiet inset.
- showFolder_=new QPushButton("Show in folder",document);showFolder_->setObjectName("showSavedCopy");showFolder_->hide();savedActions->addWidget(showFolder_);
- // The elided name's full path, without a pointer: a focusable button.
- copyPath_=new QPushButton("Copy path",document);copyPath_->setObjectName("copySavedPath");copyPath_->setToolTip("Copy the saved copy's full path");copyPath_->hide();savedActions->addWidget(copyPath_);
- chooseAnother_=new QPushButton("Choose another location…",document);chooseAnother_->setObjectName("chooseAnotherLocation");chooseAnother_->hide();savedActions->addWidget(chooseAnother_);
- savedActions->addStretch(1);documentLayout->addLayout(savedActions);
- folderError_=new QLabel("Couldn't open the folder. Copy its path instead",document);folderError_->setObjectName("editorFolderError");folderError_->setTextFormat(Qt::PlainText);folderError_->setWordWrap(true);VisualStyle::role(folderError_,"error");folderError_->hide();documentLayout->addWidget(folderError_);
  sideLayout->addWidget(document);
  root->addLayout(body,1);
 
@@ -228,6 +217,19 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  // Plain, wrapping and focusable: the full name reads without a pointer.
  destination_=new QLabel(footer);destination_->setObjectName("editorDestination");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"secondary");
  destination_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);destination_->setFocusPolicy(Qt::StrongFocus);destination_->hide();footerGrid_->addWidget(destination_,2,0);
+ // Save feedback occupies the destination's footer slot until dismissed.
+ saveFeedback_=new QWidget(footer);saveFeedback_->setObjectName("editorSaveFeedback");saveFeedback_->hide();
+ auto* feedback=new QGridLayout(saveFeedback_);feedback->setContentsMargins(0,0,0,0);feedback->setHorizontalSpacing(8);feedback->setVerticalSpacing(4);feedback->setColumnStretch(0,1);
+ savedLabel_=new Graphite::ElidedLabel(saveFeedback_);savedLabel_->setObjectName("editorSaved");savedLabel_->setTextFormat(Qt::PlainText);savedLabel_->setContextMenuPolicy(Qt::ActionsContextMenu);savedLabel_->hide();feedback->addWidget(savedLabel_,0,0);
+ saveTarget_=new Graphite::ElidedLabel(saveFeedback_);saveTarget_->setObjectName("editorSaveTarget");saveTarget_->setTextFormat(Qt::PlainText);saveTarget_->setRevealable(true);saveTarget_->setRevealActionName("Show full save path");VisualStyle::role(saveTarget_,"secondary");saveTarget_->hide();feedback->addWidget(saveTarget_,2,0);
+ saveError_=new QLabel(saveFeedback_);saveError_->setObjectName("editorSaveError");saveError_->setTextFormat(Qt::PlainText);saveError_->setWordWrap(true);VisualStyle::role(saveError_,"error");saveError_->hide();feedback->addWidget(saveError_,1,0,1,3);
+ auto* copyPath=new QAction("Copy full path",savedLabel_);savedLabel_->addAction(copyPath);connect(copyPath,&QAction::triggered,this,&EditorWindow::copySavedPath);
+ showFolder_=new QPushButton("Show in folder",saveFeedback_);showFolder_->setObjectName("showSavedCopy");showFolder_->hide();VisualStyle::role(showFolder_,"quiet");feedback->addWidget(showFolder_,0,1);
+ copyPath_=new QPushButton("Copy path",saveFeedback_);copyPath_->setObjectName("copySavedPath");copyPath_->setToolTip("Copy the saved copy's full path");copyPath_->hide();VisualStyle::role(copyPath_,"quiet");feedback->addWidget(copyPath_,0,2);
+ chooseAnother_=new QPushButton("Choose another location…",saveFeedback_);chooseAnother_->setObjectName("chooseAnotherLocation");chooseAnother_->hide();VisualStyle::role(chooseAnother_,"quiet");feedback->addWidget(chooseAnother_,2,1,1,2);
+ auto* dismiss=Graphite::toolButton({}, {},"quiet",saveFeedback_);dismiss->setObjectName("dismissEditorSavedCopy");dismiss->setIcon(Graphite::chromeIcon("close"));dismiss->setAccessibleName("Dismiss save feedback");dismiss->setToolTip("Dismiss save feedback");dismiss->setFixedSize(32,32);feedback->addWidget(dismiss,0,3,3,1);connect(dismiss,&QToolButton::clicked,this,&EditorWindow::dismissSavedCopy);
+ folderError_=new QLabel("Couldn't open the folder. Copy its path instead",saveFeedback_);folderError_->setObjectName("editorFolderError");folderError_->setTextFormat(Qt::PlainText);folderError_->setWordWrap(true);VisualStyle::role(folderError_,"error");folderError_->hide();feedback->addWidget(folderError_,3,0,1,4);
+ footerGrid_->addWidget(saveFeedback_,2,0);
  message_=new QLabel(footer);message_->setWordWrap(true);message_->hide();footerGrid_->addWidget(message_,2,0);
  save_=new QPushButton("Save a copy…",footer);save_->setObjectName("editorSaveCopy");save_->setIcon(VisualStyle::icon("save"));save_->setToolTip("Save the edited image to a file (Ctrl+S)");footerGrid_->addWidget(save_,2,1);
  cancel_=new QPushButton("Cancel",footer);cancel_->setObjectName("editorCancel");VisualStyle::role(cancel_,"quiet");footerGrid_->addWidget(cancel_,2,2);
@@ -346,20 +348,22 @@ void EditorWindow::rebuildRecentColors(){
 }
 
 void EditorWindow::setDestination(const QString& destination){// The resident phrases it: "Upload to <destination>" or "Save to the local archive".
- destination_->setText(destination);destination_->setAccessibleName(destination);destination_->setVisible(!destination.isEmpty()&&!busy_&&!savingCopy_);placeDestination();}
+ destination_->setText(destination);destination_->setAccessibleName(destination);destination_->setVisible(!destination.isEmpty()&&!busy_&&!savingCopy_&&!saveFeedbackVisible_);placeDestination();}
 
 void EditorWindow::placeDestination(){
- if(!footerGrid_||destination_->text().isEmpty())return;
- // Beside the actions while the whole name fits there; otherwise a wrapping
- // line of its own above them.
+ if(!footerGrid_)return;
  const auto margins=footerGrid_->contentsMargins();const int spacing=footerGrid_->horizontalSpacing();
  int room=width()-margins.left()-margins.right();
  for(auto* button:{save_,cancel_,upload_})if(!button->isHidden())room-=button->sizeHint().width()+spacing;
- const bool above=destination_->fontMetrics().horizontalAdvance(destination_->text())>room;
- if(above==destinationAbove_)return;
- destinationAbove_=above;destination_->setWordWrap(above);footerGrid_->removeWidget(destination_);
- if(above)footerGrid_->addWidget(destination_,1,0,1,4);else footerGrid_->addWidget(destination_,2,0);
+ const bool feedback=saveFeedbackVisible_&&!busy_&&!savingCopy_;
+ saveFeedback_->setVisible(feedback);destination_->setVisible(!feedback&&!busy_&&!savingCopy_&&!destination_->text().isEmpty());
+ const bool above=feedback?saveFeedback_->sizeHint().width()>room:destination_->fontMetrics().horizontalAdvance(destination_->text())>room;
+ destinationAbove_=above;destination_->setWordWrap(above);
+ footerGrid_->removeWidget(destination_);footerGrid_->removeWidget(saveFeedback_);
+ if(above){footerGrid_->addWidget(destination_,1,0,1,4);footerGrid_->addWidget(saveFeedback_,1,0,1,4);}
+ else{footerGrid_->addWidget(destination_,2,0);footerGrid_->addWidget(saveFeedback_,2,0);}
 }
+void EditorWindow::dismissSavedCopy(){saveFeedbackVisible_=false;placeDestination();}
 void EditorWindow::resizeEvent(QResizeEvent* event){QWidget::resizeEvent(event);placeDestination();}
 bool EditorWindow::eventFilter(QObject* object,QEvent* event){
  if(object==side_&&(event->type()==QEvent::Resize||event->type()==QEvent::LayoutRequest))QTimer::singleShot(0,this,&EditorWindow::placeDocument);
@@ -375,11 +379,6 @@ void EditorWindow::placeDocument(){
  if(scroll){properties_->insertWidget(properties_->count()-1,document_);document_->layout()->setContentsMargins(0,12,0,0);}
  else{sideLayout_->addWidget(document_);document_->layout()->setContentsMargins(18,12,16,14);}
  document_->show();
-}
-
-void EditorWindow::revealDocument(){
- // Save feedback must be visible even when Document now lives below the fold.
- QTimer::singleShot(0,this,[this]{placeDocument();if(documentScrolling_)propertiesScroll_->ensureWidgetVisible(document_,0,12);});
 }
 
 void EditorWindow::documentEdited(){canvas_->documentChanged();refresh();}
@@ -407,7 +406,7 @@ void EditorWindow::refresh(){
  blurRow_->setVisible(tool!=Tool::Crop&&(tool==Tool::Blur||kind(editor::Shape::Kind::Blur)));
  textRow_->setVisible(tool!=Tool::Crop&&(tool==Tool::Text||kind(editor::Shape::Kind::Text)));
  cropRow_->setVisible(tool==Tool::Crop);
- if(tool==Tool::Blur||kind(editor::Shape::Kind::Blur))hint_->setText("Blur is a visual effect. Use Redact for passwords and private information.");
+ if(tool==Tool::Blur||kind(editor::Shape::Kind::Blur))hint_->setText("Warning: Blur is a visual effect. Use Redact for passwords and private information.");
  else hint_->setText({});
  if(tool==Tool::Redact&&!shape){hint_->setText("The covered pixels are removed from saved and uploaded images.");VisualStyle::role(hint_,"secondary");}
  else VisualStyle::role(hint_,"warning");
@@ -415,7 +414,7 @@ void EditorWindow::refresh(){
  {
   // The panel names the tool (or the selected mark) and how to use it.
   static const QStringList titles{"Select","Redact","Blur","Crop","Arrow","Rectangle","Highlight","Text"};
-  static const QStringList help{"Click a mark, or use [ and ] to cycle marks. Arrows move; Shift+arrows resize. Tab focuses properties; Escape deselects.","Drag over private information to cover it with a redaction, an opaque black box.","Drag over an area to blur it.","Drag to choose the area to keep, or set it below, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it without covering it.","Click the image to place a label. Enter finishes the text."};
+  static const QStringList help{"Click a mark to select it.","Drag over private information to cover it with a redaction, an opaque black box.","Drag over an area to blur it.","Drag to choose the area to keep, or set it below, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it without covering it.","Click the image to place a label. Enter finishes the text."};
   int index=int(tool);QString title=titles.value(index);
   // A selected mark names itself, whichever tool picked it up.
   if(shape){const QHash<int,QString> kinds{{int(editor::Shape::Kind::Redact),"Redaction"},{int(editor::Shape::Kind::Blur),"Blur"},{int(editor::Shape::Kind::Arrow),"Arrow"},{int(editor::Shape::Kind::Rectangle),"Rectangle"},{int(editor::Shape::Kind::Highlight),"Highlight"},{int(editor::Shape::Kind::Text),"Text"}};title=kinds.value(int(shape->kind),"Mark")+" selected";}
@@ -438,7 +437,9 @@ void EditorWindow::refresh(){
   cancel_->setText(edited?"Discard…":"Cancel");cancel_->setToolTip(edited?"Discard your edits and close without uploading (asks first)":"Close the editor without uploading");placeDestination();
  }
  const int percent=int(std::lround(canvas_->zoom()*100));
- status_->setText(QString("%1%").arg(percent));status_->setAccessibleName(QString("Zoom %1%").arg(percent));status_->setToolTip("Zoom: Ctrl+plus / Ctrl+minus. Fit: Ctrl+0. Actual size: Ctrl+1.\nCanvas pan: Alt+arrows; Alt+Shift+arrows pan farther.");status_->setAccessibleDescription(status_->toolTip());
+ status_->setText(canvas_->fitted()?QStringLiteral("Fit"):QString("%1%").arg(percent));status_->setAccessibleName("Zoom");
+ for(auto* action:status_->menu()->actions())action->setChecked(action->data().toInt()==(canvas_->fitted()?0:percent));
+ status_->setToolTip("Zoom: Ctrl+plus / Ctrl+minus. Fit: Ctrl+0. Actual size: Ctrl+1.\nCanvas pan: Alt+arrows; Alt+Shift+arrows pan farther.");status_->setAccessibleDescription(QString("%1% · %2").arg(percent).arg(canvas_->fitted()?"Fit to window":"Custom zoom")+". "+status_->toolTip());
 }
 
 void EditorWindow::syncGeometry(){
@@ -507,7 +508,7 @@ void EditorWindow::setSavingCopy(bool saving){
  for(auto* button:{save_,saveInstead_,chooseAnother_})button->setEnabled(!saving&&!busy_);
  upload_->setEnabled(!saving&&!busy_);cancel_->setEnabled(!saving&&!busy_);
  if(saving){
-  for(auto* widget:std::initializer_list<QWidget*>{destination_,saveError_,folderError_,savedLabel_,saveTarget_,showFolder_,copyPath_,chooseAnother_})widget->hide();
+  saveFeedback_->hide();destination_->hide();
   message_->setText("Saving a copy…");VisualStyle::role(message_,"secondary");message_->show();
  }else{message_->hide();destination_->setVisible(!busy_&&!destination_->text().isEmpty());}
  placeDestination();
@@ -543,7 +544,7 @@ void EditorWindow::showSaved(const QString& path){
  lastSave_={{"status","saved"},{"path",file.absoluteFilePath()},{"name",file.fileName()}};savedGeneration_=doc_.generation();
  savedLabel_->setToolTip(file.absoluteFilePath());savedLabel_->setAccessibleDescription(file.absoluteFilePath());savedLabel_->show();
  saveError_->hide();saveTarget_->hide();showFolder_->show();copyPath_->show();chooseAnother_->hide();
- syncSaved();revealDocument();
+ saveFeedbackVisible_=true;syncSaved();placeDestination();
 }
 void EditorWindow::syncSaved(){
  if(lastSave_["status"]!="saved")return;
@@ -561,15 +562,15 @@ void EditorWindow::showSaveFailed(const QString& path,const QString& reason){
  lastSave_={{"status","failed"},{"stage",path.isEmpty()?"chooser":"write"},{"path",path.isEmpty()?QJsonValue():QJsonValue(file.absoluteFilePath())},{"name",path.isEmpty()?QJsonValue():QJsonValue(file.fileName())},{"reason",reason}};
  ++folderRequest_;lastShowInFolder_={};folderError_->hide();
  // The file and kept draft are also in the accessible description.
- saveTarget_->setText(path.isEmpty()?QStringLiteral("Couldn't save the copy"):QString("Couldn't save ‹%1›").arg(file.fileName()));
+ saveTarget_->setText(file.fileName());
  saveTarget_->setRevealText(path.isEmpty()?QStringLiteral("Couldn't save the copy"):file.absoluteFilePath());saveTarget_->setVisible(!path.isEmpty());
- saveError_->setText(path.isEmpty()?QString("Couldn't save the copy: %1.").arg(why):reason.trimmed());
+ saveError_->setText(QString("Couldn't save: %1").arg(reason.trimmed()));
  const auto where=path.isEmpty()?QStringLiteral("the copy"):file.absoluteFilePath();
  saveTarget_->setToolTip(where);saveTarget_->setAccessibleDescription(where+". Press Enter to show the full path.");
  saveError_->setToolTip(path.isEmpty()?QStringLiteral("Your edits are kept."):QString("%1\nYour edits are kept.").arg(where));saveError_->setAccessibleName("Save a copy failed");
  saveError_->setAccessibleDescription(QString("Couldn't save %1: %2. Your edits are kept.").arg(where,why));
  saveError_->show();savedLabel_->hide();showFolder_->hide();copyPath_->hide();chooseAnother_->show();
- header_->setDocument("Edit image","Not uploaded");revealDocument();
+ header_->setDocument("Edit image","Not uploaded");saveFeedbackVisible_=true;placeDestination();
 }
 bool EditorWindow::copySavedPath(){
  if(lastSave_["status"]!="saved")return false;
@@ -586,7 +587,7 @@ bool EditorWindow::showSavedCopy(){
  folderError_->hide();
  host::showInFolder(path,[self,request](const QJsonObject& result){
   if(!self||self->folderRequest_!=request)return;
-  self->lastShowInFolder_=result;self->folderError_->setVisible(!result["opened"].toBool());if(!result["opened"].toBool())self->revealDocument();
+  self->lastShowInFolder_=result;self->folderError_->setVisible(!result["opened"].toBool());self->placeDestination();
  });
  return true;
 }
@@ -632,6 +633,7 @@ QJsonObject EditorWindow::viewState() const {
   {"canvasSize",QJsonArray{canvas_->width(),canvas_->height()}},{"editingText",canvas_->editingText()},{"busy",busy_},{"savingCopy",savingCopy_},
   {"style",QJsonObject{{"color",style.color.name()},{"width",style.width},{"strength",style.strength},{"fontPixels",style.fontPixels},{"font",style.fontFamily}}},
   {"message",message.isEmpty()?QJsonValue():QJsonValue(message)},{"lastSave",save.isEmpty()?QJsonValue():QJsonValue(save)},
+  {"saveFeedbackVisible",saveFeedbackVisible_&&!busy_&&!savingCopy_},
   {"lastShowInFolder",lastShowInFolder_.isEmpty()?QJsonValue():QJsonValue(lastShowInFolder_)},{"lastCopiedPath",lastCopiedPath_.isEmpty()?QJsonValue():QJsonValue(lastCopiedPath_)},
   {"cancelLabel",cancel_->text()},{"destination",QJsonObject{{"text",destination_->text()},{"above",destinationAbove_}}},
   {"preparationFailure",notice_->isHidden()?QJsonValue():QJsonValue(QJsonObject{{"text",noticeText_->text()}})},
@@ -701,6 +703,9 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
   const auto d=params["delta"].toArray();int dx=0,dy=0;
   if(!only({"delta"})||!params["delta"].isArray()||d.size()!=2||!integerIn(d[0],-100000,100000,dx)||!integerIn(d[1],-100000,100000,dy))return fail("invalid_request","pan needs delta [dx, dy] in canvas pixels");
   canvas_->panBy(QPointF(dx,dy));
+ }else if(action=="dismissSavedCopy"){
+  if(!only({}))return fail("invalid_request","dismissSavedCopy has no other parameters");
+  dismissSavedCopy();
  }else if(action=="showSavedCopy"||action=="copySavedPath"){
   if(!only({}))return fail("invalid_request",action+" has no other parameters");
   if(!(action=="showSavedCopy"?showSavedCopy():copySavedPath()))return fail("editor_no_saved_copy","Save a copy first");
@@ -708,7 +713,7 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
   // As Cancel / Discard… does: asks first when there are edits.
   if(!only({}))return fail("invalid_request","discard has no other parameters");
   requestCancel();if(busy_)return viewState();
- }else return fail("invalid_request","action must be inspect, tool, select, removeMark, selectNext, selectPrevious, place, geometry, applyCrop, cancelCrop, zoom, fit, actualSize, pan, keyboardHelp, showSavedCopy, copySavedPath, discard, keepEditing or confirmDiscard");
+ }else return fail("invalid_request","action must be inspect, tool, select, removeMark, selectNext, selectPrevious, place, geometry, applyCrop, cancelCrop, zoom, fit, actualSize, pan, keyboardHelp, showSavedCopy, copySavedPath, dismissSavedCopy, discard, keepEditing or confirmDiscard");
  refresh();return viewState();
 }
 
@@ -716,7 +721,7 @@ void EditorWindow::requestCancel(){
  if(busy_||savingCopy_)return;
  if(discard_){discard_->raise();discard_->activateWindow();return;}
  if(!doc_.modified()){emit cancelRequested();return;}
- const auto text=QString("Discard your edits and close the editor?\nNothing has been uploaded. Your marks and crop are lost%1.").arg(lastSave_["status"]=="saved"?"; copies you saved stay":"");
+ const auto text=QString("Discard your edits and close the editor?\nNothing has been uploaded. Your marks and crop will be lost%1.").arg(lastSave_["status"]=="saved"?"; copies you saved stay":"");
  auto* box=Graphite::confirm(this,"Discard edits?",text,"Discard edits",QStringLiteral("Keep editing"),true);
  auto* keep=box->button(QMessageBox::Cancel);keep->setObjectName("keepEditingConfirm");
  box->setWindowModality(Qt::WindowModal);box->setAttribute(Qt::WA_DeleteOnClose);

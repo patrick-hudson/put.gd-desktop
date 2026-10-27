@@ -328,6 +328,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'removeMark'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'removeMark'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'copySavedPath'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'copySavedPath'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'discard'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'discard'}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'dismissSavedCopy'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'dismissSavedCopy'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'keyboardHelp'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'keyboardHelp'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'keepEditing'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'keepEditing'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'confirmDiscard'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'confirmDiscard'}),

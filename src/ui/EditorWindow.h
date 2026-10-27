@@ -52,7 +52,7 @@ public:
  bool savingCopy() const {return savingCopy_;}
  static QString pngCopyPath(const QString& path);
  // A copy written by the window or by editor.saveCopy: its name, Show in
- // folder and Copy path beside the Document details, the full path in the
+ // folder and Copy path in the footer, the full path in the
  // tooltip and accessible description. It is recorded against the
  // document's generation: after another edit it reads "Earlier copy saved"
  // and the header no longer claims a copy. A failure (an empty path: the
@@ -63,6 +63,7 @@ public:
  bool showSavedCopy();
  // Copy path: the last saved copy's full path to the clipboard.
  bool copySavedPath();
+ void dismissSavedCopy();
  // editor.view: the tool, selection, crop draft, zoom and pan as the window
  // shows them, and one control per call through the same methods as the
  // window's own controls (see ImageEditor.cpp for the actions).
@@ -83,7 +84,6 @@ private:
  void syncSaved();
  void placeDestination();
  void placeDocument();
- void revealDocument();
  // The preparation failure strip; empty hides it. While it shows, its own
  // Save a copy… stands in for the footer's.
  void setNotice(const QString& reason);
@@ -107,13 +107,14 @@ private:
  QToolButton* customColor_=nullptr;
  QFontComboBox* font_=nullptr;
  QSpinBox* textSize_=nullptr;
+ QToolButton* status_=nullptr;
  QToolButton *undo_=nullptr,*redo_=nullptr;
  QWidget *colorRow_=nullptr,*widthRow_=nullptr,*blurRow_=nullptr,*textRow_=nullptr,*cropRow_=nullptr;
  QComboBox* width_=nullptr;
  QSlider* strength_=nullptr;
  Graphite::ElidedLabel* saveTarget_=nullptr;
  QSpinBox* strengthValue_=nullptr;
- QLabel *hint_=nullptr,*status_=nullptr,*message_=nullptr,*toolTitle_=nullptr,*toolHelp_=nullptr,*documentInfo_=nullptr,*destination_=nullptr;
+ QLabel *hint_=nullptr,*message_=nullptr,*toolTitle_=nullptr,*toolHelp_=nullptr,*documentInfo_=nullptr,*destination_=nullptr;
  QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={},*savedLabel_=nullptr,*saveError_=nullptr,*folderError_=nullptr;
  QSpinBox* geometry_[4]={};
  QWidget *geometryRow_=nullptr,*placeRow_=nullptr,*sizeLabels_=nullptr,*optionsRule_=nullptr;
@@ -124,6 +125,7 @@ private:
  QVBoxLayout *properties_=nullptr,*sideLayout_=nullptr;bool documentScrolling_=false;
  // The footer: a preparation failure, the destination (above the actions
  // when it doesn't fit beside them), then the action row.
+ QWidget* saveFeedback_=nullptr;bool saveFeedbackVisible_=false;
  QWidget* notice_=nullptr;QGridLayout* footerGrid_=nullptr;
  QLabel* noticeText_=nullptr;QPushButton *keepEditing_=nullptr,*saveInstead_=nullptr;
  bool destinationAbove_=false;

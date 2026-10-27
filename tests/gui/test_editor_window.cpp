@@ -13,6 +13,7 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QLabel>
+#include <QMenu>
 #include <QGridLayout>
 #include <QRegularExpression>
 #include <QScopeGuard>
@@ -45,6 +46,32 @@ class EditorWindowTest:public QObject {
  static QImage canvasImage(){QImage image(400,260,QImage::Format_RGB32);image.fill(QColor("#20242c"));return image;}
  static void add(EditDocument& doc,const QJsonObject& shape){QJsonArray created;QString code,message;QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",shape}}},created,code,message),qPrintable(message));}
 private slots:
+ void zoomMenuAndAgentCommandsShareTheSameView(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* zoom=window.findChild<QToolButton*>("editorZoom");QVERIFY(zoom&&zoom->menu());QCOMPARE(zoom->accessibleName(),QString("Zoom"));
+  const auto choices=zoom->menu()->actions();QCOMPARE(choices.size(),4);
+  for(int i=1;i<4;++i){choices[i]->trigger();const auto percent=choices[i]->data().toInt();QCOMPARE(window.viewState()["zoomPercent"].toInt(),percent);QVERIFY(!window.viewState()["fitted"].toBool());QVERIFY(choices[i]->isChecked());}
+  QString code,message;window.viewCommand({{"action","zoom"},{"percent",50}},code,message);QVERIFY(code.isEmpty());QVERIFY(choices[1]->isChecked());
+  choices[0]->trigger();QVERIFY(window.viewState()["fitted"].toBool());QCOMPARE(zoom->text(),QString("Fit"));QVERIFY(choices[0]->isChecked());
+ }
+ void geometryAndBlurUseTheWholePropertiesColumn(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1100,1000);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  window.selectTool(Tool::Crop);QApplication::processEvents();
+  auto* x=window.findChild<QSpinBox*>("geometryX");auto* y=window.findChild<QSpinBox*>("geometryY");auto* w=window.findChild<QSpinBox*>("geometryWidth");auto* h=window.findChild<QSpinBox*>("geometryHeight");
+  QCOMPARE(x->y(),y->y());QCOMPARE(w->y(),h->y());QVERIFY(x->x()<y->x());QVERIFY(x->geometry().bottom()<w->y());
+  for(auto* label:window.findChild<QWidget*>("editorGeometry")->findChildren<QLabel*>())if(label->buddy()){QVERIFY(label->geometry().bottom()<label->buddy()->y());QCOMPARE(label->x(),label->buddy()->x());}
+  window.selectTool(Tool::Blur);QApplication::processEvents();auto* slider=window.findChild<QSlider*>("blurStrength");auto* value=window.findChild<QSpinBox*>("blurStrengthValue");
+  QVERIFY(slider->y()>value->geometry().bottom());QVERIFY(slider->width()>=slider->parentWidget()->width()-2);QVERIFY(window.findChild<QPushButton*>("removeMark")->property("graphiteFlush").toBool());QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("graphiteFlush").toBool());
+ }
+ void footerFeedbackReplacesDestinationUntilDismissed(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Upload to Synthetic");window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* destination=window.findChild<QLabel*>("editorDestination");auto* feedback=window.findChild<QWidget*>("editorSaveFeedback");auto* footer=window.findChild<QWidget*>("editorFooter");
+  window.showSaved("/synthetic/copy.png");QApplication::processEvents();QVERIFY(!destination->isVisible());QVERIFY(feedback->isVisible());QVERIFY(footer->isAncestorOf(feedback));
+  window.findChild<QToolButton*>("dismissEditorSavedCopy")->click();QVERIFY(destination->isVisible());QVERIFY(!window.viewState()["saveFeedbackVisible"].toBool());QCOMPARE(window.viewState()["lastSave"].toObject()["status"].toString(),QString("saved"));
+  window.showSaveFailed("/synthetic/copy.png",QString("Disk full. ")+QString("Free enough space, then try again. ").repeated(5));QApplication::processEvents();
+  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QVERIFY(!destination->isVisible());QVERIFY(error->text().startsWith("Couldn't save: Disk full."));QVERIFY(error->height()>=error->heightForWidth(error->width()));
+  QString code,message;window.viewCommand({{"action","dismissSavedCopy"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(destination->isVisible());QVERIFY(!feedback->isVisible());
+ }
  void keyboardHelpIsBelowPropertiesAndAgentControllable(){
   editor::EditDocument doc(QImage(400,260,QImage::Format_RGB32));EditorWindow window(doc);window.show();
   QString code,message;auto state=window.viewCommand({{"action","keyboardHelp"}},code,message);
@@ -254,8 +281,8 @@ private slots:
  // Document details, which stay outside the scrolling properties.
  void toolbarShowsZoomAndDocumentKeepsTheSize(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,1100);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  auto* zoom=window.findChild<QLabel*>("editorZoom");QVERIFY(zoom);
-  QVERIFY2(QRegularExpression("^\\d+%$").match(zoom->text()).hasMatch(),qPrintable(zoom->text()));QVERIFY(zoom->accessibleName().startsWith("Zoom "));
+  auto* zoom=window.findChild<QToolButton*>("editorZoom");QVERIFY(zoom);
+  QVERIFY(zoom->text()=="Fit"||QRegularExpression("^\\d+%$").match(zoom->text()).hasMatch());QCOMPARE(zoom->accessibleName(),QString("Zoom"));
   auto* info=window.findChild<QLabel*>("editorDocumentInfo");QVERIFY(info);QVERIFY(info->text().contains("400 × 260 px"));
   for(auto* label:window.findChildren<QLabel*>())if(label!=info)QVERIFY2(!label->text().contains("400 × 260"),qPrintable(label->objectName()));
   QVERIFY(!window.findChild<QScrollArea*>("editorPropertiesScroll")->isAncestorOf(info));
@@ -339,7 +366,7 @@ private slots:
   // Zoom and pan move the view; fit restores it.
   state=view({{"action","zoom"},{"percent",400}});QCOMPARE(state["zoomPercent"].toDouble(),400.0);QVERIFY(!state["fitted"].toBool());
   const auto shown=state["visibleRect"].toArray();state=view({{"action","pan"},{"delta",QJsonArray{-200,0}}});QVERIFY(state["visibleRect"].toArray()!=shown);
-  QCOMPARE(window.findChild<QLabel*>("editorZoom")->text(),QString("400%"));
+  QCOMPARE(window.findChild<QToolButton*>("editorZoom")->text(),QString("400%"));
   state=view({{"action","fit"}});QVERIFY(state["fitted"].toBool());
   // Crop through the same draft as the keyboard and fields, applied once.
   state=view({{"action","tool"},{"tool","crop"}});QVERIFY(state["cropPending"].toBool());
@@ -392,7 +419,7 @@ private slots:
   QTimer::singleShot(0,&window,[&]{tick=window.savingCopy();});
   add(doc,{{"kind","redact"},{"rect",QJsonArray{0,0,200,200}}});window.documentEdited();
   PUTGD_TRY_VERIFY(tick);PUTGD_TRY_VERIFY(done);
-  QVERIFY(!window.viewState()["savingCopy"].toBool());QVERIFY(window.findChild<QLabel*>("editorDestination")->isVisible());QVERIFY(!window.viewState()["lastSave"].toObject()["current"].toBool());
+  QVERIFY(!window.viewState()["savingCopy"].toBool());QVERIFY(!window.findChild<QLabel*>("editorDestination")->isVisible());QVERIFY(!window.viewState()["lastSave"].toObject()["current"].toBool());
   QCOMPARE(window.viewState()["lastSave"].toObject()["path"].toString(),path+".png");
   QCOMPARE(QImage::fromData(saved).pixelColor(10,10),QColor(Qt::white));QVERIFY(QFileInfo::exists(path+".png"));QVERIFY(!QFileInfo::exists(path));
  }
@@ -438,7 +465,7 @@ private slots:
   QVERIFY(!writeCopy(window,path,reason).isEmpty());QCOMPARE(state->text(),QString("Not uploaded · Copy saved"));
   // A chooser that failed (no file named yet) is shown as a failure, not a cancel.
   window.showSaveFailed({},"The chosen location is not a local file.");
-  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QCOMPARE(error->text(),QString("Couldn't save the copy: the chosen location is not a local file."));
+  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QCOMPARE(error->text(),QString("Couldn't save: The chosen location is not a local file."));
   QVERIFY(window.findChild<QPushButton*>("chooseAnotherLocation")->isVisible());QVERIFY(!copy->isVisible());
   QCOMPARE(window.viewState()["lastSave"].toObject()["stage"].toString(),QString("chooser"));
  }
@@ -536,8 +563,8 @@ private slots:
   for(const auto name:{"keepEditing","saveCopyInstead","editorUpload","editorCancel"}){
    auto* button=window.findChild<QPushButton*>(name);QVERIFY(button&&button->isVisible());QVERIFY(footer->rect().contains(QRect(button->mapTo(footer,QPoint()),button->size())));
   }
-  auto* choose=window.findChild<QPushButton*>("chooseAnotherLocation");scroll->ensureWidgetVisible(choose);QApplication::processEvents();
-  QVERIFY(scroll->viewport()->rect().contains(QRect(choose->mapTo(scroll->viewport(),QPoint()),choose->size())));
+  auto* choose=window.findChild<QPushButton*>("chooseAnotherLocation");QApplication::processEvents();
+  QVERIFY(footer->rect().contains(QRect(choose->mapTo(footer,QPoint()),choose->size())));
   window.resize(1000,1100);PUTGD_TRY_VERIFY(!scroll->isAncestorOf(document));QVERIFY(choose->isVisible());
  }
  void failedFolderOpenShowsCopyPathRecoveryAndClearsForANewSave(){

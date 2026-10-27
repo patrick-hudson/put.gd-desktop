@@ -18,7 +18,7 @@ class CliContract:public QObject {
  Q_OBJECT
  static QJsonObject raw(const QString& path,const QByteArray& bytes) {QLocalSocket socket;socket.connectToServer(path);if(!socket.waitForConnected(1000))return {};socket.write(bytes);QElapsedTimer timer;timer.start();QByteArray response;while(timer.elapsed()<putgd::test::scaled(5000)&&!response.contains('\n')) {QCoreApplication::processEvents();response+=socket.readAll();putgd::test::settle(1);}return QJsonDocument::fromJson(response).object();}
 private slots:
- void editorKeyboardHelpCrossesCliResidentAndHelper(){
+ void editorViewControlsCrossCliResidentAndHelper(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;source.payload.kind="image";source.payload.image=QImage(320,200,QImage::Format_RGB32);source.payload.image.fill(Qt::cyan);
   OperationService operations(d.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);const auto runtime=d.filePath("runtime");QVERIFY(QFile::encodeName(runtime+"/session.sock").size()<=107);QVERIFY(server.listen(runtime));PUTGD_TRY_VERIFY(operations.ready());
   auto request=[&](const QString& method,const QJsonObject& params){QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),method,QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact))});(void)putgd::test::waitFor([&]{return client.state()==QProcess::NotRunning;});return QJsonDocument::fromJson(client.readAllStandardOutput()).object();};
@@ -26,6 +26,10 @@ private slots:
   QJsonObject ready;PUTGD_TRY_VERIFY(([&]{ready=request("editor.view",{{"id",id},{"action","inspect"}});return ready["ok"].toBool();})());QVERIFY(!ready["result"].toObject()["keyboardHelp"].toObject()["open"].toBool());
   const auto opened=request("editor.view",{{"id",id},{"action","keyboardHelp"}});QVERIFY2(opened["ok"].toBool(),QJsonDocument(opened).toJson().constData());QVERIFY(opened["result"].toObject()["keyboardHelp"].toObject()["open"].toBool());QVERIFY(request("editor.view",{{"id",id},{"action","inspect"}})["result"].toObject()["keyboardHelp"].toObject()["open"].toBool());
   const auto closed=request("editor.view",{{"id",id},{"action","keyboardHelp"}});QVERIFY(closed["ok"].toBool());QVERIFY(!closed["result"].toObject()["keyboardHelp"].toObject()["open"].toBool());QCOMPARE(source.reads,1);
+  const auto saved=request("editor.saveCopy",{{"id",id},{"path",d.filePath("synthetic-copy.png")}});QVERIFY2(saved["ok"].toBool(),QJsonDocument(saved).toJson().constData());
+  QVERIFY(request("editor.view",{{"id",id}})["result"].toObject()["saveFeedbackVisible"].toBool());
+  const auto dismissed=request("editor.view",{{"id",id},{"action","dismissSavedCopy"}});QVERIFY2(dismissed["ok"].toBool(),QJsonDocument(dismissed).toJson().constData());QVERIFY(!dismissed["result"].toObject()["saveFeedbackVisible"].toBool());QCOMPARE(dismissed["result"].toObject()["lastSave"].toObject()["status"].toString(),QString("saved"));
+
  }
  void recordToggleWaitsForASlowStopThroughTheRealClient(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;
