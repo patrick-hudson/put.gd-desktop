@@ -15,6 +15,8 @@
 #include "editor/EditorCommands.h"
 #include "app/DiagnosticsBundle.h"
 #include <QApplication>
+#include <QAbstractSpinBox>
+#include <QStyleOptionSpinBox>
 #include <QComboBox>
 #include <QCheckBox>
 #include <QDateTime>
@@ -55,6 +57,17 @@
 using namespace putgd;
 using namespace putgd::test;
 namespace {
+bool checkSteppers(QWidget& window){
+ for(auto* spin:window.findChildren<QAbstractSpinBox*>()){
+  if(!spin->isVisibleTo(&window)||spin->buttonSymbols()==QAbstractSpinBox::NoButtons)continue;
+  QStyleOptionSpinBox option;option.initFrom(spin);option.frame=spin->hasFrame();option.buttonSymbols=spin->buttonSymbols();
+  const auto up=spin->style()->subControlRect(QStyle::CC_SpinBox,&option,QStyle::SC_SpinBoxUp,spin);
+  const auto down=spin->style()->subControlRect(QStyle::CC_SpinBox,&option,QStyle::SC_SpinBoxDown,spin);
+  auto* field=spin->findChild<QLineEdit*>();
+  if(up.width()<32||up.height()<32||down.width()<32||down.height()<32||up.intersects(down)||!field||field->width()<field->fontMetrics().horizontalAdvance(field->displayText())+2){qCritical("Stepper does not fit: %s",qPrintable(spin->objectName()));return false;}
+ }
+ return true;
+}
 // Native capture mode (Graphite acceptance, 2026-10-26): with
 // PUTGD_PREVIEW_HANDSHAKE=DIR the tool runs on the real platform under an
 // owned magenta backdrop, publishes each state's window and waits for the
@@ -159,7 +172,7 @@ int main(int argc,char** argv){
  // Diagnostics packages save into the preview's temporary state; the upload
  // destination's check is answered here, so nothing reaches the network.
  DiagnosticsBundles bundles(operations,data.filePath("state"));bundles.setDestinationTest([](const QString&,std::function<void(Error)> done){done({});});fixture.server.setDiagnosticsBundles(&bundles);JsonReply loadFolders;fixture.setup.setProviderSetup([&](const QString&,const Destination&,const QJsonObject&,JsonReply reply,auto){loadFolders=std::move(reply);});QJsonObject previewUpdate;fixture.server.setUiDiagnostics([&]{return QJsonObject{{"update",previewUpdate},{"capabilities",QJsonObject{{"providers",QJsonObject{{"proton-drive",QJsonObject{}}}}}}};});fixture.session.refreshSnapshot();if(!waitUntil([&]{return fixture.session.diagnostics()["capabilities"].toObject()["providers"].toObject().contains("proton-drive");}))return 2;native.cover();MainWindow window(fixture.session);window.resize(1440,960);window.statusBar()->addPermanentWidget(new QLabel("Synthetic preview"));window.show();auto* list=window.findChild<QListView*>("historyList");if(!list||!waitUntil([&]{return list->model()->rowCount()==8;})){qCritical("Synthetic history did not load");return 2;}list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
- QJsonArray captures;auto save=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}const auto image=window.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+ QJsonArray captures;auto save=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}if(!checkSteppers(window))return false;const auto image=window.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
  auto* preview=window.findChild<QLabel*>("historyPreview");if(!preview||!waitUntil([&]{return !preview->pixmap().isNull();}))return 2;
  if(!save("01-history-list"))return 2;
  list->selectionModel()->select(list->model()->index(1,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(1,0));{auto* inspector=window.findChild<QScrollArea*>("historyInspectorScroll");if(!waitUntil([&]{return window.findChild<QLabel*>("historyTitle")->text().startsWith("Quarterly");}))return 2;putgd::test::settle(50);inspector->verticalScrollBar()->setValue(inspector->verticalScrollBar()->maximum());if(!save("52-history-long-inspector"))return 2;inspector->verticalScrollBar()->setValue(0);}list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
@@ -209,8 +222,8 @@ int main(int argc,char** argv){
   const auto previousDialog=qgetenv("PUTGD_FILE_DIALOG");qputenv("PUTGD_FILE_DIALOG","fallback");page->saveAsDialogCommand("open",{},[](Error,QJsonObject){});QFileDialog* chooser=nullptr;if(!waitUntil([&]{return (chooser=page->saveAsDialog().fallbackDialog())&&chooser->isVisible();}))return 2;chooser->selectFile(data.filePath("Design review copy.png"));QMetaObject::invokeMethod(chooser,"accept");if(!waitUntil([&]{return !page->historyState()["savedPath"].toString().isEmpty();})||!save("69-history-saved-copy"))return 2;if(previousDialog.isNull())qunsetenv("PUTGD_FILE_DIALOG");else qputenv("PUTGD_FILE_DIALOG",previousDialog);
  }
 
- window.navigate("destinations");{auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("backblaze-b2"));putgd::test::settle(100);destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-b2-compact"))return 2;provider->setCurrentIndex(provider->findData("s3"));}
- window.navigate("settings");tabs->setCurrentIndex(0);if(!save("settings-general-compact"))return 2;tabs->setCurrentIndex(2);if(!save("settings-shortcuts-compact"))return 2;tabs->setCurrentIndex(3);if(!save("11-advanced-compact"))return 2;window.navigate("destinations");destinations->setCurrentRow(0);destinationScroll->verticalScrollBar()->setValue(0);if(!save("12-proton-compact"))return 2;destinations->setCurrentRow(1);{auto* label=window.findChild<QLineEdit*>("destinationLabel");if(!label)return 2;const auto original=label->text();label->selectAll();label->insert(QString("Production screenshots for customer support — ").repeated(3).left(120));destinationScroll->verticalScrollBar()->setValue(0);if(!save("17-destination-long-name-compact"))return 2;destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("credentialActions"),0,40);if(!save("18-destination-credentials-compact"))return 2;label->selectAll();label->insert(original);destinationScroll->verticalScrollBar()->setValue(0);}
+ window.navigate("destinations");{auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("backblaze-b2"));putgd::test::settle(100);destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-b2-compact"))return 2;auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("authorized"));putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("b2LinkDays"),0,40);if(!save("settings-b2-stepper-1060"))return 2;mode->setCurrentIndex(mode->findData("public"));provider->setCurrentIndex(provider->findData("s3"));}
+ window.navigate("settings");tabs->setCurrentIndex(0);if(!save("settings-general-compact"))return 2;tabs->setCurrentIndex(2);if(!save("settings-shortcuts-compact"))return 2;tabs->setCurrentIndex(3);if(!save("11-advanced-compact"))return 2;window.navigate("destinations");destinations->setCurrentRow(0);destinationScroll->verticalScrollBar()->setValue(0);if(!save("12-proton-compact"))return 2;{auto* advanced=window.findChild<QToolButton*>("advancedSettings");advanced->setChecked(true);putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("protonRequestTimeout"),0,40);if(!save("settings-proton-steppers-1060"))return 2;advanced->setChecked(false);}destinations->setCurrentRow(1);{auto* label=window.findChild<QLineEdit*>("destinationLabel");if(!label)return 2;const auto original=label->text();label->selectAll();label->insert(QString("Production screenshots for customer support — ").repeated(3).left(120));destinationScroll->verticalScrollBar()->setValue(0);if(!save("17-destination-long-name-compact"))return 2;destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("credentialActions"),0,40);if(!save("18-destination-credentials-compact"))return 2;label->selectAll();label->insert(original);destinationScroll->verticalScrollBar()->setValue(0);}
  window.navigate("settings");tabs->setCurrentIndex(1);if(!save("13-capture-compact"))return 2;window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);if(!save("14-capture-exceptions-compact"))return 2;{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(100);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureRowRegion"),0,80);if(!save("settings-exceptions-compact"))return 2;scroll->verticalScrollBar()->setValue(0);}
  window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(false);auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");destination->setCurrentIndex(destination->findData(QString{}));window.findChild<QCheckBox*>("keepUploadCopies")->setChecked(false);if(!waitUntil([&]{return !settings.snapshot().archive.keepUploads&&settings.snapshot().actions["region"].destination=="local";}))return 2;if(!save("15-capture-no-output"))return 2;
  {auto* menu=window.findChild<QMenu*>("editSourceMenu");menu->popup(window.findChild<QWidget*>("commandBand")->mapToGlobal(QPoint(220,50)));putgd::test::settle(100);const auto image=menu->grab();if(!image.save(QDir(output).filePath("history-edit-sources-no-output.png")))return 2;captures.append(QJsonObject{{"file","history-edit-sources-no-output.png"},{"width",image.width()},{"height",image.height()}});menu->close();}
@@ -276,7 +289,7 @@ int main(int argc,char** argv){
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{620,530}},{"text","New total"}}}}};
   if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
   EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);editor.show();
-  auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();const auto image=editor.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+  auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=editor.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
   editor.selectTool(editor::Tool::Redact);if(!grab("20-editor-redact"))return 2;
   editor.selectTool(editor::Tool::Blur);if(!grab("21-editor-blur-warning"))return 2;
   editor.findChild<QWidget*>("blurStrength")->setFocus(Qt::TabFocusReason);if(!grab("21a-editor-blur-focus"))return 2;
@@ -287,7 +300,7 @@ int main(int argc,char** argv){
   // A selected mark with its position and size fields, then Save a copy… feedback.
   editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));if(!grab("26-editor-selected"))return 2;
   editor.resize(1060,820);if(!grab("26c-editor-1060"))return 2;
-  editor.viewCommand({{"action","keyboardHelp"}},code,message);if(!grab("26d-editor-keyboard-help"))return 2;editor.viewCommand({{"action","keyboardHelp"}},code,message);editor.resize(1180,820);
+  editor.viewCommand({{"action","keyboardHelp"}},code,message);putgd::test::settle(100);editor.findChild<QScrollArea*>("editorPropertiesScroll")->ensureWidgetVisible(editor.findChild<QWidget*>("editorKeyboardHelpText"),0,12);if(!grab("26d-editor-keyboard-help"))return 2;editor.viewCommand({{"action","keyboardHelp"}},code,message);editor.selectTool(editor::Tool::Text);if(!grab("26e-editor-text-stepper-1060"))return 2;editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));editor.resize(1180,820);
   editor.activateWindow();editor.canvas().setFocus(Qt::TabFocusReason);QTest::keyClick(&editor.canvas(),Qt::Key_Tab);if(!grab("26a-editor-properties-focus"))return 2;
   {editor::Shape label;label.kind=editor::Shape::Kind::Text;label.rect=QRect(940,580,20,20);label.text="Edge label";const auto id=doc.add(label);editor.documentEdited();editor.canvas().select(id);editor.canvas().setFocus();QTest::keyClick(&editor.canvas(),Qt::Key_Return);auto* field=editor.canvas().findChild<QLineEdit*>("annotationText");if(!field||!field->isVisible())return 2;field->setText("Long annotation text stays inside the canvas while the field scrolls");if(!grab("26b-editor-text-edge"))return 2;editor.canvas().finishText(false);doc.remove(id);editor.documentEdited();editor.canvas().select(quint64(created[3].toDouble()));}
   editor.showSaved("/home/synthetic/Pictures/put.gd-edit-2026-10-26-14-03-22.png");if(!grab("27-editor-saved"))return 2;
@@ -324,7 +337,7 @@ int main(int argc,char** argv){
   record::ReviewWindow review(o,config);review.resize(record::ReviewWindow::defaultSize());review.show();
   if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
   RecordingEdit edit;edit.revision=1;RecordingMask solid;solid.id="m-solid";solid.kind="solid";solid.rect=QRect(61,194,256,40);solid.start=8000000;solid.end=21000000;RecordingMask blur=solid;blur.id="m-blur";blur.kind="blur";blur.rect=QRect(337,194,256,130);blur.start=3000000;blur.end=12000000;edit.masks={solid,blur};edit.trimStart=2000000;edit.trimEnd=29000000;review.setEdit(edit);
-  auto shot=[&](QWidget& w,const QString& name){putgd::test::settle(450);app.processEvents();const auto image=w.grab();if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+  auto shot=[&](QWidget& w,const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(w))return false;const auto image=w.grab();if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
   // Each review state also keeps the window's own geometry (header, frame share).
   auto inspected=[&](record::ReviewWindow& r,const QString& name){QSaveFile f(QDir(output).filePath(name+".json"));return f.open(QIODevice::WriteOnly)&&f.write(QJsonDocument(r.inspect()).toJson())>0&&f.commit();};
   review.drive({{"action","selectMask"},{"maskId","m-solid"}});
@@ -332,6 +345,7 @@ int main(int argc,char** argv){
   review.drive({{"action","seek"},{"time",1000000}});if(!shot(review,"30a-review-mask-inactive")||!inspected(review,"30a-review-mask-inactive"))return 2;
   review.drive({{"action","seek"},{"time",10000000}});
   review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31-review-blur-selected")||!inspected(review,"31-review-blur-selected"))return 2;
+  {const auto size=review.size();review.resize(1060,size.height());if(!shot(review,"31b-review-strength-1060"))return 2;review.resize(size);}
   review.resize(review.minimumSizeHint());if(!shot(review,"32-review-minimum")||!inspected(review,"32-review-minimum"))return 2;
   review.resize(record::ReviewWindow::defaultSize());
   // Keyboard mask editing: the frame focused by Tab, the selected cover's ring.
