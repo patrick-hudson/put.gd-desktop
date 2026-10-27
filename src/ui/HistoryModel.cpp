@@ -45,7 +45,7 @@ int HistoryModel::operationProgress(const QJsonObject& operation){return aggrega
 bool HistoryModel::linkAvailable(int row)const{return record(row)["linkAvailable"].toBool();}
 bool HistoryModel::multipleDestinations()const{
  QSet<QString> destinations;
- for(const auto& row:rows_){auto files=row["records"].toArray();if(files.isEmpty())files.append(row);for(const auto& value:files){const auto file=value.toObject(),destination=file["receipt"].toObject()["destination"].toObject();auto id=file["profileId"].toString();if(id.isEmpty())id=destination["profileId"].toString();if(id.isEmpty())id=row["operation"].toObject()["destination"].toObject()["profileId"].toString();if(file["uploadStatus"]=="local_only")id="local";if(id.isEmpty())id=QString::fromUtf8(QJsonDocument(destination).toJson(QJsonDocument::Compact));destinations.insert(id);if(destinations.size()>1)return true;}}
+ for(const auto& row:rows_){auto files=row["records"].toArray();if(files.isEmpty())files.append(row);for(const auto& value:files){const auto file=value.toObject(),destination=file["receipt"].toObject()["destination"].toObject();auto id=file["profileId"].toString();if(id.isEmpty())id=destination["profileId"].toString();if(id.isEmpty())id=row["operation"].toObject()["destination"].toObject()["profileId"].toString();id=file["uploadStatus"]=="local_only"?QString("local:"):!id.isEmpty()?"profile:"+id:"receipt:"+QString::fromUtf8(QJsonDocument(destination).toJson(QJsonDocument::Compact));destinations.insert(id);if(destinations.size()>1)return true;}}
  return false;
 }
 QString HistoryModel::commonDestination()const{return rows_.isEmpty()||multipleDestinations()?QString{}:data(index(0),OutputRole).toString();}
