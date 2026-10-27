@@ -561,7 +561,7 @@ private slots:
   const QString reason="The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.";
   window.showPreparationFailed(reason);PUTGD_TRY_VERIFY(scroll->isAncestorOf(document));
   // A useful viewport in window coordinates; enlarged content scrolls within it.
-  QVERIFY(scroll->viewport()->height()>=180);
+  QVERIFY2(scroll->viewport()->height()>=180,qPrintable(QString("Properties viewport: %1 px").arg(scroll->viewport()->height())));
   auto* label=window.findChild<QLabel*>("editorPreparationReason");QCOMPARE(label->text(),reason);QVERIFY(label->height()>=label->heightForWidth(label->width()));
   const auto footer=window.findChild<QWidget*>("editorFooter");
   for(const auto name:{"keepEditing","saveCopyInstead","editorUpload","editorCancel"}){

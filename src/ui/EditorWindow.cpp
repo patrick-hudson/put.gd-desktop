@@ -359,7 +359,11 @@ void EditorWindow::placeDestination(){
  for(auto* button:{save_,cancel_,upload_})if(!button->isHidden())room-=button->sizeHint().width()+spacing;
  const bool feedback=saveFeedbackVisible_&&!busy_&&!savingCopy_;
  saveFeedback_->setVisible(feedback);destination_->setVisible(!feedback&&!busy_&&!savingCopy_&&!destination_->text().isEmpty());
- const bool above=feedback?(!saveError_->isHidden()||!folderError_->isHidden()||saveFeedback_->sizeHint().width()>room):destination_->fontMetrics().horizontalAdvance(destination_->text())>room;
+ // A failure can wrap beside the actions; only its recovery controls set
+ // the minimum width. This keeps a previous save failure and upload recovery
+ // from consuming the properties viewport together at enlarged text sizes.
+ const int feedbackWidth=saveError_->isHidden()?saveFeedback_->sizeHint().width():saveFeedback_->minimumSizeHint().width();
+ const bool above=feedback?feedbackWidth>room:destination_->fontMetrics().horizontalAdvance(destination_->text())>room;
  destinationAbove_=above;destination_->setWordWrap(above);
  footerGrid_->removeWidget(destination_);footerGrid_->removeWidget(saveFeedback_);
  if(above){footerGrid_->addWidget(destination_,1,0,1,4);footerGrid_->addWidget(saveFeedback_,1,0,1,4);}
