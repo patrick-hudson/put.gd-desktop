@@ -402,7 +402,7 @@ namespace {
 // Timeline geometry (#283): the clip track, then one thin lane per row of masks.
 constexpr int trackPad = 16, trackTop = 0, trackHeight = 4, laneTop = 4, grip = 16;
 int visibleLanes() { return 2; }
-int laneHeight() { return QFontMetrics(Graphite::font(Graphite::Type::metadata)).height() + 4; }
+int laneHeight() { return QFontMetrics(Graphite::font(Graphite::Type::metadata)).height() + 2; }
 int laneStep() { return std::max(24, laneHeight()); }
 constexpr qint64 minimumSpanUs = 10000;
 }
@@ -797,7 +797,6 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     transport->addWidget(speed_);
 
     transport->insertWidget(2, time_);
-    transport->addWidget(playbackStatus_);
     transport->addStretch();
     transportGrid_->addLayout(transport, 0, 0, 1, 2);
     root->addLayout(transportGrid_);
@@ -977,6 +976,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     factsRow->setContentsMargins(0, 0, 0, 0);
     factsRow->setSpacing(8);
     factsRow->addWidget(destinationRow_, 1);
+    factsRow->addWidget(playbackStatus_);
     factsRow->addWidget(exportAudio_);
     auto* divider = new Graphite::Surface("bg", Qt::LeftEdge, facts);
     divider->setFixedWidth(1);
@@ -1014,7 +1014,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         auto font = action->font();
         if (action == upload_) font.setWeight(QFont::DemiBold);
         const int icon = action->icon().isNull() ? 0 : action->iconSize().width() + 8;
-        action->setMinimumWidth(int(std::ceil(QFontMetricsF(font).horizontalAdvance(action->text()))) + icon + 40);
+        action->setMinimumWidth(int(std::ceil(QFontMetricsF(font).horizontalAdvance(action->text()))) + icon + 36);
         action->setFixedHeight(std::max(32, action->fontMetrics().height() + 2));
     }
     // Keyboard (#283): Space plays and pauses (keyPressEvent, so a focused
@@ -1567,7 +1567,11 @@ void ReviewWindow::updateMinimum() {
             // Fit the initial frame with room for the controls and one status row.
             // Later edits reflow inside the user's geometry instead of refitting it.
             const int controls = this->height() - view_->height();
-            const int width = std::min({defaultSize().width(), available.width(), int(std::round((height - controls) * aspect)) + 16});
+            // Guidance can be present on first show, then dismissed. Reserve
+            // enough width for the steady frame without refitting later edits.
+            const int steadyWidth = int(std::ceil(height * aspect * 0.62)) + 16;
+            const int packedWidth = trimGroup_->minimumSizeHint().width() + transportRow_->minimumSize().width() + 24;
+            const int width = std::min({defaultSize().width(), available.width(), std::max({steadyWidth, packedWidth, int(std::round((height - controls) * aspect)) + 16})});
             resize(std::max(width, minimumWidth()), height);
             initialFitDone_ = true;
             placeTools();

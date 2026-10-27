@@ -196,7 +196,8 @@ private slots:
             auto* status = window.findChild<QLabel*>("playbackStatus");
             QVERIFY(!time->text().contains('\n'));
             QVERIFY(status->isVisible());
-            QCOMPARE(time->geometry().center().y(), status->geometry().center().y());
+            QVERIFY(window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(status));
+            QVERIFY(window.rect().contains(QRect(status->mapTo(&window, QPoint()), status->size())));
             QVERIFY(t->trackRect().width() >= 360);
             for (auto* button : window.findChildren<QToolButton*>()) if (button->toolButtonStyle() == Qt::ToolButtonTextOnly) {
                 QVERIFY(button->width() - 24 >= QFontMetricsF(button->font()).horizontalAdvance(button->text()));
@@ -758,6 +759,36 @@ private slots:
             window.resize(ReviewWindow::defaultSize());
             PUTGD_TRY_VERIFY2(window.height() <= 768 && window.inspect()["status"].toString().contains("Free up space, then try again."),
                 qPrintable(QString("Window %1x%2 minimum %3x%4 frame %5 status %6 share %7").arg(window.width()).arg(window.height()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()).arg(window.findChild<FrameView*>()->height()).arg(window.findChild<QWidget*>("statusRow")->height()).arg(window.inspect()["video"].toObject()["share"].toDouble())));
+        }
+    }
+    void enlargedPreviewSequenceKeepsFrameGates() {
+        const auto original = QApplication::font();
+        const auto scheme = Theme::scheme();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); Theme::setScheme(scheme); });
+        // Match the preview's 21 px body, including rounding from the 14 px base.
+        auto enlarged = original; enlarged.setPixelSize(21); QApplication::setFont(enlarged);
+        for (const auto theme : {Theme::Scheme::Dark, Theme::Scheme::Light}) for (const int height : {720, 680}) {
+            Theme::setScheme(theme);
+            auto o = options(); o.durationUs = 32000000; o.canvas = QSize(960, 600); o.audioRecorded = true; o.availableSize = QSize(1366, height);
+            auto c = config(); c.audio.system = true;
+            RecordingEdit edit; edit.trimStart = 2000000; edit.trimEnd = 29000000;
+            edit.masks = {mask("solid", "solid", 8000000, 21000000), mask("blur", "blur", 3000000, 12000000)};
+            ReviewWindow window(o, c); window.setEdit(edit); window.show();
+            QVERIFY(putgd::test::waitForWindowExposed(&window));
+            QVERIFY(QFontInfo(window.findChild<QLabel*>("trimGroup")->font()).pixelSize() >= 18);
+            const auto geometry = window.geometry();
+            window.drive({{"action", "selectMask"}, {"maskId", "solid"}});
+            QApplication::processEvents();
+            QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
+            window.drive({{"action", "selectMask"}, {"maskId", "blur"}});
+            QApplication::processEvents();
+            QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.53);
+            window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
+            window.showError("Export failed: disk full");
+            QApplication::processEvents();
+            qInfo("enlarged preview sequence %dx%d recovery %.3f", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble());
+            QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
+            QCOMPARE(window.geometry(), geometry);
         }
     }
     void constrainedWorkspaceKeepsWarningsAndActionsReachable_data() {
