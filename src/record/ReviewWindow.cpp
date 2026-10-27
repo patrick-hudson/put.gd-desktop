@@ -915,7 +915,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     destination_->setTextFormat(Qt::PlainText);
     destination_->setAccessibleName(options.uploadSummary);
     destination_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    VisualStyle::role(destination_, "secondary");
+    VisualStyle::role(destination_, "meta");
     destination_->setVisible(!options.uploadSummary.isEmpty());
     auto* footer = new Graphite::Surface("bg", Qt::TopEdge, this);
     footer->setObjectName("reviewFooter");
@@ -933,7 +933,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     destinationFull_->setWordWrap(true);
     destinationFull_->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     destinationFull_->setFocusPolicy(Qt::StrongFocus);
-    VisualStyle::role(destinationFull_, "secondary");
+    VisualStyle::role(destinationFull_, "meta");
     destinationFull_->hide();
     destinationLayout->addWidget(destinationFull_, 1);
     destinationLayout->addWidget(destination_);

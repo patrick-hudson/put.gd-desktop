@@ -559,13 +559,16 @@ private slots:
     void frameGatesCoverThePreviewAspectRatio_data() {
         QTest::addColumn<QSize>("canvas");
         QTest::addColumn<double>("scale");
-        QTest::newRow("16:9") << QSize(1280, 720) << 1.0;
-        QTest::newRow("16:10") << QSize(960, 600) << 1.0;
-        QTest::newRow("16:9 large text") << QSize(1280, 720) << 1.5;
-        QTest::newRow("16:10 large text") << QSize(960, 600) << 1.5;
+        QTest::addColumn<bool>("longDestination");
+        QTest::newRow("16:9") << QSize(1280, 720) << 1.0 << false;
+        QTest::newRow("16:10") << QSize(960, 600) << 1.0 << false;
+        QTest::newRow("16:9 large text") << QSize(1280, 720) << 1.5 << false;
+        QTest::newRow("16:10 large text") << QSize(960, 600) << 1.5 << false;
+        QTest::newRow("16:10 long destination") << QSize(960, 600) << 1.0 << true;
+        QTest::newRow("16:10 long destination large text") << QSize(960, 600) << 1.5 << true;
     }
     void frameGatesCoverThePreviewAspectRatio() {
-        QFETCH(QSize, canvas); QFETCH(double, scale);
+        QFETCH(QSize, canvas); QFETCH(double, scale); QFETCH(bool, longDestination);
         const auto font = QApplication::font();
         const auto scheme = Theme::scheme();
         const auto restore = qScopeGuard([&] { QApplication::setFont(font); Theme::setScheme(scheme); });
@@ -576,6 +579,10 @@ private slots:
         for (const auto theme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(theme);
             auto o = options(); o.canvas = canvas; o.audioRecorded = true;
+            if (longDestination) {
+                o.destination = "Project archive for customer support in the European Union";
+                o.uploadSummary = "Upload to " + o.destination + " · Shared link";
+            }
             ReviewWindow window(o, config()); window.setEdit(twoMasks()); window.show();
             QVERIFY(putgd::test::waitForWindowExposed(&window));
             QVERIFY(window.height() <= 720 && window.width() <= 1342);
