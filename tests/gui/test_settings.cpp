@@ -243,7 +243,7 @@ private slots:
     for(const auto& prefix:QStringList{"profile","publication"}){auto* control=window.findChild<QComboBox*>(prefix+name);control->ensurePolished();QCOMPARE(control->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());PUTGD_TRY_COMPARE(control->height(),window.findChild<QComboBox*>("defaultCaptureDestination")->height());PUTGD_TRY_VERIFY(control->parentWidget()->rect().contains(control->geometry()));Graphite::setLocked(control,true);Graphite::setLocked(control,false);QCOMPARE(control->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());QCOMPARE(control->sizeHint().height(),window.findChild<QComboBox*>("defaultCaptureDestination")->sizeHint().height());PUTGD_TRY_COMPARE(control->height(),window.findChild<QComboBox*>("defaultCaptureDestination")->height());}
    }
    Theme::setScheme(scheme);
-   auto* check=window.findChild<QCheckBox*>("notifications");QVERIFY(check->sizeHint().height()>=32);QCOMPARE(check->style()->pixelMetric(QStyle::PM_IndicatorWidth),17);
+   auto* check=window.findChild<QCheckBox*>("notifications");QVERIFY(check->sizeHint().height()>=32);QCOMPARE(check->style()->pixelMetric(QStyle::PM_IndicatorWidth),Graphite::scaled(17));
   }
  }
  void copiedDiagnosticsPreserveExactPathsAndRevisions_data(){
@@ -635,7 +635,7 @@ private slots:
   auto* status=window.findChild<QLabel*>("settingsStatus");auto* destinationStatus=window.findChild<QLabel*>("destinationStatus");
   QCOMPARE(statusCode(window),QString("config_conflict"));QVERIFY(!status->text().contains("config_conflict"));
   QCOMPARE(status->text(),QString("Settings changed elsewhere. Your edits are kept here. Reload discards them."));
-  window.resize(800,700);PUTGD_TRY_VERIFY(window.findChild<QWidget*>("destinationStatusRow")->property("stacked").toBool());PUTGD_TRY_VERIFY(destinationReload->mapTo(&window,QPoint()).y()>destinationStatus->mapTo(&window,QPoint()).y()+destinationStatus->height());
+  window.resize(800,700);putgd::test::settle(30);QVERIFY(!QRect(destinationReload->mapTo(&window,QPoint()),destinationReload->size()).intersects(QRect(destinationStatus->mapTo(&window,QPoint()),destinationStatus->size())));
   // The band carries one bounded indicator; the explanation and Reload stay in the page.
   auto* bandStatus=window.findChild<QLabel*>("autosaveStatus");QCOMPARE(bandStatus->text(),QString("Changes not saved"));QVERIFY(bandStatus->isVisible());QVERIFY(window.findChild<QLabel*>("autosaveExplanation")->isHidden());
   auto* summary=window.findChild<QToolButton*>("captureOutputSummary");QVERIFY(summary->isEnabled());QVERIFY(summary->menu());
@@ -1844,7 +1844,8 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   for(const auto& key:QStringList{"notifications","keepUploadCopies","archiveRoot","s3ObjectPrefix","b2LinkDays","protonFolder"}){
    auto* hint=window.findChild<QLabel*>(key+"Hint");auto* control=window.findChild<QWidget*>(key);QVERIFY2(hint&&!hint->text().isEmpty(),qPrintable(key));QVERIFY(control->accessibleDescription().endsWith(hint->text()));
   }
-  for(const auto& key:QStringList{"appearanceTheme","unlockCredentialsAtStartup","uploadClipboardBehavior","namingMode","collisionPolicy","captureTemplate","s3AclMode","protonExpiration","maxFileBytesChoice"}){
+  QVERIFY(!window.findChild<QToolButton*>("appearanceThemeHelp"));
+  for(const auto& key:QStringList{"unlockCredentialsAtStartup","uploadClipboardBehavior","namingMode","collisionPolicy","captureTemplate","s3AclMode","protonExpiration","maxFileBytesChoice"}){
    auto* help=window.findChild<QToolButton*>(key+"Help");QVERIFY2(help,qPrintable(key));QCOMPARE(help->focusPolicy(),Qt::StrongFocus);QVERIFY(!help->accessibleDescription().isEmpty());
   }
  }

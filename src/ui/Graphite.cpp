@@ -1006,9 +1006,19 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
         const bool onSelected = enabled && ((option->state & State_Sunken) || ((option->state & State_On) && !(widget && widget->property("graphiteDisclosure").toBool()))) && name != "primary" && name != "danger" && name != "link" && name != "version";
         auto pixmap = icon.pixmap(iconSize, dpr(widget), !enabled ? QIcon::Disabled : onSelected ? QIcon::Selected : QIcon::Normal, option->state & State_On ? QIcon::On : QIcon::Off);
         if (name == "primary" || name == "danger") pixmap = tinted(pixmap, look.text);
-        if (widget && widget->property("captureUnavailable").toBool()) pixmap = tinted(pixmap, t().warning);
         if (widget && widget->property("headerInactive").toBool()) pixmap = tinted(pixmap, t().textMuted);
         p->drawPixmap(target.topLeft(), pixmap);
+        if (widget && widget->property("captureUnavailable").toBool()) {
+            const int side = scaled(12);
+            const QRect badge(qRound(target.right()) - side + 3, qRound(target.bottom()) - side + 3, side, side);
+            p->save();
+            p->setRenderHint(QPainter::Antialiasing);
+            p->setPen(Qt::NoPen);
+            p->setBrush(t().surface);
+            p->drawEllipse(badge.adjusted(-1, -1, 1, 1));
+            p->drawPixmap(badge.topLeft(), VisualStyle::icon("alert", t().warning).pixmap(badge.size(), dpr(widget)));
+            p->restore();
+        }
         x += iconWidth + (shown.isEmpty() ? 0 : 8);
     }
     if (!shown.isEmpty()) {
