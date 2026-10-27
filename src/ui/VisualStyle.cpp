@@ -6,6 +6,7 @@
 #include <QAbstractItemView>
 #include <QFrame>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QStyleOptionComboBox>
 #include <QHash>
 #include <QIconEngine>
@@ -148,7 +149,7 @@ void setFeedback(QLabel* label,const QString& text,const char* tone){label->setP
 void feedback(QLabel* label,const QString& text,bool error){setFeedback(label,text,error?"error":"neutral");}
 void success(QLabel* label,const QString& text){setFeedback(label,text,"success");}
 QToolButton* helpButton(const QString& title,const QString& description,QWidget* control,QWidget* parent){
- control->setToolTip(description);control->setAccessibleDescription(description);
+ control->setToolTip(description);control->setAccessibleDescription(qobject_cast<QCheckBox*>(control)?title+". "+description:description);control->setProperty("settingDescription",control->accessibleDescription());
  auto* button=new QToolButton(parent);button->setObjectName(control->objectName()+"Help");button->setProperty("settingHelpFor",control->objectName());button->setProperty("visualRole","info");button->setIcon(icon("info"));button->setIconSize(QSize(18,18));
  // A 32 px pointer target around the same small glyph (Graphite: 32–36 px targets).
  button->setFixedSize(32,32);button->setFocusPolicy(Qt::StrongFocus);button->setAccessibleName("Help for "+title);button->setAccessibleDescription(description);button->setToolTip(description);
@@ -158,14 +159,14 @@ void showHelp(const QString& title,const QString& description,QWidget* parent){
  auto* dialog=new QMessageBox(QMessageBox::NoIcon,title,title,QMessageBox::Close,parent);dialog->setObjectName("settingHelpDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->setTextFormat(Qt::PlainText);dialog->setInformativeText(description);dialog->open();
 }
 QWidget* settingLabel(const QString& title,const QString& description,QWidget* control,QWidget* parent){
- control->setAccessibleName(title);auto* row=new QWidget(parent);auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);
+ control->setAccessibleName(qobject_cast<QCheckBox*>(control)?static_cast<QCheckBox*>(control)->text():title);auto* row=new QWidget(parent);auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);
  // The help target's padding already separates its glyph from the text.
  layout->setSpacing(2);
  // A label with a buddy treats & as a mnemonic marker; show titles literally.
  auto* label=new QLabel(QString(title).replace('&',QLatin1String("&&")),row);label->setBuddy(control);layout->addWidget(label);layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
 }
 QWidget* settingRow(const QString& title,const QString& description,QWidget* control,QWidget* parent){
- control->setAccessibleName(title);auto* row=new QWidget(parent);auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);layout->addWidget(control);layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
+ control->setAccessibleName(qobject_cast<QCheckBox*>(control)?static_cast<QCheckBox*>(control)->text():title);auto* row=new QWidget(parent);auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);layout->addWidget(control);layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
 }
 namespace {
 void setPalette(QApplication& app){app.setPalette(Graphite::palette());}

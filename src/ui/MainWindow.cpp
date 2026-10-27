@@ -45,6 +45,11 @@ class StatusBand final:public QStatusBar {
 public:
  explicit StatusBand(QWidget* parent):QStatusBar(parent){setSizeGripEnabled(false);setObjectName("statusBand");setMinimumHeight(Graphite::scaled(Graphite::Metric::statusBand));setContentsMargins(8,0,8,0);}
 protected:
+ bool event(QEvent* event)override{
+  const bool handled=QStatusBar::event(event);
+  if(event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show){int height=32;for(auto* child:findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(!child->isWindow()&&child->isVisibleTo(this))height=qMax(height,qMax(child->minimumHeight(),child->sizeHint().height()));setMinimumHeight(height+4);}
+  return handled;
+ }
  void paintEvent(QPaintEvent* event)override{{QPainter p(this);p.fillRect(rect(),Theme::current().surface);p.setPen(Theme::current().border);p.drawLine(0,0,width(),0);}QStatusBar::paintEvent(event);}
 };
 }
@@ -109,7 +114,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QToolButton::clicked,this,[this,action]{emit actionRequested(action);});bandRow->addWidget(button);actionButtons_<<button;
  }
  connect(helpAction,&QAction::triggered,this,[this,actionHelp]{VisualStyle::showHelp("Capture and clipboard actions",actionHelp,this);});
- outputWarning_=new Graphite::Surface("surface",Qt::BottomEdge,center);outputWarning_->setObjectName("commandOutputWarning");auto* warningRow=new QHBoxLayout(outputWarning_);warningRow->setContentsMargins(16,6,12,8);warningRow->setSpacing(12);outputWarningText_=new QLabel(outputWarning_);outputWarningText_->setObjectName("commandOutputWarningText");outputWarningText_->setTextFormat(Qt::PlainText);outputWarningText_->setWordWrap(true);VisualStyle::role(outputWarningText_,"warning");warningRow->addWidget(outputWarningText_,1);auto* chooseOutput=new QPushButton("Choose output…",outputWarning_);chooseOutput->setObjectName("chooseCommandOutput");chooseOutput->setToolTip("Open Settings → Capture to choose the output");warningRow->addWidget(chooseOutput);connect(chooseOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});layout->addWidget(outputWarning_);connect(&session_,&UiSession::accepted,this,&MainWindow::updateAvailability);updateAvailability();
+ outputWarning_=new Graphite::Surface("surface",Qt::BottomEdge,center);outputWarning_->setObjectName("commandOutputWarning");auto* warningRow=new QHBoxLayout(outputWarning_);warningRow->setContentsMargins(16,6,12,8);warningRow->setSpacing(12);outputWarningText_=new QLabel(outputWarning_);outputWarningText_->setObjectName("commandOutputWarningText");outputWarningText_->setTextFormat(Qt::PlainText);outputWarningText_->setWordWrap(true);VisualStyle::role(outputWarningText_,"warning");warningRow->addWidget(outputWarningText_,1);auto* chooseOutput=new QPushButton("Choose output…",outputWarning_);chooseOutput->setObjectName("chooseCommandOutput");chooseOutput->setToolTip("Open Settings → Capture to choose the output");warningRow->addWidget(chooseOutput);connect(chooseOutput,&QPushButton::clicked,this,[this]{navigate("settings");QStringList affected;for(const auto& action:Settings::invocableActionNames())if(!unavailableOutput(session_.document(),action).isEmpty())affected<<action;settings_->showCaptureSettings(affected);});layout->addWidget(outputWarning_);connect(&session_,&UiSession::accepted,this,&MainWindow::updateAvailability);updateAvailability();
  // Edit an image file… whose chooser could not open: the reason under the band
  // that holds the action, with Try again. A cancel shows nothing.
  chooserFailure_=new Graphite::Surface("surface",Qt::BottomEdge,center);chooserFailure_->setObjectName("editImageChooserFailure");{auto* row=new QHBoxLayout(chooserFailure_);row->setContentsMargins(16,6,12,6);row->setSpacing(12);
@@ -136,11 +141,12 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  // nightly builds link to their GitHub release; development builds are text.
  version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);VisualStyle::role(version_,"meta");
  versionLink_=new QPushButton;versionLink_->setObjectName("appVersionLink");VisualStyle::role(versionLink_,"link");versionLink_->setFont(Graphite::font(Graphite::Type::metadata));versionLink_->setCursor(Qt::PointingHandCursor);
- connect(versionLink_,&QPushButton::clicked,this,[this]{if(const auto url=releaseLink(session_.build()).url;url.isValid())host::openLink(url);});
- auto updateVersion=[this]{
+ auto* versionGroup=new QWidget;auto* versionLayout=new QVBoxLayout(versionGroup);versionLayout->setContentsMargins(0,0,0,0);versionLayout->setSpacing(0);versionLayout->addWidget(versionLink_,0,Qt::AlignRight);auto* versionBrowser=new Graphite::BrowserFeedback(versionGroup);versionBrowser->setObjectName("appVersionBrowserFeedback");versionLayout->addWidget(versionBrowser);
+ connect(versionLink_,&QPushButton::clicked,this,[this,versionBrowser]{if(const auto url=releaseLink(session_.build()).url;url.isValid())host::openLink(url,versionBrowser->opening(url));});
+ auto updateVersion=[this,versionGroup,versionBrowser]{
   const auto link=releaseLink(session_.build());const auto name="put.gd version "+link.version;const auto page="Open the v"+link.version+" release on GitHub";
   version_->setText(link.version);version_->setAccessibleName(name);version_->setToolTip(name);version_->setVisible(!link.version.isEmpty()&&link.url.isEmpty());
-  versionLink_->setText(link.version);versionLink_->setAccessibleName(name);versionLink_->setAccessibleDescription(page);versionLink_->setToolTip(page);versionLink_->setVisible(!link.url.isEmpty());
+  versionLink_->setText(link.version);versionLink_->setAccessibleName(name);versionLink_->setAccessibleDescription(page);versionLink_->setToolTip(page);versionLink_->setVisible(!link.url.isEmpty());versionGroup->setVisible(!link.url.isEmpty());if(versionLink_->property("browserUrl").toUrl()!=link.url){versionBrowser->clear();versionLink_->setProperty("browserUrl",link.url);}
  };
  connect(&session_,&UiSession::statusChanged,this,updateVersion);updateVersion();
  // A newer version, from the resident's daily check (#293): it opens
@@ -155,18 +161,18 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  };
  connect(&session_,&UiSession::statusChanged,this,updateAvailable);updateAvailable();
  auto updateDestination=[this]{
-  const auto document=session_.document();QString label;int exceptions=0;
-  auto outputName=[&](const QJsonObject& output){const bool local=document["archive"].toObject()["keepUploads"].toBool();if(output["destination"]=="local"||output["profileId"].toString().isEmpty())return local?QString("Local only"):QString("No output enabled");for(const auto& value:document["profiles"].toArray()){const auto profile=value.toObject();if(profile["id"]!=output["profileId"])continue;const auto mode=output["publicationMode"].toString("default");const bool privateUpload=mode=="private"||(mode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return (privateUpload?QString("Private upload"):QString("Shared link"))+" · "+profile["label"].toString()+(local?QString(" + local copy"):QString{});}return QString("Choose a destination");};
-  if(document.contains("captureDefaults")){
-   label=outputName(document["captureDefaults"].toObject());
-   for(const auto& name:Settings::actionNames())if(document["actions"].toObject()[name].toObject()["destination"]!="default")++exceptions;
-   // Record screen counts only when it has a route of its own; inherited, it follows Capture region.
-   {const auto record=document["actions"].toObject()[Settings::recordingActionName()].toObject();if(record.contains("destination")&&record["destination"]!="default")++exceptions;}
-  }else{
-   const auto first=Settings::effectiveAction(document,"region");bool same=true;for(const auto& name:Settings::actionNames()){const auto action=Settings::effectiveAction(document,name);if(action["destination"]!=first["destination"]||action["profileId"]!=first["profileId"]||action["publicationMode"].toString("default")!=first["publicationMode"].toString("default")){same=false;++exceptions;}}
-   label=same?outputName(first):QString("Different for each action");
+  const auto document=session_.document();QString label;
+  auto outputName=[&](const QJsonObject& output){const bool local=document["archive"].toObject()["keepUploads"].toBool();if(output["destination"]=="local"||output["profileId"].toString().isEmpty())return local?QString("Local only"):QString("No output enabled");for(const auto& value:document["profiles"].toArray()){const auto profile=value.toObject();if(profile["id"]!=output["profileId"])continue;const auto mode=output["publicationMode"].toString("default");const bool privateUpload=mode=="private"||(mode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return (privateUpload?(profile["provider"]=="proton-drive"?QString("Private upload"):QString("Private upload unavailable")):QString("Shared link"))+" · "+profile["label"].toString()+(local?QString(" + local copy"):QString{});}return QString("Choose a destination");};
+  const auto defaults=document.contains("captureDefaults")?document["captureDefaults"].toObject():Settings::effectiveAction(document,"region");
+  const auto defaultName=outputName(defaults);QStringList details{"Default output: "+defaultName};bool mixed=false;
+  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"clipboard","Upload clipboard"},{"record","Record screen"}};
+  for(const auto& action:Settings::invocableActionNames()){
+   const auto route=Settings::effectiveAction(document,action);const auto output=outputName(route);
+   if(output!=defaultName||route["profileId"].toString()!=defaults["profileId"].toString())mixed=true;
+   details<<labels.value(action,action)+": "+output+(document["archive"].toObject()["keepUploads"].toBool()?QString{}:QString(" · No local copy"));
   }
-  label="Capture output: "+label+(exceptions?" · "+QString::number(exceptions)+(exceptions==1?" action exception":" action exceptions"):QString{});destination_->setText(label);destination_->setAccessibleName(label);destination_->setToolTip(label+"\nOutput for future captures, using your saved settings.");updateSaveStatus();
+  label=mixed?QString("Outputs vary by action…"):"Default output: "+defaultName;
+  destination_->setText(label);static_cast<Graphite::ElidedLabel*>(destination_)->setRevealText(details.join("\n\n"));destination_->setAccessibleName(label);destination_->setAccessibleDescription("Press Enter to show each action's destination, sharing and local copy behavior.");destination_->setToolTip(details.join("\n"));updateSaveStatus();
  };
  connect(changeOutput,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  connect(history_,&HistoryWindow::captureSettingsRequested,changeOutput,&QPushButton::click);
@@ -175,7 +181,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  // Autosave describes the Destinations and Settings pages, not History.
  connect(tabs_,&QTabBar::currentChanged,this,[this]{updateSaveStatus();});
  saveStatus_=new QLabel;saveStatus_->setObjectName("autosaveStatus");saveStatus_->setAccessibleName("Settings save status");saveStatus_->setTextFormat(Qt::PlainText);VisualStyle::role(saveStatus_,"meta");statusBar()->addPermanentWidget(saveStatus_);
- statusBar()->addPermanentWidget(updateLink_);statusBar()->addPermanentWidget(version_);statusBar()->addPermanentWidget(versionLink_);
+ statusBar()->addPermanentWidget(updateLink_);statusBar()->addPermanentWidget(version_);statusBar()->addPermanentWidget(versionGroup);
  connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});
  updateDestination();updateSaveStatus();tabs_->setCurrentIndex(0);RedesignTheme::apply(*this);
  connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{QTimer::singleShot(0,this,[this]{fitBand();});});

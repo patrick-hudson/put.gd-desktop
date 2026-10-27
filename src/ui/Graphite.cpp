@@ -1,6 +1,8 @@
 #include "Graphite.h"
 #include "IconArt.h"
 #include "VisualStyle.h"
+#include <QAccessibleWidget>
+#include <QClipboard>
 #include <QAbstractItemView>
 #include <QAbstractSpinBox>
 #include <QApplication>
@@ -32,6 +34,7 @@
 #include <QFormLayout>
 #include <QPushButton>
 #include <QScrollBar>
+#include <QScrollArea>
 #include <QSlider>
 #include <QStatusBar>
 #include <QStyleFactory>
@@ -304,6 +307,7 @@ void setLocked(QWidget* widget, bool locked) {
     widget->setProperty("graphiteLocked", locked);
     widget->style()->unpolish(widget);
     widget->style()->polish(widget);
+    widget->updateGeometry();
     widget->update();
 }
 bool isLocked(const QWidget* widget) { return widget && widget->property("graphiteLocked").toBool(); }
@@ -434,10 +438,12 @@ void Style::polish(QWidget* widget) {
     // Type roles: size, weight and colour from the tokens. A role change
     // re-polishes (VisualStyle::role), as does a scheme switch.
     const auto name = role(widget);
+    if (qobject_cast<QAbstractButton*>(widget) && (name == "link" || name == "version")) widget->setMinimumHeight(std::max(32, widget->minimumHeight()));
     const auto tone = widget->property("feedbackTone").toString();
     const auto binding = widget->property("bindingTone").toString();
     const bool locked = isLocked(widget);
-    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty() && !locked) return;
+    const bool bodyControl = qobject_cast<QComboBox*>(widget);
+    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty() && !locked && !bodyControl) return;
     const auto& c = t();
     QColor colour;
     QFont f;
@@ -455,6 +461,7 @@ void Style::polish(QWidget* widget) {
     else if (name == "technical") f = monoFont(Type::technical);
     else if (name == "pill") { f = font(Type::micro); colour = c.textSecondary; }
     else if (name == "editableTitle") f = font(Type::page, true);
+    else if (bodyControl) f = font(Type::body);
     else setFont = false;
     // An outcome's tone outranks the slot's quiet colour: an error in a muted
     // line still reads as an error.
@@ -471,6 +478,7 @@ void Style::polish(QWidget* widget) {
     if (setFont && !qobject_cast<QAbstractButton*>(widget)) {
         widget->setFont(f);
         widget->setProperty("graphiteFont", true);
+        widget->updateGeometry();
     } else if (setFont && name == "version") {
         widget->setFont(f);
         widget->setProperty("graphiteFont", true);
@@ -489,6 +497,12 @@ void Style::polish(QWidget* widget) {
             for (const auto textRole : {QPalette::WindowText, QPalette::Text, QPalette::ButtonText}) palette.setColor(QPalette::Disabled, textRole, c.textMuted);
         widget->setPalette(palette);
         widget->setProperty("graphitePalette", true);
+    }
+    if (bodyControl) {
+        // QComboBox caches its hints across a manual unpolish/polish.
+        QEvent change(QEvent::StyleChange);
+        QCoreApplication::sendEvent(widget, &change);
+        widget->updateGeometry();
     }
     if (auto* text = qobject_cast<QLabel*>(widget); text && (name == "status" || name == "notice")) {
         text->setMargin(9);
@@ -573,7 +587,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
     case CT_PushButton: {
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
         const auto name = role(widget);
-        if (name == "link" || name == "version") return contents + QSize(8, name == "version" ? 4 : 8);
+        if (name == "link" || name == "version") return {std::max(32, contents.width() + 8), std::max(32, contents.height() + 8)};
         if (name == "info") return {std::max(contents.width() + 6, 23), std::max(contents.height() + 4, 23)};
         // Measure the label in the weight it is painted in (primary is semibold).
         int w = contents.width() + 2 * 14;
@@ -600,7 +614,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         if (name == "info") return {std::max(23, tool->iconSize.width() + 5), std::max(23, tool->iconSize.height() + 5)};
         if (name == "link" || name == "version") {
             const QFontMetrics metrics(widget ? widget->font() : QApplication::font());
-            return {metrics.horizontalAdvance(tool->text) + 8 + (icon ? tool->iconSize.width() + 6 : 0), metrics.height() + 8};
+            return {std::max(32, metrics.horizontalAdvance(tool->text) + 8 + (icon ? tool->iconSize.width() + 6 : 0)), std::max(32, metrics.height() + 8)};
         }
         if (!text) {
             const int side = std::max(Metric::iconTarget, (icon ? tool->iconSize.height() : 16) + 14);
@@ -1319,6 +1333,32 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
     QProxyStyle::drawComplexControl(control, option, p, widget);
 }
 
+BrowserFeedback::BrowserFeedback(QWidget* parent) : QWidget(parent) {
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(2);
+    message_ = new QLabel("Couldn't open the browser", this);
+    message_->setWordWrap(true);
+    message_->setTextFormat(Qt::PlainText);
+    VisualStyle::role(message_, "danger");
+    layout->addWidget(message_);
+    copy_ = new QPushButton("Copy link", this);
+    VisualStyle::role(copy_, "link");
+    layout->addWidget(copy_, 0, Qt::AlignLeft);
+    connect(copy_, &QPushButton::clicked, this, [this] { qApp->clipboard()->setText(url_.toString(QUrl::FullyEncoded)); });
+    hide();
+}
+void BrowserFeedback::clear() { ++request_; hide(); }
+std::function<void(const QJsonObject&)> BrowserFeedback::opening(const QUrl& url) {
+    hide();
+    url_ = url;
+    const auto request = ++request_;
+    return [guard = QPointer<BrowserFeedback>(this), request](const QJsonObject& result) {
+        if (!guard || request != guard->request_) return;
+        guard->setVisible(!result["opened"].toBool());
+    };
+}
+
 // ---------------------------------------------------------------- Widgets
 Surface::Surface(const char* role, Qt::Edges hairlines, QWidget* parent) : QWidget(parent), role_(role), edges_(hairlines) {}
 void Surface::paintEvent(QPaintEvent*) {
@@ -1374,7 +1414,13 @@ public:
         label_->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
         label_->setFocusPolicy(Qt::StrongFocus);
         label_->setAccessibleName(text);
-        layout->addWidget(label_);
+        auto* scroll = new QScrollArea(this);
+        scroll->setFrameShape(QFrame::NoFrame);
+        scroll->setWidgetResizable(true);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        scroll->setWidget(label_);
+        layout->addWidget(scroll);
+        label_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
         setAccessibleName(text);
     }
     QLabel* label() const { return label_; }
@@ -1387,7 +1433,29 @@ private:
     QLabel* label_;
 };
 }
-ElidedLabel::ElidedLabel(QWidget* parent) : QLabel(parent) { setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred); }
+namespace {
+class AccessibleElidedLabel final : public QAccessibleWidget {
+public:
+    explicit AccessibleElidedLabel(ElidedLabel* label) : QAccessibleWidget(label) {}
+    QAccessible::Role role() const override { return label()->revealable() ? QAccessible::Button : QAccessible::StaticText; }
+    QStringList actionNames() const override { return label()->revealable() ? QStringList{QAccessibleActionInterface::pressAction()} : QStringList{}; }
+    void doAction(const QString& action) override { if (label()->revealable() && action == QAccessibleActionInterface::pressAction()) label()->reveal(); }
+    QStringList keyBindingsForAction(const QString& action) const override { return action == QAccessibleActionInterface::pressAction() && label()->revealable() ? QStringList{"Enter", "Space"} : QStringList{}; }
+private:
+    ElidedLabel* label() const { return static_cast<ElidedLabel*>(widget()); }
+};
+}
+ElidedLabel::ElidedLabel(QWidget* parent) : QLabel(parent) {
+    static const bool factory = [] {
+        QAccessible::installFactory([](const QString&, QObject* object) -> QAccessibleInterface* {
+            if (auto* label = qobject_cast<ElidedLabel*>(object)) return new AccessibleElidedLabel(label);
+            return nullptr;
+        });
+        return true;
+    }();
+    Q_UNUSED(factory);
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+}
 QSize ElidedLabel::minimumSizeHint() const { return {std::min(QLabel::minimumSizeHint().width(), fontMetrics().averageCharWidth() * 8), QLabel::minimumSizeHint().height()}; }
 void ElidedLabel::setText(const QString& text) {
     QLabel::setText(text);
@@ -1400,18 +1468,22 @@ void ElidedLabel::setRevealable(bool on) {
     setFocusPolicy(on ? Qt::StrongFocus : Qt::NoFocus);
     setCursor(on ? Qt::PointingHandCursor : Qt::ArrowCursor);
     setAccessibleDescription(on ? QStringLiteral("Press Enter to show the full text.") : QString());
+    setMinimumHeight(on ? 32 : 0);
+    updateGeometry();
     update();
 }
 bool ElidedLabel::elided() const { return QFontMetricsF(font()).horizontalAdvance(text()) > contentsRect().width(); }
 void ElidedLabel::reveal() {
     if (!revealable_ || text().isEmpty()) return;
     if (popup_) popup_->close();
-    auto* popup = new FullTextPopup(text(), this);
+    auto* popup = new FullTextPopup(revealText_.isEmpty() ? text() : revealText_, this);
     popup_ = popup;
     const auto screen = (window() && window()->screen() ? window()->screen() : QGuiApplication::primaryScreen())->availableGeometry();
     const int width = std::min(std::max(this->width(), scaled(320)), std::min(scaled(560), screen.width() - 16));
     popup->setFixedWidth(width);
-    popup->adjustSize();
+    const int maxHeight = std::min(screen.height() - 16, window() ? window()->height() - 16 : screen.height() - 16);
+    popup->label()->setMinimumHeight(popup->label()->heightForWidth(width - 36));
+    popup->resize(width, std::min(maxHeight, popup->label()->minimumHeight() + 20));
     // Above a label in the lower half of its window (the status band), below
     // one higher up; the other side when the screen has no room.
     const QPoint above = mapToGlobal(QPoint(0, -popup->height() - 4)), below = mapToGlobal(QPoint(0, height() + 4));

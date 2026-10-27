@@ -1,4 +1,7 @@
 #pragma once
+#include <QUrl>
+#include <QJsonObject>
+#include <functional>
 #include "Theme.h"
 #include <QFont>
 #include <QIcon>
@@ -9,7 +12,7 @@
 #include <QTabBar>
 #include <QWidget>
 
-class QApplication;class QLineEdit;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
+class QPushButton;class QApplication;class QLineEdit;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
 
 // The Graphite visual language (2026-10-26): one painted control set for every
 // app-owned surface. Paint owns appearance; the Qt widget underneath keeps
@@ -147,6 +150,7 @@ public:
     explicit ElidedLabel(QWidget* parent = nullptr);
     void setText(const QString&);
     void setRevealable(bool);
+    void setRevealText(const QString& text) { revealText_ = text; }
     bool revealable() const { return revealable_; }
     bool elided() const;
     // Opens the full text popup (revealable labels); the popup while it is open.
@@ -162,7 +166,21 @@ protected:
     void focusOutEvent(QFocusEvent*) override;
 private:
     bool revealable_ = false;
+    QString revealText_;
     QPointer<QWidget> popup_;
+};
+
+// Browser failures stay beside the originating action, with the exact link to copy.
+class BrowserFeedback final : public QWidget {
+public:
+    explicit BrowserFeedback(QWidget* parent = nullptr);
+    std::function<void(const QJsonObject&)> opening(const QUrl&);
+    void clear();
+private:
+    QLabel* message_;
+    QPushButton* copy_;
+    QUrl url_;
+    quint64 request_ = 0;
 };
 
 // The segmented control: one track, a raised selected segment, labels centred

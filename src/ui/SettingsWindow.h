@@ -26,7 +26,7 @@ public:
  QString autosaveText()const;
  // A conflict or a refused save: edits wait in this window, not in the file.
  bool changesUnsaved()const{return conflict_||autosaveBlocked_;}
- void showCaptureSettings();void showLocalCopySettings();
+ void showCaptureSettings(const QStringList& affectedActions={});void showLocalCopySettings();
  // General → Updates (#293), scrolled into view.
  void showUpdates();
  QWidget* destinationsPage()const{return destinationPage_;}
@@ -76,6 +76,7 @@ private:
  void queueCaptureEdit(QWidget*);void updateCaptureInheritance();
  QString destinationDefaultSharing(const QString& profileId)const;QJsonObject captureRoutingState()const;QString outputSummary(QComboBox* profile,QComboBox* sharing)const;
  QComboBox *captureProfile_=nullptr,*captureSharing_=nullptr;
+ QStringList outputRecoveryActions_;
  QToolButton* captureExceptions_=nullptr;QHash<QString,QCheckBox*> useCaptureDefault_;QHash<QString,QWidget*> captureEditors_;
  bool captureDefaultsEnabled_=false,captureRoutingEdited_=false,recordingRoutingEdited_=false;
  QLabel* captureOutputNotice_=nullptr;QHash<QString,QLabel*> captureStatus_,captureSummary_;QHash<QString,QCheckBox*> captureOverride_;
