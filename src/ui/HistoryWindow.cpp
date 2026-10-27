@@ -174,7 +174,7 @@ private:Graphite::NavigationDelegate navigation_;
 // for a readable name, so a heading and its values come and go together.
 struct Columns {QRect item,output,created,actions;};
 Columns historyColumns(const QRect& row,bool =false){
- Columns c;const int action=row.width()>=Graphite::scaled(390)?Graphite::scaled(190):0,width=qMax(0,row.width()-action),minimum=Graphite::scaled(180);c.actions=action?QRect(row.right()-action+1,row.top(),action,row.height()):QRect();const int created=width-Graphite::scaled(104)>=minimum?Graphite::scaled(104):0;const int output=created&&width-created-Graphite::scaled(132)>=minimum?Graphite::scaled(132):0;
+ Columns c;const int action=qMin(Graphite::scaled(190),qMax(0,row.width()-Graphite::scaled(180))),width=qMax(0,row.width()-action),minimum=Graphite::scaled(180);c.actions=action?QRect(row.right()-action+1,row.top(),action,row.height()):QRect();const int created=width-Graphite::scaled(104)>=minimum?Graphite::scaled(104):0;const int output=created&&width-created-Graphite::scaled(132)>=minimum?Graphite::scaled(132):0;
  c.created=created?QRect(row.left()+width-created,row.top(),created,row.height()):QRect();
  c.output=output?QRect(row.left()+width-created-output,row.top(),output,row.height()):QRect();
  c.item=QRect(row.left(),row.top(),width-created-output,row.height());return c;
@@ -183,14 +183,19 @@ int dayHeadingHeight(){return qMax(32,QFontMetrics(Graphite::font(Graphite::Type
 // Row actions are 32 px targets, taller when enlarged text needs it.
 int actionHeight(){return qMax(32,QFontMetrics(Graphite::font()).height()+12);}
 int rowTextInset(){return Graphite::scaled(100)>125?5:10;}
-int rowContentHeight(){return qMax(Graphite::Metric::thumbHeight,QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+6)+2*rowTextInset()+4;}
+int rowContentHeight(){return qMax(Graphite::Metric::historyRow,qMax(Graphite::Metric::thumbHeight,QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+6)+2*rowTextInset()+4);}
 // A gallery card's picture keeps the 248 px card's proportions as cards grow.
 int galleryPicture(int cardWidth){return qMax(90,(cardWidth-2)*145/234);}
-void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn){
+// Keep status labels together; diagnostic prose retains its natural wrapping.
+QString statusPhrases(QString text,bool failed=false){
+ auto tokens=text.split(" · ");for(int i=0;i<tokens.size();++i)if(!failed||i!=1||tokens[i]=="Saved locally")tokens[i].replace(' ',QChar(0x00a0));return tokens.join(" · ");
+}
+void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded=false){
  document.setDocumentMargin(0);document.setDefaultFont(Graphite::font(Graphite::Type::metadata));QTextOption option;option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);document.setDefaultTextOption(option);
  const auto record=index.data(HistoryModel::RecordRole).toJsonObject();const auto& t=Theme::current();auto text=HistoryModel::failed(record)?HistoryModel::statusText(record):index.data(HistoryModel::SubtitleRole).toString();if(createdColumn&&!HistoryModel::failed(record)){const auto created=index.data(HistoryModel::CreatedRole).toString();if(!created.isEmpty())text.remove(" · "+created);}
- if(HistoryModel::failed(record)){const auto label=HistoryModel::failureLabel(record);auto detail=text;if(detail.startsWith(label))detail.remove(0,label.size());document.setHtml("<span style=\"color:"+t.danger.name()+"\">"+label.toHtmlEscaped()+"</span><span style=\"color:"+t.textSecondary.name()+"\">"+detail.toHtmlEscaped()+"</span>");}
- else{const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();const auto color=remote=="Deletion failed"||remote=="Sharing failed"?t.danger:!remote.isEmpty()||copy=="suppressed"?t.textSecondary:copy=="copied"?t.success:t.textMuted;document.setHtml("<span style=\"color:"+color.name()+"\">"+text.toHtmlEscaped()+"</span>");}document.setTextWidth(qMax(20,width));
+ if(bounded)text=QFontMetrics(document.defaultFont()).elidedText(text,Qt::ElideRight,qMax(20,width));
+ if(HistoryModel::failed(record)){const auto fullLabel=HistoryModel::failureLabel(record),label=text.startsWith(fullLabel)?fullLabel:text;auto detail=text;if(detail.startsWith(label))detail.remove(0,label.size());document.setHtml("<span style=\"color:"+t.danger.name()+"\">"+statusPhrases(label).toHtmlEscaped()+"</span><span style=\"color:"+t.textSecondary.name()+"\">"+statusPhrases(detail,true).toHtmlEscaped()+"</span>");}
+ else{const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();const auto color=remote=="Deletion failed"||remote=="Sharing failed"?t.danger:!remote.isEmpty()||copy=="suppressed"?t.textSecondary:copy=="copied"?t.success:t.textMuted;document.setHtml("<span style=\"color:"+color.name()+"\">"+statusPhrases(text).toHtmlEscaped()+"</span>");}document.setTextWidth(qMax(20,width));
 }
 // The row's body: right of the thumbnail in a list, under it in a gallery tile.
 QRect rowBody(const QRect& outer,bool gallery,int heading){
@@ -301,7 +306,7 @@ public:
  std::function<void(const QModelIndex&)> primary,details;
  std::function<void(const QModelIndex&,const QPoint&)> menu;
  // Whether a gallery card already has its details open beside it.
- std::function<bool()> inspectorBeside;
+ std::function<bool()> inspectorBeside,compactList;
  bool grid()const{return view_->viewMode()==QListView::IconMode;}
  bool menuOnly()const{return !grid();}
  bool columnMenuOnly()const{return false;}
@@ -309,20 +314,27 @@ public:
  bool detailsShown(const QModelIndex& i)const{return view_->selectionModel()->selectedRows().size()<=1&&(grid()||!menuOnly())&&!(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
  bool recovery(const QModelIndex& i)const{return i.data(HistoryModel::PrimaryActionRole).toString().startsWith("Retry ");}
  bool inlineActions(const QModelIndex& i)const{return grid()||!(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
- bool primaryShown(const QModelIndex& i)const{return inlineActions(i)&&view_->selectionModel()->selectedRows().size()<=1&&!i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
+ bool rowPrimary(const QModelIndex& i)const{return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()&&(grid()||!inspectorBeside||!inspectorBeside()||recovery(i));}
+ bool primaryShown(const QModelIndex& i)const{return rowPrimary(i)&&inlineActions(i)&&view_->selectionModel()->selectedRows().size()<=1&&!i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
  QRect card(QRect r,const QModelIndex& i)const{return r.adjusted(6,heading(i)+2,-6,-2);}
  // Gallery cards share each row evenly. The preferred width grows with the
  // text size, so enlarged text gives fewer columns, not heavily elided names.
  // The flow layout always reserves a scrollbar's extent (QListViewPrivate::prepareItemsLayout).
  int galleryWidth()const{const int s=view_->spacing(),reserve=view_->style()->pixelMetric(QStyle::PM_ScrollView_ScrollBarOverlap,nullptr,view_->verticalScrollBar())?0:view_->style()->pixelMetric(QStyle::PM_ScrollBarExtent,nullptr,view_->verticalScrollBar());const int available=qMax(160,view_->maximumViewportSize().width()-reserve-2*s);int minimum=Graphite::scaled(248);for(int row=0;row<view_->model()->rowCount();++row)minimum=qMax(minimum,primaryWidth(view_->model()->index(row,0))+detailsWidth()+actionHeight()+52);const int columns=qMax(1,available/(minimum+s));return qMax(160,available/columns-s);}
- // Reserve action space even while it is hidden, so hovering never changes
- // the filename. Narrow rows put actions below instead of losing the title.
+ // Reserve each row's actions before laying out text. Only compact metadata
+ // that cannot fit beside them needs a footer; hover never changes its height.
  int detailsWidth()const{return qMax(details_->sizeHint().width(),QFontMetrics(Graphite::font()).horizontalAdvance("Details")+30);}
  QRect detailsRect(QRect r,const QModelIndex& i)const{const auto b=menuRect(r,i);const int w=grid()?detailsWidth():qBound(32,actionHeight(),36);const int h=grid()?b.height():w;return QRect(b.left()-8-w,b.top()+(b.height()-h)/2,w,h);}
  int primaryWidth(const QModelIndex& i)const{return qMax(84,QFontMetrics(Graphite::font()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())+28);}
+ int inlineTextWidth(const QRect& r,const QModelIndex& i)const{
+  const auto body=rowBody(r,false,heading(i));if(!inlineActions(i))return qMax(20,historyColumns(body).item.width()-12);const auto c=card(r,i);const int left=c.right()-12-actionHeight()-(rowPrimary(i)?8+primaryWidth(i):0);
+  return qMax(20,qMin(historyColumns(body).item.width()-12,left-body.left()-8));
+ }
  bool actionsBelow(const QRect& r,const QModelIndex& i)const{
-  return !grid()&&historyColumns(rowBody(r,false,heading(i)),columnMenuOnly()).actions.isEmpty();
+  if(grid()||(compactList&&!compactList()))return false;
+  const auto body=rowBody(r,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,inlineTextWidth(r,i),!historyColumns(body).created.isEmpty());
+  return std::ceil(metadata.size().height())>rowContentHeight()-4-2*rowTextInset()-QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-6;
  }
  QRect primaryRect(QRect r,const QModelIndex& i)const{
   const auto c=card(r,i);const int h=actionHeight();const int w=qMin(primaryWidth(i),qMax(0,c.width()-12-12-h-8-(grid()?detailsWidth()+8:!menuOnly()?qBound(32,h,36)+8:0)));
@@ -338,10 +350,12 @@ public:
    return {width,2+1+galleryPicture(width-12)+10+text+12+actionHeight()+12+2};
   }
   const int width=qMax(160,view_->viewport()->width()-2*view_->spacing());
-  int height=rowContentHeight()+heading(i);
-  const auto outer=QRect(0,0,width,height);const auto body=rowBody(outer,false,heading(i));const auto columns=historyColumns(body);const bool below=actionsBelow(outer,i);const auto action=i.data(HistoryModel::PrimaryActionRole).toString();int textWidth=qMax(20,columns.item.width()-12);if(!below)textWidth=qMin(textWidth,qMax(20,(action.isEmpty()?menuRect(outer,i):primaryRect(outer,i)).left()-columns.item.left()-8));
-  if(columns.output.isEmpty()||i.data(HistoryModel::FailedRole).toBool()){QTextDocument metadata;historyMetadata(metadata,i,textWidth,!columns.created.isEmpty());height+=qMax(0,int(std::ceil(metadata.size().height()))-QFontMetrics(Graphite::font(Graphite::Type::metadata)).height());}
-  if(below)height+=actionHeight()+12+qMax(0,8-rowTextInset());
+  int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
+  if(actionsBelow(outer,i)){
+   const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,historyColumns(body).item.width()-12,!historyColumns(body).created.isEmpty());
+   const int text=2*rowTextInset()+4+QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+int(std::ceil(metadata.size().height()));
+   height=qMax(rowContentHeight(),text)+heading(i)+actionHeight()+12;
+  }
   return {width,height};
  }
  void paint(QPainter* p,const QStyleOptionViewItem& option,const QModelIndex& i)const override{
@@ -370,7 +384,7 @@ public:
   const auto columns=grid()?Columns{body,{},{},{}}:historyColumns(body,columnMenuOnly());
   const bool below=actionsBelow(outer,i);
   int itemWidth=qMax(0,columns.item.width()-12);
-  if(!grid()&&!below){const int actionLeft=!action.isEmpty()?primaryBounds.left():moreBounds.left();itemWidth=qMin(itemWidth,qMax(0,actionLeft-columns.item.left()-8));}
+  if(!grid()&&!below)itemWidth=inlineTextWidth(outer,i);
   else if(grid())itemWidth=body.width();
   const auto titleFont=Graphite::font(Graphite::Type::body,true),metaFont=Graphite::font(Graphite::Type::metadata);
   const int lineTop=grid()?body.top():rowTop+rowTextInset();
@@ -382,7 +396,7 @@ public:
   else if(!grid()){const auto created=i.data(HistoryModel::CreatedRole).toString();if(!columns.created.isEmpty()&&!created.isEmpty())subtitle.remove(" · "+created);}
   const auto remote=HistoryModel::remoteStateText(record);const QColor subtitleColour=failed||remote=="Deletion failed"||remote=="Sharing failed"?t.danger:!remote.isEmpty()?t.textSecondary:suppressed?t.textSecondary:copied?t.success:t.textMuted;
   const QRectF metadata(columns.item.left(),lineTop+QFontMetrics(titleFont).height()+6,itemWidth,QFontMetrics(metaFont).height());
-  if(!grid()&&(columns.output.isEmpty()||failed)){QTextDocument document;historyMetadata(document,i,itemWidth,!columns.created.isEmpty());p->save();p->translate(metadata.topLeft());document.drawContents(p);p->restore();}
+  if(!grid()){QTextDocument document;historyMetadata(document,i,itemWidth,!columns.created.isEmpty(),compactList&&!compactList());p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:rowContentHeight()-4-rowTextInset()-QFontMetrics(titleFont).height()-6-rowTextInset();p->setClipRect(QRectF(0,0,itemWidth,available));document.drawContents(p);p->restore();}
   else if(failed){
    const int labelWidth=QFontMetrics(metaFont).horizontalAdvance(subtitle);Graphite::paintText(*p,metadata,subtitle,t.danger,metaFont);
    auto detail=errorText(i);if(detail.startsWith(subtitle))detail.remove(0,subtitle.size());
@@ -433,7 +447,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  {const QFontMetrics strong(Graphite::font(Graphite::Type::body,true));int widest=0;for(int i=0;i<categories_->count();++i)widest=qMax(widest,strong.horizontalAdvance(categories_->item(i)->text()));sidebar->setFixedWidth(Graphite::sidebarWidth(Graphite::Metric::historySidebar,widest+74));}
  side->addStretch();
  auto* content=new QWidget(this);content->setObjectName("historyContent");page->addWidget(content,1);auto* layout=new QVBoxLayout(content);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
- auto* headerBar=new QWidget(content);auto* header=new QHBoxLayout(headerBar);header->setContentsMargins(18,12,16,10);header->setSpacing(8);// The page is already named by the navigation; the heading names what is shown.
+ auto* headerBar=new QWidget(content);headerBar->setObjectName("historyHeader");auto* header=new QHBoxLayout(headerBar);header->setContentsMargins(18,12,16,10);header->setSpacing(8);// The page is already named by the navigation; the heading names what is shown.
  // Long combined headings ("Recordings · failed uploads") elide before they crowd search.
  // The compact layout opens the inspector over the list; this returns to it.
  detailsBack_=Graphite::toolButton("Back to list",{},"quiet",this);detailsBack_->setObjectName("historyDetailsBack");detailsBack_->setIcon(Graphite::chromeIcon("chevron-left"));detailsBack_->setIconSize(QSize(14,14));detailsBack_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);detailsBack_->setToolTip("Return to the list (Esc)");detailsBack_->hide();header->addWidget(detailsBack_);connect(detailsBack_,&QToolButton::clicked,this,[this]{setDetailsOpen(false);});
@@ -482,7 +496,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
  connect(categories_,&QListWidget::currentRowChanged,this,[this]{if(restoringCategory_)return;auto* state=findChild<QLineEdit*>("historyFilteruploadStatus");if(categories_->currentRow()==5)state->setText("failed");else if(state->text()=="failed")state->clear();applyFilters();});
  heading_=heading;connect(categories_,&QListWidget::currentRowChanged,this,&HistoryWindow::updateHeading);
  static const bool accessibilityInstalled=[] {QAccessible::installFactory(historyAccessibility);return true;}();Q_UNUSED(accessibilityInstalled);
- model_=new HistoryModel(session,this);table_=new QListView(this);table_->setObjectName("historyList");table_->setAccessibleName("History items and upload activity");table_->setAccessibleDescription("Enter for details, Menu for actions");table_->setModel(model_);table_->setFrameShape(QFrame::NoFrame);Graphite::transparentView(table_);table_->setMouseTracking(true);table_->setSelectionMode(QAbstractItemView::ExtendedSelection);table_->setResizeMode(QListView::Adjust);table_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);table_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);table_->setSpacing(1);table_->setContextMenuPolicy(Qt::CustomContextMenu);auto* delegate=new HistoryDelegate(table_);table_->setItemDelegate(delegate);delegate->details=[this](const QModelIndex& i){table_->selectionModel()->setCurrentIndex(i,QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);openSelectedDetails();};delegate->primary=[this](const QModelIndex& i){primaryAction(i);};if(auto* accessible=dynamic_cast<AccessibleHistoryList*>(QAccessible::queryAccessibleInterface(table_)))accessible->primaryAction=delegate->primary;delegate->menu=[this](const QModelIndex& i,const QPoint& p){showRowMenu(i,p,true);};delegate->inspectorBeside=[this]{return !compact_&&inspectorScroll_&&!inspectorScroll_->isHidden();};auto* openDetails=new QAction(this);openDetails->setShortcuts({QKeySequence(Qt::Key_Return),QKeySequence(Qt::Key_Enter)});openDetails->setShortcutContext(Qt::WidgetShortcut);table_->addAction(openDetails);connect(openDetails,&QAction::triggered,this,[this]{if(table_->selectionModel()->selectedRows().size()==1)openSelectedDetails();});connect(table_,&QListView::doubleClicked,this,[this]{if(table_->selectionModel()->selectedRows().size()==1)openSelectedDetails();});connect(table_,&QWidget::customContextMenuRequested,this,[this](const QPoint& p){const auto i=table_->indexAt(p);if(i.isValid())showRowMenu(i,table_->viewport()->mapToGlobal(p));});auto* rowMenu=new QAction(this);rowMenu->setShortcuts({QKeySequence(Qt::Key_Menu),QKeySequence(Qt::SHIFT|Qt::Key_F10)});rowMenu->setShortcutContext(Qt::WidgetShortcut);table_->addAction(rowMenu);connect(rowMenu,&QAction::triggered,this,[this]{const auto i=table_->currentIndex();if(i.isValid())showRowMenu(i,table_->viewport()->mapToGlobal(table_->visualRect(i).center()));});
+ model_=new HistoryModel(session,this);table_=new QListView(this);table_->setObjectName("historyList");table_->setAccessibleName("History items and upload activity");table_->setAccessibleDescription("Enter for details, Menu for actions");table_->setModel(model_);table_->setFrameShape(QFrame::NoFrame);Graphite::transparentView(table_);table_->setMouseTracking(true);table_->setSelectionMode(QAbstractItemView::ExtendedSelection);table_->setResizeMode(QListView::Adjust);table_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);table_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);table_->setSpacing(1);table_->setContextMenuPolicy(Qt::CustomContextMenu);auto* delegate=new HistoryDelegate(table_);table_->setItemDelegate(delegate);delegate->details=[this](const QModelIndex& i){table_->selectionModel()->setCurrentIndex(i,QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);openSelectedDetails();};delegate->primary=[this](const QModelIndex& i){primaryAction(i);};if(auto* accessible=dynamic_cast<AccessibleHistoryList*>(QAccessible::queryAccessibleInterface(table_)))accessible->primaryAction=delegate->primary;delegate->menu=[this](const QModelIndex& i,const QPoint& p){showRowMenu(i,p,true);};delegate->inspectorBeside=[this]{return !compact_&&inspectorScroll_&&!inspectorScroll_->isHidden();};delegate->compactList=[this]{return split_->width()<Graphite::scaled(420)+Graphite::scaled(320);};auto* openDetails=new QAction(this);openDetails->setShortcuts({QKeySequence(Qt::Key_Return),QKeySequence(Qt::Key_Enter)});openDetails->setShortcutContext(Qt::WidgetShortcut);table_->addAction(openDetails);connect(openDetails,&QAction::triggered,this,[this]{if(table_->selectionModel()->selectedRows().size()==1)openSelectedDetails();});connect(table_,&QListView::doubleClicked,this,[this]{if(table_->selectionModel()->selectedRows().size()==1)openSelectedDetails();});connect(table_,&QWidget::customContextMenuRequested,this,[this](const QPoint& p){const auto i=table_->indexAt(p);if(i.isValid())showRowMenu(i,table_->viewport()->mapToGlobal(p));});auto* rowMenu=new QAction(this);rowMenu->setShortcuts({QKeySequence(Qt::Key_Menu),QKeySequence(Qt::SHIFT|Qt::Key_F10)});rowMenu->setShortcutContext(Qt::WidgetShortcut);table_->addAction(rowMenu);connect(rowMenu,&QAction::triggered,this,[this]{const auto i=table_->currentIndex();if(i.isValid())showRowMenu(i,table_->viewport()->mapToGlobal(table_->visualRect(i).center()));});
  // Empty history and no matching items say different things (applyFilters).
  emptyState_=new QWidget(this);emptyState_->setObjectName("historyEmptyState");{auto* box=new QVBoxLayout(emptyState_);box->setContentsMargins(24,24,24,24);box->setSpacing(8);box->addStretch(2);
   empty_=new QLabel("No items yet",emptyState_);empty_->setObjectName("historyEmpty");empty_->setTextFormat(Qt::PlainText);empty_->setWordWrap(true);empty_->setAlignment(Qt::AlignCenter);VisualStyle::role(empty_,"sectionTitle");box->addWidget(empty_);
@@ -572,7 +586,7 @@ void HistoryWindow::updateInspectorLayout(){if(!split_)return;updateFooterLayout
  expandPreview_->setVisible(shortPreview&&ready);preview_->setVisible((ready||(!currentDetail_.isEmpty()&&(currentDetail_["category"]=="images"||video(currentDetail_))))&&previewErrors_.value(currentDetail_["id"].toString()).code!="preview_unsupported"&&!(shortPreview&&ready));
  if(auto* box=singleInspector_->layout()){box->setContentsMargins(18,compact_?10:16,18,compact_?12:16);box->setSpacing(compact_?8:10);}if(auto* escape=findChild<QAction*>("historyDetailsEscape"))escape->setEnabled(detailsOpen_);
  // Hide the old navigation before showing its replacement; Qt otherwise grows the window briefly.
- split_->setStretchFactor(0,1);split_->setStretchFactor(1,0);if(columns_)columns_->setVisible(!gallery);detailsBack_->setText(detailsFromGallery_?"Back to gallery":"Back to list");detailsBack_->setToolTip(detailsFromGallery_?"Return to the gallery (Esc)":"Return to the list (Esc)");if(!back)detailsBack_->hide();if(heading_)heading_->setVisible(!details);findChild<QWidget*>("historyViewMode")->setVisible(!details);if(back)detailsBack_->show();const bool wasDetails=list_->isHidden();list_->setVisible(!details);findChild<QWidget*>("historyListColumn")->setVisible(!details);
+ split_->setStretchFactor(0,1);split_->setStretchFactor(1,0);if(columns_)columns_->setVisible(!gallery);detailsBack_->setText(detailsFromGallery_?"Back to gallery":"Back to list");detailsBack_->setToolTip(detailsFromGallery_?"Return to the gallery (Esc)":"Return to the list (Esc)");if(!back)detailsBack_->hide();if(heading_)heading_->setVisible(!details&&!property("denseHistory").toBool());findChild<QWidget*>("historyViewMode")->setVisible(!details);if(back)detailsBack_->show();const bool wasDetails=list_->isHidden();list_->setVisible(!details);findChild<QWidget*>("historyListColumn")->setVisible(!details);
  inspectorScroll_->setVisible(selected>0&&(!gallery||detailsOpen_)&&(!compact_||details));singleInspector_->setVisible(single);selectionInspector_->setVisible(selected>1);
  // Opened over the list, the inspector takes the whole width; the split's
  // inspector maximum bounds it again once both panes fit.
@@ -585,7 +599,18 @@ void HistoryWindow::setDetailsOpen(bool open){
  if(detailsOpen_){inspectorScroll_->verticalScrollBar()->setValue(0);(compact_?detailsBack_:detailsClose_)->setFocus(Qt::OtherFocusReason);QTimer::singleShot(0,this,[this]{if(detailsOpen_)(compact_?detailsBack_:detailsClose_)->setFocus(Qt::OtherFocusReason);});}else if(wasOpen){table_->doItemsLayout();table_->verticalScrollBar()->setValue(gallery?galleryScroll_:listScroll_);table_->setFocus(Qt::OtherFocusReason);QTimer::singleShot(0,this,[this,gallery]{table_->verticalScrollBar()->setValue(gallery?galleryScroll_:listScroll_);});}emit viewStateChanged();
 }
 void HistoryWindow::updateFooterLayout(){
- if(!footerRow_||!columns_)return;footerRow_->show();footerBar_->show();columns_->update();
+ if(!footerRow_||!columns_)return;
+ // At the minimum window height, use the rail's spare space for controls so
+ // the list still fits six whole base rows, including its day heading.
+ const bool dense=Graphite::scaled(100)<=100&&height()<600;auto* header=findChild<QWidget*>("historyHeader");
+ if(dense!=property("denseHistory").toBool()){
+  setProperty("denseHistory",dense);auto* content=qobject_cast<QVBoxLayout*>(findChild<QWidget*>("historyContent")->layout());auto* rail=qobject_cast<QVBoxLayout*>(findChild<QWidget*>("historySidebar")->layout());auto* tools=qobject_cast<QBoxLayout*>(header->layout());auto* footer=qobject_cast<QBoxLayout*>(footerRow_->layout());auto* box=qobject_cast<QVBoxLayout*>(footerBar_->layout());
+  tools->setDirection(dense?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);tools->setContentsMargins(dense?0:18,dense?0:12,dense?0:16,dense?0:10);tools->setStretch(3,dense?0:1);footer->setDirection(dense?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);box->setContentsMargins(dense?0:16,8,dense?0:16,dense?0:10);
+  header->setSizePolicy(QSizePolicy::Preferred,dense?QSizePolicy::Maximum:QSizePolicy::Preferred);footerBar_->setSizePolicy(QSizePolicy::Preferred,dense?QSizePolicy::Maximum:QSizePolicy::Preferred);
+  if(dense){rail->insertWidget(1,header);rail->addWidget(footerBar_);}else{content->insertWidget(0,header);content->addWidget(footerBar_);}header->show();
+ }
+ if(!dense)header->layout()->setContentsMargins(18,height()<600?2:12,16,height()<600?2:10);
+ footerRow_->show();footerBar_->show();columns_->update();
 }
 void HistoryWindow::updateMultiSummary(){
  const auto rows=table_->selectionModel()->selectedRows();qint64 bytes=0;QStringList destinations;QMap<QString,int> states;const auto files=selectedFiles();
