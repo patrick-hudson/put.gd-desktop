@@ -117,6 +117,8 @@ public:
  QJsonArray activeObservations() const;
  bool storageActive() const {return storageRequests_>0;}
  Settings settingsSnapshot() const {return settings_.snapshot();}
+ // The tray needs only the desktop report, without querying storage providers.
+ QJsonObject shortcutStatus() const {return source_.capabilities()["shortcuts"].toObject();}
  QString settingsRevision() const {return settings_.revision();}
  // With an item ID, cancels only that file's upload; the batch's other files continue.
  void cancel(const QString& id,JsonReply,const QString& itemId={});

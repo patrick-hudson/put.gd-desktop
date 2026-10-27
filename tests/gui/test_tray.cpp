@@ -33,10 +33,10 @@ int amberPixels(const QImage& image) {
 
 class CaptureSource final : public SourceAdapter {
 public:
- QStringList actions;
+ QStringList actions;QJsonObject shortcutState;
  int copies = 0;
  quint64 clipboardRevision() const override { return 0; }
- QJsonObject capabilities() const override { return {}; }
+ QJsonObject capabilities() const override { return {{"shortcuts",shortcutState}}; }
  void acquire(const QString& action, const ResourceLimits&, std::function<void(PayloadResult)> done) override {
   actions.append(action);
   done({{}, {"source_cancelled", "Synthetic selection cancelled", {}}});
@@ -78,9 +78,12 @@ private slots:
   QGuiApplication::setDesktopSettingsAware(aware);
  }
  void menuShowsDisplayOnlyShortcutsAndCancelsUploads(){
-  QTemporaryDir dir;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);SettingsService settings(dir.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});auto doc=configuration(dir.path());auto actions=doc["actions"].toObject();for(const auto& name:Settings::presentationOrder()){auto action=actions[name].toObject();action["shortcut"]="Ctrl+Shift+R";actions[name]=action;}doc["actions"]=actions;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService operations(dir.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);auto* menu=tray->contextMenu();
-  for(auto* entry:menu->actions())if(entry->property("commandLabel").isValid()){QVERIFY(entry->text().contains('\t'));QVERIFY(entry->shortcut().isEmpty());}
+  QTemporaryDir dir;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);SettingsService settings(dir.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});auto doc=configuration(dir.path());auto actions=doc["actions"].toObject();for(const auto& name:Settings::presentationOrder()){auto action=actions[name].toObject();action["shortcut"]="Ctrl+Shift+R";actions[name]=action;}doc["actions"]=actions;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService operations(dir.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);auto* menu=tray->contextMenu();QVERIFY(menu->findChild<QAction*>("trayOutputSummary"));QVERIFY(menu->findChild<QAction*>("trayChangeOutput"));
+  for(auto* entry:menu->actions())if(entry->property("commandLabel").isValid()){QVERIFY(!entry->text().contains('\t'));QVERIFY(entry->shortcut().isEmpty());}
   auto* status=menu->findChild<QAction*>("trayUploadStatus");auto* cancel=menu->findChild<QAction*>("trayCancelUpload");QVERIFY(status&&cancel);QVERIFY(!status->isVisible());QString id;operations.invoke("clipboard",[&](Error error,QJsonObject value){QVERIFY(!error);id=value["operationId"].toString();});auto drain=qScopeGuard([provider]{provider->deferUploads=false;for(auto complete:std::exchange(provider->completions,{}))complete();});PUTGD_TRY_COMPARE(provider->requests.size(),1);PUTGD_TRY_VERIFY(cancel->isVisible());QCOMPARE(menu->actions()[0],status);QCOMPARE(menu->actions()[1],cancel);QVERIFY(!status->isEnabled());QCOMPARE(status->text(),QString("Uploading 1 file…"));cancel->trigger();provider->completions.takeFirst()();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);PUTGD_TRY_VERIFY(!status->isVisible());bool canceled=false;operations.inspect(id,[&](Error error,QJsonObject op){QVERIFY(!error);canceled=op["state"]=="cancelled";});PUTGD_TRY_VERIFY(canceled);
+ }
+ void trayShortcutsRequireDesktopConfirmationAndClearStaleBindings(){
+  QTemporaryDir dir;ProviderRegistry providers;providers.add("opaque",std::make_shared<OpaqueProvider>());SettingsService settings(dir.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});auto doc=configuration(dir.path());auto actions=doc["actions"].toObject();auto region=actions["region"].toObject();region["shortcut"]="Ctrl+Shift+R";actions["region"]=region;doc["actions"]=actions;QVERIFY(settings.save(doc,{}));CaptureSource source;OperationService operations(dir.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());QStringList views;TrayController controller(operations,[&](const QString& view){views<<view;},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();auto* menu=tray->contextMenu();auto* entry=actionNamed(tray,"Capture region");QVERIFY(entry);QVERIFY(!entry->text().contains('\t'));source.shortcutState={{"available",true},{"bindings",QJsonObject{{"region",QJsonObject{{"bound",true},{"requested","Ctrl+Shift+R"},{"actual","Ctrl+Shift+R"}}}}}};QMetaObject::invokeMethod(menu,"aboutToShow");QVERIFY(entry->text().contains("\tCtrl+Shift+R"));source.shortcutState={};QMetaObject::invokeMethod(menu,"aboutToShow");QVERIFY(!entry->text().contains('\t'));menu->findChild<QAction*>("trayChangeOutput")->trigger();QCOMPARE(views.last(),QString("captureSettings"));
  }
  void multipleUploadsDelegateBoundedConfirmation(){
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->concurrency=8;provider->dispatcher=this;providers.add("opaque",provider);SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});auto doc=configuration(directory.path());auto naming=doc["naming"].toObject();naming["mode"]="generated";doc["naming"]=naming;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());QStringList views;TrayController controller(operations,[&](const QString& view){views<<view;},[]{});
@@ -480,7 +483,7 @@ private slots:
    source.acquisitions.takeFirst()({{}, {"fixture_capture_failed","Synthetic capture failure",{}}});
   }
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  auto* recovery=tray->contextMenu()->findChild<QAction*>("trayFailedUploads");QCOMPARE(recovery->text(),storageFailure?QString("Failed uploads"):QString("Capture needs attention"));QVERIFY(!recovery->property("operationId").toString().isEmpty());
+  auto* recovery=tray->contextMenu()->findChild<QAction*>("trayFailedUploads");QCOMPARE(recovery->text(),storageFailure?QString("Failed uploads (1)"):QString("Capture needs attention"));QVERIFY(!recovery->property("operationId").toString().isEmpty());
   // Progress from the successful request must not mask the error pulse.
   provider->requests.first().progress({"uploading",1,100});
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
@@ -531,8 +534,8 @@ private slots:
   // A single & would be eaten as a mnemonic marker in the menu.
   QVERIFY(actionNamed(tray, "Capture region && edit"));
   // Capture entries come first in a fixed order, then the editor sources and the clipboard upload.
-  QStringList texts; for (auto* action : menu->actions()) { if(!action->isVisible())continue;if (action->isSeparator()) break; texts.append(action->text().section('\t',0,0)); }
-  QCOMPARE(texts, QStringList({"Capture region", "Capture window", "Capture desktop", "Capture region && edit", "Record screen", "Upload clipboard", "Edit image"}));
+  QStringList texts; for (auto* action : menu->actions()) { if(!action->isVisible())continue;if (action->property("commandLabel").isValid()||action->data()=="edit-sources") texts.append(action->text().section('\t',0,0)); }
+  QCOMPARE(texts, QStringList({"Capture region", "Capture window", "Capture desktop", "Capture region && edit", "Edit image", "Record screen", "Upload clipboard"}));
   // Other editor sources sit in one submenu; a file opens the main window's picker.
   QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit image") editImage = action->menu();
   QVERIFY(editImage); QCOMPARE(editImage->actions().size(), 2);

@@ -13,6 +13,8 @@
 #include <QAction>
 #include <QKeySequence>
 #include <QMenu>
+#include <QWidgetAction>
+#include <QLabel>
 #include <QPointer>
 #include <QSystemTrayIcon>
 #include <QDir>
@@ -179,6 +181,7 @@ TrayController::TrayController(OperationService& operations,
    else if (action == "failed-uploads") acknowledgeFailures();
    else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
    else if (action == "edit-file") showView("editFile");
+   else if (action == "capture-settings") showView("captureSettings");
    else if (action == "settings") showSettings();
    else if (action == "destinations") showView("destinations");
    else if (action == "history") showHistory();
@@ -193,6 +196,7 @@ TrayController::TrayController(OperationService& operations,
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
  uploadStatus_=menu_->addAction(QString{});uploadStatus_->setObjectName("trayUploadStatus");uploadStatus_->setEnabled(false);cancelUpload_=menu_->addAction("Cancel upload");cancelUpload_->setObjectName("trayCancelUpload");connect(cancelUpload_,&QAction::triggered,this,&TrayController::cancelUploads);uploadSeparator_=menu_->addSeparator();connect(menu_.get(),&QMenu::aboutToShow,this,&TrayController::refreshMenu);
+ outputMenu_=menu_->addMenu("Capture output");outputSummary_=outputMenu_->menuAction();outputSummary_->setObjectName("trayOutputSummary");for(const auto& action:Settings::presentationOrder()){auto* entry=new QWidgetAction(outputMenu_);entry->setObjectName("trayOutput"+action);auto* label=new QLabel;label->setWordWrap(true);label->setMinimumWidth(280);label->setMaximumWidth(480);label->setContentsMargins(12,6,12,6);VisualStyle::role(label,"muted");entry->setDefaultWidget(label);connect(entry,&QAction::changed,label,[entry,label]{label->setText(entry->text());});outputMenu_->addAction(entry);}auto* change=menu_->addAction("Change output…");change->setObjectName("trayChangeOutput");connect(change,&QAction::triggered,this,[this]{showView("captureSettings");});menu_->addSeparator();
  // Capture entries first, in the order people reach for them; QAction text
  // treats a single & as a mnemonic marker, so && shows one &.
  const auto capture = [this](const QString& action, const QString& label) {
@@ -204,7 +208,7 @@ TrayController::TrayController(OperationService& operations,
  for(const auto& action:Settings::presentationOrder())capture(action,labels.value(action));
  // Other editor sources stay one level down so the menu does not grow.
  auto* editImage = menu_->addMenu("Edit image");
- editImage->menuAction()->setData("edit");
+ editImage->menuAction()->setData("edit-sources");auto* before=menu_->actions().value(menu_->actions().indexOf(editImage->menuAction()));for(auto* entry:menu_->actions())if(entry->data()=="record")before=entry;menu_->insertMenu(before,editImage);
  connect(editImage->addAction("Edit clipboard image"), &QAction::triggered, this, [this] { invokeAction("edit", false, {{"source", "clipboard"}}); });
  connect(editImage->addAction("Edit an image file…"), &QAction::triggered, this, [this] { showView("editFile"); });
  menu_->addSeparator();
@@ -251,6 +255,7 @@ TrayController::TrayController(OperationService& operations,
  connect(&operations_, &OperationService::resultReady, this, [this](const QString& id) {
   operations_.inspect(id, [guard = QPointer<TrayController>(this)](Error error, QJsonObject operation) {
    if (!guard || error) return;
+   for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();if(item["uploadStatus"]=="uploaded")guard->failedItems_.remove(item["artifact"].toObject()["id"].toString());}if(guard->failedItems_.isEmpty()&&guard->attentionLabel_=="Failed uploads")guard->errorPending_=false;
    const auto state = operation["state"].toString();
    bool failed=meaningfulError(operation["error"].toObject())||state=="failed"||state=="partial"||state=="interrupted";
    for(const auto& value:operation["items"].toArray()) {
@@ -258,6 +263,7 @@ TrayController::TrayController(OperationService& operations,
     failed=failed||meaningfulError(item["error"].toObject())||meaningfulError(item["local"].toObject()["error"].toObject());
    }
    if(failed&&state!="cancelled"){const auto error=operation["error"].toObject();guard->latchFailure({error["code"].toString(),error["message"].toString(),error["details"].toObject()},operation);}
+   guard->refreshActivity();
    if(!guard->available()||!guard->operations_.settingsSnapshot().notifications)return;
    if ((state == "completed" || state == "partial") && operation["copyStatus"] == "pending")
     return;
@@ -370,7 +376,7 @@ void TrayController::retintMenu() {
  const auto tint=Theme::trayTints(panel_.light()).idle;
  // Menu entry IDs name actions, not glyphs: map each one, so an ID without its
  // own IconArt glyph never falls back to the generic file.
- static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"window","window"},{"desktop","desktop"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"destinations","destinations"},{"update","download"}};
+ static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"edit-sources","edit"},{"window","window"},{"desktop","desktop"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"destinations","destinations"},{"update","download"}};
  for(auto* action:menu_->actions())if(const auto glyph=glyphs.value(action->data().toString());!glyph.isEmpty())action->setIcon(VisualStyle::icon(glyph,tint));
 }
 QJsonObject TrayController::trayTint()const {
@@ -383,9 +389,12 @@ void TrayController::cancelUploads() {
  if(ids.size()>1){showView("historyCancelAll:"+QString::fromUtf8(QJsonDocument(QJsonArray::fromStringList(ids)).toJson(QJsonDocument::Compact)));return;}
  if(ids.size()==1)operations_.cancel(ids.first(),[guard=QPointer<TrayController>(this)](Error error,QJsonObject){if(guard&&error)guard->notifyFailure(error);});
 }
-void TrayController::acknowledgeFailures(){const auto view=attentionView_;errorPending_=false;attentionOperation_.clear();refreshActivity();showView(view);}
+void TrayController::acknowledgeFailures(){const auto view=attentionView_;failedItems_.clear();errorPending_=false;attentionOperation_.clear();refreshActivity();showView(view);}
 void TrayController::refreshMenu() {
- QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();for(const auto& action:Settings::presentationOrder())shortcuts.insert(action,settings.actions.value(action).shortcut);
+ QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();const auto shortcutStatus=operations_.shortcutStatus();const auto bindings=shortcutStatus["bindings"].toObject();for(const auto& action:Settings::presentationOrder()){const auto binding=bindings[action].toObject();if(!shortcutStatus["available"].toBool()||!binding["bound"].toBool()||!binding["error"].toString().isEmpty()||!binding["error"].toObject().isEmpty()||binding["requested"].toString()!=settings.actions.value(action).shortcut)continue;QStringList actual;if(binding["actual"].isString())actual<<binding["actual"].toString();else for(const auto& value:binding["actual"].toArray())actual<<value.toString();actual.removeAll(QString{});if(!actual.isEmpty())shortcuts.insert(action,actual.first());}
+ const auto outputName=[&](const QString& action){const auto route=settings.actions.value(action);if(route.destination=="local"||route.profileId.isEmpty())return settings.archive.keepUploads?QString("Local only"):QString("Nothing is saved or uploaded");const auto profile=settings.profiles.value(route.profileId);const bool privateUpload=route.publicationMode=="private"||(route.publicationMode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return QString(privateUpload?"Private upload":"Shared link")+" · "+profile["label"].toString()+(settings.archive.keepUploads?" + local copy":"");};
+ const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};QStringList outputs;const auto first=outputName("region");bool mixed=false;for(const auto& action:Settings::presentationOrder()){const auto output=outputName(action);mixed|=output!=first;outputs<<labels.value(action)+": "+output;}const auto output=mixed?QString("Mixed outputs"):first;
+ const auto attention=attentionLabel_=="Failed uploads"?QString("Failed uploads (%1)").arg(failedItems_.size()):attentionLabel_;
  int files=0,uploads=0;bool uploading=false;for(const auto& value:operations_.activeObservations()){
   const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;uploading=true;++uploads;
   for(const auto& v:op["items"].toArray()){const auto item=v.toObject();if(item["uploadStatus"]=="uploading"||item["uploadStatus"]=="pending")++files;}
@@ -393,12 +402,13 @@ void TrayController::refreshMenu() {
  QString recording;for(const auto& value:operations_.activeObservations()){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording")recording=phaseLabel(op);}
  const auto status=!uploading?QString{}:files?QString("Uploading %1 %2…").arg(files).arg(files==1?"file":"files"):QString("Preparing upload…");
 #ifdef Q_OS_LINUX
- if(native_){native_->setCommands(shortcuts,status,uploads,errorPending_,recording,attentionLabel_);return;}
+ if(native_){native_->setOutput(output,outputs);native_->setCommands(shortcuts,status,uploads,errorPending_,recording,attention);return;}
 #endif
  if(!menu_)return;
- for(auto* entry:menu_->actions())if(entry->property("commandLabel").isValid()&&shortcuts.contains(entry->data().toString())){const auto key=QKeySequence(shortcuts.value(entry->data().toString())).toString(QKeySequence::NativeText);entry->setText(entry->property("commandLabel").toString()+(entry->data()=="record"&&!recording.isEmpty()?" — "+recording:QString{})+(key.isEmpty()?QString{}:"\t"+key));}
+ outputSummary_->setText(QString(output).replace('&',QStringLiteral("&&")));int outputIndex=0;for(auto* entry:outputMenu_->actions())entry->setText(outputs.value(outputIndex++));
+ for(auto* entry:menu_->actions())if(entry->property("commandLabel").isValid()){const auto key=QKeySequence(shortcuts.value(entry->data().toString())).toString(QKeySequence::NativeText);entry->setText(entry->property("commandLabel").toString()+(entry->data()=="record"&&!recording.isEmpty()?" — "+recording:QString{})+(key.isEmpty()?QString{}:"\t"+key));}
  // Tab-separated menu text displays a shortcut without registering another key handler.
- failedUploads_->setProperty("operationId",attentionOperation_);failedUploads_->setText(attentionLabel_);failedUploads_->setVisible(errorPending_);cancelUpload_->setText(uploads>1?"Cancel all uploads…":"Cancel upload");
+ failedUploads_->setProperty("operationId",attentionOperation_);failedUploads_->setText(attention);failedUploads_->setVisible(errorPending_);cancelUpload_->setText(uploads>1?"Cancel all uploads…":"Cancel upload");
  uploadStatus_->setText(status);for(auto* entry:{uploadStatus_,cancelUpload_,uploadSeparator_})entry->setVisible(uploading);
 }
 void TrayController::refreshActivity() {
@@ -469,7 +479,7 @@ void TrayController::latchFailure(const Error& error,const QJsonObject& operatio
  for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();const auto itemError=item["error"].toObject(),local=item["local"].toObject();uploadFailed|=(item["uploadStatus"]=="failed"||meaningfulError(itemError)||operation["state"]=="interrupted")&&!operation["destination"].toObject()["providerId"].toString().isEmpty();localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());if(!cause&&meaningfulError(itemError))cause={itemError["code"].toString(),itemError["message"].toString(),itemError["details"].toObject()};}
  attentionOperation_=operation["id"].toString();attentionLabel_="Action needs attention";attentionView_="history";
  const bool setup=QStringList{"output_required","profile_not_found","provider_unavailable","invalid_destination","destination_unavailable","s3_settings_invalid","b2_settings_invalid","config_invalid","credential_setup_required"}.contains(cause.code);
- if(uploadFailed){attentionLabel_="Failed uploads";attentionView_="historyFailed";}
+ if(uploadFailed){for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();if(item["uploadStatus"]=="failed"||item["uploadStatus"]=="unknown"||meaningfulError(item["error"].toObject())||operation["state"]=="interrupted")failedItems_.insert(item["artifact"].toObject()["id"].toString(operation["id"].toString()));}attentionLabel_="Failed uploads";attentionView_="historyFailed";}
  else if(localFailed||setup){attentionLabel_=localFailed?"Local save needs attention":"Destination needs attention";const QJsonObject recovery{{"action",operation["action"].toString("region")},{"code",localFailed?"archive_failed":cause.code},{"message",localFailed&&cause.message.isEmpty()?"Couldn't save a local copy. Review the local-copy folder.":cause.message}};attentionView_="actionRecovery:"+QString::fromUtf8(QJsonDocument(recovery).toJson(QJsonDocument::Compact));}
  else if(!operation["id"].toString().isEmpty()&&operation["items"].toArray().isEmpty()&&QStringList{"region","window","desktop","edit","record"}.contains(operation["action"].toString()))attentionLabel_="Capture needs attention";
  flashError();

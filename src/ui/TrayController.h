@@ -94,7 +94,8 @@ private:
  int iconRecording_=0;
  QString activityText_,activityTitle_="put.gd";
  QAction *uploadStatus_=nullptr,*cancelUpload_=nullptr,*uploadSeparator_=nullptr,*failedUploads_=nullptr;
- QSet<QString> activeUploads_;
+ QSet<QString> activeUploads_,failedItems_;
+ QAction* outputSummary_=nullptr;QMenu* outputMenu_=nullptr;
  void showAbout();
  void showView(const QString&);
  OperationService& operations_;
