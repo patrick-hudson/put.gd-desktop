@@ -59,6 +59,29 @@ private slots:
   QVERIFY(!choices[0]->shortcut().isEmpty());QVERIFY(!choices[2]->shortcut().isEmpty());QVERIFY(!choices[5]->shortcut().isEmpty());QVERIFY(!choices[6]->shortcut().isEmpty());
   const auto buttons=window.findChild<QWidget*>("editorToolbar")->findChildren<QToolButton*>();for(auto* button:buttons){QVERIFY(!button->toolTip().startsWith("Fit to window"));QVERIFY(!button->toolTip().startsWith("Actual size"));}
  }
+ void privacyToolsHaveMeasuredLabels(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1060,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  int labeled=0;
+  for(auto* button:window.findChild<QWidget*>("editorToolbar")->findChildren<QToolButton*>()){
+   if(!button->isCheckable())continue;
+   const bool privacy=button->accessibleName()=="Redact"||button->accessibleName()=="Blur";
+   QCOMPARE(button->toolButtonStyle(),privacy?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonIconOnly);
+   if(privacy){++labeled;QCOMPARE(button->text(),button->accessibleName());QVERIFY(button->width()>=button->fontMetrics().horizontalAdvance(button->text())+button->iconSize().width()+Graphite::scaled(8)+24);QTest::mouseClick(button,Qt::LeftButton);QCOMPARE(window.viewState()["tool"].toString(),button->text().toLower());}
+  }
+  QCOMPARE(labeled,2);
+ }
+ void annotationGeometryStartsCollapsedAndCropStaysVisible(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1060,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  window.selectTool(Tool::Rectangle);QVERIFY(window.canvas().placeMark());
+  auto* disclosure=window.findChild<QToolButton*>("editorGeometryDisclosure");auto* x=window.findChild<QSpinBox*>("geometryX");QVERIFY(disclosure&&x);QVERIFY(disclosure->isVisible());QVERIFY(!disclosure->isChecked());QVERIFY(!x->isVisible());QVERIFY(window.findChild<QPushButton*>("removeMark")->isVisible());
+  const auto id=window.canvas().selected();const auto original=doc.find(id)->rect;
+  window.canvas().setFocus();QTest::keyClick(&window.canvas(),Qt::Key_Right);QCOMPARE(doc.find(id)->rect,original.translated(1,0));QVERIFY(!x->isVisible());
+  QString code,message;auto state=window.viewCommand({{"action","geometryDetails"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(state["geometryDetails"].toObject()["open"].toBool());QVERIFY(x->isVisible());
+  x->setValue(12);QCOMPARE(doc.find(id)->rect.x(),12);
+  disclosure->setFocus();QTest::keyClick(disclosure,Qt::Key_Space);QVERIFY(!x->isVisible());QVERIFY(!window.viewState()["geometryDetails"].toObject()["open"].toBool());
+  window.selectTool(Tool::Crop);QVERIFY(x->isVisible());QVERIFY(!disclosure->isVisible());QVERIFY(window.viewState()["geometryDetails"].toObject()["visible"].toBool());QVERIFY(!window.viewState()["geometryDetails"].toObject()["open"].toBool());
+  window.canvas().cancelCrop();window.canvas().select(id);QVERIFY(disclosure->isVisible());QVERIFY(!x->isVisible());
+ }
  void compactLargeTextKeepsCanvasWidthAndReadableFeedback(){
   // Install the style first, then simulate a desktop's enlarged application font.
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
@@ -400,7 +423,7 @@ private slots:
   state=view({{"action","place"}});QCOMPARE(doc.shapes().size(),1);const auto id=doc.shapes().first().id;
   QCOMPARE(quint64(state["selectedShapeId"].toDouble()),id);QCOMPARE(state["geometry"].toArray(),QJsonArray({100,65,200,130}));
   // The geometry fields show the selection and edit it as one undo step.
-  auto* x=window.findChild<QSpinBox*>("geometryX");auto* width=window.findChild<QSpinBox*>("geometryWidth");QVERIFY(x&&width);QVERIFY(x->isVisible());
+  auto* x=window.findChild<QSpinBox*>("geometryX");auto* width=window.findChild<QSpinBox*>("geometryWidth");QVERIFY(x&&width);QVERIFY(!x->isVisible());view({{"action","geometryDetails"}});QVERIFY(x->isVisible());
   QCOMPARE(x->value(),100);QCOMPARE(width->value(),200);
   x->setValue(12);QCOMPARE(doc.find(id)->rect,QRect(12,65,200,130));QVERIFY(doc.undo());window.documentEdited();QCOMPARE(doc.find(id)->rect,QRect(100,65,200,130));QCOMPARE(x->value(),100);
   state=view({{"action","geometry"},{"rect",QJsonArray{5,6,70,80}}});QCOMPARE(doc.find(id)->rect,QRect(5,6,70,80));QCOMPARE(width->value(),70);
@@ -431,9 +454,10 @@ private slots:
   add(doc,{{"kind","redact"},{"rect",QJsonArray{10,10,50,20}}});add(doc,{{"kind","blur"},{"rect",QJsonArray{100,100,50,20}}});window.documentEdited();
   window.selectTool(Tool::Select);auto& canvas=window.canvas();window.activateWindow();canvas.setFocus();
   QTest::keyClick(&canvas,Qt::Key_BracketRight);const auto id=doc.shapes().at(0).id;QCOMPARE(canvas.selected(),id);
-  auto* x=window.findChild<QSpinBox*>("geometryX");QVERIFY(x&&x->isVisible());
-  QTest::keyClick(&canvas,Qt::Key_Tab);QCOMPARE(QApplication::focusWidget(),x);QCOMPARE(canvas.selected(),id);QVERIFY(x->isVisible());
-  QTest::keyClick(x,Qt::Key_Backtab);QCOMPARE(QApplication::focusWidget(),&canvas);QCOMPARE(canvas.selected(),id);
+  auto* x=window.findChild<QSpinBox*>("geometryX");auto* disclosure=window.findChild<QToolButton*>("editorGeometryDisclosure");QVERIFY(x&&!x->isVisible());
+  QTest::keyClick(&canvas,Qt::Key_Tab);QCOMPARE(QApplication::focusWidget(),disclosure);QCOMPARE(canvas.selected(),id);
+  QTest::keyClick(disclosure,Qt::Key_Space);QVERIFY(x->isVisible());QTest::keyClick(disclosure,Qt::Key_Tab);QCOMPARE(QApplication::focusWidget(),x);
+  QTest::keyClick(x,Qt::Key_Backtab);QCOMPARE(QApplication::focusWidget(),disclosure);QTest::keyClick(disclosure,Qt::Key_Backtab);QCOMPARE(QApplication::focusWidget(),&canvas);QCOMPARE(canvas.selected(),id);
   QTest::keyClick(&canvas,Qt::Key_BracketLeft);QCOMPARE(canvas.selected(),doc.shapes().at(1).id);
   QTest::keyClick(&canvas,Qt::Key_Escape);QCOMPARE(canvas.selected(),quint64(0));QVERIFY(!x->isVisible());
   // The Place button is the pointer-free route for each drawing tool.

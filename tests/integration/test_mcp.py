@@ -339,6 +339,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'discard'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'discard'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'dismissSavedCopy'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'dismissSavedCopy'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'keyboardHelp'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'keyboardHelp'}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'geometryDetails'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'geometryDetails'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'keepEditing'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'keepEditing'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'confirmDiscard'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'confirmDiscard'}),
                     ('get_recording_capabilities', {}, 'recording.capabilities', {}),

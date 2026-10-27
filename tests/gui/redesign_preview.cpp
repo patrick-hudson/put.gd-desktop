@@ -309,11 +309,12 @@ int main(int argc,char** argv){
   // A crop draft over mixed content shows the dual-stroke guides and the crop fields.
   editor.selectTool(editor::Tool::Crop);editor.viewCommand({{"action","geometry"},{"rect",QJsonArray{40,150,640,420}}},code,message);if(!grab("23-editor-crop"))return 2;
   editor.canvas().cancelCrop();editor.resize(900,620);if(!grab("24-editor-compact"))return 2;
-  // A selected mark with its position and size fields, then Save a copy… feedback.
+  // A selected mark with collapsed geometry, then its expanded fields and Save a copy… feedback.
   editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));if(!grab("26-editor-selected"))return 2;
   editor.setDestination("Private upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams, release readiness and accessibility reviews");editor.resize(900,620);if(!grab("26g-editor-long-destination"))return 2;
   editor.setDestination("Private upload to Project archive");
   editor.resize(1060,820);if(!grab("26c-editor-1060"))return 2;
+  editor.viewCommand({{"action","geometryDetails"}},code,message);if(!grab("26h-editor-geometry-expanded"))return 2;editor.viewCommand({{"action","geometryDetails"}},code,message);
   editor.viewCommand({{"action","keyboardHelp"}},code,message);putgd::test::settle(100);editor.findChild<QScrollArea*>("editorPropertiesScroll")->ensureWidgetVisible(editor.findChild<QWidget*>("editorKeyboardHelpText"),0,12);if(!grab("26d-editor-keyboard-help"))return 2;editor.viewCommand({{"action","keyboardHelp"}},code,message);editor.selectTool(editor::Tool::Text);if(!grab("26e-editor-text-stepper-1060"))return 2;editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[3].toDouble()));editor.resize(1180,820);
   {auto* zoom=editor.findChild<QToolButton*>("editorZoom");zoom->menu()->popup(zoom->mapToGlobal(QPoint(0,zoom->height())));putgd::test::settle(100);if(!zoom->menu()->grab().save(QDir(output).filePath("26f-editor-zoom-menu.png")))return 2;zoom->menu()->close();}
   editor.activateWindow();editor.canvas().setFocus(Qt::TabFocusReason);QTest::keyClick(&editor.canvas(),Qt::Key_Tab);if(!grab("26a-editor-properties-focus"))return 2;

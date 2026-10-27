@@ -100,8 +100,9 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  const Entry entries[]={{Tool::Select,"select","Select and move","V",""},{Tool::Redact,"redact","Redact","X","covers with an opaque redaction"},{Tool::Blur,"blur","Blur","B","a visual effect only"},{Tool::Crop,"crop","Crop","C",""},
   {Tool::Arrow,"annotate-arrow","Arrow","A",""},{Tool::Rectangle,"rectangle","Rectangle","R",""},{Tool::Highlight,"highlight","Highlight","H",""},{Tool::Text,"text","Text","T",""}};
  for(const auto& entry:entries){
-  auto* button=new QToolButton(toolbar);button->setCheckable(true);button->setIcon(VisualStyle::icon(entry.icon));button->setIconSize(QSize(20,20));button->setFixedSize(Graphite::scaled(36),Graphite::scaled(36));button->setFocusPolicy(Qt::StrongFocus);
+  auto* button=new QToolButton(toolbar);button->setCheckable(true);button->setIcon(VisualStyle::icon(entry.icon));button->setIconSize(QSize(20,20));button->setFixedHeight(Graphite::scaled(36));button->setFocusPolicy(Qt::StrongFocus);
   const auto label=QString::fromUtf8(entry.label),detail=QString::fromUtf8(entry.detail);
+  if(entry.tool==Tool::Redact||entry.tool==Tool::Blur){button->setText(label);button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);button->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);}else button->setFixedWidth(Graphite::scaled(36));
   button->setToolTip(detail.isEmpty()?QString("%1 (%2)").arg(label,entry.key):QString("%1 (%2) — %3").arg(label,entry.key,detail));button->setAccessibleName(label);button->setAccessibleDescription(detail);
   VisualStyle::role(button,"quiet");tools_->addButton(button,int(entry.tool));toolButtons_.insert(int(entry.tool),button);tools->addWidget(button);
   auto* shortcut=new QShortcut(QKeySequence(QString::fromLatin1(entry.key)),this);shortcut->setContext(Qt::WindowShortcut);
@@ -183,17 +184,20 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  // Position and size of the selected mark or the pending crop, in image
  // pixels; each committed value is one undoable step.
  geometryRow_=column(panel,layout);geometryRow_->setObjectName("editorGeometry");
- geometryTitle_=fieldLabel("Position and size",geometryRow_);layout->addWidget(geometryTitle_);
- auto* fields=new QGridLayout;fields->setContentsMargins(0,0,0,0);fields->setHorizontalSpacing(8);fields->setVerticalSpacing(4);
+ geometryDisclosure_=new QToolButton(geometryRow_);geometryDisclosure_->setObjectName("editorGeometryDisclosure");geometryDisclosure_->setProperty("graphiteFlush",true);geometryDisclosure_->setText("Position and size");Graphite::disclosure(geometryDisclosure_);layout->addWidget(geometryDisclosure_,0,Qt::AlignLeft);
+ geometryTitle_=fieldLabel("Crop area",geometryRow_);layout->addWidget(geometryTitle_);
+ geometryFields_=new QWidget(geometryRow_);geometryFields_->setObjectName("editorGeometryFields");
+ auto* fields=new QGridLayout(geometryFields_);fields->setContentsMargins(0,0,0,0);fields->setHorizontalSpacing(8);fields->setVerticalSpacing(4);
  const char* names[4]={"geometryX","geometryY","geometryWidth","geometryHeight"};
  for(int i=0;i<4;++i){
-  geometryLabels_[i]=fieldLabel({},geometryRow_);
-  auto* box=new QSpinBox(geometryRow_);box->setObjectName(names[i]);box->setSuffix(" px");box->setKeyboardTracking(false);box->setMinimumWidth(Graphite::scaled(64));
+  geometryLabels_[i]=fieldLabel({},geometryFields_);
+  auto* box=new QSpinBox(geometryFields_);box->setObjectName(names[i]);box->setSuffix(" px");box->setKeyboardTracking(false);box->setMinimumWidth(Graphite::scaled(64));
   geometryLabels_[i]->setBuddy(box);geometry_[i]=box;
   fields->addWidget(geometryLabels_[i],(i/2)*2,i%2);fields->addWidget(box,(i/2)*2+1,i%2);
   connect(box,&QSpinBox::valueChanged,this,&EditorWindow::applyGeometry);
  }
- layout->addLayout(fields);properties->addWidget(geometryRow_);properties->addWidget(cropRow_);
+ layout->addWidget(geometryFields_);properties->addWidget(geometryRow_);properties->addWidget(cropRow_);
+ connect(geometryDisclosure_,&QToolButton::toggled,this,[this]{syncGeometry();});
  remove_=new QPushButton("Remove mark",panel);remove_->setObjectName("removeMark");remove_->setProperty("graphiteFlush",true);remove_->setIcon(VisualStyle::icon("remove"));remove_->setIconSize(QSize(20,20));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");properties->addWidget(remove_,0,Qt::AlignLeft);
  auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setProperty("graphiteFlush",true);keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Graphite::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
  auto* keyboardText=new QWidget(panel);keyboardText->setObjectName("editorKeyboardHelpText");
@@ -398,7 +402,7 @@ bool EditorWindow::eventFilter(QObject* object,QEvent* event){
 void EditorWindow::placeDocument(){
  if(!document_||!side_->isVisible())return;
  // Narrow panels stack complete fields instead of clipping their text or steppers.
- auto* fields=qobject_cast<QGridLayout*>(geometryRow_->layout()->itemAt(1)->layout());
+ auto* fields=qobject_cast<QGridLayout*>(geometryFields_->layout());
  const int available=propertiesScroll_->viewport()->width()-properties_->contentsMargins().left()-properties_->contentsMargins().right();
  int fieldWidth=0;for(auto* field:geometry_)fieldWidth=std::max(fieldWidth,field->sizeHint().width());
  const bool stacked=available<fieldWidth*2+fields->horizontalSpacing();
@@ -483,7 +487,8 @@ void EditorWindow::syncGeometry(){
  if(!geometry)return;
  const auto* shape=canvas_->cropPending()?nullptr:doc_.find(canvas_->selected());
  const bool arrow=shape&&shape->kind==editor::Shape::Kind::Arrow,text=shape&&shape->kind==editor::Shape::Kind::Text;
- geometryTitle_->setText(canvas_->cropPending()?"Crop area":arrow?"Tail and head":"Position and size");
+ geometryTitle_->setVisible(canvas_->cropPending());geometryDisclosure_->setVisible(!canvas_->cropPending());
+ geometryFields_->setVisible(canvas_->cropPending()||geometryDisclosure_->isChecked());
  static const QStringList boxLabels{"X","Y","Width","Height"},arrowLabels{"Tail X","Tail Y","Head X","Head Y"};
  static const QStringList boxNames{"X position","Y position","Width","Height"},arrowNames{"Arrow tail X","Arrow tail Y","Arrow head X","Arrow head Y"};
  const auto r=*geometry;const int values[4]={r.x(),r.y(),arrow?r.x()+r.width():r.width(),arrow?r.y()+r.height():r.height()};
@@ -668,6 +673,7 @@ QJsonObject EditorWindow::viewState() const {
  QJsonObject message;if(!message_->isHidden())message={{"text",message_->text()},{"tone",message_->property("visualRole").toString()}};
  auto save=lastSave_;if(save["status"]=="saved")save["current"]=savedGeneration_==doc_.generation();
  return {{"scheme",Theme::name(Theme::scheme())},{"tool",toolNames.value(int(canvas_->tool()))},{"selectedShapeId",selected?QJsonValue(double(selected)):QJsonValue()},
+  {"geometryDetails",QJsonObject{{"open",geometryDisclosure_->isChecked()},{"visible",geometryFields_->isVisibleTo(this)}}},
   {"geometry",rectValue(canvas_->selectionGeometry())},{"cropPending",canvas_->cropPending()},{"selection",canvas_->selectionSummary()},
   {"zoomPercent",std::round(canvas_->zoom()*1000)/10},{"fitted",canvas_->fitted()},{"visibleRect",rectValue(canvas_->visibleImageRect())},
   {"propertiesWidth",side_->width()},{"canvasSize",QJsonArray{canvas_->width(),canvas_->height()}},{"editingText",canvas_->editingText()},{"busy",busy_},{"savingCopy",savingCopy_},
@@ -701,6 +707,9 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
  if(action=="keyboardHelp"){
   if(!only({}))return fail("invalid_request","keyboardHelp has no other parameters");
   findChild<QToolButton*>("editorKeyboardHelp")->toggle();
+ }else if(action=="geometryDetails"){
+  if(!only({}))return fail("invalid_request","geometryDetails has no other parameters");
+  geometryDisclosure_->toggle();
  }else if(action=="tool"){
   if(!only({"tool"})||!toolNames.contains(params["tool"].toString()))return fail("invalid_request","tool must be select, redact, blur, crop, arrow, rectangle, highlight or text");
   selectTool(Tool(toolNames.indexOf(params["tool"].toString())));
@@ -760,7 +769,7 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
   // As Cancel / Discard… does: asks first when there are edits.
   if(!only({}))return fail("invalid_request","discard has no other parameters");
   requestCancel();if(busy_)return viewState();
- }else return fail("invalid_request","action must be inspect, tool, select, removeMark, selectNext, selectPrevious, place, geometry, applyCrop, cancelCrop, zoom, fit, actualSize, pan, propertiesWidth, keyboardHelp, showSavedCopy, copySavedPath, saveDetails, dismissSavedCopy, discard, keepEditing or confirmDiscard");
+ }else return fail("invalid_request","action must be inspect, tool, select, removeMark, selectNext, selectPrevious, place, geometry, applyCrop, cancelCrop, zoom, fit, actualSize, pan, propertiesWidth, keyboardHelp, geometryDetails, showSavedCopy, copySavedPath, saveDetails, dismissSavedCopy, discard, keepEditing or confirmDiscard");
  refresh();return viewState();
 }
 

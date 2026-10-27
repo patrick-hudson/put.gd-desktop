@@ -7,6 +7,7 @@
 #include "ui/Graphite.h"
 #include "ui/BlurRadius.h"
 #include <QApplication>
+#include <cmath>
 #include <QFormLayout>
 #include <QListWidget>
 #include <QToolTip>
@@ -462,6 +463,24 @@ private slots:
             label.setRevealable(false);const auto plain=label.grab().toImage();QVERIFY(idle!=plain);label.setRevealable(true);
             label.setAttribute(Qt::WA_UnderMouse,true);const auto hover=label.grab().toImage();QVERIFY(hover!=idle);
             label.setAttribute(Qt::WA_UnderMouse,false);
+        }
+    }
+    void summaryDisclosureFollowsShortTextInAStretchingFooter() {
+        Graphite::ElidedLabel label;
+        label.resize(800, 36);
+        label.setText("Private upload to Project archive");
+        label.show();label.clearFocus();label.setAttribute(Qt::WA_UnderMouse, false);
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            label.setRevealable(true);const auto summary = label.grab().toImage();
+            label.setRevealable(false);const auto plain = label.grab().toImage();
+            const int end = 6 + int(std::ceil(QFontMetricsF(label.font()).horizontalAdvance(label.text())));
+            int changed = 0, right = 0;
+            for (int y = 0; y < summary.height(); ++y) for (int x = end + 6; x < summary.width(); ++x) {
+                if (summary.pixel(x, y) != plain.pixel(x, y)) {++changed;right = std::max(right, x);}
+            }
+            QVERIFY(changed > 0);
+            QVERIFY(right <= end + 6 + Graphite::scaled(12));
         }
     }
     // A revealable summary is a tab stop whose Enter shows its full plain text;

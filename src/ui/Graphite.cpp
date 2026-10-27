@@ -1587,7 +1587,13 @@ ElidedLabel::ElidedLabel(QWidget* parent) : QLabel(parent) {
 }
 QSize ElidedLabel::sizeHint() const { return QLabel::sizeHint() + QSize(revealable_ ? scaled(12) + 18 : 0, 0); }
 QSize ElidedLabel::minimumSizeHint() const { return {std::min(QLabel::minimumSizeHint().width(), fontMetrics().averageCharWidth() * 8) + (revealable_ ? scaled(12) + 18 : 0), QLabel::minimumSizeHint().height()}; }
-QRect ElidedLabel::textRect() const { return revealable_ ? contentsRect().adjusted(6, 0, -scaled(12) - 12, 0) : contentsRect(); }
+QRect ElidedLabel::textRect() const {
+    if (!revealable_) return contentsRect();
+    auto box = contentsRect().adjusted(6, 0, -scaled(12) - 12, 0);
+    // Keep the summary and its disclosure together even in a stretching footer.
+    box.setWidth(std::min(box.width(), int(std::ceil(QFontMetricsF(font()).horizontalAdvance(text())))));
+    return box;
+}
 bool ElidedLabel::event(QEvent* event) {
     if (revealable_ && (event->type() == QEvent::HoverEnter || event->type() == QEvent::HoverLeave)) update();
     return QLabel::event(event);
@@ -1648,8 +1654,8 @@ void ElidedLabel::paintEvent(QPaintEvent*) {
     p.setRenderHint(QPainter::Antialiasing);
     if (revealable_) {
         if (isEnabled() && underMouse()) rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), t().surfaceRaised, {}, 4);
-        const auto box = contentsRect();
-        VisualStyle::icon("info").paint(&p, QRect(box.right() - 6 - scaled(12), box.center().y() - scaled(12) / 2, scaled(12), scaled(12)), Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
+        const auto box = textRect();
+        VisualStyle::icon("info").paint(&p, QRect(box.right() + 7, box.center().y() - scaled(12) / 2, scaled(12), scaled(12)), Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
     }
     // A revealable summary's keyboard focus: the amber ring around its text.
     if (revealable_ && keyboardFocus(this)) {

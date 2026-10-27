@@ -119,7 +119,8 @@ private:
  Graphite::ElidedLabel* destination_=nullptr;QWidget* blurWarning_=nullptr;
  QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={},*savedLabel_=nullptr;Graphite::ElidedLabel *saveError_=nullptr,*folderError_=nullptr;
  QSpinBox* geometry_[4]={};
- QWidget *geometryRow_=nullptr,*placeRow_=nullptr,*sizeLabels_=nullptr,*optionsRule_=nullptr;
+ QToolButton* geometryDisclosure_=nullptr;
+ QWidget *geometryFields_=nullptr,*geometryRow_=nullptr,*placeRow_=nullptr,*sizeLabels_=nullptr,*optionsRule_=nullptr;
  bool syncingGeometry_=false;
  Graphite::WindowHeader* header_=nullptr;
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr,*remove_=nullptr;
