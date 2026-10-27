@@ -2,6 +2,8 @@
 #include <QColor>
 #include <QFont>
 #include <QImage>
+#include <QHash>
+#include <QPainterPath>
 #include <QList>
 #include <QPoint>
 #include <QRect>
@@ -70,6 +72,9 @@ public:
  int historyEntries() const {return undo_.size()+redo_.size();}
  bool historyTruncated() const {return truncated_;}
 
+ // Resolve text on the calling (GUI) thread before a worker renders a copy.
+ EditDocument snapshotForExport() const;
+
  // Full-resolution sanitized result: redaction overwrites source pixels first,
  // blur reads only redacted pixels, annotations are drawn, then crop applies.
  // Fully transparent pixels have their hidden color cleared.
@@ -81,7 +86,7 @@ public:
 
  static QRect clampRect(const QRect&,const QRect& bounds);
  static void blurInPlace(QImage&,const QRect&,int radius);
- static void paintAnnotation(class QPainter&,const Shape&);
+ static void paintAnnotation(class QPainter&,const Shape&,const QPainterPath* textPath=nullptr);
 private:
  struct State {QList<Shape> shapes;QRect crop;bool operator==(const State&) const=default;};
  static qint64 bytesOf(const State&);
@@ -93,5 +98,7 @@ private:
  QList<State> undo_,redo_;
  qint64 historyBytes_=0;
  quint64 nextId_=1,generation_=0;
+ QHash<quint64,QPainterPath> textPaths_;
+ quint64 textPathsGeneration_=0;
 };
 }

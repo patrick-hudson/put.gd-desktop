@@ -30,6 +30,10 @@ void boxLine(QRgb* line,int count,qsizetype step,int radius,std::vector<QRgb>& s
  }
 }
 QColor contrast(const QColor& color){return color.lightnessF()>0.6?QColor(20,20,20):QColor(255,255,255);}
+QPainterPath textPath(const Shape& shape){
+ const auto font=textFont(shape.fontFamily,shape.fontPixels);QPainterPath path;
+ path.addText(QPointF(shape.rect.left(),shape.rect.top()+QFontMetrics(font).ascent()),font,shape.text);return path;
+}
 }
 
 QRect Shape::bounds() const {
@@ -133,7 +137,7 @@ void EditDocument::applyRedactions(QImage& image,const QRect& within) const {
  }
 }
 
-void EditDocument::paintAnnotation(QPainter& painter,const Shape& shape){
+void EditDocument::paintAnnotation(QPainter& painter,const Shape& shape,const QPainterPath* frozenText){
  painter.save();painter.setRenderHint(QPainter::Antialiasing,true);painter.setRenderHint(QPainter::TextAntialiasing,true);
  switch(shape.kind){
  case Shape::Kind::Rectangle:{
@@ -156,14 +160,21 @@ void EditDocument::paintAnnotation(QPainter& painter,const Shape& shape){
  }
  case Shape::Kind::Text:{
   if(shape.text.isEmpty())break;
-  const auto font=textFont(shape.fontFamily,shape.fontPixels);
-  QPainterPath path;path.addText(QPointF(shape.rect.left(),shape.rect.top()+QFontMetrics(font).ascent()),font,shape.text);
+  const auto path=frozenText?*frozenText:textPath(shape);
   painter.setPen(QPen(contrast(shape.color),std::max(2.0,shape.fontPixels/7.0),Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));painter.setBrush(Qt::NoBrush);painter.drawPath(path);
   painter.setPen(Qt::NoPen);painter.setBrush(shape.color);painter.drawPath(path);break;
  }
  case Shape::Kind::Redact:case Shape::Kind::Blur:break;
  }
  painter.restore();
+}
+
+EditDocument EditDocument::snapshotForExport() const {
+ auto snapshot=*this;snapshot.textPaths_.clear();snapshot.textPathsGeneration_=generation_;
+ // Font fallback/outline caches differ between Qt threads on some distros.
+ // Freeze only the small vector outlines; the full raster stays on the worker.
+ for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Text)snapshot.textPaths_.insert(shape.id,textPath(shape));
+ return snapshot;
 }
 
 QImage EditDocument::render() const {
@@ -176,7 +187,7 @@ QImage EditDocument::render() const {
  for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Blur)blurInPlace(out,shape.rect.translated(-crop.topLeft()),shape.strength);
  {
   QPainter painter(&out);painter.translate(-crop.topLeft());
-  for(const auto& shape:state_.shapes)if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur)paintAnnotation(painter,shape);
+  for(const auto& shape:state_.shapes)if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur){const auto path=textPaths_.constFind(shape.id);paintAnnotation(painter,shape,textPathsGeneration_==generation_&&path!=textPaths_.cend()?&path.value():nullptr);}
  }
  if(out.hasAlphaChannel())for(int y=0;y<out.height();++y){auto* line=reinterpret_cast<QRgb*>(out.scanLine(y));for(int x=0;x<out.width();++x)if(qAlpha(line[x])==0)line[x]=0;}
  return out;

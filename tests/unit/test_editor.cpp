@@ -9,6 +9,8 @@
 #include <QImageWriter>
 #include <QRandomGenerator>
 #include <QTest>
+#include <QScopeGuard>
+#include <thread>
 #include <QtEndian>
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::editor;
@@ -38,6 +40,13 @@ QByteArray insertBeforeIend(QByteArray png,const QByteArray& extra){return png.i
 class EditorTest:public QObject {
  Q_OBJECT
 private slots:
+ void exportSnapshotKeepsGuiTextOutlinesOnTheWorker(){
+  const auto font=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(font);});
+  EditDocument document(noise({320,200},21));Shape text;text.kind=Shape::Kind::Text;text.rect={10,40,200,40};text.text="synthetic";document.add(text);
+  const auto expected=document.exportPng();QVERIFY(!expected.isEmpty());const auto snapshot=document.snapshotForExport();
+  auto changed=font;changed.setStretch(150);qApp->setFont(changed);QVERIFY(document.exportPng()!=expected);
+  QByteArray saved;std::thread worker([&]{saved=snapshot.exportPng();});worker.join();QCOMPARE(saved,expected);
+ }
  void redactionRemovesSecretPixelsThroughEveryOperation_data(){
   QTest::addColumn<int>("variant");
   QTest::newRow("redact-only")<<0;QTest::newRow("blur-overlapping")<<1;QTest::newRow("blur-adjacent")<<2;

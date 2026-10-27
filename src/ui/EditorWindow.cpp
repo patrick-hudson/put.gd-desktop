@@ -517,7 +517,7 @@ bool EditorWindow::writeCopy(const QString& path,CopyDone done){
  finishPendingEdits();
  const auto target=pngCopyPath(path);const auto generation=doc_.generation();
  // Qt's image/list copies detach on mutation; no live document reaches the worker.
- auto snapshot=doc_;
+ auto snapshot=doc_.snapshotForExport();
  setSavingCopy(true);lastSave_={{"status","saving"},{"path",target}};
  struct Result {QByteArray png;QString reason;};
  auto result=std::make_shared<Result>();
