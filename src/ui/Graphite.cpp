@@ -706,8 +706,8 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         auto text = item->text;
         QString shortcut;
         if (const int tab = text.indexOf('\t'); tab >= 0) { shortcut = text.mid(tab + 1); text = text.left(tab); }
-        int w = 12 + (item->menuHasCheckableItems ? 26 : 0) + (item->maxIconWidth > 0 ? 28 : 0) + metrics.horizontalAdvance(QString(text).remove('&')) + 16;
-        if (!shortcut.isEmpty()) w += 28 + QFontMetrics(font(Type::metadata)).horizontalAdvance(shortcut);
+        int w = 12 + (item->menuHasCheckableItems ? 26 : 0) + (item->maxIconWidth > 0 ? scaled(Metric::icon) + 10 : 0) + metrics.horizontalAdvance(QString(text).remove('&')) + 16;
+        if (!shortcut.isEmpty()) w += 28 + int(std::ceil(QFontMetricsF(font(Type::metadata)).horizontalAdvance(shortcut)));
         else if (item->reservedShortcutWidth > 0) w += 28 + item->reservedShortcutWidth;
         if (item->menuItemType == QStyleOptionMenuItem::SubMenu) w += 20;
         return {w, std::max(32, metrics.height() + 12)};
@@ -1114,7 +1114,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         int right = r.right() - 12 - (item->menuItemType == QStyleOptionMenuItem::SubMenu ? 20 : 0);
         if (!shortcut.isEmpty()) {
             const auto f = font(Type::metadata);
-            const int width = QFontMetrics(f).horizontalAdvance(shortcut);
+            const int width = int(std::ceil(QFontMetricsF(f).horizontalAdvance(shortcut)));
             paintText(*p, QRectF(right - width, r.top(), width, r.height()), shortcut, enabled ? c.textMuted : c.textDisabled, f, Qt::AlignRight | Qt::AlignVCenter);
             right -= width + 24;
         }

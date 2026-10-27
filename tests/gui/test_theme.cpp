@@ -44,6 +44,7 @@
 #include <QGridLayout>
 #include <memory>
 #include <QtTest>
+#include <QtMath>
 #include "fixtures/Waits.h"
 
 using namespace putgd;
@@ -80,6 +81,16 @@ private slots:
                 for(const auto state:{QStyle::State(QStyle::State_Enabled),QStyle::State(QStyle::State_Enabled|QStyle::State_MouseOver),QStyle::State(QStyle::State_None)}){const auto image=render(state);int ink=0,amber=0;for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x){ink+=image.pixelColor(x,y)==(state&QStyle::State_Enabled?c.textSecondary:c.textDisabled);amber+=image.pixelColor(x,y)==c.accent;}QVERIFY(ink>0);QCOMPARE(amber,0);}
                 QCOMPARE(render(QStyle::State_None),render(QStyle::State_MouseOver|QStyle::State_Sunken));
             }
+        }
+    }
+    void menuShortcutsKeepTheirCompleteInk() {
+        for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);const auto& c=Theme::current();
+            QMenu menu;QStyleOptionMenuItem option;option.state=QStyle::State_Enabled;option.rect=QRect(0,0,220,40);option.font=Graphite::font();option.text="Zoom out\tCtrl+-";option.menuItemType=QStyleOptionMenuItem::Normal;
+            QImage actual(option.rect.size(),QImage::Format_RGB32);actual.fill(c.bg);{QPainter painter(&actual);menu.style()->drawControl(QStyle::CE_MenuItem,&option,&painter,&menu);}
+            const auto font=Graphite::font(Graphite::Type::metadata);const int width=qCeil(QFontMetricsF(font).horizontalAdvance("Ctrl+-"));const QRect text(option.rect.right()-12-width,0,width,option.rect.height());
+            QImage expected(option.rect.size(),QImage::Format_RGB32);expected.fill(c.bg);{QPainter painter(&expected);Graphite::paintText(painter,text,"Ctrl+-",c.textMuted,font,Qt::AlignRight|Qt::AlignVCenter,Qt::ElideNone);}
+            QCOMPARE(actual.copy(text),expected.copy(text));
         }
     }
     void confirmationsSeparateQuestionFromConsequence() {
