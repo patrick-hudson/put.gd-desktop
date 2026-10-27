@@ -243,7 +243,12 @@ HistoryPage HistoryStore::list(const HistoryQuery& query) const {
  // "text+other" is an aggregate, never a stored category: clipboard text and
  // other files together, History's "Other files" (2026-10-26). Every other
  // value still matches one stored category exactly.
- if(query.category=="text+other")where+=" AND category IN ('text','other')";else filter("category",query.category);filter("mime",query.mime);filter("profile_id",query.profileId);filter("upload_status",query.uploadStatus);filter("local_status",query.localStatus);filter("remote_status",query.remoteStatus);
+ if(query.category=="text+other")where+=" AND category IN ('text','other')";else filter("category",query.category);filter("mime",query.mime);filter("profile_id",query.profileId);filter("upload_status",query.uploadStatus);filter("local_status",query.localStatus);
+ // Friendly History groups retain exact recorded states for technical queries.
+ if(query.remoteStatus=="available")where+=" AND upload_status='uploaded' AND remote_status IN ('present','not_requested')";
+ else if(query.remoteStatus=="deleted")where+=" AND remote_status IN ('removed','already_missing')";
+ else if(query.remoteStatus=="needs_attention")where+=" AND remote_status NOT IN ('present','not_requested','removed','already_missing')";
+ else filter("remote_status",query.remoteStatus);
  if(!query.from.isEmpty()) {where+=" AND created>=?";values.append(query.from);}if(!query.to.isEmpty()) {where+=" AND created<=?";values.append(query.to);}
  if(!query.search.isEmpty()) {where+=" AND name LIKE ? ESCAPE '\\'";auto escaped=query.search;escaped.replace("\\","\\\\");escaped.replace("%","\\%");escaped.replace("_","\\_");values.append("%"+escaped+"%");}
  QSqlQuery q(db_);q.prepare("SELECT count(*) FROM history"+where);for(const auto& v:values) q.addBindValue(v);
