@@ -359,6 +359,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_, formatAudio_, lockedAudio_, lockedFormat_}) choices->addWidget(w);
     record_ = new QPushButton("Start recording", this); record_->setObjectName("record");
     VisualStyle::role(record_, "primary");
+    record_->setProperty("graphiteSemanticIcon", true);
     pause_ = new QPushButton("Pause", this);
     pause_->setIcon(VisualStyle::icon("pause"));
     resume_ = new QPushButton("Resume", this);

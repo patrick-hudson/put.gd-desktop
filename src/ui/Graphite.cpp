@@ -1079,7 +1079,8 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
         // A checked or pressed quiet or secondary button sits on the selected fill.
         const bool onSelected = enabled && ((option->state & State_Sunken) || ((option->state & State_On) && !(widget && widget->property("graphiteDisclosure").toBool()))) && name != "primary" && name != "danger" && name != "link" && name != "version";
         auto pixmap = icon.pixmap(iconSize, dpr(widget), !enabled ? QIcon::Disabled : onSelected ? QIcon::Selected : QIcon::Normal, option->state & State_On ? QIcon::On : QIcon::Off);
-        if (name == "primary" || name == "danger" || (widget && widget->property("graphiteOnMedia").toBool())) pixmap = tinted(pixmap, look.text);
+        if ((name == "primary" || name == "danger" || (widget && widget->property("graphiteOnMedia").toBool()))
+            && !(enabled && widget && widget->property("graphiteSemanticIcon").toBool())) pixmap = tinted(pixmap, look.text);
         if (widget && widget->property("headerInactive").toBool()) pixmap = tinted(pixmap, t().textMuted);
         p->drawPixmap(target.topLeft(), pixmap);
         // Only an action whose own output is broken is badged; a global gap is the banner's job.
