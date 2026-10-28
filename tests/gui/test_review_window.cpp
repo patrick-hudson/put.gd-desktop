@@ -1279,12 +1279,12 @@ private slots:
         QVERIFY(state["audio"].toString().endsWith("Preview muted"));
         QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->isVisible());
     }
-    void recordingBarProtectsTheFormatBeforeTargetMetadata_data() {
+    void recordingBarKeepsTheTargetAndFormatBeforeStart_data() {
         QTest::addColumn<double>("scale");
         QTest::newRow("standard") << 1.0;
         QTest::newRow("150%") << 1.5;
     }
-    void recordingBarProtectsTheFormatBeforeTargetMetadata() {
+    void recordingBarKeepsTheTargetAndFormatBeforeStart() {
         QFETCH(double, scale);
         const auto original = QApplication::font();
         const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
@@ -1301,7 +1301,13 @@ private slots:
             QVERIFY(format->width() >= format->fontMetrics().horizontalAdvance(purpose) + 44);
             QVERIFY(format->toolTip().contains(o.targetLabel));
         }
-        QVERIFY(!bar.findChild<QLabel*>("target")->isVisible());
+        auto* target = bar.findChild<QLabel*>("target");
+        QVERIFY(target->isVisible());
+        QCOMPARE(target->text(), o.targetLabel);
+        QVERIFY(target->width() >= target->fontMetrics().horizontalAdvance("960 × 600"));
+        QVERIFY(target->height() >= target->heightForWidth(target->width()));
+        QVERIFY(bar.rect().contains(QRect(target->mapTo(&bar, QPoint()), target->size())));
+        QVERIFY(bar.findChild<QPushButton*>("record")->isVisible());
     }
     void stoppingKeepsTheClipAndDiscardStillAsks() {
         ControlBar::Options o;

@@ -331,6 +331,10 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     choices->setSpacing(Graphite::space(Graphite::Space::s));
     target_ = new QLabel(options.targetLabel, choices_);
     target_->setObjectName("target");
+    target_->setWordWrap(true);
+    target_->setMinimumWidth(0);
+    target_->setToolTip(options.targetLabel);
+    target_->setAccessibleName(options.targetLabel);
     audio_ = new QCheckBox("System audio", choices_);
     audio_->setChecked(config.audio.system);
     format_ = new FormatBox(choices_);
@@ -419,12 +423,20 @@ void ControlBar::arrange(bool twoRows) {
 void ControlBar::fitTo(const QRect& screen) {
     // Two rows when one would take most of the screen's width: a 150% text
     // size on a 1366 px laptop, or a narrow portrait monitor.
-    compactTarget_ = false;
+    target_->setMaximumWidth(QWIDGETSIZE_MAX);
+    lockedFacts_->setMaximumWidth(QWIDGETSIZE_MAX);
     arrange(false);
     if (screen.width() > 0 && widestSize().width() > screen.width() * 3 / 4) {
-        compactTarget_ = true;
+        arrange(true);
+        // Reflow the choices before wrapping the target; Start never loses its context.
+        const int room = screen.width() * 3 / 4 - 2 * Graphite::space(Graphite::Space::m);
+        int other = 0;
+        for (auto* widget : std::initializer_list<QWidget*>{audio_, format_, formatAudio_})
+            if (!widget->isHidden()) other += widget->sizeHint().width() + Graphite::space(Graphite::Space::s);
+        target_->setMaximumWidth(qMax(Graphite::scaled(100), room - other));
+        lockedFacts_->setWordWrap(true);
+        lockedFacts_->setMaximumWidth(qMax(Graphite::scaled(100), room));
         refresh();
-        if (widestSize().width() > screen.width() * 3 / 4) arrange(true);
     }
 }
 void ControlBar::askDiscard() {
@@ -460,7 +472,7 @@ void ControlBar::refresh() {
     format_->setVisible(ready);
     formatAudio_->setText(QStringLiteral("%1 has no audio").arg(config_.format == "gif" ? QStringLiteral("GIF") : QStringLiteral("WebP")));
     formatAudio_->setVisible(ready && config_.silent());
-    target_->setVisible(ready && !compactTarget_);
+    target_->setVisible(ready && !options_.targetLabel.isEmpty());
     choices_->setToolTip(options_.targetLabel);
     choices_->setAccessibleDescription(options_.targetLabel);
     lockedFacts_->setVisible(!ready);
