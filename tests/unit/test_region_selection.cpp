@@ -1,5 +1,6 @@
 #include "ui/RegionSelection.h"
 #include <QtTest>
+#include <QScopeGuard>
 using namespace putgd;
 class RegionSelectionTest final:public QObject {
  Q_OBJECT
