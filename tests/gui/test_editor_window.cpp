@@ -289,6 +289,11 @@ private slots:
    QApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);canvas.resize(440,300);QApplication::processEvents();
   }
  }
+ void concurrentNoticesUseTheCompactTextWarningWithoutRefitting(){
+  const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(21);qApp->setFont(font);
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));const auto geometry=window.canvas().geometry();const auto visible=window.canvas().visibleImageRect();
+  add(doc,{{"kind","text"},{"at",QJsonArray{390,100}},{"text","Outside image"},{"fontPixels",28}});window.documentEdited();window.showSaved("/synthetic/copy.png");QApplication::processEvents();auto* warning=window.canvas().findChild<Graphite::Banner*>("annotationTextWarning");auto* feedback=window.findChild<QWidget*>("editorSaveFeedback");QVERIFY(warning&&warning->isVisible()&&feedback->isVisible());QCOMPARE(warning->textLabel()->text(),QString("Text will be cut off"));QCOMPARE(warning->actionButton()->text(),QString("Select affected text"));QVERIFY(warning->accessibleDescription().contains("saved image"));QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(window.canvas().visibleImageRect(),visible);QVERIFY(warning->geometry().bottom()<feedback->y());window.allowClose();
+ }
  void textOverflowFollowsGlyphsCropAndDraftWithoutChangingTheDocument(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   add(doc,{{"kind","text"},{"at",QJsonArray{100,100}},{"text","Note"},{"fontPixels",28}});window.documentEdited();
