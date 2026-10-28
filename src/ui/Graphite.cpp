@@ -2133,6 +2133,13 @@ protected:
         }
         grid->setRowMinimumHeight(3, space(Space::l));
         grid->addWidget(buttons, 4, 0);
+        const auto margins = grid->contentsMargins();
+        const int available = screen()->availableGeometry().width() - 2 * space(Space::xl) - margins.left() - margins.right();
+        const int natural = std::max(title->fontMetrics().size(Qt::TextExpandTabs, title->text()).width(),
+            body ? body->fontMetrics().size(Qt::TextExpandTabs, body->text()).width() : 0);
+        const int contentWidth = std::max(1, std::min({scaled(420), available, natural}));
+        title->setFixedWidth(contentWidth);
+        if (body) body->setFixedWidth(contentWidth);
         grid->activate();
         adjustSize();
     }

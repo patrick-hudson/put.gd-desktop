@@ -282,6 +282,25 @@ private slots:
         const auto* buttons=box->findChild<QDialogButtonBox*>();QVERIFY(buttons);QCOMPARE(buttons->y()-consequence->geometry().bottom()-1,16);
         QCOMPARE(box->defaultButton(),box->button(QMessageBox::Cancel));QCOMPARE(box->escapeButton(),box->button(QMessageBox::Cancel));
     }
+    void confirmationColumnsGrowWithTextAndFitTheScreen() {
+        const auto original = qApp->font();
+        const auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        int previous = 0;
+        for (const int pixels : {14, 21}) {
+            auto enlarged = original; enlarged.setPixelSize(pixels); qApp->setFont(enlarged);
+            std::unique_ptr<QMessageBox> box(Graphite::confirm(nullptr, "Reload settings",
+                "Replace this window's settings with the configuration file as it is now?\nThose unsaved edits are discarded: credentials typed but not stored.", "Reload from file", "Cancel", true));
+            box->show(); putgd::test::settle(10);
+            auto* title = box->findChild<QLabel*>("qt_msgbox_label");
+            auto* body = box->findChild<QLabel*>("qt_msgbox_informativelabel");
+            QVERIFY(title && body); QCOMPARE(title->width(), body->width());
+            QVERIFY(title->width() <= Graphite::scaled(420));
+            QVERIFY(box->width() <= box->screen()->availableGeometry().width());
+            QVERIFY(box->rect().contains(title->geometry())); QVERIFY(box->rect().contains(body->geometry()));
+            if (previous) QVERIFY(box->width() >= previous * 1.35);
+            previous = box->width();
+        }
+    }
     void disclosuresOnlyChangeTheirChevronWhenExpanded() {
         for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
             Theme::setScheme(scheme);QToolButton button;button.setText("Keyboard help");Graphite::disclosure(&button);button.resize(button.sizeHint());
