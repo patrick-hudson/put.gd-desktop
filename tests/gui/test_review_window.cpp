@@ -142,6 +142,7 @@ private slots:
         auto edit = twoMasks(); edit.trimStart = 2000000; edit.trimEnd = 29000000;
         ReviewWindow window(o, config()); window.setEdit(edit); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
         window.resize(1200, 720); putgd::test::settle(10);
         auto* trim = window.findChild<QLabel*>("muted");
         auto* interval = window.findChild<QLabel*>("maskActiveInterval");
@@ -215,10 +216,12 @@ private slots:
             QVERIFY(pixels.pixelColor(x, y) != Theme::current().bg);
         QCOMPARE(t.trackRect().height(), 8);
     }
-    void blurGuidanceStaysInTheMaskRowDuringExportRecovery() {
+    void addBlurGuidanceGivesRecoveryRoomAndResumesUntilDismissed() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         const auto visible = [&] { return window.inspect()["blurGuidance"].toObject()["visible"].toBool(); };
+        QVERIFY(!visible());
+        QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
         QVERIFY(visible());
         const auto frame = window.findChild<FrameView*>()->geometry();
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
@@ -228,10 +231,11 @@ private slots:
         QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
         window.showError("Export failed: disk full");
         QCOMPARE(window.inspect()["statusRow"].toArray().size(), 1);
-        QVERIFY(visible());
+        QVERIFY(!visible());
         QVERIFY(buttonNamed(window, "Try again"));
         window.drive({{"action", "dismissStatus"}});
         QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
+        QVERIFY(visible());
         window.drive({{"action", "dismissBlurTip"}});
         QVERIFY(!visible());
         window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
@@ -366,6 +370,8 @@ private slots:
         window.setEdit(twoMasks());
         QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}).code.isEmpty());
         QVERIFY(controls->isVisible());
+        QVERIFY(!window.inspect()["blurGuidance"].toObject()["visible"].toBool());
+        QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
         QVERIFY(window.inspect()["blurGuidance"].toObject()["visible"].toBool());
         window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
@@ -555,7 +561,10 @@ private slots:
         QVERIFY(track->maskRect("m-blur").height() >= Graphite::scaled(16));
         QCOMPARE(track->maskRect("m-solid").top() - track->maskRect("m-blur").bottom() - 1, 2);
         auto* chip = window.findChild<QToolButton*>("reviewBlurChip");
-        QVERIFY(chip && chip->isVisible());
+        QVERIFY(chip && !chip->isVisible());
+        QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
+        QApplication::processEvents();
+        QVERIFY(chip->isVisible());
         QCOMPARE(chip->text(), QString("Blur may be reversible · Use Redact"));
         QVERIFY(chip->toolTip().contains("Use Redact"));
         QVERIFY(chip->height() >= chip->heightForWidth(chip->width()));
@@ -1344,6 +1353,7 @@ private slots:
         qInfo("review two masks share %.3f timeline %d", state["video"].toObject()["share"].toDouble(), state["timeline"].toObject()["rect"].toArray()[3].toInt());
         QVERIFY2(state["video"].toObject()["share"].toDouble() >= 0.6, qPrintable(QString::number(state["video"].toObject()["share"].toDouble())));
         // Transient guidance sits below the frame, leaving the video unobscured.
+        QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QApplication::processEvents();
         QVERIFY(!window.findChild<QWidget*>("statusRow")->isVisible());
@@ -1393,6 +1403,7 @@ private slots:
             qInfo("review 150%% text %dx%d minimum %dx%d share %.3f", window.width(), window.height(), minimum.width(), minimum.height(), window.inspect()["video"].toObject()["share"].toDouble());
             const auto userGeometry = window.geometry();
             QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
+            QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
             window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
             QApplication::processEvents();
             qInfo("review 150%% text transient %dx%d share %.3f", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble());
@@ -1461,6 +1472,7 @@ private slots:
             else QVERIFY(transport->mapTo(&window, transport->rect().bottomLeft()).y() < window.findChild<FrameView*>()->y());
             QVERIFY(window.height() <= 720 && window.width() <= 1342);
             const auto steady = window.inspect()["video"].toObject()["share"].toDouble();
+            QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
             window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
             QApplication::processEvents();
             const auto transient = window.inspect()["video"].toObject()["share"].toDouble();
@@ -1503,6 +1515,7 @@ private slots:
             qInfo("sequence steady %dx%d share %.3f frame %d mask %d status %d timeline %d", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble(), window.findChild<FrameView*>()->height(), window.findChild<QWidget*>("maskControls")->height(), window.findChild<QWidget*>("statusRow")->height(), timeline(window)->height());
 
             QVERIFY2(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60, qPrintable(QString::number(window.inspect()["video"].toObject()["share"].toDouble())));
+            QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
             window.drive({{"action", "selectMask"}, {"maskId", "blur"}});
             QApplication::processEvents();
             qInfo("sequence transient %dx%d share %.3f frame %d status %d footer %d", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble(), window.findChild<FrameView*>()->height(), window.findChild<QWidget*>("statusRow")->height(), window.findChild<QWidget*>("reviewFooter")->height());
@@ -1558,6 +1571,7 @@ private slots:
             const auto steady = window.inspect()["video"].toObject()["share"].toDouble();
             qInfo("constrained review %dx%d %s window %dx%d steady %.3f", canvas.width(), canvas.height(), qPrintable(Theme::name(scheme)), window.width(), window.height(), steady);
             QVERIFY2(steady >= 0.60, qPrintable(QString::number(steady)));
+            QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
             window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
             window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
             putgd::test::settle(40);
@@ -1573,7 +1587,7 @@ private slots:
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             QVERIFY(!window.inspect()["status"].toString().contains(Graphite::blurWarningText()));
             QVERIFY(!buttonNamed(window, "Use Redact"));
-            QVERIFY(window.inspect()["blurGuidance"].toObject()["visible"].toBool());
+            QVERIFY(!window.inspect()["blurGuidance"].toObject()["visible"].toBool());
             QVERIFY(window.inspect()["errorDetails"].toObject()["visible"].toBool());
             QCOMPARE(window.inspect()["errorDetails"].toObject()["message"].toString(), failure);
             for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && !w->isWindow())
@@ -2128,12 +2142,14 @@ private slots:
         QVERIFY(!row->isVisible());
     }
     // Blur is a visual effect: the editor's guidance shows, readable without
-    // hover, while a blur is placed or selected, with a switch to Redaction.
+    // hover, once Add blur is invoked, with a switch to Redaction.
     void blurGuidanceAndRedactionNames() {
         ReviewWindow window(options(), config());
         QSignalSpy proposals(&window, &ReviewWindow::editProposed);
         window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QVERIFY(!window.inspect()["blurGuidance"].toObject()["visible"].toBool());
+        QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
         QVERIFY(window.inspect()["blurGuidance"].toObject()["visible"].toBool());
         auto* list = window.findChild<QComboBox*>("masks");
         QCOMPARE(list->itemText(1), QString("Redaction 2"));

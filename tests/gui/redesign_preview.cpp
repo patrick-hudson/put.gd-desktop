@@ -409,6 +409,7 @@ int main(int argc,char** argv){
   review.drive({{"action","seek"},{"time",25000000}});if(!shot(review,"30b-review-mask-ended")||!inspected(review,"30b-review-mask-ended"))return 2;
   review.drive({{"action","seek"},{"time",10000000}});
   review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31-review-blur-selected")||!inspected(review,"31-review-blur-selected"))return 2;
+  review.drive({{"action","addMask"},{"kind","blur"}});if(!shot(review,"31j-review-add-blur-warning")||!inspected(review,"31j-review-add-blur-warning"))return 2;review.drive({{"action","dismissBlurTip"}});
   {review.drive({{"action","showMaskOptions"}});if(!shot(*review.findChild<QMenu*>("maskOptionsMenu"),"31i-review-mask-options"))return 2;review.drive({{"action","closeMaskOptions"}});}
   {const auto size=review.size();review.resize(1060,size.height());if(!shot(review,"31b-review-strength-1060"))return 2;review.resize(size);}
   {auto many=edit;for(int i=2;i<8;++i){auto mask=solid;mask.id=QStringLiteral("m-extra-%1").arg(i);many.masks.append(mask);}review.setEdit(many);review.drive({{"action","selectMask"},{"maskId","m-solid"}});if(!shot(review,"31c-review-many-lanes")||!inspected(review,"31c-review-many-lanes"))return 2;review.setEdit(edit);review.drive({{"action","selectMask"},{"maskId","m-blur"}});}

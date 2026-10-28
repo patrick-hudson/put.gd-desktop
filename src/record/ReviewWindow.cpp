@@ -1570,6 +1570,7 @@ void ReviewWindow::selectMask(const QString& id) {
 void ReviewWindow::armMask(const QString& kind) {
     stopPlayback();
     view_->armCreate(kind);
+    if (kind == "blur") blurTipShown_ = true;
     for (auto* s : {escape_, place_, placeEnter_}) s->setEnabled(true);
     refreshLabels();
 }
@@ -1578,6 +1579,7 @@ void ReviewWindow::disarm() {
     for (auto* s : {escape_, place_, placeEnter_}) s->setEnabled(false);
 }
 void ReviewWindow::addMaskAt(const QString& kind, const QRect& r) {
+    if (kind == "blur") blurTipShown_ = true;
     // A new mask starts at the current frame and runs to the retained end.
     const qint64 at = std::min<qint64>(playhead(), options_.durationUs - 1);
     const qint64 end = std::max<qint64>(at + 1, edit_.exportEnd(options_.durationUs));
@@ -1743,7 +1745,6 @@ void ReviewWindow::refreshLabels() {
     // times and Remove for a selected mask, the strength for a selected blur.
     const auto* mask = selectedMask();
     const bool anyBlur = view_->armed() == "blur" || std::any_of(edit_.masks.cbegin(), edit_.masks.cend(), [](const auto& mask) { return mask.kind == "blur"; });
-    if (blurTipShown_ && !anyBlur) blurTipDismissed_ = true;
     const bool properties = !edit_.masks.isEmpty() || !view_->armed().isEmpty();
     maskGroup_->setVisible(properties);
     masks_->setVisible(true);
@@ -1763,7 +1764,8 @@ void ReviewWindow::refreshLabels() {
         const QString startsAt = QStringLiteral("Starts at %1").arg(timeText(mask->start));
         static_cast<MaskInterval*>(maskActive_)->setInterval(QStringLiteral("%1–%2").arg(timeText(mask->start), timeText(mask->end)), at < mask->start ? startsAt : at >= mask->end ? outside : QString());
     } else static_cast<MaskInterval*>(maskActive_)->setInterval(QStringLiteral("No mask selected"), {});
-    const bool warning = anyBlur && !blurTipDismissed_;
+    // Guidance starts only with Add blur, never with selection or a restored edit.
+    const bool warning = anyBlur && blurTipShown_ && !blurTipDismissed_ && message_.tone != "error";
     const auto maximumTime = timeText(options_.durationUs);
     retained_->setFixedWidth(std::max(retained_->fontMetrics().horizontalAdvance(QStringLiteral("Keep 0:00–00:00 · 000 s")),
         retained_->fontMetrics().horizontalAdvance(retained_->text())));
@@ -1772,11 +1774,10 @@ void ReviewWindow::refreshLabels() {
         QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(QStringLiteral("No mask selected"))));
     auto* chip = static_cast<MaskInterval*>(maskActive_)->warningButton();
     auto chipPolicy = chip->sizePolicy();
-    chipPolicy.setRetainSizeWhenHidden(anyBlur && !blurTipDismissed_);
+    chipPolicy.setRetainSizeWhenHidden(warning);
     chip->setSizePolicy(chipPolicy);
     static_cast<MaskInterval*>(maskActive_)->setWarning(warning ? Graphite::blurWarningText() : QString());
     static_cast<MaskInterval*>(maskActive_)->warningButton()->setEnabled(!exporting_ && (view_->armed() == "blur" || (mask && mask->kind == "blur")));
-    if (warning) blurTipShown_ = true;
     findChild<Graphite::Banner*>("reviewBlurAdvice")->setVisible(mask && mask->kind == "blur");
     strengthControl_->setVisible(mask && mask->kind == "blur");
     if (mask) { strength_->blockSignals(true); strength_->setValue(mask->strength); strength_->blockSignals(false); }
@@ -2258,7 +2259,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"revision", double(edit_.revision)}, {"trim", QJsonObject{{"start", double(edit_.trimStart)}, {"end", double(edit_.exportEnd(options_.durationUs))}}},
         {"masks", masks}, {"selectedMaskId", mask ? QJsonValue(mask->id) : QJsonValue(QJsonValue::Null)},
         {"armed", view_->armed().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->armed())},
-        {"blurGuidance", QJsonObject{{"visible", maskGroup_->isVisibleTo(this) && !blurTipDismissed_ && (view_->armed() == "blur" || std::any_of(edit_.masks.cbegin(), edit_.masks.cend(), [](const auto& mask) { return mask.kind == "blur"; }))}, {"text", Graphite::blurWarningText()}, {"drive", QJsonObject{{"action", "showMaskOptions"}}}}},
+        {"blurGuidance", QJsonObject{{"visible", static_cast<MaskInterval*>(maskActive_)->warningButton()->isVisibleTo(this)}, {"text", Graphite::blurWarningText()}, {"drive", QJsonObject{{"action", "showMaskOptions"}}}}},
         {"maskControls", QJsonObject{{"list", masks_->isVisibleTo(this)}, {"times", maskStart_->isVisibleTo(this)}, {"strength", strength_->isVisibleTo(this)}, {"remove", removeMask_->isVisibleTo(this)}}},
         {"maskOptions", QJsonObject{{"available", mask != nullptr}, {"blurRadiusAvailable", mask && mask->kind == "blur"}, {"deleteAvailable", mask != nullptr}, {"open", maskOptions_->menu()->isVisible()}, {"drive", QJsonObject{{"action", "showMaskOptions"}}}}},
         {"formatAdvice", QJsonObject{{"visible", formatAdvice_->isVisibleTo(this)}, {"drive", QJsonObject{{"action", "showFormatTips"}}}}},
