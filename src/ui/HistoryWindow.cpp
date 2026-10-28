@@ -91,7 +91,7 @@ QString statusPhrases(QString text,bool failed=false){
  auto tokens=text.split(" · ");for(int i=0;i<tokens.size();++i)if(!failed||i!=1||tokens[i]=="Saved locally")tokens[i].replace(' ',QChar(0x00a0));return tokens.join(" · ");
 }
 QString metadataSpan(const QString& text,const QColor& color,bool fact=false){return "<span style=\"color:"+color.name()+";font-size:"+QString::number(Graphite::font(fact?Graphite::Type::technical:Graphite::Type::metadata).pixelSize())+"px\">"+statusPhrases(text).toHtmlEscaped()+"</span>";}
-bool outcomePart(const QJsonObject& record,const QString& part){return HistoryModel::statusText(record).split(" · ").contains(part);}
+bool outcomePart(const QJsonObject& record,const QString& part){for(const auto& outcome:HistoryModel::statusText(record).split(" · "))if(outcome==part||outcome.startsWith(part+".")||outcome.startsWith(part+" ("))return true;return false;}
 QColor metadataColor(const QJsonObject& record,const QString& part,const QColor& neutral){
  const auto& t=Theme::current();if(HistoryModel::failed(record))return part==HistoryModel::failureLabel(record)?t.danger:neutral;
  const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();const bool status=part==remote||part=="Shared link"||part=="Copied to clipboard"||part=="Couldn't copy result"||part=="Couldn't copy link"||part=="Result not copied"||part=="Link not copied";
@@ -502,7 +502,7 @@ public:
   if(!grid()){
    const QFontMetricsF titleMetrics(titleFont);const auto shown=titleMetrics.elidedText(i.data().toString(),titleElision(i.data().toString()),itemWidth);const qreal baseline=Graphite::opticalBaseline(titleMetrics,shown,lineTop+QFontMetrics(titleFont).height()/2.0);
    if(!compact&&!failed&&!below&&!columns.output.isEmpty())paintHistoryColumn(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,QFontMetrics(titleFont).height()),i.data(HistoryModel::OutputRole).toString(),t.textSecondary,baseline);
-   if(!compact&&!failed&&!below&&!actionsShown&&!columns.created.isEmpty()){const auto text=i.data(HistoryModel::CreatedRole).toString();const QFontMetricsF metrics(metaFont);paintHistoryColumn(*p,QRectF(columns.created.right()+1-metrics.horizontalAdvance(text),lineTop,metrics.horizontalAdvance(text),QFontMetrics(titleFont).height()),text,t.textMuted,baseline);}
+   if(!compact&&!failed&&!below&&!actionsShown&&!columns.created.isEmpty()){const auto text=i.data(HistoryModel::CreatedRole).toString();const QFontMetricsF metrics(Graphite::font(Graphite::Type::metadata));paintHistoryColumn(*p,QRectF(columns.created.right()+1-metrics.horizontalAdvance(text),lineTop,metrics.horizontalAdvance(text),QFontMetrics(titleFont).height()),text,t.textMuted,baseline);}
   }
   if(actionsShown){
    if(grid()){auto fill=t.surfaceRaised;fill.setAlphaF(0.92);p->setPen(Qt::NoPen);p->setBrush(fill);p->drawRoundedRect(primaryBounds.united(moreBounds).adjusted(-space(Space::xs),-space(Space::xs),space(Space::xs),space(Space::xs)),6,6);}
