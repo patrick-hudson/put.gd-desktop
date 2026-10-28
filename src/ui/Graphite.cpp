@@ -164,6 +164,11 @@ Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, 
     } else if (roleName == "info" || roleName == "quiet" || flat) {
         look.fill = down || on ? c.selected : hover ? mix(c.surface, c.surfaceRaised, 0.8) : QColor(Qt::transparent);
         look.text = enabled ? (on ? c.text : c.textSecondary) : c.textDisabled;
+        if (widget && widget->property("graphiteOnMedia").toBool()) {
+            look.fill = down || on || hover ? QColor(255, 255, 255, down ? 20 : 12) : QColor(Qt::transparent);
+            look.text = Theme::onMedia();
+            if (!enabled) look.text.setAlpha(128);
+        }
     } else {
         look.fill = !enabled ? mix(c.surface, c.surfaceRaised, 0.5) : down || on ? c.selected : hover ? mix(c.surfaceRaised, c.selected, 0.6) : c.surfaceRaised;
         look.stroke = on ? mix(c.borderStrong, c.selected, 0.45) : controlStroke();
@@ -1031,7 +1036,7 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
         // A checked or pressed quiet or secondary button sits on the selected fill.
         const bool onSelected = enabled && ((option->state & State_Sunken) || ((option->state & State_On) && !(widget && widget->property("graphiteDisclosure").toBool()))) && name != "primary" && name != "danger" && name != "link" && name != "version";
         auto pixmap = icon.pixmap(iconSize, dpr(widget), !enabled ? QIcon::Disabled : onSelected ? QIcon::Selected : QIcon::Normal, option->state & State_On ? QIcon::On : QIcon::Off);
-        if (name == "primary" || name == "danger") pixmap = tinted(pixmap, look.text);
+        if (name == "primary" || name == "danger" || (widget && widget->property("graphiteOnMedia").toBool())) pixmap = tinted(pixmap, look.text);
         if (widget && widget->property("headerInactive").toBool()) pixmap = tinted(pixmap, t().textMuted);
         p->drawPixmap(target.topLeft(), pixmap);
         // Only an action whose own output is broken is badged; a global gap is the banner's job.
