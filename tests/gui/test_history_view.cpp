@@ -1174,7 +1174,8 @@ QCOMPARE(button->property("captureUnavailable").toBool(),button->property("captu
    if(size==QSize(1440,960)&&pixels==14){QCOMPARE(search->height(),Graphite::Metric::control);QVERIFY(qAbs(search->mapTo(&window,QPoint()).y()-125)<=1);QVERIFY(qAbs(heading->mapTo(&window,heading->rect().center()).y()-search->mapTo(&window,search->rect().center()).y())<=1);}
    const auto outer=list->visualRect(list->model()->index(0,0));const int inset=Graphite::space(Graphite::Space::s),headingX=list->viewport()->mapFromGlobal(heading->mapToGlobal(QPoint())).x();QStyleOptionViewItem option;option.initFrom(list);option.rect=outer;option.state=QStyle::State_Enabled|QStyle::State_Selected;QImage shot(list->viewport()->size(),QImage::Format_RGB32);shot.fill(Theme::current().bg);{QPainter painter(&shot);list->itemDelegate()->paint(&painter,option,index);}
    int pictureLeft=-1,pictureY=-1;for(int x=0;x<shot.width()&&pictureLeft<0;++x)for(int y=0;y<shot.height();++y)if(shot.pixelColor(x,y)==marker){pictureLeft=x;pictureY=y;break;}
-   QCOMPARE(pictureLeft,gallery?headingX+2:headingX+1);
+   // The rounded thumbnail can gain one edge pixel at a different scaled width.
+   QVERIFY(qAbs(pictureLeft-(gallery?headingX+2:headingX+1))<=1);
    const int cardLeft=outer.left()+inset;QCOMPARE(cardLeft,gallery?headingX:headingX-inset);
    if(!gallery){int eyebrowLeft=-1;for(int x=0;x<shot.width()&&eyebrowLeft<0;++x)for(int y=outer.top();y<outer.top()+qMax(32,QFontMetrics(Graphite::font(Graphite::Type::micro,true)).height()+8);++y)if(shot.pixelColor(x,y)!=Theme::current().bg){eyebrowLeft=x;break;}QVERIFY(qAbs(eyebrowLeft-headingX)<=1);QCOMPARE(shot.pixelColor(cardLeft,pictureY),Theme::current().selected);}
    QVERIFY(!list->horizontalScrollBar()->isVisible());
