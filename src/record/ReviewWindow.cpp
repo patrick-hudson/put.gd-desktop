@@ -958,6 +958,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         painter.drawLine(QPointF(grip.center().x(), grip.top() + 5), QPointF(grip.center().x(), grip.bottom() - 5));
         painter.setPen(Qt::NoPen);
     }
+    QRegion nameKnockouts;
     for (int i = 0; i < masks_.size(); ++i) {
         if (lane_.value(i) < laneScroll_->value() || lane_.value(i) >= laneScroll_->value() + visibleLanes()) continue;
         const auto& mask = masks_[i];
@@ -987,14 +988,19 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
             textArea.setLeft(textArea.left() + side + 4);
         }
         // Labels stay inside their own coverage without erasing interval pixels.
-        if (QFontMetricsF(gutterFont()).horizontalAdvance(name) <= textArea.width() && textArea.height() >= QFontMetrics(gutterFont()).tightBoundingRect(name).height())
+        if (QFontMetricsF(gutterFont()).horizontalAdvance(name) <= textArea.width() && textArea.height() >= QFontMetrics(gutterFont()).tightBoundingRect(name).height()) {
             Graphite::paintText(painter, textArea, name, p.text, gutterFont(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
+            nameKnockouts += QRectF(textArea.left() - 1, textArea.top(), QFontMetricsF(gutterFont()).horizontalAdvance(name) + 2, textArea.height()).toAlignedRect();
+        }
 
     }
     // Keep the playhead inside the lane area, never beside the control rows.
     const int x = xFor(playhead_);
+    painter.save();
+    painter.setClipRegion(QRegion(rect()) - nameKnockouts);
     painter.setPen(QPen(p.text, 1.5));
     painter.drawLine(QPointF(x, track.top()), QPointF(x, lanesBottom() - 1));
+    painter.restore();
     painter.setPen(Qt::NoPen);
     painter.setBrush(p.text);
     painter.drawPolygon(QPolygonF{QPointF(x - 4, timelineTop() + rulerHeight()), QPointF(x + 4, timelineTop() + rulerHeight()), QPointF(x, timelineTop() + rulerHeight() + 5)});

@@ -1624,6 +1624,17 @@ private slots:
             QVERIFY(Theme::contrast(colors.text, selectedFill) >= 4.5);
         }
     }
+    void timelinePlayheadKeepsMaskNamesReadable() {
+        ReviewTimeline timeline; timeline.setDuration(duration); timeline.setTrim(0, duration);
+        timeline.setMasks({mask("solid", "solid", 2000000, 10000000)}, "solid");
+        timeline.resize(900, timeline.sizeHint().height()); timeline.show(); QApplication::processEvents();
+        const auto bar = timeline.maskRect("solid");
+        const QRect name(bar.left() + 7, bar.top() + 1, QFontMetrics(Graphite::font(Graphite::Type::caption)).horizontalAdvance("Redaction 1") - 2, bar.height() - 2);
+        timeline.setPlayhead(11000000); const auto before = timeline.grab().toImage().copy(name);
+        const qint64 at = 2000000 + qRound64(double(name.center().x() - timeline.xFor(2000000)) * duration / (timeline.xFor(duration) - timeline.xFor(0)));
+        timeline.setPlayhead(at); const auto after = timeline.grab().toImage().copy(name);
+        QCOMPARE(after, before);
+    }
     void timelineTargetsAre32PixelsAndNearestHandleWins_data() {
         QTest::addColumn<double>("scale");
         QTest::newRow("standard") << 1.0;
