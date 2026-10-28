@@ -1830,7 +1830,7 @@ void SettingsWindow::refreshCredentialHint(){
    // Only the short identifying prefix, never the key.
    VisualStyle::feedback(g->credentialHint_,hint["accessKeyHint"].toString()+" · Secret key stored"+(hint["tokenStored"].toBool()?QString(" · Session token stored"):QString{})+" · "+(keychain?"In the system keychain":"For this session"));
    g->access_->setPlaceholderText("Type a new key ID to replace it");g->secret_->setPlaceholderText("Type a new secret to replace it");if(hint["tokenStored"].toBool())g->token_->setPlaceholderText("Type a new token to replace it");
-  }else VisualStyle::feedback(g->credentialHint_,keychain?"Locked in the system keychain · Unlock saved credentials to identify it":"None stored");
+  }else VisualStyle::feedback(g->credentialHint_,keychain?"Locked in the system keychain":"None stored");
  });
 }
 void SettingsWindow::refreshDestinationList(const QJsonObject& document){
