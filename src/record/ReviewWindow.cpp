@@ -738,7 +738,9 @@ int gripTarget() { return std::max(40, iconTarget()); }
 int visibleLanes() { return 2; }
 QFont gutterFont() { auto font = Graphite::font(Graphite::Type::caption); font.setWeight(QFont::Medium); return font; }
 QFont rulerFont() { return Graphite::font(Graphite::Type::caption); }
-int laneHeight() { return std::max(Graphite::scaled(16), QFontMetrics(gutterFont()).height() + 4); }
+// Lane names ("Redaction 2", "Blur 3") keep 3 px around their glyphs; the font's
+// unused line leading doesn't take timeline height.
+int laneHeight() { return std::max(16, QFontMetrics(gutterFont()).tightBoundingRect(QStringLiteral("Redaction Blur 0123456789")).height() + 2 * 3); }
 int rowHeight() { return laneHeight() + 2; }
 int rulerHeight() { return 16; }
 int clipHeight() { return rulerHeight() + 10; }
@@ -898,7 +900,7 @@ QSize ReviewTimeline::sizeHint() const { return {480, minimumSizeHint().height()
 int ReviewTimeline::heightForLanes(int width, int lanes) const {
     Q_UNUSED(width);
     // Leave the clamped last target below the trim track and nearest its own lane.
-    const int rows = clipHeight() + std::min(lanes, visibleLanes()) * rowHeight() + (lanes > 0 ? 3 : 0)
+    const int rows = std::max(clipHeight() + std::min(lanes, visibleLanes()) * rowHeight(), lanes > 0 ? clipHeight() - 1 + gripTarget() : 0)
         + (lanes > visibleLanes() ? iconTarget() : 0);
     return timelineTop() + std::max(laneHeader_ ? clipHeight() + rowHeight() / 2 + (laneHeader_->height() + 1) / 2 + 1 : rulerHeight() + 10, rows);
 }

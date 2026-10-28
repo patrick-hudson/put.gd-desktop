@@ -761,7 +761,9 @@ private slots:
         QVERIFY(add->height() >= 28);
         QCOMPARE(add->text(), QString("+ Add mask"));
         QCOMPARE(add->geometry().center().y(), track->maskRect("m-blur").center().y());
-        QVERIFY(track->maskRect("m-blur").height() >= Graphite::scaled(16));
+        // Lane names keep 3 px around their glyphs at every scale.
+        { auto laneFont = Graphite::font(Graphite::Type::caption); laneFont.setWeight(QFont::Medium);
+          QVERIFY(track->maskRect("m-blur").height() >= QFontMetrics(laneFont).tightBoundingRect(QStringLiteral("Redaction 12")).height() + 6); }
         QCOMPARE(track->maskRect("m-solid").top() - track->maskRect("m-blur").bottom() - 1, 2);
         auto* chip = window.findChild<QToolButton*>("reviewBlurChip");
         QVERIFY(chip && !chip->isVisible());
@@ -1643,8 +1645,8 @@ private slots:
         const auto first = t.maskHitRect("one"), second = t.maskHitRect("two");
         const auto firstBar = t.maskRect("one"), secondBar = t.maskRect("two");
         auto laneFont = Graphite::font(Graphite::Type::caption); laneFont.setWeight(QFont::Medium);
-        QVERIFY(firstBar.height() >= Graphite::scaled(16));
-        QVERIFY(firstBar.height() >= QFontMetrics(laneFont).height() + 4);
+        QVERIFY(firstBar.height() >= 16);
+        QVERIFY(firstBar.height() >= QFontMetrics(laneFont).tightBoundingRect(QStringLiteral("Redaction 12")).height() + 6);
         QCOMPARE(secondBar.top() - firstBar.top(), firstBar.height() + 2);
         QVERIFY(first.contains(firstBar));
         QVERIFY(second.contains(secondBar));
