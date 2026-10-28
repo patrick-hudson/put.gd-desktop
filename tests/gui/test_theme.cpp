@@ -925,6 +925,8 @@ private slots:
             QCOMPARE(image.pixelColor(100,0),c.leadOutline);
             QCOMPARE(lead.font().weight(),QFont::Medium);
             QVERIFY(Theme::contrast(c.text,c.lead)>=4.5);
+            QVERIFY(Theme::contrast(c.leadOutline,c.bg)>=3.0);
+            QVERIFY(c.lead != c.surfaceRaised);
             QVERIFY(c.lead!=c.text);
         }
     }

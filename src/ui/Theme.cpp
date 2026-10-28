@@ -22,7 +22,7 @@ const Palette dark{
  QColor("#D6D6D2"),QColor("#777773"),
  QColor("#7C7C78"),
  QColor("#F0F0EC"),QColor("#848480"),
- QColor("#2E2E2C"),QColor("#4A4A46"),QColor("#F0524F"),
+ QColor("#2E2E2C"),QColor("#7C7C78"),QColor("#F0524F"),
  QColor("#DEDED8"),QColor("#F0F0EC"),
 };
 const Palette light{
@@ -33,7 +33,7 @@ const Palette light{
  QColor("#383834"),QColor("#86867E"),
  QColor("#82827B"),
  QColor("#292926"),QColor("#787874"),
- QColor("#F0EFEA"),QColor("#C9C9C3"),QColor("#C8302B"),
+ QColor("#F0EFEA"),QColor("#82827B"),QColor("#C8302B"),
  QColor("#292926"),QColor("#3A3A37"),
 };
 struct Token {const char* name;QColor Palette::* member;};
