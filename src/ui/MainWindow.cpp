@@ -214,7 +214,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});
  updateDestination();updateSaveStatus();tabs_->setCurrentIndex(0);RedesignTheme::apply(*this);
  orderNavigation(header,tabs_,actionButtons_,band_);
- connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{QTimer::singleShot(0,this,[this]{fitBand();});});
+ connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{QTimer::singleShot(0,this,[this]{fitBand();});});installEventFilter(this);
 }
 SettingsWindow* MainWindow::settings(){
  if(settings_)return settings_;
@@ -256,7 +256,10 @@ void MainWindow::updateSaveStatus(){
 }
 // Compact commands keep their task labels; output details stay in the status menu.
 void MainWindow::fitBand(){
- if(!band_||fittingBand_)return;fittingBand_=true;auto* grid=static_cast<QGridLayout*>(band_->layout());
+ if(!band_||fittingBand_)return;fittingBand_=true;
+ // A short window keeps one 4 px inset around the measured navigation track.
+ if(auto* header=findChild<Graphite::WindowHeader*>("windowHeader"))header->setFixedHeight(height()<Graphite::scaled(720)?qMax(Graphite::scaled(48),tabs_->sizeHint().height()+2*space(Space::xs)):Graphite::scaled(Graphite::Metric::header));
+ auto* grid=static_cast<QGridLayout*>(band_->layout());
  auto apply=[this,grid](int stage){grid->setHorizontalSpacing(space(stage>=2?Space::xs:Space::s));grid->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));for(auto* button:actionButtons_){button->setMinimumWidth(0);}for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setToolButtonStyle(stage==3&&(action=="window"||action=="desktop")?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);const auto label=stage&&(action=="window"||action=="desktop")?(action=="window"?QString("Window"):QString("Desktop")):button->property("commandLabel").toString();if(!label.isEmpty())button->setText(QString(label).replace('&',QStringLiteral("&&")));}grid->invalidate();grid->activate();};
  int stage=0;for(;stage<4;++stage){apply(stage);if(grid->sizeHint().width()<=band_->width()||stage==3)break;}
  for(auto* button:actionButtons_)button->setMinimumWidth(button->sizeHint().width());bandStage_=stage;fittingBand_=false;
@@ -292,7 +295,7 @@ QString MainWindow::droppedImage(const QMimeData* data){
 }
 bool MainWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched->objectName()=="appVersionBrowserFeedback"&&(event->type()==QEvent::ShowToParent||event->type()==QEvent::HideToParent))static_cast<QWidget*>(watched)->parentWidget()->setVisible(event->type()==QEvent::ShowToParent);
- if(watched==band_&&event->type()==QEvent::Resize)fitBand();
+ if((watched==this||watched==band_)&&event->type()==QEvent::Resize)fitBand();
  if(watched==statusBar()&&event->type()==QEvent::Resize){updateOutputSummary();updateSaveStatus();}
  if(watched!=editButton_)return QMainWindow::eventFilter(watched,event);
  auto highlight=[this](bool on){editButton_->setProperty("dropTarget",on);editButton_->style()->unpolish(editButton_);editButton_->style()->polish(editButton_);};

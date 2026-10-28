@@ -1898,7 +1898,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.show();
   auto* band=window.findChild<QWidget*>("commandBand");auto* status=window.findChild<QWidget*>("statusBand");QVERIFY(band&&status);
   const auto insets=QMargins(Graphite::space(Graphite::Space::m),Graphite::space(Graphite::Space::s),Graphite::space(Graphite::Space::m),Graphite::space(Graphite::Space::s));
-  for(auto size:{QSize(1440,1000),QSize(1060,680)}){window.resize(size);putgd::test::settle(30);QCOMPARE(band->layout()->contentsMargins(),insets);QVERIFY(status->height()>=Graphite::scaled(56));}
+  for(auto size:{QSize(1440,1000),QSize(1060,680)}){window.resize(size);putgd::test::settle(30);QCOMPARE(band->layout()->contentsMargins(),insets);QVERIFY(status->height()>=Graphite::scaled(56));auto* header=window.findChild<QWidget*>("windowHeader");auto* navigation=window.findChild<QTabBar*>("mainNavigation");QVERIFY(header->height()>=navigation->height()+2*Graphite::space(Graphite::Space::xs));if(size.height()<Graphite::scaled(720))QVERIFY(header->height()<Graphite::scaled(Graphite::Metric::header));}
   auto* version=window.findChild<QLabel*>("appVersion");auto* versionLink=window.findChild<QPushButton*>("appVersionLink");QCOMPARE(version->font().pixelSize(),versionLink->font().pixelSize());QCOMPARE(window.findChild<QPushButton*>("updateAvailable")->font().pixelSize(),version->font().pixelSize());
  }
  void railShowsTheResidentVersionAndOpensItsGitHubPage(){
