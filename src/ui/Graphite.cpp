@@ -569,7 +569,7 @@ void Style::polish(QWidget* widget) {
         // The popup list paints its rows like every other list.
         if (auto* delegate = combo->itemDelegate(); delegate && QByteArray(delegate->metaObject()->className()) == "QComboBoxDelegate")
             combo->setItemDelegate(new QStyledItemDelegate(combo));
-        combo->view()->setProperty("graphiteRowHeight", 32);
+        combo->view()->setProperty("graphiteRowHeight", scaled(32));
     }
     if (QByteArray(widget->metaObject()->className()) == "QTipLabel") widget->setFont(font(Type::metadata));
     // Type roles: size, weight and colour from the tokens. A role change
@@ -842,7 +842,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         if (!shortcut.isEmpty()) w += 28 + int(std::ceil(QFontMetricsF(font(Type::metadata)).horizontalAdvance(shortcut)));
         else if (item->reservedShortcutWidth > 0) w += 28 + item->reservedShortcutWidth;
         if (item->menuItemType == QStyleOptionMenuItem::SubMenu) w += 20;
-        return {w, std::max(32, metrics.height() + 12)};
+        return {w, std::max(scaled(32), metrics.height() + scaled(12))};
     }
     case CT_TabBarTab: {
         const auto* tab = qstyleoption_cast<const QStyleOptionTab*>(option);
@@ -857,7 +857,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
     }
     case CT_ItemViewItem: {
         auto size = QProxyStyle::sizeFromContents(type, option, contents, widget);
-        if (widget) if (const int rows = widget->property("graphiteRowHeight").toInt(); rows > 0) size.setHeight(std::max(size.height(), rows));
+        if (widget) if (const int rows = widget->property("graphiteRowHeight").toInt(); rows > 0) size.setHeight(std::max({size.height(), rows, option->fontMetrics.height() + scaled(12)}));
         return size;
     }
     default: break;

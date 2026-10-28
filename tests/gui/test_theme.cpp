@@ -794,6 +794,24 @@ private slots:
             QCOMPARE(combo.sizeHint().height(), Graphite::scaled(Graphite::Metric::controlCompact));
         }
     }
+    void popupRowsKeepPaddingAroundScaledText() {
+        const auto original = qApp->font();
+        const auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        int previousCombo = 0, previousMenu = 0;
+        for (const qreal scale : {1.0, 1.25, 1.5}) {
+            auto enlarged = original; enlarged.setPixelSize(qRound(QFontInfo(original).pixelSize() * scale)); qApp->setFont(enlarged);
+            QComboBox combo; combo.addItem("Compatible MP4"); combo.show(); combo.showPopup(); putgd::test::settle(10);
+            const int comboRow = combo.view()->sizeHintForRow(0);
+            QVERIFY(comboRow >= combo.view()->fontMetrics().height() + Graphite::scaled(12));
+            QVERIFY(comboRow > previousCombo); previousCombo = comboRow;
+            combo.hidePopup();
+            QMenu menu; auto* action = menu.addAction("Save a copy…"); menu.popup(QPoint(0, 0)); putgd::test::settle(10);
+            const int menuRow = menu.actionGeometry(action).height();
+            QVERIFY(menuRow >= menu.fontMetrics().height() + Graphite::scaled(12));
+            QVERIFY(menuRow > previousMenu); previousMenu = menuRow;
+            menu.close();
+        }
+    }
     void actionWeightsFollowTheirPurpose() {
         for (const auto* role : {"quiet", "secondary", "danger", "primary", "lead"}) {
             QPushButton button("Apply changes"); VisualStyle::role(&button, role);
