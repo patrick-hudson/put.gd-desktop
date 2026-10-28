@@ -202,6 +202,19 @@ protected:
 private:
     BlurChip* warning_;
 };
+// Use the metadata row's top padding; an inline footer keeps its boundary rule.
+class ReviewFooter final : public Graphite::Surface {
+public:
+    explicit ReviewFooter(QWidget* parent) : Graphite::Surface("bg", {}, parent) {}
+protected:
+    void paintEvent(QPaintEvent* event) override {
+        Graphite::Surface::paintEvent(event);
+        QPainter painter(this);
+        const auto* actions = findChild<QWidget*>("reviewActions");
+        const bool inlineActions = actions && actions->layout()->property("singleRow").toBool();
+        painter.fillRect(0, inlineActions ? 0 : reviewSpace(Graphite::Space::xs), width(), 1, Theme::current().border);
+    }
+};
 // Keep destination names intact. The footer moves metadata above its actions
 // before this menu's label needs to wrap; the popup retains selectable details.
 class DestinationMenu final : public QToolButton {
@@ -1389,7 +1402,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // Keep the destination readable while its complete value wraps.
     destination_->setMinimumWidth(12 * destination_->font().pixelSize());
     destination_->setVisible(!options.uploadSummary.isEmpty());
-    auto* footer = new Graphite::Surface("bg", Qt::TopEdge, this);
+    auto* footer = new ReviewFooter(this);
     footer->setObjectName("reviewFooter");
     auto* footerRows = new QVBoxLayout(footer);
     // The action targets supply vertical padding; keep the frame gates with 13 px context.

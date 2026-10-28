@@ -14,6 +14,7 @@
 #include "ui/Theme.h"
 #include <QLabel>
 #include <QApplication>
+#include <QPainter>
 #include <QGridLayout>
 #include <QVBoxLayout>
 #include <QClipboard>
@@ -1636,6 +1637,31 @@ private slots:
             window.resize(ReviewWindow::defaultSize());
             PUTGD_TRY_VERIFY2(window.height() <= 768 && window.inspect()["status"].toString().contains("Free up space, then try again."),
                 qPrintable(QString("Window %1x%2 minimum %3x%4 frame %5 status %6 share %7").arg(window.width()).arg(window.height()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()).arg(window.findChild<FrameView*>()->height()).arg(window.findChild<QWidget*>("statusRow")->height()).arg(window.inspect()["video"].toObject()["share"].toDouble())));
+        }
+    }
+    void deliveryRuleUsesExistingPadding() {
+        const auto previous = Theme::scheme();
+        const auto restore = qScopeGuard([previous] { Theme::setScheme(previous); });
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            auto o = options(); o.canvas = QSize(960, 600); o.availableSize = QSize(1366, 720);
+            ReviewWindow window(o, config()); window.resize(756, 720); window.show();
+            QVERIFY(putgd::test::waitForWindowExposed(&window));
+            auto* footer = window.findChild<QWidget*>("reviewFooter"); QVERIFY(footer);
+            QImage expected(1, 1, QImage::Format_RGB32); expected.fill(Theme::current().bg);
+            { QPainter painter(&expected); painter.fillRect(expected.rect(), Theme::current().border); }
+            const auto shot = footer->grab().toImage();
+            for (const int x : {1, footer->width() / 2, footer->width() - 2}) {
+                QCOMPARE(footer->findChild<QWidget*>("reviewActions")->layout()->property("singleRow").toBool(), false);
+                QCOMPARE(shot.pixelColor(x, 4), expected.pixelColor(0, 0));
+                QCOMPARE(shot.pixelColor(x, 3), Theme::current().bg);
+                QCOMPARE(shot.pixelColor(x, 5), Theme::current().bg);
+            }
+            window.showError("Export failed: disk full"); QApplication::processEvents();
+            auto* retry = buttonNamed(window, "Try again"); QVERIFY(retry);
+            QCOMPARE(retry->property("visualRole").toString(), QString("quiet"));
+            QCOMPARE(retry->font().weight(), QFont::DemiBold);
+            QCOMPARE(window.findChild<QPushButton*>("reviewErrorDetails")->font().weight(), QFont::DemiBold);
         }
     }
     void enlargedPreviewSequenceKeepsFrameGates() {
