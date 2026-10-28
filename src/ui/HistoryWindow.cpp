@@ -118,7 +118,7 @@ private:
 void setHistoryOutcome(QLabel* label,const QJsonObject& group){
  const auto remote=HistoryModel::remoteStateText(group);const bool failed=HistoryModel::failed(group);const auto text=HistoryModel::statusText(group);const auto& t=Theme::current();
  VisualStyle::role(label,failed||remote=="Deletion failed"||remote=="Sharing failed"?"danger":!remote.isEmpty()?"muted":group["uploadStatus"]=="uploaded"?"success":"muted");
- QStringList segments;const auto parts=text.split(" · ");for(const auto& part:parts)segments.append(metadataSpan(part,failed?(part.startsWith("Saved")||part=="Local file unavailable"?t.textSecondary:t.danger):remote=="Deletion failed"||remote=="Sharing failed"?t.danger:remote.isEmpty()&&group["uploadStatus"]=="uploaded"?t.success:t.textSecondary));
+ QStringList segments;const auto parts=text.split(" · ");for(const auto& part:parts)segments.append(metadataSpan(part,failed?(part==HistoryModel::failureLabel(group)?t.danger:t.textSecondary):remote=="Deletion failed"||remote=="Sharing failed"?t.danger:remote.isEmpty()&&group["uploadStatus"]=="uploaded"?t.success:t.textSecondary));
  static_cast<HistoryOutcome*>(label)->setSegments(segments,text);
 }
 // A video's poster carries a play glyph and its length, so a still is never
