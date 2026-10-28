@@ -6,7 +6,10 @@ class QLabel;
 class QRadioButton;
 class QWidget;
 class QToolButton;
+namespace putgd::Graphite { enum class Space; }
 namespace putgd::PreferenceRows {
+// Decorative form spacing stays on the base grid as text and controls grow.
+int spacing(Graphite::Space);
 // Preserve each field and its agent identity while composing card rows. Text
 // fields stack unless preferenceInline is set; inline values share a measured
 // width within their page family.
