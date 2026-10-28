@@ -546,7 +546,7 @@ private slots:
         }
     }
     void outlineIconsKeepSecondaryColourInsideOptionalWashes() {
-        const QStringList outlines{"upload","failed-uploads","download","region","window","desktop","clipboard","record","history","destinations","settings","preferences","info","shortcuts","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","bucket","proton","add","file","video"};
+        const QStringList outlines{"upload","failed-uploads","download","region","window","desktop","clipboard","copy","record","history","destinations","settings","preferences","info","shortcuts","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","bucket","proton","add","file","video"};
         for (const auto& name : outlines) {
             const auto art = IconArt::symbol(name, Qt::white, 4, Qt::red);
             QVERIFY2(art == IconArt::symbol(name, Qt::white, 4, Qt::blue), qPrintable(name));

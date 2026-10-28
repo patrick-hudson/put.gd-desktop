@@ -1634,7 +1634,7 @@ BrowserFeedback::BrowserFeedback(QWidget* parent) : QWidget(parent) {
     message_->setTextFormat(Qt::PlainText);
     VisualStyle::role(message_, "danger");
     layout->addWidget(message_);
-    copy_ = new QPushButton("Copy link", this);
+    copy_ = new QPushButton(VisualStyle::icon("copy"), "Copy link", this);
     VisualStyle::role(copy_, "link");
     layout->addWidget(copy_, 0, Qt::AlignLeft);
     connect(copy_, &QPushButton::clicked, this, [this] { qApp->clipboard()->setText(url_.toString(QUrl::FullyEncoded)); });

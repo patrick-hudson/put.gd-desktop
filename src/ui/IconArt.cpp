@@ -89,6 +89,8 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="clipboard") {
   QPainterPath board;board.moveTo(8,5);board.lineTo(6,5);board.quadTo(4,5,4,7);board.lineTo(4,19);board.quadTo(4,21,6,21);board.lineTo(18,21);board.quadTo(20,21,20,19);board.lineTo(20,7);board.quadTo(20,5,18,5);board.lineTo(16,5);p.drawPath(board);
   rounded(8,3,8,4,1);p.drawLine(12,17,12,10);QPainterPath upload;upload.moveTo(8.5,13.5);upload.lineTo(12,10);upload.lineTo(15.5,13.5);p.drawPath(upload);
+ } else if(name=="copy") {
+  QPainterPath back;back.moveTo(7,16);back.lineTo(5,16);back.quadTo(3,16,3,14);back.lineTo(3,5);back.quadTo(3,3,5,3);back.lineTo(14,3);back.quadTo(16,3,16,5);back.lineTo(16,7);p.drawPath(back);rounded(8,8,13,13,2);
  } else if(name=="history") {
   p.drawArc(QRectF(2.4,2.4,19.2,19.2),135*16,-305*16);
   QPainterPath head;head.moveTo(3,3);head.lineTo(3,8);head.lineTo(8,8);p.drawPath(head);
