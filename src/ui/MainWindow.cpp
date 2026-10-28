@@ -59,6 +59,9 @@ protected:
 };
 class EditSourceButton final:public QToolButton {
 public:using QToolButton::QToolButton;
+ // Toolbar targets retain six history rows with the 56 px status band.
+ QSize sizeHint()const override{auto size=QToolButton::sizeHint();size.setHeight(qMax(32,qMax(iconSize().height(),fontMetrics().height()+space(Space::s))));return size;}
+ QSize minimumSizeHint()const override{return sizeHint();}
 protected:
  void keyPressEvent(QKeyEvent* event)override{if(event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter){click();event->accept();return;}QToolButton::keyPressEvent(event);}
 };
