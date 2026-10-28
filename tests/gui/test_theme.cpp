@@ -249,7 +249,11 @@ private slots:
                 QPainter painter(&shot); bar.style()->drawComplexControl(QStyle::CC_ScrollBar, &option, &painter, &bar); painter.end();
                 const auto handle = bar.style()->subControlRect(QStyle::CC_ScrollBar, &option, QStyle::SC_ScrollBarSlider, &bar);
                 const auto thumb = shot.pixelColor(handle.center());
-                QCOMPARE(thumb, p.controlOutline);
+                QCOMPARE(thumb, p.borderStrong);
+                int inkWidth = 0;
+                for (int x = 0; x < shot.width(); ++x) inkWidth += shot.pixelColor(x, handle.center().y()) != surface;
+                QCOMPARE(inkWidth, 6);
+                QVERIFY(bar.style()->pixelMetric(QStyle::PM_ScrollBarExtent, nullptr, &bar) >= 12);
                 QVERIFY2(Theme::contrast(thumb, surface) >= 3.0, qPrintable(Theme::name(scheme) + " scrollbar on " + surface.name()));
                 for (const auto state : {QStyle::State_MouseOver, QStyle::State_Sunken}) {
                     option.state = QStyle::State_Enabled | state; option.activeSubControls = QStyle::SC_ScrollBarSlider;

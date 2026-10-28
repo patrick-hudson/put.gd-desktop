@@ -15,7 +15,7 @@ namespace {
 // pair, held to the same rules on the selected fill; test_theme checks both
 // schemes.
 const Palette dark{
- QColor("#121212"),QColor("#191919"),QColor("#202020"),QColor("#2A2A2A"),QColor("#333230"),QColor(255,255,255,18),QColor("#515151"),
+ QColor("#121212"),QColor("#191919"),QColor("#202020"),QColor("#2A2A2A"),QColor("#333230"),QColor(255,255,255,18),QColor("#737373"),
  QColor("#F0F0EC"),QColor("#D2D2CF"),QColor("#AAAAA6"),QColor("#9F9F9B"),
  QColor("#E8B66D"),QColor("#F0C887"),QColor("#24201A"),QColor("#E8C591"),
  QColor("#91BCA2"),QColor("#E8B66D"),QColor("#E59B93"),QColor("#EFB4AE"),QColor("#29372E"),QColor("#332C22"),QColor("#3D2A29"),
@@ -26,7 +26,7 @@ const Palette dark{
  QColor("#DEDED8"),QColor("#F0F0EC"),
 };
 const Palette light{
- QColor("#EDEDEA"),QColor("#FFFFFF"),QColor("#F5F5F2"),QColor("#FFFFFF"),QColor("#ECEBE6"),QColor(0,0,0,20),QColor("#AAAAA3"),
+ QColor("#EDEDEA"),QColor("#FFFFFF"),QColor("#F5F5F2"),QColor("#FFFFFF"),QColor("#ECEBE6"),QColor(0,0,0,20),QColor("#8E8E87"),
  QColor("#292926"),QColor("#484844"),QColor("#62625B"),QColor("#62625B"),
  QColor("#8F5B20"),QColor("#774816"),QColor("#FFFFFF"),QColor("#80521D"),
  QColor("#386A4B"),QColor("#8F5B20"),QColor("#A44139"),QColor("#8F322B"),QColor("#DFEDE3"),QColor("#EEE5D8"),QColor("#F4E0DE"),
