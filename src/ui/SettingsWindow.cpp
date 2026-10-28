@@ -2026,7 +2026,7 @@ void SettingsWindow::configurationChanged(){
 void SettingsWindow::updateProtonAccountDisplay(){
  const bool connected=!protonAccountUid_.isEmpty();const bool tested=testedDestinations_.contains(profileId_->text())&&testedDestinations_.value(profileId_->text())==editedProfile();
  PreferenceRows::sectionFor(findControl<QWidget*>("protonFolderSection")->findChild<QFormLayout*>())->setVisible(connected);findControl<QWidget*>("protonFolderPrerequisite")->setVisible(!connected);
- protonAccount_->setText(tested?QString("Account and folder checked · Upload and sharing aren't tested"):connected?(protonAccountEmail_.isEmpty()?QString("Account configured"):protonAccountEmail_+" · Account configured"):QString("Not connected"));
+ protonAccount_->setText(tested?QString("Account and folder checked · Upload and sharing aren't tested"):connected?(protonAccountEmail_.isEmpty()?QString("Account configured"):protonAccountEmail_):QString("Not connected"));
  findControl<QPushButton*>("connectProtonAccount")->setText(connected?"Reconnect account…":"Connect Proton Drive…");
 }
 bool SettingsWindow::applyProtonAccountResult(const QString& id,const QJsonObject& result){
