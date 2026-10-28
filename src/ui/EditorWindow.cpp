@@ -396,10 +396,10 @@ void EditorWindow::placeDestination(){
  for(auto* button:{save_,cancel_,upload_})if(!button->isHidden())room-=button->sizeHint().width()+spacing;
  // Measure the destination and sharing together before assigning spare space.
  auto* documentLayout=static_cast<QHBoxLayout*>(document_->layout());auto* separator=findChild<QLabel*>("editorSharingSeparator");
- documentLayout->setSpacing(Graphite::space(Space::xs));documentLayout->setContentsMargins(0,0,Graphite::space(Space::xl)-spacing,0);documentLayout->itemAt(1)->spacerItem()->changeSize(Graphite::space(Space::l)-2*Graphite::space(Space::xs),0);separator->setVisible(!sharingMode_->isHidden());documentLayout->invalidate();
+ documentLayout->setSpacing(Graphite::space(Space::xs));documentLayout->setContentsMargins(0,0,Graphite::space(Space::xl)-spacing,0);documentLayout->itemAt(1)->spacerItem()->changeSize(Graphite::space(Space::l)-Graphite::space(Space::xs),0);separator->setVisible(!sharingMode_->isHidden());documentLayout->invalidate();
  const bool above=document_->sizeHint().width()>room;
  destinationAbove_=above;
- separator->setVisible(!above&&!sharingMode_->isHidden());documentLayout->setSpacing(Graphite::space(above?Space::l:Space::xs));documentLayout->setContentsMargins(0,0,above?0:Graphite::space(Space::xl)-spacing,0);documentLayout->itemAt(1)->spacerItem()->changeSize(above?0:Graphite::space(Space::l)-2*Graphite::space(Space::xs),0);documentLayout->setStretch(2,above?1:0);documentLayout->setStretch(5,above?0:1);documentLayout->invalidate();
+ separator->setVisible(!above&&!sharingMode_->isHidden());documentLayout->setSpacing(Graphite::space(above?Space::l:Space::xs));documentLayout->setContentsMargins(0,0,above?0:Graphite::space(Space::xl)-spacing,0);documentLayout->itemAt(1)->spacerItem()->changeSize(above?0:Graphite::space(Space::l)-Graphite::space(Space::xs),0);documentLayout->setStretch(2,above?1:0);documentLayout->setStretch(5,above?0:1);documentLayout->invalidate();
  const int slot=Graphite::scaled(Graphite::Metric::control);
  footerGrid_->setRowMinimumHeight(1,above?slot:0);document_->setMinimumHeight(slot);
  footerGrid_->removeWidget(document_);footerGrid_->addWidget(document_,above?1:2,0,1,above?4:1);
