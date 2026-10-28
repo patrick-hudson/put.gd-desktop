@@ -750,8 +750,8 @@ int Style::styleHint(StyleHint hint, const QStyleOption* option, const QWidget* 
 
 QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, const QSize& contents, const QWidget* widget) const {
     const bool compact = compactControl(widget);
-    const int height = compact ? scaled(Metric::controlCompact) : Metric::control;
-    const int padding = compact ? space(Space::s) : 14;
+    const int height = scaled(compact ? Metric::controlCompact : Metric::control);
+    const int padding = scaled(compact ? int(Space::s) : 14);
     switch (type) {
     case CT_PushButton: {
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
@@ -793,7 +793,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
             return {std::max(32, metrics.horizontalAdvance(tool->text) + 8 + (icon ? tool->iconSize.width() + 6 : 0)), std::max(32, metrics.height() + 8)};
         }
         if (!text) {
-            const int side = std::max(compact ? height : Metric::iconTarget, (icon ? tool->iconSize.height() : 16) + padding);
+            const int side = std::max(compact ? height : scaled(Metric::iconTarget), (icon ? tool->iconSize.height() : scaled(16)) + padding);
             return {side + (split ? scaled(Metric::splitArrow) : 0), side};
         }
         const QFont f = buttonFont(widget, option);

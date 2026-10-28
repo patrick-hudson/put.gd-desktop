@@ -769,7 +769,7 @@ private slots:
     void compactControlsMeasureTheirPaintedTypeAndScale() {
         const auto original = QApplication::font();
         const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
-        for (const qreal scale : {1.0, 1.5}) {
+        for (const qreal scale : {1.0, 1.25, 1.5}) {
             auto enlarged = original; enlarged.setPixelSize(qRound(QFontInfo(original).pixelSize() * scale)); QApplication::setFont(enlarged);
             QPushButton push("Start here");
             QToolButton tool; tool.setText("End here"); tool.setToolButtonStyle(Qt::ToolButtonTextOnly);
@@ -777,6 +777,7 @@ private slots:
             for (auto* widget : {static_cast<QWidget*>(&push), static_cast<QWidget*>(&tool), static_cast<QWidget*>(&combo)}) {
                 widget->ensurePolished();
                 const int standard = widget->sizeHint().height();
+                QVERIFY(standard >= Graphite::scaled(Graphite::Metric::control));
                 widget->setProperty("graphiteDensity", "compact");
                 QCOMPARE(widget->font().pixelSize(), Graphite::scaled(13));
                 QCOMPARE(widget->font().weight(), QFont::Normal);
