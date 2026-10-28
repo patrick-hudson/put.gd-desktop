@@ -15,10 +15,10 @@ public:
     BlurRadius(int minimum, int maximum, int value, bool compact, QWidget* parent = nullptr) : QWidget(parent) {
         auto* layout = new QVBoxLayout(this);
         layout->setContentsMargins(0, 0, 0, 0);
-        layout->setSpacing(4);
+        layout->setSpacing(Graphite::space(Graphite::Space::xs));
         auto* row = new QHBoxLayout;
         row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(8);
+        row->setSpacing(Graphite::space(Graphite::Space::s));
         label_ = new QLabel("Blur radius", this);
         VisualStyle::role(label_, "meta");
         if (compact) { row->addWidget(label_); row->addStretch(1); }
@@ -44,17 +44,18 @@ public:
         VisualStyle::role(unit_, "unitSuffix");
         joined->addWidget(unit_);
         row->addWidget(field);
+        if (!compact) row->addStretch(1);
+        layout->addLayout(row);
         if (!compact) {
             slider_ = new QSlider(Qt::Horizontal, this);
             slider_->setRange(minimum, maximum);
             slider_->setValue(value);
             slider_->setAccessibleName("Blur radius");
             slider_->setAccessibleDescription(description);
-            row->addWidget(slider_, 1);
+            layout->addWidget(slider_);
             connect(slider_, &QSlider::valueChanged, value_, &QSpinBox::setValue);
             connect(value_, &QSpinBox::valueChanged, slider_, &QSlider::setValue);
         }
-        layout->addLayout(row);
     }
     QLabel* label() const { return label_; }
     QLabel* unitLabel() const { return unit_; }

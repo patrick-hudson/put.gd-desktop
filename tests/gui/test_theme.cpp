@@ -209,7 +209,7 @@ private slots:
             QCOMPARE(unit->x(),spin->geometry().right()+1);QCOMPARE(unit->y(),spin->y());QCOMPARE(unit->height(),spin->height());
             spin->setFocus(Qt::TabFocusReason);spin->setValue(63);QTest::keyClick(spin,Qt::Key_Up);QCOMPARE(spin->value(),64);QTest::keyClick(spin,Qt::Key_Up);QCOMPARE(spin->value(),64);
             if (compact) QVERIFY(!radius.slider());
-            else {QCOMPARE(radius.slider()->value(),64);radius.slider()->setValue(2);QCOMPARE(spin->value(),2);}
+            else {QCOMPARE(radius.slider()->value(),64);radius.slider()->setValue(2);QCOMPARE(spin->value(),2);radius.resize(180,radius.sizeHint().height());putgd::test::settle(10);QCOMPARE(radius.slider()->width(),radius.width());QVERIFY(radius.slider()->y()>spin->mapTo(&radius,spin->rect().bottomLeft()).y());}
         }
     }
     void sharedBlurWarningInvokesTheHostsRedactAction() {

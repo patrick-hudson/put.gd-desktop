@@ -179,7 +179,7 @@ private slots:
   for(auto* label:window.findChild<QWidget*>("editorGeometry")->findChildren<QLabel*>())if(label->buddy()){QVERIFY(label->geometry().bottom()<label->buddy()->y());QCOMPARE(label->x(),label->buddy()->x());}
   window.selectTool(Tool::Blur);QApplication::processEvents();auto* slider=window.findChild<QSlider*>("blurStrength");auto* value=window.findChild<QSpinBox*>("blurStrengthValue");
   auto* radius=static_cast<BlurRadius*>(slider->parentWidget());const auto spinPosition=value->mapTo(radius,QPoint());
-  QCOMPARE(slider->geometry().center().y(),value->mapTo(radius,value->rect().center()).y());QVERIFY(slider->x()>spinPosition.x()+value->width());QVERIFY(slider->width()>0);QVERIFY(radius->label()->geometry().bottom()<spinPosition.y());QCOMPARE(window.findChild<QPushButton*>("removeMark")->property("graphiteDensity").toString(),QString("compact"));QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("graphiteFlush").toBool());
+  QVERIFY(slider->y()>spinPosition.y()+value->height());QCOMPARE(slider->x(),0);QCOMPARE(slider->width(),radius->width());QVERIFY(radius->label()->geometry().bottom()<spinPosition.y());QCOMPARE(window.findChild<QPushButton*>("removeMark")->property("graphiteDensity").toString(),QString("compact"));QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("graphiteFlush").toBool());
  }
  void propertiesSplitterKeepsTheChosenWidthAcrossToolsAndResizes(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1180,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
