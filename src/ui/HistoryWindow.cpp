@@ -90,7 +90,8 @@ QString linkExpiry(const QJsonObject& detail){
 QString statusPhrases(QString text,bool failed=false){
  auto tokens=text.split(" · ");for(int i=0;i<tokens.size();++i)if(!failed||i!=1||tokens[i]=="Saved locally")tokens[i].replace(' ',QChar(0x00a0));return tokens.join(" · ");
 }
-QString metadataSpan(const QString& text,const QColor& color){return "<span style=\"color:"+color.name()+"\">"+statusPhrases(text).toHtmlEscaped()+"</span>";}
+QString metadataSpan(const QString& text,const QColor& color,bool fact=false){return "<span style=\"color:"+color.name()+";font-size:"+QString::number(Graphite::font(fact?Graphite::Type::technical:Graphite::Type::metadata).pixelSize())+"px\">"+statusPhrases(text).toHtmlEscaped()+"</span>";}
+bool outcomePart(const QJsonObject& record,const QString& part){return HistoryModel::statusText(record).split(" · ").contains(part);}
 QColor metadataColor(const QJsonObject& record,const QString& part,const QColor& neutral){
  const auto& t=Theme::current();if(HistoryModel::failed(record))return part==HistoryModel::failureLabel(record)?t.danger:neutral;
  const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();const bool status=part==remote||part=="Shared link"||part=="Copied to clipboard"||part=="Couldn't copy result"||part=="Couldn't copy link"||part=="Result not copied"||part=="Link not copied";
@@ -99,9 +100,9 @@ QColor metadataColor(const QJsonObject& record,const QString& part,const QColor&
 QString failureDetail(const QJsonObject& record){auto text=HistoryModel::statusText(record);const auto label=HistoryModel::failureLabel(record);if(text==label)return {};if(text.startsWith(label+" · "))text.remove(0,label.size()+3);return text;}
 QString failureDescription(const QModelIndex& index){const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QStringList parts{record["name"].toString(index.data().toString()),HistoryModel::failureLabel(record),index.data(HistoryModel::CreatedRole).toString(),failureDetail(record)};parts.removeAll({});return parts.join(". ");}
 void compactFailureDetail(QTextDocument& document,const QModelIndex& index,int width){
- const auto font=Graphite::font(Graphite::Type::metadata);QStringList spans;for(const auto& part:failureDetail(index.data(HistoryModel::RecordRole).toJsonObject()).split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,Theme::current().textSecondary));
+ const auto font=Graphite::font(Graphite::Type::technical);QStringList spans;for(const auto& part:failureDetail(index.data(HistoryModel::RecordRole).toJsonObject()).split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,Theme::current().textSecondary,true));
  document.setDocumentMargin(0);document.setDefaultFont(font);document.setHtml(Graphite::separatedLines(spans,font,width));auto lines=document.toPlainText().split('\n');auto shown=lines.value(0);if(lines.size()>1)shown+=QChar(0x2026);shown=QFontMetrics(font).elidedText(shown,Qt::ElideRight,qMax(0,width));
- QTextOption option;option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(metadataSpan(shown,Theme::current().textSecondary));document.setTextWidth(qMax(20,width));
+ QTextOption option;option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(metadataSpan(shown,Theme::current().textSecondary,true));document.setTextWidth(qMax(20,width));
 }
 class HistoryHeader final:public QWidget {
 public:using QWidget::QWidget;
@@ -123,7 +124,7 @@ private:
 void setHistoryOutcome(QLabel* label,const QJsonObject& group){
  const auto remote=HistoryModel::remoteStateText(group);const bool failed=HistoryModel::failed(group);const auto text=HistoryModel::statusText(group);const auto& t=Theme::current();
  VisualStyle::role(label,failed||remote=="Deletion failed"||remote=="Sharing failed"?"danger":!remote.isEmpty()?"muted":group["uploadStatus"]=="uploaded"?"success":"muted");
- QStringList segments;const auto parts=text.split(" · ");for(const auto& part:parts)segments.append(metadataSpan(part,failed?(part==HistoryModel::failureLabel(group)?t.danger:t.textSecondary):remote=="Deletion failed"||remote=="Sharing failed"?t.danger:remote.isEmpty()&&group["uploadStatus"]=="uploaded"?t.success:t.textSecondary));
+ QStringList segments;const auto parts=text.split(" · ");for(const auto& part:parts)segments.append(metadataSpan(part,failed?(part==HistoryModel::failureLabel(group)?t.danger:t.textSecondary):remote=="Deletion failed"||remote=="Sharing failed"?t.danger:remote.isEmpty()&&group["uploadStatus"]=="uploaded"?t.success:t.textSecondary,true));
  static_cast<HistoryOutcome*>(label)->setSegments(segments,text);
 }
 // A video's poster carries a play glyph and its length, so a still is never
@@ -248,12 +249,12 @@ int actionHeight(){return Graphite::scaled(28);}
 constexpr int historyThumbWidth=96,historyThumbHeight=60;
 int rowTextInset(){return space(Graphite::scaled(100)>125?Space::xs:Space::s);}
 QFont historyTitleFont(bool selected=false){auto font=Graphite::font(Graphite::Type::body);font.setWeight(selected?QFont::DemiBold:QFont::Medium);return font;}
-int compactMetadataGap(){return Graphite::scaled(100)>125?space(Space::xs):qMax(space(Space::xs),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::metadata)).height())/2);}
-int compactDetailGap(){return qMax(compactMetadataGap(),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+1)/2);}
-int rowContentHeight(){const int title=QFontMetrics(historyTitleFont()).height(),meta=QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,qMax(title+meta+space(Space::xs)+2*rowTextInset()+4,rowTextInset()+title+compactMetadataGap()+(meta+actionHeight()+1)/2+4)));}
+int compactMetadataGap(){return Graphite::scaled(100)>125?space(Space::xs):qMax(space(Space::xs),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::technical)).height())/2);}
+int compactDetailGap(){return qMax(compactMetadataGap(),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::technical)).height()+1)/2);}
+int rowContentHeight(){const int title=QFontMetrics(historyTitleFont()).height(),meta=QFontMetrics(Graphite::font(Graphite::Type::technical)).height();return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,qMax(title+meta+space(Space::xs)+2*rowTextInset()+4,rowTextInset()+title+compactMetadataGap()+(meta+actionHeight()+1)/2+4)));}
 // Enlarged rows keep breathing room above the title and second-line actions.
 int compactTextInset(){return Graphite::scaled(100)>125?space(Space::xs):rowTextInset();}
-int galleryTextHeight(){return QFontMetrics(historyTitleFont()).height()+6+2*QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();}
+int galleryTextHeight(){return QFontMetrics(historyTitleFont()).height()+6+2*QFontMetrics(Graphite::font(Graphite::Type::technical)).height();}
 // The picture spends only the space left after the caption and status lines.
 int galleryPicture(int cardWidth,int cardHeight){return qMax(1,qMin((cardWidth-2)*10/16,cardHeight-1-2*space(Space::m)-galleryTextHeight()));}
 }
@@ -263,24 +264,24 @@ void HistoryWindow::metadataDocument(QTextDocument& document,const QModelIndex& 
  if(compact){
   const auto created=index.data(HistoryModel::CreatedRole).toString();const auto kind=HistoryModel::friendlyAction(record["operation"].toObject()["action"].toString(record["category"].toString())),size=HistoryModel::fileSize(record["bytes"].toInteger());
   auto parts=text.split(" · ",Qt::SkipEmptyParts);parts.removeAll(created);parts.removeAll(kind);parts.removeAll(size);
-  if(HistoryModel::failed(record)){parts={HistoryModel::failureLabel(record)};}const auto status=parts.join(" · ");const QFontMetrics metrics(document.defaultFont());
+  if(HistoryModel::failed(record)){parts={HistoryModel::failureLabel(record)};}const auto status=parts.join(" · ");const QFontMetrics facts(Graphite::font(Graphite::Type::technical));
+  const auto span=[&](const QString& part){return metadataSpan(part,metadataColor(record,part,t.textSecondary),parts.contains(part));};
+  const auto measured=[&](const QStringList& shown){QStringList spans;for(const auto& part:shown.join(" · ").split(" · ",Qt::SkipEmptyParts))spans.append(span(part));QTextDocument measure;measure.setDocumentMargin(0);measure.setDefaultFont(document.defaultFont());measure.setHtml(spans.join(metadataSpan(" · ",t.textSecondary)));return measure.idealWidth();};
   QStringList shown;if(!HistoryModel::failed(record)){if(!kind.isEmpty())shown.append(kind);if(!size.isEmpty())shown.append(size);}if(!status.isEmpty())shown.append(status);if(!created.isEmpty())shown.append(created);
-  for(const auto& optional:{size,kind})if(metrics.horizontalAdvance(shown.join(" · "))>width)shown.removeAll(optional);
-  if(HistoryModel::failed(record)&&metrics.horizontalAdvance(shown.join(" · "))>width)shown.removeAll(created);
-  if(!status.isEmpty()&&metrics.horizontalAdvance(shown.join(" · "))>width){const int room=qMax(0,width-metrics.horizontalAdvance(shown.contains(created)?" · "+created:QString{}));shown.removeAll(status);const auto shortened=metrics.elidedText(status,Qt::ElideRight,room);if(!shortened.isEmpty())shown.prepend(shortened);}
-  QStringList spans;for(const auto& part:shown.join(" · ").split(" · ",Qt::SkipEmptyParts)){auto original=part;if(part.endsWith(QChar(0x2026)))for(const auto& candidate:parts)if(candidate.startsWith(part.chopped(1))){original=candidate;break;}spans.append(metadataSpan(part,metadataColor(record,original,t.textSecondary)));}
+  for(const auto& optional:{size,kind,created})if(measured(shown)>width)shown.removeAll(optional);
+  if(!status.isEmpty()&&measured(shown)>width){shown.removeAll(status);const auto shortened=facts.elidedText(status,Qt::ElideRight,qMax(0,width));if(!shortened.isEmpty())shown.prepend(shortened);}
+  QStringList spans;for(const auto& part:shown.join(" · ").split(" · ",Qt::SkipEmptyParts)){auto original=part;if(part.endsWith(QChar(0x2026)))for(const auto& candidate:parts)if(candidate.startsWith(part.chopped(1))){original=candidate;break;}spans.append(metadataSpan(part,metadataColor(record,original,t.textSecondary),parts.contains(original)));}
   option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(spans.join(metadataSpan(" · ",t.textSecondary)));document.setTextWidth(qMax(20,width));return;
  }
  if(bounded&&!HistoryModel::failed(record))text=QFontMetrics(document.defaultFont()).elidedText(text,Qt::ElideRight,qMax(20,width));
- if(HistoryModel::failed(record)){const auto fullLabel=HistoryModel::failureLabel(record),label=text.startsWith(fullLabel)?fullLabel:text;auto detail=text;if(detail.startsWith(label))detail.remove(0,label.size());document.setHtml("<span style=\"color:"+t.danger.name()+"\">"+statusPhrases(label).toHtmlEscaped()+"</span><span style=\"color:"+t.textSecondary.name()+"\">"+statusPhrases(detail,true).toHtmlEscaped()+"</span>");}
- else{QStringList spans;for(const auto& part:text.split(" · "))spans.append(metadataSpan(part,metadataColor(record,part,t.textMuted)));document.setHtml(spans.join(metadataSpan(" · ",t.textMuted)));}
- if(separated){QStringList spans;for(const auto& part:text.split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,metadataColor(record,part,HistoryModel::failed(record)?t.textSecondary:t.textMuted)));option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(Graphite::separatedLines(spans,document.defaultFont(),width));}document.setTextWidth(qMax(20,width));
+ QStringList statusSpans;for(const auto& part:text.split(" · ",Qt::SkipEmptyParts))statusSpans.append(metadataSpan(part,metadataColor(record,part,HistoryModel::failed(record)?t.textSecondary:t.textMuted),HistoryModel::failed(record)||outcomePart(record,part)));document.setHtml(statusSpans.join(metadataSpan(" · ",t.textMuted)));
+ if(separated){QStringList spans;for(const auto& part:text.split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,metadataColor(record,part,HistoryModel::failed(record)?t.textSecondary:t.textMuted),HistoryModel::failed(record)||outcomePart(record,part)));option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(Graphite::separatedLines(spans,Graphite::font(Graphite::Type::technical),width));}document.setTextWidth(qMax(20,width));
  if(HistoryModel::failed(record)){
   const auto created=index.data(HistoryModel::CreatedRole).toString();if(created.isEmpty())return;
   // Age spends only spare metadata space; it never displaces failure details.
   const auto original=document.toHtml();const qreal available=document.size().height();
-  if(separated){QStringList spans;for(const auto& part:text.split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,metadataColor(record,part,t.textSecondary)));spans.append(metadataSpan(created,t.textSecondary));document.setHtml(Graphite::separatedLines(spans,document.defaultFont(),width));}
-  else{QTextCursor cursor(&document);cursor.movePosition(QTextCursor::End);QTextCharFormat format;format.setForeground(t.textSecondary);cursor.insertText(QString(QChar(0x00a0))+"· "+created,format);}
+  if(separated){QStringList spans;for(const auto& part:text.split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,metadataColor(record,part,t.textSecondary),true));spans.append(metadataSpan(created,t.textSecondary));document.setHtml(Graphite::separatedLines(spans,Graphite::font(Graphite::Type::technical),width));}
+  else{QTextCursor cursor(&document);cursor.movePosition(QTextCursor::End);QTextCharFormat format;format.setFont(Graphite::font(Graphite::Type::metadata));format.setForeground(t.textSecondary);cursor.insertText(QString(QChar(0x00a0))+"· "+created,format);}
   document.setTextWidth(qMax(20,width));document.size();if(separated?document.begin().layout()->lineCount()>2:document.size().height()>available)document.setHtml(original);
  }
 }
@@ -302,7 +303,7 @@ void paintHistoryColumn(QPainter& painter,const QRectF& rect,const QString& text
 }
 QRect HistoryWindow::failureTextArea(const QSize& row,bool gallery,bool dayHeading){
  const auto body=rowBody(QRect(QPoint(),row),gallery,gallery||!dayHeading?0:dayHeadingHeight());
- const auto title=historyTitleFont(),meta=Graphite::font(Graphite::Type::metadata);
+ const auto title=historyTitleFont(),meta=Graphite::font(Graphite::Type::technical);
  const bool compact=!gallery&&body.width()<Graphite::scaled(480);
  const int top=body.top()+(gallery?0:compact?compactTextInset():rowTextInset())+QFontMetrics(title).height();
  const int extra=compact?compactMetadataGap()+compactDetailGap()+QFontMetrics(meta).height():6;
@@ -409,12 +410,12 @@ public:
  bool compactRow(const QRect& r,const QModelIndex& i)const{return !grid()&&rowBody(r,false,heading(i)).width()<Graphite::scaled(480);}
  int compactActionWidth(const QModelIndex& i)const{return actionHeight()+space(Space::s)+listDetailsSpace()+(i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()?0:primaryWidth(i)+space(Space::s));}
  int compactMetadataTop(const QRect& r,const QModelIndex& i)const{return rowBody(r,false,heading(i)).top()+compactTextInset()+QFontMetrics(historyTitleFont()).height()+compactMetadataGap();}
- int compactErrorTop(const QRect& r,const QModelIndex& i)const{return compactMetadataTop(r,i)+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+compactDetailGap();}
+ int compactErrorTop(const QRect& r,const QModelIndex& i)const{return compactMetadataTop(r,i)+QFontMetrics(Graphite::font(Graphite::Type::technical)).height()+compactDetailGap();}
  int inlineTextWidth(const QRect& r,const QModelIndex& i)const{
   const auto body=rowBody(r,false,heading(i));return qMax(20,(i.data(HistoryModel::FailedRole).toBool()?body.width()-actionHeight()-space(Space::s)-listDetailsSpace()-(rowPrimary(i)?primaryWidth(i)+space(Space::s):0):rowColumns(body,i).item.width())-space(Space::s));
  }
  bool actionsBelow(const QRect& r,const QModelIndex& i)const{
-  if(compactRow(r,i))return !i.data(HistoryModel::FailedRole).toBool()&&rowBody(r,false,heading(i)).width()-compactActionWidth(i)<QFontMetrics(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(i.data(HistoryModel::CreatedRole).toString())+space(Space::xxl);
+  if(compactRow(r,i))return !i.data(HistoryModel::FailedRole).toBool()&&rowBody(r,false,heading(i)).width()-compactActionWidth(i)<QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(i.data(HistoryModel::CreatedRole).toString())+space(Space::xxl);
   if(!grid()&&i.data(HistoryModel::FailedRole).toBool())return false;
   if(grid()||(compactList&&!compactList()))return false;
   const auto body=rowBody(r,false,heading(i));QTextDocument metadata;HistoryWindow::metadataDocument(metadata,i,inlineTextWidth(r,i),!rowColumns(body,i).created.isEmpty());
@@ -423,7 +424,7 @@ public:
  QRect primaryRect(QRect r,const QModelIndex& i)const{
   const auto c=card(r,i);const int h=actionHeight(),detailsSpace=detailsShown(i)?listDetailsSpace():0;const int w=qMin(primaryWidth(i),qMax(0,c.width()-2*space(Space::m)-h-space(Space::s)-(grid()?detailsWidth()+space(Space::s):detailsSpace)));
   if(grid())return galleryActionRect(r,i,0);
-  if(compactRow(r,i))return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):compactMetadataTop(r,i)+(QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()-h)/2,w,h);
+  if(compactRow(r,i))return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):compactMetadataTop(r,i)+(QFontMetrics(Graphite::font(Graphite::Type::technical)).height()-h)/2,w,h);
   if(i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,c.top()+rowTextInset()+(QFontMetrics(historyTitleFont()).height()-h)/2,w,h);
   return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):c.top()+(rowContentHeight()-4-h)/2,w,h);
  }
@@ -438,7 +439,7 @@ public:
   const int width=qMax(160,view_->viewport()->width()-2*view_->spacing());
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
   if(compactRow(outer,i)){
-   const bool below=actionsBelow(outer,i),failed=i.data(HistoryModel::FailedRole).toBool();const int metaHeight=QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();int bottom=compactMetadataTop(outer,i)+metaHeight+(below?0:qMax(0,(actionHeight()-metaHeight)/2));
+   const bool below=actionsBelow(outer,i),failed=i.data(HistoryModel::FailedRole).toBool();const int metaHeight=QFontMetrics(Graphite::font(Graphite::Type::technical)).height();int bottom=compactMetadataTop(outer,i)+metaHeight+(below?0:qMax(0,(actionHeight()-metaHeight)/2));
    if(failed)return {width,rowContentHeight()+metaHeight+space(Space::xs)+heading(i)};
    height=qMax(rowContentHeight(),bottom-heading(i)+2+(below?actionHeight()+space(Space::m):0))+heading(i);return {width,height};
   }
@@ -482,7 +483,7 @@ public:
   if(compact)itemWidth=body.width();
   else if(!grid()&&!below)itemWidth=inlineTextWidth(outer,i);
   else if(grid()||below)itemWidth=body.width();
-  const auto titleFont=historyTitleFont(chosen),metaFont=Graphite::font(Graphite::Type::metadata);
+  const auto titleFont=historyTitleFont(chosen),metaFont=Graphite::font(Graphite::Type::technical);
   const int lineTop=grid()?body.top():rowTop+(compact?compactTextInset():rowTextInset());
   Graphite::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,QFontMetrics(titleFont).height()),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,compact?Qt::ElideRight:titleElision(i.data().toString()));
   const int metadataWidth=compact?qMax(20,body.width()-(below?0:compactActionWidth(i))):!grid()&&failed?body.width():itemWidth;
