@@ -202,18 +202,25 @@ protected:
 private:
     BlurChip* warning_;
 };
-// Use the metadata row's top padding; an inline footer keeps its boundary rule.
+// A boundary belongs above an inline footer, clear of text on both sides.
 class ReviewFooter final : public Graphite::Surface {
 public:
     explicit ReviewFooter(QWidget* parent) : Graphite::Surface("bg", {}, parent) {}
 protected:
     void paintEvent(QPaintEvent* event) override {
-        Graphite::Surface::paintEvent(event);
-        QPainter painter(this);
         const auto* actions = findChild<QWidget*>("reviewActions");
-        const bool inlineActions = actions && actions->layout()->property("singleRow").toBool();
-        painter.fillRect(0, inlineActions ? 0 : reviewSpace(Graphite::Space::xs), width(), 1, Theme::current().border);
+        bool boundary = actions && actions->layout()->property("singleRow").toBool();
+        const int y = mapTo(window(), QPoint()).y();
+        for (auto* label : window()->findChildren<QLabel*>()) {
+            if (!boundary || !label->isVisibleTo(window()) || label->text().isEmpty()) continue;
+            const QRect text = label->fontMetrics().boundingRect(label->contentsRect(), label->alignment() | (label->wordWrap() ? Qt::TextWordWrap : 0), label->text()).translated(label->mapTo(window(), QPoint()));
+            if (text.bottom() >= y - 4 && text.top() <= y + 4) boundary = false;
+        }
+        if (boundary != boundary_) { boundary_ = boundary; setHairlines(boundary ? Qt::TopEdge : Qt::Edges{}); }
+        Graphite::Surface::paintEvent(event);
     }
+private:
+    bool boundary_ = false;
 };
 // Keep destination names intact. The footer moves metadata above its actions
 // before this menu's label needs to wrap; the popup retains selectable details.

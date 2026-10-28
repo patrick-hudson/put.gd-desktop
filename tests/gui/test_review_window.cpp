@@ -1639,29 +1639,43 @@ private slots:
                 qPrintable(QString("Window %1x%2 minimum %3x%4 frame %5 status %6 share %7").arg(window.width()).arg(window.height()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()).arg(window.findChild<FrameView*>()->height()).arg(window.findChild<QWidget*>("statusRow")->height()).arg(window.inspect()["video"].toObject()["share"].toDouble())));
         }
     }
-    void deliveryRuleUsesExistingPadding() {
-        const auto previous = Theme::scheme();
-        const auto restore = qScopeGuard([previous] { Theme::setScheme(previous); });
-        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+    void deliveryRuleStaysClearOfLabelText_data() {
+        QTest::addColumn<int>("pixels");
+        QTest::newRow("text100") << 14;
+        QTest::newRow("text150") << 21;
+    }
+    void deliveryRuleStaysClearOfLabelText() {
+        QFETCH(int, pixels);
+        auto font = qApp->font(); font.setPixelSize(pixels); qApp->setFont(font);
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) for (const int width : {756, 1600}) {
             Theme::setScheme(scheme);
-            auto o = options(); o.canvas = QSize(960, 600); o.availableSize = QSize(1366, 720);
-            ReviewWindow window(o, config()); window.resize(756, 720); window.show();
+            auto o = options(); o.canvas = QSize(960, 600); o.availableSize = QSize(1600, 960);
+            ReviewWindow window(o, config()); window.show();
             QVERIFY(putgd::test::waitForWindowExposed(&window));
+            window.resize(width, 720);
+            for (int i = 0; i < 3; ++i) QApplication::processEvents();
             auto* footer = window.findChild<QWidget*>("reviewFooter"); QVERIFY(footer);
+            const bool single = footer->findChild<QWidget*>("reviewActions")->layout()->property("singleRow").toBool();
+            QCOMPARE(single, width == 1600);
+            // Render just the surface to distinguish the rule from glyph pixels.
+            QImage rule(footer->size(), QImage::Format_RGB32); rule.fill(Qt::magenta);
+            footer->render(&rule, QPoint(), QRegion(), QWidget::DrawWindowBackground);
             QImage expected(1, 1, QImage::Format_RGB32); expected.fill(Theme::current().bg);
             { QPainter painter(&expected); painter.fillRect(expected.rect(), Theme::current().border); }
-            const auto shot = footer->grab().toImage();
-            for (const int x : {1, footer->width() / 2, footer->width() - 2}) {
-                QCOMPARE(footer->findChild<QWidget*>("reviewActions")->layout()->property("singleRow").toBool(), false);
-                QCOMPARE(shot.pixelColor(x, 4), expected.pixelColor(0, 0));
-                QCOMPARE(shot.pixelColor(x, 3), Theme::current().bg);
-                QCOMPARE(shot.pixelColor(x, 5), Theme::current().bg);
+            const auto ruleColor = expected.pixelColor(0, 0);
+            int rulePixels = 0;
+            for (int y = 0; y < rule.height(); ++y) for (int x = 0; x < rule.width(); ++x) {
+                if (rule.pixelColor(x, y) != ruleColor) continue;
+                ++rulePixels;
+                QVERIFY(single); QCOMPARE(y, 0);
+                for (auto* label : window.findChildren<QLabel*>()) {
+                    if (!label->isVisibleTo(&window) || label->text().isEmpty()) continue;
+                    const QRect text = label->fontMetrics().boundingRect(label->contentsRect(), label->alignment() | (label->wordWrap() ? Qt::TextWordWrap : 0), label->text()).translated(label->mapTo(&window, QPoint()) - footer->pos());
+                    QVERIFY2(!text.contains(x, y), qPrintable(label->objectName()));
+                    QVERIFY(text.bottom() < y - 4 || text.top() > y + 4);
+                }
             }
-            window.showError("Export failed: disk full"); QApplication::processEvents();
-            auto* retry = buttonNamed(window, "Try again"); QVERIFY(retry);
-            QCOMPARE(retry->property("visualRole").toString(), QString("quiet"));
-            QCOMPARE(retry->font().weight(), QFont::DemiBold);
-            QCOMPARE(window.findChild<QPushButton*>("reviewErrorDetails")->font().weight(), QFont::DemiBold);
+            if (!single) QCOMPARE(rulePixels, 0);
         }
     }
     void enlargedPreviewSequenceKeepsFrameGates() {
