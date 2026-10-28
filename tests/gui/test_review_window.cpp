@@ -2150,7 +2150,7 @@ private slots:
         QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont(Graphite::Type::technical)).family());
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
-        QCOMPARE(window.inspect()["playbackStatus"].toString(), QStringLiteral("Silent preview"));
+        QCOMPARE(window.inspect()["previewAudioStatus"].toString(), QStringLiteral("Silent preview"));
         QVERIFY(window.inspect()["outsideKeptPart"].toBool());
         QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("Keep 0:02–0:29 · 27 s"));
     }

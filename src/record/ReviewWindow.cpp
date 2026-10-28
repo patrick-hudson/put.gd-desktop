@@ -2499,6 +2499,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"statusFacts", statusFacts},
         {"scheme", Theme::name(Theme::scheme())}, {"exporting", exporting_},
         {"playbackStatus", playhead() < edit_.trimStart || playhead() >= edit_.exportEnd(options_.durationUs) ? QStringLiteral("Outside kept part") : QString()},
+        {"previewAudioStatus", playbackStatus_->text()}, {"outsideKeptPart", view_->outsideKeptPart()},
         {"playheadUs", double(playhead())}, {"playing", playing_}, {"speed", speed_->currentData().toDouble()},
         {"revision", double(edit_.revision)}, {"trim", QJsonObject{{"start", double(edit_.trimStart)}, {"end", double(edit_.exportEnd(options_.durationUs))}}},
         {"masks", masks}, {"selectedMaskId", mask ? QJsonValue(mask->id) : QJsonValue(QJsonValue::Null)},
