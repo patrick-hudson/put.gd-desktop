@@ -152,6 +152,23 @@ private slots:
             }
         }
     }
+    void secondaryButtonLabelsKeepTheMainTextInk() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme); const auto& c = Theme::current();
+            for (const auto* role : {"", "secondary"}) {
+                QPushButton button("Browse…"); VisualStyle::role(&button, role);
+                for (const auto state : {QStyle::State(QStyle::State_Enabled), QStyle::State(QStyle::State_Enabled | QStyle::State_MouseOver), QStyle::State(QStyle::State_Enabled | QStyle::State_Sunken), QStyle::State(QStyle::State_None)}) {
+                    QStyleOptionButton option; option.rect = QRect(0, 0, 180, 36); option.text = button.text(); option.state = state;
+                    QImage shot(option.rect.size(), QImage::Format_RGB32); shot.fill(c.bg);
+                    { QPainter painter(&shot); button.style()->drawControl(QStyle::CE_PushButtonLabel, &option, &painter, &button); }
+                    int ink = 0;
+                    const auto expected = state & QStyle::State_Enabled ? c.text : c.textDisabled;
+                    for (int y = 0; y < shot.height(); ++y) for (int x = 0; x < shot.width(); ++x) ink += shot.pixelColor(x, y) == expected;
+                    QVERIFY(ink > 0);
+                }
+            }
+        }
+    }
     void disabledQuietToolButtonsShowOnlyTheirGlyph() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);const auto& colors=Theme::current();

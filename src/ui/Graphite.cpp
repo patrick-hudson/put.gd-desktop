@@ -176,7 +176,7 @@ Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, 
     } else {
         look.fill = !enabled ? mix(c.surface, c.surfaceRaised, 0.5) : down || on ? c.selected : hover ? mix(c.surfaceRaised, c.selected, 0.6) : c.surfaceRaised;
         look.stroke = on ? mix(c.borderStrong, c.selected, 0.45) : controlStroke();
-        look.text = enabled ? (on ? c.text : c.textSecondary) : c.textDisabled;
+        look.text = enabled ? c.text : c.textDisabled;
     }
     if (!enabled) {
         look.fill = QColor(Qt::transparent);
@@ -375,7 +375,7 @@ QPalette palette() {
     palette.setColor(QPalette::AlternateBase, p.surface);
     palette.setColor(QPalette::Text, p.text);
     palette.setColor(QPalette::Button, p.surfaceRaised);
-    palette.setColor(QPalette::ButtonText, p.textSecondary);
+    palette.setColor(QPalette::ButtonText, p.text);
     palette.setColor(QPalette::BrightText, p.text);
     palette.setColor(QPalette::Light, p.borderStrong);
     palette.setColor(QPalette::Midlight, p.border);
