@@ -1555,6 +1555,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     speed_->setFixedHeight(textControlHeight(speed_));
     speed_->setFixedWidth(int(std::ceil(QFontMetricsF(speed_->font()).horizontalAdvance(QStringLiteral("0.5×"))))
         + std::max(Graphite::Metric::splitZone + reviewSpace(Graphite::Space::s), 3 * Graphite::space(Graphite::Space::xs) + Graphite::scaled(16)));
+    play_->setFixedWidth(speed_->width());
     format_->setFixedHeight(textControlHeight(format_));
     formatAdvice_->setFixedHeight(format_->height());
     for (auto* action : {upload_, save_, cancel_}) {
