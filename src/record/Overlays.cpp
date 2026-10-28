@@ -423,6 +423,7 @@ void ControlBar::arrange(bool twoRows) {
 void ControlBar::fitTo(const QRect& screen) {
     // Two rows when one would take most of the screen's width: a 150% text
     // size on a 1366 px laptop, or a narrow portrait monitor.
+    target_->setMinimumWidth(qMin(Graphite::scaled(180), target_->fontMetrics().horizontalAdvance(options_.targetLabel.section(QStringLiteral(" · "), -1))));
     target_->setMaximumWidth(QWIDGETSIZE_MAX);
     lockedFacts_->setMaximumWidth(QWIDGETSIZE_MAX);
     arrange(false);
@@ -433,7 +434,7 @@ void ControlBar::fitTo(const QRect& screen) {
         int other = 0;
         for (auto* widget : std::initializer_list<QWidget*>{audio_, format_, formatAudio_})
             if (!widget->isHidden()) other += widget->sizeHint().width() + Graphite::space(Graphite::Space::s);
-        target_->setMaximumWidth(qMax(Graphite::scaled(100), room - other));
+        target_->setMaximumWidth(qMax(target_->minimumWidth(), qMax(Graphite::scaled(100), room - other)));
         lockedFacts_->setWordWrap(true);
         lockedFacts_->setMaximumWidth(qMax(Graphite::scaled(100), room));
         refresh();
