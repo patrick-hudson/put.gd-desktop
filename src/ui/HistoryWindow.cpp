@@ -243,6 +243,7 @@ constexpr int historyThumbWidth=96,historyThumbHeight=60;
 int rowTextInset(){return space(Graphite::scaled(100)>125?Space::xs:Space::s);}
 QFont historyTitleFont(bool selected=false){auto font=Graphite::font(Graphite::Type::body);font.setWeight(selected?QFont::DemiBold:QFont::Medium);return font;}
 int compactMetadataGap(){return Graphite::scaled(100)>125?space(Space::xs):qMax(space(Space::xs),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::metadata)).height())/2);}
+int compactDetailGap(){return qMax(compactMetadataGap(),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+1)/2);}
 int rowContentHeight(){const int title=QFontMetrics(historyTitleFont()).height(),meta=QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,qMax(title+meta+space(Space::xs)+2*rowTextInset()+4,rowTextInset()+title+compactMetadataGap()+(meta+actionHeight()+1)/2+4)));}
 // Enlarged rows keep breathing room above the title and second-line actions.
 int compactTextInset(){return Graphite::scaled(100)>125?space(Space::xs):rowTextInset();}
@@ -287,7 +288,7 @@ QRect HistoryWindow::failureTextArea(const QSize& row,bool gallery,bool dayHeadi
  const auto title=historyTitleFont(),meta=Graphite::font(Graphite::Type::metadata);
  const bool compact=!gallery&&body.width()<Graphite::scaled(480);
  const int top=body.top()+(gallery?0:compact?compactTextInset():rowTextInset())+QFontMetrics(title).height();
- const int extra=compact?2*compactMetadataGap()+QFontMetrics(meta).height():6;
+ const int extra=compact?compactMetadataGap()+compactDetailGap()+QFontMetrics(meta).height():6;
  return {body.left(),top+extra,qMax(20,body.width()),QFontMetrics(meta).height()};
 }
 namespace {
@@ -392,7 +393,7 @@ public:
  bool compactRow(const QRect& r,const QModelIndex& i)const{return !grid()&&rowBody(r,false,heading(i)).width()<Graphite::scaled(480);}
  int compactActionWidth(const QModelIndex& i)const{return actionHeight()+space(Space::s)+listDetailsSpace()+(i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()?0:primaryWidth(i)+space(Space::s));}
  int compactMetadataTop(const QRect& r,const QModelIndex& i)const{return rowBody(r,false,heading(i)).top()+compactTextInset()+QFontMetrics(historyTitleFont()).height()+compactMetadataGap();}
- int compactErrorTop(const QRect& r,const QModelIndex& i)const{return compactMetadataTop(r,i)+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+compactMetadataGap();}
+ int compactErrorTop(const QRect& r,const QModelIndex& i)const{return compactMetadataTop(r,i)+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+compactDetailGap();}
  int inlineTextWidth(const QRect& r,const QModelIndex& i)const{
   const auto body=rowBody(r,false,heading(i));return qMax(20,(i.data(HistoryModel::FailedRole).toBool()?body.width()-actionHeight()-space(Space::s)-listDetailsSpace()-(rowPrimary(i)?primaryWidth(i)+space(Space::s):0):rowColumns(body,i).item.width())-space(Space::s));
  }
@@ -472,7 +473,7 @@ public:
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
   if(compact){
    QTextDocument document;historyMetadata(document,i,metadataWidth,false,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,QFontMetrics(metaFont).height()));document.drawContents(p);p->restore();
-   if(failed){QTextDocument error;compactFailureDetail(error,i,body.width()-compactActionWidth(i));p->save();p->translate(body.left(),compactErrorTop(outer,i));p->setClipRect(QRectF(0,0,body.width(),QFontMetrics(metaFont).height()));error.drawContents(p);p->restore();}
+   if(failed){QTextDocument error;compactFailureDetail(error,i,body.width()-(compactErrorTop(outer,i)<=moreBounds.bottom()?compactActionWidth(i):0));p->save();p->translate(body.left(),compactErrorTop(outer,i));p->setClipRect(QRectF(0,0,body.width(),QFontMetrics(metaFont).height()));error.drawContents(p);p->restore();}
   }
   else if(!grid()){QTextDocument document;historyMetadata(document,i,metadataWidth,!below&&!columns.created.isEmpty(),compactList&&!compactList());p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
   else if(failed){
