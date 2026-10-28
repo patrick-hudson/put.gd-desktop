@@ -185,18 +185,17 @@ public:explicit HistoryCategoryDelegate(QObject* parent):QStyledItemDelegate(par
  void paint(QPainter* painter,const QStyleOptionViewItem& option,const QModelIndex& index)const override{if(index.flags()==Qt::NoItemFlags){painter->save();painter->setPen(Theme::current().border);painter->drawLine(option.rect.left()+2,option.rect.center().y(),option.rect.right()-2,option.rect.center().y());painter->restore();}else navigation_.paint(painter,option,index);}
 private:Graphite::NavigationDelegate navigation_;
 };
-// Item takes the space left by Destination, Created and a stable trailing
-// icon slot. Each row reserves only its own primary action inside Item.
+// Time and row actions share a stable trailing slot, so hover never moves text.
 struct Columns {QRect item,output,created,actions;};
-Columns historyColumns(const QRect& row,bool details=false,bool destination=true){
- Columns c;const int h=qMax(32,QFontMetrics(Graphite::font()).height()+12),action=h+8+(details?qBound(32,h,36)+8:0),width=qMax(0,row.width()-action),minimum=Graphite::scaled(280);c.actions=QRect(row.right()-action+1,row.top(),action,row.height());const int created=width-Graphite::scaled(104)>=minimum?Graphite::scaled(104):0;const int output=destination&&created&&width-created-Graphite::scaled(132)>=minimum?Graphite::scaled(132):0;
- c.created=created?QRect(row.left()+width-created,row.top(),created,row.height()):QRect();
- c.output=output?QRect(row.left()+width-created-output,row.top(),output,row.height()):QRect();
- c.item=QRect(row.left(),row.top(),width-created-output,row.height());return c;
+Columns historyColumns(const QRect& row,bool details=false,bool destination=true,int primary=0){
+ Columns c;const int h=Graphite::scaled(28),actions=h+(details?h+space(Space::s):0)+(primary?primary+space(Space::s):0),created=qMax(Graphite::scaled(80),QFontMetrics(Graphite::font(Graphite::Type::metadata)).horizontalAdvance("88 min ago")),tail=qMax(created,actions),width=qMax(0,row.width()-tail-space(Space::s));
+ const int output=destination&&width-Graphite::scaled(132)>=Graphite::scaled(200)?Graphite::scaled(132):0;
+ c.actions=QRect(row.right()-tail+1,row.top(),tail,row.height());c.created=QRect(row.right()-created+1,row.top(),created,row.height());
+ c.output=output?QRect(row.left()+width-output,row.top(),output,row.height()):QRect();c.item=QRect(row.left(),row.top(),width-output,row.height());return c;
 }
 int dayHeadingHeight(){return qMax(32,QFontMetrics(Graphite::font(Graphite::Type::micro,true)).height()+8);}
-// Row actions are 32 px targets, taller when enlarged text needs it.
-int actionHeight(){return qMax(32,QFontMetrics(Graphite::font()).height()+12);}
+// Compact targets follow text enlargement.
+int actionHeight(){return Graphite::scaled(28);}
 constexpr int historyThumbWidth=96,historyThumbHeight=60;
 int rowTextInset(){return space(Graphite::scaled(100)>125?Space::xs:Space::s);}
 int rowContentHeight(){return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+space(Space::xs)+2*rowTextInset()+4));}
@@ -211,10 +210,10 @@ void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,
 }
 // The row's body: right of the thumbnail in a list, under it in a gallery tile.
 QRect rowBody(const QRect& outer,bool gallery,int heading){
- auto bounded=outer;if(!gallery)bounded.setWidth(qMin(760,bounded.width()));const auto card=bounded.adjusted(6,heading+2,-6,-2);
+ const auto card=outer.adjusted(space(Space::s),heading+2,-space(Space::s),-2);
  if(gallery){const int top=card.top()+1+galleryPicture(card.width())+10;return QRect(card.left()+14,top,card.width()-28,qMax(0,card.bottom()-top+1));}
- const int left=card.left()+12+historyThumbWidth+16;
- return QRect(left,card.top(),card.right()-12-left+1,rowContentHeight()-4);
+ const int left=card.left()+space(Space::s)+historyThumbWidth+space(Space::l);
+ return QRect(left,card.top(),card.right()-space(Space::s)-left+1,rowContentHeight()-4);
 }
 // Align the visible ink too: C and J can have different (even negative)
 // bearings in distro fonts.
@@ -274,9 +273,9 @@ QAccessibleInterface* historyAccessibility(const QString&,QObject* object){if(au
 class HistoryDelegate final:public QStyledItemDelegate {
 public:
  explicit HistoryDelegate(QListView* view):QStyledItemDelegate(view),view_(view){
-  primary_=Graphite::toolButton({}, {},"secondary",view_->viewport());primary_->setObjectName("historyRowPrimary");primary_->setToolButtonStyle(Qt::ToolButtonTextOnly);primary_->hide();connect(primary_,&QToolButton::clicked,this,[this]{const auto i=view_->currentIndex();if(i.isValid()&&primaryShown(i)&&primary)primary(i);});
-  more_=Graphite::toolButton({}, {},"quiet",view_->viewport());more_->setObjectName("historyRowMore");more_->setIcon(Graphite::chromeIcon("more"));more_->hide();view_->viewport()->installEventFilter(this);
-  details_=Graphite::toolButton({}, {},"quiet",view_->viewport());details_->setObjectName("historyRowDetails");details_->setIcon(Graphite::chromeIcon("chevron-right"));details_->setAccessibleName("Show details");details_->setAccessibleDescription("Open the selected item's details. Enter also opens details.");details_->setToolTip("Show details (Enter)");details_->hide();connect(details_,&QToolButton::clicked,this,[this]{if(details)details(view_->currentIndex());});
+  primary_=Graphite::toolButton({}, {},"secondary",view_->viewport());primary_->setObjectName("historyRowPrimary");primary_->setToolButtonStyle(Qt::ToolButtonTextOnly);primary_->setProperty("graphiteDensity","compact");primary_->hide();connect(primary_,&QToolButton::clicked,this,[this]{const auto i=view_->currentIndex();if(i.isValid()&&primaryShown(i)&&primary)primary(i);});
+  more_=Graphite::toolButton({}, {},"quiet",view_->viewport());more_->setObjectName("historyRowMore");more_->setIcon(Graphite::chromeIcon("more"));more_->setProperty("graphiteDensity","compact");more_->hide();view_->viewport()->installEventFilter(this);
+  details_=Graphite::toolButton({}, {},"quiet",view_->viewport());details_->setObjectName("historyRowDetails");details_->setIcon(Graphite::chromeIcon("chevron-right"));details_->setAccessibleName("Show details");details_->setAccessibleDescription("Open the selected item's details. Enter also opens details.");details_->setToolTip("Show details (Enter)");details_->setProperty("graphiteDensity","compact");details_->hide();connect(details_,&QToolButton::clicked,this,[this]{if(details)details(view_->currentIndex());});
   connect(more_,&QToolButton::clicked,this,[this]{const auto i=view_->currentIndex();if(i.isValid()&&menu)menu(i,more_->mapToGlobal(QPoint(0,more_->height())));});
   auto update=[this]{QTimer::singleShot(0,this,[this]{updateMore();});};
   connect(view_->selectionModel(),&QItemSelectionModel::currentChanged,this,update);connect(view_->selectionModel(),&QItemSelectionModel::selectionChanged,this,update);connect(view_->verticalScrollBar(),&QScrollBar::valueChanged,this,update);connect(view_->model(),&QAbstractItemModel::modelReset,this,update);
@@ -307,43 +306,42 @@ public:
  bool grid()const{return view_->viewMode()==QListView::IconMode;}
  bool menuOnly()const{return !grid();}
  bool columnMenuOnly()const{return compactList&&compactList();}
- Columns rowColumns(const QRect& body)const{const auto* model=qobject_cast<HistoryModel*>(view_->model());return historyColumns(body,columnMenuOnly(),!model||model->multipleDestinations());}
+ Columns rowColumns(const QRect& body,const QModelIndex& i)const{const auto* model=qobject_cast<HistoryModel*>(view_->model());return historyColumns(body,columnMenuOnly(),!model||model->multipleDestinations(),rowPrimary(i)?primaryWidth(i):0);}
  bool beside(const QModelIndex& i)const{return menuOnly()||(grid()&&inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
  bool detailsShown(const QModelIndex& i)const{return view_->selectionModel()->selectedRows().size()<=1&&(grid()||(compactList&&compactList()&&view_->selectionModel()->isSelected(i)))&&!(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
  bool recovery(const QModelIndex& i)const{return i.data(HistoryModel::PrimaryActionRole).toString().startsWith("Retry ");}
- bool inlineActions(const QModelIndex& i)const{return grid()||!(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
- bool rowPrimary(const QModelIndex& i)const{if(grid()&&inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i))return false;return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()&&(grid()||!inspectorBeside||!inspectorBeside()||recovery(i));}
+ bool inlineActions(const QModelIndex&)const{return true;}
+ bool rowPrimary(const QModelIndex& i)const{if(grid()&&inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i))return false;return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  bool primaryShown(const QModelIndex& i)const{return rowPrimary(i)&&inlineActions(i)&&(view_->selectionModel()->selectedRows().size()<=1||(grid()&&recovery(i)))&&!i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
- QRect card(QRect r,const QModelIndex& i)const{if(!grid())r.setWidth(qMin(760,r.width()));return r.adjusted(6,heading(i)+2,-6,-2);}
+ QRect card(QRect r,const QModelIndex& i)const{return r.adjusted(space(Space::s),heading(i)+2,-space(Space::s),-2);}
  // Gallery cards share each row evenly. The preferred width grows with the
  // text size, so enlarged text gives fewer columns, not heavily elided names.
  // The flow layout always reserves a scrollbar's extent (QListViewPrivate::prepareItemsLayout).
  int galleryWidth()const{const int s=view_->spacing(),reserve=view_->style()->pixelMetric(QStyle::PM_ScrollView_ScrollBarOverlap,nullptr,view_->verticalScrollBar())?0:view_->style()->pixelMetric(QStyle::PM_ScrollBarExtent,nullptr,view_->verticalScrollBar());const int available=qMax(160,view_->maximumViewportSize().width()-reserve-2*s);int minimum=Graphite::scaled(248);for(int row=0;row<view_->model()->rowCount();++row)minimum=qMax(minimum,3*qMax(primaryWidth(view_->model()->index(row,0)),detailsWidth())+36);const int columns=qMax(1,available/(minimum+s));return qMax(160,available/columns-s);}
  // Failure metadata wraps below the title and reserved actions.
  // Hover and selection never change the reserved height.
- int listDetailsSpace()const{return !grid()&&compactList&&compactList()?qBound(32,actionHeight(),36)+8:0;}
+ int listDetailsSpace()const{return !grid()&&compactList&&compactList()?actionHeight()+space(Space::s):0;}
  int detailsWidth()const{return qMax(details_->sizeHint().width(),QFontMetrics(Graphite::font()).horizontalAdvance("Details")+30);}
  QRect galleryActionRect(QRect r,const QModelIndex& i,int column)const{const auto c=card(r,i);const int left=c.left()+12,width=c.width()-24,first=left+width*column/3,last=left+width*(column+1)/3;return QRect(first,c.top()+1+galleryPicture(c.width())-actionHeight()-8,last-first,actionHeight());}
- QRect detailsRect(QRect r,const QModelIndex& i)const{if(grid())return galleryActionRect(r,i,1);const auto b=menuRect(r,i);const int w=grid()?detailsWidth():qBound(32,actionHeight(),36);const int h=grid()?b.height():w;return QRect(b.left()-8-w,b.top()+(b.height()-h)/2,w,h);}
- int primaryWidth(const QModelIndex& i)const{return qMax(84,QFontMetrics(Graphite::font()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())+28);}
+ QRect detailsRect(QRect r,const QModelIndex& i)const{if(grid())return galleryActionRect(r,i,1);const auto b=menuRect(r,i);const int w=grid()?detailsWidth():actionHeight();const int h=grid()?b.height():w;return QRect(b.left()-8-w,b.top()+(b.height()-h)/2,w,h);}
+ int primaryWidth(const QModelIndex& i)const{return qMax(Graphite::scaled(84),int(std::ceil(QFontMetricsF(Graphite::labelFont()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())))+space(Space::xxl));}
  int inlineTextWidth(const QRect& r,const QModelIndex& i)const{
-  const auto body=rowBody(r,false,heading(i));return qMax(20,(i.data(HistoryModel::FailedRole).toBool()?body.width()-actionHeight()-8-listDetailsSpace():rowColumns(body).item.width())-12-(rowPrimary(i)&&inlineActions(i)?primaryWidth(i)+8:0));
+  const auto body=rowBody(r,false,heading(i));return qMax(20,(i.data(HistoryModel::FailedRole).toBool()?body.width()-actionHeight()-space(Space::s)-listDetailsSpace()-(rowPrimary(i)?primaryWidth(i)+space(Space::s):0):rowColumns(body,i).item.width())-space(Space::s));
  }
  bool actionsBelow(const QRect& r,const QModelIndex& i)const{
   if(!grid()&&i.data(HistoryModel::FailedRole).toBool())return false;
   if(grid()||(compactList&&!compactList()))return false;
-  const auto body=rowBody(r,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,inlineTextWidth(r,i),!rowColumns(body).created.isEmpty());
+  const auto body=rowBody(r,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,inlineTextWidth(r,i),!rowColumns(body,i).created.isEmpty());
   return std::ceil(metadata.size().height())>rowContentHeight()-4-2*rowTextInset()-QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-6;
  }
  QRect primaryRect(QRect r,const QModelIndex& i)const{
   const auto c=card(r,i);const int h=actionHeight();const int w=qMin(primaryWidth(i),qMax(0,c.width()-12-12-h-8-(grid()?detailsWidth()+8:listDetailsSpace())));
   if(grid())return galleryActionRect(r,i,0);
-  if(i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-12-h-8-listDetailsSpace()-w,c.top()+rowTextInset()+(QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-h)/2,w,h);
-  const auto layout=rowColumns(rowBody(r,false,heading(i)));const int right=layout.item.right()-12;
-  return QRect((actionsBelow(r,i)?c.right()-12-h-8-listDetailsSpace():right)-w,actionsBelow(r,i)?c.bottom()-h-11:i.data(HistoryModel::FailedRole).toBool()?c.top()+rowTextInset():c.top()+(rowContentHeight()-4-h)/2,w,h);
+  if(i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-listDetailsSpace()-w,c.top()+rowTextInset()+(QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-h)/2,w,h);
+  return QRect(c.right()-space(Space::s)-h-space(Space::s)-listDetailsSpace()-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):c.top()+(rowContentHeight()-4-h)/2,w,h);
  }
- QRect menuRect(QRect r,const QModelIndex& i)const{if(grid())return galleryActionRect(r,i,2);const auto b=primaryRect(r,i);const auto c=card(r,i);const int h=actionHeight();return QRect(c.right()-12-h,b.top(),h,h);}
+ QRect menuRect(QRect r,const QModelIndex& i)const{if(grid())return galleryActionRect(r,i,2);const auto b=primaryRect(r,i);const auto c=card(r,i);const int h=actionHeight();return QRect(c.right()-space(Space::s)-h,b.top(),h,h);}
  static QString errorText(const QModelIndex& i){return HistoryModel::statusText(i.data(HistoryModel::RecordRole).toJsonObject());}
  int textLeft(const QRect& c)const{return c.left()+12+historyThumbWidth+16;}
  QSize sizeHint(const QStyleOptionViewItem&,const QModelIndex& i)const override{
@@ -351,11 +349,11 @@ public:
    const int width=galleryWidth(),text=QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+2*QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();
    return {width,2+1+galleryPicture(width-12)+10+text+12+2};
   }
-  const int width=qMin(760,qMax(160,view_->viewport()->width()-2*view_->spacing()));
+  const int width=qMax(160,view_->viewport()->width()-2*view_->spacing());
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
   if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
   if(actionsBelow(outer,i)){
-   const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,i.data(HistoryModel::FailedRole).toBool()?body.width():rowColumns(body).item.width()-12,!rowColumns(body).created.isEmpty());
+   const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);
    const int text=rowTextInset()+qMax(8,rowTextInset())+4+QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+int(std::ceil(metadata.size().height()));
    height=qMax(rowContentHeight(),text)+heading(i)+actionHeight()+12;
   }
@@ -372,33 +370,33 @@ public:
   else{p->setPen(Qt::NoPen);p->setBrush(hover?t.surface:t.bg);p->drawRoundedRect(QRectF(r),8,8);}
 
   const int rowTop=r.top();const int rowHeight=grid()?r.height():rowContentHeight()-4;
-  QRect thumb=grid()?QRect(r.left()+1,r.top()+1,r.width()-2,galleryPicture(r.width())):QRect(r.left()+12,rowTop+(rowHeight-historyThumbHeight)/2,historyThumbWidth,historyThumbHeight);
-  p->setPen(Qt::NoPen);p->setBrush(t.well);p->drawRoundedRect(thumb,6,6);
+  QRect thumb=grid()?QRect(r.left()+1,r.top()+1,r.width()-2,galleryPicture(r.width())):QRect(r.left()+space(Space::s),rowTop+(rowHeight-historyThumbHeight)/2,historyThumbWidth,historyThumbHeight);
+  p->setPen(Qt::NoPen);p->setBrush(t.well);p->drawRoundedRect(thumb,4,4);
   const auto image=qvariant_cast<QImage>(i.data(HistoryModel::ThumbnailRole));
-  p->save();QPainterPath thumbnailClip;thumbnailClip.addRoundedRect(thumb,6,6);p->setClipPath(thumbnailClip,Qt::IntersectClip);
+  p->save();QPainterPath thumbnailClip;thumbnailClip.addRoundedRect(thumb,4,4);p->setClipPath(thumbnailClip,Qt::IntersectClip);
   if(!image.isNull()){const auto scaled=image.scaled(thumb.size(),grid()?Qt::KeepAspectRatioByExpanding:Qt::KeepAspectRatio,Qt::SmoothTransformation);const QPoint origin(thumb.center().x()-scaled.width()/2,thumb.center().y()-scaled.height()/2);p->drawImage(origin,scaled);if(video(record))paintVideoBadge(*p,grid()?thumb:QRect(origin,scaled.size()),HistoryModel::duration(image.text(HistoryModel::durationKey).toLongLong()));}
   else{
    // No preview: an honest file-type glyph, never a fabricated picture.
    const auto category=record["category"].toString();const int side=grid()?36:24;
    VisualStyle::icon(category=="images"?"images":category=="videos"?"record":category=="text"?"clipboard":"document").paint(p,QRect(thumb.center()-QPoint(side/2,side/2),QSize(side,side)));
   }
-  p->restore();p->setPen(QPen(QColor(255,255,255,15),1));p->setBrush(Qt::NoBrush);p->drawRoundedRect(QRectF(thumb).adjusted(0.5,0.5,-0.5,-0.5),6,6);
+  p->restore();p->setPen(QPen(t.border,1));p->setBrush(Qt::NoBrush);p->drawRoundedRect(QRectF(thumb).adjusted(0.5,0.5,-0.5,-0.5),4,4);
   // The primary action uses its own measured width; hover icons keep a fixed slot.
   const auto action=i.data(HistoryModel::PrimaryActionRole).toString();const bool showPrimary=primaryShown(i);const bool routineActionsShown=inlineActions(i)&&(hover||chosen||((option.state&QStyle::State_HasFocus)&&view_->hasFocus()));const bool actionsShown=routineActionsShown||(!grid()&&inlineActions(i)&&recovery(i));
   const auto primaryBounds=primaryRect(outer,i);const auto moreBounds=menuRect(outer,i);
   const QRect body=rowBody(outer,grid(),heading(i));
-  const auto columns=grid()?Columns{body,{},{},{}}:rowColumns(body);
+  const auto columns=grid()?Columns{body,{},{},{}}:rowColumns(body,i);
   const bool below=actionsBelow(outer,i);
   int itemWidth=qMax(0,columns.item.width()-12);
   if(!grid()&&!below)itemWidth=inlineTextWidth(outer,i);
-  else if(grid())itemWidth=body.width();
+  else if(grid()||below)itemWidth=body.width();
   const auto titleFont=Graphite::font(Graphite::Type::body,true),metaFont=Graphite::font(Graphite::Type::metadata);
   const int lineTop=grid()?body.top():rowTop+rowTextInset();
   Graphite::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,QFontMetrics(titleFont).height()),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideMiddle);
   const int metadataWidth=!grid()&&failed?body.width():itemWidth;
   const int metadataTop=lineTop+QFontMetrics(titleFont).height()+6;
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
-  if(!grid()){QTextDocument document;historyMetadata(document,i,metadataWidth,!columns.created.isEmpty(),compactList&&!compactList());p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
+  if(!grid()){QTextDocument document;historyMetadata(document,i,metadataWidth,!below&&!columns.created.isEmpty(),compactList&&!compactList());p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
   else if(failed){
    QTextDocument document;historyMetadata(document,i,metadataWidth,false);document.size();
    if(document.begin().layout()->lineCount()<=2){p->save();p->translate(metadata.topLeft());document.drawContents(p);p->restore();}
@@ -406,13 +404,13 @@ public:
   }else{QTextDocument document;historyMetadata(document,i,metadataWidth,false);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,2*metadata.height()));document.drawContents(p);p->restore();}
   if(!grid()){
    const QFontMetricsF titleMetrics(titleFont);const auto shown=titleMetrics.elidedText(i.data().toString(),Qt::ElideMiddle,itemWidth);const qreal baseline=Graphite::opticalBaseline(titleMetrics,shown,lineTop+QFontMetrics(titleFont).height()/2.0);
-   if(!failed&&!columns.output.isEmpty())paintHistoryColumn(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,QFontMetrics(titleFont).height()),i.data(HistoryModel::OutputRole).toString(),t.textSecondary,baseline);
-   if(!failed&&!columns.created.isEmpty())paintHistoryColumn(*p,QRectF(columns.created.left(),lineTop,columns.created.width()-8,QFontMetrics(titleFont).height()),i.data(HistoryModel::CreatedRole).toString(),t.textSecondary,baseline);
+   if(!failed&&!below&&!columns.output.isEmpty())paintHistoryColumn(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,QFontMetrics(titleFont).height()),i.data(HistoryModel::OutputRole).toString(),t.textSecondary,baseline);
+   if(!failed&&!below&&!actionsShown&&!columns.created.isEmpty()){const auto text=i.data(HistoryModel::CreatedRole).toString();const QFontMetricsF metrics(metaFont);paintHistoryColumn(*p,QRectF(columns.created.right()+1-metrics.horizontalAdvance(text),lineTop,metrics.horizontalAdvance(text),QFontMetrics(titleFont).height()),text,t.textMuted,baseline);}
   }
   if(actionsShown){
    if(grid()){p->setPen(Qt::NoPen);p->setBrush(Theme::mediaScrim());p->drawRect(QRect(r.left()+1,primaryBounds.top()-8,r.width()-2,actionHeight()+16));}
    auto* style=view_->style();
-   if(showPrimary&&(!grid()||i!=view_->currentIndex()||!primary_->isVisible())){QStyleOptionButton button;button.rect=primaryBounds;button.text=action;button.state=QStyle::State_Enabled|(option.state&QStyle::State_MouseOver&&primaryBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);if(pressed_==i&&pressedAction_==1)button.state|=QStyle::State_Sunken;button.fontMetrics=QFontMetrics(Graphite::font());p->save();p->setFont(Graphite::font());style->drawControl(QStyle::CE_PushButton,&button,p,grid()?primary_:nullptr);p->restore();}
+   if(showPrimary&&(!grid()||i!=view_->currentIndex()||!primary_->isVisible())){QStyleOptionButton button;button.rect=primaryBounds;button.text=action;button.state=QStyle::State_Enabled|(option.state&QStyle::State_MouseOver&&primaryBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);if(pressed_==i&&pressedAction_==1)button.state|=QStyle::State_Sunken;button.fontMetrics=QFontMetrics(Graphite::font());p->save();p->setFont(Graphite::font());style->drawControl(QStyle::CE_PushButton,&button,p,primary_);p->restore();}
    if(!grid()||routineActionsShown){
     if(grid()&&detailsShown(i)&&(i!=view_->currentIndex()||!details_->isVisible())){QStyleOptionButton button;button.rect=detailsRect(outer,i);button.text="Details";button.state=QStyle::State_Enabled;style->drawControl(QStyle::CE_PushButton,&button,p,details_);}
     if(!grid()||i!=view_->currentIndex()||!more_->isVisible()){QStyleOptionButton more;more.rect=moreBounds;more.state=QStyle::State_Enabled|(moreBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);style->drawPrimitive(QStyle::PE_PanelButtonCommand,&more,p,grid()?more_:nullptr);const int side=Graphite::scaled(Graphite::Metric::icon);Graphite::paintChromeGlyph(*p,QRectF(moreBounds.center().x()-side/2.0,moreBounds.center().y()-side/2.0,side,side),"more",grid()?Theme::onMedia():t.textSecondary);}
@@ -594,7 +592,7 @@ void HistoryWindow::updateInspectorLayout(){if(!split_)return;updateFooterLayout
  const int selected=table_->selectionModel()->selectedRows().size();const bool single=selected==1,gallery=grid_->isChecked();
  compact_=split_->width()<Graphite::scaled(420)+Graphite::scaled(320);if((!compact_&&!detailsFromGallery_)||(!single&&!restoringSelection_))detailsOpen_=false;
  const bool details=compact_&&detailsOpen_,back=detailsOpen_&&compact_;detailsClose_->setVisible(detailsOpen_&&!compact_);split_->setOrientation(Qt::Horizontal);
- inspectorScroll_->setMinimumWidth(compact_||details?0:Graphite::scaled(320));inspectorScroll_->setMaximumWidth(compact_||details?QWIDGETSIZE_MAX:Graphite::scaled(360));inspectorScroll_->setMaximumHeight(QWIDGETSIZE_MAX);
+ inspectorScroll_->setMinimumWidth(compact_||details?0:Graphite::scaled(320));inspectorScroll_->setMaximumWidth(compact_||details?QWIDGETSIZE_MAX:Graphite::scaled(380));inspectorScroll_->setMaximumHeight(QWIDGETSIZE_MAX);
  // A compact preview keeps the title and primary action above the fold.
  const bool shortPreview=compact_&&(split_->height()<Graphite::scaled(360)||height()<Graphite::scaled(480));const bool ready=!static_cast<HistoryPreview*>(preview_)->image.isNull();preview_->setMinimumHeight(compact_?(shortPreview?48:120):180);preview_->setMaximumHeight(compact_?(shortPreview?48:120):260);
  const bool missing=previewErrors_.value(currentDetail_["id"].toString()).code=="preview_source_missing",galleryCard=gallery&&detailsOpen_&&!compact_&&single&&table_->isVisibleTo(this)&&table_->viewport()->rect().intersects(table_->visualRect(table_->currentIndex()));
