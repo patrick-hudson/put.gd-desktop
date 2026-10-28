@@ -1840,7 +1840,7 @@ void ReviewWindow::refreshMaskList() {
     masks_->blockSignals(false);
     int widest = masks_->fontMetrics().horizontalAdvance(masks_->placeholderText());
     for (int i = 0; i < masks_->count(); ++i) widest = std::max(widest, masks_->fontMetrics().horizontalAdvance(masks_->itemText(i)));
-    masks_->setFixedWidth(widest + Graphite::Metric::splitZone + 18);
+    masks_->setFixedWidth(widest + Graphite::scaled(Graphite::Metric::splitZone + 18));
 }
 void ReviewWindow::refreshTimeline() {
     timeline_->setTrim(edit_.trimStart, edit_.exportEnd(options_.durationUs));
