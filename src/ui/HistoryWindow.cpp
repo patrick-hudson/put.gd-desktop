@@ -254,7 +254,7 @@ int compactMetadataGap(){return Graphite::scaled(100)>125?qMin(space(Space::xs),
 int compactDetailGap(){return qMax(compactMetadataGap(),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::technical)).height()+1)/2);}
 int rowContentHeight(){const int title=QFontMetrics(historyTitleFont()).height(),meta=QFontMetrics(Graphite::font(Graphite::Type::technical)).height();return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,qMax(title+meta+space(Space::xs)+2*compactTextInset()+4,compactTextInset()+title+compactMetadataGap()+(meta+actionHeight()+1)/2+4)));}
 // Compact insets leave room for the taller outcome without losing a whole row.
-int galleryTextHeight(){return QFontMetrics(historyTitleFont()).height()+6+2*QFontMetrics(Graphite::font(Graphite::Type::technical)).height();}
+int galleryTextHeight(){return QFontMetrics(historyTitleFont()).height()+space(Space::s)+2*QFontMetrics(Graphite::font(Graphite::Type::technical)).height()+space(Space::s)+actionHeight();}
 // The picture spends only the space left after the caption and status lines.
 int galleryPicture(int cardWidth,int cardHeight){return qMax(1,qMin((cardWidth-2)*10/16,cardHeight-1-2*space(Space::m)-galleryTextHeight()));}
 }
@@ -405,7 +405,7 @@ public:
  // Hover and selection never change the reserved height.
  int listDetailsSpace()const{return !grid()&&compactList&&compactList()?actionHeight()+space(Space::s):0;}
  int detailsWidth()const{return qMax(details_->sizeHint().width(),QFontMetrics(Graphite::font()).horizontalAdvance("Details")+30);}
- QRect galleryActionRect(QRect r,const QModelIndex& i,int column)const{const auto c=card(r,i);const int h=actionHeight(),pad=space(Space::xs);return QRect(c.right()-space(Space::s)-2*h-pad+(column==2?h+pad:0),c.top()+space(Space::s)+pad,h,h);}
+ QRect galleryActionRect(QRect r,const QModelIndex& i,int column)const{const auto c=card(r,i);const int h=actionHeight(),pad=space(Space::xs);return QRect(c.right()-space(Space::l)-2*h-pad+(column==2?h+pad:0),c.bottom()-space(Space::m)-h+1,h,h);}
  QRect detailsRect(QRect r,const QModelIndex& i)const{if(grid())return galleryActionRect(r,i,1);const auto b=menuRect(r,i);const int w=grid()?detailsWidth():actionHeight();const int h=grid()?b.height():w;return QRect(b.left()-space(Space::s)-w,b.top()+(b.height()-h)/2,w,h);}
  int primaryWidth(const QModelIndex& i)const{return qMax(Graphite::scaled(84),int(std::ceil(QFontMetricsF(Graphite::labelFont()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())))+space(Space::xxl));}
  bool compactRow(const QRect& r,const QModelIndex& i)const{return !grid()&&rowBody(r,false,heading(i)).width()<Graphite::scaled(480);}
@@ -506,7 +506,6 @@ public:
    if(!compact&&!failed&&!below&&!actionsShown&&!columns.created.isEmpty()){const auto text=i.data(HistoryModel::CreatedRole).toString();const QFontMetricsF metrics(Graphite::font(Graphite::Type::metadata));paintHistoryColumn(*p,QRectF(columns.created.right()+1-metrics.horizontalAdvance(text),lineTop,metrics.horizontalAdvance(text),QFontMetrics(titleFont).height()),text,t.textMuted,baseline);}
   }
   if(actionsShown){
-   if(grid()){auto fill=t.surfaceRaised;fill.setAlphaF(0.92);p->setPen(Qt::NoPen);p->setBrush(fill);p->drawRoundedRect(primaryBounds.united(moreBounds).adjusted(-space(Space::xs),-space(Space::xs),space(Space::xs),space(Space::xs)),6,6);}
    auto* style=view_->style();
    if(showPrimary&&(!grid()||i!=view_->currentIndex()||!primary_->isVisible())){QStyleOptionButton button;button.rect=primaryBounds;button.text=grid()?QString{}:action;if(grid()){button.icon=VisualStyle::icon("copy");button.iconSize=QSize(Graphite::scaled(16),Graphite::scaled(16));}button.state=(!grid()||action=="Copy link"?QStyle::State_Enabled:QStyle::State_None)|(option.state&QStyle::State_MouseOver&&primaryBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);if(pressed_==i&&pressedAction_==1)button.state|=QStyle::State_Sunken;button.fontMetrics=QFontMetrics(Graphite::font());p->save();p->setFont(Graphite::font());style->drawControl(QStyle::CE_PushButton,&button,p,primary_);p->restore();}
    if(!grid()||routineActionsShown){
