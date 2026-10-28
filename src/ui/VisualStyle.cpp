@@ -309,12 +309,12 @@ void alignChoices(QWidget* owner,const QList<QFormLayout*>& family){
   ChoiceFamily(QWidget* owner,const QList<QFormLayout*>& forms):QObject(owner){
    QSet<ChoiceBox*> seen;
    for(auto* form:forms)for(int row=0;row<form->rowCount();++row){auto* item=form->itemAt(row,QFormLayout::FieldRole);if(!item||!item->widget())continue;auto* field=item->widget();auto controls=field->findChildren<QComboBox*>();if(auto* combo=qobject_cast<QComboBox*>(field))controls.prepend(combo);for(auto* combo:controls)if(auto* choice=dynamic_cast<ChoiceBox*>(combo);choice&&!seen.contains(choice)){
-    seen.insert(choice);choices_.append(choice);choice->installEventFilter(this);
+    seen.insert(choice);choices_.append(choice);choice->installEventFilter(this);if(auto* holder=choice->parentWidget())holder->installEventFilter(this);
     connect(choice->model(),&QAbstractItemModel::dataChanged,this,[this]{schedule();});connect(choice->model(),&QAbstractItemModel::rowsInserted,this,[this]{schedule();});connect(choice->model(),&QAbstractItemModel::rowsRemoved,this,[this]{schedule();});connect(choice->model(),&QAbstractItemModel::modelReset,this,[this]{schedule();});
    }}schedule();
   }
  protected:
-  bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::FontChange||event->type()==QEvent::StyleChange||event->type()==QEvent::Show)schedule();return false;}
+  bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::FontChange||event->type()==QEvent::StyleChange||event->type()==QEvent::Show||event->type()==QEvent::Hide||event->type()==QEvent::LayoutRequest)schedule();return false;}
  private:
   void schedule(){if(pending_)return;pending_=true;QTimer::singleShot(0,this,[this]{apply();pending_=false;});}
   void apply(){
