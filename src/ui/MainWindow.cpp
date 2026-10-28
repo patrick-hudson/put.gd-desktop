@@ -176,10 +176,10 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  auto* versionBrowser=new Graphite::BrowserFeedback(versionNotice);versionBrowser->setObjectName("appVersionBrowserFeedback");auto* feedbackLayout=versionBrowser->layout();delete feedbackLayout;auto* feedbackRow=new QHBoxLayout(versionBrowser);feedbackRow->setContentsMargins(0,0,0,0);feedbackRow->setSpacing(space(Space::m));feedbackRow->addWidget(versionBrowser->findChild<QLabel*>(),1);auto* copyRelease=versionBrowser->findChild<QPushButton*>();copyRelease->setText("Copy release link");copyRelease->setObjectName("copyReleaseLink");feedbackRow->addWidget(copyRelease);noticeRow->addWidget(versionBrowser,1);
  auto* dismissVersion=Graphite::toolButton({},{},"quiet",versionNotice);dismissVersion->setObjectName("dismissVersionNotification");dismissVersion->setIcon(Graphite::chromeIcon("close"));dismissVersion->setAccessibleName("Dismiss release link notification");dismissVersion->setToolTip("Dismiss");noticeRow->addWidget(dismissVersion);connect(dismissVersion,&QToolButton::clicked,versionBrowser,&Graphite::BrowserFeedback::clear);versionBrowser->installEventFilter(this);versionNotice->hide();layout->insertWidget(layout->indexOf(pages_),versionNotice);
  connect(versionLink_,&QPushButton::clicked,this,[this,versionBrowser]{if(const auto url=releaseLink(session_.build()).url;url.isValid())host::openLink(url,versionBrowser->opening(url));});
- auto updateVersion=[this,versionGroup,versionBrowser]{
+ auto updateVersion=[this,versionBrowser]{
   const auto link=releaseLink(session_.build());const auto name="put.gd version "+link.version;const auto page="Open the v"+link.version+" release on GitHub";
-  version_->setText(link.version);version_->setAccessibleName(name);version_->setToolTip(name);version_->setVisible(!link.version.isEmpty()&&link.url.isEmpty());
-  versionLink_->setText(link.version);versionLink_->setAccessibleName(name);versionLink_->setAccessibleDescription(page);versionLink_->setToolTip(page);versionLink_->setVisible(!link.url.isEmpty());versionGroup->setVisible(!link.url.isEmpty());if(versionLink_->property("browserUrl").toUrl()!=link.url){versionBrowser->clear();versionLink_->setProperty("browserUrl",link.url);}
+  version_->setText(link.version);version_->setAccessibleName(name);version_->setToolTip(name);
+  versionLink_->setText(link.version);versionLink_->setAccessibleName(name);versionLink_->setAccessibleDescription(page);versionLink_->setToolTip(page);versionLink_->setVisible(!link.url.isEmpty());if(versionLink_->property("browserUrl").toUrl()!=link.url){versionBrowser->clear();versionLink_->setProperty("browserUrl",link.url);}updateSaveStatus();
  };
  connect(&session_,&UiSession::statusChanged,this,updateVersion);updateVersion();
  // A newer version, from the resident's daily check (#293): it opens
@@ -258,17 +258,17 @@ void MainWindow::updateSaveStatus(){
  if(updateLink_){const auto update=session_.diagnostics()["update"].toObject();updateLink_->setVisible(update["supported"].toBool()&&update["result"].toObject()["updateAvailable"].toBool());}
  // "Settings save automatically" is the band's least important line: it gives
  // way before the output summary has to elide (narrow windows, large text).
- const auto* content=findChild<QWidget*>("statusContent");const int gap=content->layout()->spacing();
+ const auto* content=findChild<QWidget*>("statusContent");auto* row=content->layout();const int gap=row->spacing();
  const auto link=releaseLink(session_.build());auto* versionGroup=findChild<QWidget*>("appVersionGroup");
- // Measure the actual row, including its insets. Only the output may shrink;
- // update and save feedback retain their full size hints in the same layout.
- int needed=outputGroup_->isHidden()?0:qMax(destination_->minimumWidth(),destination_->sizeHint().width())+gap;
- for(auto* widget:QWidgetList{saveStatus_,updateLink_})if(!widget->isHidden())needed+=widget->sizeHint().width()+gap;
- needed=qMax(0,needed-gap);
- const int versionWidth=link.url.isEmpty()?version_->sizeHint().width():versionGroup->sizeHint().width();
- const bool versionRoom=!unsaved&&!link.version.isEmpty()&&needed+versionWidth+gap<=content->contentsRect().width();
+ // Nested layouts can require more than their text advances, especially after
+ // a font change. Use Qt's effective item sizes and leave one grid gap spare.
+ int needed=row->contentsMargins().left()+row->contentsMargins().right(),count=0;
+ for(int i=0;i<row->count();++i){auto* item=row->itemAt(i);auto* widget=item->widget();if(!widget||widget->isHidden()||widget==explanation_||widget==version_||widget==versionGroup)continue;needed+=item->sizeHint().expandedTo(item->minimumSize()).width()+(count++?gap:0);}
+ const auto width=[](QWidget* widget){return widget->sizeHint().expandedTo(widget->minimumSizeHint()).expandedTo(widget->minimumSize()).width();};
+ const int versionWidth=width(link.url.isEmpty()?static_cast<QWidget*>(version_):versionGroup),available=content->contentsRect().width()-space(Space::s);
+ const bool versionRoom=!unsaved&&!link.version.isEmpty()&&needed+versionWidth+(count?gap:0)<=available;
  version_->setVisible(versionRoom&&!link.version.isEmpty()&&link.url.isEmpty());versionGroup->setVisible(versionRoom&&!link.url.isEmpty());
- explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&needed+(versionRoom?versionWidth+gap:0)+explanation_->sizeHint().width()+gap<=content->contentsRect().width());
+ explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&needed+(versionRoom?versionWidth+gap:0)+width(explanation_)+gap<=available);
 }
 // Compact commands keep their task labels; output details stay in the status menu.
 void MainWindow::fitBand(){
@@ -312,7 +312,8 @@ QString MainWindow::droppedImage(const QMimeData* data){
 bool MainWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched->objectName()=="appVersionBrowserFeedback"&&(event->type()==QEvent::ShowToParent||event->type()==QEvent::HideToParent))static_cast<QWidget*>(watched)->parentWidget()->setVisible(event->type()==QEvent::ShowToParent);
  if((watched==this||watched==band_)&&event->type()==QEvent::Resize)fitBand();
- if(watched->objectName()=="statusContent"&&(event->type()==QEvent::Resize||event->type()==QEvent::LayoutRequest))updateSaveStatus();
+ // Refit after Qt finishes the layout/font event, never inside its geometry update.
+ if(watched->objectName()=="statusContent"&&(event->type()==QEvent::Resize||event->type()==QEvent::LayoutRequest||event->type()==QEvent::FontChange||event->type()==QEvent::StyleChange)&&!statusFitPending_){statusFitPending_=true;QTimer::singleShot(0,this,[this]{updateSaveStatus();statusFitPending_=false;});}
  if(watched!=editButton_)return QMainWindow::eventFilter(watched,event);
  auto highlight=[this](bool on){editButton_->setProperty("dropTarget",on);editButton_->style()->unpolish(editButton_);editButton_->style()->polish(editButton_);};
  switch(event->type()){

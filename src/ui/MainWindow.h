@@ -34,6 +34,6 @@ private:
  UiSession& session_;QToolButton* editButton_=nullptr;SettingsWindow* settings_=nullptr;HistoryWindow* history_;QTabBar* tabs_;QStackedWidget* pages_;QToolButton* destination_=nullptr;QLabel *saveStatus_=nullptr,*version_=nullptr;QPushButton* versionLink_;QPushButton* updateLink_=nullptr;FileDialog* chooser_=nullptr;QLabel* explanation_=nullptr;QWidget* outputGroup_=nullptr;
  // Edit an image file… whose chooser failed: its reason and Try again, under the command band.
  QWidget* chooserFailure_=nullptr;QLabel* chooserError_=nullptr;
- QWidget* outputWarning_=nullptr;QLabel* outputWarningText_=nullptr;QWidget* band_=nullptr;QList<QToolButton*> actionButtons_;int bandStage_=0;bool fittingBand_=false;
+ QWidget* outputWarning_=nullptr;QLabel* outputWarningText_=nullptr;QWidget* band_=nullptr;QList<QToolButton*> actionButtons_;int bandStage_=0;bool fittingBand_=false,statusFitPending_=false;
 };
 }

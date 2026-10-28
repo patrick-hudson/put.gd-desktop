@@ -490,8 +490,12 @@ private slots:
    for(int i=0;i<shown.size()&&found.isEmpty();++i){if(!band->rect().contains(rectIn(shown[i])))found=shown[i]->objectName()+" leaves the band";for(int j=i+1;j<shown.size()&&found.isEmpty();++j)if(rectIn(shown[i]).intersects(rectIn(shown[j])))found=shown[i]->objectName()+" overlaps "+shown[j]->objectName();}
    if(found.isEmpty()&&summary->width()<summary->minimumSizeHint().width())found="the summary is under its minimum";
    for(auto* w:shown)if(w!=summary&&found.isEmpty()&&(w->width()<w->sizeHint().width()||w->height()<w->fontMetrics().height()))found=w->objectName()+" is truncated";
+   if(!found.isEmpty()){found+=" at "+QString::number(window.width())+" px";for(auto* w:shown)found+=QString("; %1 x=%2 w=%3 hint=%4 min=%5").arg(w->objectName()).arg(rectIn(w).x()).arg(w->width()).arg(w->sizeHint().width()).arg(w->minimumWidth());}
    return found.isEmpty();};
   QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));
+  for(int width:{1320,1800,1060}){window.resize(width,680);QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));}
+  // Refit optional metadata when fonts change in an already laid-out band.
+  const auto updateFont=update->font();auto larger=updateFont;larger.setPixelSize(pixels+4);update->setFont(larger);QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));update->setFont(updateFont);QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));
   fixture.client.failOnce["settings.save"]={"client_unavailable","Synthetic lost reply",{}};window.findChild<QLineEdit*>("maxFiles")->setText("251");
   PUTGD_TRY_COMPARE(status->text(),QString("Changes not saved"));QVERIFY(status->isVisible());QVERIFY(update->isVisible());QVERIFY(explanation->isHidden());QVERIFY(!status->text().contains('\n'));
   for(int width:{1060,1320,1800,1060}){window.resize(width,680);QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));}
