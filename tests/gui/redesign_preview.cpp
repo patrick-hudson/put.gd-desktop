@@ -197,6 +197,13 @@ int main(int argc,char** argv){
   }
   specimen.adjustSize();specimen.show();putgd::test::settle(30);if(!specimen.grab().save(QDir(output).filePath("00-control-tiers.png")))return 2;
  }
+ {
+  Graphite::Surface specimen("bg");auto* rows=new QVBoxLayout(&specimen);rows->setContentsMargins(Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl));rows->setSpacing(Graphite::space(Graphite::Space::l));
+  rows->addWidget(Graphite::label("Inactive actions and readable locked values","section"));auto* row=new QHBoxLayout;row->setSpacing(Graphite::space(Graphite::Space::s));
+  auto* active=new QPushButton("Start here",&specimen);row->addWidget(active);auto* inactive=new QPushButton("Start here",&specimen);inactive->setEnabled(false);row->addWidget(inactive);
+  auto* locked=new QComboBox(&specimen);locked->addItem("Forever");Graphite::setLocked(locked,true);locked->setEnabled(false);row->addWidget(locked);auto* unavailable=new QComboBox(&specimen);unavailable->addItem("Unavailable");unavailable->setEnabled(false);row->addWidget(unavailable);rows->addLayout(row);
+  specimen.adjustSize();specimen.show();putgd::test::settle(30);if(!specimen.grab().save(QDir(output).filePath("00-inactive-locked-controls.png")))return 2;
+ }
  QJsonArray captures,skippedCaptures;auto save=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(name=="01a-history-preview-focus"||name=="10a-history-compact-preview-focus"){window.activateWindow();auto* focusedPreview=window.findChild<QLabel*>("historyPreview");if(QGuiApplication::platformName()=="offscreen"&&!focusedPreview->isVisible()){skippedCaptures.append(QJsonObject{{"state",name},{"reason","inspector_hidden"}});return true;}focusedPreview->setFocus(Qt::TabFocusReason);app.processEvents();if(!focusedPreview->hasFocus())return false;}if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}if(!checkSteppers(window))return false;const auto image=window.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
  const bool recordOnly=qEnvironmentVariableIsSet("PUTGD_PREVIEW_RECORD_ONLY");
  const bool editorOnly=qEnvironmentVariableIsSet("PUTGD_PREVIEW_EDITOR_ONLY");

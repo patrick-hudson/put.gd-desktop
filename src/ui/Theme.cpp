@@ -7,8 +7,8 @@ namespace putgd::Theme {
 namespace {
 // The Graphite language (2026-10-26): warm graphite surfaces, neutral primary
 // actions and a restrained amber accent, with a parallel warm off-white light
-// palette (not an inversion). Every text colour meets WCAG AA (4.5:1) on bg,
-// surface, surfaceRaised and selected, and the accent (focus rings) and icons
+// palette (not an inversion). Active and locked text meet WCAG AA (4.5:1) on bg,
+// surface, surfaceRaised and selected; inactive text meets 3:1. Accent and icons
 // meet 3:1 on them. Control outlines and the icons' secondary tone meet 3:1 on
 // bg, surface and surfaceRaised, and the two icon tones 3:1 against each other
 // so a duotone glyph keeps its inner detail. Selected glyphs have their own
@@ -16,7 +16,7 @@ namespace {
 // schemes.
 const Palette dark{
  QColor("#121212"),QColor("#191919"),QColor("#202020"),QColor("#2A2A2A"),QColor("#333230"),QColor(255,255,255,18),QColor("#737373"),
- QColor("#F0F0EC"),QColor("#C4C4BF"),QColor("#AAAAA6"),QColor("#9F9F9B"),
+ QColor("#F0F0EC"),QColor("#C4C4BF"),QColor("#AAAAA6"),QColor("#7B7B77"),
  QColor("#E8B66D"),QColor("#F0C887"),QColor("#24201A"),QColor("#E8C591"),
  QColor("#91BCA2"),QColor("#E8B66D"),QColor("#E59B93"),QColor("#EFB4AE"),QColor("#29372E"),QColor("#332C22"),QColor("#3D2A29"),
  QColor("#D6D6D2"),QColor("#777773"),
@@ -27,7 +27,7 @@ const Palette dark{
 };
 const Palette light{
  QColor("#EDEDEA"),QColor("#FFFFFF"),QColor("#F5F5F2"),QColor("#FFFFFF"),QColor("#ECEBE6"),QColor(0,0,0,20),QColor("#8E8E87"),
- QColor("#292926"),QColor("#484844"),QColor("#62625B"),QColor("#62625B"),
+ QColor("#292926"),QColor("#484844"),QColor("#62625B"),QColor("#878780"),
  QColor("#8F5B20"),QColor("#774816"),QColor("#FFFFFF"),QColor("#80521D"),
  QColor("#386A4B"),QColor("#8F5B20"),QColor("#A44139"),QColor("#8F322B"),QColor("#DFEDE3"),QColor("#EEE5D8"),QColor("#F4E0DE"),
  QColor("#383834"),QColor("#86867E"),

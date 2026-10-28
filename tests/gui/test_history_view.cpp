@@ -734,7 +734,7 @@ private slots:
    Theme::setScheme(scheme);QMenu menu(&window);auto* enabled=menu.addAction("Copy details");auto* disabled=menu.addAction("Retry upload");disabled->setEnabled(false);
    menu.popup(window.mapToGlobal(QPoint(20,20)));PUTGD_TRY_VERIFY(menu.isVisible());const auto image=menu.grab().toImage();
    auto contrast=[&](QAction* action){double best=1;const auto r=menu.actionGeometry(action);for(int y=r.top();y<=r.bottom();++y)for(int x=r.left();x<=r.right();++x)best=std::max(best,Theme::contrast(image.pixelColor(x,y),Theme::current().surfaceRaised));return best;};
-   const auto enabledContrast=contrast(enabled),disabledContrast=contrast(disabled);QVERIFY(disabledContrast>=4.5);
+   const auto enabledContrast=contrast(enabled),disabledContrast=contrast(disabled);QVERIFY(disabledContrast>=3.0);
    QVERIFY2(enabledContrast>disabledContrast*1.4,qPrintable(QString("%1 enabled %2 vs disabled %3").arg(Theme::name(scheme)).arg(enabledContrast).arg(disabledContrast)));menu.close();
   }
  }

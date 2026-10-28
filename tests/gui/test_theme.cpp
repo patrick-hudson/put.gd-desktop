@@ -356,7 +356,7 @@ private slots:
             const QList<QPair<const char*, QColor>> backgrounds{{"bg", p.bg}, {"surface", p.surface}, {"surfaceRaised", p.surfaceRaised}, {"selected", p.selected}};
             for (const auto& [name, text] : texts)
                 for (const auto& [background, colour] : backgrounds)
-                    QVERIFY2(Theme::contrast(text, colour) >= 4.5, qPrintable(QString("%1 %2 on %3: %4").arg(Theme::name(scheme), name, background).arg(Theme::contrast(text, colour))));
+                    QVERIFY2(Theme::contrast(text, colour) >= (QString(name) == "textDisabled" ? 3.0 : 4.5), qPrintable(QString("%1 %2 on %3: %4").arg(Theme::name(scheme), name, background).arg(Theme::contrast(text, colour))));
             for (const auto& [background, colour] : backgrounds) {
                 QVERIFY2(Theme::contrast(p.accent, colour) >= 3.0, qPrintable(QString("%1 focus ring on %2").arg(Theme::name(scheme), background)));
                 QVERIFY2(Theme::contrast(p.icon, colour) >= 3.0, qPrintable(QString("%1 icon on %2").arg(Theme::name(scheme), background)));
@@ -494,7 +494,7 @@ private slots:
     }
     // A locked value (Graphite::setLocked) reads as information: its text is
     // textMuted at 4.5:1 on the page. Unavailable controls keep readable
-    // textDisabled and omit interaction. Unlocking restores their shared look.
+    // textDisabled at 3:1 and omit interaction. Unlocking restores their shared look.
     void lockedValuesStayReadable() {
         QWidget window;
         auto* layout = new QVBoxLayout(&window);
@@ -516,7 +516,7 @@ private slots:
                 return ratio;
             };
             QVERIFY2(best(locked) >= 4.5, qPrintable(Theme::name(scheme) + QString(" locked %1").arg(best(locked))));
-            QVERIFY2(best(unavailable) >= 4.5, qPrintable(Theme::name(scheme) + QString(" unavailable %1").arg(best(unavailable))));
+            QVERIFY2(best(unavailable) >= 3.0, qPrintable(Theme::name(scheme) + QString(" unavailable %1").arg(best(unavailable))));
         }
         Graphite::setLocked(locked, false);
         QVERIFY(!Graphite::isLocked(locked));
@@ -524,6 +524,38 @@ private slots:
         const auto a = window.grab(QRect(locked->mapTo(&window, QPoint()), locked->size())).toImage();
         const auto b = window.grab(QRect(unavailable->mapTo(&window, QPoint()), unavailable->size())).toImage();
         QCOMPARE(a, b);
+    }
+    void lockedReadoutsKeepMutedTextContrast() {
+        QWidget window;
+        QVBoxLayout layout(&window);
+        QComboBox choice; choice.addItem("Forever");
+        QComboBox editable; editable.setEditable(true); editable.addItem("Saved value");
+        QSpinBox number; number.setValue(42);
+        QLineEdit value("Saved path"); value.setReadOnly(true);
+        QPushButton fact("Default");
+        for (auto* widget : QList<QWidget*>{&choice, &editable, &number, &value, &fact}) {
+            Graphite::setLocked(widget, true);
+            widget->setEnabled(false);
+            layout.addWidget(widget);
+        }
+        RedesignTheme::apply(window); window.show();
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            const auto& c = Theme::current();
+            for (auto* widget : QList<QWidget*>{&choice, &editable, editable.lineEdit(), &number, number.findChild<QLineEdit*>(), &value, &fact}) {
+                QVERIFY(widget);
+                for (const auto role : {QPalette::Text, QPalette::WindowText, QPalette::ButtonText})
+                    QCOMPARE(widget->palette().color(QPalette::Disabled, role), c.textMuted);
+                const auto shot = widget->grab().toImage();
+                int ink = 0;
+                for (int y = 0; y < shot.height(); ++y) for (int x = 0; x < shot.width(); ++x) ink += shot.pixelColor(x, y) == c.textMuted;
+                QVERIFY2(ink > 0, widget->metaObject()->className());
+                for (const auto& surface : {c.bg, c.surface, c.surfaceRaised, c.selected}) {
+                    QVERIFY(Theme::contrast(c.textMuted, surface) >= 4.5);
+                    QVERIFY(Theme::contrast(c.textMuted, surface) > Theme::contrast(c.textDisabled, surface));
+                }
+            }
+        }
     }
     void trayTintsSuitTheirPanels() {
         // Typical panels: GNOME Shell's and Mint-Y-Dark's dark bars, Breeze's light one.
