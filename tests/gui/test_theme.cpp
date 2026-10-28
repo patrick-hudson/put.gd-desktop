@@ -128,7 +128,7 @@ private slots:
         const auto restore = qScopeGuard([&] { qApp->setFont(original); Graphite::WindowHeader::setCustomFrameOverride(0); });
         Graphite::WindowHeader::setCustomFrameOverride(1);
         for (const qreal scale : {1.0, 1.25, 1.5}) {
-            auto enlarged = original; enlarged.setPixelSize(qRound(QFontInfo(original).pixelSize() * scale)); qApp->setFont(enlarged);
+            auto enlarged = original; enlarged.setPointSizeF(QFontInfo(original).pixelSize() * scale * 72.0 / 96.0); qApp->setFont(enlarged);
             QWidget window; QVBoxLayout layout(&window); QMenu menu;
             auto* header = Graphite::WindowHeader::install(&window, &layout, &menu, Graphite::WindowHeader::Density::Compact);
             window.resize(900, 200); window.show(); putgd::test::settle(10);
@@ -788,7 +788,7 @@ private slots:
         const auto original = QApplication::font();
         const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
         for (const qreal scale : {1.0, 1.25, 1.5}) {
-            auto enlarged = original; enlarged.setPixelSize(qRound(QFontInfo(original).pixelSize() * scale)); QApplication::setFont(enlarged);
+            auto enlarged = original; enlarged.setPointSizeF(QFontInfo(original).pixelSize() * scale * 72.0 / 96.0); QApplication::setFont(enlarged);
             QPushButton push("Start here");
             QToolButton tool; tool.setText("End here"); tool.setToolButtonStyle(Qt::ToolButtonTextOnly);
             QComboBox combo; combo.addItem("Compatible MP4");
@@ -817,7 +817,7 @@ private slots:
         const auto restore = qScopeGuard([&] { qApp->setFont(original); });
         int previousCombo = 0, previousMenu = 0;
         for (const qreal scale : {1.0, 1.25, 1.5}) {
-            auto enlarged = original; enlarged.setPixelSize(qRound(QFontInfo(original).pixelSize() * scale)); qApp->setFont(enlarged);
+            auto enlarged = original; enlarged.setPointSizeF(QFontInfo(original).pixelSize() * scale * 72.0 / 96.0); qApp->setFont(enlarged);
             QComboBox combo; combo.addItem("Compatible MP4"); combo.show(); combo.showPopup(); putgd::test::settle(10);
             const int comboRow = combo.view()->sizeHintForRow(0);
             QVERIFY(comboRow >= combo.view()->fontMetrics().height() + Graphite::scaled(12));
@@ -835,7 +835,7 @@ private slots:
         const auto restore = qScopeGuard([&] { qApp->setFont(original); });
         int previousStep = 0, previousArrow = 0;
         for (const qreal scale : {1.0, 1.25, 1.5}) {
-            auto enlarged = original; enlarged.setPixelSize(qRound(QFontInfo(original).pixelSize() * scale)); qApp->setFont(enlarged);
+            auto enlarged = original; enlarged.setPointSizeF(QFontInfo(original).pixelSize() * scale * 72.0 / 96.0); qApp->setFont(enlarged);
             QSpinBox spin; spin.setRange(0, 100); spin.setValue(42); spin.ensurePolished(); spin.resize(spin.sizeHint()); spin.show();
             QComboBox combo; combo.addItem("Compatible MP4"); combo.ensurePolished(); combo.resize(combo.sizeHint());
             for (const auto direction : {Qt::LeftToRight, Qt::RightToLeft}) {
@@ -1078,7 +1078,7 @@ private slots:
         for (const auto& text : {QString("Private upload"), QString("Capture output: Shared link · Production screenshots for customer support + local copy · 2 action exceptions")}) {
             int previous = 0;
             for (const qreal scale : {1.0, 1.25, 1.5}) {
-                auto enlarged = original; enlarged.setPixelSize(qRound(QFontInfo(original).pixelSize() * scale)); qApp->setFont(enlarged);
+                auto enlarged = original; enlarged.setPointSizeF(QFontInfo(original).pixelSize() * scale * 72.0 / 96.0); qApp->setFont(enlarged);
                 Graphite::ElidedLabel label; label.setFont(Graphite::font()); label.setText(text); label.setRevealable(true);
                 label.resize(scale == 1.0 ? 700 : 180, 60); label.show(); label.reveal();
                 auto* popup = label.fullTextPopup(); QVERIFY(popup && popup->isVisible());
