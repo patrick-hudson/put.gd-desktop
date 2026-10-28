@@ -81,8 +81,10 @@ class HistoryActionInkProbe final:public QProxyStyle {
 public:
  HistoryActionInkProbe():QProxyStyle(QStyleFactory::create("Fusion")){}
  mutable QList<QRect> buttons;
+ mutable QStringList labels;
+ mutable QList<bool> enabled;
  void drawControl(ControlElement element,const QStyleOption* option,QPainter* painter,const QWidget* widget=nullptr)const override{
-  if(element==CE_PushButton){buttons.append(option->rect);return;}
+  if(element==CE_PushButton){buttons.append(option->rect);const auto* button=qstyleoption_cast<const QStyleOptionButton*>(option);labels.append(button?button->text:QString{});enabled.append(option->state&State_Enabled);return;}
   QProxyStyle::drawControl(element,option,painter,widget);
  }
  void drawPrimitive(PrimitiveElement element,const QStyleOption* option,QPainter* painter,const QWidget* widget=nullptr)const override{
@@ -234,6 +236,12 @@ private slots:
    QTextCursor status(&document);status.setPosition(0);status.movePosition(QTextCursor::NextCharacter,QTextCursor::KeepAnchor);QVERIFY(!status.isNull());QCOMPARE(status.charFormat().font().pixelSize(),Graphite::font(Graphite::Type::technical).pixelSize());QCOMPARE(status.charFormat().foreground().color(),Theme::current().danger);
   }
   QVERIFY(dropped);QVERIFY(shortened);QVERIFY(retained);
+ }
+ void galleryFailureOffersAReadableRetryWithoutHover(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);HistoryWindow window(fixture.session);auto* list=window.findChild<QListView*>("historyList");window.findChild<QToolButton*>("historyGridMode")->click();HistoryActionInkProbe probe;list->setStyle(&probe);
+  QStandardItemModel model(1,1);const auto index=model.index(0,0);model.setData(index,QJsonObject{{"uploadStatus","failed"},{"error",QJsonObject{{"message","Connection interrupted"}}}},HistoryModel::RecordRole);model.setData(index,true,HistoryModel::FailedRole);model.setData(index,"Retry upload",HistoryModel::PrimaryActionRole);
+  QStyleOptionViewItem option;option.initFrom(list);option.rect=QRect(0,0,320,340);option.state=QStyle::State_Enabled;QImage image(option.rect.size(),QImage::Format_RGB32);QPainter painter(&image);list->itemDelegate()->paint(&painter,option,index);
+  const int retry=probe.labels.indexOf("Retry upload");QVERIFY(retry>=0);QVERIFY(probe.enabled[retry]);QVERIFY(probe.buttons[retry].width()>=QFontMetrics(Graphite::labelFont()).horizontalAdvance("Retry upload"));QVERIFY(option.rect.contains(probe.buttons[retry]));
  }
  void compactFailureUsesTheClearWidthBelowActions(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);HistoryWindow window(fixture.session);auto* list=window.findChild<QListView*>("historyList");HistoryActionInkProbe probe;list->setStyle(&probe);
