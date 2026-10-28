@@ -62,7 +62,9 @@ namespace putgd::record {
 namespace {
 constexpr int handleSize = 8;
 constexpr int compactReviewHeight = 648;
-int textControlHeight(const QWidget*) { return Graphite::scaled(28); }
+// Compact media chrome keeps its padding on the logical grid as text grows.
+int reviewSpace(Graphite::Space value) { return static_cast<int>(value); }
+int textControlHeight(const QWidget* widget) { return std::max(28, widget->fontMetrics().height()); }
 int iconTarget() { return Graphite::Metric::iconTarget; }
 }
 
@@ -108,7 +110,7 @@ public:
         setProperty("driveAction", QJsonObject{{"action", "useSolidCover"}});
         VisualStyle::role(this, "meta");
         setProperty("graphiteDensity", "compact");
-        setFixedHeight(Graphite::scaled(28));
+        setFixedHeight(textControlHeight(this));
     }
 protected:
     void paintEvent(QPaintEvent*) override {
@@ -118,7 +120,7 @@ protected:
         painter.setBrush(underMouse() && isEnabled() ? palette.selected : palette.warningSurface);
         painter.setPen(Graphite::keyboardFocus(this) ? QPen(palette.accent, 1) : QPen(Qt::NoPen));
         painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Graphite::Metric::smallRadius, Graphite::Metric::smallRadius);
-        const int gap = Graphite::space(Graphite::Space::xs), side = 16;
+        const int gap = reviewSpace(Graphite::Space::xs), side = 16;
         VisualStyle::icon("alert", palette.textSecondary).paint(&painter, QRect(gap, (height() - side) / 2, side, side));
         Graphite::paintText(painter, rect().adjusted(side + gap * 2, 0, -gap, 0), text(), palette.textSecondary, font(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
     }
@@ -134,11 +136,13 @@ public:
         warning_->hide();
     }
     QToolButton* warningButton() const { return warning_; }
+    QSize sizeHint() const override { return {width(), fontMetrics().height()}; }
+    QSize minimumSizeHint() const override { return sizeHint(); }
     void reserve(const QStringList& intervals, bool warning) {
         int width = fontMetrics().horizontalAdvance(QStringLiteral("—"));
         for (const auto& interval : intervals) width = std::max(width, fontMetrics().horizontalAdvance(interval));
-        setFixedWidth(width + Graphite::space(Graphite::Space::s));
-        warning_->setFixedWidth(warning_->fontMetrics().horizontalAdvance(warning_->text()) + 16 + 3 * Graphite::space(Graphite::Space::xs));
+        setFixedWidth(width + reviewSpace(Graphite::Space::s));
+        warning_->setFixedWidth(warning_->fontMetrics().horizontalAdvance(warning_->text()) + 16 + 3 * reviewSpace(Graphite::Space::xs));
         auto policy = warning_->sizePolicy();
         policy.setRetainSizeWhenHidden(warning);
         warning_->setSizePolicy(policy);
@@ -146,10 +150,16 @@ public:
     void setInterval(const QString& interval, const QString& state) {
         setText(interval + (state.isEmpty() ? QString() : QStringLiteral(" · ") + state));
         setToolTip(text());
+        setAccessibleName(text());
     }
     void setWarning(const QString& warning) {
         warning_->setVisible(!warning.isEmpty());
         setAccessibleDescription(warning);
+    }
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter painter(this);
+        Graphite::paintText(painter, rect(), text().section(QStringLiteral(" · "), 0, 0), palette().color(foregroundRole()), font(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
     }
 private:
     BlurChip* warning_;
@@ -161,6 +171,7 @@ public:
     using QToolButton::QToolButton;
     int heightForWidth(int width) const override {
         const int padding = Graphite::Metric::splitZone + 24;
+        if (fontMetrics().horizontalAdvance(text()) <= width - padding) return fontMetrics().height();
         return std::max(fontMetrics().height(), fontMetrics().boundingRect(QRect(0, 0, std::max(1, width - padding), 10000), Qt::TextWordWrap, text()).height());
     }
 protected:
@@ -171,9 +182,11 @@ protected:
         style()->drawPrimitive(QStyle::PE_PanelButtonTool, &option, &painter, this);
         const auto ink = isEnabled() ? Theme::current().textSecondary : Theme::current().textDisabled;
         const auto textRect = rect().adjusted(12, 0, -Graphite::Metric::splitZone - 12, 0);
+        const auto display = property("displayText").isValid() ? property("displayText").toString() : text();
         painter.setFont(font());
         painter.setPen(ink);
-        painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextWordWrap, text());
+        const int wrap = fontMetrics().horizontalAdvance(display) <= textRect.width() ? Qt::TextSingleLine : Qt::TextWordWrap;
+        painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | wrap, display);
         Graphite::paintChevron(painter, QPointF(width() - Graphite::Metric::splitZone / 2.0 - 4, height() / 2.0), 8, Qt::DownArrow, ink);
     }
 };
@@ -182,8 +195,8 @@ protected:
 // for one line. Every control keeps its full size; the row grows instead.
 class FlowRow final : public QWidget {
 public:
-    static int groupGap() { return Graphite::space(Graphite::Space::xs); }
-    static int lineGap() { return Graphite::space(Graphite::Space::xs); }
+    static int groupGap() { return reviewSpace(Graphite::Space::xs); }
+    static int lineGap() { return reviewSpace(Graphite::Space::xs); }
     explicit FlowRow(QWidget* parent) : QWidget(parent) {}
     void setGutter(QWidget* label, int indent) { label->setParent(this); label_ = label; indent_ = indent; relayout(); }
     void addGroup(QWidget* group) { group->setParent(this); group->installEventFilter(this); groups_.append(group); }
@@ -239,7 +252,7 @@ private:
         }
         int top = 0;
         for (int i = 0; i < lines.size(); ++i) {
-            int line = i == 0 ? Graphite::scaled(28) : 0;
+            int line = i == 0 ? 28 : 0;
             for (const auto& placed : lines[i]) line = std::max(line, placed.second.height());
             if (apply) {
                 if (!lines[i].isEmpty()) {
@@ -248,7 +261,7 @@ private:
                         last.second.setWidth(std::max(last.second.width(), width - last.second.left()));
                 }
                 for (const auto& [group, rect] : lines[i]) group->setGeometry(rect.translated(0, top + (line - rect.height()) / 2));
-                if (i == 0 && label_) label_->setGeometry(0, 0, indent_ - Graphite::space(Graphite::Space::s), line);
+                if (i == 0 && label_) label_->setGeometry(0, 0, indent_ - reviewSpace(Graphite::Space::s), line);
             }
             top += line + (i + 1 < lines.size() ? lineGap() : 0);
         }
@@ -284,8 +297,8 @@ FrameView::FrameView(QWidget* parent, std::shared_ptr<MaskNames> names) : QWidge
     errorCard_ = new ErrorCard(this);
     errorCard_->setObjectName("previewError");
     auto* row = new QHBoxLayout(errorCard_);
-    row->setContentsMargins(Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::s));
-    row->setSpacing(Graphite::space(Graphite::Space::m));
+    row->setContentsMargins(reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s));
+    row->setSpacing(reviewSpace(Graphite::Space::m));
     errorText_ = new QLabel(errorCard_);
     errorText_->setObjectName("previewErrorText");
     errorText_->setWordWrap(true);
@@ -587,7 +600,7 @@ QFont gutterFont() { auto font = Graphite::font(Graphite::Type::caption); font.s
 QFont rulerFont() { return Graphite::font(Graphite::Type::caption); }
 int laneHeight() { return 16; }
 int rowHeight() { return laneHeight() + 2; }
-int rulerHeight() { return Graphite::scaled(16); }
+int rulerHeight() { return 16; }
 int clipHeight() { return rulerHeight() + 10; }
 constexpr qint64 minimumSpanUs = 10000;
 }
@@ -865,7 +878,7 @@ void ReviewTimeline::placeNavigation() {
         transport_->setProperty("aboveTimeline", true);
         transport_->setGeometry(0, 0, width(), rowTransportHeight_);
     }
-    if (laneHeader_) laneHeader_->setGeometry(0, timelineTop() + rulerHeight(), gutterWidth() - Graphite::space(Graphite::Space::xs), Graphite::scaled(28));
+    if (laneHeader_) laneHeader_->setGeometry(0, timelineTop() + rulerHeight(), gutterWidth() - reviewSpace(Graphite::Space::xs), Graphite::scaled(28));
     const int side = iconTarget();
     previousMasks_->setGeometry(0, lanesBottom(), side, side);
     moreMasks_->setGeometry(side + 4, lanesBottom(), side, side);
@@ -1025,7 +1038,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     header_->setDocument(QStringLiteral("Review recording"));
     // Why the capture ended when it stopped itself (#225); hidden otherwise.
     auto* banner = new QVBoxLayout;
-    banner->setContentsMargins(Graphite::space(Graphite::Space::l), 0, Graphite::space(Graphite::Space::l), 0);
+    banner->setContentsMargins(reviewSpace(Graphite::Space::l), 0, reviewSpace(Graphite::Space::l), 0);
     frame->addLayout(banner);
     notice_ = new QLabel(this);
     notice_->setObjectName("notice");
@@ -1041,15 +1054,15 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // Keep the well and image edge; fixed compact insets preserve the frame at large text.
     view_ = new FrameView(this, maskNames_);
     view_->setObjectName("frame");
-    view_->setContentsMargins(Graphite::space(Graphite::Space::xs), 0, Graphite::space(Graphite::Space::xs), 0);
+    view_->setContentsMargins(reviewSpace(Graphite::Space::xs), 0, reviewSpace(Graphite::Space::xs), 0);
     view_->setMinimumHeight(180);
     view_->setCanvas(options.canvas);
     view_->setAccessibleName("Recording frame");
     frame->addWidget(view_, 1);
     // Compact bands leave room for the video even with enlarged text and status.
     auto* root = new QVBoxLayout;
-    root->setContentsMargins(Graphite::space(Graphite::Space::m), 0, Graphite::space(Graphite::Space::m), 0);
-    root->setSpacing(Graphite::space(Graphite::Space::xs));
+    root->setContentsMargins(reviewSpace(Graphite::Space::m), 0, reviewSpace(Graphite::Space::m), 0);
+    root->setSpacing(reviewSpace(Graphite::Space::xs));
     frame->addLayout(root);
     auto tool = [this](const char* icon, const QString& name, const QString& tip) {
         auto* button = new QToolButton(this);
@@ -1059,7 +1072,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         button->setAccessibleName(name);
         button->setAutoRaise(true);
         button->setProperty("graphiteDensity", "compact");
-        button->setFixedSize(Graphite::scaled(28), Graphite::scaled(28));
+        button->setFixedSize(textControlHeight(button), textControlHeight(button));
         return button;
     };
     // Timing actions retain their words and grow with the text.
@@ -1071,7 +1084,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         button->setToolTip(tip);
         button->setProperty("graphiteDensity", "compact");
         VisualStyle::role(button, "label");
-        button->setFixedSize(int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(text))) + 24, Graphite::scaled(28));
+        button->setFixedSize(int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(text))) + 24, textControlHeight(button));
         return button;
     };
     // A row's name in the shared gutter, beside its controls and level with the lanes' names.
@@ -1083,7 +1096,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         box->setObjectName(name);
         auto* row = new QHBoxLayout(box);
         row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(Graphite::space(Graphite::Space::xs));
+        row->setSpacing(reviewSpace(Graphite::Space::xs));
         for (auto* w : widgets) row->addWidget(w);
         return box;
     };
@@ -1116,7 +1129,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     addMask_->setAutoRaise(true);
     addMask_->setObjectName("addMask");
     addMask_->setPopupMode(QToolButton::InstantPopup);
-    addMask_->setFixedSize(gutter - Graphite::space(Graphite::Space::xs), Graphite::scaled(28));
+    addMask_->setFixedSize(gutter - reviewSpace(Graphite::Space::xs), textControlHeight(addMask_));
     auto* maskMenu = new QMenu(addMask_);
     addMask_->setMenu(maskMenu);
     addSolid_ = maskMenu->addAction(VisualStyle::icon("redact"), "Add redaction");
@@ -1152,8 +1165,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* optionsAction = new QWidgetAction(optionsMenu);
     auto* optionsPanel = new QWidget(optionsMenu);
     auto* optionsLayout = new QVBoxLayout(optionsPanel);
-    optionsLayout->setContentsMargins(Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::s));
-    optionsLayout->setSpacing(Graphite::space(Graphite::Space::s));
+    optionsLayout->setContentsMargins(reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s));
+    optionsLayout->setSpacing(reviewSpace(Graphite::Space::s));
     auto* blurAdvice = new Graphite::Banner(Graphite::Banner::Tone::Warning, Graphite::blurWarningText(), optionsPanel);
     blurAdvice->setObjectName("reviewBlurAdvice");
     blurAdvice->setMaximumWidth(480);
@@ -1218,18 +1231,22 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     transport_->setObjectName("reviewTransport");
     auto* transport = new QHBoxLayout(transport_);
     transport->setContentsMargins(0, 0, 0, 0);
-    transport->setSpacing(Graphite::space(Graphite::Space::xs));
+    transport->setSpacing(reviewSpace(Graphite::Space::xs));
     transport->addWidget(play_);
     transport->addWidget(time_);
     transport->addWidget(speed_);
     transport->addStretch(1);
-    timeline_->setTransport(transport_);
+    if (Graphite::WindowHeader::customFrame()) {
+        header_->setDocument(QString());
+        header_->setAccessibleName("Review recording");
+        header_->setCentre(transport_);
+    } else root->insertWidget(0, transport_);
     // Status belongs below the frame, so no guidance or recovery action hides video.
     statusRow_ = new QWidget(this);
     statusRow_->setObjectName("statusRow");
     statusLines_ = new QVBoxLayout(statusRow_);
     statusLines_->setContentsMargins(0, 0, 0, 0);
-    statusLines_->setSpacing(Graphite::space(Graphite::Space::xs));
+    statusLines_->setSpacing(reviewSpace(Graphite::Space::xs));
     statusRow_->hide();
     frame->addWidget(statusRow_);
     // One footer row when its measured content fits; metadata moves above otherwise.
@@ -1269,7 +1286,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     draft->setObjectName("draftState");
     draft->setToolTip("Nothing uploads until you choose Upload; Save a copy… exports locally.");
     VisualStyle::role(draft, "meta");
-    header_->addTrailing(draft);
+
     destination_ = new Graphite::ElidedLabel(this);
     destination_->setText(options.uploadSummary);
     destination_->setWordWrap(true);
@@ -1286,14 +1303,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* footer = new Graphite::Surface("bg", Qt::TopEdge, this);
     footer->setObjectName("reviewFooter");
     auto* footerRows = new QVBoxLayout(footer);
-    footerRows->setContentsMargins(Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::s));
-    footerRows->setSpacing(Graphite::space(Graphite::Space::xs));
+    footerRows->setContentsMargins(reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::xs), reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::xs));
+    footerRows->setSpacing(reviewSpace(Graphite::Space::xs));
     auto* actions = new QWidget(footer);
     actions->setObjectName("reviewActions");
     auto* actionsRow = new QGridLayout(actions);
     actionsRow->setContentsMargins(0, 0, 0, 0);
-    actionsRow->setHorizontalSpacing(Graphite::space(Graphite::Space::xs));
-    actionsRow->setVerticalSpacing(Graphite::space(Graphite::Space::xs));
+    actionsRow->setHorizontalSpacing(reviewSpace(Graphite::Space::xs));
+    actionsRow->setVerticalSpacing(reviewSpace(Graphite::Space::xs));
     destinationMenu_ = new DestinationMenu(actions);
     destinationMenu_->setObjectName("uploadDestinationMenu");
     destinationMenu_->setAutoRaise(true);
@@ -1309,7 +1326,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     destinationFull_->setObjectName("uploadDestinationWrapped");
     destinationFull_->setTextFormat(Qt::PlainText);
     destinationFull_->setWordWrap(true);
-    destinationFull_->setMargin(Graphite::space(Graphite::Space::m));
+    destinationFull_->setMargin(reviewSpace(Graphite::Space::m));
     destinationFull_->setMaximumWidth(480);
     destinationFull_->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     destinationFull_->setFocusPolicy(Qt::StrongFocus);
@@ -1326,13 +1343,29 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     metadata->setObjectName("reviewMetadata");
     auto* metadataRow = new QHBoxLayout(metadata);
     metadataRow->setContentsMargins(0, 0, 0, 0);
-    metadataRow->setSpacing(Graphite::space(Graphite::Space::s));
+    metadataRow->setSpacing(reviewSpace(Graphite::Space::s));
     metadataRow->addWidget(exportAudio_);
-    metadataRow->addWidget(playbackStatus_);
+    playbackStatus_->hide();
+    metadataRow->addWidget(draft);
     actionsRow->addWidget(metadata, 0, 3);
     actionsRow->addWidget(save_, 0, 4);
     actionsRow->addWidget(cancel_, 0, 5);
     actionsRow->addWidget(upload_, 0, 6);
+    auto* nameLine = new QWidget(actions);
+    nameLine->setObjectName("reviewDestinationLine");
+    auto* nameRow = new QVBoxLayout(nameLine);
+    nameRow->setContentsMargins(0, 0, 0, 0);
+    nameRow->setSpacing(0);
+    nameRow->addWidget(destination_);
+    nameLine->hide();
+    for (const auto& name : {"reviewMetadataLine", "reviewActionLine"}) {
+        auto* line = new QWidget(actions);
+        line->setObjectName(name);
+        auto* row = new QHBoxLayout(line);
+        row->setContentsMargins(0, 0, 0, 0);
+        row->setSpacing(reviewSpace(Graphite::Space::xs));
+        line->hide();
+    }
     footerRows->addWidget(actions);
     frame->addWidget(footer);
     errorDetails_ = new QPushButton("Details…", this);
@@ -1340,7 +1373,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     errorDetails_->setProperty("driveAction", QJsonObject{{"action", "showAdvice"}});
     VisualStyle::role(errorDetails_, "quiet");
     errorDetails_->setFixedWidth(int(std::ceil(QFontMetricsF(errorDetails_->font()).horizontalAdvance(errorDetails_->text()))) + 28);
-    errorDetails_->setFixedHeight(textControlHeight(errorDetails_));
+    errorDetails_->setFixedHeight(std::max(32, textControlHeight(errorDetails_)));
     errorDetails_->hide();
     connect(errorDetails_, &QPushButton::clicked, this, [this] { drive({{"action", "showAdvice"}}); });
     placeDestination();
@@ -1348,17 +1381,19 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     for (auto* field : std::initializer_list<QWidget*>{speed_, masks_, strength_, format_}) {
         field->setProperty("graphiteDensity", "compact");
         VisualStyle::role(field, "meta");
-        field->setFixedHeight(Graphite::scaled(28));
+        field->setFixedHeight(textControlHeight(field));
     }
+    strength_->setFixedHeight(std::max(32, textControlHeight(strength_)));
     play_->setFixedHeight(speed_->height());
-    format_->setFixedHeight(Graphite::scaled(28));
+    format_->setFixedHeight(textControlHeight(format_));
     formatAdvice_->setFixedHeight(format_->height());
     for (auto* action : {upload_, save_, cancel_}) {
+        action->setProperty("graphiteDensity", "compact");
         action->ensurePolished();
-        auto font = Graphite::labelFont();
+        auto font = action->font();
         const int icon = action->icon().isNull() ? 0 : action->iconSize().width() + 8;
         action->setFixedWidth(int(std::ceil(QFontMetricsF(font).horizontalAdvance(action->text()))) + icon + 32);
-        action->setFixedHeight(32);
+        action->setFixedHeight(textControlHeight(action));
     }
     // Keyboard (#283): Space plays and pauses (keyPressEvent, so a focused
     // button or list still takes its own Space), I/O set the trim, Shift+I/O the
@@ -1645,8 +1680,7 @@ void ReviewWindow::refreshLabels() {
     time_->setText(QStringLiteral("%1 / %2").arg(timeText(at), timeText(options_.durationUs)));
     time_->setAccessibleDescription(time_->text());
     playbackStatus_->setText(retained ? QStringLiteral("Preview muted") : QStringLiteral("Outside kept part"));
-    playbackStatus_->show();
-    timeline_->setTransport(transport_);
+    playbackStatus_->hide();
     time_->setToolTip(time_->text() + "\n" + (retained ? QStringLiteral("Playhead time / recording length") : QStringLiteral("The playhead is in a trimmed-away part; it is not exported")));
     const auto boundary = [](qint64 us) { auto text = durationText(us); if (text.endsWith(".0")) text.chop(2); return text; };
     retained_->setText(QStringLiteral("Keep %1–%2 · %3 s").arg(boundary(edit_.trimStart), boundary(end), seconds(end - edit_.trimStart)));
@@ -1680,7 +1714,7 @@ void ReviewWindow::refreshLabels() {
     QStringList intervals;
     for (const auto& item : edit_.masks) {
         const auto interval = QStringLiteral("%1–%2").arg(timeText(item.start), timeText(item.end));
-        intervals << interval + QStringLiteral(" · Starts at %1").arg(timeText(item.start)) << interval + QStringLiteral(" · ") + outside;
+        intervals << interval;
     }
     static_cast<MaskInterval*>(maskActive_)->reserve(intervals, anyBlur);
     static_cast<MaskInterval*>(maskActive_)->setWarning(warning ? Graphite::blurWarningText() : QString());
@@ -1743,7 +1777,7 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
 void ReviewWindow::refreshStatus() {
     footerError_ = message_.tone == "error";
     playbackStatus_->setText(playhead() < edit_.trimStart || playhead() >= edit_.exportEnd(options_.durationUs) ? QStringLiteral("Outside kept part") : QStringLiteral("Preview muted"));
-    playbackStatus_->show();
+    playbackStatus_->hide();
     placeDestination();
     auto entries = statusEntries();
     for (auto& entry : entries) {
@@ -1787,7 +1821,7 @@ void ReviewWindow::refreshStatus() {
         auto* line = new QWidget(band);
         auto* row = new QHBoxLayout(line);
         row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(Graphite::space(Graphite::Space::xs));
+        row->setSpacing(reviewSpace(Graphite::Space::xs));
         // The words carry the tone; colour only repeats it.
         const bool saved = std::any_of(entry.actions.cbegin(), entry.actions.cend(), [](const auto& action) { return action.second["action"] == "copyPath"; });
         QLabel* text;
@@ -1827,7 +1861,7 @@ void ReviewWindow::refreshStatus() {
             // Compact action painting inside a full pointer target.
             button->setFixedWidth((params["action"] == "dismissStatus" || params["action"] == "dismissBlurTip") ? iconTarget() : int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(label))) + 28);
             button->setMinimumHeight(32);
-            button->setFixedHeight(textControlHeight(button));
+            button->setFixedHeight(std::max(32, textControlHeight(button)));
             button->setProperty("driveAction", params);
             connect(button, &QPushButton::clicked, this, [this, params] { drive(params); });
             row->addWidget(button, 0, Qt::AlignVCenter);
@@ -1877,8 +1911,8 @@ void ReviewWindow::showAdvice(bool formatTips) {
     auto* body = new QWidget(scroll);
     scroll->setWidget(body);
     auto* layout = new QVBoxLayout(body);
-    layout->setContentsMargins(Graphite::space(Graphite::Space::xl), Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::xl), Graphite::space(Graphite::Space::l));
-    layout->setSpacing(Graphite::space(Graphite::Space::m));
+    layout->setContentsMargins(reviewSpace(Graphite::Space::xl), reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::xl), reviewSpace(Graphite::Space::l));
+    layout->setSpacing(reviewSpace(Graphite::Space::m));
     auto* heading = new QLabel(title, body);
     VisualStyle::role(heading, "sectionTitle");
     layout->addWidget(heading);
@@ -1902,7 +1936,7 @@ void ReviewWindow::showAdvice(bool formatTips) {
         auto* formatRow = new QWidget(body);
         auto* formatLayout = new QVBoxLayout(formatRow);
         formatLayout->setContentsMargins(0, 0, 0, 0);
-        formatLayout->setSpacing(Graphite::space(Graphite::Space::xs));
+        formatLayout->setSpacing(reviewSpace(Graphite::Space::xs));
         formatLayout->addWidget(fact(formatHint(config_.format, config_.codec)));
         bool h264Available = false;
         for (int i = 0; i < format_->count(); ++i) h264Available |= format_->itemData(i).toStringList() == QStringList{"mp4", "h264"};
@@ -1921,8 +1955,8 @@ void ReviewWindow::showAdvice(bool formatTips) {
     layout->addStretch();
     auto* footer = new Graphite::Surface("bg", Qt::TopEdge, dialog);
     auto* actions = new QHBoxLayout(footer);
-    actions->setContentsMargins(Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::m));
-    actions->setSpacing(Graphite::space(Graphite::Space::s));
+    actions->setContentsMargins(reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::m), reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::m));
+    actions->setSpacing(reviewSpace(Graphite::Space::s));
     actions->addStretch();
     if (failed) {
         auto* retry = new QPushButton("Try again", footer);
@@ -1965,9 +1999,11 @@ void ReviewWindow::updateMinimum() {
             const auto share = [&](int width, int controls, int timelineHeight) {
                 const auto margins = footer->layout()->contentsMargins();
                 const int metadataWidth = findChild<QWidget*>("reviewMetadata")->sizeHint().width();
-                const int destinationHeight = destinationMenu_->heightForWidth(std::max(destinationMenu_->minimumWidth(), width - 2 * Graphite::space(Graphite::Space::l) - metadataWidth - Graphite::space(Graphite::Space::s)));
-                const int footerHeight = 32 + (footerFits(width - 2 * Graphite::space(Graphite::Space::l) - Graphite::space(Graphite::Space::xs)) ? 0 : std::max(destinationHeight, destinationMenu_->fontMetrics().height()) + 4);
-                const int chrome = fixed + trim->heightFor(width - 2 * Graphite::space(Graphite::Space::m)) + timelineHeight + footerHeight + margins.top() + margins.bottom();
+                const bool longName = destinationMenu_->fontMetrics().horizontalAdvance(options_.destination) > reviewSpace(Graphite::Space::xl) * 10;
+                const int nameHeight = destination_->fontMetrics().horizontalAdvance(options_.destination) <= width - 2 * reviewSpace(Graphite::Space::l) ? destination_->fontMetrics().tightBoundingRect(options_.destination).height() : destination_->heightForWidth(width - 2 * reviewSpace(Graphite::Space::l));
+                const int destinationHeight = longName ? nameHeight + destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(std::max(destinationMenu_->minimumWidth(), width - 2 * reviewSpace(Graphite::Space::l) - metadataWidth - reviewSpace(Graphite::Space::s)));
+                const int footerHeight = format_->height() + (footerFits(width - 2 * reviewSpace(Graphite::Space::l) - reviewSpace(Graphite::Space::xs)) ? 0 : std::max(destinationHeight, destinationMenu_->fontMetrics().height()) + (longName ? 0 : 4));
+                const int chrome = fixed + trim->heightFor(width - 2 * reviewSpace(Graphite::Space::m)) + timelineHeight + footerHeight + margins.top() + margins.bottom();
                 const QSize image = QSize(10000, int(10000 / aspect)).scaled(QSize(width - 8, height - chrome - controls), Qt::KeepAspectRatio);
                 return double(image.width()) * image.height() / (double(width) * height);
             };
@@ -1976,12 +2012,12 @@ void ReviewWindow::updateMinimum() {
             const int axisMinimum = QFontMetrics(gutterFont()).horizontalAdvance(durationText(options_.durationUs)) * 4 + 96;
             for (int candidate = minimumWidth(); candidate <= available.width(); candidate += 2) {
                 const int futureControls = edit_.masks.isEmpty() ? maskStart_->height() : 0;
-                const int controls = std::max(futureControls, flow->heightFor(candidate - 2 * Graphite::space(Graphite::Space::m), true));
-                const int timelineHeight = timeline_->heightForLanes(candidate - 2 * Graphite::space(Graphite::Space::m), std::max(2, timeline_->lanes()));
-                const double steady = share(candidate, std::max(futureControls, flow->heightFor(candidate - 2 * Graphite::space(Graphite::Space::m))), timelineHeight);
+                const int controls = std::max(futureControls, flow->heightFor(candidate - 2 * reviewSpace(Graphite::Space::m), true));
+                const int timelineHeight = timeline_->heightForLanes(candidate - 2 * reviewSpace(Graphite::Space::m), std::max(2, timeline_->lanes()));
+                const double steady = share(candidate, std::max(futureControls, flow->heightFor(candidate - 2 * reviewSpace(Graphite::Space::m))), timelineHeight);
                 const double transient = share(candidate, controls + std::max(32, QFontMetrics(Graphite::font(Graphite::Type::metadata)).height() + 8) + 4, timelineHeight);
-                const int inlineAxis = candidate - 2 * Graphite::space(Graphite::Space::m) - trackPad - ReviewTimeline::gutterWidth() - transport_->property("inlineWidth").toInt() - 12;
-                const int axis = inlineAxis < 360 ? candidate - 2 * Graphite::space(Graphite::Space::m) - trackPad - ReviewTimeline::gutterWidth() : inlineAxis;
+                const int inlineAxis = candidate - 2 * reviewSpace(Graphite::Space::m) - trackPad - ReviewTimeline::gutterWidth() - transport_->property("inlineWidth").toInt() - 12;
+                const int axis = inlineAxis < 360 ? candidate - 2 * reviewSpace(Graphite::Space::m) - trackPad - ReviewTimeline::gutterWidth() : inlineAxis;
                 const double organization = std::min(1.0, double(axis) / axisMinimum) - controls * 0.002;
                 const double score = steady >= 0.605 && transient >= 0.535 ? 10 + organization + transient * 0.02 : steady >= 0.605 ? 1 + transient : steady;
                 if (score > best) { best = score; width = candidate; }
@@ -2027,9 +2063,9 @@ QSize ReviewWindow::minimumSizeHint() const {
     // wrapped at that width (with a blur's radius) sets the height.
     const auto* flow = static_cast<const FlowRow*>(maskGroup_);
     const auto rows = layout()->minimumSize();
-    const int width = std::max({640, rows.width(), flow->minimumSizeHint().width() + 2 * Graphite::space(Graphite::Space::l)});
+    const int width = std::max({640, rows.width(), flow->minimumSizeHint().width() + 2 * reviewSpace(Graphite::Space::l)});
     int height = rows.height();
-    if (flow->isVisibleTo(this)) height += flow->heightFor(width - 2 * Graphite::space(Graphite::Space::m), true) - flow->minimumSizeHint().height();
+    if (flow->isVisibleTo(this)) height += flow->heightFor(width - 2 * reviewSpace(Graphite::Space::m), true) - flow->minimumSizeHint().height();
     // Status lines wrap at a narrow width; count them as they are laid out.
     if (statusRow_->isVisibleTo(this) && statusRow_->hasHeightForWidth()) height += std::max(0, statusRow_->heightForWidth(width) - statusRow_->minimumSizeHint().height());
     return {width, std::max(480, height)};
@@ -2049,7 +2085,8 @@ void ReviewWindow::placeDestination() {
     destination_->setRevealText("Destination: " + options_.destination + "\nSharing: " + (options_.sharingMode == "private" ? "Private upload" : "Shared link") + "\n\n" + formatLabel(config_.format, config_.codec) + "\n" + formatHint(config_.format, config_.codec) + "\n" + audio_->property("summary").toString());
     destination_->setToolTip(options_.uploadSummary);
     destination_->setAccessibleName(options_.uploadSummary);
-    exportAudio_->setText(effectiveAudio(config_, options_.audioRecorded, audioIntent_) ? QStringLiteral("System audio included") : !options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : QStringLiteral("Audio off in export"));
+    exportAudio_->setText(effectiveAudio(config_, options_.audioRecorded, audioIntent_) ? QStringLiteral("System audio") : !options_.audioRecorded ? QStringLiteral("No audio") : config_.silent() ? QStringLiteral("Silent %1").arg(config_.format.toUpper()) : QStringLiteral("Audio off"));
+    exportAudio_->setText(exportAudio_->text() + QStringLiteral(" · ") + playbackStatus_->text());
     const auto details = "Destination: " + options_.destination + "\nSharing: " + (options_.sharingMode == "private" ? "Private upload" : "Shared link") + "\n\n" + options_.uploadSummary + "\n" + formatLabel(config_.format, config_.codec) + "\n" + formatHint(config_.format, config_.codec) + "\n" + audio_->property("summary").toString();
     destinationFull_->setText(details);
     destinationMenu_->setText(destination_->text());
@@ -2057,19 +2094,33 @@ void ReviewWindow::placeDestination() {
     destinationMenu_->setAccessibleName(destination_->text());
     destinationMenu_->setVisible(!options_.uploadSummary.isEmpty());
     auto* metadata = findChild<QWidget*>("reviewMetadata");
-    const int modeWidth = std::min(destinationMenu_->fontMetrics().horizontalAdvance(destination_->text()), Graphite::scaled(240)) + Graphite::Metric::splitZone + 24;
+    const auto mode = options_.sharingMode == "private" ? QStringLiteral("Private upload") : QStringLiteral("Shared link");
+    const int fullWidth = destinationMenu_->fontMetrics().horizontalAdvance(destination_->text()) + Graphite::Metric::splitZone + 24;
+    const bool longName = destinationMenu_->fontMetrics().horizontalAdvance(options_.destination) > reviewSpace(Graphite::Space::xl) * 10;
+    const int modeWidth = (longName ? destinationMenu_->fontMetrics().horizontalAdvance(mode) : std::min(destinationMenu_->fontMetrics().horizontalAdvance(destination_->text()), reviewSpace(Graphite::Space::xl) * 10)) + Graphite::Metric::splitZone + 24;
     destinationMenu_->setMinimumWidth(modeWidth);
-    const int naturalDestination = destinationMenu_->fontMetrics().horizontalAdvance(destination_->text()) + Graphite::Metric::splitZone + 24;
+    const int naturalDestination = longName ? modeWidth : fullWidth;
     destinationMenu_->setMaximumWidth(naturalDestination);
     auto* grid = qobject_cast<QGridLayout*>(findChild<QWidget*>("reviewActions")->layout());
-    const int available = std::max(1, width() - 2 * Graphite::space(Graphite::Space::l));
+    const int available = std::max(1, width() - 2 * reviewSpace(Graphite::Space::l));
     const bool wasSingle = grid->property("placed").toBool() && grid->property("singleRow").toBool();
     const bool single = footerFits(available + (wasSingle ? 4 : -4));
-    const int destinationSpace = single ? naturalDestination : available - metadata->sizeHint().width() - Graphite::space(Graphite::Space::s);
-    destinationMenu_->setFixedHeight(single ? 32 : destinationMenu_->heightForWidth(std::max(modeWidth, destinationSpace)));
-    if (!grid->property("placed").toBool() || grid->property("singleRow").toBool() != single) {
-        for (auto* widget : std::initializer_list<QWidget*>{destinationMenu_, format_, formatAdvice_, metadata, save_, cancel_, upload_}) grid->removeWidget(widget);
+    const int destinationSpace = single ? naturalDestination : available - metadata->sizeHint().width() - reviewSpace(Graphite::Space::s);
+    const bool splitName = longName && !single;
+    destinationMenu_->setProperty("displayText", splitName ? QVariant(mode) : QVariant());
+    destinationMenu_->setMaximumWidth(splitName ? modeWidth : fullWidth);
+    destinationMenu_->setFixedHeight(single ? 32 : splitName ? destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(std::max(modeWidth, destinationSpace)));
+    if (!grid->property("placed").toBool() || grid->property("singleRow").toBool() != single || grid->property("splitName").toBool() != splitName) {
+        auto* nameLine = findChild<QWidget*>("reviewDestinationLine");
+        auto* metaLine = findChild<QWidget*>("reviewMetadataLine");
+        auto* actionLine = findChild<QWidget*>("reviewActionLine");
+        for (auto* line : {metaLine, actionLine}) while (auto* item = line->layout()->takeAt(0)) delete item;
+        for (auto* widget : std::initializer_list<QWidget*>{destinationMenu_, format_, formatAdvice_, metadata, save_, cancel_, upload_, nameLine, metaLine, actionLine}) grid->removeWidget(widget);
         for (int column = 0; column < 7; ++column) grid->setColumnStretch(column, 0);
+        nameLine->setVisible(splitName);
+        destination_->setVisible(splitName);
+        metaLine->setVisible(!single);
+        actionLine->setVisible(!single);
         if (single) {
             grid->addWidget(destinationMenu_, 0, 0, Qt::AlignLeft);
             grid->addWidget(format_, 0, 1);
@@ -2080,21 +2131,33 @@ void ReviewWindow::placeDestination() {
             grid->addWidget(upload_, 0, 6);
             grid->setColumnStretch(0, 1);
         } else {
-            grid->addWidget(destinationMenu_, 0, 0, 1, 4, Qt::AlignLeft);
-            grid->addWidget(metadata, 0, 4, 1, 3, Qt::AlignRight);
-            grid->addWidget(format_, 1, 0);
-            grid->addWidget(formatAdvice_, 1, 1);
-            grid->addWidget(save_, 1, 4);
-            grid->addWidget(cancel_, 1, 5);
-            grid->addWidget(upload_, 1, 6);
-            grid->setColumnStretch(2, 1);
+            auto* metaRow = static_cast<QHBoxLayout*>(metaLine->layout());
+            metaRow->addWidget(destinationMenu_, 1);
+            metaRow->addWidget(metadata);
+            auto* actionRow = static_cast<QHBoxLayout*>(actionLine->layout());
+            actionRow->addWidget(format_);
+            actionRow->addWidget(formatAdvice_);
+            actionRow->addStretch(1);
+            for (auto* action : {save_, cancel_, upload_}) actionRow->addWidget(action);
+            if (splitName) grid->addWidget(nameLine, 0, 0, 1, 7);
+            grid->addWidget(metaLine, splitName ? 1 : 0, 0, 1, 7);
+            grid->addWidget(actionLine, splitName ? 2 : 1, 0, 1, 7);
+            grid->setVerticalSpacing(splitName ? 0 : reviewSpace(Graphite::Space::xs));
         }
+        grid->setProperty("splitName", splitName);
         grid->setProperty("placed", true);
         grid->setProperty("singleRow", single);
         grid->invalidate();
     }
     grid->activate();
-    const int height = single ? 32 : destinationMenu_->heightForWidth(destinationMenu_->width());
+    if (splitName) {
+        destination_->setText(options_.destination);
+        const int nameWidth = std::max(1, available - Graphite::scaled(14) - 18);
+        const bool fits = destination_->fontMetrics().horizontalAdvance(options_.destination) <= nameWidth;
+        destination_->setWordWrap(!fits);
+        destination_->setFixedHeight(fits ? destination_->fontMetrics().tightBoundingRect(options_.destination).height() : destination_->heightForWidth(nameWidth));
+    }
+    const int height = single ? 32 : splitName ? destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(destinationMenu_->width());
     if (destinationMenu_->height() != height) { destinationMenu_->setFixedHeight(height); grid->activate(); }
 }
 QJsonObject ReviewWindow::inspect() const {

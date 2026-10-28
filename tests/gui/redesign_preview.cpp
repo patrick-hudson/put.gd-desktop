@@ -199,7 +199,9 @@ int main(int argc,char** argv){
  }
  QJsonArray captures;auto save=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(name=="01a-history-preview-focus"||name=="10a-history-compact-preview-focus"){window.activateWindow();auto* focusedPreview=window.findChild<QLabel*>("historyPreview");focusedPreview->setFocus(Qt::TabFocusReason);app.processEvents();if(!focusedPreview->hasFocus())return false;}if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}if(!checkSteppers(window))return false;const auto image=window.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
  const bool recordOnly=qEnvironmentVariableIsSet("PUTGD_PREVIEW_RECORD_ONLY");
+ const bool editorOnly=qEnvironmentVariableIsSet("PUTGD_PREVIEW_EDITOR_ONLY");
  if(!recordOnly){
+ if(!editorOnly){
  auto* preview=window.findChild<QLabel*>("historyPreview");if(!preview||!waitUntil([&]{return !preview->pixmap().isNull();}))return 2;
  if(QGuiApplication::platformName()=="offscreen"){
   QMenu menu(&window);menu.addAction("All actions: Shared link · R&&D · No local copy")->setEnabled(false);menu.addAction("Capture region && edit: Off: no output")->setEnabled(false);menu.addSeparator();menu.addAction("Change output");menu.show();putgd::test::settle(20);const auto image=menu.grab();if(!image.save(QDir(output).filePath("00-output-menu-literal-ampersand.png")))return 2;captures.append(QJsonObject{{"file","00-output-menu-literal-ampersand.png"},{"width",image.width()},{"height",image.height()}});menu.close();
@@ -311,6 +313,7 @@ int main(int argc,char** argv){
  {HistoryStore ledger(operations.databasePath());for(int i=0;i<24;++i){Operation op;op.id=QString("synthetic-many-active-%1").arg(i);op.created=now.addSecs(i+100).toString(Qt::ISODateWithMs);op.action="clipboard";op.state="running";op.phase="uploading";op.settings=settings.snapshot();if(ledger.saveOperation(op))return 2;}}
  window.history()->refresh();if(!waitUntil([&]{return window.findChild<QPushButton*>("historyMoreActive")->text()=="23 more active";})||!save("history-many-active"))return 2;
  window.history()->command({{"action","cancelAll"}},[](Error,QJsonObject){});{auto* dialog=window.history()->findChild<QDialog*>("historyCancelAllConfirmation");if(!dialog||!dialog->isVisible())return 2;putgd::test::settle(100);const auto image=dialog->grab();if(!image.save(QDir(output).filePath("history-cancel-all-confirmation.png")))return 2;captures.append(QJsonObject{{"file","history-cancel-all-confirmation.png"},{"width",image.width()},{"height",image.height()}});}window.history()->command({{"action","keepUploading"}},[](Error,QJsonObject){});
+ }
  // Editor: the same widgets the --edit-image helper shows, over a synthetic capture.
  if(!editorIcons().save(QDir(output).filePath("00-editor-icons.png")))return 2;
  {
@@ -375,7 +378,7 @@ int main(int argc,char** argv){
  }
  }
 #ifdef PUTGD_PREVIEW_REVIEW
- {
+ if(!editorOnly){
   // Settings recovery at the supported compact width.
  if(!recordOnly){QTemporaryDir temp("/tmp/pgs-XXXXXX");SettingsService config(temp.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles.first().toObject();profile["provider"]="proton-drive";profile["settings"]=ProtonProvider::defaults();profiles[0]=profile;doc["profiles"]=profiles;if(!config.save(doc,{}))return 2;CredentialStore secrets;UiSessionFixture recovery(config,secrets);JsonReply finish;
   recovery.setup.setProviderSetup([&](const QString&,const Destination&,const QJsonObject&,JsonReply done,auto event){finish=done;event({{"event","auth"},{"url","https://account.proton.me/cli?synthetic-preview"}});});host::setTestOpener([](const QUrl&){});MainWindow recover(recovery.session);recover.resize(1060,680);recover.navigate("destinations");recover.show();putgd::test::settle(100);if(!recover.grab().save(QDir(output).filePath("settings-proton-signed-out.png")))return 2;captures.append(QJsonObject{{"file","settings-proton-signed-out.png"},{"width",recover.width()},{"height",recover.height()}});recover.findChild<QPushButton*>("connectProtonAccount")->click();if(!waitUntil([&]{return recover.settings()->saveViewState()["setupJobs"].toArray().size()==1&&recover.findChild<QLabel*>("protonAccountStatus")->text().contains("browser");}))return 2;const auto job=recover.settings()->saveViewState()["setupJobs"].toArray().first().toObject()["setupId"].toString();recover.settings()->protonBrowserFinished(job,{{"opened",false}});putgd::test::settle(100);if(!recover.grab().save(QDir(output).filePath("settings-proton-browser-retry.png")))return 2;captures.append(QJsonObject{{"file","settings-proton-browser-retry.png"},{"width",recover.width()},{"height",recover.height()}});finish({"synthetic_cancelled","Synthetic preview finished",{}},{});host::setTestOpener({});
@@ -474,7 +477,7 @@ int main(int argc,char** argv){
   selector.cancel();
  }
 #endif
- if(!recordOnly){
+ if(!recordOnly&&!editorOnly){
   AboutWindow about(fixture.session.build(),&window);RedesignTheme::apply(about);about.show();
   auto grabAbout=[&](const QString& name){app.processEvents();const auto image=about.grab();if(!image.save(QDir(output).filePath(name+".png"))||!native.step(about,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
   if(!grabAbout("about"))return 2;auto* details=about.findChild<QPushButton*>("buildDetails");if(!details)return 2;details->click();if(!grabAbout("about-build-details"))return 2;about.close();

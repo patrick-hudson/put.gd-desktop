@@ -335,6 +335,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     audio_->setChecked(config.audio.system);
     format_ = new FormatBox(choices_);
     format_->setObjectName("format");
+    format_->setProperty("purposeMinimum", true);
     format_->setAccessibleName("Recording format");
     format_->setToolTip("The format the recording is reviewed and exported in");
     for (const auto& format : options.formats) {
@@ -342,7 +343,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
         if (codecs.isEmpty()) { format_->addItem(formatLabel(format, {}), QStringList{format, QString()}); format_->setItemData(format_->count() - 1, formatLabel(format, {}) + "\n" + formatHint(format, {}), Qt::ToolTipRole); }
         for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatLabel(format, codec.toString()) + "\n" + formatHint(format, codec.toString()), Qt::ToolTipRole); }
     }
-    format_->setToolTip(options_.targetLabel + QStringLiteral("\n") + format_->currentData(Qt::ToolTipRole).toString());
+    format_->setToolTip((options_.targetLabel.isEmpty() ? QString() : options_.targetLabel + QStringLiteral("\n")) + format_->currentData(Qt::ToolTipRole).toString());
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) format_->setCurrentIndex(i); }
     formatAudio_ = new QLabel(choices_);
     formatAudio_->setObjectName("formatAudio");
@@ -393,7 +394,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     connect(discard_, &QPushButton::clicked, this, [this] { confirming_ = false; refresh(); emit cancelRequested(); });
     connect(audio_, &QCheckBox::toggled, this, [this](bool on) { if (audioIntent_ == on) return; audioIntent_ = on; config_.audio.system = on && options_.audioSupported && !config_.silent(); emit configChanged(config_); });
     connect(format_, &QComboBox::currentIndexChanged, this, [this](int index) {
-        format_->setToolTip(options_.targetLabel + QStringLiteral("\n") + format_->itemData(index, Qt::ToolTipRole).toString());
+        format_->setToolTip((options_.targetLabel.isEmpty() ? QString() : options_.targetLabel + QStringLiteral("\n")) + format_->itemData(index, Qt::ToolTipRole).toString());
         const auto value = format_->itemData(index).toStringList();
         if (value.size() != 2 || (value[0] == config_.format && value[1] == config_.codec)) return;
         config_.format = value[0];
