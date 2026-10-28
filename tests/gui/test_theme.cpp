@@ -663,6 +663,33 @@ private slots:
         disclosure.setChecked(true);
         QCOMPARE(disclosure.font().weight(), QFont::Normal);
     }
+    void textActionsStayFlushAndUnderlineOnHoverOrFocus() {
+        Fonts::load(); VisualStyle::apply(*qApp);
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme); const auto& c = Theme::current();
+            QPushButton button("Copy details"); VisualStyle::role(&button, "textAction");
+            button.setProperty("graphiteFlush", true); button.ensurePolished(); button.resize(button.sizeHint());
+            QCOMPARE(button.font().weight(), QFont::Medium);
+            const auto render = [&](QStyle::State state) {
+                QStyleOptionButton option; option.initFrom(&button); option.rect = button.rect(); option.text = button.text(); option.state = QStyle::State_Enabled | state;
+                QImage image(button.size(), QImage::Format_RGB32); image.fill(c.surface);
+                QPainter painter(&image); button.style()->drawControl(QStyle::CE_PushButtonLabel, &option, &painter, &button); return image;
+            };
+            const auto ink = [&](const QImage& image) {
+                int count = 0; for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x) {
+                    const auto pixel = image.pixelColor(x, y);
+                    count += qAbs(pixel.red()-c.text.red()) + qAbs(pixel.green()-c.text.green()) + qAbs(pixel.blue()-c.text.blue()) < 15;
+                } return count;
+            };
+            const auto resting = render(QStyle::State_None);
+            QVERIFY(ink(resting) > 30);
+            QVERIFY(ink(render(QStyle::State_MouseOver)) > ink(resting));
+            QVERIFY(ink(render(QStyle::State_HasFocus)) > ink(resting));
+            int last = -1; for (int y = 0; y < resting.height(); ++y) for (int x = 0; x < resting.width(); ++x)
+                if (Theme::contrast(resting.pixelColor(x, y), c.surface) >= 3.0) last = qMax(last, x);
+            QVERIFY2(resting.width()-1-last <= 1, qPrintable(QString("Trailing text inset: %1").arg(resting.width()-1-last)));
+        }
+    }
     void leadButtonKeepsTheContentActionProminent() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme); const auto& c = Theme::current();
