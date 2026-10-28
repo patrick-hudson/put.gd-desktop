@@ -75,6 +75,17 @@ protected:
  }
 private:QColor color_;bool custom_;
 };
+class KeyboardHelp final:public QWidget {
+public:
+ explicit KeyboardHelp(QWidget* parent):QWidget(parent){grid_=new QGridLayout(this);grid_->setContentsMargins(0,0,0,0);grid_->setHorizontalSpacing(Graphite::space(Space::s));grid_->setVerticalSpacing(Graphite::space(Space::xs));grid_->setColumnStretch(1,1);setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);}
+ void addShortcut(QLabel* key,QLabel* meaning){rows_.append(QPair<QLabel*,QLabel*>{key,meaning});grid_->addWidget(key,rows_.size()-1,0,Qt::AlignTop);grid_->addWidget(meaning,rows_.size()-1,1,Qt::AlignTop);}
+protected:
+ void resizeEvent(QResizeEvent* event)override{QWidget::resizeEvent(event);reflow();}
+ void showEvent(QShowEvent* event)override{QWidget::showEvent(event);reflow();}
+private:
+ QGridLayout* grid_;QList<QPair<QLabel*,QLabel*>> rows_;bool stacked_=false;
+ void reflow(){int keys=0,meanings=0;for(const auto& [key,meaning]:rows_){keys=qMax(keys,key->sizeHint().width());meanings=qMax(meanings,meaning->fontMetrics().horizontalAdvance(meaning->text()));}const bool stacked=keys+meanings+Graphite::space(Space::s)>contentsRect().width();if(stacked==stacked_)return;stacked_=stacked;while(auto* item=grid_->takeAt(0))delete item;grid_->setColumnStretch(1,stacked?0:1);int row=0;for(const auto& [key,meaning]:rows_){grid_->addWidget(key,row,0,Qt::AlignTop);grid_->addWidget(meaning,stacked?row+1:row,stacked?0:1,Qt::AlignTop);row+=stacked?2:1;}setProperty("stacked",stacked);}
+};
 QLabel* fieldLabel(const QString& text,QWidget* parent){auto* label=new QLabel(text,parent);VisualStyle::role(label,"caption");return label;}
 QWidget* column(QWidget* parent,QVBoxLayout*& layout){auto* widget=new QWidget(parent);layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,0);layout->setSpacing(Graphite::space(Space::s));return widget;}
 // Tool names in editor.view, in Tool order.
@@ -206,12 +217,11 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  connect(geometryDisclosure_,&QToolButton::toggled,this,[this]{syncGeometry();});
  remove_=new QPushButton(heading);remove_->setObjectName("removeMark");remove_->setAccessibleName("Remove mark");remove_->setProperty("graphiteDensity","compact");remove_->setIcon(VisualStyle::icon("remove"));remove_->setProperty("graphiteIconBase",QSize(20,20));remove_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));remove_->setFixedSize(Graphite::scaled(28),Graphite::scaled(28));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");remove_->installEventFilter(this);titleRow->addWidget(remove_,0,Qt::AlignTop);
  auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setProperty("graphiteFlush",true);keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Graphite::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
- auto* keyboardText=new QWidget(panel);keyboardText->setObjectName("editorKeyboardHelpText");
- auto* keyboardGrid=new QGridLayout(keyboardText);keyboardGrid->setContentsMargins(0,0,0,0);keyboardGrid->setHorizontalSpacing(Graphite::space(Space::s));keyboardGrid->setVerticalSpacing(Graphite::space(Space::xs));
+ auto* keyboardText=new KeyboardHelp(panel);keyboardText->setObjectName("editorKeyboardHelpText");
  const QList<QPair<QString,QString>> shortcuts{{"[ / ]","Cycle marks"},{"Arrows","Move"},{"Shift+arrows","Resize"},{"Ctrl","Use 10 px steps"},{"Tab","Focus properties"},{"Delete","Remove mark"},{"Escape","Deselect"},{"Insert","Place mark"},{"Ctrl+Z","Undo"},{"Ctrl+Shift+Z","Redo"}};
- QStringList keyboardSummary;int shortcutRow=0;
- for(const auto& [keys,description]:shortcuts){auto* key=new QLabel(keys,keyboardText);Graphite::setMono(key);VisualStyle::role(key,"secondary");auto* meaning=new QLabel(description,keyboardText);meaning->setWordWrap(true);VisualStyle::role(meaning,"secondary");keyboardGrid->addWidget(key,shortcutRow,0,Qt::AlignTop);keyboardGrid->addWidget(meaning,shortcutRow++,1,Qt::AlignTop);keyboardSummary.append(keys+": "+description);}
- keyboardGrid->setColumnStretch(1,1);keyboardText->setAccessibleName("Keyboard help");keyboardText->setProperty("text",keyboardSummary.join('\n'));keyboardText->hide();properties->addWidget(keyboardText);
+ QStringList keyboardSummary;
+ for(const auto& [keys,description]:shortcuts){auto* key=new QLabel(keys,keyboardText);Graphite::setMono(key);VisualStyle::role(key,"secondary");auto* meaning=new QLabel(description,keyboardText);meaning->setWordWrap(true);VisualStyle::role(meaning,"secondary");keyboardText->addShortcut(key,meaning);keyboardSummary.append(keys+": "+description);}
+ keyboardText->setAccessibleName("Keyboard help");keyboardText->setProperty("text",keyboardSummary.join('\n'));keyboardText->hide();properties->addWidget(keyboardText);
  connect(keyboardHelp,&QToolButton::toggled,this,[this,keyboardText](bool open){keyboardText->setVisible(open);if(open)QTimer::singleShot(0,this,[this,keyboardText]{if(!keyboardText->isHidden())propertiesScroll_->ensureWidgetVisible(keyboardText,0,12);});});
  for(auto* control:panel->findChildren<QWidget*>())if(qobject_cast<QPushButton*>(control)||qobject_cast<QComboBox*>(control)||qobject_cast<QSpinBox*>(control)||(qobject_cast<QToolButton*>(control)&&!dynamic_cast<Swatch*>(control))){control->setProperty("graphiteDensity","compact");if(qobject_cast<QSpinBox*>(control))control->setMinimumHeight(32);control->style()->unpolish(control);control->style()->polish(control);}
  properties->addStretch(1);
