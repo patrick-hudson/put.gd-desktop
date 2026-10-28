@@ -1000,10 +1000,13 @@ private slots:
   window.findChild<QToolButton*>("historyGridMode")->click();list->setStyle(&probe);const auto index=list->model()->index(0,0);QCOMPARE(index.data(HistoryModel::PrimaryActionRole).toString(),QString("Retry upload"));
   QStyleOptionViewItem option;option.initFrom(list);const auto size=list->itemDelegate()->sizeHint(option,index);
   // Cards share each row: no wider than the viewport allows, never narrower than the scaled preference allows.
-  const int available=list->viewport()->width()-2*list->spacing();QVERIFY2(size.width()>=qMin(Graphite::scaled(248),available-list->spacing())-1,qPrintable(QString("card %1 of %2").arg(size.width()).arg(available)));QVERIFY(available/(size.width()+list->spacing())<=qMax(1,available/Graphite::scaled(248)));
+  const int available=list->viewport()->width()-2*list->spacing();QVERIFY2(size.width()>=qMin(qMin(Graphite::scaled(248),310),available-list->spacing())-1,qPrintable(QString("card %1 of %2").arg(size.width()).arg(available)));QVERIFY(available/(size.width()+list->spacing())<=qMax(1,available/qMin(Graphite::scaled(248),310)));
   option.rect=QRect(QPoint(),size);option.state=QStyle::State_Enabled|QStyle::State_MouseOver;QImage image(size,QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);{QPainter painter(&image);list->itemDelegate()->paint(&painter,option,index);}
   const auto area=HistoryWindow::failureTextArea(size,true,false);const int textBottom=area.bottom()+1;QCOMPARE(probe.buttons.size(),2);QCOMPARE(probe.buttons[0].size(),QSize(Graphite::scaled(28),Graphite::scaled(28)));QCOMPARE(probe.buttons[1].size(),probe.buttons[0].size());QVERIFY(probe.buttons[0].top()<Graphite::scaled(24));QVERIFY(probe.buttons[1].right()>size.width()-Graphite::scaled(60));
   for(const auto& button:probe.buttons){QVERIFY2(button.bottom()<area.top()-QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-6,qPrintable(QString("thumbnail action at y%1, metadata ends y%2").arg(button.top()).arg(textBottom)));QVERIFY(QRect(QPoint(),size).contains(button));QVERIFY(button.height()>=Graphite::scaled(28));}
+  window.resize(1060,800);QApplication::processEvents();const auto compactCard=list->itemDelegate()->sizeHint(option,index);QVERIFY2(2*(compactCard.width()+list->spacing())<=list->maximumViewportSize().width(),"Compact Gallery must fit at least two columns at 1060 px, including 150% text");
+  window.resize(600,800);QApplication::processEvents();const auto single=list->itemDelegate()->sizeHint(option,index);QVERIFY(single.width()>=list->viewport()->width()-3*list->spacing()-list->style()->pixelMetric(QStyle::PM_ScrollBarExtent)-2);
+
  }
  // Retain the existing gate name for callers; the header is intentionally absent.
  void historyMetadataColoursOnlyStatusWords(){

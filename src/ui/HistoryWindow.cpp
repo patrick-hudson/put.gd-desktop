@@ -396,10 +396,9 @@ public:
  bool primaryShown(const QModelIndex& i)const{if(grid())return !(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));return rowPrimary(i)&&inlineActions(i)&&(view_->selectionModel()->selectedRows().size()<=1||(grid()&&recovery(i)))&&!i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
  QRect card(QRect r,const QModelIndex& i)const{return grid()?r.adjusted(space(Space::s),space(Space::s),-space(Space::s),-space(Space::s)):r.adjusted(space(Space::s),heading(i)+2,-space(Space::s),-2);}
- // Rows share their width; a lone column keeps the preferred card width.
- // Enlarged text gives fewer columns, not oversized pictures.
+ // Cards share their row; picture height stays bounded even in a single column.
  // The flow layout always reserves a scrollbar's extent (QListViewPrivate::prepareItemsLayout).
- int galleryWidth()const{const int s=view_->spacing(),reserve=view_->style()->pixelMetric(QStyle::PM_ScrollView_ScrollBarOverlap,nullptr,view_->verticalScrollBar())?0:view_->style()->pixelMetric(QStyle::PM_ScrollBarExtent,nullptr,view_->verticalScrollBar());const int available=qMax(160,view_->maximumViewportSize().width()-reserve-2*s),minimum=Graphite::scaled(248),columns=qMax(1,available/(minimum+s)),width=available/columns-s-1;return qMax(160,columns==1?qMin(width,minimum):width);}
+ int galleryWidth()const{const int s=view_->spacing(),reserve=view_->style()->pixelMetric(QStyle::PM_ScrollView_ScrollBarOverlap,nullptr,view_->verticalScrollBar())?0:view_->style()->pixelMetric(QStyle::PM_ScrollBarExtent,nullptr,view_->verticalScrollBar());const int available=qMax(160,view_->maximumViewportSize().width()-reserve-2*s),minimum=qMin(Graphite::scaled(248),310),columns=qMax(1,available/(minimum+s)),width=available/columns-s-1;return qMax(160,width);}
  // Failure metadata wraps below the title and reserved actions.
  // Hover and selection never change the reserved height.
  int listDetailsSpace()const{return !grid()&&compactList&&compactList()?actionHeight()+space(Space::s):0;}
