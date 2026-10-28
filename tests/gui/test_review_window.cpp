@@ -1554,6 +1554,10 @@ private slots:
         QCOMPARE(box.displayedText(), QStringLiteral("MP4"));
         QVERIFY(box.accessibleDescription().contains("H.264"));
         QVERIFY(box.accessibleDescription().contains("Recommended"));
+        box.addItem("Smaller video — MP4 (H.265)", QStringList{"mp4", "h265"});
+        QVERIFY(FormatDelegate::tradeoff(box.model()->index(1, 0)).contains("Limited browser compatibility"));
+        QStyleOptionViewItem option;
+        QVERIFY(box.itemDelegate()->sizeHint(option, box.model()->index(1, 0)).height() > 2 * box.fontMetrics().height());
     }
     void maskChooserReservesScaledControlAndPopupSpace() {
         for (int pixels : {14, 21}) {

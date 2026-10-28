@@ -7,14 +7,40 @@
 #include <algorithm>
 #include <QPainter>
 #include <QStyleOptionComboBox>
+#include <QStyledItemDelegate>
 #include <QWheelEvent>
 
 namespace putgd::record {
+class FormatDelegate final : public QStyledItemDelegate {
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+    static QString tradeoff(const QModelIndex& index) {
+        const auto format = index.data(Qt::UserRole).toStringList();
+        if (format.value(0) == "mp4") return format.value(1) == "h265" ? QStringLiteral("Smaller files · Limited browser compatibility") : QStringLiteral("Recommended for browser sharing");
+        if (format.value(0) == "webm") return QStringLiteral("Browser playback · Older Safari unsupported");
+        return format.value(0) == "gif" ? QStringLiteral("Silent animation · Larger files") : QStringLiteral("Silent animation · Smaller than GIF");
+    }
+    QSize sizeHint(const QStyleOptionViewItem&, const QModelIndex& index) const override {
+        const QFontMetrics title(Graphite::font()), description(Graphite::font(Graphite::Type::metadata));
+        return {std::max(title.horizontalAdvance(index.data().toString()), description.horizontalAdvance(tradeoff(index))) + 2 * Graphite::space(Graphite::Space::m), title.height() + description.height() + Graphite::space(Graphite::Space::xs) + 2 * Graphite::space(Graphite::Space::s)};
+    }
+    void paint(QPainter* painter, const QStyleOptionViewItem& base, const QModelIndex& index) const override {
+        auto option = base; initStyleOption(&option, index); option.text.clear();
+        const auto* style = option.widget ? option.widget->style() : qApp->style();
+        style->drawControl(QStyle::CE_ItemViewItem, &option, painter, option.widget);
+        const auto& colors = Theme::current();
+        const auto area = option.rect.adjusted(Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s), -Graphite::space(Graphite::Space::m), -Graphite::space(Graphite::Space::s));
+        const int titleHeight = QFontMetrics(Graphite::font()).height();
+        Graphite::paintText(*painter, QRect(area.left(), area.top(), area.width(), titleHeight), index.data().toString(), colors.text, Graphite::font(), Qt::AlignLeft | Qt::AlignVCenter);
+        Graphite::paintText(*painter, QRect(area.left(), area.top() + titleHeight + Graphite::space(Graphite::Space::xs), area.width(), QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()), tradeoff(index), colors.textSecondary, Graphite::font(Graphite::Type::metadata), Qt::AlignLeft | Qt::AlignVCenter);
+    }
+};
 // The closed choice leads with purpose; its popup and tooltip keep the codec
 // and recommendation without making every review action row that wide.
 class FormatBox final : public QComboBox {
 public:
     explicit FormatBox(QWidget* parent = nullptr) : QComboBox(parent) {
+        setItemDelegate(new FormatDelegate(this));
         const auto describe = [this] { setToolTip(currentData(Qt::ToolTipRole).toString()); setAccessibleDescription(currentText() + "\n" + toolTip()); };
         connect(this, &QComboBox::currentIndexChanged, this, describe);
         connect(model(), &QAbstractItemModel::dataChanged, this, describe);
