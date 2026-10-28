@@ -1538,6 +1538,33 @@ private slots:
         discard->click(); QVERIFY(bar.confirming()); QCOMPARE(cancelled.size(), 0);
         bar.findChild<QPushButton*>("keepRecording")->click(); QVERIFY(!bar.confirming());
     }
+    void timelineIntervalsAndBlurWarningsHaveContrast() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            const auto& colors = Theme::current();
+            ReviewTimeline t;
+            t.setDuration(duration); t.setTrim(1000000, 11000000);
+            t.setMasks({mask("blur", "blur", 2000000, 10000000)}, {});
+            t.resize(900, t.sizeHint().height()); t.show();
+            QApplication::processEvents();
+            const auto image = t.grab().toImage();
+            const auto track = t.trackRect();
+            const auto retained = image.pixelColor(t.xFor(6000000), track.center().y());
+            QVERIFY(Theme::contrast(retained, colors.surfaceRaised) >= 3.0);
+            const auto bar = t.maskRect("blur");
+            const auto fill = image.pixelColor(bar.right() - 12, bar.center().y());
+            const auto contrastIn = [&](const QRect& area) {
+                double contrast = 1;
+                for (int y = area.top(); y <= area.bottom(); ++y)
+                    for (int x = area.left(); x <= area.right(); ++x)
+                        contrast = std::max(contrast, Theme::contrast(image.pixelColor(x, y), fill));
+                return contrast;
+            };
+            const int side = std::min(bar.height() - 2, Graphite::scaled(14));
+            QVERIFY(contrastIn(QRect(bar.left() + 4, bar.center().y() - side / 2, side, side)) >= 4.5);
+            QVERIFY(contrastIn(QRect(bar.right() - 40, bar.bottom() - 4, 24, 2)) >= 3.0);
+        }
+    }
     void timelineTargetsAre32PixelsAndNearestHandleWins_data() {
         QTest::addColumn<double>("scale");
         QTest::newRow("standard") << 1.0;

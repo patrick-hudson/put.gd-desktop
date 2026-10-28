@@ -921,8 +921,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
     painter.setBrush(p.surfaceRaised);
     painter.drawRoundedRect(QRectF(track).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
     const QColor edge = isEnabled() ? p.accent : p.borderStrong;
-    QColor kept = p.text;
-    kept.setAlphaF(0.22);
+    const QColor kept = p.controlOutline;
     const QRectF retained(xFor(start), track.center().y() - 2, xFor(end) - xFor(start), 6);
     painter.setPen(Qt::NoPen);
     painter.setBrush(kept);
@@ -949,7 +948,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         painter.setBrush(selected ? p.warningSurface : QColor(dark ? "#3A3A37" : "#D9D8D2"));
         painter.drawRoundedRect(bar, Graphite::Metric::smallRadius, Graphite::Metric::smallRadius);
         // The kind at lane size: a blur is hatched, a solid cover filled.
-        QColor ink = selected ? p.accent : p.textMuted;
+        QColor ink = selected ? p.accent : p.textSecondary;
         ink.setAlpha(mask.kind == "solid" ? 120 : 200);
         painter.setPen(Qt::NoPen);
         painter.setBrush(mask.kind == "solid" ? QBrush(ink) : QBrush(ink, Qt::BDiagPattern));
@@ -961,7 +960,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         auto textArea = bar.adjusted(6, 0, -6, 0);
         if (mask.kind == "blur" && bar.width() > lane.height() + 12) {
             const int side = std::min(lane.height() - 2, Graphite::scaled(14));
-            VisualStyle::icon("alert", selected ? p.accent : p.textMuted).paint(&painter, QRect(left + 4, lane.top() + (lane.height() - side) / 2, side, side));
+            VisualStyle::icon("alert", selected ? p.accent : p.textSecondary).paint(&painter, QRect(left + 4, lane.top() + (lane.height() - side) / 2, side, side));
             textArea.setLeft(textArea.left() + side + 4);
         }
         // Labels stay inside their own coverage without erasing interval pixels.
