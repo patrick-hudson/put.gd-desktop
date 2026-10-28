@@ -890,6 +890,12 @@ private slots:
  // Column headings and row values share one geometry: at every width, with
  // a scrollbar, each heading is painted where its values start, and a
  // dropped column loses its heading too.
+ void historyMetadataColoursOnlyStatusWords(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);HistoryWindow window(fixture.session);auto* list=window.findChild<QListView*>("historyList");list->viewport()->resize(762,400);
+  QStandardItemModel model(1,1);const auto index=model.index(0,0);model.setData(index,"Synthetic screenshot",Qt::DisplayRole);model.setData(index,"Region · 35 KiB · Shared link",HistoryModel::SubtitleRole);model.setData(index,QJsonObject{{"operation",QJsonObject{{"copyStatus","copied"}}}},HistoryModel::RecordRole);
+  QStyleOptionViewItem option;option.initFrom(list);option.rect=QRect(QPoint(),list->itemDelegate()->sizeHint(option,index));option.state=QStyle::State_Enabled;QImage image(option.rect.size(),QImage::Format_ARGB32_Premultiplied);image.fill(Theme::current().bg);{QPainter p(&image);list->itemDelegate()->paint(&p,option,index);}
+  const auto area=HistoryWindow::failureTextArea(image.size(),false,false);const int prefix=QFontMetrics(Graphite::font(Graphite::Type::metadata)).horizontalAdvance("Region · 35 KiB");int status=0,prefixStatus=0;for(int y=area.top();y<=area.bottom();++y)for(int x=area.left();x<=area.right();++x){const auto pixel=image.pixelColor(x,y);if(pixel.green()-pixel.red()>=8&&pixel.green()-pixel.blue()>=6){++status;if(x<area.left()+prefix)++prefixStatus;}}if(!qEnvironmentVariable("PUTGD_HISTORY_METADATA_SHOT").isEmpty())image.save(qEnvironmentVariable("PUTGD_HISTORY_METADATA_SHOT"));QVERIFY2(status>5,qPrintable(QString("%1 success pixels in %2x%3 metadata at %4,%5 (%6px prefix), row %7x%8").arg(status).arg(area.width()).arg(area.height()).arg(area.x()).arg(area.y()).arg(prefix).arg(image.width()).arg(image.height())));QCOMPARE(prefixStatus,0);
+ }
  void columnHeadingsMatchRowColumns_data(){
   QTest::addColumn<QString>("family");QTest::newRow("current-font")<<QString{};QTest::newRow("distro-sans")<<QString("DejaVu Sans");
  }

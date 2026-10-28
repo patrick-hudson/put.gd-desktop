@@ -206,7 +206,7 @@ void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,
  const auto record=index.data(HistoryModel::RecordRole).toJsonObject();const auto& t=Theme::current();auto text=HistoryModel::failed(record)?HistoryModel::statusText(record):index.data(HistoryModel::SubtitleRole).toString();if(createdColumn&&!HistoryModel::failed(record)){const auto created=index.data(HistoryModel::CreatedRole).toString();if(!created.isEmpty())text.remove(" · "+created);}
  if(bounded&&!HistoryModel::failed(record))text=QFontMetrics(document.defaultFont()).elidedText(text,Qt::ElideRight,qMax(20,width));
  if(HistoryModel::failed(record)){const auto fullLabel=HistoryModel::failureLabel(record),label=text.startsWith(fullLabel)?fullLabel:text;auto detail=text;if(detail.startsWith(label))detail.remove(0,label.size());document.setHtml("<span style=\"color:"+t.danger.name()+"\">"+statusPhrases(label).toHtmlEscaped()+"</span><span style=\"color:"+t.textSecondary.name()+"\">"+statusPhrases(detail,true).toHtmlEscaped()+"</span>");}
- else{const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();const auto color=remote=="Deletion failed"||remote=="Sharing failed"?t.danger:!remote.isEmpty()||copy=="suppressed"?t.textSecondary:copy=="copied"?t.success:t.textMuted;document.setHtml("<span style=\"color:"+color.name()+"\">"+statusPhrases(text).toHtmlEscaped()+"</span>");}document.setTextWidth(qMax(20,width));
+ else{const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();QString html;for(const auto& part:text.split(" · ")){const bool status=part==remote||part=="Shared link"||part=="Copied to clipboard"||part=="Couldn't copy result"||part=="Couldn't copy link"||part=="Result not copied"||part=="Link not copied";const auto color=status&&(part=="Deletion failed"||part=="Sharing failed"||part.startsWith("Couldn't copy"))?t.danger:status&&remote.isEmpty()&&copy=="copied"?t.success:t.textMuted;if(!html.isEmpty())html+="<span style=\"color:"+t.textMuted.name()+"\"> · </span>";html+="<span style=\"color:"+color.name()+"\">"+statusPhrases(part).toHtmlEscaped()+"</span>";}document.setHtml(html);}document.setTextWidth(qMax(20,width));
 }
 // The row's body: right of the thumbnail in a list, under it in a gallery tile.
 QRect rowBody(const QRect& outer,bool gallery,int heading){
@@ -365,7 +365,7 @@ public:
   const auto& t=Theme::current();p->save();p->setRenderHint(QPainter::Antialiasing);const auto outer=option.rect;const auto group=i.data(HistoryModel::DayRole).toString();
   if(heading(i))Graphite::paintText(*p,QRectF(outer.left()+18,outer.top()+6,outer.width()-36,heading(i)-6),group,t.textMuted,Graphite::font(Graphite::Type::micro,true));
   const auto r=card(outer,i);const bool chosen=option.state&QStyle::State_Selected;const bool hover=option.state&QStyle::State_MouseOver;const bool failed=i.data(HistoryModel::FailedRole).toBool();
-  const auto record=i.data(HistoryModel::RecordRole).toJsonObject();const auto op=record["operation"].toObject();
+  const auto record=i.data(HistoryModel::RecordRole).toJsonObject();
   // Selection is neutral; keyboard focus has its own amber outline.
   if(chosen)Graphite::paintSelection(*p,r);
   else if(grid()){p->setPen(QPen(t.border,1));p->setBrush(hover?t.surfaceRaised:t.surface);p->drawRoundedRect(QRectF(r).adjusted(0.5,0.5,-0.5,-0.5),Graphite::Metric::containerRadius,Graphite::Metric::containerRadius);}
@@ -393,12 +393,6 @@ public:
   const auto titleFont=Graphite::font(Graphite::Type::body,true),metaFont=Graphite::font(Graphite::Type::metadata);
   const int lineTop=grid()?body.top():rowTop+rowTextInset();
   Graphite::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,QFontMetrics(titleFont).height()),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideMiddle);
-  const bool copied=op["copyStatus"]=="copied",suppressed=op["copyStatus"]=="suppressed";
-  auto subtitle=i.data(HistoryModel::SubtitleRole).toString();
-  // Failure metadata replaces the ordinary size/time subtitle.
-  if(failed)subtitle=HistoryModel::failureLabel(record);
-  else if(!grid()){const auto created=i.data(HistoryModel::CreatedRole).toString();if(!columns.created.isEmpty()&&!created.isEmpty())subtitle.remove(" · "+created);}
-  const auto remote=HistoryModel::remoteStateText(record);const QColor subtitleColour=failed||remote=="Deletion failed"||remote=="Sharing failed"?t.danger:!remote.isEmpty()?t.textSecondary:suppressed?t.textSecondary:copied?t.success:t.textMuted;
   const int metadataWidth=!grid()&&failed?body.width():itemWidth;
   const int metadataTop=lineTop+QFontMetrics(titleFont).height()+6;
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
@@ -407,7 +401,7 @@ public:
    QTextDocument document;historyMetadata(document,i,metadataWidth,false);document.size();
    if(document.begin().layout()->lineCount()<=2){p->save();p->translate(metadata.topLeft());document.drawContents(p);p->restore();}
    else Graphite::paintText(*p,metadata,HistoryModel::failureLabel(record)+" · See Details",t.danger,metaFont,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideNone);
-  }else Graphite::paintText(*p,metadata,subtitle,subtitleColour,metaFont);
+  }else{QTextDocument document;historyMetadata(document,i,metadataWidth,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,metadata.height()));document.drawContents(p);p->restore();}
   if(!grid()){
    const QFontMetricsF titleMetrics(titleFont);const auto shown=titleMetrics.elidedText(i.data().toString(),Qt::ElideMiddle,itemWidth);const qreal baseline=Graphite::opticalBaseline(titleMetrics,shown,lineTop+QFontMetrics(titleFont).height()/2.0);
    if(!failed&&!columns.output.isEmpty())paintHistoryColumn(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,QFontMetrics(titleFont).height()),i.data(HistoryModel::OutputRole).toString(),t.textSecondary,baseline);
