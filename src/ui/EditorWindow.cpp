@@ -137,7 +137,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* side=new Graphite::Surface("surface",{},splitter_);side->setObjectName("editorSide");side->setMinimumWidth(std::max(240,Graphite::scaled(180)));
  propertiesWidth_=std::max(240,Graphite::scaled(180));
  side_=side;side->installEventFilter(this);
- auto* sideLayout=new QVBoxLayout(side);sideLayout_=sideLayout;sideLayout->setContentsMargins(0,0,0,0);sideLayout->setSpacing(0);
+ auto* sideLayout=new QVBoxLayout(side);sideLayout->setContentsMargins(0,0,0,0);sideLayout->setSpacing(0);
  auto* panel=new Graphite::Surface("surface",{},side);panel->setObjectName("editorOptions");
  auto* panelScroll=new QScrollArea(side);propertiesScroll_=panelScroll;panelScroll->setObjectName("editorPropertiesScroll");panelScroll->setWidgetResizable(true);panelScroll->setFocusPolicy(Qt::NoFocus);panelScroll->setFrameShape(QFrame::NoFrame);panelScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);panelScroll->setWidget(panel);sideLayout->addWidget(panelScroll,1);
  splitter_->addWidget(side);splitter_->setStretchFactor(0,1);splitter_->setStretchFactor(1,0);
@@ -221,7 +221,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* footer=new Graphite::Surface("bg",Qt::TopEdge,this);footer->setObjectName("editorFooter");footer->setMinimumHeight(Graphite::scaled(56));
  footerGrid_=new QGridLayout(footer);footerGrid_->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::s),Graphite::space(Space::l),Graphite::space(Space::s));footerGrid_->setHorizontalSpacing(Graphite::space(Space::s));footerGrid_->setVerticalSpacing(Graphite::space(Space::xs));footerGrid_->setColumnStretch(0,1);
  auto* document=new QWidget(footer);document->setObjectName("editorDocument");document_=document;
- auto* documentLayout=new QVBoxLayout(document);documentLayout->setContentsMargins(0,0,0,0);documentLayout->setSpacing(Graphite::space(Space::xs));
+ auto* documentLayout=new QHBoxLayout(document);documentLayout->setContentsMargins(0,0,0,0);documentLayout->setSpacing(Graphite::space(Space::xs));
  documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");VisualStyle::role(documentInfo_,"meta");documentLayout->addWidget(documentInfo_);footerGrid_->addWidget(document,2,0);
  notice_=new QWidget(footer);notice_->setObjectName("editorPreparationFailure");
  auto* noticeLayout=new QGridLayout(notice_);noticeLayout->setContentsMargins(0,0,0,0);noticeLayout->setSpacing(Graphite::space(Space::s));
@@ -230,8 +230,8 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  saveInstead_=new QPushButton("Save a copy…",notice_);saveInstead_->setObjectName("saveCopyInstead");saveInstead_->setToolTip("Save the edited image to a file instead (Ctrl+S)");noticeLayout->addWidget(saveInstead_,1,1);
  notice_->hide();footerGrid_->addWidget(notice_,0,0,1,4);
  // Elision keeps the actions reachable; keyboard activation reveals the name.
- destination_=new Graphite::ElidedLabel(document);destination_->setElideMode(Qt::ElideRight);destination_->setRevealable(true);destination_->setObjectName("editorDestination");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"secondary");
- destination_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);destination_->setFocusPolicy(Qt::StrongFocus);destination_->hide();documentLayout->addWidget(destination_);
+ destination_=new Graphite::ElidedLabel(document);destination_->setElideMode(Qt::ElideRight);destination_->setRevealable(true);destination_->setObjectName("editorDestination");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"meta");
+ destination_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);destination_->setFocusPolicy(Qt::StrongFocus);destination_->hide();documentLayout->addWidget(destination_,1);
  // Saving locally never hides the separate upload destination.
  saveFeedback_=new Graphite::Banner(Graphite::Banner::Tone::Info,{},canvasViewport_);saveFeedback_->setObjectName("editorSaveFeedback");saveFeedback_->hide();saveFeedback_->installEventFilter(this);
  saveFeedbackTimer_=new QTimer(this);saveFeedbackTimer_->setObjectName("editorSaveFeedbackTimer");saveFeedbackTimer_->setSingleShot(true);
@@ -385,7 +385,7 @@ void EditorWindow::placeDestination(){
  int room=width()-margins.left()-margins.right();
  for(auto* button:{save_,cancel_,upload_})if(!button->isHidden())room-=button->sizeHint().width()+spacing;
  // Include the shared summary's details affordance in the fit calculation.
- const bool above=std::max(documentInfo_->sizeHint().width(),destination_->isHidden()?0:destination_->sizeHint().width())>room;
+ const bool above=document_->sizeHint().width()>room;
  destinationAbove_=above;
  const int slot=Graphite::scaled(Graphite::Metric::control);
  footerGrid_->setRowMinimumHeight(1,above?slot:0);document_->setMinimumHeight(slot);
@@ -460,7 +460,6 @@ void EditorWindow::placeDocument(){
  auto* cropButtons=qobject_cast<QBoxLayout*>(cropRow_->layout());
  const int cropWidth=findChild<QPushButton*>("applyCrop")->sizeHint().width()+findChild<QPushButton*>("cancelCrop")->sizeHint().width()+cropButtons->spacing();
  cropButtons->setDirection(cropWidth>available?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);
-
 }
 
 void EditorWindow::documentEdited(){canvas_->documentChanged();refresh();}
