@@ -255,7 +255,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // Drives the open Settings window's Diagnostics group and package dialog, and the
  // History window's Save diagnostics row action, the way a user does (#122).
  if(method=="ui.diagnostics") {
-  static const QStringList actions{"inspect","setDebugLogging","clearLogs","openPackage","setPackage","savePackage","showInFolder","closePackage"};
+  static const QStringList actions{"inspect","setDebugLogging","setDesktopDetails","copyDetails","refreshDesktopSupport","clearLogs","openPackage","setPackage","savePackage","showInFolder","closePackage"};
   if(!fields(p,{"action"},{"enabled","includeNames","folder","operation","upload"})||!actions.contains(p["action"].toString())||(p.contains("enabled")&&!p["enabled"].isBool())||(p.contains("includeNames")&&!p["includeNames"].isBool())||(p.contains("upload")&&!p["upload"].isBool())
      ||(p.contains("folder")&&(!string(p,"folder",4096)||!QDir::isAbsolutePath(p["folder"].toString())))||(p.contains("operation")&&!string(p,"operation",128))){reply(invalid(),{});return;}
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
