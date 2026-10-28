@@ -2533,7 +2533,7 @@ QToolButton* chromeButton(const QString& glyph, const QString& name, QWidget* pa
     auto* button = new QToolButton(parent);
     button->setIcon(chromeIcon(glyph));
     button->setIconSize(QSize(20, 20));
-    button->setFixedSize(Metric::iconTarget, Metric::iconTarget);
+    button->setFixedSize(scaled(Metric::iconTarget), scaled(Metric::iconTarget));
     button->setProperty("visualRole", "quiet");
     button->setProperty("noChevron", true);
     button->setAccessibleName(name);
@@ -2655,9 +2655,9 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu, Density density) : QWid
 }
 int WindowHeader::compactHeight() const {
     const QFontMetricsF title(Graphite::font(Type::body, true));
-    // Compact review chrome keeps the full text line and 32 px targets.
+    // Compact review chrome keeps the full text line and scaled icon targets.
     const int text = int(std::ceil(title.height())) + 4;
-    return std::max(Metric::iconTarget, text);
+    return std::max(scaled(Metric::iconTarget), text);
 }
 void WindowHeader::fitHeight() { setFixedHeight(density_ == Density::Compact ? compactHeight() : scaled(Metric::header)); }
 void WindowHeader::resizeEvent(QResizeEvent* event) { QWidget::resizeEvent(event); syncWindowState(); }
