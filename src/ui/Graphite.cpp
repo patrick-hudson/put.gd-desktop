@@ -1240,7 +1240,11 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const bool enabled = option->state & State_Enabled;
         const bool selected = enabled && (option->state & State_Selected);
         if (selected) rounded(p, QRectF(r).adjusted(2, 1, -2, -1), c.selected, {}, 5);
-        const QColor ink = enabled ? (selected ? c.text : c.textSecondary) : c.textDisabled;
+        const auto* menu = qobject_cast<const QMenu*>(widget);
+        const auto* action = menu ? menu->actionAt(r.center()) : nullptr;
+        // Status text is disabled for navigation, not because it is unreadable.
+        const bool information = action && action->property("visualRole") == "information";
+        const QColor ink = information ? c.textSecondary : enabled ? (selected ? c.text : c.textSecondary) : c.textDisabled;
         int x = r.left() + 12;
         if (item->menuHasCheckableItems) {
             const QRectF box(x, r.center().y() - 7.5, 15, 15);

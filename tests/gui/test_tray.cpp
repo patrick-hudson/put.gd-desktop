@@ -215,6 +215,7 @@ private slots:
   OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
   QStringList views;TrayController controller(operations,[&](const QString& view){views.append(view);},[]{});
   auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);
+  auto* information=tray->contextMenu()->findChild<QAction*>("trayUploadStatus");QVERIFY(information);QVERIFY(!information->isEnabled());QCOMPARE(information->property("visualRole").toString(),QString("information"));
   const auto idleIcon=tray->icon().pixmap(24,24).toImage();const auto idleTooltip=tray->toolTip();
   QString operationId;operations.invoke("clipboard",[&](Error e,QJsonObject value){QVERIFY(!e);operationId=value["operationId"].toString();});
   PUTGD_TRY_COMPARE(source.acquisitions.size(),1);

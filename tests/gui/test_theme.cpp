@@ -182,6 +182,41 @@ private slots:
             }
         }
     }
+    void informationalMenuItemsRemainReadableAndNonInteractive() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            const auto& c = Theme::current();
+            QMenu menu;
+            auto* information = menu.addAction("Uploading… 50%");
+            information->setProperty("visualRole", "information");
+            information->setEnabled(false);
+            auto* cancel = menu.addAction("Cancel upload");
+            auto* unavailable = menu.addAction("Unavailable action");
+            unavailable->setEnabled(false);
+            menu.show();
+            QCoreApplication::processEvents();
+            const auto image = menu.grab().toImage();
+            const auto rect = menu.actionGeometry(information);
+            QVERIFY(!rect.isEmpty());
+            const auto background = image.pixelColor(rect.center().x(), rect.top());
+            auto strongestInkContrast = [&](QRect bounds) {
+                qreal contrast = 1;
+                bounds.adjust(12, 1, -12, -1);
+                for (int y = bounds.top(); y <= bounds.bottom(); ++y)
+                    for (int x = bounds.left(); x <= bounds.right(); ++x)
+                        contrast = qMax(contrast, Theme::contrast(image.pixelColor(x,y), background));
+                return contrast;
+            };
+            // Subpixel font rendering need not contain any exact token pixels.
+            QVERIFY(strongestInkContrast(rect) >= 4.5);
+            const auto disabledContrast = strongestInkContrast(menu.actionGeometry(unavailable));
+            QVERIFY(disabledContrast > 1);
+            QVERIFY(disabledContrast <= Theme::contrast(c.textDisabled, background) + 0.02);
+            QTest::keyClick(&menu, Qt::Key_Down);
+            QCOMPARE(menu.activeAction(), cancel);
+            menu.close();
+        }
+    }
     void menuLiteralAmpersandsReserveTheirVisibleWidth() {
         for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}) {
             Theme::setScheme(scheme);const auto& c=Theme::current();
