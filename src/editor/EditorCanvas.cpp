@@ -611,9 +611,14 @@ bool EditorCanvas::selectAffectedText(){
 void EditorCanvas::placeTextWarning(){
  const bool outside=textOutsideImage();textWarning_->setVisible(outside);if(!outside)return;
  auto* banner=static_cast<Graphite::Banner*>(textWarning_);
- banner->setText(tool_==Tool::Crop?"Some text will be cut off by this crop":"Some text will be cut off in the saved image");
- const int w=std::max(0,width()-32);banner->resize(w,banner->height());banner->layout()->activate();
- banner->setGeometry(16,16,w,std::max(banner->minimumSizeHint().height(),banner->heightForWidth(w)));banner->raise();
+ const QString explanation=tool_==Tool::Crop?"Some text will be cut off by this crop":"Some text will be cut off in the saved image";
+ const int inset=Graphite::space(Graphite::Space::l),w=std::max(0,width()-2*inset);
+ banner->setText(explanation);
+ const int natural=banner->layout()->sizeHint().width()-banner->textLabel()->sizeHint().width()+banner->textLabel()->fontMetrics().horizontalAdvance(explanation);
+ if(natural>w)banner->setText("Text will be cut off");
+ banner->setAccessibleDescription(explanation+". Select affected text to move or edit it.");
+ banner->resize(w,banner->height());banner->layout()->activate();
+ banner->setGeometry(inset,inset,w,std::max(banner->minimumSizeHint().height(),banner->heightForWidth(w)));banner->raise();
 }
 void EditorCanvas::placeTextEditor(){
  if(!textEditor_)return;
