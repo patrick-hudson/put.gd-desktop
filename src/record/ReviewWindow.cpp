@@ -199,7 +199,6 @@ public:
     static int lineGap() { return reviewSpace(Graphite::Space::xs); }
     explicit FlowRow(QWidget* parent) : QWidget(parent) {}
     void setGutter(QWidget* label, int indent) { label->setParent(this); label_ = label; indent_ = indent; relayout(); }
-    void setReadout(QWidget* readout) { readout_ = readout; }
     void addGroup(QWidget* group) { group->setParent(this); group->installEventFilter(this); groups_.append(group); }
     // The height at a width; reserved also counts hidden groups that keep their size.
     int heightFor(int width, bool reserved = false) const { return arrange(width, reserved, false); }
@@ -258,12 +257,8 @@ private:
             if (apply) {
                 if (!lines[i].isEmpty()) {
                     auto& last = lines[i].last();
-                    if ((last.first == readout_ || last.first == groups_.last()) && qobject_cast<QLabel*>(last.first))
+                    if (last.first == groups_.last() && qobject_cast<QLabel*>(last.first))
                         last.second.setWidth(std::max(last.second.width(), width - last.second.left()));
-                }
-                for (auto& placed : lines[i]) if (placed.first == readout_ && placed.first != lines[i].last().first) {
-                    const int remaining = lines[i].last().second.right() - placed.second.right() + groupGap();
-                    placed.second.moveRight(width - remaining - 1);
                 }
                 for (const auto& [group, rect] : lines[i]) group->setGeometry(rect.translated(0, top + (line - rect.height()) / 2));
                 if (i == 0 && label_) label_->setGeometry(0, 0, indent_ - reviewSpace(Graphite::Space::s), line);
@@ -272,7 +267,6 @@ private:
         }
         return top;
     }
-    QWidget* readout_ = nullptr;
     QWidget* label_ = nullptr;
     QList<QWidget*> groups_;
     int indent_ = 0;
@@ -1041,7 +1035,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     frame->setSpacing(0);
     // A one-line title and upload state preserve the frame area.
     header_ = Graphite::WindowHeader::install(this, frame, nullptr, Graphite::WindowHeader::Density::Compact);
-    header_->setDocument(QStringLiteral("Review recording"));
+    header_->findChild<QLabel*>("brandName")->setText(QStringLiteral("Review recording"));
     // Why the capture ended when it stopped itself (#225); hidden otherwise.
     auto* banner = new QVBoxLayout;
     banner->setContentsMargins(reviewSpace(Graphite::Space::l), 0, reviewSpace(Graphite::Space::l), 0);
@@ -1127,7 +1121,6 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     VisualStyle::role(retained_, "meta");
     retained_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     trimFlow->addGroup(retained_);
-    trimFlow->setReadout(retained_);
     root->addWidget(trimGroup_);
     // Mask: the kinds to add, the mask to edit, its blur radius, its timing and
     // its interval, wrapping as whole groups when the row is too narrow.
@@ -1202,7 +1195,6 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     timeline_->setLaneHeader(addMask_);
     maskTiming_ = group("maskTimingControls", {maskStart_, maskEnd_});
     for (auto* w : std::initializer_list<QWidget*>{maskTools_, maskTiming_, static_cast<MaskInterval*>(maskActive_)->warningButton(), maskActive_}) flow->addGroup(w);
-    flow->setReadout(maskActive_);
     flow->setGutter(groupLabel("Mask", "maskGroup"), gutter);
     root->addWidget(flow);
     // Playback has its own row, leaving every ruler tick readable.
@@ -1246,7 +1238,6 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     transport->addWidget(speed_);
     transport->addStretch(1);
     if (Graphite::WindowHeader::customFrame()) {
-        header_->setDocument(QStringLiteral("Review recording"));
         header_->setAccessibleName("Review recording");
         header_->setCentre(transport_);
     } else frame->insertWidget(frame->indexOf(view_), transport_);
