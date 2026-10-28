@@ -586,6 +586,7 @@ void Style::polish(QWidget* widget) {
     // line still reads as an error.
     if (tone == "error") colour = c.danger;
     else if (tone == "success") colour = c.success;
+    else if (tone == "warning") colour = c.warning;
     else if (name == "default" || name == "private") colour = c.textMuted;
     else if (name == "secondary") colour = c.textSecondary;
     else if ((name == "link" && qobject_cast<QLabel*>(widget)) || binding == "active") colour = c.textSecondary;
