@@ -281,10 +281,11 @@ void MainWindow::fitBand(){
  // A short window keeps one 4 px inset around the measured navigation track.
  if(auto* header=findChild<Graphite::WindowHeader*>("windowHeader"))header->setFixedHeight(height()<Graphite::scaled(720)?qMax(Graphite::scaled(48),tabs_->sizeHint().height()+2*space(Space::xs)):Graphite::scaled(Graphite::Metric::header));
  auto* grid=static_cast<QGridLayout*>(band_->layout());
- auto apply=[this,grid](int stage){grid->setHorizontalSpacing(space(stage>=2?Space::xs:Space::s));grid->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));for(auto* button:actionButtons_){button->setMinimumWidth(0);}for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setProperty("graphiteTight",stage==3);button->setToolButtonStyle(stage==3&&(action=="window"||action=="desktop")?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);const auto label=stage&&(action=="window"||action=="desktop")?(action=="window"?QString("Window"):QString("Desktop")):button->property("commandLabel").toString();if(!label.isEmpty())button->setText(QString(label).replace('&',QStringLiteral("&&")));button->setMinimumWidth(button->sizeHint().width());}grid->invalidate();grid->activate();};
+ auto apply=[this,grid](int stage){grid->setHorizontalSpacing(space(stage>=2?Space::xs:Space::s));grid->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));for(auto* button:actionButtons_){button->setMinimumWidth(0);}for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setProperty("graphiteTight",stage>=2);const bool secondary=action=="record"||action=="clipboard";button->setToolButtonStyle((stage>=3&&secondary)||(stage==4&&(action=="window"||action=="desktop"))?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);const auto label=stage&&(action=="window"||action=="desktop")?(action=="window"?QString("Window"):QString("Desktop")):button->property("commandLabel").toString();if(!label.isEmpty())button->setText(QString(label).replace('&',QStringLiteral("&&")));button->setMinimumWidth(button->sizeHint().width());}grid->invalidate();grid->activate();};
+ // Reclaim padding, then secondary labels before the screenshot group loses its labels.
  // The shortest ladder stage defines the true minimum at enlarged text sizes.
- apply(3);setMinimumWidth(qMax(1060,grid->minimumSize().width()));
- int stage=0;for(;stage<4;++stage){apply(stage);if(grid->sizeHint().width()<=band_->width()||stage==3)break;}
+ apply(4);setMinimumWidth(qMax(1060,grid->minimumSize().width()));
+ int stage=0;for(;stage<5;++stage){apply(stage);if(grid->sizeHint().width()<=band_->width()||stage==4)break;}
  for(auto* button:actionButtons_)button->setMinimumWidth(button->sizeHint().width());bandStage_=stage;fittingBand_=false;
 }
 void MainWindow::updateAvailability(){
