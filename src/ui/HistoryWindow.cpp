@@ -215,7 +215,8 @@ int dayHeadingHeight(){return qMax(32,QFontMetrics(Graphite::font(Graphite::Type
 int actionHeight(){return Graphite::scaled(28);}
 constexpr int historyThumbWidth=96,historyThumbHeight=60;
 int rowTextInset(){return space(Graphite::scaled(100)>125?Space::xs:Space::s);}
-int rowContentHeight(){return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+space(Space::xs)+2*rowTextInset()+4));}
+QFont historyTitleFont(bool selected=false){auto font=Graphite::font(Graphite::Type::body);font.setWeight(selected?QFont::DemiBold:QFont::Medium);return font;}
+int rowContentHeight(){return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,QFontMetrics(historyTitleFont()).height()+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+space(Space::xs)+2*rowTextInset()+4));}
 // Gallery pictures share a 16:10 frame.
 int galleryPicture(int cardWidth){return qMax(1,(cardWidth-2)*10/16);}
 void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded=false){
@@ -242,7 +243,7 @@ void paintHistoryColumn(QPainter& painter,const QRectF& rect,const QString& text
 }
 QRect HistoryWindow::failureTextArea(const QSize& row,bool gallery,bool dayHeading){
  const auto body=rowBody(QRect(QPoint(),row),gallery,gallery||!dayHeading?0:dayHeadingHeight());
- const auto title=Graphite::font(Graphite::Type::body,true),meta=Graphite::font(Graphite::Type::metadata);
+ const auto title=historyTitleFont(),meta=Graphite::font(Graphite::Type::metadata);
  return {body.left(),(gallery?body.top():body.top()+rowTextInset())+QFontMetrics(title).height()+6,qMax(20,body.width()),QFontMetrics(meta).height()};
 }
 namespace {
@@ -350,12 +351,12 @@ public:
   if(!grid()&&i.data(HistoryModel::FailedRole).toBool())return false;
   if(grid()||(compactList&&!compactList()))return false;
   const auto body=rowBody(r,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,inlineTextWidth(r,i),!rowColumns(body,i).created.isEmpty());
-  return std::ceil(metadata.size().height())>rowContentHeight()-4-2*rowTextInset()-QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-6;
+  return std::ceil(metadata.size().height())>rowContentHeight()-4-2*rowTextInset()-QFontMetrics(historyTitleFont()).height()-6;
  }
  QRect primaryRect(QRect r,const QModelIndex& i)const{
   const auto c=card(r,i);const int h=actionHeight(),detailsSpace=detailsShown(i)?listDetailsSpace():0;const int w=qMin(primaryWidth(i),qMax(0,c.width()-2*space(Space::m)-h-space(Space::s)-(grid()?detailsWidth()+space(Space::s):detailsSpace)));
   if(grid())return galleryActionRect(r,i,0);
-  if(i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,c.top()+rowTextInset()+(QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-h)/2,w,h);
+  if(i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,c.top()+rowTextInset()+(QFontMetrics(historyTitleFont()).height()-h)/2,w,h);
   return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):c.top()+(rowContentHeight()-4-h)/2,w,h);
  }
  QRect menuRect(QRect r,const QModelIndex& i)const{if(grid())return galleryActionRect(r,i,2);const auto b=primaryRect(r,i);const auto c=card(r,i);const int h=actionHeight();return QRect(c.right()-space(Space::s)-h,b.top(),h,h);}
@@ -363,15 +364,15 @@ public:
  int textLeft(const QRect& c)const{return c.left()+12+historyThumbWidth+16;}
  QSize sizeHint(const QStyleOptionViewItem&,const QModelIndex& i)const override{
   if(grid()){
-   const int width=galleryWidth(),text=QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+2*QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();
+   const int width=galleryWidth(),text=QFontMetrics(historyTitleFont()).height()+6+2*QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();
    return {width,2*space(Space::s)+1+galleryPicture(width-2*space(Space::s))+space(Space::m)+text+space(Space::m)};
   }
   const int width=qMax(160,view_->viewport()->width()-2*view_->spacing());
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
-  if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
+  if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
   if(actionsBelow(outer,i)){
    const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);
-   const int text=rowTextInset()+qMax(8,rowTextInset())+4+QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+int(std::ceil(metadata.size().height()));
+   const int text=rowTextInset()+qMax(8,rowTextInset())+4+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()));
    height=qMax(rowContentHeight(),text)+heading(i)+actionHeight()+12;
   }
   return {width,height};
@@ -407,7 +408,7 @@ public:
   int itemWidth=qMax(0,columns.item.width()-12);
   if(!grid()&&!below)itemWidth=inlineTextWidth(outer,i);
   else if(grid()||below)itemWidth=body.width();
-  const auto titleFont=Graphite::font(Graphite::Type::body,true),metaFont=Graphite::font(Graphite::Type::metadata);
+  const auto titleFont=historyTitleFont(chosen),metaFont=Graphite::font(Graphite::Type::metadata);
   const int lineTop=grid()?body.top():rowTop+rowTextInset();
   Graphite::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,QFontMetrics(titleFont).height()),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,titleElision(i.data().toString()));
   const int metadataWidth=!grid()&&failed?body.width():itemWidth;
@@ -468,12 +469,12 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
 
  navigationBox->addStretch();
  auto* content=new QWidget(this);content->setObjectName("historyContent");page->addWidget(content,1);auto* layout=new QVBoxLayout(content);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
- auto* headerBar=new QWidget(content);headerBar->setObjectName("historyHeader");auto* toolbar=new QWidget(headerBar);toolbar->setObjectName("historyCompactControls");toolbar->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);auto* headerBox=new QVBoxLayout(headerBar);headerBox->setContentsMargins(0,0,0,0);headerBox->addWidget(toolbar);auto* header=new QGridLayout(toolbar);header->setSizeConstraint(QLayout::SetNoConstraint);header->setContentsMargins(space(Space::xxl),space(Space::s),space(Space::l),space(Space::s));header->setSpacing(space(Space::s));// The page is already named by the navigation; the heading names what is shown.
+ auto* headerBar=new QWidget(content);headerBar->setObjectName("historyHeader");auto* toolbar=new QWidget(headerBar);toolbar->setObjectName("historyCompactControls");toolbar->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);auto* headerBox=new QVBoxLayout(headerBar);headerBox->setContentsMargins(0,0,0,0);headerBox->addWidget(toolbar);auto* header=new QGridLayout(toolbar);header->setSizeConstraint(QLayout::SetNoConstraint);header->setContentsMargins(space(Space::xxl),Graphite::pageHeaderTop(),space(Space::l),space(Space::s));header->setRowMinimumHeight(0,Graphite::scaled(Graphite::Metric::control));header->setSpacing(space(Space::s));// The page is already named by the navigation; the heading names what is shown.
  // Long combined headings ("Recordings · failed uploads") elide before they crowd search.
  // The compact layout opens the inspector over the list; this returns to it.
  detailsBack_=Graphite::toolButton("Back to list",{},"quiet",this);detailsBack_->setObjectName("historyDetailsBack");detailsBack_->setIcon(Graphite::chromeIcon("chevron-left"));detailsBack_->setIconSize(QSize(14,14));detailsBack_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);detailsBack_->setToolTip("Return to the list (Esc)");detailsBack_->hide();header->addWidget(detailsBack_,0,0);connect(detailsBack_,&QToolButton::clicked,this,[this]{setDetailsOpen(false);});
  {auto* back=new QAction(this);back->setObjectName("historyDetailsEscape");back->setShortcut(QKeySequence(Qt::Key_Escape));back->setShortcutContext(Qt::WidgetWithChildrenShortcut);back->setEnabled(false);addAction(back);connect(back,&QAction::triggered,this,[this]{if(expandedPreview_&&expandedPreview_->isVisible())expandedPreview_->reject();else setDetailsOpen(false);});}
- auto* heading=new Graphite::ElidedLabel(this);heading->setText("All items");heading->setObjectName("historyHeading");heading->setTextFormat(Qt::PlainText);VisualStyle::role(heading,"sectionTitle");auto* headingGroup=new QWidget(toolbar);headingGroup->setObjectName("historyHeadingGroup");auto* headingBox=new QHBoxLayout(headingGroup);headingBox->setContentsMargins(0,0,0,0);headingBox->setSpacing(space(Space::s));headingBox->addWidget(heading,0,Qt::AlignBaseline);count_=new Graphite::ElidedLabel(headingGroup);count_->setObjectName("historyCount");VisualStyle::role(count_,"muted");headingBox->addWidget(count_,0,Qt::AlignBaseline);headingBox->addStretch();header->addWidget(headingGroup,0,0);header->setColumnStretch(0,1);
+ auto* heading=new Graphite::ElidedLabel(this);heading->setText("All items");heading->setObjectName("historyHeading");heading->setTextFormat(Qt::PlainText);VisualStyle::role(heading,"sectionTitle");auto* headingGroup=new QWidget(toolbar);headingGroup->setObjectName("historyHeadingGroup");headingGroup->setFixedHeight(Graphite::scaled(Graphite::Metric::control));auto* headingBox=new QHBoxLayout(headingGroup);headingBox->setContentsMargins(0,0,0,0);headingBox->setSpacing(space(Space::s));headingBox->addWidget(heading,0,Qt::AlignVCenter);count_=new Graphite::ElidedLabel(headingGroup);count_->setObjectName("historyCount");VisualStyle::role(count_,"muted");headingBox->addWidget(count_,0,Qt::AlignVCenter);headingBox->addStretch();header->addWidget(headingGroup,0,0);header->setColumnStretch(0,1);
  auto* search=new QLineEdit(this);search->setObjectName("historySearch");search->setAccessibleName("Search history by file name");search->setPlaceholderText("Search history");search->setMaxLength(256);search->setClearButtonEnabled(true);search->setMinimumWidth(180);search->setMaximumWidth(300);header->addWidget(search,0,1);
  auto* advancedToggle=new QToolButton(this);advancedToggle->setObjectName("historyFiltersExpanded");advancedToggle->setText("Filters");Graphite::disclosure(advancedToggle);advancedToggle->setAccessibleName("Show advanced history filters");header->addWidget(advancedToggle,0,2);filtersToggle_=advancedToggle;
  // Restrictions stay visible while the filters are collapsed: "Filters · N" and the way back.
@@ -637,7 +638,7 @@ void HistoryWindow::updateFooterLayout(){
  if(status_->text()=="Select an item to inspect its files and share link.")status_->hide();
  auto* sidebar=findChild<QWidget*>("historySidebar");auto* rail=qobject_cast<QVBoxLayout*>(sidebar->layout());auto* box=qobject_cast<QVBoxLayout*>(footerBar_->layout());auto* tools=qobject_cast<QGridLayout*>(header->layout());
  setProperty("denseHistory",dense);categories_->setProperty("denseHistory",dense);rail->setContentsMargins(space(Space::l),dense?space(Space::s):space(Space::l),space(Space::l),space(Space::l));box->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));footerBar_->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Maximum);
- tools->setContentsMargins(space(Space::xxl),dense?0:space(Space::s),space(Space::l),dense?space(Space::xs):space(Space::s));tools->setHorizontalSpacing(space(Space::s));tools->setVerticalSpacing(space(Space::xs));
+ tools->setContentsMargins(space(Space::xxl),Graphite::pageHeaderTop(),space(Space::l),dense?space(Space::xs):space(Space::s));tools->setHorizontalSpacing(space(Space::s));tools->setVerticalSpacing(space(Space::xs));
  auto* search=findChild<QLineEdit*>("historySearch");auto* views=findChild<QWidget*>("historyViewMode");auto* management=findChild<QToolButton*>("historyManagementExpanded");views->setFixedWidth(views->sizeHint().width());
  const int available=header->width()-tools->contentsMargins().left()-tools->contentsMargins().right(),clear=activeFilters().isEmpty()?0:clearFilters_->sizeHint().width()+space(Space::s),required=180+filtersToggle_->sizeHint().width()+views->sizeHint().width()+management->sizeHint().width()+clear+3*space(Space::s);
  const bool wrap=required>available,details=compact_&&detailsOpen_;auto* heading=findChild<QWidget*>("historyHeadingGroup");const bool headingRow=available<required+heading->minimumSizeHint().width()+space(Space::l);const int toolRow=headingRow&&!details?1:0;

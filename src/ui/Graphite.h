@@ -91,6 +91,8 @@ qreal textScale();
 int scaled(int pixels);
 // One edge for History, Settings and Destinations; text enlargement has a bounded cap.
 int railWidth();
+// Top inset above every rail page's header row; the row is Metric::control tall so headings share one centre line across tabs.
+inline int pageHeaderTop() { return space(Space::l); }
 // Label and icon measurements include text enlargement; the cap is logical pixels.
 int sidebarWidth(int baseline, int natural);
 // Text vertically centred on its ink, elided to the rectangle.
