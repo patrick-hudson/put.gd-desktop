@@ -367,6 +367,22 @@ private slots:
             QCOMPARE(retry.font().weight(), QFont::DemiBold);
         }
     }
+    void trayBadgesKnockOutTheGlyphAndFailureWins() {
+        for (const bool light : {false, true}) {
+            const auto tint = Theme::trayTints(light).idle;
+            for (const int scale : {1, 2}) {
+                const auto failed = IconArt::liftTray(tint, -2, scale);
+                QCOMPARE(IconArt::liftTray(tint, -2, scale, 1), failed);
+                QCOMPARE(IconArt::liftTray(tint, -2, scale, 2), failed);
+                for (const int recording : {0, 1, 2}) {
+                    const auto badge = IconArt::liftTray(tint, recording ? -1 : -2, scale, recording);
+                    const int x = recording ? 10 : 13;
+                    QVERIFY(IconArt::liftTray(tint, -1, scale).pixelColor(x * scale, 7 * scale).alpha() > 0);
+                    QVERIFY(badge.pixelColor(x * scale, 7 * scale).alpha() < 64);
+                }
+            }
+        }
+    }
     void liveIndicatorsMeetContrastWithoutReusingDanger() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             const auto& p=Theme::palette(scheme);
