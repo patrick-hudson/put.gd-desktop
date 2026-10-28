@@ -174,7 +174,7 @@ QToolButton* helpButton(const QString& title,const QString& description,QWidget*
  });return button;
 }
 void showHelp(const QString& title,const QString& description,QWidget* parent){
- auto* dialog=new QMessageBox(QMessageBox::NoIcon,title,title,QMessageBox::Close,parent);dialog->setObjectName("settingHelpDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->setTextFormat(Qt::PlainText);dialog->setInformativeText(description);dialog->open();
+ auto* dialog=new QMessageBox(QMessageBox::NoIcon,QStringLiteral("Help"),title,QMessageBox::Close,parent);dialog->setObjectName("settingHelpDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->setTextFormat(Qt::PlainText);dialog->setInformativeText(description);dialog->open();
 }
 QWidget* settingLabel(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  if(!qobject_cast<QLabel*>(control))control->setMinimumHeight(qMax(control->minimumHeight(),Graphite::scaled(Graphite::Metric::control)));
