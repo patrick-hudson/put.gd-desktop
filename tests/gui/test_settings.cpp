@@ -376,7 +376,7 @@ private slots:
   QVERIFY2(lines[1].startsWith("Default"),qPrintable(lines[1]));QVERIFY(lines[1].contains("Ready to test"));QVERIFY(!lines[1].contains(QChar(0x2026)));
   // Both name lines and the full status fit inside the row.
   const QFontMetrics metrics(list->font());const auto rect=list->visualItemRect(list->item(0));
-  for(const auto& nameLine:nameLines)QVERIFY(metrics.horizontalAdvance(nameLine)<rect.width()-Graphite::scaled(28)-26);const QFontMetrics body(Graphite::font(Graphite::Type::body,true)),meta(Graphite::font(Graphite::Type::metadata));const int statusHeight=meta.boundingRect(QRect(0,0,rect.width()-Graphite::scaled(28)-36,10000),Qt::TextWordWrap,lines[1]).height();QVERIFY(rect.height()>=2*body.height()+statusHeight+32);
+  for(const auto& nameLine:nameLines)QVERIFY(metrics.horizontalAdvance(nameLine)<rect.width()-Graphite::scaled(28)-26);const QFontMetrics body(Graphite::font(Graphite::Type::body,true)),meta(Graphite::font(Graphite::Type::metadata));const int statusHeight=meta.boundingRect(QRect(0,0,rect.width()-Graphite::scaled(28)-2*Graphite::space(Graphite::Space::m),10000),Qt::TextWordWrap,lines[1]).height();QVERIFY(rect.height()>=2*body.height()+statusHeight+Graphite::space(Graphite::Space::xs)+2*Graphite::space(Graphite::Space::m));
   const auto alternate=window.settings()->destinationRowLines(1);QCOMPARE(alternate[1],QString("Ready to test"));auto alternateName=alternate[0];alternateName.replace('\n',' ');QVERIFY(QString("Synthetic alternate").startsWith(alternateName.endsWith(QChar(0x2026))?alternateName.chopped(1):alternateName));
   QCOMPARE(list->item(0)->toolTip().section('\n',0,0),first["label"].toString());
   // Pressing another row selects it without rebuilding the rows, so the view keeps the

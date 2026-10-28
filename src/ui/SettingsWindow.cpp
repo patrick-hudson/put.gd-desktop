@@ -230,9 +230,11 @@ QJsonObject s3Profile(const QString& id){
 class DestinationRowDelegate final:public QStyledItemDelegate {
 public:
  using QStyledItemDelegate::QStyledItemDelegate;
- QStringList nameLines(const QString& name,int width)const{const QFontMetrics metrics(Graphite::font(Graphite::Type::body,true));if(metrics.horizontalAdvance(name)<=width)return {name};int split=0;while(split<name.size()&&metrics.horizontalAdvance(name.left(split+1))<=width)++split;split=qMax(1,split);const int space=name.lastIndexOf(' ',split);if(space>0)split=space;return {name.left(split).trimmed(),metrics.elidedText(name.mid(split).trimmed(),Qt::ElideRight,width)};}
+ QStringList nameLines(const QString& name,int width)const{const QFontMetrics metrics(Graphite::labelFont(true));if(metrics.horizontalAdvance(name)<=width)return {name};int split=0;while(split<name.size()&&metrics.horizontalAdvance(name.left(split+1))<=width)++split;split=qMax(1,split);const int space=name.lastIndexOf(' ',split);if(space>0)split=space;return {name.left(split).trimmed(),metrics.elidedText(name.mid(split).trimmed(),Qt::ElideRight,width)};}
  QStyleOptionViewItem shown(const QStyleOptionViewItem& base,const QModelIndex& index)const{auto option=base;initStyleOption(&option,index);return option;}
- QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& index)const override{const auto lines=index.data().toString().split('\n');const int width=qMax(24,(option.widget?option.widget->width():option.rect.width())-Graphite::scaled(28)-36);const QFontMetrics body(Graphite::font(Graphite::Type::body,true)),meta(Graphite::font(Graphite::Type::metadata));const auto status=meta.boundingRect(QRect(0,0,width,10000),Qt::TextWordWrap,lines.value(1));return {0,qMax(Graphite::scaled(76),int(nameLines(lines.value(0),width).size())*body.height()+status.height()+32)};}
+ int textWidth(int width)const{return qMax(24,width-2*space(Space::m)-Graphite::scaled(28));}
+ int blockHeight(const QStringList& lines,int width)const{const QFontMetrics body(Graphite::labelFont(true)),meta(Graphite::font(Graphite::Type::metadata));return int(nameLines(lines.value(0),width).size())*body.height()+(lines.value(1).isEmpty()?0:space(Space::xs)+meta.boundingRect(QRect(0,0,width,10000),Qt::TextWordWrap,lines.value(1)).height());}
+ QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& index)const override{const int width=textWidth(option.rect.width()>0?option.rect.width():option.widget?option.widget->contentsRect().width():Graphite::railWidth()-2*space(Space::l));return {0,qMax(Graphite::scaled(56),blockHeight(index.data().toString().split('\n'),width)+2*space(Space::m))};}
  void paint(QPainter* p,const QStyleOptionViewItem& base,const QModelIndex& index)const override{
   auto option=shown(base,index);const auto lines=option.text.split(QChar::LineSeparator);const auto& t=Theme::current();
   const bool selected=option.state&QStyle::State_Selected,hover=option.state&QStyle::State_MouseOver,enabled=option.state&QStyle::State_Enabled;
@@ -240,10 +242,11 @@ public:
   if(selected||hover){p->setPen(Qt::NoPen);p->setBrush(selected?t.selected:Graphite::mix(t.surface,t.surfaceRaised,0.7));p->drawRoundedRect(box,6,6);}
   if(selected)p->fillRect(QRectF(box.left(),box.top()+8,2,box.height()-16),t.accent);
   if(selected&&option.widget&&Graphite::keyboardFocus(option.widget)){p->setPen(QPen(t.accent,1));p->setBrush(Qt::NoBrush);p->drawRoundedRect(box.adjusted(0.5,0.5,-0.5,-0.5),6,6);}
-  qreal x=box.left()+12;if(!option.icon.isNull()){option.icon.paint(p,QRect(int(x),int(box.center().y())-Graphite::scaled(Graphite::Metric::icon)/2,Graphite::scaled(Graphite::Metric::icon),Graphite::scaled(Graphite::Metric::icon)),Qt::AlignCenter,!enabled?QIcon::Disabled:selected?QIcon::Selected:QIcon::Normal);x+=Graphite::scaled(28);}
-  const QRectF text(x,box.top(),box.right()-10-x,box.height());const QFontMetrics body(Graphite::font(Graphite::Type::body,selected));
-  const auto names=nameLines(lines.value(0),int(text.width()));for(int line=0;line<names.size();++line)Graphite::paintText(*p,QRectF(text.left(),box.top()+12+line*body.height(),text.width(),body.height()),names[line],enabled?(selected?t.text:t.textSecondary):t.textDisabled,Graphite::font(Graphite::Type::body,selected),Qt::AlignLeft|Qt::AlignVCenter);
-  if(lines.size()>1){p->setFont(Graphite::font(Graphite::Type::metadata));p->setPen(enabled?t.textMuted:t.textDisabled);p->drawText(QRectF(text.left(),box.top()+16+names.size()*body.height(),text.width(),box.height()-28-names.size()*body.height()),Qt::AlignLeft|Qt::AlignTop|Qt::TextWordWrap,lines.value(1));}
+  const int width=textWidth(option.rect.width()),block=blockHeight(lines,width);const qreal top=option.rect.center().y()+0.5-block/2.0;
+  qreal x=option.rect.left()+space(Space::m);if(!option.icon.isNull()){const int side=Graphite::scaled(Graphite::Metric::icon);option.icon.paint(p,QRect(int(x),qRound(top+block/2.0-side/2.0),side,side),Qt::AlignCenter,!enabled?QIcon::Disabled:selected?QIcon::Selected:QIcon::Normal);x+=Graphite::scaled(28);}
+  const QRectF text(x,top,width,block);const QFontMetrics body(Graphite::labelFont(selected));
+  const auto names=nameLines(lines.value(0),width);for(int line=0;line<names.size();++line)Graphite::paintText(*p,QRectF(text.left(),top+line*body.height(),text.width(),body.height()),names[line],enabled?(selected?t.text:t.textSecondary):t.textDisabled,Graphite::labelFont(selected),Qt::AlignLeft|Qt::AlignVCenter);
+  if(!lines.value(1).isEmpty()){p->setFont(Graphite::font(Graphite::Type::metadata));p->setPen(enabled?t.textMuted:t.textDisabled);p->drawText(QRectF(text.left(),top+names.size()*body.height()+space(Space::xs),text.width(),block-names.size()*body.height()-space(Space::xs)),Qt::AlignLeft|Qt::AlignTop|Qt::TextWordWrap,lines.value(1));}
   p->restore();
  }
 protected:
@@ -291,7 +294,7 @@ public:
  // The displayed name has up to two lines; status stays separate.
  QStringList shownLines(int row)const{
   QStyleOptionViewItem option;initViewItemOption(&option);option.rect=visualItemRect(item(row));
-  auto* delegate=static_cast<DestinationRowDelegate*>(itemDelegate());auto lines=delegate->shown(option,model()->index(row,0)).text.split(QChar::LineSeparator);lines[0]=delegate->nameLines(lines[0],qMax(24,option.rect.width()-Graphite::scaled(28)-26)).join('\n');return lines;
+  auto* delegate=static_cast<DestinationRowDelegate*>(itemDelegate());auto lines=delegate->shown(option,model()->index(row,0)).text.split(QChar::LineSeparator);lines[0]=delegate->nameLines(lines[0],delegate->textWidth(option.rect.width())).join('\n');return lines;
  }
  // A slim, slightly translucent label beside and below the pointer, so the drop
  // line within half a row of it stays visible (#133).
