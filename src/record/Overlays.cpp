@@ -309,10 +309,10 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) VisualStyle::apply(*app);
     connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, [this] { refresh(); update(); });
     auto* rows = new QVBoxLayout(this);
-    rows->setContentsMargins(12, 8, 12, 8);
+    rows->setContentsMargins(Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s));
     rows->setSpacing(Graphite::space(Graphite::Space::s));
     top_ = new QHBoxLayout;
-    top_->setSpacing(8);
+    top_->setSpacing(Graphite::space(Graphite::Space::s));
     rows->addLayout(top_);
     dot_ = new QLabel(this);
     dot_->setFixedSize(12, 12);
@@ -328,7 +328,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     choices_->setObjectName("choices");
     auto* choices = new QHBoxLayout(choices_);
     choices->setContentsMargins(0, 0, 0, 0);
-    choices->setSpacing(8);
+    choices->setSpacing(Graphite::space(Graphite::Space::s));
     target_ = new QLabel(options.targetLabel, choices_);
     target_->setObjectName("target");
     audio_ = new QCheckBox("System audio", choices_);
@@ -488,7 +488,7 @@ void ControlBar::refresh() {
     stop_->setEnabled(state_ != "stopping");
     cancel_->setEnabled(state_ != "stopping");
     cancel_->setToolTip(ready ? QStringLiteral("Close without recording") : QStringLiteral("Discard this recording (asks first)"));
-    layout()->setContentsMargins(handle ? QMargins(8, 4, 8, 4) : QMargins(12, 8, 12, 8));
+    layout()->setContentsMargins(handle ? QMargins(Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::xs), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::xs)) : QMargins(Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s)));
     adjustSize();
     reposition();
 }

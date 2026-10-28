@@ -366,8 +366,8 @@ private slots:
             QVERIFY(clip && !clip->isVisible());
             const auto lane = t->trackRect().translated(t->pos());
             QVERIFY(t->geometry().bottom() < trim->y());
-            QCOMPARE(t->x(), 12);
-            QCOMPARE(t->width(), window.width() - 24);
+            QCOMPARE(t->x(), Graphite::space(Graphite::Space::m));
+            QCOMPARE(t->width(), window.width() - 2 * Graphite::space(Graphite::Space::m));
             QVERIFY(lane.width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
             for (const auto& mask : twoMasks().masks) {
                 const auto bar = t->maskRect(mask.id).translated(t->pos());

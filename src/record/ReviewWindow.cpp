@@ -182,7 +182,8 @@ protected:
 // for one line. Every control keeps its full size; the row grows instead.
 class FlowRow final : public QWidget {
 public:
-    static constexpr int groupGap = 4, lineGap = 4;
+    static int groupGap() { return Graphite::space(Graphite::Space::xs); }
+    static int lineGap() { return Graphite::space(Graphite::Space::xs); }
     explicit FlowRow(QWidget* parent) : QWidget(parent) {}
     void setGutter(QWidget* label, int indent) { label->setParent(this); label_ = label; indent_ = indent; relayout(); }
     void addGroup(QWidget* group) { group->setParent(this); group->installEventFilter(this); groups_.append(group); }
@@ -190,8 +191,8 @@ public:
     int heightFor(int width, bool reserved = false) const { return arrange(width, reserved, false); }
     int singleLineWidth(bool reserved) const {
         int x = indent_;
-        for (auto* group : groups_) if (shown(group, reserved)) x += widthOf(group) + groupGap;
-        return x - groupGap;
+        for (auto* group : groups_) if (shown(group, reserved)) x += widthOf(group) + groupGap();
+        return x - groupGap();
     }
     // The enclosing box layout asks for the height at the width it gives.
     bool hasHeightForWidth() const override { return true; }
@@ -232,9 +233,9 @@ private:
         for (auto* group : groups_) {
             if (!shown(group, reserved) && !group->sizePolicy().retainSizeWhenHidden()) continue;
             const int w = group == groups_.last() && qobject_cast<QLabel*>(group) ? group->minimumSizeHint().width() : widthOf(group);
-            if (x > indent_ && x + w > width - 12) { lines.append(QList<QPair<QWidget*, QRect>>{}); x = indent_; }
+            if (x > indent_ && x + w > width) { lines.append(QList<QPair<QWidget*, QRect>>{}); x = indent_; }
             lines.last().append({group, QRect(x, 0, w, heightOf(group))});
-            x += w + groupGap;
+            x += w + groupGap();
         }
         int top = 0;
         for (int i = 0; i < lines.size(); ++i) {
@@ -244,12 +245,12 @@ private:
                 if (!lines[i].isEmpty()) {
                     auto& last = lines[i].last();
                     if (last.first == groups_.last() && qobject_cast<QLabel*>(last.first))
-                        last.second.setWidth(std::max(last.second.width(), width - 12 - last.second.left()));
+                        last.second.setWidth(std::max(last.second.width(), width - last.second.left()));
                 }
                 for (const auto& [group, rect] : lines[i]) group->setGeometry(rect.translated(0, top + (line - rect.height()) / 2));
-                if (i == 0 && label_) label_->setGeometry(0, 0, indent_ - 8, line);
+                if (i == 0 && label_) label_->setGeometry(0, 0, indent_ - Graphite::space(Graphite::Space::s), line);
             }
-            top += line + (i + 1 < lines.size() ? lineGap : 0);
+            top += line + (i + 1 < lines.size() ? lineGap() : 0);
         }
         return top;
     }
@@ -1040,15 +1041,15 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // Keep the well and image edge; fixed compact insets preserve the frame at large text.
     view_ = new FrameView(this, maskNames_);
     view_->setObjectName("frame");
-    view_->setContentsMargins(4, 0, 4, 0);
+    view_->setContentsMargins(Graphite::space(Graphite::Space::xs), 0, Graphite::space(Graphite::Space::xs), 0);
     view_->setMinimumHeight(180);
     view_->setCanvas(options.canvas);
     view_->setAccessibleName("Recording frame");
     frame->addWidget(view_, 1);
     // Compact bands leave room for the video even with enlarged text and status.
     auto* root = new QVBoxLayout;
-    root->setContentsMargins(12, 0, 12, 0);
-    root->setSpacing(4);
+    root->setContentsMargins(Graphite::space(Graphite::Space::m), 0, Graphite::space(Graphite::Space::m), 0);
+    root->setSpacing(Graphite::space(Graphite::Space::xs));
     frame->addLayout(root);
     auto tool = [this](const char* icon, const QString& name, const QString& tip) {
         auto* button = new QToolButton(this);
@@ -1285,14 +1286,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* footer = new Graphite::Surface("bg", Qt::TopEdge, this);
     footer->setObjectName("reviewFooter");
     auto* footerRows = new QVBoxLayout(footer);
-    footerRows->setContentsMargins(12, 8, 12, 8);
-    footerRows->setSpacing(4);
+    footerRows->setContentsMargins(Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::s));
+    footerRows->setSpacing(Graphite::space(Graphite::Space::xs));
     auto* actions = new QWidget(footer);
     actions->setObjectName("reviewActions");
     auto* actionsRow = new QGridLayout(actions);
     actionsRow->setContentsMargins(0, 0, 0, 0);
-    actionsRow->setHorizontalSpacing(4);
-    actionsRow->setVerticalSpacing(4);
+    actionsRow->setHorizontalSpacing(Graphite::space(Graphite::Space::xs));
+    actionsRow->setVerticalSpacing(Graphite::space(Graphite::Space::xs));
     destinationMenu_ = new DestinationMenu(actions);
     destinationMenu_->setObjectName("uploadDestinationMenu");
     destinationMenu_->setAutoRaise(true);
@@ -1308,7 +1309,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     destinationFull_->setObjectName("uploadDestinationWrapped");
     destinationFull_->setTextFormat(Qt::PlainText);
     destinationFull_->setWordWrap(true);
-    destinationFull_->setMargin(12);
+    destinationFull_->setMargin(Graphite::space(Graphite::Space::m));
     destinationFull_->setMaximumWidth(480);
     destinationFull_->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     destinationFull_->setFocusPolicy(Qt::StrongFocus);
@@ -1964,9 +1965,9 @@ void ReviewWindow::updateMinimum() {
             const auto share = [&](int width, int controls, int timelineHeight) {
                 const auto margins = footer->layout()->contentsMargins();
                 const int metadataWidth = findChild<QWidget*>("reviewMetadata")->sizeHint().width();
-                const int destinationHeight = destinationMenu_->heightForWidth(std::max(destinationMenu_->minimumWidth(), width - 24 - metadataWidth - 8));
-                const int footerHeight = 32 + (footerFits(width - 28) ? 0 : std::max(destinationHeight, destinationMenu_->fontMetrics().height()) + 4);
-                const int chrome = fixed + trim->heightFor(width - 24) + timelineHeight + footerHeight + margins.top() + margins.bottom();
+                const int destinationHeight = destinationMenu_->heightForWidth(std::max(destinationMenu_->minimumWidth(), width - 2 * Graphite::space(Graphite::Space::l) - metadataWidth - Graphite::space(Graphite::Space::s)));
+                const int footerHeight = 32 + (footerFits(width - 2 * Graphite::space(Graphite::Space::l) - Graphite::space(Graphite::Space::xs)) ? 0 : std::max(destinationHeight, destinationMenu_->fontMetrics().height()) + 4);
+                const int chrome = fixed + trim->heightFor(width - 2 * Graphite::space(Graphite::Space::m)) + timelineHeight + footerHeight + margins.top() + margins.bottom();
                 const QSize image = QSize(10000, int(10000 / aspect)).scaled(QSize(width - 8, height - chrome - controls), Qt::KeepAspectRatio);
                 return double(image.width()) * image.height() / (double(width) * height);
             };
@@ -1975,12 +1976,12 @@ void ReviewWindow::updateMinimum() {
             const int axisMinimum = QFontMetrics(gutterFont()).horizontalAdvance(durationText(options_.durationUs)) * 4 + 96;
             for (int candidate = minimumWidth(); candidate <= available.width(); candidate += 2) {
                 const int futureControls = edit_.masks.isEmpty() ? maskStart_->height() : 0;
-                const int controls = std::max(futureControls, flow->heightFor(candidate - 24, true));
-                const int timelineHeight = timeline_->heightForLanes(candidate - 24, std::max(2, timeline_->lanes()));
-                const double steady = share(candidate, std::max(futureControls, flow->heightFor(candidate - 24)), timelineHeight);
+                const int controls = std::max(futureControls, flow->heightFor(candidate - 2 * Graphite::space(Graphite::Space::m), true));
+                const int timelineHeight = timeline_->heightForLanes(candidate - 2 * Graphite::space(Graphite::Space::m), std::max(2, timeline_->lanes()));
+                const double steady = share(candidate, std::max(futureControls, flow->heightFor(candidate - 2 * Graphite::space(Graphite::Space::m))), timelineHeight);
                 const double transient = share(candidate, controls + std::max(32, QFontMetrics(Graphite::font(Graphite::Type::metadata)).height() + 8) + 4, timelineHeight);
-                const int inlineAxis = candidate - 24 - trackPad - ReviewTimeline::gutterWidth() - transport_->property("inlineWidth").toInt() - 12;
-                const int axis = inlineAxis < 360 ? candidate - 24 - trackPad - ReviewTimeline::gutterWidth() : inlineAxis;
+                const int inlineAxis = candidate - 2 * Graphite::space(Graphite::Space::m) - trackPad - ReviewTimeline::gutterWidth() - transport_->property("inlineWidth").toInt() - 12;
+                const int axis = inlineAxis < 360 ? candidate - 2 * Graphite::space(Graphite::Space::m) - trackPad - ReviewTimeline::gutterWidth() : inlineAxis;
                 const double organization = std::min(1.0, double(axis) / axisMinimum) - controls * 0.002;
                 const double score = steady >= 0.605 && transient >= 0.535 ? 10 + organization + transient * 0.02 : steady >= 0.605 ? 1 + transient : steady;
                 if (score > best) { best = score; width = candidate; }
@@ -2028,7 +2029,7 @@ QSize ReviewWindow::minimumSizeHint() const {
     const auto rows = layout()->minimumSize();
     const int width = std::max({640, rows.width(), flow->minimumSizeHint().width() + 2 * Graphite::space(Graphite::Space::l)});
     int height = rows.height();
-    if (flow->isVisibleTo(this)) height += flow->heightFor(width - 24, true) - flow->minimumSizeHint().height();
+    if (flow->isVisibleTo(this)) height += flow->heightFor(width - 2 * Graphite::space(Graphite::Space::m), true) - flow->minimumSizeHint().height();
     // Status lines wrap at a narrow width; count them as they are laid out.
     if (statusRow_->isVisibleTo(this) && statusRow_->hasHeightForWidth()) height += std::max(0, statusRow_->heightForWidth(width) - statusRow_->minimumSizeHint().height());
     return {width, std::max(480, height)};
@@ -2061,7 +2062,7 @@ void ReviewWindow::placeDestination() {
     const int naturalDestination = destinationMenu_->fontMetrics().horizontalAdvance(destination_->text()) + Graphite::Metric::splitZone + 24;
     destinationMenu_->setMaximumWidth(naturalDestination);
     auto* grid = qobject_cast<QGridLayout*>(findChild<QWidget*>("reviewActions")->layout());
-    const int available = std::max(1, width() - 24);
+    const int available = std::max(1, width() - 2 * Graphite::space(Graphite::Space::l));
     const bool wasSingle = grid->property("placed").toBool() && grid->property("singleRow").toBool();
     const bool single = footerFits(available + (wasSingle ? 4 : -4));
     const int destinationSpace = single ? naturalDestination : available - metadata->sizeHint().width() - Graphite::space(Graphite::Space::s);
