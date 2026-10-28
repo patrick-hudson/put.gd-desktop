@@ -92,11 +92,11 @@ private slots:
  void instructionsRemainVisibleAndClearBeforeDismissal(){
   for(const auto& variant:{QString("dark"),QString("light"),QString("text150")}){
    KdeRegionOverlay overlay({});auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
-   QPalette palette;const bool light=variant=="light";palette.setColor(QPalette::Window,light?QColor("#EEEEEB"):QColor("#191919"));palette.setColor(QPalette::WindowText,light?QColor("#292926"):QColor("#F0F0EC"));surface->setPalette(palette);
+   QPalette palette;const bool light=variant=="light";Theme::setScheme(light?Theme::Scheme::Light:Theme::Scheme::Dark);palette.setColor(QPalette::Window,light?QColor("#EEEEEB"):QColor("#191919"));palette.setColor(QPalette::WindowText,light?QColor("#292926"):QColor("#F0F0EC"));surface->setPalette(palette);
    QFont font=surface->font();font.setPixelSize(variant=="text150"?21:14);surface->setFont(font);QTest::keyClick(surface,Qt::Key_Right);
    QCOMPARE(overlay.selection_,QRectF(200,150,400,300));QVERIFY(!overlay.clearing_);QVERIFY(!overlay.finished_);
    surface->repaint();const auto image=surface->grab().toImage();QCOMPARE(image.pixelColor(300,151),QColor(Qt::white));QCOMPARE(image.pixelColor(5,500),QColor(0,0,0,70));QCOMPARE(image.pixelColor(400,300).alpha(),0);const auto box=regionInstructionBox(surface->rect(),QFontMetrics(font),regionInstructions(overlay.selection_,false,"Display 1"));QVERIFY(!box.isEmpty());QVERIFY(box.height()<surface->height()/3);
-   const auto bg=palette.color(QPalette::Window);QCOMPARE(image.pixelColor(box.left()+10,box.top()+4),bg);
+   const auto bg=Theme::current().surfaceRaised;QCOMPARE(image.pixelColor(box.left()+10,box.top()+4),bg);
    int ink=0;for(int y=box.top()+6;y<box.bottom()-6;++y)for(int x=box.left()+10;x<box.right()-10;++x){const auto c=image.pixelColor(x,y);if(c.alpha()==255&&std::abs(c.lightness()-bg.lightness())>100)++ink;}
    QVERIFY(ink>100);
    const auto dir=qEnvironmentVariable("PUTGD_REGION_RENDER_DIR");if(!dir.isEmpty()){QVERIFY(QDir().mkpath(dir+"/"+variant));QImage preview(image.size(),QImage::Format_RGB32);preview.fill(bg);QPainter painter(&preview);painter.drawImage(0,0,image);painter.end();QVERIFY(preview.save(dir+"/"+variant+"/kde-region.png"));}
