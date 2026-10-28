@@ -222,7 +222,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  footerGrid_=new QGridLayout(footer);footerGrid_->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::s),Graphite::space(Space::l),Graphite::space(Space::s));footerGrid_->setHorizontalSpacing(Graphite::space(Space::s));footerGrid_->setVerticalSpacing(Graphite::space(Space::xs));footerGrid_->setColumnStretch(0,1);
  auto* document=new QWidget(footer);document->setObjectName("editorDocument");document->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);document_=document;
  auto* documentLayout=new QHBoxLayout(document);documentLayout->setContentsMargins(0,0,0,0);documentLayout->setSpacing(Graphite::space(Space::l));
- documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");VisualStyle::role(documentInfo_,"meta");documentLayout->addWidget(documentInfo_);footerGrid_->addWidget(document,2,0);
+ documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");VisualStyle::role(documentInfo_,"meta");documentLayout->addWidget(documentInfo_);documentLayout->addSpacing(0);footerGrid_->addWidget(document,2,0);
  notice_=new QWidget(footer);notice_->setObjectName("editorPreparationFailure");
  auto* noticeLayout=new QGridLayout(notice_);noticeLayout->setContentsMargins(0,0,0,0);noticeLayout->setSpacing(Graphite::space(Space::s));
  noticeText_=new QLabel(notice_);noticeText_->setObjectName("editorPreparationReason");noticeText_->setTextFormat(Qt::PlainText);noticeText_->setWordWrap(true);VisualStyle::role(noticeText_,"error");noticeLayout->addWidget(noticeText_,0,0,1,3);noticeLayout->setColumnStretch(2,1);
@@ -231,8 +231,9 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  notice_->hide();footerGrid_->addWidget(notice_,0,0,1,4);
  // Elision keeps the actions reachable; keyboard activation reveals the name.
  destination_=new Graphite::ElidedLabel(document);destination_->setElideMode(Qt::ElideRight);destination_->setRevealable(true);destination_->setObjectName("editorDestination");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"meta");
- destination_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);destination_->setFocusPolicy(Qt::StrongFocus);destination_->hide();documentLayout->addWidget(destination_,1);
- sharingMode_=new QLabel(document);sharingMode_->setObjectName("editorSharingMode");sharingMode_->setTextFormat(Qt::PlainText);VisualStyle::role(sharingMode_,"meta");sharingMode_->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Preferred);sharingMode_->hide();documentLayout->addWidget(sharingMode_);
+ destination_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);destination_->setFocusPolicy(Qt::StrongFocus);destination_->hide();documentLayout->addWidget(destination_);
+ auto* sharingSeparator=new QLabel("·",document);sharingSeparator->setObjectName("editorSharingSeparator");VisualStyle::role(sharingSeparator,"secondary");sharingSeparator->hide();documentLayout->addWidget(sharingSeparator);
+ sharingMode_=new QLabel(document);sharingMode_->setObjectName("editorSharingMode");sharingMode_->setTextFormat(Qt::PlainText);VisualStyle::role(sharingMode_,"meta");sharingMode_->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Preferred);sharingMode_->hide();documentLayout->addWidget(sharingMode_);documentLayout->addStretch();
  // Saving locally never hides the separate upload destination.
  saveFeedback_=new Graphite::Banner(Graphite::Banner::Tone::Info,{},canvasViewport_);saveFeedback_->setObjectName("editorSaveFeedback");saveFeedback_->hide();saveFeedback_->installEventFilter(this);
  saveFeedbackTimer_=new QTimer(this);saveFeedbackTimer_->setObjectName("editorSaveFeedbackTimer");saveFeedbackTimer_->setSingleShot(true);
@@ -393,9 +394,12 @@ void EditorWindow::placeDestination(){
  const auto margins=footerGrid_->contentsMargins();const int spacing=footerGrid_->horizontalSpacing();
  int room=width()-margins.left()-margins.right();
  for(auto* button:{save_,cancel_,upload_})if(!button->isHidden())room-=button->sizeHint().width()+spacing;
- // Include the shared summary's details affordance in the fit calculation.
+ // Measure the destination and sharing together before assigning spare space.
+ auto* documentLayout=static_cast<QHBoxLayout*>(document_->layout());auto* separator=findChild<QLabel*>("editorSharingSeparator");
+ documentLayout->setSpacing(Graphite::space(Space::xs));documentLayout->setContentsMargins(0,0,Graphite::space(Space::xl)-spacing,0);documentLayout->itemAt(1)->spacerItem()->changeSize(Graphite::space(Space::l)-2*Graphite::space(Space::xs),0);separator->setVisible(!sharingMode_->isHidden());documentLayout->invalidate();
  const bool above=document_->sizeHint().width()>room;
  destinationAbove_=above;
+ separator->setVisible(!above&&!sharingMode_->isHidden());documentLayout->setSpacing(Graphite::space(above?Space::l:Space::xs));documentLayout->setContentsMargins(0,0,above?0:Graphite::space(Space::xl)-spacing,0);documentLayout->itemAt(1)->spacerItem()->changeSize(above?0:Graphite::space(Space::l)-2*Graphite::space(Space::xs),0);documentLayout->setStretch(2,above?1:0);documentLayout->setStretch(5,above?0:1);documentLayout->invalidate();
  const int slot=Graphite::scaled(Graphite::Metric::control);
  footerGrid_->setRowMinimumHeight(1,above?slot:0);document_->setMinimumHeight(slot);
  footerGrid_->removeWidget(document_);footerGrid_->addWidget(document_,above?1:2,0,1,above?4:1);

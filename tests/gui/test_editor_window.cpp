@@ -803,6 +803,8 @@ private slots:
    QCOMPARE(window.viewState()["destination"].toObject()["sharingMode"].toString(),mode->text());
    QCOMPARE(window.viewState()["destination"].toObject()["text"].toString(),name+" · "+mode->text());
   }
+  window.resize(1400,700);window.setDestination("Private upload to Project archive");QApplication::processEvents();QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());auto* separator=window.findChild<QLabel*>("editorSharingSeparator");QVERIFY(separator->isVisible());QCOMPARE(separator->x()-destination->geometry().right()-1,Graphite::space(Graphite::Space::xs));QCOMPARE(mode->x()-separator->geometry().right()-1,Graphite::space(Graphite::Space::xs));
+  const auto original=QApplication::font();const auto restore=qScopeGuard([&]{QApplication::setFont(original);});auto font=original;font.setPixelSize(21);QApplication::setFont(font);window.resize(760,560);QApplication::processEvents();QVERIFY(mode->isVisible());QVERIFY(mode->width()>=mode->sizeHint().width());QVERIFY(document->rect().contains(mode->geometry()));
   window.setDestination("Upload to Archive");QVERIFY(!mode->isVisible());
  }
  void blurWarningUsesTheExistingRedactToolWithoutChangingMarks(){
