@@ -400,6 +400,7 @@ public:
    // remain reachable, including after selecting a row or resizing the splitter.
    QTimer::singleShot(0,view_,[view=view_]{view->doItemsLayout();});
   }
+  if(watched==primary_||watched==more_)return false;
   return QStyledItemDelegate::eventFilter(watched,event);
  }
  std::function<void(const QModelIndex&)> primary,details;
