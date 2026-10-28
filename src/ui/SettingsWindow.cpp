@@ -680,7 +680,7 @@ QStringList s3Regions(){
 }
 }
 namespace PreferenceRows {
-QStringList destinationStateLines(const QString& state,int width){QStringList lines;const QFontMetricsF metrics(Graphite::font(Graphite::Type::metadata));for(const auto& part:state.split(" · ",Qt::SkipEmptyParts)){if(lines.isEmpty()||qCeil(metrics.horizontalAdvance(lines.last()+" · "+part))+space(Space::xs)>width)lines.append(part);else lines.last()+=" · "+part;}return lines;}
+QStringList destinationStateLines(const QString& state,int width){QStringList lines;const QFontMetricsF metrics(Graphite::font(Graphite::Type::metadata));for(const auto& part:state.split(" · ",Qt::SkipEmptyParts)){if(lines.isEmpty()||qCeil(metrics.horizontalAdvance(lines.last()+" · "+part))>width)lines.append(part);else lines.last()+=" · "+part;}return lines;}
 QLabel* caption(const QString& text){auto* label=Graphite::label(text,"secondary");label->setProperty("graphiteStatus",true);label->setWordWrap(true);return label;}
 QFormLayout* card(QVBoxLayout* page,const QString& heading,const QString& description,bool headingInside){
  auto* card=new Graphite::Surface("surface");card->setProperty("preferenceCard",true);auto* box=new QVBoxLayout(card);box->setSizeConstraint(QLayout::SetMinimumSize);box->setContentsMargins(0,0,0,0);box->setSpacing(0);auto* section=new FormRow;section->setProperty("preferenceSection",true);section->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Minimum);auto* column=new QVBoxLayout(section);column->setSizeConstraint(QLayout::SetMinimumSize);column->setContentsMargins(0,0,0,0);column->setSpacing(space(Space::s));addPreferenceWidget(column,Graphite::label(heading,"sectionTitle"));if(!description.isEmpty())column->addWidget(caption(description));
