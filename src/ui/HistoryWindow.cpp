@@ -226,8 +226,8 @@ void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,
 }
 // The row's body: right of the thumbnail in a list, under it in a gallery tile.
 QRect rowBody(const QRect& outer,bool gallery,int heading){
- const auto card=outer.adjusted(space(Space::s),heading+2,-space(Space::s),-2);
- if(gallery){const int top=card.top()+1+galleryPicture(card.width())+10;return QRect(card.left()+14,top,card.width()-28,qMax(0,card.bottom()-top+1));}
+ const auto card=gallery?outer.adjusted(space(Space::s),space(Space::s),-space(Space::s),-space(Space::s)):outer.adjusted(space(Space::s),heading+2,-space(Space::s),-2);
+ if(gallery){const int top=card.top()+1+galleryPicture(card.width())+space(Space::m);return QRect(card.left()+space(Space::l),top,card.width()-2*space(Space::l),qMax(0,card.bottom()-top+1));}
  const int left=card.left()+space(Space::s)+historyThumbWidth+space(Space::l);
  return QRect(left,card.top(),card.right()-space(Space::s)-left+1,rowContentHeight()-4);
 }
@@ -330,7 +330,7 @@ public:
  bool rowPrimary(const QModelIndex& i)const{if(!inlineActions(i))return false;return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  bool primaryShown(const QModelIndex& i)const{if(grid())return !(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));return rowPrimary(i)&&inlineActions(i)&&(view_->selectionModel()->selectedRows().size()<=1||(grid()&&recovery(i)))&&!i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
- QRect card(QRect r,const QModelIndex& i)const{return r.adjusted(space(Space::s),heading(i)+2,-space(Space::s),-2);}
+ QRect card(QRect r,const QModelIndex& i)const{return grid()?r.adjusted(space(Space::s),space(Space::s),-space(Space::s),-space(Space::s)):r.adjusted(space(Space::s),heading(i)+2,-space(Space::s),-2);}
  // Gallery cards share each row evenly. The preferred width grows with the
  // text size, so enlarged text gives fewer columns, not heavily elided names.
  // The flow layout always reserves a scrollbar's extent (QListViewPrivate::prepareItemsLayout).
@@ -340,7 +340,7 @@ public:
  int listDetailsSpace()const{return !grid()&&compactList&&compactList()?actionHeight()+space(Space::s):0;}
  int detailsWidth()const{return qMax(details_->sizeHint().width(),QFontMetrics(Graphite::font()).horizontalAdvance("Details")+30);}
  QRect galleryActionRect(QRect r,const QModelIndex& i,int column)const{const auto c=card(r,i);const int h=actionHeight(),pad=space(Space::xs);return QRect(c.right()-space(Space::s)-2*h-pad+(column==2?h+pad:0),c.top()+space(Space::s)+pad,h,h);}
- QRect detailsRect(QRect r,const QModelIndex& i)const{if(grid())return galleryActionRect(r,i,1);const auto b=menuRect(r,i);const int w=grid()?detailsWidth():actionHeight();const int h=grid()?b.height():w;return QRect(b.left()-8-w,b.top()+(b.height()-h)/2,w,h);}
+ QRect detailsRect(QRect r,const QModelIndex& i)const{if(grid())return galleryActionRect(r,i,1);const auto b=menuRect(r,i);const int w=grid()?detailsWidth():actionHeight();const int h=grid()?b.height():w;return QRect(b.left()-space(Space::s)-w,b.top()+(b.height()-h)/2,w,h);}
  int primaryWidth(const QModelIndex& i)const{return qMax(Graphite::scaled(84),int(std::ceil(QFontMetricsF(Graphite::labelFont()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())))+space(Space::xxl));}
  int inlineTextWidth(const QRect& r,const QModelIndex& i)const{
   const auto body=rowBody(r,false,heading(i));return qMax(20,(i.data(HistoryModel::FailedRole).toBool()?body.width()-actionHeight()-space(Space::s)-listDetailsSpace()-(rowPrimary(i)?primaryWidth(i)+space(Space::s):0):rowColumns(body,i).item.width())-space(Space::s));
@@ -352,10 +352,10 @@ public:
   return std::ceil(metadata.size().height())>rowContentHeight()-4-2*rowTextInset()-QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-6;
  }
  QRect primaryRect(QRect r,const QModelIndex& i)const{
-  const auto c=card(r,i);const int h=actionHeight();const int w=qMin(primaryWidth(i),qMax(0,c.width()-12-12-h-8-(grid()?detailsWidth()+8:listDetailsSpace())));
+  const auto c=card(r,i);const int h=actionHeight(),detailsSpace=detailsShown(i)?listDetailsSpace():0;const int w=qMin(primaryWidth(i),qMax(0,c.width()-2*space(Space::m)-h-space(Space::s)-(grid()?detailsWidth()+space(Space::s):detailsSpace)));
   if(grid())return galleryActionRect(r,i,0);
-  if(i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-listDetailsSpace()-w,c.top()+rowTextInset()+(QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-h)/2,w,h);
-  return QRect(c.right()-space(Space::s)-h-space(Space::s)-listDetailsSpace()-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):c.top()+(rowContentHeight()-4-h)/2,w,h);
+  if(i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,c.top()+rowTextInset()+(QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-h)/2,w,h);
+  return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):c.top()+(rowContentHeight()-4-h)/2,w,h);
  }
  QRect menuRect(QRect r,const QModelIndex& i)const{if(grid())return galleryActionRect(r,i,2);const auto b=primaryRect(r,i);const auto c=card(r,i);const int h=actionHeight();return QRect(c.right()-space(Space::s)-h,b.top(),h,h);}
  static QString errorText(const QModelIndex& i){return HistoryModel::statusText(i.data(HistoryModel::RecordRole).toJsonObject());}
@@ -363,7 +363,7 @@ public:
  QSize sizeHint(const QStyleOptionViewItem&,const QModelIndex& i)const override{
   if(grid()){
    const int width=galleryWidth(),text=QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+2*QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();
-   return {width,2+1+galleryPicture(width-12)+10+text+12+2};
+   return {width,2*space(Space::s)+1+galleryPicture(width-2*space(Space::s))+space(Space::m)+text+space(Space::m)};
   }
   const int width=qMax(160,view_->viewport()->width()-2*view_->spacing());
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
@@ -377,7 +377,7 @@ public:
  }
  void paint(QPainter* p,const QStyleOptionViewItem& option,const QModelIndex& i)const override{
   const auto& t=Theme::current();p->save();p->setRenderHint(QPainter::Antialiasing);const auto outer=option.rect;const auto group=i.data(HistoryModel::DayRole).toString();
-  if(heading(i))Graphite::paintText(*p,QRectF(outer.left()+18,outer.top()+6,outer.width()-36,heading(i)-6),group,t.textMuted,Graphite::font(Graphite::Type::micro,true));
+  if(heading(i))Graphite::paintText(*p,QRectF(outer.left()+2*space(Space::s),outer.top()+6,outer.width()-4*space(Space::s),heading(i)-6),group,t.textMuted,Graphite::font(Graphite::Type::micro,true));
   const auto r=card(outer,i);const bool chosen=option.state&QStyle::State_Selected;const bool hover=option.state&QStyle::State_MouseOver;const bool failed=i.data(HistoryModel::FailedRole).toBool();
   const auto record=i.data(HistoryModel::RecordRole).toJsonObject();
   // Selection is neutral; keyboard focus has its own amber outline.
@@ -634,8 +634,8 @@ void HistoryWindow::updateFooterLayout(){
  const bool dense=Graphite::scaled(100)<=150&&height()<600;auto* header=findChild<QWidget*>("historyCompactControls");
  if(status_->text()=="Select an item to inspect its files and share link.")status_->hide();
  auto* sidebar=findChild<QWidget*>("historySidebar");auto* rail=qobject_cast<QVBoxLayout*>(sidebar->layout());auto* box=qobject_cast<QVBoxLayout*>(footerBar_->layout());auto* tools=qobject_cast<QGridLayout*>(header->layout());
- setProperty("denseHistory",dense);categories_->setProperty("denseHistory",dense);table_->setSpacing(dense?0:1);rail->setContentsMargins(space(Space::l),dense?space(Space::s):space(Space::l),space(Space::l),space(Space::l));box->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));footerBar_->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Maximum);
- tools->setContentsMargins(space(Space::m),dense?0:space(Space::s),space(Space::m),dense?space(Space::xs):space(Space::s));tools->setHorizontalSpacing(space(Space::s));tools->setVerticalSpacing(space(Space::xs));
+ setProperty("denseHistory",dense);categories_->setProperty("denseHistory",dense);table_->setSpacing(grid_->isChecked()||dense?0:1);rail->setContentsMargins(space(Space::l),dense?space(Space::s):space(Space::l),space(Space::l),space(Space::l));box->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));footerBar_->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Maximum);
+ tools->setContentsMargins(space(Space::l)+table_->spacing(),dense?0:space(Space::s),space(Space::l),dense?space(Space::xs):space(Space::s));tools->setHorizontalSpacing(space(Space::s));tools->setVerticalSpacing(space(Space::xs));
  auto* search=findChild<QLineEdit*>("historySearch");auto* views=findChild<QWidget*>("historyViewMode");auto* management=findChild<QToolButton*>("historyManagementExpanded");views->setFixedWidth(views->sizeHint().width());
  const int available=header->width()-34,clear=activeFilters().isEmpty()?0:clearFilters_->sizeHint().width()+8,required=180+filtersToggle_->sizeHint().width()+views->sizeHint().width()+management->sizeHint().width()+clear+24;
  const bool wrap=required>available,details=compact_&&detailsOpen_;auto* heading=findChild<QWidget*>("historyHeadingGroup");const bool headingRow=available<required+heading->minimumSizeHint().width()+space(Space::l);const int toolRow=headingRow&&!details?1:0;
@@ -989,6 +989,7 @@ QDialog* HistoryWindow::deletionConfirmation(QWidget* parent,const QJsonObject& 
  const auto first=names.value(targets.first().toObject()["historyId"].toString(),"this file");
  auto* heading=new QLabel(targets.size()==1?QString("Delete “%1” from its destination?").arg(first):QString("Delete %1 files from their destinations?").arg(targets.size()),dialog);heading->setObjectName("deleteConfirmationHeading");heading->setTextFormat(Qt::PlainText);heading->setWordWrap(true);VisualStyle::role(heading,"sectionTitle");box->addWidget(heading);
  const bool proton=std::any_of(targets.begin(),targets.end(),[](const QJsonValue& value){return value.toObject()["receipt"].toObject()["destination"].toObject()["providerId"]=="proton-drive";});
+ if(proton){heading->setText("These files can't be deleted from Proton Drive");dialog->setWindowTitle(heading->text());}
  QString consequence=proton?"This selection includes Proton Drive files that put.gd can’t safely delete. Nothing will be deleted.":"put.gd deletes each file below from its destination. Local copies and history stay. Copies already cached by browsers or a CDN can stay visible for a while.";
  if(skipped>0)consequence+=QString("\n%1 other selected %2 no confirmed upload to delete and %3 left out.").arg(skipped).arg(skipped==1?"file has":"files have").arg(skipped==1?"is":"are");
  auto* text=new QLabel(consequence,dialog);text->setObjectName("deleteConfirmationText");text->setTextFormat(Qt::PlainText);text->setWordWrap(true);box->addWidget(text);
@@ -1019,8 +1020,8 @@ QDialog* HistoryWindow::deletionConfirmation(QWidget* parent,const QJsonObject& 
  auto* toggle=new QToolButton(dialog);toggle->setObjectName("deleteConfirmationDetailsExpanded");toggle->setText("Technical details");Graphite::disclosure(toggle);toggle->setAccessibleName("Show the full deletion preparation");box->addWidget(toggle,0,Qt::AlignLeft);
  auto* detailsDialog=new QDialog(dialog);detailsDialog->setWindowTitle("Deletion technical details");auto* detailsBox=new QVBoxLayout(detailsDialog);auto* details=new QPlainTextEdit(QString::fromUtf8(QJsonDocument(preparation).toJson(QJsonDocument::Indented)),detailsDialog);details->setObjectName("deleteConfirmationDetails");details->setReadOnly(true);details->setLineWrapMode(QPlainTextEdit::NoWrap);VisualStyle::role(details,"diagnostics");details->setAccessibleName("Deletion preparation receipt");detailsBox->addWidget(details);auto* copyDetails=new QPushButton("Copy technical details",detailsDialog);copyDetails->setObjectName("copyDeletionTechnicalDetails");detailsBox->addWidget(copyDetails);QObject::connect(copyDetails,&QPushButton::clicked,details,[details]{QApplication::clipboard()->setText(details->toPlainText());});detailsDialog->resize(Graphite::scaled(520),Graphite::scaled(320));
  QObject::connect(toggle,&QToolButton::toggled,detailsDialog,[detailsDialog](bool on){detailsDialog->setVisible(on);});QObject::connect(detailsDialog,&QDialog::finished,toggle,[toggle]{toggle->setChecked(false);});
- auto* buttons=new QHBoxLayout;buttons->setSpacing(space(Space::s));buttons->addStretch();auto* cancel=new QPushButton("Cancel",dialog);cancel->setObjectName("confirmCancel");cancel->setAutoDefault(true);cancel->setDefault(true);auto* action=new QPushButton(QString("Delete %1 %2").arg(targets.size()).arg(targets.size()==1?"file":"files"),dialog);action->setObjectName("confirmActionButton");action->setEnabled(!unsupported);action->setAccessibleName(action->text());action->setAutoDefault(false);VisualStyle::role(action,"danger");buttons->addWidget(cancel);buttons->addWidget(action);box->addLayout(buttons);
- QObject::connect(cancel,&QPushButton::clicked,dialog,&QDialog::reject);QObject::connect(action,&QPushButton::clicked,dialog,&QDialog::accept);
+ auto* buttons=new QHBoxLayout;buttons->setSpacing(space(Space::s));buttons->addStretch();auto* cancel=new QPushButton(unsupported?"Close":"Cancel",dialog);cancel->setObjectName("confirmCancel");cancel->setAutoDefault(true);cancel->setDefault(true);buttons->addWidget(cancel);QPushButton* action=nullptr;if(!unsupported){action=new QPushButton(QString("Delete %1 %2").arg(targets.size()).arg(targets.size()==1?"file":"files"),dialog);action->setObjectName("confirmActionButton");action->setAccessibleName(action->text());action->setAutoDefault(false);VisualStyle::role(action,"danger");buttons->addWidget(action);}box->addLayout(buttons);
+ QObject::connect(cancel,&QPushButton::clicked,dialog,&QDialog::reject);if(action)QObject::connect(action,&QPushButton::clicked,dialog,&QDialog::accept);
  const auto available=(parent?parent->screen():QGuiApplication::primaryScreen())->availableGeometry();const int height=qMax(1,qMin(available.height(),parent?parent->window()->height():available.height())-40),width=qMin(Graphite::scaled(560),available.width()-40);box->setSizeConstraint(QLayout::SetNoConstraint);dialog->setMaximumSize(qMin(Graphite::scaled(720),available.width()-40),height);dialog->resize(width,qMin(height,Graphite::scaled(520)));cancel->setFocus(Qt::OtherFocusReason);
  return dialog;
 }
