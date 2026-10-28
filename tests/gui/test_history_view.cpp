@@ -1025,6 +1025,11 @@ QCOMPARE(button->property("captureUnavailable").toBool(),button->property("captu
  }
  // Below the width both panes need at this text size, the inspector opens
  // over the list on request and returns to it, by keyboard and ui.history.
+ void historyPageHeadingStartsAtSharedInset(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);MainWindow window(fixture.session);window.show();auto* page=window.history();auto* rail=window.findChild<QWidget*>("historySidebar");auto* heading=window.findChild<QLabel*>("historyHeading");QVERIFY(rail);QVERIFY(heading);
+  for(const auto size:{QSize(1440,960),QSize(1060,680)})for(const auto* mode:{"historyListMode","historyGridMode"}){window.resize(size);window.findChild<QToolButton*>(mode)->click();PUTGD_TRY_VERIFY(heading->isVisible());PUTGD_TRY_COMPARE(heading->mapTo(page,QPoint()).x(),rail->width()+Graphite::space(Graphite::Space::xxl));}
+ }
  void enlargedHistoryKeepsFourRowsAtMinimumSize_data(){
   QTest::addColumn<int>("pixels");QTest::addColumn<int>("minimumRows");QTest::newRow("text100-six-rows")<<14<<6;QTest::newRow("text150-four-rows")<<21<<4;
  }
