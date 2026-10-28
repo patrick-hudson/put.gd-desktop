@@ -112,8 +112,9 @@ bool captureRouting(const QJsonValue& value){
 }
 bool settingsState(const QJsonObject& s){
  if(s.contains("autosaveBlocked")&&!s["autosaveBlocked"].isBool())return false;
- if(!fields(s,{"autosaveBlocked","draft","numbers","profileEditors","baseRevision","observedRevision","dirty","conflict","initialProfile","profileIndex","section","advanced","resourceLimits","geometry","setupJobs","provisionalProfile","captureRouting"}))return false;
+ if(!fields(s,{"autosaveBlocked","draft","numbers","profileEditors","baseRevision","observedRevision","dirty","conflict","initialProfile","profileIndex","section","advanced","resourceLimits","desktopSupportDetails","geometry","setupJobs","provisionalProfile","captureRouting"}))return false;
  if(s.contains("resourceLimits")&&!s["resourceLimits"].isBool())return false;
+ if(s.contains("desktopSupportDetails")&&!s["desktopSupportDetails"].isBool())return false;
  if(s.contains("captureRouting")&&!captureRouting(s["captureRouting"]))return false;
  if(!safeDocument(s["draft"])||!scalars(s["numbers"],limitKeys+retentionKeys,true)||!geometry(s["geometry"]))return false;
  for(const auto& key:QStringList{"dirty","conflict","initialProfile","advanced"})if(!s[key].isBool())return false;
