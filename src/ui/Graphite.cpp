@@ -2026,7 +2026,12 @@ QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
     layout->addWidget(text);
     auto* action = toolButton("Use Redact", {}, "quiet", warning);
     action->setObjectName("useRedact");
-    layout->addWidget(action, 0, Qt::AlignLeft);
+    action->setProperty("graphiteFlush", true);
+    auto* actions = new QHBoxLayout;
+    actions->setContentsMargins(text->contentsMargins().left(), 0, 0, 0);
+    actions->addWidget(action, 0, Qt::AlignLeft);
+    actions->addStretch();
+    layout->addLayout(actions);
     QObject::connect(action, &QToolButton::clicked, warning, useRedact);
     return warning;
 }
