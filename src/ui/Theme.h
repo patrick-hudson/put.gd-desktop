@@ -31,6 +31,11 @@ struct Palette {
 };
 const Palette& palette(Scheme);
 const Palette& current();
+// Settings pages and preference cards have a separate light surface ladder.
+QColor preferencePage();
+QColor preferenceCard();
+QColor preferenceBorder();
+QColor preferenceSeparator();
 Scheme scheme();
 QString name(Scheme);
 // Token name to #rrggbb, for view state, tests and the CLI/MCP.

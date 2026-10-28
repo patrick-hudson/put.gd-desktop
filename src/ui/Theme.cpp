@@ -59,6 +59,10 @@ double luminance(const QColor& c){return 0.2126*channel(c.redF())+0.7152*channel
 const Palette& palette(Scheme scheme){return scheme==Scheme::Light?light:dark;}
 const Palette& current(){return palette(active.load());}
 Scheme scheme(){return active.load();}
+QColor preferencePage(){return scheme()==Scheme::Light?QColor("#F5F5F2"):current().bg;}
+QColor preferenceCard(){return scheme()==Scheme::Light?QColor("#FFFFFF"):current().surface;}
+QColor preferenceBorder(){return scheme()==Scheme::Light?QColor("#E2E1DB"):current().border;}
+QColor preferenceSeparator(){return scheme()==Scheme::Light?QColor("#ECEBE6"):current().border;}
 QString name(Scheme scheme){return scheme==Scheme::Light?QStringLiteral("light"):QStringLiteral("dark");}
 QJsonObject tokens(Scheme scheme){
  QJsonObject result;const auto& values=palette(scheme);

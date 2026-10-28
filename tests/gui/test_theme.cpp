@@ -68,6 +68,29 @@ class ThemeTest : public QObject {
     }
 private slots:
     void init() { Theme::setScheme(Theme::Scheme::Dark); }
+    void preferenceSurfacesAndSecondaryTypeFollowTheScheme() {
+        VisualStyle::apply(*qApp);
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            const auto& palette = Theme::current();
+            QCOMPARE(Theme::preferencePage(), scheme == Theme::Scheme::Light ? QColor("#F5F5F2") : palette.bg);
+            QCOMPARE(Theme::preferenceCard(), scheme == Theme::Scheme::Light ? QColor("#FFFFFF") : palette.surface);
+            QCOMPARE(Theme::preferenceBorder(), scheme == Theme::Scheme::Light ? QColor("#E2E1DB") : palette.border);
+            QCOMPARE(Theme::preferenceSeparator(), scheme == Theme::Scheme::Light ? QColor("#ECEBE6") : palette.border);
+            QVERIFY(Theme::contrast(palette.textSecondary, Theme::preferencePage()) >= 4.5);
+            QVERIFY(Theme::contrast(palette.textSecondary, Theme::preferenceCard()) >= 4.5);
+            QVERIFY(Theme::contrast(palette.bg, scheme == Theme::Scheme::Dark ? palette.textSecondary : palette.text) >= 3.0);
+            for (const auto* role : {"secondary", "muted", "subtitle", "meta", "caption"}) {
+                std::unique_ptr<QLabel> label(Graphite::label("Readable context", role));
+                QCOMPARE(label->font().pixelSize(), Graphite::scaled(13));
+                QCOMPARE(label->palette().color(QPalette::WindowText), palette.textSecondary);
+            }
+            Graphite::Surface page("preferencePage");page.resize(100,60);page.show();
+            QCOMPARE(page.grab().toImage().pixelColor(50,30), Theme::preferencePage());
+            Graphite::Surface card("surface");card.setProperty("preferenceCard",true);card.resize(100,60);card.show();
+            QCOMPARE(card.grab().toImage().pixelColor(50,30), Theme::preferenceCard());
+        }
+    }
     void sharedTypeRolesKeepTheirWeightsAndHeadingScale() {
         Fonts::load();
         QVERIFY(QFontDatabase::styles(Graphite::uiFamily()).contains("Medium"));

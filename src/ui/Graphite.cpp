@@ -216,7 +216,7 @@ void check(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyb
     const bool enabled = option->state & QStyle::State_Enabled;
     const bool on = option->state & QStyle::State_On, partial = option->state & QStyle::State_NoChange;
     // Checked stays visibly checked when disabled: a muted fill with the tick.
-    QColor fill = on || partial ? (enabled ? c.text : c.textMuted) : (enabled ? c.surfaceRaised : locked ? QColor(Qt::transparent) : c.surface);
+    QColor fill = on || partial ? (enabled ? (Theme::scheme() == Theme::Scheme::Dark ? c.textSecondary : c.text) : c.textMuted) : (enabled ? c.surfaceRaised : locked ? QColor(Qt::transparent) : c.surface);
     QColor stroke = keyboard ? c.accent : on || partial ? fill : enabled ? c.controlOutline : locked ? c.textMuted : c.textDisabled;
     rounded(p, box, fill, stroke, 4, keyboard ? 1.5 : 1);
     if (!on && !partial) return;
@@ -555,18 +555,19 @@ void Style::polish(QWidget* widget) {
     if (name == "title" || name == "page") f = font(widget->property("compactHeading").toBool() ? Type::compactPage : Type::page, true);
     else if (name == "sectionTitle" || name == "section") f = font(Type::section, true);
     else if (name == "label") f = labelFont();
-    else if (name == "body" || name == "secondary") f = font(Type::body);
+    else if (name == "body") f = font(Type::body);
+    else if (!bodyControl && (name == "secondary" || name == "muted" || name == "subtitle" || name == "status" || name == "caption")) { f = font(Type::technical); colour = c.textSecondary; }
     else if (name == "strong") f = font(Type::body, true);
-    else if (name == "caption" || name == "eyebrow" || name == "railHeading" || name == "micro") { f = font(Type::caption); colour = c.textMuted; }
+    else if (name == "eyebrow" || name == "railHeading" || name == "micro") { f = font(Type::caption); colour = c.textMuted; }
     // An error is never small print: it takes body type even in a meta slot.
-    else if (name == "inspectorKey") { f = font(13); colour = c.textMuted; }
-    else if (name == "meta") { f = font(tone == "error" ? Type::body : Type::metadata); colour = c.textMuted; }
-    else if (name == "version") f = font(Type::micro);
-    else if (name == "binding") { f = monoFont(Type::metadata); colour = c.textMuted; }
+    else if (name == "inspectorKey") { f = font(13); colour = c.textSecondary; }
+    else if (name == "meta") { f = font(tone == "error" ? Type::body : Type::metadata); colour = c.textSecondary; }
+    else if (name == "version") f = font(Type::technical);
+    else if (name == "binding") { f = monoFont(Type::metadata); colour = c.textSecondary; }
     else if (name == "mono" || name == "path" || (name == "link" && qobject_cast<QLineEdit*>(widget)) || name == "diagnostics") f = monoFont(Type::metadata);
     // Editable technical values use the quieter 13 px Mono role.
     else if (name == "technical") f = monoFont(Type::technical);
-    else if (name == "pill") { f = font(Type::micro); colour = c.textSecondary; }
+    else if (name == "pill") { f = font(Type::technical); colour = c.textSecondary; }
     else if (name == "editableTitle") f = font(widget->property("compactHeading").toBool() ? Type::compactPage : Type::page, true);
     else if (bodyControl) {
         f = font(Type::body);
@@ -583,7 +584,7 @@ void Style::polish(QWidget* widget) {
     // line still reads as an error.
     if (tone == "error") colour = c.danger;
     else if (tone == "success") colour = c.success;
-    else if (name == "subtitle" || name == "muted" || name == "default" || name == "private") colour = c.textMuted;
+    else if (name == "default" || name == "private") colour = c.textMuted;
     else if (name == "secondary") colour = c.textSecondary;
     else if ((name == "link" && qobject_cast<QLabel*>(widget)) || binding == "active") colour = c.textSecondary;
     else if (name == "success" || tone == "success") colour = c.success;
@@ -1456,6 +1457,7 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         drawPrimitive(PE_PanelButtonTool, &panel, p, widget);
         const auto look = buttonLook(buttonRole(widget, option), &panel, tool->state & State_AutoRaise, widget);
         QStyleOptionToolButton label(*tool);
+        if (widget && widget->property("preferenceAddRow").toBool()) label.rect.adjust(space(Space::l), 0, -space(Space::l), 0);
         if (split || chevron) label.rect = option->rect.adjusted(0, 0, -(Metric::splitZone - 4), 0);
         if (split) label.rect = subControlRect(CC_ToolButton, tool, SC_ToolButton, widget);
         drawControl(CE_ToolButtonLabel, &label, p, widget);
@@ -1608,19 +1610,19 @@ void Surface::paintEvent(QPaintEvent*) {
     QPainter p(this);
     const auto& c = t();
     if (property("preferenceCard").toBool()) {
-        rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), c.surface, c.border, Metric::containerRadius);
+        rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Theme::preferenceCard(), Theme::preferenceBorder(), Metric::containerRadius);
         int previous = -1;
         if (auto* form = findChild<QFormLayout*>()) for (int row = 0; row < form->rowCount(); ++row) {
             auto* item = form->itemAt(row, QFormLayout::FieldRole);
             if (!item || !item->widget() || !form->isRowVisible(row)) continue;
             const auto* field = item->widget();
             const int y = field->mapTo(this, QPoint()).y();
-            if (previous >= 0) { p.setPen(c.border); p.drawLine(space(Space::l), y, width() - space(Space::l), y); }
+            if (previous >= 0) { p.setPen(Theme::preferenceSeparator()); p.drawLine(space(Space::l), y, width() - space(Space::l), y); }
             previous = y;
         }
         return;
     }
-    p.fillRect(rect(), role_ == "well" ? c.well : role_ == "surface" ? c.surface : role_ == "raised" ? c.surfaceRaised : c.bg);
+    p.fillRect(rect(), role_ == "preferencePage" ? Theme::preferencePage() : role_ == "well" ? c.well : role_ == "surface" ? c.surface : role_ == "raised" ? c.surfaceRaised : c.bg);
     p.setPen(c.border);
     if (edges_ & Qt::TopEdge) p.drawLine(0, 0, width(), 0);
     if (edges_ & Qt::BottomEdge) p.drawLine(0, height() - 1, width(), height() - 1);
@@ -2362,11 +2364,7 @@ void SegmentTrack::addButton(QToolButton* button) {
     button->setFixedHeight(std::max(Metric::iconTarget, scaled(Metric::control) - Metric::segmentInset));
     static_cast<QHBoxLayout*>(layout())->addWidget(button);
 }
-void SegmentTrack::paintEvent(QPaintEvent*) {
-    QPainter p(this);
-    const auto& c = t();
-    rounded(&p, QRectF(rect()), mix(c.bg, c.surface, 0.6), c.border, Metric::trackRadius);
-}
+void SegmentTrack::paintEvent(QPaintEvent*) {}
 
 // ---------------------------------------------------------------- Window chrome
 namespace {
