@@ -5,6 +5,7 @@
 #include "record/ReviewWindow.h"
 #include "record/Duration.h"
 #include "record/MaskBox.h"
+#include "record/FormatBox.h"
 #include "record/Overlays.h"
 #include "ui/RegionOverlay.h"
 #include <QAccessible>
@@ -1542,6 +1543,17 @@ private slots:
         stop->click(); QCOMPARE(stopped.size(), 1); QCOMPARE(cancelled.size(), 0);
         discard->click(); QVERIFY(bar.confirming()); QCOMPARE(cancelled.size(), 0);
         bar.findChild<QPushButton*>("keepRecording")->click(); QVERIFY(!bar.confirming());
+    }
+    void compactFormatsUseCompletePurposeOrFormatNames() {
+        FormatBox box;
+        box.addItem("Compatible video — MP4 (H.264) · Recommended", QStringList{"mp4", "h264"});
+        box.setItemData(0, "Recommended for browser sharing", Qt::ToolTipRole);
+        box.resize(500, box.sizeHint().height());
+        QCOMPARE(box.displayedText(), QStringLiteral("Compatible video"));
+        box.resize(box.minimumSizeHint().width(), box.height());
+        QCOMPARE(box.displayedText(), QStringLiteral("MP4"));
+        QVERIFY(box.accessibleDescription().contains("H.264"));
+        QVERIFY(box.accessibleDescription().contains("Recommended"));
     }
     void maskChooserReservesScaledControlAndPopupSpace() {
         for (int pixels : {14, 21}) {
