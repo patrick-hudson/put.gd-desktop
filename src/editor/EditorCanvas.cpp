@@ -614,7 +614,8 @@ void EditorCanvas::placeTextWarning(){
  const QString explanation=tool_==Tool::Crop?"Some text will be cut off by this crop":"Some text will be cut off in the saved image";
  const int inset=Graphite::space(Graphite::Space::l),w=std::max(0,width()-2*inset);
  banner->setText(explanation);
- const int natural=banner->layout()->sizeHint().width()-banner->textLabel()->sizeHint().width()+banner->textLabel()->fontMetrics().horizontalAdvance(explanation);
+ const auto margins=banner->layout()->contentsMargins();
+ const int natural=banner->textLabel()->fontMetrics().horizontalAdvance(explanation)+banner->actionButton()->sizeHint().width()+Graphite::space(Graphite::Space::s)+margins.left()+margins.right();
  if(natural>w)banner->setText("Text will be cut off");
  banner->setAccessibleDescription(explanation+". Select affected text to move or edit it.");
  banner->resize(w,banner->height());banner->layout()->activate();
