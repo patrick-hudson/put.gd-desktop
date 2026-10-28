@@ -1856,6 +1856,15 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
    auto* help=window.findChild<QToolButton*>(key+"Help");QVERIFY2(help,qPrintable(key));QCOMPARE(help->focusPolicy(),Qt::StrongFocus);QVERIFY(!help->accessibleDescription().isEmpty());
   }
  }
+ void formChoicesShareWidthsAndTextFieldsKeepTheirColumn(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1200);window.showCaptureSettings();window.show();
+  auto* choices=window.findChild<QComboBox*>("uploadClipboardBehavior");QVERIFY(choices);putgd::test::settle(30);const int width=choices->width();QVERIFY(width>=Graphite::scaled(240)&&width<=Graphite::scaled(400));
+  for(const auto& name:{"defaultCaptureDestination","defaultCaptureSharing","namingMode","collisionPolicy"}){auto* combo=window.findChild<QComboBox*>(name);QVERIFY(combo);QCOMPARE(combo->width(),width);}
+  auto* path=window.findChild<QLineEdit*>("archiveRoot");QVERIFY(path->width()>width);
+  choices->addItem(QString(120,'W'));putgd::test::settle(30);for(const auto& name:{"defaultCaptureDestination","defaultCaptureSharing","namingMode","collisionPolicy"})QCOMPARE(window.findChild<QComboBox*>(name)->width(),Graphite::scaled(400));
+  window.navigate("destinations");putgd::test::settle(30);auto* serviceChoice=window.findChild<QComboBox*>("s3Service");auto* region=window.findChild<QComboBox*>("s3RegionChoices");auto* acl=window.findChild<QComboBox*>("s3AclMode");QVERIFY(serviceChoice&&region&&acl);QCOMPARE(serviceChoice->width(),region->width());QCOMPARE(serviceChoice->width(),acl->width());QVERIFY(window.findChild<QLineEdit*>("s3Bucket")->width()>region->width());
+  window.resize(1060,680);putgd::test::settle(30);for(auto* combo:{serviceChoice,region,acl})QVERIFY(window.rect().contains(QRect(combo->mapTo(&window,QPoint()),combo->size())));QCOMPARE(window.findChild<QScrollArea*>("destinationScroll")->horizontalScrollBar()->maximum(),0);
+ }
  void sharedFormsUseOneMinimumControlWidth(){
   QWidget host;QVBoxLayout outer(&host);QList<QWidget*> pages;QList<QFormLayout*> forms;
   for(int width:{80,220}){auto* page=new QWidget;auto* box=new QVBoxLayout(page);box->setContentsMargins(28,0,28,0);auto* form=new QFormLayout;VisualStyle::styleForm(form);auto* field=new QLineEdit;field->setMinimumWidth(width);form->addRow(new QLabel("Value"),field);box->addLayout(form);outer.addWidget(page);pages<<page;forms<<form;}

@@ -30,6 +30,7 @@ QString indicators(Theme::Scheme);
 QWidget* header(const QString& title,const QString& subtitle,QWidget* parent);
 QFrame* card(const QString& title,const QString& subtitle,QWidget* parent);
 void styleForm(QFormLayout*);
+void alignChoices(QWidget* owner,const QList<QFormLayout*>& family);
 void alignFormValue(QLabel* caption,QLabel* value);
 void decorateView(QAbstractItemView*,const QList<int>& statusColumns);
 void role(QWidget*,const char*);

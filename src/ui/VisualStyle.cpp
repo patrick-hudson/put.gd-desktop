@@ -26,6 +26,9 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QWheelEvent>
+#include <QTimer>
+#include <QSet>
+#include <QAbstractItemModel>
 #include <QDir>
 #include <QImage>
 #include <QTemporaryDir>
@@ -120,6 +123,8 @@ private:QHeaderView* header_;
 };
 class ChoiceBox final:public QComboBox {
 public:using QComboBox::QComboBox;
+ QSize naturalSizeHint()const{return QComboBox::sizeHint();}
+ QSize sizeHint()const override{auto size=naturalSizeHint();if(const int width=property("formChoiceWidth").toInt();width>0)size.setWidth(width);return size;}
 protected:
  // Leave wheel input to the containing pane. The open popup handles its own scrolling.
  void wheelEvent(QWheelEvent* event)override {event->ignore();}
@@ -298,6 +303,32 @@ void alignFormValue(QLabel* caption,QLabel* value){
  }
 }
 void styleForm(QFormLayout* form){form->setContentsMargins(0,0,0,0);form->setHorizontalSpacing(space(Space::l));form->setVerticalSpacing(space(Space::m));form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);form->setRowWrapPolicy(QFormLayout::DontWrapRows);form->setLabelAlignment(Qt::AlignLeft|Qt::AlignTop);}
+void alignChoices(QWidget* owner,const QList<QFormLayout*>& family){
+ class ChoiceFamily final:public QObject {
+ public:
+  ChoiceFamily(QWidget* owner,const QList<QFormLayout*>& forms):QObject(owner){
+   QSet<ChoiceBox*> seen;
+   for(auto* form:forms)for(int row=0;row<form->rowCount();++row){auto* item=form->itemAt(row,QFormLayout::FieldRole);if(!item||!item->widget())continue;auto* field=item->widget();auto controls=field->findChildren<QComboBox*>();if(auto* combo=qobject_cast<QComboBox*>(field))controls.prepend(combo);for(auto* combo:controls)if(auto* choice=dynamic_cast<ChoiceBox*>(combo);choice&&!seen.contains(choice)){
+    seen.insert(choice);choices_.append(choice);choice->installEventFilter(this);
+    connect(choice->model(),&QAbstractItemModel::dataChanged,this,[this]{schedule();});connect(choice->model(),&QAbstractItemModel::rowsInserted,this,[this]{schedule();});connect(choice->model(),&QAbstractItemModel::rowsRemoved,this,[this]{schedule();});connect(choice->model(),&QAbstractItemModel::modelReset,this,[this]{schedule();});
+   }}schedule();
+  }
+ protected:
+  bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::FontChange||event->type()==QEvent::StyleChange||event->type()==QEvent::Show)schedule();return false;}
+ private:
+  void schedule(){if(pending_)return;pending_=true;QTimer::singleShot(0,this,[this]{apply();pending_=false;});}
+  void apply(){
+   int width=Graphite::scaled(240);for(auto* choice:choices_)width=qMax(width,choice->naturalSizeHint().width());width=qMin(width,Graphite::scaled(400));
+   for(auto* choice:choices_){QWidget* target=choice;int unitWidth=0;if(auto* holder=choice->parentWidget())for(auto* label:holder->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))if(label->property("visualRole")=="unitSuffix"){target=holder;unitWidth=label->isHidden()?0:label->sizeHint().width();break;}
+    const int preferred=width-unitWidth;if(choice->property("formChoiceWidth").toInt()!=preferred){choice->setProperty("formChoiceWidth",preferred);choice->updateGeometry();}
+    // A shared preferred width still shrinks when a stacked form is narrow.
+    target->setMaximumWidth(width);choice->setMaximumWidth(width);
+   }
+  }
+  QList<ChoiceBox*> choices_;bool pending_=false;
+ };
+ new ChoiceFamily(owner,family);
+}
 void decorateView(QAbstractItemView* view,const QList<int>& columns){view->setItemDelegate(new StateDelegate(columns,view));view->setAlternatingRowColors(true);view->setIconSize(QSize(22,22));view->setTextElideMode(Qt::ElideMiddle);}
 QString indicators(Theme::Scheme scheme){
     static std::unique_ptr<QTemporaryDir> folder;
