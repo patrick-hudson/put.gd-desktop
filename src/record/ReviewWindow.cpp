@@ -90,11 +90,12 @@ protected:
         initStyleOption(&option);
         style()->drawPrimitive(QStyle::PE_PanelButtonTool, &option, &painter, this);
         const auto colour = isEnabled() ? Theme::current().textSecondary : Theme::current().textDisabled;
-        const auto labelRect = rect().adjusted(4, 0, -10, 0);
+        const int inset = reviewSpace(Graphite::Space::xs), gap = 6, chevron = 6;
+        const auto labelRect = rect().adjusted(inset, 0, -inset - gap - chevron, 0);
         auto label = text();
         if (fontMetrics().horizontalAdvance(label) > labelRect.width()) label.remove(0, 2);
         Graphite::paintText(painter, labelRect, label, colour, font(), Qt::AlignLeft | Qt::AlignVCenter);
-        Graphite::paintChevron(painter, QPointF(width() - 9, height() / 2.0), 6, Qt::DownArrow, colour);
+        Graphite::paintChevron(painter, QPointF(labelRect.left() + fontMetrics().horizontalAdvance(label) + gap + chevron / 2.0, height() / 2.0), chevron, Qt::DownArrow, colour);
     }
 };
 class BlurChip final : public QToolButton {
@@ -224,7 +225,8 @@ protected:
         painter.setPen(ink);
         const int wrap = fontMetrics().horizontalAdvance(display) <= textRect.width() ? Qt::TextSingleLine : Qt::TextWordWrap;
         painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | wrap, display);
-        Graphite::paintChevron(painter, QPointF(width() - Graphite::Metric::splitZone / 2.0 - 4, height() / 2.0), 8, Qt::DownArrow, ink);
+        const qreal textEnd = textRect.left() + std::min(fontMetrics().horizontalAdvance(display), textRect.width());
+        Graphite::paintChevron(painter, QPointF(textEnd + 6 + 4, height() / 2.0), 8, Qt::DownArrow, ink);
     }
 };
 // One boundary around each timing pair; the buttons retain their own focus and actions.
