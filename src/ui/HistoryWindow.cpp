@@ -231,9 +231,9 @@ constexpr int historyThumbWidth=96,historyThumbHeight=60;
 int rowTextInset(){return space(Graphite::scaled(100)>125?Space::xs:Space::s);}
 QFont historyTitleFont(bool selected=false){auto font=Graphite::font(Graphite::Type::body);font.setWeight(selected?QFont::DemiBold:QFont::Medium);return font;}
 int compactMetadataGap(){return qMax(space(Space::xs),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::metadata)).height())/2);}
-int rowContentHeight(){return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,QFontMetrics(historyTitleFont()).height()+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+space(Space::xs)+2*rowTextInset()+4));}
-// Enlarged compact rows reserve the base height for their second-line actions.
-int compactTextInset(){return Graphite::scaled(100)>125?0:rowTextInset();}
+int rowContentHeight(){return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,QFontMetrics(historyTitleFont()).height()+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+space(Space::xs)+2*rowTextInset()+4))+(Graphite::scaled(100)>125?space(Space::xs):0);}
+// Enlarged rows keep breathing room above the title and second-line actions.
+int compactTextInset(){return Graphite::scaled(100)>125?space(Space::xs):rowTextInset();}
 // Gallery pictures share a 16:10 frame.
 int galleryPicture(int cardWidth){return qMax(1,(cardWidth-2)*10/16);}
 void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded=false,bool compact=false,bool separated=false){
