@@ -1246,13 +1246,13 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         }
         if (item->menuItemType == QStyleOptionMenuItem::EmptyArea) return;
         const bool enabled = option->state & State_Enabled;
-        const bool selected = enabled && (option->state & State_Selected);
-        if (selected) rounded(p, QRectF(r).adjusted(2, 1, -2, -1), c.selected, {}, 5);
         const auto* menu = qobject_cast<const QMenu*>(widget);
         const auto* action = menu ? menu->actionAt(r.center()) : nullptr;
         // Status text is disabled for navigation, not because it is unreadable.
         const bool information = action && action->property("visualRole") == "information";
-        const QColor ink = information ? c.textSecondary : enabled ? (selected ? c.text : c.textSecondary) : c.textDisabled;
+        const bool selected = !information && enabled && (option->state & State_Selected);
+        if (selected) rounded(p, QRectF(r).adjusted(2, 1, -2, -1), c.selected, {}, 5);
+        const QColor ink = information ? c.textMuted : enabled ? (selected ? c.text : c.textSecondary) : c.textDisabled;
         int x = r.left() + 12;
         if (item->menuHasCheckableItems) {
             const QRectF box(x, r.center().y() - 7.5, 15, 15);
@@ -1291,10 +1291,11 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
             right -= width + 24;
         }
         p->save();
-        p->setFont(item->font);
+        const auto menuFont = information ? font(Type::metadata) : item->font;
+        p->setFont(menuFont);
         p->setPen(ink);
         const QRect textRect(x, r.top(), std::max(0, right - x), r.height());
-        const auto elided = QFontMetrics(item->font).elidedText(text, Qt::ElideRight, textRect.width(), Qt::TextShowMnemonic);
+        const auto elided = QFontMetrics(menuFont).elidedText(text, Qt::ElideRight, textRect.width(), Qt::TextShowMnemonic);
         p->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft | Qt::TextShowMnemonic | Qt::TextSingleLine, elided);
         p->restore();
         if (item->menuItemType == QStyleOptionMenuItem::SubMenu) paintChevron(*p, QPointF(r.right() - 16, r.center().y()), 8, Qt::RightArrow, enabled ? c.textMuted : c.textDisabled);

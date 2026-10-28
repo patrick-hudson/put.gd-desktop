@@ -215,7 +215,7 @@ int main(int argc,char** argv){
  if(!editorOnly){
  auto* preview=window.findChild<QLabel*>("historyPreview");if(!preview||!waitUntil([&]{return !preview->pixmap().isNull();}))return 2;
  if(QGuiApplication::platformName()=="offscreen"){
-  QMenu status(&window);auto* information=status.addAction("Uploading… 50% · 2 MiB of 4 MiB");information->setEnabled(false);information->setProperty("visualRole","information");status.addAction("Cancel upload");status.addSeparator();status.addAction("History");status.show();putgd::test::settle(20);if(!status.grab().save(QDir(output).filePath("00-tray-upload-status.png")))return 2;status.close();
+  QMenu status(&window);auto* information=status.addAction("Uploading… 50% · 2 MiB of 4 MiB");information->setEnabled(false);information->setProperty("visualRole","information");status.addSeparator();status.addAction("Cancel upload");status.addSeparator();status.addAction("History");status.show();putgd::test::settle(20);if(!status.grab().save(QDir(output).filePath("00-tray-upload-status.png")))return 2;status.close();
   QMenu menu(&window);menu.addAction("All actions: Shared link · R&&D · No local copy")->setEnabled(false);menu.addAction("Capture region && edit: Off: no output")->setEnabled(false);menu.addSeparator();menu.addAction("Change output");menu.show();putgd::test::settle(20);const auto image=menu.grab();if(!image.save(QDir(output).filePath("00-output-menu-literal-ampersand.png")))return 2;captures.append(QJsonObject{{"file","00-output-menu-literal-ampersand.png"},{"width",image.width()},{"height",image.height()}});menu.close();
  }
  if(!save("01-history-list"))return 2;
