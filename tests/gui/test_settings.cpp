@@ -1161,7 +1161,7 @@ private slots:
    auto* edit=window.findChild<QLineEdit*>(key);auto* combo=window.findChild<QComboBox*>(key+"Choice");QVERIFY(edit);QVERIFY(combo);
    QCOMPARE(edit->text(),QString("Auto"));QCOMPARE(edit->placeholderText(),QString("No limit"));
    QCOMPARE(combo->itemText(0),QString("Auto"));QCOMPARE(combo->itemText(1),QString("No limit"));
-   QCOMPARE(bool(window.findChild<QToolButton*>(key+"ChoiceHelp")),key=="pendingArtifactBytes");
+   QVERIFY(!window.findChild<QToolButton*>(key+"ChoiceHelp"));
   }
   auto* edit=window.findChild<QLineEdit*>("maxFileBytes");auto* combo=window.findChild<QComboBox*>("maxFileBytesChoice");
   combo->setCurrentIndex(1);emit combo->activated(1);
