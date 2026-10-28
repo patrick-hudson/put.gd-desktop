@@ -5,6 +5,7 @@
 #include "ui/BlurRadius.h"
 #include "EffectiveAudio.h"
 #include <QFormLayout>
+#include <QStyleOptionSpinBox>
 #include <QGridLayout>
 #include <QFrame>
 #include <QScrollArea>
@@ -1290,8 +1291,6 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     strengthControl_ = radius;
     VisualStyle::role(radius->unitLabel(), "meta");
     strength_ = radius->spinBox();
-    // Two digits plus the field padding and two full 32 px stepper targets.
-    strength_->setFixedWidth(strength_->fontMetrics().horizontalAdvance(QString::number(strength_->maximum())) + Graphite::scaled(80));
     maskStart_ = action("Start here", "Set mask start at playhead", "Start the selected mask at the playhead (Shift+I)");
     maskEnd_ = action("End here", "Set mask end at playhead", "End the selected mask at the playhead (Shift+O)");
     removeMask_ = tool("remove", "Delete mask", "Delete the selected mask (Delete)");
@@ -1550,6 +1549,11 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         field->setFixedHeight(textControlHeight(field));
     }
     strength_->setFixedHeight(std::max(32, textControlHeight(strength_)));
+    // Measure after the compact role applies its font and scaled steppers.
+    QStyleOptionSpinBox spin;
+    spin.initFrom(strength_); spin.frame = strength_->hasFrame(); spin.buttonSymbols = strength_->buttonSymbols();
+    const QSize value(strength_->fontMetrics().horizontalAdvance(QString::number(strength_->maximum())), strength_->fontMetrics().height());
+    strength_->setFixedWidth(strength_->style()->sizeFromContents(QStyle::CT_SpinBox, &spin, value, strength_).width());
     play_->setProperty("graphiteIconBase", QSize(16, 16));
     play_->setIconSize(QSize(Graphite::scaled(16), Graphite::scaled(16)));
     play_->setFixedSize(textControlHeight(play_), textControlHeight(play_));
