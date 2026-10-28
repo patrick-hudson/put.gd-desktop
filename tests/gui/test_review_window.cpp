@@ -373,6 +373,8 @@ private slots:
             window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}}); putgd::test::settle(10);
             QVERIFY(!chip->isEnabled());
             QCOMPARE(chip->toolTip(), QString("Select a blur to use Redact"));
+            QCOMPARE(chip->text(), chip->toolTip());
+            QCOMPARE(chip->accessibleName(), chip->text());
             QCOMPARE(chip->sizeHint(), size);
             QCOMPARE(window.findChild<FrameView*>()->geometry(), frame);
             const auto& palette = Theme::current();
@@ -750,6 +752,8 @@ private slots:
         QCOMPARE(chip->text(), QString("Blur may be reversible · Use Redact"));
         if (chip->isEnabled()) QVERIFY(chip->toolTip().contains("Use Redact"));
         else QCOMPARE(chip->toolTip(), QString("Select a blur to use Redact"));
+            QCOMPARE(chip->text(), chip->toolTip());
+            QCOMPARE(chip->accessibleName(), chip->text());
         QVERIFY(chip->height() >= chip->heightForWidth(chip->width()));
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QSignalSpy proposed(&window, &ReviewWindow::editProposed);

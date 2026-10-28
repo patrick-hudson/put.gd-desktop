@@ -116,14 +116,18 @@ public:
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     }
     QSize sizeHint() const override {
-        return {fontMetrics().horizontalAdvance(QStringLiteral("Blur may be reversible · "))
-            + QFontMetrics(actionFont(true)).horizontalAdvance(QStringLiteral("Use Redact")) + 16 + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)};
+        const int enabled = fontMetrics().horizontalAdvance(QStringLiteral("Blur may be reversible · ")) + QFontMetrics(actionFont(true)).horizontalAdvance(QStringLiteral("Use Redact"));
+        const int disabled = fontMetrics().horizontalAdvance(QStringLiteral("Select a blur to use Redact"));
+        return {std::max(enabled, disabled) + 16 + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)};
     }
     QSize minimumSizeHint() const override { return sizeHint(); }
 protected:
     void changeEvent(QEvent* event) override {
         QToolButton::changeEvent(event);
-        if (event->type() == QEvent::EnabledChange) setToolTip(isEnabled() ? text() : QStringLiteral("Select a blur to use Redact"));
+        if (event->type() == QEvent::EnabledChange) {
+            const auto description = isEnabled() ? QStringLiteral("Blur may be reversible · Use Redact") : QStringLiteral("Select a blur to use Redact");
+            setText(description); setToolTip(description); setAccessibleName(description);
+        }
     }
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
@@ -136,12 +140,13 @@ protected:
         VisualStyle::icon("alert", isEnabled() ? palette.warning : palette.textDisabled).paint(&painter, QRect(gap, (height() - side) / 2, side, side));
         const auto disabledInk = Theme::contrast(palette.textDisabled, palette.warningSurface) >= 4.5 ? palette.textDisabled : palette.textSecondary;
         const auto informationInk = isEnabled() ? palette.textSecondary : disabledInk;
-        const QString information = QStringLiteral("Blur may be reversible · ");
+        const QString information = isEnabled() ? QStringLiteral("Blur may be reversible · ") : QStringLiteral("Select a blur to use Redact");
         painter.setFont(font());
         painter.setPen(informationInk);
         const auto textRect = rect().adjusted(side + gap * 2, 0, -gap, 0);
         painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, information);
-        painter.setFont(actionFont(isEnabled()));
+        if (!isEnabled()) return;
+        painter.setFont(actionFont(true));
         painter.setPen(isEnabled() ? palette.text : disabledInk);
         painter.drawText(textRect.adjusted(fontMetrics().horizontalAdvance(information), 0, 0, 0), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, QStringLiteral("Use Redact"));
     }
