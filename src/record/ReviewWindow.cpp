@@ -1557,8 +1557,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     strength_->setFixedWidth(strength_->style()->sizeFromContents(QStyle::CT_SpinBox, &spin, value, strength_).width());
     play_->setProperty("graphiteIconBase", QSize(16, 16));
     play_->setIconSize(QSize(Graphite::scaled(16), Graphite::scaled(16)));
-    play_->setFixedSize(textControlHeight(play_), textControlHeight(play_));
     speed_->setFixedHeight(textControlHeight(speed_));
+    // An icon-only control: it matches its text neighbour rather than its unused font.
+    play_->setFixedSize(speed_->height(), speed_->height());
     speed_->setFixedWidth(int(std::ceil(QFontMetricsF(speed_->font()).horizontalAdvance(QStringLiteral("0.5×"))))
         + std::max(Graphite::Metric::splitZone + reviewSpace(Graphite::Space::s), 3 * Graphite::space(Graphite::Space::xs) + Graphite::scaled(16)));
     play_->setFixedWidth(speed_->width());

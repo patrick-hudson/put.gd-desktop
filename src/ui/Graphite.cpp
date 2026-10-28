@@ -2541,6 +2541,7 @@ QToolButton* chromeButton(const QString& glyph, const QString& name, QWidget* pa
     button->setFixedSize(scaled(Metric::iconTarget), scaled(Metric::iconTarget));
     button->setProperty("visualRole", "quiet");
     button->setProperty("noChevron", true);
+    button->setProperty("graphiteChrome", true);
     button->setAccessibleName(name);
     button->setToolTip(name);
     button->setFocusPolicy(Qt::TabFocus);
@@ -2652,6 +2653,9 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu, Density density) : QWid
         palette.setColor(QPalette::WindowText, property("headerInactive").toBool() ? t().textMuted : t().text);
         name_->setPalette(palette);
     });
+    // Media chrome draws its glyphs at the body icon size.
+    if (density == Density::Compact)
+        for (auto* button : findChildren<QToolButton*>()) if (button->property("graphiteChrome").toBool()) { button->setProperty("graphiteIconBase", QSize(16, 16)); button->setIconSize(QSize(scaled(16), scaled(16))); }
     fitHeight();
     // Without put.gd's frame the desktop's title bar names the window; a compact
     // header would only repeat it and take the content's height.
@@ -2659,12 +2663,22 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu, Density density) : QWid
     syncWindowState();
 }
 int WindowHeader::compactHeight() const {
-    const QFontMetricsF title(Graphite::font(Type::body, true));
-    // Compact review chrome keeps the full text line and scaled icon targets.
-    const int text = int(std::ceil(title.height())) + 4;
-    return std::max(scaled(Metric::iconTarget), text);
+    // Compact media chrome follows what it holds: the title's glyphs with 3 px
+    // around them, window glyphs with 4 px, and its centre controls; the frame
+    // below, not a scaled pointer target, takes the remaining height.
+    const QFontMetrics title(Graphite::font(Type::body, true));
+    int glyph = 0;
+    for (const auto* button : findChildren<QToolButton*>()) if (button->property("graphiteChrome").toBool() && !button->isHidden()) glyph = std::max(glyph, button->iconSize().height() + 2 * 4);
+    const int centre = centre_ ? centre_->sizeHint().height() : 0;
+    return std::max({int(Metric::iconTarget), title.tightBoundingRect(QStringLiteral("Hg")).height() + 2 * 3, glyph, centre});
 }
-void WindowHeader::fitHeight() { setFixedHeight(density_ == Density::Compact ? compactHeight() : scaled(Metric::header)); }
+void WindowHeader::fitHeight() {
+    const int height = density_ == Density::Compact ? compactHeight() : scaled(Metric::header);
+    setFixedHeight(height);
+    // Compact window buttons keep their scaled width and share the header's height.
+    if (density_ == Density::Compact)
+        for (auto* button : findChildren<QToolButton*>()) if (button->property("graphiteChrome").toBool()) button->setFixedHeight(height);
+}
 void WindowHeader::resizeEvent(QResizeEvent* event) { QWidget::resizeEvent(event); syncWindowState(); }
 void WindowHeader::changeEvent(QEvent* event) {
     // A later application font (enlarged text) changes the line height.
@@ -2675,8 +2689,10 @@ void WindowHeader::setCentre(QWidget* centre) {
     if (centre_) { row_->removeWidget(centre_); centre_->hide(); }
     centre_ = centre;
     centre->setParent(this);
+    centre->installEventFilter(this);
     row_->insertWidget(2, centre, 0, Qt::AlignCenter);
     centre->show();
+    fitHeight();
     syncWindowState();
 }
 void WindowHeader::setLeading(QWidget* content) {
@@ -2768,6 +2784,8 @@ void WindowHeader::syncWindowState() {
     setProperty("balancedTitle", balanced);
 }
 bool WindowHeader::eventFilter(QObject* watched, QEvent* event) {
+    // Compact chrome follows its centre controls as they settle.
+    if (density_ == Density::Compact && ((watched == centre_ && event->type() == QEvent::LayoutRequest) || (watched == window_ && event->type() == QEvent::Show)) && height() != compactHeight()) fitHeight();
     if (watched == window_ && (event->type() == QEvent::WindowStateChange || event->type() == QEvent::Show || event->type() == QEvent::Resize)) syncWindowState();
     if (watched == window_ && (event->type() == QEvent::WindowActivate || event->type() == QEvent::WindowDeactivate)) {
         const bool inactive = event->type() == QEvent::WindowDeactivate;
