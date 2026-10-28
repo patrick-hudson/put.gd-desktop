@@ -494,12 +494,16 @@ private slots:
  // Finalizing disables each control that acts, not whole containers: the
  // header, the Document details and the progress message keep full contrast.
  void busyStateDisablesActionsButKeepsStatusReadable(){
+  const auto restore=qScopeGuard([previous=Theme::scheme()]{Theme::setScheme(previous);});
   EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Upload to synthetic destination");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   window.setBusy("Preparing the edited image…");
   auto* header=window.findChild<QWidget*>("windowHeader");QVERIFY(header);
-  for(auto* label:window.findChildren<QLabel*>()){
-   if(label->objectName()=="annotationTextWarningText")QVERIFY(Theme::contrast(label->palette().color(QPalette::Disabled,QPalette::WindowText),Theme::current().surface)>=4.5);
-   else QVERIFY2(label->isEnabled(),qPrintable(label->objectName()+": "+label->text()));
+  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+   Theme::setScheme(scheme);
+   for(auto* label:window.findChildren<QLabel*>()){
+    if(label->objectName()=="annotationTextWarningText")QVERIFY(Theme::contrast(label->palette().color(QPalette::Disabled,QPalette::WindowText),Theme::current().surface)>=4.5);
+    else QVERIFY2(label->isEnabled(),qPrintable(label->objectName()+": "+label->text()));
+   }
   }
   for(auto* button:window.findChildren<QAbstractButton*>())QVERIFY2(button->isEnabled()==header->isAncestorOf(button),qPrintable(button->objectName()+" "+button->text()+" "+button->accessibleName()));
   for(auto* field:window.findChildren<QAbstractSpinBox*>())QVERIFY(!field->isEnabled());

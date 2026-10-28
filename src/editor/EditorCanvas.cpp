@@ -73,7 +73,7 @@ EditorCanvas::EditorCanvas(EditDocument& doc,QWidget* parent):QWidget(parent),do
  // Screen readers hear the selection, or the crop, and the keys that act on it.
  connect(this,&EditorCanvas::selectionChanged,this,&EditorCanvas::announce);connect(this,&EditorCanvas::changed,this,&EditorCanvas::announce);
  auto* warning=new Graphite::Banner(Graphite::Banner::Tone::Warning,{},this);textWarning_=warning;textWarning_->setObjectName("annotationTextWarning");
- warning->textLabel()->setObjectName("annotationTextWarningText");warning->setAction("Select affected text");
+ warning->textLabel()->setObjectName("annotationTextWarningText");Graphite::setLocked(warning->textLabel(),true);warning->setAction("Select affected text");
  warning->actionButton()->setObjectName("selectAffectedText");
  connect(warning->actionButton(),&QPushButton::clicked,this,[this]{selectAffectedText();});textWarning_->hide();
  announce();
