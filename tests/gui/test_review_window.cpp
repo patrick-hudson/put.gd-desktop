@@ -709,7 +709,8 @@ private slots:
             QVERIFY(!time->text().contains('\n'));
             auto* audio = window.findChild<QLabel*>("exportAudioSummary");
             QVERIFY(audio->isVisible() && !audio->text().contains(status->text()));
-            QVERIFY(status->isVisible() && window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(status));
+            QVERIFY(window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(status));
+            if (!status->isVisible()) QVERIFY(window.findChild<QToolButton*>("uploadDestinationMenu")->toolTip().contains("Silent preview"));
             QVERIFY((window.findChild<QWidget*>("reviewDestinationSummary")->isAncestorOf(audio)
                 || window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(audio)));
             QVERIFY(t->trackRect().width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
@@ -971,13 +972,13 @@ private slots:
             auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
             auto* header = window.findChild<Graphite::WindowHeader*>();
             QVERIFY(output->property("headerSummary").toBool());
-            QCOMPARE(output->width(), output->fontMetrics().horizontalAdvance(output->text()) + int(Graphite::Space::l));
+            QCOMPARE(output->width(), output->fontMetrics().horizontalAdvance(output->text()) + 6 + Graphite::scaled(8) + 2);
             QCOMPARE(output->mapTo(header, QPoint()).x(), header->layout()->contentsMargins().left());
             const auto natural = output->grab().toImage();
             const int minimum = output->minimumWidth(), maximum = output->maximumWidth();
             output->setFixedWidth(natural.width() + 80);
             const auto reference = output->grab().toImage();
-            const QRect text(0, 0, natural.width() - int(Graphite::Space::l), natural.height());
+            const QRect text(0, 0, natural.width() - (6 + Graphite::scaled(8) + 2), natural.height());
             QCOMPARE(natural.copy(text), reference.copy(text));
             output->setMinimumWidth(minimum); output->setMaximumWidth(maximum);
             output->resize(natural.size());
@@ -1878,12 +1879,22 @@ private slots:
         auto* masks = window.findChild<QComboBox*>("masks");
         QCOMPARE(masks->mapTo(&window, QPoint()).x(), window.findChild<QWidget*>("trimTimingPair")->mapTo(&window, QPoint()).x());
         QCOMPARE(window.findChild<QWidget*>("trimControls")->height(), window.findChild<QToolButton*>("addMask")->height());
-        // A long destination elides before the sharing mode on one metadata line.
+        // Sharing stays whole and the name retains a useful prefix at large text.
         auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
         QVERIFY(output->property("elideDestination").toBool());
         QCOMPARE(output->height(), output->fontMetrics().height());
         QVERIFY(!window.findChild<QWidget*>("reviewDestinationLine")->isVisible());
         QVERIFY(output->toolTip().contains(o.destination));
+        window.resize(640, 648); putgd::test::settle(20);
+        const auto suffix = output->property("sharingSuffix").toString();
+        const int nameWidth = output->width() - output->fontMetrics().horizontalAdvance(suffix) - (6 + Graphite::scaled(8) + 2);
+        QVERIFY(nameWidth >= Graphite::scaled(96));
+        QVERIFY(output->fontMetrics().elidedText(o.destination, Qt::ElideRight, nameWidth).startsWith(o.destination.left(10)));
+        auto* summary = window.findChild<QWidget*>("reviewDestinationSummary");
+        auto* metadata = window.findChild<QWidget*>("reviewMetadata");
+        const auto summaryRect = QRect(summary->mapTo(&window, QPoint()), summary->size());
+        const auto metadataRect = QRect(metadata->mapTo(&window, QPoint()), metadata->size());
+        QVERIFY(metadataRect.top() > summaryRect.bottom() || metadataRect.left() - summaryRect.right() - 1 >= Graphite::space(Graphite::Space::l));
         QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
         // Wide windows keep the rows on the lanes' gutter.
         window.resize(1600, window.height()); putgd::test::settle(20);
