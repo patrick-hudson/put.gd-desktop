@@ -298,7 +298,7 @@ private slots:
             for (const auto name : {"addMask", "uploadDestinationMenu"}) {
                 auto* button = window.findChild<QToolButton*>(name); QVERIFY(button);
                 if (button->objectName() == "addMask")
-                    QVERIFY(button->width() >= button->fontMetrics().horizontalAdvance(QStringLiteral("Add mask")) + 4 + 6 + 6);
+                    QVERIFY(button->width() >= button->fontMetrics().horizontalAdvance(QStringLiteral("+ Add mask")) + 4 + 6 + 6);
                 const auto image = button->grab().toImage();
                 const auto ink = Theme::current().textSecondary;
                 const auto hasInk = [&](int x) {
@@ -742,7 +742,8 @@ private slots:
         QVERIFY(transport->height() >= 28);
         QCOMPARE(track->trackRect().top(), 17);
         QCOMPARE(track->trackRect().left(), ReviewTimeline::gutterWidth());
-        QCOMPARE(ReviewTimeline::gutterWidth(), std::min(112, Graphite::scaled(96)));
+        QVERIFY(ReviewTimeline::gutterWidth() >= std::min(112, Graphite::scaled(96)));
+        QVERIFY(ReviewTimeline::gutterWidth() >= QFontMetrics(Graphite::labelFont()).horizontalAdvance(QStringLiteral("+ Add mask")) + 20);
         const int axis = track->mapTo(&window, track->trackRect().topLeft()).x();
         for (const char* name : {"trimTimingControls", "maskKinds"}) {
             auto* group = window.findChild<QWidget*>(name);

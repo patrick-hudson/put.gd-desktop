@@ -859,7 +859,7 @@ void ReviewTimeline::layoutLanes() {
     lanes_ = int(ends.size());
 }
 int ReviewTimeline::gutterWidth() {
-    return std::max(std::min(112, Graphite::scaled(96)), QFontMetrics(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(QStringLiteral("+ Add mask")) + 20);
+    return std::max(std::min(112, Graphite::scaled(96)), QFontMetrics(Graphite::labelFont()).horizontalAdvance(QStringLiteral("+ Add mask")) + 20);
 }
 bool ReviewTimeline::transportAbove(int) const { return transport_ != nullptr; }
 int ReviewTimeline::timelineTop() const { return transport_ ? transport_->height() : 0; }
