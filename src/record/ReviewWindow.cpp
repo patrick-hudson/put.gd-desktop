@@ -323,10 +323,19 @@ public:
         grid_->setRowStretch(1, 1);
     }
     void setGutter(QWidget* label, int indent) {
-        indent_ = indent;
+        label_ = label;
+        indent_ = fullIndent_ = indent;
         label->setFixedWidth(indent);
         grid_->addWidget(label, 0, 0, Qt::AlignVCenter);
     }
+    // Rows that can't keep the lanes' gutter on one line share a label-width column instead.
+    void setCompactGutter(int indent, const FlowRow* partner) { compactIndent_ = indent; partner_ = partner; }
+    bool fitsGutter(int width) const {
+        int x = fullIndent_;
+        for (auto* group : groups_) if (!group->property("flowOptional").toBool() && shown(group, true)) x += widthOf(group) + groupGap();
+        return x - groupGap() + readoutWidth() + grid_->contentsMargins().right() <= width;
+    }
+    int indentFor(int width) const { return compactIndent_ <= 0 || (fitsGutter(width) && (!partner_ || partner_->fitsGutter(width))) ? fullIndent_ : compactIndent_; }
     void setReadout(QLabel* label) {
         readout_ = label;
         grid_->addWidget(label, 0, 2, Qt::AlignRight | Qt::AlignVCenter);
@@ -347,7 +356,7 @@ public:
         int widest = 0;
         for (auto* group : groups_) if (shown(group, true)) widest = std::max(widest, group->hasHeightForWidth() ? group->minimumSizeHint().width() : widthOf(group));
         const int first = groups_.isEmpty() ? 0 : widthOf(groups_.first());
-        return {indent_ + std::max(widest, first + readoutWidth()) + grid_->contentsMargins().right(), heightFor(width())};
+        return {(compactIndent_ > 0 ? std::min(indent_, compactIndent_) : indent_) + std::max(widest, first + readoutWidth()) + grid_->contentsMargins().right(), heightFor(width())};
     }
     void relayout() {
         // A newly shown group may still carry its previous layout minimum.
@@ -374,15 +383,17 @@ private:
     int readoutWidth() const { return readout_ ? readout_->width() + groupGap() : 0; }
     static int heightOf(QWidget* group, int width) { return std::min(group->maximumHeight(), std::max(group->minimumHeight(), group->hasHeightForWidth() ? group->heightForWidth(width) : group->sizeHint().height())); }
     int arrange(int width, bool reserved, bool apply) const {
+        const int indent = indentFor(width);
+        if (apply && label_ && label_->width() != indent) { label_->setFixedWidth(indent); const_cast<FlowRow*>(this)->indent_ = indent; }
         width -= grid_->contentsMargins().right();
         // Wrap complete groups without compressing text or pointer targets.
         QList<QList<QPair<QWidget*, QRect>>> lines(1);
-        int x = indent_;
+        int x = indent;
         for (auto* group : groups_) {
             if (!shown(group, reserved) && !group->sizePolicy().retainSizeWhenHidden()) continue;
             const int minimum = group->hasHeightForWidth() ? group->minimumSizeHint().width() : widthOf(group);
             int right = width - (lines.size() == 1 ? readoutWidth() : 0);
-            if (x > indent_ && x + minimum > right) { lines.append(QList<QPair<QWidget*, QRect>>{}); x = indent_; right = width; }
+            if (x > indent && x + minimum > right) { lines.append(QList<QPair<QWidget*, QRect>>{}); x = indent; right = width; }
             const int w = group->hasHeightForWidth() ? std::max(minimum, std::min(widthOf(group), right - x)) : widthOf(group);
             lines.last().append({group, QRect(x, 0, w, heightOf(group, w))});
             x += w + groupGap();
@@ -407,7 +418,9 @@ private:
     QGridLayout* grid_;
     QLabel* readout_ = nullptr;
     QList<QWidget*> groups_;
-    int indent_ = 0;
+    QWidget* label_ = nullptr;
+    const FlowRow* partner_ = nullptr;
+    int indent_ = 0, fullIndent_ = 0, compactIndent_ = 0;
 };
 // The card over the frame when a preview could not be decoded.
 class ErrorCard final : public QWidget {
@@ -1343,8 +1356,17 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     maskTiming_ = new TimingPair(maskStart_, maskEnd_, this);
     maskTiming_->setObjectName("maskTimingControls");
     for (auto* w : std::initializer_list<QWidget*>{maskTools_, maskTiming_, static_cast<MaskInterval*>(maskActive_)->warningButton()}) flow->addGroup(w);
-    flow->setGutter(groupLabel("Mask", "maskGroup"), gutter);
+    auto* maskLabel = groupLabel("Mask", "maskGroup");
+    flow->setGutter(maskLabel, gutter);
     flow->setReadout(maskActive_);
+    // When the lanes' gutter would wrap either control row, both rows share a column sized to their names.
+    static_cast<MaskInterval*>(maskActive_)->warningButton()->setProperty("flowOptional", true);
+    auto* trimLabel = trimGroup_->findChild<QLabel*>("trimGroup");
+    for (auto* label : {trimLabel, maskLabel}) label->ensurePolished();
+    const auto nameWidth = [](QLabel* label) { return int(std::ceil(QFontMetricsF(label->font()).horizontalAdvance(label->text()))) + label->contentsMargins().left() + label->contentsMargins().right(); };
+    const int compactGutter = std::max(nameWidth(trimLabel), nameWidth(maskLabel)) + reviewSpace(Graphite::Space::m);
+    trimFlow->setCompactGutter(compactGutter, flow);
+    flow->setCompactGutter(compactGutter, trimFlow);
     root->addSpacing(reviewSpace(Graphite::Space::xs));
     root->addWidget(flow);
     // Playback has its own row, leaving every ruler tick readable.
