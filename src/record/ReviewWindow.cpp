@@ -87,7 +87,10 @@ protected:
         initStyleOption(&option);
         style()->drawPrimitive(QStyle::PE_PanelButtonTool, &option, &painter, this);
         const auto colour = isEnabled() ? Theme::current().textSecondary : Theme::current().textDisabled;
-        Graphite::paintText(painter, rect().adjusted(4, 0, -18, 0), text(), colour, font(), Qt::AlignLeft | Qt::AlignVCenter);
+        const auto labelRect = rect().adjusted(4, 0, -18, 0);
+        auto label = text();
+        if (fontMetrics().horizontalAdvance(label) > labelRect.width()) label.remove(0, 2);
+        Graphite::paintText(painter, labelRect, label, colour, font(), Qt::AlignLeft | Qt::AlignVCenter);
         Graphite::paintChevron(painter, QPointF(width() - 9, height() / 2.0), 6, Qt::DownArrow, colour);
     }
 };
@@ -115,8 +118,9 @@ protected:
         painter.setPen(Graphite::keyboardFocus(this) ? QPen(palette.accent, 1) : QPen(Qt::NoPen));
         painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Graphite::Metric::smallRadius, Graphite::Metric::smallRadius);
         const int gap = Graphite::space(Graphite::Space::xs), side = 16;
-        VisualStyle::icon("alert", palette.textSecondary).paint(&painter, QRect(gap, (height() - side) / 2, side, side));
-        Graphite::paintText(painter, rect().adjusted(side + gap * 2, 0, -gap, 0), text(), palette.textSecondary, font(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideRight);
+        const bool compact = width() <= 32;
+        VisualStyle::icon("alert", palette.textSecondary).paint(&painter, QRect(compact ? (width() - side) / 2 : gap, (height() - side) / 2, side, side));
+        if (!compact) Graphite::paintText(painter, rect().adjusted(side + gap * 2, 0, -gap, 0), text(), palette.textSecondary, font(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideRight);
     }
 };
 // One baseline for the interval and privacy warning. Selection never changes
@@ -137,7 +141,7 @@ public:
         update();
     }
     QSize sizeHint() const override { return {Graphite::scaled(240), 32}; }
-    QSize minimumSizeHint() const override { return {Graphite::scaled(120), 32}; }
+    QSize minimumSizeHint() const override { return {80, 32}; }
 protected:
     void resizeEvent(QResizeEvent* event) override { QLabel::resizeEvent(event); placeWarning(); }
     void paintEvent(QPaintEvent*) override {
@@ -150,7 +154,10 @@ private:
     void placeWarning() {
         const int gap = Graphite::space(Graphite::Space::s);
         const int intervalWidth = std::min(fontMetrics().horizontalAdvance(text()) + gap, width() / 2);
-        warning_->setGeometry(intervalWidth, 0, width() - intervalWidth, 32);
+        const int warningWidth = width() - intervalWidth;
+        const int minimumWarning = warning_->fontMetrics().horizontalAdvance(QStringLiteral("Blur may be…")) + 32;
+        const int chipWidth = warningWidth >= minimumWarning ? warningWidth : 32;
+        warning_->setGeometry(width() - chipWidth, 0, chipWidth, 32);
     }
     void updateTip() { setToolTip(text() + (warning_->isHidden() ? QString() : QStringLiteral("\n") + accessibleDescription())); }
     BlurChip* warning_;
@@ -210,7 +217,7 @@ private:
         for (auto* group : groups_) {
             if (!shown(group, reserved)) continue;
             const int w = group == groups_.last() && qobject_cast<QLabel*>(group) ? group->minimumSizeHint().width() : widthOf(group);
-            if (x > indent_ && x + w > width - Graphite::space(Graphite::Space::l)) { lines.append(QList<QPair<QWidget*, QRect>>{}); x = indent_; }
+            if (x > indent_ && x + w > width - 12) { lines.append(QList<QPair<QWidget*, QRect>>{}); x = indent_; }
             lines.last().append({group, QRect(x, 0, w, heightOf(group))});
             x += w + groupGap;
         }
@@ -222,7 +229,7 @@ private:
                 if (!lines[i].isEmpty()) {
                     auto& last = lines[i].last();
                     if (last.first == groups_.last() && qobject_cast<QLabel*>(last.first))
-                        last.second.setWidth(std::max(last.second.width(), width - Graphite::space(Graphite::Space::l) - last.second.left()));
+                        last.second.setWidth(std::max(last.second.width(), width - 12 - last.second.left()));
                 }
                 for (const auto& [group, rect] : lines[i]) group->setGeometry(rect.translated(0, top + (line - rect.height()) / 2));
                 if (i == 0 && label_) label_->setGeometry(0, 0, indent_ - 8, line);
@@ -561,10 +568,10 @@ constexpr int trackPad = 16, trackHeight = 8;
 int gripTarget() { return std::max(40, iconTarget()); }
 int visibleLanes() { return 2; }
 QFont gutterFont() { return Graphite::monoFont(Graphite::Type::caption); }
-int laneHeight() { return std::max(20, QFontMetrics(gutterFont()).tightBoundingRect(QStringLiteral("Redaction 8")).height()); }
-int rowHeight() { return laneHeight() + Graphite::space(Graphite::Space::xs); }
-int rulerHeight() { return std::max(16, QFontMetrics(gutterFont()).tightBoundingRect(QStringLiteral("0:00.0")).height()); }
-int clipHeight() { return rulerHeight() + 12; }
+int laneHeight() { return 16; }
+int rowHeight() { return laneHeight() + 2; }
+int rulerHeight() { return 32; }
+int clipHeight() { return rulerHeight() + 10; }
 constexpr qint64 minimumSpanUs = 10000;
 }
 
@@ -685,12 +692,12 @@ void ReviewTimeline::layoutLanes() {
     lanes_ = int(ends.size());
 }
 int ReviewTimeline::gutterWidth() {
-    return std::min(144, Graphite::scaled(96));
+    return std::min(112, Graphite::scaled(96));
 }
 bool ReviewTimeline::transportAbove(int) const { return transport_ != nullptr; }
-int ReviewTimeline::timelineTop() const { return transport_ ? rowTransportHeight_ + Graphite::space(Graphite::Space::xs) : 0; }
+int ReviewTimeline::timelineTop() const { return 0; }
 QRect ReviewTimeline::trackRect() const {
-    return QRect(gutterWidth(), timelineTop() + rulerHeight() + 3, std::max(1, width() - trackPad - gutterWidth()), trackHeight);
+    return QRect(gutterWidth(), timelineTop() + rulerHeight() + 1, std::max(1, width() - trackPad - gutterWidth()), trackHeight);
 }
 QRect ReviewTimeline::laneRect(int lane) const { const auto track = trackRect(); return QRect(track.left(), timelineTop() + clipHeight() + (lane - laneScroll_->value()) * rowHeight() + (rowHeight() - laneHeight()) / 2, track.width(), laneHeight()); }
 int ReviewTimeline::lanesBottom() const { return timelineTop() + clipHeight() + std::min(lanes_, visibleLanes()) * rowHeight(); }
@@ -719,10 +726,11 @@ QRect ReviewTimeline::maskHitRect(const QString& id) const {
 }
 QSize ReviewTimeline::sizeHint() const { return {480, minimumSizeHint().height()}; }
 int ReviewTimeline::heightForLanes(int width, int lanes) const {
-    const bool above = transportAbove(width);
-    const int rows = (above ? rowTransportHeight_ + Graphite::space(Graphite::Space::xs) : 0) + clipHeight() + std::min(lanes, visibleLanes()) * rowHeight();
-    return std::max(32, std::max(above ? rowTransportHeight_ : inlineTransportHeight_, rows)
-        + (lanes > visibleLanes() ? iconTarget() : 0));
+    Q_UNUSED(width);
+    // Leave the clamped last target below the trim track and nearest its own lane.
+    const int rows = clipHeight() + std::min(lanes, visibleLanes()) * rowHeight() + (lanes > 0 ? 3 : 0)
+        + (lanes > visibleLanes() ? iconTarget() : 0);
+    return std::max(laneHeader_ ? rulerHeight() + laneHeader_->height() : 32, rows);
 }
 QSize ReviewTimeline::minimumSizeHint() const { return {220, heightForLanes(width(), lanes_)}; }
 void ReviewTimeline::paintEvent(QPaintEvent*) {
@@ -735,12 +743,16 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
     const auto track = trackRect();
     // Adapt the ruler to the available width; endpoints always remain visible.
     const int count = std::clamp(track.width() / std::max(1, QFontMetrics(gutterFont()).horizontalAdvance(durationText(duration_)) + 36), 1, 4);
+    const auto* speed = transport_ ? transport_->findChild<QWidget*>("speed") : nullptr;
+    const auto* status = transport_ ? transport_->findChild<QWidget*>("playbackStatus") : nullptr;
     for (int i = 0; i <= count; ++i) {
         const auto at = duration_ * i / count;
         const int x = xFor(at);
         const int labelWidth = QFontMetrics(gutterFont()).horizontalAdvance(durationText(at)) + 2;
         const int left = std::clamp(x - labelWidth / 2, track.left(), std::max(track.left(), track.right() - labelWidth + 1));
-        Graphite::paintText(painter, QRect(left, timelineTop(), labelWidth, rulerHeight()), durationText(at), p.textMuted, gutterFont(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
+        const auto label = QRect(left, timelineTop(), labelWidth, rulerHeight());
+        if (!speed || (label.left() > speed->geometry().right() + 8 && label.right() < status->geometry().left() - 8))
+            Graphite::paintText(painter, label, durationText(at), p.textMuted, gutterFont(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
         painter.setPen(QPen(p.borderStrong, 1));
         painter.drawLine(x, timelineTop() + rulerHeight(), x, track.top() - 2);
     }
@@ -834,12 +846,12 @@ void ReviewTimeline::placeNavigation() {
     if (transport_) {
         auto* row = static_cast<QBoxLayout*>(transport_->layout());
         row->setDirection(QBoxLayout::LeftToRight);
-        rowTransportHeight_ = 40;
+        rowTransportHeight_ = 32;
         transport_->setProperty("inlineWidth", 0);
         transport_->setProperty("aboveTimeline", true);
         transport_->setGeometry(0, 0, width(), rowTransportHeight_);
     }
-    if (laneHeader_) laneHeader_->setGeometry(0, timelineTop(), gutterWidth() - Graphite::space(Graphite::Space::xs), 28);
+    if (laneHeader_) laneHeader_->setGeometry(0, rulerHeight(), gutterWidth() - Graphite::space(Graphite::Space::xs), 28);
     const int side = iconTarget();
     previousMasks_->setGeometry(0, lanesBottom(), side, side);
     moreMasks_->setGeometry(side + 4, lanesBottom(), side, side);
@@ -1012,19 +1024,18 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     noticeBand->setContentWidget(notice_);
     noticeBand->hide();
     banner->addWidget(noticeBand);
-    // The well leaves the same inset around the image as the editor.
+    // Keep the well and image edge; fixed compact insets preserve the frame at large text.
     view_ = new FrameView(this, maskNames_);
     view_->setObjectName("frame");
-    const int inset = Graphite::space(Graphite::Space::l);
-    view_->setContentsMargins(inset, inset, inset, inset);
+    view_->setContentsMargins(4, 0, 4, 0);
     view_->setMinimumHeight(180);
     view_->setCanvas(options.canvas);
     view_->setAccessibleName("Recording frame");
     frame->addWidget(view_, 1);
     // Compact bands leave room for the video even with enlarged text and status.
     auto* root = new QVBoxLayout;
-    root->setContentsMargins(Graphite::space(Graphite::Space::l), 0, Graphite::space(Graphite::Space::l), 0);
-    root->setSpacing(Graphite::space(Graphite::Space::xs));
+    root->setContentsMargins(12, 0, 12, 0);
+    root->setSpacing(4);
     frame->addLayout(root);
     auto tool = [this](const char* icon, const QString& name, const QString& tip) {
         auto* button = new QToolButton(this);
@@ -1206,7 +1217,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     statusLines_->setSpacing(Graphite::space(Graphite::Space::xs));
     statusRow_->hide();
     frame->addWidget(statusRow_);
-    // One footer row: output details, format and audio, then explicit actions.
+    // One footer row when its measured content fits; metadata moves above otherwise.
     format_ = new FormatBox(this);
     format_->setAccessibleName("Output format");
     for (const auto& format : options.formats) {
@@ -1260,14 +1271,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* footer = new Graphite::Surface("bg", Qt::TopEdge, this);
     footer->setObjectName("reviewFooter");
     auto* footerRows = new QVBoxLayout(footer);
-    footerRows->setContentsMargins(Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::m));
-    footerRows->setSpacing(Graphite::space(Graphite::Space::xs));
+    footerRows->setContentsMargins(12, 8, 12, 8);
+    footerRows->setSpacing(4);
     auto* actions = new QWidget(footer);
     actions->setObjectName("reviewActions");
     auto* actionsRow = new QGridLayout(actions);
     actionsRow->setContentsMargins(0, 0, 0, 0);
-    actionsRow->setHorizontalSpacing(Graphite::space(Graphite::Space::xs));
-    actionsRow->setVerticalSpacing(Graphite::space(Graphite::Space::xs));
+    actionsRow->setHorizontalSpacing(4);
+    actionsRow->setVerticalSpacing(4);
     destinationMenu_ = new QToolButton(actions);
     destinationMenu_->setObjectName("uploadDestinationMenu");
     destinationMenu_->setAutoRaise(true);
@@ -1417,7 +1428,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     const QList<QWidget*> order{view_, play_, speed_, timeline_, addMask_, trimStart_, trimEnd_, resetTrim_, masks_, maskOptions_, maskStart_, maskEnd_, static_cast<MaskInterval*>(maskActive_)->warningButton(), destinationMenu_, format_, formatAdvice_, save_, cancel_, upload_};
     for (int i = 1; i < order.size(); ++i) setTabOrder(order[i - 1], order[i]);
     timeline_->setFocus();
-    // The default fits a 1366×768 desktop; a smaller screen gets what it has.
+    // Fit inside the workspace; first presentation measures the frame share before choosing width.
     QSize size = defaultSize().boundedTo(availableReviewSize());
     resize(size);
     placeTools();
@@ -1597,7 +1608,7 @@ void ReviewWindow::refreshMaskList() {
     masks_->setToolTip(row < 0 ? QStringLiteral("Choose the mask to edit") : masks_->itemData(row, Qt::ToolTipRole).toString());
     masks_->blockSignals(false);
     int widest = masks_->fontMetrics().horizontalAdvance(masks_->placeholderText());
-    for (int i = 0; i < masks_->count(); ++i) widest = std::max(widest, masks_->fontMetrics().horizontalAdvance(masks_->itemData(i).toString()));
+    for (int i = 0; i < masks_->count(); ++i) widest = std::max(widest, masks_->fontMetrics().horizontalAdvance(masks_->itemText(i)));
     masks_->setFixedWidth(widest + Graphite::Metric::splitZone + 18);
 }
 void ReviewWindow::refreshTimeline() {
@@ -1924,9 +1935,9 @@ void ReviewWindow::updateMinimum() {
                 - footer->height() - (statusRow_->isVisible() ? statusRow_->height() : 0);
             const auto share = [&](int width, int controls, int timelineHeight) {
                 const auto margins = footer->layout()->contentsMargins();
-                const int footerHeight = (footerFits(width - 2 * Graphite::space(Graphite::Space::l)) ? 1 : 2) * std::max(32, upload_->height()) + (footerFits(width - 2 * Graphite::space(Graphite::Space::l)) ? 0 : 4);
-                const int chrome = fixed + trim->heightFor(width - 2 * Graphite::space(Graphite::Space::l)) + timelineHeight + footerHeight + margins.top() + margins.bottom();
-                const QSize image = QSize(10000, int(10000 / aspect)).scaled(QSize(width - 2 * Graphite::space(Graphite::Space::l), height - chrome - controls - 2 * Graphite::space(Graphite::Space::l)), Qt::KeepAspectRatio);
+                const int footerHeight = 32 + (footerFits(width - 28) ? 0 : std::max(20, destinationMenu_->fontMetrics().height()) + 4);
+                const int chrome = fixed + trim->heightFor(width - 24) + timelineHeight + footerHeight + margins.top() + margins.bottom();
+                const QSize image = QSize(10000, int(10000 / aspect)).scaled(QSize(width - 8, height - chrome - controls), Qt::KeepAspectRatio);
                 return double(image.width()) * image.height() / (double(width) * height);
             };
             int width = minimumWidth();
@@ -1934,12 +1945,12 @@ void ReviewWindow::updateMinimum() {
             const int axisMinimum = QFontMetrics(gutterFont()).horizontalAdvance(durationText(options_.durationUs)) * 4 + 96;
             for (int candidate = minimumWidth(); candidate <= available.width(); candidate += 2) {
                 const int futureControls = edit_.masks.isEmpty() ? maskStart_->height() : 0;
-                const int controls = std::max(futureControls, flow->heightFor(candidate - 2 * Graphite::space(Graphite::Space::l), true));
-                const int timelineHeight = timeline_->heightForLanes(candidate - 2 * Graphite::space(Graphite::Space::l), std::max(2, timeline_->lanes()));
-                const double steady = share(candidate, std::max(futureControls, flow->heightFor(candidate - 2 * Graphite::space(Graphite::Space::l))), timelineHeight);
+                const int controls = std::max(futureControls, flow->heightFor(candidate - 24, true));
+                const int timelineHeight = timeline_->heightForLanes(candidate - 24, std::max(2, timeline_->lanes()));
+                const double steady = share(candidate, std::max(futureControls, flow->heightFor(candidate - 24)), timelineHeight);
                 const double transient = share(candidate, controls + std::max(32, QFontMetrics(Graphite::font(Graphite::Type::metadata)).height() + 8) + 4, timelineHeight);
-                const int inlineAxis = candidate - 2 * Graphite::space(Graphite::Space::l) - trackPad - ReviewTimeline::gutterWidth() - transport_->property("inlineWidth").toInt() - 12;
-                const int axis = inlineAxis < 360 ? candidate - 2 * Graphite::space(Graphite::Space::l) - trackPad - ReviewTimeline::gutterWidth() : inlineAxis;
+                const int inlineAxis = candidate - 24 - trackPad - ReviewTimeline::gutterWidth() - transport_->property("inlineWidth").toInt() - 12;
+                const int axis = inlineAxis < 360 ? candidate - 24 - trackPad - ReviewTimeline::gutterWidth() : inlineAxis;
                 const double organization = std::min(1.0, double(axis) / axisMinimum) - controls * 0.002;
                 const double score = steady >= 0.605 && transient >= 0.535 ? 10 + organization + transient * 0.02 : steady >= 0.605 ? 1 + transient : steady;
                 if (score > best) { best = score; width = candidate; }
@@ -1987,7 +1998,7 @@ QSize ReviewWindow::minimumSizeHint() const {
     const auto rows = layout()->minimumSize();
     const int width = std::max({640, rows.width(), flow->minimumSizeHint().width() + 2 * Graphite::space(Graphite::Space::l)});
     int height = rows.height();
-    if (flow->isVisibleTo(this)) height += flow->heightFor(width - 2 * Graphite::space(Graphite::Space::l), true) - flow->minimumSizeHint().height();
+    if (flow->isVisibleTo(this)) height += flow->heightFor(width - 24, true) - flow->minimumSizeHint().height();
     // Status lines wrap at a narrow width; count them as they are laid out.
     if (statusRow_->isVisibleTo(this) && statusRow_->hasHeightForWidth()) height += std::max(0, statusRow_->heightForWidth(width) - statusRow_->minimumSizeHint().height());
     return {width, std::max(480, height)};
@@ -2020,9 +2031,10 @@ void ReviewWindow::placeDestination() {
     const int naturalDestination = destinationMenu_->fontMetrics().horizontalAdvance(destination_->text()) + Graphite::Metric::splitZone + 24;
     destinationMenu_->setMaximumWidth(naturalDestination);
     auto* grid = qobject_cast<QGridLayout*>(findChild<QWidget*>("reviewActions")->layout());
-    const int available = std::max(1, width() - 2 * Graphite::space(Graphite::Space::l));
+    const int available = std::max(1, width() - 24);
     const bool wasSingle = grid->property("placed").toBool() && grid->property("singleRow").toBool();
     const bool single = footerFits(available + (wasSingle ? 4 : -4));
+    destinationMenu_->setFixedHeight(single ? 32 : std::max(20, destinationMenu_->fontMetrics().height()));
     if (!grid->property("placed").toBool() || grid->property("singleRow").toBool() != single) {
         for (auto* widget : std::initializer_list<QWidget*>{destinationMenu_, format_, formatAdvice_, exportAudio_, save_, cancel_, upload_}) grid->removeWidget(widget);
         for (int column = 0; column < 7; ++column) grid->setColumnStretch(column, 0);
