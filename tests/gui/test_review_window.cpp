@@ -443,7 +443,7 @@ private slots:
         auto* add = window.findChild<QToolButton*>("addMask");
         QVERIFY(add->height() >= 28);
         QCOMPARE(add->text(), QString("+ Add mask"));
-        QVERIFY(add->y() < track->trackRect().top());
+        QCOMPARE(add->geometry().center().y(), track->maskRect("m-blur").center().y());
         QCOMPARE(track->maskRect("m-blur").height(), 16);
         QCOMPARE(track->maskRect("m-solid").top() - track->maskRect("m-blur").bottom() - 1, 2);
         auto* chip = window.findChild<QToolButton*>("reviewBlurChip");

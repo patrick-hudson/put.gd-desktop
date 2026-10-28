@@ -159,7 +159,7 @@ public:
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
-        Graphite::paintText(painter, rect(), text().section(QStringLiteral(" · "), 0, 0), palette().color(foregroundRole()), font(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
+        Graphite::paintText(painter, rect(), text().section(QStringLiteral(" · "), 0, 0), palette().color(foregroundRole()), font(), Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
     }
 private:
     BlurChip* warning_;
@@ -199,6 +199,7 @@ public:
     static int lineGap() { return reviewSpace(Graphite::Space::xs); }
     explicit FlowRow(QWidget* parent) : QWidget(parent) {}
     void setGutter(QWidget* label, int indent) { label->setParent(this); label_ = label; indent_ = indent; relayout(); }
+    void setReadout(QWidget* readout) { readout_ = readout; }
     void addGroup(QWidget* group) { group->setParent(this); group->installEventFilter(this); groups_.append(group); }
     // The height at a width; reserved also counts hidden groups that keep their size.
     int heightFor(int width, bool reserved = false) const { return arrange(width, reserved, false); }
@@ -257,8 +258,12 @@ private:
             if (apply) {
                 if (!lines[i].isEmpty()) {
                     auto& last = lines[i].last();
-                    if (last.first == groups_.last() && qobject_cast<QLabel*>(last.first))
+                    if ((last.first == readout_ || last.first == groups_.last()) && qobject_cast<QLabel*>(last.first))
                         last.second.setWidth(std::max(last.second.width(), width - last.second.left()));
+                }
+                for (auto& placed : lines[i]) if (placed.first == readout_ && placed.first != lines[i].last().first) {
+                    const int remaining = lines[i].last().second.right() - placed.second.right() + groupGap();
+                    placed.second.moveRight(width - remaining - 1);
                 }
                 for (const auto& [group, rect] : lines[i]) group->setGeometry(rect.translated(0, top + (line - rect.height()) / 2));
                 if (i == 0 && label_) label_->setGeometry(0, 0, indent_ - reviewSpace(Graphite::Space::s), line);
@@ -267,6 +272,7 @@ private:
         }
         return top;
     }
+    QWidget* readout_ = nullptr;
     QWidget* label_ = nullptr;
     QList<QWidget*> groups_;
     int indent_ = 0;
@@ -764,7 +770,7 @@ int ReviewTimeline::heightForLanes(int width, int lanes) const {
 }
 QSize ReviewTimeline::minimumSizeHint() const { return {220, heightForLanes(width(), lanes_)}; }
 void ReviewTimeline::paintEvent(QPaintEvent*) {
-    // Graphite: a quiet track, the retained interval framed in amber between
+    // Graphite: a quiet retained interval between amber
     // two grip handles, lightly dimmed trimmed-away ends, mask bars in lanes
     // and the playhead with its marker.
     const auto& p = Theme::current();
@@ -789,12 +795,12 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
     painter.setBrush(p.surfaceRaised);
     painter.drawRoundedRect(QRectF(track).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
     const QColor edge = isEnabled() ? p.accent : p.borderStrong;
-    QColor kept = p.accent;
-    kept.setAlpha(isEnabled() ? 70 : 30);
-    const QRectF retained(xFor(start), track.top() + 0.5, xFor(end) - xFor(start), track.height() - 1);
-    painter.setPen(QPen(edge, 1.5));
+    QColor kept = p.text;
+    kept.setAlphaF(0.22);
+    const QRectF retained(xFor(start), track.center().y() - 2, xFor(end) - xFor(start), 6);
+    painter.setPen(Qt::NoPen);
     painter.setBrush(kept);
-    painter.drawRect(retained);
+    painter.drawRoundedRect(retained, 3, 3);
     painter.setPen(Qt::NoPen);
     for (const qint64 at : {start, end}) {
         const QRectF grip(xFor(at) - 5.5, track.top() - 3, 11, track.height() + 6);
@@ -830,7 +836,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         auto textArea = bar.adjusted(6, 0, -6, 0);
         if (mask.kind == "blur" && bar.width() > lane.height() + 12) {
             const int side = std::min(lane.height() - 2, Graphite::scaled(14));
-            VisualStyle::icon("alert", p.accent).paint(&painter, QRect(left + 4, lane.top() + (lane.height() - side) / 2, side, side));
+            VisualStyle::icon("alert", selected ? p.accent : p.textMuted).paint(&painter, QRect(left + 4, lane.top() + (lane.height() - side) / 2, side, side));
             textArea.setLeft(textArea.left() + side + 4);
         }
         // Labels stay inside their own coverage without erasing interval pixels.
@@ -878,7 +884,7 @@ void ReviewTimeline::placeNavigation() {
         transport_->setProperty("aboveTimeline", true);
         transport_->setGeometry(0, 0, width(), rowTransportHeight_);
     }
-    if (laneHeader_) laneHeader_->setGeometry(0, timelineTop() + rulerHeight(), gutterWidth() - reviewSpace(Graphite::Space::xs), Graphite::scaled(28));
+    if (laneHeader_) laneHeader_->setGeometry(0, laneRect(laneScroll_->value()).center().y() - Graphite::scaled(28) / 2, gutterWidth() - reviewSpace(Graphite::Space::xs), Graphite::scaled(28));
     const int side = iconTarget();
     previousMasks_->setGeometry(0, lanesBottom(), side, side);
     moreMasks_->setGeometry(side + 4, lanesBottom(), side, side);
@@ -1121,6 +1127,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     VisualStyle::role(retained_, "meta");
     retained_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     trimFlow->addGroup(retained_);
+    trimFlow->setReadout(retained_);
     root->addWidget(trimGroup_);
     // Mask: the kinds to add, the mask to edit, its blur radius, its timing and
     // its interval, wrapping as whole groups when the row is too narrow.
@@ -1194,7 +1201,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     maskTools_ = group("maskKinds", {masks_, maskOptions_});
     timeline_->setLaneHeader(addMask_);
     maskTiming_ = group("maskTimingControls", {maskStart_, maskEnd_});
-    for (auto* w : std::initializer_list<QWidget*>{maskTools_, maskTiming_, maskActive_, static_cast<MaskInterval*>(maskActive_)->warningButton()}) flow->addGroup(w);
+    for (auto* w : std::initializer_list<QWidget*>{maskTools_, maskTiming_, static_cast<MaskInterval*>(maskActive_)->warningButton(), maskActive_}) flow->addGroup(w);
+    flow->setReadout(maskActive_);
     flow->setGutter(groupLabel("Mask", "maskGroup"), gutter);
     root->addWidget(flow);
     // Playback has its own row, leaving every ruler tick readable.
@@ -1246,7 +1254,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     statusRow_ = new QWidget(this);
     statusRow_->setObjectName("statusRow");
     statusLines_ = new QVBoxLayout(statusRow_);
-    statusLines_->setContentsMargins(0, 0, 0, 0);
+    statusLines_->setContentsMargins(reviewSpace(Graphite::Space::m), 0, reviewSpace(Graphite::Space::m), 0);
     statusLines_->setSpacing(reviewSpace(Graphite::Space::xs));
     statusRow_->hide();
     frame->addWidget(statusRow_);
