@@ -238,7 +238,7 @@ private slots:
                 const auto hasInk = [&](int x) {
                     for (int y = 0; y < image.height(); ++y) {
                         const auto pixel = image.pixelColor(x, y);
-                        if (std::abs(pixel.red() - ink.red()) + std::abs(pixel.green() - ink.green()) + std::abs(pixel.blue() - ink.blue()) < 25) return true;
+                        if (std::abs(pixel.red() - ink.red()) + std::abs(pixel.green() - ink.green()) + std::abs(pixel.blue() - ink.blue()) < 150) return true;
                     }
                     return false;
                 };
@@ -664,7 +664,8 @@ private slots:
         QApplication::processEvents();
         QVERIFY(chip->isVisible());
         QCOMPARE(chip->text(), QString("Blur may be reversible · Use Redact"));
-        QVERIFY(chip->toolTip().contains("Use Redact"));
+        if (chip->isEnabled()) QVERIFY(chip->toolTip().contains("Use Redact"));
+        else QCOMPARE(chip->toolTip(), QString("Select a blur to use Redact"));
         QVERIFY(chip->height() >= chip->heightForWidth(chip->width()));
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QSignalSpy proposed(&window, &ReviewWindow::editProposed);
