@@ -242,6 +242,39 @@ private slots:
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QVERIFY(!visible());
     }
+    void blurChipDistinguishesEnabledAndDisabledActions() {
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
+        auto* chip = window.findChild<QToolButton*>("reviewBlurChip"); QVERIFY(chip);
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}); putgd::test::settle(10);
+            QVERIFY(chip->isEnabled());
+            const auto size = chip->sizeHint();
+            const auto frame = window.findChild<FrameView*>()->geometry();
+            const auto enabled = chip->grab().toImage();
+            window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}}); putgd::test::settle(10);
+            QVERIFY(!chip->isEnabled());
+            QCOMPARE(chip->toolTip(), QString("Select a blur to use Redact"));
+            QCOMPARE(chip->sizeHint(), size);
+            QCOMPARE(window.findChild<FrameView*>()->geometry(), frame);
+            const auto& palette = Theme::current();
+            const auto ink = Theme::contrast(palette.textDisabled, palette.warningSurface) >= 4.5 ? palette.textDisabled : palette.textSecondary;
+            QVERIFY(Theme::contrast(ink, palette.warningSurface) >= 4.5);
+            const auto disabled = chip->grab().toImage();
+            QVERIFY(disabled != enabled);
+            QTest::mouseMove(chip, chip->rect().center()); putgd::test::settle(10);
+            QCOMPARE(chip->grab().toImage(), disabled);
+            QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+            chip->click(); QCOMPARE(proposals.size(), 0);
+            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}); putgd::test::settle(10);
+            QVERIFY(chip->isEnabled());
+            QVERIFY(chip->toolTip() != QString("Select a blur to use Redact"));
+            chip->click(); QCOMPARE(proposals.size(), 1);
+            QCOMPARE(proposed(proposals)["maskId"].toString(), QString("m-blur"));
+        }
+    }
     void recoveryStaysWithItsMessageAboveTheFooter() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));

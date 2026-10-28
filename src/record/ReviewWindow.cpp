@@ -113,9 +113,16 @@ public:
         setProperty("graphiteDensity", "compact");
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     }
-    QSize sizeHint() const override { return {fontMetrics().horizontalAdvance(text()) + 16 + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)}; }
+    QSize sizeHint() const override {
+        return {fontMetrics().horizontalAdvance(QStringLiteral("Blur may be reversible · "))
+            + QFontMetrics(actionFont(true)).horizontalAdvance(QStringLiteral("Use Redact")) + 16 + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)};
+    }
     QSize minimumSizeHint() const override { return sizeHint(); }
 protected:
+    void changeEvent(QEvent* event) override {
+        QToolButton::changeEvent(event);
+        if (event->type() == QEvent::EnabledChange) setToolTip(isEnabled() ? text() : QStringLiteral("Select a blur to use Redact"));
+    }
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
@@ -124,12 +131,20 @@ protected:
         painter.setPen(Graphite::keyboardFocus(this) ? QPen(palette.accent, 1) : QPen(Qt::NoPen));
         painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Graphite::Metric::smallRadius, Graphite::Metric::smallRadius);
         const int gap = reviewSpace(Graphite::Space::xs), side = 16;
-        VisualStyle::icon("alert", palette.textSecondary).paint(&painter, QRect(gap, (height() - side) / 2, side, side));
+        VisualStyle::icon("alert", isEnabled() ? palette.warning : palette.textDisabled).paint(&painter, QRect(gap, (height() - side) / 2, side, side));
+        const auto disabledInk = Theme::contrast(palette.textDisabled, palette.warningSurface) >= 4.5 ? palette.textDisabled : palette.textSecondary;
+        const auto informationInk = isEnabled() ? palette.textSecondary : disabledInk;
+        const QString information = QStringLiteral("Blur may be reversible · ");
         painter.setFont(font());
-        painter.setPen(palette.textSecondary);
+        painter.setPen(informationInk);
         const auto textRect = rect().adjusted(side + gap * 2, 0, -gap, 0);
-        painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, text());
+        painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, information);
+        painter.setFont(actionFont(isEnabled()));
+        painter.setPen(isEnabled() ? palette.text : disabledInk);
+        painter.drawText(textRect.adjusted(fontMetrics().horizontalAdvance(information), 0, 0, 0), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, QStringLiteral("Use Redact"));
     }
+private:
+    QFont actionFont(bool enabled) const { auto action = font(); action.setWeight(enabled ? QFont::DemiBold : QFont::Normal); return action; }
 };
 // Keep the existing mono width reservation while giving words their UI face.
 class RetainedInterval final : public QLabel {
