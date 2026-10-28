@@ -7,6 +7,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QJsonDocument>
+#include <QJsonArray>
 #include <QPushButton>
 #include <QTextEdit>
 #include <QTextDocument>
@@ -41,7 +42,7 @@ AboutWindow::AboutWindow(const QJsonObject& residentBuild,QWidget* parent):QDial
  auto* browser=new Graphite::BrowserFeedback(identity);browser->setObjectName("aboutWebsiteFeedback");column->addWidget(browser);connect(website,&QPushButton::clicked,this,[browser]{const QUrl url("https://put.gd");host::openLink(url,browser->opening(url));});
  auto* details=new Graphite::Surface("surface",{},identity);details->setObjectName("aboutBuildDetails");auto* facts=new QVBoxLayout(details);const int inset=Graphite::space(Graphite::Space::m);facts->setContentsMargins(inset,inset,inset,inset);facts->setSpacing(Graphite::space(Graphite::Space::s));
  const auto add=[&](const QString& label,const QString& value,const QString& object){auto* caption=Graphite::label(label,"meta",details);facts->addWidget(caption);auto* text=new BuildValue(value);text->setObjectName(object);VisualStyle::role(text,"mono");facts->addWidget(text);};
- add("Version",residentBuild["version"].toString(),"buildVersion");add("Commit",residentBuild["gitCommit"].toString(residentBuild["commit"].toString("Unknown")),"buildCommit");add("Build state",residentBuild["dirty"].isBool()?(residentBuild["dirty"].toBool()?"Modified source tree":"Clean source tree"):"Unknown","buildState");column->addWidget(details);details->hide();root->addWidget(content);
+ auto* fullVersion=new BuildValue(residentBuild["version"].toString());fullVersion->setParent(this);fullVersion->setObjectName("buildVersion");fullVersion->hide();add("Commit",residentBuild["gitCommit"].toString(residentBuild["commit"].toString("Unknown")),"buildCommit");add("Build state",residentBuild["dirty"].isBool()?(residentBuild["dirty"].toBool()?"Modified source tree":"Clean source tree"):"Unknown","buildState");for(auto it=residentBuild.begin();it!=residentBuild.end();++it){if(QStringList{"version","gitCommit","commit","dirty"}.contains(it.key()))continue;const auto value=it.value();const auto text=value.isObject()?QString::fromUtf8(QJsonDocument(value.toObject()).toJson(QJsonDocument::Compact)):value.isArray()?QString::fromUtf8(QJsonDocument(value.toArray()).toJson(QJsonDocument::Compact)):value.toVariant().toString();add(it.key(),text,"build_"+it.key());}column->addWidget(details);details->hide();root->addWidget(content);
  auto* buttons=new QWidget(this);buttons->setObjectName("aboutActions");auto* actions=new QHBoxLayout(buttons);actions->setContentsMargins(0,0,0,0);actions->setSpacing(Graphite::space(Graphite::Space::s));
  auto* copy=new QPushButton("Copy build details",buttons);copy->setObjectName("copyBuildDetails");VisualStyle::role(copy,"quiet");copy->hide();actions->addWidget(copy);connect(copy,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(details_);});actions->addStretch();
  auto* toggle=new QPushButton("Build details",buttons);toggle->setObjectName("buildDetails");toggle->setCheckable(true);VisualStyle::role(toggle,"quiet");actions->addWidget(toggle);
