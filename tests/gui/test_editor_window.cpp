@@ -718,7 +718,7 @@ private slots:
   copy->click();QCOMPARE(QGuiApplication::clipboard()->text(),QFileInfo(path).absoluteFilePath());
   QCOMPARE(window.viewState()["lastCopiedPath"].toString(),QFileInfo(path).absoluteFilePath());
   add(doc,{{"kind","redact"},{"rect",QJsonArray{10,10,50,20}}});window.documentEdited();
-  QCOMPARE(state->text(),QString("Not uploaded"));QCOMPARE(saved->text(),QString("Earlier copy saved: synthetic copy.png"));
+  QCOMPARE(state->text(),QString("Not uploaded"));QCOMPARE(saved->text(),QString("Earlier copy saved: synthetic copy.png"));QCOMPARE(window.findChild<Graphite::Banner*>("editorSaveFeedback")->tone(),Graphite::Banner::Tone::Info);
   QVERIFY(!window.viewState()["lastSave"].toObject()["current"].toBool());QVERIFY(copy->isVisible());
   QGuiApplication::clipboard()->clear();QString code,message;window.viewCommand({{"action","copySavedPath"}},code,message);QVERIFY(code.isEmpty());
   QCOMPARE(QGuiApplication::clipboard()->text(),QFileInfo(path).absoluteFilePath());

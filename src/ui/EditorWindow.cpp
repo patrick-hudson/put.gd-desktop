@@ -423,7 +423,7 @@ void EditorWindow::placeDestination(){
  saveError_->setVisible(feedback&&lastSave_["status"]=="failed");saveTarget_->hide();folderError_->setVisible(feedback&&folderFailed);
  chooseAnother_->setVisible(feedback&&lastSave_["status"]=="failed");
  findChild<QToolButton*>("editorSaveDetails")->setVisible(feedback&&(lastSave_["status"]=="failed"||(!lastShowInFolder_.isEmpty()&&!lastShowInFolder_["opened"].toBool())));
- const auto tone=!message_->isHidden()?(message_->property("visualRole")=="error"?Graphite::Banner::Tone::Error:Graphite::Banner::Tone::Info):folderFailed||lastSave_["status"]=="failed"?Graphite::Banner::Tone::Error:lastSave_["status"]=="saved"?Graphite::Banner::Tone::Success:Graphite::Banner::Tone::Info;
+ const auto tone=!message_->isHidden()?(message_->property("visualRole")=="error"?Graphite::Banner::Tone::Error:Graphite::Banner::Tone::Info):folderFailed||lastSave_["status"]=="failed"?Graphite::Banner::Tone::Error:lastSave_["status"]=="saved"&&savedGeneration_==doc_.generation()?Graphite::Banner::Tone::Success:Graphite::Banner::Tone::Info;
  saveFeedback_->setTone(tone);
  saveFeedback_->setAccessibleName(!message_->isHidden()?message_->text():folderFailed?folderError_->text():lastSave_["status"]=="failed"?saveError_->accessibleDescription():savedLabel_->text());
  saveFeedback_->dismissButton()->setVisible(feedback);
