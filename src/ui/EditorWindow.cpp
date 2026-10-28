@@ -77,14 +77,14 @@ private:QColor color_;bool custom_;
 };
 class KeyboardHelp final:public QWidget {
 public:
- explicit KeyboardHelp(QWidget* parent):QWidget(parent){grid_=new QGridLayout(this);grid_->setContentsMargins(0,0,0,0);grid_->setHorizontalSpacing(Graphite::space(Space::s));grid_->setVerticalSpacing(Graphite::space(Space::xs));grid_->setColumnStretch(1,1);setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);}
- void addShortcut(QLabel* key,QLabel* meaning){rows_.append(QPair<QLabel*,QLabel*>{key,meaning});grid_->addWidget(key,rows_.size()-1,0,Qt::AlignTop);grid_->addWidget(meaning,rows_.size()-1,1,Qt::AlignTop);}
+ explicit KeyboardHelp(QWidget* parent):QWidget(parent){grid_=new QGridLayout(this);grid_->setContentsMargins(0,0,0,0);grid_->setHorizontalSpacing(Graphite::space(Space::s));grid_->setVerticalSpacing(Graphite::space(Space::s));grid_->setColumnStretch(1,1);setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);}
+ void addShortcut(QLabel* key,QLabel* meaning){auto* pair=new QWidget(this);auto* line=new QBoxLayout(QBoxLayout::LeftToRight,pair);line->setContentsMargins(0,0,0,0);line->addWidget(meaning);line->addWidget(key);rows_.append({pair,key,meaning});grid_->addWidget(pair,rows_.size()-1,0,1,2);reflow();}
 protected:
  void resizeEvent(QResizeEvent* event)override{QWidget::resizeEvent(event);reflow();}
  void showEvent(QShowEvent* event)override{QWidget::showEvent(event);reflow();}
 private:
- QGridLayout* grid_;QList<QPair<QLabel*,QLabel*>> rows_;bool stacked_=false;
- void reflow(){int keys=0,meanings=0;for(const auto& [key,meaning]:rows_){keys=qMax(keys,key->sizeHint().width());meanings=qMax(meanings,meaning->fontMetrics().horizontalAdvance(meaning->text()));}const bool stacked=keys+meanings+Graphite::space(Space::s)>contentsRect().width();if(stacked==stacked_)return;stacked_=stacked;while(auto* item=grid_->takeAt(0))delete item;grid_->setColumnStretch(1,stacked?0:1);int row=0;for(const auto& [key,meaning]:rows_){grid_->addWidget(key,row,0,Qt::AlignTop);grid_->addWidget(meaning,stacked?row+1:row,stacked?0:1,Qt::AlignTop);row+=stacked?2:1;}setProperty("stacked",stacked);}
+ struct Pair{QWidget* widget;QLabel* key;QLabel* meaning;};QGridLayout* grid_;QList<Pair> rows_;
+ void reflow(){int keys=0,meanings=0;for(const auto& pair:rows_){keys=qMax(keys,pair.key->sizeHint().width());meanings=qMax(meanings,pair.meaning->fontMetrics().horizontalAdvance(pair.meaning->text()));}const bool stacked=keys+meanings+Graphite::space(Space::s)>contentsRect().width();for(const auto& pair:rows_){auto* line=static_cast<QBoxLayout*>(pair.widget->layout());line->setDirection(stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);line->setSpacing(stacked?1:Graphite::space(Space::s));VisualStyle::role(pair.meaning,"body");VisualStyle::role(pair.key,"technical");line->setStretch(0,stacked?0:1);line->setStretch(1,0);}setProperty("stacked",stacked);}
 };
 QLabel* fieldLabel(const QString& text,QWidget* parent){auto* label=new QLabel(text,parent);VisualStyle::role(label,"caption");return label;}
 QWidget* column(QWidget* parent,QVBoxLayout*& layout){auto* widget=new QWidget(parent);layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,0);layout->setSpacing(Graphite::space(Space::s));return widget;}
