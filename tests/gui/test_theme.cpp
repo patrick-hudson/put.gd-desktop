@@ -35,6 +35,7 @@
 #include <QRegularExpression>
 #include <QScopeGuard>
 #include <QSpinBox>
+#include <QScreen>
 #include <QScrollBar>
 #include <QSlider>
 #include <QScrollArea>
@@ -121,6 +122,23 @@ private slots:
         const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);Graphite::WindowHeader::setCustomFrameOverride(0);});Graphite::WindowHeader::setCustomFrameOverride(1);
         QVERIFY(qApp->style()->pixelMetric(QStyle::PM_ScrollBarExtent)>=12);QCOMPARE(qApp->style()->pixelMetric(QStyle::PM_SplitterWidth),8);auto enlarged=original;enlarged.setPixelSize(21);qApp->setFont(enlarged);QVERIFY(qApp->style()->pixelMetric(QStyle::PM_ScrollBarExtent)>=16);
         QWidget window;QVBoxLayout layout(&window);layout.setContentsMargins(0,0,0,0);auto* header=Graphite::WindowHeader::install(&window,&layout,nullptr,Graphite::WindowHeader::Density::Compact);header->setDocument("Review recording");auto* state=new QLabel("Not uploaded");header->addTrailing(state);window.resize(680,200);window.show();putgd::test::settle(20);auto* title=header->findChild<QLabel*>("documentName");QVERIFY(title);QVERIFY(title->width()>=title->fontMetrics().horizontalAdvance(title->text()));QEvent inactive(QEvent::WindowDeactivate);QApplication::sendEvent(&window,&inactive);QVERIFY(title->property("headerInactive").toBool());QVERIFY(header->findChild<QToolButton*>("windowClose")->isEnabled());QEvent active(QEvent::WindowActivate);QApplication::sendEvent(&window,&active);QVERIFY(!title->property("headerInactive").toBool());window.resize(1200,200);putgd::test::settle(20);QVERIFY(header->property("balancedTitle").toBool());
+    }
+    void chromeButtonsLeaveRoomAroundScaledGlyphs() {
+        const auto original = qApp->font();
+        const auto restore = qScopeGuard([&] { qApp->setFont(original); Graphite::WindowHeader::setCustomFrameOverride(0); });
+        Graphite::WindowHeader::setCustomFrameOverride(1);
+        for (const qreal scale : {1.0, 1.25, 1.5}) {
+            auto enlarged = original; enlarged.setPointSizeF(QFontInfo(original).pixelSize() * scale * 72.0 / 96.0); qApp->setFont(enlarged);
+            QWidget window; QVBoxLayout layout(&window); QMenu menu;
+            auto* header = Graphite::WindowHeader::install(&window, &layout, &menu, Graphite::WindowHeader::Density::Compact);
+            window.resize(900, 200); window.show(); putgd::test::settle(10);
+            for (const auto* name : {"applicationMenu", "windowMinimize", "windowMaximize", "windowClose"}) {
+                auto* button = header->findChild<QToolButton*>(name); QVERIFY(button);
+                QVERIFY(button->width() >= button->iconSize().width() + 8);
+                QVERIFY(button->height() >= button->iconSize().height() + 8);
+                QVERIFY(header->rect().contains(QRect(button->mapTo(header, QPoint()), button->size())));
+            }
+        }
     }
     void customHeaderOffersWindowActions() {
         Graphite::WindowHeader::setCustomFrameOverride(1);
@@ -250,7 +268,7 @@ private slots:
     }
     void sharedBlurWarningInvokesTheHostsRedactAction() {
         int calls=0;std::unique_ptr<QWidget> warning(Graphite::blurWarning([&]{++calls;}));warning->resize(300,150);warning->show();putgd::test::settle(10);
-        auto* action=warning->findChild<QToolButton*>("useRedact");auto* text=warning->findChild<QLabel*>("blurWarningText");QVERIFY(action&&text);QCOMPARE(text->text(),Graphite::blurWarningText());QVERIFY(action->property("graphiteFlush").toBool());QCOMPARE(action->mapTo(warning.get(),QPoint()).x(),text->mapTo(warning.get(),QPoint(text->contentsMargins().left(),0)).x());
+        auto* action=warning->findChild<QToolButton*>("useRedact");auto* text=warning->findChild<QLabel*>("blurWarningText");QVERIFY(action&&text);QCOMPARE(text->text(),Graphite::blurWarningText());QVERIFY(!text->text().contains(action->text()));QVERIFY(action->accessibleDescription().contains(text->text()));QVERIFY(action->accessibleDescription().contains(action->text()));QVERIFY(action->property("graphiteFlush").toBool());QCOMPARE(action->mapTo(warning.get(),QPoint()).x(),text->mapTo(warning.get(),QPoint(text->contentsMargins().left(),0)).x());
         action->setFocus(Qt::TabFocusReason);QTest::keyClick(action,Qt::Key_Space);QCOMPARE(calls,1);QVERIFY(text->geometry().bottom()<action->y());
         warning->setEnabled(false);QTest::mouseClick(action,Qt::LeftButton);QCOMPARE(calls,1);
     }
@@ -769,14 +787,15 @@ private slots:
     void compactControlsMeasureTheirPaintedTypeAndScale() {
         const auto original = QApplication::font();
         const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
-        for (const qreal scale : {1.0, 1.5}) {
-            auto enlarged = original; enlarged.setPixelSize(qRound(QFontInfo(original).pixelSize() * scale)); QApplication::setFont(enlarged);
+        for (const qreal scale : {1.0, 1.25, 1.5}) {
+            auto enlarged = original; enlarged.setPointSizeF(QFontInfo(original).pixelSize() * scale * 72.0 / 96.0); QApplication::setFont(enlarged);
             QPushButton push("Start here");
             QToolButton tool; tool.setText("End here"); tool.setToolButtonStyle(Qt::ToolButtonTextOnly);
             QComboBox combo; combo.addItem("Compatible MP4");
             for (auto* widget : {static_cast<QWidget*>(&push), static_cast<QWidget*>(&tool), static_cast<QWidget*>(&combo)}) {
                 widget->ensurePolished();
                 const int standard = widget->sizeHint().height();
+                QVERIFY(standard >= Graphite::scaled(Graphite::Metric::control));
                 widget->setProperty("graphiteDensity", "compact");
                 QCOMPARE(widget->font().pixelSize(), Graphite::scaled(13));
                 QCOMPARE(widget->font().weight(), QFont::Normal);
@@ -791,6 +810,50 @@ private slots:
             combo.setFrame(false);
             combo.setProperty("graphiteDensity", "compact");
             QCOMPARE(combo.sizeHint().height(), Graphite::scaled(Graphite::Metric::controlCompact));
+        }
+    }
+    void popupRowsKeepPaddingAroundScaledText() {
+        const auto original = qApp->font();
+        const auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        int previousCombo = 0, previousMenu = 0;
+        for (const qreal scale : {1.0, 1.25, 1.5}) {
+            auto enlarged = original; enlarged.setPointSizeF(QFontInfo(original).pixelSize() * scale * 72.0 / 96.0); qApp->setFont(enlarged);
+            QComboBox combo; combo.addItem("Compatible MP4"); combo.show(); combo.showPopup(); putgd::test::settle(10);
+            const int comboRow = combo.view()->sizeHintForRow(0);
+            QVERIFY(comboRow >= combo.view()->fontMetrics().height() + Graphite::scaled(12));
+            QVERIFY(comboRow > previousCombo); previousCombo = comboRow;
+            combo.hidePopup();
+            QMenu menu; auto* action = menu.addAction("Save a copy…"); menu.popup(QPoint(0, 0)); putgd::test::settle(10);
+            const int menuRow = menu.actionGeometry(action).height();
+            QVERIFY(menuRow >= menu.fontMetrics().height() + Graphite::scaled(12));
+            QVERIFY(menuRow > previousMenu); previousMenu = menuRow;
+            menu.close();
+        }
+    }
+    void stepperAndComboArrowTargetsGrowWithText() {
+        const auto original = qApp->font();
+        const auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        int previousStep = 0, previousArrow = 0;
+        for (const qreal scale : {1.0, 1.25, 1.5}) {
+            auto enlarged = original; enlarged.setPointSizeF(QFontInfo(original).pixelSize() * scale * 72.0 / 96.0); qApp->setFont(enlarged);
+            QSpinBox spin; spin.setRange(0, 100); spin.setValue(42); spin.ensurePolished(); spin.resize(spin.sizeHint()); spin.show();
+            QComboBox combo; combo.addItem("Compatible MP4"); combo.ensurePolished(); combo.resize(combo.sizeHint());
+            for (const auto direction : {Qt::LeftToRight, Qt::RightToLeft}) {
+                spin.setLayoutDirection(direction); combo.setLayoutDirection(direction);
+                QStyleOptionSpinBox option; option.initFrom(&spin); option.frame = true; option.buttonSymbols = QAbstractSpinBox::UpDownArrows;
+                const auto up = spin.style()->subControlRect(QStyle::CC_SpinBox, &option, QStyle::SC_SpinBoxUp, &spin);
+                const auto down = spin.style()->subControlRect(QStyle::CC_SpinBox, &option, QStyle::SC_SpinBoxDown, &spin);
+                const auto edit = spin.style()->subControlRect(QStyle::CC_SpinBox, &option, QStyle::SC_SpinBoxEditField, &spin);
+                QVERIFY(up.width() > previousStep); QCOMPARE(up.width(), down.width());
+                QVERIFY(spin.rect().contains(up)); QVERIFY(spin.rect().contains(down));
+                QVERIFY(!edit.intersects(up)); QVERIFY(!edit.intersects(down)); QVERIFY(!up.intersects(down));
+                QTest::mouseClick(&spin, Qt::LeftButton, Qt::NoModifier, up.center()); QCOMPARE(spin.value(), 43);
+                QTest::mouseClick(&spin, Qt::LeftButton, Qt::NoModifier, down.center()); QCOMPARE(spin.value(), 42);
+                QStyleOptionComboBox choice; choice.initFrom(&combo); choice.frame = true;
+                const auto arrow = combo.style()->subControlRect(QStyle::CC_ComboBox, &choice, QStyle::SC_ComboBoxArrow, &combo);
+                QVERIFY(arrow.width() > previousArrow); QVERIFY(combo.rect().contains(arrow));
+            }
+            previousStep = Graphite::scaled(32); previousArrow = Graphite::scaled(Graphite::Metric::splitZone) + 2;
         }
     }
     void actionWeightsFollowTheirPurpose() {
@@ -862,6 +925,8 @@ private slots:
             QCOMPARE(image.pixelColor(100,0),c.leadOutline);
             QCOMPARE(lead.font().weight(),QFont::Medium);
             QVERIFY(Theme::contrast(c.text,c.lead)>=4.5);
+            QVERIFY(Theme::contrast(c.leadOutline,c.bg)>=3.0);
+            QVERIFY(c.lead != c.surfaceRaised);
             QVERIFY(c.lead!=c.text);
         }
     }
@@ -1005,6 +1070,23 @@ private slots:
             }
             QVERIFY(changed > 0);
             QVERIFY(right <= end + 6 + Graphite::scaled(14));
+        }
+    }
+    void revealedTextWidthFollowsItsNaturalTextInsteadOfItsOwner() {
+        const auto original = qApp->font();
+        const auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        for (const auto& text : {QString("Private upload"), QString("Capture output: Shared link · Production screenshots for customer support + local copy · 2 action exceptions")}) {
+            int previous = 0;
+            for (const qreal scale : {1.0, 1.25, 1.5}) {
+                auto enlarged = original; enlarged.setPointSizeF(QFontInfo(original).pixelSize() * scale * 72.0 / 96.0); qApp->setFont(enlarged);
+                Graphite::ElidedLabel label; label.setFont(Graphite::font()); label.setText(text); label.setRevealable(true);
+                label.resize(scale == 1.0 ? 700 : 180, 60); label.show(); label.reveal();
+                auto* popup = label.fullTextPopup(); QVERIFY(popup && popup->isVisible());
+                const int maximum = std::min(Graphite::scaled(560), popup->screen()->availableGeometry().width() - 16);
+                QVERIFY(popup->width() >= std::min(Graphite::scaled(360), maximum));
+                QVERIFY(popup->width() <= maximum); QVERIFY(popup->width() >= previous);
+                previous = popup->width(); popup->close();
+            }
         }
     }
     // A revealable summary is a tab stop whose Enter shows its full plain text;
