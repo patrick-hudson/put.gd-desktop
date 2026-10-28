@@ -1025,6 +1025,16 @@ QCOMPARE(button->property("captureUnavailable").toBool(),button->property("captu
  }
  // Below the width both panes need at this text size, the inspector opens
  // over the list on request and returns to it, by keyboard and ui.history.
+ void historyTitlesPreserveBeginningsOrFileExtensions(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);HistoryWindow window(fixture.session);auto* list=window.findChild<QListView*>("historyList");QStandardItemModel model(1,1);const auto index=model.index(0,0);
+  for(const bool gallery:{false,true}){window.findChild<QToolButton*>(gallery?"historyGridMode":"historyListMode")->click();list->viewport()->resize(640,400);QStyleOptionViewItem option;option.initFrom(list);option.state=QStyle::State_Enabled;option.rect=QRect(QPoint(),list->itemDelegate()->sizeHint(option,index));
+   auto render=[&](const QString& name){model.setData(index,name);QImage shot(option.rect.size(),QImage::Format_ARGB32_Premultiplied);shot.fill(Qt::transparent);QPainter painter(&shot);list->itemDelegate()->paint(&painter,option,index);return shot;};
+   const QString beginning="Window — Design review "+QString(120,'W');
+   QCOMPARE(render(beginning+" first ending"),render(beginning+" second ending"));
+   QVERIFY(render(beginning+".png")!=render(beginning+".jpg"));
+   QVERIFY(render("Screenshot "+beginning)!=render("Window "+beginning));
+  }
+ }
  void historyPageHeadingStartsAtSharedInset(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);MainWindow window(fixture.session);window.show();auto* page=window.history();auto* rail=window.findChild<QWidget*>("historySidebar");auto* heading=window.findChild<QLabel*>("historyHeading");QVERIFY(rail);QVERIFY(heading);

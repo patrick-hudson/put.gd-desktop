@@ -75,6 +75,7 @@ namespace {
 using Graphite::Space;
 using Graphite::space;
 QString originalDestination(const QJsonObject& receipt,const QJsonArray& profiles);
+Qt::TextElideMode titleElision(const QString& name){return QFileInfo(name).suffix().isEmpty()?Qt::ElideRight:Qt::ElideMiddle;}
 // The recorded link's confirmed expiry (#253): upcoming while the link works,
 // or passed once the service or the clock says it has.
 QString linkExpiry(const QJsonObject& detail){
@@ -182,7 +183,7 @@ public:
  explicit HistorySummary(QWidget* parent):QWidget(parent){grid_=new QGridLayout(this);grid_->setContentsMargins(0,0,0,0);grid_->setHorizontalSpacing(space(Space::m));grid_->setVerticalSpacing(space(Space::s));setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);}
  void setFields(const QList<std::pair<QString,QString>>& fields){
   while(auto* item=grid_->takeAt(0)){delete item->widget();delete item;}labels_.clear();values_.clear();QStringList text;
-  for(const auto& [key,value]:fields){auto* label=new QLabel(key,this);VisualStyle::role(label,"inspectorKey");QLabel* content;if(key=="File"){auto* file=new Graphite::ElidedLabel(this);file->setElideMode(Qt::ElideMiddle);file->setText(value);file->setObjectName("historyFileValue");content=file;}else content=new QLabel(value,this);VisualStyle::role(content,"body");content->setAlignment(Qt::AlignLeft|Qt::AlignTop);content->setTextFormat(Qt::PlainText);content->setWordWrap(key!="File");content->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);content->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);content->setMinimumWidth(0);content->setAccessibleName(key+": "+value);content->setToolTip(value);labels_.append(label);values_.append(content);text.append(key+": "+value);}
+  for(const auto& [key,value]:fields){auto* label=new QLabel(key,this);VisualStyle::role(label,"inspectorKey");QLabel* content;if(key=="File"){auto* file=new Graphite::ElidedLabel(this);file->setElideMode(titleElision(value));file->setText(value);file->setObjectName("historyFileValue");content=file;}else content=new QLabel(value,this);VisualStyle::role(content,"body");content->setAlignment(Qt::AlignLeft|Qt::AlignTop);content->setTextFormat(Qt::PlainText);content->setWordWrap(key!="File");content->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);content->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);content->setMinimumWidth(0);content->setAccessibleName(key+": "+value);content->setToolTip(value);labels_.append(label);values_.append(content);text.append(key+": "+value);}
   setProperty("text",text.join("\n"));setAccessibleDescription(text.join("\n"));arrange();
  }
 protected:void resizeEvent(QResizeEvent* event)override{QWidget::resizeEvent(event);arrange();}
@@ -408,7 +409,7 @@ public:
   else if(grid()||below)itemWidth=body.width();
   const auto titleFont=Graphite::font(Graphite::Type::body,true),metaFont=Graphite::font(Graphite::Type::metadata);
   const int lineTop=grid()?body.top():rowTop+rowTextInset();
-  Graphite::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,QFontMetrics(titleFont).height()),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideMiddle);
+  Graphite::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,QFontMetrics(titleFont).height()),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,titleElision(i.data().toString()));
   const int metadataWidth=!grid()&&failed?body.width():itemWidth;
   const int metadataTop=lineTop+QFontMetrics(titleFont).height()+6;
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
@@ -419,7 +420,7 @@ public:
    else Graphite::paintText(*p,metadata,HistoryModel::failureLabel(record)+" · See Details",t.danger,metaFont,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideNone);
   }else{QTextDocument document;historyMetadata(document,i,metadataWidth,false);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,2*metadata.height()));document.drawContents(p);p->restore();}
   if(!grid()){
-   const QFontMetricsF titleMetrics(titleFont);const auto shown=titleMetrics.elidedText(i.data().toString(),Qt::ElideMiddle,itemWidth);const qreal baseline=Graphite::opticalBaseline(titleMetrics,shown,lineTop+QFontMetrics(titleFont).height()/2.0);
+   const QFontMetricsF titleMetrics(titleFont);const auto shown=titleMetrics.elidedText(i.data().toString(),titleElision(i.data().toString()),itemWidth);const qreal baseline=Graphite::opticalBaseline(titleMetrics,shown,lineTop+QFontMetrics(titleFont).height()/2.0);
    if(!failed&&!below&&!columns.output.isEmpty())paintHistoryColumn(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,QFontMetrics(titleFont).height()),i.data(HistoryModel::OutputRole).toString(),t.textSecondary,baseline);
    if(!failed&&!below&&!actionsShown&&!columns.created.isEmpty()){const auto text=i.data(HistoryModel::CreatedRole).toString();const QFontMetricsF metrics(metaFont);paintHistoryColumn(*p,QRectF(columns.created.right()+1-metrics.horizontalAdvance(text),lineTop,metrics.horizontalAdvance(text),QFontMetrics(titleFont).height()),text,t.textMuted,baseline);}
   }
@@ -892,7 +893,7 @@ bool HistoryWindow::expandPreview(){
  const auto* source=static_cast<HistoryPreview*>(preview_);if(source->image.isNull())return false;
  if(expandedPreview_&&expandedPreview_->isVisible()){expandedPreview_->raise();expandedPreview_->activateWindow();return true;}
  auto* dialog=new QDialog(this);expandedPreview_=dialog;dialog->setObjectName("historyExpandedPreview");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->setWindowTitle("Preview — "+currentDetail_["name"].toString());dialog->setWindowModality(Qt::WindowModal);RedesignTheme::apply(*dialog);
- auto* box=new QVBoxLayout(dialog);box->setContentsMargins(space(Space::l),space(Space::l),space(Space::l),space(Space::l));box->setSpacing(space(Space::m));auto* title=new Graphite::ElidedLabel(dialog);title->setText(currentDetail_["name"].toString());VisualStyle::role(title,"sectionTitle");box->addWidget(title);auto* picture=new HistoryPreview(dialog);picture->setObjectName("historyExpandedImage");picture->setAccessibleName("Expanded preview of "+currentDetail_["name"].toString());picture->setAlignment(Qt::AlignCenter);picture->setMinimumSize(120,120);picture->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Ignored);VisualStyle::role(picture,"well");picture->setImage(source->image,source->recording);box->addWidget(picture,1);
+ auto* box=new QVBoxLayout(dialog);box->setContentsMargins(space(Space::l),space(Space::l),space(Space::l),space(Space::l));box->setSpacing(space(Space::m));auto* title=new Graphite::ElidedLabel(dialog);title->setText(currentDetail_["name"].toString());title->setElideMode(titleElision(title->text()));VisualStyle::role(title,"sectionTitle");box->addWidget(title);auto* picture=new HistoryPreview(dialog);picture->setObjectName("historyExpandedImage");picture->setAccessibleName("Expanded preview of "+currentDetail_["name"].toString());picture->setAlignment(Qt::AlignCenter);picture->setMinimumSize(120,120);picture->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Ignored);VisualStyle::role(picture,"well");picture->setImage(source->image,source->recording);box->addWidget(picture,1);
  auto* close=new QPushButton("Close preview",dialog);close->setObjectName("closeHistoryPreview");close->setDefault(true);box->addWidget(close,0,Qt::AlignRight);connect(close,&QPushButton::clicked,dialog,&QDialog::accept);const QPointer<QWidget> returnFocus=preview_;connect(dialog,&QDialog::finished,this,[this,returnFocus]{QTimer::singleShot(0,this,[this,returnFocus]{if(!isVisible())return;auto* target=returnFocus&&returnFocus->isVisible()?returnFocus.data():preview_;if(target->isVisible()){window()->activateWindow();target->setFocus(Qt::OtherFocusReason);}});emit viewStateChanged();});
  const auto available=screen()?screen()->availableGeometry().size():QSize(1000,700);dialog->resize(QSize(900,640).boundedTo(available-QSize(48,48)));dialog->show();close->setFocus(Qt::OtherFocusReason);emit viewStateChanged();return true;
 }
