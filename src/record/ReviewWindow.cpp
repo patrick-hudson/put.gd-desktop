@@ -183,7 +183,8 @@ protected:
         QPainter painter(this);
         style()->drawPrimitive(QStyle::PE_PanelButtonTool, &option, &painter, this);
         const auto ink = isEnabled() ? Theme::current().textSecondary : Theme::current().textDisabled;
-        const auto textRect = rect().adjusted(12, 0, -Graphite::Metric::splitZone - 12, 0);
+        const bool flush = property("graphiteFlush").toBool();
+        const auto textRect = rect().adjusted(flush ? 0 : 12, 0, -Graphite::Metric::splitZone - (flush ? 24 : 12), 0);
         const auto display = property("displayText").isValid() ? property("displayText").toString() : text();
         painter.setFont(font());
         painter.setPen(ink);
@@ -191,6 +192,31 @@ protected:
         painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | wrap, display);
         Graphite::paintChevron(painter, QPointF(width() - Graphite::Metric::splitZone / 2.0 - 4, height() / 2.0), 8, Qt::DownArrow, ink);
     }
+};
+// One boundary around each timing pair; the buttons retain their own focus and actions.
+class TimingPair final : public QWidget {
+public:
+    TimingPair(QToolButton* start, QToolButton* end, QWidget* parent) : QWidget(parent), start_(start) {
+        auto* row = new QHBoxLayout(this);
+        row->setContentsMargins(1, 0, reviewSpace(Graphite::Space::xs) - 2, 0);
+        row->setSpacing(1);
+        for (auto* button : {start, end}) {
+            VisualStyle::role(button, "quiet");
+            row->addWidget(button);
+        }
+        setFixedHeight(start->height());
+    }
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(Graphite::controlStroke());
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Graphite::scaled(5), Graphite::scaled(5));
+        painter.fillRect(QRect(start_->geometry().right() + 1, 1, 1, height() - 2), Graphite::controlStroke());
+    }
+private:
+    QToolButton* start_;
 };
 // The mask row: its gutter label, then groups of controls that wrap whole,
 // under the first group, when the window is too narrow or the text too large
@@ -1091,7 +1117,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     };
     // A row's name in the shared gutter, beside its controls and level with the lanes' names.
     const int gutter = ReviewTimeline::gutterWidth();
-    auto groupLabel = [this, gutter](const QString& text, const QString& name) { auto* label = new QLabel(text, this); label->setObjectName(name); VisualStyle::role(label, "meta"); label->setFixedWidth(gutter - 8); return label; };
+    auto groupLabel = [this, gutter](const QString& text, const QString& name) { auto* label = new QLabel(text, this); label->setObjectName(name); VisualStyle::role(label, "meta"); label->setContentsMargins(reviewSpace(Graphite::Space::xs), 0, 0, 0); label->setFixedWidth(gutter - 8); return label; };
     // Compact groups keep mask timing and its interval on the same line.
     auto group = [this](const QString& name, std::initializer_list<QWidget*> widgets) {
         auto* box = new QWidget(this);
@@ -1112,6 +1138,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     trimStart_ = action("Start here", "Set trim start at playhead", "Keep from the playhead: set the trim start here (I)");
     trimEnd_ = action("End here", "Set trim end at playhead", "Keep up to the playhead: set the trim end here (O)");
     resetTrim_ = action("Reset", "Reset trim", "Keep the whole recording");
+    VisualStyle::role(resetTrim_, "quiet");
     retained_ = new QLabel(this);
     retained_->setObjectName("muted");
     retained_->setAccessibleName("Kept interval");
@@ -1119,7 +1146,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     trimGroup_ = trimFlow;
     trimGroup_->setObjectName("trimControls");
     trimFlow->setGutter(groupLabel("Trim", "trimGroup"), gutter);
-    trimFlow->addGroup(group("trimTimingControls", {trimStart_, trimEnd_, resetTrim_}));
+    auto* trimPair = new TimingPair(trimStart_, trimEnd_, this);
+    trimPair->setObjectName("trimTimingPair");
+    trimFlow->addGroup(group("trimTimingControls", {trimPair, resetTrim_}));
     VisualStyle::role(retained_, "meta");
     retained_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     trimFlow->addGroup(retained_);
@@ -1195,7 +1224,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     maskGroup_ = flow;
     maskTools_ = group("maskKinds", {masks_, maskOptions_});
     timeline_->setLaneHeader(addMask_);
-    maskTiming_ = group("maskTimingControls", {maskStart_, maskEnd_});
+    maskTiming_ = new TimingPair(maskStart_, maskEnd_, this);
+    maskTiming_->setObjectName("maskTimingControls");
     for (auto* w : std::initializer_list<QWidget*>{maskTools_, maskTiming_, static_cast<MaskInterval*>(maskActive_)->warningButton(), maskActive_}) flow->addGroup(w);
     flow->setGutter(groupLabel("Mask", "maskGroup"), gutter);
     root->addWidget(flow);
@@ -1316,6 +1346,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     actionsRow->setVerticalSpacing(reviewSpace(Graphite::Space::xs));
     destinationMenu_ = new DestinationMenu(actions);
     destinationMenu_->setObjectName("uploadDestinationMenu");
+    destinationMenu_->setProperty("graphiteFlush", true);
     destinationMenu_->setAutoRaise(true);
     destinationMenu_->setPopupMode(QToolButton::InstantPopup);
     destinationMenu_->setToolButtonStyle(Qt::ToolButtonTextOnly);

@@ -249,7 +249,7 @@ private slots:
         auto* timing = window.findChild<QWidget*>("maskTimingControls");
         QVERIFY(masks->isAncestorOf(timing) && masks->isAncestorOf(interval)); QVERIFY(!trim->isAncestorOf(interval) && !trim->isAncestorOf(timing));
         QVERIFY(trim->isVisible());
-        // Timing actions keep their words on compact secondary buttons in both rows.
+        // Timing pairs retain their words, height and independent actions in both rows.
         const QList<std::tuple<QWidget*, QString, QString>> actions{{trim, "Set trim start at playhead", "Start here"}, {trim, "Set trim end at playhead", "End here"}, {trim, "Reset trim", "Reset"}, {timing, "Set mask start at playhead", "Start here"}, {timing, "Set mask end at playhead", "End here"}};
         for (const auto& [row, name, text] : actions) {
             QToolButton* found = nullptr;
@@ -260,6 +260,15 @@ private slots:
             QCOMPARE(found->property("graphiteDensity").toString(), QString("compact"));
             QVERIFY(found->width() >= QFontMetricsF(found->font()).horizontalAdvance(text) + 24);
         }
+        for (auto* pair : {window.findChild<QWidget*>("trimTimingPair"), timing}) {
+            QVERIFY(pair);QCOMPARE(pair->layout()->spacing(), 1);
+            const auto buttons = pair->findChildren<QToolButton*>(QString{}, Qt::FindDirectChildrenOnly);
+            QCOMPARE(buttons.size(), 2);QCOMPARE(buttons[0]->geometry().right() + 2, buttons[1]->geometry().left());
+            for (auto* button : buttons) QCOMPARE(button->property("visualRole").toString(), QString("quiet"));
+        }
+        QCOMPARE(buttonNamed(window, "Reset trim")->property("visualRole").toString(), QString("quiet"));
+        for (const auto& name : {"trimGroup", "maskGroup"}) QCOMPARE(window.findChild<QLabel*>(name)->mapTo(&window, window.findChild<QLabel*>(name)->contentsRect().topLeft()).x(), 16);
+        QVERIFY(window.findChild<QToolButton*>("uploadDestinationMenu")->property("graphiteFlush").toBool());
         QVERIFY(!window.findChild<QLabel*>("maskTimingGroup"));
         QVERIFY(window.findChild<QLabel*>("muted")->text().startsWith("Keep 0:02–0:29 · 27 s"));
         auto* add = window.findChild<QToolButton*>("addMask");
