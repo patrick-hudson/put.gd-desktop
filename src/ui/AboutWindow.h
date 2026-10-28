@@ -1,14 +1,13 @@
 #pragma once
 #include <QJsonObject>
-#include <QMessageBox>
+#include <QDialog>
 
 namespace putgd {
-class AboutWindow final : public QMessageBox {
+class AboutWindow final : public QDialog {
 public:
  explicit AboutWindow(const QJsonObject& residentBuild, QWidget* parent = nullptr);
-protected:
- void showEvent(QShowEvent*)override;
+ QString detailedText()const{return details_;}
 private:
- void updateDetailsButton();
+ QString details_;
 };
 }

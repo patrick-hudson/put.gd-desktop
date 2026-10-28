@@ -2,25 +2,19 @@
 #include "VisualStyle.h"
 #include "Graphite.h"
 #include "platform/HostOpen.h"
-#include <QGridLayout>
 #include <QApplication>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QDialogButtonBox>
 #include <QJsonDocument>
 #include <QPushButton>
-#include <QStyle>
-#include <QStyleOptionButton>
 #include <QTextEdit>
 #include <QTextDocument>
 #include <QTextOption>
 #include <QResizeEvent>
-#include <QFormLayout>
-#include <QScrollArea>
-#include <QScrollBar>
 #include <QClipboard>
-#include <QScreen>
+#include <QTimer>
+#include <QPointer>
 #include <QtMath>
 
 namespace putgd {
@@ -31,69 +25,27 @@ public:
  QSize sizeHint()const override{return {fontMetrics().horizontalAdvance(toPlainText()),fontMetrics().height()};}
  QSize minimumSizeHint()const override{return {0,fontMetrics().height()};}
 protected:
- void resizeEvent(QResizeEvent* event)override{QTextEdit::resizeEvent(event);document()->setTextWidth(viewport()->width());const int height=qCeil(document()->size().height())+2*frameWidth();if(minimumHeight()!=height){setFixedHeight(height);updateGeometry();}}
-};
-class BuildRow final:public QWidget {
-public:
- BuildRow(const QString& name,BuildValue* value){auto* line=new QBoxLayout(QBoxLayout::LeftToRight,this);line->setContentsMargins(0,0,0,0);line->setSpacing(Graphite::space(Graphite::Space::s));label_=Graphite::label(name,"secondary");line->addWidget(label_,0,Qt::AlignTop);line->addWidget(value,1);value_=value;}
- QSize minimumSizeHint()const override{return {0,QWidget::minimumSizeHint().height()};}
-protected:
- void resizeEvent(QResizeEvent* event)override{QWidget::resizeEvent(event);const bool stacked=label_->sizeHint().width()+Graphite::space(Graphite::Space::l)+value_->sizeHint().width()>width();static_cast<QBoxLayout*>(layout())->setDirection(stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);}
-private:QLabel* label_;BuildValue* value_;
+ void resizeEvent(QResizeEvent* event)override{QTextEdit::resizeEvent(event);document()->setTextWidth(viewport()->width());const int height=qCeil(document()->size().height())+2*frameWidth();if(minimumHeight()!=height){setFixedHeight(height);updateGeometry();QTimer::singleShot(0,window(),[owner=QPointer<QWidget>(window())]{if(owner)owner->adjustSize();});}}
 };
 }
-AboutWindow::AboutWindow(const QJsonObject& residentBuild, QWidget* parent)
- : QMessageBox(QMessageBox::Information, "About put.gd",
-               QString("put.gd"),
-               QMessageBox::Close, parent) {
- VisualStyle::apply(*qApp);
- setWindowModality(Qt::NonModal);
- setTextFormat(Qt::PlainText);
- setInformativeText("Screen capture and file sharing");
- setDetailedText(QString::fromUtf8(QJsonDocument(residentBuild).toJson(QJsonDocument::Indented)));
- if(auto* raw=findChild<QTextEdit*>()){
-  auto* host=raw->parentWidget();auto* box=qobject_cast<QVBoxLayout*>(host->layout());raw->hide();
-  auto* scroll=new QScrollArea(host);scroll->setObjectName("aboutBuildDetails");scroll->setFrameShape(QFrame::NoFrame);scroll->setWidgetResizable(true);scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);auto* body=new QWidget;auto* column=new QVBoxLayout(body);const int inset=Graphite::space(Graphite::Space::s);column->setContentsMargins(inset,inset,inset,inset);column->setSpacing(inset);const auto add=[&](const QString& name,const QString& value,const QString& object){auto* text=new BuildValue(value);text->setObjectName(object);VisualStyle::role(text,"mono");column->addWidget(new BuildRow(name,text));};
-  add("Version",residentBuild["version"].toString(),"buildVersion");add("Commit",residentBuild["gitCommit"].toString(residentBuild["commit"].toString("Unknown")),"buildCommit");add("Build state",residentBuild["dirty"].isBool()?(residentBuild["dirty"].toBool()?"Modified source tree":"Clean source tree"):"Unknown","buildState");
-  auto* copy=new QPushButton("Copy build details");copy->setObjectName("copyBuildDetails");VisualStyle::role(copy,"quiet");column->addWidget(copy,0,Qt::AlignLeft);connect(copy,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(detailedText());});scroll->setWidget(body);scroll->setMinimumWidth(0);scroll->setFixedHeight(qMin(body->sizeHint().height()+2*scroll->frameWidth(),screen()->availableGeometry().height()/2));if(box)box->addWidget(scroll);
- }
- // The button box runs QMessageBox's disclosure handler before ours, even
- // when Qt 6.4 reconnects the button itself on show.
- for(auto* button:findChildren<QPushButton*>())if(standardButton(button)==QMessageBox::NoButton&&findChild<QDialogButtonBox*>()->buttons().contains(button)){button->setObjectName("buildDetails");VisualStyle::role(button,"quiet");button->setText("Build details");connect(findChild<QDialogButtonBox*>(),&QDialogButtonBox::clicked,this,[this,button](QAbstractButton* clicked){if(clicked!=button)return;updateDetailsButton();});}
- // A small branded dialog, with the connected resident’s build on request.
- setIconPixmap(VisualStyle::icon("brand").pixmap(Graphite::scaled(64),Graphite::scaled(64)));
- auto* website=new QPushButton(VisualStyle::icon("open-external"),"put.gd website",this);website->setObjectName("putgdWebsite");VisualStyle::role(website,"link");website->setProperty("graphiteFlush",true);
- auto* browser=new Graphite::BrowserFeedback(this);browser->setObjectName("aboutWebsiteFeedback");
- setMinimumWidth(Graphite::scaled(380));
- auto* version=new QLabel(this);version->setTextFormat(Qt::PlainText);version->setWordWrap(false);version->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);version->setObjectName("aboutVersion");version->setText(residentBuild["version"].toString().section('-',0,0).section('+',0,0));version->setToolTip(residentBuild["version"].toString());VisualStyle::role(version,"binding");version->setMinimumWidth(Graphite::scaled(240));version->setMaximumWidth(Graphite::scaled(320));
- if(auto* grid=qobject_cast<QGridLayout*>(layout())){
-  auto* message=findChild<QLabel*>("qt_msgbox_label");auto* informative=findChild<QLabel*>("qt_msgbox_informativelabel");message->setObjectName("aboutMessageText");informative->setObjectName("aboutMessageInfo");auto* icon=findChild<QLabel*>("qt_msgboxex_icon_label");auto* buttons=findChild<QDialogButtonBox*>();auto* details=findChild<QTextEdit*>();QLayoutItem* detailsItem=nullptr;
-  // Keep Qt's build-details disclosure intact while replacing its message grid.
-  while(auto* item=grid->takeAt(0)){if(details&&((item->layout()&&item->layout()->indexOf(details)>=0)||(item->widget()&&(item->widget()==details||item->widget()->isAncestorOf(details)))))detailsItem=item;else delete item;}
-  for(int row=0;row<grid->rowCount();++row){grid->setRowMinimumHeight(row,0);grid->setRowStretch(row,0);}for(int column=0;column<grid->columnCount();++column){grid->setColumnMinimumWidth(column,0);grid->setColumnStretch(column,0);}
-  grid->setContentsMargins(Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl));grid->setSpacing(0);
-  auto* content=new QWidget(this);content->setObjectName("aboutContent");content->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Minimum);content->setMinimumWidth(Graphite::scaled(380)-2*Graphite::space(Graphite::Space::xl));auto* row=new QHBoxLayout(content);row->setContentsMargins(0,0,0,0);row->setSpacing(Graphite::space(Graphite::Space::l));if(icon)row->addWidget(icon,0,Qt::AlignTop);
-  // Qt sizes its private text labels at the dialog font; the branded heading
-  // needs its own label and line box. Keep the message properties intact.
-  message->hide();informative->hide();auto* name=new QLabel(text(),content);name->setObjectName("qt_msgbox_label");VisualStyle::role(name,"title");auto* info=new QLabel(informativeText(),content);info->setObjectName("qt_msgbox_informativelabel");info->setWordWrap(true);VisualStyle::role(info,"secondary");
-  auto* column=new QVBoxLayout;column->setContentsMargins(0,0,0,0);column->setSpacing(Graphite::space(Graphite::Space::s));row->addLayout(column,1);name->setAlignment(Qt::AlignLeft|Qt::AlignTop);column->addWidget(name);info->setContentsMargins(0,0,0,0);column->addWidget(info);column->addWidget(version);column->addWidget(website,0,Qt::AlignLeft);column->addWidget(browser);
-  grid->addWidget(content,0,0);grid->setRowMinimumHeight(1,Graphite::space(Graphite::Space::xl));buttons->setCenterButtons(false);grid->addWidget(buttons,2,0,Qt::AlignRight);if(detailsItem)grid->addItem(detailsItem,3,0);
- }
- VisualStyle::role(button(QMessageBox::Close),"lead");setDefaultButton(QMessageBox::Close);
- connect(website,&QPushButton::clicked,this,[browser]{const QUrl url("https://put.gd");host::openLink(url,browser->opening(url));});
- updateDetailsButton();
-}
-void AboutWindow::showEvent(QShowEvent* event){
- QMessageBox::showEvent(event);
- // QMessageBox restores its generic disclosure label when shown.
- updateDetailsButton();
-}
-void AboutWindow::updateDetailsButton(){
- if(auto* button=findChild<QPushButton*>("buildDetails")){
-  auto* details=findChild<QTextEdit*>();if(details)details->hide();auto* rows=findChild<QScrollArea*>("aboutBuildDetails");button->setText(rows&&rows->isVisibleTo(this)?"Hide build details":"Build details");
-  // Qt's private disclosure button measures only its built-in labels.
-  QStyleOptionButton option;option.initFrom(button);option.text="Hide build details";
-  button->setMinimumWidth(button->style()->sizeFromContents(QStyle::CT_PushButton,&option,button->fontMetrics().size(Qt::TextShowMnemonic,option.text),button).width());
- }
+AboutWindow::AboutWindow(const QJsonObject& residentBuild,QWidget* parent):QDialog(parent),details_(QString::fromUtf8(QJsonDocument(residentBuild).toJson(QJsonDocument::Indented))){
+ VisualStyle::apply(*qApp);setWindowTitle("About put.gd");setWindowIcon(VisualStyle::icon("brand"));setWindowModality(Qt::NonModal);setFixedWidth(Graphite::scaled(440));
+ auto* root=new QVBoxLayout(this);const int margin=Graphite::space(Graphite::Space::xl);root->setContentsMargins(margin,margin,margin,margin);root->setSpacing(margin);
+ auto* content=new QWidget(this);content->setObjectName("aboutContent");auto* row=new QHBoxLayout(content);row->setContentsMargins(0,0,0,0);row->setSpacing(Graphite::space(Graphite::Space::l));
+ auto* icon=new QLabel(content);icon->setObjectName("qt_msgboxex_icon_label");const int side=Graphite::scaled(64);icon->setFixedSize(side,side);icon->setPixmap(VisualStyle::icon("brand").pixmap(side,side));row->addWidget(icon,0,Qt::AlignTop);
+ auto* identity=new QWidget(content);identity->setObjectName("aboutIdentity");auto* column=new QVBoxLayout(identity);column->setContentsMargins(0,0,0,0);column->setSpacing(Graphite::space(Graphite::Space::s));row->addWidget(identity,1);
+ auto* name=Graphite::label("put.gd","title",identity);name->setObjectName("qt_msgbox_label");column->addWidget(name);
+ auto* info=Graphite::label("Screen capture and file sharing","secondary",identity);info->setObjectName("qt_msgbox_informativelabel");info->setWordWrap(true);column->addWidget(info);
+ auto* version=Graphite::label(residentBuild["version"].toString().section('-',0,0).section('+',0,0),"binding",identity);version->setObjectName("aboutVersion");version->setToolTip(residentBuild["version"].toString());version->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);column->addWidget(version);
+ auto* website=new QPushButton(VisualStyle::icon("open-external"),"put.gd website",identity);website->setObjectName("putgdWebsite");VisualStyle::role(website,"link");website->setProperty("graphiteFlush",true);column->addWidget(website,0,Qt::AlignLeft);
+ auto* browser=new Graphite::BrowserFeedback(identity);browser->setObjectName("aboutWebsiteFeedback");column->addWidget(browser);connect(website,&QPushButton::clicked,this,[browser]{const QUrl url("https://put.gd");host::openLink(url,browser->opening(url));});
+ auto* details=new Graphite::Surface("surface",identity);details->setObjectName("aboutBuildDetails");auto* facts=new QVBoxLayout(details);const int inset=Graphite::space(Graphite::Space::m);facts->setContentsMargins(inset,inset,inset,inset);facts->setSpacing(Graphite::space(Graphite::Space::s));
+ const auto add=[&](const QString& label,const QString& value,const QString& object){auto* caption=Graphite::label(label,"meta",details);facts->addWidget(caption);auto* text=new BuildValue(value);text->setObjectName(object);VisualStyle::role(text,"mono");facts->addWidget(text);};
+ add("Version",residentBuild["version"].toString(),"buildVersion");add("Commit",residentBuild["gitCommit"].toString(residentBuild["commit"].toString("Unknown")),"buildCommit");add("Build state",residentBuild["dirty"].isBool()?(residentBuild["dirty"].toBool()?"Modified source tree":"Clean source tree"):"Unknown","buildState");column->addWidget(details);details->hide();root->addWidget(content);
+ auto* buttons=new QWidget(this);buttons->setObjectName("aboutActions");auto* actions=new QHBoxLayout(buttons);actions->setContentsMargins(0,0,0,0);actions->setSpacing(Graphite::space(Graphite::Space::s));
+ auto* copy=new QPushButton("Copy build details",buttons);copy->setObjectName("copyBuildDetails");VisualStyle::role(copy,"quiet");copy->hide();actions->addWidget(copy);connect(copy,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(details_);});actions->addStretch();
+ auto* toggle=new QPushButton("Build details",buttons);toggle->setObjectName("buildDetails");toggle->setCheckable(true);VisualStyle::role(toggle,"quiet");actions->addWidget(toggle);
+ auto* close=new QPushButton("Close",buttons);close->setObjectName("closeAbout");VisualStyle::role(close,"lead");close->setDefault(true);actions->addWidget(close);connect(close,&QPushButton::clicked,this,&QDialog::accept);root->addWidget(buttons);
+ connect(toggle,&QPushButton::toggled,this,[this,toggle,details,copy](bool expanded){details->setVisible(expanded);copy->setVisible(expanded);toggle->setText(expanded?"Hide build details":"Build details");layout()->activate();adjustSize();});
 }
 }
