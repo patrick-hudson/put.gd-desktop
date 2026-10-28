@@ -23,5 +23,5 @@ QWidget* radio(QRadioButton*,const QString& explanation,const QString& detail);
 // preferenceStacked keeps a picker full width; other choices move below their
 // caption when the family gutter and a usable field no longer fit.
 void box(QFormLayout*);
-void alignChoices(QWidget* family);
+void alignChoices(QWidget* family,bool reserveHelp=false);
 }
