@@ -157,6 +157,8 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="folder-new"||name=="save") {
   p.drawPath(folder());p.drawLine(12,10,12,17);
   if(name=="save"){p.drawLine(8,13,12,17);p.drawLine(12,17,16,13);}else p.drawLine(8,13,16,13);
+ } else if(name=="eye") {
+  QPainterPath eye;eye.moveTo(2,12);eye.cubicTo(7,4,17,4,22,12);eye.cubicTo(17,20,7,20,2,12);eye.closeSubpath();p.drawPath(eye);p.drawEllipse(QPointF(12,12),3,3);
  } else if(name=="view-list") {
   for(int y:{5,12,19}){p.drawPoint(QPointF(4,y));p.drawLine(9,y,21,y);}
  } else if(name=="view-detail") {

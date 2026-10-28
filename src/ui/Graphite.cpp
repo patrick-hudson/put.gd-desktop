@@ -177,6 +177,10 @@ Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, 
         look.stroke = on ? mix(c.borderStrong, c.selected, 0.45) : controlStroke();
         look.text = enabled ? (on ? c.text : c.textSecondary) : c.textDisabled;
     }
+    if (!enabled) {
+        look.fill = QColor(Qt::transparent);
+        look.stroke = c.border;
+    }
     return look;
 }
 QString buttonRole(const QWidget* widget, const QStyleOption* option) {
@@ -915,10 +919,11 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
     case PE_FrameTabBarBase: case PE_FrameTabWidget: case PE_IndicatorButtonDropDown: case PE_PanelScrollAreaCorner: case PE_FrameDockWidget:
         return;
     case PE_PanelButtonCommand: case PE_PanelButtonBevel: case PE_PanelButtonTool: {
-        const auto look = buttonLook(buttonRole(widget, option), option, element == PE_PanelButtonTool && (option->state & State_AutoRaise), widget);
+        auto look = buttonLook(buttonRole(widget, option), option, element == PE_PanelButtonTool && (option->state & State_AutoRaise), widget);
+        const bool segment = widget && qobject_cast<SegmentTrack*>(widget->parentWidget());
+        if (segment) { look.fill = QColor(Qt::transparent); look.stroke = {}; }
         QColor stroke = keyboardState(option) ? c.accent : look.stroke;
         if (!look.fill.isValid() && !stroke.isValid()) return;
-        const bool segment = widget && qobject_cast<SegmentTrack*>(widget->parentWidget());
         const int inset = segment ? Metric::segmentInset / 2 : 0;
         const QRectF box = QRectF(option->rect).adjusted(inset, inset, -inset, -inset);
         rounded(p, box, look.fill.isValid() ? look.fill : QColor(Qt::transparent), stroke, controlRadius(widget), keyboardState(option) ? 1.5 : 1);
@@ -1124,7 +1129,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto name = buttonRole(widget, option);
         QRect body = (name == "link" || name == "version") ? option->rect.adjusted(4, 0, -4, 0) : option->rect.adjusted(12, 0, -12, 0);
         if (flushButton(widget)) body.setLeft(option->rect.left());
-        if (widget && widget->property("graphiteNavRow").toBool()) { body.setLeft(option->rect.left() + 14); body.setRight(option->rect.right() - space(Space::xs)); }
+        if (widget && widget->property("graphiteNavRow").toBool()) { body.setLeft(option->rect.left() + (compactControl(widget) ? 6 : 14)); body.setRight(option->rect.right() - space(Space::xs)); }
         if ((button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) body.setRight(option->rect.right() - Metric::splitZone);
         drawButtonLabel(option, button->text, button->icon, button->iconSize, p, widget, body);
         return;
@@ -2043,6 +2048,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
                 const bool unitted = qobject_cast<QLineEdit*>(control) && control->parentWidget() && !qobject_cast<QComboBox*>(control->parentWidget())
                     && std::any_of(control->parentWidget()->children().cbegin(), control->parentWidget()->children().cend(), [](QObject* o) { return o->property("visualRole").toString() == "unitSuffix"; });
                 if (!qobject_cast<QComboBox*>(control) && !qobject_cast<QAbstractSpinBox*>(control) && !unitted) continue;
+                if (control->property("graphiteFullWidth").toBool()) continue;
                 // A long choice is a preferred width, not the form's minimum.
                 // Keep its natural size when there is room and let the style
                 // elide the closed value when an enlarged-text form is narrow.
@@ -2305,7 +2311,6 @@ void Segmented::paintEvent(QPaintEvent*) {
     for (int i = 0; i < count(); ++i) {
         const QRectF r = QRectF(tabRect(i)).adjusted(Metric::segmentInset, Metric::segmentInset + 2, -Metric::segmentInset, -Metric::segmentInset - 2);
         const bool on = i == currentIndex();
-        if (on) rounded(&p, r, c.selected, mix(c.borderStrong, c.selected, 0.6), Metric::segmentRadius);
         if (on) p.fillRect(QRectF(r.center().x() - 12, r.bottom() - 3, 24, 2), c.accent);
         if (on && keyboardFocus(this)) rounded(&p, r, {}, c.accent, Metric::segmentRadius, 1.5);
         const QColor ink = !isTabEnabled(i) ? c.textDisabled : on ? c.text : i == hovered ? c.textSecondary : c.textMuted;

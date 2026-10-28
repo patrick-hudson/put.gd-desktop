@@ -16,7 +16,7 @@ namespace {
 // schemes.
 const Palette dark{
  QColor("#121212"),QColor("#191919"),QColor("#202020"),QColor("#2A2A2A"),QColor("#333230"),QColor(255,255,255,18),QColor("#737373"),
- QColor("#F0F0EC"),QColor("#D2D2CF"),QColor("#AAAAA6"),QColor("#9F9F9B"),
+ QColor("#F0F0EC"),QColor("#C4C4BF"),QColor("#AAAAA6"),QColor("#9F9F9B"),
  QColor("#E8B66D"),QColor("#F0C887"),QColor("#24201A"),QColor("#E8C591"),
  QColor("#91BCA2"),QColor("#E8B66D"),QColor("#E59B93"),QColor("#EFB4AE"),QColor("#29372E"),QColor("#332C22"),QColor("#3D2A29"),
  QColor("#D6D6D2"),QColor("#777773"),

@@ -275,7 +275,7 @@ private slots:
             }
         }
     }
-    void segmentFillKeepsItsInsetInsideThePointerTarget() {
+    void segmentUsesAnUnderlineWithoutASelectionPill() {
         Graphite::SegmentTrack track;
         auto* list=Graphite::toolButton("List"); auto* gallery=Graphite::toolButton("Gallery");
         track.addButton(list); track.addButton(gallery); list->setChecked(true);
@@ -283,7 +283,8 @@ private slots:
         QVERIFY(list->height()>=Graphite::Metric::iconTarget);
         QCOMPARE(track.height(),Graphite::scaled(Graphite::Metric::control));
         const auto shot=track.grab().toImage(); const int x=list->geometry().center().x();
-        QCOMPARE(shot.pixelColor(x,Graphite::Metric::segmentInset),Theme::current().selected);
+        QVERIFY(shot.pixelColor(x,Graphite::Metric::segmentInset)!=Theme::current().selected);
+        int amber=0;for(int y=0;y<shot.height();++y)for(int px=list->geometry().left();px<=list->geometry().right();++px)if(shot.pixelColor(px,y)==Theme::current().accent)++amber;QVERIFY(amber>=24);
         QVERIFY(shot.pixelColor(x,Graphite::Metric::segmentInset-1)!=Theme::current().selected);
     }
     void recessedMediaKeepsAnEdgeInBothSchemes() {

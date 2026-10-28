@@ -318,7 +318,7 @@ void alignChoices(QWidget* owner,const QList<QFormLayout*>& family){
  private:
   void schedule(){if(pending_)return;pending_=true;QTimer::singleShot(0,this,[this]{apply();pending_=false;});}
   void apply(){
-   for(auto* choice:choices_){QWidget* target=choice;int unitWidth=0;if(auto* holder=choice->parentWidget())for(auto* label:holder->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))if(label->property("visualRole")=="unitSuffix"){target=holder;unitWidth=label->isHidden()?0:label->sizeHint().width();break;}
+   for(auto* choice:choices_){if(choice->property("graphiteFullWidth").toBool()){choice->setMaximumWidth(QWIDGETSIZE_MAX);continue;}QWidget* target=choice;int unitWidth=0;if(auto* holder=choice->parentWidget())for(auto* label:holder->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))if(label->property("visualRole")=="unitSuffix"){target=holder;unitWidth=label->isHidden()?0:label->sizeHint().width();break;}
     const int preferred=Graphite::scaled(choice->property("formWidth").toInt()>0?choice->property("formWidth").toInt():320),width=preferred+unitWidth;choice->setMinimumWidth(qMin(choice->minimumWidth(),preferred));if(choice->property("formChoiceWidth").toInt()!=preferred){choice->setProperty("formChoiceWidth",preferred);choice->updateGeometry();}
     // A shared preferred width still shrinks when a stacked form is narrow.
     target->setMaximumWidth(width);choice->setMaximumWidth(preferred);
