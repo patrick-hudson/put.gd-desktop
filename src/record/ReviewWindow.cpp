@@ -2354,7 +2354,7 @@ void ReviewWindow::placeDestination() {
     const bool splitName = longName && !single;
     destinationMenu_->setProperty("displayText", splitName ? QVariant(mode) : QVariant());
     destinationMenu_->setMaximumWidth(inHeader ? naturalDestination : splitName ? modeWidth : fullWidth);
-    destinationMenu_->setFixedHeight(single ? 32 : splitName ? destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(std::max(modeWidth, destinationSpace)));
+    destinationMenu_->setFixedHeight(single ? textControlHeight(destinationMenu_) : splitName ? destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(std::max(modeWidth, destinationSpace)));
     if (!grid->property("placed").toBool() || movedHeader || grid->property("singleRow").toBool() != single || grid->property("splitName").toBool() != splitName) {
         auto* nameLine = findChild<QWidget*>("reviewDestinationLine");
         auto* metaLine = findChild<QWidget*>("reviewMetadataLine");
@@ -2434,7 +2434,7 @@ void ReviewWindow::placeDestination() {
         destination_->setWordWrap(!fits);
         destination_->setFixedHeight(fits ? destination_->fontMetrics().tightBoundingRect(options_.destination).height() : destination_->heightForWidth(nameWidth));
     }
-    const int height = single ? 32 : splitName ? destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(destinationMenu_->width());
+    const int height = single ? textControlHeight(destinationMenu_) : splitName ? destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(destinationMenu_->width());
     if (destinationMenu_->height() != height) { destinationMenu_->setFixedHeight(height); grid->activate(); }
     header_->setLeading(inHeader ? destinationSummary : nullptr);
     placeErrorDetails();
