@@ -254,7 +254,8 @@ int rowContentHeight(){const int title=QFontMetrics(historyTitleFont()).height()
 int compactTextInset(){return Graphite::scaled(100)>125?space(Space::xs):rowTextInset();}
 // Gallery pictures share a 16:10 frame.
 int galleryPicture(int cardWidth){return qMax(1,(cardWidth-2)*10/16);}
-void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded=false,bool compact=false,bool separated=false){
+}
+void HistoryWindow::metadataDocument(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded,bool compact,bool separated){
  document.setDocumentMargin(0);document.setDefaultFont(Graphite::font(Graphite::Type::metadata));QTextOption option;option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);document.setDefaultTextOption(option);
  const auto record=index.data(HistoryModel::RecordRole).toJsonObject();const auto& t=Theme::current();auto text=HistoryModel::failed(record)?HistoryModel::statusText(record):index.data(HistoryModel::SubtitleRole).toString();if(createdColumn&&!HistoryModel::failed(record)){const auto created=index.data(HistoryModel::CreatedRole).toString();if(!created.isEmpty())text.remove(" · "+created);}
  if(compact){
@@ -277,10 +278,11 @@ void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,
   // Age spends only spare metadata space; it never displaces failure details.
   const auto original=document.toHtml();const qreal available=document.size().height();
   if(separated){QStringList spans;for(const auto& part:text.split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,metadataColor(record,part,t.textSecondary)));spans.append(metadataSpan(created,t.textSecondary));document.setHtml(Graphite::separatedLines(spans,document.defaultFont(),width));}
-  else{QTextCursor cursor(&document);cursor.movePosition(QTextCursor::End);cursor.insertHtml(metadataSpan(" · "+created,t.textSecondary));}
+  else{QTextCursor cursor(&document);cursor.movePosition(QTextCursor::End);QTextCharFormat format;format.setForeground(t.textSecondary);cursor.insertText(QString(QChar(0x00a0))+"· "+created,format);}
   document.setTextWidth(qMax(20,width));document.size();if(separated?document.begin().layout()->lineCount()>2:document.size().height()>available)document.setHtml(original);
  }
 }
+namespace {
 // The row's body: right of the thumbnail in a list, under it in a gallery tile.
 QRect rowBody(const QRect& outer,bool gallery,int heading){
  const auto card=gallery?outer.adjusted(space(Space::s),space(Space::s),-space(Space::s),-space(Space::s)):outer.adjusted(space(Space::s),heading+2,-space(Space::s),-2);
@@ -414,7 +416,7 @@ public:
   if(compactRow(r,i))return !i.data(HistoryModel::FailedRole).toBool()&&rowBody(r,false,heading(i)).width()-compactActionWidth(i)<QFontMetrics(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(i.data(HistoryModel::CreatedRole).toString())+space(Space::xxl);
   if(!grid()&&i.data(HistoryModel::FailedRole).toBool())return false;
   if(grid()||(compactList&&!compactList()))return false;
-  const auto body=rowBody(r,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,inlineTextWidth(r,i),!rowColumns(body,i).created.isEmpty());
+  const auto body=rowBody(r,false,heading(i));QTextDocument metadata;HistoryWindow::metadataDocument(metadata,i,inlineTextWidth(r,i),!rowColumns(body,i).created.isEmpty());
   return std::ceil(metadata.size().height())>rowContentHeight()-4-2*rowTextInset()-QFontMetrics(historyTitleFont()).height()-6;
  }
  QRect primaryRect(QRect r,const QModelIndex& i)const{
@@ -438,9 +440,9 @@ public:
    if(failed)return {width,rowContentHeight()+metaHeight+space(Space::xs)+heading(i)};
    height=qMax(rowContentHeight(),bottom-heading(i)+2+(below?actionHeight()+space(Space::m):0))+heading(i);return {width,height};
   }
-  if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
+  if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;HistoryWindow::metadataDocument(metadata,i,body.width(),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
   if(actionsBelow(outer,i)){
-   const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);
+   const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;HistoryWindow::metadataDocument(metadata,i,body.width(),false);
    const int text=rowTextInset()+qMax(8,rowTextInset())+4+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()));
    height=qMax(rowContentHeight(),text)+heading(i)+actionHeight()+12;
   }
@@ -485,15 +487,15 @@ public:
   const int metadataTop=compact?compactMetadataTop(outer,i):lineTop+QFontMetrics(titleFont).height()+6;
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
   if(compact){
-   QTextDocument document;historyMetadata(document,i,metadataWidth,false,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,QFontMetrics(metaFont).height()));document.drawContents(p);p->restore();
+   QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,QFontMetrics(metaFont).height()));document.drawContents(p);p->restore();
    if(failed){QTextDocument error;compactFailureDetail(error,i,body.width()-(compactErrorTop(outer,i)<=moreBounds.bottom()?compactActionWidth(i):0));p->save();p->translate(body.left(),compactErrorTop(outer,i));p->setClipRect(QRectF(0,0,body.width(),QFontMetrics(metaFont).height()));error.drawContents(p);p->restore();}
   }
-  else if(!grid()){QTextDocument document;historyMetadata(document,i,metadataWidth,!below&&!columns.created.isEmpty(),compactList&&!compactList());p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
+  else if(!grid()){QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,!below&&!columns.created.isEmpty(),compactList&&!compactList());p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
   else if(failed){
-   QTextDocument document;historyMetadata(document,i,metadataWidth,false,false,false,true);document.size();
+   QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,false,false,true);document.size();
    if(document.begin().layout()->lineCount()<=2){p->save();p->translate(metadata.topLeft());document.drawContents(p);p->restore();}
    else Graphite::paintText(*p,metadata,HistoryModel::failureLabel(record)+" · See Details",t.danger,metaFont,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideNone);
-  }else{QTextDocument document;historyMetadata(document,i,metadataWidth,false,false,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,2*metadata.height()));document.drawContents(p);p->restore();}
+  }else{QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,false,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,2*metadata.height()));document.drawContents(p);p->restore();}
   if(!grid()){
    const QFontMetricsF titleMetrics(titleFont);const auto shown=titleMetrics.elidedText(i.data().toString(),titleElision(i.data().toString()),itemWidth);const qreal baseline=Graphite::opticalBaseline(titleMetrics,shown,lineTop+QFontMetrics(titleFont).height()/2.0);
    if(!compact&&!failed&&!below&&!columns.output.isEmpty())paintHistoryColumn(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,QFontMetrics(titleFont).height()),i.data(HistoryModel::OutputRole).toString(),t.textSecondary,baseline);

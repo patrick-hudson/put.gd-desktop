@@ -1,6 +1,8 @@
 #include <QDateTime>
 #include <QTextDocument>
 #include <QTextCursor>
+#include <QRegularExpression>
+#include <QTextCursor>
 #include <QTextOption>
 #include <QAccessible>
 #include <QCursor>
@@ -253,6 +255,23 @@ private slots:
   const int wide=gallery?metrics.horizontalAdvance("Upload failed · Connection interrupted")+Graphite::space(Graphite::Space::l):Graphite::scaled(900);QVERIFY(render("3 min ago",wide)!=render({},wide));
   int narrow=Graphite::scaled(480);if(gallery){record["error"]=QJsonObject{{"message","Offline"}};narrow=metrics.horizontalAdvance("Upload failed · Offline")+2;QVERIFY(metrics.horizontalAdvance("Saved locally · 3 min ago")>narrow);}else{QString detail="Connection interrupted";while(metrics.horizontalAdvance("Upload failed · "+detail+" · Saved locally · 3 min ago")<=narrow)detail+=" again";record["error"]=QJsonObject{{"message",detail}};QVERIFY(metrics.horizontalAdvance("Upload failed · "+detail+" · Saved locally")<=narrow);}
   QCOMPARE(render("3 min ago",narrow),render({},narrow));
+ }
+ void metadataSeparatorsKeepWhitespace_data(){
+  QTest::addColumn<bool>("failed");QTest::addColumn<bool>("light");for(bool failed:{false,true})for(bool light:{false,true})QTest::newRow(qPrintable(QString("%1-%2").arg(failed?"failed":"uploaded",light?"light":"dark")))<<failed<<light;
+ }
+ void metadataSeparatorsKeepWhitespace(){
+  QFETCH(bool,failed);QFETCH(bool,light);const auto previous=Theme::scheme();Theme::setScheme(light?Theme::Scheme::Light:Theme::Scheme::Dark);auto theme=qScopeGuard([previous]{Theme::setScheme(previous);});
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  const auto saved=putgd::test::fixture(d.path(),"saved.txt","synthetic local copy");QVERIFY(!saved.isEmpty());
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="separator";op.created=QDateTime::currentDateTimeUtc().addSecs(-120).toString(Qt::ISODateWithMs);op.action="region";op.state=failed?"failed":"completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id="separator-file";item.artifact.name="Synthetic.png";item.artifact.mime="image/png";item.artifact.category="images";item.artifact.bytes=35840;item.uploadStatus=failed?"failed":"uploaded";item.local.status="saved";item.local.path=saved;if(failed)item.error={"synthetic","Connection interrupted",{}};op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(Graphite::scaled(1500),900);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);selectRow(list,0);const auto index=list->model()->index(0,0);const auto created=index.data(HistoryModel::CreatedRole).toString();QVERIFY(!created.isEmpty());
+  PUTGD_TRY_VERIFY(!window.findChild<QLabel*>("historyOutcome")->text().isEmpty());
+  const QRegularExpression joined(QStringLiteral("\\S·|·\\S"),QRegularExpression::UseUnicodePropertiesOption);
+  for(const auto& mode:QStringList{"wide","compact","gallery","inspector"})for(int width:{Graphite::scaled(280),Graphite::scaled(900)}){
+   QTextDocument document;if(mode=="inspector")document.setHtml(window.findChild<QLabel*>("historyOutcome")->text());else HistoryWindow::metadataDocument(document,index,width,mode=="wide",false,mode=="compact",mode=="gallery");const auto plain=document.toPlainText();QVERIFY2(!joined.match(plain).hasMatch(),qPrintable(mode+": "+plain));
+   if(mode!="inspector"&&width==Graphite::scaled(900)){QVERIFY2(plain.contains(QChar(0x00b7)),qPrintable(mode+": "+plain));if(failed||mode!="wide")QVERIFY2(plain.contains(created),qPrintable(mode+": "+plain));}
+   if(failed&&mode=="wide"&&width==Graphite::scaled(900)){QVERIFY2(plain.contains("Saved locally · "+created),qPrintable(plain));QTextCursor cursor(&document);cursor.setPosition(plain.lastIndexOf(created)+1);QCOMPARE(cursor.charFormat().foreground().color(),Theme::current().textSecondary);}
+  }
  }
  void compactRowsKeepTitlesClearAndTimesVisible_data(){
   QTest::addColumn<int>("bodyWidth");QTest::addColumn<bool>("failed");for(int width:{280,479,480})for(bool failed:{false,true})QTest::newRow(qPrintable(QString("body%1-%2").arg(width).arg(failed?"failed":"uploaded")))<<width<<failed;
