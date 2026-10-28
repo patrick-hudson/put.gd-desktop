@@ -1071,6 +1071,7 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
     const auto name = buttonRole(widget, option);
     auto look = buttonLook(name, option, false, widget);
     if (widget && widget->property("graphiteStatus").toBool() && (option->state & State_Enabled)) look.text = t().textSecondary;
+    if (widget && widget->property("graphiteDisclosure").toBool() && (option->state & State_Enabled)) look.text = t().text;
     QFont f = buttonFont(widget, option);
     f.setUnderline(look.underline);
     const QFontMetricsF metrics(f);
@@ -1446,8 +1447,9 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         if (!tool || tool->toolButtonStyle == Qt::ToolButtonTextUnderIcon) break;
         if (widget && widget->property("preferenceDisclosure").toBool()) {
             const auto body = option->rect.adjusted(space(Space::l), space(Space::m), -space(Space::l), -space(Space::m));
-            paintText(*p, body.adjusted(0, 0, -scaled(24), 0), tool->text, c.textSecondary, font(), Qt::AlignLeft | Qt::AlignVCenter);
-            paintChevron(*p, QPointF(body.right() - scaled(8), body.center().y()), scaled(10), tool->state & State_On ? Qt::DownArrow : Qt::RightArrow, c.textSecondary);
+            paintText(*p, body.adjusted(0, 0, -scaled(24), 0), tool->text, tool->state & State_Enabled ? c.text : c.textDisabled, font(), Qt::AlignLeft | Qt::AlignVCenter);
+            const QRect icon(body.right() + 1 - tool->iconSize.width(), body.center().y() - tool->iconSize.height() / 2, tool->iconSize.width(), tool->iconSize.height());
+            tool->icon.paint(p, icon, Qt::AlignCenter, tool->state & State_Enabled ? QIcon::Normal : QIcon::Disabled);
             if (keyboardState(option)) rounded(p, QRectF(option->rect).adjusted(1, 1, -1, -1), {}, c.accent, Metric::containerRadius);
             return;
         }
