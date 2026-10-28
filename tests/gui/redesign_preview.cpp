@@ -140,7 +140,7 @@ QImage iconSpecimen(){
 // real 20 px rows (the editor toolbar, and Recording review's mask tools that
 // share the redact glyph) at 1:1 and magnified 3x without smoothing.
 QImage editorIcons(){
- const auto& t=Theme::current();QImage image(1800,560,QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
+ const auto& t=Theme::current();const int rowHeight=Graphite::scaled(20)+16;QImage image(1800,112+3*(3*rowHeight+32),QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
  QFont small=p.font();small.setPixelSize(11);p.setFont(small);p.setPen(t.textMuted);
  const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","rectangle","highlight","text","undo","redo","remove","save"};
  for(int i=0;i<names.size();++i){const int x=12+i*86;VisualStyle::icon(names[i]).paint(&p,QRect(x+23,14,40,40));p.drawText(QRect(x,60,86,20),Qt::AlignCenter,names[i]);}
@@ -149,10 +149,10 @@ QImage editorIcons(){
   for(int i=0;i<icons.size();++i){if(icons[i]=="|"){q.fillRect(QRect(8+i*step+step/2,7,1,22),t.border);continue;}VisualStyle::icon(icons[i]).paint(&q,QRect(8+i*step+(step-glyph)/2,8,glyph,glyph));}
   return strip;
  };
- auto show=[&](const QString& title,const QImage& strip,int y){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));};
- show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","redact","blur","crop","|","annotate-arrow","rectangle","highlight","text"},40),112);
- show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","save","upload"},32),252);
- show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32),392);
+ int y=112;auto show=[&](const QString& title,const QImage& strip){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));y+=3*strip.height()+32;};
+ show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","redact","blur","crop","|","annotate-arrow","rectangle","highlight","text"},40));
+ show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","save","upload"},32));
+ show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32));
  return image;
 }
 QImage syntheticCapture(int index){
