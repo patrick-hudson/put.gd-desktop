@@ -152,7 +152,7 @@ private slots:
   for(double scale:{1.0,1.25,1.5})for(const auto size:{QSize(1440,960),QSize(1060,680)})QTest::newRow(qPrintable(QString("%1-%2").arg(scale).arg(size.width())))<<scale<<size;
  }
  void preferenceTextAndFirstControlGeometry(){
-  QFETCH(double,scale);QFETCH(QSize,size);Fonts::load();VisualStyle::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(qRound(14*scale));qApp->setFont(font);
+  QFETCH(double,scale);QFETCH(QSize,size);Fonts::load();VisualStyle::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPointSizeF(14*scale*72/96);qApp->setFont(font);
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(size);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");
   const auto check=[&](QWidget* page){
    int labels=0;
@@ -172,10 +172,9 @@ private slots:
       const int inset=Graphite::space(Graphite::Space::l);QCOMPARE(toggle->mapTo(card,QPoint(inset,0)).x(),inset);
       // Compare the actual painted text with its expected origin; trailing glyphs
       // and card borders lie outside this crop.
-      QImage actual=toggle->grab().toImage();QImage expected(actual.size(),QImage::Format_ARGB32_Premultiplied);expected.fill(Qt::transparent);QPainter painter(&expected);Graphite::paintText(painter,QRect(inset,0,toggle->width()/2,toggle->height()),toggle->text(),Qt::white,Graphite::font());painter.end();
-      const QColor ink=toggle->property("preferenceAddRow").toBool()?Theme::current().textSecondary:Theme::current().text;
-      const auto first=[&](const QImage& image,bool reference){for(int x=2;x<toggle->width()/2;++x)for(int y=toggle->height()/2-toggle->fontMetrics().height()/2;y<toggle->height()/2+toggle->fontMetrics().height()/2;++y){const auto c=image.pixelColor(x,y);if(reference?c.alpha()>100:qAbs(c.red()-ink.red())+qAbs(c.green()-ink.green())+qAbs(c.blue()-ink.blue())<12)return x;}return -1;};
-      QCOMPARE(first(actual,false),first(expected,true));
+      QImage actual=toggle->grab().toImage();QImage expected(actual.size(),QImage::Format_ARGB32_Premultiplied);const QColor ink=toggle->property("preferenceAddRow").toBool()?Theme::current().textSecondary:Theme::current().text;expected.fill(Theme::preferenceCard());QPainter painter(&expected);Graphite::paintText(painter,QRect(inset,0,toggle->width()/2,toggle->height()),toggle->text(),ink,Graphite::font());painter.end();
+      const auto first=[&](const QImage& image){for(int x=2;x<toggle->width()/2;++x)for(int y=toggle->height()/2-toggle->fontMetrics().height()/2;y<toggle->height()/2+toggle->fontMetrics().height()/2;++y){const auto c=image.pixelColor(x,y);if(qAbs(c.red()-ink.red())+qAbs(c.green()-ink.green())+qAbs(c.blue()-ink.blue())<12)return x;}return -1;};
+      QCOMPARE(first(actual),first(expected));
      }
     }
    }

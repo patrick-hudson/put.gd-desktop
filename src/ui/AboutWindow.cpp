@@ -15,6 +15,7 @@
 #include <QTextEdit>
 #include <QTextDocument>
 #include <QScreen>
+#include <QtMath>
 
 namespace putgd {
 AboutWindow::AboutWindow(const QJsonObject& residentBuild, QWidget* parent)
