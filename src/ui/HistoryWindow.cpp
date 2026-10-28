@@ -247,13 +247,13 @@ int dayHeadingHeight(){return qMax(32,QFontMetrics(Graphite::font(Graphite::Type
 // Compact targets follow text enlargement.
 int actionHeight(){return Graphite::scaled(28);}
 constexpr int historyThumbWidth=96,historyThumbHeight=60;
-int rowTextInset(){return Graphite::scaled(100)>125?qMin(space(Space::xs),Graphite::Metric::space):space(Space::s);}
+int rowTextInset(){return space(Graphite::scaled(100)>125?Space::xs:Space::s);}
+int compactTextInset(){return Graphite::scaled(100)>125?qMin(space(Space::xs),Graphite::Metric::space):rowTextInset();}
 QFont historyTitleFont(bool selected=false){auto font=Graphite::font(Graphite::Type::body);font.setWeight(selected?QFont::DemiBold:QFont::Medium);return font;}
 int compactMetadataGap(){return Graphite::scaled(100)>125?qMin(space(Space::xs),Graphite::Metric::space):qMax(space(Space::xs),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::technical)).height())/2);}
 int compactDetailGap(){return qMax(compactMetadataGap(),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::technical)).height()+1)/2);}
-int rowContentHeight(){const int title=QFontMetrics(historyTitleFont()).height(),meta=QFontMetrics(Graphite::font(Graphite::Type::technical)).height();return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,qMax(title+meta+space(Space::xs)+2*rowTextInset()+4,rowTextInset()+title+compactMetadataGap()+(meta+actionHeight()+1)/2+4)));}
-// Enlarged rows keep breathing room above the title and second-line actions.
-int compactTextInset(){return rowTextInset();}
+int rowContentHeight(){const int title=QFontMetrics(historyTitleFont()).height(),meta=QFontMetrics(Graphite::font(Graphite::Type::technical)).height();return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,qMax(title+meta+space(Space::xs)+2*compactTextInset()+4,compactTextInset()+title+compactMetadataGap()+(meta+actionHeight()+1)/2+4)));}
+// Compact insets leave room for the taller outcome without losing a whole row.
 int galleryTextHeight(){return QFontMetrics(historyTitleFont()).height()+6+2*QFontMetrics(Graphite::font(Graphite::Type::technical)).height();}
 // The picture spends only the space left after the caption and status lines.
 int galleryPicture(int cardWidth,int cardHeight){return qMax(1,qMin((cardWidth-2)*10/16,cardHeight-1-2*space(Space::m)-galleryTextHeight()));}
