@@ -221,8 +221,8 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* footer=new Graphite::Surface("bg",Qt::TopEdge,this);footer->setObjectName("editorFooter");footer->setMinimumHeight(Graphite::scaled(56));
  footerGrid_=new QGridLayout(footer);footerGrid_->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::s),Graphite::space(Space::l),Graphite::space(Space::s));footerGrid_->setHorizontalSpacing(Graphite::space(Space::s));footerGrid_->setVerticalSpacing(Graphite::space(Space::xs));footerGrid_->setColumnStretch(0,1);
  auto* document=new QWidget(footer);document->setObjectName("editorDocument");document_=document;
- auto* documentLayout=new QVBoxLayout(document);documentLayout->setContentsMargins(0,0,0,0);documentLayout->setSpacing(0);
- documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");VisualStyle::role(documentInfo_,"meta");documentLayout->addWidget(documentInfo_);footerGrid_->addWidget(document,1,0,1,4);
+ auto* documentLayout=new QVBoxLayout(document);documentLayout->setContentsMargins(0,0,0,0);documentLayout->setSpacing(Graphite::space(Space::xs));
+ documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");VisualStyle::role(documentInfo_,"meta");documentLayout->addWidget(documentInfo_);footerGrid_->addWidget(document,2,0);
  notice_=new QWidget(footer);notice_->setObjectName("editorPreparationFailure");
  auto* noticeLayout=new QGridLayout(notice_);noticeLayout->setContentsMargins(0,0,0,0);noticeLayout->setSpacing(Graphite::space(Space::s));
  noticeText_=new QLabel(notice_);noticeText_->setObjectName("editorPreparationReason");noticeText_->setTextFormat(Qt::PlainText);noticeText_->setWordWrap(true);VisualStyle::role(noticeText_,"error");noticeLayout->addWidget(noticeText_,0,0,1,3);noticeLayout->setColumnStretch(2,1);
@@ -230,8 +230,8 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  saveInstead_=new QPushButton("Save a copy…",notice_);saveInstead_->setObjectName("saveCopyInstead");saveInstead_->setToolTip("Save the edited image to a file instead (Ctrl+S)");noticeLayout->addWidget(saveInstead_,1,1);
  notice_->hide();footerGrid_->addWidget(notice_,0,0,1,4);
  // Elision keeps the actions reachable; keyboard activation reveals the name.
- destination_=new Graphite::ElidedLabel(footer);destination_->setElideMode(Qt::ElideRight);destination_->setRevealable(true);destination_->setObjectName("editorDestination");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"secondary");
- destination_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);destination_->setFocusPolicy(Qt::StrongFocus);destination_->hide();footerGrid_->addWidget(destination_,3,0);
+ destination_=new Graphite::ElidedLabel(document);destination_->setElideMode(Qt::ElideRight);destination_->setRevealable(true);destination_->setObjectName("editorDestination");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"secondary");
+ destination_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);destination_->setFocusPolicy(Qt::StrongFocus);destination_->hide();documentLayout->addWidget(destination_);
  // Saving locally never hides the separate upload destination.
  saveFeedback_=new Graphite::Banner(Graphite::Banner::Tone::Info,{},canvasViewport_);saveFeedback_->setObjectName("editorSaveFeedback");saveFeedback_->hide();saveFeedback_->installEventFilter(this);
  saveFeedbackTimer_=new QTimer(this);saveFeedbackTimer_->setObjectName("editorSaveFeedbackTimer");saveFeedbackTimer_->setSingleShot(true);
@@ -257,9 +257,9 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  folderError_=new Graphite::ElidedLabel(saveFeedback_);folderError_->setText("Couldn't open the folder. Use Copy path instead.");folderError_->setObjectName("editorFolderError");folderError_->setTextFormat(Qt::PlainText);VisualStyle::role(folderError_,"error");folderError_->hide();resultRow->addWidget(folderError_,1);feedback->addWidget(result,0,0);feedback->addWidget(actions,0,1);
 
  message_=new QLabel(result);message_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);message_->hide();resultRow->insertWidget(0,message_,1);
- save_=new QPushButton("Save a copy…",footer);save_->setObjectName("editorSaveCopy");save_->setIcon(VisualStyle::icon("save"));save_->setProperty("graphiteIconBase",QSize(20,20));save_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));save_->setToolTip("Save the edited image to a file (Ctrl+S)");footerGrid_->addWidget(save_,3,1);
- cancel_=new QPushButton("Cancel",footer);cancel_->setObjectName("editorCancel");VisualStyle::role(cancel_,"quiet");footerGrid_->addWidget(cancel_,3,2);
- upload_=new QPushButton("Upload",footer);upload_->setObjectName("editorUpload");upload_->setIcon(VisualStyle::icon("upload"));upload_->setProperty("graphiteIconBase",QSize(20,20));upload_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));VisualStyle::role(upload_,"primary");upload_->setToolTip("Upload the finished, sanitized image (Ctrl+Enter). The source file is not uploaded.");upload_->setAutoDefault(false);footerGrid_->addWidget(upload_,3,3);
+ save_=new QPushButton("Save a copy…",footer);save_->setObjectName("editorSaveCopy");save_->setIcon(VisualStyle::icon("save"));save_->setProperty("graphiteIconBase",QSize(20,20));save_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));save_->setToolTip("Save the edited image to a file (Ctrl+S)");footerGrid_->addWidget(save_,2,1);
+ cancel_=new QPushButton("Cancel",footer);cancel_->setObjectName("editorCancel");VisualStyle::role(cancel_,"quiet");footerGrid_->addWidget(cancel_,2,2);
+ upload_=new QPushButton("Upload",footer);upload_->setObjectName("editorUpload");upload_->setIcon(VisualStyle::icon("upload"));upload_->setProperty("graphiteIconBase",QSize(20,20));upload_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));VisualStyle::role(upload_,"primary");upload_->setToolTip("Upload the finished, sanitized image (Ctrl+Enter). The source file is not uploaded.");upload_->setAutoDefault(false);footerGrid_->addWidget(upload_,2,3);
  root->addWidget(footer);
 
  RedesignTheme::apply(*this);
@@ -385,11 +385,11 @@ void EditorWindow::placeDestination(){
  int room=width()-margins.left()-margins.right();
  for(auto* button:{save_,cancel_,upload_})if(!button->isHidden())room-=button->sizeHint().width()+spacing;
  // Include the shared summary's details affordance in the fit calculation.
- const bool above=!destination_->isHidden()&&destination_->sizeHint().width()>room;
+ const bool above=std::max(documentInfo_->sizeHint().width(),destination_->isHidden()?0:destination_->sizeHint().width())>room;
  destinationAbove_=above;
  const int slot=Graphite::scaled(Graphite::Metric::control);
- footerGrid_->setRowMinimumHeight(2,above?slot:0);destination_->setMinimumHeight(slot);
- footerGrid_->removeWidget(destination_);footerGrid_->addWidget(destination_,above?2:3,0,1,above?4:1);
+ footerGrid_->setRowMinimumHeight(1,above?slot:0);document_->setMinimumHeight(slot);
+ footerGrid_->removeWidget(document_);footerGrid_->addWidget(document_,above?1:2,0,1,above?4:1);
  const bool feedback=saveFeedbackVisible_&&!busy_&&!savingCopy_;
  saveFeedback_->setVisible(feedback||!message_->isHidden());
  auto* result=findChild<QWidget*>("editorSaveResult");auto* actions=findChild<QWidget*>("editorSaveActions");

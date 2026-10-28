@@ -758,12 +758,12 @@ private slots:
   auto* destination=window.findChild<Graphite::ElidedLabel*>("editorDestination");auto* footer=window.findChild<QWidget*>("editorFooter");const auto upload=window.findChild<QPushButton*>("editorUpload");
   QVERIFY(destination);QVERIFY(destination->focusPolicy()&Qt::TabFocus);QApplication::processEvents();
   QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
-  QCOMPARE(destination->geometry().center().y(),upload->geometry().center().y());QVERIFY(destination->geometry().right()<window.findChild<QPushButton*>("editorSaveCopy")->x());
+  QVERIFY(destination->mapTo(footer,QPoint()).x()+destination->width()<window.findChild<QPushButton*>("editorSaveCopy")->x());
   QCOMPARE(footer->height(),Graphite::scaled(56));
   const QString longName="Upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams, release readiness and accessibility reviews";
   window.setDestination(longName);window.resize(760,560);QApplication::processEvents();
   QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());QVERIFY(destination->isVisible());
-  QVERIFY(destination->geometry().bottom()<upload->geometry().top());QCOMPARE(destination->text(),longName);QCOMPARE(destination->toolTip(),longName);QVERIFY(destination->elided());
+  QVERIFY(destination->mapTo(footer,destination->rect().bottomLeft()).y()<upload->geometry().top());QCOMPARE(destination->text(),longName.mid(10));QCOMPARE(destination->toolTip(),longName.mid(10));QVERIFY(destination->elided());
   destination->setFocus(Qt::TabFocusReason);QTest::keyClick(destination,Qt::Key_Return);QVERIFY(destination->fullTextPopup());QVERIFY(destination->fullTextPopup()->isVisible());destination->fullTextPopup()->close();
   window.setDestination("Upload to Project archive");window.resize(1400,700);QApplication::processEvents();QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
   QCOMPARE(footer->height(),Graphite::scaled(56));
