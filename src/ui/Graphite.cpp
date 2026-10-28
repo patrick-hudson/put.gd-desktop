@@ -177,7 +177,7 @@ Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, 
     Look look;
     if (roleName == "textAction") {
         look.text = enabled ? c.text : c.textDisabled;
-        look.underline = enabled && (hover || (option->state & QStyle::State_HasFocus));
+        look.underline = enabled;
     } else if (roleName == "link" || roleName == "version") {
         look.text = enabled ? (roleName == "version" && !hover ? c.textMuted : c.textSecondary) : c.textDisabled;
         look.underline = hover;
@@ -221,11 +221,13 @@ QString buttonRole(const QWidget* widget, const QStyleOption* option) {
     return value;
 }
 QFont buttonFont(const QWidget* widget, const QStyleOption* option) {
-    auto f = compactControl(widget) ? font(Type::technical) : widget ? widget->font() : QApplication::font();
     const auto name = buttonRole(widget, option);
+    auto f = compactControl(widget) || name == "textAction" ? font(Type::technical) : widget ? widget->font() : QApplication::font();
     const bool selected = (option->state & QStyle::State_On) && widget
         && (widget->property("graphiteNavRow").toBool() || qobject_cast<SegmentTrack*>(widget->parentWidget()));
-    f.setWeight(name == "textAction" || (!compactControl(widget) && (name == "primary" || name == "lead" || selected)) ? QFont::Medium : QFont::Normal);
+    const bool activeTextAction = name == "textAction" && (option->state & QStyle::State_Enabled)
+        && (option->state & (QStyle::State_MouseOver | QStyle::State_Sunken));
+    f.setWeight(activeTextAction || (!compactControl(widget) && (name == "primary" || name == "lead" || selected)) ? QFont::Medium : QFont::Normal);
     return f;
 }
 QPixmap tinted(const QPixmap& source, const QColor& colour) {
@@ -592,7 +594,7 @@ void Style::polish(QWidget* widget) {
     // An error is never small print: it takes body type even in a meta slot.
     else if (name == "inspectorKey") { f = font(13); colour = c.textSecondary; }
     else if (name == "meta") { f = font(tone == "error" ? Type::body : Type::technical); colour = c.textSecondary; }
-    else if (name == "textAction") { f = font(Type::technical); f.setWeight(QFont::Medium); }
+    else if (name == "textAction") f = font(Type::technical);
     else if (name == "version") f = font(Type::technical);
     else if (name == "binding") { f = monoFont(Type::technical); colour = c.textSecondary; }
     else if (name == "mono" || name == "path" || (name == "link" && qobject_cast<QLineEdit*>(widget)) || name == "diagnostics") f = monoFont(Type::technical);
@@ -744,7 +746,11 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
     case CT_PushButton: {
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
         const auto name = role(widget);
-        if (name == "textAction" && button) return {int(std::ceil(QFontMetricsF(buttonFont(widget, option)).horizontalAdvance(button->text))), std::max(scaled(Metric::controlCompact), contents.height() + padding)};
+        if (name == "textAction" && button) {
+            // Reserve the hover weight so the label and layout stay whole.
+            auto f = font(Type::technical); f.setWeight(QFont::Medium);
+            return {int(std::ceil(QFontMetricsF(f).horizontalAdvance(button->text))), std::max(scaled(Metric::controlCompact), contents.height() + padding)};
+        }
         if (name == "link" || name == "version") return {std::max(32, contents.width() + 8), std::max(32, contents.height() + 8)};
         if (name == "info") return {std::max(contents.width() + 6, 23), std::max(contents.height() + 4, 23)};
         // Measure the same role weight used to paint action labels.
@@ -1103,7 +1109,7 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
     if (widget && widget->property("graphiteStatus").toBool() && (option->state & State_Enabled)) look.text = t().textSecondary;
     if (widget && widget->property("graphiteDisclosure").toBool() && (option->state & State_Enabled)) look.text = t().text;
     QFont f = buttonFont(widget, option);
-    f.setUnderline(look.underline);
+    f.setUnderline(look.underline && name != "textAction");
     const QFontMetricsF metrics(f);
     const bool hasIcon = !icon.isNull() && iconSize.isValid() && iconSize.width() > 0;
     const int iconWidth = hasIcon ? iconSize.width() : 0;
@@ -1145,6 +1151,10 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
         p->setPen(look.text);
         const qreal baseline = opticalBaseline(metrics, shown, body.top() + body.height() / 2.0);
         p->drawText(QPointF(x, baseline), shown);
+        if (name == "textAction" && look.underline) {
+            const bool active = option->state & (State_MouseOver | State_Sunken | State_HasFocus);
+            p->fillRect(QRectF(x, std::round(baseline) + 2, textWidth, 1), active ? t().text : t().textMuted);
+        }
         p->restore();
     }
 }
