@@ -193,7 +193,7 @@ void boxPreferenceRows(QFormLayout* form){
   if(field->property("preferenceRowInset").toBool())continue;if(field->findChild<QFormLayout*>())continue;
   if(column){column->setSizeConstraint(QLayout::SetMinimumSize);column->setContentsMargins(spacing(Space::l),spacing(Space::s),spacing(Space::l),spacing(Space::s));column->setSpacing(spacing(Space::xs));}else if(!field->findChild<QFormLayout*>())field->setContentsMargins(spacing(Space::l),spacing(Space::m),spacing(Space::l),spacing(Space::m));
   if(auto* disclosure=qobject_cast<QToolButton*>(field);disclosure&&disclosure->property("graphiteDisclosure").toBool()){disclosure->setProperty("preferenceDisclosure",true);disclosure->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);}
-  field->setMinimumHeight(std::max({field->minimumHeight(),Graphite::scaled(Graphite::Metric::control)+2*spacing(Space::s),field->layout()?field->layout()->totalMinimumSize().height():0}));field->setProperty("preferenceRow",true);
+  field->setProperty("preferenceRow",true);field->setMinimumHeight(std::max({field->minimumHeight(),Graphite::scaled(Graphite::Metric::control)+2*spacing(Space::s),field->layout()?field->layout()->totalMinimumSize().height():0}));
  }
 }
 class PreferenceChoiceRow final:public QObject {
@@ -762,7 +762,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  updateChannel_=choices(this,"updateChannel",{});updateChannel_->addItem("Stable","stable");updateChannel_->addItem("Nightly","nightly");auto* channelRow=setting(updatesForm,"Channel",updateChannel_,"/preferences/updates/channel");updateRows_.append(channelRow);
  // A repository install shows its repository's channel and can't choose (#386).
  updateChannelSource_=new QLabel;updateChannelSource_->setObjectName("updateChannelSource");updateChannelSource_->setWordWrap(true);VisualStyle::role(updateChannelSource_,"muted");updateChannelSource_->hide();channelRow->layout()->addWidget(updateChannelSource_);
- auto* updateRow=new QWidget;auto* updateLayout=new QHBoxLayout(updateRow);updateLayout->setContentsMargins(0,0,0,0);updateLayout->setSpacing(spacing(Space::s));
+ auto* updateRow=new FormRow;auto* updateLayout=new QHBoxLayout(updateRow);updateLayout->setContentsMargins(0,0,0,0);updateLayout->setSpacing(spacing(Space::s));
  updateStatus_=new QLabel;updateStatus_->setObjectName("updateStatus");updateStatus_->setWordWrap(true);updateStatus_->setAlignment(Qt::AlignLeft|Qt::AlignTop);updateStatus_->setContentsMargins(0,qMax(0,(Graphite::scaled(Graphite::Metric::control)-QFontMetrics(Graphite::font(Graphite::Type::body)).height())/2),0,0);updateStatus_->setAccessibleName("Update status");
  // Focusable, so a deep link can land on it when no update action applies.
  updateStatus_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);updateLayout->addWidget(updateStatus_,0,Qt::AlignTop);
