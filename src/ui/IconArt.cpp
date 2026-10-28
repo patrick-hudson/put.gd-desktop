@@ -27,23 +27,24 @@ QImage canvas(int scale) {
 QImage liftTray(const QColor& color,int percent,int scale,int recording) {
  auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
  const auto& light=Theme::trayTints(true);const auto& tints=Theme::trayTints(color==light.idle||color==light.upload||color==light.encoding||color==light.error);
+ const bool failed=percent==-2;
+ const auto glyph=failed?tints.error:color;
  const auto shape=arrow().united(tray());
- if(percent<0) p.fillPath(shape,color);
+ if(percent<0) p.fillPath(shape,glyph);
  else {
-  p.fillPath(shape,color);
+  p.fillPath(shape,glyph);
   p.save();const auto fill=qBound(0,percent,100)/100.0;
   p.setClipRect(QRectF(0,23-21*fill,24,21*fill));p.fillPath(shape,tints.encoding);p.restore();
  }
  p.setPen(QPen(Theme::trayOutline(),0.65,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
  p.setBrush(Qt::NoBrush);p.drawPath(shape);
  // A 7 px disc at 16 px, with a 1 px transparent ring, always top-right.
- const bool failed=percent==-2;
  const QRectF badge=failed||recording?QRectF(13.5,0,10.5,10.5):QRectF();
  if(!badge.isEmpty()){
   p.save();p.setCompositionMode(QPainter::CompositionMode_Clear);p.setPen(Qt::NoPen);p.setBrush(Qt::black);p.drawEllipse(badge.adjusted(-1.5,-1.5,1.5,1.5));p.restore();
-  p.setPen(Qt::NoPen);p.setBrush(failed?tints.error:recording==2?tints.idle:tints.live);p.drawEllipse(badge);
+  p.setPen(Qt::NoPen);p.setBrush(recording==1?tints.live:recording==2?tints.idle:tints.error);p.drawEllipse(badge);
   p.save();p.setCompositionMode(QPainter::CompositionMode_Clear);p.setBrush(Qt::black);
-  if(failed){p.drawRoundedRect(QRectF(18,2,1.5,4),.75,.75);p.drawEllipse(QRectF(18,7,1.5,1.5));}
+  if(!recording){p.drawRoundedRect(QRectF(18,2,1.5,4),.75,.75);p.drawEllipse(QRectF(18,7,1.5,1.5));}
   else if(recording==2){p.drawRect(QRectF(16.5,2.5,1.5,5.5));p.drawRect(QRectF(19.5,2.5,1.5,5.5));}
   p.restore();
  }

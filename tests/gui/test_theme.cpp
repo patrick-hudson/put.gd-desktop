@@ -385,26 +385,38 @@ private slots:
             QCOMPARE(details->font().weight(), QFont::DemiBold);
         }
     }
-    void trayBadgesKnockOutTheGlyphAndFailureWins() {
+    void trayBadgesKeepRecordingVisibleWithLatchedFailure() {
         for (const bool light : {false, true}) {
             const auto& tints = Theme::trayTints(light);
             QCOMPARE(tints.idle, Theme::palette(light ? Theme::Scheme::Light : Theme::Scheme::Dark).icon);
             const auto idle = IconArt::liftTray(tints.idle, -1, 4);
             const auto failed = IconArt::liftTray(tints.idle, -2, 4);
-            QCOMPARE(IconArt::liftTray(tints.idle, -2, 4, 1), failed);
-            QCOMPARE(IconArt::liftTray(tints.idle, -2, 4, 2), failed);
+            for (const int state : {1, 2}) {
+                const auto combined = IconArt::liftTray(tints.idle, -2, 4, state);
+                QVERIFY(combined != failed);
+                QCOMPARE(combined.copy(0, 0, 12 * 4, 24 * 4), failed.copy(0, 0, 12 * 4, 24 * 4));
+                QCOMPARE(combined.pixelColor(15 * 4, 5 * 4), state == 1 ? tints.live : tints.idle);
+                if (state == 2) for (int x : {17, 20}) QCOMPARE(combined.pixelColor(x * 4, 5 * 4).alpha(), 0);
+            }
+            for (const int side : {16, 20, 24, 48}) for (const int state : {1, 2}) {
+                const auto combined = VisualStyle::icon("tray", tints.idle, -2, state).pixmap(side, side).toImage();
+                const auto failure = VisualStyle::icon("tray", tints.error, -2).pixmap(side, side).toImage();
+                QVERIFY(combined != failure);
+                QCOMPARE(combined.copy(0, 0, side / 2, side), failure.copy(0, 0, side / 2, side));
+            }
             for (const int state : {0, 1, 2}) {
                 const auto image = IconArt::liftTray(tints.idle, state ? -1 : -2, 4, state);
                 // The knockout ring clears the original arrow at the same corner.
                 QVERIFY(idle.pixelColor(13 * 4, 7 * 4).alpha() > 0);
                 QCOMPARE(image.pixelColor(13 * 4, 7 * 4).alpha(), 0);
-                QCOMPARE(image.copy(0, 0, 12 * 4, 24 * 4), idle.copy(0, 0, 12 * 4, 24 * 4));
+                const auto base = state ? idle : IconArt::liftTray(tints.error, -1, 4);
+                QCOMPARE(image.copy(0, 0, 12 * 4, 24 * 4), base.copy(0, 0, 12 * 4, 24 * 4));
                 QCOMPARE(image.pixelColor(15 * 4, 5 * 4), state == 0 ? tints.error : state == 1 ? tints.live : tints.idle);
                 if (state == 0) { QCOMPARE(image.pixelColor(18 * 4 + 3, 3 * 4).alpha(), 0); QCOMPARE(image.pixelColor(18 * 4 + 3, 7 * 4 + 3).alpha(), 0); }
                 if (state == 2) for (int x : {17, 20}) QCOMPARE(image.pixelColor(x * 4, 5 * 4).alpha(), 0);
-                for (const int side : {16, 22, 24, 48}) {
+                for (const int side : {16, 20, 24, 48}) {
                     const auto small = VisualStyle::icon("tray", tints.idle, state ? -1 : -2, state).pixmap(side, side).toImage();
-                    const auto plain = VisualStyle::icon("tray", tints.idle).pixmap(side, side).toImage();
+                    const auto plain = VisualStyle::icon("tray", state ? tints.idle : tints.error).pixmap(side, side).toImage();
                     QCOMPARE(small.size(), QSize(side, side));
                     QCOMPARE(plain.size(), QSize(side, side));
                     int disc = 0, holes = 0;

@@ -174,8 +174,11 @@ int main(int argc,char** argv){
  // but enforce the same Linux path precondition before constructing the app.
  const auto socket=QDir(QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation)).filePath("putgd/session.sock");if(socket.toUtf8().size()>107){qCritical("Resolved Unix socket exceeds 107 UTF-8 bytes");return 2;}
  {
-  QImage states(900,200,QImage::Format_ARGB32_Premultiplied);states.fill(Theme::current().bg);QPainter painter(&states);painter.setFont(Graphite::font(Graphite::Type::body));painter.setPen(Theme::current().text);const auto tints=Theme::trayTints(Theme::scheme()==Theme::Scheme::Light);const QStringList labels{"Idle","Recording","Paused","Uploading + recording","Failed + paused"};
-  for(int n=0;n<labels.size();++n){painter.drawPixmap(n*180+66,8,VisualStyle::icon("tray",n==4?tints.error:tints.idle,n==4?-2:n==3?50:-1,n==1||n==3?1:n==2||n==4?2:0).pixmap(48,48));for(int size:{16,22,24})painter.drawPixmap(n*180+24+(size-16)*12,76,VisualStyle::icon("tray",n==4?tints.error:tints.idle,n==4?-2:n==3?50:-1,n==1||n==3?1:n==2||n==4?2:0).pixmap(size,size));painter.drawText(QRect(n*180,112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}painter.end();if(!states.save(QDir(output).filePath("settings-tray-states.png")))return 2;
+  QImage states(1260,400,QImage::Format_ARGB32_Premultiplied);QPainter painter(&states);painter.setFont(Graphite::font(Graphite::Type::metadata));
+  const QStringList labels{"Idle","Recording","Paused","Uploading + recording","Failed","Failed + recording","Failed + paused"};
+  for(const bool light:{false,true}){const int y=light?200:0;const auto& panel=Theme::palette(light?Theme::Scheme::Light:Theme::Scheme::Dark);painter.fillRect(0,y,states.width(),200,panel.bg);painter.setPen(panel.text);const auto& tints=Theme::trayTints(light);
+   for(int n=0;n<labels.size();++n){const auto icon=VisualStyle::icon("tray",tints.idle,n>=4?-2:n==3?50:-1,n==1||n==3||n==5?1:n==2||n==6?2:0);painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,20,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
+  }painter.end();if(!states.save(QDir(output).filePath("settings-tray-states.png")))return 2;
  }
  QTemporaryDir data("/tmp/pgr-XXXXXX");if(!data.isValid())return 2;const auto config=previewConfig(data.path());SettingsService settings(data.filePath("synthetic-config.json"),[](const QString&,const QJsonObject&){return Error{};});if(!settings.save(config,{})){qCritical("Cannot write synthetic preview configuration");return 2;}
  // No production provider or capture action is used. Credentials below are
