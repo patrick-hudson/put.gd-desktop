@@ -246,15 +246,21 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* feedback=new QGridLayout(feedbackContent);feedback->setContentsMargins(0,0,0,0);feedback->setSpacing(Graphite::space(Space::s));feedback->setColumnStretch(0,1);
  auto* result=new QWidget(saveFeedback_);result->setObjectName("editorSaveResult");auto* resultRow=new QHBoxLayout(result);resultRow->setContentsMargins(0,0,0,0);resultRow->setSpacing(Graphite::space(Space::s));
  auto* actions=new QWidget(saveFeedback_);actions->setObjectName("editorSaveActions");auto* recoveryRow=new QHBoxLayout(actions);recoveryRow->setContentsMargins(0,0,0,0);recoveryRow->setSpacing(Graphite::space(Space::s));
- savedLabel_=new Graphite::ElidedLabel(saveFeedback_);savedLabel_->setObjectName("editorSaved");savedLabel_->setTextFormat(Qt::PlainText);savedLabel_->setContextMenuPolicy(Qt::ActionsContextMenu);savedLabel_->hide();resultRow->addWidget(savedLabel_,1);
+ savedLabel_=new Graphite::ElidedLabel(saveFeedback_);savedLabel_->setObjectName("editorSaved");savedLabel_->setTextFormat(Qt::PlainText);savedLabel_->setElideMode(Qt::ElideRight);savedLabel_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);savedLabel_->setContextMenuPolicy(Qt::ActionsContextMenu);savedLabel_->hide();resultRow->addWidget(savedLabel_,1);
  saveTarget_=new Graphite::ElidedLabel(saveFeedback_);saveTarget_->setObjectName("editorSaveTarget");saveTarget_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);saveTarget_->setTextFormat(Qt::PlainText);saveTarget_->setElideMode(Qt::ElideMiddle);VisualStyle::role(saveTarget_,"secondary");saveTarget_->hide();resultRow->addWidget(saveTarget_,1);
  saveError_=new Graphite::ElidedLabel(saveFeedback_);saveError_->setObjectName("editorSaveError");saveError_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);saveError_->setTextFormat(Qt::PlainText);saveError_->setElideMode(Qt::ElideRight);saveError_->setRevealActionName("Save failure details");saveError_->setRevealTitle("Save to");VisualStyle::role(saveError_,"body");saveError_->hide();resultRow->insertWidget(0,saveError_,2);
  auto* details=Graphite::toolButton("Details",{},"quiet",saveFeedback_);details->setObjectName("editorSaveDetails");resultRow->insertWidget(1,details);connect(details,&QToolButton::clicked,this,[this]{if(auto* popup=saveError_->fullTextPopup();popup&&popup->isVisible())popup->close();else saveError_->reveal();});
  auto* copyPath=new QAction("Copy full path",savedLabel_);savedLabel_->addAction(copyPath);connect(copyPath,&QAction::triggered,this,&EditorWindow::copySavedPath);
  showFolder_=new QPushButton("Show in folder",saveFeedback_);showFolder_->setObjectName("showSavedCopy");showFolder_->hide();VisualStyle::role(showFolder_,"quiet");recoveryRow->addWidget(showFolder_);
  copyPath_=new QPushButton("Copy path",saveFeedback_);copyPath_->setObjectName("copySavedPath");copyPath_->setToolTip("Copy the saved copy's full path");copyPath_->hide();VisualStyle::role(copyPath_,"quiet");recoveryRow->addWidget(copyPath_);
+ savedMore_=Graphite::toolButton({}, {},"quiet",saveFeedback_);savedMore_->setIcon(Graphite::chromeIcon("more"));savedMore_->setObjectName("editorSavedMore");savedMore_->setAccessibleName("Saved copy actions");savedMore_->setToolTip("Saved copy actions");savedMore_->setPopupMode(QToolButton::InstantPopup);savedMore_->hide();recoveryRow->addWidget(savedMore_);
+ auto* savedMenu=new QMenu(savedMore_);savedMore_->setMenu(savedMenu);
+ auto* showSaved=savedMenu->addAction("Show in folder");showSaved->setObjectName("showSavedCopyMenu");connect(showSaved,&QAction::triggered,this,&EditorWindow::showSavedCopy);
+ auto* copySaved=savedMenu->addAction("Copy path");copySaved->setObjectName("copySavedPathMenu");connect(copySaved,&QAction::triggered,this,&EditorWindow::copySavedPath);
  chooseAnother_=new QPushButton("Choose another location…",saveFeedback_);chooseAnother_->setObjectName("chooseAnotherLocation");chooseAnother_->hide();VisualStyle::role(chooseAnother_,"quiet");recoveryRow->addWidget(chooseAnother_);
  saveFeedback_->setDismissible(true,"Dismiss save feedback");auto* dismiss=saveFeedback_->dismissButton();dismiss->setFocusPolicy(Qt::StrongFocus);dismiss->setObjectName("dismissEditorSavedCopy");connect(dismiss,&QToolButton::clicked,this,&EditorWindow::dismissSavedCopy);setTabOrder(showFolder_,copyPath_);setTabOrder(copyPath_,dismiss);setTabOrder(chooseAnother_,dismiss);
+ setTabOrder(savedMore_,dismiss);
+ for(auto* button:saveFeedback_->findChildren<QAbstractButton*>()){button->setProperty("graphiteDensity","compact");button->style()->unpolish(button);button->style()->polish(button);}
  folderError_=new Graphite::ElidedLabel(saveFeedback_);folderError_->setText("Couldn't open the folder. Use Copy path instead.");folderError_->setObjectName("editorFolderError");folderError_->setTextFormat(Qt::PlainText);VisualStyle::role(folderError_,"body");folderError_->hide();resultRow->addWidget(folderError_,1);feedback->addWidget(result,0,0);feedback->addWidget(actions,0,1);
 
  message_=new QLabel(result);message_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);message_->hide();resultRow->insertWidget(0,message_,1);
@@ -418,20 +424,31 @@ void EditorWindow::placeTools(){
 }
 void EditorWindow::placeSaveFeedback(){
  if(!saveFeedback_||saveFeedback_->isHidden())return;
+ // Overlay controls follow their text height rather than decorative text scaling.
+ for(auto* button:saveFeedback_->findChildren<QAbstractButton*>())button->setFixedHeight(std::max(32,button->fontMetrics().height()+2*int(Space::xs)));
+ const int target=saveFeedback_->dismissButton()->height();saveFeedback_->dismissButton()->setFixedWidth(target);savedMore_->setFixedSize(target,target);
+ const auto inset=saveFeedback_->layout()->contentsMargins();saveFeedback_->layout()->setContentsMargins(inset.left(),int(Space::xs),int(Space::m),int(Space::xs));
  const int w=std::max(0,canvas_->width()-2*Graphite::space(Space::l));saveFeedback_->resize(w,saveFeedback_->height());
  auto* result=findChild<QWidget*>("editorSaveResult");auto* actions=findChild<QWidget*>("editorSaveActions");
  auto* grid=qobject_cast<QGridLayout*>(result->parentWidget()->layout());
  const int room=w-saveFeedback_->layout()->contentsMargins().left()-saveFeedback_->layout()->contentsMargins().right()-(saveFeedback_->dismissButton()->isHidden()?0:saveFeedback_->dismissButton()->width()+Graphite::space(Space::s));
+ const bool saved=lastSave_["status"]=="saved"&&saveFeedbackVisible_;
+ const int savedWidth=std::max(savedLabel_->minimumSizeHint().width(),std::min(savedLabel_->fontMetrics().horizontalAdvance(savedLabel_->text()),Graphite::scaled(320)));
+ const bool overflow=saved&&!savedLabel_->isHidden()&&savedWidth+showFolder_->sizeHint().width()+copyPath_->sizeHint().width()+2*Graphite::space(Space::s)>room;
+ showFolder_->setVisible(saved&&!overflow);copyPath_->setVisible(saved&&!overflow);savedMore_->setVisible(overflow);
  // Keep enough of the outcome readable before moving recovery actions below it.
  int natural=0,count=0;for(int i=0;i<result->layout()->count();++i)if(auto* widget=result->layout()->itemAt(i)->widget();widget&&!widget->isHidden()){auto* label=qobject_cast<QLabel*>(widget);natural+=label?label->fontMetrics().horizontalAdvance(label->text()):widget->sizeHint().width();++count;}
  natural+=std::max(0,count-1)*result->layout()->spacing();
  const int resultWidth=std::max(result->minimumSizeHint().width(),std::min(natural,Graphite::scaled(320)));
- const bool stacked=!actions->isHidden()&&resultWidth+actions->sizeHint().width()+Graphite::space(Space::s)>room;
+ const bool stacked=!overflow&&!actions->isHidden()&&resultWidth+actions->sizeHint().width()+Graphite::space(Space::s)>room;
  int row=0,column=0,rowSpan=0,columnSpan=0;grid->getItemPosition(grid->indexOf(actions),&row,&column,&rowSpan,&columnSpan);
  if(row!=(stacked?1:0)){grid->removeWidget(actions);grid->addWidget(actions,stacked?1:0,stacked?0:1,Qt::AlignLeft);}
- saveFeedback_->layout()->activate();
- const int h=std::max(saveFeedback_->minimumSizeHint().height(),saveFeedback_->heightForWidth(w));
- saveFeedback_->setGeometry(Graphite::space(Space::l),canvasViewport_->height()-Graphite::space(Space::l)-h,w,h);saveFeedback_->raise();
+ // Measure the reflowed content before the outer widget's cached row catches up.
+ grid->invalidate();saveFeedback_->layout()->invalidate();
+ const auto margins=saveFeedback_->layout()->contentsMargins();
+ const int contentHeight=std::max(grid->minimumSize().height(),grid->hasHeightForWidth()?grid->heightForWidth(std::max(0,room)):0);
+ const int h=margins.top()+margins.bottom()+std::max(contentHeight,saveFeedback_->dismissButton()->isHidden()?0:saveFeedback_->dismissButton()->height());
+ saveFeedback_->setGeometry(Graphite::space(Space::l),canvasViewport_->height()-Graphite::space(Space::l)-h,w,h);saveFeedback_->layout()->activate();saveFeedback_->raise();
 }
 void EditorWindow::placeProperties(){
  if(!splitter_)return;
@@ -637,6 +654,7 @@ void EditorWindow::syncSaved(){
  // The copy holds the draft as it was then; after another edit it is an earlier copy.
  const bool current=savedGeneration_==doc_.generation();const auto name=lastSave_["name"].toString();
  savedLabel_->setText(current?"Saved "+name:"Earlier copy saved: "+name);VisualStyle::role(savedLabel_,current?"success":"secondary");
+ savedLabel_->setToolTip(lastSave_["path"].toString());
  savedLabel_->setAccessibleName(current?"Saved a copy":"Saved an earlier copy");
  if(lastShowInFolder_.isEmpty()||lastShowInFolder_["opened"].toBool())saveFeedback_->setAccessibleName(savedLabel_->text());
  header_->setDocument("Edit image","Not uploaded");

@@ -112,6 +112,7 @@ private:
  QSpinBox* textSize_=nullptr;
  QToolButton* status_=nullptr;
  QToolButton *undo_=nullptr,*redo_=nullptr;
+ QToolButton* savedMore_=nullptr;
  QWidget *colorRow_=nullptr,*widthRow_=nullptr,*blurRow_=nullptr,*textRow_=nullptr,*cropRow_=nullptr;
  QComboBox* width_=nullptr;
  QSlider* strength_=nullptr;
@@ -120,7 +121,7 @@ private:
  Graphite::ElidedLabel* toolTitle_=nullptr;
  QLabel *hint_=nullptr,*message_=nullptr,*toolHelp_=nullptr,*documentInfo_=nullptr;
  Graphite::ElidedLabel* destination_=nullptr;QLabel* sharingMode_=nullptr;QWidget* blurWarning_=nullptr;
- QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={},*savedLabel_=nullptr;Graphite::ElidedLabel *saveError_=nullptr,*folderError_=nullptr;
+ QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={};Graphite::ElidedLabel *savedLabel_=nullptr,*saveError_=nullptr,*folderError_=nullptr;
  QSpinBox* geometry_[4]={};
  QToolButton* geometryDisclosure_=nullptr;
  QWidget *geometryFields_=nullptr,*geometryRow_=nullptr,*placeRow_=nullptr,*sizeLabels_=nullptr,*optionsRule_=nullptr;

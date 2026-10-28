@@ -221,12 +221,15 @@ private slots:
    if(fitted)window.canvas().fit();else{window.canvas().setZoom(2);window.canvas().panBy({-90,-60});}
    const auto geometry=window.canvas().geometry();const auto zoom=window.canvas().zoom();const auto visible=window.canvas().visibleImageRect();
    auto stable=[&]{QApplication::processEvents();if(feedback->isVisible())QVERIFY(window.canvas().rect().contains(QRect(feedback->pos(),feedback->size())));QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(window.canvas().zoom(),zoom);QCOMPARE(window.canvas().visibleImageRect(),visible);QCOMPARE(window.canvas().fitted(),fitted);};
-   window.showSaved("/synthetic/long saved image name.png");stable();
+   const QString savedPath="/synthetic/"+QString("long saved image name ").repeated(12)+".png";window.showSaved(savedPath);stable();
+   auto* more=window.findChild<QToolButton*>("editorSavedMore");auto* saved=window.findChild<Graphite::ElidedLabel*>("editorSaved");QVERIFY(more->isVisible());QVERIFY(saved->elided());QCOMPARE(saved->toolTip(),savedPath);QVERIFY(feedback->height()<=more->height()+2*int(Graphite::Space::xs));
+   QGuiApplication::clipboard()->clear();more->menu()->findChild<QAction*>("copySavedPathMenu")->trigger();QCOMPARE(QGuiApplication::clipboard()->text(),savedPath);QCOMPARE(window.viewState()["lastCopiedPath"].toString(),savedPath);
    window.showSaveFailed("/synthetic/long failed image name.png",QString("Permission denied. ").repeated(20));stable();
    auto* details=window.findChild<QToolButton*>("editorSaveDetails");auto* retry=window.findChild<QPushButton*>("chooseAnotherLocation");
    QVERIFY(details->isVisible());QVERIFY(retry->isVisible());
    auto* reason=window.findChild<QLabel*>("editorSaveError");QVERIFY(reason->width()>=reason->fontMetrics().horizontalAdvance("Couldn't save"));
-   for(auto* button:{static_cast<QWidget*>(details),static_cast<QWidget*>(retry)})QVERIFY(feedback->rect().contains(QRect(button->mapTo(feedback,QPoint()),button->size())));
+   for(auto* button:{static_cast<QWidget*>(details),static_cast<QWidget*>(retry)}){const QRect bounds(button->mapTo(feedback,QPoint()),button->size());QVERIFY2(feedback->rect().contains(bounds),qPrintable(QString("%1 at %2,%3 %4x%5 in feedback %6x%7").arg(button->objectName()).arg(bounds.x()).arg(bounds.y()).arg(bounds.width()).arg(bounds.height()).arg(feedback->width()).arg(feedback->height())));}
+   QVERIFY(!more->isVisible());QVERIFY(feedback->height()<=details->height()+retry->height()+2*int(Graphite::Space::xs)+Graphite::space(Graphite::Space::s));
    window.dismissSavedCopy();stable();
    QTemporaryDir dir;QVERIFY(window.writeCopy(dir.filePath("copy.png")));stable();PUTGD_TRY_VERIFY(!window.savingCopy());stable();
   }
