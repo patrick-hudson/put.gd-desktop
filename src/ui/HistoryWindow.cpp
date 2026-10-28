@@ -90,7 +90,8 @@ QString linkExpiry(const QJsonObject& detail){
 QString statusPhrases(QString text,bool failed=false){
  auto tokens=text.split(" · ");for(int i=0;i<tokens.size();++i)if(!failed||i!=1||tokens[i]=="Saved locally")tokens[i].replace(' ',QChar(0x00a0));return tokens.join(" · ");
 }
-QString metadataSpan(const QString& text,const QColor& color,bool fact=false){return "<span style=\"color:"+color.name()+";font-size:"+QString::number(Graphite::font(fact?Graphite::Type::technical:Graphite::Type::metadata).pixelSize())+"px\">"+statusPhrases(text).toHtmlEscaped()+"</span>";}
+QFont outcomeFont(){auto font=Graphite::font(Graphite::scaled(100)>=125?Graphite::Type::metadata:Graphite::Type::technical);if(Graphite::scaled(100)>=125)font.setWeight(QFont::Medium);return font;}
+QString metadataSpan(const QString& text,const QColor& color,bool fact=false){const auto font=fact?outcomeFont():Graphite::font(Graphite::Type::metadata);return "<span style=\"color:"+color.name()+";font-size:"+QString::number(font.pixelSize())+"px;font-weight:"+QString::number(font.weight())+"\">"+statusPhrases(text).toHtmlEscaped()+"</span>";}
 bool outcomePart(const QJsonObject& record,const QString& part){for(const auto& outcome:HistoryModel::statusText(record).split(" · "))if(outcome==part||outcome.startsWith(part+".")||outcome.startsWith(part+" ("))return true;return false;}
 QColor metadataColor(const QJsonObject& record,const QString& part,const QColor& neutral){
  const auto& t=Theme::current();if(HistoryModel::failed(record))return part==HistoryModel::failureLabel(record)?t.danger:neutral;
