@@ -2266,7 +2266,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
                             if (auto* text = qobject_cast<QLabel*>(label)) intrinsic = text->fontMetrics().horizontalAdvance(QString(text->text()).replace("&&", "&"));
                             else {
                                 for (auto* text : label->findChildren<QLabel*>(Qt::FindDirectChildrenOnly)) { intrinsic += text->fontMetrics().horizontalAdvance(QString(text->text()).replace("&&", "&")); ++parts; }
-                                for (auto* button : label->findChildren<QAbstractButton*>(Qt::FindDirectChildrenOnly)) { intrinsic += button->sizeHint().width(); ++parts; }
+                                for (auto* button : label->findChildren<QAbstractButton*>(Qt::FindDirectChildrenOnly)) { intrinsic += button->minimumWidth() == button->maximumWidth() ? button->width() : button->sizeHint().width(); ++parts; }
                                 if (parts > 1 && label->layout()) intrinsic += (parts - 1) * label->layout()->spacing();
                             }
                             gutter = std::max(gutter, intrinsic);
