@@ -17,6 +17,7 @@
 #include "app/DiagnosticsBundle.h"
 #include <QApplication>
 #include <QHBoxLayout>
+#include <QGridLayout>
 #include <QVBoxLayout>
 #include <QContextMenuEvent>
 #include <QAbstractSpinBox>
