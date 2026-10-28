@@ -129,6 +129,18 @@ private slots:
             }
         }
     }
+    void disabledQuietToolButtonsShowOnlyTheirGlyph() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);const auto& colors=Theme::current();
+            for (const bool implicit : {false, true}) {
+                QToolButton button;button.setAutoRaise(true);if(!implicit)VisualStyle::role(&button,"quiet");
+                QStyleOptionToolButton option;option.rect=QRect(0,0,48,40);option.icon=VisualStyle::icon("redo");option.iconSize=QSize(18,18);option.toolButtonStyle=Qt::ToolButtonIconOnly;
+                auto render=[&](QStyle::State state){option.state=state|QStyle::State_AutoRaise;QImage shot(option.rect.size(),QImage::Format_RGB32);shot.fill(colors.bg);QPainter painter(&shot);button.style()->drawComplexControl(QStyle::CC_ToolButton,&option,&painter,&button);return shot;};
+                const auto idle=render(QStyle::State_None);QCOMPARE(idle,render(QStyle::State_MouseOver|QStyle::State_Sunken|QStyle::State_On));int ink=0;
+                const QRect glyph(15,11,18,18);for(int y=0;y<idle.height();++y)for(int x=0;x<idle.width();++x){if(!glyph.contains(x,y))QCOMPARE(idle.pixelColor(x,y),colors.bg);ink+=idle.pixelColor(x,y)==colors.textDisabled;}QVERIFY(ink>0);
+            }
+        }
+    }
     void menuLiteralAmpersandsReserveTheirVisibleWidth() {
         for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}) {
             Theme::setScheme(scheme);const auto& c=Theme::current();
