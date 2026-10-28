@@ -1,5 +1,6 @@
 #pragma once
 #include <QString>
+#include <QStringList>
 class QFormLayout;
 class QVBoxLayout;
 class QLabel;
@@ -10,6 +11,7 @@ namespace putgd::PreferenceRows {
 // Preserve each field and its agent identity while composing card rows. Text
 // fields stack unless preferenceInline is set; inline values fill the width after a measured, capped
 // label gutter shared within their page family.
+QStringList destinationStateLines(const QString& state,int width);
 QLabel* caption(const QString&);
 QFormLayout* card(QVBoxLayout*,const QString& heading,const QString& description={},bool headingInside=false);
 QWidget* sectionFor(QFormLayout*);
