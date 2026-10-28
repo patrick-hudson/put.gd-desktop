@@ -135,7 +135,7 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="text") {
   line(color,1.8);p.drawLine(5,5,19,5);p.drawLine(12,5,12,20);
  } else if(name=="refresh") {
-  p.scale(1.2,1.2);line(color,2);QPainterPath turn;turn.arcMoveTo(QRectF(3,3,14,14),0);turn.arcTo(QRectF(3,3,14,14),0,-270);turn.moveTo(5,8);turn.lineTo(10,3);turn.lineTo(15,8);p.drawPath(turn);
+  line(color,1.8);QPainterPath turn;turn.arcMoveTo(QRectF(4,4,16,16),0);turn.arcTo(QRectF(4,4,16,16),0,-315);turn.moveTo(20,3.5);turn.lineTo(20,8);turn.lineTo(15.5,8);p.drawPath(turn);
  } else if(name=="undo"||name=="redo") {
   if(name=="redo"){p.translate(24,0);p.scale(-1,1);}
   line(color,1.8);QPainterPath turn;turn.moveTo(4,9);turn.lineTo(15,9);turn.quadTo(21,9,21,15);turn.quadTo(21,21,15,21);turn.lineTo(10,21);
