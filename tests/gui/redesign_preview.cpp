@@ -504,7 +504,7 @@ int main(int argc,char** argv){
  if(!recordOnly&&!editorOnly){
   AboutWindow about(fixture.session.build(),&window);RedesignTheme::apply(about);about.show();
   auto grabAbout=[&](const QString& name){app.processEvents();const auto image=about.grab();if(!image.save(QDir(output).filePath(name+".png"))||!native.step(about,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
-  if(!grabAbout("about"))return 2;auto* details=about.findChild<QPushButton*>("buildDetails");if(!details)return 2;details->click();if(!grabAbout("about-build-details"))return 2;about.close();
+  if(!grabAbout("about"))return 2;auto* details=about.findChild<QToolButton*>("buildDetails");if(!details)return 2;details->click();if(!grabAbout("about-build-details"))return 2;about.findChild<QPushButton*>("copyBuildDetails")->click();if(!grabAbout("about-build-details-copied"))return 2;about.close();
  }
  // The custom frame under real input: the driver moves, maximizes, restores,
  // resizes and finally closes the main window.
