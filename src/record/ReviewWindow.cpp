@@ -1316,6 +1316,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     blurAdvice->setMaximumWidth(480);
     blurAdvice->setAction("Use Redact");
     blurAdvice->actionButton()->setObjectName("useRedact");
+    blurAdvice->actionButton()->setAccessibleDescription(Graphite::blurWarningText());
     blurAdvice->actionButton()->setProperty("driveAction", QJsonObject{{"action", "useSolidCover"}});
     blurAdvice->setDismissible(true, "Got it");
     blurAdvice->dismissButton()->setProperty("driveAction", QJsonObject{{"action", "dismissBlurTip"}});
