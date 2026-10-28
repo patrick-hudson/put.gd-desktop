@@ -221,7 +221,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* footer=new Graphite::Surface("bg",Qt::TopEdge,this);footer->setObjectName("editorFooter");footer->setMinimumHeight(Graphite::scaled(56));
  footerGrid_=new QGridLayout(footer);footerGrid_->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::s),Graphite::space(Space::l),Graphite::space(Space::s));footerGrid_->setHorizontalSpacing(Graphite::space(Space::s));footerGrid_->setVerticalSpacing(Graphite::space(Space::xs));footerGrid_->setColumnStretch(0,1);
  auto* document=new QWidget(footer);document->setObjectName("editorDocument");document_=document;
- auto* documentLayout=new QHBoxLayout(document);documentLayout->setContentsMargins(0,0,0,0);documentLayout->setSpacing(Graphite::space(Space::xs));
+ auto* documentLayout=new QHBoxLayout(document);documentLayout->setContentsMargins(0,0,0,0);documentLayout->setSpacing(Graphite::space(Space::l));
  documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");VisualStyle::role(documentInfo_,"meta");documentLayout->addWidget(documentInfo_);footerGrid_->addWidget(document,2,0);
  notice_=new QWidget(footer);notice_->setObjectName("editorPreparationFailure");
  auto* noticeLayout=new QGridLayout(notice_);noticeLayout->setContentsMargins(0,0,0,0);noticeLayout->setSpacing(Graphite::space(Space::s));

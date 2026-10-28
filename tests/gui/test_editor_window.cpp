@@ -765,6 +765,8 @@ private slots:
   QVERIFY(destination);QVERIFY(destination->focusPolicy()&Qt::TabFocus);QApplication::processEvents();
   QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
   QVERIFY(destination->mapTo(footer,QPoint()).x()+destination->width()<window.findChild<QPushButton*>("editorSaveCopy")->x());
+  auto* info=window.findChild<QLabel*>("editorDocumentInfo");
+  QCOMPARE(destination->x()-(info->x()+info->width()),Graphite::space(Graphite::Space::l));
   QCOMPARE(footer->height(),Graphite::scaled(56));
   const QString longName="Upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams, release readiness and accessibility reviews";
   window.setDestination(longName);window.resize(760,560);QApplication::processEvents();
