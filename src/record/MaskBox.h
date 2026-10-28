@@ -1,5 +1,6 @@
 #pragma once
 #include <QComboBox>
+#include "ui/Graphite.h"
 #include <QAbstractItemView>
 #include <QWheelEvent>
 #include <algorithm>
@@ -13,14 +14,14 @@ public:
         auto size = QComboBox::sizeHint();
         int width = fontMetrics().horizontalAdvance(placeholderText());
         for (int i = 0; i < count(); ++i) width = std::max(width, fontMetrics().horizontalAdvance(itemText(i)));
-        size.setWidth(width + 44);
+        size.setWidth(width + Graphite::scaled(44));
         return size;
     }
     QSize minimumSizeHint() const override { return sizeHint(); }
     void showPopup() override {
         int width = 0;
         for (int i = 0; i < count(); ++i) width = std::max(width, fontMetrics().horizontalAdvance(itemText(i)));
-        view()->setMinimumWidth(width + 40);
+        view()->setMinimumWidth(width + Graphite::scaled(40));
         QComboBox::showPopup();
     }
 protected:

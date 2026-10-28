@@ -4,6 +4,7 @@
 // proof; the lab captures are in the docs.
 #include "record/ReviewWindow.h"
 #include "record/Duration.h"
+#include "record/MaskBox.h"
 #include "record/Overlays.h"
 #include "ui/RegionOverlay.h"
 #include <QAccessible>
@@ -1537,6 +1538,17 @@ private slots:
         stop->click(); QCOMPARE(stopped.size(), 1); QCOMPARE(cancelled.size(), 0);
         discard->click(); QVERIFY(bar.confirming()); QCOMPARE(cancelled.size(), 0);
         bar.findChild<QPushButton*>("keepRecording")->click(); QVERIFY(!bar.confirming());
+    }
+    void maskChooserReservesScaledControlAndPopupSpace() {
+        for (int pixels : {14, 21}) {
+            auto font = qApp->font(); font.setPixelSize(pixels); qApp->setFont(font);
+            MaskBox box; box.addItems({"Redact 1", "Blur 1"}); box.show();
+            const int text = std::max(box.fontMetrics().horizontalAdvance("Redact 1"), box.fontMetrics().horizontalAdvance("Blur 1"));
+            QVERIFY(box.sizeHint().width() >= text + Graphite::scaled(44));
+            box.showPopup();
+            QVERIFY(box.view()->minimumWidth() >= text + Graphite::scaled(40));
+            box.hidePopup();
+        }
     }
     void timelineIntervalsAndBlurWarningsHaveContrast() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {

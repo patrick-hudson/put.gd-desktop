@@ -1285,7 +1285,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     VisualStyle::role(radius->unitLabel(), "meta");
     strength_ = radius->spinBox();
     // Two digits plus the field padding and two full 32 px stepper targets.
-    strength_->setFixedWidth(strength_->fontMetrics().horizontalAdvance(QString::number(strength_->maximum())) + 80);
+    strength_->setFixedWidth(strength_->fontMetrics().horizontalAdvance(QString::number(strength_->maximum())) + Graphite::scaled(80));
     maskStart_ = action("Start here", "Set mask start at playhead", "Start the selected mask at the playhead (Shift+I)");
     maskEnd_ = action("End here", "Set mask end at playhead", "End the selected mask at the playhead (Shift+O)");
     removeMask_ = tool("remove", "Delete mask", "Delete the selected mask (Delete)");
