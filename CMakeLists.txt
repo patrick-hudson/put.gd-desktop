@@ -1198,9 +1198,9 @@ if(BUILD_TESTING)
     add_test(NAME gui_${view} COMMAND test_gui_${view})
     set_tests_properties(gui_${view} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
   endforeach()
-  # Delayed saves, setup polling and shortcut deadlines expand this suite;
-  # the complete ASan/UBSan matrix takes longer than the former 60 s budget.
-  set_tests_properties(gui_settings PROPERTIES TIMEOUT 120)
+  # Delayed saves, setup polling and theme/scale cases expand this functional
+  # suite; leave time for a complete run on the shared builders.
+  set_tests_properties(gui_settings PROPERTIES TIMEOUT 180)
   # Copy image decodes the retained original in the putgd-ui image worker (#284).
   add_dependencies(test_gui_history_view putgd-ui)
   set_tests_properties(gui_history_view PROPERTIES TIMEOUT 120)
