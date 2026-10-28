@@ -185,7 +185,7 @@ private slots:
   // action row. Paint with that same width to test both layout and clipping.
   list->viewport()->resize(width+2*list->spacing(),300);
   QStyleOptionViewItem option;option.initFrom(list);option.font=list->font();
-  const auto size=list->itemDelegate()->sizeHint(option,index);QCOMPARE(size.width(),width);option.rect=QRect(QPoint(),size);
+  const auto size=list->itemDelegate()->sizeHint(option,index);QCOMPARE(size.width(),qMin(760,width));option.rect=QRect(QPoint(),size);
   option.state=QStyle::State_Enabled|(selected?QStyle::State_Selected:QStyle::State_MouseOver);
   QImage actual(size,QImage::Format_ARGB32_Premultiplied);actual.fill(Qt::transparent);
   {QPainter painter(&actual);list->itemDelegate()->paint(&painter,option,index);}
@@ -887,9 +887,7 @@ private slots:
   const auto area=HistoryWindow::failureTextArea(size,true,false);const int textBottom=area.bottom()+1;QCOMPARE(probe.buttons.size(),2);
   for(const auto& button:probe.buttons){QVERIFY2(button.bottom()<area.top()-QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()-6,qPrintable(QString("thumbnail action at y%1, metadata ends y%2").arg(button.top()).arg(textBottom)));QVERIFY(QRect(QPoint(),size).contains(button));QVERIFY(button.height()>=QFontMetrics(Graphite::font()).height()+8);}
  }
- // Column headings and row values share one geometry: at every width, with
- // a scrollbar, each heading is painted where its values start, and a
- // dropped column loses its heading too.
+ // Retain the existing gate name for callers; the header is intentionally absent.
  void historyMetadataColoursOnlyStatusWords(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);HistoryWindow window(fixture.session);auto* list=window.findChild<QListView*>("historyList");list->viewport()->resize(762,400);
   QStandardItemModel model(1,1);const auto index=model.index(0,0);model.setData(index,"Synthetic screenshot",Qt::DisplayRole);model.setData(index,"Region · 35 KiB · Shared link",HistoryModel::SubtitleRole);model.setData(index,QJsonObject{{"operation",QJsonObject{{"copyStatus","copied"}}}},HistoryModel::RecordRole);

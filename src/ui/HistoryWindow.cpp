@@ -197,8 +197,9 @@ Columns historyColumns(const QRect& row,bool details=false,bool destination=true
 int dayHeadingHeight(){return qMax(32,QFontMetrics(Graphite::font(Graphite::Type::micro,true)).height()+8);}
 // Row actions are 32 px targets, taller when enlarged text needs it.
 int actionHeight(){return qMax(32,QFontMetrics(Graphite::font()).height()+12);}
-int rowTextInset(){return Graphite::scaled(100)>125?5:10;}
-int rowContentHeight(){return qMax(Graphite::Metric::historyRow,qMax(Graphite::Metric::thumbHeight,QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+6)+2*rowTextInset()+4);}
+constexpr int historyThumbWidth=96,historyThumbHeight=60;
+int rowTextInset(){return space(Graphite::scaled(100)>125?Space::xs:Space::s);}
+int rowContentHeight(){return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+space(Space::xs)+2*rowTextInset()+4));}
 // Wider cards keep their pictures bounded, leaving room for another row.
 int galleryPicture(int cardWidth){return qMin(Graphite::scaled(145),qMax(90,(cardWidth-2)*145/234));}
 void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded=false){
@@ -210,13 +211,11 @@ void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,
 }
 // The row's body: right of the thumbnail in a list, under it in a gallery tile.
 QRect rowBody(const QRect& outer,bool gallery,int heading){
- const auto card=outer.adjusted(6,heading+2,-6,-2);
+ auto bounded=outer;if(!gallery)bounded.setWidth(qMin(760,bounded.width()));const auto card=bounded.adjusted(6,heading+2,-6,-2);
  if(gallery){const int top=card.top()+1+galleryPicture(card.width())+10;return QRect(card.left()+14,top,card.width()-28,qMax(0,card.bottom()-top+1));}
- const int left=card.left()+12+Graphite::Metric::thumbWidth+16;
+ const int left=card.left()+12+historyThumbWidth+16;
  return QRect(left,card.top(),card.right()-12-left+1,rowContentHeight()-4);
 }
-// List geometry follows the viewport, including its scrollbar.
-QRect listRow(const QListView* view,int top,int height){return QRect(view->spacing(),top,qMax(160,view->viewport()->width()-2*view->spacing()),height);}
 // Align the visible ink too: C and J can have different (even negative)
 // bearings in distro fonts.
 void paintHistoryColumn(QPainter& painter,const QRectF& rect,const QString& text,const QColor& color,qreal baseline){
@@ -316,7 +315,7 @@ public:
  bool rowPrimary(const QModelIndex& i)const{if(grid()&&inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i))return false;return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()&&(grid()||!inspectorBeside||!inspectorBeside()||recovery(i));}
  bool primaryShown(const QModelIndex& i)const{return rowPrimary(i)&&inlineActions(i)&&(view_->selectionModel()->selectedRows().size()<=1||(grid()&&recovery(i)))&&!i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
- QRect card(QRect r,const QModelIndex& i)const{return r.adjusted(6,heading(i)+2,-6,-2);}
+ QRect card(QRect r,const QModelIndex& i)const{if(!grid())r.setWidth(qMin(760,r.width()));return r.adjusted(6,heading(i)+2,-6,-2);}
  // Gallery cards share each row evenly. The preferred width grows with the
  // text size, so enlarged text gives fewer columns, not heavily elided names.
  // The flow layout always reserves a scrollbar's extent (QListViewPrivate::prepareItemsLayout).
@@ -345,13 +344,13 @@ public:
  }
  QRect menuRect(QRect r,const QModelIndex& i)const{const auto b=primaryRect(r,i);const auto c=card(r,i);const int h=actionHeight();return QRect(c.right()-12-h,b.top(),h,h);}
  static QString errorText(const QModelIndex& i){return HistoryModel::statusText(i.data(HistoryModel::RecordRole).toJsonObject());}
- int textLeft(const QRect& c)const{return c.left()+12+Graphite::Metric::thumbWidth+16;}
+ int textLeft(const QRect& c)const{return c.left()+12+historyThumbWidth+16;}
  QSize sizeHint(const QStyleOptionViewItem&,const QModelIndex& i)const override{
   if(grid()){
    const int width=galleryWidth();const auto body=rowBody(QRect(0,0,width,0),true,0);QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);const int measured=int(std::ceil(metadata.size().height()));const int lines=i.data(HistoryModel::FailedRole).toBool()&&metadata.begin().layout()->lineCount()<=2?measured:QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();const int text=QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+lines;
    return {width,2+1+galleryPicture(width-12)+10+text+12+2};
   }
-  const int width=qMax(160,view_->viewport()->width()-2*view_->spacing());
+  const int width=qMin(760,qMax(160,view_->viewport()->width()-2*view_->spacing()));
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
   if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(Graphite::font(Graphite::Type::body,true)).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
   if(actionsBelow(outer,i)){
@@ -372,15 +371,17 @@ public:
   else{p->setPen(Qt::NoPen);p->setBrush(hover?t.surface:t.bg);p->drawRoundedRect(QRectF(r),8,8);}
 
   const int rowTop=r.top();const int rowHeight=grid()?r.height():rowContentHeight()-4;
-  QRect thumb=grid()?QRect(r.left()+1,r.top()+1,r.width()-2,galleryPicture(r.width())):QRect(r.left()+12,rowTop+(rowHeight-Graphite::Metric::thumbHeight)/2,Graphite::Metric::thumbWidth,Graphite::Metric::thumbHeight);
+  QRect thumb=grid()?QRect(r.left()+1,r.top()+1,r.width()-2,galleryPicture(r.width())):QRect(r.left()+12,rowTop+(rowHeight-historyThumbHeight)/2,historyThumbWidth,historyThumbHeight);
   p->setPen(Qt::NoPen);p->setBrush(t.well);p->drawRoundedRect(thumb,6,6);
   const auto image=qvariant_cast<QImage>(i.data(HistoryModel::ThumbnailRole));
+  p->save();QPainterPath thumbnailClip;thumbnailClip.addRoundedRect(thumb,6,6);p->setClipPath(thumbnailClip,Qt::IntersectClip);
   if(!image.isNull()){const auto scaled=image.scaled(thumb.size(),Qt::KeepAspectRatio,Qt::SmoothTransformation);const QPoint origin(thumb.center().x()-scaled.width()/2,thumb.center().y()-scaled.height()/2);p->drawImage(origin,scaled);if(video(record))paintVideoBadge(*p,QRect(origin,scaled.size()),HistoryModel::duration(image.text(HistoryModel::durationKey).toLongLong()));}
   else{
    // No preview: an honest file-type glyph, never a fabricated picture.
    const auto category=record["category"].toString();const int side=grid()?36:24;
    VisualStyle::icon(category=="images"?"images":category=="videos"?"record":category=="text"?"clipboard":"document").paint(p,QRect(thumb.center()-QPoint(side/2,side/2),QSize(side,side)));
   }
+  p->restore();p->setPen(QPen(QColor(255,255,255,15),1));p->setBrush(Qt::NoBrush);p->drawRoundedRect(QRectF(thumb).adjusted(0.5,0.5,-0.5,-0.5),6,6);
   // The primary action uses its own measured width; hover icons keep a fixed slot.
   const auto action=i.data(HistoryModel::PrimaryActionRole).toString();const bool showPrimary=primaryShown(i);const bool routineActionsShown=inlineActions(i)&&(hover||chosen||((option.state&QStyle::State_HasFocus)&&view_->hasFocus()));const bool actionsShown=routineActionsShown||(!grid()&&inlineActions(i)&&recovery(i));
   const auto primaryBounds=primaryRect(outer,i);const auto moreBounds=menuRect(outer,i);
