@@ -1859,6 +1859,9 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
    auto* help=window.findChild<QToolButton*>(key+"Help");QVERIFY2(help,qPrintable(key));QCOMPARE(help->focusPolicy(),Qt::StrongFocus);QVERIFY(!help->accessibleDescription().isEmpty());
   }
  }
+ void destinationStatusUsesTheColumnInsetAndFullWidth(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();auto* row=window.findChild<QWidget*>("destinationStatusRow");QVERIFY(row);QCOMPARE(row->layout()->contentsMargins().left(),Graphite::space(Graphite::Space::xxl));QCOMPARE(row->maximumWidth(),QWIDGETSIZE_MAX);QCOMPARE(window.findChild<QWidget*>("settingsStatusRow")->maximumWidth(),QWIDGETSIZE_MAX);
+ }
  void shortcutChoicesShareTheSettingsValueWidth_data(){QTest::addColumn<int>("pixels");QTest::newRow("normal")<<14;QTest::newRow("large")<<21;}
  void shortcutChoicesShareTheSettingsValueWidth(){
   QFETCH(int,pixels);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.resize(1440,1100);window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");auto* choice=window.findChild<QComboBox*>("appearanceTheme");PUTGD_TRY_VERIFY(choice->width()>0);const int width=choice->width();tabs->setCurrentIndex(2);auto* record=window.findChild<QPushButton*>("recordRegionShortcut");PUTGD_TRY_COMPARE(record->width(),width);tabs->setCurrentIndex(3);auto* retention=window.findChild<QComboBox*>("historyRetentionChoice");PUTGD_TRY_COMPARE(retention->width(),width);
