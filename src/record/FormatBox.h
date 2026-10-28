@@ -24,11 +24,7 @@ public:
         size.setWidth(width + 44);
         return size;
     }
-    QSize minimumSizeHint() const override {
-        auto size = sizeHint();
-        size.setWidth(std::min(size.width(), fontMetrics().horizontalAdvance(QStringLiteral("MP4")) + 44));
-        return size;
-    }
+    QSize minimumSizeHint() const override { return sizeHint(); }
     void showPopup() override {
         int width = 0;
         for (int i = 0; i < count(); ++i) width = std::max(width, fontMetrics().horizontalAdvance(itemText(i)));

@@ -310,7 +310,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, [this] { refresh(); update(); });
     auto* rows = new QVBoxLayout(this);
     rows->setContentsMargins(12, 8, 12, 8);
-    rows->setSpacing(6);
+    rows->setSpacing(Graphite::space(Graphite::Space::s));
     top_ = new QHBoxLayout;
     top_->setSpacing(8);
     rows->addLayout(top_);
@@ -322,7 +322,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     VisualStyle::role(state_label_, "strong");
     time_ = new QLabel("0:00.0", this);
     time_->setObjectName("time");
-    time_->setFont(Graphite::monoFont(Graphite::Type::body));
+    Graphite::setMono(time_, Graphite::Type::body);
     time_->setMinimumWidth(QFontMetrics(time_->font()).horizontalAdvance(QStringLiteral("00:00.0")) + 4);
     choices_ = new QWidget(this);
     choices_->setObjectName("choices");
@@ -342,7 +342,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
         if (codecs.isEmpty()) { format_->addItem(formatLabel(format, {}), QStringList{format, QString()}); format_->setItemData(format_->count() - 1, formatLabel(format, {}) + "\n" + formatHint(format, {}), Qt::ToolTipRole); }
         for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatLabel(format, codec.toString()) + "\n" + formatHint(format, codec.toString()), Qt::ToolTipRole); }
     }
-    format_->setToolTip(format_->currentData(Qt::ToolTipRole).toString());
+    format_->setToolTip(options_.targetLabel + QStringLiteral("\n") + format_->currentData(Qt::ToolTipRole).toString());
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) format_->setCurrentIndex(i); }
     formatAudio_ = new QLabel(choices_);
     formatAudio_->setObjectName("formatAudio");
@@ -393,6 +393,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     connect(discard_, &QPushButton::clicked, this, [this] { confirming_ = false; refresh(); emit cancelRequested(); });
     connect(audio_, &QCheckBox::toggled, this, [this](bool on) { if (audioIntent_ == on) return; audioIntent_ = on; config_.audio.system = on && options_.audioSupported && !config_.silent(); emit configChanged(config_); });
     connect(format_, &QComboBox::currentIndexChanged, this, [this](int index) {
+        format_->setToolTip(options_.targetLabel + QStringLiteral("\n") + format_->itemData(index, Qt::ToolTipRole).toString());
         const auto value = format_->itemData(index).toStringList();
         if (value.size() != 2 || (value[0] == config_.format && value[1] == config_.codec)) return;
         config_.format = value[0];
@@ -416,8 +417,13 @@ void ControlBar::arrange(bool twoRows) {
 void ControlBar::fitTo(const QRect& screen) {
     // Two rows when one would take most of the screen's width: a 150% text
     // size on a 1366 px laptop, or a narrow portrait monitor.
+    compactTarget_ = false;
     arrange(false);
-    if (screen.width() > 0 && widestSize().width() > screen.width() * 3 / 4) arrange(true);
+    if (screen.width() > 0 && widestSize().width() > screen.width() * 3 / 4) {
+        compactTarget_ = true;
+        refresh();
+        if (widestSize().width() > screen.width() * 3 / 4) arrange(true);
+    }
 }
 void ControlBar::askDiscard() {
     if (state_ != "recording" && state_ != "paused") return;
@@ -451,7 +457,9 @@ void ControlBar::refresh() {
     format_->setVisible(ready);
     formatAudio_->setText(QStringLiteral("%1 has no audio").arg(config_.format == "gif" ? QStringLiteral("GIF") : QStringLiteral("WebP")));
     formatAudio_->setVisible(ready && config_.silent());
-    target_->setVisible(ready);
+    target_->setVisible(ready && !compactTarget_);
+    choices_->setToolTip(options_.targetLabel);
+    choices_->setAccessibleDescription(options_.targetLabel);
     lockedFacts_->setVisible(!ready);
     lockedAudio_->hide();
     lockedFormat_->hide();

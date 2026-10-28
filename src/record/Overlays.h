@@ -153,7 +153,7 @@ private:
     Placed placed_ = Placed::None;
     QRect recorded_, spot_;
     int screen_ = -1, layerScreen_ = -1;
-    bool outside_ = false, handle_ = false, dragged_ = false, dragging_ = false, twoRows_ = false, confirming_ = false;
+    bool outside_ = false, handle_ = false, dragged_ = false, dragging_ = false, twoRows_ = false, confirming_ = false, compactTarget_ = false;
     QPoint dragOffset_;
     QLabel *formatAudio_ = nullptr, *lockedAudio_ = nullptr, *lockedFormat_ = nullptr, *lockedFacts_ = nullptr;
     QLabel *dot_ = nullptr, *state_label_ = nullptr, *time_ = nullptr, *target_ = nullptr, *question_ = nullptr;

@@ -219,14 +219,15 @@ private slots:
         auto* timing = window.findChild<QWidget*>("maskTimingControls");
         QVERIFY(masks->isAncestorOf(timing) && masks->isAncestorOf(interval)); QVERIFY(!trim->isAncestorOf(interval) && !trim->isAncestorOf(timing));
         QVERIFY(trim->isVisible());
-        // Timing actions read as words on 32 px secondary buttons, in both rows.
+        // Timing actions keep their words on compact secondary buttons in both rows.
         const QList<std::tuple<QWidget*, QString, QString>> actions{{trim, "Set trim start at playhead", "Start here"}, {trim, "Set trim end at playhead", "End here"}, {trim, "Reset trim", "Reset"}, {timing, "Set mask start at playhead", "Start here"}, {timing, "Set mask end at playhead", "End here"}};
         for (const auto& [row, name, text] : actions) {
             QToolButton* found = nullptr;
             for (auto* button : row->findChildren<QToolButton*>()) if (button->accessibleName() == name) found = button;
             QVERIFY2(found && found->isVisible(), qPrintable(name)); QCOMPARE(found->toolButtonStyle(), Qt::ToolButtonTextOnly); QCOMPARE(found->text(), text);
             QVERIFY(!found->autoRaise());
-            QCOMPARE(found->height(), 32);
+            QCOMPARE(found->height(), Graphite::scaled(28));
+            QCOMPARE(found->property("graphiteDensity").toString(), QString("compact"));
             QVERIFY(found->width() >= QFontMetricsF(found->font()).horizontalAdvance(text) + 24);
         }
         QVERIFY(!window.findChild<QLabel*>("maskTimingGroup"));
@@ -393,7 +394,7 @@ private slots:
             QVERIFY(!time->text().contains('\n'));
             QVERIFY(status->isVisible());
             QVERIFY(status->width() >= QFontMetricsF(status->font()).horizontalAdvance(status->text()) + 2);
-            QVERIFY(window.findChild<QWidget*>("reviewTransport")->isAncestorOf(status));
+            QVERIFY(window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(status));
             QVERIFY(window.rect().contains(QRect(status->mapTo(&window, QPoint()), status->size())));
             QVERIFY(t->trackRect().width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
             for (auto* button : window.findChildren<QToolButton*>()) if (button->isVisible() && button->toolButtonStyle() == Qt::ToolButtonTextOnly && button->objectName() != "uploadDestinationMenu" && button->objectName() != "addMask") {
@@ -420,12 +421,13 @@ private slots:
         QApplication::setFont(font);
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        QCOMPARE(window.findChild<QWidget*>("trimControls")->height(), 32);
-        QCOMPARE(window.findChild<QWidget*>("maskControls")->height(), 32);
+        QCOMPARE(window.findChild<QWidget*>("trimControls")->height(), Graphite::scaled(28));
+        QVERIFY(window.findChild<QWidget*>("maskControls")->height() >= Graphite::scaled(28));
         window.resize(1200, 720); QApplication::processEvents();
         auto* track = timeline(window);
         auto* transport = window.findChild<QWidget*>("reviewTransport");
-        QCOMPARE(transport->height(), 32);
+        QCOMPARE(transport->height(), Graphite::scaled(28));
+        QVERIFY(track->trackRect().top() - transport->geometry().bottom() >= Graphite::scaled(16));
         QCOMPARE(track->trackRect().left(), ReviewTimeline::gutterWidth());
         QCOMPARE(ReviewTimeline::gutterWidth(), std::min(112, Graphite::scaled(96)));
         const int axis = track->mapTo(&window, track->trackRect().topLeft()).x();
@@ -439,7 +441,7 @@ private slots:
         auto* frame = window.findChild<FrameView*>();
         QVERIFY(frame->contentsRect().contains(frame->imageRect()));
         auto* add = window.findChild<QToolButton*>("addMask");
-        QCOMPARE(add->height(), 28);
+        QCOMPARE(add->height(), Graphite::scaled(28));
         QCOMPARE(add->text(), QString("+ Add mask"));
         QVERIFY(add->y() < track->trackRect().top());
         QCOMPARE(track->maskRect("m-blur").height(), 16);
@@ -448,6 +450,7 @@ private slots:
         QVERIFY(chip && chip->isVisible());
         QCOMPARE(chip->text(), QString("Blur may be reversible · Use Redact"));
         QVERIFY(chip->toolTip().contains("Use Redact"));
+        QVERIFY(chip->width() >= chip->fontMetrics().horizontalAdvance(chip->text()) + 16 + 3 * Graphite::space(Graphite::Space::xs));
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QSignalSpy proposed(&window, &ReviewWindow::editProposed);
         chip->click();
@@ -467,7 +470,8 @@ private slots:
         if (font.pointSizeF() > 0) font.setPointSizeF(font.pointSizeF() * scale);
         else font.setPixelSize(qRound(font.pixelSize() * scale));
         QApplication::setFont(font);
-        auto o = options(); o.audioRecorded = true;
+        auto o = options(); o.audioRecorded = true; o.destination = "Proton Drive";
+        o.uploadSummary = "Upload to Proton Drive · Shared link";
         auto c = config(); c.audio.system = true;
         ReviewWindow window(o, c); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -477,7 +481,8 @@ private slots:
             return output && output->isVisible() && output->toolTip().contains(o.destination) && output->text().contains("Shared link")
                 && output->toolTip().contains(o.destination) && output->menu()
                 && output->height() >= output->fontMetrics().height() && window.rect().contains(QRect(output->mapTo(&window, QPoint()), output->size()))
-                && output->fontMetrics().horizontalAdvance(output->text()) + Graphite::Metric::splitZone + 24 <= output->width();
+                && output->text().contains(o.destination) && !output->text().contains(QChar(0x2026))
+                && output->height() >= output->heightForWidth(output->width());
         };
         window.resize(window.minimumSizeHint()); QApplication::processEvents();
         QVERIFY2(nameFits(), qPrintable(destination->text()));
@@ -1002,6 +1007,30 @@ private slots:
         QVERIFY(state["audio"].toString().endsWith("Preview muted"));
         QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->isVisible());
     }
+    void recordingBarProtectsTheFormatBeforeTargetMetadata_data() {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("standard") << 1.0;
+        QTest::newRow("150%") << 1.5;
+    }
+    void recordingBarProtectsTheFormatBeforeTargetMetadata() {
+        QFETCH(double, scale);
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
+        auto font = original; font.setPixelSize(qRound(14 * scale)); QApplication::setFont(font);
+        ControlBar::Options o; o.targetLabel = "Region · 960 × 600";
+        o.formats = options().formats; o.codecs = options().codecs;
+        ControlBar bar(o, config()); bar.fitTo(QRect(0, 0, 800, 720)); bar.show();
+        QApplication::processEvents();
+        auto* format = bar.findChild<QComboBox*>("format");
+        QVERIFY(format && format->isVisible());
+        for (int i = 0; i < format->count(); ++i) {
+            format->setCurrentIndex(i); QApplication::processEvents();
+            const auto purpose = format->currentText().section(QStringLiteral(" — "), 0, 0);
+            QVERIFY(format->width() >= format->fontMetrics().horizontalAdvance(purpose) + 44);
+            QVERIFY(format->toolTip().contains(o.targetLabel));
+        }
+        QVERIFY(!bar.findChild<QLabel*>("target")->isVisible());
+    }
     void stoppingKeepsTheClipAndDiscardStillAsks() {
         ControlBar::Options o;
         o.targetLabel = "Region"; o.formats = {"mp4"}; o.codecs = {{"mp4", QJsonArray{"h264"}}};
@@ -1235,7 +1264,7 @@ private slots:
             QVERIFY(name && name->height() >= name->fontMetrics().height() && name->y() >= 0 && name->y() + name->height() <= header->height());
             for (const auto& text : {QString("Save a copy…"), QString("Discard…"), QString("Upload")}) {
                 auto* action = buttonNamed(window, text); QVERIFY(action);
-                const auto font = action->font(); QCOMPARE(font.weight(), action->property("visualRole").toString() == "primary" ? QFont::Medium : QFont::Normal);
+                const auto font = action->font(); QCOMPARE(font.weight(), action->property("visualRole") == "primary" ? QFont::Medium : QFont::Normal);
                 const int icon = action->icon().isNull() ? 0 : action->iconSize().width() + 8;
                 QVERIFY(action->width() >= QFontMetrics(font).horizontalAdvance(text) + icon + 24);
             }
