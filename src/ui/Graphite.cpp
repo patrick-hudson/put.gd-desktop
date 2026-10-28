@@ -677,6 +677,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) w += Metric::splitZone - 8;
         if (button && button->text.isEmpty()) return {std::max(Metric::control, contents.width() + 18), std::max(Metric::control, contents.height() + 14)};
         if (flushButton(widget)) w -= 14;
+        if (widget && widget->property("graphiteNavRow").toBool()) w -= 8;
         if (button && !button->text.isEmpty()) w = std::max(w, 64);
         return {w, std::max(Metric::control, contents.height() + 14)};
     }
@@ -1086,6 +1087,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto name = buttonRole(widget, option);
         QRect body = (name == "link" || name == "version") ? option->rect.adjusted(4, 0, -4, 0) : option->rect.adjusted(12, 0, -12, 0);
         if (flushButton(widget)) body.setLeft(option->rect.left());
+        if (widget && widget->property("graphiteNavRow").toBool()) body.setRight(option->rect.right() - space(Space::xs));
         if ((button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) body.setRight(option->rect.right() - Metric::splitZone);
         drawButtonLabel(option, button->text, button->icon, button->iconSize, p, widget, body);
         return;
