@@ -550,6 +550,7 @@ void Style::polish(QWidget* widget) {
     else if (name == "strong") f = font(Type::body, true);
     else if (name == "caption" || name == "eyebrow" || name == "railHeading" || name == "micro") { f = font(Type::caption); colour = c.textMuted; }
     // An error is never small print: it takes body type even in a meta slot.
+    else if (name == "inspectorKey") { f = font(13); colour = c.textMuted; }
     else if (name == "meta") { f = font(tone == "error" ? Type::body : Type::metadata); colour = c.textMuted; }
     else if (name == "version") f = font(Type::micro);
     else if (name == "binding") { f = monoFont(Type::metadata); colour = c.textMuted; }
