@@ -168,9 +168,9 @@ private slots:
             const auto image = interval->grab().toImage();
             int mutedInk = 0;
             for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x)
-                mutedInk += std::abs(image.pixelColor(x, y).red() - Theme::current().textMuted.red()) < 12
-                    && std::abs(image.pixelColor(x, y).green() - Theme::current().textMuted.green()) < 12
-                    && std::abs(image.pixelColor(x, y).blue() - Theme::current().textMuted.blue()) < 12;
+                mutedInk += std::abs(image.pixelColor(x, y).red() - Theme::current().textSecondary.red()) < 12
+                    && std::abs(image.pixelColor(x, y).green() - Theme::current().textSecondary.green()) < 12
+                    && std::abs(image.pixelColor(x, y).blue() - Theme::current().textSecondary.blue()) < 12;
             QVERIFY(mutedInk > 0);
             for (const auto id : {"m-blur", "m-solid"}) {
                 window.drive({{"action", "selectMask"}, {"maskId", id}}); putgd::test::settle(10);

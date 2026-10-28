@@ -131,6 +131,32 @@ protected:
         painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, text());
     }
 };
+// Keep the existing mono width reservation while giving words their UI face.
+class RetainedInterval final : public QLabel {
+public:
+    using QLabel::QLabel;
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter painter(this);
+        const auto parts = text().split(QStringLiteral(" · "));
+        if (parts.size() != 2) return;
+        const auto sans = Graphite::font(Graphite::Type::technical);
+        const auto mono = Graphite::monoFont(Graphite::Type::technical);
+        const QList<QPair<QString, QFont>> runs{{QStringLiteral("Keep "), sans}, {parts[0].mid(5), mono},
+            {QStringLiteral(" · "), sans}, {parts[1].chopped(2), mono}, {QStringLiteral(" s"), sans}};
+        qreal width = 0;
+        for (const auto& run : runs) width += QFontMetricsF(run.second).horizontalAdvance(run.first);
+        qreal x = rect().right() + 1 - width;
+        const QFontMetricsF metrics(mono);
+        const qreal baseline = (height() - metrics.height()) / 2.0 + metrics.ascent();
+        painter.setPen(Theme::current().textSecondary);
+        for (const auto& run : runs) {
+            painter.setFont(run.second);
+            painter.drawText(QPointF(x, baseline), run.first);
+            x += QFontMetricsF(run.second).horizontalAdvance(run.first);
+        }
+    }
+};
 // The interval stays in the readout column; its warning wraps among the controls.
 class MaskInterval final : public QLabel {
 public:
@@ -154,7 +180,7 @@ protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
         const bool empty = text() == QStringLiteral("No mask selected");
-        Graphite::paintText(painter, rect(), text().section(QStringLiteral(" · "), 0, 0), empty ? Theme::current().textMuted : Theme::current().text, empty ? Graphite::font(Graphite::Type::technical) : font(), Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
+        Graphite::paintText(painter, rect(), text().section(QStringLiteral(" · "), 0, 0), Theme::current().textSecondary, empty ? Graphite::font(Graphite::Type::technical) : font(), Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
     }
 private:
     BlurChip* warning_;
@@ -1151,7 +1177,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     trimEnd_ = action("End here", "Set trim end at playhead", "Keep up to the playhead: set the trim end here (O)");
     resetTrim_ = action("Reset", "Reset trim", "Keep the whole recording");
     VisualStyle::role(resetTrim_, "quiet");
-    retained_ = new QLabel(this);
+    retained_ = new RetainedInterval(this);
     retained_->setObjectName("muted");
     retained_->setAccessibleName("Kept interval");
     auto* trimFlow = new FlowRow(this);
