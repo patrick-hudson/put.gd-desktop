@@ -212,34 +212,15 @@ QRect rowBody(const QRect& outer,bool gallery,int heading){
  const int left=card.left()+12+Graphite::Metric::thumbWidth+16;
  return QRect(left,card.top(),card.right()-12-left+1,rowContentHeight()-4);
 }
-// A list row at the viewport's current width. The column header and every
-// row lay out their columns from this one geometry, scrollbar included.
+// List geometry follows the viewport, including its scrollbar.
 QRect listRow(const QListView* view,int top,int height){return QRect(view->spacing(),top,qMax(160,view->viewport()->width()-2*view->spacing()),height);}
 // Align the visible ink too: C and J can have different (even negative)
-// bearings in distro fonts. Header and values use this same column painter.
-void paintHistoryColumn(QPainter& painter,const QRectF& rect,const QString& text,const QColor& color){
+// bearings in distro fonts.
+void paintHistoryColumn(QPainter& painter,const QRectF& rect,const QString& text,const QColor& color,qreal baseline){
  const auto font=Graphite::font(Graphite::Type::metadata);const QFontMetricsF metrics(font);const auto shown=metrics.elidedText(text,Qt::ElideRight,rect.width());
- Graphite::paintText(painter,rect.translated(-metrics.tightBoundingRect(shown).left(),0),shown,color,font,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideNone);
+ painter.save();painter.setFont(font);painter.setPen(color);painter.drawText(QPointF(rect.left()-metrics.tightBoundingRect(shown).left(),baseline),shown);painter.restore();
 }
-// Item / Destination / Created above the list, on the same columns as its rows.
-class HistoryColumns final:public QWidget {
-public:
- std::function<bool()> menuOnly;
- explicit HistoryColumns(QListView* view,QWidget* parent):QWidget(parent),view_(view){setObjectName("historyColumns");setFixedHeight(qMax(32,QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+8));view_->viewport()->installEventFilter(this);}
- // A scrollbar narrows the viewport without resizing this header.
- bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Resize)update();return false;}
-protected:
- void paintEvent(QPaintEvent*)override{
-  QPainter p(this);const auto& t=Theme::current();const int left=view_->viewport()->mapTo(window(),QPoint(0,0)).x()-mapTo(window(),QPoint(0,0)).x();
-  const auto row=listRow(view_,0,height()).translated(left,0);const auto body=rowBody(row,false,0);
-  const auto c=historyColumns(QRect(body.left(),0,body.width(),height()),menuOnly&&menuOnly(),qobject_cast<HistoryModel*>(view_->model())->multipleDestinations());const auto f=Graphite::font(Graphite::Type::metadata);const int thumb=row.left()+6+12;
-  Graphite::paintText(p,QRectF(thumb,0,qMax(0,c.item.right()-thumb-8),height()),"Item",t.textMuted,f);
-  if(!c.output.isEmpty())paintHistoryColumn(p,c.output.adjusted(0,0,-8,0),"Destination",t.textMuted);
-  if(!c.created.isEmpty())paintHistoryColumn(p,c.created.adjusted(0,0,-8,0),"Created",t.textMuted);
-  p.setPen(t.border);p.drawLine(0,height()-1,width(),height()-1);
- }
-private:QListView* view_;
-};
+
 }
 QRect HistoryWindow::failureTextArea(const QSize& row,bool gallery,bool dayHeading){
  const auto body=rowBody(QRect(QPoint(),row),gallery,gallery||!dayHeading?0:dayHeadingHeight());
@@ -425,8 +406,9 @@ public:
    else Graphite::paintText(*p,metadata,HistoryModel::failureLabel(record)+" · See Details",t.danger,metaFont,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideNone);
   }else Graphite::paintText(*p,metadata,subtitle,subtitleColour,metaFont);
   if(!grid()){
-   if(!failed&&!columns.output.isEmpty())paintHistoryColumn(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,Graphite::scaled(22)),i.data(HistoryModel::OutputRole).toString(),t.textSecondary);
-   if(!failed&&!columns.created.isEmpty())paintHistoryColumn(*p,QRectF(columns.created.left(),lineTop,columns.created.width()-8,Graphite::scaled(22)),i.data(HistoryModel::CreatedRole).toString(),t.textSecondary);
+   const QFontMetricsF titleMetrics(titleFont);const auto shown=titleMetrics.elidedText(i.data().toString(),Qt::ElideMiddle,itemWidth);const qreal baseline=Graphite::opticalBaseline(titleMetrics,shown,lineTop+QFontMetrics(titleFont).height()/2.0);
+   if(!failed&&!columns.output.isEmpty())paintHistoryColumn(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,QFontMetrics(titleFont).height()),i.data(HistoryModel::OutputRole).toString(),t.textSecondary,baseline);
+   if(!failed&&!columns.created.isEmpty())paintHistoryColumn(*p,QRectF(columns.created.left(),lineTop,columns.created.width()-8,QFontMetrics(titleFont).height()),i.data(HistoryModel::CreatedRole).toString(),t.textSecondary,baseline);
   }
   if(actionsShown){
    if(grid()){p->setPen(Qt::NoPen);p->setBrush(t.surface);p->drawRect(QRect(r.left()+1,primaryBounds.top()-4,r.width()-2,actionHeight()+8));}
@@ -530,7 +512,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
   empty_=new QLabel("No items yet",emptyState_);empty_->setObjectName("historyEmpty");empty_->setTextFormat(Qt::PlainText);empty_->setWordWrap(true);empty_->setAlignment(Qt::AlignCenter);VisualStyle::role(empty_,"sectionTitle");box->addWidget(empty_);
   emptyBody_=new QLabel(emptyState_);emptyBody_->setObjectName("historyEmptyHint");emptyBody_->setTextFormat(Qt::PlainText);emptyBody_->setWordWrap(true);emptyBody_->setAlignment(Qt::AlignCenter);VisualStyle::role(emptyBody_,"muted");box->addWidget(emptyBody_);
   resetView_=new QPushButton("Clear search and filters",emptyState_);resetView_->setObjectName("historyResetView");resetView_->hide();retryLoading_=new QPushButton("Retry loading",emptyState_);retryLoading_->setObjectName("historyRetryLoading");VisualStyle::role(retryLoading_,"primary");retryLoading_->setAccessibleName("Retry loading history with the current filters");retryLoading_->hide();auto* loadActions=new QWidget(emptyState_);loadActions->setObjectName("historyLoadActions");auto* loadButtons=new QHBoxLayout(loadActions);loadButtons->setContentsMargins(0,0,0,0);loadButtons->setSpacing(space(Space::s));loadButtons->addWidget(retryLoading_);auto* diagnostics=new QPushButton("Save diagnostics…",loadActions);diagnostics->setObjectName("historyLoadDiagnostics");loadButtons->addWidget(diagnostics);loadActions->hide();box->addWidget(loadActions,0,Qt::AlignHCenter);connect(diagnostics,&QPushButton::clicked,this,[this,diagnostics]{diagnostics->setEnabled(false);session_.request("ui.diagnostics",{{"action","openPackage"}},this,[g=QPointer<HistoryWindow>(this),diagnostics](Error e,QJsonObject){if(!g)return;diagnostics->setEnabled(true);if(e)VisualStyle::feedback(g->status_,e.message,true);});});connect(retryLoading_,&QPushButton::clicked,this,&HistoryWindow::refresh);box->addSpacing(space(Space::xs));box->addWidget(resetView_,0,Qt::AlignHCenter);connect(resetView_,&QPushButton::clicked,this,[this]{clearFilters(true);});box->addStretch(3);}
- auto* listPane=new QWidget(this);auto* listBox=new QVBoxLayout(listPane);listBox->setContentsMargins(0,0,0,0);listBox->setSpacing(0);auto* columnHeader=new HistoryColumns(table_,listPane);columns_=columnHeader;columnHeader->menuOnly=[delegate]{return delegate->columnMenuOnly();};filterScroll->installEventFilter(this);listBox->addWidget(table_,1);
+ auto* listPane=new QWidget(this);auto* listBox=new QVBoxLayout(listPane);listBox->setContentsMargins(0,0,0,0);listBox->setSpacing(0);columns_=new QWidget(listPane);columns_->setObjectName("historyColumns");columns_->hide();filterScroll->installEventFilter(this);listBox->addWidget(table_,1);
  // Several selected rows: what they can do together.
  selectionBar_=new QWidget(listPane);selectionBar_->setObjectName("historySelectionBar");selectionBar_->setAccessibleName("Selection actions");{auto* bar=new QHBoxLayout(selectionBar_);bar->setContentsMargins(space(Space::xs),0,0,0);bar->setSpacing(space(Space::s));
   selectionCount_=new QLabel(selectionBar_);selectionCount_->setObjectName("historySelectionCount");selectionCount_->setTextFormat(Qt::PlainText);VisualStyle::role(selectionCount_,"strong");bar->addWidget(selectionCount_);bar->addStretch();
@@ -646,7 +628,7 @@ void HistoryWindow::updateFooterLayout(){
  int column=0;if(heading||details)tools->addWidget(details?static_cast<QWidget*>(detailsBack_):heading_,0,column++);
  tools->addWidget(search,0,column,1,wrap?4:1);tools->setColumnStretch(column,1);if(wrap)column=0;else ++column;
  tools->addWidget(filtersToggle_,wrap?1:0,column++);tools->addWidget(clearFilters_,wrap?1:0,column++);tools->addWidget(views,wrap?1:0,column++);tools->addWidget(management,wrap?1:0,column++);header->show();header->setProperty("wrapped",wrap);
- columns_->setVisible(model_&&model_->rowCount()>0&&!dense&&!grid_->isChecked()&&!details);
+ columns_->hide();
  const bool railFooter=dense&&footerRow_->minimumSizeHint().width()<=sidebar->width()-rail->contentsMargins().left()-rail->contentsMargins().right();
  if(footerRow_->parentWidget()!=(railFooter?sidebar:footerBar_)){if(railFooter)rail->addWidget(footerRow_);else box->insertWidget(0,footerRow_);}footerRow_->show();
  auto* navigation=findChild<QWidget*>("historyNavigation");int categoryHeight=0;QStyleOptionViewItem option;option.initFrom(categories_);option.widget=categories_;option.rect=categories_->viewport()->rect();for(int i=0;i<categories_->count();++i)categoryHeight+=categories_->itemDelegate()->sizeHint(option,categories_->model()->index(i,0)).height();categories_->setFixedHeight(categoryHeight+4);categories_->doItemsLayout();
