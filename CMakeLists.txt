@@ -254,7 +254,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(putgd_x11 STATIC src/platform/x11/X11Capture.cpp src/platform/x11/CinnamonRegionCapture.cpp
     src/platform/x11/X11CompositorSettle.cpp src/platform/x11/X11SourceAdapter.cpp src/platform/x11/NativeRegionOverlay.cpp
     src/ui/RegionOverlay.cpp src/ui/RegionSelector.h)
-  target_link_libraries(putgd_x11 PUBLIC putgd_app putgd_x11_listeners Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCB_DAMAGE Qt6::DBus)
+  target_link_libraries(putgd_x11 PUBLIC putgd_app putgd_x11_listeners putgd_visual Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCB_DAMAGE Qt6::DBus)
   add_library(putgd_capture_control STATIC src/platform/x11/CaptureControl.cpp)
   target_include_directories(putgd_capture_control PUBLIC src)
   target_link_libraries(putgd_capture_control PUBLIC Qt6::Core putgd_build_options)
@@ -310,7 +310,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${xdg_output_protocol}" "${protocol_dir}/xdg-output-unstable-v1-protocol.c"
     DEPENDS "${xdg_output_protocol}" VERBATIM)
   add_library(putgd_kde_region_process STATIC src/platform/kde/KdeRegionProcess.cpp src/platform/kde/KdeRegionProtocol.cpp)
-  target_link_libraries(putgd_kde_region_process PUBLIC putgd_app putgd_capture_control putgd_build_identity)
+  target_link_libraries(putgd_kde_region_process PUBLIC putgd_app putgd_capture_control putgd_build_identity putgd_visual)
   find_package(Threads REQUIRED)
   add_library(putgd_kde STATIC src/platform/kde/KWinTransfer.cpp src/platform/kde/KWinCapture.cpp
     src/platform/kde/KdeShortcuts.cpp src/platform/kde/KdeShortcutNormalization.cpp
