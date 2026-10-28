@@ -90,6 +90,11 @@ QString statusPhrases(QString text,bool failed=false){
  auto tokens=text.split(" · ");for(int i=0;i<tokens.size();++i)if(!failed||i!=1||tokens[i]=="Saved locally")tokens[i].replace(' ',QChar(0x00a0));return tokens.join(" · ");
 }
 QString metadataSpan(const QString& text,const QColor& color){return "<span style=\"color:"+color.name()+"\">"+statusPhrases(text).toHtmlEscaped()+"</span>";}
+QColor metadataColor(const QJsonObject& record,const QString& part,const QColor& neutral){
+ const auto& t=Theme::current();if(HistoryModel::failed(record))return part==HistoryModel::failureLabel(record)?t.danger:neutral;
+ const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();const bool status=part==remote||part=="Shared link"||part=="Copied to clipboard"||part=="Couldn't copy result"||part=="Couldn't copy link"||part=="Result not copied"||part=="Link not copied";
+ return status&&(part=="Deletion failed"||part=="Sharing failed"||part.startsWith("Couldn't copy"))?t.danger:status&&remote.isEmpty()&&copy=="copied"?t.success:neutral;
+}
 QString failureDetail(const QJsonObject& record){auto text=HistoryModel::statusText(record);const auto label=HistoryModel::failureLabel(record);if(text==label)return {};if(text.startsWith(label+" · "))text.remove(0,label.size()+3);return text;}
 QString failureDescription(const QModelIndex& index){const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QStringList parts{record["name"].toString(index.data().toString()),HistoryModel::failureLabel(record),index.data(HistoryModel::CreatedRole).toString(),failureDetail(record)};parts.removeAll({});return parts.join(". ");}
 void compactFailureDetail(QTextDocument& document,const QModelIndex& index,int width){
@@ -99,10 +104,10 @@ void compactFailureDetail(QTextDocument& document,const QModelIndex& index,int w
 }
 class HistoryOutcome final:public QLabel {
 public:
- explicit HistoryOutcome(QWidget* parent):QLabel(parent){setTextFormat(Qt::RichText);setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);}
+ explicit HistoryOutcome(QWidget* parent):QLabel(parent){setTextFormat(Qt::RichText);setWordWrap(true);QSizePolicy policy(QSizePolicy::Ignored,QSizePolicy::Preferred);policy.setHeightForWidth(true);setSizePolicy(policy);}
  void setSegments(const QStringList& segments,const QString& plain){segments_=segments;setToolTip(plain);setAccessibleName(plain);setAccessibleDescription(plain);refresh();}
  bool hasHeightForWidth()const override{return true;}
- int heightForWidth(int width)const override{QTextDocument document;document.setDocumentMargin(0);document.setDefaultFont(font());document.setHtml(Graphite::separatedLines(segments_,font(),width));return int(std::ceil(document.size().height()));}
+ int heightForWidth(int width)const override{QTextDocument document;document.setDocumentMargin(0);document.setDefaultFont(font());document.setHtml(Graphite::separatedLines(segments_,font(),width));document.setTextWidth(qMax(1,width));return int(std::ceil(document.size().height()));}
  QSize sizeHint()const override{return {0,heightForWidth(width())};}
  QSize minimumSizeHint()const override{return {0,fontMetrics().height()};}
 protected:void resizeEvent(QResizeEvent* event)override{QLabel::resizeEvent(event);refresh();}
@@ -113,7 +118,7 @@ private:
 void setHistoryOutcome(QLabel* label,const QJsonObject& group){
  const auto remote=HistoryModel::remoteStateText(group);const bool failed=HistoryModel::failed(group);const auto text=HistoryModel::statusText(group);const auto& t=Theme::current();
  VisualStyle::role(label,failed||remote=="Deletion failed"||remote=="Sharing failed"?"danger":!remote.isEmpty()?"muted":group["uploadStatus"]=="uploaded"?"success":"muted");
- QStringList segments;const auto parts=text.split(" · ");for(const auto& part:parts)segments.append(metadataSpan(part,failed?(part.startsWith("Saved")||part=="Local file unavailable"?t.textSecondary:t.danger):label->palette().color(QPalette::WindowText)));
+ QStringList segments;const auto parts=text.split(" · ");for(const auto& part:parts)segments.append(metadataSpan(part,failed?(part.startsWith("Saved")||part=="Local file unavailable"?t.textSecondary:t.danger):remote=="Deletion failed"||remote=="Sharing failed"?t.danger:remote.isEmpty()&&group["uploadStatus"]=="uploaded"?t.success:t.textSecondary));
  static_cast<HistoryOutcome*>(label)->setSegments(segments,text);
 }
 // A video's poster carries a play glyph and its length, so a still is never
@@ -237,8 +242,8 @@ int actionHeight(){return Graphite::scaled(28);}
 constexpr int historyThumbWidth=96,historyThumbHeight=60;
 int rowTextInset(){return space(Graphite::scaled(100)>125?Space::xs:Space::s);}
 QFont historyTitleFont(bool selected=false){auto font=Graphite::font(Graphite::Type::body);font.setWeight(selected?QFont::DemiBold:QFont::Medium);return font;}
-int compactMetadataGap(){return qMax(space(Space::xs),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::metadata)).height())/2);}
-int rowContentHeight(){return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,QFontMetrics(historyTitleFont()).height()+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+space(Space::xs)+2*rowTextInset()+4))+(Graphite::scaled(100)>125?space(Space::xs):0);}
+int compactMetadataGap(){return Graphite::scaled(100)>125?space(Space::xs):qMax(space(Space::xs),(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::metadata)).height())/2);}
+int rowContentHeight(){const int title=QFontMetrics(historyTitleFont()).height(),meta=QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,qMax(title+meta+space(Space::xs)+2*rowTextInset()+4,rowTextInset()+title+compactMetadataGap()+(meta+actionHeight()+1)/2+4)));}
 // Enlarged rows keep breathing room above the title and second-line actions.
 int compactTextInset(){return Graphite::scaled(100)>125?space(Space::xs):rowTextInset();}
 // Gallery pictures share a 16:10 frame.
@@ -253,12 +258,13 @@ void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,
   QStringList shown;if(!HistoryModel::failed(record)){if(!kind.isEmpty())shown.append(kind);if(!size.isEmpty())shown.append(size);}if(!status.isEmpty())shown.append(status);if(!created.isEmpty())shown.append(created);
   for(const auto& optional:{size,kind})if(metrics.horizontalAdvance(shown.join(" · "))>width)shown.removeAll(optional);
   if(!status.isEmpty()&&metrics.horizontalAdvance(shown.join(" · "))>width){const int room=qMax(0,width-metrics.horizontalAdvance(created.isEmpty()?QString{}:" · "+created));shown.removeAll(status);const auto shortened=metrics.elidedText(status,Qt::ElideRight,room);if(!shortened.isEmpty())shown.prepend(shortened);}
-  QStringList spans;for(const auto& part:shown){const bool isStatus=part!=kind&&part!=size&&part!=created;const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();const auto color=isStatus&&(HistoryModel::failed(record)||remote=="Deletion failed"||remote=="Sharing failed"||part.startsWith("Couldn't copy"))?t.danger:isStatus&&remote.isEmpty()&&copy=="copied"?t.success:t.textSecondary;spans.append(metadataSpan(part,color));}
+  QStringList spans;for(const auto& part:shown.join(" · ").split(" · ",Qt::SkipEmptyParts)){auto original=part;if(part.endsWith(QChar(0x2026)))for(const auto& candidate:parts)if(candidate.startsWith(part.chopped(1))){original=candidate;break;}spans.append(metadataSpan(part,metadataColor(record,original,t.textSecondary)));}
   option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(spans.join(metadataSpan(" · ",t.textSecondary)));document.setTextWidth(qMax(20,width));return;
  }
  if(bounded&&!HistoryModel::failed(record))text=QFontMetrics(document.defaultFont()).elidedText(text,Qt::ElideRight,qMax(20,width));
  if(HistoryModel::failed(record)){const auto fullLabel=HistoryModel::failureLabel(record),label=text.startsWith(fullLabel)?fullLabel:text;auto detail=text;if(detail.startsWith(label))detail.remove(0,label.size());document.setHtml("<span style=\"color:"+t.danger.name()+"\">"+statusPhrases(label).toHtmlEscaped()+"</span><span style=\"color:"+t.textSecondary.name()+"\">"+statusPhrases(detail,true).toHtmlEscaped()+"</span>");}
- else{const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();QString html;for(const auto& part:text.split(" · ")){const bool status=part==remote||part=="Shared link"||part=="Copied to clipboard"||part=="Couldn't copy result"||part=="Couldn't copy link"||part=="Result not copied"||part=="Link not copied";const auto color=status&&(part=="Deletion failed"||part=="Sharing failed"||part.startsWith("Couldn't copy"))?t.danger:status&&remote.isEmpty()&&copy=="copied"?t.success:t.textMuted;if(!html.isEmpty())html+="<span style=\"color:"+t.textMuted.name()+"\"> · </span>";html+="<span style=\"color:"+color.name()+"\">"+statusPhrases(part).toHtmlEscaped()+"</span>";}document.setHtml(html);}if(separated){QStringList spans;const auto parts=text.split(" · ",Qt::SkipEmptyParts);for(const auto& part:parts){const auto color=HistoryModel::failed(record)?(part==HistoryModel::failureLabel(record)?t.danger:t.textSecondary):part=="Shared link"||part=="Copied to clipboard"?t.success:part=="Deletion failed"||part=="Sharing failed"||part.startsWith("Couldn't copy")?t.danger:t.textMuted;spans.append(metadataSpan(part,color));}option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(Graphite::separatedLines(spans,document.defaultFont(),width));}document.setTextWidth(qMax(20,width));
+ else{QStringList spans;for(const auto& part:text.split(" · "))spans.append(metadataSpan(part,metadataColor(record,part,t.textMuted)));document.setHtml(spans.join(metadataSpan(" · ",t.textMuted)));}
+ if(separated){QStringList spans;for(const auto& part:text.split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,metadataColor(record,part,HistoryModel::failed(record)?t.textSecondary:t.textMuted)));option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(Graphite::separatedLines(spans,document.defaultFont(),width));}document.setTextWidth(qMax(20,width));
 }
 // The row's body: right of the thumbnail in a list, under it in a gallery tile.
 QRect rowBody(const QRect& outer,bool gallery,int heading){
@@ -390,7 +396,7 @@ public:
   const auto body=rowBody(r,false,heading(i));return qMax(20,(i.data(HistoryModel::FailedRole).toBool()?body.width()-actionHeight()-space(Space::s)-listDetailsSpace()-(rowPrimary(i)?primaryWidth(i)+space(Space::s):0):rowColumns(body,i).item.width())-space(Space::s));
  }
  bool actionsBelow(const QRect& r,const QModelIndex& i)const{
-  if(compactRow(r,i))return rowBody(r,false,heading(i)).width()-compactActionWidth(i)<QFontMetrics(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(i.data(HistoryModel::CreatedRole).toString())+space(Space::xxl);
+  if(compactRow(r,i))return !i.data(HistoryModel::FailedRole).toBool()&&rowBody(r,false,heading(i)).width()-compactActionWidth(i)<QFontMetrics(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(i.data(HistoryModel::CreatedRole).toString())+space(Space::xxl);
   if(!grid()&&i.data(HistoryModel::FailedRole).toBool())return false;
   if(grid()||(compactList&&!compactList()))return false;
   const auto body=rowBody(r,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,inlineTextWidth(r,i),!rowColumns(body,i).created.isEmpty());
@@ -414,7 +420,7 @@ public:
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
   if(compactRow(outer,i)){
    const bool below=actionsBelow(outer,i),failed=i.data(HistoryModel::FailedRole).toBool();const int metaHeight=QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();int bottom=compactMetadataTop(outer,i)+metaHeight+(below?0:qMax(0,(actionHeight()-metaHeight)/2));
-   if(failed)return {width,rowContentHeight()+metaHeight+space(Space::xs)+heading(i)+(below?actionHeight()+space(Space::m):0)};
+   if(failed)return {width,rowContentHeight()+metaHeight+space(Space::xs)+heading(i)};
    height=qMax(rowContentHeight(),bottom-heading(i)+2+(below?actionHeight()+space(Space::m):0))+heading(i);return {width,height};
   }
   if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
@@ -470,7 +476,7 @@ public:
   else if(!grid()){QTextDocument document;historyMetadata(document,i,metadataWidth,!below&&!columns.created.isEmpty(),compactList&&!compactList());p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
   else if(failed){
    QTextDocument document;historyMetadata(document,i,metadataWidth,false,false,false,true);document.size();
-   if(document.size().height()<=2*QFontMetrics(metaFont).height()){p->save();p->translate(metadata.topLeft());document.drawContents(p);p->restore();}
+   if(document.begin().layout()->lineCount()<=2){p->save();p->translate(metadata.topLeft());document.drawContents(p);p->restore();}
    else Graphite::paintText(*p,metadata,HistoryModel::failureLabel(record)+" · See Details",t.danger,metaFont,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideNone);
   }else{QTextDocument document;historyMetadata(document,i,metadataWidth,false,false,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,2*metadata.height()));document.drawContents(p);p->restore();}
   if(!grid()){
@@ -522,7 +528,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
 
  navigationBox->addStretch();
  auto* content=new QWidget(this);content->setObjectName("historyContent");page->addWidget(content,1);auto* layout=new QVBoxLayout(content);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
- auto* headerBar=new QWidget(content);headerBar->setObjectName("historyHeader");auto* toolbar=new QWidget(headerBar);toolbar->setObjectName("historyCompactControls");toolbar->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);auto* headerBox=new QVBoxLayout(headerBar);headerBox->setContentsMargins(0,0,0,0);headerBox->addWidget(toolbar);auto* header=new QGridLayout(toolbar);header->setSizeConstraint(QLayout::SetNoConstraint);header->setContentsMargins(space(Space::xxl),Graphite::pageHeaderTop(),space(Space::l),space(Space::s));header->setRowMinimumHeight(0,Graphite::Metric::control);header->setSpacing(space(Space::s));// The page is already named by the navigation; the heading names what is shown.
+ auto* headerBar=new QWidget(content);headerBar->setObjectName("historyHeader");auto* toolbar=new QWidget(headerBar);toolbar->setObjectName("historyCompactControls");toolbar->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);auto* headerBox=new QVBoxLayout(headerBar);headerBox->setContentsMargins(0,0,0,0);headerBox->addWidget(toolbar);auto* header=new QGridLayout(toolbar);header->setSizeConstraint(QLayout::SetNoConstraint);header->setContentsMargins(space(Space::xxl),Graphite::pageHeaderTop(),space(Space::l),space(Space::s));header->setRowMinimumHeight(0,Graphite::Metric::control);header->setSpacing(space(Space::s));header->setVerticalSpacing(space(Space::xs));// The page is already named by the navigation; the heading names what is shown.
  // Long combined headings ("Recordings · failed uploads") elide before they crowd search.
  // The compact layout opens the inspector over the list; this returns to it.
  detailsBack_=Graphite::toolButton("Back to list",{},"quiet",this);detailsBack_->setObjectName("historyDetailsBack");detailsBack_->setIcon(Graphite::chromeIcon("chevron-left"));detailsBack_->setIconSize(QSize(14,14));detailsBack_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);detailsBack_->setToolTip("Return to the list (Esc)");detailsBack_->hide();header->addWidget(detailsBack_,0,0);connect(detailsBack_,&QToolButton::clicked,this,[this]{setDetailsOpen(false);});
@@ -691,7 +697,7 @@ void HistoryWindow::updateFooterLayout(){
  if(status_->text()=="Select an item to inspect its files and share link.")status_->hide();
  auto* sidebar=findChild<QWidget*>("historySidebar");auto* rail=qobject_cast<QVBoxLayout*>(sidebar->layout());auto* box=qobject_cast<QVBoxLayout*>(footerBar_->layout());auto* tools=qobject_cast<QGridLayout*>(header->layout());
  setProperty("denseHistory",dense);categories_->setProperty("denseHistory",dense);rail->setContentsMargins(space(Space::l),dense?space(Space::s):space(Space::l),space(Space::l),space(Space::l));box->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));footerBar_->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Maximum);
- tools->setContentsMargins(space(Space::xxl),Graphite::pageHeaderTop(),space(Space::l),dense?space(Space::xs):space(Space::s));tools->setHorizontalSpacing(space(Space::s));tools->setVerticalSpacing(space(Space::xs));
+ tools->setContentsMargins(space(Space::xxl),Graphite::pageHeaderTop(),space(Space::l),dense?(Graphite::scaled(100)>125?0:space(Space::xs)):space(Space::s));tools->setHorizontalSpacing(space(Space::s));tools->setVerticalSpacing(dense&&Graphite::scaled(100)>125?0:space(Space::xs));
  auto* search=findChild<QLineEdit*>("historySearch");auto* views=findChild<QWidget*>("historyViewMode");auto* management=findChild<QToolButton*>("historyManagementExpanded");views->setFixedWidth(views->sizeHint().width());
  const int available=header->width()-tools->contentsMargins().left()-tools->contentsMargins().right(),clear=activeFilters().isEmpty()?0:clearFilters_->sizeHint().width()+space(Space::s),required=180+filtersToggle_->sizeHint().width()+views->sizeHint().width()+management->sizeHint().width()+clear+3*space(Space::s);
  const bool wrap=required>available,details=compact_&&detailsOpen_;auto* heading=findChild<QWidget*>("historyHeadingGroup");const bool headingRow=available<required+heading->minimumSizeHint().width()+space(Space::l);const int toolRow=headingRow&&!details?1:0;
