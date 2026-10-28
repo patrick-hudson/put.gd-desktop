@@ -1435,6 +1435,44 @@ private slots:
         QVERIFY(target->width() > target->fontMetrics().horizontalAdvance("960 × 600"));
         QVERIFY(target->height() >= target->heightForWidth(target->width()));
     }
+    void recordingBarMeasuresEveryCurrentSummary_data() {
+        QTest::addColumn<int>("pixels");
+        QTest::addColumn<int>("screenWidth");
+        for (int pixels : {14, 21}) for (int width : {800, 1366, 2400})
+            QTest::newRow(qPrintable(QString("%1px-%2").arg(pixels).arg(width))) << pixels << width;
+    }
+    void recordingBarMeasuresEveryCurrentSummary() {
+        QFETCH(int, pixels); QFETCH(int, screenWidth);
+        auto font = qApp->font(); font.setPixelSize(pixels); qApp->setFont(font);
+        ControlBar::Options o; o.targetLabel = "Region · 960 × 600"; o.audioSupported = true;
+        o.formats = options().formats; o.codecs = options().codecs;
+        auto c = config(); c.audio.system = true;
+        ControlBar bar(o, c); bar.fitTo(QRect(0, 0, screenWidth, 768)); bar.show();
+        auto* format = bar.findChild<QComboBox*>("format");
+        auto* facts = bar.findChild<QLabel*>("recordingFacts");
+        auto* target = bar.findChild<QLabel*>("target");
+        for (const char* state : {"ready", "recording", "paused", "ready", "recording", "paused"}) {
+            if (QString::fromLatin1(state) == "ready") {
+                format->setCurrentIndex(format->findData(QStringList{"gif", QString()}));
+                format->setCurrentIndex(format->findData(QStringList{"mp4", "h264"}));
+            }
+            bar.setState(state); QApplication::processEvents();
+            auto* label = QString::fromLatin1(state) == "ready" ? target : facts;
+            QVERIFY(label->isVisible());
+            if (label == facts) QCOMPARE(facts->text(), QStringLiteral("Region · 960 × 600 · With system audio · ") + format->currentText().section(QStringLiteral(" — "), 0, 0));
+            const int required = label->wordWrap() ? label->heightForWidth(label->width()) : label->fontMetrics().height();
+            QVERIFY2(label->height() >= required, qPrintable(QString("%1: %2 < %3").arg(state).arg(label->height()).arg(required)));
+            QVERIFY(bar.rect().contains(QRect(label->mapTo(&bar, QPoint()), label->size())));
+            if (!label->wordWrap()) QVERIFY(label->width() >= label->fontMetrics().horizontalAdvance(label->text()));
+            // A later fit must measure the unwrapped text again.
+            bar.fitTo(QRect(0, 0, screenWidth, 768)); QApplication::processEvents();
+            QVERIFY(label->height() >= (label->wordWrap() ? label->heightForWidth(label->width()) : label->fontMetrics().height()));
+        }
+        bar.fitTo(QRect(0, 0, 4000, 768)); QApplication::processEvents();
+        QVERIFY(!bar.twoRows());
+        QVERIFY(!facts->wordWrap());
+        QVERIFY(facts->width() >= facts->fontMetrics().horizontalAdvance(facts->text()));
+    }
     void stoppingKeepsTheClipAndDiscardStillAsks() {
         ControlBar::Options o;
         o.targetLabel = "Region"; o.formats = {"mp4"}; o.codecs = {{"mp4", QJsonArray{"h264"}}};

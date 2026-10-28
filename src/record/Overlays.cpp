@@ -422,35 +422,10 @@ void ControlBar::arrange(bool twoRows) {
     rows->removeWidget(choices_);
     if (twoRows) rows->addWidget(choices_, 0, Qt::AlignLeft);
     else top_->insertWidget(top_->indexOf(time_) + 1, choices_);
-    refresh();
 }
 void ControlBar::fitTo(const QRect& screen) {
-    // Two rows when one would take most of the screen's width: a 150% text
-    // size on a 1366 px laptop, or a narrow portrait monitor.
-    target_->setWordWrap(false);
-    target_->setMinimumHeight(0);
-    target_->setMinimumWidth(0);
-    target_->setMaximumWidth(QWIDGETSIZE_MAX);
-    lockedFacts_->setMaximumWidth(QWIDGETSIZE_MAX);
-    arrange(false);
-    if (screen.width() > 0 && widestSize().width() > screen.width() * 3 / 4) {
-        arrange(true);
-        // Reflow the choices before wrapping the target; Start never loses its context.
-        const int room = screen.width() * 3 / 4 - 2 * Graphite::space(Graphite::Space::m);
-        int other = 0;
-        for (auto* widget : std::initializer_list<QWidget*>{audio_, format_, formatAudio_})
-            if (!widget->isHidden()) other += widget->sizeHint().width() + Graphite::space(Graphite::Space::s);
-        const int padding = Graphite::space(Graphite::Space::xs);
-        const int natural = target_->fontMetrics().horizontalAdvance(options_.targetLabel) + padding;
-        const int minimum = qMin(natural, target_->fontMetrics().horizontalAdvance(options_.targetLabel.section(QStringLiteral(" · "), -1)) + padding);
-        const int width = qBound(minimum, room - other, natural);
-        target_->setWordWrap(true);
-        target_->setFixedWidth(width);
-        target_->setMinimumHeight(target_->heightForWidth(width));
-        lockedFacts_->setWordWrap(true);
-        lockedFacts_->setMaximumWidth(qMax(Graphite::scaled(100), room));
-        refresh();
-    }
+    fitWidth_ = screen.width();
+    refresh();
 }
 void ControlBar::askDiscard() {
     if (state_ != "recording" && state_ != "paused") return;
@@ -517,7 +492,34 @@ void ControlBar::refresh() {
     cancel_->setEnabled(state_ != "stopping");
     cancel_->setToolTip(ready ? QStringLiteral("Close without recording") : QStringLiteral("Discard this recording (asks first)"));
     layout()->setContentsMargins(handle ? QMargins(Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::xs), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::xs)) : QMargins(Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s)));
+    // Measure the current full text before applying any wrapping from a prior state.
+    for (auto* label : {target_, lockedFacts_}) {
+        label->setWordWrap(false);
+        label->setMinimumSize(0, 0);
+        label->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+    }
+    arrange(false);
+    layout()->invalidate();
     adjustSize();
+    if (!handle && fitWidth_ > 0 && sizeHint().width() > fitWidth_ * 3 / 4) {
+        arrange(true);
+        const int room = std::max(1, fitWidth_ * 3 / 4 - 2 * Graphite::space(Graphite::Space::m));
+        int other = 0;
+        for (auto* widget : std::initializer_list<QWidget*>{audio_, format_, formatAudio_})
+            if (!widget->isHidden()) other += widget->sizeHint().width() + Graphite::space(Graphite::Space::s);
+        for (auto* label : {target_, lockedFacts_}) {
+            if (label->isHidden()) continue;
+            const int natural = label->fontMetrics().horizontalAdvance(label->text()) + Graphite::space(Graphite::Space::xs);
+            const int minimum = label == target_ ? std::min(natural, label->fontMetrics().horizontalAdvance(options_.targetLabel.section(QStringLiteral(" · "), -1)) + Graphite::space(Graphite::Space::xs)) : 1;
+            const int width = std::clamp(room - (label == target_ ? other : 0), minimum, natural);
+            label->setWordWrap(true);
+            label->setFixedWidth(width);
+            label->setMinimumHeight(label->heightForWidth(width));
+        }
+        layout()->invalidate();
+        adjustSize();
+    }
+    layout()->activate();
     reposition();
 }
 void ControlBar::setState(const QString& state) { state_ = state; refresh(); }
