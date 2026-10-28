@@ -352,6 +352,14 @@ int main(int argc,char** argv){
   editor.showPreparationFailed("The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.");if(!grab("29-editor-preparation-failed"))return 2;
   editor.allowClose();editor.close();
  }
+ {
+  // Dark app content must keep a visible image boundary in either scheme.
+  QImage image(960,600,QImage::Format_RGB32);image.fill(QColor("#191919"));
+  QPainter painter(&image);painter.fillRect(QRect(0,0,960,44),QColor("#202020"));painter.setFont(Graphite::font());painter.setPen(QColor("#F0F0EC"));painter.drawText(QRect(24,0,900,44),Qt::AlignVCenter,"Synthetic dark screenshot");painter.end();
+  editor::EditDocument doc(image);EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.show();putgd::test::settle(450);
+  const auto captured=editor.grab();if(!captured.save(QDir(output).filePath("26l-editor-dark-content.png")))return 2;
+  captures.append(QJsonObject{{"file","26l-editor-dark-content.png"},{"width",captured.width()},{"height",captured.height()}});editor.allowClose();editor.close();
+ }
  }
 #ifdef PUTGD_PREVIEW_REVIEW
  {
