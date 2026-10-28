@@ -429,10 +429,14 @@ public:
  struct GalleryCaption {QString html;int height=0,lastTop=0,lastHeight=0,lastWidth=0;};
  GalleryCaption galleryCaption(const QModelIndex& i,int width)const{
   QTextDocument document;HistoryWindow::metadataDocument(document,i,width,false,false,false,true);document.size();
-  if(document.begin().layout()->lineCount()>2){
-   if(i.data(HistoryModel::FailedRole).toBool())document.setHtml(metadataSpan(HistoryModel::failureLabel(i.data(HistoryModel::RecordRole).toJsonObject())+" · See Details",Theme::current().danger,true));
-   else HistoryWindow::metadataDocument(document,i,width,false,false,true);
-  }
+  if(i.data(HistoryModel::FailedRole).toBool()){
+   bool overflow=document.begin().layout()->lineCount()>3;for(int line=0;line<document.begin().layout()->lineCount();++line)overflow|=document.begin().layout()->lineAt(line).naturalTextWidth()>width;
+   if(overflow){
+    const auto record=i.data(HistoryModel::RecordRole).toJsonObject();QStringList spans{metadataSpan(HistoryModel::failureLabel(record),Theme::current().danger,true)};
+    if(record["local"].toObject()["status"]=="saved")spans.append(metadataSpan(HistoryModel::localCopyUnavailable(record)?"Local file unavailable":"Saved locally",Theme::current().textSecondary,true));
+    spans.append(metadataSpan("Details in ⋯",Theme::current().textSecondary));document.setHtml(Graphite::separatedLines(spans,Graphite::font(Graphite::Type::technical),width));
+   }
+  }else if(document.begin().layout()->lineCount()>2)HistoryWindow::metadataDocument(document,i,width,false,false,true);
   document.setTextWidth(width);document.size();const auto* layout=document.begin().layout();const auto last=layout->lineAt(layout->lineCount()-1);
   return {document.toHtml(),int(std::ceil(document.size().height())),int(std::floor(last.y())),int(std::ceil(last.height())),int(std::ceil(last.naturalTextWidth()))};
  }
@@ -522,7 +526,7 @@ public:
   }
   p->restore();p->setPen(QPen(t.border,1));p->setBrush(Qt::NoBrush);p->drawRoundedRect(QRectF(thumb).adjusted(0.5,0.5,-0.5,-0.5),4,4);
   // The primary action uses its own measured width; hover icons keep a fixed slot.
-  const auto action=i.data(HistoryModel::PrimaryActionRole).toString();const bool showPrimary=primaryShown(i);const bool routineActionsShown=inlineActions(i)&&(hover||chosen||(grid()&&(i==view_->currentIndex()||i==actionIndex_))||((option.state&QStyle::State_HasFocus)&&view_->hasFocus()));const bool actionsShown=routineActionsShown||(inlineActions(i)&&recovery(i));
+  const auto action=i.data(HistoryModel::PrimaryActionRole).toString();const bool showPrimary=primaryShown(i);const bool routineActionsShown=inlineActions(i)&&(hover||chosen||(grid()&&(i==view_->currentIndex()||i==actionIndex_))||((option.state&QStyle::State_HasFocus)&&view_->hasFocus()));const bool actionsShown=routineActionsShown||(inlineActions(i)&&(recovery(i)||(grid()&&failed)));
   const auto primaryBounds=primaryRect(outer,i);const auto moreBounds=menuRect(outer,i);
   const QRect body=grid()?galleryBody(outer,i):rowBody(outer,false,heading(i));
   const auto columns=grid()?Columns{body,{},{},{}}:rowColumns(body,i);
