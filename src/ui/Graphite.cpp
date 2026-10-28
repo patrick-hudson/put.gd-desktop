@@ -2628,6 +2628,17 @@ void WindowHeader::setCentre(QWidget* centre) {
     centre->show();
     syncWindowState();
 }
+void WindowHeader::setLeading(QWidget* content) {
+    if (leadingContent_ != content) {
+        if (leadingContent_) { leading_->layout()->removeWidget(leadingContent_); leadingContent_->hide(); }
+        leadingContent_ = content;
+        if (content) {
+            static_cast<QHBoxLayout*>(leading_->layout())->insertWidget(1, content, 1);
+            content->show();
+        } else name_->show();
+    }
+    syncWindowState();
+}
 void WindowHeader::setDocument(const QString& name, const QString& state) {
     if (!docName_) {
         auto* block = new QWidget(this);
@@ -2668,6 +2679,17 @@ void WindowHeader::syncWindowState() {
         maximize_->setAccessibleName(maximized ? QStringLiteral("Restore") : QStringLiteral("Maximize"));
         maximize_->setToolTip(maximize_->accessibleName());
     }
+    if (leadingContent_) {
+        name_->hide();
+        leading_->setMinimumWidth(0);
+        trailing_->setMinimumWidth(0);
+        row_->setStretch(0, 1);
+        row_->setStretch(1, 0);
+        row_->setStretch(row_->count() - 2, 0);
+        setProperty("balancedTitle", false);
+        return;
+    }
+    row_->setStretch(0, 0);
     if (density_ == Density::Compact) {
         // The transport gets the space first; a partial window name adds noise.
         const auto margins = row_->contentsMargins();

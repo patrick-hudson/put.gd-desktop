@@ -642,7 +642,8 @@ private slots:
             auto* audio = window.findChild<QLabel*>("exportAudioSummary");
             QVERIFY(audio->isVisible() && !audio->text().contains(status->text()));
             QVERIFY(status->isVisible() && metadata->isAncestorOf(status));
-            QVERIFY(window.findChild<QWidget*>("reviewDestinationSummary")->isAncestorOf(audio));
+            QVERIFY((window.findChild<QWidget*>("reviewDestinationSummary")->isAncestorOf(audio)
+                || window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(audio)));
             QVERIFY(t->trackRect().width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
             for (auto* button : window.findChildren<QToolButton*>()) if (button->isVisible() && button->toolButtonStyle() == Qt::ToolButtonTextOnly && button->objectName() != "uploadDestinationMenu" && button->objectName() != "addMask") {
                 QVERIFY(button->width() - (button->objectName() == "useRedact" ? 16 : button->objectName() == "showMoreMasks" ? 8 : 24) >= QFontMetricsF(button->font()).horizontalAdvance(button->text()));
@@ -733,7 +734,7 @@ private slots:
                 && output->toolTip().contains(o.destination) && output->menu()
                 && output->height() >= output->fontMetrics().height() && window.rect().contains(QRect(output->mapTo(&window, QPoint()), output->size()))
                 && output->text().contains(o.destination) && !output->text().contains(QChar(0x2026))
-                && output->height() >= output->heightForWidth(output->width());
+                && (output->property("headerSummary").toBool() || output->height() >= output->heightForWidth(output->width()));
         };
         window.resize(window.minimumSizeHint()); QApplication::processEvents();
         QVERIFY2(nameFits(), qPrintable(destination->text()));
@@ -841,6 +842,7 @@ private slots:
         QFETCH(bool, recorded);
         QFETCH(bool, enabled);
         QFETCH(QString, format);
+        Graphite::WindowHeader::setCustomFrameOverride(-1);
         auto o = options(); o.audioRecorded = recorded;
         auto c = config(); c.audio.system = enabled; c.format = format;
         ReviewWindow window(o, c); window.show();
@@ -872,6 +874,59 @@ private slots:
                 QVERIFY(window.findChild<QWidget*>("reviewFooter")->height() <= 48);
             }
             else QVERIFY(save->mapTo(&window, save->rect().center()).y() > outputY);
+        }
+    }
+    void destinationMovesToTheHeaderOnlyWhenItFits_data() {
+        QTest::addColumn<int>("pixels");
+        QTest::addColumn<bool>("privateUpload");
+        for (int pixels : {14, 21}) for (bool privateUpload : {false, true})
+            QTest::newRow(qPrintable(QString("%1px-%2").arg(pixels).arg(privateUpload ? "private" : "shared"))) << pixels << privateUpload;
+    }
+    void destinationMovesToTheHeaderOnlyWhenItFits() {
+        QFETCH(int, pixels); QFETCH(bool, privateUpload);
+        auto font = qApp->font(); font.setPixelSize(pixels); qApp->setFont(font);
+        auto o = options(); o.audioRecorded = true;
+        o.destination = QStringLiteral("Project archive for customer support in the European Union");
+        o.sharingMode = privateUpload ? "private" : "share";
+        o.uploadSummary = (privateUpload ? "Private upload to " : "Upload to ") + o.destination;
+        auto c = config(); c.audio.system = true;
+        ReviewWindow window(o, c); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* header = window.findChild<Graphite::WindowHeader*>();
+        auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
+        auto* menu = output->menu();
+        auto* draft = window.findChild<QLabel*>("draftState");
+        auto* audio = window.findChild<QLabel*>("exportAudioSummary");
+        auto* transport = window.findChild<QWidget*>("reviewTransport");
+        const auto bounds = [&](QWidget* w) { return QRect(w->mapTo(&window, QPoint()), w->size()); };
+        for (const int width : {1600, 640, 1600}) {
+            window.resize(width, 720);
+            for (int i = 0; i < 4; ++i) QApplication::processEvents();
+            QCOMPARE(output, window.findChild<QToolButton*>("uploadDestinationMenu"));
+            QCOMPARE(menu, output->menu());
+            const bool inHeader = width == 1600;
+            QCOMPARE(output->property("headerSummary").toBool(), inHeader);
+            QCOMPARE(header->isAncestorOf(output), inHeader);
+            QCOMPARE(header->isAncestorOf(draft), inHeader);
+            QCOMPARE(header->isAncestorOf(audio), inHeader);
+            QVERIFY(output->isVisible() && draft->isVisible() && audio->isVisible());
+            QVERIFY(output->toolTip().contains(o.destination));
+            QVERIFY(output->accessibleDescription().contains(o.destination));
+            QVERIFY(output->accessibleDescription().contains(privateUpload ? "Private upload" : "Shared link"));
+            for (auto* widget : std::initializer_list<QWidget*>{output, draft, audio, transport}) QVERIFY(window.rect().contains(bounds(widget)));
+            if (inHeader) {
+                QVERIFY(bounds(output).right() < bounds(transport).left());
+                QVERIFY(bounds(transport).right() < bounds(draft).left());
+                QVERIFY(bounds(draft).right() < bounds(audio).left());
+                QVERIFY(bounds(audio).right() < bounds(window.findChild<QToolButton*>("windowMinimize")).left());
+                const auto suffix = output->property("sharingSuffix").toString();
+                QVERIFY(output->width() >= output->fontMetrics().horizontalAdvance(suffix + QStringLiteral("…")) + 24);
+                QVERIFY(!window.findChild<QLabel*>("brandName")->isVisible());
+            } else QVERIFY(window.findChild<QWidget*>("reviewFooter")->isAncestorOf(output));
+            bool opened = false;
+            QTimer::singleShot(0, output, [&] { opened = menu->isVisible(); menu->close(); });
+            output->setFocus(Qt::TabFocusReason); QTest::keyClick(output, Qt::Key_Space);
+            QVERIFY(opened);
         }
     }
     void maskLanePagingPreservesSelectionAndDoesNotWrap() {
@@ -1263,7 +1318,7 @@ private slots:
         auto* grid = qobject_cast<QGridLayout*>(window.findChild<QWidget*>("reviewActions")->layout());
         QVERIFY(grid);
         QVERIFY(target->text().contains("Shared link"));
-        if (grid->property("singleRow").toBool()) QCOMPARE(target->mapTo(&window, target->rect().center()).y(), upload->mapTo(&window, upload->rect().center()).y());
+        if (grid->property("singleRow").toBool() && !target->property("headerSummary").toBool()) QCOMPARE(target->mapTo(&window, target->rect().center()).y(), upload->mapTo(&window, upload->rect().center()).y());
         else QVERIFY(target->mapTo(&window, target->rect().bottomLeft()).y() < upload->mapTo(&window, QPoint()).y());
         QVERIFY(window.rect().contains(QRect(target->mapTo(&window, QPoint()), target->size())));
         auto* full = window.findChild<QLabel*>("uploadDestinationWrapped");
@@ -1434,7 +1489,7 @@ private slots:
         QVERIFY(!state || !state->isVisible());
         auto* draft = window.findChild<QLabel*>("draftState");
         QVERIFY(draft && draft->isVisible() && draft->text() == QStringLiteral("Not uploaded"));
-        QVERIFY(window.findChild<QWidget*>("reviewFooter")->isAncestorOf(draft));
+        QCOMPARE(header->isAncestorOf(draft), window.findChild<QToolButton*>("uploadDestinationMenu")->property("headerSummary").toBool());
         // The shared window controls, each at least a 32 px target.
         for (const auto* name : {"windowMinimize", "windowMaximize", "windowClose"}) {
             auto* button = header->findChild<QToolButton*>(name);

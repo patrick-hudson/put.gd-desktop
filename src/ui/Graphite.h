@@ -304,6 +304,9 @@ public:
     enum class Density { Standard, Compact };
     explicit WindowHeader(QWidget* window, QMenu* menu = nullptr, Density density = Density::Standard);
     void setCentre(QWidget*);
+    // Optional leading content takes the remaining width beside a fixed centre.
+    // Passing nullptr restores the brand; the caller owns the removed content.
+    void setLeading(QWidget*);
     // A document's name and its truthful upload state ("Not uploaded"). The
     // compact header shows the name only; keep the state elsewhere.
     void setDocument(const QString& name, const QString& state = {});
@@ -340,6 +343,7 @@ private:
     QHBoxLayout* row_ = nullptr;
     QWidget* centre_ = nullptr;
     QWidget* leading_ = nullptr;
+    QWidget* leadingContent_ = nullptr;
     QWidget* trailing_ = nullptr;
     QHBoxLayout* trailingRow_ = nullptr;
     ElidedLabel* docName_ = nullptr;
