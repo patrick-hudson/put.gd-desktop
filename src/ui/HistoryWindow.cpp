@@ -429,7 +429,13 @@ public:
  int detailsWidth()const{return qMax(details_->sizeHint().width(),QFontMetrics(Graphite::font()).horizontalAdvance("Details")+30);}
  struct GalleryCaption {QString html;int height=0,lastTop=0,lastHeight=0,lastWidth=0;};
  GalleryCaption galleryCaption(const QModelIndex& i,int width)const{
-  QTextDocument document;HistoryWindow::metadataDocument(document,i,width,false,false,false,true);document.size();
+  QTextDocument document;HistoryWindow::metadataDocument(document,i,width,false,false,false,true);
+  if(!i.data(HistoryModel::FailedRole).toBool()){
+   const auto title=i.data().toString().toCaseFolded();auto parts=i.data(HistoryModel::SubtitleRole).toString().split(" · ",Qt::SkipEmptyParts);const auto kind=parts.value(0).toCaseFolded();
+   const bool redundant=(kind=="full desktop"&&(title=="desktop"||title.startsWith("desktop ")))||(kind=="window"&&(title==kind||title.startsWith(kind+" ")))||(kind=="clipboard"&&(title==kind||title.startsWith(kind+" ")));
+   if(redundant){parts.removeFirst();const auto record=i.data(HistoryModel::RecordRole).toJsonObject();QStringList spans;for(const auto& part:parts)spans.append(metadataSpan(part,metadataColor(record,part,Theme::current().textMuted),outcomePart(record,part)));document.setHtml(Graphite::separatedLines(spans,Graphite::font(Graphite::Type::technical),width));document.setTextWidth(width);}
+  }
+  document.size();
   if(i.data(HistoryModel::FailedRole).toBool()){
    bool overflow=document.begin().layout()->lineCount()>3;for(int line=0;line<document.begin().layout()->lineCount();++line)overflow|=document.begin().layout()->lineAt(line).naturalTextWidth()>width;
    if(overflow){
