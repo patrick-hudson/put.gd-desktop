@@ -1416,7 +1416,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     statusRow_ = new QWidget(this);
     statusRow_->setObjectName("statusRow");
     statusLines_ = new QVBoxLayout(statusRow_);
-    statusLines_->setContentsMargins(reviewSpace(Graphite::Space::m), 0, reviewSpace(Graphite::Space::m), reviewSpace(Graphite::Space::xs));
+    // Status bands align with the frame's edges, leaving recovery text a full line.
+    statusLines_->setContentsMargins(reviewSpace(Graphite::Space::xs), 0, reviewSpace(Graphite::Space::xs), reviewSpace(Graphite::Space::xs));
     statusLines_->setSpacing(reviewSpace(Graphite::Space::xs));
     statusRow_->hide();
     frame->addWidget(statusRow_);
@@ -2465,10 +2466,12 @@ void ReviewWindow::placeErrorDetails() {
         + findChild<QLabel*>("draftState")->sizeHint().width() + errorDetails_->width() + 2 * reviewSpace(Graphite::Space::s);
     const bool separateMetadata = !findChild<QWidget*>("reviewActions")->layout()->property("singleRow").toBool();
     const bool inFooter = separateMetadata && !inHeader && needed > statusContent_->width() && footerNeeded <= width() - 2 * footerInset();
-    int headerNeeded = transport_->sizeHint().width() + errorDetails_->width()
-        + header_->layout()->contentsMargins().left() + header_->layout()->contentsMargins().right() + 4 * header_->layout()->spacing();
+    // Playback stays centred, so the trailing slot's width is needed on both sides.
+    int trailing = errorDetails_->width() + header_->layout()->spacing();
     for (const auto* name : {"windowMinimize", "windowMaximize", "windowClose"})
-        if (const auto* button = header_->findChild<QToolButton*>(name)) headerNeeded += button->width() + button->parentWidget()->layout()->spacing();
+        if (const auto* button = header_->findChild<QToolButton*>(name)) trailing += button->width() + button->parentWidget()->layout()->spacing();
+    const int headerNeeded = transport_->sizeHint().width() + 2 * trailing
+        + header_->layout()->contentsMargins().left() + header_->layout()->contentsMargins().right() + 4 * header_->layout()->spacing();
     const bool onHeader = Graphite::WindowHeader::customFrame() && !inHeader && !inFooter
         && needed > statusContent_->width() && headerNeeded <= header_->width();
     errorDetails_->setFixedHeight(inFooter ? textControlHeight(errorDetails_) : std::max(32, textControlHeight(errorDetails_)));
