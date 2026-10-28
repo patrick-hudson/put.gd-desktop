@@ -14,6 +14,8 @@
 #include <QStyleOptionButton>
 #include <QTextEdit>
 #include <QTextDocument>
+#include <QTextOption>
+#include <QResizeEvent>
 #include <QFormLayout>
 #include <QScrollArea>
 #include <QScrollBar>
@@ -22,6 +24,24 @@
 #include <QtMath>
 
 namespace putgd {
+namespace {
+class BuildValue final:public QTextEdit {
+public:
+ explicit BuildValue(const QString& value){setPlainText(value);setReadOnly(true);setFrameShape(QFrame::NoFrame);setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);setWordWrapMode(QTextOption::WrapAnywhere);document()->setDocumentMargin(0);setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);}
+ QSize sizeHint()const override{return {fontMetrics().horizontalAdvance(toPlainText()),fontMetrics().height()};}
+ QSize minimumSizeHint()const override{return {0,fontMetrics().height()};}
+protected:
+ void resizeEvent(QResizeEvent* event)override{QTextEdit::resizeEvent(event);document()->setTextWidth(viewport()->width());const int height=qCeil(document()->size().height())+2*frameWidth();if(minimumHeight()!=height){setFixedHeight(height);updateGeometry();}}
+};
+class BuildRow final:public QWidget {
+public:
+ BuildRow(const QString& name,BuildValue* value){auto* line=new QBoxLayout(QBoxLayout::LeftToRight,this);line->setContentsMargins(0,0,0,0);line->setSpacing(Graphite::space(Graphite::Space::s));label_=Graphite::label(name,"secondary");line->addWidget(label_,0,Qt::AlignTop);line->addWidget(value,1);value_=value;}
+ QSize minimumSizeHint()const override{return {0,QWidget::minimumSizeHint().height()};}
+protected:
+ void resizeEvent(QResizeEvent* event)override{QWidget::resizeEvent(event);const bool stacked=label_->sizeHint().width()+Graphite::space(Graphite::Space::l)+value_->sizeHint().width()>width();static_cast<QBoxLayout*>(layout())->setDirection(stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);}
+private:QLabel* label_;BuildValue* value_;
+};
+}
 AboutWindow::AboutWindow(const QJsonObject& residentBuild, QWidget* parent)
  : QMessageBox(QMessageBox::Information, "About put.gd",
                QString("put.gd"),
@@ -33,10 +53,9 @@ AboutWindow::AboutWindow(const QJsonObject& residentBuild, QWidget* parent)
  setDetailedText(QString::fromUtf8(QJsonDocument(residentBuild).toJson(QJsonDocument::Indented)));
  if(auto* raw=findChild<QTextEdit*>()){
   auto* host=raw->parentWidget();auto* box=qobject_cast<QVBoxLayout*>(host->layout());raw->hide();
-  auto* scroll=new QScrollArea(host);scroll->setObjectName("aboutBuildDetails");scroll->setFrameShape(QFrame::NoFrame);scroll->setWidgetResizable(true);auto* body=new QWidget;auto* column=new QVBoxLayout(body);const int inset=Graphite::space(Graphite::Space::s);column->setContentsMargins(inset,inset,inset,inset);column->setSpacing(inset);auto* form=new QFormLayout;form->setHorizontalSpacing(Graphite::space(Graphite::Space::l));form->setVerticalSpacing(inset);form->setRowWrapPolicy(QFormLayout::DontWrapRows);column->addLayout(form);
-  const auto add=[&](const QString& name,const QString& value,const QString& object){auto* label=new QLabel(value);label->setObjectName(object);label->setTextFormat(Qt::PlainText);label->setWordWrap(false);label->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);VisualStyle::role(label,"mono");label->setMinimumWidth(label->fontMetrics().horizontalAdvance(value));form->addRow(Graphite::label(name,"secondary"),label);};
+  auto* scroll=new QScrollArea(host);scroll->setObjectName("aboutBuildDetails");scroll->setFrameShape(QFrame::NoFrame);scroll->setWidgetResizable(true);scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);auto* body=new QWidget;auto* column=new QVBoxLayout(body);const int inset=Graphite::space(Graphite::Space::s);column->setContentsMargins(inset,inset,inset,inset);column->setSpacing(inset);const auto add=[&](const QString& name,const QString& value,const QString& object){auto* text=new BuildValue(value);text->setObjectName(object);VisualStyle::role(text,"mono");column->addWidget(new BuildRow(name,text));};
   add("Version",residentBuild["version"].toString(),"buildVersion");add("Commit",residentBuild["gitCommit"].toString(residentBuild["commit"].toString("Unknown")),"buildCommit");add("Build state",residentBuild["dirty"].isBool()?(residentBuild["dirty"].toBool()?"Modified source tree":"Clean source tree"):"Unknown","buildState");
-  auto* copy=new QPushButton("Copy build details");copy->setObjectName("copyBuildDetails");VisualStyle::role(copy,"quiet");column->addWidget(copy,0,Qt::AlignLeft);connect(copy,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(detailedText());});scroll->setWidget(body);scroll->setMinimumWidth(0);scroll->setFixedHeight(qMin(body->sizeHint().height()+2*scroll->frameWidth()+scroll->horizontalScrollBar()->sizeHint().height(),screen()->availableGeometry().height()/2));if(box)box->addWidget(scroll);
+  auto* copy=new QPushButton("Copy build details");copy->setObjectName("copyBuildDetails");VisualStyle::role(copy,"quiet");column->addWidget(copy,0,Qt::AlignLeft);connect(copy,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(detailedText());});scroll->setWidget(body);scroll->setMinimumWidth(0);scroll->setFixedHeight(qMin(body->sizeHint().height()+2*scroll->frameWidth(),screen()->availableGeometry().height()/2));if(box)box->addWidget(scroll);
  }
  // The button box runs QMessageBox's disclosure handler before ours, even
  // when Qt 6.4 reconnects the button itself on show.
