@@ -215,8 +215,8 @@ FrameView::FrameView(QWidget* parent, std::shared_ptr<MaskNames> names) : QWidge
     errorCard_ = new ErrorCard(this);
     errorCard_->setObjectName("previewError");
     auto* row = new QHBoxLayout(errorCard_);
-    row->setContentsMargins(14, 8, 8, 8);
-    row->setSpacing(12);
+    row->setContentsMargins(Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::s));
+    row->setSpacing(Graphite::space(Graphite::Space::m));
     errorText_ = new QLabel(errorCard_);
     errorText_->setObjectName("previewErrorText");
     errorText_->setWordWrap(true);
@@ -955,7 +955,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     header_->setDocument(QStringLiteral("Review recording"));
     // Why the capture ended when it stopped itself (#225); hidden otherwise.
     auto* banner = new QVBoxLayout;
-    banner->setContentsMargins(8, 0, 8, 0);
+    banner->setContentsMargins(Graphite::space(Graphite::Space::l), 0, Graphite::space(Graphite::Space::l), 0);
     frame->addLayout(banner);
     notice_ = new QLabel(this);
     notice_->setObjectName("notice");
@@ -1011,7 +1011,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         box->setObjectName(name);
         auto* row = new QHBoxLayout(box);
         row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(4);
+        row->setSpacing(Graphite::space(Graphite::Space::xs));
         for (auto* w : widgets) row->addWidget(w);
         return box;
     };
@@ -1080,8 +1080,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* optionsAction = new QWidgetAction(optionsMenu);
     auto* optionsPanel = new QWidget(optionsMenu);
     auto* optionsLayout = new QVBoxLayout(optionsPanel);
-    optionsLayout->setContentsMargins(8, 8, 8, 8);
-    optionsLayout->setSpacing(8);
+    optionsLayout->setContentsMargins(Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::s));
+    optionsLayout->setSpacing(Graphite::space(Graphite::Space::s));
     auto* blurAdvice = new Graphite::Banner(Graphite::Banner::Tone::Warning, Graphite::blurWarningText(), optionsPanel);
     blurAdvice->setObjectName("reviewBlurAdvice");
     blurAdvice->setMaximumWidth(480);
@@ -1145,7 +1145,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     transport_->setObjectName("reviewTransport");
     auto* transport = new QHBoxLayout(transport_);
     transport->setContentsMargins(0, 0, 0, 0);
-    transport->setSpacing(4);
+    transport->setSpacing(Graphite::space(Graphite::Space::xs));
     transport->addWidget(play_);
     transport->addWidget(speed_);
     transport->addWidget(time_);
@@ -1157,7 +1157,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     statusRow_->setObjectName("statusRow");
     statusLines_ = new QVBoxLayout(statusRow_);
     statusLines_->setContentsMargins(0, 0, 0, 0);
-    statusLines_->setSpacing(4);
+    statusLines_->setSpacing(Graphite::space(Graphite::Space::xs));
     statusRow_->hide();
     frame->addWidget(statusRow_);
     // One footer row: output details, format and audio, then explicit actions.
@@ -1216,7 +1216,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     footer->setObjectName("reviewFooter");
     auto* footerRows = new QVBoxLayout(footer);
     footerRows->setContentsMargins(8, 2, 8, 2);
-    footerRows->setSpacing(4);
+    footerRows->setSpacing(Graphite::space(Graphite::Space::xs));
     auto* actions = new QWidget(footer);
     actions->setObjectName("reviewActions");
     auto* actionsRow = new QGridLayout(actions);
@@ -1705,7 +1705,7 @@ void ReviewWindow::refreshStatus() {
         auto* line = new QWidget(band);
         auto* row = new QHBoxLayout(line);
         row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(4);
+        row->setSpacing(Graphite::space(Graphite::Space::xs));
         // The words carry the tone; colour only repeats it.
         const bool saved = std::any_of(entry.actions.cbegin(), entry.actions.cend(), [](const auto& action) { return action.second["action"] == "copyPath"; });
         QLabel* text;
@@ -1795,8 +1795,8 @@ void ReviewWindow::showAdvice(bool formatTips) {
     auto* body = new QWidget(scroll);
     scroll->setWidget(body);
     auto* layout = new QVBoxLayout(body);
-    layout->setContentsMargins(24, 20, 24, 14);
-    layout->setSpacing(14);
+    layout->setContentsMargins(Graphite::space(Graphite::Space::xl), Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::xl), Graphite::space(Graphite::Space::l));
+    layout->setSpacing(Graphite::space(Graphite::Space::m));
     auto* heading = new QLabel(title, body);
     VisualStyle::role(heading, "sectionTitle");
     layout->addWidget(heading);
@@ -1820,7 +1820,7 @@ void ReviewWindow::showAdvice(bool formatTips) {
         auto* formatRow = new QWidget(body);
         auto* formatLayout = new QVBoxLayout(formatRow);
         formatLayout->setContentsMargins(0, 0, 0, 0);
-        formatLayout->setSpacing(4);
+        formatLayout->setSpacing(Graphite::space(Graphite::Space::xs));
         formatLayout->addWidget(fact(formatHint(config_.format, config_.codec)));
         bool h264Available = false;
         for (int i = 0; i < format_->count(); ++i) h264Available |= format_->itemData(i).toStringList() == QStringList{"mp4", "h264"};
@@ -1839,8 +1839,8 @@ void ReviewWindow::showAdvice(bool formatTips) {
     layout->addStretch();
     auto* footer = new Graphite::Surface("bg", Qt::TopEdge, dialog);
     auto* actions = new QHBoxLayout(footer);
-    actions->setContentsMargins(24, 12, 24, 12);
-    actions->setSpacing(8);
+    actions->setContentsMargins(Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::l), Graphite::space(Graphite::Space::m));
+    actions->setSpacing(Graphite::space(Graphite::Space::s));
     actions->addStretch();
     if (failed) {
         auto* retry = new QPushButton("Try again", footer);
