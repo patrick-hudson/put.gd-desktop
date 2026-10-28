@@ -4,6 +4,8 @@
 #include "ui/Graphite.h"
 #include "platform/HostOpen.h"
 #include <QLabel>
+#include <QDialogButtonBox>
+#include <QLayout>
 #include <QUrl>
 #include <QApplication>
 #include <QJsonDocument>
@@ -47,7 +49,7 @@ private slots:
   QVERIFY(!dialog->isModal());
   QCOMPARE(dialog->windowModality(), Qt::NonModal);
   QVERIFY(!QApplication::activeModalWidget());
-  QCOMPARE(dialog->text(), QString("put.gd"));auto* version=dialog->findChild<QLabel*>("aboutVersion");QVERIFY(version);QCOMPARE(version->text(),manifest["version"].toString());QCOMPARE(version->font().family(),Graphite::monoFamily());QCOMPARE(version->font().pixelSize(),Graphite::scaled(12));QVERIFY(version->wordWrap());auto* name=dialog->findChild<QLabel*>("qt_msgbox_label");QCOMPARE(name->font().pixelSize(),Graphite::scaled(Graphite::Type::section));QCOMPARE(name->font().weight(),QFont::DemiBold);auto* website=dialog->findChild<QPushButton*>("putgdWebsite");QVERIFY(website);QVERIFY(website->isVisibleTo(dialog));QUrl opened;host::setTestOpener([&](const QUrl& url){opened=url;});website->click();host::setTestOpener({});QCOMPARE(opened,QUrl("https://put.gd"));QVERIFY(dialog->isVisible());
+  QCOMPARE(dialog->text(), QString("put.gd"));auto* version=dialog->findChild<QLabel*>("aboutVersion");QVERIFY(version);QCOMPARE(version->text(),manifest["version"].toString());QCOMPARE(version->font().family(),Graphite::monoFamily());QCOMPARE(version->font().pixelSize(),Graphite::scaled(12));QVERIFY(version->wordWrap());auto* name=dialog->findChild<QLabel*>("qt_msgbox_label");QCOMPARE(name->font().pixelSize(),Graphite::scaled(22));QCOMPARE(name->font().weight(),QFont::DemiBold);auto* website=dialog->findChild<QPushButton*>("putgdWebsite");QVERIFY(website);QVERIFY(website->isVisibleTo(dialog));QUrl opened;host::setTestOpener([&](const QUrl& url){opened=url;});website->click();host::setTestOpener({});QCOMPARE(opened,QUrl("https://put.gd"));QVERIFY(dialog->isVisible());
   QCOMPARE(QJsonDocument::fromJson(dialog->detailedText().toUtf8()).object(), manifest);
   QVERIFY(dialog->button(QMessageBox::Close));QVERIFY(!dialog->button(QMessageBox::Ok));auto* details=dialog->findChild<QPushButton*>("buildDetails");QVERIFY(details);QCOMPARE(details->text(),QString("Build details"));details->click();QCOMPARE(details->text(),QString("Hide build details"));auto* data=dialog->findChild<QTextEdit*>();QVERIFY(data&&data->isVisible()&&data->isReadOnly());data->selectAll();QCOMPARE(QJsonDocument::fromJson(data->textCursor().selectedText().replace(QChar::ParagraphSeparator,'\n').toUtf8()).object(),manifest);details->click();QCOMPARE(details->text(),QString("Build details"));
   QVERIFY(dialog->informativeText().contains("Screen capture and file sharing"));
@@ -60,9 +62,16 @@ private slots:
   QVERIFY(dialog.isNull());
  }
 
+ void aboutUsesTheSharedSpacingAndTypeRoles() {
+  VisualStyle::apply(*qApp);AboutWindow dialog({{"version","26.1027.1543-dev"}});dialog.show();QApplication::processEvents();
+  auto* content=dialog.findChild<QWidget*>("aboutContent");auto* buttons=dialog.findChild<QDialogButtonBox*>();auto* icon=dialog.findChild<QLabel*>("qt_msgboxex_icon_label");auto* tagline=dialog.findChild<QLabel*>("qt_msgbox_informativelabel");auto* version=dialog.findChild<QLabel*>("aboutVersion");auto* website=dialog.findChild<QPushButton*>("putgdWebsite");QVERIFY(content&&buttons&&icon&&tagline&&version&&website);for(auto* text:{dialog.findChild<QLabel*>("qt_msgbox_label"),tagline,version})QVERIFY2(text->height()>=text->fontMetrics().height(),qPrintable(text->objectName()));
+  const int margin=Graphite::space(Graphite::Space::xl);QCOMPARE(dialog.layout()->contentsMargins(),QMargins(margin,margin,margin,margin));QCOMPARE(content->mapTo(&dialog,QPoint()),QPoint(margin,margin));QVERIFY(icon->width()>=Graphite::scaled(64));QVERIFY(icon->height()>=Graphite::scaled(64));QCOMPARE(tagline->font().pixelSize(),Graphite::scaled(14));QCOMPARE(tagline->palette().color(QPalette::WindowText),Theme::current().textSecondary);QCOMPARE(version->palette().color(QPalette::WindowText),Theme::current().textMuted);
+  QVERIFY(version->mapTo(&dialog,QPoint()).y()<website->mapTo(&dialog,QPoint()).y());QCOMPARE(buttons->mapTo(&dialog,QPoint()).y()-content->mapTo(&dialog,QPoint(0,content->height())).y(),margin);QCOMPARE(buttons->mapTo(&dialog,QPoint(buttons->width(),0)).x(),dialog.width()-margin);
+ }
+
  void disclosureLabelsFitAtLargeText() {
   VisualStyle::apply(*qApp);const auto oldFont=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(oldFont);});auto font=oldFont;font.setPixelSize(21);qApp->setFont(font);
-  AboutWindow dialog({{"version","26.1027.1543-dev+g0123456789ab"}});dialog.show();auto* details=dialog.findChild<QPushButton*>("buildDetails");QVERIFY(details);
+  AboutWindow dialog({{"version","26.1027.1543-dev+g0123456789ab"}});dialog.show();QApplication::processEvents();for(const auto* name:{"qt_msgbox_label","qt_msgbox_informativelabel","aboutVersion"}){auto* text=dialog.findChild<QLabel*>(name);QVERIFY(text);QVERIFY2(text->height()>=text->fontMetrics().height(),qPrintable(QString("%1: %2 < %3").arg(name).arg(text->height()).arg(text->fontMetrics().height())));}auto* details=dialog.findChild<QPushButton*>("buildDetails");QVERIFY(details);
   for(int i=0;i<2;++i){details->click();QApplication::processEvents();const int padding=2*details->style()->pixelMetric(QStyle::PM_ButtonMargin,nullptr,details);QCOMPARE(details->fontMetrics().elidedText(details->text(),Qt::ElideRight,details->width()-padding),details->text());}
  }
 

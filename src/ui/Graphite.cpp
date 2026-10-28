@@ -546,7 +546,7 @@ void Style::polish(QWidget* widget) {
     if (name == "title" || name == "page") f = font(widget->property("compactHeading").toBool() ? Type::compactPage : Type::page, true);
     else if (name == "sectionTitle" || name == "section") f = font(Type::section, true);
     else if (name == "label") f = labelFont();
-    else if (name == "body") f = font(Type::body);
+    else if (name == "body" || name == "secondary") f = font(Type::body);
     else if (name == "strong") f = font(Type::body, true);
     else if (name == "caption" || name == "eyebrow" || name == "railHeading" || name == "micro") { f = font(Type::caption); colour = c.textMuted; }
     // An error is never small print: it takes body type even in a meta slot.

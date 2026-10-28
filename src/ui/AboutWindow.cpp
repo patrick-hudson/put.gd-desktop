@@ -5,6 +5,7 @@
 #include <QGridLayout>
 #include <QApplication>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QDialogButtonBox>
 #include <QJsonDocument>
@@ -22,22 +23,29 @@ AboutWindow::AboutWindow(const QJsonObject& residentBuild, QWidget* parent)
  setWindowModality(Qt::NonModal);
  setTextFormat(Qt::PlainText);
  setInformativeText("Screen capture and file sharing");
- if(auto* name=findChild<QLabel*>("qt_msgbox_label")){VisualStyle::role(name,"sectionTitle");}
- if(auto* info=findChild<QLabel*>("qt_msgbox_informativelabel"))info->setText("Screen capture and file sharing");
  setDetailedText(QString::fromUtf8(QJsonDocument(residentBuild).toJson(QJsonDocument::Indented)));
  // The button box runs QMessageBox's disclosure handler before ours, even
  // when Qt 6.4 reconnects the button itself on show.
  for(auto* button:findChildren<QPushButton*>())if(standardButton(button)==QMessageBox::NoButton){button->setObjectName("buildDetails");button->setText("Build details");connect(findChild<QDialogButtonBox*>(),&QDialogButtonBox::clicked,this,[this,button](QAbstractButton* clicked){if(clicked!=button)return;updateDetailsButton();});}
  // A small branded dialog, with the connected resident’s build on request.
- setIconPixmap(VisualStyle::icon("brand").pixmap(48,48));
+ setIconPixmap(VisualStyle::icon("brand").pixmap(Graphite::scaled(64),Graphite::scaled(64)));
  auto* website=new QPushButton("put.gd website",this);website->setObjectName("putgdWebsite");VisualStyle::role(website,"link");website->setProperty("graphiteFlush",true);
  auto* browser=new Graphite::BrowserFeedback(this);browser->setObjectName("aboutWebsiteFeedback");
  setMinimumWidth(Graphite::scaled(380));
- auto* version=new QLabel(this);version->setTextFormat(Qt::PlainText);version->setWordWrap(true);version->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);version->setObjectName("aboutVersion");version->setText(residentBuild["version"].toString());Graphite::setMono(version,Graphite::Type::metadata);version->setMinimumWidth(Graphite::scaled(220));version->setMaximumWidth(Graphite::scaled(280));
+ auto* version=new QLabel(this);version->setTextFormat(Qt::PlainText);version->setWordWrap(true);version->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);version->setObjectName("aboutVersion");version->setText(residentBuild["version"].toString());VisualStyle::role(version,"binding");version->setMinimumWidth(Graphite::scaled(240));version->setMaximumWidth(Graphite::scaled(320));
  if(auto* grid=qobject_cast<QGridLayout*>(layout())){
-  auto* info=findChild<QLabel*>("qt_msgbox_informativelabel");auto* content=new QWidget(this);content->setMinimumWidth(Graphite::scaled(300));auto* column=new QVBoxLayout(content);column->setContentsMargins(0,0,0,0);column->setSpacing(Graphite::space(Graphite::Space::s));grid->removeWidget(info);column->addWidget(info);column->addWidget(website,0,Qt::AlignLeft);column->addWidget(version);column->addWidget(browser);grid->addWidget(content,1,2);
+  auto* message=findChild<QLabel*>("qt_msgbox_label");auto* informative=findChild<QLabel*>("qt_msgbox_informativelabel");message->setObjectName("aboutMessageText");informative->setObjectName("aboutMessageInfo");auto* icon=findChild<QLabel*>("qt_msgboxex_icon_label");auto* buttons=findChild<QDialogButtonBox*>();auto* details=findChild<QTextEdit*>();QLayoutItem* detailsItem=nullptr;
+  // Keep Qt's build-details disclosure intact while replacing its message grid.
+  while(auto* item=grid->takeAt(0)){if(details&&((item->layout()&&item->layout()->indexOf(details)>=0)||(item->widget()&&(item->widget()==details||item->widget()->isAncestorOf(details)))))detailsItem=item;else delete item;}
+  for(int row=0;row<grid->rowCount();++row){grid->setRowMinimumHeight(row,0);grid->setRowStretch(row,0);}for(int column=0;column<grid->columnCount();++column){grid->setColumnMinimumWidth(column,0);grid->setColumnStretch(column,0);}
+  grid->setContentsMargins(Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl));grid->setSpacing(0);
+  auto* content=new QWidget(this);content->setObjectName("aboutContent");content->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Minimum);content->setMinimumWidth(Graphite::scaled(380)-2*Graphite::space(Graphite::Space::xl));auto* row=new QHBoxLayout(content);row->setContentsMargins(0,0,0,0);row->setSpacing(Graphite::space(Graphite::Space::l));if(icon)row->addWidget(icon,0,Qt::AlignTop);
+  // Qt sizes its private text labels at the dialog font; the branded heading
+  // needs its own label and line box. Keep the message properties intact.
+  message->hide();informative->hide();auto* name=new QLabel(text(),content);name->setObjectName("qt_msgbox_label");VisualStyle::role(name,"title");auto* info=new QLabel(informativeText(),content);info->setObjectName("qt_msgbox_informativelabel");info->setWordWrap(true);VisualStyle::role(info,"secondary");
+  auto* column=new QVBoxLayout;column->setContentsMargins(0,0,0,0);column->setSpacing(Graphite::space(Graphite::Space::s));row->addLayout(column,1);name->setAlignment(Qt::AlignLeft|Qt::AlignTop);column->addWidget(name);info->setContentsMargins(0,0,0,0);column->addWidget(info);column->addWidget(version);column->addWidget(website,0,Qt::AlignLeft);column->addWidget(browser);
+  grid->addWidget(content,0,0);grid->setRowMinimumHeight(1,Graphite::space(Graphite::Space::xl));buttons->setCenterButtons(false);grid->addWidget(buttons,2,0,Qt::AlignRight);if(detailsItem)grid->addItem(detailsItem,3,0);
  }
- if(auto* buttons=findChild<QDialogButtonBox*>()){buttons->setCenterButtons(false);if(auto* grid=qobject_cast<QGridLayout*>(layout()))grid->setAlignment(buttons,Qt::AlignRight);}
  VisualStyle::role(button(QMessageBox::Close),"primary");setDefaultButton(QMessageBox::Close);
  connect(website,&QPushButton::clicked,this,[browser]{const QUrl url("https://put.gd");host::openLink(url,browser->opening(url));});
  updateDetailsButton();
