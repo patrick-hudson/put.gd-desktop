@@ -216,6 +216,45 @@ private slots:
             QVERIFY(pixels.pixelColor(x, y) != Theme::current().bg);
         QCOMPARE(t.trackRect().height(), 8);
     }
+    void menuChevronsFollowTheirLabels_data() {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("standard") << 1.0;
+        QTest::newRow("150%") << 1.5;
+    }
+    void menuChevronsFollowTheirLabels() {
+        QFETCH(double, scale);
+        auto font = QApplication::font();
+        if (font.pointSizeF() > 0) font.setPointSizeF(font.pointSizeF() * scale);
+        else font.setPixelSize(qRound(font.pixelSize() * scale));
+        QApplication::setFont(font);
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        window.resize(1200, 720); QVERIFY(putgd::test::waitForWindowExposed(&window));
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme); putgd::test::settle(10);
+            for (const auto name : {"addMask", "uploadDestinationMenu"}) {
+                auto* button = window.findChild<QToolButton*>(name); QVERIFY(button);
+                const auto image = button->grab().toImage();
+                const auto ink = Theme::current().textSecondary;
+                const auto hasInk = [&](int x) {
+                    for (int y = 0; y < image.height(); ++y) {
+                        const auto pixel = image.pixelColor(x, y);
+                        if (std::abs(pixel.red() - ink.red()) + std::abs(pixel.green() - ink.green()) + std::abs(pixel.blue() - ink.blue()) < 25) return true;
+                    }
+                    return false;
+                };
+                int x = image.width() - 1;
+                while (x >= 0 && !hasInk(x)) --x;
+                const int arrowRight = x;
+                while (x >= 0 && hasInk(x)) --x;
+                const int arrowLeft = x + 1;
+                while (x >= 0 && !hasInk(x)) --x;
+                const int gap = arrowLeft - x - 1;
+                QVERIFY2(arrowRight - arrowLeft >= 3, name);
+                QVERIFY2(gap >= 4 && gap <= 12, qPrintable(QString("%1: %2 px between label and chevron").arg(name).arg(gap)));
+                QVERIFY(arrowRight < image.width() - 1);
+            }
+        }
+    }
     void maskLanesShowHandlesOnlyOnTheSelectedInterval() {
         ReviewTimeline track;
         track.setDuration(duration); track.setTrim(0, duration); track.setPlayhead(duration - 1);
