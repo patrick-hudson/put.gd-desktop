@@ -2576,6 +2576,7 @@ void WindowHeader::setButtonLayout(const WindowButtonLayout& layout) {
     };
     place(leftButtons_, layout.left);
     place(rightButtons_, layout.right);
+    leftButtons_->setContentsMargins(0, 0, layout.left.isEmpty() ? 0 : std::max(0, space(Space::l) - leading_->layout()->spacing()), 0);
     for (int i = 1; i < chromeOrder_.size(); ++i) QWidget::setTabOrder(chromeOrder_[i - 1], chromeOrder_[i]);
     if (row_->indexOf(trailing_) >= 0) syncWindowState();
 }

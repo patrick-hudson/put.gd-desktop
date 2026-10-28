@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QFile>
 #include <QLabel>
+#include <QMenu>
 #include <QSaveFile>
 #include <QScopeGuard>
 #include <QSignalSpy>
@@ -52,7 +53,8 @@ private slots:
         for (const auto density : {Graphite::WindowHeader::Density::Standard, Graphite::WindowHeader::Density::Compact}) {
             QWidget window;
             QVBoxLayout row(&window);
-            auto* header = Graphite::WindowHeader::install(&window, &row, nullptr, density);
+            QMenu menu;
+            auto* header = Graphite::WindowHeader::install(&window, &row, &menu, density);
             header->setDocument("Review recording");
             auto* status = new QLabel("Not uploaded");
             header->addTrailing(status);
@@ -66,6 +68,7 @@ private slots:
             header->setButtonLayout(WindowButtons::fromGSettings("close,minimize,maximize:"));
             QCoreApplication::processEvents();
             QVERIFY(x(close) < x(minimize)); QVERIFY(x(minimize) < x(maximize)); QVERIFY(x(maximize) < x(brand));
+            QCOMPARE(x(header->findChild<QToolButton*>("applicationMenu")) - x(maximize) - maximize->width(), Graphite::space(Graphite::Space::l));
             QCOMPARE(close->nextInFocusChain(), minimize);
             QCOMPARE(minimize->nextInFocusChain(), maximize);
             header->setButtonLayout(WindowButtons::fromGSettings(":maximize,minimize,close"));
