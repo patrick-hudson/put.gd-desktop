@@ -464,9 +464,21 @@ private slots:
             for(int y=0;y<art.height();++y)for(int x=0;x<art.width();++x)if(art.pixelColor(x,y).alpha()>127)ink=ink.united(QRect(x,y,1,1));
             return std::max(ink.width(),ink.height())/4.0;
         };
-        for(const auto& name:{"image","stop","rectangle","zoom-fit"})QVERIFY2(std::abs(extent(name)-18)<=0.5,name);
+        for(const auto& name:{"image","rectangle","zoom-fit"})QVERIFY2(std::abs(extent(name)-18)<=0.5,name);
         for(const auto& name:{"window","desktop","shortcuts","save"})QVERIFY2(std::abs(extent(name)-20)<=0.5,name);
         QVERIFY(std::abs(extent("add")-21)<=0.5);
+    }
+    void stopGlyphIsFilledAndDistinctFromRectangle() {
+        for(const int scale:{1,2,4}) {
+            const auto stop=IconArt::symbol("stop",Qt::white,scale);
+            const auto rectangle=IconArt::symbol("rectangle",Qt::white,scale);
+            QCOMPARE(stop.pixelColor(12*scale,12*scale).alpha(),255);
+            QCOMPARE(rectangle.pixelColor(12*scale,12*scale).alpha(),0);
+            QRect ink;
+            for(int y=0;y<stop.height();++y)for(int x=0;x<stop.width();++x)if(stop.pixelColor(x,y).alpha()>127)ink=ink.united(QRect(x,y,1,1));
+            QCOMPARE(ink,QRect(7*scale,7*scale,10*scale,10*scale));
+            QVERIFY(stop.pixelColor(7*scale,7*scale).alpha()<128);
+        }
     }
     void providerOutlinesStayDistinctAtSidebarSize() {
         for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}) {
