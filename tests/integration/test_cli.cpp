@@ -28,7 +28,10 @@ private slots:
   const auto closed=request("editor.view",{{"id",id},{"action","keyboardHelp"}});QVERIFY(closed["ok"].toBool());QVERIFY(!closed["result"].toObject()["keyboardHelp"].toObject()["open"].toBool());QCOMPARE(source.reads,1);
   const auto geometry=request("editor.view",{{"id",id},{"action","geometryDetails"}});QVERIFY2(geometry["ok"].toBool(),QJsonDocument(geometry).toJson().constData());QVERIFY(geometry["result"].toObject()["geometryDetails"].toObject()["open"].toBool());
   QVERIFY(request("editor.view",{{"id",id},{"action","geometryDetails"}})["ok"].toBool());
-  const auto panel=request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",220}});QVERIFY2(panel["ok"].toBool(),QJsonDocument(panel).toJson().constData());QCOMPARE(panel["result"].toObject()["propertiesWidth"].toInt(),220);
+  // Requests retain the 200 px API floor; the reply reports the UI's bounded width.
+  const auto panel=request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",220}});QVERIFY2(panel["ok"].toBool(),QJsonDocument(panel).toJson().constData());QCOMPARE(panel["result"].toObject()["propertiesWidth"].toInt(),240);
+  const auto wider=request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",280}});QVERIFY2(wider["ok"].toBool(),QJsonDocument(wider).toJson().constData());const int bounded=wider["result"].toObject()["propertiesWidth"].toInt();QVERIFY(bounded>=240&&bounded<=280);
+  QCOMPARE(request("editor.view",{{"id",id},{"action","inspect"}})["result"].toObject()["propertiesWidth"].toInt(),bounded);
   QVERIFY(!request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",199}})["ok"].toBool());
   const auto applied=request("editor.apply",{{"id",id},{"commands",QJsonArray{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{310,190}},{"text","Clipped annotation"}}}}}}});QVERIFY2(applied["ok"].toBool(),QJsonDocument(applied).toJson().constData());
   const auto affected=request("editor.view",{{"id",id},{"action","selectAffectedText"}});QVERIFY2(affected["ok"].toBool(),QJsonDocument(affected).toJson().constData());QVERIFY(affected["result"].toObject()["selectedShapeId"].toDouble()>0);QVERIFY(affected["result"].toObject()["textOutsideImage"].toBool());
