@@ -2085,7 +2085,7 @@ void ReviewWindow::placeDestination() {
     destination_->setRevealText("Destination: " + options_.destination + "\nSharing: " + (options_.sharingMode == "private" ? "Private upload" : "Shared link") + "\n\n" + formatLabel(config_.format, config_.codec) + "\n" + formatHint(config_.format, config_.codec) + "\n" + audio_->property("summary").toString());
     destination_->setToolTip(options_.uploadSummary);
     destination_->setAccessibleName(options_.uploadSummary);
-    exportAudio_->setText(effectiveAudio(config_, options_.audioRecorded, audioIntent_) ? QStringLiteral("System audio") : !options_.audioRecorded ? QStringLiteral("No audio") : config_.silent() ? QStringLiteral("Silent %1").arg(config_.format.toUpper()) : QStringLiteral("Audio off"));
+    exportAudio_->setText(effectiveAudio(config_, options_.audioRecorded, audioIntent_) ? QStringLiteral("System audio") : !options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("Silent %1").arg(config_.format.toUpper()) : QStringLiteral("Audio off"));
     exportAudio_->setText(exportAudio_->text() + QStringLiteral(" · ") + playbackStatus_->text());
     const auto details = "Destination: " + options_.destination + "\nSharing: " + (options_.sharingMode == "private" ? "Private upload" : "Shared link") + "\n\n" + options_.uploadSummary + "\n" + formatLabel(config_.format, config_.codec) + "\n" + formatHint(config_.format, config_.codec) + "\n" + audio_->property("summary").toString();
     destinationFull_->setText(details);

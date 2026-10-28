@@ -567,7 +567,8 @@ void Style::polish(QWidget* widget) {
     if (compactControl(widget) && bodyControl) { f = font(Type::technical); setFont = true; }
     if (statusBand) { f = font(Type::technical); colour = c.textSecondary; setFont = true; }
     if (monoPixels) { f = monoFont(monoPixels); setFont = true; }
-    if (widget->property("graphiteStatus").toBool()) { f = font(tone == "error" ? Type::body : 13); colour = c.textSecondary; setFont = true; }
+    // One type size per side of the status band; an error keeps its colour, not a larger size.
+    if (widget->property("graphiteStatus").toBool()) { f = font(13); colour = c.textSecondary; setFont = true; }
     if (auto* edit = qobject_cast<QLineEdit*>(widget); setFont && edit && edit->text().isEmpty()) f.setFamily(uiFamily());
     // An outcome's tone outranks the slot's quiet colour: an error in a muted
     // line still reads as an error.

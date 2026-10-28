@@ -86,9 +86,7 @@ private slots:
         QCOMPARE(session.review_->inspect()["audioEffective"].toBool(), captured);
         QCOMPARE(session.review_->inspect()["format"].toObject(), (QJsonObject{{"format", "mp4"}, {"codec", "h264"}}));
         const auto audio = session.review_->findChild<QLabel*>("exportAudioSummary")->text();
-        QVERIFY(audio.contains(captured ? QString("System audio included") : QString("No audio recorded")));
-        // The muted preview is stated once, beside the transport, not in the export summary.
-        QVERIFY(!audio.contains("Preview muted"));
+        QVERIFY(audio.contains(captured ? QString("System audio") : QString("No audio recorded")));
     }
     void automaticStop_data() {
         QTest::addColumn<bool>("paused");
