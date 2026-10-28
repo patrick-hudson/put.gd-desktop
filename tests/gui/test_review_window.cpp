@@ -844,7 +844,8 @@ private slots:
         const auto before = window.geometry();
         QVERIFY(window.drive({{"action", "seek"}, {"time", 0}}).code.isEmpty()); QApplication::processEvents();
         QVERIFY(window.findChild<QLabel*>("playbackStatus")->isVisible());
-        QVERIFY(window.findChild<QLabel*>("playbackStatus")->text().contains("Outside kept part"));
+        QCOMPARE(window.findChild<QLabel*>("playbackStatus")->text(), QStringLiteral("Silent preview"));
+        QVERIFY(window.findChild<FrameView*>()->outsideKeptPart());
         QCOMPARE(track->trackRect(), axis);
         QCOMPARE(window.geometry(), before);
         track->setMinimumWidth(0); track->setMaximumWidth(QWIDGETSIZE_MAX);
@@ -2149,7 +2150,8 @@ private slots:
         QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont(Graphite::Type::technical)).family());
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
-        QVERIFY(window.inspect()["playbackStatus"].toString().contains("Outside kept part"));
+        QCOMPARE(window.inspect()["playbackStatus"].toString(), QStringLiteral("Silent preview"));
+        QVERIFY(window.inspect()["outsideKeptPart"].toBool());
         QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("Keep 0:02–0:29 · 27 s"));
     }
     void adviceWidthScalesWithinTheAvailableScreen() {

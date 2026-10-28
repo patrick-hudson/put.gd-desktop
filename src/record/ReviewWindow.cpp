@@ -616,6 +616,7 @@ void FrameView::paintEvent(QPaintEvent*) {
         painter.drawRect(pending);
         dualOutline(painter, pending, mediaAccent, 1.5, Qt::DashLine);
     }
+    if (outsideKeptPart_) mediaLabel(painter, QPointF(target.left() + 8, target.bottom() - QFontMetrics(Graphite::font(Graphite::Type::metadata)).height() - 16), QStringLiteral("Outside kept part"), target);
     if (!armed_.isEmpty())
         mediaLabel(painter, QPointF(target.left() + 8, target.top() + 8), armed_ == "solid" ? QStringLiteral("Drag on the frame to place the redaction, or press Enter for a centered one") : QStringLiteral("Drag on the frame to place the blur, or press Enter for a centered one"), target);
     if (Graphite::keyboardFocus(this)) { painter.setPen(QPen(Theme::current().accent, 2)); painter.setBrush(Qt::NoBrush); painter.drawRect(QRectF(rect()).adjusted(1, 1, -1, -1)); }
@@ -1363,7 +1364,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     time_->setAccessibleName("Playhead time");
     time_->setMinimumWidth(time_->fontMetrics().horizontalAdvance(QStringLiteral("%1 / %1").arg(durationText(options.durationUs))) + 4);
     playbackStatus_ = new Graphite::ElidedLabel(this);
-    playbackStatus_->setText("Outside kept part");
+    playbackStatus_->setText("Silent preview");
     playbackStatus_->setObjectName("playbackStatus");
     VisualStyle::role(playbackStatus_, "meta");
     playbackStatus_->setProperty("reservedWidth", int(std::ceil(QFontMetricsF(playbackStatus_->font()).horizontalAdvance(playbackStatus_->text()))) + 2);
@@ -1850,7 +1851,8 @@ void ReviewWindow::refreshLabels() {
     const bool retained = at >= edit_.trimStart && at < end;
     time_->setText(QStringLiteral("%1 / %2").arg(timeText(at), timeText(options_.durationUs)));
     time_->setAccessibleDescription(time_->text());
-    playbackStatus_->setText(retained ? QStringLiteral("Silent preview") : QStringLiteral("Outside kept part"));
+    playbackStatus_->setText(QStringLiteral("Silent preview"));
+    view_->setOutsideKeptPart(!retained);
     playbackStatus_->show();
     time_->setToolTip(time_->text() + "\n" + (retained ? QStringLiteral("Playhead time / recording length") : QStringLiteral("The playhead is in a trimmed-away part; it is not exported")));
     const auto boundary = [](qint64 us) { auto text = durationText(us); if (text.endsWith(".0")) text.chop(2); return text; };
@@ -1949,7 +1951,8 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
 }
 void ReviewWindow::refreshStatus() {
     footerError_ = message_.tone == "error";
-    playbackStatus_->setText(playhead() < edit_.trimStart || playhead() >= edit_.exportEnd(options_.durationUs) ? QStringLiteral("Outside kept part") : QStringLiteral("Silent preview"));
+    playbackStatus_->setText(QStringLiteral("Silent preview"));
+    view_->setOutsideKeptPart(playhead() < edit_.trimStart || playhead() >= edit_.exportEnd(options_.durationUs));
     playbackStatus_->show();
     placeDestination();
     auto entries = statusEntries();

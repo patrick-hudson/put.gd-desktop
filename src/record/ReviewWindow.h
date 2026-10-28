@@ -54,6 +54,8 @@ public:
     QRect imageRect() const;
     void setPlaying(bool playing) { playing_ = playing; update(); }
     bool playing() const { return playing_; }
+    void setOutsideKeptPart(bool outside) { outsideKeptPart_ = outside; update(); }
+    bool outsideKeptPart() const { return outsideKeptPart_; }
     // The mask Enter places: centred, half the frame's width and height.
     QRect defaultMaskRect() const;
     // Proposes a keyboard nudge that is still waiting for the keys to stop.
@@ -82,6 +84,7 @@ private:
     void announce();
     QImage frame_;
     qint64 timeUs_ = 0;
+    bool outsideKeptPart_ = false;
     QSize canvas_;
     QList<RecordingMask> masks_;
     std::shared_ptr<MaskNames> maskNames_;
