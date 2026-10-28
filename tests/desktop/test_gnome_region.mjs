@@ -49,7 +49,7 @@ eval(selector);
 const scaledOutputs = [{x: -800, y: 100, width: 800, height: 600, density: 1.25}, {x: 0, y: -200, width: 800, height: 600, density: 2}];
 equal(RegionSelection.outputSize({x: -799, y: 101, width: 101, height: 51}, scaledOutputs), {width: 127, height: 64});
 equal(RegionSelection.outputSize({x: -100, y: 100, width: 200, height: 100}, scaledOutputs), {width: 400, height: 200});
-equal(RegionSelection.instructions(null, false, 'Left', scaledOutputs[0], scaledOutputs).includes('Entire display 1000 × 750 px'), true);
+equal(RegionSelection.instructions(null, false, 'Left', scaledOutputs[0], scaledOutputs).includes('Entire display · 1000 × 750 px'), true);
 equal(RegionSelection.instructions({x: 0, y: 0, width: 50, height: 30}, false, 'Unknown', null).includes('50 × 30 logical px'), true);
 const oneOutput = [{x: 0, y: 0, width: 800, height: 600, density: 1}];
 const oneHint = RegionSelection.instructions({x: 0, y: 0, width: 400, height: 400}, false, 'Display 1', oneOutput[0], oneOutput, false, 'Saves locally');
@@ -85,8 +85,8 @@ function closed(actor) {equal([actor.destroyed, grabs], [true, 0]);}
 
 {
     const {actor, result} = begin();
-    equal(actor._instructions.text.includes('Enter captures this entire display'), true);
-    equal(actor._instructions.text.includes('Display 2 · Entire display 1280 × 720 px'), true);
+    equal(actor._instructions.text.includes('Enter to capture'), true);
+    equal(actor._instructions.text.includes('Display 2 · Entire display · 1280 × 720 px'), true);
     equal([actor._rectangle.x, actor._rectangle.y, actor._rectangle.width, actor._rectangle.height], [1920, -100, 1280, 720]);
     key(actor, 'Left', 3);
     equal(actor._instructions.text.includes('Enter to capture'), true);
@@ -183,7 +183,7 @@ print('PASS mouse-to-keyboard clipping and keyboard-to-mouse replacement');
     equal(RegionSelection.switchDisplay({x: 0, y: 0, width: 1920, height: 1080}, monitors, 0),
         {current: 1, region: {x: 1920, y: -100, width: 1280, height: 720}});
     equal(RegionSelection.instructions(null, true, 'Display 2').includes('Drag to select'), true);
-    equal(RegionSelection.instructions(null, true, 'Display 2').includes('Enter chooses this entire display'), true);
+    equal(RegionSelection.instructions(null, true, 'Display 2').includes('Enter to choose'), true);
     equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Enter to choose'), true);
     equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('2 × 2'), true);
     equal(RegionSelection.instructions({width: 2, height: 2}, true, 'Display 2').includes('Drag to select'), true);

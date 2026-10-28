@@ -1173,7 +1173,7 @@ private slots:
         for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"&&w->width()==800)surface=w;
         QVERIFY(surface);
         QTest::keyClick(surface,Qt::Key_Tab);
-        QVERIFY(surface->accessibleDescription().contains("Display 2 · Entire display 320 × 240 px · "));
+        QVERIFY(surface->accessibleDescription().contains("Display 2 · Entire display · 320 × 240 px · "));
         QTest::keyClick(surface,Qt::Key_Right);
         QTest::keyClick(surface,Qt::Key_Backtab);
         QVERIFY(surface->accessibleDescription().contains("Display 1 · "));

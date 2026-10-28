@@ -65,10 +65,10 @@ inline QString regionInstructions(const QRectF& selection = {}, bool recording =
     const bool selected = !selection.isEmpty();
     const bool multipleDisplays = frames.size() > 1;
     const QString context = (multipleDisplays ? (display.isEmpty() ? QStringLiteral("Display 1") : display) + QStringLiteral(" · ") : QString())
-        + (selected ? QStringLiteral("%1 × %2 %3 · ") : QStringLiteral("Entire display %1 × %2 %3 · "))
+        + (selected ? QStringLiteral("%1 × %2 %3 · ") : QStringLiteral("Entire display · %1 × %2 %3 · "))
             .arg(qRound(size.width())).arg(qRound(size.height())).arg(unit);
-    const QString accept = dragging ? (recording ? QStringLiteral("Release to choose recording area") : QStringLiteral("Release to capture")) : recording ? (selected ? QStringLiteral("Enter to choose") : QStringLiteral("Enter chooses this entire display"))
-                                     : (selected ? QStringLiteral("Enter to capture") : QStringLiteral("Enter captures this entire display"));
+    const QString accept = dragging ? (recording ? QStringLiteral("Release to choose recording area") : QStringLiteral("Release to capture")) : recording ? QStringLiteral("Enter to choose")
+                                     : QStringLiteral("Enter to capture");
     const QString help = (dragging ? QString() : QStringLiteral("Drag to select · ")) + QStringLiteral("Arrows move · Shift+arrows resize")
         + (multipleDisplays ? QStringLiteral(" · Tab next display") : QString());
     return context + accept + QStringLiteral(" · Esc to cancel\n") + help

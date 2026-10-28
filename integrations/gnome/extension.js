@@ -234,9 +234,9 @@ const RegionSelection = {
         const logical = selected ? region : bounds;
         const output = logical ? this.outputSize(logical, outputs) : null;
         const size = output || logical;
-        const context = `${outputs.length > 1 ? `${display || 'Display 1'} · ` : ''}${selected ? '' : 'Entire display '}${Math.round(size?.width ?? 0)} × ${Math.round(size?.height ?? 0)} ${output ? 'px' : 'logical px'} · `;
-        const accept = dragging ? (recording ? 'Release to choose recording area' : 'Release to capture') : recording ? (selected ? 'Enter to choose' : 'Enter chooses this entire display')
-            : (selected ? 'Enter to capture' : 'Enter captures this entire display');
+        const context = `${outputs.length > 1 ? `${display || 'Display 1'} · ` : ''}${selected ? '' : 'Entire display · '}${Math.round(size?.width ?? 0)} × ${Math.round(size?.height ?? 0)} ${output ? 'px' : 'logical px'} · `;
+        const accept = dragging ? (recording ? 'Release to choose recording area' : 'Release to capture') : recording ? 'Enter to choose'
+            : 'Enter to capture';
         return context + accept + ' · Esc to cancel\n' + (dragging ? '' : 'Drag to select · ') +
             'Arrows move · Shift+arrows resize' + (outputs.length > 1 ? ' · Tab next display' : '') +
             (recording ? '\nStart recording comes next' : outcome ? `\n${outcome}` : '');

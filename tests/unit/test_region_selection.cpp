@@ -55,9 +55,9 @@ private slots:
    QRectF selected;const QRectF screen(0,0,800,600);
    const QList<CaptureFrame> frames{{"DP-2",screen,QRect(0,0,800,600),1,0,{}}};
    const auto initial=regionInstructions(selected,recording,"DP-2",screen,frames);
-   QVERIFY(initial.contains(recording?"Enter chooses this entire display":"Enter captures this entire display"));
+   QVERIFY(initial.contains(recording?"Enter to choose":"Enter to capture"));
    QVERIFY(initial.contains("Drag to select · Arrows move"));
-   QVERIFY(initial.startsWith("Entire display 800 × 600 px · "));QVERIFY(!initial.contains("logical pixels"));
+   QVERIFY(initial.startsWith("Entire display · 800 × 600 px · "));QVERIFY(!initial.contains("logical pixels"));
    QCOMPARE(regionKey(selected,screen,Qt::Key_Right),RegionKeyAction::Change);
    const auto changed=regionInstructions(selected,recording,"DP-2",screen,frames);
    QVERIFY(changed.contains(recording?"Enter to choose":"Enter to capture"));
@@ -83,7 +83,7 @@ private slots:
   QCOMPARE(regionOutputSize(QRectF(-100,100,200,100),frames),QSize(400,200));
   QCOMPARE(regionOutputSize(QRectF(-800,100,800,600),frames),QSize(1000,750));
   const auto hint=regionInstructions({},false,"Left",frames[0].logicalRect,frames);
-  QVERIFY(hint.contains("Entire display 1000 × 750 px"));
+  QVERIFY(hint.contains("Entire display · 1000 × 750 px"));
   QVERIFY(regionInstructions(QRectF(-799,101,101,51),true,"Left",frames[0].logicalRect,frames).contains("127 × 64 px"));
   QVERIFY(regionInstructions(QRectF(0,0,50,30),false,"Unknown",QRectF(0,0,800,600),{}).contains("50 × 30 logical px"));
  }

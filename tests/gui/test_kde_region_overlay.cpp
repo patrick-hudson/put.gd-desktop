@@ -31,7 +31,7 @@ private slots:
   QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);QSignalSpy cancelled(&overlay,&KdeRegionOverlay::cancelled);
   auto* accessible=QAccessible::queryAccessibleInterface(surface);QVERIFY(accessible);QCOMPARE(accessible->text(QAccessible::Name),QString("Capture region"));
   QVERIFY(accessible->text(QAccessible::Description).contains("Drag to select"));
-  QVERIFY(surface->accessibleDescription().contains("Enter captures this entire display"));
+  QVERIFY(surface->accessibleDescription().contains("Enter to capture"));
   QTest::keyClick(surface,Qt::Key_Right);QCOMPARE(overlay.selection_,QRectF(-600,250,400,300));
   QVERIFY(surface->accessibleDescription().contains("Enter to capture"));QVERIFY(surface->accessibleDescription().contains("400 × 300"));
   QTest::keyClick(surface,Qt::Key_Right);QTest::keyClick(surface,Qt::Key_Down,Qt::ControlModifier);
@@ -43,8 +43,8 @@ private slots:
  }
  void recordingHintsReflectSelection(){
   KdeRegionOverlay overlay({},nullptr,true);auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);
-  QCOMPARE(surface->accessibleName(),QString("Recording region"));QVERIFY(surface->accessibleDescription().contains("Enter chooses this entire display"));
-  QVERIFY(surface->accessibleDescription().contains("Enter chooses this entire display"));
+  QCOMPARE(surface->accessibleName(),QString("Recording region"));QVERIFY(surface->accessibleDescription().contains("Enter to choose"));
+  QVERIFY(surface->accessibleDescription().contains("Enter to choose"));
   QTest::mousePress(surface,Qt::LeftButton,{},QPoint(40,40));QTest::mouseMove(surface,QPoint(200,200));QVERIFY(surface->accessibleDescription().contains("Release to choose recording area"));
   QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().contains("Enter to choose"));QVERIFY(surface->accessibleDescription().contains("160 × 160"));
   QTest::keyClick(surface,Qt::Key_Escape);
