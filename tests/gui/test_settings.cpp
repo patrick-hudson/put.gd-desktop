@@ -1852,9 +1852,14 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
    auto* hint=window.findChild<QLabel*>(key+"Hint");auto* control=window.findChild<QWidget*>(key);QVERIFY2(hint&&!hint->text().isEmpty(),qPrintable(key));QVERIFY(control->accessibleDescription().endsWith(hint->text()));
   }
   QVERIFY(!window.findChild<QToolButton*>("appearanceThemeHelp"));
-  for(const auto& key:QStringList{"unlockCredentialsAtStartup","uploadClipboardBehavior","namingMode","collisionPolicy","captureTemplate","s3AclMode","protonExpiration","pendingArtifactBytesChoice"}){
+  for(const auto& key:QStringList{"unlockCredentialsAtStartup","uploadClipboardBehavior","namingMode","collisionPolicy","captureTemplate","s3AclMode","protonExpiration"}){
    auto* help=window.findChild<QToolButton*>(key+"Help");QVERIFY2(help,qPrintable(key));QCOMPARE(help->focusPolicy(),Qt::StrongFocus);QVERIFY(!help->accessibleDescription().isEmpty());
   }
+ }
+ void advancedOnlyDisclosesRetentionAndDebugHelp(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");auto* page=window.findChild<QTabWidget*>("settingsTabs")->widget(3);int helps=0;for(auto* button:page->findChildren<QToolButton*>())if(!button->property("settingHelpFor").toString().isEmpty()){++helps;QVERIFY(button->objectName()=="historyRetentionChoiceHelp"||button->objectName()=="debugLoggingHelp");}QCOMPARE(helps,2);
+  for(const auto& name:{"pendingArtifactBytesChoice","pendingImageBytes","previewCacheBytes","failedArtifactDays","logSummary","uncleanExit"}){auto* control=window.findChild<QWidget*>(name);QVERIFY(control);QVERIFY(!control->accessibleDescription().isEmpty());QVERIFY(!window.findChild<QToolButton*>(QString(name)+"Help"));}
+  window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.show();auto* help=window.findChild<QToolButton*>("historyRetentionChoiceHelp");help->click();QVERIFY(window.findChild<QLabel*>("historyRetentionChoiceHelpText")->isVisible());help->click();QVERIFY(!window.findChild<QLabel*>("historyRetentionChoiceHelpText")->isVisible());
  }
  void addDestinationUsesAQuietNavigationRow(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();putgd::test::settle(30);auto* add=window.findChild<QPushButton*>("addS3Destination");auto* list=window.findChild<QListWidget*>("destinationList");QVERIFY(add&&list);QCOMPARE(add->text(),QString("+ Add destination"));QCOMPARE(add->property("visualRole").toString(),QString("quiet"));QCOMPARE(add->height(),Graphite::scaled(Graphite::Metric::navRow));QVERIFY(add->property("alignLeft").toBool());QCOMPARE(add->mapTo(&window,QPoint()).x(),list->mapTo(&window,QPoint()).x());QCOMPARE(add->width(),list->width());QVERIFY(add->menu());QVERIFY(add->focusPolicy()&Qt::TabFocus);
