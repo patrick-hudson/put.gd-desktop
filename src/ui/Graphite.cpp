@@ -2469,7 +2469,8 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu, Density density) : QWid
     if (menu) menu_->setMenu(menu);
     menu_->setVisible(menu);
     leading->addWidget(menu_);
-    name_ = new QLabel(QStringLiteral("put.gd"), leading_);
+    name_ = new ElidedLabel(leading_);
+    name_->setText(QStringLiteral("put.gd"));
     name_->setObjectName(QStringLiteral("brandName"));
     // The compact band sets the brand at the title's size, so one text line fits it.
     VisualStyle::role(name_, density == Density::Compact ? "strong" : "sectionTitle");

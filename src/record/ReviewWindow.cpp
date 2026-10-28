@@ -240,7 +240,7 @@ protected:
 private:
     static bool shown(QWidget* group, bool reserved) { return !group->isHidden() || (reserved && group->sizePolicy().retainSizeWhenHidden()); }
     static int widthOf(QWidget* group) { return std::max({group->sizeHint().width(), group->minimumSizeHint().width(), group->minimumWidth()}); }
-    static int heightOf(QWidget* group) { return std::min(group->maximumHeight(), std::max(group->sizeHint().height(), group->minimumHeight())); }
+    static int heightOf(QWidget* group) { return std::min(group->maximumHeight(), std::max({group->sizeHint().height(), group->minimumHeight(), qobject_cast<QLabel*>(group) ? 28 : 0})); }
     int arrange(int width, bool reserved, bool apply) const {
         // Wrap complete groups without compressing text or pointer targets.
         QList<QList<QPair<QWidget*, QRect>>> lines(1);
@@ -880,7 +880,7 @@ void ReviewTimeline::placeNavigation() {
         transport_->setProperty("aboveTimeline", true);
         transport_->setGeometry(0, 0, width(), rowTransportHeight_);
     }
-    if (laneHeader_) laneHeader_->setGeometry(0, laneRect(laneScroll_->value()).center().y() - Graphite::scaled(28) / 2, gutterWidth() - reviewSpace(Graphite::Space::xs), Graphite::scaled(28));
+    if (laneHeader_) laneHeader_->setGeometry(0, laneRect(laneScroll_->value()).center().y() - (laneHeader_->height() - 1) / 2, gutterWidth() - reviewSpace(Graphite::Space::xs), laneHeader_->height());
     const int side = iconTarget();
     previousMasks_->setGeometry(0, lanesBottom(), side, side);
     moreMasks_->setGeometry(side + 4, lanesBottom(), side, side);
@@ -1320,7 +1320,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     destinationMenu_->setPopupMode(QToolButton::InstantPopup);
     destinationMenu_->setToolButtonStyle(Qt::ToolButtonTextOnly);
     VisualStyle::role(destinationMenu_, "meta");
-    destinationMenu_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+    destinationMenu_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     destinationMenu_->setMinimumWidth(60);
     destinationMenu_->setFixedHeight(32);
     auto* details = new QMenu(destinationMenu_);
@@ -1389,8 +1389,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     strength_->setFixedHeight(std::max(32, textControlHeight(strength_)));
     play_->setProperty("graphiteIconBase", QSize(16, 16));
     play_->setIconSize(QSize(Graphite::scaled(16), Graphite::scaled(16)));
-    play_->setFixedSize(Graphite::scaled(28), Graphite::scaled(28));
-    speed_->setFixedHeight(Graphite::scaled(28));
+    play_->setFixedSize(textControlHeight(play_), textControlHeight(play_));
+    speed_->setFixedHeight(textControlHeight(speed_));
     format_->setFixedHeight(textControlHeight(format_));
     formatAdvice_->setFixedHeight(format_->height());
     for (auto* action : {upload_, save_, cancel_}) {
