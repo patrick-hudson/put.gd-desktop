@@ -1847,10 +1847,14 @@ void ElidedLabel::reveal() {
     auto* popup = new FullTextPopup(revealText_.isEmpty() ? text() : revealText_, revealTitle_, this);
     popup_ = popup;
     const auto screen = (window() && window()->screen() ? window()->screen() : QGuiApplication::primaryScreen())->availableGeometry();
-    const int width = std::min(std::max(this->width(), scaled(320)), std::min(scaled(560), screen.width() - 16));
+    const auto margins = popup->layout()->contentsMargins();
+    const int padding = margins.left() + margins.right() + 2 * popup->label()->margin() + space(Space::s);
+    const int natural = int(std::ceil(QFontMetricsF(popup->label()->font()).size(Qt::TextExpandTabs, popup->label()->text()).width()));
+    const int maximum = std::max(1, std::min(scaled(560), screen.width() - 16));
+    const int width = std::clamp(natural + padding, std::min(scaled(360), maximum), maximum);
     popup->setFixedWidth(width);
     const int maxHeight = std::min(screen.height() - 16, window() ? window()->height() - 16 : screen.height() - 16);
-    popup->label()->setMinimumHeight(popup->label()->heightForWidth(width - 36));
+    popup->label()->setMinimumHeight(popup->label()->heightForWidth(std::max(1, width - padding)));
     popup->resize(width, std::min(maxHeight, popup->label()->minimumHeight() + (revealTitle_.isEmpty() ? 20 : scaled(48))));
     // Above a label in the lower half of its window (the status band), below
     // one higher up; the other side when the screen has no room.

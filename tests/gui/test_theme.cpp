@@ -35,6 +35,7 @@
 #include <QRegularExpression>
 #include <QScopeGuard>
 #include <QSpinBox>
+#include <QScreen>
 #include <QScrollBar>
 #include <QSlider>
 #include <QScrollArea>
@@ -1067,6 +1068,23 @@ private slots:
             }
             QVERIFY(changed > 0);
             QVERIFY(right <= end + 6 + Graphite::scaled(14));
+        }
+    }
+    void revealedTextWidthFollowsItsNaturalTextInsteadOfItsOwner() {
+        const auto original = qApp->font();
+        const auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        for (const auto& text : {QString("Private upload"), QString("Capture output: Shared link · Production screenshots for customer support + local copy · 2 action exceptions")}) {
+            int previous = 0;
+            for (const qreal scale : {1.0, 1.25, 1.5}) {
+                auto enlarged = original; enlarged.setPixelSize(qRound(QFontInfo(original).pixelSize() * scale)); qApp->setFont(enlarged);
+                Graphite::ElidedLabel label; label.setFont(Graphite::font()); label.setText(text); label.setRevealable(true);
+                label.resize(scale == 1.0 ? 700 : 180, 60); label.show(); label.reveal();
+                auto* popup = label.fullTextPopup(); QVERIFY(popup && popup->isVisible());
+                const int maximum = std::min(Graphite::scaled(560), popup->screen()->availableGeometry().width() - 16);
+                QVERIFY(popup->width() >= std::min(Graphite::scaled(360), maximum));
+                QVERIFY(popup->width() <= maximum); QVERIFY(popup->width() >= previous);
+                previous = popup->width(); popup->close();
+            }
         }
     }
     // A revealable summary is a tab stop whose Enter shows its full plain text;
