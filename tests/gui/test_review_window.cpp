@@ -156,8 +156,16 @@ private slots:
             QCOMPARE(grid->columnStretch(2), 0);
             QVERIFY(grid->itemAtPosition(0, 2)->alignment().testFlag(Qt::AlignRight));
         }
-        QVERIFY(trim->width() >= trim->fontMetrics().horizontalAdvance(QStringLiteral("Keep 0:00–00:00 · 000 s")));
-        QVERIFY(interval->width() >= QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(QStringLiteral("No mask selected")));
+        // A wider reference render proves the actual readout has no clipped ink.
+        const int measured = trim->width();
+        trim->setFixedWidth(512);
+        const auto reference = trim->grab().toImage();
+        const auto background = reference.pixelColor(0, 0);
+        for (int y = 0; y < reference.height(); ++y) for (int x = 0; x < reference.width() - measured; ++x)
+            QCOMPARE(reference.pixelColor(x, y), background);
+        trim->setFixedWidth(measured);
+        QApplication::processEvents();
+        QVERIFY(interval->width() >= QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(QStringLiteral("—")));
         QVERIFY(interval->width() < trim->width());
         auto* upload = buttonNamed(window, "Upload"); QVERIFY(upload);
         QCOMPARE(interval->mapTo(&window, interval->rect().topRight()).x(), upload->mapTo(&window, upload->rect().topRight()).x());
@@ -177,7 +185,13 @@ private slots:
             for (const auto id : {"m-blur", "m-solid"}) {
                 window.drive({{"action", "selectMask"}, {"maskId", id}}); putgd::test::settle(10);
                 QCOMPARE(interval->geometry(), geometry);
-                QVERIFY(interval->width() >= interval->fontMetrics().horizontalAdvance(interval->text().section(QStringLiteral(" · "), 0, 0)));
+                const int measured = interval->width();
+                interval->setFixedWidth(512);
+                const auto reference = interval->grab().toImage();
+                const auto background = reference.pixelColor(0, 0);
+                for (int y = 0; y < reference.height(); ++y) for (int x = 0; x < reference.width() - measured; ++x)
+                    QCOMPARE(reference.pixelColor(x, y), background);
+                interval->setFixedWidth(measured); QApplication::processEvents();
             }
         }
         auto* warning = window.findChild<QToolButton*>("reviewBlurChip");
@@ -217,6 +231,37 @@ private slots:
         for (int y = bar.top(); y <= bar.bottom(); ++y) for (int x = bar.left(); x <= bar.right(); ++x)
             QVERIFY(pixels.pixelColor(x, y) != Theme::current().bg);
         QCOMPARE(t.trackRect().height(), 8);
+    }
+    void maskReadoutKeepsFractionalTimesAndSelectionGeometry_data() {
+        QTest::addColumn<int>("pixels");
+        QTest::newRow("text100") << 14;
+        QTest::newRow("text150") << 21;
+    }
+    void maskReadoutKeepsFractionalTimesAndSelectionGeometry() {
+        QFETCH(int, pixels);
+        auto font = qApp->font(); font.setPixelSize(pixels); qApp->setFont(font);
+        auto edit = twoMasks(); edit.masks[1].start = 1200000; edit.masks[1].end = 10200000;
+        ReviewWindow window(options(), config()); window.setEdit(edit); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.resize(1200, 720); QApplication::processEvents();
+        auto* interval = window.findChild<QLabel*>("maskActiveInterval");
+        const auto geometry = interval->geometry();
+        for (const auto& id : QStringList{"m-solid", "m-blur", {}}) {
+            window.drive({{"action", "selectMask"}, {"maskId", id.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(id)}});
+            QApplication::processEvents();
+            QCOMPARE(interval->geometry(), geometry);
+            if (id == "m-solid") {
+                QVERIFY(interval->text().contains("0:01.2–0:10.2"));
+                QVERIFY(interval->width() >= interval->fontMetrics().horizontalAdvance(QStringLiteral("0:01.2–0:10.2")));
+            }
+            const int measured = interval->width();
+            interval->setFixedWidth(512);
+            const auto reference = interval->grab().toImage();
+            const auto background = reference.pixelColor(0, 0);
+            for (int y = 0; y < reference.height(); ++y) for (int x = 0; x < reference.width() - measured; ++x)
+                QCOMPARE(reference.pixelColor(x, y), background);
+            interval->setFixedWidth(measured); QApplication::processEvents();
+        }
     }
     void menuChevronsFollowTheirLabels_data() {
         QTest::addColumn<double>("scale");

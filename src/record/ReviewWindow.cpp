@@ -148,26 +148,35 @@ protected:
 private:
     QFont actionFont(bool enabled) const { auto action = font(); action.setWeight(enabled ? QFont::DemiBold : QFont::Normal); return action; }
 };
-// Keep the existing mono width reservation while giving words their UI face.
+// Measure the same mixed type that is painted, without reserving mono-width words.
 class RetainedInterval final : public QLabel {
 public:
     using QLabel::QLabel;
+    static QList<QPair<QString, QFont>> runs(const QString& text) {
+        const auto parts = text.split(QStringLiteral(" · "));
+        if (parts.size() != 2) return {};
+        const auto sans = Graphite::font(Graphite::Type::technical);
+        const auto mono = Graphite::monoFont(Graphite::Type::technical);
+        return {{QStringLiteral("Keep "), sans}, {parts[0].mid(5), mono},
+            {QStringLiteral(" · "), sans}, {parts[1].chopped(2), mono}, {QStringLiteral(" s"), sans}};
+    }
+    static int measuredWidth(const QString& text) {
+        qreal width = 0;
+        for (const auto& run : runs(text)) width += QFontMetricsF(run.second).horizontalAdvance(run.first);
+        return int(std::ceil(width)) + 2;
+    }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
-        const auto parts = text().split(QStringLiteral(" · "));
-        if (parts.size() != 2) return;
-        const auto sans = Graphite::font(Graphite::Type::technical);
         const auto mono = Graphite::monoFont(Graphite::Type::technical);
-        const QList<QPair<QString, QFont>> runs{{QStringLiteral("Keep "), sans}, {parts[0].mid(5), mono},
-            {QStringLiteral(" · "), sans}, {parts[1].chopped(2), mono}, {QStringLiteral(" s"), sans}};
+        const auto textRuns = runs(text());
         qreal width = 0;
-        for (const auto& run : runs) width += QFontMetricsF(run.second).horizontalAdvance(run.first);
+        for (const auto& run : textRuns) width += QFontMetricsF(run.second).horizontalAdvance(run.first);
         qreal x = rect().right() + 1 - width;
         const QFontMetricsF metrics(mono);
         const qreal baseline = (height() - metrics.height()) / 2.0 + metrics.ascent();
         painter.setPen(Theme::current().textSecondary);
-        for (const auto& run : runs) {
+        for (const auto& run : textRuns) {
             painter.setFont(run.second);
             painter.drawText(QPointF(x, baseline), run.first);
             x += QFontMetricsF(run.second).horizontalAdvance(run.first);
@@ -177,6 +186,12 @@ protected:
 // The interval stays in the readout column; its warning wraps among the controls.
 class MaskInterval final : public QLabel {
 public:
+    static QString displayText(const QString& text) {
+        if (text == QStringLiteral("No mask selected")) return QStringLiteral("—");
+        auto times = text.section(QStringLiteral(" · "), 0, 0).split(QChar(0x2013));
+        for (auto& time : times) if (time.endsWith(QStringLiteral(".0"))) time.chop(2);
+        return times.join(QChar(0x2013));
+    }
     explicit MaskInterval(QWidget* parent) : QLabel(parent), warning_(new BlurChip(this)) {
         auto policy = warning_->sizePolicy();
         policy.setRetainSizeWhenHidden(true);
@@ -197,7 +212,7 @@ protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
         const bool empty = text() == QStringLiteral("No mask selected");
-        Graphite::paintText(painter, rect(), text().section(QStringLiteral(" · "), 0, 0), Theme::current().textSecondary, empty ? Graphite::font(Graphite::Type::technical) : font(), Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
+        Graphite::paintText(painter, rect(), displayText(text()), Theme::current().textSecondary, empty ? Graphite::font(Graphite::Type::technical) : font(), Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
     }
 private:
     BlurChip* warning_;
@@ -1847,12 +1862,12 @@ void ReviewWindow::refreshLabels() {
     } else static_cast<MaskInterval*>(maskActive_)->setInterval(QStringLiteral("No mask selected"), {});
     // Guidance starts only with Add blur, never with selection or a restored edit.
     const bool warning = anyBlur && blurTipShown_ && !blurTipDismissed_ && message_.tone != "error";
-    const auto maximumTime = timeText(options_.durationUs);
-    retained_->setFixedWidth(std::max(retained_->fontMetrics().horizontalAdvance(QStringLiteral("Keep 0:00–00:00 · 000 s")),
-        retained_->fontMetrics().horizontalAdvance(retained_->text())));
+    retained_->setFixedWidth(RetainedInterval::measuredWidth(retained_->text()));
     // Reserve each row's own widest content, independent of mask selection.
-    maskActive_->setFixedWidth(std::max(maskActive_->fontMetrics().horizontalAdvance(QStringLiteral("%1–%1").arg(maximumTime)),
-        QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(QStringLiteral("No mask selected"))));
+    int intervalWidth = QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(QStringLiteral("—"));
+    for (const auto& item : edit_.masks) intervalWidth = std::max(intervalWidth,
+        maskActive_->fontMetrics().horizontalAdvance(MaskInterval::displayText(QStringLiteral("%1–%2").arg(timeText(item.start), timeText(item.end)))));
+    maskActive_->setFixedWidth(intervalWidth + 2);
     auto* chip = static_cast<MaskInterval*>(maskActive_)->warningButton();
     auto chipPolicy = chip->sizePolicy();
     chipPolicy.setRetainSizeWhenHidden(warning);
@@ -1948,6 +1963,7 @@ void ReviewWindow::refreshStatus() {
     if (std::any_of(entries.cbegin(), entries.cend(), [](const auto& entry) { return entry.text == Graphite::blurWarningText(); })) blurTipShown_ = true;
     errorDetails_->hide();
     errorDetails_->setParent(this);
+    statusContent_ = nullptr;
     // Later: a status action's own click may be what changed the row.
     while (auto* item = statusLines_->takeAt(0)) { if (auto* w = item->widget()) { w->hide(); w->deleteLater(); } delete item; }
     for (const auto& entry : entries) {
@@ -1958,6 +1974,7 @@ void ReviewWindow::refreshStatus() {
         // Full pointer targets already provide the compact band's vertical padding.
         band->layout()->setContentsMargins(margins.left(), 0, margins.right(), 0);
         auto* line = new QWidget(band);
+        statusContent_ = line;
         auto* row = new QHBoxLayout(line);
         row->setContentsMargins(0, 0, 0, 0);
         row->setSpacing(reviewSpace(Graphite::Space::xs));
@@ -2146,7 +2163,7 @@ void ReviewWindow::updateMinimum() {
                 const bool longName = destinationMenu_->fontMetrics().horizontalAdvance(options_.destination) > reviewSpace(Graphite::Space::xl) * 10;
                 const int nameHeight = destination_->fontMetrics().horizontalAdvance(options_.destination) <= width - 2 * reviewSpace(Graphite::Space::l) ? destination_->fontMetrics().tightBoundingRect(options_.destination).height() : destination_->heightForWidth(width - 2 * reviewSpace(Graphite::Space::l));
                 const int destinationHeight = longName ? nameHeight + destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(std::max(destinationMenu_->minimumWidth(), width - 2 * reviewSpace(Graphite::Space::l) - metadataWidth - reviewSpace(Graphite::Space::s)));
-                const int footerHeight = format_->height() + (footerFits(width - 2 * reviewSpace(Graphite::Space::l) - reviewSpace(Graphite::Space::xs)) ? 0 : std::max(destinationHeight, destinationMenu_->fontMetrics().height()) + (longName ? 0 : 4));
+                const int footerHeight = format_->height() + (footerFits(width - 2 * reviewSpace(Graphite::Space::l) - reviewSpace(Graphite::Space::xs)) ? 0 : std::max(destinationHeight, destinationMenu_->fontMetrics().height()) + (longName ? 2 * reviewSpace(Graphite::Space::xs) : reviewSpace(Graphite::Space::xs)));
                 const int chrome = fixed + trim->heightFor(width - 2 * reviewSpace(Graphite::Space::m)) + timelineHeight + footerHeight + margins.top() + margins.bottom();
                 const QSize image = QSize(10000, int(10000 / aspect)).scaled(QSize(width - 8, height - chrome - controls), Qt::KeepAspectRatio);
                 return double(image.width()) * image.height() / (double(width) * height);
@@ -2163,7 +2180,7 @@ void ReviewWindow::updateMinimum() {
                 const int inlineAxis = candidate - 2 * reviewSpace(Graphite::Space::m) - trackPad - ReviewTimeline::gutterWidth() - transport_->property("inlineWidth").toInt() - 12;
                 const int axis = inlineAxis < 360 ? candidate - 2 * reviewSpace(Graphite::Space::m) - trackPad - ReviewTimeline::gutterWidth() : inlineAxis;
                 const double organization = std::min(1.0, double(axis) / axisMinimum) - controls * 0.002;
-                const double score = steady >= 0.605 && transient >= 0.535 ? 10 + organization + transient * 0.02 : steady >= 0.605 ? 1 + transient : steady;
+                const double score = steady >= 0.605 && transient >= 0.535 ? 10 + transient + organization * 0.02 : steady >= 0.605 ? 1 + transient : steady;
                 if (score > best) { best = score; width = candidate; }
             }
             resize(std::max(width, minimumWidth()), height);
@@ -2360,7 +2377,30 @@ void ReviewWindow::placeDestination() {
     const int height = single ? 32 : splitName ? destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(destinationMenu_->width());
     if (destinationMenu_->height() != height) { destinationMenu_->setFixedHeight(height); grid->activate(); }
     header_->setLeading(inHeader ? destinationSummary : nullptr);
+    placeErrorDetails();
     destinationMenu_->update();
+}
+void ReviewWindow::placeErrorDetails() {
+    if (!errorDetails_ || errorDetails_->isHidden() || !statusContent_) return;
+    auto* text = statusContent_->findChild<QLabel*>("status");
+    auto* row = static_cast<QHBoxLayout*>(statusContent_->layout());
+    int needed = text->fontMetrics().horizontalAdvance(text->text()) + 4 + errorDetails_->width() + row->spacing();
+    for (auto* button : statusContent_->findChildren<QPushButton*>(QString(), Qt::FindDirectChildrenOnly))
+        if (button != errorDetails_) needed += button->width() + row->spacing();
+    const bool inHeader = destinationMenu_->property("headerSummary").toBool();
+    const int footerNeeded = destinationMenu_->width() + destinationContextWidth()
+        + findChild<QLabel*>("draftState")->sizeHint().width() + errorDetails_->width() + 2 * reviewSpace(Graphite::Space::s);
+    const bool separateMetadata = !findChild<QWidget*>("reviewActions")->layout()->property("singleRow").toBool();
+    const bool inFooter = separateMetadata && !inHeader && needed > statusContent_->width() && footerNeeded <= width() - 2 * footerInset();
+    errorDetails_->setFixedHeight(inFooter ? textControlHeight(errorDetails_) : std::max(32, textControlHeight(errorDetails_)));
+    auto* metadata = findChild<QWidget*>("reviewMetadata");
+    auto* target = inFooter ? static_cast<QHBoxLayout*>(metadata->layout()) : row;
+    if (errorDetails_->parentWidget() != target->parentWidget()) {
+        // The existing recovery action uses spare metadata width before text wraps.
+        target->insertWidget(inFooter ? 1 : target->count() - 1, errorDetails_, 0, Qt::AlignVCenter);
+        errorDetails_->show();
+        target->activate();
+    }
 }
 QJsonObject ReviewWindow::inspect() const {
     auto rect = [](const QRect& r) { return QJsonArray{r.x(), r.y(), r.width(), r.height()}; };

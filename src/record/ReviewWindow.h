@@ -245,6 +245,7 @@ private:
     QList<StatusEntry> statusEntries() const;
     void refreshStatus();
     void placeDestination();
+    void placeErrorDetails();
     int destinationContextWidth() const;
     bool footerFits(int width) const;
     bool destinationFitsHeader(int width) const;
@@ -308,6 +309,7 @@ private:
     QLabel *notice_ = nullptr, *time_ = nullptr, *playbackStatus_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
     // Errors, warnings and privacy guidance with their actions; shown only when there are any.
     QWidget* statusRow_ = nullptr;
+    QWidget* statusContent_ = nullptr;
     QVBoxLayout* statusLines_ = nullptr;
     QList<StatusEntry> shownStatus_;
     bool blurTipShown_ = false;
