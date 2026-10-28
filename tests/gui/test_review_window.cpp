@@ -1235,7 +1235,7 @@ private slots:
             QVERIFY(name && name->height() >= name->fontMetrics().height() && name->y() >= 0 && name->y() + name->height() <= header->height());
             for (const auto& text : {QString("Save a copy…"), QString("Discard…"), QString("Upload")}) {
                 auto* action = buttonNamed(window, text); QVERIFY(action);
-                const auto font = action->font(); QCOMPARE(font.weight(), QFont::Medium);
+                const auto font = action->font(); QCOMPARE(font.weight(), action->property("visualRole").toString() == "primary" ? QFont::Medium : QFont::Normal);
                 const int icon = action->icon().isNull() ? 0 : action->iconSize().width() + 8;
                 QVERIFY(action->width() >= QFontMetrics(font).horizontalAdvance(text) + icon + 24);
             }

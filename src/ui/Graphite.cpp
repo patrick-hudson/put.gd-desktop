@@ -184,6 +184,14 @@ QString buttonRole(const QWidget* widget, const QStyleOption* option) {
     }
     return value;
 }
+QFont buttonFont(const QWidget* widget, const QStyleOption* option) {
+    auto f = widget ? widget->font() : QApplication::font();
+    const auto name = buttonRole(widget, option);
+    const bool selected = (option->state & QStyle::State_On) && widget
+        && (widget->property("graphiteNavRow").toBool() || qobject_cast<SegmentTrack*>(widget->parentWidget()));
+    f.setWeight(name == "primary" || name == "lead" || selected ? QFont::Medium : QFont::Normal);
+    return f;
+}
 QPixmap tinted(const QPixmap& source, const QColor& colour) {
     QPixmap result(source.size());
     result.setDevicePixelRatio(source.devicePixelRatio());
@@ -321,9 +329,9 @@ QFont font(int pixels, bool strong) {
     f.setWeight(strong && pixels != Type::caption ? QFont::DemiBold : QFont::Normal);
     return f;
 }
-QFont labelFont() {
+QFont labelFont(bool selected) {
     auto f = font(Type::label);
-    f.setWeight(QFont::Medium);
+    f.setWeight(selected ? QFont::Medium : QFont::Normal);
     return f;
 }
 QFont monoFont(int pixels) {
@@ -509,8 +517,11 @@ void Style::polish(QWidget* widget) {
     const bool locked = isLocked(widget);
     const bool buttonControl = qobject_cast<QAbstractButton*>(widget);
     const bool bodyControl = qobject_cast<QComboBox*>(widget) || buttonControl;
+    bool statusBand = false;
+    for (auto* parent = widget->parentWidget(); parent && !widget->isWindow(); parent = parent->parentWidget())
+        if (qobject_cast<QStatusBar*>(parent)) { statusBand = true; break; }
     const int monoPixels = widget->property("graphiteMonoPixels").toInt();
-    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty() && !locked && !bodyControl && !monoPixels) return;
+    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty() && !locked && !bodyControl && !monoPixels && !statusBand) return;
     const auto& c = t();
     QColor colour;
     QFont f;
@@ -530,8 +541,12 @@ void Style::polish(QWidget* widget) {
     else if (name == "technical") f = monoFont(Type::technical);
     else if (name == "pill") { f = font(Type::micro); colour = c.textSecondary; }
     else if (name == "editableTitle") f = font(widget->property("compactHeading").toBool() ? Type::compactPage : Type::page, true);
-    else if (bodyControl) f = buttonControl ? labelFont() : font(Type::body);
+    else if (bodyControl) {
+        f = font(Type::body);
+        if (buttonControl && (name == "primary" || name == "lead")) f.setWeight(QFont::Medium);
+    }
     else setFont = false;
+    if (statusBand) { f = font(Type::technical); colour = c.textSecondary; setFont = true; }
     if (monoPixels) { f = monoFont(monoPixels); setFont = true; }
     if (auto* edit = qobject_cast<QLineEdit*>(widget); setFont && edit && edit->text().isEmpty()) f.setFamily(uiFamily());
     // An outcome's tone outranks the slot's quiet colour: an error in a muted
@@ -665,11 +680,10 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         const auto name = role(widget);
         if (name == "link" || name == "version") return {std::max(32, contents.width() + 8), std::max(32, contents.height() + 8)};
         if (name == "info") return {std::max(contents.width() + 6, 23), std::max(contents.height() + 4, 23)};
-        // Measure the same medium weight used to paint action labels.
+        // Measure the same role weight used to paint action labels.
         int w = contents.width() + 2 * 14;
         if (button && !button->text.isEmpty()) {
-            QFont f = widget ? widget->font() : QApplication::font();
-            if (name != "version" && name != "meta" && name != "caption") f.setWeight(QFont::Medium);
+            const QFont f = buttonFont(widget, option);
             const int text = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(button->text).remove(QRegularExpression(QStringLiteral("&(?!&)"))))));
             const int icon = button->icon.isNull() ? 0 : button->iconSize.width() + 8;
             w = text + icon + 2 * 14 + 2;
@@ -698,8 +712,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
             const int side = std::max(Metric::iconTarget, (icon ? tool->iconSize.height() : 16) + 14);
             return {side + (split ? Metric::splitArrow : 0), side};
         }
-        QFont f = widget ? widget->font() : QApplication::font();
-        if (name != "version" && name != "meta" && name != "caption") f.setWeight(QFont::Medium);
+        const QFont f = buttonFont(widget, option);
         const QFontMetrics metrics(f);
         int w = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + 2 * 14 + 2 + (icon ? tool->iconSize.width() + 8 : 0);
         if (split) w += Metric::splitArrow - 6;
@@ -745,7 +758,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
     case CT_TabBarTab: {
         const auto* tab = qstyleoption_cast<const QStyleOptionTab*>(option);
         if (!tab) break;
-        const QFontMetrics metrics(labelFont());
+        const QFontMetrics metrics(labelFont(true));
         const int icon = tab->icon.isNull() ? 0 : tab->iconSize.width() + 8;
         return {std::max(96, metrics.horizontalAdvance(QString(tab->text).remove('&')) + icon + 40), 40};
     }
@@ -1018,8 +1031,7 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
 void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, const QIcon& icon, QSize iconSize, QPainter* p, const QWidget* widget, QRect body) const {
     const auto name = buttonRole(widget, option);
     const auto look = buttonLook(name, option, false, widget);
-    QFont f = widget ? widget->font() : QApplication::font();
-    if (name != "version" && name != "meta" && name != "caption") f.setWeight(QFont::Medium);
+    QFont f = buttonFont(widget, option);
     f.setUnderline(look.underline);
     const QFontMetricsF metrics(f);
     const bool hasIcon = !icon.isNull() && iconSize.isValid() && iconSize.width() > 0;
@@ -1211,7 +1223,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto* tab = qstyleoption_cast<const QStyleOptionTab*>(option);
         if (!tab) break;
         const bool selected = option->state & State_Selected;
-        const auto f = labelFont();
+        const auto f = labelFont(selected);
         const QColor ink = !(option->state & State_Enabled) ? c.textDisabled : selected ? c.text : option->state & State_MouseOver ? c.textSecondary : c.textMuted;
         QRect r = option->rect;
         if (!tab->icon.isNull()) {
@@ -1878,7 +1890,7 @@ NavigationDelegate::NavigationDelegate(QObject* parent, int rowHeight) : QStyled
 QSize NavigationDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
     const bool two = !index.data(SecondLineRole).toString().isEmpty();
     const QFontMetrics metrics(Graphite::font());
-    const bool wrap = index.data(WrapLabelRole).toBool() && QFontMetrics(Graphite::labelFont()).horizontalAdvance(index.data().toString()) > option.rect.width() - scaled(Metric::icon) - 38;
+    const bool wrap = index.data(WrapLabelRole).toBool() && QFontMetrics(Graphite::labelFont(true)).horizontalAdvance(index.data().toString()) > option.rect.width() - scaled(Metric::icon) - 38;
     const int natural = wrap ? 2 * metrics.height() + 16 : two ? metrics.height() + QFontMetrics(Graphite::font(Type::metadata)).height() + 22 : metrics.height() + 16;
     return {option.rect.width(), std::max(scaled(two && rowHeight_ < Metric::destinationRow ? Metric::destinationRow : rowHeight_), natural)};
 }
@@ -1902,7 +1914,7 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
     const QColor ink = !enabled ? c.textDisabled : selected ? c.text : c.textSecondary;
     const QRectF text(x, box.top(), box.right() - 10 - x, box.height());
     if (second.isEmpty() && index.data(WrapLabelRole).toBool()) {
-        const auto labelFont = (selected ? Graphite::labelFont() : Graphite::font(Type::body));
+        const auto labelFont = (selected ? Graphite::labelFont(true) : Graphite::font(Type::body));
         const QFontMetrics metrics(labelFont);
         if (metrics.horizontalAdvance(first) <= text.width()) paintText(*p, text, first, ink, labelFont);
         else {
@@ -1916,10 +1928,10 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
             paintText(*p, QRectF(text.left(), top + metrics.height(), text.width(), metrics.height()), first.mid(split + 1), ink, labelFont, Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
         }
     }
-    else if (second.isEmpty()) paintText(*p, text, first, ink, (selected ? Graphite::labelFont() : Graphite::font(Type::body)));
+    else if (second.isEmpty()) paintText(*p, text, first, ink, (selected ? Graphite::labelFont(true) : Graphite::font(Type::body)));
     else {
         const qreal h = box.height();
-        paintText(*p, QRectF(text.left(), box.top() + h * 0.18, text.width(), h * 0.36), first, ink, (selected ? Graphite::labelFont() : Graphite::font(Type::body)));
+        paintText(*p, QRectF(text.left(), box.top() + h * 0.18, text.width(), h * 0.36), first, ink, (selected ? Graphite::labelFont(true) : Graphite::font(Type::body)));
         paintText(*p, QRectF(text.left(), box.top() + h * 0.52, text.width(), h * 0.32), second, enabled ? c.textMuted : c.textDisabled, Graphite::font(Type::metadata));
     }
 }
@@ -2247,7 +2259,7 @@ Segmented::Segmented(QWidget* parent) : QTabBar(parent) {
     setAttribute(Qt::WA_Hover);
 }
 QSize Segmented::tabSizeHint(int index) const {
-    const QFontMetrics metrics(Graphite::labelFont());
+    const QFontMetrics metrics(Graphite::labelFont(true));
     return {std::max(110, metrics.horizontalAdvance(tabText(index)) + 44), std::max(scaled(40), metrics.height() + 20)};
 }
 QSize Segmented::sizeHint() const {
@@ -2270,7 +2282,7 @@ void Segmented::paintEvent(QPaintEvent*) {
         if (on) p.fillRect(QRectF(r.center().x() - 12, r.bottom() - 3, 24, 2), c.accent);
         if (on && keyboardFocus(this)) rounded(&p, r, {}, c.accent, Metric::segmentRadius, 1.5);
         const QColor ink = !isTabEnabled(i) ? c.textDisabled : on ? c.text : i == hovered ? c.textSecondary : c.textMuted;
-        paintText(p, r, tabText(i), ink, Graphite::labelFont(), Qt::AlignCenter);
+        paintText(p, r, tabText(i), ink, Graphite::labelFont(on), Qt::AlignCenter);
     }
 }
 

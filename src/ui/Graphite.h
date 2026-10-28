@@ -50,7 +50,7 @@ QString uiFamily();
 QString monoFamily();
 void setFamilies(const QString& ui, const QString& mono);
 QFont font(int pixels = Type::body, bool strong = false);
-QFont labelFont();
+QFont labelFont(bool selected = false);
 QFont monoFont(int pixels = Type::metadata);
 // Orthogonal to colour roles; restored on every polish.
 void setMono(QWidget*, int pixels = Type::metadata);

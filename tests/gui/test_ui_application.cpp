@@ -481,7 +481,7 @@ private slots:
   auto* explanation=window.findChild<QLabel*>("autosaveExplanation");auto* status=window.findChild<QLabel*>("autosaveStatus");
   // "Settings save automatically" gives way before the summary has to elide.
   auto* elided=window.findChild<QToolButton*>("captureOutputSummary");PUTGD_TRY_VERIFY(explanation->isHidden()||elided->width()>=elided->sizeHint().width());
-  QVERIFY(elided->font().pixelSize()>=pixels);
+  QCOMPARE(elided->font().pixelSize(),Graphite::scaled(13));QCOMPARE(elided->font().weight(),QFont::Normal);if(pixels>14)QVERIFY(elided->font().pixelSize()>13);
   if(longOutput){PUTGD_TRY_VERIFY(elided->width()<elided->sizeHint().width());QVERIFY(window.findChild<QLabel*>("appVersion")->isHidden());QVERIFY(window.findChild<QWidget*>("appVersionGroup")->isHidden());QVERIFY(elided->toolTip().contains(longName));}
   auto* band=window.statusBar();auto* summary=window.findChild<QToolButton*>("captureOutputSummary");
   const auto rectIn=[&](QWidget* w){return QRect(w->mapTo(band,QPoint()),w->size());};

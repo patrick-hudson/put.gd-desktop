@@ -82,7 +82,8 @@ private slots:
             QCOMPARE(Graphite::font(Graphite::Type::page, true).pixelSize(), body == 14 ? 22 : 29);
             QCOMPARE(Graphite::font(Graphite::Type::compactPage, true).pixelSize(), body == 14 ? 20 : 26);
             QVERIFY2(std::abs(Graphite::font(Graphite::Type::page, true).letterSpacing() + 0.2) <= 1.0 / 64, qPrintable(QString::number(Graphite::font(Graphite::Type::page, true).letterSpacing())));
-            QCOMPARE(Graphite::labelFont().weight(), QFont::Medium);
+            QCOMPARE(Graphite::labelFont().weight(), QFont::Normal);
+            QCOMPARE(Graphite::labelFont(true).weight(), QFont::Medium);
             QCOMPARE(Graphite::font(Graphite::Type::caption, true).weight(), QFont::Normal);
             QCOMPARE(Graphite::font(Graphite::Type::section, true).weight(), QFont::DemiBold);
             std::unique_ptr<QLabel> section(Graphite::label("Appearance", "section"));
@@ -514,6 +515,20 @@ private slots:
     }
     // A primary button is the neutral text fill with background-colour ink;
     // its label, alone or as one group with its icon, is centred.
+    void actionWeightsFollowTheirPurpose() {
+        for (const auto* role : {"quiet", "secondary", "danger", "primary", "lead"}) {
+            QPushButton button("Apply changes"); VisualStyle::role(&button, role);
+            QCOMPARE(button.font().weight(), QByteArray(role) == "primary" || QByteArray(role) == "lead" ? QFont::Medium : QFont::Normal);
+        }
+        QCheckBox check("Launch at login"); check.ensurePolished();
+        QRadioButton radio("Save locally"); radio.ensurePolished();
+        QToolButton disclosure; Graphite::disclosure(&disclosure); disclosure.ensurePolished();
+        QCOMPARE(check.font().weight(), QFont::Normal);
+        QCOMPARE(radio.font().weight(), QFont::Normal);
+        QCOMPARE(disclosure.font().weight(), QFont::Normal);
+        disclosure.setChecked(true);
+        QCOMPARE(disclosure.font().weight(), QFont::Normal);
+    }
     void leadButtonKeepsTheContentActionProminent() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme); const auto& c = Theme::current();
