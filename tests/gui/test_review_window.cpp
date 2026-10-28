@@ -1289,7 +1289,7 @@ private slots:
         const auto original = QApplication::font();
         const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
         auto font = original; font.setPixelSize(qRound(14 * scale)); QApplication::setFont(font);
-        ControlBar::Options o; o.targetLabel = "Region · 960 × 600";
+        ControlBar::Options o; o.targetLabel = "Region · 960 × 600"; o.audioSupported = true;
         o.formats = options().formats; o.codecs = options().codecs;
         ControlBar bar(o, config()); bar.fitTo(QRect(0, 0, 800, 720)); bar.show();
         QApplication::processEvents();
