@@ -567,6 +567,7 @@ void Style::polish(QWidget* widget) {
     if (compactControl(widget) && bodyControl) { f = font(Type::technical); setFont = true; }
     if (statusBand) { f = font(Type::technical); colour = c.textSecondary; setFont = true; }
     if (monoPixels) { f = monoFont(monoPixels); setFont = true; }
+    if (widget->property("graphiteStatus").toBool()) { f = font(tone == "error" ? Type::body : 13); colour = c.textSecondary; setFont = true; }
     if (auto* edit = qobject_cast<QLineEdit*>(widget); setFont && edit && edit->text().isEmpty()) f.setFamily(uiFamily());
     // An outcome's tone outranks the slot's quiet colour: an error in a muted
     // line still reads as an error.
@@ -1052,7 +1053,8 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
 
 void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, const QIcon& icon, QSize iconSize, QPainter* p, const QWidget* widget, QRect body) const {
     const auto name = buttonRole(widget, option);
-    const auto look = buttonLook(name, option, false, widget);
+    auto look = buttonLook(name, option, false, widget);
+    if (widget && widget->property("graphiteStatus").toBool() && (option->state & State_Enabled)) look.text = t().textSecondary;
     QFont f = buttonFont(widget, option);
     f.setUnderline(look.underline);
     const QFontMetricsF metrics(f);
@@ -2604,6 +2606,7 @@ void WindowHeader::contextMenuEvent(QContextMenuEvent* event) {
     event->accept();
 }
 void WindowHeader::paintEvent(QPaintEvent*) {
+    if (property("graphiteChromePlane").toBool()) return;
     QPainter p(this);
     p.fillRect(rect(), t().bg);
     p.setPen(t().border);
@@ -2615,8 +2618,8 @@ WindowHeader* WindowHeader::install(QWidget* window, QBoxLayout* rootLayout, QMe
         new WindowEdges(window);
     }
     auto* header = new WindowHeader(window, menu, density);
-    if (auto* main = qobject_cast<QMainWindow*>(window)) main->setMenuWidget(header);
-    else if (rootLayout) rootLayout->insertWidget(0, header);
+    if (rootLayout) rootLayout->insertWidget(0, header);
+    else if (auto* main = qobject_cast<QMainWindow*>(window)) main->setMenuWidget(header);
     return header;
 }
 }

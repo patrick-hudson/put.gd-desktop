@@ -51,7 +51,7 @@ void orderNavigation(Graphite::WindowHeader* header,QWidget* tabs_,const QList<Q
 class OutputButton final:public QToolButton {
 public:
  explicit OutputButton(QWidget* parent):QToolButton(parent){setMinimumHeight(qMax(32,fontMetrics().height()+4));}
- // The status band keeps a 32 px target and the full body font without form padding.
+ // Status controls retain a 32 px target without form padding.
  QSize sizeHint()const override{auto size=QToolButton::sizeHint();size.setHeight(qMax(32,fontMetrics().height()+4));return size;}
  QSize minimumSizeHint()const override{return {Graphite::scaled(120),sizeHint().height()};}
 protected:
@@ -67,7 +67,7 @@ public:
 };
 class EditSourceButton final:public QToolButton {
 public:using QToolButton::QToolButton;
- // Toolbar targets retain six history rows with the 56 px status band.
+ // Compact toolbar targets retain the supported History row count.
  QSize sizeHint()const override{auto size=QToolButton::sizeHint();if(window()->height()<Graphite::scaled(720))size.setHeight(qMax(Graphite::Metric::iconTarget,qMax(iconSize().height(),fontMetrics().height()+space(Space::s))));return size;}
  QSize minimumSizeHint()const override{return sizeHint();}
 protected:
@@ -84,11 +84,11 @@ QString unavailableOutput(const QJsonObject& document,const QString& action){
 // Only compact output and build metadata belong in the status band.
 class StatusBand final:public QStatusBar {
 public:
- explicit StatusBand(QWidget* parent):QStatusBar(parent){setSizeGripEnabled(false);setObjectName("statusBand");setMinimumHeight(Graphite::scaled(Graphite::Metric::statusBand));setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));}
+ explicit StatusBand(QWidget* parent):QStatusBar(parent){setSizeGripEnabled(false);setObjectName("statusBand");setMinimumHeight(Graphite::scaled(Graphite::Metric::statusBand));setContentsMargins(space(Space::l),0,space(Space::l),0);}
 protected:
  bool event(QEvent* event)override{
   const bool handled=QStatusBar::event(event);
-  if(event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show){int height=Graphite::scaled(32);for(auto* child:findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(!child->isWindow()&&child->isVisibleTo(this))height=qMax(height,qMax(child->minimumHeight(),child->sizeHint().height()));setMinimumHeight(qMax(Graphite::scaled(Graphite::Metric::statusBand),height+2*space(Space::s)));}
+  if(event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show){int height=Graphite::scaled(32);for(auto* child:findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(!child->isWindow()&&child->isVisibleTo(this))height=qMax(height,qMax(child->minimumHeight(),child->sizeHint().height()));setMinimumHeight(qMax(Graphite::scaled(Graphite::Metric::statusBand),height+2*space(Space::xs)));}
   return handled;
  }
  void paintEvent(QPaintEvent* event)override{{QPainter p(this);p.fillRect(rect(),Theme::current().surface);p.setPen(Theme::current().border);p.drawLine(0,0,width(),0);}QStatusBar::paintEvent(event);}
@@ -111,11 +111,12 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  connect(menu->addAction("About put.gd"),&QAction::triggered,this,&MainWindow::aboutRequested);
  menu->addSeparator();
  auto* quitAction=menu->addAction("Quit put.gd");quitAction->setObjectName("quitApplication");connect(quitAction,&QAction::triggered,this,&MainWindow::quitRequested);
- auto* header=Graphite::WindowHeader::install(this,nullptr,menu);
- tabs_=new Graphite::Segmented(header);tabs_->setObjectName("mainNavigation");tabs_->setAccessibleName("Main navigation");for(const auto* label:{"History","Destinations","Settings"})tabs_->addTab(label);header->setCentre(tabs_);
  auto* center=new QWidget;setCentralWidget(center);auto* layout=new QVBoxLayout(center);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
+ auto* chrome=new Graphite::Surface("surface",Qt::BottomEdge,center);chrome->setObjectName("mainChrome");auto* chromeBox=new QVBoxLayout(chrome);chromeBox->setContentsMargins(0,0,0,0);chromeBox->setSpacing(0);layout->addWidget(chrome);
+ auto* header=Graphite::WindowHeader::install(this,chromeBox,menu);header->setProperty("graphiteChromePlane",true);
+ tabs_=new Graphite::Segmented(header);tabs_->setObjectName("mainNavigation");tabs_->setAccessibleName("Main navigation");for(const auto* label:{"History","Destinations","Settings"})tabs_->addTab(label);header->setCentre(tabs_);
  // The command band: capture and upload actions, lead first.
- band_=new Graphite::Surface("bg",{},center);band_->setObjectName("commandBand");band_->setAccessibleName("Capture and upload actions");band_->installEventFilter(this);auto* bandRow=new QGridLayout(band_);bandRow->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));bandRow->setSpacing(space(Space::s));layout->addWidget(band_);
+ band_=new QWidget(chrome);band_->setObjectName("commandBand");band_->setAccessibleName("Capture and upload actions");band_->installEventFilter(this);auto* bandRow=new QGridLayout(band_);bandRow->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));bandRow->setSpacing(space(Space::s));chromeBox->addWidget(band_);
  const QHash<QString,QString> explanations{{"region","Drag to select an area of your screen. Press Escape to cancel."},{"window","Capture the focused external app window, including its frame where supported."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Upload copied local files, an image, or plain text, in that order. Text URLs are uploaded as text."},{"edit","Select a region, then redact, blur, crop or annotate it. Nothing uploads until you choose Upload.\n\nUse its menu to edit the clipboard image or an image file instead, or drop a PNG or JPEG on this button."},{"record","Drag to select an area, then use the floating bar to record, pause and stop. Stop opens a review window; nothing uploads until you choose Upload there."}};
  const auto actionHelp=[&]{QStringList help;for(const auto& action:Settings::presentationOrder())help<<labels.value(action)+": "+explanations.value(action);help<<"Each button starts that action after finished settings edits are saved. Screen captures close this window to keep it out of the capture; clipboard uploads keep it open. Store or clear unfinished credentials before a screen capture. Settings → Capture selects the upload destination, and Keep a local copy independently enables local saving. Both can be enabled. With neither enabled, capture actions are unavailable. Shared uploads copy a link; private uploads create no link. Select the output summary in the status bar to see each action's output behavior. Results and recovery actions appear in History.";return help.join("\n\n");}();
  // Three groups, each action once: the screenshots (Capture region is the
@@ -224,6 +225,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  saveStatus_=new QLabel;saveStatus_->setObjectName("autosaveStatus");saveStatus_->setAccessibleName("Settings save status");saveStatus_->setTextFormat(Qt::PlainText);VisualStyle::role(saveStatus_,"meta");statusRow->addWidget(saveStatus_);
  for(auto* widget:QWidgetList{explanation_,saveStatus_,updateLink_,version_,versionGroup})widget->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
  statusRow->addWidget(updateLink_);statusRow->addWidget(version_);statusRow->addWidget(versionGroup);
+ for(auto* control:QList<QWidget*>{destination_,version_,versionLink_,updateLink_,explanation_,saveStatus_}){control->setProperty("graphiteStatus",true);VisualStyle::role(control,control->property("visualRole").toByteArray().constData());}
  connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});
  updateDestination();updateSaveStatus();tabs_->setCurrentIndex(0);RedesignTheme::apply(*this);
  orderNavigation(header,tabs_,actionButtons_,band_);
