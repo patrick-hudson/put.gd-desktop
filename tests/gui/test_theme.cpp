@@ -547,8 +547,8 @@ private slots:
     void lockedReadoutsKeepMutedTextContrast() {
         QWidget window;
         QVBoxLayout layout(&window);
-        QComboBox choice; choice.addItem("Forever");
-        QComboBox editable; editable.setEditable(true); editable.addItem("Saved value");
+        QComboBox choice; choice.setObjectName("lockedChoice"); choice.addItem("Forever");
+        QComboBox editable; editable.setObjectName("lockedEditableChoice"); editable.setEditable(true); editable.addItem("Saved value");
         QSpinBox number; number.setValue(42);
         QLineEdit value("Saved path"); value.setReadOnly(true);
         QPushButton fact("Default");
@@ -558,6 +558,7 @@ private slots:
             layout.addWidget(widget);
         }
         RedesignTheme::apply(window); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);
             const auto& c = Theme::current();
@@ -567,8 +568,14 @@ private slots:
                     QCOMPARE(widget->palette().color(QPalette::Disabled, role), c.textMuted);
                 const auto shot = widget->grab().toImage();
                 int ink = 0;
-                for (int y = 0; y < shot.height(); ++y) for (int x = 0; x < shot.width(); ++x) ink += shot.pixelColor(x, y) == c.textMuted;
-                QVERIFY2(ink > 0, widget->metaObject()->className());
+                // Native editors use subpixel antialiasing: their glyph cores
+                // can approach the token without containing its exact RGB.
+                for (int y = 0; y < shot.height(); ++y) for (int x = 0; x < shot.width(); ++x) {
+                    const auto pixel = shot.pixelColor(x, y);
+                    const int distance = std::abs(pixel.red() - c.textMuted.red()) + std::abs(pixel.green() - c.textMuted.green()) + std::abs(pixel.blue() - c.textMuted.blue());
+                    ink += distance <= 12 && Theme::contrast(pixel, c.bg) >= 4.5;
+                }
+                QVERIFY2(ink > 0, qPrintable(QString(widget->metaObject()->className()) + " " + widget->objectName()));
                 for (const auto& surface : {c.bg, c.surface, c.surfaceRaised, c.selected}) {
                     QVERIFY(Theme::contrast(c.textMuted, surface) >= 4.5);
                     QVERIFY(Theme::contrast(c.textMuted, surface) > Theme::contrast(c.textDisabled, surface));
