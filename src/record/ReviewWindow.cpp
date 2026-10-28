@@ -1473,8 +1473,10 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     errorDetails_->setObjectName("reviewErrorDetails");
     errorDetails_->setProperty("graphiteDensity", "compact");
     errorDetails_->setProperty("driveAction", QJsonObject{{"action", "showAdvice"}});
+    errorDetails_->setProperty("graphiteStrong", true);
+    errorDetails_->setProperty("graphiteTight", true);
     VisualStyle::role(errorDetails_, "quiet");
-    errorDetails_->setFixedWidth(int(std::ceil(QFontMetricsF(errorDetails_->font()).horizontalAdvance(errorDetails_->text()))) + 28);
+    errorDetails_->setFixedWidth(int(std::ceil(QFontMetricsF(errorDetails_->font()).horizontalAdvance(errorDetails_->text()))) + 2 * reviewSpace(Graphite::Space::s));
     errorDetails_->setFixedHeight(std::max(32, textControlHeight(errorDetails_)));
     errorDetails_->hide();
     connect(errorDetails_, &QPushButton::clicked, this, [this] { drive({{"action", "showAdvice"}}); });
@@ -1926,7 +1928,6 @@ void ReviewWindow::refreshStatus() {
         const auto tone = entry.tone == "error" ? Graphite::Banner::Tone::Error : entry.tone == "warning" ? Graphite::Banner::Tone::Warning : entry.tone == "success" ? Graphite::Banner::Tone::Success : Graphite::Banner::Tone::Info;
         auto* band = new Graphite::Banner(tone, {}, statusRow_);
         band->setObjectName("statusLine");
-        band->setFillOnly(tone == Graphite::Banner::Tone::Error);
         const auto margins = band->layout()->contentsMargins();
         // Full pointer targets already provide the compact band's vertical padding.
         band->layout()->setContentsMargins(margins.left(), 0, margins.right(), 0);
@@ -1970,9 +1971,11 @@ void ReviewWindow::refreshStatus() {
                 button->setToolTip(label);
                 button->setFixedWidth(iconTarget());
             }
-            if (params["action"] != "retryExport") VisualStyle::role(button, "quiet");
+            button->setProperty("graphiteStrong", params["action"] == "retryExport");
+            button->setProperty("graphiteTight", params["action"] == "retryExport");
+            VisualStyle::role(button, "quiet");
             // Compact action painting inside a full pointer target.
-            button->setFixedWidth((params["action"] == "dismissStatus" || params["action"] == "dismissBlurTip") ? iconTarget() : int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(label))) + 28);
+            button->setFixedWidth((params["action"] == "dismissStatus" || params["action"] == "dismissBlurTip") ? iconTarget() : int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(label))) + (params["action"] == "retryExport" ? 2 * reviewSpace(Graphite::Space::s) : 28));
             button->setMinimumHeight(32);
             button->setFixedHeight(std::max(32, textControlHeight(button)));
             button->setProperty("driveAction", params);

@@ -362,7 +362,7 @@ private slots:
                 QVERIFY(button); QCOMPARE(button->property("visualRole").toString(), QString("quiet"));
                 QVERIFY(Theme::contrast(button->palette().color(QPalette::ButtonText), colors.dangerSurface) >= 4.5);
             }
-            QVERIFY(buttonNamed(window, "Try again")->property("visualRole").toString() != "quiet");
+            QCOMPARE(buttonNamed(window, "Try again")->property("visualRole").toString(), QString("quiet"));
         }
     }
     void recoveryStaysWithItsMessageAboveTheFooter() {
@@ -1672,11 +1672,13 @@ private slots:
             window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
             window.showError("Export failed: disk full");
             QApplication::processEvents();
+            for (auto* label : window.findChild<QWidget*>("statusRow")->findChildren<QLabel*>("status")) if (label->isVisible())
+                QVERIFY(label->heightForWidth(label->width()) <= label->fontMetrics().height());
             qInfo("enlarged preview sequence %dx%d recovery %.3f", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             QCOMPARE(window.geometry(), geometry);
             for (auto* button : window.findChild<QWidget*>("statusRow")->findChildren<QPushButton*>("statusAction")) {
-                QVERIFY2(button->width() >= button->fontMetrics().horizontalAdvance(button->text()) + 28, qPrintable(button->text()));
+                QVERIFY2(button->width() >= button->fontMetrics().horizontalAdvance(button->text()) + (button->property("driveAction").toJsonObject()["action"] == "retryExport" ? 16 : 28), qPrintable(button->text()));
             }
         }
     }

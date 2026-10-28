@@ -351,6 +351,22 @@ private slots:
         }
         QCOMPARE(Graphite::Metric::trackRadius - Graphite::Metric::segmentInset, Graphite::Metric::segmentRadius);
     }
+    void errorBannersUseTheirToneWithoutAnOptIn() {
+        const auto previous = Theme::scheme();
+        const auto restore = qScopeGuard([previous] { Theme::setScheme(previous); });
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            Graphite::Banner banner(Graphite::Banner::Tone::Error, "Save failed");
+            banner.resize(500, 48); banner.show();
+            const auto shot = banner.grab().toImage();
+            QCOMPARE(shot.pixelColor(250, 0), Theme::current().dangerSurface);
+            QCOMPARE(shot.pixelColor(250, 24), Theme::current().dangerSurface);
+            QVERIFY(Theme::contrast(Theme::current().textSecondary, Theme::current().dangerSurface) >= 4.5);
+            QPushButton retry("Try again"); retry.setProperty("graphiteDensity", "compact");
+            retry.setProperty("graphiteStrong", true); VisualStyle::role(&retry, "quiet");
+            QCOMPARE(retry.font().weight(), QFont::DemiBold);
+        }
+    }
     void liveIndicatorsMeetContrastWithoutReusingDanger() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             const auto& p=Theme::palette(scheme);

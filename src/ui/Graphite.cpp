@@ -227,7 +227,7 @@ QFont buttonFont(const QWidget* widget, const QStyleOption* option) {
         && (widget->property("graphiteNavRow").toBool() || qobject_cast<SegmentTrack*>(widget->parentWidget()));
     const bool activeTextAction = name == "textAction" && (option->state & QStyle::State_Enabled)
         && (option->state & (QStyle::State_MouseOver | QStyle::State_Sunken));
-    f.setWeight(activeTextAction || (!compactControl(widget) && (name == "primary" || name == "lead" || selected)) ? QFont::Medium : QFont::Normal);
+    f.setWeight(widget && widget->property("graphiteStrong").toBool() ? QFont::DemiBold : activeTextAction || (!compactControl(widget) && (name == "primary" || name == "lead" || selected)) ? QFont::Medium : QFont::Normal);
     return f;
 }
 QPixmap tinted(const QPixmap& source, const QColor& colour) {
@@ -608,6 +608,7 @@ void Style::polish(QWidget* widget) {
     }
     else setFont = false;
     if (compactControl(widget) && bodyControl && name != "textAction") { f = font(Type::technical); setFont = true; }
+    if (widget->property("graphiteStrong").toBool()) f.setWeight(QFont::DemiBold);
     if (statusBand) { f = font(Type::technical); colour = c.textSecondary; setFont = true; }
     if (monoPixels) { f = monoFont(monoPixels); setFont = true; }
     // One type size per side of the status band; an error keeps its colour, not a larger size.
@@ -763,6 +764,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         }
         if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) w += Metric::splitZone - 8;
         if (button && button->text.isEmpty()) return {std::max(height, contents.width() + padding), std::max(height, contents.height() + padding)};
+        if (widget && widget->property("graphiteTight").toBool()) w -= 2 * (14 - int(Space::s));
         if (flushButton(widget)) w -= compact ? 28 : 14;
         if (widget && widget->property("graphiteNavRow").toBool()) w -= 8;
         if (button && !button->text.isEmpty()) w = std::max(w, 64);
@@ -1180,7 +1182,8 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
         if (!button) break;
         const auto name = buttonRole(widget, option);
-        QRect body = (name == "link" || name == "version") ? option->rect.adjusted(4, 0, -4, 0) : option->rect.adjusted(12, 0, -12, 0);
+        const int inset = name == "link" || name == "version" ? int(Space::xs) : widget && widget->property("graphiteTight").toBool() ? int(Space::s) : int(Space::m);
+        QRect body = option->rect.adjusted(inset, 0, -inset, 0);
         if (flushButton(widget)) { body.setLeft(option->rect.left()); if (compactControl(widget) || name == "textAction") body.setRight(option->rect.right()); }
         if (widget && widget->property("graphiteNavRow").toBool()) { body.setLeft(option->rect.left() + (compactControl(widget) ? 6 : 14)); body.setRight(option->rect.right() - space(Space::xs)); }
         if ((button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) body.setRight(option->rect.right() - Metric::splitZone);
@@ -1960,8 +1963,9 @@ void Banner::paintEvent(QPaintEvent*) {
     const QColor tone = tone_ == Tone::Warning ? colors.warning : tone_ == Tone::Error ? colors.danger : tone_ == Tone::Success ? colors.success : colors.textMuted;
     QPainter painter(this);
     painter.fillRect(rect(), colors.bg);
-    const QColor fill = fillOnly_ ? (tone_ == Tone::Error ? colors.dangerSurface : tone_ == Tone::Warning ? colors.warningSurface : tone_ == Tone::Success ? colors.successSurface : colors.surface) : colors.surface;
-    rounded(&painter, rect(), fill, fillOnly_ ? QColor() : colors.borderStrong, Metric::containerRadius);
+    const bool fillOnly = fillOnly_ || tone_ == Tone::Error;
+    const QColor fill = fillOnly ? (tone_ == Tone::Error ? colors.dangerSurface : tone_ == Tone::Warning ? colors.warningSurface : tone_ == Tone::Success ? colors.successSurface : colors.surface) : colors.surface;
+    rounded(&painter, rect(), fill, fillOnly ? QColor() : colors.borderStrong, Metric::containerRadius);
     const int side = scaled(Metric::icon);
     QRect firstRow = row_->cellRect(0, 0);
     if (content_ != text_ && content_->layout() && content_->layout()->count())
