@@ -1856,6 +1856,10 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
    auto* help=window.findChild<QToolButton*>(key+"Help");QVERIFY2(help,qPrintable(key));QCOMPARE(help->focusPolicy(),Qt::StrongFocus);QVERIFY(!help->accessibleDescription().isEmpty());
   }
  }
+ void diagnosticsPackageIsAnAlignedSecondaryAction(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1400);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.show();putgd::test::settle(30);
+  auto* package=window.findChild<QPushButton*>("createDiagnosticsPackage");auto* clear=window.findChild<QPushButton*>("clearLogs");QVERIFY(package&&clear);QCOMPARE(package->property("visualRole").toString(),QString("secondary"));QVERIFY(package->width()<package->parentWidget()->width());QCOMPARE(package->mapTo(&window,QPoint(package->width(),0)).x(),clear->mapTo(&window,QPoint(clear->width(),0)).x());
+ }
  void formChoicesShareWidthsAndTextFieldsKeepTheirColumn(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1200);window.showCaptureSettings();window.show();
   auto* choices=window.findChild<QComboBox*>("uploadClipboardBehavior");QVERIFY(choices);putgd::test::settle(30);const int width=choices->width();QVERIFY(width>=Graphite::scaled(240)&&width<=Graphite::scaled(400));
