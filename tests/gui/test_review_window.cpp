@@ -1335,6 +1335,11 @@ private slots:
             }
             ReviewWindow window(o, config()); window.setEdit(twoMasks()); window.show();
             QVERIFY(putgd::test::waitForWindowExposed(&window));
+            auto* transport = window.findChild<QWidget*>("reviewTransport");
+            auto* header = window.findChild<Graphite::WindowHeader*>("windowHeader");
+            QCOMPARE(header->isVisible(), customHeader);
+            if (customHeader) QVERIFY(header->isAncestorOf(transport));
+            else QVERIFY(transport->mapTo(&window, transport->rect().bottomLeft()).y() < window.findChild<FrameView*>()->y());
             QVERIFY(window.height() <= 720 && window.width() <= 1342);
             const auto steady = window.inspect()["video"].toObject()["share"].toDouble();
             window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});

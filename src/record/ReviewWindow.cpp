@@ -1500,8 +1500,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     updateMinimum();
 }
 QSize ReviewWindow::defaultSize() {
-    // Reserve the mask lane and transient guidance on first presentation.
-    return {820, Graphite::WindowHeader::customFrame() ? 720 : 688};
+    // Native decorations are already reserved by availableReviewSize().
+    return {820, 720};
 }
 
 RecordingMask* ReviewWindow::selectedMask() {
