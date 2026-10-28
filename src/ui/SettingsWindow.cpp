@@ -119,7 +119,7 @@ QComboBox* choices(QWidget* parent,const QString& name,const QStringList& values
 // QFormLayout can compress a wrapped field below its layout's minimum height.
 class FormRow final:public QWidget {
 protected:
- bool event(QEvent* event)override{const bool handled=QWidget::event(event);if(layout()&&(event->type()==QEvent::Resize||event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show)){const int height=qMax(layout()->totalMinimumSize().height(),layout()->totalHeightForWidth(width()));if(minimumHeight()!=height)setMinimumHeight(height);}return handled;}
+ bool event(QEvent* event)override{const bool handled=QWidget::event(event);if(layout()&&(event->type()==QEvent::Resize||event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show)){const int floor=property("preferenceRow").toBool()?Graphite::scaled(Graphite::Metric::control)+2*space(Space::m):0;const int height=std::max({floor,layout()->totalMinimumSize().height(),layout()->totalHeightForWidth(width())});if(minimumHeight()!=height)setMinimumHeight(height);}return handled;}
 };
 // Keep the real checkbox's text and accessibility contract while placing its indicator at the row edge.
 class PreferenceCheck final:public QCheckBox {
@@ -192,7 +192,7 @@ void boxPreferenceRows(QFormLayout* form){
   if(field->property("preferenceRowInset").toBool())continue;if(field->findChild<QFormLayout*>())continue;
   if(column){column->setSizeConstraint(QLayout::SetMinimumSize);column->setContentsMargins(space(Space::l),space(Space::m),space(Space::l),space(Space::m));column->setSpacing(space(Space::xs));}else if(!field->findChild<QFormLayout*>())field->setContentsMargins(space(Space::l),space(Space::m),space(Space::l),space(Space::m));
   if(auto* disclosure=qobject_cast<QToolButton*>(field);disclosure&&disclosure->property("graphiteDisclosure").toBool()){disclosure->setProperty("preferenceDisclosure",true);disclosure->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);}
-  field->setMinimumHeight(std::max({field->minimumHeight(),Graphite::scaled(52),field->layout()?field->layout()->totalMinimumSize().height():0}));field->setProperty("preferenceRow",true);
+  field->setMinimumHeight(std::max({field->minimumHeight(),Graphite::scaled(Graphite::Metric::control)+2*space(Space::m),field->layout()?field->layout()->totalMinimumSize().height():0}));field->setProperty("preferenceRow",true);
  }
 }
 class PreferenceChoiceRow final:public QObject {
@@ -680,7 +680,7 @@ QWidget* rowFor(QWidget* field){auto* row=field->property("preferenceRowContaine
 QWidget* labelFor(QFormLayout* form,QWidget* row){if(auto* label=form->labelForField(row))return label;return qobject_cast<QWidget*>(row->property("preferenceLabel").value<QObject*>());}
 
 QWidget* action(QFormLayout* form,const QString& heading,const QString& hint,QWidget* control){
- auto* row=new FormRow;auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);auto* line=new QHBoxLayout;line->setSpacing(space(Space::l));auto* captions=new QVBoxLayout;captions->setSpacing(space(Space::s));auto* label=Graphite::label(heading,"body");label->setWordWrap(true);captions->addWidget(label);if(!hint.isEmpty())captions->addWidget(caption(hint));line->addLayout(captions,1);line->addWidget(control,0,Qt::AlignRight|Qt::AlignVCenter);column->addLayout(line);row->setProperty("preferenceLabel",QVariant::fromValue(static_cast<QObject*>(label)));form->addRow(row);return row;
+ auto* row=new FormRow;auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);auto* line=new QHBoxLayout;line->setSpacing(space(Space::l));auto* captions=new QVBoxLayout;captions->setSpacing(space(Space::xs));captions->setAlignment(Qt::AlignVCenter);auto* label=Graphite::label(heading,"body");label->setWordWrap(true);captions->addWidget(label);if(!hint.isEmpty())captions->addWidget(caption(hint));line->addLayout(captions,1);line->addWidget(control,0,Qt::AlignRight|Qt::AlignVCenter);column->addLayout(line);row->setProperty("preferenceLabel",QVariant::fromValue(static_cast<QObject*>(label)));form->addRow(row);return row;
 }
 QWidget* radio(QRadioButton* radio,const QString& explanation,const QString& detail){auto* row=new FormRow;row->setProperty("inlineHelpRow",true);auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);column->setSpacing(space(Space::s));auto* box=new QHBoxLayout;box->setSpacing(space(Space::l));auto* text=new QVBoxLayout;text->setSpacing(space(Space::xs));auto* heading=new QHBoxLayout;heading->setSpacing(space(Space::xs));auto* title=Graphite::label(radio->text(),"body");title->setBuddy(radio);title->setWordWrap(true);heading->addWidget(title);auto* help=VisualStyle::helpButton(radio->text(),detail,radio,row);heading->addWidget(help);heading->addStretch(1);text->addLayout(heading);text->addWidget(caption(explanation));box->addLayout(text,1);box->addWidget(radio,0,Qt::AlignVCenter);column->addLayout(box);radio->setFixedWidth(Graphite::scaled(24));radio->setAccessibleName(radio->text());QObject::connect(help,&QToolButton::toggled,row,[row,radio]{if(auto* note=row->findChild<QLabel*>(radio->objectName()+"HelpText")){note->setProperty("graphiteStatus",true);VisualStyle::role(note,"secondary");}});return row;}
 void box(QFormLayout* form){boxPreferenceRows(form);}
