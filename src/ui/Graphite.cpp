@@ -1973,21 +1973,8 @@ void Banner::styleContent() {
     }
     for (auto* button : findChildren<QAbstractButton*>()) {
         if (!qobject_cast<QPushButton*>(button) && !qobject_cast<QToolButton*>(button)) continue;
-        const bool styled = button->property("graphiteBannerAction").toBool();
-        if (tone_ == Tone::Error) {
-            if (!styled) {
-                button->setProperty("graphiteBannerRole", button->property("visualRole"));
-                button->setProperty("graphiteBannerStrong", button->property("graphiteStrong"));
-            }
-            button->setProperty("graphiteBannerAction", true);
-            button->setProperty("graphiteStrong", true);
-            VisualStyle::role(button, "quiet");
-        } else if (styled) {
-            button->setProperty("graphiteBannerAction", false);
-            button->setProperty("graphiteStrong", button->property("graphiteBannerStrong"));
-            const auto previous = button->property("graphiteBannerRole").toByteArray();
-            VisualStyle::role(button, previous.constData());
-        }
+        button->setProperty("graphiteStrong", true);
+        VisualStyle::role(button, "quiet");
     }
 }
 void Banner::announce(const QString& message) {

@@ -378,9 +378,14 @@ private slots:
             QVERIFY(details->property("graphiteStrong").toBool());
             QCOMPARE(details->font().weight(), QFont::DemiBold);
             banner.setTone(Graphite::Banner::Tone::Info);
-            QCOMPARE(details->property("visualRole").toString(), QString("secondary"));
-            QVERIFY(!details->property("graphiteStrong").toBool());
+            QCOMPARE(details->property("visualRole").toString(), QString("quiet"));
+            QVERIFY(details->property("graphiteStrong").toBool());
             QCOMPARE(message->palette().color(QPalette::WindowText), Theme::current().textSecondary);
+            for (const auto tone : {Graphite::Banner::Tone::Info, Graphite::Banner::Tone::Warning, Graphite::Banner::Tone::Success}) {
+                banner.setTone(tone);
+                QCOMPARE(details->font().weight(), QFont::DemiBold);
+                QCOMPARE(banner.actionButton()->font().weight(), QFont::DemiBold);
+            }
             banner.setTone(Graphite::Banner::Tone::Error);
             QCOMPARE(message->palette().color(QPalette::WindowText), Theme::current().text);
             QCOMPARE(details->font().weight(), QFont::DemiBold);
