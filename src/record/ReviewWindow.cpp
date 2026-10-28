@@ -1207,7 +1207,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     for (const auto& [label, factor] : std::initializer_list<std::pair<const char*, double>>{{"0.5×", 0.5}, {"1×", 1.0}, {"2×", 2.0}, {"4×", 4.0}}) speed_->addItem(QString::fromUtf8(label), factor);
     speed_->setCurrentIndex(1);
     speed_->setFixedWidth(Graphite::scaled(64));
-    speed_->setFrame(true);
+    speed_->setFrame(false);
     // Mono keeps the timecode columns steady while scrubbing.
     time_ = new Graphite::ElidedLabel(this);
     time_->setObjectName("time");
@@ -1224,7 +1224,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto notePolicy = playbackStatus_->sizePolicy();
     notePolicy.setRetainSizeWhenHidden(true);
     playbackStatus_->setSizePolicy(notePolicy);
-    playbackStatus_->hide();
+    playbackStatus_->show();
     time_->setFixedHeight(time_->fontMetrics().tightBoundingRect(QStringLiteral("0:00.0/0:00.0")).height() + 1);
     playbackStatus_->setFixedHeight(playbackStatus_->fontMetrics().tightBoundingRect(playbackStatus_->text()).height());
     transport_ = new QWidget(this);
@@ -1234,13 +1234,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     transport->setSpacing(reviewSpace(Graphite::Space::xs));
     transport->addWidget(play_);
     transport->addWidget(time_);
+    transport->addWidget(playbackStatus_);
     transport->addWidget(speed_);
     transport->addStretch(1);
     if (Graphite::WindowHeader::customFrame()) {
-        header_->setDocument(QString());
+        header_->setDocument(QStringLiteral("Review recording"));
         header_->setAccessibleName("Review recording");
         header_->setCentre(transport_);
-    } else root->insertWidget(0, transport_);
+    } else frame->insertWidget(frame->indexOf(view_), transport_);
     // Status belongs below the frame, so no guidance or recovery action hides video.
     statusRow_ = new QWidget(this);
     statusRow_->setObjectName("statusRow");
@@ -1286,6 +1287,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     draft->setObjectName("draftState");
     draft->setToolTip("Nothing uploads until you choose Upload; Save a copy… exports locally.");
     VisualStyle::role(draft, "meta");
+    draft->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     destination_ = new Graphite::ElidedLabel(this);
     destination_->setText(options.uploadSummary);
@@ -1345,7 +1347,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     metadataRow->setContentsMargins(0, 0, 0, 0);
     metadataRow->setSpacing(reviewSpace(Graphite::Space::s));
     metadataRow->addWidget(exportAudio_);
-    playbackStatus_->hide();
+    metadataRow->addStretch(1);
     metadataRow->addWidget(draft);
     actionsRow->addWidget(metadata, 0, 3);
     actionsRow->addWidget(save_, 0, 4);
@@ -1384,7 +1386,10 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         field->setFixedHeight(textControlHeight(field));
     }
     strength_->setFixedHeight(std::max(32, textControlHeight(strength_)));
-    play_->setFixedHeight(speed_->height());
+    play_->setProperty("graphiteIconBase", QSize(16, 16));
+    play_->setIconSize(QSize(Graphite::scaled(16), Graphite::scaled(16)));
+    play_->setFixedSize(Graphite::scaled(28), Graphite::scaled(28));
+    speed_->setFixedHeight(Graphite::scaled(28));
     format_->setFixedHeight(textControlHeight(format_));
     formatAdvice_->setFixedHeight(format_->height());
     for (auto* action : {upload_, save_, cancel_}) {
@@ -1680,7 +1685,7 @@ void ReviewWindow::refreshLabels() {
     time_->setText(QStringLiteral("%1 / %2").arg(timeText(at), timeText(options_.durationUs)));
     time_->setAccessibleDescription(time_->text());
     playbackStatus_->setText(retained ? QStringLiteral("Preview muted") : QStringLiteral("Outside kept part"));
-    playbackStatus_->hide();
+    playbackStatus_->show();
     time_->setToolTip(time_->text() + "\n" + (retained ? QStringLiteral("Playhead time / recording length") : QStringLiteral("The playhead is in a trimmed-away part; it is not exported")));
     const auto boundary = [](qint64 us) { auto text = durationText(us); if (text.endsWith(".0")) text.chop(2); return text; };
     retained_->setText(QStringLiteral("Keep %1–%2 · %3 s").arg(boundary(edit_.trimStart), boundary(end), seconds(end - edit_.trimStart)));
@@ -1776,7 +1781,7 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
 void ReviewWindow::refreshStatus() {
     footerError_ = message_.tone == "error";
     playbackStatus_->setText(playhead() < edit_.trimStart || playhead() >= edit_.exportEnd(options_.durationUs) ? QStringLiteral("Outside kept part") : QStringLiteral("Preview muted"));
-    playbackStatus_->hide();
+    playbackStatus_->show();
     placeDestination();
     auto entries = statusEntries();
     for (auto& entry : entries) {
@@ -2085,9 +2090,6 @@ void ReviewWindow::placeDestination() {
     destination_->setToolTip(options_.uploadSummary);
     destination_->setAccessibleName(options_.uploadSummary);
     exportAudio_->setText(effectiveAudio(config_, options_.audioRecorded, audioIntent_) ? QStringLiteral("System audio") : !options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("Silent %1").arg(config_.format.toUpper()) : QStringLiteral("Audio off"));
-    // With no recorded audio, silence is already explicit; keep trim-position feedback.
-    if (options_.audioRecorded || playbackStatus_->text() != QStringLiteral("Preview muted"))
-        exportAudio_->setText(exportAudio_->text() + QStringLiteral(" · ") + playbackStatus_->text());
     const auto details = "Destination: " + options_.destination + "\nSharing: " + (options_.sharingMode == "private" ? "Private upload" : "Shared link") + "\n\n" + options_.uploadSummary + "\n" + formatLabel(config_.format, config_.codec) + "\n" + formatHint(config_.format, config_.codec) + "\n" + audio_->property("summary").toString();
     destinationFull_->setText(details);
     destinationMenu_->setText(destination_->text());
@@ -2133,8 +2135,8 @@ void ReviewWindow::placeDestination() {
             grid->setColumnStretch(0, 1);
         } else {
             auto* metaRow = static_cast<QHBoxLayout*>(metaLine->layout());
-            metaRow->addWidget(destinationMenu_, 1);
-            metaRow->addWidget(metadata);
+            metaRow->addWidget(destinationMenu_);
+            metaRow->addWidget(metadata, 1);
             auto* actionRow = static_cast<QHBoxLayout*>(actionLine->layout());
             actionRow->addWidget(format_);
             actionRow->addWidget(formatAdvice_);

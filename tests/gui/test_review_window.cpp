@@ -393,7 +393,8 @@ private slots:
             }
             QVERIFY(!time->text().contains('\n'));
             auto* audio = window.findChild<QLabel*>("exportAudioSummary");
-            QVERIFY(audio->isVisible() && audio->text().contains(status->text()));
+            QVERIFY(audio->isVisible() && !audio->text().contains(status->text()));
+            QVERIFY(status->isVisible() && metadata->isAncestorOf(status));
             QVERIFY(window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(audio));
             QVERIFY(t->trackRect().width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
             for (auto* button : window.findChildren<QToolButton*>()) if (button->isVisible() && button->toolButtonStyle() == Qt::ToolButtonTextOnly && button->objectName() != "uploadDestinationMenu" && button->objectName() != "addMask") {
@@ -523,7 +524,8 @@ private slots:
         const auto axis = track->trackRect();
         const auto before = window.geometry();
         QVERIFY(window.drive({{"action", "seek"}, {"time", 0}}).code.isEmpty()); QApplication::processEvents();
-        QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->text().contains("Outside kept part"));
+        QVERIFY(window.findChild<QLabel*>("playbackStatus")->isVisible());
+        QVERIFY(window.findChild<QLabel*>("playbackStatus")->text().contains("Outside kept part"));
         QCOMPARE(track->trackRect(), axis);
         QCOMPARE(window.geometry(), before);
         track->setMinimumWidth(0); track->setMaximumWidth(QWIDGETSIZE_MAX);
@@ -1275,15 +1277,19 @@ private slots:
         QTest::addColumn<QSize>("canvas");
         QTest::addColumn<double>("scale");
         QTest::addColumn<bool>("longDestination");
-        QTest::newRow("16:9") << QSize(1280, 720) << 1.0 << false;
-        QTest::newRow("16:10") << QSize(960, 600) << 1.0 << false;
-        QTest::newRow("16:9 large text") << QSize(1280, 720) << 1.5 << false;
-        QTest::newRow("16:10 large text") << QSize(960, 600) << 1.5 << false;
-        QTest::newRow("16:10 long destination") << QSize(960, 600) << 1.0 << true;
-        QTest::newRow("16:10 long destination large text") << QSize(960, 600) << 1.5 << true;
+        QTest::addColumn<bool>("customHeader");
+        QTest::newRow("16:9") << QSize(1280, 720) << 1.0 << false << true;
+        QTest::newRow("16:10") << QSize(960, 600) << 1.0 << false << true;
+        QTest::newRow("16:9 large text") << QSize(1280, 720) << 1.5 << false << true;
+        QTest::newRow("16:10 large text") << QSize(960, 600) << 1.5 << false << true;
+        QTest::newRow("16:10 long destination") << QSize(960, 600) << 1.0 << true << true;
+        QTest::newRow("16:10 long destination large text") << QSize(960, 600) << 1.5 << true << true;
+        QTest::newRow("native 16:9") << QSize(1280, 720) << 1.0 << false << false;
+        QTest::newRow("native 16:10 large text") << QSize(960, 600) << 1.5 << true << false;
     }
     void frameGatesCoverThePreviewAspectRatio() {
-        QFETCH(QSize, canvas); QFETCH(double, scale); QFETCH(bool, longDestination);
+        QFETCH(QSize, canvas); QFETCH(double, scale); QFETCH(bool, longDestination); QFETCH(bool, customHeader);
+        Graphite::WindowHeader::setCustomFrameOverride(customHeader ? 1 : -1);
         const auto font = QApplication::font();
         const auto scheme = Theme::scheme();
         const auto restore = qScopeGuard([&] { QApplication::setFont(font); Theme::setScheme(scheme); });
