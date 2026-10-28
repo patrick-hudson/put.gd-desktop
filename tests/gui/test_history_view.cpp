@@ -727,11 +727,16 @@ private slots:
   QCOMPARE(HistoryModel::failureLabel(record),QString("Edit failed"));QVERIFY(row.data(HistoryModel::PrimaryActionRole).toString().isEmpty());
   QVERIFY(!HistoryModel::statusText(record).contains("Upload"));QVERIFY(HistoryModel::statusText(record).contains("PNG or JPEG"));
   selectRow(list,0);putgd::test::settle(200);PUTGD_TRY_VERIFY(!window.findChild<QPushButton*>("retryOperation")->isVisible());
-  // Disabled row-menu entries must look disabled in the app theme.
-  RedesignTheme::apply(window);QMenu menu(&window);auto* enabled=menu.addAction("Copy details");auto* disabled=menu.addAction("Retry upload");disabled->setEnabled(false);
-  menu.popup(window.mapToGlobal(QPoint(20,20)));PUTGD_TRY_VERIFY(menu.isVisible());const auto image=menu.grab().toImage();
-  auto brightest=[&](QAction* action){int best=0;const auto r=menu.actionGeometry(action);for(int y=r.top();y<=r.bottom();++y)for(int x=r.left();x<=r.right();++x)best=std::max(best,qGray(image.pixel(x,y)));return best;};
-  QVERIFY2(brightest(disabled)+40<brightest(enabled),qPrintable(QString("%1 vs %2").arg(brightest(disabled)).arg(brightest(enabled))));menu.close();
+  // Compare readable ink against the menu surface in either scheme; a raw
+  // brightness gap assumes the old secondary text and only works in dark mode.
+  const auto previous=Theme::scheme();auto restore=qScopeGuard([previous]{Theme::setScheme(previous);});RedesignTheme::apply(window);
+  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+   Theme::setScheme(scheme);QMenu menu(&window);auto* enabled=menu.addAction("Copy details");auto* disabled=menu.addAction("Retry upload");disabled->setEnabled(false);
+   menu.popup(window.mapToGlobal(QPoint(20,20)));PUTGD_TRY_VERIFY(menu.isVisible());const auto image=menu.grab().toImage();
+   auto contrast=[&](QAction* action){double best=1;const auto r=menu.actionGeometry(action);for(int y=r.top();y<=r.bottom();++y)for(int x=r.left();x<=r.right();++x)best=std::max(best,Theme::contrast(image.pixelColor(x,y),Theme::current().surfaceRaised));return best;};
+   const auto enabledContrast=contrast(enabled),disabledContrast=contrast(disabled);QVERIFY(disabledContrast>=4.5);
+   QVERIFY2(enabledContrast>disabledContrast*1.4,qPrintable(QString("%1 enabled %2 vs disabled %3").arg(Theme::name(scheme)).arg(enabledContrast).arg(disabledContrast)));menu.close();
+  }
  }
  void offlineSearchUsesOriginalReceiptsAndRemovedLinksAreDisabled() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
