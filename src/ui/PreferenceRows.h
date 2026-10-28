@@ -5,6 +5,7 @@ class QVBoxLayout;
 class QLabel;
 class QRadioButton;
 class QWidget;
+class QToolButton;
 namespace putgd::PreferenceRows {
 // Preserve each field and its agent identity while composing card rows. Text
 // fields stack unless preferenceInline is set; inline values share a measured
@@ -15,6 +16,7 @@ QWidget* sectionFor(QFormLayout*);
 QWidget* rowFor(QWidget*);
 QWidget* labelFor(QFormLayout*,QWidget* row);
 QWidget* action(QFormLayout*,const QString& heading,const QString& hint,QWidget* control);
+QWidget* disclosure(QFormLayout*,const QString& heading,QLabel* summary,QToolButton* toggle);
 QWidget* radio(QRadioButton*,const QString& explanation,const QString& detail);
 // preferenceStacked keeps a picker full width; preferenceResponsive lets a
 // choice move below its label when the measured family width no longer fits.
