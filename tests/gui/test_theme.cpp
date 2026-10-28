@@ -205,7 +205,7 @@ private slots:
             Theme::setScheme(scheme);
             const auto& c = Theme::current();
             QMenu menu;
-            auto* information = menu.addAction("Uploading… 50%");
+            auto* information = menu.addAction("Uploading… 50% · 2 MiB of 4 MiB");
             information->setProperty("visualRole", "information");
             information->setEnabled(false);
             auto* cancel = menu.addAction("Cancel upload");
@@ -216,6 +216,9 @@ private slots:
             const auto image = menu.grab().toImage();
             const auto rect = menu.actionGeometry(information);
             QVERIFY(!rect.isEmpty());
+            QStyleOptionMenuItem measured;measured.text=information->text();measured.font=Graphite::font(Graphite::Type::micro);measured.menuItemType=QStyleOptionMenuItem::Normal;measured.menuHasCheckableItems=false;measured.maxIconWidth=0;
+            const auto measuredSize=menu.style()->sizeFromContents(QStyle::CT_MenuItem,&measured,{},&menu);
+            QCOMPARE(measuredSize.width(),QFontMetrics(Graphite::font(Graphite::Type::technical)).size(Qt::TextSingleLine|Qt::TextShowMnemonic,information->text()).width()+28);
             const auto background = image.pixelColor(rect.center().x(), rect.top());
             auto strongestInkContrast = [&](QRect bounds) {
                 qreal contrast = 1;

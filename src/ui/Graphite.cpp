@@ -834,7 +834,10 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         const auto* item = qstyleoption_cast<const QStyleOptionMenuItem*>(option);
         if (!item) break;
         if (item->menuItemType == QStyleOptionMenuItem::Separator) return {contents.width(), 9};
-        const QFontMetrics metrics(item->font);
+        const auto* menu = qobject_cast<const QMenu*>(widget);
+        const auto actions = menu ? menu->actions() : QList<QAction*>{};
+        const bool information = std::any_of(actions.cbegin(), actions.cend(), [item](const QAction* action) { return action->text() == item->text && action->property("visualRole") == "information"; });
+        const QFontMetrics metrics(information ? font(Type::technical) : item->font);
         auto text = item->text;
         QString shortcut;
         if (const int tab = text.indexOf('\t'); tab >= 0) { shortcut = text.mid(tab + 1); text = text.left(tab); }
@@ -1291,7 +1294,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
             right -= width + 24;
         }
         p->save();
-        const auto menuFont = information ? font(Type::metadata) : item->font;
+        const auto menuFont = information ? font(Type::technical) : item->font;
         p->setFont(menuFont);
         p->setPen(ink);
         const QRect textRect(x, r.top(), std::max(0, right - x), r.height());
