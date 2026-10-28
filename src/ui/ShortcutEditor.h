@@ -29,6 +29,8 @@ public:
  void setStatus(const QJsonObject&);
  // Refresh desktop support beside the page status: asks the desktop again.
  void setRefreshAction(std::function<void()> action){refreshAction_=std::move(action);}
+ QLabel* statusLabel() const{return status_;}
+ QPushButton* refreshButton() const{return refresh_;}
  const QHash<QString,QLineEdit*>& editors() const{return editors_;}
 protected:
  bool eventFilter(QObject*,QEvent*) override;
