@@ -1392,9 +1392,19 @@ private slots:
                     qInfo() << w->metaObject()->className() << w->objectName() << w->accessibleName() << w->geometry() << w->minimumSizeHint() << w->sizeHint();
             }
             PUTGD_TRY_VERIFY(window.height() <= 680);
-            QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60);
+            auto* audio = window.findChild<QLabel*>("exportAudioSummary");
+            QCOMPARE(audio->text(), QStringLiteral("No audio recorded"));
+            QCOMPARE(audio->accessibleName(), QStringLiteral("No audio recorded · Preview muted"));
+            QVERIFY(window.inspect()["previewMuted"].toBool());
+            const auto steady = window.inspect()["video"].toObject()["share"].toDouble();
+            qInfo("constrained review %dx%d %s window %dx%d steady %.3f", canvas.width(), canvas.height(), qPrintable(Theme::name(scheme)), window.width(), window.height(), steady);
+            QVERIFY2(steady >= 0.60, qPrintable(QString::number(steady)));
             window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
             window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
+            putgd::test::settle(40);
+            const auto transient = window.inspect()["video"].toObject()["share"].toDouble();
+            qInfo("constrained review transient %.3f", transient);
+            QVERIFY2(transient >= 0.53, qPrintable(QString::number(transient)));
             const QString failure = "Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again";
             window.showError(failure);
             PUTGD_TRY_VERIFY2(window.height() <= 680 && window.minimumSizeHint().height() <= 680,

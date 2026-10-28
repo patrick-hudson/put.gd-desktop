@@ -1731,7 +1731,6 @@ void ReviewWindow::refreshLabels() {
     audio_->setToolTip(!options_.audioRecorded ? QStringLiteral("No system audio was recorded") : config_.silent() ? QStringLiteral("System audio was recorded; %1 exports are silent. Choose MP4 or WebM to keep it.").arg(config_.format.toUpper()) : includesAudio ? QStringLiteral("The export keeps the recorded system audio; the preview is silent") : QStringLiteral("System audio is turned off for this export"));
     audio_->setAccessibleName(QStringLiteral("Audio: ") + audio);
     formatAdvice_->setVisible(config_.format == "mp4" && config_.codec == "h265");
-    exportAudio_->setText(audio);
     exportAudio_->setAccessibleName(audio);
     exportAudio_->setToolTip(audio_->toolTip());
     placeTools();
@@ -2086,7 +2085,9 @@ void ReviewWindow::placeDestination() {
     destination_->setToolTip(options_.uploadSummary);
     destination_->setAccessibleName(options_.uploadSummary);
     exportAudio_->setText(effectiveAudio(config_, options_.audioRecorded, audioIntent_) ? QStringLiteral("System audio") : !options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("Silent %1").arg(config_.format.toUpper()) : QStringLiteral("Audio off"));
-    exportAudio_->setText(exportAudio_->text() + QStringLiteral(" · ") + playbackStatus_->text());
+    // With no recorded audio, silence is already explicit; keep trim-position feedback.
+    if (options_.audioRecorded || playbackStatus_->text() != QStringLiteral("Preview muted"))
+        exportAudio_->setText(exportAudio_->text() + QStringLiteral(" · ") + playbackStatus_->text());
     const auto details = "Destination: " + options_.destination + "\nSharing: " + (options_.sharingMode == "private" ? "Private upload" : "Shared link") + "\n\n" + options_.uploadSummary + "\n" + formatLabel(config_.format, config_.codec) + "\n" + formatHint(config_.format, config_.codec) + "\n" + audio_->property("summary").toString();
     destinationFull_->setText(details);
     destinationMenu_->setText(destination_->text());
@@ -2144,11 +2145,20 @@ void ReviewWindow::placeDestination() {
             grid->addWidget(actionLine, splitName ? 2 : 1, 0, 1, 7);
             grid->setVerticalSpacing(splitName ? 0 : reviewSpace(Graphite::Space::xs));
         }
+        // Reparenting between footer rows hides widgets that were already shown.
+        for (auto* widget : std::initializer_list<QWidget*>{format_, metadata, save_, cancel_, upload_}) widget->show();
+        destinationMenu_->setVisible(!options_.uploadSummary.isEmpty());
+        formatAdvice_->setVisible(config_.format == "mp4" && config_.codec == "h265");
         grid->setProperty("splitName", splitName);
         grid->setProperty("placed", true);
         grid->setProperty("singleRow", single);
         grid->invalidate();
     }
+    // Settle child minima before the default fit measures the footer.
+    metadata->layout()->activate();
+    for (const auto* name : {"reviewMetadataLine", "reviewActionLine"})
+        findChild<QWidget*>(name)->layout()->activate();
+    grid->invalidate();
     grid->activate();
     if (splitName) {
         destination_->setText(options_.destination);
