@@ -72,6 +72,7 @@
 #include <QStyleOptionFrame>
 #include <QStyleOptionButton>
 #include <QWidgetItem>
+#include <QTextLayout>
 #include <QScreen>
 #include <QWindow>
 #include <QGuiApplication>
@@ -153,6 +154,17 @@ protected:
  void mouseReleaseEvent(QMouseEvent* event)override{if(event->button()==Qt::LeftButton&&check_->isEnabled())check_->click();QLabel::mouseReleaseEvent(event);}
 private:PreferenceCheck* check_;
 };
+// Measure the caption before wrapping; its help stays beside the first line.
+class PreferenceCheckCaption final:public QWidget {
+public:
+ PreferenceCheckCaption(QWidget* label,QWidget* help):label_(static_cast<QLabel*>(label)),help_(help){label_->setParent(this);help_->setParent(this);label_->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Preferred);setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Preferred);auto policy=sizePolicy();policy.setHeightForWidth(true);setSizePolicy(policy);}
+ QSize sizeHint()const override{return {label_->fontMetrics().horizontalAdvance(label_->text())+space(Space::xs)+help_->sizeHint().width(),qMax(label_->fontMetrics().height(),help_->sizeHint().height())};}
+ QSize minimumSizeHint()const override{return {help_->sizeHint().width()+space(Space::xs),sizeHint().height()};}
+ int heightForWidth(int width)const override{return qMax(help_->sizeHint().height(),label_->heightForWidth(qMax(1,width-space(Space::xs)-help_->sizeHint().width())));}
+protected:
+ void resizeEvent(QResizeEvent* event)override{QWidget::resizeEvent(event);const auto helpSize=help_->sizeHint();const int advance=label_->fontMetrics().horizontalAdvance(label_->text());const int available=qMax(1,width()-helpSize.width()-space(Space::xs));const int textWidth=qMin(advance,available);label_->setGeometry(0,0,textWidth,qMax(label_->fontMetrics().height(),label_->heightForWidth(textWidth)));QTextLayout text(label_->text(),label_->font());QTextOption option;option.setWrapMode(QTextOption::WordWrap);text.setTextOption(option);text.beginLayout();auto line=text.createLine();line.setLineWidth(textWidth);text.endLayout();const int firstLine=qRound(line.naturalTextWidth());help_->setGeometry(firstLine+space(Space::xs),qMax(0,(label_->fontMetrics().height()-helpSize.height())/2),helpSize.width(),helpSize.height());}
+private:QLabel* label_;QWidget* help_;
+};
 void boxPreferenceRows(QFormLayout* form){
  form->setVerticalSpacing(0);form->setHorizontalSpacing(0);
  for(int i=0;i<form->rowCount();++i){
@@ -163,7 +175,7 @@ void boxPreferenceRows(QFormLayout* form){
   if(label||check){
    if(!column){auto* value=new QWidget;value->setLayout(field->layout());column=new QVBoxLayout(field);column->addWidget(value);}
    auto* value=new QWidget;value->setObjectName(field->objectName()+"PreferenceValue");QList<QWidget*> fullRows,errors;auto* values=new QVBoxLayout(value);values->setContentsMargins(0,0,0,0);values->setSpacing(space(Space::xs));while(auto* part=column->takeAt(0)){if(auto* widget=part->widget()){if(widget->property("visualRole")=="error")errors.append(widget);else if(widget->objectName()=="captureOutputBlock")fullRows.append(widget);else values->addWidget(widget);delete part;}else if(auto* nested=part->layout())values->addLayout(nested);else values->addItem(part);}
-   if(check){label=new PreferenceLabel(check);check->setProperty("preferenceIndicator",true);check->setFixedWidth(Graphite::scaled(24));if(auto* line=qobject_cast<QHBoxLayout*>(values->itemAt(0)->layout())){for(int n=line->count()-1;n>=0;--n){auto* part=line->itemAt(n);if(part->spacerItem()){delete line->takeAt(n);continue;}if(auto* help=part->widget();help&&help!=check){line->removeWidget(help);auto* labels=new QWidget;auto* left=new QHBoxLayout(labels);left->setContentsMargins(0,0,0,0);left->setSpacing(space(Space::xs));left->addWidget(label,0);left->addWidget(help);left->addStretch(1);label=labels;}}line->insertStretch(0,1);}}
+   if(check){label=new PreferenceLabel(check);check->setProperty("preferenceIndicator",true);check->setFixedWidth(Graphite::scaled(24));if(auto* line=qobject_cast<QHBoxLayout*>(values->itemAt(0)->layout())){for(int n=line->count()-1;n>=0;--n){auto* part=line->itemAt(n);if(part->spacerItem()){delete line->takeAt(n);continue;}if(auto* help=part->widget();help&&help!=check){line->removeWidget(help);label=new PreferenceCheckCaption(label,help);}}line->insertStretch(0,1);}}
    if(label){field->setProperty("preferenceLabel",QVariant::fromValue(static_cast<QObject*>(label)));label->setMinimumWidth(0);label->setMaximumWidth(QWIDGETSIZE_MAX);label->setMinimumHeight(0);label->setMaximumHeight(QWIDGETSIZE_MAX);for(auto* text:label->findChildren<QLabel*>())text->setWordWrap(true);}
    if(labelItem){const bool shown=form->isRowVisible(i);auto taken=form->takeRow(i);delete taken.labelItem;delete taken.fieldItem;form->insertRow(i,field);form->setRowVisible(field,shown);}
    auto* captions=new QWidget;auto* captionBox=new QVBoxLayout(captions);captionBox->setContentsMargins(0,0,0,0);captionBox->setSpacing(space(Space::xs));captionBox->addWidget(label);label->show();for(auto* hint:value->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))if((hint->objectName().endsWith("Hint")&&!field->property("preferenceReadout").toBool())||hint->objectName()=="debugLoggingStatus"){values->removeWidget(hint);captionBox->addWidget(hint);}label=captions;
