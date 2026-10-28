@@ -1624,8 +1624,8 @@ public:
         setAttribute(Qt::WA_DeleteOnClose);
         setObjectName("elidedLabelFullText");
         auto* layout = new QVBoxLayout(this);
-        layout->setContentsMargins(8, 8, 8, 8);
-        layout->setSpacing(8);
+        layout->setContentsMargins(space(Space::s), space(Space::s), space(Space::s), space(Space::s));
+        layout->setSpacing(space(Space::s));
         if (!title.isEmpty()) layout->addWidget(Graphite::label(title, "meta", this));
         label_ = new QLabel(text, this);
         label_->setObjectName("elidedLabelFullTextValue");
@@ -1810,9 +1810,9 @@ Banner::Banner(Tone tone, const QString& text, QWidget* parent) : QWidget(parent
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAccessibleName(text);
     row_ = new QGridLayout(this);
-    row_->setContentsMargins(scaled(12) + scaled(Metric::icon) + 8, 8, 12, 8);
-    row_->setHorizontalSpacing(8);
-    row_->setVerticalSpacing(4);
+    row_->setContentsMargins(space(Space::m) + scaled(Metric::icon) + space(Space::s), space(Space::s), space(Space::m), space(Space::s));
+    row_->setHorizontalSpacing(space(Space::s));
+    row_->setVerticalSpacing(space(Space::xs));
     row_->setColumnStretch(0, 1);
     text_ = label(text, "body", this);
     text_->setTextFormat(Qt::PlainText);
@@ -1895,7 +1895,7 @@ QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
     auto* warning = new QWidget(parent);
     auto* layout = new QVBoxLayout(warning);
     layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(8);
+    layout->setSpacing(space(Space::s));
     auto* text = warningLabel(blurWarningText(), warning);
     text->setObjectName("blurWarningText");
     layout->addWidget(text);
@@ -1980,10 +1980,10 @@ protected:
         if (body) {
             body->setContentsMargins(0, 0, 0, 0);
             body->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-            grid->setRowMinimumHeight(1, 12);
+            grid->setRowMinimumHeight(1, space(Space::m));
             grid->addWidget(body, 2, 0);
         }
-        grid->setRowMinimumHeight(3, 16);
+        grid->setRowMinimumHeight(3, space(Space::l));
         grid->addWidget(buttons, 4, 0);
         grid->activate();
         adjustSize();
