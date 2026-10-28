@@ -221,7 +221,7 @@ private slots:
   for(int width:{100,140,200,300,500}){
    QTextDocument document;HistoryWindow::metadataDocument(document,index,width,false,false,true);auto plain=document.toPlainText();plain.replace(QChar(0x00a0),' ');QVERIFY(document.idealWidth()<=width+1);QVERIFY(!plain.isEmpty());QTextCursor status(&document);const int statusAt=plain.indexOf("Shared link");if(statusAt>=0){status.setPosition(statusAt);status.movePosition(QTextCursor::NextCharacter,QTextCursor::KeepAnchor);}else status=QTextCursor();
    if(QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance("Shared link")<=width){QVERIFY(!status.isNull());QCOMPARE(status.charFormat().font().pixelSize(),Graphite::font(Graphite::Type::technical).pixelSize());QCOMPARE(status.charFormat().foreground().color(),Theme::current().success);}
-   for(const auto& part:QStringList{"Region","35 KiB","2 min ago"}){const auto at=plain.indexOf(part);if(at>=0){QTextCursor cursor(&document);cursor.setPosition(at);cursor.movePosition(QTextCursor::NextCharacter,QTextCursor::KeepAnchor);incidental=true;QCOMPARE(cursor.charFormat().font().pixelSize(),Graphite::font(Graphite::Type::metadata).pixelSize());}}
+   for(const auto& part:QStringList{"Region","35 KiB","2 min ago"}){const auto at=plain.indexOf(part);if(at>=0){QTextCursor cursor(&document);cursor.setPosition(at);cursor.movePosition(QTextCursor::NextCharacter,QTextCursor::KeepAnchor);incidental=true;QCOMPARE(cursor.charFormat().font().pixelSize(),Graphite::font(Graphite::Type::technical).pixelSize());QCOMPARE(cursor.charFormat().foreground().color(),Theme::current().textMuted);}}
    dropped|=!plain.contains("Region");QVERIFY(!plain.contains("Reg…"));QVERIFY(!plain.contains("35…"));
   }
   QVERIFY(incidental);QVERIFY(dropped);

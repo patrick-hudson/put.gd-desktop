@@ -91,7 +91,7 @@ QString statusPhrases(QString text,bool failed=false){
  auto tokens=text.split(" · ");for(int i=0;i<tokens.size();++i)if(!failed||i!=1||tokens[i]=="Saved locally")tokens[i].replace(' ',QChar(0x00a0));return tokens.join(" · ");
 }
 QFont outcomeFont(){auto font=Graphite::font(Graphite::scaled(100)>=125?Graphite::Type::metadata:Graphite::Type::technical);if(Graphite::scaled(100)>=125)font.setWeight(QFont::Medium);return font;}
-QString metadataSpan(const QString& text,const QColor& color,bool fact=false){const auto font=fact?outcomeFont():Graphite::font(Graphite::Type::metadata);return "<span style=\"color:"+color.name()+";font-size:"+QString::number(font.pixelSize())+"px;font-weight:"+QString::number(font.weight())+"\">"+statusPhrases(text).toHtmlEscaped()+"</span>";}
+QString metadataSpan(const QString& text,const QColor& color,bool fact=false){const auto font=fact?outcomeFont():Graphite::font(Graphite::Type::technical);return "<span style=\"color:"+color.name()+";font-size:"+QString::number(font.pixelSize())+"px;font-weight:"+QString::number(font.weight())+"\">"+statusPhrases(text).toHtmlEscaped()+"</span>";}
 bool outcomePart(const QJsonObject& record,const QString& part){for(const auto& outcome:HistoryModel::statusText(record).split(" · "))if(outcome==part||outcome.startsWith(part+".")||outcome.startsWith(part+" ("))return true;return false;}
 QColor metadataColor(const QJsonObject& record,const QString& part,const QColor& neutral){
  const auto& t=Theme::current();if(HistoryModel::failed(record))return part==HistoryModel::failureLabel(record)?t.danger:neutral;
@@ -239,7 +239,7 @@ private:Graphite::NavigationDelegate navigation_;
 // Time and row actions share a stable trailing slot, so hover never moves text.
 struct Columns {QRect item,output,created,actions;};
 Columns historyColumns(const QRect& row,bool details=false,bool destination=true,int primary=0){
- Columns c;const int h=Graphite::scaled(28),actions=h+(details?h+space(Space::s):0)+(primary?primary+space(Space::s):0),created=qMax(Graphite::scaled(80),QFontMetrics(Graphite::font(Graphite::Type::metadata)).horizontalAdvance("88 min ago")),tail=qMax(created,actions),width=qMax(0,row.width()-tail-space(Space::s));
+ Columns c;const int h=Graphite::scaled(28),actions=h+(details?h+space(Space::s):0)+(primary?primary+space(Space::s):0),created=qMax(Graphite::scaled(80),QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance("88 min ago")),tail=qMax(created,actions),width=qMax(0,row.width()-tail-space(Space::s));
  const int output=destination&&width-Graphite::scaled(132)>=Graphite::scaled(200)?Graphite::scaled(132):0;
  c.actions=QRect(row.right()-tail+1,row.top(),tail,row.height());c.created=QRect(row.right()-created+1,row.top(),created,row.height());
  c.output=output?QRect(row.left()+width-output,row.top(),output,row.height()):QRect();c.item=QRect(row.left(),row.top(),width-output,row.height());return c;
@@ -260,18 +260,18 @@ int galleryTextHeight(){return QFontMetrics(historyTitleFont()).height()+space(S
 int galleryPicture(int cardWidth,int cardHeight){return qMax(1,qMin((cardWidth-2)*10/16,cardHeight-1-2*space(Space::m)-galleryTextHeight()));}
 }
 void HistoryWindow::metadataDocument(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded,bool compact,bool separated){
- document.setDocumentMargin(0);document.setDefaultFont(Graphite::font(Graphite::Type::metadata));QTextOption option;option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);document.setDefaultTextOption(option);
+ document.setDocumentMargin(0);document.setDefaultFont(Graphite::font(Graphite::Type::technical));QTextOption option;option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);document.setDefaultTextOption(option);
  const auto record=index.data(HistoryModel::RecordRole).toJsonObject();const auto& t=Theme::current();auto text=HistoryModel::failed(record)?HistoryModel::statusText(record):index.data(HistoryModel::SubtitleRole).toString();if(createdColumn&&!HistoryModel::failed(record)){const auto created=index.data(HistoryModel::CreatedRole).toString();if(!created.isEmpty())text.remove(" · "+created);}
  if(compact){
   const auto created=index.data(HistoryModel::CreatedRole).toString();const auto kind=HistoryModel::friendlyAction(record["operation"].toObject()["action"].toString(record["category"].toString())),size=HistoryModel::fileSize(record["bytes"].toInteger());
   auto parts=text.split(" · ",Qt::SkipEmptyParts);parts.removeAll(created);parts.removeAll(kind);parts.removeAll(size);
   if(HistoryModel::failed(record)){parts={HistoryModel::failureLabel(record)};}const auto status=parts.join(" · ");const QFontMetrics facts(Graphite::font(Graphite::Type::technical));
-  const auto span=[&](const QString& part){return metadataSpan(part,metadataColor(record,part,t.textSecondary),parts.contains(part));};
+  const auto span=[&](const QString& part){return metadataSpan(part,metadataColor(record,part,parts.contains(part)?t.textSecondary:t.textMuted),parts.contains(part));};
   const auto measured=[&](const QStringList& shown){QStringList spans;for(const auto& part:shown.join(" · ").split(" · ",Qt::SkipEmptyParts))spans.append(span(part));QTextDocument measure;measure.setDocumentMargin(0);measure.setDefaultFont(document.defaultFont());measure.setHtml(spans.join(metadataSpan(" · ",t.textSecondary)));return measure.idealWidth();};
   QStringList shown;if(!HistoryModel::failed(record)){if(!kind.isEmpty())shown.append(kind);if(!size.isEmpty())shown.append(size);}if(!status.isEmpty())shown.append(status);if(!created.isEmpty())shown.append(created);
   for(const auto& optional:{size,kind,created})if(measured(shown)>width)shown.removeAll(optional);
   if(!status.isEmpty()&&measured(shown)>width){shown.removeAll(status);const auto shortened=facts.elidedText(status,Qt::ElideRight,qMax(0,width));if(!shortened.isEmpty())shown.prepend(shortened);}
-  QStringList spans;for(const auto& part:shown.join(" · ").split(" · ",Qt::SkipEmptyParts)){auto original=part;if(part.endsWith(QChar(0x2026)))for(const auto& candidate:parts)if(candidate.startsWith(part.chopped(1))){original=candidate;break;}spans.append(metadataSpan(part,metadataColor(record,original,t.textSecondary),parts.contains(original)));}
+  QStringList spans;for(const auto& part:shown.join(" · ").split(" · ",Qt::SkipEmptyParts)){auto original=part;if(part.endsWith(QChar(0x2026)))for(const auto& candidate:parts)if(candidate.startsWith(part.chopped(1))){original=candidate;break;}spans.append(metadataSpan(part,metadataColor(record,original,parts.contains(original)?t.textSecondary:t.textMuted),parts.contains(original)));}
   option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(spans.join(metadataSpan(" · ",t.textSecondary)));document.setTextWidth(qMax(20,width));return;
  }
  if(bounded&&!HistoryModel::failed(record))text=QFontMetrics(document.defaultFont()).elidedText(text,Qt::ElideRight,qMax(20,width));
@@ -282,8 +282,8 @@ void HistoryWindow::metadataDocument(QTextDocument& document,const QModelIndex& 
   const auto created=index.data(HistoryModel::CreatedRole).toString();if(created.isEmpty())return;
   // Age spends only spare metadata space; it never displaces failure details.
   const auto original=document.toHtml();const qreal available=document.size().height();
-  if(separated){QStringList spans;for(const auto& part:text.split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,metadataColor(record,part,t.textSecondary),true));spans.append(metadataSpan(created,t.textSecondary));document.setHtml(Graphite::separatedLines(spans,Graphite::font(Graphite::Type::technical),width));}
-  else{QTextCursor cursor(&document);cursor.movePosition(QTextCursor::End);QTextCharFormat format;format.setFont(Graphite::font(Graphite::Type::metadata));format.setForeground(t.textSecondary);cursor.insertText(QString(QChar(0x00a0))+"· "+created,format);}
+  if(separated){QStringList spans;for(const auto& part:text.split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,metadataColor(record,part,t.textSecondary),true));spans.append(metadataSpan(created,t.textMuted));document.setHtml(Graphite::separatedLines(spans,Graphite::font(Graphite::Type::technical),width));}
+  else{QTextCursor cursor(&document);cursor.movePosition(QTextCursor::End);QTextCharFormat format;format.setFont(Graphite::font(Graphite::Type::technical));format.setForeground(t.textMuted);cursor.insertText(QString(QChar(0x00a0))+"· "+created,format);}
   document.setTextWidth(qMax(20,width));document.size();if(separated?document.begin().layout()->lineCount()>2:document.size().height()>available)document.setHtml(original);
  }
 }
@@ -298,7 +298,7 @@ QRect rowBody(const QRect& outer,bool gallery,int heading){
 // Align the visible ink too: C and J can have different (even negative)
 // bearings in distro fonts.
 void paintHistoryColumn(QPainter& painter,const QRectF& rect,const QString& text,const QColor& color,qreal baseline){
- const auto font=Graphite::font(Graphite::Type::metadata);const QFontMetricsF metrics(font);const auto shown=metrics.elidedText(text,Qt::ElideRight,rect.width());
+ const auto font=Graphite::font(Graphite::Type::technical);const QFontMetricsF metrics(font);const auto shown=metrics.elidedText(text,Qt::ElideRight,rect.width());
  painter.save();painter.setFont(font);painter.setPen(color);painter.drawText(QPointF(rect.left()-metrics.tightBoundingRect(shown).left(),baseline),shown);painter.restore();
 }
 
@@ -505,7 +505,7 @@ public:
   if(!grid()){
    const QFontMetricsF titleMetrics(titleFont);const auto shown=titleMetrics.elidedText(i.data().toString(),titleElision(i.data().toString()),itemWidth);const qreal baseline=Graphite::opticalBaseline(titleMetrics,shown,lineTop+QFontMetrics(titleFont).height()/2.0);
    if(!compact&&!failed&&!below&&!columns.output.isEmpty())paintHistoryColumn(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,QFontMetrics(titleFont).height()),i.data(HistoryModel::OutputRole).toString(),t.textSecondary,baseline);
-   if(!compact&&!failed&&!below&&!actionsShown&&!columns.created.isEmpty()){const auto text=i.data(HistoryModel::CreatedRole).toString();const QFontMetricsF metrics(Graphite::font(Graphite::Type::metadata));paintHistoryColumn(*p,QRectF(columns.created.right()+1-metrics.horizontalAdvance(text),lineTop,metrics.horizontalAdvance(text),QFontMetrics(titleFont).height()),text,t.textMuted,baseline);}
+   if(!compact&&!failed&&!below&&!actionsShown&&!columns.created.isEmpty()){const auto text=i.data(HistoryModel::CreatedRole).toString();const QFontMetricsF metrics(Graphite::font(Graphite::Type::technical));paintHistoryColumn(*p,QRectF(columns.created.right()+1-metrics.horizontalAdvance(text),lineTop,metrics.horizontalAdvance(text),QFontMetrics(titleFont).height()),text,t.textMuted,baseline);}
   }
   if(actionsShown){
    auto* style=view_->style();
