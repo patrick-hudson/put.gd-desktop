@@ -1035,10 +1035,24 @@ QCOMPARE(button->property("captureUnavailable").toBool(),button->property("captu
    QVERIFY(render("Screenshot "+beginning)!=render("Window "+beginning));
   }
  }
+ void historyPageHeadingStartsAtSharedInset_data(){
+  QTest::addColumn<int>("pixels");QTest::newRow("text100")<<14;QTest::newRow("text150")<<21;
+ }
  void historyPageHeadingStartsAtSharedInset(){
+  QFETCH(int,pixels);QWidget themed;RedesignTheme::apply(themed);const auto original=QApplication::font();auto font=original;const qreal base=original.pixelSize()>0?original.pixelSize():original.pointSizeF()*96.0/72.0;font.setPixelSize(qRound(base*pixels/14.0));QApplication::setFont(font);auto restore=qScopeGuard([&]{QApplication::setFont(original);});
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
-  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);MainWindow window(fixture.session);window.show();auto* page=window.history();auto* rail=window.findChild<QWidget*>("historySidebar");auto* heading=window.findChild<QLabel*>("historyHeading");QVERIFY(rail);QVERIFY(heading);
-  for(const auto size:{QSize(1440,960),QSize(1060,680)})for(const auto* mode:{"historyListMode","historyGridMode"}){window.resize(size);window.findChild<QToolButton*>(mode)->click();PUTGD_TRY_VERIFY(heading->isVisible());PUTGD_TRY_COMPARE(heading->mapTo(page,QPoint()).x(),rail->width()+Graphite::space(Graphite::Space::xxl));}
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="aligned-history";op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id=op.id+"-file";item.artifact.name="Aligned.png";item.artifact.mime="image/png";item.uploadStatus="local_only";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);MainWindow window(fixture.session);window.show();auto* page=window.history();auto* rail=window.findChild<QWidget*>("historySidebar");auto* heading=window.findChild<QLabel*>("historyHeading");auto* list=window.findChild<QListView*>("historyList");QVERIFY(rail);QVERIFY(heading);PUTGD_TRY_COMPARE(list->model()->rowCount(),1);
+  QStandardItemModel model(1,1);const auto index=model.index(0,0);QImage thumbnail(96,60,QImage::Format_RGB32);const QColor marker("#12E3C7");thumbnail.fill(marker);model.setData(index,thumbnail,HistoryModel::ThumbnailRole);model.setData(index,"TODAY",HistoryModel::DayRole);model.setData(index,"Aligned.png");
+  for(const auto size:{QSize(1440,960),QSize(1060,680)})for(const bool gallery:{false,true}){
+   window.resize(size);window.findChild<QToolButton*>(gallery?"historyGridMode":"historyListMode")->click();PUTGD_TRY_VERIFY(heading->isVisible());PUTGD_TRY_COMPARE(heading->mapTo(page,QPoint()).x(),rail->width()+Graphite::space(Graphite::Space::xxl));putgd::test::settle(30);
+   const auto outer=list->visualRect(list->model()->index(0,0));const int inset=Graphite::space(Graphite::Space::s),headingX=list->viewport()->mapFromGlobal(heading->mapToGlobal(QPoint())).x();QStyleOptionViewItem option;option.initFrom(list);option.rect=outer;option.state=QStyle::State_Enabled|QStyle::State_Selected;QImage shot(list->viewport()->size(),QImage::Format_RGB32);shot.fill(Theme::current().bg);{QPainter painter(&shot);list->itemDelegate()->paint(&painter,option,index);}
+   int pictureLeft=-1,pictureY=-1;for(int x=0;x<shot.width()&&pictureLeft<0;++x)for(int y=0;y<shot.height();++y)if(shot.pixelColor(x,y)==marker){pictureLeft=x;pictureY=y;break;}
+   QCOMPARE(pictureLeft,gallery?headingX+2:headingX+1);
+   const int cardLeft=outer.left()+inset;QCOMPARE(cardLeft,gallery?headingX:headingX-inset);
+   if(!gallery){int eyebrowLeft=-1;for(int x=0;x<shot.width()&&eyebrowLeft<0;++x)for(int y=outer.top();y<outer.top()+qMax(32,QFontMetrics(Graphite::font(Graphite::Type::micro,true)).height()+8);++y)if(shot.pixelColor(x,y)!=Theme::current().bg){eyebrowLeft=x;break;}QVERIFY(qAbs(eyebrowLeft-headingX)<=1);QCOMPARE(shot.pixelColor(cardLeft,pictureY),Theme::current().selected);}
+   QVERIFY(!list->horizontalScrollBar()->isVisible());
+  }
  }
  void enlargedHistoryKeepsFourRowsAtMinimumSize_data(){
   QTest::addColumn<int>("pixels");QTest::addColumn<int>("minimumRows");QTest::newRow("text100-six-rows")<<14<<6;QTest::newRow("text150-four-rows")<<21<<4;
