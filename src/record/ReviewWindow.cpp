@@ -995,8 +995,8 @@ void ReviewTimeline::showPreviousMasks() {
     laneScroll_->setValue(std::max(0, laneScroll_->value() - visibleLanes()));
 }
 void ReviewTimeline::placeNavigation() {
-    laneSummary_->setText(QStringLiteral("Lanes %1–%2 of %3").arg(laneScroll_->value() + 1).arg(std::min(lanes_, laneScroll_->value() + visibleLanes())).arg(lanes_));
-    laneSummary_->setToolTip(QStringLiteral("Lanes %1–%2 of %3").arg(laneScroll_->value() + 1).arg(std::min(lanes_, laneScroll_->value() + visibleLanes())).arg(lanes_));
+    laneSummary_->setText(lanes_ ? QStringLiteral("Lanes %1–%2 of %3").arg(laneScroll_->value() + 1).arg(std::min(lanes_, laneScroll_->value() + visibleLanes())).arg(lanes_) : QStringLiteral("No masks"));
+    laneSummary_->setToolTip(laneSummary_->text());
     laneSummary_->setAccessibleDescription(laneSummary_->toolTip());
     previousMasks_->setEnabled(laneScroll_->value() > 0);
     moreMasks_->setEnabled(laneScroll_->value() < laneScroll_->maximum());

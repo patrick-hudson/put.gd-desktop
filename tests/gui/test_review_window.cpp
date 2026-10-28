@@ -2121,6 +2121,18 @@ private slots:
         QVERIFY(window.drive({{"action", "showAdvice"}}).state["adviceDialog"].toObject()["open"].toBool());
         QVERIFY(!buttonNamed(window, "Use MP4 (H.264)"));
     }
+    void emptyMaskLanesHaveATruthfulSummary() {
+        ReviewWindow window(options(), config()); window.show();
+        QApplication::processEvents();
+        auto* summary = window.findChild<QLabel*>("maskLaneSummary");
+        QVERIFY(summary);
+        QCOMPARE(summary->text(), QStringLiteral("No masks"));
+        QCOMPARE(summary->toolTip(), summary->text());
+        QCOMPARE(summary->accessibleDescription(), summary->text());
+        QCOMPARE(window.inspect()["timeline"].toObject()["laneSummary"].toString(), summary->text());
+        window.setEdit(twoMasks()); window.setEdit({});
+        QCOMPARE(summary->text(), QStringLiteral("No masks"));
+    }
     void maskControlsShowOnlyWhenTheyApply() {
         ReviewWindow window(options(), config());
         window.show();
