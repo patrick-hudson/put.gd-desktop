@@ -114,7 +114,7 @@ private:
  QString buildUpdateChannel() const;void showUpdateChannel();QString updateChannelSetting_,updateChannelShown_;
  // #348: set by showUpdates until the user scrolls or leaves the page.
  void revealUpdates();bool revealUpdates_=false;void revealAndFocus(QWidget*);QWidget *generalPage_=nullptr,*updatesCard_=nullptr;
- QCheckBox* checkUpdates_=nullptr;QComboBox* updateChannel_=nullptr;QLabel* updateStatus_=nullptr;QPushButton *checkNow_=nullptr,*downloadUpdate_=nullptr,*releaseNotes_=nullptr,*openUpdates_=nullptr;QWidget *updateActionsRow_=nullptr,*updateCommandRow_=nullptr;QLineEdit* updateCommand_=nullptr;QFormLayout* updatesForm_=nullptr;QList<QWidget*> updateRows_;
+ QCheckBox* checkUpdates_=nullptr;QComboBox* updateChannel_=nullptr;QLabel *updateStatus_=nullptr,*updatesIntro_=nullptr;QPushButton *checkNow_=nullptr,*downloadUpdate_=nullptr,*releaseNotes_=nullptr,*openUpdates_=nullptr;QWidget *updateActionsRow_=nullptr,*updateCommandRow_=nullptr;QLineEdit* updateCommand_=nullptr;QFormLayout* updatesForm_=nullptr;QList<QWidget*> updateRows_;
  // AppImage install (#293 phase 3): Download and install, its progress and Restart.
  QLabel *updateChannelSource_=nullptr,*otherChannelText_=nullptr,*otherChannelCommands_=nullptr;QWidget* otherChannelRow_=nullptr;
  QPushButton *installUpdate_=nullptr,*restartUpdate_=nullptr;QProgressBar* installProgress_=nullptr;QLabel* installStatus_=nullptr;QWidget* installRow_=nullptr;void refreshInstallStatus(const QJsonObject& update,bool available,bool managed);

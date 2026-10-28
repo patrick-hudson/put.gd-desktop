@@ -755,9 +755,9 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  appearance_=choices(this,"appearanceTheme",{});appearance_->addItem("Match the desktop","system");appearance_->addItem("Dark","dark");appearance_->addItem("Light","light");setting(look,"Theme",appearance_,"/preferences/appearance/theme");
  // Updates (#293): the daily check, its channel and the last result. The
  // resident runs the check; this page shows it and starts Check now.
- auto* updatesForm=section(general,"Updates","Checks app.put.gd once a day. Nothing installs automatically.");
+ auto* updatesForm=section(general,"Updates","Nothing installs automatically.");updatesIntro_=qobject_cast<QLabel*>(PreferenceRows::sectionFor(updatesForm)->layout()->itemAt(1)->widget());updatesIntro_->setObjectName("updatesIntro");
  auto* privacy=new QToolButton;privacy->setObjectName("updatePrivacyDetails");privacy->setText("What the check sends");Graphite::disclosure(privacy);updatesForm->addRow(privacy);auto* privacyText=new QLabel("GET /update/v1/stable.json or /update/v1/nightly.json on app.put.gd. Headers: User-Agent: put.gd-update-check/1; Accept: application/json; Accept-Language: en. No query or cookies. The server receives your network IP address. Version comparison happens on this computer.");privacyText->setObjectName("updatePrivacyFields");privacyText->setWordWrap(true);VisualStyle::role(privacyText,"muted");updatesForm->addRow(privacyText);privacyText->hide();connect(privacy,&QToolButton::toggled,privacyText,&QWidget::setVisible);
- updatesForm_=updatesForm;checkUpdates_=new PreferenceCheck("Check for updates once a day");checkUpdates_->setObjectName("checkForUpdates");updateRows_.append(setting(updatesForm,"Updates",checkUpdates_,"/preferences/updates/check"));
+ updatesForm_=updatesForm;checkUpdates_=new PreferenceCheck("Check for updates once a day");checkUpdates_->setObjectName("checkForUpdates");updateRows_.append(setting(updatesForm,"Updates",checkUpdates_,"/preferences/updates/check"));connect(checkUpdates_,&QCheckBox::toggled,this,[this]{updatesIntro_->setText(checkUpdates_->isChecked()?"Checks app.put.gd once a day. Nothing installs automatically.":"Checks app.put.gd when you choose Check now. Nothing installs automatically.");});
  updateChannel_=choices(this,"updateChannel",{});updateChannel_->addItem("Stable","stable");updateChannel_->addItem("Nightly","nightly");auto* channelRow=setting(updatesForm,"Channel",updateChannel_,"/preferences/updates/channel");updateRows_.append(channelRow);
  // A repository install shows its repository's channel and can't choose (#386).
  updateChannelSource_=new QLabel;updateChannelSource_->setObjectName("updateChannelSource");updateChannelSource_->setWordWrap(true);VisualStyle::role(updateChannelSource_,"muted");updateChannelSource_->hide();channelRow->layout()->addWidget(updateChannelSource_);
@@ -1338,6 +1338,7 @@ void SettingsWindow::showUpdateChannel(){
 void SettingsWindow::refreshUpdateStatus(){
  const auto update=settings_.diagnostics()["update"].toObject();const auto build=update["build"].toObject();const auto result=update["result"].toObject();
  const bool supported=update["supported"].toBool();
+ updatesIntro_->setVisible(supported);updatesIntro_->setText(checkUpdates_->isChecked()?"Checks app.put.gd once a day. Nothing installs automatically.":"Checks app.put.gd when you choose Check now. Nothing installs automatically.");
  // The choice shows this build's channel until it is changed (#344).
  showUpdateChannel();
  // A build that never checks has nothing to choose: only the reason shows.
