@@ -94,6 +94,19 @@ class ReviewWindowTest : public QObject {
     static qint64 slack(const ReviewTimeline& t) { return 2 * duration / t.trackRect().width() + 1; }
     static ReviewTimeline* timeline(ReviewWindow& w) { return w.findChild<ReviewTimeline*>("timeline"); }
 private slots:
+    void startRecordingDotKeepsItsLiveColourAcrossThemes() {
+        ControlBar::Options o; o.formats = options().formats; o.codecs = options().codecs;
+        ControlBar bar(o, config()); bar.show(); QApplication::processEvents();
+        auto* start = bar.findChild<QPushButton*>("record"); QVERIFY(start && start->isVisible());
+        for (auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme); QApplication::processEvents();
+            const auto image = start->grab().toImage();
+            int livePixels = 0;
+            for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x)
+                livePixels += image.pixelColor(x, y) == Theme::current().live;
+            QVERIFY2(livePixels >= 12, "Start recording must paint the live-coloured dot on its primary button");
+        }
+    }
     void playbackAndReadoutsKeepTheirOwnPlaces() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
