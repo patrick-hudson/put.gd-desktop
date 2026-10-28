@@ -1960,7 +1960,8 @@ void Banner::paintEvent(QPaintEvent*) {
     const QColor tone = tone_ == Tone::Warning ? colors.warning : tone_ == Tone::Error ? colors.danger : tone_ == Tone::Success ? colors.success : colors.textMuted;
     QPainter painter(this);
     painter.fillRect(rect(), colors.bg);
-    rounded(&painter, rect(), colors.surface, colors.borderStrong, Metric::containerRadius);
+    const QColor fill = fillOnly_ ? (tone_ == Tone::Error ? colors.dangerSurface : tone_ == Tone::Warning ? colors.warningSurface : tone_ == Tone::Success ? colors.successSurface : colors.surface) : colors.surface;
+    rounded(&painter, rect(), fill, fillOnly_ ? QColor() : colors.borderStrong, Metric::containerRadius);
     const int side = scaled(Metric::icon);
     QRect firstRow = row_->cellRect(0, 0);
     if (content_ != text_ && content_->layout() && content_->layout()->count())

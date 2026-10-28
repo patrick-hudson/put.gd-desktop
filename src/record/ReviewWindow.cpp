@@ -1926,6 +1926,7 @@ void ReviewWindow::refreshStatus() {
         const auto tone = entry.tone == "error" ? Graphite::Banner::Tone::Error : entry.tone == "warning" ? Graphite::Banner::Tone::Warning : entry.tone == "success" ? Graphite::Banner::Tone::Success : Graphite::Banner::Tone::Info;
         auto* band = new Graphite::Banner(tone, {}, statusRow_);
         band->setObjectName("statusLine");
+        band->setFillOnly(tone == Graphite::Banner::Tone::Error);
         const auto margins = band->layout()->contentsMargins();
         // Full pointer targets already provide the compact band's vertical padding.
         band->layout()->setContentsMargins(margins.left(), 0, margins.right(), 0);

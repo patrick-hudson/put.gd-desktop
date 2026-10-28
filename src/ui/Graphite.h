@@ -154,6 +154,7 @@ public:
     enum class Tone { Info, Warning, Error, Success };
     explicit Banner(Tone tone, const QString& text = {}, QWidget* parent = nullptr);
     void setTone(Tone);
+    void setFillOnly(bool on) { fillOnly_ = on; update(); }
     Tone tone() const { return tone_; }
     void setText(const QString&);
     void setIcon(const QIcon&); // Null restores the tone's glyph.
@@ -171,6 +172,7 @@ protected:
 private:
     void placeAction();
     Tone tone_;
+    bool fillOnly_ = false;
     QIcon icon_;
     QGridLayout* row_;
     QLabel* text_;
