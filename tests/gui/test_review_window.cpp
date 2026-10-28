@@ -216,6 +216,32 @@ private slots:
             QVERIFY(pixels.pixelColor(x, y) != Theme::current().bg);
         QCOMPARE(t.trackRect().height(), 8);
     }
+    void maskLanesShowHandlesOnlyOnTheSelectedInterval() {
+        ReviewTimeline track;
+        track.setDuration(duration); track.setTrim(0, duration); track.setPlayhead(duration - 1);
+        const auto solid = mask("solid", "solid", 1000000, 10000000);
+        const auto blur = mask("blur", "blur", 2000000, 9000000);
+        track.setMasks({solid, blur}, {});
+        track.resize(700, track.sizeHint().height()); track.show();
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme); QApplication::processEvents();
+            const auto fill = QColor(scheme == Theme::Scheme::Dark ? "#3A3A37" : "#D9D8D2");
+            const auto plain = track.grab().toImage();
+            for (const auto id : {"solid", "blur"}) {
+                const auto bar = track.maskRect(id);
+                QCOMPARE(plain.pixelColor(bar.left() + 2, bar.center().y()), fill);
+                QCOMPARE(plain.pixelColor(bar.right() - 2, bar.center().y()), fill);
+            }
+            track.setMasks({solid, blur}, solid.id); QApplication::processEvents();
+            const auto selected = track.grab().toImage();
+            const auto bar = track.maskRect(solid.id);
+            QCOMPARE(selected.pixelColor(bar.left(), bar.center().y()), Theme::current().accent);
+            QCOMPARE(selected.pixelColor(bar.right() + 1, bar.center().y()), Theme::current().accent);
+            const auto other = track.maskRect(blur.id);
+            QCOMPARE(selected.pixelColor(other.left() + 2, other.center().y()), fill);
+            track.setMasks({solid, blur}, {});
+        }
+    }
     void addBlurGuidanceGivesRecoveryRoomAndResumesUntilDismissed() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));

@@ -895,19 +895,18 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         const auto lane = laneRect(lane_.value(i));
         const int left = xFor(retiming ? dragStart_ : mask.start), right = xFor(retiming ? dragEnd_ : mask.end);
         const QRectF bar = QRectF(left, lane.top(), std::max(3, right - left), lane.height()).adjusted(0.5, 0.5, -0.5, -0.5);
-        painter.setPen(selected ? QPen(p.accent, 1.5) : QPen(p.border, 1));
-        painter.setBrush(selected ? p.warningSurface : p.selected);
+        const bool dark = Theme::scheme() == Theme::Scheme::Dark;
+        painter.setPen(selected ? QPen(p.accent, 1.5) : QPen(QColor(dark ? "#737373" : "#8E8E87"), 1));
+        painter.setBrush(selected ? p.warningSurface : QColor(dark ? "#3A3A37" : "#D9D8D2"));
         painter.drawRoundedRect(bar, Graphite::Metric::smallRadius, Graphite::Metric::smallRadius);
         // The kind at lane size: a blur is hatched, a solid cover filled.
         QColor ink = selected ? p.accent : p.textMuted;
         ink.setAlpha(mask.kind == "solid" ? 120 : 200);
         painter.setPen(Qt::NoPen);
-        painter.setBrush(mask.kind == "solid" ? QBrush(ink) : QBrush(ink, Qt::BDiagPattern));
+        painter.setBrush(QBrush(ink, Qt::BDiagPattern));
         const auto fill = bar.adjusted(1.5, 1.5, -1.5, -1.5);
-        painter.drawRoundedRect(mask.kind == "solid" ? fill : QRectF(fill.left(), fill.bottom() - 3, fill.width(), 3), 2, 2);
+        if (mask.kind == "blur") painter.drawRoundedRect(QRectF(fill.left(), fill.bottom() - 3, fill.width(), 3), 2, 2);
         painter.setPen(Qt::NoPen);
-        painter.setBrush(selected ? p.accent : p.textMuted);
-        painter.drawRoundedRect(QRectF(bar.left(), bar.top(), 2.5, bar.height()), 1, 1);
         if (selected) { painter.setBrush(p.accent); for (const int x : {left, right}) painter.drawRoundedRect(QRectF(x - 1.5, lane.top() - 2, 3, lane.height() + 4), 1, 1); }
         const QString name = maskNames_->name(mask);
         auto textArea = bar.adjusted(6, 0, -6, 0);
