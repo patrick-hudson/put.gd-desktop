@@ -27,6 +27,7 @@ struct Palette {
  // selected glyph keeps its silhouette and its inner detail.
  QColor iconSelected,iconSecondarySelected;
  QColor lead,leadOutline,live;
+ QColor primary,primaryHover;
 };
 const Palette& palette(Scheme);
 const Palette& current();

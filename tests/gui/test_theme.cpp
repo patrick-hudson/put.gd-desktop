@@ -338,7 +338,9 @@ private slots:
             QVERIFY(Theme::contrast(p.danger, p.dangerSurface) >= 4.5);
             // Every token is reported, as #rrggbb.
             const auto tokens = Theme::tokens(scheme);
-            QCOMPARE(tokens.size(), 30);
+            QCOMPARE(tokens.size(), 32);
+            QVERIFY(tokens.contains("primary"));
+            QVERIFY(tokens.contains("primaryHover"));
             QVERIFY(tokens.contains("controlOutline"));
             for (const auto& value : tokens) QVERIFY(QRegularExpression("^#[0-9a-f]{6}$").match(value.toString()).hasMatch());
         }
@@ -513,7 +515,7 @@ private slots:
                 QVERIFY2(QFile::exists(RedesignTheme::indicators(scheme) + "/" + name + ".png"), name);
         }
     }
-    // A primary button is the neutral text fill with background-colour ink;
+    // A primary button is the neutral action fill with background-colour ink;
     // its label, alone or as one group with its icon, is centred.
     void compactControlsMeasureTheirPaintedTypeAndScale() {
         const auto original = QApplication::font();
@@ -584,7 +586,9 @@ private slots:
             const auto& p = Theme::palette(scheme);
             for (auto* button : {plain, withIcon}) {
                 const auto shot = button->grab().toImage().convertToFormat(QImage::Format_RGB32);
-                QCOMPARE(shot.pixelColor(shot.width() / 2, 3), p.text);
+                QCOMPARE(shot.pixelColor(shot.width() / 2, 3), p.primary);
+                QVERIFY(Theme::contrast(p.bg, p.primary) >= 4.5);
+                QVERIFY(Theme::contrast(p.bg, p.primaryHover) >= 4.5);
                 // Scan inside the rounded corners (radius 7) and the outline, so
                 // only label and icon ink can match.
                 const QRect inside = shot.rect().adjusted(9, 4, -9, -4);

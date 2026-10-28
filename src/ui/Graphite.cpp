@@ -154,7 +154,7 @@ Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, 
         look.text = enabled ? (roleName == "version" && !hover ? c.textMuted : c.textSecondary) : c.textDisabled;
         look.underline = hover;
     } else if (roleName == "primary") {
-        look.fill = enabled ? (down ? c.textSecondary : hover ? mix(c.text, c.textSecondary, 0.55) : c.text) : c.surfaceRaised;
+        look.fill = enabled ? (down ? c.textSecondary : hover ? c.primaryHover : c.primary) : c.surfaceRaised;
         look.text = enabled ? c.bg : c.textDisabled;
     } else if (roleName == "lead") {
         look.fill = !enabled ? c.surfaceRaised : down ? c.selected : hover ? mix(c.lead, c.selected, 0.35) : c.lead;

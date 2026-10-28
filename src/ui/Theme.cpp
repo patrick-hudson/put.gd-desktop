@@ -23,6 +23,7 @@ const Palette dark{
  QColor("#7C7C78"),
  QColor("#F0F0EC"),QColor("#848480"),
  QColor("#2E2E2C"),QColor("#4A4A46"),QColor("#F0524F"),
+ QColor("#DEDED8"),QColor("#F0F0EC"),
 };
 const Palette light{
  QColor("#EDEDEA"),QColor("#FFFFFF"),QColor("#F5F5F2"),QColor("#FFFFFF"),QColor("#ECEBE6"),QColor(0,0,0,20),QColor("#AAAAA3"),
@@ -33,6 +34,7 @@ const Palette light{
  QColor("#82827B"),
  QColor("#292926"),QColor("#787874"),
  QColor("#F0EFEA"),QColor("#C9C9C3"),QColor("#C8302B"),
+ QColor("#292926"),QColor("#3A3A37"),
 };
 struct Token {const char* name;QColor Palette::* member;};
 constexpr Token table[]{
@@ -42,6 +44,7 @@ constexpr Token table[]{
  {"onAccent",&Palette::onAccent},{"link",&Palette::link},{"success",&Palette::success},{"warning",&Palette::warning},{"danger",&Palette::danger},
  {"dangerHover",&Palette::dangerHover},{"successSurface",&Palette::successSurface},{"warningSurface",&Palette::warningSurface},
  {"dangerSurface",&Palette::dangerSurface},{"icon",&Palette::icon},{"iconSecondary",&Palette::iconSecondary},
+ {"primary",&Palette::primary},{"primaryHover",&Palette::primaryHover},
  {"lead",&Palette::lead},{"leadOutline",&Palette::leadOutline},{"live",&Palette::live},
  {"controlOutline",&Palette::controlOutline},{"iconSelected",&Palette::iconSelected},{"iconSecondarySelected",&Palette::iconSecondarySelected},
 };
