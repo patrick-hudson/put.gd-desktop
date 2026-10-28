@@ -281,11 +281,11 @@ void MainWindow::fitBand(){
  // A short window keeps one 4 px inset around the measured navigation track.
  if(auto* header=findChild<Graphite::WindowHeader*>("windowHeader"))header->setFixedHeight(height()<Graphite::scaled(720)?qMax(Graphite::scaled(48),tabs_->sizeHint().height()+2*space(Space::xs)):Graphite::scaled(Graphite::Metric::header));
  auto* grid=static_cast<QGridLayout*>(band_->layout());
- auto apply=[this,grid](int stage){grid->setHorizontalSpacing(space(stage>=2?Space::xs:Space::s));grid->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));for(auto* button:actionButtons_){button->setMinimumWidth(0);}for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setProperty("graphiteTight",stage>=2);const bool secondary=action=="record"||action=="clipboard";button->setToolButtonStyle((stage>=3&&secondary)||(stage==4&&(action=="window"||action=="desktop"))?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);const auto label=stage&&(action=="window"||action=="desktop")?(action=="window"?QString("Window"):QString("Desktop")):button->property("commandLabel").toString();if(!label.isEmpty())button->setText(QString(label).replace('&',QStringLiteral("&&")));button->setMinimumWidth(button->sizeHint().width());}grid->invalidate();grid->activate();};
- // Reclaim padding, then secondary labels before the screenshot group loses its labels.
+ auto apply=[this,grid](int stage){grid->setHorizontalSpacing(space(stage>=2?Space::xs:Space::s));grid->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));for(auto* button:actionButtons_){button->setMinimumWidth(0);}for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setProperty("graphiteTight",stage>=2);const bool secondary=action=="record"||action=="clipboard";button->setToolButtonStyle((stage>=4&&secondary)||(stage==5&&(action=="window"||action=="desktop"))?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);const auto label=stage&&(action=="window"||action=="desktop")?(action=="window"?QString("Window"):QString("Desktop")):stage>=3&&secondary?(action=="record"?QString("Record"):QString("Clipboard")):button->property("commandLabel").toString();if(!label.isEmpty())button->setText(QString(label).replace('&',QStringLiteral("&&")));button->setMinimumWidth(button->sizeHint().width());}grid->invalidate();grid->activate();};
+ // Shorten before dropping; drop decoration before target, filename, outcome or output facts.
  // The shortest ladder stage defines the true minimum at enlarged text sizes.
- apply(4);setMinimumWidth(qMax(1060,grid->minimumSize().width()));
- int stage=0;for(;stage<5;++stage){apply(stage);if(grid->sizeHint().width()<=band_->width()||stage==4)break;}
+ apply(5);setMinimumWidth(qMax(1060,grid->minimumSize().width()));
+ int stage=0;for(;stage<6;++stage){apply(stage);if(grid->sizeHint().width()<=band_->width()||stage==5)break;}
  for(auto* button:actionButtons_)button->setMinimumWidth(button->sizeHint().width());bandStage_=stage;fittingBand_=false;
 }
 void MainWindow::updateAvailability(){

@@ -425,6 +425,14 @@ private slots:
  // At 1280×800 the whole rail fits; at 768 px it may scroll a little,
  // depending on the fonts, and below the window's minimum height, where a
  // window manager can still hold it, the rest scrolls into view.
+ void commandBandShortensSecondaryLabelsBeforeIcons(){
+  const auto original=QApplication::font();const auto restore=qScopeGuard([&]{QApplication::setFont(original);});auto font=original;font.setPixelSize(21);QApplication::setFont(font);
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);window.show();
+  QToolButton *record=nullptr,*clipboard=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){if(button->property("captureAction")=="record")record=button;if(button->property("captureAction")=="clipboard")clipboard=button;}
+  QVERIFY(record&&clipboard);bool shortened=false,full=false;
+  for(int width=1060;width<=2100;width+=20){window.resize(width,680);QApplication::processEvents();if(record->toolButtonStyle()==Qt::ToolButtonTextBesideIcon&&record->text()=="Record"){shortened=true;QCOMPARE(clipboard->text(),QString("Clipboard"));QCOMPARE(clipboard->toolButtonStyle(),Qt::ToolButtonTextBesideIcon);}full|=record->toolButtonStyle()==Qt::ToolButtonTextBesideIcon&&record->text()=="Record screen";QCOMPARE(record->accessibleName(),QString("Record screen"));QCOMPARE(clipboard->accessibleName(),QString("Upload clipboard"));}
+  QVERIFY(shortened);QVERIFY(full);
+ }
  void railFitsShortWindows_data(){
   QTest::addColumn<QSize>("size");QTest::addColumn<int>("scrolls");
   enum{Never,Maybe,Always};
