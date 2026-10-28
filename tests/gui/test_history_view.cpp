@@ -80,9 +80,9 @@ public:int paints=0;QRegion region;
 class HistoryActionInkProbe final:public QProxyStyle {
 public:
  HistoryActionInkProbe():QProxyStyle(QStyleFactory::create("Fusion")){}
- mutable QList<QRect> buttons;
+ mutable QList<QRect> buttons;mutable QStringList roles;
  void drawControl(ControlElement element,const QStyleOption* option,QPainter* painter,const QWidget* widget=nullptr)const override{
-  if(element==CE_PushButton){buttons.append(option->rect);return;}
+  if(element==CE_PushButton){buttons.append(option->rect);roles.append(widget?widget->property("visualRole").toString():QString{});return;}
   QProxyStyle::drawControl(element,option,painter,widget);
  }
  void drawPrimitive(PrimitiveElement element,const QStyleOption* option,QPainter* painter,const QWidget* widget=nullptr)const override{
@@ -1036,6 +1036,11 @@ private slots:
   QStandardItemModel model(1,1);const auto index=model.index(0,0);model.setData(index,"Synthetic screenshot",Qt::DisplayRole);model.setData(index,"Region · 35 KiB · Shared link",HistoryModel::SubtitleRole);model.setData(index,QJsonObject{{"operation",QJsonObject{{"copyStatus","copied"}}}},HistoryModel::RecordRole);
   QStyleOptionViewItem option;option.initFrom(list);option.rect=QRect(QPoint(),list->itemDelegate()->sizeHint(option,index));option.state=QStyle::State_Enabled;QImage image(option.rect.size(),QImage::Format_ARGB32_Premultiplied);image.fill(Theme::current().bg);{QPainter p(&image);list->itemDelegate()->paint(&p,option,index);}
   const auto area=HistoryWindow::failureTextArea(image.size(),false,false);const int prefix=QFontMetrics(Graphite::font(Graphite::Type::metadata)).horizontalAdvance("Region · 35 KiB");int status=0,prefixStatus=0;for(int y=area.top();y<=area.bottom();++y)for(int x=area.left();x<=area.right();++x){const auto pixel=image.pixelColor(x,y);if(pixel.green()-pixel.red()>=8&&pixel.green()-pixel.blue()>=6){++status;if(x<area.left()+prefix)++prefixStatus;}}if(!qEnvironmentVariable("PUTGD_HISTORY_METADATA_SHOT").isEmpty())image.save(qEnvironmentVariable("PUTGD_HISTORY_METADATA_SHOT"));QVERIFY2(status>5,qPrintable(QString("%1 success pixels in %2x%3 metadata at %4,%5 (%6px prefix), row %7x%8").arg(status).arg(area.width()).arg(area.height()).arg(area.x()).arg(area.y()).arg(prefix).arg(image.width()).arg(image.height())));QCOMPARE(prefixStatus,0);
+ }
+ void galleryPaintedActionsKeepTheirOwnRole(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);HistoryActionInkProbe probe;HistoryWindow window(fixture.session);window.resize(1200,800);window.show();auto* list=window.findChild<QListView*>("historyList");window.findChild<QToolButton*>("historyGridMode")->click();list->setStyle(&probe);QStandardItemModel model(2,1);
+  for(int row=0;row<2;++row){const auto index=model.index(row,0);model.setData(index,"Synthetic.png");model.setData(index,row?"Copy link":"Retry upload",HistoryModel::PrimaryActionRole);model.setData(index,!row,HistoryModel::FailedRole);model.setData(index,QJsonObject{{"uploadStatus",row?"uploaded":"failed"}},HistoryModel::RecordRole);}
+  auto* live=window.findChild<QToolButton*>("historyRowPrimary");for(const auto& liveRole:{"quiet","secondary"}){live->setProperty("visualRole",liveRole);for(int row=0;row<2;++row){const auto index=model.index(row,0);QStyleOptionViewItem option;option.initFrom(list);option.state=QStyle::State_Enabled|QStyle::State_Selected;option.rect=QRect(QPoint(),list->itemDelegate()->sizeHint(option,index));QImage image(option.rect.size(),QImage::Format_RGB32);image.fill(Theme::current().bg);probe.roles.clear();{QPainter painter(&image);list->itemDelegate()->paint(&painter,option,index);}QVERIFY(!probe.roles.isEmpty());QCOMPARE(probe.roles.first(),row?QString("quiet"):QString("secondary"));}}
  }
  void galleryActionsKeepReadableTextOverBrightMedia(){
   const auto previous=Theme::scheme();auto restore=qScopeGuard([previous]{Theme::setScheme(previous);});QWidget window;RedesignTheme::apply(window);
