@@ -410,6 +410,12 @@ private slots:
         QCOMPARE(Theme::tokens(Theme::Scheme::Light)["controlOutline"].toString(), QString("#82827b"));
         QVERIFY(Theme::tokens(Theme::Scheme::Light)["bg"] != Theme::tokens(Theme::Scheme::Dark)["bg"]);
     }
+    void refreshGlyphHasItsOwnCircularOutline() {
+        const auto refresh=IconArt::symbol("refresh",Qt::white,4);
+        QVERIFY(refresh!=IconArt::symbol("redo",Qt::white,4));
+        int ink=0;for(int y=0;y<refresh.height();++y)for(int x=0;x<refresh.width();++x)ink+=refresh.pixelColor(x,y).alpha()>128;
+        QVERIFY(ink>300);
+    }
     void bannerGlyphsRemainVisibleOnTheirSurface() {
         for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}) for(const auto tone:{Graphite::Banner::Tone::Info,Graphite::Banner::Tone::Warning,Graphite::Banner::Tone::Error,Graphite::Banner::Tone::Success}) {
             Theme::setScheme(scheme);Graphite::Banner banner(tone,"A readable explanation.");banner.resize(420,90);banner.show();putgd::test::settle(10);
@@ -419,7 +425,7 @@ private slots:
         }
     }
     void outlineIconsKeepSecondaryColourInsideOptionalWashes() {
-        const QStringList outlines{"upload","failed-uploads","download","region","window","desktop","clipboard","history","destinations","settings","preferences","info","shortcuts","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","bucket","proton","add","file","video"};
+        const QStringList outlines{"upload","failed-uploads","download","region","window","desktop","clipboard","history","destinations","settings","preferences","info","shortcuts","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","bucket","proton","add","file","video"};
         for (const auto& name : outlines) {
             const auto art = IconArt::symbol(name, Qt::white, 4, Qt::red);
             QVERIFY2(art == IconArt::symbol(name, Qt::white, 4, Qt::blue), qPrintable(name));

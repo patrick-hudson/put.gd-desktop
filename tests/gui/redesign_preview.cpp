@@ -117,7 +117,7 @@ struct Native {
 bool waitUntil(const std::function<bool()>& condition){return putgd::test::waitFor(condition,8000);}
 QImage iconSpecimen(){
  const auto& theme=Theme::current();const auto& tints=Theme::trayTints(Theme::scheme()==Theme::Scheme::Light);
- const QStringList names{"region","window","desktop","record","alert","clipboard","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
+ const QStringList names{"region","window","desktop","record","alert","clipboard","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
  const int rows=(names.size()+7)/8,identityY=64+rows*94;
  QImage image(1280,identityY+340,QImage::Format_RGB32);image.fill(theme.bg);QPainter p(&image);p.setPen(theme.text);p.setFont(Graphite::font(Graphite::Type::body));
  p.drawText(24,28,"Outline family · 40 px reference + actual 20 px (text-scaled) · production renderer");

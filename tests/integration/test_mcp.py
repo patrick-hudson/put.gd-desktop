@@ -284,6 +284,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('settings_diagnostics', {'action': 'inspect'}, 'ui.diagnostics', {'action': 'inspect'}),
                     ('settings_diagnostics', {'action': 'setDesktopDetails', 'enabled': True}, 'ui.diagnostics', {'action': 'setDesktopDetails', 'enabled': True}),
                     ('settings_diagnostics', {'action': 'copyDetails'}, 'ui.diagnostics', {'action': 'copyDetails'}),
+                    ('settings_diagnostics', {'action': 'showConfigFolder'}, 'ui.diagnostics', {'action': 'showConfigFolder'}),
                     ('settings_diagnostics', {'action': 'refreshDesktopSupport'}, 'ui.diagnostics', {'action': 'refreshDesktopSupport'}),
                     ('settings_diagnostics', {'action': 'setDebugLogging', 'enabled': False}, 'ui.diagnostics', {'action': 'setDebugLogging', 'enabled': False}),
                     ('settings_diagnostics', {'action': 'openPackage', 'operation_id': 'synthetic-operation', 'include_names': True}, 'ui.diagnostics', {'action': 'openPackage', 'operation': 'synthetic-operation', 'includeNames': True}),

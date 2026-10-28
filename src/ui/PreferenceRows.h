@@ -7,7 +7,8 @@ class QRadioButton;
 class QWidget;
 namespace putgd::PreferenceRows {
 // Preserve each field and its agent identity while composing card rows. Text
-// fields stack; choices share a measured width within their page family.
+// fields stack unless preferenceInline is set; inline values share a measured
+// width within their page family.
 QLabel* caption(const QString&);
 QFormLayout* card(QVBoxLayout*,const QString& heading,const QString& description={},bool headingInside=false);
 QWidget* sectionFor(QFormLayout*);
