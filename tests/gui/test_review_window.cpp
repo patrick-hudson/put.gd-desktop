@@ -764,7 +764,7 @@ private slots:
         QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
         QApplication::processEvents();
         QVERIFY(chip->isVisible());
-        QCOMPARE(chip->text(), QString("Blur may be reversible · Use Redact"));
+        QCOMPARE(chip->text(), chip->isEnabled() ? QString("Blur may be reversible · Use Redact") : QString("Select a blur to use Redact"));
         if (chip->isEnabled()) QVERIFY(chip->toolTip().contains("Use Redact"));
         else QCOMPARE(chip->toolTip(), QString("Select a blur to use Redact"));
             QCOMPARE(chip->text(), chip->toolTip());
