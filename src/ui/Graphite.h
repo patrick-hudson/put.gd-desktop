@@ -1,4 +1,5 @@
 #pragma once
+#include "WindowButtons.h"
 #include <QUrl>
 #include <QJsonObject>
 #include <functional>
@@ -314,6 +315,7 @@ public:
     QToolButton* menuButton() const { return menu_; }
     Density density() const { return density_; }
     void chromeAfter(QWidget* last);
+    void setButtonLayout(const WindowButtonLayout&);
     // The compact band's height for the current fonts: the title's line height
     // plus padding, never less than a 32 px control target plus padding.
     int compactHeight() const;
@@ -346,6 +348,8 @@ private:
     QWidget* leadingContent_ = nullptr;
     QWidget* trailing_ = nullptr;
     QHBoxLayout* trailingRow_ = nullptr;
+    QWidget *leftButtons_ = nullptr, *rightButtons_ = nullptr;
+    QList<QToolButton*> chromeOrder_;
     ElidedLabel* docName_ = nullptr;
     QLabel* docState_ = nullptr;
     QToolButton *minimize_ = nullptr, *maximize_ = nullptr, *close_ = nullptr;

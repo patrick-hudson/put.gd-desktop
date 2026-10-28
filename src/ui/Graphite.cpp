@@ -2534,7 +2534,7 @@ namespace {
 int& customFrameOverride() { static int forced = 0; return forced; }
 }
 void WindowHeader::chromeAfter(QWidget* last) {
-    for (auto* button : {minimize_, maximize_, close_}) if (button) { QWidget::setTabOrder(last, button); last = button; }
+    for (auto* button : chromeOrder_) { QWidget::setTabOrder(last, button); last = button; }
     if (menu_) QWidget::setTabOrder(last, menu_);
 }
 void WindowHeader::setCustomFrameOverride(int forced) { customFrameOverride() = forced; }
@@ -2543,6 +2543,28 @@ bool WindowHeader::customFrame() {
     if (qEnvironmentVariable("PUTGD_SYSTEM_DECORATIONS") == QLatin1String("1")) return false;
     const auto platform = QGuiApplication::platformName();
     return platform == QLatin1String("xcb") || platform.startsWith(QLatin1String("wayland"));
+}
+
+void WindowHeader::setButtonLayout(const WindowButtonLayout& layout) {
+    if (!leftButtons_) return;
+    for (auto* group : {leftButtons_, rightButtons_})
+        while (auto* item = group->layout()->takeAt(0)) delete item;
+    for (auto* button : {minimize_, maximize_, close_}) button->hide();
+    chromeOrder_.clear();
+    auto place = [this](QWidget* group, const QStringList& names) {
+        for (const auto& name : names) {
+            auto* button = name == "minimize" ? minimize_ : name == "maximize" ? maximize_ : name == "close" ? close_ : nullptr;
+            if (!button || chromeOrder_.contains(button)) continue;
+            group->layout()->addWidget(button);
+            button->show();
+            chromeOrder_.append(button);
+        }
+        group->setVisible(group->layout()->count() > 0);
+    };
+    place(leftButtons_, layout.left);
+    place(rightButtons_, layout.right);
+    for (int i = 1; i < chromeOrder_.size(); ++i) QWidget::setTabOrder(chromeOrder_[i - 1], chromeOrder_[i]);
+    if (row_->indexOf(trailing_) >= 0) syncWindowState();
 }
 
 WindowHeader::WindowHeader(QWidget* window, QMenu* menu, Density density) : QWidget(window), density_(density), window_(window) {
@@ -2578,14 +2600,24 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu, Density density) : QWid
     trailingRow_->setSpacing(4);
     trailingRow_->addStretch();
     if (customFrame()) {
+        leftButtons_ = new QWidget(leading_);
+        rightButtons_ = new QWidget(trailing_);
+        for (auto* group : {leftButtons_, rightButtons_}) {
+            auto* buttons = new QHBoxLayout(group);
+            buttons->setContentsMargins(0, 0, 0, 0);
+            buttons->setSpacing(4);
+        }
+        leading->insertWidget(0, leftButtons_);
+        trailingRow_->addWidget(rightButtons_);
         minimize_ = chromeButton(QStringLiteral("minimize"), QStringLiteral("Minimize"), trailing_);
         maximize_ = chromeButton(QStringLiteral("maximize"), QStringLiteral("Maximize"), trailing_);
         close_ = chromeButton(QStringLiteral("close"), QStringLiteral("Close window"), trailing_);
         minimize_->setObjectName(QStringLiteral("windowMinimize"));
         maximize_->setObjectName(QStringLiteral("windowMaximize"));
         close_->setObjectName(QStringLiteral("windowClose"));
-        trailingRow_->addSpacing(8);
-        for (auto* button : {minimize_, maximize_, close_}) trailingRow_->addWidget(button);
+        auto& buttons = WindowButtons::instance();
+        setButtonLayout(buttons.layout());
+        connect(&buttons, &WindowButtons::changed, this, [this, &buttons] { setButtonLayout(buttons.layout()); });
         connect(minimize_, &QToolButton::clicked, this, [this] { if (window_) window_->showMinimized(); });
         connect(maximize_, &QToolButton::clicked, this, [this] {
             if (!window_) return;
@@ -2697,7 +2729,7 @@ void WindowHeader::syncWindowState() {
         const int menuWidth = menu_->isHidden() ? 0 : menu_->sizeHint().width() + leading_->layout()->spacing();
         const int titleWidth = docName_ ? int(std::ceil(QFontMetricsF(docName_->font()).horizontalAdvance(docName_->text()))) : 0;
         const int centreWidth = docName_ ? titleWidth : centre_ ? centre_->sizeHint().width() : 0;
-        const int available = width() - margins.left() - margins.right() - trailing_->sizeHint().width() - menuWidth - 4 * row_->spacing();
+        const int available = width() - margins.left() - margins.right() - trailing_->sizeHint().width() - menuWidth - (leftButtons_ && !leftButtons_->isHidden() ? leftButtons_->sizeHint().width() + leading_->layout()->spacing() : 0) - 4 * row_->spacing();
         name_->setVisible(available >= nameWidth + centreWidth);
         if (docName_) docName_->setVisible(available >= titleWidth + (name_->isHidden() ? 0 : nameWidth));
     }

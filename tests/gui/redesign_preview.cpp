@@ -218,6 +218,10 @@ int main(int argc,char** argv){
   QMenu menu(&window);menu.addAction("All actions: Shared link · R&&D · No local copy")->setEnabled(false);menu.addAction("Capture region && edit: Off: no output")->setEnabled(false);menu.addSeparator();menu.addAction("Change output");menu.show();putgd::test::settle(20);const auto image=menu.grab();if(!image.save(QDir(output).filePath("00-output-menu-literal-ampersand.png")))return 2;captures.append(QJsonObject{{"file","00-output-menu-literal-ampersand.png"},{"width",image.width()},{"height",image.height()}});menu.close();
  }
  if(!save("01-history-list"))return 2;
+ if(QGuiApplication::platformName()=="offscreen"){
+  auto* header=window.findChild<Graphite::WindowHeader*>("windowHeader");header->setButtonLayout(WindowButtons::fromGSettings("close,minimize,maximize:"));if(!save("01b-history-left-window-buttons"))return 2;header->setButtonLayout(WindowButtons::instance().layout());
+ }
+
  {auto* preview=window.findChild<QLabel*>("historyPreview");const bool open=!preview->isVisible();if(open)window.history()->command({{"action","openDetails"}},[](Error,QJsonObject){});preview->setFocus(Qt::TabFocusReason);if(!save("01a-history-preview-focus"))return 2;if(open)window.history()->command({{"action","closeDetails"}},[](Error,QJsonObject){});list->setFocus();}
  if(QGuiApplication::platformName()=="offscreen"){auto* header=window.findChild<QWidget*>("windowHeader");const QPoint at(header->width()/2,header->height()-4);QContextMenuEvent event(QContextMenuEvent::Mouse,at,header->mapToGlobal(at));app.sendEvent(header,&event);auto* menu=header->findChild<QMenu*>("windowContextMenu");if(!menu)return 2;putgd::test::settle(40);QPixmap shot=window.grab();{QPainter painter(&shot);painter.drawPixmap(window.mapFromGlobal(menu->mapToGlobal(QPoint())),menu->grab());}if(!shot.save(QDir(output).filePath("settings-header-context-menu.png")))return 2;menu->close();}
 
