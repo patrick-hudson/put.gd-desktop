@@ -343,7 +343,7 @@ private slots:
             for (const auto& value : tokens) QVERIFY(QRegularExpression("^#[0-9a-f]{6}$").match(value.toString()).hasMatch());
         }
         QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["bg"].toString(), QString("#191919"));
-        QCOMPARE(Theme::tokens(Theme::Scheme::Light)["bg"].toString(), QString("#f3f3f0"));
+        QCOMPARE(Theme::tokens(Theme::Scheme::Light)["bg"].toString(), QString("#ffffff"));
         // Graphite: amber, never blue, and a neutral primary action.
         QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["accent"].toString(), QString("#e8b66d"));
         QCOMPARE(Theme::tokens(Theme::Scheme::Dark)["controlOutline"].toString(), QString("#7c7c78"));

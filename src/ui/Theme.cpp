@@ -25,14 +25,14 @@ const Palette dark{
  QColor("#2E2E2C"),QColor("#4A4A46"),QColor("#F0524F"),
 };
 const Palette light{
- QColor("#E6E6E2"),QColor("#F3F3F0"),QColor("#FAFAF8"),QColor("#FFFFFF"),QColor("#E5E4DF"),QColor("#E2E2DD"),QColor("#AAAAA3"),
+ QColor("#EDEDEA"),QColor("#FFFFFF"),QColor("#F5F5F2"),QColor("#FFFFFF"),QColor("#ECEBE6"),QColor(0,0,0,20),QColor("#AAAAA3"),
  QColor("#292926"),QColor("#484844"),QColor("#62625B"),QColor("#62625B"),
  QColor("#8F5B20"),QColor("#774816"),QColor("#FFFFFF"),QColor("#80521D"),
  QColor("#386A4B"),QColor("#8F5B20"),QColor("#A44139"),QColor("#8F322B"),QColor("#DFEDE3"),QColor("#EEE5D8"),QColor("#F4E0DE"),
  QColor("#383834"),QColor("#86867E"),
  QColor("#82827B"),
  QColor("#292926"),QColor("#787874"),
- QColor("#FFFFFF"),QColor("#C9C9C3"),QColor("#C8302B"),
+ QColor("#F0EFEA"),QColor("#C9C9C3"),QColor("#C8302B"),
 };
 struct Token {const char* name;QColor Palette::* member;};
 constexpr Token table[]{
