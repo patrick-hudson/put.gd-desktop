@@ -15,6 +15,7 @@
 #include <QLabel>
 #include <QApplication>
 #include <QGridLayout>
+#include <QVBoxLayout>
 #include <QClipboard>
 #include <QWheelEvent>
 #include "platform/HostOpen.h"
@@ -1253,6 +1254,39 @@ private slots:
         PUTGD_TRY_VERIFY(window.isMaximized());
         QTest::mouseDClick(header, Qt::LeftButton, {}, empty);
         PUTGD_TRY_VERIFY(!window.isMaximized());
+    }
+    void compactHeaderShowsOnlyCompleteNames_data() {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("standard") << 1.0;
+        QTest::newRow("150%") << 1.5;
+    }
+    void compactHeaderShowsOnlyCompleteNames() {
+        QFETCH(double, scale);
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
+        auto font = original;
+        if (font.pointSizeF() > 0) font.setPointSizeF(font.pointSizeF() * scale);
+        else font.setPixelSize(qRound(font.pixelSize() * scale));
+        QApplication::setFont(font);
+        ReviewWindow window(options(), config()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        auto* title = window.findChild<Graphite::ElidedLabel*>("brandName");
+        for (const int width : {1366, 720, 1060, 800, 1366}) {
+            window.resize(width, 720); putgd::test::settle(10);
+            QVERIFY(title->isHidden() || !title->elided());
+            QVERIFY(window.findChild<QWidget*>("reviewTransport")->isVisible());
+            QCOMPARE(window.windowTitle(), QString("Review recording"));
+        }
+        auto* header = window.findChild<Graphite::WindowHeader*>();
+        QWidget documentWindow; QVBoxLayout layout(&documentWindow);
+        auto* documentHeader = Graphite::WindowHeader::install(&documentWindow, &layout, nullptr, Graphite::WindowHeader::Density::Compact);
+        documentHeader->setDocument(QString(200, 'W'));
+        documentWindow.resize(680, 200); documentWindow.show(); putgd::test::settle(10);
+        auto* document = documentHeader->findChild<Graphite::ElidedLabel*>("documentName");
+        QVERIFY(document->isHidden());
+        documentHeader->setDocument("Clip"); putgd::test::settle(10);
+        QVERIFY(document->isVisible()); QVERIFY(!document->elided());
+        QVERIFY(header->height() >= 32);
     }
     void desktopDecorationsHideTheCompactHeader() {
         Graphite::WindowHeader::setCustomFrameOverride(-1);

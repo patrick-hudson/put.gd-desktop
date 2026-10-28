@@ -2578,6 +2578,17 @@ void WindowHeader::syncWindowState() {
         maximize_->setAccessibleName(maximized ? QStringLiteral("Restore") : QStringLiteral("Maximize"));
         maximize_->setToolTip(maximize_->accessibleName());
     }
+    if (density_ == Density::Compact) {
+        // The transport gets the space first; a partial window name adds noise.
+        const auto margins = row_->contentsMargins();
+        const int nameWidth = int(std::ceil(QFontMetricsF(name_->font()).horizontalAdvance(name_->text())));
+        const int menuWidth = menu_->isHidden() ? 0 : menu_->sizeHint().width() + leading_->layout()->spacing();
+        const int titleWidth = docName_ ? int(std::ceil(QFontMetricsF(docName_->font()).horizontalAdvance(docName_->text()))) : 0;
+        const int centreWidth = docName_ ? titleWidth : centre_ ? centre_->sizeHint().width() : 0;
+        const int available = width() - margins.left() - margins.right() - trailing_->sizeHint().width() - menuWidth - 4 * row_->spacing();
+        name_->setVisible(available >= nameWidth + centreWidth);
+        if (docName_) docName_->setVisible(available >= titleWidth + (name_->isHidden() ? 0 : nameWidth));
+    }
     leading_->setMinimumWidth(0);
     trailing_->setMinimumWidth(0);
     const int side = std::max(leading_->sizeHint().width(), trailing_->sizeHint().width());
