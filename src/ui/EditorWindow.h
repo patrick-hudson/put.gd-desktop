@@ -119,7 +119,7 @@ private:
  QSpinBox* strengthValue_=nullptr;
  Graphite::ElidedLabel* toolTitle_=nullptr;
  QLabel *hint_=nullptr,*message_=nullptr,*toolHelp_=nullptr,*documentInfo_=nullptr;
- Graphite::ElidedLabel* destination_=nullptr;QWidget* blurWarning_=nullptr;
+ Graphite::ElidedLabel* destination_=nullptr;QLabel* sharingMode_=nullptr;QWidget* blurWarning_=nullptr;
  QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={},*savedLabel_=nullptr;Graphite::ElidedLabel *saveError_=nullptr,*folderError_=nullptr;
  QSpinBox* geometry_[4]={};
  QToolButton* geometryDisclosure_=nullptr;

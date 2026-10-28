@@ -158,7 +158,7 @@ private slots:
   // Install the style first, then simulate a desktop's enlarged application font.
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
   const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});auto larger=previous;larger.setPixelSize(qRound(Graphite::font().pixelSize()*1.5));QApplication::setFont(larger);
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Private upload to Project archive");QCOMPARE(window.findChild<QLabel*>("editorDestination")->text(),QString("Project archive · Private upload"));window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Private upload to Project archive");QCOMPARE(window.findChild<QLabel*>("editorDestination")->text(),QString("Project archive"));QCOMPARE(window.findChild<QLabel*>("editorSharingMode")->text(),QString("Private upload"));window.resize(1400,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.resize(900,620);QApplication::processEvents();QCOMPARE(window.width(),900);
   QVERIFY2(window.canvas().width()>=window.width()*0.66,qPrintable(QString("canvas %1 in %2").arg(window.canvas().width()).arg(window.width())));QVERIFY(window.findChild<QWidget*>("editorSide")->width()+window.findChild<QSplitter*>("editorSplitter")->handleWidth()<=window.width()/3);
   const auto canvas=window.canvas().geometry();
   for(const auto tool:{Tool::Blur,Tool::Crop,Tool::Text,Tool::Select}){window.selectTool(tool);QApplication::processEvents();QCOMPARE(window.canvas().geometry(),canvas);}
@@ -788,6 +788,19 @@ private slots:
   destination->setFocus(Qt::TabFocusReason);QTest::keyClick(destination,Qt::Key_Return);QVERIFY(destination->fullTextPopup());QVERIFY(destination->fullTextPopup()->isVisible());destination->fullTextPopup()->close();
   window.setDestination("Upload to Project archive");window.resize(1400,700);QApplication::processEvents();QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
   QCOMPARE(footer->height(),Graphite::scaled(56));
+ }
+ void footerKeepsSharingModeVisibleBesideAnElidedDestination(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* destination=window.findChild<Graphite::ElidedLabel*>("editorDestination");auto* mode=window.findChild<QLabel*>("editorSharingMode");auto* document=window.findChild<QWidget*>("editorDocument");
+  const QString name=QString("Production screenshots for customer support — ").repeated(10);
+  for(const bool shared:{false,true}){
+   window.setDestination(shared?"Upload to "+name+" · Shared link":"Private upload to "+name);QApplication::processEvents();
+   QCOMPARE(destination->text(),name);QCOMPARE(destination->toolTip(),name);QVERIFY(destination->elided());
+   QCOMPARE(mode->text(),shared?QString("Shared link"):QString("Private upload"));QVERIFY(mode->isVisible());QVERIFY(mode->width()>=mode->sizeHint().width());QVERIFY(document->rect().contains(mode->geometry()));QVERIFY(!destination->geometry().intersects(mode->geometry()));
+   QCOMPARE(window.viewState()["destination"].toObject()["sharingMode"].toString(),mode->text());
+   QCOMPARE(window.viewState()["destination"].toObject()["text"].toString(),name+" · "+mode->text());
+  }
+  window.setDestination("Upload to Archive");QVERIFY(!mode->isVisible());
  }
  void blurWarningUsesTheExistingRedactToolWithoutChangingMarks(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.selectTool(Tool::Blur);

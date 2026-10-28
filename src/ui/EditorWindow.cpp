@@ -220,7 +220,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  // The summary shares the action row; save feedback overlays the canvas.
  auto* footer=new Graphite::Surface("bg",Qt::TopEdge,this);footer->setObjectName("editorFooter");footer->setMinimumHeight(Graphite::scaled(56));
  footerGrid_=new QGridLayout(footer);footerGrid_->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::s),Graphite::space(Space::l),Graphite::space(Space::s));footerGrid_->setHorizontalSpacing(Graphite::space(Space::s));footerGrid_->setVerticalSpacing(Graphite::space(Space::xs));footerGrid_->setColumnStretch(0,1);
- auto* document=new QWidget(footer);document->setObjectName("editorDocument");document_=document;
+ auto* document=new QWidget(footer);document->setObjectName("editorDocument");document->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);document_=document;
  auto* documentLayout=new QHBoxLayout(document);documentLayout->setContentsMargins(0,0,0,0);documentLayout->setSpacing(Graphite::space(Space::l));
  documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");VisualStyle::role(documentInfo_,"meta");documentLayout->addWidget(documentInfo_);footerGrid_->addWidget(document,2,0);
  notice_=new QWidget(footer);notice_->setObjectName("editorPreparationFailure");
@@ -232,6 +232,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  // Elision keeps the actions reachable; keyboard activation reveals the name.
  destination_=new Graphite::ElidedLabel(document);destination_->setElideMode(Qt::ElideRight);destination_->setRevealable(true);destination_->setObjectName("editorDestination");destination_->setTextFormat(Qt::PlainText);VisualStyle::role(destination_,"meta");
  destination_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);destination_->setFocusPolicy(Qt::StrongFocus);destination_->hide();documentLayout->addWidget(destination_,1);
+ sharingMode_=new QLabel(document);sharingMode_->setObjectName("editorSharingMode");sharingMode_->setTextFormat(Qt::PlainText);VisualStyle::role(sharingMode_,"meta");sharingMode_->setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Preferred);sharingMode_->hide();documentLayout->addWidget(sharingMode_);
  // Saving locally never hides the separate upload destination.
  saveFeedback_=new Graphite::Banner(Graphite::Banner::Tone::Info,{},canvasViewport_);saveFeedback_->setObjectName("editorSaveFeedback");saveFeedback_->hide();saveFeedback_->installEventFilter(this);
  saveFeedbackTimer_=new QTimer(this);saveFeedbackTimer_->setObjectName("editorSaveFeedbackTimer");saveFeedbackTimer_->setSingleShot(true);
@@ -372,15 +373,17 @@ void EditorWindow::rebuildRecentColors(){
 }
 
 void EditorWindow::setDestination(const QString& destination){
- auto summary=destination;
- if(summary.startsWith("Private upload to "))summary=summary.mid(18)+QStringLiteral(" · Private upload");
- else if(summary.startsWith("Upload to "))summary=summary.mid(10);
+ auto summary=destination;QString mode;
+ if(summary.startsWith("Private upload to ")){summary=summary.mid(18);mode="Private upload";}
+ else if(summary.startsWith("Upload to ")){summary=summary.mid(10);if(summary.endsWith(" · Shared link")){summary.chop(14);mode="Shared link";}}
+ sharingMode_->setText(mode);sharingMode_->setAccessibleName(mode);
  destination_->setText(summary);destination_->setAccessibleName(summary);placeDestination();}
 
 void EditorWindow::placeDestination(){
  if(!footerGrid_)return;
  save_->setVisible(notice_->isHidden());
  destination_->setVisible(!destination_->text().isEmpty());
+ sharingMode_->setVisible(!sharingMode_->text().isEmpty());
  const auto margins=footerGrid_->contentsMargins();const int spacing=footerGrid_->horizontalSpacing();
  int room=width()-margins.left()-margins.right();
  for(auto* button:{save_,cancel_,upload_})if(!button->isHidden())room-=button->sizeHint().width()+spacing;
@@ -727,7 +730,7 @@ QJsonObject EditorWindow::viewState() const {
   {"message",message.isEmpty()?QJsonValue():QJsonValue(message)},{"lastSave",save.isEmpty()?QJsonValue():QJsonValue(save)},
   {"saveFeedbackVisible",saveFeedbackVisible_&&!busy_&&!savingCopy_},{"saveDetailsOpen",saveError_->fullTextPopup()&&saveError_->fullTextPopup()->isVisible()},
   {"lastShowInFolder",lastShowInFolder_.isEmpty()?QJsonValue():QJsonValue(lastShowInFolder_)},{"lastCopiedPath",lastCopiedPath_.isEmpty()?QJsonValue():QJsonValue(lastCopiedPath_)},
-  {"cancelLabel",cancel_->text()},{"destination",QJsonObject{{"text",destination_->text()},{"above",destinationAbove_}}},
+  {"cancelLabel",cancel_->text()},{"destination",QJsonObject{{"text",destination_->text()+(sharingMode_->text().isEmpty()?QString():" · "+sharingMode_->text())},{"sharingMode",sharingMode_->text()},{"above",destinationAbove_}}},
   {"preparationFailure",notice_->isHidden()?QJsonValue():QJsonValue(QJsonObject{{"text",noticeText_->text()}})},
   {"keyboardHelp",QJsonObject{{"open",findChild<QToolButton*>("editorKeyboardHelp")->isChecked()},{"text",findChild<QWidget*>("editorKeyboardHelpText")->property("text").toString()}}},
   {"discardConfirmation",QJsonObject{{"open",bool(discard_)},{"text",discard_?QJsonValue(discard_->property("confirmationText").toString()):QJsonValue()}}}};
