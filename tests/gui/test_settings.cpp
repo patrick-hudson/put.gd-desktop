@@ -527,6 +527,7 @@ private slots:
   for(const char* name:{"closePackage","savePackage"}){auto* button=dialog->findChild<QPushButton*>(name);QVERIFY(button->isVisible());QVERIFY(!scroll->isAncestorOf(button));
    const QRect shown(button->mapTo(dialog,QPoint()),button->size());QVERIFY2(dialog->rect().contains(shown),qPrintable(QString("%1 outside the dialog").arg(name)));}
   auto* cancel=dialog->findChild<QPushButton*>("closePackage");auto* save=dialog->findChild<QPushButton*>("savePackage");QVERIFY(save->x()-cancel->geometry().right()-1>=8);
+  auto* footer=dialog->layout()->itemAt(dialog->layout()->count()-1)->layout();QVERIFY(footer);QVERIFY(footer->geometry().height()>=Graphite::scaled(Graphite::Metric::statusBand));
   QCOMPARE(dialog->findChild<QLabel*>("packageFolder")->font().family(),Graphite::monoFamily());
   dialog->reject();
  }
