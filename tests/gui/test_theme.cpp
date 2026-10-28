@@ -284,6 +284,7 @@ private slots:
         QCOMPARE(track.height(),Graphite::scaled(Graphite::Metric::control));
         const auto shot=track.grab().toImage(); const int x=list->geometry().center().x();
         QVERIFY(shot.pixelColor(x,Graphite::Metric::segmentInset)!=Theme::current().selected);
+        QCOMPARE(shot.pixelColor(x,Graphite::Metric::segmentInset),shot.pixelColor(x,Graphite::Metric::segmentInset-1));
         int amber=0;for(int y=0;y<shot.height();++y)for(int px=list->geometry().left();px<=list->geometry().right();++px)if(shot.pixelColor(px,y)==Theme::current().accent)++amber;QVERIFY(amber>=24);
         QVERIFY(shot.pixelColor(x,Graphite::Metric::segmentInset-1)!=Theme::current().selected);
     }

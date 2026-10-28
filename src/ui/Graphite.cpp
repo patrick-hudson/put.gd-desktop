@@ -921,7 +921,7 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
     case PE_PanelButtonCommand: case PE_PanelButtonBevel: case PE_PanelButtonTool: {
         auto look = buttonLook(buttonRole(widget, option), option, element == PE_PanelButtonTool && (option->state & State_AutoRaise), widget);
         const bool segment = widget && qobject_cast<SegmentTrack*>(widget->parentWidget());
-        if (segment) { look.fill = QColor(Qt::transparent); look.stroke = {}; }
+        if (segment) { look.fill = QColor(Qt::transparent); look.stroke = QColor(); }
         QColor stroke = keyboardState(option) ? c.accent : look.stroke;
         if (!look.fill.isValid() && !stroke.isValid()) return;
         const int inset = segment ? Metric::segmentInset / 2 : 0;
