@@ -708,7 +708,7 @@ int Style::pixelMetric(PixelMetric metric, const QStyleOption* option, const QWi
     case PM_ScrollBarSliderMin: return 28;
     case PM_MenuPanelWidth: return 1;
     case PM_MenuHMargin: case PM_MenuVMargin: return 5;
-    case PM_MenuButtonIndicator: return Metric::splitZone;
+    case PM_MenuButtonIndicator: return scaled(Metric::splitZone);
     case PM_SubMenuOverlap: return 2;
     case PM_ToolTipLabelFrameWidth: return 7;
     case PM_SplitterWidth: return 8;
@@ -771,7 +771,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
             const int icon = button->icon.isNull() ? 0 : button->iconSize.width() + 8;
             w = text + icon + 2 * 14 + 2;
         }
-        if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) w += Metric::splitZone - 8;
+        if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) w += scaled(Metric::splitZone) - scaled(8);
         if (button && button->text.isEmpty()) return {std::max(height, contents.width() + padding), std::max(height, contents.height() + padding)};
         if (widget && widget->property("graphiteTight").toBool()) w -= 2 * (14 - int(Space::s));
         if (flushButton(widget)) w -= compact ? 28 : 14;
@@ -805,7 +805,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
             const int label = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + (icon ? tool->iconSize.width() + 8 : 0);
             w = label + (flushButton(widget) ? 0 : inset) + std::max(inset, space(Space::s)) + scaled(Metric::splitArrow) + 2;
         }
-        else if (menu) w += Metric::splitZone - 6;
+        else if (menu) w += scaled(Metric::splitZone) - scaled(6);
         if (!split && flushButton(widget)) w -= 14;
         return {w, std::max(height, metrics.height() + padding)};
     }
@@ -818,13 +818,13 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
     case CT_ComboBox: {
         const auto* combo = qstyleoption_cast<const QStyleOptionComboBox*>(option);
         if (combo && !combo->frame && !compact) break;
-        return {contents.width() + 12 + Metric::splitZone + 6, std::max(height, contents.height() + padding)};
+        return {contents.width() + space(Space::m) + scaled(Metric::splitZone) + space(Space::xs) + 2, std::max(height, contents.height() + padding)};
     }
     case CT_SpinBox: {
         const auto* spin = qstyleoption_cast<const QStyleOptionSpinBox*>(option);
         if (spin && !spin->frame) break;
-        const int buttons = spin && spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 64;
-        return {contents.width() + 12 + buttons + 4, std::max(height, contents.height() + padding)};
+        const int buttons = spin && spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 2 * scaled(32);
+        return {contents.width() + space(Space::m) + buttons + space(Space::xs), std::max(height, contents.height() + padding)};
     }
     case CT_CheckBox: case CT_RadioButton: {
         auto size = QProxyStyle::sizeFromContents(type, option, contents, widget);
@@ -909,8 +909,8 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* o
         if (combo && !combo->frame) break;
         switch (sub) {
         case SC_ComboBoxFrame: case SC_ComboBoxListBoxPopup: return r;
-        case SC_ComboBoxArrow: return visualRect(option->direction, r, QRect(r.right() - Metric::splitZone - 2, r.top(), Metric::splitZone + 2, r.height()));
-        case SC_ComboBoxEditField: return visualRect(option->direction, r, r.adjusted(12, 1, -(Metric::splitZone + 4), -1));
+        case SC_ComboBoxArrow: return visualRect(option->direction, r, QRect(r.right() - scaled(Metric::splitZone) - 2, r.top(), scaled(Metric::splitZone) + 2, r.height()));
+        case SC_ComboBoxEditField: return visualRect(option->direction, r, r.adjusted(space(Space::m), 1, -(scaled(Metric::splitZone) + space(Space::xs)), -1));
         default: break;
         }
         break;
@@ -918,12 +918,12 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* o
     case CC_SpinBox: {
         const auto* spin = qstyleoption_cast<const QStyleOptionSpinBox*>(option);
         if (!spin || !spin->frame) break;
-        const int buttons = spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 64;
+        const int buttons = spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 2 * scaled(32);
         switch (sub) {
         case SC_SpinBoxFrame: return r;
-        case SC_SpinBoxEditField: return visualRect(option->direction, r, r.adjusted(11, 1, -(buttons + 3), -1));
-        case SC_SpinBoxUp: return buttons ? visualRect(option->direction, r, QRect(r.right() - 32, r.top(), 32, r.height())) : QRect();
-        case SC_SpinBoxDown: return buttons ? visualRect(option->direction, r, QRect(r.right() - 64, r.top(), 32, r.height())) : QRect();
+        case SC_SpinBoxEditField: return visualRect(option->direction, r, r.adjusted(space(Space::m) - 1, 1, -(buttons + space(Space::xs) - 1), -1));
+        case SC_SpinBoxUp: return buttons ? visualRect(option->direction, r, QRect(r.right() - scaled(32), r.top(), scaled(32), r.height())) : QRect();
+        case SC_SpinBoxDown: return buttons ? visualRect(option->direction, r, QRect(r.right() - 2 * scaled(32), r.top(), scaled(32), r.height())) : QRect();
         default: break;
         }
         break;
@@ -1190,7 +1190,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         drawPrimitive(PE_PanelButtonCommand, option, p, widget);
         if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) {
             const auto look = buttonLook(buttonRole(widget, option), option, false, widget);
-            paintChevron(*p, QPointF(option->rect.right() - Metric::splitZone / 2.0 + 1, option->rect.center().y() + 0.5), 8, Qt::DownArrow, look.text);
+            paintChevron(*p, QPointF(option->rect.right() - scaled(Metric::splitZone) / 2.0 + 1, option->rect.center().y() + 0.5), 8, Qt::DownArrow, look.text);
         }
         return;
     }
@@ -1207,7 +1207,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         QRect body = option->rect.adjusted(inset, 0, -inset, 0);
         if (flushButton(widget)) { body.setLeft(option->rect.left()); if (compactControl(widget) || name == "textAction") body.setRight(option->rect.right()); }
         if (widget && widget->property("graphiteNavRow").toBool()) { body.setLeft(option->rect.left() + (compactControl(widget) ? 6 : 14)); body.setRight(option->rect.right() - space(Space::xs)); }
-        if ((button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) body.setRight(option->rect.right() - Metric::splitZone);
+        if ((button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) body.setRight(option->rect.right() - scaled(Metric::splitZone));
         drawButtonLabel(option, button->text, button->icon, button->iconSize, p, widget, body);
         return;
     }
@@ -1539,7 +1539,7 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         drawPrimitive(PE_PanelButtonTool, &panel, p, widget);
         const auto look = buttonLook(buttonRole(widget, option), &panel, tool->state & State_AutoRaise, widget);
         QStyleOptionToolButton label(*tool);
-        if (split || chevron) label.rect = option->rect.adjusted(0, 0, -(Metric::splitZone - 4), 0);
+        if (split || chevron) label.rect = option->rect.adjusted(0, 0, -(scaled(Metric::splitZone) - scaled(4)), 0);
         if (split) label.rect = subControlRect(CC_ToolButton, tool, SC_ToolButton, widget);
         drawControl(CE_ToolButtonLabel, &label, p, widget);
         if (split) {
@@ -1550,7 +1550,7 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
             p->restore();
             paintChevron(*p, QRectF(menu).center() + QPointF(0, 0.5), 8, Qt::DownArrow, look.text);
         } else if (chevron) {
-            paintChevron(*p, QPointF(option->rect.right() - Metric::splitZone / 2.0 + 2, option->rect.center().y() + 0.5), 8, Qt::DownArrow, look.text);
+            paintChevron(*p, QPointF(option->rect.right() - scaled(Metric::splitZone) / 2.0 + 2, option->rect.center().y() + 0.5), 8, Qt::DownArrow, look.text);
         }
         return;
     }
@@ -1574,11 +1574,11 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
             const auto box = subControlRect(CC_SpinBox, spin, sub, widget);
             const bool enabled = (option->state & State_Enabled) && (spin->stepEnabled & (sub == SC_SpinBoxUp ? QAbstractSpinBox::StepUpEnabled : QAbstractSpinBox::StepDownEnabled));
             if (enabled && (spin->activeSubControls & sub) && (option->state & (State_MouseOver | State_Sunken)))
-                rounded(p, QRectF(box).adjusted(2, 0, 0, 0), mix(c.surfaceRaised, c.selected, (option->state & State_Sunken) ? 1.0 : 0.5), {}, 4);
+                rounded(p, QRectF(box).adjusted(space(Space::xs) / 2.0, 0, 0, 0), mix(c.surfaceRaised, c.selected, (option->state & State_Sunken) ? 1.0 : 0.5), {}, 4);
             p->setPen(QPen(enabled ? c.textSecondary : c.textDisabled, 1.5, Qt::SolidLine, Qt::RoundCap));
             const QPointF centre = QRectF(box).center();
-            p->drawLine(centre + QPointF(-4, 0), centre + QPointF(4, 0));
-            if (sub == SC_SpinBoxUp) p->drawLine(centre + QPointF(0, -4), centre + QPointF(0, 4));
+            p->drawLine(centre + QPointF(-scaled(4), 0), centre + QPointF(scaled(4), 0));
+            if (sub == SC_SpinBoxUp) p->drawLine(centre + QPointF(0, -scaled(4)), centre + QPointF(0, scaled(4)));
         }
         return;
     }

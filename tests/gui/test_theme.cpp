@@ -812,6 +812,32 @@ private slots:
             menu.close();
         }
     }
+    void stepperAndComboArrowTargetsGrowWithText() {
+        const auto original = qApp->font();
+        const auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        int previousStep = 0, previousArrow = 0;
+        for (const qreal scale : {1.0, 1.25, 1.5}) {
+            auto enlarged = original; enlarged.setPixelSize(qRound(QFontInfo(original).pixelSize() * scale)); qApp->setFont(enlarged);
+            QSpinBox spin; spin.setRange(0, 100); spin.setValue(42); spin.ensurePolished(); spin.resize(spin.sizeHint()); spin.show();
+            QComboBox combo; combo.addItem("Compatible MP4"); combo.ensurePolished(); combo.resize(combo.sizeHint());
+            for (const auto direction : {Qt::LeftToRight, Qt::RightToLeft}) {
+                spin.setLayoutDirection(direction); combo.setLayoutDirection(direction);
+                QStyleOptionSpinBox option; option.initFrom(&spin); option.frame = true; option.buttonSymbols = QAbstractSpinBox::UpDownArrows;
+                const auto up = spin.style()->subControlRect(QStyle::CC_SpinBox, &option, QStyle::SC_SpinBoxUp, &spin);
+                const auto down = spin.style()->subControlRect(QStyle::CC_SpinBox, &option, QStyle::SC_SpinBoxDown, &spin);
+                const auto edit = spin.style()->subControlRect(QStyle::CC_SpinBox, &option, QStyle::SC_SpinBoxEditField, &spin);
+                QVERIFY(up.width() > previousStep); QCOMPARE(up.width(), down.width());
+                QVERIFY(spin.rect().contains(up)); QVERIFY(spin.rect().contains(down));
+                QVERIFY(!edit.intersects(up)); QVERIFY(!edit.intersects(down)); QVERIFY(!up.intersects(down));
+                QTest::mouseClick(&spin, Qt::LeftButton, Qt::NoModifier, up.center()); QCOMPARE(spin.value(), 43);
+                QTest::mouseClick(&spin, Qt::LeftButton, Qt::NoModifier, down.center()); QCOMPARE(spin.value(), 42);
+                QStyleOptionComboBox choice; choice.initFrom(&combo); choice.frame = true;
+                const auto arrow = combo.style()->subControlRect(QStyle::CC_ComboBox, &choice, QStyle::SC_ComboBoxArrow, &combo);
+                QVERIFY(arrow.width() > previousArrow); QVERIFY(combo.rect().contains(arrow));
+            }
+            previousStep = Graphite::scaled(32); previousArrow = Graphite::scaled(Graphite::Metric::splitZone) + 2;
+        }
+    }
     void actionWeightsFollowTheirPurpose() {
         for (const auto* role : {"quiet", "secondary", "danger", "primary", "lead"}) {
             QPushButton button("Apply changes"); VisualStyle::role(&button, role);
