@@ -426,6 +426,7 @@ public:
  QRect primaryRect(QRect r,const QModelIndex& i)const{
   const auto c=card(r,i);const int h=actionHeight(),detailsSpace=detailsShown(i)?listDetailsSpace():0;const int w=qMin(primaryWidth(i),qMax(0,c.width()-2*space(Space::m)-h-space(Space::s)-(grid()?detailsWidth()+space(Space::s):detailsSpace)));
   if(grid())return galleryActionRect(r,i,0);
+  if(compactRow(r,i)&&i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,c.top()+compactTextInset(),w,h);
   if(compactRow(r,i))return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):compactMetadataTop(r,i)+(QFontMetrics(Graphite::font(Graphite::Type::technical)).height()-h)/2,w,h);
   if(i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,c.top()+rowTextInset()+(QFontMetrics(historyTitleFont()).height()-h)/2,w,h);
   return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):c.top()+(rowContentHeight()-4-h)/2,w,h);
@@ -482,13 +483,13 @@ public:
   const auto columns=grid()?Columns{body,{},{},{}}:rowColumns(body,i);
   const bool below=actionsBelow(outer,i),compact=compactRow(outer,i);
   int itemWidth=qMax(0,columns.item.width()-12);
-  if(compact)itemWidth=body.width();
+  if(compact)itemWidth=body.width()-(failed?compactActionWidth(i):0);
   else if(!grid()&&!below)itemWidth=inlineTextWidth(outer,i);
   else if(grid()||below)itemWidth=body.width();
   const auto titleFont=historyTitleFont(chosen),metaFont=Graphite::font(Graphite::Type::technical);
   const int lineTop=grid()?body.top():rowTop+(compact?compactTextInset():rowTextInset());
   Graphite::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,QFontMetrics(titleFont).height()),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,compact?Qt::ElideRight:titleElision(i.data().toString()));
-  const int metadataWidth=compact?qMax(20,body.width()-(below?0:compactActionWidth(i))):!grid()&&failed?body.width():itemWidth;
+  const int metadataWidth=compact?qMax(20,body.width()-(below||compactMetadataTop(outer,i)>moreBounds.bottom()?0:compactActionWidth(i))):!grid()&&failed?body.width():itemWidth;
   const int metadataTop=compact?compactMetadataTop(outer,i):lineTop+QFontMetrics(titleFont).height()+6;
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
   if(compact){
