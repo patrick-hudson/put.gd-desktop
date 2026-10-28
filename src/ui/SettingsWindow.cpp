@@ -149,8 +149,23 @@ public:
  PreferenceLabel(PreferenceCheck* check):QLabel(check->text()),check_(check){setBuddy(check);setWordWrap(true);check->installEventFilter(this);setEnabled(check->isEnabled());}
 protected:
  bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::EnabledChange)setEnabled(check_->isEnabled());return false;}
- void mouseReleaseEvent(QMouseEvent* event)override{if(event->button()==Qt::LeftButton&&check_->isEnabled())check_->click();QLabel::mouseReleaseEvent(event);}
 private:PreferenceCheck* check_;
+};
+// The whole checkbox row activates on a completed click; help keeps its own target.
+class PreferenceCheckRow final:public QObject {
+public:
+ PreferenceCheckRow(PreferenceCheck* check,QWidget* row):QObject(row),check_(check),row_(row){row_->installEventFilter(this);for(auto* child:row_->findChildren<QWidget*>())child->installEventFilter(this);}
+protected:
+ bool eventFilter(QObject* watched,QEvent* event)override{
+  auto* widget=qobject_cast<QWidget*>(watched);if(!widget)return false;
+  if(event->type()==QEvent::UngrabMouse||event->type()==QEvent::Hide)pressed_=false;
+  if(event->type()!=QEvent::MouseButtonPress&&event->type()!=QEvent::MouseButtonRelease)return false;
+  auto* mouse=static_cast<QMouseEvent*>(event);if(mouse->button()!=Qt::LeftButton)return false;
+  const auto point=row_->mapFromGlobal(mouse->globalPosition().toPoint());auto* target=row_->childAt(point);bool button=false;for(auto* child=target;child&&child!=row_;child=child->parentWidget())button|=qobject_cast<QAbstractButton*>(child)!=nullptr;
+  if(event->type()==QEvent::MouseButtonPress){pressed_=check_->isEnabled()&&!button&&row_->rect().contains(point);press_=point;return pressed_;}
+  const bool activate=pressed_&&check_->isEnabled()&&!button&&row_->rect().contains(point)&&(point-press_).manhattanLength()<=QApplication::startDragDistance();const bool handled=pressed_;pressed_=false;if(activate){check_->setFocus(Qt::MouseFocusReason);check_->click();}return handled;
+ }
+private:PreferenceCheck* check_;QWidget* row_;bool pressed_=false;QPoint press_;
 };
 // Measure the caption before wrapping; its help stays beside the first line.
 class PreferenceCheckCaption final:public QWidget {
@@ -189,7 +204,7 @@ void boxPreferenceRows(QFormLayout* form){
    if(choice)for(auto* line:value->findChildren<QHBoxLayout*>()){for(int n=line->count()-1;n>=0;--n)if(line->itemAt(n)->spacerItem())delete line->takeAt(n);for(int n=0;n<line->count();++n)if(auto* part=line->itemAt(n)->widget();part&&(qobject_cast<QComboBox*>(part)||part->findChild<QComboBox*>()))line->setStretch(n,1);}
    if(stacked){column->addWidget(label);column->addWidget(value);}
    else{auto* line=new QHBoxLayout;line->setContentsMargins(0,0,0,0);line->setSpacing(space(Space::l));line->addWidget(label,check||choice||compactValue?1:0,Qt::AlignTop);line->addWidget(value,check||choice||compactValue?0:1,compactValue?Qt::AlignRight|Qt::AlignTop:Qt::AlignTop);if(check)value->setFixedWidth(Graphite::scaled(24));column->addLayout(line);}
-   for(auto* full:fullRows)column->addWidget(full);for(auto* error:errors)column->addWidget(error);label->show();value->show();
+   for(auto* full:fullRows)column->addWidget(full);for(auto* error:errors)column->addWidget(error);label->show();value->show();if(check)new PreferenceCheckRow(check,field);
    for(auto* control:value->findChildren<QWidget*>())if((qobject_cast<QLineEdit*>(control)&&!qobject_cast<QAbstractSpinBox*>(control->parentWidget()))||qobject_cast<QComboBox*>(control)){control->setProperty("graphiteFullWidth",true);control->setMinimumWidth(0);if(!numeric||qobject_cast<QComboBox*>(control))control->setMaximumWidth(QWIDGETSIZE_MAX);if(technicalField&&qobject_cast<QLineEdit*>(control))VisualStyle::role(control,"technical");if(auto* combo=qobject_cast<QComboBox*>(control)){combo->setProperty("preferenceChoice",choice);combo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);}for(auto* line:value->findChildren<QLayout*>())line->setAlignment(control,{});control->show();}
    if(!check&&!choice&&!stacked&&!numeric)for(auto* text:value->findChildren<QLabel*>()){text->setAlignment((text->objectName()=="archiveRootHint"?Qt::AlignLeft:Qt::AlignRight)|Qt::AlignVCenter);if(text->property("visualRole")!="technical")VisualStyle::role(text,"secondary");}
   }
