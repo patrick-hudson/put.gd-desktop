@@ -356,20 +356,39 @@ QAccessibleInterface* historyAccessibility(const QString&,QObject* object){if(au
 class HistoryDelegate final:public QStyledItemDelegate {
 public:
  explicit HistoryDelegate(QListView* view):QStyledItemDelegate(view),view_(view){
-  primary_=Graphite::toolButton({}, {},"secondary",view_->viewport());primary_->setObjectName("historyRowPrimary");primary_->setToolButtonStyle(Qt::ToolButtonTextOnly);primary_->setProperty("graphiteDensity","compact");primary_->hide();connect(primary_,&QToolButton::clicked,this,[this]{const auto i=view_->currentIndex();if(i.isValid()&&primaryShown(i)&&primary)primary(i);});
+  primary_=Graphite::toolButton({}, {},"secondary",view_->viewport());primary_->setObjectName("historyRowPrimary");primary_->setToolButtonStyle(Qt::ToolButtonTextOnly);primary_->setProperty("graphiteDensity","compact");primary_->hide();connect(primary_,&QToolButton::clicked,this,[this]{const auto i=grid()?QModelIndex(actionIndex_):view_->currentIndex();if(i.isValid()&&primaryShown(i)&&primary)primary(i);});
   more_=Graphite::toolButton({}, {},"quiet",view_->viewport());more_->setObjectName("historyRowMore");more_->setIcon(Graphite::chromeIcon("more"));more_->setProperty("graphiteDensity","compact");more_->hide();view_->viewport()->installEventFilter(this);
   details_=Graphite::toolButton({}, {},"quiet",view_->viewport());details_->setObjectName("historyRowDetails");details_->setIcon(Graphite::chromeIcon("chevron-right"));details_->setAccessibleName("Show details");details_->setAccessibleDescription("Open the selected item's details. Enter also opens details.");details_->setToolTip("Show details (Enter)");details_->setProperty("graphiteDensity","compact");details_->hide();connect(details_,&QToolButton::clicked,this,[this]{if(details)details(view_->currentIndex());});
-  connect(more_,&QToolButton::clicked,this,[this]{const auto i=view_->currentIndex();if(i.isValid()&&menu)menu(i,more_->mapToGlobal(QPoint(0,more_->height())));});
+  connect(more_,&QToolButton::clicked,this,[this]{const auto i=grid()?QModelIndex(actionIndex_):view_->currentIndex();if(i.isValid()&&menu){menuOpen_=true;menu(i,more_->mapToGlobal(QPoint(0,more_->height())));menuOpen_=false;updateMore();}});
+  for(auto* button:{primary_,more_})button->installEventFilter(this);QWidget::setTabOrder(view_,primary_);QWidget::setTabOrder(primary_,more_);
   auto update=[this]{QTimer::singleShot(0,this,[this]{updateMore();});};
   connect(view_->selectionModel(),&QItemSelectionModel::currentChanged,this,update);connect(view_->selectionModel(),&QItemSelectionModel::selectionChanged,this,update);connect(view_->verticalScrollBar(),&QScrollBar::valueChanged,this,update);connect(view_->model(),&QAbstractItemModel::modelReset,this,update);
   auto cancel=[this]{cancelPress();};connect(view_->model(),&QAbstractItemModel::modelAboutToBeReset,this,cancel);connect(view_->model(),&QAbstractItemModel::rowsAboutToBeRemoved,this,cancel);connect(view_->model(),&QAbstractItemModel::layoutAboutToBeChanged,this,cancel);connect(view_->model(),&QAbstractItemModel::dataChanged,this,cancel);
  }
- void updateMore(){for(auto* button:{primary_,details_,more_})button->setProperty("graphiteOnMedia",false);primary_->setProperty("visualRole",grid()?"quiet":"secondary");const auto i=view_->currentIndex();const auto row=view_->visualRect(i);const auto bounds=menuRect(row,i);const bool visible=i.isValid()&&view_->selectionModel()->isSelected(i)&&inlineActions(i)&&view_->viewport()->rect().intersects(bounds)&&(view_->selectionModel()->selectedRows().size()<=1||row.contains(view_->viewport()->mapFromGlobal(QCursor::pos())));more_->setVisible(visible);const bool showDetails=visible&&detailsShown(i)&&view_->selectionModel()->selectedRows().size()==1;const bool showPrimary=visible&&primaryShown(i);primary_->setVisible(showPrimary);if(showPrimary){const auto label=i.data(HistoryModel::PrimaryActionRole).toString();primary_->setEnabled(true);primary_->setIcon(label=="Copy link"?VisualStyle::icon("copy"):QIcon{});primary_->setIconSize(QSize(Graphite::scaled(16),Graphite::scaled(16)));primary_->setToolButtonStyle(grid()&&label=="Copy link"?Qt::ToolButtonIconOnly:label=="Copy link"?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonTextOnly);primary_->setText(label);primary_->setToolTip(label);primary_->setAccessibleName(label);primary_->setAccessibleDescription(label+" for "+i.data().toString());primary_->setGeometry(primaryRect(row,i));primary_->raise();}details_->setVisible(showDetails);details_->setText(grid()?"Details":QString{});details_->setToolButtonStyle(grid()?Qt::ToolButtonTextOnly:Qt::ToolButtonIconOnly);if(showDetails){details_->setGeometry(detailsRect(row,i));details_->raise();}if(!visible)return;const auto name="More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString();more_->setAccessibleName(name);more_->setToolTip(name);more_->setGeometry(bounds);more_->raise();}
+ void updateMore(){
+  for(auto* button:{primary_,details_,more_})button->setProperty("graphiteOnMedia",false);
+  QModelIndex i=view_->currentIndex();
+  if(grid()){
+   if((primary_->hasFocus()||more_->hasFocus()||primary_->underMouse()||more_->underMouse()||menuOpen_)&&actionIndex_.isValid())i=actionIndex_;
+   else if(hovered_.isValid())i=hovered_;
+  }
+  const auto row=view_->visualRect(i);const auto bounds=i.isValid()?menuRect(row,i):QRect();
+  const bool visible=i.isValid()&&inlineActions(i)&&view_->viewport()->rect().intersects(bounds)&&(grid()||view_->selectionModel()->isSelected(i))&&(grid()||view_->selectionModel()->selectedRows().size()<=1||row.contains(view_->viewport()->mapFromGlobal(QCursor::pos())));
+  actionIndex_=i;more_->setVisible(visible);const bool showDetails=visible&&detailsShown(i)&&view_->selectionModel()->selectedRows().size()==1;const bool showPrimary=visible&&primaryShown(i);
+  primary_->setProperty("visualRole",grid()&&!recovery(i)?"quiet":"secondary");primary_->setVisible(showPrimary);
+  if(showPrimary){const auto label=i.data(HistoryModel::PrimaryActionRole).toString();primary_->setEnabled(true);primary_->setIcon(label=="Copy link"?VisualStyle::icon("copy"):QIcon{});primary_->setIconSize(QSize(Graphite::scaled(16),Graphite::scaled(16)));primary_->setToolButtonStyle(grid()&&label=="Copy link"?Qt::ToolButtonIconOnly:label=="Copy link"?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonTextOnly);primary_->setText(label);primary_->setToolTip(label);primary_->setAccessibleName(label);primary_->setAccessibleDescription(label+" for "+i.data().toString());primary_->setGeometry(primaryRect(row,i));primary_->raise();}
+  details_->setVisible(showDetails);details_->setText(grid()?"Details":QString{});details_->setToolButtonStyle(grid()?Qt::ToolButtonTextOnly:Qt::ToolButtonIconOnly);if(showDetails){details_->setGeometry(detailsRect(row,i));details_->raise();}
+  if(!visible)return;const auto name="More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString();more_->setAccessibleName(name);more_->setToolTip(name);more_->setGeometry(bounds);more_->raise();
+ }
  bool helpEvent(QHelpEvent* event,QAbstractItemView* view,const QStyleOptionViewItem& option,const QModelIndex& i)override{
   if(i.data(HistoryModel::FailedRole).toBool()&&!menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),failureDescription(i),view);return true;}
   if(menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),"More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString(),view);return true;}return QStyledItemDelegate::helpEvent(event,view,option,i);
  }
  bool eventFilter(QObject* watched,QEvent* event)override{
+  if(grid()&&watched==view_->viewport()&&(event->type()==QEvent::MouseMove||event->type()==QEvent::Leave)){
+   const auto hovered=event->type()==QEvent::Leave?QModelIndex{}:view_->indexAt(static_cast<QMouseEvent*>(event)->position().toPoint());if(hovered_!=hovered){hovered_=hovered;updateMore();view_->viewport()->update();}
+  }
+  if((watched==primary_||watched==more_)&&(event->type()==QEvent::FocusIn||event->type()==QEvent::FocusOut||event->type()==QEvent::Leave))QTimer::singleShot(0,this,[this]{updateMore();view_->viewport()->update();});
   if(watched==view_->viewport()&&event->type()==QEvent::MouseMove&&pressed_.isValid()&&(static_cast<QMouseEvent*>(event)->position().toPoint()-pressPosition_).manhattanLength()>QApplication::startDragDistance())cancelPress();
   if(watched==view_->viewport()&&(event->type()==QEvent::Hide||event->type()==QEvent::UngrabMouse))cancelPress();
   if(watched==view_->viewport()&&(event->type()==QEvent::Resize||event->type()==QEvent::Show||event->type()==QEvent::Paint)){
@@ -394,7 +413,7 @@ public:
  bool beside(const QModelIndex& i)const{return menuOnly()||(grid()&&inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
  bool detailsShown(const QModelIndex& i)const{return !grid()&&view_->selectionModel()->selectedRows().size()<=1&&(compactList&&compactList()&&view_->selectionModel()->isSelected(i))&&!(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
  bool recovery(const QModelIndex& i)const{return i.data(HistoryModel::PrimaryActionRole).toString().startsWith("Retry ");}
- bool inlineActions(const QModelIndex& i)const{return !(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->selectedRows().size()==1&&view_->selectionModel()->isSelected(i));}
+ bool inlineActions(const QModelIndex& i)const{return grid()||!(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->selectedRows().size()==1&&view_->selectionModel()->isSelected(i));}
  bool rowPrimary(const QModelIndex& i)const{if(!inlineActions(i))return false;return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  bool primaryShown(const QModelIndex& i)const{if(grid())return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()&&inlineActions(i);return rowPrimary(i)&&inlineActions(i)&&(view_->selectionModel()->selectedRows().size()<=1||(grid()&&recovery(i)))&&!i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
@@ -406,7 +425,34 @@ public:
  // Hover and selection never change the reserved height.
  int listDetailsSpace()const{return !grid()&&compactList&&compactList()?actionHeight()+space(Space::s):0;}
  int detailsWidth()const{return qMax(details_->sizeHint().width(),QFontMetrics(Graphite::font()).horizontalAdvance("Details")+30);}
- QRect galleryActionRect(QRect r,const QModelIndex& i,int column)const{const auto c=card(r,i);const int h=actionHeight(),pad=space(Space::xs);return QRect(c.right()-space(Space::l)-2*h-pad+(column==2?h+pad:0),c.bottom()-space(Space::m)-h+1,h,h);}
+ struct GalleryCaption {QString html;int height=0,lastTop=0,lastHeight=0,lastWidth=0;};
+ GalleryCaption galleryCaption(const QModelIndex& i,int width)const{
+  QTextDocument document;HistoryWindow::metadataDocument(document,i,width,false,false,false,true);document.size();
+  if(document.begin().layout()->lineCount()>2){
+   if(i.data(HistoryModel::FailedRole).toBool())document.setHtml(metadataSpan(HistoryModel::failureLabel(i.data(HistoryModel::RecordRole).toJsonObject())+" · See Details",Theme::current().danger,true));
+   else HistoryWindow::metadataDocument(document,i,width,false,false,true);
+  }
+  document.setTextWidth(width);document.size();const auto* layout=document.begin().layout();const auto last=layout->lineAt(layout->lineCount()-1);
+  return {document.toHtml(),int(std::ceil(document.size().height())),int(std::floor(last.y())),int(std::ceil(last.height())),int(std::ceil(last.naturalTextWidth()))};
+ }
+ int galleryPrimaryWidth(const QModelIndex& i)const{const auto action=i.data(HistoryModel::PrimaryActionRole).toString();return action.isEmpty()?0:action=="Copy link"?actionHeight():qMax(Graphite::scaled(84),QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(action)+space(Space::xxl));}
+ int galleryActionsWidth(const QModelIndex& i)const{const int primary=galleryPrimaryWidth(i);return actionHeight()+(primary?space(Space::xs)+primary:0);}
+ struct GalleryRow {bool below=false;int metadataHeight=0,picture=0,height=0;};
+ GalleryRow galleryRow(const QModelIndex& i,int width)const{
+  // Match QListView's wrapping width, including its reserved scrollbar. Fit is
+  // a row decision from full captions/actions, never from interaction state.
+  const int reserve=view_->style()->pixelMetric(QStyle::PM_ScrollView_ScrollBarOverlap,nullptr,view_->verticalScrollBar())?0:view_->style()->pixelMetric(QStyle::PM_ScrollBarExtent,nullptr,view_->verticalScrollBar());
+  const int columns=qMax(1,(view_->maximumViewportSize().width()-reserve-2*view_->spacing())/(galleryWidth()+view_->spacing())),start=i.row()/columns*columns,bodyWidth=qMax(1,width-2*space(Space::s)-2*space(Space::l));GalleryRow row;
+  for(int index=start;index<qMin(start+columns,i.model()->rowCount());++index){const auto item=i.model()->index(index,0);const auto caption=galleryCaption(item,bodyWidth);row.below|=caption.lastWidth+space(Space::s)+galleryActionsWidth(item)>bodyWidth;row.metadataHeight=qMax(row.metadataHeight,caption.height);}
+  if(!row.below)for(int index=start;index<qMin(start+columns,i.model()->rowCount());++index){const auto caption=galleryCaption(i.model()->index(index,0),bodyWidth);row.metadataHeight=qMax(row.metadataHeight,caption.height+qMax(0,actionHeight()-caption.lastHeight));}
+  const int caption=QFontMetrics(historyTitleFont()).height()+space(Space::xs)+row.metadataHeight+(row.below?space(Space::xs)+actionHeight():0)+space(Space::m),padding=2*space(Space::s)+1+space(Space::m)+caption;
+  row.picture=qMax(1,qMin((width-2*space(Space::s)-2)*10/16,view_->viewport()->height()-2*view_->spacing()-padding));row.height=padding+row.picture;return row;
+ }
+ QRect galleryBody(const QRect& r,const QModelIndex& i)const{const auto c=card(r,i);const int top=c.top()+1+galleryRow(i,r.width()).picture+space(Space::m);return {c.left()+space(Space::l),top,qMax(1,c.width()-2*space(Space::l)),qMax(0,c.bottom()-top+1)};}
+ QRect galleryActionRect(QRect r,const QModelIndex& i,int column)const{
+  const auto body=galleryBody(r,i);const auto row=galleryRow(i,r.width());const auto caption=galleryCaption(i,body.width());const int h=actionHeight(),top=body.top()+QFontMetrics(historyTitleFont()).height()+space(Space::xs)+(row.below?row.metadataHeight+space(Space::xs):caption.lastTop);
+  return {body.right()+1-(column==2?h:galleryActionsWidth(i)),top,column==2?h:galleryPrimaryWidth(i),h};
+ }
  QRect detailsRect(QRect r,const QModelIndex& i)const{if(grid())return galleryActionRect(r,i,1);const auto b=menuRect(r,i);const int w=grid()?detailsWidth():actionHeight();const int h=grid()?b.height():w;return QRect(b.left()-space(Space::s)-w,b.top()+(b.height()-h)/2,w,h);}
  int primaryWidth(const QModelIndex& i)const{return qMax(Graphite::scaled(84),int(std::ceil(QFontMetricsF(Graphite::labelFont()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())))+space(Space::xxl)+(i.data(HistoryModel::PrimaryActionRole)=="Copy link"?Graphite::scaled(16)+space(Space::s):0));}
  bool compactRow(const QRect& r,const QModelIndex& i)const{return !grid()&&rowBody(r,false,heading(i)).width()<Graphite::scaled(480);}
@@ -435,9 +481,7 @@ public:
  static QString errorText(const QModelIndex& i){return HistoryModel::statusText(i.data(HistoryModel::RecordRole).toJsonObject());}
  QSize sizeHint(const QStyleOptionViewItem&,const QModelIndex& i)const override{
   if(grid()){
-   const int width=galleryWidth(),padding=2*space(Space::s)+1+2*space(Space::m)+galleryTextHeight();
-   const int picture=qMax(1,qMin((width-2*space(Space::s)-2)*10/16,view_->viewport()->height()-2*view_->spacing()-padding));
-   return {width,padding+picture};
+   const int width=galleryWidth();return {width,galleryRow(i,width).height};
   }
   const int width=qMax(160,view_->viewport()->width()-2*view_->spacing());
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
@@ -465,7 +509,7 @@ public:
   else{p->setPen(Qt::NoPen);p->setBrush(hover?t.surface:t.bg);p->drawRoundedRect(QRectF(r),8,8);}
 
   const int rowTop=r.top();const int rowHeight=grid()?r.height():rowContentHeight()-4;
-  QRect thumb=grid()?QRect(r.left()+1,r.top()+1,r.width()-2,galleryPicture(r.width(),r.height())):QRect(r.left()+space(Space::s),rowTop+(rowHeight-historyThumbHeight)/2,historyThumbWidth,historyThumbHeight);
+  QRect thumb=grid()?QRect(r.left()+1,r.top()+1,r.width()-2,galleryRow(i,outer.width()).picture):QRect(r.left()+space(Space::s),rowTop+(rowHeight-historyThumbHeight)/2,historyThumbWidth,historyThumbHeight);
   p->setPen(Qt::NoPen);p->setBrush(t.well);p->drawRoundedRect(thumb,4,4);
   const auto image=qvariant_cast<QImage>(i.data(HistoryModel::ThumbnailRole));
   p->save();QPainterPath thumbnailClip;thumbnailClip.addRoundedRect(thumb,4,4);p->setClipPath(thumbnailClip,Qt::IntersectClip);
@@ -477,31 +521,31 @@ public:
   }
   p->restore();p->setPen(QPen(t.border,1));p->setBrush(Qt::NoBrush);p->drawRoundedRect(QRectF(thumb).adjusted(0.5,0.5,-0.5,-0.5),4,4);
   // The primary action uses its own measured width; hover icons keep a fixed slot.
-  const auto action=i.data(HistoryModel::PrimaryActionRole).toString();const bool showPrimary=primaryShown(i);const bool routineActionsShown=inlineActions(i)&&(hover||chosen||((option.state&QStyle::State_HasFocus)&&view_->hasFocus()));const bool actionsShown=routineActionsShown||(!grid()&&inlineActions(i)&&recovery(i));
+  const auto action=i.data(HistoryModel::PrimaryActionRole).toString();const bool showPrimary=primaryShown(i);const bool routineActionsShown=inlineActions(i)&&(hover||chosen||(grid()&&(i==view_->currentIndex()||i==actionIndex_))||((option.state&QStyle::State_HasFocus)&&view_->hasFocus()));const bool actionsShown=routineActionsShown||(inlineActions(i)&&recovery(i));
   const auto primaryBounds=primaryRect(outer,i);const auto moreBounds=menuRect(outer,i);
-  const QRect body=rowBody(outer,grid(),heading(i));
+  const QRect body=grid()?galleryBody(outer,i):rowBody(outer,false,heading(i));
   const auto columns=grid()?Columns{body,{},{},{}}:rowColumns(body,i);
   const bool below=actionsBelow(outer,i),compact=compactRow(outer,i);
   int itemWidth=qMax(0,columns.item.width()-12);
   if(compact)itemWidth=body.width()-(failed?compactActionWidth(i):0);
   else if(!grid()&&!below)itemWidth=inlineTextWidth(outer,i);
   else if(grid()||below)itemWidth=body.width();
-  const auto titleFont=historyTitleFont(chosen),metaFont=Graphite::font(Graphite::Type::technical);
+  const auto titleFont=historyTitleFont(!grid()&&chosen),metaFont=Graphite::font(Graphite::Type::technical);
   const int lineTop=grid()?body.top():rowTop+(compact?compactTextInset():rowTextInset());
   Graphite::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,QFontMetrics(titleFont).height()),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,compact?Qt::ElideRight:titleElision(i.data().toString()));
   const int metadataWidth=compact?qMax(20,body.width()-(below||compactMetadataTop(outer,i)>moreBounds.bottom()?0:compactActionWidth(i))):!grid()&&failed?body.width():itemWidth;
-  const int metadataTop=compact?compactMetadataTop(outer,i):lineTop+QFontMetrics(titleFont).height()+6;
+  const int metadataTop=compact?compactMetadataTop(outer,i):lineTop+QFontMetrics(titleFont).height()+(grid()?space(Space::xs):6);
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
   if(compact){
    QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,QFontMetrics(metaFont).height()));document.drawContents(p);p->restore();
    if(failed){QTextDocument error;compactFailureDetail(error,i,body.width()-(compactErrorTop(outer,i)<=moreBounds.bottom()?compactActionWidth(i):0));p->save();p->translate(body.left(),compactErrorTop(outer,i));p->setClipRect(QRectF(0,0,body.width(),QFontMetrics(metaFont).height()));error.drawContents(p);p->restore();}
   }
   else if(!grid()){QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,!below&&!columns.created.isEmpty(),compactList&&!compactList());p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
-  else if(failed){
-   QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,false,false,true);document.size();
-   if(document.begin().layout()->lineCount()<=2){p->save();p->translate(metadata.topLeft());document.drawContents(p);p->restore();}
-   else Graphite::paintText(*p,metadata,HistoryModel::failureLabel(record)+" · See Details",t.danger,metaFont,Qt::AlignLeft|Qt::AlignVCenter,Qt::ElideNone);
-  }else{QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,false,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,2*metadata.height()));document.drawContents(p);p->restore();}
+  else{
+   const auto caption=galleryCaption(i,metadataWidth);const auto row=galleryRow(i,outer.width());QTextDocument document;document.setDocumentMargin(0);document.setDefaultFont(metaFont);document.setHtml(caption.html);document.setTextWidth(metadataWidth);
+   const int shift=row.below?0:qMax(0,(actionHeight()-caption.lastHeight)/2);
+   p->save();p->translate(metadata.topLeft());if(caption.lastTop){p->save();p->setClipRect(QRectF(0,0,metadataWidth,caption.lastTop));document.drawContents(p);p->restore();}p->translate(0,shift);p->setClipRect(QRectF(0,caption.lastTop,metadataWidth,caption.height-caption.lastTop));document.drawContents(p);p->restore();
+  }
   if(!grid()){
    const QFontMetricsF titleMetrics(titleFont);const auto shown=titleMetrics.elidedText(i.data().toString(),titleElision(i.data().toString()),itemWidth);const qreal baseline=Graphite::opticalBaseline(titleMetrics,shown,lineTop+QFontMetrics(titleFont).height()/2.0);
    if(!compact&&!failed&&!below&&!columns.output.isEmpty())paintHistoryColumn(*p,QRectF(columns.output.left(),lineTop,columns.output.width()-8,QFontMetrics(titleFont).height()),i.data(HistoryModel::OutputRole).toString(),t.textSecondary,baseline);
@@ -509,10 +553,10 @@ public:
   }
   if(actionsShown){
    auto* style=view_->style();
-   if(showPrimary&&(!grid()||i!=view_->currentIndex()||!primary_->isVisible())){QStyleOptionButton button;button.rect=primaryBounds;button.text=grid()&&action=="Copy link"?QString{}:action;if(action=="Copy link"){button.icon=VisualStyle::icon("copy");button.iconSize=QSize(Graphite::scaled(16),Graphite::scaled(16));}button.state=QStyle::State_Enabled|(option.state&QStyle::State_MouseOver&&primaryBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);if(pressed_==i&&pressedAction_==1)button.state|=QStyle::State_Sunken;button.fontMetrics=QFontMetrics(Graphite::font());p->save();p->setFont(Graphite::font());style->drawControl(QStyle::CE_PushButton,&button,p,primary_);p->restore();}
-   if(!grid()||routineActionsShown){
+   if(showPrimary&&(!grid()||i!=actionIndex_||!primary_->isVisible())){QStyleOptionButton button;button.rect=primaryBounds;button.text=grid()&&action=="Copy link"?QString{}:action;if(action=="Copy link"){button.icon=VisualStyle::icon("copy");button.iconSize=QSize(Graphite::scaled(16),Graphite::scaled(16));}button.state=QStyle::State_Enabled|(option.state&QStyle::State_MouseOver&&primaryBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);if(pressed_==i&&pressedAction_==1)button.state|=QStyle::State_Sunken;button.fontMetrics=QFontMetrics(Graphite::font());p->save();p->setFont(Graphite::font());style->drawControl(QStyle::CE_PushButton,&button,p,primary_);p->restore();}
+   if(!grid()||actionsShown){
     if(grid()&&detailsShown(i)&&(i!=view_->currentIndex()||!details_->isVisible())){QStyleOptionButton button;button.rect=detailsRect(outer,i);button.text="Details";button.state=QStyle::State_Enabled;style->drawControl(QStyle::CE_PushButton,&button,p,details_);}
-    if(!grid()||i!=view_->currentIndex()||!more_->isVisible()){QStyleOptionButton more;more.rect=moreBounds;more.state=QStyle::State_Enabled|(moreBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);style->drawPrimitive(QStyle::PE_PanelButtonCommand,&more,p,grid()?more_:nullptr);const int side=Graphite::scaled(Graphite::Metric::icon);Graphite::paintChromeGlyph(*p,QRectF(moreBounds.center().x()-side/2.0,moreBounds.center().y()-side/2.0,side,side),"more",t.textSecondary);}
+    if(!grid()||i!=actionIndex_||!more_->isVisible()){QStyleOptionButton more;more.rect=moreBounds;more.state=QStyle::State_Enabled|(moreBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);style->drawPrimitive(QStyle::PE_PanelButtonCommand,&more,p,grid()?more_:nullptr);const int side=Graphite::scaled(Graphite::Metric::icon);Graphite::paintChromeGlyph(*p,QRectF(moreBounds.center().x()-side/2.0,moreBounds.center().y()-side/2.0,side,side),"more",t.textSecondary);}
    }
   }
   if(i.data(HistoryModel::ActiveRole).toBool()){const int progress=i.data(HistoryModel::ProgressRole).toInt();if(progress>=0){QRectF bar(columns.item.left(),grid()?primaryBounds.top()-8:r.bottom()-(below?actionHeight()+12:0)-8,qMax(20,itemWidth),3);p->setPen(Qt::NoPen);p->setBrush(t.surfaceRaised);p->drawRoundedRect(bar,1.5,1.5);bar.setWidth(bar.width()*progress/100);p->setBrush(t.text);p->drawRoundedRect(bar,1.5,1.5);}}
@@ -529,7 +573,7 @@ public:
  }
 private:
  void cancelPress(){pressed_=QPersistentModelIndex{};pressedAction_=0;view_->viewport()->update();}
- QListView* view_;QToolButton *primary_,*details_,*more_;QPersistentModelIndex pressed_;int pressedAction_=0;QPoint pressPosition_;
+ QListView* view_;QToolButton *primary_,*details_,*more_;QPersistentModelIndex pressed_,hovered_,actionIndex_;bool menuOpen_=false;int pressedAction_=0;QPoint pressPosition_;
 };
 }
 HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(parent),session_(session){
