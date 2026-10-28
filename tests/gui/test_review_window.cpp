@@ -22,6 +22,7 @@
 #include "platform/HostOpen.h"
 #include <QFontInfo>
 #include <QComboBox>
+#include <QStyleOptionComboBox>
 #include <QFileDialog>
 #include <QFile>
 #include <QLineEdit>
@@ -946,13 +947,13 @@ private slots:
         auto* audio = window.findChild<QLabel*>("exportAudioSummary");
         auto* transport = window.findChild<QWidget*>("reviewTransport");
         const auto bounds = [&](QWidget* w) { return QRect(w->mapTo(&window, QPoint()), w->size()); };
-        for (const int width : {1600, 640, 1600}) {
+        for (const int width : {1600, 1340, 1060, 640, 1600}) {
             window.resize(width, 720);
             for (int i = 0; i < 4; ++i) QApplication::processEvents();
             QCOMPARE(output, window.findChild<QToolButton*>("uploadDestinationMenu"));
             QCOMPARE(menu, output->menu());
-            const bool inHeader = width == 1600;
-            QCOMPARE(output->property("headerSummary").toBool(), inHeader);
+            const bool inHeader = output->property("headerSummary").toBool();
+            if (width == 1600 || width == 640) QCOMPARE(inHeader, width == 1600);
             QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
             QCOMPARE(header->isAncestorOf(output), inHeader);
             QCOMPARE(header->isAncestorOf(draft), inHeader);
@@ -966,11 +967,28 @@ private slots:
                 QVERIFY(bounds(output).right() < bounds(transport).left());
                 QVERIFY(bounds(transport).right() < bounds(draft).left());
                 QVERIFY(bounds(draft).right() < bounds(audio).left());
-                QVERIFY(bounds(audio).right() < bounds(window.findChild<QToolButton*>("windowMinimize")).left());
+                for (const auto* name : {"windowMinimize", "windowMaximize", "windowClose"}) {
+                    const auto button = bounds(window.findChild<QToolButton*>(name));
+                    QVERIFY(!button.intersects(bounds(audio)));
+                    if (button.left() > bounds(audio).right()) QVERIFY(button.left() - bounds(audio).right() - 1 >= Graphite::space(Graphite::Space::m));
+                }
                 const auto suffix = output->property("sharingSuffix").toString();
                 QVERIFY(output->width() >= output->fontMetrics().horizontalAdvance(suffix + QStringLiteral("…")) + 24);
                 QVERIFY(!window.findChild<QLabel*>("brandName")->isVisible());
             } else QVERIFY(window.findChild<QWidget*>("reviewFooter")->isAncestorOf(output));
+            auto* speed = window.findChild<QComboBox*>("speed");
+            const int speedWidth = speed->width();
+            for (int index = 0; index < speed->count(); ++index) {
+                speed->setCurrentIndex(index);
+                QStyleOptionComboBox option; option.initFrom(speed); option.frame = false; option.currentText = speed->currentText();
+                const auto text = speed->style()->subControlRect(QStyle::CC_ComboBox, &option, QStyle::SC_ComboBoxEditField, speed);
+                const auto arrow = speed->style()->subControlRect(QStyle::CC_ComboBox, &option, QStyle::SC_ComboBoxArrow, speed);
+                QVERIFY2(qAbs(text.width() - QFontMetricsF(speed->font()).horizontalAdvance(speed->currentText())) <= 1,
+                    qPrintable(QString("speed '%1': text %2, advance %3, control %4, font %5; painted %6").arg(speed->currentText()).arg(text.width()).arg(QFontMetricsF(speed->font()).horizontalAdvance(speed->currentText())).arg(speed->width()).arg(speed->font().toString(), Graphite::font(Graphite::Type::technical).toString())));
+                QCOMPARE(arrow.left() - text.right() - 1, Graphite::space(Graphite::Space::xs));
+                QVERIFY(speed->rect().contains(arrow));
+                QCOMPARE(speed->width(), speedWidth);
+            }
             bool opened = false;
             QTimer::singleShot(0, output, [&] { opened = menu->isVisible(); menu->close(); });
             output->setFocus(Qt::TabFocusReason); QTest::keyClick(output, Qt::Key_Space);

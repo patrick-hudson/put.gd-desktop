@@ -898,6 +898,14 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* o
     }
     case CC_ComboBox: {
         const auto* combo = qstyleoption_cast<const QStyleOptionComboBox*>(option);
+        if (combo && !combo->frame && !combo->editable) {
+            const int inset = space(Space::xs), arrowWidth = scaled(16);
+            const auto f = compactControl(widget) ? font(Type::technical) : widget ? widget->font() : QApplication::font();
+            const int textWidth = std::min(int(std::ceil(QFontMetricsF(f).horizontalAdvance(combo->currentText))),
+                std::max(0, r.width() - 3 * inset - arrowWidth));
+            if (sub == SC_ComboBoxEditField) return visualRect(option->direction, r, QRect(r.left() + inset, r.top(), textWidth, r.height()));
+            if (sub == SC_ComboBoxArrow) return visualRect(option->direction, r, QRect(r.left() + 2 * inset + textWidth, r.top(), arrowWidth, r.height()));
+        }
         if (combo && !combo->frame) break;
         switch (sub) {
         case SC_ComboBoxFrame: case SC_ComboBoxListBoxPopup: return r;

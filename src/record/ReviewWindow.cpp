@@ -1533,7 +1533,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     play_->setIconSize(QSize(Graphite::scaled(16), Graphite::scaled(16)));
     play_->setFixedSize(textControlHeight(play_), textControlHeight(play_));
     speed_->setFixedHeight(textControlHeight(speed_));
-    speed_->setFixedWidth(int(std::ceil(QFontMetricsF(speed_->font()).horizontalAdvance(QStringLiteral("0.5×")))) + Graphite::Metric::splitZone + reviewSpace(Graphite::Space::s));
+    speed_->setFixedWidth(int(std::ceil(QFontMetricsF(speed_->font()).horizontalAdvance(QStringLiteral("0.5×"))))
+        + std::max(Graphite::Metric::splitZone + reviewSpace(Graphite::Space::s), 3 * Graphite::space(Graphite::Space::xs) + Graphite::scaled(16)));
     format_->setFixedHeight(textControlHeight(format_));
     formatAdvice_->setFixedHeight(format_->height());
     for (auto* action : {upload_, save_, cancel_}) {
@@ -2254,7 +2255,7 @@ bool ReviewWindow::destinationFitsHeader(int width) const {
         destinationMenu_->fontMetrics().horizontalAdvance(mode + QStringLiteral("…")) + destinationMenuPadding());
     int needed = margins.left() + margins.right() + destinationWidth + transport_->sizeHint().width()
         + findChild<QLabel*>("draftState")->sizeHint().width() + destinationContextWidth()
-        + 4 * header_->layout()->spacing() + reviewSpace(Graphite::Space::l);
+        + 4 * header_->layout()->spacing() + reviewSpace(Graphite::Space::l) + Graphite::space(Graphite::Space::m);
     for (const auto* name : {"windowMinimize", "windowMaximize", "windowClose"})
         if (const auto* button = header_->findChild<QToolButton*>(name)) needed += button->width() + reviewSpace(Graphite::Space::xs);
     const bool wasHeader = destinationMenu_->property("headerSummary").toBool();
@@ -2281,6 +2282,7 @@ void ReviewWindow::placeDestination() {
     const auto mode = options_.sharingMode == "private" ? QStringLiteral("Private upload") : QStringLiteral("Shared link");
     const bool inHeader = destinationFitsHeader(width());
     const bool movedHeader = inHeader != destinationMenu_->property("headerSummary").toBool();
+    metadata->layout()->setContentsMargins(0, 0, inHeader ? Graphite::space(Graphite::Space::m) : 0, 0);
     destinationMenu_->setProperty("headerSummary", inHeader);
     destinationMenu_->setProperty("destinationName", options_.destination);
     destinationMenu_->setProperty("sharingSuffix", QStringLiteral(" · ") + mode);
@@ -2352,7 +2354,8 @@ void ReviewWindow::placeDestination() {
             grid->setVerticalSpacing(reviewSpace(Graphite::Space::xs));
         }
         // Reparenting between footer rows hides widgets that were already shown.
-        for (auto* widget : std::initializer_list<QWidget*>{destinationSummary, format_, metadata, save_, cancel_, upload_}) widget->show();
+        for (auto* widget : std::initializer_list<QWidget*>{destinationSummary, format_, metadata, exportAudio_, save_, cancel_, upload_}) widget->show();
+        separator->setVisible(!options_.uploadSummary.isEmpty());
         destinationMenu_->setVisible(!options_.uploadSummary.isEmpty());
         formatAdvice_->setVisible(config_.format == "mp4" && config_.codec == "h265");
         grid->setProperty("splitName", splitName);
