@@ -762,7 +762,7 @@ int ReviewTimeline::heightForLanes(int width, int lanes) const {
     // Leave the clamped last target below the trim track and nearest its own lane.
     const int rows = clipHeight() + std::min(lanes, visibleLanes()) * rowHeight() + (lanes > 0 ? 3 : 0)
         + (lanes > visibleLanes() ? iconTarget() : 0);
-    return timelineTop() + std::max(laneHeader_ ? clipHeight() + rowHeight() / 2 - 1 + (laneHeader_->height() + 1) / 2 : rulerHeight() + 10, rows);
+    return timelineTop() + std::max(laneHeader_ ? clipHeight() + rowHeight() / 2 + (laneHeader_->height() + 1) / 2 : rulerHeight() + 10, rows);
 }
 QSize ReviewTimeline::minimumSizeHint() const { return {220, heightForLanes(width(), lanes_)}; }
 void ReviewTimeline::paintEvent(QPaintEvent*) {
@@ -1391,6 +1391,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     play_->setIconSize(QSize(Graphite::scaled(16), Graphite::scaled(16)));
     play_->setFixedSize(textControlHeight(play_), textControlHeight(play_));
     speed_->setFixedHeight(textControlHeight(speed_));
+    speed_->setFixedWidth(int(std::ceil(QFontMetricsF(speed_->font()).horizontalAdvance(QStringLiteral("0.5×")))) + Graphite::Metric::splitZone + reviewSpace(Graphite::Space::s));
     format_->setFixedHeight(textControlHeight(format_));
     formatAdvice_->setFixedHeight(format_->height());
     for (auto* action : {upload_, save_, cancel_}) {

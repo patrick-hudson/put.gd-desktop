@@ -411,7 +411,7 @@ private slots:
             auto* speed = window.findChild<QComboBox*>("speed");
             auto* masks = window.findChild<QWidget*>("maskControls");
             QVERIFY(window.findChild<Graphite::WindowHeader*>()->isAncestorOf(metadata));
-            QCOMPARE(speed->width(), Graphite::scaled(64));
+            QVERIFY(speed->width() >= speed->fontMetrics().horizontalAdvance(QStringLiteral("0.5×")) + Graphite::Metric::splitZone);
             for (auto* control : std::initializer_list<QWidget*>{playback, speed, time}) {
                 QVERIFY(metadata->isAncestorOf(control));
                 const QRect bounds(control->mapTo(&window, QPoint()), control->size());
