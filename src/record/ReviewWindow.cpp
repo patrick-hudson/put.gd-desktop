@@ -2216,11 +2216,8 @@ void ReviewWindow::updateMinimum() {
                 - footer->height() - (statusRow_->isVisible() ? statusRow_->height() : 0);
             const auto share = [&](int width, int controls, int timelineHeight) {
                 const auto margins = footer->layout()->contentsMargins();
-                const int metadataWidth = findChild<QWidget*>("reviewMetadata")->sizeHint().width() + destinationContextWidth();
-                const bool longName = destinationMenu_->fontMetrics().horizontalAdvance(options_.destination) > reviewSpace(Graphite::Space::xl) * 10;
-                const int nameHeight = destination_->fontMetrics().horizontalAdvance(options_.destination) <= width - 2 * reviewSpace(Graphite::Space::l) ? destination_->fontMetrics().tightBoundingRect(options_.destination).height() : destination_->heightForWidth(width - 2 * reviewSpace(Graphite::Space::l));
-                const int destinationHeight = longName ? nameHeight + destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(std::max(destinationMenu_->minimumWidth(), width - 2 * reviewSpace(Graphite::Space::l) - metadataWidth - reviewSpace(Graphite::Space::s)));
-                const int footerHeight = format_->height() + (footerFits(width - 2 * reviewSpace(Graphite::Space::l) - reviewSpace(Graphite::Space::xs)) ? 0 : std::max(destinationHeight, destinationMenu_->fontMetrics().height()) + (longName ? 2 * reviewSpace(Graphite::Space::xs) : reviewSpace(Graphite::Space::xs)));
+                // The destination elides on the metadata line, so a second footer row is one text line.
+                const int footerHeight = format_->height() + (footerFits(width - 2 * reviewSpace(Graphite::Space::l) - reviewSpace(Graphite::Space::xs)) ? 0 : destinationMenu_->fontMetrics().height() + reviewSpace(Graphite::Space::xs));
                 const int chrome = fixed + trim->heightFor(width - 2 * reviewSpace(Graphite::Space::m)) + timelineHeight + footerHeight + margins.top() + margins.bottom();
                 const QSize image = QSize(10000, int(10000 / aspect)).scaled(QSize(width - 8, height - chrome - controls), Qt::KeepAspectRatio);
                 return double(image.width()) * image.height() / (double(width) * height);
@@ -2357,31 +2354,28 @@ void ReviewWindow::placeDestination() {
     destinationMenu_->setProperty("destinationName", options_.destination);
     destinationMenu_->setProperty("sharingSuffix", QStringLiteral(" · ") + mode);
     const int fullWidth = destinationMenu_->fontMetrics().horizontalAdvance(destination_->text()) + destinationMenuPadding();
-    const bool longName = destinationMenu_->fontMetrics().horizontalAdvance(options_.destination) > reviewSpace(Graphite::Space::xl) * 10;
-    const int modeWidth = (longName ? destinationMenu_->fontMetrics().horizontalAdvance(mode) : std::min(destinationMenu_->fontMetrics().horizontalAdvance(destination_->text()), reviewSpace(Graphite::Space::xl) * 10)) + destinationMenuPadding();
-    destinationMenu_->setMinimumWidth(modeWidth);
     const int sharingMinimum = destinationMenu_->fontMetrics().horizontalAdvance(QStringLiteral("… · ") + mode) + destinationMenuPadding();
     const int headerMinimum = std::max(12 * destinationMenu_->font().pixelSize(), sharingMinimum);
-    destinationMenu_->setProperty("elideDestination", inHeader || !longName);
-    if (inHeader || !longName) destinationMenu_->setMinimumWidth(inHeader ? headerMinimum : sharingMinimum);
+    // A long name elides before the sharing mode; the menu and tooltip keep it whole.
+    destinationMenu_->setProperty("elideDestination", true);
+    destinationMenu_->setMinimumWidth(inHeader ? headerMinimum : sharingMinimum);
     int leadingExtra = header_->menuButton()->parentWidget()->layout()->spacing();
     for (const auto* name : {"windowMinimize", "windowMaximize", "windowClose"})
         if (const auto* button = header_->findChild<QToolButton*>(name); button && header_->menuButton()->parentWidget()->isAncestorOf(button))
             leadingExtra += button->width() + button->parentWidget()->layout()->spacing();
     const int headerRoom = width() / 2 - transport_->sizeHint().width() / 2
         - header_->layout()->contentsMargins().left() - 2 * header_->layout()->spacing() - leadingExtra;
-    const int naturalDestination = inHeader ? std::min(fullWidth, std::max(headerMinimum, headerRoom)) : longName ? modeWidth : fullWidth;
+    const int naturalDestination = inHeader ? std::min(fullWidth, std::max(headerMinimum, headerRoom)) : fullWidth;
     destinationMenu_->setMaximumWidth(naturalDestination);
     auto* grid = qobject_cast<QGridLayout*>(findChild<QWidget*>("reviewActions")->layout());
     const int available = std::max(1, width() - 2 * reviewSpace(Graphite::Space::l));
     const bool wasSingle = grid->property("placed").toBool() && grid->property("singleRow").toBool();
     const bool single = inHeader || footerFits(available + (wasSingle ? 4 : -4));
     const int destinationSpace = single ? naturalDestination : available - metadata->sizeHint().width() - destinationContextWidth() - reviewSpace(Graphite::Space::s);
-    const bool splitName = longName && !single;
-    destinationMenu_->setProperty("displayText", splitName ? QVariant(mode) : QVariant());
-    destinationMenu_->setMaximumWidth(inHeader ? naturalDestination : splitName ? modeWidth : fullWidth);
-    destinationMenu_->setFixedHeight(single ? textControlHeight(destinationMenu_) : splitName ? destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(std::max(modeWidth, destinationSpace)));
-    if (!grid->property("placed").toBool() || movedHeader || grid->property("singleRow").toBool() != single || grid->property("splitName").toBool() != splitName) {
+    destinationMenu_->setProperty("displayText", QVariant());
+    destinationMenu_->setMaximumWidth(inHeader ? naturalDestination : fullWidth);
+    destinationMenu_->setFixedHeight(single ? textControlHeight(destinationMenu_) : destinationMenu_->heightForWidth(std::max(sharingMinimum, destinationSpace)));
+    if (!grid->property("placed").toBool() || movedHeader || grid->property("singleRow").toBool() != single) {
         auto* nameLine = findChild<QWidget*>("reviewDestinationLine");
         auto* metaLine = findChild<QWidget*>("reviewMetadataLine");
         auto* actionLine = findChild<QWidget*>("reviewActionLine");
@@ -2409,8 +2403,8 @@ void ReviewWindow::placeDestination() {
         }
         if (hadDetails) metadataRow->insertWidget(1, errorDetails_);
         for (int column = 0; column < 7; ++column) grid->setColumnStretch(column, 0);
-        nameLine->setVisible(splitName);
-        destination_->setVisible(splitName);
+        nameLine->hide();
+        destination_->hide();
         metaLine->setVisible(!single);
         actionLine->setVisible(!single);
         if (single) {
@@ -2431,9 +2425,8 @@ void ReviewWindow::placeDestination() {
             actionRow->addWidget(formatAdvice_);
             actionRow->addStretch(1);
             for (auto* action : {save_, cancel_, upload_}) actionRow->addWidget(action);
-            if (splitName) grid->addWidget(nameLine, 0, 0, 1, 7);
-            grid->addWidget(metaLine, splitName ? 1 : 0, 0, 1, 7);
-            grid->addWidget(actionLine, splitName ? 2 : 1, 0, 1, 7);
+            grid->addWidget(metaLine, 0, 0, 1, 7);
+            grid->addWidget(actionLine, 1, 0, 1, 7);
             grid->setVerticalSpacing(reviewSpace(Graphite::Space::xs));
         }
         // Reparenting between footer rows hides widgets that were already shown.
@@ -2441,7 +2434,6 @@ void ReviewWindow::placeDestination() {
         separator->setVisible(!options_.uploadSummary.isEmpty());
         destinationMenu_->setVisible(!options_.uploadSummary.isEmpty());
         formatAdvice_->setVisible(config_.format == "mp4" && config_.codec == "h265");
-        grid->setProperty("splitName", splitName);
         grid->setProperty("placed", true);
         grid->setProperty("singleRow", single);
         grid->invalidate();
@@ -2453,14 +2445,7 @@ void ReviewWindow::placeDestination() {
         findChild<QWidget*>(name)->layout()->activate();
     grid->invalidate();
     grid->activate();
-    if (splitName) {
-        destination_->setText(options_.destination);
-        const int nameWidth = std::max(1, available - Graphite::scaled(14) - 18);
-        const bool fits = destination_->fontMetrics().horizontalAdvance(options_.destination) <= nameWidth;
-        destination_->setWordWrap(!fits);
-        destination_->setFixedHeight(fits ? destination_->fontMetrics().tightBoundingRect(options_.destination).height() : destination_->heightForWidth(nameWidth));
-    }
-    const int height = single ? textControlHeight(destinationMenu_) : splitName ? destinationMenu_->fontMetrics().height() : destinationMenu_->heightForWidth(destinationMenu_->width());
+    const int height = single ? textControlHeight(destinationMenu_) : destinationMenu_->heightForWidth(destinationMenu_->width());
     if (destinationMenu_->height() != height) { destinationMenu_->setFixedHeight(height); grid->activate(); }
     header_->setLeading(inHeader ? destinationSummary : nullptr);
     placeErrorDetails();
