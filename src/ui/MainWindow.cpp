@@ -243,6 +243,8 @@ void MainWindow::updateSaveStatus(){
  if(!saveStatus_||!explanation_)return;
  const auto text=settings_?settings_->autosaveText():QString();const bool unsaved=settings_&&settings_->changesUnsaved();
  VisualStyle::feedback(saveStatus_,unsaved?QString("Changes not saved"):text,unsaved);saveStatus_->setToolTip(unsaved?text:QString());saveStatus_->setAccessibleDescription(unsaved?text:QString());
+ // Recovery uses body type; caption metadata yields to that single message.
+ if(updateLink_){const auto update=session_.diagnostics()["update"].toObject();updateLink_->setVisible(!unsaved&&update["supported"].toBool()&&update["result"].toObject()["updateAvailable"].toBool());}
  // "Settings save automatically" is the band's least important line: it gives
  // way before the output summary has to elide (narrow windows, large text).
  const int gap=qMax(statusBar()->style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing,nullptr,statusBar()),6);
@@ -250,7 +252,7 @@ void MainWindow::updateSaveStatus(){
  int needed=(outputGroup_->isHidden()?0:destination_->sizeHint().width()+gap)+24;
  for(auto* widget:statusBar()->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(widget!=outputGroup_&&widget!=explanation_&&widget!=version_&&widget!=versionGroup&&!widget->isWindow()&&widget->isVisibleTo(statusBar()))needed+=widget->sizeHint().width()+gap;
  const int versionWidth=link.url.isEmpty()?version_->sizeHint().width():versionGroup->sizeHint().width();
- const bool versionRoom=needed+versionWidth+gap<=statusBar()->width();
+ const bool versionRoom=!unsaved&&needed+versionWidth+gap<=statusBar()->width();
  version_->setVisible(versionRoom&&!link.version.isEmpty()&&link.url.isEmpty());versionGroup->setVisible(versionRoom&&!link.url.isEmpty());
  explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&needed+(versionRoom?versionWidth+gap:0)+explanation_->sizeHint().width()+gap<=statusBar()->width());
 }
