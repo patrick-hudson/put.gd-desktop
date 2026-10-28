@@ -89,7 +89,7 @@ protected:
         initStyleOption(&option);
         style()->drawPrimitive(QStyle::PE_PanelButtonTool, &option, &painter, this);
         const auto colour = isEnabled() ? Theme::current().textSecondary : Theme::current().textDisabled;
-        const auto labelRect = rect().adjusted(4, 0, -18, 0);
+        const auto labelRect = rect().adjusted(4, 0, -10, 0);
         auto label = text();
         if (fontMetrics().horizontalAdvance(label) > labelRect.width()) label.remove(0, 2);
         Graphite::paintText(painter, labelRect, label, colour, font(), Qt::AlignLeft | Qt::AlignVCenter);
