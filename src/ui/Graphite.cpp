@@ -484,10 +484,14 @@ void Style::polish(QPalette& palette) { palette = Graphite::palette(); }
 
 bool Style::eventFilter(QObject* watched, QEvent* event) {
     if (event->type() == QEvent::DynamicPropertyChange
-        && static_cast<QDynamicPropertyChangeEvent*>(event)->propertyName() == "graphiteDensity") {
+        && (static_cast<QDynamicPropertyChangeEvent*>(event)->propertyName() == "graphiteDensity"
+            || static_cast<QDynamicPropertyChangeEvent*>(event)->propertyName() == "graphiteTight")) {
         if (auto* widget = qobject_cast<QWidget*>(watched)) {
             unpolish(widget);
             polish(widget);
+            // QToolButton caches its size hint until the style changes.
+            QEvent changed(QEvent::StyleChange);
+            QCoreApplication::sendEvent(widget, &changed);
             widget->updateGeometry();
             widget->update();
         }
@@ -738,12 +742,13 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         }
         if (!text) {
             const int side = std::max(compact ? height : Metric::iconTarget, (icon ? tool->iconSize.height() : 16) + padding);
-            return {side + (split ? Metric::splitArrow : 0), side};
+            return {side + (split ? scaled(Metric::splitArrow) : 0), side};
         }
         const QFont f = buttonFont(widget, option);
         const QFontMetrics metrics(f);
         int w = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + 2 * 14 + 2 + (icon ? tool->iconSize.width() + 8 : 0);
-        if (split) w += Metric::splitArrow - 6;
+        if (widget && widget->property("graphiteTight").toBool()) w -= 2 * (int(Space::m) - int(Space::xs));
+        if (split) w += scaled(Metric::splitArrow) - 6;
         else if (menu) w += Metric::splitZone - 6;
         if (flushButton(widget)) w -= 14;
         return {w, std::max(height, metrics.height() + padding)};
@@ -886,8 +891,8 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* o
     case CC_ToolButton: {
         const auto* tool = qstyleoption_cast<const QStyleOptionToolButton*>(option);
         if (!tool || !(tool->features & QStyleOptionToolButton::MenuButtonPopup)) break;
-        if (sub == SC_ToolButtonMenu) return visualRect(option->direction, r, QRect(r.right() - Metric::splitArrow + 1, r.top(), Metric::splitArrow, r.height()));
-        if (sub == SC_ToolButton) return visualRect(option->direction, r, r.adjusted(0, 0, -Metric::splitArrow, 0));
+        if (sub == SC_ToolButtonMenu) return visualRect(option->direction, r, QRect(r.right() - scaled(Metric::splitArrow) + 1, r.top(), scaled(Metric::splitArrow), r.height()));
+        if (sub == SC_ToolButton) return visualRect(option->direction, r, r.adjusted(0, 0, -scaled(Metric::splitArrow), 0));
         break;
     }
     default: break;
@@ -1142,7 +1147,8 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto name = buttonRole(widget, option);
         const bool textShown = tool->toolButtonStyle != Qt::ToolButtonIconOnly && !tool->text.isEmpty();
         const bool iconShown = tool->toolButtonStyle != Qt::ToolButtonTextOnly && !tool->icon.isNull();
-        QRect body = textShown ? option->rect.adjusted(name == "link" || name == "version" ? 4 : 12, 0, name == "link" || name == "version" ? -4 : -12, 0) : option->rect;
+        const int inset = name == "link" || name == "version" || (widget && widget->property("graphiteTight").toBool()) ? int(Space::xs) : int(Space::m);
+        QRect body = textShown ? option->rect.adjusted(inset, 0, -inset, 0) : option->rect;
         if (flushButton(widget)) body.setLeft(option->rect.left());
         drawButtonLabel(option, textShown ? tool->text : QString(), iconShown ? tool->icon : QIcon(), tool->iconSize, p, widget, body);
         return;
