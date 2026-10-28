@@ -172,7 +172,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  connect(&session_,&UiSession::statusChanged,this,updateVersion);updateVersion();
  // A newer version, from the resident's daily check (#293): it opens
  // General → Updates, which has the download.
- updateLink_=new QPushButton(VisualStyle::icon("download"),"Update available");updateLink_->setObjectName("updateAvailable");VisualStyle::role(updateLink_,"link");updateLink_->setCursor(Qt::PointingHandCursor);updateLink_->hide();
+ updateLink_=new QPushButton(VisualStyle::icon("download"),"Update available");updateLink_->setObjectName("updateAvailable");VisualStyle::role(updateLink_,"version");updateLink_->setCursor(Qt::PointingHandCursor);updateLink_->hide();
  connect(updateLink_,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showUpdates();});
  auto updateAvailable=[this]{
   const auto update=session_.diagnostics()["update"].toObject();const auto result=update["result"].toObject();

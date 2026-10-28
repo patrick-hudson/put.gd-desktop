@@ -302,7 +302,7 @@ public:
   auto* root=new QVBoxLayout(this);root->setContentsMargins(0,0,0,0);root->setSpacing(0);
   scroll_=new QScrollArea(this);scroll_->setObjectName("diagnosticsPackageScroll");scroll_->setWidgetResizable(true);scroll_->setFrameShape(QFrame::NoFrame);scroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);root->addWidget(scroll_,1);
   auto* body=new QWidget;body->setObjectName("diagnosticsPackageBody");scroll_->setWidget(body);
-  auto* layout=new QVBoxLayout(body);layout->setContentsMargins(24,20,24,14);layout->setSpacing(14);
+  auto* layout=new QVBoxLayout(body);layout->setContentsMargins(space(Space::xl),space(Space::xl),space(Space::xl),space(Space::xl));layout->setSpacing(space(Space::m));
   auto* heading=new QLabel("Create diagnostics package",this);VisualStyle::role(heading,"sectionTitle");layout->addWidget(heading);
   auto* intro=new QLabel("A .zip a maintainer can use to work out what went wrong. It is always saved on this computer; nothing is uploaded unless you choose to below.",this);intro->setWordWrap(true);VisualStyle::role(intro,"muted");layout->addWidget(intro);
   auto* form=new QFormLayout;VisualStyle::styleForm(form);form->setVerticalSpacing(space(Space::m));layout->addLayout(form);
@@ -332,7 +332,7 @@ public:
   auto* inventory=new QToolButton(this);inventory->setObjectName("packageContentsToggle");inventory->setText("Package contents");Graphite::disclosure(inventory);layout->addWidget(inventory);layout->addWidget(contents_);layout->addWidget(operations_);contents_->hide();operations_->hide();connect(inventory,&QToolButton::toggled,contents_,&QWidget::setVisible);connect(inventory,&QToolButton::toggled,operations_,&QWidget::setVisible);connect(inventory,&QToolButton::toggled,this,[this]{fit();});
   result_=label("packageResult");VisualStyle::role(result_,"status");result_->hide();layout->addWidget(result_);
   rule_=Graphite::rule(this);root->addWidget(rule_);
-  auto* buttons=footer_=new QHBoxLayout;buttons->setContentsMargins(24,12,24,18);buttons->setSpacing(space(Space::s));show_=new QPushButton("Show in folder",this);show_->setObjectName("showPackageInFolder");show_->hide();buttons->addWidget(show_);buttons->addStretch();
+  auto* buttons=footer_=new QHBoxLayout;buttons->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));buttons->setSpacing(space(Space::s));show_=new QPushButton("Show in folder",this);show_->setObjectName("showPackageInFolder");show_->hide();buttons->addWidget(show_);buttons->addStretch();
   close_=new QPushButton("Cancel",this);close_->setObjectName("closePackage");buttons->addWidget(close_);
   save_=new QPushButton("Save package",this);save_->setObjectName("savePackage");VisualStyle::role(save_,"primary");save_->setDefault(true);buttons->addWidget(save_);root->addLayout(buttons);
   connect(includeNames_,&QCheckBox::toggled,this,[this]{refreshPreview();});
