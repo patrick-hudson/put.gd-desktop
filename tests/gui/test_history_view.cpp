@@ -1,5 +1,6 @@
 #include <QDateTime>
 #include <QTextDocument>
+#include <QTextCursor>
 #include <QTextOption>
 #include <QAccessible>
 #include <QCursor>
@@ -203,6 +204,25 @@ private slots:
    QVERIFY2(actual.rect().contains(bounds),"Every row action must fit inside its row");int coveredInk=0;
    for(int y=bounds.top();y<=bounds.bottom();++y)for(int x=bounds.left();x<=bounds.right();++x){const auto color=actual.pixelColor(x,y).rgb();if(color==title||color==status)++coveredInk;}
    QVERIFY2(coveredInk==0,qPrintable(QString("Action at %1,%2 %3x%4 covers %5 text pixels").arg(bounds.x()).arg(bounds.y()).arg(bounds.width()).arg(bounds.height()).arg(coveredInk)));
+  }
+ }
+ void separatedMetadataBreaksOnlyBetweenSegments(){
+  const auto font=Graphite::font(Graphite::Type::metadata);const QFontMetrics metrics(font);const QString first="<span style=\"color:#a44139\">Upload failed</span>",second="<span style=\"color:#484844\">Connection interrupted</span>",third="<span style=\"color:#484844\">Saved locally</span>";
+  const int width=metrics.horizontalAdvance("Upload failed · Connection interrupted");const auto html=Graphite::separatedLines({first,second,third},font,width);QTextDocument document;document.setDefaultFont(font);document.setHtml(html);QCOMPARE(document.toPlainText(),QString("Upload failed · Connection interrupted\nSaved locally"));
+  for(const auto& line:document.toPlainText().split('\n')){QVERIFY(!line.startsWith("·"));QVERIFY(!line.endsWith("·"));QVERIFY(!line.contains(QChar(0x2026)));}
+  QTextCursor cursor(&document);cursor.setPosition(2);QCOMPARE(cursor.charFormat().foreground().color(),QColor("#a44139"));cursor.setPosition(document.toPlainText().size()-2);QCOMPARE(cursor.charFormat().foreground().color(),QColor("#484844"));
+  document.setHtml(Graphite::separatedLines({first,second,third},font,1));QCOMPARE(document.toPlainText(),QString("Upload failed\nConnection interrupted\nSaved locally"));QCOMPARE(Graphite::separatedLines({},font,width),QString{});
+ }
+ void compactMetadataDropsWholeSegmentsAndKeepsStatusColour(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);HistoryWindow window(fixture.session);window.resize(Graphite::scaled(1400),800);window.show();putgd::test::settle(30);auto* list=window.findChild<QListView*>("historyList");HistoryActionInkProbe probe;list->setStyle(&probe);
+  QStandardItemModel model(1,1);const auto index=model.index(0,0);model.setData(index,"Region · 35 KiB · 2 min ago · Shared link",HistoryModel::SubtitleRole);model.setData(index,"2 min ago",HistoryModel::CreatedRole);model.setData(index,QJsonObject{{"uploadStatus","uploaded"},{"bytes",35840},{"category","images"},{"operation",QJsonObject{{"action","region"},{"copyStatus","copied"}}}},HistoryModel::RecordRole);
+  const auto font=Graphite::font(Graphite::Type::metadata);const QFontMetrics metrics(font);const auto& t=Theme::current();const int left=96+2*Graphite::space(Graphite::Space::s)+Graphite::space(Graphite::Space::l);
+  for(int bodyWidth:{200,240,300,400}){
+   list->viewport()->resize(Graphite::scaled(bodyWidth)+left+2*Graphite::space(Graphite::Space::s),600);QStyleOptionViewItem option;option.initFrom(list);const auto size=list->itemDelegate()->sizeHint(option,index);option.rect=QRect(QPoint(),size);option.state=QStyle::State_Enabled|QStyle::State_MouseOver;probe.buttons.clear();QImage image(size,QImage::Format_RGB32);image.fill(t.bg);{QPainter painter(&image);list->itemDelegate()->paint(&painter,option,index);}QCOMPARE(probe.buttons.size(),1);
+   const auto button=probe.buttons.first();const int width=button.left()-Graphite::space(Graphite::Space::s)-left,top=button.top()+(button.height()-metrics.height())/2;
+   QStringList expected;if(metrics.horizontalAdvance("Region · 35 KiB · Shared link · 2 min ago")<=width)expected={"Region","35 KiB","Shared link","2 min ago"};else if(metrics.horizontalAdvance("Region · Shared link · 2 min ago")<=width)expected={"Region","Shared link","2 min ago"};else if(metrics.horizontalAdvance("Shared link · 2 min ago")<=width)expected={"Shared link","2 min ago"};else expected={metrics.elidedText("Shared link",Qt::ElideRight,qMax(0,width-metrics.horizontalAdvance(" · 2 min ago"))),"2 min ago"};
+   QString html;for(const auto& part:expected){if(!html.isEmpty())html+="<span style=\"color:"+t.textSecondary.name()+"\"> · </span>";auto text=part;text.replace(' ',QChar(0x00a0));html+="<span style=\"color:"+(part==expected[expected.size()-2]?t.success:t.textSecondary).name()+"\">"+text+"</span>";}
+   QTextDocument document;document.setDocumentMargin(0);document.setDefaultFont(font);QTextOption noWrap;noWrap.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(noWrap);document.setHtml(html);document.setTextWidth(width);QImage reference(width,metrics.height(),QImage::Format_RGB32);reference.fill(t.bg);{QPainter painter(&reference);document.drawContents(&painter);}QCOMPARE(image.copy(left,top,width,metrics.height()),reference);
   }
  }
  void compactRowsKeepTitlesClearAndTimesVisible_data(){

@@ -10,6 +10,7 @@
 #include <QProxyStyle>
 #include <QStyledItemDelegate>
 #include <QTabBar>
+#include <QStringList>
 #include <QWidget>
 
 class QPushButton;class QApplication;class QLineEdit;class QMessageBox;
@@ -52,6 +53,8 @@ void setFamilies(const QString& ui, const QString& mono);
 QFont font(int pixels = Type::body, bool strong = false);
 QFont labelFont(bool selected = false);
 QFont monoFont(int pixels = Type::metadata);
+// Escaped HTML segments (including colour spans); wrap only between segments.
+QString separatedLines(QStringList segments, const QFont&, int width);
 // Orthogonal to colour roles; restored on every polish.
 void setMono(QWidget*, int pixels = Type::metadata);
 QColor mix(const QColor& a, const QColor& b, qreal amount);

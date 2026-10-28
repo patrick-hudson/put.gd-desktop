@@ -52,6 +52,7 @@
 #endif
 #include <QStyledItemDelegate>
 #include <QTextEdit>
+#include <QTextDocument>
 #include <QToolButton>
 #include <QToolTip>
 #include <QWindow>
@@ -60,6 +61,30 @@
 #include <cmath>
 
 namespace putgd::Graphite {
+QString separatedLines(QStringList segments, const QFont& font, int width) {
+    const QFontMetrics metrics(font);
+    const QString separator = "<span style=\"color:" + Theme::current().textSecondary.name() + "\"> · </span>";
+    QStringList lines;
+    QString line, plainLine;
+    for (const auto& segment : segments) {
+        QTextDocument document;
+        document.setHtml(segment);
+        const auto plain = document.toPlainText();
+        if (plain.isEmpty()) continue;
+        const auto joined = plainLine.isEmpty() ? plain : plainLine + " · " + plain;
+        if (!plainLine.isEmpty() && metrics.horizontalAdvance(joined) > qMax(0, width)) {
+            lines.append(line);
+            line.clear();
+            plainLine.clear();
+        }
+        if (!line.isEmpty()) { line += separator; plainLine += " · "; }
+        line += segment;
+        plainLine += plain;
+    }
+    if (!line.isEmpty()) lines.append(line);
+    return lines.join("<br>");
+}
+
 namespace {
 QString& uiFamilyName() { static QString name; return name; }
 QString& monoFamilyName() { static QString name; return name; }
