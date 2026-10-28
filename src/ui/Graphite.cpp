@@ -338,7 +338,7 @@ qreal applicationScale() {
     if (installedBody() <= 0 || !qApp) return 1.0;
     return std::clamp(pixelsOf(QApplication::font()) / installedBody(), 0.75, 3.0);
 }
-int space(Space value) { return scaled(static_cast<int>(value)); }
+int space(Space value) { return int(std::lround(static_cast<int>(value) * std::min(textScale() * applicationScale(), qreal(1.15)))); }
 int lineHeight(int pixels) {
     const int line = pixels == Type::caption ? Type::captionLine : pixels == Type::section ? Type::sectionLine : pixels == Type::page ? Type::pageLine : Type::bodyLine;
     const qreal scale = textScale() * applicationScale();
@@ -636,7 +636,7 @@ void Style::polish(QWidget* widget) {
     }
     if (auto* label = qobject_cast<QLabel*>(widget); label && setFont && (name == "caption" || name == "body" || name == "label" || name == "section" || name == "page")) {
         const bool section = name == "section" || name == "sectionTitle";
-        if (name == "section") label->setContentsMargins(0, scaled(Type::sectionAbove), 0, scaled(Type::sectionBelow));
+        if (name == "section") label->setContentsMargins(0, space(Space::xl), 0, space(Space::s));
         const int pixels = name == "page" || name == "title" || name == "editableTitle" ? Type::page : section ? Type::section : f.pixelSize() == scaled(Type::caption) ? Type::caption : Type::body;
         label->setMinimumHeight(lineHeight(pixels) + label->contentsMargins().top() + label->contentsMargins().bottom());
     }
@@ -696,7 +696,7 @@ int Style::pixelMetric(PixelMetric metric, const QStyleOption* option, const QWi
     case PM_ComboBoxFrameWidth: case PM_SpinBoxFrameWidth: return 1;
     case PM_IndicatorWidth: case PM_IndicatorHeight: return scaled(17);
     case PM_ExclusiveIndicatorWidth: case PM_ExclusiveIndicatorHeight: return scaled(18);
-    case PM_CheckBoxLabelSpacing: case PM_RadioButtonLabelSpacing: return scaled(9);
+    case PM_CheckBoxLabelSpacing: case PM_RadioButtonLabelSpacing: return space(Space::s);
     case PM_ScrollBarExtent: return std::max(12, int(std::lround(12 + 8 * (textScale() * applicationScale() - 1))));
     case PM_ScrollBarSliderMin: return 28;
     case PM_MenuPanelWidth: return 1;
@@ -744,7 +744,7 @@ int Style::styleHint(StyleHint hint, const QStyleOption* option, const QWidget* 
 QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, const QSize& contents, const QWidget* widget) const {
     const bool compact = compactControl(widget);
     const int height = compact ? scaled(Metric::controlCompact) : Metric::control;
-    const int padding = compact ? scaled(8) : 14;
+    const int padding = compact ? space(Space::s) : 14;
     switch (type) {
     case CT_PushButton: {
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
@@ -2005,7 +2005,7 @@ void Banner::paintEvent(QPaintEvent*) {
     QRect firstRow = row_->cellRect(0, 0);
     if (content_ != text_ && content_->layout() && content_->layout()->count())
         firstRow = content_->layout()->itemAt(0)->geometry().translated(content_->pos());
-    const QRect glyph(scaled(12), firstRow.y() + std::max(0, (firstRow.height() - side) / 2), side, side);
+    const QRect glyph(space(Space::m), firstRow.y() + std::max(0, (firstRow.height() - side) / 2), side, side);
     if (!icon_.isNull()) icon_.paint(&painter, glyph);
     else if (tone_ == Tone::Success) paintChromeGlyph(painter, glyph, "check", tone);
     else if (tone_ == Tone::Info) {

@@ -110,10 +110,11 @@ private slots:
             QCOMPARE(Graphite::font(Graphite::Type::caption, true).weight(), QFont::Normal);
             QCOMPARE(Graphite::font(Graphite::Type::section, true).weight(), QFont::DemiBold);
             std::unique_ptr<QLabel> section(Graphite::label("Appearance", "section"));
-            QCOMPARE(section->contentsMargins().top(), Graphite::scaled(24));
-            QCOMPARE(section->contentsMargins().bottom(), Graphite::scaled(8));
-            QVERIFY(section->minimumHeight() >= Graphite::lineHeight(Graphite::Type::section) + Graphite::scaled(32));
-            QCOMPARE(Graphite::space(Graphite::Space::l), Graphite::scaled(16));
+            QCOMPARE(section->contentsMargins().top(), Graphite::space(Graphite::Space::xl));
+            QCOMPARE(section->contentsMargins().bottom(), Graphite::space(Graphite::Space::s));
+            QVERIFY(section->minimumHeight() >= Graphite::lineHeight(Graphite::Type::section) + Graphite::space(Graphite::Space::xl) + Graphite::space(Graphite::Space::s));
+            QCOMPARE(Graphite::space(Graphite::Space::l), body == 14 ? 16 : 18);
+            QVERIFY(Graphite::scaled(Graphite::Metric::control) >= 36 * body / 14);
         }
     }
     void chromeTargetsAndTitleFitFollowTextSize() {

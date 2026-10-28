@@ -43,6 +43,8 @@ constexpr int captionLine = 16, bodyLine = 20, sectionLine = 22, pageLine = 28;
 constexpr int sectionAbove = 24, sectionBelow = 8;
 }
 enum class Space { xs = 4, s = 8, m = 12, l = 16, xl = 24, xxl = 32 };
+// Decorative gaps and insets follow text only up to 1.15x; line boxes and
+// control heights keep following the full font scale through scaled().
 int space(Space);
 int lineHeight(int pixels);
 // Families registered by Fonts::load (IBM Plex) in processes that bundle them;
