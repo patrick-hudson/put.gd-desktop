@@ -3,6 +3,7 @@
 #include "Graphite.h"
 #include "platform/HostOpen.h"
 #include <QGridLayout>
+#include <QApplication>
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QDialogButtonBox>
@@ -17,6 +18,7 @@ AboutWindow::AboutWindow(const QJsonObject& residentBuild, QWidget* parent)
  : QMessageBox(QMessageBox::Information, "About put.gd",
                QString("put.gd"),
                QMessageBox::Close, parent) {
+ VisualStyle::apply(*qApp);
  setWindowModality(Qt::NonModal);
  setTextFormat(Qt::PlainText);
  setInformativeText("Screen capture and file sharing");
