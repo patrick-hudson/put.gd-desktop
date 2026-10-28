@@ -54,7 +54,7 @@ public:
     QRect imageRect() const;
     void setPlaying(bool playing) { playing_ = playing; update(); }
     bool playing() const { return playing_; }
-    void setOutsideKeptPart(bool outside) { outsideKeptPart_ = outside; update(); }
+    void setOutsideKeptPart(bool outside) { if (outsideKeptPart_ == outside) return; outsideKeptPart_ = outside; announce(); update(); }
     bool outsideKeptPart() const { return outsideKeptPart_; }
     // The mask Enter places: centred, half the frame's width and height.
     QRect defaultMaskRect() const;

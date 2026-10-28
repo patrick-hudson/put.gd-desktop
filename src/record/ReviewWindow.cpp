@@ -506,6 +506,7 @@ void FrameView::announce() {
         break;
     }
     if (!armed_.isEmpty()) text = armed_ == "solid" ? QStringLiteral("Drag on the frame to place the redaction, or press Enter for a centered one") : QStringLiteral("Drag on the frame to place the blur, or press Enter for a centered one");
+    if (outsideKeptPart_) text.prepend(QStringLiteral("Outside kept part. "));
     if (!error_.isEmpty()) text.prepend(error_ + QStringLiteral(". "));
     if (accessibleDescription() == text) return;
     setAccessibleDescription(text);
