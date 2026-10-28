@@ -561,10 +561,10 @@ void Style::polish(QWidget* widget) {
     else if (name == "eyebrow" || name == "railHeading" || name == "micro") { f = font(Type::caption); colour = c.textMuted; }
     // An error is never small print: it takes body type even in a meta slot.
     else if (name == "inspectorKey") { f = font(13); colour = c.textSecondary; }
-    else if (name == "meta") { f = font(tone == "error" ? Type::body : Type::metadata); colour = c.textSecondary; }
+    else if (name == "meta") { f = font(tone == "error" ? Type::body : Type::technical); colour = c.textSecondary; }
     else if (name == "version") f = font(Type::technical);
-    else if (name == "binding") { f = monoFont(Type::metadata); colour = c.textSecondary; }
-    else if (name == "mono" || name == "path" || (name == "link" && qobject_cast<QLineEdit*>(widget)) || name == "diagnostics") f = monoFont(Type::metadata);
+    else if (name == "binding") { f = monoFont(Type::technical); colour = c.textSecondary; }
+    else if (name == "mono" || name == "path" || (name == "link" && qobject_cast<QLineEdit*>(widget)) || name == "diagnostics") f = monoFont(Type::technical);
     // Editable technical values use the quieter 13 px Mono role.
     else if (name == "technical") f = monoFont(Type::technical);
     else if (name == "pill") { f = font(Type::technical); colour = c.textSecondary; }
@@ -2335,9 +2335,6 @@ QSize Segmented::minimumSizeHint() const { return sizeHint(); }
 void Segmented::paintEvent(QPaintEvent*) {
     QPainter p(this);
     const auto& c = t();
-    QRectF track;
-    for (int i = 0; i < count(); ++i) track |= QRectF(tabRect(i));
-    rounded(&p, track.adjusted(0, 2, 0, -2), mix(c.bg, c.surface, 0.6), c.border, Metric::trackRadius);
     const int hovered = underMouse() ? tabAt(mapFromGlobal(QCursor::pos())) : -1;
     for (int i = 0; i < count(); ++i) {
         const QRectF r = QRectF(tabRect(i)).adjusted(Metric::segmentInset, Metric::segmentInset + 2, -Metric::segmentInset, -Metric::segmentInset - 2);

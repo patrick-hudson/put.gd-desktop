@@ -62,7 +62,7 @@ private slots:
     for(auto* label:window.findChild<QWidget*>("editorSide")->findChildren<QLabel*>()){
      if(!QStringList{"Color","Line width","Font","Size in image pixels","Blur radius","Crop area","X","Y","Width","Height","Document"}.contains(label->text()))continue;
      QCOMPARE(label->property("visualRole").toString(),QString("caption"));
-     QCOMPARE(label->font().pixelSize(),Graphite::scaled(Graphite::Type::caption));
+     QCOMPARE(label->font().pixelSize(),Graphite::scaled(Graphite::Type::technical));
      QVERIFY(label->height()>=label->fontMetrics().height());
     }
    }

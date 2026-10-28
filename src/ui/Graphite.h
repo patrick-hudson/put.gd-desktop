@@ -36,7 +36,7 @@ constexpr int labelGutter = 220;
 }
 // Type sizes and minimum line boxes in logical pixels.
 namespace Type {
-constexpr int caption = 12, metadata = 13, micro = caption, maskBadge = 12;
+constexpr int caption = 12, metadata = caption, micro = caption, maskBadge = 12;
 constexpr int body = 14, label = 14, section = 16, page = 22, compactPage = 20, technical = 13;
 constexpr int captionLine = 16, bodyLine = 20, sectionLine = 22, pageLine = 28;
 constexpr int sectionAbove = 24, sectionBelow = 8;
