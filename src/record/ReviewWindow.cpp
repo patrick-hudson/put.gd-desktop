@@ -1353,6 +1353,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     for (const auto& [label, factor] : std::initializer_list<std::pair<const char*, double>>{{"0.5×", 0.5}, {"1×", 1.0}, {"2×", 2.0}, {"4×", 4.0}}) speed_->addItem(QString::fromUtf8(label), factor);
     speed_->setCurrentIndex(1);
     speed_->setFixedWidth(Graphite::scaled(64));
+    play_->setFixedWidth(speed_->width());
     speed_->setFrame(false);
     // Mono keeps the timecode columns steady while scrubbing.
     time_ = new Graphite::ElidedLabel(this);

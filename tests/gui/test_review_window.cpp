@@ -113,6 +113,20 @@ private slots:
             QVERIFY2(livePixels >= 12, "Start recording must paint the live-coloured dot on its primary button");
         }
     }
+    void playheadReadoutStaysOnTheFrameCentre() {
+        Graphite::WindowHeader::setCustomFrameOverride(1);
+        auto restore = qScopeGuard([] { Graphite::WindowHeader::setCustomFrameOverride(0); });
+        ReviewWindow window(options(), config()); window.show();
+        for (int width : {640, 744, 1342}) {
+            window.resize(width, 720); QApplication::processEvents();
+            auto* time = window.findChild<QLabel*>("time");
+            auto* frame = window.findChild<FrameView*>();
+            const qreal timeCentre = time->mapTo(&window, QPoint()).x() + time->width() / 2.0;
+            const qreal frameCentre = frame->mapTo(&window, QPoint()).x() + frame->width() / 2.0;
+            QVERIFY2(std::abs(timeCentre - frameCentre) <= 1, qPrintable(QString("%1: readout %2, frame %3").arg(width).arg(timeCentre).arg(frameCentre)));
+            QCOMPARE(window.findChild<QToolButton*>("play")->width(), window.findChild<QComboBox*>("speed")->width());
+        }
+    }
     void playbackAndReadoutsKeepTheirOwnPlaces() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
