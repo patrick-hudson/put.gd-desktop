@@ -1078,7 +1078,7 @@ private slots:
         QCheckBox check("Synthetic");QRadioButton radio("Synthetic");
         QCOMPARE(check.style()->pixelMetric(QStyle::PM_IndicatorWidth),Graphite::scaled(17));
         QCOMPARE(radio.style()->pixelMetric(QStyle::PM_ExclusiveIndicatorWidth),Graphite::scaled(18));
-        QCOMPARE(check.style()->pixelMetric(QStyle::PM_CheckBoxLabelSpacing),Graphite::scaled(9));
+        QCOMPARE(check.style()->pixelMetric(QStyle::PM_CheckBoxLabelSpacing),Graphite::space(Graphite::Space::s));
         check.ensurePolished();radio.ensurePolished();
         QVERIFY(check.sizeHint().height()>=Graphite::scaled(17));QVERIFY(radio.sizeHint().height()>=Graphite::scaled(18));
     }
