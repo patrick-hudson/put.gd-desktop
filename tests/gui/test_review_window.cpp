@@ -1839,6 +1839,57 @@ private slots:
         window.resize(1280, 760);
         PUTGD_TRY_VERIFY(window.inspect()["video"].toObject()["rect"].toArray()[2].toInt() > before[2].toInt());
     }
+    void largeTextControlsKeepTextPaddingAndOneLineRows() {
+        const auto original = qApp->font();
+        const auto restore = qScopeGuard([&] { qApp->setFont(original); Graphite::WindowHeader::setCustomFrameOverride(0); });
+        Graphite::WindowHeader::setCustomFrameOverride(1);
+        auto font = original; font.setPointSizeF(10.5 * 1.5); qApp->setFont(font);
+        auto o = options(); o.canvas = QSize(960, 600); o.durationUs = 32000000; o.availableSize = QSize(1366, 680); o.audioRecorded = true;
+        o.destination = QStringLiteral("Project archive for customer support in the European Union");
+        o.uploadSummary = "Upload to " + o.destination + " · Shared link";
+        RecordingEdit edit; edit.masks = {mask("solid", "solid", 8000000, 21000000), mask("blur", "blur", 3000000, 12000000)};
+        ReviewWindow window(o, config()); window.setEdit(edit); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.drive({{"action", "selectMask"}, {"maskId", "blur"}});
+        putgd::test::settle(20);
+        // Every framed text control keeps 3 px above and below its full text line.
+        for (const auto* name : {"trimControls", "maskControls", "reviewActions", "reviewTransport"})
+            for (auto* control : window.findChild<QWidget*>(name)->findChildren<QWidget*>()) {
+                if (!control->isVisible() || control->property("graphiteFlush").toBool()) continue;
+                auto* button = qobject_cast<QAbstractButton*>(control);
+                if (!(button && !button->text().isEmpty()) && !qobject_cast<QComboBox*>(control)) continue;
+                QVERIFY2(control->height() >= control->fontMetrics().height() + 6, qPrintable(QString("%1 '%2' %3 px for a %4 px line").arg(control->metaObject()->className(), button ? button->text() : control->objectName()).arg(control->height()).arg(control->fontMetrics().height())));
+            }
+        // Media chrome follows its contents rather than a scaled pointer target.
+        auto* header = window.findChild<Graphite::WindowHeader*>("windowHeader");
+        auto* transport = window.findChild<QWidget*>("reviewTransport");
+        QVERIFY(header->height() < Graphite::scaled(Graphite::Metric::iconTarget));
+        QVERIFY(header->rect().contains(transport->geometry()));
+        for (auto* button : header->findChildren<QToolButton*>()) if (button->isVisible() && button->property("graphiteChrome").toBool()) {
+            QVERIFY(header->rect().contains(button->geometry().translated(button->parentWidget()->mapTo(header, QPoint()))));
+            QVERIFY(button->height() >= button->iconSize().height() + 8);
+        }
+        // Trim and Mask share one name column and stay single lines when the lanes' gutter can't.
+        auto* trimName = window.findChild<QLabel*>("trimGroup");
+        auto* maskName = window.findChild<QLabel*>("maskGroup");
+        QCOMPARE(trimName->width(), maskName->width());
+        QVERIFY(trimName->width() < ReviewTimeline::gutterWidth());
+        QVERIFY(trimName->width() >= trimName->fontMetrics().horizontalAdvance(trimName->text()));
+        auto* masks = window.findChild<QComboBox*>("masks");
+        QCOMPARE(masks->mapTo(&window, QPoint()).x(), window.findChild<QWidget*>("trimTimingPair")->mapTo(&window, QPoint()).x());
+        QCOMPARE(window.findChild<QWidget*>("trimControls")->height(), window.findChild<QToolButton*>("addMask")->height());
+        // A long destination elides before the sharing mode on one metadata line.
+        auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
+        QVERIFY(output->property("elideDestination").toBool());
+        QCOMPARE(output->height(), output->fontMetrics().height());
+        QVERIFY(!window.findChild<QWidget*>("reviewDestinationLine")->isVisible());
+        QVERIFY(output->toolTip().contains(o.destination));
+        QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
+        // Wide windows keep the rows on the lanes' gutter.
+        window.resize(1600, window.height()); putgd::test::settle(20);
+        QCOMPARE(trimName->width(), ReviewTimeline::gutterWidth());
+        QCOMPARE(maskName->width(), ReviewTimeline::gutterWidth());
+    }
     void largeTextStillFitsA1366x768Desktop() {
         const auto font = QApplication::font();
         const auto scheme = Theme::scheme();
@@ -2139,7 +2190,7 @@ private slots:
             QVERIFY(window.inspect()["errorDetails"].toObject()["visible"].toBool());
             QCOMPARE(window.inspect()["errorDetails"].toObject()["message"].toString(), failure);
             for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && !w->isWindow())
-                QVERIFY2(window.rect().contains(QRect(w->mapTo(&window, QPoint()), w->size())), qPrintable(w->accessibleName() + w->objectName()));
+                QVERIFY2(window.rect().contains(QRect(w->mapTo(&window, QPoint()), w->size())), qPrintable(w->accessibleName() + w->objectName() + QString(" %1,%2 %3x%4 in %5x%6").arg(w->mapTo(&window, QPoint()).x()).arg(w->mapTo(&window, QPoint()).y()).arg(w->width()).arg(w->height()).arg(window.width()).arg(window.height())));
             QVERIFY(window.drive({{"action", "showAdvice"}}).state["adviceDialog"].toObject()["open"].toBool());
             auto* details = window.findChild<QWidget*>("reviewAdviceText");
             QVERIFY(details);
