@@ -27,6 +27,8 @@
 #include <QStyleOptionComboBox>
 #include <QFileDialog>
 #include <QFile>
+#include <QDir>
+#include <QJsonDocument>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QMenu>
@@ -1989,6 +1991,42 @@ private slots:
             }
             if (!single) QCOMPARE(rulePixels, 0);
         }
+    }
+    void compactReviewFrameShares_data() {
+        QTest::addColumn<QSize>("canvas"); QTest::addColumn<double>("scale");
+        for (const auto canvas : {QSize(1280, 720), QSize(960, 600)}) for (double scale : {1.0, 1.25, 1.5})
+            QTest::newRow(qPrintable(QString("%1-%2").arg(canvas.width()).arg(scale))) << canvas << scale;
+    }
+    void compactReviewFrameShares() {
+        QFETCH(QSize, canvas); QFETCH(double, scale);
+        const auto original = qApp->font();
+        auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        auto font = original; font.setPointSizeF(10.5 * scale); qApp->setFont(font);
+        QCOMPARE(Graphite::scaled(Graphite::Metric::controlCompact), qRound(28 * scale));
+        auto o = options(); o.canvas = canvas; o.durationUs = 32000000; o.availableSize = QSize(1366, 680); o.audioRecorded = true;
+        auto c = config(); c.audio.system = true;
+        RecordingEdit edit; edit.trimStart = 2000000; edit.trimEnd = 29000000;
+        edit.masks = {mask("solid", "solid", 8000000, 21000000), mask("blur", "blur", 3000000, 12000000)};
+        ReviewWindow window(o, c); window.setEdit(edit); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QJsonObject report{{"canvas", QJsonArray{canvas.width(), canvas.height()}}, {"scale", scale}};
+        const auto capture = [&](const QString& stage) {
+            QApplication::processEvents();
+            const auto state = window.inspect(); const double share = state["video"].toObject()["share"].toDouble();
+            report[stage] = state;
+            qInfo("compact tier %dx%d %.2f %s %dx%d share %.6f", canvas.width(), canvas.height(), scale, qPrintable(stage), window.width(), window.height(), share);
+            const auto output = qEnvironmentVariable("PUTGD_REVIEW_TIER_EVIDENCE");
+            if (!output.isEmpty()) { QDir().mkpath(output); window.grab().save(QDir(output).filePath(QString("%1-%2-%3.png").arg(canvas.width()).arg(scale).arg(stage))); }
+            return share;
+        };
+        window.drive({{"action", "selectMask"}, {"maskId", "solid"}}); const double steady = capture("steady");
+        window.drive({{"action", "addMask"}, {"kind", "blur"}}); window.drive({{"action", "selectMask"}, {"maskId", "blur"}}); const double transient = capture("transient");
+        window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}}); window.showError("Export failed: disk full"); const double recovery = capture("recovery");
+        const auto output = qEnvironmentVariable("PUTGD_REVIEW_TIER_EVIDENCE");
+        if (!output.isEmpty()) { QFile file(QDir(output).filePath(QString("%1-%2.json").arg(canvas.width()).arg(scale))); QVERIFY(file.open(QIODevice::WriteOnly)); file.write(QJsonDocument(report).toJson()); }
+        QVERIFY2(steady >= 0.60, qPrintable(QString::number(steady)));
+        QVERIFY2(transient >= 0.53, qPrintable(QString::number(transient)));
+        QVERIFY2(recovery >= 0.45, qPrintable(QString::number(recovery)));
     }
     void enlargedPreviewSequenceKeepsFrameGates() {
         const auto original = QApplication::font();
