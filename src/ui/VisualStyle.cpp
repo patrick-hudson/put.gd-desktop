@@ -34,6 +34,8 @@
 #include <functional>
 #include <memory>
 namespace putgd::VisualStyle {
+using Graphite::Space;
+using Graphite::space;
 namespace {
 // Indicator glyphs painted from the tokens, at 1x and @2x, so they change with
 // the scheme. They live in a private temporary folder for this process.
@@ -170,14 +172,14 @@ void showHelp(const QString& title,const QString& description,QWidget* parent){
 }
 QWidget* settingLabel(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  if(!qobject_cast<QLabel*>(control))control->setMinimumHeight(qMax(control->minimumHeight(),Graphite::scaled(Graphite::Metric::control)));
- control->setAccessibleName(qobject_cast<QCheckBox*>(control)?static_cast<QCheckBox*>(control)->text():title);auto* row=new QWidget(parent);row->setFixedHeight(Graphite::scaled(Graphite::Metric::control));auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);
+ control->setAccessibleName(qobject_cast<QCheckBox*>(control)?static_cast<QCheckBox*>(control)->text():title);auto* row=new QWidget(parent);row->setFixedHeight(Graphite::scaled(Graphite::Metric::control));auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(space(Space::xs));
  auto* label=new QLabel(QString(title).replace('&',QLatin1String("&&")),row);label->setBuddy(control);layout->addWidget(label);
  if(!description.trimmed().isEmpty()&&description.simplified()!=title.simplified())layout->addWidget(helpButton(title,description,control,row));
  layout->addStretch();return row;
 }
 QWidget* settingRow(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setAccessibleName(qobject_cast<QCheckBox*>(control)?static_cast<QCheckBox*>(control)->text():title);control->setToolTip(description);control->setAccessibleDescription(qobject_cast<QCheckBox*>(control)?title+". "+description:description);control->setProperty("settingDescription",control->accessibleDescription());
- auto* row=new QWidget(parent);row->setProperty("inlineHelpRow",true);row->setMinimumHeight(Graphite::scaled(32));auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);column->setSpacing(6);auto* layout=new QHBoxLayout;column->addLayout(layout);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);layout->addWidget(control);if(!description.trimmed().isEmpty()&&description.simplified()!=title.simplified())layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
+ auto* row=new QWidget(parent);row->setProperty("inlineHelpRow",true);row->setMinimumHeight(Graphite::scaled(32));auto* column=new QVBoxLayout(row);column->setContentsMargins(0,0,0,0);column->setSpacing(space(Space::s));auto* layout=new QHBoxLayout;column->addLayout(layout);layout->setContentsMargins(0,0,0,0);layout->setSpacing(space(Space::xs));layout->addWidget(control);if(!description.trimmed().isEmpty()&&description.simplified()!=title.simplified())layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
 }
 namespace {
 void setPalette(QApplication& app){app.setPalette(Graphite::palette());}
@@ -286,8 +288,8 @@ QIcon icon(const QString& name,const QColor& color,int percent,int recording){
  if(!progress)cache.insert(key,result);
  return result;
 }
-QWidget* header(const QString& title,const QString& subtitle,QWidget* parent){auto* widget=new QWidget(parent);auto* layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,4);layout->setSpacing(4);auto* heading=new QLabel(title,widget);role(heading,"title");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,widget);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return widget;}
-QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");frame->setMaximumWidth(Graphite::scaled(880));auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(0,16,0,16);layout->setSpacing(10);auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
+QWidget* header(const QString& title,const QString& subtitle,QWidget* parent){auto* widget=new QWidget(parent);auto* layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,space(Space::xs));layout->setSpacing(space(Space::s));auto* heading=new QLabel(title,widget);role(heading,"title");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,widget);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return widget;}
+QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");frame->setMaximumWidth(Graphite::scaled(880));auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(0,space(Space::xl),0,0);layout->setSpacing(space(Space::s));auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
 void alignFormValue(QLabel* caption,QLabel* value){
  caption->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);value->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);value->setMinimumHeight(Graphite::scaled(Graphite::Metric::control));
  if(auto* parent=value->parentWidget())for(auto* form:parent->findChildren<QFormLayout*>()){
@@ -295,7 +297,7 @@ void alignFormValue(QLabel* caption,QLabel* value){
   form->setLabelAlignment(Qt::AlignLeft|Qt::AlignBaseline);form->setAlignment(caption,Qt::AlignLeft|Qt::AlignBaseline);form->setAlignment(value,Qt::AlignLeft|Qt::AlignBaseline);
  }
 }
-void styleForm(QFormLayout* form){form->setContentsMargins(0,0,0,0);form->setHorizontalSpacing(16);form->setVerticalSpacing(8);form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);form->setRowWrapPolicy(QFormLayout::DontWrapRows);form->setLabelAlignment(Qt::AlignLeft|Qt::AlignTop);}
+void styleForm(QFormLayout* form){form->setContentsMargins(0,0,0,0);form->setHorizontalSpacing(space(Space::l));form->setVerticalSpacing(space(Space::m));form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);form->setRowWrapPolicy(QFormLayout::DontWrapRows);form->setLabelAlignment(Qt::AlignLeft|Qt::AlignTop);}
 void decorateView(QAbstractItemView* view,const QList<int>& columns){view->setItemDelegate(new StateDelegate(columns,view));view->setAlternatingRowColors(true);view->setIconSize(QSize(22,22));view->setTextElideMode(Qt::ElideMiddle);}
 QString indicators(Theme::Scheme scheme){
     static std::unique_ptr<QTemporaryDir> folder;
