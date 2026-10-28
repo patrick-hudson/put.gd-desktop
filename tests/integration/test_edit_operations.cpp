@@ -135,7 +135,10 @@ private slots:
   QVERIFY(f.settings->save(doc,f.settings->revision()));
   const auto invoked=call([&](JsonReply r){f.operations->invoke("edit",r);});QVERIFY2(!invoked.error,qPrintable(invoked.error.message));
   const auto id=invoked.result["operationId"].toString();auto state=command(*f.operations,id,"inspect");QVERIFY2(!state.error,qPrintable(state.error.message));
-  const auto expected=local?prefix:prefix+label+suffix;QCOMPARE(state.result["destination"].toString(),expected);QCOMPARE(state.result["view"].toObject()["destination"].toObject()["text"].toString(),expected);
+  const auto expected=local?prefix:prefix+label+suffix;QCOMPARE(state.result["destination"].toString(),expected);
+  // The resident keeps its upload summary; the footer presents destination · resolved sharing.
+  const auto displayed=local?prefix:label+(mode=="private"?QStringLiteral(" · Private upload"):suffix);
+  QCOMPARE(state.result["view"].toObject()["destination"].toObject()["text"].toString(),displayed);
   // The new view action crosses the resident/helper boundary, then undo restores it.
   QVERIFY(!command(*f.operations,id,"apply",redactSecret()).error);auto selected=command(*f.operations,id,"view",{{"action","selectNext"}});QVERIFY(!selected.error);
   QVERIFY(!command(*f.operations,id,"view",{{"action","removeMark"}}).error);QCOMPARE(command(*f.operations,id,"inspect").result["shapes"].toArray().size(),0);
