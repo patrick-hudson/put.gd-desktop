@@ -64,6 +64,7 @@ constexpr int handleSize = 8;
 constexpr int compactReviewHeight = 648;
 // Compact media chrome keeps its padding on the logical grid as text grows.
 int reviewSpace(Graphite::Space value) { return static_cast<int>(value); }
+int footerInset() { return reviewSpace(Graphite::Space::l); }
 int textControlHeight(const QWidget* widget) { return std::max(28, widget->fontMetrics().height()); }
 int iconTarget() { return Graphite::Metric::iconTarget; }
 }
@@ -112,14 +113,8 @@ public:
         setProperty("graphiteDensity", "compact");
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     }
-    bool hasHeightForWidth() const override { return true; }
-    int heightForWidth(int width) const override {
-        const int padding = 16 + 3 * reviewSpace(Graphite::Space::xs);
-        if (fontMetrics().horizontalAdvance(text()) <= width - padding) return textControlHeight(this);
-        return std::max(textControlHeight(this), fontMetrics().boundingRect(QRect(0, 0, std::max(1, width - padding), 10000), Qt::TextWordWrap, text()).height() + reviewSpace(Graphite::Space::xs));
-    }
     QSize sizeHint() const override { return {fontMetrics().horizontalAdvance(text()) + 16 + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)}; }
-    QSize minimumSizeHint() const override { return {fontMetrics().horizontalAdvance(QStringLiteral("reversible")) + 16 + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)}; }
+    QSize minimumSizeHint() const override { return sizeHint(); }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
@@ -133,8 +128,7 @@ protected:
         painter.setFont(font());
         painter.setPen(palette.textSecondary);
         const auto textRect = rect().adjusted(side + gap * 2, 0, -gap, 0);
-        const int wrap = fontMetrics().horizontalAdvance(text()) <= textRect.width() ? Qt::TextSingleLine : Qt::TextWordWrap;
-        painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | wrap, text());
+        painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, text());
     }
 };
 // The interval stays in the readout column; its warning wraps among the controls.
@@ -160,7 +154,7 @@ protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
         const bool empty = text() == QStringLiteral("No mask selected");
-        Graphite::paintText(painter, rect(), text().section(QStringLiteral(" · "), 0, 0), empty ? Theme::current().textMuted : Theme::current().text, font(), Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
+        Graphite::paintText(painter, rect(), text().section(QStringLiteral(" · "), 0, 0), empty ? Theme::current().textMuted : Theme::current().text, empty ? Graphite::font(Graphite::Type::technical) : font(), Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
     }
 private:
     BlurChip* warning_;
@@ -224,7 +218,7 @@ public:
     static int groupGap() { return reviewSpace(Graphite::Space::xs); }
     static int lineGap() { return reviewSpace(Graphite::Space::xs); }
     explicit FlowRow(QWidget* parent) : QWidget(parent), grid_(new QGridLayout(this)) {
-        grid_->setContentsMargins(0, 0, 0, 0);
+        grid_->setContentsMargins(0, 0, footerInset() - reviewSpace(Graphite::Space::m), 0);
         grid_->setSpacing(0);
         grid_->setColumnStretch(1, 1);
         grid_->setColumnStretch(2, 0);
@@ -245,7 +239,7 @@ public:
     int singleLineWidth(bool reserved) const {
         int x = indent_;
         for (auto* group : groups_) if (shown(group, reserved)) x += widthOf(group) + groupGap();
-        return x - groupGap() + readoutWidth();
+        return x - groupGap() + readoutWidth() + grid_->contentsMargins().right();
     }
     // The enclosing box layout asks for the height at the width it gives.
     bool hasHeightForWidth() const override { return true; }
@@ -255,7 +249,7 @@ public:
         int widest = 0;
         for (auto* group : groups_) if (shown(group, true)) widest = std::max(widest, group->hasHeightForWidth() ? group->minimumSizeHint().width() : widthOf(group));
         const int first = groups_.isEmpty() ? 0 : widthOf(groups_.first());
-        return {indent_ + std::max(widest, first + readoutWidth()), heightFor(width())};
+        return {indent_ + std::max(widest, first + readoutWidth()) + grid_->contentsMargins().right(), heightFor(width())};
     }
     void relayout() {
         // A newly shown group may still carry its previous layout minimum.
@@ -282,6 +276,7 @@ private:
     int readoutWidth() const { return readout_ ? readout_->width() + groupGap() : 0; }
     static int heightOf(QWidget* group, int width) { return std::min(group->maximumHeight(), std::max(group->minimumHeight(), group->hasHeightForWidth() ? group->heightForWidth(width) : group->sizeHint().height())); }
     int arrange(int width, bool reserved, bool apply) const {
+        width -= grid_->contentsMargins().right();
         // Wrap complete groups without compressing text or pointer targets.
         QList<QList<QPair<QWidget*, QRect>>> lines(1);
         int x = indent_;
@@ -1355,7 +1350,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     footer->setObjectName("reviewFooter");
     auto* footerRows = new QVBoxLayout(footer);
     // The action targets supply vertical padding; keep the frame gates with 13 px context.
-    footerRows->setContentsMargins(reviewSpace(Graphite::Space::l), 0, reviewSpace(Graphite::Space::l), 0);
+    footerRows->setContentsMargins(footerInset(), 0, footerInset(), 0);
     footerRows->setSpacing(reviewSpace(Graphite::Space::xs));
     auto* actions = new QWidget(footer);
     actions->setObjectName("reviewActions");
@@ -1770,12 +1765,11 @@ void ReviewWindow::refreshLabels() {
     } else static_cast<MaskInterval*>(maskActive_)->setInterval(QStringLiteral("No mask selected"), {});
     const bool warning = anyBlur && !blurTipDismissed_;
     const auto maximumTime = timeText(options_.durationUs);
-    const QStringList readouts{QStringLiteral("Keep 0:00–00:00 · 000 s"),
-        retained_->text(),
-        QStringLiteral("%1–%1").arg(maximumTime), QStringLiteral("No mask selected")};
-    int readoutWidth = 0;
-    for (const auto& text : readouts) readoutWidth = std::max(readoutWidth, retained_->fontMetrics().horizontalAdvance(text));
-    for (auto* label : {retained_, maskActive_}) label->setFixedWidth(readoutWidth);
+    retained_->setFixedWidth(std::max(retained_->fontMetrics().horizontalAdvance(QStringLiteral("Keep 0:00–00:00 · 000 s")),
+        retained_->fontMetrics().horizontalAdvance(retained_->text())));
+    // Reserve each row's own widest content, independent of mask selection.
+    maskActive_->setFixedWidth(std::max(maskActive_->fontMetrics().horizontalAdvance(QStringLiteral("%1–%1").arg(maximumTime)),
+        QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(QStringLiteral("No mask selected"))));
     auto* chip = static_cast<MaskInterval*>(maskActive_)->warningButton();
     auto chipPolicy = chip->sizePolicy();
     chipPolicy.setRetainSizeWhenHidden(anyBlur && !blurTipDismissed_);

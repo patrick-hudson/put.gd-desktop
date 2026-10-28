@@ -148,13 +148,16 @@ private slots:
         for (auto* label : {trim, interval}) {
             QCOMPARE(label->font(), Graphite::monoFont(Graphite::Type::technical));
             QVERIFY(!label->wordWrap());
-            QVERIFY(label->width() >= label->fontMetrics().horizontalAdvance(QStringLiteral("Keep 0:00–00:00 · 000 s")));
             auto* grid = qobject_cast<QGridLayout*>(label->parentWidget()->layout());
             QVERIFY(grid); QCOMPARE(grid->itemAtPosition(0, 2)->widget(), label);
             QCOMPARE(grid->columnStretch(2), 0);
             QVERIFY(grid->itemAtPosition(0, 2)->alignment().testFlag(Qt::AlignRight));
         }
-        QCOMPARE(trim->width(), interval->width());
+        QVERIFY(trim->width() >= trim->fontMetrics().horizontalAdvance(QStringLiteral("Keep 0:00–00:00 · 000 s")));
+        QVERIFY(interval->width() >= QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(QStringLiteral("No mask selected")));
+        QVERIFY(interval->width() < trim->width());
+        auto* upload = buttonNamed(window, "Upload"); QVERIFY(upload);
+        QCOMPARE(interval->mapTo(&window, interval->rect().topRight()).x(), upload->mapTo(&window, upload->rect().topRight()).x());
         const auto geometry = interval->geometry();
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);
@@ -174,11 +177,21 @@ private slots:
                 QVERIFY(interval->width() >= interval->fontMetrics().horizontalAdvance(interval->text().section(QStringLiteral(" · "), 0, 0)));
             }
         }
-        window.resize(window.minimumSizeHint()); putgd::test::settle(10);
         auto* warning = window.findChild<QToolButton*>("reviewBlurChip");
-        QVERIFY(warning->isVisible());
-        QVERIFY(warning->height() >= warning->heightForWidth(warning->width()));
-        QCOMPARE(trim->mapTo(&window, trim->rect().topRight()).x(), interval->mapTo(&window, interval->rect().topRight()).x());
+        for (const int width : {728, 640, 1200}) {
+            window.resize(width, 720); putgd::test::settle(10);
+            QVERIFY(warning->isVisible());
+            QCOMPARE(warning->minimumSizeHint(), warning->sizeHint());
+            QVERIFY(warning->width() >= warning->sizeHint().width());
+            QCOMPARE(warning->height(), warning->sizeHint().height());
+            const auto frame = window.findChild<FrameView*>()->geometry();
+            window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); putgd::test::settle(10);
+            QCOMPARE(window.findChild<FrameView*>()->geometry(), frame);
+            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}); putgd::test::settle(10);
+            QCOMPARE(window.findChild<FrameView*>()->geometry(), frame);
+            QCOMPARE(trim->mapTo(&window, trim->rect().topRight()).x(), interval->mapTo(&window, interval->rect().topRight()).x());
+            QCOMPARE(interval->mapTo(&window, interval->rect().topRight()).x(), upload->mapTo(&window, upload->rect().topRight()).x());
+        }
     }
     void labelsStayInsideTheirOwnMaskCoverage() {
         FrameView frame;
