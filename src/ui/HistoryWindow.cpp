@@ -320,7 +320,8 @@ public:
  bool beside(const QModelIndex& i)const{return menuOnly()||(grid()&&inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
  bool detailsShown(const QModelIndex& i)const{return !grid()&&view_->selectionModel()->selectedRows().size()<=1&&(compactList&&compactList()&&view_->selectionModel()->isSelected(i))&&!(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
  bool recovery(const QModelIndex& i)const{return i.data(HistoryModel::PrimaryActionRole).toString().startsWith("Retry ");}
- bool inlineActions(const QModelIndex&)const{return true;}
+ // The inspector beside the list owns the selected item's actions; its row shows none.
+ bool inlineActions(const QModelIndex& i)const{return !(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
  bool rowPrimary(const QModelIndex& i)const{if(grid()&&inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i))return false;return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  bool primaryShown(const QModelIndex& i)const{if(grid())return !(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));return rowPrimary(i)&&inlineActions(i)&&(view_->selectionModel()->selectedRows().size()<=1||(grid()&&recovery(i)))&&!i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
