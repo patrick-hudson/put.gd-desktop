@@ -25,6 +25,7 @@
 #include <QFontInfo>
 #include <QComboBox>
 #include <QStyleOptionComboBox>
+#include <QStyleOptionSpinBox>
 #include <QFileDialog>
 #include <QFile>
 #include <QDir>
@@ -2022,8 +2023,14 @@ private slots:
         window.drive({{"action", "selectMask"}, {"maskId", "solid"}}); const double steady = capture("steady");
         window.drive({{"action", "addMask"}, {"kind", "blur"}}); window.drive({{"action", "selectMask"}, {"maskId", "blur"}}); const double transient = capture("transient");
         window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}}); window.showError("Export failed: disk full"); const double recovery = capture("recovery");
+        auto* strength = window.findChild<QSpinBox*>(); QVERIFY(strength);
+        QStyleOptionSpinBox spin; spin.initFrom(strength); spin.frame = strength->hasFrame(); spin.buttonSymbols = strength->buttonSymbols();
+        const int editWidth = strength->style()->subControlRect(QStyle::CC_SpinBox, &spin, QStyle::SC_SpinBoxEditField, strength).width();
+        const int valueWidth = strength->fontMetrics().horizontalAdvance(QString::number(strength->maximum()));
+        report["blurSpin"] = QJsonObject{{"width", strength->width()}, {"height", strength->height()}, {"editWidth", editWidth}, {"valueWidth", valueWidth}};
         const auto output = qEnvironmentVariable("PUTGD_REVIEW_TIER_EVIDENCE");
         if (!output.isEmpty()) { QFile file(QDir(output).filePath(QString("%1-%2.json").arg(canvas.width()).arg(scale))); QVERIFY(file.open(QIODevice::WriteOnly)); file.write(QJsonDocument(report).toJson()); }
+        QVERIFY2(editWidth >= valueWidth, "The scaled steppers must leave room for the largest blur value");
         QVERIFY2(steady >= 0.60, qPrintable(QString::number(steady)));
         QVERIFY2(transient >= 0.53, qPrintable(QString::number(transient)));
         QVERIFY2(recovery >= 0.45, qPrintable(QString::number(recovery)));
