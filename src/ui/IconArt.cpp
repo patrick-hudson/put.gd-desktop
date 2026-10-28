@@ -190,6 +190,8 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   QPainterPath cloud;cloud.moveTo(7,19);cloud.cubicTo(1,19,1,10,6.5,10);
   cloud.cubicTo(6.5,3,16.5,2,18,9);cloud.cubicTo(23,9,23,19,18,19);
   cloud.closeSubpath();p.drawPath(cloud);
+  // The drive base is 1.5 px at the provider's actual 16 px.
+  p.setPen(QPen(color,2.25,Qt::SolidLine,Qt::FlatCap));p.drawLine(QPointF(6,21.75),QPointF(19,21.75));
  } else if(name=="add") {
   p.drawEllipse(QRectF(2.4,2.4,19.2,19.2));p.drawLine(12,7,12,17);p.drawLine(7,12,17,12);
  } else {

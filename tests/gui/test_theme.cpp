@@ -472,6 +472,8 @@ private slots:
                 QCOMPARE(cloud.pixelColor(size/2,size/2).alpha(),0);
                 int ink=0;for(int y=0;y<size;++y)for(int x=0;x<size;++x)ink+=cloud.pixelColor(x,y).alpha()>128;
                 QVERIFY(ink>size*2);QVERIFY(ink<size*size/2);
+                // A separate flat drive base remains continuous below the cloud.
+                bool base=false;for(int y=5*size/6;y<size;++y){bool continuous=true;for(int x=size/3;x<2*size/3;++x)continuous&=cloud.pixelColor(x,y).alpha()>128;base|=continuous;}QVERIFY(base);
             }
         }
     }
