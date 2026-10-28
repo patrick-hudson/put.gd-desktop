@@ -1856,6 +1856,9 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
    auto* help=window.findChild<QToolButton*>(key+"Help");QVERIFY2(help,qPrintable(key));QCOMPARE(help->focusPolicy(),Qt::StrongFocus);QVERIFY(!help->accessibleDescription().isEmpty());
   }
  }
+ void addDestinationUsesAQuietNavigationRow(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();putgd::test::settle(30);auto* add=window.findChild<QPushButton*>("addS3Destination");auto* list=window.findChild<QListWidget*>("destinationList");QVERIFY(add&&list);QCOMPARE(add->text(),QString("+ Add destination"));QCOMPARE(add->property("visualRole").toString(),QString("quiet"));QCOMPARE(add->height(),Graphite::scaled(Graphite::Metric::navRow));QVERIFY(add->property("alignLeft").toBool());QCOMPARE(add->mapTo(&window,QPoint()).x(),list->mapTo(&window,QPoint()).x());QCOMPARE(add->width(),list->width());QVERIFY(add->menu());QVERIFY(add->focusPolicy()&Qt::TabFocus);
+ }
  void diagnosticsPackageIsAnAlignedSecondaryAction(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1400);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.show();putgd::test::settle(30);
   auto* package=window.findChild<QPushButton*>("createDiagnosticsPackage");auto* clear=window.findChild<QPushButton*>("clearLogs");QVERIFY(package&&clear);QCOMPARE(package->property("visualRole").toString(),QString("secondary"));QVERIFY(package->width()<package->parentWidget()->width());QCOMPARE(package->mapTo(&window,QPoint(package->width(),0)).x(),clear->mapTo(&window,QPoint(clear->width(),0)).x());
