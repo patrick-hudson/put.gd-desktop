@@ -1443,9 +1443,9 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   auto* acl=window.findChild<QComboBox*>("s3AclMode");QCOMPARE(acl->itemText(acl->findData("omit")),QString("Use bucket policy"));QCOMPARE(acl->itemText(acl->findData("public-read")),QString("Request public read"));QCOMPARE(acl->accessibleName(),QString("Upload access request"));
   // Help uses a 14 px outline glyph in a 24 px target.
   int helps=0;for(auto* help:window.findChildren<QToolButton*>())if(help->property("settingHelpFor").isValid()){++helps;QCOMPARE(help->size(),QSize(Graphite::scaled(24),Graphite::scaled(24)));QCOMPARE(help->iconSize(),QSize(Graphite::scaled(14),Graphite::scaled(14)));QVERIFY(help->text().isEmpty());QVERIFY(!help->accessibleDescription().isEmpty());}QVERIFY(helps>=3);
-  // Advanced: every value box has one width; only changed values show Reset.
+  // Numeric inputs stay compact; choice controls share the family width. Only changed values show Reset.
   window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(true);putgd::test::settle(20);
-  QSet<int> widths;for(const auto* key:{"concurrentUploads","maxFileBytes","maxFiles","imageBytes","pendingImageBytes","historyRetentionDays","failedArtifactDays","recentActivityLimit"}){auto* edit=window.findChild<QLineEdit*>(key);QWidget* box=qobject_cast<QComboBox*>(edit->parentWidget())?edit->parentWidget():edit;widths.insert(box->width());}
+  QSet<int> widths;for(const auto* key:{"concurrentUploads","maxFiles","imageBytes","pendingImageBytes","failedArtifactDays","recentActivityLimit"}){auto* edit=window.findChild<QLineEdit*>(key);QWidget* box=qobject_cast<QComboBox*>(edit->parentWidget())?edit->parentWidget():edit;widths.insert(box->width());}
   QCOMPARE(widths.size(),1);
   QPushButton* reset=nullptr;for(auto* button:window.findChildren<QPushButton*>())if(button->accessibleName()=="Reset Uploads at once to default")reset=button;QVERIFY(reset&&!reset->isVisible());
   for(auto* label:tabs->widget(3)->findChildren<QLabel*>())QVERIFY2(!(label->isVisible()&&label->text()=="Default"),"No plain Default labels beside values");

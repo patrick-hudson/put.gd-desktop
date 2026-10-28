@@ -122,7 +122,7 @@ protected:
 private:QHeaderView* header_;
 };
 class ChoiceBox final:public QComboBox {
-public:using QComboBox::QComboBox;
+public:explicit ChoiceBox(QWidget* parent):QComboBox(parent){setSizeAdjustPolicy(QComboBox::AdjustToContents);}
  QSize naturalSizeHint()const{return QComboBox::sizeHint();}
  QSize sizeHint()const override{auto size=naturalSizeHint();if(const int width=property("formChoiceWidth").toInt();width>0)size.setWidth(width);return size;}
 protected:
