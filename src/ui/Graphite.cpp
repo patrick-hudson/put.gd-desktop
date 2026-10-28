@@ -11,6 +11,7 @@
 #include <QComboBox>
 #include <QCursor>
 #include <QEvent>
+#include <QDynamicPropertyChangeEvent>
 #include <QFocusEvent>
 #include <QFontDatabase>
 #include <QFontMetricsF>
@@ -64,6 +65,8 @@ QString& uiFamilyName() { static QString name; return name; }
 QString& monoFamilyName() { static QString name; return name; }
 const Theme::Palette& t() { return Theme::current(); }
 QString role(const QWidget* widget) { return widget ? widget->property("visualRole").toString() : QString(); }
+bool compactControl(const QWidget* widget) { return widget && widget->property("graphiteDensity") == "compact"; }
+qreal controlRadius(const QWidget* widget) { return compactControl(widget) ? scaled(Metric::compactRadius) : Metric::radius; }
 bool flushButton(const QWidget* widget) { return widget && (role(widget) == "quiet" || role(widget) == "link") && widget->property("graphiteFlush").toBool(); }
 bool progressAnimationEnabled(const QWidget* widget, const QStyleOption* option = nullptr) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
@@ -125,7 +128,7 @@ void field(QPainter* p, const QRectF& rect, const QStyleOption* option, const QW
     p->setPen(QPen(stroke, 1));
     // A locked value has no fill of its own: a read-only frame on the page.
     p->setBrush(enabled ? QBrush(t().surfaceRaised) : locked ? QBrush(Qt::NoBrush) : QBrush(t().surface));
-    p->drawPath(partlyRounded(rect.adjusted(0.5, 0.5, -0.5, -0.5), Metric::radius, !squareLeft, !squareRight));
+    p->drawPath(partlyRounded(rect.adjusted(0.5, 0.5, -0.5, -0.5), controlRadius(widget), !squareLeft, !squareRight));
     p->restore();
 }
 struct Look {
@@ -185,11 +188,11 @@ QString buttonRole(const QWidget* widget, const QStyleOption* option) {
     return value;
 }
 QFont buttonFont(const QWidget* widget, const QStyleOption* option) {
-    auto f = widget ? widget->font() : QApplication::font();
+    auto f = compactControl(widget) ? font(Type::technical) : widget ? widget->font() : QApplication::font();
     const auto name = buttonRole(widget, option);
     const bool selected = (option->state & QStyle::State_On) && widget
         && (widget->property("graphiteNavRow").toBool() || qobject_cast<SegmentTrack*>(widget->parentWidget()));
-    f.setWeight(name == "primary" || name == "lead" || selected ? QFont::Medium : QFont::Normal);
+    f.setWeight(!compactControl(widget) && (name == "primary" || name == "lead" || selected) ? QFont::Medium : QFont::Normal);
     return f;
 }
 QPixmap tinted(const QPixmap& source, const QColor& colour) {
@@ -475,8 +478,22 @@ void setMono(QWidget* widget, int pixels) {
 
 void Style::polish(QPalette& palette) { palette = Graphite::palette(); }
 
+bool Style::eventFilter(QObject* watched, QEvent* event) {
+    if (event->type() == QEvent::DynamicPropertyChange
+        && static_cast<QDynamicPropertyChangeEvent*>(event)->propertyName() == "graphiteDensity") {
+        if (auto* widget = qobject_cast<QWidget*>(watched)) {
+            unpolish(widget);
+            polish(widget);
+            widget->updateGeometry();
+            widget->update();
+        }
+    }
+    return QProxyStyle::eventFilter(watched, event);
+}
+
 void Style::polish(QWidget* widget) {
     QProxyStyle::polish(widget);
+    if (qobject_cast<QAbstractButton*>(widget) || qobject_cast<QComboBox*>(widget)) widget->installEventFilter(this);
     if (qobject_cast<QAbstractButton*>(widget) || qobject_cast<QComboBox*>(widget) || qobject_cast<QAbstractSpinBox*>(widget) || qobject_cast<QTabBar*>(widget)
         || qobject_cast<QScrollBar*>(widget) || qobject_cast<QSlider*>(widget) || qobject_cast<QLineEdit*>(widget))
         widget->setAttribute(Qt::WA_Hover);
@@ -546,6 +563,7 @@ void Style::polish(QWidget* widget) {
         if (buttonControl && (name == "primary" || name == "lead")) f.setWeight(QFont::Medium);
     }
     else setFont = false;
+    if (compactControl(widget) && bodyControl) { f = font(Type::technical); setFont = true; }
     if (statusBand) { f = font(Type::technical); colour = c.textSecondary; setFont = true; }
     if (monoPixels) { f = monoFont(monoPixels); setFont = true; }
     if (auto* edit = qobject_cast<QLineEdit*>(widget); setFont && edit && edit->text().isEmpty()) f.setFamily(uiFamily());
@@ -674,6 +692,9 @@ int Style::styleHint(StyleHint hint, const QStyleOption* option, const QWidget* 
 }
 
 QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, const QSize& contents, const QWidget* widget) const {
+    const bool compact = compactControl(widget);
+    const int height = compact ? scaled(Metric::controlCompact) : Metric::control;
+    const int padding = compact ? scaled(8) : 14;
     switch (type) {
     case CT_PushButton: {
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
@@ -689,11 +710,11 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
             w = text + icon + 2 * 14 + 2;
         }
         if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) w += Metric::splitZone - 8;
-        if (button && button->text.isEmpty()) return {std::max(Metric::control, contents.width() + 18), std::max(Metric::control, contents.height() + 14)};
+        if (button && button->text.isEmpty()) return {std::max(height, contents.width() + padding), std::max(height, contents.height() + padding)};
         if (flushButton(widget)) w -= 14;
         if (widget && widget->property("graphiteNavRow").toBool()) w -= 8;
         if (button && !button->text.isEmpty()) w = std::max(w, 64);
-        return {w, std::max(Metric::control, contents.height() + 14)};
+        return {w, std::max(height, contents.height() + padding)};
     }
     case CT_ToolButton: {
         const auto* tool = qstyleoption_cast<const QStyleOptionToolButton*>(option);
@@ -709,7 +730,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
             return {std::max(32, metrics.horizontalAdvance(tool->text) + 8 + (icon ? tool->iconSize.width() + 6 : 0)), std::max(32, metrics.height() + 8)};
         }
         if (!text) {
-            const int side = std::max(Metric::iconTarget, (icon ? tool->iconSize.height() : 16) + 14);
+            const int side = std::max(compact ? height : Metric::iconTarget, (icon ? tool->iconSize.height() : 16) + padding);
             return {side + (split ? Metric::splitArrow : 0), side};
         }
         const QFont f = buttonFont(widget, option);
@@ -718,24 +739,24 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         if (split) w += Metric::splitArrow - 6;
         else if (menu) w += Metric::splitZone - 6;
         if (flushButton(widget)) w -= 14;
-        return {w, std::max(Metric::control, metrics.height() + 14)};
+        return {w, std::max(height, metrics.height() + padding)};
     }
     case CT_LineEdit: {
         const auto* frame = qstyleoption_cast<const QStyleOptionFrame*>(option);
         if (role(widget) == "editableTitle") return contents + QSize(4, 10);
         if (frame && frame->lineWidth <= 0) break;
-        return {contents.width() + 22, std::max(Metric::control, contents.height() + 14)};
+        return {contents.width() + 22, std::max(height, contents.height() + padding)};
     }
     case CT_ComboBox: {
         const auto* combo = qstyleoption_cast<const QStyleOptionComboBox*>(option);
-        if (combo && !combo->frame) break;
-        return {contents.width() + 12 + Metric::splitZone + 6, std::max(Metric::control, contents.height() + 14)};
+        if (combo && !combo->frame && !compact) break;
+        return {contents.width() + 12 + Metric::splitZone + 6, std::max(height, contents.height() + padding)};
     }
     case CT_SpinBox: {
         const auto* spin = qstyleoption_cast<const QStyleOptionSpinBox*>(option);
         if (spin && !spin->frame) break;
         const int buttons = spin && spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 64;
-        return {contents.width() + 12 + buttons + 4, std::max(Metric::control, contents.height() + 14)};
+        return {contents.width() + 12 + buttons + 4, std::max(height, contents.height() + padding)};
     }
     case CT_CheckBox: case CT_RadioButton: {
         auto size = QProxyStyle::sizeFromContents(type, option, contents, widget);
@@ -897,7 +918,7 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
         const bool segment = widget && qobject_cast<SegmentTrack*>(widget->parentWidget());
         const int inset = segment ? Metric::segmentInset / 2 : 0;
         const QRectF box = QRectF(option->rect).adjusted(inset, inset, -inset, -inset);
-        rounded(p, box, look.fill.isValid() ? look.fill : QColor(Qt::transparent), stroke, Metric::radius, keyboardState(option) ? 1.5 : 1);
+        rounded(p, box, look.fill.isValid() ? look.fill : QColor(Qt::transparent), stroke, controlRadius(widget), keyboardState(option) ? 1.5 : 1);
         if (segment && (option->state & State_On))
             p->fillRect(QRectF(box.center().x() - 12, box.bottom() - 3, 24, 2), c.accent);
         return;
@@ -1385,7 +1406,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
             p->drawPixmap(QPoint(r.left(), r.center().y() - combo->iconSize.height() / 2), pixmap);
             r.setLeft(r.left() + combo->iconSize.width() + 8);
         }
-        const auto f = widget ? widget->font() : QApplication::font();
+        const auto f = compactControl(widget) ? font(Type::technical) : widget ? widget->font() : QApplication::font();
         paintText(*p, r, combo->currentText, option->state & State_Enabled ? c.text : lockedLook(option, widget) ? c.textMuted : c.textDisabled, f, Qt::AlignLeft | Qt::AlignVCenter);
         return;
     }
@@ -1427,9 +1448,9 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
     }
     case CC_ComboBox: {
         const auto* combo = qstyleoption_cast<const QStyleOptionComboBox*>(option);
-        if (!combo || !combo->frame) break;
+        if (!combo) break;
         const bool focused = combo->editable ? (option->state & State_HasFocus) : keyboardState(option) || (option->state & State_On);
-        field(p, option->rect, option, widget, focused);
+        if (combo->frame) field(p, option->rect, option, widget, focused);
         // A locked value can't be opened: no chevron.
         if (lockedLook(option, widget)) return;
         const auto arrow = subControlRect(CC_ComboBox, combo, SC_ComboBoxArrow, widget);

@@ -515,6 +515,33 @@ private slots:
     }
     // A primary button is the neutral text fill with background-colour ink;
     // its label, alone or as one group with its icon, is centred.
+    void compactControlsMeasureTheirPaintedTypeAndScale() {
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
+        for (const qreal scale : {1.0, 1.5}) {
+            auto enlarged = original; enlarged.setPixelSize(qRound(QFontInfo(original).pixelSize() * scale)); QApplication::setFont(enlarged);
+            QPushButton push("Start here");
+            QToolButton tool; tool.setText("End here"); tool.setToolButtonStyle(Qt::ToolButtonTextOnly);
+            QComboBox combo; combo.addItem("Compatible MP4");
+            for (auto* widget : {static_cast<QWidget*>(&push), static_cast<QWidget*>(&tool), static_cast<QWidget*>(&combo)}) {
+                widget->ensurePolished();
+                const int standard = widget->sizeHint().height();
+                widget->setProperty("graphiteDensity", "compact");
+                QCOMPARE(widget->font().pixelSize(), Graphite::scaled(13));
+                QCOMPARE(widget->font().weight(), QFont::Normal);
+                const auto hint = widget->sizeHint();
+                QCOMPARE(hint.height(), Graphite::scaled(Graphite::Metric::controlCompact));
+                QVERIFY(hint.height() <= standard);
+                QVERIFY(hint.width() >= widget->fontMetrics().horizontalAdvance(qobject_cast<QComboBox*>(widget) ? combo.currentText() : qobject_cast<QAbstractButton*>(widget)->text()));
+                widget->setProperty("graphiteDensity", {});
+                QCOMPARE(widget->font().pixelSize(), Graphite::scaled(Graphite::Type::body));
+                QCOMPARE(widget->sizeHint().height(), standard);
+            }
+            combo.setFrame(false);
+            combo.setProperty("graphiteDensity", "compact");
+            QCOMPARE(combo.sizeHint().height(), Graphite::scaled(Graphite::Metric::controlCompact));
+        }
+    }
     void actionWeightsFollowTheirPurpose() {
         for (const auto* role : {"quiet", "secondary", "danger", "primary", "lead"}) {
             QPushButton button("Apply changes"); VisualStyle::role(&button, role);

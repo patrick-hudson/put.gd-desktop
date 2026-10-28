@@ -16,6 +16,8 @@
 #include "editor/EditorCommands.h"
 #include "app/DiagnosticsBundle.h"
 #include <QApplication>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QContextMenuEvent>
 #include <QAbstractSpinBox>
 #include <QStyleOptionSpinBox>
@@ -186,6 +188,15 @@ int main(int argc,char** argv){
  // Diagnostics packages save into the preview's temporary state; the upload
  // destination's check is answered here, so nothing reaches the network.
  DiagnosticsBundles bundles(operations,data.filePath("state"));bundles.setDestinationTest([](const QString&,std::function<void(Error)> done){done({});});fixture.server.setDiagnosticsBundles(&bundles);JsonReply loadFolders;fixture.setup.setProviderSetup([&](const QString&,const Destination&,const QJsonObject&,JsonReply reply,auto){loadFolders=std::move(reply);});QJsonObject previewUpdate;fixture.server.setUiDiagnostics([&]{return QJsonObject{{"update",previewUpdate},{"capabilities",QJsonObject{{"providers",QJsonObject{{"proton-drive",QJsonObject{}}}}}}};});fixture.session.refreshSnapshot();if(!waitUntil([&]{return fixture.session.diagnostics()["capabilities"].toObject()["providers"].toObject().contains("proton-drive");}))return 2;native.cover();MainWindow window(fixture.session);window.resize(1440,960);auto* previewStatus=new QLabel("Synthetic preview");VisualStyle::role(previewStatus,"meta");window.statusBar()->addPermanentWidget(previewStatus);QObject::connect(&window,&MainWindow::settingsCreated,previewStatus,[previewStatus](SettingsWindow* settings){QObject::connect(settings,&SettingsWindow::viewStateChanged,previewStatus,[previewStatus,settings]{previewStatus->setVisible(!settings->changesUnsaved());});});window.show();auto* list=window.findChild<QListView*>("historyList");if(!list||!waitUntil([&]{return list->model()->rowCount()==8;})){qCritical("Synthetic history did not load");return 2;}list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
+ // The compact tier is shared API; show it before individual surfaces adopt it.
+ {
+  Graphite::Surface specimen("bg");auto* rows=new QVBoxLayout(&specimen);rows->setContentsMargins(Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl));rows->setSpacing(Graphite::space(Graphite::Space::l));
+  for(const bool compact:{false,true}){rows->addWidget(Graphite::label(compact?"Compact · 28 px / 13 px Regular":"Standard · 36 px / 14 px", "section"));auto* row=new QHBoxLayout;row->setSpacing(Graphite::space(Graphite::Space::s));
+   for(const auto* role:{"primary","lead","secondary","quiet"}){auto* button=new QPushButton(role,&specimen);VisualStyle::role(button,role);if(compact)button->setProperty("graphiteDensity","compact");row->addWidget(button);}
+   auto* combo=new QComboBox(&specimen);combo->addItems({"Compatible MP4","Smaller WebM"});if(compact)combo->setProperty("graphiteDensity","compact");row->addWidget(combo);auto* tool=Graphite::toolButton("Start here","trim-in","quiet",&specimen);if(compact)tool->setProperty("graphiteDensity","compact");row->addWidget(tool);rows->addLayout(row);
+  }
+  specimen.adjustSize();specimen.show();putgd::test::settle(30);if(!specimen.grab().save(QDir(output).filePath("00-control-tiers.png")))return 2;
+ }
  QJsonArray captures;auto save=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(name=="01a-history-preview-focus"||name=="10a-history-compact-preview-focus"){window.activateWindow();auto* focusedPreview=window.findChild<QLabel*>("historyPreview");focusedPreview->setFocus(Qt::TabFocusReason);app.processEvents();if(!focusedPreview->hasFocus())return false;}if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}if(!checkSteppers(window))return false;const auto image=window.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
  const bool recordOnly=qEnvironmentVariableIsSet("PUTGD_PREVIEW_RECORD_ONLY");
  if(!recordOnly){

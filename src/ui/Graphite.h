@@ -22,7 +22,7 @@ class QGridLayout;class QFormLayout;class QAbstractButton;class QAbstractScrollA
 namespace putgd::Graphite {
 // Geometry in logical pixels at the default text scale.
 namespace Metric {
-constexpr int space = 4, control = 36, iconTarget = 32, radius = 6, segmentRadius = 6, trackRadius = 10, swatchRadius = 4, smallRadius = 4, containerRadius = 10, segmentInset = 4;
+constexpr int space = 4, control = 36, controlCompact = 28, compactRadius = 5, iconTarget = 32, radius = 6, segmentRadius = 6, trackRadius = 10, swatchRadius = 4, smallRadius = 4, containerRadius = 10, segmentInset = 4;
 constexpr int header = 56, commandBand = 60, statusBand = 56, icon = 20, splitZone = 26;
 // A split button's menu half: a full 32 px pointer target with the same small
 // chevron (combo boxes and menu buttons keep splitZone for their chevron).
@@ -111,6 +111,8 @@ public:
     void drawControl(ControlElement, const QStyleOption*, QPainter*, const QWidget* = nullptr) const override;
     void drawComplexControl(ComplexControl, const QStyleOptionComplex*, QPainter*, const QWidget* = nullptr) const override;
     QPixmap generatedIconPixmap(QIcon::Mode, const QPixmap&, const QStyleOption*) const override;
+protected:
+    bool eventFilter(QObject*, QEvent*) override;
 private:
     void drawButtonLabel(const QStyleOption*, const QString& text, const QIcon&, QSize iconSize, QPainter*, const QWidget*, QRect body) const;
 };
