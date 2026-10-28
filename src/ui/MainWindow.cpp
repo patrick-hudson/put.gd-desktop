@@ -60,7 +60,7 @@ protected:
 class EditSourceButton final:public QToolButton {
 public:using QToolButton::QToolButton;
  // Toolbar targets retain six history rows with the 56 px status band.
- QSize sizeHint()const override{auto size=QToolButton::sizeHint();size.setHeight(qMax(32,qMax(iconSize().height(),fontMetrics().height()+space(Space::s))));return size;}
+ QSize sizeHint()const override{auto size=QToolButton::sizeHint();if(window()->height()<Graphite::scaled(720))size.setHeight(qMax(Graphite::Metric::iconTarget,qMax(iconSize().height(),fontMetrics().height()+space(Space::s))));return size;}
  QSize minimumSizeHint()const override{return sizeHint();}
 protected:
  void keyPressEvent(QKeyEvent* event)override{if(event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter){click();event->accept();return;}QToolButton::keyPressEvent(event);}
@@ -76,11 +76,11 @@ QString unavailableOutput(const QJsonObject& document,const QString& action){
 // Only compact output and build metadata belong in the status band.
 class StatusBand final:public QStatusBar {
 public:
- explicit StatusBand(QWidget* parent):QStatusBar(parent){setSizeGripEnabled(false);setObjectName("statusBand");setMinimumHeight(Graphite::scaled(56));setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));}
+ explicit StatusBand(QWidget* parent):QStatusBar(parent){setSizeGripEnabled(false);setObjectName("statusBand");setMinimumHeight(Graphite::scaled(Graphite::Metric::statusBand));setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));}
 protected:
  bool event(QEvent* event)override{
   const bool handled=QStatusBar::event(event);
-  if(event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show){int height=Graphite::scaled(32);for(auto* child:findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(!child->isWindow()&&child->isVisibleTo(this))height=qMax(height,qMax(child->minimumHeight(),child->sizeHint().height()));setMinimumHeight(qMax(Graphite::scaled(56),height+2*space(Space::s)));}
+  if(event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show){int height=Graphite::scaled(32);for(auto* child:findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(!child->isWindow()&&child->isVisibleTo(this))height=qMax(height,qMax(child->minimumHeight(),child->sizeHint().height()));setMinimumHeight(qMax(Graphite::scaled(Graphite::Metric::statusBand),height+2*space(Space::s)));}
   return handled;
  }
  void paintEvent(QPaintEvent* event)override{{QPainter p(this);p.fillRect(rect(),Theme::current().surface);p.setPen(Theme::current().border);p.drawLine(0,0,width(),0);}QStatusBar::paintEvent(event);}
