@@ -2194,7 +2194,7 @@ void SettingsWindow::reloadFromFile(){
  resetDraft(true);
 }
 void SettingsWindow::fitRails(){
- const int width=qBound(Graphite::scaled(200),qRound(Graphite::scaled(200)*Graphite::textScale()),Graphite::scaled(280));
+ const int width=Graphite::railWidth();
  if(settingsRail_)settingsRail_->setFixedWidth(width);if(destinationRail_)destinationRail_->setFixedWidth(width);
 }
 }

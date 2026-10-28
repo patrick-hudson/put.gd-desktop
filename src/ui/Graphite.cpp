@@ -315,6 +315,7 @@ int lineHeight(int pixels) {
     return int(std::lround(line * ((pixels == Type::section || pixels == Type::page || pixels == Type::compactPage) ? 1 + (scale - 1) * 0.6 : scale)));
 }
 int scaled(int pixels) { return int(std::lround(pixels * textScale() * applicationScale())); }
+int railWidth() { return std::min(scaled(Metric::sidebar), int(std::lround(Metric::sidebarMax * 1.25 * applicationScale()))); }
 QString uiFamily() { return uiFamilyName().isEmpty() ? QApplication::font().family() : uiFamilyName(); }
 QString monoFamily() { return monoFamilyName().isEmpty() ? QFontDatabase::systemFont(QFontDatabase::FixedFont).family() : monoFamilyName(); }
 void setFamilies(const QString& ui, const QString& mono) {

@@ -135,6 +135,10 @@ private slots:
  void shortcutSupportRetriesWhenItsWindowRegainsFocus(){
   ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());int retries=0;editor.setRefreshAction([&]{++retries;});editor.show();putgd::test::settle(10);auto* refresh=editor.findChild<QPushButton*>("refreshShortcutSupport");QVERIFY(refresh);QCOMPARE(refresh->property("visualRole").toString(),QString("quiet"));const int before=retries;QEvent activated(QEvent::WindowActivate);QApplication::sendEvent(&editor,&activated);QCOMPARE(retries,before+1);editor.setStatus({{"available",true},{"bindings",QJsonObject{}}});
  }
+ void topLevelPagesShareOneRailEdge(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.show();
+  for(const auto& page:{"history","settings","destinations"}){window.navigate(page);putgd::test::settle(20);for(const auto& name:{"historySidebar","settingsRail","destinationRail"})if(auto* rail=window.findChild<QWidget*>(name))QCOMPARE(rail->width(),Graphite::railWidth());}
+ }
  void technicalPlaceholdersUseSansUntilAValueIsEntered(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(Settings::defaults(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings()->showLocalCopySettings();window.show();auto* input=window.findChild<QLineEdit*>("folderImages");QVERIFY(input);QCOMPARE(input->placeholderText(),QString("Same as Save to"));QCOMPARE(input->font().family(),Graphite::uiFamily());input->setText("synthetic");QCOMPARE(input->font().family(),Graphite::monoFont(Graphite::Type::technical).family());input->clear();QCOMPARE(input->font().family(),Graphite::uiFamily());
  }

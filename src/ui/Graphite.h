@@ -89,6 +89,8 @@ qreal opticalBaseline(const QFontMetricsF&, const QString&, qreal centre);
 // control heights scale with it. See Graphite.cpp.
 qreal textScale();
 int scaled(int pixels);
+// One edge for History, Settings and Destinations; text enlargement has a bounded cap.
+int railWidth();
 // Label and icon measurements include text enlargement; the cap is logical pixels.
 int sidebarWidth(int baseline, int natural);
 // Text vertically centred on its ink, elided to the rectangle.
