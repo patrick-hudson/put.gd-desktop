@@ -44,7 +44,7 @@ QImage liftApp(const QColor& color,int scale) {
  auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
  p.setPen(Qt::NoPen);p.setBrush(Theme::brandTile());p.drawRoundedRect(QRectF(0,0,24,24),5,5);
  p.translate(2.4,2);p.scale(0.8,0.8);
- p.fillPath(tray(),color.darker(190));p.fillPath(arrow(),color);
+ p.fillPath(tray(),Theme::brandTray());p.fillPath(arrow(),color);
  return image;
 }
 QImage symbol(const QString& name,const QColor& color,int scale,const QColor& secondaryColor) {
@@ -110,9 +110,8 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   // 1.8 units on the 24-unit grid gives a 1.5 px stroke in 20 px tool icons.
   line(color,1.8);QPainterPath pointer;pointer.moveTo(5,3);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,21);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
  } else if(name=="redact") {
-  line(color,1.8);rounded(3,7,18,10,1);
-  p.drawLine(5,3,11,3);p.drawLine(15,3,19,3);p.drawLine(5,21,9,21);p.drawLine(13,21,19,21);
-  for(int x:{6,11,16})p.drawLine(x,14,x+3,10);
+  fill(color);rounded(3,5,18,11,1);
+  line(color,1.8);p.drawLine(3,20,21,20);
  } else if(name=="blur") {
   // A soft droplet, distinct from an app grid or pixelation.
   line(color,1.8);QPainterPath drop;drop.moveTo(12,3);drop.cubicTo(9,7,5,10,5,15);drop.cubicTo(5,23,19,23,19,15);drop.cubicTo(19,10,15,7,12,3);p.drawPath(drop);
@@ -132,7 +131,7 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="chevron-down") {
   line(color);QPainterPath chevron;chevron.moveTo(6,9);chevron.lineTo(12,15);chevron.lineTo(18,9);p.drawPath(chevron);
  } else if(name=="text") {
-  line(color,1.8);p.drawLine(5,5,19,5);p.drawLine(5,5,5,8);p.drawLine(19,5,19,8);p.drawLine(12,5,12,20);p.drawLine(8,20,16,20);
+  line(color,1.8);p.drawLine(5,5,19,5);p.drawLine(12,5,12,20);
  } else if(name=="undo"||name=="redo") {
   if(name=="redo"){p.translate(24,0);p.scale(-1,1);}
   line(color,1.8);QPainterPath turn;turn.moveTo(4,9);turn.lineTo(15,9);turn.quadTo(21,9,21,15);turn.quadTo(21,21,15,21);turn.lineTo(10,21);
@@ -180,9 +179,10 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="bucket") {
   p.drawEllipse(QRectF(4,3,16,6));QPainterPath body;body.moveTo(4,6);body.lineTo(4,18);body.cubicTo(4,22,20,22,20,18);body.lineTo(20,6);p.drawPath(body);p.drawArc(QRectF(4,9,16,6),180*16,180*16);
  } else if(name=="proton") {
-  // The 3-unit drive-tab notch survives 16 px without a second folder shape.
-  QPainterPath cloud;cloud.moveTo(7,19);cloud.cubicTo(1.5,19,1.5,10,6.5,10);cloud.cubicTo(6.5,3,16.5,2,18,9);cloud.cubicTo(23,9,23,19,18,19);
-  cloud.lineTo(14,19);cloud.lineTo(14,16);cloud.lineTo(11,16);cloud.lineTo(11,19);cloud.closeSubpath();p.drawPath(cloud);
+  // A clean cloud silhouette stays legible at the provider's actual 16 px.
+  QPainterPath cloud;cloud.moveTo(7,19);cloud.cubicTo(1,19,1,10,6.5,10);
+  cloud.cubicTo(6.5,3,16.5,2,18,9);cloud.cubicTo(23,9,23,19,18,19);
+  cloud.closeSubpath();p.drawPath(cloud);
  } else if(name=="add") {
   p.drawEllipse(QRectF(2.4,2.4,19.2,19.2));p.drawLine(12,7,12,17);p.drawLine(7,12,17,12);
  } else {
