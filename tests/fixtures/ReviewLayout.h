@@ -38,15 +38,15 @@ inline QString reviewFooterProblem(record::ReviewWindow& window) {
     const auto destination = state["destination"].toString();
     const auto mode = state["sharingMode"].toString() == "private" ? QStringLiteral("Private upload") : QStringLiteral("Shared link");
     if (!output->toolTip().contains(destination) || !output->accessibleDescription().contains(destination)) return "Full destination is missing from tooltip or accessibility description";
-    const bool header = output->property("headerSummary").toBool();
-    const auto display = header ? output->property("sharingSuffix").toString()
+    const bool elided = output->property("elideDestination").toBool();
+    const auto display = elided ? output->property("sharingSuffix").toString()
         : output->property("displayText").isValid() ? output->property("displayText").toString() : output->text();
     const int textWidth = output->width() - int(Graphite::Space::l);
-    if (!display.contains(mode) || textWidth < output->fontMetrics().horizontalAdvance(header ? QStringLiteral("…") + display : mode)
-        || (!header && output->fontMetrics().horizontalAdvance(display) > textWidth
+    if (!display.contains(mode) || textWidth < output->fontMetrics().horizontalAdvance(elided ? QStringLiteral("…") + display : mode)
+        || (!elided && output->fontMetrics().horizontalAdvance(display) > textWidth
             && output->height() < output->fontMetrics().boundingRect(QRect(0, 0, std::max(1, textWidth), 10000), Qt::TextWordWrap, display).height()))
-        return QString("Sharing mode is not fully visible: '%1' in %2x%3 px (font %4 px, mode %5 px, header %6)")
-            .arg(display).arg(output->width()).arg(output->height()).arg(output->fontMetrics().height()).arg(output->fontMetrics().horizontalAdvance(mode)).arg(header);
+        return QString("Sharing mode is not fully visible: '%1' in %2x%3 px (font %4 px, mode %5 px, elided %6)")
+            .arg(display).arg(output->width()).arg(output->height()).arg(output->fontMetrics().height()).arg(output->fontMetrics().horizontalAdvance(mode)).arg(elided);
     return {};
 }
 }

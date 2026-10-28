@@ -2731,10 +2731,11 @@ void WindowHeader::syncWindowState() {
         row_->setStretch(1, 0);
         row_->setStretch(row_->count() - 2, 0);
         setProperty("balancedTitle", false);
-        return;
+        // Review opts into equal side slots around its playback controls.
+        if (!property("balancedLeading").toBool()) return;
     }
     row_->setStretch(0, 0);
-    if (density_ == Density::Compact) {
+    if (density_ == Density::Compact && !leadingContent_) {
         // The transport gets the space first; a partial window name adds noise.
         const auto margins = row_->contentsMargins();
         const int nameWidth = int(std::ceil(QFontMetricsF(name_->font()).horizontalAdvance(name_->text())));

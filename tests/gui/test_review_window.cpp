@@ -121,7 +121,7 @@ private slots:
         QCOMPARE(window.findChild<QLabel*>("brandName")->text(), QString("Review recording"));
         QCOMPARE(window.findChild<QLabel*>("brandName")->toolTip(), QString("Review recording"));
         auto* status = window.findChild<QLabel*>("playbackStatus");
-        QVERIFY(window.findChild<QWidget*>("reviewTransport")->isAncestorOf(status));
+        QVERIFY(window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(status));
         const auto geometry = window.geometry(); const auto statusGeometry = status->geometry();
         window.drive({{"action", "seek"}, {"time", 0}}); QApplication::processEvents();
         QCOMPARE(status->geometry(), statusGeometry); QCOMPARE(window.geometry(), geometry);
@@ -688,7 +688,7 @@ private slots:
             QVERIFY(!time->text().contains('\n'));
             auto* audio = window.findChild<QLabel*>("exportAudioSummary");
             QVERIFY(audio->isVisible() && !audio->text().contains(status->text()));
-            QVERIFY(status->isVisible() && metadata->isAncestorOf(status));
+            QVERIFY(status->isVisible() && window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(status));
             QVERIFY((window.findChild<QWidget*>("reviewDestinationSummary")->isAncestorOf(audio)
                 || window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(audio)));
             QVERIFY(t->trackRect().width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
@@ -914,8 +914,10 @@ private slots:
             QCOMPARE(audio->mapTo(&window, audio->rect().center()).y(), outputY);
             QVERIFY(separator->isVisible());
             QCOMPARE(separator->text(), QStringLiteral(" · "));
-            QCOMPARE(separator->mapTo(&window, QPoint()).x(), output->mapTo(&window, QPoint(output->width(), 0)).x());
-            QCOMPARE(audio->mapTo(&window, QPoint()).x(), separator->mapTo(&window, QPoint(separator->width(), 0)).x());
+            QCOMPARE(separator->mapTo(&window, QPoint()).x(), audio->mapTo(&window, QPoint(audio->width(), 0)).x());
+            auto* preview = window.findChild<QLabel*>("playbackStatus");
+            QCOMPARE(preview->mapTo(&window, QPoint()).x(), separator->mapTo(&window, QPoint(separator->width(), 0)).x());
+            QVERIFY(window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(audio));
             QCOMPARE(audio->width(), audio->sizeHint().width());
             if (width == 1366) {
                 QCOMPARE(save->mapTo(&window, save->rect().center()).y(), outputY);
@@ -924,14 +926,51 @@ private slots:
             else QVERIFY(save->mapTo(&window, save->rect().center()).y() > outputY);
         }
     }
+    void shortDestinationAndMetadataUseNaturalHeaderWidths_data() {
+        QTest::addColumn<int>("pixels");
+        QTest::newRow("standard") << 14;
+        QTest::newRow("150%") << 21;
+    }
+    void shortDestinationAndMetadataUseNaturalHeaderWidths() {
+        QFETCH(int, pixels);
+        auto font = qApp->font(); font.setPixelSize(pixels); qApp->setFont(font);
+        for (const auto theme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(theme);
+            auto o = options(); o.audioRecorded = true;
+            auto c = config(); c.audio.system = true;
+            ReviewWindow window(o, c); window.show();
+            QVERIFY(putgd::test::waitForWindowExposed(&window));
+            window.resize(1600, 720); putgd::test::settle(10);
+            auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
+            auto* header = window.findChild<Graphite::WindowHeader*>();
+            QVERIFY(output->property("headerSummary").toBool());
+            QCOMPARE(output->width(), output->fontMetrics().horizontalAdvance(output->text()) + int(Graphite::Space::l));
+            QCOMPARE(output->mapTo(header, QPoint()).x(), header->layout()->contentsMargins().left());
+            const auto natural = output->grab().toImage();
+            const int minimum = output->minimumWidth(), maximum = output->maximumWidth();
+            output->setFixedWidth(natural.width() + 80);
+            const auto reference = output->grab().toImage();
+            const QRect text(0, 0, natural.width() - int(Graphite::Space::l), natural.height());
+            QCOMPARE(natural.copy(text), reference.copy(text));
+            output->setMinimumWidth(minimum); output->setMaximumWidth(maximum);
+            output->resize(natural.size());
+            auto* status = window.findChild<QLabel*>("playbackStatus");
+            auto* separator = window.findChild<QLabel*>("reviewDraftSeparator");
+            window.drive({{"action", "seek"}, {"time", 0}}); putgd::test::settle(10);
+            QCOMPARE(status->width(), status->sizeHint().width());
+            QCOMPARE(separator->mapTo(&window, QPoint()).x(), status->mapTo(&window, QPoint(status->width(), 0)).x());
+        }
+    }
     void destinationMovesToTheHeaderOnlyWhenItFits_data() {
         QTest::addColumn<int>("pixels");
         QTest::addColumn<bool>("privateUpload");
-        for (int pixels : {14, 21}) for (bool privateUpload : {false, true})
-            QTest::newRow(qPrintable(QString("%1px-%2").arg(pixels).arg(privateUpload ? "private" : "shared"))) << pixels << privateUpload;
+        QTest::addColumn<bool>("light");
+        for (int pixels : {14, 21}) for (bool privateUpload : {false, true}) for (bool light : {false, true})
+            QTest::newRow(qPrintable(QString("%1px-%2-%3").arg(pixels).arg(privateUpload ? "private" : "shared").arg(light ? "light" : "dark"))) << pixels << privateUpload << light;
     }
     void destinationMovesToTheHeaderOnlyWhenItFits() {
-        QFETCH(int, pixels); QFETCH(bool, privateUpload);
+        QFETCH(int, pixels); QFETCH(bool, privateUpload); QFETCH(bool, light);
+        Theme::setScheme(light ? Theme::Scheme::Light : Theme::Scheme::Dark);
         auto font = qApp->font(); font.setPixelSize(pixels); qApp->setFont(font);
         auto o = options(); o.audioRecorded = true;
         o.destination = QStringLiteral("Project archive for customer support in the European Union");
@@ -964,13 +1003,24 @@ private slots:
             QVERIFY(output->accessibleDescription().contains(privateUpload ? "Private upload" : "Shared link"));
             for (auto* widget : std::initializer_list<QWidget*>{output, draft, audio, transport}) QVERIFY(window.rect().contains(bounds(widget)));
             if (inHeader) {
+                const auto* view = window.findChild<FrameView*>();
+                const qreal frameCentre = view->mapTo(&window, QPointF(view->imageRect().center())).x();
+                const qreal transportCentre = transport->mapTo(&window, QPointF(transport->width() / 2.0, 0)).x();
+                QVERIFY2(qAbs(transportCentre - frameCentre) <= 2, qPrintable(QString("transport %1, frame %2").arg(transportCentre).arg(frameCentre)));
+                QVERIFY(output->maximumWidth() <= output->fontMetrics().horizontalAdvance(output->text()) + Graphite::space(Graphite::Space::l));
+                QTest::mouseMove(&window, QPoint(5, window.height() - 5));
+                output->clearFocus(); QApplication::processEvents();
+                const auto image = header->grab().toImage();
+                QCOMPARE(image.pixelColor(header->width() / 3, 3), Theme::current().bg);
+                const auto menuImage = output->grab().toImage();
+                QCOMPARE(menuImage.pixelColor(output->width() / 2, 3), Theme::current().bg);
                 QVERIFY(bounds(output).right() < bounds(transport).left());
-                QVERIFY(bounds(transport).right() < bounds(draft).left());
-                QVERIFY(bounds(draft).right() < bounds(audio).left());
+                QVERIFY(bounds(transport).right() < bounds(audio).left());
+                QVERIFY(bounds(audio).right() < bounds(draft).left());
                 for (const auto* name : {"windowMinimize", "windowMaximize", "windowClose"}) {
                     const auto button = bounds(window.findChild<QToolButton*>(name));
                     QVERIFY(!button.intersects(bounds(audio)));
-                    if (button.left() > bounds(audio).right()) QVERIFY(button.left() - bounds(audio).right() - 1 >= Graphite::space(Graphite::Space::m));
+                    if (button.left() > bounds(draft).right()) QVERIFY(button.left() - bounds(draft).right() - 1 >= Graphite::space(Graphite::Space::l));
                 }
                 const auto suffix = output->property("sharingSuffix").toString();
                 QVERIFY(output->width() >= output->fontMetrics().horizontalAdvance(suffix + QStringLiteral("…")) + 24);
@@ -1895,7 +1945,10 @@ private slots:
             window.showError("Export failed: disk full");
             QApplication::processEvents();
             for (auto* label : window.findChild<QWidget*>("statusRow")->findChildren<QLabel*>("status")) if (label->isVisible())
-                QVERIFY(label->heightForWidth(label->width()) <= label->fontMetrics().height());
+                QVERIFY2(label->heightForWidth(label->width()) <= label->fontMetrics().height(),
+                    qPrintable(QString("'%1' needs %2 px, has %3 px at window %4; details %5 px in %6")
+                        .arg(label->text()).arg(label->fontMetrics().horizontalAdvance(label->text())).arg(label->width()).arg(window.width())
+                        .arg(window.findChild<QPushButton*>("reviewErrorDetails")->width()).arg(window.findChild<QPushButton*>("reviewErrorDetails")->parentWidget()->objectName())));
             qInfo("enlarged preview sequence %dx%d recovery %.3f", window.width(), window.height(), window.inspect()["video"].toObject()["share"].toDouble());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             QCOMPARE(window.geometry(), geometry);
