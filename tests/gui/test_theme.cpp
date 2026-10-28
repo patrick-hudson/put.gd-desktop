@@ -387,16 +387,34 @@ private slots:
     }
     void trayBadgesKnockOutTheGlyphAndFailureWins() {
         for (const bool light : {false, true}) {
-            const auto tint = Theme::trayTints(light).idle;
-            for (const int scale : {1, 2}) {
-                const auto failed = IconArt::liftTray(tint, -2, scale);
-                QCOMPARE(IconArt::liftTray(tint, -2, scale, 1), failed);
-                QCOMPARE(IconArt::liftTray(tint, -2, scale, 2), failed);
-                for (const int recording : {0, 1, 2}) {
-                    const auto badge = IconArt::liftTray(tint, recording ? -1 : -2, scale, recording);
-                    const int x = recording ? 10 : 13;
-                    QVERIFY(IconArt::liftTray(tint, -1, scale).pixelColor(x * scale, 7 * scale).alpha() > 0);
-                    QVERIFY(badge.pixelColor(x * scale, 7 * scale).alpha() < 64);
+            const auto& tints = Theme::trayTints(light);
+            QCOMPARE(tints.idle, Theme::palette(light ? Theme::Scheme::Light : Theme::Scheme::Dark).icon);
+            const auto idle = IconArt::liftTray(tints.idle, -1, 4);
+            const auto failed = IconArt::liftTray(tints.idle, -2, 4);
+            QCOMPARE(IconArt::liftTray(tints.idle, -2, 4, 1), failed);
+            QCOMPARE(IconArt::liftTray(tints.idle, -2, 4, 2), failed);
+            for (const int state : {0, 1, 2}) {
+                const auto image = IconArt::liftTray(tints.idle, state ? -1 : -2, 4, state);
+                // The knockout ring clears the original arrow at the same corner.
+                QVERIFY(idle.pixelColor(13 * 4, 7 * 4).alpha() > 0);
+                QCOMPARE(image.pixelColor(13 * 4, 7 * 4).alpha(), 0);
+                QCOMPARE(image.copy(0, 0, 12 * 4, 24 * 4), idle.copy(0, 0, 12 * 4, 24 * 4));
+                QCOMPARE(image.pixelColor(15 * 4, 5 * 4), state == 0 ? tints.error : state == 1 ? tints.live : tints.idle);
+                if (state == 0) { QCOMPARE(image.pixelColor(18 * 4 + 3, 3 * 4).alpha(), 0); QCOMPARE(image.pixelColor(18 * 4 + 3, 7 * 4 + 3).alpha(), 0); }
+                if (state == 2) for (int x : {17, 20}) QCOMPARE(image.pixelColor(x * 4, 5 * 4).alpha(), 0);
+                for (const int side : {16, 22, 24, 48}) {
+                    const auto small = VisualStyle::icon("tray", tints.idle, state ? -1 : -2, state).pixmap(side, side).toImage();
+                    const auto plain = VisualStyle::icon("tray", tints.idle).pixmap(side, side).toImage();
+                    QCOMPARE(small.size(), QSize(side, side));
+                    QCOMPARE(plain.size(), QSize(side, side));
+                    int disc = 0, holes = 0;
+                    for (int y = 1; y < side * 9 / 24; ++y) for (int x = side * 15 / 24; x < side * 23 / 24; ++x) {
+                        disc += small.pixelColor(x, y).alpha() > 230;
+                        holes += small.pixelColor(x, y).alpha() < 128;
+                    }
+                    QVERIFY2(disc >= 3, qPrintable(QString("badge %1 at %2 px has %3 solid pixels").arg(state).arg(side).arg(disc)));
+                    if (state != 1) QVERIFY2(holes >= 2, qPrintable(QString("badge %1 at %2 px has %3 knockout pixels").arg(state).arg(side).arg(holes)));
+                    QCOMPARE(small.copy(0, 0, side / 2, side), plain.copy(0, 0, side / 2, side));
                 }
             }
         }
@@ -410,7 +428,7 @@ private slots:
             const auto& tints=Theme::trayTints(light);
             for (const auto& tint : {tints.idle,tints.upload,tints.encoding,tints.error}) {
                 const auto badge=IconArt::liftTray(tint,-1,2,1);
-                QCOMPARE(badge.pixelColor(10,10),tints.live);
+                QCOMPARE(badge.pixelColor(38,10),tints.live);
             }
             for (const auto& panel : {light?QColor("#ffffff"):QColor("#141414"),light?QColor("#dedee2"):QColor("#3b3b3f")}) QVERIFY(Theme::contrast(tints.live,panel)>=3.0);
         }

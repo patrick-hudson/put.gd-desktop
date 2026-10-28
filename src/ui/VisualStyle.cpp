@@ -289,7 +289,7 @@ QIcon icon(const QString& name,const QColor& color,int percent,int recording){
    auto image=IconArt::liftApp(color,scale);image.setDevicePixelRatio(1);
    result.addPixmap(QPixmap::fromImage(image));
   }
- } else for(int scale:{1,2,3})result.addPixmap(QPixmap::fromImage(progress?IconArt::liftTray(color,percent,scale,recording):IconArt::symbol(name,color,scale)));
+ } else for(int scale:{1,2,3}){auto image=progress?IconArt::liftTray(color,percent,scale,recording):IconArt::symbol(name,color,scale);if(name=="tray")image.setDevicePixelRatio(1);result.addPixmap(QPixmap::fromImage(image));}
  if(!progress)cache.insert(key,result);
  return result;
 }
