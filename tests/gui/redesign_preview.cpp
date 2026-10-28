@@ -369,6 +369,7 @@ int main(int argc,char** argv){
    captures.append(QJsonObject{{"file","29a-editor-saving.png"},{"width",editor.width()},{"height",editor.height()}});
    if(!waitUntil([&]{return !editor.savingCopy();}))return 2;}
   editor.setBusy("Preparing the edited image…");if(!grab("25-editor-finalizing"))return 2;
+  {editor::Shape label;label.kind=editor::Shape::Kind::Text;label.rect=QRect(doc.imageRect().right()-20,doc.imageRect().bottom()-40,20,20);label.text="Annotation beyond the image edge";const auto id=doc.add(label);editor.documentEdited();if(!grab("25a-editor-finalizing-warning"))return 2;doc.remove(id);editor.documentEdited();}
   // A result over the output's limit: editing resumes with the reason, and a
   // destination too long to sit beside the actions wraps above them.
   editor.setDestination("Upload to Production screenshots for customer support (EU) · Shared link");

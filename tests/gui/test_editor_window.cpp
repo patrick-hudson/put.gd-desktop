@@ -495,7 +495,9 @@ private slots:
  // header, the Document details and the progress message keep full contrast.
  void busyStateDisablesActionsButKeepsStatusReadable(){
   const auto restore=qScopeGuard([previous=Theme::scheme()]{Theme::setScheme(previous);});
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Upload to synthetic destination");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  EditDocument doc(canvasImage());add(doc,{{"kind","text"},{"at",QJsonArray{390,230}},{"text","Annotation beyond the image edge"},{"fontPixels",28}});
+  EditorWindow window(doc);window.setDestination("Upload to synthetic destination");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* warning=window.findChild<QLabel*>("annotationTextWarningText");QVERIFY(warning&&warning->isVisible());
   window.setBusy("Preparing the edited image…");
   auto* header=window.findChild<QWidget*>("windowHeader");QVERIFY(header);
   for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
