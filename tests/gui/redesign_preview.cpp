@@ -149,7 +149,7 @@ QImage editorIcons(){
  };
  auto show=[&](const QString& title,const QImage& strip,int y){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));};
  show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","redact","blur","crop","|","annotate-arrow","rectangle","highlight","text"},40),112);
- show("Editor view tools | document actions",row({"undo","redo","remove","|","save","upload"},32),252);
+ show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","save","upload"},32),252);
  show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32),392);
  return image;
 }
