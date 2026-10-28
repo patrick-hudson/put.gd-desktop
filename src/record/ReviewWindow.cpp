@@ -1467,7 +1467,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     VisualStyle::role(destinationMenu_, "meta");
     destinationMenu_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     destinationMenu_->setMinimumWidth(60);
-    destinationMenu_->setFixedHeight(32);
+    destinationMenu_->setFixedHeight(textControlHeight(destinationMenu_));
     auto* details = new QMenu(destinationMenu_);
     auto* detailsAction = new QWidgetAction(details);
     destinationFull_ = new QLabel(options.uploadSummary, details);
