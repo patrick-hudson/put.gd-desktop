@@ -1171,8 +1171,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     frame->addWidget(view_, 1);
     // Compact bands leave room for the video even with enlarged text and status.
     auto* root = new QVBoxLayout;
-    root->setContentsMargins(reviewSpace(Graphite::Space::m), 0, reviewSpace(Graphite::Space::m), 0);
-    root->setSpacing(reviewSpace(Graphite::Space::xs));
+    root->setContentsMargins(reviewSpace(Graphite::Space::m), 0, reviewSpace(Graphite::Space::m), reviewSpace(Graphite::Space::xs));
+    root->setSpacing(0);
     frame->addLayout(root);
     auto tool = [this](const char* icon, const QString& name, const QString& tip) {
         auto* button = new QToolButton(this);
@@ -1311,6 +1311,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     for (auto* w : std::initializer_list<QWidget*>{maskTools_, maskTiming_, static_cast<MaskInterval*>(maskActive_)->warningButton()}) flow->addGroup(w);
     flow->setGutter(groupLabel("Mask", "maskGroup"), gutter);
     flow->setReadout(maskActive_);
+    root->addSpacing(reviewSpace(Graphite::Space::xs));
     root->addWidget(flow);
     // Playback has its own row, leaving every ruler tick readable.
     play_ = tool("play", "Play", "Play the retained part silently (Space)");
@@ -1360,7 +1361,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     statusRow_ = new QWidget(this);
     statusRow_->setObjectName("statusRow");
     statusLines_ = new QVBoxLayout(statusRow_);
-    statusLines_->setContentsMargins(reviewSpace(Graphite::Space::m), 0, reviewSpace(Graphite::Space::m), 0);
+    statusLines_->setContentsMargins(reviewSpace(Graphite::Space::m), 0, reviewSpace(Graphite::Space::m), reviewSpace(Graphite::Space::xs));
     statusLines_->setSpacing(reviewSpace(Graphite::Space::xs));
     statusRow_->hide();
     frame->addWidget(statusRow_);
@@ -1419,8 +1420,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* footer = new ReviewFooter(this);
     footer->setObjectName("reviewFooter");
     auto* footerRows = new QVBoxLayout(footer);
-    // The action targets supply vertical padding; keep the frame gates with 13 px context.
-    footerRows->setContentsMargins(footerInset(), 0, footerInset(), 0);
+    footerRows->setContentsMargins(footerInset(), 0, footerInset(), reviewSpace(Graphite::Space::s));
     footerRows->setSpacing(reviewSpace(Graphite::Space::xs));
     auto* actions = new QWidget(footer);
     actions->setObjectName("reviewActions");
@@ -2332,7 +2332,7 @@ void ReviewWindow::placeDestination() {
             if (splitName) grid->addWidget(nameLine, 0, 0, 1, 7);
             grid->addWidget(metaLine, splitName ? 1 : 0, 0, 1, 7);
             grid->addWidget(actionLine, splitName ? 2 : 1, 0, 1, 7);
-            grid->setVerticalSpacing(splitName ? 0 : reviewSpace(Graphite::Space::xs));
+            grid->setVerticalSpacing(reviewSpace(Graphite::Space::xs));
         }
         // Reparenting between footer rows hides widgets that were already shown.
         for (auto* widget : std::initializer_list<QWidget*>{destinationSummary, format_, metadata, save_, cancel_, upload_}) widget->show();
