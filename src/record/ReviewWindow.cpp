@@ -1309,8 +1309,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* optionsLayout = new QVBoxLayout(optionsPanel);
     optionsLayout->setContentsMargins(reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s));
     optionsLayout->setSpacing(reviewSpace(Graphite::Space::s));
-    auto* blurAdvice = new Graphite::Banner(Graphite::Banner::Tone::Warning, Graphite::blurWarningText(), optionsPanel);
+    auto* blurAdvice = new Graphite::Banner(Graphite::Banner::Tone::Warning, "Blur may be reversible.", optionsPanel);
     blurAdvice->setObjectName("reviewBlurAdvice");
+    blurAdvice->setAccessibleDescription(Graphite::blurWarningText());
     blurAdvice->setMaximumWidth(480);
     blurAdvice->setAction("Use Redact");
     blurAdvice->actionButton()->setObjectName("useRedact");
