@@ -7,6 +7,8 @@
 #include "ui/VisualStyle.h"
 #include "ui/ViewState.h"
 #include <QScopeGuard>
+#include <QTextEdit>
+#include <QScreen>
 #include "fixtures/UiSessionFixture.h"
 #include <QApplication>
 #include <QComboBox>
@@ -48,6 +50,10 @@ public:
 class UiApplicationTest:public QObject {
  Q_OBJECT
 private slots:
+ void aboutBuildDetailsFollowTheCurrentFont_data(){QTest::addColumn<int>("pixels");QTest::newRow("normal")<<14;QTest::newRow("large")<<21;}
+ void aboutBuildDetailsFollowTheCurrentFont(){
+  QFETCH(int,pixels);VisualStyle::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);AboutWindow about(QJsonObject{{"version","26.1028.1"},{"source","synthetic"},{"compiler","test"}});about.show();auto* toggle=about.findChild<QPushButton*>("buildDetails");QVERIFY(toggle);toggle->click();auto* details=about.findChild<QTextEdit*>();QVERIFY(details&&details->isVisible());QCOMPARE(details->property("visualRole").toString(),QString("mono"));QCOMPARE(details->font().family(),Graphite::monoFamily());QVERIFY(details->height()<=about.screen()->availableGeometry().height()/3);QVERIFY(details->viewport()->height()>=6*details->fontMetrics().lineSpacing());toggle->click();QVERIFY(details->isHidden());toggle->click();QVERIFY(details->isVisible());
+ }
  void keyboardOrderPutsChromeAfterContent(){
   Graphite::WindowHeader::setCustomFrameOverride(1);auto restore=qScopeGuard([]{Graphite::WindowHeader::setCustomFrameOverride(0);});QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);window.show();window.activateWindow();auto* menu=window.findChild<QToolButton*>("applicationMenu");auto* navigation=window.findChild<QTabBar*>("mainNavigation");QVERIFY(menu&&navigation);menu->setFocus();QTest::keyClick(menu,Qt::Key_Tab);PUTGD_TRY_VERIFY(navigation->hasFocus());QTest::keyClick(navigation,Qt::Key_Tab);QCOMPARE(window.focusWidget()->objectName(),QString("captureActionButton"));
   QStringList order;QWidget* next=menu;do{if(next->isVisibleTo(&window)&&next->isEnabled()&&(next->focusPolicy()&Qt::TabFocus))order.append(next->objectName());next=next->nextInFocusChain();}while(next!=menu);QVERIFY(order.indexOf("historyCategories")>order.indexOf("captureActionButton"));QVERIFY(order.indexOf("windowMinimize")>order.indexOf("historyCategories"));QCOMPARE(order.last(),QString("windowClose"));window.navigate("settings");order.clear();next=menu;do{if(next->isVisibleTo(&window)&&next->isEnabled()&&(next->focusPolicy()&Qt::TabFocus))order.append(next->objectName());next=next->nextInFocusChain();}while(next!=menu);QVERIFY(order.indexOf("appearanceTheme")>order.indexOf("captureActionButton"));QCOMPARE(order.last(),QString("windowClose"));

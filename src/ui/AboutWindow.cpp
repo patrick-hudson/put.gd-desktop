@@ -13,6 +13,8 @@
 #include <QStyle>
 #include <QStyleOptionButton>
 #include <QTextEdit>
+#include <QTextDocument>
+#include <QScreen>
 
 namespace putgd {
 AboutWindow::AboutWindow(const QJsonObject& residentBuild, QWidget* parent)
@@ -57,7 +59,7 @@ void AboutWindow::showEvent(QShowEvent* event){
 }
 void AboutWindow::updateDetailsButton(){
  if(auto* button=findChild<QPushButton*>("buildDetails")){
-  auto* details=findChild<QTextEdit*>();button->setText(details&&details->isVisibleTo(this)?"Hide build details":"Build details");
+  auto* details=findChild<QTextEdit*>();if(details){VisualStyle::role(details,"mono");const int height=6*details->fontMetrics().lineSpacing()+qCeil(2*details->document()->documentMargin())+2*details->frameWidth();details->setFixedHeight(qMin(height,screen()->availableGeometry().height()/3));}button->setText(details&&details->isVisibleTo(this)?"Hide build details":"Build details");
   // Qt's private disclosure button measures only its built-in labels.
   QStyleOptionButton option;option.initFrom(button);option.text="Hide build details";
   button->setMinimumWidth(button->style()->sizeFromContents(QStyle::CT_PushButton,&option,button->fontMetrics().size(Qt::TextShowMnemonic,option.text),button).width());
