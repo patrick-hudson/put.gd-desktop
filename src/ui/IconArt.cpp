@@ -145,6 +145,9 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   QPainterPath ones;ones.moveTo(6.8,9.2);ones.lineTo(9.2,7.6);ones.lineTo(9.2,16.4);
   ones.moveTo(14.8,9.2);ones.lineTo(17.2,7.6);ones.lineTo(17.2,16.4);p.drawPath(ones);
   fill(color);p.drawEllipse(QPointF(12.4,9.9),0.9,0.9);p.drawEllipse(QPointF(12.4,14.3),0.9,0.9);
+ } else if(name=="open-external") {
+  QPainterPath box;box.moveTo(11,5);box.lineTo(5,5);box.lineTo(5,21);box.lineTo(21,21);box.lineTo(21,13);p.drawPath(box);
+  p.drawLine(11,13,21,3);p.drawLine(14,3,21,3);p.drawLine(21,3,21,10);
  } else if(name=="back"||name=="forward"||name=="up") {
   // The fallback file dialog's toolbar (#259): one arrow, turned.
   if(name=="forward"){p.translate(24,0);p.scale(-1,1);}
