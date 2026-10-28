@@ -280,9 +280,8 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
   acquisition=[sourcePath](const ResourceLimits&,std::function<void(PayloadResult)> deliver){ClipboardPayload payload;payload.kind="files";payload.files={sourcePath};deliver({payload,{}});};
   released();
  }else {
-  const auto provider=op.destination.providerId;
-  const auto providerName=provider=="proton-drive"?QStringLiteral("Proton Drive"):provider=="backblaze-b2"?QStringLiteral("Backblaze B2"):provider=="s3"?QStringLiteral("S3"):snapshot.profiles.value(route.profileId)["label"].toString(provider);
-  source_.setCaptureOutcome(action=="edit"?QStringLiteral("Opens the image editor"):upload?QStringLiteral("Uploads immediately to %1").arg(providerName):QStringLiteral("Saves locally"));
+  const auto output=uploadReviewOptions(op,providers_);
+  source_.setCaptureOutcome(action=="edit"?QStringLiteral("Opens the image editor"):upload?QStringLiteral("Uploads immediately to %1 · %2").arg(output["destination"].toString(),output["sharingMode"]=="private"?QStringLiteral("Private upload"):QStringLiteral("Shared link")):QStringLiteral("Saves locally"));
   acquisition=source_.prepareAcquisition(source,snapshot.limits,std::move(earlyTerminal),std::move(released));
  }
  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition,earlyError](Error e,QJsonObject result) mutable {

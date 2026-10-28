@@ -17,7 +17,7 @@ class KdeRegionOverlayTest final:public QObject {
  }
 private slots:
  void resolvedOutcomeIsVisibleAndAccessible(){
-  for(const QString outcome:{QString("Uploads immediately to Proton Drive"),QString("Saves locally"),QString("Opens the image editor")}){
+  for(const QString outcome:{QString("Uploads immediately to Team Drive · Shared link"),QString("Saves locally"),QString("Opens the image editor")}){
    KdeRegionOverlay overlay({},nullptr,false,outcome);auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
    QVERIFY(surface->accessibleDescription().endsWith(outcome));
    QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().endsWith(outcome));

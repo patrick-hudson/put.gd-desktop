@@ -57,7 +57,7 @@ equal(oneHint.split('\n').length, 3);
 equal(oneHint.split('\n')[0], '400 × 400 px · Enter to capture · Esc to cancel');
 equal(oneHint.includes('Display 1'), false);
 print('PASS output pixel sizes on fractional, mixed-density and unknown outputs');
-for (const outcome of ['Uploads immediately to Proton Drive', 'Saves locally', 'Opens the image editor']) {
+for (const outcome of ['Uploads immediately to Team Drive · Shared link', 'Saves locally', 'Opens the image editor']) {
     const actor = new globalThis.RegionSelector(false, null, outcome);
     const result = actor.selectAsync();
     equal(actor._instructions.text.endsWith(`\n${outcome}`), true);

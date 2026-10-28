@@ -87,23 +87,24 @@ class OperationsTest:public QObject {
  Q_OBJECT
 private slots:
  void screenshotOutcomeUsesResolvedRoute_data(){
-  QTest::addColumn<QString>("action");QTest::addColumn<QString>("provider");QTest::addColumn<QString>("outcome");
-  QTest::newRow("local")<<QString("region")<<QString()<<QString("Saves locally");
-  QTest::newRow("proton")<<QString("region")<<QString("proton-drive")<<QString("Uploads immediately to Proton Drive");
-  QTest::newRow("s3")<<QString("region")<<QString("s3")<<QString("Uploads immediately to S3");
-  QTest::newRow("b2")<<QString("region")<<QString("backblaze-b2")<<QString("Uploads immediately to Backblaze B2");
-  QTest::newRow("edit-proton")<<QString("edit")<<QString("proton-drive")<<QString("Opens the image editor");
-  QTest::newRow("edit-local")<<QString("edit")<<QString()<<QString("Opens the image editor");
+  QTest::addColumn<QString>("action");QTest::addColumn<QString>("provider");QTest::addColumn<QString>("mode");QTest::addColumn<QString>("outcome");
+  QTest::newRow("local")<<QString("region")<<QString()<<QString("default")<<QString("Saves locally");
+  QTest::newRow("proton")<<QString("region")<<QString("proton-drive")<<QString("default")<<QString("Uploads immediately to Team Drive · Shared link");
+  QTest::newRow("s3")<<QString("region")<<QString("s3")<<QString("share")<<QString("Uploads immediately to Team Drive · Shared link");
+  QTest::newRow("b2")<<QString("region")<<QString("backblaze-b2")<<QString("default")<<QString("Uploads immediately to Team Drive · Shared link");
+  QTest::newRow("private")<<QString("region")<<QString("proton-drive")<<QString("private")<<QString("Uploads immediately to Team Drive · Private upload");
+  QTest::newRow("edit-proton")<<QString("edit")<<QString("proton-drive")<<QString("private")<<QString("Opens the image editor");
+  QTest::newRow("edit-local")<<QString("edit")<<QString()<<QString("default")<<QString("Opens the image editor");
  }
  void screenshotOutcomeUsesResolvedRoute(){
-  QFETCH(QString,action);QFETCH(QString,provider);QFETCH(QString,outcome);
+  QFETCH(QString,action);QFETCH(QString,provider);QFETCH(QString,mode);QFETCH(QString,outcome);
   QTemporaryDir d;ProviderRegistry registry;if(!provider.isEmpty())registry.add(provider,std::make_shared<OpaqueProvider>());
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});
   auto doc=configuration(d.path(),provider.isEmpty());
   if(!provider.isEmpty()){
-   auto profile=doc["profiles"].toArray().first().toObject();profile["provider"]=provider;doc["profiles"]=QJsonArray{profile};
+   auto profile=doc["profiles"].toArray().first().toObject();profile["provider"]=provider;profile["label"]="Team Drive";doc["profiles"]=QJsonArray{profile};
    auto actions=doc["actions"].toObject();for(const auto& name:Settings::actionNames()){auto route=actions[name].toObject();route["destination"]="default";route["profileId"]=QJsonValue::Null;actions[name]=route;}doc["actions"]=actions;
-   doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","test"},{"publicationMode","default"}};
+   doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","test"},{"publicationMode",mode}};
   }
   QVERIFY(settings.save(doc,{}));OutcomeSource source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   QString id;operations.invoke(action,[&](Error error,QJsonObject result){QVERIFY(!error);id=result["operationId"].toString();});

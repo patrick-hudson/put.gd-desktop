@@ -156,7 +156,7 @@ inline QRect regionInstructionBox(const QRect& bounds, const QFontMetrics& metri
     for (int i = 0; i < lines.size(); ++i)
         textHeight += (i == 0 ? titleMetrics : metrics).boundingRect(QRect(0, 0, width - 20, available.height()), Qt::TextWordWrap | Qt::AlignCenter, lines[i]).height();
     const int height = std::min(available.height(), textHeight + 12);
-    const QRect top(bounds.center().x() - width / 2, available.top(), width, height);
+    const QRect top(available.left() + (available.width() - width) / 2, available.top(), width, height);
     const QRect bottom(top.x(), available.bottom() - height + 1, width, height);
     // Prefer clear content; near the drag pointer, avoid covering its next move.
     auto score = [&](const QRect& box) {

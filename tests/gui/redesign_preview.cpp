@@ -483,7 +483,7 @@ int main(int argc,char** argv){
   crowded.hide();qunsetenv("PUTGD_RECORD_REVIEW_DELAY_MS");
   const auto screen=QGuiApplication::primaryScreen()->geometry();
   CaptureFrame selectionFrame{"fixture",screen,screen,1,0,{}};
-  RegionOverlay screenshot({selectionFrame},nullptr,"Uploads immediately to Proton Drive");screenshot.start();
+  RegionOverlay screenshot({selectionFrame},nullptr,"Uploads immediately to Team Drive · Shared link");screenshot.start();
   for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"){if(!shot(*w,"46-region-entire-display"))return 2;QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"44-region-keyboard"))return 2;QTest::mousePress(w,Qt::LeftButton,{},QPoint(w->width()/2-200,8));QTest::mouseMove(w,QPoint(w->width()/2+200,220));if(!shot(*w,"44a-region-badge-outside-selection"))return 2;break;}
   screenshot.cancel();
   record::SelectionOverlay selector;selector.start();

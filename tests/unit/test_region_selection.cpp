@@ -30,7 +30,7 @@ private slots:
  }
  void screenshotOutcomeSurvivesKeyboardAndMouseSelection(){
   const QRectF bounds(0,0,800,600);const QList<CaptureFrame> frames{{"Display 1",bounds,bounds.toRect(),1,0,{}}};
-  for(const QString outcome:{QString("Uploads immediately to Proton Drive"),QString("Saves locally"),QString("Opens the image editor")}){
+  for(const QString outcome:{QString("Uploads immediately to Team Drive · Shared link"),QString("Saves locally"),QString("Opens the image editor")}){
    for(bool dragging:{false,true})for(const QRectF selection:{QRectF(),QRectF(20,30,400,200)}){
     const auto text=regionInstructions(selection,false,"Display 1",bounds,frames,dragging,outcome);
     QVERIFY(text.endsWith("\n"+outcome));QCOMPARE(text.count(outcome),1);
@@ -41,6 +41,14 @@ private slots:
    const auto recording=regionInstructions({},true,"Display 1",bounds,frames,false,outcome);
    QVERIFY(!recording.contains(outcome));QVERIFY(recording.endsWith("Start recording comes next"));
   }
+ }
+ void destinationAndSharingWrapInsideTheBadge(){
+  auto font=nativeRegionFont();font.setPixelSize(21);const QFontMetrics metrics(font);const QRect bounds(0,0,640,480);
+  const auto shortText=regionInstructions({},false,{},bounds,{},false,"Uploads immediately to Team Drive · Shared link");
+  const auto longText=regionInstructions({},false,{},bounds,{},false,"Uploads immediately to Team Drive for the quarterly release readiness review and accessibility notes · Private upload");
+  const auto shortBox=regionInstructionBox(bounds,metrics,shortText,{}, {},font),longBox=regionInstructionBox(bounds,metrics,longText,{}, {},font);
+  QVERIFY(bounds.adjusted(16,16,-16,-16).contains(longBox));QVERIFY(longBox.height()>shortBox.height());
+
  }
  void hintsReflectActionAndState(){
   for(bool recording:{false,true}){
