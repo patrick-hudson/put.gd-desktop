@@ -14,6 +14,10 @@
 #include <QStyleOptionButton>
 #include <QTextEdit>
 #include <QTextDocument>
+#include <QFormLayout>
+#include <QScrollArea>
+#include <QScrollBar>
+#include <QClipboard>
 #include <QScreen>
 #include <QtMath>
 
@@ -27,9 +31,16 @@ AboutWindow::AboutWindow(const QJsonObject& residentBuild, QWidget* parent)
  setTextFormat(Qt::PlainText);
  setInformativeText("Screen capture and file sharing");
  setDetailedText(QString::fromUtf8(QJsonDocument(residentBuild).toJson(QJsonDocument::Indented)));
+ if(auto* raw=findChild<QTextEdit*>()){
+  auto* host=raw->parentWidget();auto* box=qobject_cast<QVBoxLayout*>(host->layout());raw->hide();
+  auto* scroll=new QScrollArea(host);scroll->setObjectName("aboutBuildDetails");scroll->setFrameShape(QFrame::NoFrame);scroll->setWidgetResizable(true);auto* body=new QWidget;auto* column=new QVBoxLayout(body);const int inset=Graphite::space(Graphite::Space::s);column->setContentsMargins(inset,inset,inset,inset);column->setSpacing(inset);auto* form=new QFormLayout;form->setHorizontalSpacing(Graphite::space(Graphite::Space::l));form->setVerticalSpacing(inset);form->setRowWrapPolicy(QFormLayout::DontWrapRows);column->addLayout(form);
+  const auto add=[&](const QString& name,const QString& value,const QString& object){auto* label=new QLabel(value);label->setObjectName(object);label->setTextFormat(Qt::PlainText);label->setWordWrap(false);label->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);VisualStyle::role(label,"mono");label->setMinimumWidth(label->fontMetrics().horizontalAdvance(value));form->addRow(Graphite::label(name,"secondary"),label);};
+  add("Version",residentBuild["version"].toString(),"buildVersion");add("Commit",residentBuild["gitCommit"].toString(residentBuild["commit"].toString("Unknown")),"buildCommit");add("Build state",residentBuild["dirty"].isBool()?(residentBuild["dirty"].toBool()?"Modified source tree":"Clean source tree"):"Unknown","buildState");
+  auto* copy=new QPushButton("Copy build details");copy->setObjectName("copyBuildDetails");VisualStyle::role(copy,"quiet");column->addWidget(copy,0,Qt::AlignLeft);connect(copy,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(detailedText());});scroll->setWidget(body);scroll->setMinimumWidth(0);scroll->setFixedHeight(qMin(body->sizeHint().height()+2*scroll->frameWidth()+scroll->horizontalScrollBar()->sizeHint().height(),screen()->availableGeometry().height()/2));if(box)box->addWidget(scroll);
+ }
  // The button box runs QMessageBox's disclosure handler before ours, even
  // when Qt 6.4 reconnects the button itself on show.
- for(auto* button:findChildren<QPushButton*>())if(standardButton(button)==QMessageBox::NoButton){button->setObjectName("buildDetails");VisualStyle::role(button,"quiet");button->setText("Build details");connect(findChild<QDialogButtonBox*>(),&QDialogButtonBox::clicked,this,[this,button](QAbstractButton* clicked){if(clicked!=button)return;updateDetailsButton();});}
+ for(auto* button:findChildren<QPushButton*>())if(standardButton(button)==QMessageBox::NoButton&&findChild<QDialogButtonBox*>()->buttons().contains(button)){button->setObjectName("buildDetails");VisualStyle::role(button,"quiet");button->setText("Build details");connect(findChild<QDialogButtonBox*>(),&QDialogButtonBox::clicked,this,[this,button](QAbstractButton* clicked){if(clicked!=button)return;updateDetailsButton();});}
  // A small branded dialog, with the connected resident’s build on request.
  setIconPixmap(VisualStyle::icon("brand").pixmap(Graphite::scaled(64),Graphite::scaled(64)));
  auto* website=new QPushButton(VisualStyle::icon("open-external"),"put.gd website",this);website->setObjectName("putgdWebsite");VisualStyle::role(website,"link");website->setProperty("graphiteFlush",true);
@@ -60,7 +71,7 @@ void AboutWindow::showEvent(QShowEvent* event){
 }
 void AboutWindow::updateDetailsButton(){
  if(auto* button=findChild<QPushButton*>("buildDetails")){
-  auto* details=findChild<QTextEdit*>();if(details){VisualStyle::role(details,"mono");const int height=6*details->fontMetrics().lineSpacing()+qCeil(2*details->document()->documentMargin())+2*details->frameWidth();details->setFixedHeight(qMin(height,screen()->availableGeometry().height()/3));}button->setText(details&&details->isVisibleTo(this)?"Hide build details":"Build details");
+  auto* details=findChild<QTextEdit*>();if(details)details->hide();auto* rows=findChild<QScrollArea*>("aboutBuildDetails");button->setText(rows&&rows->isVisibleTo(this)?"Hide build details":"Build details");
   // Qt's private disclosure button measures only its built-in labels.
   QStyleOptionButton option;option.initFrom(button);option.text="Hide build details";
   button->setMinimumWidth(button->style()->sizeFromContents(QStyle::CT_PushButton,&option,button->fontMetrics().size(Qt::TextShowMnemonic,option.text),button).width());

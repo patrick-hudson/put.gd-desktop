@@ -13,6 +13,9 @@
 #include <QPushButton>
 #include <QStyle>
 #include <QTextEdit>
+#include <QScrollArea>
+#include <QFormLayout>
+#include <QClipboard>
 #include <QTest>
 #include <QTimer>
 #include <QScopeGuard>
@@ -28,7 +31,7 @@ private slots:
   // Deliberately differ from this test binary to prove the displayed identity
   // comes from the connected resident rather than a helper-local build lookup.
   manifest["version"] = "0.1.1-dev.999+g0123456789ab";
-  manifest["commit"] = "0123456789abcdef0123456789abcdef01234567";
+  manifest["gitCommit"] = "0123456789abcdef0123456789abcdef01234567";
   auto owner = std::make_unique<AboutWindow>(manifest);
   QPointer<AboutWindow> dialog = owner.get();
   bool enteredModalLoop = false;
@@ -51,13 +54,13 @@ private slots:
   QVERIFY(!QApplication::activeModalWidget());
   QCOMPARE(dialog->text(), QString("put.gd"));auto* version=dialog->findChild<QLabel*>("aboutVersion");QVERIFY(version);QCOMPARE(version->text(),manifest["version"].toString().section('-',0,0).section('+',0,0));QCOMPARE(version->font().family(),Graphite::monoFamily());QCOMPARE(version->font().pixelSize(),Graphite::scaled(13));QVERIFY(!version->wordWrap());auto* name=dialog->findChild<QLabel*>("qt_msgbox_label");QCOMPARE(name->font().pixelSize(),Graphite::scaled(22));QCOMPARE(name->font().weight(),QFont::DemiBold);auto* website=dialog->findChild<QPushButton*>("putgdWebsite");QVERIFY(website);QVERIFY(website->isVisibleTo(dialog));QUrl opened;host::setTestOpener([&](const QUrl& url){opened=url;});website->click();host::setTestOpener({});QCOMPARE(opened,QUrl("https://put.gd"));QVERIFY(dialog->isVisible());
   QCOMPARE(QJsonDocument::fromJson(dialog->detailedText().toUtf8()).object(), manifest);
-  QVERIFY(dialog->button(QMessageBox::Close));QVERIFY(!dialog->button(QMessageBox::Ok));auto* details=dialog->findChild<QPushButton*>("buildDetails");QVERIFY(details);QCOMPARE(details->text(),QString("Build details"));details->click();QCOMPARE(details->text(),QString("Hide build details"));auto* data=dialog->findChild<QTextEdit*>();QVERIFY(data&&data->isVisible()&&data->isReadOnly());data->selectAll();QCOMPARE(QJsonDocument::fromJson(data->textCursor().selectedText().replace(QChar::ParagraphSeparator,'\n').toUtf8()).object(),manifest);details->click();QCOMPARE(details->text(),QString("Build details"));
+  QVERIFY(dialog->button(QMessageBox::Close));QVERIFY(!dialog->button(QMessageBox::Ok));auto* details=dialog->findChild<QPushButton*>("buildDetails");QVERIFY(details);QCOMPARE(details->text(),QString("Build details"));details->click();QCOMPARE(details->text(),QString("Hide build details"));auto* data=dialog->findChild<QTextEdit*>();QVERIFY(data&&data->isHidden()&&data->isReadOnly());auto* rows=dialog->findChild<QScrollArea*>("aboutBuildDetails");QVERIFY(rows&&rows->isVisible());auto* commit=dialog->findChild<QLabel*>("buildCommit");QCOMPARE(commit->text(),manifest["gitCommit"].toString());QVERIFY(!commit->wordWrap());QVERIFY(commit->textInteractionFlags().testFlag(Qt::TextSelectableByKeyboard));auto* copy=dialog->findChild<QPushButton*>("copyBuildDetails");QVERIFY(copy);copy->click();QCOMPARE(QJsonDocument::fromJson(qApp->clipboard()->text().toUtf8()).object(),manifest);data->selectAll();QCOMPARE(QJsonDocument::fromJson(data->textCursor().selectedText().replace(QChar::ParagraphSeparator,'\n').toUtf8()).object(),manifest);details->click();QCOMPARE(details->text(),QString("Build details"));
   QVERIFY(dialog->informativeText().contains("Screen capture and file sharing"));
   QVERIFY(!dialog->testAttribute(Qt::WA_DeleteOnClose));
   dialog->close();
   QVERIFY(dialog);
   QVERIFY(!dialog->isVisible());
-  dialog->show();details->click();QCOMPARE(details->text(),QString("Hide build details"));QVERIFY(data->isVisible());details->click();QCOMPARE(details->text(),QString("Build details"));QVERIFY(!data->isVisible());dialog->close();
+  dialog->show();details->click();QCOMPARE(details->text(),QString("Hide build details"));QVERIFY(rows->isVisible());details->click();QCOMPARE(details->text(),QString("Build details"));QVERIFY(!rows->isVisible());dialog->close();
   owner.reset();
   QVERIFY(dialog.isNull());
  }
