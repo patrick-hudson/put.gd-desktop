@@ -1123,7 +1123,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto name = buttonRole(widget, option);
         QRect body = (name == "link" || name == "version") ? option->rect.adjusted(4, 0, -4, 0) : option->rect.adjusted(12, 0, -12, 0);
         if (flushButton(widget)) body.setLeft(option->rect.left());
-        if (widget && widget->property("graphiteNavRow").toBool()) body.setRight(option->rect.right() - space(Space::xs));
+        if (widget && widget->property("graphiteNavRow").toBool()) { body.setLeft(option->rect.left() + 14); body.setRight(option->rect.right() - space(Space::xs)); }
         if ((button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) body.setRight(option->rect.right() - Metric::splitZone);
         drawButtonLabel(option, button->text, button->icon, button->iconSize, p, widget, body);
         return;

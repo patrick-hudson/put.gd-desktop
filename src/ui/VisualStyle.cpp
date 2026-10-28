@@ -294,7 +294,7 @@ QIcon icon(const QString& name,const QColor& color,int percent,int recording){
  return result;
 }
 QWidget* header(const QString& title,const QString& subtitle,QWidget* parent){auto* widget=new QWidget(parent);auto* layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,space(Space::xs));layout->setSpacing(space(Space::s));auto* heading=new QLabel(title,widget);role(heading,"title");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,widget);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return widget;}
-QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");frame->setMaximumWidth(Graphite::scaled(880));auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(0,space(Space::xl),0,0);layout->setSpacing(space(Space::s));auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
+QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");frame->setMaximumWidth(Graphite::scaled(720));auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(0,space(Space::xl),0,0);layout->setSpacing(space(Space::s));auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
 void alignFormValue(QLabel* caption,QLabel* value){
  caption->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);value->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);value->setMinimumHeight(Graphite::scaled(Graphite::Metric::control));
  if(auto* parent=value->parentWidget())for(auto* form:parent->findChildren<QFormLayout*>()){
@@ -318,11 +318,10 @@ void alignChoices(QWidget* owner,const QList<QFormLayout*>& family){
  private:
   void schedule(){if(pending_)return;pending_=true;QTimer::singleShot(0,this,[this]{apply();pending_=false;});}
   void apply(){
-   int width=Graphite::scaled(240);for(auto* choice:choices_)width=qMax(width,choice->naturalSizeHint().width());width=qMin(width,Graphite::scaled(400));
    for(auto* choice:choices_){QWidget* target=choice;int unitWidth=0;if(auto* holder=choice->parentWidget())for(auto* label:holder->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))if(label->property("visualRole")=="unitSuffix"){target=holder;unitWidth=label->isHidden()?0:label->sizeHint().width();break;}
-    const int preferred=width-unitWidth;if(choice->property("formChoiceWidth").toInt()!=preferred){choice->setProperty("formChoiceWidth",preferred);choice->updateGeometry();}
+    const int preferred=Graphite::scaled(choice->property("formWidth").toInt()>0?choice->property("formWidth").toInt():320),width=preferred+unitWidth;choice->setMinimumWidth(qMin(choice->minimumWidth(),preferred));if(choice->property("formChoiceWidth").toInt()!=preferred){choice->setProperty("formChoiceWidth",preferred);choice->updateGeometry();}
     // A shared preferred width still shrinks when a stacked form is narrow.
-    target->setMaximumWidth(width);choice->setMaximumWidth(width);
+    target->setMaximumWidth(width);choice->setMaximumWidth(preferred);
    }
   }
   QList<ChoiceBox*> choices_;bool pending_=false;
