@@ -56,7 +56,7 @@ using Graphite::Space;
 namespace {
 QFrame* separator(QWidget* parent){auto* line=Graphite::rule(parent,Qt::Vertical);line->setFixedHeight(22);return line;}
 // A colour choice: its colour in a rounded square, a ring when chosen, the
-// accent ring under keyboard focus. The custom picker shows a colour wheel.
+// accent ring under keyboard focus. The custom picker stays neutral.
 // The 32 px button is the hit target; the painted square stays 24 px. Its
 // edge is the 3:1 control outline, on whole pixels, so white stays visible
 // on the light panel and near-black on the dark one.
@@ -66,8 +66,9 @@ public:
 protected:
  void paintEvent(QPaintEvent*)override{
   QPainter p(this);p.setRenderHint(QPainter::Antialiasing);const auto& t=Theme::current();const qreal inset=(width()-Graphite::scaled(24))/2.0+0.5;const QRectF box=QRectF(rect()).adjusted(inset,inset,-inset,-inset);
-  if(custom_){QConicalGradient wheel(box.center(),0);const QList<QColor> stops{QColor("#ef4444"),QColor("#f59e0b"),QColor("#facc15"),QColor("#22c55e"),QColor("#3b82f6"),QColor("#a855f7"),QColor("#ef4444")};for(int i=0;i<stops.size();++i)wheel.setColorAt(i/6.0,stops[i]);p.setBrush(wheel);}else p.setBrush(color_);
+  p.setBrush(custom_?t.surfaceRaised:color_);
   p.setPen(QPen(t.controlOutline,1));p.drawRoundedRect(box,Graphite::Metric::swatchRadius,Graphite::Metric::swatchRadius);
+  if(custom_)VisualStyle::icon("add",t.textSecondary).paint(&p,QRect(qRound(box.center().x()-Graphite::scaled(14)/2.0),qRound(box.center().y()-Graphite::scaled(14)/2.0),Graphite::scaled(14),Graphite::scaled(14)));
   if(isChecked()){p.setPen(QPen(t.text,2));p.setBrush(Qt::NoBrush);p.drawRoundedRect(QRectF(rect()).adjusted(1,1,-1,-1),7,7);}
   else if(underMouse()){p.setPen(QPen(t.borderStrong,1));p.setBrush(Qt::NoBrush);p.drawRoundedRect(QRectF(rect()).adjusted(1.5,1.5,-1.5,-1.5),7,7);}
   if(hasFocus()&&window()->testAttribute(Qt::WA_KeyboardFocusChange)){p.setPen(QPen(t.accent,1.5));p.setBrush(Qt::NoBrush);p.drawRoundedRect(QRectF(rect()).adjusted(0.75,0.75,-0.75,-0.75),7,7);}
@@ -144,7 +145,8 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  connect(splitter_,&QSplitter::splitterMoved,this,[this]{propertiesWidth_=side_->width();});
  auto* properties=new QVBoxLayout(panel);properties_=properties;properties->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::l),Graphite::space(Space::l),Graphite::space(Space::l));properties->setSpacing(Graphite::space(Space::m));
  QVBoxLayout* headingLayout=nullptr;auto* heading=column(panel,headingLayout);properties->addWidget(heading);
- toolTitle_=new QLabel(heading);toolTitle_->setObjectName("editorToolTitle");toolTitle_->setWordWrap(true);VisualStyle::role(toolTitle_,"sectionTitle");headingLayout->addWidget(toolTitle_);
+ auto* titleRow=new QHBoxLayout;titleRow->setContentsMargins(0,0,0,0);titleRow->setSpacing(Graphite::space(Space::s));headingLayout->addLayout(titleRow);
+ toolTitle_=new QLabel(heading);toolTitle_->setObjectName("editorToolTitle");toolTitle_->setWordWrap(true);VisualStyle::role(toolTitle_,"sectionTitle");titleRow->addWidget(toolTitle_,1);
  toolHelp_=new QLabel(heading);toolHelp_->setObjectName("editorToolHelp");toolHelp_->setWordWrap(true);VisualStyle::role(toolHelp_,"muted");headingLayout->addWidget(toolHelp_);
  blurWarning_=Graphite::blurWarning([this]{if(!busy_){selectTool(Tool::Redact);}},panel);
  blurWarning_->findChild<QLabel*>("blurWarningText")->setObjectName("editorToolWarning");properties->addWidget(blurWarning_);
@@ -203,7 +205,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  }
  layout->addWidget(geometryFields_);properties->addWidget(geometryRow_);properties->addWidget(cropRow_);
  connect(geometryDisclosure_,&QToolButton::toggled,this,[this]{syncGeometry();});
- remove_=new QPushButton("Remove mark",panel);remove_->setObjectName("removeMark");remove_->setProperty("graphiteFlush",true);remove_->setIcon(VisualStyle::icon("remove"));remove_->setProperty("graphiteIconBase",QSize(20,20));remove_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");properties->addWidget(remove_,0,Qt::AlignLeft);
+ remove_=new QPushButton(heading);remove_->setObjectName("removeMark");remove_->setAccessibleName("Remove mark");remove_->setProperty("graphiteDensity","compact");remove_->setIcon(VisualStyle::icon("remove"));remove_->setProperty("graphiteIconBase",QSize(20,20));remove_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));remove_->setFixedSize(Graphite::scaled(28),Graphite::scaled(28));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");remove_->installEventFilter(this);titleRow->addWidget(remove_,0,Qt::AlignTop);
  auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setProperty("graphiteFlush",true);keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Graphite::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
  auto* keyboardText=new QWidget(panel);keyboardText->setObjectName("editorKeyboardHelpText");
  auto* keyboardGrid=new QGridLayout(keyboardText);keyboardGrid->setContentsMargins(0,0,0,0);keyboardGrid->setHorizontalSpacing(Graphite::space(Space::s));keyboardGrid->setVerticalSpacing(Graphite::space(Space::xs));
@@ -212,6 +214,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  for(const auto& [keys,description]:shortcuts){auto* key=new QLabel(keys,keyboardText);Graphite::setMono(key);VisualStyle::role(key,"secondary");auto* meaning=new QLabel(description,keyboardText);meaning->setWordWrap(true);VisualStyle::role(meaning,"secondary");keyboardGrid->addWidget(key,shortcutRow,0,Qt::AlignTop);keyboardGrid->addWidget(meaning,shortcutRow++,1,Qt::AlignTop);keyboardSummary.append(keys+": "+description);}
  keyboardGrid->setColumnStretch(1,1);keyboardText->setAccessibleName("Keyboard help");keyboardText->setProperty("text",keyboardSummary.join('\n'));keyboardText->hide();properties->addWidget(keyboardText);
  connect(keyboardHelp,&QToolButton::toggled,this,[this,keyboardText](bool open){keyboardText->setVisible(open);if(open)QTimer::singleShot(0,this,[this,keyboardText]{if(!keyboardText->isHidden())propertiesScroll_->ensureWidgetVisible(keyboardText,0,12);});});
+ for(auto* control:panel->findChildren<QWidget*>())if(qobject_cast<QPushButton*>(control)||qobject_cast<QComboBox*>(control)||qobject_cast<QSpinBox*>(control)||(qobject_cast<QToolButton*>(control)&&!dynamic_cast<Swatch*>(control))){control->setProperty("graphiteDensity","compact");control->style()->unpolish(control);control->style()->polish(control);}
  properties->addStretch(1);
  auto* document=new Graphite::Surface("surface",Qt::TopEdge,side);document->setObjectName("editorDocument");document_=document;
  auto* documentLayout=new QVBoxLayout(document);documentLayout->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::xl),Graphite::space(Space::l),Graphite::space(Space::l));documentLayout->setSpacing(Graphite::space(Space::s));
@@ -437,6 +440,7 @@ void EditorWindow::placeProperties(){
 void EditorWindow::dismissSavedCopy(){saveFeedbackTimer_->stop();if(auto* popup=saveError_->fullTextPopup())popup->close();saveFeedbackVisible_=false;placeDestination();}
 void EditorWindow::resizeEvent(QResizeEvent* event){QWidget::resizeEvent(event);placeTools();placeProperties();placeDestination();}
 bool EditorWindow::eventFilter(QObject* object,QEvent* event){
+ if(object==remove_&&(event->type()==QEvent::Enter||event->type()==QEvent::Leave)){const bool hover=event->type()==QEvent::Enter;VisualStyle::role(remove_,hover?"danger":"quiet");remove_->setIcon(VisualStyle::icon("remove",hover?Theme::current().danger:Theme::current().textSecondary));}
  if(object->objectName()=="editorToolbar"&&event->type()==QEvent::FontChange)QTimer::singleShot(0,this,&EditorWindow::placeTools);
  if(object==side_&&(event->type()==QEvent::Resize||event->type()==QEvent::LayoutRequest))QTimer::singleShot(0,this,&EditorWindow::placeDocument);
  if((object==canvas_&&event->type()==QEvent::Resize)||(object==saveFeedback_&&event->type()==QEvent::LayoutRequest))QTimer::singleShot(0,this,&EditorWindow::placeSaveFeedback);

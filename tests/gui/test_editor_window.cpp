@@ -166,7 +166,7 @@ private slots:
   for(auto* label:window.findChild<QWidget*>("editorGeometry")->findChildren<QLabel*>())if(label->buddy()){QVERIFY(label->geometry().bottom()<label->buddy()->y());QCOMPARE(label->x(),label->buddy()->x());}
   window.selectTool(Tool::Blur);QApplication::processEvents();auto* slider=window.findChild<QSlider*>("blurStrength");auto* value=window.findChild<QSpinBox*>("blurStrengthValue");
   auto* radius=static_cast<BlurRadius*>(slider->parentWidget());const auto spinPosition=value->mapTo(radius,QPoint());
-  QCOMPARE(slider->geometry().center().y(),value->mapTo(radius,value->rect().center()).y());QVERIFY(slider->x()>spinPosition.x()+value->width());QVERIFY(slider->width()>0);QVERIFY(radius->label()->geometry().bottom()<spinPosition.y());QVERIFY(window.findChild<QPushButton*>("removeMark")->property("graphiteFlush").toBool());QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("graphiteFlush").toBool());
+  QCOMPARE(slider->geometry().center().y(),value->mapTo(radius,value->rect().center()).y());QVERIFY(slider->x()>spinPosition.x()+value->width());QVERIFY(slider->width()>0);QVERIFY(radius->label()->geometry().bottom()<spinPosition.y());QCOMPARE(window.findChild<QPushButton*>("removeMark")->property("graphiteDensity").toString(),QString("compact"));QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("graphiteFlush").toBool());
  }
  void propertiesSplitterKeepsTheChosenWidthAcrossToolsAndResizes(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1180,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -781,7 +781,7 @@ private slots:
  void removeMarkIsVisibleUndoableAndAgentControllable(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1100,900);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   add(doc,{{"kind","rectangle"},{"rect",QJsonArray{10,10,50,20}}});window.documentEdited();const auto original=doc.shapes().first();
-  auto* remove=window.findChild<QPushButton*>("removeMark");QVERIFY(remove);QVERIFY(!remove->isVisible());
+  auto* remove=window.findChild<QPushButton*>("removeMark");QVERIFY(remove);QVERIFY(remove->text().isEmpty());QCOMPARE(remove->accessibleName(),QString("Remove mark"));QCOMPARE(remove->property("graphiteDensity").toString(),QString("compact"));auto* title=window.findChild<QLabel*>("editorToolTitle");QCOMPARE(remove->parentWidget(),title->parentWidget());QVERIFY(!remove->isVisible());
   window.selectTool(Tool::Select);window.canvas().select(original.id);QVERIFY(remove->isVisible());QVERIFY(!remove->icon().isNull());QVERIFY(remove->toolTip().contains("Delete"));
   remove->click();QVERIFY(doc.shapes().isEmpty());QCOMPARE(window.canvas().selected(),quint64(0));QVERIFY(!remove->isVisible());
   QVERIFY(doc.undo());window.documentEdited();QCOMPARE(doc.shapes().first(),original);
