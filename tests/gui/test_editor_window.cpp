@@ -145,7 +145,7 @@ private slots:
   // Install the style first, then simulate a desktop's enlarged application font.
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
   const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});auto larger=previous;larger.setPixelSize(qRound(Graphite::font().pixelSize()*1.5));QApplication::setFont(larger);
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Private upload to Project archive");window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Private upload to Project archive");QCOMPARE(window.findChild<QLabel*>("editorDestination")->text(),QString("Project archive · Private upload"));window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   QVERIFY2(window.canvas().width()>=window.width()*0.66,qPrintable(QString("canvas %1 in %2").arg(window.canvas().width()).arg(window.width())));QVERIFY(window.findChild<QWidget*>("editorSide")->width()+window.findChild<QSplitter*>("editorSplitter")->handleWidth()<=window.width()/3);
   const auto canvas=window.canvas().geometry();
   for(const auto tool:{Tool::Blur,Tool::Crop,Tool::Text,Tool::Select}){window.selectTool(tool);QApplication::processEvents();QCOMPARE(window.canvas().geometry(),canvas);}

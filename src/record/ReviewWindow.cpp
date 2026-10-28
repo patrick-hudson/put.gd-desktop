@@ -136,12 +136,13 @@ public:
         warning_->hide();
     }
     QToolButton* warningButton() const { return warning_; }
-    QSize sizeHint() const override { return {width(), fontMetrics().height()}; }
+    QSize sizeHint() const override { return {reservedWidth_, fontMetrics().height()}; }
     QSize minimumSizeHint() const override { return sizeHint(); }
     void reserve(const QStringList& intervals, bool warning) {
         int width = fontMetrics().horizontalAdvance(QStringLiteral("—"));
         for (const auto& interval : intervals) width = std::max(width, fontMetrics().horizontalAdvance(interval));
-        setFixedWidth(width + reviewSpace(Graphite::Space::s));
+        reservedWidth_ = width + reviewSpace(Graphite::Space::s);
+        setMinimumWidth(reservedWidth_);
         warning_->setFixedWidth(warning_->fontMetrics().horizontalAdvance(warning_->text()) + 16 + 3 * reviewSpace(Graphite::Space::xs));
         auto policy = warning_->sizePolicy();
         policy.setRetainSizeWhenHidden(warning);
@@ -163,6 +164,7 @@ protected:
     }
 private:
     BlurChip* warning_;
+    int reservedWidth_ = 0;
 };
 // Keep destination names intact. The footer moves metadata above its actions
 // before this menu's label needs to wrap; the popup retains selectable details.

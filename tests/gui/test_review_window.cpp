@@ -94,6 +94,22 @@ class ReviewWindowTest : public QObject {
     static qint64 slack(const ReviewTimeline& t) { return 2 * duration / t.trackRect().width() + 1; }
     static ReviewTimeline* timeline(ReviewWindow& w) { return w.findChild<ReviewTimeline*>("timeline"); }
 private slots:
+    void playbackAndReadoutsKeepTheirOwnPlaces() {
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.resize(1200, 720); QApplication::processEvents();
+        auto* trim = window.findChild<QLabel*>("muted");
+        auto* interval = window.findChild<QLabel*>("maskActiveInterval");
+        QCOMPARE(trim->mapTo(&window, trim->rect().topRight()).x(), interval->mapTo(&window, interval->rect().topRight()).x());
+        QCOMPARE(window.findChild<QLabel*>("brandName")->text(), QString("Review recording"));
+        auto* status = window.findChild<QLabel*>("playbackStatus");
+        QVERIFY(window.findChild<QWidget*>("reviewTransport")->isAncestorOf(status));
+        const auto geometry = window.geometry(); const auto statusGeometry = status->geometry();
+        window.drive({{"action", "seek"}, {"time", 0}}); QApplication::processEvents();
+        QCOMPARE(status->geometry(), statusGeometry); QCOMPARE(window.geometry(), geometry);
+        QVERIFY(!window.findChild<QComboBox*>("speed")->hasFrame());
+        QCOMPARE(window.findChild<QToolButton*>("play")->iconSize(), QSize(Graphite::scaled(16), Graphite::scaled(16)));
+    }
     void labelsStayInsideTheirOwnMaskCoverage() {
         FrameView frame;
         frame.setCanvas({320, 180}); frame.resize(640, 360);
