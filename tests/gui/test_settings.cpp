@@ -641,7 +641,7 @@ private slots:
   bool opened=false;settings->diagnosticsCommand({{"action","openPackage"}},[&](Error,QJsonObject){opened=true;});PUTGD_TRY_VERIFY(opened);
   auto* dialog=settings->findChild<QDialog*>("diagnosticsPackageDialog");QVERIFY(dialog&&dialog->isVisible());QVERIFY(putgd::test::waitForWindowExposed(dialog));
   PUTGD_TRY_VERIFY(!settings->diagnosticsState()["package"].toObject()["uploadTarget"].toObject()["checking"].toBool());putgd::test::settle(100);
-  const auto screen=dialog->screen()->availableGeometry();QVERIFY2(dialog->height()<=screen.height(),qPrintable(QString("dialog %1 px on a %2 px screen").arg(dialog->height()).arg(screen.height())));
+  const auto screen=dialog->screen()->availableGeometry();QCOMPARE(dialog->minimumWidth(),qMin(Graphite::scaled(560),screen.width()));QVERIFY(dialog->width()<=screen.width());QVERIFY2(dialog->height()<=screen.height(),qPrintable(QString("dialog %1 px on a %2 px screen").arg(dialog->height()).arg(screen.height())));
   auto* scroll=dialog->findChild<QScrollArea*>("diagnosticsPackageScroll");QVERIFY(scroll);QVERIFY(scroll->widget()->isAncestorOf(dialog->findChild<QLabel*>("packageContents")));
   auto* contents=dialog->findChild<QLabel*>("packageContents");QVERIFY(contents->isHidden());auto* inventory=dialog->findChild<QToolButton*>("packageContentsToggle");QVERIFY(inventory);inventory->click();QVERIFY(!contents->isHidden());putgd::test::settle(50);QVERIFY(!contents->text().isEmpty());QVERIFY(contents->height()>=contents->heightForWidth(contents->width()));
   // Large text needs more than the screen holds: the body scrolls, the buttons stay outside it.

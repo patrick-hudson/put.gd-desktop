@@ -416,7 +416,7 @@ public:
  using Reply=std::function<void(Error,QJsonObject)>;
  std::function<void(const QString&)> folderChosen; // an empty folder means the default
  DiagnosticsPackageDialog(UiSession& session,QWidget* parent):QDialog(parent),session_(session){
-  setObjectName("diagnosticsPackageDialog");setWindowTitle("Create diagnostics package");setAccessibleName("Create diagnostics package");setModal(true);setMinimumWidth(560);
+  setObjectName("diagnosticsPackageDialog");setWindowTitle("Create diagnostics package");setAccessibleName("Create diagnostics package");setModal(true);const auto* display=parent?parent->screen():QGuiApplication::primaryScreen();setMinimumWidth(qMin(Graphite::scaled(560),display?display->availableGeometry().width():Graphite::scaled(560)));
   // The body scrolls inside the screen's height; Cancel and Save stay pinned below it.
   auto* root=new QVBoxLayout(this);root->setContentsMargins(0,0,0,0);root->setSpacing(0);
   scroll_=new QScrollArea(this);scroll_->setObjectName("diagnosticsPackageScroll");scroll_->setWidgetResizable(true);scroll_->setFrameShape(QFrame::NoFrame);scroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);root->addWidget(scroll_,1);
@@ -550,7 +550,7 @@ public:
   body->setMinimumHeight(bodyHeight);const int footer=footer_->totalSizeHint().height()+1;
   const auto* screen=windowHandle()&&windowHandle()->screen()?windowHandle()->screen():parentWidget()&&parentWidget()->screen()?parentWidget()->screen():QGuiApplication::primaryScreen();
   // Room for the desktop's title bar and panels around the dialog.
-  const int cap=screen?qMax(320,screen->availableGeometry().height()-64):QWIDGETSIZE_MAX;
+  const int cap=screen?qMax(1,screen->availableGeometry().height()-Graphite::scaled(64)):QWIDGETSIZE_MAX;
   const int wanted=qMin(cap,bodyHeight+footer);setMaximumHeight(cap);setMinimumHeight(qMin(wanted,Graphite::scaled(320)));
   if(height()<wanted||height()>cap)resize(width(),wanted);
   rule_->setVisible(bodyHeight+footer>height());

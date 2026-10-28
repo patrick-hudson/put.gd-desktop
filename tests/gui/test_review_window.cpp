@@ -2074,6 +2074,18 @@ private slots:
         QVERIFY(window.inspect()["playbackStatus"].toString().contains("Outside kept part"));
         QCOMPARE(window.findChild<QLabel*>("muted")->text(), QString("Keep 0:02–0:29 · 27 s"));
     }
+    void adviceWidthScalesWithinTheAvailableScreen() {
+        auto font = qApp->font(); font.setPixelSize(21); qApp->setFont(font);
+        for (const auto available : {QSize(1200, 680), QSize(700, 680)}) {
+            auto o = options(); o.availableSize = available;
+            ReviewWindow window(o, config()); window.show();
+            window.drive({{"action", "showAdvice"}});
+            auto* dialog = window.findChild<QDialog*>("reviewAdvice");
+            QVERIFY(dialog && dialog->isVisible());
+            QCOMPARE(dialog->width(), std::min(Graphite::scaled(640), std::min(available.width(), dialog->screen()->availableGeometry().width())));
+            QVERIFY(dialog->height() <= available.height());
+        }
+    }
     void adviceOnlyOffersAvailableFormats() {
         auto o = options(); o.codecs["mp4"] = QJsonArray{"h265"};
         auto c = config(); c.codec = "h265";

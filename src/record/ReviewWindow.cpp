@@ -2144,8 +2144,10 @@ void ReviewWindow::showAdvice(bool formatTips) {
     connect(close, &QPushButton::clicked, this, [dialog] { dialog->close(); });
     actions->addWidget(close);
     root->addWidget(footer);
-    const int detailsHeight = heading->sizeHint().height() + text->heightForWidth(592) + footer->sizeHint().height() + 62;
-    dialog->resize(QSize(640, hasError ? detailsHeight : Graphite::scaled(360)).boundedTo(availableReviewSize()));
+    const QSize available = availableReviewSize().boundedTo(dialog->screen()->availableGeometry().size());
+    const int width = std::min(Graphite::scaled(640), available.width());
+    const int detailsHeight = heading->sizeHint().height() + text->heightForWidth(std::max(1, width - layout->contentsMargins().left() - layout->contentsMargins().right())) + footer->sizeHint().height() + Graphite::scaled(62);
+    dialog->resize(QSize(width, hasError ? detailsHeight : Graphite::scaled(360)).boundedTo(available));
     dialog->show();
     if (hasError) text->setFocus();
 }

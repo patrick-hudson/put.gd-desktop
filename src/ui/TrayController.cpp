@@ -17,6 +17,8 @@
 #include <QLabel>
 #include <QPointer>
 #include <QSystemTrayIcon>
+#include <QScreen>
+#include "Graphite.h"
 #include <QDir>
 #include <QHash>
 #include <QFileInfo>
@@ -196,7 +198,7 @@ TrayController::TrayController(OperationService& operations,
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
  uploadStatus_=menu_->addAction(QString{});uploadStatus_->setObjectName("trayUploadStatus");uploadStatus_->setEnabled(false);uploadStatus_->setProperty("visualRole","information");auto* statusSeparator=menu_->addSeparator();statusSeparator->setObjectName("trayStatusSeparator");cancelUpload_=menu_->addAction("Cancel upload");cancelUpload_->setObjectName("trayCancelUpload");connect(cancelUpload_,&QAction::triggered,this,&TrayController::cancelUploads);uploadSeparator_=menu_->addSeparator();connect(menu_.get(),&QMenu::aboutToShow,this,&TrayController::refreshMenu);
- outputMenu_=menu_->addMenu("Capture output");outputSummary_=outputMenu_->menuAction();outputSummary_->setObjectName("trayOutputSummary");for(const auto& action:Settings::presentationOrder()){auto* entry=new QWidgetAction(outputMenu_);entry->setObjectName("trayOutput"+action);auto* label=new QLabel;label->setTextFormat(Qt::PlainText);label->setWordWrap(true);label->setMinimumWidth(280);label->setMaximumWidth(480);label->setContentsMargins(12,6,12,6);VisualStyle::role(label,"muted");entry->setDefaultWidget(label);connect(entry,&QAction::changed,label,[entry,label]{label->setText(entry->text());});outputMenu_->addAction(entry);}auto* change=menu_->addAction("Change output…");change->setObjectName("trayChangeOutput");connect(change,&QAction::triggered,this,[this]{showView("captureSettings");});menu_->addSeparator();
+ outputMenu_=menu_->addMenu("Capture output");outputSummary_=outputMenu_->menuAction();outputSummary_->setObjectName("trayOutputSummary");for(const auto& action:Settings::presentationOrder()){auto* entry=new QWidgetAction(outputMenu_);entry->setObjectName("trayOutput"+action);auto* label=new QLabel;label->setTextFormat(Qt::PlainText);label->setWordWrap(true);const auto* screen=outputMenu_->screen();const int available=screen?screen->availableGeometry().width():Graphite::scaled(480);label->setMinimumWidth(qMin(Graphite::scaled(280),available));label->setMaximumWidth(qMin(Graphite::scaled(480),available));label->setContentsMargins(Graphite::space(Graphite::Space::m),Graphite::space(Graphite::Space::s),Graphite::space(Graphite::Space::m),Graphite::space(Graphite::Space::s));VisualStyle::role(label,"muted");entry->setDefaultWidget(label);connect(entry,&QAction::changed,label,[entry,label]{label->setText(entry->text());});outputMenu_->addAction(entry);}auto* change=menu_->addAction("Change output…");change->setObjectName("trayChangeOutput");connect(change,&QAction::triggered,this,[this]{showView("captureSettings");});menu_->addSeparator();
  // Capture entries first, in the order people reach for them; QAction text
  // treats a single & as a mnemonic marker, so && shows one &.
  const auto capture = [this](const QString& action, const QString& label) {
