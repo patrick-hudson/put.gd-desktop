@@ -52,6 +52,7 @@
 
 namespace putgd {
 using editor::Tool;
+using Graphite::Space;
 namespace {
 QFrame* separator(QWidget* parent){auto* line=Graphite::rule(parent,Qt::Vertical);line->setFixedHeight(22);return line;}
 // A colour choice: its colour in a rounded square, a ring when chosen, the
@@ -74,7 +75,7 @@ protected:
 private:QColor color_;bool custom_;
 };
 QLabel* fieldLabel(const QString& text,QWidget* parent){auto* label=new QLabel(text,parent);VisualStyle::role(label,"meta");return label;}
-QWidget* column(QWidget* parent,QVBoxLayout*& layout){auto* widget=new QWidget(parent);layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,0);layout->setSpacing(8);return widget;}
+QWidget* column(QWidget* parent,QVBoxLayout*& layout){auto* widget=new QWidget(parent);layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,0);layout->setSpacing(Graphite::space(Space::s));return widget;}
 // Tool names in editor.view, in Tool order.
 const QStringList toolNames{"select","redact","blur","crop","arrow","rectangle","highlight","text"};
 QJsonValue rectValue(const std::optional<QRect>& r){if(!r)return QJsonValue();return QJsonArray{r->x(),r->y(),r->width(),r->height()};}
@@ -94,7 +95,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  header_=Graphite::WindowHeader::install(this,root);header_->setDocument("Edit image","Not uploaded");
 
  auto* toolbar=new Graphite::Surface("bg",Qt::BottomEdge,this);toolbar->setObjectName("editorToolbar");toolbar->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);toolbar->installEventFilter(this);
- auto* tools=new QHBoxLayout(toolbar);tools->setContentsMargins(12,8,12,8);tools->setSpacing(2);
+ auto* tools=new QHBoxLayout(toolbar);tools->setContentsMargins(Graphite::space(Space::m),Graphite::space(Space::s),Graphite::space(Space::m),Graphite::space(Space::s));tools->setSpacing(Graphite::space(Space::xs));
  tools_=new QButtonGroup(this);tools_->setExclusive(true);
  // The tool is Redact; the marks it makes are redactions.
  struct Entry{Tool tool;const char* icon;const char* label;const char* key;const char* detail;};
@@ -102,7 +103,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   {Tool::Arrow,"annotate-arrow","Arrow","A",""},{Tool::Rectangle,"rectangle","Rectangle","R",""},{Tool::Highlight,"highlight","Highlight","H",""},{Tool::Text,"text","Text","T",""},
   {Tool::Redact,"redact","Redact","X","covers with an opaque redaction"},{Tool::Blur,"blur","Blur","B","a visual effect only"}};
  for(const auto& entry:entries){
-  if(entry.tool==Tool::Redact){tools->addSpacing(4);tools->addWidget(separator(toolbar));tools->addSpacing(4);}
+  if(entry.tool==Tool::Redact){tools->addSpacing(Graphite::space(Space::xs));tools->addWidget(separator(toolbar));tools->addSpacing(Graphite::space(Space::xs));}
   auto* button=new QToolButton(toolbar);button->setCheckable(true);button->setIcon(VisualStyle::icon(entry.icon));button->setProperty("graphiteIconBase",QSize(20,20));button->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));button->setFixedHeight(Graphite::scaled(36));button->setFocusPolicy(Qt::StrongFocus);
   const auto label=QString::fromUtf8(entry.label),detail=QString::fromUtf8(entry.detail);
   button->setText(entry.tool==Tool::Select?QStringLiteral("Select"):label);button->setToolButtonStyle(Qt::ToolButtonIconOnly);button->setFixedWidth(Graphite::scaled(36));
@@ -114,9 +115,9 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  tools->addStretch(1);
  auto toolButton=[&](const char* icon,const QString& tip){auto* button=new QToolButton(toolbar);button->setIcon(VisualStyle::icon(icon));button->setProperty("graphiteIconBase",QSize(20,20));button->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));button->setFixedSize(Graphite::scaled(36),Graphite::scaled(36));button->setFocusPolicy(Qt::StrongFocus);button->setToolTip(tip);button->setAccessibleName(tip);VisualStyle::role(button,"quiet");tools->addWidget(button);return button;};
  undo_=toolButton("undo","Undo (Ctrl+Z)");redo_=toolButton("redo","Redo (Ctrl+Shift+Z)");
- tools->addSpacing(4);tools->addWidget(separator(toolbar));tools->addSpacing(4);
+ tools->addSpacing(Graphite::space(Space::xs));tools->addWidget(separator(toolbar));tools->addSpacing(Graphite::space(Space::xs));
  // One zoom menu reports the live percentage; document size stays in Document.
- tools->addSpacing(6);status_=new QToolButton(toolbar);status_->setObjectName("editorZoom");status_->setAccessibleName("Zoom");status_->setToolButtonStyle(Qt::ToolButtonTextOnly);status_->setPopupMode(QToolButton::InstantPopup);status_->setFocusPolicy(Qt::StrongFocus);VisualStyle::role(status_,"quiet");tools->addWidget(status_);
+ status_=new QToolButton(toolbar);status_->setObjectName("editorZoom");status_->setAccessibleName("Zoom");status_->setToolButtonStyle(Qt::ToolButtonTextOnly);status_->setPopupMode(QToolButton::InstantPopup);status_->setFocusPolicy(Qt::StrongFocus);VisualStyle::role(status_,"quiet");tools->addWidget(status_);
  auto* zoomMenu=new QMenu(status_);auto* zoomChoices=new QActionGroup(zoomMenu);zoomChoices->setExclusive(true);
  for(const int percent:{0,50,100,200}){auto* action=zoomMenu->addAction(percent?QString("%1%").arg(percent):QStringLiteral("Fit"));action->setCheckable(true);action->setData(percent);zoomChoices->addAction(action);connect(action,&QAction::triggered,this,[this,percent]{if(percent)canvas_->setZoom(percent/100.0);else canvas_->fit();});}
  zoomMenu->addSeparator();
@@ -141,21 +142,22 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* panelScroll=new QScrollArea(side);propertiesScroll_=panelScroll;panelScroll->setObjectName("editorPropertiesScroll");panelScroll->setWidgetResizable(true);panelScroll->setFocusPolicy(Qt::NoFocus);panelScroll->setFrameShape(QFrame::NoFrame);panelScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);panelScroll->setWidget(panel);sideLayout->addWidget(panelScroll,1);
  splitter_->addWidget(side);splitter_->setStretchFactor(0,1);splitter_->setStretchFactor(1,0);
  connect(splitter_,&QSplitter::splitterMoved,this,[this]{propertiesWidth_=side_->width();});
- auto* properties=new QVBoxLayout(panel);properties_=properties;properties->setContentsMargins(18,16,16,16);properties->setSpacing(12);
- toolTitle_=new QLabel(panel);toolTitle_->setObjectName("editorToolTitle");toolTitle_->setWordWrap(true);VisualStyle::role(toolTitle_,"sectionTitle");properties->addWidget(toolTitle_);
- toolHelp_=new QLabel(panel);toolHelp_->setObjectName("editorToolHelp");toolHelp_->setWordWrap(true);VisualStyle::role(toolHelp_,"muted");properties->addWidget(toolHelp_);
+ auto* properties=new QVBoxLayout(panel);properties_=properties;properties->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::l),Graphite::space(Space::l),Graphite::space(Space::l));properties->setSpacing(Graphite::space(Space::m));
+ QVBoxLayout* headingLayout=nullptr;auto* heading=column(panel,headingLayout);properties->addWidget(heading);
+ toolTitle_=new QLabel(heading);toolTitle_->setObjectName("editorToolTitle");toolTitle_->setWordWrap(true);VisualStyle::role(toolTitle_,"sectionTitle");headingLayout->addWidget(toolTitle_);
+ toolHelp_=new QLabel(heading);toolHelp_->setObjectName("editorToolHelp");toolHelp_->setWordWrap(true);VisualStyle::role(toolHelp_,"muted");headingLayout->addWidget(toolHelp_);
  blurWarning_=Graphite::blurWarning([this]{if(!busy_){selectTool(Tool::Redact);}},panel);
  blurWarning_->findChild<QLabel*>("blurWarningText")->setObjectName("editorToolWarning");properties->addWidget(blurWarning_);
  hint_=Graphite::label({},"secondary",panel);hint_->setWordWrap(true);properties->addWidget(hint_);
  // Without a pointer: the tool's mark in the middle of the image (Insert).
- placeRow_=new QWidget(panel);auto* placeLayout=new QHBoxLayout(placeRow_);placeLayout->setContentsMargins(0,0,0,0);
+ placeRow_=new QWidget(panel);auto* placeLayout=new QHBoxLayout(placeRow_);placeLayout->setContentsMargins(0,0,0,0);placeLayout->setSpacing(Graphite::space(Space::s));
  place_=new QPushButton(placeRow_);place_->setObjectName("placeMark");place_->setProperty("graphiteIconBase",QSize(20,20));place_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));placeLayout->addWidget(place_);placeLayout->addStretch(1);properties->addWidget(placeRow_);
  // Divides the tool's help from its options; hidden when it has none.
- optionsRule_=Graphite::rule(panel);optionsRule_->setObjectName("editorOptionsRule");properties->addWidget(optionsRule_);
+ optionsRule_=new QWidget(panel);optionsRule_->setObjectName("editorOptionsRule");auto* ruleLayout=new QVBoxLayout(optionsRule_);ruleLayout->setContentsMargins(0,0,0,Graphite::space(Space::m));ruleLayout->setSpacing(0);ruleLayout->addWidget(Graphite::rule(optionsRule_));properties->addWidget(optionsRule_);
  QVBoxLayout* layout=nullptr;
  colorRow_=column(panel,layout);layout->addWidget(fieldLabel("Color",colorRow_));
  swatchGroup_=new QButtonGroup(this);
- auto* grid=new QGridLayout;grid->setContentsMargins(0,0,0,0);grid->setSpacing(4);int cell=0;
+ auto* grid=new QGridLayout;grid->setContentsMargins(0,0,0,0);grid->setSpacing(Graphite::space(Space::xs));int cell=0;
  const QStringList colorNames{"Red","Orange","Yellow","Green","Blue","White","Black"};
  for(const auto& color:{QColor(220,38,38),QColor(245,158,11),QColor(250,204,21),QColor(34,197,94),QColor(59,130,246),QColor(255,255,255),QColor(17,19,23)}){
   auto* swatch=makeSwatch(color);swatch->setAccessibleName("Color "+colorNames[cell]);swatch->setAccessibleDescription(color.name());swatch->setToolTip(colorNames[cell]+" ("+color.name()+")");swatches_.append(swatch);grid->addWidget(swatch,cell/4,cell%4);++cell;
@@ -166,12 +168,12 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  customColor_->setToolTip("Custom color…");customColor_->setAccessibleName("Custom color");grid->addWidget(customColor_,cell/4,cell%4);
  grid->setColumnStretch(4,1);layout->addLayout(grid);
  connect(customColor_,&QToolButton::clicked,this,&EditorWindow::pickCustomColor);
- auto* recent=new QWidget(colorRow_);recentLayout_=new QHBoxLayout(recent);recentLayout_->setContentsMargins(0,0,0,0);recentLayout_->setSpacing(4);recentLayout_->addStretch(1);recent->setObjectName("recentColors");recent->setAccessibleName("Recent custom colors");layout->addWidget(recent);
+ auto* recent=new QWidget(colorRow_);recentLayout_=new QHBoxLayout(recent);recentLayout_->setContentsMargins(0,0,0,0);recentLayout_->setSpacing(Graphite::space(Space::xs));recentLayout_->addStretch(1);recent->setObjectName("recentColors");recent->setAccessibleName("Recent custom colors");layout->addWidget(recent);
  properties->addWidget(colorRow_);
  widthRow_=column(panel,layout);layout->addWidget(fieldLabel("Line width",widthRow_));
  width_=VisualStyle::choiceBox(widthRow_);width_->addItem("Thin · 2 px",2);width_->addItem("Medium · 4 px",4);width_->addItem("Thick · 8 px",8);width_->setCurrentIndex(1);width_->setAccessibleName("Line width");layout->addWidget(width_);
  properties->addWidget(widthRow_);
- auto* blurRadius=new BlurRadius(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur,12,false,panel);blurRow_=blurRadius;
+ auto* blurRadius=new BlurRadius(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur,12,false,panel);blurRow_=blurRadius;blurRadius->layout()->setSpacing(Graphite::space(Space::s));
  strength_=blurRadius->slider();strength_->setObjectName("blurStrength");strengthValue_=blurRadius->spinBox();strengthValue_->setObjectName("blurStrengthValue");
  properties->addWidget(blurRow_);
  textRow_=column(panel,layout);layout->addWidget(fieldLabel("Font",textRow_));
@@ -181,7 +183,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  textSize_=new QSpinBox(textRow_);textSize_->setObjectName("textSize");textSize_->setRange(editor::minimumFontPixels,editor::maximumFontPixels);textSize_->setValue(28);textSize_->setSuffix(" px");
  textSize_->setKeyboardTracking(false);textSize_->setAccessibleName("Text size in image pixels");layout->addWidget(textSize_);
  properties->addWidget(textRow_);
- cropRow_=new QWidget(panel);auto* cropButtons=new QHBoxLayout(cropRow_);cropButtons->setContentsMargins(0,0,0,0);cropButtons->setSpacing(8);
+ cropRow_=new QWidget(panel);auto* cropButtons=new QHBoxLayout(cropRow_);cropButtons->setContentsMargins(0,0,0,0);cropButtons->setSpacing(Graphite::space(Space::s));
  auto* applyCrop=new QPushButton("Apply crop",cropRow_);applyCrop->setObjectName("applyCrop");applyCrop->setToolTip("Apply crop (Enter)");VisualStyle::role(applyCrop,"primary");cropButtons->addWidget(applyCrop);
  auto* cancelCrop=new QPushButton("Cancel crop",cropRow_);cancelCrop->setObjectName("cancelCrop");cancelCrop->setToolTip("Cancel crop (Esc)");VisualStyle::role(cancelCrop,"quiet");cropButtons->addWidget(cancelCrop);
  // Position and size of the selected mark or the pending crop, in image
@@ -190,7 +192,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  geometryDisclosure_=new QToolButton(geometryRow_);geometryDisclosure_->setObjectName("editorGeometryDisclosure");geometryDisclosure_->setProperty("graphiteFlush",true);geometryDisclosure_->setText("Position and size");Graphite::disclosure(geometryDisclosure_);layout->addWidget(geometryDisclosure_,0,Qt::AlignLeft);
  geometryTitle_=fieldLabel("Crop area",geometryRow_);layout->addWidget(geometryTitle_);
  geometryFields_=new QWidget(geometryRow_);geometryFields_->setObjectName("editorGeometryFields");
- auto* fields=new QGridLayout(geometryFields_);fields->setContentsMargins(0,0,0,0);fields->setHorizontalSpacing(8);fields->setVerticalSpacing(4);
+ auto* fields=new QGridLayout(geometryFields_);fields->setContentsMargins(0,0,0,0);fields->setHorizontalSpacing(Graphite::space(Space::s));fields->setVerticalSpacing(Graphite::space(Space::s));
  const char* names[4]={"geometryX","geometryY","geometryWidth","geometryHeight"};
  for(int i=0;i<4;++i){
   geometryLabels_[i]=fieldLabel({},geometryFields_);
@@ -204,7 +206,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  remove_=new QPushButton("Remove mark",panel);remove_->setObjectName("removeMark");remove_->setProperty("graphiteFlush",true);remove_->setIcon(VisualStyle::icon("remove"));remove_->setProperty("graphiteIconBase",QSize(20,20));remove_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));remove_->setToolTip("Remove the selected mark (Delete)");VisualStyle::role(remove_,"quiet");properties->addWidget(remove_,0,Qt::AlignLeft);
  auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setProperty("graphiteFlush",true);keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Graphite::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
  auto* keyboardText=new QWidget(panel);keyboardText->setObjectName("editorKeyboardHelpText");
- auto* keyboardGrid=new QGridLayout(keyboardText);keyboardGrid->setContentsMargins(0,0,0,0);keyboardGrid->setHorizontalSpacing(8);keyboardGrid->setVerticalSpacing(4);
+ auto* keyboardGrid=new QGridLayout(keyboardText);keyboardGrid->setContentsMargins(0,0,0,0);keyboardGrid->setHorizontalSpacing(Graphite::space(Space::s));keyboardGrid->setVerticalSpacing(Graphite::space(Space::xs));
  const QList<QPair<QString,QString>> shortcuts{{"[ / ]","Cycle marks"},{"Arrows","Move"},{"Shift+arrows","Resize"},{"Ctrl","Use 10 px steps"},{"Tab","Focus properties"},{"Delete","Remove mark"},{"Escape","Deselect"},{"Insert","Place mark"},{"Ctrl+Z","Undo"},{"Ctrl+Shift+Z","Redo"}};
  QStringList keyboardSummary;int shortcutRow=0;
  for(const auto& [keys,description]:shortcuts){auto* key=new QLabel(keys,keyboardText);Graphite::setMono(key);VisualStyle::role(key,"secondary");auto* meaning=new QLabel(description,keyboardText);meaning->setWordWrap(true);VisualStyle::role(meaning,"secondary");keyboardGrid->addWidget(key,shortcutRow,0,Qt::AlignTop);keyboardGrid->addWidget(meaning,shortcutRow++,1,Qt::AlignTop);keyboardSummary.append(keys+": "+description);}
@@ -212,17 +214,17 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  connect(keyboardHelp,&QToolButton::toggled,this,[this,keyboardText](bool open){keyboardText->setVisible(open);if(open)QTimer::singleShot(0,this,[this,keyboardText]{if(!keyboardText->isHidden())propertiesScroll_->ensureWidgetVisible(keyboardText,0,12);});});
  properties->addStretch(1);
  auto* document=new Graphite::Surface("surface",Qt::TopEdge,side);document->setObjectName("editorDocument");document_=document;
- auto* documentLayout=new QVBoxLayout(document);documentLayout->setContentsMargins(18,12,16,14);documentLayout->setSpacing(6);
+ auto* documentLayout=new QVBoxLayout(document);documentLayout->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::xl),Graphite::space(Space::l),Graphite::space(Space::l));documentLayout->setSpacing(Graphite::space(Space::s));
  documentLayout->addWidget(fieldLabel("Document",document));
  documentInfo_=new QLabel(document);documentInfo_->setObjectName("editorDocumentInfo");documentInfo_->setWordWrap(true);VisualStyle::role(documentInfo_,"secondary");documentLayout->addWidget(documentInfo_);
  sideLayout->addWidget(document);
  root->addWidget(splitter_,1);
 
  // The summary shares the action row; save feedback overlays the canvas.
- auto* footer=new Graphite::Surface("bg",Qt::TopEdge,this);footer->setObjectName("editorFooter");
- footerGrid_=new QGridLayout(footer);footerGrid_->setContentsMargins(14,10,14,10);footerGrid_->setHorizontalSpacing(8);footerGrid_->setVerticalSpacing(4);footerGrid_->setColumnStretch(0,1);
+ auto* footer=new Graphite::Surface("bg",Qt::TopEdge,this);footer->setObjectName("editorFooter");footer->setMinimumHeight(Graphite::scaled(56));
+ footerGrid_=new QGridLayout(footer);footerGrid_->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::s),Graphite::space(Space::l),Graphite::space(Space::s));footerGrid_->setHorizontalSpacing(Graphite::space(Space::s));footerGrid_->setVerticalSpacing(Graphite::space(Space::xs));footerGrid_->setColumnStretch(0,1);
  notice_=new QWidget(footer);notice_->setObjectName("editorPreparationFailure");
- auto* noticeLayout=new QGridLayout(notice_);noticeLayout->setContentsMargins(0,0,0,0);noticeLayout->setSpacing(8);
+ auto* noticeLayout=new QGridLayout(notice_);noticeLayout->setContentsMargins(0,0,0,0);noticeLayout->setSpacing(Graphite::space(Space::s));
  noticeText_=new QLabel(notice_);noticeText_->setObjectName("editorPreparationReason");noticeText_->setTextFormat(Qt::PlainText);noticeText_->setWordWrap(true);VisualStyle::role(noticeText_,"error");noticeLayout->addWidget(noticeText_,0,0,1,3);noticeLayout->setColumnStretch(2,1);
  keepEditing_=new QPushButton("Keep editing",notice_);keepEditing_->setObjectName("keepEditing");noticeLayout->addWidget(keepEditing_,1,0);
  saveInstead_=new QPushButton("Save a copy…",notice_);saveInstead_->setObjectName("saveCopyInstead");saveInstead_->setToolTip("Save the edited image to a file instead (Ctrl+S)");noticeLayout->addWidget(saveInstead_,1,1);
@@ -240,9 +242,9 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   dismissSavedCopy();
  });
  auto* feedbackContent=new QWidget(saveFeedback_);saveFeedback_->setContentWidget(feedbackContent);
- auto* feedback=new QGridLayout(feedbackContent);feedback->setContentsMargins(0,0,0,0);feedback->setSpacing(8);feedback->setColumnStretch(0,1);
- auto* result=new QWidget(saveFeedback_);result->setObjectName("editorSaveResult");auto* resultRow=new QHBoxLayout(result);resultRow->setContentsMargins(0,0,0,0);resultRow->setSpacing(8);
- auto* actions=new QWidget(saveFeedback_);actions->setObjectName("editorSaveActions");auto* recoveryRow=new QHBoxLayout(actions);recoveryRow->setContentsMargins(0,0,0,0);recoveryRow->setSpacing(8);
+ auto* feedback=new QGridLayout(feedbackContent);feedback->setContentsMargins(0,0,0,0);feedback->setSpacing(Graphite::space(Space::s));feedback->setColumnStretch(0,1);
+ auto* result=new QWidget(saveFeedback_);result->setObjectName("editorSaveResult");auto* resultRow=new QHBoxLayout(result);resultRow->setContentsMargins(0,0,0,0);resultRow->setSpacing(Graphite::space(Space::s));
+ auto* actions=new QWidget(saveFeedback_);actions->setObjectName("editorSaveActions");auto* recoveryRow=new QHBoxLayout(actions);recoveryRow->setContentsMargins(0,0,0,0);recoveryRow->setSpacing(Graphite::space(Space::s));
  savedLabel_=new Graphite::ElidedLabel(saveFeedback_);savedLabel_->setObjectName("editorSaved");savedLabel_->setTextFormat(Qt::PlainText);savedLabel_->setContextMenuPolicy(Qt::ActionsContextMenu);savedLabel_->hide();resultRow->addWidget(savedLabel_,1);
  saveTarget_=new Graphite::ElidedLabel(saveFeedback_);saveTarget_->setObjectName("editorSaveTarget");saveTarget_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);saveTarget_->setTextFormat(Qt::PlainText);saveTarget_->setElideMode(Qt::ElideMiddle);VisualStyle::role(saveTarget_,"secondary");saveTarget_->hide();resultRow->addWidget(saveTarget_,1);
  saveError_=new Graphite::ElidedLabel(saveFeedback_);saveError_->setObjectName("editorSaveError");saveError_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);saveError_->setTextFormat(Qt::PlainText);saveError_->setElideMode(Qt::ElideRight);saveError_->setRevealActionName("Save failure details");saveError_->setRevealTitle("Save to");VisualStyle::role(saveError_,"error");saveError_->hide();resultRow->insertWidget(0,saveError_,2);
@@ -403,25 +405,27 @@ void EditorWindow::placeDestination(){
 void EditorWindow::placeTools(){
  auto apply=[&](bool allLabels){for(auto it=toolButtons_.cbegin();it!=toolButtons_.cend();++it){auto* button=it.value();const bool label=allLabels||it.key()==int(Tool::Redact)||it.key()==int(Tool::Blur);button->setMinimumWidth(0);button->setMaximumWidth(QWIDGETSIZE_MAX);button->setToolButtonStyle(label?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonIconOnly);if(!label)button->setFixedWidth(Graphite::scaled(36));}};
  // Measure every label in the current font before folding the ordinary tools.
- apply(true);auto* toolbar=findChild<QWidget*>("editorToolbar");
+ apply(true);auto* toolbar=findChild<QWidget*>("editorToolbar");toolbar->layout()->setSpacing(Graphite::space(Space::xs));
  if(toolbar->layout()->sizeHint().width()>toolbar->width())apply(false);
+ // Compact large text keeps both privacy labels before spending space on gaps.
+ if(toolbar->layout()->sizeHint().width()>toolbar->width())toolbar->layout()->setSpacing(0);
 }
 void EditorWindow::placeSaveFeedback(){
  if(!saveFeedback_||saveFeedback_->isHidden())return;
- const int w=std::max(0,canvas_->width()-32);saveFeedback_->resize(w,saveFeedback_->height());
+ const int w=std::max(0,canvas_->width()-2*Graphite::space(Space::l));saveFeedback_->resize(w,saveFeedback_->height());
  auto* result=findChild<QWidget*>("editorSaveResult");auto* actions=findChild<QWidget*>("editorSaveActions");
  auto* grid=qobject_cast<QGridLayout*>(result->parentWidget()->layout());
- const int room=w-saveFeedback_->layout()->contentsMargins().left()-saveFeedback_->layout()->contentsMargins().right()-(saveFeedback_->dismissButton()->isHidden()?0:saveFeedback_->dismissButton()->width()+8);
+ const int room=w-saveFeedback_->layout()->contentsMargins().left()-saveFeedback_->layout()->contentsMargins().right()-(saveFeedback_->dismissButton()->isHidden()?0:saveFeedback_->dismissButton()->width()+Graphite::space(Space::s));
  // Keep enough of the outcome readable before moving recovery actions below it.
  int natural=0,count=0;for(int i=0;i<result->layout()->count();++i)if(auto* widget=result->layout()->itemAt(i)->widget();widget&&!widget->isHidden()){auto* label=qobject_cast<QLabel*>(widget);natural+=label?label->fontMetrics().horizontalAdvance(label->text()):widget->sizeHint().width();++count;}
  natural+=std::max(0,count-1)*result->layout()->spacing();
  const int resultWidth=std::max(result->minimumSizeHint().width(),std::min(natural,Graphite::scaled(320)));
- const bool stacked=!actions->isHidden()&&resultWidth+actions->sizeHint().width()+8>room;
+ const bool stacked=!actions->isHidden()&&resultWidth+actions->sizeHint().width()+Graphite::space(Space::s)>room;
  int row=0,column=0,rowSpan=0,columnSpan=0;grid->getItemPosition(grid->indexOf(actions),&row,&column,&rowSpan,&columnSpan);
  if(row!=(stacked?1:0)){grid->removeWidget(actions);grid->addWidget(actions,stacked?1:0,stacked?0:1,Qt::AlignLeft);}
  saveFeedback_->layout()->activate();
  const int h=std::max(saveFeedback_->minimumSizeHint().height(),saveFeedback_->heightForWidth(w));
- saveFeedback_->setGeometry(16,canvasViewport_->height()-16-h,w,h);saveFeedback_->raise();
+ saveFeedback_->setGeometry(Graphite::space(Space::l),canvasViewport_->height()-Graphite::space(Space::l)-h,w,h);saveFeedback_->raise();
 }
 void EditorWindow::placeProperties(){
  if(!splitter_)return;
@@ -457,8 +461,8 @@ void EditorWindow::placeDocument(){
  if(scroll==documentScrolling_)return;
  documentScrolling_=scroll;
  sideLayout_->removeWidget(document_);properties_->removeWidget(document_);
- if(scroll){properties_->insertWidget(properties_->count()-1,document_);document_->layout()->setContentsMargins(0,12,0,0);}
- else{sideLayout_->addWidget(document_);document_->layout()->setContentsMargins(18,12,16,14);}
+ if(scroll){properties_->insertWidget(properties_->count()-1,document_);document_->layout()->setContentsMargins(0,Graphite::space(Space::xl),0,0);}
+ else{sideLayout_->addWidget(document_);document_->layout()->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::xl),Graphite::space(Space::l),Graphite::space(Space::l));}
  document_->show();
 }
 
