@@ -67,7 +67,8 @@ constexpr int compactReviewHeight = 648;
 int reviewSpace(Graphite::Space value) { return static_cast<int>(value); }
 int footerInset() { return reviewSpace(Graphite::Space::l); }
 int destinationMenuPadding() { return reviewSpace(Graphite::Space::l); }
-int textControlHeight(const QWidget* widget) { return std::max(28, widget->fontMetrics().height()); }
+// Text controls keep at least 3 px above and below their full text line at every scale.
+int textControlHeight(const QWidget* widget) { return std::max(28, widget->fontMetrics().height() + 2 * 3); }
 int iconTarget() { return Graphite::Metric::iconTarget; }
 }
 
