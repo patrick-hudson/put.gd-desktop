@@ -451,7 +451,8 @@ private slots:
   auto pixels=[&]{return qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes;};
   tray.setActivity(Theme::trayTints(false).idle,"Recording",50);const auto progress=pixels();tray.setActivity(Theme::trayTints(false).idle,"Recording",50,1);const auto recording=pixels();QVERIFY(progress!=recording);
   tray.setActivity(Theme::trayTints(false).idle,"Recording paused",50,2);QVERIFY(recording!=pixels());const auto paused=pixels();tray.setActivity(Theme::trayTints(false).idle,"Recording paused",75,2);QVERIFY(paused!=pixels());
-  tray.setActivity(Theme::trayTints(false).error,"Failed uploads\nRecording paused",-2,2);const auto failed=pixels();tray.setActivity(Theme::trayTints(false).error,"Failed uploads\nRecording paused",-2);QVERIFY(failed!=pixels());QVERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Recording paused"));
+  tray.setActivity(Theme::trayTints(false).error,"Failed uploads\nRecording paused",-2,2);const auto failed=pixels();// One badge at a time: failure outranks the paused-recording badge, which stays in the tooltip.
+  tray.setActivity(Theme::trayTints(false).error,"Failed uploads\nRecording paused",-2);QCOMPARE(pixels(),failed);QVERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Recording paused"));
   tray.setCommands({},"Uploading a file",1,true,"Recording paused");
   auto property=[&](int id,const QString& name){return qdbus_cast<QDBusVariant>(call("/Menu","com.canonical.dbusmenu","GetProperty",{id,name}).arguments().first()).variant();};
   tray.setCommands({},"Uploading a file",1,true,"Recording paused","Local save needs attention");QCOMPARE(property(22,"label").toString(),QString("Local save needs attention"));QVERIFY(property(16,"label").toString().contains("Recording paused"));QVERIFY(property(22,"visible").toBool());QVERIFY(property(19,"visible").toBool());
