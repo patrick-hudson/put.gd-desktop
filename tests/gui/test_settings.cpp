@@ -170,11 +170,17 @@ private slots:
      }
      if(auto* toggle=qobject_cast<QToolButton*>(field);toggle&&(toggle->property("preferenceDisclosure").toBool()||toggle->property("preferenceAddRow").toBool())){
       const int inset=Graphite::space(Graphite::Space::l);QCOMPARE(toggle->mapTo(card,QPoint(inset,0)).x(),inset);
-      // Compare the actual painted text with its expected origin; trailing glyphs
-      // and card borders lie outside this crop.
-      QImage actual=toggle->grab().toImage();QImage expected(actual.size(),QImage::Format_ARGB32_Premultiplied);const QColor ink=toggle->property("preferenceAddRow").toBool()?Theme::current().textSecondary:Theme::current().text;expected.fill(actual.pixelColor(2,toggle->height()/2));QPainter painter(&expected);Graphite::paintText(painter,QRect(inset,0,toggle->width()/2,toggle->height()),toggle->text(),ink,Graphite::font());painter.end();
-      const auto first=[&](const QImage& image){for(int x=2;x<toggle->width()/2;++x)for(int y=toggle->height()/2-toggle->fontMetrics().height()/2;y<toggle->height()/2+toggle->fontMetrics().height()/2;++y){const auto c=image.pixelColor(x,y);if(qAbs(c.red()-ink.red())+qAbs(c.green()-ink.green())+qAbs(c.blue()-ink.blue())<12)return x;}return -1;};
-      QVERIFY2(first(actual)==first(expected),qPrintable(QString("%1 (%2) actual %3 expected %4 font %5").arg(toggle->objectName(),toggle->text()).arg(first(actual)).arg(first(expected)).arg(toggle->font().toString())));
+      // Antialiased glyph edges need not contain the exact foreground colour.
+      // Measure visible ink against the backdrop, in device pixels, away from
+      // focus outlines, trailing glyphs and card borders.
+      const QImage actual=toggle->grab().toImage();const qreal dpr=actual.devicePixelRatio();const QColor background=actual.pixelColor(qRound(2*dpr),actual.height()/2);
+      QImage expected(actual.size(),QImage::Format_ARGB32_Premultiplied);expected.setDevicePixelRatio(dpr);expected.fill(background);const QColor ink=toggle->property("preferenceAddRow").toBool()?Theme::current().textSecondary:Theme::current().text;
+      const int trailing=toggle->property("preferenceAddRow").toBool()?toggle->iconSize().width()+Graphite::space(Graphite::Space::s):Graphite::scaled(24);
+      QPainter painter(&expected);Graphite::paintText(painter,QRect(inset,0,toggle->width()-2*inset-trailing,toggle->height()),toggle->text(),ink,Graphite::font());painter.end();
+      const auto contrast=[&](const QColor& c){return qAbs(c.red()-background.red())+qAbs(c.green()-background.green())+qAbs(c.blue()-background.blue());};
+      const auto first=[&](const QImage& image){for(int x=qCeil(2*dpr);x<image.width()/2;++x)for(int y=qCeil(2*dpr);y<image.height()-qCeil(2*dpr);++y)if(contrast(image.pixelColor(x,y))>=contrast(ink)/4)return x;return -1;};
+      const int actualStart=first(actual),expectedStart=first(expected);QVERIFY(actualStart>=0);QVERIFY(expectedStart>=0);
+      QVERIFY2(qAbs(actualStart-expectedStart)/dpr<=1,qPrintable(QString("%1 (%2) actual %3 expected %4 DPR %5 font %6").arg(toggle->objectName(),toggle->text()).arg(actualStart/dpr).arg(expectedStart/dpr).arg(dpr).arg(toggle->font().toString())));
      }
     }
    }
