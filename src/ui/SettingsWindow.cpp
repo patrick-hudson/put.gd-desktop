@@ -1810,7 +1810,7 @@ void SettingsWindow::persistNextEdit(){
 }
 void SettingsWindow::refreshCredentialHint(){
  if(!credentialHint_)return;
- findControl<QPushButton*>("unlockCredentials")->hide();credentialHint_->clear();credentialForm_->setRowVisible(PreferenceRows::rowFor(credentialHint_),false);access_->setPlaceholderText({});secret_->setPlaceholderText({});token_->setPlaceholderText({});
+ findControl<QPushButton*>("unlockCredentials")->hide();credentialHint_->clear();credentialForm_->setRowVisible(PreferenceRows::rowFor(credentialHint_),false);access_->setPlaceholderText({});secret_->setPlaceholderText({});token_->setPlaceholderText("Paste a session token (optional)");
  if(!QStringList{"s3","backblaze-b2"}.contains(providerType_->currentData().toString())||initialProfile_||profileIndex_<0)return;
  const auto id=profileId_->text();const auto revision=settings_.revision();
  settings_.request("setup.credentialHint",{{"profileId",id},{"expectedRevision",revision}},this,[g=QPointer<SettingsWindow>(this),id,revision](Error error,QJsonObject hint){
