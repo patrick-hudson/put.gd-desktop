@@ -358,7 +358,6 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     for (auto* label : {target_, lockedAudio_, lockedFormat_, lockedFacts_}) VisualStyle::role(label, "muted");
     for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_, formatAudio_, lockedAudio_, lockedFormat_}) choices->addWidget(w);
     record_ = new QPushButton("Start recording", this); record_->setObjectName("record");
-    record_->setIcon(VisualStyle::icon("record"));
     VisualStyle::role(record_, "primary");
     pause_ = new QPushButton("Pause", this);
     pause_->setIcon(VisualStyle::icon("pause"));
@@ -441,6 +440,7 @@ void ControlBar::refresh() {
     const bool asking = confirming_ && !handle;
     const auto& tokens = Theme::current();
     setPalette(Graphite::palette());
+    record_->setIcon(VisualStyle::icon("record-dot", tokens.live));
     setProperty("themeScheme", Theme::name(Theme::scheme()));
     dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg((recording ? tokens.live : paused ? tokens.textMuted : tokens.textSecondary).name()));
     state_label_->setText(recording ? QStringLiteral("Recording") : paused ? QStringLiteral("Paused") : ready ? QStringLiteral("Ready to record") : QStringLiteral("Stopping…"));

@@ -106,12 +106,14 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   rounded(4,4,16,16,1.5);
  } else if(name=="record") {
   rounded(3,4,18,16);QPainterPath dot;dot.addEllipse(QPointF(12,12),4,4);wash(dot);p.drawPath(dot);
+ } else if(name=="record-dot") {
+  fill(color);p.drawEllipse(QPointF(12,12),6,6);
  } else if(name=="select") {
   // 1.8 units on the 24-unit grid gives a 1.5 px stroke in 20 px tool icons.
   line(color,1.8);QPainterPath pointer;pointer.moveTo(5,3);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,21);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
  } else if(name=="redact") {
-  fill(color);rounded(3,5,18,11,1);
-  line(color,1.8);p.drawLine(3,20,21,20);
+  line(color,1.8);p.drawLine(3,6,21,6);p.drawLine(3,19,14,19);
+  fill(color);rounded(3,10.5,18,5,1);
  } else if(name=="blur") {
   // A soft droplet, distinct from an app grid or pixelation.
   line(color,1.8);QPainterPath drop;drop.moveTo(12,3);drop.cubicTo(9,7,5,10,5,15);drop.cubicTo(5,23,19,23,19,15);drop.cubicTo(19,10,15,7,12,3);p.drawPath(drop);
