@@ -818,7 +818,7 @@ void HistoryWindow::updateSummary(){
  // the title already says it for this file: a batch's line describes the
  // whole capture, and a single file's line can lead with another outcome
  // ("Saved locally" after an interrupted upload).
- QTextDocument outcomeText;outcomeText.setHtml(outcome_->text());const auto shownOutcome=(outcomeText.toPlainText()+" "+(capabilityHint_->isHidden()?QString{}:capabilityHint_->text())).replace(QChar(0x00a0),QChar(' '));
+ QTextDocument outcomeText;outcomeText.setHtml(outcome_->text());auto shownOutcome=outcomeText.toPlainText()+" "+(capabilityHint_->isHidden()?QString{}:capabilityHint_->text());shownOutcome.replace(QChar(0x00a0),QChar(' '));
  const QHash<QString,QString> uploads{{"uploaded","Uploaded"},{"local_only","Local capture"},{"pending","Waiting to upload"},{"uploading","Uploading"},{"failed","Upload failed"},{"unknown","Upload outcome unknown"},{"not_requested","No upload requested"}};
  {const auto upload=uploads.value(data["uploadStatus"].toString(),"Not recorded");if(items_->count()>1||(data["uploadStatus"]!="local_only"&&!data["linkAvailable"].toBool()&&!shownOutcome.contains(upload,Qt::CaseInsensitive)&&HistoryModel::remoteStateText(data).isEmpty()))row("Upload",upload);}
  const auto copy=HistoryModel::localCopyUnavailable(data)?QString("Local file unavailable"):copies.value(local["status"].toString(),"Not recorded"),link=data["uploadStatus"]=="failed"&&data["receipt"].toObject()["objectReference"].toObject().isEmpty()?QString("Not created (upload failed)"):data["linkAvailable"].toBool()?QString("Created"):sharing.value(data["shareStatus"].toString(),"Not recorded");
