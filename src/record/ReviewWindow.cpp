@@ -94,7 +94,6 @@ protected:
         const int inset = reviewSpace(Graphite::Space::xs), gap = 6, chevron = 6;
         const auto labelRect = rect().adjusted(inset, 0, -gap - chevron, 0);
         auto label = text();
-        if (fontMetrics().horizontalAdvance(label) > labelRect.width()) label.remove(0, 2);
         Graphite::paintText(painter, labelRect, label, colour, font(), Qt::AlignLeft | Qt::AlignVCenter);
         Graphite::paintChevron(painter, QPointF(labelRect.left() + fontMetrics().horizontalAdvance(label) + gap + chevron / 2.0, height() / 2.0), chevron, Qt::DownArrow, colour);
     }
@@ -860,7 +859,7 @@ void ReviewTimeline::layoutLanes() {
     lanes_ = int(ends.size());
 }
 int ReviewTimeline::gutterWidth() {
-    return std::min(112, Graphite::scaled(96));
+    return std::max(std::min(112, Graphite::scaled(96)), QFontMetrics(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(QStringLiteral("+ Add mask")) + 20);
 }
 bool ReviewTimeline::transportAbove(int) const { return transport_ != nullptr; }
 int ReviewTimeline::timelineTop() const { return transport_ ? transport_->height() : 0; }
