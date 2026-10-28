@@ -10,6 +10,7 @@ namespace putgd::PreferenceRows {
 // fields stack; choices share a measured width within their page family.
 QLabel* caption(const QString&);
 QFormLayout* card(QVBoxLayout*,const QString& heading,const QString& description={},bool headingInside=false);
+QWidget* sectionFor(QFormLayout*);
 QWidget* rowFor(QWidget*);
 QWidget* labelFor(QFormLayout*,QWidget* row);
 QWidget* radio(QRadioButton*,const QString& explanation,const QString& detail);
