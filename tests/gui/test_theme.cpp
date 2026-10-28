@@ -476,8 +476,8 @@ private slots:
             QCOMPARE(rectangle.pixelColor(12*scale,12*scale).alpha(),0);
             QRect ink;
             for(int y=0;y<stop.height();++y)for(int x=0;x<stop.width();++x)if(stop.pixelColor(x,y).alpha()>127)ink=ink.united(QRect(x,y,1,1));
-            QCOMPARE(ink,QRect(7*scale,7*scale,10*scale,10*scale));
-            QVERIFY(stop.pixelColor(7*scale,7*scale).alpha()<128);
+            QCOMPARE(ink,QRect(6*scale,6*scale,12*scale,12*scale));
+            QVERIFY(stop.pixelColor(6*scale,6*scale).alpha()<128);
         }
     }
     void providerOutlinesStayDistinctAtSidebarSize() {

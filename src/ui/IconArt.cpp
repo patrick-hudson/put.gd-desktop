@@ -103,7 +103,7 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   rounded(4,4,16,16);QPainterPath sun;sun.addEllipse(QPointF(9,9),2,2);wash(sun);p.drawPath(sun);
   QPainterPath mountains;mountains.moveTo(4,18);mountains.lineTo(10,14);mountains.lineTo(14,17);mountains.lineTo(17,12);mountains.lineTo(20,15);p.drawPath(mountains);
  } else if(name=="stop") {
-  fill(color);rounded(7,7,10,10,2);
+  fill(color);rounded(6,6,12,12,2);
  } else if(name=="record") {
   rounded(3,4,18,16);QPainterPath dot;dot.addEllipse(QPointF(12,12),4,4);wash(dot);p.drawPath(dot);
  } else if(name=="record-dot") {
