@@ -252,8 +252,9 @@ int compactDetailGap(){return qMax(compactMetadataGap(),(actionHeight()-QFontMet
 int rowContentHeight(){const int title=QFontMetrics(historyTitleFont()).height(),meta=QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();return qMax(Graphite::Metric::historyRow,qMax(historyThumbHeight+4,qMax(title+meta+space(Space::xs)+2*rowTextInset()+4,rowTextInset()+title+compactMetadataGap()+(meta+actionHeight()+1)/2+4)));}
 // Enlarged rows keep breathing room above the title and second-line actions.
 int compactTextInset(){return Graphite::scaled(100)>125?space(Space::xs):rowTextInset();}
-// Gallery pictures share a 16:10 frame.
-int galleryPicture(int cardWidth){return qMax(1,(cardWidth-2)*10/16);}
+int galleryTextHeight(){return QFontMetrics(historyTitleFont()).height()+6+2*QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();}
+// The picture spends only the space left after the caption and status lines.
+int galleryPicture(int cardWidth,int cardHeight){return qMax(1,qMin((cardWidth-2)*10/16,cardHeight-1-2*space(Space::m)-galleryTextHeight()));}
 }
 void HistoryWindow::metadataDocument(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded,bool compact,bool separated){
  document.setDocumentMargin(0);document.setDefaultFont(Graphite::font(Graphite::Type::metadata));QTextOption option;option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);document.setDefaultTextOption(option);
@@ -286,7 +287,7 @@ namespace {
 // The row's body: right of the thumbnail in a list, under it in a gallery tile.
 QRect rowBody(const QRect& outer,bool gallery,int heading){
  const auto card=gallery?outer.adjusted(space(Space::s),space(Space::s),-space(Space::s),-space(Space::s)):outer.adjusted(space(Space::s),heading+2,-space(Space::s),-2);
- if(gallery){const int top=card.top()+1+galleryPicture(card.width())+space(Space::m);return QRect(card.left()+space(Space::l),top,card.width()-2*space(Space::l),qMax(0,card.bottom()-top+1));}
+ if(gallery){const int top=card.top()+1+galleryPicture(card.width(),card.height())+space(Space::m);return QRect(card.left()+space(Space::l),top,card.width()-2*space(Space::l),qMax(0,card.bottom()-top+1));}
  const int left=card.left()+space(Space::s)+historyThumbWidth+space(Space::l);
  return QRect(left,card.top(),card.right()-space(Space::s)-left+1,rowContentHeight()-4);
 }
@@ -394,10 +395,10 @@ public:
  bool primaryShown(const QModelIndex& i)const{if(grid())return !(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));return rowPrimary(i)&&inlineActions(i)&&(view_->selectionModel()->selectedRows().size()<=1||(grid()&&recovery(i)))&&!i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
  QRect card(QRect r,const QModelIndex& i)const{return grid()?r.adjusted(space(Space::s),space(Space::s),-space(Space::s),-space(Space::s)):r.adjusted(space(Space::s),heading(i)+2,-space(Space::s),-2);}
- // Gallery cards share each row evenly. The preferred width grows with the
- // text size, so enlarged text gives fewer columns, not heavily elided names.
+ // Rows share their width; a lone column keeps the preferred card width.
+ // Enlarged text gives fewer columns, not oversized pictures.
  // The flow layout always reserves a scrollbar's extent (QListViewPrivate::prepareItemsLayout).
- int galleryWidth()const{const int s=view_->spacing(),reserve=view_->style()->pixelMetric(QStyle::PM_ScrollView_ScrollBarOverlap,nullptr,view_->verticalScrollBar())?0:view_->style()->pixelMetric(QStyle::PM_ScrollBarExtent,nullptr,view_->verticalScrollBar());const int available=qMax(160,view_->maximumViewportSize().width()-reserve-2*s);int minimum=Graphite::scaled(248);const int columns=qMax(1,available/(minimum+s));return qMax(160,available/columns-s-1);}
+ int galleryWidth()const{const int s=view_->spacing(),reserve=view_->style()->pixelMetric(QStyle::PM_ScrollView_ScrollBarOverlap,nullptr,view_->verticalScrollBar())?0:view_->style()->pixelMetric(QStyle::PM_ScrollBarExtent,nullptr,view_->verticalScrollBar());const int available=qMax(160,view_->maximumViewportSize().width()-reserve-2*s),minimum=Graphite::scaled(248),columns=qMax(1,available/(minimum+s)),width=available/columns-s-1;return qMax(160,columns==1?qMin(width,minimum):width);}
  // Failure metadata wraps below the title and reserved actions.
  // Hover and selection never change the reserved height.
  int listDetailsSpace()const{return !grid()&&compactList&&compactList()?actionHeight()+space(Space::s):0;}
@@ -430,8 +431,9 @@ public:
  static QString errorText(const QModelIndex& i){return HistoryModel::statusText(i.data(HistoryModel::RecordRole).toJsonObject());}
  QSize sizeHint(const QStyleOptionViewItem&,const QModelIndex& i)const override{
   if(grid()){
-   const int width=galleryWidth(),text=QFontMetrics(historyTitleFont()).height()+6+2*QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();
-   return {width,2*space(Space::s)+1+galleryPicture(width-2*space(Space::s))+space(Space::m)+text+space(Space::m)};
+   const int width=galleryWidth(),padding=2*space(Space::s)+1+2*space(Space::m)+galleryTextHeight();
+   const int picture=qMax(1,qMin((width-2*space(Space::s)-2)*10/16,view_->viewport()->height()-2*view_->spacing()-padding));
+   return {width,padding+picture};
   }
   const int width=qMax(160,view_->viewport()->width()-2*view_->spacing());
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
@@ -459,11 +461,11 @@ public:
   else{p->setPen(Qt::NoPen);p->setBrush(hover?t.surface:t.bg);p->drawRoundedRect(QRectF(r),8,8);}
 
   const int rowTop=r.top();const int rowHeight=grid()?r.height():rowContentHeight()-4;
-  QRect thumb=grid()?QRect(r.left()+1,r.top()+1,r.width()-2,galleryPicture(r.width())):QRect(r.left()+space(Space::s),rowTop+(rowHeight-historyThumbHeight)/2,historyThumbWidth,historyThumbHeight);
+  QRect thumb=grid()?QRect(r.left()+1,r.top()+1,r.width()-2,galleryPicture(r.width(),r.height())):QRect(r.left()+space(Space::s),rowTop+(rowHeight-historyThumbHeight)/2,historyThumbWidth,historyThumbHeight);
   p->setPen(Qt::NoPen);p->setBrush(t.well);p->drawRoundedRect(thumb,4,4);
   const auto image=qvariant_cast<QImage>(i.data(HistoryModel::ThumbnailRole));
   p->save();QPainterPath thumbnailClip;thumbnailClip.addRoundedRect(thumb,4,4);p->setClipPath(thumbnailClip,Qt::IntersectClip);
-  if(!image.isNull()){const auto scaled=image.scaled(thumb.size(),grid()?Qt::KeepAspectRatioByExpanding:Qt::KeepAspectRatio,Qt::SmoothTransformation);const QPoint origin(thumb.center().x()-scaled.width()/2,thumb.center().y()-scaled.height()/2);p->drawImage(origin,scaled);if(video(record))paintVideoBadge(*p,grid()?thumb:QRect(origin,scaled.size()),HistoryModel::duration(image.text(HistoryModel::durationKey).toLongLong()));}
+  if(!image.isNull()){const auto target=grid()?image.size()*qMin(1.0,qMax(double(thumb.width())/image.width(),double(thumb.height())/image.height())):thumb.size();const auto scaled=image.scaled(target,grid()?Qt::KeepAspectRatioByExpanding:Qt::KeepAspectRatio,Qt::SmoothTransformation);const QPoint origin(thumb.center().x()-scaled.width()/2,thumb.center().y()-scaled.height()/2);p->drawImage(origin,scaled);if(video(record))paintVideoBadge(*p,grid()?thumb:QRect(origin,scaled.size()),HistoryModel::duration(image.text(HistoryModel::durationKey).toLongLong()));}
   else{
    // No preview: an honest file-type glyph, never a fabricated picture.
    const auto category=record["category"].toString();const int side=grid()?36:24;
