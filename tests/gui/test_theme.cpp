@@ -784,6 +784,50 @@ private slots:
     }
     // A primary button is the neutral action fill with background-colour ink;
     // its label, alone or as one group with its icon, is centred.
+    void chevronsFollowTextScale() {
+        const auto original = qApp->font();
+        const auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        QHash<int, int> previousSize, previousInk;
+        for (const qreal scale : {1.0, 1.25, 1.5}) {
+            auto enlarged = original; enlarged.setPointSizeF(QFontInfo(original).pixelSize() * scale * 72.0 / 96.0); qApp->setFont(enlarged);
+            for (int kind = 0; kind < 7; ++kind) {
+                QImage image(360, 240, QImage::Format_ARGB32_Premultiplied); image.setDevicePixelRatio(4); image.fill(Qt::transparent);
+                QPainter painter(&image); QStyleOption option; option.rect = QRect(0, 0, 90, 60); option.state = QStyle::State_Enabled;
+                QWidget quiet; quiet.setProperty("visualRole", "quiet");
+                if (kind < 2) {
+                    option.state |= QStyle::State_Children | QStyle::State_Open;
+                    qApp->style()->drawPrimitive(kind == 0 ? QStyle::PE_IndicatorArrowDown : QStyle::PE_IndicatorBranch, &option, &painter);
+                } else if (kind == 2) {
+                    QStyleOptionComboBox combo; combo.rect = option.rect; combo.state = option.state; combo.frame = false;
+                    qApp->style()->drawComplexControl(QStyle::CC_ComboBox, &combo, &painter);
+                } else if (kind == 3) {
+                    QStyleOptionButton button; button.rect = option.rect; button.state = option.state; button.features = QStyleOptionButton::HasMenu;
+                    qApp->style()->drawControl(QStyle::CE_PushButtonBevel, &button, &painter, &quiet);
+                } else if (kind < 6) {
+                    QStyleOptionToolButton button; button.rect = option.rect; button.state = option.state | QStyle::State_AutoRaise;
+                    button.text = " "; button.toolButtonStyle = Qt::ToolButtonTextOnly;
+                    button.features = kind == 4 ? QStyleOptionToolButton::HasMenu : QStyleOptionToolButton::MenuButtonPopup;
+                    qApp->style()->drawComplexControl(QStyle::CC_ToolButton, &button, &painter, &quiet);
+                } else {
+                    QStyleOptionMenuItem menu; menu.rect = option.rect; menu.state = option.state; menu.menuItemType = QStyleOptionMenuItem::SubMenu;
+                    qApp->style()->drawControl(QStyle::CE_MenuItem, &menu, &painter);
+                }
+                painter.end(); QRect bounds; int ink = 0;
+                for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x) {
+                    const auto pixel = image.pixelColor(x, y);
+                    if (pixel.alpha() > 64 && Theme::contrast(pixel, Theme::current().surfaceRaised) >= 3.0) { bounds |= QRect(x, y, 1, 1); ++ink; }
+                }
+                const int size = std::max(bounds.width(), bounds.height());
+                QVERIFY2(size > previousSize.value(kind), qPrintable(QString("Chevron %1 at scale %2: %3 px after %4").arg(kind).arg(scale).arg(size).arg(previousSize.value(kind))));
+                QVERIFY2(ink > previousInk.value(kind), qPrintable(QString("Chevron %1 at scale %2: %3 ink pixels after %4").arg(kind).arg(scale).arg(ink).arg(previousInk.value(kind)))); previousSize[kind] = size; previousInk[kind] = ink;
+            }
+            for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+                const auto folder = RedesignTheme::indicators(scheme);
+                QCOMPARE(QImage(folder + "/chevron.png").size(), QSize(Graphite::scaled(12), Graphite::scaled(12)));
+                QCOMPARE(QImage(folder + "/chevron@2x.png").size(), QSize(Graphite::scaled(12), Graphite::scaled(12)) * 2);
+            }
+        }
+    }
     void compactControlsMeasureTheirPaintedTypeAndScale() {
         const auto original = QApplication::font();
         const auto restore = qScopeGuard([&] { QApplication::setFont(original); });

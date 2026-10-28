@@ -88,7 +88,7 @@ QPalette palette();
 // "chevron-right", "chevron-left", "check". Follows scheme switches like VisualStyle::icon.
 QIcon chromeIcon(const QString& name);
 void paintChromeGlyph(QPainter&, const QRectF&, const QString& name, const QColor&);
-void paintChevron(QPainter&, const QPointF& centre, qreal size, Qt::ArrowType, const QColor&, qreal width = 1.5);
+void paintChevron(QPainter&, const QPointF& centre, qreal size, Qt::ArrowType, const QColor&, qreal width = 0);
 // The baseline that puts the ink of text (its tight bounds) on centre.
 qreal opticalBaseline(const QFontMetricsF&, const QString&, qreal centre);
 // The desktop text size against the design's 14 px body (1 to 2); type and

@@ -460,7 +460,7 @@ void install(QApplication& app) {
 void paintChevron(QPainter& p, const QPointF& c, qreal size, Qt::ArrowType direction, const QColor& colour, qreal width) {
     p.save();
     p.setRenderHint(QPainter::Antialiasing);
-    p.setPen(QPen(colour, width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    p.setPen(QPen(colour, width > 0 ? width : std::max(qreal(1.5), 1.5 * textScale() * applicationScale()), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     p.setBrush(Qt::NoBrush);
     const qreal h = size / 2, q = size / 4;
     QPainterPath path;
@@ -1063,13 +1063,13 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
     case PE_IndicatorArrowDown: case PE_IndicatorArrowUp: case PE_IndicatorArrowLeft: case PE_IndicatorArrowRight: case PE_IndicatorHeaderArrow: {
         Qt::ArrowType direction = element == PE_IndicatorArrowUp ? Qt::UpArrow : element == PE_IndicatorArrowLeft ? Qt::LeftArrow : element == PE_IndicatorArrowRight ? Qt::RightArrow : Qt::DownArrow;
         if (element == PE_IndicatorHeaderArrow) if (const auto* header = qstyleoption_cast<const QStyleOptionHeader*>(option)) direction = header->sortIndicator == QStyleOptionHeader::SortUp ? Qt::UpArrow : Qt::DownArrow;
-        const qreal size = std::min<qreal>(10, std::min(option->rect.width(), option->rect.height()) * 0.7);
+        const qreal size = std::min<qreal>(scaled(10), std::min(option->rect.width(), option->rect.height()) * 0.7);
         paintChevron(*p, QRectF(option->rect).center(), size, direction, option->state & State_Enabled ? c.textSecondary : c.textDisabled);
         return;
     }
     case PE_IndicatorBranch: {
         if (!(option->state & State_Children)) return;
-        paintChevron(*p, QRectF(option->rect).center(), 8, option->state & State_Open ? Qt::DownArrow : Qt::RightArrow, c.textMuted);
+        paintChevron(*p, QRectF(option->rect).center(), scaled(8), option->state & State_Open ? Qt::DownArrow : Qt::RightArrow, c.textMuted);
         return;
     }
     case PE_PanelItemViewItem: case PE_PanelItemViewRow: {
@@ -1190,7 +1190,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         drawPrimitive(PE_PanelButtonCommand, option, p, widget);
         if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) {
             const auto look = buttonLook(buttonRole(widget, option), option, false, widget);
-            paintChevron(*p, QPointF(option->rect.right() - scaled(Metric::splitZone) / 2.0 + 1, option->rect.center().y() + 0.5), 8, Qt::DownArrow, look.text);
+            paintChevron(*p, QPointF(option->rect.right() - scaled(Metric::splitZone) / 2.0 + 1, option->rect.center().y() + 0.5), scaled(8), Qt::DownArrow, look.text);
         }
         return;
     }
@@ -1298,7 +1298,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto elided = QFontMetrics(menuFont).elidedText(text, Qt::ElideRight, textRect.width(), Qt::TextShowMnemonic);
         p->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft | Qt::TextShowMnemonic | Qt::TextSingleLine, elided);
         p->restore();
-        if (item->menuItemType == QStyleOptionMenuItem::SubMenu) paintChevron(*p, QPointF(r.right() - 16, r.center().y()), 8, Qt::RightArrow, enabled ? c.textMuted : c.textDisabled);
+        if (item->menuItemType == QStyleOptionMenuItem::SubMenu) paintChevron(*p, QPointF(r.right() - scaled(16), r.center().y()), scaled(8), Qt::RightArrow, enabled ? c.textMuted : c.textDisabled);
         return;
     }
     case CE_MenuEmptyArea: case CE_MenuScroller: case CE_MenuTearoff: p->fillRect(option->rect, c.surfaceRaised); return;
@@ -1548,9 +1548,9 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
             p->setPen(mix(look.fill.isValid() && look.fill.alpha() ? look.fill : c.surfaceRaised, look.text, 0.25));
             p->drawLine(menu.left(), menu.top() + 9, menu.left(), menu.bottom() - 9);
             p->restore();
-            paintChevron(*p, QRectF(menu).center() + QPointF(0, 0.5), 8, Qt::DownArrow, look.text);
+            paintChevron(*p, QRectF(menu).center() + QPointF(0, 0.5), scaled(8), Qt::DownArrow, look.text);
         } else if (chevron) {
-            paintChevron(*p, QPointF(option->rect.right() - scaled(Metric::splitZone) / 2.0 + 2, option->rect.center().y() + 0.5), 8, Qt::DownArrow, look.text);
+            paintChevron(*p, QPointF(option->rect.right() - scaled(Metric::splitZone) / 2.0 + 2, option->rect.center().y() + 0.5), scaled(8), Qt::DownArrow, look.text);
         }
         return;
     }
@@ -1562,7 +1562,7 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         // A locked value can't be opened: no chevron.
         if (lockedLook(option, widget)) return;
         const auto arrow = subControlRect(CC_ComboBox, combo, SC_ComboBoxArrow, widget);
-        paintChevron(*p, QRectF(arrow).center() + QPointF(-2, 0.5), 9, Qt::DownArrow, option->state & State_Enabled ? c.textSecondary : c.textDisabled);
+        paintChevron(*p, QRectF(arrow).center() + QPointF(-2, 0.5), scaled(9), Qt::DownArrow, option->state & State_Enabled ? c.textSecondary : c.textDisabled);
         return;
     }
     case CC_SpinBox: {
@@ -1886,7 +1886,7 @@ void ElidedLabel::paintEvent(QPaintEvent*) {
         if (isEnabled() && underMouse()) rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), t().surfaceRaised, {}, 4);
         const auto box = textRect();
         if (wordWrap()) {
-            paintChevron(p, QPointF(box.right() + 7 + scaled(14) / 2.0, box.center().y()), 8, Qt::DownArrow, isEnabled() ? t().textSecondary : t().textDisabled);
+            paintChevron(p, QPointF(box.right() + 7 + scaled(14) / 2.0, box.center().y()), scaled(8), Qt::DownArrow, isEnabled() ? t().textSecondary : t().textDisabled);
         } else VisualStyle::icon("info").paint(&p, QRect(box.right() + 7, box.center().y() - scaled(14) / 2, scaled(14), scaled(14)), Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
     }
     // A revealable summary's keyboard focus: the amber ring around its text.

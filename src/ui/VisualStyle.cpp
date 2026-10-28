@@ -41,16 +41,17 @@ using Graphite::Space;
 using Graphite::space;
 namespace {
 // Indicator glyphs painted from the tokens, at 1x and @2x, so they change with
-// the scheme. They live in a private temporary folder for this process.
+// the scheme and text scale. They live in a private temporary folder for this process.
 void paintIndicators(const QString& folder, const Theme::Palette& p)
 {
     auto save = [&](const QString& name, QSize size, const std::function<void(QPainter&)>& draw) {
         for (int scale : {1, 2}) {
-            QImage image(size * scale, QImage::Format_ARGB32_Premultiplied);
+            QImage image(QSize(Graphite::scaled(size.width()), Graphite::scaled(size.height())) * scale, QImage::Format_ARGB32_Premultiplied);
             image.fill(Qt::transparent);
             QPainter painter(&image);
             painter.setRenderHint(QPainter::Antialiasing);
-            painter.scale(scale, scale);
+            const qreal textScale = Graphite::scaled(1000) / 1000.0;
+            painter.scale(scale * textScale, scale * textScale);
             draw(painter);
             painter.end();
             image.save(folder + "/" + name + (scale == 2 ? "@2x.png" : ".png"), "PNG");
@@ -331,14 +332,15 @@ void alignChoices(QWidget* owner,const QList<QFormLayout*>& family){
 void decorateView(QAbstractItemView* view,const QList<int>& columns){view->setItemDelegate(new StateDelegate(columns,view));view->setAlternatingRowColors(true);view->setIconSize(QSize(22,22));view->setTextElideMode(Qt::ElideMiddle);}
 QString indicators(Theme::Scheme scheme){
     static std::unique_ptr<QTemporaryDir> folder;
-    static QHash<int, QString> painted;
-    if (const auto found = painted.constFind(int(scheme)); found != painted.cend()) return *found;
+    static QHash<QString, QString> painted;
+    const auto key = Theme::name(scheme) + "-" + QString::number(Graphite::scaled(1000));
+    if (const auto found = painted.constFind(key); found != painted.cend()) return *found;
     if (!folder) folder = std::make_unique<QTemporaryDir>(QDir::tempPath() + "/putgd-theme-XXXXXX");
     if (!folder->isValid()) return {};
-    const auto path = folder->filePath(Theme::name(scheme));
+    const auto path = folder->filePath(key);
     QDir().mkpath(path);
     paintIndicators(path, Theme::palette(scheme));
-    painted.insert(int(scheme), path);
+    painted.insert(key, path);
     return path;
 }
 }

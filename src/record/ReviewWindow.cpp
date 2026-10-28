@@ -66,7 +66,7 @@ constexpr int compactReviewHeight = 648;
 // Compact media chrome keeps its padding on the logical grid as text grows.
 int reviewSpace(Graphite::Space value) { return static_cast<int>(value); }
 int footerInset() { return reviewSpace(Graphite::Space::l); }
-int destinationMenuPadding() { return reviewSpace(Graphite::Space::l); }
+int destinationMenuPadding() { return 6 + Graphite::scaled(8) + 2; }
 // Text controls keep at least 3 px above and below their full text line at every scale.
 int textControlHeight(const QWidget* widget) { return std::max(28, widget->fontMetrics().height() + 2 * 3); }
 int iconTarget() { return Graphite::Metric::iconTarget; }
@@ -93,7 +93,7 @@ protected:
         initStyleOption(&option);
         style()->drawPrimitive(QStyle::PE_PanelButtonTool, &option, &painter, this);
         const auto colour = isEnabled() ? Theme::current().textSecondary : Theme::current().textDisabled;
-        const int inset = reviewSpace(Graphite::Space::xs), gap = 6, chevron = 6;
+        const int inset = reviewSpace(Graphite::Space::xs), gap = 6, chevron = Graphite::scaled(6);
         const auto labelRect = rect().adjusted(inset, 0, -gap - chevron, 0);
         auto label = text();
         Graphite::paintText(painter, labelRect, label, colour, font(), Qt::AlignLeft | Qt::AlignVCenter);
@@ -281,7 +281,7 @@ protected:
         const int wrap = fontMetrics().horizontalAdvance(display) <= textRect.width() ? Qt::TextSingleLine : Qt::TextWordWrap;
         painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | wrap, display);
         const qreal textEnd = textRect.left() + std::min(fontMetrics().horizontalAdvance(display), textRect.width());
-        Graphite::paintChevron(painter, QPointF(textEnd + 6 + 4, height() / 2.0), 8, Qt::DownArrow, ink);
+        Graphite::paintChevron(painter, QPointF(textEnd + 6 + Graphite::scaled(8) / 2.0, height() / 2.0), Graphite::scaled(8), Qt::DownArrow, ink);
     }
 };
 // One boundary around each timing pair; the buttons retain their own focus and actions.
