@@ -2031,7 +2031,7 @@ void Banner::paintEvent(QPaintEvent*) {
     } else painter.drawImage(glyph, IconArt::symbol("alert", tone, std::max(1, (side + 23) / 24), tone));
 }
 QString blurWarningText() {
-    return QStringLiteral("Blur may be reversible. Use Redact for private information.");
+    return QStringLiteral("Blur may be reversible.");
 }
 QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
     auto* warning = new QWidget(parent);
@@ -2043,6 +2043,7 @@ QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
     layout->addWidget(text);
     auto* action = toolButton("Use Redact", {}, "quiet", warning);
     action->setObjectName("useRedact");
+    action->setAccessibleDescription(QStringLiteral("Blur may be reversible. Use Redact for private information."));
     action->setProperty("graphiteFlush", true);
     auto* actions = new QHBoxLayout;
     actions->setContentsMargins(text->contentsMargins().left(), 0, 0, 0);

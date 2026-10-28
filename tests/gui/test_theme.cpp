@@ -268,7 +268,7 @@ private slots:
     }
     void sharedBlurWarningInvokesTheHostsRedactAction() {
         int calls=0;std::unique_ptr<QWidget> warning(Graphite::blurWarning([&]{++calls;}));warning->resize(300,150);warning->show();putgd::test::settle(10);
-        auto* action=warning->findChild<QToolButton*>("useRedact");auto* text=warning->findChild<QLabel*>("blurWarningText");QVERIFY(action&&text);QCOMPARE(text->text(),Graphite::blurWarningText());QVERIFY(action->property("graphiteFlush").toBool());QCOMPARE(action->mapTo(warning.get(),QPoint()).x(),text->mapTo(warning.get(),QPoint(text->contentsMargins().left(),0)).x());
+        auto* action=warning->findChild<QToolButton*>("useRedact");auto* text=warning->findChild<QLabel*>("blurWarningText");QVERIFY(action&&text);QCOMPARE(text->text(),Graphite::blurWarningText());QVERIFY(!text->text().contains(action->text()));QVERIFY(action->accessibleDescription().contains(text->text()));QVERIFY(action->accessibleDescription().contains(action->text()));QVERIFY(action->property("graphiteFlush").toBool());QCOMPARE(action->mapTo(warning.get(),QPoint()).x(),text->mapTo(warning.get(),QPoint(text->contentsMargins().left(),0)).x());
         action->setFocus(Qt::TabFocusReason);QTest::keyClick(action,Qt::Key_Space);QCOMPARE(calls,1);QVERIFY(text->geometry().bottom()<action->y());
         warning->setEnabled(false);QTest::mouseClick(action,Qt::LeftButton);QCOMPARE(calls,1);
     }
