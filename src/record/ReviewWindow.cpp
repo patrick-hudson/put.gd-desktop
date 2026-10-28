@@ -110,8 +110,16 @@ public:
         setProperty("driveAction", QJsonObject{{"action", "useSolidCover"}});
         VisualStyle::role(this, "meta");
         setProperty("graphiteDensity", "compact");
-        setFixedHeight(textControlHeight(this));
+        setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     }
+    bool hasHeightForWidth() const override { return true; }
+    int heightForWidth(int width) const override {
+        const int padding = 16 + 3 * reviewSpace(Graphite::Space::xs);
+        if (fontMetrics().horizontalAdvance(text()) <= width - padding) return textControlHeight(this);
+        return std::max(textControlHeight(this), fontMetrics().boundingRect(QRect(0, 0, std::max(1, width - padding), 10000), Qt::TextWordWrap, text()).height() + reviewSpace(Graphite::Space::xs));
+    }
+    QSize sizeHint() const override { return {fontMetrics().horizontalAdvance(text()) + 16 + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)}; }
+    QSize minimumSizeHint() const override { return {fontMetrics().horizontalAdvance(QStringLiteral("reversible")) + 16 + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)}; }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
@@ -122,11 +130,14 @@ protected:
         painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Graphite::Metric::smallRadius, Graphite::Metric::smallRadius);
         const int gap = reviewSpace(Graphite::Space::xs), side = 16;
         VisualStyle::icon("alert", palette.textSecondary).paint(&painter, QRect(gap, (height() - side) / 2, side, side));
-        Graphite::paintText(painter, rect().adjusted(side + gap * 2, 0, -gap, 0), text(), palette.textSecondary, font(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
+        painter.setFont(font());
+        painter.setPen(palette.textSecondary);
+        const auto textRect = rect().adjusted(side + gap * 2, 0, -gap, 0);
+        const int wrap = fontMetrics().horizontalAdvance(text()) <= textRect.width() ? Qt::TextSingleLine : Qt::TextWordWrap;
+        painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | wrap, text());
     }
 };
-// The interval and warning are independent wrapping groups. Reserve their
-// widest content, so selecting a mask never reflows the frame under a press.
+// The interval stays in the readout column; its warning wraps among the controls.
 class MaskInterval final : public QLabel {
 public:
     explicit MaskInterval(QWidget* parent) : QLabel(parent), warning_(new BlurChip(this)) {
@@ -136,18 +147,6 @@ public:
         warning_->hide();
     }
     QToolButton* warningButton() const { return warning_; }
-    QSize sizeHint() const override { return {reservedWidth_, fontMetrics().height()}; }
-    QSize minimumSizeHint() const override { return sizeHint(); }
-    void reserve(const QStringList& intervals, bool warning) {
-        int width = fontMetrics().horizontalAdvance(QStringLiteral("—"));
-        for (const auto& interval : intervals) width = std::max(width, fontMetrics().horizontalAdvance(interval));
-        reservedWidth_ = width + reviewSpace(Graphite::Space::s);
-        setMinimumWidth(reservedWidth_);
-        warning_->setFixedWidth(warning_->fontMetrics().horizontalAdvance(warning_->text()) + 16 + 3 * reviewSpace(Graphite::Space::xs));
-        auto policy = warning_->sizePolicy();
-        policy.setRetainSizeWhenHidden(warning);
-        warning_->setSizePolicy(policy);
-    }
     void setInterval(const QString& interval, const QString& state) {
         setText(interval + (state.isEmpty() ? QString() : QStringLiteral(" · ") + state));
         setToolTip(text());
@@ -160,11 +159,11 @@ public:
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
-        Graphite::paintText(painter, rect(), text().section(QStringLiteral(" · "), 0, 0), palette().color(foregroundRole()), font(), Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
+        const bool empty = text() == QStringLiteral("No mask selected");
+        Graphite::paintText(painter, rect(), text().section(QStringLiteral(" · "), 0, 0), empty ? Theme::current().textMuted : Theme::current().text, font(), Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
     }
 private:
     BlurChip* warning_;
-    int reservedWidth_ = 0;
 };
 // Keep destination names intact. The footer moves metadata above its actions
 // before this menu's label needs to wrap; the popup retains selectable details.
@@ -218,22 +217,35 @@ protected:
 private:
     QToolButton* start_;
 };
-// The mask row: its gutter label, then groups of controls that wrap whole,
-// under the first group, when the window is too narrow or the text too large
-// for one line. Every control keeps its full size; the row grows instead.
+// Readouts own the last grid column. Continued controls use the full width
+// beneath it, so the warning wraps without squeezing either timing readout.
 class FlowRow final : public QWidget {
 public:
     static int groupGap() { return reviewSpace(Graphite::Space::xs); }
     static int lineGap() { return reviewSpace(Graphite::Space::xs); }
-    explicit FlowRow(QWidget* parent) : QWidget(parent) {}
-    void setGutter(QWidget* label, int indent) { label->setParent(this); label_ = label; indent_ = indent; relayout(); }
+    explicit FlowRow(QWidget* parent) : QWidget(parent), grid_(new QGridLayout(this)) {
+        grid_->setContentsMargins(0, 0, 0, 0);
+        grid_->setSpacing(0);
+        grid_->setColumnStretch(1, 1);
+        grid_->setColumnStretch(2, 0);
+        grid_->setRowStretch(1, 1);
+    }
+    void setGutter(QWidget* label, int indent) {
+        indent_ = indent;
+        label->setFixedWidth(indent);
+        grid_->addWidget(label, 0, 0, Qt::AlignVCenter);
+    }
+    void setReadout(QLabel* label) {
+        readout_ = label;
+        grid_->addWidget(label, 0, 2, Qt::AlignRight | Qt::AlignVCenter);
+    }
     void addGroup(QWidget* group) { group->setParent(this); group->installEventFilter(this); groups_.append(group); }
     // The height at a width; reserved also counts hidden groups that keep their size.
     int heightFor(int width, bool reserved = false) const { return arrange(width, reserved, false); }
     int singleLineWidth(bool reserved) const {
         int x = indent_;
         for (auto* group : groups_) if (shown(group, reserved)) x += widthOf(group) + groupGap();
-        return x - groupGap();
+        return x - groupGap() + readoutWidth();
     }
     // The enclosing box layout asks for the height at the width it gives.
     bool hasHeightForWidth() const override { return true; }
@@ -241,8 +253,9 @@ public:
     QSize sizeHint() const override { return {singleLineWidth(false), heightFor(width())}; }
     QSize minimumSizeHint() const override {
         int widest = 0;
-        for (auto* group : groups_) if (shown(group, true)) widest = std::max(widest, widthOf(group));
-        return {indent_ + widest, heightFor(width())};
+        for (auto* group : groups_) if (shown(group, true)) widest = std::max(widest, group->hasHeightForWidth() ? group->minimumSizeHint().width() : widthOf(group));
+        const int first = groups_.isEmpty() ? 0 : widthOf(groups_.first());
+        return {indent_ + std::max(widest, first + readoutWidth()), heightFor(width())};
     }
     void relayout() {
         // A newly shown group may still carry its previous layout minimum.
@@ -266,16 +279,19 @@ protected:
 private:
     static bool shown(QWidget* group, bool reserved) { return !group->isHidden() || (reserved && group->sizePolicy().retainSizeWhenHidden()); }
     static int widthOf(QWidget* group) { return std::max({group->sizeHint().width(), group->minimumSizeHint().width(), group->minimumWidth()}); }
-    static int heightOf(QWidget* group) { return std::min(group->maximumHeight(), std::max({group->sizeHint().height(), group->minimumHeight(), qobject_cast<QLabel*>(group) ? 28 : 0})); }
+    int readoutWidth() const { return readout_ ? readout_->width() + groupGap() : 0; }
+    static int heightOf(QWidget* group, int width) { return std::min(group->maximumHeight(), std::max(group->minimumHeight(), group->hasHeightForWidth() ? group->heightForWidth(width) : group->sizeHint().height())); }
     int arrange(int width, bool reserved, bool apply) const {
         // Wrap complete groups without compressing text or pointer targets.
         QList<QList<QPair<QWidget*, QRect>>> lines(1);
         int x = indent_;
         for (auto* group : groups_) {
             if (!shown(group, reserved) && !group->sizePolicy().retainSizeWhenHidden()) continue;
-            const int w = group == groups_.last() && qobject_cast<QLabel*>(group) ? group->minimumSizeHint().width() : widthOf(group);
-            if (x > indent_ && x + w > width) { lines.append(QList<QPair<QWidget*, QRect>>{}); x = indent_; }
-            lines.last().append({group, QRect(x, 0, w, heightOf(group))});
+            const int minimum = group->hasHeightForWidth() ? group->minimumSizeHint().width() : widthOf(group);
+            int right = width - (lines.size() == 1 ? readoutWidth() : 0);
+            if (x > indent_ && x + minimum > right) { lines.append(QList<QPair<QWidget*, QRect>>{}); x = indent_; right = width; }
+            const int w = group->hasHeightForWidth() ? std::max(minimum, std::min(widthOf(group), right - x)) : widthOf(group);
+            lines.last().append({group, QRect(x, 0, w, heightOf(group, w))});
             x += w + groupGap();
         }
         int top = 0;
@@ -283,19 +299,20 @@ private:
             int line = i == 0 ? 28 : 0;
             for (const auto& placed : lines[i]) line = std::max(line, placed.second.height());
             if (apply) {
-                if (!lines[i].isEmpty()) {
-                    auto& last = lines[i].last();
-                    if (last.first == groups_.last() && qobject_cast<QLabel*>(last.first))
-                        last.second.setWidth(std::max(last.second.width(), width - last.second.left()));
-                }
                 for (const auto& [group, rect] : lines[i]) group->setGeometry(rect.translated(0, top + (line - rect.height()) / 2));
-                if (i == 0 && label_) label_->setGeometry(0, 0, indent_ - reviewSpace(Graphite::Space::s), line);
+                if (i == 0) grid_->setRowMinimumHeight(0, line);
             }
             top += line + (i + 1 < lines.size() ? lineGap() : 0);
         }
+        if (apply) {
+            grid_->setRowMinimumHeight(1, top - grid_->rowMinimumHeight(0));
+            grid_->invalidate();
+            grid_->activate();
+        }
         return top;
     }
-    QWidget* label_ = nullptr;
+    QGridLayout* grid_;
+    QLabel* readout_ = nullptr;
     QList<QWidget*> groups_;
     int indent_ = 0;
 };
@@ -1149,9 +1166,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* trimPair = new TimingPair(trimStart_, trimEnd_, this);
     trimPair->setObjectName("trimTimingPair");
     trimFlow->addGroup(group("trimTimingControls", {trimPair, resetTrim_}));
-    VisualStyle::role(retained_, "meta");
+    VisualStyle::role(retained_, "technical");
     retained_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    trimFlow->addGroup(retained_);
+    trimFlow->setReadout(retained_);
     root->addWidget(trimGroup_);
     // Mask: the kinds to add, the mask to edit, its blur radius, its timing and
     // its interval, wrapping as whole groups when the row is too narrow.
@@ -1217,7 +1234,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(removeMask_, &QToolButton::clicked, optionsMenu, &QMenu::close);
     maskActive_ = new MaskInterval(this);
     maskActive_->setObjectName("maskActiveInterval");
-    VisualStyle::role(maskActive_, "meta");
+    VisualStyle::role(maskActive_, "technical");
     connect(static_cast<MaskInterval*>(maskActive_)->warningButton(), &QToolButton::clicked, this, [this] { drive({{"action", "useSolidCover"}}); });
     auto* flow = new FlowRow(this);
     flow->setObjectName("maskControls");
@@ -1226,8 +1243,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     timeline_->setLaneHeader(addMask_);
     maskTiming_ = new TimingPair(maskStart_, maskEnd_, this);
     maskTiming_->setObjectName("maskTimingControls");
-    for (auto* w : std::initializer_list<QWidget*>{maskTools_, maskTiming_, static_cast<MaskInterval*>(maskActive_)->warningButton(), maskActive_}) flow->addGroup(w);
+    for (auto* w : std::initializer_list<QWidget*>{maskTools_, maskTiming_, static_cast<MaskInterval*>(maskActive_)->warningButton()}) flow->addGroup(w);
     flow->setGutter(groupLabel("Mask", "maskGroup"), gutter);
+    flow->setReadout(maskActive_);
     root->addWidget(flow);
     // Playback has its own row, leaving every ruler tick readable.
     play_ = tool("play", "Play", "Play the retained part silently (Space)");
@@ -1405,6 +1423,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     frame->addWidget(footer);
     errorDetails_ = new QPushButton("Details…", this);
     errorDetails_->setObjectName("reviewErrorDetails");
+    errorDetails_->setProperty("graphiteDensity", "compact");
     errorDetails_->setProperty("driveAction", QJsonObject{{"action", "showAdvice"}});
     VisualStyle::role(errorDetails_, "quiet");
     errorDetails_->setFixedWidth(int(std::ceil(QFontMetricsF(errorDetails_->font()).horizontalAdvance(errorDetails_->text()))) + 28);
@@ -1748,14 +1767,19 @@ void ReviewWindow::refreshLabels() {
     if (mask) {
         const QString startsAt = QStringLiteral("Starts at %1").arg(timeText(mask->start));
         static_cast<MaskInterval*>(maskActive_)->setInterval(QStringLiteral("%1–%2").arg(timeText(mask->start), timeText(mask->end)), at < mask->start ? startsAt : at >= mask->end ? outside : QString());
-    } else static_cast<MaskInterval*>(maskActive_)->setInterval(QStringLiteral("—"), {});
+    } else static_cast<MaskInterval*>(maskActive_)->setInterval(QStringLiteral("No mask selected"), {});
     const bool warning = anyBlur && !blurTipDismissed_;
-    QStringList intervals;
-    for (const auto& item : edit_.masks) {
-        const auto interval = QStringLiteral("%1–%2").arg(timeText(item.start), timeText(item.end));
-        intervals << interval;
-    }
-    static_cast<MaskInterval*>(maskActive_)->reserve(intervals, anyBlur);
+    const auto maximumTime = timeText(options_.durationUs);
+    const QStringList readouts{QStringLiteral("Keep 0:00–00:00 · 000 s"),
+        retained_->text(),
+        QStringLiteral("%1–%1").arg(maximumTime), QStringLiteral("No mask selected")};
+    int readoutWidth = 0;
+    for (const auto& text : readouts) readoutWidth = std::max(readoutWidth, retained_->fontMetrics().horizontalAdvance(text));
+    for (auto* label : {retained_, maskActive_}) label->setFixedWidth(readoutWidth);
+    auto* chip = static_cast<MaskInterval*>(maskActive_)->warningButton();
+    auto chipPolicy = chip->sizePolicy();
+    chipPolicy.setRetainSizeWhenHidden(anyBlur && !blurTipDismissed_);
+    chip->setSizePolicy(chipPolicy);
     static_cast<MaskInterval*>(maskActive_)->setWarning(warning ? Graphite::blurWarningText() : QString());
     static_cast<MaskInterval*>(maskActive_)->warningButton()->setEnabled(!exporting_ && (view_->armed() == "blur" || (mask && mask->kind == "blur")));
     if (warning) blurTipShown_ = true;
@@ -1855,7 +1879,8 @@ void ReviewWindow::refreshStatus() {
         auto* band = new Graphite::Banner(tone, {}, statusRow_);
         band->setObjectName("statusLine");
         const auto margins = band->layout()->contentsMargins();
-        band->layout()->setContentsMargins(margins.left(), 4, margins.right(), 4);
+        // Full pointer targets already provide the compact band's vertical padding.
+        band->layout()->setContentsMargins(margins.left(), 0, margins.right(), 0);
         auto* line = new QWidget(band);
         auto* row = new QHBoxLayout(line);
         row->setContentsMargins(0, 0, 0, 0);
@@ -1885,6 +1910,7 @@ void ReviewWindow::refreshStatus() {
                 errorDetails_->show();
             }
             auto* button = new QPushButton(label, line);
+            button->setProperty("graphiteDensity", "compact");
             button->setObjectName(params["action"] == "useSolidCover" ? "useRedact" : "statusAction");
             VisualStyle::role(button, "label");
             if (params["action"] == "dismissStatus" || params["action"] == "dismissBlurTip") {

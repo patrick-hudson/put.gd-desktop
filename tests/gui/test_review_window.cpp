@@ -124,6 +124,61 @@ private slots:
         QVERIFY(!window.findChild<QComboBox*>("speed")->hasFrame());
         QCOMPARE(window.findChild<QToolButton*>("play")->iconSize(), QSize(Graphite::scaled(16), Graphite::scaled(16)));
     }
+    void readoutsKeepAReservedLastColumn_data() {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("standard") << 1.0;
+        QTest::newRow("150%") << 1.5;
+    }
+    void readoutsKeepAReservedLastColumn() {
+        QFETCH(double, scale);
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([&] { QApplication::setFont(original); });
+        auto font = original;
+        if (font.pointSizeF() > 0) font.setPointSizeF(font.pointSizeF() * scale);
+        else font.setPixelSize(qRound(font.pixelSize() * scale));
+        QApplication::setFont(font);
+        auto o = options(); o.durationUs = 32000000;
+        auto edit = twoMasks(); edit.trimStart = 2000000; edit.trimEnd = 29000000;
+        ReviewWindow window(o, config()); window.setEdit(edit); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.resize(1200, 720); putgd::test::settle(10);
+        auto* trim = window.findChild<QLabel*>("muted");
+        auto* interval = window.findChild<QLabel*>("maskActiveInterval");
+        for (auto* label : {trim, interval}) {
+            QCOMPARE(label->font(), Graphite::monoFont(Graphite::Type::technical));
+            QVERIFY(!label->wordWrap());
+            QVERIFY(label->width() >= label->fontMetrics().horizontalAdvance(QStringLiteral("Keep 0:00–00:00 · 000 s")));
+            auto* grid = qobject_cast<QGridLayout*>(label->parentWidget()->layout());
+            QVERIFY(grid); QCOMPARE(grid->itemAtPosition(0, 2)->widget(), label);
+            QCOMPARE(grid->columnStretch(2), 0);
+            QVERIFY(grid->itemAtPosition(0, 2)->alignment().testFlag(Qt::AlignRight));
+        }
+        QCOMPARE(trim->width(), interval->width());
+        const auto geometry = interval->geometry();
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); putgd::test::settle(10);
+            QCOMPARE(interval->text(), QString("No mask selected"));
+            QCOMPARE(interval->geometry(), geometry);
+            const auto image = interval->grab().toImage();
+            int mutedInk = 0;
+            for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x)
+                mutedInk += std::abs(image.pixelColor(x, y).red() - Theme::current().textMuted.red()) < 12
+                    && std::abs(image.pixelColor(x, y).green() - Theme::current().textMuted.green()) < 12
+                    && std::abs(image.pixelColor(x, y).blue() - Theme::current().textMuted.blue()) < 12;
+            QVERIFY(mutedInk > 0);
+            for (const auto id : {"m-blur", "m-solid"}) {
+                window.drive({{"action", "selectMask"}, {"maskId", id}}); putgd::test::settle(10);
+                QCOMPARE(interval->geometry(), geometry);
+                QVERIFY(interval->width() >= interval->fontMetrics().horizontalAdvance(interval->text().section(QStringLiteral(" · "), 0, 0)));
+            }
+        }
+        window.resize(window.minimumSizeHint()); putgd::test::settle(10);
+        auto* warning = window.findChild<QToolButton*>("reviewBlurChip");
+        QVERIFY(warning->isVisible());
+        QVERIFY(warning->height() >= warning->heightForWidth(warning->width()));
+        QCOMPARE(trim->mapTo(&window, trim->rect().topRight()).x(), interval->mapTo(&window, interval->rect().topRight()).x());
+    }
     void labelsStayInsideTheirOwnMaskCoverage() {
         FrameView frame;
         frame.setCanvas({320, 180}); frame.resize(640, 360);
@@ -308,7 +363,7 @@ private slots:
         QApplication::processEvents();
         QVERIFY(controls->isVisible());
         QVERIFY(!window.findChild<QToolButton*>("maskOptions")->isEnabled());
-        QCOMPARE(window.findChild<QLabel*>("maskActiveInterval")->text(), QString("—"));
+        QCOMPARE(window.findChild<QLabel*>("maskActiveInterval")->text(), QString("No mask selected"));
         QCOMPARE(frame->geometry(), before);
     }
     void selectingAMaskDuringAPressNeverRefitsTheFrame_data() {
@@ -336,7 +391,7 @@ private slots:
         const auto geometry = frame->geometry(), image = frame->imageRect(), row = group->geometry();
         const int comboWidth = combo->width(), intervalWidth = interval->width();
         QVERIFY(group->isVisible()); QCOMPARE(combo->currentIndex(), -1); QCOMPARE(combo->placeholderText(), QString("Select a mask"));
-        QCOMPARE(interval->text(), QString("—"));
+        QCOMPARE(interval->text(), QString("No mask selected"));
         auto* maskOptions = window.findChild<QToolButton*>("maskOptions");
         QVERIFY(!maskOptions->isEnabled()); QCOMPARE(maskOptions->toolTip(), QString("Select a mask first"));
         for (const auto id : {"m-blur", "m-solid"}) {
@@ -489,7 +544,7 @@ private slots:
         QVERIFY(chip && chip->isVisible());
         QCOMPARE(chip->text(), QString("Blur may be reversible · Use Redact"));
         QVERIFY(chip->toolTip().contains("Use Redact"));
-        QVERIFY(chip->width() >= chip->fontMetrics().horizontalAdvance(chip->text()) + 16 + 3 * int(Graphite::Space::xs));
+        QVERIFY(chip->height() >= chip->heightForWidth(chip->width()));
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QSignalSpy proposed(&window, &ReviewWindow::editProposed);
         chip->click();
@@ -1524,7 +1579,7 @@ private slots:
         QCOMPARE(label->pos(), position);
         QVERIFY(!window.findChild<FrameView*>()->isAncestorOf(label));
         QCOMPARE(label->text(), QString("0:05.0–0:20.0 · Starts at 0:05.0"));
-        QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::font(Graphite::Type::metadata)).family());
+        QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont(Graphite::Type::technical)).family());
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
         QVERIFY(window.inspect()["playbackStatus"].toString().contains("Outside kept part"));
