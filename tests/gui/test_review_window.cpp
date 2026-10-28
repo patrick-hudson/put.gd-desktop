@@ -1515,6 +1515,14 @@ private slots:
             QVERIFY2(label->height() >= required, qPrintable(QString("%1: %2 < %3").arg(state).arg(label->height()).arg(required)));
             QVERIFY(bar.rect().contains(QRect(label->mapTo(&bar, QPoint()), label->size())));
             if (!label->wordWrap()) QVERIFY(label->width() >= label->fontMetrics().horizontalAdvance(label->text()));
+            if (label == target && bar.twoRows()) {
+                auto* choices = target->parentWidget();
+                const int room = std::max(screenWidth * 3 / 4 - 2 * Graphite::space(Graphite::Space::m), bar.layout()->itemAt(0)->layout()->sizeHint().width());
+                int required = target->fontMetrics().horizontalAdvance(target->text()) + Graphite::space(Graphite::Space::xs);
+                for (int i = 0; i < choices->layout()->count(); ++i)
+                    if (auto* widget = choices->layout()->itemAt(i)->widget(); widget && widget != target && !widget->isHidden()) required += widget->sizeHint().width() + Graphite::space(Graphite::Space::s);
+                if (required <= room) QVERIFY(target->width() >= target->fontMetrics().horizontalAdvance(target->text()));
+            }
             // A later fit must measure the unwrapped text again.
             bar.fitTo(QRect(0, 0, screenWidth, 768)); QApplication::processEvents();
             QVERIFY(label->height() >= (label->wordWrap() ? label->heightForWidth(label->width()) : label->fontMetrics().height()));

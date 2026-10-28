@@ -503,7 +503,7 @@ void ControlBar::refresh() {
     adjustSize();
     if (!handle && fitWidth_ > 0 && sizeHint().width() > fitWidth_ * 3 / 4) {
         arrange(true);
-        const int room = std::max(1, fitWidth_ * 3 / 4 - 2 * Graphite::space(Graphite::Space::m));
+        const int room = std::max({1, fitWidth_ * 3 / 4 - 2 * Graphite::space(Graphite::Space::m), top_->sizeHint().width()});
         int other = 0;
         for (auto* widget : std::initializer_list<QWidget*>{audio_, format_, formatAudio_})
             if (!widget->isHidden()) other += widget->sizeHint().width() + Graphite::space(Graphite::Space::s);
