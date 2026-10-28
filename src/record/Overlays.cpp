@@ -427,6 +427,7 @@ void ControlBar::arrange(bool twoRows) {
 void ControlBar::fitTo(const QRect& screen) {
     // Two rows when one would take most of the screen's width: a 150% text
     // size on a 1366 px laptop, or a narrow portrait monitor.
+    target_->setWordWrap(false);
     target_->setMinimumHeight(0);
     target_->setMinimumWidth(0);
     target_->setMaximumWidth(QWIDGETSIZE_MAX);
@@ -443,6 +444,7 @@ void ControlBar::fitTo(const QRect& screen) {
         const int natural = target_->fontMetrics().horizontalAdvance(options_.targetLabel) + padding;
         const int minimum = qMin(natural, target_->fontMetrics().horizontalAdvance(options_.targetLabel.section(QStringLiteral(" · "), -1)) + padding);
         const int width = qBound(minimum, room - other, natural);
+        target_->setWordWrap(true);
         target_->setFixedWidth(width);
         target_->setMinimumHeight(target_->heightForWidth(width));
         lockedFacts_->setWordWrap(true);
