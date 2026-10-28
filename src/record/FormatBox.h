@@ -23,7 +23,7 @@ public:
     }
     QSize sizeHint(const QStyleOptionViewItem&, const QModelIndex& index) const override {
         const QFontMetrics title(Graphite::font()), description(Graphite::font(Graphite::Type::metadata));
-        return {std::max(title.horizontalAdvance(index.data().toString()), description.horizontalAdvance(tradeoff(index))) + 2 * Graphite::space(Graphite::Space::m), title.height() + description.height() + Graphite::space(Graphite::Space::xs) + 2 * Graphite::space(Graphite::Space::s)};
+        return {std::max(title.horizontalAdvance(index.data().toString().section(QStringLiteral(" · "), 0, 0)), description.horizontalAdvance(tradeoff(index))) + 2 * Graphite::space(Graphite::Space::m), title.height() + description.height() + Graphite::space(Graphite::Space::xs) + 2 * Graphite::space(Graphite::Space::s)};
     }
     void paint(QPainter* painter, const QStyleOptionViewItem& base, const QModelIndex& index) const override {
         auto option = base; initStyleOption(&option, index); option.text.clear();
@@ -32,7 +32,7 @@ public:
         const auto& colors = Theme::current();
         const auto area = option.rect.adjusted(Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s), -Graphite::space(Graphite::Space::m), -Graphite::space(Graphite::Space::s));
         const int titleHeight = QFontMetrics(Graphite::font()).height();
-        Graphite::paintText(*painter, QRect(area.left(), area.top(), area.width(), titleHeight), index.data().toString(), colors.text, Graphite::font(), Qt::AlignLeft | Qt::AlignVCenter);
+        Graphite::paintText(*painter, QRect(area.left(), area.top(), area.width(), titleHeight), index.data().toString().section(QStringLiteral(" · "), 0, 0), colors.text, Graphite::font(), Qt::AlignLeft | Qt::AlignVCenter);
         Graphite::paintText(*painter, QRect(area.left(), area.top() + titleHeight + Graphite::space(Graphite::Space::xs), area.width(), QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()), tradeoff(index), colors.textSecondary, Graphite::font(Graphite::Type::metadata), Qt::AlignLeft | Qt::AlignVCenter);
     }
 };
