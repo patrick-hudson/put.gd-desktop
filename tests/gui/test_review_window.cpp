@@ -115,6 +115,7 @@ private slots:
         auto* interval = window.findChild<QLabel*>("maskActiveInterval");
         QCOMPARE(trim->mapTo(&window, trim->rect().topRight()).x(), interval->mapTo(&window, interval->rect().topRight()).x());
         QCOMPARE(window.findChild<QLabel*>("brandName")->text(), QString("Review recording"));
+        QCOMPARE(window.findChild<QLabel*>("brandName")->toolTip(), QString("Review recording"));
         auto* status = window.findChild<QLabel*>("playbackStatus");
         QVERIFY(window.findChild<QWidget*>("reviewTransport")->isAncestorOf(status));
         const auto geometry = window.geometry(); const auto statusGeometry = status->geometry();

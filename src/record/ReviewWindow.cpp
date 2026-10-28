@@ -1037,7 +1037,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     frame->setSpacing(0);
     // A one-line title and upload state preserve the frame area.
     header_ = Graphite::WindowHeader::install(this, frame, nullptr, Graphite::WindowHeader::Density::Compact);
-    header_->findChild<QLabel*>("brandName")->setText(QStringLiteral("Review recording"));
+    header_->findChild<Graphite::ElidedLabel*>("brandName")->setText(QStringLiteral("Review recording"));
     // Why the capture ended when it stopped itself (#225); hidden otherwise.
     auto* banner = new QVBoxLayout;
     banner->setContentsMargins(reviewSpace(Graphite::Space::l), 0, reviewSpace(Graphite::Space::l), 0);
