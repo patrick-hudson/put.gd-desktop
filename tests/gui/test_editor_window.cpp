@@ -170,11 +170,11 @@ private slots:
  }
  void propertiesSplitterKeepsTheChosenWidthAcrossToolsAndResizes(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1180,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  auto* splitter=window.findChild<QSplitter*>("editorSplitter");auto* side=window.findChild<QWidget*>("editorSide");QVERIFY(splitter&&side);QCOMPARE(side->width(),Graphite::scaled(260));
+  auto* splitter=window.findChild<QSplitter*>("editorSplitter");auto* side=window.findChild<QWidget*>("editorSide");QVERIFY(splitter&&side);QCOMPARE(side->width(),std::max(240,Graphite::scaled(180)));QCOMPARE(splitter->handleWidth(),1);
   // A real handle drag and an agent command change the same bounded panel.
   auto* handle=splitter->handle(1);const auto press=handle->rect().center();const auto global=handle->mapToGlobal(press);
-  QTest::mousePress(handle,Qt::LeftButton,{},press);QMouseEvent move(QEvent::MouseMove,QPointF(press+QPoint(30,0)),QPointF(global+QPoint(30,0)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(handle,&move);QTest::mouseRelease(handle,Qt::LeftButton,{},press);
-  QVERIFY(side->width()<Graphite::scaled(260));
+  QTest::mousePress(handle,Qt::LeftButton,{},press);QMouseEvent move(QEvent::MouseMove,QPointF(press+QPoint(-30,0)),QPointF(global+QPoint(-30,0)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(handle,&move);QTest::mouseRelease(handle,Qt::LeftButton,{},press);
+  QVERIFY(side->width()>240);
   QString code,message;auto state=window.viewCommand({{"action","propertiesWidth"},{"pixels",240}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));QCOMPARE(state["propertiesWidth"].toInt(),240);
   const auto canvas=window.canvas().geometry();
   for(const auto tool:{Tool::Blur,Tool::Crop,Tool::Text,Tool::Select,Tool::Arrow}){window.selectTool(tool);QApplication::processEvents();QCOMPARE(side->width(),240);QCOMPARE(window.canvas().geometry(),canvas);}
@@ -517,7 +517,7 @@ private slots:
   QVERIFY(zoom->text().startsWith("Fit · ")||QRegularExpression("^\\d+%$").match(zoom->text()).hasMatch());QCOMPARE(zoom->accessibleName(),QString("Zoom"));
   auto* info=window.findChild<QLabel*>("editorDocumentInfo");QVERIFY(info);QVERIFY(info->text().contains("400 × 260 px"));
   for(auto* label:window.findChildren<QLabel*>())if(label!=info)QVERIFY2(!label->text().contains("400 × 260"),qPrintable(label->objectName()));
-  QVERIFY(!window.findChild<QScrollArea*>("editorPropertiesScroll")->isAncestorOf(info));
+  QVERIFY(window.findChild<QWidget*>("editorFooter")->isAncestorOf(info));
   // Every colour target is at least 32 px; the painted swatch stays inside it.
   window.selectTool(Tool::Arrow);int swatches=0;
   for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName().startsWith("Color ")||button->objectName()=="customColor"){++swatches;QVERIFY(button->width()>=Graphite::scaled(32)&&button->height()>=Graphite::scaled(32));}
@@ -794,14 +794,15 @@ private slots:
   QVERIFY(doc.undo());window.documentEdited();window.canvas().select(original.id);window.setBusy("Preparing…");QVERIFY(!remove->isEnabled());
   code.clear();window.viewCommand({{"action","removeMark"}},code,message);QCOMPARE(code,QString("editor_finalizing"));QCOMPARE(doc.shapes().size(),1);
  }
- void shortBodyScrollsDocumentAndKeepsExportAndRecoveryVisible(){
+ void shortBodyKeepsDocumentMetadataAndRecoveryInTheFooter(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Private upload to Production screenshots for customer support (EU)");window.resize(1000,1100);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* scroll=window.findChild<QScrollArea*>("editorPropertiesScroll");auto* document=window.findChild<QWidget*>("editorDocument");QVERIFY(scroll&&document);
   PUTGD_TRY_VERIFY(!scroll->isAncestorOf(document));
   window.showSaveFailed("/synthetic/copy.png","Permission denied");window.resize(900,620);
   const QString reason="The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.";
-  window.showPreparationFailed(reason);PUTGD_TRY_VERIFY(scroll->isAncestorOf(document));
-  // Document reparenting finishes before its viewport can be measured.
+  window.showPreparationFailed(reason);PUTGD_TRY_VERIFY(!scroll->isAncestorOf(document));
+  QVERIFY(window.findChild<QWidget*>("editorFooter")->isAncestorOf(document));
+  // Properties retain a useful viewport while recovery stays reachable.
   PUTGD_TRY_VERIFY(scroll->viewport()->height()>=Graphite::scaled(180));
   auto* label=window.findChild<QLabel*>("editorPreparationReason");QCOMPARE(label->text(),reason);QVERIFY(label->height()>=label->heightForWidth(label->width()));
   const auto footer=window.findChild<QWidget*>("editorFooter");

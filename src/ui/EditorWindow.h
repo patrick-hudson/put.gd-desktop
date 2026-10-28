@@ -126,9 +126,9 @@ private:
  bool syncingGeometry_=false;
  Graphite::WindowHeader* header_=nullptr;
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr,*remove_=nullptr;
- QSplitter* splitter_=nullptr;int propertiesWidth_=260;
+ QSplitter* splitter_=nullptr;int propertiesWidth_=240;
  QWidget *canvasViewport_=nullptr,*side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;
- QVBoxLayout *properties_=nullptr,*sideLayout_=nullptr;bool documentScrolling_=false;
+ QVBoxLayout *properties_=nullptr,*sideLayout_=nullptr;
  // Feedback overlays the canvas without changing its geometry or zoom.
  Graphite::Banner* saveFeedback_=nullptr;QTimer* saveFeedbackTimer_=nullptr;bool saveFeedbackVisible_=false;
  QWidget* notice_=nullptr;QGridLayout* footerGrid_=nullptr;
