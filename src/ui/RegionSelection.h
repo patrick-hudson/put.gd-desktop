@@ -1,5 +1,6 @@
 #pragma once
 #include "platform/Geometry.h"
+#include "Graphite.h"
 #include <cmath>
 #include <QAccessible>
 #include <QGuiApplication>
@@ -143,47 +144,50 @@ inline void describeRegion(QWidget* surface, const QRectF& selection, bool recor
     QAccessible::updateAccessibility(&changed);
 }
 inline QRect regionInstructionBox(const QRect& bounds, const QFontMetrics& metrics, const QString& instructions = regionInstructions(), const QRectF& selection = {}, const std::optional<QPointF>& pointer = {}, const QFont& font = nativeRegionFont()) {
-    const QRect available = bounds.adjusted(16, 16, -16, -16);
-    if (available.width() <= 20 || available.height() <= 12) return {};
+    const int margin = Graphite::space(Graphite::Space::l);
+    const int horizontal = 2 * Graphite::space(Graphite::Space::m), vertical = 2 * Graphite::space(Graphite::Space::s);
+    const QRect available = bounds.adjusted(margin, margin, -margin, -margin);
+    if (available.width() <= horizontal || available.height() <= vertical) return {};
     auto strong = font;
     strong.setWeight(QFont::DemiBold);
     const QFontMetrics titleMetrics(strong);
     const auto lines = instructions.split('\n');
     int naturalWidth = 0;
     for (int i = 0; i < lines.size(); ++i) naturalWidth = std::max(naturalWidth, (i == 0 ? titleMetrics : metrics).horizontalAdvance(lines[i]));
-    const int width = std::min(available.width(), naturalWidth + 20);
+    const int width = std::min(available.width(), naturalWidth + horizontal);
     int textHeight = 0;
     for (int i = 0; i < lines.size(); ++i)
-        textHeight += (i == 0 ? titleMetrics : metrics).boundingRect(QRect(0, 0, width - 20, available.height()), Qt::TextWordWrap | Qt::AlignCenter, lines[i]).height();
-    const int height = std::min(available.height(), textHeight + 12);
+        textHeight += (i == 0 ? titleMetrics : metrics).boundingRect(QRect(0, 0, width - horizontal, available.height()), Qt::TextWordWrap | Qt::AlignCenter, lines[i]).height();
+    const int height = std::min(available.height(), textHeight + vertical);
     const QRect top(available.left() + (available.width() - width) / 2, available.top(), width, height);
     const QRect bottom(top.x(), available.bottom() - height + 1, width, height);
     // Prefer clear content; near the drag pointer, avoid covering its next move.
     auto score = [&](const QRect& box) {
         const auto overlap = QRectF(box).intersected(selection);
-        return overlap.width() * overlap.height() + (pointer && QRectF(box).adjusted(-24, -24, 24, 24).contains(*pointer) ? qreal(bounds.width()) * bounds.height() : 0);
+        return overlap.width() * overlap.height() + (pointer && QRectF(box).adjusted(-Graphite::space(Graphite::Space::xxl), -Graphite::space(Graphite::Space::xxl), Graphite::space(Graphite::Space::xxl), Graphite::space(Graphite::Space::xxl)).contains(*pointer) ? qreal(bounds.width()) * bounds.height() : 0);
     };
     return score(bottom) < score(top) ? bottom : top;
 }
 // An opaque, outlined backdrop stays legible over a live desktop in either theme.
-inline void paintRegionInstructions(QPainter& painter, const QRect& bounds, const QPalette& palette, const QString& instructions = regionInstructions(), const QRectF& selection = {}, const std::optional<QPointF>& pointer = {}) {
+inline void paintRegionInstructions(QPainter& painter, const QRect& bounds, const QPalette&, const QString& instructions = regionInstructions(), const QRectF& selection = {}, const std::optional<QPointF>& pointer = {}) {
     const QRect box = regionInstructionBox(bounds, painter.fontMetrics(), instructions, selection, pointer, painter.font());
     if (box.isEmpty()) return;
     painter.save();
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setBrush(palette.color(QPalette::Window));
-    painter.setPen(QPen(palette.color(QPalette::WindowText), 1));
-    painter.drawRoundedRect(box.adjusted(0, 0, -1, -1), 6, 6);
+    const auto& colors = Theme::current();
+    painter.setBrush(colors.surfaceRaised);
+    painter.setPen(QPen(colors.borderStrong, 1));
+    painter.drawRoundedRect(box.adjusted(0, 0, -1, -1), Graphite::scaled(Graphite::Metric::radius), Graphite::scaled(Graphite::Metric::radius));
     const auto base = painter.font();
     const auto lines = instructions.split('\n');
-    int top = box.top() + 6;
+    const int horizontal = Graphite::space(Graphite::Space::m), vertical = Graphite::space(Graphite::Space::s);
+    int top = box.top() + vertical;
     for (int i = 0; i < lines.size(); ++i) {
         auto font = base;
         font.setWeight(i == 0 ? QFont::DemiBold : QFont::Normal);
         painter.setFont(font);
-        const auto ink = palette.color(QPalette::WindowText), background = palette.color(QPalette::Window);
-        painter.setPen(i == 0 ? ink : QColor((ink.red() * 4 + background.red()) / 5, (ink.green() * 4 + background.green()) / 5, (ink.blue() * 4 + background.blue()) / 5));
-        const QRect area(box.left() + 10, top, box.width() - 20, box.bottom() - top - 5);
+        painter.setPen(i == 0 ? colors.text : colors.textSecondary);
+        const QRect area(box.left() + horizontal, top, box.width() - 2 * horizontal, box.bottom() - top - vertical + 1);
         const int height = QFontMetrics(font).boundingRect(area, Qt::TextWordWrap | Qt::AlignCenter, lines[i]).height();
         painter.drawText(QRect(area.left(), top, area.width(), height), Qt::TextWordWrap | Qt::AlignCenter, lines[i]);
         top += height;

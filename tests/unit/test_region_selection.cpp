@@ -4,6 +4,19 @@ using namespace putgd;
 class RegionSelectionTest final:public QObject {
  Q_OBJECT
 private slots:
+ void instructionCardUsesThemeAndScaledInsets(){
+  const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});
+  for(int pixels:{14,21})for(auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+   auto font=original;font.setPixelSize(pixels);qApp->setFont(font);Theme::setScheme(scheme);
+   const QRect bounds(0,0,800,600);const QString text="Capture region\nDrag to choose";const auto box=regionInstructionBox(bounds,QFontMetrics(font),text,{}, {},font);
+   QCOMPARE(box.top(),Graphite::space(Graphite::Space::l));
+   QImage image(bounds.size(),QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);QPainter painter(&image);painter.setFont(font);
+   QPalette unrelated;unrelated.setColor(QPalette::Window,Qt::magenta);unrelated.setColor(QPalette::WindowText,Qt::green);paintRegionInstructions(painter,bounds,unrelated,text);painter.end();
+   QCOMPARE(image.pixelColor(box.center().x(),box.top()+2),Theme::current().surfaceRaised);
+   QVERIFY(Theme::contrast(Theme::current().text,Theme::current().surfaceRaised)>=4.5);
+   QVERIFY(Theme::contrast(Theme::current().textSecondary,Theme::current().surfaceRaised)>=4.5);
+  }
+ }
  void badgeAvoidsSelectionAndDragPointer(){
   const QRect bounds(0,0,800,600);const QFontMetrics metrics(QFont{});const auto text=regionInstructions({},true);
   const auto top=regionInstructionBox(bounds,metrics,text);QVERIFY(top.top()<100);
@@ -47,7 +60,7 @@ private slots:
   const auto shortText=regionInstructions({},false,{},bounds,{},false,"Uploads immediately to Team Drive · Shared link");
   const auto longText=regionInstructions({},false,{},bounds,{},false,"Uploads immediately to Team Drive for the quarterly release readiness review and accessibility notes · Private upload");
   const auto shortBox=regionInstructionBox(bounds,metrics,shortText,{}, {},font),longBox=regionInstructionBox(bounds,metrics,longText,{}, {},font);
-  QVERIFY(bounds.adjusted(16,16,-16,-16).contains(longBox));QVERIFY(longBox.height()>shortBox.height());
+  const int margin=Graphite::space(Graphite::Space::l);QVERIFY(bounds.adjusted(margin,margin,-margin,-margin).contains(longBox));QVERIFY(longBox.height()>shortBox.height());
 
  }
  void hintsReflectActionAndState(){
