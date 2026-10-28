@@ -783,13 +783,6 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         const auto* tool = qstyleoption_cast<const QStyleOptionToolButton*>(option);
         if (!tool) break;
         const auto name = role(widget);
-        if (widget && widget->property("preferenceAddRow").toBool()) {
-            const auto body = option->rect.adjusted(space(Space::l), 0, -space(Space::l), 0);
-            paintText(*p, body.adjusted(0, 0, -tool->iconSize.width() - space(Space::s), 0), tool->text, tool->state & State_Enabled ? c.textSecondary : c.textDisabled, font(), Qt::AlignLeft | Qt::AlignVCenter);
-            tool->icon.paint(p, QRect(body.right() + 1 - tool->iconSize.width(), body.center().y() - tool->iconSize.height() / 2, tool->iconSize.width(), tool->iconSize.height()), Qt::AlignCenter, tool->state & State_Enabled ? QIcon::Normal : QIcon::Disabled);
-            if (keyboardState(option)) rounded(p, QRectF(option->rect).adjusted(1, 1, -1, -1), {}, c.accent, Metric::containerRadius);
-            return;
-        }
         const bool split = tool->features & QStyleOptionToolButton::MenuButtonPopup;
         const bool menu = (tool->features & QStyleOptionToolButton::HasMenu) && !split && !(widget && widget->property("noChevron").toBool());
         const bool text = !tool->text.isEmpty() && tool->toolButtonStyle != Qt::ToolButtonIconOnly;
@@ -1514,6 +1507,13 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
             paintText(*p, body.adjusted(0, 0, -scaled(24), 0), tool->text, tool->state & State_Enabled ? c.text : c.textDisabled, font(), Qt::AlignLeft | Qt::AlignVCenter);
             const QRect icon(body.right() + 1 - tool->iconSize.width(), body.center().y() - tool->iconSize.height() / 2, tool->iconSize.width(), tool->iconSize.height());
             tool->icon.paint(p, icon, Qt::AlignCenter, tool->state & State_Enabled ? QIcon::Normal : QIcon::Disabled);
+            if (keyboardState(option)) rounded(p, QRectF(option->rect).adjusted(1, 1, -1, -1), {}, c.accent, Metric::containerRadius);
+            return;
+        }
+        if (widget && widget->property("preferenceAddRow").toBool()) {
+            const auto body = option->rect.adjusted(space(Space::l), 0, -space(Space::l), 0);
+            paintText(*p, body.adjusted(0, 0, -tool->iconSize.width() - space(Space::s), 0), tool->text, tool->state & State_Enabled ? c.textSecondary : c.textDisabled, font(), Qt::AlignLeft | Qt::AlignVCenter);
+            tool->icon.paint(p, QRect(body.right() + 1 - tool->iconSize.width(), body.center().y() - tool->iconSize.height() / 2, tool->iconSize.width(), tool->iconSize.height()), Qt::AlignCenter, tool->state & State_Enabled ? QIcon::Normal : QIcon::Disabled);
             if (keyboardState(option)) rounded(p, QRectF(option->rect).adjusted(1, 1, -1, -1), {}, c.accent, Metric::containerRadius);
             return;
         }
