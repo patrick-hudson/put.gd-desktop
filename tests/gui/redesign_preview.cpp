@@ -59,6 +59,7 @@
 #include <QWindow>
 #ifdef PUTGD_PREVIEW_REVIEW
 #include "record/ReviewWindow.h"
+#include "fixtures/ReviewLayout.h"
 #include "ui/RegionOverlay.h"
 #include "record/Overlays.h"
 #endif
@@ -406,7 +407,7 @@ int main(int argc,char** argv){
   record::ReviewWindow review(o,config);review.resize(record::ReviewWindow::defaultSize());review.show();
   if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
   RecordingEdit edit;edit.revision=1;RecordingMask solid;solid.id="m-solid";solid.kind="solid";solid.rect=QRect(61,194,256,40);solid.start=8000000;solid.end=21000000;RecordingMask blur=solid;blur.id="m-blur";blur.kind="blur";blur.rect=QRect(337,194,256,130);blur.start=3000000;blur.end=12000000;edit.masks={solid,blur};edit.trimStart=2000000;edit.trimEnd=29000000;review.setEdit(edit);
-  auto shot=[&](QWidget& w,const QString& name){if(auto* r=qobject_cast<record::ReviewWindow*>(&w))if(auto* view=r->findChild<record::FrameView*>();view&&view->previewError().isEmpty())view->setFrame(syntheticCapture(2),qint64(r->inspect()["playheadUs"].toDouble()));putgd::test::settle(450);app.processEvents();if(!checkSteppers(w))return false;const auto image=w.grab();if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+  auto shot=[&](QWidget& w,const QString& name){if(auto* r=qobject_cast<record::ReviewWindow*>(&w))if(auto* view=r->findChild<record::FrameView*>();view&&view->previewError().isEmpty())view->setFrame(syntheticCapture(2),qint64(r->inspect()["playheadUs"].toDouble()));putgd::test::settle(450);app.processEvents();if(auto* r=qobject_cast<record::ReviewWindow*>(&w)){const auto problem=putgd::test::reviewFooterProblem(*r);if(!problem.isEmpty()){qCritical()<<name<<problem;w.grab().save(QDir(output).filePath(name+"-failed.png"));return false;}}if(!checkSteppers(w))return false;const auto image=w.grab();if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
   // Each review state also keeps the window's own geometry (header, frame share).
   auto inspected=[&](record::ReviewWindow& r,const QString& name){QSaveFile f(QDir(output).filePath(name+".json"));return f.open(QIODevice::WriteOnly)&&f.write(QJsonDocument(r.inspect()).toJson())>0&&f.commit();};
   review.drive({{"action","selectMask"},{"maskId","m-solid"}});

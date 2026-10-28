@@ -41,6 +41,7 @@
 #include <tuple>
 #include <cmath>
 #include "fixtures/Waits.h"
+#include "fixtures/ReviewLayout.h"
 using namespace putgd;
 using namespace putgd::record;
 
@@ -858,6 +859,7 @@ private slots:
             window.resize(width, 720);
             for (int i = 0; i < 3; ++i) QApplication::processEvents();
             QCOMPARE(grid->property("singleRow").toBool(), width == 1366);
+            QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
             QVERIFY(output->text().contains("Shared link"));
             QVERIFY(output->toolTip().contains(options().destination));
             QCOMPARE(save->text(), QString("Save a copy…"));
@@ -906,6 +908,7 @@ private slots:
             QCOMPARE(menu, output->menu());
             const bool inHeader = width == 1600;
             QCOMPARE(output->property("headerSummary").toBool(), inHeader);
+            QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
             QCOMPARE(header->isAncestorOf(output), inHeader);
             QCOMPARE(header->isAncestorOf(draft), inHeader);
             QCOMPARE(header->isAncestorOf(audio), inHeader);
@@ -1692,10 +1695,12 @@ private slots:
             else QVERIFY(transport->mapTo(&window, transport->rect().bottomLeft()).y() < window.findChild<FrameView*>()->y());
             QVERIFY(window.height() <= 720 && window.width() <= 1342);
             const auto steady = window.inspect()["video"].toObject()["share"].toDouble();
+            QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
             QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
             window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
             QApplication::processEvents();
             const auto transient = window.inspect()["video"].toObject()["share"].toDouble();
+            QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
             qInfo("review %dx%d text %.1f %s window %dx%d steady %.3f transient %.3f", canvas.width(), canvas.height(), scale, qPrintable(Theme::name(theme)), window.width(), window.height(), steady, transient);
             for (auto* label : window.findChild<QWidget*>("statusRow")->findChildren<QLabel*>("status")) if (label->isVisible())
                 qInfo("blur copy %d px in %d px; status %d px, frame %d px, window %dx%d", label->fontMetrics().horizontalAdvance(label->text()), label->contentsRect().width(), window.findChild<QWidget*>("statusRow")->height(), window.findChild<FrameView*>()->height(), window.width(), window.height());
@@ -1707,6 +1712,7 @@ private slots:
             window.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
             PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Disk is full. Free up space, then try again."));
             qInfo("visible recovery frame share %.3f at %dx%d", window.inspect()["video"].toObject()["share"].toDouble(), window.width(), window.height());
+            QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
             qInfo("recovery status %d px, frame %d px", window.findChild<QWidget*>("statusRow")->height(), window.findChild<FrameView*>()->height());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             window.resize(ReviewWindow::defaultSize());

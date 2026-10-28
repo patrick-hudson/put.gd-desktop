@@ -1,0 +1,52 @@
+#pragma once
+#include "record/ReviewWindow.h"
+#include "ui/Graphite.h"
+#include <QLabel>
+#include <QLayout>
+#include <QToolButton>
+#include <algorithm>
+
+namespace putgd::test {
+// Shared by the widget gates and every rendered review state, including failures.
+inline QString reviewFooterProblem(record::ReviewWindow& window) {
+    const auto bounds = [&](QWidget* widget) {
+        const auto content = widget->layout() ? widget->layout()->contentsRect() : widget->rect();
+        return content.translated(widget->mapTo(&window, QPoint()));
+    };
+    auto* footer = window.findChild<QWidget*>("reviewFooter");
+    auto* actions = window.findChild<QWidget*>("reviewActions");
+    if (!footer || !actions) return "Review footer is missing";
+    const int inset = window.height() - bounds(actions).bottom() - 1;
+    if (inset < 8) return QString("Review footer bottom inset is %1 px, expected at least 8").arg(inset);
+    QList<QPair<QString, QRect>> rows;
+    for (const auto* name : {"trimControls", "maskControls", "statusRow", "reviewDestinationLine", "reviewMetadataLine", "reviewActionLine"}) {
+        auto* row = window.findChild<QWidget*>(name);
+        if (row && row->isVisibleTo(&window)) rows.append({QString::fromLatin1(name), bounds(row)});
+    }
+    if (actions->layout()->property("singleRow").toBool()) rows.append({QStringLiteral("reviewActions"), bounds(actions)});
+    std::sort(rows.begin(), rows.end(), [](const auto& a, const auto& b) { return a.second.top() < b.second.top(); });
+    for (int i = 1; i < rows.size(); ++i) {
+        const int gap = rows[i].second.top() - rows[i - 1].second.bottom() - 1;
+        if (gap < 4) return QString("Review rows %1 and %2 are %3 px apart, expected at least 4")
+            .arg(rows[i - 1].first, rows[i].first).arg(gap);
+    }
+    auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
+    const auto state = window.inspect();
+    if (state["uploadSummary"].toString().isEmpty()) return {};
+    if (!output || !output->isVisibleTo(&window) || !output->menu()
+        || !window.rect().contains(QRect(output->mapTo(&window, QPoint()), output->size()))) return "Destination menu is not visible and reachable";
+    const auto destination = state["destination"].toString();
+    const auto mode = state["sharingMode"].toString() == "private" ? QStringLiteral("Private upload") : QStringLiteral("Shared link");
+    if (!output->toolTip().contains(destination) || !output->accessibleDescription().contains(destination)) return "Full destination is missing from tooltip or accessibility description";
+    const bool header = output->property("headerSummary").toBool();
+    const auto display = header ? output->property("sharingSuffix").toString()
+        : output->property("displayText").isValid() ? output->property("displayText").toString() : output->text();
+    const int textWidth = output->width() - int(Graphite::Space::l);
+    if (!display.contains(mode) || textWidth < output->fontMetrics().horizontalAdvance(header ? QStringLiteral("…") + display : mode)
+        || (!header && output->fontMetrics().horizontalAdvance(display) > textWidth
+            && output->height() < output->fontMetrics().boundingRect(QRect(0, 0, std::max(1, textWidth), 10000), Qt::TextWordWrap, display).height()))
+        return QString("Sharing mode is not fully visible: '%1' in %2x%3 px (font %4 px, mode %5 px, header %6)")
+            .arg(display).arg(output->width()).arg(output->height()).arg(output->fontMetrics().height()).arg(output->fontMetrics().horizontalAdvance(mode)).arg(header);
+    return {};
+}
+}
