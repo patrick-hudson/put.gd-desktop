@@ -1595,6 +1595,11 @@ private slots:
             const int side = std::min(bar.height() - 2, Graphite::scaled(14));
             QVERIFY(contrastIn(QRect(bar.left() + 4, bar.center().y() - side / 2, side, side)) >= 4.5);
             QVERIFY(contrastIn(QRect(bar.right() - 40, bar.bottom() - 4, 24, 2)) >= 3.0);
+            t.setMasks({mask("solid", "solid", 2000000, 10000000)}, "solid");
+            const auto solid = t.maskRect("solid");
+            const auto selected = t.grab().toImage();
+            const auto selectedFill = selected.pixelColor(solid.right() - 20, solid.center().y());
+            QVERIFY(Theme::contrast(colors.text, selectedFill) >= 4.5);
         }
     }
     void timelineTargetsAre32PixelsAndNearestHandleWins_data() {

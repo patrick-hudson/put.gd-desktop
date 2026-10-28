@@ -954,7 +954,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         painter.drawRoundedRect(bar, Graphite::Metric::smallRadius, Graphite::Metric::smallRadius);
         // The kind at lane size: a blur is hatched, a solid cover filled.
         QColor ink = selected ? p.accent : p.textSecondary;
-        ink.setAlpha(mask.kind == "solid" ? 120 : 200);
+        ink.setAlpha(mask.kind == "solid" ? 105 : 200);
         painter.setPen(Qt::NoPen);
         painter.setBrush(mask.kind == "solid" ? QBrush(ink) : QBrush(ink, Qt::BDiagPattern));
         const auto fill = bar.adjusted(1.5, 1.5, -1.5, -1.5);
