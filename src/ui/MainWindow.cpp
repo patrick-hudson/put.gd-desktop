@@ -35,6 +35,7 @@
 #include <QTabWidget>
 #include <QStatusBar>
 #include <QTimer>
+#include <QtMath>
 #include "platform/HostOpen.h"
 #include "core/ReleaseLink.h"
 namespace putgd {
@@ -56,6 +57,13 @@ public:
 protected:
  void changeEvent(QEvent* event)override{QToolButton::changeEvent(event);if(event->type()==QEvent::FontChange)setMinimumHeight(qMax(32,fontMetrics().height()+4));}
  void keyPressEvent(QKeyEvent* event)override{if(menu()&&(event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter)){menu()->popup(mapToGlobal(QPoint(0,-menu()->sizeHint().height())));event->accept();return;}QToolButton::keyPressEvent(event);}
+};
+class StatusLink final:public QPushButton {
+public:
+ using QPushButton::QPushButton;
+ // Graphite's version links paint 4 px insets and an 8 px icon/text gap.
+ QSize sizeHint()const override{auto size=QPushButton::sizeHint();size.setWidth(qMax(size.width(),qCeil(QFontMetricsF(font()).horizontalAdvance(text()))+(icon().isNull()?0:iconSize().width()+8)+8));return size;}
+ QSize minimumSizeHint()const override{return sizeHint();}
 };
 class EditSourceButton final:public QToolButton {
 public:using QToolButton::QToolButton;
@@ -152,16 +160,17 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  pages_->addWidget(new QWidget(pages_));pages_->addWidget(new QWidget(pages_));
  connect(tabs_,&QTabBar::currentChanged,this,[this](int row){if(settings_)settings_->clearCompletedFeedback();if(row>0)settings();pages_->setCurrentIndex(row);if(row==1)settings_->activateDestinations();updateAvailability();emit viewStateChanged();});
  connect(history_,&HistoryWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(history_,&HistoryWindow::editRequested,this,&MainWindow::editRequested);connect(history_,&HistoryWindow::chooseImageRequested,this,&MainWindow::chooseImageToEdit);
- setStatusBar(new StatusBand(this));statusBar()->installEventFilter(this);
+ setStatusBar(new StatusBand(this));
+ auto* statusContent=new QWidget;statusContent->setObjectName("statusContent");statusContent->installEventFilter(this);auto* statusRow=new QHBoxLayout(statusContent);statusRow->setContentsMargins(0,0,0,0);statusRow->setSpacing(space(Space::s));statusBar()->addWidget(statusContent,1);
  // One output control; the popup owns the per-action details and navigation.
  auto* outputGroup=outputGroup_=new QWidget;outputGroup->setObjectName("captureOutputGroup");auto* outputRow=new QHBoxLayout(outputGroup);outputRow->setContentsMargins(0,0,0,0);outputRow->setSpacing(0);
  destination_=new OutputButton(outputGroup);destination_->setFocusPolicy(Qt::StrongFocus);VisualStyle::role(destination_,"quiet");destination_->setObjectName("captureOutputSummary");destination_->setToolButtonStyle(Qt::ToolButtonTextOnly);destination_->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);destination_->setMinimumWidth(Graphite::scaled(120));destination_->setPopupMode(QToolButton::InstantPopup);outputRow->addWidget(destination_,1);outputRow->addStretch(0);
  auto* outputMenu=new QMenu(destination_);outputMenu->setObjectName("captureOutputMenu");destination_->setMenu(outputMenu);const auto info=[outputMenu](const QString& name){auto* entry=new QWidgetAction(outputMenu);entry->setObjectName(name);auto* label=new QLabel;label->setTextFormat(Qt::PlainText);label->setWordWrap(true);label->setMinimumWidth(Graphite::scaled(280));label->setMaximumWidth(Graphite::scaled(480));label->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));label->setFocusPolicy(Qt::NoFocus);VisualStyle::role(label,"muted");entry->setDefaultWidget(label);connect(entry,&QAction::changed,label,[entry,label]{label->setText(entry->text());});outputMenu->addAction(entry);};info("captureOutputDefault");for(const auto& action:Settings::presentationOrder())info("captureOutputDetail"+action);outputMenu->addSeparator();auto* changeOutput=outputMenu->addAction("Change output");changeOutput->setObjectName("changeCaptureOutput");
- statusBar()->addWidget(outputGroup,1);updateAvailability();
+ statusRow->addWidget(outputGroup,1);updateAvailability();
  // The running build, from the resident identity About also shows. Stable and
  // nightly builds link to their GitHub release; development builds are text.
  version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);VisualStyle::role(version_,"meta");
- versionLink_=new QPushButton;versionLink_->setObjectName("appVersionLink");VisualStyle::role(versionLink_,"version");versionLink_->setCursor(Qt::PointingHandCursor);
+ versionLink_=new StatusLink;versionLink_->setObjectName("appVersionLink");VisualStyle::role(versionLink_,"version");versionLink_->setCursor(Qt::PointingHandCursor);
  auto* versionGroup=new QWidget;versionGroup->setObjectName("appVersionGroup");auto* versionLayout=new QHBoxLayout(versionGroup);versionLayout->setContentsMargins(0,0,0,0);versionLayout->addWidget(versionLink_);
  auto* versionNotice=new Graphite::Surface("surface",Qt::BottomEdge,center);versionNotice->setObjectName("appVersionNotification");auto* noticeRow=new QHBoxLayout(versionNotice);noticeRow->setContentsMargins(space(Space::l),space(Space::s),space(Space::m),space(Space::s));noticeRow->setSpacing(space(Space::m));
  auto* versionBrowser=new Graphite::BrowserFeedback(versionNotice);versionBrowser->setObjectName("appVersionBrowserFeedback");auto* feedbackLayout=versionBrowser->layout();delete feedbackLayout;auto* feedbackRow=new QHBoxLayout(versionBrowser);feedbackRow->setContentsMargins(0,0,0,0);feedbackRow->setSpacing(space(Space::m));feedbackRow->addWidget(versionBrowser->findChild<QLabel*>(),1);auto* copyRelease=versionBrowser->findChild<QPushButton*>();copyRelease->setText("Copy release link");copyRelease->setObjectName("copyReleaseLink");feedbackRow->addWidget(copyRelease);noticeRow->addWidget(versionBrowser,1);
@@ -175,7 +184,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  connect(&session_,&UiSession::statusChanged,this,updateVersion);updateVersion();
  // A newer version, from the resident's daily check (#293): it opens
  // General → Updates, which has the download.
- updateLink_=new QPushButton(VisualStyle::icon("download"),"Update available");updateLink_->setObjectName("updateAvailable");VisualStyle::role(updateLink_,"version");updateLink_->setCursor(Qt::PointingHandCursor);updateLink_->hide();
+ updateLink_=new StatusLink(VisualStyle::icon("download"),"Update available");updateLink_->setObjectName("updateAvailable");VisualStyle::role(updateLink_,"version");updateLink_->setCursor(Qt::PointingHandCursor);updateLink_->hide();
  connect(updateLink_,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showUpdates();});
  auto updateAvailable=[this]{
   const auto update=session_.diagnostics()["update"].toObject();const auto result=update["result"].toObject();
@@ -206,11 +215,12 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  connect(changeOutput,&QAction::triggered,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  connect(history_,&HistoryWindow::captureSettingsRequested,changeOutput,&QAction::trigger);
  connect(history_,&HistoryWindow::localCopySettingsRequested,this,&MainWindow::showLocalCopySettings);
- explanation_=new QLabel("Settings save automatically");explanation_->setObjectName("autosaveExplanation");VisualStyle::role(explanation_,"meta");statusBar()->addPermanentWidget(explanation_);
+ explanation_=new QLabel("Settings save automatically");explanation_->setObjectName("autosaveExplanation");VisualStyle::role(explanation_,"meta");statusRow->addWidget(explanation_);
  // Autosave describes the Destinations and Settings pages, not History.
  connect(tabs_,&QTabBar::currentChanged,this,[this]{updateSaveStatus();});
- saveStatus_=new QLabel;saveStatus_->setObjectName("autosaveStatus");saveStatus_->setAccessibleName("Settings save status");saveStatus_->setTextFormat(Qt::PlainText);VisualStyle::role(saveStatus_,"meta");statusBar()->addPermanentWidget(saveStatus_);
- statusBar()->addPermanentWidget(updateLink_);statusBar()->addPermanentWidget(version_);statusBar()->addPermanentWidget(versionGroup);
+ saveStatus_=new QLabel;saveStatus_->setObjectName("autosaveStatus");saveStatus_->setAccessibleName("Settings save status");saveStatus_->setTextFormat(Qt::PlainText);VisualStyle::role(saveStatus_,"meta");statusRow->addWidget(saveStatus_);
+ for(auto* widget:QWidgetList{explanation_,saveStatus_,updateLink_,version_,versionGroup})widget->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
+ statusRow->addWidget(updateLink_);statusRow->addWidget(version_);statusRow->addWidget(versionGroup);
  connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});
  updateDestination();updateSaveStatus();tabs_->setCurrentIndex(0);RedesignTheme::apply(*this);
  orderNavigation(header,tabs_,actionButtons_,band_);
@@ -242,19 +252,23 @@ void MainWindow::updateOutputSummary(){
 void MainWindow::updateSaveStatus(){
  if(!saveStatus_||!explanation_)return;
  const auto text=settings_?settings_->autosaveText():QString();const bool unsaved=settings_&&settings_->changesUnsaved();
- VisualStyle::feedback(saveStatus_,unsaved?QString("Changes not saved"):text,unsaved);saveStatus_->setToolTip(unsaved?text:QString());saveStatus_->setAccessibleDescription(unsaved?text:QString());
- // Recovery uses body type; caption metadata yields to that single message.
- if(updateLink_){const auto update=session_.diagnostics()["update"].toObject();updateLink_->setVisible(!unsaved&&update["supported"].toBool()&&update["result"].toObject()["updateAvailable"].toBool());}
+ const auto feedback=unsaved?QString("Changes not saved"):text;
+ if(saveStatus_->text()!=feedback||saveStatus_->property("feedbackTone").toString()!=(unsaved?"error":"neutral"))VisualStyle::feedback(saveStatus_,feedback,unsaved);
+ saveStatus_->setToolTip(unsaved?text:QString());saveStatus_->setAccessibleDescription(unsaved?text:QString());
+ if(updateLink_){const auto update=session_.diagnostics()["update"].toObject();updateLink_->setVisible(update["supported"].toBool()&&update["result"].toObject()["updateAvailable"].toBool());}
  // "Settings save automatically" is the band's least important line: it gives
  // way before the output summary has to elide (narrow windows, large text).
- const int gap=qMax(statusBar()->style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing,nullptr,statusBar()),6);
+ const auto* content=findChild<QWidget*>("statusContent");const int gap=content->layout()->spacing();
  const auto link=releaseLink(session_.build());auto* versionGroup=findChild<QWidget*>("appVersionGroup");
- int needed=(outputGroup_->isHidden()?0:destination_->sizeHint().width()+gap)+24;
- for(auto* widget:statusBar()->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(widget!=outputGroup_&&widget!=explanation_&&widget!=version_&&widget!=versionGroup&&!widget->isWindow()&&widget->isVisibleTo(statusBar()))needed+=widget->sizeHint().width()+gap;
+ // Measure the actual row, including its insets. Only the output may shrink;
+ // update and save feedback retain their full size hints in the same layout.
+ int needed=outputGroup_->isHidden()?0:qMax(destination_->minimumWidth(),destination_->sizeHint().width())+gap;
+ for(auto* widget:QWidgetList{saveStatus_,updateLink_})if(!widget->isHidden())needed+=widget->sizeHint().width()+gap;
+ needed=qMax(0,needed-gap);
  const int versionWidth=link.url.isEmpty()?version_->sizeHint().width():versionGroup->sizeHint().width();
- const bool versionRoom=!unsaved&&needed+versionWidth+gap<=statusBar()->width();
+ const bool versionRoom=!unsaved&&!link.version.isEmpty()&&needed+versionWidth+gap<=content->contentsRect().width();
  version_->setVisible(versionRoom&&!link.version.isEmpty()&&link.url.isEmpty());versionGroup->setVisible(versionRoom&&!link.url.isEmpty());
- explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&needed+(versionRoom?versionWidth+gap:0)+explanation_->sizeHint().width()+gap<=statusBar()->width());
+ explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&needed+(versionRoom?versionWidth+gap:0)+explanation_->sizeHint().width()+gap<=content->contentsRect().width());
 }
 // Compact commands keep their task labels; output details stay in the status menu.
 void MainWindow::fitBand(){
@@ -298,7 +312,7 @@ QString MainWindow::droppedImage(const QMimeData* data){
 bool MainWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched->objectName()=="appVersionBrowserFeedback"&&(event->type()==QEvent::ShowToParent||event->type()==QEvent::HideToParent))static_cast<QWidget*>(watched)->parentWidget()->setVisible(event->type()==QEvent::ShowToParent);
  if((watched==this||watched==band_)&&event->type()==QEvent::Resize)fitBand();
- if(watched==statusBar()&&event->type()==QEvent::Resize){updateOutputSummary();updateSaveStatus();}
+ if(watched->objectName()=="statusContent"&&(event->type()==QEvent::Resize||event->type()==QEvent::LayoutRequest))updateSaveStatus();
  if(watched!=editButton_)return QMainWindow::eventFilter(watched,event);
  auto highlight=[this](bool on){editButton_->setProperty("dropTarget",on);editButton_->style()->unpolish(editButton_);editButton_->style()->polish(editButton_);};
  switch(event->type()){

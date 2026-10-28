@@ -29,6 +29,8 @@
 #include <QTimer>
 #include <QStatusBar>
 #include <QStyleOptionToolButton>
+#include <QStyleOptionButton>
+#include <QPainter>
 #include "ui/Graphite.h"
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::test;
@@ -459,28 +461,44 @@ private slots:
   QVERIFY2(version->height()>=version->fontMetrics().lineSpacing(),qPrintable(QString("version link %1 px for a %2 px line").arg(version->height()).arg(version->fontMetrics().lineSpacing())));
   QVERIFY(window.rect().contains(QRect(version->mapTo(&window,QPoint()),version->size())));
  }
- // The status band at the minimum width and 150% text, with an update offered and
+ // The status band at the minimum width and enlarged text, with an update offered and
  // unsaved settings: one bounded "Changes not saved", no "save automatically",
  // and the summary, Change output…, update link and version neither overlap
  // nor leave the band. The split button keeps its 32 px arrow zone in the band.
+ void statusBandFitsAtLargeTextWhileChangesWait_data(){
+  QTest::addColumn<int>("pixels");QTest::addColumn<bool>("longOutput");
+  for(int pixels:{14,18,21,28})for(bool longOutput:{false,true})QTest::newRow(qPrintable(QString("text%1-%2").arg(pixels).arg(longOutput?"long":"normal")))<<pixels<<longOutput;
+ }
  void statusBandFitsAtLargeTextWhileChangesWait(){
-  auto font=QApplication::font();const auto original=font;auto restore=qScopeGuard([&]{QApplication::setFont(original);});font.setPixelSize(21);QApplication::setFont(font);
-  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
+  QFETCH(int,pixels);QFETCH(bool,longOutput);auto font=QApplication::font();const auto original=font;auto restore=qScopeGuard([&]{QApplication::setFont(original);});font.setPixelSize(pixels);QApplication::setFont(font);
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();
+  const auto longName=QString("Customer support and release readiness archive ").repeated(2)+"Europe, Middle East, Asia-Pacific";
+  if(longOutput){auto profiles=document["profiles"].toArray();auto profile=profiles.first().toObject();profile["label"]=longName;profiles[0]=profile;document["profiles"]=profiles;}
+  QVERIFY(settings.save(document,{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
   fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=QJsonObject{{"supported",true},{"result",QJsonObject{{"updateAvailable",true},{"latest","26.1231.99999-nightly"}}}};return data;});
   MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));fixture.session.refreshSnapshot();
   auto* update=window.findChild<QPushButton*>("updateAvailable");PUTGD_TRY_VERIFY(update->isVisible());
   auto* explanation=window.findChild<QLabel*>("autosaveExplanation");auto* status=window.findChild<QLabel*>("autosaveStatus");
   // "Settings save automatically" gives way before the summary has to elide.
   auto* elided=window.findChild<QToolButton*>("captureOutputSummary");PUTGD_TRY_VERIFY(explanation->isHidden()||elided->width()>=elided->sizeHint().width());
-  fixture.client.failOnce["settings.save"]={"client_unavailable","Synthetic lost reply",{}};window.findChild<QLineEdit*>("maxFiles")->setText("251");
-  PUTGD_TRY_COMPARE(status->text(),QString("Changes not saved"));QVERIFY(status->isVisible());QVERIFY(explanation->isHidden());QVERIFY(!status->text().contains('\n'));
+  QVERIFY(elided->font().pixelSize()>=pixels);
+  if(longOutput){PUTGD_TRY_VERIFY(elided->width()<elided->sizeHint().width());QVERIFY(window.findChild<QLabel*>("appVersion")->isHidden());QVERIFY(window.findChild<QWidget*>("appVersionGroup")->isHidden());QVERIFY(elided->toolTip().contains(longName));}
   auto* band=window.statusBar();auto* summary=window.findChild<QToolButton*>("captureOutputSummary");
   const auto rectIn=[&](QWidget* w){return QRect(w->mapTo(band,QPoint()),w->size());};
-  QString found;QVERIFY2(putgd::test::waitFor([&]{
-   found.clear();QWidgetList shown{summary,status,update};for(auto* w:band->findChildren<QWidget*>()){if((w->objectName()=="appVersion"||w->objectName()=="appVersionLink")&&w->isVisible())shown<<w;}
+  QString found;const auto fits=[&]{
+   found.clear();QWidgetList shown;for(auto* w:QWidgetList{summary,status,update,explanation})if(w->isVisible())shown<<w;for(auto* w:band->findChildren<QWidget*>()){if((w->objectName()=="appVersion"||w->objectName()=="appVersionLink")&&w->isVisible())shown<<w;}
    for(int i=0;i<shown.size()&&found.isEmpty();++i){if(!band->rect().contains(rectIn(shown[i])))found=shown[i]->objectName()+" leaves the band";for(int j=i+1;j<shown.size()&&found.isEmpty();++j)if(rectIn(shown[i]).intersects(rectIn(shown[j])))found=shown[i]->objectName()+" overlaps "+shown[j]->objectName();}
    if(found.isEmpty()&&summary->width()<summary->minimumSizeHint().width())found="the summary is under its minimum";
-   return found.isEmpty();}),qPrintable(found));
+   for(auto* w:shown)if(w!=summary&&found.isEmpty()&&(w->width()<w->sizeHint().width()||w->height()<w->fontMetrics().height()))found=w->objectName()+" is truncated";
+   return found.isEmpty();};
+  QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));
+  fixture.client.failOnce["settings.save"]={"client_unavailable","Synthetic lost reply",{}};window.findChild<QLineEdit*>("maxFiles")->setText("251");
+  PUTGD_TRY_COMPARE(status->text(),QString("Changes not saved"));QVERIFY(status->isVisible());QVERIFY(update->isVisible());QVERIFY(explanation->isHidden());QVERIFY(!status->text().contains('\n'));
+  for(int width:{1060,1320,1800,1060}){window.resize(width,680);QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));}
+  // A whole label paints identically with extra room; a premature ellipsis
+  // differs even when Qt's size hint wrongly claims that the button fits.
+  const auto labelPixels=[&](int extra){QImage image(update->size(),QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);QPainter painter(&image);QStyleOptionButton option;option.initFrom(update);option.rect=update->rect().adjusted(0,0,extra,0);option.text=update->text();option.icon=update->icon();option.iconSize=update->iconSize();update->style()->drawControl(QStyle::CE_PushButtonLabel,&option,&painter,update);return image;};
+  QCOMPARE(labelPixels(0),labelPixels(256));
   // The summary is a tab stop whatever its width.
   QCOMPARE(summary->focusPolicy(),Qt::StrongFocus);
   for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->popupMode()==QToolButton::MenuButtonPopup){
