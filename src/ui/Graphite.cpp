@@ -556,6 +556,7 @@ void Style::polish(QWidget* widget) {
     else if (name == "sectionTitle" || name == "section") f = font(Type::section, true);
     else if (name == "label") f = labelFont();
     else if (name == "body") f = font(Type::body);
+    else if (name == "bodySecondary") { f = font(Type::body); colour = c.textSecondary; }
     else if (!bodyControl && (name == "secondary" || name == "muted" || name == "subtitle" || name == "status" || name == "caption")) { f = font(Type::technical); colour = c.textSecondary; }
     else if (name == "strong") f = font(Type::body, true);
     else if (name == "eyebrow" || name == "railHeading" || name == "micro") { f = font(Type::caption); colour = c.textMuted; }
