@@ -1130,7 +1130,7 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
     qreal x = leftAligned ? body.left() : body.left() + (body.width() - group) / 2.0;
     if (hasIcon) {
         const bool enabled = option->state & State_Enabled;
-        const QRectF target(std::round(x), body.top() + (body.height() - iconSize.height()) / 2.0, iconSize.width(), iconSize.height());
+        const QRectF target(std::round(x), body.top() + (body.height() - iconSize.height()) / 2.0 - (widget ? scaled(widget->property("graphiteIconRaise").toInt()) : 0), iconSize.width(), iconSize.height());
         // A checked or pressed quiet or secondary button sits on the selected fill.
         const bool onSelected = enabled && ((option->state & State_Sunken) || ((option->state & State_On) && !(widget && widget->property("graphiteDisclosure").toBool()))) && name != "primary" && name != "danger" && name != "link" && name != "version";
         auto pixmap = icon.pixmap(iconSize, dpr(widget), !enabled ? QIcon::Disabled : onSelected ? QIcon::Selected : QIcon::Normal, option->state & State_On ? QIcon::On : QIcon::Off);
