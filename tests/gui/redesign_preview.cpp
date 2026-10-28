@@ -196,9 +196,9 @@ int main(int argc,char** argv){
  // The compact tier is shared API; show it before individual surfaces adopt it.
  {
   Graphite::Surface specimen("bg");auto* rows=new QVBoxLayout(&specimen);rows->setContentsMargins(Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::xl));rows->setSpacing(Graphite::space(Graphite::Space::l));
-  for(const bool compact:{false,true}){rows->addWidget(Graphite::label(compact?"Compact · 28 px / 13 px Regular":"Standard · 36 px / 14 px", "section"));auto* row=new QHBoxLayout;row->setSpacing(Graphite::space(Graphite::Space::s));
+  for(const bool compact:{false,true}){auto* caption=Graphite::label({},"section");rows->addWidget(caption);auto* row=new QHBoxLayout;row->setSpacing(Graphite::space(Graphite::Space::s));
    for(const auto* role:{"primary","lead","secondary","quiet"}){auto* button=new QPushButton(role,&specimen);VisualStyle::role(button,role);if(compact)button->setProperty("graphiteDensity","compact");row->addWidget(button);}
-   auto* combo=new QComboBox(&specimen);combo->addItems({"Compatible MP4","Smaller WebM"});if(compact)combo->setProperty("graphiteDensity","compact");row->addWidget(combo);auto* tool=Graphite::toolButton("Start here","trim-in","quiet",&specimen);if(compact)tool->setProperty("graphiteDensity","compact");row->addWidget(tool);rows->addLayout(row);
+   auto* combo=new QComboBox(&specimen);combo->addItems({"Compatible MP4","Smaller WebM"});if(compact)combo->setProperty("graphiteDensity","compact");row->addWidget(combo);auto* tool=Graphite::toolButton("Start here","trim-in","quiet",&specimen);if(compact)tool->setProperty("graphiteDensity","compact");row->addWidget(tool);rows->addLayout(row);auto* measured=row->itemAt(0)->widget();measured->ensurePolished();caption->setText(QString("%1 · %2 px / %3 px%4").arg(compact?"Compact":"Standard").arg(measured->sizeHint().height()).arg(measured->font().pixelSize()).arg(compact?" Regular":""));
   }
   specimen.adjustSize();specimen.show();putgd::test::settle(30);if(!specimen.grab().save(QDir(output).filePath("00-control-tiers.png")))return 2;
  }
