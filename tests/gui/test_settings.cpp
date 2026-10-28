@@ -265,16 +265,13 @@ private slots:
   SettingsService service(dir.filePath(name));QVERIFY(service.save(Settings::defaults(),{}));
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();
   auto* metadata=window.findChild<QLabel*>("settingsMetadata");QVERIFY(metadata);
-  QPushButton* copy=nullptr;QLabel* capabilities=nullptr;
-  for(auto* button:window.findChildren<QPushButton*>())if(button->text()=="Copy diagnostics")copy=button;
-  for(auto* label:window.findChildren<QLabel*>())if(label->accessibleName()=="Desktop support diagnostics")capabilities=label;
-  QVERIFY(copy&&capabilities);
+  auto* copy=window.findChild<QPushButton*>("copyDesktopDetails");QVERIFY(copy);
   for(int revision=0;revision<2;++revision){
    const auto plain="Configuration: "+service.path()+"\nAccepted revision: "+service.revision()+"\nObserved file revision: "+service.metadata()["observedRevision"].toString();
    PUTGD_TRY_COMPARE(metadata->accessibleName(),plain);
    QVERIFY2(metadata->text().count(QChar(0x200B))>plain.count(QChar(0x200B)),"Fixture must exercise display-only wrap characters");
    QApplication::clipboard()->clear();copy->click();
-   QCOMPARE(QApplication::clipboard()->text(),capabilities->text()+"\n"+plain);
+   QCOMPARE(QApplication::clipboard()->text(),QString::fromUtf8(QJsonDocument(fixture.session.diagnostics()).toJson(QJsonDocument::Indented))+"\n"+plain);
    // A selection copied from the label is the exact text, not its display break points.
    QApplication::clipboard()->clear();metadata->setSelection(0,metadata->text().size());QTest::keyClick(metadata,Qt::Key_C,Qt::ControlModifier);
    QCOMPARE(QApplication::clipboard()->text(),plain);
