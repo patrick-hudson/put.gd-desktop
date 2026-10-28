@@ -315,7 +315,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     top_->setSpacing(Graphite::space(Graphite::Space::s));
     rows->addLayout(top_);
     dot_ = new QLabel(this);
-    dot_->setFixedSize(12, 12);
+    dot_->setFixedSize(Graphite::scaled(12), Graphite::scaled(12));
     // The state is written, not only coloured.
     state_label_ = new QLabel(this);
     state_label_->setObjectName("state");
@@ -444,7 +444,7 @@ void ControlBar::refresh() {
     setPalette(Graphite::palette());
     record_->setIcon(VisualStyle::icon("record-dot", tokens.live));
     setProperty("themeScheme", Theme::name(Theme::scheme()));
-    dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg((recording ? tokens.live : paused ? tokens.textMuted : tokens.textSecondary).name()));
+    dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: %2px;").arg((recording ? tokens.live : paused ? tokens.textMuted : tokens.textSecondary).name()).arg(dot_->width() / 2.0));
     state_label_->setText(recording ? QStringLiteral("Recording") : paused ? QStringLiteral("Paused") : ready ? QStringLiteral("Ready to record") : QStringLiteral("Stopping…"));
     // Once recording starts these are information, not disabled choices.
     const bool withSound = config_.audio.system && !config_.silent();
