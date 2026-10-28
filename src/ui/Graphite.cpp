@@ -67,7 +67,7 @@ const Theme::Palette& t() { return Theme::current(); }
 QString role(const QWidget* widget) { return widget ? widget->property("visualRole").toString() : QString(); }
 bool compactControl(const QWidget* widget) { return widget && widget->property("graphiteDensity") == "compact"; }
 qreal controlRadius(const QWidget* widget) { return compactControl(widget) ? scaled(Metric::compactRadius) : Metric::radius; }
-bool flushButton(const QWidget* widget) { return widget && (role(widget) == "quiet" || role(widget) == "link") && widget->property("graphiteFlush").toBool(); }
+bool flushButton(const QWidget* widget) { return widget && (role(widget) == "quiet" || role(widget) == "link" || role(widget) == "textAction") && widget->property("graphiteFlush").toBool(); }
 bool progressAnimationEnabled(const QWidget* widget, const QStyleOption* option = nullptr) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
     if (QGuiApplication::styleHints()->accessibility()->motionPreference() == Qt::MotionPreference::ReducedMotion) return false;
@@ -150,7 +150,10 @@ Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, 
     const bool down = enabled && (option->state & QStyle::State_Sunken);
     const bool on = (option->state & QStyle::State_On) && !(widget && widget->property("graphiteDisclosure").toBool());
     Look look;
-    if (roleName == "link" || roleName == "version") {
+    if (roleName == "textAction") {
+        look.text = enabled ? c.text : c.textDisabled;
+        look.underline = enabled && (hover || (option->state & QStyle::State_HasFocus));
+    } else if (roleName == "link" || roleName == "version") {
         look.text = enabled ? (roleName == "version" && !hover ? c.textMuted : c.textSecondary) : c.textDisabled;
         look.underline = hover;
     } else if (roleName == "primary") {
@@ -197,7 +200,7 @@ QFont buttonFont(const QWidget* widget, const QStyleOption* option) {
     const auto name = buttonRole(widget, option);
     const bool selected = (option->state & QStyle::State_On) && widget
         && (widget->property("graphiteNavRow").toBool() || qobject_cast<SegmentTrack*>(widget->parentWidget()));
-    f.setWeight(!compactControl(widget) && (name == "primary" || name == "lead" || selected) ? QFont::Medium : QFont::Normal);
+    f.setWeight(name == "textAction" || (!compactControl(widget) && (name == "primary" || name == "lead" || selected)) ? QFont::Medium : QFont::Normal);
     return f;
 }
 QPixmap tinted(const QPixmap& source, const QColor& colour) {
@@ -564,6 +567,7 @@ void Style::polish(QWidget* widget) {
     // An error is never small print: it takes body type even in a meta slot.
     else if (name == "inspectorKey") { f = font(13); colour = c.textSecondary; }
     else if (name == "meta") { f = font(tone == "error" ? Type::body : Type::technical); colour = c.textSecondary; }
+    else if (name == "textAction") { f = font(Type::technical); f.setWeight(QFont::Medium); }
     else if (name == "version") f = font(Type::technical);
     else if (name == "binding") { f = monoFont(Type::technical); colour = c.textSecondary; }
     else if (name == "mono" || name == "path" || (name == "link" && qobject_cast<QLineEdit*>(widget)) || name == "diagnostics") f = monoFont(Type::technical);
@@ -576,7 +580,7 @@ void Style::polish(QWidget* widget) {
         if (buttonControl && (name == "primary" || name == "lead")) f.setWeight(QFont::Medium);
     }
     else setFont = false;
-    if (compactControl(widget) && bodyControl) { f = font(Type::technical); setFont = true; }
+    if (compactControl(widget) && bodyControl && name != "textAction") { f = font(Type::technical); setFont = true; }
     if (statusBand) { f = font(Type::technical); colour = c.textSecondary; setFont = true; }
     if (monoPixels) { f = monoFont(monoPixels); setFont = true; }
     // One type size per side of the status band; an error keeps its colour, not a larger size.
@@ -715,6 +719,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
     case CT_PushButton: {
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
         const auto name = role(widget);
+        if (name == "textAction" && button) return {int(std::ceil(QFontMetricsF(buttonFont(widget, option)).horizontalAdvance(button->text))), std::max(scaled(Metric::controlCompact), contents.height() + padding)};
         if (name == "link" || name == "version") return {std::max(32, contents.width() + 8), std::max(32, contents.height() + 8)};
         if (name == "info") return {std::max(contents.width() + 6, 23), std::max(contents.height() + 4, 23)};
         // Measure the same role weight used to paint action labels.
@@ -1141,7 +1146,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         if (!button) break;
         const auto name = buttonRole(widget, option);
         QRect body = (name == "link" || name == "version") ? option->rect.adjusted(4, 0, -4, 0) : option->rect.adjusted(12, 0, -12, 0);
-        if (flushButton(widget)) { body.setLeft(option->rect.left()); if (compactControl(widget)) body.setRight(option->rect.right()); }
+        if (flushButton(widget)) { body.setLeft(option->rect.left()); if (compactControl(widget) || name == "textAction") body.setRight(option->rect.right()); }
         if (widget && widget->property("graphiteNavRow").toBool()) { body.setLeft(option->rect.left() + (compactControl(widget) ? 6 : 14)); body.setRight(option->rect.right() - space(Space::xs)); }
         if ((button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) body.setRight(option->rect.right() - Metric::splitZone);
         drawButtonLabel(option, button->text, button->icon, button->iconSize, p, widget, body);
