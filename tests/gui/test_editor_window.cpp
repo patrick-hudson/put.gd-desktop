@@ -52,6 +52,19 @@ class EditorWindowTest:public QObject {
  static QImage canvasImage(){QImage image(400,260,QImage::Format_RGB32);image.fill(QColor("#20242c"));return image;}
  static void add(EditDocument& doc,const QJsonObject& shape){QJsonArray created;QString code,message;QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",shape}}},created,code,message),qPrintable(message));}
 private slots:
+ void propertyHeadingElidesAndKeepsItsFullAccessibleName(){
+  {EditDocument doc(canvasImage());EditorWindow window(doc);}
+  const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});
+  auto larger=previous;larger.setPixelSize(qRound(Graphite::font().pixelSize()*1.5));QApplication::setFont(larger);
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  window.selectTool(Tool::Rectangle);QString code,message;window.viewCommand({{"action","place"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));
+  auto* title=window.findChild<Graphite::ElidedLabel*>("editorToolTitle");auto* help=window.findChild<QLabel*>("editorToolHelp");QVERIFY(title&&help);
+  QCOMPARE(title->text(),QString("Rectangle selected"));QCOMPARE(title->toolTip(),title->text());QCOMPARE(title->accessibleName(),title->text());QVERIFY(!title->wordWrap());
+  PUTGD_TRY_VERIFY(title->elided());QVERIFY(title->height()<2*title->fontMetrics().height());
+  QCOMPARE(help->text(),QString("Drag to move it."));QCOMPARE(help->minimumWidth(),0);QVERIFY(help->wordWrap());
+  PUTGD_TRY_VERIFY(help->width()>=help->fontMetrics().horizontalAdvance(help->text()));
+  window.selectTool(Tool::Crop);QCOMPARE(title->toolTip(),title->text());QCOMPARE(title->accessibleName(),title->text());
+ }
  void propertyCaptionsKeepTheirRoleAcrossThemes(){
   const auto previous=Theme::scheme();auto restore=qScopeGuard([previous]{Theme::setScheme(previous);});
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));

@@ -145,8 +145,8 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* properties=new QVBoxLayout(panel);properties_=properties;properties->setContentsMargins(Graphite::space(Space::l),Graphite::space(Space::l),Graphite::space(Space::l),Graphite::space(Space::l));properties->setSpacing(Graphite::space(Space::m));
  QVBoxLayout* headingLayout=nullptr;auto* heading=column(panel,headingLayout);properties->addWidget(heading);
  auto* titleRow=new QHBoxLayout;titleRow->setContentsMargins(0,0,0,0);titleRow->setSpacing(Graphite::space(Space::s));headingLayout->addLayout(titleRow);
- toolTitle_=new QLabel(heading);toolTitle_->setObjectName("editorToolTitle");toolTitle_->setWordWrap(true);VisualStyle::role(toolTitle_,"sectionTitle");titleRow->addWidget(toolTitle_,1);
- toolHelp_=new QLabel(heading);toolHelp_->setObjectName("editorToolHelp");toolHelp_->setWordWrap(true);VisualStyle::role(toolHelp_,"muted");headingLayout->addWidget(toolHelp_);
+ toolTitle_=new Graphite::ElidedLabel(heading);toolTitle_->setElideMode(Qt::ElideRight);toolTitle_->setObjectName("editorToolTitle");toolTitle_->setWordWrap(false);VisualStyle::role(toolTitle_,"sectionTitle");titleRow->addWidget(toolTitle_,1);
+ toolHelp_=new QLabel(heading);toolHelp_->setObjectName("editorToolHelp");toolHelp_->setMinimumWidth(0);toolHelp_->setWordWrap(true);VisualStyle::role(toolHelp_,"muted");headingLayout->addWidget(toolHelp_);
  blurWarning_=Graphite::blurWarning([this]{if(!busy_){selectTool(Tool::Redact);}},panel);
  blurWarning_->findChild<QLabel*>("blurWarningText")->setObjectName("editorToolWarning");properties->addWidget(blurWarning_);
  hint_=Graphite::label({},"secondary",panel);hint_->setWordWrap(true);properties->addWidget(hint_);
@@ -497,7 +497,7 @@ void EditorWindow::refresh(){
   int index=int(tool);QString title=titles.value(index);
   // A selected mark names itself, whichever tool picked it up.
   if(shape&&tool!=Tool::Crop){const QHash<int,QString> kinds{{int(editor::Shape::Kind::Redact),"Redaction"},{int(editor::Shape::Kind::Blur),"Blur"},{int(editor::Shape::Kind::Arrow),"Arrow"},{int(editor::Shape::Kind::Rectangle),"Rectangle"},{int(editor::Shape::Kind::Highlight),"Highlight"},{int(editor::Shape::Kind::Text),"Text"}};title=kinds.value(int(shape->kind),"Mark")+" selected";}
-  toolTitle_->setText(title);toolHelp_->setText(shape&&tool!=Tool::Crop?QStringLiteral("Drag the mark to move it."):help.value(index));
+  toolTitle_->setText(title);toolHelp_->setText(shape&&tool!=Tool::Crop?QStringLiteral("Drag to move it."):help.value(index));
   const auto bounds=doc_.crop();documentInfo_->setText(QString("Document %1 × %2 px · %3").arg(bounds.width()).arg(bounds.height()).arg(doc_.modified()?"Edited":"Unchanged"));
  }
  {
