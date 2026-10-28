@@ -90,6 +90,13 @@ QString statusPhrases(QString text,bool failed=false){
  auto tokens=text.split(" · ");for(int i=0;i<tokens.size();++i)if(!failed||i!=1||tokens[i]=="Saved locally")tokens[i].replace(' ',QChar(0x00a0));return tokens.join(" · ");
 }
 QString metadataSpan(const QString& text,const QColor& color){return "<span style=\"color:"+color.name()+"\">"+statusPhrases(text).toHtmlEscaped()+"</span>";}
+QString failureDetail(const QJsonObject& record){auto text=HistoryModel::statusText(record);const auto label=HistoryModel::failureLabel(record);if(text==label)return {};if(text.startsWith(label+" · "))text.remove(0,label.size()+3);return text;}
+QString failureDescription(const QModelIndex& index){const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QStringList parts{record["name"].toString(index.data().toString()),HistoryModel::failureLabel(record),index.data(HistoryModel::CreatedRole).toString(),failureDetail(record)};parts.removeAll({});return parts.join(". ");}
+void compactFailureDetail(QTextDocument& document,const QModelIndex& index,int width){
+ const auto font=Graphite::font(Graphite::Type::metadata);QStringList spans;for(const auto& part:failureDetail(index.data(HistoryModel::RecordRole).toJsonObject()).split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,Theme::current().textSecondary));
+ document.setDocumentMargin(0);document.setDefaultFont(font);document.setHtml(Graphite::separatedLines(spans,font,width));auto lines=document.toPlainText().split('\n');auto shown=lines.value(0);if(lines.size()>1)shown+=QChar(0x2026);shown=QFontMetrics(font).elidedText(shown,Qt::ElideRight,qMax(0,width));
+ QTextOption option;option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(metadataSpan(shown,Theme::current().textSecondary));document.setTextWidth(qMax(20,width));
+}
 class HistoryOutcome final:public QLabel {
 public:
  explicit HistoryOutcome(QWidget* parent):QLabel(parent){setTextFormat(Qt::RichText);setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);}
@@ -242,11 +249,11 @@ void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,
  if(compact){
   const auto created=index.data(HistoryModel::CreatedRole).toString();const auto kind=HistoryModel::friendlyAction(record["operation"].toObject()["action"].toString(record["category"].toString())),size=HistoryModel::fileSize(record["bytes"].toInteger());
   auto parts=text.split(" · ",Qt::SkipEmptyParts);parts.removeAll(created);parts.removeAll(kind);parts.removeAll(size);
-  if(HistoryModel::failed(record))parts.clear();const auto status=parts.join(" · ");const QFontMetrics metrics(document.defaultFont());
-  QStringList shown;if(!kind.isEmpty())shown.append(kind);if(!size.isEmpty())shown.append(size);if(!status.isEmpty())shown.append(status);if(!created.isEmpty())shown.append(created);
+  if(HistoryModel::failed(record)){parts={HistoryModel::failureLabel(record)};}const auto status=parts.join(" · ");const QFontMetrics metrics(document.defaultFont());
+  QStringList shown;if(!HistoryModel::failed(record)){if(!kind.isEmpty())shown.append(kind);if(!size.isEmpty())shown.append(size);}if(!status.isEmpty())shown.append(status);if(!created.isEmpty())shown.append(created);
   for(const auto& optional:{size,kind})if(metrics.horizontalAdvance(shown.join(" · "))>width)shown.removeAll(optional);
   if(!status.isEmpty()&&metrics.horizontalAdvance(shown.join(" · "))>width){const int room=qMax(0,width-metrics.horizontalAdvance(created.isEmpty()?QString{}:" · "+created));shown.removeAll(status);const auto shortened=metrics.elidedText(status,Qt::ElideRight,room);if(!shortened.isEmpty())shown.prepend(shortened);}
-  QStringList spans;for(const auto& part:shown){const bool isStatus=part!=kind&&part!=size&&part!=created;const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();const auto color=isStatus&&(part=="Deletion failed"||part=="Sharing failed"||part.startsWith("Couldn't copy"))?t.danger:isStatus&&remote.isEmpty()&&copy=="copied"?t.success:t.textSecondary;spans.append(metadataSpan(part,color));}
+  QStringList spans;for(const auto& part:shown){const bool isStatus=part!=kind&&part!=size&&part!=created;const auto remote=HistoryModel::remoteStateText(record),copy=record["operation"].toObject()["copyStatus"].toString();const auto color=isStatus&&(HistoryModel::failed(record)||remote=="Deletion failed"||remote=="Sharing failed"||part.startsWith("Couldn't copy"))?t.danger:isStatus&&remote.isEmpty()&&copy=="copied"?t.success:t.textSecondary;spans.append(metadataSpan(part,color));}
   option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(spans.join(metadataSpan(" · ",t.textSecondary)));document.setTextWidth(qMax(20,width));return;
  }
  if(bounded&&!HistoryModel::failed(record))text=QFontMetrics(document.defaultFont()).elidedText(text,Qt::ElideRight,qMax(20,width));
@@ -273,7 +280,7 @@ QRect HistoryWindow::failureTextArea(const QSize& row,bool gallery,bool dayHeadi
  const auto title=historyTitleFont(),meta=Graphite::font(Graphite::Type::metadata);
  const bool compact=!gallery&&body.width()<Graphite::scaled(480);
  const int top=body.top()+(gallery?0:compact?compactTextInset():rowTextInset())+QFontMetrics(title).height();
- const int extra=compact?compactMetadataGap()+QFontMetrics(meta).height()+qMax(0,(actionHeight()-QFontMetrics(meta).height())/2):6;
+ const int extra=compact?compactMetadataGap()+QFontMetrics(meta).height()+qMax(0,(actionHeight()-QFontMetrics(meta).height())/2)+space(Space::xs):6;
  return {body.left(),top+extra,qMax(20,body.width()),QFontMetrics(meta).height()};
 }
 namespace {
@@ -285,7 +292,7 @@ public:
  QAccessibleInterface* parent()const override{return view_?QAccessible::queryAccessibleInterface(view_):nullptr;}
  QAccessibleInterface* child(int)const override{return nullptr;}int childCount()const override{return 0;}int indexOfChild(const QAccessibleInterface*)const override{return -1;}
  QAccessibleInterface* childAt(int,int)const override{return nullptr;}
- QString text(QAccessible::Text type)const override{return !isValid()?QString{}:type==QAccessible::Name?index_.data(Qt::AccessibleTextRole).toString():type==QAccessible::Description?QString("Enter for details, Menu for actions"):QString{};}
+ QString text(QAccessible::Text type)const override{if(!isValid())return {};const bool failed=index_.data(HistoryModel::FailedRole).toBool();return type==QAccessible::Name?(failed?failureDescription(index_):index_.data(Qt::AccessibleTextRole).toString()):type==QAccessible::Description?(failed?failureDescription(index_)+". Enter for details, Menu for actions":QString("Enter for details, Menu for actions")):QString{};}
  void setText(QAccessible::Text,const QString&)override{}
  QRect rect()const override{return isValid()?QRect(view_->viewport()->mapToGlobal(view_->visualRect(index_).topLeft()),view_->visualRect(index_).size()).intersected(QRect(view_->viewport()->mapToGlobal(QPoint()),view_->viewport()->size())):QRect{};}
  QAccessible::Role role()const override{return QAccessible::ListItem;}
@@ -331,6 +338,7 @@ public:
  }
  void updateMore(){for(auto* button:{primary_,details_,more_})button->setProperty("graphiteOnMedia",false);primary_->setProperty("visualRole",grid()?"quiet":"secondary");const auto i=view_->currentIndex();const auto row=view_->visualRect(i);const auto bounds=menuRect(row,i);const bool visible=i.isValid()&&view_->selectionModel()->isSelected(i)&&inlineActions(i)&&view_->viewport()->rect().intersects(bounds)&&(view_->selectionModel()->selectedRows().size()<=1||row.contains(view_->viewport()->mapFromGlobal(QCursor::pos())));more_->setVisible(visible);const bool showDetails=visible&&detailsShown(i)&&view_->selectionModel()->selectedRows().size()==1;const bool showPrimary=visible&&primaryShown(i);primary_->setVisible(showPrimary);if(showPrimary){const auto label=grid()?QString("Copy link"):i.data(HistoryModel::PrimaryActionRole).toString();primary_->setEnabled(!grid()||i.data(HistoryModel::PrimaryActionRole)=="Copy link");primary_->setIcon(grid()?VisualStyle::icon("clipboard"):QIcon{});primary_->setToolButtonStyle(grid()?Qt::ToolButtonIconOnly:Qt::ToolButtonTextOnly);primary_->setText(label);primary_->setToolTip(label);primary_->setAccessibleName(label);primary_->setAccessibleDescription(label+" for "+i.data().toString());primary_->setGeometry(primaryRect(row,i));primary_->raise();}details_->setVisible(showDetails);details_->setText(grid()?"Details":QString{});details_->setToolButtonStyle(grid()?Qt::ToolButtonTextOnly:Qt::ToolButtonIconOnly);if(showDetails){details_->setGeometry(detailsRect(row,i));details_->raise();}if(!visible)return;const auto name="More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString();more_->setAccessibleName(name);more_->setToolTip(name);more_->setGeometry(bounds);more_->raise();}
  bool helpEvent(QHelpEvent* event,QAbstractItemView* view,const QStyleOptionViewItem& option,const QModelIndex& i)override{
+  if(i.data(HistoryModel::FailedRole).toBool()&&!menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),failureDescription(i),view);return true;}
   if(menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),"More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString(),view);return true;}return QStyledItemDelegate::helpEvent(event,view,option,i);
  }
  bool eventFilter(QObject* watched,QEvent* event)override{
@@ -377,7 +385,7 @@ public:
  bool compactRow(const QRect& r,const QModelIndex& i)const{return !grid()&&rowBody(r,false,heading(i)).width()<Graphite::scaled(480);}
  int compactActionWidth(const QModelIndex& i)const{return actionHeight()+space(Space::s)+listDetailsSpace()+(i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()?0:primaryWidth(i)+space(Space::s));}
  int compactMetadataTop(const QRect& r,const QModelIndex& i)const{return rowBody(r,false,heading(i)).top()+compactTextInset()+QFontMetrics(historyTitleFont()).height()+compactMetadataGap();}
- int compactErrorTop(const QRect& r,const QModelIndex& i)const{return compactMetadataTop(r,i)+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+qMax(0,(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::metadata)).height())/2);}
+ int compactErrorTop(const QRect& r,const QModelIndex& i)const{return compactMetadataTop(r,i)+QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()+qMax(0,(actionHeight()-QFontMetrics(Graphite::font(Graphite::Type::metadata)).height())/2)+space(Space::xs);}
  int inlineTextWidth(const QRect& r,const QModelIndex& i)const{
   const auto body=rowBody(r,false,heading(i));return qMax(20,(i.data(HistoryModel::FailedRole).toBool()?body.width()-actionHeight()-space(Space::s)-listDetailsSpace()-(rowPrimary(i)?primaryWidth(i)+space(Space::s):0):rowColumns(body,i).item.width())-space(Space::s));
  }
@@ -405,8 +413,8 @@ public:
   const int width=qMax(160,view_->viewport()->width()-2*view_->spacing());
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
   if(compactRow(outer,i)){
-   const auto body=rowBody(outer,false,heading(i));const bool below=actionsBelow(outer,i),failed=i.data(HistoryModel::FailedRole).toBool();const int metaHeight=QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();int bottom=compactMetadataTop(outer,i)+metaHeight+(below?0:qMax(0,(actionHeight()-metaHeight)/2));
-   if(failed){QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);bottom=compactErrorTop(outer,i)+int(std::ceil(metadata.size().height()));}
+   const bool below=actionsBelow(outer,i),failed=i.data(HistoryModel::FailedRole).toBool();const int metaHeight=QFontMetrics(Graphite::font(Graphite::Type::metadata)).height();int bottom=compactMetadataTop(outer,i)+metaHeight+(below?0:qMax(0,(actionHeight()-metaHeight)/2));
+   if(failed)return {width,rowContentHeight()+metaHeight+space(Space::xs)+heading(i)+(below?actionHeight()+space(Space::m):0)};
    height=qMax(rowContentHeight(),bottom-heading(i)+2+(below?actionHeight()+space(Space::m):0))+heading(i);return {width,height};
   }
   if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;historyMetadata(metadata,i,body.width(),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
@@ -457,7 +465,7 @@ public:
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
   if(compact){
    QTextDocument document;historyMetadata(document,i,metadataWidth,false,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,QFontMetrics(metaFont).height()));document.drawContents(p);p->restore();
-   if(failed){QTextDocument error;historyMetadata(error,i,body.width(),false);p->save();p->translate(body.left(),compactErrorTop(outer,i));error.drawContents(p);p->restore();}
+   if(failed){QTextDocument error;compactFailureDetail(error,i,body.width());p->save();p->translate(body.left(),compactErrorTop(outer,i));p->setClipRect(QRectF(0,0,body.width(),QFontMetrics(metaFont).height()));error.drawContents(p);p->restore();}
   }
   else if(!grid()){QTextDocument document;historyMetadata(document,i,metadataWidth,!below&&!columns.created.isEmpty(),compactList&&!compactList());p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
   else if(failed){
