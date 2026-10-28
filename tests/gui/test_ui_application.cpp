@@ -11,6 +11,7 @@
 #include <QScreen>
 #include "fixtures/UiSessionFixture.h"
 #include <QApplication>
+#include <QLayout>
 #include <QComboBox>
 #include <QLabel>
 #include <QJsonDocument>
@@ -34,6 +35,7 @@
 #include <QStyleOptionButton>
 #include <QPainter>
 #include "ui/Graphite.h"
+#include "ui/Fonts.h"
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::test;
 class ControlDevice:public QIODevice {
@@ -426,12 +428,12 @@ private slots:
  // depending on the fonts, and below the window's minimum height, where a
  // window manager can still hold it, the rest scrolls into view.
  void commandBandShortensSecondaryLabelsBeforeIcons(){
-  const auto original=QApplication::font();const auto restore=qScopeGuard([&]{QApplication::setFont(original);});auto font=original;font.setPixelSize(21);QApplication::setFont(font);
+  Fonts::load();VisualStyle::apply(*qApp);const auto original=QApplication::font();const auto restore=qScopeGuard([&]{QApplication::setFont(original);});auto font=original;font.setPixelSize(qRound((original.pixelSize()>0?original.pixelSize():original.pointSizeF()*96.0/72.0)*21.0/Graphite::font().pixelSize()));QApplication::setFont(font);
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);window.show();
   QToolButton *record=nullptr,*clipboard=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){if(button->property("captureAction")=="record")record=button;if(button->property("captureAction")=="clipboard")clipboard=button;}
-  QVERIFY(record&&clipboard);bool shortened=false,full=false;
-  for(int width=1060;width<=2100;width+=20){window.resize(width,680);QApplication::processEvents();if(record->toolButtonStyle()==Qt::ToolButtonTextBesideIcon&&record->text()=="Record"){shortened=true;QCOMPARE(clipboard->text(),QString("Clipboard"));QCOMPARE(clipboard->toolButtonStyle(),Qt::ToolButtonTextBesideIcon);}full|=record->toolButtonStyle()==Qt::ToolButtonTextBesideIcon&&record->text()=="Record screen";QCOMPARE(record->accessibleName(),QString("Record screen"));QCOMPARE(clipboard->accessibleName(),QString("Upload clipboard"));}
-  QVERIFY(shortened);QVERIFY(full);
+  QCOMPARE(Graphite::font().pixelSize(),21);QVERIFY(record&&clipboard);bool shortened=false,full=false,clipboardOnly=false;
+  for(int width=1060;width<=2100;width+=20){window.resize(width,680);QApplication::processEvents();if(record->toolButtonStyle()==Qt::ToolButtonTextBesideIcon&&record->text()=="Record"){shortened=true;QCOMPARE(clipboard->text(),QString("Clipboard"));clipboardOnly|=clipboard->toolButtonStyle()==Qt::ToolButtonIconOnly;}full|=record->toolButtonStyle()==Qt::ToolButtonTextBesideIcon&&record->text()=="Record screen";QCOMPARE(record->accessibleName(),QString("Record screen"));QCOMPARE(clipboard->accessibleName(),QString("Upload clipboard"));}
+  QVERIFY(shortened);QVERIFY(full);QVERIFY(clipboardOnly);window.resize(1060,680);QApplication::processEvents();QCOMPARE(record->text(),QString("Record"));QVERIFY2(record->toolButtonStyle()==Qt::ToolButtonTextBesideIcon,qPrintable(QString("band %1, hint %2, text %3, font %4").arg(window.findChild<QWidget*>("commandBand")->width()).arg(window.findChild<QWidget*>("commandBand")->layout()->sizeHint().width()).arg(record->text()).arg(record->font().pixelSize())));
  }
  void railFitsShortWindows_data(){
   QTest::addColumn<QSize>("size");QTest::addColumn<int>("scrolls");
