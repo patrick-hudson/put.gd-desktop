@@ -790,7 +790,7 @@ private slots:
   const QString longName="Upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams, release readiness and accessibility reviews";
   window.setDestination(longName);window.resize(760,560);QApplication::processEvents();
   QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());QVERIFY(destination->isVisible());
-  QVERIFY(destination->mapTo(footer,destination->rect().bottomLeft()).y()<upload->geometry().top());QCOMPARE(destination->text(),longName.mid(10));QCOMPARE(destination->toolTip(),longName.mid(10));QVERIFY(destination->elided());
+  QVERIFY(destination->mapTo(footer,destination->rect().bottomLeft()).y()<upload->mapTo(footer,QPoint()).y());QCOMPARE(destination->text(),longName.mid(10));QCOMPARE(destination->toolTip(),longName.mid(10));QVERIFY(destination->elided());
   destination->setFocus(Qt::TabFocusReason);QTest::keyClick(destination,Qt::Key_Return);QVERIFY(destination->fullTextPopup());QVERIFY(destination->fullTextPopup()->isVisible());destination->fullTextPopup()->close();
   window.setDestination("Upload to Project archive");window.resize(1400,700);QApplication::processEvents();QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
   QCOMPARE(footer->height(),Graphite::scaled(56));
@@ -799,17 +799,17 @@ private slots:
  void footerKeepsSharingModeVisibleBesideAnElidedDestination(){
   QFETCH(int,pixels);const auto original=QApplication::font();const auto restore=qScopeGuard([&]{QApplication::setFont(original);});auto font=original;font.setPixelSize(pixels);QApplication::setFont(font);
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  auto* destination=window.findChild<Graphite::ElidedLabel*>("editorDestination");auto* mode=window.findChild<QLabel*>("editorSharingMode");auto* document=window.findChild<QWidget*>("editorDocument");
+  auto* destination=window.findChild<Graphite::ElidedLabel*>("editorDestination");auto* mode=window.findChild<QLabel*>("editorSharingMode");auto* upload=window.findChild<QPushButton*>("editorUpload");auto* group=window.findChild<QWidget*>("editorUploadGroup");auto verifyPair=[&]{QCOMPARE(mode->parentWidget(),upload->parentWidget());QVERIFY(group->rect().contains(mode->geometry()));QCOMPARE(upload->x()-mode->geometry().right()-1,Graphite::space(Graphite::Space::s));QCOMPARE(mode->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());QCOMPARE(mode->font().weight(),QFont::Normal);QVERIFY(mode->width()>=mode->sizeHint().width());QVERIFY(upload->accessibleDescription().contains(destination->text()));QVERIFY(upload->accessibleDescription().contains(mode->text()=="Private upload"?QString("private upload"):QString("shared link")));};
   const QString name=QString("Production screenshots for customer support — ").repeated(10);
   for(const bool shared:{false,true}){
    window.setDestination(shared?"Upload to "+name+" · Shared link":"Private upload to "+name);QApplication::processEvents();
    QCOMPARE(destination->text(),name);QCOMPARE(destination->toolTip(),name);QVERIFY(destination->elided());
-   QCOMPARE(mode->text(),shared?QString("Shared link"):QString("Private upload"));QVERIFY(mode->isVisible());QVERIFY(mode->width()>=mode->sizeHint().width());QVERIFY(document->rect().contains(mode->geometry()));QVERIFY(!destination->geometry().intersects(mode->geometry()));
+   QCOMPARE(mode->text(),shared?QString("Shared link"):QString("Private upload"));QVERIFY(mode->isVisible());QVERIFY(mode->width()>=mode->sizeHint().width());verifyPair();
    QCOMPARE(window.viewState()["destination"].toObject()["sharingMode"].toString(),mode->text());
    QCOMPARE(window.viewState()["destination"].toObject()["text"].toString(),name+" · "+mode->text());
   }
-  window.resize(1900,700);window.setDestination("Private upload to Project archive");QApplication::processEvents();QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());auto* separator=window.findChild<QLabel*>("editorSharingSeparator");QVERIFY(separator->isVisible());QCOMPARE(separator->x()-destination->geometry().right()-1,Graphite::space(Graphite::Space::xs));QCOMPARE(mode->x()-separator->geometry().right()-1,Graphite::space(Graphite::Space::xs));
-  if(pixels==21)QVERIFY(Graphite::scaled(100)>=145);window.resize(760,560);QApplication::processEvents();QVERIFY(mode->isVisible());QVERIFY(mode->width()>=mode->sizeHint().width());QVERIFY(document->rect().contains(mode->geometry()));
+  window.resize(1900,700);window.setDestination("Private upload to Project archive");QApplication::processEvents();QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());QVERIFY(!window.findChild<QLabel*>("editorSharingSeparator"));verifyPair();
+  if(pixels==21)QVERIFY(Graphite::scaled(100)>=145);window.setDestination("Private upload to "+name);window.resize(760,560);QApplication::processEvents();QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());QVERIFY(mode->isVisible());verifyPair();
   window.setDestination("Upload to Archive");QVERIFY(!mode->isVisible());
  }
  void blurWarningUsesTheExistingRedactToolWithoutChangingMarks(){
