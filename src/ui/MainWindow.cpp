@@ -166,7 +166,10 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  auto* outputGroup=outputGroup_=new QWidget;outputGroup->setObjectName("captureOutputGroup");auto* outputRow=new QHBoxLayout(outputGroup);outputRow->setContentsMargins(0,0,0,0);outputRow->setSpacing(0);
  destination_=new OutputButton(outputGroup);destination_->setFocusPolicy(Qt::StrongFocus);VisualStyle::role(destination_,"quiet");destination_->setObjectName("captureOutputSummary");destination_->setToolButtonStyle(Qt::ToolButtonTextOnly);destination_->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);destination_->setMinimumWidth(Graphite::scaled(120));destination_->setPopupMode(QToolButton::InstantPopup);outputRow->addWidget(destination_,1);outputRow->addStretch(0);
  auto* outputMenu=new QMenu(destination_);outputMenu->setObjectName("captureOutputMenu");destination_->setMenu(outputMenu);const auto info=[outputMenu](const QString& name){auto* entry=new QWidgetAction(outputMenu);entry->setObjectName(name);auto* label=new QLabel;label->setTextFormat(Qt::PlainText);label->setWordWrap(true);label->setMinimumWidth(Graphite::scaled(280));label->setMaximumWidth(Graphite::scaled(480));label->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));label->setFocusPolicy(Qt::NoFocus);VisualStyle::role(label,"muted");entry->setDefaultWidget(label);connect(entry,&QAction::changed,label,[entry,label]{label->setText(entry->text());});outputMenu->addAction(entry);};info("captureOutputDefault");for(const auto& action:Settings::presentationOrder())info("captureOutputDetail"+action);outputMenu->addSeparator();auto* changeOutput=outputMenu->addAction("Change output");changeOutput->setObjectName("changeCaptureOutput");
- statusRow->addWidget(outputGroup,1);updateAvailability();
+ statusRow->addWidget(outputGroup,1);
+ // When the output summary is hidden (Settings → Capture), the remaining status
+ // items stay together at the right instead of spreading across the band.
+ statusRow->addStretch(0);updateAvailability();
  // The running build, from the resident identity About also shows. Stable and
  // nightly builds link to their GitHub release; development builds are text.
  version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);VisualStyle::role(version_,"meta");
