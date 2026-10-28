@@ -1303,11 +1303,16 @@ private slots:
         }
         auto* target = bar.findChild<QLabel*>("target");
         QVERIFY(target->isVisible());
-        QCOMPARE(target->text(), o.targetLabel);
+        QCOMPARE(QString(target->text()).replace(QChar(0x00a0), ' '), o.targetLabel);
         QVERIFY(target->width() >= target->fontMetrics().horizontalAdvance("960 × 600"));
         QVERIFY(target->height() >= target->heightForWidth(target->width()));
         QVERIFY(bar.rect().contains(QRect(target->mapTo(&bar, QPoint()), target->size())));
         QVERIFY(bar.findChild<QPushButton*>("record")->isVisible());
+        for (const char* state : {"recording", "paused", "recording", "ready"}) bar.setState(state);
+        bar.fitTo(QRect(0, 0, 1024, 768)); QApplication::processEvents();
+        QVERIFY(target->isVisible());
+        QVERIFY(target->width() > target->fontMetrics().horizontalAdvance("960 × 600"));
+        QVERIFY(target->height() >= target->heightForWidth(target->width()));
     }
     void stoppingKeepsTheClipAndDiscardStillAsks() {
         ControlBar::Options o;

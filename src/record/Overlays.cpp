@@ -331,6 +331,10 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     choices->setSpacing(Graphite::space(Graphite::Space::s));
     target_ = new QLabel(options.targetLabel, choices_);
     target_->setObjectName("target");
+    auto targetText = options.targetLabel;
+    const auto dimensions = targetText.lastIndexOf(QStringLiteral(" · "));
+    if (dimensions >= 0) targetText = targetText.left(dimensions + 3) + targetText.mid(dimensions + 3).replace(' ', QChar(0x00a0));
+    target_->setText(targetText);
     target_->setWordWrap(true);
     target_->setMinimumWidth(0);
     target_->setToolTip(options.targetLabel);
@@ -423,7 +427,8 @@ void ControlBar::arrange(bool twoRows) {
 void ControlBar::fitTo(const QRect& screen) {
     // Two rows when one would take most of the screen's width: a 150% text
     // size on a 1366 px laptop, or a narrow portrait monitor.
-    target_->setMinimumWidth(qMin(Graphite::scaled(180), target_->fontMetrics().horizontalAdvance(options_.targetLabel.section(QStringLiteral(" · "), -1))));
+    target_->setMinimumHeight(0);
+    target_->setMinimumWidth(0);
     target_->setMaximumWidth(QWIDGETSIZE_MAX);
     lockedFacts_->setMaximumWidth(QWIDGETSIZE_MAX);
     arrange(false);
@@ -434,7 +439,12 @@ void ControlBar::fitTo(const QRect& screen) {
         int other = 0;
         for (auto* widget : std::initializer_list<QWidget*>{audio_, format_, formatAudio_})
             if (!widget->isHidden()) other += widget->sizeHint().width() + Graphite::space(Graphite::Space::s);
-        target_->setMaximumWidth(qMax(target_->minimumWidth(), qMax(Graphite::scaled(100), room - other)));
+        const int padding = Graphite::space(Graphite::Space::xs);
+        const int natural = target_->fontMetrics().horizontalAdvance(options_.targetLabel) + padding;
+        const int minimum = qMin(natural, target_->fontMetrics().horizontalAdvance(options_.targetLabel.section(QStringLiteral(" · "), -1)) + padding);
+        const int width = qBound(minimum, room - other, natural);
+        target_->setFixedWidth(width);
+        target_->setMinimumHeight(target_->heightForWidth(width));
         lockedFacts_->setWordWrap(true);
         lockedFacts_->setMaximumWidth(qMax(Graphite::scaled(100), room));
         refresh();
