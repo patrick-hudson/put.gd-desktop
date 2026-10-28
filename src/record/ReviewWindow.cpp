@@ -903,9 +903,9 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         QColor ink = selected ? p.accent : p.textMuted;
         ink.setAlpha(mask.kind == "solid" ? 120 : 200);
         painter.setPen(Qt::NoPen);
-        painter.setBrush(QBrush(ink, Qt::BDiagPattern));
+        painter.setBrush(mask.kind == "solid" ? QBrush(ink) : QBrush(ink, Qt::BDiagPattern));
         const auto fill = bar.adjusted(1.5, 1.5, -1.5, -1.5);
-        if (mask.kind == "blur") painter.drawRoundedRect(QRectF(fill.left(), fill.bottom() - 3, fill.width(), 3), 2, 2);
+        if (mask.kind == "blur" || selected) painter.drawRoundedRect(mask.kind == "solid" ? fill : QRectF(fill.left(), fill.bottom() - 3, fill.width(), 3), 2, 2);
         painter.setPen(Qt::NoPen);
         if (selected) { painter.setBrush(p.accent); for (const int x : {left, right}) painter.drawRoundedRect(QRectF(x - 1.5, lane.top() - 2, 3, lane.height() + 4), 1, 1); }
         const QString name = maskNames_->name(mask);
