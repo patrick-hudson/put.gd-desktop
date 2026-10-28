@@ -1449,7 +1449,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   // Numeric inputs stay compact; choice controls share the family width. Only changed values show Reset.
   window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(true);putgd::test::settle(20);
   QSet<int> widths;for(const auto* key:{"concurrentUploads","maxFiles","imageBytes","pendingImageBytes","failedArtifactDays","recentActivityLimit"}){auto* edit=window.findChild<QLineEdit*>(key);QWidget* box=qobject_cast<QComboBox*>(edit->parentWidget())?edit->parentWidget():edit;widths.insert(box->width());}
-  QCOMPARE(widths.size(),1);
+  QCOMPARE(widths.size(),1);for(const auto* name:{"failedArtifactDaysUnit","historyRetentionDaysUnit"})QCOMPARE(window.findChild<QLabel*>(name)->property("visualRole").toString(),QString("unitSuffix"));
   QPushButton* reset=nullptr;for(auto* button:window.findChildren<QPushButton*>())if(button->accessibleName()=="Reset Uploads at once to default")reset=button;QVERIFY(reset&&!reset->isVisible());
   for(auto* label:tabs->widget(3)->findChildren<QLabel*>())QVERIFY2(!(label->isVisible()&&label->text()=="Default"),"No plain Default labels beside values");
   window.findChild<QLineEdit*>("concurrentUploads")->setText("5");QVERIFY(reset->isVisible());

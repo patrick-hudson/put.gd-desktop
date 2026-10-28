@@ -185,7 +185,7 @@ void boxPreferenceRows(QFormLayout* form){
    else{auto* line=new QHBoxLayout;line->setContentsMargins(0,0,0,0);line->setSpacing(space(Space::l));line->addWidget(label,check||choice?1:0);line->addWidget(value,check||choice?0:1,Qt::AlignVCenter);if(check)value->setFixedWidth(Graphite::scaled(24));column->addLayout(line);}
    for(auto* full:fullRows)column->addWidget(full);label->show();value->show();
    for(auto* control:value->findChildren<QWidget*>())if(qobject_cast<QLineEdit*>(control)||qobject_cast<QComboBox*>(control)){control->setProperty("graphiteFullWidth",true);control->setMinimumWidth(0);if(!numeric||qobject_cast<QComboBox*>(control))control->setMaximumWidth(QWIDGETSIZE_MAX);if(stacked)VisualStyle::role(control,"technical");if(auto* combo=qobject_cast<QComboBox*>(control)){combo->setProperty("preferenceChoice",true);combo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);}for(auto* line:value->findChildren<QLayout*>())line->setAlignment(control,{});control->show();}
-   if(!check&&!choice&&!stacked)for(auto* text:value->findChildren<QLabel*>()){text->setAlignment(Qt::AlignRight|Qt::AlignVCenter);VisualStyle::role(text,"secondary");}
+   if(!check&&!choice&&!stacked&&!numeric)for(auto* text:value->findChildren<QLabel*>()){text->setAlignment(Qt::AlignRight|Qt::AlignVCenter);VisualStyle::role(text,"secondary");}
    value->setMinimumHeight(values->totalMinimumSize().height());
   }
   if(column){column->setSizeConstraint(QLayout::SetMinimumSize);column->setContentsMargins(space(Space::l),space(Space::m),space(Space::l),space(Space::m));column->setSpacing(space(Space::xs));}else if(!field->findChild<QFormLayout*>())field->setContentsMargins(space(Space::l),space(Space::m),space(Space::l),space(Space::m));
