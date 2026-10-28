@@ -203,8 +203,8 @@ class FieldActionsSizer final:public QObject {
 public:
  FieldActionsSizer(QWidget* owner,QBoxLayout* line,QWidget* value,QWidget* actions):QObject(owner),line_(line),actions_(actions){owner->installEventFilter(this);value->installEventFilter(this);actions->installEventFilter(this);}
 protected:
- bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Resize||event->type()==QEvent::Show||event->type()==QEvent::LayoutRequest){const bool stacked=line_->geometry().width()<Graphite::scaled(240)+actions_->sizeHint().width()+space(Space::s);line_->setDirection(stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);line_->setStretch(0,1);line_->setStretch(1,0);}return false;}
-private:QBoxLayout* line_;QWidget* actions_;
+ bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Resize||event->type()==QEvent::Show||event->type()==QEvent::LayoutRequest){auto* parent=line_->parentWidget();if(parent&&parent!=widthOwner_){widthOwner_=parent;parent->installEventFilter(this);}const int room=parent?parent->contentsRect().width():line_->geometry().width();const bool stacked=room<Graphite::scaled(240)+actions_->sizeHint().width()+space(Space::s);line_->setDirection(stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);line_->setStretch(0,1);line_->setStretch(1,0);line_->setAlignment(actions_,Qt::AlignRight);}return false;}
+private:QBoxLayout* line_;QWidget* actions_;QWidget* widthOwner_=nullptr;
 };
 class PreferenceChoiceRow final:public QObject {
 public:
