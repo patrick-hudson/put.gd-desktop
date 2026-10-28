@@ -147,7 +147,7 @@ private:
  QString baseRevision_;
  QString metadataText_; // Canonical metadata; display-only wrap characters never enter diagnostics copies.
  QJsonObject draft_,savingDocument_;QString observed_;bool loading_=false,appearancePreviewed_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
- QLabel *status_=nullptr,*metadata_=nullptr,*capabilities_=nullptr;
+ QLabel *status_=nullptr,*metadata_=nullptr;QWidget* capabilities_=nullptr;
  ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
  QComboBox *providerType_=nullptr,*protonFolder_=nullptr;QSpinBox* protonExpiration_=nullptr;QDoubleSpinBox* protonTimeout_=nullptr;
  QComboBox* b2LinkMode_=nullptr;QSpinBox* b2LinkDays_=nullptr;
