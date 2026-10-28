@@ -119,7 +119,7 @@ QString formatHint(const QString& format, const QString& codec) {
 QString formatLabel(const QString& format, const QString& codec) {
     if (format == "mp4") return codec == "h265" ? QStringLiteral("Smaller video — MP4 (H.265)") : QStringLiteral("Compatible video — MP4 (H.264) · Recommended");
     if (format == "webm") return QStringLiteral("Browser video — WebM (VP9)");
-    if (format == "gif") return QStringLiteral("Animated GIF — silent");
+    if (format == "gif") return QStringLiteral("Animated GIF");
     return QStringLiteral("Animated WebP — silent");
 }
 
