@@ -273,6 +273,7 @@ private slots:
                         QVERIFY(label && label->isVisible() && label->isEnabled());
                         QCOMPARE(label->palette().color(QPalette::WindowText), putgd::Theme::current().textSecondary);
                         QVERIFY(putgd::Theme::contrast(label->palette().color(QPalette::WindowText), putgd::Theme::current().bg) >= 4.5);
+                        QCOMPARE(label->palette().color(QPalette::Disabled, QPalette::WindowText), putgd::Theme::current().textMuted);
                     }
                 }
                 bar.setState("ready");
@@ -315,8 +316,8 @@ private slots:
             QVERIFY(putgd::Theme::contrast(p.text, p.bg) >= 4.5);
             QVERIFY(putgd::Theme::contrast(p.text, p.surfaceRaised) >= 4.5);
             QVERIFY(putgd::Theme::contrast(p.textMuted, p.bg) >= 4.5);
-            // ControlBar paints this boundary token; disabled text stays readable on bg.
-            QVERIFY(putgd::Theme::contrast(p.textDisabled, p.bg) >= 4.5);
+            // Inactive actions meet 3:1; the information above keeps 4.5:1.
+            QVERIFY(putgd::Theme::contrast(p.textDisabled, p.bg) >= 3.0);
             QVERIFY(putgd::Theme::contrast(p.controlOutline, Qt::black) >= 3.0);
             QVERIFY(putgd::Theme::contrast(p.controlOutline, Qt::white) >= 3.0);
             putgd::Theme::setScheme(scheme);

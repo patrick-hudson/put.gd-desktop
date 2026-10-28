@@ -348,6 +348,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     formatAudio_ = new QLabel(choices_);
     formatAudio_->setObjectName("formatAudio");
     VisualStyle::role(formatAudio_, "muted");
+    Graphite::setLocked(formatAudio_, true);
     lockedAudio_ = new QLabel(choices_);
     lockedAudio_->setObjectName("lockedAudio");
     lockedFormat_ = new QLabel(choices_);
@@ -355,7 +356,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     lockedFacts_ = new QLabel(choices_);
     lockedFacts_->setObjectName("recordingFacts");
     choices->addWidget(lockedFacts_);
-    for (auto* label : {target_, lockedAudio_, lockedFormat_, lockedFacts_}) VisualStyle::role(label, "muted");
+    for (auto* label : {target_, lockedAudio_, lockedFormat_, lockedFacts_}) { VisualStyle::role(label, "muted"); Graphite::setLocked(label, true); }
     for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_, formatAudio_, lockedAudio_, lockedFormat_}) choices->addWidget(w);
     record_ = new QPushButton("Start recording", this); record_->setObjectName("record");
     VisualStyle::role(record_, "primary");
