@@ -1431,6 +1431,13 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
     case CC_ToolButton: {
         const auto* tool = qstyleoption_cast<const QStyleOptionToolButton*>(option);
         if (!tool || tool->toolButtonStyle == Qt::ToolButtonTextUnderIcon) break;
+        if (widget && widget->property("preferenceDisclosure").toBool()) {
+            const auto body = option->rect.adjusted(space(Space::l), space(Space::m), -space(Space::l), -space(Space::m));
+            paintText(*p, body.adjusted(0, 0, -scaled(24), 0), tool->text, c.textSecondary, font(), Qt::AlignLeft | Qt::AlignVCenter);
+            paintChevron(*p, QPointF(body.right() - scaled(8), body.center().y()), scaled(10), tool->state & State_On ? Qt::DownArrow : Qt::RightArrow, c.textSecondary);
+            if (keyboardState(option)) rounded(p, QRectF(option->rect).adjusted(1, 1, -1, -1), {}, c.accent, Metric::containerRadius);
+            return;
+        }
         const bool split = tool->features & QStyleOptionToolButton::MenuButtonPopup;
         const bool chevron = (tool->features & QStyleOptionToolButton::HasMenu) && !split && !(widget && widget->property("noChevron").toBool())
                              && !tool->text.isEmpty() && tool->toolButtonStyle != Qt::ToolButtonIconOnly;
@@ -1591,6 +1598,19 @@ Surface::Surface(const char* role, Qt::Edges hairlines, QWidget* parent) : QWidg
 void Surface::paintEvent(QPaintEvent*) {
     QPainter p(this);
     const auto& c = t();
+    if (property("preferenceCard").toBool()) {
+        rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), c.surface, c.border, Metric::containerRadius);
+        int previous = -1;
+        if (auto* form = findChild<QFormLayout*>()) for (int row = 0; row < form->rowCount(); ++row) {
+            auto* item = form->itemAt(row, QFormLayout::FieldRole);
+            if (!item || !item->widget() || !form->isRowVisible(row)) continue;
+            const auto* field = item->widget();
+            const int y = field->mapTo(this, QPoint()).y();
+            if (previous >= 0) { p.setPen(c.border); p.drawLine(space(Space::l), y, width() - space(Space::l), y); }
+            previous = y;
+        }
+        return;
+    }
     p.fillRect(rect(), role_ == "well" ? c.well : role_ == "surface" ? c.surface : role_ == "raised" ? c.surfaceRaised : c.bg);
     p.setPen(c.border);
     if (edges_ & Qt::TopEdge) p.drawLine(0, 0, width(), 0);
