@@ -511,7 +511,7 @@ private slots:
         }
     }
     void outlineIconsKeepSecondaryColourInsideOptionalWashes() {
-        const QStringList outlines{"upload","failed-uploads","download","region","window","desktop","clipboard","history","destinations","settings","preferences","info","shortcuts","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","bucket","proton","add","file","video"};
+        const QStringList outlines{"upload","failed-uploads","download","region","window","desktop","clipboard","record","history","destinations","settings","preferences","info","shortcuts","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","save","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","bucket","proton","add","file","video"};
         for (const auto& name : outlines) {
             const auto art = IconArt::symbol(name, Qt::white, 4, Qt::red);
             QVERIFY2(art == IconArt::symbol(name, Qt::white, 4, Qt::blue), qPrintable(name));
@@ -523,11 +523,11 @@ private slots:
             }
             QVERIFY2(ink > 100, qPrintable(name));
         }
-        for (const auto& name : {"record", "alert", "image"}) {
+        for (const auto& name : {"alert", "image"}) {
             const auto art = IconArt::symbol(name, Qt::white, 4, Qt::red);
             QVERIFY(art != IconArt::symbol(name, Qt::white, 4, Qt::blue));
             // Sample empty interior, away from the antialiased outline.
-            const auto interior = QString(name)=="record" ? QPoint(12,12) : QString(name)=="alert" ? QPoint(7,17) : QPoint(9,9);
+            const auto interior = QString(name)=="alert" ? QPoint(7,17) : QPoint(9,9);
             const auto wash = art.pixelColor(interior*4);
             QVERIFY2(wash.alpha() >= 45 && wash.alpha() <= 47, name);
             QCOMPARE(wash.red(), 255);QCOMPARE(wash.blue(), 0);
