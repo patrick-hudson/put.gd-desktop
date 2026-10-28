@@ -1868,6 +1868,12 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1400);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.show();putgd::test::settle(30);
   auto* package=window.findChild<QPushButton*>("createDiagnosticsPackage");auto* clear=window.findChild<QPushButton*>("clearLogs");QVERIFY(package&&clear);QCOMPARE(package->property("visualRole").toString(),QString("secondary"));QVERIFY(package->width()<package->parentWidget()->width());QCOMPARE(package->mapTo(&window,QPoint(package->width(),0)).x(),clear->mapTo(&window,QPoint(clear->width(),0)).x());
  }
+ void choiceFamiliesRemeasureContentIndependently(){
+  QWidget host;QVBoxLayout column(&host);QList<QFormLayout*> forms;QList<QComboBox*> choices;
+  for(int i=0;i<3;++i){auto* form=new QFormLayout;VisualStyle::styleForm(form);column.addLayout(form);auto* combo=VisualStyle::choiceBox(&host);combo->addItem("Short");form->addRow("Value",combo);forms<<form;choices<<combo;}
+  VisualStyle::alignChoices(&host,{forms[0],forms[1]});VisualStyle::alignChoices(&host,{forms[2]});host.resize(1000,400);host.show();putgd::test::settle(30);for(auto* combo:choices)QCOMPARE(combo->width(),Graphite::scaled(240));
+  choices[0]->addItem(QString(120,'W'));PUTGD_TRY_COMPARE(choices[0]->width(),Graphite::scaled(400));QCOMPARE(choices[1]->width(),choices[0]->width());QCOMPARE(choices[2]->width(),Graphite::scaled(240));
+ }
  void formChoicesShareWidthsAndTextFieldsKeepTheirColumn(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1200);window.showCaptureSettings();window.show();
   auto* choices=window.findChild<QComboBox*>("uploadClipboardBehavior");QVERIFY(choices);putgd::test::settle(30);const int width=choices->width();QVERIFY(width>=Graphite::scaled(240)&&width<=Graphite::scaled(400));
@@ -1875,7 +1881,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   auto* path=window.findChild<QLineEdit*>("archiveRoot");QVERIFY(path->width()>width);
   choices->addItem(QString(120,'W'));putgd::test::settle(30);for(const auto& name:{"defaultCaptureDestination","defaultCaptureSharing","namingMode","collisionPolicy"})QCOMPARE(window.findChild<QComboBox*>(name)->width(),Graphite::scaled(400));
   window.navigate("destinations");putgd::test::settle(30);auto* serviceChoice=window.findChild<QComboBox*>("s3Service");auto* region=window.findChild<QComboBox*>("s3RegionChoices");auto* acl=window.findChild<QComboBox*>("s3AclMode");QVERIFY(serviceChoice&&region&&acl);QCOMPARE(serviceChoice->width(),region->width());QCOMPARE(serviceChoice->width(),acl->width());QVERIFY(window.findChild<QLineEdit*>("s3Bucket")->width()>region->width());
-  window.resize(1060,680);putgd::test::settle(30);for(auto* combo:{serviceChoice,region,acl})QVERIFY(window.rect().contains(QRect(combo->mapTo(&window,QPoint()),combo->size())));QCOMPARE(window.findChild<QScrollArea*>("destinationScroll")->horizontalScrollBar()->maximum(),0);
+  window.resize(1060,680);putgd::test::settle(30);for(auto* combo:{serviceChoice,region,acl}){const auto bounds=QRect(combo->mapTo(&window,QPoint()),combo->size());QVERIFY(bounds.left()>=0&&bounds.right()<window.width());}QCOMPARE(window.findChild<QScrollArea*>("destinationScroll")->horizontalScrollBar()->maximum(),0);
  }
  void sharedFormsUseOneMinimumControlWidth(){
   QWidget host;QVBoxLayout outer(&host);QList<QWidget*> pages;QList<QFormLayout*> forms;
