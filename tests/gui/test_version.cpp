@@ -4,6 +4,7 @@
 #include "ui/Graphite.h"
 #include "platform/HostOpen.h"
 #include <QLabel>
+#include <QMessageBox>
 #include <QDialogButtonBox>
 #include <QLayout>
 #include <QUrl>
