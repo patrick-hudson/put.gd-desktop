@@ -16,6 +16,7 @@
 #include <QTextEdit>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QScreen>
 #include <QFormLayout>
 #include <QClipboard>
 #include <QTest>
@@ -74,6 +75,24 @@ private slots:
   QVERIFY(version->mapTo(&dialog,QPoint()).y()<website->mapTo(&dialog,QPoint()).y());QCOMPARE(buttons->mapTo(&dialog,QPoint()).y()-content->mapTo(&dialog,QPoint(0,content->height())).y(),margin);QCOMPARE(buttons->mapTo(&dialog,QPoint(buttons->width(),0)).x(),dialog.width()-margin);
  }
 
+ void expandedAboutFitsTheScreenWithoutSidewaysScroll_data(){QTest::addColumn<int>("pixels");QTest::newRow("text100")<<14;QTest::newRow("text150")<<21;}
+ void expandedAboutFitsTheScreenWithoutSidewaysScroll(){
+  QFETCH(int,pixels);VisualStyle::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);
+  const QJsonObject manifest{{"version","26.1028.1702-dev+ga40505cb7d78.dirty"},{"gitCommit","a40505cb7d788b598878277469fad0c1f2e3d4c5"},{"dirty",true},{"baseVersion","26.1028.1702"},{"commitCount",4182},{"gitTree","5c0ffee5c0ffee5c0ffee5c0ffee5c0ffee5c0ff"},{"packageVersion","26.1028.1702~dev.4182.ga40505cb7d78"},{"schemaVersion",1},{"sourceProvenance","git"}};
+  AboutWindow dialog(manifest);dialog.show();QApplication::processEvents();dialog.findChild<QPushButton*>("buildDetails")->click();QApplication::processEvents();
+  const auto available=dialog.screen()->availableGeometry();QVERIFY2(dialog.height()<=available.height()&&dialog.width()<=available.width(),qPrintable(QString("%1x%2 in %3x%4").arg(dialog.width()).arg(dialog.height()).arg(available.width()).arg(available.height())));
+  if(pixels==14)QVERIFY2(dialog.height()<=600,qPrintable(QString::number(dialog.height())));
+  auto* card=dialog.findChild<QWidget*>("aboutBuildDetails");QVERIFY(card->isVisible());int captionLeft=-1,valueLeft=-1;
+  for(auto* value:card->findChildren<QTextEdit*>()){
+   QCOMPARE(value->wordWrapMode(),QTextOption::WrapAnywhere);QCOMPARE(value->horizontalScrollBar()->maximum(),0);QVERIFY(value->height()>=value->heightForWidth(value->width()));
+   if(valueLeft<0)valueLeft=value->x();QCOMPARE(value->x(),valueLeft);
+   auto* caption=card->findChild<QLabel*>(value->objectName()+"Caption");QVERIFY(caption);if(captionLeft<0)captionLeft=caption->x();QCOMPARE(caption->x(),captionLeft);QVERIFY(caption->x()+caption->width()<=valueLeft);QCOMPARE(caption->y(),value->y());
+  }
+  QCOMPARE(card->findChild<QLabel*>("build_gitTreeCaption")->text(),QString("Git tree"));
+  // The whole card is visible unless the screen is shorter than the dialog's readable maximum.
+  auto* scroll=dialog.findChild<QScrollArea*>("aboutBuildScroll");QVERIFY(scroll);if(dialog.height()<dialog.maximumFitHeight())QCOMPARE(scroll->verticalScrollBar()->maximum(),0);
+  for(auto* name:{"copyBuildDetails","buildDetails","closeAbout"}){auto* button=dialog.findChild<QPushButton*>(name);QVERIFY(dialog.rect().contains(QRect(button->mapTo(&dialog,QPoint()),button->size())));}
+ }
  void disclosureLabelsFitAtLargeText() {
   VisualStyle::apply(*qApp);const auto oldFont=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(oldFont);});auto font=oldFont;font.setPixelSize(21);qApp->setFont(font);
   AboutWindow dialog({{"version","26.1027.1543-dev+g0123456789ab"}});dialog.show();QApplication::processEvents();for(const auto* name:{"qt_msgbox_label","qt_msgbox_informativelabel","aboutVersion"}){auto* text=dialog.findChild<QLabel*>(name);QVERIFY(text);QVERIFY2(text->height()>=text->fontMetrics().height(),qPrintable(QString("%1: %2 < %3").arg(name).arg(text->height()).arg(text->fontMetrics().height())));}auto* details=dialog.findChild<QPushButton*>("buildDetails");QVERIFY(details);

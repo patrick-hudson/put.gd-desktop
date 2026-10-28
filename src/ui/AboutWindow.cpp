@@ -10,6 +10,10 @@
 #include <QJsonArray>
 #include <QPushButton>
 #include <QTextEdit>
+#include <QGridLayout>
+#include <QScrollArea>
+#include <QScreen>
+#include <QGuiApplication>
 #include <QTextDocument>
 #include <QTextOption>
 #include <QResizeEvent>
@@ -20,25 +24,31 @@
 
 namespace putgd {
 namespace {
+// Selectable, wrap-anywhere values whose height follows the width the grid gives them.
 class BuildValue final:public QTextEdit {
 public:
- explicit BuildValue(const QString& value){setPlainText(value);setReadOnly(true);setFrameShape(QFrame::NoFrame);setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);setWordWrapMode(QTextOption::WrapAnywhere);document()->setDocumentMargin(0);setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);}
- QSize sizeHint()const override{return {fontMetrics().horizontalAdvance(toPlainText()),fontMetrics().height()};}
- QSize minimumSizeHint()const override{return {0,fontMetrics().height()};}
+ explicit BuildValue(const QString& value){setPlainText(value);setReadOnly(true);setFrameShape(QFrame::NoFrame);setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);setWordWrapMode(QTextOption::WrapAnywhere);document()->setDocumentMargin(0);QSizePolicy policy(QSizePolicy::Expanding,QSizePolicy::Preferred);policy.setHeightForWidth(true);setSizePolicy(policy);}
+ bool hasHeightForWidth()const override{return true;}
+ int heightForWidth(int width)const override{QTextDocument text;text.setDocumentMargin(0);text.setDefaultFont(font());text.setDefaultTextOption(document()->defaultTextOption());text.setPlainText(toPlainText());text.setTextWidth(qMax(1,width-2*frameWidth()));return qCeil(text.size().height())+2*frameWidth();}
+ QSize sizeHint()const override{const int width=fontMetrics().horizontalAdvance(toPlainText())+2*frameWidth()+1;return {width,heightForWidth(width)};}
+ QSize minimumSizeHint()const override{return {fontMetrics().averageCharWidth()*8,fontMetrics().height()};}
 protected:
- void resizeEvent(QResizeEvent* event)override{QTextEdit::resizeEvent(event);document()->setTextWidth(viewport()->width());const int height=qCeil(document()->size().height())+2*frameWidth();if(minimumHeight()!=height){setFixedHeight(height);updateGeometry();QTimer::singleShot(0,window(),[owner=QPointer<QWidget>(window())]{if(owner)owner->adjustSize();});}}
- };
-class BuildFactRow final:public QWidget {
-public:
- BuildFactRow(QLabel* caption,BuildValue* value){caption_=caption;value_=value;auto* row=new QBoxLayout(QBoxLayout::LeftToRight,this);row->setContentsMargins(0,0,0,0);row->addWidget(caption,0,Qt::AlignTop);row->addWidget(value,1);}
- QSize minimumSizeHint()const override{return {0,QWidget::minimumSizeHint().height()};}
-protected:
- void resizeEvent(QResizeEvent* event)override{QWidget::resizeEvent(event);const bool stacked=caption_->sizeHint().width()+Graphite::space(Graphite::Space::m)+value_->sizeHint().width()>width();auto* row=static_cast<QBoxLayout*>(layout());row->setDirection(stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);row->setSpacing(Graphite::space(stacked?Graphite::Space::xs:Graphite::Space::m));}
-private:QLabel* caption_;BuildValue* value_;
+ void resizeEvent(QResizeEvent* event)override{QTextEdit::resizeEvent(event);if(event->size().width()!=event->oldSize().width())updateGeometry();}
 };
+// The facts scroll only when the screen can't hold them; otherwise they ask for their full height.
+class BuildFacts final:public QScrollArea {
+public:
+ explicit BuildFacts(QWidget* card,QWidget* parent):QScrollArea(parent){setObjectName("aboutBuildScroll");setWidget(card);setWidgetResizable(true);setFrameShape(QFrame::NoFrame);setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);viewport()->setAutoFillBackground(false);QSizePolicy policy(QSizePolicy::Preferred,QSizePolicy::Preferred);policy.setHeightForWidth(true);setSizePolicy(policy);}
+ bool hasHeightForWidth()const override{return true;}
+ int heightForWidth(int width)const override{return widget()->layout()->totalHeightForWidth(width);}
+ QSize sizeHint()const override{return {widget()->sizeHint().width(),heightForWidth(qMax(width(),widget()->minimumSizeHint().width()))};}
+ QSize minimumSizeHint()const override{return {widget()->minimumSizeHint().width(),3*fontMetrics().height()};}
+};
+// Manifest keys are camelCase; show them as sentence-case captions.
+QString caption(const QString& key){QString text;for(const auto c:key){if(c.isUpper()&&!text.isEmpty())text+=' ';text+=text.isEmpty()?c.toUpper():c.toLower();}return text;}
 }
 AboutWindow::AboutWindow(const QJsonObject& residentBuild,QWidget* parent):QDialog(parent),details_(QString::fromUtf8(QJsonDocument(residentBuild).toJson(QJsonDocument::Indented))){
- VisualStyle::apply(*qApp);setWindowTitle("About put.gd");setWindowIcon(VisualStyle::icon("brand"));setWindowModality(Qt::NonModal);setFixedWidth(Graphite::scaled(440));
+ VisualStyle::apply(*qApp);setWindowTitle("About put.gd");setWindowIcon(VisualStyle::icon("brand"));setWindowModality(Qt::NonModal);const auto* display=screen()?screen():QGuiApplication::primaryScreen();setFixedWidth(display?qMin(Graphite::scaled(440),display->availableGeometry().width()-2*Graphite::space(Graphite::Space::xl)):Graphite::scaled(440));
  auto* root=new QVBoxLayout(this);const int margin=Graphite::space(Graphite::Space::xl);root->setContentsMargins(margin,margin,margin,margin);root->setSpacing(margin);
  auto* content=new QWidget(this);content->setObjectName("aboutContent");auto* row=new QHBoxLayout(content);row->setContentsMargins(0,0,0,0);row->setSpacing(Graphite::space(Graphite::Space::l));
  auto* icon=new QLabel(content);icon->setObjectName("qt_msgboxex_icon_label");const int side=Graphite::scaled(64);icon->setFixedSize(side,side);icon->setPixmap(VisualStyle::icon("brand").pixmap(side,side));row->addWidget(icon,0,Qt::AlignTop);
@@ -48,13 +58,18 @@ AboutWindow::AboutWindow(const QJsonObject& residentBuild,QWidget* parent):QDial
  auto* version=Graphite::label(residentBuild["version"].toString().section('-',0,0).section('+',0,0),"binding",identity);version->setObjectName("aboutVersion");version->setToolTip(residentBuild["version"].toString());version->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);column->addWidget(version);
  auto* website=new QPushButton(VisualStyle::icon("open-external"),"put.gd website",identity);website->setObjectName("putgdWebsite");website->setAutoDefault(false);VisualStyle::role(website,"link");website->setProperty("graphiteFlush",true);column->addWidget(website,0,Qt::AlignLeft);
  auto* browser=new Graphite::BrowserFeedback(identity);browser->setObjectName("aboutWebsiteFeedback");column->addWidget(browser);connect(website,&QPushButton::clicked,this,[browser]{const QUrl url("https://put.gd");host::openLink(url,browser->opening(url));});
- auto* details=new Graphite::Surface("surface",{},identity);details->setObjectName("aboutBuildDetails");auto* facts=new QVBoxLayout(details);const int inset=Graphite::space(Graphite::Space::m);facts->setContentsMargins(inset,inset,inset,inset);facts->setSpacing(Graphite::space(Graphite::Space::s));
- const auto add=[&](const QString& label,const QString& value,const QString& object){auto* caption=Graphite::label(label,"meta",details);auto* text=new BuildValue(value.isEmpty()?QString("Unknown"):value);text->setObjectName(object);VisualStyle::role(text,"mono");text->viewport()->setAutoFillBackground(false);facts->addWidget(new BuildFactRow(caption,text));};
- auto* fullVersion=new BuildValue(residentBuild["version"].toString());fullVersion->setParent(this);fullVersion->setObjectName("buildVersion");fullVersion->hide();add("Commit",residentBuild["gitCommit"].toString(residentBuild["commit"].toString("Unknown")),"buildCommit");add("Build state",residentBuild["dirty"].isBool()?(residentBuild["dirty"].toBool()?"Modified source tree":"Clean source tree"):"Unknown","buildState");for(auto it=residentBuild.begin();it!=residentBuild.end();++it){if(QStringList{"version","gitCommit","commit","dirty"}.contains(it.key()))continue;const auto value=it.value();const auto text=value.isObject()?QString::fromUtf8(QJsonDocument(value.toObject()).toJson(QJsonDocument::Compact)):value.isArray()?QString::fromUtf8(QJsonDocument(value.toArray()).toJson(QJsonDocument::Compact)):value.toVariant().toString();add(it.key(),text,"build_"+it.key());}column->addWidget(details);details->hide();root->addWidget(content);
+ // Expanded facts: a two-column key/value card on the text column, values wrapping anywhere.
+ auto* details=new Graphite::Surface("surface",{},nullptr);details->setObjectName("aboutBuildDetails");auto* facts=new QGridLayout(details);const int inset=Graphite::space(Graphite::Space::m);facts->setContentsMargins(inset,inset,inset,inset);facts->setHorizontalSpacing(Graphite::space(Graphite::Space::m));facts->setVerticalSpacing(Graphite::space(Graphite::Space::s));facts->setColumnStretch(1,1);
+ const auto add=[&](const QString& label,const QString& value,const QString& object){auto* key=Graphite::label(label,"meta",details);key->setObjectName(object+"Caption");auto* text=new BuildValue(value.isEmpty()?QString("Unknown"):value);text->setParent(details);text->setObjectName(object);VisualStyle::role(text,"mono");text->viewport()->setAutoFillBackground(false);text->setAccessibleName(label);const int row=facts->rowCount();facts->addWidget(key,row,0,Qt::AlignLeft|Qt::AlignTop);facts->addWidget(text,row,1);};
+ auto* fullVersion=new BuildValue(residentBuild["version"].toString());fullVersion->setParent(this);fullVersion->setObjectName("buildVersion");fullVersion->hide();add("Commit",residentBuild["gitCommit"].toString(residentBuild["commit"].toString("Unknown")),"buildCommit");add("Build state",residentBuild["dirty"].isBool()?(residentBuild["dirty"].toBool()?"Modified source tree":"Clean source tree"):"Unknown","buildState");for(auto it=residentBuild.begin();it!=residentBuild.end();++it){if(QStringList{"version","gitCommit","commit","dirty"}.contains(it.key()))continue;const auto value=it.value();const auto text=value.isObject()?QString::fromUtf8(QJsonDocument(value.toObject()).toJson(QJsonDocument::Compact)):value.isArray()?QString::fromUtf8(QJsonDocument(value.toArray()).toJson(QJsonDocument::Compact)):value.toVariant().toString();add(caption(it.key()),text,"build_"+it.key());}
+ auto* scroll=new BuildFacts(details,identity);column->addWidget(scroll);scroll->hide();root->addWidget(content);
  auto* buttons=new QWidget(this);buttons->setObjectName("aboutActions");auto* actions=new QHBoxLayout(buttons);actions->setContentsMargins(0,0,0,0);actions->setSpacing(Graphite::space(Graphite::Space::s));
  auto* copy=new QPushButton("Copy build details",buttons);copy->setObjectName("copyBuildDetails");copy->setAutoDefault(false);VisualStyle::role(copy,"quiet");copy->hide();actions->addWidget(copy);connect(copy,&QPushButton::clicked,this,[this]{qApp->clipboard()->setText(details_);});actions->addStretch();
  auto* toggle=new QPushButton("Build details",buttons);toggle->setObjectName("buildDetails");toggle->setAutoDefault(false);toggle->setCheckable(true);VisualStyle::role(toggle,"quiet");actions->addWidget(toggle);
  auto* close=new QPushButton("Close",buttons);close->setObjectName("closeAbout");VisualStyle::role(close,"lead");close->setDefault(true);actions->addWidget(close);connect(close,&QPushButton::clicked,this,&QDialog::accept);root->addWidget(buttons);
- connect(toggle,&QPushButton::toggled,this,[this,toggle,details,copy](bool expanded){details->setVisible(expanded);copy->setVisible(expanded);toggle->setText(expanded?"Hide build details":"Build details");layout()->activate();adjustSize();});
+ connect(toggle,&QPushButton::toggled,this,[this,toggle,scroll,copy](bool expanded){scroll->setVisible(expanded);copy->setVisible(expanded);toggle->setText(expanded?"Hide build details":"Build details");fitHeight();});
 }
+// Grow to the content, up to a readable maximum inside the screen; the facts scroll only beyond it.
+int AboutWindow::maximumFitHeight()const{const auto* display=screen()?screen():QGuiApplication::primaryScreen();const int screenRoom=display?display->availableGeometry().height()-2*Graphite::space(Graphite::Space::xl):Graphite::scaled(600);return qMin(Graphite::scaled(600),screenRoom);}
+void AboutWindow::fitHeight(){auto* facts=findChild<QScrollArea*>("aboutBuildScroll");facts->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);layout()->activate();const int natural=layout()->totalHeightForWidth(width());const int limit=qMax(maximumFitHeight(),layout()->totalMinimumSize().height());if(natural>limit)facts->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);resize(width(),qMin(natural,limit));}
 }
