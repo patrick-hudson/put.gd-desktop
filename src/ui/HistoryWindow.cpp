@@ -59,6 +59,7 @@
 #include <QStyledItemDelegate>
 #include <QStyleOptionButton>
 #include <QTextDocument>
+#include <QTextCursor>
 #include <QTextBlock>
 #include <QTextLayout>
 #include <QAbstractTextDocumentLayout>
@@ -267,6 +268,14 @@ void historyMetadata(QTextDocument& document,const QModelIndex& index,int width,
  if(HistoryModel::failed(record)){const auto fullLabel=HistoryModel::failureLabel(record),label=text.startsWith(fullLabel)?fullLabel:text;auto detail=text;if(detail.startsWith(label))detail.remove(0,label.size());document.setHtml("<span style=\"color:"+t.danger.name()+"\">"+statusPhrases(label).toHtmlEscaped()+"</span><span style=\"color:"+t.textSecondary.name()+"\">"+statusPhrases(detail,true).toHtmlEscaped()+"</span>");}
  else{QStringList spans;for(const auto& part:text.split(" · "))spans.append(metadataSpan(part,metadataColor(record,part,t.textMuted)));document.setHtml(spans.join(metadataSpan(" · ",t.textMuted)));}
  if(separated){QStringList spans;for(const auto& part:text.split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,metadataColor(record,part,HistoryModel::failed(record)?t.textSecondary:t.textMuted)));option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(Graphite::separatedLines(spans,document.defaultFont(),width));}document.setTextWidth(qMax(20,width));
+ if(HistoryModel::failed(record)){
+  const auto created=index.data(HistoryModel::CreatedRole).toString();if(created.isEmpty())return;
+  // Age spends only spare metadata space; it never displaces failure details.
+  const auto original=document.toHtml();const qreal available=document.size().height();
+  if(separated){QStringList spans;for(const auto& part:text.split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,metadataColor(record,part,t.textSecondary)));spans.append(metadataSpan(created,t.textSecondary));document.setHtml(Graphite::separatedLines(spans,document.defaultFont(),width));}
+  else{QTextCursor cursor(&document);cursor.movePosition(QTextCursor::End);cursor.insertHtml(metadataSpan(" · "+created,t.textSecondary));}
+  document.setTextWidth(qMax(20,width));document.size();if(separated?document.begin().layout()->lineCount()>2:document.size().height()>available)document.setHtml(original);
+ }
 }
 // The row's body: right of the thumbnail in a list, under it in a gallery tile.
 QRect rowBody(const QRect& outer,bool gallery,int heading){
