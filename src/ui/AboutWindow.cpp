@@ -26,7 +26,7 @@ AboutWindow::AboutWindow(const QJsonObject& residentBuild, QWidget* parent)
  setDetailedText(QString::fromUtf8(QJsonDocument(residentBuild).toJson(QJsonDocument::Indented)));
  // The button box runs QMessageBox's disclosure handler before ours, even
  // when Qt 6.4 reconnects the button itself on show.
- for(auto* button:findChildren<QPushButton*>())if(standardButton(button)==QMessageBox::NoButton){button->setObjectName("buildDetails");button->setText("Build details");connect(findChild<QDialogButtonBox*>(),&QDialogButtonBox::clicked,this,[this,button](QAbstractButton* clicked){if(clicked!=button)return;updateDetailsButton();});}
+ for(auto* button:findChildren<QPushButton*>())if(standardButton(button)==QMessageBox::NoButton){button->setObjectName("buildDetails");VisualStyle::role(button,"quiet");button->setText("Build details");connect(findChild<QDialogButtonBox*>(),&QDialogButtonBox::clicked,this,[this,button](QAbstractButton* clicked){if(clicked!=button)return;updateDetailsButton();});}
  // A small branded dialog, with the connected resident’s build on request.
  setIconPixmap(VisualStyle::icon("brand").pixmap(Graphite::scaled(64),Graphite::scaled(64)));
  auto* website=new QPushButton(VisualStyle::icon("open-external"),"put.gd website",this);website->setObjectName("putgdWebsite");VisualStyle::role(website,"link");website->setProperty("graphiteFlush",true);
@@ -46,7 +46,7 @@ AboutWindow::AboutWindow(const QJsonObject& residentBuild, QWidget* parent)
   auto* column=new QVBoxLayout;column->setContentsMargins(0,0,0,0);column->setSpacing(Graphite::space(Graphite::Space::s));row->addLayout(column,1);name->setAlignment(Qt::AlignLeft|Qt::AlignTop);column->addWidget(name);info->setContentsMargins(0,0,0,0);column->addWidget(info);column->addWidget(version);column->addWidget(website,0,Qt::AlignLeft);column->addWidget(browser);
   grid->addWidget(content,0,0);grid->setRowMinimumHeight(1,Graphite::space(Graphite::Space::xl));buttons->setCenterButtons(false);grid->addWidget(buttons,2,0,Qt::AlignRight);if(detailsItem)grid->addItem(detailsItem,3,0);
  }
- VisualStyle::role(button(QMessageBox::Close),"secondary");setDefaultButton(QMessageBox::Close);
+ VisualStyle::role(button(QMessageBox::Close),"lead");setDefaultButton(QMessageBox::Close);
  connect(website,&QPushButton::clicked,this,[browser]{const QUrl url("https://put.gd");host::openLink(url,browser->opening(url));});
  updateDetailsButton();
 }
