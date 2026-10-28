@@ -1493,7 +1493,6 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     errorDetails_->setObjectName("reviewErrorDetails");
     errorDetails_->setProperty("graphiteDensity", "compact");
     errorDetails_->setProperty("driveAction", QJsonObject{{"action", "showAdvice"}});
-    errorDetails_->setProperty("graphiteStrong", true);
     errorDetails_->setProperty("graphiteTight", true);
     VisualStyle::role(errorDetails_, "quiet");
     errorDetails_->setFixedWidth(int(std::ceil(QFontMetricsF(errorDetails_->font()).horizontalAdvance(errorDetails_->text()))) + 2 * reviewSpace(Graphite::Space::s));
@@ -1971,9 +1970,10 @@ void ReviewWindow::refreshStatus() {
         text->setAccessibleName(entry.text);
         VisualStyle::role(text, entry.tone == "success" ? "success" : "secondary");
         VisualStyle::role(text, "meta");
-        // No wider than its words, so the actions follow them; narrower, it wraps.
+        // Keep recovery at the right edge while a long message can still wrap.
         text->setMaximumWidth(text->fontMetrics().horizontalAdvance(entry.text) + 4);
         row->addWidget(text, 1);
+        row->addStretch(0);
         for (const auto& [label, params] : entry.actions) {
             if (entry.tone == "error" && params["action"] == "dismissStatus") {
                 row->addWidget(errorDetails_);
@@ -1991,19 +1991,20 @@ void ReviewWindow::refreshStatus() {
                 button->setToolTip(label);
                 button->setFixedWidth(iconTarget());
             }
-            button->setProperty("graphiteStrong", params["action"] == "retryExport");
             button->setProperty("graphiteTight", params["action"] == "retryExport");
             VisualStyle::role(button, "quiet");
             // Compact action painting inside a full pointer target.
-            button->setFixedWidth((params["action"] == "dismissStatus" || params["action"] == "dismissBlurTip") ? iconTarget() : int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(label))) + (params["action"] == "retryExport" ? 2 * reviewSpace(Graphite::Space::s) : 28));
             button->setMinimumHeight(32);
             button->setFixedHeight(std::max(32, textControlHeight(button)));
             button->setProperty("driveAction", params);
             connect(button, &QPushButton::clicked, this, [this, params] { drive(params); });
             row->addWidget(button, 0, Qt::AlignVCenter);
         }
-        row->addStretch(0);
         band->setContentWidget(line);
+        for (auto* button : line->findChildren<QPushButton*>()) {
+            const auto action = button->property("driveAction").toJsonObject()["action"].toString();
+            button->setFixedWidth(button->text().isEmpty() ? iconTarget() : int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(button->text()))) + (action == "retryExport" || button == errorDetails_ ? 2 * reviewSpace(Graphite::Space::s) : 28));
+        }
         statusLines_->addWidget(band);
         band->show();
         row->activate();

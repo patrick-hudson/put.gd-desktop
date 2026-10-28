@@ -578,7 +578,8 @@ void Style::polish(QWidget* widget) {
     for (auto* parent = widget->parentWidget(); parent && !widget->isWindow(); parent = parent->parentWidget())
         if (qobject_cast<QStatusBar*>(parent)) { statusBand = true; break; }
     const int monoPixels = widget->property("graphiteMonoPixels").toInt();
-    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty() && !locked && !bodyControl && !monoPixels && !statusBand) return;
+    const bool bannerMessage = widget->property("graphiteBannerMessage").toBool();
+    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty() && !locked && !bodyControl && !monoPixels && !statusBand && !bannerMessage) return;
     const auto& c = t();
     QColor colour;
     QFont f;
@@ -627,6 +628,7 @@ void Style::polish(QWidget* widget) {
     else if (name == "danger" || name == "error" || tone == "error" || binding == "error") colour = c.danger;
     else if (name == "status") colour = c.textSecondary;
     else if (name == "notice") colour = c.text;
+    if (bannerMessage) colour = c.text;
     if (setFont) {
         widget->setFont(f);
         widget->setProperty("graphiteFont", true);
@@ -1922,9 +1924,10 @@ Banner::Banner(Tone tone, const QString& text, QWidget* parent) : QWidget(parent
     dismiss_->setFixedSize(scaled(Metric::iconTarget), scaled(Metric::iconTarget));
     row_->addWidget(dismiss_, 0, 2, Qt::AlignTop);
     setDismissible(false);
+    styleContent();
     connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
 }
-void Banner::setTone(Tone tone) { tone_ = tone; update(); }
+void Banner::setTone(Tone tone) { tone_ = tone; styleContent(); placeAction(); update(); }
 void Banner::setText(const QString& text) { text_->setText(text); setAccessibleName(text); placeAction(); }
 void Banner::setIcon(const QIcon& icon) { icon_ = icon; update(); }
 void Banner::setAction(const QString& text) {
@@ -1945,7 +1948,34 @@ void Banner::setContentWidget(QWidget* widget) {
     content_ = widget;
     row_->addWidget(content_, 0, 0);
     content_->show();
+    styleContent();
     placeAction();
+}
+void Banner::styleContent() {
+    // Error content belongs to the component, including callers with custom rows.
+    for (auto* label : findChildren<QLabel*>()) {
+        label->setProperty("graphiteBannerMessage", tone_ == Tone::Error);
+        label->style()->unpolish(label);
+        label->style()->polish(label);
+    }
+    for (auto* button : findChildren<QAbstractButton*>()) {
+        if (!qobject_cast<QPushButton*>(button) && !qobject_cast<QToolButton*>(button)) continue;
+        const bool styled = button->property("graphiteBannerAction").toBool();
+        if (tone_ == Tone::Error) {
+            if (!styled) {
+                button->setProperty("graphiteBannerRole", button->property("visualRole"));
+                button->setProperty("graphiteBannerStrong", button->property("graphiteStrong"));
+            }
+            button->setProperty("graphiteBannerAction", true);
+            button->setProperty("graphiteStrong", true);
+            VisualStyle::role(button, "quiet");
+        } else if (styled) {
+            button->setProperty("graphiteBannerAction", false);
+            button->setProperty("graphiteStrong", button->property("graphiteBannerStrong"));
+            const auto previous = button->property("graphiteBannerRole").toByteArray();
+            VisualStyle::role(button, previous.constData());
+        }
+    }
 }
 void Banner::announce(const QString& message) {
     if (!message.isEmpty()) setAccessibleName(message);

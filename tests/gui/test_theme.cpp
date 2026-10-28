@@ -361,10 +361,28 @@ private slots:
             const auto shot = banner.grab().toImage();
             QCOMPARE(shot.pixelColor(250, 0), Theme::current().dangerSurface);
             QCOMPARE(shot.pixelColor(250, 24), Theme::current().dangerSurface);
-            QVERIFY(Theme::contrast(Theme::current().textSecondary, Theme::current().dangerSurface) >= 4.5);
-            QPushButton retry("Try again"); retry.setProperty("graphiteDensity", "compact");
-            retry.setProperty("graphiteStrong", true); VisualStyle::role(&retry, "quiet");
-            QCOMPARE(retry.font().weight(), QFont::DemiBold);
+            QCOMPARE(banner.textLabel()->palette().color(QPalette::WindowText), Theme::current().text);
+            QVERIFY(Theme::contrast(Theme::current().text, Theme::current().dangerSurface) >= 4.5);
+            banner.setAction("Try again");
+            QCOMPARE(banner.actionButton()->property("visualRole").toString(), QString("quiet"));
+            QVERIFY(banner.actionButton()->property("graphiteStrong").toBool());
+            QCOMPARE(banner.actionButton()->font().weight(), QFont::DemiBold);
+            auto* content = new QWidget(&banner); auto* row = new QHBoxLayout(content);
+            auto* message = Graphite::label("Couldn't save", "meta", content);
+            auto* details = Graphite::toolButton("Details", {}, "secondary", content);
+            row->addWidget(message); row->addWidget(details); banner.setContentWidget(content);
+            QCOMPARE(message->palette().color(QPalette::WindowText), Theme::current().text);
+            QCOMPARE(message->font().pixelSize(), Graphite::scaled(Graphite::Type::technical));
+            QCOMPARE(details->property("visualRole").toString(), QString("quiet"));
+            QVERIFY(details->property("graphiteStrong").toBool());
+            QCOMPARE(details->font().weight(), QFont::DemiBold);
+            banner.setTone(Graphite::Banner::Tone::Info);
+            QCOMPARE(details->property("visualRole").toString(), QString("secondary"));
+            QVERIFY(!details->property("graphiteStrong").toBool());
+            QCOMPARE(message->palette().color(QPalette::WindowText), Theme::current().textSecondary);
+            banner.setTone(Graphite::Banner::Tone::Error);
+            QCOMPARE(message->palette().color(QPalette::WindowText), Theme::current().text);
+            QCOMPARE(details->font().weight(), QFont::DemiBold);
         }
     }
     void trayBadgesKnockOutTheGlyphAndFailureWins() {

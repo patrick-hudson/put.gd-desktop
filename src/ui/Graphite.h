@@ -170,6 +170,7 @@ protected:
     void paintEvent(QPaintEvent*) override;
     void resizeEvent(QResizeEvent*) override;
 private:
+    void styleContent();
     void placeAction();
     Tone tone_;
     bool fillOnly_ = false;

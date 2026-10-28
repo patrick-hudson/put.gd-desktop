@@ -358,12 +358,21 @@ private slots:
             const auto& colors = Theme::current();
             const auto shot = band->grab().toImage();
             for (const int y : {0, 1, band->height() - 1}) QCOMPARE(shot.pixelColor(band->width() / 2, y), colors.dangerSurface);
+            QCOMPARE(text->palette().color(QPalette::WindowText), colors.text);
             QVERIFY(Theme::contrast(text->palette().color(QPalette::WindowText), colors.dangerSurface) >= 4.5);
             for (auto* button : {buttonNamed(window, "Details…"), buttonNamed(window, "Dismiss")}) {
                 QVERIFY(button); QCOMPARE(button->property("visualRole").toString(), QString("quiet"));
                 QVERIFY(Theme::contrast(button->palette().color(QPalette::ButtonText), colors.dangerSurface) >= 4.5);
             }
-            QCOMPARE(buttonNamed(window, "Try again")->property("visualRole").toString(), QString("quiet"));
+            for (auto* button : band->findChildren<QPushButton*>()) {
+                QCOMPARE(button->property("visualRole").toString(), QString("quiet"));
+                QVERIFY(button->property("graphiteStrong").toBool());
+                QCOMPARE(button->font().weight(), QFont::DemiBold);
+            }
+            auto* dismiss = buttonNamed(window, "Dismiss"); QVERIFY(dismiss);
+            QCOMPARE(dismiss->mapTo(band, dismiss->rect().topRight()).x(), band->width() - band->layout()->contentsMargins().right() - 1);
+            auto* retry = buttonNamed(window, "Try again"); QVERIFY(retry);
+            QVERIFY(retry->mapTo(band, QPoint()).x() > text->mapTo(band, text->rect().topRight()).x());
         }
     }
     void recoveryStaysWithItsMessageAboveTheFooter() {
