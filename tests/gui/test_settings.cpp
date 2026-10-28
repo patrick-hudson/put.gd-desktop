@@ -735,7 +735,7 @@ private slots:
   list->setCurrentRow(0);PUTGD_TRY_VERIFY(makeDefault->isHidden());QVERIFY(list->item(0)->text().contains("Default"));
   list->setCurrentRow(1);PUTGD_TRY_COMPARE(makeDefault->text(),QString("Make default…"));QVERIFY(makeDefault->isVisible()&&!Graphite::isLocked(makeDefault));
  }
- // Sidebars share one scaled width; long destination names stay inside it.
+ // Sidebars share one measured width; long destination names stay inside it.
  void sidebarsFollowTheirLabelsAtLargeText(){
   auto font=QApplication::font();const auto original=font;auto restore=qScopeGuard([&]{QApplication::setFont(original);});
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
@@ -743,7 +743,7 @@ private slots:
    QCOMPARE(window.findChild<QWidget*>("settingsRail")->width(),Graphite::railWidth());auto* nav=window.findChild<QListWidget*>("settingsNavigation");baseRow=nav->visualItemRect(nav->item(0)).height();}
   font.setPixelSize(21);QApplication::setFont(font);
   MainWindow window(fixture.session);window.navigate("settings");window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  auto* nav=window.findChild<QListWidget*>("settingsNavigation");QVERIFY(nav->visualItemRect(nav->item(0)).height()>baseRow);
+  auto* nav=window.findChild<QListWidget*>("settingsNavigation");QVERIFY(nav->visualItemRect(nav->item(0)).height()>baseRow);QVERIFY(Graphite::railWidth()<280);
   for(const char* name:{"settingsRail","destinationRail"}){auto* rail=window.findChild<QWidget*>(name);QCOMPARE(rail->width(),Graphite::railWidth());}
   QCOMPARE(window.findChild<QWidget*>("destinationRail")->width(),window.findChild<QWidget*>("settingsRail")->width());
   // Category labels fit inside the fixed rail.

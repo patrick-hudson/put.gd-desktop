@@ -345,7 +345,14 @@ int lineHeight(int pixels) {
     return int(std::lround(line * ((pixels == Type::section || pixels == Type::page || pixels == Type::compactPage) ? 1 + (scale - 1) * 0.6 : scale)));
 }
 int scaled(int pixels) { return int(std::lround(pixels * textScale() * applicationScale())); }
-int railWidth() { return std::min(scaled(Metric::sidebar), int(std::lround(Metric::sidebarMax * 1.25 * applicationScale()))); }
+int railWidth() {
+    const QFontMetrics metrics(labelFont(true));
+    int text = 0;
+    for (const auto* name : {"All items", "Images", "Recordings", "Other files", "Failed uploads", "General", "Capture", "Shortcuts", "Advanced"})
+        text = std::max(text, metrics.horizontalAdvance(QString::fromLatin1(name)));
+    const int natural = 2 * space(Space::l) + 2 * space(Space::m) + scaled(Metric::icon) + space(Space::s) + text;
+    return std::clamp(natural, Metric::sidebar, Metric::sidebar + 2 * space(Space::xl));
+}
 QString uiFamily() { return uiFamilyName().isEmpty() ? QApplication::font().family() : uiFamilyName(); }
 QString monoFamily() { return monoFamilyName().isEmpty() ? QFontDatabase::systemFont(QFontDatabase::FixedFont).family() : monoFamilyName(); }
 void setFamilies(const QString& ui, const QString& mono) {
