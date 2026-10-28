@@ -488,7 +488,7 @@ private slots:
         QVERIFY(metadata->mapTo(&window, QPoint()).y() >= window.findChild<FrameView*>()->geometry().bottom());
         auto* audio = window.findChild<QLabel*>("exportAudioSummary");
         QVERIFY(audio && audio->isVisible());
-        QVERIFY(audio->accessibleName().endsWith(" · Preview muted"));
+        QVERIFY(audio->accessibleName().endsWith(" · Silent preview"));
     }
     void stackedToolsKeepTheirScopeAndTrimLabels() {
         auto edit = twoMasks(); edit.trimStart = 2000000; edit.trimEnd = 29000000;
@@ -1447,7 +1447,7 @@ private slots:
         QVERIFY(audio->isVisible());
         QVERIFY(!QRect(audio->mapTo(&window, QPoint()), audio->size()).intersects(QRect(target->mapTo(&window, QPoint()), target->size())));
         QVERIFY(audio->mapTo(&window, audio->rect().topRight()).x() <= window.width() - 8);
-        QVERIFY(state["audio"].toString().endsWith("Preview muted"));
+        QVERIFY(state["audio"].toString().endsWith("Silent preview"));
         QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->isVisible());
     }
     void recordingBarKeepsTheTargetAndFormatBeforeStart_data() {
@@ -1987,7 +1987,7 @@ private slots:
             PUTGD_TRY_VERIFY(window.height() <= 680);
             auto* audio = window.findChild<QLabel*>("exportAudioSummary");
             QCOMPARE(audio->text(), QStringLiteral("No audio recorded"));
-            QCOMPARE(audio->accessibleName(), QStringLiteral("No audio recorded · Preview muted"));
+            QCOMPARE(audio->accessibleName(), QStringLiteral("No audio recorded · Silent preview"));
             QVERIFY(window.inspect()["previewMuted"].toBool());
             const auto steady = window.inspect()["video"].toObject()["share"].toDouble();
             qInfo("constrained review %dx%d %s window %dx%d steady %.3f", canvas.width(), canvas.height(), qPrintable(Theme::name(scheme)), window.width(), window.height(), steady);
@@ -2030,10 +2030,10 @@ private slots:
         for (const auto& format : {"gif", "webp"}) {
             QVERIFY(window.drive({{"action", "format"}, {"format", format}}).code.isEmpty());
             QVERIFY(!qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
-            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("No audio in %1 · Preview muted").arg(QString(format).toUpper()));
+            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("No audio in %1 · Silent preview").arg(QString(format).toUpper()));
             QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}}).code.isEmpty());
             QVERIFY(qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
-            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("System audio included · Preview muted"));
+            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("System audio included · Silent preview"));
             QVERIFY(qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
         }
     }
@@ -2414,7 +2414,7 @@ private slots:
         QCOMPARE(window.inspect()["statusRow"].toArray().size(), 0);
         QCOMPARE(audio->text(), QString("Silent preview"));
         QVERIFY(audio->accessibleName().contains("System audio included"));
-        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("System audio included · Preview muted"));
+        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("System audio included · Silent preview"));
         QVERIFY(window.findChild<QLabel*>("exportAudioSummary")->isVisible());
         // H.265: a warning with its fix; the fix is the format control's own path.
         QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}}).code.isEmpty());
@@ -2451,7 +2451,7 @@ private slots:
         QVERIFY(window.drive({{"action", "format"}, {"format", "gif"}, {"codec", ""}}).code.isEmpty());
         QCOMPARE(audio->text(), QString("Silent preview"));
         QVERIFY(audio->accessibleName().contains("No audio in GIF"));
-        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("No audio in GIF · Preview muted"));
+        QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("No audio in GIF · Silent preview"));
         lines = window.inspect()["statusRow"].toArray();
         QCOMPARE(lines.size(), 1);
         QVERIFY(lines[0].toObject()["text"].toString().startsWith(QStringLiteral("GIF is limited to 5 s")));

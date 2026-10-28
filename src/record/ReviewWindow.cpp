@@ -1844,7 +1844,7 @@ void ReviewWindow::refreshLabels() {
     const bool retained = at >= edit_.trimStart && at < end;
     time_->setText(QStringLiteral("%1 / %2").arg(timeText(at), timeText(options_.durationUs)));
     time_->setAccessibleDescription(time_->text());
-    playbackStatus_->setText(retained ? QStringLiteral("Preview muted") : QStringLiteral("Outside kept part"));
+    playbackStatus_->setText(retained ? QStringLiteral("Silent preview") : QStringLiteral("Outside kept part"));
     playbackStatus_->show();
     time_->setToolTip(time_->text() + "\n" + (retained ? QStringLiteral("Playhead time / recording length") : QStringLiteral("The playhead is in a trimmed-away part; it is not exported")));
     const auto boundary = [](qint64 us) { auto text = durationText(us); if (text.endsWith(".0")) text.chop(2); return text; };
@@ -1893,7 +1893,7 @@ void ReviewWindow::refreshLabels() {
     if (mask) { strength_->blockSignals(true); strength_->setValue(mask->strength); strength_->blockSignals(false); }
     // Preview and export audio stay together, independently of the destination.
     const bool includesAudio = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
-    const QString audio = (!options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : includesAudio ? QStringLiteral("System audio included") : QStringLiteral("Audio off in export")) + QStringLiteral(" · Preview muted");
+    const QString audio = (!options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : includesAudio ? QStringLiteral("System audio included") : QStringLiteral("Audio off in export")) + QStringLiteral(" · Silent preview");
     audio_->setText(QStringLiteral("Silent preview"));
     audio_->setProperty("summary", audio);
     audio_->setToolTip(!options_.audioRecorded ? QStringLiteral("No system audio was recorded") : config_.silent() ? QStringLiteral("System audio was recorded; %1 exports are silent. Choose MP4 or WebM to keep it.").arg(config_.format.toUpper()) : includesAudio ? QStringLiteral("The export keeps the recorded system audio; the preview is silent") : QStringLiteral("System audio is turned off for this export"));
@@ -1943,7 +1943,7 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
 }
 void ReviewWindow::refreshStatus() {
     footerError_ = message_.tone == "error";
-    playbackStatus_->setText(playhead() < edit_.trimStart || playhead() >= edit_.exportEnd(options_.durationUs) ? QStringLiteral("Outside kept part") : QStringLiteral("Preview muted"));
+    playbackStatus_->setText(playhead() < edit_.trimStart || playhead() >= edit_.exportEnd(options_.durationUs) ? QStringLiteral("Outside kept part") : QStringLiteral("Silent preview"));
     playbackStatus_->show();
     placeDestination();
     auto entries = statusEntries();
