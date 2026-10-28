@@ -74,7 +74,7 @@ protected:
  }
 private:QColor color_;bool custom_;
 };
-QLabel* fieldLabel(const QString& text,QWidget* parent){auto* label=new QLabel(text,parent);VisualStyle::role(label,"meta");return label;}
+QLabel* fieldLabel(const QString& text,QWidget* parent){auto* label=new QLabel(text,parent);VisualStyle::role(label,"caption");return label;}
 QWidget* column(QWidget* parent,QVBoxLayout*& layout){auto* widget=new QWidget(parent);layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,0);layout->setSpacing(Graphite::space(Space::s));return widget;}
 // Tool names in editor.view, in Tool order.
 const QStringList toolNames{"select","redact","blur","crop","arrow","rectangle","highlight","text"};
@@ -173,7 +173,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  widthRow_=column(panel,layout);layout->addWidget(fieldLabel("Line width",widthRow_));
  width_=VisualStyle::choiceBox(widthRow_);width_->addItem("Thin · 2 px",2);width_->addItem("Medium · 4 px",4);width_->addItem("Thick · 8 px",8);width_->setCurrentIndex(1);width_->setAccessibleName("Line width");layout->addWidget(width_);
  properties->addWidget(widthRow_);
- auto* blurRadius=new BlurRadius(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur,12,false,panel);blurRow_=blurRadius;blurRadius->layout()->setSpacing(Graphite::space(Space::s));
+ auto* blurRadius=new BlurRadius(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur,12,false,panel);blurRow_=blurRadius;VisualStyle::role(blurRadius->label(),"caption");blurRadius->layout()->setSpacing(Graphite::space(Space::s));
  strength_=blurRadius->slider();strength_->setObjectName("blurStrength");strengthValue_=blurRadius->spinBox();strengthValue_->setObjectName("blurStrengthValue");
  properties->addWidget(blurRow_);
  textRow_=column(panel,layout);layout->addWidget(fieldLabel("Font",textRow_));

@@ -52,6 +52,22 @@ class EditorWindowTest:public QObject {
  static QImage canvasImage(){QImage image(400,260,QImage::Format_RGB32);image.fill(QColor("#20242c"));return image;}
  static void add(EditDocument& doc,const QJsonObject& shape){QJsonArray created;QString code,message;QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",shape}}},created,code,message),qPrintable(message));}
 private slots:
+ void propertyCaptionsKeepTheirRoleAcrossThemes(){
+  const auto previous=Theme::scheme();auto restore=qScopeGuard([previous]{Theme::setScheme(previous);});
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+   Theme::setScheme(scheme);
+   for(const auto tool:{Tool::Arrow,Tool::Text,Tool::Blur,Tool::Crop}){
+    window.selectTool(tool);QApplication::processEvents();
+    for(auto* label:window.findChild<QWidget*>("editorSide")->findChildren<QLabel*>()){
+     if(!QStringList{"Color","Line width","Font","Size in image pixels","Blur radius","Crop area","X","Y","Width","Height","Document"}.contains(label->text()))continue;
+     QCOMPARE(label->property("visualRole").toString(),QString("caption"));
+     QCOMPARE(label->font().pixelSize(),Graphite::scaled(Graphite::Type::caption));
+     QVERIFY(label->height()>=label->fontMetrics().height());
+    }
+   }
+  }
+ }
  void zoomMenuAndAgentCommandsShareTheSameView(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* zoom=window.findChild<QToolButton*>("editorZoom");QVERIFY(zoom&&zoom->menu());QCOMPARE(zoom->accessibleName(),QString("Zoom"));
