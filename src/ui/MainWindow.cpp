@@ -216,7 +216,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   }
   if(!mixed)details[0].replace(0,QString("Default output").size(),"All actions");
   QString popupSummary=details.first();if(groupedEntries.size()==1){const auto* entry=groupedEntries.constBegin().value();popupSummary="All actions: "+entry->text().section(": ",1);for(auto* grouped:groupedEntries)grouped->setVisible(false);}
-  label=mixed?QString("Mixed outputs"):defaultName=="Local only"?QString("Captures save locally"):defaultName=="Nothing is saved or uploaded"?QString("Captures have no output"):"Captures upload right away · "+defaultName;
+  label=mixed?QString("Mixed outputs"):defaultName=="Local only"?QString("Captures save locally"):defaultName=="Nothing is saved or uploaded"?QString("Captures have no output"):"Capture output · "+defaultName;
   fitBand();destination_->setProperty("fullOutputSummary",label);updateOutputSummary();destination_->menu()->findChild<QAction*>("captureOutputDefault")->setText(popupSummary);destination_->setAccessibleName(label);destination_->setAccessibleDescription(details.join("\n"));destination_->setToolTip(details.join("\n"));updateSaveStatus();
  };
  connect(changeOutput,&QAction::triggered,this,[this]{navigate("settings");settings_->showCaptureSettings();});
