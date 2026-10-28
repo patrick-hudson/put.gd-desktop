@@ -141,6 +141,45 @@ private slots:
   QLabel* caption=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->buddy()==bucket)caption=label;QVERIFY(caption);QVERIFY(!QRect(caption->mapTo(&window,QPoint()),caption->size()).intersects(QRect(bucket->mapTo(&window,QPoint()),bucket->size())));QCOMPARE(bucket->width(),window.findChild<QComboBox*>("s3RegionChoices")->width());QVERIFY(error->mapTo(&window,QPoint()).y()>=bucket->mapTo(&window,QPoint(0,bucket->height())).y());
   auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("proton-drive"));putgd::test::settle(30);gutter=0;check(window.findChild<QScrollArea*>("destinationScroll")->widget());
  }
+ void preferenceTextAndFirstControlGeometry_data(){
+  QTest::addColumn<double>("scale");QTest::addColumn<QSize>("size");
+  for(double scale:{1.0,1.25,1.5})for(const auto size:{QSize(1440,960),QSize(1060,680)})QTest::newRow(qPrintable(QString("%1-%2").arg(scale).arg(size.width())))<<scale<<size;
+ }
+ void preferenceTextAndFirstControlGeometry(){
+  QFETCH(double,scale);QFETCH(QSize,size);Fonts::load();VisualStyle::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(qRound(14*scale));qApp->setFont(font);
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(size);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");
+  const auto check=[&](QWidget* page){
+   int labels=0;
+   for(auto* form:page->findChildren<QFormLayout*>()){
+    auto* card=form->parentWidget();if(!card->isVisibleTo(page)||!card->property("preferenceCard").toBool())continue;
+    for(int row=0;row<form->rowCount();++row){
+     auto* item=form->itemAt(row,QFormLayout::FieldRole);auto* field=item?item->widget():nullptr;if(!field||!form->isRowVisible(row))continue;
+     if(auto* holder=qobject_cast<QWidget*>(field->property("preferenceLabel").value<QObject*>())){
+      auto* caption=qobject_cast<QLabel*>(holder);if(!caption)caption=holder->findChild<QLabel*>();if(!caption||caption->isHidden())continue;++labels;
+      QCOMPARE(caption->mapTo(card,QPoint()).x(),Graphite::space(Graphite::Space::l));
+      auto* control=caption->buddy();if(!control||qobject_cast<QLabel*>(control)||field->property("preferenceStacked").toBool()||field->property("stacked").toBool())continue;
+      if(qobject_cast<QComboBox*>(control->parentWidget())||qobject_cast<QPushButton*>(control->parentWidget()))control=control->parentWidget();
+      const int delta=caption->mapTo(card,caption->rect().center()).y()-control->mapTo(card,control->rect().center()).y();
+      QVERIFY2(qAbs(delta)<=2,qPrintable(QString("%1: label/control centre delta %2").arg(control->objectName()).arg(delta)));
+     }
+     if(auto* toggle=qobject_cast<QToolButton*>(field);toggle&&(toggle->property("preferenceDisclosure").toBool()||toggle->property("preferenceAddRow").toBool())){
+      const int inset=Graphite::space(Graphite::Space::l);QCOMPARE(toggle->mapTo(card,QPoint(inset,0)).x(),inset);
+      // Compare the actual painted text with its expected origin; trailing glyphs
+      // and card borders lie outside this crop.
+      QImage actual=toggle->grab().toImage();QImage expected(actual.size(),QImage::Format_ARGB32_Premultiplied);expected.fill(Qt::transparent);QPainter painter(&expected);Graphite::paintText(painter,QRect(inset,0,toggle->width()/2,toggle->height()),toggle->text(),Qt::white,Graphite::font());painter.end();
+      const QColor ink=toggle->property("preferenceAddRow").toBool()?Theme::current().textSecondary:Theme::current().text;
+      const auto first=[&](const QImage& image,bool reference){for(int x=2;x<toggle->width()/2;++x)for(int y=toggle->height()/2-toggle->fontMetrics().height()/2;y<toggle->height()/2+toggle->fontMetrics().height()/2;++y){const auto c=image.pixelColor(x,y);if(reference?c.alpha()>100:qAbs(c.red()-ink.red())+qAbs(c.green()-ink.green())+qAbs(c.blue()-ink.blue())<12)return x;}return -1;};
+      QCOMPARE(first(actual,false),first(expected,true));
+     }
+    }
+   }
+   QVERIFY(labels>0);
+  };
+  for(int page=0;page<tabs->count();++page){tabs->setCurrentIndex(page);for(auto* toggle:tabs->currentWidget()->findChildren<QToolButton*>())if(toggle->property("graphiteDisclosure").toBool())toggle->setChecked(true);putgd::test::settle(40);check(tabs->currentWidget());}
+  window.navigate("destinations");auto* scroll=window.findChild<QScrollArea*>("destinationScroll");auto* provider=window.findChild<QComboBox*>("storageProvider");window.findChild<QToolButton*>("advancedSettings")->setChecked(true);
+  for(const auto* kind:{"s3","backblaze-b2","proton-drive"}){provider->setCurrentIndex(provider->findData(kind));putgd::test::settle(40);check(scroll->widget());}
+  provider->setCurrentIndex(provider->findData("s3"));auto* mode=window.findChild<QComboBox*>("credentialMode");mode->setCurrentIndex(mode->currentData()=="session"?mode->findData("keychain"):mode->findData("session"));putgd::test::settle(40);check(scroll->widget());
+ }
  void formHintsAndTrailingActionsKeepTheirGeometry_data(){QTest::addColumn<int>("pixels");QTest::newRow("normal")<<14;QTest::newRow("large")<<21;}
  void formHintsAndTrailingActionsKeepTheirGeometry(){
   QFETCH(int,pixels);Fonts::load();VisualStyle::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);
