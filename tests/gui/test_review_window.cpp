@@ -609,7 +609,7 @@ private slots:
             auto* audio = window.findChild<QLabel*>("exportAudioSummary");
             QVERIFY(audio->isVisible() && !audio->text().contains(status->text()));
             QVERIFY(status->isVisible() && metadata->isAncestorOf(status));
-            QVERIFY(window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(audio));
+            QVERIFY(window.findChild<QWidget*>("reviewDestinationSummary")->isAncestorOf(audio));
             QVERIFY(t->trackRect().width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
             for (auto* button : window.findChildren<QToolButton*>()) if (button->isVisible() && button->toolButtonStyle() == Qt::ToolButtonTextOnly && button->objectName() != "uploadDestinationMenu" && button->objectName() != "addMask") {
                 QVERIFY(button->width() - (button->objectName() == "useRedact" ? 16 : button->objectName() == "showMoreMasks" ? 8 : 24) >= QFontMetricsF(button->font()).horizontalAdvance(button->text()));
@@ -795,15 +795,30 @@ private slots:
         QCOMPARE(window.inspect()["armed"].toString(), QString("blur"));
         QVERIFY(window.findChild<FrameView*>()->accessibleDescription().contains("blur", Qt::CaseInsensitive));
     }
+    void footerMovesTheSameWidgetsAtMeasuredFit_data() {
+        QTest::addColumn<bool>("recorded");
+        QTest::addColumn<bool>("enabled");
+        QTest::addColumn<QString>("format");
+        QTest::newRow("system-audio") << true << true << QString("mp4");
+        QTest::newRow("no-audio") << false << false << QString("mp4");
+        QTest::newRow("audio-off") << true << false << QString("mp4");
+        QTest::newRow("silent-format") << true << true << QString("gif");
+    }
     void footerMovesTheSameWidgetsAtMeasuredFit() {
-        ReviewWindow window(options(), config()); window.show();
+        QFETCH(bool, recorded);
+        QFETCH(bool, enabled);
+        QFETCH(QString, format);
+        auto o = options(); o.audioRecorded = recorded;
+        auto c = config(); c.audio.system = enabled; c.format = format;
+        ReviewWindow window(o, c); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
         auto* audio = window.findChild<QLabel*>("exportAudioSummary");
         auto* save = buttonNamed(window, "Save a copy…");
         auto* discard = window.findChild<QPushButton*>("discard");
         auto* grid = qobject_cast<QGridLayout*>(window.findChild<QWidget*>("reviewActions")->layout());
-        QVERIFY(output && audio && save && discard && grid);
+        auto* separator = window.findChild<QLabel*>("reviewAudioSeparator");
+        QVERIFY(output && audio && save && discard && grid && separator);
         for (const int width : {1366, 640, 1366}) {
             window.resize(width, 720);
             for (int i = 0; i < 3; ++i) QApplication::processEvents();
@@ -814,6 +829,11 @@ private slots:
             QCOMPARE(discard->text(), QString("Discard…"));
             const int outputY = output->mapTo(&window, output->rect().center()).y();
             QCOMPARE(audio->mapTo(&window, audio->rect().center()).y(), outputY);
+            QVERIFY(separator->isVisible());
+            QCOMPARE(separator->text(), QStringLiteral(" · "));
+            QCOMPARE(separator->mapTo(&window, QPoint()).x(), output->mapTo(&window, QPoint(output->width(), 0)).x());
+            QCOMPARE(audio->mapTo(&window, QPoint()).x(), separator->mapTo(&window, QPoint(separator->width(), 0)).x());
+            QCOMPARE(audio->width(), audio->sizeHint().width());
             if (width == 1366) {
                 QCOMPARE(save->mapTo(&window, save->rect().center()).y(), outputY);
                 QVERIFY(window.findChild<QWidget*>("reviewFooter")->height() <= 48);

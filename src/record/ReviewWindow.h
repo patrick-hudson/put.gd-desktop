@@ -245,6 +245,7 @@ private:
     QList<StatusEntry> statusEntries() const;
     void refreshStatus();
     void placeDestination();
+    int destinationContextWidth() const;
     bool footerFits(int width) const;
     // Discard, the close button and the drive's discard ask before anything is
     // lost; recording.cancel (an agent's explicit cancel) never asks.
