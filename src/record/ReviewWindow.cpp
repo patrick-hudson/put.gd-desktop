@@ -1336,7 +1336,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* footer = new Graphite::Surface("bg", Qt::TopEdge, this);
     footer->setObjectName("reviewFooter");
     auto* footerRows = new QVBoxLayout(footer);
-    footerRows->setContentsMargins(reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::xs), reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::xs));
+    // The action targets supply vertical padding; keep the frame gates with 13 px context.
+    footerRows->setContentsMargins(reviewSpace(Graphite::Space::l), 0, reviewSpace(Graphite::Space::l), 0);
     footerRows->setSpacing(reviewSpace(Graphite::Space::xs));
     auto* actions = new QWidget(footer);
     actions->setObjectName("reviewActions");
