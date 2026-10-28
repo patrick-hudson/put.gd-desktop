@@ -168,9 +168,9 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="view-detail") {
   rounded(3,3,18,18);p.drawLine(3,9,21,9);p.drawLine(3,15,21,15);p.drawLine(10,3,10,21);
  } else if(name=="play") {
-  QPainterPath play;play.moveTo(7,4);play.lineTo(20,12);play.lineTo(7,20);play.closeSubpath();p.drawPath(play);
+  fill(color);QPainterPath play;play.moveTo(7,4);play.lineTo(20,12);play.lineTo(7,20);play.closeSubpath();p.drawPath(play);
  } else if(name=="pause") {
-  rounded(5,4,4,16,1);rounded(15,4,4,16,1);
+  fill(color);rounded(6,5,4,14,1);rounded(14,5,4,14,1);
  } else if(name=="trim-in"||name=="trim-out"||name=="trim-reset") {
   if(name=="trim-out"){p.translate(24,0);p.scale(-1,1);}
   const bool reset=name=="trim-reset";rounded(reset?7:10,9,reset?10:11,6,1);

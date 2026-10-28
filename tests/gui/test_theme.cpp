@@ -468,6 +468,17 @@ private slots:
         for(const auto& name:{"window","desktop","shortcuts","save"})QVERIFY2(std::abs(extent(name)-20)<=0.5,name);
         QVERIFY(std::abs(extent("add")-21)<=0.5);
     }
+    void transportGlyphsKeepSolidInteriorsAndSeparatedPauseBars() {
+        for (const int scale : {1, 2, 4}) {
+            const auto play = IconArt::symbol("play", Qt::white, scale);
+            const auto pause = IconArt::symbol("pause", Qt::white, scale);
+            QCOMPARE(play.pixelColor(10 * scale, 12 * scale), QColor(Qt::white));
+            for (const int x : {7, 8, 15, 16}) QCOMPARE(pause.pixelColor(x * scale, 12 * scale), QColor(Qt::white));
+            QCOMPARE(pause.pixelColor(12 * scale, 12 * scale).alpha(), 0);
+            QCOMPARE(pause.pixelColor(8 * scale, 4 * scale).alpha(), 0);
+            QCOMPARE(pause.pixelColor(8 * scale, 19 * scale).alpha(), 0);
+        }
+    }
     void stopGlyphIsFilledAndDistinctFromRectangle() {
         for(const int scale:{1,2,4}) {
             const auto stop=IconArt::symbol("stop",Qt::white,scale);
