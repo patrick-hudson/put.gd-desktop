@@ -552,7 +552,7 @@ private slots:
         QVERIFY(add->height() >= 28);
         QCOMPARE(add->text(), QString("+ Add mask"));
         QCOMPARE(add->geometry().center().y(), track->maskRect("m-blur").center().y());
-        QCOMPARE(track->maskRect("m-blur").height(), 16);
+        QVERIFY(track->maskRect("m-blur").height() >= Graphite::scaled(16));
         QCOMPARE(track->maskRect("m-solid").top() - track->maskRect("m-blur").bottom() - 1, 2);
         auto* chip = window.findChild<QToolButton*>("reviewBlurChip");
         QVERIFY(chip && chip->isVisible());
@@ -740,7 +740,7 @@ private slots:
         // Selecting a different mask still reveals its lane through session/CLI/MCP.
         QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "7"}}).code.isEmpty());
         QVERIFY(!timeline(window)->maskRect("7").isEmpty());
-        QVERIFY(timeline(window)->maskRect("7").height() == 16);
+        QVERIFY(timeline(window)->maskRect("7").height() >= Graphite::scaled(16));
     }
     void maskOptionsExposeRadiusAndDeletionThroughTheSameDrive_data() {
         QTest::addColumn<double>("scale");
@@ -1175,6 +1175,13 @@ private slots:
         t.resize(600, t.sizeHint().height());
         t.show();
         const auto first = t.maskHitRect("one"), second = t.maskHitRect("two");
+        const auto firstBar = t.maskRect("one"), secondBar = t.maskRect("two");
+        auto laneFont = Graphite::font(Graphite::Type::caption); laneFont.setWeight(QFont::Medium);
+        QVERIFY(firstBar.height() >= Graphite::scaled(16));
+        QVERIFY(firstBar.height() >= QFontMetrics(laneFont).height() + 4);
+        QCOMPARE(secondBar.top() - firstBar.top(), firstBar.height() + 2);
+        QVERIFY(first.contains(firstBar));
+        QVERIFY(second.contains(secondBar));
         QVERIFY(first.height() >= 40);
         QVERIFY(second.height() >= 40);
         QVERIFY(t.rect().contains(first));

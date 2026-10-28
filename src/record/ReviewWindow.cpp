@@ -638,7 +638,7 @@ int gripTarget() { return std::max(40, iconTarget()); }
 int visibleLanes() { return 2; }
 QFont gutterFont() { auto font = Graphite::font(Graphite::Type::caption); font.setWeight(QFont::Medium); return font; }
 QFont rulerFont() { return Graphite::font(Graphite::Type::caption); }
-int laneHeight() { return 16; }
+int laneHeight() { return std::max(Graphite::scaled(16), QFontMetrics(gutterFont()).height() + 4); }
 int rowHeight() { return laneHeight() + 2; }
 int rulerHeight() { return 16; }
 int clipHeight() { return rulerHeight() + 10; }
@@ -788,7 +788,7 @@ QRect ReviewTimeline::maskHitRect(const QString& id) const {
     const auto bar = maskRect(id);
     if (bar.isNull()) return {};
     // A generous invisible target, kept inside the timeline; the nearest lane wins where targets overlap.
-    const int side = gripTarget();
+    const int side = std::max(gripTarget(), laneHeight());
     QRect target(bar.left() - side / 2, bar.center().y() - side / 2, std::max(side, bar.width() + side), side);
     if (target.bottom() >= height()) target.moveBottom(height() - 1);
     if (target.top() < 0) target.moveTop(0);
@@ -800,7 +800,7 @@ int ReviewTimeline::heightForLanes(int width, int lanes) const {
     // Leave the clamped last target below the trim track and nearest its own lane.
     const int rows = clipHeight() + std::min(lanes, visibleLanes()) * rowHeight() + (lanes > 0 ? 3 : 0)
         + (lanes > visibleLanes() ? iconTarget() : 0);
-    return timelineTop() + std::max(laneHeader_ ? clipHeight() + rowHeight() / 2 + (laneHeader_->height() + 1) / 2 : rulerHeight() + 10, rows);
+    return timelineTop() + std::max(laneHeader_ ? clipHeight() + rowHeight() / 2 + (laneHeader_->height() + 1) / 2 + 1 : rulerHeight() + 10, rows);
 }
 QSize ReviewTimeline::minimumSizeHint() const { return {220, heightForLanes(width(), lanes_)}; }
 void ReviewTimeline::paintEvent(QPaintEvent*) {
