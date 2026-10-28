@@ -11,6 +11,7 @@
 #include <QScreen>
 #include "fixtures/UiSessionFixture.h"
 #include <QApplication>
+#include <QMessageBox>
 #include <QLayout>
 #include <QComboBox>
 #include <QLabel>
