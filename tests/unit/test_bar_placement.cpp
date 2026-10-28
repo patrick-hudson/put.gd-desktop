@@ -271,7 +271,7 @@ private slots:
                     QVERIFY(!bar.findChild<QPushButton*>("stop")->icon().isNull());
                     for (auto* label : {facts}) {
                         QVERIFY(label && label->isVisible() && label->isEnabled());
-                        QCOMPARE(label->palette().color(QPalette::WindowText), putgd::Theme::current().textMuted);
+                        QCOMPARE(label->palette().color(QPalette::WindowText), putgd::Theme::current().textSecondary);
                         QVERIFY(putgd::Theme::contrast(label->palette().color(QPalette::WindowText), putgd::Theme::current().bg) >= 4.5);
                     }
                 }
