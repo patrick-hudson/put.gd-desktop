@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QComboBox>
+#include <QApplication>
 #include <QAbstractItemModel>
 #include "ui/Graphite.h"
 #include <QAbstractItemView>
