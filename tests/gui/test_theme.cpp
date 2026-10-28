@@ -812,6 +812,26 @@ private slots:
     }
     // A split button's menu half is a full 32 px target; its small chevron sits
     // centred in it, and clicking anywhere in it opens the menu.
+    void splitButtonKeepsTextClearOfTheDividerAtLargeText() {
+        VisualStyle::apply(*qApp);
+        const auto original = QApplication::font();
+        const auto restore = qScopeGuard([original] { QApplication::setFont(original); });
+        auto enlarged = original; enlarged.setPixelSize(21); QApplication::setFont(enlarged);
+        for (const bool tight : {false, true}) {
+            class Button final : public QToolButton { public: QStyleOptionToolButton option() const { QStyleOptionToolButton value; initStyleOption(&value); return value; } };
+            Button button;
+            button.setText("Capture region && edit"); button.setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+            button.setIcon(VisualStyle::icon("edit")); button.setIconSize(QSize(24,24));
+            button.setProperty("graphiteTight", tight); VisualStyle::role(&button, "quiet");
+            QMenu menu; menu.addAction("Capture desktop"); button.setMenu(&menu);
+            button.setPopupMode(QToolButton::MenuButtonPopup); button.ensurePolished(); button.resize(button.sizeHint());
+            QVERIFY(button.font().pixelSize() >= 21);
+            const auto option = button.option();
+            const auto action = button.style()->subControlRect(QStyle::CC_ToolButton, &option, QStyle::SC_ToolButton, &button);
+            const auto label = QFontMetricsF(button.font()).horizontalAdvance("Capture region & edit") + button.iconSize().width() + 8;
+            QVERIFY2(action.width() >= std::ceil(label) + Graphite::space(Graphite::Space::s) + int(tight ? Graphite::Space::xs : Graphite::Space::m), qPrintable(QString("tight %1 action %2 label %3 space %4 font %5 icon %6 hint %7").arg(tight).arg(action.width()).arg(label).arg(Graphite::space(Graphite::Space::s)).arg(button.font().pixelSize()).arg(button.iconSize().width()).arg(button.sizeHint().width())));
+        }
+    }
     void splitButtonArrowZoneIsAFullTarget() {
         QWidget window;
         auto* layout = new QHBoxLayout(&window);

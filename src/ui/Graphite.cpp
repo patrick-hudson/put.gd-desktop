@@ -791,9 +791,13 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         const QFontMetrics metrics(f);
         int w = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + 2 * 14 + 2 + (icon ? tool->iconSize.width() + 8 : 0);
         if (widget && widget->property("graphiteTight").toBool()) w -= 2 * (int(Space::m) - int(Space::xs));
-        if (split) w += scaled(Metric::splitArrow) - 6;
+        if (split) {
+            const int inset = name == "link" || name == "version" || (widget && widget->property("graphiteTight").toBool()) ? int(Space::xs) : int(Space::m);
+            const int label = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + (icon ? tool->iconSize.width() + 8 : 0);
+            w = label + (flushButton(widget) ? 0 : inset) + std::max(inset, space(Space::s)) + scaled(Metric::splitArrow) + 2;
+        }
         else if (menu) w += Metric::splitZone - 6;
-        if (flushButton(widget)) w -= 14;
+        if (!split && flushButton(widget)) w -= 14;
         return {w, std::max(height, metrics.height() + padding)};
     }
     case CT_LineEdit: {
@@ -1198,7 +1202,8 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const bool textShown = tool->toolButtonStyle != Qt::ToolButtonIconOnly && !tool->text.isEmpty();
         const bool iconShown = tool->toolButtonStyle != Qt::ToolButtonTextOnly && !tool->icon.isNull();
         const int inset = name == "link" || name == "version" || (widget && widget->property("graphiteTight").toBool()) ? int(Space::xs) : int(Space::m);
-        QRect body = textShown ? option->rect.adjusted(inset, 0, -inset, 0) : option->rect;
+        const int trailing = tool->features & QStyleOptionToolButton::MenuButtonPopup ? std::max(inset, space(Space::s)) : inset;
+        QRect body = textShown ? option->rect.adjusted(inset, 0, -trailing, 0) : option->rect;
         if (flushButton(widget)) body.setLeft(option->rect.left());
         drawButtonLabel(option, textShown ? tool->text : QString(), iconShown ? tool->icon : QIcon(), tool->iconSize, p, widget, body);
         return;
