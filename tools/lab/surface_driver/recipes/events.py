@@ -82,6 +82,7 @@ def _upload(ctx: Context):
     op = _operation(ctx, f['operationId'])
     ctx.expect(any(i.get('uploadStatus') == 'uploading' for i in op.get('items', [])),
                'real upload is still in flight before the OS event')
+    ctx.note('Slow-upload operation: ' + f['operationId'])
     return f
 
 
@@ -170,6 +171,7 @@ def ui_helper_crash(ctx: Context):
     before = _result(ctx, 'ui.snapshot')
     pid = before['diagnostics']['ui']['pid']
     ctx.expect(isinstance(pid, int) and pid > 1, 'inspect identifies the live UI helper PID')
+    ctx.note('UI helper crash target PID: ' + str(pid) + '; resident epoch: ' + before['residentEpoch'])
     ctx.frame('before', window='history')
     # pidfd eliminates PID reuse between validation and the fatal signal. Check
     # ownership, executable and private runtime before killing exactly one PID.
@@ -486,6 +488,7 @@ def _space_error(ctx: Context, method, params):
         result = reply['result'] if 'ok' in reply else reply
         identity = result.get('operationId', result.get('id'))
         ctx.expect(identity, 'accepted import keeps operation identity')
+        ctx.note('Constrained-storage operation: ' + identity)
         op = ctx.wait(lambda: (o if (o := _operation(ctx, identity)).get('state') == 'failed' else None), 'import fails on constrained storage')
         error = op['error']
     ctx.expect(error.get('code') == 'disk_space_insufficient', 'production disk admission rejects the event')
@@ -578,6 +581,7 @@ def incomplete_uploads_kept(ctx: Context):
     f = _fixture(ctx, 'events.incomplete-multipart')
     ctx.expect(f['address'] == '127.0.0.1', 'multipart denial only on local S3 fixture')
     ctx.expect(ctx.destination == 's3', 'S3 multipart lane selected')
+    ctx.note('Incomplete multipart operation: ' + f['operationId'] + '; item: ' + f['itemId'])
     op = _operation(ctx, f['operationId'])
     ctx.expect(any(i['artifact']['id'] == f['itemId'] for i in op['items']), 'exact multipart item is journalled')
     ctx.view('ui.show', {'view': 'history'})

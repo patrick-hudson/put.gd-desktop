@@ -96,6 +96,7 @@ class Fake(Context):
     def fixture(self, name): return self.fixtures[name]
     def notifications(self): return self.notices
     def clipboard_text(self): return self.text
+    def note(self, text): self.actions.append(('note', text))
     def review(self, reason): self.actions.append(('review', reason))
     def cli(self, *args, **kw):
         reply = self.call(args[0], json.loads(args[1]) if len(args) > 1 else None)
