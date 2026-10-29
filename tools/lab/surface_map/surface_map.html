@@ -118,12 +118,13 @@ function rowLabel(r){
  return (desktopLabel[r.desktop] || r.desktop) + ' on ' + (r.host || 'unspecified host') +
   (r.placement ? ' (' + (r.placement==='guest' ? 'VM' : r.placement) + ')' : '') + (r.guest ? ' · ' + r.guest : '');
 }
-function selectedRows(){ return DATA.rows.filter(r => (!host || r.host===host) && (!desktop || r.desktop===desktop)); }
+function selectedRows(filterDesktop=true){ return DATA.rows.filter(r => (!host || r.host===host) && (!filterDesktop || !desktop || r.desktop===desktop)); }
 function cellFor(i,r){ return (i.cells||[]).find(c => rowKey(c)===rowKey(r)) || {}; }
 function badges(ds){ return (ds||[]).map(d => '<span class="badge">' + esc(d) + '</span>').join(''); }
 function status(i){
  if(host){
-  const cs = selectedRows().map(r => cellFor(i,r));
+  // Optional desktops gate only when explicitly selected, as without a host filter.
+  const cs = selectedRows().filter(r => desktop || r.required!==false).map(r => cellFor(i,r));
   const fs = cs.map(c => c.functional), vs = cs.map(c => c.visual);
   const f = fs.includes('failed') ? 'failed' : fs.length && fs.every(s => s==='passed') ? 'passed' : fs.includes('passed') ? 'partial' : fs.includes('blocked') ? 'blocked' : 'untested';
   const v = !i.visualApplies ? 'n/a' : vs.includes('reviewed-wrong') ? 'reviewed-wrong' : vs.length && vs.every(s => s==='reviewed-ok') ? 'reviewed-ok' : vs.some(Boolean) ? 'frames' : 'none';
@@ -326,7 +327,8 @@ function lightbox(s){
 function renderMatrix(main){
  const wrap = document.createElement('div'); wrap.style.gridColumn = '1 / -1';
  const hosted = DATA.hostCoverage || host;
- const ds = hosted ? selectedRows() : DATA.desktops.filter(d => !desktop || desktop===d.id);
+ // Matrix compares all desktop columns; chips affect Map/Gaps and popovers.
+ const ds = hosted ? selectedRows(false) : DATA.desktops;
  let h = '<table class="matrix"><tr><th>Interaction</th><th>kind</th><th>driver</th>' + ds.map(d => '<th colspan="2">' + esc(hosted ? rowLabel(d) : d.label) + '</th>').join('') + '</tr>';
  DATA.surfaces.forEach(s => {
   const items = DATA.interactions.filter(i => i.surface === s.id); if(!items.length) return;

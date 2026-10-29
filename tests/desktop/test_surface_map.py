@@ -219,6 +219,25 @@ class Aggregation(unittest.TestCase):
                                guest='another-golden', functional='blocked'))
         self.assertEqual(len(surface_map.summarise(self.model, rows)['editor.undo']['cells']), 3)
 
+    def test_newer_host_verdict_preserves_nonempty_metadata(self):
+        older = self.entry('editor.undo', 'ubuntu-gnome-wayland', host='f44',
+                           placement='guest', functional='failed', review=True,
+                           review_reason='Inspect frame', frames=[{'label': 'after', 'path': 'after.png'}],
+                           recipe='undo', build='abc123', at='2026-10-01')
+        newer = self.entry('editor.undo', 'ubuntu-gnome-wayland', host='f44',
+                           placement='guest', functional='passed', at='2026-10-02')
+        for missing in ({}, {k: None for k in ('review', 'review_reason', 'frames', 'recipe', 'build')}):
+            with self.subTest(missing=missing):
+                cell = surface_map.summarise(self.model, [older, {**newer, **missing}])['editor.undo']['cells'][0]
+                self.assertEqual(cell['functional'], 'passed')
+                for field in ('review', 'review_reason', 'frames', 'recipe', 'build'):
+                    self.assertEqual(cell[field], older[field])
+        replacement = {**newer, 'review': False, 'review_reason': '', 'frames': [],
+                       'recipe': 'redo', 'build': 'def456'}
+        cell = surface_map.summarise(self.model, [replacement, older])['editor.undo']['cells'][0]
+        for field in ('review', 'review_reason', 'frames', 'recipe', 'build'):
+            self.assertEqual(cell[field], replacement[field])
+
     def test_missing_host_dimension_does_not_count_as_passed(self):
         rows = [self.entry('editor.undo', 'ubuntu-gnome-wayland', host='m74', placement='guest',
                            functional='passed', visual='reviewed-ok'),
@@ -333,6 +352,51 @@ class ReceiptImport(unittest.TestCase):
         self.assertIn('function renderReview', page)
         self.assertIn('frames/after.png', page)
         self.assertIn('Compare before and after', page)
+
+    def test_unnamed_guest_failure_keeps_its_row_beside_named_pass(self):
+        desktop = 'ubuntu-gnome-wayland'
+        unnamed = surface_map.make_entry('editor.undo', desktop, 'deb', host='f44',
+                                        placement='guest', functional='failed', at='2026-10-01')
+        named = surface_map.make_entry('editor.undo', desktop, 'deb', host='f44',
+                                      placement='guest', guest='golden', functional='passed', at='2026-10-02')
+        # Round-trip existing coverage as well as newly created entries.
+        path = self.receipt('existing.json', {'schemaVersion': 2, 'entries': [unnamed, named]})
+        data = surface_map.build_page_data(self.model, surface_map.load_coverage([path]), None, self.tmp.name)
+        rows = [r for r in data['rows'] if r['desktop']==desktop and r['host']=='f44']
+        self.assertEqual({r['guest'] for r in rows}, {None, 'golden'})
+        item = next(i for i in data['interactions'] if i['id']=='editor.undo')
+        cells = {surface_map.cell_key(c): c for c in item['cells']}
+        self.assertEqual({cells[surface_map.cell_key(r)]['functional'] for r in rows}, {'failed', 'passed'})
+        self.assertEqual(item['desktops'][desktop]['functional'], 'failed')
+        data = surface_map.build_page_data(self.model, [named], None, self.tmp.name)
+        rows = [r for r in data['rows'] if r['desktop']==desktop and r['host']=='f44']
+        self.assertEqual([r['guest'] for r in rows], ['golden'])
+
+    def test_host_rows_preserve_required_for_planned_and_observed_cells(self):
+        optional = surface_map.make_entry('editor.undo', 'neon-kde-wayland', 'deb', host='d69',
+                                         placement='guest', guest='neon', functional='failed')
+        data = surface_map.build_page_data(self.model, [optional], None, self.tmp.name)
+        required = {d['id']: d.get('required', True) for d in self.model['desktops']}
+        for row in data['rows']:
+            with self.subTest(row=row):
+                self.assertEqual(row['required'], required[row['desktop']])
+        self.assertTrue(any(not r['required'] and r['guest']=='neon' for r in data['rows']))
+        self.assertTrue(any(r['required'] and r['host']=='d69' for r in data['rows']))
+
+    def test_native_placement_rejects_guest_in_entry_and_mark(self):
+        import contextlib, io
+        with self.assertRaisesRegex(surface_map.ModelError, 'guest cannot be used with native placement'):
+            surface_map.make_entry('editor.undo', 'mint-cinnamon-x11', 'deb',
+                                   host='m74', placement='native', guest='golden')
+        path = Path(self.tmp.name) / 'invalid-mark.json'
+        error = io.StringIO()
+        with contextlib.redirect_stderr(error):
+            result = surface_map.main(['mark', 'editor.undo', '--coverage', str(path),
+                '--desktop', 'mint-cinnamon-x11', '--package', 'deb', '--functional', 'passed',
+                '--host', 'm74', '--placement', 'native', '--guest', 'golden'])
+        self.assertEqual(result, 2)
+        self.assertIn('guest cannot be used with native placement', error.getvalue())
+        self.assertFalse(path.exists())
 
     def test_old_driver_rows_still_import_with_cli_defaults(self):
         path = self.receipt('old-driver.json', {'interactions': [

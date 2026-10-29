@@ -2,10 +2,13 @@
 """Surface map: every surface and interaction of put.gd, coloured by acceptance coverage.
 
   surface_map.py build --catalog DIR --coverage FILE... --output DIR [--label TEXT] [--index] [--open] [--watch]
-  surface_map.py mark INTERACTION --coverage FILE --desktop ID --package deb|rpm|appimage
+  surface_map.py mark INTERACTION --coverage FILE --desktop ID --package deb|rpm|appimage|source
                  [--functional passed|failed|blocked] [--visual frames|reviewed-ok|reviewed-wrong]
                  [--receipt PATH] [--issue N] [--note TEXT]
-  surface_map.py import --coverage FILE --desktop ID --package PKG RECEIPT...
+                 [--host ID] [--placement native|guest|boat] [--guest NAME]
+                 [--destination local|s3|b2|proton] [--review-reason TEXT]
+  surface_map.py import --coverage FILE [--desktop ID] [--package PKG] RECEIPT...
+    Import defaults are optional when receipt rows carry desktop and package.
   surface_map.py checklist --coverage FILE... [--desktop ID]
   surface_map.py check [--catalog DIR]
 
@@ -158,6 +161,8 @@ def write_coverage(path, campaign, entries):
 
 
 def validate_row(row):
+    if row.get('placement') == 'native' and row.get('guest') is not None:
+        raise ModelError('guest cannot be used with native placement')
     for field, choices in (('host', HOSTS), ('placement', PLACEMENTS),
                            ('destination', DESTINATIONS), ('package', PACKAGES),
                            ('functional', FUNCTIONAL), ('visual', VISUAL)):
@@ -217,7 +222,8 @@ def latest_per_cell(entries, by_host=False):
         if entry.get('note'):
             cell['notes'].append(entry['note'])
         if by_host:
-            cell.update({k: entry.get(k) for k in ROW_FIELDS if k != 'destination'})
+            cell.update({k: entry[k] for k in ROW_FIELDS
+                         if k != 'destination' and entry.get(k) is not None})
             cell.setdefault('destinations', set())
             if entry.get('destination'):
                 cell['destinations'].add(entry['destination'])
@@ -439,10 +445,13 @@ def build_page_data(model, entries, catalog, output, embed=False, label=''):
     for state in ('frames', 'reviewed-ok', 'reviewed-wrong', 'none'):
         counts['visual-' + state] = sum(1 for i in interactions if i['visual'] == state)
     rows = {cell_key({'desktop': d['id'], **r}) for d in model['desktops'] for r in d.get('rows', [])}
-    rows.update(cell_key(e) for e in entries)
-    # A named golden refines a planned guest row rather than adding a second,
-    # permanently untested copy of the same placement.
-    rows = {r for r in rows if r[3] or not any(other[:3] == r[:3] and other[3] for other in rows)}
+    evidence_rows = {cell_key(e) for e in entries}
+    rows.update(evidence_rows)
+    # A named golden refines an empty planned guest placement. Keep every row
+    # backed by evidence, including unnamed guests, so no failure disappears.
+    rows = {r for r in rows if r in evidence_rows or r[3]
+            or not any(other[:3] == r[:3] and other[3] for other in rows)}
+    required = {d['id']: d.get('required', True) for d in model['desktops']}
     return {
         'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
         'label': label,
@@ -450,7 +459,8 @@ def build_page_data(model, entries, catalog, output, embed=False, label=''):
         'desktops': model['desktops'],
         'packages': list(PACKAGES),
         'hosts': list(HOSTS),
-        'rows': [dict(zip(('desktop', 'host', 'placement', 'guest'), r))
+        'rows': [{**dict(zip(('desktop', 'host', 'placement', 'guest'), r)),
+                  'required': required.get(r[0], True)}
                  for r in sorted(rows, key=lambda r: tuple(v or '' for v in r))],
         'hostCoverage': any(any(cell_key(e)[1:]) for e in entries),
         'reviews': [{k: v for k, v in e.items() if not k.startswith('_')}
