@@ -267,13 +267,27 @@ class CatalogCheck(unittest.TestCase):
         for surface in model['surfaces']:
             if surface.get('capture') and surface['capture'] not in skip:
                 (root / (surface['capture'] + '.png')).write_bytes(b'png')
-                captures.append({'file': surface['capture'] + '.png'})
+                entry = {'file': surface['capture'] + '.png'}
+                # The region selector capture has no control selectors to validate, so an
+                # empty sidecar is a valid declared one.
+                if surface['capture'] == '44-region-keyboard':
+                    (root / '44-region-keyboard.controls.json').write_text(
+                        json.dumps({'width': 1, 'height': 1, 'controls': [], 'keys': []}), encoding='utf-8')
+                    entry['controls'] = '44-region-keyboard.controls.json'
+                captures.append(entry)
         (root / 'manifest.json').write_text(json.dumps({'kind': 'synthetic-ui-catalog', 'platform': platform,
                                                         'captures': captures}), encoding='utf-8')
 
     def test_missing_or_empty_catalog_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(self.run_check(Path(tmp) / 'absent'), 1)
+            self.assertEqual(self.run_check(tmp), 1)
+
+    def test_declared_controls_sidecar_must_exist(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.catalog(Path(tmp), 'offscreen')
+            self.assertEqual(self.run_check(tmp), 0)
+            (Path(tmp) / '44-region-keyboard.controls.json').unlink()
             self.assertEqual(self.run_check(tmp), 1)
 
     def test_only_documented_captures_may_be_absent_natively(self):

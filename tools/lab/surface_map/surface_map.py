@@ -627,6 +627,13 @@ def check(args):
         if meta.get('kind') != 'synthetic-ui-catalog' or not meta.get('captures'):
             print('catalog manifest lists no captures: ' + args.catalog, file=sys.stderr)
             return 1
+        # Every capture the producer declares with a controls sidecar must have it: without the
+        # sidecar, selector validation and hotspots silently disappear for that capture.
+        lost = [c['controls'] for c in meta['captures'] if c.get('controls')
+                and not (Path(args.catalog) / c['controls']).is_file()]
+        if lost:
+            print('declared controls files missing from catalog: ' + ', '.join(lost), file=sys.stderr)
+            return 1
         platform = meta.get('platform')
         missing = [s['capture'] for s in model['surfaces'] if s.get('capture')
                    and not (Path(args.catalog) / (s['capture'] + '.png')).exists()]
