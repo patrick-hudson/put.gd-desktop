@@ -240,6 +240,10 @@ private slots:
   // Keyboard nudges stop at the edge without adding an undo step.
   canvas.setTool(Tool::Select);canvas.select(small);const auto history=doc.historyEntries();
   QTest::keyClick(&canvas,Qt::Key_Left);QTest::keyClick(&canvas,Qt::Key_Up);QCOMPARE(doc.find(small)->rect,QRect(0,0,20,10));QCOMPARE(doc.historyEntries(),history);
+  // After a crop, shrinking by keyboard stops at the crop's near edge.
+  const auto wide=doc.add(box(Shape::Kind::Rectangle,QRect(0,20,100,40)));QVERIFY(doc.setCrop(QRect(50,0,200,150)));canvas.documentChanged();canvas.select(wide);
+  for(int i=0;i<5;++i)QTest::keyClick(&canvas,Qt::Key_Left,Qt::ShiftModifier|Qt::ControlModifier);
+  QCOMPARE(doc.find(wide)->rect,QRect(0,20,51,40));
  }
  void textToolDragsLabelsAndClicksToEdit(){
   EditDocument doc(noise({400,300},12));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));

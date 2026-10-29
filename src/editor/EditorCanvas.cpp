@@ -501,7 +501,11 @@ bool EditorCanvas::nudge(const QPoint& d,bool resize){
  else if(shape.kind==Kind::Text){
   shape.fontPixels=std::clamp(shape.fontPixels+d.x()+d.y(),minimumFontPixels,maximumFontPixels);
   const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));shape.rect.setSize(QSize(metrics.horizontalAdvance(shape.text)+1,metrics.height()));
- }else{shape.rect.setRight(std::min(shape.rect.right()+d.x(),std::max(area.right(),current->rect.right())));shape.rect.setBottom(std::min(shape.rect.bottom()+d.y(),std::max(area.bottom(),current->rect.bottom())));if(shape.rect.width()<1||shape.rect.height()<1)return true;}
+ }else{
+  // The moving edges stay on the crop; one already outside may only come in.
+  shape.rect.setRight(std::clamp(shape.rect.right()+d.x(),std::min(area.left(),current->rect.right()),std::max(area.right(),current->rect.right())));
+  shape.rect.setBottom(std::clamp(shape.rect.bottom()+d.y(),std::min(area.top(),current->rect.bottom()),std::max(area.bottom(),current->rect.bottom())));
+  if(shape.rect.width()<1||shape.rect.height()<1)return true;}
  const auto bounds=shape.kind==Kind::Arrow?QRect(shape.from,shape.to).normalized():shape.rect;
  if(!bounds.intersects(doc_.imageRect()))return true;
  if(doc_.replace(shape)){update();emit changed();if(shape.kind==Kind::Text)emit selectionChanged();}
