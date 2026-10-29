@@ -1,5 +1,7 @@
 # Surface map per-builder evidence
 
+Latest follow-up: [three non-blocking validator fixes, 44 passing tests and Map column before/after evidence](validator-fixes/README.md) for code `bd22544c`. Earlier findings and claims below remain historical.
+
 Latest completion: [current green-suite and sticky-header evidence](completion/README.md) supersedes the historical blockers below.
 
 Code: [PR #667](https://github.com/patrick-hudson/put.gd-desktop/pull/667), source `cf4f4525afc519a3e86f32fd7c1bdde3f55fda2a`, based on nightly `a18d79e762dfa4780522e25d6e3f63df1b3a2258`.
