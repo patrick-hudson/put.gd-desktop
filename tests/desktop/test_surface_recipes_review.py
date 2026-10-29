@@ -323,8 +323,8 @@ class ReviewRecipes(unittest.TestCase):
         ctx = FakeContext()
         state = ctx.call('recording.review')
         self.assertEqual(review._point(ctx, state, [0, 0, 960, 600]), (580, 350))
-        ctx.geometry = lambda _: {'x': -1920, 'y': 0, 'width': 1920, 'height': 1200, 'scale': 2}
-        self.assertEqual(review._point(ctx, state, [0, 0, 960, 600]), (-960, 600))
+        ctx.geometry = lambda _: {'x': -1920, 'y': 0, 'screen_x': -1920, 'width': 960, 'height': 600, 'scale': 2}
+        self.assertEqual(review._point(ctx, state, [0, 0, 960, 600]), (960, 600))
 
     def test_upload_terminal_operation_and_stored_file(self):
         ctx = FakeContext()

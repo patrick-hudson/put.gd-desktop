@@ -57,9 +57,13 @@ def _changed(ctx, rid, revision):
 
 def _point(ctx, state, rect, fx=.5, fy=.5):
     g = ctx.geometry('review')
+    if g.get('head', 0) != 0:
+        ctx.blocked('Context.click_at/drag cannot select a non-primary head (#672)', issue=672)
     sx, sy = g['width'] / state['size'][0], g['height'] / state['size'][1]
     x, y, w, h = rect
-    return round(g['x'] + (x + w * fx) * sx), round(g['y'] + (y + h * fy) * sy)
+    scale = g.get('scale', 1)
+    return (round((g['x'] - g.get('screen_x', 0) + (x + w * fx) * sx) * scale),
+            round((g['y'] - g.get('screen_y', 0) + (y + h * fy) * sy) * scale))
 
 
 def _video(ctx, rid, fx=.5, fy=.5):
