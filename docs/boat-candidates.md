@@ -27,7 +27,9 @@ before creating workers; it does not stop another session's workers.
 By default the command fans out seven `large` workers (8 vCPU, 16 GB), one per
 artifact, from `putgd-build-base`. Each has `--no-env`, an explicit auto-stop
 TTL (default 10,800 seconds), and a controller deadline 180 seconds before that
-TTL. Use `--type default` for the 4-vCPU/8-GB size, or `--ttl SECONDS` (600–14,400)
+TTL for hydration/build. Collection retains the unused build budget or a
+150-second reserve, and cleanup follows even when either phase fails.
+Use `--type default` for the 4-vCPU/8-GB size, or `--ttl SECONDS` (600–14,400)
 for a deliberate bounded run. A small TTL can expire during cold provisioning.
 The command waits for `hydrated: true` before accessing a worker and reads the
 SSH host key through authenticated `boat exec`, then uses strict host-key
