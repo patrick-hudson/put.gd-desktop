@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import json
 
-from tools.lab.surface_driver.api import recipe
+from tools.lab.surface_driver.api import RecipeFailed, recipe
 
 LIST = '01-history-list'
 GALLERY = '02-history-gallery'
@@ -34,7 +34,7 @@ def _result(value):
     """Resident/MCP replies may be envelopes; never discard a reported failure."""
     if 'ok' in value:
         if value['ok'] is not True:
-            raise AssertionError('resident/MCP request failed: ' + value.get('error', {}).get('code', 'unknown'))
+            raise RecipeFailed('resident/MCP request failed: ' + value.get('error', {}).get('code', 'unknown'))
         return value['result']
     return value
 
