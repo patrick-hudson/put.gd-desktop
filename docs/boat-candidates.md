@@ -37,11 +37,11 @@ verification for all SSH/SCP traffic. The private SSH key and agent stay local.
 | --- | --- | --- |
 | AppImage | Locked Qt/runtime, CI provisioning and `build-appimage.sh` | Mint, Fedora, Aurora and other AppImage rows |
 | Ubuntu 24.04 DEB and source archive | Native production package/audit and curated source export | Mint 22.3; Ubuntu 24.04; source |
-| Ubuntu 26.04 DEB | Native production package/audit with KDE helper | Kubuntu 26.04 |
+| Ubuntu 26.04 DEB | Native production package/audit with KDE helper | Kubuntu 26.04 and Ubuntu 26.04 GNOME |
 | Debian 13 DEB | Native production package/audit with KDE helper | Debian 13 |
 | Fedora 44 RPM | Native production package/audit with KDE helper | Fedora 44 |
 | `ui-catalog/` | Ubuntu 26.04 CI dev build, offscreen renderer and surface-map check | Agent surface map |
-| Lab-fixture DEB | Ubuntu 24.04 release preset with `PUTGD_LAB_FIXTURE=ON` | Disposable guest drivers requiring `putgd-desktop-fixture` |
+| Lab-fixture DEB | Ubuntu 24.04 release preset with `PUTGD_LAB_FIXTURE=ON` | Mint/Ubuntu 24.04 guest drivers requiring `putgd-desktop-fixture` |
 
 The controller reads the requested commit's `.github/workflows/package.yml`
 and `ci.yml` from Git, takes the native image digests from that matrix and reuses
@@ -95,6 +95,12 @@ with the provisioned Ubuntu GNOME/Wayland golden and a separately identified
 built tree. Snapshot preparation does not boot a golden or establish a desktop
 pass. Fork a lab snapshot with `--no-env` and a finite TTL, wait for hydration,
 and create disposable overlays using the existing [VM lab](vm-lab.md) commands.
+The GNOME snapshot's preparation receipt is
+`/home/user/putgd-gnome-golden/snapshot-receipt.json`; its immutable disk is
+`/home/user/putgd-gnome-golden/image.qcow2`, and the host build tree is
+`/home/user/gnome-source`. That tree and fixture DEB target the Ubuntu 24.04
+sandbox host. Use the `ubuntu26.04` production artifact for the Ubuntu 26.04
+GNOME guest.
 Before graphical work, meet the storage, socket, bootstrap, display-wall and
 saved-visual requirements in that guide.
 
