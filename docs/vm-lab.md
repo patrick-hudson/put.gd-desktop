@@ -9,6 +9,10 @@ continuing a test session so subsequent actions remain visible on the display wa
 A locked or blanked session must be visibly restored before graphical acceptance.
 Host protocol tests and offscreen fixture checks do not prove desktop acceptance.
 
+For opt-in parallel package preparation on disposable cloud workers, use
+[exact candidate builds on Boat](boat-candidates.md). Its artifact and snapshot
+receipts are separate from the graphical acceptance evidence below.
+
 ## Host selection
 
 Plan host/guest placement with the [Linux acceptance matrix](acceptance-matrix.md).
