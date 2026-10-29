@@ -723,7 +723,8 @@ QStringList s3Regions(){
 }
 }
 namespace PreferenceRows {
-QStringList destinationStateLines(const QString& state,int width){QStringList escaped;for(const auto& fact:state.split(" · ",Qt::SkipEmptyParts))escaped.append(fact.toHtmlEscaped());QTextDocument text;text.setHtml(Graphite::separatedLines(escaped,Graphite::font(Graphite::Type::metadata),width));return text.toPlainText().split('\n');}
+// The painter uses fractional advances; reserve the rounding pixel before wrapping.
+QStringList destinationStateLines(const QString& state,int width){QStringList escaped;for(const auto& fact:state.split(" · ",Qt::SkipEmptyParts))escaped.append(fact.toHtmlEscaped());QTextDocument text;text.setHtml(Graphite::separatedLines(escaped,Graphite::font(Graphite::Type::metadata),qMax(0,width-1)));return text.toPlainText().split('\n');}
 QLabel* caption(const QString& text){auto* label=Graphite::label(text,"secondary");label->setProperty("graphiteStatus",true);label->setWordWrap(true);return label;}
 QFormLayout* card(QVBoxLayout* page,const QString& heading,const QString& description,bool headingInside){
  auto* card=new Graphite::Surface("surface");card->setProperty("preferenceCard",true);auto* box=new QVBoxLayout(card);box->setSizeConstraint(QLayout::SetMinimumSize);box->setContentsMargins(0,0,0,0);box->setSpacing(0);auto* section=new FormRow;section->setProperty("preferenceSection",true);section->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Minimum);auto* column=new QVBoxLayout(section);column->setSizeConstraint(QLayout::SetMinimumSize);column->setContentsMargins(0,0,0,0);column->setSpacing(space(Space::s));addPreferenceWidget(column,Graphite::label(heading,"sectionTitle"));if(!description.isEmpty())column->addWidget(caption(description));
