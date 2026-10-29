@@ -42,15 +42,25 @@ def _nodes(ctx, name, role=None):
     query = {'name': name}
     if role:
         query['role'] = role
+    def on_screen(node):
+        rect = node.get('rect', node.get('bounds'))
+        if not rect:
+            return False
+        if isinstance(rect, dict):
+            x, y, w, h = (rect[k] for k in ('x', 'y', 'width', 'height'))
+        else:
+            x, y, w, h = rect
+        return x >= 0 and y >= 0 and w > 0 and h > 0
     return [n for n in ctx.accessible(query)
             if n.get('name') == name and n.get('visible', True)
-            and n.get('showing', True)]
+            and n.get('showing', True) and on_screen(n)]
 
 
 def _node(ctx, name, role=None):
     def find():
         found = _nodes(ctx, name, role)
-        ctx.expect(len(found) <= 1, 'desktop selector is unambiguous: ' + name)
+        if len(found) > 1:
+            ctx.blocked('Desktop selector needs ownership/notification scoping: ' + name, 670)
         return found[0] if found else None
     return ctx.wait(find, 'visible desktop node: ' + name)
 

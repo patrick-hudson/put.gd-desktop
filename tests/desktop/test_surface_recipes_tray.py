@@ -325,6 +325,22 @@ class TrayRecipesTest(unittest.TestCase):
         tray.context_menu(ctx)
         self.assertIn(('frame', 'after', '00-tray-menu'), ctx.events)
 
+    def test_hidden_notification_candidates_are_not_pointer_targets(self):
+        ctx = FakeContext()
+        ctx.accessible = lambda q: [
+            {'name': q['name'], 'rect': [0, 0, 0, 0]},
+            {'name': q['name'], 'rect': [-2147483648, -2147483648, 50, 20]},
+            {'name': q['name'], 'rect': [20, 30, 50, 20]},
+        ]
+        self.assertEqual(tray._node(ctx, 'Show in folder')['rect'], [20, 30, 50, 20])
+
+    def test_multiple_visible_notification_buttons_block_instead_of_clicking_an_old_operation(self):
+        ctx = FakeContext()
+        ctx.accessible = lambda q: [{'name': q['name'], 'rect': [20, 30, 50, 20]}] * 2
+        with self.assertRaises(RecipeBlocked):
+            tray._press(ctx, 'Save diagnostics for this upload')
+        self.assertFalse(any(e[0] == 'click' for e in ctx.events))
+
     def test_profile_fragments_cover_model_desktops_and_are_lane_scoped(self):
         for desktop in json.loads((ROOT / 'tools/lab/surface_map/model.json').read_text())['desktops']:
             fragment = ROOT / 'tools/lab/surface_driver/profiles' / (desktop['id'] + '.d') / 'tray.json'
