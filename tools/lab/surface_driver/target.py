@@ -79,13 +79,17 @@ class Target:
         self._rfb = None
         self._lock = None
         self._last_heartbeat = 0
+        self._lock_valid_until = 0
 
     def require_lock(self, host, session):
         self._lock = (host, session)
         self.heartbeat(force=True)
 
     def heartbeat(self, force=False):
-        if not self._lock or (not force and time.monotonic()-self._last_heartbeat<60):
+        if not self._lock:
+            return
+        now=time.monotonic()
+        if not force and now-self._last_heartbeat<60 and now<self._lock_valid_until:
             return
         from tools.lab import desktop_lock
         host,session=self._lock
@@ -98,6 +102,7 @@ class Target:
         if not value.get('ok') or value.get('state')!='held':
             raise RecipeBlocked('physical desktop lock is no longer held by this session')
         self._last_heartbeat=time.monotonic()
+        self._lock_valid_until=self._last_heartbeat+max(0,value.get('expiresInSeconds',0)-1)
 
     def session(self, body, timeout=60):
         # lab.guest_session discovers the native bus and absolute Wayland socket

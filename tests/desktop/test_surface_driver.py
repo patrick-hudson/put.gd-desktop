@@ -267,6 +267,17 @@ class Running(unittest.TestCase):
         self.ctx.call('editor.open',{'source':'file','path':'/tmp/synthetic.png'})
         self.assertEqual(self.ctx.notes,['operationId=test-operation-123'])
 
+    def test_cached_heartbeat_does_not_allow_input_past_expiry(self):
+        from types import SimpleNamespace
+        target=Target.__new__(Target)
+        target._lock=('f44','owned-session');target._last_heartbeat=100;target._lock_valid_until=105
+        calls=[]
+        target.physical=SimpleNamespace(ssh=lambda *args:calls.append(args) or json.dumps({'ok':True,'state':'expired','expiresInSeconds':0}))
+        target.run=self.path
+        with patch('tools.lab.surface_driver.target.time.monotonic',return_value=110):
+            with self.assertRaisesRegex(RecipeBlocked,'no longer held'):target.heartbeat()
+        self.assertEqual(len(calls),1)
+
     def test_notification_correlation(self):
         raw='''method call time=100.1 sender=:1.2 -> destination=org.freedesktop.Notifications serial=45 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
    string "put.gd"
