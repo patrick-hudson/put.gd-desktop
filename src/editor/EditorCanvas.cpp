@@ -45,6 +45,11 @@ QPointF inside(const QPointF& p,const QRect& bounds){
 QPoint inside(const QPoint& p,const QRect& bounds){
  return {std::clamp(p.x(),bounds.left(),bounds.left()+bounds.width()),std::clamp(p.y(),bounds.top(),bounds.top()+bounds.height())};
 }
+// An arrow end moved by one axis keeps the other where it was, even outside.
+QPoint insideFrom(const QPoint& was,const QPoint& p,const QRect& bounds){
+ auto axis=[](int now,int before,int low,int high){return std::clamp(now,std::min(low,before),std::max(high,before));};
+ return {axis(p.x(),was.x(),bounds.left(),bounds.left()+bounds.width()),axis(p.y(),was.y(),bounds.top(),bounds.top()+bounds.height())};
+}
 QPoint containedMove(const Shape& shape,const QPoint& d,const QRect& bounds){
  const bool arrow=shape.kind==Shape::Kind::Arrow;
  const auto box=arrow?QRect(shape.from,shape.to).normalized():shape.rect;const auto room=arrow?bounds.adjusted(0,0,1,1):bounds;
@@ -404,17 +409,23 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
   const auto end=inside(now,bounds);
   if(shape.kind==Shape::Kind::Arrow)shape.to=QPoint(int(std::lround(end.x())),int(std::lround(end.y())));
   else{
-   // A drag wholly in the margin rounds to an empty box, which release discards.
-   shape.rect=boxFrom(inside(start,bounds),end).intersected(bounds);
-   if((event->modifiers()&Qt::ShiftModifier)&&!shape.rect.isEmpty()){
-    const auto corner=shape.rect.topLeft();
-    const int side=std::min({std::max(shape.rect.width(),shape.rect.height()),bounds.left()+bounds.width()-corner.x(),bounds.top()+bounds.height()-corner.y()});
-    shape.rect=QRect(corner,QSize(side,side));
-   }
+   const auto from=inside(start,bounds);
+   // A drag wholly in one margin pins both ends to the same edge; release
+   // discards the empty box rather than keeping a sliver on the image.
+   auto pinned=[](double a,double b,double low,double high){return a==b&&(a==low||a==high);};
+   if(pinned(from.x(),end.x(),bounds.left(),bounds.left()+bounds.width())||pinned(from.y(),end.y(),bounds.top(),bounds.top()+bounds.height()))shape.rect=QRect();
+   else if(event->modifiers()&Qt::ShiftModifier){
+    // The square grows from the press point toward the pointer, as far as the image allows.
+    const QPointF corner(std::floor(from.x()),std::floor(from.y()));const double dx=end.x()-corner.x(),dy=end.y()-corner.y();
+    const double roomX=dx<0?corner.x()-bounds.left():bounds.left()+bounds.width()-corner.x();
+    const double roomY=dy<0?corner.y()-bounds.top():bounds.top()+bounds.height()-corner.y();
+    const double side=std::floor(std::min({std::max(std::abs(dx),std::abs(dy)),roomX,roomY}));
+    shape.rect=side<1?QRect():boxFrom(corner,corner+QPointF(dx<0?-side:side,dy<0?-side:side));
+   }else shape.rect=boxFrom(from,end).intersected(bounds);
   }
  }else if(drag_==Drag::Move){const auto d=containedMove(shape,delta,bounds);shape.rect.translate(d);shape.from+=d;shape.to+=d;}
  else if(drag_==Drag::Resize){
-  if(shape.kind==Shape::Kind::Arrow){if(handle_==0)shape.from=inside(shape.from+delta,bounds);else shape.to=inside(shape.to+delta,bounds);}
+  if(shape.kind==Shape::Kind::Arrow){if(handle_==0)shape.from=insideFrom(shape.from,shape.from+delta,bounds);else shape.to=insideFrom(shape.to,shape.to+delta,bounds);}
   else if(shape.kind==Shape::Kind::Text)shape=scaledText(original_,handle_,now);
   else shape.rect=resized(shape.rect,handle_,delta,bounds);
  }
@@ -500,7 +511,7 @@ bool EditorCanvas::nudge(const QPoint& d,bool resize){
  const auto* current=doc_.find(selected_);if(!current)return false;
  auto shape=*current;using Kind=Shape::Kind;const auto area=doc_.crop();
  if(!resize){const auto step=containedMove(shape,d,area);shape.rect.translate(step);shape.from+=step;shape.to+=step;}
- else if(shape.kind==Kind::Arrow){shape.to=inside(shape.to+d,area);if(shape.to==shape.from)return true;}
+ else if(shape.kind==Kind::Arrow){shape.to=insideFrom(shape.to,shape.to+d,area);if(shape.to==shape.from)return true;}
  else if(shape.kind==Kind::Text){
   shape.fontPixels=std::clamp(shape.fontPixels+d.x()+d.y(),minimumFontPixels,maximumFontPixels);
   const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));shape.rect.setSize(QSize(metrics.horizontalAdvance(shape.text)+1,metrics.height()));

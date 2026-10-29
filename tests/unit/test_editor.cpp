@@ -252,6 +252,24 @@ private slots:
   QTest::mouseRelease(&canvas,Qt::LeftButton,{},cropped+QPoint(170,200));
   QCOMPARE(doc.find(tall)->rect,QRect(100,100,70,100));
  }
+ void squaresAndArrowEndsKeepTheirAnchors(){
+  EditDocument doc(noise({400,300},17));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Rectangle);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
+  const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
+  auto drag=[&](QPoint from,QPoint to,Qt::KeyboardModifiers modifiers){
+   QTest::mousePress(&canvas,Qt::LeftButton,modifiers,origin+from);
+   QMouseEvent move(QEvent::MouseMove,QPointF(origin+to),canvas.mapToGlobal(QPointF(origin+to)),Qt::NoButton,Qt::LeftButton,modifiers);QApplication::sendEvent(&canvas,&move);
+   QTest::mouseRelease(&canvas,Qt::LeftButton,modifiers,origin+to);
+  };
+  // A Shift-drag in the left margin draws nothing, not a square on the image.
+  drag({-30,50},{-10,150},Qt::ShiftModifier);QVERIFY(doc.shapes().isEmpty());
+  // A square drawn up and left still starts at the press point.
+  drag({390,290},{100,200},Qt::ShiftModifier);QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().rect,QRect(100,0,290,290));
+  // An arrow head left of a later crop keeps its x when resized vertically.
+  Shape arrow;arrow.kind=Shape::Kind::Arrow;arrow.from={150,50};arrow.to={60,80};const auto id=doc.add(arrow);
+  QVERIFY(doc.setCrop(QRect(100,0,200,150)));canvas.setTool(Tool::Select);canvas.documentChanged();canvas.select(id);
+  QTest::keyClick(&canvas,Qt::Key_Down,Qt::ShiftModifier);QCOMPARE(doc.find(id)->to,QPoint(60,81));
+ }
  void marginDragDrawsNothing(){
   EditDocument doc(noise({400,300},16));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
   canvas.setTool(Tool::Rectangle);canvas.fit();
