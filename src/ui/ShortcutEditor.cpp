@@ -173,7 +173,7 @@ void ShortcutEditor::setStatus(const QJsonObject& status) {
   const auto expected=entry["effective"].isString()&&entry["requested"].toString()==draft?entry["effective"].toString():draft;
   const bool confirmed=entry["bound"].toBool()&&actualBinding(entry["actual"])==expected&&entry["error"].toString().isEmpty();
   label->setVisible(presentation.shown&&!confirmed);
-  unreported|=entry.isEmpty()&&!draft.isEmpty();attention|=!confirmed&&presentation.shown&&qstrcmp(presentation.tone,"muted")!=0;
+  unreported|=(!draft.isEmpty()&&entry.isEmpty())||entry["state"]=="pending";attention|=!confirmed&&presentation.shown&&!draft.isEmpty()&&!entry.isEmpty()&&entry["state"]!="pending"&&entry["state"]!="recording";
  }
  if(!status.contains("available"))status_->setText("Waiting for the desktop to confirm these shortcuts");
  else if(!status["available"].toBool())status_->setText("Global shortcuts are unavailable on this desktop.");
