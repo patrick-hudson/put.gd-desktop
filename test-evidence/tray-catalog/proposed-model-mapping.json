@@ -1,0 +1,91 @@
+{
+  "modelEdited": false,
+  "surfaceDefaultCapture": "00-tray-menu-idle",
+  "interactions": {
+    "tray.menu-upload-status": {
+      "capture": "00-tray-menu-uploading",
+      "control": "trayUploadStatus"
+    },
+    "tray.menu-cancel-upload": {
+      "capture": "00-tray-menu-uploading",
+      "control": "trayCancelUpload"
+    },
+    "tray.menu-output-submenu": {
+      "capture": "00-tray-menu-idle",
+      "control": "trayOutputSummary"
+    },
+    "tray.menu-change-output": {
+      "capture": "00-tray-menu-idle",
+      "control": "trayChangeOutput"
+    },
+    "tray.menu-capture-region": {
+      "capture": "00-tray-menu-idle",
+      "control": "region"
+    },
+    "tray.menu-capture-window": {
+      "capture": "00-tray-menu-idle",
+      "control": "window"
+    },
+    "tray.menu-capture-desktop": {
+      "capture": "00-tray-menu-idle",
+      "control": "desktop"
+    },
+    "tray.menu-capture-region-edit": {
+      "capture": "00-tray-menu-idle",
+      "control": "edit"
+    },
+    "tray.menu-record": {
+      "capture": "00-tray-menu-idle",
+      "control": "record"
+    },
+    "tray.menu-upload-clipboard": {
+      "capture": "00-tray-menu-idle",
+      "control": "clipboard"
+    },
+    "tray.menu-attention": {
+      "capture": "00-tray-menu-proton-busy",
+      "control": "trayFailedUploads"
+    },
+    "tray.menu-history": {
+      "capture": "00-tray-menu-idle",
+      "control": "history"
+    },
+    "tray.menu-destinations": {
+      "capture": "00-tray-menu-idle",
+      "control": "destinations"
+    },
+    "tray.menu-settings": {
+      "capture": "00-tray-menu-idle",
+      "control": "preferences"
+    },
+    "tray.menu-update-available": {
+      "capture": "00-tray-menu-idle",
+      "control": "update"
+    },
+    "tray.menu-about": {
+      "capture": "00-tray-menu-idle",
+      "control": "text:About put.gd"
+    },
+    "tray.menu-quit": {
+      "capture": "00-tray-menu-idle",
+      "control": "text:Quit put.gd"
+    }
+  },
+  "outputRows": {
+    "capture": "00-tray-output-submenu",
+    "controls": [
+      "trayOutputregion",
+      "trayOutputwindow",
+      "trayOutputdesktop",
+      "trayOutputedit",
+      "trayOutputrecord",
+      "trayOutputclipboard"
+    ]
+  },
+  "editImageParent": {
+    "capture": "00-tray-menu-idle",
+    "control": "edit-sources",
+    "note": "Edit clipboard/file are nested child actions; these four requested captures show their parent only."
+  },
+  "scope": "Qt fallback menu reference; no native icon, tooltip, gesture, notification or shortcut-binding evidence."
+}

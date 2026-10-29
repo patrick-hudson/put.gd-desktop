@@ -1,0 +1,3 @@
+model ok: 9 desktops, 22 surfaces, 394 interactions
+controls only in other states (no hotspot): editor.place-mark -> placeMark, editor.apply-crop -> applyCrop, editor.cancel-crop -> cancelCrop, editor.affected-text -> selectAffectedText
+catalog ok: 177 captures with controls

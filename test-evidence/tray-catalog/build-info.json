@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "version": "26.1029.2305-dev+gf579c7f63e0c",
+  "baseVersion": "26.1029.2305",
+  "packageVersion": "26.1029.2305~dev+gf579c7f63e0c",
+  "gitCommit": "f579c7f63e0cf2d04f068856b4790f772246346f",
+  "gitTree": "53ed1453c9fb5768b55c136750c8fa22a5a76b14",
+  "commitCount": 2305,
+  "dirty": false,
+  "sourceProvenance": "git"
+}

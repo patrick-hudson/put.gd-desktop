@@ -1,0 +1,197 @@
+{
+  "source": {
+    "schemaVersion": 1,
+    "version": "26.1029.2305-dev+gf579c7f63e0c",
+    "baseVersion": "26.1029.2305",
+    "packageVersion": "26.1029.2305~dev+gf579c7f63e0c",
+    "gitCommit": "f579c7f63e0cf2d04f068856b4790f772246346f",
+    "gitTree": "53ed1453c9fb5768b55c136750c8fa22a5a76b14",
+    "commitCount": 2305,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "baseCommit": "a18d79e762dfa4780522e25d6e3f63df1b3a2258",
+  "host": {
+    "provider": "boat",
+    "snapshot": "putgd-build-base",
+    "sandbox": "bx_d9267hz4",
+    "hydratedBeforeBuild": true,
+    "ttlSeconds": 7200,
+    "os": "Ubuntu 24.04.4",
+    "qt": "6.4.2",
+    "compiler": "GCC 13.3",
+    "awsSdk": "1.11.907",
+    "user": "putgd-ci",
+    "uid": 1001
+  },
+  "desktopAcceptance": false,
+  "networkActions": 0,
+  "providerFixture": "TrayCatalogProvider returns proton_account_busy; no live Proton or S3 credentials/session",
+  "commands": {
+    "configure": "cmake --preset dev -DPUTGD_BUNDLE_PROTON=OFF",
+    "build": "cmake --build --preset dev",
+    "catalog": "QT_QPA_PLATFORM=offscreen XDG_RUNTIME_DIR=<private short runtime> TMPDIR=<private short temp> PUTGD_TEST_TIME_SCALE=3 ./build/dev/putgd-ui-catalog <private short output>",
+    "check": "python3 tools/lab/surface_map/surface_map.py check --catalog DIR",
+    "ctest": "ctest --preset dev --parallel 12 --resource-spec-file <absolute tools/ci/ctest-resources.json> --output-junit <absolute build/dev/ctest-results.xml>",
+    "retry": "same CTest command, once, selecting ^(gui_tray|gui_settings)$"
+  },
+  "validation": {
+    "catalogExit": 0,
+    "catalogCapturesWithControls": 177,
+    "surfaceMapExit": 0,
+    "ctest": {
+      "tests": 113,
+      "passedFirst": 111,
+      "passedOnRetry": [
+        "gui_settings",
+        "gui_tray"
+      ],
+      "failed": [],
+      "ok": true
+    },
+    "effectiveCtestGate": "passed with two documented integration retries",
+    "selectorsVerified": 17,
+    "rectangles": "all positive and contained"
+  },
+  "captures": {
+    "00-tray-menu-idle": {
+      "width": 327,
+      "height": 519,
+      "rows": 18,
+      "separators": 3,
+      "labels": [
+        "Shared link \u00b7 Proton Drive + local copy",
+        "Change output\u2026",
+        "Capture region",
+        "Capture window",
+        "Capture desktop",
+        "Capture region && edit",
+        "Edit image",
+        "Record screen",
+        "Upload clipboard",
+        "History",
+        "Destinations",
+        "Settings",
+        "Update available: 26.1029.9999",
+        "About put.gd",
+        "Quit put.gd"
+      ]
+    },
+    "00-tray-menu-uploading": {
+      "width": 327,
+      "height": 601,
+      "rows": 22,
+      "separators": 5,
+      "labels": [
+        "Uploading 1 file\u2026",
+        "Cancel upload",
+        "Shared link \u00b7 Proton Drive + local copy",
+        "Change output\u2026",
+        "Capture region",
+        "Capture window",
+        "Capture desktop",
+        "Capture region && edit",
+        "Edit image",
+        "Record screen",
+        "Upload clipboard",
+        "History",
+        "Destinations",
+        "Settings",
+        "Update available: 26.1029.9999",
+        "About put.gd",
+        "Quit put.gd"
+      ]
+    },
+    "00-tray-menu-proton-busy": {
+      "width": 327,
+      "height": 551,
+      "rows": 19,
+      "separators": 3,
+      "labels": [
+        "Shared link \u00b7 Proton Drive + local copy",
+        "Change output\u2026",
+        "Capture region",
+        "Capture window",
+        "Capture desktop",
+        "Capture region && edit",
+        "Edit image",
+        "Record screen",
+        "Upload clipboard",
+        "History",
+        "Destinations",
+        "Settings",
+        "Failed uploads (1)",
+        "Update available: 26.1029.9999",
+        "About put.gd",
+        "Quit put.gd"
+      ]
+    },
+    "00-tray-output-submenu": {
+      "width": 292,
+      "height": 312,
+      "rows": 6,
+      "separators": 0,
+      "labels": [
+        "Capture region: Shared link \u00b7 Proton Drive + local copy",
+        "Capture window: Shared link \u00b7 Proton Drive + local copy",
+        "Capture desktop: Shared link \u00b7 Proton Drive + local copy",
+        "Capture region & edit: Shared link \u00b7 Proton Drive + local copy",
+        "Record screen: Shared link \u00b7 Proton Drive + local copy",
+        "Upload clipboard: Shared link \u00b7 Proton Drive + local copy"
+      ]
+    }
+  },
+  "sha256": {
+    "00-tray-menu-idle.png": "5993133d5531c4d35821ee824f74a8697e9c7f5744101c959ce8d3584959f33d",
+    "00-tray-menu-idle.controls.json": "166615c27e49c514c6d03fec2558cccdfae314594eaa6d65868782bfd115558e",
+    "00-tray-menu-uploading.png": "08bc03d58d16dd8a6d23a3a85eca3c6fa9856dd7a8d77c754efa9dbec989d81f",
+    "00-tray-menu-uploading.controls.json": "0aed9c1b15bc0e101e7276b52b58fa6d5b2c201297b8d662930599f99516ebbc",
+    "00-tray-menu-proton-busy.png": "f4d16e41653f9fc32530f67d1ede6d983355a0b7c1e3ebeecba240b509827e45",
+    "00-tray-menu-proton-busy.controls.json": "8f858fa8c3dd1424dce54fabcfeb0c6ba9aaae9872273c1bf4a6eb00b8b3c164",
+    "00-tray-output-submenu.png": "378250ba6da1eaa8b1fd5c9788fb466210e7c40d6d092f9673e0565420efdab8",
+    "00-tray-output-submenu.controls.json": "3d6c61c7ebe26938f4c3fbac8950aa9062ce6e52fb07e43daf9fa3faeabace4c",
+    "build-info.json": "d979d46e1717ace98393283a7ec0210db9361ac4f722006be1ade6e37246c4f7",
+    "binary-sha256.txt": "f3be727643cb8e638e212d05721ef7a53942ae92050c8f011c4e5c9c0e134a92",
+    "flake-ledger.json": "9bf5f27d7f553fa11f1e73d676e715e2627e9a1010e0bc371f3b5862146fd950",
+    "version.txt": "4ee7e9d420af5333306b3a2e6edf766b3aac97529ba081d2d1f20a86ef13aff3",
+    "toolchain.txt": "80b53377330e4764251beac197e9be24e1a407ffe04eee53b276048084709d22",
+    "catalog-socket-preflight.json": "d01a5c7077af99a4e9fd52396a6211c2b489ecb3a86810f53ffc26670d4b9d6c",
+    "socket-preflight.json": "9117624fb058fb97cde233b857895eacb880d9ecf8e3ca78ad57062edeb33275",
+    "socket-preflight-retry.json": "489c9f70687a3cc79191535c151dbe9af05a270ce2c7f1afa515052a847488a8",
+    "surface-map.log": "8d4b8c5b8399232fd83cfdebd60ccbabcbd534bc34bf8321ef5e71722472b834",
+    "proposed-model-mapping.json": "f63a58beb64e592d6307f40bc2caf3a367c1aab4027d97a9ae810e5a2b1bda9b"
+  },
+  "rawEvidenceSha256": {
+    "ctest-first.xml": "a3865329d07ea8cab757c79b2d28b6e8e3b5a89f3cd66b76d3abb4a0d8d1d980",
+    "ctest-retry.xml": "2ee4d3ade2bb0d12132830ff89f5e6bd5ee4ea00aed95b00a72faf477e498850",
+    "ctest-first.log": "aa90c6560df1eeab0b5a77aba2fe41b130c518ab062642a88c3ae9a6ec108055",
+    "ctest-retry.log": "0f9987719c349748356fe2be37ee82a1ce289f0c2171b793c8512291b01d1e3f",
+    "catalog.log": "4d1e7ba832407f596c7c734c1cab3435229bed301388a502468f3c63c3f69c03"
+  },
+  "followUps": {
+    "trayFlake": 625,
+    "settingsFlake": 707,
+    "editImageSubmenu": 688,
+    "upstreamReceiptDriftFixedByPr": 690
+  },
+  "earlierAttemptsRetainedPrivately": [
+    "Missing distro libxcb-xinput-dev; stale snapshot bundled-runtime cache, reset to dev default OFF",
+    "fd48dbac catalog clipped the taller menu, caught by row-fit assertion; fixed by f579c7f6",
+    "CTest launch access/resource-path errors ran no tests; corrected private paths and absolute resource spec",
+    "Full first pass 111/113; gui_tray and gui_settings each passed their sole integration retry"
+  ],
+  "cleanup": {
+    "operation": {
+      "attemptCount": 1,
+      "completedAt": "2026-10-29T23:41:08.975Z",
+      "expectedBy": null,
+      "id": "bdop_8d862d2e0b454b3ab31f7d11011eb68b",
+      "kind": "sandbox",
+      "reason": "explicit",
+      "requestedAt": "2026-10-29T23:40:47.021Z",
+      "stage": "completed",
+      "status": "completed",
+      "targetId": "bx_d9267hz4"
+    }
+  }
+}
