@@ -207,6 +207,9 @@ The scenario uses two deterministic synthetic files per operation and drives:
    state and idle, then explicit production `operation.retry` with the original
    operation, retained artifact and publication IDs. Unknown publication is
    reconciled by that retry; a new action never conceals it.
+   Keep the default 32 MiB payload: on the lab uplink 8 MiB files can finish
+   before the cancel lands. A cancel after the files uploaded settles with
+   `copyStatus: partial` (some links copied), which the runner accepts as final.
 5. A local-only file batch whose new private archive root is intentionally a
    regular file. Its real save must fail and latch the tray: "Needs attention",
    the error glyph and badge, and "Local save needs attention — open the tray
@@ -277,9 +280,13 @@ tray menu, and watches the result:
 
 1. A `busctl monitor` on the resident's bus name records every dbusmenu call
    other clients make to put.gd's menu. The guest needs `busctl` and `stdbuf`.
-2. The pointer moves to `--tray-x/--tray-y`, and the profile's button
-   (right by default) opens the menu. The monitor must show the desktop asking
-   for the menu (`AboutToShow` or an `opened` event).
+2. Tray icons move when other items come and go, so `--tray-x/--tray-y` is
+   only a hint: the runner finds the latched icon's error-tint pixels near it in
+   the frame taken just before, and fails over (below) if there are none. The
+   profile's button (right by default) opens the menu there. The monitor must
+   show the desktop asking for the menu (`AboutToShow`, `AboutToShowGroup` or
+   an `opened` event) at the resident's unique bus name: Cinnamon addresses its
+   calls there, not to the item's well-known name.
 3. The runner counts the attention item's place among the visible, enabled
    top-level rows of the live menu layout and presses Down that many times. If
    the desktop reports hovers, the last one must be the attention row.
@@ -291,7 +298,9 @@ Frames before, open, highlighted and after are saved as witnesses. Each
 profile's optional `tray_menu` entry calibrates its desktop: `button`,
 `openSeconds` (0.8 by default) and `firstRowSelected` (whether the menu opens
 with its first row highlighted). Attempts record whether their profile was
-calibrated.
+calibrated, where the icon was found and whether the desktop reported hovers.
+Cinnamon is calibrated (right button, 0.8 s, no first-row highlight; no hover
+reports, so its own `clicked` on the counted row is the proof).
 
 If the menu does not open, the highlight is elsewhere or no click arrives, the
 runner presses Escape, saves the frame and sends the dbusmenu `clicked` event
