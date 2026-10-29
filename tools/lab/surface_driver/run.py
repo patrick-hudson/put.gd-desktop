@@ -153,11 +153,15 @@ def main(argv=None):
     try:
         profile=load_profile(args.desktop,args.profiles)
         recipes=discover(args.recipes);validate_recipes(recipes)
-        target=Target(run=run,host_profile=args.host_profile,bin_dir=args.bin_dir)
+        target=Target(run=run,host_profile=args.host_profile,bin_dir=args.bin_dir,
+                      app_executable='putgd-launcher' if args.package=='appimage' else 'putgd')
         environment['placement_details'].update(run_id=target.info['id'],lab_profile=target.info['profile'],
                                                  run_directory=str(target.run),session_root=target.root,socket=target.socket)
         if args.placement=='native':
             target.require_lock(args.host,args.lock_session)
+        environment['target']=target.identity()
+        if environment['target'].get('session_type')!=profile['session']:
+            raise RecipeBlocked('native session type does not match the selected desktop profile')
         target.start()
         context=DriverContext(target,environment,profile,args.catalog,args.out)
         snapshot=context.call('ui.snapshot')

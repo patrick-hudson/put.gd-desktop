@@ -74,6 +74,8 @@ class Mapping(unittest.TestCase):
         self.assertEqual(qcodes('Ctrl+Z'),['ctrl','z'])
         self.assertEqual(qcodes('Ctrl+Shift+Z'),['ctrl','shift','z'])
         self.assertEqual(qcodes('Escape'),['esc'])
+        self.assertEqual(qcodes('Ctrl++'),['ctrl','shift','equal'])
+        self.assertEqual(qcodes('Backtab'),['shift','tab'])
         self.assertEqual(qcodes('!'),['shift','1'])
         with self.assertRaises(RecipeBlocked): qcodes('☃')
         self.assertEqual(checked_socket('/'+'x'*106),'/'+'x'*106)
@@ -193,6 +195,23 @@ class Running(unittest.TestCase):
         self.assertEqual(events[0][:5],(4,4,20,10,True))
         self.assertEqual(events[-1][:5],(4,4,20,10,False))
 
+    def test_resized_layout_uses_live_control_instead_of_guessing(self):
+        inv={'width':20,'height':10,'controls':[{'name':'upload','text':'&Upload','rect':[2,2,4,4]}]}
+        (self.path/'test-editor.controls.json').write_text(json.dumps(inv))
+        self.ctx.catalog=Catalog(self.path,{})
+        self.ctx.geometry=lambda role:{'x':0,'y':0,'width':40,'height':20,'scale':1}
+        self.ctx._dimensions=lambda head=0:(100,100)
+        probes=[]
+        self.ctx._probe=lambda name,query:probes.append((name,query)) or [6,8,10,12]
+        events=[];self.ctx.target.pointer=lambda *args:events.append(args)
+        self.ctx.click('upload',window='editor')
+        self.assertEqual(events[0][:2],(11,14))
+        self.assertEqual(probes[0][0],'control')
+        self.assertEqual(probes[0][1]['label'],'Upload')
+        self.ctx.profile['at_spi']['available']=False
+        with self.assertRaisesRegex(RecipeBlocked,'live AT-SPI'):
+            self.ctx.click('upload',window='editor')
+
     def test_unicode_input_refuses_before_partial_typing(self):
         sent=[];self.ctx.target.key=lambda value:sent.append(value)
         with self.assertRaises(RecipeBlocked):self.ctx.type_text('hello ☃')
@@ -204,6 +223,7 @@ class Running(unittest.TestCase):
     def test_main_checks_identity_and_configures_local_output(self):
         target=FakeTarget();target.info={'id':'run-id','profile':'cinnamon-x11'};target.run=self.path
         target.start=lambda:None;target.close=lambda:None
+        target.identity=lambda:{'session_type':'x11','desktop':'X-Cinnamon'}
         calls=[]
         def cli(*args,timeout=60):
             calls.append(args)

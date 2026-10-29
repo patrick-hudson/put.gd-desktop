@@ -6,6 +6,7 @@ import re
 import shlex
 import time
 from tools.lab import lab
+from tools.lab.surface_map.surface_map import plain_label
 from .api import Context, Frame, RecipeBlocked, RecipeFailed
 from .catalog import Catalog, compare, control_point, image_modules
 from .target import qcodes
@@ -133,7 +134,21 @@ class DriverContext(Context):
     def click(self, control, window, button='left', offset=None):
         name, inventory, row = self.catalog.resolve(control,window,self._captures.get(window))
         geometry = self.geometry(window)
-        x,y = control_point(inventory,row,geometry,offset)
+        # Resizing a Qt layout moves anchors nonlinearly. A ratio alone can
+        # hit a neighbouring control, so obtain an independently live rectangle
+        # when the window's logical size differs from the capture.
+        if (geometry['width'],geometry['height']) != (inventory['width'],inventory['height']):
+            if not self.profile.get('at_spi',{}).get('available'):
+                raise RecipeBlocked('resized catalog control needs live AT-SPI geometry')
+            x,y,w,h=self._probe('control',{'name':row.get('name'),'label':plain_label(row.get('text')),
+                                             'title':self.profile.get('window_titles',{}).get(window,window),
+                                             'pid':geometry.get('pid'),'bounds':[geometry[k] for k in ('x','y','width','height')]})
+            dx,dy=offset if offset is not None else (row['rect'][2]/2,row['rect'][3]/2)
+            scale=geometry.get('scale',1)
+            x=round((x-geometry.get('screen_x',0)+dx*w/row['rect'][2])*scale)
+            y=round((y-geometry.get('screen_y',0)+dy*h/row['rect'][3])*scale)
+        else:
+            x,y = control_point(inventory,row,geometry,offset)
         self._pointer_click(x,y,button,geometry.get('head',0))
 
     def _dimensions(self, head=0):

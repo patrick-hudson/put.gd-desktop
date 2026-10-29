@@ -24,10 +24,12 @@ SHIFTED = dict(zip('!@#$%^&*()_+{}:"~<>?|', '1234567890-=[];\'`,./\\'))
 
 
 def qcodes(chord):
-    parts = chord.split('+') if chord != '+' else ['+']
+    parts = chord[:-2].split('+')+['+'] if chord.endswith('++') else (chord.split('+') if chord != '+' else ['+'])
     result = []
     for part in parts:
-        if part in QT_KEYS:
+        if part=='Backtab':
+            result+=['shift','tab']
+        elif part in QT_KEYS:
             result.append(QT_KEYS[part])
         elif len(part) == 1 and part in SHIFTED:
             result += ['shift', PUNCTUATION.get(SHIFTED[part], SHIFTED[part])]
@@ -58,7 +60,7 @@ def desktop_transport(function):
 
 
 class Target:
-    def __init__(self, *, run=None, host_profile=None, session_root=None, bin_dir=None):
+    def __init__(self, *, run=None, host_profile=None, session_root=None, bin_dir=None, app_executable="putgd"):
         self.physical = PhysicalHost(json.loads(Path(host_profile).read_text())) if host_profile else None
         self.run = self.physical.run if self.physical else Path(run).resolve()
         if self.physical:
@@ -70,6 +72,7 @@ class Target:
         checked_socket(str(self.run / 'qmp.sock'))
         self.started = False
         self.bin_dir = bin_dir
+        self.app_executable = app_executable
         self.monitor_pid = None
         self._rfb = None
         self._lock = None
@@ -110,7 +113,7 @@ class Target:
 
     def prefix(self):
         root = shlex.quote(self.root)
-        return 'umask 077\n' + ('export PATH='+shlex.quote(self.bin_dir)+':"$PATH"\n' if self.bin_dir else '') + ''.join('export '+key+'='+root+'/'+suffix+'\n' for key,suffix in (
+        return 'umask 077\nexport QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1\n' + ('export PATH='+shlex.quote(self.bin_dir)+':"$PATH"\n' if self.bin_dir else '') + ''.join('export '+key+'='+root+'/'+suffix+'\n' for key,suffix in (
             ('XDG_CONFIG_HOME','config'),('XDG_DATA_HOME','data'),('XDG_STATE_HOME','state'),
             ('XDG_CACHE_HOME','cache'),('XDG_RUNTIME_DIR','runtime')))
 
@@ -122,15 +125,29 @@ class Target:
         except (lab.LabError, subprocess.TimeoutExpired, ValueError) as error:
             raise RecipeBlocked('target session command unavailable: ' + type(error).__name__) from error
 
+    def identity(self):
+        code="""import json,os,platform
+release=platform.freedesktop_os_release()
+print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machine':platform.machine(),
+                  'os':{k:release.get(k) for k in ('ID','VERSION_ID','VARIANT_ID')},
+                  'session_type':os.environ.get('XDG_SESSION_TYPE'),
+                  'desktop':os.environ.get('XDG_CURRENT_DESKTOP'),
+                  'qt_platform':os.environ.get('QT_QPA_PLATFORM')}))
+"""
+        result=self.execute("python3 - <<'SD_IDENTITY'\n"+code+'SD_IDENTITY\n')
+        if result['returncode']:
+            raise RecipeBlocked('native target identity unavailable')
+        return json.loads(result['stdout'])
+
     def start(self):
-        available=self.execute('command -v putgd >/dev/null && command -v putgd-cli >/dev/null')
+        available=self.execute('command -v '+shlex.quote(self.app_executable)+' >/dev/null && command -v putgd-cli >/dev/null')
         if available['returncode']:
-            raise RecipeBlocked('putgd and putgd-cli must be installed before the surface run')
+            raise RecipeBlocked(self.app_executable+' and putgd-cli must be installed before the surface run')
         result = self.execute('test ! -e '+shlex.quote(self.root)+' && mkdir -m 700 '+shlex.quote(self.root)+' && mkdir -m 700 '+
                               ' '.join(shlex.quote(self.root+'/'+s) for s in ('runtime','config','data','cache','state','files')))
         if result['returncode']:
             raise RecipeBlocked('private session directory already exists or cannot be created')
-        result = self.execute('nohup putgd --background > '+shlex.quote(self.root+'/app.log')+' 2>&1 < /dev/null &')
+        result = self.execute('nohup '+shlex.quote(self.app_executable)+' --background > '+shlex.quote(self.root+'/app.log')+' 2>&1 < /dev/null &')
         if result['returncode']:
             raise RecipeBlocked('could not start isolated resident')
         self.started = True
