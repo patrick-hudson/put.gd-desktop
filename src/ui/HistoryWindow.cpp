@@ -382,13 +382,13 @@ public:
   const bool visible=i.isValid()&&inlineActions(i)&&view_->viewport()->rect().intersects(bounds)&&(grid()||view_->selectionModel()->isSelected(i))&&(grid()||view_->selectionModel()->selectedRows().size()<=1||row.contains(view_->viewport()->mapFromGlobal(QCursor::pos())));
   actionIndex_=i;more_->setVisible(visible);const bool showDetails=visible&&detailsShown(i)&&view_->selectionModel()->selectedRows().size()==1;const bool showPrimary=visible&&primaryShown(i);
   primary_->setProperty("visualRole",grid()&&!recovery(i)?"quiet":"secondary");primary_->setVisible(showPrimary);
-  if(showPrimary){const auto label=i.data(HistoryModel::PrimaryActionRole).toString();primary_->setEnabled(true);primary_->setIcon(label=="Copy link"?VisualStyle::icon("copy"):QIcon{});primary_->setIconSize(QSize(Graphite::scaled(16),Graphite::scaled(16)));primary_->setToolButtonStyle(grid()&&label=="Copy link"?Qt::ToolButtonIconOnly:label=="Copy link"?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonTextOnly);primary_->setText(label);primary_->setToolTip(label);primary_->setAccessibleName(label);primary_->setAccessibleDescription(label+" for "+i.data().toString());primary_->setGeometry(primaryRect(row,i));primary_->raise();}
+  if(showPrimary){const auto label=i.data(HistoryModel::PrimaryActionRole).toString();primary_->setEnabled(true);const bool icon=iconPrimary(row,i);primary_->setIcon(label=="Copy link"||icon?VisualStyle::icon("copy"):QIcon{});primary_->setIconSize(QSize(Graphite::scaled(16),Graphite::scaled(16)));primary_->setToolButtonStyle(icon?Qt::ToolButtonIconOnly:label=="Copy link"?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonTextOnly);primary_->setText(label);primary_->setToolTip(label);primary_->setAccessibleName(label);primary_->setAccessibleDescription(label+" for "+i.data().toString());primary_->setGeometry(primaryRect(row,i));primary_->raise();}
   details_->setVisible(showDetails);details_->setText(grid()?"Details":QString{});details_->setToolButtonStyle(grid()?Qt::ToolButtonTextOnly:Qt::ToolButtonIconOnly);if(showDetails){details_->setGeometry(detailsRect(row,i));details_->raise();}
   if(!visible)return;const auto name="More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString();more_->setAccessibleName(name);more_->setToolTip(name);more_->setGeometry(bounds);more_->raise();
  }
  bool helpEvent(QHelpEvent* event,QAbstractItemView* view,const QStyleOptionViewItem& option,const QModelIndex& i)override{
   if(i.data(HistoryModel::FailedRole).toBool()&&!menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),failureDescription(i),view);return true;}
-  if(menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),"More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString(),view);return true;}return QStyledItemDelegate::helpEvent(event,view,option,i);
+  if(inlineActions(i)&&menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),"More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString(),view);return true;}return QStyledItemDelegate::helpEvent(event,view,option,i);
  }
  bool eventFilter(QObject* watched,QEvent* event)override{
   if(grid()&&watched==view_->viewport()&&(event->type()==QEvent::MouseMove||event->type()==QEvent::Leave)){
@@ -418,9 +418,10 @@ public:
  bool columnMenuOnly()const{return compactList&&compactList();}
  Columns rowColumns(const QRect& body,const QModelIndex& i)const{const auto* model=qobject_cast<HistoryModel*>(view_->model());return historyColumns(body,columnMenuOnly(),!model||model->multipleDestinations(),rowPrimary(i)?primaryWidth(i):0);}
  bool beside(const QModelIndex& i)const{return menuOnly()||(grid()&&inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
- bool detailsShown(const QModelIndex& i)const{return !grid()&&view_->selectionModel()->selectedRows().size()<=1&&(compactList&&compactList()&&view_->selectionModel()->isSelected(i))&&!(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
+ bool detailsShown(const QModelIndex& i)const{return !grid()&&!compactRows()&&view_->selectionModel()->selectedRows().size()<=1&&(compactList&&compactList()&&view_->selectionModel()->isSelected(i))&&!(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->isSelected(i));}
  bool recovery(const QModelIndex& i)const{return i.data(HistoryModel::PrimaryActionRole).toString().startsWith("Retry ");}
- bool inlineActions(const QModelIndex& i)const{return grid()||!(inspectorBeside&&inspectorBeside()&&view_->selectionModel()->selectedRows().size()==1&&view_->selectionModel()->isSelected(i));}
+ // An open inspector holds compact rows' actions; only failures keep Retry in the row.
+ bool inlineActions(const QModelIndex& i)const{if(grid())return true;if(!inspectorBeside||!inspectorBeside())return true;return !(view_->selectionModel()->selectedRows().size()==1&&view_->selectionModel()->isSelected(i))&&(!compactRows()||i.data(HistoryModel::FailedRole).toBool());}
  bool rowPrimary(const QModelIndex& i)const{if(!inlineActions(i))return false;return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  bool primaryShown(const QModelIndex& i)const{if(grid())return !i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()&&inlineActions(i);return rowPrimary(i)&&inlineActions(i)&&(view_->selectionModel()->selectedRows().size()<=1||(grid()&&recovery(i)))&&!i.data(HistoryModel::PrimaryActionRole).toString().isEmpty();}
  int heading(const QModelIndex& i)const{return !grid()&&!i.data(HistoryModel::DayRole).toString().isEmpty()?dayHeadingHeight():0;}
@@ -473,7 +474,16 @@ public:
  QRect detailsRect(QRect r,const QModelIndex& i)const{if(grid())return galleryActionRect(r,i,1);const auto b=menuRect(r,i);const int w=grid()?detailsWidth():actionHeight();const int h=grid()?b.height():w;return QRect(b.left()-space(Space::s)-w,b.top()+(b.height()-h)/2,w,h);}
  int primaryWidth(const QModelIndex& i)const{return qMax(Graphite::scaled(84),int(std::ceil(QFontMetricsF(Graphite::labelFont()).horizontalAdvance(i.data(HistoryModel::PrimaryActionRole).toString())))+space(Space::xxl)+(i.data(HistoryModel::PrimaryActionRole)=="Copy link"?Graphite::scaled(16)+space(Space::s):0));}
  bool compactRow(const QRect& r,const QModelIndex& i)const{return !grid()&&rowBody(r,false,heading(i)).width()<Graphite::scaled(480);}
- int compactActionWidth(const QModelIndex& i)const{return actionHeight()+space(Space::s)+listDetailsSpace()+(i.data(HistoryModel::PrimaryActionRole).toString().isEmpty()?0:primaryWidth(i)+space(Space::s));}
+ bool compactRows()const{return !grid()&&rowBody(QRect(0,0,qMax(160,view_->viewport()->width()-2*view_->spacing()),rowContentHeight()),false,0).width()<Graphite::scaled(480);}
+ // Compact copy actions are icons (name in the tooltip); recovery stays labelled.
+ bool compactIcon(const QModelIndex& i)const{const auto action=i.data(HistoryModel::PrimaryActionRole).toString();return !i.data(HistoryModel::FailedRole).toBool()&&(action=="Copy link"||action=="Copy result");}
+ bool iconPrimary(const QRect& r,const QModelIndex& i)const{return grid()?i.data(HistoryModel::PrimaryActionRole)=="Copy link":compactRow(r,i)&&compactIcon(i);}
+ // Independent of hover and selection, so nothing reflows on interaction.
+ int compactActionWidth(const QModelIndex& i)const{
+  const bool failed=i.data(HistoryModel::FailedRole).toBool();if(!failed&&inspectorBeside&&inspectorBeside())return 0;
+  if(i.data(HistoryModel::PrimaryActionRole).toString().isEmpty())return space(Space::s)+actionHeight();
+  return space(Space::s)+actionHeight()+(compactIcon(i)?space(Space::xs)+actionHeight():space(Space::s)+primaryWidth(i));
+ }
  int compactMetadataTop(const QRect& r,const QModelIndex& i)const{return rowBody(r,false,heading(i)).top()+compactTextInset()+QFontMetrics(historyTitleFont()).height()+compactMetadataGap();}
  int compactErrorTop(const QRect& r,const QModelIndex& i)const{return compactMetadataTop(r,i)+QFontMetrics(Graphite::font(Graphite::Type::technical)).height()+compactDetailGap();}
  int inlineTextWidth(const QRect& r,const QModelIndex& i)const{
@@ -489,8 +499,9 @@ public:
  QRect primaryRect(QRect r,const QModelIndex& i)const{
   const auto c=card(r,i);const int h=actionHeight(),detailsSpace=detailsShown(i)?listDetailsSpace():0;const int w=qMin(primaryWidth(i),qMax(0,c.width()-2*space(Space::m)-h-space(Space::s)-(grid()?detailsWidth()+space(Space::s):detailsSpace)));
   if(grid())return galleryActionRect(r,i,0);
-  if(compactRow(r,i)&&i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,c.top()+(c.height()-h)/2,w,h);
-  if(compactRow(r,i))return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):c.top()+(c.height()-h)/2,w,h);
+  // Compact failures keep their title and status line whole: actions share the detail line, which may elide.
+  if(compactRow(r,i)&&i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-w,compactErrorTop(r,i)+(QFontMetrics(Graphite::font(Graphite::Type::technical)).height()-h)/2,w,h);
+  if(compactRow(r,i)){const bool icon=compactIcon(i);const int width=icon?h:w;return QRect(c.right()-space(Space::s)-h-(icon?space(Space::xs):space(Space::s))-width,actionsBelow(r,i)?c.bottom()-h-space(Space::s):c.top()+(c.height()-h)/2,width,h);}
   if(i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,c.top()+(c.height()-h)/2,w,h);
   return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):c.top()+(rowContentHeight()-4-h)/2,w,h);
  }
@@ -504,7 +515,8 @@ public:
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
   if(compactRow(outer,i)){
    const bool below=actionsBelow(outer,i),failed=i.data(HistoryModel::FailedRole).toBool();const int metaHeight=QFontMetrics(Graphite::font(Graphite::Type::technical)).height();int bottom=compactMetadataTop(outer,i)+metaHeight+(below?0:qMax(0,(actionHeight()-metaHeight)/2));
-   if(failed)return {width,rowContentHeight()+metaHeight+space(Space::xs)+heading(i)};
+   // Room for the actions centred on the detail line, inside the card.
+   if(failed)return {width,qMax(rowContentHeight()+metaHeight+space(Space::xs)+heading(i),compactErrorTop(outer,i)+(metaHeight+actionHeight()+1)/2+3)};
    height=qMax(rowContentHeight(),bottom-heading(i)+2+(below?actionHeight()+space(Space::m):0))+heading(i);return {width,height};
   }
   if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;HistoryWindow::metadataDocument(metadata,i,inlineTextWidth(outer,i),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
@@ -544,18 +556,18 @@ public:
   const auto columns=grid()?Columns{body,{},{},{}}:rowColumns(body,i);
   const bool below=actionsBelow(outer,i),compact=compactRow(outer,i);
   int itemWidth=qMax(0,columns.item.width()-12);
-  if(compact)itemWidth=qMax(0,body.width()-(below?0:compactActionWidth(i)));
+  if(compact)itemWidth=qMax(0,body.width()-(below||failed?0:compactActionWidth(i)));
   else if(!grid()&&!below)itemWidth=inlineTextWidth(outer,i);
   else if(grid()||below)itemWidth=body.width();
   const auto titleFont=historyTitleFont(!grid()&&chosen),metaFont=Graphite::font(Graphite::Type::technical);
   const int lineTop=grid()?body.top():rowTop+(compact?compactTextInset():rowTextInset());
   Graphite::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,QFontMetrics(titleFont).height()),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,compact?Qt::ElideRight:titleElision(i.data().toString()));
-  const int metadataWidth=compact?qMax(20,body.width()-(below?0:compactActionWidth(i))):!grid()&&failed?inlineTextWidth(outer,i):itemWidth;
+  const int metadataWidth=compact?qMax(20,body.width()-(below||failed?0:compactActionWidth(i))):!grid()&&failed?inlineTextWidth(outer,i):itemWidth;
   const int metadataTop=compact?compactMetadataTop(outer,i):lineTop+QFontMetrics(titleFont).height()+(grid()?space(Space::xs):6);
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
   if(compact){
    QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,QFontMetrics(metaFont).height()));document.drawContents(p);p->restore();
-   if(failed){QTextDocument error;compactFailureDetail(error,i,body.width()-(compactErrorTop(outer,i)<=moreBounds.bottom()?compactActionWidth(i):0));p->save();p->translate(body.left(),compactErrorTop(outer,i));p->setClipRect(QRectF(0,0,body.width(),QFontMetrics(metaFont).height()));error.drawContents(p);p->restore();}
+   if(failed){QTextDocument error;compactFailureDetail(error,i,body.width()-compactActionWidth(i));p->save();p->translate(body.left(),compactErrorTop(outer,i));p->setClipRect(QRectF(0,0,body.width(),QFontMetrics(metaFont).height()));error.drawContents(p);p->restore();}
   }
   else if(!grid()){QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,true);p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
   else{
@@ -570,7 +582,7 @@ public:
   }
   if(actionsShown){
    auto* style=view_->style();
-   if(showPrimary&&(!grid()||i!=actionIndex_||!primary_->isVisible())){QStyleOptionButton button;button.rect=primaryBounds;button.text=grid()&&action=="Copy link"?QString{}:action;if(action=="Copy link"){button.icon=VisualStyle::icon("copy");button.iconSize=QSize(Graphite::scaled(16),Graphite::scaled(16));}button.state=QStyle::State_Enabled|(option.state&QStyle::State_MouseOver&&primaryBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);if(pressed_==i&&pressedAction_==1)button.state|=QStyle::State_Sunken;button.fontMetrics=QFontMetrics(Graphite::font());p->save();p->setFont(Graphite::font());style->drawControl(QStyle::CE_PushButton,&button,p,grid()&&!recovery(i)?paintQuiet_:paintSecondary_);p->restore();}
+   if(showPrimary&&(!grid()||i!=actionIndex_||!primary_->isVisible())){QStyleOptionButton button;button.rect=primaryBounds;const bool icon=iconPrimary(outer,i);button.text=icon?QString{}:action;if(action=="Copy link"||icon){button.icon=VisualStyle::icon("copy");button.iconSize=QSize(Graphite::scaled(16),Graphite::scaled(16));}button.state=QStyle::State_Enabled|(option.state&QStyle::State_MouseOver&&primaryBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);if(pressed_==i&&pressedAction_==1)button.state|=QStyle::State_Sunken;button.fontMetrics=QFontMetrics(Graphite::font());p->save();p->setFont(Graphite::font());style->drawControl(QStyle::CE_PushButton,&button,p,grid()&&!recovery(i)?paintQuiet_:paintSecondary_);p->restore();}
    if(!grid()||actionsShown){
     if(grid()&&detailsShown(i)&&(i!=view_->currentIndex()||!details_->isVisible())){QStyleOptionButton button;button.rect=detailsRect(outer,i);button.text="Details";button.state=QStyle::State_Enabled;style->drawControl(QStyle::CE_PushButton,&button,p,details_);}
     if(!grid()||i!=actionIndex_||!more_->isVisible()){QStyleOptionButton more;more.rect=moreBounds;more.state=QStyle::State_Enabled|(moreBounds.contains(view_->viewport()->mapFromGlobal(QCursor::pos()))?QStyle::State_MouseOver:QStyle::State_None);style->drawPrimitive(QStyle::PE_PanelButtonCommand,&more,p,more_);const int side=Graphite::scaled(Graphite::Metric::icon);Graphite::paintChromeGlyph(*p,QRectF(moreBounds.center().x()-side/2.0,moreBounds.center().y()-side/2.0,side,side),"more",t.textSecondary);}
