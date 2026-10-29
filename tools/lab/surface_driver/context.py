@@ -27,7 +27,7 @@ class DriverContext(Context):
         for key in ('desktop','host','placement','package','destination'):
             setattr(self,key,environment[key])
         self.catalog, self.out = Catalog(catalog,profile), Path(out)
-        self.profile = dict(profile, guest=environment.get('guest') if not getattr(target,'physical',None) else None)
+        self.profile = dict(profile, guest=environment.get('guest'))
         self._fixtures = {}
         self._captures = {}
         self._current_window = None
@@ -321,7 +321,7 @@ asyncio.run(main())
             if not row:
                 raise RecipeBlocked('resident completed fixture but did not expose its history row')
             value = Fixture(id=row['id'],history_id=row['id'],operation_id=operation,
-                                    link=row.get('link',''),path=row.get('local',{}).get('path'),state=state,row=row)
+                                    name=row.get('name'),link=row.get('receipt',{}).get('directUrl') or None,path=row.get('local',{}).get('path'),state=state,row=row)
             self._fixtures[name] = value
             return value
         if name == 'recording':

@@ -131,6 +131,8 @@ def main(argv=None):
     args=parser().parse_args(argv)
     if not re.fullmatch(r'[A-Za-z0-9_.-]+',args.campaign):
         raise SystemExit('campaign must be a filename-safe identifier')
+    if args.placement=='native' and args.guest:
+        raise SystemExit('native placement cannot name a guest')
     if args.placement=='boat' and not args.boat_id:
         raise SystemExit('--placement boat requires --boat-id')
     if args.host_profile and args.host != 'boat' and (args.placement != 'native' or not args.lock_session):
@@ -156,7 +158,9 @@ def main(argv=None):
         target=Target(run=run,host_profile=args.host_profile,bin_dir=args.bin_dir,
                       app_executable='putgd-launcher' if args.package=='appimage' else 'putgd')
         environment['placement_details'].update(run_id=target.info['id'],lab_profile=target.info['profile'],
-                                                 run_directory=str(target.run),session_root=target.root,socket=target.socket)
+                                                 run_directory=str(target.run),session_root=target.root,socket=target.socket,
+                                                 input_backend=('host-input' if (target.run/'qmp.sock').exists() else 'vnc') if target.physical else 'qmp',
+                                                 frame_backend='vnc' if target.physical else 'qmp')
         if args.placement=='native':
             target.require_lock(args.host,args.lock_session)
         environment['target']=target.identity()
