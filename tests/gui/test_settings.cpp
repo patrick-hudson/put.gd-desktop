@@ -1977,6 +1977,14 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
  }
  // Final read: an exception card painted its chosen "Nothing is saved or uploaded"
  // in red while the default's same fact was a neutral warning (council 22).
+ // Final read: the stacked read-only endpoint sat right-aligned under its left-aligned label.
+ void readOnlyValuesFollowTheirLabelWhenStacked(){
+  VisualStyle::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(21);qApp->setFont(font);
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();window.findChild<QToolButton*>("advancedSettings")->setChecked(true);
+  auto* endpoint=window.findChild<QLabel*>("s3EndpointValue");QVERIFY(endpoint);window.resize(1800,800);putgd::test::settle(80);QWidget* field=endpoint;while(field&&!field->property("stacked").isValid())field=field->parentWidget();QVERIFY(field);
+  QSet<bool> seen;for(const int width:{1800,1060,1800}){window.resize(width,800);putgd::test::settle(80);const bool stacked=field->property("stacked").toBool();seen.insert(stacked);QCOMPARE(endpoint->alignment()&Qt::AlignHorizontal_Mask,stacked?Qt::AlignLeft:Qt::AlignRight);}
+  QCOMPARE(seen.size(),2);
+ }
  void exceptionWithoutOutputUsesTheSameNeutralWarning(){
   VisualStyle::apply(*qApp);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::defaults(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.showCaptureSettings();window.show();
   auto* summary=window.findChild<QLabel*>("captureSummaryClipboard");QVERIFY(summary);window.findChild<QCheckBox*>("overrideClipboard")->click();PUTGD_TRY_COMPARE(summary->text(),QString("Nothing is saved or uploaded"));
