@@ -31,7 +31,10 @@ def _get(ctx):
 
 
 def _fixture(ctx):
-    f = ctx.fixture('destinations')
+    try:
+        f = ctx.fixture('destinations')
+    except KeyError:
+        ctx.blocked('Missing private destinations fixture (#666).', issue=CORE_ISSUE)
     if not isinstance(f, dict) or f.get('private') is not True:
         ctx.blocked('Need a clean private destinations resident fixture (#666).', issue=CORE_ISSUE)
     path = PurePosixPath(f.get('config_path', ''))
@@ -47,6 +50,19 @@ def _fixture(ctx):
             or endpoint.username or endpoint.password or endpoint.query or endpoint.fragment):
         ctx.blocked('Only a loopback moto S3 fixture is allowed in this lane.', issue=CORE_ISSUE)
     ctx.expect(_get(ctx)['metadata']['path'] == str(path), 'resident uses the exact private config')
+    script = """import json,os,stat
+from pathlib import Path
+p=Path(PATH)
+root=Path(os.environ['XDG_CONFIG_HOME'])
+s=root.lstat()
+ok=(root.is_absolute() and root.resolve()==root and root!=Path.home()/'.config'
+    and stat.S_ISDIR(s.st_mode) and s.st_uid==os.getuid() and not s.st_mode & 0o077
+    and p==root/'putgd/config.json' and p.resolve()==p)
+print(json.dumps({'privateConfig':ok}))
+""".replace('PATH', repr(str(path)))
+    checked = ctx.shell("python3 - <<'PY'\n" + script + '\nPY\n')
+    if checked['returncode'] != 0 or json.loads(checked['stdout']) != {'privateConfig': True}:
+        ctx.blocked('Target XDG config must be private, owned and isolated from the user config.', issue=CORE_ISSUE)
     return f, p
 
 

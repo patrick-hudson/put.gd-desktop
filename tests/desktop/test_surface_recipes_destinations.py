@@ -26,6 +26,7 @@ class FakeContext(Context):
         self.checked = False
         self.invalid = False
         self.corrupt_disk = False
+        self.private_root = True
         self.f = {'private': True, 'config_path': '/tmp/sd/c/putgd/config.json',
                   'profile': {'id': 'fixture', 'label': 'Fixture', 'provider': 's3',
                               'credentials': {'mode': 'session', 'reference': None},
@@ -70,6 +71,8 @@ class FakeContext(Context):
         # Execute no target script on the workstation. Independently check the
         # expected digest, and allow corruption to falsify disk verification.
         self.assert_event('shell', script)
+        if 'privateConfig' in script:
+            return {'returncode': 0, 'stdout': json.dumps({'privateConfig': self.private_root})}
         digest = hashlib.sha256(json.dumps(self.document, sort_keys=True,
                                           separators=(',', ':'), ensure_ascii=True).encode()).hexdigest()
         return {'returncode': 0, 'stdout': json.dumps({
@@ -239,6 +242,13 @@ class DestinationsContracts(unittest.TestCase):
         with self.assertRaises(RecipeBlocked):
             lane.rename(ctx)
         self.assertFalse(any(e[0] in ('click', 'view') for e in ctx.events))
+
+    def test_target_private_root_verified_before_patch(self):
+        ctx = FakeContext()
+        ctx.private_root = False
+        with self.assertRaises(RecipeBlocked):
+            lane.rename(ctx)
+        self.assertFalse(any(e[:2] == ('call', 'settings.patch') for e in ctx.events))
 
     def test_disk_disagreement_is_failure(self):
         ctx = FakeContext()
