@@ -37,7 +37,27 @@ def _view(ctx, op, **params):
 
 
 def _frame(ctx, label, reference=REFERENCE):
-    return ctx.frame(label, window='editor', reference=reference)
+    frame = ctx.frame(label, window='editor', reference=reference)
+    # Catalog choice is interaction state, identical on every desktop. The
+    # merged profile is the contract's state-hint path until use_catalog is in
+    # api.py; it prevents ambiguous matches across 900/1060/1180 captures.
+    ctx.profile.setdefault('catalog_windows', {})['editor'] = [reference]
+    return frame
+
+
+def _resize(ctx, width, height):
+    rect = ctx.geometry('editor')
+    if [rect['width'],rect['height']] != [width,height]:
+        # Ui::WindowEdges owns a 10px corner on every custom-framed window.
+        # Dragging it is real compositor input, not a geometry mutation.
+        start=(rect['x']+rect['width']-5,rect['y']+rect['height']-5)
+        end=(rect['x']+width-5,rect['y']+height-5)
+        ctx.drag(start,end)
+        def sized():
+            r=ctx.geometry('editor')
+            return r if [r['width'],r['height']]==[width,height] else None
+        ctx.wait(sized,'editor resized to matching catalog dimensions')
+
 
 
 @contextmanager
@@ -60,6 +80,7 @@ def _session(ctx, opener=None):
         state = ctx.wait(ready, 'editor ready on synthetic image')
         ctx.expect(state['phase'] == 'editing' and not state['shapes'], 'fresh private editor has no marks')
         ctx.expect([state['width'], state['height']] == [640, 320], 'four-quadrant fixture is 640x320')
+        _resize(ctx,1180,820)
         _view(ctx, op, action='fit')
         ctx.expect(_inspect(ctx, op)['view']['fitted'], 'editor opens fitted')
         _frame(ctx, 'before')
@@ -90,12 +111,21 @@ def _tool(ctx, op, name, key=None):
 
 def _point(ctx, op, x, y):
     """Image pixel centre -> canvas screen point, including current pan/zoom."""
-    try:
-        canvas = ctx.geometry('editor.canvas')
-    except (NotImplementedError, KeyError, ValueError):
-        ctx.blocked('Core must expose editor.canvas screen geometry for image-coordinate drags', issue=CORE_ISSUE)
     state = _inspect(ctx, op)
     view = state['view']
+    # AT-SPI is part of Context and exposes the actual canvas component, while
+    # window geometry alone cannot locate the toolbar/properties inset.
+    window=ctx.geometry('editor')
+    matches=ctx.accessible({'name':'Image being edited'})
+    candidates=[row['rect'] for row in matches if row.get('rect') and
+                row['rect'][2:]==view['canvasSize'] and
+                row['rect'][0]>=window['x'] and row['rect'][1]>=window['y'] and
+                row['rect'][0]+row['rect'][2]<=window['x']+window['width'] and
+                row['rect'][1]+row['rect'][3]<=window['y']+window['height']]
+    if len(candidates)!=1:
+        ctx.blocked('AT-SPI must identify one owned Image being edited canvas for image-coordinate drags',issue=CORE_ISSUE)
+    x0,y0,width,height=candidates[0]
+    canvas={'x':x0,'y':y0,'width':width,'height':height}
     ctx.expect([canvas['width'], canvas['height']] == view['canvasSize'], 'geometry identifies the live editor canvas')
     scale = view['zoomPercent'] / 100
     vx, vy, vw, vh = view['visibleRect']
@@ -317,8 +347,7 @@ def zoom_pan(ctx):
         ctx.keys('Alt+Left','Alt+Shift+Up')
         ctx.expect(_inspect(ctx, op)['view']['visibleRect'] != before, 'Alt arrows pan canvas')
         before = _inspect(ctx, op)['view']['visibleRect']
-        canvas = ctx.geometry('editor.canvas')
-        centre = (canvas['x']+canvas['width']//2, canvas['y']+canvas['height']//2)
+        centre = _point(ctx,op,320,160)
         ctx.drag(centre, (centre[0]+60, centre[1]+30), button='middle')
         ctx.expect(_inspect(ctx, op)['view']['visibleRect'] != before, 'middle drag pans canvas')
         before = _inspect(ctx, op)['view']['visibleRect']
@@ -445,7 +474,6 @@ def _blocked_recipe(name, ids, reason):
 _blocked_recipe('held_modifiers', ('editor.mouse-square','editor.key-ctrl-cursor','editor.key-pan-space','editor.mouse-zoom'),
                 'Context has no held-modifier drag/scroll or key-down/up; Shift-square, Ctrl-overdraw/cursor/zoom and Space-pan need real input')
 _blocked_recipe('double_click', ('editor.double-click-text',), 'Context has no double-click input')
-_blocked_recipe('window_chrome', ('editor.window-close','editor.compact'), 'Context has no real window resize/minimize/maximize/close input')
 _blocked_recipe('preparation_failure', ('editor.preparation-failed',), 'Needs deterministic output-limit failure fixture; normal small image cannot exercise this banner')
 
 
@@ -630,3 +658,40 @@ def save_feedback(ctx):
         ctx.wait(lambda: not _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'],'recovery chooser cancelled')
         _frame(ctx,'after','28-editor-save-failed')
         ctx.blocked('Saved banner/copy/dismiss/failure/details/recovery checked; Show in folder and compact overflow actions need bounded file-manager/window fixtures',issue=CORE_ISSUE)
+
+
+@recipe('editor.window-close','editor.compact',needs=IMAGE)
+def window_chrome(ctx):
+    with _session(ctx) as op:
+        _resize(ctx,1060,820)
+        view=_inspect(ctx,op)['view']
+        ctx.expect(view['fitted'] and view['propertiesWidth']>0,'compact resize retains Fit and properties')
+        _frame(ctx,'compact','26c-editor-1060')
+        _resize(ctx,1180,820)
+        _frame(ctx,'restored','26-editor-selected')
+        before=ctx.geometry('editor')
+        ctx.click('windowMaximize',window='editor')
+        ctx.wait(lambda: ctx.geometry('editor')['width']>before['width'],'maximize enlarges editor')
+        ctx.expect(_inspect(ctx,op)['phase']=='editing','maximize preserves private edit')
+        # The maximized layout is not a catalog scale. Use the same keyboard
+        # window-manager action to restore it, rather than map a stale rectangle.
+        restore=ctx.profile.get('editor',{}).get('restore_maximized_keys')
+        if not restore:
+            ctx.blocked('Desktop profile needs editor.restore_maximized_keys for native maximize/restore acceptance',issue=CORE_ISSUE)
+        ctx.keys(*restore)
+        ctx.wait(lambda: ctx.geometry('editor')['width']==before['width'],'restore original window')
+        ctx.click('windowMinimize',window='editor')
+        def minimized():
+            try: ctx.geometry('editor')
+            except RecipeBlocked: return True
+            return False
+        ctx.wait(minimized,'minimize hides live editor window')
+        ctx.call('editor.raise',{'id':op})
+        ctx.wait(lambda: ctx.geometry('editor'),'raise restores minimized editor')
+        ctx.click('placeMark',window='editor')
+        ctx.click('windowClose',window='editor')
+        ctx.expect(_inspect(ctx,op)['view']['discardConfirmation']['open'],'window Close asks before discarding')
+        ctx.frame('close-question',window='confirm',reference='19-editor-discard-confirm')
+        ctx.keys('Esc')
+        ctx.expect(_inspect(ctx,op)['phase']=='editing','Escape keeps editor after window Close')
+        _frame(ctx,'after','26-editor-selected')

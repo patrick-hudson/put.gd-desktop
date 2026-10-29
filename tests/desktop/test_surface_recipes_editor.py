@@ -16,6 +16,7 @@ from tools.lab.surface_driver.recipes import editor
 class FakeContext(Context):
     def __init__(self):
         self.events = []
+        self.profile = {}
         self.phase = 'editing'
         self.state = {'phase':'editing','width':640,'height':320,'shapes':[], 'canUndo':False,'canRedo':False,
                       'view':{'tool':'redact','fitted':True,'visibleRect':[0,0,640,320], 'zoomPercent':100,
@@ -62,8 +63,11 @@ class FakeContext(Context):
 
     def geometry(self, window):
         self.events.append(('geometry',window))
-        assert window == 'editor.canvas'
-        return {'x':100,'y':100,'width':800,'height':500}
+        assert window == 'editor'
+        return {'x':0,'y':0,'width':1180,'height':820}
+
+    def accessible(self,query):
+        return [{'name':'Image being edited','rect':[100,100,800,500]}]
 
     def click(self, control, window, **kwargs):
         self.events.append(('click',control,window))
@@ -190,7 +194,7 @@ class EditorRecipes(unittest.TestCase):
     def test_unknown_canvas_geometry_blocks_not_passes(self):
         ctx=FakeContext()
         def missing(role): raise NotImplementedError
-        ctx.geometry=missing
+        ctx.accessible=lambda query: []
         with self.assertRaises(RecipeBlocked) as raised: editor.redact(ctx)
         self.assertEqual(663,raised.exception.issue)
         self.assertEqual('cancelled',ctx.phase)
@@ -214,7 +218,7 @@ class EditorRecipes(unittest.TestCase):
         self.assertEqual('cancelled',ctx.phase)
 
     def test_all_pending_recipes_explain_block_after_frames(self):
-        names=['held_modifiers','double_click','window_chrome',
+        names=['held_modifiers','double_click',
                'preparation_failure']
         for name in names:
             with self.subTest(name=name):
