@@ -11,6 +11,9 @@
 #include <thread>
 #include <algorithm>
 #include <csignal>
+#include <fcntl.h>
+#include <unistd.h>
+#include <QTemporaryFile>
 #include "fixtures/Waits.h"
 
 using namespace putgd;
@@ -72,6 +75,26 @@ private slots:
   const QRectF selected(-20,20,60,40);QCOMPARE(kdeRegionRectangle(kdeRegionRectangle(selected),decoded,e),selected);QVERIFY(!e);
   auto reordered=decoded;std::reverse(reordered.begin(),reordered.end());QVERIFY(kdeRegionLayoutsMatch(frames(),reordered));
   reordered[0].logicalRect.translate(1,0);QVERIFY(!kdeRegionLayoutsMatch(frames(),reordered));
+ }
+ void frozenFramesTravelInASealedMemfd() {
+  // #629: the helper reads only a sealed memfd of exactly the announced size.
+  QList<CaptureFrame> layout{{"DP-1",QRectF(0,0,40,30),{},1,0,{}},{"DP-2",QRectF(40,0,20,15),{},1,0,{}}};
+  auto pixels=layout;pixels[0].pixels=QImage(80,60,QImage::Format_RGB32);pixels[0].pixels.fill(Qt::red);pixels[0].density=2;pixels[0].nativeRect=QRect(0,0,80,60);
+  pixels[1].pixels=QImage(20,15,QImage::Format_ARGB32_Premultiplied);pixels[1].pixels.fill(Qt::blue);pixels[1].nativeRect=QRect(80,0,20,15);
+  Error error;auto frozen=kdeFrozenFrames(layout,pixels,error);QVERIFY(!error);QVERIFY(frozen.fd>=3);
+  QVERIFY(::fcntl(frozen.fd,F_GETFD)&FD_CLOEXEC);
+  auto received=layout;QVERIFY(kdeFrozenPixels(::dup(frozen.fd),frozen.frames,received,error));QVERIFY(!error);
+  QCOMPARE(received[0].pixels.size(),QSize(80,60));QCOMPARE(received[0].pixels.pixelColor(10,10),QColor(Qt::red));QCOMPARE(received[0].density,2.0);QCOMPARE(received[0].nativeRect,QRect(0,0,80,60));
+  QCOMPARE(received[1].pixels.pixelColor(5,5),QColor(Qt::blue));QCOMPARE(received[1].nativeRect,QRect(80,0,20,15));
+  // The memfd cannot be written once sealed.
+  QCOMPARE(::write(frozen.fd,"x",1),ssize_t(-1));
+  // A wrong announced size, or an ordinary unsealed file, is refused.
+  auto wrong=frozen.frames;auto row=wrong[1].toObject();row["width"]=21;wrong[1]=row;received=layout;QVERIFY(!kdeFrozenPixels(::dup(frozen.fd),wrong,received,error));QVERIFY(bool(error));
+  QTemporaryFile file;QVERIFY(file.open());QByteArray bytes(80*60*4+20*15*4,'\0');QCOMPARE(file.write(bytes),qint64(bytes.size()));QVERIFY(file.flush());
+  received=layout;QVERIFY(!kdeFrozenPixels(::dup(file.handle()),frozen.frames,received,error));QVERIFY(bool(error));
+  ::close(frozen.fd);
+  // Pixels must match the layout one to one.
+  pixels.removeLast();QCOMPARE(kdeFrozenFrames(layout,pixels,error).fd,-1);QVERIFY(bool(error));
  }
  void invalidLayoutIsRejected() {
   for(int kind=0;kind<5;++kind) {

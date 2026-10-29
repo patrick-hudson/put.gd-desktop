@@ -1,5 +1,6 @@
 #pragma once
 #include "ui/RegionSelector.h"
+#include "ui/RegionSelection.h"
 #include <QElapsedTimer>
 #include <QRegion>
 #include <QPointer>
@@ -13,12 +14,17 @@ namespace putgd {
 class NativeRegionOverlay final:public RegionSelector {
  Q_OBJECT
 public:
- explicit NativeRegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr,xcb_cursor_t residentCursor=XCB_CURSOR_NONE,QString outcome={});
+ // frozen (#629): every frame carries the pixels captured before selection.
+ // They become each surface's server-side background once input is grabbed.
+ explicit NativeRegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr,xcb_cursor_t residentCursor=XCB_CURSOR_NONE,QString outcome={},bool frozen=false);
  ~NativeRegionOverlay() override;
  static bool supportsLayout(const QList<CaptureFrame>&);
  // How long selection waits for another client's grab, such as an open
  // menu's, to end before it explains why it cannot start (#341).
  static constexpr int grabWaitMs=3000,grabRetryMs=50;
+ // A frozen selection already holds the menu's pixels, so it waits for the
+ // menu to close instead of failing; the helper deadline still bounds it.
+ static constexpr int frozenGrabWaitMs=60000;
  void start() override;
  void cancel(Error error={"cancelled","Region selection cancelled",{}}) override;
 private:
@@ -26,7 +32,10 @@ private:
  void describe();
  void initializeSurfaces();
  void grabInput();
- struct Surface {CaptureFrame frame;xcb_window_t window=XCB_WINDOW_NONE;QRect outline;int pen=1;QImage instructions;QString instructionsKey;QPoint instructionsAt;};
+ // Only the compact hint and size pills are client raster images; a frozen
+ // frame is uploaded once into a server pixmap and repainted by the server.
+ struct Badge {QImage image;QString key;QPoint at;};
+ struct Surface {CaptureFrame frame;int index=0;xcb_window_t window=XCB_WINDOW_NONE;QRect outline;int pen=1;QImage frozen;xcb_pixmap_t background=XCB_NONE;Badge hint,size;};
  void events();
  QPointF logicalPoint(QPoint)const;
  void move(QPointF);
@@ -34,7 +43,10 @@ private:
  void draw(Surface&);
  void key(int,Qt::KeyboardModifiers,QPoint);
  int screenAt(QPoint)const;
- void prepareInstructions(Surface&);
+ void prepareBadges(Surface&);
+ void prepareBadge(Surface&,Badge&,const QRect&,const QString&,qreal);
+ void showFrozen();
+ bool presenting()const{return !frozen_||frozenShown_;}
  void finish();
  bool checked(xcb_void_cookie_t);
  QList<CaptureFrame> frames_;
@@ -56,6 +68,8 @@ private:
  bool pointerGrabbed_=false,keyboardGrabbed_=false;
  bool initialized_=false;
  QElapsedTimer grabClock_;
- int grabAttempts_=0,keyboardScreen_=-1;
+ int grabAttempts_=0,keyboardScreen_=-1,hintScreen_=0;
+ bool frozen_=false,frozenShown_=false;
+ RegionHintFade hint_{[this]{if(finished_||!connection_||hintScreen_>=surfaces_.size())return;auto& surface=surfaces_[hintScreen_];prepareBadges(surface);draw(surface);xcb_flush(connection_);}};
 };
 }

@@ -211,6 +211,17 @@ private slots:
 #endif
   LocalServer second(settings,ops,history);QCOMPARE(second.listen(d.filePath("runtime")).error.code,QString("session_running"));
  }
+ void regionSelectionModeTogglesThroughTheCli() {
+  // #629: Settings, session settings.patch, putgd-cli and MCP share one key.
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());
+  QCOMPARE(settings.snapshot().regionSelectionMode,QString("live"));
+  QProcess client;const auto patch=[&](const QString& mode){client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"settings.patch",QString("{\"patch\":{\"preferences\":{\"regionSelectionMode\":\"%1\"}},\"expectedRevision\":\"%2\"}").arg(mode,settings.revision())});};
+  const auto reply=[&]{return QJsonDocument::fromJson(client.readAllStandardOutput()).object();};
+  patch("screenshot_first");PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QVERIFY(reply()["ok"].toBool());QCOMPARE(settings.snapshot().regionSelectionMode,QString("screenshot_first"));
+  patch("frozen");PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(reply()["error"].toObject()["code"].toString(),QString("config_invalid"));QCOMPARE(settings.snapshot().regionSelectionMode,QString("screenshot_first"));
+  patch("live");PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QVERIFY(reply()["ok"].toBool());QCOMPARE(settings.snapshot().regionSelectionMode,QString("live"));
+  QCOMPARE(source.reads,0);
+ }
  void settingsTransportAndRedactedDiagnostics() {
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());const auto revision=settings.revision();QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"settings.patch",QString("{\"patch\":{\"preferences\":{\"notifications\":false}},\"expectedRevision\":\"%1\"}").arg(revision)});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);auto response=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QVERIFY(response["ok"].toBool());QVERIFY(!settings.snapshot().notifications);client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"settings.patch",QString("{\"patch\":{},\"expectedRevision\":\"%1\"}").arg(revision)});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);response=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QCOMPARE(response["error"].toObject()["code"].toString(),QString("config_conflict"));client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"diagnostics"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);const auto bytes=client.readAllStandardOutput();QVERIFY(!bytes.contains("credentials"));QVERIFY(!bytes.contains("synthetic source"));QVERIFY(!bytes.contains("config.json"));QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
  }

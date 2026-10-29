@@ -32,8 +32,12 @@ private:
  void verifyExternalWindow(const QString&,std::function<void(Error)>);
  QList<CaptureFrame> layout()const;
  bool unchanged(const QList<CaptureFrame>&,quint64)const;
- void capture(QString,QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome);
+ void capture(QString,QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false);
  void captureScreens(QList<CaptureFrame>,quint64,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
+ // Reads every frozen output through ScreenShot2, in layout order.
+ void captureFrames(QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(QList<CaptureFrame>,Error)>);
+ // Screenshot first (#629): select over frames already read, then cut from them.
+ void selectFrozen(QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome);
  void compose(QList<CaptureFrame>,QList<CaptureFrame>,quint64,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>);
  ResourceLimits limits_;
  qint64 uiProcess_=0;

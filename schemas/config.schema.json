@@ -898,6 +898,14 @@
           "default": "each_link",
           "description": "Copy every successful upload link individually as it becomes available, or one ordered list after overlapping uploads settle. Omitted legacy settings use each_link."
         },
+        "regionSelectionMode": {
+          "enum": [
+            "live",
+            "screenshot_first"
+          ],
+          "default": "live",
+          "description": "How region capture shows the screen while you drag. live keeps the desktop updating (an open menu must close first); screenshot_first captures every monitor before the selector opens and cuts the region from that frozen frame, so open menus are included. Recording region selection is always live. Omitted means live."
+        },
         "unlockCredentialsAtStartup": {
           "type": "boolean",
           "default": true,

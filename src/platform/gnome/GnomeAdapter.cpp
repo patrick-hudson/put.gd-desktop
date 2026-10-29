@@ -147,14 +147,17 @@ SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QStrin
  QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[action].isEmpty();const auto id=hotkey?hotkeyPrepared_[action].takeFirst():uuid();Error error;
  if(!ready_)error=helperError_.code.isEmpty()?Error{"helper_unavailable","Enable putgd@put.gd before sharing",{}}:helperError_;
  else if(action=="window"&&uiProcessError_){error=uiProcessError_;if(hotkey)release(id);}
+ // An extension loaded before an upgrade ignores regionMode and would select
+ // live while reporting success; ask for the re-login instead (#629).
+ else if(action=="region"&&regionScreenshotFirst_&&outdated()){error=recordingShellError();if(hotkey)release(id);}
  else if(!hotkey){const auto result=sync("Prepare",{id,action},error);if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME preparation identity is invalid",{}};if(!error){prepared_.append(id);QTimer::singleShot(120000,this,[this,id]{if(prepared_.removeOne(id))release(id);});}}
  if(hotkey&&!error)prepared_.append(id);
- return [guard,id,action,error,outcome=captureOutcome_](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply),outcome);};
+ return [guard,id,action,error,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply),outcome,screenshot);};
 }
 void GnomeAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply){prepareAcquisition(action)(limits,std::move(reply));}
-void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply,const QString& outcome){
+void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply,const QString& outcome,bool screenshotFirst){
  if(!prepared_.removeOne(id)){reply({{},{"bridge_protocol","GNOME preparation expired or was cancelled",{}}});return;}
- auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->outcome=outcome;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
+ auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->outcome=outcome;transfer->screenshotFirst=screenshotFirst;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
  // Only clipboard imports choose among image types; screen captures are PNG.
  // Listing Qt's readers instantiates every installed image plugin (30 plugins,
  // 12 MiB with KDE's kimageformats), so the transient image job lists them,
@@ -177,6 +180,8 @@ void GnomeAdapter::start(const QString& id,const QString& action,const ResourceL
 void GnomeAdapter::requestTransfer(const std::shared_ptr<Transfer>& transfer,const QJsonArray& imageMimes){
  const auto limits=transfer->limits;
  QJsonObject bounds{{"outcome",transfer->outcome},{"imageMimes",imageMimes},{"textBytes",double(limits.clipboardTextBytes)},{"imageBytes",double(limits.imageBytes)},{"imagePixels",double(limits.imagePixels)},{"maxFiles",limits.maxFiles}};
+ // Screenshot first (#629): the Shell freezes the stage before selecting.
+ if(transfer->screenshotFirst)bounds["regionMode"]="screenshot_first";
  call("Acquire",{transfer->id,json(bounds)},[this,transfer](Error error,QJsonObject metadata){
   if(!transfers_.contains(transfer->id))return;
   const auto bytes=metadata["bytes"].toDouble(-1);const auto bound=std::max(transfer->limits.clipboardTextBytes,transfer->limits.imageBytes);

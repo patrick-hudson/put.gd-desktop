@@ -65,6 +65,9 @@ struct Settings {
     // Opt-in debug logging; the resident turns it off again after 24 hours.
     bool debugLogging = false;
     QString uploadClipboardBehavior = "each_link";
+    // preferences.regionSelectionMode (#629): live (default) keeps the desktop
+    // updating under the selector; screenshot_first freezes every monitor first.
+    QString regionSelectionMode = "live";
     // preferences.appearance.theme (#60): system, dark or light.
     QString appearanceTheme = "system";
     bool notifications = true;

@@ -11,6 +11,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 
 Gio._promisify(Shell.Screenshot.prototype, 'screenshot_area');
+Gio._promisify(Shell.Screenshot.prototype, 'screenshot_stage_to_content');
 Gio._promisify(Shell.Screenshot, 'composite_to_stream');
 const PATH = '/org/gnome/Shell/Extensions/Putgd';
 const IFACE = 'org.putgd.Gnome50';
@@ -71,6 +72,8 @@ function limitsFrom(json) {
     'bridge_protocol', 'Invalid supported image MIME list');
     check(value.outcome === undefined || (typeof value.outcome === 'string' && value.outcome.length <= 256),
         'bridge_protocol', 'Invalid capture outcome');
+    check(value.regionMode === undefined || value.regionMode === 'screenshot_first',
+        'bridge_protocol', 'Invalid region selection mode');
     return value;
 }
 // The recording helper's control bar, a frameless Qt window the Shell places.
@@ -189,9 +192,14 @@ function bytesOf(stream) {
 // screenshot UI internals or leave an upstream idle destruction callback alive.
 // Pure geometry module, mirrored by RegionSelection.h and exercised without Shell.
 const RegionSelection = {
-    instructionStyle(scheme) {
+    // No scrim on any monitor (#629): a one-line hint pill that fades after
+    // about 2 s, then only a compact size label next to the selection.
+    hint: 'Drag to select · Esc to cancel',
+    hintHoldMs: 1700,
+    hintFadeMs: 300,
+    pillStyle(scheme) {
         const dark = scheme === 'prefer-dark';
-        return `background-color: ${dark ? '#191919' : '#eeeeeb'}; color: ${dark ? '#f0f0ec' : '#292926'}; border: 1px solid ${dark ? '#515151' : '#aaaaa3'}; border-radius: 6px; padding: 6px 10px; font-size: 10.5pt; text-align: center;`;
+        return `background-color: ${dark ? '#191919' : '#eeeeeb'}; color: ${dark ? '#f0f0ec' : '#292926'}; border: 1px solid ${dark ? '#515151' : '#aaaaa3'}; border-radius: 999px; padding: 4px 12px; font-size: 10.5pt;`;
     },
     switchDisplay(region, monitors, current, backwards = false) {
         const next = (current + (backwards ? -1 : 1) + monitors.length) % monitors.length;
@@ -203,18 +211,57 @@ const RegionSelection = {
             x: Math.max(to.x, Math.min(region.x + to.x - from.x, to.x + to.width - width)),
             y: Math.max(to.y, Math.min(region.y + to.y - from.y, to.y + to.height - height)), width, height}};
     },
-    instructionPosition(monitor, width, height, region, pointer) {
-        const x = monitor.x + Math.floor((monitor.width - width) / 2);
-        const top = monitor.y + 16, bottom = monitor.y + monitor.height - 16 - height;
-        const score = y => {
-            const overlap = region ? Math.max(0, Math.min(x + width, region.x + region.width) - Math.max(x, region.x)) *
-                Math.max(0, Math.min(y + height, region.y + region.height) - Math.max(y, region.y)) : 0;
-            return overlap + (pointer && pointer[0] >= x - 24 && pointer[0] <= x + width + 24 &&
-                pointer[1] >= y - 24 && pointer[1] <= y + height + 24 ? monitor.width * monitor.height : 0);
-        };
-        return [x, score(bottom) < score(top) ? bottom : top];
+    overlap(a, b) {
+        return b ? Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) *
+            Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y)) : 0;
     },
-    scrimAlpha: 70,
+    // Top centre of the monitor, or its bottom when the selection covers the top.
+    hintPosition(monitor, width, height, region) {
+        const x = monitor.x + Math.floor((monitor.width - width) / 2);
+        const top = {x, y: monitor.y + 16, width, height};
+        const bottom = {x, y: monitor.y + monitor.height - 16 - height, width, height};
+        return this.overlap(top, region) > 0 && this.overlap(bottom, region) === 0 ? [x, bottom.y] : [x, top.y];
+    },
+    // Just outside the bottom-left corner; above the top-left without room
+    // below, inside the top-left corner when neither fits.
+    sizePosition(monitor, width, height, region) {
+        const gap = 4;
+        let x = region.x, y = region.y + region.height + gap;
+        if (y + height > monitor.y + monitor.height) {
+            y = region.y - gap - height;
+            if (y < monitor.y) {
+                x += gap;
+                y = region.y + gap;
+            }
+        }
+        return [Math.max(monitor.x, Math.min(x, monitor.x + monitor.width - width)),
+            Math.max(monitor.y, Math.min(y, monitor.y + monitor.height - height))];
+    },
+    // The monitor that holds most of the selection shows its size.
+    labelMonitor(monitors, region) {
+        let best = null, area = 0;
+        for (const monitor of monitors) {
+            const part = this.overlap(monitor, region);
+            if (part > area) {
+                area = part;
+                best = monitor;
+            }
+        }
+        return best;
+    },
+    // A monitor's logical rectangle in stage-texture pixels, clipped to the texture.
+    textureArea([x, y, width, height], scale, textureWidth, textureHeight) {
+        const left = Math.max(0, Math.floor(x * scale)), top = Math.max(0, Math.floor(y * scale));
+        const right = Math.min(textureWidth, Math.ceil((x + width) * scale));
+        const bottom = Math.min(textureHeight, Math.ceil((y + height) * scale));
+        return [left, top, Math.max(0, right - left), Math.max(0, bottom - top)];
+    },
+    sizeLabel(region, outputs = []) {
+        if (!(region?.width > 0 && region?.height > 0))
+            return '';
+        const size = this.outputSize(region, outputs) || region;
+        return `${Math.round(size.width)} × ${Math.round(size.height)}`;
+    },
     outputSize(region, outputs) {
         const frames = outputs.filter(f => region.x < f.x + f.width && region.x + region.width > f.x && region.y < f.y + f.height && region.y + region.height > f.y);
         if (!frames.length || frames.some(f => !Number.isFinite(f.density) || f.density <= 0))
@@ -244,17 +291,19 @@ const RegionSelection = {
 };
 
 const RegionSelector = GObject.registerClass(class RegionSelector extends St.Widget {
-    _init(recording = false, outputs = null, outcome = '') {
+    // frozen (#629): the stage screenshot taken before selection, drawn as the
+    // backdrop; without it the selector is transparent over the live desktop.
+    _init(recording = false, outputs = null, outcome = '', frozen = null) {
         super._init({reactive: true, visible: false, accessible_name: recording ? 'Recording region' : 'Capture region', x: 0, y: 0});
         this._outputs = outputs;
         this._outcome = outcome;
         this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
         this.set_cursor_type(Clutter.CursorType.CROSSHAIR);
-        this._scrims = Array.from({length: 4}, () => {
-            const scrim = new St.Widget({reactive: false, style: `background-color: rgba(0, 0, 0, ${RegionSelection.scrimAlpha / 255});`});
-            this.add_child(scrim);
-            return scrim;
-        });
+        if (frozen) {
+            this._backdrop = new St.Widget({reactive: false, x: 0, y: 0, width: global.stage.width, height: global.stage.height});
+            this._backdrop.set_content(frozen);
+            this.add_child(this._backdrop);
+        }
         this._rectangle = new St.Widget({visible: false, accessible_name: recording ? 'Recording region' : 'Capture region',
             clip_to_allocation: true, style: 'border: 3px solid black; background-color: transparent;'});
         this.add_child(this._rectangle);
@@ -262,13 +311,15 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         this.add_child(this._contrast);
         this._recording = recording;
         this._keyboardMonitor = this._monitor();
+        this._hintMonitor = this._keyboardMonitor;
         // The capture bridge has no app scheme field; use the native preference.
         const settings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
-        this._instructionDark = settings.get_string('color-scheme') === 'prefer-dark';
-        this._instructions = new St.Label({reactive: false, text: '',
-            style: RegionSelection.instructionStyle(settings.get_string('color-scheme'))});
-        this._instructions.clutter_text.set_line_wrap(true);
-        this.add_child(this._instructions);
+        const style = RegionSelection.pillStyle(settings.get_string('color-scheme'));
+        this._hint = new St.Label({reactive: false, text: RegionSelection.hint, style});
+        this.add_child(this._hint);
+        this._size = new St.Label({reactive: false, visible: false, text: '', style});
+        this.add_child(this._size);
+        this._instructionText = '';
         this._region = null;
         this._start = null;
         this._finish = null;
@@ -379,30 +430,37 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         return Main.layoutManager.monitors.find(m => x >= m.x && x < m.x + m.width && y >= m.y && y < m.y + m.height)
             ?? Main.layoutManager.primaryMonitor;
     }
+    _outputList() {
+        return this._outputs || Main.layoutManager.monitors.map((m, i) => ({...m, density: global.display.get_monitor_scale(i)}));
+    }
     _placeInstructions() {
         const monitor = this._monitor();
         if (!monitor)
             return;
-        if (!this._region || this._region.width < 1 || this._region.height < 1)
+        const selected = this._region?.width > 0 && this._region?.height > 0;
+        if (!selected)
             this._outline(monitor);
-        this._instructions.set_width(-1);
-        this._instructions.set_width(Math.max(1, Math.min(this._instructions.get_preferred_width(-1)[1], monitor.width - 32)));
-        const height = this._instructions.get_preferred_height(this._instructions.width)[1];
-        this._instructions.set_position(...RegionSelection.instructionPosition(monitor, this._instructions.width, height, this._region, this._start ? this._pointer : null));
+        const hintMonitor = this._hintMonitor || monitor;
+        this._hint.set_position(...RegionSelection.hintPosition(hintMonitor, this._hint.get_preferred_width(-1)[1],
+            this._hint.get_preferred_height(-1)[1], selected ? this._region : null));
+        const labelMonitor = selected ? RegionSelection.labelMonitor(Main.layoutManager.monitors, this._region) : null;
+        if (!labelMonitor) {
+            this._size.hide();
+            return;
+        }
+        this._size.text = RegionSelection.sizeLabel(this._region, this._outputList());
+        this._size.set_position(...RegionSelection.sizePosition(labelMonitor, this._size.get_preferred_width(-1)[1],
+            this._size.get_preferred_height(-1)[1], this._region));
+        this._size.show();
     }
     _describe() {
         const rect = this._region;
         const monitor = this._monitor();
         const index = Main.layoutManager.monitors.indexOf(monitor);
         const display = `Display ${index + 1}`;
-        const outputs = this._outputs || Main.layoutManager.monitors.map((m, i) => ({...m, density: global.display.get_monitor_scale(i)}));
-        const instructions = RegionSelection.instructions(rect, this._recording, display, monitor, outputs, !!this._start, this._outcome);
-        this._instructions.text = instructions;
-        const dark = this._instructionDark;
-        const escape = text => GLib.markup_escape_text(text, -1);
-        this._instructions.clutter_text.set_markup(instructions.split('\n').map((line, i) => i === 0
-            ? `<span weight="semibold">${escape(line)}</span>`
-            : `<span foreground="${dark ? '#aaaaa6' : '#62625b'}">${escape(line)}</span>`).join('\n'));
+        // The full keyboard help and outcome stay in the accessible description.
+        const instructions = RegionSelection.instructions(rect, this._recording, display, monitor, this._outputList(), !!this._start, this._outcome);
+        this._instructionText = instructions;
         const description = (rect && rect.width > 0 && rect.height > 0
             ? `Region ${rect.width} × ${rect.height} at ${rect.x}, ${rect.y}.`
             : 'No region selected.') + ` ${instructions}`;
@@ -416,17 +474,6 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         this._placeInstructions();
     }
     _outline(rect) {
-        const width = global.stage.width, height = global.stage.height;
-        const left = Math.max(0, rect.x), top = Math.max(0, rect.y);
-        const right = Math.min(width, rect.x + rect.width), bottom = Math.min(height, rect.y + rect.height);
-        const strips = [[0, 0, width, top], [0, bottom, width, height - bottom],
-            [0, top, left, bottom - top], [right, top, width - right, bottom - top]];
-        this._scrims.forEach((scrim, i) => {
-            const [x, y, w, h] = strips[i];
-            scrim.set_position(x, y);
-            scrim.set_size(Math.max(0, w), Math.max(0, h));
-            scrim.show();
-        });
         this._rectangle.set_position(rect.x, rect.y);
         this._rectangle.set_size(rect.width, rect.height);
         this._rectangle.show();
@@ -449,6 +496,8 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
                 this._grab = Main.pushModal(this);
                 check(!this._grab.is_revoked(), 'busy_selecting',
                     'GNOME cannot acquire the selection input grab');
+                this._hint.ease({opacity: 0, delay: RegionSelection.hintHoldMs, duration: RegionSelection.hintFadeMs,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD});
             } catch (error) {
                 this._finish = null;
                 this._cleanup();
@@ -464,6 +513,7 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         this._grab = null;
         if (grab)
             Main.popModal(grab);
+        this._hint.remove_all_transitions();
         this.hide();
         this.destroy();
     }
@@ -1002,6 +1052,7 @@ export default class PutgdExtension extends Extension {
         let total = 0;
         let pixelCount = 0;
         let selection;
+        let frozen = null;
         if (request.action === 'window') {
             check(request.window.get_compositor_private() === request.actor && !request.window.minimized &&
                 JSON.stringify(rectangle(request.window.get_frame_rect())) === JSON.stringify(request.frame),
@@ -1037,7 +1088,16 @@ export default class PutgdExtension extends Extension {
             selection = [Math.min(...xs), Math.min(...ys), Math.max(...right) - Math.min(...xs), Math.max(...bottom) - Math.min(...ys)];
             if (request.action === 'region') {
                 check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
-                const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: m.density})), request.limits.outcome);
+                // Screenshot first (#629): read the whole stage before the
+                // selector opens, so open menus stay in the frame it shows.
+                if (limits.regionMode === 'screenshot_first') {
+                    request.stage = 'region-freeze';
+                    const [content, scale] = await new Shell.Screenshot().screenshot_stage_to_content();
+                    this._alive(request);
+                    check(content && Number.isFinite(scale) && scale > 0, 'capture_failed', 'GNOME could not freeze the desktop');
+                    frozen = {content, scale, texture: content.get_texture()};
+                }
+                const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: frozen ? frozen.scale : m.density})), request.limits.outcome, frozen?.content ?? null);
                 this._selector = request.selector = selector;
                 request.stage = 'region-select';
                 const selected = await selector.selectAsync();
@@ -1048,16 +1108,24 @@ export default class PutgdExtension extends Extension {
                 selection = rectangle(selected);
             }
             // selectAsync removes its actors and modal grab before resolving.
-            // Shell.Screenshot now reads the live desktop after selection.
+            // Live selection reads the desktop now; Screenshot first cuts each
+            // monitor from the frozen stage texture, with no second capture.
             for (const monitor of request.layout) {
                 const [x, y, width, height] = monitor.logical;
-                const estimated = Math.ceil(width * monitor.density) * Math.ceil(height * monitor.density);
+                const density = frozen ? frozen.scale : monitor.density;
+                const estimated = Math.ceil(width * density) * Math.ceil(height * density);
                 check(estimated <= limits.imagePixels - pixelCount && estimated * 4 <= limits.imageBytes - pixelCount * 4,
                     'input_excessive', 'Monitor capture exceeds image limits');
                 const stream = Gio.MemoryOutputStream.new_resizable();
-                const shooter = new Shell.Screenshot();
                 request.stage = 'monitor-capture';
-                await shooter.screenshot_area(x, y, width, height, stream);
+                if (frozen) {
+                    const [left, top, w, h] = RegionSelection.textureArea([x, y, width, height], frozen.scale,
+                        frozen.texture.get_width(), frozen.texture.get_height());
+                    check(w > 0 && h > 0, 'display_changed', 'Frozen desktop does not cover the monitor');
+                    await Shell.Screenshot.composite_to_stream(frozen.texture, left, top, w, h, frozen.scale, null, 0, 0, 1, stream);
+                } else {
+                    await new Shell.Screenshot().screenshot_area(x, y, width, height, stream);
+                }
                 this._alive(request);
                 const data = bytesOf(stream);
                 const [pixelWidth, pixelHeight] = this._pngSize(data);

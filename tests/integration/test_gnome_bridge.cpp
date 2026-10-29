@@ -85,7 +85,7 @@ class GnomeHelperFixture final:public QObject,protected QDBusContext {
  Q_OBJECT
  Q_CLASSINFO("D-Bus Interface","org.putgd.Gnome50")
  uint currentPid_=0,failPid_=0,failures_=0;
- QJsonArray registrations_,lastAcquireMimes_;QString lastOutcome_;
+ QJsonArray registrations_,lastAcquireMimes_;QString lastOutcome_,lastRegionMode_;int acquires_=0;
  int hellos_=0,binds_=0,commits_=0;
  QJsonObject lastBindings_;
  QString helloError_=qEnvironmentVariable("PUTGD_TEST_HELLO_ERROR"),prepareError_=qEnvironmentVariable("PUTGD_TEST_PREPARE_ERROR");
@@ -120,7 +120,7 @@ public slots:
  void SetErrors(const QString& hello,const QString& prepare){helloError_=hello;prepareError_=prepare;}
  QString Prepare(const QString& id,const QString&){if(!prepareError_.isEmpty()){sendErrorReply(prepareError_,"Synthetic preparation failure");return {};}return json({{"version",1},{"requestId",id}});}
  QString Acquire(const QString& id,const QString& encoded){
-  const auto bounds=QJsonDocument::fromJson(encoded.toUtf8()).object();lastOutcome_=bounds["outcome"].toString();const auto mimes=bounds["imageMimes"].toArray();lastAcquireMimes_=mimes;
+  const auto bounds=QJsonDocument::fromJson(encoded.toUtf8()).object();++acquires_;lastOutcome_=bounds["outcome"].toString();lastRegionMode_=bounds["regionMode"].toString();const auto mimes=bounds["imageMimes"].toArray();lastAcquireMimes_=mimes;
   for(const auto& mime:mimes)
    if(!mime.isString()||!mime.toString().startsWith("image/"))
     return json({{"error",QJsonObject{{"code","bridge_protocol"},{"message","Invalid supported image MIME list"}}}});
@@ -129,7 +129,7 @@ public slots:
  QString Read(const QString& id,qulonglong offset,uint){return json({{"version",1},{"requestId",id},{"offset",double(offset)},{"data","eA=="}});}
  QString Release(const QString&){return json({});}
  void FailRegistration(uint pid,uint count){failPid_=pid;failures_=count;}
- QString State(){return json({{"outcome",lastOutcome_},{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
+ QString State(){return json({{"outcome",lastOutcome_},{"regionMode",lastRegionMode_},{"acquires",acquires_},{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
  void TriggerWindow(const QString& ticket){emit Action("window",ticket);}
  signals:
  void Action(const QString& action,const QString& ticket);
@@ -222,6 +222,14 @@ private slots:
   bool completed=false;prepared({},[&](PayloadResult){completed=true;});PUTGD_TRY_VERIFY(completed);
   QCOMPARE(state()["outcome"].toString(),QString("Uploads right away to Proton Drive"));
  }
+ void screenshotFirstTravelsWithRegionCapturesOnly(){
+  // #629: a current extension gets regionMode only for region captures.
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));source.setRegionScreenshotFirst(true);
+  for(const auto& [action,expected]:QList<QPair<QString,QString>>{{"region","screenshot_first"},{"desktop",QString()}}){
+   bool completed=false;source.acquire(action,{},[&](PayloadResult value){QVERIFY(value.error.code!="helper_outdated");completed=true;});PUTGD_TRY_VERIFY(completed);
+   QCOMPARE(state()["regionMode"].toString(),expected);
+  }
+ }
  void screenCapturesSendOnlyPngWithoutListingImagePlugins(){
   // Listing image types instantiates every installed Qt image plugin; only a
   // clipboard import needs them, and the image job lists them out of process.
@@ -299,6 +307,16 @@ private slots:
   // Screenshots keep working with the loaded extension.
   QVERIFY(source.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool());
   QCOMPARE(source.regionError().code,QString("helper_outdated"));
+  // #629: the loaded extension ignores regionMode, so Screenshot first must not
+  // silently select live; Live mode still captures with it.
+  const auto before=state()["acquires"].toInt();
+  source.setRegionScreenshotFirst(true);PayloadResult frozen;bool frozenDone=false;
+  source.acquire("region",{},[&](PayloadResult value){frozen=std::move(value);frozenDone=true;});PUTGD_TRY_VERIFY(frozenDone);
+  QCOMPARE(frozen.error.code,QString("helper_outdated"));QVERIFY2(frozen.error.message.contains("log out and back in"),qPrintable(frozen.error.message));
+  QCOMPARE(state()["acquires"].toInt(),before);
+  source.setRegionScreenshotFirst(false);PayloadResult live;bool liveDone=false;
+  source.acquire("region",{},[&](PayloadResult value){live=std::move(value);liveDone=true;});PUTGD_TRY_VERIFY(liveDone);
+  QVERIFY2(!live.error,qPrintable(live.error.code+": "+live.error.message));QCOMPARE(live.payload.bytes,QByteArray("x"));QCOMPARE(state()["acquires"].toInt(),before+1);QCOMPARE(state()["regionMode"].toString(),QString());
   stopFixture();PUTGD_TRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());PUTGD_TRY_VERIFY(helperAvailable(source));QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());
  }
  void ownerReplacementRegistersLatestPid(){

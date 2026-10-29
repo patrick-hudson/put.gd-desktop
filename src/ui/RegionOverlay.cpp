@@ -41,7 +41,16 @@ public:
  // Full-surface damage keeps an outward-moving edge inside that clip.
  void updateSelection(const QRectF& previous){describeRegion(this,owner_.selection_,false,QStringLiteral("Display %1").arg(activeScreen()+1),owner_.frames_[activeScreen()].logicalRect,owner_.frames_,owner_.dragging_,owner_.outcome_);Q_UNUSED(previous);update();}
 protected:
- void paintEvent(QPaintEvent*) override {QPainter painter(this);const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));const QRectF local=clipped.translated(-logicalRect_.topLeft());paintRegionScrim(painter,rect(),local);if(!clipped.isEmpty()){paintSelectionOutline(painter,local);}if(owner_.keyboardScreen_<0||owner_.frames_[activeScreen()].identity==identity_)paintRegionInstructions(painter,rect(),palette(),regionInstructions(owner_.selection_,false,QStringLiteral("Display %1").arg(activeScreen()+1),owner_.frames_[activeScreen()].logicalRect,owner_.frames_,owner_.dragging_,owner_.outcome_), owner_.selection_.translated(-logicalRect_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);}
+ void paintEvent(QPaintEvent*) override {
+  QPainter painter(this);
+  const int own=ownScreen();
+  if(owner_.frozen_&&!owner_.frames_[own].pixels.isNull())painter.drawImage(rect(),owner_.frames_[own].pixels);
+  const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));
+  if(!clipped.isEmpty())paintSelectionOutline(painter,clipped.translated(-logicalRect_.topLeft()));
+  QList<QRectF> displays;for(const auto& frame:owner_.frames_)displays.append(frame.logicalRect);
+  paintRegionChrome(painter,rect(),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_,owner_.hint_.opacity(),regionLabelDisplay(displays,owner_.selection_)==own);
+ }
+ int ownScreen() const {for(int i=0;i<owner_.frames_.size();++i)if(owner_.frames_[i].identity==identity_)return i;return 0;}
  void mousePressEvent(QMouseEvent* e) override {if(e->button()==Qt::RightButton){owner_.cancel();return;}if(e->button()==Qt::LeftButton){owner_.press(e->globalPosition());grabMouse();}}
  void mouseMoveEvent(QMouseEvent* e) override {owner_.move(e->globalPosition());}
  void mouseReleaseEvent(QMouseEvent* e) override {if(e->button()==Qt::LeftButton){releaseMouse();owner_.release(e->globalPosition());}}
@@ -65,18 +74,20 @@ private:
  RegionOverlay& owner_;
  QRectF logicalRect_;QString identity_;
 };
-RegionOverlay::RegionOverlay(QList<CaptureFrame> frames,QObject* parent,QString outcome):RegionSelector(parent),frames_(std::move(frames)),outcome_(std::move(outcome)){}
+RegionOverlay::RegionOverlay(QList<CaptureFrame> frames,QObject* parent,QString outcome,bool frozen):RegionSelector(parent),frames_(std::move(frames)),outcome_(std::move(outcome)),frozen_(frozen){}
+void RegionOverlay::repaint(){for(auto* surface:surfaces_)surface->update();}
 RegionOverlay::~RegionOverlay(){finish();for(auto* s:surfaces_)delete s;}
 void RegionOverlay::start(){
  for(const auto& frame:frames_){auto* surface=new Surface(*this,frame);surfaces_.append(surface);skipCloseAnimation(surface);surface->show();surface->raise();}
  Surface* focus=surfaces_.isEmpty()?nullptr:surfaces_.first();for(auto* s:surfaces_)if(s->geometry().contains(QCursor::pos()))focus=s;
- if(focus){keyboardScreen_=surfaces_.indexOf(focus);focus->grabKeyboard();for(auto* surface:surfaces_)surface->updateSelection({});}
+ if(focus){keyboardScreen_=hintScreen_=surfaces_.indexOf(focus);focus->grabKeyboard();for(auto* surface:surfaces_)surface->updateSelection({});}
+ hint_.start();
  connect(qGuiApp,&QGuiApplication::screenAdded,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});connect(qGuiApp,&QGuiApplication::screenRemoved,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});
  for(auto* screen:QGuiApplication::screens()) {connect(screen,&QScreen::geometryChanged,this,[this]{cancel({"display_changed","Display geometry changed during region selection",{}});});connect(screen,&QScreen::logicalDotsPerInchChanged,this,[this]{cancel({"display_changed","Display scale changed during region selection",{}});});connect(screen,&QScreen::orientationChanged,this,[this]{cancel({"display_changed","Display rotation changed during region selection",{}});});}
 }
 void RegionOverlay::press(QPointF point){if(finished_)return;keyboardScreen_=-1;anchor_=point;dragging_=true;selection_=QRectF(point,QSizeF{});for(auto* s:surfaces_)s->updateSelection({});}
 void RegionOverlay::move(QPointF point){if(!dragging_||finished_)return;const auto previous=selection_;selection_=QRectF(anchor_,point).normalized();for(auto* s:surfaces_)s->updateSelection(previous);}
 void RegionOverlay::release(QPointF point){if(!dragging_||finished_)return;move(point);if(selection_.width()<1||selection_.height()<1){cancel();return;}finish();emit selected(selection_);}
-void RegionOverlay::finish(){finished_=true;for(auto* s:surfaces_){s->releaseKeyboard();s->releaseMouse();s->hide();}}
+void RegionOverlay::finish(){finished_=true;hint_.stop();for(auto* s:surfaces_){s->releaseKeyboard();s->releaseMouse();s->hide();}}
 void RegionOverlay::cancel(Error error){if(finished_)return;finish();emit cancelled(error);}
 }

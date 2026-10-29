@@ -15,7 +15,9 @@ public:
  explicit KdeRegionProcess(QObject* parent=nullptr);
  explicit KdeRegionProcess(QString helperPath,QObject* parent=nullptr);
  ~KdeRegionProcess() override;
- void start(const QList<CaptureFrame>&,std::function<void(QRectF,Error)>,QString outcome={});
+ // pixels (Screenshot first, #629): the frozen frames, in layout order, that the
+ // helper shows as its backdrop. Empty keeps the transparent live selector.
+ void start(const QList<CaptureFrame>&,std::function<void(QRectF,Error)>,QString outcome={},const QList<CaptureFrame>& pixels={});
  void cancel(Error={"cancelled","Region selection cancelled",{}});
  // Permanently stop this request owner without calling into its dying caller.
  void shutdown();
@@ -27,6 +29,8 @@ private:
  void receive(const QString&,const QJsonObject&);
  void fail(Error);
  void finish(int,QProcess::ExitStatus);
+ void closeFrozen();
+ int frozenFd_=-1;
  QString helperPath_,nonce_,launchStartTicks_; quint64 generation_=0; qint64 launchPid_=0;
  QList<CaptureFrame> frames_; QRectF result_;
  QProcess* process_=nullptr; CaptureControl* control_=nullptr;

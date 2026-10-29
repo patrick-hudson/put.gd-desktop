@@ -30,6 +30,9 @@ public:
  // window, and clears it on exit. Native adapters exclude it at invocation.
  virtual void setUiProcess(qint64) {}
  void setCaptureOutcome(const QString& outcome) { captureOutcome_=outcome; }
+ // Region screenshots only (#629): freeze every monitor before selection and
+ // cut the result from those frames. Recording selection always stays live.
+ void setRegionScreenshotFirst(bool frozen) { regionScreenshotFirst_=frozen; }
  virtual quint64 clipboardRevision() const=0;
  virtual QJsonObject capabilities() const=0;
  // Freeze native target identity/layout on the session thread before persistence
@@ -71,6 +74,7 @@ public:
 protected:
  // Non-secret presentation context; adapters copy it when freezing each request.
  QString captureOutcome_;
+ bool regionScreenshotFirst_=false;
 };
 class UnavailableSource final:public SourceAdapter {
 public:

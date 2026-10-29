@@ -89,19 +89,39 @@ private slots:
    QCOMPARE(accepted.size(),mode==2?1:0);QCOMPARE(cancelled.size(),mode==2?0:1);QVERIFY(!surface->isVisible());
   }
  }
- void instructionsRemainVisibleAndClearBeforeDismissal(){
+ void hintAndSizeShowWithoutScrimAndClearBeforeDismissal(){
+  // #629: no scrim; a one-line hint pill and a size label next to the selection.
   for(const auto& variant:{QString("dark"),QString("light"),QString("text150")}){
    KdeRegionOverlay overlay({});auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
-   QPalette palette;const bool light=variant=="light";Theme::setScheme(light?Theme::Scheme::Light:Theme::Scheme::Dark);palette.setColor(QPalette::Window,light?QColor("#EEEEEB"):QColor("#191919"));palette.setColor(QPalette::WindowText,light?QColor("#292926"):QColor("#F0F0EC"));surface->setPalette(palette);
+   const bool light=variant=="light";Theme::setScheme(light?Theme::Scheme::Light:Theme::Scheme::Dark);
    QFont font=surface->font();font.setPixelSize(variant=="text150"?21:14);surface->setFont(font);QTest::keyClick(surface,Qt::Key_Right);
    QCOMPARE(overlay.selection_,QRectF(200,150,400,300));QVERIFY(!overlay.clearing_);QVERIFY(!overlay.finished_);
-   surface->repaint();const auto image=surface->grab().toImage();QCOMPARE(image.pixelColor(300,151),QColor(Qt::white));QCOMPARE(image.pixelColor(5,500),QColor(0,0,0,70));QCOMPARE(image.pixelColor(400,300).alpha(),0);const auto box=regionInstructionBox(surface->rect(),QFontMetrics(font),regionInstructions(overlay.selection_,false,"Display 1"));QVERIFY(!box.isEmpty());QVERIFY(box.height()<surface->height()/3);
-   const auto bg=Theme::current().surfaceRaised;QCOMPARE(image.pixelColor(box.left()+10,box.top()+4),bg);
-   int ink=0;for(int y=box.top()+6;y<box.bottom()-6;++y)for(int x=box.left()+10;x<box.right()-10;++x){const auto c=image.pixelColor(x,y);if(c.alpha()==255&&std::abs(c.lightness()-bg.lightness())>100)++ink;}
-   QVERIFY(ink>100);
-   const auto dir=qEnvironmentVariable("PUTGD_REGION_RENDER_DIR");if(!dir.isEmpty()){QVERIFY(QDir().mkpath(dir+"/"+variant));QImage preview(image.size(),QImage::Format_RGB32);preview.fill(bg);QPainter painter(&preview);painter.drawImage(0,0,image);painter.end();QVERIFY(preview.save(dir+"/"+variant+"/kde-region.png"));}
+   surface->repaint();const auto image=surface->grab().toImage();QCOMPARE(image.pixelColor(300,151),QColor(Qt::white));
+   QCOMPARE(image.pixelColor(5,500).alpha(),0);QCOMPARE(image.pixelColor(790,10).alpha(),0);QCOMPARE(image.pixelColor(400,300).alpha(),0);
+   const QFontMetrics metrics(font);const auto bg=Theme::current().surfaceRaised;
+   const auto hint=regionHintBox(surface->rect(),metrics,regionHint(),overlay.selection_);QVERIFY(!hint.isEmpty());QVERIFY(hint.height()<surface->height()/8);
+   QCOMPARE(image.pixelColor(hint.left()+hint.height(),hint.top()+2),bg);
+   const auto size=regionSizeBox(surface->rect(),metrics,regionSizeLabel(overlay.selection_,overlay.frames_),overlay.selection_);
+   QVERIFY(!size.isEmpty());QVERIFY(!QRectF(size).intersects(overlay.selection_));QCOMPARE(image.pixelColor(size.left()+size.height(),size.top()+2),bg);
+   int ink=0;for(int y=hint.top()+3;y<hint.bottom()-3;++y)for(int x=hint.left()+8;x<hint.right()-8;++x){const auto c=image.pixelColor(x,y);if(c.alpha()==255&&std::abs(c.lightness()-bg.lightness())>100)++ink;}
+   QVERIFY(ink>50);
+   const auto dir=qEnvironmentVariable("PUTGD_REGION_RENDER_DIR");if(!dir.isEmpty()){QVERIFY(QDir().mkpath(dir+"/"+variant));QImage preview(image.size(),QImage::Format_RGB32);preview.fill(Qt::darkCyan);QPainter painter(&preview);painter.drawImage(0,0,image);painter.end();QVERIFY(preview.save(dir+"/"+variant+"/kde-region.png"));}
+   // After the fade only the size label remains.
+   overlay.hint_.expire();surface->repaint();const auto faded=surface->grab().toImage();QCOMPARE(faded.pixelColor(hint.left()+hint.height(),hint.top()+2).alpha(),0);QCOMPARE(faded.pixelColor(size.left()+size.height(),size.top()+2),bg);
    overlay.clearing_=true;const auto cleared=surface->grab().toImage();for(int y=0;y<cleared.height();++y)for(int x=0;x<cleared.width();++x)QCOMPARE(cleared.pixelColor(x,y).alpha(),0);
   }
+ }
+ void screenshotFirstDrawsTheFrozenFrame(){
+  // #629: the frozen pixels are the backdrop; the selection only adds an outline.
+  QImage pixels(1600,1200,QImage::Format_RGB32);pixels.fill(QColor(Qt::magenta));
+  KdeRegionOverlay overlay({},nullptr,false,{},true);
+  CaptureFrame frame{"Display 1",QRectF(0,0,800,600),QRect(0,0,1600,1200),2,0,pixels};overlay.frames_.append(frame);overlay.addSurface(frame,QGuiApplication::primaryScreen());
+  QWidget* surface=nullptr;for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-kde-region-overlay")surface=w;QVERIFY(surface);
+  overlay.hint_.expire();QTest::keyClick(surface,Qt::Key_Right);surface->repaint();const auto image=surface->grab().toImage();
+  QCOMPARE(image.pixelColor(5,500),QColor(Qt::magenta));QCOMPARE(image.pixelColor(400,300),QColor(Qt::magenta));QCOMPARE(image.pixelColor(300,151),QColor(Qt::white));
+  // The size label reports the frozen frame's output pixels.
+  QCOMPARE(regionSizeLabel(overlay.selection_,overlay.frames_),QString("800 × 600"));
+  overlay.cancel();
  }
 };
 }

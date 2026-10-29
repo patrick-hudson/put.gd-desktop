@@ -44,6 +44,9 @@ private:
  void capture(const X11Target&,const ResourceLimits&,std::function<void(PayloadResult)>);
  void captureSelected(const X11Target&,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>,quint64);
  void compose(QList<CaptureFrame>,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>);
+ // Reads every monitor of the target now: Cinnamon's scene, else the root.
+ void captureLayout(const X11Target&,const ResourceLimits&,quint64 generation,std::function<void(QList<CaptureFrame>,Error)>);
+ void openSelector(const X11Target&,const ResourceLimits&,quint64 generation,QList<CaptureFrame>,std::function<void(RegionSelectionResult)>);
  X11Capture capture_;
  X11Clipboard clipboard_;
  X11Shortcuts shortcuts_;
@@ -56,5 +59,7 @@ private:
  quint64 generation_=0;
  quint64 selectedGeneration_=0;
  X11Target selectedTarget_;
+ // Pixels a Screenshot first selection was drawn over; consumed once.
+ QList<CaptureFrame> frozenFrames_;
 };
 }

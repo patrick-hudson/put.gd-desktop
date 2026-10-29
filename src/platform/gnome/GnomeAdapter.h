@@ -42,13 +42,13 @@ private:
  // Why a region cannot be recorded through the Shell right now.
  Error recordingShellError()const;
  using Reply=std::function<void(Error,QJsonObject)>;
- struct Transfer {QString id,outcome;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
+ struct Transfer {QString id,outcome;bool screenshotFirst=false;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
  void discover();
  void applyShortcutBindings(std::function<void(Error)> reply={});
  void invalidateShortcutBindings();
  void call(const QString& method,const QVariantList&,Reply,int timeout=5000);
  QJsonObject sync(const QString& method,const QVariantList&,Error&,int timeout=1000);
- void start(const QString& id,const QString& action,const ResourceLimits&,std::function<void(PayloadResult)>,const QString& outcome);
+ void start(const QString& id,const QString& action,const ResourceLimits&,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false);
  void requestTransfer(const std::shared_ptr<Transfer>&,const QJsonArray& imageMimes);
  void read(const std::shared_ptr<Transfer>&);
  void decode(const std::shared_ptr<Transfer>&);
