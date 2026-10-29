@@ -278,7 +278,7 @@ void EditorCanvas::paintEvent(QPaintEvent*){
   else if(shape.kind==Shape::Kind::Blur){const auto& tile=blurTile(shape);const auto area=shape.rect.intersected(doc_.crop());if(!tile.isNull())painter.drawImage(QRectF(area),tile);}
   else if(!(textEditor_&&shape.id==textShape_))EditDocument::paintAnnotation(painter,shape);
  }
- if(textEditor_)EditDocument::paintAnnotation(painter,pendingText());
+ // The open field shows the text being typed; painting it here as well showed it twice.
  painter.restore();
  Graphite::paintImageEdge(painter,target);
  if(tool_==Tool::Crop){
@@ -628,7 +628,7 @@ void EditorCanvas::placeTextEditor(){
  const auto at=toWidget(textAnchor_);const QFontMetrics metrics(textEditor_->font());
  const int w=std::min(bounds.width(),std::max(220,metrics.horizontalAdvance(textEditor_->text())+48));
  const int h=std::min(bounds.height(),metrics.height()+12);
- const int below=int(std::ceil(at.y()+pendingText().rect.height()*scale_))+12;
+ const int below=int(std::ceil(at.y()))+12;
  const int y=below+h<=bounds.bottom()?below:int(at.y())-h-12;
  QRect field(std::clamp(int(at.x())-4,bounds.left(),bounds.right()-w+1),std::clamp(y,bounds.top(),bounds.bottom()-h+1),w,h);
  placeTextWarning();

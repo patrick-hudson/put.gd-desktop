@@ -277,6 +277,14 @@ private slots:
   window.allowClose();
  }
 
+ // Final read: while typing, the text showed twice, painted at the anchor and in the field.
+ void textBeingTypedShowsOnlyInItsField(){
+  EditDocument doc(canvasImage());EditorCanvas canvas(doc);canvas.resize(440,300);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));canvas.setTool(Tool::Text);auto style=canvas.style();style.color=QColor(0,0,255);style.fontPixels=28;canvas.setStyle(style);canvas.fit();
+  const QPoint origin((canvas.width()-400)/2,(canvas.height()-260)/2);QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(60,60));auto* field=canvas.findChild<QLineEdit*>("annotationText");QVERIFY(field&&field->isVisible());field->setText("WWWW");QApplication::processEvents();
+  const auto ink=[&](const QImage& image,const QRect& skip){int count=0;for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x){const auto c=image.pixelColor(x,y);if(!skip.contains(x,y)&&c.blue()>200&&c.red()<60&&c.green()<60)++count;}return count;};
+  QCOMPARE(ink(canvas.grab().toImage(),field->geometry()),0);QVERIFY(field->y()<origin.y()+60+QFontMetrics(field->font()).height());
+  canvas.finishText(true);QApplication::processEvents();QVERIFY(ink(canvas.grab().toImage(),{})>20);
+ }
  void textEntryStaysInsideCanvasWithoutMovingTheAnnotation(){
   EditDocument doc(canvasImage());EditorCanvas canvas(doc);canvas.resize(440,300);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));canvas.setTool(Tool::Text);
   for(const QPoint anchor:{QPoint(390,80),QPoint(150,250),QPoint(390,250)}){
