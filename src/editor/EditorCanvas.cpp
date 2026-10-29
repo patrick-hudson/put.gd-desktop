@@ -242,12 +242,14 @@ Shape EditorCanvas::scaledText(const Shape& original,int handle,const QPointF& n
  else if(handle==4)resized.moveTopLeft(box.topLeft());else resized.moveTopRight(box.topRight());
  shape.rect=resized;return shape;
 }
-// Only the edges the handle moves are held inside bounds.
+// The edges a handle moves stay inside bounds; one already outside (a mark
+// cropped since) may come in but never jumps there or moves farther out.
 QRect EditorCanvas::resized(QRect r,int handle,const QPoint& d,const QRect& bounds) const {
- if(handle==0||handle==6||handle==7)r.setLeft(std::clamp(r.left()+d.x(),bounds.left(),bounds.right()));
- if(handle==2||handle==3||handle==4)r.setRight(std::clamp(r.right()+d.x(),bounds.left(),bounds.right()));
- if(handle==0||handle==1||handle==2)r.setTop(std::clamp(r.top()+d.y(),bounds.top(),bounds.bottom()));
- if(handle==4||handle==5||handle==6)r.setBottom(std::clamp(r.bottom()+d.y(),bounds.top(),bounds.bottom()));
+ auto edge=[](int now,int delta,int low,int high){return std::clamp(now+delta,std::min(low,now),std::max(high,now));};
+ if(handle==0||handle==6||handle==7)r.setLeft(edge(r.left(),d.x(),bounds.left(),bounds.right()));
+ if(handle==2||handle==3||handle==4)r.setRight(edge(r.right(),d.x(),bounds.left(),bounds.right()));
+ if(handle==0||handle==1||handle==2)r.setTop(edge(r.top(),d.y(),bounds.top(),bounds.bottom()));
+ if(handle==4||handle==5||handle==6)r.setBottom(edge(r.bottom(),d.y(),bounds.top(),bounds.bottom()));
  return r.normalized();
 }
 
@@ -402,8 +404,9 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
   const auto end=inside(now,bounds);
   if(shape.kind==Shape::Kind::Arrow)shape.to=QPoint(int(std::lround(end.x())),int(std::lround(end.y())));
   else{
-   shape.rect=boxFrom(inside(start,bounds),end);
-   if(event->modifiers()&Qt::ShiftModifier){
+   // A drag wholly in the margin rounds to an empty box, which release discards.
+   shape.rect=boxFrom(inside(start,bounds),end).intersected(bounds);
+   if((event->modifiers()&Qt::ShiftModifier)&&!shape.rect.isEmpty()){
     const auto corner=shape.rect.topLeft();
     const int side=std::min({std::max(shape.rect.width(),shape.rect.height()),bounds.left()+bounds.width()-corner.x(),bounds.top()+bounds.height()-corner.y()});
     shape.rect=QRect(corner,QSize(side,side));

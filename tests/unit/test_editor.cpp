@@ -244,6 +244,29 @@ private slots:
   const auto wide=doc.add(box(Shape::Kind::Rectangle,QRect(0,20,100,40)));QVERIFY(doc.setCrop(QRect(50,0,200,150)));canvas.documentChanged();canvas.select(wide);
   for(int i=0;i<5;++i)QTest::keyClick(&canvas,Qt::Key_Left,Qt::ShiftModifier|Qt::ControlModifier);
   QCOMPARE(doc.find(wide)->rect,QRect(0,20,51,40));
+  // A sideways corner drag leaves an edge already outside the crop where it is.
+  const auto tall=doc.add(box(Shape::Kind::Rectangle,QRect(100,100,50,100)));canvas.documentChanged();canvas.select(tall);
+  const QPoint cropped((canvas.width()-200)/2-50,(canvas.height()-150)/2);
+  QTest::mousePress(&canvas,Qt::LeftButton,{},cropped+QPoint(150,200));
+  QMouseEvent sideways(QEvent::MouseMove,QPointF(cropped+QPoint(170,200)),canvas.mapToGlobal(QPointF(cropped+QPoint(170,200))),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&sideways);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,{},cropped+QPoint(170,200));
+  QCOMPARE(doc.find(tall)->rect,QRect(100,100,70,100));
+ }
+ void marginDragDrawsNothing(){
+  EditDocument doc(noise({400,300},16));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Rectangle);canvas.fit();
+  // At 4x the image overflows the canvas and its right edge stops 48 px from the widget edge.
+  canvas.zoomBy(4.0,QPointF((canvas.width()-400)/2+400,canvas.height()/2));QCOMPARE(canvas.zoom(),4.0);
+  const int edge=canvas.width()-48;
+  QTest::mousePress(&canvas,Qt::LeftButton,{},QPoint(edge+24,250));
+  QMouseEvent move(QEvent::MouseMove,QPointF(edge+38,400),canvas.mapToGlobal(QPointF(edge+38,400)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,{},QPoint(edge+38,400));
+  QVERIFY(doc.shapes().isEmpty());QVERIFY(!doc.canUndo());
+  // The same drag starting on the image draws up to the edge.
+  QTest::mousePress(&canvas,Qt::LeftButton,{},QPoint(edge-40,250));
+  QMouseEvent inward(QEvent::MouseMove,QPointF(edge+38,400),canvas.mapToGlobal(QPointF(edge+38,400)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&inward);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,{},QPoint(edge+38,400));
+  QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().rect.right(),399);
  }
  void textToolDragsLabelsAndClicksToEdit(){
   EditDocument doc(noise({400,300},12));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
