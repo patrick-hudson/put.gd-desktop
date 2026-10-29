@@ -239,8 +239,10 @@ def rename(ctx):
         'destinations.s3-public-url', needs=NEEDS, destinations=('s3',))
 @_failure_frame
 def s3_fields(ctx):
-    _open(ctx)
-    values = {'bucket': 'surface-fixture-bucket', 'region': 'us-west-2',
+    _, profiles = _open(ctx)
+    bucket = ('surface-edited-bucket' if profiles[0]['settings']['bucket'] != 'surface-edited-bucket'
+              else 'surface-alternate-bucket')
+    values = {'bucket': bucket, 'region': 'us-west-2',
               'objectPrefix': 'surface/typed/', 'publicUrlBase': 'https://surface.invalid/images'}
     for control, key in (('s3Bucket', 'bucket'), ('s3RegionChoices', 'region'),
                          ('s3ObjectPrefix', 'objectPrefix'), ('s3PublicUrlBase', 'publicUrlBase')):

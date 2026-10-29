@@ -319,6 +319,15 @@ class DestinationsContracts(unittest.TestCase):
         self.assertTrue(any(e[0] == 'note' and 'Offline' in e[1] for e in ctx.events))
         self.assertFalse(any(e[0] == 'call' and e[1].startswith('setup.') for e in ctx.events))
 
+    def test_ignored_bucket_input_cannot_pass_against_offline_baseline(self):
+        ctx = self.context()
+        def missing(_name):
+            raise RecipeBlocked('unknown fixture: destinations')
+        ctx.fixture = missing
+        ctx.commit_field = lambda: None
+        with self.assertRaisesRegex(RecipeFailed, 'bucket autosaved'):
+            lane.s3_fields(ctx)
+
 
 if __name__ == '__main__':
     unittest.main()
