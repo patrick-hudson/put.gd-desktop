@@ -494,6 +494,12 @@ void paintChromeGlyph(QPainter& painter, const QRectF& rect, const QString& name
         painter.drawLine(QPointF(10, tail), QPointF(10, tip));
         QPainterPath head; head.moveTo(5, wing); head.lineTo(10, tip); head.lineTo(15, wing); painter.drawPath(head);
     }
+    else if (name == "muted-speaker") {
+        QPainterPath speaker; speaker.moveTo(3, 8); speaker.lineTo(6, 8); speaker.lineTo(10, 4); speaker.lineTo(10, 16); speaker.lineTo(6, 12); speaker.lineTo(3, 12); speaker.closeSubpath();
+        painter.drawPath(speaker);
+        painter.drawLine(QPointF(14, 7), QPointF(18, 13));
+        painter.drawLine(QPointF(18, 7), QPointF(14, 13));
+    }
     else if (name == "chevron-up") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::UpArrow, colour); return; }
     else if (name == "chevron-down") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::DownArrow, colour); return; }
     else if (name == "chevron-right") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::RightArrow, colour); return; }

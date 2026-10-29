@@ -309,7 +309,7 @@ private:
     ReviewTimeline* timeline_ = nullptr;
     Graphite::ElidedLabel* destination_ = nullptr;
     QLabel* destinationFull_ = nullptr;
-    QLabel *notice_ = nullptr, *time_ = nullptr, *playbackStatus_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
+    QLabel *notice_ = nullptr, *time_ = nullptr, *playbackStatus_ = nullptr, *previewIndicator_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
     // Errors, warnings and privacy guidance with their actions; shown only when there are any.
     QWidget* statusRow_ = nullptr;
     QWidget* statusContent_ = nullptr;

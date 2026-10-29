@@ -2101,6 +2101,41 @@ private slots:
             if (!single) QCOMPARE(rulePixels, 0);
         }
     }
+    void compactPreviewKeepsANonInteractiveMutedIndicator() {
+        const auto original = qApp->font(); auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        auto font = original; font.setPixelSize(21); qApp->setFont(font);
+        auto o = options(); o.audioRecorded = true;
+        auto c = config(); c.audio.system = true;
+        ReviewWindow window(o, c); window.setEdit(twoMasks()); window.show();
+        putgd::test::settle(20); window.resize(640, 720); putgd::test::settle(20);
+        auto* text = window.findChild<QLabel*>("playbackStatus");
+        auto* indicator = window.findChild<QLabel*>("previewMutedIndicator"); QVERIFY(indicator);
+        QVERIFY(!text->isVisibleTo(&window)); QVERIFY(indicator->isVisibleTo(&window));
+        QCOMPARE(indicator->focusPolicy(), Qt::NoFocus);
+        auto* transport = window.findChild<QWidget*>("reviewTransport");
+        QVERIFY(indicator->mapTo(&window, QPoint()).x() > transport->mapTo(&window, transport->rect().topRight()).x());
+        QVERIFY(window.rect().contains(indicator->geometry()));
+        QVERIFY(indicator->accessibleDescription().contains("preview is silent", Qt::CaseInsensitive));
+        QVERIFY(indicator->accessibleDescription().contains("export keeps the recorded system audio"));
+        window.drive({{"action", "format"}, {"format", "gif"}});
+        QVERIFY(indicator->accessibleDescription().contains("GIF exports are silent"));
+    }
+    void selectedTinyInactiveMaskKeepsItsStateBesideTheMask() {
+        const auto original = qApp->font(); auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        auto font = original; font.setPixelSize(21); qApp->setFont(font);
+        FrameView frame; frame.resize(640, 360); frame.setCanvas({640, 360});
+        QImage image(640, 360, QImage::Format_RGB32); image.fill(QColor(120, 120, 120));
+        auto m = mask("one", "solid", 1000000, 2000000); m.rect = QRect(100, 80, 40, 14);
+        frame.setFrame(image, 0); frame.setMasks({m}, "one"); frame.show(); putgd::test::settle(10);
+        QVERIFY(frame.accessibleDescription().contains("Inactive at playhead"));
+        const auto shot = frame.grab().toImage();
+        const QFontMetrics metrics(Graphite::font(Graphite::Type::maskBadge, true));
+        const int width = metrics.horizontalAdvance(QStringLiteral("1 · inactive")) + 8;
+        int scrim = 0;
+        for (int x = m.rect.right() + 5; x < m.rect.right() + width + 4; ++x)
+            scrim += shot.pixelColor(x, m.rect.top() + 2).lightness() < 100;
+        QVERIFY2(scrim >= width - 8, "The compact identity and inactive state must fit beside a tiny mask");
+    }
     void wideningDoesNotRaiseTheFittedMinimum_data() {
         QTest::addColumn<int>("pixels");
         QTest::newRow("normal") << 14;
@@ -2210,7 +2245,8 @@ private slots:
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             QCOMPARE(window.geometry(), geometry);
             for (auto* button : window.findChild<QWidget*>("statusRow")->findChildren<QPushButton*>("statusAction")) {
-                QVERIFY2(button->width() >= button->fontMetrics().horizontalAdvance(button->text()) + (button->property("driveAction").toJsonObject()["action"] == "retryExport" ? 16 : 28), qPrintable(button->text()));
+                QVERIFY(button->property("graphiteFlush").toBool());
+                QVERIFY2(button->width() >= std::ceil(QFontMetricsF(button->font()).horizontalAdvance(button->text())), qPrintable(button->text()));
             }
         }
     }

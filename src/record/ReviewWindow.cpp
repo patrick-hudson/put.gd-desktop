@@ -100,6 +100,21 @@ protected:
         Graphite::paintChevron(painter, QPointF(labelRect.left() + fontMetrics().horizontalAdvance(label) + gap + chevron / 2.0, height() / 2.0), chevron, Qt::DownArrow, colour);
     }
 };
+class MutedPreview final : public QLabel {
+public:
+    explicit MutedPreview(QWidget* parent) : QLabel(parent) {
+        setObjectName("previewMutedIndicator");
+        setAccessibleName(QStringLiteral("Silent preview"));
+        setFocusPolicy(Qt::NoFocus);
+        setFixedSize(Graphite::scaled(16), Graphite::scaled(16));
+        auto policy = sizePolicy(); policy.setRetainSizeWhenHidden(true); setSizePolicy(policy);
+    }
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter painter(this);
+        Graphite::paintChromeGlyph(painter, rect(), "muted-speaker", Theme::current().textSecondary);
+    }
+};
 class BlurChip final : public QToolButton {
 public:
     explicit BlurChip(QWidget* parent) : QToolButton(parent) {
@@ -471,7 +486,7 @@ FrameView::FrameView(QWidget* parent, std::shared_ptr<MaskNames> names) : QWidge
     connect(retry_, &QPushButton::clicked, this, &FrameView::retryRequested);
     errorCard_->hide();
 }
-void FrameView::setFrame(const QImage& image, qint64 timeUs) { frame_ = image; timeUs_ = timeUs; setPreviewError({}); update(); }
+void FrameView::setFrame(const QImage& image, qint64 timeUs) { frame_ = image; timeUs_ = timeUs; setPreviewError({}); announce(); update(); }
 void FrameView::setPreviewError(const QString& message) {
     error_ = message;
     announce();
@@ -524,6 +539,7 @@ void FrameView::announce() {
         if (m.id != selected_) continue;
         text = QStringLiteral("%1 selected: %2 × %3 at %4, %5. Applies from %6 to %7. Arrows move, Shift+arrows resize, Ctrl+arrows 10 px; Delete removes, Escape deselects.")
             .arg(maskNames_->name(m)).arg(m.rect.width()).arg(m.rect.height()).arg(m.rect.x()).arg(m.rect.y()).arg(durationText(m.start), durationText(m.end));
+        if (!(m.start <= timeUs_ && timeUs_ < m.end)) text.prepend(QStringLiteral("Inactive at playhead. "));
         break;
     }
     if (!armed_.isEmpty()) text = armed_ == "solid" ? QStringLiteral("Drag on the frame to place the redaction, or press Enter for a centered one") : QStringLiteral("Drag on the frame to place the blur, or press Enter for a centered one");
@@ -568,6 +584,8 @@ QRectF mediaLabelRect(const QPointF& at, const QString& text, const QRectF& boun
     QRectF box(at, QSizeF(std::min(metrics.horizontalAdvance(text) + (badge ? 8 : 12), bounds.width()), (badge ? metrics.tightBoundingRect(text).height() : metrics.height()) + 6));
     if (box.right() > bounds.right()) box.moveRight(bounds.right());
     if (box.bottom() > bounds.bottom()) box.moveBottom(bounds.bottom());
+    if (box.left() < bounds.left()) box.moveLeft(bounds.left());
+    if (box.top() < bounds.top()) box.moveTop(bounds.top());
     return box;
 }
 void mediaLabel(QPainter& painter, const QPointF& at, const QString& text, const QRectF& bounds, bool badge = false) {
@@ -617,16 +635,26 @@ void FrameView::paintEvent(QPaintEvent*) {
         const bool selected = mask.id == selected_;
         const bool full = selected || mask.id == hovered_;
         const auto r = toView(mask.rect);
-        QString text = full ? maskNames_->name(mask) + (selected && !(mask.start <= timeUs_ && timeUs_ < mask.end) ? QStringLiteral(" · inactive") : QString())
+        const bool inactive = selected && !(mask.start <= timeUs_ && timeUs_ < mask.end);
+        QString text = full ? maskNames_->name(mask) + (inactive ? QStringLiteral(" · inactive") : QString())
                             : QString::number(maskNames_->number(mask));
-        const QPointF at = r.topLeft() + QPointF(3, 3);
+        QPointF at = r.topLeft() + QPointF(3, 3);
         auto label = mediaLabelRect(at, text, target, !full);
-        bool badge = !full || label.width() > r.width() - 6 || label.height() > r.height() - 6;
+        const bool badge = !full || label.width() > r.width() - 6 || label.height() > r.height() - 6;
         if (badge) {
-            text = QString::number(maskNames_->number(mask));
+            text = QString::number(maskNames_->number(mask)) + (inactive ? QStringLiteral(" · inactive") : QString());
             label = mediaLabelRect(at, text, target, true);
         }
-        if (label.width() > r.width() - 6 || label.height() > r.height() - 6 || (!selected && label.intersects(selectedView))) continue;
+        if (label.width() > r.width() - 6 || label.height() > r.height() - 6) {
+            if (!selected) continue;
+            // A small mask keeps its identity and state beside it, inside the frame.
+            at = QPointF(r.right() + 4, r.top());
+            label = mediaLabelRect(at, text, target, true);
+            if (label.intersects(r)) at = QPointF(r.left() - label.width() - 4, r.top());
+            label = mediaLabelRect(at, text, target, true);
+            if (label.intersects(r)) at = QPointF(r.left(), r.top() - label.height() - 4);
+        }
+        if (!selected && label.intersects(selectedView)) continue;
         mediaLabel(painter, at, text, target, badge);
     }
     if (drag_ == Drag::Create) {
@@ -1419,6 +1447,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* transport = new QHBoxLayout(transport_);
     transport->setContentsMargins(0, 0, 0, 0);
     transport->setSpacing(reviewSpace(Graphite::Space::xs));
+    previewIndicator_ = new MutedPreview(Graphite::WindowHeader::customFrame() ? header_ : static_cast<QWidget*>(this));
+    previewIndicator_->setAttribute(Qt::WA_TransparentForMouseEvents);
     transport->addWidget(play_);
     transport->addWidget(time_);
     transport->addWidget(speed_);
@@ -1957,6 +1987,9 @@ void ReviewWindow::refreshLabels() {
     formatAdvice_->setVisible(config_.format == "mp4" && config_.codec == "h265");
     exportAudio_->setAccessibleName(audio);
     exportAudio_->setToolTip(audio_->toolTip());
+    const auto previewDescription = QStringLiteral("The preview is silent. ") + audio_->toolTip();
+    previewIndicator_->setAccessibleDescription(previewDescription);
+    previewIndicator_->setToolTip(previewDescription);
     placeTools();
     refreshStatus();
 }
@@ -2466,6 +2499,7 @@ void ReviewWindow::placeDestination() {
         grid->invalidate();
     }
     playbackStatus_->setVisible(showPreview);
+    previewIndicator_->setVisible(!showPreview);
     findChild<QLabel*>("reviewAudioSeparator")->setVisible(showPreview && !options_.uploadSummary.isEmpty());
     int actionMinimum = 0;
     for (auto* widget : std::initializer_list<QWidget*>{format_, formatAdvice_, save_, cancel_, upload_}) {
@@ -2485,6 +2519,10 @@ void ReviewWindow::placeDestination() {
     const int height = single ? textControlHeight(destinationMenu_) : destinationMenu_->heightForWidth(destinationMenu_->width());
     if (destinationMenu_->height() != height) { destinationMenu_->setFixedHeight(height); grid->activate(); }
     header_->setLeading(inHeader ? destinationSummary : nullptr);
+    header_->layout()->activate();
+    const auto transportEdge = transport_->mapTo(previewIndicator_->parentWidget(), QPoint(transport_->width(), transport_->height() / 2));
+    previewIndicator_->move(transportEdge.x() + reviewSpace(Graphite::Space::xs), transportEdge.y() - previewIndicator_->height() / 2);
+    previewIndicator_->raise();
     placeErrorDetails();
     destinationMenu_->update();
 }
