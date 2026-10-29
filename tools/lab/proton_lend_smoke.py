@@ -9,9 +9,9 @@
 
 The run's put.gd must be installed (lab.py install). With the borrowed keychain
 reference from PUTGD_LAB_PROTON_REFERENCE, it adds a Proton destination to the
-guest's lab configuration, creates a new isolated folder, uploads one synthetic
-PNG privately through the editor, then creates, inspects and revokes that
-upload's own link. It writes proton-smoke.json (nonsecret: names, IDs, states,
+guest's lab configuration, creates a new isolated folder, runs Check account and
+folder against it, uploads one synthetic PNG privately through the editor, then
+creates, inspects and revokes that upload's own link. It writes proton-smoke.json (nonsecret: names, IDs, states,
 no URLs) into the run, and quits the guest's put.gd. Proton files cannot be
 deleted through put.gd, so the folder and its one file stay for manual removal.
 """
@@ -117,6 +117,14 @@ class Smoke:
         self.patch_profile(folderUid=folder['uid'], folderName=folder.get('name', name))
         self.result['folderName'] = folder.get('name', name)
         self.step('folder', folderName=self.result['folderName'])
+
+    def check(self):
+        """Settings' Check account and folder (Test connection) against the new folder."""
+        tested = self.setup('testDestination')
+        self.result['testScope'] = tested.get('testScope')
+        self.step('checked', testScope=self.result['testScope'])
+        if self.result['testScope'] != 'account-folder':
+            raise lab.LabError(f'Check account and folder covered {self.result["testScope"]}, not account-folder')
 
     def upload(self):
         # A synthetic 256x160 gradient, written by the guest's own python3; no host data.
@@ -267,6 +275,7 @@ def main():
         else:
             smoke.configure()
             smoke.folder()
+            smoke.check()
             if '--browser' in sys.argv[1:]:
                 smoke.browser()
             smoke.upload()
