@@ -179,8 +179,10 @@ class _Marionette:
 _OBSERVE = r'''
 const e = arguments[0], u = new URL(location.href), body = document.body;
 const text = body ? body.innerText : '', title = document.title || '';
+let basename = '';
+try { basename=decodeURIComponent(u.pathname.split('/').pop()); } catch (_) {}
 const named = title.includes(e.name) || text.includes(e.name) ||
-              decodeURIComponent(u.pathname.split('/').pop())===e.name;
+              basename===e.name;
 const visible = el => {const r=el.getBoundingClientRect();
   return r.width>0 && r.height>0 && getComputedStyle(el).visibility!=='hidden';};
 const media = [...document.querySelectorAll('img,video,canvas,embed,object')].some(el =>
@@ -389,9 +391,12 @@ def _target(action, values):
             return {'blank': True, 'safe': safe is True}
         if action == 'observe':
             for handle in client.call('WebDriver:GetWindowHandles'):
-                client.call('WebDriver:SwitchToWindow', {'handle': handle})
-                result = client.script(_OBSERVE, [values['expect']])
-                if result.get('matched'):
+                try:
+                    client.call('WebDriver:SwitchToWindow', {'handle': handle})
+                    result = client.script(_OBSERVE, [values['expect']])
+                except _TargetError:
+                    continue  # A closed/navigating tab must not hide a later match.
+                if isinstance(result, dict) and result.get('matched'):
                     return result
             return {}  # falsy until ctx.wait's deadline
         raise ValueError('Unknown browser helper action')

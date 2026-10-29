@@ -201,6 +201,28 @@ class ProtocolContracts(unittest.TestCase):
             raise failures[0]
 
 
+class ObservationContracts(unittest.TestCase):
+    def test_closed_tab_does_not_hide_a_later_matching_page(self):
+        client = SimpleNamespace()
+        def call(method, params=None):
+            if method == 'WebDriver:GetWindowHandles':
+                return ['closed', 'good']
+            if params['handle'] == 'closed':
+                raise browser._TargetError('Firefox protocol command failed')
+        client.call = call
+        client.script = lambda *args: {'matched': True, 'url_host': '127.0.0.1', 'title': 'fixture.txt'}
+        client.close = lambda: None
+        with patch.object(browser, '_Marionette', return_value=client):
+            result = browser._target('observe', {'port': 1234, 'expect': {'name': 'fixture.txt'}})
+        self.assertTrue(result['matched'])
+
+    def test_non_mapping_browser_reply_does_not_pass(self):
+        client = SimpleNamespace(call=lambda *args: ['good'] if args[0].endswith('GetWindowHandles') else None,
+                                 script=lambda *args: None, close=lambda: None)
+        with patch.object(browser, '_Marionette', return_value=client):
+            self.assertEqual(browser._target('observe', {'port': 1234, 'expect': {}}), {})
+
+
 class MimeTransactions(unittest.TestCase):
     def test_byte_mode_hash_restore_existing_missing_and_desktop_files(self):
         with tempfile.TemporaryDirectory() as temporary:
