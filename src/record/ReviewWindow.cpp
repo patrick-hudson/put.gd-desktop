@@ -2495,7 +2495,9 @@ void ReviewWindow::placeDestination() {
             header_->setLeading(destinationSummary);
         } else {
             header_->setLeading(nullptr);
-            metadata->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+            // An ignored hint reads as zero width, so a one-row grid would hand the
+            // metadata's column to the stretching destination and paint it under Save.
+            metadata->setSizePolicy(single ? QSizePolicy::Preferred : QSizePolicy::Ignored, QSizePolicy::Preferred);
         }
         if (hadDetails) metadataRow->insertWidget(1, errorDetails_);
         for (int column = 0; column < 7; ++column) grid->setColumnStretch(column, 0);

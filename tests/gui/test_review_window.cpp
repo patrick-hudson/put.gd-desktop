@@ -1078,6 +1078,38 @@ private slots:
             else QVERIFY(save->mapTo(&window, save->rect().center()).y() > outputY);
         }
     }
+    // Final read: at 1060×720 the one-row footer painted its metadata under
+    // Save a copy… and Discard…. Every width keeps each footer child apart.
+    void footerChildrenNeverOverlapAcrossWidths_data() {
+        QTest::addColumn<int>("pixels");
+        QTest::newRow("standard") << 14;
+        QTest::newRow("150%") << 21;
+    }
+    void footerChildrenNeverOverlapAcrossWidths() {
+        QFETCH(int, pixels);
+        auto font = qApp->font(); font.setPixelSize(pixels); qApp->setFont(font);
+        for (const int frame : {1, -1}) {
+            Graphite::WindowHeader::setCustomFrameOverride(frame);
+            auto o = options(); o.audioRecorded = true; o.canvas = QSize(960, 600); o.formats = QStringList{"mp4", "webm", "gif", "webp"};
+            auto c = config(); c.audio.system = true;
+            ReviewWindow window(o, c); window.show();
+            QVERIFY(putgd::test::waitForWindowExposed(&window));
+            RecordingEdit edit; edit.revision = 1; edit.masks = {mask("solid", "solid", 8000000, 21000000), mask("blur", "blur", 3000000, 12000000)};
+            window.setEdit(edit);
+            window.drive({{"action", "selectMask"}, {"maskId", "blur"}});
+            // Both directions: the one-row/two-row switch has hysteresis.
+            QList<int> widths;
+            for (int width = 640; width <= 1440; width += 6) widths.append(width);
+            for (int width = 1440; width >= 640; width -= 6) widths.append(width);
+            widths.append(1060);
+            for (const int width : widths) {
+                window.resize(width, 720);
+                for (int i = 0; i < 3; ++i) QApplication::processEvents();
+                const auto problem = putgd::test::reviewFooterProblem(window);
+                QVERIFY2(problem.isEmpty(), qPrintable(QString("frame %1: %2").arg(frame).arg(problem)));
+            }
+        }
+    }
     void shortDestinationAndMetadataUseNaturalHeaderWidths_data() {
         QTest::addColumn<int>("pixels");
         QTest::newRow("standard") << 14;
