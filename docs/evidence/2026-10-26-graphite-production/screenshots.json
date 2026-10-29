@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "privateEvidenceRoot": "work/graphite-production-20261026",
+  "content": "Manually inspected, synthetic test pattern and isolated loopback destination only. No credentials, protected login fields or user payloads. Magenta is the test backdrop, not the app palette. These are exact PNG copies of saved compositor frames; no pixel edits, resampling or cropping.",
+  "images": [
+    {
+      "file": "history-dark.png",
+      "source": "functional/m74-native-d8a07551-a4/history-after-upload.png",
+      "sha256": "86cc755c5f559c4daf9c6b28610889952ff32c334b5fcad1fd17ab3a7ec94acf",
+      "bytes": 88294,
+      "caption": "History after explicit upload",
+      "desktop": "Mint 22.3, Cinnamon 6.6.9, X11; Ubuntu 24.04 DEB",
+      "scope": "installed-package workflow",
+      "sourceCommit": "d8a07551c45695d2bcbd197705ecfcbdb119432a",
+      "receipt": "functional/m74-native-d8a07551-a4/log.json",
+      "receiptSha256": "4b9050aa80c05015f1c4127b9a51081a144ba940f9ad9ad37d16116bd299525c",
+      "artifact": {
+        "kind": "native",
+        "file": "putgd_26.1026.1408~dev+gd8a07551c456_amd64.deb",
+        "sha256": "4153262b7b80f847c99ff54b9077778eeab7cabba40a979f775597f5b625f37a"
+      }
+    },
+    {
+      "file": "history-light.png",
+      "source": "functional/m74-appimage-d8a07551-a2/main-history-light.png",
+      "sha256": "7e01839e4616a2157379249e2c3fc4b8e007f1348e01b00c182c0a55b954321b",
+      "bytes": 80334,
+      "caption": "Light empty History",
+      "desktop": "Mint 22.3, Cinnamon 6.6.9, X11; AppImage",
+      "scope": "installed-package workflow",
+      "sourceCommit": "d8a07551c45695d2bcbd197705ecfcbdb119432a",
+      "receipt": "functional/m74-appimage-d8a07551-a2/log.json",
+      "receiptSha256": "a4b907ecadb7987302d3d73d35a5bcbd1f0317b79e4c6980a7700385b7d98db0",
+      "artifact": {
+        "kind": "appimage",
+        "file": "putgd-26.1026.1408-dev+gd8a07551c456-x86_64.AppImage",
+        "sha256": "2c9ddca813d0bd5b744a52a92a38ac2407e5890d63092b75d638994b16d4af04"
+      }
+    },
+    {
+      "file": "editor-dark.png",
+      "source": "functional/f44-appimage-d8a07551-a1/editor-redact-blur.png",
+      "sha256": "3dc80f7b1af27e46b72d4cfc0355de3de88417beb724cbaad74f9dc1a4601f1d",
+      "bytes": 48894,
+      "caption": "Dark editor after real redaction and blur drags",
+      "desktop": "Fedora 44, GNOME 50.6, Wayland; AppImage",
+      "scope": "installed-package workflow",
+      "sourceCommit": "d8a07551c45695d2bcbd197705ecfcbdb119432a",
+      "receipt": "functional/f44-appimage-d8a07551-a1/log.json",
+      "receiptSha256": "373627161bb713ffb0970929a3cfabf57e9f087b48a8be1015d5cfefeae1a9b3",
+      "artifact": {
+        "kind": "appimage",
+        "file": "putgd-26.1026.1408-dev+gd8a07551c456-x86_64.AppImage",
+        "sha256": "2c9ddca813d0bd5b744a52a92a38ac2407e5890d63092b75d638994b16d4af04"
+      }
+    },
+    {
+      "file": "settings-dark.png",
+      "source": "functional/u26vm-native-d8a07551-a2/settings-keyboard-focus.png",
+      "sha256": "c2d2f883d8c4039dad1e67dd7c4c58496be7f19b1da44f92f63bda90a02479d9",
+      "bytes": 103616,
+      "caption": "General settings with keyboard focus",
+      "desktop": "Ubuntu 26.04.1 VM on d69, GNOME 50.1, Wayland; Ubuntu 26.04 DEB",
+      "scope": "installed-package workflow",
+      "sourceCommit": "d8a07551c45695d2bcbd197705ecfcbdb119432a",
+      "receipt": "functional/u26vm-native-d8a07551-a2/log.json",
+      "receiptSha256": "2a72f295336e45c3420163639e9c3407ef47b6837a25df6e756fbd29b05e39f3",
+      "artifact": {
+        "kind": "native",
+        "file": "putgd_26.1026.1408~dev+gd8a07551c456_amd64.deb",
+        "sha256": "8eacd950a1cf06a8779bcc07db6d84bf4cecbcadf3ead9d8ecf180231a9ac2b0"
+      }
+    },
+    {
+      "file": "review-dark.png",
+      "source": "functional/u26vm-appimage-d8a07551-a1/review-trim-mask.png",
+      "sha256": "d6105f11bbe40029f81b1dad9fd72b3616d6eaa3363ede38d7ebcc21f0e614b1",
+      "bytes": 56498,
+      "caption": "Recording review with trim and a timed blur",
+      "desktop": "Ubuntu 26.04.1 VM on d69, GNOME 50.1, Wayland; AppImage",
+      "scope": "installed-package workflow",
+      "sourceCommit": "d8a07551c45695d2bcbd197705ecfcbdb119432a",
+      "receipt": "functional/u26vm-appimage-d8a07551-a1/log.json",
+      "receiptSha256": "ccf2e1fe583eade5ea47b2502cf7904e17d1d8f99866844d06bc41ecc384eb18",
+      "artifact": {
+        "kind": "appimage",
+        "file": "putgd-26.1026.1408-dev+gd8a07551c456-x86_64.AppImage",
+        "sha256": "2c9ddca813d0bd5b744a52a92a38ac2407e5890d63092b75d638994b16d4af04"
+      }
+    },
+    {
+      "file": "review-light.png",
+      "source": "functional/d69gx11-native-d8a07551-a2/review-trim-mask.png",
+      "sha256": "00d38b3103153ce3721949e79c6f7106fd8924ad684e2b727057c4f9c54445d7",
+      "bytes": 61816,
+      "caption": "Light recording review; desktop title bar",
+      "desktop": "Debian 13, GNOME 48.7, Xorg; Debian 13 DEB",
+      "scope": "installed-package workflow",
+      "sourceCommit": "d8a07551c45695d2bcbd197705ecfcbdb119432a",
+      "receipt": "functional/d69gx11-native-d8a07551-a2/log.json",
+      "receiptSha256": "41a82603a98b162f959f56bde1b33c06080c8904299a518259fc173c3fb5d5bc",
+      "artifact": {
+        "kind": "native",
+        "file": "putgd_26.1026.1408~dev+gd8a07551c456_amd64.deb",
+        "sha256": "8343c7bbdbce9b3c2551b97aaff87eed63cf3524b21ac53ede4ef8c9b0f96bf6"
+      }
+    },
+    {
+      "file": "recording-light.png",
+      "source": "functional/m74-native-d8a07551-a4/record-paused.png",
+      "sha256": "48bb28f7cce416750735379f7d598271f8d174c6203560a0ea3813a0203070d8",
+      "bytes": 31489,
+      "caption": "Paused recording with explicit Resume and Stop recording",
+      "desktop": "Mint 22.3, Cinnamon 6.6.9, X11; Ubuntu 24.04 DEB",
+      "scope": "installed-package workflow",
+      "sourceCommit": "d8a07551c45695d2bcbd197705ecfcbdb119432a",
+      "receipt": "functional/m74-native-d8a07551-a4/log.json",
+      "receiptSha256": "4b9050aa80c05015f1c4127b9a51081a144ba940f9ad9ad37d16116bd299525c",
+      "artifact": {
+        "kind": "native",
+        "file": "putgd_26.1026.1408~dev+gd8a07551c456_amd64.deb",
+        "sha256": "4153262b7b80f847c99ff54b9077778eeab7cabba40a979f775597f5b625f37a"
+      }
+    },
+    {
+      "file": "destinations-large-text.png",
+      "source": "native/final-d392f547/f44-dark-text150/17-destination-long-name-compact.png",
+      "sha256": "3c6fce3d221c63be0b91de9b714f444df209ead963ba2692da95301b0e5b2071",
+      "bytes": 89087,
+      "caption": "Compact destination with 150% text and a long name; synthetic preview, not final-package workflow proof",
+      "desktop": "Fedora 44, GNOME 50.6, Wayland, Qt 6.11.2; production preview at d392f547",
+      "scope": "production preview; synthetic fixture content",
+      "sourceCommit": "d392f54740402754e0da3c53a4b4a68e213da94e",
+      "receipt": "native/final-d392f547/f44-dark-text150/native.json",
+      "receiptSha256": "cd0e5b911fdff63f98ce5614610ee57deda774550249a81bbcc321981071b730",
+      "artifact": null
+    }
+  ]
+}

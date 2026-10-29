@@ -102,6 +102,17 @@ quit the resident. On desktops without a tray, Settings exposes a **Quit put.gd*
 
 History date boundaries use stored ISO UTC timestamps. Search is a literal substring of
 the display filename; SQL wildcard characters are escaped. Pages are 1–200 entries.
+The `category` filter matches a stored category exactly (for example `images`,
+`videos`, `text` or `other`). The new aggregate value `text+other` matches both
+`text` and `other`, as History's **Other files** sidebar entry does. It is a query
+value, never a stored category. Every other value retains exact matching;
+`files` is not an alias for this aggregate. An omitted or empty category leaves
+the category unfiltered. For example:
+
+```sh
+putgd-cli history.list '{"limit":50,"category":"text+other"}'
+```
+
 Delete preparation performs no destructive request. Review its original destinations
 and effects before confirming. Wrong acknowledgement, unresolved publication, local-only
 or skipped entries never issue a deletion. Clearing history/cache never removes cloud
