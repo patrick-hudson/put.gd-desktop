@@ -14,6 +14,7 @@ instruction file. Use the existing documentation below; this file is an index.
 | Linux distro/session matrix and physical/VM placement | [docs/acceptance-matrix.md](docs/acceptance-matrix.md) |
 | Required verification and recorded acceptance | [docs/verification.md](docs/verification.md) |
 | Remote builders, physical-desktop acceptance, VM displays and golden transfers | [docs/remote-builders.md](docs/remote-builders.md) |
+| Aurora Fedora 45 physical builder, Toolbx commands and Proton lab adapter | [Aurora builder](docs/remote-builders.md#aurora-amd-fedora-45-builder) |
 | Remote VM tunnel and wall registration | [docs/remote-vm-displays.md](docs/remote-vm-displays.md) |
 | Golden image locations (Fedora, Debian, S3), verified copies, restore and standard guest login | [docs/remote-golden-images.md](docs/remote-golden-images.md) |
 | Linux VM lifecycle, provisioning and login inputs | [docs/vm-lab.md](docs/vm-lab.md) |

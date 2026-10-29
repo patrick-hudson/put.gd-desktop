@@ -187,8 +187,9 @@ build, test and review checkpoints.
 
 ## Lab sessions on the builders
 
-Each lab builder (f44, d69, k72, m74) holds one put.gd Proton session, signed in
-once by Patrick with the dedicated test account phudson2@gmail.com. Later sessions
+Each lab builder (f44, d69, k72, m74, aurora-amd) holds one put.gd Proton
+session, signed in once by Patrick with the dedicated test account
+phudson2@gmail.com. Later sessions
 test against it without a new sign-in: on the builder itself, or in a VM on that
 builder that borrows it. Every refresh rotates the session's refresh token, so a
 session is a baton with one holder at a time, and the refreshed state goes back to
@@ -205,6 +206,14 @@ uses the builder's session: the lab profile's app, `check`, `lend` or `recover`.
 The `proton_lab.py` commands below take it themselves when it is free, and reuse it
 when the same session already holds it.
 
+Aurora was added on 2026-10-29 with an independent sign-in. On that Atomic host,
+use `~/.local/bin/putgd-proton-lab` for the commands below: its installed adapter
+uses canonical `/var/home/patrick/putgd-lab/` paths and the prepared native app.
+The [Aurora builder guide](remote-builders.md#aurora-amd-fedora-45-builder)
+records the build, keyring and keep-alive setup. Its initial verification covers
+native account/folder access; VM lending still requires the usual guest preflight
+and provisioning.
+
 ### Where each session lives
 
 | | |
@@ -212,12 +221,13 @@ when the same session already holds it.
 | Lab profile | `~/putgd-lab/proton/` with its own `config/`, `data/` and `state/` (`XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME`); destination `proton-lab` |
 | Keychain entry | service `ch.proton.drive/putgd`, name `putgd/proton/lab-<host>`, in the builder's default Secret Service collection |
 | Registry | `~/putgd-lab/locks/proton-registry.json`, next to the lock: host, reference, app, keyring, last check and its outcome, nothing secret |
-| App | nightly 26.1023.1058 extracted into `~/putgd-lab/proton/app/`: the AppImage on f44 and m74; the debian13 or ubuntu26.04 .deb on d69 and k72, until [#518](https://github.com/patrick-hudson/put.gd-desktop/issues/518) is fixed |
-| Bridge | `~/putgd-lab/proton/bridge/` (host relay built on that builder and the Bun 1.4.2 broker) and `guest-bridge/` (relay built against Qt 6.4.2 on m74, for guests) |
+| App | on f44, d69, k72 and m74: nightly 26.1023.1058 extracted into `~/putgd-lab/proton/app/` (AppImage on f44/m74, debian13 or ubuntu26.04 .deb on d69/k72, until [#518](https://github.com/patrick-hudson/put.gd-desktop/issues/518) is fixed); on aurora-amd: the installed native source build recorded in its registry |
+| Bridge | `~/putgd-lab/proton/bridge/` holds the host relay and Bun 1.4.2 broker; the original four also have `guest-bridge/` (relay built against Qt 6.4.2 on m74, for guests). Provision the guest bridge before Aurora lends a session. |
 | Keep-alive | `~/.config/systemd/user/putgd-proton-keepalive.{service,timer}`, running a copy of the lab tools in `~/.local/libexec/putgd-proton/` |
 
 The default collection is a **blank-password lab keyring**: gnome-keyring
-`putgd lab` on f44, d69 and m74, KWallet `putgdlab` on k72.
+`putgd lab` on f44, d69 and m74, KWallet `putgdlab` on k72 and KWallet
+`putgd lab` on aurora-amd.
 - **Why blank:** the builders log in automatically, and a password-protected
   keyring stays locked after every boot, so the session would fail with
   `keychain_unavailable` until someone typed the password.
@@ -227,7 +237,11 @@ The default collection is a **blank-password lab keyring**: gnome-keyring
   password-protected. New secrets from other apps now go to the lab keyring.
 - **Repairing it:** `proton_lab.py lab-keyring` creates the collection and makes it the
   default. `proton_lab.py keychain` proves it accepts a synthetic entry without a
-  prompt.
+  prompt. Aurora's KWallet 6.31 uses the standard Secret Service interface;
+  its collection was created through that interface and passes the synthetic
+  check. The legacy bootstrap's compatibility fix is tracked in
+  [#647](https://github.com/patrick-hudson/put.gd-desktop/issues/647); preserve the
+  existing collection and use the installed Aurora adapter.
 
 ### Commands
 
