@@ -1854,6 +1854,7 @@ void ReviewWindow::setConfig(const RecordingConfig& config) {
     config_.audio.system = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) { format_->blockSignals(true); format_->setCurrentIndex(i); format_->blockSignals(false); } }
     format_->setToolTip(format_->currentData(Qt::ToolTipRole).toString());
+    format_->setAccessibleDescription(format_->currentText() + "\n" + format_->toolTip());
     refreshLabels();
 }
 void ReviewWindow::setExporting(bool exporting, const QString& label) {

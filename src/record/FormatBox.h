@@ -55,7 +55,11 @@ public:
     }
     QSize minimumSizeHint() const override {
         auto size = sizeHint();
-        if (!property("purposeMinimum").toBool()) size.setWidth(std::min(size.width(), fontMetrics().horizontalAdvance(QStringLiteral("MP4")) + Graphite::scaled(44)));
+        if (!property("purposeMinimum").toBool()) {
+            int compact = 0;
+            for (int i = 0; i < count(); ++i) compact = std::max(compact, fontMetrics().horizontalAdvance(compactLabel(itemData(i).toStringList())));
+            size.setWidth(std::min(size.width(), compact + Graphite::scaled(44)));
+        }
         return size;
     }
     void showPopup() override {
@@ -69,8 +73,7 @@ public:
         const int available = style()->subControlRect(QStyle::CC_ComboBox, &option, QStyle::SC_ComboBoxEditField, this).width();
         const auto label = purpose(currentText());
         if (fontMetrics().horizontalAdvance(label) <= available) return label;
-        const auto format = currentData().toStringList().value(0);
-        return format == "webm" ? QStringLiteral("WebM") : format == "webp" ? QStringLiteral("WebP") : format.toUpper();
+        return compactLabel(currentData().toStringList());
     }
 protected:
     void paintEvent(QPaintEvent*) override {
@@ -83,6 +86,12 @@ protected:
     }
     void wheelEvent(QWheelEvent* event) override { event->ignore(); }
 private:
+    static QString compactLabel(const QStringList& value) {
+        const auto format = value.value(0), codec = value.value(1);
+        if (format == "mp4" && codec == "h264") return QStringLiteral("H.264");
+        if (format == "mp4" && codec == "h265") return QStringLiteral("H.265");
+        return format == "webm" ? QStringLiteral("WebM") : format == "webp" ? QStringLiteral("WebP") : format.toUpper();
+    }
     static QString purpose(const QString& label) { return label.section(QStringLiteral(" — "), 0, 0); }
 };
 }

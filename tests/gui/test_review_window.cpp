@@ -1610,13 +1610,29 @@ private slots:
         box.resize(500, box.sizeHint().height());
         QCOMPARE(box.displayedText(), QStringLiteral("Compatible video"));
         box.resize(box.minimumSizeHint().width(), box.height());
-        QCOMPARE(box.displayedText(), QStringLiteral("MP4"));
+        QCOMPARE(box.displayedText(), QStringLiteral("H.264"));
         QVERIFY(box.accessibleDescription().contains("H.264"));
         QVERIFY(box.accessibleDescription().contains("Recommended"));
         box.addItem("Smaller video — MP4 (H.265)", QStringList{"mp4", "h265"});
         QVERIFY(FormatDelegate::tradeoff(box.model()->index(1, 0)).contains("Limited browser compatibility"));
         QStyleOptionViewItem option;
         QVERIFY(box.itemDelegate()->sizeHint(option, box.model()->index(1, 0)).height() > 2 * box.fontMetrics().height());
+    }
+    void compactReviewDistinguishesAvcAndHevcAtLargeText() {
+        const auto original = qApp->font(); auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        auto font = original; font.setPixelSize(21); qApp->setFont(font);
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        putgd::test::settle(20); window.resize(640, 720); putgd::test::settle(20);
+        FormatBox* format = nullptr;
+        for (auto* box : window.findChildren<QComboBox*>()) if (box->accessibleName() == "Output format") format = static_cast<FormatBox*>(box);
+        QVERIFY(format);
+        // Exercise the compact allocation used when the footer gives its space to actions.
+        format->setFixedWidth(format->minimumSizeHint().width());
+        QCOMPARE(format->displayedText(), QString("H.264")); const auto avc = format->grab().toImage();
+        window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
+        QCOMPARE(format->displayedText(), QString("H.265")); QVERIFY(format->grab().toImage() != avc);
+        QVERIFY(format->toolTip().contains("Smaller video")); QVERIFY(format->accessibleDescription().contains("H.265"));
+        QVERIFY(format->minimumSizeHint().width() >= format->fontMetrics().horizontalAdvance("H.265") + Graphite::scaled(44));
     }
     void maskChooserReservesScaledControlAndPopupSpace() {
         for (int pixels : {14, 21}) {
