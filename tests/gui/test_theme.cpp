@@ -367,6 +367,25 @@ private slots:
         QTest::keyClick(first,Qt::Key_Tab);PUTGD_TRY_VERIFY(icon->hasFocus());PUTGD_TRY_COMPARE(QToolTip::text(),QString("Edit an image"));
         QTest::keyClick(icon,Qt::Key_Backtab);PUTGD_TRY_VERIFY(first->hasFocus());PUTGD_TRY_VERIFY(!QToolTip::isVisible());
     }
+    // A light desktop's tooltip colours (dark ink) on the dark tip panel left
+    // hover text unreadable: Qt hands tips the desktop's tooltip palette again
+    // on every desktop palette notification (KGlobalSettings, a colour scheme
+    // change), after Graphite set the application palette. Tips take their
+    // ink from the scheme, live.
+    void tooltipsReadOnTheirPanelWhateverTheDesktopPalette() {
+        QPalette desktop;desktop.setColor(QPalette::ToolTipBase,Qt::white);desktop.setColor(QPalette::ToolTipText,Qt::black);
+        auto restore=qScopeGuard([tips=QToolTip::palette()]{QToolTip::hideText();QToolTip::setPalette(tips);});
+        QToolTip::setPalette(desktop);
+        QWidget page;page.resize(200,100);page.show();QVERIFY(putgd::test::waitForWindowExposed(&page));
+        const auto tip=[]()->QWidget*{for(auto* widget:QApplication::topLevelWidgets())if(widget->isVisible()&&QByteArray(widget->metaObject()->className())=="QTipLabel")return widget;return nullptr;};
+        const auto readable=[](QWidget* label){const auto& p=Theme::current();const auto ink=label->palette().color(QPalette::ToolTipText);return ink==p.text&&Theme::contrast(ink,p.surfaceRaised)>=4.5;};
+        QToolTip::showText(page.mapToGlobal(QPoint(20,20)),"Copy link",&page);
+        PUTGD_TRY_VERIFY(tip());QVERIFY(readable(tip()));
+        // A scheme switch while the tip is up recolours it.
+        Theme::setScheme(Theme::Scheme::Light);
+        PUTGD_TRY_VERIFY(tip()&&readable(tip()));
+        QCOMPARE(QToolTip::palette().color(QPalette::ToolTipText),Theme::current().text);
+    }
     void idleScrollbarsMeetContrastOnEveryScrollSurface() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);
