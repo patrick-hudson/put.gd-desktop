@@ -116,6 +116,66 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
+  surface-map:
+    # map.put.gd: every surface and interaction of this nightly, coloured by the
+    # acceptance coverage recorded under tools/lab/surface_map/coverage. Rendered
+    # from the linux (26.04) job's UI catalog; never gates publication.
+    needs: [plan, ci, publish]
+    if: needs.plan.outputs.skip == 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write  # assume the putgd-map-publish role through OIDC
+    env:
+      TAG: ${{ needs.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.tag }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ui-catalog
+          path: build/ui-catalog
+      - name: Render the surface map
+        run: |
+          python3 tools/lab/surface_map/surface_map.py build --catalog build/ui-catalog \
+            --coverage tools/lab/surface_map/coverage/[0-9]*.json \
+            --output build/surface-map --index --label "$TAG"
+          printf '<!DOCTYPE html><meta charset="utf-8"><title>Not found</title><p>Not found. The map lives at <a href="/">map.put.gd</a>.' > build/surface-map/404.html
+      - name: Publish to map.put.gd
+        # The role, bucket and distribution are repository variables set from the
+        # put.gd-site Terraform outputs; without them the render is only retained.
+        if: vars.MAP_PUBLISH_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.MAP_PUBLISH_ROLE_ARN }}
+          aws-region: us-east-2
+      - name: Sync the page and invalidate
+        if: vars.MAP_PUBLISH_ROLE_ARN != ''
+        env:
+          MAP_BUCKET: ${{ vars.MAP_BUCKET }}
+          MAP_DISTRIBUTION_ID: ${{ vars.MAP_DISTRIBUTION_ID }}
+        run: |
+          aws s3 sync build/surface-map/captures "s3://$MAP_BUCKET/captures" --delete \
+            --cache-control "public, max-age=86400"
+          for file in index.html 404.html; do
+            aws s3 cp "build/surface-map/$file" "s3://$MAP_BUCKET/$file" \
+              --cache-control "public, max-age=300" --content-type "text/html; charset=utf-8"
+          done
+          aws s3 cp build/surface-map/map.json "s3://$MAP_BUCKET/map.json" \
+            --cache-control "public, max-age=300" --content-type "application/json"
+          aws cloudfront create-invalidation --distribution-id "$MAP_DISTRIBUTION_ID" --paths "/" "/index.html" "/map.json" "/404.html"
+          echo "Published the surface map for \`$TAG\` to https://map.put.gd/." >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain the rendered map
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: surface-map-${{ needs.plan.outputs.tag }}
+          path: build/surface-map
+          if-no-files-found: warn
+          retention-days: 30
+
   stable-scan:
     # A stable AppImage freezes its bundled components, so every day the latest
     # stable release's own SBOMs meet the day's vulnerability data (#420,

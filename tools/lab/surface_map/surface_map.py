@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Surface map: every surface and interaction of put.gd, coloured by acceptance coverage.
 
-  surface_map.py build --catalog DIR --coverage FILE... --output DIR [--open] [--watch]
+  surface_map.py build --catalog DIR --coverage FILE... --output DIR [--label TEXT] [--index] [--open] [--watch]
   surface_map.py mark INTERACTION --coverage FILE --desktop ID --package deb|rpm|appimage
                  [--functional passed|failed|blocked] [--visual frames|reviewed-ok|reviewed-wrong]
                  [--receipt PATH] [--issue N] [--note TEXT]
@@ -324,7 +324,7 @@ def unmodelled(controls, interactions):
 
 # ----------------------------------------------------------------- page
 
-def build_page_data(model, entries, catalog, output, embed=False):
+def build_page_data(model, entries, catalog, output, embed=False, label=''):
     summary = summarise(model, entries)
     by_surface = {}
     for item in model['interactions']:
@@ -373,6 +373,7 @@ def build_page_data(model, entries, catalog, output, embed=False):
         counts['visual-' + state] = sum(1 for i in interactions if i['visual'] == state)
     return {
         'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'label': label,
         'catalog': str(catalog) if catalog else None,
         'desktops': model['desktops'],
         'packages': list(PACKAGES),
@@ -386,7 +387,8 @@ def build_page_data(model, entries, catalog, output, embed=False):
 def render(data, template_path=TEMPLATE_PATH):
     template = Path(template_path).read_text(encoding='utf-8')
     payload = json.dumps(data, separators=(',', ':')).replace('</', '<\\/')
-    return template.replace('/*__DATA__*/null', payload).replace('__GENERATED__', html.escape(data['generated']))
+    return template.replace('/*__DATA__*/null', payload).replace('__GENERATED__', html.escape(data['generated'])) \
+        .replace('__LABEL__', html.escape(data.get('label') or ''))
 
 
 def build(args):
@@ -394,11 +396,12 @@ def build(args):
     entries = load_coverage(args.coverage)
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
-    data = build_page_data(model, entries, args.catalog, output, embed=args.embed)
-    (output / 'map.html').write_text(render(data), encoding='utf-8')
+    data = build_page_data(model, entries, args.catalog, output, embed=args.embed, label=getattr(args, 'label', '') or '')
+    page = output / ('index.html' if getattr(args, 'index', False) else 'map.html')
+    page.write_text(render(data), encoding='utf-8')
     (output / 'map.json').write_text(json.dumps(data, indent=1, sort_keys=True), encoding='utf-8')
     if getattr(args, 'open', False) and not getattr(args, '_opened', False):
-        open_in_browser(output / 'map.html')
+        open_in_browser(page)
         args._opened = True
     return data
 
@@ -644,7 +647,9 @@ def main(argv=None):
     p.add_argument('--coverage', nargs='*', default=[], help='campaign coverage files')
     p.add_argument('--output', required=True)
     p.add_argument('--embed', action='store_true', help='inline the pictures (one portable file)')
-    p.add_argument('--open', action='store_true', help='open map.html in the browser after building')
+    p.add_argument('--open', action='store_true', help='open the page in the browser after building')
+    p.add_argument('--label', default='', help='what this map describes, shown in the header (a nightly tag)')
+    p.add_argument('--index', action='store_true', help='name the page index.html (for a web root)')
     p.add_argument('--watch', action='store_true', help='rebuild when the inputs change')
     p.add_argument('--interval', type=float, default=2.0)
 
@@ -683,8 +688,8 @@ def main(argv=None):
                 return 0
             data = build(args)
             counts = data['counts']
-            print('%s/map.html: %d interactions, %d passed, %d partial, %d failed, %d blocked, %d untested' % (
-                args.output, counts['total'], counts['passed'], counts['partial'], counts['failed'],
+            print('%s/%s: %d interactions, %d passed, %d partial, %d failed, %d blocked, %d untested' % (
+                args.output, 'index.html' if args.index else 'map.html', counts['total'], counts['passed'], counts['partial'], counts['failed'],
                 counts['blocked'], counts['untested']))
             return 0
         if args.command == 'mark':
