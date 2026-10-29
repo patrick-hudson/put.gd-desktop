@@ -24,8 +24,8 @@ header #label:empty{display:none}
 .views button{border:0;background:transparent;color:var(--muted);padding:3px 10px;cursor:pointer;font-size:11.5px}
 .views button.on{background:var(--card2);color:var(--text)}
 main{display:grid;grid-template-columns:260px 1fr;gap:16px;padding:16px 18px;align-items:start}
-@media (max-width:900px){main{grid-template-columns:1fr}}
 .col{position:sticky;top:var(--toolbar-height,0px);display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - var(--toolbar-height,0px) - 12px);overflow:auto}
+@media (max-width:900px){main{grid-template-columns:1fr}.col{position:static;max-height:none;overflow:visible}}
 .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
 .card h3{margin:0 0 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;display:flex;gap:8px;align-items:center}
 .card h3 .n{margin-left:auto;font-weight:400;letter-spacing:0;text-transform:none}

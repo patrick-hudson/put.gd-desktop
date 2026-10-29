@@ -152,7 +152,9 @@ def load_coverage(paths, model=None):
                           for r in d.get('rows', [])
                           if r['host'] == entry['host'] and r['placement'] == 'native']
                 if len(native) == 1 and entry.get('guest') is None:
+                    # Inferred on every load from the current model; never written back.
                     entry['placement'] = 'native'
+                    entry['_inferred_placement'] = True
                 else:
                     entry['_desktop_only'] = True
                     print('%s: entry %d (%s, %s, host %s): missing placement; '
@@ -168,7 +170,9 @@ def load_coverage(paths, model=None):
 def write_coverage(path, campaign, entries):
     path = Path(path)
     doc = {'schemaVersion': 2, 'campaign': campaign,
-           'entries': [{k: v for k, v in e.items() if not k.startswith('_')} for e in entries]}
+           'entries': [{k: v for k, v in e.items()
+                        if not k.startswith('_') and not (k == 'placement' and e.get('_inferred_placement'))}
+                       for e in entries]}
     tmp = path.with_suffix(path.suffix + '.tmp')
     tmp.write_text(json.dumps(doc, indent=1, sort_keys=True) + '\n', encoding='utf-8')
     os.replace(tmp, path)

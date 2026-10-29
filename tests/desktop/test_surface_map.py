@@ -396,6 +396,17 @@ class ReceiptImport(unittest.TestCase):
         self.assertEqual(surface_map.main(['build', '--coverage', str(path),
                                           '--output', str(Path(self.tmp.name) / 'native')]), 0)
 
+    def test_inferred_placement_is_not_written_back(self):
+        path = self.receipt('host-only.json', {'schemaVersion': 2, 'entries': [
+            {'interaction': 'editor.undo', 'desktop': 'mint-cinnamon-x11', 'package': 'deb',
+             'functional': 'passed', 'host': 'm74'}]})
+        loaded = surface_map.load_coverage([path], self.model)
+        self.assertEqual(loaded[0]['placement'], 'native')
+        surface_map.write_coverage(path, 'host-only', loaded)
+        written = json.loads(path.read_text(encoding='utf-8'))['entries'][0]
+        self.assertNotIn('placement', written)
+        self.assertEqual(written['host'], 'm74')
+
     def test_load_unresolved_placement_stays_in_desktop_rollup_only(self):
         for native_count in (0, 2):
             with self.subTest(native_count=native_count):
