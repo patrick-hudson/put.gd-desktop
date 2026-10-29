@@ -146,12 +146,17 @@ def _new_operation(ctx, previous, action):
         matches = [o for o in _recent(ctx) if o['id'] not in previous and o['action'] == action]
         ctx.expect(len(matches) <= 1, 'one operation admitted for one real input')
         return matches[0] if matches else None
-    return ctx.wait(find, 'new ' + action + ' operation')
+    operation = ctx.wait(find, 'new ' + action + ' operation')
+    ctx.note('operation=' + operation['id'] + ' action=' + action)
+    return operation
 
 
 def _settled(ctx, operation):
-    return ctx.wait(lambda: (o if (o := ctx.call('operation.inspect', {'id': operation['id']}))
-                            ['state'] in TERMINAL else None), 'operation settled', timeout=30)
+    settled = ctx.wait(lambda: (o if (o := ctx.call('operation.inspect', {'id': operation['id']}))
+                               ['state'] in TERMINAL else None), 'operation settled', timeout=30)
+    ctx.note('operation=' + settled['id'] + ' state=' + settled['state'] + ' artifacts=' +
+             ','.join(i.get('artifact', {}).get('id', '') for i in settled.get('items', [])))
+    return settled
 
 
 @contextmanager
@@ -473,6 +478,7 @@ def _save_diagnostics(ctx, root):
               'with zipfile.ZipFile(files[0]) as z: assert z.testzip() is None\n'
               'print(files[0].name)\nPY\n')
     filename = _shell(ctx, script)
+    ctx.note('diagnostics target operation=' + op['id'] + ' package=' + filename)
     ctx.frame('after-diagnostics-button')
     return notice, saved, filename
 
