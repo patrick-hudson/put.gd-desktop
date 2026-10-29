@@ -382,8 +382,8 @@ private slots:
         QToolTip::showText(page.mapToGlobal(QPoint(20,20)),"Copy link",&page);
         PUTGD_TRY_VERIFY(tip());QVERIFY(readable(tip()));
         // A scheme switch while the tip is up recolours it.
-        Theme::setScheme(Theme::Scheme::Light);putgd::test::settle(10);
-        QVERIFY(tip());QVERIFY(readable(tip()));
+        Theme::setScheme(Theme::Scheme::Light);
+        PUTGD_TRY_VERIFY(tip()&&readable(tip()));
         QCOMPARE(QToolTip::palette().color(QPalette::ToolTipText),Theme::current().text);
     }
     void idleScrollbarsMeetContrastOnEveryScrollSurface() {
