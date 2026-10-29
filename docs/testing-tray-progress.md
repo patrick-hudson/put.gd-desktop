@@ -59,8 +59,10 @@ before quiet memory sampling.
    verifies every path in this receipt, not just these three examples. Native
    package-manager installation must resolve its dependencies normally. This
    runner does not add an RPM installer to `lab.py`.
-4. Keep the VM's localhost VNC listener and display wall at
-   `http://127.0.0.1:8765/` active. Restore a locked session through its visible
+4. Keep the VM's localhost VNC listener running. The runner itself needs no
+   viewer: QMP supplies its input and screenshots on VMs, and `physical.py`
+   reads the host's VNC tunnel directly. The display wall at
+   `http://127.0.0.1:8765/` is only for watching live. Restore a locked session through its visible
    console using the owned/private protected login input identified by existing
    bootstrap metadata. The operator reads it only in memory and types into the
    visibly focused masked field. Do not print it, put it in argv, photograph it,
@@ -206,14 +208,19 @@ The scenario uses two deterministic synthetic files per operation and drives:
    operation, retained artifact and publication IDs. Unknown publication is
    reconciled by that retry; a new action never conceals it.
 5. A local-only file batch whose new private archive root is intentionally a
-   regular file. Its real save must fail. Replacing that owned blocker with a
+   regular file. Its real save must fail and latch the tray: "Needs attention",
+   the error glyph and badge, and "Local save needs attention — open the tray
+   menu to review". The latch must hold for 3 seconds untouched. The runner
+   then opens it from the desktop's own tray menu (see
+   [opening a latched failure](#opening-a-latched-failure)) and requires the
+   exact original idle icon afterwards. Replacing that owned blocker with a
    directory permits `operation.retryLocalSave` on the same operation; actual
    saved bytes must match independent source hashes and stay local-only.
 6. Resident quit/restart, a new matching process identity, exact preserved
    history receipts and the original idle icon hashes/empty tooltip.
 
 CLI and SNI reads are independent and ordered within one SSH session, avoiding
-network round trips that can alias the 300 ms blink. The product batches observations. Counter
+network round trips between them. The product batches observations. Counter
 assertions use before/after CLI reads plus a two-second recent observation
 window, restricted to the current row’s operation and artifact identity.
 An operation moving up a row keeps its own observations; a previous operation
@@ -225,51 +232,79 @@ the rejected SNI text is redacted from failure evidence.
 
 Icon colours are checked against the tint set for the panel the resident sees
 (#229). put.gd tints its tray icon for the panel, not the app theme
-(`Theme::trayTints`, #60): dark panels get idle `#9BBCFF`, upload `#62D69B` with
-a `#2B5D43` unfilled remainder, and error `#FFB4AB`; light panels get `#2759B8`,
-`#146C42` with `#092F1D`, and `#B4312A`. At setup the runner reads the panel
+(`Theme::trayTints`, #60). Dark panels get idle `#d6d6d2`, upload `#91bca2`,
+encoding `#e8b66d` and error `#e59b93`; light panels get `#383834`, `#386a4b`,
+`#8f5b20` and `#a44139`. At setup the runner reads the panel
 tone the way `PanelTone` does, in the resident's own environment: the KDE
 configuration cascade (`plasmarc`, `kdeglobals`, the Plasma style's `colors`),
 Cinnamon's `org.cinnamon.theme`, or GNOME's dark top bar. It then waits until
 put.gd's own report (`ui.snapshot` `diagnostics.trayTint`) agrees, and saves
-both in `panel-tone.json`. Every read, the error pulse included, is checked
+both in `panel-tone.json`. Every read, attention included, is checked
 against that one set. The resident and the reader get the desktop session's
 `XDG_CONFIG_DIRS` and `XDG_DATA_DIRS`: Plasma lists `~/.config/kdedefaults`
 there, and without it a Breeze Dark panel reads as Plasma's light default.
 `TRAY_TINTS` in `tray_progress.py` mirrors `Theme.cpp`; the contracts read the
 C++ table and `PanelTone`'s rule rows back, so the two can't drift.
-Expected error overlays are scoped to the runner's original local-save failure
-ID or explicit `proton_account_busy` failures on original concurrent/retry IDs.
-Independent terminal CLI items must prove the expected failure before red is
-accepted. Each newly failed ID supplies one monotonic three-second pulse window;
-repeated frames never renew it. A newly failed ID archives the previous window
-and requires a fresh red/blue/red sequence. Red, a subsequent blue off-phase and returning red must all be
-observed and receive native screenshot witnesses. A single red frame followed
-by blue for the rest of the window is insufficient. Blue during that window is
-not idle recovery. Recovery requires the window to expire, no active CLI work,
-and the exact original blue idle icon/empty tooltip. `errorPulses` records the
-failure IDs/times, deadline, red/blue observations and recovery time separately
-from upload activity coverage. Initial bracketed green and green within the
-last 500 ms of the observed deadline can be validated as transition grace;
-they receive no pulse or upload coverage and cannot establish idle recovery.
-Green during the established pulse fails immediately. Missing phases fail the replay and require a new
-preserved run; the harness never invents error coverage from a declaration.
+
+The tooltip title is `put.gd` when idle or preparing, `Uploading` while an upload
+is shown, `Upload complete` for a confirmed upload and `Needs attention` for a
+latched failure (`TrayController::refreshActivity`). Working icons keep the idle
+glyph, with an encoding-colour fill for upload progress; the upload colour is
+reserved for a confirmed completion. The reveal and hold timings stay with the
+product: activity appears after 200 ms, a shown upload holds at least 600 ms,
+and "Finishing upload" covers the short hold after the last transfer. Rounded
+tooltip sizes use the app's MB/GB format (`ByteSize::summary`).
+`tests/desktop/test_lab_ui_contract.py` fails when any title, label or unit the
+runner matches leaves the app source.
+
+A failure latches until it is opened. Only the runner's original local-save
+failure ID, or explicit `proton_account_busy` failures on original concurrent or
+retry IDs, may latch. Independent terminal CLI items must prove that failure
+before the attention state is accepted; until then a frame showing it gets only
+the two-second batching grace. Attention without an expected failure is fatal.
+While latched, every icon must carry the error colour without a progress or
+completion fill, and the first tooltip row must name the expected item, such as
+"Local save needs attention — open the tray menu to review". Later rows are
+ordinary activity, checked against observations. A local-save latch that clears
+before its item is opened fails the replay. A Proton busy latch clears by itself
+once its retried items upload. The `attention` results record the failure IDs,
+when the latch was first and last seen, how it was opened and when it cleared.
+
+### Opening a latched failure
+
+The runner opens the attention item the way a person does, on the desktop's own
+tray menu, and watches the result:
+
+1. A `busctl monitor` on the resident's bus name records every dbusmenu call
+   other clients make to put.gd's menu. The guest needs `busctl` and `stdbuf`.
+2. The pointer moves to `--tray-x/--tray-y`, and the profile's button
+   (right by default) opens the menu. The monitor must show the desktop asking
+   for the menu (`AboutToShow` or an `opened` event).
+3. The runner counts the attention item's place among the visible, enabled
+   top-level rows of the live menu layout and presses Down that many times. If
+   the desktop reports hovers, the last one must be the attention row.
+4. Enter. The desktop's own `clicked` for exactly that row must reach put.gd
+   within 5 seconds. A click on any other row is fatal: it may have started a
+   capture or quit the resident.
+
+Frames before, open, highlighted and after are saved as witnesses. Each
+profile's optional `tray_menu` entry calibrates its desktop: `button`,
+`openSeconds` (0.8 by default) and `firstRowSelected` (whether the menu opens
+with its first row highlighted). Attempts record whether their profile was
+calibrated.
+
+If the menu does not open, the highlight is elsewhere or no click arrives, the
+runner presses Escape, saves the frame and sends the dbusmenu `clicked` event
+itself, so the rest of the replay can run. That run never counts as a visible
+pass: `visibleMenuFallbacks` in the results and the printed summary carry the
+reason, and acceptance treats it as a finding about put.gd on that desktop.
 
 Rounded tooltip bytes must fit real observed byte bounds and their own
 integer percentage. A source-size fallback must be labelled `Estimated`, match
 the actual counters/source bytes, and stop at 99% while awaiting finalization or
-receipt. No elapsed-time percentage is accepted. Green activity is revealed after
-200 ms; successful work that finishes before that delay leaves the blue icon
-unchanged. Once revealed, green stays visible for at least 600 ms, including at
-least 200 ms of terminal feedback. A confirmed successful upload displays full
-green before returning to blue. Pending receipt lookup and gaps between storage
-phases retain the last visible frame. Tooltips update during the reveal delay. Partial
-fills include a dim green base, which is still green storage feedback at 0%.
-Destination checks and storage work without a usable transfer denominator use
-that dim green frame rather than appearing complete before transfer begins.
-Concurrent transfer fills are weighted by their acquired source sizes; local
-preparation and queued transfers do not contribute. Error pulses supersede all
-fills and retain their existing timing.
+receipt. No elapsed-time percentage is accepted. Concurrent transfer fills are
+weighted by their acquired source sizes; local preparation and queued transfers
+do not contribute. A latched failure supersedes all fills.
 The SNI phase must have a matching production observation. Source filenames,
 paths and links are prohibited in tray text.
 
