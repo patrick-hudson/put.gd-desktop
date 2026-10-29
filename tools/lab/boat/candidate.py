@@ -90,7 +90,7 @@ def prepare_output(path):
     ancestor = path
     while not ancestor.exists():
         ancestor = ancestor.parent
-    probe = subprocess.run(['git', '-C', str(ancestor), 'rev-parse', '--show-toplevel'],
+    probe = subprocess.run(['git', '-C', str(ancestor), 'rev-parse', '--git-dir'],
                            capture_output=True, text=True)
     if probe.returncode == 0:
         raise ValueError('output must be outside Git, including ignored work/ directories')

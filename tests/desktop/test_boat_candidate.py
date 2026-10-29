@@ -53,8 +53,16 @@ class CandidateContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            for suffix in ('work/ignored/result', '.git/result'):
+                with self.subTest(suffix=suffix), self.assertRaises(ValueError):
+                    candidate.prepare_output(root / suffix)
+
+    def test_output_rejects_bare_repositories(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(['git', 'init', '--bare', '-q', str(root)], check=True)
             with self.assertRaises(ValueError):
-                candidate.prepare_output(root / 'work/ignored/result')
+                candidate.prepare_output(root / 'result')
 
     def test_output_is_private_and_does_not_overwrite(self):
         with tempfile.TemporaryDirectory() as temporary:
