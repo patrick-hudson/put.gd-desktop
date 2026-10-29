@@ -316,7 +316,7 @@ private slots:
   QCOMPARE(state()["acquires"].toInt(),before);
   source.setRegionScreenshotFirst(false);PayloadResult live;bool liveDone=false;
   source.acquire("region",{},[&](PayloadResult value){live=std::move(value);liveDone=true;});PUTGD_TRY_VERIFY(liveDone);
-  QVERIFY(live.error.code!="helper_outdated");QCOMPARE(state()["acquires"].toInt(),before+1);QCOMPARE(state()["regionMode"].toString(),QString());
+  QVERIFY2(!live.error,qPrintable(live.error.code+": "+live.error.message));QCOMPARE(live.payload.bytes,QByteArray("x"));QCOMPARE(state()["acquires"].toInt(),before+1);QCOMPARE(state()["regionMode"].toString(),QString());
   stopFixture();PUTGD_TRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());PUTGD_TRY_VERIFY(helperAvailable(source));QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());
  }
  void ownerReplacementRegistersLatestPid(){
