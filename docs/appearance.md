@@ -86,7 +86,8 @@ and `selected` in both schemes, the accent (focus rings) and icon colour meet
 Colours that are not theme colours stay fixed: the brand mark, user content
 (screenshots, annotation colours, redaction black), the custom-colour
 rainbow swatch, the on-screen region selection ring and the scrim behind a
-video poster's play glyph.
+video poster's play glyph. Region selectors draw no scrim (#629); their hint pill and
+size label use `surfaceRaised`, `borderStrong` and `text` from the current scheme.
 
 ## Recording overlays
 
