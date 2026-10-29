@@ -9,6 +9,9 @@
 #include <QMenu>
 #include <QWidgetAction>
 #include <QTextDocument>
+#include <QTextBlock>
+#include <QTextLayout>
+#include <QAbstractTextDocumentLayout>
 #include <QDropEvent>
 #include <QFileInfo>
 #include <QMimeData>
@@ -49,13 +52,28 @@ void orderNavigation(Graphite::WindowHeader* header,QWidget* tabs_,const QList<Q
  QList<QWidget*> content;auto* next=last->nextInFocusChain();while(next!=last){if(next!=header->menuButton()&&next!=tabs_&&!header->isAncestorOf(next)&&!band_->isAncestorOf(next)&&next->focusPolicy()!=Qt::NoFocus)content.append(next);next=next->nextInFocusChain();}
  for(auto* control:content){QWidget::setTabOrder(last,control);last=control;}header->chromeAfter(last);
 }
+QString outputSpan(const QString& text,const QFont& font,const QColor& color){return "<span style=\"font-family:'"+font.family()+"';font-size:"+QString::number(font.pixelSize())+"px;font-weight:"+QString::number(font.weight())+";color:"+color.name()+"\">"+text+"</span>";}
+// One document owns both the popup's measurements and its painted text.
+class OutputLabel final:public QLabel {
+public:
+ explicit OutputLabel(QWidget* parent):QLabel(parent){document_.setDocumentMargin(0);document_.setDefaultFont(Graphite::font());setFocusPolicy(Qt::NoFocus);}
+ int measure(const QString& html){document_.setHtml(html);document_.setTextWidth(-1);return qCeil(document_.idealWidth());}
+ QString wrap(const QStringList& segments,const QFont& font,const QColor& color,int width){QStringList lines;QString line;for(const auto& segment:segments){const auto joined=line.isEmpty()?segment:line+" · "+segment;if(!line.isEmpty()&&measure(outputSpan(joined,font,color))>width){lines.append(line);line.clear();}if(!line.isEmpty())line+=" · ";line+=segment;}if(!line.isEmpty())lines.append(line);return outputSpan(lines.join("<br>"),font,color);}
+ void fit(const QString& html,int width){setText(html);document_.setHtml(html);document_.setTextWidth(width);setFixedSize(width,qCeil(document_.size().height()));int lines=0;for(auto block=document_.begin();block.isValid();block=block.next())lines+=block.layout()->lineCount();setProperty("renderedLines",lines);}
+ int heightForWidth(int)const override{return height();}
+protected:
+ void paintEvent(QPaintEvent*)override{QPainter painter(this);document_.drawContents(&painter);}
+private:QTextDocument document_;
+};
 // One measured grid keeps the default and its exceptions together.
 void populateOutputRows(QMenu* menu){
  auto* action=menu->findChild<QWidgetAction*>("captureOutputRows");auto* body=action->defaultWidget();auto* grid=qobject_cast<QGridLayout*>(body->layout());while(auto* item=grid->takeAt(0)){delete item->widget();delete item;}
  QList<QAction*> rows{menu->findChild<QAction*>("captureOutputDefault")};for(const auto& name:Settings::presentationOrder())if(auto* entry=menu->findChild<QAction*>("captureOutputDetail"+name);entry->isVisible())rows.append(entry);
- const auto bodyFont=Graphite::font(),metaFont=Graphite::font(Graphite::Type::technical);int natural=0;for(auto* entry:rows){natural=qMax(natural,QFontMetrics(bodyFont).horizontalAdvance(entry->text().section(": ",0,0)));natural=qMax(natural,QFontMetrics(metaFont).horizontalAdvance(entry->text().section(": ",1)));}const int inset=space(Space::m),width=qBound(Graphite::scaled(280),natural+2*inset,Graphite::scaled(480)),room=width-2*inset;int row=0;
+ const auto bodyFont=Graphite::font(),metaFont=Graphite::font(Graphite::Type::technical);QList<OutputLabel*> labels;int natural=0;
+ for(auto* entry:rows){auto* label=new OutputLabel(body);labels.append(label);natural=qMax(natural,label->measure(outputSpan(entry->text().section(": ",0,0).toHtmlEscaped(),bodyFont,Theme::current().text)+"<br>"+outputSpan(entry->text().section(": ",1).toHtmlEscaped(),metaFont,Theme::current().textSecondary)));}
+ const int inset=space(Space::m),width=qBound(Graphite::scaled(280),natural+2*inset,Graphite::scaled(480)),room=width-2*inset;int row=0,index=0;
  for(auto* entry:rows){if(row==1){auto* caption=Graphite::label("Exceptions","meta",body);caption->setObjectName("captureOutputExceptions");caption->setContentsMargins(0,space(Space::s),0,0);grid->addWidget(caption,row++,0);}
-  auto* label=new QLabel(body);label->setObjectName(entry->objectName()+"Text");label->setTextFormat(Qt::RichText);label->setWordWrap(true);label->setFocusPolicy(Qt::NoFocus);VisualStyle::role(label,"secondary");QStringList segments;for(const auto& segment:entry->text().section(": ",1).split(" · "))segments.append(segment.toHtmlEscaped());const auto names=entry->text().section(": ",0,0);const auto html="<span style=\"font-size:"+QString::number(bodyFont.pixelSize())+"px;color:"+Theme::current().text.name()+"\">"+Graphite::separatedLines({names.toHtmlEscaped()},bodyFont,room)+"</span><br><span style=\"font-size:"+QString::number(metaFont.pixelSize())+"px;color:"+Theme::current().textSecondary.name()+"\">"+Graphite::separatedLines(segments,metaFont,room)+"</span>";label->setText(html);label->setAccessibleName(entry->text());QTextDocument measured;measured.setDocumentMargin(0);measured.setDefaultFont(label->font());measured.setHtml(html);measured.setTextWidth(room);label->setFixedSize(room,qMax(qCeil(measured.size().height()),label->heightForWidth(room)));grid->addWidget(label,row++,0);
+  auto* label=labels[index++];label->setObjectName(entry->objectName()+"Text");QStringList segments;for(const auto& segment:entry->text().section(": ",1).split(" · "))segments.append(segment.toHtmlEscaped());const auto names=entry->text().section(": ",0,0);const auto html=label->wrap({names.toHtmlEscaped()},bodyFont,Theme::current().text,room)+"<br>"+label->wrap(segments,metaFont,Theme::current().textSecondary,room);label->fit(html,room);label->setAccessibleName(entry->text());grid->addWidget(label,row++,0);
  }body->setFixedWidth(width);grid->activate();
 }
 class OutputButton final:public QToolButton {
