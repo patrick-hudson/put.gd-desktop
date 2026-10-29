@@ -264,7 +264,7 @@ private slots:
   // A Shift-drag in the left margin draws nothing, not a square on the image.
   drag({-30,50},{-10,150},Qt::ShiftModifier);QVERIFY(doc.shapes().isEmpty());
   // A square drawn up and left still starts at the press point.
-  drag({390,290},{100,200},Qt::ShiftModifier);QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().rect,QRect(100,0,290,290));
+  drag({390,290},{100,200},Qt::ShiftModifier);QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().rect,QRect(100,0,291,291));
   // An arrow head left of a later crop keeps its x when resized vertically.
   Shape arrow;arrow.kind=Shape::Kind::Arrow;arrow.from={150,50};arrow.to={60,80};const auto id=doc.add(arrow);
   QVERIFY(doc.setCrop(QRect(100,0,200,150)));canvas.setTool(Tool::Select);canvas.documentChanged();canvas.select(id);
@@ -285,6 +285,12 @@ private slots:
   QMouseEvent inward(QEvent::MouseMove,QPointF(edge+38,400),canvas.mapToGlobal(QPointF(edge+38,400)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&inward);
   QTest::mouseRelease(&canvas,Qt::LeftButton,{},QPoint(edge+38,400));
   QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().rect.right(),399);
+  // At 4x a Shift-drag half a pixel left and 50 down squares leftward and covers
+  // every pixel reached: image y 133.5 to 183.5 touches 51 rows.
+  QTest::mousePress(&canvas,Qt::LeftButton,Qt::ShiftModifier,QPoint(edge-157,250));
+  QMouseEvent square(QEvent::MouseMove,QPointF(edge-159,450),canvas.mapToGlobal(QPointF(edge-159,450)),Qt::NoButton,Qt::LeftButton,Qt::ShiftModifier);QApplication::sendEvent(&canvas,&square);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,Qt::ShiftModifier,QPoint(edge-159,450));
+  QCOMPARE(doc.shapes().size(),2);QCOMPARE(doc.shapes().last().rect,QRect(310,133,51,51));
  }
  void textToolDragsLabelsAndClicksToEdit(){
   EditDocument doc(noise({400,300},12));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));

@@ -410,17 +410,19 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
   if(shape.kind==Shape::Kind::Arrow)shape.to=QPoint(int(std::lround(end.x())),int(std::lround(end.y())));
   else{
    const auto from=inside(start,bounds);
-   // A drag wholly in one margin pins both ends to the same edge; release
-   // discards the empty box rather than keeping a sliver on the image.
-   auto pinned=[](double a,double b,double low,double high){return a==b&&(a==low||a==high);};
-   if(pinned(from.x(),end.x(),bounds.left(),bounds.left()+bounds.width())||pinned(from.y(),end.y(),bounds.top(),bounds.top()+bounds.height()))shape.rect=QRect();
+   // A drag wholly in one margin is discarded rather than kept as a sliver
+   // on the image's edge.
+   auto beyond=[](double a,double b,double low,double high){return (a<low&&b<low)||(a>high&&b>high);};
+   if(beyond(start.x(),now.x(),bounds.left(),bounds.left()+bounds.width())||beyond(start.y(),now.y(),bounds.top(),bounds.top()+bounds.height()))shape.rect=QRect();
    else if(event->modifiers()&Qt::ShiftModifier){
-    // The square grows from the press point toward the pointer, as far as the image allows.
-    const QPointF corner(std::floor(from.x()),std::floor(from.y()));const double dx=end.x()-corner.x(),dy=end.y()-corner.y();
-    const double roomX=dx<0?corner.x()-bounds.left():bounds.left()+bounds.width()-corner.x();
-    const double roomY=dy<0?corner.y()-bounds.top():bounds.top()+bounds.height()-corner.y();
-    const double side=std::floor(std::min({std::max(std::abs(dx),std::abs(dy)),roomX,roomY}));
-    shape.rect=side<1?QRect():boxFrom(corner,corner+QPointF(dx<0?-side:side,dy<0?-side:side));
+    // The square grows from the pressed pixel toward the pointer and covers
+    // every pixel the pointer reached, as far as the image allows.
+    const int px=std::clamp(int(std::floor(start.x())),bounds.left(),bounds.right()),py=std::clamp(int(std::floor(start.y())),bounds.top(),bounds.bottom());
+    const bool right=now.x()>=start.x(),down=now.y()>=start.y();
+    const int reachX=right?int(std::ceil(end.x()))-px:px-int(std::floor(end.x()))+1,reachY=down?int(std::ceil(end.y()))-py:py-int(std::floor(end.y()))+1;
+    const int roomX=right?bounds.right()-px+1:px-bounds.left()+1,roomY=down?bounds.bottom()-py+1:py-bounds.top()+1;
+    const int side=std::min({std::max({reachX,reachY,1}),roomX,roomY});
+    shape.rect=QRect(right?px:px-side+1,down?py:py-side+1,side,side);
    }else shape.rect=boxFrom(from,end).intersected(bounds);
   }
  }else if(drag_==Drag::Move){const auto d=containedMove(shape,delta,bounds);shape.rect.translate(d);shape.from+=d;shape.to+=d;}
