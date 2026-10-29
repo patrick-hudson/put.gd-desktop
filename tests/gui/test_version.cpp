@@ -15,6 +15,8 @@
 #include <QToolButton>
 #include <QStyle>
 #include <QTextEdit>
+#include <QTextBlock>
+#include <QTextLayout>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QScreen>
@@ -85,7 +87,7 @@ private slots:
   QVERIFY2(dialog.height()<=dialog.maximumFitHeight(),qPrintable(QString("Height %1 exceeds %2").arg(dialog.height()).arg(dialog.maximumFitHeight())));QCOMPARE(dialog.maximumFitHeight(),qMin(Graphite::scaled(600),available.height()-2*Graphite::space(Graphite::Space::xl)));for(const auto* name:{"buildCommit","build_gitTree"}){auto* hash=dialog.findChild<QTextEdit*>(name);QCOMPARE(hash->toPlainText().size(),12);QVERIFY(hash->toolTip().size()>12);QCOMPARE(hash->accessibleDescription(),hash->toolTip());QCOMPARE(hash->font().family(),Graphite::monoFamily());}QCOMPARE(dialog.findChild<QTextEdit*>("build_commitCount")->font().family(),Graphite::uiFamily());
   auto* card=dialog.findChild<QWidget*>("aboutBuildDetails");QVERIFY(card->isVisible());int captionLeft=-1,valueLeft=-1;
   for(auto* value:card->findChildren<QTextEdit*>()){
-   QCOMPARE(value->wordWrapMode(),QTextOption::WrapAnywhere);QCOMPARE(value->horizontalScrollBar()->maximum(),0);QVERIFY(value->height()>=value->heightForWidth(value->width()));
+   QCOMPARE(value->wordWrapMode(),value->objectName()=="build_packageVersion"?QTextOption::WordWrap:QTextOption::WrapAnywhere);QCOMPARE(value->horizontalScrollBar()->maximum(),0);QVERIFY(value->height()>=value->heightForWidth(value->width()));
    if(valueLeft<0)valueLeft=value->x();QCOMPARE(value->x(),valueLeft);
    auto* caption=card->findChild<QLabel*>(value->objectName()+"Caption");QVERIFY(caption);if(captionLeft<0)captionLeft=caption->x();QCOMPARE(caption->x(),captionLeft);QVERIFY(caption->x()+caption->width()<=valueLeft);QCOMPARE(caption->y(),value->y());
   }
@@ -94,6 +96,14 @@ private slots:
   auto* scroll=dialog.findChild<QScrollArea*>("aboutBuildScroll");QVERIFY(scroll);if(dialog.height()<dialog.maximumFitHeight())QCOMPARE(scroll->verticalScrollBar()->maximum(),0);
   for(auto* name:{"copyBuildDetails","buildDetails","closeAbout"}){auto* button=dialog.findChild<QAbstractButton*>(name);QVERIFY(dialog.rect().contains(QRect(button->mapTo(&dialog,QPoint()),button->size())));}
  }
+ void packageVersionWrapsAtSeparatorsAndCopiesTheOriginal(){
+  VisualStyle::apply(*qApp);const QString package="26.1028.1702~dev.4182.ga40505cb7d78+local";AboutWindow dialog({{"version","26.1028.1702"},{"packageVersion",package}});dialog.show();dialog.findChild<QToolButton*>("buildDetails")->click();QApplication::processEvents();auto* value=dialog.findChild<QTextEdit*>("build_packageVersion");QVERIFY(value);QCOMPARE(value->wordWrapMode(),QTextOption::WordWrap);QCOMPARE(QString(value->toPlainText()).remove(QChar(0x2060)),QString(package).replace("~",QString("~\u200b")).replace("+",QString("\u200b+")));value->selectAll();value->copy();QCOMPARE(qApp->clipboard()->text(),package);QCOMPARE(value->toolTip(),package);for(auto block=value->document()->begin();block.isValid();block=block.next()){auto* layout=block.layout();for(int n=0;n+1<layout->lineCount();++n){const auto line=layout->lineAt(n);auto before=block.text().left(line.textStart()+line.textLength());auto after=block.text().mid(line.textStart()+line.textLength());before.remove(QChar(0x200b));before.remove(QChar(0x2060));after.remove(QChar(0x200b));after.remove(QChar(0x2060));QVERIFY2(before.endsWith("~")||after.startsWith("+"),qPrintable(before+" | "+after));}}
+ }
+
+ void selectableBuildValuesPreserveOriginalUnicode(){
+  const QString package="26.1028.1702~dev+gabc\u200bdef\u2060",provenance="supplied\u200b\u2060";AboutWindow dialog({{"version","26.1028.1702"},{"packageVersion",package},{"sourceProvenance",provenance}});dialog.show();dialog.findChild<QToolButton*>("buildDetails")->click();QApplication::processEvents();for(const auto& pair:QList<QPair<QString,QString>>{{"build_packageVersion",package},{"build_sourceProvenance",provenance}}){auto* value=dialog.findChild<QTextEdit*>(pair.first);value->selectAll();value->copy();QCOMPARE(qApp->clipboard()->text(),pair.second);}
+ }
+
  void unknownBuildFactsUseSecondaryProse(){
   AboutWindow dialog({{"version","26.1028.1"},{"sourceProvenance","unknown"}});dialog.show();dialog.findChild<QToolButton*>("buildDetails")->click();QApplication::processEvents();for(const auto& name:{"buildCommit","buildState","build_sourceProvenance"}){auto* value=dialog.findChild<QTextEdit*>(name);QVERIFY(value);QCOMPARE(value->toPlainText(),QString("Unknown"));QCOMPARE(value->property("visualRole").toString(),QString("secondary"));QCOMPARE(value->font().family(),Graphite::uiFamily());}
  }
