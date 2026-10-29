@@ -186,24 +186,26 @@ const named = title.includes(e.name) || text.includes(e.name) ||
               basename===e.name;
 const visible = el => {const r=el.getBoundingClientRect();
   return r.width>0 && r.height>0 && getComputedStyle(el).visibility!=='hidden';};
-const media = [...document.querySelectorAll('img,video,canvas,embed,object')].some(el =>
+const painted = el => {
+  try { return el.width>0 && el.height>0 &&
+    el.getContext('2d').getImageData(0,0,el.width,el.height).data.some((v,i)=>i%4===3 && v>0); }
+  catch (_) { return false; }
+};
+const media = [...document.querySelectorAll('img,video,canvas')].some(el =>
   visible(el) && (el.tagName==='IMG' ? el.complete && el.naturalWidth>0 :
-  el.tagName==='VIDEO' ? el.readyState>=2 :
-  el.tagName==='CANVAS' ? el.width>0 && el.height>0 :
-  /pdf/.test(el.type || '')));
-const download = [...document.querySelectorAll('button,a,[role="button"]')].some(el =>
-  visible(el) && !el.disabled && /download/i.test(el.innerText || el.getAttribute('aria-label') || ''));
+  el.tagName==='VIDEO' ? el.readyState>=2 : painted(el)));
+// A Download button alone says nothing about decryption or completed bytes.
 const status = performance.getEntriesByType('navigation')[0]?.responseStatus || 0;
 const error = /^(404|403|500|AccessDenied|NoSuchKey|Error response)/i.test(text.trim()) ||
               /Problem loading page|Server Not Found|Error response|Access Denied/i.test(title);
-const content = e.kind==='proton' ? text.includes(e.name) && (media || download) :
+const content = e.kind==='proton' ? text.includes(e.name) && media :
                 (media || text.trim().length>0);
 const hostOK = e.url_host ? u.hostname===e.url_host :
                e.kind==='proton' ? /(^|\.)proton\.(me|ch)$/.test(u.hostname) : true;
 const matched = ['http:','https:'].includes(u.protocol) && hostOK && named &&
   title.length>0 && document.hasFocus() && innerWidth>=screen.width && innerHeight>=screen.height &&
   document.readyState==='complete' && status<400 && !error &&
-  content && (!e.preview || media || (e.kind==='proton' ? download : text.trim().length>0)) &&
+  content && (!e.preview || media || (e.kind!=='proton' && text.trim().length>0)) &&
   (!e.text || text.includes(e.text));
 // Keep only a title we can prove contains no URL path, fragment, or arbitrary
 // page-supplied token: the filename, when it is present in the actual title.
