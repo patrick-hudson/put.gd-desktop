@@ -122,7 +122,8 @@ bool kdeFrozenPixels(int fd,const QJsonArray& frames,QList<CaptureFrame>& layout
  struct Close { int fd; ~Close() { if(fd>=0) ::close(fd); } } owner{fd};
  if(fd<3 || frames.size()!=layout.size() || ::fcntl(fd,F_SETFD,FD_CLOEXEC)!=0) { error=frozenInvalid(); return false; }
  // Only a sealed memfd of exactly the announced size is read.
- if((::fcntl(fd,F_GET_SEALS)&frozenSeals)!=frozenSeals) { error=frozenInvalid(); return false; }
+ const int seals=::fcntl(fd,F_GET_SEALS);
+ if(seals<0 || (seals&frozenSeals)!=frozenSeals) { error=frozenInvalid(); return false; }
  qint64 total=0; QList<QSize> sizes;
  for(const auto& value:frames) {
   const auto row=value.toObject(); const auto native=row["native"].toArray();
