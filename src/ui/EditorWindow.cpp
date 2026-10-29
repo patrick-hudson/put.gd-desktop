@@ -99,6 +99,7 @@ bool integerIn(const QJsonValue& value,double minimum,double maximum,int& out){
 }
 
 EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(parent),doc_(doc){
+ RedesignTheme::apply(*this);
  setObjectName("putgdWindow");setWindowTitle("Edit image — put.gd");setWindowIcon(VisualStyle::icon("brand"));
  setAttribute(Qt::WA_DeleteOnClose,false);
  chooser_=new FileDialog(this);
@@ -282,8 +283,6 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  upload_=new QPushButton("Upload",uploadGroup);upload_->setObjectName("editorUpload");upload_->setIcon(VisualStyle::icon("upload"));upload_->setProperty("graphiteIconBase",QSize(20,20));upload_->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));VisualStyle::role(upload_,"primary");upload_->setToolTip("Upload the finished, sanitized image (Ctrl+Enter). The source file is not uploaded.");upload_->setAutoDefault(false);uploadRow->addWidget(upload_);footerGrid_->addWidget(uploadGroup,2,3);
  root->addWidget(footer);
 
- RedesignTheme::apply(*this);
-
  connect(tools_,&QButtonGroup::idClicked,this,[this](int id){selectTool(Tool(id));});
  connect(canvas_,&editor::EditorCanvas::toolRequested,this,[this](Tool tool){if(auto* button=toolButtons_.value(int(tool)))button->setChecked(true);refresh();});
  connect(canvas_,&editor::EditorCanvas::changed,this,&EditorWindow::refresh);
@@ -415,6 +414,8 @@ void EditorWindow::placeDestination(){
  const int slot=Graphite::scaled(Graphite::Metric::control);
  footerGrid_->setRowMinimumHeight(1,above?slot:0);document_->setMinimumHeight(slot);
  footerGrid_->removeWidget(document_);footerGrid_->addWidget(document_,above?1:2,0,1,above?4:1);
+ // Reflow the footer before its new row can squeeze the sharing controls.
+ footerGrid_->activate();layout()->activate();
  const bool feedback=saveFeedbackVisible_&&!busy_&&!savingCopy_;
  saveFeedback_->setVisible(feedback||!message_->isHidden());
  auto* result=findChild<QWidget*>("editorSaveResult");auto* actions=findChild<QWidget*>("editorSaveActions");
