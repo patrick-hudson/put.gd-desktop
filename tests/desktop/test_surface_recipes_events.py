@@ -97,7 +97,9 @@ class Fake(Context):
     def clipboard_text(self): return self.text
     def review(self, reason): self.actions.append(('review', reason))
     def cli(self, *args, **kw):
-        return {'returncode': 0, 'stdout': json.dumps({'ok': True, 'result': self.call(args[0])})}
+        reply = self.call(args[0], json.loads(args[1]) if len(args) > 1 else None)
+        envelope = reply if 'ok' in reply else {'ok': True, 'result': reply}
+        return {'returncode': 0 if envelope['ok'] else 1, 'stdout': json.dumps(envelope)}
     def mcp(self, method, arguments=None):
         self.actions.append(('mcp', method))
         return self.call('update.check' if method == 'check_for_updates' else 'update.status')

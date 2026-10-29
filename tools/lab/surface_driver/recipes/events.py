@@ -467,7 +467,11 @@ PYCLEAN'''.replace('__MOUNT__', repr(path))
 
 
 def _space_error(ctx: Context, method, params):
-    reply = ctx.call(method, params)
+    # call() raises on resident errors in the production driver. Keep the raw
+    # CLI envelope for this intentionally failing action, including its code.
+    response = ctx.cli(method, json.dumps(params))
+    ctx.expect(response['returncode'] in (0, 1), 'resident returned an action response')
+    reply = json.loads(response['stdout'])
     if reply.get('ok') is False:
         error = reply['error']
     else:
