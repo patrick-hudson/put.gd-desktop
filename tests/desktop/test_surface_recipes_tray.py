@@ -147,7 +147,7 @@ class FakeContext(Context):
         elif name == 'Local save needs attention':
             self.latch = False
             self.menu = False
-            self.target = 'History'
+            self.target = 'Capture'
         elif name == 'Save diagnostics for this upload':
             for n in self.notices:
                 n['buttons'] = []

@@ -398,8 +398,10 @@ def local_failure_attention(ctx):
                    'local retry retains operation identity and saves each item')
         _node(ctx, 'Local save needs attention', 'menu item')
         _press(ctx, 'Local save needs attention', 'menu item')
-        ctx.expect(bool(ctx.call('ui.history', {'action': 'inspect'})), 'attention click opens History')
-        _page(ctx, 'History')
+        # Unlike the failed-upload branch, local-save attention goes directly
+        # to Settings → Capture → Local copies via actionRecovery.
+        ctx.wait(lambda: ctx.call('ui.viewState').get('settings', {}).get('section') == 1,
+                 'local-save attention opens Capture settings')
         _menu(ctx)
         try:
             ctx.expect(not _nodes(ctx, 'Local save needs attention', 'menu item'), 'attention click clears the latch')
@@ -522,12 +524,23 @@ def scroll_noop(ctx):
 @recipe('tray.icon-idle', desktop_drawn=True)
 def idle(ctx):
     _begin(ctx)
+    _menu(ctx)
+    for label in ('Local save needs attention', 'Destination needs attention',
+                  'Capture needs attention', 'Action needs attention'):
+        if _nodes(ctx, label, 'menu item'):
+            _press(ctx, label, 'menu item')
+            break
+    ctx.keys('Esc')
+    ctx.view('ui.show', {'view': 'settings'})
     ctx.frame('before')
     ctx.expect(all(o['state'] in TERMINAL for o in _recent(ctx)), 'resident has no active operation')
     _icon(ctx)
     _menu(ctx)
     try:
         ctx.expect(not _nodes(ctx, 'Cancel upload', 'menu item'), 'idle menu has no cancel-upload row')
+        ctx.expect(not any(_nodes(ctx, label, 'menu item') for label in (
+            'Local save needs attention', 'Destination needs attention',
+            'Capture needs attention', 'Action needs attention')), 'idle menu has no attention latch')
         ctx.frame('after')
         ctx.review('Saved panel frame needs glyph/tint review; tooltip hover and SNI pixel observation are not in Context')
     finally:
