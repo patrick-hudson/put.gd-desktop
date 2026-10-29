@@ -315,7 +315,7 @@ termination, oversize admission and a missing helper. `edit_operations_integrati
 checks that an uploaded edit leaves no unredacted pixels in any retained raster,
 that cancellation stores nothing, file sources, single-session raising and
 restart recovery. Synthetic screenshots of the themed window are produced by
-`putgd-redesign-preview` (`20-`–`25-editor-*.png`). Offscreen results are not
+`putgd-ui-catalog` (`20-`–`25-editor-*.png`). Offscreen results are not
 desktop acceptance. Graphical, memory and MCP evidence is in the
 [2026-10-17 receipt](evidence/2026-10-17-issue51-edit-and-upload.md), and the
 lab drivers are described in the [VM lab guide](vm-lab.md#editor-acceptance-drivers).

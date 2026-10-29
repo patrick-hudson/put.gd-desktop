@@ -61,6 +61,9 @@ so a change to them doesn't select `linux` and `portable`.
 every hosted Python suite once through `tools/ci/contracts.py`:
 
 - `release`: `tests/ci`, `tests/releases` and the Python suites in `tests/unit`.
+  `tests/ci/test_ui_names.py` fails on the retired UI names (Graphite,
+  `VisualStyle`, `RedesignTheme`, redesign, `PUTGD_PREVIEW_`) in code and build
+  inputs; see [the visual language](visual-language.md#shared-implementation).
 - `proton`: the helper source and redistribution suites in `tools/proton`.
 - `lab`: every `tests/desktop/test_*.py`, `tests/maintenance` and the UI-process
   benchmark contract. QEMU disk utilities are installed so overlay tests run.

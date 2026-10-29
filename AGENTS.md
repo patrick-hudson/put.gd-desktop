@@ -98,7 +98,7 @@ Follow that plan and `docs/recording.md`; finalized files enter the shared
 pipeline only through the explicit Upload action.
 The user-approved Edit & upload image editor (#51) is the still-image editing feature; its
 contract, privacy boundaries and agent control are in `docs/image-editor.md`.
-New windows reuse the redesign theme and IconArt glyphs, and every interactive
+New windows reuse the app style (`putgd::Ui`, `src/ui/Ui.h`) and IconArt glyphs, and every interactive
 capability stays controllable through session methods, `putgd-cli` and the MCP helper.
 
 Agent source, workflow and acceptance maps are in `docs/agents.md`. The optional Python

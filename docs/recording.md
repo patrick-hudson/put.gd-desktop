@@ -293,7 +293,7 @@ a green Record button before capture and a red Stop button during it,
 the retained time, the target, a system-audio checkbox and a format/codec
 choice (editable only before Record; GIF/WebP disable audio), and Record,
 Pause/Resume, Stop and Cancel. From Record on the checkbox is locked but still
-shows whether the clip records system audio: ticked with the redesign theme's
+shows whether the clip records system audio: ticked with the app theme's
 check on a muted fill, or empty, with a tooltip saying which (#120; before,
 the locked box was drawn empty either way). Its actions run in the helper and are reported
 to the resident as events (`started`, `paused`, `resumed`, `stopped` with
