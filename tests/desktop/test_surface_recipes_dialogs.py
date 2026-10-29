@@ -38,6 +38,7 @@ class FakeContext(Context):
         self.corrupt_choice = False
         self.cancel_mutates = False
         self.witness_fails = False
+        self.fallback_during_prepare = False
 
     def fixture(self, name):
         if name.startswith('file-dialog-'):
@@ -90,6 +91,11 @@ class FakeContext(Context):
             self.field = params.get('field', 'root')
             mode = 'open' if self.owner == 'editImage' else 'folder' if self.owner in ('outputFolder', 'diagnosticsFolder') else 'save'
             self.dialog = {'open': True, 'backend': self.backend, 'mode': mode, 'title': 'Synthetic chooser', 'last': self.dialog['last']}
+            self.prepare_inspects = 0
+        elif action == 'inspect' and self.dialog['open']:
+            self.prepare_inspects += 1
+            if self.fallback_during_prepare and self.prepare_inspects > 1:
+                self.dialog.update(backend='fallback', fallbackReason='portal_failed')
         elif action == 'cancel' and self.dialog['open']:
             self._finish('cancelled')
         return copy.deepcopy(self.dialog)
@@ -221,6 +227,13 @@ class DialogRecipes(unittest.TestCase):
         ctx = FakeContext('portal')
         ctx.no_accessibility = True
         with self.assertRaisesRegex(RecipeFailed, 'accessible and drawn'):
+            dialogs.output_folder_portal(ctx)
+        self.assertFalse(ctx.dialog['open'])
+
+    def test_portal_fallback_while_waiting_for_draw_is_blocked(self):
+        ctx = FakeContext('portal')
+        ctx.fallback_during_prepare = True
+        with self.assertRaisesRegex(RecipeBlocked, 'Portal changed backend'):
             dialogs.output_folder_portal(ctx)
         self.assertFalse(ctx.dialog['open'])
 

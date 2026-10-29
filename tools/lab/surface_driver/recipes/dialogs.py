@@ -81,15 +81,20 @@ def _ready(ctx, inspect, backend, mode):
                     '; fallbackReason=' + str(state.get('fallbackReason')))
     ctx.expect(state['mode'] == mode, 'chooser has the requested mode')
     if backend == 'portal':
-        query = {'name': state['title']}
-        ctx.wait(lambda: ctx.accessible(query), 'desktop chooser is accessible and drawn')
+        def drawn():
+            current = inspect()
+            if current.get('backend') != backend:
+                ctx.blocked('Portal changed backend before becoming ready; fallbackReason=' +
+                            str(current.get('fallbackReason')))
+            return ctx.accessible({'name': current['title']})
+        ctx.wait(drawn, 'desktop chooser is accessible and drawn')
     else:
         ctx.geometry('putgdFileDialog')
     _frame(ctx, 'dialog-ready', backend, mode)
     return state
 
 
-def _input(ctx, backend, path, mode):
+def _input(ctx, backend, path, mode, inspect):
     if backend == 'fallback':
         ctx.click('fileNameEdit', window='putgdFileDialog')
         ctx.keys('Ctrl+A')
@@ -100,9 +105,9 @@ def _input(ctx, backend, path, mode):
     if backend == 'portal':
         # A title-only AT-SPI witness is insufficient: inspect the typed path
         # before Return can navigate, accept, or trigger an overwrite prompt.
-        ctx.expect(ctx.accessible({'text': path}), 'desktop chooser contains the typed path')
+        ctx.wait(lambda: ctx.accessible({'text': path}), 'desktop chooser contains the typed path')
     ctx.keys('Return')
-    if backend == 'portal' and mode == 'folder':
+    if backend == 'portal' and mode == 'folder' and inspect()['open']:
         ctx.keys(*ctx.profile['dialogs']['backends'][backend]['folder_accept_keys'])
 
 
@@ -128,7 +133,7 @@ def _exercise(ctx, backend, mode, request, consumer, path, *, mcp=False):
             command('cancel')
         command('open')
         _ready(ctx, lambda: command('inspect'), backend, mode)
-        _input(ctx, backend, path, mode)
+        _input(ctx, backend, path, mode, lambda: command('inspect'))
         chosen = ctx.wait(lambda: (s if not s['open'] else None)
                           if (s := command('inspect')) else None, 'chooser accepted')
         ctx.expect(chosen['last']['status'] == 'chosen', 'resident reports a choice')
