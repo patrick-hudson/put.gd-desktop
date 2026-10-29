@@ -437,6 +437,14 @@ class HistoryRecipeTests(unittest.TestCase):
 
         history._open(BusyContext())
 
+    def test_catalog_normalization_uses_real_edge_drag_from_profile(self):
+        ctx = FakeContext()
+        ctx.profile = {'history_catalog_size': [1440, 960]}
+        history._open(ctx)
+        self.assertEqual([ctx.window['width'], ctx.window['height']], [1440, 960])
+        self.assertTrue(any(e[0] == 'drag' for e in ctx.events))
+        self.assertTrue({'setup-before-resize', 'setup-after-resize'} <= {f[0] for f in ctx.frames})
+
     def test_no_mutation_calls_used_as_input(self):
         ctx = FakeContext()
         with self.assertRaisesRegex(AssertionError, 'instead of input'):

@@ -8,5 +8,9 @@
     "historyExpandedPreview": "Preview \u2014",
     "historyCancelAllConfirmation": "Cancel all uploads",
     "confirmAction": "^(Delete from destination|Clear history records|Clear temporary files)$"
-  }
+  },
+  "history_catalog_size": [
+    1440,
+    960
+  ]
 }
