@@ -249,6 +249,7 @@ private:
     void refreshStatus();
     void placeDestination();
     void placeErrorDetails();
+    void placeFooterStatus();
     int destinationContextWidth() const;
     bool footerFits(int width) const;
     bool destinationFitsHeader(int width) const;
@@ -300,6 +301,8 @@ private:
     QSize availableReviewSize() const;
     void showAdvice(bool formatTips = false);
     bool compactStatus_ = false, footerError_ = false;
+    // The error left the status band for the footer's status slot, so the blur warning stays.
+    bool errorInFooter_ = false;
     QPointer<QWidget> adviceDialog_;
     bool minimumPending_ = false, initialFitDone_ = false;
     // The Trim row, the wrapping Mask row (its kinds, timing) and the transport row.

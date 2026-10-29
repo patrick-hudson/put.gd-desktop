@@ -1861,7 +1861,7 @@ void ReviewWindow::setEdit(const RecordingEdit& edit) {
     QStringList before;
     for (const auto& mask : edit_.masks) before.append(mask.id);
     // An accepted edit answers a refusal or an earlier result in the status row.
-    if (edit.revision != edit_.revision && !exporting_) message_ = {};
+    if (edit.revision != edit_.revision && !exporting_) { message_ = {}; errorInFooter_ = false; }
     maskNames_->observe(edit.masks);
     edit_ = edit;
     for (const auto& mask : edit_.masks) if (!before.contains(mask.id)) selectedMask_ = mask.id;
@@ -1893,6 +1893,7 @@ void ReviewWindow::setExporting(bool exporting, const QString& label) {
     for (auto* w : std::initializer_list<QWidget*>{upload_, save_, cancel_, trimStart_, trimEnd_, resetTrim_, addMask_, removeMask_, maskOptions_, maskStart_, maskEnd_, strength_, masks_, format_, play_, speed_, timeline_, view_}) w->setEnabled(!exporting);
     // Progress while it runs, then the result (a failure arrives through showError).
     message_ = label.isEmpty() ? StatusEntry{} : StatusEntry{label, exporting ? QStringLiteral("info") : QStringLiteral("success"), {}};
+    errorInFooter_ = false;
     if (!exporting && !label.isEmpty()) message_.actions = {{QStringLiteral("Dismiss"), QJsonObject{{"action", "dismissStatus"}}}};
     refreshLabels();
 }
@@ -1911,6 +1912,7 @@ void ReviewWindow::setSavedCopy(const QString& path, quint64 revision, const Rec
 }
 void ReviewWindow::showError(const QString& message, bool retryExport) {
     message_ = message.isEmpty() ? StatusEntry{} : StatusEntry{message, QStringLiteral("error"), {{QStringLiteral("Dismiss"), QJsonObject{{"action", "dismissStatus"}}}}};
+    errorInFooter_ = false;
     if (!message.isEmpty() && retryExport) message_.actions.prepend({QStringLiteral("Try again"), QJsonObject{{"action", "retryExport"}}});
     refreshLabels();
 }
@@ -1990,8 +1992,9 @@ void ReviewWindow::refreshLabels() {
         const QString startsAt = QStringLiteral("Starts at %1").arg(timeText(mask->start));
         static_cast<MaskInterval*>(maskActive_)->setInterval(QStringLiteral("%1–%2").arg(timeText(mask->start), timeText(mask->end)), at < mask->start ? startsAt : at >= mask->end ? outside : QString());
     } else static_cast<MaskInterval*>(maskActive_)->setInterval(QStringLiteral("No mask selected"), {});
-    // Guidance starts only with Add blur, never with selection or a restored edit.
-    const bool warning = anyBlur && blurTipShown_ && !blurTipDismissed_ && message_.tone != "error";
+    // Guidance starts only with Add blur, never with selection or a restored edit; an
+    // error below the frame doesn't hide it (council 17).
+    const bool warning = anyBlur && blurTipShown_ && !blurTipDismissed_;
     retained_->setFixedWidth(RetainedInterval::measuredWidth(retained_->text()));
     // Reserve each row's own widest content, independent of mask selection.
     int intervalWidth = QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(QStringLiteral("—"));
@@ -2101,7 +2104,10 @@ void ReviewWindow::refreshStatus() {
     statusContent_ = nullptr;
     // Later: a status action's own click may be what changed the row.
     while (auto* item = statusLines_->takeAt(0)) { if (auto* w = item->widget()) { w->hide(); w->deleteLater(); } delete item; }
+    int bands = 0;
     for (const auto& entry : entries) {
+        if (errorInFooter_ && entry.tone == "error") continue;
+        ++bands;
         const auto tone = entry.tone == "error" ? Graphite::Banner::Tone::Error : entry.tone == "warning" ? Graphite::Banner::Tone::Warning : entry.tone == "success" ? Graphite::Banner::Tone::Success : Graphite::Banner::Tone::Info;
         auto* band = new Graphite::Banner(tone, {}, statusRow_);
         band->setObjectName("statusLine");
@@ -2178,10 +2184,21 @@ void ReviewWindow::refreshStatus() {
         row->activate();
     }
     placeDestination();
-    statusRow_->setVisible(!entries.isEmpty());
+    statusRow_->setVisible(bands > 0);
     statusLines_->invalidate();
     statusLines_->activate();
     layout()->activate();
+    // The recovery gate holds a 0.45 frame share; below it the error yields its band
+    // to the footer's status slot rather than hide the blur warning.
+    const auto frame = view_->imageRect();
+    const bool crowded = isVisible() && double(frame.width()) * frame.height() / std::max(1, width() * height()) < 0.46;
+    if (!errorInFooter_ && bands && message_.tone == "error" && static_cast<MaskInterval*>(maskActive_)->warningButton()->isVisibleTo(this)
+        && !findChild<QWidget*>("reviewActions")->layout()->property("singleRow").toBool() && (crowded || minimumSizeHint().height() > availableReviewSize().height())) {
+        errorInFooter_ = true;
+        shownStatus_.clear();
+        refreshStatus();
+        return;
+    }
     updateMinimum();
 }
 void ReviewWindow::resizeEvent(QResizeEvent* event) {
@@ -2564,8 +2581,39 @@ void ReviewWindow::placeDestination() {
     if (destinationMenu_->height() != height) { destinationMenu_->setFixedHeight(height); grid->activate(); }
     header_->setLeading(inHeader ? destinationSummary : nullptr);
     header_->layout()->activate();
+    placeFooterStatus();
     placeErrorDetails();
     destinationMenu_->update();
+}
+// Council 17 keeps the blur warning painted; when it and the error band can't both fit,
+// the error takes the footer's status slot (in place of the export facts) with Details….
+void ReviewWindow::placeFooterStatus() {
+    const auto error = std::find_if(shownStatus_.cbegin(), shownStatus_.cend(), [](const auto& entry) { return entry.tone == "error"; });
+    const bool footer = errorInFooter_ && error != shownStatus_.cend();
+    auto* metadataRow = static_cast<QHBoxLayout*>(findChild<QWidget*>("reviewMetadata")->layout());
+    const auto text = footer ? error->text : QStringLiteral("Silent preview");
+    const bool was = playbackStatus_->property("footerError").toBool();
+    if (playbackStatus_->text() != text || was != footer) {
+        playbackStatus_->setText(text);
+        playbackStatus_->setAccessibleName(text);
+        playbackStatus_->setProperty("footerError", footer);
+        playbackStatus_->setProperty("feedbackTone", footer ? QStringLiteral("error") : QString());
+        playbackStatus_->style()->unpolish(playbackStatus_);
+        playbackStatus_->style()->polish(playbackStatus_);
+        playbackStatus_->setFixedHeight(footer ? playbackStatus_->fontMetrics().height() : playbackStatus_->fontMetrics().tightBoundingRect(text).height());
+    }
+    if (!footer) {
+        // Back from the slot: place the footer's own facts again.
+        if (was) { errorDetails_->hide(); errorDetails_->setParent(this); findChild<QWidget*>("reviewActions")->layout()->setProperty("placed", false); placeDestination(); }
+        return;
+    }
+    for (auto* widget : std::initializer_list<QWidget*>{exportAudio_, findChild<QLabel*>("reviewAudioSeparator"), findChild<QLabel*>("reviewDraftSeparator"), findChild<QLabel*>("draftState")}) widget->hide();
+    playbackStatus_->show();
+    previewIndicator_->setVisible(true);
+    findChild<QWidget*>("previewMutedBalance")->setVisible(true);
+    if (metadataRow->indexOf(errorDetails_) < 0) metadataRow->insertWidget(metadataRow->indexOf(playbackStatus_) + 1, errorDetails_, 0, Qt::AlignVCenter);
+    errorDetails_->setFixedHeight(textControlHeight(errorDetails_));
+    errorDetails_->show();
 }
 void ReviewWindow::placeErrorDetails() {
     if (!errorDetails_ || errorDetails_->isHidden() || !statusContent_) return;
@@ -2714,6 +2762,7 @@ ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
     }
     if (action == "dismissStatus") {
         message_ = {};
+        errorInFooter_ = false;
         if (adviceDialog_) { adviceDialog_->close(); adviceDialog_.clear(); }
         refreshLabels();
         return done();

@@ -368,7 +368,8 @@ private slots:
         QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
         window.showError("Export failed: disk full");
         QCOMPARE(window.inspect()["statusRow"].toArray().size(), 1);
-        QVERIFY(!visible());
+        // Council 17: the error doesn't hide the warning.
+        QVERIFY(visible());
         QVERIFY(buttonNamed(window, "Try again"));
         window.drive({{"action", "dismissStatus"}});
         QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
@@ -2423,6 +2424,28 @@ private slots:
         QTest::newRow("16:9") << QSize(1280, 720);
         QTest::newRow("16:10") << QSize(960, 600);
     }
+    // Final read (council 17): an error used to hide the selected blur's warning. With
+    // room, the warning line and the error band stack; the footer keeps its facts.
+    void blurWarningStaysPaintedWithAnError() {
+        auto o = options(); o.audioRecorded = true;
+        ReviewWindow window(o, config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
+        window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
+        window.showError("Export failed: the disk holding the private recording is full");
+        QApplication::processEvents();
+        QVERIFY(window.inspect()["blurGuidance"].toObject()["visible"].toBool());
+        QVERIFY(window.findChild<QWidget*>("reviewBlurChip")->isVisible());
+        QVERIFY(window.findChild<QWidget*>("statusRow")->isVisible());
+        QCOMPARE(window.findChild<QLabel*>("playbackStatus")->text(), QString("Silent preview"));
+        QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
+        QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
+        // Dismissing the error restores the footer's facts.
+        window.drive({{"action", "dismissStatus"}});
+        QVERIFY(!window.findChild<QWidget*>("statusRow")->isVisible());
+        QVERIFY(window.findChild<QWidget*>("reviewBlurChip")->isVisible());
+        QCOMPARE(window.findChild<QLabel*>("playbackStatus")->text(), QString("Silent preview"));
+    }
     void constrainedWorkspaceKeepsWarningsAndActionsReachable() {
         QFETCH(QSize, canvas);
         const auto font = QApplication::font();
@@ -2468,8 +2491,16 @@ private slots:
             qInfo("visible recovery frame share %.3f at %dx%d", window.inspect()["video"].toObject()["share"].toDouble(), window.width(), window.height());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             QVERIFY(!window.inspect()["status"].toString().contains(Graphite::blurWarningText()));
-            QVERIFY(!buttonNamed(window, "Use Redact"));
-            QVERIFY(!window.inspect()["blurGuidance"].toObject()["visible"].toBool());
+            // Final read (council 17): the error doesn't hide the selected blur's warning;
+            // both lines stack in the constrained window and stay inside it.
+            QVERIFY(window.inspect()["blurGuidance"].toObject()["visible"].toBool());
+            auto* chip = window.findChild<QWidget*>("reviewBlurChip");
+            QVERIFY(chip && chip->isVisible() && window.rect().contains(QRect(chip->mapTo(&window, QPoint()), chip->size())));
+            // Here both don't fit: the error takes the footer's status slot with Details….
+            QVERIFY(!window.findChild<QWidget*>("statusRow")->isVisible());
+            QCOMPARE(window.findChild<QLabel*>("playbackStatus")->text(), QString("Disk is full. Free up space, then try again."));
+            QVERIFY(window.findChild<QWidget*>("reviewFooter")->isAncestorOf(window.findChild<QWidget*>("reviewErrorDetails")));
+            QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
             QVERIFY(window.inspect()["errorDetails"].toObject()["visible"].toBool());
             QCOMPARE(window.inspect()["errorDetails"].toObject()["message"].toString(), failure);
             for (auto* w : window.findChildren<QWidget*>()) if (w->isVisible() && !w->isWindow())
