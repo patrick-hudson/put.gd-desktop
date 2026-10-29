@@ -20,7 +20,7 @@ class FakeContext(Context):
         self.backend = backend
         self.profile = {'dialogs': {'backends': {
             'portal': {'available': True, 'location_keys': ['Ctrl+L'], 'folder_accept_keys': ['Alt+S']},
-            'fallback': {'available': True, 'references': {'open': 'test-open', 'save': 'test-save', 'folder': 'test-folder'}},
+            'fallback': {'available': True, 'expected_reason': 'disabled', 'references': {'open': 'test-open', 'save': 'test-save', 'folder': 'test-folder'}},
         }}}
         self.document = {'archive': {'root': '/old', 'folders': dict.fromkeys(('images', 'videos', 'text', 'other'))}}
         self.package_folder = '/old-package'
@@ -93,6 +93,8 @@ class FakeContext(Context):
             self.field = params.get('field', 'root')
             mode = 'open' if self.owner == 'editImage' else 'folder' if self.owner in ('outputFolder', 'diagnosticsFolder') else 'save'
             self.dialog = {'open': True, 'backend': self.backend, 'mode': mode, 'title': 'Synthetic chooser', 'last': self.dialog['last']}
+            if self.backend == 'fallback':
+                self.dialog['fallbackReason'] = 'disabled'
             self.prepare_inspects = 0
         elif action == 'inspect' and self.dialog['open']:
             self.prepare_inspects += 1

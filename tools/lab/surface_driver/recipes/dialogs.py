@@ -78,6 +78,11 @@ def _ready(ctx, inspect, backend, mode):
     if state['backend'] != backend:
         ctx.blocked('Requested ' + backend + ', got ' + state['backend'] +
                     '; fallbackReason=' + str(state.get('fallbackReason')))
+    if backend == 'fallback':
+        expected = ctx.profile['dialogs']['backends'][backend]['expected_reason']
+        if state.get('fallbackReason') != expected:
+            ctx.blocked('Fallback launch did not apply the profile environment; reason=' +
+                        str(state.get('fallbackReason')), issue=671)
     ctx.expect(state['mode'] == mode, 'chooser has the requested mode')
     if backend == 'portal':
         def drawn():
