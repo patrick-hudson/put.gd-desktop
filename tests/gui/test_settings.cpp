@@ -193,12 +193,18 @@ private slots:
       // focus outlines, trailing glyphs and card borders.
       const QImage actual=toggle->grab().toImage();const qreal dpr=actual.devicePixelRatio();const QColor background=actual.pixelColor(qRound(2*dpr),actual.height()/2);
       QImage expected(actual.size(),QImage::Format_ARGB32_Premultiplied);expected.setDevicePixelRatio(dpr);expected.fill(background);const QColor ink=toggle->property("preferenceAddRow").toBool()?Theme::current().textSecondary:Theme::current().text;
-      const int trailing=toggle->property("preferenceAddRow").toBool()?toggle->iconSize().width()+Graphite::space(Graphite::Space::s):Graphite::scaled(24);
-      QPainter painter(&expected);Graphite::paintText(painter,QRect(inset,0,toggle->width()-2*inset-trailing,toggle->height()),toggle->text(),ink,Graphite::font());painter.end();
+      const bool addRow=toggle->property("preferenceAddRow").toBool();const int leading=addRow?toggle->iconSize().width()+Graphite::space(Graphite::Space::s):0,trailing=addRow?0:Graphite::scaled(24);
+      QPainter painter(&expected);if(addRow)toggle->icon().paint(&painter,QRect(inset,(toggle->height()-toggle->iconSize().height())/2,toggle->iconSize().width(),toggle->iconSize().height()));Graphite::paintText(painter,QRect(inset+leading,0,toggle->width()-2*inset-leading-trailing,toggle->height()),toggle->text(),ink,Graphite::font());painter.end();
       const auto contrast=[&](const QColor& c){return qAbs(c.red()-background.red())+qAbs(c.green()-background.green())+qAbs(c.blue()-background.blue());};
-      const auto first=[&](const QImage& image){for(int x=qCeil(2*dpr);x<image.width()/2;++x)for(int y=qCeil(2*dpr);y<image.height()-qCeil(2*dpr);++y)if(contrast(image.pixelColor(x,y))>=contrast(ink)/4)return x;return -1;};
+      const auto first=[&](const QImage& image,int from=0){for(int x=std::max(from,qCeil(2*dpr));x<image.width()/2;++x)for(int y=qCeil(2*dpr);y<image.height()-qCeil(2*dpr);++y)if(contrast(image.pixelColor(x,y))>=contrast(ink)/4)return x;return -1;};
       const int actualStart=first(actual),expectedStart=first(expected);QVERIFY(actualStart>=0);QVERIFY(expectedStart>=0);
       QVERIFY2(qAbs(actualStart-expectedStart)/dpr<=1,qPrintable(QString("%1 (%2) actual %3 expected %4 DPR %5 font %6").arg(toggle->objectName(),toggle->text()).arg(actualStart/dpr).arg(expectedStart/dpr).arg(dpr).arg(toggle->font().toString())));
+      if(addRow){
+       // The leading glyph matched above; the text must still follow it at the glyph gap.
+       QImage text(actual.size(),QImage::Format_ARGB32_Premultiplied);text.setDevicePixelRatio(dpr);text.fill(background);QPainter textPainter(&text);Graphite::paintText(textPainter,QRect(inset+leading,0,toggle->width()-2*inset-leading,toggle->height()),toggle->text(),ink,Graphite::font());textPainter.end();
+       const int from=qCeil((inset+toggle->iconSize().width()+1)*dpr),actualText=first(actual,from),expectedText=first(text,from);QVERIFY(expectedText>=0);
+       QVERIFY2(actualText>=0&&qAbs(actualText-expectedText)/dpr<=1,qPrintable(QString("%1 text actual %2 expected %3 DPR %4").arg(toggle->objectName()).arg(actualText/dpr).arg(expectedText/dpr).arg(dpr)));
+      }
      }
     }
    }
