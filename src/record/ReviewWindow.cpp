@@ -107,12 +107,11 @@ public:
         setAccessibleName(QStringLiteral("Silent preview"));
         setFocusPolicy(Qt::NoFocus);
         setFixedSize(Graphite::scaled(16), Graphite::scaled(16));
-        auto policy = sizePolicy(); policy.setRetainSizeWhenHidden(true); setSizePolicy(policy);
     }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
-        Graphite::paintChromeGlyph(painter, rect(), "muted-speaker", Theme::current().textSecondary);
+        Graphite::paintChromeGlyph(painter, contentsRect(), "muted-speaker", Theme::current().textSecondary);
     }
 };
 class BlurChip final : public QToolButton {
@@ -1449,11 +1448,21 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* transport = new QHBoxLayout(transport_);
     transport->setContentsMargins(0, 0, 0, 0);
     transport->setSpacing(reviewSpace(Graphite::Space::xs));
-    previewIndicator_ = new MutedPreview(Graphite::WindowHeader::customFrame() ? header_ : static_cast<QWidget*>(this));
+    // The silent-preview glyph belongs to the transport, so the header's measured
+    // fit includes it; an equal leading slot keeps the readout on the frame's centre.
+    previewIndicator_ = new MutedPreview(transport_);
     previewIndicator_->setAttribute(Qt::WA_TransparentForMouseEvents);
+    // Its leading margin and the layout spacing make space(m) after the speed control.
+    previewIndicator_->setContentsMargins(reviewSpace(Graphite::Space::m) - transport->spacing(), 0, 0, 0);
+    previewIndicator_->setFixedWidth(previewIndicator_->height() + previewIndicator_->contentsMargins().left());
+    auto* balance = new QWidget(transport_);
+    balance->setObjectName("previewMutedBalance");
+    balance->setFixedSize(previewIndicator_->width(), 1);
+    transport->addWidget(balance);
     transport->addWidget(play_);
     transport->addWidget(time_);
     transport->addWidget(speed_);
+    transport->addWidget(previewIndicator_);
     if (Graphite::WindowHeader::customFrame()) {
         header_->setAccessibleName("Review recording");
         header_->setCentre(transport_);
@@ -2504,6 +2513,7 @@ void ReviewWindow::placeDestination() {
     }
     playbackStatus_->setVisible(showPreview);
     previewIndicator_->setVisible(!showPreview);
+    findChild<QWidget*>("previewMutedBalance")->setVisible(!showPreview);
     findChild<QLabel*>("reviewAudioSeparator")->setVisible(showPreview && !options_.uploadSummary.isEmpty());
     int actionMinimum = 0;
     for (auto* widget : std::initializer_list<QWidget*>{format_, formatAdvice_, save_, cancel_, upload_}) {
@@ -2524,9 +2534,6 @@ void ReviewWindow::placeDestination() {
     if (destinationMenu_->height() != height) { destinationMenu_->setFixedHeight(height); grid->activate(); }
     header_->setLeading(inHeader ? destinationSummary : nullptr);
     header_->layout()->activate();
-    const auto transportEdge = transport_->mapTo(previewIndicator_->parentWidget(), QPoint(transport_->width(), transport_->height() / 2));
-    previewIndicator_->move(transportEdge.x() + reviewSpace(Graphite::Space::xs), transportEdge.y() - previewIndicator_->height() / 2);
-    previewIndicator_->raise();
     placeErrorDetails();
     destinationMenu_->update();
 }

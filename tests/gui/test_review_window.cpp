@@ -2133,12 +2133,41 @@ private slots:
         QVERIFY(!text->isVisibleTo(&window)); QVERIFY(indicator->isVisibleTo(&window));
         QCOMPARE(indicator->focusPolicy(), Qt::NoFocus);
         auto* transport = window.findChild<QWidget*>("reviewTransport");
-        QVERIFY(indicator->mapTo(&window, QPoint()).x() > transport->mapTo(&window, transport->rect().topRight()).x());
-        QVERIFY(window.rect().contains(indicator->geometry()));
+        // Layout-managed after the speed control, inside the header's measured fit.
+        QCOMPARE(indicator->parentWidget(), transport);
+        auto* speed = window.findChild<QWidget*>("speed");
+        QCOMPARE(indicator->x() + indicator->contentsRect().left() - speed->geometry().right() - 1, int(Graphite::Space::m));
+        QVERIFY(window.rect().contains(QRect(indicator->mapTo(&window, QPoint()), indicator->size())));
         QVERIFY(indicator->accessibleDescription().contains("preview is silent", Qt::CaseInsensitive));
         QVERIFY(indicator->accessibleDescription().contains("export keeps the recorded system audio"));
         window.drive({{"action", "format"}, {"format", "gif"}});
         QVERIFY(indicator->accessibleDescription().contains("GIF exports are silent"));
+    }
+    // Round 19 R4: the silent-preview glyph keeps space(xl) clear of the window
+    // controls at every width and text size.
+    void mutedIndicatorStaysClearOfTheWindowControls() {
+        const auto original = qApp->font(); auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        bool shown = false;
+        for (const int pixels : {14, 21}) {
+            auto font = original; font.setPixelSize(pixels); qApp->setFont(font);
+            auto o = options(); o.audioRecorded = true;
+            auto c = config(); c.audio.system = true;
+            ReviewWindow window(o, c); window.setEdit(twoMasks()); window.show();
+            QVERIFY(putgd::test::waitForWindowExposed(&window));
+            auto* indicator = window.findChild<QLabel*>("previewMutedIndicator"); QVERIFY(indicator);
+            auto* minimise = window.findChild<QToolButton*>("windowMinimize"); QVERIFY(minimise);
+            for (int width = 640; width <= 1800; width += 6) {
+                window.resize(width, 720); putgd::test::settle(2);
+                if (window.width() != width) continue;
+                if (!indicator->isVisibleTo(&window)) continue;
+                const QRect glyph(indicator->mapTo(&window, indicator->contentsRect().topLeft()), indicator->contentsRect().size());
+                const QRect control(minimise->mapTo(&window, QPoint()), minimise->size());
+                QVERIFY2(control.left() - glyph.right() - 1 >= int(Graphite::Space::xl),
+                    qPrintable(QString("%1 px text at %2 px: glyph ends %3, minimise starts %4").arg(pixels).arg(width).arg(glyph.right()).arg(control.left())));
+                shown = true;
+            }
+        }
+        QVERIFY(shown);
     }
     void selectedTinyInactiveMaskKeepsItsStateBesideTheMask() {
         const auto original = qApp->font(); auto restore = qScopeGuard([&] { qApp->setFont(original); });
