@@ -440,7 +440,7 @@ def formats(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('review.save-copy', 'review.status-actions', needs=('recording',))
+@recipe('review.save-copy', needs=('recording',))
 def save_copy(ctx):
     rid = _open(ctx)
     ctx.click('text:Save a copy…', window='review')
@@ -462,7 +462,13 @@ def save_copy(ctx):
                             for row in _state(ctx, rid)['statusFacts'] for a in row['actions']),
              'Dismiss hides saved-copy result')
     _frame(ctx, 'after')
-    ctx.review('Saved-copy Copy path/Dismiss passed; Show in folder and failed-export recovery need isolated opener/failure fixtures (#672).')
+
+
+
+@recipe('review.status-actions', needs=('recording', 'recording-export-failure'))
+def status_actions(ctx):
+    _open(ctx)
+    ctx.blocked('Full status actions need an isolated opener and recoverable export-failure fixture for Show in folder, Try again and format/trim recovery (#672)', issue=672)
 
 
 @recipe('review.destination-menu', 'review.upload', needs=('recording', 'destination'),
@@ -541,7 +547,7 @@ def advice(ctx):
     _frame(ctx, 'after', '68-review-error-details', 'reviewAdvice')
     ctx.keys('Esc')
     ctx.expect(_inspect(ctx, rid)['state'] == 'reviewing', 'advice leaves recording in review')
-    ctx.review('Format tips passed; Export failed/Recording error advice variants need fault fixtures (#672).')
+    ctx.blocked('Format tips exercised; Export failed/Recording error advice variants need fault fixtures (#672)', issue=672)
 
 
 @recipe('review.notice', needs=('recording', 'recording-budget-stop'))
@@ -602,7 +608,7 @@ def cli_recording(ctx):
     ctx.click('play', window='review')
     ctx.keys('Space')
     _frame(ctx, 'after')
-    ctx.review('CLI capture prepare/start/pause/resume/stop/select/overlay remain unexercised; review-stage entries passed. Fixture follow-up #672.')
+    ctx.blocked('CLI review-stage entries exercised; capture prepare/start/pause/resume/stop/select/overlay need a capture fixture (#672)', issue=672)
 
 
 @recipe('mcp.recording', 'mcp.recording-review', needs=('recording', 'mcp'))
@@ -624,4 +630,4 @@ def mcp_recording(ctx):
     ctx.click('play', window='review')
     ctx.keys('Space')
     _frame(ctx, 'after')
-    ctx.review('Capture-stage MCP tools and upload_recording remain unexercised; review/edit/preview/save passed. Fixture follow-up #672.')
+    ctx.blocked('MCP review/edit/preview/save exercised; capture lifecycle and upload_recording need fresh capture/destination fixtures (#672)', issue=672)

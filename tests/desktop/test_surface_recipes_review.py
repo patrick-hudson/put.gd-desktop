@@ -242,6 +242,20 @@ class ReviewRecipes(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'fresh fixture'):
             review.playback(ctx)
 
+    def test_core_namespace_fixture_is_explicitly_blocked(self):
+        ctx = FakeContext()
+        ctx.fixture_data['recording'] = types.SimpleNamespace(id='recording-id')
+        with self.assertRaises(RecipeBlocked) as result:
+            review.playback(ctx)
+        self.assertEqual(result.exception.issue, 672)
+
+    def test_missing_motion_proof_fails_before_input(self):
+        ctx = FakeContext()
+        ctx.shell_status = 1
+        with self.assertRaisesRegex(RecipeFailed, 'pattern moves'):
+            review.playback(ctx)
+        self.assertFalse(any(t[0] in ('click','keys') for t in ctx.trace))
+
     def test_discard_keep_then_confirm(self):
         ctx = FakeContext()
         review.discard(ctx)
