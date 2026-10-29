@@ -1,5 +1,5 @@
 #pragma once
-#include "ui/VisualStyle.h"
+#include "ui/Ui.h"
 #include <QApplication>
 
 namespace putgd::record {
@@ -11,6 +11,6 @@ namespace putgd::record {
 inline constexpr char desktopFileName[] = "putgd-record";
 inline void applyIdentity(QApplication& app) {
     app.setDesktopFileName(QString::fromLatin1(desktopFileName));
-    app.setWindowIcon(VisualStyle::icon("brand"));
+    app.setWindowIcon(Ui::icon("brand"));
 }
 }

@@ -61,10 +61,10 @@ private slots:
  void propertyHeadingFitsAndKeepsItsSelectionAccessible(){
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
   const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});
-  auto larger=previous;larger.setPixelSize(qRound(Graphite::font().pixelSize()*1.5));QApplication::setFont(larger);
+  auto larger=previous;larger.setPixelSize(qRound(Ui::font().pixelSize()*1.5));QApplication::setFont(larger);
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   window.selectTool(Tool::Rectangle);QString code,message;window.viewCommand({{"action","place"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));
-  auto* title=window.findChild<Graphite::ElidedLabel*>("editorToolTitle");auto* help=window.findChild<QLabel*>("editorToolHelp");QVERIFY(title&&help);
+  auto* title=window.findChild<Ui::ElidedLabel*>("editorToolTitle");auto* help=window.findChild<QLabel*>("editorToolHelp");QVERIFY(title&&help);
   QCOMPARE(title->text(),QString("Rectangle"));QCOMPARE(title->toolTip(),title->text());QCOMPARE(title->accessibleName(),QString("Rectangle selected"));QVERIFY(!title->wordWrap());
   PUTGD_TRY_VERIFY(!title->elided());QVERIFY(title->height()<2*title->fontMetrics().height());
   QCOMPARE(help->text(),QString("Drag to move it."));QCOMPARE(help->minimumWidth(),0);QVERIFY(help->wordWrap());
@@ -81,7 +81,7 @@ private slots:
     for(auto* label:window.findChild<QWidget*>("editorSide")->findChildren<QLabel*>()){
      if(!QStringList{"Color","Line width","Font","Size in image pixels","Blur radius","Crop area","X","Y","Width","Height","Document"}.contains(label->text()))continue;
      QCOMPARE(label->property("visualRole").toString(),QString("caption"));
-     QCOMPARE(label->font().pixelSize(),Graphite::scaled(Graphite::Type::technical));
+     QCOMPARE(label->font().pixelSize(),Ui::scaled(Ui::Type::technical));
      QVERIFY(label->height()>=label->fontMetrics().height());
     }
    }
@@ -100,7 +100,7 @@ private slots:
  }
  void toolsFoldFromMeasuredWidthAndKeepPrivacyLabels(){
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
-  const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});const auto base=Graphite::font();
+  const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});const auto base=Ui::font();
   for(const bool enlarged:{false,true}){
    auto current=base;if(enlarged)current.setPixelSize(qRound(base.pixelSize()*1.5));QApplication::setFont(current);
    EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1800,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -135,7 +135,7 @@ private slots:
   }
  }
  void sharedBannerActionsWrapAndUseHostCommands(){
-  QWidget host;auto* layout=new QVBoxLayout(&host);auto* banner=new Graphite::Banner(Graphite::Banner::Tone::Warning,"A warning that needs room to explain what happened",&host);layout->addWidget(banner);
+  QWidget host;auto* layout=new QVBoxLayout(&host);auto* banner=new Ui::Banner(Ui::Banner::Tone::Warning,"A warning that needs room to explain what happened",&host);layout->addWidget(banner);
   banner->setAction("Recover");banner->setDismissible(true);bool recovered=false,dismissed=false;
   connect(banner->actionButton(),&QPushButton::clicked,&host,[&]{recovered=true;});
   connect(banner->dismissButton(),&QToolButton::clicked,&host,[&]{dismissed=true;banner->hide();});
@@ -143,9 +143,9 @@ private slots:
   QVERIFY(banner->actionButton()->y()>banner->textLabel()->y());QVERIFY(banner->textLabel()->wordWrap());
   banner->actionButton()->click();QVERIFY(recovered);QVERIFY(banner->isVisible());
   host.resize(900,120);QApplication::processEvents();const auto image=banner->grab().toImage();int top=image.height(),bottom=-1;
-  for(int y=0;y<image.height();++y)for(int x=0;x<Graphite::scaled(32);++x)if(image.pixelColor(x,y)==Theme::current().warning){top=std::min(top,y);bottom=std::max(bottom,y);}
+  for(int y=0;y<image.height();++y)for(int x=0;x<Ui::scaled(32);++x)if(image.pixelColor(x,y)==Theme::current().warning){top=std::min(top,y);bottom=std::max(bottom,y);}
   QVERIFY(bottom>=top);QVERIFY(qAbs((top+bottom)/2.0-(banner->textLabel()->y()+(banner->textLabel()->fontMetrics().lineSpacing()-1)/2.0))<=1);
-  for(const auto tone:{Graphite::Banner::Tone::Info,Graphite::Banner::Tone::Warning,Graphite::Banner::Tone::Error,Graphite::Banner::Tone::Success}){banner->setTone(tone);QCOMPARE(banner->tone(),tone);QVERIFY(!banner->grab().isNull());}
+  for(const auto tone:{Ui::Banner::Tone::Info,Ui::Banner::Tone::Warning,Ui::Banner::Tone::Error,Ui::Banner::Tone::Success}){banner->setTone(tone);QCOMPARE(banner->tone(),tone);QVERIFY(!banner->grab().isNull());}
   banner->dismissButton()->click();QVERIFY(dismissed);QVERIFY(!banner->isVisible());
  }
  void annotationGeometryStartsCollapsedAndCropStaysVisible(){
@@ -163,14 +163,14 @@ private slots:
  void compactLargeTextKeepsCanvasWidthAndReadableFeedback(){
   // Install the style first, then simulate a desktop's enlarged application font.
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
-  const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});auto larger=previous;larger.setPixelSize(qRound(Graphite::font().pixelSize()*1.5));QApplication::setFont(larger);
+  const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});auto larger=previous;larger.setPixelSize(qRound(Ui::font().pixelSize()*1.5));QApplication::setFont(larger);
   EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Private upload to Project archive");QCOMPARE(window.findChild<QLabel*>("editorDestination")->text(),QString("Project archive"));QCOMPARE(window.findChild<QLabel*>("editorSharingMode")->text(),QString("Private upload"));window.resize(1400,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.resize(900,620);QApplication::processEvents();QCOMPARE(window.width(),900);
   QVERIFY2(window.canvas().width()>=window.width()*0.66,qPrintable(QString("canvas %1 in %2").arg(window.canvas().width()).arg(window.width())));QVERIFY(window.findChild<QWidget*>("editorSide")->width()+window.findChild<QSplitter*>("editorSplitter")->handleWidth()<=window.width()/3);
   const auto canvas=window.canvas().geometry();
   for(const auto tool:{Tool::Blur,Tool::Crop,Tool::Text,Tool::Select}){window.selectTool(tool);QApplication::processEvents();QCOMPARE(window.canvas().geometry(),canvas);}
   window.showSaveFailed("/synthetic/denied.png",QString("Permission denied. ")+QString("Your edits are kept. ").repeated(12));QApplication::processEvents();QCOMPARE(window.canvas().width(),canvas.width());QCOMPARE(window.canvas().x(),canvas.x());
   const auto feedback=window.findChild<QWidget*>("editorSaveFeedback");auto* choose=window.findChild<QPushButton*>("chooseAnotherLocation");QVERIFY(choose->isVisible());QVERIFY(feedback->rect().contains(QRect(choose->mapTo(feedback,QPoint()),choose->size())));QVERIFY(choose->width()>=choose->sizeHint().width());
-  window.findChild<QToolButton*>("editorSaveDetails")->click();auto* error=window.findChild<Graphite::ElidedLabel*>("editorSaveError");QVERIFY(error->fullTextPopup());QVERIFY(error->fullTextPopup()->isVisible());QCOMPARE(window.canvas().width(),canvas.width());error->fullTextPopup()->close();
+  window.findChild<QToolButton*>("editorSaveDetails")->click();auto* error=window.findChild<Ui::ElidedLabel*>("editorSaveError");QVERIFY(error->fullTextPopup());QVERIFY(error->fullTextPopup()->isVisible());QCOMPARE(window.canvas().width(),canvas.width());error->fullTextPopup()->close();
   window.dismissSavedCopy();QApplication::processEvents();QCOMPARE(window.canvas().geometry(),canvas);
  }
  void cropFieldsPrecedeThePrimaryAction(){
@@ -185,11 +185,11 @@ private slots:
   for(auto* label:window.findChild<QWidget*>("editorGeometry")->findChildren<QLabel*>())if(label->buddy()){QVERIFY(label->geometry().bottom()<label->buddy()->y());QCOMPARE(label->x(),label->buddy()->x());}
   window.selectTool(Tool::Blur);QApplication::processEvents();auto* slider=window.findChild<QSlider*>("blurStrength");auto* value=window.findChild<QSpinBox*>("blurStrengthValue");
   auto* radius=static_cast<BlurRadius*>(slider->parentWidget());const auto spinPosition=value->mapTo(radius,QPoint());
-  QVERIFY(slider->y()>spinPosition.y()+value->height());QCOMPARE(slider->x(),0);QCOMPARE(slider->width(),radius->width());QVERIFY(radius->label()->geometry().bottom()<spinPosition.y());QCOMPARE(window.findChild<QPushButton*>("removeMark")->property("graphiteDensity").toString(),QString("compact"));QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("graphiteFlush").toBool());
+  QVERIFY(slider->y()>spinPosition.y()+value->height());QCOMPARE(slider->x(),0);QCOMPARE(slider->width(),radius->width());QVERIFY(radius->label()->geometry().bottom()<spinPosition.y());QCOMPARE(window.findChild<QPushButton*>("removeMark")->property("uiDensity").toString(),QString("compact"));QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("uiFlush").toBool());
  }
  void propertiesSplitterKeepsTheChosenWidthAcrossToolsAndResizes(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1180,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  auto* splitter=window.findChild<QSplitter*>("editorSplitter");auto* side=window.findChild<QWidget*>("editorSide");QVERIFY(splitter&&side);QCOMPARE(side->width(),std::max(240,Graphite::scaled(180)));QCOMPARE(splitter->handleWidth(),1);
+  auto* splitter=window.findChild<QSplitter*>("editorSplitter");auto* side=window.findChild<QWidget*>("editorSide");QVERIFY(splitter&&side);QCOMPARE(side->width(),std::max(240,Ui::scaled(180)));QCOMPARE(splitter->handleWidth(),1);
   // A real handle drag and an agent command change the same bounded panel.
   auto* handle=splitter->handle(1);const auto press=handle->rect().center();const auto global=handle->mapToGlobal(press);
   QTest::mousePress(handle,Qt::LeftButton,{},press);QMouseEvent move(QEvent::MouseMove,QPointF(press+QPoint(-30,0)),QPointF(global+QPoint(-30,0)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(handle,&move);QTest::mouseRelease(handle,Qt::LeftButton,{},press);
@@ -211,7 +211,7 @@ private slots:
   for(const auto name:{"showSavedCopy","copySavedPath"}){auto* button=window.findChild<QPushButton*>(name);QVERIFY(button->isVisible());QVERIFY(button->width()>=button->sizeHint().width());}
   window.findChild<QToolButton*>("dismissEditorSavedCopy")->click();QApplication::processEvents();QVERIFY(destination->isVisible());QVERIFY(!window.viewState()["saveFeedbackVisible"].toBool());QCOMPARE(window.viewState()["lastSave"].toObject()["status"].toString(),QString("saved"));
   window.showSaveFailed("/synthetic/copy.png",QString("Disk full. ")+QString("Free enough space, then try again. ").repeated(5));QApplication::processEvents();
-  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QCOMPARE(error->property("visualRole").toString(),QString("body"));QCOMPARE(error->palette().color(QPalette::WindowText),Theme::current().text);for(const auto name:{"editorSaveDetails","chooseAnotherLocation"}){auto* action=window.findChild<QAbstractButton*>(name);QVERIFY(action);QCOMPARE(action->property("visualRole").toString(),QString("textAction"));QVERIFY(action->property("graphiteStrong").toBool());QCOMPARE(action->font().weight(),QFont::DemiBold);}QVERIFY(destination->isVisible());QVERIFY(error->text().startsWith("Couldn't save: Disk full."));QVERIFY(!error->wordWrap());QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(feedback->parentWidget(),window.canvas().parentWidget());QVERIFY(feedback->testAttribute(Qt::WA_OpaquePaintEvent));QVERIFY(window.canvas().rect().contains(QRect(feedback->pos(),feedback->size())));QVERIFY(feedback->geometry().bottom()<footer->y());QVERIFY(upload->isEnabled());
+  auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error->isVisible());QCOMPARE(error->property("visualRole").toString(),QString("body"));QCOMPARE(error->palette().color(QPalette::WindowText),Theme::current().text);for(const auto name:{"editorSaveDetails","chooseAnotherLocation"}){auto* action=window.findChild<QAbstractButton*>(name);QVERIFY(action);QCOMPARE(action->property("visualRole").toString(),QString("textAction"));QVERIFY(action->property("uiStrong").toBool());QCOMPARE(action->font().weight(),QFont::DemiBold);}QVERIFY(destination->isVisible());QVERIFY(error->text().startsWith("Couldn't save: Disk full."));QVERIFY(!error->wordWrap());QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(feedback->parentWidget(),window.canvas().parentWidget());QVERIFY(feedback->testAttribute(Qt::WA_OpaquePaintEvent));QVERIFY(window.canvas().rect().contains(QRect(feedback->pos(),feedback->size())));QVERIFY(feedback->geometry().bottom()<footer->y());QVERIFY(upload->isEnabled());
   auto* retry=window.findChild<QPushButton*>("chooseAnotherLocation");QVERIFY(retry->isVisible());QVERIFY(retry->width()>=retry->sizeHint().width());
   QString code,message;window.viewCommand({{"action","dismissSavedCopy"}},code,message);QApplication::processEvents();QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(destination->isVisible());QVERIFY(!feedback->isVisible());
   QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(window.canvas().zoom(),zoom);QCOMPARE(window.canvas().visibleImageRect(),visible);
@@ -220,7 +220,7 @@ private slots:
  void saveFeedbackOverlayPreservesTheImageAtLargeText(){
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
   const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});
-  auto larger=previous;larger.setPixelSize(qRound(Graphite::font().pixelSize()*1.5));QApplication::setFont(larger);
+  auto larger=previous;larger.setPixelSize(qRound(Ui::font().pixelSize()*1.5));QApplication::setFont(larger);
   EditDocument doc(QImage(1600,1000,QImage::Format_RGB32));EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* feedback=window.findChild<QWidget*>("editorSaveFeedback");QCOMPARE(feedback->parentWidget(),window.canvas().parentWidget());QVERIFY(feedback->testAttribute(Qt::WA_OpaquePaintEvent));QVERIFY(!feedback->sizePolicy().retainSizeWhenHidden());
   for(const bool fitted:{true,false}){
@@ -228,14 +228,14 @@ private slots:
    const auto geometry=window.canvas().geometry();const auto zoom=window.canvas().zoom();const auto visible=window.canvas().visibleImageRect();
    auto stable=[&]{QApplication::processEvents();if(feedback->isVisible())QVERIFY(window.canvas().rect().contains(QRect(feedback->pos(),feedback->size())));QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(window.canvas().zoom(),zoom);QCOMPARE(window.canvas().visibleImageRect(),visible);QCOMPARE(window.canvas().fitted(),fitted);};
    const QString savedPath="/synthetic/"+QString("long saved image name ").repeated(12)+".png";window.showSaved(savedPath);stable();
-   auto* more=window.findChild<QToolButton*>("editorSavedMore");auto* saved=window.findChild<Graphite::ElidedLabel*>("editorSaved");QVERIFY(more->isVisible());QVERIFY(saved->elided());QCOMPARE(saved->toolTip(),savedPath);QVERIFY(feedback->height()<=more->height()+2*int(Graphite::Space::xs));
+   auto* more=window.findChild<QToolButton*>("editorSavedMore");auto* saved=window.findChild<Ui::ElidedLabel*>("editorSaved");QVERIFY(more->isVisible());QVERIFY(saved->elided());QCOMPARE(saved->toolTip(),savedPath);QVERIFY(feedback->height()<=more->height()+2*int(Ui::Space::xs));
    QGuiApplication::clipboard()->clear();more->menu()->findChild<QAction*>("copySavedPathMenu")->trigger();QCOMPARE(QGuiApplication::clipboard()->text(),savedPath);QCOMPARE(window.viewState()["lastCopiedPath"].toString(),savedPath);
    window.showSaveFailed("/synthetic/long failed image name.png",QString("Permission denied. ").repeated(20));stable();
    auto* details=window.findChild<QToolButton*>("editorSaveDetails");auto* retry=window.findChild<QPushButton*>("chooseAnotherLocation");
    QVERIFY(details->isVisible());QVERIFY(retry->isVisible());
    auto* reason=window.findChild<QLabel*>("editorSaveError");QVERIFY(reason->width()>=reason->fontMetrics().horizontalAdvance("Couldn't save"));
    for(auto* button:{static_cast<QWidget*>(details),static_cast<QWidget*>(retry)}){const QRect bounds(button->mapTo(feedback,QPoint()),button->size());QVERIFY2(feedback->rect().contains(bounds),qPrintable(QString("%1 at %2,%3 %4x%5 in feedback %6x%7").arg(button->objectName()).arg(bounds.x()).arg(bounds.y()).arg(bounds.width()).arg(bounds.height()).arg(feedback->width()).arg(feedback->height())));}
-   QVERIFY(!more->isVisible());QVERIFY(feedback->height()<=details->height()+retry->height()+2*int(Graphite::Space::xs)+Graphite::space(Graphite::Space::s));
+   QVERIFY(!more->isVisible());QVERIFY(feedback->height()<=details->height()+retry->height()+2*int(Ui::Space::xs)+Ui::space(Ui::Space::s));
    window.dismissSavedCopy();stable();
    QTemporaryDir dir;QVERIFY(window.writeCopy(dir.filePath("copy.png")));stable();PUTGD_TRY_VERIFY(!window.savingCopy());stable();
   }
@@ -270,25 +270,25 @@ private slots:
   if(!QAccessible::isActive())QDBusConnection::sessionBus().call(QDBusMessage::createMethodCall("org.a11y.Bus","/org/a11y/bus","org.a11y.Bus","GetAddress"));
 #endif
   PUTGD_TRY_VERIFY(QAccessible::isActive());
-  auto* feedback=window.findChild<Graphite::Banner*>("editorSaveFeedback");window.showSaveFailed("/synthetic/copy.png","Disk full");QCOMPARE(alerted,feedback);QVERIFY(feedback->accessibleName().contains("Disk full",Qt::CaseInsensitive));
+  auto* feedback=window.findChild<Ui::Banner*>("editorSaveFeedback");window.showSaveFailed("/synthetic/copy.png","Disk full");QCOMPARE(alerted,feedback);QVERIFY(feedback->accessibleName().contains("Disk full",Qt::CaseInsensitive));
   window.showSaved("/synthetic/new copy.png");QVERIFY(!feedback->accessibleName().contains("full"));
  }
  void preparationLimitNoticeUsesAWarningBanner(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();window.showPreparationFailed("The edited image exceeds the 25 MB upload limit.");auto* banner=window.findChild<Graphite::Banner*>("editorPreparationFailure");QVERIFY(banner&&banner->isVisible());QCOMPARE(banner->tone(),Graphite::Banner::Tone::Warning);QVERIFY(banner->isAncestorOf(window.findChild<QPushButton*>("keepEditing")));QVERIFY(banner->isAncestorOf(window.findChild<QPushButton*>("saveCopyInstead")));window.findChild<QPushButton*>("keepEditing")->click();QVERIFY(banner->isHidden());window.allowClose();
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();window.showPreparationFailed("The edited image exceeds the 25 MB upload limit.");auto* banner=window.findChild<Ui::Banner*>("editorPreparationFailure");QVERIFY(banner&&banner->isVisible());QCOMPARE(banner->tone(),Ui::Banner::Tone::Warning);QVERIFY(banner->isAncestorOf(window.findChild<QPushButton*>("keepEditing")));QVERIFY(banner->isAncestorOf(window.findChild<QPushButton*>("saveCopyInstead")));window.findChild<QPushButton*>("keepEditing")->click();QVERIFY(banner->isHidden());window.allowClose();
  }
  void failureOverlayUsesTheSharedDismissAction(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();window.setFailure("Synthetic export failed");auto* banner=window.findChild<Graphite::Banner*>("editorSaveFeedback");QVERIFY(banner->isVisible());QVERIFY(banner->dismissButton()->isVisible());const auto before=window.canvas().geometry();QString code,message;window.viewCommand({{"action","dismissSavedCopy"}},code,message);QVERIFY(code.isEmpty());QVERIFY(banner->isHidden());QCOMPARE(window.canvas().geometry(),before);window.allowClose();
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();window.setFailure("Synthetic export failed");auto* banner=window.findChild<Ui::Banner*>("editorSaveFeedback");QVERIFY(banner->isVisible());QVERIFY(banner->dismissButton()->isVisible());const auto before=window.canvas().geometry();QString code,message;window.viewCommand({{"action","dismissSavedCopy"}},code,message);QVERIFY(code.isEmpty());QVERIFY(banner->isHidden());QCOMPARE(window.canvas().geometry(),before);window.allowClose();
  }
  void keyboardHelpStacksWithoutWideningThePanel(){
-  const auto original=QApplication::font();const auto restore=qScopeGuard([&]{QApplication::setFont(original);});auto font=original;font.setPixelSize(21);QApplication::setFont(font);EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(760,700);window.show();QApplication::processEvents();auto* panel=window.findChild<QScrollArea*>("editorPropertiesScroll");const int width=panel->width();QString code,message;window.viewCommand({{"action","keyboardHelp"}},code,message);QVERIFY(code.isEmpty());QApplication::processEvents();auto* text=window.findChild<QWidget*>("editorKeyboardHelpText");QVERIFY(text->property("stacked").toBool());QCOMPARE(panel->width(),width);auto* heading=window.findChild<QToolButton*>("editorKeyboardHelp");PUTGD_TRY_VERIFY(panel->viewport()->rect().contains(QRect(heading->mapTo(panel->viewport(),QPoint()),heading->size())));auto* grid=qobject_cast<QGridLayout*>(text->layout());QVERIFY(grid);for(int row=0;row<11;++row){const auto* pair=grid->itemAtPosition(row,0)->widget();const auto* meaning=pair->layout()->itemAt(0)->widget();const auto* key=pair->layout()->itemAt(1)->widget();const int needed=meaning->fontMetrics().horizontalAdvance(qobject_cast<const QLabel*>(meaning)->text())+Graphite::space(Graphite::Space::m)+key->fontMetrics().horizontalAdvance(qobject_cast<const QLabel*>(key)->text());QCOMPARE(pair->property("stacked").toBool(),needed>text->contentsRect().width());if(pair->property("stacked").toBool()){QCOMPARE(pair->layout()->spacing(),1);QVERIFY(meaning->geometry().bottom()<key->geometry().top());}else{QCOMPARE(pair->layout()->spacing(),Graphite::space(Graphite::Space::m));QVERIFY(meaning->geometry().right()<key->geometry().left());}QVERIFY(meaning->width()>=meaning->fontMetrics().horizontalAdvance(qobject_cast<const QLabel*>(meaning)->text()));}window.allowClose();
+  const auto original=QApplication::font();const auto restore=qScopeGuard([&]{QApplication::setFont(original);});auto font=original;font.setPixelSize(21);QApplication::setFont(font);EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(760,700);window.show();QApplication::processEvents();auto* panel=window.findChild<QScrollArea*>("editorPropertiesScroll");const int width=panel->width();QString code,message;window.viewCommand({{"action","keyboardHelp"}},code,message);QVERIFY(code.isEmpty());QApplication::processEvents();auto* text=window.findChild<QWidget*>("editorKeyboardHelpText");QVERIFY(text->property("stacked").toBool());QCOMPARE(panel->width(),width);auto* heading=window.findChild<QToolButton*>("editorKeyboardHelp");PUTGD_TRY_VERIFY(panel->viewport()->rect().contains(QRect(heading->mapTo(panel->viewport(),QPoint()),heading->size())));auto* grid=qobject_cast<QGridLayout*>(text->layout());QVERIFY(grid);for(int row=0;row<11;++row){const auto* pair=grid->itemAtPosition(row,0)->widget();const auto* meaning=pair->layout()->itemAt(0)->widget();const auto* key=pair->layout()->itemAt(1)->widget();const int needed=meaning->fontMetrics().horizontalAdvance(qobject_cast<const QLabel*>(meaning)->text())+Ui::space(Ui::Space::m)+key->fontMetrics().horizontalAdvance(qobject_cast<const QLabel*>(key)->text());QCOMPARE(pair->property("stacked").toBool(),needed>text->contentsRect().width());if(pair->property("stacked").toBool()){QCOMPARE(pair->layout()->spacing(),1);QVERIFY(meaning->geometry().bottom()<key->geometry().top());}else{QCOMPARE(pair->layout()->spacing(),Ui::space(Ui::Space::m));QVERIFY(meaning->geometry().right()<key->geometry().left());}QVERIFY(meaning->width()>=meaning->fontMetrics().horizontalAdvance(qobject_cast<const QLabel*>(meaning)->text()));}window.allowClose();
  }
  void keyboardHelpIsBelowPropertiesAndAgentControllable(){
   editor::EditDocument doc(QImage(400,260,QImage::Format_RGB32));EditorWindow window(doc);window.show();
   QString code,message;auto state=window.viewCommand({{"action","keyboardHelp"}},code,message);
   QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(state["keyboardHelp"].toObject()["open"].toBool());
   auto* help=window.findChild<QToolButton*>("editorKeyboardHelp");auto* text=window.findChild<QWidget*>("editorKeyboardHelpText");
-  QVERIFY(help&&text&&text->isVisible());QVERIFY(text->property("text").toString().contains("Ctrl+arrows: Move 10 px"));QVERIFY(text->property("text").toString().contains("Ctrl+Shift+arrows: Resize 10 px"));auto* grid=qobject_cast<QGridLayout*>(text->layout());QVERIFY(grid);QCOMPARE(grid->verticalSpacing(),Graphite::space(Graphite::Space::s));QCOMPARE(grid->count(),11);
-  for(int row=0;row<11;++row){auto* pair=grid->itemAtPosition(row,0)->widget();auto* meaning=qobject_cast<QLabel*>(pair->layout()->itemAt(0)->widget());auto* key=qobject_cast<QLabel*>(pair->layout()->itemAt(1)->widget());QVERIFY(key&&meaning);QCOMPARE(key->font().family(),Graphite::monoFamily());QCOMPARE(meaning->font().family(),Graphite::uiFamily());}QCOMPARE(help->accessibleDescription(),QString("Expanded"));
+  QVERIFY(help&&text&&text->isVisible());QVERIFY(text->property("text").toString().contains("Ctrl+arrows: Move 10 px"));QVERIFY(text->property("text").toString().contains("Ctrl+Shift+arrows: Resize 10 px"));auto* grid=qobject_cast<QGridLayout*>(text->layout());QVERIFY(grid);QCOMPARE(grid->verticalSpacing(),Ui::space(Ui::Space::s));QCOMPARE(grid->count(),11);
+  for(int row=0;row<11;++row){auto* pair=grid->itemAtPosition(row,0)->widget();auto* meaning=qobject_cast<QLabel*>(pair->layout()->itemAt(0)->widget());auto* key=qobject_cast<QLabel*>(pair->layout()->itemAt(1)->widget());QVERIFY(key&&meaning);QCOMPARE(key->font().family(),Ui::monoFamily());QCOMPARE(meaning->font().family(),Ui::uiFamily());}QCOMPARE(help->accessibleDescription(),QString("Expanded"));
   QApplication::processEvents();auto* scroll=window.findChild<QScrollArea*>("editorPropertiesScroll");
   if(text->height()<=scroll->viewport()->height())QVERIFY(scroll->viewport()->rect().contains(QRect(text->mapTo(scroll->viewport(),QPoint()),text->size())));
   else for(auto* label:text->findChildren<QLabel*>()){scroll->ensureWidgetVisible(label);QApplication::processEvents();QVERIFY(scroll->viewport()->rect().contains(QRect(label->mapTo(scroll->viewport(),QPoint()),label->size())));}
@@ -326,7 +326,7 @@ private slots:
  void concurrentNoticesUseTheCompactTextWarningWithoutRefitting(){
   const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(21);qApp->setFont(font);
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));const auto geometry=window.canvas().geometry();const auto visible=window.canvas().visibleImageRect();
-  add(doc,{{"kind","text"},{"at",QJsonArray{390,100}},{"text","Outside image"},{"fontPixels",28}});window.documentEdited();window.showSaved("/synthetic/copy.png");QApplication::processEvents();auto* warning=window.canvas().findChild<Graphite::Banner*>("annotationTextWarning");auto* feedback=window.findChild<QWidget*>("editorSaveFeedback");QVERIFY(warning&&warning->isVisible()&&feedback->isVisible());QCOMPARE(warning->textLabel()->text(),QString("Text will be cut off"));QCOMPARE(warning->actionButton()->text(),QString("Select affected text"));QVERIFY(warning->accessibleDescription().contains("saved image"));QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(window.canvas().visibleImageRect(),visible);QVERIFY(warning->geometry().bottom()<feedback->y());window.allowClose();
+  add(doc,{{"kind","text"},{"at",QJsonArray{390,100}},{"text","Outside image"},{"fontPixels",28}});window.documentEdited();window.showSaved("/synthetic/copy.png");QApplication::processEvents();auto* warning=window.canvas().findChild<Ui::Banner*>("annotationTextWarning");auto* feedback=window.findChild<QWidget*>("editorSaveFeedback");QVERIFY(warning&&warning->isVisible()&&feedback->isVisible());QCOMPARE(warning->textLabel()->text(),QString("Text will be cut off"));QCOMPARE(warning->actionButton()->text(),QString("Select affected text"));QVERIFY(warning->accessibleDescription().contains("saved image"));QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(window.canvas().visibleImageRect(),visible);QVERIFY(warning->geometry().bottom()<feedback->y());window.allowClose();
  }
  void textOverflowFollowsGlyphsCropAndDraftWithoutChangingTheDocument(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
@@ -368,11 +368,11 @@ private slots:
  void largeTextEditorChoicesKeepTheirCompleteLabels(){
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
   const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});
-  auto larger=previous;larger.setPixelSize(qRound(Graphite::font().pixelSize()*1.5));QApplication::setFont(larger);
+  auto larger=previous;larger.setPixelSize(qRound(Ui::font().pixelSize()*1.5));QApplication::setFont(larger);
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  QVERIFY(Graphite::font().pixelSize()>=21);
-  for(auto* button:window.findChild<QWidget*>("editorToolbar")->findChildren<QToolButton*>())if(!button->icon().isNull()){QCOMPARE(button->iconSize(),QSize(Graphite::scaled(20),Graphite::scaled(20)));QVERIFY(button->height()>=Graphite::scaled(36));}
-  for(const auto name:{"removeMark","placeMark"})QCOMPARE(window.findChild<QPushButton*>(name)->iconSize(),QSize(Graphite::scaled(20),Graphite::scaled(20)));
+  QVERIFY(Ui::font().pixelSize()>=21);
+  for(auto* button:window.findChild<QWidget*>("editorToolbar")->findChildren<QToolButton*>())if(!button->icon().isNull()){QCOMPARE(button->iconSize(),QSize(Ui::scaled(20),Ui::scaled(20)));QVERIFY(button->height()>=Ui::scaled(36));}
+  for(const auto name:{"removeMark","placeMark"})QCOMPARE(window.findChild<QPushButton*>(name)->iconSize(),QSize(Ui::scaled(20),Ui::scaled(20)));
   for(const auto tool:{Tool::Rectangle,Tool::Text,Tool::Crop}){
    window.selectTool(tool);QApplication::processEvents();
    for(auto* combo:window.findChildren<QComboBox*>())if(combo->isVisible()){
@@ -416,19 +416,19 @@ private slots:
    Theme::setScheme(scheme);QProgressBar bar;bar.setTextVisible(false);bar.resize(240,20);bar.setRange(0,100);bar.setValue(0);bar.show();QVERIFY(putgd::test::waitForWindowExposed(&bar));
    const auto zero=bar.grab().toImage();bar.setRange(0,0);const auto busy=bar.grab().toImage();QVERIFY(busy!=zero);
    int fill=0;for(int y=0;y<busy.height();++y)for(int x=0;x<busy.width();++x)if(busy.pixelColor(x,y)==Theme::current().text)++fill;QVERIFY(fill>100);
-   auto* timer=bar.findChild<QTimer*>("graphiteBusyTimer");QVERIFY(timer);QVERIFY(timer->isActive());
-   PUTGD_TRY_VERIFY(bar.property("graphiteBusyPhase").toDouble()>0.08);QVERIFY(bar.grab().toImage()!=busy);
+   auto* timer=bar.findChild<QTimer*>("uiBusyTimer");QVERIFY(timer);QVERIFY(timer->isActive());
+   PUTGD_TRY_VERIFY(bar.property("uiBusyPhase").toDouble()>0.08);QVERIFY(bar.grab().toImage()!=busy);
    bar.setRange(0,100);bar.setValue(0);PUTGD_TRY_VERIFY(!timer->isActive());QCOMPARE(bar.grab().toImage(),zero);
   }
  }
  void disabledStyleAnimationKeepsAVisibleBusySegment(){
   class QuietStyle final:public QProxyStyle {
   public:
-   QuietStyle():QProxyStyle(new Graphite::Style){}
+   QuietStyle():QProxyStyle(new Ui::Style){}
    int styleHint(StyleHint hint,const QStyleOption* option=nullptr,const QWidget* widget=nullptr,QStyleHintReturn* data=nullptr)const override{return hint==SH_Widget_Animate?0:QProxyStyle::styleHint(hint,option,widget,data);}
   } style;
   QProgressBar bar;bar.setStyle(&style);bar.setTextVisible(false);bar.resize(240,20);bar.setRange(0,0);bar.show();QVERIFY(putgd::test::waitForWindowExposed(&bar));
-  const auto still=bar.grab().toImage();auto* timer=bar.findChild<QTimer*>("graphiteBusyTimer");QVERIFY(timer&&!timer->isActive());
+  const auto still=bar.grab().toImage();auto* timer=bar.findChild<QTimer*>("uiBusyTimer");QVERIFY(timer&&!timer->isActive());
   QCOMPARE(still.pixelColor(still.width()/2,still.height()/2),Theme::current().text);QCOMPARE(bar.grab().toImage(),still);
  }
  void liveSchemeAlsoUpdatesTheOpenFallbackChooser(){
@@ -584,7 +584,7 @@ private slots:
   QVERIFY(window.findChild<QWidget*>("editorFooter")->isAncestorOf(info));
   // Every colour target is at least 32 px; the painted swatch stays inside it.
   window.selectTool(Tool::Arrow);int swatches=0;
-  for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName().startsWith("Color ")||button->objectName()=="customColor"){++swatches;QVERIFY(button->width()>=Graphite::scaled(32)&&button->height()>=Graphite::scaled(32));}
+  for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName().startsWith("Color ")||button->objectName()=="customColor"){++swatches;QVERIFY(button->width()>=Ui::scaled(32)&&button->height()>=Ui::scaled(32));}
   QCOMPARE(swatches,8);
   for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName()=="Color Orange"){QTest::mouseClick(button,Qt::LeftButton,{},QPoint(1,1));QCOMPARE(window.canvas().style().color,QColor(245,158,11));}
  }
@@ -600,7 +600,7 @@ private slots:
    for(auto* swatch:window.findChildren<QToolButton*>()){
     if(!swatch->accessibleName().startsWith("Color ")||swatch->isChecked())continue;++checked;
     // The top edge's middle: the 1 px outline row, and the panel above the square.
-    const auto edge=image.pixelColor(swatch->mapTo(&window,QPoint(swatch->width()/2,Graphite::scaled(4))));
+    const auto edge=image.pixelColor(swatch->mapTo(&window,QPoint(swatch->width()/2,Ui::scaled(4))));
     const auto panel=image.pixelColor(swatch->mapTo(&window,QPoint(swatch->width()/2,1)));
     const double ratio=Theme::contrast(edge,panel);
     QVERIFY2(ratio>=3.0,qPrintable(QString("%1 %2: %3:1").arg(Theme::name(scheme),swatch->accessibleName()).arg(ratio,0,'f',2)));
@@ -636,8 +636,8 @@ private slots:
   window.showSaveFailed(dir.filePath("denied.png"),"Permission denied");
   auto* error=window.findChild<QLabel*>("editorSaveError");QVERIFY(error);QVERIFY(error->isVisible());QVERIFY(!error->wordWrap());QVERIFY(!saved->isVisible());
   QVERIFY(error->text().contains("Permission denied",Qt::CaseInsensitive));QVERIFY(error->accessibleDescription().contains(QFileInfo(dir.filePath("denied.png")).absoluteFilePath()));
-  auto* target=window.findChild<Graphite::ElidedLabel*>("editorSaveTarget");QVERIFY(target&&target->isHidden());QVERIFY(target->text().contains("denied.png"));QVERIFY(!target->revealable());
-  auto* details=window.findChild<QToolButton*>("editorSaveDetails");QVERIFY(details&&details->isVisible());details->click();auto* popup=window.findChild<Graphite::ElidedLabel*>("editorSaveError")->fullTextPopup();QVERIFY(popup&&popup->isVisible());
+  auto* target=window.findChild<Ui::ElidedLabel*>("editorSaveTarget");QVERIFY(target&&target->isHidden());QVERIFY(target->text().contains("denied.png"));QVERIFY(!target->revealable());
+  auto* details=window.findChild<QToolButton*>("editorSaveDetails");QVERIFY(details&&details->isVisible());details->click();auto* popup=window.findChild<Ui::ElidedLabel*>("editorSaveError")->fullTextPopup();QVERIFY(popup&&popup->isVisible());
   auto* full=popup->findChild<QLabel*>("elidedLabelFullTextValue");QVERIFY(full);QVERIFY(full->text().contains(QFileInfo(dir.filePath("denied.png")).absoluteFilePath()));QVERIFY(full->text().contains("Permission denied"));QVERIFY(full->textInteractionFlags()&Qt::TextSelectableByKeyboard);QCOMPARE(popup->layout()->contentsMargins(),QMargins(8,8,8,8));popup->close();
   QString detailsCode,detailsMessage;auto detailsState=window.viewCommand({{"action","saveDetails"}},detailsCode,detailsMessage);QVERIFY2(detailsCode.isEmpty(),qPrintable(detailsMessage));QVERIFY(detailsState["saveDetailsOpen"].toBool());
   detailsState=window.viewCommand({{"action","saveDetails"}},detailsCode,detailsMessage);QVERIFY(detailsCode.isEmpty());QVERIFY(!detailsState["saveDetailsOpen"].toBool());
@@ -757,7 +757,7 @@ private slots:
   copy->click();QCOMPARE(QGuiApplication::clipboard()->text(),QFileInfo(path).absoluteFilePath());
   QCOMPARE(window.viewState()["lastCopiedPath"].toString(),QFileInfo(path).absoluteFilePath());
   add(doc,{{"kind","redact"},{"rect",QJsonArray{10,10,50,20}}});window.documentEdited();
-  QCOMPARE(state->text(),QString("Not uploaded"));QCOMPARE(saved->text(),QString("Earlier copy saved: synthetic copy.png"));QCOMPARE(window.findChild<Graphite::Banner*>("editorSaveFeedback")->tone(),Graphite::Banner::Tone::Info);
+  QCOMPARE(state->text(),QString("Not uploaded"));QCOMPARE(saved->text(),QString("Earlier copy saved: synthetic copy.png"));QCOMPARE(window.findChild<Ui::Banner*>("editorSaveFeedback")->tone(),Ui::Banner::Tone::Info);
   QVERIFY(!window.viewState()["lastSave"].toObject()["current"].toBool());QVERIFY(copy->isVisible());
   QGuiApplication::clipboard()->clear();QString code,message;window.viewCommand({{"action","copySavedPath"}},code,message);QVERIFY(code.isEmpty());
   QCOMPARE(QGuiApplication::clipboard()->text(),QFileInfo(path).absoluteFilePath());
@@ -819,26 +819,26 @@ private slots:
  // Summary and actions share the 56 px band until the summary needs its own row.
  void footerOnlyWrapsWhenTheDestinationCannotFit(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.setDestination("Upload to Project archive");window.resize(1100,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  auto* destination=window.findChild<Graphite::ElidedLabel*>("editorDestination");auto* footer=window.findChild<QWidget*>("editorFooter");const auto upload=window.findChild<QPushButton*>("editorUpload");
+  auto* destination=window.findChild<Ui::ElidedLabel*>("editorDestination");auto* footer=window.findChild<QWidget*>("editorFooter");const auto upload=window.findChild<QPushButton*>("editorUpload");
   QVERIFY(destination);QVERIFY(destination->focusPolicy()&Qt::TabFocus);QApplication::processEvents();
   QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
   QVERIFY(destination->mapTo(footer,QPoint()).x()+destination->width()<window.findChild<QPushButton*>("editorSaveCopy")->x());
   auto* info=window.findChild<QLabel*>("editorDocumentInfo");
-  QCOMPARE(destination->x()-(info->x()+info->width()),Graphite::space(Graphite::Space::l));
-  QCOMPARE(footer->height(),Graphite::scaled(56));
+  QCOMPARE(destination->x()-(info->x()+info->width()),Ui::space(Ui::Space::l));
+  QCOMPARE(footer->height(),Ui::scaled(56));
   const QString longName="Upload to Production screenshots for customer support, Europe, Middle East and Asia-Pacific teams, release readiness and accessibility reviews";
   window.setDestination(longName);window.resize(760,560);QApplication::processEvents();
   QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());QVERIFY(destination->isVisible());
   QVERIFY(destination->mapTo(footer,destination->rect().bottomLeft()).y()<upload->mapTo(footer,QPoint()).y());QCOMPARE(destination->text(),longName.mid(10));QCOMPARE(destination->toolTip(),longName.mid(10));QVERIFY(destination->elided());
   destination->setFocus(Qt::TabFocusReason);QTest::keyClick(destination,Qt::Key_Return);QVERIFY(destination->fullTextPopup());QVERIFY(destination->fullTextPopup()->isVisible());destination->fullTextPopup()->close();
   window.setDestination("Upload to Project archive");window.resize(1400,700);QApplication::processEvents();QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());
-  QCOMPARE(footer->height(),Graphite::scaled(56));
+  QCOMPARE(footer->height(),Ui::scaled(56));
  }
  void footerKeepsSharingModeVisibleBesideAnElidedDestination_data(){QTest::addColumn<int>("pixels");QTest::newRow("standard")<<14;QTest::newRow("text150")<<21;}
  void footerKeepsSharingModeVisibleBesideAnElidedDestination(){
   QFETCH(int,pixels);const auto original=QApplication::font();const auto restore=qScopeGuard([&]{QApplication::setFont(original);});auto font=original;font.setPixelSize(pixels);QApplication::setFont(font);
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  auto* destination=window.findChild<Graphite::ElidedLabel*>("editorDestination");auto* mode=window.findChild<QLabel*>("editorSharingMode");auto* upload=window.findChild<QPushButton*>("editorUpload");auto* group=window.findChild<QWidget*>("editorUploadGroup");auto verifyPair=[&]{QCOMPARE(mode->parentWidget(),upload->parentWidget());QVERIFY(group->rect().contains(mode->geometry()));QCOMPARE(upload->x()-mode->geometry().right()-1,Graphite::space(Graphite::Space::s));QCOMPARE(mode->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());QCOMPARE(mode->font().weight(),QFont::Normal);QVERIFY(mode->width()>=mode->sizeHint().width());QVERIFY(upload->accessibleDescription().contains(destination->text()));QVERIFY(upload->accessibleDescription().contains(mode->text()=="Private upload"?QString("private upload"):QString("shared link")));};
+  auto* destination=window.findChild<Ui::ElidedLabel*>("editorDestination");auto* mode=window.findChild<QLabel*>("editorSharingMode");auto* upload=window.findChild<QPushButton*>("editorUpload");auto* group=window.findChild<QWidget*>("editorUploadGroup");auto verifyPair=[&]{QCOMPARE(mode->parentWidget(),upload->parentWidget());QVERIFY(group->rect().contains(mode->geometry()));QCOMPARE(upload->x()-mode->geometry().right()-1,Ui::space(Ui::Space::s));QCOMPARE(mode->font().pixelSize(),Ui::font(Ui::Type::body).pixelSize());QCOMPARE(mode->font().weight(),QFont::Normal);QVERIFY(mode->width()>=mode->sizeHint().width());QVERIFY(upload->accessibleDescription().contains(destination->text()));QVERIFY(upload->accessibleDescription().contains(mode->text()=="Private upload"?QString("private upload"):QString("shared link")));};
   const QString name=QString("Production screenshots for customer support — ").repeated(10);
   for(const bool shared:{false,true}){
    window.setDestination(shared?"Upload to "+name+" · Shared link":"Private upload to "+name);QApplication::processEvents();
@@ -848,14 +848,14 @@ private slots:
    QCOMPARE(window.viewState()["destination"].toObject()["text"].toString(),name+" · "+mode->text());
   }
   window.resize(1900,700);window.setDestination("Private upload to Project archive");QApplication::processEvents();QVERIFY(!window.viewState()["destination"].toObject()["above"].toBool());QVERIFY(!window.findChild<QLabel*>("editorSharingSeparator"));verifyPair();
-  if(pixels==21)QVERIFY(Graphite::scaled(100)>=145);window.setDestination("Private upload to "+name);window.resize(760,560);QApplication::processEvents();QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());QVERIFY(mode->isVisible());verifyPair();
+  if(pixels==21)QVERIFY(Ui::scaled(100)>=145);window.setDestination("Private upload to "+name);window.resize(760,560);QApplication::processEvents();QVERIFY(window.viewState()["destination"].toObject()["above"].toBool());QVERIFY(mode->isVisible());verifyPair();
   window.setDestination("Upload to Archive");QVERIFY(!mode->isVisible());
  }
  void blurWarningUsesTheExistingRedactToolWithoutChangingMarks(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.selectTool(Tool::Blur);
   add(doc,{{"kind","blur"},{"rect",QJsonArray{10,10,50,20}},{"strength",24}});window.documentEdited();window.canvas().select(doc.shapes().last().id);const auto original=doc.shapes().last();
   auto* warning=window.findChild<QLabel*>("editorToolWarning");auto* redact=window.findChild<QToolButton*>("useRedact");QVERIFY(warning&&warning->isVisible());QVERIFY(redact&&redact->isVisible());
-  QCOMPARE(warning->text(),Graphite::blurWarningText());
+  QCOMPARE(warning->text(),Ui::blurWarningText());
   // The review's Use Redact converts a blur; this one only picks the tool, and says so.
   QCOMPARE(redact->text(),QString("Choose Redact tool"));QVERIFY(redact->toolTip().contains("Existing blur marks are unchanged."));QVERIFY(redact->accessibleDescription().contains("Existing blur marks are unchanged."));
   redact->click();QCOMPARE(window.canvas().tool(),Tool::Redact);QCOMPARE(doc.shapes().last(),original);QVERIFY(!warning->isVisible());
@@ -866,7 +866,7 @@ private slots:
  void removeMarkIsVisibleUndoableAndAgentControllable(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1100,900);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   add(doc,{{"kind","rectangle"},{"rect",QJsonArray{10,10,50,20}}});window.documentEdited();const auto original=doc.shapes().first();
-  auto* remove=window.findChild<QPushButton*>("removeMark");QVERIFY(remove);QVERIFY(remove->text().isEmpty());QCOMPARE(remove->accessibleName(),QString("Remove mark"));QCOMPARE(remove->property("graphiteDensity").toString(),QString("compact"));auto* title=window.findChild<QLabel*>("editorToolTitle");QCOMPARE(remove->parentWidget(),title->parentWidget());QVERIFY(!remove->isVisible());
+  auto* remove=window.findChild<QPushButton*>("removeMark");QVERIFY(remove);QVERIFY(remove->text().isEmpty());QCOMPARE(remove->accessibleName(),QString("Remove mark"));QCOMPARE(remove->property("uiDensity").toString(),QString("compact"));auto* title=window.findChild<QLabel*>("editorToolTitle");QCOMPARE(remove->parentWidget(),title->parentWidget());QVERIFY(!remove->isVisible());
   window.selectTool(Tool::Select);window.canvas().select(original.id);QVERIFY(remove->isVisible());QVERIFY(!remove->icon().isNull());QVERIFY(remove->toolTip().contains("Delete"));
   remove->click();QVERIFY(doc.shapes().isEmpty());QCOMPARE(window.canvas().selected(),quint64(0));QVERIFY(!remove->isVisible());
   QVERIFY(doc.undo());window.documentEdited();QCOMPARE(doc.shapes().first(),original);
@@ -888,7 +888,7 @@ private slots:
   window.showPreparationFailed(reason);PUTGD_TRY_VERIFY(!scroll->isAncestorOf(document));
   QVERIFY(window.findChild<QWidget*>("editorFooter")->isAncestorOf(document));
   // Properties retain a useful viewport while recovery stays reachable.
-  PUTGD_TRY_VERIFY(scroll->viewport()->height()>=Graphite::scaled(180));
+  PUTGD_TRY_VERIFY(scroll->viewport()->height()>=Ui::scaled(180));
   auto* label=window.findChild<QLabel*>("editorPreparationReason");QCOMPARE(label->text(),reason);QVERIFY(label->height()>=label->heightForWidth(label->width()));
   const auto footer=window.findChild<QWidget*>("editorFooter");
   for(const auto name:{"keepEditing","saveCopyInstead","editorUpload","editorCancel"}){

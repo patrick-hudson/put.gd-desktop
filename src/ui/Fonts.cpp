@@ -1,5 +1,5 @@
 #include "Fonts.h"
-#include "Graphite.h"
+#include "Ui.h"
 #include <QFontDatabase>
 
 // Q_INIT_RESOURCE must be outside putgd's namespace.
@@ -19,7 +19,7 @@ struct Families {
         const auto sans = QFontDatabase::applicationFontFamilies(regular), monos = QFontDatabase::applicationFontFamilies(fixed);
         if (!sans.isEmpty()) ui = sans.front();
         if (!monos.isEmpty()) mono = monos.front();
-        Graphite::setFamilies(ui, mono);
+        Ui::setFamilies(ui, mono);
     }
 };
 const Families& families() { static const Families value; return value; }

@@ -343,7 +343,7 @@ target_link_libraries(putgd_client PUBLIC Qt6::Core Qt6::Network putgd_build_opt
 add_library(putgd_ui_state STATIC src/ui/ViewState.cpp)
 target_include_directories(putgd_ui_state PUBLIC src)
 target_link_libraries(putgd_ui_state PUBLIC Qt6::Core putgd_build_options)
-add_library(putgd_visual STATIC src/ui/VisualStyle.cpp src/ui/IconArt.cpp src/ui/Theme.cpp src/ui/Graphite.cpp src/ui/WindowButtons.cpp)
+add_library(putgd_visual STATIC src/ui/Ui.cpp src/ui/IconArt.cpp src/ui/Theme.cpp src/ui/WindowButtons.cpp)
 target_include_directories(putgd_visual PUBLIC src)
 target_link_libraries(putgd_visual PUBLIC Qt6::Widgets putgd_build_options)
 # Links and folders opened on the host (#326): the desktop portal and the file
@@ -392,7 +392,7 @@ endif()
 # The bundled IBM Plex fonts (OFL), for the interface and recording helper only.
 add_library(putgd_fonts STATIC src/ui/Fonts.cpp src/ui/fonts.qrc)
 target_link_libraries(putgd_fonts PUBLIC putgd_visual)
-add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/RedesignTheme.cpp src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/ShortcutEditor.cpp
+add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/UiWindow.cpp src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/ShortcutEditor.cpp
   src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp)
 target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_fonts putgd_appearance putgd_file_dialog PRIVATE putgd_s3_wire putgd_host_open putgd_shortcut_keyboard)
 # Editing model and canvas for the on-demand editor helper; no storage or IPC.
@@ -805,14 +805,14 @@ if(BUILD_TESTING)
   endif()
   add_test(NAME version_integration COMMAND test_version)
   set_tests_properties(version_integration PROPERTIES TIMEOUT 30)
-  add_executable(putgd-redesign-preview tests/gui/redesign_preview.cpp)
-  target_include_directories(putgd-redesign-preview PRIVATE tests src)
-  target_link_libraries(putgd-redesign-preview PRIVATE putgd_ui_application putgd_editor_window putgd_app putgd_s3 Qt6::Test)
+  add_executable(putgd-ui-catalog tests/gui/ui_catalog.cpp)
+  target_include_directories(putgd-ui-catalog PRIVATE tests src)
+  target_link_libraries(putgd-ui-catalog PRIVATE putgd_ui_application putgd_editor_window putgd_app putgd_s3 Qt6::Test)
   if(TARGET putgd-record)
-    # The review window and control bar states (synthetic; Graphite acceptance).
-    target_sources(putgd-redesign-preview PRIVATE src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
-    target_link_libraries(putgd-redesign-preview PRIVATE putgd_fonts putgd_file_dialog Qt6::DBus PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
-    target_compile_definitions(putgd-redesign-preview PRIVATE PUTGD_PREVIEW_REVIEW=1)
+    # The review window and control bar states (synthetic UI catalog states).
+    target_sources(putgd-ui-catalog PRIVATE src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
+    target_link_libraries(putgd-ui-catalog PRIVATE putgd_fonts putgd_file_dialog Qt6::DBus PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
+    target_compile_definitions(putgd-ui-catalog PRIVATE PUTGD_CATALOG_REVIEW=1)
   endif()
   # #237: theme switch timing with History (gallery) and Settings open.
   add_executable(putgd-bench-theme-switch tests/performance/bench_theme_switch.cpp)

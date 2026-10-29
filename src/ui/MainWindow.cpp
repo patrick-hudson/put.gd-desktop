@@ -20,9 +20,7 @@
 #include "SettingsWindow.h"
 #include "HistoryWindow.h"
 #include "UiSession.h"
-#include "VisualStyle.h"
-#include "RedesignTheme.h"
-#include "Graphite.h"
+#include "Ui.h"
 #include <QPainter>
 #include <QMenu>
 #include <QHBoxLayout>
@@ -43,10 +41,10 @@
 #include "platform/HostOpen.h"
 #include "core/ReleaseLink.h"
 namespace putgd {
-using Graphite::Space;
-using Graphite::space;
+using Ui::Space;
+using Ui::space;
 namespace {
-void orderNavigation(Graphite::WindowHeader* header,QWidget* tabs_,const QList<QToolButton*>& actionButtons_,QWidget* band_){
+void orderNavigation(Ui::WindowHeader* header,QWidget* tabs_,const QList<QToolButton*>& actionButtons_,QWidget* band_){
  QWidget* last=header->menuButton();QWidget::setTabOrder(last,tabs_);last=tabs_;for(auto* button:actionButtons_){QWidget::setTabOrder(last,button);last=button;}
  // Preserve each page's internal order, after the persistent commands; chrome is last.
  QList<QWidget*> content;auto* next=last->nextInFocusChain();while(next!=last){if(next!=header->menuButton()&&next!=tabs_&&!header->isAncestorOf(next)&&!band_->isAncestorOf(next)&&next->focusPolicy()!=Qt::NoFocus)content.append(next);next=next->nextInFocusChain();}
@@ -56,7 +54,7 @@ QString outputSpan(const QString& text,const QFont& font,const QColor& color){re
 // One document owns both the popup's measurements and its painted text.
 class OutputLabel final:public QLabel {
 public:
- explicit OutputLabel(QWidget* parent):QLabel(parent){document_.setDocumentMargin(0);document_.setDefaultFont(Graphite::font());setFocusPolicy(Qt::NoFocus);}
+ explicit OutputLabel(QWidget* parent):QLabel(parent){document_.setDocumentMargin(0);document_.setDefaultFont(Ui::font());setFocusPolicy(Qt::NoFocus);}
  int measure(const QString& html){document_.setHtml(html);document_.setTextWidth(-1);return qCeil(document_.idealWidth());}
  QString wrap(const QStringList& segments,const QFont& font,const QColor& color,int width){QStringList lines;QString line;for(const auto& segment:segments){const auto joined=line.isEmpty()?segment:line+" · "+segment;if(!line.isEmpty()&&measure(outputSpan(joined,font,color))>width){lines.append(line);line.clear();}if(!line.isEmpty())line+=" · ";line+=segment;}if(!line.isEmpty())lines.append(line);return outputSpan(lines.join("<br>"),font,color);}
  void fit(const QString& html,int width){setText(html);document_.setHtml(html);document_.setTextWidth(width);setFixedSize(width,qCeil(document_.size().height()));int lines=0;for(auto block=document_.begin();block.isValid();block=block.next())lines+=block.layout()->lineCount();setProperty("renderedLines",lines);}
@@ -69,10 +67,10 @@ private:QTextDocument document_;
 void populateOutputRows(QMenu* menu){
  auto* action=menu->findChild<QWidgetAction*>("captureOutputRows");auto* body=action->defaultWidget();auto* grid=qobject_cast<QGridLayout*>(body->layout());while(auto* item=grid->takeAt(0)){delete item->widget();delete item;}
  QList<QAction*> rows{menu->findChild<QAction*>("captureOutputDefault")};for(const auto& name:Settings::presentationOrder())if(auto* entry=menu->findChild<QAction*>("captureOutputDetail"+name);entry->isVisible())rows.append(entry);
- const auto bodyFont=Graphite::font(),metaFont=Graphite::font(Graphite::Type::technical);QList<OutputLabel*> labels;int natural=0;
+ const auto bodyFont=Ui::font(),metaFont=Ui::font(Ui::Type::technical);QList<OutputLabel*> labels;int natural=0;
  for(auto* entry:rows){auto* label=new OutputLabel(body);labels.append(label);natural=qMax(natural,label->measure(outputSpan(entry->text().section(": ",0,0).toHtmlEscaped(),bodyFont,Theme::current().text)+"<br>"+outputSpan(entry->text().section(": ",1).toHtmlEscaped(),metaFont,Theme::current().textSecondary)));}
- const int inset=space(Space::m),width=qBound(Graphite::scaled(280),natural+2*inset,Graphite::scaled(480)),room=width-2*inset;int row=0,index=0;
- for(auto* entry:rows){if(row==1){auto* caption=Graphite::label("Exceptions","meta",body);caption->setObjectName("captureOutputExceptions");caption->setContentsMargins(0,space(Space::s),0,0);grid->addWidget(caption,row++,0);}
+ const int inset=space(Space::m),width=qBound(Ui::scaled(280),natural+2*inset,Ui::scaled(480)),room=width-2*inset;int row=0,index=0;
+ for(auto* entry:rows){if(row==1){auto* caption=Ui::label("Exceptions","meta",body);caption->setObjectName("captureOutputExceptions");caption->setContentsMargins(0,space(Space::s),0,0);grid->addWidget(caption,row++,0);}
   auto* label=labels[index++];label->setObjectName(entry->objectName()+"Text");QStringList segments;for(const auto& segment:entry->text().section(": ",1).split(" · "))segments.append(segment.toHtmlEscaped());const auto names=entry->text().section(": ",0,0);const auto html=label->wrap({names.toHtmlEscaped()},bodyFont,Theme::current().text,room)+"<br>"+label->wrap(segments,metaFont,Theme::current().textSecondary,room);label->fit(html,room);label->setAccessibleName(entry->text());grid->addWidget(label,row++,0);
  }body->setFixedWidth(width);grid->activate();
 }
@@ -81,7 +79,7 @@ public:
  explicit OutputButton(QWidget* parent):QToolButton(parent){setMinimumHeight(qMax(32,fontMetrics().height()+4));}
  // Status controls retain a 32 px target without form padding.
  QSize sizeHint()const override{auto size=QToolButton::sizeHint();size.setHeight(qMax(32,fontMetrics().height()+4));return size;}
- QSize minimumSizeHint()const override{return {Graphite::scaled(120),sizeHint().height()};}
+ QSize minimumSizeHint()const override{return {Ui::scaled(120),sizeHint().height()};}
 protected:
  void changeEvent(QEvent* event)override{QToolButton::changeEvent(event);if(event->type()==QEvent::FontChange)setMinimumHeight(qMax(32,fontMetrics().height()+4));}
  void keyPressEvent(QKeyEvent* event)override{if(menu()&&(event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter)){menu()->popup(mapToGlobal(QPoint(0,-menu()->sizeHint().height())));event->accept();return;}QToolButton::keyPressEvent(event);}
@@ -89,14 +87,14 @@ protected:
 class StatusLink final:public QPushButton {
 public:
  using QPushButton::QPushButton;
- // Graphite's version links paint 4 px insets and an 8 px icon/text gap.
+ // The style's version links paint 4 px insets and an 8 px icon/text gap.
  QSize sizeHint()const override{auto size=QPushButton::sizeHint();size.setWidth(qMax(size.width(),qCeil(QFontMetricsF(font()).horizontalAdvance(text()))+(icon().isNull()?0:iconSize().width()+8)+8));return size;}
  QSize minimumSizeHint()const override{return sizeHint();}
 };
 class EditSourceButton final:public QToolButton {
 public:using QToolButton::QToolButton;
  // Compact toolbar targets retain the supported History row count.
- QSize sizeHint()const override{auto size=QToolButton::sizeHint();if(window()->height()<Graphite::scaled(720))size.setHeight(qMax(Graphite::Metric::iconTarget,qMax(iconSize().height(),fontMetrics().height()+space(Space::s))));return size;}
+ QSize sizeHint()const override{auto size=QToolButton::sizeHint();if(window()->height()<Ui::scaled(720))size.setHeight(qMax(Ui::Metric::iconTarget,qMax(iconSize().height(),fontMetrics().height()+space(Space::s))));return size;}
  QSize minimumSizeHint()const override{return sizeHint();}
 protected:
  void keyPressEvent(QKeyEvent* event)override{if(event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter){click();event->accept();return;}QToolButton::keyPressEvent(event);}
@@ -112,11 +110,11 @@ QString unavailableOutput(const QJsonObject& document,const QString& action){
 // Only compact output and build metadata belong in the status band.
 class StatusBand final:public QStatusBar {
 public:
- explicit StatusBand(QWidget* parent):QStatusBar(parent){setSizeGripEnabled(false);setObjectName("statusBand");setMinimumHeight(Graphite::scaled(Graphite::Metric::statusBand));setContentsMargins(space(Space::l),0,space(Space::l),0);}
+ explicit StatusBand(QWidget* parent):QStatusBar(parent){setSizeGripEnabled(false);setObjectName("statusBand");setMinimumHeight(Ui::scaled(Ui::Metric::statusBand));setContentsMargins(space(Space::l),0,space(Space::l),0);}
 protected:
  bool event(QEvent* event)override{
   const bool handled=QStatusBar::event(event);
-  if(event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show){int height=Graphite::scaled(32);for(auto* child:findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(!child->isWindow()&&child->isVisibleTo(this))height=qMax(height,qMax(child->minimumHeight(),child->sizeHint().height()));setMinimumHeight(qMax(Graphite::scaled(Graphite::Metric::statusBand),height+2*space(Space::xs)));}
+  if(event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show){int height=Ui::scaled(32);for(auto* child:findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(!child->isWindow()&&child->isVisibleTo(this))height=qMax(height,qMax(child->minimumHeight(),child->sizeHint().height()));setMinimumHeight(qMax(Ui::scaled(Ui::Metric::statusBand),height+2*space(Space::xs)));}
   return handled;
  }
  void paintEvent(QPaintEvent* event)override{{QPainter p(this);p.fillRect(rect(),Theme::current().surface);p.setPen(Theme::current().border);p.drawLine(0,0,width(),0);}QStatusBar::paintEvent(event);}
@@ -124,7 +122,7 @@ protected:
 }
 MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),session_(session){
  chooser_=new FileDialog(this);
- setObjectName("putgdMainWindow");setWindowTitle("put.gd");setWindowIcon(VisualStyle::icon("brand"));resize(1320,880);setMinimumSize(1060,680);
+ setObjectName("putgdMainWindow");setWindowTitle("put.gd");setWindowIcon(Ui::icon("brand"));resize(1320,880);setMinimumSize(1060,680);
  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"record","Record screen"}};
  const QHash<QString,QString> glyphs{{"region","region"},{"window","window"},{"desktop","desktop"},{"clipboard","clipboard"},{"edit","edit"},{"record","record"}};
  // The application menu holds only what the window does not already show:
@@ -140,9 +138,9 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  menu->addSeparator();
  auto* quitAction=menu->addAction("Quit put.gd");quitAction->setObjectName("quitApplication");connect(quitAction,&QAction::triggered,this,&MainWindow::quitRequested);
  auto* center=new QWidget;setCentralWidget(center);auto* layout=new QVBoxLayout(center);layout->setContentsMargins(0,0,0,0);layout->setSpacing(0);
- auto* chrome=new Graphite::Surface("surface",Qt::BottomEdge,center);chrome->setObjectName("mainChrome");auto* chromeBox=new QVBoxLayout(chrome);chromeBox->setContentsMargins(0,0,0,0);chromeBox->setSpacing(0);layout->addWidget(chrome);
- auto* header=Graphite::WindowHeader::install(this,chromeBox,menu);header->setProperty("graphiteChromePlane",true);
- tabs_=new Graphite::Segmented(header);tabs_->setObjectName("mainNavigation");tabs_->setAccessibleName("Main navigation");for(const auto* label:{"History","Destinations","Settings"})tabs_->addTab(label);header->setCentre(tabs_);
+ auto* chrome=new Ui::Surface("surface",Qt::BottomEdge,center);chrome->setObjectName("mainChrome");auto* chromeBox=new QVBoxLayout(chrome);chromeBox->setContentsMargins(0,0,0,0);chromeBox->setSpacing(0);layout->addWidget(chrome);
+ auto* header=Ui::WindowHeader::install(this,chromeBox,menu);header->setProperty("uiChromePlane",true);
+ tabs_=new Ui::Segmented(header);tabs_->setObjectName("mainNavigation");tabs_->setAccessibleName("Main navigation");for(const auto* label:{"History","Destinations","Settings"})tabs_->addTab(label);header->setCentre(tabs_);
  // The command band: capture and upload actions, lead first.
  band_=new QWidget(chrome);band_->setObjectName("commandBand");band_->setAccessibleName("Capture and upload actions");band_->installEventFilter(this);auto* bandRow=new QGridLayout(band_);bandRow->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));bandRow->setSpacing(space(Space::s));chromeBox->addWidget(band_);
  const QHash<QString,QString> explanations{{"region","Drag to select an area of your screen. Press Escape to cancel."},{"window","Capture the focused external app window, including its frame where supported."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Upload copied local files, an image, or plain text, in that order. Text URLs are uploaded as text."},{"edit","Select a region, then redact, blur, crop or annotate it. Nothing uploads until you choose Upload.\n\nUse its menu to edit the clipboard image or an image file instead, or drop a PNG or JPEG on this button."},{"record","Drag to select an area, then use the floating bar to record, pause and stop. Stop opens a review window; nothing uploads until you choose Upload there."}};
@@ -152,36 +150,36 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  // upload, which captures nothing. Hairlines separate the groups.
  const auto bandOrder=Settings::presentationOrder();
  for(const auto& action:bandOrder){
-  if(action=="edit"){auto* divider=Graphite::rule(band_,Qt::Vertical);divider->setObjectName("commandBandDivider");divider->setFixedHeight(Graphite::scaled(20));bandRow->addWidget(divider,0,3,Qt::AlignCenter);}
+  if(action=="edit"){auto* divider=Ui::rule(band_,Qt::Vertical);divider->setObjectName("commandBandDivider");divider->setFixedHeight(Ui::scaled(20));bandRow->addWidget(divider,0,3,Qt::AlignCenter);}
   if(action=="clipboard")bandRow->setColumnStretch(6,1);
-  auto* button=new EditSourceButton(band_);button->setText(QString(labels.value(action)).replace('&',QStringLiteral("&&")));button->setFocusPolicy(Qt::StrongFocus);button->setIconSize(QSize(Graphite::scaled(Graphite::Metric::icon),Graphite::scaled(Graphite::Metric::icon)));button->setIcon(VisualStyle::icon(glyphs.value(action)));button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);VisualStyle::role(button,action=="region"?"lead":"quiet");button->setObjectName("captureActionButton");button->setProperty("captureAction",action);button->setAccessibleName(labels.value(action));
+  auto* button=new EditSourceButton(band_);button->setText(QString(labels.value(action)).replace('&',QStringLiteral("&&")));button->setFocusPolicy(Qt::StrongFocus);button->setIconSize(QSize(Ui::scaled(Ui::Metric::icon),Ui::scaled(Ui::Metric::icon)));button->setIcon(Ui::icon(glyphs.value(action)));button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);Ui::role(button,action=="region"?"lead":"quiet");button->setObjectName("captureActionButton");button->setProperty("captureAction",action);button->setAccessibleName(labels.value(action));
   if(action=="edit"){
    // The button captures a region to edit; its menu edits an image that
    // already exists instead and never starts a capture. A right-click or a
    // dropped PNG or JPEG does the same.
    editButton_=button;button->setContextMenuPolicy(Qt::CustomContextMenu);button->setAcceptDrops(true);button->installEventFilter(this);
    auto* sources=new QMenu(this);sources->setObjectName("editSourceMenu");
-   connect(sources->addAction(VisualStyle::icon("clipboard"),"Edit clipboard image"),&QAction::triggered,this,[this]{emit editRequested("clipboard",{});});
-   connect(sources->addAction(VisualStyle::icon("images"),"Edit an image file…"),&QAction::triggered,this,&MainWindow::chooseImageToEdit);
+   connect(sources->addAction(Ui::icon("clipboard"),"Edit clipboard image"),&QAction::triggered,this,[this]{emit editRequested("clipboard",{});});
+   connect(sources->addAction(Ui::icon("images"),"Edit an image file…"),&QAction::triggered,this,&MainWindow::chooseImageToEdit);
    button->setMenu(sources);button->setPopupMode(QToolButton::MenuButtonPopup);
    connect(button,&QWidget::customContextMenuRequested,sources,[sources,button](const QPoint& at){sources->popup(button->mapToGlobal(at));});
   }
   auto update=[this,button,action,explanations,glyphs]{
    const auto saved=Settings::effectiveAction(session_.document(),action);const auto key=QKeySequence(saved["shortcut"].toString()).toString(QKeySequence::NativeText);
-   const auto unavailable=unavailableOutput(session_.document(),action);button->setEnabled(true);const auto defaults=session_.document()["captureDefaults"].toObject();button->setProperty("captureUnavailable",!unavailable.isEmpty());button->setProperty("captureBadge",!unavailable.isEmpty()&&!defaults.isEmpty()&&(saved["destination"]!=defaults["destination"]||saved["profileId"]!=defaults["profileId"]||saved["publicationMode"]!=defaults["publicationMode"]));if(action=="region")VisualStyle::role(button,"lead");button->setIcon(VisualStyle::icon(glyphs.value(action)));
+   const auto unavailable=unavailableOutput(session_.document(),action);button->setEnabled(true);const auto defaults=session_.document()["captureDefaults"].toObject();button->setProperty("captureUnavailable",!unavailable.isEmpty());button->setProperty("captureBadge",!unavailable.isEmpty()&&!defaults.isEmpty()&&(saved["destination"]!=defaults["destination"]||saved["profileId"]!=defaults["profileId"]||saved["publicationMode"]!=defaults["publicationMode"]));if(action=="region")Ui::role(button,"lead");button->setIcon(Ui::icon(glyphs.value(action)));
    button->setAccessibleDescription(unavailable.isEmpty()?explanations.value(action):(action=="edit"?"Region capture unavailable: "+unavailable+" Existing images can still be edited.":"Unavailable: "+unavailable));
    button->setToolTip(button->accessibleName()+(key.isEmpty()?QString{}:QString(" · ")+key)+(unavailable.isEmpty()?QString{}:QString("\n")+unavailable));
   };
   connect(&session_,&UiSession::accepted,button,update);update();connect(button,&QToolButton::clicked,this,[this,action]{const auto reason=unavailableOutput(session_.document(),action);if(reason.isEmpty())emit actionRequested(action);else showActionFailure(action,{"output_required",reason,{}});});bandRow->addWidget(button,0,action=="region"?0:action=="window"?1:action=="desktop"?2:action=="edit"?4:action=="record"?5:7,Qt::AlignLeft);actionButtons_<<button;
  }
- connect(helpAction,&QAction::triggered,this,[this,actionHelp]{VisualStyle::showHelp("Capture actions",actionHelp,this);});
- outputWarning_=new Graphite::Surface("surface",Qt::BottomEdge,center);outputWarning_->setObjectName("commandOutputWarning");auto* warningRow=new QHBoxLayout(outputWarning_);warningRow->setContentsMargins(space(Space::l),space(Space::s),space(Space::m),space(Space::s));warningRow->setSpacing(space(Space::m));outputWarningText_=new QLabel(outputWarning_);outputWarningText_->setObjectName("commandOutputWarningText");outputWarningText_->setTextFormat(Qt::PlainText);outputWarningText_->setWordWrap(true);outputWarningText_->installEventFilter(this);VisualStyle::role(outputWarningText_,"body");auto* warningGlyph=new QLabel(outputWarning_);warningGlyph->setObjectName("commandOutputWarningGlyph");auto refreshGlyph=[warningGlyph]{const int size=Graphite::scaled(18);warningGlyph->setFixedSize(size,size);warningGlyph->setPixmap(VisualStyle::icon("alert",Theme::current().warning).pixmap(size,size));};connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,warningGlyph,refreshGlyph);refreshGlyph();warningRow->addSpacing(warningGlyph->width()+space(Space::m));warningRow->addWidget(outputWarningText_,1,Qt::AlignVCenter);auto* chooseOutput=new QPushButton("Change output",outputWarning_);chooseOutput->setObjectName("chooseCommandOutput");chooseOutput->setToolTip("Open Settings → Capture to choose the output");warningRow->addWidget(chooseOutput);connect(chooseOutput,&QPushButton::clicked,this,[this]{navigate("settings");QStringList affected;for(const auto& action:Settings::presentationOrder())if(!unavailableOutput(session_.document(),action).isEmpty())affected<<action;settings_->showCaptureSettings(affected);});layout->addWidget(outputWarning_);connect(&session_,&UiSession::accepted,this,&MainWindow::updateAvailability);updateAvailability();
+ connect(helpAction,&QAction::triggered,this,[this,actionHelp]{Ui::showHelp("Capture actions",actionHelp,this);});
+ outputWarning_=new Ui::Surface("surface",Qt::BottomEdge,center);outputWarning_->setObjectName("commandOutputWarning");auto* warningRow=new QHBoxLayout(outputWarning_);warningRow->setContentsMargins(space(Space::l),space(Space::s),space(Space::m),space(Space::s));warningRow->setSpacing(space(Space::m));outputWarningText_=new QLabel(outputWarning_);outputWarningText_->setObjectName("commandOutputWarningText");outputWarningText_->setTextFormat(Qt::PlainText);outputWarningText_->setWordWrap(true);outputWarningText_->installEventFilter(this);Ui::role(outputWarningText_,"body");auto* warningGlyph=new QLabel(outputWarning_);warningGlyph->setObjectName("commandOutputWarningGlyph");auto refreshGlyph=[warningGlyph]{const int size=Ui::scaled(18);warningGlyph->setFixedSize(size,size);warningGlyph->setPixmap(Ui::icon("alert",Theme::current().warning).pixmap(size,size));};connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,warningGlyph,refreshGlyph);refreshGlyph();warningRow->addSpacing(warningGlyph->width()+space(Space::m));warningRow->addWidget(outputWarningText_,1,Qt::AlignVCenter);auto* chooseOutput=new QPushButton("Change output",outputWarning_);chooseOutput->setObjectName("chooseCommandOutput");chooseOutput->setToolTip("Open Settings → Capture to choose the output");warningRow->addWidget(chooseOutput);connect(chooseOutput,&QPushButton::clicked,this,[this]{navigate("settings");QStringList affected;for(const auto& action:Settings::presentationOrder())if(!unavailableOutput(session_.document(),action).isEmpty())affected<<action;settings_->showCaptureSettings(affected);});layout->addWidget(outputWarning_);connect(&session_,&UiSession::accepted,this,&MainWindow::updateAvailability);updateAvailability();
  // Edit an image file… whose chooser could not open: the reason under the band
  // that holds the action, with Try again. A cancel shows nothing.
- chooserFailure_=new Graphite::Surface("surface",Qt::BottomEdge,center);chooserFailure_->setObjectName("editImageChooserFailure");{auto* row=new QHBoxLayout(chooserFailure_);row->setContentsMargins(space(Space::l),space(Space::s),space(Space::m),space(Space::s));row->setSpacing(space(Space::m));
+ chooserFailure_=new Ui::Surface("surface",Qt::BottomEdge,center);chooserFailure_->setObjectName("editImageChooserFailure");{auto* row=new QHBoxLayout(chooserFailure_);row->setContentsMargins(space(Space::l),space(Space::s),space(Space::m),space(Space::s));row->setSpacing(space(Space::m));
   chooserError_=new QLabel(chooserFailure_);chooserError_->setObjectName("editImageChooserError");chooserError_->setTextFormat(Qt::PlainText);chooserError_->setWordWrap(true);row->addWidget(chooserError_,1);
   auto* retry=new QPushButton("Try again",chooserFailure_);retry->setObjectName("retryEditImageChooser");row->addWidget(retry);connect(retry,&QPushButton::clicked,this,[this]{chooseImageToEdit();});
-  auto* dismiss=Graphite::toolButton({},{},"quiet",chooserFailure_);dismiss->setObjectName("dismissEditImageChooserFailure");dismiss->setIcon(Graphite::chromeIcon("close"));dismiss->setAccessibleName("Dismiss");dismiss->setToolTip("Dismiss");row->addWidget(dismiss);connect(dismiss,&QToolButton::clicked,chooserFailure_,&QWidget::hide);}
+  auto* dismiss=Ui::toolButton({},{},"quiet",chooserFailure_);dismiss->setObjectName("dismissEditImageChooserFailure");dismiss->setIcon(Ui::chromeIcon("close"));dismiss->setAccessibleName("Dismiss");dismiss->setToolTip("Dismiss");row->addWidget(dismiss);connect(dismiss,&QToolButton::clicked,chooserFailure_,&QWidget::hide);}
  layout->addWidget(chooserFailure_);chooserFailure_->hide();
  pages_=new QStackedWidget;pages_->setObjectName("mainPages");layout->addWidget(pages_,1);history_=new HistoryWindow(session_,pages_);pages_->addWidget(history_);
  // Keep the navigation indexes stable without constructing hidden Settings and
@@ -193,7 +191,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  auto* statusContent=new QWidget;statusContent->setObjectName("statusContent");statusContent->installEventFilter(this);auto* statusRow=new QHBoxLayout(statusContent);statusRow->setContentsMargins(0,0,0,0);statusRow->setSpacing(space(Space::s));statusBar()->addWidget(statusContent,1);
  // One output control; the popup owns the per-action details and navigation.
  auto* outputGroup=outputGroup_=new QWidget;outputGroup->setObjectName("captureOutputGroup");auto* outputRow=new QHBoxLayout(outputGroup);outputRow->setContentsMargins(0,0,0,0);outputRow->setSpacing(0);
- destination_=new OutputButton(outputGroup);destination_->setFocusPolicy(Qt::StrongFocus);VisualStyle::role(destination_,"quiet");destination_->setObjectName("captureOutputSummary");destination_->setToolButtonStyle(Qt::ToolButtonTextOnly);destination_->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);destination_->setMinimumWidth(Graphite::scaled(120));destination_->setPopupMode(QToolButton::InstantPopup);outputRow->addWidget(destination_,1);outputRow->addStretch(0);
+ destination_=new OutputButton(outputGroup);destination_->setFocusPolicy(Qt::StrongFocus);Ui::role(destination_,"quiet");destination_->setObjectName("captureOutputSummary");destination_->setToolButtonStyle(Qt::ToolButtonTextOnly);destination_->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);destination_->setMinimumWidth(Ui::scaled(120));destination_->setPopupMode(QToolButton::InstantPopup);outputRow->addWidget(destination_,1);outputRow->addStretch(0);
  auto* outputMenu=new QMenu(destination_);outputMenu->setObjectName("captureOutputMenu");destination_->setMenu(outputMenu);const auto info=[outputMenu](const QString& name){auto* entry=new QAction(outputMenu);entry->setObjectName(name);};info("captureOutputDefault");for(const auto& action:Settings::presentationOrder())info("captureOutputDetail"+action);
  auto* outputRows=new QWidgetAction(outputMenu);outputRows->setObjectName("captureOutputRows");auto* outputBody=new QWidget;outputBody->setFocusPolicy(Qt::NoFocus);auto* outputGrid=new QGridLayout(outputBody);outputGrid->setContentsMargins(space(Space::m),space(Space::m),space(Space::m),space(Space::m));outputGrid->setSpacing(space(Space::s));outputRows->setDefaultWidget(outputBody);outputMenu->addAction(outputRows);connect(outputMenu,&QMenu::aboutToShow,outputMenu,[outputMenu]{populateOutputRows(outputMenu);});outputMenu->addSeparator();auto* changeOutput=outputMenu->addAction("Change output");changeOutput->setObjectName("changeCaptureOutput");
  statusRow->addWidget(outputGroup,1);
@@ -202,12 +200,12 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  statusRow->addStretch(0);updateAvailability();
  // The running build, from the resident identity About also shows. Stable and
  // nightly builds link to their GitHub release; development builds are text.
- version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);VisualStyle::role(version_,"meta");
- versionLink_=new StatusLink;versionLink_->setObjectName("appVersionLink");VisualStyle::role(versionLink_,"version");versionLink_->setCursor(Qt::PointingHandCursor);
+ version_=new QLabel;version_->setObjectName("appVersion");version_->setTextFormat(Qt::PlainText);Ui::role(version_,"meta");
+ versionLink_=new StatusLink;versionLink_->setObjectName("appVersionLink");Ui::role(versionLink_,"version");versionLink_->setCursor(Qt::PointingHandCursor);
  auto* versionGroup=new QWidget;versionGroup->setObjectName("appVersionGroup");auto* versionLayout=new QHBoxLayout(versionGroup);versionLayout->setContentsMargins(0,0,0,0);versionLayout->addWidget(versionLink_);
- auto* versionNotice=new Graphite::Surface("surface",Qt::BottomEdge,center);versionNotice->setObjectName("appVersionNotification");auto* noticeRow=new QHBoxLayout(versionNotice);noticeRow->setContentsMargins(space(Space::l),space(Space::s),space(Space::m),space(Space::s));noticeRow->setSpacing(space(Space::m));
- auto* versionBrowser=new Graphite::BrowserFeedback(versionNotice);versionBrowser->setObjectName("appVersionBrowserFeedback");auto* feedbackLayout=versionBrowser->layout();delete feedbackLayout;auto* feedbackRow=new QHBoxLayout(versionBrowser);feedbackRow->setContentsMargins(0,0,0,0);feedbackRow->setSpacing(space(Space::m));feedbackRow->addWidget(versionBrowser->findChild<QLabel*>(),1);auto* copyRelease=versionBrowser->findChild<QPushButton*>();copyRelease->setText("Copy release link");copyRelease->setObjectName("copyReleaseLink");feedbackRow->addWidget(copyRelease);noticeRow->addWidget(versionBrowser,1);
- auto* dismissVersion=Graphite::toolButton({},{},"quiet",versionNotice);dismissVersion->setObjectName("dismissVersionNotification");dismissVersion->setIcon(Graphite::chromeIcon("close"));dismissVersion->setAccessibleName("Dismiss release link notification");dismissVersion->setToolTip("Dismiss");noticeRow->addWidget(dismissVersion);connect(dismissVersion,&QToolButton::clicked,versionBrowser,&Graphite::BrowserFeedback::clear);versionBrowser->installEventFilter(this);versionNotice->hide();layout->insertWidget(layout->indexOf(pages_),versionNotice);
+ auto* versionNotice=new Ui::Surface("surface",Qt::BottomEdge,center);versionNotice->setObjectName("appVersionNotification");auto* noticeRow=new QHBoxLayout(versionNotice);noticeRow->setContentsMargins(space(Space::l),space(Space::s),space(Space::m),space(Space::s));noticeRow->setSpacing(space(Space::m));
+ auto* versionBrowser=new Ui::BrowserFeedback(versionNotice);versionBrowser->setObjectName("appVersionBrowserFeedback");auto* feedbackLayout=versionBrowser->layout();delete feedbackLayout;auto* feedbackRow=new QHBoxLayout(versionBrowser);feedbackRow->setContentsMargins(0,0,0,0);feedbackRow->setSpacing(space(Space::m));feedbackRow->addWidget(versionBrowser->findChild<QLabel*>(),1);auto* copyRelease=versionBrowser->findChild<QPushButton*>();copyRelease->setText("Copy release link");copyRelease->setObjectName("copyReleaseLink");feedbackRow->addWidget(copyRelease);noticeRow->addWidget(versionBrowser,1);
+ auto* dismissVersion=Ui::toolButton({},{},"quiet",versionNotice);dismissVersion->setObjectName("dismissVersionNotification");dismissVersion->setIcon(Ui::chromeIcon("close"));dismissVersion->setAccessibleName("Dismiss release link notification");dismissVersion->setToolTip("Dismiss");noticeRow->addWidget(dismissVersion);connect(dismissVersion,&QToolButton::clicked,versionBrowser,&Ui::BrowserFeedback::clear);versionBrowser->installEventFilter(this);versionNotice->hide();layout->insertWidget(layout->indexOf(pages_),versionNotice);
  connect(versionLink_,&QPushButton::clicked,this,[this,versionBrowser]{if(const auto url=releaseLink(session_.build()).url;url.isValid())host::openLink(url,versionBrowser->opening(url));});
  auto updateVersion=[this,versionBrowser]{
   const auto link=releaseLink(session_.build());const auto name="put.gd version "+link.version;const auto page="Open the v"+link.version+" release on GitHub";
@@ -217,7 +215,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  connect(&session_,&UiSession::statusChanged,this,updateVersion);updateVersion();
  // A newer version, from the resident's daily check (#293): it opens
  // General → Updates, which has the download.
- updateLink_=new StatusLink(VisualStyle::icon("download"),"Update available");updateLink_->setObjectName("updateAvailable");VisualStyle::role(updateLink_,"version");updateLink_->setCursor(Qt::PointingHandCursor);updateLink_->hide();
+ updateLink_=new StatusLink(Ui::icon("download"),"Update available");updateLink_->setObjectName("updateAvailable");Ui::role(updateLink_,"version");updateLink_->setCursor(Qt::PointingHandCursor);updateLink_->hide();
  connect(updateLink_,&QPushButton::clicked,this,[this]{navigate("settings");settings_->showUpdates();});
  auto updateAvailable=[this]{
   const auto update=session_.diagnostics()["update"].toObject();const auto result=update["result"].toObject();
@@ -251,15 +249,15 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  connect(changeOutput,&QAction::triggered,this,[this]{navigate("settings");settings_->showCaptureSettings();});
  connect(history_,&HistoryWindow::captureSettingsRequested,changeOutput,&QAction::trigger);
  connect(history_,&HistoryWindow::localCopySettingsRequested,this,&MainWindow::showLocalCopySettings);
- explanation_=new QLabel("Settings save automatically");explanation_->setObjectName("autosaveExplanation");VisualStyle::role(explanation_,"meta");statusRow->addWidget(explanation_);
+ explanation_=new QLabel("Settings save automatically");explanation_->setObjectName("autosaveExplanation");Ui::role(explanation_,"meta");statusRow->addWidget(explanation_);
  // Autosave describes the Destinations and Settings pages, not History.
  connect(tabs_,&QTabBar::currentChanged,this,[this]{updateSaveStatus();});
- saveStatus_=new QLabel;saveStatus_->setObjectName("autosaveStatus");saveStatus_->setAccessibleName("Settings save status");saveStatus_->setTextFormat(Qt::PlainText);VisualStyle::role(saveStatus_,"meta");statusRow->addWidget(saveStatus_);
+ saveStatus_=new QLabel;saveStatus_->setObjectName("autosaveStatus");saveStatus_->setAccessibleName("Settings save status");saveStatus_->setTextFormat(Qt::PlainText);Ui::role(saveStatus_,"meta");statusRow->addWidget(saveStatus_);
  for(auto* widget:QWidgetList{explanation_,saveStatus_,updateLink_,version_,versionGroup})widget->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
  statusRow->addWidget(updateLink_);statusRow->addWidget(version_);statusRow->addWidget(versionGroup);
- for(auto* control:QList<QWidget*>{destination_,version_,versionLink_,updateLink_,explanation_,saveStatus_}){control->setProperty("graphiteStatus",true);VisualStyle::role(control,control->property("visualRole").toByteArray().constData());}
+ for(auto* control:QList<QWidget*>{destination_,version_,versionLink_,updateLink_,explanation_,saveStatus_}){control->setProperty("uiStatus",true);Ui::role(control,control->property("visualRole").toByteArray().constData());}
  connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});
- updateDestination();updateSaveStatus();tabs_->setCurrentIndex(0);RedesignTheme::apply(*this);
+ updateDestination();updateSaveStatus();tabs_->setCurrentIndex(0);Ui::styleWindow(*this);
  orderNavigation(header,tabs_,actionButtons_,band_);
  connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this,updateDestination]{QTimer::singleShot(0,this,[updateDestination]{updateDestination();});});installEventFilter(this);
 }
@@ -269,10 +267,10 @@ SettingsWindow* MainWindow::settings(){
  auto* destinations=pages_->widget(1);auto* preferences=pages_->widget(2);
  pages_->removeWidget(destinations);pages_->removeWidget(preferences);delete destinations;delete preferences;
  pages_->addWidget(settings_->destinationsPage());pages_->addWidget(settings_);
- orderNavigation(findChild<Graphite::WindowHeader*>("windowHeader"),tabs_,actionButtons_,band_);
+ orderNavigation(findChild<Ui::WindowHeader*>("windowHeader"),tabs_,actionButtons_,band_);
  // New combo popup containers need the same themed delegate/margin refresh
  // that the original eager tree received when the main style was applied.
- RedesignTheme::apply(*this);
+ Ui::styleWindow(*this);
  connect(settings_,&SettingsWindow::viewStateChanged,this,[this]{updateSaveStatus();updateAvailability();emit viewStateChanged();});
  connect(settings_,&SettingsWindow::actionRequested,this,&MainWindow::actionRequested);
  connect(settings_,&SettingsWindow::quitRequested,this,&MainWindow::quitRequested);
@@ -291,7 +289,7 @@ void MainWindow::updateSaveStatus(){
  const auto text=settings_?settings_->autosaveText():QString();const bool unsaved=settings_&&settings_->changesUnsaved();
  const auto feedback=unsaved?QString("Changes not saved"):text;
  // Council 22: the page's banner carries the warning; this line stays in the band's secondary ink.
- if(saveStatus_->text()!=feedback||saveStatus_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(saveStatus_,feedback);
+ if(saveStatus_->text()!=feedback||saveStatus_->property("feedbackTone").toString()!="neutral")Ui::feedback(saveStatus_,feedback);
  saveStatus_->setToolTip(unsaved?text:QString());saveStatus_->setAccessibleDescription(unsaved?text:QString());
  if(updateLink_){const auto update=session_.diagnostics()["update"].toObject();updateLink_->setVisible(update["supported"].toBool()&&update["result"].toObject()["updateAvailable"].toBool());}
  // "Settings save automatically" is the band's least important line: it gives
@@ -312,9 +310,9 @@ void MainWindow::updateSaveStatus(){
 void MainWindow::fitBand(){
  if(!band_||fittingBand_)return;fittingBand_=true;
  // A short window keeps one 4 px inset around the measured navigation track.
- if(auto* header=findChild<Graphite::WindowHeader*>("windowHeader"))header->setFixedHeight(height()<Graphite::scaled(720)?qMax(Graphite::scaled(48),tabs_->sizeHint().height()+2*space(Space::xs)):Graphite::scaled(Graphite::Metric::header));
+ if(auto* header=findChild<Ui::WindowHeader*>("windowHeader"))header->setFixedHeight(height()<Ui::scaled(720)?qMax(Ui::scaled(48),tabs_->sizeHint().height()+2*space(Space::xs)):Ui::scaled(Ui::Metric::header));
  auto* grid=static_cast<QGridLayout*>(band_->layout());
- auto apply=[this,grid](int stage){grid->setHorizontalSpacing(space(stage>=2?Space::xs:Space::s));grid->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));for(auto* button:actionButtons_){button->setMinimumWidth(0);}for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setProperty("graphiteTight",stage>=2);const bool secondary=action=="record"||action=="clipboard";button->setToolButtonStyle((stage>=4&&action=="clipboard")||(stage>=5&&action=="record")||(stage==6&&(action=="window"||action=="desktop"))?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);const auto label=stage&&(action=="window"||action=="desktop")?(action=="window"?QString("Window"):QString("Desktop")):stage>=3&&secondary?(action=="record"?QString("Record"):QString("Clipboard")):button->property("commandLabel").toString();if(!label.isEmpty())button->setText(QString(label).replace('&',QStringLiteral("&&")));button->setMinimumWidth(button->sizeHint().width());}grid->invalidate();grid->activate();};
+ auto apply=[this,grid](int stage){grid->setHorizontalSpacing(space(stage>=2?Space::xs:Space::s));grid->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));for(auto* button:actionButtons_){button->setMinimumWidth(0);}for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setProperty("uiTight",stage>=2);const bool secondary=action=="record"||action=="clipboard";button->setToolButtonStyle((stage>=4&&action=="clipboard")||(stage>=5&&action=="record")||(stage==6&&(action=="window"||action=="desktop"))?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);const auto label=stage&&(action=="window"||action=="desktop")?(action=="window"?QString("Window"):QString("Desktop")):stage>=3&&secondary?(action=="record"?QString("Record"):QString("Clipboard")):button->property("commandLabel").toString();if(!label.isEmpty())button->setText(QString(label).replace('&',QStringLiteral("&&")));button->setMinimumWidth(button->sizeHint().width());}grid->invalidate();grid->activate();};
  // Shorten before dropping; drop decoration before target, filename, outcome or output facts.
  // The shortest ladder stage defines the true minimum at enlarged text sizes.
  apply(6);setMinimumWidth(qMax(1060,grid->minimumSize().width()));
@@ -329,8 +327,8 @@ void MainWindow::showActionFailure(const QString& action,const Error& error){
  const bool output=error.code=="output_required",local=error.code=="archive_failed";
  if(output)showCaptureSettings({action});else if(local)showLocalCopySettings();else {navigate("destinations");const auto route=Settings::effectiveAction(session_.document(),action);auto* profiles=findChild<QListWidget*>("destinationList");const auto destinations=session_.document()["profiles"].toArray();QString provider;for(int i=0;i<destinations.size();++i)if(destinations[i].toObject()["id"]==route["profileId"]){if(profiles)profiles->setCurrentRow(i);provider=destinations[i].toObject()["provider"].toString();}const auto target=(provider=="s3"||provider=="backblaze-b2")?QString("s3Bucket"):provider=="proton-drive"?QString("protonFolder"):QString("destinationLabel");QTimer::singleShot(0,this,[this,target]{auto* control=findChild<QWidget*>(target);if(!control||!control->isVisible())control=findChild<QWidget*>("destinationLabel");if(control){if(auto* scroll=findChild<QScrollArea*>("destinationScroll"))scroll->ensureWidgetVisible(control,24,24);control->setFocus(Qt::OtherFocusReason);control->setAttribute(Qt::WA_KeyboardFocusChange);}});}
  // A notice like the others: a warning banner with its recovery action and ×, never danger-coloured text (council 22).
- auto* notice=findChild<QWidget*>("actionRecoveryNotification");if(!notice){notice=new Graphite::Surface("bg",Qt::BottomEdge,centralWidget());notice->setObjectName("actionRecoveryNotification");auto* row=new QHBoxLayout(notice);row->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));auto* banner=new Graphite::Banner(Graphite::Banner::Tone::Warning,{},notice);banner->setObjectName("actionRecoveryBanner");row->addWidget(banner);auto* text=banner->textLabel();text->setObjectName("actionRecoveryError");banner->setAction(QStringLiteral(" "));auto* retry=banner->actionButton();retry->setObjectName("actionRecoveryLink");connect(retry,&QPushButton::clicked,this,[this,retry]{const auto action=retry->property("action").toString(),page=retry->property("page").toString();if(page=="capture")showCaptureSettings({action});else if(page=="local")showLocalCopySettings();else {const Error error{retry->property("code").toString(),retry->property("message").toString(),{}};showActionFailure(action,error);}});banner->setDismissible(true,"Dismiss action error");auto* dismiss=banner->dismissButton();dismiss->setObjectName("dismissActionRecovery");connect(dismiss,&QToolButton::clicked,this,[this,notice]{notice->hide();updateAvailability();});auto* box=static_cast<QVBoxLayout*>(centralWidget()->layout());box->insertWidget(box->indexOf(pages_),notice);connect(tabs_,&QTabBar::currentChanged,this,[this,notice]{notice->hide();updateAvailability();});}
- auto* banner=notice->findChild<Graphite::Banner*>("actionRecoveryBanner");banner->setText(error.message);auto* retry=notice->findChild<QPushButton*>("actionRecoveryLink");banner->setAction(output?"Change output":local?"Keep local copies":"Review destination");retry->setProperty("action",action);retry->setProperty("code",error.code);retry->setProperty("message",error.message);retry->setProperty("page",output?"capture":local?"local":"destinations");notice->setProperty("outputRecovery",output);notice->show();updateAvailability();
+ auto* notice=findChild<QWidget*>("actionRecoveryNotification");if(!notice){notice=new Ui::Surface("bg",Qt::BottomEdge,centralWidget());notice->setObjectName("actionRecoveryNotification");auto* row=new QHBoxLayout(notice);row->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));auto* banner=new Ui::Banner(Ui::Banner::Tone::Warning,{},notice);banner->setObjectName("actionRecoveryBanner");row->addWidget(banner);auto* text=banner->textLabel();text->setObjectName("actionRecoveryError");banner->setAction(QStringLiteral(" "));auto* retry=banner->actionButton();retry->setObjectName("actionRecoveryLink");connect(retry,&QPushButton::clicked,this,[this,retry]{const auto action=retry->property("action").toString(),page=retry->property("page").toString();if(page=="capture")showCaptureSettings({action});else if(page=="local")showLocalCopySettings();else {const Error error{retry->property("code").toString(),retry->property("message").toString(),{}};showActionFailure(action,error);}});banner->setDismissible(true,"Dismiss action error");auto* dismiss=banner->dismissButton();dismiss->setObjectName("dismissActionRecovery");connect(dismiss,&QToolButton::clicked,this,[this,notice]{notice->hide();updateAvailability();});auto* box=static_cast<QVBoxLayout*>(centralWidget()->layout());box->insertWidget(box->indexOf(pages_),notice);connect(tabs_,&QTabBar::currentChanged,this,[this,notice]{notice->hide();updateAvailability();});}
+ auto* banner=notice->findChild<Ui::Banner*>("actionRecoveryBanner");banner->setText(error.message);auto* retry=notice->findChild<QPushButton*>("actionRecoveryLink");banner->setAction(output?"Change output":local?"Keep local copies":"Review destination");retry->setProperty("action",action);retry->setProperty("code",error.code);retry->setProperty("message",error.message);retry->setProperty("page",output?"capture":local?"local":"destinations");notice->setProperty("outputRecovery",output);notice->show();updateAvailability();
 }
 void MainWindow::showCaptureSettings(const QStringList& actions){navigate("settings");settings_->showCaptureSettings(actions);}
 void MainWindow::showLocalCopySettings(){navigate("settings");settings_->showLocalCopySettings();}
@@ -343,7 +341,7 @@ bool MainWindow::chooseImageToEdit(){
 }
 void MainWindow::imageChooserFinished(const FileDialog::Result& result){
  chooserFailure_->setVisible(result.failed());
- if(result.failed())VisualStyle::feedback(chooserError_,"Edit an image file: the file chooser couldn't open"+(result.error.isEmpty()?QString("."):": "+result.error.left(1).toLower()+result.error.mid(1)+(result.error.endsWith('.')?"":"."))+" Nothing was opened.",true);
+ if(result.failed())Ui::feedback(chooserError_,"Edit an image file: the file chooser couldn't open"+(result.error.isEmpty()?QString("."):": "+result.error.left(1).toLower()+result.error.mid(1)+(result.error.endsWith('.')?"":"."))+" Nothing was opened.",true);
  if(result.chosen())emit editRequested("file",result.path);
 }
 QString MainWindow::droppedImage(const QMimeData* data){

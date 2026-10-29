@@ -25,7 +25,7 @@ class QScrollBar;
 class QThread;
 class QToolButton;
 namespace putgd { class FileDialog; }
-namespace putgd::Graphite { class ElidedLabel; class WindowHeader; }
+namespace putgd::Ui { class ElidedLabel; class WindowHeader; }
 
 namespace putgd::record {
 // Paints the preview frame scaled to fit and lets the user create, select,
@@ -180,7 +180,7 @@ private:
     QLabel* laneSummary_ = nullptr;
     QWidget* transport_ = nullptr;
     QWidget* laneHeader_ = nullptr;
-    Graphite::ElidedLabel* clipLabel_ = nullptr;
+    Ui::ElidedLabel* clipLabel_ = nullptr;
     QString selected_;
     Drag drag_ = Drag::None;
     qint64 dragStart_ = 0, dragEnd_ = 0;
@@ -307,10 +307,10 @@ private:
     bool minimumPending_ = false, initialFitDone_ = false;
     // The Trim row, the wrapping Mask row (its kinds, timing) and the transport row.
     QWidget *trimGroup_ = nullptr, *maskGroup_ = nullptr, *maskTiming_ = nullptr, *transport_ = nullptr;
-    Graphite::WindowHeader* header_ = nullptr;
+    Ui::WindowHeader* header_ = nullptr;
     FrameView* view_ = nullptr;
     ReviewTimeline* timeline_ = nullptr;
-    Graphite::ElidedLabel* destination_ = nullptr;
+    Ui::ElidedLabel* destination_ = nullptr;
     QLabel* destinationFull_ = nullptr;
     QLabel *notice_ = nullptr, *time_ = nullptr, *playbackStatus_ = nullptr, *previewIndicator_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
     // Errors, warnings and privacy guidance with their actions; shown only when there are any.

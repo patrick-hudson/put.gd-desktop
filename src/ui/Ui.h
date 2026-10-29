@@ -6,6 +6,7 @@
 #include "Theme.h"
 #include <QFont>
 #include <QIcon>
+#include <QList>
 #include <QLabel>
 #include <QPointer>
 #include <QProxyStyle>
@@ -16,12 +17,13 @@
 
 class QPushButton;class QApplication;class QLineEdit;class QMessageBox;
 class QGridLayout;class QFormLayout;class QAbstractButton;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
+class QHeaderView;class QComboBox;class QAbstractItemView;
 
-// The Graphite visual language (2026-10-26): one painted control set for every
+// put.gd's visual language (2026-10-26): one painted control set for every
 // app-owned surface. Paint owns appearance; the Qt widget underneath keeps
 // input, focus, text editing, accessibility and OS integration. Colours are
 // the Theme tokens, read when painting, so a scheme switch is a repaint.
-namespace putgd::Graphite {
+namespace putgd::Ui {
 // Geometry in logical pixels at the default text scale.
 namespace Metric {
 constexpr int space = 4, control = 36, controlCompact = 28, compactRadius = 5, iconTarget = 32, radius = 6, segmentRadius = 6, trackRadius = 10, swatchRadius = 4, smallRadius = 4, containerRadius = 10, segmentInset = 4;
@@ -78,21 +80,21 @@ bool keyboardFocus(const QWidget*);
 void setLocked(QWidget*, bool locked);
 bool isLocked(const QWidget*);
 
-// Installs the Graphite style, palette and font on the application and keeps
+// Installs the app style, palette and font on the application and keeps
 // them in step with Theme scheme switches. Safe to call more than once.
 void install(QApplication&);
 QPalette palette();
 
 // Glyphs drawn from paths, for chrome controls IconArt has no symbol for:
 // "menu", "more", "minimize", "maximize", "restore", "close", "chevron-down",
-// "chevron-right", "chevron-left", "check". Follows scheme switches like VisualStyle::icon.
+// "chevron-right", "chevron-left", "check". Follows scheme switches like Ui::icon.
 QIcon chromeIcon(const QString& name);
 void paintChromeGlyph(QPainter&, const QRectF&, const QString& name, const QColor&);
 void paintChevron(QPainter&, const QPointF& centre, qreal size, Qt::ArrowType, const QColor&, qreal width = 0);
 // The baseline that puts the ink of text (its tight bounds) on centre.
 qreal opticalBaseline(const QFontMetricsF&, const QString&, qreal centre);
 // The desktop text size against the design's 14 px body (1 to 2); type and
-// control heights scale with it. See Graphite.cpp.
+// control heights scale with it. See Ui.cpp.
 qreal textScale();
 int scaled(int pixels);
 // One edge for History, Settings and Destinations; text enlargement has a bounded cap.
@@ -383,4 +385,45 @@ void disclosure(QToolButton*);
 // Builds a button in a role (see Style): "primary", "lead", "secondary" (default),
 // "quiet", "danger", "link". glyph is an IconArt name, or empty.
 QToolButton* toolButton(const QString& text, const QString& glyph = {}, const char* role = nullptr, QWidget* parent = nullptr);
+
+// Application styling, scheme following, glyphs and the shared settings rows.
+void apply(QApplication&);
+// #237: every widget carries the active scheme in its themeScheme property,
+// and stylesheets hold both schemes' rules, each scoped to that mark, so a
+// switch never replaces a stylesheet: Qt re-polishes every widget below one
+// that changes, which took over a second with History and Settings open. A
+// switch re-polishes only the visible widgets (after the hooks, which set
+// palettes); a hidden one catches up just before it is shown.
+QString schemeScoped(const std::function<QString(Theme::Scheme)>& render);
+void followScheme(QApplication&,std::function<void()> beforeRepolish={});
+void configureColumns(QHeaderView* header);
+QComboBox* choiceBox(QWidget* parent);
+// A glyph in the active scheme's icon colours. QIcon users repaint it in the
+// new colours after a scheme switch (#60); a pixmap taken from it does not.
+QIcon icon(const QString& name);
+// A glyph in a fixed colour: tray tints, glyphs drawn on the accent.
+QIcon icon(const QString& name,const QColor& color,int percent=-1,int recording=0);
+// Folder of the check, radio, chevron and spin step images painted from the
+// scheme's tokens (1x and @2x) in a private temporary folder for this process,
+// for stylesheets' image urls; empty when it cannot be written.
+QString indicators(Theme::Scheme);
+QWidget* header(const QString& title,const QString& subtitle,QWidget* parent);
+QFrame* card(const QString& title,const QString& subtitle,QWidget* parent);
+void styleForm(QFormLayout*);
+void alignChoices(QWidget* owner,const QList<QFormLayout*>& family);
+void alignFormValue(QLabel* caption,QLabel* value);
+void decorateView(QAbstractItemView*,const QList<int>& statusColumns);
+void role(QWidget*,const char*);
+void feedback(QLabel*,const QString&,bool error=false);
+void success(QLabel*,const QString&);
+QToolButton* helpButton(const QString& title,const QString& description,QWidget* control,QWidget* parent);
+// The same help dialog without a button (a menu entry opens it).
+void showHelp(const QString& title,const QString& description,QWidget* parent);
+QWidget* settingLabel(const QString& title,const QString& description,QWidget* control,QWidget* parent);
+QWidget* settingRow(const QString& title,const QString& description,QWidget* control,QWidget* parent);
+// Applies the bundled font and the scheme palette to a window and its
+// descendants, with an optional window stylesheet template (same %token%
+// placeholders, both schemes, see schemeScoped); a scheme switch re-applies
+// the palette. Defined in putgd_ui (UiWindow.cpp): it needs the bundled fonts.
+void styleWindow(QWidget& root, const QString& extraTemplate = {});
 }

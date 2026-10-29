@@ -1,7 +1,6 @@
 #include "EditorCanvas.h"
 #include "ui/Theme.h"
-#include "ui/Graphite.h"
-#include "ui/VisualStyle.h"
+#include "ui/Ui.h"
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QPushButton>
@@ -92,8 +91,8 @@ EditorCanvas::EditorCanvas(EditDocument& doc,QWidget* parent):QWidget(parent),do
  setMinimumSize(320,240);setAccessibleName("Image being edited");
  // Screen readers hear the selection, or the crop, and the keys that act on it.
  connect(this,&EditorCanvas::selectionChanged,this,&EditorCanvas::announce);connect(this,&EditorCanvas::changed,this,&EditorCanvas::announce);
- auto* warning=new Graphite::Banner(Graphite::Banner::Tone::Warning,{},this);textWarning_=warning;textWarning_->setObjectName("annotationTextWarning");
- warning->textLabel()->setObjectName("annotationTextWarningText");Graphite::setLocked(warning->textLabel(),true);warning->setAction("Select affected text");
+ auto* warning=new Ui::Banner(Ui::Banner::Tone::Warning,{},this);textWarning_=warning;textWarning_->setObjectName("annotationTextWarning");
+ warning->textLabel()->setObjectName("annotationTextWarningText");Ui::setLocked(warning->textLabel(),true);warning->setAction("Select affected text");
  warning->actionButton()->setObjectName("selectAffectedText");
  connect(warning->actionButton(),&QPushButton::clicked,this,[this]{selectAffectedText();});textWarning_->hide();
  announce();
@@ -286,7 +285,7 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  placeTextWarning();
  QPainter painter(this);painter.fillRect(rect(),canvasBackground());
  const auto bounds=visibleBounds();const auto target=toWidget(bounds);
- Graphite::paintImageShadow(painter,target);
+ Ui::paintImageShadow(painter,target);
  // Paint only the visible source rectangle; never allocate a scaled full frame.
  const QRectF visible=target.intersected(QRectF(rect()));
  if(!visible.isEmpty()){
@@ -303,7 +302,7 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  }
  // The open field shows the text being typed; painting it here as well showed it twice.
  painter.restore();
- Graphite::paintImageEdge(painter,target);
+ Ui::paintImageEdge(painter,target);
  if(tool_==Tool::Crop){
   const auto crop=toWidget(cropDraft_);QPainterPath outside;outside.addRect(target);outside.addRect(crop);
   painter.fillPath(outside,dim());
@@ -658,12 +657,12 @@ bool EditorCanvas::selectAffectedText(){
 }
 void EditorCanvas::placeTextWarning(){
  const bool outside=textOutsideImage();textWarning_->setVisible(outside);if(!outside)return;
- auto* banner=static_cast<Graphite::Banner*>(textWarning_);
+ auto* banner=static_cast<Ui::Banner*>(textWarning_);
  const QString explanation=tool_==Tool::Crop?"Some text will be cut off by this crop":"Some text will be cut off in the saved image";
- const int inset=Graphite::space(Graphite::Space::l),w=std::max(0,width()-2*inset);
+ const int inset=Ui::space(Ui::Space::l),w=std::max(0,width()-2*inset);
  banner->setText(explanation);
  const auto margins=banner->layout()->contentsMargins();
- const int natural=banner->textLabel()->fontMetrics().horizontalAdvance(explanation)+banner->actionButton()->sizeHint().width()+Graphite::space(Graphite::Space::s)+margins.left()+margins.right();
+ const int natural=banner->textLabel()->fontMetrics().horizontalAdvance(explanation)+banner->actionButton()->sizeHint().width()+Ui::space(Ui::Space::s)+margins.left()+margins.right();
  if(natural>w)banner->setText("Text will be cut off");
  banner->setAccessibleDescription(explanation+". Select affected text to move or edit it.");
  banner->resize(w,banner->height());banner->layout()->activate();

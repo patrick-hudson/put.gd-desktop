@@ -3,7 +3,7 @@
 #include <QComboBox>
 #include <QApplication>
 #include <QAbstractItemModel>
-#include "ui/Graphite.h"
+#include "ui/Ui.h"
 #include <QAbstractItemView>
 #include <algorithm>
 #include <QPainter>
@@ -22,18 +22,18 @@ public:
         return format.value(0) == "gif" ? QStringLiteral("Silent animation · Larger files") : QStringLiteral("Silent animation · Smaller than GIF");
     }
     QSize sizeHint(const QStyleOptionViewItem&, const QModelIndex& index) const override {
-        const QFontMetrics title(Graphite::font()), description(Graphite::font(Graphite::Type::metadata));
-        return {std::max(title.horizontalAdvance(index.data().toString().section(QStringLiteral(" · "), 0, 0)), description.horizontalAdvance(tradeoff(index))) + 2 * Graphite::space(Graphite::Space::m), title.height() + description.height() + Graphite::space(Graphite::Space::xs) + 2 * Graphite::space(Graphite::Space::s)};
+        const QFontMetrics title(Ui::font()), description(Ui::font(Ui::Type::metadata));
+        return {std::max(title.horizontalAdvance(index.data().toString().section(QStringLiteral(" · "), 0, 0)), description.horizontalAdvance(tradeoff(index))) + 2 * Ui::space(Ui::Space::m), title.height() + description.height() + Ui::space(Ui::Space::xs) + 2 * Ui::space(Ui::Space::s)};
     }
     void paint(QPainter* painter, const QStyleOptionViewItem& base, const QModelIndex& index) const override {
         auto option = base; initStyleOption(&option, index); option.text.clear();
         const auto* style = option.widget ? option.widget->style() : qApp->style();
         style->drawControl(QStyle::CE_ItemViewItem, &option, painter, option.widget);
         const auto& colors = Theme::current();
-        const auto area = option.rect.adjusted(Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s), -Graphite::space(Graphite::Space::m), -Graphite::space(Graphite::Space::s));
-        const int titleHeight = QFontMetrics(Graphite::font()).height();
-        Graphite::paintText(*painter, QRect(area.left(), area.top(), area.width(), titleHeight), index.data().toString().section(QStringLiteral(" · "), 0, 0), colors.text, Graphite::font(), Qt::AlignLeft | Qt::AlignVCenter);
-        Graphite::paintText(*painter, QRect(area.left(), area.top() + titleHeight + Graphite::space(Graphite::Space::xs), area.width(), QFontMetrics(Graphite::font(Graphite::Type::metadata)).height()), tradeoff(index), colors.textSecondary, Graphite::font(Graphite::Type::metadata), Qt::AlignLeft | Qt::AlignVCenter);
+        const auto area = option.rect.adjusted(Ui::space(Ui::Space::m), Ui::space(Ui::Space::s), -Ui::space(Ui::Space::m), -Ui::space(Ui::Space::s));
+        const int titleHeight = QFontMetrics(Ui::font()).height();
+        Ui::paintText(*painter, QRect(area.left(), area.top(), area.width(), titleHeight), index.data().toString().section(QStringLiteral(" · "), 0, 0), colors.text, Ui::font(), Qt::AlignLeft | Qt::AlignVCenter);
+        Ui::paintText(*painter, QRect(area.left(), area.top() + titleHeight + Ui::space(Ui::Space::xs), area.width(), QFontMetrics(Ui::font(Ui::Type::metadata)).height()), tradeoff(index), colors.textSecondary, Ui::font(Ui::Type::metadata), Qt::AlignLeft | Qt::AlignVCenter);
     }
 };
 // The closed choice leads with purpose; its popup and tooltip keep the codec
@@ -50,7 +50,7 @@ public:
         auto size = QComboBox::sizeHint();
         int width = 0;
         for (int i = 0; i < count(); ++i) width = std::max(width, fontMetrics().horizontalAdvance(purpose(itemText(i))));
-        size.setWidth(width + Graphite::scaled(44));
+        size.setWidth(width + Ui::scaled(44));
         return size;
     }
     QSize minimumSizeHint() const override {
@@ -58,14 +58,14 @@ public:
         if (!property("purposeMinimum").toBool()) {
             int compact = 0;
             for (int i = 0; i < count(); ++i) compact = std::max(compact, fontMetrics().horizontalAdvance(compactLabel(itemData(i).toStringList())));
-            size.setWidth(std::min(size.width(), compact + Graphite::scaled(44)));
+            size.setWidth(std::min(size.width(), compact + Ui::scaled(44)));
         }
         return size;
     }
     void showPopup() override {
         int width = 0;
         for (int i = 0; i < count(); ++i) width = std::max(width, fontMetrics().horizontalAdvance(itemText(i)));
-        view()->setMinimumWidth(width + Graphite::scaled(40));
+        view()->setMinimumWidth(width + Ui::scaled(40));
         QComboBox::showPopup();
     }
     QString displayedText() const {

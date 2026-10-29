@@ -1,8 +1,8 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
     <qresource prefix="/record">
-        <!-- The redesign theme's tick, for the control bar's System audio box. -->
-        <file alias="check.png">../ui/redesign-icons/check.png</file>
-        <file alias="check@2x.png">../ui/redesign-icons/check@2x.png</file>
+        <!-- The app theme's tick, for the control bar's System audio box. -->
+        <file alias="check.png">../ui/icons/check.png</file>
+        <file alias="check@2x.png">../ui/icons/check@2x.png</file>
     </qresource>
 </RCC>

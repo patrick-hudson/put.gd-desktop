@@ -11,7 +11,7 @@ class HistoryModel final:public QAbstractListModel {
  Q_OBJECT
 public:
  enum Role { RecordRole=Qt::UserRole+1, SubtitleRole, DayRole, ThumbnailRole, ActiveRole, FailedRole, ProgressRole, PrimaryActionRole,
-  // The History list's Destination and Created columns (Graphite, 2026-10-26).
+  // The History list's Destination and Created columns (2026-10-26).
   OutputRole, CreatedRole };
  explicit HistoryModel(UiSession&,QObject* parent=nullptr);
  int rowCount(const QModelIndex& parent={})const override;

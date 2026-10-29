@@ -1,6 +1,6 @@
 #pragma once
 #include "editor/EditorCanvas.h"
-#include "Graphite.h"
+#include "Ui.h"
 #include <QHash>
 #include <QJsonObject>
 #include <QPointer>
@@ -116,23 +116,23 @@ private:
  QWidget *colorRow_=nullptr,*widthRow_=nullptr,*blurRow_=nullptr,*textRow_=nullptr,*cropRow_=nullptr;
  QComboBox* width_=nullptr;
  QSlider* strength_=nullptr;
- Graphite::ElidedLabel* saveTarget_=nullptr;
+ Ui::ElidedLabel* saveTarget_=nullptr;
  QSpinBox* strengthValue_=nullptr;
- Graphite::ElidedLabel* toolTitle_=nullptr;
+ Ui::ElidedLabel* toolTitle_=nullptr;
  QLabel *hint_=nullptr,*message_=nullptr,*toolHelp_=nullptr,*documentInfo_=nullptr;
- Graphite::ElidedLabel* destination_=nullptr;QLabel* sharingMode_=nullptr;QWidget* blurWarning_=nullptr;
- QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={};Graphite::ElidedLabel *savedLabel_=nullptr,*saveError_=nullptr,*folderError_=nullptr;
+ Ui::ElidedLabel* destination_=nullptr;QLabel* sharingMode_=nullptr;QWidget* blurWarning_=nullptr;
+ QLabel *geometryTitle_=nullptr,*geometryLabels_[4]={};Ui::ElidedLabel *savedLabel_=nullptr,*saveError_=nullptr,*folderError_=nullptr;
  QSpinBox* geometry_[4]={};
  QToolButton* geometryDisclosure_=nullptr;
  QWidget *geometryFields_=nullptr,*geometryRow_=nullptr,*placeRow_=nullptr,*sizeLabels_=nullptr,*optionsRule_=nullptr;
  bool syncingGeometry_=false;
- Graphite::WindowHeader* header_=nullptr;
+ Ui::WindowHeader* header_=nullptr;
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr,*remove_=nullptr;
  QSplitter* splitter_=nullptr;int propertiesWidth_=240;
  QWidget *canvasViewport_=nullptr,*side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;
  QVBoxLayout *properties_=nullptr;
  // Feedback overlays the canvas without changing its geometry or zoom.
- Graphite::Banner* saveFeedback_=nullptr;QTimer* saveFeedbackTimer_=nullptr;bool saveFeedbackVisible_=false;
+ Ui::Banner* saveFeedback_=nullptr;QTimer* saveFeedbackTimer_=nullptr;bool saveFeedbackVisible_=false;
  QWidget* notice_=nullptr;QGridLayout* footerGrid_=nullptr;
  QLabel* noticeText_=nullptr;QPushButton *keepEditing_=nullptr,*saveInstead_=nullptr;
  bool destinationAbove_=false;

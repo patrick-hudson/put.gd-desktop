@@ -14,7 +14,7 @@
 #include <QUrl>
 class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;class QGridLayout;class QProgressBar;
 namespace putgd {
-class ShortcutEditor;namespace Graphite{class Banner;}
+class ShortcutEditor;namespace Ui{class Banner;}
 class SettingsWindow final:public RetainedWindow {
  Q_OBJECT
 public:
@@ -94,7 +94,7 @@ private:
  // Reload from file…, beside the conflict on Settings and on Destinations, and
  // in Advanced → Config file: one confirmation naming the unsaved edits it
  // discards, then the same reload (resetDraft(true)).
- QVector<QPushButton*> reloadConflict_;QVector<Graphite::Banner*> conflictBanners_;void reloadFromFile();QStringList draftEdits()const;void showConflictActions();void placeConflictBanners();static QString conflictMessage();
+ QVector<QPushButton*> reloadConflict_;QVector<Ui::Banner*> conflictBanners_;void reloadFromFile();QStringList draftEdits()const;void showConflictActions();void placeConflictBanners();static QString conflictMessage();
  // The accepted document the draft started from, to tell its edits apart
  // from changes another writer made.
  QJsonObject baseDocument_;

@@ -5,7 +5,7 @@
 
 namespace putgd::Theme {
 namespace {
-// The Graphite language (2026-10-26): warm graphite surfaces, neutral primary
+// put.gd's visual language (2026-10-26): warm charcoal surfaces, neutral primary
 // actions and a restrained amber accent, with a parallel warm off-white light
 // palette (not an inversion). Active and locked text meet WCAG AA (4.5:1) on bg,
 // surface, surfaceRaised and selected; inactive text meets 3:1. Accent and icons

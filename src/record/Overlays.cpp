@@ -6,8 +6,7 @@
 #include "ui/SelectionOutline.h"
 #include "ui/RegionSelection.h"
 #include "ui/Theme.h"
-#include "ui/VisualStyle.h"
-#include "ui/Graphite.h"
+#include "ui/Ui.h"
 #include "ui/Fonts.h"
 #include <QApplication>
 #include <QApplication>
@@ -306,31 +305,31 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     setObjectName("putgd-record-bar");
     setWindowTitle(QString::fromLatin1(controlBarTitle));
     setAttribute(Qt::WA_ShowWithoutActivating);
-    // Graphite controls; the bar paints its own surface and outline.
+    // The app's painted controls; the bar paints its own surface and outline.
     Fonts::load();
-    if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) VisualStyle::apply(*app);
+    if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) Ui::apply(*app);
     connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, [this] { refresh(); update(); });
     auto* rows = new QVBoxLayout(this);
-    rows->setContentsMargins(Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s));
-    rows->setSpacing(Graphite::space(Graphite::Space::s));
+    rows->setContentsMargins(Ui::space(Ui::Space::m), Ui::space(Ui::Space::s), Ui::space(Ui::Space::m), Ui::space(Ui::Space::s));
+    rows->setSpacing(Ui::space(Ui::Space::s));
     top_ = new QHBoxLayout;
-    top_->setSpacing(Graphite::space(Graphite::Space::s));
+    top_->setSpacing(Ui::space(Ui::Space::s));
     rows->addLayout(top_);
     dot_ = new QLabel(this);
-    dot_->setFixedSize(Graphite::scaled(12), Graphite::scaled(12));
+    dot_->setFixedSize(Ui::scaled(12), Ui::scaled(12));
     // The state is written, not only coloured.
     state_label_ = new QLabel(this);
     state_label_->setObjectName("state");
-    VisualStyle::role(state_label_, "strong");
+    Ui::role(state_label_, "strong");
     time_ = new QLabel("0:00.0", this);
     time_->setObjectName("time");
-    Graphite::setMono(time_, Graphite::Type::body);
+    Ui::setMono(time_, Ui::Type::body);
     time_->setMinimumWidth(QFontMetrics(time_->font()).horizontalAdvance(QStringLiteral("00:00.0")) + 4);
     choices_ = new QWidget(this);
     choices_->setObjectName("choices");
     auto* choices = new QHBoxLayout(choices_);
     choices->setContentsMargins(0, 0, 0, 0);
-    choices->setSpacing(Graphite::space(Graphite::Space::s));
+    choices->setSpacing(Ui::space(Ui::Space::s));
     target_ = new QLabel(options.targetLabel, choices_);
     target_->setObjectName("target");
     auto targetText = options.targetLabel;
@@ -357,8 +356,8 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) format_->setCurrentIndex(i); }
     formatAudio_ = new QLabel(choices_);
     formatAudio_->setObjectName("formatAudio");
-    VisualStyle::role(formatAudio_, "muted");
-    Graphite::setLocked(formatAudio_, true);
+    Ui::role(formatAudio_, "muted");
+    Ui::setLocked(formatAudio_, true);
     lockedAudio_ = new QLabel(choices_);
     lockedAudio_->setObjectName("lockedAudio");
     lockedFormat_ = new QLabel(choices_);
@@ -366,31 +365,31 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     lockedFacts_ = new QLabel(choices_);
     lockedFacts_->setObjectName("recordingFacts");
     choices->addWidget(lockedFacts_);
-    for (auto* label : {target_, lockedAudio_, lockedFormat_, lockedFacts_}) { VisualStyle::role(label, "muted"); Graphite::setLocked(label, true); }
+    for (auto* label : {target_, lockedAudio_, lockedFormat_, lockedFacts_}) { Ui::role(label, "muted"); Ui::setLocked(label, true); }
     for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_, formatAudio_, lockedAudio_, lockedFormat_}) choices->addWidget(w);
     record_ = new QPushButton("Start recording", this); record_->setObjectName("record");
-    VisualStyle::role(record_, "primary");
-    record_->setProperty("graphiteSemanticIcon", true);
+    Ui::role(record_, "primary");
+    record_->setProperty("uiSemanticIcon", true);
     pause_ = new QPushButton("Pause", this);
-    pause_->setIcon(VisualStyle::icon("pause"));
+    pause_->setIcon(Ui::icon("pause"));
     resume_ = new QPushButton("Resume", this);
-    resume_->setIcon(VisualStyle::icon("play"));
+    resume_->setIcon(Ui::icon("play"));
     stop_ = new QPushButton("Stop recording", this); stop_->setObjectName("stop");
-    stop_->setIcon(VisualStyle::icon("stop"));
-    VisualStyle::role(stop_, "primary");
+    stop_->setIcon(Ui::icon("stop"));
+    Ui::role(stop_, "primary");
     cancel_ = new QPushButton("Cancel", this);
     cancel_->setObjectName("cancel");
     cancel_->setToolTip("Discard this recording");
-    VisualStyle::role(cancel_, "quiet");
+    Ui::role(cancel_, "quiet");
     // The discard question, in the bar so it stays where the bar may be (never over the clip).
     question_ = new QLabel("Discard this recording?", this);
     question_->setObjectName("discardQuestion");
-    VisualStyle::role(question_, "strong");
+    Ui::role(question_, "strong");
     keep_ = new QPushButton("Keep recording", this);
     keep_->setObjectName("keepRecording");
     discard_ = new QPushButton("Discard recording", this);
     discard_->setObjectName("discardRecording");
-    VisualStyle::role(discard_, "danger");
+    Ui::role(discard_, "danger");
     for (auto* w : std::initializer_list<QWidget*>{dot_, state_label_, time_, choices_, question_}) top_->addWidget(w);
     top_->addStretch(1);
     for (auto* w : std::initializer_list<QWidget*>{record_, pause_, resume_, stop_, keep_, discard_, cancel_}) top_->addWidget(w);
@@ -443,15 +442,15 @@ void ControlBar::refresh() {
     if (!recording && !paused) confirming_ = false;
     const bool asking = confirming_ && !handle;
     const auto& tokens = Theme::current();
-    setPalette(Graphite::palette());
-    record_->setIcon(VisualStyle::icon("record-dot", tokens.live));
+    setPalette(Ui::palette());
+    record_->setIcon(Ui::icon("record-dot", tokens.live));
     setProperty("themeScheme", Theme::name(Theme::scheme()));
     dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: %2px;").arg((recording ? tokens.live : paused ? tokens.textMuted : tokens.textSecondary).name()).arg(dot_->width() / 2.0));
     state_label_->setText(recording ? QStringLiteral("Recording") : paused ? QStringLiteral("Paused") : ready ? QStringLiteral("Ready to record") : QStringLiteral("Stopping…"));
     // Once recording starts these are information, not disabled choices.
     const bool withSound = config_.audio.system && !config_.silent();
     audio_->setEnabled(ready && options_.audioSupported && !config_.silent());
-    Graphite::setLocked(audio_, !audio_->isEnabled());
+    Ui::setLocked(audio_, !audio_->isEnabled());
     audio_->blockSignals(true);
     audio_->setChecked(audioIntent_);
     audio_->blockSignals(false);
@@ -493,7 +492,7 @@ void ControlBar::refresh() {
     stop_->setEnabled(state_ != "stopping");
     cancel_->setEnabled(state_ != "stopping");
     cancel_->setToolTip(ready ? QStringLiteral("Close without recording") : QStringLiteral("Discard this recording (asks first)"));
-    layout()->setContentsMargins(handle ? QMargins(Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::xs), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::xs)) : QMargins(Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s)));
+    layout()->setContentsMargins(handle ? QMargins(Ui::space(Ui::Space::s), Ui::space(Ui::Space::xs), Ui::space(Ui::Space::s), Ui::space(Ui::Space::xs)) : QMargins(Ui::space(Ui::Space::m), Ui::space(Ui::Space::s), Ui::space(Ui::Space::m), Ui::space(Ui::Space::s)));
     // Measure the current full text before applying any wrapping from a prior state.
     for (auto* label : {target_, lockedFacts_}) {
         label->setWordWrap(false);
@@ -505,14 +504,14 @@ void ControlBar::refresh() {
     adjustSize();
     if (!handle && fitWidth_ > 0 && sizeHint().width() > fitWidth_ * 3 / 4) {
         arrange(true);
-        const int room = std::max(1, fitWidth_ * 3 / 4 - 2 * Graphite::space(Graphite::Space::m));
+        const int room = std::max(1, fitWidth_ * 3 / 4 - 2 * Ui::space(Ui::Space::m));
         int other = 0;
         for (auto* widget : std::initializer_list<QWidget*>{audio_, format_, formatAudio_})
-            if (!widget->isHidden()) other += widget->sizeHint().width() + Graphite::space(Graphite::Space::s);
+            if (!widget->isHidden()) other += widget->sizeHint().width() + Ui::space(Ui::Space::s);
         for (auto* label : {target_, lockedFacts_}) {
             if (label->isHidden()) continue;
-            const int natural = label->fontMetrics().horizontalAdvance(label->text()) + Graphite::space(Graphite::Space::xs);
-            const int minimum = label == target_ ? std::min(natural, label->fontMetrics().horizontalAdvance(options_.targetLabel.section(QStringLiteral(" · "), -1)) + Graphite::space(Graphite::Space::xs)) : 1;
+            const int natural = label->fontMetrics().horizontalAdvance(label->text()) + Ui::space(Ui::Space::xs);
+            const int minimum = label == target_ ? std::min(natural, label->fontMetrics().horizontalAdvance(options_.targetLabel.section(QStringLiteral(" · "), -1)) + Ui::space(Ui::Space::xs)) : 1;
             const int width = std::clamp(room - (label == target_ ? other : 0), minimum, natural);
             label->setWordWrap(true);
             label->setFixedWidth(width);

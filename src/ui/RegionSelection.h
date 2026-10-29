@@ -1,6 +1,6 @@
 #pragma once
 #include "platform/Geometry.h"
-#include "Graphite.h"
+#include "Ui.h"
 #include <cmath>
 #include <QAccessible>
 #include <QGuiApplication>
@@ -163,11 +163,11 @@ inline int regionLabelDisplay(const QList<QRectF>& displays,const QRectF& select
     return chosen;
 }
 inline QSize regionPillSize(const QFontMetrics& metrics,const QString& text){
-    return {metrics.horizontalAdvance(text)+2*Graphite::space(Graphite::Space::m),metrics.height()+2*Graphite::space(Graphite::Space::xs)};
+    return {metrics.horizontalAdvance(text)+2*Ui::space(Ui::Space::m),metrics.height()+2*Ui::space(Ui::Space::xs)};
 }
 // Top centre of the display, or its bottom when the selection covers the top.
 inline QRect regionHintBox(const QRect& bounds,const QFontMetrics& metrics,const QString& text=regionHint(),const QRectF& selection={}){
-    const int margin=Graphite::space(Graphite::Space::l);
+    const int margin=Ui::space(Ui::Space::l);
     const QRect available=bounds.adjusted(margin,margin,-margin,-margin);
     const auto size=regionPillSize(metrics,text);
     if(available.width()<size.width()||available.height()<size.height())return {};
@@ -181,7 +181,7 @@ inline QRect regionSizeBox(const QRect& bounds,const QFontMetrics& metrics,const
     if(text.isEmpty()||selection.isEmpty())return {};
     const auto size=regionPillSize(metrics,text);
     if(bounds.width()<size.width()||bounds.height()<size.height())return {};
-    const int gap=Graphite::space(Graphite::Space::xs);
+    const int gap=Ui::space(Ui::Space::xs);
     const auto outer=selection.toAlignedRect();
     int x=outer.left(),y=outer.bottom()+1+gap;
     if(y+size.height()-1>bounds.bottom()){y=outer.top()-gap-size.height();if(y<bounds.top()){x+=gap;y=outer.top()+gap;}}
