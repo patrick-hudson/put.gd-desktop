@@ -113,6 +113,11 @@ private slots:
   QCOMPARE(ask(*session,"saveCopy",{{"path","relative.png"}}).error.code,QString("invalid_request"));
   QCOMPARE(ask(*session,"shell").error.code,QString("invalid_request"));
   QVERIFY(!ask(*session,"raise").error);
+  // View-only work must not change another copy or the bytes handed to Upload.
+  QVERIFY(!ask(*session,"view",{{"action","zoom"},{"percent",125}}).error);
+  QVERIFY(!ask(*session,"preview",{{"maxEdge",128}}).error);
+  const auto repeated=ask(*session,"saveCopy",{{"path",root.filePath("copy-after-preview.png")}});
+  QVERIFY2(!repeated.error,qPrintable(repeated.error.message));QCOMPARE(repeated.result["sha256"],saved.result["sha256"]);
   QVERIFY(!ask(*session,"submit").error);
   if(worker.joinable())worker.join();
   QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));

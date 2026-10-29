@@ -100,7 +100,9 @@ private:
  QList<State> undo_,redo_;
  qint64 historyBytes_=0;
  quint64 nextId_=1,generation_=0;
- QHash<quint64,QPainterPath> textPaths_;
- quint64 textPathsGeneration_=0;
+ mutable QHash<quint64,QPainterPath> textPaths_;
+ mutable quint64 textPathsGeneration_=0;
+ mutable QFont textPathsFont_;
+ bool textPathsFrozen_=false;
 };
 }

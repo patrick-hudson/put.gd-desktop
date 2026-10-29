@@ -176,11 +176,15 @@ void EditDocument::paintAnnotation(QPainter& painter,const Shape& shape,const QP
 }
 
 EditDocument EditDocument::snapshotForExport() const {
- auto snapshot=*this;snapshot.textPaths_.clear();snapshot.textPathsGeneration_=generation_;
- // Font fallback/outline caches differ between Qt threads on some distros.
- // Freeze only the small vector outlines; the full raster stays on the worker.
- for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Text)snapshot.textPaths_.insert(shape.id,textPath(shape));
- return snapshot;
+ // Qt's FreeType outlines can change after a canvas repaint, even with the
+ // same font and draft. Reuse one set for every copy and Upload of that draft.
+ const QFont defaultFont;
+ if(textPathsGeneration_!=generation_||textPathsFont_!=defaultFont){
+  textPaths_.clear();textPathsGeneration_=generation_;textPathsFont_=defaultFont;
+  for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Text)textPaths_.insert(shape.id,textPath(shape));
+ }
+ // A worker keeps the GUI's resolved outlines regardless of its default font.
+ auto snapshot=*this;snapshot.textPathsFrozen_=true;return snapshot;
 }
 
 QImage EditDocument::render() const {
@@ -193,7 +197,7 @@ QImage EditDocument::render() const {
  for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Blur)blurInPlace(out,shape.rect.translated(-crop.topLeft()),shape.strength);
  {
   QPainter painter(&out);painter.translate(-crop.topLeft());
-  for(const auto& shape:state_.shapes)if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur){const auto path=textPaths_.constFind(shape.id);paintAnnotation(painter,shape,textPathsGeneration_==generation_&&path!=textPaths_.cend()?&path.value():nullptr);}
+  for(const auto& shape:state_.shapes)if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur){const auto path=textPaths_.constFind(shape.id);paintAnnotation(painter,shape,textPathsGeneration_==generation_&&(textPathsFrozen_||textPathsFont_==QFont())&&path!=textPaths_.cend()?&path.value():nullptr);}
  }
  if(out.hasAlphaChannel())for(int y=0;y<out.height();++y){auto* line=reinterpret_cast<QRgb*>(out.scanLine(y));for(int x=0;x<out.width();++x)if(qAlpha(line[x])==0)line[x]=0;}
  return out;
