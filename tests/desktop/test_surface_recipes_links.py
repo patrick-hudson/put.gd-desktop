@@ -19,6 +19,9 @@ from tools.lab.surface_driver import browser
 from tools.lab.surface_driver.api import Context, Frame, RecipeBlocked, RecipeFailed, REGISTRY
 from tools.lab.surface_driver.recipes import links
 
+# /proc/PID/stat with a command name containing a space and ')' and starttime 7.
+FAKE_STAT = '999999999 (fire fox)) S ' + ' '.join(['0'] * 18) + ' 7 0'
+
 
 class FakeContext(Context):
     profile = {}
@@ -132,6 +135,23 @@ class BrowserContracts(unittest.TestCase):
         self.assertFalse(any(event[0] == 'frame' for event in self.context.events))
         self.assertTrue(any(event[0] == 'review' for event in self.context.events))
 
+    def test_dispatch_to_another_firefox_fails_closed_without_frames(self):
+        seen = []
+        def remote(ctx, action, values):
+            if action == 'observe':
+                seen.append(action)
+                return {'matched': False, 'foreign': 1}
+            if action == 'blank' and seen:
+                return {'blank': True, 'safe': False}
+            return self.remote(ctx, action, values)
+        with patch.object(browser, '_remote', remote):
+            with self.assertRaisesRegex(RecipeFailed, 'external dispatch reached the private Marionette Firefox'):
+                with browser.default_browser(self.context):
+                    browser.open_and_verify(self.context, lambda: None, self.context.upload['expect'])
+        self.assertFalse(any(event[0] == 'frame' for event in self.context.events))
+        self.assertTrue(any(event[0] == 'review' for event in self.context.events))
+        self.assertNotIn(id(self.context), browser._ACTIVE)
+
     def test_stale_or_mismatched_page_cannot_pass(self):
         def remote(ctx, action, values):
             return {} if action == 'observe' else self.remote(ctx, action, values)
@@ -204,6 +224,17 @@ class ProtocolContracts(unittest.TestCase):
 
 
 class ObservationContracts(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.directory = Path(temporary.name)
+        (self.directory / 'transaction.json').write_text(json.dumps(
+            {'directory': str(self.directory), 'since': 100, 'foreign': []}))
+        self.values = {'directory': str(self.directory), 'port': 1234}
+        mains = patch.object(browser, '_firefox_mains', return_value=[])
+        self.mains = mains.start()
+        self.addCleanup(mains.stop)
+
     def test_closed_tab_does_not_hide_a_later_matching_page(self):
         client = SimpleNamespace()
         def call(method, params=None):
@@ -215,14 +246,137 @@ class ObservationContracts(unittest.TestCase):
         client.script = lambda *args: {'matched': True, 'url_host': '127.0.0.1', 'title': 'fixture.txt'}
         client.close = lambda: None
         with patch.object(browser, '_Marionette', return_value=client):
-            result = browser._target('observe', {'port': 1234, 'expect': {'name': 'fixture.txt'}})
+            result = browser._target('observe', {**self.values, 'expect': {'name': 'fixture.txt'}})
         self.assertTrue(result['matched'])
 
     def test_non_mapping_browser_reply_does_not_pass(self):
         client = SimpleNamespace(call=lambda *args: ['good'] if args[0].endswith('GetWindowHandles') else None,
                                  script=lambda *args: None, close=lambda: None)
         with patch.object(browser, '_Marionette', return_value=client):
-            self.assertEqual(browser._target('observe', {'port': 1234, 'expect': {}}), {})
+            self.assertEqual(browser._target('observe', {**self.values, 'expect': {}}), {})
+
+    def test_dispatch_to_firefox_outside_private_profile_is_named_and_recorded(self):
+        # #693 root cause: an unguarded MIME profile launched the stock
+        # firefox.desktop, a separate default-profile instance Marionette
+        # could not see. Pre-existing and own-profile parents are not foreign.
+        self.mains.return_value = [
+            (10, '50', [b'/usr/lib/firefox/firefox', b'about:blank']),
+            (11, '150', [b'/usr/lib/firefox/firefox', b'http://127.0.0.1/private-token/fixture.txt']),
+            (12, '160', [b'/usr/lib/firefox/firefox', b'--profile', str(self.directory).encode(), b'--kiosk'])]
+        client = SimpleNamespace(call=lambda *args: [] if args[0].endswith('GetWindowHandles') else None,
+                                 script=lambda *args: True, close=lambda: None)
+        with patch.object(browser, '_Marionette', return_value=client):
+            result = browser._target('observe', {**self.values, 'expect': {'name': 'fixture.txt'}})
+            self.assertEqual(result, {'matched': False, 'foreign': 1})
+            self.assertNotIn('private-token', json.dumps(result))
+            stored = json.loads((self.directory / 'transaction.json').read_text())
+            self.assertEqual(stored['foreign'], [[11, '150']])
+            # Its window may show the link: the failure frame is not safe.
+            self.assertFalse(browser._target('blank', self.values)['safe'])
+
+    def test_restore_stops_exact_owned_and_foreign_identities_only(self):
+        backups = []
+        state = {'directory': str(self.directory), 'desktops': [], 'backups': backups,
+                 'pid': 20, 'pid_start': '120', 'since': 100, 'foreign': [[11, '150']]}
+        (self.directory / 'transaction.json').write_text(json.dumps(state))
+        self.mains.return_value = [
+            (10, '50', [b'/usr/lib/firefox/firefox']),
+            (12, '160', [b'/usr/lib/firefox/firefox', b'--profile', str(self.directory).encode(), b'--marionette'])]
+        with patch.object(browser, '_terminate') as terminate:
+            self.assertTrue(browser._restore({'directory': str(self.directory)})['restored'])
+        self.assertEqual([c.args for c in terminate.call_args_list], [(20, '120'), (12, '160'), (11, '150')])
+        self.assertFalse(self.directory.exists())
+
+
+class DispatchFixes(unittest.TestCase):
+    def test_handler_starts_an_attachable_instance_and_pins_new_tabs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            process = SimpleNamespace(pid=999999999, poll=lambda: None)
+            real_read = Path.read_text
+            def read(path, *args, **kwargs):
+                return FAKE_STAT if str(path) == '/proc/999999999/stat' else real_read(path, *args, **kwargs)
+            def mime(args, **kwargs):
+                data = Path(kwargs['env']['XDG_DATA_HOME'])
+                desktop = next((data / 'applications').glob('putgdsurface*.desktop'))
+                return subprocess.CompletedProcess(args, 0, desktop.name + '\n', '')
+            with patch.dict(browser.os.environ, {'XDG_CONFIG_HOME': str(home / 'isolated/config'),
+                                                 'XDG_DATA_HOME': str(home / 'isolated/data')}), \
+                 patch.object(browser.pwd, 'getpwuid', return_value=SimpleNamespace(pw_dir=str(home))), \
+                 patch.object(browser.subprocess, 'Popen', return_value=process), \
+                 patch.object(browser, '_Marionette'), \
+                 patch.object(browser, '_firefox_mains', return_value=[]), \
+                 patch.object(browser, '_terminate'), \
+                 patch.object(browser.subprocess, 'run', side_effect=mime), \
+                 patch.object(Path, 'read_text', read):
+                state = browser._prepare({'command': ['snap', 'run', 'firefox']})
+                directory = Path(state['directory'])
+                entry = next((home / '.local/share/applications').glob('putgdsurface*.desktop')).read_text()
+                self.assertIn('"--profile" "%s" "--kiosk" "--marionette" %%u' % directory, entry)
+                prefs = (directory / 'user.js').read_text()
+                self.assertIn('user_pref("browser.link.open_newwindow.override.external", 3);', prefs)
+                self.assertIn('user_pref("datareporting.policy.firstRunURL", "");', prefs)
+                transaction = json.loads((directory / 'transaction.json').read_text())
+                self.assertEqual((transaction['pid_start'], transaction['foreign']), ('7', []))
+                self.assertIsInstance(transaction['since'], int)
+                browser._restore(state)
+
+    def test_trigger_failure_after_real_setup_restores_mime_bytes(self):
+        # The whole failure path with the real target code: prepare, blank,
+        # a failing trigger, the safe failure blank and restore.
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            configs = [home / '.config', home / 'isolated/config']
+            originals = [b'[Default Applications]\r\nx-scheme-handler/https=recorder.desktop;\r\n', b'# isolated\n']
+            for config, original in zip(configs, originals):
+                config.mkdir(parents=True)
+                (config / 'mimeapps.list').write_bytes(original)
+                (config / 'mimeapps.list').chmod(0o640)
+            process = SimpleNamespace(pid=999999999, poll=lambda: None)
+            real_read = Path.read_text
+            def read(path, *args, **kwargs):
+                return FAKE_STAT if str(path) == '/proc/999999999/stat' else real_read(path, *args, **kwargs)
+            def mime(args, **kwargs):
+                config = Path(kwargs['env']['XDG_CONFIG_HOME'])
+                data = Path(kwargs['env']['XDG_DATA_HOME'])
+                desktop = next((data / 'applications').glob('putgdsurface*.desktop'))
+                if args[1] == 'default':
+                    (config / 'mimeapps.list').write_bytes(b'x-scheme-handler/https=' + desktop.name.encode())
+                return subprocess.CompletedProcess(args, 0, desktop.name + '\n', '')
+            client = SimpleNamespace(call=lambda *args: [] if args[0].endswith('GetWindowHandles') else None,
+                                     script=lambda *args: True, close=lambda: None)
+            def remote(ctx, action, values):
+                ctx.events.append(('remote', action))
+                return json.loads(json.dumps(browser._target(action, json.loads(json.dumps(values)))))
+            def trigger():
+                for config in configs:
+                    self.assertNotEqual((config / 'mimeapps.list').read_bytes()[:9], b'[Default ')
+                raise RecipeFailed('entry point did not dispatch')
+            ctx = FakeContext()
+            with patch.dict(browser.os.environ, {'XDG_CONFIG_HOME': str(configs[1]),
+                                                 'XDG_DATA_HOME': str(home / 'isolated/data')}), \
+                 patch.object(browser.pwd, 'getpwuid', return_value=SimpleNamespace(pw_dir=str(home))), \
+                 patch.object(browser.subprocess, 'Popen', return_value=process), \
+                 patch.object(browser, '_Marionette', return_value=client), \
+                 patch.object(browser, '_firefox_mains', return_value=[]), \
+                 patch.object(browser, '_terminate') as terminate, \
+                 patch.object(browser.subprocess, 'run', side_effect=mime), \
+                 patch.object(browser, '_remote', remote), \
+                 patch.object(Path, 'read_text', read):
+                with self.assertRaisesRegex(RecipeFailed, 'entry point did not dispatch'):
+                    with browser.default_browser(ctx, 'firefox'):
+                        browser.open_and_verify(ctx, trigger, ctx.upload['expect'])
+            for config, original in zip(configs, originals):
+                path = config / 'mimeapps.list'
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), hashlib.sha256(original).hexdigest())
+                self.assertEqual(path.stat().st_mode & 0o777, 0o640)
+            self.assertFalse(list(home.rglob('putgdsurface*.desktop')))
+            self.assertFalse(list((home / '.mozilla/firefox').iterdir()))
+            terminate.assert_called_once_with(999999999, '7')
+            self.assertEqual([e for e in ctx.events if e[0] == 'remote'],
+                             [('remote', a) for a in ('prepare', 'blank', 'blank', 'restore')])
+            self.assertIn(('frame', 'browser-failure-safe-desktop', None), ctx.events)
+            self.assertNotIn(id(ctx), browser._ACTIVE)
 
 
 class MimeTransactions(unittest.TestCase):
@@ -277,7 +431,7 @@ class MimeTransactions(unittest.TestCase):
             # changes bytes before failing, as a half-completed xdg-mime can.
             real_read = Path.read_text
             def read(path, *args, **kwargs):
-                return ' '.join(['0'] * 22) if str(path) == '/proc/999999999/stat' else real_read(path, *args, **kwargs)
+                return FAKE_STAT if str(path) == '/proc/999999999/stat' else real_read(path, *args, **kwargs)
             def fail(*args, **kwargs):
                 # GLib rejects a quoted program token in Exec, even though
                 # xdg-mime default exits zero. Exercise its actual parser.
@@ -295,6 +449,8 @@ class MimeTransactions(unittest.TestCase):
                  patch.object(browser.pwd, 'getpwuid', return_value=SimpleNamespace(pw_dir=str(home))), \
                  patch.object(browser.subprocess, 'Popen', return_value=process), \
                  patch.object(browser, '_Marionette') as protocol, \
+                 patch.object(browser, '_firefox_mains', return_value=[]), \
+                 patch.object(browser, '_terminate') as terminate, \
                  patch.object(browser.subprocess, 'run', side_effect=fail), \
                  patch.object(Path, 'read_text', read):
                 with self.assertRaises(subprocess.CalledProcessError):
@@ -315,7 +471,7 @@ class MimeTransactions(unittest.TestCase):
             process = SimpleNamespace(pid=999999999, poll=lambda: None)
             real_read = Path.read_text
             def read(path, *args, **kwargs):
-                return ' '.join(['0'] * 22) if str(path) == '/proc/999999999/stat' else real_read(path, *args, **kwargs)
+                return FAKE_STAT if str(path) == '/proc/999999999/stat' else real_read(path, *args, **kwargs)
             calls = []
             def mime(args, **kwargs):
                 config = Path(kwargs['env']['XDG_CONFIG_HOME'])
@@ -330,11 +486,14 @@ class MimeTransactions(unittest.TestCase):
                  patch.object(browser.pwd, 'getpwuid', return_value=SimpleNamespace(pw_dir=str(home))), \
                  patch.object(browser.subprocess, 'Popen', return_value=process), \
                  patch.object(browser, '_Marionette'), \
+                 patch.object(browser, '_firefox_mains', return_value=[]), \
+                 patch.object(browser, '_terminate') as terminate, \
                  patch.object(browser.subprocess, 'run', side_effect=mime), \
                  patch.object(Path, 'read_text', read):
                 state = browser._prepare({})
                 self.assertEqual(len(calls), 8)
                 self.assertTrue(browser._restore(state)['restored'])
+                terminate.assert_called_once_with(999999999, '7')
             for config, original in zip(configs, originals):
                 self.assertEqual((config / 'mimeapps.list').read_bytes(), original)
             self.assertFalse(list(home.rglob('putgdsurface*.desktop')))

@@ -8,6 +8,14 @@ Profile fragments may set ``browser.command`` (argv, e.g. snap run firefox),
 ``browser.config_home``/``browser.data_home`` when they differ from ~/.config
 and ~/.local/share. The portal's real defaults and Context.shell's isolated
 XDG defaults are both guarded, covering portal and launcher fallback dispatch.
+
+The handler reruns the browser command with the private ``--profile``; Firefox
+remoting, keyed by profile, forwards the URL to the running Marionette
+instance as a new tab (#693 guest trials: Mint deb 146 and Ubuntu snap 154,
+also with a personal default-profile Firefox already running). Snap replaces
+MOZ_APP_REMOTINGNAME with its own, so the profile is what routes the URL. A
+dispatch that starts a Firefox outside that profile fails closed by name;
+that process is stopped at restore, since its window may show the link.
 """
 from __future__ import annotations
 
@@ -96,6 +104,9 @@ def open_and_verify(ctx, trigger, expect):
         trigger()
         result = ctx.wait(lambda: _remote(ctx, 'observe', {**state, 'expect': expect}),
                           'default Firefox loaded the expected page content', timeout=45)
+        ctx.expect(not result.get('foreign') or result.get('matched'),
+                   'external dispatch reached the private Marionette Firefox, '
+                   'not a Firefox started outside its profile')
         ctx.expect(result.get('matched'), 'real Firefox URL, title and page content match')
         frames.append(asdict(ctx.frame('browser-content', window=None)))
         receipt = {key: result[key] for key in ('url_host', 'title', 'matched')}
@@ -109,8 +120,8 @@ def open_and_verify(ctx, trigger, expect):
         if safe.get('safe'):
             frames.append(asdict(ctx.frame('browser-failure-safe-desktop', window=None)))
         else:
-            ctx.review('Failure frame withheld: private blank kiosk did not own the foreground; '
-                       'core needs a redacted full-desktop failure frame')
+            ctx.review('Failure frame withheld: private blank kiosk did not own the foreground '
+                       'or another Firefox was started; core needs a redacted full-desktop failure frame')
         raise
 
 
@@ -270,6 +281,64 @@ def _environment(config, data):
     return env
 
 
+_FIREFOX = {'firefox', 'firefox-bin', 'firefox-esr'}
+
+
+def _uptime_ticks():
+    return int(float(Path('/proc/uptime').read_text().split()[0]) * os.sysconf('SC_CLK_TCK'))
+
+
+def _start_ticks(pid):
+    # Field 22 (starttime), counted after the parenthesized command name.
+    return Path('/proc/%d/stat' % pid).read_text().rsplit(')', 1)[1].split()[19]
+
+
+def _firefox_mains():
+    """(pid, start ticks, argv) of this user's Firefox parent processes."""
+    found = []
+    for entry in Path('/proc').iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            if entry.stat().st_uid != os.getuid():
+                continue
+            argv = (entry / 'cmdline').read_bytes().split(b'\0')
+            if (os.path.basename(argv[0]).decode(errors='replace') not in _FIREFOX
+                    or b'-contentproc' in argv):
+                continue
+            found.append((int(entry.name), _start_ticks(int(entry.name)), argv))
+        except (OSError, IndexError):
+            continue  # Exited while being read.
+    return found
+
+
+def _foreign(state):
+    """Firefox parents started during this transaction outside its private profile.
+
+    Returns identities only; argv may hold the dispatched URL and never leaves
+    the target.
+    """
+    profile = state['directory'].encode()
+    return [[pid, start] for pid, start, argv in _firefox_mains()
+            if profile not in argv and int(start) >= state['since']]
+
+
+def _terminate(pid, start):
+    """Stop one exact process identity, never a name or substring match."""
+    path = Path('/proc/%d/stat' % pid)
+    try:
+        if _start_ticks(pid) != start:
+            return
+        os.kill(pid, 15)
+        deadline = time.monotonic() + 8
+        while path.exists() and time.monotonic() < deadline:
+            time.sleep(.1)
+        if path.exists() and _start_ticks(pid) == start:
+            os.kill(pid, 9)
+    except (OSError, IndexError):
+        pass  # Already exited.
+
+
 def _prepare(options):
     home = Path(pwd.getpwuid(os.getuid()).pw_dir)
     expand = lambda value: Path(value.replace('~', str(home), 1)) if value.startswith('~/') else Path(value)
@@ -293,27 +362,32 @@ def _prepare(options):
     desktops = list(dict.fromkeys(d / 'applications' / (token + '.desktop') for c, d in profiles))
     desktop = desktops[0]
     state = {'directory': str(directory), 'desktops': [str(p) for p in desktops],
-             'backups': backups, 'pid': None}
+             'backups': backups, 'pid': None, 'since': _uptime_ticks(), 'foreign': []}
     try:
         with socket.socket() as probe:
             probe.bind(('127.0.0.1', 0))
             state['port'] = probe.getsockname()[1]
+        # External links open as a new tab of the kiosk window, and no
+        # first-run or privacy-notice tab competes with the dispatched page.
         preferences = {'marionette.port': state['port'], 'browser.shell.checkDefaultBrowser': False,
                        'browser.startup.homepage_override.mstone': 'ignore',
                        'browser.startup.page': 0, 'browser.aboutwelcome.enabled': False,
                        'browser.newtabpage.enabled': False, 'datareporting.policy.dataSubmissionEnabled': False,
+                       'datareporting.policy.firstRunURL': '', 'toolkit.telemetry.reportingpolicy.firstRun': False,
+                       'startup.homepage_welcome_url': '', 'startup.homepage_welcome_url.additional': '',
+                       'browser.link.open_newwindow': 3, 'browser.link.open_newwindow.override.external': 3,
                        'browser.sessionstore.resume_from_crash': False,
                        'signon.rememberSignons': False, 'browser.privatebrowsing.autostart': True}
         (directory / 'user.js').write_text(''.join('user_pref(%s, %s);\n' % (json.dumps(k), json.dumps(v))
                                                   for k, v in preferences.items()))
         env = _environment(config, data)
         env['MOZ_APP_REMOTINGNAME'] = token
-        # Both the initial instance and the handler use a unique remoting
-        # name. Page observation still fails closed if dispatch reaches a
-        # different instance (the bounded guest trials caught this case).
+        # The handler forwards to the running instance through profile-keyed
+        # remoting. If that instance has gone, the handler starts one on the
+        # same profile and Marionette port, so observation still attaches.
         argv = command + ['--profile', str(directory), '--kiosk']
         desktop_argv = ['MOZ_APP_REMOTINGNAME=' + token, 'XDG_CONFIG_HOME=' + str(config),
-                        'XDG_DATA_HOME=' + str(data)] + argv + ['%u']
+                        'XDG_DATA_HOME=' + str(data)] + argv + ['--marionette', '%u']
         def desktop_quote(value):
             return '"' + value.replace('\\', '\\\\').replace('"', '\\"').replace('`', '\\`').replace('$', '\\$') + '"'
         # Keep the executable token unquoted. GLib ignores handlers whose
@@ -326,7 +400,7 @@ def _prepare(options):
         process = subprocess.Popen(argv + ['--marionette', 'about:blank'], env=env,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         state['pid'] = process.pid
-        state['pid_start'] = Path('/proc/%d/stat' % process.pid).read_text().split()[21]
+        state['pid_start'] = _start_ticks(process.pid)
         (directory / 'transaction.json').write_text(json.dumps(state))
         deadline = time.monotonic() + 35
         while True:
@@ -360,17 +434,15 @@ def _restore(state):
     if stored.exists():
         state = json.loads(stored.read_text())
     _restore_mime(state['backups'])
-    pid = state.get('pid')
-    if pid:
-        process_stat = Path('/proc/%d/stat' % pid)
-        if process_stat.exists() and process_stat.read_text().split()[21] == state.get('pid_start'):
-            # Only our exact process, never a name/substring match.
-            os.kill(pid, 15)
-            deadline = time.monotonic() + 8
-            while process_stat.exists() and time.monotonic() < deadline:
-                time.sleep(.1)
-            if process_stat.exists() and process_stat.read_text().split()[21] == state.get('pid_start'):
-                os.kill(pid, 9)
+    # Exact identities only: our launch, any instance on our private profile
+    # (a handler-started one), and Firefox processes recorded as started
+    # outside it during this transaction.
+    targets = [[state['pid'], state.get('pid_start')]] if state.get('pid') else []
+    profile = state['directory'].encode()
+    targets += [[pid, start] for pid, start, argv in _firefox_mains() if profile in argv]
+    targets += state.get('foreign', [])
+    for pid, start in targets:
+        _terminate(pid, start)
     for desktop in state['desktops']:
         Path(desktop).unlink(missing_ok=True)
     shutil.rmtree(directory)
@@ -382,6 +454,8 @@ def _target(action, values):
         return _prepare(values)
     if action == 'restore':
         return _restore(values)
+    stored = Path(values['directory']) / 'transaction.json'
+    transaction = json.loads(stored.read_text())
     client = _Marionette(values['port'])
     try:
         if action == 'blank':
@@ -391,8 +465,11 @@ def _target(action, values):
                 client.call('WebDriver:Navigate', {'url': 'about:blank'})
             safe = client.script("return location.href==='about:blank' && document.hasFocus() && "
                                  "innerWidth>=screen.width && innerHeight>=screen.height;")
-            return {'blank': True, 'safe': safe is True}
+            # Another Firefox's window may show a token-bearing URL.
+            return {'blank': True, 'safe': safe is True and not _foreign(transaction)}
         if action == 'observe':
+            # Every top-level browsing context (tab) of the private instance.
+            # blank navigated all earlier ones, so only a dispatched page matches.
             for handle in client.call('WebDriver:GetWindowHandles'):
                 try:
                     client.call('WebDriver:SwitchToWindow', {'handle': handle})
@@ -401,6 +478,14 @@ def _target(action, values):
                     continue  # A closed/navigating tab must not hide a later match.
                 if isinstance(result, dict) and result.get('matched'):
                     return result
+            foreign = _foreign(transaction)
+            if foreign:
+                # Recorded so restore stops exactly these processes.
+                transaction['foreign'] = [item for item in transaction.get('foreign', []) if item not in foreign] + foreign
+                temporary = stored.with_name('.transaction.json')
+                temporary.write_text(json.dumps(transaction))
+                os.replace(temporary, stored)
+                return {'matched': False, 'foreign': len(foreign)}
             return {}  # falsy until ctx.wait's deadline
         raise ValueError('Unknown browser helper action')
     finally:
