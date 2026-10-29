@@ -1,16 +1,179 @@
 {
  "schemaVersion": 1,
- "notes": "Inventory of every surface and interaction of put.gd for acceptance coverage. Kinds: button, menu-item, field, key, shortcut, gesture, state, cli, mcp, event, edge. `control` names an objectName (or text:LABEL, text-glob:PATTERN, glob:NAME-PATTERN, class:QtClass; one or a list) in the surface's catalog capture; `keys` are Qt portable key names; `method` is the resident method; `to` is the surface the interaction leads to. Visual applies unless `visual` is false (cli and mcp default to false).",
+ "notes": "Inventory of every surface and interaction of put.gd for acceptance coverage. Kinds: button, menu-item, field, key, shortcut, gesture, state, cli, mcp, event, edge. `control` names an objectName (or text:LABEL, text-glob:PATTERN, glob:NAME-PATTERN, class:QtClass; one or a list) in the surface's catalog capture; `keys` are Qt portable key names; `method` is the resident method; `to` is the surface the interaction leads to. Visual applies unless `visual` is false (cli and mcp default to false). Desktop rows name every planned builder placement, not a single inferred host. Hostless v1 coverage stays unspecified. Cinnamon guests use the Mint cinnamon-x11 golden. Ubuntu GNOME VM rows on k72/aurora-amd include both session profiles; provision/verify the selected profile before acceptance.",
  "desktops": [
-  {"id": "mint-cinnamon-x11", "label": "Mint Cinnamon/X11", "required": true, "host": "m74 physical"},
-  {"id": "ubuntu-gnome-wayland", "label": "Ubuntu GNOME/Wayland", "required": true, "host": "VM"},
-  {"id": "ubuntu-gnome-x11", "label": "Ubuntu GNOME/X11", "required": true, "host": "VM"},
-  {"id": "kubuntu-kde-wayland", "label": "Kubuntu KDE/Wayland", "required": true, "host": "k72 physical"},
-  {"id": "kubuntu-kde-x11", "label": "Kubuntu KDE/X11", "required": true, "host": "k72 physical (X11 session on request)"},
-  {"id": "fedora-gnome-wayland", "label": "Fedora GNOME/Wayland", "required": true, "host": "f44 physical"},
-  {"id": "debian-kde-wayland", "label": "Debian KDE/Wayland", "required": true, "host": "d69 physical"},
-  {"id": "aurora-kde-wayland", "label": "Aurora KDE/Wayland (AppImage)", "required": true, "host": "VM on f44/d69"},
-  {"id": "neon-kde-wayland", "label": "KDE neon (Unstable/User)", "required": false, "host": "VM"}
+  {
+   "id": "mint-cinnamon-x11",
+   "label": "Mint Cinnamon/X11",
+   "required": true,
+   "rows": [
+    {
+     "host": "m74",
+     "placement": "native"
+    },
+    {
+     "host": "f44",
+     "placement": "guest"
+    },
+    {
+     "host": "d69",
+     "placement": "guest"
+    },
+    {
+     "host": "k72",
+     "placement": "guest"
+    },
+    {
+     "host": "aurora-amd",
+     "placement": "guest"
+    }
+   ],
+   "notes": "Planned native/VM placements; inventory does not establish acceptance or golden availability. The cinnamon-x11 golden is Linux Mint 22.3 (docs/vm-lab.md, First Cinnamon golden disk)."
+  },
+  {
+   "id": "ubuntu-gnome-wayland",
+   "label": "Ubuntu GNOME/Wayland",
+   "required": true,
+   "rows": [
+    {
+     "host": "m74",
+     "placement": "guest"
+    },
+    {
+     "host": "f44",
+     "placement": "guest"
+    },
+    {
+     "host": "d69",
+     "placement": "guest"
+    },
+    {
+     "host": "k72",
+     "placement": "guest"
+    },
+    {
+     "host": "aurora-amd",
+     "placement": "guest"
+    }
+   ],
+   "notes": "Planned native/VM placements; inventory does not establish acceptance or golden availability."
+  },
+  {
+   "id": "ubuntu-gnome-x11",
+   "label": "Ubuntu GNOME/X11",
+   "required": true,
+   "rows": [
+    {
+     "host": "m74",
+     "placement": "guest"
+    },
+    {
+     "host": "f44",
+     "placement": "guest"
+    },
+    {
+     "host": "d69",
+     "placement": "guest"
+    },
+    {
+     "host": "k72",
+     "placement": "guest"
+    },
+    {
+     "host": "aurora-amd",
+     "placement": "guest"
+    }
+   ],
+   "notes": "Planned native/VM placements; inventory does not establish acceptance or golden availability."
+  },
+  {
+   "id": "kubuntu-kde-wayland",
+   "label": "Kubuntu KDE/Wayland",
+   "required": true,
+   "rows": [
+    {
+     "host": "k72",
+     "placement": "native"
+    },
+    {
+     "host": "f44",
+     "placement": "guest"
+    },
+    {
+     "host": "d69",
+     "placement": "guest"
+    }
+   ],
+   "notes": "Planned native/VM placements; inventory does not establish acceptance or golden availability."
+  },
+  {
+   "id": "kubuntu-kde-x11",
+   "label": "Kubuntu KDE/X11",
+   "required": true,
+   "rows": [
+    {
+     "host": "k72",
+     "placement": "native"
+    }
+   ],
+   "notes": "Planned native/VM placements; inventory does not establish acceptance or golden availability."
+  },
+  {
+   "id": "fedora-gnome-wayland",
+   "label": "Fedora GNOME/Wayland",
+   "required": true,
+   "rows": [
+    {
+     "host": "f44",
+     "placement": "native"
+    }
+   ],
+   "notes": "Planned native/VM placements; inventory does not establish acceptance or golden availability."
+  },
+  {
+   "id": "debian-kde-wayland",
+   "label": "Debian KDE/Wayland",
+   "required": true,
+   "rows": [
+    {
+     "host": "d69",
+     "placement": "native"
+    }
+   ],
+   "notes": "Planned native/VM placements; inventory does not establish acceptance or golden availability."
+  },
+  {
+   "id": "aurora-kde-wayland",
+   "label": "Aurora KDE/Wayland",
+   "required": true,
+   "rows": [
+    {
+     "host": "aurora-amd",
+     "placement": "native"
+    },
+    {
+     "host": "f44",
+     "placement": "guest"
+    },
+    {
+     "host": "d69",
+     "placement": "guest"
+    }
+   ],
+   "notes": "Planned native/VM placements; inventory does not establish acceptance or golden availability. Native source build on aurora-amd; Fedora 45 guests on f44/d69."
+  },
+  {
+   "id": "neon-kde-wayland",
+   "label": "KDE neon (Unstable/User)",
+   "required": false,
+   "rows": [
+    {
+     "host": "d69",
+     "placement": "guest"
+    }
+   ],
+   "notes": "Planned native/VM placements; inventory does not establish acceptance or golden availability."
+  }
  ],
  "surfaces": [
   {"id": "shortcuts", "label": "Global shortcuts", "kind": "channel", "notes": "X11 key grabs, KDE KGlobalAccel, GNOME Shell extension. No portal GlobalShortcuts: other Wayland desktops get none."},

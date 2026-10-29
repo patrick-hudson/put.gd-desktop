@@ -66,6 +66,27 @@ class ModelContract(unittest.TestCase):
         cls.labels = cls.src | literals('tests/gui/ui_catalog.cpp')
         cls.server = literals('src/app/LocalServer.cpp')
 
+    def test_every_planned_builder_row_maps_to_a_desktop(self):
+        rows = {(d['id'], r['host'], r['placement']) for d in self.model['desktops'] for r in d['rows']}
+        expected = {
+            ('mint-cinnamon-x11', 'm74', 'native'), ('fedora-gnome-wayland', 'f44', 'native'),
+            ('debian-kde-wayland', 'd69', 'native'), ('kubuntu-kde-wayland', 'k72', 'native'),
+            ('kubuntu-kde-x11', 'k72', 'native'), ('aurora-kde-wayland', 'aurora-amd', 'native'),
+            ('neon-kde-wayland', 'd69', 'guest')}
+        expected.update(('ubuntu-gnome-' + session, host, 'guest')
+                        for host in ('m74', 'f44', 'd69', 'k72', 'aurora-amd') for session in ('wayland', 'x11'))
+        expected.update(('mint-cinnamon-x11', h, 'guest') for h in ('f44', 'd69', 'k72', 'aurora-amd'))
+        expected.update((d, h, 'guest') for d in ('kubuntu-kde-wayland', 'aurora-kde-wayland') for h in ('f44', 'd69'))
+        self.assertEqual(rows, expected)
+        self.assertFalse(next(d for d in self.model['desktops'] if d['id']=='neon-kde-wayland')['required'])
+        self.assertTrue(all('host' not in d and 'notes' in d for d in self.model['desktops']))
+
+    def test_nightly_coverage_glob_includes_numbered_v2_files(self):
+        workflow = (ROOT / '.github/workflows/nightly.yml').read_text()
+        self.assertIn('tools/lab/surface_map/coverage/[0-9]*.json', workflow)
+        self.assertTrue(fnmatch.fnmatchcase('2026-10-29-hosts.json', '[0-9]*.json'))
+        self.assertFalse(fnmatch.fnmatchcase('_schema-example.json', '[0-9]*.json'))
+
     def test_sources_exist(self):
         missing = sorted({i['source'] for i in self.model['interactions'] if 'source' in i and not (ROOT / i['source']).exists()})
         self.assertEqual(missing, [])
@@ -183,6 +204,37 @@ class Aggregation(unittest.TestCase):
         entries.append(self.entry('editor.undo', optional[0], functional='failed'))
         self.assertEqual(surface_map.summarise(self.model, entries)['editor.undo']['functional'], 'passed')
 
+    def test_host_cells_do_not_overwrite_each_other(self):
+        rows = [self.entry('editor.undo', 'ubuntu-gnome-wayland', host=h, placement='guest',
+                           guest='gnome', functional=f, at=at)
+                for h, f, at in [('m74', 'failed', '2026-10-01'), ('f44', 'passed', '2026-10-02')]]
+        result = surface_map.summarise(self.model, rows)['editor.undo']
+        self.assertEqual(len(result['cells']), 2)
+        self.assertEqual(result['desktops']['ubuntu-gnome-wayland']['functional'], 'failed')
+        rows.append(self.entry('editor.undo', 'ubuntu-gnome-wayland', host='m74', placement='guest',
+                               guest='gnome', functional='passed', at='2026-10-03'))
+        self.assertEqual(surface_map.summarise(self.model, rows)['editor.undo']['desktops']
+                         ['ubuntu-gnome-wayland']['functional'], 'passed')
+        rows.append(self.entry('editor.undo', 'ubuntu-gnome-wayland', host='m74', placement='guest',
+                               guest='another-golden', functional='blocked'))
+        self.assertEqual(len(surface_map.summarise(self.model, rows)['editor.undo']['cells']), 3)
+
+    def test_missing_host_dimension_does_not_count_as_passed(self):
+        rows = [self.entry('editor.undo', 'ubuntu-gnome-wayland', host='m74', placement='guest',
+                           functional='passed', visual='reviewed-ok'),
+                self.entry('editor.undo', 'ubuntu-gnome-wayland', host='f44', placement='guest',
+                           visual='reviewed-ok')]
+        c = surface_map.summarise(self.model, rows)['editor.undo']['desktops']['ubuntu-gnome-wayland']
+        self.assertEqual((c['functional'], c['visual']), ('partial', 'reviewed-ok'))
+
+    def test_mixed_legacy_and_host_rows_remain_available(self):
+        rows = [self.entry('editor.undo', 'mint-cinnamon-x11', functional='passed'),
+                self.entry('editor.redo', 'ubuntu-gnome-wayland', host='f44', placement='guest', functional='passed')]
+        cells = surface_map.summarise(self.model, rows)['editor.undo']['cells']
+        self.assertEqual(len(cells), 1)
+        self.assertIsNone(cells[0]['host'])
+        self.assertEqual(cells[0]['functional'], 'passed')
+
     def test_mark_rejects_unknown_values(self):
         with self.assertRaises(surface_map.ModelError):
             surface_map.make_entry('editor.undo', 'mint-cinnamon-x11', 'snap', functional='passed')
@@ -239,6 +291,70 @@ class ReceiptImport(unittest.TestCase):
         path = self.receipt('other.json', {'hello': 'world'})
         with self.assertRaises(surface_map.ModelError):
             surface_map.import_receipt(self.model, path, 'debian-kde-wayland', 'appimage')
+
+    def test_v1_coverage_preserves_desktop_summary(self):
+        path = self.receipt('v1.json', {'schemaVersion': 1, 'campaign': 'legacy', 'entries': [
+            {'interaction': 'editor.undo', 'desktop': 'mint-cinnamon-x11', 'package': 'deb',
+             'functional': 'passed', 'visual': 'frames', 'at': '2026-10-01'}]})
+        loaded = surface_map.load_coverage([path])
+        result = surface_map.summarise(self.model, loaded)['editor.undo']
+        self.assertNotIn('cells', result)
+        self.assertEqual(result['desktops']['mint-cinnamon-x11'], {
+            'functional': 'passed', 'visual': 'frames', 'packages': ['deb'],
+            'receipts': [], 'issues': [], 'notes': []})
+        self.assertNotIn('host', loaded[0])
+
+    def test_v2_driver_import_and_host_filter_review_data(self):
+        row = {'interaction': 'editor.undo', 'desktop': 'ubuntu-gnome-wayland', 'package': 'source',
+               'functional': 'passed', 'visual': 'frames', 'host': 'm74', 'placement': 'guest',
+               'guest': 'gnome-provisioned-20261016', 'destination': 'proton', 'review': True,
+               'review_reason': 'Compare before and after', 'recipe': 'editor.undo', 'build': 'abc123',
+               'at': '2026-10-29T00:00:00Z', 'receipt': 'work/synthetic/receipt.json',
+               'frames': [{'label': 'before', 'path': 'frames/before.png'},
+                          {'label': 'after', 'path': 'frames/after.png', 'reference': '26-editor-selected',
+                           'distance': 0.12, 'tolerance': 0.05}]}
+        receipt = self.receipt('driver.json', {'schemaVersion': 2, 'interactions': [row, {**row, 'host': 'f44'}]})
+        entries = surface_map.import_receipt(self.model, receipt)
+        for k, v in row.items():
+            self.assertEqual(entries[0][k], v)
+        path = Path(self.tmp.name) / 'coverage.json'
+        surface_map.write_coverage(path, 'v2', entries)
+        self.assertEqual(json.loads(path.read_text())['schemaVersion'], 2)
+        loaded = surface_map.load_coverage([path])
+        data = surface_map.build_page_data(self.model, loaded, None, self.tmp.name)
+        cells = next(i for i in data['interactions'] if i['id']=='editor.undo')['cells']
+        self.assertEqual({c['host'] for c in cells}, {'m74', 'f44'})
+        self.assertEqual(data['hosts'], list(surface_map.HOSTS))
+        self.assertTrue(data['hostCoverage'])
+        self.assertEqual(len(data['reviews']), 2)
+        self.assertEqual(data['reviews'][0]['frames'], row['frames'])
+        page = surface_map.render(data)
+        self.assertIn('aria-label="Host filter"', page)
+        self.assertIn('function renderReview', page)
+        self.assertIn('frames/after.png', page)
+        self.assertIn('Compare before and after', page)
+
+    def test_old_driver_rows_still_import_with_cli_defaults(self):
+        path = self.receipt('old-driver.json', {'interactions': [
+            {'interaction': 'editor.undo', 'functional': 'passed'}]})
+        entries = surface_map.import_receipt(self.model, path, 'mint-cinnamon-x11', 'deb')
+        self.assertEqual(entries[0]['desktop'], 'mint-cinnamon-x11')
+        self.assertNotIn('host', entries[0])
+
+    def test_mark_v2_flags_and_review_only(self):
+        path = Path(self.tmp.name) / 'mark.json'
+        self.assertEqual(surface_map.main(['mark', 'editor.undo', '--coverage', str(path),
+            '--desktop', 'aurora-kde-wayland', '--package', 'source', '--host', 'aurora-amd',
+            '--placement', 'native', '--destination', 'local', '--review-reason', 'Desktop drawn']), 0)
+        row = surface_map.load_coverage([path])[0]
+        self.assertTrue(row['review'])
+        self.assertEqual(row['host'], 'aurora-amd')
+
+    def test_invalid_v2_metadata_rejected(self):
+        for metadata in ({'host': 'unknown'}, {'placement': 'VM'}, {'destination': 'ftp'},
+                         {'review': 'true'}, {'frames': ['bad']}):
+            with self.subTest(metadata=metadata), self.assertRaises(surface_map.ModelError):
+                surface_map.make_entry('editor.undo', 'mint-cinnamon-x11', 'deb', **metadata)
 
     def test_coverage_round_trip_and_page(self):
         coverage = Path(self.tmp.name) / 'coverage.json'
