@@ -34,7 +34,7 @@ class Fake(Context):
         self.shell_fail = None
         self.shell_hook = None
         self.drop_packets = 3
-        self.settings = {'document': {'preferences': {'launchAtLogin': False}},
+        self.settings = {'document': {'preferences': {'launchAtLogin': False}, 'actions': {'clipboard': {'shortcut': 'Ctrl+Alt+C'}}},
                          'metadata': {'path': '/private/config/putgd/config.json',
                                       'observedRevision': 'old', 'acceptedRevision': 'old', 'validation': {'ok': True}}}
 
@@ -42,7 +42,7 @@ class Fake(Context):
         self.actions.append(('call', method, params))
         if method == 'ui.snapshot':
             return {'residentEpoch': self.epoch, 'operationsReady': True,
-                    'diagnostics': {'ui': {'pid': self.pid}, 'loginStartup': {'enabled': self.settings['document']['preferences']['launchAtLogin']}}}
+                    'diagnostics': {'shortcuts': {'bindings': {'clipboard': {'requested': self.settings['document']['actions']['clipboard']['shortcut'], 'bound': True}}}, 'ui': {'pid': self.pid}, 'loginStartup': {'enabled': self.settings['document']['preferences']['launchAtLogin']}}}
         if method == 'settings.get': return copy.deepcopy(self.settings)
         if method == 'settings.patch':
             
@@ -69,6 +69,7 @@ class Fake(Context):
             return {'returncode': 1, 'stdout': '', 'stderr': 'fixture failure'}
         if 'PYCONFIG' in script:
             self.settings['document']['preferences']['launchAtLogin'] = True
+            self.settings['document']['actions']['clipboard']['shortcut'] = 'Ctrl+Alt+Shift+F12'
             self.settings['metadata'].update(observedRevision='new', acceptedRevision='new')
         if 'PYKILL' in script:
             self.pid = 0
@@ -177,7 +178,7 @@ class EventRecipes(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             p = root / 'config.json'
-            p.write_text('{"preferences":{"launchAtLogin":false},"preserve":17}')
+            p.write_text('{"preferences":{"launchAtLogin":false},"actions":{"clipboard":{"shortcut":"Ctrl+Alt+C"}},"preserve":17}')
             p.chmod(0o600)
             import hashlib
             ctx = Fake()
@@ -186,7 +187,7 @@ class EventRecipes(unittest.TestCase):
             def execute(script):
                 captured.append(script)
                 run = subprocess.run(['sh', '-c', script], env={**os.environ, 'XDG_CONFIG_HOME': directory}, capture_output=True, text=True)
-                ctx.settings['document']['preferences']['launchAtLogin'] = json.loads(p.read_text())['preferences']['launchAtLogin']
+                ctx.settings['document'] = json.loads(p.read_text())
                 ctx.settings['metadata']['acceptedRevision'] = 'new'
                 return {'returncode': run.returncode, 'stdout': run.stdout, 'stderr': run.stderr}
             ctx.shell_hook = execute

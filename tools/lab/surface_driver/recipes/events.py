@@ -94,6 +94,10 @@ def config_changed(ctx: Context):
     metadata = before['metadata']
     document = before['document']
     enabled = not document.get('preferences', {}).get('launchAtLogin', False)
+    old_shortcut = document['actions']['clipboard']['shortcut']
+    used = {a.get('shortcut') for a in document['actions'].values()}
+    shortcut = next('Ctrl+Alt+Shift+F' + str(n) for n in range(12, 0, -1)
+                    if 'Ctrl+Alt+Shift+F' + str(n) not in used)
     ctx.frame('before', window='settings')
     # Do not copy a complete user document through a shell command or log. The
     # guest script reads it in memory, checks the revision, and changes one bool.
@@ -114,6 +118,7 @@ try:
     assert hashlib.sha256(p.read_bytes()).hexdigest() == REVISION
     doc = json.loads(raw)
     doc.setdefault('preferences', {})['launchAtLogin'] = ENABLED
+    doc['actions']['clipboard']['shortcut'] = __SHORTCUT__
     tmpfd, name = tempfile.mkstemp(prefix='.events-', dir=p.parent)
     try:
         with os.fdopen(tmpfd, 'w') as out:
@@ -127,7 +132,7 @@ finally:
     os.close(fd)
     lock.unlink()
 PYCONFIG'''
-    script = script.replace('PATH', repr(metadata['path'])).replace('REVISION', repr(metadata['observedRevision'])).replace('ENABLED', repr(enabled))
+    script = script.replace('PATH', repr(metadata['path'])).replace('REVISION', repr(metadata['observedRevision'])).replace('ENABLED', repr(enabled)).replace('__SHORTCUT__', repr(shortcut))
     try:
         _shell(ctx, script, 'external atomic config edit in private profile')
         after = ctx.wait(lambda: (s if (s := _result(ctx, 'settings.get'))['document'].get('preferences', {}).get('launchAtLogin') == enabled else None),
@@ -136,12 +141,15 @@ PYCONFIG'''
         ctx.expect(after['metadata']['acceptedRevision'] != metadata['acceptedRevision'], 'watcher accepted a new revision')
         ctx.wait(lambda: _result(ctx, 'ui.snapshot')['diagnostics']['loginStartup']['enabled'] == enabled,
                  'login startup integration reapplied')
+        ctx.expect(after['document']['actions']['clipboard']['shortcut'] == shortcut, 'external shortcut preference accepted')
+        ctx.wait(lambda: ((b := _result(ctx, 'ui.snapshot')['diagnostics']['shortcuts']['bindings']['clipboard']).get('requested') == shortcut
+                          and b.get('bound') is True), 'native clipboard shortcut rebound')
         ctx.frame('after', window='settings')
-        ctx.review('Frames verify Settings refresh; this recipe does not yet prove a changed shortcut was rebound.')
     finally:
         current = _result(ctx, 'settings.get')
         _result(ctx, 'settings.patch', {'expectedRevision': current['metadata']['observedRevision'],
-                                     'patch': {'preferences': {'launchAtLogin': document.get('preferences', {}).get('launchAtLogin', False)}}})
+                                     'patch': {'preferences': {'launchAtLogin': document.get('preferences', {}).get('launchAtLogin', False)},
+                                               'actions': {'clipboard': {'shortcut': old_shortcut}}}})
 
 
 @recipe('event.single-instance')
@@ -531,7 +539,9 @@ def recording_budget_stop(ctx: Context):
                                  'patch': {'limits': {'maxFileBytes': 64 * 1024 * 1024}}})
     identity = None
     try:
-        prepared = _result(ctx, 'recording.prepare', f['prepare'])
+        prepare = dict(f['prepare'])
+        prepare['audio'] = {'system': False, 'microphone': False}
+        prepared = _result(ctx, 'recording.prepare', prepare)
         identity = prepared['recordingId']
         ctx.note('Budget-stop recording operation: ' + identity)
         ctx.wait(lambda: _result(ctx, 'recording.inspect', {'id': identity})['state'] == 'ready', 'recording is ready', timeout=45)
