@@ -145,7 +145,7 @@ class FakeContext(Context):
         if self.no_accessibility:
             return []
         if query["name"] == "Discard this recording?":
-            return [{"name": query["name"]}] if self.question else []
+            return [{"name": query["name"], "rect": [10, 10, 300, 24] if self.question else [0, 0, 0, 0]}]
         if query["name"] != {"region": "Capture region", "recsel": "Recording region"}.get(self.surface):
             return []
         prefix = "No region selected."

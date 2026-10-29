@@ -119,6 +119,12 @@ def _rect(ctx, recording=False):
     return [x, y, w, h]
 
 
+def _visible(ctx, name):
+    # AT-SPI can retain hidden child nodes. A name alone is not visibility.
+    return any((r := node.get("rect")) and len(r) == 4 and r[2] > 0 and r[3] > 0
+               and r[0] > -1_000_000 and r[1] > -1_000_000 for node in ctx.accessible({"name": name}))
+
+
 def _expect_rect(ctx, wanted, recording=False):
     ctx.wait(lambda: _rect(ctx, recording) == wanted, "selector rectangle " + str(wanted))
     ctx.note("Inspected selector rectangle " + str(wanted))
@@ -576,9 +582,9 @@ def bar_discard(ctx):
                     _state(ctx, rid, "paused")
                 ctx.click("cancel", window="bar-" + phase)
                 ctx.frame("question-" + phase, window="bar", reference="36-record-discard-confirm" if phase == "recording" else "42-record-paused-discard-confirm")
-                ctx.expect(bool(ctx.accessible({"name": "Discard this recording?"})), "inline discard question visible")
+                ctx.expect(_visible(ctx, "Discard this recording?"), "inline discard question visible")
                 ctx.keys("Esc")
-                ctx.expect(not ctx.accessible({"name": "Discard this recording?"}), "Esc answers Keep")
+                ctx.expect(not _visible(ctx, "Discard this recording?"), "Esc answers Keep")
                 ctx.expect(_inspect(ctx, rid)["state"] == phase, "Keep preserves phase")
                 ctx.click("cancel", window="bar-" + phase)
                 ctx.click("keepRecording", window="bar-question-" + phase)
