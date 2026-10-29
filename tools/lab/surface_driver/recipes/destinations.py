@@ -135,6 +135,11 @@ def _open(ctx, count=1):
                  'preferences': {'unlockCredentialsAtStartup': False}})
     ctx.view('ui.show', {'view': 'destinations'})
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'known destination fixture')
+    geometry = ctx.geometry('destinations')
+    ctx.scroll(geometry['x'] + geometry['width'] - 32,
+               geometry['y'] + geometry['height']//2, 30)
+    if profiles:
+        _selected(ctx, 0)
     _frame(ctx, 'before')
     return f, profiles
 
@@ -192,6 +197,11 @@ def _accessible(ctx, control):
     if len(rows) != 1 or not isinstance(rows[0], dict):
         ctx.blocked('Need one current non-secret accessible control: ' + control, issue=CORE_ISSUE)
     return rows[0]
+
+
+def _requires(ctx, capability):
+    if ctx.profile.get('destinations', {}).get(capability) != 1:
+        ctx.blocked('Need core destinations ' + capability + ' before changing this GUI state (#666).', issue=CORE_ISSUE)
 
 
 def _state(ctx, control, key):
@@ -253,6 +263,7 @@ def acl(ctx):
 @_failure_frame
 def service(ctx):
     _, profiles = _open(ctx)
+    _requires(ctx, 'capture_state_contract')
     # The selector opens endpoint editing; it does not supply an account's
     # endpoint. No test/upload is invoked for these reserved fixture addresses.
     for index, endpoint in ((1, 'https://surface.invalid.r2.cloudflarestorage.com'),
@@ -267,6 +278,7 @@ def service(ctx):
 @_failure_frame
 def advanced_connection(ctx):
     _, profiles = _open(ctx)
+    _requires(ctx, 'capture_state_contract')
     ctx.click('advancedSettings', window='destinations')
     _edit(ctx, 's3StorageClass', 'STANDARD_IA')
     _saved(ctx, lambda doc: doc['profiles'][0]['settings']['storageClass'] == 'STANDARD_IA', 'storage class saved')
@@ -284,6 +296,7 @@ def advanced_connection(ctx):
 @_failure_frame
 def autosave_validation(ctx):
     _open(ctx)
+    _requires(ctx, 'accessible_state_contract')
     _edit(ctx, 's3Bucket', 'invalid bucket with spaces')
     # An observed inline error makes this an eventual assertion, not a race
     # against the 400 ms autosave timer.
@@ -330,6 +343,7 @@ def drag_reorder(ctx):
 @_failure_frame
 def add(ctx):
     _open(ctx)
+    _requires(ctx, 'capture_state_contract')
     for menu_index, provider, label in ((0, 's3', 'Added S3'), (2, 'backblaze-b2', 'Added B2')):
         ctx.click('addS3Destination', window='destinations')
         ctx.keys('Home', *(['Down'] * menu_index), 'Return')
@@ -348,6 +362,7 @@ def add(ctx):
 @_failure_frame
 def make_default(ctx):
     _, profiles = _open(ctx)
+    _requires(ctx, 'capture_state_contract')
     ctx.click('makeDefaultDestination', window='destinations')
     # First prove cancellation preserves routing, then confirm explicitly.
     ctx.keys('Escape')
@@ -363,6 +378,7 @@ def make_default(ctx):
 @_failure_frame
 def remove(ctx):
     _, profiles = _open(ctx)
+    _requires(ctx, 'capture_state_contract')
     # Destination actions: Rename, Storage service submenu, Remove destination.
     def request():
         ctx.click('destinationActions', window='destinations')
@@ -405,6 +421,7 @@ def cli_credentials_refused(ctx):
 @_failure_frame
 def help_toggles(ctx):
     _open(ctx)
+    _requires(ctx, 'accessible_state_contract')
     ctx.click('s3BucketHelp', window='destinations')
     ctx.expect(_state(ctx, 's3BucketHelp', 'checked') is True, 'bucket explanation expanded')
     _frame(ctx, 'expanded')
@@ -432,6 +449,7 @@ def credential_lifecycle(ctx):
 @_failure_frame
 def conflict(ctx):
     _, profiles = _open(ctx)
+    _requires(ctx, 'accessible_state_contract')
     _edit(ctx, 's3Bucket', 'invalid unsaved draft')
     ctx.wait(lambda: _state(ctx, 's3BucketError', 'text'), 'invalid draft retained')
     _patch(ctx, {'preferences': {'notifications': not _get(ctx)['document']['preferences'].get('notifications', True)}})

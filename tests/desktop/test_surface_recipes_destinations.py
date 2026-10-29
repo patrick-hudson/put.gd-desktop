@@ -19,7 +19,7 @@ class FakeContext(Context):
         self.temporary = tempfile.TemporaryDirectory(prefix='sd-')
         self.root = Path(self.temporary.name)
         (self.root / 'putgd').mkdir(mode=0o700)
-        self.profile = {'destinations': {'accessible_state_contract': 1}}
+        self.profile = {'destinations': {'accessible_state_contract': 1, 'capture_state_contract': 1}}
         self.document = {'profiles': [], 'preferences': {}}
         self.revision = 1
         self.events = []
@@ -97,6 +97,12 @@ class FakeContext(Context):
 
     def frame(self, label, window=None, reference=None):
         self.assert_event('frame', label, window, reference)
+
+    def geometry(self, window):
+        return {'x': 0, 'y': 0, 'width': 1320, 'height': 880, 'scale': 1}
+
+    def scroll(self, x, y, clicks):
+        self.assert_event('scroll', x, y, clicks)
 
     def note(self, text):
         self.assert_event('note', text)
