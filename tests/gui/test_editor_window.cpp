@@ -884,6 +884,12 @@ private slots:
   QString code,message;auto state=window.viewCommand({{"action","showSavedCopy"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(!state["lastShowInFolder"].toObject()["opened"].toBool(true));
   auto* error=window.findChild<QLabel*>("editorFolderError");QVERIFY(error&&error->isVisible());QCOMPARE(error->property("visualRole").toString(),QString("body"));QCOMPARE(error->palette().color(QPalette::WindowText),Theme::current().text);QVERIFY(error->text().contains("Use Copy path instead."));
   auto* copy=window.findChild<QPushButton*>("copySavedPath");QVERIFY(copy->isVisible());
+  // Final read: Details leads the actions group, after the message, as on a failed save.
+  {auto* details=window.findChild<QToolButton*>("editorSaveDetails");auto* actions=window.findChild<QWidget*>("editorSaveActions");QVERIFY(details->isVisible());QCOMPARE(details->parentWidget(),actions);QVERIFY(details->mapTo(&window,QPoint()).x()<copy->mapTo(&window,QPoint()).x());
+   // On the message's line, Details follows it; it never leads the strip.
+   auto after=[&](QWidget* message){const QRect a(details->mapTo(&window,QPoint()),details->size()),m(message->mapTo(&window,QPoint()),message->size());return a.top()>m.bottom()||a.left()>=m.right();};QVERIFY(after(error));
+   window.showSaveFailed("/synthetic/denied.png","Permission denied");QApplication::processEvents();QCOMPARE(details->parentWidget(),actions);QVERIFY(details->isVisible());QVERIFY(after(window.findChild<QLabel*>("editorSaveError")));
+   window.showSaved(path);state=window.viewCommand({{"action","showSavedCopy"}},code,message);QVERIFY(error->isVisible());}
   auto* scroll=window.findChild<QScrollArea*>("editorPropertiesScroll");
   if(scroll->isAncestorOf(error)){
    PUTGD_TRY_VERIFY(scroll->viewport()->rect().contains(QRect(error->mapTo(scroll->viewport(),QPoint()),error->size())));
