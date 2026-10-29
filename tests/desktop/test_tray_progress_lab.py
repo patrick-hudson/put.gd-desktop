@@ -11,12 +11,17 @@ tray = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tray)
 
 
-def observation(description, color=None, title='put.gd — Working'):
+def observation(description, color=None, title=None):
     color = color or tray.TRAY_TINTS['dark']['upload' if description == 'Upload complete' else 'encoding']
+    title = title or (tray.COMPLETE if description == 'Upload complete' else tray.UPLOADING)
+    # A partial progress fill keeps idle pixels beside the encoding colour.
+    colors = {color: 120}
+    if color == tray.TRAY_TINTS['dark']['encoding']:
+        colors[tray.TRAY_TINTS['dark']['idle']] = 60
     return {'pid': 42, 'hostRegistered': True, 'registered': True,
             'title': title, 'description': description,
             'icons': [{'width': 24, 'height': 24, 'sha256': 'synthetic',
-                       'opaqueColors': {color: 120}}]}
+                       'opaqueColors': colors}]}
 
 
 def mock_reads(replay):
@@ -41,10 +46,10 @@ class TrayProgressContracts(unittest.TestCase):
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2,
                     'bytesTransferred': n*1024**2, 'bytesTotal': 4*1024**2}
                    for n in (1, 2, 3)]
-        self.assertTrue(tray.check_tooltip(observation('Uploading: 2 MiB of 4 MiB (50%)'), records, 's3', 42)['counter'])
-        for text in ('Uploading: 5 MiB of 4 MiB (125%)',
-                     'Uploading: 2 MiB of 4 MiB (90%)',
-                     'Uploading: 2 MiB of 8 MiB (25%)'):
+        self.assertTrue(tray.check_tooltip(observation('Uploading: 2 MB of 4 MB (50%)'), records, 's3', 42)['counter'])
+        for text in ('Uploading: 5 MB of 4 MB (125%)',
+                     'Uploading: 2 MB of 4 MB (90%)',
+                     'Uploading: 2 MB of 8 MB (25%)'):
             with self.subTest(text=text), self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(observation(text), records, 's3', 42)
 
@@ -52,29 +57,29 @@ class TrayProgressContracts(unittest.TestCase):
         # The SDK may retry and decrease its encrypted byte counter.
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2,
                     'bytesTransferred': n*1024**2} for n in (8, 6)]
-        result = tray.check_tooltip(observation('Uploading: 7 MiB transferred · Source size: 4 MiB'), records, 'proton-drive', 42)
+        result = tray.check_tooltip(observation('Uploading: 7 MB transferred · Source size: 4 MB'), records, 'proton-drive', 42)
         self.assertTrue(result['counter'])
-        self.assertTrue(tray.check_tooltip(observation('Uploading: 7 MiB transferred · Source size: 4 MiB · Estimated 99%'), records, 'proton-drive', 42)['counter'])
-        for text in ('Uploading: 7 MiB of 4 MiB (175%)',
-                     'Uploading: 7 MiB transferred · Source size: 7 MiB',
-                     'Uploading: 12 MiB transferred · Source size: 4 MiB'):
+        self.assertTrue(tray.check_tooltip(observation('Uploading: 7 MB transferred · Source size: 4 MB · Estimated 99%'), records, 'proton-drive', 42)['counter'])
+        for text in ('Uploading: 7 MB of 4 MB (175%)',
+                     'Uploading: 7 MB transferred · Source size: 7 MB',
+                     'Uploading: 12 MB transferred · Source size: 4 MB'):
             with self.subTest(text=text), self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(observation(text), records, 'proton-drive', 42)
 
     def test_source_estimates_are_bounded_and_must_match_observed_counters(self):
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2, 'bytesTransferred': 2*1024**2}]
-        self.assertTrue(tray.check_tooltip(observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%'), records, 'proton-drive', 42)['counter'])
+        self.assertTrue(tray.check_tooltip(observation('Uploading: 2 MB transferred · Source size: 4 MB · Estimated 50%'), records, 'proton-drive', 42)['counter'])
         for estimate in (25, 75, 100):
             with self.subTest(estimate=estimate), self.assertRaises(tray.TrayProgressError):
-                tray.check_tooltip(observation(f'Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated {estimate}%'), records, 'proton-drive', 42)
+                tray.check_tooltip(observation(f'Uploading: 2 MB transferred · Source size: 4 MB · Estimated {estimate}%'), records, 'proton-drive', 42)
         # At zero fill the entire Lift silhouette retains its idle tint.
-        empty = observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%', color='#d6d6d2')
+        empty = observation('Uploading: 2 MB transferred · Source size: 4 MB · Estimated 50%', color='#d6d6d2')
         self.assertFalse(tray.check_tooltip(empty, records, 'proton-drive', 42)['storageActive'])
 
     def test_s3_replay_still_requires_its_real_transfer_total(self):
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2, 'bytesTransferred': 2*1024**2}]
         with self.assertRaises(tray.TrayProgressError):
-            tray.check_tooltip(observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%'), records, 's3', 42)
+            tray.check_tooltip(observation('Uploading: 2 MB transferred · Source size: 4 MB · Estimated 50%'), records, 's3', 42)
 
     def test_completion_frame_requires_green_without_progress_fill(self):
         self.assertFalse(tray.check_tooltip(observation('Upload complete'), [], 's3', 42)['idle'])
@@ -84,13 +89,33 @@ class TrayProgressContracts(unittest.TestCase):
             with self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(snapshot, [], 's3', 42)
 
+    def test_a_nearly_complete_fill_may_cover_the_whole_glyph(self):
+        records = [{'phase': 'uploading', 'sourceBytes': 8*1024**2, 'bytesTransferred': 8*1024**2, 'bytesTotal': 8*1024**2}]
+        full = observation('Uploading: 8 MB of 8 MB (100%)')
+        full['icons'][0]['opaqueColors'] = {tray.TRAY_TINTS['dark']['encoding']: 400, '#a58656': 30}
+        result = tray.check_tooltip(full, records, 's3', 42)
+        self.assertTrue(result['storageActive'] and result['counter'])
+        empty = observation('Uploading: 8 MB of 8 MB (100%)')
+        empty['icons'][0]['opaqueColors'] = {'#a58656': 30}
+        with self.assertRaisesRegex(tray.TrayProgressError, 'brand color'):
+            tray.check_tooltip(empty, records, 's3', 42)
+        sliver = observation('Uploading: 0.02 MB of 8 MB (0%)')
+        sliver['icons'] = [{'width': 24, 'sha256': 's', 'opaqueColors': {tray.TRAY_TINTS['dark']['idle']: 128}},
+                           {'width': 72, 'sha256': 'l', 'opaqueColors': {tray.TRAY_TINTS['dark']['idle']: 1500,
+                                                                          tray.TRAY_TINTS['dark']['encoding']: 12}}]
+        records[0]['bytesTransferred'] = 20000
+        self.assertFalse(tray.check_tooltip(sliver, records, 's3', 42)['storageActive'])
+        idle = observation('', tray.TRAY_TINTS['dark']['encoding'], tray.IDLE)
+        with self.assertRaisesRegex(tray.TrayProgressError, 'progress fill'):
+            tray.check_tooltip(idle, [], 's3', 42)
+
     def test_concurrent_rows_cannot_borrow_another_operation_counter(self):
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2,
                     'bytesTransferred': n*1024**2, 'bytesTotal': 4*1024**2,
                     'rowIndex': row} for row, ns in ((0, (1, 2)), (1, (2, 3))) for n in ns]
-        tray.check_tooltip(observation('Uploading: 1 MiB of 4 MiB (25%)\nUploading: 3 MiB of 4 MiB (75%)'), records, 's3', 42)
+        tray.check_tooltip(observation('Uploading: 1 MB of 4 MB (25%)\nUploading: 3 MB of 4 MB (75%)'), records, 's3', 42)
         with self.assertRaises(tray.TrayProgressError):
-            tray.check_tooltip(observation('Uploading: 3 MiB of 4 MiB (75%)\nUploading: 1 MiB of 4 MiB (25%)'), records, 's3', 42)
+            tray.check_tooltip(observation('Uploading: 3 MB of 4 MB (75%)\nUploading: 1 MB of 4 MB (25%)'), records, 's3', 42)
 
     def test_protocol_identity_color_privacy_and_idle_are_independent_of_rendering(self):
         records = [{'phase': 'queued', 'sourceBytes': 0}]
@@ -101,7 +126,7 @@ class TrayProgressContracts(unittest.TestCase):
                        {'icons': observation('Queued', color='#ffffff')['icons']}):
             with self.subTest(defect=defect), self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip({**observation('Queued'), **defect}, records, 's3', 42)
-        idle = observation('', color='#d6d6d2', title='put.gd — Share and local capture')
+        idle = observation('', color='#d6d6d2', title=tray.IDLE)
         self.assertTrue(tray.check_tooltip(idle, [], 's3', 42)['idle'])
         with self.assertRaises(tray.TrayProgressError):
             tray.check_tooltip({**idle, 'description': 'Uploading'}, [], 's3', 42)
@@ -117,12 +142,14 @@ class TrayProgressContracts(unittest.TestCase):
                     [{'phase': 'queued', 'sourceBytes': 0}], 'proton-drive', 42)
         self.assertFalse(queued['storageActive'])
         records[0]['bytesTransferred'] = 1024**2
-        green = tray.check_tooltip(observation('Uploading: 1 MiB transferred · Source size: 4 MiB'),
+        green = tray.check_tooltip(observation('Uploading: 1 MB transferred · Source size: 4 MB'),
                                    records, 'proton-drive', 42)
         self.assertTrue(green['storageActive'])
         self.assertTrue(green['counter'])
+        # One size idle-only and another fill-only share no colour.
         mixed = observation('Uploading', color='#d6d6d2')
-        mixed['icons'].append(observation('Uploading')['icons'][0])
+        mixed['icons'].append({'width': 48, 'height': 48, 'sha256': 'fill',
+                               'opaqueColors': {tray.TRAY_TINTS['dark']['encoding']: 400}})
         with self.assertRaises(tray.TrayProgressError):
             tray.check_tooltip(mixed, records, 'proton-drive', 42)
 
@@ -140,7 +167,7 @@ class TrayProgressContracts(unittest.TestCase):
                 replay.save = replay.witness = lambda *args: None
                 for phase, text, color, progress in (
                     ('queued', 'Queued', '#d6d6d2', {}),
-                    ('uploading', 'Uploading: 1 MiB transferred · Source size: 4 MiB',
+                    ('uploading', 'Uploading: 1 MB transferred · Source size: 4 MB',
                      transfer_color, {'bytesTransferred': 1024**2})):
                     op = {'id': 'operation', 'state': 'running', 'phase': phase,
                           'items': [{'artifact': {'id': 'artifact', 'bytes': 4*1024**2},
@@ -165,11 +192,11 @@ class TrayProgressContracts(unittest.TestCase):
     def test_intermediate_phase_requires_a_real_observation(self):
         for phase, text in (('sharing', 'Creating share link'),
                             ('saving_local', 'Saving local copy'),
-                            ('finalizing', 'Finalizing · Source size: 4 MiB')):
+                            ('finalizing', 'Finalizing · Source size: 4 MB')):
             record = {'phase': phase, 'sourceBytes': 4*1024**2}
             self.assertIn(phase, tray.check_tooltip(observation(text), [record], 's3', 42)['phases'])
         with self.assertRaises(tray.TrayProgressError):
-            tray.check_tooltip(observation('Finalizing · Source size: 4 MiB'),
+            tray.check_tooltip(observation('Finalizing · Source size: 4 MB'),
                                [{'phase': 'queued', 'sourceBytes': 4*1024**2}], 's3', 42)
 
     def test_package_bound_source_provenance_preserves_supplied_dirty_unknown(self):
@@ -267,12 +294,12 @@ class TrayProgressContracts(unittest.TestCase):
                'sourceBytes': 4*1024**2, 'bytesTransferred': 3*1024**2,
                'bytesTotal': 4*1024**2, 'rowIndex': 0, 'activeCount': 1, 'fileIndex': 1, 'fileCount': 2}
         current = {**old, 'operationId': 'new', 'artifactId': 'b', 'bytesTransferred': 1024**2}
-        text = observation('Uploading file 1/2: 3 MiB of 4 MiB (75%)')
+        text = observation('Uploading file 1/2: 3 MB of 4 MB (75%)')
         for stale in (old, {**old, 'operationId': 'new'}):
             with self.subTest(stale=stale), self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(text, tray.correlated_records([stale, current], [current]), 's3', 42)
         with self.assertRaises(tray.TrayProgressError):
-            tray.check_tooltip(observation('Uploading file 2/2: 1 MiB of 4 MiB (25%)'), [current], 's3', 42)
+            tray.check_tooltip(observation('Uploading file 2/2: 1 MB of 4 MB (25%)'), [current], 's3', 42)
 
     def test_same_operation_row_shift_keeps_its_own_batched_counter(self):
         row = {'operationId': 'remaining', 'artifactId': 'a', 'phase': 'uploading',
@@ -280,7 +307,7 @@ class TrayProgressContracts(unittest.TestCase):
                'bytesTotal': 4*1024**2, 'rowIndex': 1, 'activeCount': 1}
         current = {**row, 'rowIndex': 0, 'bytesTransferred': 2*1024**2}
         rows = tray.correlated_records([row, current], [current])
-        self.assertTrue(tray.check_tooltip(observation('Uploading: 1 MiB of 4 MiB (25%)'), rows, 's3', 42)['counter'])
+        self.assertTrue(tray.check_tooltip(observation('Uploading: 1 MB of 4 MB (25%)'), rows, 's3', 42)['counter'])
 
     def test_concurrent_batch_row_matches_combined_production_counters(self):
         mib = 1024**2
@@ -293,10 +320,10 @@ class TrayProgressContracts(unittest.TestCase):
               'items': [item('uploading', 'uploading', 3*mib), item('uploading', 'uploading', mib), item('pending', 'queued')]}
         records = tray.records_from([op])
         self.assertEqual((records[0]['running'], records[0]['waiting'], records[0]['batchTransferred']), (2, 1, 4*mib))
-        self.assertTrue(tray.check_tooltip(observation('Uploading: 4 MiB of 8 MiB (50%) · 2 uploading, 1 waiting'),
+        self.assertTrue(tray.check_tooltip(observation('Uploading: 4 MB of 8 MB (50%) · 2 uploading, 1 waiting'),
                                            records, 's3', 42)['counter'])
-        for wrong in ('Uploading: 4 MiB of 8 MiB (50%) · 3 uploading', 'Uploading: 6 MiB of 8 MiB (75%) · 2 uploading, 1 waiting',
-                      'Uploading: 4 MiB of 9 MiB (44%) · 2 uploading, 1 waiting'):
+        for wrong in ('Uploading: 4 MB of 8 MB (50%) · 3 uploading', 'Uploading: 6 MB of 8 MB (75%) · 2 uploading, 1 waiting',
+                      'Uploading: 4 MB of 9 MB (44%) · 2 uploading, 1 waiting'):
             with self.subTest(wrong=wrong), self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(observation(wrong), records, 's3', 42)
 
@@ -328,164 +355,430 @@ class TrayProgressContracts(unittest.TestCase):
             self.assertTrue(all(not row['assertions']['matched'] for row in records))
             self.assertFalse(replay.result['coverage'].get('test', {}).get('active', False))
 
-    def error_replay(self, directory, operation=None):
+    def attention_replay(self, directory, operation=None, kind='local-save', provider='s3'):
         from unittest.mock import Mock
         replay = object.__new__(tray.Replay)
         mock_reads(replay)
-        replay.args = SimpleNamespace(provider='s3')
+        replay.args = SimpleNamespace(provider=provider, timeout=5)
         replay.pid = 42; replay.history = []; replay.mismatch_since = None
         replay.result = {'coverage': {}}; replay.save = Mock(); replay.witness = Mock()
         replay.output = Path(directory)
-        replay.error_pulse = {'operationIds': ['failed'], 'kind': 'local-save', 'required': True}
+        replay.expect_attention(['failed'], kind, required=kind == 'local-save')
         operation = operation or {'id': 'failed', 'state': 'failed', 'items': [
             {'uploadStatus': 'local_only', 'local': {'status': 'failed'}}]}
         replay.cli = Mock(return_value={'operations': [operation]})
         return replay
 
-    def test_expected_local_error_requires_error_pulse_and_bounded_idle_recovery(self):
+    LOCAL = 'Local save needs attention'
+
+    def attention(self, label=LOCAL, color='#e59b93', rows=''):
+        return observation(label + tray.REVIEW + rows, color, tray.ATTENTION)
+
+    def test_local_failure_latches_until_its_attention_item_is_opened(self):
         from unittest.mock import Mock, patch
         with tempfile.TemporaryDirectory() as directory:
-            replay = self.error_replay(directory)
-            replay.snapshot = Mock(side_effect=[
-                observation('', '#e59b93', tray.IDLE), observation('', '#d6d6d2', tray.IDLE),
-                observation('', '#e59b93', tray.IDLE), observation('', '#d6d6d2', tray.IDLE),
-                observation('', '#d6d6d2', tray.IDLE)])
-            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 10.62, 12.99, 13.01]):
-                red = replay.observe('local-failure')[2]
-                blue = replay.observe('local-failure')[2]
-                self.assertFalse(red['idle']); self.assertFalse(blue['idle'])
-                self.assertEqual(red['errorColor'], '#e59b93')
-                self.assertEqual(blue['errorColor'], '#d6d6d2')
-                self.assertEqual(replay.observe('local-failure')[2]['errorColor'], '#e59b93')
-                self.assertFalse(replay.observe('local-failure')[2]['idle'])
+            replay = self.attention_replay(directory)
+            replay.snapshot = Mock(side_effect=[self.attention(), self.attention(),
+                                                observation('', '#d6d6d2', tray.IDLE)])
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 14, 15]):
+                first = replay.observe('local-failure')[2]
+                self.assertEqual(first['attention'], self.LOCAL)
+                self.assertFalse(first['idle'])
+                replay.observe('local-failure')
+                with self.assertRaisesRegex(tray.TrayProgressError, 'before its attention item was opened'):
+                    replay.observe('local-failure')
+            latch = replay.result['attention'][0]
+            self.assertEqual((latch['failureObservedAt'], latch['attentionObservedAt'], latch['lastAttentionAt']), (10, 10, 14))
+            self.assertFalse(replay.result['coverage']['local-failure']['active'])
+            self.assertIn('local-failure-attention', [call.args[0] for call in replay.witness.call_args_list])
+        with tempfile.TemporaryDirectory() as directory:
+            replay = self.attention_replay(directory)
+            replay.snapshot = Mock(side_effect=[self.attention(), observation('', '#d6d6d2', tray.IDLE)])
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 14]):
+                replay.observe('local-failure')
+                replay.attention['acknowledgedAt'] = 13
                 self.assertTrue(replay.observe('local-failure')[2]['idle'])
-            pulse = replay.result['errorPulses'][0]
-            self.assertEqual(pulse['operationIds'], ['failed'])
-            self.assertEqual(pulse['failureObservedAt'], 10)
-            self.assertEqual(pulse['deadline'], 13)
-            self.assertEqual(pulse['redObservedAt'], 10)
-            self.assertEqual(pulse['blueAfterRedObservedAt'], 10.31)
-            self.assertEqual(pulse['redAfterBlueObservedAt'], 10.62)
-            self.assertEqual(pulse['recoveredAt'], 13.01)
-            self.assertFalse(replay.result['coverage']['local-failure']['active'])
-            labels = [call.args[0] for call in replay.witness.call_args_list]
-            self.assertIn('local-failure-error-red', labels)
-            self.assertIn('local-failure-error-blue', labels)
-            self.assertIn('local-failure-error-recovered', labels)
+            self.assertEqual(replay.attention['clearedAt'], 14)
 
-    def test_green_cannot_override_an_established_error_pulse(self):
+    def test_attention_without_a_runner_created_failure_is_fatal(self):
         from unittest.mock import Mock, patch
+        with self.assertRaisesRegex(tray.TrayProgressError, 'without a runner-created failure'):
+            tray.check_tooltip(self.attention(), [], 's3', 42)
         with tempfile.TemporaryDirectory() as directory:
-            replay = self.error_replay(directory)
-            replay.snapshot = Mock(side_effect=[observation('', '#e59b93', tray.IDLE),
-                observation('Upload complete', tray.TRAY_TINTS['dark']['upload'])])
-            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31]):
-                replay.observe('local-failure')
-                with self.assertRaises(tray.TrayProgressError):
+            replay = self.attention_replay(directory)
+            replay.attention = None
+            replay.snapshot = Mock(return_value=self.attention())
+            with patch.object(tray.time, 'monotonic', return_value=10):
+                with self.assertRaisesRegex(tray.TrayProgressError, 'without a runner-created failure'):
                     replay.observe('local-failure')
 
-    def test_green_grace_does_not_earn_upload_or_error_coverage(self):
+    def test_attention_before_its_failure_is_observed_gets_only_batching_grace(self):
         from unittest.mock import Mock, patch
+        running = {'id': 'failed', 'state': 'running', 'phase': 'saving_local', 'items': []}
         with tempfile.TemporaryDirectory() as directory:
-            replay = self.error_replay(directory)
-            replay.snapshot = Mock(side_effect=[observation('', '#e59b93', tray.IDLE),
-                observation('', '#d6d6d2', tray.IDLE), observation('Upload complete', tray.TRAY_TINTS['dark']['upload'])])
-            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 12.6]):
-                replay.observe('local-failure'); replay.observe('local-failure')
-                checked = replay.observe('local-failure')[2]
-            self.assertFalse(checked['matched'])
-            self.assertFalse(checked['idle'])
-            self.assertFalse(replay.result['coverage']['local-failure']['active'])
+            replay = self.attention_replay(directory, running)
+            replay.snapshot = Mock(return_value=self.attention())
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 12.01]):
+                self.assertFalse(replay.observe('local-failure')[2]['matched'])
+                with self.assertRaisesRegex(tray.TrayProgressError, 'batching grace'):
+                    replay.observe('local-failure')
+            self.assertNotIn('attentionObservedAt', replay.attention)
 
-    def test_error_recovery_requires_red_to_return_after_idle_tint(self):
+    def test_attention_cannot_borrow_another_failure_identity(self):
         from unittest.mock import Mock, patch
-        with tempfile.TemporaryDirectory() as directory:
-            replay = self.error_replay(directory)
-            replay.snapshot = Mock(side_effect=[observation('', '#e59b93', tray.IDLE),
-                observation('', '#d6d6d2', tray.IDLE), observation('', '#d6d6d2', tray.IDLE)])
-            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 13.01]):
-                replay.observe('local-failure'); replay.observe('local-failure')
-                with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
-
-    def test_new_failure_cannot_reuse_an_earlier_blink_sequence(self):
-        from unittest.mock import Mock, patch
-        with tempfile.TemporaryDirectory() as directory:
-            replay = self.error_replay(directory)
-            replay.args.provider = 'proton-drive'
-            replay.error_pulse = {'operationIds': ['failed', 'second'], 'kind': 'proton-busy', 'required': False}
-            def operation(oid):
-                return {'id': oid, 'state': 'partial', 'items': [{'uploadStatus': 'failed',
-                    'shareStatus': 'not_requested', 'error': {'code': 'proton_account_busy'}}]}
-            first, second = operation('failed'), operation('second')
-            replay.cli = Mock(side_effect=[{'operations': [first]}]*6 + [{'operations': [first, second]}]*4)
-            replay.snapshot = Mock(side_effect=[observation('', color, tray.IDLE) for color in
-                ('#e59b93', '#d6d6d2', '#e59b93', '#d6d6d2', '#d6d6d2')])
-            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 10.62, 12.5, 15.51]):
-                for _ in range(4): replay.observe('concurrent')
-                with self.assertRaises(tray.TrayProgressError): replay.observe('concurrent')
-
-    def test_error_pulse_cannot_borrow_failure_identity_or_outlive_fixed_window(self):
-        from unittest.mock import Mock, patch
-        invalid = [
-            {'id': 'other', 'state': 'failed', 'items': [{'uploadStatus': 'local_only', 'local': {'status': 'failed'}}]},
-            {'id': 'failed', 'state': 'running', 'phase': 'saving_local', 'items': []},
-            {'id': 'failed', 'state': 'failed', 'items': [{'uploadStatus': 'failed', 'local': {'status': 'saved'}}]}]
-        for operation in invalid:
+        for operation in (
+                {'id': 'other', 'state': 'failed', 'items': [{'uploadStatus': 'local_only', 'local': {'status': 'failed'}}]},
+                {'id': 'failed', 'state': 'failed', 'items': [{'uploadStatus': 'failed', 'local': {'status': 'saved'}}]}):
             with self.subTest(operation=operation), tempfile.TemporaryDirectory() as directory:
-                replay = self.error_replay(directory, operation)
-                replay.snapshot = Mock(return_value=observation('', '#e59b93', tray.IDLE))
-                with patch.object(tray.time, 'monotonic', return_value=10):
-                    with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
-        with tempfile.TemporaryDirectory() as directory:
-            replay = self.error_replay(directory)
-            replay.snapshot = Mock(return_value=observation('', '#e59b93', tray.IDLE))
-            with patch.object(tray.time, 'monotonic', side_effect=[10, 13.01]):
-                replay.observe('local-failure')
-                with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
+                replay = self.attention_replay(directory, operation)
+                replay.snapshot = Mock(return_value=self.attention())
+                with patch.object(tray.time, 'monotonic', side_effect=[10, 12.01]):
+                    with self.assertRaises(tray.TrayProgressError):
+                        replay.observe('local-failure'); replay.observe('local-failure')
 
-    def test_error_recovery_rejects_missing_error_or_idle_tint_transition(self):
-        from unittest.mock import Mock, patch
-        for first_color in ('#d6d6d2', '#e59b93'):
-            with self.subTest(first_color=first_color), tempfile.TemporaryDirectory() as directory:
-                replay = self.error_replay(directory)
-                replay.snapshot = Mock(side_effect=[observation('', first_color, tray.IDLE),
-                                                    observation('', '#d6d6d2', tray.IDLE)])
-                with patch.object(tray.time, 'monotonic', side_effect=[10, 13.01]):
-                    replay.observe('local-failure')
-                    with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
+    def test_attention_text_and_glyph_must_match_the_latched_failure(self):
+        labels = [self.LOCAL]
+        self.assertEqual(tray.check_tooltip(self.attention(), [], 's3', 42, attention=labels)['attention'], self.LOCAL)
+        for snapshot in (self.attention('Failed uploads'), observation(self.LOCAL, '#e59b93', tray.ATTENTION),
+                         self.attention(color='#d6d6d2'), self.attention(color=tray.TRAY_TINTS['dark']['upload'])):
+            with self.subTest(snapshot=snapshot['description']), self.assertRaises(tray.TrayProgressError):
+                tray.check_tooltip(snapshot, [], 's3', 42, attention=labels)
+        progress = self.attention()
+        progress['icons'][0]['opaqueColors'][tray.TRAY_TINTS['dark']['encoding']] = 30
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(progress, [], 's3', 42, attention=labels)
+        # Red belongs to the attention state only.
+        with self.assertRaisesRegex(tray.TrayProgressError, 'Error tint'):
+            tray.check_tooltip(observation('', '#e59b93', tray.IDLE), [], 's3', 42)
+        records = [{'phase': 'uploading', 'bytesTransferred': 2*1024**2, 'bytesTotal': 4*1024**2, 'sourceBytes': 4*1024**2}]
+        busy = self.attention('Failed uploads', rows='\nUploading: 2 MB of 4 MB (50%)')
+        result = tray.check_tooltip(busy, records, 's3', 42, attention=['Failed uploads'])
+        self.assertTrue(result['counter'])
+        self.assertFalse(result['storageActive'])
 
-    def test_expected_error_keeps_privacy_identity_and_color_guards(self):
+    def test_attention_keeps_privacy_and_identity_guards(self):
         from unittest.mock import Mock, patch
         for defect in ({'pid': 7}, {'hostRegistered': False}, {'registered': False},
-                       {'description': 'https://example.invalid/sensitive'},
-                       {'title': 'unexpected'},
-                       {'icons': observation('', '#ffffff', tray.IDLE)['icons']},
-                       {'icons': [observation('', '#e59b93', tray.IDLE)['icons'][0],
-                                  observation('', '#d6d6d2', tray.IDLE)['icons'][0]]}):
+                       {'description': 'https://example.invalid/sensitive'}, {'title': 'unexpected'}):
             with self.subTest(defect=defect), tempfile.TemporaryDirectory() as directory:
-                replay = self.error_replay(directory)
-                replay.snapshot = Mock(return_value={**observation('', '#e59b93', tray.IDLE), **defect})
+                replay = self.attention_replay(directory)
+                replay.snapshot = Mock(return_value={**self.attention(), **defect})
                 with patch.object(tray.time, 'monotonic', return_value=10):
                     with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
                 evidence = (replay.output/'observations.jsonl').read_text()
                 self.assertIn('redacted', evidence); self.assertNotIn('sensitive', evidence)
-        with self.assertRaises(tray.TrayProgressError):
-            tray.check_tooltip(observation('', '#e59b93', tray.IDLE), [], 's3', 42)
 
-    def test_only_explicit_original_id_proton_busy_can_authorize_optional_pulse(self):
+    def test_proton_busy_latch_clears_when_retried_items_upload(self):
+        from unittest.mock import Mock, patch
+        op = {'id': 'failed', 'state': 'partial', 'items': [
+            {'uploadStatus': 'failed', 'shareStatus': 'not_requested', 'error': {'code': 'proton_account_busy'}}]}
+        with tempfile.TemporaryDirectory() as directory:
+            replay = self.attention_replay(directory, op, 'proton-busy', 'proton-drive')
+            replay.snapshot = Mock(side_effect=[self.attention('Failed uploads'), observation('', '#d6d6d2', tray.IDLE)])
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 11]):
+                self.assertEqual(replay.observe('concurrent')[2]['attention'], 'Failed uploads')
+                self.assertTrue(replay.observe('concurrent')[2]['idle'])
+            self.assertEqual(replay.attention['clearedAt'], 11)
+            replay.expect_attention(['second'], 'proton-busy')
+            self.assertEqual(replay.attention['operationIds'], ['second'])
+
+    def test_only_explicit_original_id_proton_busy_can_authorize_attention(self):
         from unittest.mock import Mock, patch
         for code in ('proton_account_busy', 'proton_permission_denied'):
             with self.subTest(code=code), tempfile.TemporaryDirectory() as directory:
                 op = {'id': 'failed', 'state': 'partial', 'items': [
                     {'uploadStatus': 'uploaded', 'shareStatus': 'failed', 'error': {'code': code}}]}
-                replay = self.error_replay(directory, op); replay.args.provider = 'proton-drive'
-                replay.error_pulse = {'operationIds': ['failed'], 'kind': 'proton-busy', 'required': False}
-                replay.snapshot = Mock(return_value=observation('', '#e59b93', tray.IDLE))
+                replay = self.attention_replay(directory, op, 'proton-busy', 'proton-drive')
+                replay.snapshot = Mock(return_value=self.attention('Failed uploads'))
                 with patch.object(tray.time, 'monotonic', return_value=10):
                     if code == 'proton_account_busy':
-                        self.assertEqual(replay.observe('concurrent')[2]['errorColor'], '#e59b93')
+                        self.assertEqual(replay.observe('concurrent')[2]['attention'], 'Failed uploads')
                     else:
                         with self.assertRaises(tray.TrayProgressError): replay.observe('concurrent')
+
+    def test_acknowledgement_holds_the_latch_then_opens_the_real_menu_item(self):
+        from unittest.mock import Mock, patch
+        def replay_with(menu_labels, frames):
+            replay = object.__new__(tray.Replay)
+            replay.args = SimpleNamespace(timeout=5)
+            replay.attention = {'kind': 'local-save', 'required': True, 'attentionObservedAt': 10,
+                                'attentionLabel': self.LOCAL}
+            replay.witness = Mock()
+            replay.observe = Mock(side_effect=[(None, {'service': ':1.5', 'path': '/StatusNotifierItem'}, frame)
+                                               for frame in frames])
+            replay.tray_menu = Mock(side_effect=lambda snapshot, label=None: {'ok': True, 'labels': menu_labels}
+                                    if label is None else {'ok': True, 'clicked': 1, 'label': label})
+            replay.result = {}
+            replay.open_visibly = Mock(side_effect=tray.VisibleMenuFailed('not under test'))
+            return replay
+        held = {'matched': True, 'attention': self.LOCAL}
+        replay = replay_with(['Capture region', self.LOCAL, 'Quit put.gd'], [held] * 3)
+        with patch.object(tray.time, 'monotonic', side_effect=[11, 12, 13.5, 20]), patch.object(tray.time, 'sleep'):
+            replay.acknowledge_attention('local-failure')
+        self.assertEqual(replay.tray_menu.call_args_list[-1].args[1], self.LOCAL)
+        self.assertEqual((replay.attention['acknowledgedAt'], replay.attention['menuLabel']), (20, self.LOCAL))
+        replay = replay_with(['Capture region', 'Quit put.gd'], [held] * 3)
+        with patch.object(tray.time, 'monotonic', side_effect=[11, 12, 13.5]), patch.object(tray.time, 'sleep'):
+            with self.assertRaisesRegex(tray.TrayProgressError, 'does not offer'):
+                replay.acknowledge_attention('local-failure')
+        replay = replay_with([self.LOCAL], [held, {'matched': True, 'idle': True}])
+        with patch.object(tray.time, 'monotonic', side_effect=[11, 12, 12.5]), patch.object(tray.time, 'sleep'):
+            with self.assertRaisesRegex(tray.TrayProgressError, 'left the tray'):
+                replay.acknowledge_attention('local-failure')
+
+    def test_settling_opens_a_required_latch_before_idle_and_keeps_a_busy_latch(self):
+        from unittest.mock import Mock, call
+        op = {'id': 'failed', 'state': 'failed', 'copyStatus': 'no_result', 'items': [{
+            'artifact': {'id': 'a', 'bytes': 1, 'sha256': 'x'}, 'uploadStatus': 'local_only',
+            'local': {'status': 'failed'}}]}
+        for kind, observed, expected in (('local-save', {}, ['acknowledge', 'idle']),
+                                         ('proton-busy', {'attentionObservedAt': 10}, []),
+                                         ('proton-busy', {'attentionObservedAt': 10, 'clearedAt': 11}, ['idle'])):
+            with self.subTest(kind=kind, observed=observed):
+                replay = object.__new__(tray.Replay)
+                replay.args = SimpleNamespace(timeout=5)
+                replay.attention = {'kind': kind, 'required': kind == 'local-save', 'failureObservedAt': 9, **observed}
+                replay.operations = Mock(return_value={'failed': op}); replay.save = Mock()
+                order = Mock()
+                replay.acknowledge_attention = order.acknowledge; replay.returned_to_idle = order.idle
+                self.assertEqual(replay.settled(['failed'], 'label'), {'failed': op})
+                self.assertEqual([name for name, *_ in order.mock_calls], expected)
+        replay.attention = {'kind': 'local-save', 'required': True}
+        with self.assertRaisesRegex(tray.TrayProgressError, 'not independently observed'):
+            replay.settled(['failed'], 'label')
+
+    def test_menu_events_keep_only_dbusmenu_calls_to_the_resident(self):
+        import json
+        def call(member, payload_type, data, destination=':1.5', interface='com.canonical.dbusmenu', kind='method_call'):
+            return json.dumps({'type': kind, 'sender': ':1.9', 'destination': destination, 'interface': interface,
+                               'member': member, 'payload': {'type': payload_type, 'data': data}})
+        lines = [call('AboutToShow', 'i', [0]), 'not json',
+                 call('GetLayout', 'iias', [0, -1, []]),
+                 call('Event', 'isvu', [22, 'hovered', {'type': 's', 'data': ''}, 0]),
+                 call('EventGroup', 'a(isvu)', [[[21, 'hovered', {'type': 's', 'data': ''}, 0], [22, 'clicked', {}, 0]]]),
+                 call('AboutToShowGroup', 'ai', [[0, 30]]),
+                 call('Event', 'isvu', [30, 'clicked', {}, 0], destination=':1.6'),
+                 call('Event', 'isvu', [30, 'clicked', {}, 0], interface='org.example'),
+                 call('Event', 'isvu', [30, 'clicked', {}, 0], kind='signal')]
+        self.assertEqual(tray.menu_events(lines, ':1.5'), [('show', 0, None), ('event', 22, 'hovered'),
+                         ('event', 21, 'hovered'), ('event', 22, 'clicked'), ('show', 0, None), ('show', 30, None)])
+        plasma = [call('AboutToShow', 'i', [0], destination='org.kde.StatusNotifierItem.putgd_x'),
+                  call('Event', 'isvu', [0, 'opened', {'type': 's', 'data': ''}, 0], destination='org.kde.StatusNotifierItem.putgd_x'),
+                  call('Event', 'isvu', [22, 'clicked', {}, 0], destination='org.kde.StatusNotifierItem.other')]
+        self.assertEqual(tray.menu_events(plasma, ':1.5'), [])
+        self.assertEqual(tray.menu_events(plasma, {':1.5', 'org.kde.StatusNotifierItem.putgd_x'}),
+                         [('show', 0, None), ('event', 0, 'opened')])
+
+    def test_menu_monitor_follows_the_items_unique_owner(self):
+        import json
+        from unittest.mock import Mock, patch
+        replay = object.__new__(tray.Replay)
+        replay.guest = '/tmp/tp-x'
+        calls = []
+        def session(body):
+            calls.append(body)
+            if 'GetNameOwner' in body:
+                return json.dumps({'type': 's', 'data': [':1.163']}) + '\n4242\n'
+            return '\n'.join(json.dumps({'type': 'method_call', 'destination': ':1.163', 'interface': 'com.canonical.dbusmenu',
+                                          'member': 'AboutToShowGroup', 'payload': {'type': 'ai', 'data': [[0]]}}) for _ in (1,))
+        replay.session = session
+        with patch.object(tray.time, 'sleep'):
+            monitor = replay.menu_monitor('org.kde.StatusNotifierItem-2210-1')
+        self.assertEqual((monitor[0], monitor[2], monitor[3]), (4242, ':1.163', 'org.kde.StatusNotifierItem-2210-1'))
+        self.assertIn("monitor org.kde.StatusNotifierItem-2210-1 >", calls[0])
+        self.assertEqual(replay.menu_monitor_events(monitor), [('show', 0, None)])
+
+    def test_the_latched_icon_is_found_by_its_tint_near_the_hint(self):
+        from unittest.mock import Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'frame.ppm'
+            width, height = 400, 120
+            pixels = bytearray(bytes([30, 30, 30]) * (width * height))
+            def paint(x0, y0, size, rgb):
+                for y in range(y0, y0 + size):
+                    for x in range(x0, x0 + size):
+                        pixels[(y * width + x) * 3:(y * width + x) * 3 + 3] = bytes(rgb)
+            paint(300, 90, 20, (0xe5, 0x9b, 0x93))
+            path.write_bytes(f'P6\n{width} {height}\n255\n'.encode() + bytes(pixels))
+            self.assertEqual(tray.locate_tinted_icon(path, '#e59b93', (270, 100)), (309, 99))
+            self.assertIsNone(tray.locate_tinted_icon(path, '#e59b93', (20, 20), reach=(100, 40)))
+            self.assertIsNone(tray.locate_tinted_icon(path, '#a44139', (270, 100)))
+        replay = self.visible_replay([[]])
+        with patch.object(tray.lab, 'pointer') as pointer, patch.object(tray.lab, 'key'), patch.object(tray.time, 'sleep'), \
+                patch.object(tray, 'locate_tinted_icon', return_value=None):
+            with self.assertRaisesRegex(tray.VisibleMenuFailed, 'not near the supplied position'):
+                replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+        # Only the park move away from the panel (Plasma tints a hovered icon); no click.
+        self.assertEqual([c.args[1:] for c in pointer.call_args_list], [(640, 400, 1280, 800)])
+
+    def test_menu_events_accept_the_well_known_item_name_too(self):
+        import json
+        calls = [json.dumps({'type': 'method_call', 'destination': name, 'interface': 'com.canonical.dbusmenu',
+                             'member': 'Event', 'payload': {'type': 'isvu', 'data': [0, 'opened', {}, 0]}})
+                 for name in ('org.kde.StatusNotifierItem.putgd_1', ':1.300', ':1.9')]
+        # Plasma addresses the well-known name, Cinnamon the unique owner.
+        self.assertEqual(tray.menu_events(calls, {':1.300', 'org.kde.StatusNotifierItem.putgd_1'}),
+                         [('event', 0, 'opened')] * 2)
+
+    def test_prime_open_opens_and_closes_once_before_the_counted_open(self):
+        from unittest.mock import Mock, patch
+        shown = [('show', 0, None)]
+        replay = self.visible_replay([shown, shown, shown + [('event', 22, 'clicked')]],
+                                     profile={'tray_menu': {'primeOpen': True}})
+        order = Mock()
+        with patch.object(tray.lab, 'pointer', order.pointer), patch.object(tray.lab, 'key', order.key), \
+                patch.object(tray.time, 'sleep'), patch.object(tray, 'locate_tinted_icon', return_value=(1158, 15)):
+            attempt = replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+        self.assertTrue(attempt['primedOpen'])
+        steps = [(name, call.args[1:3] if name == 'pointer' else call.args[1]) + tuple(call.args[5:])
+                 for name, call in ((c[0], c) for c in order.mock_calls)]
+        self.assertEqual(steps[:6], [('pointer', (640, 400)), ('pointer', (1158, 15)), ('pointer', (1158, 15), True, 'right'),
+                                     ('pointer', (1158, 15), False, 'right'), ('key', ['esc']), ('pointer', (1158, 15))])
+        self.assertEqual([step[1] for step in steps if step[0] == 'key'][-3:], [['down'], ['down'], ['ret']])
+        self.assertIn('local-failure-menu-primed', [call.args[0] for call in replay.witness.call_args_list])
+
+    def test_menu_presses_count_visible_top_level_rows(self):
+        rows = [{'id': 3, 'label': 'Capture region'}, {'id': 22, 'label': 'Failed uploads (2)'}, {'id': 30, 'label': 'Quit put.gd'}]
+        self.assertEqual(tray.menu_presses(rows, 'Failed uploads', False), (rows[1], 2))
+        self.assertEqual(tray.menu_presses(rows, 'Failed uploads', True), (rows[1], 1))
+        self.assertEqual(tray.menu_presses(rows, 'Local save needs attention', False), (None, None))
+
+    def visible_replay(self, events, rows=None, profile=None):
+        from unittest.mock import Mock
+        replay = object.__new__(tray.Replay)
+        replay.args = SimpleNamespace(tray_x=1200, tray_y=10)
+        replay.run, replay.width, replay.height = Path('/run'), 1280, 800
+        replay.profile = profile or {}
+        replay.result = {}
+        replay.witness = Mock()
+        rows = rows or [{'id': 3, 'label': 'Capture region'}, {'id': 22, 'label': self.LOCAL}, {'id': 30, 'label': 'Quit put.gd'}]
+        replay.tray_menu = Mock(return_value={'ok': True, 'rows': rows, 'labels': [r['label'] for r in rows]})
+        replay.menu_monitor = Mock(return_value=(41, '/tmp/tp-x/menu-monitor.jsonl', ':1.163'))
+        replay.menu_monitor_events = Mock(side_effect=events)
+        replay.stop_menu_monitor = Mock()
+        replay.tints = tray.TRAY_TINTS['dark']
+        return replay
+
+    def test_visible_menu_reaches_the_row_by_keyboard_and_needs_the_desktops_click(self):
+        from unittest.mock import patch
+        shown = [('show', 0, None)]
+        hovered = shown + [('event', 3, 'hovered'), ('event', 22, 'hovered')]
+        replay = self.visible_replay([shown, hovered, hovered + [('event', 22, 'clicked')]])
+        with patch.object(tray.lab, 'pointer') as pointer, patch.object(tray.lab, 'key') as key, \
+                patch.object(tray.time, 'sleep'), patch.object(tray, 'locate_tinted_icon', return_value=(1124, 779)):
+            attempt = replay.open_visibly({'service': ':1.5', 'path': '/StatusNotifierItem'}, self.LOCAL, 'local-failure')
+        self.assertEqual((attempt['status'], attempt['label'], attempt['downPresses']), ('passed', self.LOCAL, 2))
+        self.assertTrue(attempt['hoverReported'])
+        self.assertFalse(attempt['calibrated'])
+        self.assertEqual([c.args[1:3] for c in pointer.call_args_list], [(640, 400)] + [(1124, 779)] * 3)
+        self.assertEqual([c.args[5:] for c in pointer.call_args_list], [(), (), (True, 'right'), (False, 'right')])
+        self.assertEqual(attempt['iconAt'], (1124, 779))
+        self.assertEqual([c.args[1] for c in key.call_args_list], [['down'], ['down'], ['ret']])
+        replay.stop_menu_monitor.assert_called_once_with((41, '/tmp/tp-x/menu-monitor.jsonl', ':1.163'))
+        self.assertEqual(attempt['busOwner'], ':1.163')
+        self.assertEqual(replay.result['trayMenu'], [attempt])
+
+    def test_visible_menu_failures_close_the_menu_and_report_their_reason(self):
+        from unittest.mock import patch
+        shown = [('show', 0, None)]
+        cases = (([[]], 'did not open'),
+                 ([shown, shown + [('event', 30, 'hovered')]], 'highlight is not on the attention row'))
+        for events, reason in cases:
+            with self.subTest(reason=reason):
+                replay = self.visible_replay(events)
+                with patch.object(tray.lab, 'pointer'), patch.object(tray.lab, 'key') as key, patch.object(tray.time, 'sleep'), \
+                patch.object(tray, 'locate_tinted_icon', return_value=(1124, 779)):
+                    with self.assertRaisesRegex(tray.VisibleMenuFailed, reason):
+                        replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+                self.assertEqual(key.call_args_list[-1].args[1], ['esc'])
+                self.assertEqual(replay.result['trayMenu'][0]['status'], 'failed')
+                replay.stop_menu_monitor.assert_called_once()
+        replay = self.visible_replay([], rows=[{'id': 30, 'label': 'Quit put.gd'}])
+        with self.assertRaisesRegex(tray.VisibleMenuFailed, 'not a top-level'):
+            replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+        # No click within five seconds; then a click on another item is fatal, not a fallback.
+        replay = self.visible_replay([shown, shown] + [shown] * 3)
+        with patch.object(tray.lab, 'pointer'), patch.object(tray.lab, 'key'), patch.object(tray.time, 'sleep'), \
+                patch.object(tray, 'locate_tinted_icon', return_value=(1124, 779)), \
+                patch.object(tray.time, 'monotonic', side_effect=[0, 1, 6]):
+            with self.assertRaisesRegex(tray.VisibleMenuFailed, 'no click'):
+                replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+        replay = self.visible_replay([shown, shown, shown + [('event', 30, 'clicked')]],
+                                     profile={'tray_menu': {'firstRowSelected': True}})
+        with patch.object(tray.lab, 'pointer'), patch.object(tray.lab, 'key') as key, patch.object(tray.time, 'sleep'), \
+                patch.object(tray, 'locate_tinted_icon', return_value=(1124, 779)):
+            with self.assertRaisesRegex(tray.TrayProgressError, 'activated another item') as raised:
+                replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+        self.assertNotIsInstance(raised.exception, tray.VisibleMenuFailed)
+        self.assertEqual([c.args[1] for c in key.call_args_list], [['down'], ['ret']])
+        self.assertTrue(replay.result['trayMenu'][0]['calibrated'])
+
+    def test_a_failed_visible_menu_falls_back_to_the_dbus_event_and_says_so(self):
+        from unittest.mock import Mock, patch
+        replay = object.__new__(tray.Replay)
+        replay.args = SimpleNamespace(timeout=5)
+        replay.attention = {'kind': 'local-save', 'required': True, 'attentionObservedAt': 10, 'attentionLabel': self.LOCAL}
+        replay.result = {}; replay.witness = Mock()
+        held = {'matched': True, 'attention': self.LOCAL}
+        replay.observe = Mock(return_value=(None, {'service': ':1.5', 'path': '/S'}, held))
+        replay.open_visibly = Mock(side_effect=tray.VisibleMenuFailed('the desktop did not open put.gd\'s menu'))
+        replay.tray_menu = Mock(side_effect=lambda snapshot, label=None: {'ok': True, 'labels': [self.LOCAL]}
+                                if label is None else {'ok': True, 'clicked': 1, 'label': label})
+        with patch.object(tray.time, 'monotonic', side_effect=[11, 12, 13.5, 20]), patch.object(tray.time, 'sleep'):
+            replay.acknowledge_attention('local-failure')
+        self.assertEqual(replay.attention['openedBy'], 'dbus-event-fallback')
+        self.assertEqual(replay.result['visibleMenuFallbacks'],
+                         [{'scenario': 'local-failure', 'reason': 'the desktop did not open put.gd\'s menu'}])
+        replay.open_visibly = Mock(return_value={'status': 'passed', 'label': self.LOCAL})
+        replay.result, replay.attention = {}, {**replay.attention, 'attentionObservedAt': 10}
+        replay.tray_menu.reset_mock()
+        with patch.object(tray.time, 'monotonic', side_effect=[11, 12, 13.5, 20]), patch.object(tray.time, 'sleep'):
+            replay.acknowledge_attention('local-failure')
+        self.assertEqual(replay.attention['openedBy'], 'visible-menu')
+        self.assertNotIn('visibleMenuFallbacks', replay.result)
+        self.assertTrue(all(call.args[1:] == () for call in replay.tray_menu.call_args_list))
+
+    def test_tray_menu_script_opens_exactly_one_matching_item(self):
+        import json, os, stat, subprocess, sys
+        def node(ident, label, visible=True, children=()):
+            return [ident, {'label': {'type': 's', 'data': label}, 'visible': {'type': 'b', 'data': visible}},
+                    [{'type': '(ia{sv}av)', 'data': child} for child in children]]
+        separator = [24, {'type': {'type': 's', 'data': 'separator'}, 'label': {'type': 's', 'data': '-'}}, []]
+        cases = [(None, [node(21, 'Capture region', children=[node(40, 'Region only')]), separator,
+                         node(22, 'Failed uploads (2)'), node(23, 'Hidden', False)], None),
+                 ('Failed uploads', [node(22, 'Failed uploads (2)'), node(30, 'Quit put.gd')], '22'),
+                 ('Local save needs attention', [node(30, 'Quit put.gd')], None)]
+        for wanted, children, event in cases:
+            with self.subTest(wanted=wanted), tempfile.TemporaryDirectory() as directory:
+                log = Path(directory) / 'calls.jsonl'
+                fake = Path(directory) / 'busctl'
+                layout = json.dumps({'type': 'u(ia{sv}av)', 'data': [7, node(0, '', children=children)]})
+                fake.write_text('#!' + sys.executable + '\nimport json,sys\n'
+                    'open(' + repr(str(log)) + ',"a").write(json.dumps(sys.argv[1:])+"\\n")\n'
+                    'args=sys.argv[1:]\n'
+                    'if "get-property" in args: print(json.dumps({"type":"o","data":"/Menu"}))\n'
+                    'elif "GetLayout" in args: print(' + repr(layout) + ')\n')
+                fake.chmod(fake.stat().st_mode | stat.S_IXUSR)
+                script = tray.TRAY_MENU.replace('SERVICE', repr(':1.5')).replace('PATH', repr('/StatusNotifierItem')) \
+                                       .replace('LABEL', repr(wanted))
+                env = {**os.environ, 'PATH': directory + os.pathsep + os.environ['PATH'],
+                       'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/nonexistent'}
+                reply = json.loads(subprocess.run([sys.executable, '-c', script], env=env, capture_output=True,
+                                                  text=True, check=True).stdout)
+                calls = [json.loads(line) for line in log.read_text().splitlines()]
+                events = [call for call in calls if 'Event' in call]
+                self.assertTrue(all(call[0] == '--address=unix:path=/nonexistent' for call in calls))
+                if wanted is None:
+                    self.assertEqual(reply['labels'], ['Capture region', 'Region only', '-', 'Failed uploads (2)'])
+                    self.assertEqual(reply['rows'], [{'id': 21, 'label': 'Capture region'}, {'id': 22, 'label': 'Failed uploads (2)'}])
+                    self.assertEqual(events, [])
+                elif event:
+                    self.assertEqual((reply['clicked'], reply['label']), (1, 'Failed uploads (2)'))
+                    self.assertEqual(events, [['--address=unix:path=/nonexistent', '--json=short', 'call', ':1.5', '/Menu',
+                                               'com.canonical.dbusmenu', 'Event', 'isvu', event, 'clicked', 's', '', '0']])
+                else:
+                    self.assertEqual(reply, {'ok': False, 'error': 'attention_item_not_unique'})
+                    self.assertEqual(events, [])
 
     def test_concurrency_requires_two_running_nonqueued_rows(self):
         checked = {'idle': False, 'phases': ['uploading', 'queued']}
@@ -680,37 +973,38 @@ class TrayPanelToneContracts(unittest.TestCase):
         with self.assertRaisesRegex(tray.TrayProgressError, 'brand color'):
             tray.check_tooltip(idle, [], 's3', 42)
         records = [{'id': 'op', 'phase': 'uploading', 'bytesTransferred': 2097152, 'bytesTotal': 4194304, 'bytesEstimated': False}]
-        active = observation('Uploading: 2 MiB of 4 MiB (50%)', color=light['idle'])
+        active = observation('Uploading: 2 MB of 4 MB (50%)', color=light['idle'])
         active['icons'][0]['opaqueColors'][light['encoding']] = 60
         result = tray.check_tooltip(active, records, 's3', 42, tints=light)
         self.assertTrue(result['storageActive'] and result['counter'])
         with self.assertRaises(tray.TrayProgressError):
             tray.check_tooltip(active, records, 's3', 42)
-        dark_on_light = observation('Uploading: 2 MiB of 4 MiB (50%)', color=self.DARK['upload'])
+        dark_on_light = observation('Uploading: 2 MB of 4 MB (50%)', color=self.DARK['upload'])
         with self.assertRaises(tray.TrayProgressError):
             tray.check_tooltip(dark_on_light, records, 's3', 42, tints=light)
         self.assertFalse(tray.check_tooltip(observation('Upload complete', color=light['upload']), [], 's3', 42, tints=light)['idle'])
         with self.assertRaises(tray.TrayProgressError):
             tray.check_tooltip(active | {'description': 'Upload complete'}, [], 's3', 42, tints=light)
-        red = tray.check_tooltip(observation('', light['error'], tray.IDLE), [], 's3', 42, error_pulse=True, tints=light)
-        self.assertEqual(red['errorColor'], light['error'])
+        latched = 'Local save needs attention' + tray.REVIEW
+        red = tray.check_tooltip(observation(latched, light['error'], tray.ATTENTION), [], 's3', 42,
+                                 attention=['Local save needs attention'], tints=light)
+        self.assertEqual(red['attention'], 'Local save needs attention')
         with self.assertRaises(tray.TrayProgressError):
-            tray.check_tooltip(observation('', self.DARK['error'], tray.IDLE), [], 's3', 42, error_pulse=True, tints=light)
+            tray.check_tooltip(observation(latched, self.DARK['error'], tray.ATTENTION), [], 's3', 42,
+                               attention=['Local save needs attention'], tints=light)
 
-    def test_light_panel_error_pulse_uses_the_light_error_and_idle_tints(self):
+    def test_light_panel_attention_uses_the_light_error_tint(self):
         from unittest.mock import Mock, patch
         light = self.LIGHT
         with tempfile.TemporaryDirectory() as directory:
-            replay = TrayProgressContracts.error_replay(self, directory)
+            replay = TrayProgressContracts.attention_replay(self, directory)
             replay.tints = light
-            replay.snapshot = Mock(side_effect=[observation('', light[c], tray.IDLE)
-                                                for c in ('error', 'idle', 'error', 'idle', 'idle')])
-            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 10.62, 12.99, 13.01]):
-                self.assertEqual(replay.observe('local-failure')[2]['errorColor'], light['error'])
-                self.assertEqual(replay.observe('local-failure')[2]['errorColor'], light['idle'])
-                replay.observe('local-failure'); replay.observe('local-failure')
+            replay.snapshot = Mock(side_effect=[observation(TrayProgressContracts.LOCAL + tray.REVIEW, light['error'], tray.ATTENTION),
+                                                observation('', light['idle'], tray.IDLE)])
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 14]):
+                self.assertEqual(replay.observe('local-failure')[2]['attention'], TrayProgressContracts.LOCAL)
+                replay.attention['acknowledgedAt'] = 13
                 self.assertTrue(replay.observe('local-failure')[2]['idle'])
-            self.assertEqual(replay.result['errorPulses'][0]['recoveredAt'], 13.01)
 
     def tone_replay(self, directory, inputs, reported):
         import json

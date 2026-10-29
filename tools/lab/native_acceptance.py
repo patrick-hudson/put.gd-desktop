@@ -216,6 +216,10 @@ def tray_target(env, identity):
     return targets[0]
 
 
+# The Quit entry of the native tray menu (src/ui/NativeTray.cpp).
+QUIT_LABEL = 'Quit put.gd'
+
+
 def quit_action(layout):
     matches = []
     def walk(node, enabled=True):
@@ -224,12 +228,12 @@ def quit_action(layout):
         action, props, children = node
         values = {k: v.get('data') if isinstance(v, dict) else v for k, v in props.items()}
         usable = enabled and values.get('visible', True) and values.get('enabled', True)
-        if usable and values.get('label', '').replace('&', '').replace('_', '').strip() == 'Quit':
+        if usable and values.get('label', '').replace('&', '').replace('_', '').strip() == QUIT_LABEL:
             matches.append(action)
         for child in children:
             walk(child, usable)
     walk(layout)
-    require(len(matches) == 1, 'Expected exactly one visible enabled Quit action in the owned tray menu')
+    require(len(matches) == 1, 'Expected exactly one visible enabled ' + QUIT_LABEL + ' action in the owned tray menu')
     return matches[0]
 
 

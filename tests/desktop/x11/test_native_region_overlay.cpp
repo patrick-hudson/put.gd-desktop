@@ -1,6 +1,7 @@
 // Isolated X11 rendering/input/lifetime contracts. This is not compositor proof.
 #include "platform/x11/NativeRegionOverlay.h"
 #include "ui/RegionSelection.h"
+#include "ui/Theme.h"
 #include <QAccessible>
 #include <QDir>
 #include <QPainter>
@@ -176,7 +177,7 @@ private slots:
    const auto badge=rendered.copy(0,0,w.rect.width(),160);int light=0,dark=0;
    for(int y=0;y<badge.height();++y)for(int x=0;x<badge.width();++x){const auto c=badge.pixelColor(x,y);if(c.alpha()==255){if(c.lightness()>192)++light;if(c.lightness()<64)++dark;}}
    if(w.rect.x()==0){QVERIFY(light>100);QVERIFY(dark>100);}else{QCOMPARE(light,0);QCOMPARE(dark,0);}
-   const auto dir=qEnvironmentVariable("PUTGD_REGION_RENDER_DIR");if(!dir.isEmpty())for(const auto& variant:{QString("dark"),QString("light")}){const auto outputVariant=large?QString("text150"):variant;QVERIFY(QDir().mkpath(dir+"/"+outputVariant));QImage composed(rendered.size(),QImage::Format_RGB32);composed.fill(variant=="dark"?QColor("#191919"):QColor("#EEEEEB"));QPainter painter(&composed);painter.drawImage(0,0,rendered);painter.end();QVERIFY(composed.save(dir+"/"+outputVariant+"/native-"+QString::number(w.rect.x())+(large?"-"+variant:QString{})+".png"));}
+   const auto dir=qEnvironmentVariable("PUTGD_REGION_RENDER_DIR");if(!dir.isEmpty())for(const auto& variant:{QString("dark"),QString("light")}){const auto outputVariant=large?QString("text150"):variant;QVERIFY(QDir().mkpath(dir+"/"+outputVariant));QImage composed(rendered.size(),QImage::Format_RGB32);composed.fill(Theme::palette(variant=="dark"?Theme::Scheme::Dark:Theme::Scheme::Light).bg);QPainter painter(&composed);painter.drawImage(0,0,rendered);painter.end();QVERIFY(composed.save(dir+"/"+outputVariant+"/native-"+QString::number(w.rect.x())+(large?"-"+variant:QString{})+".png"));}
   }
   overlay.cancel();availableGrabs();
  }

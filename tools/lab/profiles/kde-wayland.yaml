@@ -44,5 +44,10 @@
         "f12"
       ]
     }
+  },
+  "tray_menu": {
+    "button": "right",
+    "openSeconds": 0.8,
+    "firstRowSelected": false
   }
 }

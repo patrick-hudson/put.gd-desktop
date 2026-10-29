@@ -25,7 +25,20 @@ spec = importlib.util.spec_from_file_location('putgd_tray_lab', HERE / 'lab.py')
 lab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lab)
 TERMINAL = {'completed', 'partial', 'failed', 'cancelled', 'interrupted'}
-IDLE = 'put.gd — Share and local capture'
+# Final clipboard outcomes (OperationClipboard): partial means some links
+# were copied while another copy failed or was suppressed.
+COPY_SETTLED = ('copied', 'partial', 'suppressed', 'failed', 'no_result')
+# TrayController::refreshActivity: the tooltip's title, then its activity rows.
+IDLE = 'put.gd'
+UPLOADING = 'Uploading'
+COMPLETE = 'Upload complete'
+ATTENTION = 'Needs attention'
+FINISHING = 'Finishing upload'
+REVIEW = ' — open the tray menu to review'
+# TrayController::latchFailure: the attention item each runner failure latches.
+ATTENTION_LABELS = {'local-save': ('Local save needs attention',), 'proton-busy': ('Failed uploads',)}
+# A latched failure must survive at least this long without being opened.
+LATCH_SECONDS = 3
 LABELS = {'preflight': 'Checking destination', 'saving_local': 'Saving local copy',
           'sharing': 'Creating share link', 'reconciling': 'Checking previous upload'}
 # Theme::trayTints (src/ui/Theme.cpp): the panel the icon sits on, not the app
@@ -45,6 +58,10 @@ class TrayProgressError(RuntimeError):
 
 class ObservationMismatch(TrayProgressError):
     """Only asynchronous production/SNI correlation may receive batching grace."""
+
+
+class VisibleMenuFailed(TrayProgressError):
+    """The desktop's own tray menu did not deliver the click; the D-Bus event may stand in, reported."""
 
 
 def observed(condition, message):
@@ -69,30 +86,31 @@ def socket_paths(guest_root, qmp_socket, native_paths=()):
 
 
 def byte_summary(value):
+    """ByteSize::summary: MB below a GB, GB above, two decimals, 1024 math."""
     unit = 1024**3 if value >= 1024**3 else 1024**2
     hundredths = (value % unit * 100 + unit // 2) // unit
     whole = value // unit
     if value > 0 and not whole and not hundredths:
-        return '<0.01 MiB'
+        return '<0.01 MB'
     if hundredths == 100:
         whole, hundredths = whole + 1, 0
     fraction = ('.' + str(hundredths).zfill(2).rstrip('0')) if hundredths else ''
-    return str(whole) + fraction + (' GiB' if unit == 1024**3 else ' MiB')
+    return str(whole) + fraction + (' GB' if unit == 1024**3 else ' MB')
 
 
 def displayed_interval(text):
     """An integer-byte range consistent with the tooltip's rounded byte summary."""
-    if text == '<0.01 MiB':
+    if text == '<0.01 MB':
         return 1, (1024**2 + 199) // 200 - 1
     number, suffix = text.split()
-    unit = 1024**3 if suffix == 'GiB' else 1024**2
+    unit = 1024**3 if suffix == 'GB' else 1024**2
     center = Decimal(number) * unit
     half = Decimal(unit) / 200
     # Include boundary integer bytes; percentage is checked against this same range.
     return max(0, int(center - half)), int(center + half)
 
 
-SIZE = r'(?:<0\.01|[0-9]+(?:\.[0-9]{1,2})?) (?:MiB|GiB)'
+SIZE = r'(?:<0\.01|[0-9]+(?:\.[0-9]{1,2})?) (?:MB|GB)'
 COUNTER = re.compile(r'^(.+?): (' + SIZE + r')(?: of (' + SIZE + r')(?: \(([0-9]+)%\))?| transferred · Source size: (' + SIZE + r')(?: · Estimated ([0-9]+)%)?)$')
 # Several files of one operation transferring at once (#175): combined bytes and counts.
 BATCH = re.compile(r'^(.+?)(?:: (' + SIZE + r') of (' + SIZE + r') \(([0-9]+)%\)|: (' + SIZE + r') transferred)? · ([0-9]+) uploading'
@@ -153,6 +171,44 @@ def panel_tone(inputs):
     return False, 'default'
 
 
+# Runs in the resident's session: lists the owned SNI's visible dbusmenu labels
+# and, with a label, sends one "clicked" Event to the single matching item (an
+# exact label, or a "Failed uploads (N)" count). No pointer or coordinates.
+TRAY_MENU = r'''import json,os,re,subprocess
+address=os.environ.get('DBUS_SESSION_BUS_ADDRESS') or 'unix:path=/run/user/%d/bus' % os.getuid()
+def bus(*args):
+    reply=subprocess.run(['busctl','--address='+address,'--json=short',*args],capture_output=True,text=True,timeout=20)
+    if reply.returncode:
+        print(json.dumps({'ok':False,'error':'dbus_call_failed'}));raise SystemExit(0)
+    return json.loads(reply.stdout).get('data') if reply.stdout.strip() else []
+service,path,wanted=SERVICE,PATH,LABEL
+menu=bus('get-property',service,path,'org.kde.StatusNotifierItem','Menu')
+menu=menu[0] if isinstance(menu,list) else menu
+layout=bus('call',service,menu,'com.canonical.dbusmenu','GetLayout','iias','--','0','-1','0')
+items,rows=[],[]
+def walk(node,usable=True,depth=0):
+    if isinstance(node,dict):node=node['data']
+    ident,props,children=node
+    values={key:(value.get('data') if isinstance(value,dict) else value) for key,value in props.items()}
+    usable=usable and values.get('visible',True) and values.get('enabled',True)
+    label=str(values.get('label','')).replace('&','').replace('_','').strip()
+    if usable and label:
+        items.append((ident,label))
+        # Keyboard navigation visits the top level's visible, enabled rows.
+        if depth==1 and values.get('type','standard')!='separator':rows.append({'id':ident,'label':label})
+    for child in children:walk(child,usable,depth+1)
+walk(layout[1])
+result={'ok':True,'labels':[label for _,label in items],'rows':rows}
+if wanted is not None:
+    matches=[(ident,label) for ident,label in items if label==wanted or re.fullmatch(re.escape(wanted)+r' \([0-9]+\)',label)]
+    if len(matches)!=1:
+        print(json.dumps({'ok':False,'error':'attention_item_not_unique'}));raise SystemExit(0)
+    bus('call',service,menu,'com.canonical.dbusmenu','Event','isvu',str(matches[0][0]),'clicked','s','','0')
+    result.update(clicked=1,label=matches[0][1])
+print(json.dumps(result))
+'''
+
+
 # Runs in the resident's own environment (Replay.session), so it reads the
 # configuration cascade put.gd's PanelTone::refresh reads: XDG_CONFIG_HOME, its
 # kdedefaults, then XDG_CONFIG_DIRS, first file that sets the key; the Plasma
@@ -209,7 +265,7 @@ print(json.dumps(inputs))
 '''
 
 
-def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False, tints=TRAY_TINTS['dark']):
+def check_tooltip(snapshot, records, provider, pid, *, attention=None, tints=TRAY_TINTS['dark']):
     """Compare SNI bytes/phase with recent independent production CLI observations.
 
     The resident batches observations, and CLI and DBus calls are not atomic.
@@ -217,45 +273,69 @@ def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False, tints=
     counters must fit a real observed range and their own rounded percentage;
     SDK counters may decrease. Source-size estimates must be explicitly labelled
     and bounded independently against observed bytes and the acquired file size.
+
+    attention lists the labels a runner-created failure may latch. The resident
+    keeps "Needs attention" with the error glyph until the tray menu's attention
+    item is opened (TrayController::latchFailure); without a runner-created
+    failure that state is fatal.
     """
     require(snapshot.get('pid') == pid and snapshot.get('hostRegistered') and snapshot.get('registered'),
             'SNI must be registered with the native host and owned by the expected app PID')
     text = snapshot.get('description', '')
     require(not re.search(r'https?://|file://|synthetic-[12]\.txt|/tmp/|/home/', text, re.IGNORECASE),
             'Tray tooltip exposes a source name, path or link')
-    idle = snapshot.get('title') == IDLE
-    require(idle or snapshot.get('title') == 'put.gd — Working', 'Unexpected tray title')
+    title = snapshot.get('title')
+    require(title in (IDLE, UPLOADING, COMPLETE, ATTENTION), 'Unexpected tray title')
     icons = snapshot.get('icons', [])
-    colors = (((tints['idle'],), (tints['error'],)) if error_pulse else
-              ((tints['idle'],),) if idle else
-              ((tints['upload'],),) if text == 'Upload complete' else
-              ((tints['idle'],), (tints['encoding'],)))
-    present = [family[0] for family in colors if icons and
-               all(any(icon.get('opaqueColors', {}).get(color, 0) > 0 for color in family) for icon in icons)]
-    # Partial progress retains idle pixels alongside the encoding fill. Every
-    # advertised size must contain the fill before it earns storage coverage.
-    if not idle and not error_pulse and present == [tints['idle'], tints['encoding']]:
-        present = [tints['encoding']]
-    require(len(present) == 1,
-            'SNI icon does not have the required idle/active brand color')
-    if idle:
-        observed(not text, 'Idle tooltip retains stale work')
-        observed(not records, 'Idle tray while production work remains active')
-        return {'idle': not error_pulse, 'storageActive': False, 'counter': False, 'phases': [],
-                **({'errorColor': present[0]} if error_pulse else {})}
-    if text == 'Upload complete':
-        observed(not records and present == [tints['upload']], 'Completion fill must be green with no remaining work')
-        require(all(icon.get('opaqueColors', {}).get(tints['upload'], 0) > 0 and
-                    not icon.get('opaqueColors', {}).get(tints['encoding'], 0) for icon in icons),
+    has = lambda icon, role: icon.get('opaqueColors', {}).get(tints[role], 0) > 0
+    require(icons, 'SNI has no icon pixmaps')
+    if title == ATTENTION:
+        require(attention, 'Tray needs attention without a runner-created failure')
+        first, _, rest = text.partition('\n')
+        labels = [label for label in attention if first == label + REVIEW]
+        require(labels, 'Attention text does not name the expected failure')
+        # The error glyph and badge replace every progress or completion fill.
+        require(all(has(icon, 'error') and not has(icon, 'upload') and not has(icon, 'encoding') for icon in icons),
+                'Attention icon must be the error glyph without progress or completion')
+        result = {'idle': False, 'attention': labels[0], 'storageActive': False, 'counter': False, 'phases': []}
+        if rest:
+            check_activity(rest.splitlines(), records, provider, result)
+        return result
+    require(not any(has(icon, 'error') for icon in icons), 'Error tint outside the attention state')
+    if title == COMPLETE:
+        require(text == COMPLETE, 'Completion title without completion text')
+        observed(not records and all(has(icon, 'upload') for icon in icons), 'Completion fill must be green with no remaining work')
+        require(all(not has(icon, 'encoding') and not has(icon, 'idle') for icon in icons),
                 'Completion frame must be fully green without a progress fill')
         return {'idle': False, 'storageActive': False, 'counter': False, 'phases': []}
+    require(not any(has(icon, 'upload') for icon in icons), 'Completion tint before a confirmed completion')
+    # Partial progress keeps idle pixels beside the encoding fill; a nearly
+    # complete fill covers the whole glyph. A sliver of fill reaches the large
+    # sizes before the smallest, so every advertised size must contain the
+    # fill before it earns storage coverage.
+    filled = [has(icon, 'encoding') for icon in icons]
+    require(all(has(icon, 'idle') for icon in icons) or all(filled),
+            'SNI icon does not have the required idle/active brand color')
+    if title == IDLE and not text:
+        require(not any(filled) and all(has(icon, 'idle') for icon in icons), 'Idle tray retains a progress fill')
+        observed(not records, 'Idle tray while production work remains active')
+        return {'idle': True, 'storageActive': False, 'counter': False, 'phases': []}
     observed(text, 'Working tray has no activity text')
+    result = {'idle': False, 'storageActive': all(filled), 'counter': False, 'phases': []}
+    if text == FINISHING:
+        # The 200-600 ms hold after the last transfer, before completion.
+        require(title == UPLOADING, 'Finishing text outside an upload')
+        result['finishing'] = True
+        return result
+    check_activity(text.splitlines(), records, provider, result)
+    return result
+
+
+def check_activity(lines, records, provider, result):
+    """Each activity row must match an independently observed operation row."""
     labels = {LABELS.get(record['phase'], record['phase'].replace('_', ' ').capitalize()): record['phase']
               for record in records}
-    result = {'idle': False, 'storageActive': present[0] == tints['encoding'], 'counter': False, 'phases': []}
-    if error_pulse:
-        result['errorColor'] = present[0]
-    for row_index, line in enumerate(text.splitlines()):
+    for row_index, line in enumerate(lines):
         overflow = re.fullmatch(r'([0-9]+) more active operations', line)
         if overflow:
             observed(any(record.get('activeCount') == int(overflow[1]) + 3 for record in records),
@@ -324,7 +404,64 @@ def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False, tints=
             observed(any(low <= total and low * 100 // total <= percent <= min(high, total) * 100 // total
                         for total in totals), 'Tray percentage contradicts its displayed transfer bytes')
         result['counter'] = True
-    return result
+
+
+def menu_events(lines, service):
+    """What other bus clients asked of put.gd's dbusmenu, from `busctl monitor --json=short`.
+
+    Returns (member, item id, event) in arrival order: AboutToShow/
+    AboutToShowGroup as ('show', id, None); Event and EventGroup entries as
+    ('event', id, name). Only calls addressed to the resident count: service is
+    its unique name or a collection of names it owns. Cinnamon addresses the
+    unique name, Plasma the item's well-known name.
+    """
+    services = {service} if isinstance(service, str) else set(service)
+    found = []
+    for line in lines:
+        try:
+            message = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(message, dict) or message.get('type') != 'method_call' or \
+                message.get('destination') not in services or message.get('interface') != 'com.canonical.dbusmenu':
+            continue
+        data = (message.get('payload') or {}).get('data') or []
+        member = message.get('member')
+        if member == 'AboutToShow' and data:
+            found.append(('show', data[0], None))
+        elif member == 'AboutToShowGroup' and data:
+            found.extend(('show', ident, None) for ident in data[0])
+        elif member == 'Event' and len(data) >= 2:
+            found.append(('event', data[0], data[1]))
+        elif member == 'EventGroup' and data:
+            found.extend(('event', entry[0], entry[1]) for entry in data[0] if len(entry) >= 2)
+    return found
+
+
+def locate_tinted_icon(path, colour, near, reach=(240, 60), minimum=20):
+    """Centre of the exact-colour pixels within reach of near, or None.
+
+    Tray icons move when other items come and go, so the supplied position is
+    only a hint; a latched icon carries the error tint the runner knows.
+    """
+    width, height, pixels = lab.ppm(path)
+    target = bytes.fromhex(colour.lstrip('#'))
+    x0, x1 = max(0, near[0] - reach[0]), min(width, near[0] + reach[0] + 1)
+    y0, y1 = max(0, near[1] - reach[1]), min(height, near[1] + reach[1] + 1)
+    found = [(x, y) for y in range(y0, y1) for x in range(x0, x1)
+             if pixels[(y * width + x) * 3:(y * width + x) * 3 + 3] == target]
+    if len(found) < minimum:
+        return None
+    xs, ys = [x for x, _ in found], [y for _, y in found]
+    return (min(xs) + max(xs)) // 2, (min(ys) + max(ys)) // 2
+
+
+def menu_presses(rows, label, first_row_selected):
+    """(target row, Down presses) to reach the attention row, or (None, None)."""
+    for index, row in enumerate(rows):
+        if row['label'] == label or re.fullmatch(re.escape(label) + r' \([0-9]+\)', row['label']):
+            return row, index if first_row_selected else index + 1
+    return None, None
 
 
 def records_from(operations):
@@ -439,6 +576,10 @@ def native_display_prefix():
 class Replay:
     # setup() replaces this with the set for the panel the resident sees.
     tints = TRAY_TINTS['dark']
+    # A runner-created failure the tray may latch (expect_attention).
+    attention = None
+    # The lab profile; its optional tray_menu entry calibrates the visible menu path.
+    profile = {}
 
     def __init__(self, args):
         self.args = args
@@ -454,7 +595,7 @@ class Replay:
         self.pid = None
         self.history = []
         self.mismatch_since = None
-        self.error_pulse = None
+        self.attention = None
         self.witness_number = 0
         self.result = {'schemaVersion': 1, 'protocolPassed': False,
                        'graphicalAcceptance': 'pending-human-inspection',
@@ -553,7 +694,7 @@ class Replay:
 
     def read_observation(self):
         # One SSH session preserves independent ordered CLI/SNI/CLI reads
-        # without three network round trips aliasing the 300 ms error blink.
+        # without three network round trips between them.
         commands = [['/usr/bin/putgd-cli', 'operation.recent', '{}'],
                     [self.args.probe, '--pid', str(self.pid)],
                     ['/usr/bin/putgd-cli', 'operation.recent', '{}']]
@@ -599,70 +740,212 @@ class Replay:
         self.save('panel-tone.json', self.result['panelTone'])
         return self.result['panelTone']
 
-    def expect_error(self, ids, kind, required=False):
+    def expect_attention(self, ids, kind, required=False):
         # Call only for a runner-created failure or the bounded original-ID
-        # Proton busy scenario. A declaration alone never authorizes red.
-        self.error_pulse = {'operationIds': list(ids), 'kind': kind, 'required': required}
+        # Proton busy scenario. A declaration alone never authorizes red. A
+        # retry of a still-latched failure keeps the original latch.
+        if self.attention and self.attention['kind'] == kind and 'clearedAt' not in self.attention:
+            self.attention['operationIds'] = sorted(set(self.attention['operationIds']) | set(ids))
+            self.attention['required'] = self.attention['required'] or required
+            return
+        self.attention = {'operationIds': list(ids), 'kind': kind, 'labels': list(ATTENTION_LABELS[kind]),
+                          'required': required}
 
-    def error_window(self, operations, now):
-        pulse = getattr(self, 'error_pulse', None)
-        if not pulse or pulse.get('recoveredAt') is not None:
-            return False
-        failed = [op for op in operations if op['id'] in pulse['operationIds']
+    def attention_labels(self, operations, now):
+        """The labels the tray may show, once the runner's failure is independently observed."""
+        expected = self.attention
+        if not expected or 'clearedAt' in expected:
+            return None
+        failed = [op for op in operations if op['id'] in expected['operationIds']
                   and op['state'] in {'failed', 'partial', 'interrupted'}]
         for op in failed:
             items = op.get('items', [])
-            if pulse['kind'] == 'local-save':
+            if expected['kind'] == 'local-save':
                 valid = items and all(item.get('uploadStatus') == 'local_only' and
                     item.get('local', {}).get('status') == 'failed' for item in items)
             else:
-                valid = pulse['kind'] == 'proton-busy' and self.args.provider == 'proton-drive' and items and all(
+                valid = expected['kind'] == 'proton-busy' and self.args.provider == 'proton-drive' and items and all(
                     (item.get('uploadStatus') == 'uploaded' and item.get('shareStatus') == 'shared') or
                     (item.get('uploadStatus') != 'unknown' and item.get('shareStatus') != 'unknown' and
                      item.get('error', {}).get('code') == 'proton_account_busy') for item in items) and any(
                     item.get('error', {}).get('code') == 'proton_account_busy' for item in items)
             require(valid, 'Expected error does not match independently observed failed operation')
-        new_ids = sorted({op['id'] for op in failed} - set(pulse.get('failedOperationIds', [])))
-        if new_ids:
-            if 'failureObservedAt' not in pulse:
-                pulse['failureObservedAt'] = now
-                self.result.setdefault('errorPulses', []).append(pulse)
-            # Only a distinct independently failed operation can extend a pulse;
-            # repeated red frames or historical failures never reset its clock.
-            pulse.setdefault('failedOperationIds', []).extend(new_ids)
-            pulse.setdefault('failureObservations', []).append({'operationIds': new_ids, 'monotonicSeconds': now})
-            window_fields = ('windowStartedAt', 'windowOperationIds', 'deadline',
-                             'redObservedAt', 'blueAfterRedObservedAt', 'redAfterBlueObservedAt')
-            if 'deadline' in pulse:
-                pulse.setdefault('previousWindows', []).append({key: pulse[key] for key in window_fields if key in pulse})
-            for key in window_fields:
-                pulse.pop(key, None)
-            pulse['windowStartedAt'] = now
-            pulse['windowOperationIds'] = new_ids
-            pulse['deadline'] = now + 3
-        if 'deadline' not in pulse:
-            return False
-        return now < pulse['deadline']
+        if failed:
+            expected.setdefault('failureObservedAt', now)
+            expected['failedOperationIds'] = sorted(set(expected.get('failedOperationIds', [])) | {op['id'] for op in failed})
+        return expected['labels'] if 'failureObservedAt' in expected else None
 
-    def error_evidence(self, checked, now, label):
-        pulse = getattr(self, 'error_pulse', None)
-        if not pulse or 'failureObservedAt' not in pulse or pulse.get('recoveredAt') is not None:
+    def attention_evidence(self, checked, now, label):
+        expected = self.attention
+        if not expected or 'clearedAt' in expected:
             return
-        color = checked.get('errorColor')
-        if color == self.tints['error'] and 'redObservedAt' not in pulse:
-            pulse['redObservedAt'] = now
-            self.witness(label + '-error-red', hover=False)
-        elif color == self.tints['error'] and 'blueAfterRedObservedAt' in pulse and 'redAfterBlueObservedAt' not in pulse:
-            pulse['redAfterBlueObservedAt'] = now
-            self.witness(label + '-error-red-returned', hover=False)
-        elif color == self.tints['idle'] and 'redObservedAt' in pulse and 'blueAfterRedObservedAt' not in pulse:
-            pulse['blueAfterRedObservedAt'] = now
-            self.witness(label + '-error-blue', hover=False)
-        if now >= pulse['deadline'] and checked['idle']:
-            require('redObservedAt' in pulse and 'blueAfterRedObservedAt' in pulse and 'redAfterBlueObservedAt' in pulse,
-                    'Expected error needs real red, blue and returning red pulse observations before recovery')
-            pulse['recoveredAt'] = now
-            self.witness(label + '-error-recovered', hover=False)
+        if checked.get('attention'):
+            if 'attentionObservedAt' not in expected:
+                expected['attentionObservedAt'] = now
+                expected['attentionLabel'] = checked['attention']
+                self.result.setdefault('attention', []).append(expected)
+                self.witness(label + '-attention', hover=False)
+            expected['lastAttentionAt'] = now
+        elif 'attentionObservedAt' in expected:
+            # Only opening the attention item clears a local failure; a Proton
+            # busy latch also clears once its retried items have uploaded.
+            require('acknowledgedAt' in expected or expected['kind'] == 'proton-busy',
+                    'Tray cleared a latched failure before its attention item was opened')
+            expected['clearedAt'] = now
+
+    def tray_menu(self, snapshot, label=None):
+        """The owned SNI's visible menu labels; with label, open the one item that matches."""
+        script = TRAY_MENU.replace('SERVICE', repr(snapshot['service'])).replace('PATH', repr(snapshot['path'])) \
+                          .replace('LABEL', repr(label))
+        value = json.loads(self.session("python3 - <<'PY'\n" + script + 'PY\n'))
+        require(value.get('ok'), 'Tray menu read failed: ' + value.get('error', 'unknown'))
+        return value
+
+    def menu_monitor(self, service):
+        """Record what the desktop's tray sends put.gd's menu; returns (pid, file, unique owner, service).
+
+        The SNI may be registered under a well-known name, while the tray
+        addresses its menu calls to the resident's unique connection name.
+        """
+        path = f'{self.guest}/menu-monitor-{uuid.uuid4().hex[:8]}.jsonl'
+        output = self.session('addr="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}"\n'
+                              'busctl --address="$addr" --json=short call org.freedesktop.DBus /org/freedesktop/DBus '
+                              'org.freedesktop.DBus GetNameOwner s ' + shlex.quote(service) + '\n'
+                              '(setsid stdbuf -oL busctl --address="$addr" --json=short monitor ' + shlex.quote(service) +
+                              ' > ' + shlex.quote(path) + ' 2>/dev/null < /dev/null & echo $!)\n')
+        lines = output.strip().splitlines()
+        owner = json.loads(lines[0])['data'][0]
+        require(isinstance(owner, str) and owner.startswith(':'), 'The tray item has no unique bus owner')
+        time.sleep(.5)
+        return int(lines[-1]), path, owner, service
+
+    def menu_monitor_events(self, monitor):
+        text = self.session('cat -- ' + shlex.quote(monitor[1]) + ' 2>/dev/null || true\n')
+        return menu_events(text.splitlines(), {monitor[2], monitor[3]})
+
+    def stop_menu_monitor(self, monitor):
+        # Only the recorded monitor: its stdout must still be this run's file.
+        pid, path = monitor[:2]
+        self.session(f'[ "$(readlink /proc/{pid}/fd/1 2>/dev/null)" = {shlex.quote(path)} ] && kill {pid} || true\n')
+
+    def open_visibly(self, snapshot, item, label):
+        """Right-click the real tray icon, reach item with the keyboard, press Enter.
+
+        The desktop's own tray must open put.gd's menu and send "clicked" for
+        exactly that item. Returns the attempt; raises VisibleMenuFailed when
+        the desktop did not, after Escape closes whatever opened.
+        """
+        settings = {'button': 'right', 'openSeconds': .8, 'firstRowSelected': False, 'primeOpen': False,
+                    **self.profile.get('tray_menu', {})}
+        attempt = {'method': 'visible-menu', 'settings': settings, 'calibrated': 'tray_menu' in self.profile}
+        self.result.setdefault('trayMenu', []).append(attempt)
+        row, presses = menu_presses(self.tray_menu(snapshot)['rows'], item, settings['firstRowSelected'])
+        if row is None:
+            attempt['status'] = 'failed'
+            attempt['reason'] = 'attention item is not a top-level menu row'
+            raise VisibleMenuFailed(attempt['reason'])
+        attempt.update(target=row, downPresses=presses)
+        monitor = self.menu_monitor(snapshot['service'])
+        attempt['busOwner'] = monitor[2]
+        try:
+            x, y = self.args.tray_x, self.args.tray_y
+            # Plasma lightens the tray icon under the pointer (its active icon
+            # effect), and the previous hover witness left the pointer there, so
+            # the exact error tint would be missing. Park it away from the panel.
+            lab.pointer(self.run, self.width // 2, self.height // 2, self.width, self.height)
+            time.sleep(.8)
+            before = self.witness(label + '-menu-before', hover=False)
+            found = locate_tinted_icon(before, self.tints['error'], (x, y))
+            if found is None:
+                raise VisibleMenuFailed('the latched tray icon is not near the supplied position')
+            x, y = attempt['iconAt'] = found
+            if settings['primeOpen']:
+                # GNOME's AppIndicator applies a LayoutUpdated received while
+                # closed only when the menu next opens, and that open loses its
+                # keyboard focus. Open and Escape once so the counted open
+                # starts from the current layout; the attempt records it.
+                lab.pointer(self.run, x, y, self.width, self.height)
+                time.sleep(.3)
+                lab.pointer(self.run, x, y, self.width, self.height, True, settings['button'])
+                time.sleep(.05)
+                lab.pointer(self.run, x, y, self.width, self.height, False, settings['button'])
+                time.sleep(settings['openSeconds'])
+                self.witness(label + '-menu-primed', hover=False)
+                lab.key(self.run, ['esc'])
+                time.sleep(.5)
+                attempt['primedOpen'] = True
+            lab.pointer(self.run, x, y, self.width, self.height)
+            time.sleep(.3)
+            lab.pointer(self.run, x, y, self.width, self.height, True, settings['button'])
+            time.sleep(.05)
+            lab.pointer(self.run, x, y, self.width, self.height, False, settings['button'])
+            time.sleep(settings['openSeconds'])
+            self.witness(label + '-menu-open', hover=False)
+            events = self.menu_monitor_events(monitor)
+            if not any(kind == 'show' or (kind == 'event' and name == 'opened') for kind, _, name in events):
+                raise VisibleMenuFailed('the desktop did not open put.gd\'s menu')
+            for _ in range(presses):
+                lab.key(self.run, ['down'])
+                time.sleep(.15)
+            time.sleep(.3)
+            self.witness(label + '-menu-highlight', hover=False)
+            hovered = [ident for kind, ident, name in self.menu_monitor_events(monitor)
+                       if kind == 'event' and name == 'hovered']
+            attempt['hoverReported'] = bool(hovered)
+            if hovered and hovered[-1] != row['id']:
+                raise VisibleMenuFailed('the keyboard highlight is not on the attention row')
+            lab.key(self.run, ['ret'])
+            deadline = time.monotonic() + 5
+            while True:
+                clicked = [ident for kind, ident, name in self.menu_monitor_events(monitor)
+                           if kind == 'event' and name == 'clicked']
+                if clicked:
+                    break
+                if time.monotonic() >= deadline:
+                    raise VisibleMenuFailed('no click from the desktop reached put.gd')
+                time.sleep(.2)
+            # Another item may have started a capture or quit the resident.
+            require(clicked == [row['id']], 'The visible tray menu activated another item: ' + json.dumps(clicked))
+            attempt.update(status='passed', label=row['label'])
+            return attempt
+        except VisibleMenuFailed as error:
+            attempt.update(status='failed', reason=str(error))
+            lab.key(self.run, ['esc'])
+            time.sleep(.3)
+            self.witness(label + '-menu-failed', hover=False)
+            raise
+        finally:
+            self.stop_menu_monitor(monitor)
+
+    def acknowledge_attention(self, label):
+        """Hold a runner-created latch for LATCH_SECONDS, then open it from the real tray menu."""
+        expected = self.attention
+        def latched():
+            _, snapshot, checked = self.observe(label)
+            return snapshot if checked['matched'] and checked.get('attention') else None
+        snapshot = self.wait(latched, 'Tray did not latch the expected failure: ' + label)
+        while time.monotonic() - expected['attentionObservedAt'] < LATCH_SECONDS:
+            time.sleep(.25)
+            _, snapshot, checked = self.observe(label)
+            require(checked['matched'] and checked.get('attention'), 'Latched failure left the tray: ' + label)
+        self.witness(label + '-attention-latched')
+        menu = self.tray_menu(snapshot)
+        item = expected['attentionLabel']
+        require(any(entry == item or re.fullmatch(re.escape(item) + r' \([0-9]+\)', entry) for entry in menu['labels']),
+                'Tray menu does not offer the attention item: ' + item)
+        try:
+            opened = self.open_visibly(snapshot, item, label)
+            expected['acknowledgedAt'] = time.monotonic()
+            expected['menuLabel'], expected['openedBy'] = opened['label'], 'visible-menu'
+        except VisibleMenuFailed as error:
+            # The run continues, but never as a visible pass: the summary
+            # reports the desktop's failure for investigation.
+            self.result.setdefault('visibleMenuFallbacks', []).append({'scenario': label, 'reason': str(error)})
+            opened = self.tray_menu(snapshot, item)
+            require(opened.get('clicked') == 1, 'Tray attention item was not opened exactly once')
+            expected['acknowledgedAt'] = time.monotonic()
+            expected['menuLabel'], expected['openedBy'] = opened['label'], 'dbus-event-fallback'
+        self.witness(label + '-attention-opened', hover=False)
 
     def observe(self, label):
         before, snapshot, after = self.read_observation()
@@ -672,30 +955,16 @@ class Replay:
         self.history = [(stamp, rows) for stamp, rows in self.history if now - stamp <= 2]
         recent = correlated_records([row for _, rows in self.history for row in rows], after_rows)
         try:
-            pulse_active = self.error_window(after, now)
-            green_grace = False
-            # Only the initial bracket can retain green from before failure.
-            # Later green may return near the end because observing a failed
-            # operation trails the resident's pulse clock. Neither grants pulse
-            # coverage; green in the established pulse must fail error priority.
-            if pulse_active and any(icon.get('opaqueColors', {}).get(color, 0) for icon in snapshot.get('icons', [])
-                                    for color in (self.tints['upload'], self.tints['encoding'])):
-                pulse = self.error_pulse
-                before_failed = {op['id'] for op in before if op['state'] in {'failed', 'partial', 'interrupted'}}
-                bracketed_failure = not set(pulse['failedOperationIds']) <= before_failed
-                require(bracketed_failure or now >= pulse['deadline'] - .5,
-                        'Green frame overrides an established error pulse')
-                pulse_active = False
-                green_grace = True
+            labels = self.attention_labels(before + after, now)
+            # The resident latches on its own result; a CLI read bracketing that
+            # moment may not show the failure yet. Only an expected failure gets
+            # this batching grace.
+            observed(labels or snapshot.get('title') != ATTENTION or not self.attention
+                     or 'clearedAt' in self.attention, 'Attention shown before its failure is observed')
             checked = {**check_tooltip(snapshot, recent, self.args.provider, self.pid,
-                                      error_pulse=pulse_active, tints=self.tints), 'matched': True}
-            if green_grace:
-                checked.update(idle=False, matched=False, error='Bracketed error color transition')
-                if self.mismatch_since is None:
-                    self.mismatch_since = now
-            else:
-                self.error_evidence(checked, now, label)
-                self.mismatch_since = None
+                                      attention=labels, tints=self.tints), 'matched': True}
+            self.attention_evidence(checked, now, label)
+            self.mismatch_since = None
         except ObservationMismatch as error:
             # Separate DBus/CLI reads may straddle a queued-row, file or phase
             # transition. Preserve the sample, grant no coverage, and bound the
@@ -721,7 +990,7 @@ class Replay:
         flags = self.result['coverage'].setdefault(label, {'active': False, 'counter': False,
                   'storageActive': False, 'queued': False, 'concurrentAdmission': False, 'finalizing': False, 'sharing': False})
         new = []
-        for key, value in [('active', not checked['idle'] and 'errorColor' not in checked), ('counter', checked['counter']),
+        for key, value in [('active', not checked['idle'] and 'attention' not in checked), ('counter', checked['counter']),
                            ('storageActive', checked['storageActive']),
                            ('queued', 'queued' in checked['phases']),
                            ('concurrentAdmission', concurrent_admission(checked, after_rows)),
@@ -746,11 +1015,11 @@ class Replay:
         def terminal():
             found = self.operations(ids, label)
             if len(found) == len(ids) and all(op['state'] in TERMINAL and
-                    op.get('copyStatus') in ('copied', 'suppressed', 'failed', 'no_result') for op in found.values()):
+                    op.get('copyStatus') in COPY_SETTLED for op in found.values()):
                 return found
         found = self.wait(terminal, 'Operations did not settle: ' + label)
-        pulse = getattr(self, 'error_pulse', None)
-        require(not pulse or not pulse['required'] or 'failureObservedAt' in pulse,
+        expected = self.attention
+        require(not expected or not expected['required'] or 'failureObservedAt' in expected,
                 'Expected failed operation was not independently observed')
         self.save(label + '-outcomes.json', {key: {
             'state': op['state'], 'copyStatus': op['copyStatus'], 'items': [{
@@ -759,15 +1028,26 @@ class Replay:
                 'localStatus': item['local']['status'], 'shareStatus': item.get('shareStatus'),
                 'errorCode': item.get('error', {}).get('code')}
                 for item in op['items']]} for key, op in found.items()})
+        if expected and expected['required'] and 'acknowledgedAt' not in expected:
+            self.acknowledge_attention(label)
+        elif expected and expected['kind'] == 'proton-busy' and 'attentionObservedAt' in expected \
+                and 'clearedAt' not in expected:
+            # Busy failures stay latched until their retried items upload.
+            return found
+        self.returned_to_idle(label)
+        return found
+
+    def returned_to_idle(self, label):
         def idle():
             _, snapshot, checked = self.observe(label)
             return snapshot if checked['matched'] and checked['idle'] else None
         snapshot = self.wait(idle, 'Tray did not return to idle: ' + label)
         require([icon['sha256'] for icon in snapshot['icons']] == self.idle_hashes,
                 'Settled tray did not restore the exact original idle icon')
+        require(not self.attention or 'attentionObservedAt' not in self.attention or 'clearedAt' in self.attention,
+                'Idle tray while a failure is still latched')
         self.witness(label + '-idle')
-        self.error_pulse = None
-        return found
+        self.attention = None
 
     def clipboard(self):
         image = self.witness('source-fixture', hover=False)
@@ -938,19 +1218,29 @@ print(json.dumps(results))
     def s3_public_bytes(self, operation):
         # Read original URLs inside guest memory through the production CLI, so
         # no link or account data is interpolated into SSH/process arguments.
-        script = """import hashlib,json,subprocess,urllib.request
+        script = """import hashlib,json,subprocess,urllib.error,urllib.request
 reply=json.loads(subprocess.check_output(['/usr/bin/putgd-cli','operation.inspect',json.dumps({'id':OPERATION})],text=True))
 assert reply['ok']
 results=[]
 for item in reply['result']['items']:
-    expected=item['artifact']['bytes']; received=0; digest=hashlib.sha256()
-    with urllib.request.urlopen(item['receipt']['directUrl'],timeout=30) as response:
-        while True:
-            chunk=response.read(1048576)
-            if not chunk:break
-            received+=len(chunk)
-            assert received<=expected
-            digest.update(chunk)
+    expected=item['artifact']['bytes']
+    # The lab's user-mode network sometimes resets a long download; only a
+    # reset restarts it, from zero. HTTP errors and wrong bytes still fail.
+    for attempt in range(3):
+        received=0; digest=hashlib.sha256()
+        try:
+            with urllib.request.urlopen(item['receipt']['directUrl'],timeout=30) as response:
+                while True:
+                    chunk=response.read(1048576)
+                    if not chunk:break
+                    received+=len(chunk)
+                    assert received<=expected
+                    digest.update(chunk)
+            break
+        except (ConnectionResetError, urllib.error.URLError) as error:
+            reset=isinstance(error, ConnectionResetError) or isinstance(getattr(error,'reason',None), ConnectionResetError)
+            if not reset or isinstance(error, urllib.error.HTTPError) or attempt == 2:
+                raise
     assert received==expected and digest.hexdigest()==item['artifact']['sha256']
     results.append({'bytes':received,'sha256':digest.hexdigest()})
 print(json.dumps(results))
@@ -987,7 +1277,7 @@ print(json.dumps(results))
                 accepted = self.cli('operation.retry', {'id': operation_id})
                 require(accepted.get('operationId') == operation_id and accepted.get('retryAccepted'),
                         'Busy recovery did not retain original operation ID')
-                self.expect_error([operation_id], 'proton-busy')
+                self.expect_attention([operation_id], 'proton-busy')
                 op = self.settled([operation_id], 'concurrent-recovery-' + str(attempt))[operation_id]
                 old_items, items = initial[operation_id]['items'], op['items']
                 require([item['artifact']['id'] for item in items] == [item['artifact']['id'] for item in old_items]
@@ -1001,6 +1291,8 @@ print(json.dumps(results))
                     allowed(op)
             pending = [operation_id for operation_id, op in recovered.items() if not complete(op)]
             if not pending:
+                if self.attention and 'attentionObservedAt' in self.attention and 'clearedAt' not in self.attention:
+                    self.returned_to_idle('concurrent-recovered')
                 return recovered
         raise TrayProgressError('Bounded original-ID Proton busy recovery did not complete')
 
@@ -1021,7 +1313,7 @@ print(json.dumps(results))
         self.clipboard()
         concurrent_ids = [self.invoke(), self.invoke()]
         if self.args.provider == 'proton-drive':
-            self.expect_error(concurrent_ids, 'proton-busy')
+            self.expect_attention(concurrent_ids, 'proton-busy')
         concurrent = self.settled(concurrent_ids, 'concurrent')
         concurrent = self.recover_proton_busy(concurrent)
         self.successful_uploads(concurrent)
@@ -1057,7 +1349,7 @@ print(json.dumps(results))
                     'archive': {'root': blocked, 'keepUploads': True}})
         self.clipboard()
         local_id = self.invoke()
-        self.expect_error([local_id], 'local-save', required=True)
+        self.expect_attention([local_id], 'local-save', required=True)
         failed = self.settled([local_id], 'local-failure')[local_id]
         require(failed['items'] and all(item['local']['status'] == 'failed' and item['uploadStatus'] == 'local_only'
                 for item in failed['items']), 'Synthetic local-save failure was not observed')
@@ -1148,7 +1440,8 @@ def main():
                 for path in sorted(replay.output.iterdir()) if path.is_file() and path.name != 'manifest.json'}})
             print(json.dumps({'protocolPassed': replay.result['protocolPassed'],
                 'graphicalAcceptance': replay.result['graphicalAcceptance'], 'output': str(replay.output),
-                'operationIds': replay.ids, 'status': replay.result.get('status'), 'error': replay.result.get('error')}))
+                'operationIds': replay.ids, 'status': replay.result.get('status'), 'error': replay.result.get('error'),
+                'visibleMenuFallbacks': replay.result.get('visibleMenuFallbacks', [])}))
     return return_code
 
 

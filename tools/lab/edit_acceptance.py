@@ -8,7 +8,7 @@ Uses the runner's own helpers: real hotkey, region drag, mouse/keyboard input
 in the editor, production CLI agent commands, QMP witnesses and the
 independent fixture paste. Local output only; no network destination.
 """
-import base64, hashlib, json, sys, time
+import base64, hashlib, json, math, sys, time
 from pathlib import Path
 sys.path.insert(0, 'tools/lab')
 import lab
@@ -109,15 +109,22 @@ try:
     park_pointer()
     open_frame = shot('02-editor-open')
 
-    # Locate the image on screen from the independent frame (unique full pattern).
-    located = lab.locate_fixture_paint(open_frame['path'])
+    # The editor opens at Fit, which scales the image to the canvas beside the
+    # properties panel. Take the scale from the window's view state and find
+    # the scaled image in the independent frame (unique full pattern).
+    view = editor('view', {'id': op_id})
+    scale = view['zoomPercent'] / 100
+    result['editorView'] = {key: view.get(key) for key in ('zoomPercent', 'fitted', 'visibleRect', 'canvasSize', 'propertiesWidth')}
+    check('editorFitsWholeImage', view['fitted'] and view['visibleRect'] == [0, 0, 640, 320] and 0 < scale <= 1, result['editorView'])
+    located = lab.locate_scaled_fixture_paint(open_frame['path'], scale)
     check('editorImageLocatedUniquely', located is not None, 'pattern missing, obscured or ambiguous')
-    origin = (located['x'], located['y'])
     result['editorImageOrigin'] = located
-    check('editorShowsImageAt100Percent', (located['width'], located['height']) == (640, 320), located)
+    # One screen pixel spans 1/scale image pixels.
+    slack = math.ceil(1 / scale)
 
     def at(ix, iy):
-        return origin[0] + ix, origin[1] + iy
+        # The screen pixel that holds the centre of image pixel (ix, iy).
+        return math.floor(located['x'] + (ix + .5) * scale), math.floor(located['y'] + (iy + .5) * scale)
 
     # Real mouse: Redact is the default tool; drag over the green quadrant.
     sx, sy = at(340, 20); ex, ey = at(600, 140)
@@ -129,7 +136,8 @@ try:
     mouse_redactions = [s for s in state['shapes'] if s['kind'] == 'redact']
     check('mouseDrawnRedaction', len(mouse_redactions) == 1, state['shapes'])
     rx, ry, rw, rh = mouse_redactions[0]['rect']
-    check('mouseRedactionGeometry', abs(rx - 340) <= 1 and abs(ry - 20) <= 1 and abs(rx + rw - 600) <= 2 and abs(ry + rh - 140) <= 2, mouse_redactions[0]['rect'])
+    check('mouseRedactionGeometry', abs(rx - 340) <= slack and abs(ry - 20) <= slack and abs(rx + rw - 600) <= slack + 1
+          and abs(ry + rh - 140) <= slack + 1, mouse_redactions[0]['rect'])
 
     # Real keyboard: Text tool, click, type, Enter (must not upload), undo/redo.
     lab.key(run, ['t']); time.sleep(.3)
@@ -151,13 +159,16 @@ try:
     lab.key(run, ['r']); time.sleep(.3)
     count = len(editor('inspect', {'id': op_id})['shapes'])
     mx, my = at(470, 80)
+    ex, ey = at(500, 100)
     lab.pointer(run, mx, my, width, height, True); time.sleep(.15)
-    lab.pointer(run, mx + 15, my + 10, width, height); time.sleep(.1)
-    lab.pointer(run, mx + 30, my + 20, width, height); time.sleep(.15)
-    lab.pointer(run, mx + 30, my + 20, width, height, False); time.sleep(.4)
+    lab.pointer(run, (mx + ex) // 2, (my + ey) // 2, width, height); time.sleep(.1)
+    lab.pointer(run, ex, ey, width, height); time.sleep(.15)
+    lab.pointer(run, ex, ey, width, height, False); time.sleep(.4)
     shapes = editor('inspect', {'id': op_id})['shapes']
     moved = [s['rect'] for s in shapes if s['kind'] == 'redact']
-    check('drawingToolMovedMark', len(shapes) == count and moved == [[rx + 30, ry + 20, rw, rh]], {'count': [count, len(shapes)], 'redact': moved})
+    check('drawingToolMovedMark', len(shapes) == count and len(moved) == 1 and moved[0][2:] == [rw, rh]
+          and abs(moved[0][0] - rx - 30) <= slack and abs(moved[0][1] - ry - 20) <= slack,
+          {'count': [count, len(shapes)], 'redact': moved})
     lab.key(run, ['ctrl', 'z']); time.sleep(.4)
     restored = [s['rect'] for s in editor('inspect', {'id': op_id})['shapes'] if s['kind'] == 'redact']
     check('moveUndone', restored == [[rx, ry, rw, rh]], restored)
