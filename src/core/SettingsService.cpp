@@ -1,4 +1,4 @@
-#include "core/DisplaySize.h"
+#include "core/ByteSize.h"
 #include "SettingsService.h"
 #include "Log.h"
 #include <QCryptographicHash>
@@ -21,10 +21,10 @@ Error readConfig(const QString& path, QByteArray& bytes, bool& exists) {
     if (!exists) return {};
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) return {"config_unreadable", "Cannot read the configuration file.", {}};
-    if (file.size() > maximumConfigBytes) return {"config_too_large", DisplaySize::labels("Configuration exceeds the 1 MiB limit."), {}};
+    if (file.size() > maximumConfigBytes) return {"config_too_large", ByteSize::labels("Configuration exceeds the 1 MiB limit."), {}};
     bytes = file.read(maximumConfigBytes + 1);
     if (file.error() != QFile::NoError) return {"config_unreadable", "Cannot read the configuration file.", {}};
-    if (bytes.size() > maximumConfigBytes) return {"config_too_large", DisplaySize::labels("Configuration exceeds the 1 MiB limit."), {}};
+    if (bytes.size() > maximumConfigBytes) return {"config_too_large", ByteSize::labels("Configuration exceeds the 1 MiB limit."), {}};
     return {};
 }
 QJsonObject overlay(const QJsonObject& original, const QJsonObject& patch) {
@@ -59,7 +59,7 @@ LoadedSettings loadValidated(const QString& path,const ProfileValidator& validat
 Error writeCandidate(const QString& path,const ProfileValidator& validator,const CredentialValidator& credentialValidator,const QJsonObject& candidate,const QString& expectedRevision) {
     if (auto error = Settings::validate(candidate, validator, credentialValidator)) return error;
     const auto bytes = QJsonDocument(candidate).toJson(QJsonDocument::Indented);
-    if (bytes.size() > maximumConfigBytes) return {"config_too_large", DisplaySize::labels("Configuration exceeds the 1 MiB limit."), {}};
+    if (bytes.size() > maximumConfigBytes) return {"config_too_large", ByteSize::labels("Configuration exceeds the 1 MiB limit."), {}};
     const auto parent = QFileInfo(path).absolutePath();
     if (!QDir(parent).exists()) {
         if (!QDir().mkpath(parent) || !QFile::setPermissions(parent, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner))

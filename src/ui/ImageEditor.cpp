@@ -1,5 +1,5 @@
 #include "ImageEditor.h"
-#include "core/DisplaySize.h"
+#include "core/ByteSize.h"
 #include "EditorWindow.h"
 #include "FileDialog.h"
 #include "app/UiControl.h"
@@ -150,7 +150,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    {const auto crop=document->crop();width=crop.width();height=crop.height();png=document->exportPng();}
    if(png.isEmpty()){recover("edit_export_failed","The edited image could not be encoded as PNG. Your edits are kept: try again, or save a copy.");return;}
    if(png.size()>outputBytes){
-    recover("input_excessive",QString("The edited image is %1, over the %2 limit for this output. Your edits are kept: crop it and try again, or save a copy.").arg(DisplaySize::localized(png.size(),1),DisplaySize::localized(outputBytes,1)));
+    recover("input_excessive",QString("The edited image is %1, over the %2 limit for this output. Your edits are kept: crop it and try again, or save a copy.").arg(ByteSize::localized(png.size(),1),ByteSize::localized(outputBytes,1)));
     return;
    }
    // Staging that can't be written is not recoverable here: the session ends.

@@ -1,6 +1,6 @@
 #include "ArtifactStore.h"
 #include "DiskSpace.h"
-#include "DisplaySize.h"
+#include "ByteSize.h"
 #include "UploadNaming.h"
 #include <QBuffer>
 #include <QCryptographicHash>
@@ -37,7 +37,7 @@ struct Reservation {
  QString key;qint64 bytes=0;
  ~Reservation(){if(bytes<=0)return;std::lock_guard lock(reservationsMutex);if((reservations[key]-=bytes)<=0)reservations.remove(key);}
 };
-QString size(qint64 bytes) {return DisplaySize::admissionLimit(bytes);}
+QString size(qint64 bytes) {return ByteSize::admissionLimit(bytes);}
 }
 QJsonObject ArtifactStore::DiskBudget::toJson() const {return {{"freeBytes",double(freeBytes)},{"totalBytes",double(totalBytes)},{"reserveBytes",double(reserveBytes)},{"reservedBytes",double(reservedBytes)},{"availableBytes",double(available())}};}
 QString ArtifactStore::sizeText(qint64 bytes) {return size(bytes);}
