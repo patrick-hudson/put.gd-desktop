@@ -94,6 +94,8 @@ int main(int argc,char** argv){
   {"listOpenMs",listOpenMs},{"gridSwitchMs",gridSwitchMs},{"repaintMs",summary(repaint)},{"scrollMs",summary(scroll)},{"hoverMs",summary(hover)},
   {"idlePaintsPerSecond",idlePaints*1000.0/idleMs},{"rssKb",QJsonObject{{"start",rssStart},{"gallery",rssGallery},{"end",rssEnd}}}};
  QSaveFile out(args.at(1));if(!out.open(QIODevice::WriteOnly))return 2;out.write(QJsonDocument(result).toJson(QJsonDocument::Indented));if(!out.commit())return 2;
- std::fprintf(stdout,"%s\n",QJsonDocument(result).toJson(QJsonDocument::Compact).constData());
+ std::fprintf(stdout,"%s\n",QJsonDocument(result).toJson(QJsonDocument::Compact).constData());std::fflush(stdout);
+ // PUTGD_BENCH_HOLD_MS keeps the hovered gallery on screen for a window capture.
+ if(const int hold=qEnvironmentVariableIntValue("PUTGD_BENCH_HOLD_MS");hold>0){window->raise();window->activateWindow();QTest::qWait(qMin(hold,120000));}
  return 0;
 }
