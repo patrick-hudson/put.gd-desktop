@@ -105,6 +105,26 @@ def render(binary, scheme, output, text_scale=None, log=sys.stderr):
         lock.close()
 
 
+def render_problem(directory):
+    """Why DIRECTORY is not a complete, clean catalog render, or '' when it is.
+
+    putgd-ui-catalog writes manifest.json last, listing every capture it saved.
+    """
+    try:
+        manifest = json.loads((Path(directory) / 'manifest.json').read_text())
+    except (OSError, ValueError):
+        return 'no readable manifest.json; the catalog did not finish'
+    if manifest.get('kind') != 'synthetic-ui-catalog' or manifest.get('sourceReads') != 0:
+        return 'manifest.json is not a clean synthetic catalog run'
+    captures = [c.get('file') for c in manifest.get('captures') or []]
+    if not captures:
+        return 'manifest.json lists no captures'
+    missing = [name for name in captures if not name or not (Path(directory) / name).is_file()]
+    if missing:
+        return 'captures listed in manifest.json are missing: ' + ', '.join(map(str, missing[:10]))
+    return ''
+
+
 def states(directory):
     return {p.stem: p for p in Path(directory).glob('*.png')} if Path(directory).is_dir() else {}
 
@@ -160,13 +180,10 @@ def main(argv=None):
                                                       if args.text_scale else '', seconds))
     if status != 0:
         return finish(False, 'putgd-ui-catalog failed its own checks (exit %d)' % status)
-    try:
-        manifest = json.loads((output / 'manifest.json').read_text())
-    except (OSError, ValueError):
-        return finish(False, 'no readable manifest.json; the catalog did not finish')
-    if manifest.get('kind') != 'synthetic-ui-catalog' or manifest.get('sourceReads') != 0:
-        return finish(False, 'manifest.json is not a clean synthetic catalog run')
-    report['qtVersion'] = manifest.get('qtVersion')
+    problem = render_problem(output)
+    if problem:
+        return finish(False, problem)
+    report['qtVersion'] = json.loads((output / 'manifest.json').read_text()).get('qtVersion')
     if args.layout_only:
         return finish(True)
     if not references.is_dir():

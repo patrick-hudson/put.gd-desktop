@@ -111,18 +111,29 @@ class Updating(Fixture):
     def test_main_requires_complete_renders(self):
         source = self.root / 'artifact'
         png(source / 'dark' / '10-same.png')
-        with self.assertRaises(SystemExit):
-            update.main(['--from', str(source), '--scheme', 'dark', '--references', str(self.refs)])
-        (source / 'dark' / 'manifest.json').write_text(json.dumps({'kind': 'synthetic-ui-catalog'}))
-        refs = self.root / 'fresh'
-        stdout = io.StringIO()
-        sys.stdout, saved = stdout, sys.stdout
-        try:
-            update.main(['--from', str(source), '--scheme', 'dark', '--references', str(refs)])
-        finally:
-            sys.stdout = saved
-        self.assertEqual([p.name for p in (refs / 'dark').iterdir()], ['10-same.png'])
+        manifest = source / 'dark' / 'manifest.json'
 
+        def run(references):
+            saved, sys.stdout = sys.stdout, io.StringIO()
+            try:
+                return update.main(['--from', str(source), '--scheme', 'dark', '--references', str(references)])
+            finally:
+                sys.stdout = saved
+
+        for document in (None, {'kind': 'synthetic-ui-catalog'},
+                         {'kind': 'synthetic-ui-catalog', 'sourceReads': 1, 'captures': [{'file': '10-same.png'}]},
+                         {'kind': 'synthetic-ui-catalog', 'sourceReads': 0,
+                          'captures': [{'file': '10-same.png'}, {'file': '11-noise.png'}]}):
+            if document is not None:
+                manifest.write_text(json.dumps(document))
+            with self.subTest(document=document), self.assertRaises(SystemExit):
+                run(self.refs)
+        self.assertTrue((self.refs / '13-gone.png').exists(), 'a rejected render deleted a reference')
+        manifest.write_text(json.dumps({'kind': 'synthetic-ui-catalog', 'sourceReads': 0,
+                                        'captures': [{'file': '10-same.png'}]}))
+        refs = self.root / 'fresh'
+        run(refs)
+        self.assertEqual([p.name for p in (refs / 'dark').iterdir()], ['10-same.png'])
 
 if __name__ == '__main__':
     unittest.main()

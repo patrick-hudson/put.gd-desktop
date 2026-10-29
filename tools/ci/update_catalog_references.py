@@ -86,8 +86,12 @@ def main(argv=None):
         total = 0
         for scheme in schemes:
             rendered = root / scheme
-            if not (rendered / 'manifest.json').is_file():
-                raise SystemExit('%s is not a complete catalog render (no manifest.json)' % rendered)
+            # A partial render would delete the references of every state it lacks.
+            problem = check.render_problem(rendered)
+            if problem:
+                raise SystemExit('%s is not a complete catalog render: %s' % (rendered, problem))
+        for scheme in schemes:
+            rendered = root / scheme
             print('%s:' % scheme)
             total += apply(rendered, args.references / scheme, args.dry_run)
     print('%d reference images %s.' % (total, 'would change' if args.dry_run else 'changed'))
