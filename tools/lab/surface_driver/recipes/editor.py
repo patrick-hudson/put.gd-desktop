@@ -225,7 +225,19 @@ def selection_geometry(ctx):
         for s in _inspect(ctx, op)['shapes']:
             x,y,w,h = s['rect']
             ctx.expect(x >= 0 and y >= 0 and x+w <= 640 and y+h <= 320, 'pointer edits stay inside image')
+        _tool(ctx,op,'arrow','A')
+        ctx.keys('Insert')
+        arrow = _inspect(ctx,op)['shapes'][-1]
+        ctx.keys('Shift+Right','Ctrl+Shift+Down')
+        changed = _inspect(ctx,op)['shapes'][-1]
+        ctx.expect(changed['from']==arrow['from'] and changed['to']==[arrow['to'][0]+1,arrow['to'][1]+10], 'resize keys move only arrow head')
+        _tool(ctx,op,'text','T')
+        ctx.keys('Insert'); ctx.type_text('resize'); ctx.keys('Return')
+        pixels=_inspect(ctx,op)['shapes'][-1]['fontPixels']
+        ctx.keys('Shift+Right','Ctrl+Shift+Up')
+        ctx.expect(_inspect(ctx,op)['shapes'][-1]['fontPixels']==pixels-9,'text resize keys change font by 1 and 10 pixels')
         _frame(ctx, 'after', '26-editor-selected')
+        ctx.blocked('Move/nudge/resize/clamp checks passed; text-corner mouse scaling still needs an exact text-handle fixture',issue=CORE_ISSUE)
 
 
 @recipe('editor.tool-crop', 'editor.apply-crop', 'editor.cancel-crop', needs=IMAGE)
@@ -432,8 +444,8 @@ def _named_or_legacy(ctx, name, fallback):
         ctx.click(fallback, window='editor')
 
 
-@recipe('editor.colours', 'editor.line-width', needs=IMAGE)
-def style_controls(ctx):
+@recipe('editor.colours', needs=IMAGE)
+def palette(ctx):
     with _session(ctx) as op:
         _tool(ctx, op, 'rectangle', 'R')
         ctx.keys('Insert')
@@ -443,6 +455,15 @@ def style_controls(ctx):
             _named_or_legacy(ctx, 'colorSwatch'+name, f'text-glob:{name} ({colour})')
             state = _inspect(ctx,op)
             ctx.expect(state['view']['style']['color']==colour and state['shapes'][0]['color']==colour, 'palette updates style and selected shape')
+        _frame(ctx,'after','22-editor-arrow-style')
+        ctx.blocked('Seven palette swatches checked; recent custom colours require selecting a colour in the native picker',issue=CORE_ISSUE)
+
+
+@recipe('editor.line-width', needs=IMAGE)
+def style_controls(ctx):
+    with _session(ctx) as op:
+        _tool(ctx,op,'rectangle','R')
+        ctx.keys('Insert')
         for key, width in [('Home',2),('Down',4),('End',8)]:
             _named_or_legacy(ctx,'lineWidth','class:QComboBox')
             ctx.keys(key,'Return')
