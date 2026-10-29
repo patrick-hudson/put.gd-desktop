@@ -1,6 +1,7 @@
 #include "ui/RegionSelection.h"
 #include <QtTest>
 #include <QScopeGuard>
+#include "fixtures/Waits.h"
 using namespace putgd;
 class RegionSelectionTest final:public QObject {
  Q_OBJECT
@@ -24,7 +25,7 @@ private slots:
   QCOMPARE(regionHintOpacity(regionHintHoldMs+regionHintFadeMs/2),0.5);QCOMPARE(regionHintOpacity(regionHintHoldMs+regionHintFadeMs),0.0);
   QVERIFY(regionHintHoldMs+regionHintFadeMs>=1800&&regionHintHoldMs+regionHintFadeMs<=2500);
   int repaints=0;RegionHintFade fade([&]{++repaints;});QCOMPARE(fade.opacity(),1.0);
-  fade.start();QVERIFY(fade.visible());QTRY_VERIFY_WITH_TIMEOUT(!fade.visible(),4000);QVERIFY(repaints>=1);
+  fade.start();QVERIFY(fade.visible());PUTGD_TRY_VERIFY_WITH_TIMEOUT(!fade.visible(),4000);QVERIFY(repaints>=1);
   fade.start();fade.expire();QCOMPARE(fade.opacity(),0.0);
  }
  void hintMovesOffTheSelection(){

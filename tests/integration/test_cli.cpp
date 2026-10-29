@@ -215,10 +215,11 @@ private slots:
   // #629: Settings, session settings.patch, putgd-cli and MCP share one key.
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());
   QCOMPARE(settings.snapshot().regionSelectionMode,QString("live"));
-  const auto patch=[&](const QString& mode)->QJsonObject{QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"settings.patch",QString("{\"patch\":{\"preferences\":{\"regionSelectionMode\":\"%1\"}},\"expectedRevision\":\"%2\"}").arg(mode,settings.revision())});for(int i=0;i<1500&&client.state()!=QProcess::NotRunning;++i)QTest::qWait(20);return QJsonDocument::fromJson(client.readAllStandardOutput()).object();};
-  QVERIFY(patch("screenshot_first")["ok"].toBool());QCOMPARE(settings.snapshot().regionSelectionMode,QString("screenshot_first"));
-  QCOMPARE(patch("frozen")["error"].toObject()["code"].toString(),QString("config_invalid"));QCOMPARE(settings.snapshot().regionSelectionMode,QString("screenshot_first"));
-  QVERIFY(patch("live")["ok"].toBool());QCOMPARE(settings.snapshot().regionSelectionMode,QString("live"));
+  QProcess client;const auto patch=[&](const QString& mode){client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"settings.patch",QString("{\"patch\":{\"preferences\":{\"regionSelectionMode\":\"%1\"}},\"expectedRevision\":\"%2\"}").arg(mode,settings.revision())});};
+  const auto reply=[&]{return QJsonDocument::fromJson(client.readAllStandardOutput()).object();};
+  patch("screenshot_first");PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QVERIFY(reply()["ok"].toBool());QCOMPARE(settings.snapshot().regionSelectionMode,QString("screenshot_first"));
+  patch("frozen");PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(reply()["error"].toObject()["code"].toString(),QString("config_invalid"));QCOMPARE(settings.snapshot().regionSelectionMode,QString("screenshot_first"));
+  patch("live");PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QVERIFY(reply()["ok"].toBool());QCOMPARE(settings.snapshot().regionSelectionMode,QString("live"));
   QCOMPARE(source.reads,0);
  }
  void settingsTransportAndRedactedDiagnostics() {
