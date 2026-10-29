@@ -251,7 +251,7 @@ class DestinationsContracts(unittest.TestCase):
                     self.assertTrue(any(e[0] in ('click', 'cli', 'drag') for e in ctx.events))
                 frames = [e for e in ctx.events if e[0] == 'frame']
                 self.assertEqual(frames[0][1], 'before')
-                self.assertEqual(frames[-1][1], 'after')
+                self.assertIn(frames[-1][1], ('after', 'after-failure'))
                 self.assertTrue(all(e[3] for e in frames))
                 self.assertTrue(any(e[0] == 'shell' for e in ctx.events))
                 calls = [e[1] for e in ctx.events if e[0] == 'call']
@@ -302,6 +302,7 @@ class DestinationsContracts(unittest.TestCase):
             lane.add_credentials(ctx)
         self.assertEqual(caught.exception.issue, 666)
         self.assertFalse(any(e[0] == 'accessible' for e in ctx.events))
+        self.assertIn(('frame', 'after-failure', 'destinations', lane.REFERENCE), ctx.events)
 
     def test_offline_fields_work_when_core_has_no_lane_fixture(self):
         ctx = self.context()

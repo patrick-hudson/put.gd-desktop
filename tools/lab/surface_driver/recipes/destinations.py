@@ -11,6 +11,7 @@ never claim a connection test or credential roundtrip.
 from __future__ import annotations
 
 from copy import deepcopy
+from functools import wraps
 import hashlib
 import ipaddress
 import json
@@ -92,6 +93,25 @@ def _patch(ctx, patch):
 
 def _frame(ctx, label, reference=REFERENCE):
     return ctx.frame(label, window='destinations', reference=reference)
+
+
+def _failure_frame(function):
+    """Retain a referenced after-frame on refusal/failure, preserving its cause.
+
+    These recipes never enter or reveal credentials. A later credential recipe
+    must suppress capture throughout any reveal instead of using this wrapper.
+    """
+    @wraps(function)
+    def capture(ctx):
+        try:
+            return function(ctx)
+        except Exception:
+            try:
+                _frame(ctx, 'after-failure')
+            except Exception:
+                pass  # The core also retains a full-screen failure witness.
+            raise
+    return capture
 
 
 def _open(ctx, count=1):
@@ -182,6 +202,7 @@ def _state(ctx, control, key):
 
 
 @recipe('destinations.add-credentials', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def add_credentials(ctx):
     _open(ctx)
     ctx.wait(lambda: _state(ctx, 'addDestinationCredentials', 'visible'), 'missing credential action appears')
@@ -192,6 +213,7 @@ def add_credentials(ctx):
 
 
 @recipe('destinations.rename', 'destinations.actions-menu', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def rename(ctx):
     _, profiles = _open(ctx)
     ctx.click('destinationActions', window='destinations')
@@ -205,6 +227,7 @@ def rename(ctx):
 
 @recipe('destinations.s3-bucket', 'destinations.s3-region', 'destinations.s3-prefix',
         'destinations.s3-public-url', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def s3_fields(ctx):
     _open(ctx)
     values = {'bucket': 'surface-fixture-bucket', 'region': 'us-west-2',
@@ -217,6 +240,7 @@ def s3_fields(ctx):
 
 
 @recipe('destinations.s3-acl', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def acl(ctx):
     _open(ctx)
     for index, value in ((1, 'public-read'), (0, 'omit')):
@@ -226,6 +250,7 @@ def acl(ctx):
 
 
 @recipe('destinations.s3-service', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def service(ctx):
     _, profiles = _open(ctx)
     # The selector opens endpoint editing; it does not supply an account's
@@ -239,6 +264,7 @@ def service(ctx):
 
 
 @recipe('destinations.advanced-connection', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def advanced_connection(ctx):
     _, profiles = _open(ctx)
     ctx.click('advancedSettings', window='destinations')
@@ -255,6 +281,7 @@ def advanced_connection(ctx):
 
 
 @recipe('destinations.autosave', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def autosave_validation(ctx):
     _open(ctx)
     _edit(ctx, 's3Bucket', 'invalid bucket with spaces')
@@ -269,6 +296,7 @@ def autosave_validation(ctx):
 
 
 @recipe('destinations.list', 'destinations.key-move', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def select_and_key_reorder(ctx):
     _, profiles = _open(ctx, 3)
     _selected(ctx, 1)
@@ -282,6 +310,7 @@ def select_and_key_reorder(ctx):
 
 
 @recipe('destinations.drag-reorder', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def drag_reorder(ctx):
     _, profiles = _open(ctx, 3)
     # Resolve actual rendered row bounds, never scale invented row heights.
@@ -298,6 +327,7 @@ def drag_reorder(ctx):
 
 
 @recipe('destinations.add', 'confirm.add-destination-name', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def add(ctx):
     _open(ctx)
     for menu_index, provider, label in ((0, 's3', 'Added S3'), (2, 'backblaze-b2', 'Added B2')):
@@ -315,6 +345,7 @@ def add(ctx):
 
 
 @recipe('destinations.make-default', 'confirm.make-default-untested', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def make_default(ctx):
     _, profiles = _open(ctx)
     ctx.click('makeDefaultDestination', window='destinations')
@@ -329,6 +360,7 @@ def make_default(ctx):
 
 
 @recipe('destinations.remove', 'confirm.remove-destination', 'destinations.empty', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def remove(ctx):
     _, profiles = _open(ctx)
     # Destination actions: Rename, Storage service submenu, Remove destination.
@@ -346,6 +378,7 @@ def remove(ctx):
 
 
 @recipe('destinations.credential-mode', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def credential_mode(ctx):
     _open(ctx)
     for index, mode in ((0, 'keychain'), (1, 'session')):
@@ -357,6 +390,7 @@ def credential_mode(ctx):
 
 
 @recipe('cli.credentials-refused', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def cli_credentials_refused(ctx):
     _open(ctx)
     for method in ('setup.storeCredentials', 'setup.storeSharePassword', 'setup.revealCredentialSecret'):
@@ -368,6 +402,7 @@ def cli_credentials_refused(ctx):
 
 
 @recipe('destinations.help-toggles', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def help_toggles(ctx):
     _open(ctx)
     ctx.click('s3BucketHelp', window='destinations')
@@ -385,6 +420,7 @@ def help_toggles(ctx):
 @recipe('destinations.credential-fields',
         'destinations.store-credentials', 'destinations.show-secret',
         'destinations.unlock-credentials', 'destinations.test', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def credential_lifecycle(ctx):
     _open(ctx)
     _frame(ctx, 'after')
@@ -393,6 +429,7 @@ def credential_lifecycle(ctx):
 
 
 @recipe('destinations.conflict', needs=NEEDS, destinations=('s3',))
+@_failure_frame
 def conflict(ctx):
     _, profiles = _open(ctx)
     _edit(ctx, 's3Bucket', 'invalid unsaved draft')
