@@ -241,6 +241,8 @@ class FakeContext(Context):
                 self.query.update(category=category, uploadStatus='failed' if self.category_index == 4 else '')
             elif key == 'Down' and self.focus == 'historyChoiceuploadStatus':
                 self.query['uploadStatus'] = 'uploaded'
+            elif key == 'Backspace' and self.focus == 'historySearch':
+                self.typed = ''
             elif key == 'Return' and self.focus == 'historySearch':
                 self.query['search'] = self.typed
             elif key == 'Return' and self.focus == 'historyList':
@@ -262,7 +264,8 @@ class FakeContext(Context):
 
     def type_text(self, text):
         self.events.append(('type_text', text))
-        self.typed = text
+        if text:
+            self.typed = text
 
     def accessible(self, query):
         return [{'name': 'Total size: 3 MB' if query['name'].startswith('Total') else 'Size: 1 MB · 640×320'}]
@@ -381,6 +384,37 @@ class HistoryRecipeTests(unittest.TestCase):
             history.delete_remote(ctx)
         self.assertNotIn('confirmActionButton', [e[1] for e in ctx.events if e[0] == 'click'])
         self.assertEqual(ctx.remote, 'present')
+
+    def test_typing_empty_text_does_not_clear_selected_text(self):
+        ctx = FakeContext()
+        ctx.typed = 'unchanged'
+        ctx.type_text('')
+        self.assertEqual(ctx.typed, 'unchanged')
+        history._search(ctx, '')
+        self.assertEqual(ctx.query['search'], '')
+        self.assertIn(('keys', ('Backspace',)), ctx.events)
+
+    def test_cancel_all_waits_for_delayed_dialog_visibility(self):
+        class DelayedContext(FakeContext):
+            pending = 0
+
+            def click(self, control, window, button='left', offset=None):
+                if control == 'historyConfirmCancelAll' and not self.confirmation['open']:
+                    raise RecipeFailed('confirmation is not open')
+                super().click(control, window, button, offset)
+                if control == 'cancelAllBannerOperations':
+                    self.confirmation['open'] = False
+                    self.pending = 2
+
+            def state(self):
+                result = super().state()
+                if self.pending:
+                    self.pending -= 1
+                    if not self.pending:
+                        self.confirmation['open'] = True
+                return result
+
+        history.cancel_all(DelayedContext(('history_active_uploads',)))
 
     def test_setup_waits_for_async_query_before_selection_mutation(self):
         class BusyContext(FakeContext):

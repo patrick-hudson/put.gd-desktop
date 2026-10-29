@@ -63,7 +63,10 @@ def _open(ctx):
 def _search(ctx, text):
     ctx.click('historySearch', window='history')
     ctx.keys('Ctrl+A')
-    ctx.type_text(text)
+    if text:
+        ctx.type_text(text)
+    else:
+        ctx.keys('Backspace')
     ctx.keys('Return')
     ctx.wait(lambda: not _state(ctx)['busy'] and _state(ctx)['query']['search'] == text,
              'search is applied by real input')
@@ -364,14 +367,15 @@ def cancel_all(ctx):
     _open(ctx)
     _frame(ctx, 'before', 'history-many-active')
     ctx.click('cancelAllBannerOperations', window='history')
-    state = _state(ctx)['cancelAllConfirmation']
+    state = ctx.wait(lambda: (s if (s := _state(ctx))['cancelAllConfirmation']['open'] else None), 'cancel-all confirmation opens')['cancelAllConfirmation']
     _frame(ctx, 'keep-question', 'history-cancel-all-confirmation', 'historyCancelAllConfirmation')
     ctx.expect(state['open'] and set(state['operationIds']) == set(ids), 'confirmation captures exact active identities')
     ctx.click('historyKeepUploading', window='historyCancelAllConfirmation')
     ctx.wait(lambda: not _state(ctx)['cancelAllConfirmation']['open'], 'Keep uploading dismisses confirmation')
     ctx.expect(_state(ctx)['activeOperationCount'] == len(ids), 'Keep uploading leaves all operations active')
     ctx.click('cancelAllBannerOperations', window='history')
-    ctx.expect(set(_state(ctx)['cancelAllConfirmation']['operationIds']) == set(ids), 'second confirmation captures same identities')
+    second = ctx.wait(lambda: (s if (s := _state(ctx))['cancelAllConfirmation']['open'] else None), 'second cancel-all confirmation opens')
+    ctx.expect(set(second['cancelAllConfirmation']['operationIds']) == set(ids), 'second confirmation captures same identities')
     ctx.click('historyConfirmCancelAll', window='historyCancelAllConfirmation')
     ctx.wait(lambda: all(_result(ctx.call('operation.inspect', {'id': item}))['state'] == 'cancelled' for item in ids), 'all confirmed uploads cancel', timeout=30)
     ctx.expect(_state(ctx)['activeOperationCount'] == 0, 'banner clears canceled uploads')
