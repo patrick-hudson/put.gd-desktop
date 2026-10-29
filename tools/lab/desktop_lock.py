@@ -39,6 +39,7 @@ HOSTS = {
     'd69': ('192.168.68.69', 'Debian 13 Plasma Wayland'),
     'k72': ('192.168.68.72', 'Kubuntu 26.04 Plasma Wayland'),
     'm74': ('192.168.68.74', 'Linux Mint 22.3 Cinnamon X11'),
+    'aurora-amd': ('192.168.68.71', 'Aurora Fedora 45 Plasma Wayland'),
 }
 USER = 'patrick'
 IDENTITY = Path.home() / '.ssh/awskey_110724'
