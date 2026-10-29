@@ -300,6 +300,18 @@ class Contracts(unittest.TestCase):
         lane.saved(ctx, 'preferences.diagnostics.debugLogging', True, 0)
         self.assertEqual(polls, [False])
 
+    def test_blocked_package_does_not_poison_next_recipe(self):
+        ctx = Fake()
+        ctx.call('ui.diagnostics', {'action': 'openPackage'})
+        click = ctx.click
+        def require_unblocked_page(*args, **kwargs):
+            ctx.expect(not ctx.pkg['open'], 'modal dialog blocks real page input')
+            return click(*args, **kwargs)
+        ctx.click = require_unblocked_page
+        lane.opened(ctx, 1)
+        self.assertFalse(ctx.pkg['open'])
+        self.assertEqual(ctx.section, 1)
+
     def test_resident_error_is_not_a_pass(self):
         ctx = Fake()
         ctx.command_error = 'settings.patch'

@@ -97,6 +97,13 @@ def opened(ctx, section):
     if baseline:
         patch(ctx, baseline)
     result(ctx, ctx.view('ui.show', {'view': 'settings'}))
+    # A blocked diagnostics recipe can leave its modal dialog open. Restore
+    # this private lane's known page before sending navigation or field input.
+    diagnostics = call(ctx, 'ui.diagnostics', {'action': 'inspect'})
+    if diagnostics['package'].get('open'):
+        ctx.wait(lambda: not package(ctx).get('saving'), 'previous package save settled', timeout=90)
+        call(ctx, 'ui.diagnostics', {'action': 'closePackage'})
+        ctx.wait(lambda: not package(ctx)['open'], 'previous package dialog closed')
     ctx.wait(lambda: state(ctx).get('appearance', {}).get('theme') == 'dark',
              'catalog appearance applied to the UI')
     # Native layout preparation is profile data, never a desktop branch in a
