@@ -973,6 +973,14 @@ Virtual-3 disconnected (normal left inverted right x axis y axis)
             # The exact locator cannot see an image whose outer pixels carry an edge.
             path.write_bytes(render(700, 400, [(20, 30, 1.0)]))
             self.assertIsNone(lab.locate_fixture_paint(path))
+            # A complete top half above a single bottom row is not the fixture.
+            width, height = 700, 400
+            truncated = bytearray(render(width, height, [(20, 30, .9)]))
+            header = len(f'P6\n{width} {height}\n255\n'.encode())
+            for y in range(30 + 147, height):
+                truncated[header + y * width * 3:header + (y + 1) * width * 3] = bytes([60, 60, 60]) * width
+            path.write_bytes(bytes(truncated))
+            self.assertIsNone(lab.locate_scaled_fixture_paint(path, .9))
             path.write_bytes(render(760, 400, [(5, 10, .5), (400, 60, .5)]))
             self.assertIsNone(lab.locate_scaled_fixture_paint(path, .5))
             self.assertIsNone(lab.locate_scaled_fixture_paint(path, .9))

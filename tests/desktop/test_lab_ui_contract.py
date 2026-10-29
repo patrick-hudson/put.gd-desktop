@@ -53,8 +53,13 @@ class LabUiContract(unittest.TestCase):
 
     def test_settled_copy_statuses(self):
         tray = load('tray_progress')
-        self.assertLiterals(set(tray.COPY_SETTLED), 'src/app/OperationClipboard.cpp')
-        self.assertNotIn('pending', tray.COPY_SETTLED)
+        # Every status the app assigns to copyStatus, in both directions:
+        # all but pending are final, and the replay waits for exactly those.
+        assigned = set()
+        for path in (ROOT / 'src').rglob('*.cpp'):
+            assigned.update(re.findall(r'copyStatus\s*=\s*(?:QStringLiteral\()?"([a-z_]+)"', path.read_text(encoding='utf-8')))
+        self.assertIn('pending', assigned)
+        self.assertEqual(set(tray.COPY_SETTLED), assigned - {'pending'})
 
     def test_tray_quit_label(self):
         native = load('native_acceptance')

@@ -434,6 +434,12 @@ def locate_scaled_fixture_paint(path, scale, slack=3):
                       if any(abs(x - start) <= 1 for x, _ in pair(y, blue, yellow))), None)
         if below is None:
             continue
+        # The bottom half must be complete too, not one matching row.
+        bottom = below
+        while bottom < height and any(abs(x - start) <= 1 for x, _ in pair(bottom, blue, yellow)):
+            bottom += 1
+        if not down - 2 * slack <= bottom - below <= down + 1:
+            continue
         across_at = sum(boundary for _, boundary in rows) / len(rows)
         down_at = (last + 1 + below) / 2
         matches.append({'x': across_at - across, 'y': down_at - down, 'width': 640 * scale, 'height': 320 * scale})
