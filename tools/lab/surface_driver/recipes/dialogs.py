@@ -4,9 +4,8 @@ Core fixture requests (not implemented by this lane):
 * file-dialog-{portal,fallback}: start a fresh private resident/helper family
   with profile['dialogs']['backends'][backend]['environment']; return
   {'available': bool, 'reason': str}. Do not change a running process's env.
-* local-history: {'history_id': str, 'path': str}, a synthetic retained file.
-* recording-review: {'operation_id': str, 'extension': str}, a stopped synthetic
-  recording in private review, prepared only for the recipe that requests it.
+The core's history fixture supplies .history_id and .path for a retained
+synthetic file; its recording fixture supplies .id for a private MP4 review.
 
 Shell results use Context.shell's {returncode, stdout, stderr} contract. Call,
 view and MCP results are resident result objects, without transport envelopes.
@@ -68,9 +67,9 @@ def _frame(ctx, label, backend, mode=None):
         reference = ctx.profile['dialogs']['backends'][backend]['references'].get(mode)
         if not reference:
             ctx.review('No current fallback ' + mode + ' chooser catalog capture is registered')
-    # No put.gd window role is used: portal windows belong to the desktop, and
-    # the chooser must remain visible even when it covers the owning window.
-    ctx.frame(label, reference=reference)
+    # Desktop frames include portal windows even when they cover their owner.
+    # A fallback reference must crop the chooser, never the owning main window.
+    ctx.frame(label, window='putgdFileDialog' if reference else None, reference=reference)
 
 
 def _ready(ctx, inspect, backend, mode):
@@ -164,6 +163,14 @@ def _ui_request(dialog, **params):
     return 'ui.fileDialog', dict(dialog=dialog, **params)
 
 
+def _editor_ready(ctx, identity):
+    def inspect():
+        result = ctx.cli('editor.inspect', json.dumps({'id': identity}))
+        response = json.loads(result['stdout'])
+        return response.get('result') if response.get('ok') else None
+    return ctx.wait(inspect, 'editor helper is ready', timeout=30)
+
+
 def _output(ctx, backend, files, *, mcp=False, cancel_only=False):
     ctx.view('ui.show', {'view': 'settings'})
     fields = ('root',) if mcp or cancel_only else ('root', 'images', 'videos', 'text', 'other')
@@ -219,21 +226,24 @@ def _run(ctx, backend, scenario):
         finally:
             ctx.call('ui.diagnostics', {'action': 'closePackage'})
     elif scenario == 'history-save-as':
-        fixture = ctx.fixture('local-history')
+        fixture = ctx.fixture('history')
+        if not fixture.path:
+            ctx.blocked('Core history fixture did not retain its original file path', issue=671)
         ctx.view('ui.show', {'view': 'history'})
         ctx.wait(lambda: not ctx.call('ui.history', {'action': 'inspect'})['busy'], 'history loaded')
-        ctx.call('ui.history', {'action': 'select', 'ids': [fixture['history_id']]})
+        ctx.call('ui.history', {'action': 'select', 'ids': [fixture.history_id]})
         path = files['root'] + '/History copy.png'
-        _exercise(ctx, backend, 'save', _ui_request('historySaveAs', id=fixture['history_id']),
+        _exercise(ctx, backend, 'save', _ui_request('historySaveAs', id=fixture.history_id),
                   lambda: ctx.call('ui.history', {'action': 'inspect'})['savedPath'], path)
         ctx.wait(lambda: ctx.call('ui.history', {'action': 'inspect'}).get('copyJob', {}).get('status') == 'saved',
                  'resident finished saving original')
         ctx.expect(ctx.call('ui.history', {'action': 'inspect'})['savedPath'] == path, 'history saved path')
-        _shell(ctx, 'cmp -- ' + shlex.quote(fixture['path']) + ' ' + shlex.quote(path))
+        _shell(ctx, 'cmp -- ' + shlex.quote(fixture.path) + ' ' + shlex.quote(path))
         _frame(ctx, 'after', backend)
     elif scenario == 'editor-save-copy':
         op = ctx.call('editor.open', {'source': 'file', 'path': files['image']})['operationId']
         try:
+            _editor_ready(ctx, op)
             ctx.view('editor.view', {'id': op, 'action': 'fit'})
             path = files['root'] + '/Edited copy.png'
             def consumer():
@@ -248,10 +258,10 @@ def _run(ctx, backend, scenario):
         finally:
             ctx.call('editor.cancel', {'id': op})
     elif scenario == 'review-save-copy':
-        fixture = ctx.fixture('recording-review')
-        op = fixture['operation_id']
+        fixture = ctx.fixture('recording')
+        op = fixture.id
         ctx.view('recording.review', {'id': op, 'action': 'inspect'})
-        path = files['root'] + '/Recording copy.' + fixture['extension']
+        path = files['root'] + '/Recording copy.mp4'
         def consumer():
             state = ctx.call('recording.review', {'id': op, 'action': 'inspect'})
             return {'savedCopy': state['savedCopy'], 'edit': state['edit']}
@@ -278,7 +288,7 @@ def _run(ctx, backend, scenario):
                          if op['id'] not in before_ids and op['action'] == 'edit'), None)
         op = ctx.wait(opened, 'chosen image created an edit operation')['id']
         try:
-            state = ctx.wait(lambda: ctx.call('editor.inspect', {'id': op}), 'chosen image decoded')
+            state = _editor_ready(ctx, op)
             ctx.expect(state['phase'] == 'editing', 'selected image is open for editing')
             _frame(ctx, 'after', backend)
         finally:
@@ -294,9 +304,9 @@ def _png(ctx, path):
 def _register(scenario, backend):
     needs = ['file-dialog-' + backend]
     if scenario == 'history-save-as':
-        needs.append('local-history')
+        needs.append('history')
     if scenario == 'review-save-copy':
-        needs.append('recording-review')
+        needs.append('recording')
     interaction = scenario if scenario.startswith('mcp.') else 'dialog.' + scenario
 
     @recipe(interaction, needs=needs, destinations=('local',), desktop_drawn=backend == 'portal')

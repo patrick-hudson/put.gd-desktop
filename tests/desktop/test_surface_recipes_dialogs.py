@@ -6,6 +6,7 @@ import copy
 import json
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -44,8 +45,8 @@ class FakeContext(Context):
     def fixture(self, name):
         if name.startswith('file-dialog-'):
             return {'available': True, 'reason': ''}
-        return {'local-history': {'history_id': 'history-1', 'path': '/retained/original.png'},
-                'recording-review': {'operation_id': 'record-1', 'extension': 'webm'}}[name]
+        return {'history': SimpleNamespace(history_id='history-1', path='/retained/original.png'),
+                'recording': SimpleNamespace(id='record-1')}[name]
 
     def shell(self, script, timeout=60):
         self.calls.append(('shell', script))
@@ -128,6 +129,9 @@ class FakeContext(Context):
         self.calls.append(('mcp', tool, arguments))
         assert tool == 'drive_file_dialog'
         return self._chooser('ui.fileDialog', arguments)
+
+    def cli(self, *args, timeout=60):
+        return {'returncode': 0, 'stdout': json.dumps({'ok': True, 'result': self.call(args[0], json.loads(args[1]))})}
 
     def wait(self, predicate, what, timeout=10, interval=.2):
         for _ in range(3):
