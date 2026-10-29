@@ -214,6 +214,7 @@ def _choose(ctx, rid, rect=None):
         x, y, w, h = rect
         ctx.drag((int(x), int(y)), (int(x + w), int(y + h)))
     ready = _state(ctx, rid, "ready")
+    ctx.note("Observed recording target " + str(ready["target"]))
     ctx.expect(ready["target"]["rect"] == rect, "chosen recording bounds match real input")
     ctx.expect(not ready["selecting"], "selector closes before ready bar")
     ctx.note("Inspected recording target " + str(rect))
@@ -619,6 +620,7 @@ def bar_drag(ctx):
             rejected = ctx.geometry("bar")
             ctx.expect(rejected["x"] + rejected["width"] <= x or rejected["x"] >= x + w or rejected["y"] + rejected["height"] <= y or rejected["y"] >= y + h, "dragging an outside bar cannot overlap the capture")
             ctx.frame("rejected-inside", window="bar", reference=BAR)
+            ctx.review("Outside placement and drag exclusion are inspected here; above/other-screen/compositor placements need their own fixture geometry (#664).")
         finally:
             _cancel_record(ctx, rid)
 
@@ -639,6 +641,7 @@ def bar_handle(ctx):
             ctx.frame("handle", window="bar")
             _stop(ctx, rid)
             ctx.frame("after", window="review", reference="30-review")
+            ctx.review("Handle Stop and width collapse are exercised. Resume on a paused handle still needs a fixture with a known paused session; the handle has no Pause control (#664).")
         finally:
             _cancel_record(ctx, rid)
 
