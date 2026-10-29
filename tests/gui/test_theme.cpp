@@ -433,6 +433,32 @@ private slots:
         }
         QCOMPARE(Graphite::Metric::trackRadius - Graphite::Metric::segmentInset, Graphite::Metric::segmentRadius);
     }
+    void bannerGlyphCentersOnTheFirstTextLine_data() {
+        QTest::addColumn<int>("pixels");
+        QTest::newRow("100%") << 14;
+        QTest::newRow("150%") << 21;
+    }
+    void bannerGlyphCentersOnTheFirstTextLine() {
+        QFETCH(int, pixels);
+        const auto previous = qApp->font();
+        const auto restore = qScopeGuard([&] { qApp->setFont(previous); });
+        auto font = previous; font.setPixelSize(pixels); qApp->setFont(font);
+        Graphite::Banner banner(Graphite::Banner::Tone::Warning, "A warning with enough detail to wrap onto several lines in a narrow banner.");
+        // A solid icon exposes the exact painted glyph bounds, independent of its artwork.
+        QPixmap glyph(32, 32); glyph.fill(Qt::magenta); banner.setIcon(QIcon(glyph));
+        banner.setAction("Recover"); banner.resize(340, 180); banner.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&banner));
+        for (const int width : {340, 900}) {
+            banner.resize(width, 180); QApplication::processEvents();
+            const auto image = banner.grab().toImage();
+            int top = image.height(), bottom = -1;
+            for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x)
+                if (image.pixelColor(x, y) == QColor(Qt::magenta)) { top = std::min(top, y); bottom = std::max(bottom, y); }
+            QVERIFY(bottom >= top);
+            const double center = banner.textLabel()->y() + (banner.textLabel()->fontMetrics().lineSpacing() - 1) / 2.0;
+            QVERIFY(qAbs((top + bottom) / 2.0 - center) <= 1);
+        }
+    }
     void errorBannersUseTheirToneWithoutAnOptIn() {
         const auto previous = Theme::scheme();
         const auto restore = qScopeGuard([previous] { Theme::setScheme(previous); });

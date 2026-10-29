@@ -138,7 +138,7 @@ private slots:
   banner->actionButton()->click();QVERIFY(recovered);QVERIFY(banner->isVisible());
   host.resize(900,120);QApplication::processEvents();const auto image=banner->grab().toImage();int top=image.height(),bottom=-1;
   for(int y=0;y<image.height();++y)for(int x=0;x<Graphite::scaled(32);++x)if(image.pixelColor(x,y)==Theme::current().warning){top=std::min(top,y);bottom=std::max(bottom,y);}
-  QVERIFY(bottom>=top);QVERIFY(qAbs((top+bottom)/2-banner->textLabel()->geometry().center().y())<=3);
+  QVERIFY(bottom>=top);QVERIFY(qAbs((top+bottom)/2.0-(banner->textLabel()->y()+(banner->textLabel()->fontMetrics().lineSpacing()-1)/2.0))<=1);
   for(const auto tone:{Graphite::Banner::Tone::Info,Graphite::Banner::Tone::Warning,Graphite::Banner::Tone::Error,Graphite::Banner::Tone::Success}){banner->setTone(tone);QCOMPARE(banner->tone(),tone);QVERIFY(!banner->grab().isNull());}
   banner->dismissButton()->click();QVERIFY(dismissed);QVERIFY(!banner->isVisible());
  }

@@ -1973,7 +1973,7 @@ Banner::Banner(Tone tone, const QString& text, QWidget* parent) : QWidget(parent
     text_->setWordWrap(true);
     text_->setMinimumWidth(0);
     content_ = text_;
-    row_->addWidget(content_, 0, 0);
+    row_->addWidget(content_, 0, 0, Qt::AlignVCenter);
     action_ = new QPushButton(this);
     VisualStyle::role(action_, "textAction");
     row_->addWidget(action_, 0, 1, Qt::AlignTop);
@@ -2049,10 +2049,13 @@ void Banner::paintEvent(QPaintEvent*) {
     const QColor fill = fillOnly ? (tone_ == Tone::Error ? colors.dangerSurface : tone_ == Tone::Warning ? colors.warningSurface : tone_ == Tone::Success ? colors.successSurface : colors.surface) : colors.surface;
     rounded(&painter, rect(), fill, fillOnly ? QColor() : colors.borderStrong, Metric::containerRadius);
     const int side = scaled(Metric::icon);
-    QRect firstRow = row_->cellRect(0, 0);
-    if (content_ != text_ && content_->layout() && content_->layout()->count())
+    QRect firstRow = content_->geometry();
+    int lineHeight = text_->fontMetrics().lineSpacing();
+    if (content_ != text_ && content_->layout() && content_->layout()->count()) {
         firstRow = content_->layout()->itemAt(0)->geometry().translated(content_->pos());
-    const QRect glyph(space(Space::m), firstRow.y() + std::max(0, (firstRow.height() - side) / 2), side, side);
+        lineHeight = firstRow.height();
+    }
+    const QRect glyph(space(Space::m), firstRow.y() + (lineHeight - side) / 2, side, side);
     if (!icon_.isNull()) icon_.paint(&painter, glyph);
     else if (tone_ == Tone::Success) paintChromeGlyph(painter, glyph, "check", tone);
     else if (tone_ == Tone::Info) {
