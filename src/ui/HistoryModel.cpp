@@ -35,7 +35,7 @@ bool localSaveFailed(const QJsonObject& r){
 bool active(const QJsonObject& r){return Operation::activeState(r["operation"].toObject()["state"].toString());}
 }
 QString HistoryModel::relativeTime(const QJsonObject& r){return relative(r);}
-QString HistoryModel::fileSize(qint64 bytes){if(bytes<1024)return QString("%1 B").arg(bytes);if(bytes<1024*1024)return QString("%1 KiB").arg(QString::number(double(bytes)/1024,'f',bytes<10*1024?1:0));return ByteSize::summary(bytes);}
+QString HistoryModel::fileSize(qint64 bytes){return ByteSize::fileSummary(bytes);}
 QString HistoryModel::duration(qint64 ms){if(ms<=0)return {};const qint64 s=(ms+999)/1000;return s>=3600?QString("%1:%2:%3").arg(s/3600).arg(s/60%60,2,10,QChar('0')).arg(s%60,2,10,QChar('0')):QString("%1:%2").arg(s/60).arg(s%60,2,10,QChar('0'));}
 HistoryModel::HistoryModel(UiSession& history,QObject* parent):QAbstractListModel(parent),history_(history){}
 int HistoryModel::rowCount(const QModelIndex& parent)const{return parent.isValid()?0:rows_.size();}

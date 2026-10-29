@@ -227,7 +227,7 @@ void FileDialog::openFallback(const QString& reason){
  dialog->resize(size.expandedTo(dialog->minimumSizeHint()));
  if(auto* tree=dialog->findChild<QTreeView*>("treeView");tree&&tree->header()->count()>=4){
   const auto metrics=tree->fontMetrics();const int padding=32;
-  tree->header()->resizeSection(1,metrics.horizontalAdvance(QStringLiteral("1023.9 KiB"))+padding);
+  tree->header()->resizeSection(1,metrics.horizontalAdvance(QStringLiteral("1023.9 KB"))+padding);
   tree->header()->resizeSection(2,metrics.horizontalAdvance(QStringLiteral("MP4 video file"))+padding);
   tree->header()->resizeSection(3,metrics.horizontalAdvance(QLocale().toString(QDateTime(QDate(2026,12,30),QTime(23,59)),QLocale::ShortFormat))+padding);
  }

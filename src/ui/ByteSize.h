@@ -60,10 +60,10 @@ inline QJsonValue fromDecimal(const QString& text, qint64 unit = MiB) {
 
 inline QString summary(qint64 bytes) {
     const auto unit = bytes >= GiB ? GiB : MiB;
-    const auto suffix = bytes >= GiB ? QString(" GiB") : QString(" MiB");
+    const auto suffix = bytes >= GiB ? QString(" GB") : QString(" MB");
     auto whole = bytes / unit;
     auto hundredths = ((bytes % unit) * 100 + unit / 2) / unit;
-    if (bytes > 0 && !whole && !hundredths) return "<0.01 MiB";
+    if (bytes > 0 && !whole && !hundredths) return "<0.01 MB";
     if (hundredths == 100) {
         ++whole;
         hundredths = 0;
@@ -75,5 +75,10 @@ inline QString summary(qint64 bytes) {
         result += '.' + fraction;
     }
     return result + suffix;
+}// Traditional display labels, with the same 1024-based arithmetic everywhere.
+inline QString fileSummary(qint64 bytes) {
+    if (bytes < MiB) return QString("%1 KB").arg(QString::number(double(bytes) / 1024, 'f', bytes < 10 * 1024 ? 1 : 0));
+    return summary(bytes);
 }
+
 }

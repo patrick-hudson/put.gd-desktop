@@ -142,10 +142,10 @@ bool appearanceState(const QJsonValue& value){
  return true;
 }
 Error validateUiState(const QJsonObject& state){
- if(QJsonDocument(state).toJson(QJsonDocument::Compact).size()>maximumUiStateBytes)return {"ui_state_too_large","The draft exceeds the 8 MiB UI state limit. Keep this window open and reduce the draft before closing.",{}};
+ if(QJsonDocument(state).toJson(QJsonDocument::Compact).size()>maximumUiStateBytes)return {"ui_state_too_large","The draft exceeds the 8 MB UI state limit. Keep this window open and reduce the draft before closing.",{}};
  for(const auto& key:QStringList{"settings","history","activity"})if(state[key].isObject()&&state[key].toObject().contains("stateError")){
   const auto reason=state[key].toObject()["stateError"].toString();
-  if(reason=="ui_state_too_large")return {"ui_state_too_large","The draft exceeds the 8 MiB UI state limit. Keep this window open and reduce the draft before closing.",{}};
+  if(reason=="ui_state_too_large")return {"ui_state_too_large","The draft exceeds the 8 MB UI state limit. Keep this window open and reduce the draft before closing.",{}};
   if(reason=="request_awaiting_acceptance")return {"ui_request_pending","A request is awaiting resident acceptance. Wait for its result before closing this window.",{}};
   return {"ui_state_unclassified","The draft contains unclassified provider settings. Keep this window open and correct these fields before closing.",{}};
  }

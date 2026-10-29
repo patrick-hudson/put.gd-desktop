@@ -155,11 +155,11 @@ private slots:
   const QJsonObject batch{{"id","a"},{"action","clipboard"},{"state","uploading"},{"phase","uploading"},{"created","2026-10-20T06:00:00.000Z"},
    {"items",QJsonArray{item("uploading","uploading",4*mib,8*mib),item("uploading","uploading",2*mib,8*mib),item("pending","queued",-1,8*mib),
                        item("pending","queued",-1,8*mib),item("pending","queued",-1,8*mib),item("uploaded","completed",8*mib,8*mib)}}};
-  QCOMPARE(TrayController::describeActivity({batch}),QString("Uploading: 14 MiB of 24 MiB (58%) · 2 uploading, 3 waiting, 1 done"));
+  QCOMPARE(TrayController::describeActivity({batch}),QString("Uploading: 14 MB of 24 MB (58%) · 2 uploading, 3 waiting, 1 done"));
   // One file transferring still names it.
   const QJsonObject single{{"id","b"},{"action","clipboard"},{"state","uploading"},{"phase","uploading"},{"created","2026-10-20T06:00:00.000Z"},
    {"items",QJsonArray{item("uploading","uploading",3*mib,4*mib),item("pending","queued",-1,4*mib)}}};
-  QCOMPARE(TrayController::describeActivity({single}),QString("Uploading file 1/2: 3 MiB of 4 MiB (75%)"));
+  QCOMPARE(TrayController::describeActivity({single}),QString("Uploading file 1/2: 3 MB of 4 MB (75%)"));
  }
 
  void fastUploadsDoNotFlashTheIcon() {
@@ -226,7 +226,7 @@ private slots:
   PUTGD_TRY_COMPARE(provider->requests.size(),1);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,0).pixmap(24,24).toImage());
   provider->requests.first().progress({"uploading",2*1024*1024,4*1024*1024});
-  PUTGD_TRY_VERIFY(tray->toolTip().contains("2 MiB of 4 MiB"));
+  PUTGD_TRY_VERIFY(tray->toolTip().contains("2 MB of 4 MB"));
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,50).pixmap(24,24).toImage());
   const auto half=tray->icon().pixmap(24,24).toImage();
   provider->requests.first().progress({"uploading",0,4*1024*1024});
@@ -253,8 +253,8 @@ private slots:
   PUTGD_TRY_VERIFY(tray->toolTip().contains("Preparing"));
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),empty);
   provider->requests.first().progress({"uploading",8*1024*1024,{}});
-  PUTGD_TRY_VERIFY(tray->toolTip().contains("8 MiB transferred"));
-  QVERIFY(tray->toolTip().contains("Source size: 4 MiB"));QVERIFY(tray->toolTip().contains("Estimated 99%"));
+  PUTGD_TRY_VERIFY(tray->toolTip().contains("8 MB transferred"));
+  QVERIFY(tray->toolTip().contains("Source size: 4 MB"));QVERIFY(tray->toolTip().contains("Estimated 99%"));
   provider->requests.first().progress({"uploading",2*1024*1024,{}});
   PUTGD_TRY_VERIFY(tray->toolTip().contains("Estimated 50%"));
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),half);
@@ -391,8 +391,8 @@ private slots:
   for(int index=0;index<4;++index)provider->requests[index].progress({"uploading",(index+1)*1024*1024,8*1024*1024});
   PUTGD_TRY_VERIFY(tray->toolTip().contains("1 more active operations"));PUTGD_TRY_COMPARE(batches.size(),1);
   const auto tooltip=tray->toolTip();
-  QVERIFY(tooltip.contains("1 MiB of 8 MiB"));QVERIFY(tooltip.contains("2 MiB of 8 MiB"));QVERIFY(tooltip.contains("3 MiB of 8 MiB"));QVERIFY(!tooltip.contains("4 MiB of 8 MiB"));
-  QVERIFY(tooltip.indexOf("1 MiB")<tooltip.indexOf("2 MiB"));QVERIFY(tooltip.indexOf("2 MiB")<tooltip.indexOf("3 MiB"));
+  QVERIFY(tooltip.contains("1 MB of 8 MB"));QVERIFY(tooltip.contains("2 MB of 8 MB"));QVERIFY(tooltip.contains("3 MB of 8 MB"));QVERIFY(!tooltip.contains("4 MB of 8 MB"));
+  QVERIFY(tooltip.indexOf("1 MB")<tooltip.indexOf("2 MB"));QVERIFY(tooltip.indexOf("2 MB")<tooltip.indexOf("3 MB"));
   putgd::test::settle(300);PUTGD_TRY_COMPARE(batches.size(),1);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",Theme::trayTints(false).idle,31).pixmap(24,24).toImage());
   for(auto complete:std::exchange(provider->completions,{}))complete();
