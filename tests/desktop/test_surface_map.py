@@ -255,6 +255,39 @@ class ReceiptImport(unittest.TestCase):
         self.assertEqual(data['counts']['total'], len(self.model['interactions']))
 
 
+class CatalogCheck(unittest.TestCase):
+    def run_check(self, directory):
+        import contextlib, io
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            return surface_map.main(['check', '--catalog', str(directory)])
+
+    def catalog(self, root, platform, skip=()):
+        model = surface_map.load_model()
+        captures = []
+        for surface in model['surfaces']:
+            if surface.get('capture') and surface['capture'] not in skip:
+                (root / (surface['capture'] + '.png')).write_bytes(b'png')
+                captures.append({'file': surface['capture'] + '.png'})
+        (root / 'manifest.json').write_text(json.dumps({'kind': 'synthetic-ui-catalog', 'platform': platform,
+                                                        'captures': captures}), encoding='utf-8')
+
+    def test_missing_or_empty_catalog_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(self.run_check(Path(tmp) / 'absent'), 1)
+            self.assertEqual(self.run_check(tmp), 1)
+
+    def test_only_documented_captures_may_be_absent_natively(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.catalog(Path(tmp), 'xcb', skip={'00-tray-upload-status'})
+            self.assertEqual(self.run_check(tmp), 0)
+        with tempfile.TemporaryDirectory() as tmp:
+            self.catalog(Path(tmp), 'offscreen', skip={'00-tray-upload-status'})
+            self.assertEqual(self.run_check(tmp), 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            self.catalog(Path(tmp), 'xcb', skip={'about'})
+            self.assertEqual(self.run_check(tmp), 1)
+
+
 class ControlMatching(unittest.TestCase):
     def test_selectors_and_labels(self):
         controls = {'width': 10, 'height': 10, 'controls': [

@@ -40,6 +40,8 @@ KINDS = ('button', 'menu-item', 'field', 'key', 'shortcut', 'gesture', 'state', 
 FUNCTIONAL = ('passed', 'failed', 'blocked')
 VISUAL = ('frames', 'reviewed-ok', 'reviewed-wrong')
 PACKAGES = ('deb', 'rpm', 'appimage')
+# Synthetic captures putgd-ui-catalog draws only offscreen (tests/gui/ui_catalog.cpp).
+OFFSCREEN_ONLY_CAPTURES = {'00-tray-upload-status'}
 
 
 class ModelError(ValueError):
@@ -615,17 +617,28 @@ def check(args):
     print('model ok: %d desktops, %d surfaces, %d interactions' % (
         len(model['desktops']), len(model['surfaces']), len(model['interactions'])))
     if args.catalog:
+        # putgd-ui-catalog always finishes by writing manifest.json; without it the run did
+        # not complete (or this is not a catalog), so nothing below can be trusted.
+        manifest = Path(args.catalog) / 'manifest.json'
+        if not manifest.is_file():
+            print('not a complete putgd-ui-catalog output (no manifest.json): ' + args.catalog, file=sys.stderr)
+            return 1
+        meta = json.loads(manifest.read_text(encoding='utf-8'))
+        if meta.get('kind') != 'synthetic-ui-catalog' or not meta.get('captures'):
+            print('catalog manifest lists no captures: ' + args.catalog, file=sys.stderr)
+            return 1
+        platform = meta.get('platform')
         missing = [s['capture'] for s in model['surfaces'] if s.get('capture')
                    and not (Path(args.catalog) / (s['capture'] + '.png')).exists()]
-        manifest = Path(args.catalog) / 'manifest.json'
-        platform = json.loads(manifest.read_text(encoding='utf-8')).get('platform') if manifest.exists() else None
-        if missing and platform == 'offscreen':
-            print('captures missing from catalog: ' + ', '.join(missing), file=sys.stderr)
+        # Only the documented offscreen-only synthetic states may be absent, and only from a
+        # native (PUTGD_CATALOG_HANDSHAKE) catalog; the map shows them as placeholders.
+        allowed = OFFSCREEN_ONLY_CAPTURES if platform != 'offscreen' else set()
+        unexpected = [c for c in missing if c not in allowed]
+        if unexpected:
+            print('captures missing from the %s catalog: %s' % (platform, ', '.join(unexpected)), file=sys.stderr)
             return 1
         if missing:
-            # Native catalogs (PUTGD_CATALOG_HANDSHAKE) skip offscreen-only synthetic states such
-            # as the tray menus; the map shows those surfaces as placeholders.
-            print('captures not in this %s catalog (placeholders): %s' % (platform or 'unknown', ', '.join(missing)))
+            print('offscreen-only captures not in this %s catalog (placeholders): %s' % (platform, ', '.join(missing)))
         # A control missing from the surface's own capture but present in another
         # state is fine (no hotspot, listed as an action); one found nowhere is drift.
         everywhere = [json.loads(p.read_text(encoding='utf-8')) for p in sorted(Path(args.catalog).glob('*.controls.json'))]
