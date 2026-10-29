@@ -1547,8 +1547,8 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         }
         if (widget && widget->property("preferenceAddRow").toBool()) {
             const auto body = option->rect.adjusted(space(Space::l), 0, -space(Space::l), 0);
-            paintText(*p, body.adjusted(0, 0, -tool->iconSize.width() - space(Space::s), 0), tool->text, tool->state & State_Enabled ? c.textSecondary : c.textDisabled, font(), Qt::AlignLeft | Qt::AlignVCenter);
-            tool->icon.paint(p, QRect(body.right() + 1 - tool->iconSize.width(), body.center().y() - tool->iconSize.height() / 2, tool->iconSize.width(), tool->iconSize.height()), Qt::AlignCenter, tool->state & State_Enabled ? QIcon::Normal : QIcon::Disabled);
+            tool->icon.paint(p, QRect(body.left(), body.center().y() - tool->iconSize.height() / 2, tool->iconSize.width(), tool->iconSize.height()), Qt::AlignCenter, tool->state & State_Enabled ? QIcon::Normal : QIcon::Disabled);
+            paintText(*p, body.adjusted(tool->iconSize.width() + space(Space::s), 0, 0, 0), tool->text, tool->state & State_Enabled ? c.textSecondary : c.textDisabled, font(), Qt::AlignLeft | Qt::AlignVCenter);
             if (keyboardState(option)) rounded(p, QRectF(option->rect).adjusted(1, 1, -1, -1), {}, c.accent, Metric::containerRadius);
             return;
         }
