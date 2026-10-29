@@ -315,7 +315,7 @@ class TrayRecipesTest(unittest.TestCase):
     def test_ambiguous_accessibility_target_fails_before_click(self):
         ctx = FakeContext()
         ctx.accessible = lambda query: [{'name': query['name'], 'rect': [1, 2, 3, 4]}] * 2
-        with self.assertRaises(RecipeFailed):
+        with self.assertRaises(RecipeBlocked):
             tray.activate(ctx)
         self.assertFalse(any(e[0] == 'click' for e in ctx.events))
 

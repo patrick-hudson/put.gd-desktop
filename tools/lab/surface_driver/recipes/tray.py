@@ -11,7 +11,7 @@ from contextlib import contextmanager
 import json
 import shlex
 
-from tools.lab.surface_driver.api import recipe
+from tools.lab.surface_driver.api import RecipeFailed, recipe
 
 
 TERMINAL = {'completed', 'failed', 'partial', 'interrupted', 'cancelled'}
@@ -96,7 +96,16 @@ def _icon(ctx):
     selector = _profile(ctx).get('icon')
     if not selector:
         ctx.blocked('Profile has no unambiguous desktop tray icon selector')
-    return _node(ctx, selector['name'], selector.get('role'))
+    def find():
+        nodes = _nodes(ctx, selector['name'], selector.get('role'))
+        if len(nodes) > 1:
+            ctx.blocked('Tray selector needs a profile role; candidate roles: ' +
+                        ', '.join(sorted({n.get('role', 'unknown') for n in nodes})), 670)
+        return nodes[0] if nodes else None
+    try:
+        return ctx.wait(find, 'desktop tray icon selector')
+    except RecipeFailed:
+        ctx.blocked('Desktop does not expose the configured tray icon selector through AT-SPI', 670)
 
 
 def _menu(ctx):
