@@ -392,6 +392,15 @@ class SelectorRecipes(unittest.TestCase):
         with self.assertRaises(RecipeBlocked):
             selectors._description(ctx)
 
+    def test_missing_selector_node_is_blocked_with_failure_frame_and_cleanup(self):
+        ctx = FakeContext()
+        ctx.no_accessibility = True
+        with self.assertRaisesRegex(RecipeBlocked, "no live AT-SPI node"):
+            selectors.region_keyboard(ctx)
+        self.assertEqual(ctx.surface, "history")
+        self.assertEqual(ctx.document, ctx.original)
+        self.assertIn("selector-readback-unavailable", [f[0] for f in ctx.frames])
+
     def test_missing_description_cleans_up_open_selector(self):
         ctx = FakeContext()
         real_accessible = ctx.accessible

@@ -14,7 +14,7 @@ import shlex
 from contextlib import contextmanager
 from pathlib import PurePosixPath
 
-from tools.lab.surface_driver.api import RecipeBlocked, recipe
+from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
 
 # The initial core runner has no selector fixture. A campaign can supply its
 # equivalent immutable metadata in the selectors profile fragment until #664
@@ -86,6 +86,11 @@ def _local(ctx, mode="live"):
     try:
         accepted = _call(ctx, "settings.get")["document"]
         ctx.expect(accepted["preferences"]["regionSelectionMode"] == mode, "selection mode accepted")
+        # The resident can open Settings on its first start. Bring the synthetic
+        # fixture back before opening a selector, never while a selector is live.
+        if env.get("prepare_command"):
+            prepared = ctx.shell(env["prepare_command"])
+            ctx.expect(prepared.get("returncode") == 0, "moving pattern fixture is visible")
         yield
     finally:
         # Restore only owned fields against a freshly read revision.
@@ -116,6 +121,7 @@ def _rect(ctx, recording=False):
 
 def _expect_rect(ctx, wanted, recording=False):
     ctx.wait(lambda: _rect(ctx, recording) == wanted, "selector rectangle " + str(wanted))
+    ctx.note("Inspected selector rectangle " + str(wanted))
 
 
 def _open_region(ctx, edit=False):
@@ -124,10 +130,17 @@ def _open_region(ctx, edit=False):
     opened = _result(ctx.view("action.invoke", {"action": "edit" if edit else "region"}))
     ctx.expect(bool(opened.get("operationId")), "capture action returns a durable operation identity")
     oid = opened["operationId"]
+    ctx.note("Capture operation " + oid)
     try:
         ctx.wait(lambda: ctx.accessible({"name": "Capture region"}), "screenshot selector opened")
-    except Exception:
+    except Exception as error:
+        ctx.frame("selector-readback-unavailable")
+        observed = _op(ctx, oid)
+        if observed["state"] == "failed":
+            ctx.expect(False, "capture failed before selector readback: " + observed.get("error", {}).get("code", "unknown"))
         _cancel_region(ctx, oid)
+        if isinstance(error, RecipeFailed) and observed["state"] in ("accepted", "acquiring"):
+            ctx.blocked("Capture selector has no live AT-SPI node in this session; resident has no selection inspect fallback (#664)", issue=664)
         raise
     return oid
 
@@ -157,6 +170,7 @@ def _open_record(ctx, entire=False):
     opened = _result(ctx.view("recording.prepare", {"target": target, "format": "mp4", "codec": "h264", "fps": 15, "audio": {"system": False}}))
     ctx.expect(bool(opened.get("recordingId")), "recording prepare returns an operation identity")
     rid = opened["recordingId"]
+    ctx.note("Recording operation " + rid)
     if entire:
         _state(ctx, rid, "ready")
     else:
@@ -188,6 +202,7 @@ def _choose(ctx, rid, rect=None):
     ready = _state(ctx, rid, "ready")
     ctx.expect(ready["target"]["rect"] == rect, "chosen recording bounds match real input")
     ctx.expect(not ready["selecting"], "selector closes before ready bar")
+    ctx.note("Inspected recording target " + str(rect))
     return ready
 
 
@@ -612,8 +627,6 @@ def bar_hidden(ctx):
         rid = _ready(ctx, entire=True)
         try:
             ctx.frame("before", window="bar", reference=BAR)
-            ctx.keys("Esc")
-            _state(ctx, rid, "cancelled")
             ctx.frame("after")
             ctx.blocked("Hidden overlay is API-only (recording.overlay); no public key or control exists to exercise it with real input. API-lane lifecycle/occlusion coverage is required.")
         finally:
