@@ -152,6 +152,7 @@ def main(argv=None):
     target=None
     rows=[]
     recipes=[]
+    exit_code=2
     try:
         profile=load_profile(args.desktop,args.profiles)
         recipes=discover(args.recipes);validate_recipes(recipes)
@@ -185,7 +186,7 @@ def main(argv=None):
         context.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],'patch':patch})
         context.start_notifications()
         rows=run_recipes(context,recipes,environment,args.out,args.campaign,coverage)
-        return 0 if all(r.functional=='passed' for r in rows) else 1
+        exit_code=0 if all(r.functional=='passed' for r in rows) else 1
     except (RecipeBlocked,RecipeFailed,lab.LabError,ValueError,FileNotFoundError) as error:
         environment['blocked']=str(error)
         if target:
@@ -200,13 +201,16 @@ def main(argv=None):
                   destination=args.destination,recipe=r.name,build=args.build,at=stamp()) for r in recipes for i in r.interactions]
         write_receipts(args.out,environment,rows,args.campaign,coverage)
         print(json.dumps({'blocked':str(error)}),file=sys.stderr)
-        return 2
+        exit_code=2
     finally:
         if target:
             cleanup=target.close()
             if cleanup:
                 environment['cleanup_errors']=cleanup
                 write_receipts(args.out,environment,rows,args.campaign,coverage)
+                if exit_code==0:
+                    exit_code=2
+    return exit_code
 
 
 if __name__=='__main__':

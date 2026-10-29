@@ -243,6 +243,11 @@ class Running(unittest.TestCase):
         self.assertTrue(mutation['patch']['archive']['root'].startswith(target.root))
         self.assertTrue(mutation['patch']['archive']['keepUploads'])
         self.assertEqual(json.loads((self.path/'run/receipt.json').read_text())['environment']['observed_build']['gitCommit'],'abcdef')
+        target.close=lambda:['cleanup incomplete']
+        args[args.index('--out')+1]=str(self.path/'run-error')
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]):
+            self.assertEqual(main(args),2)
+        self.assertEqual(json.loads((self.path/'run-error/receipt.json').read_text())['environment']['cleanup_errors'],['cleanup incomplete'])
 
     def test_cleanup_attempts_quit_when_monitor_transport_fails(self):
         target=Target.__new__(Target)

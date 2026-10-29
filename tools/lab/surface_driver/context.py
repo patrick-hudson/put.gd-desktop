@@ -217,12 +217,7 @@ class DriverContext(Context):
     def scroll(self,x,y,clicks):
         w,h = self._dimensions()
         if self.target.physical:
-            from tools.lab.rfb import RFB
-            client = RFB(self.target.physical.config['vnc_port'])
-            try:
-                client.scroll(x,y,clicks)
-            finally:
-                client.close()
+            self.target.scroll_vnc(x,y,clicks)
         else:
             self.target.pointer(x,y,w,h)
             for _ in range(abs(clicks)):

@@ -54,7 +54,9 @@ def desktop_transport(function):
         try:
             args[0].heartbeat()
             return function(*args, **kwargs)
-        except (OSError, lab.LabError) as error:
+        except RecipeBlocked:
+            raise
+        except (OSError, RuntimeError) as error:
             raise RecipeBlocked(function.__name__+' desktop transport unavailable: '+type(error).__name__) from error
     return invoke
 
@@ -89,7 +91,10 @@ class Target:
         host,session=self._lock
         payload={'host':host,'session':session,'action':'heartbeat'}
         script="python3 - <<'SD_LOCK'\n"+desktop_lock.remote_script(payload)+'\nSD_LOCK\n'
-        value=json.loads(self.physical.ssh(self.run,script))
+        try:
+            value=json.loads(self.physical.ssh(self.run,script))
+        except (lab.LabError,OSError,ValueError) as error:
+            raise RecipeBlocked('physical desktop lock heartbeat unavailable') from error
         if not value.get('ok') or value.get('state')!='held':
             raise RecipeBlocked('physical desktop lock is no longer held by this session')
         self._last_heartbeat=time.monotonic()
@@ -197,6 +202,10 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         with Image.open(witness['path']) as im:
             im.save(path)
         return witness
+
+    @desktop_transport
+    def scroll_vnc(self, x, y, clicks):
+        self.vnc().scroll(x,y,clicks)
 
     def vnc(self):
         if self._rfb is None:
