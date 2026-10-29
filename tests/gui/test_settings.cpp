@@ -1813,6 +1813,28 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
    PUTGD_TRY_COMPARE(service.snapshot().updateChannel,expected=="stable"?QString("build"):QString("stable"));
   }
  }
+ // A stored updates object may leave out check or channel. Saving another
+ // preference must not add them, or the draft never matches the file and every
+ // toolbar action is refused as "not saved".
+ void partialUpdatesObjectSavesCleanly_data(){
+  QTest::addColumn<QJsonObject>("updates");
+  QTest::newRow("channel-only")<<QJsonObject{{"channel","build"}};
+  QTest::newRow("check-only")<<QJsonObject{{"check",false}};
+  QTest::newRow("empty")<<QJsonObject{};
+  QTest::newRow("both")<<QJsonObject{{"check",true},{"channel","stable"}};
+ }
+ void partialUpdatesObjectSavesCleanly(){
+  QFETCH(QJsonObject,updates);
+  QTemporaryDir dir;QVERIFY(dir.isValid());SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=Settings::defaults();auto prefs=doc["preferences"].toObject();prefs["updates"]=updates;doc["preferences"]=prefs;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  MainWindow window(fixture.session);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());
+  QVERIFY(!window.settings()->actionSaveError());
+  auto* notifications=window.findChild<QCheckBox*>("notifications");QVERIFY(notifications);const bool before=notifications->isChecked();notifications->setChecked(!before);
+  PUTGD_TRY_COMPARE(service.snapshot().notifications,!before);
+  QCOMPARE(service.document()["preferences"].toObject()["updates"].toObject(),updates);
+  PUTGD_TRY_VERIFY(!window.settings()->actionSaveError());
+ }
  // #386: a DEB/RPM that updates from put.gd's repository shows the
  // repository's channel without a choice, and the commands that move to the
  // other one; put.gd runs none of them and never rewrites the stored choice.

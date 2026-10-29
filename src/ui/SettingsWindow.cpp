@@ -1346,7 +1346,14 @@ QJsonObject SettingsWindow::candidate() const {
  // file each keep following their own (#344), and the other one by name.
  const auto chosen=updateChannel_->currentData().toString();const bool changed=!updateChannelShown_.isEmpty()&&chosen!=updateChannelShown_;
  const auto channel=!changed?updateChannelSetting_:chosen==buildUpdateChannel()?QString("build"):chosen;
- if(preferences.contains("updates")||!checkUpdates_->isChecked()||channel!="build"){auto updates=preferences["updates"].toObject();updates["check"]=checkUpdates_->isChecked();updates["channel"]=channel;preferences["updates"]=updates;}
+ // Both keys are optional in a stored object; one it leaves out stays out until it differs from
+ // its default, or the draft never matches the file and every action reports unsaved settings.
+ if(preferences.contains("updates")||!checkUpdates_->isChecked()||channel!="build"){
+  const bool stored=preferences.contains("updates");auto updates=preferences["updates"].toObject();
+  if(!stored||updates.contains("check")||!checkUpdates_->isChecked())updates["check"]=checkUpdates_->isChecked();
+  if(!stored||updates.contains("channel")||channel!="build")updates["channel"]=channel;
+  preferences["updates"]=updates;
+ }
  // debugLogging is always written with the object; packageFolder stays as the draft holds it.
  if(preferences.contains("diagnostics")||debugLogging_->isChecked()){auto diagnostics=preferences["diagnostics"].toObject();diagnostics["debugLogging"]=debugLogging_->isChecked();preferences["diagnostics"]=diagnostics;}
  doc["preferences"]=preferences;auto limits=doc["limits"].toObject(),retention=doc["retention"].toObject();
@@ -2080,7 +2087,8 @@ void SettingsWindow::clearCredentialInputs(){
 void SettingsWindow::closeEvent(QCloseEvent* event){clearCredentialInputs();RetainedWindow::closeEvent(event);}
 Error SettingsWindow::actionSaveError()const{
  if(!conflict_&&!autosaveBlocked_&&!dirty_)return {};
- const auto message=status_->property("feedbackTone")=="error"&&!status_->text().isEmpty()?status_->text():QStringLiteral("The latest settings couldn’t be saved. The draft is still open.");
+ // A failed save or a conflict has already said why; otherwise the draft just isn't saved yet.
+ const auto message=status_->property("feedbackTone")=="error"&&!status_->text().isEmpty()?status_->text():QStringLiteral("Some changes in Settings aren’t saved yet. Finish or undo them, then try again.");
  return {"settings_not_saved",message,{}};
 }
 bool SettingsWindow::hasCredentialInputs()const{
