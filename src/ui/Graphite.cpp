@@ -1546,6 +1546,12 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
             return;
         }
         if (widget && widget->property("preferenceAddRow").toBool()) {
+            // Keep the quiet button's hover and pressed fill; the add row draws its own focus ring.
+            QStyleOption panel(*option);
+            panel.state &= ~State_HasFocus;
+            if (tool->activeSubControls & SC_ToolButtonMenu) panel.state |= State_Sunken;
+            if (!(tool->state & State_Enabled)) panel.state &= ~(State_MouseOver | State_Sunken);
+            drawPrimitive(PE_PanelButtonTool, &panel, p, widget);
             const auto body = option->rect.adjusted(space(Space::l), 0, -space(Space::l), 0);
             tool->icon.paint(p, QRect(body.left(), body.center().y() - tool->iconSize.height() / 2, tool->iconSize.width(), tool->iconSize.height()), Qt::AlignCenter, tool->state & State_Enabled ? QIcon::Normal : QIcon::Disabled);
             paintText(*p, body.adjusted(tool->iconSize.width() + space(Space::s), 0, 0, 0), tool->text, tool->state & State_Enabled ? c.textSecondary : c.textDisabled, font(), Qt::AlignLeft | Qt::AlignVCenter);
