@@ -2068,6 +2068,28 @@ private slots:
             if (!single) QCOMPARE(rulePixels, 0);
         }
     }
+    void wideningDoesNotRaiseTheFittedMinimum_data() {
+        QTest::addColumn<int>("pixels");
+        QTest::newRow("normal") << 14;
+        QTest::newRow("large") << 21;
+    }
+    void wideningDoesNotRaiseTheFittedMinimum() {
+        QFETCH(int, pixels);
+        const auto original = qApp->font();
+        auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        auto font = original; font.setPixelSize(pixels); qApp->setFont(font);
+        auto o = options(); o.availableSize = QSize(1366, 720); o.audioRecorded = true;
+        ReviewWindow window(o, config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        putgd::test::settle(20);
+        const auto fitted = window.size();
+        const int minimum = window.minimumWidth();
+        window.resize(1342, fitted.height()); putgd::test::settle(20);
+        QVERIFY2(window.minimumWidth() <= minimum, qPrintable(QString("Minimum ratcheted from %1 to %2").arg(minimum).arg(window.minimumWidth())));
+        window.resize(fitted); putgd::test::settle(20);
+        QCOMPARE(window.size(), fitted);
+        QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
+    }
     void compactReviewFrameShares_data() {
         QTest::addColumn<QSize>("canvas"); QTest::addColumn<double>("scale");
         for (const auto canvas : {QSize(1280, 720), QSize(960, 600)}) for (double scale : {1.0, 1.25, 1.5})

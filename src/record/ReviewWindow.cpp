@@ -227,6 +227,12 @@ private:
 class ReviewFooter final : public Graphite::Surface {
 public:
     explicit ReviewFooter(QWidget* parent) : Graphite::Surface("bg", {}, parent) {}
+    QSize minimumSizeHint() const override {
+        auto hint = Graphite::Surface::minimumSizeHint();
+        // The wide arrangement is a preference, never a new window minimum.
+        if (const int width = property("compactMinimumWidth").toInt(); width > 0) hint.setWidth(width);
+        return hint;
+    }
 protected:
     void paintEvent(QPaintEvent* event) override {
         const auto* actions = findChild<QWidget*>("reviewActions");
@@ -1482,6 +1488,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* footer = new ReviewFooter(this);
     footer->setObjectName("reviewFooter");
     auto* footerRows = new QVBoxLayout(footer);
+    footerRows->setSizeConstraint(QLayout::SetNoConstraint);
     footerRows->setContentsMargins(footerInset(), 0, footerInset(), reviewSpace(Graphite::Space::s));
     footerRows->setSpacing(reviewSpace(Graphite::Space::xs));
     auto* actions = new QWidget(footer);
@@ -2457,6 +2464,14 @@ void ReviewWindow::placeDestination() {
     }
     playbackStatus_->setVisible(showPreview);
     findChild<QLabel*>("reviewAudioSeparator")->setVisible(showPreview && !options_.uploadSummary.isEmpty());
+    int actionMinimum = 0;
+    for (auto* widget : std::initializer_list<QWidget*>{format_, formatAdvice_, save_, cancel_, upload_}) {
+        if (widget->isHidden()) continue;
+        actionMinimum += std::clamp(widget->minimumSizeHint().width(), widget->minimumWidth(), widget->maximumWidth()) + reviewSpace(Graphite::Space::xs);
+    }
+    const int metadataMinimum = sharingMinimum + metadataWidth - previewWidth
+        - (inHeader ? reviewSpace(Graphite::Space::l) : 0) + reviewSpace(Graphite::Space::l);
+    findChild<QWidget*>("reviewFooter")->setProperty("compactMinimumWidth", std::max(actionMinimum, metadataMinimum) + 2 * footerInset());
     // Settle child minima before the default fit measures the footer.
     destinationSummary->layout()->activate();
     metadata->layout()->activate();
