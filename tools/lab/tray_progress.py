@@ -25,6 +25,9 @@ spec = importlib.util.spec_from_file_location('putgd_tray_lab', HERE / 'lab.py')
 lab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lab)
 TERMINAL = {'completed', 'partial', 'failed', 'cancelled', 'interrupted'}
+# Final clipboard outcomes (OperationClipboard): partial means some links
+# were copied while another copy failed or was suppressed.
+COPY_SETTLED = ('copied', 'partial', 'suppressed', 'failed', 'no_result')
 # TrayController::refreshActivity: the tooltip's title, then its activity rows.
 IDLE = 'put.gd'
 UPLOADING = 'Uploading'
@@ -989,7 +992,7 @@ class Replay:
         def terminal():
             found = self.operations(ids, label)
             if len(found) == len(ids) and all(op['state'] in TERMINAL and
-                    op.get('copyStatus') in ('copied', 'suppressed', 'failed', 'no_result') for op in found.values()):
+                    op.get('copyStatus') in COPY_SETTLED for op in found.values()):
                 return found
         found = self.wait(terminal, 'Operations did not settle: ' + label)
         expected = self.attention

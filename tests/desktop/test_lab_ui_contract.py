@@ -51,6 +51,11 @@ class LabUiContract(unittest.TestCase):
                 self.assertEqual(tray.byte_summary(value), text)
                 self.assertRegex(text, '^' + tray.SIZE + '$')
 
+    def test_settled_copy_statuses(self):
+        tray = load('tray_progress')
+        self.assertLiterals(set(tray.COPY_SETTLED), 'src/app/OperationClipboard.cpp')
+        self.assertNotIn('pending', tray.COPY_SETTLED)
+
     def test_tray_quit_label(self):
         native = load('native_acceptance')
         self.assertLiterals({native.QUIT_LABEL}, 'src/ui/NativeTray.cpp', 'src/ui/TrayController.cpp')
