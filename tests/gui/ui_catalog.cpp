@@ -259,7 +259,7 @@ bool captureTrayMenus(const QString& output,QJsonArray& captures){
  std::exchange(provider->finish,{})();
  if(!waitUntil([&]{return attention->isVisible()&&attention->text()=="Failed uploads (1)"&&!uploading->isVisible();}))return false;
  QJsonObject failed;bool inspected=false;operations.inspect(operationId,[&](Error error,QJsonObject value){invokeError=error;failed=value;inspected=true;});
- if(!waitUntil([&]{return inspected;})||invokeError||failed["state"]!="failed"||failed["items"].toArray().first().toObject()["error"].toObject()["code"]!="proton_account_busy")return false;
+ if(!waitUntil([&]{return inspected;})||invokeError||!QStringList{"failed","partial"}.contains(failed["state"].toString())||failed["items"].toArray().isEmpty()||failed["items"].toArray().first().toObject()["error"].toObject()["code"]!="proton_account_busy")return false;
  return shot(*menu,"00-tray-menu-proton-busy");
 }
 }
