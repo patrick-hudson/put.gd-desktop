@@ -441,6 +441,7 @@ void install(QApplication& app) {
     app.setProperty("putgdGraphite", true);
     if (!qobject_cast<Style*>(app.style())) app.setStyle(new Style);
     app.setPalette(palette());
+    QToolTip::setPalette(palette());
     // An application font already enlarged against the desktop's (a test or a
     // caller) keeps its enlargement; the body size is the base it scales from.
     const qreal enlarged = std::max<qreal>(1.0, pixelsOf(app.font()) / std::max<qreal>(1.0, pixelsOf(QFontDatabase::systemFont(QFontDatabase::GeneralFont))));
@@ -454,6 +455,7 @@ void install(QApplication& app) {
     } else installedBody() = pixelsOf(app.font()) / enlarged;
     QObject::connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, &app, [&app] {
         app.setPalette(palette());
+        QToolTip::setPalette(palette());
         for (auto* widget : QApplication::allWidgets()) if (widget->isVisible()) widget->update();
     });
 }
@@ -584,7 +586,12 @@ void Style::polish(QWidget* widget) {
             combo->setItemDelegate(new QStyledItemDelegate(combo));
         combo->view()->setProperty("graphiteRowHeight", scaled(32));
     }
-    if (QByteArray(widget->metaObject()->className()) == "QTipLabel") widget->setFont(font(Type::metadata));
+    if (QByteArray(widget->metaObject()->className()) == "QTipLabel") {
+        // Qt seeds a tip's palette from the desktop's tooltip colours, which
+        // need not match the panel PE_PanelTipLabel paints from the tokens.
+        widget->setFont(font(Type::metadata));
+        widget->setPalette(palette());
+    }
     // Type roles: size, weight and colour from the tokens. A role change
     // re-polishes (VisualStyle::role), as does a scheme switch.
     const auto name = role(widget);
