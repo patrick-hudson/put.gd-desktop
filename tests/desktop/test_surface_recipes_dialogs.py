@@ -39,6 +39,7 @@ class FakeContext(Context):
         self.cancel_mutates = False
         self.witness_fails = False
         self.fallback_during_prepare = False
+        self.names_only_accessibility = False
 
     def fixture(self, name):
         if name.startswith('file-dialog-'):
@@ -141,6 +142,8 @@ class FakeContext(Context):
 
     def accessible(self, query):
         self.calls.append(('accessible', query))
+        if self.names_only_accessibility:
+            return [{'name': 'Synthetic chooser', 'role': 'dialog'}]
         return [] if self.no_accessibility else [{'name': query.get('name'), 'text': query.get('text')}]
 
     def keys(self, *sequence):
@@ -235,6 +238,14 @@ class DialogRecipes(unittest.TestCase):
         ctx.fallback_during_prepare = True
         with self.assertRaisesRegex(RecipeBlocked, 'Portal changed backend'):
             dialogs.output_folder_portal(ctx)
+        self.assertFalse(ctx.dialog['open'])
+
+    def test_probe_ignoring_text_query_cannot_false_pass(self):
+        ctx = FakeContext('portal')
+        ctx.names_only_accessibility = True
+        with self.assertRaisesRegex(RecipeBlocked, 'exposes names only') as blocked:
+            dialogs.output_folder_portal(ctx)
+        self.assertEqual(blocked.exception.issue, 671)
         self.assertFalse(ctx.dialog['open'])
 
     def test_independent_file_witness_is_required(self):

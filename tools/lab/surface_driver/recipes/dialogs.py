@@ -105,7 +105,14 @@ def _input(ctx, backend, path, mode, inspect):
     if backend == 'portal':
         # A title-only AT-SPI witness is insufficient: inspect the typed path
         # before Return can navigate, accept, or trigger an overwrite prompt.
-        ctx.wait(lambda: ctx.accessible({'text': path}), 'desktop chooser contains the typed path')
+        def contains_path():
+            nodes = ctx.accessible({'text': path})
+            matches = [node for node in nodes if path in
+                       (node.get('text'), node.get('value'), node.get('name'))]
+            if nodes and not matches and not any('text' in node or 'value' in node for node in nodes):
+                ctx.blocked('AT-SPI probe exposes names only; cannot prove typed chooser path', issue=671)
+            return matches
+        ctx.wait(contains_path, 'desktop chooser contains the typed path')
     ctx.keys('Return')
     if backend == 'portal' and mode == 'folder' and inspect()['open']:
         ctx.keys(*ctx.profile['dialogs']['backends'][backend]['folder_accept_keys'])
