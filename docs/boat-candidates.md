@@ -43,7 +43,7 @@ verification for all SSH/SCP traffic. The private SSH key and agent stay local.
 | Debian 13 DEB | Native production package/audit with KDE helper | Debian 13 |
 | Fedora 44 RPM | Native production package/audit with KDE helper | Fedora 44 |
 | `ui-catalog/` | Ubuntu 26.04 CI dev build, offscreen renderer and surface-map check | Agent surface map |
-| Lab-fixture DEB | Ubuntu 24.04 release preset with `PUTGD_LAB_FIXTURE=ON` | Mint/Ubuntu 24.04 guest drivers requiring `putgd-desktop-fixture` |
+| Lab-fixture DEB and standalone helper | Ubuntu 24.04 release preset with `PUTGD_LAB_FIXTURE=ON` | Mint/Ubuntu 24.04 guest drivers requiring `putgd-desktop-fixture` |
 
 The controller reads the requested commit's `.github/workflows/package.yml`
 and `ci.yml` from Git, takes the native image digests from that matrix and reuses
