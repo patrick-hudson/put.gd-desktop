@@ -37,6 +37,10 @@ class CandidateContracts(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             candidate.parser().parse_args([SHA, '--output', '/tmp/result', '--artifact', 'latest'])
 
+    def test_sha_must_identify_a_commit_object_before_any_worker_is_started(self):
+        with patch.object(candidate, 'run', return_value='tree\n'), self.assertRaises(ValueError):
+            candidate.load_workflows(SHA)
+
     def test_capacity_requires_room_for_entire_fanout(self):
         limits = {'canStart': True, 'maxActiveSandboxes': 100, 'activeSandboxes': 3,
                   'starts': {period: {'remaining': 10} for period in ('minute', 'hour', 'day')}}

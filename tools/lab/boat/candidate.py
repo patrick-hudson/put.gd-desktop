@@ -112,6 +112,8 @@ def check_capacity(limits, workers):
 
 def load_workflows(commit):
     import yaml  # standard distro python3-yaml; no workstation provisioning
+    if run(['git', '-C', str(ROOT), 'cat-file', '-t', commit]).strip() != 'commit':
+        raise ValueError('SHA must identify a commit, not a tree or tag object')
     def read(name):
         return yaml.safe_load(run(['git', '-C', str(ROOT), 'show', f'{commit}:.github/workflows/{name}.yml']))
     return read('package'), read('ci')
@@ -399,6 +401,6 @@ def main(argv=None):
 if __name__ == '__main__':
     try:
         sys.exit(main())
-    except (ValueError, RuntimeError, StopIteration) as error:
+    except (ValueError, RuntimeError, StopIteration, OSError, ImportError) as error:
         print(f'candidate: {error}', file=sys.stderr)
         sys.exit(2)
