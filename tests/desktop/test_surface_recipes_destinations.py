@@ -19,7 +19,7 @@ class FakeContext(Context):
         self.temporary = tempfile.TemporaryDirectory(prefix='sd-')
         self.root = Path(self.temporary.name)
         (self.root / 'putgd').mkdir(mode=0o700)
-        self.profile = {}
+        self.profile = {'destinations': {'accessible_state_contract': 1}}
         self.document = {'profiles': [], 'preferences': {}}
         self.revision = 1
         self.events = []
@@ -291,6 +291,14 @@ class DestinationsContracts(unittest.TestCase):
         self.assertTrue(scripts)
         self.assertTrue(all('Renamed surface destination' not in s for s in scripts))
         self.assertTrue(all('print(json.dumps' in s for s in scripts))
+
+    def test_current_core_accessibility_blocks_without_guessing(self):
+        ctx = self.context()
+        ctx.profile = {}
+        with self.assertRaises(RecipeBlocked) as caught:
+            lane.add_credentials(ctx)
+        self.assertEqual(caught.exception.issue, 666)
+        self.assertFalse(any(e[0] == 'accessible' for e in ctx.events))
 
 
 if __name__ == '__main__':

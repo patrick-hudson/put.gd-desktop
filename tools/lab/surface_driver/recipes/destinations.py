@@ -5,6 +5,8 @@ absolute ``config_path`` and a valid ``profile`` whose S3 endpoint is loopback
 moto. It must start each recipe with a clean private resident. Credential and
 AT-SPI dependent cases explicitly block until their safe fixtures are available.
 No fixture may point at the desktop user's ordinary config or real keyring.
+Without that fixture, field-only cases use an offline loopback profile; they
+never claim a connection test or credential roundtrip.
 """
 from __future__ import annotations
 
@@ -15,11 +17,22 @@ import json
 from pathlib import PurePosixPath
 from urllib.parse import urlsplit
 
-from tools.lab.surface_driver.api import recipe
+from tools.lab.surface_driver.api import RecipeBlocked, recipe
 
 REFERENCE = '04-destinations-s3'
 CORE_ISSUE = 666
-NEEDS = ('destinations',)
+NEEDS = ()
+
+
+def _offline_fixture(ctx):
+    ctx.note('Offline loopback field fixture; no provider connection or credentials are exercised.')
+    return {'private': True, 'config_path': _get(ctx)['metadata']['path'],
+            'profile': {'provider': 's3', 'settings': {
+                'bucket': 'surface-fixture-bucket', 'region': 'us-east-1',
+                'endpoint': 'http://127.0.0.1:5000', 'objectPrefix': '',
+                'storageClass': 'STANDARD', 'aclMode': 'omit', 'publicUrlBase': None,
+                'addressing': 'path', 'connectTimeoutMs': 5000, 'requestTimeoutMs': 60000,
+                'lowSpeedBytesPerSecond': 1, 'lowSpeedTimeSeconds': 30}}}
 
 
 def _result(value):
@@ -34,7 +47,11 @@ def _fixture(ctx):
     try:
         f = ctx.fixture('destinations')
     except KeyError:
-        ctx.blocked('Missing private destinations fixture (#666).', issue=CORE_ISSUE)
+        f = _offline_fixture(ctx)
+    except RecipeBlocked as error:
+        if str(error) != 'unknown fixture: destinations':
+            raise
+        f = _offline_fixture(ctx)
     if not isinstance(f, dict) or f.get('private') is not True:
         ctx.blocked('Need a clean private destinations resident fixture (#666).', issue=CORE_ISSUE)
     path = PurePosixPath(f.get('config_path', ''))
@@ -149,6 +166,8 @@ def _selected(ctx, index):
 
 def _accessible(ctx, control):
     """#666: exact non-secret object lookup; never query a secret field's text."""
+    if ctx.profile.get('destinations', {}).get('accessible_state_contract') != 1:
+        ctx.blocked('Core accessibility exposes names/rects only, not destination control values/states (#666).', issue=CORE_ISSUE)
     rows = ctx.accessible({'window': 'destinations', 'control': control})
     if len(rows) != 1 or not isinstance(rows[0], dict):
         ctx.blocked('Need one current non-secret accessible control: ' + control, issue=CORE_ISSUE)
