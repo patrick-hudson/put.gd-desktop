@@ -1317,8 +1317,10 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     masks_->setMinimumWidth(masks_->fontMetrics().horizontalAdvance(QStringLiteral("88")) + Graphite::Metric::splitZone + 18);
     auto* radius = new BlurRadius(2, 64, 16, true, this);
     strengthControl_ = radius;
-    VisualStyle::role(radius->unitLabel(), "meta");
+    radius->unitLabel()->hide();
     strength_ = radius->spinBox();
+    strength_->setProperty("hasUnit", false);
+    strength_->setSuffix(QStringLiteral(" px"));
     maskStart_ = action("Start here", "Set mask start at playhead", "Start the selected mask at the playhead (Shift+I)");
     maskEnd_ = action("End here", "Set mask end at playhead", "End the selected mask at the playhead (Shift+O)");
     removeMask_ = tool("remove", "Delete mask", "Delete the selected mask (Delete)");
@@ -1591,7 +1593,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // Measure after the compact role applies its font and scaled steppers.
     QStyleOptionSpinBox spin;
     spin.initFrom(strength_); spin.frame = strength_->hasFrame(); spin.buttonSymbols = strength_->buttonSymbols();
-    const QSize value(strength_->fontMetrics().horizontalAdvance(QString::number(strength_->maximum())), strength_->fontMetrics().height());
+    const QSize value(strength_->fontMetrics().horizontalAdvance(QString::number(strength_->maximum()) + strength_->suffix()), strength_->fontMetrics().height());
     strength_->setFixedWidth(strength_->style()->sizeFromContents(QStyle::CT_SpinBox, &spin, value, strength_).width());
     play_->setProperty("graphiteIconBase", QSize(16, 16));
     play_->setIconSize(QSize(Graphite::scaled(16), Graphite::scaled(16)));

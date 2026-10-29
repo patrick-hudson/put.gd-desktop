@@ -2156,7 +2156,9 @@ private slots:
         auto* strength = window.findChild<QSpinBox*>(); QVERIFY(strength);
         QStyleOptionSpinBox spin; spin.initFrom(strength); spin.frame = strength->hasFrame(); spin.buttonSymbols = strength->buttonSymbols();
         const int editWidth = strength->style()->subControlRect(QStyle::CC_SpinBox, &spin, QStyle::SC_SpinBoxEditField, strength).width();
-        const int valueWidth = strength->fontMetrics().horizontalAdvance(QString::number(strength->maximum()));
+        QCOMPARE(strength->suffix(), QString(" px"));
+        QVERIFY(!window.findChild<QLabel*>("blurRadiusUnit")->isVisible());
+        const int valueWidth = strength->fontMetrics().horizontalAdvance(QString::number(strength->maximum()) + strength->suffix());
         report["blurSpin"] = QJsonObject{{"width", strength->width()}, {"height", strength->height()}, {"editWidth", editWidth}, {"valueWidth", valueWidth}};
         const auto output = qEnvironmentVariable("PUTGD_REVIEW_TIER_EVIDENCE");
         if (!output.isEmpty()) { QFile file(QDir(output).filePath(QString("%1-%2.json").arg(canvas.width()).arg(scale))); QVERIFY(file.open(QIODevice::WriteOnly)); file.write(QJsonDocument(report).toJson()); }
