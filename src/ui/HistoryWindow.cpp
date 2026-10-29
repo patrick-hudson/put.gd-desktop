@@ -515,8 +515,8 @@ public:
   int height=rowContentHeight()+heading(i);const auto outer=QRect(0,0,width,height);
   if(compactRow(outer,i)){
    const bool below=actionsBelow(outer,i),failed=i.data(HistoryModel::FailedRole).toBool();const int metaHeight=QFontMetrics(Graphite::font(Graphite::Type::technical)).height();int bottom=compactMetadataTop(outer,i)+metaHeight+(below?0:qMax(0,(actionHeight()-metaHeight)/2));
-   // Room for the actions centred on the detail line, inside the card.
-   if(failed)return {width,qMax(rowContentHeight()+metaHeight+space(Space::xs)+heading(i),compactErrorTop(outer,i)+(metaHeight+actionHeight()+1)/2+3)};
+   // Room for the actions centred on the detail line, inset inside the card.
+   if(failed)return {width,qMax(rowContentHeight()+metaHeight+space(Space::xs)+heading(i),compactErrorTop(outer,i)+(metaHeight+actionHeight()+1)/2+space(Space::xs)+3)};
    height=qMax(rowContentHeight(),bottom-heading(i)+2+(below?actionHeight()+space(Space::m):0))+heading(i);return {width,height};
   }
   if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;HistoryWindow::metadataDocument(metadata,i,inlineTextWidth(outer,i),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
