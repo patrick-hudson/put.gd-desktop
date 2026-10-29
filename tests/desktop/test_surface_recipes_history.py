@@ -374,6 +374,27 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertNotIn('confirmActionButton', [e[1] for e in ctx.events if e[0] == 'click'])
         self.assertEqual(ctx.remote, 'present')
 
+    def test_setup_waits_for_async_query_before_selection_mutation(self):
+        class BusyContext(FakeContext):
+            pending = 0
+
+            def view(self, method, params=None):
+                if method == 'ui.history':
+                    action = params['action']
+                    if self.pending and action in ('closeDetails', 'clearSelection'):
+                        raise RecipeFailed('history_busy')
+                    if action == 'clearFilters':
+                        self.pending = 3
+                return super().view(method, params)
+
+            def state(self):
+                result = super().state()
+                result['busy'] = self.pending > 0
+                self.pending = max(0, self.pending - 1)
+                return result
+
+        history._open(BusyContext())
+
     def test_no_mutation_calls_used_as_input(self):
         ctx = FakeContext()
         with self.assertRaisesRegex(AssertionError, 'instead of input'):

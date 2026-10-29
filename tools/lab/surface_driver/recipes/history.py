@@ -1,7 +1,7 @@
 """History and shared shell recipes; no input, runner or fixture implementation.
 
 Fixture requests (all data is synthetic, private and reset before each recipe):
-* history-row: core SimpleNamespace with id, history_id, operation_id, row.
+* history-row: core descriptor with id, history_id, operation_id, row.
 * launcher: requires ctx.cli to dispatch leading flags to putgd (core request).
 * history_rows: {image: {id, name}, category_counts: {category: count}}. The
   image name uniquely matches one row, backed by a retained PNG/local copy.
@@ -51,6 +51,7 @@ def _frame(ctx, label, reference=LIST, window='history'):
 def _open(ctx):
     ctx.view('ui.show', {'view': 'history'})
     ctx.view('ui.history', {'action': 'clearFilters', 'scope': 'all'})
+    ctx.wait(lambda: not _state(ctx)['busy'], 'cleared History query settles before selection changes')
     ctx.view('ui.history', {'action': 'closePreview'})
     ctx.view('ui.history', {'action': 'closeDetails'})
     ctx.view('ui.history', {'action': 'clearSelection'})
