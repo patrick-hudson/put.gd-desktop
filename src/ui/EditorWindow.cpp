@@ -426,7 +426,7 @@ void EditorWindow::placeDestination(){
  const auto tone=!message_->isHidden()?(message_->property("visualRole")=="error"?Graphite::Banner::Tone::Error:Graphite::Banner::Tone::Info):folderFailed||lastSave_["status"]=="failed"?Graphite::Banner::Tone::Error:lastSave_["status"]=="saved"&&savedGeneration_==doc_.generation()?Graphite::Banner::Tone::Success:Graphite::Banner::Tone::Info;
  saveFeedback_->setTone(tone);
  saveFeedback_->setAccessibleName(!message_->isHidden()?message_->text():folderFailed?folderError_->text():lastSave_["status"]=="failed"?saveError_->accessibleDescription():savedLabel_->text());
- saveFeedback_->dismissButton()->setVisible(feedback);
+ saveFeedback_->dismissButton()->setVisible(feedback||(!message_->isHidden()&&!busy_&&!savingCopy_));
  placeSaveFeedback();
 }
 void EditorWindow::placeTools(){
@@ -472,7 +472,7 @@ void EditorWindow::placeProperties(){
  const int panel=std::clamp(propertiesWidth_,side_->minimumWidth(),side_->maximumWidth());
  splitter_->setSizes({std::max(0,splitter_->width()-splitter_->handleWidth()-panel),panel});
 }
-void EditorWindow::dismissSavedCopy(){saveFeedbackTimer_->stop();if(auto* popup=saveError_->fullTextPopup())popup->close();saveFeedbackVisible_=false;placeDestination();}
+void EditorWindow::dismissSavedCopy(){saveFeedbackTimer_->stop();if(auto* popup=saveError_->fullTextPopup())popup->close();saveFeedbackVisible_=false;if(!busy_&&!savingCopy_)message_->hide();placeDestination();}
 void EditorWindow::resizeEvent(QResizeEvent* event){QWidget::resizeEvent(event);placeTools();placeProperties();placeDestination();}
 bool EditorWindow::eventFilter(QObject* object,QEvent* event){
  if(object==remove_&&(event->type()==QEvent::Enter||event->type()==QEvent::Leave)){const bool hover=event->type()==QEvent::Enter;VisualStyle::role(remove_,hover?"danger":"quiet");remove_->setIcon(VisualStyle::icon("remove",hover?Theme::current().danger:Theme::current().textSecondary));}
