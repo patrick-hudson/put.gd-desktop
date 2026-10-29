@@ -1,0 +1,25 @@
+{
+  "window_titles": {
+    "settings": "^put.gd$",
+    "diagnostics": "^Create diagnostics package$",
+    "about": "^About put.gd$"
+  },
+  "settings": {
+    "prepare_script": "settings_output=$(xrandr --query | awk '/ connected primary / {print $1; exit}')\ntest -n \"$settings_output\" && xrandr --output \"$settings_output\" --mode 1920x1080\nsettings_window=$(xdotool search --onlyvisible --name \"^put.gd$\")\ntest \"$(printf \"%s\\n\" \"$settings_window\" | wc -l)\" -eq 1 && xdotool windowsize \"$settings_window\" 1440 960 windowmove \"$settings_window\" 120 40"
+  },
+  "catalog_windows": {
+    "settings": [
+      "07-settings-general",
+      "08-settings-capture",
+      "06-settings-shortcuts",
+      "05-settings-advanced"
+    ],
+    "diagnostics": [
+      "58-diagnostics-package"
+    ],
+    "about": [
+      "about",
+      "about-build-details"
+    ]
+  }
+}

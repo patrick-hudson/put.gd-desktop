@@ -219,6 +219,9 @@ class Fake(Context):
     def frame(self, label, window=None, reference=None):
         self.frames.append((label, window, reference))
 
+    def use_catalog(self, window, reference):
+        pass
+
     def fixture(self, name):
         if name not in self.fixtures:
             self.blocked('missing fixture: ' + name)
@@ -313,6 +316,14 @@ class Contracts(unittest.TestCase):
         with self.assertRaisesRegex(RecipeBlocked, 'refusing the normal user profile'):
             lane.appearance(ctx)
         self.assertEqual(ctx.inputs, [])
+
+    def test_cinnamon_fragment_keeps_layout_policy_out_of_recipes(self):
+        from tools.lab.surface_driver.profiles import load_profile
+        profile = load_profile('mint-cinnamon-x11')
+        self.assertEqual(profile['window_titles']['diagnostics'], '^Create diagnostics package$')
+        self.assertEqual(profile['catalog_windows']['settings'], list(lane.REFERENCES))
+        self.assertIn('1440 960', profile['settings']['prepare_script'])
+        self.assertNotIn('mint-cinnamon', Path(lane.__file__).read_text())
 
     def test_actual_private_config_guard(self):
         with tempfile.TemporaryDirectory() as directory:

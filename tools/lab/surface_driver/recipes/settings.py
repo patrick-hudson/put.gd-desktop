@@ -78,6 +78,12 @@ def state(ctx):
 def opened(ctx, section):
     persisted(ctx)  # fail closed before any mutation, including resident setup
     result(ctx, ctx.view('ui.show', {'view': 'settings'}))
+    # Native layout preparation is profile data, never a desktop branch in a
+    # recipe. Control rectangles still come only from the catalog.
+    preparation = ctx.profile.get('settings', {}).get('prepare_script')
+    if preparation:
+        ctx.expect(ctx.shell(preparation)['returncode'] == 0, 'profile prepared catalog window geometry')
+    ctx.use_catalog('settings', REFERENCES[section])
     ctx.click('settingsNavigation', window='settings')
     ctx.keys('Home', *('Down',) * section)
     ctx.wait(lambda: state(ctx).get('settings', {}).get('section') == section,
@@ -355,6 +361,7 @@ def package(ctx):
 def open_package(ctx):
     opened(ctx, 3)
     result(ctx, ctx.view('ui.diagnostics', {'action': 'openPackage'}))
+    ctx.use_catalog('diagnostics', '58-diagnostics-package')
     ctx.wait(lambda: package(ctx).get('open') and not package(ctx).get('previewing'), 'diagnostics preview ready')
     ctx.expect(package(ctx)['includeNames'] is False, 'file names excluded on every new dialog')
 
@@ -368,6 +375,7 @@ def package_options(ctx):
     opened(ctx, 3)
     frame(ctx, 'before', 3)
     ctx.click('createDiagnosticsPackage', window='settings')
+    ctx.use_catalog('diagnostics', '58-diagnostics-package')
     ctx.wait(lambda: package(ctx).get('open') and not package(ctx).get('previewing'), 'package opened by real click')
     package_frame(ctx, 'before-options')
     ctx.expect(package(ctx)['includeNames'] is False, 'names initially excluded')
