@@ -21,6 +21,7 @@ import argparse
 import base64
 import datetime as dt
 import fnmatch
+import hashlib
 import html
 import json
 import os
@@ -214,12 +215,15 @@ def summarise(model, entries):
     for item in model['interactions']:
         per_desktop = cells.get(item['id'], {})
         applies = interaction_visual(item)
-        # A desktop that was tested on some package but has no functional result stays untested.
-        functional = aggregate_functional([per_desktop.get(d, {}).get('functional') for d in required])
-        if functional == 'passed' and any(d not in per_desktop for d in required):
+        # A required desktop without a result for a dimension counts as missing for that
+        # dimension, even when it has an entry for the other one.
+        functional_states = [per_desktop.get(d, {}).get('functional') for d in required]
+        functional = aggregate_functional(functional_states)
+        if functional == 'passed' and not all(functional_states):
             functional = 'partial'
-        visual = aggregate_visual([per_desktop.get(d, {}).get('visual') for d in required], applies)
-        if visual == 'reviewed-ok' and any(d not in per_desktop for d in required):
+        visual_states = [per_desktop.get(d, {}).get('visual') for d in required]
+        visual = aggregate_visual(visual_states, applies)
+        if visual == 'reviewed-ok' and not all(visual_states):
             visual = 'frames'
         out[item['id']] = {
             'functional': functional, 'visual': visual,
@@ -342,8 +346,12 @@ def build_page_data(model, entries, catalog, output, embed=False, label=''):
                     image = 'data:image/png;base64,' + base64.b64encode(source.read_bytes()).decode('ascii')
                 else:
                     captures_dir.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(source, captures_dir / source.name)
-                    image = 'captures/' + source.name
+                    # Content-hashed name: a changed capture gets a new URL, so a cached
+                    # old picture never sits under new hotspots.
+                    digest = hashlib.sha256(source.read_bytes()).hexdigest()[:12]
+                    name = '%s.%s.png' % (source.stem, digest)
+                    shutil.copyfile(source, captures_dir / name)
+                    image = 'captures/' + name
         hotspots = []
         for item in items:
             for selector in selectors(item):
@@ -609,9 +617,15 @@ def check(args):
     if args.catalog:
         missing = [s['capture'] for s in model['surfaces'] if s.get('capture')
                    and not (Path(args.catalog) / (s['capture'] + '.png')).exists()]
-        if missing:
+        manifest = Path(args.catalog) / 'manifest.json'
+        platform = json.loads(manifest.read_text(encoding='utf-8')).get('platform') if manifest.exists() else None
+        if missing and platform == 'offscreen':
             print('captures missing from catalog: ' + ', '.join(missing), file=sys.stderr)
             return 1
+        if missing:
+            # Native catalogs (PUTGD_CATALOG_HANDSHAKE) skip offscreen-only synthetic states such
+            # as the tray menus; the map shows those surfaces as placeholders.
+            print('captures not in this %s catalog (placeholders): %s' % (platform or 'unknown', ', '.join(missing)))
         # A control missing from the surface's own capture but present in another
         # state is fine (no hotspot, listed as an action); one found nowhere is drift.
         everywhere = [json.loads(p.read_text(encoding='utf-8')) for p in sorted(Path(args.catalog).glob('*.controls.json'))]

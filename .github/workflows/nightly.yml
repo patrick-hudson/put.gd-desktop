@@ -126,17 +126,39 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      actions: read  # the reused source-CI run's ui-catalog artifact
       id-token: write  # assume the putgd-map-publish role through OIDC
     env:
       TAG: ${{ needs.plan.outputs.tag }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.plan.outputs.tag }}
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - name: Download this run's UI catalog
+        # Absent when the nightly reused verified source CI: the linux job did not run.
+        id: catalog
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ui-catalog
           path: build/ui-catalog
+      - name: Download the reused source-CI provenance
+        if: steps.catalog.outcome != 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: source-ci-provenance
+          path: build/provenance
+      - name: Download the UI catalog from the reused source-CI run
+        if: steps.catalog.outcome != 'success'
+        run: |
+          run_id="$(python3 -c 'import json,sys; p=json.load(open(sys.argv[1]))["producer"]; print(p["runId"] if p else "")' build/provenance/reused-ci.json)"
+          if [ -z "$run_id" ]; then
+            echo "::error::No ui-catalog in this run and no reused source-CI run to take it from."
+            exit 1
+          fi
+          gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --name ui-catalog --dir build/ui-catalog
+          echo "UI catalog taken from reused source-CI run $run_id." >> "$GITHUB_STEP_SUMMARY"
       - name: Render the surface map
         run: |
           python3 tools/lab/surface_map/surface_map.py build --catalog build/ui-catalog \
@@ -157,8 +179,11 @@ jobs:
           MAP_BUCKET: ${{ vars.MAP_BUCKET }}
           MAP_DISTRIBUTION_ID: ${{ vars.MAP_DISTRIBUTION_ID }}
         run: |
-          aws s3 sync build/surface-map/captures "s3://$MAP_BUCKET/captures" --delete \
-            --cache-control "public, max-age=86400"
+          # Capture names carry a content hash, so they are immutable. Upload them before the
+          # page that names them, and keep older ones (no --delete): a page still cached for
+          # five minutes may name them. The set is small and changes only with the UI.
+          aws s3 sync build/surface-map/captures "s3://$MAP_BUCKET/captures" \
+            --cache-control "public, max-age=31536000, immutable"
           for file in index.html 404.html; do
             aws s3 cp "build/surface-map/$file" "s3://$MAP_BUCKET/$file" \
               --cache-control "public, max-age=300" --content-type "text/html; charset=utf-8"

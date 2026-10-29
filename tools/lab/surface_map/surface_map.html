@@ -34,7 +34,8 @@ main{display:grid;grid-template-columns:260px 1fr;gap:16px;padding:16px 18px;ali
 .row .lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row small{color:var(--muted);margin-left:4px}
 .row kbd,.k kbd{font-family:var(--mono);font-size:10.5px;background:var(--card2);border:1px solid var(--border);padding:0 4px;border-radius:3px}
-.d{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.6);flex:none;cursor:pointer}
+.d{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.6);flex:none;cursor:pointer;padding:0;font:inherit;appearance:none}
+button.d:focus-visible,button.h:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .surfaces{display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:14px}
 .shot img{cursor:zoom-in}
 .lb{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:40;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
@@ -43,7 +44,7 @@ main{display:grid;grid-template-columns:260px 1fr;gap:16px;padding:16px 18px;ali
 .shot{position:relative;flex:none;border:1px solid var(--border);border-radius:4px;background:#0c0c0c;overflow:visible}
 .shot img{display:block;border-radius:4px}
 .shot .ph{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-align:center;padding:12px}
-.h{position:absolute;border:2px solid #000;border-radius:50%;width:12px;height:12px;transform:translate(-50%,-50%);box-shadow:0 0 0 1.5px rgba(255,255,255,.7);cursor:pointer}
+.h{position:absolute;padding:0;appearance:none;border:2px solid #000;border-radius:50%;width:12px;height:12px;transform:translate(-50%,-50%);box-shadow:0 0 0 1.5px rgba(255,255,255,.7);cursor:pointer}
 .h.box{border-radius:3px;transform:none;width:auto;height:auto;background:transparent!important;box-shadow:none;border-width:2px}
 .h.box::after{content:"";position:absolute;right:-7px;top:-7px;width:10px;height:10px;border-radius:50%;background:var(--c);border:1.5px solid #000}
 .side{flex:1;min-width:0}
@@ -57,7 +58,7 @@ details summary{cursor:pointer}
 details li{margin:2px 0}
 .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--muted);align-items:center;padding:8px 18px 0}
 .legend .d{cursor:default;margin-right:4px;vertical-align:middle}
-.pop{position:absolute;z-index:30;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:11.5px;min-width:300px;max-width:440px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.pop{position:absolute;z-index:50;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:11.5px;min-width:300px;max-width:440px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .pop h4{margin:0 0 4px;font-size:12.5px}
 .pop .meta{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-bottom:6px;word-break:break-all}
 .pop table{border-collapse:collapse;width:100%}
@@ -106,9 +107,26 @@ function status(i){
  const c = i.desktops[desktop] || {};
  return {f: c.functional || 'untested', v: i.visualApplies ? (c.visual || 'none') : 'n/a'};
 }
+// Interactive marks are buttons, so Tab reaches them and Enter/Space open the popover.
+function markButton(cls, label){
+ const el = document.createElement('button'); el.type = 'button'; el.className = cls;
+ el.setAttribute('aria-label', label); el.title = label; return el;
+}
+// Receipt links come from coverage files. Only http(s) URLs and paths committed to the
+// repository (docs/, tools/, tests/) become links; the published map serves neither lab
+// run directories nor other schemes, so everything else is shown as text.
+const REPO = 'https://github.com/patrick-hudson/put.gd-desktop/blob/';
+function safeHref(r){
+ const v = String(r||'').trim();
+ if(/^https:\/\//i.test(v)) return v;
+ const rel = v.replace(/^\.\//, '');
+ if(/^(docs|tools|tests)\/[A-Za-z0-9._\/-]+$/.test(rel) && !rel.includes('..'))
+  return REPO + encodeURIComponent(/^v[0-9.]+-nightly$/.test(DATA.label || '') ? DATA.label : 'nightly') + '/' + rel;
+ return null;
+}
 function dot(i, cls){
  const s = status(i);
- const el = document.createElement('span');
+ const el = markButton('d', i.label + ' — functional: ' + s.f + ', visual: ' + s.v);
  el.className = 'd ' + (cls||'');
  el.style.background = 'linear-gradient(90deg,' + F[s.f] + ' 50%,' + V[s.v] + ' 50%)';
  el.title = i.label + ' — functional: ' + s.f + ', visual: ' + s.v;
@@ -127,7 +145,7 @@ function popover(i, anchor){
  const rows = DATA.desktops.map(d => {
   const c = i.desktops[d.id] || {};
   const f = c.functional || 'untested', v = i.visualApplies ? (c.visual || 'none') : 'n/a';
-  const receipts = (c.receipts||[]).map(r => '<a href="' + esc(r) + '">' + esc(r.split('/').slice(-2).join('/')) + '</a>').join('<br>');
+  const receipts = (c.receipts||[]).map(r => { const href = safeHref(r), text = esc(String(r).split('/').slice(-2).join('/')); return href === null ? text : '<a href="' + esc(href) + '" rel="noopener noreferrer">' + text + '</a>'; }).join('<br>');
   const issues = (c.issues||[]).map(n => '#' + n).join(' ');
   return '<tr><td>' + esc(d.label) + (d.required===false ? ' <small>(optional)</small>' : '') + '</td>' +
    '<td><span class="d" style="background:' + F[f] + ';cursor:default"></span> ' + esc(f) + '</td>' +
@@ -208,9 +226,9 @@ function surfaceCard(s){
   shot.querySelector('img').addEventListener('click', e => { e.stopPropagation(); lightbox(s); });
   s.hotspots.forEach(h => {
    const i = byId[h.interaction]; if(!i) return; hot[i.id] = true;
-   const st = status(i); const el = document.createElement('span');
+   const st = status(i);
    const [x,y,w,hh] = h.rect; const big = w*scale > 40 && hh*scale > 24;
-   el.className = 'h' + (big ? ' box' : '');
+   const el = markButton('h' + (big ? ' box' : ''), i.label + ' — ' + st.f + ' / ' + st.v);
    el.style.setProperty('--c', F[st.f]);
    if(big){ el.style.left = (x*scale) + 'px'; el.style.top = (y*scale) + 'px'; el.style.width = (w*scale) + 'px'; el.style.height = (hh*scale) + 'px'; el.style.borderColor = F[st.f]; }
    else { el.style.left = ((x + w/2)*scale) + 'px'; el.style.top = ((y + hh/2)*scale) + 'px'; el.style.background = 'linear-gradient(90deg,' + F[st.f] + ' 50%,' + V[st.v] + ' 50%)'; }
@@ -264,7 +282,7 @@ function lightbox(s){
  shot.innerHTML = '<img src="' + esc(s.image) + '" width="' + w + '" height="' + h + '" alt="">';
  s.hotspots.forEach(hs => {
   const i = byId[hs.interaction]; if(!i) return; const st = status(i);
-  const [x,y,cw,ch] = hs.rect; const el = document.createElement('span'); el.className = 'h box';
+  const [x,y,cw,ch] = hs.rect; const el = markButton('h box', i.label + ' — ' + st.f + ' / ' + st.v);
   el.style.left = (x*scale) + 'px'; el.style.top = (y*scale) + 'px'; el.style.width = Math.max(10, cw*scale) + 'px'; el.style.height = Math.max(10, ch*scale) + 'px';
   el.style.borderColor = F[st.f]; el.style.setProperty('--c', V[st.v]); el.title = i.label + ' — ' + st.f + ' / ' + st.v;
   el.addEventListener('click', e => { e.stopPropagation(); popover(i, el); });
@@ -287,7 +305,7 @@ function renderMatrix(main){
    h += '<tr><td title="' + esc(i.id) + '">' + esc(i.label) + (i.keys && i.keys.length ? ' ' + keysHtml(i.keys) : '') + '</td><td>' + esc(i.kind) + '</td><td>' + esc((i.drivers||[]).join(', ') || 'manual') + '</td>';
    ds.forEach(d => {
     const c = i.desktops[d.id] || {}; const f = c.functional || 'untested', v = i.visualApplies ? (c.visual || 'none') : 'n/a';
-    h += '<td class="c" title="functional ' + esc(f) + '"><span class="d" data-i="' + esc(i.id) + '" style="background:' + F[f] + '"></span></td><td class="c" title="visual ' + esc(v) + '"><span class="d" data-i="' + esc(i.id) + '" style="background:' + V[v] + '"></span></td>';
+    h += '<td class="c"><button type="button" class="d" aria-label="' + esc(i.label + ' on ' + d.label + ': functional ' + f) + '" title="functional ' + esc(f) + '" data-i="' + esc(i.id) + '" style="background:' + F[f] + '"></button></td><td class="c"><button type="button" class="d" aria-label="' + esc(i.label + ' on ' + d.label + ': visual ' + v) + '" title="visual ' + esc(v) + '" data-i="' + esc(i.id) + '" style="background:' + V[v] + '"></button></td>';
    });
    h += '</tr>';
   });

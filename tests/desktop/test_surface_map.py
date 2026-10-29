@@ -167,6 +167,15 @@ class Aggregation(unittest.TestCase):
         entries.append(self.entry('editor.undo', self.required[0], functional='passed', at='2099-01-02T00:00:00Z'))
         self.assertEqual(surface_map.summarise(self.model, entries)['editor.undo']['functional'], 'passed')
 
+    def test_a_desktop_with_only_one_dimension_is_missing_the_other(self):
+        entries = [self.entry('editor.undo', self.required[0], functional='passed', visual='reviewed-ok')]
+        entries += [self.entry('editor.undo', d, visual='reviewed-ok') for d in self.required[1:]]
+        summary = surface_map.summarise(self.model, entries)['editor.undo']
+        self.assertEqual((summary['functional'], summary['visual']), ('partial', 'reviewed-ok'))
+        entries = [self.entry('editor.undo', d, functional='passed') for d in self.required]
+        entries.append(self.entry('editor.undo', self.required[0], visual='reviewed-ok'))
+        self.assertEqual(surface_map.summarise(self.model, entries)['editor.undo']['visual'], 'frames')
+
     def test_optional_desktops_do_not_gate(self):
         optional = [d['id'] for d in self.model['desktops'] if not d.get('required', True)]
         self.assertTrue(optional)
