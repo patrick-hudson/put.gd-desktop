@@ -234,7 +234,10 @@ bool captureTrayMenus(const QString& output,QJsonArray& captures){
  auto* menu=tray->contextMenu();
  controller.setUpdateStatus({{"channel","stable"},{"result",QJsonObject{{"updateAvailable",true},{"latest","26.1029.9999"}}}});
  auto shot=[&](QMenu& root,const QString& name){
-  root.show();root.adjustSize();putgd::test::settle(40);
+  // QWidget::adjustSize caps top-level windows to two thirds of the offscreen
+  // screen. Size to the real menu's hint so the taller upload state keeps every
+  // row in the reference instead of cropping its About/Quit group.
+  root.ensurePolished();root.resize(root.sizeHint());root.show();putgd::test::settle(40);
   // Unlike the general widget inventory, a menu inventory contains exactly its
   // visible rows, including separators and QWidgetAction output labels. Hidden
   // conditional actions have no click target; child QLabel geometry is not a row.
