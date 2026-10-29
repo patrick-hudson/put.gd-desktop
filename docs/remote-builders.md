@@ -1,6 +1,6 @@
 # Preferred build and graphical test servers
 
-Patrick's four physical Linux servers are the preferred project build, VM and
+Patrick's five physical Linux servers are the preferred project build, VM and
 acceptance hosts. Choose a host by required tools/profile and available
 capacity; use workstation-local VMs when the servers are unavailable or cannot
 run the required profile. Record the reason for each fallback. Work under
@@ -12,8 +12,9 @@ run the required profile. Record the reason for each fallback. Work under
 | Debian 13 | `patrick@192.168.68.69` | KDE Plasma on Wayland | `127.0.0.1:5979` | `putgd-debian-vnc.service` |
 | Kubuntu 26.04.1 LTS | `patrick@192.168.68.72` | KDE Plasma 6.6.6 on Wayland (default since 2026-10-20; X11 session on request) | `127.0.0.1:5972` | `putgd-kubuntu-vnc.service` |
 | Linux Mint 22.3 | `patrick@192.168.68.74` | Cinnamon 6.6.4 on X11 | `127.0.0.1:5974` | `putgd-mint-vnc.service` |
+| Aurora Fedora 45 (`aurora-amd`) | `patrick@192.168.68.71` | Plasma 6.7.5 on Wayland | `127.0.0.1:5976` | `putgd-aurora-vnc.service` |
 
-The user authorizes full root access on these four machines through passwordless
+The user authorizes full root access on these five machines through passwordless
 sudo: install normal distro dependencies, configure build tools, compile and run
 tests using `sudo -n COMMAND` (or `sudo -n -i`). `sudo -n id -u` must report `0`.
 Do not apply this remote authorization to the workstation or unrelated machines.
@@ -29,8 +30,9 @@ appropriate physical machine. Provision missing profiles and record local fallba
 ## Graphical acceptance on the physical desktops
 
 The build servers themselves are authorized graphical acceptance targets. Build,
-install and run the candidate directly in Fedora's existing GNOME/Wayland session,
-Debian's Plasma/Wayland session or Kubuntu's Plasma/X11 session. Use the
+install and run the candidate directly in Fedora's GNOME/Wayland session,
+Debian's or Aurora's Plasma/Wayland session, Kubuntu's selected Plasma session,
+or Mint's Cinnamon/X11 session. Use the
 corresponding physical-host tile on the workstation wall, preserve the user's
 other windows/projects, and save screenshots or recordings of the actual app
 behavior and failures.
@@ -43,7 +45,7 @@ VM for other required guest profiles. Preserve the release matrix's exact versio
 
 ## Pinned SSH access
 
-Connect from the main workstation on the LAN. All four hosts accept
+Connect from the main workstation on the LAN. All five hosts accept
 `/home/patrick/.ssh/awskey_110724`. Keep that private key on the workstation:
 never copy it into a server, VM, source export, image or evidence packet. Use
 the existing host pins; do not replace them or disable host-key verification.
@@ -72,17 +74,107 @@ ssh -i /home/patrick/.ssh/awskey_110724 -o IdentitiesOnly=yes \
   -o StrictHostKeyChecking=yes \
   -o UserKnownHostsFile=/home/patrick/work/put.gd/work/remote-builders/m74/known_hosts \
   patrick@192.168.68.74
+
+# Aurora Fedora 45
+ssh -i /home/patrick/.ssh/awskey_110724 -o IdentitiesOnly=yes \
+  -o StrictHostKeyChecking=yes \
+  -o UserKnownHostsFile=/home/patrick/work/put.gd/work/remote-builders/aurora-amd/known_hosts \
+  patrick@192.168.68.71
 ```
 
 For unattended commands, also use `-o BatchMode=yes` and a bounded connection
 timeout. A missing pin or mismatch requires verified identity recovery, not
 trust-on-first-use. Local bootstrap notes and tunnel units live privately under
-`work/remote-builders/f44/`, `work/remote-builders/d69/`, `work/remote-builders/k72/` and
-`work/remote-builders/m74/`.
+`work/remote-builders/f44/`, `work/remote-builders/d69/`,
+`work/remote-builders/k72/`, `work/remote-builders/m74/` and
+`work/remote-builders/aurora-amd/`. The `.71`
+address previously belonged to a Windows builder; use the Aurora pin directory
+for this host and preserve the historical Windows records.
+
+## Aurora AMD Fedora 45 builder
+
+`aurora-amd` (`192.168.68.71`) is a preferred build and native Plasma/Wayland
+test host. Its 2026-10-29 bootstrap ran Aurora `testing-45.20261029.1` on an AMD
+Ryzen 5 PRO 8500GE / Radeon 740M, with 16 GB RAM and a 512 GB NVMe drive.
+The native session used Plasma/KWin 6.7.5 and distro Qt 6.11.2.
+
+### Build commands
+
+Development packages live in the official Fedora 45 Toolbx `putgd-build`.
+Use the installed wrapper on Aurora:
+
+```sh
+~/.local/bin/putgd-build-env cmake --preset dev
+~/.local/bin/putgd-build-env cmake --build --preset dev
+~/.local/bin/putgd-build-env ctest --preset dev
+```
+
+With no arguments, `putgd-build-env` opens a shell in that container. The wrapper
+selects `/var/home/patrick/work/put.gd`, the canonical path to the prepared
+checkout, clears the live graphical session variables for CTest and checks the
+test socket paths under a new short private `TMPDIR`. For an isolated checkout,
+enter the same container and configure from that checkout's canonical path with
+its matching pinned SDK prefix. Exact source/build identity rules still apply.
+The `/home/patrick` alias resolves to `/var/home/patrick`; configuring through the
+alias caused build-tree S3 and Proton helper lookup to miss their exact directory
+match during bootstrap.
+
+The prepared environment has Fedora GCC 16.2.1, CMake, Ninja, Qt 6.11.2 development
+packages, QtKeychain 0.17.0, the pinned official AWS SDK 1.11.907 and the bundled
+Proton runtime. Qt stays dynamically linked to distro libraries. Fedora's
+`openssl3-devel` / `openssl3-libs` 3.5.8 compatibility packages support this SDK;
+the OpenSSL 4 dependency update is tracked in
+[#646](https://github.com/patrick-hudson/put.gd-desktop/issues/646). The container
+also has the GStreamer media plugins and Cisco OpenH264 needed by recording
+contracts. Native `openssl3-libs` was added persistently with `rpm-ostree` and
+applied live.
+
+The host is image-based: use DNF inside Toolbx for development packages and
+review `rpm-ostree` transactions for native runtime/package additions. Native
+GUI checks use the physical Plasma/Wayland session and its wall tile. Run the
+capacity/KVM/display preflight and provision the required guest before VM work;
+the bootstrap evidence does not establish VM or release-matrix acceptance.
+
+### Proton, credentials and setup evidence
+
+Patrick signed in independently on this builder. Its existing lab session uses
+reference `putgd/proton/lab-aurora-amd` and the native KWallet Secret Service
+collection `putgd lab`. Use its installed host adapter:
+
+```sh
+~/.local/bin/putgd-proton-lab status
+~/.local/bin/putgd-proton-lab check --session ID --owner NAME
+```
+
+The adapter in `~/.local/libexec/putgd-proton/aurora_lab.py` selects canonical
+profile and broker paths under `/var/home/patrick/putgd-lab/` and adds the native
+KDE session variables for GUI work. Its registry is
+`~/putgd-lab/locks/proton-registry.json`. The weekly
+`putgd-proton-keepalive.timer` is enabled. Take `aurora-amd`'s Proton lock for
+session use and its desktop lock for GUI work, using the same commands as the
+other builders. KWallet 6.31's Secret Service split requires the prepared
+collection; the legacy bootstrap compatibility fix is tracked in
+[#647](https://github.com/patrick-hudson/put.gd-desktop/issues/647).
+
+The authorized test credential file is `~/Documents/creds.txt`, owned by
+`patrick`, mode `0600`, outside the source checkout. Read it only in memory for
+authorized live tests; keep its contents out of logs, diagnostics and exports.
+
+The bootstrap built clean source `9dac325035a28f0f7b00281b4e759ddc3f337b2f`
+(`26.1029.2263-dev+g9dac325035a2`) with **113/113 CTest suites passing**. These are
+offscreen/Xvfb contracts. A fresh native lab resident then passed the Proton
+account/folder check against a new isolated folder; its own Destinations window
+was saved as a cropped visual. This proves the native Proton setup only.
+Private records, failed attempts and exact identities remain on Aurora in
+`~/work/bootstrap-aurora-20261029/` and on the workstation in
+`work/remote-builders/aurora-amd/bootstrap/`. The installed lab app's current
+prefix is recorded in the registry; use a matching current build for later
+acceptance. Display scaling is 100%, and sleep/suspend/hibernate targets remain
+masked. The wall and both stats dashboards already include this host.
 
 ## Visual results are required
 
-All three physical desktops appear at [the display wall](http://127.0.0.1:8765/).
+All five physical desktops appear at [the display wall](http://127.0.0.1:8765/).
 Tiles start view-only; select **Enable KB + Mouse** to interact, then return to
 view-only when finished. VNC has no password and must remain restricted to
 loopback, reached through authenticated SSH tunnels. Never expose it to the LAN.
@@ -90,7 +182,8 @@ The services in the inventory table run on the workstation. Inspect/recover the
 existing service before starting a duplicate tunnel or taking its port.
 
 Each tile's VNC server runs in the host's desktop session as user `patrick`
-(found on the hosts on 2026-10-19; none of it is in this repository):
+(original hosts inspected on 2026-10-19, Aurora added on 2026-10-29; the units
+live on the hosts):
 
 | Host | Server | Unit | Listens |
 | --- | --- | --- | --- |
@@ -99,6 +192,7 @@ Each tile's VNC server runs in the host's desktop session as user `patrick`
 | k72 Plasma X11 | `X0tigervnc` (Ubuntu's `tigervnc-scraping-server` 1.15) on the X display | user `patrick-vnc.service`, started by the `patrick-vnc` autostart entry only in an X11 session | `127.0.0.1:5900` |
 | m74 Cinnamon X11 (added 2026-10-20) | `X0tigervnc` (Mint's `tigervnc-scraping-server`) on the physical `:0` display | user `putgd-native-vnc.service` | `127.0.0.1:5900` |
 | k72 Plasma Wayland (added 2026-10-20, #87; default session) | `/usr/local/bin/w0vncserver`, TigerVNC `v1.16.2` (`b555312d`) built in `~/work/bootstrap-w0vnc` like d69's | user `w0vncserver.service` (Wayland + KDE only, `WantedBy=plasma-workspace-wayland.target`), run under `systemd-inhibit --what=idle:sleep --mode=block` by the `10-inhibit-sleep.conf` drop-in; `wall-vnc-watchdog.service` restarts it when its stream stops | `127.0.0.1:5900` |
+| aurora-amd Plasma Wayland | `/usr/local/bin/w0vncserver`, from Fedora 45 TigerVNC 1.16.2 | user `app-org.tigervnc.w0vncserver.service` under an idle/sleep inhibitor; `aurora-wall-watchdog.service` restarts it if the stream stalls | `127.0.0.1:5900` |
 
 Every lab desktop must stay awake: the wall VNC unit (or a sibling) holds a
 `systemd-inhibit --what=idle:sleep --mode=block` inhibitor. On 2026-10-20 k72's new
@@ -253,8 +347,10 @@ waiting for the lock, over a probe process left behind by a finished test.
 ### Shared and exclusive resources
 
 - **The physical desktops are exclusive.** f44 (Fedora 44 GNOME Wayland, `.70`),
-  d69 (Debian 13 Plasma Wayland, `.69`), k72 (Kubuntu 26.04 Plasma Wayland, `.72`) and
-  m74 (Linux Mint 22.3 Cinnamon X11, `.74`) each serve one session at a time, under a lock from `tools/lab/desktop_lock.py`.
+  d69 (Debian 13 Plasma Wayland, `.69`), k72 (Kubuntu 26.04 Plasma Wayland, `.72`),
+  m74 (Linux Mint 22.3 Cinnamon X11, `.74`) and aurora-amd (Aurora Fedora 45
+  Plasma Wayland, `.71`) each serve one session at a time, under a lock from
+  `tools/lab/desktop_lock.py`.
   You need the lock for anything that runs in the desktop session, draws on it,
   sends it input, captures or records it, or logs it out. That includes installing
   a package, extension or desktop entry the session loads.
@@ -494,7 +590,8 @@ lab desktop needs the same treatment.
 ## Proton sessions on the builders
 
 Each builder holds one put.gd Proton Drive session for the test account
-phudson2@gmail.com, signed in once by Patrick on 2026-10-23. Use it for live Proton
+phudson2@gmail.com, signed in once by Patrick: the original four on 2026-10-23
+and Aurora on 2026-10-29. Use it for live Proton
 tests on the builder or in its VMs. The tools, commands and recovery steps are in
 [Proton Drive: lab sessions](proton-drive.md#lab-sessions-on-the-builders); the
 evidence is in [the 2026-10-23 lab sessions](evidence/2026-10-23-proton-lab-sessions/README.md).
@@ -505,6 +602,7 @@ evidence is in [the 2026-10-23 lab sessions](evidence/2026-10-23-proton-lab-sess
 | d69 | `putgd/proton/lab-d69` | gnome-keyring `putgd lab` | extracted debian13 .deb (#518) | Cinnamon, GNOME and KDE goldens |
 | k72 | `putgd/proton/lab-k72` | KWallet `putgdlab` | extracted ubuntu26.04 .deb (#518) | none (no goldens) |
 | m74 | `putgd/proton/lab-m74` | gnome-keyring `putgd lab` | extracted AppImage | none (no goldens) |
+| aurora-amd | `putgd/proton/lab-aurora-amd` | KWallet `putgd lab` | installed native source build; use `putgd-proton-lab` | provision guest bridge and goldens first |
 
 - **The Proton lock.** Take `desktop_lock.py acquire HOST --resource proton` before
   using a builder's session in any way: its lab app, a check, or lending it to a VM.
@@ -515,9 +613,11 @@ evidence is in [the 2026-10-23 lab sessions](evidence/2026-10-23-proton-lab-sess
   for example for a new sign-in) also needs the desktop lock. Restore the browser
   handler afterwards: d69 and k72 send https to the ChatGPT app, so sign-ins there
   need Firefox set temporarily, with `mimeapps.list` backed up and restored byte for byte.
-- **Keyrings.** The blank-password lab keyring is the default on every builder, so
-  sessions survive reboots and re-logins under autologin. That was proven on all four:
-  a reboot on k72, display-manager re-logins elsewhere.
+- **Keyrings.** The blank-password lab keyring is the default on every builder.
+  Reboot/re-login persistence under autologin was proven on the original four:
+  a reboot on k72, display-manager re-logins elsewhere. Aurora's initial
+  verification covers a new resident reading the persisted session; its setup
+  record is in the [Aurora section](#aurora-amd-fedora-45-builder).
 - **VM guest keys and pins.** These are needed for the Proton-lending goldens:
   - On d69, the Ubuntu-based goldens accept `lab-bootstrap-d69/rec-ws/identity`. The
     plain `identity` times out at boot.

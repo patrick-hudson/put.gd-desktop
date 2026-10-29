@@ -6,20 +6,27 @@ Use standard system development packages; ask the user to install missing packag
 when administrator authentication is required. Do not assemble a substitute toolchain.
 
 Prefer Patrick's Fedora 44 (`192.168.68.70`), Debian 13 (`192.168.68.69`),
-Kubuntu 26.04 (`192.168.68.72`) and Linux Mint 22.3 (`192.168.68.74`) physical
-build/test servers for builds, VM hosting and graphical acceptance.
+Kubuntu 26.04 (`192.168.68.72`), Linux Mint 22.3 (`192.168.68.74`) and
+Aurora Fedora 45 (`192.168.68.71`, lock host `aurora-amd`) physical build/test
+servers for builds, VM hosting and graphical acceptance.
 Their existing GNOME, Plasma and Cinnamon sessions are graphical acceptance targets too:
 run and verify the app directly on the appropriate physical desktop, visible on
 its host wall tile, with saved visuals and exact host/session/source/build identities.
 Use local workstation VMs as a fallback when those hosts cannot run the required
 profile; record the reason. Connection pins, host selection, visual evidence and
-golden-image transfer rules are in `docs/remote-builders.md`. On these four servers,
+golden-image transfer rules are in `docs/remote-builders.md`. On these five servers,
 the user authorizes dependency/tool setup and testing with passwordless
 `sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
 on the workstation. Verify host capacity, KVM and display access before VM runs;
 host preference does not change the required guest versions.
 
-The four physical desktops serve one session at a time. Before any GUI work on
+Aurora uses the Fedora 45 Toolbx `putgd-build`: build with
+`~/.local/bin/putgd-build-env` from the canonical `/var/home/patrick/work/put.gd`
+checkout. Its native Plasma Wayland session is the graphical target. Use
+`~/.local/bin/putgd-proton-lab` for its existing Proton lab session; the Atomic
+home and KWallet details are in `docs/remote-builders.md`.
+
+The five physical desktops serve one session at a time. Before any GUI work on
 one, take its lock with `python3 tools/lab/desktop_lock.py acquire`, heartbeat it,
 and release it only after its cleanup check passes. Never wait for another
 session's reply while holding a lock: notify with a deadline, and silence means go.
