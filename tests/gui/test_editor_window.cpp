@@ -828,6 +828,8 @@ private slots:
   add(doc,{{"kind","blur"},{"rect",QJsonArray{10,10,50,20}},{"strength",24}});window.documentEdited();window.canvas().select(doc.shapes().last().id);const auto original=doc.shapes().last();
   auto* warning=window.findChild<QLabel*>("editorToolWarning");auto* redact=window.findChild<QToolButton*>("useRedact");QVERIFY(warning&&warning->isVisible());QVERIFY(redact&&redact->isVisible());
   QCOMPARE(warning->text(),Graphite::blurWarningText());
+  // The review's Use Redact converts a blur; this one only picks the tool, and says so.
+  QCOMPARE(redact->text(),QString("Choose Redact tool"));QVERIFY(redact->toolTip().contains("Existing blur marks are unchanged."));QVERIFY(redact->accessibleDescription().contains("Existing blur marks are unchanged."));
   redact->click();QCOMPARE(window.canvas().tool(),Tool::Redact);QCOMPARE(doc.shapes().last(),original);QVERIFY(!warning->isVisible());
   QString code,message;window.viewCommand({{"action","tool"},{"tool","blur"}},code,message);QVERIFY(code.isEmpty());QVERIFY(warning->isVisible());
   window.viewCommand({{"action","tool"},{"tool","redact"}},code,message);QVERIFY(code.isEmpty());QCOMPARE(window.canvas().tool(),Tool::Redact);QCOMPARE(doc.shapes().last(),original);QVERIFY(!warning->isVisible());

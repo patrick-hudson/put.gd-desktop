@@ -2065,9 +2065,11 @@ QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
     auto* text = warningLabel(blurWarningText(), warning);
     text->setObjectName("blurWarningText");
     layout->addWidget(text);
-    auto* action = toolButton("Use Redact", {}, "textAction", warning);
+    // It switches tools; unlike the review's Use Redact it converts nothing.
+    auto* action = toolButton("Choose Redact tool", {}, "textAction", warning);
     action->setObjectName("useRedact");
-    action->setAccessibleDescription(QStringLiteral("Blur may be reversible. Use Redact for private information."));
+    action->setToolTip(QStringLiteral("Existing blur marks are unchanged."));
+    action->setAccessibleDescription(QStringLiteral("Blur may be reversible. Choose Redact tool for private information. Existing blur marks are unchanged."));
     action->setProperty("graphiteFlush", true);
     auto* actions = new QHBoxLayout;
     actions->setContentsMargins(text->contentsMargins().left(), 0, 0, 0);
