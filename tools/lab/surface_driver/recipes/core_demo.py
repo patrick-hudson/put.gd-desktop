@@ -3,7 +3,7 @@ from tools.lab.surface_driver.api import recipe
 
 
 def opened(ctx):
-    result=ctx.call('editor.open',{'source':'desktop'})
+    result=ctx.call('editor.open',{'source':'file','path':ctx.fixture('image')['path']})
     identity=result['operationId']
     def ready():
         reply=ctx.cli('editor.inspect','{"id":"'+identity+'"}')

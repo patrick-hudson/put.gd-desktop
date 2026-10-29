@@ -5,10 +5,19 @@ from pathlib import Path
 import re
 import shlex
 import time
-from types import SimpleNamespace
+from tools.lab import lab
 from .api import Context, Frame, RecipeBlocked, RecipeFailed
 from .catalog import Catalog, compare, control_point, image_modules
 from .target import qcodes
+
+
+class Fixture(dict):
+    """Descriptors support both the contract's attributes and mapping recipes."""
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError as error:
+            raise AttributeError(name) from error
 
 
 class DriverContext(Context):
@@ -36,15 +45,23 @@ class DriverContext(Context):
 
     def call(self, method, params=None):
         self._check_time()
-        response = self.cli(method,json.dumps(params or {}))
-        try:
-            envelope = json.loads(response['stdout'])
-        except ValueError as error:
-            raise RecipeBlocked('production CLI returned no JSON envelope') from error
-        if not envelope.get('ok'):
-            code = envelope.get('error',{}).get('code','unknown')
+        deadline=min(self._deadline,time.monotonic()+15)
+        while True:
+            response=self.cli(method,json.dumps(params or {}))
+            try:
+                envelope=json.loads(response['stdout'])
+            except ValueError as error:
+                raise RecipeBlocked('production CLI returned no JSON envelope') from error
+            if envelope.get('ok'):
+                return envelope['result']
+            code=envelope.get('error',{}).get('code','unknown')
+            # Startup acknowledgement precedes helper construction. Retry only
+            # observational commands, never a mutation whose effect is uncertain.
+            observational=method.endswith('.inspect') or method in ('ui.viewState','history.list')
+            if observational and code in ('editor_starting','initializing') and time.monotonic()<deadline:
+                time.sleep(.2)
+                continue
             raise RecipeFailed('resident '+method+': '+code)
-        return envelope['result']
 
     def view(self, method, params=None):
         params = dict(params or {})
@@ -250,22 +267,28 @@ asyncio.run(main())
     def fixture(self,name):
         if name in self._fixtures:
             return self._fixtures[name]
+        if name == 'image':
+            import base64, io
+            Image,_,_=image_modules()
+            image=Image.new('RGB',(640,320))
+            for i,color in enumerate(lab.FIXTURE_RGB):
+                x,y=(i%2)*320,(i//2)*160
+                image.paste(color,(x,y,x+320,y+160))
+            stream=io.BytesIO();image.save(stream,format='PNG')
+            path=self.target.root+'/files/synthetic.png'
+            result=self.shell("python3 - <<'SD_FIXTURE'\nimport base64\nfrom pathlib import Path\nPath("+repr(path)+").write_bytes(base64.b64decode("+repr(base64.b64encode(stream.getvalue()).decode())+"))\nSD_FIXTURE\n")
+            if result['returncode']:
+                raise RecipeBlocked('cannot write synthetic image on target')
+            value=Fixture(path=path,width=640,height=320)
+            self._fixtures[name]=value
+            return value
         if name in ('upload','history','history-row'):
             if self.destination != 'local':
                 raise RecipeBlocked('remote upload fixture requires the live lane isolated destination/credential bridge; core never provisions credentials')
             settings = self.call('settings.get')
             self.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
                                        'patch':{'archive':{'root':self.target.root+'/files'},'actions':{'desktop':{'destination':'local','profileId':None}}}})
-            # Synthetic pixels go through the production editor/import pipeline;
-            # no desktop content is captured to manufacture a history fixture.
-            import base64, io
-            Image,_,_=image_modules()
-            image=Image.new('RGB',(640,320),'#336699')
-            stream=io.BytesIO();image.save(stream,format='PNG')
-            path=self.target.root+'/files/synthetic.png'
-            result=self.shell("python3 - <<'SD_FIXTURE'\nimport base64\nfrom pathlib import Path\nPath("+repr(path)+").write_bytes(base64.b64decode("+repr(base64.b64encode(stream.getvalue()).decode())+"))\nSD_FIXTURE\n")
-            if result['returncode']:
-                raise RecipeBlocked('cannot write synthetic image on target')
+            path=self.fixture('image')['path']
             settings=self.call('settings.get')
             self.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
                                        'patch':{'actions':{'edit':{'destination':'local','profileId':None}}}})
@@ -281,7 +304,7 @@ asyncio.run(main())
             row = next((r for r in rows if r.get('operationId')==operation),None)
             if not row:
                 raise RecipeBlocked('resident completed fixture but did not expose its history row')
-            value = SimpleNamespace(id=row['id'],history_id=row['id'],operation_id=operation,
+            value = Fixture(id=row['id'],history_id=row['id'],operation_id=operation,
                                     link=row.get('link',''),path=row.get('local',{}).get('path'),state=state,row=row)
             self._fixtures[name] = value
             return value
@@ -298,7 +321,7 @@ asyncio.run(main())
             self.call('recording.start',{'id':rid}); time.sleep(1)
             self.call('recording.stop',{'id':rid})
             self.wait(lambda:self.call('recording.inspect',{'id':rid}).get('state')=='reviewing','recording fixture review',45)
-            value = SimpleNamespace(id=rid,recording_id=rid)
+            value = Fixture(id=rid,recording_id=rid)
             self._fixtures[name] = value
             return value
         raise RecipeBlocked('unknown fixture: '+name)

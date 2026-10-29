@@ -178,6 +178,12 @@ def main(argv=None):
         return 0 if all(r.functional=='passed' for r in rows) else 1
     except (RecipeBlocked,ValueError,FileNotFoundError) as error:
         environment['blocked']=str(error)
+        if target:
+            try:
+                target.screenshot(args.out/'startup-failed.png')
+                environment['failure_frames']=['startup-failed.png']
+            except Exception:
+                environment['failure_frames_unavailable']=True
         if not rows:
             rows=[ReceiptRow(i,args.desktop,args.package,'blocked',receipt=str(args.out/'receipt.json'),
                   note=str(error),host=args.host,placement=args.placement,guest=args.guest,

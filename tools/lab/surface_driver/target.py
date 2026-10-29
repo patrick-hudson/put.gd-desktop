@@ -103,6 +103,9 @@ class Target:
             raise RecipeBlocked('target session command unavailable: ' + type(error).__name__) from error
 
     def start(self):
+        available=self.execute('command -v putgd >/dev/null && command -v putgd-cli >/dev/null')
+        if available['returncode']:
+            raise RecipeBlocked('putgd and putgd-cli must be installed before the surface run')
         result = self.execute('test ! -e '+shlex.quote(self.root)+' && mkdir -m 700 '+shlex.quote(self.root)+' && mkdir -m 700 '+
                               ' '.join(shlex.quote(self.root+'/'+s) for s in ('runtime','config','data','cache','state','files')))
         if result['returncode']:
