@@ -50,9 +50,11 @@
 #include <QTabWidget>
 #include <QToolButton>
 #include <QElapsedTimer>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QTest>
 #include <atomic>
+#include <optional>
 #include <thread>
 #include <QScopeGuard>
 #include <QAbstractButton>
@@ -161,6 +163,22 @@ struct Native {
  }
 };
 bool waitUntil(const std::function<bool()>& condition){return putgd::test::waitFor(condition,8000);}
+// The synthetic data folders. Their paths show in Settings, so reference
+// renders (tools/ci/check_catalog_references.py) name a fixed, empty parent in
+// PUTGD_CATALOG_DATA_DIR; otherwise each is a new temporary directory.
+class DataDir {
+public:
+ explicit DataDir(const QString& name){
+  const auto root=qEnvironmentVariable("PUTGD_CATALOG_DATA_DIR");
+  if(root.isEmpty()){temp_.emplace("/tmp/"+name+"-XXXXXX");if(temp_->isValid())path_=temp_->path();return;}
+  const auto path=QDir(root).filePath(name);if(QDir().mkpath(path)&&QDir(path).isEmpty())path_=path;
+ }
+ bool isValid()const{return !path_.isEmpty();}
+ QString path()const{return path_;}
+ QString filePath(const QString& name)const{return QDir(path_).filePath(name);}
+private:
+ std::optional<QTemporaryDir> temp_;QString path_;
+};
 QImage iconSpecimen(){
  const auto& theme=Theme::current();const auto& tints=Theme::trayTints(Theme::scheme()==Theme::Scheme::Light);
  const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
@@ -268,7 +286,7 @@ int main(int argc,char** argv){
    for(int n=0;n<labels.size();++n){const auto icon=Ui::icon("tray",tints.idle,n>=4?-2:n==3?50:-1,n==1||n==3||n==5?1:n==2||n==6?2:0);painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,20,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
   }painter.end();if(!states.save(QDir(output).filePath("settings-tray-states.png")))return 2;
  }
- QTemporaryDir data("/tmp/pgr-XXXXXX");if(!data.isValid())return 2;const auto config=catalogConfig(data.path());SettingsService settings(data.filePath("synthetic-config.json"),[](const QString&,const QJsonObject&){return Error{};});if(!settings.save(config,{})){qCritical("Cannot write synthetic catalog configuration");return 2;}
+ DataDir data("pgr");if(!data.isValid())return 2;const auto config=catalogConfig(data.path());SettingsService settings(data.filePath("synthetic-config.json"),[](const QString&,const QJsonObject&){return Error{};});if(!settings.save(config,{})){qCritical("Cannot write synthetic catalog configuration");return 2;}
  // No production provider or capture action is used. Credentials below are
  // synthetic and stored only in the fixture session, never the OS keychain.
  ProviderRegistry registry;Source source;OperationService operations(data.filePath("data"),settings,registry,source);if(!waitUntil([&]{return operations.ready();})){qCritical("Synthetic resident did not initialize");return 2;}
@@ -394,7 +412,8 @@ int main(int argc,char** argv){
   for(const auto& state:QStringList{"present","removed","local_only"}){
    const auto operationId="synthetic-missing-copy-"+state;const auto rows=model->rowCount();
    {HistoryStore ledger(operations.databasePath());Error error;auto op=ledger.operation("synthetic-history-kind-1",&error);if(error)return 2;op.id=operationId;op.created=now.addSecs(rows).toString(Qt::ISODateWithMs);op.items[0].artifact.id=operationId+"-file";op.items[0].remoteStatus=state=="local_only"?"not_requested":state;op.items[0].uploadStatus=state=="local_only"?"local_only":"uploaded";op.items[0].shareStatus=state=="local_only"?"not_requested":"shared";op.items[0].receipt.directUrl=state=="local_only"?QString{}:"https://example.invalid/synthetic-recording";if(ledger.saveOperation(op))return 2;}
-   page->refresh();if(!waitUntil([&]{return model->rowCount()==rows+1;}))return 2;int row=-1;for(int r=0;r<model->rowCount();++r)if(model->record(r)["operationId"]==operationId)row=r;if(row<0)return 2;list->selectionModel()->select(model->index(row),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(model->index(row));const auto marker=state=="present"?QString("download the uploaded"):state=="removed"?QString("was deleted from"):QString("No successful upload is recorded");if(!waitUntil([&]{return window.findChild<QLabel*>("historyCapabilityHint")->text().contains(marker);}))return 2;inspector->verticalScrollBar()->setValue(0);if(!save("history-missing-copy-"+state))return 2;
+   page->refresh();if(!waitUntil([&]{return model->rowCount()==rows+1;}))return 2;int row=-1;for(int r=0;r<model->rowCount();++r)if(model->record(r)["operationId"]==operationId)row=r;if(row<0)return 2;list->selectionModel()->select(model->index(row),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(model->index(row));const auto marker=state=="present"?QString("download the uploaded"):state=="removed"?QString("was deleted from"):QString("No successful upload is recorded");// The preview request starts 400 ms after the selection; wait past it for its outcome.
+   auto* missingPreview=window.findChild<QLabel*>("historyPreview");const auto previewSettled=[&]{return window.findChild<QLabel*>("historyCapabilityHint")->text().contains(marker)&&(!missingPreview->isVisible()||missingPreview->text()!=QStringLiteral("Making a preview…"));};if(!waitUntil(previewSettled))return 2;putgd::test::settle(700);if(!waitUntil(previewSettled))return 2;inspector->verticalScrollBar()->setValue(0);if(!save("history-missing-copy-"+state))return 2;
   }
   window.resize(size);}
  {auto* page=window.history();auto* model=qobject_cast<HistoryModel*>(list->model());int row=-1;for(int r=0;r<model->rowCount();++r)if(model->record(r)["operationId"]=="synthetic-preview-operation-0")row=r;if(row<0)return 2;list->selectionModel()->select(model->index(row),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(model->index(row));if(!waitUntil([&]{return window.findChild<QPushButton*>("saveHistoryAs")->isEnabled();}))return 2;
@@ -409,9 +428,9 @@ int main(int argc,char** argv){
  // Locked values: the inherited per-action outputs, scrolled into view.
  window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);if(auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget()))if(auto* region=window.findChild<QComboBox*>("profileRegion")){putgd::test::settle(100);scroll->ensureWidgetVisible(region,0,200);}if(!save("50-capture-exceptions-locked"))return 2;window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(false);
  // Settings review: replacement storage, setup admission and deep-link focus.
- window.navigate("destinations");destinations->setCurrentRow(1);{auto* mode=window.findChild<QComboBox*>("credentialMode");mode->setCurrentIndex(mode->findData("keychain"));if(!waitUntil([&]{return settings.document()["profiles"].toArray()[1].toObject()["credentials"].toObject()["mode"]=="keychain";}))return 2;destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("credentialActions"),0,40);if(!save("60-credential-storage-replacement"))return 2;
-  fixture.client.replyDelayMs["settings.save"]=2500;auto* name=window.findChild<QLineEdit*>("destinationLabel");const auto original=name->text();name->setText("Project archive pending save");window.settings()->flushAutosave();putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("credentialStoreReason"),0,16);if(!save("61-credential-store-pending"))return 2;if(!waitUntil([&]{return window.findChild<QPushButton*>("storeCredentials")->isEnabled();}))return 2;fixture.client.replyDelayMs.remove("settings.save");name->setText(original);mode->setCurrentIndex(mode->findData("session"));if(!waitUntil([&]{return window.findChild<QPushButton*>("storeCredentials")->isEnabled();}))return 2;}
- window.findChild<QToolButton*>("advancedSettings")->setChecked(true);putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("s3LowSpeedBytesPerSecondControl"),0,40);if(!save("62-destination-connection-expanded"))return 2;destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("s3EndpointValue"),0,40);if(!save("settings-endpoint-advanced"))return 2;window.findChild<QToolButton*>("advancedSettings")->setChecked(false);
+ window.navigate("destinations");destinations->setCurrentRow(1);{auto* mode=window.findChild<QComboBox*>("credentialMode");mode->setCurrentIndex(mode->findData("keychain"));if(!waitUntil([&]{return settings.document()["profiles"].toArray()[1].toObject()["credentials"].toObject()["mode"]=="keychain";}))return 2;putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("credentialActions"),0,40);if(!save("60-credential-storage-replacement"))return 2;
+  fixture.client.replyDelayMs["settings.save"]=2500;auto* name=window.findChild<QLineEdit*>("destinationLabel");const auto original=name->text();name->setText("Project archive pending save");window.settings()->flushAutosave();putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("credentialStoreReason"),0,16);putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("credentialStoreReason"),0,16);if(!save("61-credential-store-pending"))return 2;if(!waitUntil([&]{return window.findChild<QPushButton*>("storeCredentials")->isEnabled();}))return 2;fixture.client.replyDelayMs.remove("settings.save");name->setText(original);mode->setCurrentIndex(mode->findData("session"));if(!waitUntil([&]{return window.findChild<QPushButton*>("storeCredentials")->isEnabled();}))return 2;}
+ window.findChild<QToolButton*>("advancedSettings")->setChecked(true);putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("s3LowSpeedBytesPerSecondControl"),0,40);putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("s3LowSpeedBytesPerSecondControl"),0,40);if(!save("62-destination-connection-expanded"))return 2;destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("s3EndpointValue"),0,40);if(!save("settings-endpoint-advanced"))return 2;window.findChild<QToolButton*>("advancedSettings")->setChecked(false);
  window.activateWindow();window.showLocalCopySettings();if(!waitUntil([&]{return window.findChild<QCheckBox*>("keepUploadCopies")->hasFocus();})||!save("63-local-copies-focus"))return 2;
  // A conflict: the file changes under an unsaved draft (a typed, unstored key);
  // Reload from file… sits beside the message on both pages.
@@ -531,9 +550,11 @@ int main(int argc,char** argv){
 #ifdef PUTGD_CATALOG_REVIEW
  if(!editorOnly){
   // Settings recovery at the supported compact width.
- if(!recordOnly){QTemporaryDir temp("/tmp/pgs-XXXXXX");SettingsService config(temp.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles.first().toObject();profile["provider"]="proton-drive";profile["settings"]=ProtonProvider::defaults();profiles[0]=profile;doc["profiles"]=profiles;if(!config.save(doc,{}))return 2;CredentialStore secrets;UiSessionFixture recovery(config,secrets);JsonReply finish;
+ if(!recordOnly){DataDir temp("pgs");SettingsService config(temp.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles.first().toObject();profile["provider"]="proton-drive";profile["settings"]=ProtonProvider::defaults();profiles[0]=profile;doc["profiles"]=profiles;if(!config.save(doc,{}))return 2;CredentialStore secrets;UiSessionFixture recovery(config,secrets);JsonReply finish;
   recovery.setup.setProviderSetup([&](const QString&,const Destination&,const QJsonObject&,JsonReply done,auto event){finish=done;event({{"event","auth"},{"url","https://account.proton.me/cli?synthetic-preview"}});});host::setTestOpener([](const QUrl&){});MainWindow recover(recovery.session);recover.resize(1060,680);recover.navigate("destinations");recover.show();putgd::test::settle(100);if(!recover.grab().save(QDir(output).filePath("settings-proton-signed-out.png")))return 2;captures.append(QJsonObject{{"file","settings-proton-signed-out.png"},{"width",recover.width()},{"height",recover.height()}});recover.findChild<QPushButton*>("connectProtonAccount")->click();if(!waitUntil([&]{return recover.settings()->saveViewState()["setupJobs"].toArray().size()==1&&recover.findChild<QLabel*>("protonAccountStatus")->text().contains("browser");}))return 2;const auto job=recover.settings()->saveViewState()["setupJobs"].toArray().first().toObject()["setupId"].toString();recover.settings()->protonBrowserFinished(job,{{"opened",false}});putgd::test::settle(100);if(!recover.grab().save(QDir(output).filePath("settings-proton-browser-retry.png")))return 2;captures.append(QJsonObject{{"file","settings-proton-browser-retry.png"},{"width",recover.width()},{"height",recover.height()}});finish({"synthetic_cancelled","Synthetic preview finished",{}},{});host::setTestOpener({});
-  recover.navigate("settings");recover.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);QFile::remove(config.path());recover.findChild<QPushButton*>("openConfigEditor")->click();auto* scroll=qobject_cast<QScrollArea*>(recover.findChild<QTabWidget*>("settingsTabs")->currentWidget());putgd::test::settle(100);scroll->ensureWidgetVisible(recover.findChild<QLabel*>("configEditorFailure"));if(!recover.grab().save(QDir(output).filePath("settings-config-editor-failure.png")))return 2;captures.append(QJsonObject{{"file","settings-config-editor-failure.png"},{"width",recover.width()},{"height",recover.height()}});
+  recover.navigate("settings");recover.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);QFile::remove(config.path());recover.findChild<QPushButton*>("openConfigEditor")->click();auto* scroll=qobject_cast<QScrollArea*>(recover.findChild<QTabWidget*>("settingsTabs")->currentWidget());
+  // The cancelled Proton setup's progress line clears when its job ends.
+  if(!waitUntil([&]{return recover.settings()->saveViewState()["setupJobs"].toArray().isEmpty();}))return 2;putgd::test::settle(100);scroll->ensureWidgetVisible(recover.findChild<QLabel*>("configEditorFailure"));if(!recover.grab().save(QDir(output).filePath("settings-config-editor-failure.png")))return 2;captures.append(QJsonObject{{"file","settings-config-editor-failure.png"},{"width",recover.width()},{"height",recover.height()}});
  }
  // The private review and the ready control bar, over a synthetic frame.
   record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.destination="Project archive";o.sharingMode="share";o.uploadSummary="Upload to Project archive · Shared link";o.durationUs=32000000;o.canvas=QSize(960,600);o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
@@ -639,5 +660,5 @@ int main(int argc,char** argv){
  // The custom frame under real input: the driver moves, maximizes, restores,
  // resizes and finally closes the main window.
  window.resize(1060,680);window.showNormal();if(!native.chrome(window,"90-chrome"))return 2;
- QSaveFile manifest(QDir(output).filePath("manifest.json"));if(!manifest.open(QIODevice::WriteOnly))return 2;manifest.write(QJsonDocument(QJsonObject{{"kind","synthetic-ui-catalog"},{"desktopAcceptance",false},{"platform",QGuiApplication::platformName()},{"networkActions",0},{"credentialFixture","synthetic session only"},{"sourceReads",source.reads},{"captures",captures},{"skippedCaptures",skippedCaptures}}).toJson(QJsonDocument::Indented));if(!manifest.commit())return 2;return source.reads==0?0:2;
+ QSaveFile manifest(QDir(output).filePath("manifest.json"));if(!manifest.open(QIODevice::WriteOnly))return 2;manifest.write(QJsonDocument(QJsonObject{{"kind","synthetic-ui-catalog"},{"qtVersion",QString::fromLatin1(qVersion())},{"desktopAcceptance",false},{"platform",QGuiApplication::platformName()},{"networkActions",0},{"credentialFixture","synthetic session only"},{"sourceReads",source.reads},{"captures",captures},{"skippedCaptures",skippedCaptures}}).toJson(QJsonDocument::Indented));if(!manifest.commit())return 2;return source.reads==0?0:2;
 }
