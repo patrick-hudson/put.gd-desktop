@@ -1,11 +1,32 @@
 {
   "tray": {
     "icon": {
-      "name": "put.gd"
+      "name": "",
+      "role": "panel",
+      "size": [
+        24,
+        24
+      ],
+      "bottom_band": 40,
+      "placements": [
+        "boat"
+      ],
+      "root": {
+        "name": "",
+        "role": "window",
+        "attributes": {
+          "toolkit": "clutter"
+        }
+      },
+      "reason": "Cinnamon Cally exports an anonymous SNI panel. Require one native 24px panel in the bottom band; block ambiguity and non-Boat placements."
     },
     "notification_server": "cinnamon",
     "resident_notifications": true,
     "shortcut_channel": "x11",
-    "fixture_issue": 670
+    "fixture_issue": 670,
+    "menu": {
+      "role": "label",
+      "reject_origin": true
+    }
   }
 }

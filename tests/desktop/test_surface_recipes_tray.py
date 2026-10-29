@@ -97,6 +97,12 @@ class FakeContext(Context):
 
     def accessible(self, query):
         name = query['name']
+        if name == '' and query.get('role') == 'window':
+            return [{'name': '', 'role': 'window', 'rect': [0, 0, 100, 80],
+                     'attributes': {'toolkit': 'clutter'}, 'pid': 1317}]
+        if name == '' and query.get('role') == 'panel':
+            self.last_node = 'put.gd'
+            return [{'name': '', 'role': 'panel', 'rect': [38, 43, 24, 24], 'pid': 1317}]
         names = {'put.gd', self.target, 'History', 'Settings', 'Destinations'}
         if self.fixture:
             names.add(tray.FIXTURE_TITLE)
@@ -339,6 +345,13 @@ class TrayRecipesTest(unittest.TestCase):
         ctx.accessible = lambda q: [{'name': q['name'], 'rect': [20, 30, 50, 20]}] * 2
         with self.assertRaises(RecipeBlocked):
             tray._press(ctx, 'Save diagnostics for this upload')
+        self.assertFalse(any(e[0] == 'click' for e in ctx.events))
+
+    def test_anonymous_tray_locator_blocks_outside_its_validated_placement(self):
+        ctx = FakeContext()
+        ctx.placement = 'native'
+        with self.assertRaisesRegex(RecipeBlocked, 'isolated placements'):
+            tray.context_menu(ctx)
         self.assertFalse(any(e[0] == 'click' for e in ctx.events))
 
     def test_profile_fragments_cover_model_desktops_and_are_lane_scoped(self):

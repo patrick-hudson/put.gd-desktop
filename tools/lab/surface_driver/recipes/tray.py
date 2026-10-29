@@ -39,6 +39,8 @@ def _shell(ctx, script):
 
 
 def _nodes(ctx, name, role=None):
+    menu_policy = _profile(ctx).get('menu', {}) if role == 'menu item' else {}
+    role = menu_policy.get('role', role)
     query = {'name': name}
     if role:
         query['role'] = role
@@ -50,7 +52,8 @@ def _nodes(ctx, name, role=None):
             x, y, w, h = (rect[k] for k in ('x', 'y', 'width', 'height'))
         else:
             x, y, w, h = rect
-        return x >= 0 and y >= 0 and w > 0 and h > 0
+        return (x >= 0 and y >= 0 and w > 0 and h > 0
+                and not (menu_policy.get('reject_origin') and x == 0 and y == 0))
     return [n for n in ctx.accessible(query)
             if n.get('name') == name and n.get('visible', True)
             and n.get('showing', True) and on_screen(n)]
@@ -103,11 +106,35 @@ def _page(ctx, name):
 
 
 def _icon(ctx):
+    def rect(node):
+        value = node['rect']
+        return [value[k] for k in ('x', 'y', 'width', 'height')] if isinstance(value, dict) else list(value)
     selector = _profile(ctx).get('icon')
     if not selector:
         ctx.blocked('Profile has no unambiguous desktop tray icon selector')
+    if selector.get('placements') and ctx.placement not in selector['placements']:
+        ctx.blocked('Anonymous tray geometry is validated only in the isolated placements listed by this profile', 670)
+    root = None
+    if selector.get('root'):
+        spec = selector['root']
+        roots = [n for n in _nodes(ctx, spec['name'], spec.get('role'))
+                 if all(n.get('attributes', {}).get(k) == v for k, v in spec.get('attributes', {}).items())]
+        if len(roots) != 1:
+            ctx.blocked('Desktop root is ambiguous for the anonymous tray selector', 670)
+        root = rect(roots[0])
     def find():
         nodes = _nodes(ctx, selector['name'], selector.get('role'))
+        nodes = [{**n, 'rect': rect(n)} for n in nodes]
+        if selector.get('size'):
+            nodes = [n for n in nodes if list(n['rect'][2:]) == selector['size']]
+        if root is not None:
+            # A desktop supplies this policy; coordinates always come from the
+            # current AT-SPI rectangles, never a fixed panel pixel location.
+            bottom = root[1] + root[3]
+            nodes = [n for n in nodes if n.get('pid') == roots[0].get('pid')
+                     and n['rect'][1] >= bottom - selector['bottom_band']]
+        unique = {(n.get('pid'), tuple(n['rect'])): n for n in nodes}
+        nodes = list(unique.values())
         if len(nodes) > 1:
             ctx.blocked('Tray selector needs a profile role; candidate roles: ' +
                         ', '.join(sorted({n.get('role', 'unknown') for n in nodes})), 670)
