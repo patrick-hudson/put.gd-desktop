@@ -78,8 +78,18 @@ def _begin(ctx):
     ctx.view('ui.show', {'view': 'settings'})
     snapshot = ctx.call('ui.snapshot')
     ctx.expect(snapshot.get('operationsReady'), 'resident journal is ready')
-    ctx.expect(snapshot['diagnostics'].get('trayAvailable'), 'resident has a tray host')
+    if not snapshot['diagnostics'].get('trayAvailable'):
+        ctx.blocked('Resident reports no desktop tray host', _profile(ctx).get('fixture_issue'))
     return snapshot
+
+
+def _page(ctx, name):
+    def selected():
+        node = _node(ctx, name, 'page tab')
+        if 'selected' not in node:
+            ctx.blocked('AT-SPI needs the selected state to prove page navigation', 670)
+        return node['selected']
+    ctx.wait(selected, 'selected main page: ' + name)
 
 
 def _icon(ctx):
@@ -191,7 +201,7 @@ def activate(ctx):
     ctx.click_at(*_point(ctx, _icon(ctx)))
     state = ctx.call('ui.history', {'action': 'inspect'})
     ctx.expect(isinstance(state, dict) and bool(state), 'History inspector answers after tray activation')
-    _node(ctx, 'History')
+    _page(ctx, 'History')
     ctx.frame('after')
 
 
@@ -212,18 +222,24 @@ def _navigation(interaction, label, target):
     @recipe(interaction, desktop_drawn=True)
     def navigate(ctx):
         _begin(ctx)
+        if target == 'settings':
+            ctx.view('ui.show', {'view': 'history'})
         _menu(ctx)
         _menu_frame(ctx, 'before')
         _press(ctx, label, 'menu item')
         if target == 'history':
             ctx.expect(bool(ctx.call('ui.history', {'action': 'inspect'})), 'History inspector answers')
+            _page(ctx, 'History')
+        elif target in ('settings', 'destinations'):
+            _page(ctx, target.title())
         elif target == 'capture':
             ctx.wait(lambda: ctx.call('ui.viewState').get('settings', {}).get('section') == 1,
                      'Settings Capture section')
         elif target == 'editFile':
             state = ctx.call('ui.fileDialog', {'dialog': 'editImage', 'action': 'inspect'})
             ctx.expect(state.get('open'), 'edit image file chooser is open')
-        _node(ctx, _profile(ctx).get('targets', {}).get(target, target))
+        if target == 'about':
+            _node(ctx, 'About put.gd', 'dialog')
         ctx.frame('after')
         if target == 'editFile':
             ctx.keys('Esc')
@@ -340,8 +356,9 @@ def edit_clipboard(ctx):
         operation = ctx.wait(lambda: (o if (o := ctx.call('operation.inspect', {'id': operation['id']}))
                                       ['state'] == 'editing' else None), 'clipboard image editor')
         try:
-            ctx.expect(ctx.call('editor.inspect', {'id': operation['id']}).get('id') == operation['id'],
-                       'editor belongs to the real-input operation')
+            state = ctx.call('editor.inspect', {'id': operation['id']})
+            ctx.expect(state.get('phase') == 'editing' and (state.get('width'), state.get('height')) == (96, 64),
+                       'real-input operation opened the known synthetic 96×64 clipboard image')
             ctx.frame('after')
         finally:
             ctx.call('editor.cancel', {'id': operation['id']})
@@ -358,7 +375,7 @@ def saved_locally(ctx):
         ctx.frame('after')
 
 
-@recipe('notification.local-save-failed', 'tray.icon-attention', 'tray.menu-attention', desktop_drawn=True)
+@recipe('notification.local-save-failed', 'tray.icon-attention', desktop_drawn=True)
 def local_failure_attention(ctx):
     with _local(ctx, failure=True) as root:
         op = _local_upload(ctx)
@@ -380,6 +397,7 @@ def local_failure_attention(ctx):
         _node(ctx, 'Local save needs attention', 'menu item')
         _press(ctx, 'Local save needs attention', 'menu item')
         ctx.expect(bool(ctx.call('ui.history', {'action': 'inspect'})), 'attention click opens History')
+        _page(ctx, 'History')
         _menu(ctx)
         try:
             ctx.expect(not _nodes(ctx, 'Local save needs attention', 'menu item'), 'attention click clears the latch')
@@ -389,13 +407,21 @@ def local_failure_attention(ctx):
             ctx.keys('Esc')
 
 
+@recipe('tray.menu-attention', desktop_drawn=True)
+def attention_with_busy_latch(ctx):
+    local_failure_attention(ctx)
+    ctx.blocked('Local-save attention/retry branch exercised; Proton busy-latch branch needs an offline '
+                'proton_account_busy fixture and original-ID recovery without a live Proton session', 670)
+
+
 @recipe('notification.preference-off', desktop_drawn=True)
 def notifications_off(ctx):
     with _local(ctx, notifications=False):
         old_ids = {n['id'] for n in ctx.notifications()}
         op = _local_upload(ctx)
         ctx.expect(op['state'] == 'completed', 'operation still completes with notifications disabled')
-        # Wait through an additional resident round trip before collecting the bus.
+        # Observe a bounded quiet window as well as the terminal resident state.
+        _shell(ctx, "python3 -c 'import time; time.sleep(1)'\n")
         ctx.call('ui.snapshot')
         ctx.expect(not [n for n in ctx.notifications() if n.get('id') not in old_ids
                         and n.get('summary') == 'Saved locally'], 'operation toast suppressed')
@@ -485,7 +511,7 @@ def scroll_noop(ctx):
     ctx.frame('after')
 
 
-@recipe('tray.icon-idle', 'tray.tooltip', desktop_drawn=True)
+@recipe('tray.icon-idle', desktop_drawn=True)
 def idle(ctx):
     _begin(ctx)
     ctx.frame('before')
@@ -504,6 +530,7 @@ def idle(ctx):
 # silently disappear from a lane run. Issue numbers are filled by the follow-up
 # tracker; no provider session is borrowed to cover an offline-only campaign.
 BLOCKED = {
+    'tray.tooltip': 'Needs real pointer hover plus read-only tooltip observation; Context exposes clicks but no hover',
     'tray.icon-uploading': 'Needs an offline provider fixture with controlled storage progress lasting over 200 ms',
     'tray.icon-complete': 'Needs an offline successful upload and sub-600-ms icon sampling; local saves have no upload fill',
     'tray.icon-recording': 'Needs a recording fixture and icon-pixel observation for active-dot and paused-bars evidence',

@@ -34,7 +34,7 @@ class FakeContext(Context):
         self.clipboard = ''
         self.document = {'actions': {}, 'preferences': {'notifications': True}, 'archive': {}}
         self.original = copy.deepcopy(self.document)
-        self.target = 'General'
+        self.target = 'Settings'
         self.obstruction = False
         self.latch = False
         self.readonly = False
@@ -45,7 +45,7 @@ class FakeContext(Context):
     def view(self, method, params=None):
         self.events.append(('view', method, params))
         assert method == 'ui.show'
-        self.target = 'General'
+        self.target = params['view'].title()
         return {'shown': params['view']}
 
     def call(self, method, params=None):
@@ -83,7 +83,7 @@ class FakeContext(Context):
             return {'shortcuts': {'available': self.shortcut_available,
                     'bindings': {a: {'bound': True} for a in tray.CHORDS}}}
         if method == 'editor.inspect':
-            return {'id': params['id']}
+            return {'phase': 'editing', 'width': 96, 'height': 64}
         if method == 'editor.cancel':
             self.operations[-1]['state'] = 'cancelled'
             return {}
@@ -97,7 +97,7 @@ class FakeContext(Context):
 
     def accessible(self, query):
         name = query['name']
-        names = {'put.gd', self.target}
+        names = {'put.gd', self.target, 'History', 'Settings', 'Destinations'}
         if self.fixture:
             names.add(tray.FIXTURE_TITLE)
         if self.menu:
@@ -119,7 +119,8 @@ class FakeContext(Context):
         self.last_node = name
         return [{'name': name, 'role': query.get('role', 'label'),
                  'rect': {'x': 40, 'y': 50, 'width': 20, 'height': 10},
-                 'enabled': not name.endswith(': Local only'), 'visible': True}]
+                 'enabled': not name.endswith(': Local only'), 'visible': True,
+                 'selected': name == self.target}]
 
     def click_at(self, x, y, button='left'):
         assert (x, y) == (50, 55)
@@ -159,7 +160,7 @@ class FakeContext(Context):
         elif name == 'Show in folder':
             self.target = 'putgd-diagnostics-20261029-000000Z.zip'
         elif name != tray.FIXTURE_TITLE:
-            self.target = {'Settings': 'General', 'Change output…': 'Capture'}.get(name, name)
+            self.target = {'Change output…': 'Capture'}.get(name, name)
             self.menu = False
 
     def _invoke(self, action, editing=False):
@@ -242,7 +243,7 @@ class TrayRecipesTest(unittest.TestCase):
 
     def test_every_executable_recipe_uses_real_input_and_restores_settings(self):
         for r in self.recipes():
-            if any(i in tray.BLOCKED for i in r.interactions):
+            if any(i in tray.BLOCKED for i in r.interactions) or r.function == tray.attention_with_busy_latch:
                 continue
             with self.subTest(recipe=r.name):
                 ctx = FakeContext()
@@ -286,6 +287,30 @@ class TrayRecipesTest(unittest.TestCase):
         with self.assertRaises(RecipeFailed):
             tray.tray_menu_upload_clipboard(ctx)
         self.assertFalse(ctx.fixture)
+
+    def test_ignored_tray_activation_cannot_pass_using_a_hidden_history_inspector(self):
+        ctx = FakeContext()
+        ctx.ignored_input = True
+        with self.assertRaises(RecipeFailed):
+            tray.activate(ctx)
+
+    def test_missing_selected_state_cannot_pass_navigation(self):
+        ctx = FakeContext()
+        original = ctx.accessible
+        def without_selection(query):
+            nodes = original(query)
+            for node in nodes:
+                node.pop('selected', None)
+            return nodes
+        ctx.accessible = without_selection
+        with self.assertRaises(RecipeBlocked):
+            tray.activate(ctx)
+
+    def test_busy_latch_is_explicitly_blocked_after_local_branch(self):
+        ctx = FakeContext()
+        with self.assertRaisesRegex(RecipeBlocked, 'proton_account_busy'):
+            tray.attention_with_busy_latch(ctx)
+        self.assertEqual(ctx.document, ctx.original)
 
     def test_ambiguous_accessibility_target_fails_before_click(self):
         ctx = FakeContext()

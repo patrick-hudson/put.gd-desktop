@@ -3,13 +3,6 @@
     "icon": {
       "name": "put.gd"
     },
-    "targets": {
-      "history": "History",
-      "settings": "General",
-      "destinations": "Destinations",
-      "about": "About put.gd",
-      "capture": "Capture"
-    },
     "notification_server": "Plasma",
     "resident_notifications": false,
     "shortcut_channel": "kglobalaccel",
