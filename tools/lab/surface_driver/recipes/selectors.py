@@ -126,9 +126,13 @@ def _open_region(ctx, edit=False):
     before = {o["id"] for o in _recent(ctx)}
     ctx.view("ui.show", {"view": "history"})
     ctx.click("text:Capture region & edit" if edit else "text:Capture region", window="history")
-    ctx.wait(lambda: ctx.accessible({"name": "Capture region"}), "screenshot selector opened")
     op = ctx.wait(lambda: next((o for o in _recent(ctx) if o["id"] not in before and o["action"] == ("edit" if edit else "region")), None), "new capture operation")
-    ctx.expect("No region selected." in _description(ctx), "selector opens with no selection")
+    try:
+        ctx.wait(lambda: ctx.accessible({"name": "Capture region"}), "screenshot selector opened")
+        ctx.expect("No region selected." in _description(ctx), "selector opens with no selection")
+    except Exception:
+        _cancel_region(ctx, op["id"])
+        raise
     return op["id"]
 
 

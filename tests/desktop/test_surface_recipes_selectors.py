@@ -388,6 +388,17 @@ class SelectorRecipes(unittest.TestCase):
         with self.assertRaises(RecipeBlocked):
             selectors._description(ctx)
 
+    def test_missing_description_cleans_up_open_selector(self):
+        ctx = FakeContext()
+        real_accessible = ctx.accessible
+        def missing_description(query):
+            return [{k:v for k,v in row.items() if k != "description"} for row in real_accessible(query)]
+        ctx.accessible = missing_description
+        with self.assertRaises(RecipeBlocked):
+            selectors.region_keyboard(ctx)
+        self.assertEqual(ctx.surface, "history")
+        self.assertEqual(ctx.document, ctx.original)
+
     def test_unavailable_fixture_is_blocked(self):
         ctx = FakeContext()
         ctx.env = {}
