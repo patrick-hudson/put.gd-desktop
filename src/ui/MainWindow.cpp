@@ -290,7 +290,8 @@ void MainWindow::updateSaveStatus(){
  if(!saveStatus_||!explanation_)return;
  const auto text=settings_?settings_->autosaveText():QString();const bool unsaved=settings_&&settings_->changesUnsaved();
  const auto feedback=unsaved?QString("Changes not saved"):text;
- if(saveStatus_->text()!=feedback||saveStatus_->property("feedbackTone").toString()!=(unsaved?"error":"neutral"))VisualStyle::feedback(saveStatus_,feedback,unsaved);
+ // Council 22: the page's banner carries the warning; this line stays in the band's secondary ink.
+ if(saveStatus_->text()!=feedback||saveStatus_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(saveStatus_,feedback);
  saveStatus_->setToolTip(unsaved?text:QString());saveStatus_->setAccessibleDescription(unsaved?text:QString());
  if(updateLink_){const auto update=session_.diagnostics()["update"].toObject();updateLink_->setVisible(update["supported"].toBool()&&update["result"].toObject()["updateAvailable"].toBool());}
  // "Settings save automatically" is the band's least important line: it gives

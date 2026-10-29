@@ -776,11 +776,13 @@ private slots:
   auto* status=window.findChild<QLabel*>("settingsStatus");auto* destinationStatus=window.findChild<QLabel*>("destinationStatus");
   QCOMPARE(statusCode(window),QString("config_conflict"));QVERIFY(!status->text().contains("config_conflict"));
   QCOMPARE(status->text(),QString("Settings changed elsewhere. Your edits are kept here. Reload discards them."));
-  window.resize(800,700);PUTGD_TRY_VERIFY(!QRect(destinationReload->mapTo(&window,QPoint()),destinationReload->size()).intersects(QRect(destinationStatus->mapTo(&window,QPoint()),destinationStatus->size())));
+  // Council 22: the conflict is a warning banner beside its Reload, never red text.
+  auto* destinationBanner=window.findChild<Graphite::Banner*>("destinationConflictBanner");auto* settingsBanner=window.findChild<Graphite::Banner*>("settingsConflictBanner");QVERIFY(destinationBanner&&settingsBanner);for(auto* banner:{destinationBanner,settingsBanner}){QCOMPARE(banner->tone(),Graphite::Banner::Tone::Warning);QCOMPARE(banner->textLabel()->text(),status->text());QVERIFY(banner->textLabel()->palette().color(QPalette::WindowText)!=Theme::current().danger);QCOMPARE(banner->actionButton()->text(),QString("Reload from file…"));}
+  window.resize(800,700);PUTGD_TRY_VERIFY(!QRect(destinationReload->mapTo(&window,QPoint()),destinationReload->size()).intersects(QRect(destinationBanner->textLabel()->mapTo(&window,QPoint()),destinationBanner->textLabel()->size())));
   // The band carries one bounded indicator; the explanation and Reload stay in the page.
-  auto* bandStatus=window.findChild<QLabel*>("autosaveStatus");QCOMPARE(bandStatus->text(),QString("Changes not saved"));QVERIFY(bandStatus->isVisible());QVERIFY(window.findChild<QLabel*>("autosaveExplanation")->isHidden());
+  auto* bandStatus=window.findChild<QLabel*>("autosaveStatus");QCOMPARE(bandStatus->text(),QString("Changes not saved"));QVERIFY(bandStatus->isVisible());QCOMPARE(bandStatus->property("feedbackTone").toString(),QString("neutral"));QCOMPARE(bandStatus->palette().color(QPalette::WindowText),Theme::current().textSecondary);QVERIFY(window.findChild<QLabel*>("autosaveExplanation")->isHidden());
   auto* summary=window.findChild<QToolButton*>("captureOutputSummary");QVERIFY(summary->isEnabled());QVERIFY(summary->menu());
-  QVERIFY(destinationStatus->isVisible());QVERIFY(destinationReload->isVisible());QCOMPARE(destinationReload->parentWidget()->parentWidget(),destinationStatus->parentWidget()->parentWidget());
+  QVERIFY(destinationBanner->isVisible());QVERIFY(!destinationStatus->isVisible());QCOMPARE(destinationStatus->text(),status->text());QVERIFY(destinationReload->isVisible());QCOMPARE(destinationReload->parentWidget()->parentWidget(),destinationStatus->parentWidget()->parentWidget());
   QVERIFY(!settingsReload->isHidden());QCOMPARE(settingsReload->parentWidget()->parentWidget(),status->parentWidget()->parentWidget());QCOMPARE(settingsReload->text(),QString("Reload from file…"));
   // An error is body text, not small print.
   QCOMPARE(status->font().pixelSize(),Graphite::font(Graphite::Type::body).pixelSize());
@@ -791,7 +793,7 @@ private slots:
   QCOMPARE(number->text(),QString("invalid"));QVERIFY(window.settings()->saveViewState()["conflict"].toBool());QVERIFY(destinationReload->isVisible());
   // Reload from file replaces the draft with the file and clears the conflict.
   acceptNextConfirmation();destinationReload->click();
-  PUTGD_TRY_COMPARE(number->text(),saved);QVERIFY(!window.settings()->saveViewState()["conflict"].toBool());QVERIFY(destinationReload->isHidden());QVERIFY(settingsReload->isHidden());
+  PUTGD_TRY_COMPARE(number->text(),saved);QVERIFY(!window.settings()->saveViewState()["conflict"].toBool());QVERIFY(destinationReload->isHidden());QVERIFY(settingsReload->isHidden());QVERIFY(destinationBanner->isHidden());QVERIFY(settingsBanner->isHidden());
   QVERIFY(!window.findChild<QCheckBox*>("notifications")->isChecked());
   // Passive save information stays meta type.
   PUTGD_TRY_COMPARE(status->text(),QString("Settings reloaded from file."));QCOMPARE(status->font().pixelSize(),Graphite::font(Graphite::Type::technical).pixelSize());QVERIFY(statusCode(window).isEmpty());

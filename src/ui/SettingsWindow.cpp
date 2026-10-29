@@ -92,6 +92,8 @@ class SettingsStatusRow final:public Graphite::Surface {
 public:
  explicit SettingsStatusRow(QWidget* message,bool destination=false):Graphite::Surface("bg",Qt::TopEdge){line_=new QBoxLayout(QBoxLayout::LeftToRight,this);line_->setContentsMargins(space(destination?Space::xxl:Space::l),space(Space::s),space(Space::l),space(Space::s));setMinimumHeight(Graphite::scaled(56));line_->setSpacing(space(Space::m));line_->addWidget(message,1);buttons_=new QWidget(this);actions_=new QHBoxLayout(buttons_);actions_->setContentsMargins(0,0,0,0);actions_->setSpacing(space(Space::s));line_->addWidget(buttons_,0,Qt::AlignTop|Qt::AlignRight);}
  QHBoxLayout* actions()const{return actions_;}
+ // A conflict takes the row as a warning banner that carries its own Reload action.
+ void addBanner(QWidget* banner){line_->insertWidget(0,banner,1);}
 protected:
  bool event(QEvent* event)override{if(event->type()==QEvent::Resize||event->type()==QEvent::LayoutRequest){int visible=0;for(int i=0;i<actions_->count();++i)if(auto* widget=actions_->itemAt(i)->widget();widget&&!widget->isHidden())++visible;const bool stack=width()-2*space(Space::l)-buttons_->sizeHint().width()-space(Space::m)<Graphite::scaled(visible>1?480:300);const auto direction=stack?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight;if(line_->direction()!=direction)line_->setDirection(direction);setProperty("stacked",stack);}return Graphite::Surface::event(event);}
 private:QBoxLayout* line_;QWidget* buttons_;QHBoxLayout* actions_;
@@ -1116,9 +1118,10 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  status_=new QLabel;status_->setObjectName("settingsStatus");status_->setAccessibleName("Settings status");status_->setWordWrap(true);VisualStyle::role(status_,"meta");destinationStatus_=new QLabel;destinationStatus_->setObjectName("destinationStatus");destinationStatus_->setWordWrap(true);destinationStatus_->setAccessibleName("Destination status");VisualStyle::role(destinationStatus_,"muted");
  // Settings' status is a footer under the scrolling page, set off by a hairline.
  QList<SettingsStatusRow*> feedbackRows;QList<QHBoxLayout*> statusRows;for(int i=0;i<2;++i){auto* message=new QWidget;auto* text=new QVBoxLayout(message);text->setContentsMargins(0,0,0,0);text->setSpacing(space(Space::xs));text->addWidget(i?destinationStatus_:status_);auto* row=new SettingsStatusRow(message,i==1);row->setObjectName(i?"destinationStatusRow":"settingsStatusRow");feedbackRows.append(row);statusRows.append(row->actions());if(i){destinationContentLayout->addWidget(row);}else layout->addWidget(row);}
- for(int i=0;i<2;++i){auto* reload=new QPushButton("Reload from file…");reload->setObjectName(i?"reloadDestinationConflict":"reloadConflict");reload->setAccessibleName("Reload settings from file");reload->setToolTip("Replace this window's settings with the configuration file as it is now. Asks first, naming the unsaved edits it discards.");reload->hide();reloadConflict_.insert(i,reload);statusRows[i]->addWidget(reload,0,Qt::AlignTop);connect(reload,&QPushButton::clicked,this,&SettingsWindow::reloadFromFile);}
+ // Council 22: a conflict is a warning, not a failure: a banner with Reload from file…, not red text.
+ for(int i=0;i<2;++i){auto* banner=new Graphite::Banner(Graphite::Banner::Tone::Warning,conflictMessage());banner->setObjectName(i?"destinationConflictBanner":"settingsConflictBanner");banner->setAction("Reload from file…");auto* reload=banner->actionButton();reload->setObjectName(i?"reloadDestinationConflict":"reloadConflict");reload->setAccessibleName("Reload settings from file");reload->setToolTip("Replace this window's settings with the configuration file as it is now. Asks first, naming the unsaved edits it discards.");reload->hide();banner->hide();reloadConflict_.insert(i,reload);conflictBanners_.insert(i,banner);feedbackRows[i]->addBanner(banner);connect(reload,&QPushButton::clicked,this,&SettingsWindow::reloadFromFile);}
  for(int i=0;i<2;++i){auto* retry=new QPushButton("Retry saving");retry->setObjectName(i?"retryDestinationAutosave":"retryAutosave");retry->hide();retryAutosave_.append(retry);statusRows[i]->addWidget(retry,0,Qt::AlignTop);connect(retry,&QPushButton::clicked,this,[this,retry]{autosaveBlocked_=false;for(auto* button:retryAutosave_)button->hide();if(pendingEdits_.isEmpty()){for(const auto& group:QStringList{"archive","preferences","naming","limits","retention","actions","profiles","captureDefaults"})if((group!="profiles"||!initialProfile_)&&(group!="captureDefaults"||captureDefaultsEnabled_))queueEdit(retry,"/"+group);}save();});}
- for(int i=0;i<2;++i)new VisibleWithParts(feedbackRows[i],{i?destinationStatus_:status_,reloadConflict_[i],retryAutosave_[i]});
+ for(int i=0;i<2;++i)new VisibleWithParts(feedbackRows[i],{i?destinationStatus_:status_,conflictBanners_[i],retryAutosave_[i]});
  auto* testSection=new FormRow;testSection->setObjectName("destinationTestSection");auto* testBox=new QVBoxLayout(testSection);testBox->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));testBox->setSpacing(space(Space::s));auto* testLine=new QHBoxLayout;testLine->setSpacing(space(Space::l));auto* testText=new QVBoxLayout;testText->setSpacing(space(Space::xs));testText->setAlignment(Qt::AlignVCenter);testText->addWidget(Graphite::label("Connection test","body"));testText->addWidget(testScope);testLine->addLayout(testText,1);testLine->addWidget(test,0,Qt::AlignRight|Qt::AlignVCenter);testBox->addLayout(testLine);new ConnectionTestSizer(testSection,testLine,testScope,test);credentialForm->addRow(testSection);testSection->setProperty("preferenceRow",true);testSection->setProperty("preferenceRowInset",true);testSection->setProperty("preferenceNaturalHeight",true);
  autosave_=new QTimer(this);autosave_->setSingleShot(true);autosave_->setInterval(400);connect(autosave_,&QTimer::timeout,this,&SettingsWindow::save);
  for(auto* edit:findChildren<QLineEdit*>()){if(edit==access_||edit==secret_||edit==token_||edit==protonPassword_||edit->property("configPath").toString().isEmpty())continue;connect(edit,&QLineEdit::textChanged,this,[this,edit]{dirty();if(!edit->hasFocus()||edit->isReadOnly())queueEdit(edit);});connect(edit,&QLineEdit::editingFinished,this,[this,edit]{queueEdit(edit);});}
@@ -1204,8 +1207,9 @@ void SettingsWindow::status(const Error& error){
  const auto detail=e?(e.code+(e.details["path"].toString().isEmpty()?QString{}:" · "+e.details["path"].toString())):QString{};
  for(auto* label:{status_,destinationStatus_}){if(!label)continue;label->setProperty("errorCode",e?e.code:QString{});label->setToolTip(detail);label->setAccessibleDescription(detail);}
  if(destinationStatus_)VisualStyle::feedback(destinationStatus_,e.message,bool(e));
- if(e.code=="config_missing"&&settings_.revision().isEmpty()){VisualStyle::feedback(status_,"Changes save automatically when valid.");return;}
+ if(e.code=="config_missing"&&settings_.revision().isEmpty()){VisualStyle::feedback(status_,"Changes save automatically when valid.");placeConflictBanners();return;}
  VisualStyle::feedback(status_,e?e.message:"Done.",bool(e));
+ placeConflictBanners();
 }
 void SettingsWindow::refreshDiagnostics(){
  refreshLoggingStatus();refreshUpdateStatus();const auto data=settings_.diagnostics();const auto source=data["capabilities"].toObject()["source"].toObject();const auto capture=source["capture"].toObject();const auto shortcuts=data.contains("shortcuts")?data["shortcuts"].toObject():source["shortcuts"].toObject();
@@ -1889,7 +1893,7 @@ void SettingsWindow::autosaveFailure(const Error& error){
  endAppearancePreview();
  // A conflicting reorder is not kept: the list goes back to the saved order.
  const bool reordered=conflict_&&!reorderBaseline_.isEmpty();if(reordered)restoreReorderBaseline();
- auto message=error;if(conflict_)message.message="Settings changed elsewhere. Your edits are kept here. Reload discards them."+QString(reordered?" The previous destination order is restored.":"");else message.message+=" Your edits remain in this window. Retry saving when ready; the request won't repeat automatically.";status(message);
+ auto message=error;if(conflict_)message.message=conflictMessage()+QString(reordered?" The previous destination order is restored.":"");else message.message+=" Your edits remain in this window. Retry saving when ready; the request won't repeat automatically.";status(message);
  for(auto* button:retryAutosave_)button->setVisible(!conflict_);showConflictActions();
  emit viewStateChanged();
 }
@@ -2100,7 +2104,7 @@ void SettingsWindow::configurationChanged(){
  refreshMetadata();if(saving_||resetting_)return;
  if(conflict_||((dirty_||hasRetainedDrafts())&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))){
   // Keep a conflict message that is already shown, such as a restored destination order.
-  const bool shown=conflict_&&!status_->text().isEmpty();conflict_=true;if(!shown)status({"config_conflict","Settings changed elsewhere. Your edits are kept here. Reload discards them.",{}});showConflictActions();emit viewStateChanged();return;}
+  const bool shown=conflict_&&!status_->text().isEmpty();conflict_=true;if(!shown)status({"config_conflict",conflictMessage(),{}});showConflictActions();emit viewStateChanged();return;}
  if(!dirty_&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))refresh();
  auto error=settings_.metadata()["validation"].toObject()["error"].toObject();if(!error["code"].toString().isEmpty())status({error["code"].toString(),error["message"].toString(),error["details"].toObject()});
 }
@@ -2276,7 +2280,13 @@ void SettingsWindow::pollSetup(){
   }
  });
 }
-void SettingsWindow::showConflictActions(){for(auto* button:reloadConflict_)button->setVisible(conflict_);if(captureOutputBlock_)updateCaptureInheritance();}
+void SettingsWindow::showConflictActions(){placeConflictBanners();if(captureOutputBlock_)updateCaptureInheritance();}
+QString SettingsWindow::conflictMessage(){return QStringLiteral("Settings changed elsewhere. Your edits are kept here. Reload discards them.");}
+// The banner says what the status line would; the line keeps its words for agents and other errors.
+void SettingsWindow::placeConflictBanners(){
+ for(int i=0;i<conflictBanners_.size();++i){auto* label=i?destinationStatus_:status_;if(!label)continue;const bool reported=label->property("errorCode").toString()=="config_conflict"&&!label->text().isEmpty();
+  if(conflict_)conflictBanners_[i]->setText(reported?label->text():conflictMessage());reloadConflict_[i]->setVisible(conflict_);conflictBanners_[i]->setVisible(conflict_);label->parentWidget()->setVisible(!conflict_||!reported);}
+}
 // What a reload discards, in the words of the page that shows it.
 QStringList SettingsWindow::draftEdits()const{
  QStringList edits;const auto add=[&edits](const QString& text){if(!edits.contains(text))edits.append(text);};
