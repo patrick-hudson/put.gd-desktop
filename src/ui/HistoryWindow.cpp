@@ -788,6 +788,8 @@ void HistoryWindow::updateFooterLayout(){
  auto* search=findChild<QLineEdit*>("historySearch");auto* views=findChild<QWidget*>("historyViewMode");auto* management=findChild<QToolButton*>("historyManagementExpanded");views->setFixedWidth(views->sizeHint().width());
  const int available=header->width()-tools->contentsMargins().left()-tools->contentsMargins().right(),clear=activeFilters().isEmpty()?0:clearFilters_->sizeHint().width()+space(Space::s),required=180+filtersToggle_->sizeHint().width()+views->sizeHint().width()+management->sizeHint().width()+clear+3*space(Space::s);
  const bool wrap=required>available,details=compact_&&detailsOpen_;auto* heading=findChild<QWidget*>("historyHeadingGroup");const bool headingRow=available<required+heading->minimumSizeHint().width()+space(Space::l);const int toolRow=headingRow&&!details?1:0;
+ // A heading on its own row needs room for its text, rather than a control target.
+ heading->setFixedHeight(headingRow?qMax(Graphite::Metric::control,heading->layout()->totalMinimumSize().height()):Graphite::scaled(Graphite::Metric::control));
  while(auto* item=tools->takeAt(0))delete item;for(int i=0;i<6;++i)tools->setColumnStretch(i,0);
  heading->setVisible(!details);detailsBack_->setVisible(details);views->setVisible(!details);search->setVisible(!details);filtersToggle_->setVisible(!details);clearFilters_->setVisible(!details&&!activeFilters().isEmpty());management->setVisible(!details);
  tools->setContentsMargins(space(details?Space::l:Space::xxl),Graphite::pageHeaderTop(),space(Space::l),tools->contentsMargins().bottom());header->parentWidget()->setProperty("inspector",details);header->parentWidget()->update();
