@@ -3,6 +3,8 @@ import copy
 import json
 from pathlib import Path
 import sys
+import tempfile
+import subprocess
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -115,6 +117,43 @@ class FakeContext(Context):
     def note(self, text): self.events.append(('note',text))
 
 
+class ExportContext(FakeContext):
+    def __init__(self, corrupt=False):
+        super().__init__()
+        self.corrupt=corrupt
+        self.oracle_script=None
+
+    def click(self,control,window,**kwargs):
+        if control=='editorUpload':
+            self.events.append(('click',control,window)); self.phase='completed'
+        else: super().click(control,window,**kwargs)
+
+    def call(self,method,params=None):
+        if method=='operation.inspect' and self.phase=='completed':
+            return {'state':'completed','items':[{'local':{'status':'saved','path':"/private/output's copy.png"},
+                                                'artifact':{'mime':'image/png'}}]}
+        return super().call(method,params)
+
+    def shell(self,script,**kwargs):
+        self.oracle_script=script
+        # Execute the exact recipe pixel oracle with a controlled PPM. This
+        # tests the oracle's rejection behaviour, never an app export.
+        oracle=script.split("<<'ORACLE'\n",1)[1].rsplit('\nORACLE',1)[0]
+        pixels=bytearray(640*320*3)
+        colours=[(220,30,40),(20,180,70),(35,70,220),(235,190,20)]
+        for y in range(320):
+            for x in range(640):
+                rgb=colours[(y>=160)*2+(x>=320)]
+                if 340<=x<600 and 20<=y<140: rgb=(0,0,0)
+                pixels[(y*640+x)*3:(y*640+x+1)*3]=bytes(rgb)
+        if self.corrupt: pixels[(50*640+400)*3]=20
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'output.ppm'
+            path.write_bytes(b'P6\n640 320\n255\n'+pixels)
+            result=subprocess.run([sys.executable,'-c',oracle,str(path)],capture_output=True,text=True)
+        return {'returncode':result.returncode,'stdout':result.stdout,'stderr':result.stderr}
+
+
 class EditorRecipes(unittest.TestCase):
     def test_exact_ownership_once(self):
         owned={i for i,lane in json.loads((ROOT/'tools/lab/surface_driver/ownership.json').read_text())['owners'].items() if lane=='editor'}
@@ -171,7 +210,7 @@ class EditorRecipes(unittest.TestCase):
 
     def test_all_pending_recipes_explain_block_after_frames(self):
         names=['held_modifiers','double_click','window_chrome',
-               'save_copy','preparation_failure']
+               'preparation_failure']
         for name in names:
             with self.subTest(name=name):
                 ctx=FakeContext()
@@ -180,6 +219,31 @@ class EditorRecipes(unittest.TestCase):
                 self.assertGreater(len(raised.exception.reason),30)
                 self.assertEqual(['before','after'],[e[1] for e in ctx.events if e[0]=='frame'])
                 self.assertEqual('cancelled',ctx.phase)
+
+    def test_export_oracle_accepts_sanitized_pixels_and_quotes_path(self):
+        ctx=ExportContext(); editor.upload(ctx)
+        self.assertEqual('completed',ctx.phase)
+        self.assertIn("putgd-desktop-fixture --convert '/private/output",ctx.oracle_script)
+        self.assertNotIn('from tools.lab',ctx.oracle_script)
+
+    def test_export_oracle_rejects_a_single_source_pixel_in_mask(self):
+        ctx=ExportContext(corrupt=True)
+        with self.assertRaisesRegex(RecipeFailed,'every mask pixel'): editor.upload(ctx)
+
+    def test_legacy_selector_is_explicit_and_not_silent(self):
+        ctx=FakeContext()
+        def click(control,window):
+            if control=='lineWidth': raise KeyError('name not in old catalog')
+            ctx.events.append(('click',control,window))
+        ctx.click=click
+        editor._named_or_legacy(ctx,'lineWidth','class:QComboBox')
+        self.assertIn(('click','class:QComboBox','editor'),ctx.events)
+        self.assertTrue(any(e[0]=='note' and 'fix/surface-objectnames' in e[1] for e in ctx.events))
+
+    def test_copy_path_creation_rejects_bad_shell_result(self):
+        ctx=FakeContext()
+        ctx.shell=lambda script: {'returncode':0,'stdout':'/private/real-user-folder','stderr':''}
+        with self.assertRaisesRegex(RecipeFailed,'new private test directory'): editor._copy_path(ctx)
 
     def test_open_failure_not_mistaken_for_success(self):
         ctx=FakeContext()

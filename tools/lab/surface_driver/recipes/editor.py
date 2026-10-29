@@ -420,7 +420,6 @@ _blocked_recipe('held_modifiers', ('editor.mouse-square','editor.key-ctrl-cursor
                 'Context has no held-modifier drag/scroll or key-down/up; Shift-square, Ctrl-overdraw/cursor/zoom and Space-pan need real input')
 _blocked_recipe('double_click', ('editor.double-click-text',), 'Context has no double-click input')
 _blocked_recipe('window_chrome', ('editor.window-close','editor.compact'), 'Context has no real window resize/minimize/maximize/close input')
-_blocked_recipe('save_copy', ('editor.save-copy','editor.save-feedback'), 'Needs target file-dialog fixture, output path and native dialog input support; owned dialog recipe is in the dialogs lane')
 _blocked_recipe('preparation_failure', ('editor.preparation-failed',), 'Needs deterministic output-limit failure fixture; normal small image cannot exercise this banner')
 
 
@@ -548,3 +547,51 @@ def mcp_editor(ctx):
         operation=_result(ctx.call('operation.inspect',{'id':op}))
         ctx.expect(operation['state']=='cancelled' and not operation['items'],'MCP cancel stores nothing')
     ctx.blocked('MCP command/output checks passed; preview_editor image-content transport and editor_file_dialog open/cancel still need core backend contract',issue=CORE_ISSUE)
+
+
+@recipe('editor.save-copy', needs=IMAGE)
+def save_copy(ctx):
+    with _session(ctx) as op:
+        ctx.click('editorSaveCopy',window='editor')
+        dialog = _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))
+        ctx.expect(dialog['open'],'Save a copy button opens chooser')
+        _frame(ctx,'chooser-open','26-editor-selected')
+        ctx.keys('Esc')
+        ctx.wait(lambda: not _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'], 'chooser cancels by Escape')
+        ctx.keys('Ctrl+S')
+        ctx.expect(_result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'],'Ctrl+S opens chooser')
+        ctx.keys('Esc')
+        ctx.wait(lambda: not _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'], 'shortcut chooser cancels')
+        ctx.expect(_inspect(ctx,op)['phase']=='editing','chooser cancellation never uploads')
+        _frame(ctx,'after')
+        ctx.blocked('Save button/shortcut and chooser cancellation checked; selecting an output path requires the dialogs lane native-input fixture',issue=CORE_ISSUE)
+
+
+@recipe('editor.save-feedback', needs=IMAGE)
+def save_feedback(ctx):
+    with _session(ctx) as op:
+        path=_copy_path(ctx)
+        saved=_result(ctx.call('editor.saveCopy',{'id':op,'path':path}))
+        ctx.expect(saved['saved'],'private copy fixture saved')
+        view=_inspect(ctx,op)['view']
+        ctx.expect(view['saveFeedbackVisible'] and view['lastSave']['current'],'current saved copy banner appears')
+        _frame(ctx,'saved','27-editor-saved')
+        ctx.click('copySavedPath',window='editor')
+        ctx.expect(ctx.clipboard_text()==path and _inspect(ctx,op)['view']['lastCopiedPath']==path,'Copy path uses exact saved path')
+        ctx.click('dismissEditorSavedCopy',window='editor')
+        ctx.expect(not _inspect(ctx,op)['view']['saveFeedbackVisible'],'dismiss hides feedback')
+        # A missing private subdirectory deterministically triggers save failure.
+        failure=ctx.cli('editor.saveCopy',json.dumps({'id':op,'path':path+'/missing.png'}))
+        ctx.expect(failure['returncode']!=0,'invalid private target fails without upload')
+        ctx.expect(_inspect(ctx,op)['view']['saveFeedbackVisible'],'write failure presents recovery banner')
+        ctx.click('editorSaveDetails',window='editor')
+        ctx.expect(_inspect(ctx,op)['view']['saveDetailsOpen'],'Details reveals save failure')
+        _frame(ctx,'details','28a-editor-save-path')
+        ctx.click('editorSaveDetails',window='editor')
+        ctx.expect(not _inspect(ctx,op)['view']['saveDetailsOpen'],'Details toggles closed')
+        ctx.click('chooseAnotherLocation',window='editor')
+        ctx.expect(_result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'],'recovery opens another location chooser')
+        ctx.keys('Esc')
+        ctx.wait(lambda: not _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'],'recovery chooser cancelled')
+        _frame(ctx,'after','28-editor-save-failed')
+        ctx.blocked('Saved banner/copy/dismiss/failure/details/recovery checked; Show in folder and compact overflow actions need bounded file-manager/window fixtures',issue=CORE_ISSUE)
