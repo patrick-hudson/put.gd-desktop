@@ -2522,19 +2522,26 @@ private slots:
             QVERIFY(!window.drive({{"action", "showAdvice"}}).state["adviceDialog"].toObject()["open"].toBool());
         }
     }
+    void audioSurvivesSilentFormatRoundTrips_data() {
+        QTest::addColumn<bool>("recorded");
+        QTest::newRow("recorded") << true;
+        QTest::newRow("silent-capture") << false;
+    }
     void audioSurvivesSilentFormatRoundTrips() {
-        auto o = options(); o.audioRecorded = true; o.formats.append("webp");
-        auto c = config(); c.audio.system = true;
+        QFETCH(bool, recorded);
+        auto o = options(); o.audioRecorded = recorded; o.formats.append("webp");
+        auto c = config(); c.audio.system = recorded;
         ReviewWindow window(o, c); window.show(); QVERIFY(putgd::test::waitForWindowExposed(&window));
         QSignalSpy changed(&window, &ReviewWindow::configChanged);
         for (const auto& format : {"gif", "webp"}) {
             QVERIFY(window.drive({{"action", "format"}, {"format", format}}).code.isEmpty());
             QVERIFY(!qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
-            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("No audio in %1 · Silent preview").arg(QString(format).toUpper()));
+            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), recorded ? QString("No audio in %1 · Silent preview").arg(QString(format).toUpper()) : QString("No audio recorded · Silent preview"));
+            QVERIFY(!window.inspect()["audioEffective"].toBool());
             QVERIFY(window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}}).code.isEmpty());
-            QVERIFY(qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
-            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), QString("System audio included · Silent preview"));
-            QVERIFY(qvariant_cast<RecordingConfig>(changed.last().first()).audio.system);
+            QCOMPARE(qvariant_cast<RecordingConfig>(changed.last().first()).audio.system, recorded);
+            QCOMPARE(window.findChild<QLabel*>("exportAudioSummary")->accessibleName(), recorded ? QString("System audio included · Silent preview") : QString("No audio recorded · Silent preview"));
+            QCOMPARE(window.inspect()["audioEffective"].toBool(), recorded);
         }
     }
     void controlsAndStatusKeepTheUsersGeometry() {

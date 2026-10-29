@@ -28,7 +28,8 @@ public:
     // Shows ready bounds/controls and asks for any consent. Result: {canvas:[w,h]}.
     virtual void prepare(const QString& id, const RecordingTarget&, const RecordingConfig&, const QString& stagingDirectory, Reply, const QJsonObject& reviewOptions = {}) = 0;
     // start | pause | resume | stop | cancel | raise | overlay. Reply only once the
-    // helper reached the state. stop replies {durationUs, canvas:[w,h]}.
+    // helper reached the state. start/stop report audioEncoder (empty when silent);
+    // stop also replies {durationUs, canvas:[w,h]}.
     virtual void control(const QString& id, const QString& command, const QJsonObject& params, Reply) = 0;
     // One frame at clip time with trim/masks applied: {png: base64, timeUs}.
     virtual void preview(const QString& id, const RecordingEdit&, const RecordingConfig&, qint64 timeUs, int maxEdge, Reply) = 0;

@@ -260,6 +260,8 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         s.duration = duration;
         s.edit = {};
         s.captureStopped = true;
+        if (event["audioEncoder"].isString()) s.capturedSystemAudio = !event["audioEncoder"].toString().isEmpty();
+        s.config.audio.system = s.capturedSystemAudio && !s.config.silent();
         s.stopReason = event["reason"].toString();
         updateCanvas(s.canvas, event["canvas"]);
         recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
@@ -276,6 +278,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         fail({error["code"].toString("recording_failed"), error["message"].toString("The recording helper failed"), error["details"].toObject()});
     } else if (kind == "started" && (s.state == "ready" || s.state == "starting")) {
         // The user pressed Record on the helper's control bar.
+        s.capturedSystemAudio = !event["audioEncoder"].toString().isEmpty();
         for (auto it = event.begin(); it != event.end(); ++it) if (it.key() != "id" && it.key() != "event") s.progress[it.key()] = it.value();
         transition(s, "recording");
     } else if (kind == "paused" && s.state == "recording") transition(s, "paused");
@@ -289,7 +292,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
             // fixed and audio cannot appear (and is dropped for silent formats).
             const auto format = json["format"].toString();
             json.remove("fps");
-            json["audio"] = QJsonObject{{"system", s.config.audio.system && format != "gif" && format != "webp"}, {"microphone", false}};
+            json["audio"] = QJsonObject{{"system", s.capturedSystemAudio && format != "gif" && format != "webp"}, {"microphone", false}};
         }
         RecordingConfig config;
         if (!recording::parseConfig(json, config)) {
@@ -530,7 +533,10 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 return;
             }
             for (auto it = result.begin(); it != result.end(); ++it) s.progress[it.key()] = it.value();
-            if (command == "start") transition(s, "recording");
+            if (command == "start") {
+                s.capturedSystemAudio = !result["audioEncoder"].toString().isEmpty();
+                transition(s, "recording");
+            }
             else if (command == "pause") transition(s, "paused");
             else if (command == "resume") transition(s, "recording");
             else {
@@ -539,6 +545,8 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 s.duration = duration;
                 s.edit = {};
                 s.captureStopped = true;
+                if (result["audioEncoder"].isString()) s.capturedSystemAudio = !result["audioEncoder"].toString().isEmpty();
+                s.config.audio.system = s.capturedSystemAudio && !s.config.silent();
                 s.stopReason = "user";
                 updateCanvas(s.canvas, result["canvas"]);
                 recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));

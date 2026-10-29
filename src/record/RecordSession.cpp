@@ -94,7 +94,7 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
             recorded_ = true;
             audioCaptured_ = !pipeline_.audioEncoder().isEmpty();
             openReview();
-            emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"reason", "budget"}, {"stopDetails", details}});
+            emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"audioEncoder", pipeline_.audioEncoder()}, {"reason", "budget"}, {"stopDetails", details}});
         });
     });
 }

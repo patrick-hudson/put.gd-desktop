@@ -85,6 +85,8 @@ private:
         QString stopReason;
         // Finalization survives later review/edit/export state transitions.
         bool captureStopped = false;
+        // Capture capability survives silent export formats during review.
+        bool capturedSystemAudio = false;
         // Which bound set the budget at prepare (disk_space or max_file_bytes), and after
         // a budget stop {reason, message, hint, budgetBytes, maxFileBytes, durationUs, freeBytes?, ...}.
         QString budgetLimit;

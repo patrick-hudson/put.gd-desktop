@@ -347,6 +347,35 @@ private slots:
   h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);
  }
+ void reviewFormatRoundTripsPreserveCapturedAudio_data(){
+  QTest::addColumn<bool>("requested");QTest::addColumn<bool>("captured");QTest::addColumn<bool>("automaticStop");QTest::addColumn<bool>("helperStart");
+  for(bool automaticStop:{false,true})for(bool helperStart:{false,true})for(bool requested:{false,true})for(bool captured:{false,true}){
+   if(captured&&!requested)continue;
+   const auto name=QString("requested%1-captured%2-autoStop%3-helperStart%4").arg(requested).arg(captured).arg(automaticStop).arg(helperStart);
+   QTest::newRow(qPrintable(name))<<requested<<captured<<automaticStop<<helperStart;
+  }
+ }
+ void reviewFormatRoundTripsPreserveCapturedAudio(){
+  QFETCH(bool,requested);QFETCH(bool,captured);QFETCH(bool,automaticStop);QFETCH(bool,helperStart);
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());h.backend->captureSystemAudio=captured;
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",requested}}}});QVERIFY(!id.isEmpty());
+  if(helperStart){h.backend->sink({{"id",id},{"event","started"},{"audioEncoder",captured?QString("synthetic-aac"):QString()}});PUTGD_TRY_COMPARE(h.state(id),QString("recording"));h.backend->capturedSystemAudio=captured;}
+  else QVERIFY(!h.rec("start",{{"id",id}}).error);
+  if(automaticStop){h.backend->sink({{"id",id},{"event","stopped"},{"durationUs",12000000},{"audioEncoder",captured?QString("synthetic-aac"):QString()},{"reason","budget"}});PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));}
+  else QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  for(const auto* silent:{"gif","webp"}){
+   for(const auto* format:{silent,"mp4"}){
+    // The review's requested audio cannot fabricate audio in a silent capture.
+    h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format",format},{"audio",QJsonObject{{"system",true}}}}}});
+    PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString(format));
+    const bool audible=captured&&QString(format)=="mp4";
+    QCOMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["system"].toBool(),audible);
+    const auto path=h.dir.filePath(QString("copy-%1.%2").arg(silent,format));
+    QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",path}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+    QCOMPARE(h.backend->lastConfig.audio.system,audible);
+   }
+  }
+ }
  void reviewWindowEventsRoundTripThroughTheResident(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
   const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
