@@ -33,8 +33,8 @@ class FakeContext(Context):
     def __init__(self, heads=1):
         self.env = {"screens": [[0, 0, 1280, 800], [1280, 0, 1280, 800]][:heads],
                     "output_dir": "/tmp/sel-artifacts", "record_helper": "/opt/test/putgd-record"}
-        self.document = {"actions": {a: {"destination": "default", "profileId": "", "shortcut": ""} for a in ("region", "edit", "record")},
-                         "archive": {"keepUploads": False, "root": "/tmp/original"},
+        self.document = {"actions": {a: {"destination": "default", "profileId": None, "shortcut": ""} for a in ("region", "edit", "record")},
+                         "archive": {"keepUploads": False, "root": "/tmp/original", "folders": {k: None for k in ("images", "videos", "text", "other")}},
                          "preferences": {"regionSelectionMode": "live"}}
         self.original = copy.deepcopy(self.document)
         self.revision = 1
@@ -80,6 +80,9 @@ class FakeContext(Context):
             return {"document": copy.deepcopy(self.document), "metadata": {"acceptedRevision": str(self.revision)}}
         if method == "settings.patch":
             assert params["expectedRevision"] == str(self.revision), "stale configuration write"
+            for route in params["patch"].get("actions", {}).values():
+                if "profileId" in route:
+                    assert route["profileId"] is None, "local profile reference must be JSON null"
             merge(self.document, copy.deepcopy(params["patch"]))
             self.revision += 1
             return {"acceptedRevision": str(self.revision)}
@@ -90,7 +93,8 @@ class FakeContext(Context):
         if method == "operation.inspect":
             return copy.deepcopy(self.operations[params["id"]])
         if method == "recording.capabilities":
-            return {"formats": ["mp4", "webm", "gif", "webp"], "codecs": {"mp4": ["h264", "h265"], "webm": ["vp9"]}, "audio": {"system": True}}
+            return {"active": self.active if self.active in self.recordings and self._record()["state"] != "cancelled" else None,
+                    "formats": ["mp4", "webm", "gif", "webp"], "codecs": {"mp4": ["h264", "h265"], "webm": ["vp9"]}, "audio": {"system": True}}
         if method == "recording.prepare":
             rid = self._operation("record")
             target = copy.deepcopy(params["target"])
@@ -105,9 +109,11 @@ class FakeContext(Context):
             self.bar.update(x=170, y=650, width=850)
             return {"recordingId": rid}
         if method == "recording.inspect":
+            assert self.recordings[params["id"]]["state"] != "cancelled", "cancelled session is retired"
             return copy.deepcopy(self.recordings[params["id"]])
         if method == "recording.cancel":
             self.recordings[params["id"]]["state"] = "cancelled"
+            self.operations[params["id"]]["state"] = "cancelled"
             self.surface = "history"
             return {}
         if method == "recording.saveCopy":
@@ -177,6 +183,7 @@ class FakeContext(Context):
         elif control == "cancel":
             if self._record()["state"] == "ready":
                 self._record()["state"] = "cancelled"
+                self.operations[self.active]["state"] = "cancelled"
                 self.surface = "history"
             else:
                 self.question = True
@@ -185,6 +192,7 @@ class FakeContext(Context):
         elif control == "discardRecording":
             self.question = False
             self._record()["state"] = "cancelled"
+            self.operations[self.active]["state"] = "cancelled"
             self.surface = "history"
         elif control == "text:System audio":
             self.audio_intent = not self.audio_intent
@@ -198,6 +206,7 @@ class FakeContext(Context):
     def _cancel(self):
         if self.surface == "recsel":
             self._record().update(state="cancelled", selecting=False)
+            self.operations[self.active]["state"] = "cancelled"
         else:
             self.operations[self.active].update(state="failed", error={"code": "cancelled"})
         self.surface = "history"
@@ -251,6 +260,7 @@ class FakeContext(Context):
                         self.question = False
                     elif self._record()["state"] == "ready":
                         self._record()["state"] = "cancelled"
+                        self.operations[self.active]["state"] = "cancelled"
                         self.surface = "history"
                 continue
             assert self.surface in ("region", "recsel")
@@ -293,6 +303,20 @@ class SelectorRecipes(unittest.TestCase):
         ids = [i for r in self.recipes() for i in r.interactions]
         self.assertEqual(set(ids), {i for i, owner in owners.items() if owner == "selectors"})
         self.assertEqual(len(ids), len(set(ids)))
+
+    def test_desktop_differences_live_in_fragments(self):
+        model = json.loads((ROOT / "tools/lab/surface_map/model.json").read_text())
+        for desktop in model["desktops"]:
+            path = ROOT / "tools/lab/surface_driver/profiles" / (desktop["id"] + ".d") / "selectors.json"
+            value = json.loads(path.read_text())
+            self.assertEqual(value, {"selectors": {"bar_drag": desktop["id"].endswith("-x11")}})
+
+    def test_wayland_drag_is_explicitly_blocked(self):
+        ctx = FakeContext()
+        ctx.profile = {"selectors": {"bar_drag": False}}
+        with self.assertRaisesRegex(RecipeBlocked, "Compositor places"):
+            selectors.bar_drag(ctx)
+        self.assertFalse(ctx.inputs)
 
     def test_every_recipe_with_contract_fixture(self):
         for item in self.recipes():
@@ -337,6 +361,23 @@ class SelectorRecipes(unittest.TestCase):
             selectors.bar_recording(ctx)
         self.assertEqual(ctx.document, ctx.original)
         self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
+
+    def test_shortcut_only_record_route_and_folder_overrides_are_restored(self):
+        ctx = FakeContext()
+        ctx.document["actions"]["record"] = {"shortcut": ""}
+        ctx.document["archive"]["folders"]["images"] = "/tmp/original-images"
+        ctx.original = copy.deepcopy(ctx.document)
+        selectors.recording_output(ctx)
+        self.assertEqual(ctx.document, ctx.original)
+
+    def test_missing_optional_mode_is_blocked_before_mutation(self):
+        ctx = FakeContext()
+        del ctx.document["preferences"]["regionSelectionMode"]
+        ctx.original = copy.deepcopy(ctx.document)
+        with self.assertRaisesRegex(RecipeBlocked, "seed preferences"):
+            selectors.region_keyboard(ctx)
+        self.assertEqual(ctx.document, ctx.original)
+        self.assertFalse(any(m == "settings.patch" for m, _ in ctx.calls))
 
     def test_two_heads_are_required(self):
         with self.assertRaisesRegex(RecipeBlocked, "two independently sized"):

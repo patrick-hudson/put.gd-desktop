@@ -61,8 +61,13 @@ def _local(ctx, mode="live"):
         ctx.blocked("selector-desktop requires a private absolute output_dir (#664)", issue=664)
     old = _call(ctx, "settings.get")
     document = old["document"]
-    patch = {"actions": {a: {"destination": "local", "profileId": ""} for a in ("region", "edit", "record")},
-             "archive": {"keepUploads": True, "root": root},
+    if "regionSelectionMode" not in document["preferences"]:
+        ctx.blocked("selector-desktop must seed preferences.regionSelectionMode so recursive settings.patch can restore it exactly (#664)", issue=664)
+    # A shortcut-only record entry inherits region. Adding route fields to it
+    # cannot be undone by recursive settings.patch (null is a value).
+    routed = [a for a in ("region", "edit", "record") if "destination" in document["actions"][a]]
+    patch = {"actions": {a: {"destination": "local", "profileId": None} for a in routed},
+             "archive": {"keepUploads": True, "root": root, "folders": {k: None for k in document["archive"]["folders"]}},
              "preferences": {"regionSelectionMode": mode}}
     _call(ctx, "settings.patch", {"patch": patch, "expectedRevision": old["metadata"]["acceptedRevision"]})
     try:
@@ -72,8 +77,8 @@ def _local(ctx, mode="live"):
     finally:
         # Restore only owned fields against a freshly read revision.
         now = _call(ctx, "settings.get")
-        restore = {"actions": {a: document["actions"][a] for a in ("region", "edit", "record")},
-                   "archive": {k: document["archive"][k] for k in ("keepUploads", "root")},
+        restore = {"actions": {a: document["actions"][a] for a in routed},
+                   "archive": {k: document["archive"][k] for k in ("keepUploads", "root", "folders")},
                    "preferences": {"regionSelectionMode": document["preferences"]["regionSelectionMode"]}}
         _call(ctx, "settings.patch", {"patch": restore, "expectedRevision": now["metadata"]["acceptedRevision"]})
 
@@ -151,6 +156,10 @@ def _inspect(ctx, rid):
 
 
 def _state(ctx, rid, wanted):
+    if wanted == "cancelled":
+        # Cancel retires the active recording session. Its durable operation is
+        # the inspectable result, not recording.inspect (which is now unavailable).
+        return ctx.wait(lambda: (s if (s := _op(ctx, rid))["state"] == wanted else None), "recording cancelled")
     return ctx.wait(lambda: (s if (s := _inspect(ctx, rid))["state"] == wanted else None), "recording " + wanted, timeout=45)
 
 
@@ -171,14 +180,18 @@ def _choose(ctx, rid, rect=None):
 
 def _cancel_record(ctx, rid):
     # Cleanup is not claimed as an input interaction.
-    if _inspect(ctx, rid)["state"] not in ("cancelled", "failed", "submitted"):
+    if _call(ctx, "recording.capabilities").get("active") == rid:
         _call(ctx, "recording.cancel", {"id": rid})
 
 
 def _ready(ctx, entire=False):
     rid = _open_record(ctx, entire)
-    if not entire:
-        _choose(ctx, rid)
+    try:
+        if not entire:
+            _choose(ctx, rid)
+    except Exception:
+        _cancel_record(ctx, rid)
+        raise
     return rid
 
 
@@ -377,11 +390,14 @@ def recording_selection(ctx):
             finally:
                 _cancel_record(ctx, rid)
         rid = _open_record(ctx)
-        ctx.frame("before-tiny", window="recsel", reference="47-record-entire-display")
-        x, y, _, _ = map(int, _half(_screen(ctx)))
-        ctx.drag((x, y), (x + 3, y + 3))
-        _state(ctx, rid, "cancelled")
-        ctx.frame("after-tiny")
+        try:
+            ctx.frame("before-tiny", window="recsel", reference="47-record-entire-display")
+            x, y, _, _ = map(int, _half(_screen(ctx)))
+            ctx.drag((x, y), (x + 3, y + 3))
+            _state(ctx, rid, "cancelled")
+            ctx.frame("after-tiny")
+        finally:
+            _cancel_record(ctx, rid)
 
 
 @recipe("recsel.key-esc", "recsel.right-click", needs=NEEDS)
@@ -389,14 +405,17 @@ def recording_cancel(ctx):
     with _local(ctx):
         for gesture in ("Esc", "right"):
             rid = _open_record(ctx)
-            ctx.frame("before-" + gesture, window="recsel", reference="47-record-entire-display")
-            if gesture == "right":
-                x, y, w, h = _screen(ctx)
-                ctx.click_at(int(x + w / 2), int(y + h / 2), button="right")
-            else:
-                ctx.keys("Esc")
-            _state(ctx, rid, "cancelled")
-            ctx.frame("after-" + gesture)
+            try:
+                ctx.frame("before-" + gesture, window="recsel", reference="47-record-entire-display")
+                if gesture == "right":
+                    x, y, w, h = _screen(ctx)
+                    ctx.click_at(int(x + w / 2), int(y + h / 2), button="right")
+                else:
+                    ctx.keys("Esc")
+                _state(ctx, rid, "cancelled")
+                ctx.frame("after-" + gesture)
+            finally:
+                _cancel_record(ctx, rid)
 
 
 @recipe("recsel.key-arrows", needs=NEEDS)
@@ -428,11 +447,12 @@ def recording_output(ctx):
         rid = _open_record(ctx)
         try:
             ctx.frame("before", window="recsel", reference="47-record-entire-display")
-            ctx.expect(doc["actions"]["region"]["destination"] == doc["actions"]["record"]["destination"] == "local", "recording route matches region local output")
+            record_route = doc["actions"]["record"]
+            ctx.expect(doc["actions"]["region"]["destination"] == record_route.get("destination", "local") == "local", "recording route matches region local output")
             _choose(ctx, rid)
             ctx.expect(not _op(ctx, rid)["destination"].get("providerId"), "local recording has no provider destination")
             ctx.frame("after", window="bar", reference=BAR)
-            ctx.review("Local route inspected; inheritance with an upload destination and an explicit recording exception needs the live lane's isolated provider fixture.")
+            ctx.review("Local route inspected (shortcut-only entries inherit region); upload inheritance and an explicit recording exception need the live lane's isolated provider fixture.")
         finally:
             _cancel_record(ctx, rid)
 
