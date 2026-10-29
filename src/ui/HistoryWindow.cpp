@@ -100,10 +100,13 @@ QColor metadataColor(const QJsonObject& record,const QString& part,const QColor&
 }
 QString failureDetail(const QJsonObject& record){auto text=HistoryModel::statusText(record);const auto label=HistoryModel::failureLabel(record);if(text==label)return {};if(text.startsWith(label+" · "))text.remove(0,label.size()+3);return text;}
 QString failureDescription(const QModelIndex& index){const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QStringList parts{record["name"].toString(index.data().toString()),HistoryModel::failureLabel(record),index.data(HistoryModel::CreatedRole).toString(),failureDetail(record)};parts.removeAll({});return parts.join(". ");}
-void compactFailureDetail(QTextDocument& document,const QModelIndex& index,int width){
- const auto font=Graphite::font(Graphite::Type::technical);QStringList spans;for(const auto& part:failureDetail(index.data(HistoryModel::RecordRole).toJsonObject()).split(" · ",Qt::SkipEmptyParts))spans.append(metadataSpan(part,Theme::current().textSecondary,true));
- document.setDocumentMargin(0);document.setDefaultFont(font);document.setHtml(Graphite::separatedLines(spans,font,width));auto lines=document.toPlainText().split('\n');auto shown=lines.value(0);if(lines.size()>1)shown+=QChar(0x2026);shown=QFontMetrics(font).elidedText(shown,Qt::ElideRight,qMax(0,width));
- QTextOption option;option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(metadataSpan(shown,Theme::current().textSecondary,true));document.setTextWidth(qMax(20,width));
+// Beside the actions the detail keeps one line; on a line of its own its facts wrap
+// whole, and only a fact wider than the row elides.
+void compactFailureDetail(QTextDocument& document,const QModelIndex& index,int width,int skip=0,bool wrap=false){
+ const auto font=Graphite::font(Graphite::Type::technical);QStringList spans;for(const auto& part:failureDetail(index.data(HistoryModel::RecordRole).toJsonObject()).split(" · ",Qt::SkipEmptyParts).mid(skip))spans.append(metadataSpan(part,Theme::current().textSecondary,true));
+ document.setDocumentMargin(0);document.setDefaultFont(font);document.setHtml(Graphite::separatedLines(spans,font,width));auto lines=document.toPlainText().split('\n');auto shown=lines.value(0);if(lines.size()>1&&!wrap)shown+=QChar(0x2026);shown=QFontMetrics(font).elidedText(shown,Qt::ElideRight,qMax(0,width));
+ QStringList shownLines{metadataSpan(shown,Theme::current().textSecondary,true)};if(wrap)for(int line=1;line<lines.size();++line)shownLines.append(metadataSpan(QFontMetrics(font).elidedText(lines[line],Qt::ElideRight,qMax(0,width)),Theme::current().textSecondary,true));
+ QTextOption option;option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(shownLines.join("<br/>"));document.setTextWidth(qMax(20,width));
 }
 class HistoryHeader final:public QWidget {
 public:using QWidget::QWidget;
@@ -259,7 +262,7 @@ int galleryTextHeight(){return QFontMetrics(historyTitleFont()).height()+space(S
 // The picture spends only the space left after the caption and status lines.
 int galleryPicture(int cardWidth,int cardHeight){return qMax(1,qMin((cardWidth-2)*10/16,cardHeight-1-2*space(Space::m)-galleryTextHeight()));}
 }
-void HistoryWindow::metadataDocument(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded,bool compact,bool separated){
+void HistoryWindow::metadataDocument(QTextDocument& document,const QModelIndex& index,int width,bool createdColumn,bool bounded,bool compact,bool separated,int failureFacts){
  document.setDocumentMargin(0);document.setDefaultFont(Graphite::font(Graphite::Type::technical));QTextOption option;option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);document.setDefaultTextOption(option);
  const auto record=index.data(HistoryModel::RecordRole).toJsonObject();const auto& t=Theme::current();auto text=HistoryModel::failed(record)?HistoryModel::statusText(record):index.data(HistoryModel::SubtitleRole).toString();
  if((bounded||createdColumn)&&!compact&&!HistoryModel::failed(record)){
@@ -269,7 +272,7 @@ void HistoryWindow::metadataDocument(QTextDocument& document,const QModelIndex& 
  if(compact){
   const auto created=index.data(HistoryModel::CreatedRole).toString();const auto kind=HistoryModel::friendlyAction(record["operation"].toObject()["action"].toString(record["category"].toString())),size=HistoryModel::fileSize(record["bytes"].toInteger());
   auto parts=text.split(" · ",Qt::SkipEmptyParts);parts.removeAll(created);parts.removeAll(kind);parts.removeAll(size);
-  if(HistoryModel::failed(record)){parts={HistoryModel::failureLabel(record)};}const auto status=parts.join(" · ");const QFontMetrics facts(Graphite::font(Graphite::Type::technical));
+  if(HistoryModel::failed(record)){parts={HistoryModel::failureLabel(record)};parts+=failureDetail(record).split(" · ",Qt::SkipEmptyParts).mid(0,failureFacts);}const auto status=parts.join(" · ");const QFontMetrics facts(Graphite::font(Graphite::Type::technical));
   const auto span=[&](const QString& part){return metadataSpan(part,metadataColor(record,part,parts.contains(part)?t.textSecondary:t.textMuted),parts.contains(part));};
   const auto measured=[&](const QStringList& shown){QStringList spans;for(const auto& part:shown.join(" · ").split(" · ",Qt::SkipEmptyParts))spans.append(span(part));QTextDocument measure;measure.setDocumentMargin(0);measure.setDefaultFont(document.defaultFont());measure.setHtml(spans.join(metadataSpan(" · ",t.textSecondary)));return measure.idealWidth();};
   QStringList shown;if(!HistoryModel::failed(record)){if(!kind.isEmpty())shown.append(kind);if(!size.isEmpty())shown.append(size);}if(!status.isEmpty())shown.append(status);if(!created.isEmpty())shown.append(created);
@@ -486,6 +489,22 @@ public:
  }
  int compactMetadataTop(const QRect& r,const QModelIndex& i)const{return rowBody(r,false,heading(i)).top()+compactTextInset()+QFontMetrics(historyTitleFont()).height()+compactMetadataGap();}
  int compactErrorTop(const QRect& r,const QModelIndex& i)const{return compactMetadataTop(r,i)+QFontMetrics(Graphite::font(Graphite::Type::technical)).height()+compactDetailGap();}
+ // A compact failure's facts flow as one block, never shortened while there is room:
+ // the status line takes the facts that fit before its time, the rest share the detail
+ // line with Retry and ⋯, and the actions take their own line only when that can't fit.
+ int compactStatusFacts(const QRect& r,const QModelIndex& i)const{
+  const auto record=i.data(HistoryModel::RecordRole).toJsonObject();const auto facts=failureDetail(record).split(" · ",Qt::SkipEmptyParts);const auto created=i.data(HistoryModel::CreatedRole).toString();const int width=rowBody(r,false,heading(i)).width();
+  for(int count=facts.size();count>0;--count){QStringList expected{HistoryModel::failureLabel(record)};expected+=facts.mid(0,count);if(!created.isEmpty())expected.append(created);QTextDocument line;HistoryWindow::metadataDocument(line,i,width,false,false,true,false,count);if(line.toPlainText()==expected.join(" · "))return count;}
+  return 0;
+ }
+ bool compactFailureActionsBelow(const QRect& r,const QModelIndex& i)const{
+  if(!compactRow(r,i)||!i.data(HistoryModel::FailedRole).toBool())return false;const auto rest=failureDetail(i.data(HistoryModel::RecordRole).toJsonObject()).split(" · ",Qt::SkipEmptyParts).mid(compactStatusFacts(r,i)).join(" · ");
+  return !rest.isEmpty()&&QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(rest)>rowBody(r,false,heading(i)).width()-compactActionWidth(i);
+ }
+ int compactDetailHeight(const QRect& r,const QModelIndex& i)const{
+  const int meta=QFontMetrics(Graphite::font(Graphite::Type::technical)).height();if(!compactFailureActionsBelow(r,i))return meta;
+  QTextDocument detail;compactFailureDetail(detail,i,rowBody(r,false,heading(i)).width(),compactStatusFacts(r,i),true);return qMax(meta,int(std::ceil(detail.size().height())));
+ }
  int inlineTextWidth(const QRect& r,const QModelIndex& i)const{
   const auto body=rowBody(r,false,heading(i));return qMax(20,(i.data(HistoryModel::FailedRole).toBool()?body.width()-actionHeight()-space(Space::s)-listDetailsSpace()-(rowPrimary(i)?primaryWidth(i)+space(Space::s):0):rowColumns(body,i).item.width())-space(Space::s));
  }
@@ -499,8 +518,8 @@ public:
  QRect primaryRect(QRect r,const QModelIndex& i)const{
   const auto c=card(r,i);const int h=actionHeight(),detailsSpace=detailsShown(i)?listDetailsSpace():0;const int w=qMin(primaryWidth(i),qMax(0,c.width()-2*space(Space::m)-h-space(Space::s)-(grid()?detailsWidth()+space(Space::s):detailsSpace)));
   if(grid())return galleryActionRect(r,i,0);
-  // Compact failures keep their title and status line whole: actions share the detail line, which may elide.
-  if(compactRow(r,i)&&i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-w,compactErrorTop(r,i)+(QFontMetrics(Graphite::font(Graphite::Type::technical)).height()-h)/2,w,h);
+  // Compact failures keep their title and status line whole: actions share the detail line when it fits beside them.
+  if(compactRow(r,i)&&i.data(HistoryModel::FailedRole).toBool()){const int meta=QFontMetrics(Graphite::font(Graphite::Type::technical)).height();return QRect(c.right()-space(Space::s)-h-space(Space::s)-w,compactErrorTop(r,i)+(compactFailureActionsBelow(r,i)?compactDetailHeight(r,i)+space(Space::xs):(meta-h)/2),w,h);}
   if(compactRow(r,i)){const bool icon=compactIcon(i);const int width=icon?h:w;return QRect(c.right()-space(Space::s)-h-(icon?space(Space::xs):space(Space::s))-width,actionsBelow(r,i)?c.bottom()-h-space(Space::s):c.top()+(c.height()-h)/2,width,h);}
   if(i.data(HistoryModel::FailedRole).toBool())return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,c.top()+(c.height()-h)/2,w,h);
   return QRect(c.right()-space(Space::s)-h-space(Space::s)-detailsSpace-w,actionsBelow(r,i)?c.bottom()-h-space(Space::s):c.top()+(rowContentHeight()-4-h)/2,w,h);
@@ -516,7 +535,7 @@ public:
   if(compactRow(outer,i)){
    const bool below=actionsBelow(outer,i),failed=i.data(HistoryModel::FailedRole).toBool();const int metaHeight=QFontMetrics(Graphite::font(Graphite::Type::technical)).height();int bottom=compactMetadataTop(outer,i)+metaHeight+(below?0:qMax(0,(actionHeight()-metaHeight)/2));
    // Room for the actions centred on the detail line, inset inside the card.
-   if(failed)return {width,qMax(rowContentHeight()+metaHeight+space(Space::xs)+heading(i),compactErrorTop(outer,i)+(metaHeight+actionHeight()+1)/2+space(Space::xs)+3)};
+   if(failed)return {width,qMax(rowContentHeight()+metaHeight+space(Space::xs)+heading(i),compactErrorTop(outer,i)+(compactFailureActionsBelow(outer,i)?compactDetailHeight(outer,i)+space(Space::xs)+actionHeight():(metaHeight+actionHeight()+1)/2)+space(Space::xs)+3)};
    height=qMax(rowContentHeight(),bottom-heading(i)+2+(below?actionHeight()+space(Space::m):0))+heading(i);return {width,height};
   }
   if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;HistoryWindow::metadataDocument(metadata,i,inlineTextWidth(outer,i),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
@@ -566,8 +585,8 @@ public:
   const int metadataTop=compact?compactMetadataTop(outer,i):lineTop+QFontMetrics(titleFont).height()+(grid()?space(Space::xs):6);
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
   if(compact){
-   QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,false,true);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,QFontMetrics(metaFont).height()));document.drawContents(p);p->restore();
-   if(failed){QTextDocument error;compactFailureDetail(error,i,body.width()-compactActionWidth(i));p->save();p->translate(body.left(),compactErrorTop(outer,i));p->setClipRect(QRectF(0,0,body.width(),QFontMetrics(metaFont).height()));error.drawContents(p);p->restore();}
+   const int statusFacts=failed?compactStatusFacts(outer,i):0;QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,false,true,false,statusFacts);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,QFontMetrics(metaFont).height()));document.drawContents(p);p->restore();
+   if(failed){const bool own=compactFailureActionsBelow(outer,i);QTextDocument error;compactFailureDetail(error,i,body.width()-(own?0:compactActionWidth(i)),statusFacts,own);p->save();p->translate(body.left(),compactErrorTop(outer,i));p->setClipRect(QRectF(0,0,body.width(),own?compactDetailHeight(outer,i):QFontMetrics(metaFont).height()));error.drawContents(p);p->restore();}
   }
   else if(!grid()){QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,true);p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
   else{

@@ -22,7 +22,8 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  // The compact failure metadata line in row coordinates, shared with tests.
  static QRect failureTextArea(const QSize& row,bool gallery,bool dayHeading);
  // Row metadata, shared by the delegate and document-format regression tests.
- static void metadataDocument(QTextDocument&,const QModelIndex&,int width,bool createdColumn,bool bounded=false,bool compact=false,bool separated=false);
+ // failureFacts: a compact failure's first detail facts, shown between its label and time.
+ static void metadataDocument(QTextDocument&,const QModelIndex&,int width,bool createdColumn,bool bounded=false,bool compact=false,bool separated=false,int failureFacts=0);
  // ui.history: drive the open page as its controls do. Actions: inspect,
  // retryLoading, copyDeletionDetails, clearFilters (scope "filters" or "all"), select (ids), clearSelection,
  // openDetails, closeDetails, expandPreview, closePreview, showSavedCopy and
