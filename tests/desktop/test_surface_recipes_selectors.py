@@ -374,6 +374,18 @@ class SelectorRecipes(unittest.TestCase):
         self.assertEqual(ctx.document, ctx.original)
         self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
 
+    def test_wrong_drag_bounds_retain_frame_and_retire_session(self):
+        ctx = FakeContext()
+        real_drag = ctx.drag
+        def shifted_drag(start, end):
+            real_drag(start, end)
+            ctx._record()["target"]["rect"][0] += 1
+        ctx.drag = shifted_drag
+        with self.assertRaisesRegex(RecipeFailed, "chosen recording bounds"):
+            selectors.bar_recording(ctx)
+        self.assertIn("chosen-recording-area", [f[0] for f in ctx.frames])
+        self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
+
     def test_shortcut_only_record_route_and_folder_overrides_are_restored(self):
         ctx = FakeContext()
         ctx.document["actions"]["record"] = {"shortcut": ""}

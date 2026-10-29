@@ -215,6 +215,7 @@ def _choose(ctx, rid, rect=None):
         ctx.drag((int(x), int(y)), (int(x + w), int(y + h)))
     ready = _state(ctx, rid, "ready")
     ctx.note("Observed recording target " + str(ready["target"]))
+    ctx.frame("chosen-recording-area")
     ctx.expect(ready["target"]["rect"] == rect, "chosen recording bounds match real input")
     ctx.expect(not ready["selecting"], "selector closes before ready bar")
     ctx.note("Inspected recording target " + str(rect))
