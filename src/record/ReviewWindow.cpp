@@ -133,40 +133,40 @@ public:
     }
     QSize sizeHint() const override {
         const int enabled = fontMetrics().horizontalAdvance(QStringLiteral("Blur may be reversible · ")) + QFontMetrics(actionFont(true)).horizontalAdvance(QStringLiteral("Use Redact"));
-        const int disabled = fontMetrics().horizontalAdvance(QStringLiteral("Select a blur to use Redact"));
+        const int disabled = fontMetrics().horizontalAdvance(QStringLiteral("Blur may be reversible · ")) + QFontMetrics(actionFont(false)).horizontalAdvance(QStringLiteral("Use Redact"));
         return {std::max(enabled, disabled) + Graphite::scaled(16) + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)};
     }
     QSize minimumSizeHint() const override { return sizeHint(); }
-protected:
-    void changeEvent(QEvent* event) override {
-        QToolButton::changeEvent(event);
-        if (event->type() == QEvent::EnabledChange) {
-            const auto description = isEnabled() ? QStringLiteral("Blur may be reversible · Use Redact") : QStringLiteral("Select a blur to use Redact");
-            setText(description); setToolTip(description); setAccessibleName(description);
-        }
+    void setActionAvailable(bool available) {
+        actionable_ = available;
+        const auto description = available ? text() : QStringLiteral("Select a blur mask to use Redact");
+        setToolTip(description); setAccessibleDescription(description);
+        update();
     }
+    bool actionAvailable() const { return actionable_ && isEnabled(); }
+protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
         const auto& palette = Theme::current();
-        painter.setBrush(underMouse() && isEnabled() ? palette.selected : palette.warningSurface);
+        painter.setBrush(underMouse() && actionAvailable() ? palette.selected : palette.warningSurface);
         painter.setPen(Graphite::keyboardFocus(this) ? QPen(palette.accent, 1) : QPen(Qt::NoPen));
         painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Graphite::Metric::smallRadius, Graphite::Metric::smallRadius);
         const int gap = reviewSpace(Graphite::Space::xs), side = Graphite::scaled(16);
         const auto disabledInk = Theme::contrast(palette.textDisabled, palette.warningSurface) >= 4.5 ? palette.textDisabled : palette.textSecondary;
         const auto informationInk = isEnabled() ? palette.textSecondary : disabledInk;
         VisualStyle::icon("alert", isEnabled() ? palette.warning : informationInk).paint(&painter, QRect(gap, (height() - side) / 2, side, side));
-        const QString information = isEnabled() ? QStringLiteral("Blur may be reversible · ") : QStringLiteral("Select a blur to use Redact");
+        const QString information = QStringLiteral("Blur may be reversible · ");
         painter.setFont(font());
         painter.setPen(informationInk);
         const auto textRect = rect().adjusted(side + gap * 2, 0, -gap, 0);
         painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, information);
-        if (!isEnabled()) return;
-        painter.setFont(actionFont(true));
-        painter.setPen(isEnabled() ? palette.text : disabledInk);
+        painter.setFont(actionFont(actionAvailable()));
+        painter.setPen(actionAvailable() ? palette.text : disabledInk);
         painter.drawText(textRect.adjusted(fontMetrics().horizontalAdvance(information), 0, 0, 0), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, QStringLiteral("Use Redact"));
     }
 private:
+    bool actionable_ = true;
     QFont actionFont(bool enabled) const { auto action = font(); action.setWeight(enabled ? QFont::DemiBold : QFont::Normal); return action; }
 };
 // Measure the same mixed type that is painted, without reserving mono-width words.
@@ -219,7 +219,7 @@ public:
         warning_->setSizePolicy(policy);
         warning_->hide();
     }
-    QToolButton* warningButton() const { return warning_; }
+    BlurChip* warningButton() const { return warning_; }
     void setInterval(const QString& interval, const QString& state) {
         setText(interval + (state.isEmpty() ? QString() : QStringLiteral(" · ") + state));
         setToolTip(text());
@@ -1389,7 +1389,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     maskActive_ = new MaskInterval(this);
     maskActive_->setObjectName("maskActiveInterval");
     VisualStyle::role(maskActive_, "technical");
-    connect(static_cast<MaskInterval*>(maskActive_)->warningButton(), &QToolButton::clicked, this, [this] { drive({{"action", "useSolidCover"}}); });
+    connect(static_cast<MaskInterval*>(maskActive_)->warningButton(), &QToolButton::clicked, this, [this] {
+        if (static_cast<MaskInterval*>(maskActive_)->warningButton()->actionAvailable()) drive({{"action", "useSolidCover"}});
+    });
     auto* flow = new FlowRow(this);
     flow->setObjectName("maskControls");
     maskGroup_ = flow;
@@ -1973,7 +1975,8 @@ void ReviewWindow::refreshLabels() {
     chipPolicy.setRetainSizeWhenHidden(warning);
     chip->setSizePolicy(chipPolicy);
     static_cast<MaskInterval*>(maskActive_)->setWarning(warning ? Graphite::blurWarningText() : QString());
-    static_cast<MaskInterval*>(maskActive_)->warningButton()->setEnabled(!exporting_ && (view_->armed() == "blur" || (mask && mask->kind == "blur")));
+    chip->setEnabled(!exporting_);
+    chip->setActionAvailable(view_->armed() == "blur" || (mask && mask->kind == "blur"));
     findChild<Graphite::Banner*>("reviewBlurAdvice")->setVisible(mask && mask->kind == "blur");
     strengthControl_->setVisible(mask && mask->kind == "blur");
     if (mask) { strength_->blockSignals(true); strength_->setValue(mask->strength); strength_->blockSignals(false); }

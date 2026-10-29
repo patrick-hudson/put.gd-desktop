@@ -399,6 +399,7 @@ private slots:
             window.drive({{"action", "addMask"}, {"kind", "blur"}});
             window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
             putgd::test::settle(10);
+            window.setExporting(true, "Exporting synthetic clip"); putgd::test::settle(10);
             auto* chip = window.findChild<QToolButton*>("reviewBlurChip"); QVERIFY(chip && !chip->isEnabled());
             const auto& palette = Theme::current();
             const auto ink = Theme::contrast(palette.textDisabled, palette.warningSurface) >= 4.5 ? palette.textDisabled : palette.textSecondary;
@@ -422,9 +423,14 @@ private slots:
             const auto frame = window.findChild<FrameView*>()->geometry();
             const auto enabled = chip->grab().toImage();
             window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}}); putgd::test::settle(10);
-            QVERIFY(!chip->isEnabled());
-            QCOMPARE(chip->toolTip(), QString("Select a blur to use Redact"));
-            QCOMPARE(chip->text(), chip->toolTip());
+            QVERIFY(chip->isEnabled());
+            QCOMPARE(chip->toolTip(), QString("Select a blur mask to use Redact"));
+            QCOMPARE(chip->accessibleDescription(), chip->toolTip());
+            QCOMPARE(chip->text(), QString("Blur may be reversible · Use Redact"));
+            chip->setFocus(Qt::TabFocusReason); QVERIFY(chip->hasFocus());
+            QTest::keyClick(chip, Qt::Key_Backtab); QTest::keyClick(QApplication::focusWidget(), Qt::Key_Tab);
+            QCOMPARE(QApplication::focusWidget(), chip);
+            chip->clearFocus();
             QCOMPARE(chip->accessibleName(), chip->text());
             QCOMPARE(chip->sizeHint(), size);
             QCOMPARE(window.findChild<FrameView*>()->geometry(), frame);
@@ -439,7 +445,7 @@ private slots:
             chip->click(); QCOMPARE(proposals.size(), 0);
             window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}); putgd::test::settle(10);
             QVERIFY(chip->isEnabled());
-            QVERIFY(chip->toolTip() != QString("Select a blur to use Redact"));
+            QVERIFY(chip->toolTip() != QString("Select a blur mask to use Redact"));
             chip->click(); QCOMPARE(proposals.size(), 1);
             QCOMPARE(proposed(proposals)["maskId"].toString(), QString("m-blur"));
         }
@@ -804,11 +810,9 @@ private slots:
         QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
         QApplication::processEvents();
         QVERIFY(chip->isVisible());
-        QCOMPARE(chip->text(), chip->isEnabled() ? QString("Blur may be reversible · Use Redact") : QString("Select a blur to use Redact"));
-        if (chip->isEnabled()) QVERIFY(chip->toolTip().contains("Use Redact"));
-        else QCOMPARE(chip->toolTip(), QString("Select a blur to use Redact"));
-            QCOMPARE(chip->text(), chip->toolTip());
-            QCOMPARE(chip->accessibleName(), chip->text());
+        QCOMPARE(chip->text(), QString("Blur may be reversible · Use Redact"));
+        QCOMPARE(chip->accessibleName(), chip->text());
+        QVERIFY(chip->isEnabled());
         QVERIFY(chip->height() >= chip->heightForWidth(chip->width()));
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QSignalSpy proposed(&window, &ReviewWindow::editProposed);
