@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>put.gd surface map</title>
+<style>
+:root{--bg:#111418;--card:#181c22;--card2:#1f242c;--border:#2a3039;--text:#e6e9ee;--muted:#8b94a3;--accent:#4c8dff;
+ --ok:#2fbf71;--warn:#e0a526;--bad:#e5484d;--info:#4c8dff;--blocked:#a78bfa;--none:#6b7280;--na:#3a404a;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (prefers-color-scheme: light){:root{--bg:#f4f5f7;--card:#fff;--card2:#f0f2f5;--border:#d7dbe2;--text:#1a1f27;--muted:#5d6675;--na:#c9ced6}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+header h1{font-size:15px;margin:0 8px 0 0}
+header .gen{color:var(--muted);font-size:11px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--border);border-radius:999px;padding:2px 10px;color:var(--muted);font-size:11.5px;cursor:pointer;background:transparent}
+.chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.counts{margin-left:auto;font-size:11.5px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.counts b{color:var(--text)}
+.views{display:flex;gap:2px;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.views button{border:0;background:transparent;color:var(--muted);padding:3px 10px;cursor:pointer;font-size:11.5px}
+.views button.on{background:var(--card2);color:var(--text)}
+main{display:grid;grid-template-columns:260px 1fr;gap:16px;padding:16px 18px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.col{position:sticky;top:58px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 70px);overflow:auto}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.card h3{margin:0 0 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;display:flex;gap:8px;align-items:center}
+.card h3 .n{margin-left:auto;font-weight:400;letter-spacing:0;text-transform:none}
+.row{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--border);font-size:12px}
+.row:first-of-type{border-top:0}
+.row .lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row small{color:var(--muted);margin-left:4px}
+.row kbd,.k kbd{font-family:var(--mono);font-size:10.5px;background:var(--card2);border:1px solid var(--border);padding:0 4px;border-radius:3px}
+.d{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.6);flex:none;cursor:pointer}
+.surfaces{display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:14px}
+.shot img{cursor:zoom-in}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:40;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+.lb .shot{cursor:default}
+.surface .top{display:flex;gap:14px;align-items:flex-start}
+.shot{position:relative;flex:none;border:1px solid var(--border);border-radius:4px;background:#000;overflow:visible}
+.shot img{display:block;border-radius:4px}
+.shot .ph{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-align:center;padding:12px}
+.h{position:absolute;border:2px solid #000;border-radius:50%;width:12px;height:12px;transform:translate(-50%,-50%);box-shadow:0 0 0 1.5px rgba(255,255,255,.7);cursor:pointer}
+.h.box{border-radius:3px;transform:none;width:auto;height:auto;background:transparent!important;box-shadow:none;border-width:2px}
+.h.box::after{content:"";position:absolute;right:-7px;top:-7px;width:10px;height:10px;border-radius:50%;background:var(--c);border:1.5px solid #000}
+.side{flex:1;min-width:0}
+.sub{font-size:10.5px;color:var(--muted);margin:8px 0 2px;text-transform:uppercase;letter-spacing:.06em}
+.keys{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.k{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-size:11px;background:var(--card2)}
+.bar{display:inline-block;height:5px;width:70px;background:var(--border);border-radius:3px;overflow:hidden;vertical-align:middle}
+.bar i{display:block;height:100%;background:var(--ok)}
+details{margin-top:8px;font-size:11.5px;color:var(--muted)}
+details summary{cursor:pointer}
+details li{margin:2px 0}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--muted);align-items:center;padding:8px 18px 0}
+.legend .d{cursor:default;margin-right:4px;vertical-align:middle}
+.pop{position:absolute;z-index:30;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:11.5px;min-width:300px;max-width:440px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.pop h4{margin:0 0 4px;font-size:12.5px}
+.pop .meta{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-bottom:6px;word-break:break-all}
+.pop table{border-collapse:collapse;width:100%}
+.pop td{padding:3px 4px;border-top:1px solid var(--border);vertical-align:top}
+.pop td:first-child{white-space:nowrap}
+.pop a{color:var(--accent)}
+.pop .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--muted)}
+table.matrix{border-collapse:collapse;width:100%;font-size:11.5px}
+table.matrix th{position:sticky;top:58px;background:var(--bg);text-align:left;padding:6px 6px;border-bottom:1px solid var(--border);font-weight:600;color:var(--muted);font-size:11px}
+table.matrix td{padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap}
+table.matrix td.c{text-align:center}
+table.matrix tr.s td{background:var(--card2);font-weight:600;color:var(--muted);text-transform:uppercase;font-size:10.5px;letter-spacing:.06em}
+.gaps h4{margin:12px 0 4px;font-size:12.5px}
+.gaps ul{margin:0;padding-left:18px}
+button.act{border:1px solid var(--border);background:var(--card2);color:var(--text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11.5px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+ <h1>put.gd surface map</h1>
+ <span class="gen">generated __GENERATED__</span>
+ <div class="chips" id="desktops"></div>
+ <div class="views" id="views"><button data-v="map" class="on">Map</button><button data-v="matrix">Matrix</button><button data-v="gaps">Gaps</button></div>
+ <div class="counts" id="counts"></div>
+</header>
+<div class="legend" id="legend"></div>
+<main id="main"></main>
+<script type="application/json" id="data">/*__DATA__*/null</script>
+<script>
+(function(){
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const F = {passed:'var(--ok)', partial:'var(--warn)', failed:'var(--bad)', blocked:'var(--blocked)', untested:'var(--none)'};
+const V = {'reviewed-ok':'var(--ok)', frames:'var(--info)', 'reviewed-wrong':'var(--bad)', none:'var(--none)', 'n/a':'var(--na)'};
+const FL = {passed:'passed on every required desktop', partial:'passed on some desktops', failed:'failed somewhere', blocked:'blocked', untested:'never exercised'};
+const VL = {'reviewed-ok':'frames reviewed and right', frames:'frames saved, nobody reviewed', 'reviewed-wrong':'frames reviewed, wrong', none:'no frames', 'n/a':'no visual side'};
+let desktop = null, view = 'map';
+const byId = {}; DATA.interactions.forEach(i => byId[i.id] = i);
+const surfaceById = {}; DATA.surfaces.forEach(s => surfaceById[s.id] = s);
+const desktopLabel = {}; DATA.desktops.forEach(d => desktopLabel[d.id] = d.label);
+
+function status(i){
+ if(!desktop) return {f:i.functional, v:i.visual};
+ const c = i.desktops[desktop] || {};
+ return {f: c.functional || 'untested', v: i.visualApplies ? (c.visual || 'none') : 'n/a'};
+}
+function dot(i, cls){
+ const s = status(i);
+ const el = document.createElement('span');
+ el.className = 'd ' + (cls||'');
+ el.style.background = 'linear-gradient(90deg,' + F[s.f] + ' 50%,' + V[s.v] + ' 50%)';
+ el.title = i.label + ' — functional: ' + s.f + ', visual: ' + s.v;
+ el.addEventListener('click', e => { e.stopPropagation(); popover(i, el); });
+ return el;
+}
+function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function keysHtml(keys){ return (keys||[]).map(k => '<kbd>' + esc(k) + '</kbd>').join(' '); }
+
+let pop = null;
+function closePop(){ if(pop){ pop.remove(); pop = null; } }
+document.addEventListener('click', closePop);
+function popover(i, anchor){
+ closePop();
+ const s = status(i);
+ const rows = DATA.desktops.map(d => {
+  const c = i.desktops[d.id] || {};
+  const f = c.functional || 'untested', v = i.visualApplies ? (c.visual || 'none') : 'n/a';
+  const receipts = (c.receipts||[]).map(r => '<a href="' + esc(r) + '">' + esc(r.split('/').slice(-2).join('/')) + '</a>').join('<br>');
+  const issues = (c.issues||[]).map(n => '#' + n).join(' ');
+  return '<tr><td>' + esc(d.label) + (d.required===false ? ' <small>(optional)</small>' : '') + '</td>' +
+   '<td><span class="d" style="background:' + F[f] + ';cursor:default"></span> ' + esc(f) + '</td>' +
+   '<td><span class="d" style="background:' + V[v] + ';cursor:default"></span> ' + esc(v) + '</td>' +
+   '<td>' + esc((c.packages||[]).join(', ')) + '</td><td>' + receipts + (issues ? '<br>' + esc(issues) : '') +
+   ((c.notes||[]).length ? '<br><small>' + esc(c.notes.join('; ')) + '</small>' : '') + '</td></tr>';
+ }).join('');
+ const meta = [i.kind, i.method ? 'method ' + i.method : null, (i.drivers||[]).length ? 'driver ' + i.drivers.join(', ') : 'manual only',
+  i.source ? i.source : null].filter(Boolean).join(' · ');
+ pop = document.createElement('div');
+ pop.className = 'pop';
+ pop.innerHTML = '<span class="x">✕</span><h4>' + esc(surfaceById[i.surface].label) + ' · ' + esc(i.label) + (i.keys && i.keys.length ? ' ' + keysHtml(i.keys) : '') + '</h4>' +
+  '<div class="meta">' + esc(i.id) + ' · ' + esc(meta) + '</div>' +
+  (i.notes ? '<div style="margin-bottom:6px;color:var(--muted)">' + esc(i.notes) + '</div>' : '') +
+  '<table><tr><th></th><th style="text-align:left;font-weight:600;color:var(--muted)">functional</th><th style="text-align:left;font-weight:600;color:var(--muted)">visual</th><th></th><th></th></tr>' + rows + '</table>' +
+  '<div style="margin-top:6px;color:var(--muted)">overall: ' + esc(FL[s.f]) + ' · ' + esc(VL[s.v]) + '</div>';
+ pop.addEventListener('click', e => e.stopPropagation());
+ pop.querySelector('.x').addEventListener('click', closePop);
+ document.body.appendChild(pop);
+ const r = anchor.getBoundingClientRect();
+ let left = r.left + window.scrollX - 20, top = r.bottom + window.scrollY + 8;
+ if(left + pop.offsetWidth > window.scrollX + document.documentElement.clientWidth - 12) left = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+ pop.style.left = Math.max(8, left) + 'px'; pop.style.top = top + 'px';
+}
+
+function renderHeader(){
+ const chips = document.getElementById('desktops'); chips.innerHTML = '';
+ const all = document.createElement('button'); all.className = 'chip' + (desktop ? '' : ' on'); all.textContent = 'All required desktops';
+ all.onclick = () => { desktop = null; render(); }; chips.appendChild(all);
+ DATA.desktops.forEach(d => { const b = document.createElement('button'); b.className = 'chip' + (desktop===d.id ? ' on' : ''); b.textContent = d.label; b.onclick = () => { desktop = d.id; render(); }; chips.appendChild(b); });
+ document.querySelectorAll('#views button').forEach(b => { b.classList.toggle('on', b.dataset.v === view); b.onclick = () => { view = b.dataset.v; render(); }; });
+ const c = {passed:0, partial:0, failed:0, blocked:0, untested:0, frames:0, wrong:0, none:0};
+ DATA.interactions.forEach(i => { const s = status(i); c[s.f]++; if(s.v==='frames') c.frames++; if(s.v==='reviewed-wrong') c.wrong++; if(s.v==='none' && i.visualApplies) c.none++; });
+ document.getElementById('counts').innerHTML = '<span><b>' + DATA.interactions.length + '</b> interactions</span><span><b>' + c.passed + '</b> passed</span><span><b>' + c.partial + '</b> partial</span><span><b>' + c.failed + '</b> failed</span><span><b>' + c.blocked + '</b> blocked</span><span><b>' + c.untested + '</b> untested</span><span>visual: <b>' + c.frames + '</b> unreviewed · <b>' + c.wrong + '</b> wrong · <b>' + c.none + '</b> no frames</span>';
+ document.getElementById('legend').innerHTML = '<span>each dot: <b>left half</b> functional, <b>right half</b> visual</span>' +
+  Object.keys(F).map(k => '<span><span class="d" style="background:' + F[k] + '"></span>' + esc(FL[k]) + '</span>').join('') +
+  ['frames','reviewed-wrong','n/a'].map(k => '<span><span class="d" style="background:' + V[k] + '"></span>' + esc(VL[k]) + '</span>').join('') +
+  '<span><span class="d" style="background:transparent;border:1.5px dashed var(--muted)"></span>dashed label = manual only (no driver)</span>';
+}
+
+function rowHtml(i, extra){
+ const li = document.createElement('div'); li.className = 'row';
+ const manual = !(i.drivers||[]).length;
+ li.innerHTML = '<span class="lbl"' + (manual ? ' style="text-decoration:underline dotted var(--muted)"' : '') + ' title="' + esc(i.id) + '">' + esc(i.label) + (i.keys && i.keys.length ? ' ' + keysHtml(i.keys) : '') + (extra ? '<small>' + esc(extra) + '</small>' : '') + '</span>';
+ li.appendChild(dot(i));
+ return li;
+}
+
+function renderMap(main){
+ const left = document.createElement('div'); left.className = 'col';
+ const channels = DATA.surfaces.filter(s => s.kind === 'channel');
+ channels.forEach(s => {
+  const items = DATA.interactions.filter(i => i.surface === s.id);
+  const card = document.createElement('div'); card.className = 'card';
+  card.innerHTML = '<h3>' + esc(s.label) + '<span class="n">' + items.length + '</span></h3>';
+  items.forEach(i => card.appendChild(rowHtml(i, i.to ? ' → ' + surfaceById[i.to].label : '')));
+  left.appendChild(card);
+ });
+ main.appendChild(left);
+ const grid = document.createElement('div'); grid.className = 'surfaces';
+ DATA.surfaces.filter(s => s.kind !== 'channel').forEach(s => grid.appendChild(surfaceCard(s)));
+ main.appendChild(grid);
+}
+
+function surfaceCard(s){
+ const items = DATA.interactions.filter(i => i.surface === s.id);
+ const card = document.createElement('div'); card.className = 'card surface'; card.id = 'surface-' + s.id;
+ const good = items.filter(i => { const st = status(i); return st.f === 'passed' && (st.v === 'reviewed-ok' || st.v === 'n/a'); }).length;
+ card.innerHTML = '<h3>' + esc(s.label) + (s.kind ? ' <small>' + esc(s.kind) + '</small>' : '') + '<span class="n"><span class="bar"><i style="width:' + (items.length ? Math.round(100*good/items.length) : 0) + '%"></i></span> ' + good + '/' + items.length + '</span></h3>';
+ const top = document.createElement('div'); top.className = 'top';
+ const shot = document.createElement('div'); shot.className = 'shot';
+ const W = 340;
+ const hot = {};
+ if(s.image && s.imageSize){
+  const scale = W / s.imageSize[0];
+  shot.style.width = W + 'px'; shot.style.height = Math.round(s.imageSize[1] * scale) + 'px';
+  shot.innerHTML = '<img src="' + esc(s.image) + '" width="' + W + '" height="' + Math.round(s.imageSize[1] * scale) + '" alt="">';
+  shot.querySelector('img').addEventListener('click', e => { e.stopPropagation(); lightbox(s); });
+  s.hotspots.forEach(h => {
+   const i = byId[h.interaction]; if(!i) return; hot[i.id] = true;
+   const st = status(i); const el = document.createElement('span');
+   const [x,y,w,hh] = h.rect; const big = w*scale > 40 && hh*scale > 24;
+   el.className = 'h' + (big ? ' box' : '');
+   el.style.setProperty('--c', F[st.f]);
+   if(big){ el.style.left = (x*scale) + 'px'; el.style.top = (y*scale) + 'px'; el.style.width = (w*scale) + 'px'; el.style.height = (hh*scale) + 'px'; el.style.borderColor = F[st.f]; }
+   else { el.style.left = ((x + w/2)*scale) + 'px'; el.style.top = ((y + hh/2)*scale) + 'px'; el.style.background = 'linear-gradient(90deg,' + F[st.f] + ' 50%,' + V[st.v] + ' 50%)'; }
+   el.title = i.label + ' — ' + st.f + ' / ' + st.v;
+   el.addEventListener('click', e => { e.stopPropagation(); popover(i, el); });
+   shot.appendChild(el);
+  });
+ } else if (s.image) {
+  shot.style.width = W + 'px'; shot.innerHTML = '<img src="' + esc(s.image) + '" width="' + W + '" alt="">';
+ } else {
+  shot.style.width = W + 'px'; shot.style.height = '120px';
+  shot.innerHTML = '<div class="ph" style="height:100%">' + esc(s.placeholder || 'drawn by the desktop; no synthetic capture') + '</div>';
+ }
+ top.appendChild(shot);
+ const side = document.createElement('div'); side.className = 'side';
+ const reached = DATA.interactions.filter(i => i.to === s.id && i.surface !== s.id);
+ if(reached.length){ side.insertAdjacentHTML('beforeend', '<div class="sub" style="margin-top:0">Reached from</div>'); reached.forEach(i => side.appendChild(rowHtml(i, ' · ' + surfaceById[i.surface].label))); }
+ const actions = items.filter(i => !hot[i.id] && i.kind !== 'key' && i.kind !== 'edge');
+ if(actions.length){ side.insertAdjacentHTML('beforeend', '<div class="sub">' + (Object.keys(hot).length ? 'Other actions' : 'Actions') + '</div>'); actions.forEach(i => side.appendChild(rowHtml(i, i.to ? ' → ' + surfaceById[i.to].label : ''))); }
+ const leaves = items.filter(i => i.kind === 'edge');
+ if(leaves.length){ side.insertAdjacentHTML('beforeend', '<div class="sub">Leaves to</div>'); leaves.forEach(i => side.appendChild(rowHtml(i, i.to ? ' → ' + surfaceById[i.to].label : ''))); }
+ top.appendChild(side);
+ card.appendChild(top);
+ const keys = items.filter(i => i.kind === 'key');
+ if(keys.length){
+  card.insertAdjacentHTML('beforeend', '<div class="sub">Keys this surface listens to</div>');
+  const strip = document.createElement('div'); strip.className = 'keys';
+  keys.forEach(i => { const k = document.createElement('span'); k.className = 'k'; k.innerHTML = keysHtml(i.keys) + ' ' + esc(i.label); k.appendChild(dot(i)); strip.appendChild(k); });
+  card.appendChild(strip);
+ }
+ if(s.hasControls && (s.unmodelledControls.length || s.unmodelledKeys.length)){
+  const det = document.createElement('details');
+  det.innerHTML = '<summary>' + (s.unmodelledControls.length + s.unmodelledKeys.length) + ' controls or keys in the build that the inventory does not list</summary><ul>' +
+   s.unmodelledControls.map(c => '<li>' + esc(c.kind) + ' <code>' + esc(c.name || '—') + '</code> ' + esc(c.text) + '</li>').join('') +
+   s.unmodelledKeys.map(k => '<li>key <kbd>' + esc(k.keys) + '</kbd> ' + esc(k.text) + '</li>').join('') + '</ul>';
+  card.appendChild(det);
+ } else if(!s.hasControls && s.image) {
+  card.insertAdjacentHTML('beforeend', '<details><summary>no controls dump for this capture</summary>rebuild the catalog with the inventory writer to get hotspots</details>');
+ }
+ return card;
+}
+
+function lightbox(s){
+ closePop();
+ const lb = document.createElement('div'); lb.className = 'lb';
+ const maxW = document.documentElement.clientWidth - 80, maxH = document.documentElement.clientHeight - 80;
+ const scale = Math.min(maxW / s.imageSize[0], maxH / s.imageSize[1], 1.5);
+ const shot = document.createElement('div'); shot.className = 'shot';
+ const w = Math.round(s.imageSize[0] * scale), h = Math.round(s.imageSize[1] * scale);
+ shot.style.width = w + 'px'; shot.style.height = h + 'px';
+ shot.innerHTML = '<img src="' + esc(s.image) + '" width="' + w + '" height="' + h + '" alt="">';
+ s.hotspots.forEach(hs => {
+  const i = byId[hs.interaction]; if(!i) return; const st = status(i);
+  const [x,y,cw,ch] = hs.rect; const el = document.createElement('span'); el.className = 'h box';
+  el.style.left = (x*scale) + 'px'; el.style.top = (y*scale) + 'px'; el.style.width = Math.max(10, cw*scale) + 'px'; el.style.height = Math.max(10, ch*scale) + 'px';
+  el.style.borderColor = F[st.f]; el.style.setProperty('--c', V[st.v]); el.title = i.label + ' — ' + st.f + ' / ' + st.v;
+  el.addEventListener('click', e => { e.stopPropagation(); popover(i, el); });
+  shot.appendChild(el);
+ });
+ shot.addEventListener('click', e => e.stopPropagation());
+ lb.appendChild(shot);
+ lb.addEventListener('click', () => { closePop(); lb.remove(); });
+ document.body.appendChild(lb);
+}
+
+function renderMatrix(main){
+ const wrap = document.createElement('div'); wrap.style.gridColumn = '1 / -1';
+ const ds = DATA.desktops;
+ let h = '<table class="matrix"><tr><th>Interaction</th><th>kind</th><th>driver</th>' + ds.map(d => '<th colspan="2">' + esc(d.label) + '</th>').join('') + '</tr>';
+ DATA.surfaces.forEach(s => {
+  const items = DATA.interactions.filter(i => i.surface === s.id); if(!items.length) return;
+  h += '<tr class="s"><td colspan="' + (3 + 2*ds.length) + '">' + esc(s.label) + '</td></tr>';
+  items.forEach(i => {
+   h += '<tr><td title="' + esc(i.id) + '">' + esc(i.label) + (i.keys && i.keys.length ? ' ' + keysHtml(i.keys) : '') + '</td><td>' + esc(i.kind) + '</td><td>' + esc((i.drivers||[]).join(', ') || 'manual') + '</td>';
+   ds.forEach(d => {
+    const c = i.desktops[d.id] || {}; const f = c.functional || 'untested', v = i.visualApplies ? (c.visual || 'none') : 'n/a';
+    h += '<td class="c" title="functional ' + esc(f) + '"><span class="d" data-i="' + esc(i.id) + '" style="background:' + F[f] + '"></span></td><td class="c" title="visual ' + esc(v) + '"><span class="d" data-i="' + esc(i.id) + '" style="background:' + V[v] + '"></span></td>';
+   });
+   h += '</tr>';
+  });
+ });
+ wrap.innerHTML = h + '</table>';
+ wrap.querySelectorAll('.d[data-i]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); popover(byId[el.dataset.i], el); }));
+ main.appendChild(wrap);
+}
+
+function gapsText(){
+ const lines = ['# Surface map gaps' + (desktop ? ' — ' + desktopLabel[desktop] : ''), ''];
+ DATA.surfaces.forEach(s => {
+  const items = DATA.interactions.filter(i => i.surface === s.id);
+  const open = items.filter(i => { const st = status(i); return !(st.f === 'passed' && (st.v === 'reviewed-ok' || st.v === 'n/a')); });
+  if(!open.length && !s.unmodelledControls.length && !s.unmodelledKeys.length) return;
+  lines.push('## ' + s.label + ' (' + open.length + ' open)');
+  open.forEach(i => { const st = status(i); lines.push('- [ ] ' + i.label + (i.keys && i.keys.length ? ' [' + i.keys.join(', ') + ']' : '') + ' — functional: ' + st.f + ', visual: ' + st.v + ((i.drivers||[]).length ? ' · driver: ' + i.drivers.join(', ') : ' · manual')); });
+  s.unmodelledControls.forEach(c => lines.push('- [ ] not in inventory: ' + c.kind + ' ' + (c.name || '') + ' ' + c.text));
+  s.unmodelledKeys.forEach(k => lines.push('- [ ] not in inventory: key ' + k.keys + ' ' + k.text));
+  lines.push('');
+ });
+ return lines.join('\n');
+}
+function renderGaps(main){
+ const wrap = document.createElement('div'); wrap.className = 'card gaps'; wrap.style.gridColumn = '1 / -1';
+ const text = gapsText();
+ wrap.innerHTML = '<div style="display:flex;gap:10px;align-items:center"><h3 style="margin:0">Open items' + (desktop ? ' on ' + esc(desktopLabel[desktop]) : ' across required desktops') + '</h3><button class="act" id="copy">Copy as markdown</button></div><pre style="white-space:pre-wrap;font:12px/1.5 var(--mono);margin:10px 0 0">' + esc(text) + '</pre>';
+ wrap.querySelector('#copy').onclick = () => navigator.clipboard && navigator.clipboard.writeText(text);
+ main.appendChild(wrap);
+}
+
+function render(){
+ closePop();
+ renderHeader();
+ const main = document.getElementById('main'); main.innerHTML = '';
+ if(view === 'map') renderMap(main); else if(view === 'matrix') renderMatrix(main); else renderGaps(main);
+}
+render();
+})();
+</script>
+</body>
+</html>
