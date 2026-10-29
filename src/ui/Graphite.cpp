@@ -639,7 +639,7 @@ void Style::polish(QWidget* widget) {
     // line still reads as an error.
     if (tone == "error") colour = c.danger;
     else if (tone == "success") colour = c.success;
-    else if (tone == "warning") colour = c.warning;
+    else if (tone == "warning") colour = c.textSecondary;
     else if (name == "default" || name == "private") colour = c.textMuted;
     else if (name == "secondary") colour = c.textSecondary;
     else if (name == "link") colour = c.link;
@@ -1944,7 +1944,7 @@ protected:
         if (role(this) != "warning") return;
         QPainter p(this);
         const int side = scaled(Metric::icon);
-        const auto glyph = IconArt::symbol("alert", t().accent, std::max(1, (side + 23) / 24), t().accent);
+        const auto glyph = IconArt::symbol("alert", t().warning, std::max(1, (side + 23) / 24), t().warning);
         p.drawImage(QRect(0, std::max(0, (fontMetrics().height() - side) / 2), side, side), glyph);
     }
 };

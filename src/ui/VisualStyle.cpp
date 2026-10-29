@@ -141,7 +141,7 @@ public:StateDelegate(QList<int> columns,QObject* parent):QStyledItemDelegate(par
   const auto& p=Theme::current();QColor foreground=p.textSecondary,background=p.surfaceRaised;
   if(QStringList{"completed","uploaded","copied","saved","removed"}.contains(value)){foreground=p.success;background=p.successSurface;}
   else if(QStringList{"failed","denied","interrupted"}.contains(value)){foreground=p.danger;background=p.dangerSurface;}
-  else if(QStringList{"partial","uncertain","pending","running","accepted","superseded","version_retained"}.contains(value)){foreground=p.warning;background=p.warningSurface;}
+  else if(QStringList{"partial","uncertain","accepted","superseded","version_retained"}.contains(value)){foreground=p.textSecondary;background=p.warningSurface;}
   value.replace('_',' ');value=value.left(1).toUpper()+value.mid(1);
   painter->save();painter->setRenderHint(QPainter::Antialiasing);auto bounds=option.rect.adjusted(8,5,-8,-5);bounds.setWidth(qMin(bounds.width(),option.fontMetrics.horizontalAdvance(value)+22));painter->setPen(Qt::NoPen);painter->setBrush(background);painter->drawRoundedRect(bounds,5,5);painter->setPen(foreground);painter->drawText(bounds.adjusted(10,0,-8,0),Qt::AlignVCenter|Qt::AlignLeft,option.fontMetrics.elidedText(value,Qt::ElideRight,qMax(0,bounds.width()-18)));painter->restore();
  }

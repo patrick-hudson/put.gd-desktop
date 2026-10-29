@@ -15,6 +15,7 @@
 #include <QContextMenuEvent>
 #include <QFormLayout>
 #include <QListWidget>
+#include <QStyledItemDelegate>
 #include <QToolTip>
 #include <QAccessible>
 #include <QClipboard>
@@ -166,7 +167,7 @@ private slots:
             for(const auto* role:{"link","quiet"}){
                 QPushButton button("Change output");VisualStyle::role(&button,role);QStyleOptionButton option;option.rect=QRect(0,0,200,48);option.text=button.text();
                 auto render=[&](QStyle::State state){option.state=state;QImage image(option.rect.size(),QImage::Format_RGB32);image.fill(c.bg);QPainter painter(&image);button.style()->drawControl(QStyle::CE_PushButton,&option,&painter,&button);return image;};
-                for(const auto state:{QStyle::State(QStyle::State_Enabled),QStyle::State(QStyle::State_Enabled|QStyle::State_MouseOver),QStyle::State(QStyle::State_None)}){const auto image=render(state);int ink=0,amber=0;for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x){ink+=image.pixelColor(x,y)==(state&QStyle::State_Enabled?c.textSecondary:c.textDisabled);amber+=image.pixelColor(x,y)==c.accent;}QVERIFY(ink>0);QCOMPARE(amber,0);}
+                for(const auto state:{QStyle::State(QStyle::State_Enabled),QStyle::State(QStyle::State_Enabled|QStyle::State_MouseOver),QStyle::State(QStyle::State_None)}){const auto image=render(state);int ink=0,amber=0;for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x){ink+=image.pixelColor(x,y)==(state&QStyle::State_Enabled?(QString(role)=="link"?c.link:c.textSecondary):c.textDisabled);amber+=image.pixelColor(x,y)==c.accent;}QVERIFY(ink>0);QCOMPARE(amber,0);}
                 QCOMPARE(render(QStyle::State_None),render(QStyle::State_MouseOver|QStyle::State_Sunken));
             }
         }
@@ -529,6 +530,32 @@ private slots:
                 QCOMPARE(badge.pixelColor(38,10),tints.live);
             }
             for (const auto& panel : {light?QColor("#ffffff"):QColor("#141414"),light?QColor("#dedee2"):QColor("#3b3b3f")}) QVERIFY(Theme::contrast(tints.live,panel)>=3.0);
+        }
+    }
+    void warningFeedbackAndStatePillsKeepNeutralText() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme); const auto& c = Theme::current();
+            QLabel feedback("Review this choice"); feedback.setProperty("feedbackTone", "warning"); VisualStyle::role(&feedback, "meta");
+            QCOMPARE(feedback.palette().color(QPalette::WindowText), c.textSecondary);
+            QVERIFY(Theme::contrast(c.textSecondary, c.warningSurface) >= 4.5);
+            QListWidget view; VisualStyle::decorateView(&view, {0});
+            for (const auto state : {"partial", "pending", "running"}) {
+                view.clear(); view.addItem(state);
+                QStyleOptionViewItem option; option.initFrom(&view); option.widget = &view; option.rect = QRect(0, 0, 180, 40);
+                option.font = view.font(); option.fontMetrics = QFontMetrics(option.font);
+                QImage image(option.rect.size(), QImage::Format_RGB32); image.fill(c.bg);
+                { QPainter painter(&image); view.itemDelegate()->paint(&painter, option, view.model()->index(0, 0)); }
+                const bool warning = QString(state) == "partial";
+                QCOMPARE(image.pixelColor(20, 8), warning ? c.warningSurface : c.surfaceRaised);
+                int neutralInk = 0;
+                const auto fill = warning ? c.warningSurface : c.surfaceRaised;
+                for (int y = 8; y < 32; ++y) for (int x = 18; x < 100; ++x) {
+                    const auto pixel = image.pixelColor(x, y);
+                    neutralInk += Theme::contrast(pixel, fill) >= 3.0 && std::abs(pixel.red() - c.textSecondary.red()) < 25
+                        && std::abs(pixel.green() - c.textSecondary.green()) < 25 && std::abs(pixel.blue() - c.textSecondary.blue()) < 25;
+                }
+                QVERIFY(neutralInk > 5);
+            }
         }
     }
     void textAndFocusMeetAaInBothSchemes() {
