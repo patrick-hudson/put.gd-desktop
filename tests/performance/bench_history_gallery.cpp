@@ -88,7 +88,9 @@ int main(int argc,char** argv){
  for(int round=0;round<rounds;++round){QCoreApplication::processEvents();t.restart();bar->setValue(round%2?0:qMin(bar->maximum(),bar->pageStep()));QCoreApplication::sendPostedEvents();list->viewport()->repaint();scroll.append(ms(t));}
  bar->setValue(0);QCoreApplication::processEvents();
  // Hover over cards in turn, as the pointer moving across the grid.
- for(int round=0;round<rounds;++round){const auto rect=list->visualRect(list->model()->index(round%qMin(6,list->model()->rowCount()),0));QCoreApplication::processEvents();t.restart();QMouseEvent move(QEvent::MouseMove,QPointF(rect.center()),list->viewport()->mapToGlobal(QPointF(rect.center())),Qt::NoButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(list->viewport(),&move);QCoreApplication::sendPostedEvents();QCoreApplication::processEvents();list->viewport()->repaint();hover.append(ms(t));}
+ QList<QRect> visible;for(int row=0;row<list->model()->rowCount();++row)if(const auto rect=list->visualRect(list->model()->index(row,0));list->viewport()->rect().contains(rect.center()))visible.append(rect);
+ if(visible.isEmpty()){qCritical("No gallery card is visible");return 2;}
+ for(int round=0;round<rounds;++round){const auto rect=visible.at(round%qMin(6,int(visible.size())));QCoreApplication::processEvents();t.restart();QMouseEvent move(QEvent::MouseMove,QPointF(rect.center()),list->viewport()->mapToGlobal(QPointF(rect.center())),Qt::NoButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(list->viewport(),&move);QCoreApplication::sendPostedEvents();QCoreApplication::processEvents();list->viewport()->repaint();hover.append(ms(t));}
  // Idle with a card hovered: a settled view should not keep repainting.
  putgd::test::settle(300);counter.paints=0;QElapsedTimer idle;idle.start();putgd::test::settle(2000);const int idlePaints=counter.paints;const double idleMs=ms(idle);
  const auto rssEnd=rssKb();

@@ -375,7 +375,7 @@ public:
   auto cancel=[this]{cancelPress();};connect(view_->model(),&QAbstractItemModel::modelAboutToBeReset,this,cancel);connect(view_->model(),&QAbstractItemModel::modelReset,this,[this]{captions_.clear();forgetPass();});connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{captions_.clear();forgetPass();primary_->setProperty("historyGlyph",QVariant());});
   for(const auto change:{&QAbstractItemModel::rowsInserted,&QAbstractItemModel::rowsRemoved})connect(view_->model(),change,this,[this]{forgetPass();});
   connect(view_->model(),&QAbstractItemModel::layoutChanged,this,[this]{forgetPass();});
-  connect(view_->model(),&QAbstractItemModel::dataChanged,this,[this](const QModelIndex&,const QModelIndex&,const QList<int>& roles){if(roles!=QList<int>{HistoryModel::ThumbnailRole})forgetPass();});connect(view_->model(),&QAbstractItemModel::rowsAboutToBeRemoved,this,cancel);connect(view_->model(),&QAbstractItemModel::layoutAboutToBeChanged,this,cancel);connect(view_->model(),&QAbstractItemModel::dataChanged,this,cancel);
+  connect(view_->model(),&QAbstractItemModel::dataChanged,this,[this](const QModelIndex&,const QModelIndex&,const QList<int>& roles){if(roles!=QList<int>{HistoryModel::ThumbnailRole})forgetPass();});connect(view_->model(),&QAbstractItemModel::rowsAboutToBeRemoved,this,cancel);connect(view_->model(),&QAbstractItemModel::layoutAboutToBeChanged,this,cancel);connect(view_->model(),&QAbstractItemModel::dataChanged,this,[this](const QModelIndex&,const QModelIndex&,const QList<int>& roles){if(roles!=QList<int>{HistoryModel::ThumbnailRole})cancelPress();});
  }
  void updateMore(){
   // This runs on every viewport paint, so it changes the buttons only when
