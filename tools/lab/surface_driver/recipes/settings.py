@@ -9,7 +9,7 @@ import json
 import shlex
 
 from tools.lab.surface_driver.api import recipe
-from .settings_input import click as live_click
+from .settings_input import click as live_click, observe as input_witness
 
 CORE_ISSUE = 681
 
@@ -139,6 +139,9 @@ def choose(ctx, control, index):
         ctx.click(control, window='settings')
     # Editable choices route Home to their line edit unless the popup is open.
     ctx.keys('Esc', 'Alt+Down', 'Home', *('Down',) * index, 'Return', 'Tab')
+    if control in ('namingMode', 'collisionPolicy'):
+        input_witness(ctx, ctx.geometry('settings'))
+        ctx.frame('keys-after-' + control)
 
 
 def replace(ctx, control, text):
@@ -149,6 +152,9 @@ def replace(ctx, control, text):
     ctx.keys('Ctrl+A')
     ctx.type_text(text)
     ctx.keys('Tab')
+    if control == 'archiveRoot' or control.endswith('Template'):
+        input_witness(ctx, ctx.geometry('settings'))
+        ctx.frame('keys-after-' + control)
 
 
 def checkbox(identifier, control, path, section, default):
