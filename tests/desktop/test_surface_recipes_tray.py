@@ -24,6 +24,10 @@ class FakeContext(Context):
 
     def __init__(self):
         self.profile = json.loads((ROOT / 'tools/lab/surface_driver/profiles/mint-cinnamon-x11.d/tray.json').read_text())
+        # Exercise recipe logic against a capable fake, independently of the
+        # real Cinnamon preflight blocker. This is never desktop evidence.
+        self.profile['tray'].pop('preflight_blocked', None)
+        self.profile['tray']['icon'] = {'name': 'put.gd'}
         self.events = []
         self.menu = False
         self.output = False
@@ -97,12 +101,6 @@ class FakeContext(Context):
 
     def accessible(self, query):
         name = query['name']
-        if name == '' and query.get('role') == 'window':
-            return [{'name': '', 'role': 'window', 'rect': [0, 0, 100, 80],
-                     'attributes': {'toolkit': 'clutter'}, 'pid': 1317}]
-        if name == '' and query.get('role') == 'panel':
-            self.last_node = 'put.gd'
-            return [{'name': '', 'role': 'panel', 'rect': [38, 43, 24, 24], 'pid': 1317}]
         names = {'put.gd', self.target, 'History', 'Settings', 'Destinations'}
         if self.fixture:
             names.add(tray.FIXTURE_TITLE)
@@ -347,10 +345,10 @@ class TrayRecipesTest(unittest.TestCase):
             tray._press(ctx, 'Save diagnostics for this upload')
         self.assertFalse(any(e[0] == 'click' for e in ctx.events))
 
-    def test_anonymous_tray_locator_blocks_outside_its_validated_placement(self):
+    def test_known_desktop_preflight_block_prevents_input(self):
         ctx = FakeContext()
-        ctx.placement = 'native'
-        with self.assertRaisesRegex(RecipeBlocked, 'isolated placements'):
+        ctx.profile['tray']['preflight_blocked'] = 'Cinnamon locator needs core support'
+        with self.assertRaisesRegex(RecipeBlocked, 'Cinnamon locator'):
             tray.context_menu(ctx)
         self.assertFalse(any(e[0] == 'click' for e in ctx.events))
 

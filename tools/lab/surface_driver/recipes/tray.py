@@ -93,6 +93,8 @@ def _begin(ctx):
     ctx.expect(snapshot.get('operationsReady'), 'resident journal is ready')
     if not snapshot['diagnostics'].get('trayAvailable'):
         ctx.blocked('Resident reports no desktop tray host', _profile(ctx).get('fixture_issue'))
+    if _profile(ctx).get('preflight_blocked'):
+        ctx.blocked(_profile(ctx)['preflight_blocked'], _profile(ctx).get('fixture_issue'))
     return snapshot
 
 
@@ -106,35 +108,11 @@ def _page(ctx, name):
 
 
 def _icon(ctx):
-    def rect(node):
-        value = node['rect']
-        return [value[k] for k in ('x', 'y', 'width', 'height')] if isinstance(value, dict) else list(value)
     selector = _profile(ctx).get('icon')
     if not selector:
         ctx.blocked('Profile has no unambiguous desktop tray icon selector')
-    if selector.get('placements') and ctx.placement not in selector['placements']:
-        ctx.blocked('Anonymous tray geometry is validated only in the isolated placements listed by this profile', 670)
-    root = None
-    if selector.get('root'):
-        spec = selector['root']
-        roots = [n for n in _nodes(ctx, spec['name'], spec.get('role'))
-                 if all(n.get('attributes', {}).get(k) == v for k, v in spec.get('attributes', {}).items())]
-        if len(roots) != 1:
-            ctx.blocked('Desktop root is ambiguous for the anonymous tray selector', 670)
-        root = rect(roots[0])
     def find():
         nodes = _nodes(ctx, selector['name'], selector.get('role'))
-        nodes = [{**n, 'rect': rect(n)} for n in nodes]
-        if selector.get('size'):
-            nodes = [n for n in nodes if list(n['rect'][2:]) == selector['size']]
-        if root is not None:
-            # A desktop supplies this policy; coordinates always come from the
-            # current AT-SPI rectangles, never a fixed panel pixel location.
-            bottom = root[1] + root[3]
-            nodes = [n for n in nodes if n.get('pid') == roots[0].get('pid')
-                     and n['rect'][1] >= bottom - selector['bottom_band']]
-        unique = {(n.get('pid'), tuple(n['rect'])): n for n in nodes}
-        nodes = list(unique.values())
         if len(nodes) > 1:
             ctx.blocked('Tray selector needs a profile role; candidate roles: ' +
                         ', '.join(sorted({n.get('role', 'unknown') for n in nodes})), 670)

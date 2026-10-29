@@ -1,24 +1,7 @@
 {
   "tray": {
     "icon": {
-      "name": "",
-      "role": "panel",
-      "size": [
-        24,
-        24
-      ],
-      "bottom_band": 40,
-      "placements": [
-        "boat"
-      ],
-      "root": {
-        "name": "",
-        "role": "window",
-        "attributes": {
-          "toolkit": "clutter"
-        }
-      },
-      "reason": "Cinnamon Cally exports an anonymous SNI panel. Require one native 24px panel in the bottom band; block ambiguity and non-Boat placements."
+      "name": "put.gd"
     },
     "notification_server": "cinnamon",
     "resident_notifications": true,
@@ -27,6 +10,13 @@
     "menu": {
       "role": "label",
       "reject_origin": true
-    }
+    },
+    "references": {
+      "full": "00-tray-menu-idle",
+      "output": "00-tray-output-submenu",
+      "uploading": "00-tray-menu-uploading",
+      "proton-busy": "00-tray-menu-proton-busy"
+    },
+    "preflight_blocked": "Cinnamon Boat locator blocked after two smoke attempts: put.gd matches frame/label; anonymous SNI panel could not be bound to a unique desktop root. Needs an owned tray rectangle from core (#670). No further input retries in this run."
   }
 }

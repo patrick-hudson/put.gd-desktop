@@ -6,6 +6,12 @@
     "notification_server": "gnome-shell",
     "resident_notifications": false,
     "shortcut_channel": "gnome-extension",
-    "fixture_issue": 670
+    "fixture_issue": 670,
+    "references": {
+      "full": "00-tray-menu-idle",
+      "output": "00-tray-output-submenu",
+      "uploading": "00-tray-menu-uploading",
+      "proton-busy": "00-tray-menu-proton-busy"
+    }
   }
 }

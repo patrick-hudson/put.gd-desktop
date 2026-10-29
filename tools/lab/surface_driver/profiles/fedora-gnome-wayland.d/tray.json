@@ -8,6 +8,12 @@
     "shortcut_channel": "gnome-extension",
     "shortcut_reason": "GNOME Shell extension is off by default on f44; enablement requires a separate desktop setup run",
     "shortcut_issue": 490,
-    "fixture_issue": 670
+    "fixture_issue": 670,
+    "references": {
+      "full": "00-tray-menu-idle",
+      "output": "00-tray-output-submenu",
+      "uploading": "00-tray-menu-uploading",
+      "proton-busy": "00-tray-menu-proton-busy"
+    }
   }
 }
