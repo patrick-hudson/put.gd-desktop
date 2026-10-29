@@ -7,7 +7,7 @@
 #include <QPointer>
 class QTextDocument;class QGridLayout;class QCheckBox;class QDialog;class QSplitter;class QListWidget;class QVBoxLayout;class QScrollArea;class QStackedWidget;class QResizeEvent;class QListView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;class QLineEdit;class QComboBox;class QProgressBar;class QToolButton;
 namespace putgd {
-class FileDialog;namespace Graphite { class ElidedLabel; }
+class FileDialog;namespace Ui { class ElidedLabel; }
 class HistoryWindow final:public RetainedWindow {
  Q_OBJECT
 public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObject saveViewState()const;bool restoreViewState(const QJsonObject&);void releasePreview();
@@ -48,7 +48,7 @@ private:
  bool expandPreview();void updateSavedCopy();void showSavedCopy();void copySavedPath();void dismissSavedCopy();
  QPointer<QDialog> expandedPreview_;QPushButton* expandPreview_=nullptr;
  QJsonObject copyJob_;bool savedCopyDismissed_=false;
- QString savedPath_;QJsonObject savedFolderResult_;QWidget* savedCopy_=nullptr;Graphite::ElidedLabel* savedLabel_=nullptr;
+ QString savedPath_;QJsonObject savedFolderResult_;QWidget* savedCopy_=nullptr;Ui::ElidedLabel* savedLabel_=nullptr;
  QGridLayout* actions_=nullptr;QWidget* browserAction_=nullptr;QLabel* previewStatus_=nullptr;QPushButton* retryPreview_=nullptr;QHash<QString,Error> previewErrors_;
  // #190: ask the resident for a selected image's or video's missing preview,
  // once the selection has settled, one request at a time.
@@ -66,7 +66,7 @@ private:
  // over the list on request (Enter, Show details) instead of squeezing it.
  bool compact()const{return compact_;}void setDetailsOpen(bool);void openSelectedDetails();
  void inspectSelectedDeletion();void deletionAction(const QString&);QJsonObject selectedDeletion_;QHash<QString,QString> deletionNames_;QLabel* deletionStatus_=nullptr;QPushButton *deletionRetry_=nullptr,*deletionCancel_=nullptr;
- void updateHeading();bool previewRetry_=false;Graphite::ElidedLabel* heading_=nullptr;
+ void updateHeading();bool previewRetry_=false;Ui::ElidedLabel* heading_=nullptr;
  UiSession& session_;HistoryModel* model_=nullptr;QListView* table_;QSplitter* split_=nullptr;QScrollArea* inspectorScroll_=nullptr;QStackedWidget* list_;QLabel *status_,*count_,*preview_,*empty_,*title_,*outcome_,*activeLabel_;QPlainTextEdit *details_;QWidget* summary_;QLabel* capabilityHint_;QPushButton* changeLocalCopies_;QLineEdit* link_;QLabel* linkExpiry_=nullptr;QLabel* browserFeedback_=nullptr;QWidget* previousLink_=nullptr;QLineEdit* previousUrl_=nullptr;QComboBox* items_;QProgressBar* progress_;QWidget* activeBanner_=nullptr;QToolButton *grid_;QCheckBox* showCancelled_;QPushButton *copy_,*open_,*share_,*revoke_,*inspectLink_,*retry_,*cancel_,*copyImage_,*saveAs_,*editAgain_,*saveDiagnostics_;
  QStringList restoreSelection_;QString selectedItemId_,sharingId_,sharingFeedback_,deletionId_,activeId_;QJsonObject currentDetail_;bool restoringSelection_=false,deleteAccepting_=false,sharingFeedbackError_=false,sharingStopped_=false,sharingAccepting_=false,sharingPollActive_=false,deletionPollActive_=false,awaitingInitialization_=false,previewLoading_=false;
  QTimer *sharingTimer_=nullptr,*deletionTimer_=nullptr,*searchTimer_=nullptr,*previewRequestTimer_=nullptr;QString previewRequestId_,previewCandidate_;QSet<QString> previewRefused_;quint64 selectionRequest_=0;std::shared_ptr<std::atomic_bool> previewCancelled_;QString pendingPreviewPath_,pixelDimensions_;

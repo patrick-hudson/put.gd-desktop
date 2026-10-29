@@ -13,10 +13,9 @@
 #include <QAccessible>
 #include <QAbstractItemView>
 #include <QScrollBar>
-#include "ui/Graphite.h"
+#include "ui/Ui.h"
 #include "ui/Fonts.h"
 #include "ui/Theme.h"
-#include "ui/VisualStyle.h"
 #include <QLabel>
 #include <QApplication>
 #include <QPainter>
@@ -120,8 +119,8 @@ private slots:
         }
     }
     void playheadReadoutStaysOnTheFrameCentre() {
-        Graphite::WindowHeader::setCustomFrameOverride(1);
-        auto restore = qScopeGuard([] { Graphite::WindowHeader::setCustomFrameOverride(0); });
+        Ui::WindowHeader::setCustomFrameOverride(1);
+        auto restore = qScopeGuard([] { Ui::WindowHeader::setCustomFrameOverride(0); });
         ReviewWindow window(options(), config()); window.show();
         for (int width : {640, 744, 1342}) {
             window.resize(width, 720); QApplication::processEvents();
@@ -148,7 +147,7 @@ private slots:
         window.drive({{"action", "seek"}, {"time", 0}}); QApplication::processEvents();
         QCOMPARE(status->geometry(), statusGeometry); QCOMPARE(window.geometry(), geometry);
         QVERIFY(!window.findChild<QComboBox*>("speed")->hasFrame());
-        QCOMPARE(window.findChild<QToolButton*>("play")->iconSize(), QSize(Graphite::scaled(16), Graphite::scaled(16)));
+        QCOMPARE(window.findChild<QToolButton*>("play")->iconSize(), QSize(Ui::scaled(16), Ui::scaled(16)));
     }
     void readoutsKeepAReservedLastColumn_data() {
         QTest::addColumn<double>("scale");
@@ -172,7 +171,7 @@ private slots:
         auto* trim = window.findChild<QLabel*>("muted");
         auto* interval = window.findChild<QLabel*>("maskActiveInterval");
         for (auto* label : {trim, interval}) {
-            QCOMPARE(label->font(), Graphite::monoFont(Graphite::Type::technical));
+            QCOMPARE(label->font(), Ui::monoFont(Ui::Type::technical));
             QVERIFY(!label->wordWrap());
             auto* grid = qobject_cast<QGridLayout*>(label->parentWidget()->layout());
             QVERIFY(grid); QCOMPARE(grid->itemAtPosition(0, 2)->widget(), label);
@@ -188,7 +187,7 @@ private slots:
             QCOMPARE(reference.pixelColor(x, y), background);
         trim->setFixedWidth(measured);
         QApplication::processEvents();
-        QVERIFY(interval->width() >= QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(QStringLiteral("—")));
+        QVERIFY(interval->width() >= QFontMetrics(Ui::font(Ui::Type::technical)).horizontalAdvance(QStringLiteral("—")));
         QVERIFY(interval->width() < trim->width());
         auto* upload = buttonNamed(window, "Upload"); QVERIFY(upload);
         QCOMPARE(interval->mapTo(&window, interval->rect().topRight()).x(), upload->mapTo(&window, upload->rect().topRight()).x());
@@ -359,7 +358,7 @@ private slots:
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QApplication::processEvents();
         QCOMPARE(window.findChild<FrameView*>()->geometry(), frame);
-        QVERIFY(window.findChild<QLabel*>("maskActiveInterval")->accessibleDescription().contains(Graphite::blurWarningText()));
+        QVERIFY(window.findChild<QLabel*>("maskActiveInterval")->accessibleDescription().contains(Ui::blurWarningText()));
         QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
         window.showError("Export failed: disk full");
         QCOMPARE(window.inspect()["statusRow"].toArray().size(), 1);
@@ -379,7 +378,7 @@ private slots:
         ReviewWindow window(options(), config()); window.show();
         window.setSavedCopy("/nonexistent/synthetic.mp4", 0, config());
         putgd::test::settle(10);
-        auto* band = window.findChild<Graphite::Banner*>("statusLine"); QVERIFY(band);
+        auto* band = window.findChild<Ui::Banner*>("statusLine"); QVERIFY(band);
         auto* dismiss = band->dismissButton(); QVERIFY(dismiss->isVisibleTo(&window));
         QVERIFY(dismiss->text().isEmpty()); QVERIFY(!dismiss->icon().isNull());
         QCOMPARE(dismiss->accessibleName(), QString("Dismiss"));
@@ -401,9 +400,9 @@ private slots:
             auto* chip = window.findChild<QToolButton*>("reviewBlurChip"); QVERIFY(chip && !chip->isEnabled());
             const auto& palette = Theme::current();
             const auto ink = Theme::contrast(palette.textDisabled, palette.warningSurface) >= 4.5 ? palette.textDisabled : palette.textSecondary;
-            const int side = Graphite::scaled(16);
+            const int side = Ui::scaled(16);
             QImage expected(side, side, QImage::Format_RGB32); expected.fill(palette.warningSurface);
-            { QPainter painter(&expected); VisualStyle::icon("alert", ink).paint(&painter, expected.rect()); }
+            { QPainter painter(&expected); Ui::icon("alert", ink).paint(&painter, expected.rect()); }
             QCOMPARE(chip->grab().toImage().copy(4, (chip->height() - side) / 2, side, side).convertToFormat(QImage::Format_RGB32), expected);
             QVERIFY(Theme::contrast(ink, palette.warningSurface) >= 3.0);
         }
@@ -452,7 +451,7 @@ private slots:
         window.showError("Export failed: disk full");
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme); QApplication::processEvents();
-            auto* band = window.findChild<Graphite::Banner*>("statusLine");
+            auto* band = window.findChild<Ui::Banner*>("statusLine");
             QVERIFY(band);
             auto* text = band->findChild<QLabel*>("status");
             QVERIFY(text);
@@ -467,7 +466,7 @@ private slots:
             }
             for (auto* button : band->findChildren<QPushButton*>()) {
                 QCOMPARE(button->property("visualRole").toString(), button->text().isEmpty() ? QString("quiet") : QString("textAction"));
-                QVERIFY(button->property("graphiteStrong").toBool());
+                QVERIFY(button->property("uiStrong").toBool());
                 QCOMPARE(button->font().weight(), QFont::DemiBold);
             }
             auto* dismiss = buttonNamed(window, "Dismiss"); QVERIFY(dismiss);
@@ -504,15 +503,15 @@ private slots:
         const auto original = qApp->font(); auto restore = qScopeGuard([&] { qApp->setFont(original); });
         const auto rect = [](QWidget* w, QWidget* to) { return QRect(w->mapTo(to, QPoint()), w->size()); };
         const auto checkRow = [&](ReviewWindow& window, const QStringList& expected) {
-            auto* band = window.findChild<Graphite::Banner*>("statusLine"); QVERIFY(band);
+            auto* band = window.findChild<Ui::Banner*>("statusLine"); QVERIFY(band);
             QList<QAbstractButton*> shown;
             for (auto* button : band->findChildren<QAbstractButton*>()) if (button->isVisibleTo(&window) && !button->text().isEmpty()) shown.append(button);
             std::sort(shown.begin(), shown.end(), [&](auto* a, auto* b) { return rect(a, &window).left() < rect(b, &window).left(); });
             QStringList labels; for (auto* button : shown) labels.append(button->text());
             QCOMPARE(labels, expected);
             auto* dismiss = band->dismissButton(); QVERIFY(dismiss->isVisibleTo(&window));
-            for (int i = 1; i < shown.size(); ++i) QCOMPARE(rect(shown[i], &window).left() - rect(shown[i - 1], &window).right() - 1, int(Graphite::Space::l));
-            QCOMPARE(rect(dismiss, &window).left() - rect(shown.last(), &window).right() - 1, int(Graphite::Space::xs));
+            for (int i = 1; i < shown.size(); ++i) QCOMPARE(rect(shown[i], &window).left() - rect(shown[i - 1], &window).right() - 1, int(Ui::Space::l));
+            QCOMPARE(rect(dismiss, &window).left() - rect(shown.last(), &window).right() - 1, int(Ui::Space::xs));
             window.activateWindow(); shown.first()->setFocus(Qt::TabFocusReason); QVERIFY(shown.first()->hasFocus());
             for (int i = 1; i < shown.size(); ++i) { QTest::keyClick(QApplication::focusWidget(), Qt::Key_Tab); QCOMPARE(QApplication::focusWidget(), static_cast<QWidget*>(shown[i])); }
             QTest::keyClick(QApplication::focusWidget(), Qt::Key_Tab); QCOMPARE(QApplication::focusWidget(), static_cast<QWidget*>(dismiss));
@@ -531,9 +530,9 @@ private slots:
             for (const int width : {1800, 1342, 1060, 900, 820, 714, 640, 714, 820, 900, 1060, 1342, 1800, 820, 640}) {
                 window.resize(width, 720); putgd::test::settle(10);
                 if (window.width() != width) continue;
-                auto* band = window.findChild<Graphite::Banner*>("statusLine");
+                auto* band = window.findChild<Ui::Banner*>("statusLine");
                 const bool inRow = band->isAncestorOf(details);
-                placements.insert(inRow ? QStringLiteral("row") : window.findChild<Graphite::WindowHeader*>()->isAncestorOf(details) ? QStringLiteral("header") : QStringLiteral("footer"));
+                placements.insert(inRow ? QStringLiteral("row") : window.findChild<Ui::WindowHeader*>()->isAncestorOf(details) ? QStringLiteral("header") : QStringLiteral("footer"));
                 checkRow(window, inRow ? QStringList{"Details…", "Try again"} : QStringList{"Try again"});
             }
             window.drive({{"action", "dismissStatus"}}); putgd::test::settle(10);
@@ -556,7 +555,7 @@ private slots:
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme); QApplication::processEvents();
             const auto& palette = Theme::current();
-            const int left = Graphite::scaled(16) + 2 * int(Graphite::Space::xs) + chip->fontMetrics().horizontalAdvance(QStringLiteral("Blur may be reversible · "));
+            const int left = Ui::scaled(16) + 2 * int(Ui::Space::xs) + chip->fontMetrics().horizontalAdvance(QStringLiteral("Blur may be reversible · "));
             auto words = chip->font(); words.setWeight(QFont::DemiBold);
             const int width = QFontMetrics(words).horizontalAdvance(QStringLiteral("Use Redact"));
             const auto rule = [&](const QImage& image) {
@@ -616,7 +615,7 @@ private slots:
         auto* chooser = window.findChild<QComboBox*>("masks");
         QVERIFY(chooser);
         for (int i = 0; i < chooser->count(); ++i)
-            QVERIFY(chooser->width() >= chooser->fontMetrics().horizontalAdvance(chooser->itemText(i)) + Graphite::Metric::splitZone + 18);
+            QVERIFY(chooser->width() >= chooser->fontMetrics().horizontalAdvance(chooser->itemText(i)) + Ui::Metric::splitZone + 18);
         chooser->showPopup(); QApplication::processEvents();
         for (int i = 0; i < chooser->count(); ++i)
             QVERIFY(chooser->view()->width() >= chooser->fontMetrics().horizontalAdvance(chooser->itemText(i)) + 32);
@@ -649,7 +648,7 @@ private slots:
             QVERIFY2(found && found->isVisible(), qPrintable(name)); QCOMPARE(found->toolButtonStyle(), Qt::ToolButtonTextOnly); QCOMPARE(found->text(), text);
             QVERIFY(!found->autoRaise());
             QVERIFY(found->height() >= 28 && found->height() >= found->fontMetrics().height());
-            QCOMPARE(found->property("graphiteDensity").toString(), QString("compact"));
+            QCOMPARE(found->property("uiDensity").toString(), QString("compact"));
             QVERIFY(found->width() >= QFontMetricsF(found->font()).horizontalAdvance(text) + 24);
         }
         for (auto* pair : {window.findChild<QWidget*>("trimTimingPair"), timing}) {
@@ -660,7 +659,7 @@ private slots:
         }
         QCOMPARE(buttonNamed(window, "Reset trim")->property("visualRole").toString(), QString("quiet"));
         for (const auto& name : {"trimGroup", "maskGroup"}) QCOMPARE(window.findChild<QLabel*>(name)->mapTo(&window, window.findChild<QLabel*>(name)->contentsRect().topLeft()).x(), 16);
-        QVERIFY(window.findChild<QToolButton*>("uploadDestinationMenu")->property("graphiteFlush").toBool());
+        QVERIFY(window.findChild<QToolButton*>("uploadDestinationMenu")->property("uiFlush").toBool());
         QVERIFY(!window.findChild<QLabel*>("maskTimingGroup"));
         QVERIFY(window.findChild<QLabel*>("muted")->text().startsWith("Keep 0:02–0:29 · 27 s"));
         auto* add = window.findChild<QToolButton*>("addMask");
@@ -786,7 +785,7 @@ private slots:
         for (int width : {720, 820, 1060}) {
             window.resize(width, 720); QApplication::processEvents();
             auto* metadata = window.findChild<QWidget*>("reviewTransport");
-            QVERIFY(metadata && window.findChild<Graphite::WindowHeader*>()->isAncestorOf(metadata));
+            QVERIFY(metadata && window.findChild<Ui::WindowHeader*>()->isAncestorOf(metadata));
             QVERIFY(metadata->mapTo(&window, metadata->rect().bottomLeft()).y() < t->mapTo(&window, t->trackRect().topLeft()).y());
             auto* maskControls = window.findChild<QWidget*>("maskControls");
             QVERIFY(metadata->isAncestorOf(window.findChild<QComboBox*>("speed")));
@@ -799,9 +798,9 @@ private slots:
             QVERIFY(clip && !clip->isVisible());
             const auto lane = t->trackRect().translated(t->pos());
             QVERIFY(t->geometry().bottom() < trim->y());
-            QCOMPARE(t->x(), int(Graphite::Space::m));
-            QCOMPARE(t->width(), window.width() - 2 * int(Graphite::Space::m));
-            QVERIFY(lane.width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
+            QCOMPARE(t->x(), int(Ui::Space::m));
+            QCOMPARE(t->width(), window.width() - 2 * int(Ui::Space::m));
+            QVERIFY(lane.width() >= QFontMetricsF(Ui::font(Ui::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
             for (const auto& mask : twoMasks().masks) {
                 const auto bar = t->maskRect(mask.id).translated(t->pos());
                 QVERIFY(bar.top() > lane.bottom());
@@ -814,8 +813,8 @@ private slots:
             auto* playback = window.findChild<QToolButton*>("play");
             auto* speed = window.findChild<QComboBox*>("speed");
             auto* masks = window.findChild<QWidget*>("maskControls");
-            QVERIFY(window.findChild<Graphite::WindowHeader*>()->isAncestorOf(metadata));
-            QVERIFY(speed->width() >= speed->fontMetrics().horizontalAdvance(QStringLiteral("0.5×")) + Graphite::Metric::splitZone);
+            QVERIFY(window.findChild<Ui::WindowHeader*>()->isAncestorOf(metadata));
+            QVERIFY(speed->width() >= speed->fontMetrics().horizontalAdvance(QStringLiteral("0.5×")) + Ui::Metric::splitZone);
             for (auto* control : std::initializer_list<QWidget*>{playback, speed, time}) {
                 QVERIFY(metadata->isAncestorOf(control));
                 const QRect bounds(control->mapTo(&window, QPoint()), control->size());
@@ -831,7 +830,7 @@ private slots:
             if (!status->isVisible()) QVERIFY(window.findChild<QToolButton*>("uploadDestinationMenu")->toolTip().contains("Silent preview"));
             QVERIFY((window.findChild<QWidget*>("reviewDestinationSummary")->isAncestorOf(audio)
                 || window.findChild<QWidget*>("reviewMetadata")->isAncestorOf(audio)));
-            QVERIFY(t->trackRect().width() >= QFontMetricsF(Graphite::font(Graphite::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
+            QVERIFY(t->trackRect().width() >= QFontMetricsF(Ui::font(Ui::Type::metadata)).horizontalAdvance(durationText(duration)) * 2 + 24);
             for (auto* button : window.findChildren<QToolButton*>()) if (button->isVisible() && button->toolButtonStyle() == Qt::ToolButtonTextOnly && button->objectName() != "uploadDestinationMenu" && button->objectName() != "addMask") {
                 QVERIFY(button->width() - (button->objectName() == "useRedact" ? 16 : button->objectName() == "showMoreMasks" ? 8 : 24) >= QFontMetricsF(button->font()).horizontalAdvance(button->text()));
             }
@@ -864,8 +863,8 @@ private slots:
         QVERIFY(transport->height() >= 28);
         QCOMPARE(track->trackRect().top(), 17);
         QCOMPARE(track->trackRect().left(), ReviewTimeline::gutterWidth());
-        QVERIFY(ReviewTimeline::gutterWidth() >= std::min(112, Graphite::scaled(96)));
-        QVERIFY(ReviewTimeline::gutterWidth() >= QFontMetrics(Graphite::labelFont()).horizontalAdvance(QStringLiteral("+ Add mask")) + 20);
+        QVERIFY(ReviewTimeline::gutterWidth() >= std::min(112, Ui::scaled(96)));
+        QVERIFY(ReviewTimeline::gutterWidth() >= QFontMetrics(Ui::labelFont()).horizontalAdvance(QStringLiteral("+ Add mask")) + 20);
         const int axis = track->mapTo(&window, track->trackRect().topLeft()).x();
         for (const char* name : {"trimTimingControls", "maskKinds"}) {
             auto* group = window.findChild<QWidget*>(name);
@@ -873,7 +872,7 @@ private slots:
         }
         auto* time = window.findChild<QLabel*>("time");
         QVERIFY(time->text().contains(" / "));
-        QCOMPARE(time->font(), Graphite::monoFont(Graphite::Type::technical));
+        QCOMPARE(time->font(), Ui::monoFont(Ui::Type::technical));
         auto* frame = window.findChild<FrameView*>();
         QVERIFY(frame->contentsRect().contains(frame->imageRect()));
         auto* add = window.findChild<QToolButton*>("addMask");
@@ -881,7 +880,7 @@ private slots:
         QCOMPARE(add->text(), QString("+ Add mask"));
         QCOMPARE(add->geometry().center().y(), track->maskRect("m-blur").center().y());
         // Lane names keep 3 px around their glyphs at every scale.
-        { auto laneFont = Graphite::font(Graphite::Type::caption); laneFont.setWeight(QFont::Medium);
+        { auto laneFont = Ui::font(Ui::Type::caption); laneFont.setWeight(QFont::Medium);
           QVERIFY(track->maskRect("m-blur").height() >= QFontMetrics(laneFont).tightBoundingRect(QStringLiteral("Redaction 12")).height() + 6); }
         QCOMPARE(track->maskRect("m-solid").top() - track->maskRect("m-blur").bottom() - 1, 2);
         auto* chip = window.findChild<QToolButton*>("reviewBlurChip");
@@ -917,7 +916,7 @@ private slots:
         auto c = config(); c.audio.system = true;
         ReviewWindow window(o, c); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        auto* destination = window.findChild<Graphite::ElidedLabel*>("uploadDestination");
+        auto* destination = window.findChild<Ui::ElidedLabel*>("uploadDestination");
         auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
         const auto nameFits = [&] {
             return output && output->isVisible() && output->toolTip().contains(o.destination) && output->text().contains("Shared link")
@@ -1033,7 +1032,7 @@ private slots:
         QFETCH(bool, recorded);
         QFETCH(bool, enabled);
         QFETCH(QString, format);
-        Graphite::WindowHeader::setCustomFrameOverride(-1);
+        Ui::WindowHeader::setCustomFrameOverride(-1);
         auto o = options(); o.audioRecorded = recorded;
         auto c = config(); c.audio.system = enabled; c.format = format;
         ReviewWindow window(o, c); window.show();
@@ -1081,7 +1080,7 @@ private slots:
         QFETCH(int, pixels);
         auto font = qApp->font(); font.setPixelSize(pixels); qApp->setFont(font);
         for (const int frame : {1, -1}) {
-            Graphite::WindowHeader::setCustomFrameOverride(frame);
+            Ui::WindowHeader::setCustomFrameOverride(frame);
             auto o = options(); o.audioRecorded = true; o.canvas = QSize(960, 600); o.formats = QStringList{"mp4", "webm", "gif", "webp"};
             auto c = config(); c.audio.system = true;
             ReviewWindow window(o, c); window.show();
@@ -1116,11 +1115,11 @@ private slots:
                     const auto a = bounds(groups[i]), b = bounds(groups[j]);
                     if (a.top() > b.bottom() || b.top() > a.bottom()) continue;
                     const int gap = std::max(a.left(), b.left()) - std::min(a.right(), b.right()) - 1;
-                    QVERIFY2(gap >= int(Graphite::Space::s), qPrintable(QString("%1/%2 gap %3 at %4").arg(groups[i]->objectName(), groups[j]->objectName()).arg(gap).arg(width)));
+                    QVERIFY2(gap >= int(Ui::Space::s), qPrintable(QString("%1/%2 gap %3 at %4").arg(groups[i]->objectName(), groups[j]->objectName()).arg(gap).arg(width)));
                 }
                 if (actions->layout()->property("singleRow").toBool() && actions->isAncestorOf(destination)) {
                     QVERIFY(bounds(destination).right() < bounds(metadata).left());
-                    QVERIFY(bounds(format).left() - bounds(metadata).right() - 1 >= int(Graphite::Space::xl));
+                    QVERIFY(bounds(format).left() - bounds(metadata).right() - 1 >= int(Ui::Space::xl));
                 }
 
             }
@@ -1142,15 +1141,15 @@ private slots:
             QVERIFY(putgd::test::waitForWindowExposed(&window));
             window.resize(1600, 720); putgd::test::settle(10);
             auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
-            auto* header = window.findChild<Graphite::WindowHeader*>();
+            auto* header = window.findChild<Ui::WindowHeader*>();
             QVERIFY(output->property("headerSummary").toBool());
-            QCOMPARE(output->width(), output->fontMetrics().horizontalAdvance(output->text()) + 6 + Graphite::scaled(8) + 2);
+            QCOMPARE(output->width(), output->fontMetrics().horizontalAdvance(output->text()) + 6 + Ui::scaled(8) + 2);
             QCOMPARE(output->mapTo(header, QPoint()).x(), header->layout()->contentsMargins().left());
             const auto natural = output->grab().toImage();
             const int minimum = output->minimumWidth(), maximum = output->maximumWidth();
             output->setFixedWidth(natural.width() + 80);
             const auto reference = output->grab().toImage();
-            const QRect text(0, 0, natural.width() - (6 + Graphite::scaled(8) + 2), natural.height());
+            const QRect text(0, 0, natural.width() - (6 + Ui::scaled(8) + 2), natural.height());
             QCOMPARE(natural.copy(text), reference.copy(text));
             output->setMinimumWidth(minimum); output->setMaximumWidth(maximum);
             output->resize(natural.size());
@@ -1178,7 +1177,7 @@ private slots:
         auto c = config(); c.audio.system = true;
         ReviewWindow window(o, c); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        auto* header = window.findChild<Graphite::WindowHeader*>();
+        auto* header = window.findChild<Ui::WindowHeader*>();
         auto* output = window.findChild<QToolButton*>("uploadDestinationMenu");
         auto* menu = output->menu();
         auto* draft = window.findChild<QLabel*>("draftState");
@@ -1206,7 +1205,7 @@ private slots:
                 const qreal frameCentre = view->mapTo(&window, QPointF(view->imageRect().center())).x();
                 const qreal transportCentre = transport->mapTo(&window, QPointF(transport->width() / 2.0, 0)).x();
                 QVERIFY2(qAbs(transportCentre - frameCentre) <= 2, qPrintable(QString("transport %1, frame %2").arg(transportCentre).arg(frameCentre)));
-                QVERIFY(output->maximumWidth() <= output->fontMetrics().horizontalAdvance(output->text()) + Graphite::space(Graphite::Space::l));
+                QVERIFY(output->maximumWidth() <= output->fontMetrics().horizontalAdvance(output->text()) + Ui::space(Ui::Space::l));
                 QTest::mouseMove(&window, QPoint(5, window.height() - 5));
                 output->clearFocus(); QApplication::processEvents();
                 const auto image = header->grab().toImage();
@@ -1219,7 +1218,7 @@ private slots:
                 for (const auto* name : {"windowMinimize", "windowMaximize", "windowClose"}) {
                     const auto button = bounds(window.findChild<QToolButton*>(name));
                     QVERIFY(!button.intersects(bounds(audio)));
-                    if (button.left() > bounds(draft).right()) QVERIFY(button.left() - bounds(draft).right() - 1 >= Graphite::space(Graphite::Space::l));
+                    if (button.left() > bounds(draft).right()) QVERIFY(button.left() - bounds(draft).right() - 1 >= Ui::space(Ui::Space::l));
                 }
                 const auto suffix = output->property("sharingSuffix").toString();
                 QVERIFY(output->width() >= output->fontMetrics().horizontalAdvance(suffix + QStringLiteral("…")) + 24);
@@ -1233,8 +1232,8 @@ private slots:
                 const auto text = speed->style()->subControlRect(QStyle::CC_ComboBox, &option, QStyle::SC_ComboBoxEditField, speed);
                 const auto arrow = speed->style()->subControlRect(QStyle::CC_ComboBox, &option, QStyle::SC_ComboBoxArrow, speed);
                 QVERIFY2(qAbs(text.width() - QFontMetricsF(speed->font()).horizontalAdvance(speed->currentText())) <= 1,
-                    qPrintable(QString("speed '%1': text %2, advance %3, control %4, font %5; painted %6").arg(speed->currentText()).arg(text.width()).arg(QFontMetricsF(speed->font()).horizontalAdvance(speed->currentText())).arg(speed->width()).arg(speed->font().toString(), Graphite::font(Graphite::Type::technical).toString())));
-                QCOMPARE(arrow.left() - text.right() - 1, Graphite::space(Graphite::Space::xs));
+                    qPrintable(QString("speed '%1': text %2, advance %3, control %4, font %5; painted %6").arg(speed->currentText()).arg(text.width()).arg(QFontMetricsF(speed->font()).horizontalAdvance(speed->currentText())).arg(speed->width()).arg(speed->font().toString(), Ui::font(Ui::Type::technical).toString())));
+                QCOMPARE(arrow.left() - text.right() - 1, Ui::space(Ui::Space::xs));
                 QVERIFY(speed->rect().contains(arrow));
                 QCOMPARE(speed->width(), speedWidth);
             }
@@ -1273,7 +1272,7 @@ private slots:
         // Selecting a different mask still reveals its lane through session/CLI/MCP.
         QVERIFY(window.drive({{"action", "selectMask"}, {"maskId", "7"}}).code.isEmpty());
         QVERIFY(!timeline(window)->maskRect("7").isEmpty());
-        QVERIFY(timeline(window)->maskRect("7").height() >= Graphite::scaled(16));
+        QVERIFY(timeline(window)->maskRect("7").height() >= Ui::scaled(16));
     }
     void maskOptionsExposeRadiusAndDeletionThroughTheSameDrive_data() {
         QTest::addColumn<double>("scale");
@@ -1445,25 +1444,25 @@ private slots:
     // put.gd's own frame everywhere below, also offscreen: the frame share,
     // minimum size and fit include the compact header's pixels.
     void initTestCase() {
-        // A case must never restore Qt's pre-install font after Graphite's lazy
+        // A case must never restore Qt's pre-install font after the app style's lazy
         // install: later data rows would then measure smaller text.
         Fonts::load();
-        Graphite::install(*qApp);
+        Ui::install(*qApp);
         baselineFont_ = QApplication::font();
         baselineScheme_ = Theme::scheme();
     }
     void init() {
         QApplication::setFont(baselineFont_);
         Theme::setScheme(baselineScheme_);
-        Graphite::WindowHeader::setCustomFrameOverride(1);
+        Ui::WindowHeader::setCustomFrameOverride(1);
     }
     void cleanup() {
         QApplication::setFont(baselineFont_);
         Theme::setScheme(baselineScheme_);
-        Graphite::WindowHeader::setCustomFrameOverride(1);
+        Ui::WindowHeader::setCustomFrameOverride(1);
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     }
-    void cleanupTestCase() { Graphite::WindowHeader::setCustomFrameOverride(0); }
+    void cleanupTestCase() { Ui::WindowHeader::setCustomFrameOverride(0); }
     void liveSelectorsSupportKeyboard_data() {
         QTest::addColumn<bool>("recording");
         QTest::newRow("screenshot") << false;
@@ -1766,16 +1765,16 @@ private slots:
         window.drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h265"}});
         QCOMPARE(format->displayedText(), QString("H.265")); QVERIFY(format->grab().toImage() != avc);
         QVERIFY(format->toolTip().contains("Smaller video")); QVERIFY(format->accessibleDescription().contains("H.265"));
-        QVERIFY(format->minimumSizeHint().width() >= format->fontMetrics().horizontalAdvance("H.265") + Graphite::scaled(44));
+        QVERIFY(format->minimumSizeHint().width() >= format->fontMetrics().horizontalAdvance("H.265") + Ui::scaled(44));
     }
     void maskChooserReservesScaledControlAndPopupSpace() {
         for (int pixels : {14, 21}) {
             auto font = qApp->font(); font.setPixelSize(pixels); qApp->setFont(font);
             MaskBox box; box.addItems({"Redact 1", "Blur 1"}); box.show();
             const int text = std::max(box.fontMetrics().horizontalAdvance("Redact 1"), box.fontMetrics().horizontalAdvance("Blur 1"));
-            QVERIFY(box.sizeHint().width() >= text + Graphite::scaled(44));
+            QVERIFY(box.sizeHint().width() >= text + Ui::scaled(44));
             box.showPopup();
-            QVERIFY(box.view()->minimumWidth() >= text + Graphite::scaled(40));
+            QVERIFY(box.view()->minimumWidth() >= text + Ui::scaled(40));
             box.hidePopup();
         }
     }
@@ -1801,7 +1800,7 @@ private slots:
                         contrast = std::max(contrast, Theme::contrast(image.pixelColor(x, y), fill));
                 return contrast;
             };
-            const int side = std::min(bar.height() - 2, Graphite::scaled(14));
+            const int side = std::min(bar.height() - 2, Ui::scaled(14));
             QVERIFY(contrastIn(QRect(bar.left() + 4, bar.center().y() - side / 2, side, side)) >= 4.5);
             QVERIFY(contrastIn(QRect(bar.right() - 40, bar.bottom() - 4, 24, 2)) >= 3.0);
             t.setMasks({mask("solid", "solid", 2000000, 10000000)}, "solid");
@@ -1816,7 +1815,7 @@ private slots:
         timeline.setMasks({mask("solid", "solid", 2000000, 10000000)}, "solid");
         timeline.resize(900, timeline.sizeHint().height()); timeline.show(); QApplication::processEvents();
         const auto bar = timeline.maskRect("solid");
-        const QRect name(bar.left() + 7, bar.top() + 1, QFontMetrics(Graphite::font(Graphite::Type::caption)).horizontalAdvance("Redaction 1") - 2, bar.height() - 2);
+        const QRect name(bar.left() + 7, bar.top() + 1, QFontMetrics(Ui::font(Ui::Type::caption)).horizontalAdvance("Redaction 1") - 2, bar.height() - 2);
         timeline.setPlayhead(11000000); const auto before = timeline.grab().toImage().copy(name);
         const qint64 at = 2000000 + qRound64(double(name.center().x() - timeline.xFor(2000000)) * duration / (timeline.xFor(duration) - timeline.xFor(0)));
         timeline.setPlayhead(at); const auto after = timeline.grab().toImage().copy(name);
@@ -1843,7 +1842,7 @@ private slots:
         t.show();
         const auto first = t.maskHitRect("one"), second = t.maskHitRect("two");
         const auto firstBar = t.maskRect("one"), secondBar = t.maskRect("two");
-        auto laneFont = Graphite::font(Graphite::Type::caption); laneFont.setWeight(QFont::Medium);
+        auto laneFont = Ui::font(Ui::Type::caption); laneFont.setWeight(QFont::Medium);
         QVERIFY(firstBar.height() >= 16);
         QVERIFY(firstBar.height() >= QFontMetrics(laneFont).tightBoundingRect(QStringLiteral("Redaction 12")).height() + 6);
         QCOMPARE(secondBar.top() - firstBar.top(), firstBar.height() + 2);
@@ -1911,9 +1910,9 @@ private slots:
         ReviewWindow window(options(), config());
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        auto* header = window.findChild<Graphite::WindowHeader*>("windowHeader");
+        auto* header = window.findChild<Ui::WindowHeader*>("windowHeader");
         QVERIFY(header && header->isVisible());
-        QCOMPARE(header->density(), Graphite::WindowHeader::Density::Compact);
+        QCOMPARE(header->density(), Ui::WindowHeader::Density::Compact);
         QVERIFY(window.windowFlags().testFlag(Qt::FramelessWindowHint));
         // Its height keeps the full title line and the 32 px control targets.
         QCOMPARE(header->height(), header->compactHeight());
@@ -1957,35 +1956,35 @@ private slots:
         QApplication::setFont(font);
         ReviewWindow window(options(), config()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        auto* title = window.findChild<Graphite::ElidedLabel*>("brandName");
+        auto* title = window.findChild<Ui::ElidedLabel*>("brandName");
         for (const int width : {1366, 720, 1060, 800, 1366}) {
             window.resize(width, 720); PUTGD_VERIFY_STEADY(title->isHidden() || !title->elided(),10);
             QVERIFY(window.findChild<QWidget*>("reviewTransport")->isVisible());
             QCOMPARE(window.windowTitle(), QString("Review recording"));
         }
-        auto* header = window.findChild<Graphite::WindowHeader*>();
+        auto* header = window.findChild<Ui::WindowHeader*>();
         QWidget documentWindow; QVBoxLayout layout(&documentWindow);
-        auto* documentHeader = Graphite::WindowHeader::install(&documentWindow, &layout, nullptr, Graphite::WindowHeader::Density::Compact);
+        auto* documentHeader = Ui::WindowHeader::install(&documentWindow, &layout, nullptr, Ui::WindowHeader::Density::Compact);
         documentHeader->setDocument(QString(200, 'W'));
         documentWindow.resize(680, 200); documentWindow.show(); putgd::test::settle(10);
-        auto* document = documentHeader->findChild<Graphite::ElidedLabel*>("documentName");
+        auto* document = documentHeader->findChild<Ui::ElidedLabel*>("documentName");
         QVERIFY(document->isHidden());
         documentHeader->setDocument("Clip"); PUTGD_VERIFY_STEADY(document->isVisible(),10); QVERIFY(!document->elided());
         QVERIFY(header->height() >= 32);
     }
     void desktopDecorationsHideTheCompactHeader() {
-        Graphite::WindowHeader::setCustomFrameOverride(-1);
+        Ui::WindowHeader::setCustomFrameOverride(-1);
         {
             ReviewWindow window(options(), config());
             window.show();
             QVERIFY(putgd::test::waitForWindowExposed(&window));
-            auto* header = window.findChild<Graphite::WindowHeader*>("windowHeader");
+            auto* header = window.findChild<Ui::WindowHeader*>("windowHeader");
             QVERIFY(header && !header->isVisible());
             QVERIFY(!window.windowFlags().testFlag(Qt::FramelessWindowHint));
             QCOMPARE(window.windowTitle(), QStringLiteral("Review recording"));
             QVERIFY(!window.inspect()["header"].toObject()["visible"].toBool());
         }
-        Graphite::WindowHeader::setCustomFrameOverride(1);
+        Ui::WindowHeader::setCustomFrameOverride(1);
     }
     void defaultSizeFitsAndTheVideoTakesMostOfTheWindow() {
         ReviewWindow window(options(), config());
@@ -2038,8 +2037,8 @@ private slots:
     }
     void largeTextControlsKeepTextPaddingAndOneLineRows() {
         const auto original = qApp->font();
-        const auto restore = qScopeGuard([&] { qApp->setFont(original); Graphite::WindowHeader::setCustomFrameOverride(0); });
-        Graphite::WindowHeader::setCustomFrameOverride(1);
+        const auto restore = qScopeGuard([&] { qApp->setFont(original); Ui::WindowHeader::setCustomFrameOverride(0); });
+        Ui::WindowHeader::setCustomFrameOverride(1);
         auto font = original; font.setPointSizeF(10.5 * 1.5); qApp->setFont(font);
         auto o = options(); o.canvas = QSize(960, 600); o.durationUs = 32000000; o.availableSize = QSize(1366, 680); o.audioRecorded = true;
         o.destination = QStringLiteral("Project archive for customer support in the European Union");
@@ -2052,17 +2051,17 @@ private slots:
         // Every framed text control keeps 3 px above and below its full text line.
         for (const auto* name : {"trimControls", "maskControls", "reviewActions", "reviewTransport"})
             for (auto* control : window.findChild<QWidget*>(name)->findChildren<QWidget*>()) {
-                if (!control->isVisible() || control->property("graphiteFlush").toBool()) continue;
+                if (!control->isVisible() || control->property("uiFlush").toBool()) continue;
                 auto* button = qobject_cast<QAbstractButton*>(control);
                 if (!(button && !button->text().isEmpty()) && !qobject_cast<QComboBox*>(control)) continue;
                 QVERIFY2(control->height() >= control->fontMetrics().height() + 6, qPrintable(QString("%1 '%2' %3 px for a %4 px line").arg(control->metaObject()->className(), button ? button->text() : control->objectName()).arg(control->height()).arg(control->fontMetrics().height())));
             }
         // Media chrome follows its contents rather than a scaled pointer target.
-        auto* header = window.findChild<Graphite::WindowHeader*>("windowHeader");
+        auto* header = window.findChild<Ui::WindowHeader*>("windowHeader");
         auto* transport = window.findChild<QWidget*>("reviewTransport");
-        QVERIFY(header->height() < Graphite::scaled(Graphite::Metric::iconTarget));
+        QVERIFY(header->height() < Ui::scaled(Ui::Metric::iconTarget));
         QVERIFY(header->rect().contains(transport->geometry()));
-        for (auto* button : header->findChildren<QToolButton*>()) if (button->isVisible() && button->property("graphiteChrome").toBool()) {
+        for (auto* button : header->findChildren<QToolButton*>()) if (button->isVisible() && button->property("uiChrome").toBool()) {
             QVERIFY(header->rect().contains(button->geometry().translated(button->parentWidget()->mapTo(header, QPoint()))));
             QVERIFY(button->height() >= button->iconSize().height() + 8);
         }
@@ -2083,14 +2082,14 @@ private slots:
         QVERIFY(output->toolTip().contains(o.destination));
         window.resize(640, 648); putgd::test::settle(20);
         const auto suffix = output->property("sharingSuffix").toString();
-        const int nameWidth = output->width() - output->fontMetrics().horizontalAdvance(suffix) - (6 + Graphite::scaled(8) + 2);
-        QVERIFY(nameWidth >= Graphite::scaled(96));
+        const int nameWidth = output->width() - output->fontMetrics().horizontalAdvance(suffix) - (6 + Ui::scaled(8) + 2);
+        QVERIFY(nameWidth >= Ui::scaled(96));
         QVERIFY(output->fontMetrics().elidedText(o.destination, Qt::ElideRight, nameWidth).startsWith(o.destination.left(10)));
         auto* summary = window.findChild<QWidget*>("reviewDestinationSummary");
         auto* metadata = window.findChild<QWidget*>("reviewMetadata");
         const auto summaryRect = QRect(summary->mapTo(&window, QPoint()), summary->size());
         const auto metadataRect = QRect(metadata->mapTo(&window, QPoint()), metadata->size());
-        QVERIFY(metadataRect.top() > summaryRect.bottom() || metadataRect.left() - summaryRect.right() - 1 >= Graphite::space(Graphite::Space::l));
+        QVERIFY(metadataRect.top() > summaryRect.bottom() || metadataRect.left() - summaryRect.right() - 1 >= Ui::space(Ui::Space::l));
         QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
         // Wide windows keep the rows on the lanes' gutter.
         window.resize(1600, window.height()); PUTGD_COMPARE_STEADY(trimName->width(), ReviewTimeline::gutterWidth(),20);
@@ -2134,7 +2133,7 @@ private slots:
             QApplication::processEvents();
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.60);
             // The compact header grows with the text instead of clipping it.
-            auto* header = window.findChild<Graphite::WindowHeader*>("windowHeader");
+            auto* header = window.findChild<Ui::WindowHeader*>("windowHeader");
             QVERIFY(header && header->isVisible() && header->height() == header->compactHeight());
             auto* transport = header->findChild<QWidget*>("reviewTransport");
             QVERIFY(transport && transport->height() >= 28 && header->rect().contains(transport->geometry()));
@@ -2164,7 +2163,7 @@ private slots:
     }
     void frameGatesCoverThePreviewAspectRatio() {
         QFETCH(QSize, canvas); QFETCH(double, scale); QFETCH(bool, longDestination); QFETCH(bool, customHeader);
-        Graphite::WindowHeader::setCustomFrameOverride(customHeader ? 1 : -1);
+        Ui::WindowHeader::setCustomFrameOverride(customHeader ? 1 : -1);
         const auto font = QApplication::font();
         const auto scheme = Theme::scheme();
         const auto restore = qScopeGuard([&] { QApplication::setFont(font); Theme::setScheme(scheme); });
@@ -2182,7 +2181,7 @@ private slots:
             ReviewWindow window(o, config()); window.setEdit(twoMasks()); window.show();
             QVERIFY(putgd::test::waitForWindowExposed(&window));
             auto* transport = window.findChild<QWidget*>("reviewTransport");
-            auto* header = window.findChild<Graphite::WindowHeader*>("windowHeader");
+            auto* header = window.findChild<Ui::WindowHeader*>("windowHeader");
             QCOMPARE(header->isVisible(), customHeader);
             if (customHeader) QVERIFY(header->isAncestorOf(transport));
             else QVERIFY(transport->mapTo(&window, transport->rect().bottomLeft()).y() < window.findChild<FrameView*>()->y());
@@ -2267,7 +2266,7 @@ private slots:
         // Layout-managed after the speed control, inside the header's measured fit.
         QCOMPARE(indicator->parentWidget(), transport);
         auto* speed = window.findChild<QWidget*>("speed");
-        QCOMPARE(indicator->x() + indicator->contentsRect().left() - speed->geometry().right() - 1, int(Graphite::Space::m));
+        QCOMPARE(indicator->x() + indicator->contentsRect().left() - speed->geometry().right() - 1, int(Ui::Space::m));
         QVERIFY(window.rect().contains(QRect(indicator->mapTo(&window, QPoint()), indicator->size())));
         QVERIFY(indicator->accessibleDescription().contains("preview is silent", Qt::CaseInsensitive));
         QVERIFY(indicator->accessibleDescription().contains("export keeps the recorded system audio"));
@@ -2293,7 +2292,7 @@ private slots:
                 if (!indicator->isVisibleTo(&window)) continue;
                 const QRect glyph(indicator->mapTo(&window, indicator->contentsRect().topLeft()), indicator->contentsRect().size());
                 const QRect control(minimise->mapTo(&window, QPoint()), minimise->size());
-                QVERIFY2(control.left() - glyph.right() - 1 >= int(Graphite::Space::xl),
+                QVERIFY2(control.left() - glyph.right() - 1 >= int(Ui::Space::xl),
                     qPrintable(QString("%1 px text at %2 px: glyph ends %3, minimise starts %4").arg(pixels).arg(width).arg(glyph.right()).arg(control.left())));
                 shown = true;
             }
@@ -2308,7 +2307,7 @@ private slots:
         auto m = mask("one", "solid", 1000000, 2000000); m.rect = QRect(100, 80, 40, 14);
         frame.setFrame(image, 0); frame.setMasks({m}, "one"); frame.show(); PUTGD_VERIFY_STEADY(frame.accessibleDescription().contains("Inactive at playhead"),10);
         const auto shot = frame.grab().toImage();
-        const QFontMetrics metrics(Graphite::font(Graphite::Type::maskBadge, true));
+        const QFontMetrics metrics(Ui::font(Ui::Type::maskBadge, true));
         const int width = metrics.horizontalAdvance(QStringLiteral("1 · inactive")) + 8;
         int scrim = 0;
         for (int x = m.rect.right() + 5; x < m.rect.right() + width + 4; ++x)
@@ -2345,7 +2344,7 @@ private slots:
         const auto original = qApp->font();
         auto restore = qScopeGuard([&] { qApp->setFont(original); });
         auto font = original; font.setPointSizeF(10.5 * scale); qApp->setFont(font);
-        QCOMPARE(Graphite::scaled(Graphite::Metric::controlCompact), qRound(28 * scale));
+        QCOMPARE(Ui::scaled(Ui::Metric::controlCompact), qRound(28 * scale));
         auto o = options(); o.canvas = canvas; o.durationUs = 32000000; o.availableSize = QSize(1366, 680); o.audioRecorded = true;
         auto c = config(); c.audio.system = true;
         RecordingEdit edit; edit.trimStart = 2000000; edit.trimEnd = 29000000;
@@ -2422,7 +2421,7 @@ private slots:
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
             QCOMPARE(window.geometry(), geometry);
             for (auto* button : window.findChild<QWidget*>("statusRow")->findChildren<QPushButton*>("statusAction")) {
-                QVERIFY(button->property("graphiteFlush").toBool());
+                QVERIFY(button->property("uiFlush").toBool());
                 QVERIFY2(button->width() >= std::ceil(QFontMetricsF(button->font()).horizontalAdvance(button->text())), qPrintable(button->text()));
             }
         }
@@ -2498,7 +2497,7 @@ private slots:
             PUTGD_TRY_VERIFY(window.inspect()["status"].toString().contains("Disk is full. Free up space, then try again."));
             qInfo("visible recovery frame share %.3f at %dx%d", window.inspect()["video"].toObject()["share"].toDouble(), window.width(), window.height());
             QVERIFY(window.inspect()["video"].toObject()["share"].toDouble() >= 0.45);
-            QVERIFY(!window.inspect()["status"].toString().contains(Graphite::blurWarningText()));
+            QVERIFY(!window.inspect()["status"].toString().contains(Ui::blurWarningText()));
             // Final read (council 17): the error doesn't hide the selected blur's warning;
             // both lines stack in the constrained window and stay inside it.
             QVERIFY(window.inspect()["blurGuidance"].toObject()["visible"].toBool());
@@ -2575,7 +2574,7 @@ private slots:
         QCOMPARE(label->pos(), position);
         QVERIFY(!window.findChild<FrameView*>()->isAncestorOf(label));
         QCOMPARE(label->text(), QString("0:05.0–0:20.0 · Starts at 0:05.0"));
-        QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont(Graphite::Type::technical)).family());
+        QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Ui::monoFont(Ui::Type::technical)).family());
         edit.revision++; edit.trimStart = 2000000; edit.trimEnd = 29000000; window.setEdit(edit);
         window.drive({{"action", "seek"}, {"time", 0}});
         QCOMPARE(window.inspect()["previewAudioStatus"].toString(), QStringLiteral("Silent preview"));
@@ -2590,7 +2589,7 @@ private slots:
             window.drive({{"action", "showAdvice"}});
             auto* dialog = window.findChild<QDialog*>("reviewAdvice");
             QVERIFY(dialog && dialog->isVisible());
-            QCOMPARE(dialog->width(), std::min(Graphite::scaled(640), std::min(available.width(), dialog->screen()->availableGeometry().width())));
+            QCOMPARE(dialog->width(), std::min(Ui::scaled(640), std::min(available.width(), dialog->screen()->availableGeometry().width())));
             QVERIFY(dialog->height() <= available.height());
         }
     }
@@ -3209,12 +3208,12 @@ private slots:
             QLabel* label = nullptr;
             for (auto* l : window.findChildren<QLabel*>(name)) if (l->accessibleName() == "Playhead time" || l->accessibleName() == "Kept interval") label = l;
             QVERIFY2(label, name);
-            QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont(Graphite::Type::technical)).family());
+            QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Ui::monoFont(Ui::Type::technical)).family());
             const auto scheme = Theme::scheme();
             Theme::setScheme(scheme == Theme::Scheme::Dark ? Theme::Scheme::Light : Theme::Scheme::Dark);
             QApplication::processEvents();
-            QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Graphite::monoFont(Graphite::Type::technical)).family());
-            QCOMPARE(label->font().pixelSize(), Graphite::monoFont(Graphite::Type::technical).pixelSize());
+            QCOMPARE(QFontInfo(label->font()).family(), QFontInfo(Ui::monoFont(Ui::Type::technical)).family());
+            QCOMPARE(label->font().pixelSize(), Ui::monoFont(Ui::Type::technical).pixelSize());
             Theme::setScheme(scheme);
             QVERIFY(label->width() >= label->sizeHint().width());
         }

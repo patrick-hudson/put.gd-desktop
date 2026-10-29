@@ -11,8 +11,8 @@ private slots:
   for(int pixels:{14,21})for(auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
    auto font=original;font.setPixelSize(pixels);qApp->setFont(font);Theme::setScheme(scheme);
    const QRect bounds(0,0,800,600);const QFontMetrics metrics(font);const auto box=regionHintBox(bounds,metrics);
-   QCOMPARE(box.top(),Graphite::space(Graphite::Space::l));QCOMPARE(box.center().x(),bounds.center().x());
-   QCOMPARE(box.height(),metrics.height()+2*Graphite::space(Graphite::Space::xs));
+   QCOMPARE(box.top(),Ui::space(Ui::Space::l));QCOMPARE(box.center().x(),bounds.center().x());
+   QCOMPARE(box.height(),metrics.height()+2*Ui::space(Ui::Space::xs));
    QVERIFY(!regionHint().contains('\n'));QCOMPARE(regionHint(),QString("Drag to select · Esc to cancel"));
    QImage image(bounds.size(),QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);QPainter painter(&image);painter.setFont(font);
    paintRegionChrome(painter,bounds,{},{},true,1,false);painter.end();
@@ -37,7 +37,7 @@ private slots:
   QCOMPARE(regionHintBox(bounds,metrics,regionHint(),QRectF(bounds)),top);
  }
  void sizeLabelFollowsTheSelection(){
-  const QRect bounds(0,0,800,600);const QFontMetrics metrics(QFont{});const QString text="400 × 200";const int gap=Graphite::space(Graphite::Space::xs);
+  const QRect bounds(0,0,800,600);const QFontMetrics metrics(QFont{});const QString text="400 × 200";const int gap=Ui::space(Ui::Space::xs);
   const QRectF middle(100,100,400,200);auto box=regionSizeBox(bounds,metrics,text,middle);
   QCOMPARE(box.topLeft(),QPoint(100,300+gap));QVERIFY(!QRectF(box).intersects(middle));
   const QRectF low(100,450,400,148);box=regionSizeBox(bounds,metrics,text,low);QCOMPARE(box.bottom(),450-gap-1);QVERIFY(!QRectF(box).intersects(low));

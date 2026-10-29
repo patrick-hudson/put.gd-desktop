@@ -1,7 +1,6 @@
 #include "FileDialog.h"
 #include "Theme.h"
-#include "Graphite.h"
-#include "VisualStyle.h"
+#include "Ui.h"
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QFile>
@@ -62,11 +61,11 @@ void styleFallback(QFileDialog* dialog){
  for(const auto role:{QPalette::WindowText,QPalette::Text,QPalette::ButtonText})palette.setColor(QPalette::Disabled,role,p.textDisabled);
  dialog->setPalette(palette);
  dialog->setProperty("themeScheme",Theme::name(scheme));
- // Graphite paints the fallback's controls from the tokens; no stylesheet.
+ // The app style paints the fallback's controls from the tokens; no stylesheet.
  dialog->setStyleSheet({});
  // The toolbar's Fusion pixmaps are dark on dark; IconArt glyphs follow the tokens.
  const QList<std::pair<const char*,const char*>> buttons{{"backButton","back"},{"forwardButton","forward"},{"toParentButton","up"},{"newFolderButton","folder-new"},{"listModeButton","view-list"},{"detailModeButton","view-detail"}};
- for(const auto& [name,glyph]:buttons)if(auto* button=dialog->findChild<QToolButton*>(name))button->setIcon(VisualStyle::icon(glyph));
+ for(const auto& [name,glyph]:buttons)if(auto* button=dialog->findChild<QToolButton*>(name))button->setIcon(Ui::icon(glyph));
 }
 #ifdef Q_OS_LINUX
 QString shortName(const QString& name){return name.startsWith(':')?name.mid(1).replace('.','_'):name;}
@@ -222,7 +221,7 @@ void FileDialog::openFallback(const QString& reason){
  if(!filters.isEmpty())dialog->setNameFilters(filters);
  theme(dialog);
  // Qt's default leaves the detail columns too narrow for their own values.
- QSize size(Graphite::scaled(820),Graphite::scaled(520));
+ QSize size(Ui::scaled(820),Ui::scaled(520));
  if(const auto* screen=owner_->window()->screen())size=size.boundedTo(screen->availableGeometry().size()*0.9);
  dialog->resize(size.expandedTo(dialog->minimumSizeHint()));
  if(auto* tree=dialog->findChild<QTreeView*>("treeView");tree&&tree->header()->count()>=4){

@@ -16,7 +16,7 @@
 #include "ui/StdioDevice.h"
 #include "ui/Theme.h"
 #include "ui/Fonts.h"
-#include "ui/VisualStyle.h"
+#include "ui/Ui.h"
 #include <QApplication>
 #include <QBuffer>
 #include <QImage>
@@ -180,9 +180,9 @@ int main(int argc, char** argv) {
     QCoreApplication::setApplicationName("putgd-record");
     QCoreApplication::setApplicationVersion(buildVersion());
     record::applyIdentity(app);
-    // The review window and overlays share the interface's Graphite controls.
+    // The review window and overlays share the interface's painted controls.
     Fonts::load();
-    VisualStyle::apply(app);
+    Ui::apply(app);
     GError* gstError = nullptr;
     if (!gst_init_check(nullptr, nullptr, &gstError)) { if (gstError) g_error_free(gstError); return 6; }
     StdioDevice pipes(handles.input(), handles.output());

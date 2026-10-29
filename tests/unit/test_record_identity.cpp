@@ -16,7 +16,7 @@ private slots:
         QCOMPARE(QGuiApplication::desktopFileName(), QString("putgd-record"));
         const auto icon = QApplication::windowIcon();
         QVERIFY(!icon.isNull());
-        const auto expected = putgd::VisualStyle::icon("brand").pixmap(48).toImage();
+        const auto expected = putgd::Ui::icon("brand").pixmap(48).toImage();
         QCOMPARE(icon.pixmap(48).toImage(), expected);
         // Top-level windows inherit it unless they set their own.
         QWidget review;

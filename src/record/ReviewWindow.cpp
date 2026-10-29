@@ -34,8 +34,7 @@
 #include <QHelpEvent>
 #include "ui/FileDialog.h"
 #include "ui/Theme.h"
-#include "ui/VisualStyle.h"
-#include "ui/Graphite.h"
+#include "ui/Ui.h"
 #include "ui/Fonts.h"
 #include <QApplication>
 #include <QGuiApplication>
@@ -64,12 +63,12 @@ namespace {
 constexpr int handleSize = 8;
 constexpr int compactReviewHeight = 648;
 // Compact media chrome keeps its padding on the logical grid as text grows.
-int reviewSpace(Graphite::Space value) { return static_cast<int>(value); }
-int footerInset() { return reviewSpace(Graphite::Space::l); }
-int destinationMenuPadding() { return 6 + Graphite::scaled(8) + 2; }
+int reviewSpace(Ui::Space value) { return static_cast<int>(value); }
+int footerInset() { return reviewSpace(Ui::Space::l); }
+int destinationMenuPadding() { return 6 + Ui::scaled(8) + 2; }
 // Text controls keep at least 3 px above and below their full text line at every scale.
 int textControlHeight(const QWidget* widget) { return std::max(28, widget->fontMetrics().height() + 2 * 3); }
-int iconTarget() { return Graphite::Metric::iconTarget; }
+int iconTarget() { return Ui::Metric::iconTarget; }
 // Tab follows the status row's fixed visual order: secondary, primary, then ×.
 void chainStatusActions(QBoxLayout* row, QWidget* dismiss) {
     QList<QWidget*> order;
@@ -82,7 +81,7 @@ void chainStatusActions(QBoxLayout* row, QWidget* dismiss) {
 
 namespace {
 // Media overlays use fixed colours, not the app theme: they sit on captured
-// content, which is as likely pale as dark (Graphite, Recording).
+// content, which is as likely pale as dark (visual language, Recording).
 const QColor mediaAccent(0xE8, 0xB6, 0x6D);
 QString seconds(qint64 us) {
     auto text = QString::number(double(us / 10000) / 100, 'f', 2);
@@ -101,11 +100,11 @@ protected:
         initStyleOption(&option);
         style()->drawPrimitive(QStyle::PE_PanelButtonTool, &option, &painter, this);
         const auto colour = isEnabled() ? Theme::current().textSecondary : Theme::current().textDisabled;
-        const int inset = reviewSpace(Graphite::Space::xs), gap = 6, chevron = Graphite::scaled(6);
+        const int inset = reviewSpace(Ui::Space::xs), gap = 6, chevron = Ui::scaled(6);
         const auto labelRect = rect().adjusted(inset, 0, -gap - chevron, 0);
         auto label = text();
-        Graphite::paintText(painter, labelRect, label, colour, font(), Qt::AlignLeft | Qt::AlignVCenter);
-        Graphite::paintChevron(painter, QPointF(labelRect.left() + fontMetrics().horizontalAdvance(label) + gap + chevron / 2.0, height() / 2.0), chevron, Qt::DownArrow, colour);
+        Ui::paintText(painter, labelRect, label, colour, font(), Qt::AlignLeft | Qt::AlignVCenter);
+        Ui::paintChevron(painter, QPointF(labelRect.left() + fontMetrics().horizontalAdvance(label) + gap + chevron / 2.0, height() / 2.0), chevron, Qt::DownArrow, colour);
     }
 };
 class MutedPreview final : public QLabel {
@@ -114,12 +113,12 @@ public:
         setObjectName("previewMutedIndicator");
         setAccessibleName(QStringLiteral("Silent preview"));
         setFocusPolicy(Qt::NoFocus);
-        setFixedSize(Graphite::scaled(16), Graphite::scaled(16));
+        setFixedSize(Ui::scaled(16), Ui::scaled(16));
     }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
-        Graphite::paintChromeGlyph(painter, contentsRect(), "muted-speaker", Theme::current().textSecondary);
+        Ui::paintChromeGlyph(painter, contentsRect(), "muted-speaker", Theme::current().textSecondary);
     }
 };
 class BlurChip final : public QToolButton {
@@ -131,17 +130,17 @@ public:
         setToolTip(text());
         setAutoRaise(true);
         setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-        setIcon(VisualStyle::icon("alert"));
+        setIcon(Ui::icon("alert"));
         setFocusPolicy(Qt::StrongFocus);
         setProperty("driveAction", QJsonObject{{"action", "useSolidCover"}});
-        VisualStyle::role(this, "meta");
-        setProperty("graphiteDensity", "compact");
+        Ui::role(this, "meta");
+        setProperty("uiDensity", "compact");
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     }
     QSize sizeHint() const override {
         const int enabled = fontMetrics().horizontalAdvance(QStringLiteral("Blur may be reversible · ")) + QFontMetrics(actionFont(true)).horizontalAdvance(QStringLiteral("Use Redact"));
         const int disabled = fontMetrics().horizontalAdvance(QStringLiteral("Blur may be reversible · ")) + QFontMetrics(actionFont(false)).horizontalAdvance(QStringLiteral("Use Redact"));
-        return {std::max(enabled, disabled) + Graphite::scaled(16) + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)};
+        return {std::max(enabled, disabled) + Ui::scaled(16) + 3 * reviewSpace(Ui::Space::xs), textControlHeight(this)};
     }
     QSize minimumSizeHint() const override { return sizeHint(); }
     void setActionAvailable(bool available) {
@@ -157,12 +156,12 @@ protected:
         painter.setRenderHint(QPainter::Antialiasing);
         const auto& palette = Theme::current();
         painter.setBrush(underMouse() && actionAvailable() ? palette.selected : palette.warningSurface);
-        painter.setPen(Graphite::keyboardFocus(this) ? QPen(palette.accent, 1) : QPen(Qt::NoPen));
-        painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Graphite::Metric::smallRadius, Graphite::Metric::smallRadius);
-        const int gap = reviewSpace(Graphite::Space::xs), side = Graphite::scaled(16);
+        painter.setPen(Ui::keyboardFocus(this) ? QPen(palette.accent, 1) : QPen(Qt::NoPen));
+        painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Ui::Metric::smallRadius, Ui::Metric::smallRadius);
+        const int gap = reviewSpace(Ui::Space::xs), side = Ui::scaled(16);
         const auto disabledInk = Theme::contrast(palette.textDisabled, palette.warningSurface) >= 4.5 ? palette.textDisabled : palette.textSecondary;
         const auto informationInk = isEnabled() ? palette.textSecondary : disabledInk;
-        VisualStyle::icon("alert", isEnabled() ? palette.warning : informationInk).paint(&painter, QRect(gap, (height() - side) / 2, side, side));
+        Ui::icon("alert", isEnabled() ? palette.warning : informationInk).paint(&painter, QRect(gap, (height() - side) / 2, side, side));
         const QString information = QStringLiteral("Blur may be reversible · ");
         painter.setFont(font());
         painter.setPen(informationInk);
@@ -193,8 +192,8 @@ public:
     static QList<QPair<QString, QFont>> runs(const QString& text) {
         const auto parts = text.split(QStringLiteral(" · "));
         if (parts.size() != 2) return {};
-        const auto sans = Graphite::font(Graphite::Type::technical);
-        const auto mono = Graphite::monoFont(Graphite::Type::technical);
+        const auto sans = Ui::font(Ui::Type::technical);
+        const auto mono = Ui::monoFont(Ui::Type::technical);
         return {{QStringLiteral("Keep "), sans}, {parts[0].mid(5), mono},
             {QStringLiteral(" · "), sans}, {parts[1].chopped(2), mono}, {QStringLiteral(" s"), sans}};
     }
@@ -206,7 +205,7 @@ public:
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
-        const auto mono = Graphite::monoFont(Graphite::Type::technical);
+        const auto mono = Ui::monoFont(Ui::Type::technical);
         const auto textRuns = runs(text());
         qreal width = 0;
         for (const auto& run : textRuns) width += QFontMetricsF(run.second).horizontalAdvance(run.first);
@@ -250,17 +249,17 @@ protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
         const bool empty = text() == QStringLiteral("No mask selected");
-        Graphite::paintText(painter, rect(), displayText(text()), Theme::current().textSecondary, empty ? Graphite::font(Graphite::Type::technical) : font(), Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
+        Ui::paintText(painter, rect(), displayText(text()), Theme::current().textSecondary, empty ? Ui::font(Ui::Type::technical) : font(), Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
     }
 private:
     BlurChip* warning_;
 };
 // A boundary belongs above an inline footer, clear of text on both sides.
-class ReviewFooter final : public Graphite::Surface {
+class ReviewFooter final : public Ui::Surface {
 public:
-    explicit ReviewFooter(QWidget* parent) : Graphite::Surface("bg", {}, parent) {}
+    explicit ReviewFooter(QWidget* parent) : Ui::Surface("bg", {}, parent) {}
     QSize minimumSizeHint() const override {
-        auto hint = Graphite::Surface::minimumSizeHint();
+        auto hint = Ui::Surface::minimumSizeHint();
         // The wide arrangement is a preference, never a new window minimum.
         if (const int width = property("compactMinimumWidth").toInt(); width > 0) hint.setWidth(width);
         return hint;
@@ -276,7 +275,7 @@ protected:
             if (text.bottom() >= y - 4 && text.top() <= y + 4) boundary = false;
         }
         if (boundary != boundary_) { boundary_ = boundary; setHairlines(boundary ? Qt::TopEdge : Qt::Edges{}); }
-        Graphite::Surface::paintEvent(event);
+        Ui::Surface::paintEvent(event);
     }
 private:
     bool boundary_ = false;
@@ -304,7 +303,7 @@ protected:
         if (option.state & (QStyle::State_MouseOver | QStyle::State_Sunken | QStyle::State_HasFocus))
             style()->drawPrimitive(QStyle::PE_PanelButtonTool, &option, &painter, this);
         const auto ink = isEnabled() ? Theme::current().textSecondary : Theme::current().textDisabled;
-        const bool flush = property("graphiteFlush").toBool();
+        const bool flush = property("uiFlush").toBool();
         const auto textRect = rect().adjusted(flush ? 0 : 12, 0, -destinationMenuPadding(), 0);
         auto display = property("displayText").isValid() ? property("displayText").toString() : text();
         if (property("elideDestination").toBool()) {
@@ -319,7 +318,7 @@ protected:
         const int wrap = fontMetrics().horizontalAdvance(display) <= textRect.width() ? Qt::TextSingleLine : Qt::TextWordWrap;
         painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | wrap, display);
         const qreal textEnd = textRect.left() + std::min(fontMetrics().horizontalAdvance(display), textRect.width());
-        Graphite::paintChevron(painter, QPointF(textEnd + 6 + Graphite::scaled(8) / 2.0, height() / 2.0), Graphite::scaled(8), Qt::DownArrow, ink);
+        Ui::paintChevron(painter, QPointF(textEnd + 6 + Ui::scaled(8) / 2.0, height() / 2.0), Ui::scaled(8), Qt::DownArrow, ink);
     }
 };
 // One boundary around each timing pair; the buttons retain their own focus and actions.
@@ -327,10 +326,10 @@ class TimingPair final : public QWidget {
 public:
     TimingPair(QToolButton* start, QToolButton* end, QWidget* parent) : QWidget(parent), start_(start) {
         auto* row = new QHBoxLayout(this);
-        row->setContentsMargins(1, 0, reviewSpace(Graphite::Space::xs) - 2, 0);
+        row->setContentsMargins(1, 0, reviewSpace(Ui::Space::xs) - 2, 0);
         row->setSpacing(1);
         for (auto* button : {start, end}) {
-            VisualStyle::role(button, "quiet");
+            Ui::role(button, "quiet");
             row->addWidget(button);
         }
         setFixedHeight(start->height());
@@ -339,10 +338,10 @@ protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
-        painter.setPen(Graphite::controlStroke());
+        painter.setPen(Ui::controlStroke());
         painter.setBrush(Qt::NoBrush);
-        painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Graphite::scaled(5), Graphite::scaled(5));
-        painter.fillRect(QRect(start_->geometry().right() + 1, 1, 1, height() - 2), Graphite::controlStroke());
+        painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Ui::scaled(5), Ui::scaled(5));
+        painter.fillRect(QRect(start_->geometry().right() + 1, 1, 1, height() - 2), Ui::controlStroke());
     }
 private:
     QToolButton* start_;
@@ -351,10 +350,10 @@ private:
 // beneath it, so the warning wraps without squeezing either timing readout.
 class FlowRow final : public QWidget {
 public:
-    static int groupGap() { return reviewSpace(Graphite::Space::xs); }
-    static int lineGap() { return reviewSpace(Graphite::Space::xs); }
+    static int groupGap() { return reviewSpace(Ui::Space::xs); }
+    static int lineGap() { return reviewSpace(Ui::Space::xs); }
     explicit FlowRow(QWidget* parent) : QWidget(parent), grid_(new QGridLayout(this)) {
-        grid_->setContentsMargins(0, 0, footerInset() - reviewSpace(Graphite::Space::m), 0);
+        grid_->setContentsMargins(0, 0, footerInset() - reviewSpace(Ui::Space::m), 0);
         grid_->setSpacing(0);
         grid_->setColumnStretch(1, 1);
         grid_->setColumnStretch(2, 0);
@@ -486,8 +485,8 @@ FrameView::FrameView(QWidget* parent, std::shared_ptr<MaskNames> names) : QWidge
     errorCard_ = new ErrorCard(this);
     errorCard_->setObjectName("previewError");
     auto* row = new QHBoxLayout(errorCard_);
-    row->setContentsMargins(reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s));
-    row->setSpacing(reviewSpace(Graphite::Space::m));
+    row->setContentsMargins(reviewSpace(Ui::Space::l), reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::s));
+    row->setSpacing(reviewSpace(Ui::Space::m));
     errorText_ = new QLabel(errorCard_);
     errorText_->setObjectName("previewErrorText");
     errorText_->setWordWrap(true);
@@ -522,7 +521,7 @@ void FrameView::placeErrorCard() {
     if (area.isEmpty()) return;
     auto* row = static_cast<QBoxLayout*>(errorCard_->layout());
     const auto margins = row->contentsMargins();
-    const int width = std::min(area.width(), Graphite::scaled(640));
+    const int width = std::min(area.width(), Ui::scaled(640));
     const int inner = std::max(1, width - margins.left() - margins.right());
     const int buttonWidth = retry_->sizeHint().width();
     const int textWidth = inner - buttonWidth - row->spacing();
@@ -597,7 +596,7 @@ namespace {
 // Over arbitrary captured content: a dark scrim under light text, so labels and
 // instructions read on pale and dark frames alike.
 QRectF mediaLabelRect(const QPointF& at, const QString& text, const QRectF& bounds, bool badge = false) {
-    const QFontMetricsF metrics(Graphite::font(badge ? Graphite::Type::maskBadge : Graphite::Type::metadata, true));
+    const QFontMetricsF metrics(Ui::font(badge ? Ui::Type::maskBadge : Ui::Type::metadata, true));
     QRectF box(at, QSizeF(std::min(metrics.horizontalAdvance(text) + (badge ? 8 : 12), bounds.width()), (badge ? metrics.tightBoundingRect(text).height() : metrics.height()) + 6));
     if (box.right() > bounds.right()) box.moveRight(bounds.right());
     if (box.bottom() > bounds.bottom()) box.moveBottom(bounds.bottom());
@@ -606,14 +605,14 @@ QRectF mediaLabelRect(const QPointF& at, const QString& text, const QRectF& boun
     return box;
 }
 void mediaLabel(QPainter& painter, const QPointF& at, const QString& text, const QRectF& bounds, bool badge = false) {
-    const auto font = Graphite::font(badge ? Graphite::Type::maskBadge : Graphite::Type::metadata, true);
+    const auto font = Ui::font(badge ? Ui::Type::maskBadge : Ui::Type::metadata, true);
     const QRectF box = mediaLabelRect(at, text, bounds, badge);
     painter.save();
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(0, 0, 0, 175));
     painter.drawRoundedRect(box, 4, 4);
-    Graphite::paintText(painter, box.adjusted(badge ? 4 : 6, 0, badge ? -4 : -6, 0), text, Theme::onMedia(), font);
+    Ui::paintText(painter, box.adjusted(badge ? 4 : 6, 0, badge ? -4 : -6, 0), text, Theme::onMedia(), font);
     painter.restore();
 }
 // A mask outline readable on any content: a dark line under a light (or the
@@ -630,10 +629,10 @@ void FrameView::paintEvent(QPaintEvent*) {
     QPainter painter(this);
     painter.fillRect(rect(), Theme::current().well);
     const auto target = imageRect();
-    Graphite::paintImageShadow(painter, target);
+    Ui::paintImageShadow(painter, target);
     painter.fillRect(target, Qt::black);
     if (!frame_.isNull()) painter.drawImage(target, frame_);
-    Graphite::paintImageEdge(painter, target);
+    Ui::paintImageEdge(painter, target);
     // An earlier frame under a preview error is dimmed so it never reads as current.
     if (stale()) painter.fillRect(target, QColor(0, 0, 0, 140));
     const QRectF selectedView = [&] { for (const auto& m : masks_) if (m.id == selected_) return toView(m.rect); return QRectF(); }();
@@ -682,10 +681,10 @@ void FrameView::paintEvent(QPaintEvent*) {
         painter.drawRect(pending);
         dualOutline(painter, pending, mediaAccent, 1.5, Qt::DashLine);
     }
-    if (outsideKeptPart_) mediaLabel(painter, QPointF(target.left() + 8, target.bottom() - QFontMetrics(Graphite::font(Graphite::Type::metadata)).height() - 16), QStringLiteral("Outside kept part"), target);
+    if (outsideKeptPart_) mediaLabel(painter, QPointF(target.left() + 8, target.bottom() - QFontMetrics(Ui::font(Ui::Type::metadata)).height() - 16), QStringLiteral("Outside kept part"), target);
     if (!armed_.isEmpty())
         mediaLabel(painter, QPointF(target.left() + 8, target.top() + 8), armed_ == "solid" ? QStringLiteral("Drag on the frame to place the redaction, or press Enter for a centered one") : QStringLiteral("Drag on the frame to place the blur, or press Enter for a centered one"), target);
-    if (Graphite::keyboardFocus(this)) { painter.setPen(QPen(Theme::current().accent, 2)); painter.setBrush(Qt::NoBrush); painter.drawRect(QRectF(rect()).adjusted(1, 1, -1, -1)); }
+    if (Ui::keyboardFocus(this)) { painter.setPen(QPen(Theme::current().accent, 2)); painter.setBrush(Qt::NoBrush); painter.drawRect(QRectF(rect()).adjusted(1, 1, -1, -1)); }
 }
 void FrameView::focusInEvent(QFocusEvent* e) { QWidget::focusInEvent(e); update(); }
 void FrameView::focusOutEvent(QFocusEvent* e) { commitNudge(); QWidget::focusOutEvent(e); update(); }
@@ -800,8 +799,8 @@ namespace {
 constexpr int trackPad = 16, trackHeight = 8;
 int gripTarget() { return std::max(40, iconTarget()); }
 int visibleLanes() { return 2; }
-QFont gutterFont() { auto font = Graphite::font(Graphite::Type::caption); font.setWeight(QFont::Medium); return font; }
-QFont rulerFont() { return Graphite::font(Graphite::Type::caption); }
+QFont gutterFont() { auto font = Ui::font(Ui::Type::caption); font.setWeight(QFont::Medium); return font; }
+QFont rulerFont() { return Ui::font(Ui::Type::caption); }
 // Lane names ("Redaction 2", "Blur 3") keep 3 px around their glyphs; the font's
 // unused line leading doesn't take timeline height.
 int laneHeight() { return std::max(16, QFontMetrics(gutterFont()).tightBoundingRect(QStringLiteral("Redaction Blur 0123456789")).height() + 2 * 3); }
@@ -842,10 +841,10 @@ QAccessibleInterface* reviewAccessible(const QString& name, QObject* object) {
 ReviewTimeline::ReviewTimeline(QWidget* parent, std::shared_ptr<MaskNames> names) : QWidget(parent), maskNames_(names ? std::move(names) : std::make_shared<MaskNames>()) {
     static const bool installed = [] { QAccessible::installFactory(reviewAccessible); return true; }();
     Q_UNUSED(installed);
-    clipLabel_ = new Graphite::ElidedLabel(this);
+    clipLabel_ = new Ui::ElidedLabel(this);
     clipLabel_->setObjectName("clipGroup");
     clipLabel_->hide();
-    VisualStyle::role(clipLabel_, "meta");
+    Ui::role(clipLabel_, "meta");
     laneScroll_ = new QScrollBar(Qt::Vertical, this);
     laneScroll_->setObjectName("maskLaneScroll");
     laneScroll_->setAccessibleName("Mask lanes");
@@ -854,8 +853,8 @@ ReviewTimeline::ReviewTimeline(QWidget* parent, std::shared_ptr<MaskNames> names
     moreMasks_ = new QToolButton(this);
     moreMasks_->setObjectName("showMoreMasks");
     moreMasks_->setAutoRaise(true);
-    moreMasks_->setIcon(Graphite::chromeIcon("arrow-down"));
-    moreMasks_->setIconSize(QSize(Graphite::scaled(18), Graphite::scaled(18)));
+    moreMasks_->setIcon(Ui::chromeIcon("arrow-down"));
+    moreMasks_->setIconSize(QSize(Ui::scaled(18), Ui::scaled(18)));
     moreMasks_->setFixedSize(iconTarget(), iconTarget());
     moreMasks_->setAccessibleName("Next mask lanes");
     moreMasks_->setToolTip("Scroll to the next mask lanes without changing the selected mask");
@@ -863,15 +862,15 @@ ReviewTimeline::ReviewTimeline(QWidget* parent, std::shared_ptr<MaskNames> names
     previousMasks_ = new QToolButton(this);
     previousMasks_->setObjectName("previousMaskLanes");
     previousMasks_->setAutoRaise(true);
-    previousMasks_->setIcon(Graphite::chromeIcon("arrow-up"));
-    previousMasks_->setIconSize(QSize(Graphite::scaled(18), Graphite::scaled(18)));
+    previousMasks_->setIcon(Ui::chromeIcon("arrow-up"));
+    previousMasks_->setIconSize(QSize(Ui::scaled(18), Ui::scaled(18)));
     previousMasks_->setFixedSize(iconTarget(), iconTarget());
     previousMasks_->setAccessibleName("Previous mask lanes");
     previousMasks_->setToolTip("Scroll to the previous mask lanes without changing the selected mask");
     previousMasks_->hide();
     laneSummary_ = new QLabel(this);
     laneSummary_->setObjectName("maskLaneSummary");
-    VisualStyle::role(laneSummary_, "meta");
+    Ui::role(laneSummary_, "meta");
     laneSummary_->hide();
     connect(previousMasks_, &QToolButton::clicked, this, &ReviewTimeline::showPreviousMasks);
     connect(moreMasks_, &QToolButton::clicked, this, &ReviewTimeline::showMoreMasks);
@@ -928,7 +927,7 @@ void ReviewTimeline::layoutLanes() {
     lanes_ = int(ends.size());
 }
 int ReviewTimeline::gutterWidth() {
-    return std::max(std::min(112, Graphite::scaled(96)), QFontMetrics(Graphite::labelFont()).horizontalAdvance(QStringLiteral("+ Add mask")) + 20);
+    return std::max(std::min(112, Ui::scaled(96)), QFontMetrics(Ui::labelFont()).horizontalAdvance(QStringLiteral("+ Add mask")) + 20);
 }
 bool ReviewTimeline::transportAbove(int) const { return transport_ != nullptr; }
 int ReviewTimeline::timelineTop() const { return transport_ ? transport_->height() : 0; }
@@ -970,7 +969,7 @@ int ReviewTimeline::heightForLanes(int width, int lanes) const {
 }
 QSize ReviewTimeline::minimumSizeHint() const { return {220, heightForLanes(width(), lanes_)}; }
 void ReviewTimeline::paintEvent(QPaintEvent*) {
-    // Graphite: a quiet retained interval between amber
+    // A quiet retained interval between amber
     // two grip handles, lightly dimmed trimmed-away ends, mask bars in lanes
     // and the playhead with its marker.
     const auto& p = Theme::current();
@@ -985,7 +984,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         const int labelWidth = QFontMetrics(rulerFont()).horizontalAdvance(durationText(at)) + 2;
         const int left = std::clamp(x - labelWidth / 2, track.left(), std::max(track.left(), track.right() - labelWidth + 1));
         const auto label = QRect(left, timelineTop(), labelWidth, rulerHeight());
-        Graphite::paintText(painter, label, durationText(at), p.textMuted, rulerFont(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
+        Ui::paintText(painter, label, durationText(at), p.textMuted, rulerFont(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
         painter.setPen(QPen(p.borderStrong, 1));
         painter.drawLine(x, timelineTop() + rulerHeight(), x, track.top() - 2);
     }
@@ -1021,7 +1020,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         const bool dark = Theme::scheme() == Theme::Scheme::Dark;
         painter.setPen(selected ? QPen(p.accent, 1.5) : QPen(QColor(dark ? "#737373" : "#8E8E87"), 1));
         painter.setBrush(selected ? p.warningSurface : QColor(dark ? "#3A3A37" : "#D9D8D2"));
-        painter.drawRoundedRect(bar, Graphite::Metric::smallRadius, Graphite::Metric::smallRadius);
+        painter.drawRoundedRect(bar, Ui::Metric::smallRadius, Ui::Metric::smallRadius);
         // The kind at lane size: a blur is hatched, a solid cover filled.
         QColor ink = selected ? p.accent : p.textSecondary;
         ink.setAlpha(mask.kind == "solid" ? 105 : 200);
@@ -1034,13 +1033,13 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         const QString name = maskNames_->name(mask);
         auto textArea = bar.adjusted(6, 0, -6, 0);
         if (mask.kind == "blur" && bar.width() > lane.height() + 12) {
-            const int side = std::min(lane.height() - 2, Graphite::scaled(14));
-            VisualStyle::icon("alert", selected ? p.accent : p.textSecondary).paint(&painter, QRect(left + 4, lane.top() + (lane.height() - side) / 2, side, side));
+            const int side = std::min(lane.height() - 2, Ui::scaled(14));
+            Ui::icon("alert", selected ? p.accent : p.textSecondary).paint(&painter, QRect(left + 4, lane.top() + (lane.height() - side) / 2, side, side));
             textArea.setLeft(textArea.left() + side + 4);
         }
         // Labels stay inside their own coverage without erasing interval pixels.
         if (QFontMetricsF(gutterFont()).horizontalAdvance(name) <= textArea.width() && textArea.height() >= QFontMetrics(gutterFont()).tightBoundingRect(name).height()) {
-            Graphite::paintText(painter, textArea, name, p.text, gutterFont(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
+            Ui::paintText(painter, textArea, name, p.text, gutterFont(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
             nameKnockouts += QRectF(textArea.left() - 1, textArea.top(), QFontMetricsF(gutterFont()).horizontalAdvance(name) + 2, textArea.height()).toAlignedRect();
         }
 
@@ -1055,7 +1054,7 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
     painter.setPen(Qt::NoPen);
     painter.setBrush(p.text);
     painter.drawPolygon(QPolygonF{QPointF(x - 4, timelineTop() + rulerHeight()), QPointF(x + 4, timelineTop() + rulerHeight()), QPointF(x, timelineTop() + rulerHeight() + 5)});
-    if (Graphite::keyboardFocus(this)) { painter.setPen(QPen(p.accent, 1)); painter.setBrush(Qt::NoBrush); painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 5, 5); }
+    if (Ui::keyboardFocus(this)) { painter.setPen(QPen(p.accent, 1)); painter.setBrush(Qt::NoBrush); painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 5, 5); }
 }
 void ReviewTimeline::setTransport(QWidget* transport) {
     transport_ = transport;
@@ -1083,12 +1082,12 @@ void ReviewTimeline::placeNavigation() {
     if (transport_) {
         auto* row = static_cast<QBoxLayout*>(transport_->layout());
         row->setDirection(QBoxLayout::LeftToRight);
-        rowTransportHeight_ = Graphite::scaled(28);
+        rowTransportHeight_ = Ui::scaled(28);
         transport_->setProperty("inlineWidth", 0);
         transport_->setProperty("aboveTimeline", true);
         transport_->setGeometry(0, 0, width(), rowTransportHeight_);
     }
-    if (laneHeader_) laneHeader_->setGeometry(0, laneRect(laneScroll_->value()).center().y() - (laneHeader_->height() - 1) / 2, gutterWidth() - reviewSpace(Graphite::Space::xs), laneHeader_->height());
+    if (laneHeader_) laneHeader_->setGeometry(0, laneRect(laneScroll_->value()).center().y() - (laneHeader_->height() - 1) / 2, gutterWidth() - reviewSpace(Ui::Space::xs), laneHeader_->height());
     const int side = iconTarget();
     previousMasks_->setGeometry(0, lanesBottom(), side, side);
     moreMasks_->setGeometry(side + 4, lanesBottom(), side, side);
@@ -1233,9 +1232,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     config_.audio.system = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
     setObjectName("putgd-review");
     setWindowTitle("Review recording");
-    // The Graphite controls (#198: in the interface's scheme).
+    // The app's painted controls (#198: in the interface's scheme).
     Fonts::load();
-    if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) VisualStyle::apply(*app);
+    if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) Ui::apply(*app);
     setAttribute(Qt::WA_DeleteOnClose, false);
     // #283: the frame takes the window; under it the timeline, the Trim and
     // contextual mask controls, any status and the footer.
@@ -1244,48 +1243,48 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     frame->setContentsMargins(0, 0, 0, 0);
     frame->setSpacing(0);
     // A one-line title and upload state preserve the frame area.
-    header_ = Graphite::WindowHeader::install(this, frame, nullptr, Graphite::WindowHeader::Density::Compact);
+    header_ = Ui::WindowHeader::install(this, frame, nullptr, Ui::WindowHeader::Density::Compact);
     // Reflow before the header's current contents become a window minimum.
     header_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
     header_->setProperty("balancedLeading", true);
-    header_->layout()->setContentsMargins(reviewSpace(Graphite::Space::m), 0, reviewSpace(Graphite::Space::m), 0);
-    header_->findChild<Graphite::ElidedLabel*>("brandName")->setText(QStringLiteral("Review recording"));
+    header_->layout()->setContentsMargins(reviewSpace(Ui::Space::m), 0, reviewSpace(Ui::Space::m), 0);
+    header_->findChild<Ui::ElidedLabel*>("brandName")->setText(QStringLiteral("Review recording"));
     // Why the capture ended when it stopped itself (#225); hidden otherwise.
     auto* banner = new QVBoxLayout;
-    banner->setContentsMargins(reviewSpace(Graphite::Space::l), 0, reviewSpace(Graphite::Space::l), 0);
+    banner->setContentsMargins(reviewSpace(Ui::Space::l), 0, reviewSpace(Ui::Space::l), 0);
     frame->addLayout(banner);
     notice_ = new QLabel(this);
     notice_->setObjectName("notice");
-    VisualStyle::role(notice_, "notice");
+    Ui::role(notice_, "notice");
     notice_->setWordWrap(true);
     notice_->setTextFormat(Qt::PlainText);
     notice_->setAccessibleName("Why the recording stopped");
     notice_->hide();
-    auto* noticeBand = new Graphite::Banner(Graphite::Banner::Tone::Info, {}, this);
+    auto* noticeBand = new Ui::Banner(Ui::Banner::Tone::Info, {}, this);
     noticeBand->setContentWidget(notice_);
     noticeBand->hide();
     banner->addWidget(noticeBand);
     // Keep the well and image edge; fixed compact insets preserve the frame at large text.
     view_ = new FrameView(this, maskNames_);
     view_->setObjectName("frame");
-    view_->setContentsMargins(reviewSpace(Graphite::Space::xs), 0, reviewSpace(Graphite::Space::xs), 0);
+    view_->setContentsMargins(reviewSpace(Ui::Space::xs), 0, reviewSpace(Ui::Space::xs), 0);
     view_->setMinimumHeight(180);
     view_->setCanvas(options.canvas);
     view_->setAccessibleName("Recording frame");
     frame->addWidget(view_, 1);
     // Compact bands leave room for the video even with enlarged text and status.
     auto* root = new QVBoxLayout;
-    root->setContentsMargins(reviewSpace(Graphite::Space::m), 0, reviewSpace(Graphite::Space::m), reviewSpace(Graphite::Space::xs));
+    root->setContentsMargins(reviewSpace(Ui::Space::m), 0, reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::xs));
     root->setSpacing(0);
     frame->addLayout(root);
     auto tool = [this](const char* icon, const QString& name, const QString& tip) {
         auto* button = new QToolButton(this);
-        button->setIcon(VisualStyle::icon(icon));
-        button->setIconSize(QSize(Graphite::scaled(Graphite::Metric::icon), Graphite::scaled(Graphite::Metric::icon)));
+        button->setIcon(Ui::icon(icon));
+        button->setIconSize(QSize(Ui::scaled(Ui::Metric::icon), Ui::scaled(Ui::Metric::icon)));
         button->setToolTip(tip);
         button->setAccessibleName(name);
         button->setAutoRaise(true);
-        button->setProperty("graphiteDensity", "compact");
+        button->setProperty("uiDensity", "compact");
         button->setFixedSize(textControlHeight(button), textControlHeight(button));
         return button;
     };
@@ -1296,21 +1295,21 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         button->setToolButtonStyle(Qt::ToolButtonTextOnly);
         button->setAccessibleName(name);
         button->setToolTip(tip);
-        button->setProperty("graphiteDensity", "compact");
-        VisualStyle::role(button, "label");
+        button->setProperty("uiDensity", "compact");
+        Ui::role(button, "label");
         button->setFixedSize(int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(text))) + 24, textControlHeight(button));
         return button;
     };
     // A row's name in the shared gutter, beside its controls and level with the lanes' names.
     const int gutter = ReviewTimeline::gutterWidth();
-    auto groupLabel = [this, gutter](const QString& text, const QString& name) { auto* label = new QLabel(text, this); label->setObjectName(name); VisualStyle::role(label, "meta"); label->setContentsMargins(reviewSpace(Graphite::Space::xs), 0, 0, 0); label->setFixedWidth(gutter - 8); return label; };
+    auto groupLabel = [this, gutter](const QString& text, const QString& name) { auto* label = new QLabel(text, this); label->setObjectName(name); Ui::role(label, "meta"); label->setContentsMargins(reviewSpace(Ui::Space::xs), 0, 0, 0); label->setFixedWidth(gutter - 8); return label; };
     // Compact groups keep mask timing and its interval on the same line.
     auto group = [this](const QString& name, std::initializer_list<QWidget*> widgets) {
         auto* box = new QWidget(this);
         box->setObjectName(name);
         auto* row = new QHBoxLayout(box);
         row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(reviewSpace(Graphite::Space::xs));
+        row->setSpacing(reviewSpace(Ui::Space::xs));
         for (auto* w : widgets) row->addWidget(w);
         return box;
     };
@@ -1324,7 +1323,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     trimStart_ = action("Start here", "Set trim start at playhead", "Keep from the playhead: set the trim start here (I)");
     trimEnd_ = action("End here", "Set trim end at playhead", "Keep up to the playhead: set the trim end here (O)");
     resetTrim_ = action("Reset", "Reset trim", "Keep the whole recording");
-    VisualStyle::role(resetTrim_, "quiet");
+    Ui::role(resetTrim_, "quiet");
     retained_ = new RetainedInterval(this);
     retained_->setObjectName("muted");
     retained_->setAccessibleName("Kept interval");
@@ -1335,22 +1334,22 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* trimPair = new TimingPair(trimStart_, trimEnd_, this);
     trimPair->setObjectName("trimTimingPair");
     trimFlow->addGroup(group("trimTimingControls", {trimPair, resetTrim_}));
-    VisualStyle::role(retained_, "technical");
+    Ui::role(retained_, "technical");
     retained_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     trimFlow->setReadout(retained_);
     root->addWidget(trimGroup_);
     // Mask: the kinds to add, the mask to edit, its blur radius, its timing and
     // its interval, wrapping as whole groups when the row is too narrow.
     addMask_ = action("+ Add mask", "Add mask", "Add a redaction or blur to the frame");
-    VisualStyle::role(addMask_, "meta");
+    Ui::role(addMask_, "meta");
     addMask_->setAutoRaise(true);
     addMask_->setObjectName("addMask");
     addMask_->setPopupMode(QToolButton::InstantPopup);
-    addMask_->setFixedSize(gutter - reviewSpace(Graphite::Space::xs), textControlHeight(addMask_));
+    addMask_->setFixedSize(gutter - reviewSpace(Ui::Space::xs), textControlHeight(addMask_));
     auto* maskMenu = new QMenu(addMask_);
     addMask_->setMenu(maskMenu);
-    addSolid_ = maskMenu->addAction(VisualStyle::icon("redact"), "Add redaction");
-    addBlur_ = maskMenu->addAction(VisualStyle::icon("blur"), "Add blur");
+    addSolid_ = maskMenu->addAction(Ui::icon("redact"), "Add redaction");
+    addBlur_ = maskMenu->addAction(Ui::icon("blur"), "Add blur");
     addSolid_->setToolTip("Drag on the frame to place a redaction, or press Enter for a centered one");
     addBlur_->setToolTip("Blur may be reversible. Use Redact for private information.");
     masks_ = new MaskBox(this);
@@ -1359,7 +1358,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     masks_->setToolTip("The mask to edit; click one on the frame or the timeline to select it");
     masks_->setPlaceholderText("Select a mask");
     masks_->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    masks_->setMinimumWidth(masks_->fontMetrics().horizontalAdvance(QStringLiteral("88")) + Graphite::Metric::splitZone + 18);
+    masks_->setMinimumWidth(masks_->fontMetrics().horizontalAdvance(QStringLiteral("88")) + Ui::Metric::splitZone + 18);
     auto* radius = new BlurRadius(2, 64, 16, true, this);
     strengthControl_ = radius;
     radius->unitLabel()->hide();
@@ -1370,7 +1369,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     maskEnd_ = action("End here", "Set mask end at playhead", "End the selected mask at the playhead (Shift+O)");
     removeMask_ = tool("remove", "Delete mask", "Delete the selected mask (Delete)");
     removeMask_->setText("Delete mask");
-    VisualStyle::role(removeMask_, "label");
+    Ui::role(removeMask_, "label");
     removeMask_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     removeMask_->setFixedSize(int(std::ceil(QFontMetricsF(removeMask_->font()).horizontalAdvance(removeMask_->text()))) + removeMask_->iconSize().width() + 40, textControlHeight(removeMask_));
     maskOptions_ = tool("settings", "Mask options", "Mask options: blur radius and Delete mask");
@@ -1382,15 +1381,15 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* optionsAction = new QWidgetAction(optionsMenu);
     auto* optionsPanel = new QWidget(optionsMenu);
     auto* optionsLayout = new QVBoxLayout(optionsPanel);
-    optionsLayout->setContentsMargins(reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s), reviewSpace(Graphite::Space::s));
-    optionsLayout->setSpacing(reviewSpace(Graphite::Space::s));
-    auto* blurAdvice = new Graphite::Banner(Graphite::Banner::Tone::Warning, "Blur may be reversible.", optionsPanel);
+    optionsLayout->setContentsMargins(reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::s), reviewSpace(Ui::Space::s));
+    optionsLayout->setSpacing(reviewSpace(Ui::Space::s));
+    auto* blurAdvice = new Ui::Banner(Ui::Banner::Tone::Warning, "Blur may be reversible.", optionsPanel);
     blurAdvice->setObjectName("reviewBlurAdvice");
-    blurAdvice->setAccessibleDescription(Graphite::blurWarningText());
+    blurAdvice->setAccessibleDescription(Ui::blurWarningText());
     blurAdvice->setMaximumWidth(480);
     blurAdvice->setAction("Use Redact");
     blurAdvice->actionButton()->setObjectName("useRedact");
-    blurAdvice->actionButton()->setAccessibleDescription(Graphite::blurWarningText());
+    blurAdvice->actionButton()->setAccessibleDescription(Ui::blurWarningText());
     blurAdvice->actionButton()->setProperty("driveAction", QJsonObject{{"action", "useSolidCover"}});
     blurAdvice->setDismissible(true, "Got it");
     blurAdvice->dismissButton()->setProperty("driveAction", QJsonObject{{"action", "dismissBlurTip"}});
@@ -1405,7 +1404,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(removeMask_, &QToolButton::clicked, optionsMenu, &QMenu::close);
     maskActive_ = new MaskInterval(this);
     maskActive_->setObjectName("maskActiveInterval");
-    VisualStyle::role(maskActive_, "technical");
+    Ui::role(maskActive_, "technical");
     connect(static_cast<MaskInterval*>(maskActive_)->warningButton(), &QToolButton::clicked, this, [this] {
         if (static_cast<MaskInterval*>(maskActive_)->warningButton()->actionAvailable()) drive({{"action", "useSolidCover"}});
     });
@@ -1425,34 +1424,34 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     auto* trimLabel = trimGroup_->findChild<QLabel*>("trimGroup");
     for (auto* label : {trimLabel, maskLabel}) label->ensurePolished();
     const auto nameWidth = [](QLabel* label) { return int(std::ceil(QFontMetricsF(label->font()).horizontalAdvance(label->text()))) + label->contentsMargins().left() + label->contentsMargins().right(); };
-    const int compactGutter = std::max(nameWidth(trimLabel), nameWidth(maskLabel)) + reviewSpace(Graphite::Space::m);
+    const int compactGutter = std::max(nameWidth(trimLabel), nameWidth(maskLabel)) + reviewSpace(Ui::Space::m);
     trimFlow->setCompactGutter(compactGutter, flow);
     flow->setCompactGutter(compactGutter, trimFlow);
-    root->addSpacing(reviewSpace(Graphite::Space::xs));
+    root->addSpacing(reviewSpace(Ui::Space::xs));
     root->addWidget(flow);
     // Playback has its own row, leaving every ruler tick readable.
     play_ = tool("play", "Play", "Play the retained part silently (Space)");
     play_->setObjectName("play");
-    speed_ = VisualStyle::choiceBox(this);
+    speed_ = Ui::choiceBox(this);
     speed_->setObjectName("speed");
     speed_->setToolTip("Playback speed of the preview");
     speed_->setAccessibleName("Playback speed");
     for (const auto& [label, factor] : std::initializer_list<std::pair<const char*, double>>{{"0.5×", 0.5}, {"1×", 1.0}, {"2×", 2.0}, {"4×", 4.0}}) speed_->addItem(QString::fromUtf8(label), factor);
     speed_->setCurrentIndex(1);
-    speed_->setFixedWidth(Graphite::scaled(64));
+    speed_->setFixedWidth(Ui::scaled(64));
     play_->setFixedWidth(speed_->width());
     speed_->setFrame(false);
     // Mono keeps the timecode columns steady while scrubbing.
-    time_ = new Graphite::ElidedLabel(this);
+    time_ = new Ui::ElidedLabel(this);
     time_->setObjectName("time");
-    VisualStyle::role(time_, "secondary");
-    Graphite::setMono(time_, Graphite::Type::technical);
+    Ui::role(time_, "secondary");
+    Ui::setMono(time_, Ui::Type::technical);
     time_->setAccessibleName("Playhead time");
     time_->setMinimumWidth(time_->fontMetrics().horizontalAdvance(QStringLiteral("%1 / %1").arg(durationText(options.durationUs))) + 4);
-    playbackStatus_ = new Graphite::ElidedLabel(this);
+    playbackStatus_ = new Ui::ElidedLabel(this);
     playbackStatus_->setText("Silent preview");
     playbackStatus_->setObjectName("playbackStatus");
-    VisualStyle::role(playbackStatus_, "meta");
+    Ui::role(playbackStatus_, "meta");
     playbackStatus_->setProperty("reservedWidth", int(std::ceil(QFontMetricsF(playbackStatus_->font()).horizontalAdvance(playbackStatus_->text()))) + 2);
     // The repeated preview hint can yield space to the destination.
     auto notePolicy = playbackStatus_->sizePolicy();
@@ -1465,13 +1464,13 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     transport_->setObjectName("reviewTransport");
     auto* transport = new QHBoxLayout(transport_);
     transport->setContentsMargins(0, 0, 0, 0);
-    transport->setSpacing(reviewSpace(Graphite::Space::xs));
+    transport->setSpacing(reviewSpace(Ui::Space::xs));
     // The silent-preview glyph belongs to the transport, so the header's measured
     // fit includes it; an equal leading slot keeps the readout on the frame's centre.
     previewIndicator_ = new MutedPreview(transport_);
     previewIndicator_->setAttribute(Qt::WA_TransparentForMouseEvents);
     // Its leading margin and the layout spacing make space(m) after the speed control.
-    previewIndicator_->setContentsMargins(reviewSpace(Graphite::Space::m) - transport->spacing(), 0, 0, 0);
+    previewIndicator_->setContentsMargins(reviewSpace(Ui::Space::m) - transport->spacing(), 0, 0, 0);
     previewIndicator_->setFixedWidth(previewIndicator_->height() + previewIndicator_->contentsMargins().left());
     auto* balance = new QWidget(transport_);
     balance->setObjectName("previewMutedBalance");
@@ -1481,7 +1480,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     transport->addWidget(time_);
     transport->addWidget(speed_);
     transport->addWidget(previewIndicator_);
-    if (Graphite::WindowHeader::customFrame()) {
+    if (Ui::WindowHeader::customFrame()) {
         header_->setAccessibleName("Review recording");
         header_->setCentre(transport_);
     } else frame->insertWidget(frame->indexOf(view_), transport_);
@@ -1490,8 +1489,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     statusRow_->setObjectName("statusRow");
     statusLines_ = new QVBoxLayout(statusRow_);
     // Status bands align with the frame's edges, leaving recovery text a full line.
-    statusLines_->setContentsMargins(reviewSpace(Graphite::Space::xs), 0, reviewSpace(Graphite::Space::xs), reviewSpace(Graphite::Space::xs));
-    statusLines_->setSpacing(reviewSpace(Graphite::Space::xs));
+    statusLines_->setContentsMargins(reviewSpace(Ui::Space::xs), 0, reviewSpace(Ui::Space::xs), reviewSpace(Ui::Space::xs));
+    statusLines_->setSpacing(reviewSpace(Ui::Space::xs));
     statusRow_->hide();
     frame->addWidget(statusRow_);
     // One footer row when its measured content fits; metadata moves above otherwise.
@@ -1509,31 +1508,31 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // What the export carries for sound, in a few words that never elide.
     audio_ = new QLabel(this);
     audio_->setObjectName("audioSummary");
-    VisualStyle::role(audio_, "meta");
+    Ui::role(audio_, "meta");
     audio_->hide();
     exportAudio_ = new QLabel(this);
     exportAudio_->setObjectName("exportAudioSummary");
-    VisualStyle::role(exportAudio_, "meta");
+    Ui::role(exportAudio_, "meta");
     exportAudio_->setWordWrap(true);
     upload_ = new QPushButton("Upload", this);
     upload_->setObjectName("upload");
-    upload_->setIcon(VisualStyle::icon("upload"));
-    VisualStyle::role(upload_, "primary");
+    upload_->setIcon(Ui::icon("upload"));
+    Ui::role(upload_, "primary");
     upload_->setToolTip("Upload the reviewed clip with its trim and masks (the preview is silent; video exports keep the recorded system audio)");
     save_ = new QPushButton("Save a copy…", this);
-    save_->setIcon(VisualStyle::icon("save"));
+    save_->setIcon(Ui::icon("save"));
     save_->setToolTip("Export the reviewed clip to a file on this computer. Nothing is uploaded.");
     cancel_ = new QPushButton("Discard…", this);
     cancel_->setObjectName("discard");
     cancel_->setToolTip("Discard this recording and its edits (asks first)");
-    VisualStyle::role(cancel_, "quiet");
+    Ui::role(cancel_, "quiet");
     auto* draft = new QLabel("Not uploaded", this);
     draft->setObjectName("draftState");
     draft->setToolTip("Nothing uploads until you choose Upload; Save a copy… exports locally.");
-    VisualStyle::role(draft, "meta");
+    Ui::role(draft, "meta");
     draft->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
-    destination_ = new Graphite::ElidedLabel(this);
+    destination_ = new Ui::ElidedLabel(this);
     destination_->setText(options.uploadSummary);
     destination_->setWordWrap(true);
     destination_->setElideMode(Qt::ElideNone);
@@ -1542,7 +1541,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     destination_->setObjectName("uploadDestination");
     destination_->setTextFormat(Qt::PlainText);
     destination_->setAccessibleName(options.uploadSummary);
-    VisualStyle::role(destination_, "meta");
+    Ui::role(destination_, "meta");
     // Keep the destination readable while its complete value wraps.
     destination_->setMinimumWidth(12 * destination_->font().pixelSize());
     destination_->setVisible(!options.uploadSummary.isEmpty());
@@ -1550,21 +1549,21 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     footer->setObjectName("reviewFooter");
     auto* footerRows = new QVBoxLayout(footer);
     footerRows->setSizeConstraint(QLayout::SetNoConstraint);
-    footerRows->setContentsMargins(footerInset(), 0, footerInset(), reviewSpace(Graphite::Space::s));
-    footerRows->setSpacing(reviewSpace(Graphite::Space::xs));
+    footerRows->setContentsMargins(footerInset(), 0, footerInset(), reviewSpace(Ui::Space::s));
+    footerRows->setSpacing(reviewSpace(Ui::Space::xs));
     auto* actions = new QWidget(footer);
     actions->setObjectName("reviewActions");
     auto* actionsRow = new QGridLayout(actions);
     actionsRow->setContentsMargins(0, 0, 0, 0);
-    actionsRow->setHorizontalSpacing(reviewSpace(Graphite::Space::l));
-    actionsRow->setVerticalSpacing(reviewSpace(Graphite::Space::xs));
+    actionsRow->setHorizontalSpacing(reviewSpace(Ui::Space::l));
+    actionsRow->setVerticalSpacing(reviewSpace(Ui::Space::xs));
     destinationMenu_ = new DestinationMenu(actions);
     destinationMenu_->setObjectName("uploadDestinationMenu");
-    destinationMenu_->setProperty("graphiteFlush", true);
+    destinationMenu_->setProperty("uiFlush", true);
     destinationMenu_->setAutoRaise(true);
     destinationMenu_->setPopupMode(QToolButton::InstantPopup);
     destinationMenu_->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    VisualStyle::role(destinationMenu_, "meta");
+    Ui::role(destinationMenu_, "meta");
     destinationMenu_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     destinationMenu_->setMinimumWidth(60);
     destinationMenu_->setFixedHeight(textControlHeight(destinationMenu_));
@@ -1574,11 +1573,11 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     destinationFull_->setObjectName("uploadDestinationWrapped");
     destinationFull_->setTextFormat(Qt::PlainText);
     destinationFull_->setWordWrap(true);
-    destinationFull_->setMargin(reviewSpace(Graphite::Space::m));
+    destinationFull_->setMargin(reviewSpace(Ui::Space::m));
     destinationFull_->setMaximumWidth(480);
     destinationFull_->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     destinationFull_->setFocusPolicy(Qt::StrongFocus);
-    VisualStyle::role(destinationFull_, "meta");
+    Ui::role(destinationFull_, "meta");
     detailsAction->setDefaultWidget(destinationFull_);
     details->addAction(detailsAction);
     destinationMenu_->setMenu(details);
@@ -1590,7 +1589,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     destinationRow->setSpacing(0);
     auto* separator = new QLabel(QStringLiteral(" · "), destinationSummary);
     separator->setObjectName("reviewAudioSeparator");
-    VisualStyle::role(separator, "meta");
+    Ui::role(separator, "meta");
     destinationRow->addWidget(destinationMenu_, 0, Qt::AlignLeft);
     destinationRow->addWidget(separator);
     destinationRow->addWidget(exportAudio_);
@@ -1606,7 +1605,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     metadataRow->addWidget(playbackStatus_);
     auto* draftSeparator = new QLabel(QStringLiteral(" · "), metadata);
     draftSeparator->setObjectName("reviewDraftSeparator");
-    VisualStyle::role(draftSeparator, "meta");
+    Ui::role(draftSeparator, "meta");
     metadataRow->addWidget(draftSeparator);
     metadataRow->addWidget(draft);
     actionsRow->addWidget(metadata, 0, 3);
@@ -1625,18 +1624,18 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         line->setObjectName(name);
         auto* row = new QHBoxLayout(line);
         row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(reviewSpace(Graphite::Space::xs));
+        row->setSpacing(reviewSpace(Ui::Space::xs));
         line->hide();
     }
     footerRows->addWidget(actions);
     frame->addWidget(footer);
     errorDetails_ = new QPushButton("Details…", this);
     errorDetails_->setObjectName("reviewErrorDetails");
-    errorDetails_->setProperty("graphiteDensity", "compact");
+    errorDetails_->setProperty("uiDensity", "compact");
     errorDetails_->setProperty("driveAction", QJsonObject{{"action", "showAdvice"}});
-    errorDetails_->setProperty("graphiteTight", true);
-    VisualStyle::role(errorDetails_, "textAction");
-    errorDetails_->setProperty("graphiteFlush", true);
+    errorDetails_->setProperty("uiTight", true);
+    Ui::role(errorDetails_, "textAction");
+    errorDetails_->setProperty("uiFlush", true);
     errorDetails_->setFixedWidth(std::max(iconTarget(), int(std::ceil(QFontMetricsF(errorDetails_->font()).horizontalAdvance(errorDetails_->text())))));
     errorDetails_->setFixedHeight(std::max(32, textControlHeight(errorDetails_)));
     errorDetails_->hide();
@@ -1644,8 +1643,8 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     placeDestination();
     // Text stays enlarged; the review's fields need less vertical padding than forms.
     for (auto* field : std::initializer_list<QWidget*>{speed_, masks_, strength_, format_}) {
-        field->setProperty("graphiteDensity", "compact");
-        VisualStyle::role(field, "meta");
+        field->setProperty("uiDensity", "compact");
+        Ui::role(field, "meta");
         field->setFixedHeight(textControlHeight(field));
     }
     strength_->setFixedHeight(std::max(32, textControlHeight(strength_)));
@@ -1654,18 +1653,18 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     spin.initFrom(strength_); spin.frame = strength_->hasFrame(); spin.buttonSymbols = strength_->buttonSymbols();
     const QSize value(strength_->fontMetrics().horizontalAdvance(QString::number(strength_->maximum()) + strength_->suffix()), strength_->fontMetrics().height());
     strength_->setFixedWidth(strength_->style()->sizeFromContents(QStyle::CT_SpinBox, &spin, value, strength_).width());
-    play_->setProperty("graphiteIconBase", QSize(16, 16));
-    play_->setIconSize(QSize(Graphite::scaled(16), Graphite::scaled(16)));
+    play_->setProperty("uiIconBase", QSize(16, 16));
+    play_->setIconSize(QSize(Ui::scaled(16), Ui::scaled(16)));
     speed_->setFixedHeight(textControlHeight(speed_));
     // An icon-only control: it matches its text neighbour rather than its unused font.
     play_->setFixedSize(speed_->height(), speed_->height());
     speed_->setFixedWidth(int(std::ceil(QFontMetricsF(speed_->font()).horizontalAdvance(QStringLiteral("0.5×"))))
-        + std::max(Graphite::Metric::splitZone + reviewSpace(Graphite::Space::s), 3 * Graphite::space(Graphite::Space::xs) + Graphite::scaled(16)));
+        + std::max(Ui::Metric::splitZone + reviewSpace(Ui::Space::s), 3 * Ui::space(Ui::Space::xs) + Ui::scaled(16)));
     play_->setFixedWidth(speed_->width());
     format_->setFixedHeight(textControlHeight(format_));
     formatAdvice_->setFixedHeight(format_->height());
     for (auto* action : {upload_, save_, cancel_}) {
-        action->setProperty("graphiteDensity", "compact");
+        action->setProperty("uiDensity", "compact");
         action->ensurePolished();
         auto font = action->font();
         const int icon = action->icon().isNull() ? 0 : action->iconSize().width() + 8;
@@ -1949,7 +1948,7 @@ void ReviewWindow::refreshMaskList() {
     masks_->blockSignals(false);
     int widest = masks_->fontMetrics().horizontalAdvance(masks_->placeholderText());
     for (int i = 0; i < masks_->count(); ++i) widest = std::max(widest, masks_->fontMetrics().horizontalAdvance(masks_->itemText(i)));
-    masks_->setFixedWidth(widest + Graphite::scaled(Graphite::Metric::splitZone + 18));
+    masks_->setFixedWidth(widest + Ui::scaled(Ui::Metric::splitZone + 18));
 }
 void ReviewWindow::refreshTimeline() {
     timeline_->setTrim(edit_.trimStart, edit_.exportEnd(options_.durationUs));
@@ -1997,7 +1996,7 @@ void ReviewWindow::refreshLabels() {
     const bool warning = anyBlur && blurTipShown_ && !blurTipDismissed_;
     retained_->setFixedWidth(RetainedInterval::measuredWidth(retained_->text()));
     // Reserve each row's own widest content, independent of mask selection.
-    int intervalWidth = QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(QStringLiteral("—"));
+    int intervalWidth = QFontMetrics(Ui::font(Ui::Type::technical)).horizontalAdvance(QStringLiteral("—"));
     for (const auto& item : edit_.masks) intervalWidth = std::max(intervalWidth,
         maskActive_->fontMetrics().horizontalAdvance(MaskInterval::displayText(QStringLiteral("%1–%2").arg(timeText(item.start), timeText(item.end)))));
     maskActive_->setFixedWidth(intervalWidth + 2);
@@ -2005,10 +2004,10 @@ void ReviewWindow::refreshLabels() {
     auto chipPolicy = chip->sizePolicy();
     chipPolicy.setRetainSizeWhenHidden(warning);
     chip->setSizePolicy(chipPolicy);
-    static_cast<MaskInterval*>(maskActive_)->setWarning(warning ? Graphite::blurWarningText() : QString());
+    static_cast<MaskInterval*>(maskActive_)->setWarning(warning ? Ui::blurWarningText() : QString());
     chip->setEnabled(!exporting_);
     chip->setActionAvailable(view_->armed() == "blur" || (mask && mask->kind == "blur"));
-    findChild<Graphite::Banner*>("reviewBlurAdvice")->setVisible(mask && mask->kind == "blur");
+    findChild<Ui::Banner*>("reviewBlurAdvice")->setVisible(mask && mask->kind == "blur");
     strengthControl_->setVisible(mask && mask->kind == "blur");
     if (mask) { strength_->blockSignals(true); strength_->setValue(mask->strength); strength_->blockSignals(false); }
     // Preview and export audio stay together, independently of the destination.
@@ -2084,7 +2083,7 @@ void ReviewWindow::refreshStatus() {
                 entry.text.prepend(QStringLiteral("Couldn't export the recording: "));
         }
     }
-    const bool blurGuidance = std::any_of(entries.cbegin(), entries.cend(), [](const auto& entry) { return entry.text == Graphite::blurWarningText(); });
+    const bool blurGuidance = std::any_of(entries.cbegin(), entries.cend(), [](const auto& entry) { return entry.text == Ui::blurWarningText(); });
     if (compactStatus_ || blurGuidance) {
         if (config_.format == "mp4" && config_.codec == "h265") {
             entries.erase(std::remove_if(entries.begin(), entries.end(), [](const auto& entry) { return entry.text.startsWith("Use MP4 (H.264)"); }), entries.end());
@@ -2098,7 +2097,7 @@ void ReviewWindow::refreshStatus() {
     }
     if (entries == shownStatus_) { updateMinimum(); return; }
     shownStatus_ = entries;
-    if (std::any_of(entries.cbegin(), entries.cend(), [](const auto& entry) { return entry.text == Graphite::blurWarningText(); })) blurTipShown_ = true;
+    if (std::any_of(entries.cbegin(), entries.cend(), [](const auto& entry) { return entry.text == Ui::blurWarningText(); })) blurTipShown_ = true;
     errorDetails_->hide();
     errorDetails_->setParent(this);
     statusContent_ = nullptr;
@@ -2108,24 +2107,24 @@ void ReviewWindow::refreshStatus() {
     for (const auto& entry : entries) {
         if (errorInFooter_ && entry.tone == "error") continue;
         ++bands;
-        const auto tone = entry.tone == "error" ? Graphite::Banner::Tone::Error : entry.tone == "warning" ? Graphite::Banner::Tone::Warning : entry.tone == "success" ? Graphite::Banner::Tone::Success : Graphite::Banner::Tone::Info;
-        auto* band = new Graphite::Banner(tone, {}, statusRow_);
+        const auto tone = entry.tone == "error" ? Ui::Banner::Tone::Error : entry.tone == "warning" ? Ui::Banner::Tone::Warning : entry.tone == "success" ? Ui::Banner::Tone::Success : Ui::Banner::Tone::Info;
+        auto* band = new Ui::Banner(tone, {}, statusRow_);
         band->setObjectName("statusLine");
         const auto margins = band->layout()->contentsMargins();
         // Full pointer targets already provide the compact band's vertical padding.
         band->layout()->setContentsMargins(margins.left(), 0, margins.right(), 0);
         // Recovery actions read as separate words; × stays with the last of them.
-        static_cast<QGridLayout*>(band->layout())->setHorizontalSpacing(reviewSpace(Graphite::Space::xs));
+        static_cast<QGridLayout*>(band->layout())->setHorizontalSpacing(reviewSpace(Ui::Space::xs));
         auto* line = new QWidget(band);
         statusContent_ = line;
         auto* row = new QHBoxLayout(line);
         row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(reviewSpace(Graphite::Space::xs));
+        row->setSpacing(reviewSpace(Ui::Space::xs));
         // The words and banner glyph carry the tone; keep the inline copy neutral.
         const bool saved = std::any_of(entry.actions.cbegin(), entry.actions.cend(), [](const auto& action) { return action.second["action"] == "copyPath"; });
         QLabel* text;
         if (saved) {
-            auto* label = new Graphite::ElidedLabel(line);
+            auto* label = new Ui::ElidedLabel(line);
             label->setText(entry.text);
             label->setToolTip(savedPath_);
             text = label;
@@ -2135,7 +2134,7 @@ void ReviewWindow::refreshStatus() {
         text->setWordWrap(!saved);
         text->setTextInteractionFlags(Qt::TextSelectableByMouse);
         text->setAccessibleName(entry.text);
-        VisualStyle::role(text, "meta");
+        Ui::role(text, "meta");
         // Keep recovery at the right edge while a long message can still wrap.
         text->setMaximumWidth(text->fontMetrics().horizontalAdvance(entry.text) + 4);
         row->addWidget(text, 1);
@@ -2143,7 +2142,7 @@ void ReviewWindow::refreshStatus() {
         // Separate words, so space(l) between actions; fixed order: secondary
         // (Details…, Copy path) first, primary nearest ×.
         auto* actions = new QHBoxLayout;
-        actions->setSpacing(reviewSpace(Graphite::Space::l));
+        actions->setSpacing(reviewSpace(Ui::Space::l));
         row->addLayout(actions);
         if (entry.tone == "error" && std::any_of(entry.actions.cbegin(), entry.actions.cend(), [](const auto& action) { return action.second["action"] == "dismissStatus"; })) {
             actions->addWidget(errorDetails_);
@@ -2161,11 +2160,11 @@ void ReviewWindow::refreshStatus() {
                 continue;
             }
             auto* button = new QPushButton(label, line);
-            button->setProperty("graphiteDensity", "compact");
+            button->setProperty("uiDensity", "compact");
             button->setObjectName(params["action"] == "useSolidCover" ? "useRedact" : "statusAction");
-            button->setProperty("graphiteTight", params["action"] == "retryExport");
-            button->setProperty("graphiteFlush", true);
-            VisualStyle::role(button, "quiet");
+            button->setProperty("uiTight", params["action"] == "retryExport");
+            button->setProperty("uiFlush", true);
+            Ui::role(button, "quiet");
             // Compact action painting inside a full pointer target.
             button->setMinimumHeight(32);
             button->setFixedHeight(std::max(32, textControlHeight(button)));
@@ -2233,10 +2232,10 @@ void ReviewWindow::showAdvice(bool formatTips) {
     auto* body = new QWidget(scroll);
     scroll->setWidget(body);
     auto* layout = new QVBoxLayout(body);
-    layout->setContentsMargins(reviewSpace(Graphite::Space::xl), reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::xl), reviewSpace(Graphite::Space::l));
-    layout->setSpacing(reviewSpace(Graphite::Space::m));
+    layout->setContentsMargins(reviewSpace(Ui::Space::xl), reviewSpace(Ui::Space::l), reviewSpace(Ui::Space::xl), reviewSpace(Ui::Space::l));
+    layout->setSpacing(reviewSpace(Ui::Space::m));
     auto* heading = new QLabel(title, body);
-    VisualStyle::role(heading, "sectionTitle");
+    Ui::role(heading, "sectionTitle");
     layout->addWidget(heading);
     // The heading already says "Export failed"; the details don't repeat it.
     auto shown = message_.text;
@@ -2246,13 +2245,13 @@ void ReviewWindow::showAdvice(bool formatTips) {
     text->setProperty("plainText", hasError ? message_.text : audio_->property("summary").toString() + "\n\n" + formatHint(config_.format, config_.codec));
     text->setTextFormat(Qt::PlainText);
     text->setWordWrap(true);
-    Graphite::readOnlyText(text);
+    Ui::readOnlyText(text);
     text->setAccessibleName(title);
     text->setVisible(hasError);
     layout->addWidget(text);
     if (!hasError) {
         auto* form = new QFormLayout;
-        VisualStyle::styleForm(form);
+        Ui::styleForm(form);
         form->setLabelAlignment(Qt::AlignLeft | Qt::AlignTop);
         layout->addLayout(form);
         auto fact = [body](const QString& value) { auto* label = new QLabel(value, body); label->setTextFormat(Qt::PlainText); label->setWordWrap(true); return label; };
@@ -2260,14 +2259,14 @@ void ReviewWindow::showAdvice(bool formatTips) {
         auto* formatRow = new QWidget(body);
         auto* formatLayout = new QVBoxLayout(formatRow);
         formatLayout->setContentsMargins(0, 0, 0, 0);
-        formatLayout->setSpacing(reviewSpace(Graphite::Space::xs));
+        formatLayout->setSpacing(reviewSpace(Ui::Space::xs));
         formatLayout->addWidget(fact(formatHint(config_.format, config_.codec)));
         bool h264Available = false;
         for (int i = 0; i < format_->count(); ++i) h264Available |= format_->itemData(i).toStringList() == QStringList{"mp4", "h264"};
         if (config_.format == "mp4" && config_.codec == "h265" && h264Available) {
             auto* compatible = new QPushButton("Use MP4 (H.264)", formatRow);
-            compatible->setProperty("graphiteFlush", true);
-            VisualStyle::role(compatible, "quiet");
+            compatible->setProperty("uiFlush", true);
+            Ui::role(compatible, "quiet");
             connect(compatible, &QPushButton::clicked, this, [this, dialog] {
                 drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}});
                 dialog->close();
@@ -2277,14 +2276,14 @@ void ReviewWindow::showAdvice(bool formatTips) {
         form->addRow("Format", formatRow);
     }
     layout->addStretch();
-    auto* footer = new Graphite::Surface("bg", Qt::TopEdge, dialog);
+    auto* footer = new Ui::Surface("bg", Qt::TopEdge, dialog);
     auto* actions = new QHBoxLayout(footer);
-    actions->setContentsMargins(reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::m), reviewSpace(Graphite::Space::l), reviewSpace(Graphite::Space::m));
-    actions->setSpacing(reviewSpace(Graphite::Space::s));
+    actions->setContentsMargins(reviewSpace(Ui::Space::l), reviewSpace(Ui::Space::m), reviewSpace(Ui::Space::l), reviewSpace(Ui::Space::m));
+    actions->setSpacing(reviewSpace(Ui::Space::s));
     actions->addStretch();
     if (failed) {
         auto* retry = new QPushButton("Try again", footer);
-        VisualStyle::role(retry, "primary");
+        Ui::role(retry, "primary");
         retry->setDefault(true);
         connect(retry, &QPushButton::clicked, this, [this, dialog] { dialog->close(); drive({{"action", "retryExport"}}); });
         actions->addWidget(retry);
@@ -2294,9 +2293,9 @@ void ReviewWindow::showAdvice(bool formatTips) {
     actions->addWidget(close);
     root->addWidget(footer);
     const QSize available = availableReviewSize().boundedTo(dialog->screen()->availableGeometry().size());
-    const int width = std::min(Graphite::scaled(640), available.width());
-    const int detailsHeight = heading->sizeHint().height() + text->heightForWidth(std::max(1, width - layout->contentsMargins().left() - layout->contentsMargins().right())) + footer->sizeHint().height() + Graphite::scaled(62);
-    dialog->resize(QSize(width, hasError ? detailsHeight : Graphite::scaled(360)).boundedTo(available));
+    const int width = std::min(Ui::scaled(640), available.width());
+    const int detailsHeight = heading->sizeHint().height() + text->heightForWidth(std::max(1, width - layout->contentsMargins().left() - layout->contentsMargins().right())) + footer->sizeHint().height() + Ui::scaled(62);
+    dialog->resize(QSize(width, hasError ? detailsHeight : Ui::scaled(360)).boundedTo(available));
     dialog->show();
     if (hasError) text->setFocus();
 }
@@ -2325,8 +2324,8 @@ void ReviewWindow::updateMinimum() {
             const auto share = [&](int width, int controls, int timelineHeight) {
                 const auto margins = footer->layout()->contentsMargins();
                 // The destination elides on the metadata line, so a second footer row is one text line.
-                const int footerHeight = format_->height() + (footerFits(width - 2 * reviewSpace(Graphite::Space::l) - reviewSpace(Graphite::Space::xs)) ? 0 : destinationMenu_->fontMetrics().height() + reviewSpace(Graphite::Space::xs));
-                const int chrome = fixed + trim->heightFor(width - 2 * reviewSpace(Graphite::Space::m)) + timelineHeight + footerHeight + margins.top() + margins.bottom();
+                const int footerHeight = format_->height() + (footerFits(width - 2 * reviewSpace(Ui::Space::l) - reviewSpace(Ui::Space::xs)) ? 0 : destinationMenu_->fontMetrics().height() + reviewSpace(Ui::Space::xs));
+                const int chrome = fixed + trim->heightFor(width - 2 * reviewSpace(Ui::Space::m)) + timelineHeight + footerHeight + margins.top() + margins.bottom();
                 const QSize image = QSize(10000, int(10000 / aspect)).scaled(QSize(width - 8, height - chrome - controls), Qt::KeepAspectRatio);
                 return double(image.width()) * image.height() / (double(width) * height);
             };
@@ -2335,12 +2334,12 @@ void ReviewWindow::updateMinimum() {
             const int axisMinimum = QFontMetrics(gutterFont()).horizontalAdvance(durationText(options_.durationUs)) * 4 + 96;
             for (int candidate = minimumWidth(); candidate <= available.width(); candidate += 2) {
                 const int futureControls = edit_.masks.isEmpty() ? maskStart_->height() : 0;
-                const int controls = std::max(futureControls, flow->heightFor(candidate - 2 * reviewSpace(Graphite::Space::m), true));
-                const int timelineHeight = timeline_->heightForLanes(candidate - 2 * reviewSpace(Graphite::Space::m), std::max(2, timeline_->lanes()));
-                const double steady = share(candidate, std::max(futureControls, flow->heightFor(candidate - 2 * reviewSpace(Graphite::Space::m))), timelineHeight);
-                const double transient = share(candidate, controls + std::max(32, QFontMetrics(Graphite::font(Graphite::Type::metadata)).height() + 8) + 4, timelineHeight);
-                const int inlineAxis = candidate - 2 * reviewSpace(Graphite::Space::m) - trackPad - ReviewTimeline::gutterWidth() - transport_->property("inlineWidth").toInt() - 12;
-                const int axis = inlineAxis < 360 ? candidate - 2 * reviewSpace(Graphite::Space::m) - trackPad - ReviewTimeline::gutterWidth() : inlineAxis;
+                const int controls = std::max(futureControls, flow->heightFor(candidate - 2 * reviewSpace(Ui::Space::m), true));
+                const int timelineHeight = timeline_->heightForLanes(candidate - 2 * reviewSpace(Ui::Space::m), std::max(2, timeline_->lanes()));
+                const double steady = share(candidate, std::max(futureControls, flow->heightFor(candidate - 2 * reviewSpace(Ui::Space::m))), timelineHeight);
+                const double transient = share(candidate, controls + std::max(32, QFontMetrics(Ui::font(Ui::Type::metadata)).height() + 8) + 4, timelineHeight);
+                const int inlineAxis = candidate - 2 * reviewSpace(Ui::Space::m) - trackPad - ReviewTimeline::gutterWidth() - transport_->property("inlineWidth").toInt() - 12;
+                const int axis = inlineAxis < 360 ? candidate - 2 * reviewSpace(Ui::Space::m) - trackPad - ReviewTimeline::gutterWidth() : inlineAxis;
                 const double organization = std::min(1.0, double(axis) / axisMinimum) - controls * 0.002;
                 const double score = steady >= 0.605 && transient >= 0.535 ? 10 + transient + organization * 0.02 : steady >= 0.605 ? 1 + transient : steady;
                 if (score > best) { best = score; width = candidate; }
@@ -2386,9 +2385,9 @@ QSize ReviewWindow::minimumSizeHint() const {
     // wrapped at that width (with a blur's radius) sets the height.
     const auto* flow = static_cast<const FlowRow*>(maskGroup_);
     const auto rows = layout()->minimumSize();
-    const int width = std::max({640, rows.width(), flow->minimumSizeHint().width() + 2 * reviewSpace(Graphite::Space::l)});
+    const int width = std::max({640, rows.width(), flow->minimumSizeHint().width() + 2 * reviewSpace(Ui::Space::l)});
     int height = rows.height();
-    if (flow->isVisibleTo(this)) height += flow->heightFor(width - 2 * reviewSpace(Graphite::Space::m), true) - flow->minimumSizeHint().height();
+    if (flow->isVisibleTo(this)) height += flow->heightFor(width - 2 * reviewSpace(Ui::Space::m), true) - flow->minimumSizeHint().height();
     // Status lines wrap at a narrow width; count them as they are laid out.
     if (statusRow_->isVisibleTo(this) && statusRow_->hasHeightForWidth()) height += std::max(0, statusRow_->heightForWidth(width) - statusRow_->minimumSizeHint().height());
     return {width, std::max(480, height)};
@@ -2403,7 +2402,7 @@ bool ReviewWindow::footerFits(int width) const {
     const auto measured = [](const QWidget* widget) {
         return std::clamp(widget->sizeHint().width(), widget->minimumWidth(), widget->maximumWidth());
     };
-    int needed = reviewSpace(Graphite::Space::xl), groups = 0;
+    int needed = reviewSpace(Ui::Space::xl), groups = 0;
     if (!inHeader) {
         // These are the same audio, preview and draft widgets placed in metadata.
         needed += measured(exportAudio_) + measured(findChild<QLabel*>("reviewAudioSeparator"))
@@ -2422,19 +2421,19 @@ bool ReviewWindow::footerFits(int width) const {
     }
     if (config_.format == "mp4" && config_.codec == "h265") { needed += measured(formatAdvice_); ++groups; }
     // The stretch is a separate slot, with a full group gap on either side.
-    needed += groups * reviewSpace(Graphite::Space::l);
+    needed += groups * reviewSpace(Ui::Space::l);
     return width >= needed;
 }
 bool ReviewWindow::destinationFitsHeader(int width) const {
-    if (!Graphite::WindowHeader::customFrame() || options_.uploadSummary.isEmpty()) return false;
+    if (!Ui::WindowHeader::customFrame() || options_.uploadSummary.isEmpty()) return false;
     const auto margins = header_->layout()->contentsMargins();
     const auto mode = options_.sharingMode == "private" ? QStringLiteral(" · Private upload") : QStringLiteral(" · Shared link");
-    const int nameWidth = std::max(Graphite::scaled(96), destinationMenu_->fontMetrics().horizontalAdvance(options_.destination.left(10) + QStringLiteral("…")));
+    const int nameWidth = std::max(Ui::scaled(96), destinationMenu_->fontMetrics().horizontalAdvance(options_.destination.left(10) + QStringLiteral("…")));
     const int destinationWidth = nameWidth + destinationMenu_->fontMetrics().horizontalAdvance(mode) + destinationMenuPadding();
     const int metadataWidth = exportAudio_->sizeHint().width() + playbackStatus_->property("reservedWidth").toInt()
         + findChild<QLabel*>("draftState")->sizeHint().width()
         + findChild<QLabel*>("reviewAudioSeparator")->sizeHint().width()
-        + findChild<QLabel*>("reviewDraftSeparator")->sizeHint().width() + reviewSpace(Graphite::Space::l);
+        + findChild<QLabel*>("reviewDraftSeparator")->sizeHint().width() + reviewSpace(Ui::Space::l);
     int leftButtons = 0, rightButtons = 0;
     for (const auto* name : {"windowMinimize", "windowMaximize", "windowClose"}) {
         if (const auto* button = header_->findChild<QToolButton*>(name)) {
@@ -2471,16 +2470,16 @@ void ReviewWindow::placeDestination() {
     const auto mode = options_.sharingMode == "private" ? QStringLiteral("Private upload") : QStringLiteral("Shared link");
     const bool inHeader = destinationFitsHeader(width());
     const bool movedHeader = inHeader != destinationMenu_->property("headerSummary").toBool();
-    metadata->layout()->setContentsMargins(0, 0, inHeader ? reviewSpace(Graphite::Space::l) : 0, 0);
+    metadata->layout()->setContentsMargins(0, 0, inHeader ? reviewSpace(Ui::Space::l) : 0, 0);
     const int previewWidth = playbackStatus_->property("reservedWidth").toInt() + findChild<QLabel*>("reviewAudioSeparator")->sizeHint().width();
     const int metadataWidth = exportAudio_->sizeHint().width() + previewWidth
         + findChild<QLabel*>("draftState")->sizeHint().width() + findChild<QLabel*>("reviewDraftSeparator")->sizeHint().width()
-        + (inHeader ? reviewSpace(Graphite::Space::l) : 0);
+        + (inHeader ? reviewSpace(Ui::Space::l) : 0);
     destinationMenu_->setProperty("headerSummary", inHeader);
     destinationMenu_->setProperty("destinationName", options_.destination);
     destinationMenu_->setProperty("sharingSuffix", QStringLiteral(" · ") + mode);
     const int fullWidth = destinationMenu_->fontMetrics().horizontalAdvance(destination_->text()) + destinationMenuPadding();
-    const int nameMinimum = std::max(Graphite::scaled(96), destinationMenu_->fontMetrics().horizontalAdvance(options_.destination.left(10) + QStringLiteral("…")));
+    const int nameMinimum = std::max(Ui::scaled(96), destinationMenu_->fontMetrics().horizontalAdvance(options_.destination.left(10) + QStringLiteral("…")));
     const int sharingMinimum = std::min(fullWidth, nameMinimum + destinationMenu_->fontMetrics().horizontalAdvance(QStringLiteral(" · ") + mode) + destinationMenuPadding());
     const int headerMinimum = sharingMinimum;
     // A long name elides before the sharing mode; the menu and tooltip keep it whole.
@@ -2495,15 +2494,15 @@ void ReviewWindow::placeDestination() {
     const int naturalDestination = inHeader ? std::min(fullWidth, std::max(headerMinimum, headerRoom)) : fullWidth;
     destinationMenu_->setMaximumWidth(naturalDestination);
     auto* grid = qobject_cast<QGridLayout*>(findChild<QWidget*>("reviewActions")->layout());
-    const int available = std::max(1, width() - 2 * reviewSpace(Graphite::Space::l));
+    const int available = std::max(1, width() - 2 * reviewSpace(Ui::Space::l));
     const bool wasSingle = grid->property("placed").toBool() && grid->property("singleRow").toBool();
     const bool single = inHeader || footerFits(available - (wasSingle ? 0 : 4));
     // A third footer line breaks the large-text frame gates: drop this repeated hint first.
-    const bool showPreview = single || sharingMinimum + metadataWidth + Graphite::space(Graphite::Space::l) <= available;
+    const bool showPreview = single || sharingMinimum + metadataWidth + Ui::space(Ui::Space::l) <= available;
     const int requiredMetadata = metadataWidth - (showPreview ? 0 : previewWidth);
     metadata->setMinimumWidth(metadataWidth - (single ? 0 : previewWidth));
-    const bool splitMetadata = !single && sharingMinimum + requiredMetadata + Graphite::space(Graphite::Space::l) > available;
-    const int destinationSpace = single || splitMetadata ? naturalDestination : available - requiredMetadata - Graphite::space(Graphite::Space::l);
+    const bool splitMetadata = !single && sharingMinimum + requiredMetadata + Ui::space(Ui::Space::l) > available;
+    const int destinationSpace = single || splitMetadata ? naturalDestination : available - requiredMetadata - Ui::space(Ui::Space::l);
     destinationMenu_->setProperty("displayText", QVariant());
     destinationMenu_->setMaximumWidth(inHeader ? naturalDestination : fullWidth);
     destinationMenu_->setFixedHeight(single ? textControlHeight(destinationMenu_) : destinationMenu_->heightForWidth(std::max(sharingMinimum, destinationSpace)));
@@ -2544,7 +2543,7 @@ void ReviewWindow::placeDestination() {
         if (single) {
             if (!inHeader) grid->addWidget(destinationSummary, 0, 0, Qt::AlignLeft);
             if (!inHeader) grid->addWidget(metadata, 0, 1);
-            grid->setColumnMinimumWidth(2, reviewSpace(Graphite::Space::xl));
+            grid->setColumnMinimumWidth(2, reviewSpace(Ui::Space::xl));
             grid->setColumnStretch(2, 1);
             grid->addWidget(format_, 0, 3);
             grid->addWidget(formatAdvice_, 0, 4);
@@ -2555,9 +2554,9 @@ void ReviewWindow::placeDestination() {
             auto* metaRow = static_cast<QHBoxLayout*>(metaLine->layout());
             metaRow->addWidget(destinationSummary);
             if (splitMetadata) metaRow->addStretch(1);
-            else { metaRow->addSpacing(Graphite::space(Graphite::Space::l)); metaRow->addWidget(metadata, 1); }
+            else { metaRow->addSpacing(Ui::space(Ui::Space::l)); metaRow->addWidget(metadata, 1); }
             auto* actionRow = static_cast<QHBoxLayout*>(actionLine->layout());
-            actionRow->setSpacing(reviewSpace(Graphite::Space::s));
+            actionRow->setSpacing(reviewSpace(Ui::Space::s));
             actionRow->addWidget(format_);
             actionRow->addWidget(formatAdvice_);
             actionRow->addStretch(1);
@@ -2565,7 +2564,7 @@ void ReviewWindow::placeDestination() {
             grid->addWidget(metaLine, 0, 0, 1, 8);
             if (splitMetadata) grid->addWidget(metadata, 1, 0, 1, 8);
             grid->addWidget(actionLine, splitMetadata ? 2 : 1, 0, 1, 8);
-            grid->setVerticalSpacing(reviewSpace(Graphite::Space::xs));
+            grid->setVerticalSpacing(reviewSpace(Ui::Space::xs));
         }
         // Reparenting between footer rows hides widgets that were already shown.
         for (auto* widget : std::initializer_list<QWidget*>{destinationSummary, format_, metadata, exportAudio_, playbackStatus_, draftSeparator, draft, save_, cancel_, upload_}) widget->show();
@@ -2584,10 +2583,10 @@ void ReviewWindow::placeDestination() {
     int actionMinimum = 0;
     for (auto* widget : std::initializer_list<QWidget*>{format_, formatAdvice_, save_, cancel_, upload_}) {
         if (widget->isHidden()) continue;
-        actionMinimum += std::clamp(widget->minimumSizeHint().width(), widget->minimumWidth(), widget->maximumWidth()) + reviewSpace(Graphite::Space::s);
+        actionMinimum += std::clamp(widget->minimumSizeHint().width(), widget->minimumWidth(), widget->maximumWidth()) + reviewSpace(Ui::Space::s);
     }
     const int metadataMinimum = sharingMinimum + metadataWidth - previewWidth
-        - (inHeader ? reviewSpace(Graphite::Space::l) : 0) + reviewSpace(Graphite::Space::l);
+        - (inHeader ? reviewSpace(Ui::Space::l) : 0) + reviewSpace(Ui::Space::l);
     findChild<QWidget*>("reviewFooter")->setProperty("compactMinimumWidth", std::max(actionMinimum, metadataMinimum) + 2 * footerInset());
     // Settle child minima before the default fit measures the footer.
     destinationSummary->layout()->activate();
@@ -2615,7 +2614,7 @@ void ReviewWindow::placeFooterStatus() {
     if (playbackStatus_->text() != text || was != footer) {
         playbackStatus_->setText(text);
         playbackStatus_->setAccessibleName(text);
-        static_cast<Graphite::ElidedLabel*>(playbackStatus_)->setElideMode(footer ? Qt::ElideRight : Qt::ElideMiddle);
+        static_cast<Ui::ElidedLabel*>(playbackStatus_)->setElideMode(footer ? Qt::ElideRight : Qt::ElideMiddle);
         playbackStatus_->setProperty("footerError", footer);
         playbackStatus_->setProperty("feedbackTone", footer ? QStringLiteral("error") : QString());
         playbackStatus_->style()->unpolish(playbackStatus_);
@@ -2647,7 +2646,7 @@ void ReviewWindow::placeErrorDetails() {
     const int footerNeeded = destinationMenu_->width() + destinationContextWidth()
         + playbackStatus_->property("reservedWidth").toInt()
         + findChild<QLabel*>("reviewDraftSeparator")->sizeHint().width()
-        + findChild<QLabel*>("draftState")->sizeHint().width() + errorDetails_->width() + 2 * reviewSpace(Graphite::Space::s);
+        + findChild<QLabel*>("draftState")->sizeHint().width() + errorDetails_->width() + 2 * reviewSpace(Ui::Space::s);
     const bool separateMetadata = !findChild<QWidget*>("reviewActions")->layout()->property("singleRow").toBool();
     const bool inFooter = separateMetadata && !inHeader && needed > statusContent_->width() && footerNeeded <= width() - 2 * footerInset();
     // Playback stays centred, so the trailing slot's width is needed on both sides.
@@ -2656,7 +2655,7 @@ void ReviewWindow::placeErrorDetails() {
         if (const auto* button = header_->findChild<QToolButton*>(name)) trailing += button->width() + button->parentWidget()->layout()->spacing();
     const int headerNeeded = transport_->sizeHint().width() + 2 * trailing
         + header_->layout()->contentsMargins().left() + header_->layout()->contentsMargins().right() + 4 * header_->layout()->spacing();
-    const bool onHeader = Graphite::WindowHeader::customFrame() && !inHeader && !inFooter
+    const bool onHeader = Ui::WindowHeader::customFrame() && !inHeader && !inFooter
         && needed > statusContent_->width() && headerNeeded <= header_->width();
     errorDetails_->setFixedHeight(inFooter ? textControlHeight(errorDetails_) : std::max(32, textControlHeight(errorDetails_)));
     if (onHeader) {
@@ -2673,7 +2672,7 @@ void ReviewWindow::placeErrorDetails() {
         target->insertWidget(inFooter ? 1 : 0, errorDetails_, 0, Qt::AlignVCenter);
         errorDetails_->show();
         row->activate();
-        if (!inFooter) chainStatusActions(actions, static_cast<Graphite::Banner*>(statusContent_->parentWidget())->dismissButton());
+        if (!inFooter) chainStatusActions(actions, static_cast<Ui::Banner*>(statusContent_->parentWidget())->dismissButton());
     }
 }
 QJsonObject ReviewWindow::inspect() const {
@@ -2709,7 +2708,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"revision", double(edit_.revision)}, {"trim", QJsonObject{{"start", double(edit_.trimStart)}, {"end", double(edit_.exportEnd(options_.durationUs))}}},
         {"masks", masks}, {"selectedMaskId", mask ? QJsonValue(mask->id) : QJsonValue(QJsonValue::Null)},
         {"armed", view_->armed().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->armed())},
-        {"blurGuidance", QJsonObject{{"visible", static_cast<MaskInterval*>(maskActive_)->warningButton()->isVisibleTo(this)}, {"text", Graphite::blurWarningText()}, {"drive", QJsonObject{{"action", "showMaskOptions"}}}}},
+        {"blurGuidance", QJsonObject{{"visible", static_cast<MaskInterval*>(maskActive_)->warningButton()->isVisibleTo(this)}, {"text", Ui::blurWarningText()}, {"drive", QJsonObject{{"action", "showMaskOptions"}}}}},
         {"maskControls", QJsonObject{{"list", masks_->isVisibleTo(this)}, {"times", maskStart_->isVisibleTo(this)}, {"strength", strength_->isVisibleTo(this)}, {"remove", removeMask_->isVisibleTo(this)}}},
         {"maskOptions", QJsonObject{{"available", mask != nullptr}, {"blurRadiusAvailable", mask && mask->kind == "blur"}, {"deleteAvailable", mask != nullptr}, {"open", maskOptions_->menu()->isVisible()}, {"drive", QJsonObject{{"action", "showMaskOptions"}}}}},
         {"formatAdvice", QJsonObject{{"visible", formatAdvice_->isVisibleTo(this)}, {"drive", QJsonObject{{"action", "showFormatTips"}}}}},
@@ -2726,7 +2725,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"format", QJsonObject{{"format", config_.format}, {"codec", config_.codec}}},
         {"video", QJsonObject{{"rect", rect(video)}, {"share", double(video.width()) * video.height() / area}}},
         {"timeline", QJsonObject{{"rect", rect(timeline_->geometry())}, {"lanes", timeline_->lanes()}, {"firstLane", timeline_->firstLane()}, {"laneSummary", timeline_->laneSummary()}, {"interactionRowHeight", rowHeight()}, {"gripTargetSize", gripTarget()}}},
-        {"header", QJsonObject{{"visible", header_->isVisibleTo(this)}, {"rect", rect(header_->geometry())}, {"customFrame", Graphite::WindowHeader::customFrame()}}}};
+        {"header", QJsonObject{{"visible", header_->isVisibleTo(this)}, {"rect", rect(header_->geometry())}, {"customFrame", Ui::WindowHeader::customFrame()}}}};
 }
 ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
     const auto action = params["action"].toString();
@@ -2912,7 +2911,7 @@ void ReviewWindow::startPlayback() {
     disarm();
     playing_ = true;
     view_->setPlaying(true);
-    play_->setIcon(VisualStyle::icon("pause"));
+    play_->setIcon(Ui::icon("pause"));
     play_->setAccessibleName("Pause");
     play_->setToolTip("Pause the preview (Space)");
     refreshLabels();
@@ -2968,7 +2967,7 @@ void ReviewWindow::stopPlayback() {
     if (!playing_) return;
     playing_ = false;
     view_->setPlaying(false);
-    play_->setIcon(VisualStyle::icon("play"));
+    play_->setIcon(Ui::icon("play"));
     play_->setAccessibleName("Play");
     play_->setToolTip("Play the retained part silently (Space)");
     refreshLabels();
@@ -3012,7 +3011,7 @@ void ReviewWindow::askDiscard() {
     if (discard_) { discard_->raise(); discard_->activateWindow(); return; }
     stopPlayback();
     view_->commitNudge();
-    auto* box = Graphite::confirm(this, QStringLiteral("Discard recording"),
+    auto* box = Ui::confirm(this, QStringLiteral("Discard recording"),
         QStringLiteral("Discard this recording and its edits?\nThe recording, its trim and its masks are deleted. Nothing has been uploaded; copies you saved stay."),
         QStringLiteral("Discard recording"), QStringLiteral("Keep reviewing"), true);
     auto* keep = box->button(QMessageBox::Cancel);

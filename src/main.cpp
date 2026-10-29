@@ -1,4 +1,4 @@
-#include "ui/VisualStyle.h"
+#include "ui/Ui.h"
 #include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
 #include "core/HostEnvironment.h"
@@ -177,9 +177,9 @@ int main(int argc,char* argv[]) {
  else {
   std::unique_ptr<QApplication> graphical;
   {putgd::GenericResidentTheme theme;graphical=std::make_unique<QApplication>(argc,argv);}
-  putgd::VisualStyle::apply(*graphical);
+  putgd::Ui::apply(*graphical);
   graphical->setDesktopFileName("putgd");
-  graphical->setWindowIcon(putgd::VisualStyle::icon("brand"));
+  graphical->setWindowIcon(putgd::Ui::icon("brand"));
   graphical->setQuitOnLastWindowClosed(false);
   application=std::move(graphical);
  }

@@ -1,6 +1,5 @@
 #pragma once
-#include "Graphite.h"
-#include "VisualStyle.h"
+#include "Ui.h"
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QSlider>
@@ -15,12 +14,12 @@ public:
     BlurRadius(int minimum, int maximum, int value, bool compact, QWidget* parent = nullptr) : QWidget(parent) {
         auto* layout = new QVBoxLayout(this);
         layout->setContentsMargins(0, 0, 0, 0);
-        layout->setSpacing(Graphite::space(Graphite::Space::xs));
+        layout->setSpacing(Ui::space(Ui::Space::xs));
         auto* row = new QHBoxLayout;
         row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(Graphite::space(Graphite::Space::s));
+        row->setSpacing(Ui::space(Ui::Space::s));
         label_ = new QLabel("Blur radius", this);
-        VisualStyle::role(label_, "meta");
+        Ui::role(label_, "meta");
         if (compact) { row->addWidget(label_); row->addStretch(1); }
         else layout->addWidget(label_);
         value_ = new QSpinBox(this);
@@ -41,7 +40,7 @@ public:
         joined->addWidget(value_);
         unit_ = new QLabel("px", field);
         unit_->setObjectName("blurRadiusUnit");
-        VisualStyle::role(unit_, "unitSuffix");
+        Ui::role(unit_, "unitSuffix");
         joined->addWidget(unit_);
         row->addWidget(field);
         if (!compact) row->addStretch(1);

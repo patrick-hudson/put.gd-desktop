@@ -1,6 +1,5 @@
 #include "../fixtures/Waits.h"
-#include "ui/Graphite.h"
-#include "ui/VisualStyle.h"
+#include "ui/Ui.h"
 #include "ui/WindowButtons.h"
 #include <QApplication>
 #include <QFile>
@@ -24,7 +23,7 @@ class WindowButtonsTest : public QObject {
         return file.readAll();
     }
 private slots:
-    void initTestCase() { VisualStyle::apply(*qApp); }
+    void initTestCase() { Ui::apply(*qApp); }
     void fixtureLayouts() {
         const auto left = WindowButtons::fromGSettings(QString::fromUtf8(fixture("gnome-left.txt")));
         QCOMPARE(left.left, (QStringList{"close", "minimize", "maximize"}));
@@ -49,13 +48,13 @@ private slots:
         QCOMPARE(unknown.layout().right, right.right);
     }
     void headersFollowSidesOrderAndOmittedButtons() {
-        Graphite::WindowHeader::setCustomFrameOverride(1);
-        auto restore = qScopeGuard([] { Graphite::WindowHeader::setCustomFrameOverride(0); });
-        for (const auto density : {Graphite::WindowHeader::Density::Standard, Graphite::WindowHeader::Density::Compact}) {
+        Ui::WindowHeader::setCustomFrameOverride(1);
+        auto restore = qScopeGuard([] { Ui::WindowHeader::setCustomFrameOverride(0); });
+        for (const auto density : {Ui::WindowHeader::Density::Standard, Ui::WindowHeader::Density::Compact}) {
             QWidget window;
             QVBoxLayout row(&window);
             QMenu menu;
-            auto* header = Graphite::WindowHeader::install(&window, &row, &menu, density);
+            auto* header = Ui::WindowHeader::install(&window, &row, &menu, density);
             header->setDocument("Review recording");
             auto* status = new QLabel("Not uploaded");
             header->addTrailing(status);
@@ -69,7 +68,7 @@ private slots:
             header->setButtonLayout(WindowButtons::fromGSettings("close,minimize,maximize:"));
             QCoreApplication::processEvents();
             QVERIFY(x(close) < x(minimize)); QVERIFY(x(minimize) < x(maximize)); QVERIFY(x(maximize) < x(brand));
-            QCOMPARE(x(header->findChild<QToolButton*>("applicationMenu")) - x(maximize) - maximize->width(), Graphite::space(Graphite::Space::l));
+            QCOMPARE(x(header->findChild<QToolButton*>("applicationMenu")) - x(maximize) - maximize->width(), Ui::space(Ui::Space::l));
             QCOMPARE(close->nextInFocusChain(), minimize);
             QCOMPARE(minimize->nextInFocusChain(), maximize);
             header->setButtonLayout(WindowButtons::fromGSettings(":maximize,minimize,close"));

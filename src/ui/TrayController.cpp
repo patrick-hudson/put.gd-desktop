@@ -1,6 +1,6 @@
 #include "TrayController.h"
 #include <QJsonDocument>
-#include "VisualStyle.h"
+#include "Ui.h"
 #include "Theme.h"
 #include "ByteSize.h"
 #include "core/Log.h"
@@ -18,7 +18,6 @@
 #include <QPointer>
 #include <QSystemTrayIcon>
 #include <QScreen>
-#include "Graphite.h"
 #include <QDir>
 #include <QHash>
 #include <QFileInfo>
@@ -194,11 +193,11 @@ TrayController::TrayController(OperationService& operations,
  } else
 #endif
  {
- tray_ = new QSystemTrayIcon(VisualStyle::icon("tray",Theme::trayTints(panel_.light()).idle), this);
+ tray_ = new QSystemTrayIcon(Ui::icon("tray",Theme::trayTints(panel_.light()).idle), this);
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
  uploadStatus_=menu_->addAction(QString{});uploadStatus_->setObjectName("trayUploadStatus");uploadStatus_->setEnabled(false);uploadStatus_->setProperty("visualRole","information");auto* statusSeparator=menu_->addSeparator();statusSeparator->setObjectName("trayStatusSeparator");cancelUpload_=menu_->addAction("Cancel upload");cancelUpload_->setObjectName("trayCancelUpload");connect(cancelUpload_,&QAction::triggered,this,&TrayController::cancelUploads);uploadSeparator_=menu_->addSeparator();connect(menu_.get(),&QMenu::aboutToShow,this,&TrayController::refreshMenu);
- outputMenu_=menu_->addMenu("Capture output");outputSummary_=outputMenu_->menuAction();outputSummary_->setObjectName("trayOutputSummary");for(const auto& action:Settings::presentationOrder()){auto* entry=new QWidgetAction(outputMenu_);entry->setObjectName("trayOutput"+action);auto* label=new QLabel;label->setTextFormat(Qt::PlainText);label->setWordWrap(true);const auto* screen=outputMenu_->screen();const int available=screen?screen->availableGeometry().width():Graphite::scaled(480);label->setMinimumWidth(qMin(Graphite::scaled(280),available));label->setMaximumWidth(qMin(Graphite::scaled(480),available));label->setContentsMargins(Graphite::space(Graphite::Space::m),Graphite::space(Graphite::Space::s),Graphite::space(Graphite::Space::m),Graphite::space(Graphite::Space::s));VisualStyle::role(label,"muted");entry->setDefaultWidget(label);connect(entry,&QAction::changed,label,[entry,label]{label->setText(entry->text());});outputMenu_->addAction(entry);}auto* change=menu_->addAction("Change output…");change->setObjectName("trayChangeOutput");connect(change,&QAction::triggered,this,[this]{showView("captureSettings");});menu_->addSeparator();
+ outputMenu_=menu_->addMenu("Capture output");outputSummary_=outputMenu_->menuAction();outputSummary_->setObjectName("trayOutputSummary");for(const auto& action:Settings::presentationOrder()){auto* entry=new QWidgetAction(outputMenu_);entry->setObjectName("trayOutput"+action);auto* label=new QLabel;label->setTextFormat(Qt::PlainText);label->setWordWrap(true);const auto* screen=outputMenu_->screen();const int available=screen?screen->availableGeometry().width():Ui::scaled(480);label->setMinimumWidth(qMin(Ui::scaled(280),available));label->setMaximumWidth(qMin(Ui::scaled(480),available));label->setContentsMargins(Ui::space(Ui::Space::m),Ui::space(Ui::Space::s),Ui::space(Ui::Space::m),Ui::space(Ui::Space::s));Ui::role(label,"muted");entry->setDefaultWidget(label);connect(entry,&QAction::changed,label,[entry,label]{label->setText(entry->text());});outputMenu_->addAction(entry);}auto* change=menu_->addAction("Change output…");change->setObjectName("trayChangeOutput");connect(change,&QAction::triggered,this,[this]{showView("captureSettings");});menu_->addSeparator();
  // Capture entries first, in the order people reach for them; QAction text
  // treats a single & as a mnemonic marker, so && shows one &.
  const auto capture = [this](const QString& action, const QString& label) {
@@ -379,7 +378,7 @@ void TrayController::retintMenu() {
  // Menu entry IDs name actions, not glyphs: map each one, so an ID without its
  // own IconArt glyph never falls back to the generic file.
  static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"edit-sources","edit"},{"window","window"},{"desktop","desktop"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"destinations","destinations"},{"update","download"}};
- for(auto* action:menu_->actions())if(const auto glyph=glyphs.value(action->data().toString());!glyph.isEmpty())action->setIcon(VisualStyle::icon(glyph,tint));
+ for(auto* action:menu_->actions())if(const auto glyph=glyphs.value(action->data().toString());!glyph.isEmpty())action->setIcon(Ui::icon(glyph,tint));
 }
 QJsonObject TrayController::trayTint()const {
  return {{"panel",panel_.light()?"light":"dark"},{"source",panel_.source()},{"color",Theme::trayTints(panel_.light()).idle.name()}};
@@ -469,7 +468,7 @@ void TrayController::refreshActivity() {
  else
 #endif
  if(tray_) {
-  if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_)tray_->setIcon(VisualStyle::icon("tray",color,percent,recording));
+  if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_)tray_->setIcon(Ui::icon("tray",color,percent,recording));
   if(text!=activityText_||tooltipTitle!=activityTitle_)tray_->setToolTip(tooltipTitle+(text.isEmpty()||text==tooltipTitle?QString{}:QString("\n")+text));
  }
  // The tooltip's title and activity lines as the tray now shows them (#250).

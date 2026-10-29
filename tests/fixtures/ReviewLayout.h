@@ -1,6 +1,6 @@
 #pragma once
 #include "record/ReviewWindow.h"
-#include "ui/Graphite.h"
+#include "ui/Ui.h"
 #include <QLabel>
 #include <QLayout>
 #include <QToolButton>
@@ -58,7 +58,7 @@ inline QString reviewFooterProblem(record::ReviewWindow& window) {
     const bool elided = output->property("elideDestination").toBool();
     const auto display = elided ? output->property("sharingSuffix").toString()
         : output->property("displayText").isValid() ? output->property("displayText").toString() : output->text();
-    const int textWidth = output->width() - int(Graphite::Space::l);
+    const int textWidth = output->width() - int(Ui::Space::l);
     if (!display.contains(mode) || textWidth < output->fontMetrics().horizontalAdvance(elided ? QStringLiteral("…") + display : mode)
         || (!elided && output->fontMetrics().horizontalAdvance(display) > textWidth
             && output->height() < output->fontMetrics().boundingRect(QRect(0, 0, std::max(1, textWidth), 10000), Qt::TextWordWrap, display).height()))

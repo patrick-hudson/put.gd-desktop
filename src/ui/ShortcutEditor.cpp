@@ -1,8 +1,7 @@
 #include "ShortcutEditor.h"
 #include "ShortcutKeyboard.h"
 #include "PreferenceRows.h"
-#include "VisualStyle.h"
-#include "Graphite.h"
+#include "Ui.h"
 #include "core/Settings.h"
 #include <QApplication>
 #include <QFormLayout>
@@ -18,8 +17,8 @@
 #include <QVBoxLayout>
 
 namespace putgd {
-using Graphite::Space;
-using Graphite::space;
+using Ui::Space;
+using Ui::space;
 namespace {
 QString title(const QString& action) { return action.left(1).toUpper()+action.mid(1); }
 QString actualBinding(const QJsonValue& actual) {
@@ -60,37 +59,37 @@ BindingPresentation bindingPresentation(const QJsonObject& status,const QJsonObj
 }
 }
 ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
- VisualStyle::apply(*qApp);
+ Ui::apply(*qApp);
  auto* layout=new QVBoxLayout(this);layout->setContentsMargins(0,0,0,0);layout->setSpacing(space(Space::l));
  // The page-level state and its one recovery action; rows add only what is
  // specific to their action.
  auto* statusRow=new QHBoxLayout;statusRow->setContentsMargins(0,0,0,0);statusRow->setSpacing(space(Space::m));layout->addLayout(statusRow);
- status_=new QLabel(this);status_->setObjectName("shortcutStatus");status_->setWordWrap(true);VisualStyle::role(status_,"secondary");statusRow->addWidget(status_,1);
- refresh_=new QPushButton("Check shortcuts again",this);refresh_->setObjectName("refreshShortcutSupport");VisualStyle::role(refresh_,"textAction");refresh_->setToolTip("Ask the desktop again which shortcuts it holds.");statusRow->addWidget(refresh_,0,Qt::AlignVCenter);
+ status_=new QLabel(this);status_->setObjectName("shortcutStatus");status_->setWordWrap(true);Ui::role(status_,"secondary");statusRow->addWidget(status_,1);
+ refresh_=new QPushButton("Check shortcuts again",this);refresh_->setObjectName("refreshShortcutSupport");Ui::role(refresh_,"textAction");refresh_->setToolTip("Ask the desktop again which shortcuts it holds.");statusRow->addWidget(refresh_,0,Qt::AlignVCenter);
  connect(refresh_,&QPushButton::clicked,this,[this]{if(refreshAction_)refreshAction_();});
- recordingStatus_=new QLabel(this);recordingStatus_->setObjectName("shortcutRecordingStatus");recordingStatus_->setAccessibleName("Shortcut recording status");recordingStatus_->setWordWrap(true);VisualStyle::role(recordingStatus_,"status");layout->addWidget(recordingStatus_);recordingStatus_->hide();
- auto* card=new Graphite::Surface("surface");card->setProperty("preferenceCard",true);card->setObjectName("shortcutPreferenceCard");auto* cardBox=new QVBoxLayout(card);cardBox->setContentsMargins(0,0,0,0);cardBox->setSpacing(0);auto* form=new QFormLayout;VisualStyle::styleForm(form);form->setHorizontalSpacing(0);form->setVerticalSpacing(0);cardBox->addLayout(form);layout->addWidget(card);
+ recordingStatus_=new QLabel(this);recordingStatus_->setObjectName("shortcutRecordingStatus");recordingStatus_->setAccessibleName("Shortcut recording status");recordingStatus_->setWordWrap(true);Ui::role(recordingStatus_,"status");layout->addWidget(recordingStatus_);recordingStatus_->hide();
+ auto* card=new Ui::Surface("surface");card->setProperty("preferenceCard",true);card->setObjectName("shortcutPreferenceCard");auto* cardBox=new QVBoxLayout(card);cardBox->setContentsMargins(0,0,0,0);cardBox->setSpacing(0);auto* form=new QFormLayout;Ui::styleForm(form);form->setHorizontalSpacing(0);form->setVerticalSpacing(0);cardBox->addLayout(form);layout->addWidget(card);
  // The command names the main window, menu and tray use.
  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"record","Record screen"}};
- auto* helpToggle=new QToolButton(this);helpToggle->setObjectName("shortcutHelpToggle");helpToggle->setText("How shortcuts work");Graphite::disclosure(helpToggle);helpToggle->setProperty("graphiteFlush",true);auto* help=new QLabel("Click a shortcut field, press one key with optional modifiers, then release all keys. Escape cancels; × turns the shortcut off. Changes save automatically. Your desktop confirms each binding and reports conflicts below.",this);help->setObjectName("shortcutHelp");help->setWordWrap(true);VisualStyle::role(help,"muted");help->hide();connect(helpToggle,&QToolButton::toggled,this,[help](bool open){help->setVisible(open);});
+ auto* helpToggle=new QToolButton(this);helpToggle->setObjectName("shortcutHelpToggle");helpToggle->setText("How shortcuts work");Ui::disclosure(helpToggle);helpToggle->setProperty("uiFlush",true);auto* help=new QLabel("Click a shortcut field, press one key with optional modifiers, then release all keys. Escape cancels; × turns the shortcut off. Changes save automatically. Your desktop confirms each binding and reports conflicts below.",this);help->setObjectName("shortcutHelp");help->setWordWrap(true);Ui::role(help,"muted");help->hide();connect(helpToggle,&QToolButton::toggled,this,[help](bool open){help->setVisible(open);});
  const auto defaultActions=Settings::defaults()["actions"].toObject();
  for(const auto& action:Settings::presentationOrder()) {
   auto* field=new QWidget(this);auto* fieldLayout=new QVBoxLayout(field);fieldLayout->setContentsMargins(0,0,0,0);fieldLayout->setSpacing(space(Space::s));
   auto* row=new QHBoxLayout;fieldLayout->addLayout(row);
   auto* input=new QLineEdit(field);input->setObjectName("shortcut"+title(action));input->setAccessibleName(action+" shortcut");input->setReadOnly(true);input->setFrame(false);input->setPlaceholderText("Not set");input->setAccessibleDescription("Click a shortcut field, press one key with modifiers, then release all keys. Escape cancels. Changes save automatically.");editors_[action]=input;
-  auto* record=new QPushButton(field);record->setObjectName("record"+title(action)+"Shortcut");record->setAccessibleName("Change "+labels.value(action).toLower()+" shortcut");record->setMinimumWidth(0);record->setMinimumHeight(Graphite::scaled(Graphite::Metric::control));recordButtons_[action]=record;row->addWidget(record,1);auto* keycap=new QHBoxLayout(record);keycap->setContentsMargins(space(Space::m),0,space(Space::xs),0);keycap->setSpacing(space(Space::xs));input->setParent(record);input->setAttribute(Qt::WA_TransparentForMouseEvents);input->setFocusPolicy(Qt::NoFocus);keycap->addWidget(input,1);
-  auto* clear=new QPushButton(Graphite::chromeIcon("close"),{},record);clear->setIconSize(QSize(Graphite::scaled(12),Graphite::scaled(12)));clear->setObjectName("clear"+title(action)+"Shortcut");clear->setAccessibleName("Clear "+labels.value(action).toLower()+" shortcut");clear->setToolTip("Disable this shortcut.");VisualStyle::role(clear,"quiet");clear->setFixedSize(Graphite::scaled(24),Graphite::scaled(24));clear->setEnabled(false);clear->hide();connect(input,&QLineEdit::textChanged,clear,[clear](const QString& text){clear->setEnabled(!text.isEmpty());clear->setVisible(!text.isEmpty());});keycap->addWidget(clear);
+  auto* record=new QPushButton(field);record->setObjectName("record"+title(action)+"Shortcut");record->setAccessibleName("Change "+labels.value(action).toLower()+" shortcut");record->setMinimumWidth(0);record->setMinimumHeight(Ui::scaled(Ui::Metric::control));recordButtons_[action]=record;row->addWidget(record,1);auto* keycap=new QHBoxLayout(record);keycap->setContentsMargins(space(Space::m),0,space(Space::xs),0);keycap->setSpacing(space(Space::xs));input->setParent(record);input->setAttribute(Qt::WA_TransparentForMouseEvents);input->setFocusPolicy(Qt::NoFocus);keycap->addWidget(input,1);
+  auto* clear=new QPushButton(Ui::chromeIcon("close"),{},record);clear->setIconSize(QSize(Ui::scaled(12),Ui::scaled(12)));clear->setObjectName("clear"+title(action)+"Shortcut");clear->setAccessibleName("Clear "+labels.value(action).toLower()+" shortcut");clear->setToolTip("Disable this shortcut.");Ui::role(clear,"quiet");clear->setFixedSize(Ui::scaled(24),Ui::scaled(24));clear->setEnabled(false);clear->hide();connect(input,&QLineEdit::textChanged,clear,[clear](const QString& text){clear->setEnabled(!text.isEmpty());clear->setVisible(!text.isEmpty());});keycap->addWidget(clear);
   connect(record,&QPushButton::clicked,this,[this,action]{if(recordingAction_==action)cancelRecording();else startRecording(action);});
   connect(clear,&QPushButton::clicked,this,[this,input]{cancelRecording();input->clear();});
-  auto* binding=new QLabel(field);binding->setObjectName("shortcut"+title(action)+"Status");binding->setAccessibleName(action+" actual shortcut status");binding->setWordWrap(true);VisualStyle::role(binding,"binding");bindingStates_[action]=binding;fieldLayout->addWidget(binding);
+  auto* binding=new QLabel(field);binding->setObjectName("shortcut"+title(action)+"Status");binding->setAccessibleName(action+" actual shortcut status");binding->setWordWrap(true);Ui::role(binding,"binding");bindingStates_[action]=binding;fieldLayout->addWidget(binding);
   const auto defaultShortcut=defaultActions[action].toObject()["shortcut"].toString();
   const auto label=labels.value(action);
-  auto* wrapper=new QWidget;wrapper->setProperty("preferenceRow",true);wrapper->setProperty("preferenceResponsive",true);field->setProperty("preferenceChoiceValue",true);field->setProperty("preferenceShortcutValue",true);auto* rowBox=new QVBoxLayout(wrapper);rowBox->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));auto* line=new QHBoxLayout;line->setContentsMargins(0,0,0,0);rowBox->addLayout(line);line->setSpacing(space(Space::l));auto* caption=VisualStyle::settingLabel(label,{},input,this);caption->setMaximumHeight(QWIDGETSIZE_MAX);for(auto* text:caption->findChildren<QLabel*>())text->setWordWrap(true);wrapper->setProperty("preferenceLabel",QVariant::fromValue(static_cast<QObject*>(caption)));line->addWidget(caption,1,Qt::AlignTop);line->addWidget(field,0,Qt::AlignTop);form->addRow(wrapper);input->setAccessibleDescription(input->accessibleDescription()+" Default: "+(defaultShortcut.isEmpty()?QString("unassigned"):defaultShortcut)+".");
+  auto* wrapper=new QWidget;wrapper->setProperty("preferenceRow",true);wrapper->setProperty("preferenceResponsive",true);field->setProperty("preferenceChoiceValue",true);field->setProperty("preferenceShortcutValue",true);auto* rowBox=new QVBoxLayout(wrapper);rowBox->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));auto* line=new QHBoxLayout;line->setContentsMargins(0,0,0,0);rowBox->addLayout(line);line->setSpacing(space(Space::l));auto* caption=Ui::settingLabel(label,{},input,this);caption->setMaximumHeight(QWIDGETSIZE_MAX);for(auto* text:caption->findChildren<QLabel*>())text->setWordWrap(true);wrapper->setProperty("preferenceLabel",QVariant::fromValue(static_cast<QObject*>(caption)));line->addWidget(caption,1,Qt::AlignTop);line->addWidget(field,0,Qt::AlignTop);form->addRow(wrapper);input->setAccessibleDescription(input->accessibleDescription()+" Default: "+(defaultShortcut.isEmpty()?QString("unassigned"):defaultShortcut)+".");
   input->setAccessibleName(labels.value(action)+" shortcut");
  }
- helpToggle->setProperty("preferenceDisclosure",true);helpToggle->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);helpToggle->setMinimumHeight(Graphite::scaled(Graphite::Metric::control)+2*space(Space::s));form->addRow(helpToggle);help->setContentsMargins(space(Space::l),space(Space::m),space(Space::l),space(Space::m));form->addRow(help);
- auto* toggle=new QToolButton(this);toggle->setObjectName("shortcutDetailsToggle");toggle->setAccessibleName("Show exact desktop shortcut diagnostics");toggle->setText("Advanced binding details");Graphite::disclosure(toggle);toggle->setProperty("graphiteFlush",true);layout->addWidget(toggle);
- details_=new QPlainTextEdit(this);details_->setObjectName("shortcutDetails");details_->setAccessibleName("Exact desktop shortcut diagnostics JSON");details_->setReadOnly(true);details_->setMinimumHeight(Graphite::scaled(120));details_->setMaximumHeight(Graphite::scaled(220));layout->addWidget(details_);details_->hide();
+ helpToggle->setProperty("preferenceDisclosure",true);helpToggle->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);helpToggle->setMinimumHeight(Ui::scaled(Ui::Metric::control)+2*space(Space::s));form->addRow(helpToggle);help->setContentsMargins(space(Space::l),space(Space::m),space(Space::l),space(Space::m));form->addRow(help);
+ auto* toggle=new QToolButton(this);toggle->setObjectName("shortcutDetailsToggle");toggle->setAccessibleName("Show exact desktop shortcut diagnostics");toggle->setText("Advanced binding details");Ui::disclosure(toggle);toggle->setProperty("uiFlush",true);layout->addWidget(toggle);
+ details_=new QPlainTextEdit(this);details_->setObjectName("shortcutDetails");details_->setAccessibleName("Exact desktop shortcut diagnostics JSON");details_->setReadOnly(true);details_->setMinimumHeight(Ui::scaled(120));details_->setMaximumHeight(Ui::scaled(220));layout->addWidget(details_);details_->hide();
  connect(toggle,&QToolButton::toggled,this,[this](bool visible){details_->setVisible(visible);});
  qApp->installEventFilter(this);setStatus({});
 }
@@ -166,7 +165,7 @@ QJsonObject ShortcutEditor::actions(const QJsonObject& base) const {auto actions
 void ShortcutEditor::setStatus(const QJsonObject& status) {
  const auto bindings=status["bindings"].toObject();bool unreported=false,attention=false;
  for(const auto& action:Settings::presentationOrder()) {
-  auto* label=bindingStates_[action];const auto presentation=bindingPresentation(status,bindings[action].toObject());label->setText(presentation.text);label->setProperty("bindingTone",presentation.tone);VisualStyle::role(label,"binding");const auto entry=bindings[action].toObject();
+  auto* label=bindingStates_[action];const auto presentation=bindingPresentation(status,bindings[action].toObject());label->setText(presentation.text);label->setProperty("bindingTone",presentation.tone);Ui::role(label,"binding");const auto entry=bindings[action].toObject();
   // KDE registers Ctrl+Shift+1 as Ctrl+! (its "effective" chord). Hide the line
   // when the desktop holds what was asked of it, not only the literal draft.
   const auto draft=editors_[action]->text();
