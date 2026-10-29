@@ -68,7 +68,7 @@ details li{margin:2px 0}
 .pop th{color:var(--muted)}
 .pop .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--muted)}
 table.matrix{border-collapse:collapse;width:100%;font-size:11.5px}
-table.matrix th{position:sticky;top:58px;background:var(--bg);text-align:left;padding:6px 6px;border-bottom:1px solid var(--border);font-weight:600;color:var(--muted);font-size:11px}
+table.matrix th{position:sticky;top:var(--toolbar-height,0px);background:var(--bg);text-align:left;padding:6px 6px;border-bottom:1px solid var(--border);font-weight:600;color:var(--muted);font-size:11px}
 table.matrix td{padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap}
 table.matrix td.c{text-align:center}
 table.matrix tr.s td{background:var(--card2);font-weight:600;color:var(--muted);text-transform:uppercase;font-size:10.5px;letter-spacing:.06em}
@@ -112,6 +112,12 @@ let desktop = null, host = null, view = 'map';
 const byId = {}; DATA.interactions.forEach(i => byId[i.id] = i);
 const surfaceById = {}; DATA.surfaces.forEach(s => surfaceById[s.id] = s);
 const desktopLabel = {}; DATA.desktops.forEach(d => desktopLabel[d.id] = d.label);
+// Controls and counts wrap as the viewport, filters and font metrics change.
+const toolbar = document.querySelector('header');
+function syncToolbarHeight(){
+ document.documentElement.style.setProperty('--toolbar-height', toolbar.getBoundingClientRect().height + 'px');
+}
+new ResizeObserver(syncToolbarHeight).observe(toolbar);
 
 function rowKey(r){ return JSON.stringify([r.desktop,r.host||null,r.placement||null,r.guest||null]); }
 function rowLabel(r){
@@ -166,10 +172,11 @@ function keysHtml(keys){ return (keys||[]).map(k => '<kbd>' + esc(k) + '</kbd>')
 let pop = null;
 function closePop(){ if(pop){ pop.remove(); pop = null; } }
 document.addEventListener('click', closePop);
-function popover(i, anchor){
+function popover(i, anchor, matrixRow=null){
  closePop();
  const s = status(i);
  const ds = (DATA.hostCoverage || host) ? selectedRows() : DATA.desktops.map(d => ({desktop:d.id,label:d.label,required:d.required}));
+ if(matrixRow && !ds.some(d => rowKey(d)===rowKey(matrixRow))) ds.push(matrixRow);
  const rows = ds.map(d => {
   const c = (DATA.hostCoverage || host) ? cellFor(i,d) : i.desktops[d.desktop] || {};
   const f = c.functional || 'untested', v = i.visualApplies ? (c.visual || 'none') : 'n/a';
@@ -335,15 +342,15 @@ function renderMatrix(main){
   h += '<tr class="s"><td colspan="' + (3 + 2*ds.length) + '">' + esc(s.label) + '</td></tr>';
   items.forEach(i => {
    h += '<tr><td title="' + esc(i.id) + '">' + esc(i.label) + (i.keys && i.keys.length ? ' ' + keysHtml(i.keys) : '') + '</td><td>' + esc(i.kind) + '</td><td>' + esc((i.drivers||[]).join(', ') || 'manual') + '</td>';
-   ds.forEach(d => {
+   ds.forEach((d, rowIndex) => {
     const c = hosted ? cellFor(i,d) : i.desktops[d.id] || {}; const f = c.functional || 'untested', v = i.visualApplies ? (c.visual || 'none') : 'n/a';
-    h += '<td class="c"><button type="button" class="d" aria-label="' + esc(i.label + ' on ' + (hosted ? rowLabel(d) : d.label) + ': functional ' + f) + '" title="functional ' + esc(f) + '" data-i="' + esc(i.id) + '" style="background:' + F[f] + '"></button></td><td class="c"><button type="button" class="d" aria-label="' + esc(i.label + ' on ' + (hosted ? rowLabel(d) : d.label) + ': visual ' + v) + '" title="visual ' + esc(v) + '" data-i="' + esc(i.id) + '" style="background:' + V[v] + '"></button>' + badges(c.destinations) + '</td>';
+    h += '<td class="c"><button type="button" class="d" aria-label="' + esc(i.label + ' on ' + (hosted ? rowLabel(d) : d.label) + ': functional ' + f) + '" title="functional ' + esc(f) + '" data-i="' + esc(i.id) + '" data-row="' + rowIndex + '" style="background:' + F[f] + '"></button></td><td class="c"><button type="button" class="d" aria-label="' + esc(i.label + ' on ' + (hosted ? rowLabel(d) : d.label) + ': visual ' + v) + '" title="visual ' + esc(v) + '" data-i="' + esc(i.id) + '" data-row="' + rowIndex + '" style="background:' + V[v] + '"></button>' + badges(c.destinations) + '</td>';
    });
    h += '</tr>';
   });
  });
  wrap.innerHTML = h + '</table>';
- wrap.querySelectorAll('.d[data-i]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); popover(byId[el.dataset.i], el); }));
+ wrap.querySelectorAll('.d[data-i]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); popover(byId[el.dataset.i], el, hosted ? ds[Number(el.dataset.row)] : null); }));
  main.appendChild(wrap);
 }
 
@@ -392,6 +399,7 @@ function render(){
  renderHeader();
  const main = document.getElementById('main'); main.innerHTML = '';
  if(view === 'map') renderMap(main); else if(view === 'matrix') renderMatrix(main); else if(view === 'review') renderReview(main); else renderGaps(main);
+ syncToolbarHeight();
 }
 render();
 })();

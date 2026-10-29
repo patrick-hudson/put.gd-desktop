@@ -161,6 +161,8 @@ def write_coverage(path, campaign, entries):
 
 
 def validate_row(row):
+    if row.get('host') and not row.get('placement'):
+        raise ModelError('host requires placement')
     if row.get('placement') == 'native' and row.get('guest') is not None:
         raise ModelError('guest cannot be used with native placement')
     for field, choices in (('host', HOSTS), ('placement', PLACEMENTS),
@@ -203,8 +205,26 @@ def cell_key(entry):
     return tuple(entry.get(k) for k in ('desktop', 'host', 'placement', 'guest'))
 
 
+def latest_run_entries(entries):
+    """Current metadata per cell; only an identified run can supply missing fields."""
+    latest = {}
+    for entry in sorted(entries, key=lambda e: e.get('at', '')):
+        key = (entry['interaction'], cell_key(entry))
+        previous = latest.get(key, {})
+        same_run = any(entry.get(k) and entry[k] == previous.get(k)
+                       for k in ('build', 'receipt'))
+        carry = ('build', 'recipe', 'frames')
+        # A fresh verdict supersedes review requests even within the same run.
+        if not (entry.get('functional') or entry.get('visual')) and entry.get('review') is None:
+            carry += ('review', 'review_reason')
+        current = {k: previous[k] for k in carry if same_run and k in previous}
+        current.update({k: v for k, v in entry.items() if v is not None})
+        latest[key] = current
+    return list(latest.values())
+
+
 def latest_per_cell(entries, by_host=False):
-    """Newest nonempty verdict per dimension; evidence accumulates within a cell."""
+    """Newest nonempty verdict per dimension; historical evidence stays available."""
     cells = {}
     for entry in sorted(entries, key=lambda e: e.get('at', '')):
         key = cell_key(entry) if by_host else entry['desktop']
@@ -222,11 +242,13 @@ def latest_per_cell(entries, by_host=False):
         if entry.get('note'):
             cell['notes'].append(entry['note'])
         if by_host:
-            cell.update({k: entry[k] for k in ROW_FIELDS
-                         if k != 'destination' and entry.get(k) is not None})
             cell.setdefault('destinations', set())
             if entry.get('destination'):
                 cell['destinations'].add(entry['destination'])
+    if by_host:
+        for entry in latest_run_entries(entries):
+            cells[entry['interaction']][cell_key(entry)].update(
+                {k: entry[k] for k in ROW_FIELDS if k != 'destination' and k in entry})
     return cells
 
 
@@ -464,7 +486,7 @@ def build_page_data(model, entries, catalog, output, embed=False, label=''):
                  for r in sorted(rows, key=lambda r: tuple(v or '' for v in r))],
         'hostCoverage': any(any(cell_key(e)[1:]) for e in entries),
         'reviews': [{k: v for k, v in e.items() if not k.startswith('_')}
-                    for e in entries if e.get('review') is True],
+                    for e in latest_run_entries(entries) if e.get('review') is True],
         'surfaces': surfaces,
         'interactions': interactions,
         'counts': counts,

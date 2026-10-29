@@ -219,24 +219,67 @@ class Aggregation(unittest.TestCase):
                                guest='another-golden', functional='blocked'))
         self.assertEqual(len(surface_map.summarise(self.model, rows)['editor.undo']['cells']), 3)
 
-    def test_newer_host_verdict_preserves_nonempty_metadata(self):
+    def test_newer_pass_without_run_identity_drops_older_metadata(self):
         older = self.entry('editor.undo', 'ubuntu-gnome-wayland', host='f44',
-                           placement='guest', functional='failed', review=True,
-                           review_reason='Inspect frame', frames=[{'label': 'after', 'path': 'after.png'}],
-                           recipe='undo', build='abc123', at='2026-10-01')
+                           placement='guest', functional='failed', build='failing-build',
+                           recipe='undo', frames=[{'label': 'after', 'path': 'failed.png'}],
+                           at='2026-10-01')
         newer = self.entry('editor.undo', 'ubuntu-gnome-wayland', host='f44',
                            placement='guest', functional='passed', at='2026-10-02')
-        for missing in ({}, {k: None for k in ('review', 'review_reason', 'frames', 'recipe', 'build')}):
+        for missing in ({}, {k: None for k in ('frames', 'recipe', 'build')}):
             with self.subTest(missing=missing):
                 cell = surface_map.summarise(self.model, [older, {**newer, **missing}])['editor.undo']['cells'][0]
                 self.assertEqual(cell['functional'], 'passed')
-                for field in ('review', 'review_reason', 'frames', 'recipe', 'build'):
-                    self.assertEqual(cell[field], older[field])
-        replacement = {**newer, 'review': False, 'review_reason': '', 'frames': [],
-                       'recipe': 'redo', 'build': 'def456'}
+                for field in ('frames', 'recipe', 'build'):
+                    self.assertNotIn(field, cell)
+        replacement = {**newer, 'frames': [], 'recipe': 'redo', 'build': 'passing-build'}
         cell = surface_map.summarise(self.model, [replacement, older])['editor.undo']['cells'][0]
-        for field in ('review', 'review_reason', 'frames', 'recipe', 'build'):
+        for field in ('frames', 'recipe', 'build'):
             self.assertEqual(cell[field], replacement[field])
+
+    def test_newer_verdict_clears_old_review_queue_and_reason(self):
+        older = self.entry('editor.undo', 'ubuntu-gnome-wayland', host='f44',
+                           placement='guest', functional='failed', review=True,
+                           review_reason='Inspect failing frame', build='abc123',
+                           receipt='run.json', at='2026-10-01')
+        for verdict in ({'functional': 'passed'}, {'visual': 'reviewed-ok'}, {'review': False}):
+            for identity in ({}, {'build': 'abc123'}, {'receipt': 'run.json'}):
+                with self.subTest(verdict=verdict, identity=identity):
+                    newer = self.entry('editor.undo', 'ubuntu-gnome-wayland', host='f44',
+                                       placement='guest', at='2026-10-02', **verdict, **identity)
+                    entries = [newer, older]  # Deliberately unsorted input.
+                    cell = surface_map.summarise(self.model, entries)['editor.undo']['cells'][0]
+                    self.assertFalse(cell.get('review'))
+                    self.assertNotIn('review_reason', cell)
+                    data = surface_map.build_page_data(self.model, entries, None, '.')
+                    self.assertEqual(data['reviews'], [])
+        newer.update(review=True, review_reason='Inspect current run')
+        data = surface_map.build_page_data(self.model, [older, newer], None, '.')
+        self.assertEqual(len(data['reviews']), 1)
+        self.assertEqual(data['reviews'][0]['review_reason'], 'Inspect current run')
+
+    def test_same_run_preserves_metadata_when_newest_values_are_missing_or_none(self):
+        older = self.entry('editor.undo', 'ubuntu-gnome-wayland', host='f44',
+                           placement='guest', functional='failed', review=True,
+                           review_reason='Inspect frame', receipt='run.json',
+                           frames=[{'label': 'after', 'path': 'after.png'}],
+                           recipe='undo', build='abc123', at='2026-10-01')
+        for identity in ({'build': 'abc123'}, {'receipt': 'run.json'}):
+            for missing in ({}, {k: None for k in ('frames', 'recipe', 'build')}):
+                with self.subTest(identity=identity, missing=missing):
+                    newer = self.entry('editor.undo', 'ubuntu-gnome-wayland', host='f44',
+                                       placement='guest', functional='passed', at='2026-10-02')
+                    newer.update(missing)
+                    newer.update(identity)
+                    cell = surface_map.summarise(self.model, [older, newer])['editor.undo']['cells'][0]
+                    self.assertEqual(cell['functional'], 'passed')
+                    for field in ('frames', 'recipe', 'build'):
+                        self.assertEqual(cell[field], older[field])
+        metadata_only = {**newer, 'functional': None}
+        data = surface_map.build_page_data(self.model, [older, metadata_only], None, '.')
+        self.assertEqual(len(data['reviews']), 1)
+        self.assertEqual(data['reviews'][0]['review_reason'], older['review_reason'])
+        self.assertEqual(data['reviews'][0]['frames'], older['frames'])
 
     def test_missing_host_dimension_does_not_count_as_passed(self):
         rows = [self.entry('editor.undo', 'ubuntu-gnome-wayland', host='m74', placement='guest',
@@ -415,7 +458,8 @@ class ReceiptImport(unittest.TestCase):
         self.assertEqual(row['host'], 'aurora-amd')
 
     def test_invalid_v2_metadata_rejected(self):
-        for metadata in ({'host': 'unknown'}, {'placement': 'VM'}, {'destination': 'ftp'},
+        for metadata in ({'host': 'unknown'}, {'host': 'm74'}, {'host': 'm74', 'placement': None},
+                         {'placement': 'VM'}, {'destination': 'ftp'},
                          {'review': 'true'}, {'frames': ['bad']}):
             with self.subTest(metadata=metadata), self.assertRaises(surface_map.ModelError):
                 surface_map.make_entry('editor.undo', 'mint-cinnamon-x11', 'deb', **metadata)
