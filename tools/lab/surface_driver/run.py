@@ -24,6 +24,7 @@ from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.receipts import stamp, write_receipts
 from tools.lab.surface_driver.target import Target
+from tools.lab import lab
 
 
 def discover(pattern, recipe_dir=None):
@@ -177,7 +178,7 @@ def main(argv=None):
         context.start_notifications()
         rows=run_recipes(context,recipes,environment,args.out,args.campaign,coverage)
         return 0 if all(r.functional=='passed' for r in rows) else 1
-    except (RecipeBlocked,ValueError,FileNotFoundError) as error:
+    except (RecipeBlocked,RecipeFailed,lab.LabError,ValueError,FileNotFoundError) as error:
         environment['blocked']=str(error)
         if target:
             try:
@@ -194,7 +195,10 @@ def main(argv=None):
         return 2
     finally:
         if target:
-            target.close()
+            cleanup=target.close()
+            if cleanup:
+                environment['cleanup_errors']=cleanup
+                write_receipts(args.out,environment,rows,args.campaign,coverage)
 
 
 if __name__=='__main__':

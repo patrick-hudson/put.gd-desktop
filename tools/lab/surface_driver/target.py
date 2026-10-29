@@ -187,10 +187,26 @@ class Target:
         return self._rfb
 
     def close(self):
+        errors=[]
         if self._rfb is not None:
-            self._rfb.close(); self._rfb = None
+            try:
+                self._rfb.close()
+            except OSError:
+                errors.append('VNC connection cleanup failed')
+            self._rfb = None
         if self.monitor_pid:
-            self.execute('kill '+str(self.monitor_pid)+' 2>/dev/null || true')
+            try:
+                self.execute('kill '+str(self.monitor_pid)+' 2>/dev/null || true')
+                self.monitor_pid=None
+            except RecipeBlocked:
+                errors.append('notification monitor cleanup unavailable')
         if self.started:
-            self.cli('ui.quit')
-            self.started = False
+            try:
+                result=self.cli('ui.quit')
+                if result['returncode']:
+                    errors.append('resident quit was rejected; private session retained')
+                else:
+                    self.started=False
+            except RecipeBlocked:
+                errors.append('resident quit transport unavailable; private session retained')
+        return errors

@@ -10,9 +10,13 @@ def opened(ctx):
         import json
         envelope=json.loads(reply['stdout'])
         return envelope['result'] if envelope.get('ok') else None
-    ctx.wait(ready,'editor opened',30)
-    ctx.call('editor.raise',{'id':identity})
-    ctx.view('editor.view',{'id':identity,'action':'inspect'})
+    try:
+        ctx.wait(ready,'editor opened',30)
+        ctx.call('editor.raise',{'id':identity})
+        ctx.view('editor.view',{'id':identity,'action':'inspect'})
+    except Exception:
+        ctx.call('editor.cancel',{'id':identity})
+        raise
     return identity
 
 

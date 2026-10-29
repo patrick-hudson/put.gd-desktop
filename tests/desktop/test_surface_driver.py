@@ -20,7 +20,10 @@ from tools.lab.surface_driver.receipts import write_receipts
 from tools.lab.surface_driver.run import discover, main, run_recipes, validate_recipes
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    Image=None
 
 
 class Profiles(unittest.TestCase):
@@ -102,6 +105,7 @@ class Running(unittest.TestCase):
         validate_recipes(discover('core_demo'))
         with self.assertRaises(ValueError):validate_recipes([Recipe(('not.real',),lambda c:None)])
 
+    @unittest.skipUnless(Image,'requires python3-pil')
     def test_runner_pass_fail_block_and_exact_schema(self):
         def good(ctx):ctx.expect(ctx.call('capabilities')['ready'],'resident ready')
         def bad(ctx):ctx.expect(False,'actual failure')
@@ -121,6 +125,7 @@ class Running(unittest.TestCase):
         for row in rows:
             self.assertEqual([f['label'] for f in row.frames],['before','after'])
 
+    @unittest.skipUnless(Image,'requires python3-pil')
     def test_visual_within_and_outside_tolerance(self):
         Image.new('RGB',(20,10),'white').save(self.path/'good.png')
         Image.new('RGB',(20,10),'black').save(self.path/'bad.png')
@@ -135,6 +140,7 @@ class Running(unittest.TestCase):
         self.assertIn(str(self.path/'bad.png'),rows[1].review_reason)
         self.assertIn(str(self.path/'frames'),rows[1].review_reason)
 
+    @unittest.skipUnless(Image,'requires python3-pil')
     def test_desktop_drawn_never_compares(self):
         self.ctx.begin(Recipe(('tray.tooltip',),lambda c:None,desktop_drawn=True))
         self.ctx.frame('tray',reference='does-not-exist')
@@ -147,6 +153,7 @@ class Running(unittest.TestCase):
         self.ctx.profile['at_spi']['available']=False
         with self.assertRaises(RecipeBlocked):self.ctx.accessible({})
 
+    @unittest.skipUnless(Image,'requires python3-pil')
     def test_missing_reference_requests_review(self):
         self.ctx.frame('missing',reference='unknown')
         self.assertTrue(self.ctx.reviews)
@@ -174,6 +181,7 @@ class Running(unittest.TestCase):
         self.assertEqual({r['desktop']:r['functional'] for r in entries},
                          {'mint-cinnamon-x11':'failed','ubuntu-gnome-x11':'passed'})
 
+    @unittest.skipUnless(Image,'requires python3-pil')
     def test_click_uses_catalog_and_releases_button(self):
         inv={'width':20,'height':10,'controls':[{'name':'upload','rect':[2,2,4,4]}]}
         (self.path/'test-editor.controls.json').write_text(json.dumps(inv))
@@ -192,6 +200,7 @@ class Running(unittest.TestCase):
         self.ctx.type_text('Ab!')
         self.assertEqual(sent,[['shift','a'],['b'],['shift','1']])
 
+    @unittest.skipUnless(Image,'requires python3-pil')
     def test_main_checks_identity_and_configures_local_output(self):
         target=FakeTarget();target.info={'id':'run-id','profile':'cinnamon-x11'};target.run=self.path
         target.start=lambda:None;target.close=lambda:None
@@ -214,6 +223,18 @@ class Running(unittest.TestCase):
         self.assertTrue(mutation['patch']['archive']['root'].startswith(target.root))
         self.assertTrue(mutation['patch']['archive']['keepUploads'])
         self.assertEqual(json.loads((self.path/'run/receipt.json').read_text())['environment']['observed_build']['gitCommit'],'abcdef')
+
+    def test_cleanup_attempts_quit_when_monitor_transport_fails(self):
+        target=Target.__new__(Target)
+        target._rfb=None;target.monitor_pid=123;target.started=True
+        def unavailable(*args,**kwargs):raise RecipeBlocked('lost monitor transport')
+        target.execute=unavailable
+        calls=[]
+        target.cli=lambda *args,**kwargs:calls.append(args) or {'returncode':0}
+        errors=target.close()
+        self.assertEqual(calls,[('ui.quit',)])
+        self.assertFalse(target.started)
+        self.assertEqual(errors,['notification monitor cleanup unavailable'])
 
     def test_notification_correlation(self):
         raw='''method call time=100.1 sender=:1.2 -> destination=org.freedesktop.Notifications serial=45 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
