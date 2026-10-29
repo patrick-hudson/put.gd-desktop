@@ -807,7 +807,7 @@ if(BUILD_TESTING)
   set_tests_properties(version_integration PROPERTIES TIMEOUT 30)
   add_executable(putgd-ui-catalog tests/gui/ui_catalog.cpp)
   target_include_directories(putgd-ui-catalog PRIVATE tests src)
-  target_link_libraries(putgd-ui-catalog PRIVATE putgd_ui_application putgd_editor_window putgd_app putgd_s3 Qt6::Test)
+  target_link_libraries(putgd-ui-catalog PRIVATE putgd_ui_application putgd_editor_window putgd_tray putgd_app putgd_s3 Qt6::Test)
   if(TARGET putgd-record)
     # The review window and control bar states (synthetic UI catalog states).
     target_sources(putgd-ui-catalog PRIVATE src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)

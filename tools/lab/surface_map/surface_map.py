@@ -41,7 +41,10 @@ FUNCTIONAL = ('passed', 'failed', 'blocked')
 VISUAL = ('frames', 'reviewed-ok', 'reviewed-wrong')
 PACKAGES = ('deb', 'rpm', 'appimage')
 # Synthetic captures putgd-ui-catalog draws only offscreen (tests/gui/ui_catalog.cpp).
-OFFSCREEN_ONLY_CAPTURES = {'00-tray-upload-status'}
+OFFSCREEN_ONLY_CAPTURES = {
+    '00-tray-upload-status', '00-tray-menu-idle', '00-tray-menu-uploading',
+    '00-tray-menu-proton-busy', '00-tray-output-submenu',
+}
 
 
 class ModelError(ValueError):
