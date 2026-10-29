@@ -8,6 +8,11 @@ from pathlib import Path
 import shlex
 import sys
 import unittest
+from unittest.mock import patch
+import tempfile
+import types
+import contextlib
+import io
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -305,6 +310,15 @@ class ReviewRecipes(unittest.TestCase):
         self.assertIn('solid mask leaked source pixels', review._MEDIA_CHECK)
         self.assertIn('frozen export', review._MEDIA_CHECK)
 
+    def test_cli_and_mcp_reply_envelopes(self):
+        for reply in ({'ok': True, 'result': {'state':'reviewing'}},
+                      {'structuredContent': {'ok':True,'result':{'state':'reviewing'}}},
+                      {'content':[{'type':'text','text':'{"ok":true,"result":{"state":"reviewing"}}'}]},
+                      {'returncode':0,'stdout':'{"ok":true,"result":{"state":"reviewing"}}'}):
+            self.assertEqual(review._reply(FakeContext(), reply)['state'], 'reviewing')
+        with self.assertRaises(RecipeFailed):
+            review._reply(FakeContext(), {'isError':True})
+
     def test_screen_coordinates_follow_live_geometry(self):
         ctx = FakeContext()
         state = ctx.call('recording.review')
@@ -335,6 +349,61 @@ class ReviewRecipes(unittest.TestCase):
         ctx = FakeContext()
         with self.assertRaisesRegex(RecipeBlocked, 'reversible decoder failure'):
             review.preview_error(ctx)
+
+
+class MediaOracle(unittest.TestCase):
+    """Run the actual target verifier with a bounded fake decoder, including failures."""
+
+    def check_media(self, *, duration=6, codec='vp9', export_frozen=False,
+                    leak=False, dark_source=False):
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / 'output.webm')
+            Path(path).write_bytes(b'media')
+            params = {'path': path, 'working': '/working.mkv', 'frozen': '/frozen.mkv',
+                      'duration': 6, 'codec': 'vp9', 'container': 'webm', 'trimStart': 0,
+                      'trimEnd': 6_000_000, 'canvas': [640,480],
+                      'masks': [{'kind':'solid','rect':[100,100,40,40],'start':0,'end':6_000_000}]}
+            def decoder(args, **kwargs):
+                if args[0] == 'ffprobe':
+                    data = json.dumps({'format': {'duration': str(duration), 'format_name':'matroska,webm'},
+                                       'streams':[{'codec_type':'video','codec_name':codec,'width':640,'height':480}]}).encode()
+                else:
+                    self.assertIn('-nostdin', args)
+                    source = args[args.index('-i')+1]
+                    if '-frames:v' in args:
+                        size = 34*34*3
+                        value = (0 if dark_source else 100) if source == '/working.mkv' else (80 if leak else 0)
+                        data = bytes([value])*size
+                    else:
+                        moving = source == '/working.mkv' or (source == path and not export_frozen)
+                        data = bytes([10])*6144 + bytes([30 if moving else 10])*6144
+                return types.SimpleNamespace(stdout=data, returncode=0)
+            with patch.object(sys, 'argv', ['verifier', json.dumps(params)]), \
+                 patch('subprocess.run', side_effect=decoder), contextlib.redirect_stdout(io.StringIO()):
+                exec(compile(review._MEDIA_CHECK, '<target verifier>', 'exec'), {})
+
+    def test_valid_decoded_mask_and_motion(self):
+        self.check_media()
+
+    def test_wrong_duration_rejected(self):
+        with self.assertRaises(AssertionError):
+            self.check_media(duration=9)
+
+    def test_wrong_codec_rejected(self):
+        with self.assertRaises(AssertionError):
+            self.check_media(codec='h264')
+
+    def test_frozen_export_rejected(self):
+        with self.assertRaisesRegex(AssertionError, 'frozen export'):
+            self.check_media(export_frozen=True)
+
+    def test_leaking_mask_rejected(self):
+        with self.assertRaisesRegex(AssertionError, 'leaked source pixels'):
+            self.check_media(leak=True)
+
+    def test_black_source_is_not_mask_evidence(self):
+        with self.assertRaisesRegex(AssertionError, 'visible pattern'):
+            self.check_media(dark_source=True)
 
 
 if __name__ == '__main__':

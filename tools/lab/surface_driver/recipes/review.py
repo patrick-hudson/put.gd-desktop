@@ -159,6 +159,7 @@ def image_frames(path):
     fs, duration = [], 0
     for n in range(im.n_frames):
         im.seek(n)
+        im.load()
         duration += im.info.get('duration', 0) / 1000
         if n % max(1, im.n_frames//24) == 0:
             fs.append(im.convert('L').resize((96,64)).tobytes())
@@ -454,7 +455,7 @@ def upload(ctx):
     destination = ctx.fixture('destination')
     ctx.click('uploadDestinationMenu', window='review')
     # This menu describes the immutable destination snapshot, rather than selecting another one.
-    entries = ctx.accessible({'role': 'menu item', 'window': 'review'})
+    entries = ctx.accessible({'window': 'review'})
     ctx.expect(any(destination['label'] in e.get('name', '') for e in entries), 'destination menu names configured destination')
     ctx.keys('Esc')
     before = _inspect(ctx, rid)
@@ -491,6 +492,8 @@ def discard(ctx):
     op = ctx.wait(lambda: (s if (s := ctx.call('operation.inspect', {'id': rid}))['state'] == 'cancelled' else None),
                   'discard ends operation as cancelled')
     ctx.expect(not op.get('items'), 'discard published nothing')
+    ctx.view('ui.history')
+    _frame(ctx, 'after', '01-history-list', 'history')
 
 
 @recipe('review.window-close', needs=('recording',))
@@ -550,6 +553,13 @@ def _reply(ctx, result):
     if 'returncode' in result:
         ctx.expect(result['returncode'] == 0, 'production CLI command succeeds')
         result = json.loads(result['stdout'])
+    ctx.expect(not result.get('isError'), 'MCP tool succeeds')
+    if result.get('structuredContent'):
+        result = result['structuredContent']
+    elif 'content' in result:
+        texts = [c['text'] for c in result['content'] if c.get('type') == 'text']
+        ctx.expect(bool(texts), 'MCP JSON tool returns text or structured content')
+        result = json.loads(texts[0])
     ctx.expect(result.get('ok', True), 'recording command succeeds')
     return result.get('result', result)
 
