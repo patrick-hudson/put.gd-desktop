@@ -121,7 +121,7 @@ private:
  void refreshLoggingStatus();void clearLogs(std::function<void(Error,QJsonObject)> done);void choosePackageFolder(const QString& folder);
  QCheckBox* debugLogging_=nullptr;QLabel *debugLoggingStatus_=nullptr,*logSummary_=nullptr,*loggingWarning_=nullptr,*uncleanExit_=nullptr;QPushButton* clearLogs_=nullptr;
  QPointer<QDialog> packageDialog_;
- void updateProtonAccountDisplay();bool applyProtonAccountResult(const QString&,const QJsonObject&);
+ void updateProtonAccountDisplay();void sizeProtonAccountButtons();bool applyProtonAccountResult(const QString&,const QJsonObject&);
  QString setupBlockedReason()const;bool admitSetup();
  void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void updateStoreButtons();void configurationChanged();
  // A control's own (provider) enabled state; setup in progress disables it on top.
