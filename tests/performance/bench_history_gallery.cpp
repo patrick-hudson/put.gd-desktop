@@ -3,6 +3,7 @@
 // gallery and times the switch, full repaints, scrolling and hover, and counts
 // viewport paints while idle. Synthetic measurement only; not desktop evidence.
 #include "fixtures/UiSessionFixture.h"
+#include "fixtures/Waits.h"
 #include "ui/UiApplicationController.h"
 #include "ui/MainWindow.h"
 #include <QApplication>
@@ -39,7 +40,7 @@ class PaintCounter final:public QObject {
 public:int paints=0;
 protected:bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Paint)++paints;return false;}
 };
-bool waitUntil(const std::function<bool()>& condition,int ms=8000){QElapsedTimer timer;timer.start();while(!condition()&&timer.elapsed()<ms)QTest::qWait(10);return condition();}
+bool waitUntil(const std::function<bool()>& condition,int ms=8000){return putgd::test::waitFor(condition,ms);}
 QImage capture(int index){
  QImage image(1920,1080,QImage::Format_RGB32);image.fill(QColor::fromHsv((index*37)%360,90,70));QPainter p(&image);
  p.setPen(Qt::white);QFont font;font.setPixelSize(64);p.setFont(font);p.drawText(image.rect(),Qt::AlignCenter,QString("Synthetic %1").arg(index));return image;
@@ -74,12 +75,12 @@ int main(int argc,char** argv){
  if(!window){qCritical("Main window did not open");return 2;}window->resize(1320,880);
  auto* list=window->findChild<QListView*>("historyList");if(!list||!waitUntil([&]{return list->model()->rowCount()==qMin(items,50);})){qCritical("Synthetic history did not load: %d rows",list?list->model()->rowCount():-1);return 2;}
  QCoreApplication::sendPostedEvents();window->repaint();const double listOpenMs=ms(open);
- QTest::qWait(500);
+ putgd::test::settle(500);
  PaintCounter counter;list->viewport()->installEventFilter(&counter);
  // Gallery switch: click, settle the posted layout, paint the next frame.
  QElapsedTimer t;t.start();window->findChild<QToolButton*>("historyGridMode")->click();QCoreApplication::sendPostedEvents();QCoreApplication::processEvents();window->repaint();const double gridSwitchMs=ms(t);
  // Previews load in the background; wait for them before steady-state timing.
- QTest::qWait(3000);const auto rssGallery=rssKb();
+ putgd::test::settle(3000);const auto rssGallery=rssKb();
  QList<double> repaint,scroll,hover;
  for(int round=0;round<rounds;++round){t.restart();list->viewport()->repaint();repaint.append(ms(t));}
  auto* bar=list->verticalScrollBar();
@@ -88,7 +89,7 @@ int main(int argc,char** argv){
  // Hover over cards in turn, as the pointer moving across the grid.
  for(int round=0;round<rounds;++round){const auto rect=list->visualRect(list->model()->index(round%qMin(6,list->model()->rowCount()),0));t.restart();QMouseEvent move(QEvent::MouseMove,QPointF(rect.center()),list->viewport()->mapToGlobal(QPointF(rect.center())),Qt::NoButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(list->viewport(),&move);QCoreApplication::sendPostedEvents();QCoreApplication::processEvents();list->viewport()->repaint();hover.append(ms(t));}
  // Idle with a card hovered: a settled view should not keep repainting.
- QTest::qWait(300);counter.paints=0;QElapsedTimer idle;idle.start();QTest::qWait(2000);const int idlePaints=counter.paints;const double idleMs=ms(idle);
+ putgd::test::settle(300);counter.paints=0;QElapsedTimer idle;idle.start();putgd::test::settle(2000);const int idlePaints=counter.paints;const double idleMs=ms(idle);
  const auto rssEnd=rssKb();
  const QJsonObject result{{"kind","synthetic-history-gallery-timing"},{"desktopAcceptance",false},{"qt",QString::fromLatin1(qVersion())},{"platform",QGuiApplication::platformName()},{"historyItems",items},{"rows",list->model()->rowCount()},{"rounds",rounds},
   {"listOpenMs",listOpenMs},{"gridSwitchMs",gridSwitchMs},{"repaintMs",summary(repaint)},{"scrollMs",summary(scroll)},{"hoverMs",summary(hover)},
@@ -96,6 +97,6 @@ int main(int argc,char** argv){
  QSaveFile out(args.at(1));if(!out.open(QIODevice::WriteOnly))return 2;out.write(QJsonDocument(result).toJson(QJsonDocument::Indented));if(!out.commit())return 2;
  std::fprintf(stdout,"%s\n",QJsonDocument(result).toJson(QJsonDocument::Compact).constData());std::fflush(stdout);
  // PUTGD_BENCH_HOLD_MS keeps the hovered gallery on screen for a window capture.
- if(const int hold=qEnvironmentVariableIntValue("PUTGD_BENCH_HOLD_MS");hold>0){window->raise();window->activateWindow();QTest::qWait(qMin(hold,120000));}
+ if(const int hold=qEnvironmentVariableIntValue("PUTGD_BENCH_HOLD_MS");hold>0){window->raise();window->activateWindow();putgd::test::settle(qMin(hold,120000));}
  return 0;
 }
