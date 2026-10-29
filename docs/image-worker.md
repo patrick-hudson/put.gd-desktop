@@ -2,7 +2,7 @@
 
 This contract describes implementation and repeatable checks. Desktop feature parity and memory acceptance require the exact current build on the supported compositor; host tests alone do not establish either.
 
-`putgd-ui --image-job` initializes the native `QApplication` and private parent pipes, then branches before VisualStyle, resident/session communication, configuration, providers, credentials, or windows. It uses the existing `UiControl` transport. The executable is the installed/build sibling of the calling binary; tests may explicitly supply a helper path and a shorter deadline through the `ImageJob` constructor. Production reads no helper-path or fault-mode environment override.
+`putgd-ui --image-job` initializes the native `QApplication` and private parent pipes, then branches before the app style (`putgd::Ui`), resident/session communication, configuration, providers, credentials, or windows. It uses the existing `UiControl` transport. The executable is the installed/build sibling of the calling binary; tests may explicitly supply a helper path and a shorter deadline through the `ImageJob` constructor. Production reads no helper-path or fault-mode environment override.
 
 The Core caller is synchronous and belongs on an acquisition/background worker. Discovery returns the Qt-supported MIME list in its original order, including aliases and duplicates. Decode returns a `QImage`, using explicit PNG decoding in the parent after the GUI child has converted the input. Preview returns PNG bytes with the existing 256×256 aspect-preserving smooth scaling, including upscaling. The original-image pixel admission limit does not incorrectly limit the resulting thumbnail pixel count.
 

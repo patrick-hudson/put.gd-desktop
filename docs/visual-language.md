@@ -1,6 +1,6 @@
-# Graphite visual language
+# put.gd visual language
 
-Graphite is put.gd's desktop visual language: warm charcoal surfaces, neutral
+This is put.gd's desktop visual language: warm charcoal surfaces, neutral
 primary buttons, a restrained amber accent, and compact controls around the
 user's content. Dark mode is the primary design target. Light mode uses the same
 hierarchy and geometry with a complete warm off-white palette.
@@ -18,16 +18,18 @@ Use the shared components before adding window-specific painting:
 | Responsibility | Source |
 | --- | --- |
 | Semantic colors, theme notification and contrast calculation | `src/ui/Theme.h`, `Theme.cpp` |
-| Control painting, geometry, type, surfaces and navigation | `src/ui/Graphite.h`, `Graphite.cpp` |
+| Control painting, geometry, type, surfaces, navigation, visual roles, help, icons and live scheme propagation (`putgd::Ui`) | `src/ui/Ui.h`, `Ui.cpp` |
+| Window theme entry point, `Ui::styleWindow` (needs the bundled fonts, so it lives in `putgd_ui`) | `src/ui/UiWindow.cpp` |
 | Bundled IBM Plex Sans and Mono registration | `src/ui/Fonts.h`, `Fonts.cpp` |
-| Existing visual roles, help, icons and live scheme propagation | `src/ui/VisualStyle.h`, `VisualStyle.cpp` |
-| Window theme entry point | `src/ui/RedesignTheme.h`, `RedesignTheme.cpp` |
 | Action glyphs | `src/ui/IconArt.h` |
+| Synthetic screens of every window state | `putgd-ui-catalog` (`tests/gui/ui_catalog.cpp`) |
 
-`Graphite::Style` is a `QProxyStyle` over Fusion. It paints standard controls
-without an application stylesheet. Keep the existing `VisualStyle` and
-`RedesignTheme` entry points so late-created windows and hidden controls follow
-theme changes. Use IconArt for actions and the shared chrome glyphs for window
+`Ui::Style` is a `QProxyStyle` over Fusion. It paints standard controls
+without an application stylesheet. Style hints set on widgets are dynamic
+properties with a `ui` prefix (`uiFlush`, `uiDensity`, …); a bare name would
+shadow real Qt properties such as `font`, `palette` and `margin`. Use
+`Ui::apply` for the application and `Ui::styleWindow` for each window so
+late-created windows and hidden controls follow theme changes. Use IconArt for actions and the shared chrome glyphs for window
 controls. Do not introduce a second icon family or local copies of color tokens.
 
 ## Color and type
@@ -72,7 +74,7 @@ keyboard and context-menu copying, and X11 selections retain the original text,
 including any original Unicode characters.
 
 Desktop text size and display pixel ratio are separate concerns. Use
-`Graphite::font` and `Graphite::scaled` for painted type and scalable geometry;
+`Ui::font` and `Ui::scaled` for painted type and scalable geometry;
 let Qt handle DPR. Installation must preserve an already enlarged application
 font. `PUTGD_TEXT_SCALE` is a test override, not a saved appearance preference.
 
@@ -152,7 +154,7 @@ Use the same action names in the command band, menus, help and shortcut settings
 
 Other image sources are **Edit clipboard image** and **Edit an image file…**.
 Choosing either must not start a region capture. Keep drag-and-drop, tray,
-keyboard, session, CLI and MCP paths working. A visual redesign does not create
+keyboard, session, CLI and MCP paths working. A visual change does not create
 a new upload-file pipeline or change an action ID.
 
 Use sentence case and the actual action instead of generic Yes, OK or Proceed.
@@ -224,7 +226,7 @@ theme changes. Check recording review's fit with its actual desktop decorations
 on each native session, while retaining the existing image-area share gates.
 Offscreen geometry alone cannot establish decorated desktop fit.
 
-Synthetic previews and widget tests establish design and widget behavior only.
+The synthetic UI catalog and widget tests establish design and widget behavior only.
 Production acceptance needs the exact source/build on the declared desktops,
 saved visuals, functional and memory evidence, and cleanup receipts under the
 [acceptance matrix](acceptance-matrix.md) and [remote builder rules](remote-builders.md).
@@ -238,3 +240,8 @@ measurements and remaining limitations for code PR #596.
 
 The previous blue design notes remain in [design.md](design.md); the earlier
 redesign experiment remains [a historical record](ui-redesign-experiment.md).
+Those records, the 2026-10-26 receipts and other dated evidence keep the names
+they were written with: Graphite, `Graphite.h`, `VisualStyle`, `RedesignTheme`
+and `putgd-redesign-preview` became `putgd::Ui` (`Ui.h`), `Ui::styleWindow` and
+`putgd-ui-catalog` on 2026-10-29. `tests/ci/test_ui_names.py` keeps the retired
+names out of code.

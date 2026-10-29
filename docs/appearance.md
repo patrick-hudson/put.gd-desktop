@@ -24,9 +24,9 @@ CLI and MCP patches apply through the accepted revision, as before (#237).
 
 The switch replaces no stylesheet. Qt re-polishes every widget, several times
 over, when the application stylesheet changes: 1.3 to 1.5 s with History and
-Settings open. So the application and redesign stylesheets are set once and
+Settings open. So the application and window stylesheets are set once and
 hold both schemes' rules, each scoped to the `themeScheme` property that
-every widget carries (`VisualStyle::schemeScoped`, `VisualStyle::followScheme`).
+every widget carries (`Ui::schemeScoped`, `Ui::followScheme`).
 A switch sets the palettes and re-polishes only the visible widgets; a widget
 hidden at the switch catches up just before it is shown. A pick repaints every
 open window in 38 ms on d69 Plasma Wayland (Qt 6.8.2), 39 ms on f44 GNOME
@@ -67,16 +67,16 @@ One set of named colours (`src/ui/Theme.*`) has a dark and a light value:
 `text`, `textSecondary`, `textMuted`, `textDisabled`, `accent`,
 `accentHover`, `onAccent`, `link`, `success`, `warning`, `danger`,
 `dangerHover`, `successSurface`, `warningSurface`, `dangerSurface`, `icon`
-and `iconSecondary`. The redesign stylesheet, the application stylesheet and
+and `iconSecondary`. The window stylesheet, the application stylesheet and
 the editor's additions are templates with `%token%` placeholders; custom
 painting (History rows, the editor canvas, drag images) reads the tokens when
-it paints; IconArt glyphs set through `VisualStyle::icon(name)` redraw in the
+it paints; IconArt glyphs set through `Ui::icon(name)` redraw in the
 new scheme; the check, radio, chevron and spin box step (#233) images are painted from the
 tokens into a private temporary folder. A checked, disabled check box keeps the
 `selected` fill with a `textMuted` tick, and disabled radio buttons use a `border`
 ring with a `textMuted` dot, so a setting that is on never looks off (#300). The two former dark sets (the
-redesign's and the settings stylesheet's near-copies such as `#111318` for
-`#111317`) are now one, the redesign's.
+window stylesheet's and the settings stylesheet's near-copies such as `#111318` for
+`#111317`) are now one, the window stylesheet's.
 
 Every text token meets WCAG AA (4.5:1) on `bg`, `surface`, `surfaceRaised`
 and `selected` in both schemes, the accent (focus rings) and icon colour meet

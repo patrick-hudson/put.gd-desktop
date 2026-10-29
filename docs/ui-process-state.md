@@ -1,6 +1,6 @@
 # U11 C view state
 
-`validateUiState` is QtCore-only. Version 1 accepts only `schemaVersion: 1` and optional `settings`, `history`, legacy `activity`, and `main` objects. The redesign keeps legacy activity checkpoints readable, but opens History and Settings in one main window; the `activity` view is the same as History. It enforces the 8 MiB compact-JSON limit. State stays in resident RAM; this implementation writes no payload or state files.
+`validateUiState` is QtCore-only. Version 1 accepts only `schemaVersion: 1` and optional `settings`, `history`, legacy `activity`, and `main` objects. The interface keeps legacy activity checkpoints readable, but opens History and Settings in one main window; the `activity` view is the same as History. It enforces the 8 MiB compact-JSON limit. State stays in resident RAM; this implementation writes no payload or state files.
 
 The state also carries a derived, read-only `appearance` object: `theme` (the setting), `desktop` (`dark`, `light` or null), `desktopSource`, the resolved `scheme` and its `tokens` (name to `#rrggbb`). `ui.viewState` returns it unchanged; see [appearance](appearance.md).
 
@@ -40,4 +40,4 @@ The main window debounces finished field/toggle/selection changes by 400 ms, reu
 
 Transient autosave failures retain the draft and block automatic replay. The optional boolean `settings.autosaveBlocked` preserves that state across helper recreation; Retry saving is an explicit action. Validation errors may still allow independent valid fields to persist. A close with finished edits waiting for an accepted setup job keeps the helper open until those edits can flush.
 
-The redesign experiment also classifies the optional `draft.captureDefaults` object. Only scalar `destination`, `profileId` and `publicationMode` fields are allowed. Inherited action output is encoded in its existing destination field; credentials remain excluded from checkpoints.
+The validator also classifies the optional `draft.captureDefaults` object. Only scalar `destination`, `profileId` and `publicationMode` fields are allowed. Inherited action output is encoded in its existing destination field; credentials remain excluded from checkpoints.

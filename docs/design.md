@@ -1,8 +1,8 @@
 # put.gd visual design
 
-This is the historical design record preceding Graphite. Its blue palette,
+This is the historical design record preceding the current visual language. Its blue palette,
 setup flow and window structure describe earlier iterations. The current design
-contract is [Graphite visual language](visual-language.md); retain the evidence
+contract is the [visual language](visual-language.md); retain the evidence
 and verification boundaries below as historical context.
 
 The native Qt interface uses a neutral charcoal canvas and surfaces with a restrained blue accent. Blue marks the primary action and keyboard focus; red marks destructive actions and errors. Text uses the desktop's installed sans-serif font. There are no downloadable fonts, web views or raster decoration assets.
