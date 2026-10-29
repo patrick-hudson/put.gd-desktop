@@ -11,6 +11,7 @@ from contextlib import contextmanager
 import json
 import math
 import shlex
+import sys
 
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
 
@@ -46,6 +47,7 @@ def _session(ctx, opener=None):
     params = {'source': 'file', 'path': path}
     opened = _result(opener(params) if opener else ctx.call('editor.open', params))
     op = opened['operationId']
+    ctx.note('editor operationId=' + op)
     try:
         def ready():
             # call() raises for resident errors; readiness needs the raw CLI
@@ -65,9 +67,17 @@ def _session(ctx, opener=None):
     finally:
         # Submitted/cancelled operations have no live editor. Inspect the durable
         # operation first so cleanup cannot hide a failed assertion or cancel output.
-        operation = _result(ctx.call('operation.inspect', {'id': op}))
-        if operation['state'] == 'editing':
-            ctx.call('editor.cancel', {'id': op})
+        failed = sys.exc_info()[0] is not None
+        try:
+            operation = _result(ctx.call('operation.inspect', {'id': op}))
+            if operation['state'] == 'editing':
+                ctx.call('editor.cancel', {'id': op})
+                ctx.wait(lambda: _result(ctx.call('operation.inspect', {'id':op}))['state'] != 'editing', 'editor cleanup cancelled')
+        except Exception as error:
+            ctx.note('editor cleanup unavailable: ' + type(error).__name__)
+            if not failed:
+                raise RecipeFailed('editor cleanup did not complete') from error
+
 
 
 def _tool(ctx, op, name, key=None):
@@ -156,6 +166,7 @@ def text_entry(ctx):
         _tool(ctx, op, 'text', 'T')
         ctx.click_at(*_point(ctx, op, 20, 200))
         ctx.type_text('xtract')  # Tool letters remain literal while typing.
+        _frame(ctx, 'text-anchor', '26i-editor-text-anchor')
         ctx.keys('Return')
         state = _inspect(ctx, op)
         ctx.expect(len(state['shapes']) == 1 and state['shapes'][0]['text'] == 'xtract', 'typed tool letters committed as text')
@@ -166,7 +177,7 @@ def text_entry(ctx):
         ctx.type_text('cancelled draft')
         ctx.keys('Esc')
         ctx.expect(_inspect(ctx, op)['shapes'][0]['text'] == 'xtract', 'Escape discards text draft')
-        _frame(ctx, 'after', '26i-editor-text-anchor')
+        _frame(ctx, 'after', '26-editor-selected')
 
 
 @recipe('editor.undo', 'editor.redo', 'editor.place-mark', 'editor.remove-mark', needs=IMAGE)

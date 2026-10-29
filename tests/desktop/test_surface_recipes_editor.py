@@ -250,6 +250,30 @@ class EditorRecipes(unittest.TestCase):
         ctx.shell=lambda script: {'returncode':0,'stdout':'/private/real-user-folder','stderr':''}
         with self.assertRaisesRegex(RecipeFailed,'new private test directory'): editor._copy_path(ctx)
 
+    def test_cleanup_error_preserves_original_failed_assertion(self):
+        ctx=FakeContext(); ctx.bad_geometry=True
+        original=ctx.call
+        def call(method,params=None):
+            if method=='operation.inspect': raise RuntimeError('transport disappeared')
+            return original(method,params)
+        ctx.call=call
+        with self.assertRaisesRegex(RecipeFailed,'image geometry'): editor.redact(ctx)
+        self.assertIn(('note','editor cleanup unavailable: RuntimeError'),ctx.events)
+
+    def test_readiness_retries_editor_starting_envelope(self):
+        ctx=FakeContext(); original=ctx.cli
+        replies=[{'returncode':1,'stdout':json.dumps({'ok':False,'error':{'code':'editor_starting'}}),'stderr':''}]
+        def cli(method,params,**kwargs):
+            return replies.pop() if replies else original(method,params,**kwargs)
+        ctx.cli=cli
+        def wait(predicate,what,**kwargs):
+            value=predicate() or predicate()
+            ctx.expect(value,what)
+            return value
+        ctx.wait=wait
+        editor.redact(ctx)
+        self.assertEqual('cancelled',ctx.phase)
+
     def test_open_failure_not_mistaken_for_success(self):
         ctx=FakeContext()
         original=ctx.call
