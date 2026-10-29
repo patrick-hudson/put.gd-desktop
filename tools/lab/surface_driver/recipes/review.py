@@ -32,6 +32,9 @@ def _frame(ctx, label, reference=REFERENCE, window='review'):
 
 def _open(ctx):
     fixture = ctx.fixture('recording')
+    required = {'id', 'output_dir', 'working_path', 'frozen_path'}
+    if not isinstance(fixture, dict) or not required.issubset(fixture):
+        ctx.blocked('Core recording fixture must supply fresh id, output_dir, working_path and captured frozen_path (#672)', issue=672)
     rid = fixture['id']
     ctx.view('recording.review', {'id': rid, 'action': 'inspect'})
     info = _inspect(ctx, rid)
@@ -364,7 +367,7 @@ def masks(ctx):
     ctx.keys('Home', 'Return')
     ctx.expect(_state(ctx, rid)['selectedMaskId'] == mask['id'], 'mask chooser selects mask')
     _export(ctx, rid)
-    ctx.keys('Del')
+    ctx.keys('Delete')
     ctx.wait(lambda: not _inspect(ctx, rid)['edit']['masks'], 'Delete removes selected mask')
     _add(ctx, rid, centered=True)
     ctx.expect(len(_inspect(ctx, rid)['edit']['masks']) == 1, 'Return places centered mask')
