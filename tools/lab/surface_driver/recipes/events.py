@@ -59,6 +59,13 @@ def _notice(ctx: Context, text):
                     'notification: ' + text)
 
 
+def _failure_frame(ctx: Context):
+    try:
+        ctx.frame('failure-before-cleanup')
+    except Exception as error:
+        ctx.review('Failure frame unavailable: ' + type(error).__name__)
+
+
 def _operation(ctx: Context, identity):
     result = _result(ctx, 'operation.inspect', {'id': identity})
     ctx.expect(result.get('id') == identity, 'inspect retains the exact operation ID')
@@ -146,6 +153,9 @@ PYCONFIG'''
         ctx.wait(lambda: ((b := _result(ctx, 'ui.snapshot')['diagnostics']['shortcuts']['bindings']['clipboard']).get('requested') == shortcut
                           and b.get('bound') is True), 'native clipboard shortcut rebound')
         ctx.frame('after', window='settings')
+    except Exception:
+        _failure_frame(ctx)
+        raise
     finally:
         current = _result(ctx, 'settings.get')
         _result(ctx, 'settings.patch', {'expectedRevision': current['metadata']['observedRevision'],
@@ -195,6 +205,9 @@ PYKILL'''.replace('PID', str(pid))
         ctx.expect(_result(ctx, 'ui.snapshot')['residentEpoch'] == before['residentEpoch'], 'resident survives helper crash')
         _notice(ctx, 'window')
         ctx.frame('after-crash')
+    except Exception:
+        _failure_frame(ctx)
+        raise
     finally:
         ctx.view('ui.show', {'view': 'history'})
     restarted = _result(ctx, 'ui.snapshot')['diagnostics']['ui']['pid']
@@ -251,6 +264,9 @@ def network_stall(ctx: Context):
         _notice(ctx, 'failed')
         ctx.frame('after', window='history')
         ctx.review('Inspect the saved tray frame for the attention latch; resident tray state does not expose the latch.')
+    except Exception:
+        _failure_frame(ctx)
+        raise
     finally:
         if installed:
             _shell(ctx, f'sudo -n nft delete table inet {table}', 'remove only this recipe nft table')
@@ -410,17 +426,27 @@ def panel_theme_changed(ctx: Context):
     values = shlex.split(original)
     ctx.expect(len(values) == 1, 'one native theme name')
     target = spec['light'] if before['panel'] == 'dark' else spec['dark']
+    ctx.note('Panel theme original: ' + values[0] + '; target: ' + target + '; resident tint: ' + json.dumps(before, sort_keys=True))
     ctx.view('ui.show', {'view': 'history'})
     ctx.frame('before')
     try:
         _shell(ctx, shlex.join(write + [target]), 'change real desktop panel theme')
+        changed = shlex.split(_shell(ctx, shlex.join(read), 'read actual native panel theme after event').strip())
+        ctx.expect(changed == [target], 'native panel theme really changed')
+        ctx.note('Native panel theme after event: ' + changed[0])
         after = ctx.wait(lambda: (t if (t := _result(ctx, 'ui.snapshot')['diagnostics']['trayTint'])['panel'] != before['panel'] else None),
                          'resident observes native panel tone change')
         ctx.expect(after['color'] != before['color'], 'resident recolours tray glyph')
         ctx.frame('after')
         ctx.review('Review the saved native panel glyph; opening the desktop tray menu still needs a profile input target.')
+    except Exception:
+        _failure_frame(ctx)
+        raise
     finally:
         _shell(ctx, shlex.join(write + [values[0]]), 'restore original native panel theme')
+        restored = shlex.split(_shell(ctx, shlex.join(read), 'verify native theme restoration').strip())
+        ctx.expect(restored == values, 'native panel theme restored')
+        ctx.note('Native panel theme restored: ' + restored[0])
         ctx.wait(lambda: _result(ctx, 'ui.snapshot')['diagnostics']['trayTint'] == before, 'tray tone restored')
 
 def _fill_storage(ctx: Context, fixture_name):
@@ -508,6 +534,9 @@ def disk_full_import(ctx: Context):
         _notice(ctx, 'space')
         ctx.frame('after', window='history')
         ctx.review('Saved tray frame must prove the attention latch; no resident latch inspector exists yet.')
+    except Exception:
+        _failure_frame(ctx)
+        raise
     finally:
         _shell(ctx, cleanup, 'release only this recipe fill file')
 
@@ -523,6 +552,9 @@ def disk_full_record(ctx: Context):
                                               'format': 'mp4', 'fps': 15})
         _result(ctx, 'ui.snapshot')
         ctx.frame('after', window='history')
+    except Exception:
+        _failure_frame(ctx)
+        raise
     finally:
         _shell(ctx, cleanup, 'release only this recipe fill file')
 
@@ -559,6 +591,9 @@ def recording_budget_stop(ctx: Context):
         ctx.expect(not any(i.get('uploadStatus') in ('uploading', 'uploaded') for i in op['items']), 'private recording was not uploaded')
         _notice(ctx, 'stopped')
         ctx.frame('after', window='review')
+    except Exception:
+        _failure_frame(ctx)
+        raise
     finally:
         try:
             if identity:

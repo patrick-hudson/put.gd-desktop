@@ -3,12 +3,18 @@
     "clipboardWrite": "xclip -selection clipboard",
     "panelTheme": {
       "read": [
+        "env",
+        "-u",
+        "XDG_CONFIG_HOME",
         "gsettings",
         "get",
         "org.cinnamon.theme",
         "name"
       ],
       "write": [
+        "env",
+        "-u",
+        "XDG_CONFIG_HOME",
         "gsettings",
         "set",
         "org.cinnamon.theme",

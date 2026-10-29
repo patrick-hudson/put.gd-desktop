@@ -323,14 +323,18 @@ class EventRecipes(unittest.TestCase):
             return result
         ctx.call = call
         scripts = []
+        theme = ['Original Theme']
         def shell(script):
+            import shlex
             scripts.append(script)
-            return {'returncode': 0, 'stdout': "'Original Theme'" if ' get ' in script else '', 'stderr': ''}
+            if ' set ' in script: theme[0] = shlex.split(script)[-1]
+            return {'returncode': 0, 'stdout': repr(theme[0]) if ' get ' in script else '', 'stderr': ''}
         ctx.shell_hook = shell
         with self.assertRaisesRegex(RecipeFailed, 'tone change'):
             events.panel_theme_changed(ctx)
-        self.assertIn("'Original Theme'", scripts[-1])
-        self.assertIn("'Synthetic Light'", scripts[-2])
+        self.assertIn("'Original Theme'", scripts[-2])
+        self.assertIn("'Synthetic Light'", scripts[1])
+        self.assertTrue(any(a[:2] == ('frame', 'failure-before-cleanup') for a in ctx.actions))
 
     def test_budget_stop_does_not_send_user_stop_or_upload(self):
         ctx = Fake()
