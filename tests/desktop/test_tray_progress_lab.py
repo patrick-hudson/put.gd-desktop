@@ -99,6 +99,12 @@ class TrayProgressContracts(unittest.TestCase):
         empty['icons'][0]['opaqueColors'] = {'#a58656': 30}
         with self.assertRaisesRegex(tray.TrayProgressError, 'brand color'):
             tray.check_tooltip(empty, records, 's3', 42)
+        sliver = observation('Uploading: 0.02 MB of 8 MB (0%)')
+        sliver['icons'] = [{'width': 24, 'sha256': 's', 'opaqueColors': {tray.TRAY_TINTS['dark']['idle']: 128}},
+                           {'width': 72, 'sha256': 'l', 'opaqueColors': {tray.TRAY_TINTS['dark']['idle']: 1500,
+                                                                          tray.TRAY_TINTS['dark']['encoding']: 12}}]
+        records[0]['bytesTransferred'] = 20000
+        self.assertFalse(tray.check_tooltip(sliver, records, 's3', 42)['storageActive'])
         idle = observation('', tray.TRAY_TINTS['dark']['encoding'], tray.IDLE)
         with self.assertRaisesRegex(tray.TrayProgressError, 'progress fill'):
             tray.check_tooltip(idle, [], 's3', 42)
@@ -140,8 +146,10 @@ class TrayProgressContracts(unittest.TestCase):
                                    records, 'proton-drive', 42)
         self.assertTrue(green['storageActive'])
         self.assertTrue(green['counter'])
+        # One size idle-only and another fill-only share no colour.
         mixed = observation('Uploading', color='#d6d6d2')
-        mixed['icons'].append(observation('Uploading')['icons'][0])
+        mixed['icons'].append({'width': 48, 'height': 48, 'sha256': 'fill',
+                               'opaqueColors': {tray.TRAY_TINTS['dark']['encoding']: 400}})
         with self.assertRaises(tray.TrayProgressError):
             tray.check_tooltip(mixed, records, 'proton-drive', 42)
 
