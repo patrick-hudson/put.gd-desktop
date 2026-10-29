@@ -562,6 +562,12 @@ class TrayProgressContracts(unittest.TestCase):
                  call('Event', 'isvu', [30, 'clicked', {}, 0], kind='signal')]
         self.assertEqual(tray.menu_events(lines, ':1.5'), [('show', 0, None), ('event', 22, 'hovered'),
                          ('event', 21, 'hovered'), ('event', 22, 'clicked'), ('show', 0, None), ('show', 30, None)])
+        plasma = [call('AboutToShow', 'i', [0], destination='org.kde.StatusNotifierItem.putgd_x'),
+                  call('Event', 'isvu', [0, 'opened', {'type': 's', 'data': ''}, 0], destination='org.kde.StatusNotifierItem.putgd_x'),
+                  call('Event', 'isvu', [22, 'clicked', {}, 0], destination='org.kde.StatusNotifierItem.other')]
+        self.assertEqual(tray.menu_events(plasma, ':1.5'), [])
+        self.assertEqual(tray.menu_events(plasma, {':1.5', 'org.kde.StatusNotifierItem.putgd_x'}),
+                         [('show', 0, None), ('event', 0, 'opened')])
 
     def test_menu_monitor_follows_the_items_unique_owner(self):
         import json
@@ -578,7 +584,7 @@ class TrayProgressContracts(unittest.TestCase):
         replay.session = session
         with patch.object(tray.time, 'sleep'):
             monitor = replay.menu_monitor('org.kde.StatusNotifierItem-2210-1')
-        self.assertEqual((monitor[0], monitor[2]), (4242, ':1.163'))
+        self.assertEqual((monitor[0], monitor[2], monitor[3]), (4242, ':1.163', 'org.kde.StatusNotifierItem-2210-1'))
         self.assertIn("monitor org.kde.StatusNotifierItem-2210-1 >", calls[0])
         self.assertEqual(replay.menu_monitor_events(monitor), [('show', 0, None)])
 
@@ -602,7 +608,34 @@ class TrayProgressContracts(unittest.TestCase):
                 patch.object(tray, 'locate_tinted_icon', return_value=None):
             with self.assertRaisesRegex(tray.VisibleMenuFailed, 'not near the supplied position'):
                 replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
-        pointer.assert_not_called()
+        # Only the park move away from the panel (Plasma tints a hovered icon); no click.
+        self.assertEqual([c.args[1:] for c in pointer.call_args_list], [(640, 400, 1280, 800)])
+
+    def test_menu_events_accept_the_well_known_item_name_too(self):
+        import json
+        calls = [json.dumps({'type': 'method_call', 'destination': name, 'interface': 'com.canonical.dbusmenu',
+                             'member': 'Event', 'payload': {'type': 'isvu', 'data': [0, 'opened', {}, 0]}})
+                 for name in ('org.kde.StatusNotifierItem.putgd_1', ':1.300', ':1.9')]
+        # Plasma addresses the well-known name, Cinnamon the unique owner.
+        self.assertEqual(tray.menu_events(calls, {':1.300', 'org.kde.StatusNotifierItem.putgd_1'}),
+                         [('event', 0, 'opened')] * 2)
+
+    def test_prime_open_opens_and_closes_once_before_the_counted_open(self):
+        from unittest.mock import Mock, patch
+        shown = [('show', 0, None)]
+        replay = self.visible_replay([shown, shown, shown + [('event', 22, 'clicked')]],
+                                     profile={'tray_menu': {'primeOpen': True}})
+        order = Mock()
+        with patch.object(tray.lab, 'pointer', order.pointer), patch.object(tray.lab, 'key', order.key), \
+                patch.object(tray.time, 'sleep'), patch.object(tray, 'locate_tinted_icon', return_value=(1158, 15)):
+            attempt = replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+        self.assertTrue(attempt['primedOpen'])
+        steps = [(name, call.args[1:3] if name == 'pointer' else call.args[1]) + tuple(call.args[5:])
+                 for name, call in ((c[0], c) for c in order.mock_calls)]
+        self.assertEqual(steps[:6], [('pointer', (640, 400)), ('pointer', (1158, 15)), ('pointer', (1158, 15), True, 'right'),
+                                     ('pointer', (1158, 15), False, 'right'), ('key', ['esc']), ('pointer', (1158, 15))])
+        self.assertEqual([step[1] for step in steps if step[0] == 'key'][-3:], [['down'], ['down'], ['ret']])
+        self.assertIn('local-failure-menu-primed', [call.args[0] for call in replay.witness.call_args_list])
 
     def test_menu_presses_count_visible_top_level_rows(self):
         rows = [{'id': 3, 'label': 'Capture region'}, {'id': 22, 'label': 'Failed uploads (2)'}, {'id': 30, 'label': 'Quit put.gd'}]
@@ -637,8 +670,8 @@ class TrayProgressContracts(unittest.TestCase):
         self.assertEqual((attempt['status'], attempt['label'], attempt['downPresses']), ('passed', self.LOCAL, 2))
         self.assertTrue(attempt['hoverReported'])
         self.assertFalse(attempt['calibrated'])
-        self.assertEqual([c.args[1:3] for c in pointer.call_args_list], [(1124, 779)] * 3)
-        self.assertEqual([c.args[5:] for c in pointer.call_args_list], [(), (True, 'right'), (False, 'right')])
+        self.assertEqual([c.args[1:3] for c in pointer.call_args_list], [(640, 400)] + [(1124, 779)] * 3)
+        self.assertEqual([c.args[5:] for c in pointer.call_args_list], [(), (), (True, 'right'), (False, 'right')])
         self.assertEqual(attempt['iconAt'], (1124, 779))
         self.assertEqual([c.args[1] for c in key.call_args_list], [['down'], ['down'], ['ret']])
         replay.stop_menu_monitor.assert_called_once_with((41, '/tmp/tp-x/menu-monitor.jsonl', ':1.163'))

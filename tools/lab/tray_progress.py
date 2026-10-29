@@ -411,8 +411,11 @@ def menu_events(lines, service):
 
     Returns (member, item id, event) in arrival order: AboutToShow/
     AboutToShowGroup as ('show', id, None); Event and EventGroup entries as
-    ('event', id, name). Only calls addressed to the resident's unique name count.
+    ('event', id, name). Only calls addressed to the resident count: service is
+    its unique name or a collection of names it owns. Cinnamon addresses the
+    unique name, Plasma the item's well-known name.
     """
+    services = {service} if isinstance(service, str) else set(service)
     found = []
     for line in lines:
         try:
@@ -420,7 +423,7 @@ def menu_events(lines, service):
         except ValueError:
             continue
         if not isinstance(message, dict) or message.get('type') != 'method_call' or \
-                message.get('destination') != service or message.get('interface') != 'com.canonical.dbusmenu':
+                message.get('destination') not in services or message.get('interface') != 'com.canonical.dbusmenu':
             continue
         data = (message.get('payload') or {}).get('data') or []
         member = message.get('member')
@@ -799,7 +802,7 @@ class Replay:
         return value
 
     def menu_monitor(self, service):
-        """Record what the desktop's tray sends put.gd's menu; returns (pid, file, unique owner).
+        """Record what the desktop's tray sends put.gd's menu; returns (pid, file, unique owner, service).
 
         The SNI may be registered under a well-known name, while the tray
         addresses its menu calls to the resident's unique connection name.
@@ -814,15 +817,15 @@ class Replay:
         owner = json.loads(lines[0])['data'][0]
         require(isinstance(owner, str) and owner.startswith(':'), 'The tray item has no unique bus owner')
         time.sleep(.5)
-        return int(lines[-1]), path, owner
+        return int(lines[-1]), path, owner, service
 
     def menu_monitor_events(self, monitor):
         text = self.session('cat -- ' + shlex.quote(monitor[1]) + ' 2>/dev/null || true\n')
-        return menu_events(text.splitlines(), monitor[2])
+        return menu_events(text.splitlines(), {monitor[2], monitor[3]})
 
     def stop_menu_monitor(self, monitor):
         # Only the recorded monitor: its stdout must still be this run's file.
-        pid, path, _ = monitor
+        pid, path = monitor[:2]
         self.session(f'[ "$(readlink /proc/{pid}/fd/1 2>/dev/null)" = {shlex.quote(path)} ] && kill {pid} || true\n')
 
     def open_visibly(self, snapshot, item, label):
@@ -832,7 +835,7 @@ class Replay:
         exactly that item. Returns the attempt; raises VisibleMenuFailed when
         the desktop did not, after Escape closes whatever opened.
         """
-        settings = {'button': 'right', 'openSeconds': .8, 'firstRowSelected': False,
+        settings = {'button': 'right', 'openSeconds': .8, 'firstRowSelected': False, 'primeOpen': False,
                     **self.profile.get('tray_menu', {})}
         attempt = {'method': 'visible-menu', 'settings': settings, 'calibrated': 'tray_menu' in self.profile}
         self.result.setdefault('trayMenu', []).append(attempt)
@@ -846,11 +849,31 @@ class Replay:
         attempt['busOwner'] = monitor[2]
         try:
             x, y = self.args.tray_x, self.args.tray_y
+            # Plasma lightens the tray icon under the pointer (its active icon
+            # effect), and the previous hover witness left the pointer there, so
+            # the exact error tint would be missing. Park it away from the panel.
+            lab.pointer(self.run, self.width // 2, self.height // 2, self.width, self.height)
+            time.sleep(.8)
             before = self.witness(label + '-menu-before', hover=False)
             found = locate_tinted_icon(before, self.tints['error'], (x, y))
             if found is None:
                 raise VisibleMenuFailed('the latched tray icon is not near the supplied position')
             x, y = attempt['iconAt'] = found
+            if settings['primeOpen']:
+                # GNOME's AppIndicator applies a LayoutUpdated received while
+                # closed only when the menu next opens, and that open loses its
+                # keyboard focus. Open and Escape once so the counted open
+                # starts from the current layout; the attempt records it.
+                lab.pointer(self.run, x, y, self.width, self.height)
+                time.sleep(.3)
+                lab.pointer(self.run, x, y, self.width, self.height, True, settings['button'])
+                time.sleep(.05)
+                lab.pointer(self.run, x, y, self.width, self.height, False, settings['button'])
+                time.sleep(settings['openSeconds'])
+                self.witness(label + '-menu-primed', hover=False)
+                lab.key(self.run, ['esc'])
+                time.sleep(.5)
+                attempt['primedOpen'] = True
             lab.pointer(self.run, x, y, self.width, self.height)
             time.sleep(.3)
             lab.pointer(self.run, x, y, self.width, self.height, True, settings['button'])
@@ -1195,19 +1218,29 @@ print(json.dumps(results))
     def s3_public_bytes(self, operation):
         # Read original URLs inside guest memory through the production CLI, so
         # no link or account data is interpolated into SSH/process arguments.
-        script = """import hashlib,json,subprocess,urllib.request
+        script = """import hashlib,json,subprocess,urllib.error,urllib.request
 reply=json.loads(subprocess.check_output(['/usr/bin/putgd-cli','operation.inspect',json.dumps({'id':OPERATION})],text=True))
 assert reply['ok']
 results=[]
 for item in reply['result']['items']:
-    expected=item['artifact']['bytes']; received=0; digest=hashlib.sha256()
-    with urllib.request.urlopen(item['receipt']['directUrl'],timeout=30) as response:
-        while True:
-            chunk=response.read(1048576)
-            if not chunk:break
-            received+=len(chunk)
-            assert received<=expected
-            digest.update(chunk)
+    expected=item['artifact']['bytes']
+    # The lab's user-mode network sometimes resets a long download; only a
+    # reset restarts it, from zero. HTTP errors and wrong bytes still fail.
+    for attempt in range(3):
+        received=0; digest=hashlib.sha256()
+        try:
+            with urllib.request.urlopen(item['receipt']['directUrl'],timeout=30) as response:
+                while True:
+                    chunk=response.read(1048576)
+                    if not chunk:break
+                    received+=len(chunk)
+                    assert received<=expected
+                    digest.update(chunk)
+            break
+        except (ConnectionResetError, urllib.error.URLError) as error:
+            reset=isinstance(error, ConnectionResetError) or isinstance(getattr(error,'reason',None), ConnectionResetError)
+            if not reset or isinstance(error, urllib.error.HTTPError) or attempt == 2:
+                raise
     assert received==expected and digest.hexdigest()==item['artifact']['sha256']
     results.append({'bytes':received,'sha256':digest.hexdigest()})
 print(json.dumps(results))
