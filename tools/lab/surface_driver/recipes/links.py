@@ -27,6 +27,14 @@ def _guest(ctx):
         ctx.blocked('Boat links tests require a nested guest identity')
 
 
+def _upload_fixture(ctx, name):
+    upload = ctx.fixture(name)
+    link = _value(upload, 'link')
+    if not isinstance(link, str) or not link.startswith(('http://', 'https://')) or not _value(upload, 'name'):
+        ctx.blocked('Links need an HTTP upload fixture with a filename; a local-save row has no browser page', issue=691)
+    return upload
+
+
 def _expect(ctx, upload):
     return _value(upload, 'expect') or {
         'kind': 'proton' if ctx.destination == 'proton' else 's3' if ctx.destination == 's3' else 'local',
@@ -44,9 +52,12 @@ def _history(ctx, upload, details=True):
 
 def _accessible_click(ctx, query):
     nodes = ctx.wait(lambda: ctx.accessible(query), 'visible desktop control', timeout=10)
-    visible = [node for node in nodes if node.get('visible', True) and node.get('enabled', True)]
+    visible = [node for node in nodes if node.get('visible', True) and node.get('enabled', True)
+               and (node.get('bounds') or (node.get('rect') and node['rect'][2] > 0 and node['rect'][3] > 0))]
     ctx.expect(len(visible) == 1, 'one unambiguous visible desktop control')
     bounds = visible[0].get('bounds')
+    if bounds is None and visible[0].get('rect'):
+        bounds = dict(zip(('x', 'y', 'width', 'height'), visible[0]['rect']))
     if not isinstance(bounds, dict) or not all(key in bounds for key in ('x', 'y', 'width', 'height')):
         ctx.blocked('AT-SPI control needs screen bounds for real input')
     ctx.expect(bounds['width'] > 0 and bounds['height'] > 0, 'desktop control has positive bounds')
@@ -64,7 +75,7 @@ def _paste(ctx):
 def notification_open(ctx):
     _guest(ctx)
     with default_browser(ctx, 'firefox'):
-        upload = ctx.fixture('notification_upload')
+        upload = _upload_fixture(ctx, 'notification_upload')
         query = ctx.profile.get('links', {}).get('notification_query', {'name': 'Upload complete'})
         open_and_verify(ctx, lambda: _accessible_click(ctx, query), _expect(ctx, upload))
 
@@ -74,7 +85,7 @@ def notification_open(ctx):
 def notification_copy_result(ctx):
     _guest(ctx)
     with default_browser(ctx, 'firefox'):
-        upload = ctx.fixture('notification_upload')
+        upload = _upload_fixture(ctx, 'notification_upload')
         notices = ctx.wait(lambda: [n for n in ctx.notifications()
                                    if 'Link copied to the clipboard.' in n.get('body', '')],
                            'upload notification reports the link copied')
@@ -86,7 +97,7 @@ def notification_copy_result(ctx):
 @recipe('history.link-field', needs=('upload',), destinations=_DESTINATIONS, desktop_drawn=True)
 def history_link_field(ctx):
     _guest(ctx)
-    upload = ctx.fixture('upload')
+    upload = _upload_fixture(ctx, 'upload')
     with default_browser(ctx, 'firefox'):
         _history(ctx, upload)
         # The read-only field itself is selectable with actual keyboard input.
@@ -99,7 +110,7 @@ def history_link_field(ctx):
 @recipe('history.copy-link', needs=('upload',), destinations=_DESTINATIONS, desktop_drawn=True)
 def history_copy_link(ctx):
     _guest(ctx)
-    upload = ctx.fixture('upload')
+    upload = _upload_fixture(ctx, 'upload')
     with default_browser(ctx, 'firefox'):
         _history(ctx, upload)
         ctx.click('copyHistoryLink', window='history')
@@ -111,7 +122,7 @@ def history_copy_link(ctx):
         desktop_drawn=True, timeout=240)
 def history_open_link(ctx):
     _guest(ctx)
-    upload = ctx.fixture('upload')
+    upload = _upload_fixture(ctx, 'upload')
     with default_browser(ctx, 'firefox'):
         def inspector():
             _history(ctx, upload)

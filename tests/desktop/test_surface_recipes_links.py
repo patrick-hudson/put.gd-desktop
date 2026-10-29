@@ -69,6 +69,9 @@ class FakeContext(Context):
     def note(self, text):
         self.events.append(('note', text))
 
+    def review(self, reason):
+        self.events.append(('review', reason))
+
     def frame(self, label, window=None, reference=None):
         self.events.append(('frame', label, window))
         return Frame(label, label + '.png', window)
@@ -86,7 +89,7 @@ class BrowserContracts(unittest.TestCase):
             return {'restored': True}
         if action == 'observe':
             return {'url_host': '127.0.0.1', 'title': 'fixture.txt', 'matched': True}
-        return {'blank': True}
+        return {'blank': True, 'safe': True}
 
     def test_content_receipt_and_full_desktop(self):
         with patch.object(browser, '_remote', self.remote):
@@ -94,6 +97,7 @@ class BrowserContracts(unittest.TestCase):
                 receipt = browser.open_and_verify(self.context, lambda: self.context.events.append(('trigger',)),
                                                   self.context.upload['expect'])
         self.assertEqual(set(receipt), {'url_host', 'title', 'matched', 'frames'})
+        json.dumps(receipt)  # public helper result is directly serializable
         self.assertNotIn('private-token', repr(receipt) + repr(self.context.events))
         self.assertIn(('frame', 'browser-content', None), self.context.events)
         self.assertLess(self.context.events.index(('remote', 'blank')), self.context.events.index(('trigger',)))
@@ -111,6 +115,20 @@ class BrowserContracts(unittest.TestCase):
         self.assertEqual(sum(event == ('remote', 'blank') for event in self.context.events), 2)
         self.assertIn(('frame', 'browser-failure-safe-desktop', None), self.context.events)
         self.assertIn(('remote', 'restore'), self.context.events)
+
+    def test_failure_frame_withheld_when_another_browser_owns_foreground(self):
+        def remote(ctx, action, values):
+            if action == 'blank':
+                return {'blank': True, 'safe': False}
+            return self.remote(ctx, action, values)
+        def fail():
+            raise RecipeFailed('test failure')
+        with patch.object(browser, '_remote', remote):
+            with self.assertRaises(RecipeFailed):
+                with browser.default_browser(self.context):
+                    browser.open_and_verify(self.context, fail, self.context.upload['expect'])
+        self.assertFalse(any(event[0] == 'frame' for event in self.context.events))
+        self.assertTrue(any(event[0] == 'review' for event in self.context.events))
 
     def test_stale_or_mismatched_page_cannot_pass(self):
         def remote(ctx, action, values):
@@ -237,9 +255,20 @@ class MimeTransactions(unittest.TestCase):
             def read(path, *args, **kwargs):
                 return ' '.join(['0'] * 22) if str(path) == '/proc/999999999/stat' else real_read(path, *args, **kwargs)
             def fail(*args, **kwargs):
+                # GLib rejects a quoted program token in Exec, even though
+                # xdg-mime default exits zero. Exercise its actual parser.
+                try:
+                    from gi.repository import Gio
+                except ImportError:
+                    Gio = None
+                if Gio is not None:
+                    candidate = next(p for p in applications.glob('putgdsurface*.desktop'))
+                    self.assertIsNotNone(Gio.DesktopAppInfo.new_from_filename(str(candidate)))
                 mime.write_bytes(b'partially modified')
                 raise subprocess.CalledProcessError(1, 'xdg-mime')
-            with patch.object(browser.pwd, 'getpwuid', return_value=SimpleNamespace(pw_dir=str(home))), \
+            with patch.dict(browser.os.environ, {'XDG_CONFIG_HOME': str(home / 'isolated/config'),
+                                                 'XDG_DATA_HOME': str(home / 'isolated/data')}), \
+                 patch.object(browser.pwd, 'getpwuid', return_value=SimpleNamespace(pw_dir=str(home))), \
                  patch.object(browser.subprocess, 'Popen', return_value=process), \
                  patch.object(browser, '_Marionette') as protocol, \
                  patch.object(browser.subprocess, 'run', side_effect=fail), \
@@ -250,6 +279,41 @@ class MimeTransactions(unittest.TestCase):
             self.assertEqual(recorder.read_bytes(), b'never delete me')
             self.assertEqual(list(applications.iterdir()), [recorder])
             self.assertEqual(list((home / '.mozilla/firefox').iterdir()), [])
+
+    def test_normal_restore_covers_portal_and_isolated_app_mime_profiles(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            configs = [home / '.config', home / 'isolated/config']
+            originals = [b'# real portal\r\n', b'# isolated app\n']
+            for config, original in zip(configs, originals):
+                config.mkdir(parents=True)
+                (config / 'mimeapps.list').write_bytes(original)
+            process = SimpleNamespace(pid=999999999, poll=lambda: None)
+            real_read = Path.read_text
+            def read(path, *args, **kwargs):
+                return ' '.join(['0'] * 22) if str(path) == '/proc/999999999/stat' else real_read(path, *args, **kwargs)
+            calls = []
+            def mime(args, **kwargs):
+                config = Path(kwargs['env']['XDG_CONFIG_HOME'])
+                data = Path(kwargs['env']['XDG_DATA_HOME'])
+                desktop = next((data / 'applications').glob('putgdsurface*.desktop'))
+                calls.append((args[1], str(config)))
+                if args[1] == 'default':
+                    (config / 'mimeapps.list').write_bytes(b'changed by MIME setup')
+                return subprocess.CompletedProcess(args, 0, desktop.name + '\n', '')
+            with patch.dict(browser.os.environ, {'XDG_CONFIG_HOME': str(configs[1]),
+                                                 'XDG_DATA_HOME': str(home / 'isolated/data')}), \
+                 patch.object(browser.pwd, 'getpwuid', return_value=SimpleNamespace(pw_dir=str(home))), \
+                 patch.object(browser.subprocess, 'Popen', return_value=process), \
+                 patch.object(browser, '_Marionette'), \
+                 patch.object(browser.subprocess, 'run', side_effect=mime), \
+                 patch.object(Path, 'read_text', read):
+                state = browser._prepare({})
+                self.assertEqual(len(calls), 8)
+                self.assertTrue(browser._restore(state)['restored'])
+            for config, original in zip(configs, originals):
+                self.assertEqual((config / 'mimeapps.list').read_bytes(), original)
+            self.assertFalse(list(home.rglob('putgdsurface*.desktop')))
 
 
 class RecipeContracts(unittest.TestCase):
@@ -287,6 +351,21 @@ class RecipeContracts(unittest.TestCase):
             with self.assertRaises(RecipeBlocked):
                 links.history_open_link(ctx)
         self.assertFalse(ctx.events)
+
+    def test_core_local_save_fixture_blocks_before_browser_guard(self):
+        ctx = FakeContext()
+        ctx.upload = {'history_id': 'local-save', 'link': ''}
+        with patch.object(links, 'default_browser') as guard:
+            with self.assertRaises(RecipeBlocked) as result:
+                links.history_copy_link(ctx)
+            self.assertEqual(result.exception.issue, 691)
+            guard.assert_not_called()
+
+    def test_core_at_spi_rect_is_used_for_real_input(self):
+        ctx = FakeContext()
+        with patch.object(ctx, 'accessible', return_value=[{'rect': [5, 10, 30, 20]}]):
+            links._accessible_click(ctx, {'name': 'Open in browser'})
+        self.assertIn(('click_at', 20, 20), ctx.events)
 
     def test_ambiguous_accessibility_is_not_clicked(self):
         ctx = FakeContext()

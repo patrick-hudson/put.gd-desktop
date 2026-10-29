@@ -6,13 +6,14 @@ The temporary handler launches Firefox itself; it never records URL arguments.
 Profile fragments may set ``browser.command`` (argv, e.g. snap run firefox),
 ``browser.profile_root`` (snap's ~/snap/firefox/common), and real
 ``browser.config_home``/``browser.data_home`` when they differ from ~/.config
-and ~/.local/share. Context.shell's isolated XDG directories are deliberately
-not used for MIME lookup: the desktop portal reads the real user's defaults.
+and ~/.local/share. The portal's real defaults and Context.shell's isolated
+XDG defaults are both guarded, covering portal and launcher fallback dispatch.
 """
 from __future__ import annotations
 
 import base64
 from contextlib import contextmanager
+from dataclasses import asdict
 import hashlib
 import json
 import os
@@ -95,7 +96,7 @@ def open_and_verify(ctx, trigger, expect):
         result = ctx.wait(lambda: _remote(ctx, 'observe', {**state, 'expect': expect}),
                           'default Firefox loaded the expected page content', timeout=45)
         ctx.expect(result.get('matched'), 'real Firefox URL, title and page content match')
-        frames.append(ctx.frame('browser-content', window=None))
+        frames.append(asdict(ctx.frame('browser-content', window=None)))
         receipt = {key: result[key] for key in ('url_host', 'title', 'matched')}
         receipt['frames'] = frames
         ctx.note(json.dumps({key: receipt[key] for key in ('url_host', 'title', 'matched')}))
@@ -103,8 +104,12 @@ def open_and_verify(ctx, trigger, expect):
     except BaseException:
         # Kiosk has no address bar. Blank the page before retaining failure
         # evidence, since error pages may echo a token-bearing request URL.
-        _remote(ctx, 'blank', state)
-        frames.append(ctx.frame('browser-failure-safe-desktop', window=None))
+        safe = _remote(ctx, 'blank', state)
+        if safe.get('safe'):
+            frames.append(asdict(ctx.frame('browser-failure-safe-desktop', window=None)))
+        else:
+            ctx.review('Failure frame withheld: private blank kiosk did not own the foreground; '
+                       'core needs a redacted full-desktop failure frame')
         raise
 
 
@@ -193,7 +198,8 @@ const content = e.kind==='proton' ? text.includes(e.name) && (media || download)
 const hostOK = e.url_host ? u.hostname===e.url_host :
                e.kind==='proton' ? /(^|\.)proton\.(me|ch)$/.test(u.hostname) : true;
 const matched = ['http:','https:'].includes(u.protocol) && hostOK && named &&
-  title.length>0 && document.readyState==='complete' && status<400 && !error &&
+  title.length>0 && document.hasFocus() && innerWidth>=screen.width && innerHeight>=screen.height &&
+  document.readyState==='complete' && status<400 && !error &&
   content && (!e.preview || media || (e.kind==='proton' ? download : text.trim().length>0)) &&
   (!e.text || text.includes(e.text));
 // Keep only a title we can prove contains no URL path, fragment, or arbitrary
@@ -265,17 +271,23 @@ def _prepare(options):
     config = expand(options.get('config_home', str(home / '.config')))
     data = expand(options.get('data_home', str(home / '.local/share')))
     root = expand(options.get('profile_root', str(home / '.mozilla/firefox')))
-    for directory in (config, data / 'applications', root):
+    # Portal dispatch uses the real profile; gio/xdg-open fallback uses the
+    # app's private XDG profile. Guard both, with independent byte backups.
+    private = (Path(os.environ.get('XDG_CONFIG_HOME') or config),
+               Path(os.environ.get('XDG_DATA_HOME') or data))
+    profiles = list(dict.fromkeys([(config, data), private]))
+    for directory in {root, *(c for c, d in profiles), *(d / 'applications' for c, d in profiles)}:
         directory.mkdir(parents=True, exist_ok=True)
     command = options.get('command', ['firefox'])
     if not isinstance(command, list) or not command or not all(isinstance(x, str) for x in command):
         raise ValueError('browser.command must be argv')
-    backups = _snapshot(_mime_paths(config, data))
+    backups = _snapshot(sorted({path for c, d in profiles for path in _mime_paths(c, d)}))
     directory = Path(tempfile.mkdtemp(prefix='putgd-surface-', dir=root))
     os.chmod(directory, 0o700)
     token = directory.name.replace('-', '')
-    desktop = data / 'applications' / (token + '.desktop')
-    state = {'directory': str(directory), 'desktop': str(desktop),
+    desktops = list(dict.fromkeys(d / 'applications' / (token + '.desktop') for c, d in profiles))
+    desktop = desktops[0]
+    state = {'directory': str(directory), 'desktops': [str(p) for p in desktops],
              'backups': backups, 'pid': None}
     try:
         with socket.socket() as probe:
@@ -291,15 +303,21 @@ def _prepare(options):
                                                   for k, v in preferences.items()))
         env = _environment(config, data)
         env['MOZ_APP_REMOTINGNAME'] = token
-        # A unique remoting name prevents dispatch into an existing personal
-        # Firefox. Both the initial instance and the handler use this name.
+        # Both the initial instance and the handler use a unique remoting
+        # name. Page observation still fails closed if dispatch reaches a
+        # different instance (the bounded guest trials caught this case).
         argv = command + ['--profile', str(directory), '--kiosk']
-        desktop_argv = ['env', 'MOZ_APP_REMOTINGNAME=' + token] + argv + ['%u']
+        desktop_argv = ['MOZ_APP_REMOTINGNAME=' + token, 'XDG_CONFIG_HOME=' + str(config),
+                        'XDG_DATA_HOME=' + str(data)] + argv + ['%u']
         def desktop_quote(value):
             return '"' + value.replace('\\', '\\\\').replace('"', '\\"').replace('`', '\\`').replace('$', '\\$') + '"'
+        # Keep the executable token unquoted. GLib ignores handlers whose
+        # program token is quoted, although xdg-mime default reports success.
         desktop.write_text('[Desktop Entry]\nType=Application\nName=put.gd isolated Firefox\n'
-                           'Exec=' + ' '.join(desktop_quote(x) if x != '%u' else x for x in desktop_argv) +
+                           'Exec=/usr/bin/env ' + ' '.join(desktop_quote(x) if x != '%u' else x for x in desktop_argv) +
                            '\nTerminal=false\nMimeType=x-scheme-handler/http;x-scheme-handler/https;\n')
+        for alternate in desktops[1:]:
+            alternate.write_bytes(desktop.read_bytes())
         process = subprocess.Popen(argv + ['--marionette', 'about:blank'], env=env,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         state['pid'] = process.pid
@@ -315,13 +333,15 @@ def _prepare(options):
                 if process.poll() is not None or time.monotonic() >= deadline:
                     raise _TargetError('Private Firefox did not become ready') from None
                 time.sleep(.25)
-        for scheme in ('http', 'https'):
-            subprocess.run(['xdg-mime', 'default', desktop.name, 'x-scheme-handler/' + scheme],
-                           env=env, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
-            check = subprocess.run(['xdg-mime', 'query', 'default', 'x-scheme-handler/' + scheme],
-                                   env=env, capture_output=True, text=True, check=True, timeout=10)
-            if check.stdout.strip() != desktop.name:
-                raise _TargetError('Real MIME handler verification failed')
+        for profile_config, profile_data in profiles:
+            mime_env = _environment(profile_config, profile_data)
+            for scheme in ('http', 'https'):
+                subprocess.run(['xdg-mime', 'default', desktop.name, 'x-scheme-handler/' + scheme],
+                               env=mime_env, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+                check = subprocess.run(['xdg-mime', 'query', 'default', 'x-scheme-handler/' + scheme],
+                                       env=mime_env, capture_output=True, text=True, check=True, timeout=10)
+                if check.stdout.strip() != desktop.name:
+                    raise _TargetError('Real or isolated MIME handler verification failed')
         return {'directory': str(directory), 'port': state['port']}
     except BaseException:
         _restore(state)
@@ -346,7 +366,8 @@ def _restore(state):
                 time.sleep(.1)
             if process_stat.exists() and process_stat.read_text().split()[21] == state.get('pid_start'):
                 os.kill(pid, 9)
-    Path(state['desktop']).unlink(missing_ok=True)
+    for desktop in state['desktops']:
+        Path(desktop).unlink(missing_ok=True)
     shutil.rmtree(directory)
     return {'restored': True}
 
@@ -363,7 +384,9 @@ def _target(action, values):
             for handle in client.call('WebDriver:GetWindowHandles'):
                 client.call('WebDriver:SwitchToWindow', {'handle': handle})
                 client.call('WebDriver:Navigate', {'url': 'about:blank'})
-            return {'blank': True}
+            safe = client.script("return location.href==='about:blank' && document.hasFocus() && "
+                                 "innerWidth>=screen.width && innerHeight>=screen.height;")
+            return {'blank': True, 'safe': safe is True}
         if action == 'observe':
             for handle in client.call('WebDriver:GetWindowHandles'):
                 client.call('WebDriver:SwitchToWindow', {'handle': handle})
