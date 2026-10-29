@@ -194,6 +194,28 @@ class CandidateContracts(unittest.TestCase):
                 digest, path = line.split('  ')
                 self.assertEqual(candidate.sha256(output / path), digest)
 
+    def test_collection_has_its_own_reserved_deadline(self):
+        receipt = {}
+        with patch.object(candidate, 'run', return_value='') as run:
+            candidate.collect_artifacts(['scp', 'source', 'destination'], receipt, None)
+        run.assert_called_once_with(['scp', 'source', 'destination'], timeout=150)
+        self.assertIn('collectionSeconds', receipt)
+
+    def test_build_failure_remains_primary_when_collection_also_fails(self):
+        receipt = {}
+        with patch.object(candidate, 'run', side_effect=TimeoutError('copy failed')), \
+             self.assertRaisesRegex(RuntimeError, 'build failed'):
+            candidate.collect_artifacts(['scp'], receipt, RuntimeError('build failed'))
+        self.assertEqual(receipt['collectionError'], 'copy failed')
+        self.assertIn('collectionSeconds', receipt)
+
+    def test_collection_failure_after_successful_build_is_not_a_pass(self):
+        receipt = {}
+        with patch.object(candidate, 'run', side_effect=TimeoutError('copy failed')), \
+             self.assertRaisesRegex(TimeoutError, 'copy failed'):
+            candidate.collect_artifacts(['scp'], receipt, None)
+        self.assertEqual(receipt['collectionError'], 'copy failed')
+
     def test_failed_creation_after_created_event_still_deletes_owned_worker(self):
         with tempfile.TemporaryDirectory() as temporary:
             def create(argv, **kwargs):
