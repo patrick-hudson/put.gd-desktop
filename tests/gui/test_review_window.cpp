@@ -195,8 +195,7 @@ private slots:
         const auto geometry = interval->geometry();
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);
-            window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); putgd::test::settle(10);
-            QCOMPARE(interval->text(), QString("No mask selected"));
+            window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); PUTGD_COMPARE_STEADY(interval->text(), QString("No mask selected"),10);
             QCOMPARE(interval->geometry(), geometry);
             const auto image = interval->grab().toImage();
             int mutedInk = 0;
@@ -206,8 +205,7 @@ private slots:
                     && std::abs(image.pixelColor(x, y).blue() - Theme::current().textSecondary.blue()) < 12;
             QVERIFY(mutedInk > 0);
             for (const auto id : {"m-blur", "m-solid"}) {
-                window.drive({{"action", "selectMask"}, {"maskId", id}}); putgd::test::settle(10);
-                QCOMPARE(interval->geometry(), geometry);
+                window.drive({{"action", "selectMask"}, {"maskId", id}}); PUTGD_COMPARE_STEADY(interval->geometry(), geometry,10);
                 const int measured = interval->width();
                 interval->setFixedWidth(512);
                 const auto reference = interval->grab().toImage();
@@ -219,16 +217,13 @@ private slots:
         }
         auto* warning = window.findChild<QToolButton*>("reviewBlurChip");
         for (const int width : {728, 640, 1200}) {
-            window.resize(width, 720); putgd::test::settle(10);
-            QVERIFY(warning->isVisible());
+            window.resize(width, 720); PUTGD_VERIFY_STEADY(warning->isVisible(),10);
             QCOMPARE(warning->minimumSizeHint(), warning->sizeHint());
             QVERIFY(warning->width() >= warning->sizeHint().width());
             QCOMPARE(warning->height(), warning->sizeHint().height());
             const auto frame = window.findChild<FrameView*>()->geometry();
-            window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); putgd::test::settle(10);
-            QCOMPARE(window.findChild<FrameView*>()->geometry(), frame);
-            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}); putgd::test::settle(10);
-            QCOMPARE(window.findChild<FrameView*>()->geometry(), frame);
+            window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); PUTGD_COMPARE_STEADY(window.findChild<FrameView*>()->geometry(), frame,10);
+            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}); PUTGD_COMPARE_STEADY(window.findChild<FrameView*>()->geometry(), frame,10);
             QCOMPARE(trim->mapTo(&window, trim->rect().topRight()).x(), interval->mapTo(&window, interval->rect().topRight()).x());
             QCOMPARE(interval->mapTo(&window, interval->rect().topRight()).x(), upload->mapTo(&window, upload->rect().topRight()).x());
         }
@@ -420,13 +415,11 @@ private slots:
         auto* chip = window.findChild<QToolButton*>("reviewBlurChip"); QVERIFY(chip);
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);
-            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}); putgd::test::settle(10);
-            QVERIFY(chip->isEnabled());
+            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}); PUTGD_VERIFY_STEADY(chip->isEnabled(),10);
             const auto size = chip->sizeHint();
             const auto frame = window.findChild<FrameView*>()->geometry();
             const auto enabled = chip->grab().toImage();
-            window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}}); putgd::test::settle(10);
-            QVERIFY(chip->isEnabled());
+            window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}}); PUTGD_VERIFY_STEADY(chip->isEnabled(),10);
             QCOMPARE(chip->toolTip(), QString("Select a blur mask to use Redact"));
             QCOMPARE(chip->accessibleDescription(), chip->toolTip());
             QCOMPARE(chip->text(), QString("Blur may be reversible · Use Redact"));
@@ -442,12 +435,10 @@ private slots:
             QVERIFY(Theme::contrast(ink, palette.warningSurface) >= 4.5);
             const auto disabled = chip->grab().toImage();
             QVERIFY(disabled != enabled);
-            QTest::mouseMove(chip, chip->rect().center()); putgd::test::settle(10);
-            QCOMPARE(chip->grab().toImage(), disabled);
+            QTest::mouseMove(chip, chip->rect().center()); PUTGD_COMPARE_STEADY(chip->grab().toImage(), disabled,10);
             QSignalSpy proposals(&window, &ReviewWindow::editProposed);
             chip->click(); QCOMPARE(proposals.size(), 0);
-            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}); putgd::test::settle(10);
-            QVERIFY(chip->isEnabled());
+            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}); PUTGD_VERIFY_STEADY(chip->isEnabled(),10);
             QVERIFY(chip->toolTip() != QString("Select a blur mask to use Redact"));
             chip->click(); QCOMPARE(proposals.size(), 1);
             QCOMPARE(proposed(proposals)["maskId"].toString(), QString("m-blur"));
@@ -734,8 +725,8 @@ private slots:
         auto* combo = window.findChild<QComboBox*>("masks");
         auto* interval = window.findChild<QLabel*>("maskActiveInterval");
         auto* group = window.findChild<QWidget*>("maskControls");
-        const auto settle = [] { for (int i = 0; i < 3; ++i) QApplication::processEvents(); };
-        window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); settle();
+        const auto flushEvents = [] { for (int i = 0; i < 3; ++i) QApplication::processEvents(); };
+        window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); flushEvents();
         const auto geometry = frame->geometry(), image = frame->imageRect(), row = group->geometry();
         const int comboWidth = combo->width(), intervalWidth = interval->width();
         QVERIFY(group->isVisible()); QCOMPARE(combo->currentIndex(), -1); QCOMPARE(combo->placeholderText(), QString("Select a mask"));
@@ -743,16 +734,16 @@ private slots:
         auto* maskOptions = window.findChild<QToolButton*>("maskOptions");
         QVERIFY(!maskOptions->isEnabled()); QCOMPARE(maskOptions->toolTip(), QString("Select a mask first"));
         for (const auto id : {"m-blur", "m-solid"}) {
-            window.drive({{"action", "selectMask"}, {"maskId", id}}); settle();
+            window.drive({{"action", "selectMask"}, {"maskId", id}}); flushEvents();
             QCOMPARE(frame->geometry(), geometry); QCOMPARE(frame->imageRect(), image); QCOMPARE(group->geometry(), row);
             QCOMPARE(combo->width(), comboWidth); QCOMPARE(interval->width(), intervalWidth);
         }
         window.drive({{"action", "showMaskOptions"}});
-        window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); settle();
+        window.drive({{"action", "selectMask"}, {"maskId", QJsonValue(QJsonValue::Null)}}); flushEvents();
         QVERIFY(!maskOptions->menu()->isVisible());
         const auto m = twoMasks().masks.first();
         const QPoint point = image.topLeft() + QPoint(qRound(m.rect.center().x() * double(image.width()) / options().canvas.width()), qRound(m.rect.center().y() * double(image.height()) / options().canvas.height()));
-        QTest::mousePress(frame, Qt::LeftButton, {}, point); settle();
+        QTest::mousePress(frame, Qt::LeftButton, {}, point); flushEvents();
         QVERIFY(!window.inspect()["selectedMaskId"].isNull());
         QCOMPARE(frame->geometry(), geometry); QCOMPARE(frame->imageRect(), image); QCOMPARE(group->geometry(), row);
         QTest::mouseRelease(frame, Qt::LeftButton, {}, point);
@@ -1165,8 +1156,7 @@ private slots:
             output->resize(natural.size());
             auto* status = window.findChild<QLabel*>("playbackStatus");
             auto* separator = window.findChild<QLabel*>("reviewDraftSeparator");
-            window.drive({{"action", "seek"}, {"time", 0}}); putgd::test::settle(10);
-            QCOMPARE(status->width(), status->sizeHint().width());
+            window.drive({{"action", "seek"}, {"time", 0}}); PUTGD_COMPARE_STEADY(status->width(), status->sizeHint().width(),10);
             QCOMPARE(separator->mapTo(&window, QPoint()).x(), status->mapTo(&window, QPoint(status->width(), 0)).x());
         }
     }
@@ -1353,9 +1343,9 @@ private slots:
         auto edit = twoMasks(); edit.trimStart = 2000000; edit.trimEnd = 29000000;
         ReviewWindow window(o, config()); window.setEdit(edit); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
-        const auto settle = [&] { for (int i = 0; i < 3; ++i) { QApplication::processEvents(); QApplication::sendPostedEvents(); } };
+        const auto flushEvents = [&] { for (int i = 0; i < 3; ++i) { QApplication::processEvents(); QApplication::sendPostedEvents(); } };
         const auto check = [&](const QString& state) {
-            settle();
+            flushEvents();
             const auto where = [&](QWidget* w) { return QStringLiteral("(min %1x%2 hint %3x%4) ").arg(window.minimumWidth()).arg(window.minimumHeight()).arg(window.minimumSizeHint().width()).arg(window.minimumSizeHint().height()) + QStringLiteral("%1 %2 %3 at %4x%5: %6,%7 %8x%9").arg(state, QString::fromLatin1(w->metaObject()->className()), w->objectName() + "/" + w->accessibleName()).arg(window.width()).arg(window.height()).arg(w->mapTo(&window, QPoint()).x()).arg(w->mapTo(&window, QPoint()).y()).arg(w->width()).arg(w->height()); };
             // The frameless window's resize edges lie over its border by design.
             const auto edge = [&](QWidget* w) { return w->parentWidget() == &window && QList<Qt::CursorShape>{Qt::SizeHorCursor, Qt::SizeVerCursor, Qt::SizeFDiagCursor, Qt::SizeBDiagCursor}.contains(w->cursor().shape()); };
@@ -1373,7 +1363,7 @@ private slots:
             }
         };
         for (const bool minimum : {false, true}) {
-            if (minimum) { for (int i = 0; i < 3; ++i) { window.resize(window.minimumSizeHint()); settle(); } }
+            if (minimum) { for (int i = 0; i < 3; ++i) { window.resize(window.minimumSizeHint()); flushEvents(); } }
             const QString size = minimum ? QStringLiteral("minimum") : QStringLiteral("default");
             window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
             check(size + " steady");
@@ -1969,8 +1959,7 @@ private slots:
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         auto* title = window.findChild<Graphite::ElidedLabel*>("brandName");
         for (const int width : {1366, 720, 1060, 800, 1366}) {
-            window.resize(width, 720); putgd::test::settle(10);
-            QVERIFY(title->isHidden() || !title->elided());
+            window.resize(width, 720); PUTGD_VERIFY_STEADY(title->isHidden() || !title->elided(),10);
             QVERIFY(window.findChild<QWidget*>("reviewTransport")->isVisible());
             QCOMPARE(window.windowTitle(), QString("Review recording"));
         }
@@ -1981,8 +1970,7 @@ private slots:
         documentWindow.resize(680, 200); documentWindow.show(); putgd::test::settle(10);
         auto* document = documentHeader->findChild<Graphite::ElidedLabel*>("documentName");
         QVERIFY(document->isHidden());
-        documentHeader->setDocument("Clip"); putgd::test::settle(10);
-        QVERIFY(document->isVisible()); QVERIFY(!document->elided());
+        documentHeader->setDocument("Clip"); PUTGD_VERIFY_STEADY(document->isVisible(),10); QVERIFY(!document->elided());
         QVERIFY(header->height() >= 32);
     }
     void desktopDecorationsHideTheCompactHeader() {
@@ -2105,8 +2093,7 @@ private slots:
         QVERIFY(metadataRect.top() > summaryRect.bottom() || metadataRect.left() - summaryRect.right() - 1 >= Graphite::space(Graphite::Space::l));
         QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
         // Wide windows keep the rows on the lanes' gutter.
-        window.resize(1600, window.height()); putgd::test::settle(20);
-        QCOMPARE(trimName->width(), ReviewTimeline::gutterWidth());
+        window.resize(1600, window.height()); PUTGD_COMPARE_STEADY(trimName->width(), ReviewTimeline::gutterWidth(),20);
         QCOMPARE(maskName->width(), ReviewTimeline::gutterWidth());
     }
     void largeTextStillFitsA1366x768Desktop() {
@@ -2319,8 +2306,7 @@ private slots:
         FrameView frame; frame.resize(640, 360); frame.setCanvas({640, 360});
         QImage image(640, 360, QImage::Format_RGB32); image.fill(QColor(120, 120, 120));
         auto m = mask("one", "solid", 1000000, 2000000); m.rect = QRect(100, 80, 40, 14);
-        frame.setFrame(image, 0); frame.setMasks({m}, "one"); frame.show(); putgd::test::settle(10);
-        QVERIFY(frame.accessibleDescription().contains("Inactive at playhead"));
+        frame.setFrame(image, 0); frame.setMasks({m}, "one"); frame.show(); PUTGD_VERIFY_STEADY(frame.accessibleDescription().contains("Inactive at playhead"),10);
         const auto shot = frame.grab().toImage();
         const QFontMetrics metrics(Graphite::font(Graphite::Type::maskBadge, true));
         const int width = metrics.horizontalAdvance(QStringLiteral("1 · inactive")) + 8;
@@ -2345,10 +2331,8 @@ private slots:
         putgd::test::settle(20);
         const auto fitted = window.size();
         const int minimum = window.minimumWidth();
-        window.resize(1342, fitted.height()); putgd::test::settle(20);
-        QVERIFY2(window.minimumWidth() <= minimum, qPrintable(QString("Minimum ratcheted from %1 to %2").arg(minimum).arg(window.minimumWidth())));
-        window.resize(fitted); putgd::test::settle(20);
-        QCOMPARE(window.size(), fitted);
+        window.resize(1342, fitted.height()); PUTGD_VERIFY_STEADY(window.minimumWidth() <= minimum,20);QVERIFY2(window.minimumWidth() <= minimum, qPrintable(QString("Minimum ratcheted from %1 to %2").arg(minimum).arg(window.minimumWidth())));
+        window.resize(fitted); PUTGD_COMPARE_STEADY(window.size(), fitted,20);
         QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
     }
     void compactReviewFrameShares_data() {

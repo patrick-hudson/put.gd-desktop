@@ -1,3 +1,4 @@
+#include "../fixtures/Waits.h"
 #include "ui/Graphite.h"
 #include "ui/VisualStyle.h"
 #include "ui/WindowButtons.h"
@@ -109,10 +110,10 @@ private slots:
         QVERIFY(buttons.layout().left.isEmpty());
         QSignalSpy changed(&buttons, &WindowButtons::changed);
         if (monitor) {
-            QTRY_COMPARE(buttons.layout().right, QStringList{"close"});
+            PUTGD_TRY_COMPARE(buttons.layout().right, QStringList{"close"});
             QVERIFY(buttons.layout().left.isEmpty());
         } else {
-            QTRY_COMPARE(buttons.layout().left, (QStringList{"close", "minimize", "maximize"}));
+            PUTGD_TRY_COMPARE(buttons.layout().left, (QStringList{"close", "minimize", "maximize"}));
             QVERIFY(buttons.layout().right.isEmpty());
         }
         QVERIFY(!changed.isEmpty());
@@ -133,14 +134,13 @@ private slots:
         QCOMPARE(buttons.layout().left, (QStringList{"close", "minimize", "maximize"}));
         QSignalSpy changed(&buttons, &WindowButtons::changed);
         QVERIFY(write(fixture("kwin-split.conf")));
-        QTRY_COMPARE(buttons.layout().right, (QStringList{"maximize", "minimize"}));
+        PUTGD_TRY_COMPARE(buttons.layout().right, (QStringList{"maximize", "minimize"}));
         QVERIFY(!changed.isEmpty());
         changed.clear();
         QVERIFY(write(fixture("kwin-split.conf")));
-        QTest::qWait(50);
-        QVERIFY(changed.isEmpty());
+        PUTGD_VERIFY_STEADY(changed.isEmpty(),50);
         QVERIFY(write(fixture("kwin-left.conf")));
-        QTRY_VERIFY(buttons.layout().right.isEmpty());
+        PUTGD_TRY_VERIFY(buttons.layout().right.isEmpty());
 #endif
     }
 };

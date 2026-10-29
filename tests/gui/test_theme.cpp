@@ -122,7 +122,7 @@ private slots:
     void chromeTargetsAndTitleFitFollowTextSize() {
         const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);Graphite::WindowHeader::setCustomFrameOverride(0);});Graphite::WindowHeader::setCustomFrameOverride(1);
         QVERIFY(qApp->style()->pixelMetric(QStyle::PM_ScrollBarExtent)>=12);QCOMPARE(qApp->style()->pixelMetric(QStyle::PM_SplitterWidth),8);auto enlarged=original;enlarged.setPixelSize(21);qApp->setFont(enlarged);QVERIFY(qApp->style()->pixelMetric(QStyle::PM_ScrollBarExtent)>=16);
-        QWidget window;QVBoxLayout layout(&window);layout.setContentsMargins(0,0,0,0);auto* header=Graphite::WindowHeader::install(&window,&layout,nullptr,Graphite::WindowHeader::Density::Compact);header->setDocument("Review recording");auto* state=new QLabel("Not uploaded");header->addTrailing(state);window.resize(680,200);window.show();putgd::test::settle(20);auto* title=header->findChild<QLabel*>("documentName");QVERIFY(title);QVERIFY(title->width()>=title->fontMetrics().horizontalAdvance(title->text()));QEvent inactive(QEvent::WindowDeactivate);QApplication::sendEvent(&window,&inactive);QVERIFY(title->property("headerInactive").toBool());QVERIFY(header->findChild<QToolButton*>("windowClose")->isEnabled());QEvent active(QEvent::WindowActivate);QApplication::sendEvent(&window,&active);QVERIFY(!title->property("headerInactive").toBool());window.resize(1200,200);putgd::test::settle(20);QVERIFY(header->property("balancedTitle").toBool());
+        QWidget window;QVBoxLayout layout(&window);layout.setContentsMargins(0,0,0,0);auto* header=Graphite::WindowHeader::install(&window,&layout,nullptr,Graphite::WindowHeader::Density::Compact);header->setDocument("Review recording");auto* state=new QLabel("Not uploaded");header->addTrailing(state);window.resize(680,200);window.show();putgd::test::settle(20);auto* title=header->findChild<QLabel*>("documentName");QVERIFY(title);QVERIFY(title->width()>=title->fontMetrics().horizontalAdvance(title->text()));QEvent inactive(QEvent::WindowDeactivate);QApplication::sendEvent(&window,&inactive);QVERIFY(title->property("headerInactive").toBool());QVERIFY(header->findChild<QToolButton*>("windowClose")->isEnabled());QEvent active(QEvent::WindowActivate);QApplication::sendEvent(&window,&active);QVERIFY(!title->property("headerInactive").toBool());window.resize(1200,200);PUTGD_VERIFY_STEADY(header->property("balancedTitle").toBool(),20);
     }
     void chromeButtonsLeaveRoomAroundScaledGlyphs() {
         const auto original = qApp->font();
@@ -153,8 +153,7 @@ private slots:
     void warningTextAndNeutralSelectionFollowThePalette() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);const auto& c=Theme::current();
-            std::unique_ptr<QLabel> warning(Graphite::warningLabel("Warning: Blur is a visual effect."));warning->resize(320,72);warning->show();putgd::test::settle(10);
-            QCOMPARE(warning->palette().color(QPalette::WindowText),c.textSecondary);QVERIFY(warning->contentsMargins().left()>=Graphite::scaled(Graphite::Metric::icon));
+            std::unique_ptr<QLabel> warning(Graphite::warningLabel("Warning: Blur is a visual effect."));warning->resize(320,72);warning->show();PUTGD_COMPARE_STEADY(warning->palette().color(QPalette::WindowText),c.textSecondary,10);QVERIFY(warning->contentsMargins().left()>=Graphite::scaled(Graphite::Metric::icon));
             const auto image=warning->grab().toImage();int amber=0;for(int y=0;y<image.height();++y)for(int x=0;x<warning->contentsMargins().left();++x){const auto pixel=image.pixelColor(x,y);if(pixel.red()-pixel.blue()>20&&Theme::contrast(pixel,c.bg)>=3.0)++amber;}QVERIFY(amber>0);
             VisualStyle::role(warning.get(),"secondary");QCOMPARE(warning->contentsMargins().left(),0);
             QImage neutral(80,40,QImage::Format_RGB32);neutral.fill(c.bg);{QPainter painter(&neutral);Graphite::paintSelection(painter,QRectF(0,0,80,40));}QCOMPARE(neutral.pixelColor(40,20),c.selected);QCOMPARE(neutral.pixelColor(40,0),c.selected);
@@ -267,7 +266,7 @@ private slots:
             QCOMPARE(unit->x(),spin->geometry().right()+1);QCOMPARE(unit->y(),spin->y());QCOMPARE(unit->height(),spin->height());
             spin->setFocus(Qt::TabFocusReason);spin->setValue(63);QTest::keyClick(spin,Qt::Key_Up);QCOMPARE(spin->value(),64);QTest::keyClick(spin,Qt::Key_Up);QCOMPARE(spin->value(),64);
             if (compact) QVERIFY(!radius.slider());
-            else {QCOMPARE(radius.slider()->value(),64);radius.slider()->setValue(2);QCOMPARE(spin->value(),2);radius.resize(180,radius.sizeHint().height());putgd::test::settle(10);QCOMPARE(radius.slider()->width(),radius.width());QVERIFY(radius.slider()->y()>spin->mapTo(&radius,spin->rect().bottomLeft()).y());}
+            else {QCOMPARE(radius.slider()->value(),64);radius.slider()->setValue(2);QCOMPARE(spin->value(),2);radius.resize(180,radius.sizeHint().height());PUTGD_COMPARE_STEADY(radius.slider()->width(),radius.width(),10);QVERIFY(radius.slider()->y()>spin->mapTo(&radius,spin->rect().bottomLeft()).y());}
         }
     }
     void sharedBlurWarningInvokesTheHostsRedactAction() {
@@ -359,9 +358,9 @@ private slots:
         QWidget page;auto* box=new QVBoxLayout(&page);auto* shortSection=new QWidget(&page);auto* longSection=new QWidget(&page);box->addWidget(shortSection);box->addWidget(longSection);
         auto* shortForm=new QFormLayout(shortSection);auto* longForm=new QFormLayout(longSection);auto* shortLabel=new QLabel("Folder");auto* longLabel=new QLabel("Very long credential identification");shortForm->addRow(shortLabel,new QLineEdit);longForm->addRow(longLabel,new QLineEdit);
         Graphite::alignForms(&page);page.resize(700,300);page.show();PUTGD_TRY_VERIFY(shortLabel->minimumWidth()>shortLabel->fontMetrics().horizontalAdvance(shortLabel->text()));
-        const int expanded=shortLabel->minimumWidth();QVERIFY(expanded+16<=Graphite::Metric::labelGutter);QVERIFY(longLabel->wordWrap());QVERIFY(longLabel->height()>=longLabel->heightForWidth(longLabel->width()));longSection->hide();putgd::test::settle(30);QCOMPARE(shortLabel->minimumWidth(),expanded);
-        longSection->show();PUTGD_TRY_COMPARE(shortLabel->minimumWidth(),expanded);longForm->setRowVisible(0,false);putgd::test::settle(30);QCOMPARE(shortLabel->minimumWidth(),expanded);
-        shortLabel->setText("Upload folder");putgd::test::settle(30);QCOMPARE(shortLabel->minimumWidth(),expanded);
+        const int expanded=shortLabel->minimumWidth();QVERIFY(expanded+16<=Graphite::Metric::labelGutter);QVERIFY(longLabel->wordWrap());QVERIFY(longLabel->height()>=longLabel->heightForWidth(longLabel->width()));longSection->hide();PUTGD_COMPARE_STEADY(shortLabel->minimumWidth(),expanded,30);
+        longSection->show();PUTGD_TRY_COMPARE(shortLabel->minimumWidth(),expanded);longForm->setRowVisible(0,false);PUTGD_COMPARE_STEADY(shortLabel->minimumWidth(),expanded,30);
+        shortLabel->setText("Upload folder");PUTGD_COMPARE_STEADY(shortLabel->minimumWidth(),expanded,30);
     }
     void iconButtonsNameThemselvesOnKeyboardFocus() {
         QWidget page;auto* row=new QHBoxLayout(&page);auto* first=Graphite::toolButton("First","images","quiet",&page);auto* icon=Graphite::toolButton("Edit an image","edit","quiet",&page);icon->setToolButtonStyle(Qt::ToolButtonIconOnly);icon->setToolTip("Edit an image");row->addWidget(first);row->addWidget(icon);page.show();page.activateWindow();first->setFocus();putgd::test::settle(10);
@@ -413,8 +412,7 @@ private slots:
         Graphite::SegmentTrack track;
         auto* list=Graphite::toolButton("List"); auto* gallery=Graphite::toolButton("Gallery");
         track.addButton(list); track.addButton(gallery); list->setChecked(true);
-        track.resize(track.sizeHint()); track.show(); putgd::test::settle(10);
-        QVERIFY(list->height()>=Graphite::Metric::iconTarget);
+        track.resize(track.sizeHint()); track.show(); PUTGD_VERIFY_STEADY(list->height()>=Graphite::Metric::iconTarget,10);
         QCOMPARE(track.height(),Graphite::scaled(Graphite::Metric::control));
         const auto shot=track.grab().toImage(); const int x=list->geometry().center().x();
         QVERIFY(shot.pixelColor(x,Graphite::Metric::segmentInset)!=Theme::current().selected);
@@ -731,8 +729,7 @@ private slots:
             auto font=original;font.setPixelSize(pixels);qApp->setFont(font);Theme::setScheme(scheme);
             QWidget page;auto* layout=new QVBoxLayout(&page);page.setProperty("inlineHelpRow",true);
             auto* control=new QLineEdit(&page);control->setObjectName("testHelp");layout->addWidget(control);
-            auto* help=VisualStyle::helpButton("Term","An explanation.",control,&page);layout->addWidget(help);page.show();putgd::test::settle(10);
-            QCOMPARE(help->size(),QSize(Graphite::scaled(24),Graphite::scaled(24)));
+            auto* help=VisualStyle::helpButton("Term","An explanation.",control,&page);layout->addWidget(help);page.show();PUTGD_COMPARE_STEADY(help->size(),QSize(Graphite::scaled(24),Graphite::scaled(24)),10);
             QCOMPARE(help->iconSize(),QSize(Graphite::scaled(14),Graphite::scaled(14)));
             const auto art=help->icon().pixmap(48,48).toImage();int ink=0;
             for(int y=0;y<art.height();++y)for(int x=0;x<art.width();++x){const auto pixel=art.pixelColor(x,y);if(pixel.alpha()<255)continue;QCOMPARE(pixel,Theme::current().textMuted);++ink;}

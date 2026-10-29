@@ -409,7 +409,7 @@ private slots:
   const auto inView=[&](QWidget* widget){return widget->isVisible()&&scroll->viewport()->rect().contains(QRect(widget->mapTo(scroll->viewport(),QPoint()),widget->size()));};
   PUTGD_TRY_VERIFY(window->isVisible());PUTGD_TRY_VERIFY(fixture.session.ready());PUTGD_TRY_VERIFY(inView(status));
   // The window manager fits it to the screen after it was shown, small enough that General scrolls.
-  for(int h=760;h>=window->minimumHeight();h-=40){window->resize(1280,h);PUTGD_TRY_COMPARE(window->height(),h);QTest::qWait(20);if(bar->maximum()>0)break;}QVERIFY(bar->maximum()>0);
+  for(int h=760;h>=window->minimumHeight();h-=40){window->resize(1280,h);PUTGD_TRY_COMPARE(window->height(),h);putgd::test::settle(20);if(bar->maximum()>0)break;}QVERIFY(bar->maximum()>0);
   PUTGD_TRY_VERIFY2(inView(status),"Updates stays in view after the window settles smaller");
   // The update arrives: its actions add rows to the group, still in view.
   update={{"supported",true},{"build",QJsonObject{{"version","0.1.1-nightly.886"},{"channel","nightly"},{"supported",true},{"packageTarget","appimage"}}},

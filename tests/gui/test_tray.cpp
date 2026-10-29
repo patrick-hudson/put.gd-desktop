@@ -305,7 +305,7 @@ private slots:
   provider->failUpload=true;provider->completions.takeFirst()();
   const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error,-2).pixmap(24,24).toImage();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  putgd::test::settle(400);QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
+  PUTGD_COMPARE_STEADY(tray->icon().pixmap(24,24).toImage(),red,400);
   QVERIFY(tray->contextMenu()->findChild<QAction*>("trayFailedUploads")->isVisible());
  }
  void preparingAndQueuedOperationsStayBlueBeforeStorageDispatch() {
@@ -452,7 +452,7 @@ private slots:
   source.acquisitions.takeFirst()({payload,preparation?Error{}:Error{"fixture_capture_failed","Synthetic capture failure",{}}});
   const auto red=VisualStyle::icon("tray",Theme::trayTints(false).error,-2).pixmap(24,24).toImage();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  putgd::test::settle(3400);QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);QVERIFY(tray->contextMenu()->findChild<QAction*>("trayFailedUploads")->isVisible());
+  PUTGD_COMPARE_STEADY(tray->icon().pixmap(24,24).toImage(),red,3400);QVERIFY(tray->contextMenu()->findChild<QAction*>("trayFailedUploads")->isVisible());
  }
 
  void errorRecoveryResumesAnotherActiveStorageRequest_data() {
@@ -488,7 +488,7 @@ private slots:
   // Progress from the successful request must not mask the error pulse.
   provider->requests.first().progress({"uploading",1,100});
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  putgd::test::settle(400);QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
+  PUTGD_COMPARE_STEADY(tray->icon().pixmap(24,24).toImage(),red,400);
   provider->completions.takeFirst()();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
  }
 
@@ -500,7 +500,7 @@ private slots:
   controller.notifyFailure({"fixture_failed","Synthetic first error",{}});QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
   putgd::test::settle(2100);controller.notifyFailure({"fixture_failed","Synthetic second error",{}});
   putgd::test::settle(1100);PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
-  putgd::test::settle(3100);QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);auto* failed=tray->contextMenu()->findChild<QAction*>("trayFailedUploads");QVERIFY(failed->isVisible());failed->trigger();QCOMPARE(views,QStringList{"history"});QVERIFY(!failed->isVisible());QCOMPARE(tray->icon().pixmap(24,24).toImage(),blue);
+  PUTGD_COMPARE_STEADY(tray->icon().pixmap(24,24).toImage(),red,3100);auto* failed=tray->contextMenu()->findChild<QAction*>("trayFailedUploads");QVERIFY(failed->isVisible());failed->trigger();QCOMPARE(views,QStringList{"history"});QVERIFY(!failed->isVisible());QCOMPARE(tray->icon().pixmap(24,24).toImage(),blue);
  }
 
  void delegatesEveryViewAndExplicitQuitWithoutConstructingViews() {
