@@ -178,6 +178,9 @@ class FakeContext(Context):
         elif control == 'dismissHistorySavedCopy':
             self.saved = False
         elif control == 'retryOperation':
+            self.operations['op-1']['state'] = 'completed'
+            if self.fault == 'retry-new-identity':
+                self.operations['op-1']['id'] = 'replacement-operation'
             self.upload = 'uploaded'
             self.local = {'status': 'saved', 'path': '/tmp/private/copy.png'}
         elif control == 'historyMoreActive':
@@ -359,6 +362,11 @@ class HistoryRecipeTests(unittest.TestCase):
     def test_wrong_row_menu_receipt_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'selected receipt'):
             history.key_menu(FakeContext(('history-row',), fault='wrong-details'))
+
+    def test_retry_replacing_operation_identity_fails(self):
+        ctx = FakeContext(('history_retry_upload', 'history_retry_local'), fault='retry-new-identity')
+        with self.assertRaisesRegex(RecipeFailed, 'preserves operation identity'):
+            history.retry_upload(ctx)
 
     def test_wrong_cancel_identity_never_confirms(self):
         ctx = FakeContext(('history_active_uploads',), fault='wrong-cancel-ids')

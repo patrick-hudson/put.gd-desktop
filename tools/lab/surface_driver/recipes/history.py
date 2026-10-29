@@ -330,7 +330,8 @@ def _retry(ctx, fixture, control, local=False):
         detail = _result(ctx.call('history.detail', {'id': row['id']}))
         return detail if (detail['local']['status'] == 'saved' if local else detail['uploadStatus'] == 'uploaded') else None
     detail = ctx.wait(saved, 'retry settles on original history ID', timeout=60)
-    after = _result(ctx.call('operation.inspect', {'id': row['operation_id']}))
+    after = ctx.wait(lambda: (op if (op := _result(ctx.call('operation.inspect', {'id': row['operation_id']})))['state'] == 'completed' else None),
+                     'retried operation completes', timeout=30)
     ctx.expect(after['id'] == before['id'], 'retry preserves operation identity')
     ctx.expect(detail['id'] == row['id'], 'retry preserves history identity')
     _frame(ctx, 'after' if local else 'upload-after')
