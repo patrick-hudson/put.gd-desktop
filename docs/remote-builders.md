@@ -127,7 +127,12 @@ the OpenSSL 4 dependency update is tracked in
 [#646](https://github.com/patrick-hudson/put.gd-desktop/issues/646). The container
 also has the GStreamer media plugins and Cisco OpenH264 needed by recording
 contracts. Native `openssl3-libs` was added persistently with `rpm-ostree` and
-applied live.
+applied live. On 2026-10-29, for VM guests, `qemu-system-x86-core`, `qemu-img`,
+`qemu-device-display-virtio-vga` and `dpkg` were layered the same way, after a
+`--dry-run` review: 24 packages in all, with no desktop, compositor, Mesa,
+PipeWire or portal package, and the base image unchanged.
+QEMU runs on the host, not in the Toolbx. The Toolbx doesn't share `/tmp`, where
+the Proton account lock lives. `lab.py install` needs `dpkg-deb`.
 
 The host is image-based: use DNF inside Toolbx for development packages and
 review `rpm-ostree` transactions for native runtime/package additions. Native
@@ -600,9 +605,14 @@ evidence is in [the 2026-10-23 lab sessions](evidence/2026-10-23-proton-lab-sess
 | --- | --- | --- | --- | --- |
 | f44 | `putgd/proton/lab-f44` | gnome-keyring `putgd lab` | extracted AppImage | Cinnamon, GNOME and KDE goldens |
 | d69 | `putgd/proton/lab-d69` | gnome-keyring `putgd lab` | extracted debian13 .deb (#518) | Cinnamon, GNOME and KDE goldens |
-| k72 | `putgd/proton/lab-k72` | KWallet `putgdlab` | extracted ubuntu26.04 .deb (#518) | none (no goldens) |
-| m74 | `putgd/proton/lab-m74` | gnome-keyring `putgd lab` | extracted AppImage | none (no goldens) |
-| aurora-amd | `putgd/proton/lab-aurora-amd` | KWallet `putgd lab` | installed native source build; use `putgd-proton-lab` | provision guest bridge and goldens first |
+| k72 | `putgd/proton/lab-k72` | KWallet `putgdlab` | extracted ubuntu26.04 .deb (#518) | none: VT-x is off in its firmware ([#659](https://github.com/patrick-hudson/put.gd-desktop/issues/659)); guest bridge installed |
+| m74 | `putgd/proton/lab-m74` | gnome-keyring `putgd lab` | extracted AppImage | Cinnamon and GNOME goldens |
+| aurora-amd | `putgd/proton/lab-aurora-amd` | KWallet `putgd lab` | installed native source build; use `putgd-proton-lab` | Cinnamon and GNOME goldens |
+
+Each builder's registry (`~/putgd-lab/locks/proton-registry.json`) lists the goldens it
+lends to under `guests`, with each one's path, SHA-256, bootstrap key and host-key
+pins, recorded by `proton_lab.py register-guests`. Every lendable builder passed a
+lend proof on 2026-10-29 ([evidence](evidence/2026-10-29-proton-guest-bridge/README.md)).
 
 - **The Proton lock.** Take `desktop_lock.py acquire HOST --resource proton` before
   using a builder's session in any way: its lab app, a check, or lending it to a VM.
@@ -625,6 +635,14 @@ evidence is in [the 2026-10-23 lab sessions](evidence/2026-10-23-proton-lab-sess
     host key. The GNOME golden needs `lab-bootstrap-f44/known_hosts-gnome`, the same key
     d69 pins for that golden, remapped to 22220.
   - KDE uses `known_hosts-kde` (port 22234 on d69, 22434 on f44).
+  - m74 and aurora-amd have `lab-bootstrap-m74/` and `lab-bootstrap-aurora-amd/`,
+    copied from f44's: `identity`, `known_hosts` (Cinnamon golden on port 22220) and
+    `known_hosts-gnome` (GNOME golden on port 22220). The workstation keeps a
+    copy of the pins and public key under `work/lab-bootstrap-<host>/`; the
+    private key is the workstation's `work/lab-bootstrap/identity`.
+  - On aurora-amd, run `proton_lab.py` through its adapter, and give `lab.py` the
+    canonical `/var/home/patrick/...` paths. Guarded overlay cleanup refuses
+    the `/home` alias as a symlink component.
   - The Mint and Cinnamon golden takes the ubuntu24.04 .deb; the GNOME and KDE goldens
     are Ubuntu and Kubuntu 26.04 and take the ubuntu26.04 .deb.
 - **Lost session.** Patrick signs in again on that builder only. Nobody else signs in,

@@ -210,9 +210,13 @@ Aurora was added on 2026-10-29 with an independent sign-in. On that Atomic host,
 use `~/.local/bin/putgd-proton-lab` for the commands below: its installed adapter
 uses canonical `/var/home/patrick/putgd-lab/` paths and the prepared native app.
 The [Aurora builder guide](remote-builders.md#aurora-amd-fedora-45-builder)
-records the build, keyring and keep-alive setup. Its initial verification covers
-native account/folder access; VM lending still requires the usual guest preflight
-and provisioning.
+records the build, keyring and keep-alive setup. Its host has QEMU and `dpkg`
+for guests, so it lends its session to VMs like the other builders.
+
+Every builder except k72 can lend its session to a VM it hosts; k72's firmware
+has VT-x turned off ([#659](https://github.com/patrick-hudson/put.gd-desktop/issues/659)).
+The goldens each builder lends to are in
+[the builders' Proton sessions](remote-builders.md#proton-sessions-on-the-builders).
 
 ### Where each session lives
 
@@ -222,7 +226,7 @@ and provisioning.
 | Keychain entry | service `ch.proton.drive/putgd`, name `putgd/proton/lab-<host>`, in the builder's default Secret Service collection |
 | Registry | `~/putgd-lab/locks/proton-registry.json`, next to the lock: host, reference, app, keyring, last check and its outcome, nothing secret |
 | App | on f44, d69, k72 and m74: nightly 26.1023.1058 extracted into `~/putgd-lab/proton/app/` (AppImage on f44/m74, debian13 or ubuntu26.04 .deb on d69/k72, until [#518](https://github.com/patrick-hudson/put.gd-desktop/issues/518) is fixed); on aurora-amd: the installed native source build recorded in its registry |
-| Bridge | `~/putgd-lab/proton/bridge/` holds the host relay and Bun 1.4.2 broker; the original four also have `guest-bridge/` (relay built against Qt 6.4.2 on m74, for guests). Provision the guest bridge before Aurora lends a session. |
+| Bridge | `~/putgd-lab/proton/bridge/` holds the host relay and Bun 1.4.2 broker. `guest-bridge/` holds the relay built against Qt 6.4.2 on m74, for guests, and the same broker: one build, byte-identical on every builder (relay `12b70c49…`, broker `31a76c8d…`). The registry's `guests` entry records both hashes. |
 | Keep-alive | `~/.config/systemd/user/putgd-proton-keepalive.{service,timer}`, running a copy of the lab tools in `~/.local/libexec/putgd-proton/` |
 
 The default collection is a **blank-password lab keyring**: gnome-keyring
@@ -258,6 +262,7 @@ and `check`.
 | `open` / `close --session ID` | under the desktop lock, shows the lab profile's Settings on the desktop (for a sign-in) and quits it |
 | `install-app FILE`, `seed HOST` | extracts an AppImage or .deb into the profile; creates the profile and its destination |
 | `lab-keyring`, `keychain`, `install-keepalive`, `keepalive` | the keyring and keep-alive set-up above |
+| `register-guests --bootstrap-key KEY --golden PROFILE GOLDEN KNOWN_HOSTS ...` | records in the registry's `guests` entry what `lend` can boot: the guest bridge's hashes, and the bootstrap key path and each golden's path, SHA-256 and host-key pins |
 
 ### Lending the session to a VM
 
@@ -281,8 +286,11 @@ Under the builder's Proton lock, `lend`:
 5. Deletes only the guest entry.
 
 Receipts go in `~/putgd-lab/proton/receipts/<time>-<run>/` and hold names and states,
-never session material. The smoke test uploads a synthetic image privately into a
-new folder, then creates, inspects and revokes its link. It has these options:
+never session material. `lend` also records its outcome in the registry as
+`lastLend`. The smoke test creates a new folder, runs **Check account and folder**
+against it and requires the `account-folder` scope. It then uploads a synthetic
+image privately into that folder, and creates, inspects and revokes its link. With
+`--pictures` it saves the guest's Destinations and History. It has these options:
 - `--browser --hold N`: pauses before and after revoke, so the live link and its
   share page can be framed.
 - `--revoke HISTORY_ID`: settles a link left by an earlier run; use it with
@@ -322,6 +330,9 @@ access token has expired. It is skipped, not queued, while the lock is held or t
 lab app is open. To disable it, run
 `systemctl --user disable --now putgd-proton-keepalive.timer` on that builder.
 
-Carrying back a session that the VM refreshed has not been exercised live yet
+A guest that refreshed the session was carried back live for the first time on
+2026-10-29: d69's and m74's lends reported `rotated: true`, the carry-back was
+`replace_confirmed`, and each builder's `check` passed afterwards
 ([#527](https://github.com/patrick-hudson/put.gd-desktop/issues/527)). Evidence:
-[the 2026-10-23 lab sessions](evidence/2026-10-23-proton-lab-sessions/README.md).
+[the 2026-10-23 lab sessions](evidence/2026-10-23-proton-lab-sessions/README.md) and
+[lending on every builder, 2026-10-29](evidence/2026-10-29-proton-guest-bridge/README.md).
