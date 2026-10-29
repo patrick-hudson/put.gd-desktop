@@ -73,7 +73,7 @@ compiled CLI's `--version-json` accompany `build-info.json`; source commit and
 cleanliness must match the requested SHA before success is recorded.
 
 ```sh
-cd /home/patrick/work/boat-candidates/SHA-run1
+cd "/home/patrick/work/boat-candidates/${sha}-run1"
 sha256sum -c SHA256SUMS
 ```
 
