@@ -116,6 +116,10 @@ class Context:
         raise NotImplementedError
 
     # Real input (QMP for guests, the desktop's VNC/input path for physical hosts)
+    def use_catalog(self, window: str, reference: str) -> None:
+        """Optionally select the catalog state used to resolve this window's controls."""
+        raise NotImplementedError
+
     def click(self, control: str, window: str, button: str = 'left', offset: Optional[tuple] = None) -> None:
         """Click a control resolved from the current build's NAME.controls.json, mapped onto the live window."""
         raise NotImplementedError

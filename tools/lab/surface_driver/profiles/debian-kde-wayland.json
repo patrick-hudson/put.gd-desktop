@@ -1,0 +1,28 @@
+{
+  "desktop": "debian-kde-wayland",
+  "input_backend": {
+    "guest": "qmp",
+    "native": "vnc-or-host-input"
+  },
+  "catalog_tolerance": 0.025,
+  "notification_server": "plasmashell",
+  "default_browser_kind": "firefox",
+  "at_spi": {
+    "available": false,
+    "reason": "Qt 6.4 AT-SPI does not expose reliable Wayland widget geometry"
+  },
+  "session": "wayland",
+  "known_gaps": [
+    "Catalogs are synthetic content; desktop drawn surfaces require human review"
+  ],
+  "window_titles": {
+    "history": "put.gd",
+    "settings": "put.gd",
+    "main": "put.gd",
+    "editor": "Edit",
+    "review": "Review",
+    "diagnostics": "Diagnostics",
+    "about": "About"
+  },
+  "catalog_windows": {}
+}

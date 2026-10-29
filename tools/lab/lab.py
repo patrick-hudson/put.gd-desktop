@@ -551,7 +551,7 @@ mkdir -p "$session_applications" "$XDG_DATA_HOME"
 '''
 
 
-def guest_session(run, body):
+def guest_session(run, body, timeout=60):
     # Discover the real desktop session's environment, not SSH's empty DISPLAY.
     info = state(run)
     user = info['guest_user']
@@ -576,7 +576,7 @@ export XDG_RUNTIME_DIR=/run/user/$(id -u)
 export XDG_DATA_HOME=$HOME/putgd-lab/data
 {appimage_entries_prefix(profile)}{body}
 '''
-    return ssh(run, script)
+    return ssh(run, script, timeout=timeout)
 
 
 def verify_owned_guest(run):

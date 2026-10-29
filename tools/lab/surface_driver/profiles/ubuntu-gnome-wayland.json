@@ -1,0 +1,28 @@
+{
+  "desktop": "ubuntu-gnome-wayland",
+  "input_backend": {
+    "guest": "qmp",
+    "native": "vnc-or-host-input"
+  },
+  "catalog_tolerance": 0.025,
+  "notification_server": "gnome-shell",
+  "default_browser_kind": "firefox",
+  "at_spi": {
+    "available": true,
+    "reason": ""
+  },
+  "session": "wayland",
+  "known_gaps": [
+    "Catalogs are synthetic content; desktop drawn surfaces require human review"
+  ],
+  "window_titles": {
+    "history": "put.gd",
+    "settings": "put.gd",
+    "main": "put.gd",
+    "editor": "Edit",
+    "review": "Review",
+    "diagnostics": "Diagnostics",
+    "about": "About"
+  },
+  "catalog_windows": {}
+}
