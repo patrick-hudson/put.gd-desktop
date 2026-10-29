@@ -263,8 +263,9 @@ class Safety(unittest.TestCase):
 
     def test_quit_id_is_dynamic_and_must_be_unique_visible_enabled(self):
         def node(i, label, **props): return [i, {'label': {'data': label}, **{k: {'data': v} for k, v in props.items()}}, []]
-        self.assertEqual(driver.quit_action([0, {}, [node(987, '&Quit'), node(12, 'Settings')]]), 987)
-        for children in ([node(1, 'Quit', enabled=False)], [node(1, 'Quit'), node(2, 'Quit')], [node(1, 'Add a panel')]):
+        self.assertEqual(driver.quit_action([0, {}, [node(987, '&Quit put.gd'), node(12, 'Settings')]]), 987)
+        for children in ([node(1, 'Quit put.gd', enabled=False)], [node(1, 'Quit put.gd'), node(2, 'Quit put.gd')],
+                         [node(1, 'Quit')], [node(1, 'Add a panel')]):
             with self.assertRaises(driver.Refused): driver.quit_action([0, {}, children])
 
     def test_session_selection_excludes_ssh_inactive_and_other_users(self):
