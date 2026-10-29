@@ -88,6 +88,22 @@
       "clearClipboardShortcut": {
         "name": "Clear upload clipboard shortcut",
         "role": "push button"
+      },
+      "settingsSection0": {
+        "name": "General",
+        "role": "list item"
+      },
+      "settingsSection1": {
+        "name": "Capture",
+        "role": "list item"
+      },
+      "settingsSection2": {
+        "name": "Shortcuts",
+        "role": "list item"
+      },
+      "settingsSection3": {
+        "name": "Advanced",
+        "role": "list item"
       }
     },
     "theme_references": {

@@ -115,8 +115,7 @@ def opened(ctx, section):
         preparation = 'settings_window=' + shlex.quote(str(geometry['window_id'])) + '\n' + preparation
         ctx.expect(ctx.shell(preparation)['returncode'] == 0, 'profile prepared catalog window geometry')
     ctx.use_catalog('settings', REFERENCES[section])
-    ctx.click('settingsNavigation', window='settings')
-    ctx.keys('Home', *('Down',) * section)
+    live_click(ctx, 'settingsSection' + str(section))
     ctx.wait(lambda: state(ctx).get('settings', {}).get('section') == section,
              'Settings section ' + str(section))
 
@@ -204,8 +203,7 @@ def navigation(ctx):
     opened(ctx, 0)
     for section in (1, 2, 3, 0):
         frame(ctx, 'before-' + str(section), state(ctx)['settings']['section'])
-        ctx.click('settingsNavigation', window='settings')
-        ctx.keys('Home', *('Down',) * section)
+        live_click(ctx, 'settingsSection' + str(section))
         ctx.wait(lambda: state(ctx)['settings']['section'] == section, 'rail changes section')
         frame(ctx, 'after-' + str(section), section)
     persisted(ctx)

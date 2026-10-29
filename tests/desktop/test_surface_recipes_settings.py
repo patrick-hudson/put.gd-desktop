@@ -137,6 +137,8 @@ class Fake(Context):
     def click(self, control, window, **kwargs):
         self.inputs.append(('click', control, window))
         self.focus = control
+        if control.startswith('settingsSection'):
+            self.section = int(control[-1])
         toggles = {'launchAtLogin': 'preferences.launchAtLogin',
                    'unlockCredentialsAtStartup': 'preferences.unlockCredentialsAtStartup',
                    'notifications': 'preferences.notifications', 'debugLogging': 'preferences.diagnostics.debugLogging',
