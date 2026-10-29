@@ -82,12 +82,13 @@ int main(int argc,char** argv){
  // Previews load in the background; wait for them before steady-state timing.
  putgd::test::settle(3000);const auto rssGallery=rssKb();
  QList<double> repaint,scroll,hover;
- for(int round=0;round<rounds;++round){t.restart();list->viewport()->repaint();repaint.append(ms(t));}
+ // Turn the event loop before each sample, as between frames: per-pass layout memos expire then.
+ for(int round=0;round<rounds;++round){QCoreApplication::processEvents();t.restart();list->viewport()->repaint();repaint.append(ms(t));}
  auto* bar=list->verticalScrollBar();
- for(int round=0;round<rounds;++round){t.restart();bar->setValue(round%2?0:qMin(bar->maximum(),bar->pageStep()));QCoreApplication::sendPostedEvents();list->viewport()->repaint();scroll.append(ms(t));}
+ for(int round=0;round<rounds;++round){QCoreApplication::processEvents();t.restart();bar->setValue(round%2?0:qMin(bar->maximum(),bar->pageStep()));QCoreApplication::sendPostedEvents();list->viewport()->repaint();scroll.append(ms(t));}
  bar->setValue(0);QCoreApplication::processEvents();
  // Hover over cards in turn, as the pointer moving across the grid.
- for(int round=0;round<rounds;++round){const auto rect=list->visualRect(list->model()->index(round%qMin(6,list->model()->rowCount()),0));t.restart();QMouseEvent move(QEvent::MouseMove,QPointF(rect.center()),list->viewport()->mapToGlobal(QPointF(rect.center())),Qt::NoButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(list->viewport(),&move);QCoreApplication::sendPostedEvents();QCoreApplication::processEvents();list->viewport()->repaint();hover.append(ms(t));}
+ for(int round=0;round<rounds;++round){const auto rect=list->visualRect(list->model()->index(round%qMin(6,list->model()->rowCount()),0));QCoreApplication::processEvents();t.restart();QMouseEvent move(QEvent::MouseMove,QPointF(rect.center()),list->viewport()->mapToGlobal(QPointF(rect.center())),Qt::NoButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(list->viewport(),&move);QCoreApplication::sendPostedEvents();QCoreApplication::processEvents();list->viewport()->repaint();hover.append(ms(t));}
  // Idle with a card hovered: a settled view should not keep repainting.
  putgd::test::settle(300);counter.paints=0;QElapsedTimer idle;idle.start();putgd::test::settle(2000);const int idlePaints=counter.paints;const double idleMs=ms(idle);
  const auto rssEnd=rssKb();
