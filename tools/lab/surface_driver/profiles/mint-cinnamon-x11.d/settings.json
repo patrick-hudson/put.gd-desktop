@@ -5,7 +5,95 @@
     "about": "^About put.gd$"
   },
   "settings": {
-    "prepare_script": "settings_output=$(xrandr --query | awk '/ connected primary / {print $1; exit}')\ntest -n \"$settings_output\" && xrandr --output \"$settings_output\" --mode 1920x1080\nsettings_window=$(xdotool search --onlyvisible --name \"^put.gd$\")\ntest \"$(printf \"%s\\n\" \"$settings_window\" | wc -l)\" -eq 1 && xdotool windowsize \"$settings_window\" 1440 960 windowmove \"$settings_window\" 120 40"
+    "prepare_script": "settings_output=$(xrandr --query | awk '/ connected primary / {print $1; exit}')\ntest -n \"$settings_output\" && xrandr --output \"$settings_output\" --mode 1920x1080\ntest -n \"$settings_window\" && xdotool windowsize \"$settings_window\" 1440 960 windowmove \"$settings_window\" 120 40\nxdotool windowactivate --sync \"$settings_window\" windowraise \"$settings_window\"",
+    "foreground_script": "export settings_window\npython3 - <<'SETTINGS_INPUT'\nimport json, os, pathlib, subprocess\nwindow = os.environ['settings_window']\nassert window.isdecimal()\ndef command(*args):\n    return subprocess.check_output(['xdotool', *args], text=True).strip()\npid = int(command('getwindowpid', window))\nenvironment = pathlib.Path('/proc/' + str(pid) + '/environ').read_bytes().split(b'\\0')\nassert ('XDG_RUNTIME_DIR=' + os.environ['XDG_RUNTIME_DIR']).encode() in environment\ncommand('windowactivate', '--sync', window, 'windowraise', window)\npointer = dict(line.split('=', 1) for line in command('getmouselocation', '--shell').splitlines())\nprint(json.dumps({'window': window, 'pid': pid, 'active': command('getactivewindow'),\n                  'focus': command('getwindowfocus'), 'x': int(pointer['X']), 'y': int(pointer['Y'])}))\nSETTINGS_INPUT",
+    "input_state_script": "export settings_window\npython3 - <<'SETTINGS_INPUT'\nimport json, os, pathlib, subprocess\nwindow = os.environ['settings_window']\nassert window.isdecimal()\ndef command(*args):\n    return subprocess.check_output(['xdotool', *args], text=True).strip()\npid = int(command('getwindowpid', window))\nenvironment = pathlib.Path('/proc/' + str(pid) + '/environ').read_bytes().split(b'\\0')\nassert ('XDG_RUNTIME_DIR=' + os.environ['XDG_RUNTIME_DIR']).encode() in environment\n\npointer = dict(line.split('=', 1) for line in command('getmouselocation', '--shell').splitlines())\nprint(json.dumps({'window': window, 'pid': pid, 'active': command('getactivewindow'),\n                  'focus': command('getwindowfocus'), 'x': int(pointer['X']), 'y': int(pointer['Y'])}))\nSETTINGS_INPUT",
+    "viewport_insets": [
+      110,
+      40
+    ],
+    "live_controls": {
+      "archiveRoot": {
+        "name": "Save to",
+        "role": "text"
+      },
+      "namingMode": {
+        "name": "Naming",
+        "role": "combo box"
+      },
+      "collisionPolicy": {
+        "name": "When a name exists",
+        "role": "combo box"
+      },
+      "fileTemplate": {
+        "name": "Copied & uploaded files",
+        "role": "text"
+      },
+      "captureTemplate": {
+        "name": "Screen captures",
+        "role": "text"
+      },
+      "imageTemplate": {
+        "name": "Clipboard images",
+        "role": "text"
+      },
+      "textTemplate": {
+        "name": "Clipboard text",
+        "role": "text"
+      },
+      "recordRegionShortcut": {
+        "name": "Change capture region shortcut",
+        "role": "push button"
+      },
+      "clearRegionShortcut": {
+        "name": "Clear capture region shortcut",
+        "role": "push button"
+      },
+      "recordWindowShortcut": {
+        "name": "Change capture window shortcut",
+        "role": "push button"
+      },
+      "clearWindowShortcut": {
+        "name": "Clear capture window shortcut",
+        "role": "push button"
+      },
+      "recordDesktopShortcut": {
+        "name": "Change capture desktop shortcut",
+        "role": "push button"
+      },
+      "clearDesktopShortcut": {
+        "name": "Clear capture desktop shortcut",
+        "role": "push button"
+      },
+      "recordEditShortcut": {
+        "name": "Change capture region & edit shortcut",
+        "role": "push button"
+      },
+      "clearEditShortcut": {
+        "name": "Clear capture region & edit shortcut",
+        "role": "push button"
+      },
+      "recordRecordShortcut": {
+        "name": "Change record screen shortcut",
+        "role": "push button"
+      },
+      "clearRecordShortcut": {
+        "name": "Clear record screen shortcut",
+        "role": "push button"
+      },
+      "recordClipboardShortcut": {
+        "name": "Change upload clipboard shortcut",
+        "role": "push button"
+      },
+      "clearClipboardShortcut": {
+        "name": "Clear upload clipboard shortcut",
+        "role": "push button"
+      }
+    },
+    "theme_references": {
+      "dark": "07-settings-general",
+      "light": "07-settings-general-light"
+    }
   },
   "catalog_windows": {
     "settings": [

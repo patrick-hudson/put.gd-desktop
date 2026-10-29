@@ -43,6 +43,11 @@ class Fake(Context):
     profile = {}
 
     def __init__(self):
+        from tools.lab.surface_driver.profiles import load_profile
+        self.profile = load_profile(self.desktop)
+        self.targets = {}
+        self.pointer = (0, 0)
+        self.notes = []
         self.document = {
             'preferences': {'notifications': True, 'launchAtLogin': False,
                             'unlockCredentialsAtStartup': False,
@@ -214,7 +219,32 @@ class Fake(Context):
             return {'returncode': 0, 'stdout': json.dumps({'path': self.config_path, 'document': self.disk})}
         if 'zipfile' in script:
             return {'returncode': 0, 'stdout': ''}
+        if script.endswith(self.profile['settings']['prepare_script']):
+            return {'returncode': 0, 'stdout': ''}
+        if script.startswith('settings_window='):
+            return {'returncode': 0, 'stdout': json.dumps({'pid': 123, 'active': '42', 'focus': '42',
+                                                         'x': self.pointer[0], 'y': self.pointer[1]})}
+        if script == self.profile['settings']['prepare_script']:
+            return {'returncode': 0, 'stdout': ''}
         raise AssertionError('unexpected shell command')
+
+    def geometry(self, window):
+        return {'window_id': '42', 'x': 120, 'y': 40, 'width': 1440, 'height': 960, 'scale': 1}
+
+    def accessible(self, query):
+        control = next(k for k, v in self.profile['settings']['live_controls'].items() if v == query)
+        # Status insertion shifts controls; a stale point must not hit a field.
+        shift = 50 if self.recording_action or any('Esc' in str(i) for i in self.inputs) else 0
+        rectangle = [700, 240 + shift, 180, 36]
+        self.targets = {(760, 258 + shift): control}
+        return [{'pid': 123, 'rect': rectangle}]
+
+    def click_at(self, x, y, **kwargs):
+        self.pointer = (x, y)
+        self.click(self.targets[(x, y)], 'settings')
+
+    def note(self, text):
+        self.notes.append(text)
 
     def frame(self, label, window=None, reference=None):
         self.frames.append((label, window, reference))
@@ -272,9 +302,54 @@ class Contracts(unittest.TestCase):
                     rec.function(ctx)
                 self.assertTrue(ctx.inputs)
                 self.assertGreaterEqual(len(ctx.frames), 2)
-                self.assertTrue(all(ref in (*lane.REFERENCES, '58-diagnostics-package') for _, _, ref in ctx.frames))
+                self.assertTrue(all(ref in (None, *lane.REFERENCES, '07-settings-general-light', '58-diagnostics-package') for _, _, ref in ctx.frames))
                 self.assertEqual(ctx.disk, ctx.document)
                 self.assertTrue(any(method == 'ui.viewState' for method, _ in ctx.calls))
+
+    def test_theme_reference_tracks_observed_scheme(self):
+        ctx = Fake()
+        lane.appearance(ctx)
+        refs = {label: ref for label, _, ref in ctx.frames}
+        self.assertEqual(refs['after-light'], '07-settings-general-light')
+        self.assertEqual(refs['after-dark'], '07-settings-general')
+        self.assertEqual(refs['after-system'], '07-settings-general')
+
+    def test_obstructed_input_is_withheld(self):
+        ctx = Fake()
+        shell = ctx.shell
+        def obstructed(script, **kwargs):
+            if script.startswith('settings_window='):
+                return {'returncode': 1, 'stdout': ''}
+            return shell(script, **kwargs)
+        ctx.shell = obstructed
+        from tools.lab.surface_driver.recipes.settings_input import click
+        with self.assertRaises(RecipeBlocked) as caught:
+            click(ctx, 'archiveRoot')
+        self.assertEqual(caught.exception.issue, 699)
+        self.assertFalse(ctx.inputs)
+
+    def test_scrolling_requeries_live_geometry(self):
+        ctx = Fake()
+        accessible = ctx.accessible
+        scrolled = []
+        def query(control):
+            if not scrolled:
+                return [{'pid': 123, 'rect': [700, 1100, 180, 36]}]
+            return accessible(control)
+        ctx.accessible = query
+        ctx.scroll = lambda x, y, clicks: scrolled.append((x, y, clicks))
+        from tools.lab.surface_driver.recipes.settings_input import click
+        click(ctx, 'archiveRoot')
+        self.assertEqual(scrolled, [(1536, 520, -3)])
+        self.assertEqual(ctx.focus, 'archiveRoot')
+
+    def test_wrong_owner_accessibility_is_withheld(self):
+        ctx = Fake()
+        ctx.accessible = lambda query: [{'pid': 999, 'rect': [700, 240, 180, 36]}]
+        from tools.lab.surface_driver.recipes.settings_input import click
+        with self.assertRaisesRegex(RecipeBlocked, 'missing or ambiguous'):
+            click(ctx, 'archiveRoot')
+        self.assertFalse(ctx.inputs)
 
     def test_disk_divergence_fails_even_when_resident_changed(self):
         ctx = Fake()

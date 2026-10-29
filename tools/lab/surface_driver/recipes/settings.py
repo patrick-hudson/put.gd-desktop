@@ -9,6 +9,7 @@ import json
 import shlex
 
 from tools.lab.surface_driver.api import recipe
+from .settings_input import click as live_click
 
 CORE_ISSUE = 681
 
@@ -110,6 +111,8 @@ def opened(ctx, section):
     # recipe. Control rectangles still come only from the catalog.
     preparation = ctx.profile.get('settings', {}).get('prepare_script')
     if preparation:
+        geometry = ctx.geometry('settings')
+        preparation = 'settings_window=' + shlex.quote(str(geometry['window_id'])) + '\n' + preparation
         ctx.expect(ctx.shell(preparation)['returncode'] == 0, 'profile prepared catalog window geometry')
     ctx.use_catalog('settings', REFERENCES[section])
     ctx.click('settingsNavigation', window='settings')
@@ -130,13 +133,19 @@ def saved(ctx, path, value, section):
 
 
 def choose(ctx, control, index):
-    ctx.click(control, window='settings')
+    if control in ('namingMode', 'collisionPolicy'):
+        live_click(ctx, control)
+    else:
+        ctx.click(control, window='settings')
     # Editable choices route Home to their line edit unless the popup is open.
     ctx.keys('Esc', 'Alt+Down', 'Home', *('Down',) * index, 'Return', 'Tab')
 
 
 def replace(ctx, control, text):
-    ctx.click(control, window='settings')
+    if control == 'archiveRoot' or control.endswith('Template'):
+        live_click(ctx, control)
+    else:
+        ctx.click(control, window='settings')
     ctx.keys('Ctrl+A')
     ctx.type_text(text)
     ctx.keys('Tab')
@@ -211,7 +220,10 @@ def appearance(ctx):
                 ctx.expect(actual['scheme'] == theme, 'explicit scheme applied')
             elif actual.get('desktop'):
                 ctx.expect(actual['scheme'] == actual['desktop'], 'system follows observed desktop')
-            frame(ctx, 'after-' + theme, 0)
+            reference = ctx.profile.get('settings', {}).get('theme_references', {}).get(actual['scheme'])
+            if not reference:
+                ctx.blocked('No general-page catalog for observed scheme ' + actual['scheme'])
+            ctx.frame('after-' + theme, window='settings', reference=reference)
     finally:
         patch(ctx, {'preferences': {'appearance': {'theme': original}}})
 
@@ -325,7 +337,7 @@ def binding(ctx, action, chord):
 
 
 @recipe('shortcuts-page.field', 'shortcuts-page.record', 'shortcuts-page.clear',
-        'shortcuts-page.key-esc', 'shortcuts-page.key-backspace')
+        'shortcuts-page.key-esc', 'shortcuts-page.key-backspace', timeout=360)
 def shortcut_recording(ctx):
     opened(ctx, 2)
     original = get(ctx)['document']['actions']
@@ -334,31 +346,34 @@ def shortcut_recording(ctx):
         for action in ('region', 'window', 'desktop', 'clipboard', 'edit', 'record'):
             control = 'record' + action.title() + 'Shortcut'
             chord = 'Ctrl+Alt+Shift+9'
-            ctx.click(control, window='settings')
+            live_click(ctx, control)
             # Pausing is acknowledged asynchronously. Observe it before sending keys.
             ctx.wait(lambda: recording(ctx, action),
                      'shortcut recorder pauses the desktop channel')
             ctx.keys('Esc')
+            ctx.wait(lambda: not recording(ctx, action), 'Escape ends shortcut recording')
             saved(ctx, 'actions.' + action + '.shortcut', original[action]['shortcut'], 2)
-            ctx.click(control, window='settings')
+            live_click(ctx, control)
             ctx.wait(lambda: recording(ctx, action), 'recorder ready')
             ctx.keys(chord)
             saved(ctx, 'actions.' + action + '.shortcut', chord, 2)
             binding(ctx, action, chord)
             # Clicking the keycap a second time cancels, retaining the binding.
-            ctx.click(control, window='settings')
+            live_click(ctx, control)
             ctx.wait(lambda: recording(ctx, action), 'recorder ready')
-            ctx.click(control, window='settings')
+            live_click(ctx, control)
+            ctx.wait(lambda: not recording(ctx, action), 'second keycap click cancels recording')
             saved(ctx, 'actions.' + action + '.shortcut', chord, 2)
-            ctx.click('clear' + action.title() + 'Shortcut', window='settings')
+            live_click(ctx, 'clear' + action.title() + 'Shortcut')
             saved(ctx, 'actions.' + action + '.shortcut', '', 2)
-            ctx.click(control, window='settings')
+            live_click(ctx, control)
             ctx.wait(lambda: recording(ctx, action), 'recorder ready')
             ctx.keys(chord)
             saved(ctx, 'actions.' + action + '.shortcut', chord, 2)
-            ctx.click(control, window='settings')
+            live_click(ctx, control)
             ctx.wait(lambda: recording(ctx, action), 'recorder ready')
             ctx.keys('Backspace')
+            ctx.wait(lambda: not recording(ctx, action), 'Backspace ends shortcut recording')
             saved(ctx, 'actions.' + action + '.shortcut', '', 2)
             patch(ctx, {'actions': {action: original[action]}})
         frame(ctx, 'after', 2)
