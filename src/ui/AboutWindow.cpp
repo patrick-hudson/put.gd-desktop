@@ -19,7 +19,6 @@
 #include <QTextOption>
 #include <QResizeEvent>
 #include <QClipboard>
-#include <QMimeData>
 #include <QAccessible>
 #include <QTimer>
 #include <QPointer>
@@ -30,15 +29,13 @@ namespace {
 // Selectable, wrap-anywhere values whose height follows the width the grid gives them.
 class BuildValue final:public QTextEdit {
 public:
- explicit BuildValue(const QString& value,const QString& full={}):full_(full){setPlainText(value);setReadOnly(true);setFrameShape(QFrame::NoFrame);setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);setWordWrapMode(QTextOption::WrapAnywhere);document()->setDocumentMargin(0);QSizePolicy policy(QSizePolicy::Expanding,QSizePolicy::Preferred);policy.setHeightForWidth(true);setSizePolicy(policy);}
+ explicit BuildValue(const QString& value){setPlainText(value);setReadOnly(true);setFrameShape(QFrame::NoFrame);setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);setWordWrapMode(QTextOption::WrapAnywhere);document()->setDocumentMargin(0);QSizePolicy policy(QSizePolicy::Expanding,QSizePolicy::Preferred);policy.setHeightForWidth(true);setSizePolicy(policy);}
  bool hasHeightForWidth()const override{return true;}
  int heightForWidth(int width)const override{QTextDocument text;text.setDocumentMargin(0);text.setDefaultFont(font());text.setDefaultTextOption(document()->defaultTextOption());text.setPlainText(toPlainText());text.setTextWidth(qMax(1,width-2*frameWidth()));return qCeil(text.size().height())+2*frameWidth();}
  QSize sizeHint()const override{const int width=fontMetrics().horizontalAdvance(toPlainText())+2*frameWidth()+1;return {width,heightForWidth(width)};}
  QSize minimumSizeHint()const override{return {fontMetrics().averageCharWidth()*8,fontMetrics().height()};}
 protected:
- QMimeData* createMimeDataFromSelection()const override{auto* mime=QTextEdit::createMimeDataFromSelection();if(!full_.isEmpty()&&textCursor().selectedText()==toPlainText()){mime->clear();mime->setText(full_);}return mime;}
  void resizeEvent(QResizeEvent* event)override{QTextEdit::resizeEvent(event);if(event->size().width()!=event->oldSize().width())updateGeometry();}
-private:QString full_;
 };
 // The facts scroll only when the screen can't hold them; otherwise they ask for their full height.
 class BuildFacts final:public QScrollArea {
@@ -66,7 +63,7 @@ AboutWindow::AboutWindow(const QJsonObject& residentBuild,QWidget* parent):QDial
  auto* toggle=new QToolButton(identity);toggle->setText("Build details");toggle->setObjectName("buildDetails");Graphite::disclosure(toggle);column->addSpacing(Graphite::space(Graphite::Space::m)-column->spacing());column->addWidget(toggle,0,Qt::AlignLeft);
  // Expanded facts: a two-column key/value card on the text column, values wrapping anywhere.
  auto* details=new Graphite::Surface("surface",{},nullptr);details->setObjectName("aboutBuildDetails");details->setProperty("preferenceCard",true);auto* facts=new QGridLayout(details);const int inset=Graphite::space(Graphite::Space::m);facts->setContentsMargins(inset,inset,inset,inset);facts->setHorizontalSpacing(Graphite::space(Graphite::Space::m));facts->setVerticalSpacing(Graphite::space(Graphite::Space::s));facts->setColumnStretch(1,1);
- const auto add=[&](const QString& label,const QString& value,const QString& object){auto* key=Graphite::label(label,"meta",details);key->setObjectName(object+"Caption");const bool unknown=value.isEmpty()||value.compare("unknown",Qt::CaseInsensitive)==0;const bool hash=object=="buildCommit"||object=="build_gitTree";auto* text=new BuildValue(unknown?QString("Unknown"):hash?value.left(12):value,hash?value:QString{});text->setToolTip(value);text->setAccessibleDescription(value);text->setParent(details);text->setObjectName(object);VisualStyle::role(text,!unknown&&hash?"mono":"secondary");text->viewport()->setAutoFillBackground(false);text->setAccessibleName(label);const int row=facts->rowCount();facts->addWidget(key,row,0,Qt::AlignLeft|Qt::AlignTop);facts->addWidget(text,row,1);};
+ const auto add=[&](const QString& label,const QString& value,const QString& object){auto* key=Graphite::label(label,"meta",details);key->setObjectName(object+"Caption");const bool unknown=value.isEmpty()||value.compare("unknown",Qt::CaseInsensitive)==0;const bool hash=object=="buildCommit"||object=="build_gitTree";auto* text=new BuildValue(unknown?QString("Unknown"):hash?value.left(12):value);text->setToolTip(value);text->setAccessibleDescription(value);text->setParent(details);text->setObjectName(object);VisualStyle::role(text,!unknown&&hash?"mono":"secondary");text->viewport()->setAutoFillBackground(false);text->setAccessibleName(label);const int row=facts->rowCount();facts->addWidget(key,row,0,Qt::AlignLeft|Qt::AlignTop);facts->addWidget(text,row,1);};
  auto* fullVersion=new BuildValue(residentBuild["version"].toString());fullVersion->setParent(this);fullVersion->setObjectName("buildVersion");fullVersion->hide();add("Commit",residentBuild["gitCommit"].toString(residentBuild["commit"].toString("Unknown")),"buildCommit");add("Build state",residentBuild["dirty"].isBool()?(residentBuild["dirty"].toBool()?"Modified source tree":"Clean source tree"):"Unknown","buildState");for(auto it=residentBuild.begin();it!=residentBuild.end();++it){if(QStringList{"version","gitCommit","commit","dirty"}.contains(it.key()))continue;const auto value=it.value();const auto text=value.isObject()?QString::fromUtf8(QJsonDocument(value.toObject()).toJson(QJsonDocument::Compact)):value.isArray()?QString::fromUtf8(QJsonDocument(value.toArray()).toJson(QJsonDocument::Compact)):value.toVariant().toString();add(caption(it.key()),text,"build_"+it.key());}
  auto* scroll=new BuildFacts(details,identity);column->addWidget(scroll);scroll->hide();root->addWidget(content);
  auto* buttons=new QWidget(this);buttons->setObjectName("aboutActions");auto* actions=new QHBoxLayout(buttons);actions->setContentsMargins(0,0,0,0);actions->setSpacing(Graphite::space(Graphite::Space::s));
