@@ -283,6 +283,23 @@ class Contracts(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'persisted'):
             rec.function(ctx)
 
+    def test_optional_field_waits_for_asynchronous_acceptance(self):
+        ctx = Fake()
+        del ctx.document['preferences']['diagnostics']
+        del ctx.disk['preferences']['diagnostics']
+        polls = []
+        def delayed_wait(predicate, what, **kwargs):
+            if 'accepted by resident' in what:
+                polls.append(predicate())
+                ctx.document['preferences']['diagnostics'] = {'debugLogging': True}
+                ctx.checkpoint()
+            value = predicate()
+            ctx.expect(value, what)
+            return value
+        ctx.wait = delayed_wait
+        lane.saved(ctx, 'preferences.diagnostics.debugLogging', True, 0)
+        self.assertEqual(polls, [False])
+
     def test_resident_error_is_not_a_pass(self):
         ctx = Fake()
         ctx.command_error = 'settings.patch'

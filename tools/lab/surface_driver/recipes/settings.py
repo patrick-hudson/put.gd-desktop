@@ -42,6 +42,14 @@ def at(document, path):
     return document
 
 
+def value_is(document, path, value):
+    try:
+        return at(document, path) == value
+    except KeyError:
+        # Optional fields need not exist before the first accepted autosave.
+        return False
+
+
 # Read only a private profile, and check it matches the resident's actual path.
 # Never fall back to the user's real configuration directory.
 PRIVATE_CONFIG = '''import json, os, pathlib, stat
@@ -77,7 +85,20 @@ def state(ctx):
 
 def opened(ctx, section):
     persisted(ctx)  # fail closed before any mutation, including resident setup
+    # The primary catalog has a working local output and the dark scheme.
+    # Without local output, the resident adds a warning above the page and all
+    # catalog control rectangles move. Seed only this private run's preferences.
+    document = get(ctx)['document']
+    baseline = {}
+    if not document['archive']['keepUploads']:
+        baseline['archive'] = {'keepUploads': True}
+    if document['preferences'].get('appearance', {}).get('theme', 'system') != 'dark':
+        baseline['preferences'] = {'appearance': {'theme': 'dark'}}
+    if baseline:
+        patch(ctx, baseline)
     result(ctx, ctx.view('ui.show', {'view': 'settings'}))
+    ctx.wait(lambda: state(ctx).get('appearance', {}).get('theme') == 'dark',
+             'catalog appearance applied to the UI')
     # Native layout preparation is profile data, never a desktop branch in a
     # recipe. Control rectangles still come only from the catalog.
     preparation = ctx.profile.get('settings', {}).get('prepare_script')
@@ -95,9 +116,9 @@ def frame(ctx, label, section):
 
 
 def saved(ctx, path, value, section):
-    ctx.wait(lambda: at(get(ctx)['document'], path) == value,
+    ctx.wait(lambda: value_is(get(ctx)['document'], path, value),
              path + ' accepted by resident')
-    ctx.wait(lambda: at(persisted(ctx), path) == value, path + ' persisted')
+    ctx.wait(lambda: value_is(persisted(ctx), path, value), path + ' persisted')
     ctx.expect(state(ctx)['settings']['section'] == section, 'expected Settings page remains active')
 
 
