@@ -778,22 +778,30 @@ class Replay:
         return value
 
     def menu_monitor(self, service):
-        """Record what the desktop's tray sends put.gd's menu; returns (pid, file)."""
+        """Record what the desktop's tray sends put.gd's menu; returns (pid, file, unique owner).
+
+        The SNI may be registered under a well-known name, while the tray
+        addresses its menu calls to the resident's unique connection name.
+        """
         path = f'{self.guest}/menu-monitor-{uuid.uuid4().hex[:8]}.jsonl'
         output = self.session('addr="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}"\n'
+                              'busctl --address="$addr" --json=short call org.freedesktop.DBus /org/freedesktop/DBus '
+                              'org.freedesktop.DBus GetNameOwner s ' + shlex.quote(service) + '\n'
                               '(setsid stdbuf -oL busctl --address="$addr" --json=short monitor ' + shlex.quote(service) +
                               ' > ' + shlex.quote(path) + ' 2>/dev/null < /dev/null & echo $!)\n')
-        pid = int(output.strip().splitlines()[-1])
+        lines = output.strip().splitlines()
+        owner = json.loads(lines[0])['data'][0]
+        require(isinstance(owner, str) and owner.startswith(':'), 'The tray item has no unique bus owner')
         time.sleep(.5)
-        return pid, path
+        return int(lines[-1]), path, owner
 
-    def menu_monitor_events(self, monitor, service):
+    def menu_monitor_events(self, monitor):
         text = self.session('cat -- ' + shlex.quote(monitor[1]) + ' 2>/dev/null || true\n')
-        return menu_events(text.splitlines(), service)
+        return menu_events(text.splitlines(), monitor[2])
 
     def stop_menu_monitor(self, monitor):
         # Only the recorded monitor: its stdout must still be this run's file.
-        pid, path = monitor
+        pid, path, _ = monitor
         self.session(f'[ "$(readlink /proc/{pid}/fd/1 2>/dev/null)" = {shlex.quote(path)} ] && kill {pid} || true\n')
 
     def open_visibly(self, snapshot, item, label):
@@ -813,8 +821,8 @@ class Replay:
             attempt['reason'] = 'attention item is not a top-level menu row'
             raise VisibleMenuFailed(attempt['reason'])
         attempt.update(target=row, downPresses=presses)
-        service = snapshot['service']
-        monitor = self.menu_monitor(service)
+        monitor = self.menu_monitor(snapshot['service'])
+        attempt['busOwner'] = monitor[2]
         try:
             x, y = self.args.tray_x, self.args.tray_y
             lab.pointer(self.run, x, y, self.width, self.height)
@@ -825,7 +833,7 @@ class Replay:
             lab.pointer(self.run, x, y, self.width, self.height, False, settings['button'])
             time.sleep(settings['openSeconds'])
             self.witness(label + '-menu-open', hover=False)
-            events = self.menu_monitor_events(monitor, service)
+            events = self.menu_monitor_events(monitor)
             if not any(kind == 'show' or (kind == 'event' and name == 'opened') for kind, _, name in events):
                 raise VisibleMenuFailed('the desktop did not open put.gd\'s menu')
             for _ in range(presses):
@@ -833,7 +841,7 @@ class Replay:
                 time.sleep(.15)
             time.sleep(.3)
             self.witness(label + '-menu-highlight', hover=False)
-            hovered = [ident for kind, ident, name in self.menu_monitor_events(monitor, service)
+            hovered = [ident for kind, ident, name in self.menu_monitor_events(monitor)
                        if kind == 'event' and name == 'hovered']
             attempt['hoverReported'] = bool(hovered)
             if hovered and hovered[-1] != row['id']:
@@ -841,7 +849,7 @@ class Replay:
             lab.key(self.run, ['ret'])
             deadline = time.monotonic() + 5
             while True:
-                clicked = [ident for kind, ident, name in self.menu_monitor_events(monitor, service)
+                clicked = [ident for kind, ident, name in self.menu_monitor_events(monitor)
                            if kind == 'event' and name == 'clicked']
                 if clicked:
                     break

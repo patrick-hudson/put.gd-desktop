@@ -563,6 +563,25 @@ class TrayProgressContracts(unittest.TestCase):
         self.assertEqual(tray.menu_events(lines, ':1.5'), [('show', 0, None), ('event', 22, 'hovered'),
                          ('event', 21, 'hovered'), ('event', 22, 'clicked'), ('show', 0, None), ('show', 30, None)])
 
+    def test_menu_monitor_follows_the_items_unique_owner(self):
+        import json
+        from unittest.mock import Mock, patch
+        replay = object.__new__(tray.Replay)
+        replay.guest = '/tmp/tp-x'
+        calls = []
+        def session(body):
+            calls.append(body)
+            if 'GetNameOwner' in body:
+                return json.dumps({'type': 's', 'data': [':1.163']}) + '\n4242\n'
+            return '\n'.join(json.dumps({'type': 'method_call', 'destination': ':1.163', 'interface': 'com.canonical.dbusmenu',
+                                          'member': 'AboutToShowGroup', 'payload': {'type': 'ai', 'data': [[0]]}}) for _ in (1,))
+        replay.session = session
+        with patch.object(tray.time, 'sleep'):
+            monitor = replay.menu_monitor('org.kde.StatusNotifierItem-2210-1')
+        self.assertEqual((monitor[0], monitor[2]), (4242, ':1.163'))
+        self.assertIn("monitor org.kde.StatusNotifierItem-2210-1 >", calls[0])
+        self.assertEqual(replay.menu_monitor_events(monitor), [('show', 0, None)])
+
     def test_menu_presses_count_visible_top_level_rows(self):
         rows = [{'id': 3, 'label': 'Capture region'}, {'id': 22, 'label': 'Failed uploads (2)'}, {'id': 30, 'label': 'Quit put.gd'}]
         self.assertEqual(tray.menu_presses(rows, 'Failed uploads', False), (rows[1], 2))
@@ -579,7 +598,7 @@ class TrayProgressContracts(unittest.TestCase):
         replay.witness = Mock()
         rows = rows or [{'id': 3, 'label': 'Capture region'}, {'id': 22, 'label': self.LOCAL}, {'id': 30, 'label': 'Quit put.gd'}]
         replay.tray_menu = Mock(return_value={'ok': True, 'rows': rows, 'labels': [r['label'] for r in rows]})
-        replay.menu_monitor = Mock(return_value=(41, '/tmp/tp-x/menu-monitor.jsonl'))
+        replay.menu_monitor = Mock(return_value=(41, '/tmp/tp-x/menu-monitor.jsonl', ':1.163'))
         replay.menu_monitor_events = Mock(side_effect=events)
         replay.stop_menu_monitor = Mock()
         return replay
@@ -597,7 +616,8 @@ class TrayProgressContracts(unittest.TestCase):
         self.assertFalse(attempt['calibrated'])
         self.assertEqual([c.args[5:] for c in pointer.call_args_list], [(), (True, 'right'), (False, 'right')])
         self.assertEqual([c.args[1] for c in key.call_args_list], [['down'], ['down'], ['ret']])
-        replay.stop_menu_monitor.assert_called_once_with((41, '/tmp/tp-x/menu-monitor.jsonl'))
+        replay.stop_menu_monitor.assert_called_once_with((41, '/tmp/tp-x/menu-monitor.jsonl', ':1.163'))
+        self.assertEqual(attempt['busOwner'], ':1.163')
         self.assertEqual(replay.result['trayMenu'], [attempt])
 
     def test_visible_menu_failures_close_the_menu_and_report_their_reason(self):
