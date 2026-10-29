@@ -111,6 +111,8 @@ private slots:
   QTemporaryDir d;ProviderRegistry providers;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);QVERIFY(server.listen(d.filePath("runtime")));QString view;
   server.setUiActivation([&](const QString& requested,std::function<void(Error)> ack){view=requested;ack({});});
   QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"history\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);QCOMPARE(view,QString("history"));
+  view.clear();client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"destinations\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);QCOMPARE(view,QString("destinations"));
+  const auto destinationReply=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QVERIFY(destinationReply["ok"].toBool());QCOMPARE(destinationReply["result"].toObject()["shown"].toString(),QString("destinations"));
   // Settings scrolled to Updates (#293).
   view.clear();client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"updates\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);QCOMPARE(view,QString("updates"));
   view.clear();client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"arbitrary\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),1);QVERIFY(view.isEmpty());QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);

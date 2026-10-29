@@ -1,6 +1,9 @@
 #include "fixtures/U2Fixtures.h"
 #include "fixtures/FakeRecordingBackend.h"
 #include "ui/TrayController.h"
+#include "app/LocalServer.h"
+#include "app/UiProcessController.h"
+#include "ui/ViewState.h"
 #include "ui/ResidentTheme.h"
 #include "ui/VisualStyle.h"
 #include <QAction>
@@ -501,6 +504,30 @@ private slots:
   putgd::test::settle(2100);controller.notifyFailure({"fixture_failed","Synthetic second error",{}});
   putgd::test::settle(1100);PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
   PUTGD_COMPARE_STEADY(tray->icon().pixmap(24,24).toImage(),red,3100);auto* failed=tray->contextMenu()->findChild<QAction*>("trayFailedUploads");QVERIFY(failed->isVisible());failed->trigger();QCOMPARE(views,QStringList{"history"});QVERIFY(!failed->isVisible());QCOMPARE(tray->icon().pixmap(24,24).toImage(),blue);
+ }
+
+ void trayViewsReachTheProductionUi() {
+  QTemporaryDir directory;QVERIFY(directory.isValid());
+  ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));CaptureSource source;
+  OperationService operations(directory.filePath("data"),settings,providers,source);HistoryService history(operations);
+  LocalServer server(settings,operations,history);
+  const auto runtime=directory.filePath("r");QVERIFY((runtime+"/session.sock").toUtf8().size()<=107);QVERIFY(server.listen(runtime));
+  PUTGD_TRY_VERIFY(operations.ready());
+  QJsonObject checkpoint;
+  UiProcessController ui(server.socketPath(),server.residentEpoch(),PUTGD_PRODUCT_UI_PATH,[&](const QJsonObject& state){auto error=validateUiState(state);if(!error)checkpoint=state;return error;});
+  int replies=0;Error error;QString activated;
+  TrayController controller(operations,[&](const QString& view){activated=view;ui.activate(view,[&](Error e){error=e;++replies;});},[]{});
+  auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);
+  for(const auto& name:QStringList{"History","Destinations","Settings","About put.gd"}){
+   auto* action=actionNamed(tray,name);QVERIFY(action);const int before=replies;action->trigger();
+   PUTGD_TRY_COMPARE(replies,before+1);QVERIFY2(!error,qPrintable(error.code));
+   const auto view=name=="About put.gd"?QString("about"):name.toLower();QCOMPARE(activated,view);
+   if(view!="about"){
+    const int page=view=="settings"?2:view=="destinations"?1:0;
+    PUTGD_TRY_COMPARE(checkpoint["main"].toObject()["page"].toInt(-1),page);
+   }
+  }
+  bool stopped=false;ui.shutdown([&]{stopped=true;});PUTGD_TRY_VERIFY(stopped);
  }
 
  void delegatesEveryViewAndExplicitQuitWithoutConstructingViews() {
