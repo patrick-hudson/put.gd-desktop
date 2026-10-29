@@ -70,6 +70,14 @@ int destinationMenuPadding() { return 6 + Graphite::scaled(8) + 2; }
 // Text controls keep at least 3 px above and below their full text line at every scale.
 int textControlHeight(const QWidget* widget) { return std::max(28, widget->fontMetrics().height() + 2 * 3); }
 int iconTarget() { return Graphite::Metric::iconTarget; }
+// Tab follows the status row's fixed visual order: secondary, primary, then ×.
+void chainStatusActions(QBoxLayout* row, QWidget* dismiss) {
+    QList<QWidget*> order;
+    for (int i = 0; i < row->count(); ++i)
+        if (auto* button = qobject_cast<QAbstractButton*>(row->itemAt(i)->widget())) order.append(button);
+    if (dismiss && !dismiss->isHidden()) order.append(dismiss);
+    for (int i = 1; i < order.size(); ++i) QWidget::setTabOrder(order[i - 1], order[i]);
+}
 }
 
 namespace {
@@ -160,9 +168,19 @@ protected:
         painter.setPen(informationInk);
         const auto textRect = rect().adjusted(side + gap * 2, 0, -gap, 0);
         painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, information);
-        painter.setFont(actionFont(actionAvailable()));
-        painter.setPen(actionAvailable() ? palette.text : disabledInk);
-        painter.drawText(textRect.adjusted(fontMetrics().horizontalAdvance(information), 0, 0, 0), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, QStringLiteral("Use Redact"));
+        // The shared text-action look (banner weight, rule under the words);
+        // soft-disabled it keeps focus but drops to muted ink without the rule.
+        const auto action = actionFont(actionAvailable());
+        const QFontMetricsF metrics(action);
+        const auto actionRect = textRect.adjusted(fontMetrics().horizontalAdvance(information), 0, 0, 0);
+        painter.setFont(action);
+        painter.setPen(actionAvailable() ? palette.text : isEnabled() ? palette.textMuted : disabledInk);
+        painter.drawText(actionRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, QStringLiteral("Use Redact"));
+        if (actionAvailable()) {
+            const qreal baseline = actionRect.top() + (actionRect.height() - metrics.height()) / 2.0 + metrics.ascent();
+            const bool active = underMouse() || hasFocus() || isDown();
+            painter.fillRect(QRectF(actionRect.left(), std::round(baseline) + 2, metrics.horizontalAdvance(QStringLiteral("Use Redact")), 1), active ? palette.text : palette.textMuted);
+        }
     }
 private:
     bool actionable_ = true;
@@ -2012,7 +2030,7 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
     if (!savedPath_.isEmpty() && !savedDismissed_ && !exporting_)
         entries.append({(savedCurrent() ? QStringLiteral("Saved %1") : QStringLiteral("Earlier copy saved: %1")).arg(QFileInfo(savedPath_).fileName()),
             savedCurrent() ? QStringLiteral("success") : QStringLiteral("info"),
-            {{QStringLiteral("Show in folder"), {{"action", "showInFolder"}}}, {QStringLiteral("Copy path"), {{"action", "copyPath"}}}, {QStringLiteral("Dismiss"), {{"action", "dismissSavedCopy"}}}}});
+            {{QStringLiteral("Copy path"), {{"action", "copyPath"}}}, {QStringLiteral("Show in folder"), {{"action", "showInFolder"}}}, {QStringLiteral("Dismiss"), {{"action", "dismissSavedCopy"}}}}});
     if (exporting_) return entries;
     // A switch to a format this recording offers, when one would resolve the problem.
     const auto offerCompatibleVideo = [this]() -> std::optional<QPair<QString, QJsonObject>> {
@@ -2090,6 +2108,8 @@ void ReviewWindow::refreshStatus() {
         const auto margins = band->layout()->contentsMargins();
         // Full pointer targets already provide the compact band's vertical padding.
         band->layout()->setContentsMargins(margins.left(), 0, margins.right(), 0);
+        // Recovery actions read as separate words; × stays with the last of them.
+        static_cast<QGridLayout*>(band->layout())->setHorizontalSpacing(reviewSpace(Graphite::Space::xs));
         auto* line = new QWidget(band);
         statusContent_ = line;
         auto* row = new QHBoxLayout(line);
@@ -2114,11 +2134,16 @@ void ReviewWindow::refreshStatus() {
         text->setMaximumWidth(text->fontMetrics().horizontalAdvance(entry.text) + 4);
         row->addWidget(text, 1);
         row->addStretch(0);
+        // Separate words, so space(l) between actions; fixed order: secondary
+        // (Details…, Copy path) first, primary nearest ×.
+        auto* actions = new QHBoxLayout;
+        actions->setSpacing(reviewSpace(Graphite::Space::l));
+        row->addLayout(actions);
+        if (entry.tone == "error" && std::any_of(entry.actions.cbegin(), entry.actions.cend(), [](const auto& action) { return action.second["action"] == "dismissStatus"; })) {
+            actions->addWidget(errorDetails_);
+            errorDetails_->show();
+        }
         for (const auto& [label, params] : entry.actions) {
-            if (entry.tone == "error" && params["action"] == "dismissStatus") {
-                row->addWidget(errorDetails_);
-                errorDetails_->show();
-            }
             const auto action = params["action"].toString();
             if (action == "dismissStatus" || action == "dismissBlurTip" || action == "dismissSavedCopy") {
                 band->setDismissible(true, label);
@@ -2140,13 +2165,14 @@ void ReviewWindow::refreshStatus() {
             button->setFixedHeight(std::max(32, textControlHeight(button)));
             button->setProperty("driveAction", params);
             connect(button, &QPushButton::clicked, this, [this, params] { drive(params); });
-            row->addWidget(button, 0, Qt::AlignVCenter);
+            actions->addWidget(button, 0, Qt::AlignVCenter);
         }
         band->setContentWidget(line);
         for (auto* button : line->findChildren<QPushButton*>()) {
             button->setFixedHeight(std::max(32, textControlHeight(button)));
             button->setFixedWidth(std::max(iconTarget(), int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(button->text())))));
         }
+        chainStatusActions(actions, band->dismissButton());
         statusLines_->addWidget(band);
         band->show();
         row->activate();
@@ -2541,9 +2567,10 @@ void ReviewWindow::placeErrorDetails() {
     if (!errorDetails_ || errorDetails_->isHidden() || !statusContent_) return;
     auto* text = statusContent_->findChild<QLabel*>("status");
     auto* row = static_cast<QHBoxLayout*>(statusContent_->layout());
+    auto* actions = static_cast<QHBoxLayout*>(row->itemAt(2)->layout());
     int needed = text->fontMetrics().horizontalAdvance(text->text()) + 4 + errorDetails_->width() + row->spacing();
     for (auto* button : statusContent_->findChildren<QPushButton*>(QString(), Qt::FindDirectChildrenOnly))
-        if (button != errorDetails_) needed += button->width() + row->spacing();
+        if (button != errorDetails_) needed += button->width() + actions->spacing();
     const bool inHeader = destinationMenu_->property("headerSummary").toBool();
     const int footerNeeded = destinationMenu_->width() + destinationContextWidth()
         + playbackStatus_->property("reservedWidth").toInt()
@@ -2567,12 +2594,14 @@ void ReviewWindow::placeErrorDetails() {
         return;
     }
     auto* metadata = findChild<QWidget*>("reviewMetadata");
-    auto* target = inFooter ? static_cast<QHBoxLayout*>(metadata->layout()) : row;
+    auto* target = inFooter ? static_cast<QHBoxLayout*>(metadata->layout()) : actions;
     if (errorDetails_->parentWidget() != target->parentWidget()) {
-        // The existing recovery action uses spare metadata width before text wraps.
-        target->insertWidget(inFooter ? 1 : target->count() - 1, errorDetails_, 0, Qt::AlignVCenter);
+        // The existing recovery action uses spare metadata width before text wraps;
+        // in the status row it returns before the primary action.
+        target->insertWidget(inFooter ? 1 : 0, errorDetails_, 0, Qt::AlignVCenter);
         errorDetails_->show();
-        target->activate();
+        row->activate();
+        if (!inFooter) chainStatusActions(actions, static_cast<Graphite::Banner*>(statusContent_->parentWidget())->dismissButton());
     }
 }
 QJsonObject ReviewWindow::inspect() const {

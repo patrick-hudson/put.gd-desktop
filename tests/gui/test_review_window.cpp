@@ -2,6 +2,8 @@
 // window, one timeline sets the trim and mask times, mask controls show only
 // when they apply, and recording.review drives the same controls. Not desktop
 // proof; the lab captures are in the docs.
+#include <QSet>
+#include <algorithm>
 #include "record/ReviewWindow.h"
 #include "record/Duration.h"
 #include "record/MaskBox.h"
@@ -502,6 +504,91 @@ private slots:
         QSignalSpy retried(&window, &ReviewWindow::retryExportRequested);
         retry->click(); QCOMPARE(retried.size(), 1);
         dismiss->click(); QVERIFY(row->isHidden());
+    }
+    // Round 19 R5: recovery actions keep one order in every placement and after
+    // any layout history: secondary first, primary nearest ×; space(l) between
+    // actions, space(xs) before ×; Tab follows the same order.
+    void statusActionsKeepOneOrderAndSpacing() {
+        const auto original = qApp->font(); auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        const auto rect = [](QWidget* w, QWidget* to) { return QRect(w->mapTo(to, QPoint()), w->size()); };
+        const auto checkRow = [&](ReviewWindow& window, const QStringList& expected) {
+            auto* band = window.findChild<Graphite::Banner*>("statusLine"); QVERIFY(band);
+            QList<QAbstractButton*> shown;
+            for (auto* button : band->findChildren<QAbstractButton*>()) if (button->isVisibleTo(&window) && !button->text().isEmpty()) shown.append(button);
+            std::sort(shown.begin(), shown.end(), [&](auto* a, auto* b) { return rect(a, &window).left() < rect(b, &window).left(); });
+            QStringList labels; for (auto* button : shown) labels.append(button->text());
+            QCOMPARE(labels, expected);
+            auto* dismiss = band->dismissButton(); QVERIFY(dismiss->isVisibleTo(&window));
+            for (int i = 1; i < shown.size(); ++i) QCOMPARE(rect(shown[i], &window).left() - rect(shown[i - 1], &window).right() - 1, int(Graphite::Space::l));
+            QCOMPARE(rect(dismiss, &window).left() - rect(shown.last(), &window).right() - 1, int(Graphite::Space::xs));
+            window.activateWindow(); shown.first()->setFocus(Qt::TabFocusReason); QVERIFY(shown.first()->hasFocus());
+            for (int i = 1; i < shown.size(); ++i) { QTest::keyClick(QApplication::focusWidget(), Qt::Key_Tab); QCOMPARE(QApplication::focusWidget(), static_cast<QWidget*>(shown[i])); }
+            QTest::keyClick(QApplication::focusWidget(), Qt::Key_Tab); QCOMPARE(QApplication::focusWidget(), static_cast<QWidget*>(dismiss));
+        };
+        QSet<QString> placements;
+        for (const int pixels : {14, 21}) for (const bool longDestination : {false, true}) {
+            auto font = original; font.setPixelSize(pixels); qApp->setFont(font);
+            auto o = options();
+            // A long destination stays out of the header and fills the footer, so Details… can take the header slot.
+            if (longDestination) { o.destination = QStringLiteral("Project archive for customer support in the European Union"); o.uploadSummary = "Upload to " + o.destination; }
+            ReviewWindow window(o, config()); window.setEdit(twoMasks()); window.show();
+            QVERIFY(putgd::test::waitForWindowExposed(&window));
+            window.showError("Export failed: the encoder stopped writing the stream after 412 frames; check the recordings folder, then try again.");
+            auto* details = window.findChild<QPushButton*>("reviewErrorDetails"); QVERIFY(details);
+            // Down, up and down again: the order may not depend on the previous placement.
+            for (const int width : {1800, 1342, 1060, 900, 820, 714, 640, 714, 820, 900, 1060, 1342, 1800, 820, 640}) {
+                window.resize(width, 720); putgd::test::settle(10);
+                if (window.width() != width) continue;
+                auto* band = window.findChild<Graphite::Banner*>("statusLine");
+                const bool inRow = band->isAncestorOf(details);
+                placements.insert(inRow ? QStringLiteral("row") : window.findChild<Graphite::WindowHeader*>()->isAncestorOf(details) ? QStringLiteral("header") : QStringLiteral("footer"));
+                checkRow(window, inRow ? QStringList{"Details…", "Try again"} : QStringList{"Try again"});
+            }
+            window.drive({{"action", "dismissStatus"}}); putgd::test::settle(10);
+            QTemporaryDir dir; QVERIFY(dir.isValid());
+            const QString saved = dir.filePath("review copy.mp4");
+            QFile file(saved); QVERIFY(file.open(QIODevice::WriteOnly)); file.close();
+            window.setSavedCopy(saved, 3, config()); putgd::test::settle(10);
+            for (const int width : {1342, 640}) { window.resize(width, 720); putgd::test::settle(10); checkRow(window, {"Copy path", "Show in folder"}); }
+        }
+        QVERIFY2(placements.contains("row") && placements.contains("header") && placements.contains("footer"), qPrintable(QStringList(placements.cbegin(), placements.cend()).join(", ")));
+    }
+    // Round 19 R5: "Use Redact" in the chip uses the shared text-action look; soft
+    // disabled it is muted ink without the rule and keeps its focus.
+    void blurChipActionUsesTheSharedTextActionLook() {
+        const auto previous = Theme::scheme(); auto restore = qScopeGuard([previous] { Theme::setScheme(previous); });
+        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
+        auto* chip = window.findChild<QToolButton*>("reviewBlurChip"); QVERIFY(chip);
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme); QApplication::processEvents();
+            const auto& palette = Theme::current();
+            const int left = Graphite::scaled(16) + 2 * int(Graphite::Space::xs) + chip->fontMetrics().horizontalAdvance(QStringLiteral("Blur may be reversible · "));
+            auto words = chip->font(); words.setWeight(QFont::DemiBold);
+            const int width = QFontMetrics(words).horizontalAdvance(QStringLiteral("Use Redact"));
+            const auto rule = [&](const QImage& image) {
+                for (int y = image.height() / 2; y < image.height(); ++y) {
+                    bool line = true;
+                    for (int x = left + 1; x < left + width - 1 && line; ++x) line = image.pixelColor(x, y) == palette.textMuted;
+                    if (line) return true;
+                }
+                return false;
+            };
+            const auto inks = [&](const QImage& image, const QColor& colour) { int n = 0; for (int y = 0; y < image.height(); ++y) for (int x = left; x < std::min(image.width(), left + width); ++x) { const auto c = image.pixelColor(x, y); n += std::abs(c.red() - colour.red()) + std::abs(c.green() - colour.green()) + std::abs(c.blue() - colour.blue()) < 20; } return n; };
+            chip->clearFocus();
+            window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}}); putgd::test::settle(10);
+            const auto enabled = chip->grab().toImage();
+            QVERIFY2(rule(enabled), "An available Use Redact carries the text-action rule");
+            QVERIFY(inks(enabled, palette.text) > 0);
+            window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}}); putgd::test::settle(10);
+            const auto soft = chip->grab().toImage();
+            QVERIFY2(!rule(soft), "Soft-disabled Use Redact drops the rule");
+            QCOMPARE(inks(soft, palette.text), 0);
+            QVERIFY(inks(soft, palette.textMuted) > 0);
+            QVERIFY(Theme::contrast(palette.textMuted, palette.warningSurface) >= 4.5);
+            chip->setFocus(Qt::TabFocusReason); QVERIFY(chip->hasFocus());
+        }
     }
     void readoutAndRecordingBarUseTheSameTenths() {
         auto o = options(); o.durationUs = 125678901;
