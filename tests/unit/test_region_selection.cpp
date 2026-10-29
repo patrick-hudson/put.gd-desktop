@@ -5,33 +5,55 @@ using namespace putgd;
 class RegionSelectionTest final:public QObject {
  Q_OBJECT
 private slots:
- void instructionCardUsesThemeAndScaledInsets(){
+ void hintPillUsesThemeAndOneLine(){
   const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});
   for(int pixels:{14,21})for(auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
    auto font=original;font.setPixelSize(pixels);qApp->setFont(font);Theme::setScheme(scheme);
-   const QRect bounds(0,0,800,600);const QString text="Capture region\nDrag to choose";const auto box=regionInstructionBox(bounds,QFontMetrics(font),text,{}, {},font);
-   QCOMPARE(box.top(),Graphite::space(Graphite::Space::l));
+   const QRect bounds(0,0,800,600);const QFontMetrics metrics(font);const auto box=regionHintBox(bounds,metrics);
+   QCOMPARE(box.top(),Graphite::space(Graphite::Space::l));QCOMPARE(box.center().x(),bounds.center().x());
+   QCOMPARE(box.height(),metrics.height()+2*Graphite::space(Graphite::Space::xs));
+   QVERIFY(!regionHint().contains('\n'));QCOMPARE(regionHint(),QString("Drag to select · Esc to cancel"));
    QImage image(bounds.size(),QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);QPainter painter(&image);painter.setFont(font);
-   QPalette unrelated;unrelated.setColor(QPalette::Window,Qt::magenta);unrelated.setColor(QPalette::WindowText,Qt::green);paintRegionInstructions(painter,bounds,unrelated,text);painter.end();
-   QCOMPARE(image.pixelColor(box.center().x(),box.top()+2),Theme::current().surfaceRaised);
+   paintRegionChrome(painter,bounds,{},{},true,1,false);painter.end();
+   QCOMPARE(image.pixelColor(box.left()+box.height(),box.top()+2),Theme::current().surfaceRaised);
    QVERIFY(Theme::contrast(Theme::current().text,Theme::current().surfaceRaised)>=4.5);
-   QVERIFY(Theme::contrast(Theme::current().textSecondary,Theme::current().surfaceRaised)>=4.5);
   }
  }
- void badgeAvoidsSelectionAndDragPointer(){
-  const QRect bounds(0,0,800,600);const QFontMetrics metrics(QFont{});const auto text=regionInstructions({},true);
-  const auto top=regionInstructionBox(bounds,metrics,text);QVERIFY(top.top()<100);
-  const QRectF selected(200,0,400,220);
-  const auto bottom=regionInstructionBox(bounds,metrics,text,selected);QVERIFY(!QRectF(bottom).intersects(selected));QVERIFY(bottom.top()>300);
-  QCOMPARE(regionInstructionBox(bounds,metrics,text,{},QPointF(top.center())),bottom);
-  QCOMPARE(regionInstructionBox(bounds,metrics,text,{},QPointF(bottom.center())),top);
+ void hintFadesAfterAboutTwoSeconds(){
+  QCOMPARE(regionHintOpacity(0),1.0);QCOMPARE(regionHintOpacity(regionHintHoldMs),1.0);
+  QCOMPARE(regionHintOpacity(regionHintHoldMs+regionHintFadeMs/2),0.5);QCOMPARE(regionHintOpacity(regionHintHoldMs+regionHintFadeMs),0.0);
+  QVERIFY(regionHintHoldMs+regionHintFadeMs>=1800&&regionHintHoldMs+regionHintFadeMs<=2500);
+  int repaints=0;RegionHintFade fade([&]{++repaints;});QCOMPARE(fade.opacity(),1.0);
+  fade.start();QVERIFY(fade.visible());QTRY_VERIFY_WITH_TIMEOUT(!fade.visible(),4000);QVERIFY(repaints>=1);
+  fade.start();fade.expire();QCOMPARE(fade.opacity(),0.0);
  }
- void scrimLeavesSelectionClear(){
-  QImage image(100,80,QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);
-  QPainter painter(&image);paintRegionScrim(painter,image.rect(),QRectF(20,15,60,50));painter.end();
-  QCOMPARE(image.pixelColor(5,5),QColor(0,0,0,70));
-  QCOMPARE(image.pixelColor(25,20).alpha(),0);
-  QCOMPARE(image.pixelColor(85,70),QColor(0,0,0,70));
+ void hintMovesOffTheSelection(){
+  const QRect bounds(0,0,800,600);const QFontMetrics metrics(QFont{});
+  const auto top=regionHintBox(bounds,metrics);QVERIFY(top.top()<100);
+  const QRectF selected(200,0,400,220);
+  const auto bottom=regionHintBox(bounds,metrics,regionHint(),selected);QVERIFY(!QRectF(bottom).intersects(selected));QVERIFY(bottom.top()>300);
+  // A selection covering both keeps the hint at the top.
+  QCOMPARE(regionHintBox(bounds,metrics,regionHint(),QRectF(bounds)),top);
+ }
+ void sizeLabelFollowsTheSelection(){
+  const QRect bounds(0,0,800,600);const QFontMetrics metrics(QFont{});const QString text="400 × 200";const int gap=Graphite::space(Graphite::Space::xs);
+  const QRectF middle(100,100,400,200);auto box=regionSizeBox(bounds,metrics,text,middle);
+  QCOMPARE(box.topLeft(),QPoint(100,300+gap));QVERIFY(!QRectF(box).intersects(middle));
+  const QRectF low(100,450,400,148);box=regionSizeBox(bounds,metrics,text,low);QCOMPARE(box.bottom(),450-gap-1);QVERIFY(!QRectF(box).intersects(low));
+  box=regionSizeBox(bounds,metrics,text,QRectF(bounds));QCOMPARE(box.topLeft(),QPoint(gap,gap));
+  box=regionSizeBox(bounds,metrics,text,QRectF(790,100,10,10));QVERIFY(bounds.contains(box));
+  QVERIFY(regionSizeBox(bounds,metrics,{},middle).isEmpty());QVERIFY(regionSizeBox(bounds,metrics,text,{}).isEmpty());
+  const QList<QRectF> displays{QRectF(0,0,800,600),QRectF(800,0,800,600)};
+  QCOMPARE(regionLabelDisplay(displays,QRectF(700,0,200,10)),0);QCOMPARE(regionLabelDisplay(displays,QRectF(700,0,300,10)),1);QCOMPARE(regionLabelDisplay(displays,{}),-1);
+ }
+ void noScrimOnAnyDisplay(){
+  // #629: outside the selection, only the pills may cover the desktop.
+  QImage image(800,600,QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);
+  QPainter painter(&image);painter.setFont(nativeRegionFont());const QRectF selection(100,100,300,200);
+  paintRegionChrome(painter,image.rect(),selection,"300 × 200",true,1,true);painter.end();
+  const QFontMetrics metrics(nativeRegionFont());const auto hint=regionHintBox(image.rect(),metrics,regionHint(),selection),size=regionSizeBox(image.rect(),metrics,"300 × 200",selection);
+  int covered=0;for(int y=0;y<image.height();y+=7)for(int x=0;x<image.width();x+=7)if(image.pixelColor(x,y).alpha()&&!hint.contains(x,y)&&!size.contains(x,y))++covered;
+  QCOMPARE(covered,0);QVERIFY(image.pixelColor(hint.center()).alpha()==255);QVERIFY(image.pixelColor(size.center()).alpha()==255);
  }
  void switchesDisplaysAndClamps(){
   const QList<QRectF> screens{QRectF(-800,100,800,600),QRectF(0,-200,320,240)};int current=0;QRectF selected;
@@ -49,20 +71,10 @@ private slots:
     const auto text=regionInstructions(selection,false,"Display 1",bounds,frames,dragging,outcome);
     QVERIFY(text.endsWith("\n"+outcome));QCOMPARE(text.count(outcome),1);
     QVERIFY(regionDescription(selection,false,"Display 1",bounds,frames,dragging,outcome).contains(outcome));
-    const auto box=regionInstructionBox(bounds.toRect(),QFontMetrics(QFont{}),text,selection);
-    QVERIFY(bounds.contains(box));
    }
    const auto recording=regionInstructions({},true,"Display 1",bounds,frames,false,outcome);
    QVERIFY(!recording.contains(outcome));QVERIFY(recording.endsWith("Start recording comes next"));
   }
- }
- void destinationAndSharingWrapInsideTheBadge(){
-  auto font=nativeRegionFont();font.setPixelSize(21);const QFontMetrics metrics(font);const QRect bounds(0,0,640,480);
-  const auto shortText=regionInstructions({},false,{},bounds,{},false,"Uploads right away to Team Drive · Shared link");
-  const auto longText=regionInstructions({},false,{},bounds,{},false,"Uploads right away to Team Drive for the quarterly release readiness review and accessibility notes · Private upload");
-  const auto shortBox=regionInstructionBox(bounds,metrics,shortText,{}, {},font),longBox=regionInstructionBox(bounds,metrics,longText,{}, {},font);
-  const int margin=Graphite::space(Graphite::Space::l);QVERIFY(bounds.adjusted(margin,margin,-margin,-margin).contains(longBox));QVERIFY(longBox.height()>shortBox.height());
-
  }
  void hintsReflectActionAndState(){
   for(bool recording:{false,true}){
@@ -100,6 +112,8 @@ private slots:
   QVERIFY(hint.contains("Entire display · 1000 × 750 px"));
   QVERIFY(regionInstructions(QRectF(-799,101,101,51),true,"Left",frames[0].logicalRect,frames).contains("127 × 64 px"));
   QVERIFY(regionInstructions(QRectF(0,0,50,30),false,"Unknown",QRectF(0,0,800,600),{}).contains("50 × 30 logical px"));
+  // The size label uses the same capture grid, else logical pixels.
+  QCOMPARE(regionSizeLabel(QRectF(-799,101,101,51),frames),QString("127 × 64"));QCOMPARE(regionSizeLabel(QRectF(0,0,50,30),{}),QString("50 × 30"));QVERIFY(regionSizeLabel({},frames).isEmpty());
  }
  void initialRegionAndSteps(){
   const QRectF screen(-800,100,800,600);QRectF selected;

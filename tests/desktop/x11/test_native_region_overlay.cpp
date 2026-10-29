@@ -116,7 +116,7 @@ private slots:
  }
  void transparentDrawablesAndLogicalSelection(){
   motion({100,400});NativeRegionOverlay overlay(frames());int selected=0,cancelled=0;QRectF selection;connect(&overlay,&RegionSelector::selected,this,[&](const QRectF& r){selection=r;++selected;});connect(&overlay,&RegionSelector::cancelled,this,[&](const Error&){++cancelled;});overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);QCOMPARE(cancelled,0);
-  for(const auto& frame:frames()){const auto w=at(frame.nativeRect.center());QVERIFY(w);auto g=x11::reply(xcb_get_geometry_reply(connection_,xcb_get_geometry(connection_,w),nullptr));QCOMPARE(g->depth,uint8_t(32));const auto value=pixels(frame.nativeRect.bottomLeft()+QPoint(20,-20));QCOMPARE(value.size(),4);QCOMPARE(quint8(value[3]),frame.identity=="left"?uint8_t(0):uint8_t(70));}
+  for(const auto& frame:frames()){const auto w=at(frame.nativeRect.center());QVERIFY(w);auto g=x11::reply(xcb_get_geometry_reply(connection_,xcb_get_geometry(connection_,w),nullptr));QCOMPARE(g->depth,uint8_t(32));const auto value=pixels(frame.nativeRect.bottomLeft()+QPoint(20,-20));QCOMPARE(value.size(),4);QCOMPARE(quint8(value[3]),uint8_t(0));} // No scrim on any display (#629).
   motion({40,40});button(1,true);motion({1200,600});auto* accessible=QAccessible::queryAccessibleInterface(&overlay);QVERIFY(accessible);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("Release to capture"));PUTGD_TRY_VERIFY(white({44,41}));PUTGD_TRY_VERIFY(white({646,82}));button(1,false);PUTGD_TRY_COMPARE(selected,1);QCOMPARE(cancelled,0);QCOMPARE(selection,QRectF(40,40,880,260));PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
  }
  void tabSwitchesDisplayAndClampsSelection(){
@@ -164,8 +164,8 @@ private slots:
   for(int i=0;i<100;++i)keyClick(0xff53,0xffe3);
   PUTGD_TRY_COMPARE(accessible->rect(),QRect(800,100,160,200));escape();PUTGD_TRY_COMPARE(cancelled.size(),1);availableGrabs();
  }
- void instructionBackdropAndRenders_data(){QTest::addColumn<bool>("large");QTest::newRow("normal")<<false;QTest::newRow("text150")<<true;}
- void instructionBackdropAndRenders(){
+ void hintPillAndSizeLabelRender_data(){QTest::addColumn<bool>("large");QTest::newRow("normal")<<false;QTest::newRow("text150")<<true;}
+ void hintPillAndSizeLabelRender(){
   QFETCH(bool,large);const auto original=QGuiApplication::font();const auto restore=qScopeGuard([&]{QGuiApplication::setFont(original);});
   if(large){auto font=original;if(font.pixelSize()>0)font.setPixelSize(qRound(font.pixelSize()*1.5));else font.setPointSizeF(font.pointSizeF()*1.5);QGuiApplication::setFont(font);}
   motion({100,700});NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);keyClick(0xff53);
@@ -288,6 +288,33 @@ private slots:
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(owned(),2000);
   motion({40,40});button(1,true);motion({400,300});button(1,false);
   PUTGD_TRY_COMPARE(selected,1);QCOMPARE(cancelled,0);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
+ }
+ QList<CaptureFrame> frozenFrames()const{
+  auto layout=frames();
+  for(auto& frame:layout){frame.pixels=QImage(frame.nativeRect.size(),QImage::Format_RGB32);frame.pixels.fill(frame.identity=="left"?QColor(Qt::red):QColor(Qt::blue));}
+  return layout;
+ }
+ void screenshotFirstWaitsForTheMenuThenShowsTheFrozenFrame(){
+  // #629: the frame already holds the menu, so a held grab is no failure.
+  // The surfaces stay transparent (the real menu stays usable) until input
+  // is ours, then show the frozen pixels opaquely, with no scrim.
+  auto* menu=xcb_connect(nullptr,nullptr);const auto closeMenu=qScopeGuard([&]{xcb_disconnect(menu);});QVERIFY(!xcb_connection_has_error(menu));
+  auto pointer=x11::reply(xcb_grab_pointer_reply(menu,xcb_grab_pointer(menu,false,root_,XCB_EVENT_MASK_BUTTON_PRESS,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_NONE,XCB_NONE,XCB_CURRENT_TIME),nullptr));QVERIFY(pointer&&pointer->status==XCB_GRAB_STATUS_SUCCESS);
+  auto keyboard=x11::reply(xcb_grab_keyboard_reply(menu,xcb_grab_keyboard(menu,false,root_,XCB_CURRENT_TIME,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC),nullptr));QVERIFY(keyboard&&keyboard->status==XCB_GRAB_STATUS_SUCCESS);
+  motion({100,700});NativeRegionOverlay overlay(frozenFrames(),nullptr,XCB_CURSOR_NONE,{},true);int cancelled=0;QList<QRectF> selected;
+  connect(&overlay,&RegionSelector::cancelled,this,[&](const Error&){++cancelled;});connect(&overlay,&RegionSelector::selected,this,[&](const QRectF& r){selected.append(r);});
+  overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);PUTGD_COMPARE_STEADY(cancelled,0,NativeRegionOverlay::grabWaitMs+500);
+  auto clear=pixels({300,500});QCOMPARE(clear.size(),4);QCOMPARE(quint8(clear[3]),uint8_t(0));
+  xcb_ungrab_pointer(menu,XCB_CURRENT_TIME);xcb_ungrab_keyboard(menu,XCB_CURRENT_TIME);x11::reply(xcb_get_input_focus_reply(menu,xcb_get_input_focus(menu),nullptr));
+  const auto is=[&](QPoint point,QColor color){const auto b=pixels(point);return b.size()==4&&quint8(b[0])==color.blue()&&quint8(b[1])==color.green()&&quint8(b[2])==color.red()&&quint8(b[3])==255;};
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(is({300,500},Qt::red),3000);QVERIFY(is({900,300},Qt::blue));QVERIFY(is({630,790},Qt::red));
+  motion({40,40});button(1,true);motion({400,300});PUTGD_TRY_VERIFY(white({100,41}));QVERIFY(is({300,500},Qt::red));button(1,false);
+  PUTGD_TRY_COMPARE(selected.size(),1);QCOMPARE(selected.first(),QRectF(40,40,360,260));QCOMPARE(cancelled,0);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
+ }
+ void screenshotFirstRejectsMismatchedFrames(){
+  auto layout=frozenFrames();layout[1].pixels=layout[1].pixels.scaled(320,400);
+  NativeRegionOverlay overlay(layout,nullptr,XCB_CURSOR_NONE,{},true);Error failure;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){failure=e;});overlay.start();
+  PUTGD_TRY_COMPARE(failure.code,QString("capture_geometry"));QCOMPARE(drawables().size(),0);availableGrabs();
  }
  void invalidResidentCursorReleasesBothGrabs(){NativeRegionOverlay overlay(frames(),nullptr,xcb_generate_id(connection_));int cancelled=0;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){QCOMPARE(e.code,QString("capture_unavailable"));++cancelled;});overlay.start();PUTGD_TRY_COMPARE(cancelled,1);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();}
  void invalidLayoutFailsWithoutTakingGrabs(){NativeRegionOverlay overlay({});int cancelled=0;connect(&overlay,&RegionSelector::cancelled,this,[&](const Error& e){QVERIFY(bool(e));++cancelled;});overlay.start();PUTGD_TRY_COMPARE(cancelled,1);QCOMPARE(drawables().size(),0);availableGrabs();}

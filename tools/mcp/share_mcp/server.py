@@ -657,7 +657,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def patch_configuration(patch: Json, expected_revision: str) -> Json:
-        """Patch non-secret settings with expected file revision; conflicts require reread/rebase. Null is explicit. limits.maxFileBytes, maxBatchBytes and pendingArtifactBytes take a byte count, "auto" or null (no byte limit of put.gd's own; free disk and the destination's maximum still apply); inspect shows the resolved values and disk figures under configuration.result.effectiveLimits."""
+        """Patch non-secret settings with expected file revision; conflicts require reread/rebase. Null is explicit. limits.maxFileBytes, maxBatchBytes and pendingArtifactBytes take a byte count, "auto" or null (no byte limit of put.gd's own; free disk and the destination's maximum still apply); inspect shows the resolved values and disk figures under configuration.result.effectiveLimits. preferences.regionSelectionMode picks how region screenshots select (#629): "live" (default; the desktop keeps updating and an open menu must close first) or "screenshot_first" (every monitor is captured before the selector opens and the region is cut from that frozen frame, so open menus are included); recording always selects live."""
         allowed = {'schemaVersion', 'actions', 'captureDefaults', 'profiles', 'archive', 'naming', 'limits', 'retention', 'preferences'}
         if (not isinstance(patch, dict) or set(patch) - allowed or not safe_patch(patch) or
             not isinstance(expected_revision, str) or len(expected_revision) > 256):

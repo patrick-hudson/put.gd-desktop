@@ -19,7 +19,7 @@ Error selectionError(const X11Target& target,const QRectF& rectangle,const Resou
  return {};
 }
 bool sameTarget(const X11Target& a,const X11Target& b){
- if(a.action!=b.action||a.window!=b.window||a.nativeWindowRect!=b.nativeWindowRect||a.logicalSelection!=b.logicalSelection||a.layout.size()!=b.layout.size())return false;
+ if(a.action!=b.action||a.screenshotFirst!=b.screenshotFirst||a.window!=b.window||a.nativeWindowRect!=b.nativeWindowRect||a.logicalSelection!=b.logicalSelection||a.layout.size()!=b.layout.size())return false;
  for(int i=0;i<a.layout.size();++i){const auto& x=a.layout[i];const auto& y=b.layout[i];if(x.identity!=y.identity||x.logicalRect!=y.logicalRect||x.nativeRect!=y.nativeRect||x.density!=y.density||x.rotation!=y.rotation)return false;}
  return true;
 }
@@ -52,7 +52,7 @@ QJsonObject X11SourceAdapter::capabilities()const {
 SourceAdapter::PreparedAcquisition X11SourceAdapter::prepareAcquisition(const QString& action) {
  QPointer<X11SourceAdapter> guard(this);
  if(action=="clipboard"){const auto revision=clipboard_.revision();return [guard,revision](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(guard)guard->clipboard_.acquire(limits,std::move(cb),revision);else cb({{},{"source_unavailable","Desktop adapter closed",{}}});};}
- Error error;auto target=capture_.freeze(action,error);target.outcome=captureOutcome_;
+ Error error;auto target=capture_.freeze(action,error);target.outcome=captureOutcome_;target.screenshotFirst=action=="region"&&regionScreenshotFirst_;
  return [guard,target,error](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(error){cb({{},error});return;}if(guard)guard->capture(target,limits,std::move(cb));else cb({{},{"source_unavailable","Desktop adapter closed",{}}});};
 }
 void X11SourceAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){prepareAcquisition(action)(limits,std::move(cb));}
@@ -72,18 +72,43 @@ void X11SourceAdapter::selectRegionFrozen(const X11Target& target,const Resource
  if(overlay_){cb({{},0,{"busy_selecting","Region selection is already active",{}}});return;}
  qint64 pixels=0;for(const auto& frame:target.layout){const qint64 count=qint64(frame.nativeRect.width())*frame.nativeRect.height();if(count<=0||count>limits.imagePixels-pixels){cb({{},0,{"image_limit","Monitor snapshot exceeds resource limits",{}}});return;}pixels+=count;}
  Error error;if(!capture_.unchanged(target,error)){cb({{},0,error});return;}
- // A fresh selection invalidates older geometry, without reading any pixels.
- selectedGeneration_=0;selectedTarget_={};const auto generation=++generation_;
- RegionSelector* overlay=nativeRegionSelector_&&NativeRegionOverlay::supportsLayout(target.layout)?static_cast<RegionSelector*>(new NativeRegionOverlay(target.layout,this,residentRegionCursor_,target.outcome)):static_cast<RegionSelector*>(new RegionOverlay(target.layout,this,target.outcome));overlay_=overlay;
+ // A fresh selection invalidates older geometry. A live selection reads no
+ // pixels; Screenshot first reads every monitor once, before the selector maps.
+ selectedGeneration_=0;selectedTarget_={};frozenFrames_.clear();const auto generation=++generation_;
  auto callback=std::make_shared<std::function<void(RegionSelectionResult)>>(std::move(cb));
- connect(overlay,&RegionSelector::selected,this,[this,overlay,target,limits,callback,generation](const QRectF& rectangle){
+ if(!target.screenshotFirst){openSelector(target,limits,generation,{},[callback](RegionSelectionResult result){(*callback)(std::move(result));});return;}
+ captureLayout(target,limits,generation,[this,target,limits,generation,callback](QList<CaptureFrame> frames,Error error){
+  if(generation!=generation_){(*callback)({{},0,{"cancelled","Capture acquisition cancelled",{}}});return;}
+  if(error){if(!error.details.contains("stage"))error.details["stage"]="freeze";(*callback)({{},0,error});return;}
+  openSelector(target,limits,generation,std::move(frames),[callback](RegionSelectionResult result){(*callback)(std::move(result));});
+ });
+}
+void X11SourceAdapter::captureLayout(const X11Target& target,const ResourceLimits& limits,quint64 generation,std::function<void(QList<CaptureFrame>,Error)> cb){
+ if(!capture_.cinnamonCompositor()){Error error;auto frames=capture_.frames(target,error);cb(std::move(frames),error);return;}
+ auto* request=new CinnamonRegionCapture(target.layout,limits,this);regionCaptures_.insert(request);
+ connect(request,&CinnamonRegionCapture::acquired,this,[this,request,target,generation,cb=std::move(cb)](QList<CaptureFrame> frames,Error error)mutable{
+  regionCaptures_.remove(request);
+  if(generation!=generation_){cb({},{"cancelled","Capture acquisition cancelled",{}});return;}
+  if(!error)capture_.unchanged(target,error);
+  cb(error?QList<CaptureFrame>{}:std::move(frames),error);
+ });
+ request->start();
+}
+void X11SourceAdapter::openSelector(const X11Target& target,const ResourceLimits& limits,quint64 generation,QList<CaptureFrame> frozen,std::function<void(RegionSelectionResult)> cb){
+ if(overlay_){cb({{},0,{"busy_selecting","Region selection is already active",{}}});return;}
+ const bool screenshot=!frozen.isEmpty();
+ auto layout=screenshot?frozen:target.layout;
+ RegionSelector* overlay=nativeRegionSelector_&&NativeRegionOverlay::supportsLayout(target.layout)?static_cast<RegionSelector*>(new NativeRegionOverlay(layout,this,residentRegionCursor_,target.outcome,screenshot)):static_cast<RegionSelector*>(new RegionOverlay(layout,this,target.outcome,screenshot));overlay_=overlay;
+ auto callback=std::make_shared<std::function<void(RegionSelectionResult)>>(std::move(cb));
+ auto pixels=std::make_shared<QList<CaptureFrame>>(std::move(frozen));
+ connect(overlay,&RegionSelector::selected,this,[this,overlay,target,limits,callback,generation,pixels](const QRectF& rectangle){
   // Both selector implementations withdraw before emitting; wait for object
   // destruction too, so no later acquisition can include a selector surface.
-  connect(overlay,&QObject::destroyed,this,[this,overlay,target,rectangle,limits,callback,generation]{
+  connect(overlay,&QObject::destroyed,this,[this,overlay,target,rectangle,limits,callback,generation,pixels]{
    if(overlay_==overlay)overlay_=nullptr;
    if(generation!=generation_){(*callback)({{},0,{"cancelled","Capture acquisition cancelled",{}}});return;}
    const auto error=selectionError(target,rectangle,limits);if(error){(*callback)({{},0,error});return;}
-   selectedGeneration_=generation;selectedTarget_=target;
+   selectedGeneration_=generation;selectedTarget_=target;frozenFrames_=std::move(*pixels);
    for(auto& frame:selectedTarget_.layout)frame.pixels={};
    (*callback)({rectangle,generation,{}});
   });
@@ -101,10 +126,13 @@ void X11SourceAdapter::acquireSelectedRegionFrozen(const X11Target& target,const
  // Consume once even on validation failure; a selection cannot be replayed
  // against a different invocation target, even if that layout still exists.
  const bool matchingTarget=sameTarget(target,selectedTarget_);
- selectedGeneration_=0;selectedTarget_={};
+ auto frozen=std::move(frozenFrames_);
+ selectedGeneration_=0;selectedTarget_={};frozenFrames_.clear();
  if(!matchingTarget){cb({{},{"capture_target","Region selection target changed",{}}});return;}
  qint64 pixels=0;for(const auto& frame:target.layout){const qint64 count=qint64(frame.nativeRect.width())*frame.nativeRect.height();if(count<=0||count>limits.imagePixels-pixels){cb({{},{"image_limit","Monitor snapshot exceeds resource limits",{}}});return;}pixels+=count;}
  const auto error=selectionError(target,selection.rectangle,limits);if(error){cb({{},error});return;}
+ // Screenshot first: cut the result from the frames the user selected over.
+ if(!frozen.isEmpty()){Error changed;if(!capture_.unchanged(target,changed)){cb({{},changed});return;}compose(std::move(frozen),selection.rectangle,limits,std::move(cb));return;}
  // captureSelected rechecks the frozen display/target before its first read.
  captureSelected(target,selection.rectangle,limits,std::move(cb),selection.generation);
 }
@@ -145,7 +173,7 @@ void X11SourceAdapter::compose(QList<CaptureFrame> frames,QRectF selection,const
  const auto generation=generation_;auto result=std::make_shared<PayloadResult>();auto* worker=QThread::create([frames=std::move(frames),selection,limits,result]{result->payload.image=composeFrames(frames,selection,std::min(limits.imagePixels,limits.imageBytes/4),result->error);result->payload.kind="image";result->payload.mime="image/png";});workers_.append(worker);
  connect(worker,&QThread::finished,this,[this,worker,generation,result,cb=std::move(cb)]()mutable{workers_.removeOne(worker);worker->deleteLater();if(generation!=generation_)cb({{},{"cancelled","Capture acquisition cancelled",{}}});else cb(std::move(*result));});worker->start();
 }
-void X11SourceAdapter::cancelAcquisition(){++generation_;selectedGeneration_=0;selectedTarget_={};if(overlay_)overlay_->cancel();const auto captures=std::move(regionCaptures_);regionCaptures_.clear();for(auto* request:captures)request->cancel();const auto settles=std::move(settles_);settles_.clear();for(auto* settle:settles)settle->cancel();}
+void X11SourceAdapter::cancelAcquisition(){++generation_;selectedGeneration_=0;selectedTarget_={};frozenFrames_.clear();if(overlay_)overlay_->cancel();const auto captures=std::move(regionCaptures_);regionCaptures_.clear();for(auto* request:captures)request->cancel();const auto settles=std::move(settles_);settles_.clear();for(auto* settle:settles)settle->cancel();}
 void X11SourceAdapter::copy(const CopyPayload& payload,std::function<void(Error)> cb){clipboard_.copy(payload,std::move(cb));}
 void X11SourceAdapter::bindShortcuts(const QHash<QString,QString>& shortcuts){shortcuts_.bind(shortcuts);}
 }

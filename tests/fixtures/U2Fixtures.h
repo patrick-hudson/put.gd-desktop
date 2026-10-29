@@ -17,7 +17,9 @@ public:
  quint64 clipboardRevision() const override {return revision;}
  std::optional<quint64> lastCopyRevision() const override {return copiedRevision;}
  QJsonObject capabilities() const override {return {{"region",true},{"clipboardImport",QJsonArray{"files","image","text"}},{"clipboardResult",QJsonArray{"files","image","text"}}};}
- void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> cb) override {++reads;if(defer)acquisitions.append(cb);else cb({payload,{}});}
+ // The region selection mode each acquisition saw (#629), in order.
+ QList<bool> screenshotFirst;
+ void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> cb) override {++reads;screenshotFirst.append(regionScreenshotFirst_);if(defer)acquisitions.append(cb);else cb({payload,{}});}
  void cancelAcquisition() override {if(!acquisitions.isEmpty()) {auto cb=acquisitions.takeFirst();cb({{}, {"source_cancelled","Selection cancelled",{}}});}}
  void copy(const CopyPayload& p,std::function<void(Error)> cb) override {++copies;copied=p;copiedTexts.append(p.text);++revision;copiedRevision=revision;cb({});}
 };

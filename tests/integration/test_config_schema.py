@@ -46,6 +46,16 @@ class ConfigurationSchema(unittest.TestCase):
         for mode in ('latest', True, None, 42):
             self.assertFalse(validator.is_valid(legacy | {'uploadClipboardBehavior': mode}))
 
+    def test_region_selection_modes(self):
+        # #629: live by default (omitted), or screenshot_first.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        for mode in ('live', 'screenshot_first'):
+            self.assertTrue(validator.is_valid(legacy | {'regionSelectionMode': mode}))
+        for mode in ('frozen', 'screenshot', True, None, 1):
+            self.assertFalse(validator.is_valid(legacy | {'regionSelectionMode': mode}))
+
     def test_update_check_preferences(self):
         # #293: optional; check and channel each optional inside it.
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())

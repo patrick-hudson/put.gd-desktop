@@ -147,13 +147,13 @@ public:
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
+        // No scrim on any display (#629): the outline, a fading hint and the size.
         const auto clipped = owner_.selection_.isEmpty() && screen() == QGuiApplication::screens()[activeScreen()] ? logical_ : owner_.selection_.intersected(logical_);
-        const QRectF local = clipped.translated(-logical_.topLeft());
-        paintRegionScrim(painter, rect(), local);
-        if (!clipped.isEmpty()) paintSelectionOutline(painter, local);
-        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-        if (owner_.keyboardScreen_ < 0 || screen() == QGuiApplication::screens()[activeScreen()])
-            paintRegionInstructions(painter, rect(), palette(), regionInstructions(owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()]), QGuiApplication::screens()[activeScreen()]->geometry(), regionScreenFrames(), owner_.dragging_), owner_.selection_.translated(-logical_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);
+        if (!clipped.isEmpty()) paintSelectionOutline(painter, clipped.translated(-logical_.topLeft()));
+        const int own = std::max(0, int(QGuiApplication::screens().indexOf(screen())));
+        QList<QRectF> displays;
+        for (auto* output : QGuiApplication::screens()) displays.append(output->geometry());
+        paintRegionChrome(painter, rect(), owner_.selection_.translated(-logical_.topLeft()), regionSizeLabel(owner_.selection_), own == owner_.hintScreen_, owner_.hint_.opacity(), regionLabelDisplay(displays, owner_.selection_) == own);
     }
     void mousePressEvent(QMouseEvent* e) override {
         if (e->button() == Qt::RightButton) { owner_.cancel(); return; }
@@ -184,12 +184,14 @@ private:
     QRectF logical_;
 };
 SelectionOverlay::SelectionOverlay(QObject* parent) : QObject(parent) {}
+void SelectionOverlay::repaintSurfaces() { for (auto* surface : surfaces_) surface->update(); }
 SelectionOverlay::~SelectionOverlay() { finish(); for (auto* s : surfaces_) delete s; }
 void SelectionOverlay::start() {
     for (QScreen* screen : QGuiApplication::screens()) { auto* surface = new Surface(*this, screen); surfaces_.append(surface); surface->show(); surface->raise(); }
     Surface* focus = surfaces_.isEmpty() ? nullptr : surfaces_.first();
     for (auto* s : surfaces_) if (s->geometry().contains(QCursor::pos())) focus = s;
-    if (focus) { keyboardScreen_ = QGuiApplication::screens().indexOf(focus->screen()); focus->grabKeyboard(); for (auto* surface : surfaces_) surface->refresh(); }
+    if (focus) { keyboardScreen_ = hintScreen_ = QGuiApplication::screens().indexOf(focus->screen()); focus->grabKeyboard(); for (auto* surface : surfaces_) surface->refresh(); }
+    hint_.start();
     connect(qGuiApp, &QGuiApplication::screenAdded, this, [this] { cancel({"display_changed", "Display changed during region selection", {}}); });
     connect(qGuiApp, &QGuiApplication::screenRemoved, this, [this] { cancel({"display_changed", "Display changed during region selection", {}}); });
 }
@@ -208,7 +210,7 @@ void SelectionOverlay::complete(const QRect& root) {
     finish();
     emit selected(root);
 }
-void SelectionOverlay::finish() { finished_ = true; for (auto* s : surfaces_) { s->releaseKeyboard(); s->releaseMouse(); s->hide(); } }
+void SelectionOverlay::finish() { finished_ = true; hint_.stop(); for (auto* s : surfaces_) { s->releaseKeyboard(); s->releaseMouse(); s->hide(); } }
 void SelectionOverlay::cancel(Error error) { if (finished_) return; finish(); emit cancelled(error); }
 
 BoundsOverlay::BoundsOverlay(QObject* parent) : QObject(parent) {}

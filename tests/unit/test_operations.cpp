@@ -368,6 +368,24 @@ private slots:
    QTest::newRow(qPrintable(mode+"-user-change"))<<3<<true<<mode;
   }
  }
+ void regionSelectionModeReachesTheSource() {
+  // #629: each invocation hands the accepted mode to the desktop adapter.
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});
+  auto doc=configuration(d.path());QVERIFY(settings.save(doc,{}));Source source;source.defer=true;
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  const auto run=[&](int expected){
+   operations.invoke("region",[&](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.reads,expected);
+   auto cb=source.acquisitions.takeFirst();cb({{},{"source_cancelled","Selection cancelled",{}}});
+   PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  };
+  run(1);
+  auto prefs=doc["preferences"].toObject();prefs["regionSelectionMode"]="screenshot_first";doc["preferences"]=prefs;QVERIFY(settings.save(doc,settings.revision()));
+  run(2);
+  prefs["regionSelectionMode"]="live";doc["preferences"]=prefs;QVERIFY(settings.save(doc,settings.revision()));
+  run(3);
+  QCOMPARE(source.screenshotFirst,(QList<bool>{false,true,false}));
+ }
  void queuedUploadsCopyEveryLink() {
   QFETCH(int,count);QFETCH(bool,userChanged);QFETCH(QString,mode);
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();

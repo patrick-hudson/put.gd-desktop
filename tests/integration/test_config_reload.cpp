@@ -23,6 +23,19 @@ private slots:
    QCOMPARE(Settings::validate(rejected).code,QString("config_invalid"));
   }
  }
+ void regionSelectionModeDefaultsValidatesAndReloads() {
+  // #629: omitted means live; screenshot_first is the only alternative.
+  auto doc=Settings::defaults();QVERIFY(!doc["preferences"].toObject().contains("regionSelectionMode"));
+  QCOMPARE(Settings::fromValidated(doc).regionSelectionMode,QString("live"));
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));
+  auto preferences=doc["preferences"].toObject();preferences["regionSelectionMode"]="screenshot_first";doc["preferences"]=preferences;
+  QVERIFY(!Settings::validate(doc));QVERIFY(settings.save(doc,{}));
+  QCOMPARE(settings.snapshot().regionSelectionMode,QString("screenshot_first"));
+  for(const auto& invalid:QList<QJsonValue>{"frozen","screenshot",true,42,QJsonValue::Null}) {
+   auto rejected=doc;auto prefs=rejected["preferences"].toObject();prefs["regionSelectionMode"]=invalid;rejected["preferences"]=prefs;
+   const auto error=Settings::validate(rejected);QCOMPARE(error.code,QString("config_invalid"));
+  }
+ }
  void replacementsAndValidationHaveNoSideEffects() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());QVERIFY(settings.save(doc,{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());QSignalSpy accepted(&settings,&SettingsService::accepted);
   for(int index=0;index<3;++index) {auto preferences=doc["preferences"].toObject();preferences["notifications"]=index%2==1;doc["preferences"]=preferences;QSaveFile file(settings.path());file.setDirectWriteFallback(false);QVERIFY(file.open(QIODevice::WriteOnly));file.write(QJsonDocument(doc).toJson());QVERIFY(file.commit());PUTGD_TRY_COMPARE(accepted.count(),index+1);QCOMPARE(settings.document(),doc);}

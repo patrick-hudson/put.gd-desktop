@@ -182,7 +182,7 @@ int main(int argc,char** argv){
  };
  QObject::connect(&control,&putgd::CaptureControl::frame,&app,[&](const QString& type,const QJsonObject& payload){
   if(type=="bootstrap"){
-   if(bootstrapped||payload.size()!=(payload.contains("outcome")?10:9)||payload["build"].toObject()!=build||!payload["nonce"].isString()||QUuid(payload["nonce"].toString()).isNull()||!payload["generation"].isString()||!payload["path"].isString()||!payload["device"].isString()||!payload["inode"].isString()||!payload["limits"].isObject()||(payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))){rejectProtocol();return;}
+   if(bootstrapped||payload.size()!=9+int(payload.contains("outcome"))+int(payload.contains("regionMode"))||(payload.contains("regionMode")&&payload["regionMode"]!="screenshot_first")||payload["build"].toObject()!=build||!payload["nonce"].isString()||QUuid(payload["nonce"].toString()).isNull()||!payload["generation"].isString()||!payload["path"].isString()||!payload["device"].isString()||!payload["inode"].isString()||!payload["limits"].isObject()||(payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))){rejectProtocol();return;}
    nonce=payload["nonce"].toString();generation=payload["generation"].toString();bool ok=false;const auto g=generation.toULongLong(&ok);if(!ok||!g||QString::number(g)!=generation){rejectProtocol();return;}
    path=payload["path"].toString();device=payload["device"].toString();inode=payload["inode"].toString();frozen=payload["target"].toObject();const auto l=payload["limits"].toObject();
    if(l.size()!=3||!positive(l["imagePixels"],1000000000LL)||!positive(l["imageBytes"],1099511627776LL)||!positive(l["maxFileBytes"],1099511627776LL)||!path.startsWith("/tmp/putgd-capture-")||!path.endsWith("/result.png")||path.contains("/../")||path.count('/')!=3){rejectProtocol();return;}
@@ -193,6 +193,8 @@ int main(int argc,char** argv){
    if(cursor.size()!=2||!cursor["id"].isString()||!cursor["cache"].isBool()||!cursorOk||cursorId>UINT32_MAX||QString::number(cursorId)!=cursor["id"].toString()||(cursorId&&(!cursor["cache"].toBool()||frozen["action"]!="region"))){rejectProtocol();return;}
    preparedCursor=quint32(cursorId);cacheCursor=cursor["cache"].toBool();
    bootstrapped=true;putgd::Error error;target=native.resolve(frozen,resolver,error);target.outcome=payload["outcome"].toString();
+   // Screenshot first (#629) reads pixels, so its selection waits for BEGIN.
+   target.screenshotFirst=target.action=="region"&&payload["regionMode"]=="screenshot_first";
    QJsonObject seed;
    if(!error&&target.action=="region"&&!preparedCursor&&cacheCursor&&putgd::NativeRegionOverlay::supportsLayout(target.layout))seed=nativeCursorSeed();
    if(!error&&target.action=="region"&&!preparedCursor&&seed.isEmpty()){
@@ -226,7 +228,8 @@ int main(int argc,char** argv){
     source.setResidentRegionCursor(previewCursor);
     // Authenticated preview authorizes geometry/input only. It never reads a
     // screen or starts encoding, even if the user completes selection here.
-    deadline.start(120000);startSelection();return;
+    // Screenshot first reads every monitor, so it starts only after BEGIN.
+    deadline.start(120000);if(!target.screenshotFirst)startSelection();return;
    }
    if(begun||(previewed&&cursor!=previewCursor)){rejectProtocol();return;}
    source.setResidentRegionCursor(quint32(cursor));begun=true;

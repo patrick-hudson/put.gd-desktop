@@ -866,6 +866,19 @@ private slots:
   QFormLayout* form=nullptr;for(auto* candidate:tabs->widget(1)->findChildren<QFormLayout*>())if(candidate->parentWidget()->isAncestorOf(sharing)&&candidate->parentWidget()->isAncestorOf(target))form=candidate;QVERIFY(form);int sharingRow=-1,copyRow=-1;QFormLayout::ItemRole role;auto fieldRow=[form](QWidget* control){while(control&&control->parentWidget()!=form->parentWidget())control=control->parentWidget();return control;};form->getWidgetPosition(fieldRow(sharing),&sharingRow,&role);form->getWidgetPosition(fieldRow(target),&copyRow,&role);QCOMPARE(copyRow,sharingRow+1);
   target->setCurrentIndex(target->findData("list"));PUTGD_TRY_COMPARE(service.document()["preferences"].toObject()["uploadClipboardBehavior"].toString(),QString("list"));
  }
+ void regionSelectionModeLivesOnTheCapturePage(){
+  // #629: Live desktop (default) or Screenshot first, saved to the shared config.
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");tabs->setCurrentIndex(1);
+  auto* mode=window.findChild<QComboBox*>("regionSelectionMode");QVERIFY(mode);QVERIFY(tabs->widget(1)->isAncestorOf(mode));QVERIFY(!tabs->widget(0)->isAncestorOf(mode));
+  QCOMPARE(mode->count(),2);QCOMPARE(mode->itemText(0),QString("Live desktop"));QCOMPARE(mode->itemText(1),QString("Screenshot first"));QCOMPARE(mode->currentData().toString(),QString("live"));
+  auto* help=window.findChild<QToolButton*>("regionSelectionModeHelp");QVERIFY(help);QVERIFY(help->accessibleDescription().contains("open menus"));
+  // An untouched configuration keeps no key; choosing a mode writes it.
+  QVERIFY(!service.document()["preferences"].toObject().contains("regionSelectionMode"));
+  mode->setCurrentIndex(mode->findData("screenshot_first"));PUTGD_TRY_COMPARE(service.snapshot().regionSelectionMode,QString("screenshot_first"));
+  // A change made through the CLI/MCP path shows in the open window.
+  auto doc=service.document();auto prefs=doc["preferences"].toObject();prefs["regionSelectionMode"]="live";doc["preferences"]=prefs;QVERIFY(service.save(doc,service.revision()));
+  PUTGD_TRY_COMPARE(mode->currentData().toString(),QString("live"));
+ }
  void captureDefaultAndExplicitExceptionPersistAcrossReopen(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();
   QVERIFY(!window.findChild<QComboBox*>("defaultCaptureOutput"));QVERIFY(!window.findChild<QComboBox*>("destinationClipboard"));auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");QVERIFY(destination);const auto profileId=destination->currentData().toString();QVERIFY(!profileId.isEmpty());auto* local=window.findChild<QCheckBox*>("keepUploadCopies");QVERIFY(local);local->setChecked(true);PUTGD_TRY_VERIFY(service.snapshot().archive.keepUploads);QCOMPARE(service.snapshot().actions["region"].profileId,profileId);

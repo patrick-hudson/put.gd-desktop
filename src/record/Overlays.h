@@ -8,6 +8,7 @@
 #include <QRect>
 #include <QWidget>
 #include <functional>
+#include "ui/RegionSelection.h"
 
 class QCheckBox;
 class QComboBox;
@@ -47,8 +48,11 @@ private:
     void move(QPointF);
     void release(QPointF);
     void finish();
-    int keyboardScreen_ = -1;
+    int keyboardScreen_ = -1, hintScreen_ = 0;
     QList<Surface*> surfaces_;
+    // The start-up hint pill fades after about 2 s (#629).
+    void repaintSurfaces();
+    RegionHintFade hint_{[this] { repaintSurfaces(); }};
     QRectF selection_;
     QPointF anchor_;
     bool dragging_ = false, finished_ = false;

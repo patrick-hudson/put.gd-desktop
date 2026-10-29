@@ -11,6 +11,9 @@
 #include <QWidget>
 #include <algorithm>
 #include <optional>
+#include <functional>
+#include <QElapsedTimer>
+#include <QTimer>
 
 namespace putgd {
 // Native capture helpers keep the desktop family and its text enlargement.
@@ -19,13 +22,6 @@ inline QFont nativeRegionFont() {
     if (font.pointSizeF() > 0) font.setPointSizeF(std::max(qreal(10.5), font.pointSizeF()));
     else font.setPixelSize(std::max(14, font.pixelSize()));
     return font;
-}
-inline constexpr int regionScrimAlpha = 70;
-inline void paintRegionScrim(QPainter& painter, const QRect& bounds, const QRectF& selection) {
-    painter.setCompositionMode(QPainter::CompositionMode_Source);
-    painter.fillRect(bounds, QColor(0, 0, 0, regionScrimAlpha));
-    if (!selection.isEmpty()) painter.fillRect(selection, Qt::transparent);
-    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 }
 // Match composeFrames: preserve a single output's pixel grid; compose spans at
 // the highest participating density, rounding boundaries outwards once.
@@ -143,55 +139,96 @@ inline void describeRegion(QWidget* surface, const QRectF& selection, bool recor
     QAccessibleEvent changed(surface, QAccessible::DescriptionChanged);
     QAccessible::updateAccessibility(&changed);
 }
-inline QRect regionInstructionBox(const QRect& bounds, const QFontMetrics& metrics, const QString& instructions = regionInstructions(), const QRectF& selection = {}, const std::optional<QPointF>& pointer = {}, const QFont& font = nativeRegionFont()) {
-    const int margin = Graphite::space(Graphite::Space::l);
-    const int horizontal = 2 * Graphite::space(Graphite::Space::m), vertical = 2 * Graphite::space(Graphite::Space::s);
-    const QRect available = bounds.adjusted(margin, margin, -margin, -margin);
-    if (available.width() <= horizontal || available.height() <= vertical) return {};
-    auto strong = font;
-    strong.setWeight(QFont::DemiBold);
-    const QFontMetrics titleMetrics(strong);
-    const auto lines = instructions.split('\n');
-    int naturalWidth = 0;
-    for (int i = 0; i < lines.size(); ++i) naturalWidth = std::max(naturalWidth, (i == 0 ? titleMetrics : metrics).horizontalAdvance(lines[i]));
-    const int width = std::min(available.width(), naturalWidth + horizontal);
-    int textHeight = 0;
-    for (int i = 0; i < lines.size(); ++i)
-        textHeight += (i == 0 ? titleMetrics : metrics).boundingRect(QRect(0, 0, width - horizontal, available.height()), Qt::TextWordWrap | Qt::AlignCenter, lines[i]).height();
-    const int height = std::min(available.height(), textHeight + vertical);
-    const QRect top(available.left() + (available.width() - width) / 2, available.top(), width, height);
-    const QRect bottom(top.x(), available.bottom() - height + 1, width, height);
-    // Prefer clear content; near the drag pointer, avoid covering its next move.
-    auto score = [&](const QRect& box) {
-        const auto overlap = QRectF(box).intersected(selection);
-        return overlap.width() * overlap.height() + (pointer && QRectF(box).adjusted(-Graphite::space(Graphite::Space::xxl), -Graphite::space(Graphite::Space::xxl), Graphite::space(Graphite::Space::xxl), Graphite::space(Graphite::Space::xxl)).contains(*pointer) ? qreal(bounds.width()) * bounds.height() : 0);
-    };
-    return score(bottom) < score(top) ? bottom : top;
+// Selectors draw no scrim on any monitor (#629). A one-line hint pill shows at
+// start and fades; afterwards only a compact output-pixel size label follows the
+// selection. The full keyboard help and outcome stay in the accessible description.
+inline constexpr int regionHintHoldMs=1700,regionHintFadeMs=300;
+inline QString regionHint(){return QStringLiteral("Drag to select · Esc to cancel");}
+inline qreal regionHintOpacity(qint64 elapsed){
+    if(elapsed<=regionHintHoldMs)return 1;
+    if(elapsed>=regionHintHoldMs+regionHintFadeMs)return 0;
+    return 1-qreal(elapsed-regionHintHoldMs)/regionHintFadeMs;
 }
-// An opaque, outlined backdrop stays legible over a live desktop in either theme.
-inline void paintRegionInstructions(QPainter& painter, const QRect& bounds, const QPalette&, const QString& instructions = regionInstructions(), const QRectF& selection = {}, const std::optional<QPointF>& pointer = {}) {
-    const QRect box = regionInstructionBox(bounds, painter.fontMetrics(), instructions, selection, pointer, painter.font());
-    if (box.isEmpty()) return;
+// The same output-pixel size the capture produces, else logical pixels.
+inline QString regionSizeLabel(const QRectF& selection,const QList<CaptureFrame>& frames=regionScreenFrames()){
+    if(selection.isEmpty())return {};
+    const auto output=regionOutputSize(selection,frames);
+    const auto size=output.isEmpty()?selection.size():QSizeF(output);
+    return QStringLiteral("%1 × %2").arg(qRound(size.width())).arg(qRound(size.height()));
+}
+// The display that shows the size label: the one holding most of the selection.
+inline int regionLabelDisplay(const QList<QRectF>& displays,const QRectF& selection){
+    int chosen=-1;qreal best=0;
+    for(int i=0;i<displays.size();++i){const auto part=displays[i].intersected(selection);const qreal area=part.width()*part.height();if(area>best){best=area;chosen=i;}}
+    return chosen;
+}
+inline QSize regionPillSize(const QFontMetrics& metrics,const QString& text){
+    return {metrics.horizontalAdvance(text)+2*Graphite::space(Graphite::Space::m),metrics.height()+2*Graphite::space(Graphite::Space::xs)};
+}
+// Top centre of the display, or its bottom when the selection covers the top.
+inline QRect regionHintBox(const QRect& bounds,const QFontMetrics& metrics,const QString& text=regionHint(),const QRectF& selection={}){
+    const int margin=Graphite::space(Graphite::Space::l);
+    const QRect available=bounds.adjusted(margin,margin,-margin,-margin);
+    const auto size=regionPillSize(metrics,text);
+    if(available.width()<size.width()||available.height()<size.height())return {};
+    const QRect top(available.left()+(available.width()-size.width())/2,available.top(),size.width(),size.height());
+    const QRect bottom(top.x(),available.bottom()-size.height()+1,size.width(),size.height());
+    return QRectF(top).intersects(selection)&&!QRectF(bottom).intersects(selection)?bottom:top;
+}
+// Just outside the selection's bottom-left corner; above its top-left when the
+// display has no room below, and inside the top-left corner when neither fits.
+inline QRect regionSizeBox(const QRect& bounds,const QFontMetrics& metrics,const QString& text,const QRectF& selection){
+    if(text.isEmpty()||selection.isEmpty())return {};
+    const auto size=regionPillSize(metrics,text);
+    if(bounds.width()<size.width()||bounds.height()<size.height())return {};
+    const int gap=Graphite::space(Graphite::Space::xs);
+    const auto outer=selection.toAlignedRect();
+    int x=outer.left(),y=outer.bottom()+1+gap;
+    if(y+size.height()-1>bounds.bottom()){y=outer.top()-gap-size.height();if(y<bounds.top()){x+=gap;y=outer.top()+gap;}}
+    x=std::clamp(x,bounds.left(),bounds.right()-size.width()+1);
+    y=std::clamp(y,bounds.top(),bounds.bottom()-size.height()+1);
+    return {QPoint(x,y),size};
+}
+// An opaque, outlined pill stays legible over any desktop in either theme.
+inline void paintRegionPill(QPainter& painter,const QRect& box,const QString& text,qreal opacity=1){
+    if(box.isEmpty()||opacity<=0)return;
     painter.save();
+    painter.setOpacity(painter.opacity()*opacity);
     painter.setRenderHint(QPainter::Antialiasing);
-    const auto& colors = Theme::current();
+    const auto& colors=Theme::current();
+    const qreal radius=box.height()/2.0;
     painter.setBrush(colors.surfaceRaised);
-    painter.setPen(QPen(colors.borderStrong, 1));
-    painter.drawRoundedRect(box.adjusted(0, 0, -1, -1), Graphite::scaled(Graphite::Metric::radius), Graphite::scaled(Graphite::Metric::radius));
-    const auto base = painter.font();
-    const auto lines = instructions.split('\n');
-    const int horizontal = Graphite::space(Graphite::Space::m), vertical = Graphite::space(Graphite::Space::s);
-    int top = box.top() + vertical;
-    for (int i = 0; i < lines.size(); ++i) {
-        auto font = base;
-        font.setWeight(i == 0 ? QFont::DemiBold : QFont::Normal);
-        painter.setFont(font);
-        painter.setPen(i == 0 ? colors.text : colors.textSecondary);
-        const QRect area(box.left() + horizontal, top, box.width() - 2 * horizontal, box.bottom() - top - vertical + 1);
-        const int height = QFontMetrics(font).boundingRect(area, Qt::TextWordWrap | Qt::AlignCenter, lines[i]).height();
-        painter.drawText(QRect(area.left(), top, area.width(), height), Qt::TextWordWrap | Qt::AlignCenter, lines[i]);
-        top += height;
-    }
+    painter.setPen(QPen(colors.borderStrong,1));
+    painter.drawRoundedRect(QRectF(box).adjusted(0.5,0.5,-0.5,-0.5),radius,radius);
+    painter.setPen(colors.text);
+    painter.drawText(box,Qt::AlignCenter,text);
     painter.restore();
 }
+// Hint, then size label, in one surface's local coordinates. The hint shows
+// only on the active display; the label only on the display chosen above.
+inline void paintRegionChrome(QPainter& painter,const QRect& bounds,const QRectF& selection,const QString& size,bool hint,qreal hintOpacity,bool label){
+    const QFontMetrics metrics(painter.font());
+    if(hint)paintRegionPill(painter,regionHintBox(bounds,metrics,regionHint(),selection),regionHint(),hintOpacity);
+    if(label)paintRegionPill(painter,regionSizeBox(bounds,metrics,size,selection),size);
+}
+// Drives the start-up hint's fade; repaint runs whenever its opacity changes.
+class RegionHintFade {
+public:
+    explicit RegionHintFade(std::function<void()> repaint):repaint_(std::move(repaint)){
+        timer_.setInterval(33);
+        QObject::connect(&timer_,&QTimer::timeout,&timer_,[this]{const auto now=opacity();if(now!=last_){last_=now;repaint_();}if(now<=0)timer_.stop();});
+    }
+    void start(){clock_.start();expired_=false;last_=1;timer_.start();}
+    void stop(){timer_.stop();}
+    // Hide at once (tests, and selectors that close).
+    void expire(){expired_=true;timer_.stop();}
+    qreal opacity()const{return expired_?0:clock_.isValid()?regionHintOpacity(clock_.elapsed()):1;}
+    bool visible()const{return opacity()>0;}
+private:
+    std::function<void()> repaint_;
+    QElapsedTimer clock_;
+    QTimer timer_;
+    qreal last_=1;
+    bool expired_=false;
+};
 }
