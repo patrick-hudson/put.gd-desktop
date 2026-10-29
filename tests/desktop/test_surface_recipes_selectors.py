@@ -249,7 +249,9 @@ class FakeContext(Context):
         self.inputs.extend(("key", key) for key in sequence)
         for key in sequence:
             if self.surface == "format":
-                if key == "Home":
+                if key == "Esc":
+                    self.surface = "bar"
+                elif key == "Home":
                     self.combo_index = 0
                 elif key == "Down":
                     self.combo_index += 1
@@ -316,7 +318,10 @@ class SelectorRecipes(unittest.TestCase):
         for desktop in model["desktops"]:
             path = ROOT / "tools/lab/surface_driver/profiles" / (desktop["id"] + ".d") / "selectors.json"
             value = json.loads(path.read_text())
-            self.assertEqual(value, {"selectors": {"bar_drag": desktop["id"].endswith("-x11")}})
+            self.assertEqual(value["selectors"], {"bar_drag": desktop["id"].endswith("-x11")})
+            self.assertEqual(set(value["window_titles"]), set(value["catalog_windows"]))
+            self.assertEqual(value["catalog_windows"]["bar-ready"], ["33-record-ready-bar"])
+            self.assertEqual(value["catalog_windows"]["bar-paused"], ["35-record-paused-bar"])
 
     def test_wayland_drag_is_explicitly_blocked(self):
         ctx = FakeContext()

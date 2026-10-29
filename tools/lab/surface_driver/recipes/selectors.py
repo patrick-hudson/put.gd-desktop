@@ -250,14 +250,14 @@ def _motion(ctx, rid):
 
 
 def _start(ctx, rid):
-    ctx.click("record", window="bar")
+    ctx.click("record", window="bar-ready")
     _state(ctx, rid, "recording")
 
 
 def _stop(ctx, rid):
     # A changing pattern is supplied by the fixture; elapsed time alone is no proof.
     ctx.shell("sleep 2")
-    ctx.click("stop", window="bar")
+    ctx.click("stop", window="bar-handle" if _inspect(ctx, rid).get("overlayPlacement") == "handle" else "bar-recording")
     reviewed = _state(ctx, rid, "reviewing")
     ctx.expect(reviewed["durationUs"] > 0, "stopped clip has retained duration")
     _motion(ctx, rid)
@@ -507,18 +507,18 @@ def bar_options(ctx):
             caps = _call(ctx, "recording.capabilities")
             if not caps.get("audio", {}).get("system"):
                 ctx.blocked("System audio unavailable on this desktop")
-            ctx.click("text:System audio", window="bar")
+            ctx.click("text:System audio", window="bar-ready")
             ctx.wait(lambda: _inspect(ctx, rid)["config"]["audio"]["system"], "system audio enabled")
             # Format order is the catalog's real combo order, not a translated label.
             for index, (fmt, codec) in enumerate((("mp4", "h264"), ("mp4", "h265"), ("webm", "vp9"), ("gif", ""), ("webp", ""))):
                 if fmt not in caps["formats"] or (codec and codec not in caps.get("codecs", {}).get(fmt, [])):
                     ctx.blocked("Required recording format unavailable: " + fmt + "/" + codec)
-                ctx.click("format", window="bar")
+                ctx.click("format", window="bar-ready")
                 ctx.keys("Home", *(["Down"] * index), "Return")
                 info = ctx.wait(lambda: (s if (s := _inspect(ctx, rid))["config"]["format"] == fmt and s["config"]["codec"] == codec else None), "format " + fmt + "/" + codec)
                 ctx.expect(info["config"]["audio"]["system"] == (fmt not in ("gif", "webp")), "animation formats are silent")
                 ctx.frame("format-" + fmt + "-" + codec, window="bar", reference="33a-record-gif-requested-audio" if fmt == "gif" else BAR)
-            ctx.click("format", window="bar")
+            ctx.click("format", window="bar-ready")
             ctx.keys("Home", "Return")
             ctx.wait(lambda: _inspect(ctx, rid)["config"]["audio"]["system"], "video restores audio intent")
             ctx.frame("after", window="bar", reference="33b-record-restored-audio")
@@ -535,10 +535,10 @@ def bar_recording(ctx):
             _start(ctx, rid)
             ctx.frame("recording", window="bar", reference="34-record-recording-bar")
             ctx.frame("recording-bounds")
-            ctx.click("text:Pause", window="bar")
+            ctx.click("text:Pause", window="bar-recording")
             _state(ctx, rid, "paused")
             ctx.frame("paused", window="bar", reference="35-record-paused-bar")
-            ctx.click("text:Resume", window="bar")
+            ctx.click("text:Resume", window="bar-paused")
             _state(ctx, rid, "recording")
             _stop(ctx, rid)
             ctx.frame("after", window="review", reference="30-review")
@@ -554,7 +554,12 @@ def bar_discard(ctx):
             rid = _ready(ctx)
             try:
                 ctx.frame("before-ready-" + gesture, window="bar", reference=BAR)
-                ctx.click("cancel", window="bar") if gesture == "cancel" else ctx.keys("Esc")
+                if gesture == "cancel":
+                    ctx.click("cancel", window="bar-ready")
+                else:
+                    # Give the ready bar keyboard focus through a real control.
+                    ctx.click("format", window="bar-ready")
+                    ctx.keys("Esc", "Esc")
                 _state(ctx, rid, "cancelled")
                 ctx.frame("after-ready-" + gesture)
             finally:
@@ -567,19 +572,19 @@ def bar_discard(ctx):
             ctx.expect(_inspect(ctx, rid)["state"] == "recording", "Esc while recording does nothing")
             for phase in ("recording", "paused"):
                 if phase == "paused":
-                    ctx.click("text:Pause", window="bar")
+                    ctx.click("text:Pause", window="bar-recording")
                     _state(ctx, rid, "paused")
-                ctx.click("cancel", window="bar")
+                ctx.click("cancel", window="bar-" + phase)
                 ctx.frame("question-" + phase, window="bar", reference="36-record-discard-confirm" if phase == "recording" else "42-record-paused-discard-confirm")
                 ctx.expect(bool(ctx.accessible({"name": "Discard this recording?"})), "inline discard question visible")
                 ctx.keys("Esc")
                 ctx.expect(not ctx.accessible({"name": "Discard this recording?"}), "Esc answers Keep")
                 ctx.expect(_inspect(ctx, rid)["state"] == phase, "Keep preserves phase")
-                ctx.click("cancel", window="bar")
-                ctx.click("keepRecording", window="bar")
+                ctx.click("cancel", window="bar-" + phase)
+                ctx.click("keepRecording", window="bar-question-" + phase)
                 ctx.expect(_inspect(ctx, rid)["state"] == phase, "Keep button preserves phase")
-            ctx.click("cancel", window="bar")
-            ctx.click("discardRecording", window="bar")
+            ctx.click("cancel", window="bar-paused")
+            ctx.click("discardRecording", window="bar-question-paused")
             _state(ctx, rid, "cancelled")
             ctx.frame("after")
         finally:
