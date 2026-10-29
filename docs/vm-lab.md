@@ -492,7 +492,7 @@ with the region scenario, so the resident and the clipboard fixture are live:
 
 | Driver | Covers |
 | --- | --- |
-| `tools/lab/edit_acceptance.py RUN` | Graphical Edit & upload: hotkey, region-selected source, every tool, undo/redo, crop, save copy, submit, cancel, PNG sanitization and screenshots. It drives the editor at its opening Fit zoom: the scale comes from `editor.inspect` and `lab.locate_scaled_fixture_paint` finds the scaled image from its quadrant boundaries. |
+| `tools/lab/edit_acceptance.py RUN` | Graphical Edit & upload: hotkey, region-selected source, every tool, undo/redo, crop, save copy, submit, cancel, PNG sanitization and screenshots. It drives the editor at its opening Fit zoom: the scale comes from `editor.view` and `lab.locate_scaled_fixture_paint` finds the scaled image from its quadrant boundaries. On GNOME, restart the guest session after installing a new package so gnome-shell loads its put.gd extension (an older one lacks the edit shortcut). |
 | `tools/lab/edit_memory.py RUN [SAMPLER]` | Whole-family RSS+swap (`family_sampler.py` in the guest) for desktop, region and 24 MP file cases. Gate: incremental peak at most 3R + 96 MiB, and the resident returns within 8 MiB of baseline once the fixture takes the clipboard. |
 | `tools/lab/mcp_editor_e2e.py EVIDENCE` | Official MCP client through `putgd-mcp` and the target's production `putgd-cli` (a small wrapper running it over pinned SSH): all editor tools, preview image, save copy, submit and cancel. |
 | `tools/lab/guest_reboot.py RUN` | Reboot through the session manager when a session-loaded integration such as the GNOME extension must reload; verifies the boot time changed. |
