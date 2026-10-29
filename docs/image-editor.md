@@ -62,6 +62,9 @@ You don't need Select to adjust a mark:
 - With Text, dragging a label moves it, and clicking it edits it.
 - A selected text label has four corner handles. Dragging one scales the
   text around the opposite corner, and the Size box follows as you drag.
+- Drawing, moving and resizing stop at the edge of the (cropped) image. A
+  press in the margin starts the mark on the nearest edge, and a text click in
+  the margin opens no label.
 
 Next to the seven palette colors, the rainbow button opens a color picker for
 any custom color. The last six custom colors you picked appear beside it as
