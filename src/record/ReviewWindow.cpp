@@ -2596,6 +2596,7 @@ void ReviewWindow::placeFooterStatus() {
     if (playbackStatus_->text() != text || was != footer) {
         playbackStatus_->setText(text);
         playbackStatus_->setAccessibleName(text);
+        static_cast<Graphite::ElidedLabel*>(playbackStatus_)->setElideMode(footer ? Qt::ElideRight : Qt::ElideMiddle);
         playbackStatus_->setProperty("footerError", footer);
         playbackStatus_->setProperty("feedbackTone", footer ? QStringLiteral("error") : QString());
         playbackStatus_->style()->unpolish(playbackStatus_);
