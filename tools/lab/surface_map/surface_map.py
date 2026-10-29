@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Surface map: every surface and interaction of put.gd, coloured by acceptance coverage.
 
-  surface_map.py build --catalog DIR --coverage FILE... --output DIR [--watch]
+  surface_map.py build --catalog DIR --coverage FILE... --output DIR [--open] [--watch]
   surface_map.py mark INTERACTION --coverage FILE --desktop ID --package deb|rpm|appimage
                  [--functional passed|failed|blocked] [--visual frames|reviewed-ok|reviewed-wrong]
                  [--receipt PATH] [--issue N] [--note TEXT]
@@ -397,7 +397,21 @@ def build(args):
     data = build_page_data(model, entries, args.catalog, output, embed=args.embed)
     (output / 'map.html').write_text(render(data), encoding='utf-8')
     (output / 'map.json').write_text(json.dumps(data, indent=1, sort_keys=True), encoding='utf-8')
+    if getattr(args, 'open', False) and not getattr(args, '_opened', False):
+        open_in_browser(output / 'map.html')
+        args._opened = True
     return data
+
+
+def open_in_browser(path):
+    """Open the page in the desktop's browser; file:// is enough, nothing is served."""
+    import subprocess
+    import webbrowser
+    url = Path(path).resolve().as_uri()
+    try:
+        subprocess.Popen(['xdg-open', url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        webbrowser.open(url)
 
 
 def watch(args):
@@ -630,6 +644,7 @@ def main(argv=None):
     p.add_argument('--coverage', nargs='*', default=[], help='campaign coverage files')
     p.add_argument('--output', required=True)
     p.add_argument('--embed', action='store_true', help='inline the pictures (one portable file)')
+    p.add_argument('--open', action='store_true', help='open map.html in the browser after building')
     p.add_argument('--watch', action='store_true', help='rebuild when the inputs change')
     p.add_argument('--interval', type=float, default=2.0)
 
