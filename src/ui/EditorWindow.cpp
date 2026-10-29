@@ -124,7 +124,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   auto* shortcut=new QShortcut(QKeySequence(QString::fromLatin1(entry.key)),this);shortcut->setContext(Qt::WindowShortcut);
   connect(shortcut,&QShortcut::activated,this,[this,tool=entry.tool]{if(!busy_&&!canvas_->editingText())selectTool(tool);});
  }
- tools->addStretch(1);
+ tools->addStretch(1);tools->addSpacing(Graphite::space(Space::xs));tools->addWidget(separator(toolbar));tools->addSpacing(Graphite::space(Space::xs));
  auto toolButton=[&](const char* icon,const QString& tip){auto* button=new QToolButton(toolbar);button->setIcon(VisualStyle::icon(icon));button->setProperty("graphiteIconBase",QSize(20,20));button->setIconSize(QSize(Graphite::scaled(20),Graphite::scaled(20)));button->setFixedSize(Graphite::scaled(36),Graphite::scaled(36));button->setFocusPolicy(Qt::StrongFocus);button->setToolTip(tip);button->setAccessibleName(tip);VisualStyle::role(button,"quiet");tools->addWidget(button);return button;};
  undo_=toolButton("undo","Undo (Ctrl+Z)");redo_=toolButton("redo","Redo (Ctrl+Shift+Z)");
  tools->addSpacing(Graphite::space(Space::xs));tools->addWidget(separator(toolbar));tools->addSpacing(Graphite::space(Space::xs));
