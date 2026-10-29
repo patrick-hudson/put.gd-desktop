@@ -238,16 +238,13 @@ class DriverContext(Context):
         # executable is configurable for a locked tools/mcp/.venv installation.
         python = self.profile.get('mcp_python','python3')
         helper = self.profile.get('mcp_helper','putgd-mcp')
-        code = '''import asyncio,json
-from mcp import ClientSession,StdioServerParameters
-from mcp.client.stdio import stdio_client
+        import inspect
+        from tools.lab.mcp_client import helper_session
+        code='import asyncio,json\nfrom contextlib import asynccontextmanager\n'+inspect.getsource(helper_session)+'''
 async def main():
-    p=StdioServerParameters(command=HELPER,args=['--cli','putgd-cli','--socket',SOCKET,'--timeout','60'])
-    async with stdio_client(p) as (read,write):
-        async with ClientSession(read,write) as session:
-            await session.initialize()
-            reply=await session.call_tool(TOOL,ARGS)
-            print(json.dumps(reply.structuredContent if reply.structuredContent is not None else {'content':[v.model_dump(mode='json') for v in reply.content],'isError':reply.isError}))
+    async with helper_session(HELPER,['--cli','putgd-cli','--socket',SOCKET,'--timeout','60']) as session:
+        reply=await session.call_tool(TOOL,ARGS)
+        print(json.dumps(reply.structuredContent if reply.structuredContent is not None else {'content':[v.model_dump(mode='json') for v in reply.content],'isError':reply.isError}))
 asyncio.run(main())
 '''
         code = 'HELPER='+repr(helper)+'\nSOCKET='+repr(self.target.socket)+'\nTOOL='+repr(tool)+'\nARGS='+repr(arguments or {})+'\n'+code
