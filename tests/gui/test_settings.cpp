@@ -1716,6 +1716,18 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
  }
  // #344: Channel offers Stable and Nightly and starts on this build's own; the
  // build's own is stored as "build", the other one explicitly.
+ // Final read: with Check now shown the status folded into three ragged,
+ // right-aligned lines ("This is 26.1026.1-" / "nightly.").
+ void updateStatusKeepsTheRowBesideCheckNow(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);const QJsonObject update{{"supported",true},{"check",true},{"checking",false},{"checkedAt",QJsonValue()},{"nextCheckAt",QJsonValue()},{"channel","nightly"},{"result",QJsonObject{}},{"error",QJsonObject{}},{"build",QJsonObject{{"version","26.1026.1-nightly"},{"channel","nightly"},{"supported",true}}}};
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=update;return data;});
+  MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());window.settings()->showUpdates();
+  auto* status=window.findChild<QLabel*>("updateStatus");auto* check=window.findChild<QPushButton*>("checkForUpdatesNow");QVERIFY(status&&check);PUTGD_TRY_VERIFY(check->isVisible()&&status->text().startsWith("Not checked yet"));putgd::test::settle(30);
+  QVERIFY(status->text().contains(QString("26.1026.1")+QChar(0x2011)+"nightly"));QVERIFY(status->alignment()&Qt::AlignLeft);
+  const auto row=status->parentWidget();QVERIFY(status->width()>=row->width()-check->width()-2*Graphite::space(Graphite::Space::l));QVERIFY(check->x()>=status->x()+status->width());
+  const int lines=status->heightForWidth(status->width())-status->contentsMargins().top()-status->contentsMargins().bottom();QVERIFY2(lines<=status->fontMetrics().lineSpacing()+status->fontMetrics().height(),qPrintable(QString("%1 px of text in %2 px").arg(lines).arg(status->width())));
+ }
  void updateChannelStartsOnThisBuildsChannel(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);QJsonObject update;
@@ -1780,7 +1792,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   const auto expected=managed||chosen=="stable"?QString("stable"):QString("nightly");
   PUTGD_TRY_COMPARE(channel->currentData().toString(),expected);QCOMPARE(channel->isEnabled(),!managed);QCOMPARE(Graphite::isLocked(channel),managed);
   QCOMPARE(source->isVisibleTo(window.settings()),managed);QCOMPARE(text->isVisibleTo(window.settings()),managed);
-  QVERIFY(line->text().startsWith("Not checked yet"));
+  QVERIFY(QString(line->text()).replace(QChar(0x2011),QChar('-')).startsWith("Not checked yet"));
   QJsonObject wire;fixture.server.dispatch({{"schemaVersion",1},{"requestId","startup-update"},{"session",fixture.server.socketPath()},{"method","update.status"},{"params",QJsonObject{}}},[&](Error error,QJsonObject data){QVERIFY(!error);wire=data;});
   QCOMPARE(wire,updates.status());QCOMPARE(wire["channel"].toString(),expected);QVERIFY(wire["attemptedAt"].isNull());
   auto* notifications=window.findChild<QCheckBox*>("notifications");const bool before=notifications->isChecked();notifications->setChecked(!before);
@@ -1828,20 +1840,20 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   const QUrl docs(update["action"].toObject()["otherChannel"].toObject()["docs"].toString());QList<QUrl> opened;host::setTestOpener([&](const QUrl& url){opened.append(url);});auto restoreOpener=qScopeGuard([]{host::setTestOpener({});});window.findChild<QPushButton*>("otherChannelDocs")->click();QCOMPARE(opened,QList<QUrl>{docs});
   auto* browser=static_cast<Graphite::BrowserFeedback*>(window.findChild<QWidget*>("channelBrowserFeedback"));QVERIFY(browser);browser->opening(docs)({{"opened",false}});QVERIFY(browser->isVisibleTo(settings));browser->findChild<QPushButton*>()->click();QCOMPARE(qApp->clipboard()->text(),docs.toString(QUrl::FullyEncoded));browser->clear();
 
-  QVERIFY(line->text().startsWith("Up to date: 26.1022.968-nightly is the newest nightly version."));
+  QVERIFY(QString(line->text()).replace(QChar(0x2011),QChar('-')).startsWith("Up to date: 26.1022.968-nightly is the newest nightly version."));
   // Moved to stable by hand, whose release is older: said plainly, with the command that installs it anyway.
   apply("26.1022.968-nightly","nightly","stable","26.1020.950",false,{{"version","26.1020.950"},{"command","sudo apt install --allow-downgrades putgd/stable"}});
   PUTGD_TRY_COMPARE(channel->currentData().toString(),QString("stable"));QVERIFY(!channel->isEnabled());
-  QVERIFY(line->text().startsWith("Your system now updates put.gd from the stable repository. Stable 26.1020.950 is older than this nightly build (26.1022.968-nightly), so the system updater keeps this version until a newer stable release is out."));
+  QVERIFY(QString(line->text()).replace(QChar(0x2011),QChar('-')).startsWith("Your system now updates put.gd from the stable repository. Stable 26.1020.950 is older than this nightly build (26.1022.968-nightly), so the system updater keeps this version until a newer stable release is out."));
   QVERIFY(command->isVisibleTo(settings));QCOMPARE(command->text(),QString("sudo apt install --allow-downgrades putgd/stable"));
   QVERIFY(text->text().startsWith("To move to nightly"));QVERIFY(commands->text().endsWith("putgd/nightly"));
   // No stable release yet: the nightly stays until the first one.
   apply("26.1022.968-nightly","nightly","stable",QJsonValue(),false);
-  PUTGD_TRY_VERIFY(line->text().startsWith("There's no stable release yet. Your system updates put.gd from the stable repository, so this nightly build (26.1022.968-nightly) stays as it is"));
+  PUTGD_TRY_VERIFY(QString(line->text()).replace(QChar(0x2011),QChar('-')).startsWith("There's no stable release yet. Your system updates put.gd from the stable repository, so this nightly build (26.1022.968-nightly) stays as it is"));
   QVERIFY(!command->isVisibleTo(settings));
   // A newer stable release is an ordinary update through the system's updater.
   apply("26.1022.968-nightly","nightly","stable","26.1101.990",true);
-  PUTGD_TRY_VERIFY(open->isVisibleTo(settings));QVERIFY(line->text().startsWith("put.gd 26.1101.990 is available from put.gd's stable repository."));
+  PUTGD_TRY_VERIFY(open->isVisibleTo(settings));QVERIFY(QString(line->text()).replace(QChar(0x2011),QChar('-')).startsWith("put.gd 26.1101.990 is available from put.gd's stable repository."));
   // Nothing was stored: the choice belongs to builds that switch themselves.
   window.findChild<QCheckBox*>("notifications")->setChecked(!window.findChild<QCheckBox*>("notifications")->isChecked());PUTGD_COMPARE_STEADY(stored(),QString("(none)"),300);
   // Without a repository the choice is back, and the instructions go.
@@ -1916,20 +1928,20 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   const auto settings=window.settings();
   // No stable release yet: said plainly, with nothing to click.
   apply("0.1.1-nightly.900","nightly","stable",QJsonValue(),false,{{"state","idle"},{"kind","switch"},{"available",false},{"reason","no_release"},{"switch",QJsonValue()},{"running",false},{"restartRequired",false}});
-  PUTGD_TRY_VERIFY(line->text().startsWith("There's no stable release yet. This nightly build (0.1.1-nightly.900) stays as it is"));
-  QVERIFY(!line->text().contains("Up to date"));QVERIFY(!install->isVisibleTo(settings));
+  PUTGD_TRY_VERIFY(QString(line->text()).replace(QChar(0x2011),QChar('-')).startsWith("There's no stable release yet. This nightly build (0.1.1-nightly.900) stays as it is"));
+  QVERIFY(!QString(line->text()).replace(QChar(0x2011),QChar('-')).contains("Up to date"));QVERIFY(!install->isVisibleTo(settings));
   // The first stable release: Switch to stable 0.1.1.
   apply("0.1.1-nightly.900","nightly","stable","0.1.1",true,{{"state","idle"},{"kind","switch"},{"available",true},{"running",false},{"restartRequired",false},
    {"switch",QJsonObject{{"from","nightly"},{"to","stable"},{"version","0.1.1"},{"tag","v0.1.1"},{"older",false}}}});
   PUTGD_TRY_COMPARE(install->text(),QString("Switch to stable 0.1.1"));QVERIFY(install->isVisibleTo(settings));
-  QVERIFY(line->text().startsWith("Stable 0.1.1 is available. This is nightly 0.1.1-nightly.900; switching replaces it with the stable release."));
+  QVERIFY(QString(line->text()).replace(QChar(0x2011),QChar('-')).startsWith("Stable 0.1.1 is available. This is nightly 0.1.1-nightly.900; switching replaces it with the stable release."));
   // Without an install service here the click's refusal shows; it was asked for.
   install->click();PUTGD_TRY_VERIFY(status->text().contains("does not check for updates"));
   // Back from stable to an older nightly: labelled, and confirmed first.
   apply("0.1.1","stable","nightly","0.1.1-nightly.901",false,{{"state","idle"},{"kind","switch"},{"available",true},{"running",false},{"restartRequired",false},
    {"switch",QJsonObject{{"from","stable"},{"to","nightly"},{"version","0.1.1-nightly.901"},{"tag","v0.1.1-nightly.901"},{"older",true}}}});
   PUTGD_TRY_COMPARE(install->text(),QString("Switch to nightly 0.1.1-nightly.901 (older)"));
-  QVERIFY(line->text().startsWith("Nightly 0.1.1-nightly.901 is older than this stable build (0.1.1)."));
+  QVERIFY(QString(line->text()).replace(QChar(0x2011),QChar('-')).startsWith("Nightly 0.1.1-nightly.901 is older than this stable build (0.1.1)."));
   QString asked;
   QTimer dismiss;connect(&dismiss,&QTimer::timeout,this,[&]{if(auto* box=qobject_cast<QMessageBox*>(QApplication::activeModalWidget())){asked=box->property("confirmationText").toString();box->button(QMessageBox::Cancel)->click();}});dismiss.start(10);
   status->clear();install->click();dismiss.stop();
@@ -1942,7 +1954,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   apply("0.1.1","stable","stable","0.1.1",false,{{"state","idle"},{"kind","update"},{"available",true},{"running",false},{"restartRequired",false},{"switch",QJsonValue()},
    {"installed",QJsonObject{{"version","0.1.1"},{"previousVersion","0.1.1-nightly.900"},{"channel","stable"},{"previousChannel","nightly"},{"method","download"},{"installedAt","2026-10-22T10:00:00Z"}}}});
   PUTGD_TRY_VERIFY(status->text().startsWith("Switched from nightly 0.1.1-nightly.900 to stable 0.1.1 from a full download on "));
-  QVERIFY(line->text().startsWith("Up to date: 0.1.1 is the newest stable version."));QVERIFY(!install->isVisibleTo(settings));
+  QVERIFY(QString(line->text()).replace(QChar(0x2011),QChar('-')).startsWith("Up to date: 0.1.1 is the newest stable version."));QVERIFY(!install->isVisibleTo(settings));
  }
  void unavailableCaptureActionsOpenOutputRecovery(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));auto doc=Settings::defaults();auto archive=doc["archive"].toObject();archive["keepUploads"]=false;doc["archive"]=archive;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.show();QSignalSpy invoked(&window,&MainWindow::actionRequested);QSignalSpy edited(&window,&MainWindow::editRequested);auto* pages=window.findChild<QTabBar*>("mainNavigation");

@@ -233,7 +233,7 @@ void boxPreferenceRows(QFormLayout* form){
    else{auto* line=new QHBoxLayout;line->setContentsMargins(0,0,0,0);line->setSpacing(space(Space::l));line->addWidget(label,check||choice||compactValue?1:0,Qt::AlignTop);line->addWidget(value,check||choice||compactValue?0:1,compactValue?Qt::AlignRight|Qt::AlignTop:Qt::AlignTop);if(check)value->setFixedWidth(Graphite::scaled(24));column->addLayout(line);}
    for(auto* full:fullRows)column->addWidget(full);for(auto* error:errors)column->addWidget(error);label->show();value->show();if(check)new PreferenceCheckRow(check,field);
    for(auto* control:value->findChildren<QWidget*>())if((qobject_cast<QLineEdit*>(control)&&!qobject_cast<QAbstractSpinBox*>(control->parentWidget()))||qobject_cast<QComboBox*>(control)){control->setProperty("graphiteFullWidth",true);control->setMinimumWidth(0);if(!numeric||qobject_cast<QComboBox*>(control))control->setMaximumWidth(QWIDGETSIZE_MAX);if(technicalField&&qobject_cast<QLineEdit*>(control))VisualStyle::role(control,"technical");if(auto* combo=qobject_cast<QComboBox*>(control)){combo->setProperty("preferenceChoice",choice);combo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);}for(auto* line:value->findChildren<QLayout*>())line->setAlignment(control,{});control->show();}
-   if(!check&&!choice&&!stacked&&!numeric)for(auto* text:value->findChildren<QLabel*>()){text->setAlignment(((text->objectName()=="archiveRootHint"||text->objectName().endsWith("Applicability"))?Qt::AlignLeft:Qt::AlignRight)|Qt::AlignVCenter);if(text->property("visualRole")!="technical")VisualStyle::role(text,"secondary");}
+   if(!check&&!choice&&!stacked&&!numeric)for(auto* text:value->findChildren<QLabel*>()){text->setAlignment(((text->objectName()=="archiveRootHint"||text->objectName()=="updateStatus"||text->objectName().endsWith("Applicability"))?Qt::AlignLeft:Qt::AlignRight)|Qt::AlignVCenter);if(text->property("visualRole")!="technical")VisualStyle::role(text,"secondary");}
   }
   if(field->property("preferenceRowInset").toBool())continue;if(field->findChild<QFormLayout*>())continue;
   if(column){column->setSizeConstraint(QLayout::SetMinimumSize);column->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));column->setSpacing(space(field->property("preferenceStacked").toBool()?Space::s:Space::xs));}else if(!field->findChild<QFormLayout*>())field->setContentsMargins(space(Space::l),space(Space::m),space(Space::l),space(Space::m));
@@ -1427,7 +1427,8 @@ void SettingsWindow::refreshUpdateStatus(){
  showUpdateChannel();
  // A build that never checks has nothing to choose: only the reason shows.
  const bool development=settings_.build()["version"].toString().contains("-dev");for(auto* row:updateRows_)updatesForm_->setRowVisible(row,supported||(update.isEmpty()&&!development));
- if(auto* row=qobject_cast<QHBoxLayout*>(updateStatus_->parentWidget()->layout())){row->setStretch(0,supported?0:1);row->setStretch(2,supported?1:0);}
+ // The status keeps the row's width beside Check now, so it never folds into a narrow column.
+ if(auto* row=qobject_cast<QHBoxLayout*>(updateStatus_->parentWidget()->layout())){row->setStretch(0,1);row->setStretch(2,0);}
  checkNow_->setVisible(supported);checkNow_->setEnabled(supported&&!update["checking"].toBool());
  const bool available=supported&&result["updateAvailable"].toBool();
  const auto action=update["action"].toObject();const bool managed=action["kind"]=="software-updates";
@@ -1461,7 +1462,8 @@ void SettingsWindow::refreshUpdateStatus(){
    {"disabled_at_build","Update checks were turned off when this build was made, for example by a distribution's own package."}};
   VisualStyle::feedback(updateStatus_,reasons.value(update["reason"].toString(),"This build doesn't check for updates."));return;
  }
- const auto channel=update["channel"].toString();const auto current=build["version"].toString();
+ const auto channel=update["channel"].toString();// A non-breaking hyphen keeps "26.1026.1-nightly" on one line.
+ const auto current=build["version"].toString().replace('-',QChar(0x2011));
  QString text;
  if(update["checking"].toBool())text="Checking…";
  else if(switching&&!offer.isEmpty()){
