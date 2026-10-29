@@ -110,9 +110,9 @@ try:
     open_frame = shot('02-editor-open')
 
     # The editor opens at Fit, which scales the image to the canvas beside the
-    # properties panel. Take the scale from the editor and find the scaled
-    # image in the independent frame (unique full pattern).
-    view = editor('inspect', {'id': op_id})
+    # properties panel. Take the scale from the window's view state and find
+    # the scaled image in the independent frame (unique full pattern).
+    view = editor('view', {'id': op_id})
     scale = view['zoomPercent'] / 100
     result['editorView'] = {key: view.get(key) for key in ('zoomPercent', 'fitted', 'visibleRect', 'canvasSize', 'propertiesWidth')}
     check('editorFitsWholeImage', view['fitted'] and view['visibleRect'] == [0, 0, 640, 320] and 0 < scale <= 1, result['editorView'])

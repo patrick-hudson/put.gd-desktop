@@ -59,7 +59,13 @@ class LabUiContract(unittest.TestCase):
         source = (ROOT / 'tools/lab/edit_acceptance.py').read_text(encoding='utf-8')
         read = set(re.findall(r"\bview(?:\['|\.get\(')([A-Za-z]+)'", source))
         self.assertTrue({'zoomPercent', 'fitted', 'visibleRect'} <= read)
-        self.assertLiterals(read, 'src/ui/EditorWindow.cpp')
+        # The window's view state answers editor.view (EditorWindow::viewState).
+        self.assertIn("view = editor('view', {'id': op_id})", source)
+        self.assertIn('"editor.view"', (ROOT / 'src/app/LocalServer.cpp').read_text(encoding='utf-8'))
+        state = (ROOT / 'src/ui/EditorWindow.cpp').read_text(encoding='utf-8')
+        body = state[state.index('QJsonObject EditorWindow::viewState() const'):]
+        body = body[:body.index('\n}\n')]
+        self.assertEqual(sorted(key for key in read if '"' + key + '"' not in body), [])
 
 
 if __name__ == '__main__':
