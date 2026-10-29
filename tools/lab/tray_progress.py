@@ -306,13 +306,15 @@ def check_tooltip(snapshot, records, provider, pid, *, attention=None, tints=TRA
                 'Completion frame must be fully green without a progress fill')
         return {'idle': False, 'storageActive': False, 'counter': False, 'phases': []}
     require(not any(has(icon, 'upload') for icon in icons), 'Completion tint before a confirmed completion')
-    require(all(has(icon, 'idle') for icon in icons), 'SNI icon does not have the required idle/active brand color')
-    # Partial progress retains idle pixels alongside the encoding fill. Every
-    # advertised size must contain the fill before it earns storage coverage.
+    # Partial progress keeps idle pixels beside the encoding fill; a nearly
+    # complete fill covers the whole glyph. Every advertised size must contain
+    # the fill before it earns storage coverage.
+    require(all(has(icon, 'idle') or has(icon, 'encoding') for icon in icons),
+            'SNI icon does not have the required idle/active brand color')
     filled = [has(icon, 'encoding') for icon in icons]
     require(all(filled) or not any(filled), 'SNI icon sizes disagree about the progress fill')
     if title == IDLE and not text:
-        require(not any(filled), 'Idle tray retains a progress fill')
+        require(not any(filled) and all(has(icon, 'idle') for icon in icons), 'Idle tray retains a progress fill')
         observed(not records, 'Idle tray while production work remains active')
         return {'idle': True, 'storageActive': False, 'counter': False, 'phases': []}
     observed(text, 'Working tray has no activity text')

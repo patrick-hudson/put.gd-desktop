@@ -89,6 +89,20 @@ class TrayProgressContracts(unittest.TestCase):
             with self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(snapshot, [], 's3', 42)
 
+    def test_a_nearly_complete_fill_may_cover_the_whole_glyph(self):
+        records = [{'phase': 'uploading', 'sourceBytes': 8*1024**2, 'bytesTransferred': 8*1024**2, 'bytesTotal': 8*1024**2}]
+        full = observation('Uploading: 8 MB of 8 MB (100%)')
+        full['icons'][0]['opaqueColors'] = {tray.TRAY_TINTS['dark']['encoding']: 400, '#a58656': 30}
+        result = tray.check_tooltip(full, records, 's3', 42)
+        self.assertTrue(result['storageActive'] and result['counter'])
+        empty = observation('Uploading: 8 MB of 8 MB (100%)')
+        empty['icons'][0]['opaqueColors'] = {'#a58656': 30}
+        with self.assertRaisesRegex(tray.TrayProgressError, 'brand color'):
+            tray.check_tooltip(empty, records, 's3', 42)
+        idle = observation('', tray.TRAY_TINTS['dark']['encoding'], tray.IDLE)
+        with self.assertRaisesRegex(tray.TrayProgressError, 'progress fill'):
+            tray.check_tooltip(idle, [], 's3', 42)
+
     def test_concurrent_rows_cannot_borrow_another_operation_counter(self):
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2,
                     'bytesTransferred': n*1024**2, 'bytesTotal': 4*1024**2,
