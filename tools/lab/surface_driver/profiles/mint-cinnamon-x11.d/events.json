@@ -1,0 +1,21 @@
+{
+  "events": {
+    "clipboardWrite": "xclip -selection clipboard",
+    "panelTheme": {
+      "read": [
+        "gsettings",
+        "get",
+        "org.cinnamon.theme",
+        "name"
+      ],
+      "write": [
+        "gsettings",
+        "set",
+        "org.cinnamon.theme",
+        "name"
+      ],
+      "light": "Mint-Y",
+      "dark": "Mint-Y-Dark"
+    }
+  }
+}
