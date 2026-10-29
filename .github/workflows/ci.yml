@@ -234,6 +234,24 @@ jobs:
         with:
           path: build/dev/Testing/Temporary/CTestCostData.txt
           key: ctest-cost-linux-${{ matrix.distribution }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Render the UI catalog for the surface map
+        # Every window, menu, editor, review and overlay state, offscreen, with each
+        # capture's controls and key bindings (tools/lab/surface_map). The nightly
+        # workflow publishes the map rendered from this artifact to map.put.gd.
+        if: matrix.distribution == '26.04'
+        run: |
+          mkdir -p build/ui-catalog
+          QT_QPA_PLATFORM=offscreen XDG_RUNTIME_DIR="$(mktemp -d)" build/dev/putgd-ui-catalog build/ui-catalog
+          python3 tools/lab/surface_map/surface_map.py check --catalog build/ui-catalog
+      - name: Preserve the UI catalog
+        if: matrix.distribution == '26.04'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-catalog
+          path: build/ui-catalog
+          if-no-files-found: error
+          # As long as source-ci-provenance: a nightly that reuses this run reads it.
+          retention-days: 90
       - name: Preserve structured test reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
