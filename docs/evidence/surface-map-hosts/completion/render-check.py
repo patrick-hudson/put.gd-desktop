@@ -17,6 +17,10 @@ BASE = '5985e9043ea81a3ac33d2931203384e40bde035e'
 BEFORE = '9cd26ff96a9da6ec3d52ebb770ffeb0a03d44852'
 AFTER = '9ad7a2c9085e066407bd1c3f6c05c9d50ea0b9b0'
 assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == AFTER, 'run from the exact code checkout'
+# The current module, model and template are loaded from the working tree, so they must match AFTER exactly.
+INPUTS = ['tools/lab/surface_map/surface_map.py', 'tools/lab/surface_map/surface_map.html', 'tools/lab/surface_map/model.json']
+if subprocess.run(['git', 'diff', '--quiet', 'HEAD', '--', *INPUTS]).returncode != 0:
+    raise SystemExit('working tree differs from AFTER in ' + ', '.join(INPUTS) + '; commit or stash first')
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
