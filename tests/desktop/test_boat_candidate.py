@@ -127,6 +127,28 @@ class CandidateContracts(unittest.TestCase):
         with self.assertRaises(ValueError):
             candidate.step(job, 'missing')
 
+    def test_fixture_collection_exports_package_and_helper_without_cpack_scratch(self):
+        import yaml
+        packages = yaml.safe_load((ROOT / '.github/workflows/package.yml').read_text())
+        _, script, _ = candidate.recipe('lab-fixture', packages, {})
+        staging = script.split('-B build/lab-packages\n', 1)[1]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packages = root / 'build/lab-packages'
+            packages.mkdir(parents=True)
+            (packages / 'candidate.deb').write_bytes(b'fixture package')
+            (packages / '_CPack_Packages').mkdir()
+            (packages / '_CPack_Packages/scratch').write_text('excluded')
+            binary = root / 'build/release/packaging/linux/putgd-desktop-fixture'
+            binary.parent.mkdir(parents=True)
+            binary.write_bytes(b'fixture binary')
+            output = root / 'output'
+            output.mkdir()
+            subprocess.run(['bash', '-eu', '-c', staging.replace('/out/', str(output) + '/')],
+                           cwd=root, check=True)
+            self.assertEqual(sorted(p.name for p in output.iterdir()), ['candidate.deb', 'putgd-desktop-fixture'])
+            self.assertEqual((output / 'putgd-desktop-fixture').read_bytes(), b'fixture binary')
+
     def test_inline_ci_steps_cannot_join_into_one_shell_token(self):
         job = {'steps': [{'name': 'proton', 'run': 'python3 provision.py'}]}
         self.assertEqual(candidate.step(job, 'proton') + 'export FORMAT=DEB\n',

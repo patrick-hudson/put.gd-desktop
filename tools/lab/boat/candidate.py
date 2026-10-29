@@ -189,7 +189,8 @@ def recipe(target, packages, ci):
     script += step(native, 'Verify pinned SDK source') + 'bash tools/releases/provision-sdk.sh\n'
     script += step(native, 'Provision pinned Proton helper')
     script += 'cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=ON -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_BUNDLE_PROTON=ON -DCMAKE_INSTALL_PREFIX=/usr\n'
-    script += 'cmake --build --preset release --parallel "$(nproc)"\ncpack --config build/release/CPackConfig.cmake -G DEB -B /out\n'
+    script += 'cmake --build --preset release --parallel "$(nproc)"\ncpack --config build/release/CPackConfig.cmake -G DEB -B build/lab-packages\n'
+    script += 'cp build/lab-packages/*.deb /out/\ncp build/release/packaging/linux/putgd-desktop-fixture /out/\n'
     return base, script, 'release'
 
 
