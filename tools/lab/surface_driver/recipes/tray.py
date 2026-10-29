@@ -266,6 +266,8 @@ def output_submenu(ctx):
             _press(ctx, 'Local only', 'menu item')
             for action, label in LABELS.items():
                 node = _node(ctx, label + ': Local only', 'menu item')
+                if 'enabled' not in node:
+                    ctx.blocked('AT-SPI needs the enabled state to prove informational output rows are disabled', 670)
                 ctx.expect(node.get('enabled') is False, 'output row is informational: ' + action)
             _menu_frame(ctx, 'after', 'output')
         finally:
@@ -417,13 +419,16 @@ def attention_with_busy_latch(ctx):
 @recipe('notification.preference-off', desktop_drawn=True)
 def notifications_off(ctx):
     with _local(ctx, notifications=False):
-        old_ids = {n['id'] for n in ctx.notifications()}
+        # A Notify call can be observed before its method return supplies the
+        # notification ID. Preserve the monitor timestamp in the identity.
+        identity = lambda n: (n.get('id'), n.get('at'), n.get('summary'), n.get('body'))
+        old_ids = {identity(n) for n in ctx.notifications()}
         op = _local_upload(ctx)
         ctx.expect(op['state'] == 'completed', 'operation still completes with notifications disabled')
         # Observe a bounded quiet window as well as the terminal resident state.
         _shell(ctx, "python3 -c 'import time; time.sleep(1)'\n")
         ctx.call('ui.snapshot')
-        ctx.expect(not [n for n in ctx.notifications() if n.get('id') not in old_ids
+        ctx.expect(not [n for n in ctx.notifications() if identity(n) not in old_ids
                         and n.get('summary') == 'Saved locally'], 'operation toast suppressed')
         ctx.frame('after')
 
@@ -500,14 +505,17 @@ def diagnostics_not_saved(ctx):
 @recipe('tray.scroll-noop', desktop_drawn=True)
 def scroll_noop(ctx):
     _begin(ctx)
+    _page(ctx, 'Settings')
     before = {o['id'] for o in _recent(ctx)}
     point = _point(ctx, _icon(ctx))
     ctx.frame('before')
     ctx.click_at(*point, button='middle')
     ctx.scroll(*point, clicks=2)
     ctx.scroll(*point, clicks=-2)
+    _shell(ctx, "python3 -c 'import time; time.sleep(1)'\n")
     ctx.expect({o['id'] for o in _recent(ctx)} == before, 'middle click/scroll admit no operation')
     ctx.expect(not _nodes(ctx, 'Quit put.gd', 'menu item'), 'middle click/scroll open no tray menu')
+    _page(ctx, 'Settings')
     ctx.frame('after')
 
 
