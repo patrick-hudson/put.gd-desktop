@@ -222,7 +222,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  QStringList keyboardSummary;
  for(const auto& [keys,description]:shortcuts){auto* key=new QLabel(keys,keyboardText);Graphite::setMono(key);VisualStyle::role(key,"secondary");auto* meaning=new QLabel(description,keyboardText);meaning->setWordWrap(true);VisualStyle::role(meaning,"secondary");keyboardText->addShortcut(key,meaning);keyboardSummary.append(keys+": "+description);}
  keyboardText->setAccessibleName("Keyboard help");keyboardText->setProperty("text",keyboardSummary.join('\n'));keyboardText->hide();properties->addWidget(keyboardText);
- connect(keyboardHelp,&QToolButton::toggled,this,[this,keyboardText](bool open){keyboardText->setVisible(open);if(open)QTimer::singleShot(0,this,[this,keyboardText]{if(!keyboardText->isHidden())propertiesScroll_->ensureWidgetVisible(keyboardText,0,12);});});
+ connect(keyboardHelp,&QToolButton::toggled,this,[this,keyboardHelp,keyboardText](bool open){keyboardText->setVisible(open);if(open)QTimer::singleShot(0,this,[this,keyboardHelp,keyboardText]{if(!keyboardText->isHidden())propertiesScroll_->ensureWidgetVisible(keyboardHelp,0,Graphite::space(Graphite::Space::m));});});
  for(auto* control:panel->findChildren<QWidget*>())if(qobject_cast<QPushButton*>(control)||qobject_cast<QComboBox*>(control)||qobject_cast<QSpinBox*>(control)||(qobject_cast<QToolButton*>(control)&&!dynamic_cast<Swatch*>(control))){control->setProperty("graphiteDensity","compact");if(qobject_cast<QSpinBox*>(control))control->setMinimumHeight(32);control->style()->unpolish(control);control->style()->polish(control);}
  properties->addStretch(1);
  root->addWidget(splitter_,1);
