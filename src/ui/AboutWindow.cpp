@@ -1,6 +1,7 @@
 #include "AboutWindow.h"
 #include "VisualStyle.h"
 #include "Graphite.h"
+#include "Fonts.h"
 #include "platform/HostOpen.h"
 #include <QApplication>
 #include <QVBoxLayout>
@@ -55,14 +56,15 @@ public:
 QString caption(const QString& key){QString text;for(const auto c:key){if(c.isUpper()&&!text.isEmpty())text+=' ';text+=text.isEmpty()?c.toUpper():c.toLower();}return text;}
 }
 AboutWindow::AboutWindow(const QJsonObject& residentBuild,QWidget* parent):QDialog(parent),details_(QString::fromUtf8(QJsonDocument(residentBuild).toJson(QJsonDocument::Indented))){
+ Fonts::load();
  VisualStyle::apply(*qApp);setWindowTitle("About put.gd");setWindowIcon(VisualStyle::icon("brand"));setWindowModality(Qt::NonModal);const auto* display=screen()?screen():QGuiApplication::primaryScreen();setFixedWidth(display?qMin(Graphite::scaled(440),display->availableGeometry().width()-2*Graphite::space(Graphite::Space::xl)):Graphite::scaled(440));
  auto* root=new QVBoxLayout(this);const int margin=Graphite::space(Graphite::Space::xl);root->setContentsMargins(margin,margin,margin,margin);root->setSpacing(margin);
  auto* content=new QWidget(this);content->setObjectName("aboutContent");auto* row=new QHBoxLayout(content);row->setContentsMargins(0,0,0,0);row->setSpacing(Graphite::space(Graphite::Space::l));
  auto* icon=new QLabel(content);icon->setObjectName("qt_msgboxex_icon_label");const int side=Graphite::scaled(64);icon->setFixedSize(side,side);icon->setPixmap(VisualStyle::icon("brand").pixmap(side,side));row->addWidget(icon,0,Qt::AlignTop);
  auto* identity=new QWidget(content);identity->setObjectName("aboutIdentity");auto* column=new QVBoxLayout(identity);column->setContentsMargins(0,0,0,0);column->setSpacing(Graphite::space(Graphite::Space::s));row->addWidget(identity,1);
  auto* name=Graphite::label("put.gd","title",identity);name->setObjectName("qt_msgbox_label");column->addWidget(name);
- auto* info=Graphite::label("Screen capture and file sharing","secondary",identity);info->setObjectName("qt_msgbox_informativelabel");info->setWordWrap(true);column->addWidget(info);
- auto* version=Graphite::label(residentBuild["version"].toString().section('-',0,0).section('+',0,0),"binding",identity);version->setObjectName("aboutVersion");version->setToolTip(residentBuild["version"].toString());version->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);column->addWidget(version);
+ auto* info=Graphite::label("Screen capture and file sharing","secondary",identity);info->setObjectName("qt_msgbox_informativelabel");info->setWordWrap(true);info->setMinimumHeight(info->fontMetrics().height());column->addWidget(info);
+ auto* version=Graphite::label(residentBuild["version"].toString().section('-',0,0).section('+',0,0),"binding",identity);version->setObjectName("aboutVersion");version->setToolTip(residentBuild["version"].toString());version->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);version->setMinimumHeight(version->fontMetrics().height());column->addWidget(version);
  auto* website=new QPushButton(VisualStyle::icon("open-external"),"put.gd website",identity);website->setObjectName("putgdWebsite");website->setAutoDefault(false);VisualStyle::role(website,"link");website->setProperty("graphiteFlush",true);column->addWidget(website,0,Qt::AlignLeft);
  auto* browser=new Graphite::BrowserFeedback(identity);browser->setObjectName("aboutWebsiteFeedback");column->addWidget(browser);connect(website,&QPushButton::clicked,this,[browser]{const QUrl url("https://put.gd");host::openLink(url,browser->opening(url));});
  auto* toggle=new QToolButton(identity);toggle->setText("Build details");toggle->setObjectName("buildDetails");Graphite::disclosure(toggle);column->addSpacing(Graphite::space(Graphite::Space::m)-column->spacing());column->addWidget(toggle,0,Qt::AlignLeft);

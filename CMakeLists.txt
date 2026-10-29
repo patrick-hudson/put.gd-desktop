@@ -363,7 +363,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(putgd_tray PUBLIC Qt6::DBus)
 endif()
 add_library(putgd_about STATIC src/ui/AboutWindow.cpp)
-target_link_libraries(putgd_about PUBLIC putgd_visual putgd_build_identity PRIVATE putgd_host_open)
+target_link_libraries(putgd_about PUBLIC putgd_visual putgd_build_identity PRIVATE putgd_host_open putgd_fonts)
 # The appearance setting resolved against the desktop's preference (#60). The
 # interface and the resident (for putgd-record's overlays, #198) share it.
 add_library(putgd_appearance STATIC src/ui/Appearance.cpp)
