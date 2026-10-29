@@ -283,6 +283,7 @@ private slots:
         QCOMPARE(consequence->palette().color(QPalette::WindowText),Theme::current().textSecondary);
         QCOMPARE(consequence->y()-question->geometry().bottom()-1,12);
         const auto* buttons=box->findChild<QDialogButtonBox*>();QVERIFY(buttons);QCOMPARE(buttons->y()-consequence->geometry().bottom()-1,16);
+        QCOMPARE(box->layout()->contentsMargins(),QMargins(Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::l)+Graphite::space(Graphite::Space::xs),Graphite::space(Graphite::Space::xl),Graphite::space(Graphite::Space::l)));
         QCOMPARE(box->defaultButton(),box->button(QMessageBox::Cancel));QCOMPARE(box->escapeButton(),box->button(QMessageBox::Cancel));
     }
     void confirmationColumnsGrowWithTextAndFitTheScreen() {
@@ -297,6 +298,10 @@ private slots:
             auto* title = box->findChild<QLabel*>("qt_msgbox_label");
             auto* body = box->findChild<QLabel*>("qt_msgbox_informativelabel");
             QVERIFY(title && body); QCOMPARE(title->width(), body->width());
+            QCOMPARE(title->font(), Graphite::font(Graphite::Type::body, true));
+            QVERIFY(title->wordWrap());
+            QVERIFY(title->contentsRect().width() < title->width());
+            QVERIFY(title->heightForWidth(title->width()) >= 2 * title->fontMetrics().height());
             QVERIFY(title->width() <= Graphite::scaled(420));
             QVERIFY(box->width() <= box->screen()->availableGeometry().width());
             QVERIFY(box->rect().contains(title->geometry())); QVERIFY(box->rect().contains(body->geometry()));

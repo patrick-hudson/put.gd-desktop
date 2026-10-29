@@ -53,6 +53,7 @@
 #include <QStyledItemDelegate>
 #include <QTextEdit>
 #include <QTextDocument>
+#include <QTextLayout>
 #include <QToolButton>
 #include <QToolTip>
 #include <QWindow>
@@ -2125,6 +2126,7 @@ protected:
         while (auto* item = grid->takeAt(0)) delete item;
         for (int row = 0; row < grid->rowCount(); ++row) { grid->setRowMinimumHeight(row, 0); grid->setRowStretch(row, 0); }
         grid->setSpacing(0);
+        grid->setContentsMargins(space(Space::xl), space(Space::l) + space(Space::xs), space(Space::xl), space(Space::l));
         for (int column = 0; column < grid->columnCount(); ++column) { grid->setColumnMinimumWidth(column, 0); grid->setColumnStretch(column, 0); }
         title->setAlignment(Qt::AlignLeft | Qt::AlignTop);
         grid->addWidget(title, 0, 0);
@@ -2138,9 +2140,33 @@ protected:
         grid->addWidget(buttons, 4, 0);
         const auto margins = grid->contentsMargins();
         const int available = screen()->availableGeometry().width() - 2 * space(Space::xl) - margins.left() - margins.right();
-        const int natural = std::max(title->fontMetrics().size(Qt::TextExpandTabs, title->text()).width(),
+        title->ensurePolished();
+        const int naturalTitle = title->fontMetrics().size(Qt::TextExpandTabs, title->text()).width();
+        const int natural = std::max(naturalTitle,
             body ? body->fontMetrics().size(Qt::TextExpandTabs, body->text()).width() : 0);
         const int contentWidth = std::max(1, std::min({scaled(420), available, natural}));
+        int titleWidth = contentWidth;
+        if (naturalTitle > contentWidth) {
+            const auto linesAt = [&](int width) {
+                QTextLayout text(title->text(), title->font());
+                QTextOption option; option.setWrapMode(QTextOption::WordWrap); text.setTextOption(option);
+                text.beginLayout();
+                int lines = 0;
+                for (auto line = text.createLine(); line.isValid(); line = text.createLine()) { line.setLineWidth(width); ++lines; }
+                text.endLayout();
+                return lines;
+            };
+            const int lines = linesAt(contentWidth);
+            int low = 1, high = contentWidth;
+            // Balance the title without changing its text or the shared column.
+            while (low < high) {
+                const int middle = (low + high) / 2;
+                if (linesAt(middle) <= lines) high = middle;
+                else low = middle + 1;
+            }
+            titleWidth = low;
+        }
+        title->setContentsMargins(0, 0, contentWidth - titleWidth, 0);
         title->setFixedWidth(contentWidth);
         if (body) body->setFixedWidth(contentWidth);
         grid->activate();
