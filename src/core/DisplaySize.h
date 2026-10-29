@@ -27,6 +27,7 @@ inline QString summary(qint64 bytes) {
 
 // Traditional display labels, with the same 1024-based arithmetic everywhere.
 inline QString fileSummary(qint64 bytes) {
+    if (bytes < 1024) return QString("%1 B").arg(bytes);
     if (bytes < MiB) return QString("%1 KB").arg(QString::number(double(bytes) / 1024, 'f', bytes < 10 * 1024 ? 1 : 0));
     return summary(bytes);
 }
