@@ -51,6 +51,13 @@
 #include <atomic>
 #include <thread>
 #include <QScopeGuard>
+#include <QAbstractButton>
+#include <QAbstractItemView>
+#include <QAbstractScrollArea>
+#include <QAbstractSlider>
+#include <QShortcut>
+#include <QTabBar>
+#include <QTextEdit>
 #include "fixtures/Waits.h"
 #include "ui/Theme.h"
 #include "ui/Fonts.h"
@@ -76,6 +83,36 @@ bool checkSteppers(QWidget& window){
   if(up.width()<32||up.height()<32||down.width()<32||down.height()<32||up.intersects(down)||!field||field->width()<field->fontMetrics().horizontalAdvance(field->displayText())+2){qCritical("Stepper does not fit: %s",qPrintable(spin->objectName()));return false;}
  }
  return true;
+}
+// Surface map (tools/lab/surface_map): every visible control and key binding of
+// a captured window, in the capture's pixel coordinates, so hotspots and key
+// strips come from the build rather than from hand-placed rectangles.
+QJsonObject inventory(QWidget& root){
+ QJsonArray controls,keys;
+ auto rectOf=[&](QWidget* w){const auto tl=w->mapTo(&root,QPoint());return QJsonArray{tl.x(),tl.y(),w->width(),w->height()};};
+ auto add=[&](QWidget* w,const QString& kind,const QString& text,QJsonObject extra={}){QJsonObject c{{"name",w->objectName()},{"class",QString::fromLatin1(w->metaObject()->className())},{"kind",kind},{"text",text},{"rect",rectOf(w)},{"enabled",w->isEnabled()}};for(auto it=extra.begin();it!=extra.end();++it)c[it.key()]=it.value();controls.append(c);};
+ if(auto* menu=qobject_cast<QMenu*>(&root))for(auto* a:menu->actions()){if(a->isSeparator())continue;const auto r=menu->actionGeometry(a);controls.append(QJsonObject{{"name",a->objectName()},{"class","QAction"},{"kind","menu-item"},{"text",a->text()},{"rect",QJsonArray{r.x(),r.y(),r.width(),r.height()}},{"enabled",a->isEnabled()},{"submenu",a->menu()!=nullptr}});}
+ for(auto* w:root.findChildren<QWidget*>()){
+  // Same native window only: a child dialog's coordinates are not this capture's.
+  if(w->window()!=root.window()||!w->isVisibleTo(&root)||w->width()<=0||w->height()<=0||w->visibleRegion().isEmpty())continue;
+  if(auto* b=qobject_cast<QAbstractButton*>(w)){QJsonObject extra{{"checkable",b->isCheckable()},{"checked",b->isChecked()}};if(!b->shortcut().isEmpty())extra["shortcut"]=b->shortcut().toString(QKeySequence::PortableText);QString text=b->text();if(auto* t=qobject_cast<QToolButton*>(b);t&&t->defaultAction()&&text.isEmpty())text=t->defaultAction()->text();if(text.isEmpty())text=b->toolTip();add(w,"button",text,extra);}
+  else if(auto* e=qobject_cast<QLineEdit*>(w)){if(qobject_cast<QAbstractSpinBox*>(w->parentWidget())||qobject_cast<QComboBox*>(w->parentWidget()))continue;add(w,"field",e->placeholderText().isEmpty()?e->toolTip():e->placeholderText(),{{"readOnly",e->isReadOnly()},{"echo",int(e->echoMode())}});}
+  else if(qobject_cast<QPlainTextEdit*>(w)||qobject_cast<QTextEdit*>(w))add(w,"text-area",w->toolTip());
+  else if(auto* c=qobject_cast<QComboBox*>(w))add(w,"choice",c->currentText(),{{"count",c->count()}});
+  else if(auto* s=qobject_cast<QAbstractSpinBox*>(w))add(w,"stepper",s->text());
+  else if(auto* s=qobject_cast<QAbstractSlider*>(w)){if(qobject_cast<QScrollBar*>(w))continue;add(w,"slider",w->toolTip(),{{"value",s->value()},{"min",s->minimum()},{"max",s->maximum()}});}
+  else if(auto* v=qobject_cast<QAbstractItemView*>(w))add(w,"list",w->toolTip(),{{"rows",v->model()?v->model()->rowCount():0}});
+  else if(auto* t=qobject_cast<QTabBar*>(w)){QJsonArray tabs;for(int i=0;i<t->count();++i){const auto r=t->tabRect(i);const auto tl=t->mapTo(&root,r.topLeft());tabs.append(QJsonObject{{"text",t->tabText(i)},{"rect",QJsonArray{tl.x(),tl.y(),r.width(),r.height()}},{"current",i==t->currentIndex()}});}add(w,"tabs",QString(),{{"tabs",tabs}});}
+  else if(auto* l=qobject_cast<QLabel*>(w)){if((l->textInteractionFlags()&Qt::LinksAccessibleByMouse)&&l->text().contains("<a "))add(w,"link",l->text());else if(!w->objectName().isEmpty()&&w->focusPolicy()!=Qt::NoFocus)add(w,"focusable",l->text());}
+  else if(!w->objectName().isEmpty()&&w->focusPolicy()!=Qt::NoFocus&&!qobject_cast<QAbstractScrollArea*>(w)&&!qobject_cast<QMenu*>(w))add(w,"focusable",w->toolTip());
+ }
+ for(auto* a:root.findChildren<QAction*>()){QJsonArray s;for(const auto& k:a->shortcuts())if(!k.isEmpty())s.append(k.toString(QKeySequence::PortableText));if(s.isEmpty())continue;keys.append(QJsonObject{{"name",a->objectName()},{"text",a->text()},{"keys",s},{"enabled",a->isEnabled()},{"context",int(a->shortcutContext())}});}
+ for(auto* s:root.findChildren<QShortcut*>()){if(s->key().isEmpty())continue;keys.append(QJsonObject{{"name",s->objectName()},{"text",s->whatsThis()},{"keys",QJsonArray{s->key().toString(QKeySequence::PortableText)}},{"enabled",s->isEnabled()},{"context",int(s->context())}});}
+ return {{"width",root.width()},{"height",root.height()},{"class",QString::fromLatin1(root.metaObject()->className())},{"controls",controls},{"keys",keys}};
+}
+bool writeInventory(const QString& output,const QString& name,QWidget& root){
+ QSaveFile f(QDir(output).filePath(name+".controls.json"));
+ return f.open(QIODevice::WriteOnly)&&f.write(QJsonDocument(inventory(root)).toJson())>0&&f.commit();
 }
 // Native capture mode (2026-10-26): with
 // PUTGD_CATALOG_HANDSHAKE=DIR the tool runs on the real platform under an
@@ -208,15 +245,15 @@ int main(int argc,char** argv){
   auto* locked=new QComboBox(&specimen);locked->addItem("Forever");Ui::setLocked(locked,true);locked->setEnabled(false);row->addWidget(locked);auto* unavailable=new QComboBox(&specimen);unavailable->addItem("Unavailable");unavailable->setEnabled(false);row->addWidget(unavailable);rows->addLayout(row);
   specimen.adjustSize();specimen.show();putgd::test::settle(30);if(!specimen.grab().save(QDir(output).filePath("00-inactive-locked-controls.png")))return 2;
  }
- QJsonArray captures,skippedCaptures;auto save=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(name=="01a-history-preview-focus"||name=="10a-history-compact-preview-focus"){window.activateWindow();auto* focusedPreview=window.findChild<QLabel*>("historyPreview");if(QGuiApplication::platformName()=="offscreen"&&!focusedPreview->isVisible()){skippedCaptures.append(QJsonObject{{"state",name},{"reason","inspector_hidden"}});return true;}focusedPreview->setFocus(Qt::TabFocusReason);app.processEvents();if(!focusedPreview->hasFocus())return false;}if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}if(!checkSteppers(window))return false;if(name=="10-history-compact"){QJsonArray commands;auto* band=window.findChild<QWidget*>("commandBand");for(auto* button:band->findChildren<QToolButton*>("captureActionButton"))commands.append(QJsonObject{{"action",button->property("captureAction").toString()},{"label",button->text()},{"labelVisible",button->toolButtonStyle()!=Qt::ToolButtonIconOnly},{"width",button->width()},{"sizeHint",button->sizeHint().width()}});QFile measurements(QDir(output).filePath("command-band-measurements.json"));if(!measurements.open(QIODevice::WriteOnly))return false;measurements.write(QJsonDocument(QJsonObject{{"windowWidth",window.width()},{"bandWidth",band->width()},{"requiredWidth",band->layout()->sizeHint().width()},{"gap",qobject_cast<QGridLayout*>(band->layout())->horizontalSpacing()},{"commands",commands}}).toJson());}const auto image=window.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+ QJsonArray captures,skippedCaptures;auto save=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(name=="01a-history-preview-focus"||name=="10a-history-compact-preview-focus"){window.activateWindow();auto* focusedPreview=window.findChild<QLabel*>("historyPreview");if(QGuiApplication::platformName()=="offscreen"&&!focusedPreview->isVisible()){skippedCaptures.append(QJsonObject{{"state",name},{"reason","inspector_hidden"}});return true;}focusedPreview->setFocus(Qt::TabFocusReason);app.processEvents();if(!focusedPreview->hasFocus())return false;}if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}if(!checkSteppers(window))return false;if(name=="10-history-compact"){QJsonArray commands;auto* band=window.findChild<QWidget*>("commandBand");for(auto* button:band->findChildren<QToolButton*>("captureActionButton"))commands.append(QJsonObject{{"action",button->property("captureAction").toString()},{"label",button->text()},{"labelVisible",button->toolButtonStyle()!=Qt::ToolButtonIconOnly},{"width",button->width()},{"sizeHint",button->sizeHint().width()}});QFile measurements(QDir(output).filePath("command-band-measurements.json"));if(!measurements.open(QIODevice::WriteOnly))return false;measurements.write(QJsonDocument(QJsonObject{{"windowWidth",window.width()},{"bandWidth",band->width()},{"requiredWidth",band->layout()->sizeHint().width()},{"gap",qobject_cast<QGridLayout*>(band->layout())->horizontalSpacing()},{"commands",commands}}).toJson());}const auto image=window.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name)||!writeInventory(output,name,window))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
  const bool recordOnly=qEnvironmentVariableIsSet("PUTGD_CATALOG_RECORD_ONLY");
  const bool editorOnly=qEnvironmentVariableIsSet("PUTGD_CATALOG_EDITOR_ONLY");
  if(!recordOnly){
  if(!editorOnly){
  auto* preview=window.findChild<QLabel*>("historyPreview");if(!preview||!waitUntil([&]{return !preview->pixmap().isNull();}))return 2;
  if(QGuiApplication::platformName()=="offscreen"){
-  QMenu status(&window);auto* information=status.addAction("Uploading… 50% · 2 MB of 4 MB");information->setEnabled(false);information->setProperty("visualRole","information");status.addSeparator();status.addAction("Cancel upload");status.addSeparator();status.addAction("History");status.show();putgd::test::settle(20);if(!status.grab().save(QDir(output).filePath("00-tray-upload-status.png")))return 2;status.close();
-  QMenu menu(&window);menu.addAction("All actions: Shared link · R&&D · No local copy")->setEnabled(false);menu.addAction("Capture region && edit: Nothing is saved or uploaded")->setEnabled(false);menu.addSeparator();menu.addAction("Change output");menu.show();putgd::test::settle(20);const auto image=menu.grab();if(!image.save(QDir(output).filePath("00-output-menu-literal-ampersand.png")))return 2;captures.append(QJsonObject{{"file","00-output-menu-literal-ampersand.png"},{"width",image.width()},{"height",image.height()}});menu.close();
+  QMenu status(&window);auto* information=status.addAction("Uploading… 50% · 2 MB of 4 MB");information->setEnabled(false);information->setProperty("visualRole","information");status.addSeparator();status.addAction("Cancel upload");status.addSeparator();status.addAction("History");status.show();putgd::test::settle(20);if(!status.grab().save(QDir(output).filePath("00-tray-upload-status.png"))||!writeInventory(output,"00-tray-upload-status",status))return 2;status.close();
+  QMenu menu(&window);menu.addAction("All actions: Shared link · R&&D · No local copy")->setEnabled(false);menu.addAction("Capture region && edit: Nothing is saved or uploaded")->setEnabled(false);menu.addSeparator();menu.addAction("Change output");menu.show();putgd::test::settle(20);const auto image=menu.grab();if(!image.save(QDir(output).filePath("00-output-menu-literal-ampersand.png"))||!writeInventory(output,"00-output-menu-literal-ampersand",menu))return 2;captures.append(QJsonObject{{"file","00-output-menu-literal-ampersand.png"},{"controls","00-output-menu-literal-ampersand.controls.json"},{"width",image.width()},{"height",image.height()}});menu.close();
  }
  if(!save("01-history-list"))return 2;
  if(QGuiApplication::platformName()=="offscreen"){
@@ -346,7 +383,7 @@ int main(int argc,char** argv){
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{620,530}},{"text","New total"}}}}};
   if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
   EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);editor.show();
-  auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=editor.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+  auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=editor.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name)||!writeInventory(output,name,editor))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
   editor.selectTool(editor::Tool::Redact);if(!grab("20-editor-redact"))return 2;
   editor.selectTool(editor::Tool::Blur);if(!grab("21-editor-blur-warning"))return 2;
   editor.findChild<QWidget*>("blurStrength")->setFocus(Qt::TabFocusReason);if(!grab("21a-editor-blur-focus"))return 2;
@@ -412,7 +449,7 @@ int main(int argc,char** argv){
   record::ReviewWindow review(o,config);review.resize(record::ReviewWindow::defaultSize());review.show();
   if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
   RecordingEdit edit;edit.revision=1;RecordingMask solid;solid.id="m-solid";solid.kind="solid";solid.rect=QRect(61,194,256,40);solid.start=8000000;solid.end=21000000;RecordingMask blur=solid;blur.id="m-blur";blur.kind="blur";blur.rect=QRect(337,194,256,130);blur.start=3000000;blur.end=12000000;edit.masks={solid,blur};edit.trimStart=2000000;edit.trimEnd=29000000;review.setEdit(edit);
-  auto shot=[&](QWidget& w,const QString& name){if(auto* r=qobject_cast<record::ReviewWindow*>(&w))if(auto* view=r->findChild<record::FrameView*>();view&&view->previewError().isEmpty())view->setFrame(syntheticCapture(2),qint64(r->inspect()["playheadUs"].toDouble()));putgd::test::settle(450);app.processEvents();if(auto* r=qobject_cast<record::ReviewWindow*>(&w)){const auto problem=putgd::test::reviewFooterProblem(*r);if(!problem.isEmpty()){qCritical()<<name<<problem;w.grab().save(QDir(output).filePath(name+"-failed.png"));return false;}}if(!checkSteppers(w))return false;const auto image=w.grab();if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+  auto shot=[&](QWidget& w,const QString& name){if(auto* r=qobject_cast<record::ReviewWindow*>(&w))if(auto* view=r->findChild<record::FrameView*>();view&&view->previewError().isEmpty())view->setFrame(syntheticCapture(2),qint64(r->inspect()["playheadUs"].toDouble()));putgd::test::settle(450);app.processEvents();if(auto* r=qobject_cast<record::ReviewWindow*>(&w)){const auto problem=putgd::test::reviewFooterProblem(*r);if(!problem.isEmpty()){qCritical()<<name<<problem;w.grab().save(QDir(output).filePath(name+"-failed.png"));return false;}}if(!checkSteppers(w))return false;const auto image=w.grab();if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name)||!writeInventory(output,name,w))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
   // Each review state also keeps the window's own geometry (header, frame share).
   auto inspected=[&](record::ReviewWindow& r,const QString& name){QSaveFile f(QDir(output).filePath(name+".json"));return f.open(QIODevice::WriteOnly)&&f.write(QJsonDocument(r.inspect()).toJson())>0&&f.commit();};
   review.drive({{"action","selectMask"},{"maskId","m-solid"}});
@@ -502,7 +539,7 @@ int main(int argc,char** argv){
 #endif
  if(!recordOnly&&!editorOnly){
   AboutWindow about(fixture.session.build(),&window);Ui::styleWindow(about);about.show();
-  auto grabAbout=[&](const QString& name){app.processEvents();const auto image=about.grab();if(!image.save(QDir(output).filePath(name+".png"))||!native.step(about,name))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+  auto grabAbout=[&](const QString& name){app.processEvents();const auto image=about.grab();if(!image.save(QDir(output).filePath(name+".png"))||!native.step(about,name)||!writeInventory(output,name,about))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
   if(!grabAbout("about"))return 2;auto* details=about.findChild<QToolButton*>("buildDetails");if(!details)return 2;details->click();if(!grabAbout("about-build-details"))return 2;about.findChild<QPushButton*>("copyBuildDetails")->click();if(!grabAbout("about-build-details-copied"))return 2;about.close();
  }
  // The custom frame under real input: the driver moves, maximizes, restores,
