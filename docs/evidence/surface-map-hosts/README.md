@@ -1,5 +1,7 @@
 # Surface map per-builder evidence
 
+Latest completion: [current green-suite and sticky-header evidence](completion/README.md) supersedes the historical blockers below.
+
 Code: [PR #667](https://github.com/patrick-hudson/put.gd-desktop/pull/667), source `cf4f4525afc519a3e86f32fd7c1bdde3f55fda2a`, based on nightly `a18d79e762dfa4780522e25d6e3f63df1b3a2258`.
 
 This is synthetic acceptance of the offline map page. No app build, lab desktop, host lock, VM, Proton or storage destination was used. Destination values are badges in synthetic receipts. These pictures establish map behavior, not desktop functionality. Browser, viewport, checks and image SHA-256 values are in [verification.json](verification.json).
@@ -20,19 +22,22 @@ This is synthetic acceptance of the offline map page. No app build, lab desktop,
 
 ## Reproduce the page
 
-Use code commit `cf4f4525afc519a3e86f32fd7c1bdde3f55fda2a` and the synthetic input in this directory. Run from the repository root, with a new output directory:
+Use code commit `cf4f4525afc519a3e86f32fd7c1bdde3f55fda2a` in a code checkout and this evidence directory in a separate docs checkout (the fixture is not present in the code revision). Run from the code repository root. Set `evidence_dir` to the absolute path of this directory in the docs checkout; every invocation uses a fresh directory so `import` cannot append duplicate review rows:
 
 ```sh
+evidence_dir=/absolute/path/to/docs-checkout/docs/evidence/surface-map-hosts
+run_dir=$(mktemp -d /tmp/surface-host-demo.XXXXXX)
 python3 tools/lab/surface_map/surface_map.py import \
-  --coverage /tmp/surface-host-demo.json \
-  docs/evidence/surface-map-hosts/driver-v2.json
+  --coverage "$run_dir/coverage.json" \
+  --desktop ubuntu-gnome-wayland --package deb \
+  "$evidence_dir/driver-v2.json"
 python3 tools/lab/surface_map/surface_map.py build \
-  --coverage /tmp/surface-host-demo.json \
-  --output /tmp/surface-host-demo \
+  --coverage "$run_dir/coverage.json" \
+  --output "$run_dir/map" \
   --label 'Synthetic host/filter demo — no desktop acceptance'
 ```
 
-Open `/tmp/surface-host-demo/map.html` directly in a browser. Select Ubuntu GNOME/Wayland, then Matrix. Select m74 in Host, then Review. No server or network is required. For v1, build with this directory's `v1.json`; use the base commit and its original example file for the before result.
+Open `$run_dir/map/map.html` directly in a browser. Select Ubuntu GNOME/Wayland, then Matrix. Select m74 in Host, then Review. No server or network is required. For v1, build with the absolute `$evidence_dir/v1.json` path and a fresh output directory; use the base commit and its original example file for the before result.
 
 The workstation's system Python lacked pytest and ensurepip, so checks used a private temporary environment with the system Python and pytest/playwright installed through `uv pip`; no system packages or toolchain were replaced. Chromium was the existing `/usr/bin/google-chrome`. No C++ build or CTest was run for these Python/HTML changes.
 
