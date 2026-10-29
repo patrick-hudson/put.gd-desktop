@@ -23,14 +23,16 @@ inline QString summary(qint64 bytes) {
         result += '.' + fraction;
     }
     return result + suffix;
-}// Traditional display labels, with the same 1024-based arithmetic everywhere.
+}
+
+// Traditional display labels, with the same 1024-based arithmetic everywhere.
 inline QString fileSummary(qint64 bytes) {
     if (bytes < MiB) return QString("%1 KB").arg(QString::number(double(bytes) / 1024, 'f', bytes < 10 * 1024 ? 1 : 0));
     return summary(bytes);
 }
 
-inline QString localized(qint64 bytes, int precision = 1) {
-    return QLocale().formattedDataSize(bytes, precision, QLocale::DataSizeTraditionalFormat);
+inline QString localized(qint64 bytes, int precision = 1, const QLocale& locale = QLocale()) {
+    return locale.formattedDataSize(bytes, precision, QLocale::DataSizeTraditionalFormat);
 }
 inline QString admissionLimit(qint64 bytes) {
     constexpr double mib = 1024.0 * 1024, gib = mib * 1024, tib = gib * 1024;
