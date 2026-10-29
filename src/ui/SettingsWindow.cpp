@@ -149,8 +149,9 @@ private:
 class PreferenceCaption final:public QLabel {
 public:
  explicit PreferenceCaption(const QString& text):QLabel(text){setProperty("graphiteStatus",true);setWordWrap(true);VisualStyle::role(this,"secondary");}
+ void refreshHeight(){const int needed=qMax(fontMetrics().height(),heightForWidth(width()));if(minimumHeight()!=needed)setMinimumHeight(needed);}
 protected:
- void resizeEvent(QResizeEvent* event)override{QLabel::resizeEvent(event);const int needed=qMax(fontMetrics().height(),heightForWidth(width()));if(minimumHeight()!=needed)setMinimumHeight(needed);}
+ void resizeEvent(QResizeEvent* event)override{QLabel::resizeEvent(event);refreshHeight();}
 };
 // Keep the real checkbox's text and accessibility contract while placing its indicator at the row edge.
 class PreferenceCheck final:public QCheckBox {
@@ -1016,7 +1017,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // Advanced, above Config file (#238); Reset limits to defaults leaves it alone.
  auto* diagnosticsForm=section(right,"Diagnostics","Logs and diagnostics packages stay on this computer.");
  debugLogging_=new PreferenceCheck("Keep detailed debug logs for 24 hours");debugLogging_->setObjectName("debugLogging");auto* debugRow=setting(diagnosticsForm,"Debug logging",debugLogging_,"/preferences/diagnostics/debugLogging");
- debugLoggingStatus_=new QLabel;debugLoggingStatus_->setObjectName("debugLoggingStatus");debugLoggingStatus_->setWordWrap(true);VisualStyle::role(debugLoggingStatus_,"muted");qobject_cast<QVBoxLayout*>(debugRow->layout())->addWidget(debugLoggingStatus_);
+ debugLoggingStatus_=new PreferenceCaption({});debugLoggingStatus_->setObjectName("debugLoggingStatus");debugLoggingStatus_->setWordWrap(true);VisualStyle::role(debugLoggingStatus_,"muted");qobject_cast<QVBoxLayout*>(debugRow->layout())->addWidget(debugLoggingStatus_);
  logSummary_=new QLabel;logSummary_->setObjectName("logSummary");logSummary_->setWordWrap(true);logSummary_->setAccessibleName("Log folder size, file count and oldest record");VisualStyle::role(logSummary_,"secondary");
  clearLogs_=new QPushButton("Clear logs…");clearLogs_->setObjectName("clearLogs");auto* logsRow=PreferenceRows::action(diagnosticsForm,"Logs",{},clearLogs_);auto* logCaptions=qobject_cast<QBoxLayout*>(logsRow->layout()->itemAt(0)->layout()->itemAt(0)->layout());logCaptions->addWidget(logSummary_);
  loggingWarning_=new QLabel;loggingWarning_->setObjectName("loggingDegraded");loggingWarning_->setWordWrap(true);VisualStyle::role(loggingWarning_,"warning");loggingWarning_->hide();diagnosticsForm->addRow(loggingWarning_);
@@ -1559,7 +1560,7 @@ void SettingsWindow::checkForUpdates(std::function<void(Error,QJsonObject)> done
 void SettingsWindow::refreshLoggingStatus(){
  const auto data=settings_.diagnostics();const auto logging=data["logging"].toObject();
  const auto expires=logging["debugLoggingExpiresAt"].toString();
- debugLoggingStatus_->setText(logging["debugLogging"].toBool()&&!expires.isEmpty()?"On. Turns itself off at "+localTime(expires)+".":debugLogging_->isChecked()?QString("On. Turns itself off 24 hours after it was turned on."):QString("Records detailed logs for a maintainer and turns itself off after 24 hours."));debugLoggingStatus_->setText(debugLoggingStatus_->text()+" Credentials, tokens and file contents are never logged.");
+ debugLoggingStatus_->setText(logging["debugLogging"].toBool()&&!expires.isEmpty()?"On. Turns itself off at "+localTime(expires)+".":debugLogging_->isChecked()?QString("On. Turns itself off 24 hours after it was turned on."):QString("Records detailed logs for a maintainer and turns itself off after 24 hours."));debugLoggingStatus_->setText(debugLoggingStatus_->text()+" Credentials, tokens and file contents are never logged.");static_cast<PreferenceCaption*>(debugLoggingStatus_)->refreshHeight();
  if(!logging["available"].toBool(true)||logging.isEmpty())logSummary_->setText(logging.isEmpty()?QString("Log status isn't available yet."):"The log folder isn't available: "+logging["directory"].toString());
  else{
   const int files=logging["files"].toInt();const auto oldest=logging["oldestRecord"].toString();const auto retention=logging["retention"].toObject();
