@@ -122,11 +122,13 @@ class BrowserContracts(unittest.TestCase):
                 return {'blank': True, 'safe': False}
             return self.remote(ctx, action, values)
         def fail():
+            self.context.events.append(('trigger',))
             raise RecipeFailed('test failure')
         with patch.object(browser, '_remote', remote):
             with self.assertRaises(RecipeFailed):
                 with browser.default_browser(self.context):
                     browser.open_and_verify(self.context, fail, self.context.upload['expect'])
+        self.assertNotIn(('trigger',), self.context.events)
         self.assertFalse(any(event[0] == 'frame' for event in self.context.events))
         self.assertTrue(any(event[0] == 'review' for event in self.context.events))
 

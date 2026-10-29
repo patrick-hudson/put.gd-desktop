@@ -89,9 +89,10 @@ def open_and_verify(ctx, trigger, expect):
             type(expect.get('preview')) is not bool):
         raise ValueError('Expected kind, nonempty filename and preview boolean')
     state = _ACTIVE[id(ctx)]
-    _remote(ctx, 'blank', state)
     frames = []
     try:
+        ready = _remote(ctx, 'blank', state)
+        ctx.expect(ready.get('safe'), 'private blank Firefox kiosk owns the foreground before input')
         trigger()
         result = ctx.wait(lambda: _remote(ctx, 'observe', {**state, 'expect': expect}),
                           'default Firefox loaded the expected page content', timeout=45)
