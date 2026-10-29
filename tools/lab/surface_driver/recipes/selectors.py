@@ -14,9 +14,12 @@ import shlex
 from contextlib import contextmanager
 from pathlib import PurePosixPath
 
-from tools.lab.surface_driver.api import recipe
+from tools.lab.surface_driver.api import RecipeBlocked, recipe
 
-NEEDS = ("selector-desktop",)
+# The initial core runner has no selector fixture. A campaign can supply its
+# equivalent immutable metadata in the selectors profile fragment until #664
+# lands. Keep setup outside this module; recipes never implement input/runner code.
+NEEDS = ()
 REGION = "44-region-keyboard"
 RECSEL = "45-record-region-keyboard"
 BAR = "33-record-ready-bar"
@@ -37,7 +40,12 @@ def _call(ctx, method, params=None):
 
 
 def _env(ctx):
-    value = ctx.fixture("selector-desktop")
+    value = ctx.profile.get("selectors", {}).get("fixture")
+    if value is None:
+        try:
+            value = ctx.fixture("selector-desktop")
+        except RecipeBlocked:
+            ctx.blocked("selector-desktop fixture or selectors.fixture profile metadata is required (#664)", issue=664)
     if not isinstance(value, dict) or not value.get("screens"):
         ctx.blocked("selector-desktop must supply live logical screen rectangles (#664)", issue=664)
     return value
@@ -62,7 +70,12 @@ def _local(ctx, mode="live"):
     old = _call(ctx, "settings.get")
     document = old["document"]
     if "regionSelectionMode" not in document["preferences"]:
-        ctx.blocked("selector-desktop must seed preferences.regionSelectionMode so recursive settings.patch can restore it exactly (#664)", issue=664)
+        # Defaults omit this optional field. Seed the equivalent default once in
+        # the runner's private session, then take a fully restorable baseline.
+        _call(ctx, "settings.patch", {"patch": {"preferences": {"regionSelectionMode": "live"}}, "expectedRevision": old["metadata"]["acceptedRevision"]})
+        old = _call(ctx, "settings.get")
+        document = old["document"]
+        ctx.note("Seeded explicit live selection mode in the private run configuration")
     # A shortcut-only record entry inherits region. Adding route fields to it
     # cannot be undone by recursive settings.patch (null is a value).
     routed = [a for a in ("region", "edit", "record") if "destination" in document["actions"][a]]
@@ -188,7 +201,7 @@ def _ready(ctx, entire=False):
     rid = _open_record(ctx, entire)
     try:
         if not entire:
-            _choose(ctx, rid)
+            _choose(ctx, rid, _half(_screen(ctx)))
     except Exception:
         _cancel_record(ctx, rid)
         raise

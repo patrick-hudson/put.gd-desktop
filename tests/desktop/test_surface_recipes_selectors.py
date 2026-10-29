@@ -370,14 +370,13 @@ class SelectorRecipes(unittest.TestCase):
         selectors.recording_output(ctx)
         self.assertEqual(ctx.document, ctx.original)
 
-    def test_missing_optional_mode_is_blocked_before_mutation(self):
+    def test_missing_optional_mode_is_seeded_as_equivalent_default(self):
         ctx = FakeContext()
         del ctx.document["preferences"]["regionSelectionMode"]
         ctx.original = copy.deepcopy(ctx.document)
-        with self.assertRaisesRegex(RecipeBlocked, "seed preferences"):
-            selectors.region_keyboard(ctx)
+        selectors.region_keyboard(ctx)
+        ctx.original["preferences"]["regionSelectionMode"] = "live"
         self.assertEqual(ctx.document, ctx.original)
-        self.assertFalse(any(m == "settings.patch" for m, _ in ctx.calls))
 
     def test_two_heads_are_required(self):
         with self.assertRaisesRegex(RecipeBlocked, "two independently sized"):
