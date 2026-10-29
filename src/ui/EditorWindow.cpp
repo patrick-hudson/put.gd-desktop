@@ -54,7 +54,7 @@ namespace putgd {
 using editor::Tool;
 using Graphite::Space;
 namespace {
-QFrame* separator(QWidget* parent){auto* line=Graphite::rule(parent,Qt::Vertical);line->setFixedHeight(22);return line;}
+QFrame* separator(QWidget* parent){auto* line=Graphite::rule(parent,Qt::Vertical);line->setFixedHeight(Graphite::scaled(22));return line;}
 // A colour choice: its colour in a rounded square, a ring when chosen, the
 // accent ring under keyboard focus. The custom picker stays neutral.
 // The 32 px button is the hit target; the painted square stays 24 px. Its

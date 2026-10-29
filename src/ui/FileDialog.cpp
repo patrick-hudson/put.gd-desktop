@@ -1,5 +1,6 @@
 #include "FileDialog.h"
 #include "Theme.h"
+#include "Graphite.h"
 #include "VisualStyle.h"
 #include <QAbstractItemView>
 #include <QApplication>
@@ -221,7 +222,7 @@ void FileDialog::openFallback(const QString& reason){
  if(!filters.isEmpty())dialog->setNameFilters(filters);
  theme(dialog);
  // Qt's default leaves the detail columns too narrow for their own values.
- QSize size(820,520);
+ QSize size(Graphite::scaled(820),Graphite::scaled(520));
  if(const auto* screen=owner_->window()->screen())size=size.boundedTo(screen->availableGeometry().size()*0.9);
  dialog->resize(size.expandedTo(dialog->minimumSizeHint()));
  if(auto* tree=dialog->findChild<QTreeView*>("treeView");tree&&tree->header()->count()>=4){
