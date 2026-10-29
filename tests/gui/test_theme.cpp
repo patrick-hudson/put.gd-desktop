@@ -941,6 +941,17 @@ private slots:
         disclosure.setChecked(true);
         QCOMPARE(disclosure.font().weight(), QFont::Normal);
     }
+    void laneArrowsHaveAShaftAndDirectionalHead() {
+        for (const auto name : {"arrow-up", "arrow-down"}) {
+            QImage image(20, 20, QImage::Format_ARGB32); image.fill(Qt::transparent);
+            { QPainter painter(&image); Graphite::paintChromeGlyph(painter, image.rect(), name, Qt::white); }
+            QVERIFY(image.pixelColor(10, 10).alpha() > 100);
+            const int headY = QString(name) == "arrow-up" ? 7 : 13;
+            const int tailY = QString(name) == "arrow-up" ? 13 : 7;
+            QVERIFY(image.pixelColor(7, headY).alpha() > 100);
+            QCOMPARE(image.pixelColor(7, tailY).alpha(), 0);
+        }
+    }
     void linksUseTheSemanticLinkInk() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme);

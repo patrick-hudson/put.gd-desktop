@@ -488,6 +488,12 @@ void paintChromeGlyph(QPainter& painter, const QRectF& rect, const QString& name
     else if (name == "restore") { painter.drawRoundedRect(QRectF(3, 7, 10, 10), 1.5, 1.5); painter.drawLine(QPointF(7, 3), QPointF(17, 3)); painter.drawLine(QPointF(17, 3), QPointF(17, 13)); }
     else if (name == "close") { painter.drawLine(QPointF(5, 5), QPointF(15, 15)); painter.drawLine(QPointF(15, 5), QPointF(5, 15)); }
     else if (name == "check") { QPainterPath tick; tick.moveTo(4, 10.5); tick.lineTo(8, 14.5); tick.lineTo(16, 5.5); painter.drawPath(tick); }
+    else if (name == "arrow-up" || name == "arrow-down") {
+        const bool up = name == "arrow-up";
+        const qreal tip = up ? 4 : 16, tail = up ? 16 : 4, wing = up ? 9 : 11;
+        painter.drawLine(QPointF(10, tail), QPointF(10, tip));
+        QPainterPath head; head.moveTo(5, wing); head.lineTo(10, tip); head.lineTo(15, wing); painter.drawPath(head);
+    }
     else if (name == "chevron-up") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::UpArrow, colour); return; }
     else if (name == "chevron-down") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::DownArrow, colour); return; }
     else if (name == "chevron-right") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::RightArrow, colour); return; }

@@ -809,7 +809,7 @@ ReviewTimeline::ReviewTimeline(QWidget* parent, std::shared_ptr<MaskNames> names
     moreMasks_ = new QToolButton(this);
     moreMasks_->setObjectName("showMoreMasks");
     moreMasks_->setAutoRaise(true);
-    moreMasks_->setIcon(Graphite::chromeIcon("chevron-down"));
+    moreMasks_->setIcon(Graphite::chromeIcon("arrow-down"));
     moreMasks_->setIconSize(QSize(Graphite::scaled(18), Graphite::scaled(18)));
     moreMasks_->setFixedSize(iconTarget(), iconTarget());
     moreMasks_->setAccessibleName("Next mask lanes");
@@ -818,7 +818,7 @@ ReviewTimeline::ReviewTimeline(QWidget* parent, std::shared_ptr<MaskNames> names
     previousMasks_ = new QToolButton(this);
     previousMasks_->setObjectName("previousMaskLanes");
     previousMasks_->setAutoRaise(true);
-    previousMasks_->setIcon(Graphite::chromeIcon("chevron-up"));
+    previousMasks_->setIcon(Graphite::chromeIcon("arrow-up"));
     previousMasks_->setIconSize(QSize(Graphite::scaled(18), Graphite::scaled(18)));
     previousMasks_->setFixedSize(iconTarget(), iconTarget());
     previousMasks_->setAccessibleName("Previous mask lanes");
