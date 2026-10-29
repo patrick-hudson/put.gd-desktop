@@ -23,7 +23,7 @@ REFERENCE = '20-editor-redact'
 def _result(reply):
     if 'ok' in reply:
         if not reply['ok']:
-            raise AssertionError(f"editor command rejected: {reply.get('error', {}).get('code')}")
+            raise RecipeFailed(f"editor command rejected: {reply.get('error', {}).get('code')}")
         return reply['result']
     return reply
 
@@ -56,7 +56,12 @@ def _resize(ctx, width, height):
         def sized():
             r=ctx.geometry('editor')
             return r if [r['width'],r['height']]==[width,height] else None
-        ctx.wait(sized,'editor resized to matching catalog dimensions')
+        try:
+            ctx.wait(sized,'editor resized to matching catalog dimensions')
+        except RecipeFailed:
+            observed=ctx.geometry('editor')
+            ctx.note(f'editor resize requested {width}x{height}; observed {observed["width"]}x{observed["height"]}')
+            raise
 
 
 
@@ -85,6 +90,12 @@ def _session(ctx, opener=None):
         ctx.expect(_inspect(ctx, op)['view']['fitted'], 'editor opens fitted')
         _frame(ctx, 'before')
         yield op
+    except BaseException:
+        try:
+            ctx.frame('failure-before-cleanup')
+        except Exception as error:
+            ctx.note('failure frame unavailable: ' + type(error).__name__)
+        raise
     finally:
         # Submitted/cancelled operations have no live editor. Inspect the durable
         # operation first so cleanup cannot hide a failed assertion or cancel output.

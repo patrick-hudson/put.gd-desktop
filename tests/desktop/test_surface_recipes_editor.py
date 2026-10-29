@@ -226,7 +226,7 @@ class EditorRecipes(unittest.TestCase):
                 with self.assertRaises(RecipeBlocked) as raised: getattr(editor,name)(ctx)
                 self.assertEqual(663,raised.exception.issue)
                 self.assertGreater(len(raised.exception.reason),30)
-                self.assertEqual(['before','after'],[e[1] for e in ctx.events if e[0]=='frame'])
+                self.assertEqual(['before','after','failure-before-cleanup'],[e[1] for e in ctx.events if e[0]=='frame'])
                 self.assertEqual('cancelled',ctx.phase)
 
     def test_export_oracle_accepts_sanitized_pixels_and_quotes_path(self):
