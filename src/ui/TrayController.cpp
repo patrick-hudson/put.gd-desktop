@@ -99,7 +99,7 @@ struct TransferCounts {
    if(progress&&progress->bytesTotal)total+=*progress->bytesTotal;
   }
  }
- // ": 12 MiB of 40 MiB (30%) · 2 uploading, 3 waiting, 1 done"
+ // ": 12 MB of 40 MB (30%) · 2 uploading, 3 waiting, 1 done"
  QString summary() const {
   QString text;
   if(total>0)text=": "+ByteSize::summary(sent)+" of "+ByteSize::summary(total)+QString(" (%1%)").arg(qBound(0,int(100.0*sent/total),100));

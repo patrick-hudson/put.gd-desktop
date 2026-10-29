@@ -206,7 +206,7 @@ private slots:
             Theme::setScheme(scheme);
             const auto& c = Theme::current();
             QMenu menu;
-            auto* information = menu.addAction("Uploading… 50% · 2 MiB of 4 MiB");
+            auto* information = menu.addAction("Uploading… 50% · 2 MB of 4 MB");
             information->setProperty("visualRole", "information");
             information->setEnabled(false);
             auto* cancel = menu.addAction("Cancel upload");
