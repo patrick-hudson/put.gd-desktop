@@ -106,3 +106,17 @@ The workstation tunnel and only this run's wall tile were removed, and the
 workstation lab-key SSH agent was stopped. The created boat sandbox was deleted
 at the end of the campaign; its deletion receipt is retained with the private
 archive. No sandbox from this lane remains running.
+
+
+## Inherited CI failure
+
+The review lane's CI job passed all 29 recipe tests and the shared-core tests,
+but `contracts` and the required `CI` summary failed in the pre-existing
+`ModelContract.test_receipt_selectors_name_real_checks` test. The map still
+expects `checks.editorShowsImageAt100Percent`; the editor acceptance harness
+reports `editorFitsWholeImage`. This reproduced locally (23 tests, one failure).
+The three relevant map/harness/test files are byte-identical to shared base
+`06e380d0`; their hashes and reproduction are in
+[inherited-ci-failure.json](inherited-ci-failure.json).
+[Issue #700](https://github.com/patrick-hudson/put.gd-desktop/issues/700) tracks the
+owning-lane fix. Neither this failure nor the graphical fixture gates is a pass.

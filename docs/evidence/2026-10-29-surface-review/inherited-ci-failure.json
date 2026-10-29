@@ -1,0 +1,26 @@
+{
+  "issue": 700,
+  "base": "06e380d0",
+  "lane": "93c74c1b",
+  "command": "python3 tests/desktop/test_surface_map.py",
+  "tests": 23,
+  "failures": 1,
+  "test": "ModelContract.test_receipt_selectors_name_real_checks",
+  "expectedSelector": "checks.editorShowsImageAt100Percent",
+  "currentCheck": "editorFitsWholeImage",
+  "job": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40973146435/job/123795225212",
+  "unchangedFiles": {
+    "tests/desktop/test_surface_map.py": {
+      "baseSha256": "2b748fa93ebef1a88e39c190753f6473923be9a5cde90e10276855e35c82c647",
+      "laneSha256": "2b748fa93ebef1a88e39c190753f6473923be9a5cde90e10276855e35c82c647"
+    },
+    "tools/lab/surface_map/model.json": {
+      "baseSha256": "596258049b800e41e2394aa8aada4feeb466e93d3bb2badd781f30fce0c5e6f3",
+      "laneSha256": "596258049b800e41e2394aa8aada4feeb466e93d3bb2badd781f30fce0c5e6f3"
+    },
+    "tools/lab/edit_acceptance.py": {
+      "baseSha256": "61ec5a50525eb63439b7c185b57101ec824a4a1ba864728d31200a80a327e319",
+      "laneSha256": "61ec5a50525eb63439b7c185b57101ec824a4a1ba864728d31200a80a327e319"
+    }
+  }
+}
