@@ -256,6 +256,12 @@ class Running(unittest.TestCase):
         self.assertFalse(target.started)
         self.assertEqual(errors,['notification monitor cleanup unavailable'])
 
+    def test_resident_operation_identity_is_retained(self):
+        self.ctx.target.cli=lambda *args,**kwargs:{'returncode':0,'stderr':'','stdout':
+            json.dumps({'ok':True,'result':{'operationId':'test-operation-123'}})}
+        self.ctx.call('editor.open',{'source':'file','path':'/tmp/synthetic.png'})
+        self.assertEqual(self.ctx.notes,['operationId=test-operation-123'])
+
     def test_notification_correlation(self):
         raw='''method call time=100.1 sender=:1.2 -> destination=org.freedesktop.Notifications serial=45 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
    string "put.gd"

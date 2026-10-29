@@ -38,6 +38,7 @@ class DriverContext(Context):
     def begin(self, recipe):
         self.recipe = recipe
         self.frames, self.notes, self.reviews = [], [], []
+        self._noted_ids=set()
         self._notifications_since = time.time()
         self._deadline = time.monotonic() + (recipe.timeout if recipe else 120)
 
@@ -55,7 +56,13 @@ class DriverContext(Context):
             except ValueError as error:
                 raise RecipeBlocked('production CLI returned no JSON envelope') from error
             if envelope.get('ok'):
-                return envelope['result']
+                result=envelope['result']
+                for field in ('operationId','recordingId','shareOperationId'):
+                    identity=result.get(field)
+                    if isinstance(identity,str) and re.fullmatch('[A-Za-z0-9_-]{1,128}',identity) and identity not in self._noted_ids:
+                        self.note(field+'='+identity)
+                        self._noted_ids.add(identity)
+                return result
             code=envelope.get('error',{}).get('code','unknown')
             # Startup acknowledgement precedes helper construction. Retry only
             # observational commands, never a mutation whose effect is uncertain.
