@@ -2221,13 +2221,15 @@ void ReviewWindow::showAdvice(bool formatTips) {
     auto* heading = new QLabel(title, body);
     VisualStyle::role(heading, "sectionTitle");
     layout->addWidget(heading);
-    auto* text = new QLabel(message_.text, body);
+    // The heading already says "Export failed"; the details don't repeat it.
+    auto shown = message_.text;
+    if (shown.startsWith(title + QStringLiteral(": "))) { shown.remove(0, title.size() + 2); if (!shown.isEmpty()) shown[0] = shown[0].toUpper(); }
+    auto* text = new QLabel(shown, body);
     text->setObjectName("reviewAdviceText");
     text->setProperty("plainText", hasError ? message_.text : audio_->property("summary").toString() + "\n\n" + formatHint(config_.format, config_.codec));
     text->setTextFormat(Qt::PlainText);
     text->setWordWrap(true);
-    text->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-    text->setFocusPolicy(Qt::StrongFocus);
+    Graphite::readOnlyText(text);
     text->setAccessibleName(title);
     text->setVisible(hasError);
     layout->addWidget(text);

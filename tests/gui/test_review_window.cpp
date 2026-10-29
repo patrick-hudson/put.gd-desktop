@@ -2965,6 +2965,14 @@ private slots:
         QVERIFY(dialog); QCOMPARE(dialog->windowTitle(), QString("Export failed"));
         QVERIFY(!buttonNamed(*dialog, "Use MP4 (H.264)"));
         QCOMPARE(dialog->findChild<QLabel*>("reviewAdviceText")->property("plainText").toString(), QString("Export failed: disk full"));
+        // Final read: the heading says Export failed, so the text doesn't repeat it, and it has no caret.
+        auto* adviceText = dialog->findChild<QLabel*>("reviewAdviceText");
+        QCOMPARE(adviceText->text(), QString("Disk full"));
+        QVERIFY(adviceText->textInteractionFlags() & Qt::TextSelectableByKeyboard);
+        bool caretHidden = false;
+        for (auto* control : adviceText->findChildren<QObject*>(QString(), Qt::FindDirectChildrenOnly))
+            if (QByteArray(control->metaObject()->className()) == "QWidgetTextControl") caretHidden = control->property("cursorWidth").toInt() == 0;
+        QVERIFY(caretHidden);
         auto* primary = qobject_cast<QPushButton*>(buttonNamed(*dialog, "Try again"));
         QVERIFY(primary && primary->isDefault());
         primary->click(); QCOMPARE(retry.size(), 2);

@@ -1253,6 +1253,11 @@ private slots:
         QCOMPARE(text->text(), full);
         QCOMPARE(text->textFormat(), Qt::PlainText);
         QVERIFY(text->textInteractionFlags() & Qt::TextSelectableByKeyboard);
+        // Read-only details keep keyboard selection without an editing caret.
+        bool caretHidden = false;
+        for (auto* control : text->findChildren<QObject*>(QString(), Qt::FindDirectChildrenOnly))
+            if (QByteArray(control->metaObject()->className()) == "QWidgetTextControl") caretHidden = control->property("cursorWidth").toInt() == 0;
+        QVERIFY(caretHidden);
         QTest::keyClick(QApplication::focusWidget(), Qt::Key_Escape);
         PUTGD_TRY_VERIFY(!summary->fullTextPopup());
         // A click opens it too.

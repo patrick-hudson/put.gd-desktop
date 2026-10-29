@@ -187,6 +187,8 @@ private:
 };
 // Normal readable text with an amber alert glyph; include a word naming the problem.
 QLabel* warningLabel(const QString& text, QWidget* parent = nullptr);
+// Read-only details: selectable by mouse and keyboard, focusable, without a text cursor.
+void readOnlyText(QLabel*);
 // One privacy warning for image and recording blur; the action uses the host
 // editor's existing Redact command. The host decides when it is visible.
 QString blurWarningText();

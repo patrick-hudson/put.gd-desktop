@@ -1775,8 +1775,7 @@ public:
         label_->setObjectName("elidedLabelFullTextValue");
         label_->setTextFormat(Qt::PlainText);
         label_->setWordWrap(true);
-        label_->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-        label_->setFocusPolicy(Qt::StrongFocus);
+        readOnlyText(label_);
         label_->setAccessibleName(text);
         auto* scroll = new QScrollArea(this);
         scroll->setFrameShape(QFrame::NoFrame);
@@ -1948,6 +1947,13 @@ protected:
         p.drawImage(QRect(0, std::max(0, (fontMetrics().height() - side) / 2), side, side), glyph);
     }
 };
+}
+void readOnlyText(QLabel* label) {
+    label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    label->setFocusPolicy(Qt::StrongFocus);
+    // Keyboard selection gives QLabel a caret, which reads as an editable field.
+    for (auto* control : label->findChildren<QObject*>(QString(), Qt::FindDirectChildrenOnly))
+        if (QByteArray(control->metaObject()->className()) == "QWidgetTextControl") control->setProperty("cursorWidth", 0);
 }
 QLabel* warningLabel(const QString& text, QWidget* parent) {
     auto* label = new WarningLabel(text, parent);
