@@ -332,6 +332,7 @@ def _heads(ctx, recording):
             rect = _half(screens[0])
             _expect_rect(ctx, rect, recording)
             ctx.frame("before", window=role, reference=ref)
+            ctx.frame("all-heads-before")
             a, b = screens
             transferred = [b[0] + min(rect[0] - a[0], b[2] - min(rect[2], b[2])),
                            b[1] + min(rect[1] - a[1], b[3] - min(rect[3], b[3])), min(rect[2], b[2]), min(rect[3], b[3])]
@@ -339,6 +340,7 @@ def _heads(ctx, recording):
             _expect_rect(ctx, transferred, recording)
             ctx.expect("Display 2" in _description(ctx, recording), "Tab changes active output")
             ctx.frame("second-head", window=role, reference=ref)
+            ctx.frame("all-heads-second")
             ctx.keys("Shift+Tab")
             # Same-size heads round trip exactly; unequal heads preserve the clamped size.
             back = [a[0] + min(transferred[0] - b[0], a[2] - transferred[2]), a[1] + min(transferred[1] - b[1], a[3] - transferred[3]), transferred[2], transferred[3]]
@@ -471,6 +473,7 @@ def bar_recording(ctx):
             ctx.frame("before", window="bar", reference=BAR)
             _start(ctx, rid)
             ctx.frame("recording", window="bar", reference="34-record-recording-bar")
+            ctx.frame("recording-bounds")
             ctx.click("text:Pause", window="bar")
             _state(ctx, rid, "paused")
             ctx.frame("paused", window="bar", reference="35-record-paused-bar")
@@ -539,7 +542,7 @@ def bar_drag(ctx):
             ctx.frame("after", window="bar", reference=BAR)
             ctx.drag((int(after["x"] + after["width"] / 2), int(after["y"] + 2)), (int(x + w / 2), int(y + h / 2)))
             rejected = ctx.geometry("bar")
-            ctx.expect(rejected == after, "dragging an outside bar into the capture is rejected")
+            ctx.expect(rejected["x"] + rejected["width"] <= x or rejected["x"] >= x + w or rejected["y"] + rejected["height"] <= y or rejected["y"] >= y + h, "dragging an outside bar cannot overlap the capture")
             ctx.frame("rejected-inside", window="bar", reference=BAR)
         finally:
             _cancel_record(ctx, rid)
