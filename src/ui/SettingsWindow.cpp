@@ -919,7 +919,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // config paths and autosave are unchanged.
  auto* files=section(capture,"Local copies","Captures and clipboard uploads saved on this computer, with or without uploading.");
  keep_=new PreferenceCheck("Keep a local copy");keep_->setObjectName("keepUploadCopies");setting(files,"Each capture",keep_,"/archive/keepUploads",{});
- root_=input(this,"archiveRoot");auto* rootRow=setting(files,"Save to",root_,"/archive/root","Use absolute folder paths.");
+ root_=input(this,"archiveRoot");auto* rootRow=setting(files,"Save to",root_,"/archive/root","Use absolute folder paths.");rootRow->setMinimumHeight(0);connect(root_,&QLineEdit::textChanged,this,[this]{inlineError(root_,{});});
  folderChooser_=new FileDialog(this);
  auto browse=[this](QLineEdit* field){chooseOutputFolder(field);};
  // Every folder row browses the same way, beside its field.
@@ -1645,7 +1645,7 @@ void SettingsWindow::restoreReorderBaseline(){
  applyProfileOrder(order);
 }
 qint64 SettingsWindow::displayUnit(const QString& key){return key=="imagePixels"?1000000:key=="maxFileBytes"||key=="maxBatchBytes"||key=="pendingArtifactBytes"?ByteSize::GiB:key.endsWith("Bytes")?ByteSize::MiB:1;}
-void SettingsWindow::inlineError(QWidget* control,const QString& message){if(!control)return;control->setProperty("invalid",!message.isEmpty());if(!message.isEmpty())updateResourceLimits();control->style()->unpolish(control);control->style()->polish(control);if(auto* label=errors_.value(control)){VisualStyle::role(label,"error");label->setText(message);label->setVisible(!message.isEmpty());}const auto description=control->property("settingDescription").isValid()?control->property("settingDescription").toString():control->toolTip();control->setAccessibleDescription(message.isEmpty()?description:description+"\n"+message);}
+void SettingsWindow::inlineError(QWidget* control,const QString& message){if(!control)return;if(control==root_)if(auto* hint=findChild<QLabel*>("archiveRootHint"))hint->setVisible(message.isEmpty()&&(root_->text().isEmpty()||!QDir::isAbsolutePath(root_->text())));control->setProperty("invalid",!message.isEmpty());if(!message.isEmpty())updateResourceLimits();control->style()->unpolish(control);control->style()->polish(control);if(auto* label=errors_.value(control)){VisualStyle::role(label,"error");label->setText(message);label->setVisible(!message.isEmpty());}const auto description=control->property("settingDescription").isValid()?control->property("settingDescription").toString():control->toolTip();control->setAccessibleDescription(message.isEmpty()?description:description+"\n"+message);}
 bool SettingsWindow::editChangedSinceSubmission(const QString& path)const{
  return pendingEdits_.contains(path)&&(!saving_||!submittedEditSerials_.contains(path)||pendingEditSerials_.value(path)!=submittedEditSerials_.value(path));
 }
