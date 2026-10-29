@@ -89,10 +89,10 @@ private slots:
  void screenshotOutcomeUsesResolvedRoute_data(){
   QTest::addColumn<QString>("action");QTest::addColumn<QString>("provider");QTest::addColumn<QString>("mode");QTest::addColumn<QString>("outcome");
   QTest::newRow("local")<<QString("region")<<QString()<<QString("default")<<QString("Saves locally");
-  QTest::newRow("proton")<<QString("region")<<QString("proton-drive")<<QString("default")<<QString("Uploads immediately to Team Drive · Shared link");
-  QTest::newRow("s3")<<QString("region")<<QString("s3")<<QString("share")<<QString("Uploads immediately to Team Drive · Shared link");
-  QTest::newRow("b2")<<QString("region")<<QString("backblaze-b2")<<QString("default")<<QString("Uploads immediately to Team Drive · Shared link");
-  QTest::newRow("private")<<QString("region")<<QString("proton-drive")<<QString("private")<<QString("Uploads immediately to Team Drive · Private upload");
+  QTest::newRow("proton")<<QString("region")<<QString("proton-drive")<<QString("default")<<QString("Uploads right away to Team Drive · Shared link");
+  QTest::newRow("s3")<<QString("region")<<QString("s3")<<QString("share")<<QString("Uploads right away to Team Drive · Shared link");
+  QTest::newRow("b2")<<QString("region")<<QString("backblaze-b2")<<QString("default")<<QString("Uploads right away to Team Drive · Shared link");
+  QTest::newRow("private")<<QString("region")<<QString("proton-drive")<<QString("private")<<QString("Uploads right away to Team Drive · Private upload");
   QTest::newRow("edit-proton")<<QString("edit")<<QString("proton-drive")<<QString("private")<<QString("Opens the image editor");
   QTest::newRow("edit-local")<<QString("edit")<<QString()<<QString("default")<<QString("Opens the image editor");
  }

@@ -216,11 +216,11 @@ private slots:
  }
  void outcomeIsFrozenWithThePreparedCapture(){
   GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
-  source.setCaptureOutcome("Uploads immediately to Proton Drive");
+  source.setCaptureOutcome("Uploads right away to Proton Drive");
   auto prepared=source.prepareAcquisition("region");
   source.setCaptureOutcome("Opens the image editor");
   bool completed=false;prepared({},[&](PayloadResult){completed=true;});PUTGD_TRY_VERIFY(completed);
-  QCOMPARE(state()["outcome"].toString(),QString("Uploads immediately to Proton Drive"));
+  QCOMPARE(state()["outcome"].toString(),QString("Uploads right away to Proton Drive"));
  }
  void screenCapturesSendOnlyPngWithoutListingImagePlugins(){
   // Listing image types instantiates every installed Qt image plugin; only a

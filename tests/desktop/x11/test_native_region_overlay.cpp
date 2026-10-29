@@ -47,7 +47,7 @@ class NativeRegionTest final:public QObject {
  void availableGrabs(){auto pointer=x11::reply(xcb_grab_pointer_reply(connection_,xcb_grab_pointer(connection_,0,root_,XCB_EVENT_MASK_BUTTON_PRESS,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_NONE,XCB_NONE,XCB_CURRENT_TIME),nullptr));const int pointerStatus=pointer?pointer->status:-1;if(pointerStatus==XCB_GRAB_STATUS_SUCCESS)xcb_ungrab_pointer(connection_,XCB_CURRENT_TIME);auto keyboard=x11::reply(xcb_grab_keyboard_reply(connection_,xcb_grab_keyboard(connection_,0,root_,XCB_CURRENT_TIME,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC),nullptr));const int keyboardStatus=keyboard?keyboard->status:-1;if(keyboardStatus==XCB_GRAB_STATUS_SUCCESS)xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);xcb_flush(connection_);QCOMPARE(pointerStatus,int(XCB_GRAB_STATUS_SUCCESS));QCOMPARE(keyboardStatus,int(XCB_GRAB_STATUS_SUCCESS));}
 private slots:
  void resolvedOutcomeSurvivesNativeSelection(){
-  for(const QString outcome:{QString("Uploads immediately to Proton Drive"),QString("Saves locally"),QString("Opens the image editor")}){
+  for(const QString outcome:{QString("Uploads right away to Proton Drive"),QString("Saves locally"),QString("Opens the image editor")}){
    NativeRegionOverlay overlay(frames(),nullptr,XCB_CURSOR_NONE,outcome);overlay.start();PUTGD_TRY_VERIFY(!drawables().isEmpty());
    auto* accessible=QAccessible::queryAccessibleInterface(&overlay);QVERIFY(accessible);QVERIFY(accessible->text(QAccessible::Description).endsWith(outcome));
    keyClick(0xff53);PUTGD_TRY_VERIFY(accessible->text(QAccessible::Description).contains("Enter to capture"));
