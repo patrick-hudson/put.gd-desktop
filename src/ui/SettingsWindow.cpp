@@ -190,7 +190,7 @@ void boxPreferenceRows(QFormLayout* form){
   if(label&&!field->layout()){const bool shown=form->isRowVisible(i);auto taken=form->takeRow(i);delete taken.labelItem;delete taken.fieldItem;auto* wrapper=new FormRow;auto* box=new QVBoxLayout(wrapper);box->addWidget(field);field->setProperty("preferenceRowContainer",QVariant::fromValue(static_cast<QObject*>(wrapper)));wrapper->setProperty("preferenceReadout",true);wrapper->setProperty("preferenceResponsive",field->property("preferenceResponsive"));field=wrapper;form->insertRow(i,field);form->setRowVisible(field,shown);labelItem=nullptr;column=box;}
   if(label||check){
    if(!column){auto* value=new QWidget;value->setLayout(field->layout());column=new QVBoxLayout(field);column->addWidget(value);}
-   auto* value=new FormRow;value->setObjectName(field->objectName()+"PreferenceValue");QList<QWidget*> fullRows,errors;auto* values=new QVBoxLayout(value);values->setContentsMargins(0,0,0,0);values->setSpacing(space(Space::xs));while(auto* part=column->takeAt(0)){if(auto* widget=part->widget()){if(widget->property("visualRole")=="error")errors.append(widget);else if(widget->objectName()=="captureOutputBlock")fullRows.append(widget);else values->addWidget(widget);delete part;}else if(auto* nested=part->layout())values->addLayout(nested);else values->addItem(part);}
+   auto* value=new FormRow;value->setObjectName(field->objectName()+"PreferenceValue");QList<QWidget*> fullRows,errors;auto* values=new QVBoxLayout(value);values->setContentsMargins(0,0,0,0);values->setSpacing(space(Space::xs));while(auto* part=column->takeAt(0)){if(auto* widget=part->widget()){if(widget->property("visualRole")=="error")errors.append(widget);else if(widget->objectName()=="captureOutputBlock"){auto* notice=widget->findChild<QLabel*>("captureOutputNotice");widget->layout()->removeWidget(notice);values->addWidget(notice);fullRows.append(widget);}else values->addWidget(widget);delete part;}else if(auto* nested=part->layout())values->addLayout(nested);else values->addItem(part);}
    if(check){label=new PreferenceLabel(check);check->setProperty("preferenceIndicator",true);check->setFixedWidth(Graphite::scaled(24));if(auto* line=qobject_cast<QHBoxLayout*>(values->itemAt(0)->layout())){for(int n=line->count()-1;n>=0;--n){auto* part=line->itemAt(n);if(part->spacerItem()){delete line->takeAt(n);continue;}if(auto* help=part->widget();help&&help!=check){line->removeWidget(help);label=new PreferenceCheckCaption(label,help);}}line->insertStretch(0,1);}}
    if(label){field->setProperty("preferenceLabel",QVariant::fromValue(static_cast<QObject*>(label)));label->setMinimumWidth(0);label->setMaximumWidth(QWIDGETSIZE_MAX);label->setMinimumHeight(0);label->setMaximumHeight(QWIDGETSIZE_MAX);for(auto* text:label->findChildren<QLabel*>())text->setWordWrap(true);}
    if(labelItem){const bool shown=form->isRowVisible(i);auto taken=form->takeRow(i);delete taken.labelItem;delete taken.fieldItem;form->insertRow(i,field);form->setRowVisible(field,shown);}
@@ -894,7 +894,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // With no destination and no local copy every capture fails: say so right under
  // Destination, where it is seen first, with the two ways out (#596 review).
  captureOutputBlock_=new QWidget;captureOutputBlock_->setObjectName("captureOutputBlock");auto* blockLayout=new QVBoxLayout(captureOutputBlock_);blockLayout->setContentsMargins(0,space(Space::xs),0,0);blockLayout->setSpacing(space(Space::s));
- captureOutputNotice_=new QLabel;captureOutputNotice_->setObjectName("captureOutputNotice");captureOutputNotice_->setWordWrap(true);blockLayout->addWidget(captureOutputNotice_);
+ captureOutputNotice_=Graphite::warningLabel({});captureOutputNotice_->setObjectName("captureOutputNotice");captureOutputNotice_->setWordWrap(true);blockLayout->addWidget(captureOutputNotice_);
  auto* blockActions=new QHBoxLayout;blockActions->setContentsMargins(0,0,0,0);blockActions->setSpacing(space(Space::s));
  auto* enableLocal=new QPushButton("Keep a local copy");enableLocal->setObjectName("enableLocalCopies");enableLocal->setAccessibleName("Turn on Keep a local copy");blockActions->addWidget(enableLocal);
  chooseOutput_=new QPushButton("Choose a destination");chooseOutput_->setObjectName("chooseCaptureDestination");blockActions->addWidget(chooseOutput_);blockActions->addStretch();blockLayout->addLayout(blockActions);
@@ -1702,15 +1702,15 @@ void SettingsWindow::updateCaptureInheritance(){
  auto describe=[this](QLabel* label,bool upload){
   const bool local=keep_->isChecked();
   const auto text=upload?(local?QString("Uploads to the selected destination and keeps a local copy."):QString("Uploads to the selected destination; no local copy is kept.")):(local?QString("Uploads are off; keeps a local copy in your folders."):QString("New captures have no output. Choose a destination or turn on Keep a local copy."));
-  VisualStyle::feedback(label,text,!upload&&!local);
+  if(label==captureOutputNotice_){label->setText(text);VisualStyle::role(label,!upload&&!local?"warning":"secondary");}else VisualStyle::feedback(label,text,!upload&&!local);
  };
  const auto defaultLabel=[this](QComboBox* profile){const auto resolved=destinationDefaultSharing(profile->currentData().toString());return resolved.isEmpty()?sharingLabel("default"):QString("Destination default — ")+(resolved=="private"?"private upload":"shared link");};
  captureSharing_->setItemText(captureSharing_->findData("default"),defaultLabel(captureProfile_));
  const bool upload=!captureProfile_->currentData().toString().isEmpty();captureSharing_->setEnabled(upload);describe(captureOutputNotice_,upload);
  // The default's summary only repeats the controls around it; it shows while
  // there is no output, and its actions add one.
- const bool blocked=!upload&&!keep_->isChecked()&&!changesUnsaved();captureOutputBlock_->setVisible(blocked);
- if(blocked)VisualStyle::feedback(captureOutputNotice_,"New captures have no output. Choose a destination or turn on Keep a local copy.",true);
+ const bool blocked=!upload&&!keep_->isChecked()&&!changesUnsaved();captureOutputBlock_->setVisible(blocked);captureOutputNotice_->setVisible(blocked);
+ if(blocked){captureOutputNotice_->setText("New captures have no output. Choose a destination or turn on Keep a local copy.");VisualStyle::role(captureOutputNotice_,"warning");}
  chooseOutput_->setText(captureProfile_->count()>1?"Choose a destination":"Add a destination…");
  for(const auto& name:Settings::presentationOrder()){
   auto *profile=actionProfiles_[name],*sharing=publicationModes_[name];
