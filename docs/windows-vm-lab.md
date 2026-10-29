@@ -196,6 +196,18 @@ locks and report “VM busy” rather than race against a seal or another start.
 copy a running TPM or firmware. Forced shutdown uses the owned QEMU PID even if QMP
 is unavailable, and refuses sealed bases.
 
+## Reaching a test copy over SSH
+
+`windows.py start` accepts `--cpus N` (default 2) and, together with `--network`,
+`--ssh-forward PORT`: a loopback-only `hostfwd` from the host's `127.0.0.1:PORT` to
+the guest's port 22, recorded in `state.json`. Install Win32-OpenSSH in the
+disposable copy (the `Add-WindowsCapability` route stalled in the lab; the GitHub
+release zip works) with a dedicated key pair generated on the host, then copy
+builds in with `scp -P PORT` and drive PowerShell over `ssh -p PORT lab@127.0.0.1`.
+SSH logins land in session 0, so start desktop programs through an interactive
+scheduled task (`schtasks /Create ... /IT`, then `/Run`); the clipboard is per
+session and must be checked from the desktop session. See [windows.md](windows.md).
+
 ## Repeatable test copies
 
 Sealing checks qcow2 integrity and hashes the disk, UEFI variables, TPM state and

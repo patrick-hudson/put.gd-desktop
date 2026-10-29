@@ -27,6 +27,7 @@ Implement its dependencies in order and record blocked acceptance separately fro
 | Resident/post-use memory and capture latency | `tests/performance/`, `src/app/OperationService.*` | [physical replay](testing-memory.md); synthetic lab results are separate from physical budgets |
 | Integer widths / member layout | `tools/diagnostics/layout/` | [read-only probe and replay](../tools/diagnostics/layout/README.md); sizes alone do not prove RSS savings |
 | Build, dependency pins, sanitizers | `CMakePresets.json`, `cmake/`, `tools/verify_dependencies.py` | [build](build.md), [thread checks](thread-sanitizer.md) |
+| Native Windows app (Win32, no Qt) | `src/windows/` | `cmake -S src/windows` portable tests, the `windows` CI job, [Windows guest acceptance](windows.md) |
 | Commit/build identity and package versions | `cmake/BuildVersion.cmake`, `src/core/BuildInfo.h` | `version_contract`, `version_integration`, `gui_version`; [versioning](versioning.md) |
 
 Use `cmake --preset dev`, `cmake --build --preset dev`, and `ctest --preset dev`.
