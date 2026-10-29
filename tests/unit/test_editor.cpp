@@ -217,6 +217,81 @@ private slots:
   const auto before=doc.find(redactId)->rect;QVERIFY(doc.undo());QVERIFY(doc.redo());
   QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(300,90));QCOMPARE(canvas.selected(),redactId);QCOMPARE(doc.find(redactId)->rect,before);QVERIFY(!doc.canRedo());
  }
+ void pointerEditsStayOnTheImage(){
+  EditDocument doc(noise({400,300},15));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Rectangle);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
+  const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
+  auto drag=[&](QPoint from,QPoint to){
+   QTest::mousePress(&canvas,Qt::LeftButton,{},origin+from);
+   QMouseEvent move(QEvent::MouseMove,QPointF(origin+to),canvas.mapToGlobal(QPointF(origin+to)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+   QTest::mouseRelease(&canvas,Qt::LeftButton,{},origin+to);
+  };
+  // Drawing past an edge stops at it, and a press in the margin starts on the edge.
+  drag({300,200},{460,380});QCOMPARE(doc.shapes().size(),1);const auto big=doc.shapes().last().id;QCOMPARE(doc.find(big)->rect,QRect(300,200,100,100));
+  canvas.select(0);drag({-40,-30},{20,10});QCOMPARE(doc.shapes().size(),2);const auto small=doc.shapes().last().id;QCOMPARE(doc.find(small)->rect,QRect(0,0,20,10));
+  // A dragged shape stops at the edge, and a resize handle stops there too.
+  canvas.setTool(Tool::Select);drag({350,250},{-100,250});QCOMPARE(doc.find(big)->rect,QRect(0,200,100,100));
+  drag({100,300},{600,500});QCOMPARE(doc.find(big)->rect,QRect(0,200,400,100));
+  // Arrow ends stay on the image.
+  canvas.setTool(Tool::Arrow);drag({350,50},{500,-80});QCOMPARE(doc.shapes().size(),3);
+  QCOMPARE(doc.shapes().last().from,QPoint(350,50));QCOMPARE(doc.shapes().last().to,QPoint(400,0));
+  // A text click in the margin opens no label.
+  canvas.setTool(Tool::Text);QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(-30,100));QVERIFY(!canvas.editingText());
+  // Keyboard nudges stop at the edge without adding an undo step.
+  canvas.setTool(Tool::Select);canvas.select(small);const auto history=doc.historyEntries();
+  QTest::keyClick(&canvas,Qt::Key_Left);QTest::keyClick(&canvas,Qt::Key_Up);QCOMPARE(doc.find(small)->rect,QRect(0,0,20,10));QCOMPARE(doc.historyEntries(),history);
+  // After a crop, shrinking by keyboard stops at the crop's near edge.
+  const auto wide=doc.add(box(Shape::Kind::Rectangle,QRect(0,20,100,40)));QVERIFY(doc.setCrop(QRect(50,0,200,150)));canvas.documentChanged();canvas.select(wide);
+  for(int i=0;i<5;++i)QTest::keyClick(&canvas,Qt::Key_Left,Qt::ShiftModifier|Qt::ControlModifier);
+  QCOMPARE(doc.find(wide)->rect,QRect(0,20,51,40));
+  // A sideways corner drag leaves an edge already outside the crop where it is.
+  const auto tall=doc.add(box(Shape::Kind::Rectangle,QRect(100,100,50,100)));canvas.documentChanged();canvas.select(tall);
+  const QPoint cropped((canvas.width()-200)/2-50,(canvas.height()-150)/2);
+  QTest::mousePress(&canvas,Qt::LeftButton,{},cropped+QPoint(150,200));
+  QMouseEvent sideways(QEvent::MouseMove,QPointF(cropped+QPoint(170,200)),canvas.mapToGlobal(QPointF(cropped+QPoint(170,200))),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&sideways);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,{},cropped+QPoint(170,200));
+  QCOMPARE(doc.find(tall)->rect,QRect(100,100,70,100));
+ }
+ void squaresAndArrowEndsKeepTheirAnchors(){
+  EditDocument doc(noise({400,300},17));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Rectangle);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
+  const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
+  auto drag=[&](QPoint from,QPoint to,Qt::KeyboardModifiers modifiers){
+   QTest::mousePress(&canvas,Qt::LeftButton,modifiers,origin+from);
+   QMouseEvent move(QEvent::MouseMove,QPointF(origin+to),canvas.mapToGlobal(QPointF(origin+to)),Qt::NoButton,Qt::LeftButton,modifiers);QApplication::sendEvent(&canvas,&move);
+   QTest::mouseRelease(&canvas,Qt::LeftButton,modifiers,origin+to);
+  };
+  // A Shift-drag in the left margin draws nothing, not a square on the image.
+  drag({-30,50},{-10,150},Qt::ShiftModifier);QVERIFY(doc.shapes().isEmpty());
+  // A square drawn up and left still starts at the press point.
+  drag({390,290},{100,200},Qt::ShiftModifier);QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().rect,QRect(100,0,291,291));
+  // An arrow head left of a later crop keeps its x when resized vertically.
+  Shape arrow;arrow.kind=Shape::Kind::Arrow;arrow.from={150,50};arrow.to={60,80};const auto id=doc.add(arrow);
+  QVERIFY(doc.setCrop(QRect(100,0,200,150)));canvas.setTool(Tool::Select);canvas.documentChanged();canvas.select(id);
+  QTest::keyClick(&canvas,Qt::Key_Down,Qt::ShiftModifier);QCOMPARE(doc.find(id)->to,QPoint(60,81));
+ }
+ void marginDragDrawsNothing(){
+  EditDocument doc(noise({400,300},16));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Rectangle);canvas.fit();
+  // At 4x the image overflows the canvas and its right edge stops 48 px from the widget edge.
+  canvas.zoomBy(4.0,QPointF((canvas.width()-400)/2+400,canvas.height()/2));QCOMPARE(canvas.zoom(),4.0);
+  const int edge=canvas.width()-48;
+  QTest::mousePress(&canvas,Qt::LeftButton,{},QPoint(edge+24,250));
+  QMouseEvent move(QEvent::MouseMove,QPointF(edge+38,400),canvas.mapToGlobal(QPointF(edge+38,400)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,{},QPoint(edge+38,400));
+  QVERIFY(doc.shapes().isEmpty());QVERIFY(!doc.canUndo());
+  // The same drag starting on the image draws up to the edge.
+  QTest::mousePress(&canvas,Qt::LeftButton,{},QPoint(edge-40,250));
+  QMouseEvent inward(QEvent::MouseMove,QPointF(edge+38,400),canvas.mapToGlobal(QPointF(edge+38,400)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&inward);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,{},QPoint(edge+38,400));
+  QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().rect.right(),399);
+  // At 4x a Shift-drag half a pixel left and 50 down squares leftward and covers
+  // every pixel reached: image y 133.5 to 183.5 touches 51 rows.
+  QTest::mousePress(&canvas,Qt::LeftButton,Qt::ShiftModifier,QPoint(edge-157,250));
+  QMouseEvent square(QEvent::MouseMove,QPointF(edge-159,450),canvas.mapToGlobal(QPointF(edge-159,450)),Qt::NoButton,Qt::LeftButton,Qt::ShiftModifier);QApplication::sendEvent(&canvas,&square);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,Qt::ShiftModifier,QPoint(edge-159,450));
+  QCOMPARE(doc.shapes().size(),2);QCOMPARE(doc.shapes().last().rect,QRect(310,133,51,51));
+ }
  void textToolDragsLabelsAndClicksToEdit(){
   EditDocument doc(noise({400,300},12));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
   canvas.setTool(Tool::Text);canvas.fit();

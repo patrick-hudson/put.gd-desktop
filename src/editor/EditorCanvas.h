@@ -99,7 +99,7 @@ private:
  quint64 shapeAt(const QPointF& imagePoint) const;
  quint64 grabAt(const QPointF& imagePoint) const;
  void updateHoverCursor(const QPointF& widgetPoint,Qt::KeyboardModifiers);
- QRect resized(QRect,int handle,const QPoint& delta) const;
+ QRect resized(QRect,int handle,const QPoint& delta,const QRect& bounds) const;
  void clampOffset();
  Shape pendingText() const;
  void placeTextEditor();
