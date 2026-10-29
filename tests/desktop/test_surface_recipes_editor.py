@@ -39,6 +39,7 @@ class FakeContext(Context):
         if method == 'editor.inspect': return copy.deepcopy(self.state)
         if method == 'operation.inspect': return {'state':self.phase, 'items':[]}
         if method == 'editor.cancel': self.phase='cancelled'; return {}
+        if method == 'editor.raise': return {'raised':True}
         raise AssertionError(method)
 
     def cli(self, method, params, **kwargs):
@@ -277,6 +278,13 @@ class EditorRecipes(unittest.TestCase):
         ctx.wait=wait
         editor.redact(ctx)
         self.assertEqual('cancelled',ctx.phase)
+
+    def test_desktop_gate_records_issue_without_more_real_attempts(self):
+        ctx=FakeContext()
+        ctx.profile={'editor':{'acceptance_block':{'reason':'Two real attempts exhausted; blocked for review','issue':699}}}
+        with self.assertRaises(RecipeBlocked) as raised: editor.redact(ctx)
+        self.assertEqual(699,raised.exception.issue)
+        self.assertEqual([],ctx.events)
 
     def test_open_failure_not_mistaken_for_success(self):
         ctx=FakeContext()

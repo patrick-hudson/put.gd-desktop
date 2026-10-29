@@ -67,6 +67,9 @@ def _resize(ctx, width, height):
 
 @contextmanager
 def _session(ctx, opener=None):
+    blocked=ctx.profile.get('editor',{}).get('acceptance_block')
+    if blocked:
+        ctx.blocked(blocked['reason'],issue=blocked['issue'])
     image = ctx.fixture('image')
     path = image['path'] if isinstance(image, dict) else image
     params = {'source': 'file', 'path': path}
@@ -85,6 +88,7 @@ def _session(ctx, opener=None):
         state = ctx.wait(ready, 'editor ready on synthetic image')
         ctx.expect(state['phase'] == 'editing' and not state['shapes'], 'fresh private editor has no marks')
         ctx.expect([state['width'], state['height']] == [640, 320], 'four-quadrant fixture is 640x320')
+        ctx.call('editor.raise',{'id':op})
         _resize(ctx,1180,820)
         _view(ctx, op, action='fit')
         ctx.expect(_inspect(ctx, op)['view']['fitted'], 'editor opens fitted')
