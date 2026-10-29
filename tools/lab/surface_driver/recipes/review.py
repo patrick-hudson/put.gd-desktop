@@ -45,6 +45,7 @@ def _open(ctx):
     ctx.expect(not info['edit']['masks'] and info['edit']['trimStart'] == 0
                and info['edit'].get('trimEnd') in (None, info['durationUs']),
                'fresh fixture has no masks or trim')
+    _capture_motion(ctx, fixture)
     _frame(ctx, 'before')
     return rid
 
@@ -178,6 +179,11 @@ def frames(path):
 def motion(path):
     fs = frames(path)
     return sum(sum(abs(a-b) for a,b in zip(x,y))/len(x) for x,y in zip(fs,fs[1:]))/(len(fs)-1)
+active, frozen = motion(p['working']), motion(p['frozen'])
+assert frozen < .5 and active > max(.8, frozen*3 + .2), ('motion control',active,frozen)
+if p.get('captureOnly'):
+    print(json.dumps({'movingMotion':active,'frozenMotion':frozen}))
+    sys.exit(0)
 path = p['path']
 assert Path(path).is_file() and Path(path).stat().st_size > 0, 'export missing or empty'
 animation = p['container'] in ('gif','webp')
@@ -193,8 +199,6 @@ else:
 assert math.isfinite(duration) and abs(duration-p['duration']) <= .25, (duration,p['duration'])
 assert video['codec_name'] == p['codec'], video['codec_name']
 assert p['container'] in meta['format']['format_name'].split(','), meta['format']['format_name']
-active, frozen = motion(p['working']), motion(p['frozen'])
-assert frozen < .5 and active > max(.8, frozen*3 + .2), ('motion control',active,frozen)
 export_motion = motion(path)
 assert export_motion > max(.5, frozen*3 + .1), ('frozen export',export_motion,frozen)
 for mask in p['masks']:
@@ -233,6 +237,14 @@ for mask in p['masks']:
 print(json.dumps({'duration':duration,'codec':video['codec_name'],'container':meta['format']['format_name'],
                   'movingMotion':active,'frozenMotion':frozen,'exportMotion':export_motion,'masked':len(p['masks'])}))
 '''
+
+
+def _capture_motion(ctx, fixture):
+    params = {'working': fixture['working_path'], 'frozen': fixture['frozen_path'], 'captureOnly': True}
+    result = ctx.shell('python3 - ' + shlex.quote(json.dumps(params)) + " <<'REVIEW_MEDIA_PY'\n"
+                       + _MEDIA_CHECK + '\nREVIEW_MEDIA_PY', timeout=120)
+    ctx.expect(result['returncode'] == 0, 'recorded pattern moves and captured frozen control stays still')
+    ctx.note('Capture motion metrics: ' + result['stdout'].strip())
 
 
 def _verify(ctx, rid, path, info=None):
