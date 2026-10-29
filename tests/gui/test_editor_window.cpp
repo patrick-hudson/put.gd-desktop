@@ -253,6 +253,9 @@ private slots:
   auto* feedback=window.findChild<Graphite::Banner*>("editorSaveFeedback");window.showSaveFailed("/synthetic/copy.png","Disk full");QCOMPARE(alerted,feedback);QVERIFY(feedback->accessibleName().contains("Disk full",Qt::CaseInsensitive));
   window.showSaved("/synthetic/new copy.png");QVERIFY(!feedback->accessibleName().contains("full"));
  }
+ void preparationLimitNoticeUsesAWarningBanner(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();window.showPreparationFailed("The edited image exceeds the 25 MB upload limit.");auto* banner=window.findChild<Graphite::Banner*>("editorPreparationFailure");QVERIFY(banner&&banner->isVisible());QCOMPARE(banner->tone(),Graphite::Banner::Tone::Warning);QVERIFY(banner->isAncestorOf(window.findChild<QPushButton*>("keepEditing")));QVERIFY(banner->isAncestorOf(window.findChild<QPushButton*>("saveCopyInstead")));window.findChild<QPushButton*>("keepEditing")->click();QVERIFY(banner->isHidden());window.allowClose();
+ }
  void failureOverlayUsesTheSharedDismissAction(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();window.setFailure("Synthetic export failed");auto* banner=window.findChild<Graphite::Banner*>("editorSaveFeedback");QVERIFY(banner->isVisible());QVERIFY(banner->dismissButton()->isVisible());const auto before=window.canvas().geometry();QString code,message;window.viewCommand({{"action","dismissSavedCopy"}},code,message);QVERIFY(code.isEmpty());QVERIFY(banner->isHidden());QCOMPARE(window.canvas().geometry(),before);window.allowClose();
  }
