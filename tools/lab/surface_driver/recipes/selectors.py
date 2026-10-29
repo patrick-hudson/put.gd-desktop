@@ -124,13 +124,16 @@ def _expect_rect(ctx, wanted, recording=False):
     ctx.note("Inspected selector rectangle " + str(wanted))
 
 
-def _open_region(ctx, edit=False):
+def _open_region(ctx, edit=False, accessible=True):
     # action.invoke durably acknowledges before interactive acquisition finishes.
     # Surface setup therefore does not depend on the shell window's layout.
     opened = _result(ctx.view("action.invoke", {"action": "edit" if edit else "region"}))
     ctx.expect(bool(opened.get("operationId")), "capture action returns a durable operation identity")
     oid = opened["operationId"]
     ctx.note("Capture operation " + oid)
+    if not accessible:
+        ctx.wait(lambda: _op(ctx, oid)["state"] == "acquiring", "capture selector acquiring")
+        return oid
     try:
         ctx.wait(lambda: ctx.accessible({"name": "Capture region"}), "screenshot selector opened")
     except Exception as error:
@@ -147,6 +150,11 @@ def _open_region(ctx, edit=False):
 
 def _op(ctx, oid):
     return _call(ctx, "operation.inspect", {"id": oid})
+
+
+def _png_dimensions(ctx, path, width, height):
+    probe = ctx.shell("python3 -c 'import struct,sys; print(*struct.unpack(\"!II\",open(sys.argv[1],\"rb\").read(24)[16:24]))' " + shlex.quote(path))
+    ctx.expect(probe.get("returncode") == 0 and probe.get("stdout", "").strip() == f"{int(width)} {int(height)}", "capture dimensions match chosen output")
 
 
 def _cancel_region(ctx, oid, key="Esc"):
@@ -308,9 +316,7 @@ def region_capture(ctx):
                 ctx.expect(item["local"]["status"] == "saved", "capture saved locally")
                 ctx.expect(item["uploadStatus"] != "uploaded", "local route did not publish")
                 # Decode only our synthetic capture, on the guest, to check accepted bounds.
-                path = shlex.quote(item["local"]["path"])
-                probe = ctx.shell("python3 -c 'import struct,sys; print(*struct.unpack(\"!II\",open(sys.argv[1],\"rb\").read(24)[16:24]))' " + path)
-                ctx.expect(probe.get("returncode") == 0 and probe.get("stdout", "").strip() == f"{int(w)} {int(h)}", "capture dimensions match chosen area")
+                _png_dimensions(ctx, item["local"]["path"], w, h)
             ctx.frame("after-" + gesture)
         # A click (zero-size drag) must cancel rather than capture a pixel.
         oid = _open_region(ctx)
@@ -365,35 +371,42 @@ def _heads(ctx, recording):
     screens = _env(ctx)["screens"]
     if len(screens) != 2:
         ctx.blocked("Tab across heads requires exactly two independently sized guest heads (#664)", issue=664)
+    if not recording and screens[0][2:] == screens[1][2:]:
+        ctx.blocked("Screenshot Tab readback needs unequal head sizes to identify the completed output without AT-SPI (#701)", issue=701)
+    if any(s.get("scale", 1) != 1 for s in ctx.profile.get("screens", [])):
+        ctx.blocked("Completed-output Tab probe currently requires unit-scale fixture heads")
     with _local(ctx):
-        oid = _open_record(ctx) if recording else _open_region(ctx)
-        ref = RECSEL if recording else REGION
-        try:
-            ctx.keys("Right")
-            rect = _half(screens[0])
-            _expect_rect(ctx, rect, recording)
-            ctx.frame("before", reference=ref)
-            ctx.frame("all-heads-before")
-            a, b = screens
-            transferred = [b[0] + min(rect[0] - a[0], b[2] - min(rect[2], b[2])),
-                           b[1] + min(rect[1] - a[1], b[3] - min(rect[3], b[3])), min(rect[2], b[2]), min(rect[3], b[3])]
-            ctx.keys("Tab")
-            _expect_rect(ctx, transferred, recording)
-            ctx.expect("Display 2" in _description(ctx, recording), "Tab changes active output")
-            ctx.frame("second-head", reference=ref)
-            ctx.frame("all-heads-second")
-            ctx.keys("Shift+Tab")
-            # Same-size heads round trip exactly; unequal heads preserve the clamped size.
-            back = [a[0] + min(transferred[0] - b[0], a[2] - transferred[2]), a[1] + min(transferred[1] - b[1], a[3] - transferred[3]), transferred[2], transferred[3]]
-            _expect_rect(ctx, back, recording)
-            ctx.expect("Display 1" in _description(ctx, recording), "Shift+Tab returns to first output")
-            ctx.frame("after", reference=ref)
-            ctx.review("Both output covers and absence of dim on the other monitor require full-desktop visual review; AT-SPI proves selection transfer only.")
-        finally:
-            if recording:
-                _cancel_record(ctx, oid)
-            else:
-                _cancel_region(ctx, oid)
+        # Completion provides an independent chosen-output assertion even when
+        # the native selector has no accessible node. No selection is injected.
+        for number, (keys, wanted) in enumerate(((('Tab',), screens[1]), (('Tab', 'Shift+Tab'), screens[0]), (('Shift+Tab',), screens[1]))):
+            x, y, w, h = screens[0]
+            ctx.scroll(int(x + w / 2), int(y + h / 2), 0)  # position the real pointer on head 0
+            oid = _open_record(ctx) if recording else _open_region(ctx, accessible=False)
+            accepted = False
+            try:
+                ref = "47-record-entire-display" if recording else "46-region-entire-display"
+                ctx.frame("before-" + str(number), reference=ref)
+                ctx.keys(*keys)
+                ctx.frame("switched-" + str(number), reference=ref)
+                ctx.keys("Return")
+                if recording:
+                    ready = _state(ctx, oid, "ready")
+                    ctx.expect(ready["target"]["rect"] == wanted, "Tab chooses expected recording output bounds")
+                else:
+                    op = ctx.wait(lambda: (o if (o := _op(ctx, oid))["state"] == "completed" else None), "Tab capture completed")
+                    ctx.expect(bool(op["items"]), "Tab capture produces a saved image")
+                    for item in op["items"]:
+                        ctx.expect(item["local"]["status"] == "saved" and item["uploadStatus"] != "uploaded", "Tab capture stays local")
+                        _png_dimensions(ctx, item["local"]["path"], wanted[2], wanted[3])
+                accepted = True
+                ctx.note("Tab sequence " + str(keys) + " chose output " + str(wanted))
+                ctx.frame("after-" + str(number))
+            finally:
+                if recording:
+                    _cancel_record(ctx, oid)
+                elif not accepted and _op(ctx, oid)["state"] in ("accepted", "acquiring"):
+                    _cancel_region(ctx, oid)
+        ctx.review("Completed output proves Tab/Shift+Tab monitor choice. Selected-rectangle transfer/clamping and both covers still require live readback/full two-head visual review (#664/#701).")
 
 
 @recipe("region.to-upload", destinations=("local", "s3", "b2", "proton"))
@@ -448,6 +461,8 @@ def recording_cancel(ctx):
 
 @recipe("recsel.key-arrows", needs=NEEDS)
 def recording_keyboard(ctx):
+    # Prove output switching independently of optional accessibility readback.
+    _heads(ctx, True)
     with _local(ctx):
         rid = _open_record(ctx)
         try:
@@ -463,8 +478,6 @@ def recording_keyboard(ctx):
             ctx.frame("after", reference=RECSEL)
         finally:
             _cancel_record(ctx, rid)
-    # This id also promises display switching, so one-head evidence cannot pass it.
-    _heads(ctx, True)
 
 
 @recipe("recsel.inherits-region-output", needs=NEEDS)

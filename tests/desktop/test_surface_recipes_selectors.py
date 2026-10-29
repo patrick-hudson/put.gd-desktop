@@ -31,7 +31,7 @@ class FakeContext(Context):
     profile = {}
 
     def __init__(self, heads=1):
-        self.env = {"screens": [[0, 0, 1280, 800], [1280, 0, 1280, 800]][:heads],
+        self.env = {"screens": [[0, 0, 1280, 800], [1280, 0, 1024, 768]][:heads],
                     "output_dir": "/tmp/sel-artifacts", "record_helper": "/opt/test/putgd-record"}
         self.document = {"actions": {a: {"destination": "default", "profileId": None, "shortcut": ""} for a in ("region", "edit", "record")},
                          "archive": {"keepUploads": False, "root": "/tmp/original", "folders": {k: None for k in ("images", "videos", "text", "other")}},
@@ -296,6 +296,9 @@ class FakeContext(Context):
             return {"returncode": 0, "stdout": " ".join(str(int(v)) for v in self.last_size)}
         assert script in ("sleep 2", "sleep 2.2")
         return {"returncode": 0, "stdout": ""}
+
+    def scroll(self, x, y, clicks):
+        self.inputs.append(("scroll", x, y, clicks))
 
 
 class SelectorRecipes(unittest.TestCase):
