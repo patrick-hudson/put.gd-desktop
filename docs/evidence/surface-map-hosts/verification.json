@@ -1,0 +1,25 @@
+{
+  "sourceCommit": "cf4f4525afc519a3e86f32fd7c1bdde3f55fda2a",
+  "baseCommit": "a18d79e762dfa4780522e25d6e3f63df1b3a2258",
+  "kind": "synthetic offline surface-map browser acceptance; no app or desktop acceptance",
+  "capturedAt": "2026-10-29T23:13:54.336900+00:00",
+  "browser": "Google Chrome 156.0.8078.47",
+  "viewport": [
+    1900,
+    1000
+  ],
+  "python": "Python 3.12.3",
+  "pytest": "9.2.0",
+  "playwright": "1.64.1",
+  "checks": {
+    "contract": "passed: 9 desktops, 22 surfaces, 394 interactions",
+    "pytest": "32 passed, 391 subtests passed, 1 pre-existing failure",
+    "baselinePytest": "22 passed, 386 subtests passed, 1 same failure",
+    "followup": "https://github.com/patrick-hudson/put.gd-desktop/issues/661"
+  },
+  "screenshots": {
+    "review-annotated.png": "c2e1eff43554a6b9eb144fb422e8f763de2da9c22418536be0338487a057fc9c",
+    "hosts-annotated.png": "397c78ec3bf9b143b6181253e4b9e8a14d6d0d2ad8533756fc596c2b67b76525",
+    "filtered-annotated.png": "9054786e28aae6f8e96b6acf325c910cfd8869e3d8cd8df83afd4c363c28a1ca"
+  }
+}
