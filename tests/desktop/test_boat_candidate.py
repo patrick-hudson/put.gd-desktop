@@ -141,6 +141,10 @@ class CandidateContracts(unittest.TestCase):
                     self.assertNotIn('XDG_RUNTIME_DIR="$(mktemp -d)"', script)
                 if target == 'ubuntu24.04':
                     self.assertIn('tools/releases/source_archive.py', script)
+                if target == 'appimage':
+                    self.assertLess(script.index('LOG_CFG=$PWD/tools/ci/aqt-logging.ini'),
+                                    script.index('/opt/aqt/bin/aqt install-qt'))
+                    self.assertIn('RUNNER_TEMP=/out/aqt', script)
 
     def test_duplicate_artifacts_are_rejected_before_provider_calls(self):
         with patch.object(candidate, 'boat') as boat, contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):

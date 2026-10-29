@@ -161,6 +161,7 @@ def recipe(target, packages, ci):
         app = packages['jobs']['appimage']
         script = common + step(app, 'Standard build dependencies')
         # install-qt-action uses aqtinstall 3.3.*, py7zr 1.1.0; install its locked Qt/modules.
+        script += 'export RUNNER_TEMP=/out/aqt\nmkdir -p "$RUNNER_TEMP"\nexport LOG_CFG=$PWD/tools/ci/aqt-logging.ini\n'
         script += 'bash tools/ci/install-packages.sh python3-venv\npython3 -m venv /opt/aqt\n/opt/aqt/bin/pip install "aqtinstall==3.3.*" "py7zr==1.1.0"\n'
         script += 'qt_version=$(python3 -c \'import json; print(json.load(open("packaging/appimage/tools.lock.json"))["buildInputs"]["qt"])\')\n'
         script += '/opt/aqt/bin/aqt install-qt linux desktop "$qt_version" linux_gcc_64 -m qtimageformats -O /opt/Qt\n'
