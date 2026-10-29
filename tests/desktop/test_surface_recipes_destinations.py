@@ -98,6 +98,9 @@ class FakeContext(Context):
     def frame(self, label, window=None, reference=None):
         self.assert_event('frame', label, window, reference)
 
+    def note(self, text):
+        self.assert_event('note', text)
+
     def click(self, control, window, **kwargs):
         self.assert_event('click', control, window)
         self.focus = control
@@ -299,6 +302,15 @@ class DestinationsContracts(unittest.TestCase):
             lane.add_credentials(ctx)
         self.assertEqual(caught.exception.issue, 666)
         self.assertFalse(any(e[0] == 'accessible' for e in ctx.events))
+
+    def test_offline_fields_work_when_core_has_no_lane_fixture(self):
+        ctx = self.context()
+        def missing(_name):
+            raise RecipeBlocked('unknown fixture: destinations')
+        ctx.fixture = missing
+        lane.rename(ctx)
+        self.assertTrue(any(e[0] == 'note' and 'Offline' in e[1] for e in ctx.events))
+        self.assertFalse(any(e[0] == 'call' and e[1].startswith('setup.') for e in ctx.events))
 
 
 if __name__ == '__main__':
