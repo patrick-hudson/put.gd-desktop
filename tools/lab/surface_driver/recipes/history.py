@@ -22,6 +22,7 @@ Missing fixtures must block in the core; do not emulate their success.
 from __future__ import annotations
 
 import json
+from decimal import Decimal, ROUND_HALF_UP
 
 from tools.lab.surface_driver.api import RecipeFailed, recipe
 
@@ -93,6 +94,25 @@ def _details(ctx):
     ctx.click('historyList', window='history', button='right')
     ctx.keys('Esc', 'Home', 'Return')
     ctx.wait(lambda: _state(ctx)['detailsOpen'] and _state(ctx)['inspectorVisible'], 'selected details open')
+
+
+def _size(ctx, byte_count, caption='Size'):
+    # UI uses traditional labels with binary arithmetic. Assert the visible
+    # accessible value as well as the authoritative byte count.
+    if byte_count < 1024:
+        label = str(byte_count) + ' B'
+    else:
+        unit, suffix = (1024, 'KB') if byte_count < 1024**2 else ((1024**2, 'MB') if byte_count < 1024**3 else (1024**3, 'GB'))
+        precision = (1 if byte_count < 10 * 1024 else 0) if suffix == 'KB' else 2
+        value = (Decimal(byte_count) / unit).quantize(Decimal(10) ** -precision, rounding=ROUND_HALF_UP)
+        number = str(value)
+        if suffix != 'KB' and '.' in number:
+            number = number.rstrip('0').rstrip('.')
+        label = number + ' ' + suffix
+    expected = caption + ': ' + label
+    rows = ctx.wait(lambda: ctx.accessible({'name': caption + ': *'}), 'visible binary size summary')
+    ctx.expect(any(row['name'] == expected or row['name'].startswith(expected + ' · ') for row in rows),
+               'visible size uses 1024 arithmetic and KB/MB/GB labels: ' + expected)
 
 
 def _cli(ctx, *args):
@@ -216,6 +236,7 @@ def receipt_details(ctx):
     ctx.expect(detail['id'] == row['id'], 'displayed advanced receipt has exact history identity')
     authoritative = _result(ctx.call('history.detail', {'id': row['id']}))
     ctx.expect(detail['bytes'] == authoritative['bytes'], 'advanced receipt byte count matches history detail')
+    _size(ctx, authoritative['bytes'])
     _frame(ctx, 'after', '60-history-previous-link-details')
     ctx.click('historyReceiptExpanded', window='history')
 
@@ -231,6 +252,7 @@ def multi_select(ctx):
     state = ctx.wait(lambda: _state(ctx) if _state(ctx)['selectedRows'] == 2 else None, 'Shift selects both rows')
     ctx.expect(set(state['selectedIds']) == set(data['ids']), 'only exact two fixture IDs selected')
     ctx.expect(state['selectionSummary']['bytes'] == data['bytes'], 'selection summary adds bytes exactly')
+    _size(ctx, data['bytes'], 'Total size')
     _frame(ctx, 'selected', '41a-history-selection-inspector')
     ctx.click('historySelectionMore', window='history')
     ctx.click('historyClearSelection', window='historySelectionMore')
@@ -499,7 +521,7 @@ def mcp_inspect(ctx):
 BLOCKED = {
     'history.list': 'Context has no double-click primitive for the row double-click path; key-enter and multi-select recipes cover the other row navigation paths.',
     'history.filters': 'Needs full date/MIME/destination/state fixture matrix and dynamic + Filter menu capture; clear-filters recipe exercises one upload filter only.',
-    'history.row-primary': 'Needs live delegate primary hit rectangle (not a QWidget/control in 01-history-list.controls.json) for Retry upload/local save/deletion and Copy result variants.',
+    'history.row-primary': 'Needs historyRowPrimary controls captures for selected/hovered Retry upload/local save/deletion and Copy result variants; baseline catalog alone cannot resolve all states.',
     'history.row-menu': 'Needs fresh cancel/retry/local-copy/deletion row variants and dynamic menu inventory; key-menu proves only Copy details, links lane owns link actions.',
     'history.edit-again': 'Needs retained-image editor fixture with editor ID and immutable-source oracle; opening alone does not prove edit-again semantics.',
     'history.retry-deletion': 'Needs tray_progress-style moto failed-delete fixture with stable deletion ID plus queued Cancel deletion variant.',

@@ -261,6 +261,9 @@ class FakeContext(Context):
         self.events.append(('type_text', text))
         self.typed = text
 
+    def accessible(self, query):
+        return [{'name': 'Total size: 3 MB' if query['name'].startswith('Total') else 'Size: 1 MB · 640×320'}]
+
     def clipboard_text(self):
         return self.clipboard
 
@@ -375,6 +378,15 @@ class HistoryRecipeTests(unittest.TestCase):
         ctx = FakeContext()
         with self.assertRaisesRegex(AssertionError, 'instead of input'):
             ctx.call('ui.history', {'action': 'confirmCancelAll'})
+
+    def test_decimal_size_or_binary_unit_labels_are_rejected(self):
+        ctx = FakeContext()
+        ctx.accessible = lambda query: [{'name': 'Size: 1.05 MB'}]
+        with self.assertRaisesRegex(RecipeFailed, '1024 arithmetic'):
+            history._size(ctx, 1024**2)
+        ctx.accessible = lambda query: [{'name': 'Size: 1 MiB'}]
+        with self.assertRaisesRegex(RecipeFailed, 'KB/MB/GB'):
+            history._size(ctx, 1024**2)
 
     def test_failed_envelope_is_never_treated_as_result(self):
         with self.assertRaisesRegex(AssertionError, 'fixture_missing'):
