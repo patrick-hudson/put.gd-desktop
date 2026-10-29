@@ -231,10 +231,17 @@ printf '%s' "$profile"
         self.step('browser', profile=profile)
 
     def pictures(self):
-        """Evidence frames of the guest's own screen (a disposable VM): Settings with the lent
-        destination and its account, then History with the revoked link. The app keeps both open."""
-        for view in ('settings', 'history'):
-            self.cli('ui.show', {'view': view})
+        """Evidence frames of the guest's own screen (a disposable VM): Destinations with the lent
+        account and folder, then History with the revoked link. The app keeps both open. Builds
+        without a Destinations view show Settings instead."""
+        for view in ('destinations', 'history'):
+            try:
+                self.cli('ui.show', {'view': view})
+            except (lab.LabError, ValueError):
+                if view != 'destinations':
+                    raise
+                view = 'settings'
+                self.cli('ui.show', {'view': view})
             time.sleep(4)
             frame = lab.screenshot(self.run, f'proton-{view}')
             self.step('picture', view=view, path=frame['path'], sha256=frame['sha256'])
