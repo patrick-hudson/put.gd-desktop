@@ -166,7 +166,7 @@ class FakeContext(Context):
         self.inputs.append(('click', control, window))
 
     def frame(self, label, window=None, reference=None):
-        self.frames.append({'label': label, 'reference': reference})
+        self.frames.append({'label': label, 'window': window, 'reference': reference})
 
     def note(self, text):
         pass
@@ -210,6 +210,7 @@ class DialogRecipes(unittest.TestCase):
                         self.assertFalse(any(i[0] == 'click' for i in ctx.inputs))
                     else:
                         self.assertTrue(any(f['reference'] for f in ctx.frames))
+                        self.assertTrue(all(f['window'] == 'putgdFileDialog' for f in ctx.frames if f['reference']))
 
     def test_cancel_mutation_fails(self):
         ctx = FakeContext('fallback')
