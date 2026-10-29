@@ -66,7 +66,7 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
  // specific to their action.
  auto* statusRow=new QHBoxLayout;statusRow->setContentsMargins(0,0,0,0);statusRow->setSpacing(space(Space::m));layout->addLayout(statusRow);
  status_=new QLabel(this);status_->setObjectName("shortcutStatus");status_->setWordWrap(true);VisualStyle::role(status_,"secondary");statusRow->addWidget(status_,1);
- refresh_=new QPushButton("Check shortcuts again",this);refresh_->setObjectName("refreshShortcutSupport");VisualStyle::role(refresh_,"quiet");refresh_->setToolTip("Ask the desktop again which shortcuts it holds.");statusRow->addWidget(refresh_,0,Qt::AlignVCenter);
+ refresh_=new QPushButton("Check shortcuts again",this);refresh_->setObjectName("refreshShortcutSupport");VisualStyle::role(refresh_,"textAction");refresh_->setToolTip("Ask the desktop again which shortcuts it holds.");statusRow->addWidget(refresh_,0,Qt::AlignVCenter);
  connect(refresh_,&QPushButton::clicked,this,[this]{if(refreshAction_)refreshAction_();});
  recordingStatus_=new QLabel(this);recordingStatus_->setObjectName("shortcutRecordingStatus");recordingStatus_->setAccessibleName("Shortcut recording status");recordingStatus_->setWordWrap(true);VisualStyle::role(recordingStatus_,"status");layout->addWidget(recordingStatus_);recordingStatus_->hide();
  auto* card=new Graphite::Surface("surface");card->setProperty("preferenceCard",true);card->setObjectName("shortcutPreferenceCard");auto* cardBox=new QVBoxLayout(card);cardBox->setContentsMargins(0,0,0,0);cardBox->setSpacing(0);auto* form=new QFormLayout;VisualStyle::styleForm(form);form->setHorizontalSpacing(0);form->setVerticalSpacing(0);cardBox->addLayout(form);layout->addWidget(card);

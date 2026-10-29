@@ -180,7 +180,7 @@ Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, 
         look.text = enabled ? c.text : c.textDisabled;
         look.underline = enabled;
     } else if (roleName == "link" || roleName == "version") {
-        look.text = enabled ? (roleName == "version" && !hover ? c.textMuted : c.textSecondary) : c.textDisabled;
+        look.text = enabled ? (roleName == "version" ? (hover ? c.textSecondary : c.textMuted) : c.link) : c.textDisabled;
         look.underline = hover;
     } else if (roleName == "primary") {
         const auto fill = widget ? widget->property("graphitePrimaryFill").value<QColor>() : QColor();
@@ -223,7 +223,7 @@ QString buttonRole(const QWidget* widget, const QStyleOption* option) {
 }
 QFont buttonFont(const QWidget* widget, const QStyleOption* option) {
     const auto name = buttonRole(widget, option);
-    auto f = compactControl(widget) || name == "textAction" ? font(Type::technical) : widget ? widget->font() : QApplication::font();
+    auto f = name == "textAction" ? font(Type::body) : compactControl(widget) ? font(Type::technical) : widget ? widget->font() : QApplication::font();
     const bool selected = (option->state & QStyle::State_On) && widget
         && (widget->property("graphiteNavRow").toBool() || qobject_cast<SegmentTrack*>(widget->parentWidget()));
     const bool activeTextAction = name == "textAction" && (option->state & QStyle::State_Enabled)
@@ -603,7 +603,7 @@ void Style::polish(QWidget* widget) {
     // An error is never small print: it takes body type even in a meta slot.
     else if (name == "inspectorKey") { f = font(13); colour = c.textSecondary; }
     else if (name == "meta") { f = font(tone == "error" ? Type::body : Type::technical); colour = c.textSecondary; }
-    else if (name == "textAction") f = font(Type::technical);
+    else if (name == "textAction") f = font(Type::body);
     else if (name == "version") f = font(Type::technical);
     else if (name == "binding") { f = monoFont(Type::technical); colour = c.textSecondary; }
     else if (name == "mono" || name == "path" || (name == "link" && qobject_cast<QLineEdit*>(widget)) || name == "diagnostics") f = monoFont(Type::technical);
@@ -630,7 +630,8 @@ void Style::polish(QWidget* widget) {
     else if (tone == "warning") colour = c.warning;
     else if (name == "default" || name == "private") colour = c.textMuted;
     else if (name == "secondary") colour = c.textSecondary;
-    else if ((name == "link" && qobject_cast<QLabel*>(widget)) || binding == "active") colour = c.textSecondary;
+    else if (name == "link") colour = c.link;
+    else if (binding == "active") colour = c.textSecondary;
     else if (name == "success" || tone == "success") colour = c.success;
     else if (name == "warning" || binding == "warning") colour = c.textSecondary;
     else if (name == "danger" || name == "error" || tone == "error" || binding == "error") colour = c.danger;
@@ -759,8 +760,9 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         const auto name = role(widget);
         if (name == "textAction" && button) {
             // Reserve the hover weight so the label and layout stay whole.
-            auto f = font(Type::technical); f.setWeight(QFont::Medium);
-            return {int(std::ceil(QFontMetricsF(f).horizontalAdvance(button->text))), std::max(scaled(Metric::controlCompact), contents.height() + padding)};
+            auto f = font(Type::body); f.setWeight(widget && widget->property("graphiteStrong").toBool() ? QFont::DemiBold : QFont::Medium);
+            const int icon = button->icon.isNull() ? 0 : button->iconSize.width() + 8;
+            return {int(std::ceil(QFontMetricsF(f).horizontalAdvance(button->text))) + icon + (flushButton(widget) ? 0 : 2 * int(Space::s)), std::max(scaled(Metric::controlCompact), contents.height() + padding)};
         }
         if (name == "link" || name == "version") return {std::max(32, contents.width() + 8), std::max(32, contents.height() + 8)};
         if (name == "info") return {std::max(contents.width() + 6, 23), std::max(contents.height() + 4, 23)};
@@ -788,6 +790,10 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         const bool menu = (tool->features & QStyleOptionToolButton::HasMenu) && !split && !(widget && widget->property("noChevron").toBool());
         const bool text = !tool->text.isEmpty() && tool->toolButtonStyle != Qt::ToolButtonIconOnly;
         const bool icon = !tool->icon.isNull() && tool->toolButtonStyle != Qt::ToolButtonTextOnly;
+        if (name == "textAction" && text) {
+            auto f = font(Type::body); f.setWeight(widget && widget->property("graphiteStrong").toBool() ? QFont::DemiBold : QFont::Medium);
+            return {int(std::ceil(QFontMetricsF(f).horizontalAdvance(tool->text))) + (icon ? tool->iconSize.width() + 8 : 0) + (flushButton(widget) ? 0 : 2 * int(Space::s)), std::max(scaled(Metric::controlCompact), QFontMetrics(f).height() + padding)};
+        }
         if (name == "info") return {std::max(23, tool->iconSize.width() + 5), std::max(23, tool->iconSize.height() + 5)};
         if (name == "link" || name == "version") {
             const QFontMetrics metrics(widget ? widget->font() : QApplication::font());
@@ -1207,7 +1213,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
         if (!button) break;
         const auto name = buttonRole(widget, option);
-        const int inset = name == "link" || name == "version" ? int(Space::xs) : widget && widget->property("graphiteTight").toBool() ? int(Space::s) : int(Space::m);
+        const int inset = name == "textAction" ? int(Space::s) : name == "link" || name == "version" ? int(Space::xs) : widget && widget->property("graphiteTight").toBool() ? int(Space::s) : int(Space::m);
         QRect body = option->rect.adjusted(inset, 0, -inset, 0);
         if (flushButton(widget)) { body.setLeft(option->rect.left()); if (compactControl(widget) || name == "textAction") body.setRight(option->rect.right()); }
         if (widget && widget->property("graphiteNavRow").toBool()) { body.setLeft(option->rect.left() + (compactControl(widget) ? 6 : 14)); body.setRight(option->rect.right() - space(Space::xs)); }
@@ -1222,10 +1228,10 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto name = buttonRole(widget, option);
         const bool textShown = tool->toolButtonStyle != Qt::ToolButtonIconOnly && !tool->text.isEmpty();
         const bool iconShown = tool->toolButtonStyle != Qt::ToolButtonTextOnly && !tool->icon.isNull();
-        const int inset = name == "link" || name == "version" || (widget && widget->property("graphiteTight").toBool()) ? int(Space::xs) : int(Space::m);
+        const int inset = name == "textAction" ? int(Space::s) : name == "link" || name == "version" || (widget && widget->property("graphiteTight").toBool()) ? int(Space::xs) : int(Space::m);
         const int trailing = tool->features & QStyleOptionToolButton::MenuButtonPopup ? std::max(inset, space(Space::s)) : inset;
         QRect body = textShown ? option->rect.adjusted(inset, 0, -trailing, 0) : option->rect;
-        if (flushButton(widget)) body.setLeft(option->rect.left());
+        if (flushButton(widget)) { body.setLeft(option->rect.left()); if (name == "textAction") body.setRight(option->rect.right()); }
         drawButtonLabel(option, textShown ? tool->text : QString(), iconShown ? tool->icon : QIcon(), tool->iconSize, p, widget, body);
         return;
     }
@@ -1640,7 +1646,8 @@ BrowserFeedback::BrowserFeedback(QWidget* parent) : QWidget(parent) {
     VisualStyle::role(message_, "danger");
     layout->addWidget(message_);
     copy_ = new QPushButton(VisualStyle::icon("copy"), "Copy link", this);
-    VisualStyle::role(copy_, "link");
+    VisualStyle::role(copy_, "textAction");
+    copy_->setProperty("graphiteFlush", true);
     layout->addWidget(copy_, 0, Qt::AlignLeft);
     connect(copy_, &QPushButton::clicked, this, [this] { qApp->clipboard()->setText(url_.toString(QUrl::FullyEncoded)); });
     hide();
@@ -1950,7 +1957,7 @@ Banner::Banner(Tone tone, const QString& text, QWidget* parent) : QWidget(parent
     content_ = text_;
     row_->addWidget(content_, 0, 0);
     action_ = new QPushButton(this);
-    VisualStyle::role(action_, "quiet");
+    VisualStyle::role(action_, "textAction");
     row_->addWidget(action_, 0, 1, Qt::AlignTop);
     action_->hide();
     dismiss_ = toolButton({}, {}, "quiet", this);
@@ -1967,6 +1974,7 @@ void Banner::setIcon(const QIcon& icon) { icon_ = icon; update(); }
 void Banner::setAction(const QString& text) {
     action_->setText(text);
     action_->setVisible(!text.isEmpty());
+    styleContent();
     placeAction();
 }
 void Banner::setDismissible(bool visible, const QString& name) {
@@ -1995,7 +2003,7 @@ void Banner::styleContent() {
     for (auto* button : findChildren<QAbstractButton*>()) {
         if (!qobject_cast<QPushButton*>(button) && !qobject_cast<QToolButton*>(button)) continue;
         button->setProperty("graphiteStrong", true);
-        VisualStyle::role(button, "quiet");
+        VisualStyle::role(button, button == dismiss_ || button->text().isEmpty() ? "quiet" : "textAction");
     }
 }
 void Banner::announce(const QString& message) {
@@ -2045,7 +2053,7 @@ QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
     auto* text = warningLabel(blurWarningText(), warning);
     text->setObjectName("blurWarningText");
     layout->addWidget(text);
-    auto* action = toolButton("Use Redact", {}, "quiet", warning);
+    auto* action = toolButton("Use Redact", {}, "textAction", warning);
     action->setObjectName("useRedact");
     action->setAccessibleDescription(QStringLiteral("Blur may be reversible. Use Redact for private information."));
     action->setProperty("graphiteFlush", true);

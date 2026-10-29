@@ -445,7 +445,7 @@ private slots:
             QCOMPARE(banner.textLabel()->palette().color(QPalette::WindowText), Theme::current().text);
             QVERIFY(Theme::contrast(Theme::current().text, Theme::current().dangerSurface) >= 4.5);
             banner.setAction("Try again");
-            QCOMPARE(banner.actionButton()->property("visualRole").toString(), QString("quiet"));
+            QCOMPARE(banner.actionButton()->property("visualRole").toString(), QString("textAction"));
             QVERIFY(banner.actionButton()->property("graphiteStrong").toBool());
             QCOMPARE(banner.actionButton()->font().weight(), QFont::DemiBold);
             auto* content = new QWidget(&banner); auto* row = new QHBoxLayout(content);
@@ -454,11 +454,11 @@ private slots:
             row->addWidget(message); row->addWidget(details); banner.setContentWidget(content);
             QCOMPARE(message->palette().color(QPalette::WindowText), Theme::current().text);
             QCOMPARE(message->font().pixelSize(), Graphite::scaled(Graphite::Type::technical));
-            QCOMPARE(details->property("visualRole").toString(), QString("quiet"));
+            QCOMPARE(details->property("visualRole").toString(), QString("textAction"));
             QVERIFY(details->property("graphiteStrong").toBool());
             QCOMPARE(details->font().weight(), QFont::DemiBold);
             banner.setTone(Graphite::Banner::Tone::Info);
-            QCOMPARE(details->property("visualRole").toString(), QString("quiet"));
+            QCOMPARE(details->property("visualRole").toString(), QString("textAction"));
             QVERIFY(details->property("graphiteStrong").toBool());
             QCOMPARE(message->palette().color(QPalette::WindowText), Theme::current().textSecondary);
             for (const auto tone : {Graphite::Banner::Tone::Info, Graphite::Banner::Tone::Warning, Graphite::Banner::Tone::Success}) {
@@ -941,6 +941,20 @@ private slots:
         disclosure.setChecked(true);
         QCOMPARE(disclosure.font().weight(), QFont::Normal);
     }
+    void linksUseTheSemanticLinkInk() {
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            QLabel label("https://put.gd"); VisualStyle::role(&label, "link");
+            QCOMPARE(label.palette().color(QPalette::WindowText), Theme::current().link);
+            QPushButton button("Open link"); VisualStyle::role(&button, "link"); button.resize(button.sizeHint());
+            QStyleOptionButton option; option.initFrom(&button); option.rect = button.rect(); option.text = button.text(); option.state = QStyle::State_Enabled;
+            QImage image(button.size(), QImage::Format_RGB32); image.fill(Theme::current().bg);
+            { QPainter painter(&image); button.style()->drawControl(QStyle::CE_PushButtonLabel, &option, &painter, &button); }
+            int pixels = 0;
+            for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x) pixels += image.pixelColor(x, y) == Theme::current().link;
+            QVERIFY(pixels > 10);
+        }
+    }
     void textActionsStayFlushWithQuietRestingUnderlines() {
         Fonts::load(); VisualStyle::apply(*qApp);
         const auto original = qApp->font(); auto restore = qScopeGuard([&] { qApp->setFont(original); });
@@ -950,7 +964,7 @@ private slots:
             QPushButton button("Copy details"); VisualStyle::role(&button, "textAction");
             button.setProperty("graphiteFlush", true); button.ensurePolished(); button.resize(button.sizeHint());
             QCOMPARE(button.font().weight(), QFont::Normal);
-            QCOMPARE(button.font().pixelSize(), Graphite::scaled(13));
+            QCOMPARE(button.font().pixelSize(), Graphite::scaled(14));
             const auto hint = button.sizeHint();
             auto medium = button.font(); medium.setWeight(QFont::Medium);
             QCOMPARE(hint.width(), int(std::ceil(QFontMetricsF(medium).horizontalAdvance(button.text()))));

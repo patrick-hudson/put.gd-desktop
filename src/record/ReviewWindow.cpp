@@ -2083,6 +2083,7 @@ void ReviewWindow::refreshStatus() {
                 button->setFixedWidth(iconTarget());
             }
             button->setProperty("graphiteTight", params["action"] == "retryExport");
+            button->setProperty("graphiteFlush", true);
             VisualStyle::role(button, "quiet");
             // Compact action painting inside a full pointer target.
             button->setMinimumHeight(32);
@@ -2093,8 +2094,8 @@ void ReviewWindow::refreshStatus() {
         }
         band->setContentWidget(line);
         for (auto* button : line->findChildren<QPushButton*>()) {
-            const auto action = button->property("driveAction").toJsonObject()["action"].toString();
-            button->setFixedWidth(button->text().isEmpty() ? iconTarget() : int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(button->text()))) + (button == errorDetails_ ? 0 : action == "retryExport" ? 2 * reviewSpace(Graphite::Space::s) : 28));
+            button->setFixedHeight(std::max(32, textControlHeight(button)));
+            button->setFixedWidth(std::max(iconTarget(), int(std::ceil(QFontMetricsF(button->font()).horizontalAdvance(button->text())))));
         }
         statusLines_->addWidget(band);
         band->show();
