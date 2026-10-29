@@ -30,8 +30,8 @@ def _frame(ctx, label, reference=REFERENCE, window='review'):
     return ctx.frame(label, window=window, reference=reference)
 
 
-def _open(ctx):
-    fixture = ctx.fixture('recording')
+def _open(ctx, fixture_name='recording'):
+    fixture = ctx.fixture(fixture_name)
     required = {'id', 'output_dir', 'working_path', 'frozen_path'}
     if not isinstance(fixture, dict) or not required.issubset(fixture):
         ctx.blocked('Core recording fixture must supply fresh id, output_dir, working_path and captured frozen_path (#672)', issue=672)
@@ -267,10 +267,12 @@ def _verify(ctx, rid, path, info=None):
     ctx.note('Decoded export metrics: ' + result['stdout'].strip())
 
 
-def _saved(ctx, rid):
+def _saved(ctx, rid, path):
     info = ctx.wait(lambda: (s if (s := _inspect(ctx, rid))['state'] == 'reviewing'
                             and s.get('lastExport', {}).get('status') in ('saved', 'failed') else None),
                     'export finishes', timeout=180)
+    ctx.expect(info['lastExport'].get('path') == path, 'copy export matches requested path')
+    ctx.expect(info['lastExport'].get('revision') == info['edit']['revision'], 'copy export matches current edit revision')
     ctx.expect(info['lastExport']['status'] == 'saved', 'copy export succeeded')
     _verify(ctx, rid, info['lastExport']['path'], info)
     return info
@@ -280,7 +282,7 @@ def _export(ctx, rid, name='review-check'):
     info = _inspect(ctx, rid)
     path = str(PurePosixPath(ctx.fixture('recording')['output_dir']) / (name + '.' + info['config']['format']))
     ctx.call('recording.saveCopy', {'id': rid, 'path': path, 'overwrite': False})
-    return _saved(ctx, rid)
+    return _saved(ctx, rid, path)
 
 
 @recipe('review.play', 'review.speed', needs=('recording',))
@@ -350,7 +352,11 @@ def masks(ctx):
     _select_mask(ctx, rid, mask)
     revision = _inspect(ctx, rid)['edit']['revision']
     ctx.keys('Right', 'Ctrl+Right', 'Shift+Down')
-    info = _changed(ctx, rid, revision)
+    def nudged():
+        info = _inspect(ctx, rid)
+        rect = info['edit']['masks'][0]['rect']
+        return info if rect[0] == mask['rect'][0] + 11 and rect[3] == mask['rect'][3] + 1 else None
+    info = ctx.wait(nudged, 'all three frame key edits reach the resident')
     changed = info['edit']['masks'][0]
     ctx.expect(changed['rect'][0] == mask['rect'][0] + 11
                and changed['rect'][3] == mask['rect'][3] + 1, 'frame arrows move and resize in canvas pixels')
@@ -450,7 +456,7 @@ def save_copy(ctx):
     ctx.keys('Ctrl+L')
     ctx.type_text(path)
     ctx.keys('Return')
-    info = _saved(ctx, rid)
+    info = _saved(ctx, rid, path)
     ctx.expect(info['lastExport']['path'] == path, 'chooser exports to chosen absolute path')
     s = _state(ctx, rid)
     ctx.expect(s['savedCopy']['current'] and s['visible'], 'saved copy keeps private review open')
@@ -513,6 +519,7 @@ def discard(ctx):
     ctx.expect(_inspect(ctx, rid)['edit'] == before, 'Keep reviewing preserves edits')
     _frame(ctx, 'kept')
     ctx.click('discard', window='review')
+    ctx.wait(lambda: _state(ctx, rid)['discardConfirmation']['open'], 'second discard confirmation opens')
     ctx.click('confirmDiscard', window='confirmAction')
     op = ctx.wait(lambda: (s if (s := ctx.call('operation.inspect', {'id': rid}))['state'] == 'cancelled' else None),
                   'discard ends operation as cancelled')
@@ -550,9 +557,9 @@ def advice(ctx):
     ctx.blocked('Format tips exercised; Export failed/Recording error advice variants need fault fixtures (#672)', issue=672)
 
 
-@recipe('review.notice', needs=('recording', 'recording-budget-stop'))
+@recipe('review.notice', needs=('recording-budget-stop',))
 def stop_notice(ctx):
-    rid = _open(ctx)
+    rid = _open(ctx, 'recording-budget-stop')
     info = _inspect(ctx, rid)
     if info.get('stopReason') != 'budget':
         ctx.blocked('Needs a genuine byte-budget stopped motion recording, not a synthetic notice')
@@ -562,9 +569,9 @@ def stop_notice(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('review.preview-error', needs=('recording', 'recording-preview-error'))
+@recipe('review.preview-error', needs=('recording-preview-error',))
 def preview_error(ctx):
-    rid = _open(ctx)
+    rid = _open(ctx, 'recording-preview-error')
     if not _state(ctx, rid)['preview']['error']:
         ctx.blocked('Needs a reversible decoder failure fixture; do not corrupt a shared working clip')
     _frame(ctx, 'error', '40-review-preview-error')
@@ -604,7 +611,7 @@ def cli_recording(ctx):
     info = _inspect(ctx, rid)
     path = str(PurePosixPath(ctx.fixture('recording')['output_dir']) / ('cli-copy.' + info['config']['format']))
     _reply(ctx, ctx.cli('recording.saveCopy', json.dumps({'id': rid, 'path': path})))
-    _saved(ctx, rid)
+    _saved(ctx, rid, path)
     ctx.click('play', window='review')
     ctx.keys('Space')
     _frame(ctx, 'after')
@@ -625,7 +632,7 @@ def mcp_recording(ctx):
     info = _inspect(ctx, rid)
     path = str(PurePosixPath(ctx.fixture('recording')['output_dir']) / ('mcp-copy.' + info['config']['format']))
     _reply(ctx, ctx.mcp('save_recording_copy', {'id': rid, 'path': path}))
-    _saved(ctx, rid)
+    _saved(ctx, rid, path)
     ctx.expect(_inspect(ctx, rid)['retainedUs'] == 2_000_000, 'MCP trim reaches resident')
     ctx.click('play', window='review')
     ctx.keys('Space')

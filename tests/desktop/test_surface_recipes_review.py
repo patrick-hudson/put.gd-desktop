@@ -58,6 +58,8 @@ class FakeContext(Context):
                              'review-controls': {'controls': [{'name': 'format'}]}}
 
     def fixture(self, name):
+        if name in ('recording-budget-stop','recording-preview-error'):
+            return self.fixture_data.get(name, self.fixture_data['recording'])
         if name not in self.fixture_data:
             self.blocked('missing fixture: ' + name)
         return self.fixture_data[name]
@@ -76,7 +78,7 @@ class FakeContext(Context):
         if method == 'operation.inspect':
             return copy.deepcopy(self.operation)
         if method == 'recording.saveCopy':
-            self.info['lastExport'] = {'path': params['path'], 'status': self.export_status}
+            self.info['lastExport'] = {'path': params['path'], 'status': self.export_status, 'revision': self.info['edit']['revision']}
             self.state['savedCopy'] = {'path': params['path'], 'current': self.export_status == 'saved'}
             return copy.deepcopy(self.info)
         if method == 'ui.history':
@@ -301,6 +303,20 @@ class ReviewRecipes(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'export succeeded'):
             review._export(ctx, 'recording-id')
         self.assertFalse(any(t[0] == 'shell' for t in ctx.trace))
+
+    def test_stale_saved_export_cannot_satisfy_new_copy(self):
+        ctx = FakeContext()
+        ctx.info['lastExport'] = {'path':'/tmp/old.webm','revision':0,'status':'saved'}
+        with self.assertRaisesRegex(RecipeFailed, 'requested path'):
+            review._saved(ctx, 'recording-id', '/tmp/new.webm')
+        self.assertFalse(any(t[0]=='shell' for t in ctx.trace))
+
+    def test_notice_opens_its_named_fixture(self):
+        ctx = FakeContext()
+        ctx.fixture_data['recording-budget-stop'] = dict(ctx.fixture_data['recording'], id='budget-recording')
+        with self.assertRaises(RecipeBlocked):
+            review.stop_notice(ctx)
+        self.assertIn(('view','recording.review',{'id':'budget-recording','action':'inspect'}), ctx.trace)
 
     def test_media_assertions_are_mandatory(self):
         ctx = FakeContext()
