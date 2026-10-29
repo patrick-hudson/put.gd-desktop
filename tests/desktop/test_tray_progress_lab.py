@@ -582,6 +582,28 @@ class TrayProgressContracts(unittest.TestCase):
         self.assertIn("monitor org.kde.StatusNotifierItem-2210-1 >", calls[0])
         self.assertEqual(replay.menu_monitor_events(monitor), [('show', 0, None)])
 
+    def test_the_latched_icon_is_found_by_its_tint_near_the_hint(self):
+        from unittest.mock import Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'frame.ppm'
+            width, height = 400, 120
+            pixels = bytearray(bytes([30, 30, 30]) * (width * height))
+            def paint(x0, y0, size, rgb):
+                for y in range(y0, y0 + size):
+                    for x in range(x0, x0 + size):
+                        pixels[(y * width + x) * 3:(y * width + x) * 3 + 3] = bytes(rgb)
+            paint(300, 90, 20, (0xe5, 0x9b, 0x93))
+            path.write_bytes(f'P6\n{width} {height}\n255\n'.encode() + bytes(pixels))
+            self.assertEqual(tray.locate_tinted_icon(path, '#e59b93', (270, 100)), (309, 99))
+            self.assertIsNone(tray.locate_tinted_icon(path, '#e59b93', (20, 20), reach=(100, 40)))
+            self.assertIsNone(tray.locate_tinted_icon(path, '#a44139', (270, 100)))
+        replay = self.visible_replay([[]])
+        with patch.object(tray.lab, 'pointer') as pointer, patch.object(tray.lab, 'key'), patch.object(tray.time, 'sleep'), \
+                patch.object(tray, 'locate_tinted_icon', return_value=None):
+            with self.assertRaisesRegex(tray.VisibleMenuFailed, 'not near the supplied position'):
+                replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+        pointer.assert_not_called()
+
     def test_menu_presses_count_visible_top_level_rows(self):
         rows = [{'id': 3, 'label': 'Capture region'}, {'id': 22, 'label': 'Failed uploads (2)'}, {'id': 30, 'label': 'Quit put.gd'}]
         self.assertEqual(tray.menu_presses(rows, 'Failed uploads', False), (rows[1], 2))
@@ -601,6 +623,7 @@ class TrayProgressContracts(unittest.TestCase):
         replay.menu_monitor = Mock(return_value=(41, '/tmp/tp-x/menu-monitor.jsonl', ':1.163'))
         replay.menu_monitor_events = Mock(side_effect=events)
         replay.stop_menu_monitor = Mock()
+        replay.tints = tray.TRAY_TINTS['dark']
         return replay
 
     def test_visible_menu_reaches_the_row_by_keyboard_and_needs_the_desktops_click(self):
@@ -609,12 +632,14 @@ class TrayProgressContracts(unittest.TestCase):
         hovered = shown + [('event', 3, 'hovered'), ('event', 22, 'hovered')]
         replay = self.visible_replay([shown, hovered, hovered + [('event', 22, 'clicked')]])
         with patch.object(tray.lab, 'pointer') as pointer, patch.object(tray.lab, 'key') as key, \
-                patch.object(tray.time, 'sleep'):
+                patch.object(tray.time, 'sleep'), patch.object(tray, 'locate_tinted_icon', return_value=(1124, 779)):
             attempt = replay.open_visibly({'service': ':1.5', 'path': '/StatusNotifierItem'}, self.LOCAL, 'local-failure')
         self.assertEqual((attempt['status'], attempt['label'], attempt['downPresses']), ('passed', self.LOCAL, 2))
         self.assertTrue(attempt['hoverReported'])
         self.assertFalse(attempt['calibrated'])
+        self.assertEqual([c.args[1:3] for c in pointer.call_args_list], [(1124, 779)] * 3)
         self.assertEqual([c.args[5:] for c in pointer.call_args_list], [(), (True, 'right'), (False, 'right')])
+        self.assertEqual(attempt['iconAt'], (1124, 779))
         self.assertEqual([c.args[1] for c in key.call_args_list], [['down'], ['down'], ['ret']])
         replay.stop_menu_monitor.assert_called_once_with((41, '/tmp/tp-x/menu-monitor.jsonl', ':1.163'))
         self.assertEqual(attempt['busOwner'], ':1.163')
@@ -628,7 +653,8 @@ class TrayProgressContracts(unittest.TestCase):
         for events, reason in cases:
             with self.subTest(reason=reason):
                 replay = self.visible_replay(events)
-                with patch.object(tray.lab, 'pointer'), patch.object(tray.lab, 'key') as key, patch.object(tray.time, 'sleep'):
+                with patch.object(tray.lab, 'pointer'), patch.object(tray.lab, 'key') as key, patch.object(tray.time, 'sleep'), \
+                patch.object(tray, 'locate_tinted_icon', return_value=(1124, 779)):
                     with self.assertRaisesRegex(tray.VisibleMenuFailed, reason):
                         replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
                 self.assertEqual(key.call_args_list[-1].args[1], ['esc'])
@@ -640,12 +666,14 @@ class TrayProgressContracts(unittest.TestCase):
         # No click within five seconds; then a click on another item is fatal, not a fallback.
         replay = self.visible_replay([shown, shown] + [shown] * 3)
         with patch.object(tray.lab, 'pointer'), patch.object(tray.lab, 'key'), patch.object(tray.time, 'sleep'), \
+                patch.object(tray, 'locate_tinted_icon', return_value=(1124, 779)), \
                 patch.object(tray.time, 'monotonic', side_effect=[0, 1, 6]):
             with self.assertRaisesRegex(tray.VisibleMenuFailed, 'no click'):
                 replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
         replay = self.visible_replay([shown, shown, shown + [('event', 30, 'clicked')]],
                                      profile={'tray_menu': {'firstRowSelected': True}})
-        with patch.object(tray.lab, 'pointer'), patch.object(tray.lab, 'key') as key, patch.object(tray.time, 'sleep'):
+        with patch.object(tray.lab, 'pointer'), patch.object(tray.lab, 'key') as key, patch.object(tray.time, 'sleep'), \
+                patch.object(tray, 'locate_tinted_icon', return_value=(1124, 779)):
             with self.assertRaisesRegex(tray.TrayProgressError, 'activated another item') as raised:
                 replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
         self.assertNotIsInstance(raised.exception, tray.VisibleMenuFailed)

@@ -432,6 +432,24 @@ def menu_events(lines, service):
     return found
 
 
+def locate_tinted_icon(path, colour, near, reach=(240, 60), minimum=20):
+    """Centre of the exact-colour pixels within reach of near, or None.
+
+    Tray icons move when other items come and go, so the supplied position is
+    only a hint; a latched icon carries the error tint the runner knows.
+    """
+    width, height, pixels = lab.ppm(path)
+    target = bytes.fromhex(colour.lstrip('#'))
+    x0, x1 = max(0, near[0] - reach[0]), min(width, near[0] + reach[0] + 1)
+    y0, y1 = max(0, near[1] - reach[1]), min(height, near[1] + reach[1] + 1)
+    found = [(x, y) for y in range(y0, y1) for x in range(x0, x1)
+             if pixels[(y * width + x) * 3:(y * width + x) * 3 + 3] == target]
+    if len(found) < minimum:
+        return None
+    xs, ys = [x for x, _ in found], [y for _, y in found]
+    return (min(xs) + max(xs)) // 2, (min(ys) + max(ys)) // 2
+
+
 def menu_presses(rows, label, first_row_selected):
     """(target row, Down presses) to reach the attention row, or (None, None)."""
     for index, row in enumerate(rows):
@@ -825,9 +843,13 @@ class Replay:
         attempt['busOwner'] = monitor[2]
         try:
             x, y = self.args.tray_x, self.args.tray_y
+            before = self.witness(label + '-menu-before', hover=False)
+            found = locate_tinted_icon(before, self.tints['error'], (x, y))
+            if found is None:
+                raise VisibleMenuFailed('the latched tray icon is not near the supplied position')
+            x, y = attempt['iconAt'] = found
             lab.pointer(self.run, x, y, self.width, self.height)
             time.sleep(.3)
-            self.witness(label + '-menu-before', hover=False)
             lab.pointer(self.run, x, y, self.width, self.height, True, settings['button'])
             time.sleep(.05)
             lab.pointer(self.run, x, y, self.width, self.height, False, settings['button'])
