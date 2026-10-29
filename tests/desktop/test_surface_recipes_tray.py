@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+"""Contract tests only: fake Context is deliberately not desktop evidence."""
+from __future__ import annotations
+
+import copy
+import json
+from pathlib import Path
+import sys
+import unittest
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from tools.lab.surface_driver.api import Context, RecipeBlocked, RecipeFailed, REGISTRY
+from tools.lab.surface_driver.recipes import tray
+
+
+class FakeContext(Context):
+    desktop = 'mint-cinnamon-x11'
+    host = 'boat'
+    placement = 'boat'
+    destination = 'local'
+    package = 'deb'
+
+    def __init__(self):
+        self.profile = json.loads((ROOT / 'tools/lab/surface_driver/profiles/mint-cinnamon-x11.d/tray.json').read_text())
+        self.events = []
+        self.menu = False
+        self.output = False
+        self.edit_sources = False
+        self.fixture = False
+        self.operations = []
+        self.notices = []
+        self.clipboard = ''
+        self.document = {'actions': {}, 'preferences': {'notifications': True}, 'archive': {}}
+        self.original = copy.deepcopy(self.document)
+        self.target = 'General'
+        self.obstruction = False
+        self.latch = False
+        self.readonly = False
+        self.shortcut_available = True
+        self.broken_save = False
+        self.ignored_input = False
+
+    def view(self, method, params=None):
+        self.events.append(('view', method, params))
+        assert method == 'ui.show'
+        self.target = 'General'
+        return {'shown': params['view']}
+
+    def call(self, method, params=None):
+        self.events.append(('call', method, params))
+        if method == 'ui.snapshot':
+            return {'operationsReady': True, 'settings': {'document': copy.deepcopy(self.document)},
+                    'diagnostics': {'trayAvailable': True, 'activeOperations': 0}}
+        if method == 'settings.get':
+            return {'document': copy.deepcopy(self.document), 'metadata': {'acceptedRevision': 'r1'}}
+        if method == 'settings.patch':
+            assert params['expectedRevision'] == 'r1'
+            for key, value in params['patch'].items():
+                self.document.setdefault(key, {}).update(copy.deepcopy(value))
+            return {'acceptedRevision': 'r2'}
+        if method == 'settings.save':
+            assert params['expectedRevision'] == 'r1'
+            self.document = copy.deepcopy(params['document'])
+            return {'metadata': {'acceptedRevision': 'r3'}}
+        if method == 'operation.recent':
+            return {'operations': copy.deepcopy(self.operations)}
+        if method == 'operation.inspect':
+            return copy.deepcopy(next(o for o in self.operations if o['id'] == params['id']))
+        if method == 'operation.retryLocalSave':
+            op = next(o for o in self.operations if o['id'] == params['id'])
+            op['state'] = 'completed'
+            op['items'][0]['local']['status'] = 'saved'
+            return {'retryAccepted': True}
+        if method == 'ui.history':
+            return {'rows': [], 'loaded': True}
+        if method == 'ui.viewState':
+            return {'settings': {'section': 1}}
+        if method == 'ui.fileDialog':
+            return {'open': self.target == 'file-dialog'}
+        if method == 'diagnostics':
+            return {'shortcuts': {'available': self.shortcut_available,
+                    'bindings': {a: {'bound': True} for a in tray.CHORDS}}}
+        if method == 'editor.inspect':
+            return {'id': params['id']}
+        if method == 'editor.cancel':
+            self.operations[-1]['state'] = 'cancelled'
+            return {}
+        raise AssertionError('Unexpected resident method: ' + method)
+
+    def wait(self, predicate, what, timeout=10, interval=.2):
+        value = predicate()
+        if not value:
+            raise RecipeFailed(what)
+        return value
+
+    def accessible(self, query):
+        name = query['name']
+        names = {'put.gd', self.target}
+        if self.fixture:
+            names.add(tray.FIXTURE_TITLE)
+        if self.menu:
+            names.update(tray.LABELS.values())
+            names.update(('History', 'Settings', 'Destinations', 'About put.gd', 'Quit put.gd',
+                          'Change output…', 'Local only', 'Edit image'))
+            if self.latch:
+                names.add('Local save needs attention')
+        if self.output:
+            names.update(label + ': Local only' for label in tray.LABELS.values())
+        if self.edit_sources:
+            names.update(('Edit clipboard image', 'Edit an image file…'))
+        for n in self.notices:
+            names.update(n.get('buttons', ()))
+        if name not in names:
+            return []
+        # A different rectangle per label ensures that tests track the node
+        # which input actually targets, rather than accepting any click.
+        self.last_node = name
+        return [{'name': name, 'role': query.get('role', 'label'),
+                 'rect': {'x': 40, 'y': 50, 'width': 20, 'height': 10},
+                 'enabled': not name.endswith(': Local only'), 'visible': True}]
+
+    def click_at(self, x, y, button='left'):
+        assert (x, y) == (50, 55)
+        name = self.last_node
+        self.events.append(('click', name, button))
+        if self.ignored_input:
+            return
+        if name == 'put.gd':
+            if button == 'right':
+                self.menu = True
+            elif button == 'left':
+                self.target = 'History'
+        elif name == 'Local only':
+            self.output = True
+        elif name == 'Edit image':
+            self.edit_sources = True
+        elif name == 'Edit an image file…':
+            self.target = 'file-dialog'
+            self.menu = False
+        elif name == 'Edit clipboard image':
+            self._invoke('edit', editing=True)
+        elif name in tray.LABELS.values():
+            self._invoke(next(a for a, label in tray.LABELS.items() if label == name))
+        elif name == 'Local save needs attention':
+            self.latch = False
+            self.menu = False
+            self.target = 'History'
+        elif name == 'Save diagnostics for this upload':
+            for n in self.notices:
+                n['buttons'] = []
+            if self.readonly:
+                self.notices.append({'id': 99, 'summary': 'put.gd — diagnostics not saved'})
+            else:
+                self.notices.append({'id': 99, 'summary': 'put.gd — diagnostics saved',
+                    'body': 'bundle.zip. Nothing was uploaded.', 'actions': ['show-in-folder'],
+                    'buttons': ['Show in folder']})
+        elif name == 'Show in folder':
+            self.target = 'putgd-diagnostics-20261029-000000Z.zip'
+        elif name != tray.FIXTURE_TITLE:
+            self.target = {'Settings': 'General', 'Change output…': 'Capture'}.get(name, name)
+            self.menu = False
+
+    def _invoke(self, action, editing=False):
+        self.menu = False
+        pending = action in ('region', 'edit', 'record')
+        failed = self.obstruction or self.broken_save
+        self.operations.append({'id': 'op-' + str(len(self.operations)), 'action': action,
+            'state': 'editing' if editing else 'acquiring' if pending else 'failed' if failed else 'completed',
+            'items': [] if pending else [{'artifact': {'id': 'artifact-1'}, 'uploadStatus': 'local_only',
+                                          'local': {'status': 'failed' if failed else 'saved'}}]})
+        self.latch = failed
+        if not pending and self.document['preferences']['notifications']:
+            self.notices.append({'id': len(self.notices) + 1, 'summary': 'Local save failed' if failed else 'Saved locally',
+                'body': 'Local save failed.' if failed else 'Saved locally.', 'actions': ['save-diagnostics'] if failed else [],
+                'buttons': ['Save diagnostics for this upload'] if failed else []})
+
+    def keys(self, *sequence):
+        self.events.append(('keys', sequence))
+        if self.ignored_input:
+            return
+        for key in sequence:
+            if key == 'Ctrl+Alt+Shift+T':
+                self.clipboard = 'putgd synthetic clipboard text'
+            elif key in tray.CHORDS.values():
+                self._invoke(next(a for a, chord in tray.CHORDS.items() if key == chord))
+            elif key == 'Esc':
+                self.menu = self.output = self.edit_sources = False
+                if self.operations and self.operations[-1]['state'] in ('acquiring', 'editing'):
+                    self.operations[-1]['state'] = 'cancelled'
+
+    def shell(self, script, timeout=60):
+        self.events.append(('shell', script))
+        output = ''
+        if 'mktemp -d' in script:
+            output = '/tmp/pgtray.fake'
+        elif 'printf synthetic' in script:
+            self.obstruction = True
+        elif 'putgd-desktop-fixture --output' in script:
+            self.fixture = True
+            output = '4242'
+        elif script.startswith('kill --'):
+            assert script == 'kill -- 4242\n'
+            self.fixture = False
+        elif script.startswith('rm --'):
+            self.obstruction = False
+        elif 'mkdir -m 500' in script:
+            self.readonly = True
+        elif 'zipfile' in script:
+            output = 'putgd-diagnostics-20261029-000000Z.zip'
+        return {'returncode': 0, 'stdout': output, 'stderr': ''}
+
+    def frame(self, label, window=None, reference=None):
+        self.events.append(('frame', label, reference))
+
+    def clipboard_text(self):
+        return self.clipboard
+
+    def notifications(self):
+        return copy.deepcopy(self.notices)
+
+    def scroll(self, x, y, clicks):
+        self.events.append(('scroll', clicks))
+
+    def note(self, message):
+        self.events.append(('note', message))
+
+    def review(self, message):
+        self.events.append(('review', message))
+
+
+class TrayRecipesTest(unittest.TestCase):
+    def recipes(self):
+        return [r for r in REGISTRY if r.function.__module__ == tray.__name__]
+
+    def test_exact_ownership_and_no_missing_or_duplicate_ids(self):
+        owners = json.loads((ROOT / 'tools/lab/surface_driver/ownership.json').read_text())['owners']
+        actual = [i for r in self.recipes() for i in r.interactions]
+        self.assertEqual(set(actual), {i for i, owner in owners.items() if owner == 'tray'})
+        self.assertEqual(len(actual), len(set(actual)))
+
+    def test_every_executable_recipe_uses_real_input_and_restores_settings(self):
+        for r in self.recipes():
+            if any(i in tray.BLOCKED for i in r.interactions):
+                continue
+            with self.subTest(recipe=r.name):
+                ctx = FakeContext()
+                r.function(ctx)
+                self.assertTrue(r.desktop_drawn)
+                self.assertEqual(ctx.events[0][0], 'view')
+                self.assertGreaterEqual(sum(e[0] == 'frame' for e in ctx.events), 2)
+                self.assertTrue(any(e[0] in ('click', 'keys', 'scroll') for e in ctx.events))
+                self.assertEqual(ctx.document, ctx.original)
+                self.assertFalse(ctx.fixture)
+                self.assertFalse(any(e[0] == 'call' and e[1] == 'action.invoke' for e in ctx.events))
+
+    def test_explicit_blocked_rows_have_reason_and_frames(self):
+        for interaction, reason in tray.BLOCKED.items():
+            with self.subTest(interaction=interaction):
+                r = next(r for r in self.recipes() if interaction in r.interactions)
+                ctx = FakeContext()
+                with self.assertRaisesRegex(RecipeBlocked, reason.split(';')[0]):
+                    r.function(ctx)
+                self.assertGreaterEqual(sum(e[0] == 'frame' for e in ctx.events), 2)
+
+    def test_operation_failure_is_not_a_pass_and_cleanup_runs(self):
+        ctx = FakeContext()
+        ctx.broken_save = True
+        with self.assertRaises(RecipeFailed):
+            tray.saved_locally(ctx)
+        self.assertEqual(ctx.document, ctx.original)
+        self.assertFalse(ctx.fixture)
+
+    def test_missing_shortcut_channel_blocks_without_pressing_the_shortcut(self):
+        ctx = FakeContext()
+        ctx.shortcut_available = False
+        with self.assertRaises(RecipeBlocked):
+            tray.shortcut_region(ctx)
+        self.assertFalse(any(e[0] == 'keys' and 'Ctrl+Shift+1' in e[1] for e in ctx.events))
+        self.assertEqual(ctx.document, ctx.original)
+
+    def test_ignored_input_cannot_pass_clipboard_recipe(self):
+        ctx = FakeContext()
+        ctx.ignored_input = True
+        with self.assertRaises(RecipeFailed):
+            tray.tray_menu_upload_clipboard(ctx)
+        self.assertFalse(ctx.fixture)
+
+    def test_ambiguous_accessibility_target_fails_before_click(self):
+        ctx = FakeContext()
+        ctx.accessible = lambda query: [{'name': query['name'], 'rect': [1, 2, 3, 4]}] * 2
+        with self.assertRaises(RecipeFailed):
+            tray.activate(ctx)
+        self.assertFalse(any(e[0] == 'click' for e in ctx.events))
+
+    def test_catalog_reference_is_forwarded_only_when_configured(self):
+        ctx = FakeContext()
+        ctx.profile['tray']['references'] = {'full': '00-tray-menu'}
+        tray.context_menu(ctx)
+        self.assertIn(('frame', 'after', '00-tray-menu'), ctx.events)
+
+    def test_profile_fragments_cover_model_desktops_and_are_lane_scoped(self):
+        for desktop in json.loads((ROOT / 'tools/lab/surface_map/model.json').read_text())['desktops']:
+            fragment = ROOT / 'tools/lab/surface_driver/profiles' / (desktop['id'] + '.d') / 'tray.json'
+            data = json.loads(fragment.read_text())
+            self.assertEqual(list(data), ['tray'])
+            self.assertIn(data['tray']['notification_server'], ('cinnamon', 'gnome-shell', 'Plasma'))
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,0 +1,18 @@
+{
+  "tray": {
+    "icon": {
+      "name": "put.gd"
+    },
+    "targets": {
+      "history": "History",
+      "settings": "General",
+      "destinations": "Destinations",
+      "about": "About put.gd",
+      "capture": "Capture"
+    },
+    "notification_server": "gnome-shell",
+    "resident_notifications": false,
+    "shortcut_channel": "gnome-extension",
+    "fixture_issue": 670
+  }
+}

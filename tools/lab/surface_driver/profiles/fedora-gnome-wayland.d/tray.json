@@ -1,0 +1,20 @@
+{
+  "tray": {
+    "icon": {
+      "name": "put.gd"
+    },
+    "targets": {
+      "history": "History",
+      "settings": "General",
+      "destinations": "Destinations",
+      "about": "About put.gd",
+      "capture": "Capture"
+    },
+    "notification_server": "gnome-shell",
+    "resident_notifications": false,
+    "shortcut_channel": "gnome-extension",
+    "shortcut_reason": "GNOME Shell extension is off by default on f44; enablement requires a separate desktop setup run",
+    "shortcut_issue": 490,
+    "fixture_issue": 670
+  }
+}
