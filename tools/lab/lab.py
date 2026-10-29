@@ -864,7 +864,7 @@ def key(run, keys):
                 for value in reversed(keys)]})
 
 
-def pointer(run, x, y, width, height, down=None):
+def pointer(run, x, y, width, height, down=None, button='left'):
     # The inclusive tablet range has 32768 positions. Using extent-1
     # crosses Qt's half-pixel rounding boundary (680 becomes 680.5078 at 1280).
     # Choose the first tick at or above each pixel edge; floor and qRound
@@ -872,7 +872,7 @@ def pointer(run, x, y, width, height, down=None):
     events = [{'type': 'abs', 'data': {'axis': 'x', 'value': min(32767, math.ceil(x * 32768 / width))}},
               {'type': 'abs', 'data': {'axis': 'y', 'value': min(32767, math.ceil(y * 32768 / height))}}]
     if down is not None:
-        events.append({'type': 'btn', 'data': {'button': 'left', 'down': down}})
+        events.append({'type': 'btn', 'data': {'button': button, 'down': down}})
     input_events(run, events)
 
 

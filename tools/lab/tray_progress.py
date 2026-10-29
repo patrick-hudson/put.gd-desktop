@@ -57,6 +57,10 @@ class ObservationMismatch(TrayProgressError):
     """Only asynchronous production/SNI correlation may receive batching grace."""
 
 
+class VisibleMenuFailed(TrayProgressError):
+    """The desktop's own tray menu did not deliver the click; the D-Bus event may stand in, reported."""
+
+
 def observed(condition, message):
     if not condition:
         raise ObservationMismatch(message)
@@ -178,17 +182,20 @@ service,path,wanted=SERVICE,PATH,LABEL
 menu=bus('get-property',service,path,'org.kde.StatusNotifierItem','Menu')
 menu=menu[0] if isinstance(menu,list) else menu
 layout=bus('call',service,menu,'com.canonical.dbusmenu','GetLayout','iias','--','0','-1','0')
-items=[]
-def walk(node,usable=True):
+items,rows=[],[]
+def walk(node,usable=True,depth=0):
     if isinstance(node,dict):node=node['data']
     ident,props,children=node
     values={key:(value.get('data') if isinstance(value,dict) else value) for key,value in props.items()}
     usable=usable and values.get('visible',True) and values.get('enabled',True)
     label=str(values.get('label','')).replace('&','').replace('_','').strip()
-    if usable and label:items.append((ident,label))
-    for child in children:walk(child,usable)
+    if usable and label:
+        items.append((ident,label))
+        # Keyboard navigation visits the top level's visible, enabled rows.
+        if depth==1 and values.get('type','standard')!='separator':rows.append({'id':ident,'label':label})
+    for child in children:walk(child,usable,depth+1)
 walk(layout[1])
-result={'ok':True,'labels':[label for _,label in items]}
+result={'ok':True,'labels':[label for _,label in items],'rows':rows}
 if wanted is not None:
     matches=[(ident,label) for ident,label in items if label==wanted or re.fullmatch(re.escape(wanted)+r' \([0-9]+\)',label)]
     if len(matches)!=1:
@@ -394,6 +401,43 @@ def check_activity(lines, records, provider, result):
         result['counter'] = True
 
 
+def menu_events(lines, service):
+    """What other bus clients asked of put.gd's dbusmenu, from `busctl monitor --json=short`.
+
+    Returns (member, item id, event) in arrival order: AboutToShow/
+    AboutToShowGroup as ('show', id, None); Event and EventGroup entries as
+    ('event', id, name). Only calls addressed to the resident's unique name count.
+    """
+    found = []
+    for line in lines:
+        try:
+            message = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(message, dict) or message.get('type') != 'method_call' or \
+                message.get('destination') != service or message.get('interface') != 'com.canonical.dbusmenu':
+            continue
+        data = (message.get('payload') or {}).get('data') or []
+        member = message.get('member')
+        if member == 'AboutToShow' and data:
+            found.append(('show', data[0], None))
+        elif member == 'AboutToShowGroup' and data:
+            found.extend(('show', ident, None) for ident in data[0])
+        elif member == 'Event' and len(data) >= 2:
+            found.append(('event', data[0], data[1]))
+        elif member == 'EventGroup' and data:
+            found.extend(('event', entry[0], entry[1]) for entry in data[0] if len(entry) >= 2)
+    return found
+
+
+def menu_presses(rows, label, first_row_selected):
+    """(target row, Down presses) to reach the attention row, or (None, None)."""
+    for index, row in enumerate(rows):
+        if row['label'] == label or re.fullmatch(re.escape(label) + r' \([0-9]+\)', row['label']):
+            return row, index if first_row_selected else index + 1
+    return None, None
+
+
 def records_from(operations):
     active = sorted((op for op in operations if op.get('state') not in TERMINAL),
                     key=lambda op: (op.get('created', ''), op['id']))
@@ -508,6 +552,8 @@ class Replay:
     tints = TRAY_TINTS['dark']
     # A runner-created failure the tray may latch (expect_attention).
     attention = None
+    # The lab profile; its optional tray_menu entry calibrates the visible menu path.
+    profile = {}
 
     def __init__(self, args):
         self.args = args
@@ -729,6 +775,90 @@ class Replay:
         require(value.get('ok'), 'Tray menu read failed: ' + value.get('error', 'unknown'))
         return value
 
+    def menu_monitor(self, service):
+        """Record what the desktop's tray sends put.gd's menu; returns (pid, file)."""
+        path = f'{self.guest}/menu-monitor-{uuid.uuid4().hex[:8]}.jsonl'
+        output = self.session('addr="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}"\n'
+                              '(setsid stdbuf -oL busctl --address="$addr" --json=short monitor ' + shlex.quote(service) +
+                              ' > ' + shlex.quote(path) + ' 2>/dev/null < /dev/null & echo $!)\n')
+        pid = int(output.strip().splitlines()[-1])
+        time.sleep(.5)
+        return pid, path
+
+    def menu_monitor_events(self, monitor, service):
+        text = self.session('cat -- ' + shlex.quote(monitor[1]) + ' 2>/dev/null || true\n')
+        return menu_events(text.splitlines(), service)
+
+    def stop_menu_monitor(self, monitor):
+        # Only the recorded monitor: its stdout must still be this run's file.
+        pid, path = monitor
+        self.session(f'[ "$(readlink /proc/{pid}/fd/1 2>/dev/null)" = {shlex.quote(path)} ] && kill {pid} || true\n')
+
+    def open_visibly(self, snapshot, item, label):
+        """Right-click the real tray icon, reach item with the keyboard, press Enter.
+
+        The desktop's own tray must open put.gd's menu and send "clicked" for
+        exactly that item. Returns the attempt; raises VisibleMenuFailed when
+        the desktop did not, after Escape closes whatever opened.
+        """
+        settings = {'button': 'right', 'openSeconds': .8, 'firstRowSelected': False,
+                    **self.profile.get('tray_menu', {})}
+        attempt = {'method': 'visible-menu', 'settings': settings, 'calibrated': 'tray_menu' in self.profile}
+        self.result.setdefault('trayMenu', []).append(attempt)
+        row, presses = menu_presses(self.tray_menu(snapshot)['rows'], item, settings['firstRowSelected'])
+        if row is None:
+            attempt['status'] = 'failed'
+            attempt['reason'] = 'attention item is not a top-level menu row'
+            raise VisibleMenuFailed(attempt['reason'])
+        attempt.update(target=row, downPresses=presses)
+        service = snapshot['service']
+        monitor = self.menu_monitor(service)
+        try:
+            x, y = self.args.tray_x, self.args.tray_y
+            lab.pointer(self.run, x, y, self.width, self.height)
+            time.sleep(.3)
+            self.witness(label + '-menu-before', hover=False)
+            lab.pointer(self.run, x, y, self.width, self.height, True, settings['button'])
+            time.sleep(.05)
+            lab.pointer(self.run, x, y, self.width, self.height, False, settings['button'])
+            time.sleep(settings['openSeconds'])
+            self.witness(label + '-menu-open', hover=False)
+            events = self.menu_monitor_events(monitor, service)
+            if not any(kind == 'show' or (kind == 'event' and name == 'opened') for kind, _, name in events):
+                raise VisibleMenuFailed('the desktop did not open put.gd\'s menu')
+            for _ in range(presses):
+                lab.key(self.run, ['down'])
+                time.sleep(.15)
+            time.sleep(.3)
+            self.witness(label + '-menu-highlight', hover=False)
+            hovered = [ident for kind, ident, name in self.menu_monitor_events(monitor, service)
+                       if kind == 'event' and name == 'hovered']
+            attempt['hoverReported'] = bool(hovered)
+            if hovered and hovered[-1] != row['id']:
+                raise VisibleMenuFailed('the keyboard highlight is not on the attention row')
+            lab.key(self.run, ['ret'])
+            deadline = time.monotonic() + 5
+            while True:
+                clicked = [ident for kind, ident, name in self.menu_monitor_events(monitor, service)
+                           if kind == 'event' and name == 'clicked']
+                if clicked:
+                    break
+                if time.monotonic() >= deadline:
+                    raise VisibleMenuFailed('no click from the desktop reached put.gd')
+                time.sleep(.2)
+            # Another item may have started a capture or quit the resident.
+            require(clicked == [row['id']], 'The visible tray menu activated another item: ' + json.dumps(clicked))
+            attempt.update(status='passed', label=row['label'])
+            return attempt
+        except VisibleMenuFailed as error:
+            attempt.update(status='failed', reason=str(error))
+            lab.key(self.run, ['esc'])
+            time.sleep(.3)
+            self.witness(label + '-menu-failed', hover=False)
+            raise
+        finally:
+            self.stop_menu_monitor(monitor)
+
     def acknowledge_attention(self, label):
         """Hold a runner-created latch for LATCH_SECONDS, then open it from the real tray menu."""
         expected = self.attention
@@ -745,10 +875,18 @@ class Replay:
         item = expected['attentionLabel']
         require(any(entry == item or re.fullmatch(re.escape(item) + r' \([0-9]+\)', entry) for entry in menu['labels']),
                 'Tray menu does not offer the attention item: ' + item)
-        opened = self.tray_menu(snapshot, item)
-        require(opened.get('clicked') == 1, 'Tray attention item was not opened exactly once')
-        expected['acknowledgedAt'] = time.monotonic()
-        expected['menuLabel'] = opened['label']
+        try:
+            opened = self.open_visibly(snapshot, item, label)
+            expected['acknowledgedAt'] = time.monotonic()
+            expected['menuLabel'], expected['openedBy'] = opened['label'], 'visible-menu'
+        except VisibleMenuFailed as error:
+            # The run continues, but never as a visible pass: the summary
+            # reports the desktop's failure for investigation.
+            self.result.setdefault('visibleMenuFallbacks', []).append({'scenario': label, 'reason': str(error)})
+            opened = self.tray_menu(snapshot, item)
+            require(opened.get('clicked') == 1, 'Tray attention item was not opened exactly once')
+            expected['acknowledgedAt'] = time.monotonic()
+            expected['menuLabel'], expected['openedBy'] = opened['label'], 'dbus-event-fallback'
         self.witness(label + '-attention-opened', hover=False)
 
     def observe(self, label):
@@ -1234,7 +1372,8 @@ def main():
                 for path in sorted(replay.output.iterdir()) if path.is_file() and path.name != 'manifest.json'}})
             print(json.dumps({'protocolPassed': replay.result['protocolPassed'],
                 'graphicalAcceptance': replay.result['graphicalAcceptance'], 'output': str(replay.output),
-                'operationIds': replay.ids, 'status': replay.result.get('status'), 'error': replay.result.get('error')}))
+                'operationIds': replay.ids, 'status': replay.result.get('status'), 'error': replay.result.get('error'),
+                'visibleMenuFallbacks': replay.result.get('visibleMenuFallbacks', [])}))
     return return_code
 
 

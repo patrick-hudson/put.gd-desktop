@@ -486,6 +486,8 @@ class TrayProgressContracts(unittest.TestCase):
                                                for frame in frames])
             replay.tray_menu = Mock(side_effect=lambda snapshot, label=None: {'ok': True, 'labels': menu_labels}
                                     if label is None else {'ok': True, 'clicked': 1, 'label': label})
+            replay.result = {}
+            replay.open_visibly = Mock(side_effect=tray.VisibleMenuFailed('not under test'))
             return replay
         held = {'matched': True, 'attention': self.LOCAL}
         replay = replay_with(['Capture region', self.LOCAL, 'Quit put.gd'], [held] * 3)
@@ -523,12 +525,124 @@ class TrayProgressContracts(unittest.TestCase):
         with self.assertRaisesRegex(tray.TrayProgressError, 'not independently observed'):
             replay.settled(['failed'], 'label')
 
+    def test_menu_events_keep_only_dbusmenu_calls_to_the_resident(self):
+        import json
+        def call(member, payload_type, data, destination=':1.5', interface='com.canonical.dbusmenu', kind='method_call'):
+            return json.dumps({'type': kind, 'sender': ':1.9', 'destination': destination, 'interface': interface,
+                               'member': member, 'payload': {'type': payload_type, 'data': data}})
+        lines = [call('AboutToShow', 'i', [0]), 'not json',
+                 call('GetLayout', 'iias', [0, -1, []]),
+                 call('Event', 'isvu', [22, 'hovered', {'type': 's', 'data': ''}, 0]),
+                 call('EventGroup', 'a(isvu)', [[[21, 'hovered', {'type': 's', 'data': ''}, 0], [22, 'clicked', {}, 0]]]),
+                 call('AboutToShowGroup', 'ai', [[0, 30]]),
+                 call('Event', 'isvu', [30, 'clicked', {}, 0], destination=':1.6'),
+                 call('Event', 'isvu', [30, 'clicked', {}, 0], interface='org.example'),
+                 call('Event', 'isvu', [30, 'clicked', {}, 0], kind='signal')]
+        self.assertEqual(tray.menu_events(lines, ':1.5'), [('show', 0, None), ('event', 22, 'hovered'),
+                         ('event', 21, 'hovered'), ('event', 22, 'clicked'), ('show', 0, None), ('show', 30, None)])
+
+    def test_menu_presses_count_visible_top_level_rows(self):
+        rows = [{'id': 3, 'label': 'Capture region'}, {'id': 22, 'label': 'Failed uploads (2)'}, {'id': 30, 'label': 'Quit put.gd'}]
+        self.assertEqual(tray.menu_presses(rows, 'Failed uploads', False), (rows[1], 2))
+        self.assertEqual(tray.menu_presses(rows, 'Failed uploads', True), (rows[1], 1))
+        self.assertEqual(tray.menu_presses(rows, 'Local save needs attention', False), (None, None))
+
+    def visible_replay(self, events, rows=None, profile=None):
+        from unittest.mock import Mock
+        replay = object.__new__(tray.Replay)
+        replay.args = SimpleNamespace(tray_x=1200, tray_y=10)
+        replay.run, replay.width, replay.height = Path('/run'), 1280, 800
+        replay.profile = profile or {}
+        replay.result = {}
+        replay.witness = Mock()
+        rows = rows or [{'id': 3, 'label': 'Capture region'}, {'id': 22, 'label': self.LOCAL}, {'id': 30, 'label': 'Quit put.gd'}]
+        replay.tray_menu = Mock(return_value={'ok': True, 'rows': rows, 'labels': [r['label'] for r in rows]})
+        replay.menu_monitor = Mock(return_value=(41, '/tmp/tp-x/menu-monitor.jsonl'))
+        replay.menu_monitor_events = Mock(side_effect=events)
+        replay.stop_menu_monitor = Mock()
+        return replay
+
+    def test_visible_menu_reaches_the_row_by_keyboard_and_needs_the_desktops_click(self):
+        from unittest.mock import patch
+        shown = [('show', 0, None)]
+        hovered = shown + [('event', 3, 'hovered'), ('event', 22, 'hovered')]
+        replay = self.visible_replay([shown, hovered, hovered + [('event', 22, 'clicked')]])
+        with patch.object(tray.lab, 'pointer') as pointer, patch.object(tray.lab, 'key') as key, \
+                patch.object(tray.time, 'sleep'):
+            attempt = replay.open_visibly({'service': ':1.5', 'path': '/StatusNotifierItem'}, self.LOCAL, 'local-failure')
+        self.assertEqual((attempt['status'], attempt['label'], attempt['downPresses']), ('passed', self.LOCAL, 2))
+        self.assertTrue(attempt['hoverReported'])
+        self.assertFalse(attempt['calibrated'])
+        self.assertEqual([c.args[5:] for c in pointer.call_args_list], [(), (True, 'right'), (False, 'right')])
+        self.assertEqual([c.args[1] for c in key.call_args_list], [['down'], ['down'], ['ret']])
+        replay.stop_menu_monitor.assert_called_once_with((41, '/tmp/tp-x/menu-monitor.jsonl'))
+        self.assertEqual(replay.result['trayMenu'], [attempt])
+
+    def test_visible_menu_failures_close_the_menu_and_report_their_reason(self):
+        from unittest.mock import patch
+        shown = [('show', 0, None)]
+        cases = (([[]], 'did not open'),
+                 ([shown, shown + [('event', 30, 'hovered')]], 'highlight is not on the attention row'))
+        for events, reason in cases:
+            with self.subTest(reason=reason):
+                replay = self.visible_replay(events)
+                with patch.object(tray.lab, 'pointer'), patch.object(tray.lab, 'key') as key, patch.object(tray.time, 'sleep'):
+                    with self.assertRaisesRegex(tray.VisibleMenuFailed, reason):
+                        replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+                self.assertEqual(key.call_args_list[-1].args[1], ['esc'])
+                self.assertEqual(replay.result['trayMenu'][0]['status'], 'failed')
+                replay.stop_menu_monitor.assert_called_once()
+        replay = self.visible_replay([], rows=[{'id': 30, 'label': 'Quit put.gd'}])
+        with self.assertRaisesRegex(tray.VisibleMenuFailed, 'not a top-level'):
+            replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+        # No click within five seconds; then a click on another item is fatal, not a fallback.
+        replay = self.visible_replay([shown, shown] + [shown] * 3)
+        with patch.object(tray.lab, 'pointer'), patch.object(tray.lab, 'key'), patch.object(tray.time, 'sleep'), \
+                patch.object(tray.time, 'monotonic', side_effect=[0, 1, 6]):
+            with self.assertRaisesRegex(tray.VisibleMenuFailed, 'no click'):
+                replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+        replay = self.visible_replay([shown, shown, shown + [('event', 30, 'clicked')]],
+                                     profile={'tray_menu': {'firstRowSelected': True}})
+        with patch.object(tray.lab, 'pointer'), patch.object(tray.lab, 'key') as key, patch.object(tray.time, 'sleep'):
+            with self.assertRaisesRegex(tray.TrayProgressError, 'activated another item') as raised:
+                replay.open_visibly({'service': ':1.5', 'path': '/S'}, self.LOCAL, 'local-failure')
+        self.assertNotIsInstance(raised.exception, tray.VisibleMenuFailed)
+        self.assertEqual([c.args[1] for c in key.call_args_list], [['down'], ['ret']])
+        self.assertTrue(replay.result['trayMenu'][0]['calibrated'])
+
+    def test_a_failed_visible_menu_falls_back_to_the_dbus_event_and_says_so(self):
+        from unittest.mock import Mock, patch
+        replay = object.__new__(tray.Replay)
+        replay.args = SimpleNamespace(timeout=5)
+        replay.attention = {'kind': 'local-save', 'required': True, 'attentionObservedAt': 10, 'attentionLabel': self.LOCAL}
+        replay.result = {}; replay.witness = Mock()
+        held = {'matched': True, 'attention': self.LOCAL}
+        replay.observe = Mock(return_value=(None, {'service': ':1.5', 'path': '/S'}, held))
+        replay.open_visibly = Mock(side_effect=tray.VisibleMenuFailed('the desktop did not open put.gd\'s menu'))
+        replay.tray_menu = Mock(side_effect=lambda snapshot, label=None: {'ok': True, 'labels': [self.LOCAL]}
+                                if label is None else {'ok': True, 'clicked': 1, 'label': label})
+        with patch.object(tray.time, 'monotonic', side_effect=[11, 12, 13.5, 20]), patch.object(tray.time, 'sleep'):
+            replay.acknowledge_attention('local-failure')
+        self.assertEqual(replay.attention['openedBy'], 'dbus-event-fallback')
+        self.assertEqual(replay.result['visibleMenuFallbacks'],
+                         [{'scenario': 'local-failure', 'reason': 'the desktop did not open put.gd\'s menu'}])
+        replay.open_visibly = Mock(return_value={'status': 'passed', 'label': self.LOCAL})
+        replay.result, replay.attention = {}, {**replay.attention, 'attentionObservedAt': 10}
+        replay.tray_menu.reset_mock()
+        with patch.object(tray.time, 'monotonic', side_effect=[11, 12, 13.5, 20]), patch.object(tray.time, 'sleep'):
+            replay.acknowledge_attention('local-failure')
+        self.assertEqual(replay.attention['openedBy'], 'visible-menu')
+        self.assertNotIn('visibleMenuFallbacks', replay.result)
+        self.assertTrue(all(call.args[1:] == () for call in replay.tray_menu.call_args_list))
+
     def test_tray_menu_script_opens_exactly_one_matching_item(self):
         import json, os, stat, subprocess, sys
         def node(ident, label, visible=True, children=()):
             return [ident, {'label': {'type': 's', 'data': label}, 'visible': {'type': 'b', 'data': visible}},
                     [{'type': '(ia{sv}av)', 'data': child} for child in children]]
-        cases = [(None, [node(21, 'Capture region'), node(22, 'Failed uploads (2)'), node(23, 'Hidden', False)], None),
+        separator = [24, {'type': {'type': 's', 'data': 'separator'}, 'label': {'type': 's', 'data': '-'}}, []]
+        cases = [(None, [node(21, 'Capture region', children=[node(40, 'Region only')]), separator,
+                         node(22, 'Failed uploads (2)'), node(23, 'Hidden', False)], None),
                  ('Failed uploads', [node(22, 'Failed uploads (2)'), node(30, 'Quit put.gd')], '22'),
                  ('Local save needs attention', [node(30, 'Quit put.gd')], None)]
         for wanted, children, event in cases:
@@ -552,7 +666,8 @@ class TrayProgressContracts(unittest.TestCase):
                 events = [call for call in calls if 'Event' in call]
                 self.assertTrue(all(call[0] == '--address=unix:path=/nonexistent' for call in calls))
                 if wanted is None:
-                    self.assertEqual(reply['labels'], ['Capture region', 'Failed uploads (2)'])
+                    self.assertEqual(reply['labels'], ['Capture region', 'Region only', '-', 'Failed uploads (2)'])
+                    self.assertEqual(reply['rows'], [{'id': 21, 'label': 'Capture region'}, {'id': 22, 'label': 'Failed uploads (2)'}])
                     self.assertEqual(events, [])
                 elif event:
                     self.assertEqual((reply['clicked'], reply['label']), (1, 'Failed uploads (2)'))
