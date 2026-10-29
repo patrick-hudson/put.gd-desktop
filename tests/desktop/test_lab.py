@@ -938,6 +938,45 @@ Virtual-3 disconnected (normal left inverted right x axis y axis)
             path.write_bytes(header + pixels)
             self.assertIsNone(lab.locate_fixture_paint(path))
 
+    def test_scaled_fixture_origin_comes_from_quadrant_boundaries(self):
+        def render(width, height, placements, edge=True):
+            # Area-sampled like a smooth scale, with the editor's 1 px image edge.
+            pixels = bytearray(bytes([60, 60, 60]) * (width * height))
+            for ox, oy, scale in placements:
+                for y in range(int(oy) - 1, int(oy + 320 * scale) + 2):
+                    for x in range(int(ox) - 1, int(ox + 640 * scale) + 2):
+                        samples = []
+                        for sx, sy in ((.25, .25), (.75, .25), (.25, .75), (.75, .75)):
+                            u, v = (x + sx - ox) / scale, (y + sy - oy) / scale
+                            if 0 <= u < 640 and 0 <= v < 320:
+                                samples.append(lab.FIXTURE_RGB[(v >= 160) * 2 + (u >= 320)])
+                        if not samples:
+                            continue
+                        colour = [sum(c[i] for c in samples) // len(samples) if len(set(samples)) > 1
+                                  else samples[0][i] for i in range(3)]
+                        if len(samples) < 4 or (edge and (abs(x - ox) < 1 or abs(y - oy) < 1 or
+                                                         abs(x + 1 - ox - 640 * scale) < 1 or abs(y + 1 - oy - 320 * scale) < 1)):
+                            colour = [(c + 128) // 2 for c in colour]
+                        offset = (y * width + x) * 3
+                        pixels[offset:offset + 3] = bytes(colour)
+            return f'P6\n{width} {height}\n255\n'.encode() + bytes(pixels)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'editor.ppm'
+            for ox, oy, scale in ((37.3, 50.6, .9), (20, 30, 1.0), (101.5, 12.25, .5)):
+                with self.subTest(scale=scale):
+                    path.write_bytes(render(700, 400, [(ox, oy, scale)]))
+                    found = lab.locate_scaled_fixture_paint(path, scale)
+                    self.assertIsNotNone(found)
+                    self.assertAlmostEqual(found['x'], ox, delta=.6)
+                    self.assertAlmostEqual(found['y'], oy, delta=.6)
+                    self.assertEqual((found['width'], found['height']), (640 * scale, 320 * scale))
+            # The exact locator cannot see an image whose outer pixels carry an edge.
+            path.write_bytes(render(700, 400, [(20, 30, 1.0)]))
+            self.assertIsNone(lab.locate_fixture_paint(path))
+            path.write_bytes(render(760, 400, [(5, 10, .5), (400, 60, .5)]))
+            self.assertIsNone(lab.locate_scaled_fixture_paint(path, .5))
+            self.assertIsNone(lab.locate_scaled_fixture_paint(path, .9))
+
     def test_window_frame_oracle_follows_observed_kwin_session_not_profile_name(self):
         # Physical Debian 13 Plasma 6.3 (profile kde-wayland-physical) captured
         # a 642x449 server-decorated frame with paint at (1,28). Native Qt

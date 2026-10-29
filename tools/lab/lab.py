@@ -381,6 +381,65 @@ def locate_fixture_paint(path):
     return matches[0] if len(matches) == 1 else None
 
 
+FIXTURE_RGB = ((220, 30, 40), (20, 180, 70), (35, 70, 220), (235, 190, 20))
+
+
+def locate_scaled_fixture_paint(path, scale, slack=3):
+    """The 640x320 four-colour fixture drawn at scale, such as an editor's Fit zoom.
+
+    Smoothing and an image edge may change up to `slack` pixels at each
+    boundary, while quadrant interiors keep their exact colours. The origin is
+    taken from the boundaries between quadrants, so an edge drawn on the image's
+    outer pixels cannot move it. Returns float coordinates, or None unless the
+    pattern appears exactly once.
+    """
+    width, height, pixels = ppm(path)
+    red, green, blue, yellow = (bytes(colour) for colour in FIXTURE_RGB)
+    across, down = 320 * scale, 160 * scale
+    shortest, longest = max(4, int(across) - 2 * slack), int(across) + 1
+    stride = width * 3
+
+    def runs(y, colour):
+        row, found = pixels[y * stride:(y + 1) * stride], []
+        start = row.find(colour * shortest)
+        while start >= 0:
+            if start % 3:
+                start = row.find(colour * shortest, start + 1)
+                continue
+            end = start
+            while row[end:end + 3] == colour:
+                end += 3
+            if (end - start) // 3 <= longest:
+                found.append((start // 3, end // 3))
+            start = row.find(colour * shortest, end)
+        return found
+
+    def pair(y, left, right):
+        """(left start, boundary) of each left|right quadrant pair on row y."""
+        rights = runs(y, right)
+        return [(start, (end + other) / 2) for start, end in runs(y, left)
+                for other, _ in rights if end <= other <= end + 2 * slack]
+
+    tops = {}
+    for y in range(height):
+        for start, boundary in pair(y, red, green):
+            tops.setdefault(start, []).append((y, boundary))
+    matches = []
+    for start, rows in tops.items():
+        ys = [y for y, _ in rows]
+        first, last = ys[0], ys[-1]
+        if ys != list(range(first, last + 1)) or not down - 2 * slack <= len(ys) <= down + 1:
+            continue
+        below = next((y for y in range(last + 1, min(height, last + 2 + 2 * slack))
+                      if any(abs(x - start) <= 1 for x, _ in pair(y, blue, yellow))), None)
+        if below is None:
+            continue
+        across_at = sum(boundary for _, boundary in rows) / len(rows)
+        down_at = (last + 1 + below) / 2
+        matches.append({'x': across_at - across, 'y': down_at - down, 'width': 640 * scale, 'height': 320 * scale})
+    return matches[0] if len(matches) == 1 else None
+
+
 def compare_paste(actual, expected):
     return {'ok': all(actual.get(key) == value for key, value in expected.items()),
             'expected': expected, 'actual': actual}
