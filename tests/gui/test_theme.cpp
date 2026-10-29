@@ -368,10 +368,13 @@ private slots:
         QTest::keyClick(icon,Qt::Key_Backtab);PUTGD_TRY_VERIFY(first->hasFocus());PUTGD_TRY_VERIFY(!QToolTip::isVisible());
     }
     // A light desktop's tooltip colours (dark ink) on the dark tip panel left
-    // hover text unreadable: tips take their ink from the scheme, live.
+    // hover text unreadable: Qt hands tips the desktop's tooltip palette again
+    // on every desktop palette notification (KGlobalSettings, a colour scheme
+    // change), after Graphite set the application palette. Tips take their
+    // ink from the scheme, live.
     void tooltipsReadOnTheirPanelWhateverTheDesktopPalette() {
         QPalette desktop;desktop.setColor(QPalette::ToolTipBase,Qt::white);desktop.setColor(QPalette::ToolTipText,Qt::black);
-        auto restore=qScopeGuard([]{QToolTip::hideText();QToolTip::setPalette(Graphite::palette());});
+        auto restore=qScopeGuard([tips=QToolTip::palette()]{QToolTip::hideText();QToolTip::setPalette(tips);});
         QToolTip::setPalette(desktop);
         QWidget page;page.resize(200,100);page.show();QVERIFY(putgd::test::waitForWindowExposed(&page));
         const auto tip=[]()->QWidget*{for(auto* widget:QApplication::topLevelWidgets())if(widget->isVisible()&&QByteArray(widget->metaObject()->className())=="QTipLabel")return widget;return nullptr;};
