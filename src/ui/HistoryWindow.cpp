@@ -543,7 +543,7 @@ public:
   const auto columns=grid()?Columns{body,{},{},{}}:rowColumns(body,i);
   const bool below=actionsBelow(outer,i),compact=compactRow(outer,i);
   int itemWidth=qMax(0,columns.item.width()-12);
-  if(compact)itemWidth=body.width()-(failed?compactActionWidth(i):0);
+  if(compact)itemWidth=qMax(0,body.width()-(below?0:compactActionWidth(i)));
   else if(!grid()&&!below)itemWidth=inlineTextWidth(outer,i);
   else if(grid()||below)itemWidth=body.width();
   const auto titleFont=historyTitleFont(!grid()&&chosen),metaFont=Graphite::font(Graphite::Type::technical);
