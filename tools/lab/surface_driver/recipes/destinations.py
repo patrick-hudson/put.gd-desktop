@@ -150,9 +150,26 @@ def _selected(ctx, index):
 def _accessible(ctx, control):
     """#666: exact non-secret object lookup; never query a secret field's text."""
     rows = ctx.accessible({'window': 'destinations', 'control': control})
-    if len(rows) != 1:
+    if len(rows) != 1 or not isinstance(rows[0], dict):
         ctx.blocked('Need one current non-secret accessible control: ' + control, issue=CORE_ISSUE)
     return rows[0]
+
+
+def _state(ctx, control, key):
+    row = _accessible(ctx, control)
+    if key not in row:
+        ctx.blocked('Accessible control lacks required non-secret state: ' + control + '/' + key, issue=CORE_ISSUE)
+    return row[key]
+
+
+@recipe('destinations.add-credentials', needs=NEEDS)
+def add_credentials(ctx):
+    _open(ctx)
+    ctx.wait(lambda: _state(ctx, 'addDestinationCredentials', 'visible'), 'missing credential action appears')
+    ctx.click('addDestinationCredentials', window='destinations')
+    ctx.expect(_state(ctx, 'credentialAccessKey', 'focused') is True, 'Add credentials focuses access key entry')
+    _saved(ctx, lambda doc: doc['profiles'][0]['credentials'] == {'mode': 'session', 'reference': None}, 'focus action preserves credential reference')
+    _frame(ctx, 'after', '18-destination-credentials-compact')
 
 
 @recipe('destinations.rename', 'destinations.actions-menu', needs=NEEDS)
@@ -224,7 +241,7 @@ def autosave_validation(ctx):
     _edit(ctx, 's3Bucket', 'invalid bucket with spaces')
     # An observed inline error makes this an eventual assertion, not a race
     # against the 400 ms autosave timer.
-    ctx.wait(lambda: _accessible(ctx, 's3BucketError').get('text'), 'invalid bucket has an inline error')
+    ctx.wait(lambda: _state(ctx, 's3BucketError', 'text'), 'invalid bucket has an inline error')
     _saved(ctx, lambda doc: doc['profiles'][0]['settings']['bucket'] != 'invalid bucket with spaces', 'invalid edit stayed local')
     _frame(ctx, 'invalid')
     _edit(ctx, 's3Bucket', 'surface-valid-bucket')
@@ -236,7 +253,7 @@ def autosave_validation(ctx):
 def select_and_key_reorder(ctx):
     _, profiles = _open(ctx, 3)
     _selected(ctx, 1)
-    ctx.expect(_accessible(ctx, 'destinationLabel').get('text') == profiles[1]['label'], 'rail selection changes editor')
+    ctx.expect(_state(ctx, 'destinationLabel', 'text') == profiles[1]['label'], 'rail selection changes editor')
     ctx.keys('Alt+Up')
     _saved(ctx, lambda doc: [p['id'] for p in doc['profiles']] ==
            [profiles[i]['id'] for i in (1, 0, 2)], 'Alt+Up persists order')
@@ -305,7 +322,7 @@ def remove(ctx):
     request()
     ctx.click('confirmDiscard', window='confirmAction')
     _saved(ctx, lambda doc: doc['profiles'] == [], 'confirm removal leaves no profiles')
-    ctx.expect(_accessible(ctx, 'destinationsEmpty').get('visible') is True, 'empty destination state visible')
+    ctx.expect(_state(ctx, 'destinationsEmpty', 'visible') is True, 'empty destination state visible')
     _frame(ctx, 'after')
 
 
@@ -335,10 +352,10 @@ def cli_credentials_refused(ctx):
 def help_toggles(ctx):
     _open(ctx)
     ctx.click('s3BucketHelp', window='destinations')
-    ctx.expect(_accessible(ctx, 's3BucketHelp').get('checked') is True, 'bucket explanation expanded')
+    ctx.expect(_state(ctx, 's3BucketHelp', 'checked') is True, 'bucket explanation expanded')
     _frame(ctx, 'expanded')
     ctx.click('s3BucketHelp', window='destinations')
-    ctx.expect(_accessible(ctx, 's3BucketHelp').get('checked') is False, 'bucket explanation collapsed')
+    ctx.expect(_state(ctx, 's3BucketHelp', 'checked') is False, 'bucket explanation collapsed')
     _saved(ctx, lambda doc: len(doc['profiles']) == 1, 'help leaves configuration intact')
     _frame(ctx, 'after')
 
@@ -346,7 +363,7 @@ def help_toggles(ctx):
 # These interactions require safe synthetic input, exact setup-job inspection,
 # and a verified guest-only Secret Service fixture, all tracked in #666. Do not
 # silently turn them into settings.patch, mock keyring or screenshot-only passes.
-@recipe('destinations.add-credentials', 'destinations.credential-fields',
+@recipe('destinations.credential-fields',
         'destinations.store-credentials', 'destinations.show-secret',
         'destinations.unlock-credentials', 'destinations.test', needs=NEEDS)
 def credential_lifecycle(ctx):
@@ -358,7 +375,17 @@ def credential_lifecycle(ctx):
 
 @recipe('destinations.conflict', needs=NEEDS)
 def conflict(ctx):
-    _open(ctx)
+    _, profiles = _open(ctx)
+    _edit(ctx, 's3Bucket', 'invalid unsaved draft')
+    ctx.wait(lambda: _state(ctx, 's3BucketError', 'text'), 'invalid draft retained')
+    _patch(ctx, {'preferences': {'notifications': not _get(ctx)['document']['preferences'].get('notifications', True)}})
+    ctx.wait(lambda: _state(ctx, 'destinationConflictBanner', 'visible'), 'external edit raises conflict banner')
+    _frame(ctx, 'conflict', '52-destinations-conflict')
+    ctx.click('reloadDestinationConflict', window='destinations')
+    ctx.keys('Escape')
+    ctx.expect(_state(ctx, 'destinationConflictBanner', 'visible') is True, 'cancel reload keeps local draft')
+    ctx.click('reloadDestinationConflict', window='destinations')
+    ctx.click('confirmDiscard', window='confirmAction')
+    ctx.wait(lambda: not _state(ctx, 'destinationConflictBanner', 'visible'), 'confirmed reload clears conflict')
+    _saved(ctx, lambda doc: doc['profiles'] == profiles, 'reload discards invalid draft and preserves accepted settings')
     _frame(ctx, 'after')
-    ctx.blocked('Need non-secret draft/conflict inspection and a safe unstored credential '
-                'fixture to trigger an external-change conflict deterministically (#666).', issue=CORE_ISSUE)

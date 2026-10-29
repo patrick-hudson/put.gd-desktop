@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Recipe contract/safety tests. These are not graphical acceptance evidence."""
 from copy import deepcopy
-import hashlib
 import json
+import os
 from pathlib import Path
+import subprocess
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -14,6 +16,9 @@ from tools.lab.surface_driver.recipes import destinations as lane
 
 class FakeContext(Context):
     def __init__(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix='sd-')
+        self.root = Path(self.temporary.name)
+        (self.root / 'putgd').mkdir(mode=0o700)
         self.profile = {}
         self.document = {'profiles': [], 'preferences': {}}
         self.revision = 1
@@ -27,7 +32,8 @@ class FakeContext(Context):
         self.invalid = False
         self.corrupt_disk = False
         self.private_root = True
-        self.f = {'private': True, 'config_path': '/tmp/sd/c/putgd/config.json',
+        self.conflict = False
+        self.f = {'private': True, 'config_path': str(self.root / 'putgd/config.json'),
                   'profile': {'id': 'fixture', 'label': 'Fixture', 'provider': 's3',
                               'credentials': {'mode': 'session', 'reference': None},
                               'settings': {'bucket': 'surface-moto', 'region': 'us-east-1',
@@ -47,6 +53,9 @@ class FakeContext(Context):
     def call(self, method, params=None):
         self.assert_event('call', method, deepcopy(params))
         if method == 'settings.get':
+            path = Path(self.f['config_path'])
+            path.write_text(json.dumps(self.document))
+            path.chmod(0o600)
             return {'result': {'document': deepcopy(self.document), 'metadata': {
                 'path': self.f['config_path'], 'observedRevision': str(self.revision)}}}
         if method == 'settings.patch':
@@ -58,6 +67,8 @@ class FakeContext(Context):
                 else:
                     self.document[key] = deepcopy(value)
             self.revision += 1
+            if self.invalid:
+                self.conflict = True
             return {'result': {}}
         raise AssertionError('undeclared resident method: ' + method)
 
@@ -68,15 +79,16 @@ class FakeContext(Context):
         return {'shown': 'destinations'}
 
     def shell(self, script, timeout=60):
-        # Execute no target script on the workstation. Independently check the
-        # expected digest, and allow corruption to falsify disk verification.
+        # Run only the recipe's read-only Python probe against an actual private
+        # temporary document. This checks its digest/mode logic independently
+        # of the fake resident and real-input model.
         self.assert_event('shell', script)
-        if 'privateConfig' in script:
-            return {'returncode': 0, 'stdout': json.dumps({'privateConfig': self.private_root})}
-        digest = hashlib.sha256(json.dumps(self.document, sort_keys=True,
-                                          separators=(',', ':'), ensure_ascii=True).encode()).hexdigest()
-        return {'returncode': 0, 'stdout': json.dumps({
-            'matches': digest in script and not self.corrupt_disk, 'referencesOnly': True})}
+        self.root.chmod(0o700 if self.private_root else 0o755)
+        if self.corrupt_disk:
+            Path(self.f['config_path']).write_text('{}')
+        done = subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
+                              env={**os.environ, 'XDG_CONFIG_HOME': str(self.root)}, timeout=timeout)
+        return {'returncode': done.returncode, 'stdout': done.stdout, 'stderr': done.stderr}
 
     def wait(self, predicate, what, timeout=10, interval=.2):
         value = predicate()
@@ -97,11 +109,16 @@ class FakeContext(Context):
                     'publicationMode': 'default'}
             elif self.dialog == 'remove':
                 self.document['profiles'].pop(self.selection)
+            elif self.dialog == 'reload':
+                self.conflict = False
+                self.invalid = False
             else:
                 raise AssertionError('confirmation was not opened')
             self.dialog = None
         if control == 'makeDefaultDestination':
             self.dialog = 'default'
+        if control == 'reloadDestinationConflict':
+            self.dialog = 'reload'
         if control == 's3BucketHelp':
             self.checked = not self.checked
         if control.endswith('Reset'):
@@ -177,6 +194,12 @@ class FakeContext(Context):
             return [{'text': self.document['profiles'][self.selection]['label']}]
         if control == 's3BucketError':
             return [{'text': 'Invalid bucket' if self.invalid else ''}]
+        if control == 'destinationConflictBanner':
+            return [{'visible': self.conflict}]
+        if control == 'addDestinationCredentials':
+            return [{'visible': True}]
+        if control == 'credentialAccessKey':
+            return [{'focused': self.focus == 'addDestinationCredentials'}]
         if control == 'destinationsEmpty':
             return [{'visible': not self.document['profiles']}]
         if control == 's3BucketHelp':
@@ -196,6 +219,11 @@ class FakeContext(Context):
 
 
 class DestinationsContracts(unittest.TestCase):
+    def context(self):
+        ctx = FakeContext()
+        self.addCleanup(ctx.temporary.cleanup)
+        return ctx
+
     def recipes(self):
         return [r for r in REGISTRY if r.function.__module__ == lane.__name__]
 
@@ -207,10 +235,10 @@ class DestinationsContracts(unittest.TestCase):
         self.assertEqual(len(actual), len(set(actual)))
 
     def test_all_recipes_input_assertions_and_referenced_frames(self):
-        blocked = {'credential_lifecycle', 'conflict'}
+        blocked = {'credential_lifecycle'}
         for r in self.recipes():
             with self.subTest(recipe=r.name):
-                ctx = FakeContext()
+                ctx = self.context()
                 if r.function.__name__ in blocked:
                     with self.assertRaises(RecipeBlocked) as caught:
                         r.function(ctx)
@@ -230,34 +258,34 @@ class DestinationsContracts(unittest.TestCase):
         for endpoint in ('https://s3.us-east-1.amazonaws.com', 'http://localhost:5000',
                          'http://127.0.0.1:5000/?secret=value', 'http://user@127.0.0.1:5000'):
             with self.subTest(endpoint=endpoint):
-                ctx = FakeContext()
+                ctx = self.context()
                 ctx.f['profile']['settings']['endpoint'] = endpoint
                 with self.assertRaises(RecipeBlocked):
                     lane.rename(ctx)
                 self.assertFalse(any(e[:2] == ('call', 'settings.patch') for e in ctx.events))
 
     def test_private_config_required(self):
-        ctx = FakeContext()
+        ctx = self.context()
         ctx.f['private'] = False
         with self.assertRaises(RecipeBlocked):
             lane.rename(ctx)
         self.assertFalse(any(e[0] in ('click', 'view') for e in ctx.events))
 
     def test_target_private_root_verified_before_patch(self):
-        ctx = FakeContext()
+        ctx = self.context()
         ctx.private_root = False
         with self.assertRaises(RecipeBlocked):
             lane.rename(ctx)
         self.assertFalse(any(e[:2] == ('call', 'settings.patch') for e in ctx.events))
 
     def test_disk_disagreement_is_failure(self):
-        ctx = FakeContext()
+        ctx = self.context()
         ctx.corrupt_disk = True
         with self.assertRaises(RecipeFailed):
             lane.rename(ctx)
 
     def test_only_config_digest_enters_shell(self):
-        ctx = FakeContext()
+        ctx = self.context()
         lane.rename(ctx)
         scripts = [e[1] for e in ctx.events if e[0] == 'shell']
         self.assertTrue(scripts)
