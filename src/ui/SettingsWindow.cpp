@@ -1,3 +1,4 @@
+#include <cmath>
 #include "SettingsWindow.h"
 #include "MainWindow.h"
 #include "storage/proton/ProtonProvider.h"
@@ -226,7 +227,8 @@ protected:
  QString textFromValue(double value)const override{auto text=QString::number(value,'f',decimals());if(text.contains('.')){while(text.endsWith('0'))text.chop(1);if(text.endsWith('.'))text.chop(1);}return text;}
 };
 QString inputText(QLineEdit* field){if(auto* spin=qobject_cast<QDoubleSpinBox*>(field->parentWidget()))return spin->cleanText();return field->text();}
-void setInputText(QLineEdit* field,const QString& text){if(auto* spin=qobject_cast<QDoubleSpinBox*>(field->parentWidget())){bool valid=false;const double number=text.toDouble(&valid);if(valid&&number>=spin->minimum()&&number<=spin->maximum()){spin->setValue(number);return;}}field->setText(text);}
+void setInputText(QLineEdit* field,const QString& text){if(auto* spin=qobject_cast<QDoubleSpinBox*>(field->parentWidget())){bool valid=false;const double number=text.toDouble(&valid);// Round to the shown precision first: Qt 6.10 keeps unrounded values that cleanText then prints in full.
+ if(valid){const double scale=std::pow(10.0,spin->decimals());const double shown=std::max(spin->minimum(),std::round(number*scale)/scale);if(shown<=spin->maximum()){spin->setValue(shown);return;}}}field->setText(text);}
 class FieldActionsSizer final:public QObject {
 public:
  FieldActionsSizer(QWidget* owner,QBoxLayout* line,QWidget* value,QWidget* actions):QObject(owner),line_(line),actions_(actions){owner->installEventFilter(this);value->installEventFilter(this);actions->installEventFilter(this);}
