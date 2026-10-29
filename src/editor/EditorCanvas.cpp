@@ -36,6 +36,21 @@ int nearestHandle(const QPointF (&points)[N],const QPointF& position,int stride=
 }
 // The scheme's colours at paint time (#60): the canvas behind the image and
 // the accent of the keyboard focus ring around it.
+// Pointer and keyboard edits keep marks on the visible image: points stop at
+// its edges, and a mark already partly outside (cropped since) may move back
+// in but never farther out.
+QPointF inside(const QPointF& p,const QRect& bounds){
+ return {std::clamp(p.x(),double(bounds.left()),double(bounds.left()+bounds.width())),std::clamp(p.y(),double(bounds.top()),double(bounds.top()+bounds.height()))};
+}
+QPoint inside(const QPoint& p,const QRect& bounds){
+ return {std::clamp(p.x(),bounds.left(),bounds.left()+bounds.width()),std::clamp(p.y(),bounds.top(),bounds.top()+bounds.height())};
+}
+QPoint containedMove(const Shape& shape,const QPoint& d,const QRect& bounds){
+ const bool arrow=shape.kind==Shape::Kind::Arrow;
+ const auto box=arrow?QRect(shape.from,shape.to).normalized():shape.rect;const auto room=arrow?bounds.adjusted(0,0,1,1):bounds;
+ auto axis=[](int delta,int low,int high){return std::clamp(delta,std::min(low,0),std::max(high,0));};
+ return {axis(d.x(),room.left()-box.left(),room.right()-box.right()),axis(d.y(),room.top()-box.top(),room.bottom()-box.bottom())};
+}
 QColor canvasBackground(){return Theme::current().well;}
 QColor accent(){return Theme::current().accent;}
 // Guides drawn over the image read on pale and dark content alike, whatever
@@ -227,11 +242,12 @@ Shape EditorCanvas::scaledText(const Shape& original,int handle,const QPointF& n
  else if(handle==4)resized.moveTopLeft(box.topLeft());else resized.moveTopRight(box.topRight());
  shape.rect=resized;return shape;
 }
-QRect EditorCanvas::resized(QRect r,int handle,const QPoint& d) const {
- if(handle==0||handle==6||handle==7)r.setLeft(r.left()+d.x());
- if(handle==2||handle==3||handle==4)r.setRight(r.right()+d.x());
- if(handle==0||handle==1||handle==2)r.setTop(r.top()+d.y());
- if(handle==4||handle==5||handle==6)r.setBottom(r.bottom()+d.y());
+// Only the edges the handle moves are held inside bounds.
+QRect EditorCanvas::resized(QRect r,int handle,const QPoint& d,const QRect& bounds) const {
+ if(handle==0||handle==6||handle==7)r.setLeft(std::clamp(r.left()+d.x(),bounds.left(),bounds.right()));
+ if(handle==2||handle==3||handle==4)r.setRight(std::clamp(r.right()+d.x(),bounds.left(),bounds.right()));
+ if(handle==0||handle==1||handle==2)r.setTop(std::clamp(r.top()+d.y(),bounds.top(),bounds.bottom()));
+ if(handle==4||handle==5||handle==6)r.setBottom(std::clamp(r.bottom()+d.y(),bounds.top(),bounds.bottom()));
  return r.normalized();
 }
 
@@ -337,7 +353,9 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
    if(selected_!=shape->id){selected_=shape->id;emit selectionChanged();}
    original_=*shape;editOnClick_=shape->id;drag_=Drag::Move;doc_.beginGesture();update();return;
   }
-  beginText(image,nullptr);return;
+  // A new label starts on the image, not in the surrounding margin.
+  if(QRectF(doc_.crop()).contains(image))beginText(image,nullptr);
+  return;
  }
  const bool force=drawingTool()&&(event->modifiers()&Qt::ControlModifier);
  // Handles and the visible body of the current selection edit it in every tool.
@@ -358,8 +376,10 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
  }
  Shape shape;shape.kind=kindFor(tool_);shape.color=shape.kind==Shape::Kind::Redact?QColor(Qt::black):style_.color;
  shape.width=style_.width;shape.strength=style_.strength;shape.fontPixels=style_.fontPixels;shape.fontFamily=style_.fontFamily;
- const QPoint at(int(std::floor(image.x())),int(std::floor(image.y())));
- shape.from=shape.to=at;shape.rect=boxFrom(image,image);
+ // A press in the margin starts the mark at the nearest image edge.
+ const auto start=inside(image,doc_.crop());
+ const QPoint at(int(std::floor(start.x())),int(std::floor(start.y())));
+ shape.from=shape.to=at;shape.rect=boxFrom(start,start);
  doc_.beginGesture();selected_=doc_.add(shape);original_=*doc_.find(selected_);drag_=Drag::Create;emit selectionChanged();update();
 }
 
@@ -376,16 +396,24 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
  const auto image=doc_.imageRect();
  if(drag_==Drag::CropNew){cropDraft_=EditDocument::clampRect(boxFrom(start,now),image);if(cropDraft_.isEmpty())cropDraft_=cropOriginal_;update();return;}
  if(drag_==Drag::CropMove){auto moved=cropOriginal_.translated(delta);moved.moveLeft(std::clamp(moved.left(),0,image.width()-moved.width()));moved.moveTop(std::clamp(moved.top(),0,image.height()-moved.height()));cropDraft_=moved;update();return;}
- if(drag_==Drag::CropResize){const auto r=EditDocument::clampRect(resized(cropOriginal_,handle_,delta),image);if(!r.isEmpty())cropDraft_=r;update();return;}
- auto shape=original_;
+ if(drag_==Drag::CropResize){const auto r=EditDocument::clampRect(resized(cropOriginal_,handle_,delta,image),image);if(!r.isEmpty())cropDraft_=r;update();return;}
+ auto shape=original_;const auto bounds=doc_.crop();
  if(drag_==Drag::Create){
-  if(shape.kind==Shape::Kind::Arrow)shape.to=QPoint(int(std::lround(now.x())),int(std::lround(now.y())));
-  else{shape.rect=boxFrom(start,now);if(event->modifiers()&Qt::ShiftModifier){const int side=std::max(shape.rect.width(),shape.rect.height());shape.rect=QRect(shape.rect.topLeft(),QSize(side,side));}}
- }else if(drag_==Drag::Move){shape.rect.translate(delta);shape.from+=delta;shape.to+=delta;}
+  const auto end=inside(now,bounds);
+  if(shape.kind==Shape::Kind::Arrow)shape.to=QPoint(int(std::lround(end.x())),int(std::lround(end.y())));
+  else{
+   shape.rect=boxFrom(inside(start,bounds),end);
+   if(event->modifiers()&Qt::ShiftModifier){
+    const auto corner=shape.rect.topLeft();
+    const int side=std::min({std::max(shape.rect.width(),shape.rect.height()),bounds.left()+bounds.width()-corner.x(),bounds.top()+bounds.height()-corner.y()});
+    shape.rect=QRect(corner,QSize(side,side));
+   }
+  }
+ }else if(drag_==Drag::Move){const auto d=containedMove(shape,delta,bounds);shape.rect.translate(d);shape.from+=d;shape.to+=d;}
  else if(drag_==Drag::Resize){
-  if(shape.kind==Shape::Kind::Arrow){if(handle_==0)shape.from+=delta;else shape.to+=delta;}
+  if(shape.kind==Shape::Kind::Arrow){if(handle_==0)shape.from=inside(shape.from+delta,bounds);else shape.to=inside(shape.to+delta,bounds);}
   else if(shape.kind==Shape::Kind::Text)shape=scaledText(original_,handle_,now);
-  else shape.rect=resized(shape.rect,handle_,delta);
+  else shape.rect=resized(shape.rect,handle_,delta,bounds);
  }
  doc_.preview(shape);update();
  // The size control follows a text label while its corner is dragged.
@@ -467,13 +495,13 @@ bool EditorCanvas::nudge(const QPoint& d,bool resize){
   cropDraft_=r;update();announce();emit viewChanged();return true;
  }
  const auto* current=doc_.find(selected_);if(!current)return false;
- auto shape=*current;using Kind=Shape::Kind;
- if(!resize){shape.rect.translate(d);shape.from+=d;shape.to+=d;}
- else if(shape.kind==Kind::Arrow){shape.to+=d;if(shape.to==shape.from)return true;}
+ auto shape=*current;using Kind=Shape::Kind;const auto area=doc_.crop();
+ if(!resize){const auto step=containedMove(shape,d,area);shape.rect.translate(step);shape.from+=step;shape.to+=step;}
+ else if(shape.kind==Kind::Arrow){shape.to=inside(shape.to+d,area);if(shape.to==shape.from)return true;}
  else if(shape.kind==Kind::Text){
   shape.fontPixels=std::clamp(shape.fontPixels+d.x()+d.y(),minimumFontPixels,maximumFontPixels);
   const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));shape.rect.setSize(QSize(metrics.horizontalAdvance(shape.text)+1,metrics.height()));
- }else{shape.rect.setRight(shape.rect.right()+d.x());shape.rect.setBottom(shape.rect.bottom()+d.y());if(shape.rect.width()<1||shape.rect.height()<1)return true;}
+ }else{shape.rect.setRight(std::min(shape.rect.right()+d.x(),std::max(area.right(),current->rect.right())));shape.rect.setBottom(std::min(shape.rect.bottom()+d.y(),std::max(area.bottom(),current->rect.bottom())));if(shape.rect.width()<1||shape.rect.height()<1)return true;}
  const auto bounds=shape.kind==Kind::Arrow?QRect(shape.from,shape.to).normalized():shape.rect;
  if(!bounds.intersects(doc_.imageRect()))return true;
  if(doc_.replace(shape)){update();emit changed();if(shape.kind==Kind::Text)emit selectionChanged();}

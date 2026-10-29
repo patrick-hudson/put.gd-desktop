@@ -217,6 +217,30 @@ private slots:
   const auto before=doc.find(redactId)->rect;QVERIFY(doc.undo());QVERIFY(doc.redo());
   QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(300,90));QCOMPARE(canvas.selected(),redactId);QCOMPARE(doc.find(redactId)->rect,before);QVERIFY(!doc.canRedo());
  }
+ void pointerEditsStayOnTheImage(){
+  EditDocument doc(noise({400,300},15));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Rectangle);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
+  const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
+  auto drag=[&](QPoint from,QPoint to){
+   QTest::mousePress(&canvas,Qt::LeftButton,{},origin+from);
+   QMouseEvent move(QEvent::MouseMove,QPointF(origin+to),canvas.mapToGlobal(QPointF(origin+to)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+   QTest::mouseRelease(&canvas,Qt::LeftButton,{},origin+to);
+  };
+  // Drawing past an edge stops at it, and a press in the margin starts on the edge.
+  drag({300,200},{460,380});QCOMPARE(doc.shapes().size(),1);const auto big=doc.shapes().last().id;QCOMPARE(doc.find(big)->rect,QRect(300,200,100,100));
+  canvas.select(0);drag({-40,-30},{20,10});QCOMPARE(doc.shapes().size(),2);const auto small=doc.shapes().last().id;QCOMPARE(doc.find(small)->rect,QRect(0,0,20,10));
+  // A dragged shape stops at the edge, and a resize handle stops there too.
+  canvas.setTool(Tool::Select);drag({350,250},{-100,250});QCOMPARE(doc.find(big)->rect,QRect(0,200,100,100));
+  drag({100,300},{600,500});QCOMPARE(doc.find(big)->rect,QRect(0,200,400,100));
+  // Arrow ends stay on the image.
+  canvas.setTool(Tool::Arrow);drag({350,50},{500,-80});QCOMPARE(doc.shapes().size(),3);
+  QCOMPARE(doc.shapes().last().from,QPoint(350,50));QCOMPARE(doc.shapes().last().to,QPoint(400,0));
+  // A text click in the margin opens no label.
+  canvas.setTool(Tool::Text);QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(-30,100));QVERIFY(!canvas.editingText());
+  // Keyboard nudges stop at the edge without adding an undo step.
+  canvas.setTool(Tool::Select);canvas.select(small);const auto history=doc.historyEntries();
+  QTest::keyClick(&canvas,Qt::Key_Left);QTest::keyClick(&canvas,Qt::Key_Up);QCOMPARE(doc.find(small)->rect,QRect(0,0,20,10));QCOMPARE(doc.historyEntries(),history);
+ }
  void textToolDragsLabelsAndClicksToEdit(){
   EditDocument doc(noise({400,300},12));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
   canvas.setTool(Tool::Text);canvas.fit();
