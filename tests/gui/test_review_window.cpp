@@ -14,6 +14,7 @@
 #include "ui/Graphite.h"
 #include "ui/Fonts.h"
 #include "ui/Theme.h"
+#include "ui/VisualStyle.h"
 #include <QLabel>
 #include <QApplication>
 #include <QPainter>
@@ -375,6 +376,26 @@ private slots:
         window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QVERIFY(!visible());
+    }
+    void disabledBlurGlyphKeepsReadableScaledInk() {
+        const auto original = qApp->font();
+        auto restore = qScopeGuard([&] { qApp->setFont(original); });
+        for (const int pixels : {14, 21}) for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            auto font = original; font.setPixelSize(pixels); qApp->setFont(font);
+            Theme::setScheme(scheme);
+            ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
+            window.drive({{"action", "addMask"}, {"kind", "blur"}});
+            window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
+            putgd::test::settle(10);
+            auto* chip = window.findChild<QToolButton*>("reviewBlurChip"); QVERIFY(chip && !chip->isEnabled());
+            const auto& palette = Theme::current();
+            const auto ink = Theme::contrast(palette.textDisabled, palette.warningSurface) >= 4.5 ? palette.textDisabled : palette.textSecondary;
+            const int side = Graphite::scaled(16);
+            QImage expected(side, side, QImage::Format_RGB32); expected.fill(palette.warningSurface);
+            { QPainter painter(&expected); VisualStyle::icon("alert", ink).paint(&painter, expected.rect()); }
+            QCOMPARE(chip->grab().toImage().copy(4, (chip->height() - side) / 2, side, side).convertToFormat(QImage::Format_RGB32), expected);
+            QVERIFY(Theme::contrast(ink, palette.warningSurface) >= 3.0);
+        }
     }
     void blurChipDistinguishesEnabledAndDisabledActions() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();

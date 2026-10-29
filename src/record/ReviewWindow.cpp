@@ -119,7 +119,7 @@ public:
     QSize sizeHint() const override {
         const int enabled = fontMetrics().horizontalAdvance(QStringLiteral("Blur may be reversible · ")) + QFontMetrics(actionFont(true)).horizontalAdvance(QStringLiteral("Use Redact"));
         const int disabled = fontMetrics().horizontalAdvance(QStringLiteral("Select a blur to use Redact"));
-        return {std::max(enabled, disabled) + 16 + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)};
+        return {std::max(enabled, disabled) + Graphite::scaled(16) + 3 * reviewSpace(Graphite::Space::xs), textControlHeight(this)};
     }
     QSize minimumSizeHint() const override { return sizeHint(); }
 protected:
@@ -137,10 +137,10 @@ protected:
         painter.setBrush(underMouse() && isEnabled() ? palette.selected : palette.warningSurface);
         painter.setPen(Graphite::keyboardFocus(this) ? QPen(palette.accent, 1) : QPen(Qt::NoPen));
         painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Graphite::Metric::smallRadius, Graphite::Metric::smallRadius);
-        const int gap = reviewSpace(Graphite::Space::xs), side = 16;
-        VisualStyle::icon("alert", isEnabled() ? palette.warning : palette.textDisabled).paint(&painter, QRect(gap, (height() - side) / 2, side, side));
+        const int gap = reviewSpace(Graphite::Space::xs), side = Graphite::scaled(16);
         const auto disabledInk = Theme::contrast(palette.textDisabled, palette.warningSurface) >= 4.5 ? palette.textDisabled : palette.textSecondary;
         const auto informationInk = isEnabled() ? palette.textSecondary : disabledInk;
+        VisualStyle::icon("alert", isEnabled() ? palette.warning : informationInk).paint(&painter, QRect(gap, (height() - side) / 2, side, side));
         const QString information = isEnabled() ? QStringLiteral("Blur may be reversible · ") : QStringLiteral("Select a blur to use Redact");
         painter.setFont(font());
         painter.setPen(informationInk);
