@@ -7,7 +7,9 @@ points at, so a renamed button or check fails here instead of silently leaving a
 grey hole in the map.
 """
 import fnmatch
+import contextlib
 import importlib.util
+import io
 import json
 from pathlib import Path
 import re
@@ -242,7 +244,8 @@ class Aggregation(unittest.TestCase):
                            placement='guest', functional='failed', review=True,
                            review_reason='Inspect failing frame', build='abc123',
                            receipt='run.json', at='2026-10-01')
-        for verdict in ({'functional': 'passed'}, {'visual': 'reviewed-ok'}, {'review': False}):
+        for verdict in ([{'functional': f} for f in surface_map.FUNCTIONAL] +
+                        [{'visual': v} for v in ('reviewed-ok', 'reviewed-wrong')] + [{'review': False}]):
             for identity in ({}, {'build': 'abc123'}, {'receipt': 'run.json'}):
                 with self.subTest(verdict=verdict, identity=identity):
                     newer = self.entry('editor.undo', 'ubuntu-gnome-wayland', host='f44',
@@ -280,6 +283,18 @@ class Aggregation(unittest.TestCase):
         self.assertEqual(len(data['reviews']), 1)
         self.assertEqual(data['reviews'][0]['review_reason'], older['review_reason'])
         self.assertEqual(data['reviews'][0]['frames'], older['frames'])
+
+    def test_same_run_frames_alone_preserve_review_request(self):
+        older = self.entry('editor.undo', 'mint-cinnamon-x11', host='m74', placement='native',
+                           review=True, review_reason='Inspect undo', receipt='run.json',
+                           at='2026-10-01')
+        for update in ({'visual': 'frames'}, {'visual': 'frames', 'review_reason': 'Inspect new frames'}):
+            with self.subTest(update=update):
+                newer = self.entry('editor.undo', 'mint-cinnamon-x11', host='m74', placement='native',
+                                   receipt='run.json', at='2026-10-02', **update)
+                data = surface_map.build_page_data(self.model, [newer, older], None, '.')
+                self.assertEqual(len(data['reviews']), 1)
+                self.assertEqual(data['reviews'][0]['review_reason'], update.get('review_reason', 'Inspect undo'))
 
     def test_missing_host_dimension_does_not_count_as_passed(self):
         rows = [self.entry('editor.undo', 'ubuntu-gnome-wayland', host='m74', placement='guest',
@@ -365,6 +380,82 @@ class ReceiptImport(unittest.TestCase):
             'functional': 'passed', 'visual': 'frames', 'packages': ['deb'],
             'receipts': [], 'issues': [], 'notes': []})
         self.assertNotIn('host', loaded[0])
+
+    def test_load_infers_unique_native_placement(self):
+        path = self.receipt('host-only.json', {'schemaVersion': 2, 'entries': [
+            {'interaction': 'editor.undo', 'desktop': 'mint-cinnamon-x11', 'package': 'deb',
+             'functional': 'passed', 'host': 'm74'}]})
+        error = io.StringIO()
+        with contextlib.redirect_stderr(error):
+            loaded = surface_map.load_coverage([path], self.model)
+        self.assertEqual(error.getvalue(), '')
+        self.assertEqual(loaded[0]['placement'], 'native')
+        data = surface_map.build_page_data(self.model, loaded, None, self.tmp.name)
+        cell = next(i for i in data['interactions'] if i['id'] == 'editor.undo')['cells'][0]
+        self.assertEqual((cell['host'], cell['placement'], cell['functional']), ('m74', 'native', 'passed'))
+        self.assertEqual(surface_map.main(['build', '--coverage', str(path),
+                                          '--output', str(Path(self.tmp.name) / 'native')]), 0)
+
+    def test_load_unresolved_placement_stays_in_desktop_rollup_only(self):
+        for native_count in (0, 2):
+            with self.subTest(native_count=native_count):
+                model = json.loads(json.dumps(self.model))
+                desktop = next(d for d in model['desktops'] if d['id'] == 'mint-cinnamon-x11')
+                desktop['rows'] = [{'host': 'm74', 'placement': 'native'}] * native_count
+                path = self.receipt('unresolved.json', {'schemaVersion': 2, 'entries': [
+                    {'interaction': 'editor.undo', 'desktop': desktop['id'], 'package': 'deb',
+                     'functional': 'failed', 'host': 'm74'}]})
+                error = io.StringIO()
+                with contextlib.redirect_stderr(error):
+                    loaded = surface_map.load_coverage([path], model)
+                warning = error.getvalue().splitlines()
+                self.assertEqual(len(warning), 1)
+                for text in (str(path), 'entry 1', 'editor.undo', desktop['id'], 'm74', 'desktop rollup only'):
+                    self.assertIn(text, warning[0])
+                data = surface_map.build_page_data(model, loaded, None, self.tmp.name)
+                item = next(i for i in data['interactions'] if i['id'] == 'editor.undo')
+                self.assertEqual(item['desktops'][desktop['id']]['functional'], 'failed')
+                self.assertNotIn('cells', item)
+                self.assertFalse(data['hostCoverage'])
+                self.assertTrue(all(r['placement'] for r in data['rows']))
+                # A known builder pass must not hide an unresolved historical failure.
+                known = surface_map.make_entry('editor.undo', desktop['id'], 'deb', host='f44',
+                                               placement='guest', functional='passed', at='2099-01-01')
+                item = surface_map.summarise(model, loaded + [known])['editor.undo']
+                self.assertEqual(item['desktops'][desktop['id']]['functional'], 'failed')
+                self.assertEqual(len(item['cells']), 1)
+                self.assertEqual(item['cells'][0]['host'], 'f44')
+                model_path = self.receipt('model.json', model)
+                with contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(surface_map.main(['--model', str(model_path), 'build', '--coverage', str(path),
+                        '--output', str(Path(self.tmp.name) / 'unresolved')]), 0)
+
+    def test_mark_and_import_still_reject_host_without_placement(self):
+        coverage = Path(self.tmp.name) / 'invalid.json'
+        receipt = self.receipt('driver-host-only.json', {'interactions': [
+            {'interaction': 'editor.undo', 'desktop': 'mint-cinnamon-x11', 'package': 'deb',
+             'functional': 'passed', 'host': 'm74'}]})
+        for command in ([
+                'mark', 'editor.undo', '--desktop', 'mint-cinnamon-x11', '--package', 'deb',
+                '--functional', 'passed', '--host', 'm74'], ['import', str(receipt)]):
+            with self.subTest(command=command):
+                error = io.StringIO()
+                with contextlib.redirect_stderr(error):
+                    result = surface_map.main(command + ['--coverage', str(coverage)])
+                self.assertEqual(result, 2)
+                self.assertIn('host requires placement', error.getvalue())
+                self.assertFalse(coverage.exists())
+
+    def test_mark_frames_with_same_receipt_keeps_review_queue(self):
+        coverage = Path(self.tmp.name) / 'review.json'
+        flags = ['--coverage', str(coverage), '--desktop', 'mint-cinnamon-x11',
+                 '--package', 'deb', '--host', 'm74', '--placement', 'native', '--receipt', 'run.json']
+        for update in (['--review-reason', 'Inspect undo'], ['--visual', 'frames']):
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(surface_map.main(['mark', 'editor.undo'] + flags + update), 0)
+        data = surface_map.build_page_data(self.model, surface_map.load_coverage([coverage]), None, self.tmp.name)
+        self.assertEqual(len(data['reviews']), 1)
+        self.assertEqual(data['reviews'][0]['review_reason'], 'Inspect undo')
 
     def test_v2_driver_import_and_host_filter_review_data(self):
         row = {'interaction': 'editor.undo', 'desktop': 'ubuntu-gnome-wayland', 'package': 'source',
