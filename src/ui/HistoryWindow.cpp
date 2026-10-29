@@ -372,10 +372,16 @@ public:
   for(auto* button:{primary_,more_})button->installEventFilter(this);QWidget::setTabOrder(view_,primary_);QWidget::setTabOrder(primary_,more_);
   auto update=[this]{QTimer::singleShot(0,this,[this]{updateMore();});};
   connect(view_->selectionModel(),&QItemSelectionModel::currentChanged,this,update);connect(view_->selectionModel(),&QItemSelectionModel::selectionChanged,this,update);connect(view_->verticalScrollBar(),&QScrollBar::valueChanged,this,update);connect(view_->model(),&QAbstractItemModel::modelReset,this,update);
-  auto cancel=[this]{cancelPress();};connect(view_->model(),&QAbstractItemModel::modelAboutToBeReset,this,cancel);connect(view_->model(),&QAbstractItemModel::rowsAboutToBeRemoved,this,cancel);connect(view_->model(),&QAbstractItemModel::layoutAboutToBeChanged,this,cancel);connect(view_->model(),&QAbstractItemModel::dataChanged,this,cancel);
+  auto cancel=[this]{cancelPress();};connect(view_->model(),&QAbstractItemModel::modelAboutToBeReset,this,cancel);connect(view_->model(),&QAbstractItemModel::modelReset,this,[this]{captions_.clear();forgetPass();});connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{captions_.clear();forgetPass();primary_->setProperty("historyGlyph",QVariant());});
+  for(const auto change:{&QAbstractItemModel::rowsInserted,&QAbstractItemModel::rowsRemoved})connect(view_->model(),change,this,[this]{forgetPass();});
+  connect(view_->model(),&QAbstractItemModel::layoutChanged,this,[this]{forgetPass();});
+  connect(view_->model(),&QAbstractItemModel::dataChanged,this,[this](const QModelIndex&,const QModelIndex&,const QList<int>& roles){if(roles!=QList<int>{HistoryModel::ThumbnailRole})forgetPass();});connect(view_->model(),&QAbstractItemModel::rowsAboutToBeRemoved,this,cancel);connect(view_->model(),&QAbstractItemModel::layoutAboutToBeChanged,this,cancel);connect(view_->model(),&QAbstractItemModel::dataChanged,this,[this](const QModelIndex&,const QModelIndex&,const QList<int>& roles){if(roles!=QList<int>{HistoryModel::ThumbnailRole})cancelPress();});
  }
  void updateMore(){
-  for(auto* button:{primary_,details_,more_})button->setProperty("graphiteOnMedia",false);
+  // This runs on every viewport paint, so it changes the buttons only when
+  // their state differs: each change repaints them, and the viewport under them.
+  const auto set=[](QObject* object,const char* name,const QVariant& value){if(object->property(name)!=value)object->setProperty(name,value);};
+  for(auto* button:{primary_,details_,more_})set(button,"graphiteOnMedia",false);
   QModelIndex i=view_->currentIndex();
   if(grid()){
    if((primary_->hasFocus()||more_->hasFocus()||primary_->underMouse()||more_->underMouse()||menuOpen_)&&actionIndex_.isValid())i=actionIndex_;
@@ -384,10 +390,17 @@ public:
   const auto row=view_->visualRect(i);const auto bounds=i.isValid()?menuRect(row,i):QRect();
   const bool visible=i.isValid()&&inlineActions(i)&&view_->viewport()->rect().intersects(bounds)&&(grid()||view_->selectionModel()->isSelected(i))&&(grid()||view_->selectionModel()->selectedRows().size()<=1||row.contains(view_->viewport()->mapFromGlobal(QCursor::pos())));
   actionIndex_=i;more_->setVisible(visible);const bool showDetails=visible&&detailsShown(i)&&view_->selectionModel()->selectedRows().size()==1;const bool showPrimary=visible&&primaryShown(i);
-  primary_->setProperty("visualRole",grid()&&!recovery(i)?"quiet":"secondary");primary_->setVisible(showPrimary);
-  if(showPrimary){const auto label=i.data(HistoryModel::PrimaryActionRole).toString();primary_->setEnabled(true);const bool icon=iconPrimary(row,i);primary_->setIcon(label=="Copy link"||icon?VisualStyle::icon("copy"):QIcon{});primary_->setIconSize(QSize(Graphite::scaled(16),Graphite::scaled(16)));primary_->setToolButtonStyle(icon?Qt::ToolButtonIconOnly:label=="Copy link"?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonTextOnly);primary_->setText(label);primary_->setToolTip(label);primary_->setAccessibleName(label);primary_->setAccessibleDescription(label+" for "+i.data().toString());primary_->setGeometry(primaryRect(row,i));primary_->raise();}
-  details_->setVisible(showDetails);details_->setText(grid()?"Details":QString{});details_->setToolButtonStyle(grid()?Qt::ToolButtonTextOnly:Qt::ToolButtonIconOnly);if(showDetails){details_->setGeometry(detailsRect(row,i));details_->raise();}
-  if(!visible)return;const auto name="More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString();more_->setAccessibleName(name);more_->setToolTip(name);more_->setGeometry(bounds);more_->raise();
+  set(primary_,"visualRole",QString(grid()&&!recovery(i)?"quiet":"secondary"));primary_->setVisible(showPrimary);
+  if(showPrimary){const auto label=i.data(HistoryModel::PrimaryActionRole).toString();primary_->setEnabled(true);const bool icon=iconPrimary(row,i);const QString glyph=label=="Copy link"||icon?"copy":"";if(primary_->property("historyGlyph").toString()!=glyph||primary_->icon().isNull()!=glyph.isEmpty()){primary_->setIcon(glyph.isEmpty()?QIcon{}:VisualStyle::icon(glyph));primary_->setProperty("historyGlyph",glyph);}primary_->setIconSize(QSize(Graphite::scaled(16),Graphite::scaled(16)));primary_->setToolButtonStyle(icon?Qt::ToolButtonIconOnly:label=="Copy link"?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonTextOnly);primary_->setText(label);primary_->setToolTip(label);primary_->setAccessibleName(label);primary_->setAccessibleDescription(label+" for "+i.data().toString());primary_->setGeometry(primaryRect(row,i));}
+  details_->setVisible(showDetails);details_->setText(grid()?"Details":QString{});details_->setToolButtonStyle(grid()?Qt::ToolButtonTextOnly:Qt::ToolButtonIconOnly);if(showDetails){details_->setGeometry(detailsRect(row,i));}
+  if(!visible)return;const auto name="More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString();more_->setAccessibleName(name);more_->setToolTip(name);more_->setGeometry(bounds);raiseActions();
+ }
+ // Keep the shown actions above the cards, raising only when out of order:
+ // a raise repaints the viewport, and every viewport paint runs updateMore.
+ void raiseActions(){
+  QWidgetList order,shown;for(auto* button:{primary_,details_,more_})if(button->isVisible())order.append(button);
+  for(auto* child:view_->viewport()->children())if(auto* widget=qobject_cast<QWidget*>(child);widget&&widget->isVisible())shown.append(widget);
+  if(shown.mid(shown.size()-order.size())!=order)for(auto* button:order)button->raise();
  }
  bool helpEvent(QHelpEvent* event,QAbstractItemView* view,const QStyleOptionViewItem& option,const QModelIndex& i)override{
   if(i.data(HistoryModel::FailedRole).toBool()&&!menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),failureDescription(i),view);return true;}
@@ -400,6 +413,7 @@ public:
   if((watched==primary_||watched==more_)&&(event->type()==QEvent::FocusIn||event->type()==QEvent::FocusOut||event->type()==QEvent::Leave))QTimer::singleShot(0,this,[this]{updateMore();view_->viewport()->update();});
   if(watched==view_->viewport()&&event->type()==QEvent::MouseMove&&pressed_.isValid()&&(static_cast<QMouseEvent*>(event)->position().toPoint()-pressPosition_).manhattanLength()>QApplication::startDragDistance())cancelPress();
   if(watched==view_->viewport()&&(event->type()==QEvent::Hide||event->type()==QEvent::UngrabMouse))cancelPress();
+  if(watched==view_->viewport()&&event->type()==QEvent::Hide)thumbnails_.clear();
   if(watched==view_->viewport()&&(event->type()==QEvent::Resize||event->type()==QEvent::Show||event->type()==QEvent::Paint)){
    updateMore();
   }
@@ -437,7 +451,19 @@ public:
  int listDetailsSpace()const{return !grid()&&compactList&&compactList()?actionHeight()+space(Space::s):0;}
  int detailsWidth()const{return qMax(details_->sizeHint().width(),QFontMetrics(Graphite::font()).horizontalAdvance("Details")+30);}
  struct GalleryCaption {QString html;int height=0,lastTop=0,lastHeight=0,lastWidth=0;};
+ // Captions are laid-out rich text, and every card's size, paint and action
+ // placement asks for its whole row's. Keep each one until the text it shows,
+ // its width or the theme changes, so sizing the gallery stays linear.
  GalleryCaption galleryCaption(const QModelIndex& i,int width)const{
+  // Every fact a caption shows: a failure's full status and age, else the subtitle's.
+  const bool failed=i.data(HistoryModel::FailedRole).toBool();
+  const auto source=QStringList{i.data().toString(),i.data(HistoryModel::SubtitleRole).toString(),i.data(HistoryModel::CreatedRole).toString(),failed?HistoryModel::statusText(i.data(HistoryModel::RecordRole).toJsonObject()):QString{},QString::number(failed),QString::number(Graphite::font(Graphite::Type::technical).pixelSize())}.join(QChar(0x1f));
+  auto cached=captions_.constFind({i.row(),width});
+  if(cached!=captions_.cend()&&cached->first==source)return cached->second;
+  if(captions_.size()>4096)captions_.clear();
+  const auto caption=layoutGalleryCaption(i,width);captions_.insert({i.row(),width},{source,caption});return caption;
+ }
+ GalleryCaption layoutGalleryCaption(const QModelIndex& i,int width)const{
   QTextDocument document;HistoryWindow::metadataDocument(document,i,width,false,false,false,true);
   if(!i.data(HistoryModel::FailedRole).toBool()){
    const auto title=i.data().toString().toCaseFolded();auto parts=i.data(HistoryModel::SubtitleRole).toString().split(" · ",Qt::SkipEmptyParts);const auto kind=parts.value(0).toCaseFolded();
@@ -456,18 +482,39 @@ public:
   document.setTextWidth(width);document.size();const auto* layout=document.begin().layout();const auto last=layout->lineAt(layout->lineCount()-1);
   return {document.toHtml(),int(std::ceil(document.size().height())),int(std::floor(last.y())),int(std::ceil(last.height())),int(std::ceil(last.naturalTextWidth()))};
  }
- int galleryPrimaryWidth(const QModelIndex& i)const{const auto action=i.data(HistoryModel::PrimaryActionRole).toString();return action.isEmpty()?0:action=="Copy link"?actionHeight():qMax(Graphite::scaled(84),QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(action)+space(Space::xxl));}
+ int galleryPrimaryWidth(const QModelIndex& i)const{
+  const auto action=i.data(HistoryModel::PrimaryActionRole).toString();if(action.isEmpty())return 0;if(action=="Copy link")return actionHeight();
+  if(const auto found=passPrimaryWidths_.constFind(action);found!=passPrimaryWidths_.cend())return *found;
+  const int width=qMax(Graphite::scaled(84),QFontMetrics(Graphite::font(Graphite::Type::technical)).horizontalAdvance(action)+space(Space::xxl));holdForPass();passPrimaryWidths_.insert(action,width);return width;
+ }
+ // Smooth scaling every visible preview on every paint is most of a gallery
+ // frame; keep each preview's scaled copy until its image or size changes.
+ QImage scaledThumbnail(const QImage& image,const QSize& target)const{
+  const auto mode=grid()?Qt::KeepAspectRatioByExpanding:Qt::KeepAspectRatio;const auto key=std::make_pair(image.cacheKey(),std::make_pair(std::make_pair(target.width(),target.height()),int(mode)));
+  if(const auto* found=thumbnails_.object(key))return *found;
+  const auto scaled=image.scaled(target,mode,Qt::SmoothTransformation);thumbnails_.insert(key,new QImage(scaled),qMax(1,int(scaled.sizeInBytes()/1024)));return scaled;
+ }
+ // One layout or paint pass asks for each gallery row many times: once per
+ // card and again for each card's actions. Its answers hold until the event
+ // loop turns, or until the model or theme changes within the pass.
+ void holdForPass()const{if(passQueued_)return;passQueued_=true;QTimer::singleShot(0,const_cast<HistoryDelegate*>(this),[this]{forgetPass();});}
+ void forgetPass()const{passRows_.clear();passPrimaryWidths_.clear();passQueued_=false;}
  int galleryActionsWidth(const QModelIndex& i)const{const int primary=galleryPrimaryWidth(i);return actionHeight()+(primary?space(Space::xs)+primary:0);}
  struct GalleryRow {bool below=false;int metadataHeight=0,picture=0,height=0;};
  GalleryRow galleryRow(const QModelIndex& i,int width)const{
   // Match QListView's wrapping width, including its reserved scrollbar. Fit is
   // a row decision from full captions/actions, never from interaction state.
   const int reserve=view_->style()->pixelMetric(QStyle::PM_ScrollView_ScrollBarOverlap,nullptr,view_->verticalScrollBar())?0:view_->style()->pixelMetric(QStyle::PM_ScrollBarExtent,nullptr,view_->verticalScrollBar());
-  const int columns=qMax(1,(view_->maximumViewportSize().width()-reserve-2*view_->spacing())/(galleryWidth()+view_->spacing())),start=i.row()/columns*columns,bodyWidth=qMax(1,width-2*space(Space::s)-2*space(Space::l));GalleryRow row;
-  for(int index=start;index<qMin(start+columns,i.model()->rowCount());++index){const auto item=i.model()->index(index,0);const auto caption=galleryCaption(item,bodyWidth);row.below|=caption.lastWidth+space(Space::s)+galleryActionsWidth(item)>bodyWidth;row.metadataHeight=qMax(row.metadataHeight,caption.height);}
-  if(!row.below)for(int index=start;index<qMin(start+columns,i.model()->rowCount());++index){const auto caption=galleryCaption(i.model()->index(index,0),bodyWidth);row.metadataHeight=qMax(row.metadataHeight,caption.height+qMax(0,actionHeight()-caption.lastHeight));}
+  const int columns=qMax(1,(view_->maximumViewportSize().width()-reserve-2*view_->spacing())/(galleryWidth()+view_->spacing())),start=i.row()/columns*columns,bodyWidth=qMax(1,width-2*space(Space::s)-2*space(Space::l));
+  const auto key=std::make_pair(std::make_pair(start,width),std::make_pair(columns,view_->viewport()->height()));
+  if(const auto found=passRows_.constFind(key);found!=passRows_.cend())return *found;
+  GalleryRow row;
+  QList<GalleryCaption> captions;
+  for(int index=start;index<qMin(start+columns,i.model()->rowCount());++index){const auto item=i.model()->index(index,0);captions.append(galleryCaption(item,bodyWidth));const auto& caption=captions.constLast();row.below|=caption.lastWidth+space(Space::s)+galleryActionsWidth(item)>bodyWidth;row.metadataHeight=qMax(row.metadataHeight,caption.height);}
+  if(!row.below)for(const auto& caption:captions)row.metadataHeight=qMax(row.metadataHeight,caption.height+qMax(0,actionHeight()-caption.lastHeight));
   const int caption=QFontMetrics(historyTitleFont()).height()+space(Space::xs)+row.metadataHeight+(row.below?space(Space::xs)+actionHeight():0)+space(Space::m),padding=2*space(Space::s)+1+space(Space::m)+caption;
-  row.picture=qMax(1,qMin((width-2*space(Space::s)-2)*10/16,view_->viewport()->height()-2*view_->spacing()-padding));row.height=padding+row.picture;return row;
+  row.picture=qMax(1,qMin((width-2*space(Space::s)-2)*10/16,view_->viewport()->height()-2*view_->spacing()-padding));row.height=padding+row.picture;
+  holdForPass();passRows_.insert(key,row);return row;
  }
  QRect galleryBody(const QRect& r,const QModelIndex& i)const{const auto c=card(r,i);const int top=c.top()+1+galleryRow(i,r.width()).picture+space(Space::m);return {c.left()+space(Space::l),top,qMax(1,c.width()-2*space(Space::l)),qMax(0,c.bottom()-top+1)};}
  QRect galleryActionRect(QRect r,const QModelIndex& i,int column)const{
@@ -561,7 +608,7 @@ public:
   p->setPen(Qt::NoPen);p->setBrush(t.well);p->drawRoundedRect(thumb,4,4);
   const auto image=qvariant_cast<QImage>(i.data(HistoryModel::ThumbnailRole));
   p->save();QPainterPath thumbnailClip;thumbnailClip.addRoundedRect(thumb,4,4);p->setClipPath(thumbnailClip,Qt::IntersectClip);
-  if(!image.isNull()){const auto target=grid()?image.size()*qMin(1.0,qMax(double(thumb.width())/image.width(),double(thumb.height())/image.height())):thumb.size();const auto scaled=image.scaled(target,grid()?Qt::KeepAspectRatioByExpanding:Qt::KeepAspectRatio,Qt::SmoothTransformation);const QPoint origin(thumb.center().x()-scaled.width()/2,thumb.center().y()-scaled.height()/2);p->drawImage(origin,scaled);if(video(record))paintVideoBadge(*p,grid()?thumb:QRect(origin,scaled.size()),HistoryModel::duration(image.text(HistoryModel::durationKey).toLongLong()));}
+  if(!image.isNull()){const auto target=grid()?image.size()*qMin(1.0,qMax(double(thumb.width())/image.width(),double(thumb.height())/image.height())):thumb.size();const auto scaled=scaledThumbnail(image,target);const QPoint origin(thumb.center().x()-scaled.width()/2,thumb.center().y()-scaled.height()/2);p->drawImage(origin,scaled);if(video(record))paintVideoBadge(*p,grid()?thumb:QRect(origin,scaled.size()),HistoryModel::duration(image.text(HistoryModel::durationKey).toLongLong()));}
   else{
    // No preview: an honest file-type glyph, never a fabricated picture.
    const auto category=record["category"].toString();const int side=grid()?36:24;
@@ -621,6 +668,10 @@ public:
  }
 private:
  void cancelPress(){pressed_=QPersistentModelIndex{};pressedAction_=0;view_->viewport()->update();}
+ mutable QHash<std::pair<int,int>,std::pair<QString,GalleryCaption>> captions_;
+ // Scaled previews for the cards on screen, in KiB; dropped while the list is hidden.
+ mutable QCache<std::pair<qint64,std::pair<std::pair<int,int>,int>>,QImage> thumbnails_{6144};
+ mutable QHash<std::pair<std::pair<int,int>,std::pair<int,int>>,GalleryRow> passRows_;mutable QHash<QString,int> passPrimaryWidths_;mutable bool passQueued_=false;
  QListView* view_;QToolButton *primary_,*details_,*more_,*paintSecondary_,*paintQuiet_;QPersistentModelIndex pressed_,hovered_,actionIndex_;bool menuOpen_=false;int pressedAction_=0;QPoint pressPosition_;
 };
 }
@@ -818,8 +869,11 @@ void HistoryWindow::updateFooterLayout(){
  setProperty("denseHistory",dense);categories_->setProperty("denseHistory",dense);rail->setContentsMargins(space(Space::l),dense?space(Space::s):space(Space::l),space(Space::l),space(Space::l));box->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));footerBar_->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Maximum);
  tools->setContentsMargins(space(Space::xxl),Graphite::pageHeaderTop(),space(Space::l),dense?(Graphite::scaled(100)>125?0:space(Space::xs)):space(Space::s));tools->setHorizontalSpacing(space(Space::l));tools->setVerticalSpacing(dense&&Graphite::scaled(100)>125?0:space(Space::xs));
  auto* search=findChild<QLineEdit*>("historySearch");auto* views=findChild<QWidget*>("historyViewMode");auto* management=findChild<QToolButton*>("historyManagementExpanded");views->setFixedWidth(views->sizeHint().width());
- heading_->setMinimumWidth(0);search->setMinimumWidth(180);
- const int available=header->width()-tools->contentsMargins().left()-tools->contentsMargins().right(),clear=activeFilters().isEmpty()?0:clearFilters_->sizeHint().width()+space(Space::s),required=180+filtersToggle_->sizeHint().width()+views->sizeHint().width()+management->sizeHint().width()+clear+3*space(Space::s);
+ // The search minimum is set once, after the fit: a transient 180 px floor would clamp
+ // the search past its grid cell if the grid applied geometry during this pass.
+ heading_->setMinimumWidth(0);int searchMinimum=180;
+ // The grid puts its own spacing between controls, so the fit counts that, not a nominal gap.
+ const int gap=qMax(0,tools->horizontalSpacing()),available=header->width()-tools->contentsMargins().left()-tools->contentsMargins().right(),clear=activeFilters().isEmpty()?0:clearFilters_->sizeHint().width()+gap,required=180+filtersToggle_->sizeHint().width()+views->sizeHint().width()+management->sizeHint().width()+clear+3*gap;
  const bool wrap=required>available,details=compact_&&detailsOpen_;auto* heading=findChild<QWidget*>("historyHeadingGroup");const bool headingRow=available<required+heading->minimumSizeHint().width()+space(Space::l);const int toolRow=headingRow&&!details?1:0;
  // A heading on its own row needs room for its text, rather than a control target.
  heading->setFixedHeight(headingRow?qMax(Graphite::Metric::control,heading->layout()->totalMinimumSize().height()):Graphite::scaled(Graphite::Metric::control));
@@ -827,10 +881,11 @@ void HistoryWindow::updateFooterLayout(){
  heading->setVisible(!details);detailsBack_->setVisible(details);views->setVisible(!details);search->setVisible(!details);filtersToggle_->setVisible(!details);clearFilters_->setVisible(!details&&!activeFilters().isEmpty());management->setVisible(!details);
  tools->setContentsMargins(space(details?Space::l:Space::xxl),Graphite::pageHeaderTop(),space(Space::l),tools->contentsMargins().bottom());header->parentWidget()->setProperty("inspector",details);header->parentWidget()->update();
  int column=0;if(details)tools->addWidget(detailsBack_,0,column++,Qt::AlignLeft);else if(headingRow)tools->addWidget(heading,0,0,1,6);else tools->addWidget(heading,0,column++);
- if(wrap){int row=toolRow+1,used=0,columns=0;column=0;for(auto* control:QList<QWidget*>{filtersToggle_,clearFilters_,views,management}){if(control->isHidden())continue;const int width=qMax(control->minimumWidth(),control->sizeHint().width()),gap=column?space(Space::s):0;if(column&&used+gap+width>available){++row;column=0;used=0;}tools->addWidget(control,row,column++,Qt::AlignLeft);columns=qMax(columns,column);used+=(used?space(Space::s):0)+width;}column=qMax(1,columns);tools->addWidget(search,toolRow,0,1,column);tools->setColumnStretch(column-1,1);}
+ if(wrap){int row=toolRow+1,used=0,columns=0;column=0;for(auto* control:QList<QWidget*>{filtersToggle_,clearFilters_,views,management}){if(control->isHidden())continue;const int width=qMax(control->minimumWidth(),control->sizeHint().width()),before=column?gap:0;if(column&&used+before+width>available){++row;column=0;used=0;}tools->addWidget(control,row,column++,Qt::AlignLeft);columns=qMax(columns,column);used+=(used?gap:0)+width;}column=qMax(1,columns);tools->addWidget(search,toolRow,0,1,column);tools->setColumnStretch(column-1,1);}
  else{tools->addWidget(search,toolRow,column);tools->setColumnStretch(column++,1);int others=0;for(auto* control:QList<QWidget*>{filtersToggle_,clearFilters_,views,management})if(!control->isHidden()){tools->addWidget(control,toolRow,column++);others+=qMax(control->minimumWidth(),control->sizeHint().width());}
   // A heading beside search keeps its words: search gives way down to its placeholder first.
-  if(!headingRow&&!details){const int full=heading_->sizeHint().width(),extra=heading->sizeHint().width()-full,room=available-others-(column-1)*tools->horizontalSpacing()-extra;if(room-full<180){const int floor=qMin(180,search->fontMetrics().horizontalAdvance(search->placeholderText())+Graphite::scaled(24));search->setMinimumWidth(qMax(floor,room-full));heading_->setMinimumWidth(qMax(0,qMin(full,room-search->minimumWidth())));}}}
+  if(!headingRow&&!details){const int full=heading_->sizeHint().width(),extra=heading->sizeHint().width()-full,room=available-others-(column-1)*tools->horizontalSpacing()-extra;if(room-full<180){const int floor=qMin(180,search->fontMetrics().horizontalAdvance(search->placeholderText())+Graphite::scaled(24));searchMinimum=qMax(floor,room-full);heading_->setMinimumWidth(qMax(0,qMin(full,room-searchMinimum)));}}}
+ search->setMinimumWidth(searchMinimum);
  // Empty spanned columns still consume spacing in QGridLayout.
  if(headingRow&&!details){tools->removeWidget(heading);tools->addWidget(heading,0,0,1,column);}header->show();header->setProperty("wrapped",wrap);
  columns_->hide();

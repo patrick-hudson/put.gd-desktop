@@ -69,15 +69,17 @@ bool HistoryModel::remoteDeletable(const QJsonObject& f){return f["uploadStatus"
 QString HistoryModel::remoteStateText(const QJsonObject& r){
  // Current outcomes outrank an earlier clipboard success, including in a batch.
  auto files=r["records"].toArray();files.prepend(r);
- for(const auto& [key,state,label]:QList<std::tuple<QString,QString,QString>>{
+ static const QList<std::tuple<QString,QString,QString>> outcomes{
   {"remoteStatus","failed","Deletion failed"},{"remoteStatus","unknown","Remote outcome needs inspection"},{"remoteStatus","changed","Remote file changed"},
   {"remoteStatus","deleting","Deleting from destination"},{"remoteStatus","pending","Waiting for deletion"},
   {"remoteStatus","removed","Deleted from destination"},{"remoteStatus","already_missing","Deleted from destination"},
   {"shareStatus","failed","Sharing failed"},{"shareStatus","unknown","Sharing outcome needs inspection"},{"shareStatus","changed","Share link changed"},
   {"shareStatus","pending","Creating share link"},{"shareStatus","revoked","Link revoked"},
   {"remoteStatus","hidden_version_retained","Hidden; original version remains"},{"remoteStatus","version_retained","Original version retained"},
-  {"remoteStatus","unsupported_safe_removal","Safe removal unavailable"},{"remoteStatus","superseded","Replaced by a newer upload"}})
-  for(const auto& file:files)if(file.toObject()[key]==state)return label;
+  {"remoteStatus","unsupported_safe_removal","Safe removal unavailable"},{"remoteStatus","superseded","Replaced by a newer upload"}};
+ QList<std::pair<QString,QString>> states;for(const auto& value:std::as_const(files)){const auto file=value.toObject();states.append({file["remoteStatus"].toString(),file["shareStatus"].toString()});}
+ for(const auto& [key,state,label]:outcomes)
+  for(const auto& [remote,share]:states)if((key=="remoteStatus"?remote:share)==state)return label;
  return {};
 }
 bool HistoryModel::localCopyUnavailable(const QJsonObject& r){return (r["local"].toObject()["status"]=="saved"||r["uploadStatus"]=="local_only")&&!QFileInfo(r["local"].toObject()["path"].toString()).isFile();}
