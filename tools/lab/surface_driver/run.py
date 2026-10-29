@@ -156,10 +156,7 @@ def main(argv=None):
         environment['placement_details'].update(run_id=target.info['id'],lab_profile=target.info['profile'],
                                                  run_directory=str(target.run),session_root=target.root,socket=target.socket)
         if args.placement=='native':
-            from tools.lab import desktop_lock
-            state=desktop_lock.parse_lock(target.physical.ssh(target.run,'cat ~/putgd-lab/locks/desktop.lock'))
-            if state['session']!=args.lock_session or desktop_lock.assess(state,desktop_lock.now_utc())['state']!='held':
-                raise RecipeBlocked('physical desktop lock is not held by --lock-session')
+            target.require_lock(args.host,args.lock_session)
         target.start()
         context=DriverContext(target,environment,profile,args.catalog,args.out)
         snapshot=context.call('ui.snapshot')

@@ -50,6 +50,7 @@ def desktop_transport(function):
     @wraps(function)
     def invoke(*args, **kwargs):
         try:
+            args[0].heartbeat()
             return function(*args, **kwargs)
         except (OSError, lab.LabError) as error:
             raise RecipeBlocked(function.__name__+' desktop transport unavailable: '+type(error).__name__) from error
@@ -71,6 +72,24 @@ class Target:
         self.bin_dir = bin_dir
         self.monitor_pid = None
         self._rfb = None
+        self._lock = None
+        self._last_heartbeat = 0
+
+    def require_lock(self, host, session):
+        self._lock = (host, session)
+        self.heartbeat(force=True)
+
+    def heartbeat(self, force=False):
+        if not self._lock or (not force and time.monotonic()-self._last_heartbeat<60):
+            return
+        from tools.lab import desktop_lock
+        host,session=self._lock
+        payload={'host':host,'session':session,'action':'heartbeat'}
+        script="python3 - <<'SD_LOCK'\n"+desktop_lock.remote_script(payload)+'\nSD_LOCK\n'
+        value=json.loads(self.physical.ssh(self.run,script))
+        if not value.get('ok') or value.get('state')!='held':
+            raise RecipeBlocked('physical desktop lock is no longer held by this session')
+        self._last_heartbeat=time.monotonic()
 
     def session(self, body, timeout=60):
         # lab.guest_session discovers the native bus and absolute Wayland socket
@@ -96,6 +115,7 @@ class Target:
             ('XDG_CACHE_HOME','cache'),('XDG_RUNTIME_DIR','runtime')))
 
     def execute(self, script, timeout=60):
+        self.heartbeat()
         code = 'import subprocess,json\np=subprocess.run('+repr(script)+',shell=True,text=True,capture_output=True,timeout='+repr(timeout)+')\nprint(json.dumps({"returncode":p.returncode,"stdout":p.stdout,"stderr":p.stderr}))\n'
         try:
             return json.loads(self.session(self.prefix() + "python3 - <<'SD_PY'\n" + code + 'SD_PY\n', timeout + 10))

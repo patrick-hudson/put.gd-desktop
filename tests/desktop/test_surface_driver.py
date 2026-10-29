@@ -162,6 +162,36 @@ class Running(unittest.TestCase):
     def test_physical_module_import_has_no_side_effects(self):
         importlib.import_module('tools.lab.physical')
 
+    def test_coverage_preserves_other_desktops(self):
+        row=ReceiptRow('editor.undo','mint-cinnamon-x11','deb','passed',host='boat',placement='boat')
+        other=dataclasses.replace(row,desktop='ubuntu-gnome-x11')
+        write_receipts(self.path/'one',self.env,[row],'campaign',self.path/'coverage.json')
+        write_receipts(self.path/'two',self.env,[other],'campaign',self.path/'coverage.json')
+        row.functional='failed'
+        write_receipts(self.path/'one',self.env,[row],'campaign',self.path/'coverage.json')
+        entries=json.loads((self.path/'coverage.json').read_text())['entries']
+        self.assertEqual(len(entries),2)
+        self.assertEqual({r['desktop']:r['functional'] for r in entries},
+                         {'mint-cinnamon-x11':'failed','ubuntu-gnome-x11':'passed'})
+
+    def test_click_uses_catalog_and_releases_button(self):
+        inv={'width':20,'height':10,'controls':[{'name':'upload','rect':[2,2,4,4]}]}
+        (self.path/'test-editor.controls.json').write_text(json.dumps(inv))
+        self.ctx.catalog=Catalog(self.path,{})
+        self.ctx.geometry=lambda role:{'x':0,'y':0,'width':20,'height':10,'scale':1}
+        events=[]
+        self.ctx.target.pointer=lambda *args:events.append(args)
+        self.ctx.click('upload',window='editor')
+        self.assertEqual(events[0][:5],(4,4,20,10,True))
+        self.assertEqual(events[-1][:5],(4,4,20,10,False))
+
+    def test_unicode_input_refuses_before_partial_typing(self):
+        sent=[];self.ctx.target.key=lambda value:sent.append(value)
+        with self.assertRaises(RecipeBlocked):self.ctx.type_text('hello ☃')
+        self.assertEqual(sent,[])
+        self.ctx.type_text('Ab!')
+        self.assertEqual(sent,[['shift','a'],['b'],['shift','1']])
+
     def test_notification_correlation(self):
         raw='''method call time=100.1 sender=:1.2 -> destination=org.freedesktop.Notifications serial=45 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
    string "put.gd"
