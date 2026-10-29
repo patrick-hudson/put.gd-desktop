@@ -37,6 +37,7 @@ int main(int argc, char** argv) {
     UiControl control(pipes);
     QJsonObject envelope;
     bool started = false;
+    QJsonObject reviewOptions;
     QObject::connect(&pipes, &QIODevice::readChannelFinished, &app, [&] { app.exit(5); });
     QObject::connect(&control, &UiControl::failed, &app, [&] { app.exit(3); });
     auto result = [&](const QString& requestId, const QJsonObject& value) {
@@ -70,7 +71,8 @@ int main(int argc, char** argv) {
         if (type != "command") { app.exit(3); return; }
         const auto requestId = payload["requestId"].toString(), command = payload["command"].toString();
         const auto params = payload["params"].toObject();
-        if (command == "prepare") { result(requestId, {{"canvas", QJsonArray{1280, 720}}, {"staging", params["staging"]}}); return; }
+        if (command == "prepare") { reviewOptions = params["reviewOptions"].toObject(); result(requestId, {{"canvas", QJsonArray{1280, 720}}, {"staging", params["staging"]}}); return; }
+        if (command == "review") { result(requestId, {{"reviewOptions", reviewOptions}}); return; }
         if (command == "start") {
             started = true;
             if (mode == "unknown-result") { result("not-outstanding", {}); return; }
@@ -110,7 +112,7 @@ int main(int argc, char** argv) {
             result(requestId, {{"bytes", double(bytes.size())}, {"durationUs", 6000000.0}});
             return;
         }
-        if (QStringList{"pause", "resume", "cancel", "raise", "overlay", "notice"}.contains(command)) { result(requestId, {}); return; }
+        if (QStringList{"pause", "resume", "cancel", "raise", "overlay", "notice", "savedCopy"}.contains(command)) { result(requestId, {}); return; }
         if (command == "review") { result(requestId, {{"action", params["action"]}, {"visible", true}}); return; }
         auto frame = envelope;
         frame["requestId"] = requestId;

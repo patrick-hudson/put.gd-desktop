@@ -54,6 +54,32 @@ struct Harness {
 class RecordingServiceContract:public QObject {
  Q_OBJECT
 private slots:
+ void reviewDestinationUsesTheAcceptedSnapshot_data(){
+  QTest::addColumn<QString>("mode");
+  for(const auto* mode:{"default","share","private","local"})QTest::newRow(mode)<<QString(mode);
+ }
+ void reviewDestinationUsesTheAcceptedSnapshot(){
+  QFETCH(QString,mode);Harness h(mode=="local");PUTGD_TRY_VERIFY(h.operations->ready());
+  if(mode!="local"){
+   auto doc=h.settings.snapshot().document;auto actions=doc["actions"].toObject();auto route=actions["region"].toObject();route["publicationMode"]=mode;route["shortcut"]="";actions["record"]=route;doc["actions"]=actions;
+   QVERIFY(h.settings.save(doc,h.settings.revision()));
+  }
+  h.backend->deferPrepare=true;
+  const auto prepared=h.rec("prepare",{{"target",region()},{"format","mp4"}});QVERIFY(!prepared.error);
+  PUTGD_TRY_VERIFY(bool(h.backend->pendingPrepare));
+  const auto snapshot=h.backend->lastReviewOptions;
+  QCOMPARE(snapshot["sharingMode"].toString(),mode=="default"?QString("share"):mode);
+  if(mode=="local")QCOMPARE(snapshot["summary"].toString(),QString("Save to the local archive"));
+  else {
+   QCOMPARE(snapshot["destination"].toString(),QString("Synthetic opaque provider"));
+   QVERIFY(snapshot["summary"].toString().contains(mode=="private"?"Private upload to":"Shared link"));
+   auto doc=h.settings.snapshot().document;auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["label"]="Changed after acceptance";profiles[0]=profile;doc["profiles"]=profiles;QVERIFY(h.settings.save(doc,h.settings.revision()));
+  }
+  auto ready=std::move(h.backend->pendingPrepare);ready({},{});
+  const auto id=prepared.result["recordingId"].toString();PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
+  QCOMPARE(h.backend->lastReviewOptions,snapshot);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
  void unavailableBackendReportsCapabilitiesAndRefusesRecording(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);PUTGD_TRY_VERIFY(operations.ready());
   const auto caps=call(server,"recording.capabilities",{});QVERIFY(!caps.error);QVERIFY(!caps.result["available"].toBool());QCOMPARE(caps.result["reason"].toString(),QString("recording_helper_missing"));QCOMPARE(caps.result["timeUnit"].toString(),QString("microseconds"));QVERIFY(caps.result["active"].isNull());
@@ -111,6 +137,7 @@ private slots:
   {const auto last=h.rec("inspect",{{"id",id}}).result["lastExport"].toObject();QCOMPARE(last["command"].toString(),QString("saveCopy"));QCOMPARE(last["status"].toString(),QString("saved"));QCOMPARE(last["path"].toString(),copyPath);
    QCOMPARE(last["revision"].toDouble(),2.0);QCOMPARE(last["bytes"].toDouble(),double(h.backend->exportBytes.size()));QCOMPARE(last["durationUs"].toDouble(),6000000.0);}
   {QFile copy(copyPath);QVERIFY(copy.open(QIODevice::ReadOnly));QCOMPARE(copy.readAll(),h.backend->exportBytes);}
+  QVERIFY(h.backend->log.contains("savedCopy"));QCOMPARE(h.backend->lastControlParams["path"].toString(),copyPath);QCOMPARE(h.backend->lastControlParams["revision"].toDouble(),2.0);
   QCOMPARE(h.backend->exports,1);QCOMPARE(h.backend->lastEdit.trimStart,qint64(2000000));QCOMPARE(*h.backend->lastEdit.trimEnd,qint64(8000000));QCOMPARE(h.backend->lastEdit.masks.size(),1);QVERIFY(h.backend->lastConfig.audio.system);QCOMPARE(h.backend->lastConfig.fps,24);
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",copyPath}}).error.code,QString("file_exists"));
   QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",copyPath},{"overwrite",true}}).error);
@@ -310,6 +337,7 @@ private slots:
   QCOMPARE(in.result["state"].toString(),QString("reviewing"));QCOMPARE(in.result["edit"].toObject()["trimStart"].toDouble(),3000000.0);QCOMPARE(in.result["edit"].toObject()["revision"].toDouble(),2.0);
   QCOMPARE(h.backend->pushedEdit.trimStart,qint64(3000000));
   QCOMPARE(h.rec("inspect",{{"id",id}}).result["retainedUs"].toDouble(),9000000.0);
+  for(const auto* action:{"showAdvice","showFormatTips","showInFolder","copyPath","dismissSavedCopy"}){reviews.clear();QVERIFY(!h.rec("review",{{"id",id},{"action",action}}).error);QCOMPARE(reviews.first()["action"].toString(),QString(action));}
   h.backend->deferExports=true;
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("review-driven.mp4")}}).result["state"].toString(),QString("exporting"));
   const int before=h.backend->log.count("review");
@@ -318,6 +346,35 @@ private slots:
   QCOMPARE(h.rec("review",{{"id",id},{"action","inspect"}}).result["state"].toString(),QString("exporting"));QCOMPARE(reviews.size(),1);
   h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
+ void reviewFormatRoundTripsPreserveCapturedAudio_data(){
+  QTest::addColumn<bool>("requested");QTest::addColumn<bool>("captured");QTest::addColumn<bool>("automaticStop");QTest::addColumn<bool>("helperStart");
+  for(bool automaticStop:{false,true})for(bool helperStart:{false,true})for(bool requested:{false,true})for(bool captured:{false,true}){
+   if(captured&&!requested)continue;
+   const auto name=QString("requested%1-captured%2-autoStop%3-helperStart%4").arg(requested).arg(captured).arg(automaticStop).arg(helperStart);
+   QTest::newRow(qPrintable(name))<<requested<<captured<<automaticStop<<helperStart;
+  }
+ }
+ void reviewFormatRoundTripsPreserveCapturedAudio(){
+  QFETCH(bool,requested);QFETCH(bool,captured);QFETCH(bool,automaticStop);QFETCH(bool,helperStart);
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());h.backend->captureSystemAudio=captured;
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",requested}}}});QVERIFY(!id.isEmpty());
+  if(helperStart){h.backend->sink({{"id",id},{"event","started"},{"audioEncoder",captured?QString("synthetic-aac"):QString()}});PUTGD_TRY_COMPARE(h.state(id),QString("recording"));h.backend->capturedSystemAudio=captured;}
+  else QVERIFY(!h.rec("start",{{"id",id}}).error);
+  if(automaticStop){h.backend->sink({{"id",id},{"event","stopped"},{"durationUs",12000000},{"audioEncoder",captured?QString("synthetic-aac"):QString()},{"reason","budget"}});PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));}
+  else QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  for(const auto* silent:{"gif","webp"}){
+   for(const auto* format:{silent,"mp4"}){
+    // The review's requested audio cannot fabricate audio in a silent capture.
+    h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format",format},{"audio",QJsonObject{{"system",true}}}}}});
+    PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString(format));
+    const bool audible=captured&&QString(format)=="mp4";
+    QCOMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["system"].toBool(),audible);
+    const auto path=h.dir.filePath(QString("copy-%1.%2").arg(silent,format));
+    QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",path}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+    QCOMPARE(h.backend->lastConfig.audio.system,audible);
+   }
+  }
  }
  void reviewWindowEventsRoundTripThroughTheResident(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
@@ -344,6 +401,18 @@ private slots:
   PUTGD_TRY_COMPARE(h.backend->editsPushed,4);QCOMPARE(h.state(id),QString("reviewing"));
   h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",3}});
   PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(h.backend->exports,2);QCOMPARE(journal.operation(id).items.first().artifact.mime,QString("video/mp4"));
+ }
+ void retryFromReviewRepeatsOnlyTheFailedUpload(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  QCOMPARE(journal.operation(id).items.size(),0);
+  h.backend->failExport=false;
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
+  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));
+  QCOMPARE(h.backend->exports,2);QCOMPARE(journal.operation(id).items.size(),1);
  }
  void serverRejectsMalformedRequestsBeforeTheBackend(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
@@ -483,7 +552,7 @@ private slots:
  // accepted export instead of transport_failed, and inspect carries the outcome.
  void slowExportsAnswerAtOnceAndReportThroughInspect(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
-  QVERIFY(h.server->listen(h.dir.filePath("runtime")));QVERIFY(h.server->socketPath().toUtf8().size()<=107);
+  QVERIFY((h.dir.filePath("runtime/session.sock")).toUtf8().size()<=107);QVERIFY(h.server->listen(h.dir.filePath("runtime")));
   auto cli=[&](const QString& method,const QJsonObject& params){
    QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",h.server->socketPath(),method,QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact))});
    [&]{PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);}();
@@ -498,7 +567,7 @@ private slots:
   const auto [savedExit,saved]=cli("recording.saveCopy",{{"id",id},{"path",copyPath}});
   QVERIFY2(saved["ok"].toBool(),QJsonDocument(saved).toJson().constData());QCOMPARE(savedExit,0);
   QCOMPARE(saved["result"].toObject()["state"].toString(),QString("exporting"));QCOMPARE(saved["result"].toObject()["lastExport"].toObject()["status"].toString(),QString("exporting"));
-  QCOMPARE(h.backend->pendingExports.size(),1);QVERIFY(!QFileInfo::exists(copyPath));
+  QCOMPARE(h.backend->pendingExports.size(),1);QVERIFY(!QFileInfo::exists(copyPath));QVERIFY(!h.backend->log.contains("savedCopy"));
   auto inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["state"].toString(),QString("exporting"));QCOMPARE(inspected["pending"].toString(),QString("saveCopy"));
   QCOMPARE(inspected["lastExport"].toObject()["path"].toString(),copyPath);QCOMPARE(inspected["lastExport"].toObject()["revision"].toDouble(),1.0);
   QCOMPARE(call(*h.server,"operation.inspect",{{"id",id}}).result["phase"].toString(),QString("exporting"));
@@ -512,12 +581,20 @@ private slots:
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   inspected=h.rec("inspect",{{"id",id}}).result;QVERIFY(inspected["pending"].isNull());QCOMPARE(inspected["lastExport"].toObject()["status"].toString(),QString("saved"));QCOMPARE(inspected["lastExport"].toObject()["bytes"].toDouble(),double(h.backend->exportBytes.size()));
   {QFile copy(copyPath);QVERIFY(copy.open(QIODevice::ReadOnly));QCOMPARE(copy.readAll(),h.backend->exportBytes);}
+  QVERIFY(h.backend->log.contains("savedCopy"));QCOMPARE(h.backend->lastControlParams["path"].toString(),copyPath);QCOMPARE(h.backend->lastControlParams["revision"].toDouble(),1.0);
   // A failed slow export is reported the same way and writes nothing.
   const auto failedPath=h.dir.filePath("failed-copy.mp4");h.backend->failExport=true;
   QCOMPARE(h.rec("saveCopy",{{"id",id},{"path",failedPath}}).result["state"].toString(),QString("exporting"));
   h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["lastExport"].toObject()["status"].toString(),QString("failed"));QCOMPARE(inspected["lastExport"].toObject()["error"].toObject()["code"].toString(),QString("recording_export_failed"));
-  QVERIFY(!QFileInfo::exists(failedPath));h.backend->failExport=false;
+  QVERIFY(!QFileInfo::exists(failedPath));QCOMPARE(h.backend->log.count("savedCopy"),1);h.backend->failExport=false;
+  // Retry through the production CLI keeps the failed local target and cannot publish it.
+  const auto [retryExit,retried]=cli("recording.review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(retryExit,0);QVERIFY(retried["ok"].toBool());
+  QCOMPARE(retried["result"].toObject()["lastExport"].toObject()["path"].toString(),failedPath);
+  h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  QVERIFY(QFileInfo::exists(failedPath));QCOMPARE(journal.operation(id).items.size(),0);
+  QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
   // Upload: acknowledged at the start of its export; the operation then carries the outcome.
   const auto [uploadExit,uploaded]=cli("recording.upload",{{"id",id},{"revision",1}});
   QVERIFY2(uploaded["ok"].toBool(),QJsonDocument(uploaded).toJson().constData());QCOMPARE(uploadExit,0);

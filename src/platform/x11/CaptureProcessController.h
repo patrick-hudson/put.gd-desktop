@@ -29,10 +29,10 @@ public:
  ~CaptureProcessController() override;
  bool busy()const;
  bool preparedReady()const;
- Ticket prepare(const QJsonObject& frozen,const ResourceLimits&,std::function<void(Error)> earlyTerminal={},std::function<void()> earlyReleased={});
+ Ticket prepare(const QJsonObject& frozen,const ResourceLimits&,std::function<void(Error)> earlyTerminal={},std::function<void()> earlyReleased={},QString outcome={});
  void begin(const Ticket&,std::function<void(PayloadResult)>);
  void discard(const Ticket&);
- void start(const QJsonObject& frozen,const ResourceLimits&,std::function<void(PayloadResult)>);
+ void start(const QJsonObject& frozen,const ResourceLimits&,std::function<void(PayloadResult)>,QString outcome={});
  void cancel();
  QJsonObject diagnostics()const;
  qint64 processId()const;

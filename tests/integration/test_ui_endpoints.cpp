@@ -39,6 +39,9 @@ class UiEndpointsTest : public QObject {
   return QJsonDocument::fromJson(response).object();
  }
 private slots:
+ void configurationFolderActionForwardsThroughDiagnostics() {
+  Fixture f;QString group;QJsonObject forwarded;f.server.setUiCommand([&](const QString& name,const QJsonObject& params,JsonReply reply){group=name;forwarded=params;reply({},{{"opened",true}});});Error error;QJsonObject result;request(f.server,"ui.diagnostics",{{"action","showConfigFolder"}},[&](Error e,QJsonObject value){error=e;result=value;});QVERIFY(!error);QCOMPARE(group,QString("diagnostics"));QCOMPARE(forwarded,QJsonObject({{"action","showConfigFolder"}}));QVERIFY(result["opened"].toBool());
+ }
  void snapshotIncludesResidentIdentitySettingsAndDiagnostics() {
   Fixture f;QVERIFY(f.settings.save(configuration(f.root.path(),true),{}));PUTGD_TRY_VERIFY(f.operations.ready());
   Error error;QJsonObject result;bool done=false;

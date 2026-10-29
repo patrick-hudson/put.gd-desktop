@@ -78,19 +78,22 @@ class Suites(unittest.TestCase):
         self.assertIsNone(weekly.suite_kind('vim', ['vim', 'tools/ci/stress_suite.py']))
 
     def test_a_running_ctest_is_found_and_left_alone_by_the_guard(self):
-        with tempfile.TemporaryDirectory() as directory:
-            fake = Path(directory) / 'ctest'
-            fake.symlink_to('/bin/sleep')
-            process = subprocess.Popen([str(fake), '30'])
-            try:
-                found = weekly.other_suites()
-                self.assertIn({'pid': process.pid, 'uid': os.getuid(), 'kind': 'ctest'}, found)
-                with self.assertRaisesRegex(weekly.Skip, f'ctest pid {process.pid}.*would wait'):
-                    weekly.wait_until_idle(lambda line: None, 60, True)
-                self.assertIsNone(process.poll())
-            finally:
-                process.terminate()
-                process.wait()
+        # A renamed coreutils sleep is rejected by Rust coreutils. Set the
+        # Linux process name directly and wait until it is observable.
+        process = subprocess.Popen([sys.executable, '-c',
+            "from pathlib import Path; import time; Path('/proc/self/comm').write_text('ctest'); "
+            "print('ready', flush=True); time.sleep(30)"], stdout=subprocess.PIPE, text=True)
+        try:
+            self.assertEqual(process.stdout.readline().strip(), 'ready')
+            found = weekly.other_suites()
+            self.assertIn({'pid': process.pid, 'uid': os.getuid(), 'kind': 'ctest'}, found)
+            with self.assertRaisesRegex(weekly.Skip, f'ctest pid {process.pid}.*would wait'):
+                weekly.wait_until_idle(lambda line: None, 60, True)
+            self.assertIsNone(process.poll())
+        finally:
+            process.terminate()
+            process.wait()
+            process.stdout.close()
 
 
 class Token(unittest.TestCase):

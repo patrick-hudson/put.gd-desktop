@@ -33,6 +33,7 @@ public:
  // Completion toast text: the operation's own error when it failed before any
  // item; for a failed or partial upload, the failure in plain words, whether a
  // local copy was kept and what was copied (#152).
+ static QString completionTitle(const QJsonObject& operation);
  static QString completionMessage(const QJsonObject& operation,bool hasLink);
  // A provider or operation error as a short lower-case phrase.
  static QString failureReason(const QJsonObject& error);
@@ -76,20 +77,25 @@ private:
  void notifyMessage(const QString& code, const QString& title, const QString& message, bool warning, const QUrl& link = {}, const QString& diagnosticsOperation = {}, const QString& revealPath = {});
  quint64 notifications_ = 0;
  std::function<void(const QString&,JsonReply)> saveDiagnostics_;
- void refreshActivity();
- void flashError();
- QTimer errorFlashTimer_,errorRecoveryTimer_,uploadRevealTimer_,uploadCompleteTimer_;
+ void refreshActivity();void refreshMenu();void cancelUploads();
+ void flashError();void acknowledgeFailures();
+ void latchFailure(const Error&,const QJsonObject& operation = {});
+ QString attentionLabel_="Action needs attention",attentionView_="history",attentionOperation_;
+ QTimer uploadRevealTimer_,uploadCompleteTimer_;
  QElapsedTimer uploadVisibleClock_;
  bool uploadVisible_=false,uploadCompleted_=false;
  int pendingUploadFinishes_=0;
- bool errorRed_=false;
+ bool errorPending_=false;
  // Unset until the first refresh, which tints for the panel.
  QColor iconColor_;
  PanelTone panel_;
  void retintMenu();
  int iconPercent_=-1;
- QString activityText_;
- QSet<QString> activeUploads_;
+ int iconRecording_=0;
+ QString activityText_,activityTitle_="put.gd";
+ QAction *uploadStatus_=nullptr,*cancelUpload_=nullptr,*uploadSeparator_=nullptr,*failedUploads_=nullptr;
+ QSet<QString> activeUploads_,failedItems_;
+ QAction* outputSummary_=nullptr;QMenu* outputMenu_=nullptr;
  void showAbout();
  void showView(const QString&);
  OperationService& operations_;

@@ -1,6 +1,10 @@
+#include "Duration.h"
+#include "FormatBox.h"
+#include <QCursor>
 #include "Overlays.h"
 #include "BarPlacement.h"
 #include "ui/SelectionOutline.h"
+#include "ui/RegionSelection.h"
 #include "ui/Theme.h"
 #include "ui/VisualStyle.h"
 #include "ui/Graphite.h"
@@ -12,6 +16,7 @@
 #include <QCursor>
 #include <QGuiApplication>
 #include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QJsonArray>
 #include <QKeyEvent>
 #include <QLabel>
@@ -100,39 +105,27 @@ QList<QRect> screenRects() {
 }
 // The bar in the interface's scheme (#198). Its outline meets 3:1 against
 // both black and white in either scheme, so the bar's edge shows over any
-// content; Record and Stop keep their fixed green and red, white on both.
+// content; the primary actions use the shared neutral role.
 
 }
 
 QString formatHint(const QString& format, const QString& codec) {
-    if (format == "mp4" && codec == "h265") return QStringLiteral("Smaller files, but Firefox and Chrome on Linux cannot play H.265 links; Safari and Edge can. Choose H.264 for a link anyone can open.");
-    if (format == "mp4") return QStringLiteral("Plays everywhere.");
+    if (format == "mp4" && codec == "h265") return QStringLiteral("Smaller files, but Firefox and Chrome on Linux cannot play H.265 links; Safari and Edge can. Use MP4 (H.264) for broader playback compatibility.");
+    if (format == "mp4") return QStringLiteral("Recommended for browser sharing.");
     if (format == "webm") return QStringLiteral("VP9 with Opus audio; plays in browsers except older Safari.");
     if (format == "gif") return QStringLiteral("Silent animation, at most 60 s and 1280 px.");
     return QStringLiteral("Silent animated WebP, at most 60 s and 1280 px.");
 }
 QString formatLabel(const QString& format, const QString& codec) {
-    if (format == "mp4") return codec == "h265" ? QStringLiteral("MP4 (H.265)") : QStringLiteral("MP4 (H.264)");
-    if (format == "webm") return QStringLiteral("WebM (VP9)");
-    if (format == "gif") return QStringLiteral("GIF (silent)");
-    return QStringLiteral("WebP (silent)");
+    if (format == "mp4") return codec == "h265" ? QStringLiteral("Smaller video — MP4 (H.265)") : QStringLiteral("Compatible video — MP4 (H.264) · Recommended");
+    if (format == "webm") return QStringLiteral("Browser video — WebM (VP9)");
+    if (format == "gif") return QStringLiteral("Animated GIF");
+    return QStringLiteral("Animated WebP — silent");
 }
 
 namespace {
-// Text over the desktop on a label in the scheme's colours, outlined like the
-// bar, so it reads over any content: the selection hint and its size.
-void paintLabel(QPainter& painter, const QPointF& at, const QString& text) {
-    const auto& p = Theme::current();
-    const QFontMetricsF metrics(painter.font());
-    const QRectF box(at, QSizeF(metrics.horizontalAdvance(text) + 16, metrics.height() + 8));
-    painter.save();
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(p.textDisabled, 1));
-    painter.setBrush(p.bg);
-    painter.drawRoundedRect(box.adjusted(0.5, 0.5, -0.5, -0.5), 6, 6);
-    painter.setPen(p.text);
-    painter.drawText(box, Qt::AlignCenter, text);
-    painter.restore();
+QString displayName(QScreen* screen) {
+    return QStringLiteral("Display %1").arg(QGuiApplication::screens().indexOf(screen) + 1);
 }
 }
 
@@ -140,6 +133,8 @@ class SelectionOverlay::Surface final : public QWidget {
 public:
     Surface(SelectionOverlay& owner, QScreen* screen) : QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus), owner_(owner), logical_(screen->geometry()) {
         setObjectName("putgd-record-select");
+        setAccessibleName("Recording region");
+        describeRegion(this, {}, true, displayName(screen), screen->geometry());
         setAttribute(Qt::WA_TranslucentBackground);
         setScreen(screen);
         setGeometry(logical_.toAlignedRect());
@@ -148,23 +143,17 @@ public:
         setFocusPolicy(Qt::StrongFocus);
         connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
     }
-    void refresh() { update(); }
+    void refresh() { describeRegion(this, owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()]), QGuiApplication::screens()[activeScreen()]->geometry(), regionScreenFrames(), owner_.dragging_); update(); }
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
-        painter.setCompositionMode(QPainter::CompositionMode_Source);
-        painter.fillRect(rect(), QColor(0, 0, 0, 70));
-        const auto clipped = owner_.selection_.intersected(logical_);
-        if (!clipped.isEmpty()) {
-            const QRectF local = clipped.translated(-logical_.topLeft());
-            painter.fillRect(local, Qt::transparent);
-            painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-            paintSelectionOutline(painter, local);
-            paintLabel(painter, local.topLeft() + QPointF(6, 6), QStringLiteral("%1 × %2").arg(int(clipped.width())).arg(int(clipped.height())));
-        } else {
-            painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-            paintLabel(painter, QPointF(24, 24), QStringLiteral("Drag to choose the area to record. Esc cancels."));
-        }
+        const auto clipped = owner_.selection_.isEmpty() && screen() == QGuiApplication::screens()[activeScreen()] ? logical_ : owner_.selection_.intersected(logical_);
+        const QRectF local = clipped.translated(-logical_.topLeft());
+        paintRegionScrim(painter, rect(), local);
+        if (!clipped.isEmpty()) paintSelectionOutline(painter, local);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        if (owner_.keyboardScreen_ < 0 || screen() == QGuiApplication::screens()[activeScreen()])
+            paintRegionInstructions(painter, rect(), palette(), regionInstructions(owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()]), QGuiApplication::screens()[activeScreen()]->geometry(), regionScreenFrames(), owner_.dragging_), owner_.selection_.translated(-logical_.topLeft()), owner_.dragging_ ? std::optional<QPointF>(mapFromGlobal(QCursor::pos())) : std::nullopt);
     }
     void mousePressEvent(QMouseEvent* e) override {
         if (e->button() == Qt::RightButton) { owner_.cancel(); return; }
@@ -172,7 +161,24 @@ protected:
     }
     void mouseMoveEvent(QMouseEvent* e) override { owner_.move(e->globalPosition()); }
     void mouseReleaseEvent(QMouseEvent* e) override { if (e->button() == Qt::LeftButton) { releaseMouse(); owner_.release(e->globalPosition()); } }
-    void keyPressEvent(QKeyEvent* e) override { if (e->key() == Qt::Key_Escape) owner_.cancel(); }
+    bool event(QEvent* e) override {
+        if (e->type() == QEvent::KeyPress) { auto* key = static_cast<QKeyEvent*>(e); if (key->key() == Qt::Key_Tab || key->key() == Qt::Key_Backtab) { keyPressEvent(key); return true; } }
+        return QWidget::event(e);
+    }
+    int activeScreen() const { return owner_.keyboardScreen_ >= 0 ? owner_.keyboardScreen_ : std::max(0, int(QGuiApplication::screens().indexOf(screen()))); }
+    void keyPressEvent(QKeyEvent* e) override {
+        int screen = activeScreen();
+        QList<QRectF> screens;
+        for (auto* output : QGuiApplication::screens()) screens.append(output->geometry());
+        const bool switched = switchRegionDisplay(owner_.selection_, screens, screen, e->key(), e->modifiers());
+        switch (switched ? RegionKeyAction::Change : regionKey(owner_.selection_, screens[screen], e->key(), e->modifiers())) {
+        case RegionKeyAction::Cancel: owner_.cancel(); break;
+        case RegionKeyAction::Accept: owner_.complete(toRoot(owner_.selection_)); break;
+        case RegionKeyAction::Change: owner_.keyboardScreen_ = screen; owner_.dragging_ = false; for (auto* s : owner_.surfaces_) s->refresh(); break;
+        case RegionKeyAction::Ignore: e->ignore(); break;
+        }
+    }
+
 private:
     SelectionOverlay& owner_;
     QRectF logical_;
@@ -183,11 +189,11 @@ void SelectionOverlay::start() {
     for (QScreen* screen : QGuiApplication::screens()) { auto* surface = new Surface(*this, screen); surfaces_.append(surface); surface->show(); surface->raise(); }
     Surface* focus = surfaces_.isEmpty() ? nullptr : surfaces_.first();
     for (auto* s : surfaces_) if (s->geometry().contains(QCursor::pos())) focus = s;
-    if (focus) focus->grabKeyboard();
+    if (focus) { keyboardScreen_ = QGuiApplication::screens().indexOf(focus->screen()); focus->grabKeyboard(); for (auto* surface : surfaces_) surface->refresh(); }
     connect(qGuiApp, &QGuiApplication::screenAdded, this, [this] { cancel({"display_changed", "Display changed during region selection", {}}); });
     connect(qGuiApp, &QGuiApplication::screenRemoved, this, [this] { cancel({"display_changed", "Display changed during region selection", {}}); });
 }
-void SelectionOverlay::press(QPointF point) { if (finished_) return; anchor_ = point; dragging_ = true; selection_ = QRectF(point, QSizeF{}); }
+void SelectionOverlay::press(QPointF point) { if (finished_) return; keyboardScreen_ = -1; anchor_ = point; dragging_ = true; selection_ = QRectF(point, QSizeF{}); for (auto* surface : surfaces_) surface->refresh(); }
 void SelectionOverlay::move(QPointF point) { if (!dragging_ || finished_) return; selection_ = QRectF(anchor_, point).normalized(); for (auto* s : surfaces_) s->refresh(); }
 void SelectionOverlay::release(QPointF point) {
     if (!dragging_ || finished_) return;
@@ -293,7 +299,8 @@ void BoundsOverlay::hideAll() {
     rect_ = {};
 }
 
-ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QWidget* parent) : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint), config_(config), options_(options) {
+ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QWidget* parent) : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint), config_(config), audioIntent_(config.audio.system), options_(options) {
+    config_.audio.system = audioIntent_ && options_.audioSupported && !config_.silent();
     setObjectName("putgd-record-bar");
     setWindowTitle(QString::fromLatin1(controlBarTitle));
     setAttribute(Qt::WA_ShowWithoutActivating);
@@ -301,95 +308,229 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     Fonts::load();
     if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) VisualStyle::apply(*app);
     connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, [this] { refresh(); update(); });
-    auto* layout = new QHBoxLayout(this);
-    layout->setContentsMargins(12, 8, 12, 8);
-    layout->setSpacing(8);
+    auto* rows = new QVBoxLayout(this);
+    rows->setContentsMargins(Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s));
+    rows->setSpacing(Graphite::space(Graphite::Space::s));
+    top_ = new QHBoxLayout;
+    top_->setSpacing(Graphite::space(Graphite::Space::s));
+    rows->addLayout(top_);
     dot_ = new QLabel(this);
-    dot_->setFixedSize(12, 12);
+    dot_->setFixedSize(Graphite::scaled(12), Graphite::scaled(12));
     // The state is written, not only coloured.
     state_label_ = new QLabel(this);
     state_label_->setObjectName("state");
     VisualStyle::role(state_label_, "strong");
     time_ = new QLabel("0:00.0", this);
     time_->setObjectName("time");
-    time_->setFont(Graphite::monoFont(Graphite::Type::body));
+    Graphite::setMono(time_, Graphite::Type::body);
     time_->setMinimumWidth(QFontMetrics(time_->font()).horizontalAdvance(QStringLiteral("00:00.0")) + 4);
-    target_ = new QLabel(options.targetLabel, this);
-    audio_ = new QCheckBox("System audio", this);
+    choices_ = new QWidget(this);
+    choices_->setObjectName("choices");
+    auto* choices = new QHBoxLayout(choices_);
+    choices->setContentsMargins(0, 0, 0, 0);
+    choices->setSpacing(Graphite::space(Graphite::Space::s));
+    target_ = new QLabel(options.targetLabel, choices_);
+    target_->setObjectName("target");
+    auto targetText = options.targetLabel;
+    const auto dimensions = targetText.lastIndexOf(QStringLiteral(" · "));
+    if (dimensions >= 0) targetText = targetText.left(dimensions + 3) + targetText.mid(dimensions + 3).replace(' ', QChar(0x00a0));
+    target_->setText(targetText);
+    target_->setWordWrap(true);
+    target_->setMinimumWidth(0);
+    target_->setToolTip(options.targetLabel);
+    target_->setAccessibleName(options.targetLabel);
+    audio_ = new QCheckBox("System audio", choices_);
     audio_->setChecked(config.audio.system);
-    format_ = new QComboBox(this);
+    format_ = new FormatBox(choices_);
+    format_->setObjectName("format");
+    format_->setProperty("purposeMinimum", true);
+    format_->setAccessibleName("Recording format");
+    format_->setToolTip("The format the recording is reviewed and exported in");
     for (const auto& format : options.formats) {
         const auto codecs = options.codecs[format].toArray();
-        if (codecs.isEmpty()) format_->addItem(formatLabel(format, {}), QStringList{format, QString()});
-        for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatHint(format, codec.toString()), Qt::ToolTipRole); }
+        if (codecs.isEmpty()) { format_->addItem(formatLabel(format, {}), QStringList{format, QString()}); format_->setItemData(format_->count() - 1, formatLabel(format, {}) + "\n" + formatHint(format, {}), Qt::ToolTipRole); }
+        for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatLabel(format, codec.toString()) + "\n" + formatHint(format, codec.toString()), Qt::ToolTipRole); }
     }
+    format_->setToolTip((options_.targetLabel.isEmpty() ? QString() : options_.targetLabel + QStringLiteral("\n")) + format_->currentData(Qt::ToolTipRole).toString());
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) format_->setCurrentIndex(i); }
+    formatAudio_ = new QLabel(choices_);
+    formatAudio_->setObjectName("formatAudio");
+    VisualStyle::role(formatAudio_, "muted");
+    Graphite::setLocked(formatAudio_, true);
+    lockedAudio_ = new QLabel(choices_);
+    lockedAudio_->setObjectName("lockedAudio");
+    lockedFormat_ = new QLabel(choices_);
+    lockedFormat_->setObjectName("lockedFormat");
+    lockedFacts_ = new QLabel(choices_);
+    lockedFacts_->setObjectName("recordingFacts");
+    choices->addWidget(lockedFacts_);
+    for (auto* label : {target_, lockedAudio_, lockedFormat_, lockedFacts_}) { VisualStyle::role(label, "muted"); Graphite::setLocked(label, true); }
+    for (auto* w : std::initializer_list<QWidget*>{target_, audio_, format_, formatAudio_, lockedAudio_, lockedFormat_}) choices->addWidget(w);
     record_ = new QPushButton("Start recording", this); record_->setObjectName("record");
-    record_->setIcon(VisualStyle::icon("record"));
     VisualStyle::role(record_, "primary");
+    record_->setProperty("graphiteSemanticIcon", true);
     pause_ = new QPushButton("Pause", this);
     pause_->setIcon(VisualStyle::icon("pause"));
     resume_ = new QPushButton("Resume", this);
     resume_->setIcon(VisualStyle::icon("play"));
     stop_ = new QPushButton("Stop recording", this); stop_->setObjectName("stop");
-    VisualStyle::role(stop_, "danger");
+    stop_->setIcon(VisualStyle::icon("stop"));
+    VisualStyle::role(stop_, "primary");
     cancel_ = new QPushButton("Cancel", this);
+    cancel_->setObjectName("cancel");
     cancel_->setToolTip("Discard this recording");
     VisualStyle::role(cancel_, "quiet");
-    VisualStyle::role(target_, "secondary");
-    for (auto* w : std::initializer_list<QWidget*>{dot_, state_label_, time_, target_, audio_, format_, record_, pause_, resume_, stop_, cancel_}) layout->addWidget(w);
+    // The discard question, in the bar so it stays where the bar may be (never over the clip).
+    question_ = new QLabel("Discard this recording?", this);
+    question_->setObjectName("discardQuestion");
+    VisualStyle::role(question_, "strong");
+    keep_ = new QPushButton("Keep recording", this);
+    keep_->setObjectName("keepRecording");
+    discard_ = new QPushButton("Discard recording", this);
+    discard_->setObjectName("discardRecording");
+    VisualStyle::role(discard_, "danger");
+    for (auto* w : std::initializer_list<QWidget*>{dot_, state_label_, time_, choices_, question_}) top_->addWidget(w);
+    top_->addStretch(1);
+    for (auto* w : std::initializer_list<QWidget*>{record_, pause_, resume_, stop_, keep_, discard_, cancel_}) top_->addWidget(w);
     connect(record_, &QPushButton::clicked, this, &ControlBar::recordRequested);
     connect(pause_, &QPushButton::clicked, this, &ControlBar::pauseRequested);
     connect(resume_, &QPushButton::clicked, this, &ControlBar::resumeRequested);
     connect(stop_, &QPushButton::clicked, this, &ControlBar::stopRequested);
-    connect(cancel_, &QPushButton::clicked, this, &ControlBar::cancelRequested);
-    connect(audio_, &QCheckBox::toggled, this, [this](bool on) { if (config_.audio.system == on) return; config_.audio.system = on; emit configChanged(config_); });
+    // Before Record there is nothing to lose; after it, Discard… asks first.
+    connect(cancel_, &QPushButton::clicked, this, [this] { if (state_ == "ready") emit cancelRequested(); else askDiscard(); });
+    setTabOrder(keep_, discard_);
+    connect(keep_, &QPushButton::clicked, this, &ControlBar::keepRecording);
+    connect(discard_, &QPushButton::clicked, this, [this] { confirming_ = false; refresh(); emit cancelRequested(); });
+    connect(audio_, &QCheckBox::toggled, this, [this](bool on) { if (audioIntent_ == on) return; audioIntent_ = on; config_.audio.system = on && options_.audioSupported && !config_.silent(); emit configChanged(config_); });
     connect(format_, &QComboBox::currentIndexChanged, this, [this](int index) {
+        format_->setToolTip((options_.targetLabel.isEmpty() ? QString() : options_.targetLabel + QStringLiteral("\n")) + format_->itemData(index, Qt::ToolTipRole).toString());
         const auto value = format_->itemData(index).toStringList();
         if (value.size() != 2 || (value[0] == config_.format && value[1] == config_.codec)) return;
         config_.format = value[0];
         config_.codec = value[1];
-        if (config_.silent()) config_.audio.system = false;
+        config_.audio.system = audioIntent_ && options_.audioSupported && !config_.silent();
         refresh();
         emit configChanged(config_);
     });
+    const QScreen* primary = QGuiApplication::primaryScreen();
+    fitTo(primary ? primary->geometry() : QRect());
+}
+void ControlBar::arrange(bool twoRows) {
+    twoRows_ = twoRows;
+    auto* rows = static_cast<QVBoxLayout*>(layout());
+    top_->removeWidget(choices_);
+    rows->removeWidget(choices_);
+    if (twoRows) rows->addWidget(choices_, 0, Qt::AlignLeft);
+    else top_->insertWidget(top_->indexOf(time_) + 1, choices_);
+}
+void ControlBar::fitTo(const QRect& screen) {
+    fitWidth_ = screen.width();
     refresh();
 }
+void ControlBar::askDiscard() {
+    if (state_ != "recording" && state_ != "paused") return;
+    confirming_ = true;
+    refresh();
+    keep_->setFocus();
+}
+void ControlBar::keepRecording() { confirming_ = false; refresh(); }
 void ControlBar::refresh() {
     const bool ready = state_ == "ready", recording = state_ == "recording", paused = state_ == "paused";
     const bool handle = handle_ && !ready;
+    // The question belongs to a recording that can still be discarded.
+    if (!recording && !paused) confirming_ = false;
+    const bool asking = confirming_ && !handle;
     const auto& tokens = Theme::current();
     setPalette(Graphite::palette());
+    record_->setIcon(VisualStyle::icon("record-dot", tokens.live));
     setProperty("themeScheme", Theme::name(Theme::scheme()));
-    dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: 6px;").arg((recording ? tokens.danger : paused ? tokens.warning : ready ? tokens.success : tokens.textMuted).name()));
+    dot_->setStyleSheet(QStringLiteral("background: %1; border-radius: %2px;").arg((recording ? tokens.live : paused ? tokens.textMuted : tokens.textSecondary).name()).arg(dot_->width() / 2.0));
     state_label_->setText(recording ? QStringLiteral("Recording") : paused ? QStringLiteral("Paused") : ready ? QStringLiteral("Ready to record") : QStringLiteral("Stopping…"));
-    // Locked from Record on, the box still shows what is being recorded (#120).
+    // Once recording starts these are information, not disabled choices.
     const bool withSound = config_.audio.system && !config_.silent();
     audio_->setEnabled(ready && options_.audioSupported && !config_.silent());
-    audio_->setChecked(withSound);
+    Graphite::setLocked(audio_, !audio_->isEnabled());
+    audio_->blockSignals(true);
+    audio_->setChecked(audioIntent_);
+    audio_->blockSignals(false);
+    audio_->setText(config_.silent() ? QStringLiteral("System audio — used for video formats") : QStringLiteral("System audio"));
     audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : ready ? QStringLiteral("Include the sound the computer plays") : withSound ? QStringLiteral("System audio is being recorded") : QStringLiteral("System audio is not being recorded"));
     format_->setEnabled(ready);
-    for (auto* w : std::initializer_list<QWidget*>{state_label_, time_, target_, audio_, format_, cancel_}) w->setVisible(!handle);
+    audio_->setVisible(ready);
+    format_->setVisible(ready);
+    formatAudio_->setText(QStringLiteral("%1 has no audio").arg(config_.format == "gif" ? QStringLiteral("GIF") : QStringLiteral("WebP")));
+    formatAudio_->setVisible(ready && config_.silent());
+    target_->setVisible(ready && !options_.targetLabel.isEmpty());
+    choices_->setToolTip(options_.targetLabel);
+    choices_->setAccessibleDescription(options_.targetLabel);
+    lockedFacts_->setVisible(!ready);
+    lockedAudio_->hide();
+    lockedFormat_->hide();
+    lockedAudio_->setText(withSound ? QStringLiteral("With system audio") : QStringLiteral("No audio"));
+    lockedAudio_->setToolTip(audio_->toolTip());
+    lockedAudio_->setAccessibleName(QStringLiteral("Audio: ") + lockedAudio_->text());
+    lockedFormat_->setText(format_->currentText().section(QStringLiteral(" — "), 0, 0));
+    lockedFacts_->setToolTip(options_.targetLabel + " · " + lockedAudio_->text() + " · " + format_->currentText());
+    QStringList facts;
+    for (const auto& fact : {options_.targetLabel, lockedAudio_->text(), lockedFormat_->text()}) if (!fact.isEmpty()) facts.append(fact);
+    lockedFacts_->setText(facts.join(QStringLiteral(" · ")));
+    lockedFacts_->setAccessibleName(lockedFacts_->text());
+    lockedFormat_->setAccessibleName(QStringLiteral("Recording format: ") + lockedFormat_->text());
+    lockedFormat_->setToolTip(format_->currentText() + QStringLiteral("\nRecording format; choose the export format in review"));
+    cancel_->setText(ready ? QStringLiteral("Cancel") : QStringLiteral("Discard…"));
+    keep_->setText(paused ? QStringLiteral("Keep paused") : QStringLiteral("Keep recording"));
+    state_label_->setVisible(!handle);
+    time_->setVisible(!handle && !ready);
+    choices_->setVisible(!handle && !asking);
+    cancel_->setVisible(!handle && !asking);
     record_->setVisible(ready);
-    pause_->setVisible(recording && !handle);
-    resume_->setVisible(paused);
-    stop_->setVisible(recording || paused);
+    pause_->setVisible(recording && !handle && !asking);
+    resume_->setVisible(paused && !asking);
+    stop_->setVisible((recording || paused) && !asking);
+    for (auto* w : std::initializer_list<QWidget*>{question_, keep_, discard_}) w->setVisible(asking);
     stop_->setEnabled(state_ != "stopping");
     cancel_->setEnabled(state_ != "stopping");
-    layout()->setContentsMargins(handle ? QMargins(8, 4, 8, 4) : QMargins(12, 8, 12, 8));
+    cancel_->setToolTip(ready ? QStringLiteral("Close without recording") : QStringLiteral("Discard this recording (asks first)"));
+    layout()->setContentsMargins(handle ? QMargins(Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::xs), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::xs)) : QMargins(Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s), Graphite::space(Graphite::Space::m), Graphite::space(Graphite::Space::s)));
+    // Measure the current full text before applying any wrapping from a prior state.
+    for (auto* label : {target_, lockedFacts_}) {
+        label->setWordWrap(false);
+        label->setMinimumSize(0, 0);
+        label->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+    }
+    arrange(false);
+    layout()->invalidate();
     adjustSize();
+    if (!handle && fitWidth_ > 0 && sizeHint().width() > fitWidth_ * 3 / 4) {
+        arrange(true);
+        const int room = std::max(1, fitWidth_ * 3 / 4 - 2 * Graphite::space(Graphite::Space::m));
+        int other = 0;
+        for (auto* widget : std::initializer_list<QWidget*>{audio_, format_, formatAudio_})
+            if (!widget->isHidden()) other += widget->sizeHint().width() + Graphite::space(Graphite::Space::s);
+        for (auto* label : {target_, lockedFacts_}) {
+            if (label->isHidden()) continue;
+            const int natural = label->fontMetrics().horizontalAdvance(label->text()) + Graphite::space(Graphite::Space::xs);
+            const int minimum = label == target_ ? std::min(natural, label->fontMetrics().horizontalAdvance(options_.targetLabel.section(QStringLiteral(" · "), -1)) + Graphite::space(Graphite::Space::xs)) : 1;
+            const int width = std::clamp(room - (label == target_ ? other : 0), minimum, natural);
+            label->setWordWrap(true);
+            label->setFixedWidth(width);
+            label->setMinimumHeight(label->heightForWidth(width));
+        }
+        layout()->invalidate();
+        adjustSize();
+    }
+    layout()->activate();
     reposition();
 }
 void ControlBar::setState(const QString& state) { state_ = state; refresh(); }
 void ControlBar::paintEvent(QPaintEvent*) {
     QPainter painter(this);
     painter.fillRect(rect(), Theme::current().bg);
-    painter.setPen(Theme::current().borderStrong);
+    painter.setPen(Theme::current().controlOutline);
     painter.drawRect(rect().adjusted(0, 0, -1, -1));
 }
 void ControlBar::setRetained(qint64 us) {
-    const qint64 tenths = us / 100000;
-    time_->setText(QStringLiteral("%1:%2.%3").arg(tenths / 600).arg((tenths / 10) % 60, 2, 10, QChar('0')).arg(tenths % 10));
+    time_->setText(durationText(us));
 }
 QSize ControlBar::widestSize() {
     const QString state = state_;
@@ -397,8 +538,13 @@ QSize ControlBar::widestSize() {
     const Placed placed = std::exchange(placed_, Placed::None);
     handle_ = false;
     QSize widest;
-    for (const char* each : {"ready", "recording", "paused", "stopping"}) { state_ = QString::fromLatin1(each); refresh(); widest = widest.expandedTo(size()); }
+    const bool asking = std::exchange(confirming_, false);
+    for (const char* each : {"ready", "recording", "paused", "stopping"}) {
+        state_ = QString::fromLatin1(each);
+        for (const bool question : {false, true}) { confirming_ = question; refresh(); widest = widest.expandedTo(size()); }
+    }
     state_ = state;
+    confirming_ = asking;
     handle_ = handle;
     refresh();
     placed_ = placed;
@@ -406,6 +552,7 @@ QSize ControlBar::widestSize() {
 }
 bool ControlBar::placeAround(const QRect& root) {
     recorded_ = fromRootSpan(root);
+    if (const auto screens = screenRects(); !screens.isEmpty()) fitTo(screens.value(std::max(0, homeScreen(recorded_, screens))));
     outside_ = placeBar(widestSize(), recorded_, screenRects()).outside;
     placed_ = Placed::Root;
     dragged_ = false;
@@ -414,6 +561,7 @@ bool ControlBar::placeAround(const QRect& root) {
 }
 bool ControlBar::placeOnLayer(const QRect& logical) {
     recorded_ = logical;
+    if (const auto screens = screenRects(); !screens.isEmpty()) fitTo(screens.value(std::max(0, homeScreen(recorded_, screens))));
     outside_ = placeBar(widestSize(), recorded_, screenRects()).outside;
 #ifdef PUTGD_RECORD_LAYER_SHELL
     placed_ = Placed::Layer;
@@ -485,7 +633,8 @@ void ControlBar::mouseReleaseEvent(QMouseEvent* e) {
     QWidget::mouseReleaseEvent(e);
 }
 void ControlBar::keyPressEvent(QKeyEvent* e) {
-    if (e->key() == Qt::Key_Escape) { if (state_ == "ready") emit cancelRequested(); return; }
+    // Escape is the safe answer to the discard question; before Record it cancels.
+    if (e->key() == Qt::Key_Escape) { if (confirming_) keepRecording(); else if (state_ == "ready") emit cancelRequested(); return; }
     QWidget::keyPressEvent(e);
 }
 }

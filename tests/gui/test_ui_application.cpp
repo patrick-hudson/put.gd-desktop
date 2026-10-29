@@ -4,14 +4,20 @@
 #include "ui/HistoryWindow.h"
 #include "ui/AboutWindow.h"
 #include "ui/Theme.h"
+#include "ui/Graphite.h"
 #include "ui/VisualStyle.h"
 #include "ui/ViewState.h"
 #include <QScopeGuard>
+#include <QTextEdit>
+#include <QScreen>
 #include "fixtures/UiSessionFixture.h"
 #include <QApplication>
+#include <QMessageBox>
+#include <QLayout>
 #include <QComboBox>
 #include <QLabel>
 #include <QJsonDocument>
+#include <QClipboard>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QTabBar>
@@ -19,12 +25,19 @@
 #include <QStackedWidget>
 #include <QToolButton>
 #include <QPushButton>
+#include <QAction>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QTabWidget>
 #include <QStyledItemDelegate>
 #include <QtTest>
 #include <QTimer>
+#include <QStatusBar>
+#include <QStyleOptionToolButton>
+#include <QStyleOptionButton>
+#include <QPainter>
+#include "ui/Graphite.h"
+#include "ui/Fonts.h"
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::test;
 class ControlDevice:public QIODevice {
@@ -41,8 +54,32 @@ public:
 class UiApplicationTest:public QObject {
  Q_OBJECT
 private slots:
+ void aboutBuildDetailsFollowTheCurrentFont_data(){QTest::addColumn<int>("pixels");QTest::newRow("normal")<<14;QTest::newRow("large")<<21;}
+ void aboutBuildDetailsFollowTheCurrentFont(){
+  QFETCH(int,pixels);VisualStyle::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);AboutWindow about(QJsonObject{{"version","26.1028.1"},{"source","synthetic"},{"compiler","test"}});about.show();auto* toggle=about.findChild<QToolButton*>("buildDetails");QVERIFY(toggle);toggle->click();auto* details=about.findChild<QWidget*>("aboutBuildDetails");QVERIFY(details&&details->isVisible());auto* version=about.findChild<QLabel*>("aboutVersion");auto* commit=about.findChild<QTextEdit*>("buildCommit");QVERIFY(version&&commit&&version->isVisible());QCOMPARE(version->font().family(),Graphite::monoFamily());QVERIFY(version->fontMetrics().height()>=QFontMetrics(font).height()-2);QCOMPARE(commit->wordWrapMode(),QTextOption::WrapAnywhere);QVERIFY(about.findChild<QPushButton*>("copyBuildDetails"));QCOMPARE(commit->horizontalScrollBar()->maximum(),0);toggle->click();QVERIFY(!details->isVisible());toggle->click();QVERIFY(details->isVisible());
+ }
+ void keyboardOrderPutsChromeAfterContent(){
+  Graphite::WindowHeader::setCustomFrameOverride(1);auto restore=qScopeGuard([]{Graphite::WindowHeader::setCustomFrameOverride(0);});QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);window.show();window.activateWindow();auto* menu=window.findChild<QToolButton*>("applicationMenu");auto* navigation=window.findChild<QTabBar*>("mainNavigation");QVERIFY(menu&&navigation);menu->setFocus();QTest::keyClick(menu,Qt::Key_Tab);PUTGD_TRY_VERIFY(navigation->hasFocus());QTest::keyClick(navigation,Qt::Key_Tab);QCOMPARE(window.focusWidget()->objectName(),QString("captureActionButton"));
+  QStringList order;QWidget* next=menu;do{if(next->isVisibleTo(&window)&&next->isEnabled()&&(next->focusPolicy()&Qt::TabFocus))order.append(next->objectName());next=next->nextInFocusChain();}while(next!=menu);QVERIFY(order.indexOf("historyCategories")>order.indexOf("captureActionButton"));QVERIFY(order.indexOf("windowMinimize")>order.indexOf("historyCategories"));QCOMPARE(order.last(),QString("windowClose"));window.navigate("settings");order.clear();next=menu;do{if(next->isVisibleTo(&window)&&next->isEnabled()&&(next->focusPolicy()&Qt::TabFocus))order.append(next->objectName());next=next->nextInFocusChain();}while(next!=menu);QVERIFY(order.indexOf("appearanceTheme")>order.indexOf("captureActionButton"));QCOMPARE(order.last(),QString("windowClose"));
+ }
  // #558: opening and checkpointing History must not construct the hidden
  // Settings tree; explicit navigation and agent commands still initialize it.
+ void editSourcesStayAvailableWithoutOutput(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);window.show();QToolButton* edit=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="edit")edit=button;QVERIFY(edit);QVERIFY(edit->isEnabled());QVERIFY(!edit->property("captureBadge").toBool());QVERIFY(edit->menu());for(auto* action:edit->menu()->actions())QVERIFY(action->isEnabled());QSignalSpy capture(&window,&MainWindow::actionRequested),existing(&window,&MainWindow::editRequested);edit->click();QCOMPARE(capture.size(),0);edit->menu()->actions().first()->trigger();QCOMPARE(existing.size(),1);QCOMPARE(existing.first().first().toString(),QString("clipboard"));window.imageChooserFinished({FileDialog::Result::Status::Chosen,d.filePath("test.png"),{}});QCOMPARE(existing.size(),2);
+ }
+ void trayRecoveryUsesHistoryConfirmationAndFailedFilter(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl ui(device);UiApplicationController controller(fixture.session,ui,{});QStringList canceled;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="operation.cancel")canceled<<params["id"].toString();};device.send("activate",{{"view","historyCancelAll:[\"first-upload\",\"second-upload\"]"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);PUTGD_TRY_VERIFY(window->history()->historyState()["cancelAllConfirmation"].toObject()["open"].toBool());QVERIFY(canceled.isEmpty());const auto ids=window->history()->historyState()["cancelAllConfirmation"].toObject()["operationIds"].toArray();QCOMPARE(ids,QJsonArray({"first-upload","second-upload"}));window->history()->command({{"action","confirmCancelAll"}},[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(canceled.size(),2);device.send("activate",{{"view","historyFailed"}});QCOMPARE(window->history()->historyState()["query"].toObject()["uploadStatus"].toString(),QString("failed"));
+ }
+ void actionRecoveryOpensTheRelevantControl_data(){QTest::addColumn<QString>("code");QTest::addColumn<QString>("control");QTest::addColumn<int>("page");QTest::newRow("output")<<QString("output_required")<<QString("defaultCaptureDestination")<<2;QTest::newRow("destination")<<QString("s3_settings_invalid")<<QString("s3Bucket")<<1;QTest::newRow("local-copy")<<QString("archive_failed")<<QString("keepUploadCopies")<<2;}
+ void actionRecoveryOpensTheRelevantControl(){
+  QFETCH(QString,code);QFETCH(QString,control);QFETCH(int,page);QTemporaryDir d;SettingsService settings(d.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(code=="output_required"?Settings::defaults():Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl ui(device);UiApplicationController controller(fixture.session,ui,{});const auto view="actionRecovery:"+QString::fromUtf8(QJsonDocument(QJsonObject{{"action","region"},{"code",code},{"message","Synthetic specific failure"}}).toJson(QJsonDocument::Compact));device.send("activate",{{"view",view}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);QCOMPARE(window->saveViewState()["page"].toInt(),page);QCOMPARE(window->findChild<QLabel*>("actionRecoveryError")->text(),QString("Synthetic specific failure"));{/* Final read: the notice is a warning banner like the others, with no danger-coloured text. */auto* banner=window->findChild<Graphite::Banner*>("actionRecoveryBanner");QVERIFY(banner);QCOMPARE(banner->tone(),Graphite::Banner::Tone::Warning);QCOMPARE(banner->textLabel(),window->findChild<QLabel*>("actionRecoveryError"));QVERIFY(banner->textLabel()->palette().color(QPalette::WindowText)!=Theme::current().danger);QCOMPARE(banner->actionButton(),window->findChild<QPushButton*>("actionRecoveryLink"));QCOMPARE(banner->dismissButton(),window->findChild<QToolButton*>("dismissActionRecovery"));QCOMPARE(banner->actionButton()->text(),code=="output_required"?QString("Change output"):code=="archive_failed"?QString("Keep local copies"):QString("Review destination"));}auto* recovery=window->findChild<QPushButton*>("actionRecoveryLink");QCOMPARE(recovery->isVisible(),code!="output_required");if(code=="output_required")QVERIFY(window->findChild<QWidget*>("captureOutputBlock")->isVisible());auto* target=window->findChild<QWidget*>(control);QVERIFY(target);PUTGD_TRY_VERIFY(window->focusWidget()==target);if(code=="output_required")window->showCaptureSettings({"region"});else recovery->click();PUTGD_TRY_VERIFY(window->focusWidget()==target);if(code=="output_required"){auto* generic=window->findChild<QWidget*>("commandOutputWarning");QVERIFY(generic->isHidden());window->findChild<QToolButton*>("dismissActionRecovery")->click();QVERIFY(!generic->isVisible());QVERIFY(!window->findChild<QWidget*>("actionRecoveryNotification")->isVisible());window->navigate("history");PUTGD_TRY_VERIFY(generic->isVisible());}
+ }
+ void releaseBrowserFailureStaysOutsideStatusBand(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);QJsonObject snapshot;fixture.server.dispatch({{"schemaVersion",1},{"requestId","version"},{"session",fixture.server.socketPath()},{"method","ui.snapshot"},{"params",QJsonObject{}}},[&](Error e,QJsonObject data){QVERIFY(!e);snapshot=data;});PUTGD_TRY_VERIFY(!snapshot.isEmpty());auto build=snapshot["build"].toObject();build["version"]="26.1026.12345-nightly";build["dirty"]=false;snapshot["build"]=build;fixture.session.applySnapshot(snapshot);window.resize(1060,680);window.show();putgd::test::settle(30);const int before=window.statusBar()->height();auto* failure=static_cast<Graphite::BrowserFeedback*>(window.findChild<QWidget*>("appVersionBrowserFeedback"));QVERIFY(failure);failure->opening(QUrl("https://example.invalid/release"))({{"opened",false}});auto* notice=window.findChild<QWidget*>("appVersionNotification");PUTGD_TRY_VERIFY(notice->isVisible());QVERIFY(!window.statusBar()->isAncestorOf(notice));QCOMPARE(window.statusBar()->height(),before);window.findChild<QPushButton*>("copyReleaseLink")->click();QCOMPARE(QApplication::clipboard()->text(),QString("https://example.invalid/release"));window.findChild<QToolButton*>("dismissVersionNotification")->click();PUTGD_TRY_VERIFY(!notice->isVisible());
+ }
+ void trayOutputNavigationOpensCaptureSettings(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","captureSettings"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);PUTGD_TRY_COMPARE(window->saveViewState()["page"].toInt(),2);PUTGD_TRY_COMPARE(window->findChild<QTabWidget*>("settingsTabs")->currentIndex(),1);QVERIFY(window->findChild<QComboBox*>("defaultCaptureDestination")->isVisible());
+ }
  void historyDefersCleanSettingsAndUsesCurrentConfiguration(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();QVERIFY(settings.save(document,{}));
   CredentialStore secrets;UiSessionFixture fixture(settings,secrets);QJsonObject saved;
@@ -128,9 +165,9 @@ private slots:
    }
    return rows;
   };
-  // The heading's help button holds the focus, as in putgd-ui: its focus
-  // border must not change its height.
-  const auto focusHelp=[](MainWindow& window){if(auto* help=window.findChild<QWidget*>("captureActionsHeadingHelp"))help->setFocus();};
+  // A band button holds the focus, as in putgd-ui: its focus border must not
+  // change its height.
+  const auto focusHelp=[](MainWindow& window){if(auto* button=window.findChild<QWidget*>("captureActionButton"))button->setFocus();};
   Theme::setScheme(Theme::Scheme(to));
   MainWindow fresh(fixture.session);fresh.resize(1320,880);fresh.show();QVERIFY(putgd::test::waitForWindowExposed(&fresh));focusHelp(fresh);putgd::test::settle(50);
   const auto expected=layout(fresh);fresh.hide();QVERIFY(!expected.isEmpty());
@@ -219,16 +256,18 @@ private slots:
  void explicitQuitFlushesFinishedEditsBeforeStoppingTheResident_data(){QTest::addColumn<bool>("setupPending");QTest::newRow("debounce")<<false;QTest::newRow("accepted-setup")<<true;}
  void explicitQuitFlushesFinishedEditsBeforeStoppingTheResident(){
   QFETCH(bool,setupPending);QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;std::function<void(Error)> complete;UiSessionFixture fixture(settings,secrets,[&](auto,auto,auto reply){complete=reply;});ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","settings"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);
-  if(setupPending){window->findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(bool(complete));}const auto output=dir.filePath("saved-before-quit");fixture.client.replyDelayMs["settings.save"]=350;bool quit=false;QString savedAtQuit;fixture.server.setUiQuit([&]{quit=true;savedAtQuit=settings.document()["archive"].toObject()["root"].toString();});window->findChild<QLineEdit*>("archiveRoot")->setText(output);window->findChild<QPushButton*>("quitApplication")->click();
+  if(setupPending){window->findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(bool(complete));}const auto output=dir.filePath("saved-before-quit");fixture.client.replyDelayMs["settings.save"]=350;bool quit=false;QString savedAtQuit;fixture.server.setUiQuit([&]{quit=true;savedAtQuit=settings.document()["archive"].toObject()["root"].toString();});window->findChild<QLineEdit*>("archiveRoot")->setText(output);window->findChild<QAction*>("quitApplication")->trigger();
   if(setupPending){putgd::test::settle(500);PUTGD_TRY_VERIFY(!quit);complete({});}PUTGD_TRY_VERIFY(quit);QCOMPARE(savedAtQuit,output);
  }
+ void allMainPagesRemainVisibleWithNativeStyleRowMetrics_data(){QTest::addColumn<int>("frame");QTest::newRow("native")<<-1;QTest::newRow("custom")<<1;}
  void allMainPagesRemainVisibleWithNativeStyleRowMetrics(){
+  QFETCH(int,frame);Graphite::WindowHeader::setCustomFrameOverride(frame);auto restore=qScopeGuard([]{Graphite::WindowHeader::setCustomFrameOverride(0);});
   // Graphite: the pages are one centred segmented control in the header.
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);auto* navigation=window.findChild<QTabBar*>("mainNavigation");QVERIFY(navigation);window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   for(int row=0;row<navigation->count();++row){navigation->setCurrentIndex(row);PUTGD_TRY_VERIFY(navigation->rect().contains(navigation->tabRect(row)));PUTGD_TRY_COMPARE(window.findChild<QStackedWidget*>("mainPages")->currentIndex(),row);}
   QCOMPARE(QStringList({navigation->tabText(0),navigation->tabText(1),navigation->tabText(2)}),QStringList({"History","Destinations","Settings"}));
   // Centred in the window header.
-  const int centre=navigation->mapTo(&window,navigation->rect().center()).x();QVERIFY2(std::abs(centre-window.width()/2)<=4,qPrintable(QString::number(centre)));
+  for(const int width:{1060,900,1300,1060}){window.resize(width,680);QApplication::processEvents();const int centre=navigation->mapTo(&window,navigation->rect().center()).x();QVERIFY2(std::abs(centre-window.width()/2)<=4,qPrintable(QString("centre %1 in %2").arg(centre).arg(window.width())));}
  }
  void railActionsFlushSettingsAndHideScreenWindowsBeforeDispatch_data(){QTest::addColumn<QString>("action");for(const auto& name:Settings::actionNames())QTest::newRow(qPrintable(name))<<name;}
  void railActionsFlushSettingsAndHideScreenWindowsBeforeDispatch(){
@@ -239,7 +278,8 @@ private slots:
   QToolButton* button=nullptr;for(auto* candidate:window->findChildren<QToolButton*>("captureActionButton"))if(candidate->property("captureAction")==action)button=candidate;QVERIFY(button);button->click();button->click();PUTGD_TRY_COMPARE(invoked,1);QCOMPARE(savedAtInvocation,output);QCOMPARE(mainVisible,action=="clipboard");QCOMPARE(aboutVisible,action=="clipboard");PUTGD_TRY_VERIFY(window->isVisible()&&about->isVisible());QVERIFY(device.last("closeRequested").isEmpty());
  }
  void screenRailActionWaitsForAnOpenDialogToBeDismissed(){
-  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","history"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);QDialog dialog(window);dialog.setWindowModality(Qt::NonModal);dialog.show();int invoked=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="action.invoke"){++invoked;fixture.client.failOnce[method]={"fixture_rejected","Synthetic rejection",{}};}};QToolButton* button=nullptr;for(auto* candidate:window->findChildren<QToolButton*>("captureActionButton"))if(candidate->property("captureAction")=="region")button=candidate;QVERIFY(button);button->click();putgd::test::settle(300);PUTGD_TRY_COMPARE(invoked,0);PUTGD_TRY_VERIFY(window->isVisible()&&dialog.isVisible());dialog.reject();button->click();PUTGD_TRY_COMPARE(invoked,1);PUTGD_TRY_VERIFY(window->isVisible());
+  // A usable output: Capture region is unavailable while captures have nowhere to go.
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","history"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);QDialog dialog(window);dialog.setWindowModality(Qt::NonModal);dialog.show();int invoked=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="action.invoke"){++invoked;fixture.client.failOnce[method]={"fixture_rejected","Synthetic rejection",{}};}};QToolButton* button=nullptr;for(auto* candidate:window->findChildren<QToolButton*>("captureActionButton"))if(candidate->property("captureAction")=="region")button=candidate;QVERIFY(button);button->click();putgd::test::settle(300);PUTGD_TRY_COMPARE(invoked,0);PUTGD_TRY_VERIFY(window->isVisible()&&dialog.isVisible());dialog.reject();button->click();PUTGD_TRY_COMPARE(invoked,1);PUTGD_TRY_VERIFY(window->isVisible());
  }
  void acceptedScreenRailActionClosesTheHiddenHelperAfterCheckpoint(){
   QTemporaryDir dir;ProviderRegistry registry;SettingsService settings(dir.filePath("config/config.json"));auto document=Settings::defaults();auto archive=document["archive"].toObject();archive["keepUploads"]=true;archive["root"]=dir.filePath("archive");document["archive"]=archive;QVERIFY(settings.save(document,{}));Source source;source.payload=textPayload();OperationService operations(dir.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
@@ -257,7 +297,7 @@ private slots:
  }
  void closingOrQuittingDuringRailSaveCancelsOnlyThePendingInvocation_data(){QTest::addColumn<bool>("quit");QTest::newRow("close")<<false;QTest::newRow("quit")<<true;}
  void closingOrQuittingDuringRailSaveCancelsOnlyThePendingInvocation(){
-  QFETCH(bool,quit);QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);fixture.client.replyDelayMs["settings.save"]=300;ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","settings"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);int invoked=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="action.invoke")++invoked;};const auto output=dir.filePath("saved-without-capture");window->findChild<QLineEdit*>("archiveRoot")->setText(output);QToolButton* button=nullptr;for(auto* candidate:window->findChildren<QToolButton*>("captureActionButton"))if(candidate->property("captureAction")=="region")button=candidate;QVERIFY(button);button->click();bool stopped=false;fixture.server.setUiQuit([&]{stopped=true;});if(quit)window->findChild<QPushButton*>("quitApplication")->click();else window->close();PUTGD_TRY_COMPARE(settings.document()["archive"].toObject()["root"].toString(),output);if(quit)PUTGD_TRY_VERIFY(stopped);else PUTGD_TRY_VERIFY(!device.last("closeRequested").isEmpty());putgd::test::settle(350);PUTGD_TRY_COMPARE(invoked,0);
+  QFETCH(bool,quit);QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);fixture.client.replyDelayMs["settings.save"]=300;ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","settings"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);int invoked=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="action.invoke")++invoked;};const auto output=dir.filePath("saved-without-capture");window->findChild<QLineEdit*>("archiveRoot")->setText(output);QToolButton* button=nullptr;for(auto* candidate:window->findChildren<QToolButton*>("captureActionButton"))if(candidate->property("captureAction")=="region")button=candidate;QVERIFY(button);button->click();bool stopped=false;fixture.server.setUiQuit([&]{stopped=true;});if(quit)window->findChild<QAction*>("quitApplication")->trigger();else window->close();PUTGD_TRY_COMPARE(settings.document()["archive"].toObject()["root"].toString(),output);if(quit)PUTGD_TRY_VERIFY(stopped);else PUTGD_TRY_VERIFY(!device.last("closeRequested").isEmpty());putgd::test::settle(350);PUTGD_TRY_COMPARE(invoked,0);
  }
  void finalCloseWaitsForAnOutstandingLargeCheckpoint(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
@@ -368,8 +408,8 @@ private slots:
   auto* scroll=qobject_cast<QScrollArea*>(tabs->widget(0));QVERIFY(scroll);auto* bar=scroll->verticalScrollBar();
   const auto inView=[&](QWidget* widget){return widget->isVisible()&&scroll->viewport()->rect().contains(QRect(widget->mapTo(scroll->viewport(),QPoint()),widget->size()));};
   PUTGD_TRY_VERIFY(window->isVisible());PUTGD_TRY_VERIFY(fixture.session.ready());PUTGD_TRY_VERIFY(inView(status));
-  // The window manager fits it to the screen after it was shown.
-  window->resize(1280,760);PUTGD_TRY_COMPARE(window->height(),760);PUTGD_TRY_VERIFY(bar->maximum()>0);
+  // The window manager fits it to the screen after it was shown, small enough that General scrolls.
+  for(int h=760;h>=window->minimumHeight();h-=40){window->resize(1280,h);PUTGD_TRY_COMPARE(window->height(),h);putgd::test::settle(20);if(bar->maximum()>0)break;}QVERIFY(bar->maximum()>0);
   PUTGD_TRY_VERIFY2(inView(status),"Updates stays in view after the window settles smaller");
   // The update arrives: its actions add rows to the group, still in view.
   update={{"supported",true},{"build",QJsonObject{{"version","0.1.1-nightly.886"},{"channel","nightly"},{"supported",true},{"packageTarget","appimage"}}},
@@ -389,6 +429,14 @@ private slots:
  // At 1280×800 the whole rail fits; at 768 px it may scroll a little,
  // depending on the fonts, and below the window's minimum height, where a
  // window manager can still hold it, the rest scrolls into view.
+ void commandBandShortensSecondaryLabelsBeforeIcons(){
+  Fonts::load();VisualStyle::apply(*qApp);const auto original=QApplication::font();const auto restore=qScopeGuard([&]{QApplication::setFont(original);});auto font=original;font.setPixelSize(qRound((original.pixelSize()>0?original.pixelSize():original.pointSizeF()*96.0/72.0)*21.0/Graphite::font().pixelSize()));QApplication::setFont(font);
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);window.show();
+  QToolButton *record=nullptr,*clipboard=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){if(button->property("captureAction")=="record")record=button;if(button->property("captureAction")=="clipboard")clipboard=button;}
+  QCOMPARE(Graphite::font().pixelSize(),21);QVERIFY(record&&clipboard);bool shortened=false,full=false,clipboardOnly=false;
+  for(int width=1060;width<=2100;width+=20){window.resize(width,680);QApplication::processEvents();if(record->toolButtonStyle()==Qt::ToolButtonTextBesideIcon&&record->text()=="Record"){shortened=true;QCOMPARE(clipboard->text(),QString("Clipboard"));clipboardOnly|=clipboard->toolButtonStyle()==Qt::ToolButtonIconOnly;}full|=record->toolButtonStyle()==Qt::ToolButtonTextBesideIcon&&record->text()=="Record screen";QCOMPARE(record->accessibleName(),QString("Record screen"));QCOMPARE(clipboard->accessibleName(),QString("Upload clipboard"));}
+  QVERIFY(shortened);QVERIFY(full);QVERIFY(clipboardOnly);window.resize(1060,680);QApplication::processEvents();QCOMPARE(record->text(),QString("Record"));QVERIFY2(record->toolButtonStyle()==Qt::ToolButtonTextBesideIcon,qPrintable(QString("band %1, hint %2, text %3, font %4").arg(window.findChild<QWidget*>("commandBand")->width()).arg(window.findChild<QWidget*>("commandBand")->layout()->sizeHint().width()).arg(record->text()).arg(record->font().pixelSize())));
+ }
  void railFitsShortWindows_data(){
   QTest::addColumn<QSize>("size");QTest::addColumn<int>("scrolls");
   enum{Never,Maybe,Always};
@@ -411,14 +459,15 @@ private slots:
   QJsonObject snapshot;fixture.server.dispatch({{"schemaVersion",1},{"requestId","rail"},{"session",fixture.server.socketPath()},{"method","ui.snapshot"},{"params",QJsonObject{}}},[&](Error e,QJsonObject data){QVERIFY(!e);snapshot=data;});PUTGD_TRY_VERIFY(!snapshot.isEmpty());
   auto build=snapshot["build"].toObject();build["version"]="26.1231.99999-nightly";build["dirty"]=false;snapshot["build"]=build;fixture.session.applySnapshot(snapshot);
   auto* version=window.findChild<QPushButton*>("appVersionLink");QVERIFY(version);PUTGD_TRY_VERIFY(version->isVisible());
-  auto* update=window.findChild<QPushButton*>("updateAvailable");auto* output=window.findChild<QLabel*>("captureOutputSummary");auto* navigation=window.findChild<QTabBar*>("mainNavigation");auto* band=window.findChild<QWidget*>("commandBand");
-  QVERIFY(update&&output&&navigation&&band);PUTGD_TRY_VERIFY(update->isVisible());PUTGD_TRY_COMPARE(window.size(),size);QCOMPARE(output->text().count('\n'),1);
+  auto* update=window.findChild<QPushButton*>("updateAvailable");auto* output=window.findChild<QToolButton*>("captureOutputSummary");auto* navigation=window.findChild<QTabBar*>("mainNavigation");auto* band=window.findChild<QWidget*>("commandBand");
+  QVERIFY(update&&output&&navigation&&band);PUTGD_TRY_VERIFY(update->isVisible());PUTGD_TRY_COMPARE(window.size(),size);QCOMPARE(output->text(),QString("Mixed outputs"));
   Q_UNUSED(scrolls);
-  // Every capture action stays reachable: its own button, or Capture region's menu.
+  // Every capture action keeps its own visible button at every width (narrow
+  // bands show icons, named in tooltips); Capture region has no duplicate menu.
   QStringList reachable;QToolButton* region=nullptr;
-  for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){if(button->isVisible())reachable<<button->property("captureAction").toString();if(button->property("captureAction")=="region")region=button;}
-  QVERIFY(region&&region->menu());for(auto* action:region->menu()->actions())reachable<<QString(action->text()).toLower();
-  for(const auto& name:Settings::invocableActionNames())QVERIFY2(reachable.contains(name)||reachable.contains("capture "+name),qPrintable(name+" unreachable at "+QString::number(size.width())));
+  for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){if(button->isVisible())reachable<<button->property("captureAction").toString();if(button->property("captureAction")=="region")region=button;if(button->toolButtonStyle()==Qt::ToolButtonIconOnly)QVERIFY(!button->accessibleName().isEmpty()&&!button->toolTip().isEmpty());}
+  QVERIFY(region&&!region->menu());QCOMPARE(region->toolButtonStyle(),Qt::ToolButtonTextBesideIcon);
+  for(const auto& name:Settings::invocableActionNames())QVERIFY2(reachable.contains(name),qPrintable(name+" unreachable at "+QString::number(size.width())));
   // The band's controls neither overlap nor leave it; the status band shows the whole version line.
   const auto problem=[&]()->QString{
    QWidgetList items;for(auto* child:band->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(child->isVisible()&&!child->isWindow())items<<child;
@@ -426,8 +475,57 @@ private slots:
    return {};
   };
   QString found;QVERIFY2(putgd::test::waitFor([&]{found=problem();return found.isEmpty();}),qPrintable(found));
+  QVERIFY(version->height()>=32);QVERIFY(output->height()>=32);
   QVERIFY2(version->height()>=version->fontMetrics().lineSpacing(),qPrintable(QString("version link %1 px for a %2 px line").arg(version->height()).arg(version->fontMetrics().lineSpacing())));
   QVERIFY(window.rect().contains(QRect(version->mapTo(&window,QPoint()),version->size())));
+ }
+ // The status band at the minimum width and enlarged text, with an update offered and
+ // unsaved settings: one bounded "Changes not saved", no "save automatically",
+ // and the summary, Change output…, update link and version neither overlap
+ // nor leave the band. The split button keeps its 32 px arrow zone in the band.
+ void statusBandFitsAtLargeTextWhileChangesWait_data(){
+  QTest::addColumn<int>("pixels");QTest::addColumn<bool>("longOutput");
+  for(int pixels:{14,18,21,28})for(bool longOutput:{false,true})QTest::newRow(qPrintable(QString("text%1-%2").arg(pixels).arg(longOutput?"long":"normal")))<<pixels<<longOutput;
+ }
+ void statusBandFitsAtLargeTextWhileChangesWait(){
+  QFETCH(int,pixels);QFETCH(bool,longOutput);auto font=QApplication::font();const auto original=font;auto restore=qScopeGuard([&]{QApplication::setFont(original);});font.setPixelSize(pixels);QApplication::setFont(font);
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();
+  const auto longName=QString("Customer support and release readiness archive ").repeated(2)+"Europe, Middle East, Asia-Pacific";
+  if(longOutput){auto profiles=document["profiles"].toArray();auto profile=profiles.first().toObject();profile["label"]=longName;profiles[0]=profile;document["profiles"]=profiles;}
+  QVERIFY(settings.save(document,{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=QJsonObject{{"supported",true},{"result",QJsonObject{{"updateAvailable",true},{"latest","26.1231.99999-nightly"}}}};return data;});
+  MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));fixture.session.refreshSnapshot();
+  auto* update=window.findChild<QPushButton*>("updateAvailable");PUTGD_TRY_VERIFY(update->isVisible());
+  auto* explanation=window.findChild<QLabel*>("autosaveExplanation");auto* status=window.findChild<QLabel*>("autosaveStatus");
+  // "Settings save automatically" gives way before the summary has to elide.
+  auto* elided=window.findChild<QToolButton*>("captureOutputSummary");PUTGD_TRY_VERIFY(explanation->isHidden()||elided->width()>=elided->sizeHint().width());
+  QCOMPARE(elided->font().pixelSize(),Graphite::scaled(13));QCOMPARE(elided->font().weight(),QFont::Normal);if(pixels>14)QVERIFY(elided->font().pixelSize()>13);
+  if(longOutput){PUTGD_TRY_VERIFY(elided->width()<elided->sizeHint().width());QVERIFY(window.findChild<QLabel*>("appVersion")->isHidden());QVERIFY(window.findChild<QWidget*>("appVersionGroup")->isHidden());QVERIFY(elided->toolTip().contains(longName));}
+  auto* band=window.statusBar();auto* summary=window.findChild<QToolButton*>("captureOutputSummary");
+  const auto rectIn=[&](QWidget* w){return QRect(w->mapTo(band,QPoint()),w->size());};
+  QString found;const auto fits=[&]{
+   found.clear();QWidgetList shown;for(auto* w:QWidgetList{summary,status,update,explanation})if(w->isVisible())shown<<w;for(auto* w:band->findChildren<QWidget*>()){if((w->objectName()=="appVersion"||w->objectName()=="appVersionLink")&&w->isVisible())shown<<w;}
+   for(int i=0;i<shown.size()&&found.isEmpty();++i){if(!band->rect().contains(rectIn(shown[i])))found=shown[i]->objectName()+" leaves the band";for(int j=i+1;j<shown.size()&&found.isEmpty();++j)if(rectIn(shown[i]).intersects(rectIn(shown[j])))found=shown[i]->objectName()+" overlaps "+shown[j]->objectName();}
+   if(found.isEmpty()&&summary->width()<summary->minimumSizeHint().width())found="the summary is under its minimum";
+   for(auto* w:shown)if(w!=summary&&found.isEmpty()&&(w->width()<w->sizeHint().width()||w->height()<w->fontMetrics().height()))found=w->objectName()+" is truncated";
+   if(!found.isEmpty()){found+=" at "+QString::number(window.width())+" px";for(auto* w:shown)found+=QString("; %1 x=%2 w=%3 hint=%4 min=%5").arg(w->objectName()).arg(rectIn(w).x()).arg(w->width()).arg(w->sizeHint().width()).arg(w->minimumWidth());}
+   return found.isEmpty();};
+  QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));
+  for(int width:{1320,1800,1060}){window.resize(width,680);QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));}
+  // Refit optional metadata when fonts change in an already laid-out band.
+  const auto updateFont=update->font();auto larger=updateFont;larger.setPixelSize(pixels+4);update->setFont(larger);QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));update->setFont(updateFont);QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));
+  fixture.client.failOnce["settings.save"]={"client_unavailable","Synthetic lost reply",{}};window.findChild<QLineEdit*>("maxFiles")->setText("251");
+  PUTGD_TRY_COMPARE(status->text(),QString("Changes not saved"));QVERIFY(status->isVisible());QVERIFY(update->isVisible());QVERIFY(explanation->isHidden());QVERIFY(!status->text().contains('\n'));
+  for(int width:{1060,1320,1800,1060}){window.resize(width,680);QVERIFY2(putgd::test::waitFor(fits),qPrintable(found));}
+  // A whole label paints identically with extra room; a premature ellipsis
+  // differs even when Qt's size hint wrongly claims that the button fits.
+  const auto labelPixels=[&](int extra){QImage image(update->size(),QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);QPainter painter(&image);QStyleOptionButton option;option.initFrom(update);option.rect=update->rect().adjusted(0,0,extra,0);option.text=update->text();option.icon=update->icon();option.iconSize=update->iconSize();update->style()->drawControl(QStyle::CE_PushButtonLabel,&option,&painter,update);return image;};
+  QCOMPARE(labelPixels(0),labelPixels(256));
+  // The summary is a tab stop whatever its width.
+  QCOMPARE(summary->focusPolicy(),Qt::StrongFocus);
+  for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->popupMode()==QToolButton::MenuButtonPopup){
+   QStyleOptionToolButton option;option.initFrom(button);option.rect=button->rect();option.features=QStyleOptionToolButton::MenuButtonPopup|QStyleOptionToolButton::HasMenu;
+   QVERIFY(button->style()->subControlRect(QStyle::CC_ToolButton,&option,QStyle::SC_ToolButtonMenu,button).width()>=32);}
  }
 };
 QTEST_MAIN(UiApplicationTest)

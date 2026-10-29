@@ -10,10 +10,13 @@ public:
  void list(const HistoryQuery&,JsonReply);
  void detail(const QString&,JsonReply);
  // Makes the item's missing image or video preview (#190); see OperationService::makePreview.
- void preview(const QString&,JsonReply);
+ void preview(const QString&,JsonReply,bool retry=false);
  void clear(JsonReply);
  void copyImage(const QString&,JsonReply);
  void copyLink(const QString&,JsonReply);
+ // Several stored links at once, one per line in selection order: all of
+ // them, or none when any is no longer available.
+ void copyLinks(const QStringList& ids,JsonReply);
  void changeSharing(const QString& historyId,const QString& action,const QJsonObject& options,JsonReply);
  void inspectSharing(const QString&,JsonReply);
  void prepareDelete(const QStringList&,JsonReply);

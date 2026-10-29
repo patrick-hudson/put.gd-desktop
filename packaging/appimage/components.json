@@ -15,8 +15,12 @@
                 "usr/share/gnome-shell/extensions/putgd@put.gd/*", "usr/share/putgd/autostart/putgd.desktop",
                 "usr/share/putgd/build-info.json", "usr/share/putgd/dependency-lock.json",
                 "usr/share/putgd/aws-runtime-manifest.json"],
-      "noticeFiles": ["usr/share/doc/putgd/LICENSE", "usr/share/doc/putgd/wayland-*.xml"],
+      "noticeFiles": ["usr/share/doc/putgd/LICENSE", "usr/share/doc/putgd/wayland-*.xml", "usr/share/doc/putgd/fonts/*"],
       "embedded": [
+        {"name": "IBM Plex Sans Regular, Medium and SemiBold", "license": "OFL-1.1",
+         "licenseText": "usr/share/doc/putgd/fonts/OFL-sans.txt"},
+        {"name": "IBM Plex Mono Regular", "license": "OFL-1.1",
+         "licenseText": "usr/share/doc/putgd/fonts/OFL-mono.txt"},
         {"name": "zkde-screencast-unstable-v1 protocol bindings", "license": "LGPL-2.1-or-later",
          "licenseText": "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2.1"}
       ],

@@ -1,6 +1,6 @@
 # CPack removes exact paths from its generated list. Enumerate every notice;
 # wildcard entries would leave the automatic %doc entries in place.
-set(native_license_names LICENSE runtime-notices.txt copyright wayland-ext-data-control-v1.xml
+set(native_license_names LICENSE runtime-notices.txt copyright fonts/OFL-sans.txt fonts/OFL-mono.txt fonts/SOURCE.md wayland-ext-data-control-v1.xml
   wayland-wlr-data-control-unstable-v1.xml wayland-zkde-screencast-unstable-v1.xml)
 file(GLOB native_aws_notices RELATIVE "${PROJECT_BINARY_DIR}/packaging/linux/package-inputs/${CMAKE_INSTALL_DATADIR}/doc/putgd"
   "${PROJECT_BINARY_DIR}/packaging/linux/package-inputs/${CMAKE_INSTALL_DATADIR}/doc/putgd/aws-*")

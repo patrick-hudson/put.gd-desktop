@@ -226,7 +226,7 @@ private slots:
         QTest::addColumn<QString>("service");
         QTest::addColumn<QString>("expected");
         QTest::addColumn<QString>("guidance");
-        QTest::newRow("ownership") << 400 << QString("AccessControlListNotSupported") << QString("s3_acl_incompatible") << QString("Follow the bucket's policy");
+        QTest::newRow("ownership") << 400 << QString("AccessControlListNotSupported") << QString("s3_acl_incompatible") << QString("Use bucket policy");
         QTest::newRow("public-access-block") << 403 << QString("AccessDenied") << QString("s3_permission_denied") << QString("s3:PutObject");
         QTest::newRow("authentication") << 403 << QString("InvalidAccessKeyId") << QString("s3_authentication_failed") << QString("access key ID");
         QTest::newRow("wrong-secret") << 403 << QString("SignatureDoesNotMatch") << QString("s3_authentication_failed") << QString("secret access key");

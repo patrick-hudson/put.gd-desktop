@@ -1,3 +1,4 @@
+#include "core/ByteSize.h"
 #include "LocalServer.h"
 #include "RecordingBackend.h"
 #include "client/SessionClient.h"
@@ -84,7 +85,7 @@ void LocalServer::accept() {
    if(socket->property("handled").toBool())return;
    auto bytes=socket->property("bytes").toByteArray();bytes+=socket->readAll();
    auto send=[socket](QString id,Error e,QJsonObject result) {logRejection({},e);socket->sendAndClose(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');};
-   if(bytes.size()>maximumRequest) {socket->setProperty("bytes",QByteArray{});socket->setProperty("handled",true);socket->stopReading();deadline->stop();send({}, {"request_too_large","Request exceeds 1 MiB",{}},{});return;}
+   if(bytes.size()>maximumRequest) {socket->setProperty("bytes",QByteArray{});socket->setProperty("handled",true);socket->stopReading();deadline->stop();send({}, {"request_too_large",ByteSize::labels("Request exceeds 1 MiB"),{}},{});return;}
    if(!bytes.contains('\n')) {socket->setProperty("bytes",bytes);return;}
    socket->setProperty("bytes",QByteArray{});
    socket->setProperty("handled",true);socket->stopReading();deadline->stop();
@@ -112,7 +113,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  if(method=="ui.show") {
   // updates: Settings scrolled to Updates, as the rail's Update available link opens it (#293).
-  if(!fields(p,{"view"})||!QStringList{"settings","updates","history","activity","about","editFile"}.contains(p["view"].toString())){reply(invalid(),{});return;}
+  if(!fields(p,{"view"})||!QStringList{"settings","updates","history","activity","destinations","about","editFile"}.contains(p["view"].toString())){reply(invalid(),{});return;}
   if(!uiActivation_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   const auto view=p["view"].toString();uiActivation_(view,[reply=std::move(reply),view](Error error){reply(error,{{"shown",view}});});return;
  }
@@ -135,6 +136,15 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!string(p,"id")){reply(invalid(),{});return;}
   auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);return;
  }
+ // The editor window's view and selection controls, one per call; the helper checks the values.
+ if(method=="editor.view") {
+  static const QStringList actions{"inspect","tool","select","selectNext","selectPrevious","selectAffectedText","removeMark","place","geometry","applyCrop","cancelCrop","zoom","fit","actualSize","pan","showSavedCopy","copySavedPath","dismissSavedCopy","discard","keepEditing","confirmDiscard","keyboardHelp","geometryDetails","saveDetails","propertiesWidth"};
+  if(!fields(p,{"id"},{"action","tool","shapeId","rect","percent","delta","pixels"})||!string(p,"id")||(p.contains("action")&&(!string(p,"action",32)||!actions.contains(p["action"].toString())))
+     ||(p.contains("tool")&&!string(p,"tool",16))||(p.contains("shapeId")&&!p["shapeId"].isNull()&&!p["shapeId"].isDouble())
+     ||(p.contains("rect")&&(!p["rect"].isArray()||p["rect"].toArray().size()!=4))||(p.contains("percent")&&!p["percent"].isDouble())||(p.contains("pixels")&&!p["pixels"].isDouble())
+     ||(p.contains("delta")&&(!p["delta"].isArray()||p["delta"].toArray().size()!=2))){reply(invalid(),{});return;}
+  auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),"view",params,reply);return;
+ }
  // Screen recording: one session, backend-neutral; the service validates semantics.
  if(method=="recording.capabilities") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("capabilities",{},reply);return;}
  if(method=="recording.prepare") {
@@ -151,7 +161,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="recording.preview") {if(!fields(p,{"id","time"},{"maxEdge"})||!string(p,"id")||!p["time"].isDouble()||(p.contains("maxEdge")&&!p["maxEdge"].isDouble())){reply(invalid(),{});return;}operations_.recordingCommand("preview",p,reply);return;}
  if(method=="recording.review") {
   // #283: one review-window control per call; the helper checks the values.
-  static const QStringList actions{"inspect","seek","play","pause","speed","setIn","setOut","resetTrim","addMask","selectMask","setMaskIn","setMaskOut","strength","removeMask","format","saveCopyDialog","closeFileDialog"};
+  static const QStringList actions{"inspect","seek","play","pause","speed","setIn","setOut","resetTrim","addMask","showMaskOptions","closeMaskOptions","nextMaskLanes","previousMaskLanes","selectMask","setMaskIn","setMaskOut","strength","removeMask","format","saveCopyDialog","closeFileDialog","placeMask","useSolidCover","trimToLimit","dismissStatus","dismissBlurTip","showAdvice","showFormatTips","showInFolder","copyPath","dismissSavedCopy","retryExport","retryPreview","discard","keepReviewing","confirmDiscard"};
   if(!fields(p,{"id","action"},{"time","speed","kind","rect","maskId","strength","format","codec"})||!string(p,"id")||!string(p,"action",32)||!actions.contains(p["action"].toString())
      ||(p.contains("time")&&!p["time"].isDouble())||(p.contains("speed")&&!p["speed"].isDouble())||(p.contains("kind")&&!string(p,"kind",8))
      ||(p.contains("rect")&&(!p["rect"].isArray()||p["rect"].toArray().size()!=4))||(p.contains("maskId")&&!p["maskId"].isNull()&&!string(p,"maskId"))
@@ -174,7 +184,13 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   HistoryQuery q;q.limit=p["limit"].toInt(50);q.offset=p["offset"].toInt();q.search=p["search"].toString();q.category=p["category"].toString();q.mime=p["mime"].toString();q.profileId=p["profileId"].toString();q.uploadStatus=p["uploadStatus"].toString();q.localStatus=p["localStatus"].toString();q.remoteStatus=p["remoteStatus"].toString();q.from=p["from"].toString();q.to=p["to"].toString();history_.list(q,reply);return;
  }
  if(method=="history.detail"||method=="history.preview"||method=="history.copyLink"||method=="history.copyImage"||(method.startsWith("delete.")&&method!="delete.prepare"&&method!="delete.confirm")) {
-  if(!fields(p,{"id"})||!string(p,"id")) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="history.detail")history_.detail(id,reply);else if(method=="history.preview")history_.preview(id,reply);else if(method=="history.copyLink")history_.copyLink(id,reply);else if(method=="history.copyImage")history_.copyImage(id,reply);else if(method=="delete.inspect")history_.inspectDelete(id,reply);else if(method=="delete.retry")history_.retryDelete(id,reply);else if(method=="delete.cancel")history_.cancelDelete(id,reply);else reply({"unknown_method","Unknown deletion method",{}},{});return;
+  // history.preview alone takes an optional boolean retry (Retry preview).
+  if(!fields(p,{"id"},method=="history.preview"?QStringList{"retry"}:QStringList{})||!string(p,"id")||(p.contains("retry")&&!p["retry"].isBool())) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="history.detail")history_.detail(id,reply);else if(method=="history.preview")history_.preview(id,reply,p["retry"].toBool());else if(method=="history.copyLink")history_.copyLink(id,reply);else if(method=="history.copyImage")history_.copyImage(id,reply);else if(method=="delete.inspect")history_.inspectDelete(id,reply);else if(method=="delete.retry")history_.retryDelete(id,reply);else if(method=="delete.cancel")history_.cancelDelete(id,reply);else reply({"unknown_method","Unknown deletion method",{}},{});return;
+ }
+ if(method=="history.copyLinks") {
+  if(!fields(p,{"ids"})||!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000) {reply(invalid(),{});return;}
+  QStringList ids;for(const auto& id:p["ids"].toArray()) {if(!id.isString()||id.toString().isEmpty()||id.toString().size()>128||ids.contains(id.toString())) {reply(invalid(),{});return;}ids.append(id.toString());}
+  history_.copyLinks(ids,reply);return;
  }
  if(method=="delete.prepare"||method=="delete.confirm") {
   if(!fields(p,method=="delete.confirm"?QStringList{"ids","acknowledgement"}:QStringList{"ids"})||!p["ids"].isArray()||p["ids"].toArray().size()>1000||(method=="delete.confirm"&&!string(p,"acknowledgement",64))) {reply(invalid(),{});return;}
@@ -240,11 +256,20 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // Drives the open Settings window's Diagnostics group and package dialog, and the
  // History window's Save diagnostics row action, the way a user does (#122).
  if(method=="ui.diagnostics") {
-  static const QStringList actions{"inspect","setDebugLogging","clearLogs","openPackage","setPackage","savePackage","showInFolder","closePackage"};
+  static const QStringList actions{"inspect","setDebugLogging","setDesktopDetails","copyDetails","showConfigFolder","refreshDesktopSupport","clearLogs","openPackage","setPackage","savePackage","showInFolder","closePackage"};
   if(!fields(p,{"action"},{"enabled","includeNames","folder","operation","upload"})||!actions.contains(p["action"].toString())||(p.contains("enabled")&&!p["enabled"].isBool())||(p.contains("includeNames")&&!p["includeNames"].isBool())||(p.contains("upload")&&!p["upload"].isBool())
      ||(p.contains("folder")&&(!string(p,"folder",4096)||!QDir::isAbsolutePath(p["folder"].toString())))||(p.contains("operation")&&!string(p,"operation",128))){reply(invalid(),{});return;}
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("diagnostics",p,std::move(reply));return;
+ }
+ // Drives the open History page: filters, selection and the compact details view.
+ if(method=="ui.history") {
+  static const QStringList actions{"inspect","clearFilters","retryLoading","copyDeletionDetails","select","clearSelection","openDetails","closeDetails","expandPreview","closePreview","retryPreview","showSavedCopy","copySavedPath","dismissSavedCopy","cancelAll","confirmCancelAll","keepUploading"};const auto action=p["action"].toString();
+  if(!fields(p,{"action"},{"scope","ids"})||!actions.contains(action)||(p.contains("scope")&&(action!="clearFilters"||!QStringList{"filters","all"}.contains(p["scope"].toString())))
+     ||(action=="select")!=p.contains("ids")||(p.contains("ids")&&(!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000))){reply(invalid(),{});return;}
+  for(const auto& id:p["ids"].toArray())if(!id.isString()||id.toString().isEmpty()||id.toString().size()>138){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("history",p,std::move(reply));return;
  }
  if(method=="ui.historySaveDiagnostics") {
   if(!fields(p,{"id"})||!string(p,"id",128)){reply(invalid(),{});return;}

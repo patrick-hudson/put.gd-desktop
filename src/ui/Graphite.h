@@ -1,4 +1,8 @@
 #pragma once
+#include "WindowButtons.h"
+#include <QUrl>
+#include <QJsonObject>
+#include <functional>
 #include "Theme.h"
 #include <QFont>
 #include <QIcon>
@@ -7,9 +11,11 @@
 #include <QProxyStyle>
 #include <QStyledItemDelegate>
 #include <QTabBar>
+#include <QStringList>
 #include <QWidget>
 
-class QApplication;class QLineEdit;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
+class QPushButton;class QApplication;class QLineEdit;class QMessageBox;
+class QGridLayout;class QFormLayout;class QAbstractButton;class QAbstractScrollArea;class QFontMetricsF;class QBoxLayout;class QFrame;class QHBoxLayout;class QLabel;class QMenu;class QToolButton;
 
 // The Graphite visual language (2026-10-26): one painted control set for every
 // app-owned surface. Paint owns appearance; the Qt widget underneath keeps
@@ -18,27 +24,59 @@ class QApplication;class QLineEdit;class QAbstractScrollArea;class QFontMetricsF
 namespace putgd::Graphite {
 // Geometry in logical pixels at the default text scale.
 namespace Metric {
-constexpr int space = 4, control = 36, iconTarget = 32, radius = 7, segmentRadius = 6, trackRadius = 8, swatchRadius = 5;
-constexpr int header = 56, commandBand = 60, statusBand = 26, icon = 18, splitZone = 26;
+constexpr int space = 4, control = 36, controlCompact = 28, compactRadius = 5, iconTarget = 32, radius = 6, segmentRadius = 6, trackRadius = 10, swatchRadius = 4, smallRadius = 4, containerRadius = 10, segmentInset = 4;
+constexpr int header = 56, commandBand = 60, statusBand = 40, icon = 20, splitZone = 26;
+// A split button's menu half: a full 32 px pointer target with the same small
+// chevron (combo boxes and menu buttons keep splitZone for their chevron).
+constexpr int splitArrow = 32;
 constexpr int navRow = 38, destinationRow = 68, historyRow = 76, thumbWidth = 80, thumbHeight = 50;
-constexpr int historySidebar = 184, settingsSidebar = 210, destinationSidebar = 236, inspector = 300;
+constexpr int sidebar = 216, historySidebar = sidebar, settingsSidebar = sidebar, destinationSidebar = sidebar, inspector = 340;
+// Text enlarges inside a measured rail; horizontal space stays bounded.
+constexpr int sidebarMax = 240;
+// Each form family measures its labels up to this bound.
+constexpr int labelGutter = 220;
 }
-// Type sizes in pixels; weights are 400 and 600 only.
+// Type sizes and minimum line boxes in logical pixels.
 namespace Type {
-constexpr int body = 14, metadata = 12, micro = 11, section = 17, page = 23;
+constexpr int caption = 12, metadata = caption, micro = caption, maskBadge = 12;
+constexpr int body = 14, label = 14, section = 16, page = 22, compactPage = 20, technical = 13;
+constexpr int captionLine = 16, bodyLine = 20, sectionLine = 22, pageLine = 28;
+constexpr int sectionAbove = 24, sectionBelow = 8;
 }
+enum class Space { xs = 4, s = 8, m = 12, l = 16, xl = 24, xxl = 32 };
+// Decorative gaps and insets follow text only up to 1.15x; line boxes and
+// control heights keep following the full font scale through scaled().
+int space(Space);
+int lineHeight(int pixels);
 // Families registered by Fonts::load (IBM Plex) in processes that bundle them;
 // the system families elsewhere.
 QString uiFamily();
 QString monoFamily();
 void setFamilies(const QString& ui, const QString& mono);
 QFont font(int pixels = Type::body, bool strong = false);
+QFont labelFont(bool selected = false);
 QFont monoFont(int pixels = Type::metadata);
+// Escaped HTML segments (including colour spans); wrap only between segments.
+QString separatedLines(QStringList segments, const QFont&, int width);
+// Orthogonal to colour roles; restored on every polish.
+void setMono(QWidget*, int pixels = Type::metadata);
 QColor mix(const QColor& a, const QColor& b, qreal amount);
 // The hairline between a raised control and its surface: quieter than border.
+// Buttons use it; their labels identify them.
 QColor controlStroke();
+// The 3:1 boundary of an essential input (Theme's controlOutline): text
+// fields, combo boxes, spin boxes, check boxes and radio buttons.
+QColor controlOutline();
 // True while the widget has focus that came from the keyboard.
 bool keyboardFocus(const QWidget*);
+// A locked value: a disabled control that still states something, such as a
+// setting inherited from a default or one held while setup runs. It reads as
+// information, not as an unavailable action: textMuted (4.5:1) in a quiet
+// read-only frame, without a combo box's chevron or a spin box's steps. The
+// mark applies only while the control is disabled; the caller still decides
+// that. Unavailable actions keep textDisabled.
+void setLocked(QWidget*, bool locked);
+bool isLocked(const QWidget*);
 
 // Installs the Graphite style, palette and font on the application and keeps
 // them in step with Theme scheme switches. Safe to call more than once.
@@ -47,16 +85,22 @@ QPalette palette();
 
 // Glyphs drawn from paths, for chrome controls IconArt has no symbol for:
 // "menu", "more", "minimize", "maximize", "restore", "close", "chevron-down",
-// "chevron-right", "check". Follows scheme switches like VisualStyle::icon.
+// "chevron-right", "chevron-left", "check". Follows scheme switches like VisualStyle::icon.
 QIcon chromeIcon(const QString& name);
 void paintChromeGlyph(QPainter&, const QRectF&, const QString& name, const QColor&);
-void paintChevron(QPainter&, const QPointF& centre, qreal size, Qt::ArrowType, const QColor&, qreal width = 1.5);
+void paintChevron(QPainter&, const QPointF& centre, qreal size, Qt::ArrowType, const QColor&, qreal width = 0);
 // The baseline that puts the ink of text (its tight bounds) on centre.
 qreal opticalBaseline(const QFontMetricsF&, const QString&, qreal centre);
 // The desktop text size against the design's 14 px body (1 to 2); type and
 // control heights scale with it. See Graphite.cpp.
 qreal textScale();
 int scaled(int pixels);
+// One edge for History, Settings and Destinations; text enlargement has a bounded cap.
+int railWidth();
+// Top inset above every rail page's header row; the row is Metric::control tall so headings share one centre line across tabs.
+inline int pageHeaderTop() { return space(Space::l); }
+// Label and icon measurements include text enlargement; the cap is logical pixels.
+int sidebarWidth(int baseline, int natural);
 // Text vertically centred on its ink, elided to the rectangle.
 void paintText(QPainter&, const QRectF&, const QString&, const QColor&, const QFont&, Qt::Alignment = Qt::AlignLeft | Qt::AlignVCenter, Qt::TextElideMode = Qt::ElideRight);
 
@@ -77,12 +121,18 @@ public:
     void drawControl(ControlElement, const QStyleOption*, QPainter*, const QWidget* = nullptr) const override;
     void drawComplexControl(ComplexControl, const QStyleOptionComplex*, QPainter*, const QWidget* = nullptr) const override;
     QPixmap generatedIconPixmap(QIcon::Mode, const QPixmap&, const QStyleOption*) const override;
+protected:
+    bool eventFilter(QObject*, QEvent*) override;
 private:
     void drawButtonLabel(const QStyleOption*, const QString& text, const QIcon&, QSize iconSize, QPainter*, const QWidget*, QRect body) const;
 };
 
+// Recessed media only: shadow before the image, one-pixel edge after it.
+void paintImageShadow(QPainter&, const QRectF&);
+void paintImageEdge(QPainter&, const QRectF&);
+
 // A region of the window: its fill token and the hairlines on its edges.
-// role: "bg" (default), "surface" or "raised".
+// role: "bg" (default), "well", "surface" or "raised".
 class Surface : public QWidget {
     Q_OBJECT
 public:
@@ -99,6 +149,52 @@ QFrame* rule(QWidget* parent = nullptr, Qt::Orientation = Qt::Horizontal);
 // A label in a type role: "page", "section", "body", "strong", "meta",
 // "micro", "muted" and the status roles "success", "warning", "danger".
 QLabel* label(const QString& text, const char* role = "body", QWidget* parent = nullptr);
+// Shared inline notice. Text wraps; actions move below it when space is short.
+// Hosts own visibility and connect the buttons to existing session commands.
+class Banner final : public QWidget {
+    Q_OBJECT
+public:
+    enum class Tone { Info, Warning, Error, Success };
+    explicit Banner(Tone tone, const QString& text = {}, QWidget* parent = nullptr);
+    void setTone(Tone);
+    void setFillOnly(bool on) { fillOnly_ = on; update(); }
+    Tone tone() const { return tone_; }
+    void setText(const QString&);
+    void setIcon(const QIcon&); // Null restores the tone's glyph.
+    void setAction(const QString& text); // Empty hides the action.
+    void setDismissible(bool, const QString& name = QStringLiteral("Dismiss notice"));
+    QLabel* textLabel() const { return text_; }
+    QPushButton* actionButton() const { return action_; }
+    QToolButton* dismissButton() const { return dismiss_; }
+    // Complex feedback can retain its existing accessible controls and IDs.
+    void setContentWidget(QWidget*);
+    void announce(const QString& message = {}); // QAccessible::Alert for a new failure.
+protected:
+    void paintEvent(QPaintEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
+private:
+    void styleContent();
+    void placeAction();
+    Tone tone_;
+    bool fillOnly_ = false;
+    QIcon icon_;
+    QGridLayout* row_;
+    QLabel* text_;
+    QWidget* content_;
+    QPushButton* action_;
+    QToolButton* dismiss_;
+    bool stacked_ = false;
+};
+// Normal readable text with an amber alert glyph; include a word naming the problem.
+QLabel* warningLabel(const QString& text, QWidget* parent = nullptr);
+// Read-only details: selectable by mouse and keyboard, focusable, without a text cursor.
+void readOnlyText(QLabel*);
+// One privacy warning for image and recording blur; the action uses the host
+// editor's existing Redact command. The host decides when it is visible.
+QString blurWarningText();
+QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent = nullptr);
+// Neutral item selection, distinct from the keyboard focus ring and navigation markers.
+void paintSelection(QPainter&, const QRectF&, bool keyboardFocused = false, qreal radius = 8);
 
 // Rows of a page's sidebar: icon, label and an optional second line (role
 // SecondLineRole), with the shared hover, selected fill and focus ring.
@@ -106,6 +202,7 @@ class NavigationDelegate final : public QStyledItemDelegate {
     Q_OBJECT
 public:
     static constexpr int SecondLineRole = Qt::UserRole + 40;
+    static constexpr int WrapLabelRole = Qt::UserRole + 41;
     explicit NavigationDelegate(QObject* parent, int rowHeight = Metric::navRow);
     QSize sizeHint(const QStyleOptionViewItem&, const QModelIndex&) const override;
     void paint(QPainter*, const QStyleOptionViewItem&, const QModelIndex&) const override;
@@ -113,17 +210,60 @@ private:
     int rowHeight_;
 };
 
-// One line of text that elides in the middle instead of widening its window;
-// the full text stays in its tooltip and accessible name.
+// Text that elides in the middle unless word wrapping is requested;
+// the full text stays in its tooltip and accessible name. A revealable label
+// (an actionable summary, not a heading) is also a tab stop: Enter, Space or a
+// click opens its full plain text in a small popup a keyboard can read, select
+// and close with Escape.
 class ElidedLabel final : public QLabel {
     Q_OBJECT
 public:
     explicit ElidedLabel(QWidget* parent = nullptr);
     void setText(const QString&);
+    void setRevealable(bool);
+    void setElideMode(Qt::TextElideMode mode) { elideMode_ = mode; update(); }
+    void setRevealText(const QString& text) { revealText_ = text; }
+    void setRevealTitle(const QString& title) { revealTitle_ = title; }
+    void setRevealActionName(const QString& name) { revealActionName_ = name; }
+    QString revealActionName() const { return revealActionName_; }
+    bool revealable() const { return revealable_; }
+    bool elided() const;
+    int heightForWidth(int) const override;
+    // Opens full text for a revealable label or a separately titled Details action.
+    void reveal();
+    QWidget* fullTextPopup() const { return popup_; }
     QSize minimumSizeHint() const override;
-    QSize sizeHint() const override { return {QLabel::sizeHint().width(), QLabel::sizeHint().height()}; }
+    QSize sizeHint() const override;
 protected:
+    bool event(QEvent*) override;
     void paintEvent(QPaintEvent*) override;
+    void keyPressEvent(QKeyEvent*) override;
+    void mouseReleaseEvent(QMouseEvent*) override;
+    void focusInEvent(QFocusEvent*) override;
+    void focusOutEvent(QFocusEvent*) override;
+private:
+    Qt::TextElideMode elideMode_ = Qt::ElideMiddle;
+    QRect textRect() const;
+    bool revealable_ = false;
+    QString revealText_;
+    QString revealTitle_;
+    QString revealActionName_ = QStringLiteral("Show full text");
+    QPointer<QWidget> popup_;
+};
+
+// Browser failures stay beside the originating action, with the exact link to copy.
+class BrowserFeedback final : public QWidget {
+public:
+    explicit BrowserFeedback(QWidget* parent = nullptr);
+    std::function<void(const QJsonObject&)> opening(const QUrl&);
+    void clear();
+protected:
+    void showEvent(QShowEvent*) override;
+private:
+    QLabel* message_;
+    QPushButton* copy_;
+    QUrl url_;
+    quint64 request_ = 0;
 };
 
 // The segmented control: one track, a raised selected segment, labels centred
@@ -140,6 +280,17 @@ protected:
     void paintEvent(QPaintEvent*) override;
 };
 
+// The segmented track for a few checkable quiet buttons (List / Gallery):
+// the same track as Segmented behind them; each button stays a real button.
+class SegmentTrack final : public QWidget {
+    Q_OBJECT
+public:
+    explicit SegmentTrack(QWidget* parent = nullptr);
+    void addButton(QToolButton*);
+protected:
+    void paintEvent(QPaintEvent*) override;
+};
+
 // The window header shared by the main window and document windows: the
 // application menu and name at the left, a centred slot (navigation or a
 // document title), and window controls at the right when put.gd draws its own
@@ -149,32 +300,58 @@ protected:
 class WindowHeader final : public QWidget {
     Q_OBJECT
 public:
-    explicit WindowHeader(QWidget* window, QMenu* menu = nullptr);
+    // Standard: the 56 px band of the main window and the editor. Compact: one
+    // line for windows whose content needs the height (Review); its height
+    // follows the title's text metrics with 32 px window controls, and it is
+    // hidden when the desktop draws the frame (whose title bar names the window).
+    enum class Density { Standard, Compact };
+    explicit WindowHeader(QWidget* window, QMenu* menu = nullptr, Density density = Density::Standard);
     void setCentre(QWidget*);
-    // A document's name and its truthful upload state ("Not uploaded").
-    void setDocument(const QString& name, const QString& state);
+    // Optional leading content takes the remaining width beside a fixed centre.
+    // Passing nullptr restores the brand; the caller owns the removed content.
+    void setLeading(QWidget*);
+    // A document's name and its truthful upload state ("Not uploaded"). The
+    // compact header shows the name only; keep the state elsewhere.
+    void setDocument(const QString& name, const QString& state = {});
     void addTrailing(QWidget*);
     QToolButton* menuButton() const { return menu_; }
+    Density density() const { return density_; }
+    void chromeAfter(QWidget* last);
+    void setButtonLayout(const WindowButtonLayout&);
+    // The compact band's height for the current fonts: the title's line height
+    // plus padding, never less than a 32 px control target plus padding.
+    int compactHeight() const;
     // Whether put.gd draws this process's window frames.
     static bool customFrame();
+    // Tests and the preview force the custom frame on or off on platforms where
+    // it is otherwise decided by the platform name (offscreen). 0: no override.
+    static void setCustomFrameOverride(int forced);
     // Makes a top-level window frameless (when customFrame()) with resize
     // edges, and puts this header above its content.
-    static WindowHeader* install(QWidget* window, QBoxLayout* rootLayout, QMenu* menu = nullptr);
+    static WindowHeader* install(QWidget* window, QBoxLayout* rootLayout, QMenu* menu = nullptr, Density density = Density::Standard);
 protected:
     void mousePressEvent(QMouseEvent*) override;
     void mouseDoubleClickEvent(QMouseEvent*) override;
+    void contextMenuEvent(QContextMenuEvent*) override;
     void paintEvent(QPaintEvent*) override;
+    void changeEvent(QEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
     bool eventFilter(QObject*, QEvent*) override;
 private:
     void syncWindowState();
+    void fitHeight();
+    Density density_ = Density::Standard;
     QPointer<QWidget> window_;
     QToolButton* menu_ = nullptr;
     QLabel* name_ = nullptr;
     QHBoxLayout* row_ = nullptr;
     QWidget* centre_ = nullptr;
     QWidget* leading_ = nullptr;
+    QWidget* leadingContent_ = nullptr;
     QWidget* trailing_ = nullptr;
     QHBoxLayout* trailingRow_ = nullptr;
+    QWidget *leftButtons_ = nullptr, *rightButtons_ = nullptr;
+    QList<QToolButton*> chromeOrder_;
     ElidedLabel* docName_ = nullptr;
     QLabel* docState_ = nullptr;
     QToolButton *minimize_ = nullptr, *maximize_ = nullptr, *close_ = nullptr;
@@ -186,20 +363,24 @@ void transparentView(QAbstractScrollArea*);
 // action. The action is QMessageBox::Yes underneath and window titles stay as
 // they were, so agents and tests that find a dialog and press Yes keep working. True when the action was chosen.
 bool confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, bool destructive = false);
-// One label gutter for every form on a page (the widest label, at most
-// 240 px), and choice controls at a natural width (at most 400 px); text and
-// path fields keep growing. Call once a page's forms are built.
-void alignForms(QWidget* page);
+// The same component for asynchronous session control; caller opens and owns it.
+QMessageBox* confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, const QString& safe, bool destructive);
+// One gutter for a page, or a family of forms including hidden pages
+// (widest label, capped at 240 scaled px). Choices cap at 400 scaled px;
+// text and path fields grow. Call once a page's forms are built.
+void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms = {});
 // Side by side while the watched widget is at least threshold px wide,
 // stacked below that: never two cramped columns.
 void responsiveColumns(QBoxLayout*, QWidget* watched, int threshold);
 // Show a title from its beginning when it is not being edited. Keep the normal
 // shrinkable line-edit geometry so long names cannot displace adjacent actions.
 void showTextStartWhenUnfocused(QLineEdit*);
+// Icon-only controls also name themselves when reached by keyboard.
+void focusTooltips(QAbstractButton*);
 // A disclosure button: a quiet, checkable button with one chevron (right when
 // collapsed, down when expanded) whose accessible description says which.
 void disclosure(QToolButton*);
-// Builds a button in a role (see Style): "primary", "secondary" (default),
+// Builds a button in a role (see Style): "primary", "lead", "secondary" (default),
 // "quiet", "danger", "link". glyph is an IconArt name, or empty.
 QToolButton* toolButton(const QString& text, const QString& glyph = {}, const char* role = nullptr, QWidget* parent = nullptr);
 }

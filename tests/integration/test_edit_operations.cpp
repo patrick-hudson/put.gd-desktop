@@ -60,6 +60,29 @@ class EditOperationsTest:public QObject {
 private slots:
  // Like the resident's main(), fix the allocator policy before any work runs.
  void initTestCase(){QVERIFY(applyResidentAllocatorPolicy());}
+ void appearanceChangesReachTheAlreadyOpenEditor(){
+  Fixture f;PUTGD_TRY_VERIFY(f.operations->ready());f.operations->setEditorAppearance("light");
+  const auto id=call([&](JsonReply r){f.operations->invoke("edit",r);}).result["operationId"].toString();QVERIFY(!id.isEmpty());
+  // A change during startup must survive the captured bootstrap preference.
+  f.operations->setEditorAppearance("dark");
+  auto state=command(*f.operations,id,"inspect");QVERIFY(!state.error);QCOMPARE(state.result["view"].toObject()["scheme"].toString(),QString("dark"));
+  for(const auto& scheme:{QStringLiteral("light"),QStringLiteral("dark")}){
+   f.operations->setEditorAppearance(scheme);PUTGD_TRY_COMPARE(command(*f.operations,id,"inspect").result["view"].toObject()["scheme"].toString(),scheme);
+  }
+  QVERIFY(!command(*f.operations,id,"cancel").error);PUTGD_TRY_VERIFY(f.operations->editingOperation().isEmpty());QCOMPARE(f.provider->uploads.load(),0);
+ }
+ void existingImagesWithoutOutput_data(){QTest::addColumn<QString>("source");QTest::newRow("clipboard")<<QString("clipboard");QTest::newRow("file")<<QString("file");}
+ void existingImagesWithoutOutput(){
+  QFETCH(QString,source);Fixture f(false);auto doc=Settings::defaults();QVERIFY(f.settings->save(doc,f.settings->revision()));PUTGD_TRY_VERIFY(f.operations->ready());
+  QJsonObject options{{"source",source}};if(source=="file"){const auto path=f.dir.filePath("input.png");QVERIFY(capture().save(path));options["path"]=path;}
+  const auto opened=call([&](JsonReply r){f.operations->invoke("edit",r,options);});QVERIFY2(!opened.error,qPrintable(opened.error.message));const auto id=opened.result["operationId"].toString();QVERIFY(!id.isEmpty());
+  QVERIFY(!command(*f.operations,id,"inspect").error);const auto refused=command(*f.operations,id,"submit");QCOMPARE(refused.error.code,QString("output_required"));QCOMPARE(refused.error.message,QString("No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture."));
+  const auto state=command(*f.operations,id,"inspect");QVERIFY(!state.error);QCOMPARE(state.result["phase"].toString(),QString("editing"));QCOMPARE(state.result["preparation"].toObject()["code"].toString(),QString("output_required"));QCOMPARE(state.result["view"].toObject()["preparationFailure"].toObject()["text"].toString(),refused.error.message);
+  const auto copy=f.dir.filePath("saved-copy.png");const auto saved=command(*f.operations,id,"saveCopy",{{"path",copy}});QVERIFY2(!saved.error,qPrintable(saved.error.message));QVERIFY(QFileInfo(copy).isFile());QCOMPARE(QImage(copy).size(),capture().size());QCOMPARE(f.provider->uploads.load(),0);QVERIFY(!command(*f.operations,id,"cancel").error);PUTGD_TRY_COMPARE(f.operations->diagnostics()["activeOperations"].toInt(),0);
+ }
+ void capturesWithoutOutputStayGated(){
+  Fixture f(false);QVERIFY(f.settings->save(Settings::defaults(),f.settings->revision()));PUTGD_TRY_VERIFY(f.operations->ready());for(const auto& action:Settings::actionNames()){const auto result=call([&](JsonReply r){f.operations->invoke(action,r);});QCOMPARE(result.error.code,QString("output_required"));}QCOMPARE(f.source.reads,0);QCOMPARE(f.provider->uploads.load(),0);
+ }
  void submittedEditorWaitsOutsideEditing_data(){
   QTest::addColumn<bool>("cancelQueued");
   QTest::newRow("drain")<<false;
@@ -97,6 +120,31 @@ private slots:
   QCOMPARE(journal.operation(id).items.size(),cancelQueued?0:1);
   PUTGD_TRY_COMPARE(f.operations->diagnostics()["activeOperations"].toInt(),0);
  }
+ void editorSummaryUsesResolvedSharingAndTheCompleteDestination_data(){
+  QTest::addColumn<QString>("mode");QTest::addColumn<bool>("local");QTest::addColumn<QString>("prefix");QTest::addColumn<QString>("suffix");
+  QTest::newRow("private")<<QString("private")<<false<<QString("Private upload to ")<<QString();
+  QTest::newRow("shared")<<QString("share")<<false<<QString("Upload to ")<<QString(" · Shared link");
+  QTest::newRow("provider-default")<<QString("default")<<false<<QString("Upload to ")<<QString(" · Shared link");
+  QTest::newRow("local")<<QString("default")<<true<<QString("Save to the local archive")<<QString();
+ }
+ void editorSummaryUsesResolvedSharingAndTheCompleteDestination(){
+  QFETCH(QString,mode);QFETCH(bool,local);QFETCH(QString,prefix);QFETCH(QString,suffix);
+  Fixture f;PUTGD_TRY_VERIFY(f.operations->ready());auto doc=f.settings->document();auto actions=doc["actions"].toObject();auto edit=actions["edit"].toObject();
+  edit["publicationMode"]=mode;if(local){edit["destination"]="local";edit["profileId"]=QJsonValue();}actions["edit"]=edit;doc["actions"]=actions;
+  const QString label=QString(128,QChar('W'));auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["label"]=label;profiles[0]=profile;doc["profiles"]=profiles;
+  QVERIFY(f.settings->save(doc,f.settings->revision()));
+  const auto invoked=call([&](JsonReply r){f.operations->invoke("edit",r);});QVERIFY2(!invoked.error,qPrintable(invoked.error.message));
+  const auto id=invoked.result["operationId"].toString();auto state=command(*f.operations,id,"inspect");QVERIFY2(!state.error,qPrintable(state.error.message));
+  const auto expected=local?prefix:prefix+label+suffix;QCOMPARE(state.result["destination"].toString(),expected);
+  // The resident keeps its upload summary; the footer presents destination · resolved sharing.
+  const auto displayed=local?prefix:label+(mode=="private"?QStringLiteral(" · Private upload"):suffix);
+  QCOMPARE(state.result["view"].toObject()["destination"].toObject()["text"].toString(),displayed);
+  // The new view action crosses the resident/helper boundary, then undo restores it.
+  QVERIFY(!command(*f.operations,id,"apply",redactSecret()).error);auto selected=command(*f.operations,id,"view",{{"action","selectNext"}});QVERIFY(!selected.error);
+  QVERIFY(!command(*f.operations,id,"view",{{"action","removeMark"}}).error);QCOMPARE(command(*f.operations,id,"inspect").result["shapes"].toArray().size(),0);
+  QVERIFY(!command(*f.operations,id,"apply",{{"commands",QJsonArray{QJsonObject{{"op","undo"}}}}}).error);QCOMPARE(command(*f.operations,id,"inspect").result["shapes"].toArray().size(),1);
+  QVERIFY(!command(*f.operations,id,"cancel").error);
+ }
  void uploadPublishesOnlyTheRedactedResult(){
   Fixture f;PUTGD_TRY_VERIFY(f.operations->ready());
   QVERIFY(f.operations->capabilities()["editor"].toObject()["available"].toBool());
@@ -104,7 +152,7 @@ private slots:
   const auto id=invoked.result["operationId"].toString();QCOMPARE(invoked.result["operation"].toObject()["action"].toString(),QString("edit"));
   HistoryStore journal(f.operations->databasePath());
   auto state=command(*f.operations,id,"inspect");QVERIFY2(!state.error,qPrintable(state.error.code));QCOMPARE(state.result["operationId"].toString(),id);
-  QCOMPARE(state.result["destination"].toString(),QString("Upload to Synthetic opaque provider"));
+  QCOMPARE(state.result["destination"].toString(),QString("Upload to Synthetic opaque provider · Shared link"));
   PUTGD_TRY_COMPARE(journal.operation(id).state,QString("editing"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),0);
   // One editor per resident: a second request raises it and names the open edit.
   auto second=call([&](JsonReply r){f.operations->invoke("edit",r);});QCOMPARE(second.error.code,QString("editor_active"));QCOMPARE(second.error.details["operationId"].toString(),id);

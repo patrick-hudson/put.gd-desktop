@@ -260,6 +260,8 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         s.duration = duration;
         s.edit = {};
         s.captureStopped = true;
+        if (event["audioEncoder"].isString()) s.capturedSystemAudio = !event["audioEncoder"].toString().isEmpty();
+        s.config.audio.system = s.capturedSystemAudio && !s.config.silent();
         s.stopReason = event["reason"].toString();
         updateCanvas(s.canvas, event["canvas"]);
         recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
@@ -276,6 +278,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         fail({error["code"].toString("recording_failed"), error["message"].toString("The recording helper failed"), error["details"].toObject()});
     } else if (kind == "started" && (s.state == "ready" || s.state == "starting")) {
         // The user pressed Record on the helper's control bar.
+        s.capturedSystemAudio = !event["audioEncoder"].toString().isEmpty();
         for (auto it = event.begin(); it != event.end(); ++it) if (it.key() != "id" && it.key() != "event") s.progress[it.key()] = it.value();
         transition(s, "recording");
     } else if (kind == "paused" && s.state == "recording") transition(s, "paused");
@@ -289,7 +292,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
             // fixed and audio cannot appear (and is dropped for silent formats).
             const auto format = json["format"].toString();
             json.remove("fps");
-            json["audio"] = QJsonObject{{"system", s.config.audio.system && format != "gif" && format != "webp"}, {"microphone", false}};
+            json["audio"] = QJsonObject{{"system", s.capturedSystemAudio && format != "gif" && format != "webp"}, {"microphone", false}};
         }
         RecordingConfig config;
         if (!recording::parseConfig(json, config)) {
@@ -309,7 +312,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         if (integer(event["revision"], 1, 1LL << 52, &revision) && quint64(revision) == s.edit.revision && event["commands"].isArray())
             if (!recording::applyEditCommands(s.edit, event["commands"].toArray(), s.duration, s.canvas, s.config.fps)) { host_.observe(s.op); emit changed(s.op.id); }
         backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
-    } else if ((kind == "uploadRequested" || kind == "saveCopyRequested") && s.state == "reviewing") {
+    } else if ((kind == "uploadRequested" || kind == "saveCopyRequested" || kind == "retryExportRequested") && s.state == "reviewing") {
         QJsonObject params{{"id", s.op.id}, {"revision", event["revision"]}};
         if (kind == "saveCopyRequested") { params["path"] = event["path"]; params["overwrite"] = true; }
         // The helper learns the outcome from its own export command; a refused
@@ -320,7 +323,8 @@ void RecordingService::handleEvent(const QJsonObject& event) {
             backend_->setEdit(session_->op.id, session_->edit, session_->config, limitsJson(*session_));
             backend_->control(session_->op.id, "raise", {{"error", error.message}}, [](Error, QJsonObject) {});
         };
-        exportTo(kind == "uploadRequested" ? "upload" : "saveCopy", params, refused, refused);
+        if (kind == "retryExportRequested") retryExport(refused, refused);
+        else exportTo(kind == "uploadRequested" ? "upload" : "saveCopy", params, refused, refused);
     }
 }
 void RecordingService::command(const QString& command, const QJsonObject& params, JsonReply reply) {
@@ -434,7 +438,7 @@ void RecordingService::beginPrepare(quint64 generation) {
 }
 void RecordingService::prepareBackend(quint64 generation) {
     auto& s = *session_;
-    backend_->prepare(s.op.id, s.target, s.config, s.staging, marshal(generation, [this](Error error, QJsonObject result) { prepared(error, result); }));
+    backend_->prepare(s.op.id, s.target, s.config, s.staging, marshal(generation, [this](Error error, QJsonObject result) { prepared(error, result); }), host_.reviewOptions ? host_.reviewOptions(s.op) : QJsonObject{});
 }
 void RecordingService::prepared(Error error, const QJsonObject& result) {
     auto& s = *session_;
@@ -529,7 +533,10 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 return;
             }
             for (auto it = result.begin(); it != result.end(); ++it) s.progress[it.key()] = it.value();
-            if (command == "start") transition(s, "recording");
+            if (command == "start") {
+                s.capturedSystemAudio = !result["audioEncoder"].toString().isEmpty();
+                transition(s, "recording");
+            }
             else if (command == "pause") transition(s, "paused");
             else if (command == "resume") transition(s, "recording");
             else {
@@ -538,6 +545,8 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 s.duration = duration;
                 s.edit = {};
                 s.captureStopped = true;
+                if (result["audioEncoder"].isString()) s.capturedSystemAudio = !result["audioEncoder"].toString().isEmpty();
+                s.config.audio.system = s.capturedSystemAudio && !s.config.silent();
                 s.stopReason = "user";
                 updateCanvas(s.canvas, result["canvas"]);
                 recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
@@ -581,6 +590,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         // applied the proposal (or refused it) and pushed the result to the
         // window, so the window is read once more: the reply's window state and
         // edit are the ones after the action.
+        if (params["action"] == "retryExport") { retryExport(reply); return; }
         auto forwarded = params;
         forwarded.remove("id");
         const bool inspect = forwarded["action"].toString() == "inspect";
@@ -604,6 +614,16 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
     if (command == "saveCopy" || command == "upload") { exportTo(command, params, reply); return; }
     reply({"unknown_method", "Unknown recording command", {}}, {});
 }
+void RecordingService::retryExport(JsonReply reply, JsonReply done) {
+    auto& s = *session_;
+    if (s.state != "reviewing" || s.lastExport["status"] != "failed" || s.lastExportRequest.isEmpty()) {
+        reply({"recording_state", "There is no failed export to retry", {}}, {});
+        return;
+    }
+    auto params = s.lastExportRequest;
+    params["revision"] = double(s.edit.revision);
+    exportTo(s.lastExport["command"].toString(), params, std::move(reply), std::move(done));
+}
 void RecordingService::exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done) {
     auto& s = *session_;
     const auto settings = s.op.settings;
@@ -619,13 +639,19 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
         if (!integer(params["revision"], 1, 1LL << 52, &revision)) { reply(invalid("upload takes the edit revision it was reviewed at"), {}); return; }
         if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "The edit revision moved; inspect and retry", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
     }
-    if (auto error = recording::checkExportBudget(s.config, s.edit, s.duration, s.canvas, limits(settings))) { reply(error, {}); return; }
+    s.lastExportRequest = params;
+    s.lastExport = {{"command", command}, {"status", "exporting"}, {"revision", double(s.edit.revision)}};
+    if (command == "saveCopy") s.lastExport["path"] = destination;
+    if (auto error = recording::checkExportBudget(s.config, s.edit, s.duration, s.canvas, limits(settings))) {
+        s.lastExport["status"] = "failed";
+        s.lastExport["error"] = error.toJson();
+        reply(error, {});
+        return;
+    }
     const auto output = s.staging + QStringLiteral("/export-%1.%2").arg(++s.exports).arg(s.config.extension());
     const auto edit = s.edit;
     const auto config = s.config;
     const auto generation = s.generation;
-    s.lastExport = {{"command", command}, {"status", "exporting"}, {"revision", double(edit.revision)}};
-    if (command == "saveCopy") s.lastExport["path"] = destination;
     transition(s, "exporting", command == "upload" ? QStringLiteral("encoding") : QString());
     s.pending = command;
     // An export may take minutes (the helper allows 600 s), longer than a client
@@ -655,6 +681,8 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
             s.lastExport["status"] = "saved";
             s.lastExport["bytes"] = double(file.size());
             s.lastExport["durationUs"] = result.value("durationUs");
+            // Only the completed local copy is a saved result; output is disposable staging.
+            backend_->control(s.op.id, "savedCopy", {{"path", destination}, {"revision", double(edit.revision)}, {"config", config.toJson()}}, [](Error, QJsonObject) {});
             transition(s, "reviewing");
             if (done) done({}, publicJson(s));
             return;

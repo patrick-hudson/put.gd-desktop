@@ -29,6 +29,7 @@ public:
  // The resident supervisor sets the one live UI helper before it can show a
  // window, and clears it on exit. Native adapters exclude it at invocation.
  virtual void setUiProcess(qint64) {}
+ void setCaptureOutcome(const QString& outcome) { captureOutcome_=outcome; }
  virtual quint64 clipboardRevision() const=0;
  virtual QJsonObject capabilities() const=0;
  // Freeze native target identity/layout on the session thread before persistence
@@ -67,6 +68,9 @@ public:
  // cancelled, or shut down. Report copy_suppressed only when no write committed.
  virtual void invalidateCopyEligibility() {}
  virtual void copy(const CopyPayload&,std::function<void(Error)>)=0;
+protected:
+ // Non-secret presentation context; adapters copy it when freezing each request.
+ QString captureOutcome_;
 };
 class UnavailableSource final:public SourceAdapter {
 public:
@@ -93,7 +97,7 @@ public:
  void setRecordingBackend(std::unique_ptr<RecordingBackend> backend) {recording_->setBackend(std::move(backend));}
  // The interface's resolved scheme ("dark" or "light"), passed to each editor
  // helper so Edit image matches the other windows (#198's rule for putgd-record).
- void setEditorAppearance(const QString& scheme) {editorAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");}
+ void setEditorAppearance(const QString& scheme) {editorAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");if(editor_)editor_->setAppearance(editorAppearance_);}
  RecordingService& recording() {return *recording_;}
  // Tests may run a fixture helper; production always uses the sibling putgd-ui.
  void setEditorHelper(QString path) {editorHelper_=std::move(path);}
@@ -113,6 +117,8 @@ public:
  QJsonArray activeObservations() const;
  bool storageActive() const {return storageRequests_>0;}
  Settings settingsSnapshot() const {return settings_.snapshot();}
+ // The tray needs only the desktop report, without querying storage providers.
+ QJsonObject shortcutStatus() const {return source_.capabilities()["shortcuts"].toObject();}
  QString settingsRevision() const {return settings_.revision();}
  // With an item ID, cancels only that file's upload; the batch's other files continue.
  void cancel(const QString& id,JsonReply,const QString& itemId={});
@@ -125,7 +131,8 @@ public:
  // never made, failed or was removed by cleanup, made from the retained
  // artifact or a verified local copy through the one-at-a-time poster queue.
  // Answers with the preview path, or why there is none.
- void makePreview(const QString& historyId,JsonReply);
+ // retry: an explicit Retry preview forgets an earlier failure for this item.
+ void makePreview(const QString& historyId,JsonReply,bool retry=false);
  quint64 invalidateCopyEligibility();
  void cleanup(JsonReply);
  // Applies retention.failedArtifactDays without the user (#202): a minute after
@@ -161,7 +168,7 @@ signals:
  void observationsChanged();
  void storageActivityChanged();
  // An attempt failed outside normal terminal-result delivery (e.g. local retry).
- void operationError();
+ void operationError(const QString& operationId);
  // A terminal/copy result is durably observable; progress never emits this.
  void resultReady(const QString& id);
  void sharingStopped(const QJsonObject& document,const putgd::Error& error);

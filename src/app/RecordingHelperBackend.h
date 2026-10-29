@@ -25,7 +25,7 @@ public:
     QJsonObject capabilities() const override;
     void refreshCapabilities(std::function<void()> done) override;
     void setEventSink(Event sink) override { sink_ = std::move(sink); }
-    void prepare(const QString& id, const RecordingTarget&, const RecordingConfig&, const QString& stagingDirectory, Reply) override;
+    void prepare(const QString& id, const RecordingTarget&, const RecordingConfig&, const QString& stagingDirectory, Reply, const QJsonObject& reviewOptions = {}) override;
     void control(const QString& id, const QString& command, const QJsonObject& params, Reply) override;
     void preview(const QString& id, const RecordingEdit&, const RecordingConfig&, qint64 timeUs, int maxEdge, Reply) override;
     void exportClip(const QString& id, const RecordingEdit&, const RecordingConfig&, const QString& outputPath, Reply) override;

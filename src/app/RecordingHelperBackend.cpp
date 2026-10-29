@@ -109,7 +109,7 @@ void RecordingHelperBackend::finishProbe() {
 }
 QJsonObject RecordingHelperBackend::envelope() const { return {{"role", "record"}, {"nonce", child_ ? child_->nonce : QString{}}, {"generation", QString::number(child_ ? child_->generation : 0)}}; }
 
-void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& target, const RecordingConfig& config, const QString& staging, Reply reply) {
+void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& target, const RecordingConfig& config, const QString& staging, Reply reply, const QJsonObject& reviewOptions) {
     if (child_ && !child_->exited) { reply(helperError("recording_active", "A recording helper is already running"), {}); return; }
     if (child_) child_.reset();
     auto child = std::make_unique<Child>();
@@ -142,7 +142,7 @@ void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& t
     connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, [this, generation](int code, QProcess::ExitStatus status) { exited(generation, code, status); });
     child_ = std::move(child);
     // A sentinel request waits for `ready`; the helper's prepare result then answers the caller.
-    const QJsonObject params{{"id", id}, {"target", target.toJson()}, {"config", config.toJson()}, {"staging", staging}};
+    const QJsonObject params{{"id", id}, {"target", target.toJson()}, {"config", config.toJson()}, {"staging", staging}, {"reviewOptions", reviewOptions}};
     auto userReply = std::move(reply);
     child_->outstanding.insert("prepare", {[this, params, userReply](Error error, QJsonObject) { if (error) { userReply(error, {}); return; } send("prepare", params, prepareMs_, userReply); }});
     startup_.start(startupMs_);

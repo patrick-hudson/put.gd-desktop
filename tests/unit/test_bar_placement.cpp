@@ -1,8 +1,13 @@
 #include "record/BarPlacement.h"
 #include "record/Overlays.h"
 #include "ui/Theme.h"
+#include "ui/Graphite.h"
+#include "ui/RegionSelection.h"
 #include <QApplication>
 #include <QCheckBox>
+#include <QComboBox>
+#include <QLabel>
+#include <QSignalSpy>
 #include <QJsonArray>
 #include <QPushButton>
 #include <QRandomGenerator>
@@ -63,11 +68,101 @@ std::pair<int, double> greyLevels(const QImage& indicator) {
 class BarPlacement : public QObject {
     Q_OBJECT
 private slots:
+    void timerOnlyAppearsAfterRecordingStarts() {
+        ControlBar::Options options;
+        options.formats = {"mp4"};
+        options.codecs = {{"mp4", QJsonArray{"h264"}}};
+        ControlBar bar(options, putgd::RecordingConfig{});
+        bar.show(); QApplication::processEvents();
+        auto* time = bar.findChild<QLabel*>("time");
+        QVERIFY(time && !time->isVisible());
+        bar.setState("recording"); QVERIFY(time->isVisible());
+        bar.setState("paused"); QVERIFY(time->isVisible());
+        bar.setState("ready"); QVERIFY(!time->isVisible());
+    }
+
     void initTestCase() {
         // ctest names the layout it loaded into the offscreen platform; a
         // config the platform ignored would silently test one default screen.
         const int expected = qEnvironmentVariableIntValue("PUTGD_TEST_SCREENS");
         if (expected > 0) QCOMPARE(int(QGuiApplication::screens().size()), expected);
+    }
+    void requestedAudioSurvivesSilentFormats() {
+        putgd::RecordingConfig config; config.audio.system = true;
+        ControlBar bar(barOptions(), config); bar.show();
+        auto* audio = bar.findChild<QCheckBox*>();
+        auto* formats = bar.findChild<QComboBox*>("format");
+        QVERIFY(audio && formats);
+        QSignalSpy changes(&bar, &ControlBar::configChanged);
+        const auto choose = [&](const QString& format) {
+            for (int i = 0; i < formats->count(); ++i)
+                if (formats->itemData(i).toStringList().first() == format) { formats->setCurrentIndex(i); return; }
+        };
+        for (const auto& format : {QString("gif"), QString("webp")}) {
+            choose(format);
+            QVERIFY(bar.requestedAudio()); QVERIFY(!bar.effectiveAudio());
+            QCOMPARE(bar.audioState(), QJsonObject({{"requested", true}, {"effective", false}}));
+            QVERIFY(audio->isChecked() && !audio->isEnabled());
+            QCOMPARE(audio->text(), QString("System audio — used for video formats"));
+            const auto* hint = bar.findChild<QLabel*>("formatAudio");
+            QVERIFY(hint && hint->isVisible() && hint->text() == (format == "gif" ? "GIF has no audio" : "WebP has no audio"));
+            QVERIFY(!bar.config().audio.system);
+            choose("mp4");
+            QVERIFY(bar.requestedAudio() && bar.effectiveAudio());
+            QVERIFY(audio->isChecked() && audio->isEnabled());
+            QVERIFY(bar.config().audio.system);
+        }
+        QCOMPARE(changes.size(), 4);
+        audio->click(); QVERIFY(!bar.requestedAudio() && !bar.effectiveAudio());
+        choose("gif"); choose("mp4");
+        QVERIFY(!audio->isChecked() && !bar.effectiveAudio());
+    }
+    void unavailableAudioRemainsReadableInBothSchemes() {
+        const auto previous = putgd::Theme::scheme();
+        const auto restore = qScopeGuard([previous] { putgd::Theme::setScheme(previous); });
+        for (const auto scheme : {putgd::Theme::Scheme::Dark, putgd::Theme::Scheme::Light}) {
+            putgd::Theme::setScheme(scheme);
+            putgd::RecordingConfig config; config.audio.system = true;
+            ControlBar bar(barOptions(), config); bar.show();
+            auto* audio = bar.findChild<QCheckBox*>();
+            auto* formats = bar.findChild<QComboBox*>("format");
+            QVERIFY(audio && formats);
+            for (int index = 0; index < formats->count(); ++index) {
+                formats->setCurrentIndex(index);
+                const bool silent = formats->itemData(index).toStringList().first() == "gif" || formats->itemData(index).toStringList().first() == "webp";
+                QCOMPARE(putgd::Graphite::isLocked(audio), silent);
+                QVERIFY(audio->isChecked() && bar.requestedAudio());
+                if (silent) {
+                    QCOMPARE(audio->palette().color(QPalette::Disabled, QPalette::WindowText), putgd::Theme::current().textMuted);
+                    QVERIFY(putgd::Theme::contrast(audio->palette().color(QPalette::Disabled, QPalette::WindowText), putgd::Theme::current().bg) >= 4.5);
+                }
+            }
+        }
+    }
+    void recordingSelectorCyclesActualFixtureDisplays() {
+        const auto screens = QGuiApplication::screens();
+        SelectionOverlay selector; selector.start();
+        QWidget* surface = nullptr;
+        for (auto* w : QApplication::topLevelWidgets()) if (w->isVisible() && w->objectName() == "putgd-record-select" && w->screen() == screens[0]) surface = w;
+        QVERIFY(surface);
+        QSignalSpy selected(&selector, &SelectionOverlay::selected);
+        QTest::keyClick(surface, Qt::Key_Tab);
+        const int next = screens.size() > 1 ? 1 : 0;
+        if (screens.size() > 1) QVERIFY(surface->accessibleDescription().contains(QStringLiteral("Display %1").arg(next + 1)));
+        else QVERIFY(!surface->accessibleDescription().contains("Display 1"));
+        QVERIFY(surface->accessibleDescription().contains("Drag to select"));
+        QTest::keyClick(surface, Qt::Key_Right);
+        QRectF expected(QPointF(screens[next]->geometry().topLeft()) + QPointF(screens[next]->geometry().width()/4.0, screens[next]->geometry().height()/4.0), QSizeF(screens[next]->geometry().size())/2);
+        QList<QRectF> logical;for(auto* output:screens)logical.append(output->geometry());int current=next;
+        putgd::switchRegionDisplay(expected,logical,current,Qt::Key_Backtab);
+        QTest::keyClick(surface, Qt::Key_Backtab);
+        if (screens.size() > 1) QVERIFY(surface->accessibleDescription().contains(QStringLiteral("Display 1")));
+        else QVERIFY(!surface->accessibleDescription().contains("Display 1"));
+        QTest::keyClick(surface, Qt::Key_Return);
+        QCOMPARE(selected.size(), 1);
+        QVERIFY(expected.toAlignedRect().width() > 0);
+        // Fixture DPR is one; root pixels and logical coordinates agree.
+        QCOMPARE(qvariant_cast<QRect>(selected.first()[0]), expected.toAlignedRect());
     }
     void fullMonitorRegionGoesToAnotherMonitor() {
         // The region from the issue: 2560x1438 on the first monitor.
@@ -145,33 +240,46 @@ private slots:
         }
     }
 
-    // #120: from Record on the System audio box is locked, and it still shows
-    // whether the sound is recorded: filled with the theme's tick, or empty.
-    // The disabled rule used to repaint a checked box as an unchecked one.
-    void lockedAudioBoxShowsTheRecordedSound() {
-        auto barWith = [](bool sound) { putgd::RecordingConfig config; config.audio.system = sound; return std::make_unique<ControlBar>(barOptions(), config); };
-        const auto withSound = barWith(true), silent = barWith(false);
-        auto* on = withSound->findChild<QCheckBox*>();
-        auto* off = silent->findChild<QCheckBox*>();
-        QVERIFY(on && off);
-        // Before Record the box is live and ticked.
-        QVERIFY(on->isChecked() && on->isEnabled());
-        const auto [readyDarkest, readyMean] = greyLevels(audioIndicator(on));
-        QVERIFY2(readyDarkest < 70 && readyMean > 120, qPrintable(QStringLiteral("ready: darkest %1 mean %2").arg(readyDarkest).arg(readyMean)));
-        for (const char* state : {"recording", "paused", "stopping"}) {
-            withSound->setState(QString::fromLatin1(state));
-            silent->setState(QString::fromLatin1(state));
-            QVERIFY(on->isChecked() && !on->isEnabled());
-            QVERIFY(!off->isChecked() && !off->isEnabled());
-            QCOMPARE(on->toolTip(), QStringLiteral("System audio is being recorded"));
-            QCOMPARE(off->toolTip(), QStringLiteral("System audio is not being recorded"));
-            const QImage ticked = audioIndicator(on), empty = audioIndicator(off);
-            QVERIFY(ticked.width() >= 8 && ticked.height() >= 8 && ticked.size() == empty.size());
-            const auto [tickedDarkest, tickedMean] = greyLevels(ticked);
-            const auto [emptyDarkest, emptyMean] = greyLevels(empty);
-            // A light fill behind a dark tick, against an empty dark box.
-            QVERIFY2(tickedMean - emptyMean > 40, qPrintable(QStringLiteral("%1: mean %2 vs %3").arg(state).arg(tickedMean).arg(emptyMean)));
-            QVERIFY2(tickedDarkest < 70, qPrintable(QStringLiteral("%1: no tick, darkest %2 (empty %3)").arg(state).arg(tickedDarkest).arg(emptyDarkest)));
+    // Locked capture values remain readable information in both schemes.
+    void lockedValuesAreReadableLabels() {
+        const auto restore = qScopeGuard([] { putgd::Theme::setScheme(putgd::Theme::Scheme::Dark); });
+        for (const auto scheme : {putgd::Theme::Scheme::Dark, putgd::Theme::Scheme::Light}) {
+            putgd::Theme::setScheme(scheme);
+            for (const bool sound : {false, true}) {
+                putgd::RecordingConfig config;
+                config.audio.system = sound;
+                ControlBar bar(barOptions(), config);
+                bar.show();
+                auto* audio = bar.findChild<QCheckBox*>();
+                auto* format = bar.findChild<QComboBox*>("format");
+                auto* audioValue = bar.findChild<QLabel*>("lockedAudio");
+                auto* formatValue = bar.findChild<QLabel*>("lockedFormat");
+                QVERIFY(audio && format && audioValue && formatValue);
+                QVERIFY(audio->isVisible() && format->isVisible());
+                QVERIFY(!audioValue->isVisible() && !formatValue->isVisible());
+                for (const char* state : {"recording", "paused", "stopping"}) {
+                    bar.setState(QString::fromLatin1(state));
+                    QVERIFY(!audio->isVisible() && !format->isVisible());
+                    QCOMPARE(audio->isChecked(), sound);
+                    QCOMPARE(audioValue->text(), sound ? QStringLiteral("With system audio") : QStringLiteral("No audio"));
+                    QCOMPARE(formatValue->text(), format->currentText().section(QStringLiteral(" — "), 0, 0));
+                    QVERIFY(formatValue->toolTip().contains(format->currentText()));
+                    auto* facts = bar.findChild<QLabel*>("recordingFacts");
+                    QVERIFY(facts);
+                    const auto expected = QStringList{barOptions().targetLabel, audioValue->text(), formatValue->text()}.join(" · ");
+                    QCOMPARE(facts->text(), expected);
+                    QVERIFY(!bar.findChild<QPushButton*>("stop")->icon().isNull());
+                    for (auto* label : {facts}) {
+                        QVERIFY(label && label->isVisible() && label->isEnabled());
+                        QCOMPARE(label->palette().color(QPalette::WindowText), putgd::Theme::current().textSecondary);
+                        QVERIFY(putgd::Theme::contrast(label->palette().color(QPalette::WindowText), putgd::Theme::current().bg) >= 4.5);
+                        QCOMPARE(label->palette().color(QPalette::Disabled, QPalette::WindowText), putgd::Theme::current().textMuted);
+                    }
+                }
+                bar.setState("ready");
+                QVERIFY(audio->isVisible() && format->isVisible());
+                QVERIFY(!audioValue->isVisible() && !formatValue->isVisible());
+            }
         }
     }
     // #198: the bar uses the interface's scheme, from the same tokens, and a
@@ -201,13 +309,20 @@ private slots:
     // Over any content: the text reads on the bar, and the bar's outline
     // (3:1 against black and white) shows where it ends, in both schemes.
     void barReadsOverAnyContent() {
+        const auto previous = putgd::Theme::scheme();
+        const auto restore = qScopeGuard([previous] { putgd::Theme::setScheme(previous); });
         for (const auto scheme : {putgd::Theme::Scheme::Dark, putgd::Theme::Scheme::Light}) {
             const auto& p = putgd::Theme::palette(scheme);
             QVERIFY(putgd::Theme::contrast(p.text, p.bg) >= 4.5);
             QVERIFY(putgd::Theme::contrast(p.text, p.surfaceRaised) >= 4.5);
             QVERIFY(putgd::Theme::contrast(p.textMuted, p.bg) >= 4.5);
-            QVERIFY(putgd::Theme::contrast(p.textDisabled, Qt::black) >= 3.0);
-            QVERIFY(putgd::Theme::contrast(p.textDisabled, Qt::white) >= 3.0);
+            // Inactive actions meet 3:1; the information above keeps 4.5:1.
+            QVERIFY(putgd::Theme::contrast(p.textDisabled, p.bg) >= 3.0);
+            QVERIFY(putgd::Theme::contrast(p.controlOutline, Qt::black) >= 3.0);
+            QVERIFY(putgd::Theme::contrast(p.controlOutline, Qt::white) >= 3.0);
+            putgd::Theme::setScheme(scheme);
+            ControlBar bar(barOptions(), putgd::RecordingConfig{});
+            QCOMPARE(bar.grab().toImage().pixelColor(0, 0), p.controlOutline);
             // Record and Stop keep white on green and red.
             QVERIFY(putgd::Theme::contrast(Qt::white, QColor("#2e7d32")) >= 4.5);
             QVERIFY(putgd::Theme::contrast(Qt::white, QColor("#c62828")) >= 4.5);
@@ -224,7 +339,7 @@ private slots:
         auto* off = silent->findChild<QCheckBox*>();
         QVERIFY(on && off);
         auto brightest = [](const QImage& image) { int value = 0; for (int y = 2; y < image.height() - 2; ++y) for (int x = 2; x < image.width() - 2; ++x) value = std::max(value, qGray(image.pixel(x, y))); return value; };
-        for (const char* state : {"ready", "recording", "paused", "stopping"}) {
+        for (const char* state : {"ready"}) {
             withSound->setState(QString::fromLatin1(state));
             silent->setState(QString::fromLatin1(state));
             const QImage ticked = audioIndicator(on), empty = audioIndicator(off);
@@ -278,6 +393,86 @@ private slots:
             bar.setState("paused");
             QVERIFY(screens[0].contains(bar.geometry()));
         }
+    }
+    // Cancel before Record closes at once; once frames exist it asks in the
+    // bar, Keep recording first and on Escape, and the bar stays out of the clip.
+    void cancelAsksOnlyOnceRecording() {
+        const auto screens = qtScreens();
+        const QRect region(screens[0].left() + 200, screens[0].top() + 200, 600, 300);
+        ControlBar bar(barOptions(), putgd::RecordingConfig{});
+        QSignalSpy cancelled(&bar, &ControlBar::cancelRequested);
+        QVERIFY(bar.placeAround(region));
+        bar.show();
+        auto* cancel = bar.findChild<QPushButton*>("cancel");
+        auto* keep = bar.findChild<QPushButton*>("keepRecording");
+        auto* discard = bar.findChild<QPushButton*>("discardRecording");
+        QVERIFY(cancel && keep && discard);
+        QCOMPARE(cancel->text(), QStringLiteral("Cancel"));
+        cancel->click();
+        QCOMPARE(cancelled.size(), 1);
+        QSignalSpy resumed(&bar, &ControlBar::resumeRequested);
+        for (const char* state : {"recording", "paused"}) {
+            bar.setState(QString::fromLatin1(state));
+            QCOMPARE(cancel->text(), QStringLiteral("Discard…"));
+            cancel->click();
+            QCOMPARE(keep->text(), QString::fromLatin1(state) == "paused" ? QStringLiteral("Keep paused") : QStringLiteral("Keep recording"));
+            QCOMPARE(cancelled.size(), 1);
+            QVERIFY(bar.confirming());
+            QVERIFY(keep->isVisible() && discard->isVisible() && !cancel->isVisible());
+            QVERIFY(keep->x() < discard->x());QCOMPARE(bar.focusWidget(),keep);
+            QVERIFY(!bar.findChild<QPushButton*>("stop")->isVisible());
+            QVERIFY(bar.findChild<QLabel*>("discardQuestion")->isVisible());
+            QVERIFY2(!bar.geometry().intersects(region) && screenHolding(bar.geometry()) >= 0, state);
+            QTest::keyClick(&bar, Qt::Key_Escape);
+            QVERIFY(!bar.confirming());
+            QVERIFY(bar.findChild<QPushButton*>("stop")->isVisible());
+            QCOMPARE(cancelled.size(), 1);
+        }
+        cancel->click();
+        keep->click();
+        QVERIFY(!bar.confirming());
+        QCOMPARE(bar.findChild<QLabel*>("state")->text(), QStringLiteral("Paused"));
+        QCOMPARE(resumed.size(), 0);
+        cancel->click();
+        discard->click();
+        QCOMPARE(cancelled.size(), 2);
+        // A stop elsewhere drops the question.
+        cancel->click();
+        bar.setState("stopping");
+        QVERIFY(!bar.confirming());
+    }
+    // A narrow screen (or large text) takes two rows: Start/Pause/Stop on the
+    // first, target, audio and format together on the second.
+    void narrowScreensTakeTwoRows() {
+        ControlBar bar(barOptions(), putgd::RecordingConfig{});
+        auto* format = bar.findChild<QComboBox*>("format");
+        QVERIFY(format);
+        QCOMPARE(format->accessibleName(), QString("Recording format"));
+        bar.fitTo(QRect(0, 0, 2560, 1440));
+        QVERIFY(!bar.twoRows());
+        bar.show();
+        const QSize wide = bar.size();
+        bar.fitTo(QRect(0, 0, 1024, 768));
+        QVERIFY(bar.twoRows());
+        QVERIFY(bar.width() < wide.width());
+        QVERIFY(bar.width() <= 1024 * 7 / 10);
+        auto* record = bar.findChild<QPushButton*>("record");
+        auto* target = bar.findChild<QLabel*>("target");
+        auto* audio = bar.findChild<QCheckBox*>();
+        auto rowOf = [&](QWidget* w) { return w->mapTo(&bar, QPoint(0, w->height() / 2)).y(); };
+        QVERIFY(record->isVisible() && rowOf(record) < rowOf(format));
+        QCOMPARE(rowOf(target), rowOf(audio));
+        QVERIFY(std::abs(rowOf(audio) - rowOf(format)) <= 4);
+        bar.setState("recording");
+        auto* stop = bar.findChild<QPushButton*>("stop");
+        QVERIFY(stop->isVisible() && rowOf(stop) < rowOf(format));
+        // Placement decides from the recorded area's own screen.
+        const auto screens = qtScreens();
+        const QRect region(screens[0].left() + 200, screens[0].top() + 200, 600, 300);
+        bar.setState("ready");
+        QVERIFY(bar.placeAround(region));
+        QCOMPARE(bar.twoRows(), wide.width() > screens[0].width() * 7 / 10);
+        QVERIFY(!bar.geometry().intersects(region));
     }
     void dragKeepsTheBarOutOfTheClip() {
         const auto screens = qtScreens();

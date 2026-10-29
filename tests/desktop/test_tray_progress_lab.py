@@ -11,7 +11,8 @@ tray = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tray)
 
 
-def observation(description, color='#62d69b', title='put.gd — Working'):
+def observation(description, color=None, title='put.gd — Working'):
+    color = color or tray.TRAY_TINTS['dark']['upload' if description == 'Upload complete' else 'encoding']
     return {'pid': 42, 'hostRegistered': True, 'registered': True,
             'title': title, 'description': description,
             'icons': [{'width': 24, 'height': 24, 'sha256': 'synthetic',
@@ -66,20 +67,20 @@ class TrayProgressContracts(unittest.TestCase):
         for estimate in (25, 75, 100):
             with self.subTest(estimate=estimate), self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(observation(f'Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated {estimate}%'), records, 'proton-drive', 42)
-        # At zero fill the entire Lift silhouette uses the dim green base.
-        dim = observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%', color='#2b5d43')
-        self.assertTrue(tray.check_tooltip(dim, records, 'proton-drive', 42)['storageActive'])
+        # At zero fill the entire Lift silhouette retains its idle tint.
+        empty = observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%', color='#d6d6d2')
+        self.assertFalse(tray.check_tooltip(empty, records, 'proton-drive', 42)['storageActive'])
 
     def test_s3_replay_still_requires_its_real_transfer_total(self):
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2, 'bytesTransferred': 2*1024**2}]
         with self.assertRaises(tray.TrayProgressError):
             tray.check_tooltip(observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%'), records, 's3', 42)
 
-    def test_completion_frame_requires_full_bright_green_not_empty_fill(self):
+    def test_completion_frame_requires_green_without_progress_fill(self):
         self.assertFalse(tray.check_tooltip(observation('Upload complete'), [], 's3', 42)['idle'])
-        for snapshot in (observation('Upload complete', color='#2b5d43'), observation('Upload complete')):
-            if snapshot['icons'][0]['opaqueColors'].get('#62d69b'):
-                snapshot['icons'][0]['opaqueColors']['#2b5d43'] = 60
+        for snapshot in (observation('Upload complete', color='#d6d6d2'), observation('Upload complete')):
+            if snapshot['icons'][0]['opaqueColors'].get(tray.TRAY_TINTS['dark']['upload']):
+                snapshot['icons'][0]['opaqueColors'][tray.TRAY_TINTS['dark']['encoding']] = 60
             with self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(snapshot, [], 's3', 42)
 
@@ -128,7 +129,7 @@ class TrayProgressContracts(unittest.TestCase):
     def test_idle_tint_only_proton_replay_cannot_pass_storage_activity_gate(self):
         class PastQueueGate(Exception):
             pass
-        for transfer_color in ('#d6d6d2', '#62d69b'):
+        for transfer_color in ('#d6d6d2', '#e8b66d'):
             with self.subTest(transfer_color=transfer_color), tempfile.TemporaryDirectory() as directory:
                 replay = tray.Replay.__new__(tray.Replay)
                 mock_reads(replay)
@@ -346,16 +347,16 @@ class TrayProgressContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             replay = self.error_replay(directory)
             replay.snapshot = Mock(side_effect=[
-                observation('', '#ffb4ab', tray.IDLE), observation('', '#d6d6d2', tray.IDLE),
-                observation('', '#ffb4ab', tray.IDLE), observation('', '#d6d6d2', tray.IDLE),
+                observation('', '#e59b93', tray.IDLE), observation('', '#d6d6d2', tray.IDLE),
+                observation('', '#e59b93', tray.IDLE), observation('', '#d6d6d2', tray.IDLE),
                 observation('', '#d6d6d2', tray.IDLE)])
             with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 10.62, 12.99, 13.01]):
                 red = replay.observe('local-failure')[2]
                 blue = replay.observe('local-failure')[2]
                 self.assertFalse(red['idle']); self.assertFalse(blue['idle'])
-                self.assertEqual(red['errorColor'], '#ffb4ab')
+                self.assertEqual(red['errorColor'], '#e59b93')
                 self.assertEqual(blue['errorColor'], '#d6d6d2')
-                self.assertEqual(replay.observe('local-failure')[2]['errorColor'], '#ffb4ab')
+                self.assertEqual(replay.observe('local-failure')[2]['errorColor'], '#e59b93')
                 self.assertFalse(replay.observe('local-failure')[2]['idle'])
                 self.assertTrue(replay.observe('local-failure')[2]['idle'])
             pulse = replay.result['errorPulses'][0]
@@ -376,8 +377,8 @@ class TrayProgressContracts(unittest.TestCase):
         from unittest.mock import Mock, patch
         with tempfile.TemporaryDirectory() as directory:
             replay = self.error_replay(directory)
-            replay.snapshot = Mock(side_effect=[observation('', '#ffb4ab', tray.IDLE),
-                observation('Upload complete', '#62d69b')])
+            replay.snapshot = Mock(side_effect=[observation('', '#e59b93', tray.IDLE),
+                observation('Upload complete', tray.TRAY_TINTS['dark']['upload'])])
             with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31]):
                 replay.observe('local-failure')
                 with self.assertRaises(tray.TrayProgressError):
@@ -387,8 +388,8 @@ class TrayProgressContracts(unittest.TestCase):
         from unittest.mock import Mock, patch
         with tempfile.TemporaryDirectory() as directory:
             replay = self.error_replay(directory)
-            replay.snapshot = Mock(side_effect=[observation('', '#ffb4ab', tray.IDLE),
-                observation('', '#d6d6d2', tray.IDLE), observation('Upload complete', '#62d69b')])
+            replay.snapshot = Mock(side_effect=[observation('', '#e59b93', tray.IDLE),
+                observation('', '#d6d6d2', tray.IDLE), observation('Upload complete', tray.TRAY_TINTS['dark']['upload'])])
             with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 12.6]):
                 replay.observe('local-failure'); replay.observe('local-failure')
                 checked = replay.observe('local-failure')[2]
@@ -400,7 +401,7 @@ class TrayProgressContracts(unittest.TestCase):
         from unittest.mock import Mock, patch
         with tempfile.TemporaryDirectory() as directory:
             replay = self.error_replay(directory)
-            replay.snapshot = Mock(side_effect=[observation('', '#ffb4ab', tray.IDLE),
+            replay.snapshot = Mock(side_effect=[observation('', '#e59b93', tray.IDLE),
                 observation('', '#d6d6d2', tray.IDLE), observation('', '#d6d6d2', tray.IDLE)])
             with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 13.01]):
                 replay.observe('local-failure'); replay.observe('local-failure')
@@ -418,7 +419,7 @@ class TrayProgressContracts(unittest.TestCase):
             first, second = operation('failed'), operation('second')
             replay.cli = Mock(side_effect=[{'operations': [first]}]*6 + [{'operations': [first, second]}]*4)
             replay.snapshot = Mock(side_effect=[observation('', color, tray.IDLE) for color in
-                ('#ffb4ab', '#d6d6d2', '#ffb4ab', '#d6d6d2', '#d6d6d2')])
+                ('#e59b93', '#d6d6d2', '#e59b93', '#d6d6d2', '#d6d6d2')])
             with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 10.62, 12.5, 15.51]):
                 for _ in range(4): replay.observe('concurrent')
                 with self.assertRaises(tray.TrayProgressError): replay.observe('concurrent')
@@ -432,19 +433,19 @@ class TrayProgressContracts(unittest.TestCase):
         for operation in invalid:
             with self.subTest(operation=operation), tempfile.TemporaryDirectory() as directory:
                 replay = self.error_replay(directory, operation)
-                replay.snapshot = Mock(return_value=observation('', '#ffb4ab', tray.IDLE))
+                replay.snapshot = Mock(return_value=observation('', '#e59b93', tray.IDLE))
                 with patch.object(tray.time, 'monotonic', return_value=10):
                     with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
         with tempfile.TemporaryDirectory() as directory:
             replay = self.error_replay(directory)
-            replay.snapshot = Mock(return_value=observation('', '#ffb4ab', tray.IDLE))
+            replay.snapshot = Mock(return_value=observation('', '#e59b93', tray.IDLE))
             with patch.object(tray.time, 'monotonic', side_effect=[10, 13.01]):
                 replay.observe('local-failure')
                 with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
 
     def test_error_recovery_rejects_missing_error_or_idle_tint_transition(self):
         from unittest.mock import Mock, patch
-        for first_color in ('#d6d6d2', '#ffb4ab'):
+        for first_color in ('#d6d6d2', '#e59b93'):
             with self.subTest(first_color=first_color), tempfile.TemporaryDirectory() as directory:
                 replay = self.error_replay(directory)
                 replay.snapshot = Mock(side_effect=[observation('', first_color, tray.IDLE),
@@ -459,17 +460,17 @@ class TrayProgressContracts(unittest.TestCase):
                        {'description': 'https://example.invalid/sensitive'},
                        {'title': 'unexpected'},
                        {'icons': observation('', '#ffffff', tray.IDLE)['icons']},
-                       {'icons': [observation('', '#ffb4ab', tray.IDLE)['icons'][0],
+                       {'icons': [observation('', '#e59b93', tray.IDLE)['icons'][0],
                                   observation('', '#d6d6d2', tray.IDLE)['icons'][0]]}):
             with self.subTest(defect=defect), tempfile.TemporaryDirectory() as directory:
                 replay = self.error_replay(directory)
-                replay.snapshot = Mock(return_value={**observation('', '#ffb4ab', tray.IDLE), **defect})
+                replay.snapshot = Mock(return_value={**observation('', '#e59b93', tray.IDLE), **defect})
                 with patch.object(tray.time, 'monotonic', return_value=10):
                     with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
                 evidence = (replay.output/'observations.jsonl').read_text()
                 self.assertIn('redacted', evidence); self.assertNotIn('sensitive', evidence)
         with self.assertRaises(tray.TrayProgressError):
-            tray.check_tooltip(observation('', '#ffb4ab', tray.IDLE), [], 's3', 42)
+            tray.check_tooltip(observation('', '#e59b93', tray.IDLE), [], 's3', 42)
 
     def test_only_explicit_original_id_proton_busy_can_authorize_optional_pulse(self):
         from unittest.mock import Mock, patch
@@ -479,10 +480,10 @@ class TrayProgressContracts(unittest.TestCase):
                     {'uploadStatus': 'uploaded', 'shareStatus': 'failed', 'error': {'code': code}}]}
                 replay = self.error_replay(directory, op); replay.args.provider = 'proton-drive'
                 replay.error_pulse = {'operationIds': ['failed'], 'kind': 'proton-busy', 'required': False}
-                replay.snapshot = Mock(return_value=observation('', '#ffb4ab', tray.IDLE))
+                replay.snapshot = Mock(return_value=observation('', '#e59b93', tray.IDLE))
                 with patch.object(tray.time, 'monotonic', return_value=10):
                     if code == 'proton_account_busy':
-                        self.assertEqual(replay.observe('concurrent')[2]['errorColor'], '#ffb4ab')
+                        self.assertEqual(replay.observe('concurrent')[2]['errorColor'], '#e59b93')
                     else:
                         with self.assertRaises(tray.TrayProgressError): replay.observe('concurrent')
 
@@ -583,21 +584,47 @@ class TrayPanelToneContracts(unittest.TestCase):
     DARK = tray.TRAY_TINTS['dark']
 
     def test_tint_table_matches_theme_and_icon_art(self):
-        import colorsys, re
+        import re
         source = (ROOT / 'src/ui/Theme.cpp').read_text()
-        for name in ('dark', 'light'):
-            found = re.search(r'static const TrayTints ' + name + r'\{([^}]*)\}', source)
+        header = (ROOT / 'src/ui/Theme.h').read_text()
+        fields = re.search(r'struct Palette \{(.*?)\};', header, re.S)[1]
+        fields = [field.strip() for row in re.findall(r'QColor ([^;]+);', fields)
+                  for field in row.split(',')]
+        body = source[source.index('const TrayTints& trayTints('):source.index('bool setScheme(')]
+        members = re.search(r'return TrayTints\{([^}]+)\}', body)
+        self.assertIsNotNone(members)
+        members = re.findall(r'readable\(p\.(\w+)\)', members[1])
+        self.assertEqual(len(members), 5)
+        # These palettes already satisfy the adjustment loop. If a future token
+        # needs adjustment, require an explicit lab-table update rather than
+        # silently treating the raw token as the rendered tint.
+        threshold = re.search(r'contrast\(color,panels\[0\]\)<([0-9.]+)', body)[1]
+        self.assertIn('contrast(color,panels[1])<' + threshold, body)
+        panels = re.search(r'const QColor panels\[\]= \{([^}]+)\}', body)[1]
+        panels = re.findall(r'QColor\("(#[0-9A-Fa-f]{6})"\)', panels)
+        self.assertEqual(len(panels), 4)
+        def luminance(color):
+            channels = [int(color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+            return sum(weight * (c / 12.92 if c <= .03928 else ((c + .055) / 1.055)**2.4)
+                       for c, weight in zip(channels, (.2126, .7152, .0722)))
+        for name, backgrounds in (('dark', panels[1::2]), ('light', panels[::2])):
+            found = re.search(r'const Palette ' + name + r'\{(.*?)\};', source, re.S)
             self.assertIsNotNone(found, name)
-            idle, upload, encoding, error = [c.lower() for c in re.findall(r'QColor\("(#[0-9A-Fa-f]{6})"\)', found[1])]
-            tints = tray.TRAY_TINTS[name]
-            self.assertEqual((tints['idle'], tints['upload'], tints['encoding'], tints['error']),
-                             (idle, upload, encoding, error))
-            # IconArt::liftTray draws the unfilled remainder as color.darker(230).
-            self.assertIn('p.fillPath(shape,color.darker(230));', (ROOT / 'src/ui/IconArt.cpp').read_text())
-            h, sat, v = colorsys.rgb_to_hsv(*(int(upload[i:i + 2], 16) / 255 for i in (1, 3, 5)))
-            dim = '#' + ''.join('%02x' % round(c * 255) for c in colorsys.hsv_to_rgb(h, sat, v * 100 / 230))
-            self.assertEqual(tints['uploadDim'], dim)
-        self.assertEqual(self.LIGHT['uploadDim'], '#092f1d')
+            colors = re.findall(r'QColor\(([^)]*)\)', found[1])
+            self.assertEqual(len(colors), len(fields))
+            palette = dict(zip(fields, colors))
+            for role, member in zip(('idle', 'upload', 'encoding', 'error', 'live'), members):
+                color = palette[member].strip('"').lower()
+                self.assertRegex(color, r'^#[0-9a-f]{6}$')
+                for background in backgrounds:
+                    light, dark = sorted((luminance(color), luminance(background)), reverse=True)
+                    self.assertGreaterEqual((light + .05) / (dark + .05), float(threshold),
+                                            name + '/' + role + ' now needs the C++ tint adjustment')
+                self.assertEqual(tray.TRAY_TINTS[name][role], color, name + '/' + role)
+        art = (ROOT / 'src/ui/IconArt.cpp').read_text()
+        self.assertIn('p.fillPath(shape,glyph);', art)
+        self.assertIn('p.fillPath(shape,tints.encoding);', art)
+        self.assertNotIn('color.darker(230)', art)
 
     def test_panel_tone_rules_match_the_cpp_rule_table(self):
         import re
@@ -653,8 +680,8 @@ class TrayPanelToneContracts(unittest.TestCase):
         with self.assertRaisesRegex(tray.TrayProgressError, 'brand color'):
             tray.check_tooltip(idle, [], 's3', 42)
         records = [{'id': 'op', 'phase': 'uploading', 'bytesTransferred': 2097152, 'bytesTotal': 4194304, 'bytesEstimated': False}]
-        active = observation('Uploading: 2 MiB of 4 MiB (50%)', color=light['upload'])
-        active['icons'][0]['opaqueColors'][light['uploadDim']] = 60
+        active = observation('Uploading: 2 MiB of 4 MiB (50%)', color=light['idle'])
+        active['icons'][0]['opaqueColors'][light['encoding']] = 60
         result = tray.check_tooltip(active, records, 's3', 42, tints=light)
         self.assertTrue(result['storageActive'] and result['counter'])
         with self.assertRaises(tray.TrayProgressError):
@@ -699,7 +726,7 @@ class TrayPanelToneContracts(unittest.TestCase):
     def test_replay_takes_the_tint_set_both_readers_agree_on(self):
         light_panel = {'desktop': 'KDE', 'plasmarc': '', 'kdeglobals': '', 'styleColors': ''}
         with tempfile.TemporaryDirectory() as directory:
-            replay = self.tone_replay(directory, light_panel, {'panel': 'light', 'source': 'kde-default', 'color': '#454540'})
+            replay = self.tone_replay(directory, light_panel, {'panel': 'light', 'source': 'kde-default', 'color': '#383834'})
             self.assertEqual(replay.read_panel_tone()['panel'], 'light')
             self.assertIs(replay.tints, self.LIGHT)
             self.assertEqual(replay.result['panelTone']['reportedByApp']['source'], 'kde-default')

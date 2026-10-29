@@ -1,5 +1,6 @@
 #include "ViewState.h"
 #include <QJsonArray>
+#include <QDir>
 #include <QJsonDocument>
 #include <QStringList>
 #include <cmath>
@@ -97,7 +98,7 @@ bool profileEditor(const QJsonValue& value,bool includeProviders=true){
 // Derived, read-only presentation of Settings → Capture for CLI/MCP readers;
 // restoring a view recomputes it from the draft.
 bool captureRouting(const QJsonValue& value){
- if(!fields(value,{"default","region","window","desktop","clipboard","edit"})||!value.toObject().contains("default"))return false;
+ if(!fields(value,{"default","region","window","desktop","clipboard","edit","record"})||!value.toObject().contains("default"))return false;
  const auto routes=value.toObject();
  for(auto it=routes.begin();it!=routes.end();++it){
   const bool action=it.key()!="default";const QStringList text{"profileId","destination","publicationMode","sharing","effectivePublicationMode","status"};QStringList flags{"destinationEnabled","sharingEnabled"};if(action)flags.append("inherited");
@@ -111,7 +112,9 @@ bool captureRouting(const QJsonValue& value){
 }
 bool settingsState(const QJsonObject& s){
  if(s.contains("autosaveBlocked")&&!s["autosaveBlocked"].isBool())return false;
- if(!fields(s,{"autosaveBlocked","draft","numbers","profileEditors","baseRevision","observedRevision","dirty","conflict","initialProfile","profileIndex","section","advanced","geometry","setupJobs","provisionalProfile","captureRouting"}))return false;
+ if(!fields(s,{"autosaveBlocked","draft","numbers","profileEditors","baseRevision","observedRevision","dirty","conflict","initialProfile","profileIndex","section","advanced","resourceLimits","desktopSupportDetails","geometry","setupJobs","provisionalProfile","captureRouting"}))return false;
+ if(s.contains("resourceLimits")&&!s["resourceLimits"].isBool())return false;
+ if(s.contains("desktopSupportDetails")&&!s["desktopSupportDetails"].isBool())return false;
  if(s.contains("captureRouting")&&!captureRouting(s["captureRouting"]))return false;
  if(!safeDocument(s["draft"])||!scalars(s["numbers"],limitKeys+retentionKeys,true)||!geometry(s["geometry"]))return false;
  for(const auto& key:QStringList{"dirty","conflict","initialProfile","advanced"})if(!s[key].isBool())return false;
@@ -127,7 +130,7 @@ bool settingsState(const QJsonObject& s){
  for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId","revision"},true))return false;auto job=v.toObject();if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(job["kind"].toString()))return false;}
  return true;
 }
-bool historyState(const QJsonObject& s){for(const auto& key:QStringList{"gridMode","showCancelled"})if(s.contains(key)&&!s[key].isBool())return false;if(s.contains("selectedItemId")&&!s["selectedItemId"].isString())return false;if(!fields(s,{"query","filters","selectedIds","deletionId","sharingId","filtersExpanded","managementExpanded","receiptExpanded","geometry","gridMode","showCancelled","selectedItemId"})||!fields(s["query"],filterKeys+QStringList{"limit","offset"})||!scalars(s["filters"],filterKeys,true)||!stringArray(s["selectedIds"])||!s["deletionId"].isString()||(s.contains("sharingId")&&!s["sharingId"].isString())||!geometry(s["geometry"]))return false;auto q=s["query"].toObject();for(auto it=q.begin();it!=q.end();++it)if(it.key()=="limit"||it.key()=="offset"){if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()<0||it.value().toDouble()>2147483647)return false;}else if(!it.value().isString())return false;for(const auto& key:QStringList{"filtersExpanded","managementExpanded","receiptExpanded"})if(!s[key].isBool())return false;return true;}
+bool historyState(const QJsonObject& s){if(s.contains("savedPath")&&(!s["savedPath"].isString()||s["savedPath"].toString().contains(QChar(0))||(!s["savedPath"].toString().isEmpty()&&!QDir::isAbsolutePath(s["savedPath"].toString()))))return false;for(const auto& key:QStringList{"gridMode","showCancelled","detailsOpen","detailsFromGallery"})if(s.contains(key)&&!s[key].isBool())return false;if(s.contains("selectedItemId")&&!s["selectedItemId"].isString())return false;if(!fields(s,{"query","filters","selectedIds","deletionId","sharingId","filtersExpanded","managementExpanded","receiptExpanded","geometry","gridMode","showCancelled","selectedItemId","detailsOpen","detailsFromGallery","galleryScroll","listScroll","savedPath"})||!fields(s["query"],filterKeys+QStringList{"limit","offset"})||!scalars(s["filters"],filterKeys,true)||!stringArray(s["selectedIds"])||!s["deletionId"].isString()||(s.contains("sharingId")&&!s["sharingId"].isString())||!geometry(s["geometry"]))return false;auto q=s["query"].toObject();for(auto it=q.begin();it!=q.end();++it)if(it.key()=="limit"||it.key()=="offset"){if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()<0||it.value().toDouble()>2147483647)return false;}else if(!it.value().isString())return false;for(const auto& key:QStringList{"filtersExpanded","managementExpanded","receiptExpanded"})if(!s[key].isBool())return false;for(const auto& key:QStringList{"galleryScroll","listScroll"})if(s.contains(key)&&(!s[key].isDouble()||s[key].toDouble()<0||s[key].toDouble()>2147483647||std::floor(s[key].toDouble())!=s[key].toDouble()))return false;return true;}
 }
 // The resolved appearance (#60), reported read-only for CLI/MCP readers.
 bool appearanceState(const QJsonValue& value){
@@ -139,10 +142,10 @@ bool appearanceState(const QJsonValue& value){
  return true;
 }
 Error validateUiState(const QJsonObject& state){
- if(QJsonDocument(state).toJson(QJsonDocument::Compact).size()>maximumUiStateBytes)return {"ui_state_too_large","The draft exceeds the 8 MiB UI state limit. Keep this window open and reduce the draft before closing.",{}};
+ if(QJsonDocument(state).toJson(QJsonDocument::Compact).size()>maximumUiStateBytes)return {"ui_state_too_large","The draft exceeds the 8 MB UI state limit. Keep this window open and reduce the draft before closing.",{}};
  for(const auto& key:QStringList{"settings","history","activity"})if(state[key].isObject()&&state[key].toObject().contains("stateError")){
   const auto reason=state[key].toObject()["stateError"].toString();
-  if(reason=="ui_state_too_large")return {"ui_state_too_large","The draft exceeds the 8 MiB UI state limit. Keep this window open and reduce the draft before closing.",{}};
+  if(reason=="ui_state_too_large")return {"ui_state_too_large","The draft exceeds the 8 MB UI state limit. Keep this window open and reduce the draft before closing.",{}};
   if(reason=="request_awaiting_acceptance")return {"ui_request_pending","A request is awaiting resident acceptance. Wait for its result before closing this window.",{}};
   return {"ui_state_unclassified","The draft contains unclassified provider settings. Keep this window open and correct these fields before closing.",{}};
  }

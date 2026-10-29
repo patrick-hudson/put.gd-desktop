@@ -22,6 +22,7 @@ public:
         std::function<Settings()> settings;
         // Fills identity, settings snapshot, destination and ownership; rejects when busy.
         std::function<Error(Operation&)> accept;
+        std::function<QJsonObject(const Operation&)> reviewOptions;
         std::function<void(const Operation&, std::function<void(Error)>)> persist;
         std::function<void(const Operation&)> observe;
         // Hands the validated export file to the immutable artifact pipeline.
@@ -68,6 +69,7 @@ private:
         QJsonObject progress;
         // The latest saveCopy/upload export: {command, status, revision, path?, bytes?, durationUs?, error?}.
         QJsonObject lastExport;
+        QJsonObject lastExportRequest;
         std::optional<bool> overlayExcluded;
         // outside | inside | hidden | compositor: where the control bar ended up.
         QString overlayPlacement;
@@ -83,6 +85,8 @@ private:
         QString stopReason;
         // Finalization survives later review/edit/export state transitions.
         bool captureStopped = false;
+        // Capture capability survives silent export formats during review.
+        bool capturedSystemAudio = false;
         // Which bound set the budget at prepare (disk_space or max_file_bytes), and after
         // a budget stop {reason, message, hint, budgetBytes, maxFileBytes, durationUs, freeBytes?, ...}.
         QString budgetLimit;
@@ -110,6 +114,7 @@ private:
     void commandSession(const QString& command, const QJsonObject& params, JsonReply);
     // `reply` answers once the export starts (or is refused); `done`, when
     // given, runs with the export's outcome.
+    void retryExport(JsonReply reply, JsonReply done = {});
     void exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done = {});
     RecordingBackend::Reply marshal(quint64 generation, std::function<void(Error, QJsonObject)>);
     QString stagingRoot_;

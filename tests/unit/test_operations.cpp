@@ -70,9 +70,46 @@ public:
   });
  }
 };
+class OutcomeSource final:public SourceAdapter {
+public:
+ QString outcome;
+ quint64 clipboardRevision() const override {return 0;}
+ QJsonObject capabilities() const override {return {};}
+ PreparedAcquisition prepareAcquisition(const QString&) override {
+  outcome=captureOutcome_;
+  return [](const ResourceLimits&,std::function<void(PayloadResult)> reply){reply({{},{"cancelled","Synthetic selector cancelled",{}}});};
+ }
+ void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>) override {}
+ void cancelAcquisition() override {}
+ void copy(const CopyPayload&,std::function<void(Error)>) override {}
+};
 class OperationsTest:public QObject {
  Q_OBJECT
 private slots:
+ void screenshotOutcomeUsesResolvedRoute_data(){
+  QTest::addColumn<QString>("action");QTest::addColumn<QString>("provider");QTest::addColumn<QString>("mode");QTest::addColumn<QString>("outcome");
+  QTest::newRow("local")<<QString("region")<<QString()<<QString("default")<<QString("Saves locally");
+  QTest::newRow("proton")<<QString("region")<<QString("proton-drive")<<QString("default")<<QString("Uploads right away to Team Drive · Shared link");
+  QTest::newRow("s3")<<QString("region")<<QString("s3")<<QString("share")<<QString("Uploads right away to Team Drive · Shared link");
+  QTest::newRow("b2")<<QString("region")<<QString("backblaze-b2")<<QString("default")<<QString("Uploads right away to Team Drive · Shared link");
+  QTest::newRow("private")<<QString("region")<<QString("proton-drive")<<QString("private")<<QString("Uploads right away to Team Drive · Private upload");
+  QTest::newRow("edit-proton")<<QString("edit")<<QString("proton-drive")<<QString("private")<<QString("Opens the image editor");
+  QTest::newRow("edit-local")<<QString("edit")<<QString()<<QString("default")<<QString("Opens the image editor");
+ }
+ void screenshotOutcomeUsesResolvedRoute(){
+  QFETCH(QString,action);QFETCH(QString,provider);QFETCH(QString,mode);QFETCH(QString,outcome);
+  QTemporaryDir d;ProviderRegistry registry;if(!provider.isEmpty())registry.add(provider,std::make_shared<OpaqueProvider>());
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});
+  auto doc=configuration(d.path(),provider.isEmpty());
+  if(!provider.isEmpty()){
+   auto profile=doc["profiles"].toArray().first().toObject();profile["provider"]=provider;profile["label"]="Team Drive";doc["profiles"]=QJsonArray{profile};
+   auto actions=doc["actions"].toObject();for(const auto& name:Settings::actionNames()){auto route=actions[name].toObject();route["destination"]="default";route["profileId"]=QJsonValue::Null;actions[name]=route;}doc["actions"]=actions;
+   doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","test"},{"publicationMode",mode}};
+  }
+  QVERIFY(settings.save(doc,{}));OutcomeSource source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  QString id;operations.invoke(action,[&](Error error,QJsonObject result){QVERIFY(!error);id=result["operationId"].toString();});
+  QCOMPARE(source.outcome,outcome);PUTGD_TRY_VERIFY(!id.isEmpty());HistoryStore journal(operations.databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));
+ }
  void historyImageCopiesSelectedUploadedOriginalAndRejectsChangedFiles(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config/config.json"));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());Operation op;op.id="image-copy-operation";op.state="completed";
   for(int n=0;n<2;++n){QImage image(391,257,QImage::Format_RGB32);image.fill(n?Qt::cyan:Qt::magenta);QByteArray bytes;QBuffer buffer(&bytes);QVERIFY(buffer.open(QIODevice::WriteOnly));QVERIFY(image.save(&buffer,"BMP"));const auto path=d.filePath(QString("original-%1.bmp").arg(n));QFile file(path);QVERIFY(file.open(QIODevice::WriteOnly));QCOMPARE(file.write(bytes),bytes.size());file.close();OperationItem item;item.artifact.id=QString("image-%1").arg(n);item.artifact.name=QString("original-%1.bmp").arg(n);item.artifact.mime="image/bmp";item.artifact.category="images";item.artifact.originalFile=true;item.artifact.bytes=bytes.size();item.artifact.sha256=QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());item.local.status="saved";item.local.path=path;item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/original.bmp";op.items.append(item);}
@@ -462,6 +499,18 @@ private slots:
   QCOMPARE(journal.operation(id).items[0].artifact.previewPath,preview);QCOMPARE(journal.detail(item)["previewPath"].toString(),preview);QVERIFY(changes.contains(id));
   QCOMPARE(QImage(preview).text("putgd-duration-ms"),QString("4200"));
   std::tie(error,result)=ask(item);QVERIFY(!error);QCOMPARE(result["state"].toString(),QString("ready"));QCOMPARE(result["previewPath"].toString(),preview);
+  // Corrupt app-owned cache entries regenerate, while unrelated cache entries survive.
+  const auto unrelated=QFileInfo(preview).dir().filePath(QUuid::createUuid().toString(QUuid::WithoutBraces)+".png");QVERIFY(QFile::copy(preview,unrelated));
+  {QFile broken(preview);QVERIFY(broken.open(QIODevice::WriteOnly|QIODevice::Truncate));broken.write("broken png");}
+  {bool done=false;operations.makePreview(item,[&](Error e,QJsonObject r){error=e;result=r;done=true;},true);PUTGD_TRY_VERIFY_WITH_TIMEOUT(done,15000);}
+  QVERIFY2(!error,qPrintable(error.code));QCOMPARE(result["state"].toString(),QString("made"));QVERIFY(!QImage(preview).isNull());QVERIFY(QFileInfo(unrelated).isFile());
+  // A corrupt path outside our cache is refused without deleting that file.
+  const auto foreign=d.filePath("foreign.png");{QFile file(foreign);QVERIFY(file.open(QIODevice::WriteOnly));file.write("foreign bytes");}
+  {auto changed=journal.operation(id);changed.items[0].artifact.previewPath=foreign;QVERIFY(!journal.saveOperation(changed));}
+  {bool done=false;operations.makePreview(item,[&](Error e,QJsonObject r){error=e;result=r;done=true;},true);PUTGD_TRY_VERIFY(done);}
+  QCOMPARE(error.code,QString("preview_cache_invalid"));QVERIFY(QFileInfo(foreign).isFile());
+  {auto changed=journal.operation(id);changed.items[0].artifact.previewPath=preview;QVERIFY(!journal.saveOperation(changed));}
+  {bool done=false;operations.makePreview(item,[&](Error e,QJsonObject r){error=e;result=r;done=true;},true);PUTGD_TRY_VERIFY(done);QVERIFY(!error);}
   // Cleanup removed the preview and the artifact: the local copy stands in.
   QVERIFY(QFile::remove(preview));QVERIFY(QFile::remove(op.items[0].artifact.path));
   std::tie(error,result)=ask(item);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(result["state"].toString(),QString("made"));QCOMPARE(result["source"].toString(),QString("local"));QVERIFY(QFileInfo(preview).isFile());

@@ -83,12 +83,13 @@ class FileDialogTest final:public QObject {
  QDBusConnection peer_=QDBusConnection::connectToBus(QDBusConnection::SessionBus,"putgd-fake-portal");
  FakeChooser* chooser_=nullptr;
  QWidget* window_=nullptr;
+ FileDialog::Result last_;
  void registerPortal(){QVERIFY(peer_.registerService(service));}
  void unregisterPortal(){peer_.unregisterService(service);}
  // Runs one chooser and returns its answer once done is called.
  std::optional<QString> run(FileDialog& dialog,const FileDialog::Options& options,int timeout=3000){
-  std::optional<QString> result;
-  if(!dialog.open(options,[&](const QString& chosen){result=chosen;}))return std::nullopt;
+  std::optional<QString> result;last_={};
+  if(!dialog.open(options,[&](const FileDialog::Result& r){result=r.path;last_=r;}))return std::nullopt;
   (void)putgd::test::waitFor([&]{return result||dialog.fallbackDialog();},timeout);
   return result;
  }
@@ -119,6 +120,7 @@ private slots:
   const auto chosen=run(dialog,{FileDialog::Mode::Save,"Save a copy","/tmp/start dir","recording.webm",{{"WEBM",{"*.webm"}}}});
   QVERIFY(chosen.has_value());
   QCOMPARE(*chosen,QString::fromUtf8("/tmp/put.gd test/clipé.webm"));
+  QVERIFY(last_.chosen());QCOMPARE(last_.path,*chosen);
   QCOMPARE(chooser_->method,QString("SaveFile"));QCOMPARE(chooser_->title,QString("Save a copy"));
   // Offscreen has no X11 window: no parent handle.
   QCOMPARE(chooser_->parent,QString());
@@ -151,12 +153,13 @@ private slots:
   QCOMPARE(run(dialog,{FileDialog::Mode::Save,"Save a copy",{},"a.png",{}}).value_or("none"),QString());
   QVERIFY(!dialog.fallbackDialog());
   QCOMPARE(dialog.state()["last"].toObject()["status"].toString(),QString("cancelled"));
+  QCOMPARE(last_.status,FileDialog::Result::Status::Cancelled);QVERIFY(last_.error.isEmpty());
  }
  void whileOpenTheWindowIsBlockedAndCancelClosesTheRequest(){
   chooser_->answer=FakeChooser::Answer::Wait;
   FileDialog dialog(window_);bool answered=false;QString answer="unset";
-  QVERIFY(dialog.open({FileDialog::Mode::Save,"Save a copy",{},"a.png",{}},[&](const QString& p){answered=true;answer=p;}));
-  QVERIFY(!dialog.open({FileDialog::Mode::Save,"Again",{},{},{}},[](const QString&){}));
+  QVERIFY(dialog.open({FileDialog::Mode::Save,"Save a copy",{},"a.png",{}},[&](const FileDialog::Result& r){answered=true;answer=r.path;}));
+  QVERIFY(!dialog.open({FileDialog::Mode::Save,"Again",{},{},{}},[](const FileDialog::Result&){}));
   PUTGD_TRY_COMPARE(chooser_->calls,1);
   // Modal like QFileDialog::exec, with nothing drawn by Qt.
   QVERIFY(QApplication::activeModalWidget());QVERIFY(!dialog.fallbackDialog());
@@ -173,7 +176,7 @@ private slots:
  void destroyingTheOwnerClosesTheRequest(){
   chooser_->answer=FakeChooser::Answer::Wait;
   auto* dialog=new FileDialog(window_);bool answered=false;
-  QVERIFY(dialog->open({FileDialog::Mode::Open,"Edit",{},{},{}},[&](const QString&){answered=true;}));
+  QVERIFY(dialog->open({FileDialog::Mode::Open,"Edit",{},{},{}},[&](const FileDialog::Result&){answered=true;}));
   PUTGD_TRY_COMPARE(chooser_->calls,1);
   delete dialog;
   PUTGD_TRY_COMPARE(chooser_->request->closed,1);QVERIFY(!answered);
@@ -181,7 +184,7 @@ private slots:
  void portalFailureFallsBack(){
   chooser_->answer=FakeChooser::Answer::Fail;
   FileDialog dialog(window_);bool answered=false;
-  QVERIFY(dialog.open({FileDialog::Mode::Save,"Save a copy",{},"a.png",{}},[&](const QString&){answered=true;}));
+  QVERIFY(dialog.open({FileDialog::Mode::Save,"Save a copy",{},"a.png",{}},[&](const FileDialog::Result&){answered=true;}));
   auto* fallback=waitForFallback(dialog);QVERIFY(fallback);QVERIFY(!answered);
   QCOMPARE(dialog.state()["backend"].toString(),QString("fallback"));QCOMPARE(dialog.state()["fallbackReason"].toString(),QString("portal_failed"));
   QCOMPARE(fallback->acceptMode(),QFileDialog::AcceptSave);
@@ -191,7 +194,7 @@ private slots:
  void noPortalFallsBack(){
   unregisterPortal();
   FileDialog dialog(window_);
-  QVERIFY(dialog.open({FileDialog::Mode::Open,"Edit",{},{},{}},[](const QString&){}));
+  QVERIFY(dialog.open({FileDialog::Mode::Open,"Edit",{},{},{}},[](const FileDialog::Result&){}));
   QVERIFY(waitForFallback(dialog));
   QVERIFY2(dialog.state()["fallbackReason"].toString().startsWith("org.freedesktop.DBus.Error."),qPrintable(dialog.state()["fallbackReason"].toString()));
   QCOMPARE(chooser_->calls,0);
@@ -199,7 +202,7 @@ private slots:
  void unansweredCallFallsBackAndClosesTheRequest(){
   chooser_->answer=FakeChooser::Answer::NoReply;
   FileDialog dialog(window_);
-  QVERIFY(dialog.open({FileDialog::Mode::Open,"Edit",{},{},{}},[](const QString&){}));
+  QVERIFY(dialog.open({FileDialog::Mode::Open,"Edit",{},{},{}},[](const FileDialog::Result&){}));
   QVERIFY(waitForFallback(dialog));
   QCOMPARE(dialog.state()["fallbackReason"].toString(),QString("org.freedesktop.DBus.Error.NoReply"));
   PUTGD_TRY_COMPARE(chooser_->request->closed,1);
@@ -207,7 +210,7 @@ private slots:
  void oldPortalFallsBackForFolders(){
   chooser_->versionValue=2;
   FileDialog dialog(window_);
-  QVERIFY(dialog.open({FileDialog::Mode::Folder,"Choose output folder",{},{},{}},[](const QString&){}));
+  QVERIFY(dialog.open({FileDialog::Mode::Folder,"Choose output folder",{},{},{}},[](const FileDialog::Result&){}));
   auto* fallback=waitForFallback(dialog);QVERIFY(fallback);
   QCOMPARE(dialog.state()["fallbackReason"].toString(),QString("portal_version"));QCOMPARE(chooser_->calls,0);
   QCOMPARE(fallback->fileMode(),QFileDialog::Directory);
@@ -217,12 +220,15 @@ private slots:
   FileDialog dialog(window_);
   QCOMPARE(run(dialog,{FileDialog::Mode::Open,"Edit",{},{},{}}).value_or("none"),QString());
   QCOMPARE(dialog.state()["last"].toObject()["status"].toString(),QString("failed"));
+  // The caller learns it failed, and why; it is not a cancel.
+  QVERIFY(last_.failed());QVERIFY(!last_.chosen());QVERIFY(last_.path.isEmpty());
+  QVERIFY(!last_.error.isEmpty());QCOMPARE(dialog.state()["last"].toObject()["error"].toString(),last_.error);
  }
  void environmentSkipsThePortal(){
   qputenv("PUTGD_FILE_DIALOG","fallback");
   QTemporaryDir folder;QVERIFY(folder.isValid());
   FileDialog dialog(window_);QString answer="unset";
-  QVERIFY(dialog.open({FileDialog::Mode::Save,"Save a copy",folder.path(),"copy.png",{{"PNG image",{"*.png"}}}},[&](const QString& p){answer=p;}));
+  QVERIFY(dialog.open({FileDialog::Mode::Save,"Save a copy",folder.path(),"copy.png",{{"PNG image",{"*.png"}}}},[&](const FileDialog::Result& r){answer=r.path;}));
   auto* fallback=waitForFallback(dialog);QVERIFY(fallback);QCOMPARE(chooser_->calls,0);
   QCOMPARE(dialog.state()["fallbackReason"].toString(),QString("disabled"));
   QCOMPARE(fallback->windowTitle(),QString("Save a copy"));QCOMPARE(fallback->nameFilters(),QStringList{"PNG image (*.png)"});
@@ -238,7 +244,7 @@ private slots:
   qputenv("PUTGD_FILE_DIALOG","fallback");
   QTemporaryDir folder;QVERIFY(folder.isValid());for(const auto* name:{"a.png","b.png"}){QFile file(folder.filePath(name));QVERIFY(file.open(QIODevice::WriteOnly));}
   FileDialog dialog(window_);
-  QVERIFY(dialog.open({FileDialog::Mode::Save,"Save a copy",folder.path(),"copy.png",{{"PNG image",{"*.png"}}}},[](const QString&){}));
+  QVERIFY(dialog.open({FileDialog::Mode::Save,"Save a copy",folder.path(),"copy.png",{{"PNG image",{"*.png"}}}},[](const FileDialog::Result&){}));
   auto* fallback=waitForFallback(dialog);QVERIFY(fallback);
   QCOMPARE(fallback->property("themeScheme").toString(),Theme::name(Theme::Scheme(scheme)));
   const auto& p=Theme::palette(Theme::Scheme(scheme));

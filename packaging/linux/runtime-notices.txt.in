@@ -5,6 +5,8 @@ Apache-2.0 (the AWS SDK for C++) and, with the Proton Drive helper, GPL-3.0-or-l
 (Proton's crypto). This file lists every licence of the code the package contains:
 
   put.gd                                    MIT                 LICENSE
+  IBM Plex Sans Regular, Medium, SemiBold    OFL-1.1             fonts/OFL-sans.txt
+  IBM Plex Mono Regular                     OFL-1.1             fonts/OFL-mono.txt
   zkde-screencast-unstable-v1 bindings      LGPL-2.1-or-later   wayland-zkde-screencast-unstable-v1.xml
     (in putgd-record)
   ext/wlr data-control-v1 bindings          MIT-style           wayland-*-data-control-*.xml

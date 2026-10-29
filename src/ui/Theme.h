@@ -12,15 +12,30 @@ namespace putgd::Theme {
 // per-token overrides) supplies user values for these same tokens.
 enum class Scheme { Dark, Light };
 struct Palette {
- QColor bg,surface,surfaceRaised,selected,border,borderStrong;
+ QColor well,bg,surface,surfaceRaised,selected,border,borderStrong;
  QColor text,textSecondary,textMuted,textDisabled;
  QColor accent,accentHover,onAccent,link;
  QColor success,warning,danger,dangerHover,successSurface,warningSurface,dangerSurface;
  // IconArt glyphs: the main stroke and the darker or lighter secondary fill.
  QColor icon,iconSecondary;
+ // The boundary of an essential control (text field, combo box, spin box,
+ // check box, radio button): 3:1 against bg, surface and surfaceRaised, unlike
+ // the quiet decorative border.
+ QColor controlOutline;
+ // IconArt glyphs on the selected fill (a selected row, segment or menu
+ // item): both tones 3:1 against selected and against each other, so a
+ // selected glyph keeps its silhouette and its inner detail.
+ QColor iconSelected,iconSecondarySelected;
+ QColor lead,leadOutline,live;
+ QColor primary,primaryHover;
 };
 const Palette& palette(Scheme);
 const Palette& current();
+// Settings pages and preference cards have a separate light surface ladder.
+QColor preferencePage();
+QColor preferenceCard();
+QColor preferenceBorder();
+QColor preferenceSeparator();
 Scheme scheme();
 QString name(Scheme);
 // Token name to #rrggbb, for view state, tests and the CLI/MCP.
@@ -36,12 +51,13 @@ inline QColor mediaScrim(){return QColor(0,0,0,150);}
 inline QColor onMedia(){return QColor(255,255,255);}
 // The brand glyph's own colours (window and app icons): identity, not theme.
 inline QColor brandAccent(){return QColor("#E8B66D");}
+inline QColor brandTray(){return QColor("#F0C887");}
 inline QColor brandTile(){return QColor("#222222");}
 inline QColor trayOutline(){return QColor("#182126");}
 // Tray glyph tints (#60 item 5). The panel's colour, not the app theme,
 // decides which set is readable: a light app on a dark panel, or the
 // reverse, keeps a visible icon. Each meets 3:1 on its kind of panel.
-struct TrayTints {QColor idle,upload,encoding,error;};
+struct TrayTints {QColor idle,upload,encoding,error,live;};
 const TrayTints& trayTints(bool lightPanel);
 // WCAG 2.x contrast ratio of two opaque colours (1 to 21).
 double contrast(const QColor&,const QColor&);

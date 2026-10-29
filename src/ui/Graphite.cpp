@@ -1,6 +1,9 @@
 #include "Graphite.h"
 #include "IconArt.h"
 #include "VisualStyle.h"
+#include <QAccessibleWidget>
+#include <QAccessible>
+#include <QClipboard>
 #include <QAbstractItemView>
 #include <QAbstractSpinBox>
 #include <QApplication>
@@ -8,17 +11,22 @@
 #include <QComboBox>
 #include <QCursor>
 #include <QEvent>
+#include <QDynamicPropertyChangeEvent>
 #include <QFocusEvent>
 #include <QFontDatabase>
 #include <QFontMetricsF>
 #include <QHash>
 #include <QIconEngine>
+#include <QKeyEvent>
+#include <QScreen>
+#include <QGuiApplication>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMainWindow>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QContextMenuEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPlainTextEdit>
@@ -27,27 +35,79 @@
 #include <QVBoxLayout>
 #include <QFrame>
 #include <QFormLayout>
+#include <QGridLayout>
+#include <QDialogButtonBox>
 #include <QPushButton>
 #include <QScrollBar>
+#include <QScrollArea>
+#include <QShowEvent>
+#include <QTimer>
 #include <QSlider>
 #include <QStatusBar>
 #include <QStyleFactory>
 #include <QStyleOption>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
+#include <QAccessibilityHints>
+#include <QStyleHints>
+#endif
 #include <QStyledItemDelegate>
 #include <QTextEdit>
+#include <QTextDocument>
+#include <QTextLayout>
 #include <QToolButton>
+#include <QToolTip>
 #include <QWindow>
 #include <algorithm>
+#include <memory>
 #include <cmath>
 
 namespace putgd::Graphite {
+QString separatedLines(QStringList segments, const QFont& font, int width) {
+    const QFontMetrics metrics(font);
+    const QString separator = "<span style=\"color:" + Theme::current().textSecondary.name() + "\"> · </span>";
+    QStringList lines;
+    QString line, plainLine;
+    for (const auto& segment : segments) {
+        QTextDocument document;
+        document.setHtml(segment);
+        const auto plain = document.toPlainText();
+        if (plain.isEmpty()) continue;
+        const auto joined = plainLine.isEmpty() ? plain : plainLine + " · " + plain;
+        if (!plainLine.isEmpty() && metrics.horizontalAdvance(joined) > qMax(0, width)) {
+            lines.append(line);
+            line.clear();
+            plainLine.clear();
+        }
+        if (!line.isEmpty()) { line += separator; plainLine += " · "; }
+        line += segment;
+        plainLine += plain;
+    }
+    if (!line.isEmpty()) lines.append(line);
+    return lines.join("<br>");
+}
+
 namespace {
 QString& uiFamilyName() { static QString name; return name; }
 QString& monoFamilyName() { static QString name; return name; }
 const Theme::Palette& t() { return Theme::current(); }
 QString role(const QWidget* widget) { return widget ? widget->property("visualRole").toString() : QString(); }
+bool compactControl(const QWidget* widget) { return widget && widget->property("graphiteDensity") == "compact"; }
+qreal controlRadius(const QWidget* widget) { return compactControl(widget) ? scaled(Metric::compactRadius) : Metric::radius; }
+bool flushButton(const QWidget* widget) { return widget && (role(widget) == "quiet" || role(widget) == "link" || role(widget) == "textAction") && widget->property("graphiteFlush").toBool(); }
+bool progressAnimationEnabled(const QWidget* widget, const QStyleOption* option = nullptr) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
+    if (QGuiApplication::styleHints()->accessibility()->motionPreference() == Qt::MotionPreference::ReducedMotion) return false;
+#endif
+    return (widget ? widget->style() : QApplication::style())->styleHint(QStyle::SH_Widget_Animate, option, widget);
+}
 bool keyboardState(const QStyleOption* option) {
     return (option->state & QStyle::State_HasFocus) && (option->state & QStyle::State_KeyboardFocusChange);
+}
+// A disabled control marked as a locked value (setLocked), or the editor
+// inside one (an editable combo box's or a spin box's line edit).
+bool lockedLook(const QStyleOption* option, const QWidget* widget) {
+    if (option->state & QStyle::State_Enabled) return false;
+    return isLocked(widget) || (widget && (qobject_cast<const QComboBox*>(widget->parentWidget()) || qobject_cast<const QAbstractSpinBox*>(widget->parentWidget())) && isLocked(widget->parentWidget()));
 }
 void rounded(QPainter* p, const QRectF& rect, const QColor& fill, const QColor& stroke = {}, qreal radius = Metric::radius, qreal width = 1) {
     p->save();
@@ -79,55 +139,78 @@ QPainterPath partlyRounded(const QRectF& r, qreal radius, bool left, bool right)
     path.closeSubpath();
     return path;
 }
-// A text field's frame: raised fill, quiet stroke, an accent stroke while
-// focused, the danger or warning stroke when the field says so.
+// A text field's frame: raised fill, the 3:1 control outline (the quiet
+// border once disabled), a stronger stroke on hover, an accent stroke while
+// focused, or the danger stroke when the field is invalid.
 void field(QPainter* p, const QRectF& rect, const QStyleOption* option, const QWidget* widget, bool focused, bool squareRight = false, bool squareLeft = false) {
     const bool enabled = option->state & QStyle::State_Enabled;
-    QColor stroke = controlStroke();
+    const bool locked = lockedLook(option, widget);
+    QColor stroke = enabled ? controlOutline() : locked ? t().borderStrong : controlStroke();
     if (widget && widget->property("invalid").toBool()) stroke = t().danger;
-    else if (widget && widget->property("warning").toBool()) stroke = t().warning;
     else if (focused && enabled) stroke = t().accent;
-    else if (enabled && (option->state & QStyle::State_MouseOver)) stroke = t().borderStrong;
+    else if (enabled && (option->state & QStyle::State_MouseOver)) stroke = t().textMuted;
     p->save();
     p->setRenderHint(QPainter::Antialiasing);
     p->setPen(QPen(stroke, 1));
-    p->setBrush(enabled ? t().surfaceRaised : t().surface);
-    p->drawPath(partlyRounded(rect.adjusted(0.5, 0.5, -0.5, -0.5), Metric::radius, !squareLeft, !squareRight));
+    // A locked value has no fill of its own: a read-only frame on the page.
+    p->setBrush(enabled ? QBrush(t().surfaceRaised) : locked ? QBrush(Qt::NoBrush) : QBrush(t().surface));
+    p->drawPath(partlyRounded(rect.adjusted(0.5, 0.5, -0.5, -0.5), controlRadius(widget), !squareLeft, !squareRight));
     p->restore();
 }
 struct Look {
     QColor fill, stroke, text;
-    bool strong = false;
     bool underline = false;
 };
 // The colours of a button in its role and state.
-Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat) {
+Look buttonLook(const QString& roleName, const QStyleOption* option, bool flat, const QWidget* widget = nullptr) {
     const auto& c = t();
     const bool enabled = option->state & QStyle::State_Enabled;
+    // A button that states a fact (Default) rather than offering an action.
+    if (lockedLook(option, widget)) {
+        Look look;
+        look.stroke = c.borderStrong;
+        look.text = c.textMuted;
+        return look;
+    }
     const bool hover = enabled && (option->state & QStyle::State_MouseOver);
     const bool down = enabled && (option->state & QStyle::State_Sunken);
-    const bool on = option->state & QStyle::State_On;
+    const bool on = (option->state & QStyle::State_On) && !(widget && widget->property("graphiteDisclosure").toBool());
     Look look;
-    if (roleName == "link" || roleName == "version") {
-        look.text = enabled ? (roleName == "version" && !hover ? c.textMuted : c.link) : c.textDisabled;
+    if (roleName == "textAction") {
+        look.text = enabled ? c.text : c.textDisabled;
+        look.underline = enabled;
+    } else if (roleName == "link" || roleName == "version") {
+        look.text = enabled ? (roleName == "version" ? (hover ? c.textSecondary : c.textMuted) : c.link) : c.textDisabled;
         look.underline = hover;
     } else if (roleName == "primary") {
-        look.fill = enabled ? (down ? c.textSecondary : hover ? mix(c.text, c.textSecondary, 0.55) : c.text) : c.surfaceRaised;
+        const auto fill = widget ? widget->property("graphitePrimaryFill").value<QColor>() : QColor();
+        look.fill = enabled ? (down ? c.textSecondary : hover ? c.primaryHover : fill.isValid() ? fill : c.primary) : c.surfaceRaised;
         look.text = enabled ? c.bg : c.textDisabled;
-        look.strong = true;
+    } else if (roleName == "lead") {
+        look.fill = !enabled ? c.surfaceRaised : down ? c.selected : hover ? mix(c.lead, c.selected, 0.35) : c.lead;
+        look.stroke = enabled ? c.leadOutline : controlStroke();
+        look.text = enabled ? c.text : c.textDisabled;
     } else if (roleName == "danger") {
         look.fill = enabled ? (down || hover ? c.dangerSurface : c.surfaceRaised) : c.surface;
-        look.stroke = enabled && hover ? mix(c.danger, c.dangerSurface, 0.5) : controlStroke();
+        look.stroke = enabled ? c.danger : controlStroke();
         look.text = enabled ? (hover ? c.dangerHover : c.danger) : c.textDisabled;
     } else if (roleName == "info" || roleName == "quiet" || flat) {
         look.fill = down || on ? c.selected : hover ? mix(c.surface, c.surfaceRaised, 0.8) : QColor(Qt::transparent);
         look.text = enabled ? (on ? c.text : c.textSecondary) : c.textDisabled;
+        if (widget && widget->property("graphiteOnMedia").toBool()) {
+            look.fill = down || on || hover ? QColor(255, 255, 255, down ? 20 : 12) : QColor(Qt::transparent);
+            look.text = Theme::onMedia();
+            if (!enabled) look.text.setAlpha(128);
+        }
     } else {
         look.fill = !enabled ? mix(c.surface, c.surfaceRaised, 0.5) : down || on ? c.selected : hover ? mix(c.surfaceRaised, c.selected, 0.6) : c.surfaceRaised;
         look.stroke = on ? mix(c.borderStrong, c.selected, 0.45) : controlStroke();
-        look.text = enabled ? (on ? c.text : c.textSecondary) : c.textDisabled;
+        look.text = enabled ? c.text : c.textDisabled;
     }
-    if (on && roleName != "primary") look.strong = false;
+    if (!enabled) {
+        look.fill = QColor(Qt::transparent);
+        look.stroke = roleName == "quiet" || roleName == "link" || roleName == "info" || flat ? QColor() : c.border;
+    }
     return look;
 }
 QString buttonRole(const QWidget* widget, const QStyleOption* option) {
@@ -137,6 +220,16 @@ QString buttonRole(const QWidget* widget, const QStyleOption* option) {
         if (option->state & QStyle::State_AutoRaise) value = "quiet";
     }
     return value;
+}
+QFont buttonFont(const QWidget* widget, const QStyleOption* option) {
+    const auto name = buttonRole(widget, option);
+    auto f = name == "textAction" ? font(Type::body) : compactControl(widget) ? font(Type::technical) : widget ? widget->font() : QApplication::font();
+    const bool selected = (option->state & QStyle::State_On) && widget
+        && (widget->property("graphiteNavRow").toBool() || qobject_cast<SegmentTrack*>(widget->parentWidget()));
+    const bool activeTextAction = name == "textAction" && (option->state & QStyle::State_Enabled)
+        && (option->state & (QStyle::State_MouseOver | QStyle::State_Sunken));
+    f.setWeight(widget && widget->property("graphiteStrong").toBool() ? QFont::DemiBold : activeTextAction || (!compactControl(widget) && (name == "primary" || name == "lead" || selected)) ? QFont::Medium : QFont::Normal);
+    return f;
 }
 QPixmap tinted(const QPixmap& source, const QColor& colour) {
     QPixmap result(source.size());
@@ -149,13 +242,13 @@ QPixmap tinted(const QPixmap& source, const QColor& colour) {
     return result;
 }
 qreal dpr(const QWidget* widget) { return widget ? widget->devicePixelRatioF() : qApp->devicePixelRatio(); }
-void check(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyboard) {
+void check(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyboard, bool locked = false) {
     const auto& c = t();
     const bool enabled = option->state & QStyle::State_Enabled;
     const bool on = option->state & QStyle::State_On, partial = option->state & QStyle::State_NoChange;
-    // Checked stays visibly checked when locked: a muted fill with the tick.
-    QColor fill = on || partial ? (enabled ? c.text : c.textMuted) : (enabled ? c.surfaceRaised : c.surface);
-    QColor stroke = keyboard ? c.accent : on || partial ? fill : enabled ? c.textMuted : c.textDisabled;
+    // Checked stays visibly checked when disabled: a muted fill with the tick.
+    QColor fill = on || partial ? (enabled ? (Theme::scheme() == Theme::Scheme::Dark ? c.textSecondary : c.text) : c.textMuted) : (enabled ? c.surfaceRaised : locked ? QColor(Qt::transparent) : c.surface);
+    QColor stroke = keyboard ? c.accent : on || partial ? fill : enabled ? c.controlOutline : locked ? c.textMuted : c.textDisabled;
     rounded(p, box, fill, stroke, 4, keyboard ? 1.5 : 1);
     if (!on && !partial) return;
     p->save();
@@ -172,14 +265,14 @@ void check(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyb
     }
     p->restore();
 }
-void radio(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyboard) {
+void radio(QPainter* p, const QRectF& box, const QStyleOption* option, bool keyboard, bool locked = false) {
     const auto& c = t();
     const bool enabled = option->state & QStyle::State_Enabled, on = option->state & QStyle::State_On;
     p->save();
     p->setRenderHint(QPainter::Antialiasing);
     const QRectF circle = box.adjusted(0.75, 0.75, -0.75, -0.75);
-    p->setPen(QPen(keyboard ? c.accent : on && enabled ? c.text : enabled ? c.textMuted : c.textDisabled, keyboard ? 1.5 : 1));
-    p->setBrush(enabled ? c.surfaceRaised : c.surface);
+    p->setPen(QPen(keyboard ? c.accent : on && enabled ? c.text : enabled ? c.controlOutline : locked ? c.textMuted : c.textDisabled, keyboard ? 1.5 : 1));
+    p->setBrush(enabled ? QBrush(c.surfaceRaised) : locked ? QBrush(Qt::NoBrush) : QBrush(c.surface));
     p->drawEllipse(circle);
     if (on) {
         p->setPen(Qt::NoPen);
@@ -194,7 +287,7 @@ public:
     explicit ChromeIcon(QString name) : name_(std::move(name)) {}
     QIconEngine* clone() const override { return new ChromeIcon(name_); }
     void paint(QPainter* painter, const QRect& rect, QIcon::Mode mode, QIcon::State) override {
-        paintChromeGlyph(*painter, rect, name_, mode == QIcon::Disabled ? t().textDisabled : t().icon);
+        paintChromeGlyph(*painter, rect, name_, mode == QIcon::Disabled ? t().textDisabled : mode == QIcon::Selected ? t().iconSelected : t().icon);
     }
     QPixmap pixmap(const QSize& size, QIcon::Mode mode, QIcon::State state) override { return scaledPixmap(size, mode, state, 1.0); }
     QPixmap scaledPixmap(const QSize& size, QIcon::Mode mode, QIcon::State state, qreal scale) override {
@@ -211,12 +304,14 @@ private:
 }
 
 qreal opticalBaseline(const QFontMetricsF& metrics, const QString& text, qreal centre) {
-    // The prototype's rule: centre the ink of the text actually shown, so a
-    // label sits optically in the middle whatever the platform font padding.
-    // Editable text keeps Qt's own metrics; this is for painted labels only.
-    const auto ink = metrics.tightBoundingRect(text);
-    if (ink.isEmpty()) return centre + (metrics.ascent() - metrics.descent()) / 2;
-    return centre - ink.center().y();
+    // Centre the font's capital height, not each string's own ink: labels
+    // side by side then share one baseline whether or not they have
+    // descenders ("Capture window" beside "Record screen"), and still sit
+    // optically in the middle whatever the platform font padding. Editable
+    // text keeps Qt's own metrics; this is for painted labels only.
+    if (text.trimmed().isEmpty()) return centre + (metrics.ascent() - metrics.descent()) / 2;
+    const qreal cap = metrics.capHeight() > 0 ? metrics.capHeight() : metrics.tightBoundingRect(QStringLiteral("H")).height();
+    return centre + cap / 2;
 }
 qreal textScale() {
     // Pixel sizes do not follow the desktop's text size, so the language
@@ -244,7 +339,21 @@ qreal applicationScale() {
     if (installedBody() <= 0 || !qApp) return 1.0;
     return std::clamp(pixelsOf(QApplication::font()) / installedBody(), 0.75, 3.0);
 }
+int space(Space value) { return int(std::lround(static_cast<int>(value) * std::min(textScale() * applicationScale(), qreal(1.15)))); }
+int lineHeight(int pixels) {
+    const int line = pixels == Type::caption ? Type::captionLine : pixels == Type::section ? Type::sectionLine : pixels == Type::page ? Type::pageLine : Type::bodyLine;
+    const qreal scale = textScale() * applicationScale();
+    return int(std::lround(line * ((pixels == Type::section || pixels == Type::page || pixels == Type::compactPage) ? 1 + (scale - 1) * 0.6 : scale)));
+}
 int scaled(int pixels) { return int(std::lround(pixels * textScale() * applicationScale())); }
+int railWidth() {
+    const QFontMetrics metrics(labelFont(true));
+    int text = 0;
+    for (const auto* name : {"All items", "Images", "Recordings", "Other files", "Failed uploads", "General", "Capture", "Shortcuts", "Advanced"})
+        text = std::max(text, metrics.horizontalAdvance(QString::fromLatin1(name)));
+    const int natural = 2 * space(Space::l) + 2 * space(Space::m) + scaled(Metric::icon) + space(Space::s) + text;
+    return std::clamp(natural, Metric::sidebar, Metric::sidebar + 2 * space(Space::xl));
+}
 QString uiFamily() { return uiFamilyName().isEmpty() ? QApplication::font().family() : uiFamilyName(); }
 QString monoFamily() { return monoFamilyName().isEmpty() ? QFontDatabase::systemFont(QFontDatabase::FixedFont).family() : monoFamilyName(); }
 void setFamilies(const QString& ui, const QString& mono) {
@@ -260,8 +369,16 @@ void setFamilies(const QString& ui, const QString& mono) {
 }
 QFont font(int pixels, bool strong) {
     QFont f(uiFamily());
-    f.setPixelSize(scaled(pixels));
-    f.setWeight(strong ? QFont::DemiBold : QFont::Normal);
+    const qreal scale = textScale() * applicationScale();
+    const bool heading = pixels == Type::section || pixels == Type::page || pixels == Type::compactPage;
+    f.setPixelSize(heading ? int(std::lround(pixels * (1 + (scale - 1) * 0.6))) : scaled(pixels));
+    if (pixels == Type::page || pixels == Type::compactPage) f.setLetterSpacing(QFont::AbsoluteSpacing, -0.2);
+    f.setWeight(strong && pixels != Type::caption ? QFont::DemiBold : QFont::Normal);
+    return f;
+}
+QFont labelFont(bool selected) {
+    auto f = font(Type::label);
+    f.setWeight(selected ? QFont::Medium : QFont::Normal);
     return f;
 }
 QFont monoFont(int pixels) {
@@ -274,9 +391,20 @@ QColor mix(const QColor& a, const QColor& b, qreal amount) {
                             a.blueF() + (b.blueF() - a.blueF()) * amount, a.alphaF() + (b.alphaF() - a.alphaF()) * amount);
 }
 QColor controlStroke() { return mix(t().border, t().borderStrong, 0.35); }
+QColor controlOutline() { return t().controlOutline; }
 bool keyboardFocus(const QWidget* widget) {
     return widget && widget->hasFocus() && widget->window()->testAttribute(Qt::WA_KeyboardFocusChange);
 }
+void setLocked(QWidget* widget, bool locked) {
+    if (!widget || isLocked(widget) == locked) return;
+    widget->setProperty("graphiteLocked", locked);
+    widget->style()->unpolish(widget);
+    widget->style()->polish(widget);
+    widget->updateGeometry();
+    widget->update();
+}
+bool isLocked(const QWidget* widget) { return widget && widget->property("graphiteLocked").toBool(); }
+int sidebarWidth(int baseline, int natural) { return std::clamp(natural, baseline, Metric::sidebarMax); }
 QPalette palette() {
     const auto& p = t();
     QPalette palette;
@@ -286,7 +414,7 @@ QPalette palette() {
     palette.setColor(QPalette::AlternateBase, p.surface);
     palette.setColor(QPalette::Text, p.text);
     palette.setColor(QPalette::Button, p.surfaceRaised);
-    palette.setColor(QPalette::ButtonText, p.textSecondary);
+    palette.setColor(QPalette::ButtonText, p.text);
     palette.setColor(QPalette::BrightText, p.text);
     palette.setColor(QPalette::Light, p.borderStrong);
     palette.setColor(QPalette::Midlight, p.border);
@@ -333,7 +461,7 @@ void install(QApplication& app) {
 void paintChevron(QPainter& p, const QPointF& c, qreal size, Qt::ArrowType direction, const QColor& colour, qreal width) {
     p.save();
     p.setRenderHint(QPainter::Antialiasing);
-    p.setPen(QPen(colour, width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    p.setPen(QPen(colour, width > 0 ? width : std::max(qreal(1.5), 1.5 * textScale() * applicationScale()), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     p.setBrush(Qt::NoBrush);
     const qreal h = size / 2, q = size / 4;
     QPainterPath path;
@@ -360,8 +488,22 @@ void paintChromeGlyph(QPainter& painter, const QRectF& rect, const QString& name
     else if (name == "restore") { painter.drawRoundedRect(QRectF(3, 7, 10, 10), 1.5, 1.5); painter.drawLine(QPointF(7, 3), QPointF(17, 3)); painter.drawLine(QPointF(17, 3), QPointF(17, 13)); }
     else if (name == "close") { painter.drawLine(QPointF(5, 5), QPointF(15, 15)); painter.drawLine(QPointF(15, 5), QPointF(5, 15)); }
     else if (name == "check") { QPainterPath tick; tick.moveTo(4, 10.5); tick.lineTo(8, 14.5); tick.lineTo(16, 5.5); painter.drawPath(tick); }
+    else if (name == "arrow-up" || name == "arrow-down") {
+        const bool up = name == "arrow-up";
+        const qreal tip = up ? 4 : 16, tail = up ? 16 : 4, wing = up ? 9 : 11;
+        painter.drawLine(QPointF(10, tail), QPointF(10, tip));
+        QPainterPath head; head.moveTo(5, wing); head.lineTo(10, tip); head.lineTo(15, wing); painter.drawPath(head);
+    }
+    else if (name == "muted-speaker") {
+        QPainterPath speaker; speaker.moveTo(3, 8); speaker.lineTo(6, 8); speaker.lineTo(10, 4); speaker.lineTo(10, 16); speaker.lineTo(6, 12); speaker.lineTo(3, 12); speaker.closeSubpath();
+        painter.drawPath(speaker);
+        painter.drawLine(QPointF(14, 7), QPointF(18, 13));
+        painter.drawLine(QPointF(18, 7), QPointF(14, 13));
+    }
+    else if (name == "chevron-up") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::UpArrow, colour); return; }
     else if (name == "chevron-down") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::DownArrow, colour); return; }
     else if (name == "chevron-right") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::RightArrow, colour); return; }
+    else if (name == "chevron-left") { painter.restore(); paintChevron(painter, rect.center(), rect.width() * 0.5, Qt::LeftArrow, colour); return; }
     painter.restore();
 }
 QIcon chromeIcon(const QString& name) { return QIcon(new ChromeIcon(name)); }
@@ -384,67 +526,161 @@ void paintText(QPainter& p, const QRectF& rect, const QString& text, const QColo
 // ---------------------------------------------------------------- Style
 Style::Style() : QProxyStyle(QStyleFactory::create(QStringLiteral("Fusion"))) { setObjectName(QStringLiteral("graphite")); }
 
+void setMono(QWidget* widget, int pixels) {
+    widget->setProperty("graphiteMonoPixels", pixels);
+    widget->style()->unpolish(widget);
+    widget->style()->polish(widget);
+}
+
 void Style::polish(QPalette& palette) { palette = Graphite::palette(); }
+
+bool Style::eventFilter(QObject* watched, QEvent* event) {
+    if (event->type() == QEvent::DynamicPropertyChange
+        && (static_cast<QDynamicPropertyChangeEvent*>(event)->propertyName() == "graphiteDensity"
+            || static_cast<QDynamicPropertyChangeEvent*>(event)->propertyName() == "graphiteTight")) {
+        if (auto* widget = qobject_cast<QWidget*>(watched)) {
+            unpolish(widget);
+            polish(widget);
+            // QToolButton caches its size hint until the style changes.
+            QEvent changed(QEvent::StyleChange);
+            QCoreApplication::sendEvent(widget, &changed);
+            widget->updateGeometry();
+            widget->update();
+        }
+    }
+    return QProxyStyle::eventFilter(watched, event);
+}
 
 void Style::polish(QWidget* widget) {
     QProxyStyle::polish(widget);
+    if (qobject_cast<QAbstractButton*>(widget) || qobject_cast<QComboBox*>(widget)) widget->installEventFilter(this);
     if (qobject_cast<QAbstractButton*>(widget) || qobject_cast<QComboBox*>(widget) || qobject_cast<QAbstractSpinBox*>(widget) || qobject_cast<QTabBar*>(widget)
         || qobject_cast<QScrollBar*>(widget) || qobject_cast<QSlider*>(widget) || qobject_cast<QLineEdit*>(widget))
         widget->setAttribute(Qt::WA_Hover);
+    if (auto* button = qobject_cast<QAbstractButton*>(widget)) {
+        focusTooltips(button);
+        if (!button->icon().isNull()) {
+            auto base = button->property("graphiteIconBase").toSize();
+            if (!base.isValid()) {
+                base = button->iconSize();
+                if (base == QSize(scaled(Metric::icon), scaled(Metric::icon))) base = QSize(Metric::icon, Metric::icon);
+                button->setProperty("graphiteIconBase", base);
+            }
+            button->setIconSize(QSize(scaled(base.width()), scaled(base.height())));
+        }
+    }
+    if (auto* edit = qobject_cast<QLineEdit*>(widget); edit && !edit->property("graphitePlaceholderFont").toBool()) {
+        edit->setProperty("graphitePlaceholderFont", true);
+        QObject::connect(edit, &QLineEdit::textChanged, edit, [edit, empty = edit->text().isEmpty()](const QString& text) mutable {
+            if (empty == text.isEmpty()) return;
+            empty = text.isEmpty();
+            edit->style()->polish(edit);
+        });
+    }
     if (auto* view = qobject_cast<QAbstractItemView*>(widget)) view->viewport()->setAttribute(Qt::WA_Hover);
     if (auto* combo = qobject_cast<QComboBox*>(widget)) {
         // The popup list paints its rows like every other list.
         if (auto* delegate = combo->itemDelegate(); delegate && QByteArray(delegate->metaObject()->className()) == "QComboBoxDelegate")
             combo->setItemDelegate(new QStyledItemDelegate(combo));
-        combo->view()->setProperty("graphiteRowHeight", 32);
+        combo->view()->setProperty("graphiteRowHeight", scaled(32));
     }
     if (QByteArray(widget->metaObject()->className()) == "QTipLabel") widget->setFont(font(Type::metadata));
     // Type roles: size, weight and colour from the tokens. A role change
     // re-polishes (VisualStyle::role), as does a scheme switch.
     const auto name = role(widget);
+    if (qobject_cast<QAbstractButton*>(widget) && (name == "link" || name == "version")) widget->setMinimumHeight(std::max(32, widget->minimumHeight()));
     const auto tone = widget->property("feedbackTone").toString();
     const auto binding = widget->property("bindingTone").toString();
-    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty()) return;
+    const bool locked = isLocked(widget);
+    const bool buttonControl = qobject_cast<QAbstractButton*>(widget);
+    const bool bodyControl = qobject_cast<QComboBox*>(widget) || buttonControl;
+    bool statusBand = false;
+    for (auto* parent = widget->parentWidget(); parent && !widget->isWindow(); parent = parent->parentWidget())
+        if (qobject_cast<QStatusBar*>(parent)) { statusBand = true; break; }
+    const int monoPixels = widget->property("graphiteMonoPixels").toInt();
+    const bool bannerMessage = widget->property("graphiteBannerMessage").toBool();
+    if (name.isEmpty() && tone.isEmpty() && binding.isEmpty() && !locked && !bodyControl && !monoPixels && !statusBand && !bannerMessage) return;
     const auto& c = t();
     QColor colour;
     QFont f;
     bool setFont = true;
-    if (name == "title" || name == "page") f = font(Type::page, true);
+    if (name == "title" || name == "page") f = font(widget->property("compactHeading").toBool() ? Type::compactPage : Type::page, true);
     else if (name == "sectionTitle" || name == "section") f = font(Type::section, true);
+    else if (name == "label") f = labelFont();
+    else if (name == "body") f = font(Type::body);
+    else if (name == "bodySecondary") { f = font(Type::body); colour = c.textSecondary; }
+    else if (!bodyControl && (name == "secondary" || name == "muted" || name == "subtitle" || name == "status" || name == "caption")) { f = font(Type::technical); colour = c.textSecondary; }
     else if (name == "strong") f = font(Type::body, true);
-    else if (name == "eyebrow" || name == "railHeading" || name == "micro") { f = font(Type::micro, name != "micro"); colour = c.textMuted; }
-    else if (name == "meta") { f = font(Type::metadata); colour = c.textMuted; }
-    else if (name == "version") f = font(Type::micro);
-    else if (name == "binding") { f = monoFont(Type::metadata); colour = c.textMuted; }
-    else if (name == "mono" || name == "path" || (name == "link" && qobject_cast<QLineEdit*>(widget)) || name == "diagnostics") f = monoFont(Type::metadata);
-    else if (name == "pill") { f = font(Type::micro); colour = c.textSecondary; }
-    else if (name == "editableTitle") f = font(Type::page, true);
+    else if (name == "eyebrow" || name == "railHeading" || name == "micro") { f = font(Type::caption); colour = c.textMuted; }
+    // An error is never small print: it takes body type even in a meta slot.
+    else if (name == "inspectorKey") { f = font(13); colour = c.textSecondary; }
+    else if (name == "meta") { f = font(tone == "error" ? Type::body : Type::technical); colour = c.textSecondary; }
+    else if (name == "textAction") f = font(Type::body);
+    else if (name == "version") f = font(Type::technical);
+    else if (name == "binding") { f = monoFont(Type::technical); colour = c.textSecondary; }
+    else if (name == "mono" || name == "path" || (name == "link" && qobject_cast<QLineEdit*>(widget)) || name == "diagnostics") f = monoFont(Type::technical);
+    // Editable technical values use the quieter 13 px Mono role.
+    else if (name == "technical") f = monoFont(Type::technical);
+    else if (name == "pill") { f = font(Type::technical); colour = c.textSecondary; }
+    else if (name == "editableTitle") f = font(widget->property("compactHeading").toBool() ? Type::compactPage : Type::page, true);
+    else if (bodyControl) {
+        f = font(Type::body);
+        if (buttonControl && (name == "primary" || name == "lead")) f.setWeight(QFont::Medium);
+    }
     else setFont = false;
-    if (name == "subtitle" || name == "muted" || name == "default" || name == "private") colour = c.textMuted;
+    if (compactControl(widget) && bodyControl && name != "textAction") { f = font(Type::technical); setFont = true; }
+    if (widget->property("graphiteStrong").toBool()) f.setWeight(QFont::DemiBold);
+    if (statusBand) { f = font(Type::technical); colour = c.textSecondary; setFont = true; }
+    if (monoPixels) { f = monoFont(monoPixels); setFont = true; }
+    // One type size per side of the status band; an error keeps its colour, not a larger size.
+    if (widget->property("graphiteStatus").toBool()) { f = font(13); colour = c.textSecondary; setFont = true; }
+    if (auto* edit = qobject_cast<QLineEdit*>(widget); setFont && edit && edit->text().isEmpty() && !monoPixels && name != "technical" && name != "path" && name != "mono" && name != "link") f.setFamily(uiFamily());
+    // An outcome's tone outranks the slot's quiet colour: an error in a muted
+    // line still reads as an error.
+    if (tone == "error") colour = c.danger;
+    else if (tone == "success") colour = c.success;
+    else if (tone == "warning") colour = c.textSecondary;
+    else if (name == "default" || name == "private") colour = c.textMuted;
     else if (name == "secondary") colour = c.textSecondary;
-    else if ((name == "link" && qobject_cast<QLabel*>(widget)) || binding == "active") colour = c.link;
+    else if (name == "link") colour = c.link;
+    else if (binding == "active") colour = c.textSecondary;
     else if (name == "success" || tone == "success") colour = c.success;
-    else if (name == "warning" || binding == "warning") colour = c.warning;
+    else if (name == "warning" || binding == "warning") colour = c.textSecondary;
     else if (name == "danger" || name == "error" || tone == "error" || binding == "error") colour = c.danger;
     else if (name == "status") colour = c.textSecondary;
     else if (name == "notice") colour = c.text;
-    if (setFont && !qobject_cast<QAbstractButton*>(widget)) {
+    if (bannerMessage) colour = c.text;
+    if (setFont) {
         widget->setFont(f);
         widget->setProperty("graphiteFont", true);
-    } else if (setFont && name == "version") {
-        widget->setFont(f);
-        widget->setProperty("graphiteFont", true);
+        widget->updateGeometry();
     }
-    if (colour.isValid()) {
+    if (auto* label = qobject_cast<QLabel*>(widget); label && setFont && (name == "caption" || name == "body" || name == "label" || name == "section" || name == "page")) {
+        const bool section = name == "section" || name == "sectionTitle";
+        if (name == "section") label->setContentsMargins(0, space(Space::xl), 0, space(Space::s));
+        const int pixels = name == "page" || name == "title" || name == "editableTitle" ? Type::page : section ? Type::section : f.pixelSize() == scaled(Type::caption) ? Type::caption : Type::body;
+        label->setMinimumHeight(lineHeight(pixels) + label->contentsMargins().top() + label->contentsMargins().bottom());
+    }
+    if (colour.isValid() || locked) {
         // Only the text roles: everything else still follows the parent.
         QPalette palette;
         palette.setResolveMask(0);
-        for (const auto group : {QPalette::Active, QPalette::Inactive}) {
-            palette.setColor(group, QPalette::WindowText, colour);
-            palette.setColor(group, QPalette::Text, colour);
-        }
+        if (colour.isValid())
+            for (const auto group : {QPalette::Active, QPalette::Inactive}) {
+                palette.setColor(group, QPalette::WindowText, colour);
+                palette.setColor(group, QPalette::Text, colour);
+            }
+        // A locked value's text, and its editor's, is information to read.
+        if (locked)
+            for (const auto textRole : {QPalette::WindowText, QPalette::Text, QPalette::ButtonText}) palette.setColor(QPalette::Disabled, textRole, c.textMuted);
         widget->setPalette(palette);
         widget->setProperty("graphitePalette", true);
+    }
+    if (bodyControl) {
+        // QComboBox caches its hints across a manual unpolish/polish.
+        QEvent change(QEvent::StyleChange);
+        QCoreApplication::sendEvent(widget, &change);
+        widget->updateGeometry();
     }
     if (auto* text = qobject_cast<QLabel*>(widget); text && (name == "status" || name == "notice")) {
         text->setMargin(9);
@@ -479,23 +715,22 @@ int Style::pixelMetric(PixelMetric metric, const QStyleOption* option, const QWi
     case PM_ButtonDefaultIndicator: case PM_ButtonShiftHorizontal: case PM_ButtonShiftVertical: return 0;
     case PM_DefaultFrameWidth: return 1;
     case PM_ComboBoxFrameWidth: case PM_SpinBoxFrameWidth: return 1;
-    case PM_IndicatorWidth: case PM_IndicatorHeight: return 17;
-    case PM_ExclusiveIndicatorWidth: case PM_ExclusiveIndicatorHeight: return 18;
-    case PM_CheckBoxLabelSpacing: case PM_RadioButtonLabelSpacing: return 9;
-    case PM_ScrollBarExtent: return 10;
+    case PM_IndicatorWidth: case PM_IndicatorHeight: return scaled(17);
+    case PM_ExclusiveIndicatorWidth: case PM_ExclusiveIndicatorHeight: return scaled(18);
+    case PM_CheckBoxLabelSpacing: case PM_RadioButtonLabelSpacing: return space(Space::s);
+    case PM_ScrollBarExtent: return std::max(12, int(std::lround(12 + 8 * (textScale() * applicationScale() - 1))));
     case PM_ScrollBarSliderMin: return 28;
     case PM_MenuPanelWidth: return 1;
     case PM_MenuHMargin: case PM_MenuVMargin: return 5;
-    case PM_MenuButtonIndicator: return Metric::splitZone;
+    case PM_MenuButtonIndicator: return scaled(Metric::splitZone);
     case PM_SubMenuOverlap: return 2;
     case PM_ToolTipLabelFrameWidth: return 7;
-    case PM_SplitterWidth: return 3;
+    case PM_SplitterWidth: return 8;
     case PM_TabBarTabShiftVertical: case PM_TabBarTabShiftHorizontal: case PM_TabBarBaseOverlap: case PM_TabBarBaseHeight: return 0;
     case PM_TabBarTabHSpace: return 40;
     case PM_TabBarTabVSpace: return 16;
-    case PM_SliderLength: case PM_SliderControlThickness: return 14;
-    case PM_SliderThickness: return 18;
-    case PM_ToolBarIconSize: case PM_ButtonIconSize: case PM_SmallIconSize: return Metric::icon;
+    case PM_SliderLength: case PM_SliderControlThickness: case PM_SliderThickness: return 32;
+    case PM_ToolBarIconSize: case PM_ButtonIconSize: case PM_SmallIconSize: return scaled(Metric::icon);
     case PM_FocusFrameHMargin: case PM_FocusFrameVMargin: return 0;
     case PM_HeaderMargin: return 8;
     case PM_ProgressBarChunkWidth: return 1;
@@ -520,30 +755,44 @@ int Style::styleHint(StyleHint hint, const QStyleOption* option, const QWidget* 
     case SH_DialogButtonBox_ButtonsHaveIcons: return 0;
     case SH_ScrollBar_Transient: return 0;
     case SH_Widget_Animation_Duration: return 110;
+    case SH_DialogButtonLayout:
+        if (widget && widget->window()->objectName() == "confirmAction") return QDialogButtonBox::GnomeLayout;
+        return QProxyStyle::styleHint(hint, option, widget, data);
     default: return QProxyStyle::styleHint(hint, option, widget, data);
     }
 }
 
 QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, const QSize& contents, const QWidget* widget) const {
+    const bool compact = compactControl(widget);
+    const int height = scaled(compact ? Metric::controlCompact : Metric::control);
+    const int padding = scaled(compact ? int(Space::s) : 14);
     switch (type) {
     case CT_PushButton: {
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
         const auto name = role(widget);
-        if (name == "link" || name == "version") return contents + QSize(8, name == "version" ? 4 : 8);
+        if (name == "textAction" && button) {
+            // Reserve the hover weight so the label and layout stay whole.
+            auto f = font(Type::body); f.setWeight(widget && widget->property("graphiteStrong").toBool() ? QFont::DemiBold : QFont::Medium);
+            const int icon = button->icon.isNull() ? 0 : button->iconSize.width() + 8;
+            return {int(std::ceil(QFontMetricsF(f).horizontalAdvance(button->text))) + icon + (flushButton(widget) ? 0 : 2 * int(Space::s)), std::max(scaled(Metric::controlCompact), contents.height() + padding)};
+        }
+        if (name == "link" || name == "version") return {std::max(32, contents.width() + 8), std::max(32, contents.height() + 8)};
         if (name == "info") return {std::max(contents.width() + 6, 23), std::max(contents.height() + 4, 23)};
-        // Measure the label in the weight it is painted in (primary is semibold).
+        // Measure the same role weight used to paint action labels.
         int w = contents.width() + 2 * 14;
         if (button && !button->text.isEmpty()) {
-            QFont f = widget ? widget->font() : QApplication::font();
-            if (name == "primary") f.setWeight(QFont::DemiBold);
+            const QFont f = buttonFont(widget, option);
             const int text = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(button->text).remove(QRegularExpression(QStringLiteral("&(?!&)"))))));
             const int icon = button->icon.isNull() ? 0 : button->iconSize.width() + 8;
             w = text + icon + 2 * 14 + 2;
         }
-        if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) w += Metric::splitZone - 8;
-        if (button && button->text.isEmpty()) return {std::max(Metric::control, contents.width() + 18), std::max(Metric::control, contents.height() + 14)};
+        if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) w += scaled(Metric::splitZone) - scaled(8);
+        if (button && button->text.isEmpty()) return {std::max(height, contents.width() + padding), std::max(height, contents.height() + padding)};
+        if (widget && widget->property("graphiteTight").toBool()) w -= 2 * (14 - int(Space::s));
+        if (flushButton(widget)) w -= compact ? 28 : 14;
+        if (widget && widget->property("graphiteNavRow").toBool()) w -= 8;
         if (button && !button->text.isEmpty()) w = std::max(w, 64);
-        return {w, std::max(Metric::control, contents.height() + 14)};
+        return {w, std::max(height, contents.height() + padding)};
     }
     case CT_ToolButton: {
         const auto* tool = qstyleoption_cast<const QStyleOptionToolButton*>(option);
@@ -553,61 +802,74 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         const bool menu = (tool->features & QStyleOptionToolButton::HasMenu) && !split && !(widget && widget->property("noChevron").toBool());
         const bool text = !tool->text.isEmpty() && tool->toolButtonStyle != Qt::ToolButtonIconOnly;
         const bool icon = !tool->icon.isNull() && tool->toolButtonStyle != Qt::ToolButtonTextOnly;
+        if (name == "textAction" && text) {
+            auto f = font(Type::body); f.setWeight(widget && widget->property("graphiteStrong").toBool() ? QFont::DemiBold : QFont::Medium);
+            return {int(std::ceil(QFontMetricsF(f).horizontalAdvance(tool->text))) + (icon ? tool->iconSize.width() + 8 : 0) + (flushButton(widget) ? 0 : 2 * int(Space::s)), std::max(scaled(Metric::controlCompact), QFontMetrics(f).height() + padding)};
+        }
         if (name == "info") return {std::max(23, tool->iconSize.width() + 5), std::max(23, tool->iconSize.height() + 5)};
         if (name == "link" || name == "version") {
             const QFontMetrics metrics(widget ? widget->font() : QApplication::font());
-            return {metrics.horizontalAdvance(tool->text) + 8 + (icon ? tool->iconSize.width() + 6 : 0), metrics.height() + 8};
+            return {std::max(32, metrics.horizontalAdvance(tool->text) + 8 + (icon ? tool->iconSize.width() + 6 : 0)), std::max(32, metrics.height() + 8)};
         }
         if (!text) {
-            const int side = std::max(Metric::iconTarget, (icon ? tool->iconSize.height() : 16) + 14);
-            return {side + (split ? Metric::splitZone : 0), side};
+            const int side = std::max(compact ? height : scaled(Metric::iconTarget), (icon ? tool->iconSize.height() : scaled(16)) + padding);
+            return {side + (split ? scaled(Metric::splitArrow) : 0), side};
         }
-        QFont f = widget ? widget->font() : QApplication::font();
-        if (name == "primary") f.setWeight(QFont::DemiBold);
+        const QFont f = buttonFont(widget, option);
         const QFontMetrics metrics(f);
         int w = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + 2 * 14 + 2 + (icon ? tool->iconSize.width() + 8 : 0);
-        if (split || menu) w += Metric::splitZone - 6;
-        return {w, std::max(Metric::control, metrics.height() + 14)};
+        if (widget && widget->property("graphiteTight").toBool()) w -= 2 * (int(Space::m) - int(Space::xs));
+        if (split) {
+            const int inset = name == "link" || name == "version" || (widget && widget->property("graphiteTight").toBool()) ? int(Space::xs) : int(Space::m);
+            const int label = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + (icon ? tool->iconSize.width() + 8 : 0);
+            w = label + (flushButton(widget) ? 0 : inset) + std::max(inset, space(Space::s)) + scaled(Metric::splitArrow) + 2;
+        }
+        else if (menu) w += scaled(Metric::splitZone) - scaled(6);
+        if (!split && flushButton(widget)) w -= 14;
+        return {w, std::max(height, metrics.height() + padding)};
     }
     case CT_LineEdit: {
         const auto* frame = qstyleoption_cast<const QStyleOptionFrame*>(option);
         if (role(widget) == "editableTitle") return contents + QSize(4, 10);
         if (frame && frame->lineWidth <= 0) break;
-        return {contents.width() + 22, std::max(Metric::control, contents.height() + 14)};
+        return {contents.width() + 22, std::max(height, contents.height() + padding)};
     }
     case CT_ComboBox: {
         const auto* combo = qstyleoption_cast<const QStyleOptionComboBox*>(option);
-        if (combo && !combo->frame) break;
-        return {contents.width() + 12 + Metric::splitZone + 6, std::max(Metric::control, contents.height() + 14)};
+        if (combo && !combo->frame && !compact) break;
+        return {contents.width() + space(Space::m) + scaled(Metric::splitZone) + space(Space::xs) + 2, std::max(height, contents.height() + padding)};
     }
     case CT_SpinBox: {
         const auto* spin = qstyleoption_cast<const QStyleOptionSpinBox*>(option);
         if (spin && !spin->frame) break;
-        const int buttons = spin && spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 24;
-        return {contents.width() + 12 + buttons + 4, std::max(Metric::control, contents.height() + 14)};
+        const int buttons = spin && spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 2 * scaled(32);
+        return {contents.width() + space(Space::m) + buttons + space(Space::xs), std::max(height, contents.height() + padding)};
     }
     case CT_CheckBox: case CT_RadioButton: {
         auto size = QProxyStyle::sizeFromContents(type, option, contents, widget);
-        return {size.width(), std::max(size.height(), 28)};
+        return {size.width(), std::max(size.height(), 32)};
     }
     case CT_MenuItem: {
         const auto* item = qstyleoption_cast<const QStyleOptionMenuItem*>(option);
         if (!item) break;
         if (item->menuItemType == QStyleOptionMenuItem::Separator) return {contents.width(), 9};
-        const QFontMetrics metrics(item->font);
+        const auto* menu = qobject_cast<const QMenu*>(widget);
+        const auto actions = menu ? menu->actions() : QList<QAction*>{};
+        const bool information = std::any_of(actions.cbegin(), actions.cend(), [item](const QAction* action) { return action->text() == item->text && action->property("visualRole") == "information"; });
+        const QFontMetrics metrics(information ? font(Type::technical) : item->font);
         auto text = item->text;
         QString shortcut;
         if (const int tab = text.indexOf('\t'); tab >= 0) { shortcut = text.mid(tab + 1); text = text.left(tab); }
-        int w = 12 + (item->menuHasCheckableItems ? 26 : 0) + (item->maxIconWidth > 0 ? 28 : 0) + metrics.horizontalAdvance(QString(text).remove('&')) + 16;
-        if (!shortcut.isEmpty()) w += 28 + QFontMetrics(font(Type::metadata)).horizontalAdvance(shortcut);
+        int w = 12 + (item->menuHasCheckableItems ? 26 : 0) + (item->maxIconWidth > 0 ? scaled(Metric::icon) + 10 : 0) + metrics.size(Qt::TextSingleLine | Qt::TextShowMnemonic, text).width() + 16;
+        if (!shortcut.isEmpty()) w += 28 + int(std::ceil(QFontMetricsF(font(Type::metadata)).horizontalAdvance(shortcut)));
         else if (item->reservedShortcutWidth > 0) w += 28 + item->reservedShortcutWidth;
         if (item->menuItemType == QStyleOptionMenuItem::SubMenu) w += 20;
-        return {w, std::max(32, metrics.height() + 12)};
+        return {w, std::max(scaled(32), metrics.height() + scaled(12))};
     }
     case CT_TabBarTab: {
         const auto* tab = qstyleoption_cast<const QStyleOptionTab*>(option);
         if (!tab) break;
-        const QFontMetrics metrics(font(Type::body, true));
+        const QFontMetrics metrics(labelFont(true));
         const int icon = tab->icon.isNull() ? 0 : tab->iconSize.width() + 8;
         return {std::max(96, metrics.horizontalAdvance(QString(tab->text).remove('&')) + icon + 40), 40};
     }
@@ -617,7 +879,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
     }
     case CT_ItemViewItem: {
         auto size = QProxyStyle::sizeFromContents(type, option, contents, widget);
-        if (widget) if (const int rows = widget->property("graphiteRowHeight").toInt(); rows > 0) size.setHeight(std::max(size.height(), rows));
+        if (widget) if (const int rows = widget->property("graphiteRowHeight").toInt(); rows > 0) size.setHeight(std::max({size.height(), rows, option->fontMetrics.height() + scaled(12)}));
         return size;
     }
     default: break;
@@ -630,7 +892,7 @@ QRect Style::subElementRect(SubElement element, const QStyleOption* option, cons
     case SE_LineEditContents: {
         const auto* frame = qstyleoption_cast<const QStyleOptionFrame*>(option);
         // A small inset keeps a semibold first glyph's stem clear of the clip.
-        if (role(widget) == "editableTitle") return option->rect.adjusted(3, 0, -3, -2);
+        if (role(widget) == "editableTitle") return option->rect.adjusted(widget->hasFocus() ? 3 : -2, 0, -3, -2);
         if (frame && frame->lineWidth > 0) return option->rect.adjusted(10, 1, -10, -1);
         return option->rect;
     }
@@ -643,13 +905,34 @@ QRect Style::subElementRect(SubElement element, const QStyleOption* option, cons
 QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* option, SubControl sub, const QWidget* widget) const {
     const QRect r = option->rect;
     switch (control) {
+    case CC_Slider: {
+        const auto* slider = qstyleoption_cast<const QStyleOptionSlider*>(option);
+        if (!slider) break;
+        const bool horizontal = slider->orientation == Qt::Horizontal;
+        const int length = pixelMetric(PM_SliderLength, option, widget);
+        const int thickness = pixelMetric(PM_SliderControlThickness, option, widget);
+        const int position = sliderPositionFromValue(slider->minimum, slider->maximum, slider->sliderPosition, std::max(0, (horizontal ? r.width() : r.height()) - length), slider->upsideDown);
+        if (sub == SC_SliderHandle)
+            return horizontal ? QRect(r.left() + position, r.top() + (r.height() - thickness) / 2, length, thickness)
+                              : QRect(r.left() + (r.width() - thickness) / 2, r.top() + position, thickness, length);
+        if (sub == SC_SliderGroove) return r;
+        break;
+    }
     case CC_ComboBox: {
         const auto* combo = qstyleoption_cast<const QStyleOptionComboBox*>(option);
+        if (combo && !combo->frame && !combo->editable) {
+            const int inset = space(Space::xs), arrowWidth = scaled(16);
+            const auto f = compactControl(widget) ? font(Type::technical) : widget ? widget->font() : QApplication::font();
+            const int textWidth = std::min(int(std::ceil(QFontMetricsF(f).horizontalAdvance(combo->currentText))),
+                std::max(0, r.width() - 3 * inset - arrowWidth));
+            if (sub == SC_ComboBoxEditField) return visualRect(option->direction, r, QRect(r.left() + inset, r.top(), textWidth, r.height()));
+            if (sub == SC_ComboBoxArrow) return visualRect(option->direction, r, QRect(r.left() + 2 * inset + textWidth, r.top(), arrowWidth, r.height()));
+        }
         if (combo && !combo->frame) break;
         switch (sub) {
         case SC_ComboBoxFrame: case SC_ComboBoxListBoxPopup: return r;
-        case SC_ComboBoxArrow: return visualRect(option->direction, r, QRect(r.right() - Metric::splitZone - 2, r.top(), Metric::splitZone + 2, r.height()));
-        case SC_ComboBoxEditField: return visualRect(option->direction, r, r.adjusted(12, 1, -(Metric::splitZone + 4), -1));
+        case SC_ComboBoxArrow: return visualRect(option->direction, r, QRect(r.right() - scaled(Metric::splitZone) - 2, r.top(), scaled(Metric::splitZone) + 2, r.height()));
+        case SC_ComboBoxEditField: return visualRect(option->direction, r, r.adjusted(space(Space::m), 1, -(scaled(Metric::splitZone) + space(Space::xs)), -1));
         default: break;
         }
         break;
@@ -657,13 +940,12 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* o
     case CC_SpinBox: {
         const auto* spin = qstyleoption_cast<const QStyleOptionSpinBox*>(option);
         if (!spin || !spin->frame) break;
-        const int buttons = spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 24;
-        const int half = r.height() / 2;
+        const int buttons = spin->buttonSymbols == QAbstractSpinBox::NoButtons ? 0 : 2 * scaled(32);
         switch (sub) {
         case SC_SpinBoxFrame: return r;
-        case SC_SpinBoxEditField: return visualRect(option->direction, r, r.adjusted(11, 1, -(buttons + 3), -1));
-        case SC_SpinBoxUp: return buttons ? visualRect(option->direction, r, QRect(r.right() - buttons, r.top() + 3, buttons - 2, half - 3)) : QRect();
-        case SC_SpinBoxDown: return buttons ? visualRect(option->direction, r, QRect(r.right() - buttons, r.top() + half, buttons - 2, r.height() - half - 3)) : QRect();
+        case SC_SpinBoxEditField: return visualRect(option->direction, r, r.adjusted(space(Space::m) - 1, 1, -(buttons + space(Space::xs) - 1), -1));
+        case SC_SpinBoxUp: return buttons ? visualRect(option->direction, r, QRect(r.right() - scaled(32), r.top(), scaled(32), r.height())) : QRect();
+        case SC_SpinBoxDown: return buttons ? visualRect(option->direction, r, QRect(r.right() - 2 * scaled(32), r.top(), scaled(32), r.height())) : QRect();
         default: break;
         }
         break;
@@ -695,8 +977,8 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* o
     case CC_ToolButton: {
         const auto* tool = qstyleoption_cast<const QStyleOptionToolButton*>(option);
         if (!tool || !(tool->features & QStyleOptionToolButton::MenuButtonPopup)) break;
-        if (sub == SC_ToolButtonMenu) return visualRect(option->direction, r, QRect(r.right() - Metric::splitZone + 1, r.top(), Metric::splitZone, r.height()));
-        if (sub == SC_ToolButton) return visualRect(option->direction, r, r.adjusted(0, 0, -Metric::splitZone, 0));
+        if (sub == SC_ToolButtonMenu) return visualRect(option->direction, r, QRect(r.right() - scaled(Metric::splitArrow) + 1, r.top(), scaled(Metric::splitArrow), r.height()));
+        if (sub == SC_ToolButton) return visualRect(option->direction, r, r.adjusted(0, 0, -scaled(Metric::splitArrow), 0));
         break;
     }
     default: break;
@@ -705,11 +987,19 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* o
 }
 
 QStyle::SubControl Style::hitTestComplexControl(ComplexControl control, const QStyleOptionComplex* option, const QPoint& point, const QWidget* widget) const {
+    if (control == CC_Slider) {
+        if (subControlRect(control, option, SC_SliderHandle, widget).contains(point)) return SC_SliderHandle;
+        if (subControlRect(control, option, SC_SliderGroove, widget).contains(point)) return SC_SliderGroove;
+        return SC_None;
+    }
     return QProxyStyle::hitTestComplexControl(control, option, point, widget);
 }
 
 QPixmap Style::generatedIconPixmap(QIcon::Mode mode, const QPixmap& pixmap, const QStyleOption* option) const {
     if (mode == QIcon::Disabled) return tinted(pixmap, t().textDisabled);
+    // Selection is a neutral fill here, not the highlight colour: a pixmap icon
+    // without a selected variant stays as it is.
+    if (mode == QIcon::Selected) return pixmap;
     return QProxyStyle::generatedIconPixmap(mode, pixmap, option);
 }
 
@@ -720,10 +1010,16 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
     case PE_FrameTabBarBase: case PE_FrameTabWidget: case PE_IndicatorButtonDropDown: case PE_PanelScrollAreaCorner: case PE_FrameDockWidget:
         return;
     case PE_PanelButtonCommand: case PE_PanelButtonBevel: case PE_PanelButtonTool: {
-        const auto look = buttonLook(buttonRole(widget, option), option, element == PE_PanelButtonTool && (option->state & State_AutoRaise));
+        auto look = buttonLook(buttonRole(widget, option), option, element == PE_PanelButtonTool && (option->state & State_AutoRaise), widget);
+        const bool segment = widget && qobject_cast<SegmentTrack*>(widget->parentWidget());
+        if (segment) { look.fill = QColor(Qt::transparent); look.stroke = QColor(); }
         QColor stroke = keyboardState(option) ? c.accent : look.stroke;
         if (!look.fill.isValid() && !stroke.isValid()) return;
-        rounded(p, option->rect, look.fill.isValid() ? look.fill : QColor(Qt::transparent), stroke, Metric::radius, keyboardState(option) ? 1.5 : 1);
+        const int inset = segment ? Metric::segmentInset / 2 : 0;
+        const QRectF box = QRectF(option->rect).adjusted(inset, inset, -inset, -inset);
+        rounded(p, box, look.fill.isValid() ? look.fill : QColor(Qt::transparent), stroke, controlRadius(widget), keyboardState(option) ? 1.5 : 1);
+        if (segment && (option->state & State_On))
+            p->fillRect(QRectF(box.center().x() - 12, box.bottom() - 3, 24, 2), c.accent);
         return;
     }
     case PE_PanelLineEdit: {
@@ -754,7 +1050,7 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
             p->restore();
             return;
         }
-        if (qobject_cast<const QPlainTextEdit*>(widget) || qobject_cast<const QTextEdit*>(widget)) {
+        if (qobject_cast<const QPlainTextEdit*>(widget) || qobject_cast<const QTextEdit*>(widget) || (widget && widget->property("graphiteFieldFrame").toBool())) {
             if (widget->objectName() == "historySummary") return;
             field(p, option->rect, option, widget, widget->hasFocus());
             return;
@@ -766,7 +1062,7 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
         p->restore();
         return;
     }
-    case PE_PanelMenu: p->fillRect(option->rect, c.surfaceRaised); return;
+    case PE_PanelMenu: rounded(p, option->rect, c.surfaceRaised, c.border, Metric::containerRadius); return;
     case PE_PanelTipLabel:
         p->fillRect(option->rect, c.surfaceRaised);
         p->save();
@@ -775,27 +1071,27 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
         p->restore();
         return;
     case PE_IndicatorCheckBox: case PE_IndicatorItemViewItemCheck: {
-        const int side = std::min({option->rect.width(), option->rect.height(), 17});
+        const int side = std::min({option->rect.width(), option->rect.height(), scaled(17)});
         const QRectF box(option->rect.x() + (option->rect.width() - side) / 2.0, option->rect.y() + (option->rect.height() - side) / 2.0, side, side);
-        check(p, box, option, element == PE_IndicatorCheckBox && keyboardState(option));
+        check(p, box, option, element == PE_IndicatorCheckBox && keyboardState(option), lockedLook(option, widget));
         return;
     }
     case PE_IndicatorRadioButton: {
-        const int side = std::min({option->rect.width(), option->rect.height(), 18});
+        const int side = std::min({option->rect.width(), option->rect.height(), scaled(18)});
         const QRectF box(option->rect.x() + (option->rect.width() - side) / 2.0, option->rect.y() + (option->rect.height() - side) / 2.0, side, side);
-        radio(p, box, option, keyboardState(option));
+        radio(p, box, option, keyboardState(option), lockedLook(option, widget));
         return;
     }
     case PE_IndicatorArrowDown: case PE_IndicatorArrowUp: case PE_IndicatorArrowLeft: case PE_IndicatorArrowRight: case PE_IndicatorHeaderArrow: {
         Qt::ArrowType direction = element == PE_IndicatorArrowUp ? Qt::UpArrow : element == PE_IndicatorArrowLeft ? Qt::LeftArrow : element == PE_IndicatorArrowRight ? Qt::RightArrow : Qt::DownArrow;
         if (element == PE_IndicatorHeaderArrow) if (const auto* header = qstyleoption_cast<const QStyleOptionHeader*>(option)) direction = header->sortIndicator == QStyleOptionHeader::SortUp ? Qt::UpArrow : Qt::DownArrow;
-        const qreal size = std::min<qreal>(10, std::min(option->rect.width(), option->rect.height()) * 0.7);
+        const qreal size = std::min<qreal>(scaled(10), std::min(option->rect.width(), option->rect.height()) * 0.7);
         paintChevron(*p, QRectF(option->rect).center(), size, direction, option->state & State_Enabled ? c.textSecondary : c.textDisabled);
         return;
     }
     case PE_IndicatorBranch: {
         if (!(option->state & State_Children)) return;
-        paintChevron(*p, QRectF(option->rect).center(), 8, option->state & State_Open ? Qt::DownArrow : Qt::RightArrow, c.textMuted);
+        paintChevron(*p, QRectF(option->rect).center(), scaled(8), option->state & State_Open ? Qt::DownArrow : Qt::RightArrow, c.textMuted);
         return;
     }
     case PE_PanelItemViewItem: case PE_PanelItemViewRow: {
@@ -854,10 +1150,11 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
 
 void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, const QIcon& icon, QSize iconSize, QPainter* p, const QWidget* widget, QRect body) const {
     const auto name = buttonRole(widget, option);
-    const auto look = buttonLook(name, option, false);
-    QFont f = widget ? widget->font() : QApplication::font();
-    if (look.strong) f.setWeight(QFont::DemiBold);
-    f.setUnderline(look.underline);
+    auto look = buttonLook(name, option, false, widget);
+    if (widget && widget->property("graphiteStatus").toBool() && (option->state & State_Enabled)) look.text = t().textSecondary;
+    if (widget && widget->property("graphiteDisclosure").toBool() && (option->state & State_Enabled)) look.text = t().text;
+    QFont f = buttonFont(widget, option);
+    f.setUnderline(look.underline && name != "textAction");
     const QFontMetricsF metrics(f);
     const bool hasIcon = !icon.isNull() && iconSize.isValid() && iconSize.width() > 0;
     const int iconWidth = hasIcon ? iconSize.width() : 0;
@@ -866,14 +1163,31 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
     const QString shown = metrics.elidedText(plain, Qt::ElideRight, available);
     const qreal textWidth = shown.isEmpty() ? 0 : metrics.horizontalAdvance(shown);
     const qreal group = iconWidth + (hasIcon && !shown.isEmpty() ? 8 : 0) + textWidth;
-    const bool leftAligned = name == "link" || name == "version" || (widget && widget->property("alignLeft").toBool());
+    const bool leftAligned = flushButton(widget) || name == "link" || name == "version" || (widget && widget->property("alignLeft").toBool());
     qreal x = leftAligned ? body.left() : body.left() + (body.width() - group) / 2.0;
     if (hasIcon) {
         const bool enabled = option->state & State_Enabled;
-        const QRectF target(std::round(x), body.top() + (body.height() - iconSize.height()) / 2.0, iconSize.width(), iconSize.height());
-        auto pixmap = icon.pixmap(iconSize, dpr(widget), enabled ? QIcon::Normal : QIcon::Disabled, option->state & State_On ? QIcon::On : QIcon::Off);
-        if (name == "primary" || name == "danger") pixmap = tinted(pixmap, look.text);
+        const QRectF target(std::round(x), body.top() + (body.height() - iconSize.height()) / 2.0 - (widget ? scaled(widget->property("graphiteIconRaise").toInt()) : 0), iconSize.width(), iconSize.height());
+        // A checked or pressed quiet or secondary button sits on the selected fill.
+        const bool onSelected = enabled && ((option->state & State_Sunken) || ((option->state & State_On) && !(widget && widget->property("graphiteDisclosure").toBool()))) && name != "primary" && name != "danger" && name != "link" && name != "version";
+        auto pixmap = icon.pixmap(iconSize, dpr(widget), !enabled ? QIcon::Disabled : onSelected ? QIcon::Selected : QIcon::Normal, option->state & State_On ? QIcon::On : QIcon::Off);
+        const bool disabledQuiet = !enabled && (name == "quiet" || name == "info" || name == "link" || (option->state & State_AutoRaise));
+        if ((disabledQuiet || name == "primary" || name == "danger" || (widget && widget->property("graphiteOnMedia").toBool()))
+            && !(enabled && widget && widget->property("graphiteSemanticIcon").toBool())) pixmap = tinted(pixmap, look.text);
+        if (widget && widget->property("headerInactive").toBool()) pixmap = tinted(pixmap, t().textMuted);
         p->drawPixmap(target.topLeft(), pixmap);
+        // Only an action whose own output is broken is badged; a global gap is the banner's job.
+        if (widget && widget->property("captureBadge").toBool()) {
+            const int side = scaled(12);
+            const QRect badge(qRound(target.right()) - side + 3, qRound(target.bottom()) - side + 3, side, side);
+            p->save();
+            p->setRenderHint(QPainter::Antialiasing);
+            p->setPen(Qt::NoPen);
+            p->setBrush(t().surface);
+            p->drawEllipse(badge.adjusted(-1, -1, 1, 1));
+            p->drawPixmap(badge.topLeft(), VisualStyle::icon("alert", t().warning).pixmap(badge.size(), dpr(widget)));
+            p->restore();
+        }
         x += iconWidth + (shown.isEmpty() ? 0 : 8);
     }
     if (!shown.isEmpty()) {
@@ -882,6 +1196,10 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
         p->setPen(look.text);
         const qreal baseline = opticalBaseline(metrics, shown, body.top() + body.height() / 2.0);
         p->drawText(QPointF(x, baseline), shown);
+        if (name == "textAction" && look.underline) {
+            const bool active = option->state & (State_MouseOver | State_Sunken | State_HasFocus);
+            p->fillRect(QRectF(x, std::round(baseline) + 2, textWidth, 1), active ? t().text : t().textMuted);
+        }
         p->restore();
     }
 }
@@ -893,8 +1211,8 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
         drawPrimitive(PE_PanelButtonCommand, option, p, widget);
         if (button && (button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) {
-            const auto look = buttonLook(buttonRole(widget, option), option, false);
-            paintChevron(*p, QPointF(option->rect.right() - Metric::splitZone / 2.0 + 1, option->rect.center().y() + 0.5), 8, Qt::DownArrow, look.text);
+            const auto look = buttonLook(buttonRole(widget, option), option, false, widget);
+            paintChevron(*p, QPointF(option->rect.right() - scaled(Metric::splitZone) / 2.0 + 1, option->rect.center().y() + 0.5), scaled(8), Qt::DownArrow, look.text);
         }
         return;
     }
@@ -907,8 +1225,11 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
         if (!button) break;
         const auto name = buttonRole(widget, option);
-        QRect body = (name == "link" || name == "version") ? option->rect.adjusted(4, 0, -4, 0) : option->rect.adjusted(12, 0, -12, 0);
-        if ((button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) body.setRight(option->rect.right() - Metric::splitZone);
+        const int inset = name == "textAction" ? int(Space::s) : name == "link" || name == "version" ? int(Space::xs) : widget && widget->property("graphiteTight").toBool() ? int(Space::s) : int(Space::m);
+        QRect body = option->rect.adjusted(inset, 0, -inset, 0);
+        if (flushButton(widget)) { body.setLeft(option->rect.left()); if (compactControl(widget) || name == "textAction") body.setRight(option->rect.right()); }
+        if (widget && widget->property("graphiteNavRow").toBool()) { body.setLeft(option->rect.left() + (compactControl(widget) ? 6 : 14)); body.setRight(option->rect.right() - space(Space::xs)); }
+        if ((button->features & QStyleOptionButton::HasMenu) && !(widget && widget->property("noChevron").toBool())) body.setRight(option->rect.right() - scaled(Metric::splitZone));
         drawButtonLabel(option, button->text, button->icon, button->iconSize, p, widget, body);
         return;
     }
@@ -919,7 +1240,10 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto name = buttonRole(widget, option);
         const bool textShown = tool->toolButtonStyle != Qt::ToolButtonIconOnly && !tool->text.isEmpty();
         const bool iconShown = tool->toolButtonStyle != Qt::ToolButtonTextOnly && !tool->icon.isNull();
-        QRect body = textShown ? option->rect.adjusted(name == "link" || name == "version" ? 4 : 12, 0, name == "link" || name == "version" ? -4 : -12, 0) : option->rect;
+        const int inset = name == "textAction" ? int(Space::s) : name == "link" || name == "version" || (widget && widget->property("graphiteTight").toBool()) ? int(Space::xs) : int(Space::m);
+        const int trailing = tool->features & QStyleOptionToolButton::MenuButtonPopup ? std::max(inset, space(Space::s)) : inset;
+        QRect body = textShown ? option->rect.adjusted(inset, 0, -trailing, 0) : option->rect;
+        if (flushButton(widget)) { body.setLeft(option->rect.left()); if (name == "textAction") body.setRight(option->rect.right()); }
         drawButtonLabel(option, textShown ? tool->text : QString(), iconShown ? tool->icon : QIcon(), tool->iconSize, p, widget, body);
         return;
     }
@@ -927,7 +1251,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option);
         if (!button) break;
         QStyleOptionButton copy(*button);
-        copy.palette.setColor(QPalette::WindowText, option->state & State_Enabled ? c.text : c.textDisabled);
+        copy.palette.setColor(QPalette::WindowText, option->state & State_Enabled ? c.text : lockedLook(option, widget) ? c.textMuted : c.textDisabled);
         QProxyStyle::drawControl(element, &copy, p, widget);
         return;
     }
@@ -944,9 +1268,13 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         }
         if (item->menuItemType == QStyleOptionMenuItem::EmptyArea) return;
         const bool enabled = option->state & State_Enabled;
-        const bool selected = enabled && (option->state & State_Selected);
+        const auto* menu = qobject_cast<const QMenu*>(widget);
+        const auto* action = menu ? menu->actionAt(r.center()) : nullptr;
+        // Status text is disabled for navigation, not because it is unreadable.
+        const bool information = action && action->property("visualRole") == "information";
+        const bool selected = !information && enabled && (option->state & State_Selected);
         if (selected) rounded(p, QRectF(r).adjusted(2, 1, -2, -1), c.selected, {}, 5);
-        const QColor ink = enabled ? (selected ? c.text : c.textSecondary) : c.textDisabled;
+        const QColor ink = information ? c.textMuted : enabled ? (selected ? c.text : c.textSecondary) : c.textDisabled;
         int x = r.left() + 12;
         if (item->menuHasCheckableItems) {
             const QRectF box(x, r.center().y() - 7.5, 15, 15);
@@ -969,10 +1297,10 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         }
         if (item->maxIconWidth > 0) {
             if (!item->icon.isNull()) {
-                const auto pixmap = item->icon.pixmap(QSize(Metric::icon, Metric::icon), dpr(widget), enabled ? QIcon::Normal : QIcon::Disabled);
-                p->drawPixmap(QPointF(x, r.center().y() - Metric::icon / 2.0), pixmap);
+                const auto pixmap = item->icon.pixmap(QSize(scaled(Metric::icon), scaled(Metric::icon)), dpr(widget), !enabled ? QIcon::Disabled : selected ? QIcon::Selected : QIcon::Normal);
+                p->drawPixmap(QPointF(x, r.center().y() - scaled(Metric::icon) / 2.0), pixmap);
             }
-            x += 28;
+            x += scaled(Metric::icon) + 10;
         }
         auto text = item->text;
         QString shortcut;
@@ -980,18 +1308,19 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         int right = r.right() - 12 - (item->menuItemType == QStyleOptionMenuItem::SubMenu ? 20 : 0);
         if (!shortcut.isEmpty()) {
             const auto f = font(Type::metadata);
-            const int width = QFontMetrics(f).horizontalAdvance(shortcut);
+            const int width = int(std::ceil(QFontMetricsF(f).horizontalAdvance(shortcut)));
             paintText(*p, QRectF(right - width, r.top(), width, r.height()), shortcut, enabled ? c.textMuted : c.textDisabled, f, Qt::AlignRight | Qt::AlignVCenter);
             right -= width + 24;
         }
         p->save();
-        p->setFont(item->font);
+        const auto menuFont = information ? font(Type::technical) : item->font;
+        p->setFont(menuFont);
         p->setPen(ink);
         const QRect textRect(x, r.top(), std::max(0, right - x), r.height());
-        const auto elided = QFontMetrics(item->font).elidedText(text, Qt::ElideRight, textRect.width(), Qt::TextShowMnemonic);
+        const auto elided = QFontMetrics(menuFont).elidedText(text, Qt::ElideRight, textRect.width(), Qt::TextShowMnemonic);
         p->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft | Qt::TextShowMnemonic | Qt::TextSingleLine, elided);
         p->restore();
-        if (item->menuItemType == QStyleOptionMenuItem::SubMenu) paintChevron(*p, QPointF(r.right() - 16, r.center().y()), 8, Qt::RightArrow, enabled ? c.textMuted : c.textDisabled);
+        if (item->menuItemType == QStyleOptionMenuItem::SubMenu) paintChevron(*p, QPointF(r.right() - scaled(16), r.center().y()), scaled(8), Qt::RightArrow, enabled ? c.textMuted : c.textDisabled);
         return;
     }
     case CE_MenuEmptyArea: case CE_MenuScroller: case CE_MenuTearoff: p->fillRect(option->rect, c.surfaceRaised); return;
@@ -1020,9 +1349,9 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         p->drawPath(partlyRounded(r, Metric::trackRadius, first, last));
         p->restore();
         if (option->state & State_Selected) {
-            rounded(p, r.adjusted(3, 3, -3, -3), c.selected, keyboardState(option) ? c.accent : mix(c.borderStrong, c.selected, 0.7), Metric::segmentRadius);
+            rounded(p, r.adjusted(Metric::segmentInset, Metric::segmentInset, -Metric::segmentInset, -Metric::segmentInset), c.selected, keyboardState(option) ? c.accent : mix(c.borderStrong, c.selected, 0.7), Metric::segmentRadius);
         } else if (option->state & State_MouseOver) {
-            rounded(p, r.adjusted(3, 3, -3, -3), mix(c.surface, c.surfaceRaised, 0.6), {}, Metric::segmentRadius);
+            rounded(p, r.adjusted(Metric::segmentInset, Metric::segmentInset, -Metric::segmentInset, -Metric::segmentInset), mix(c.surface, c.surfaceRaised, 0.6), {}, Metric::segmentRadius);
         }
         return;
     }
@@ -1030,7 +1359,7 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const auto* tab = qstyleoption_cast<const QStyleOptionTab*>(option);
         if (!tab) break;
         const bool selected = option->state & State_Selected;
-        const auto f = font(Type::body, selected);
+        const auto f = labelFont(selected);
         const QColor ink = !(option->state & State_Enabled) ? c.textDisabled : selected ? c.text : option->state & State_MouseOver ? c.textSecondary : c.textMuted;
         QRect r = option->rect;
         if (!tab->icon.isNull()) {
@@ -1073,18 +1402,46 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
     case CE_ProgressBarGroove: {
         const QRectF r = option->rect;
         const qreal h = std::min<qreal>(r.height(), 8);
-        rounded(p, QRectF(r.left(), r.center().y() - h / 2, r.width(), h), c.selected, {}, h / 2);
+        rounded(p, QRectF(r.left(), r.center().y() - h / 2, r.width(), h), c.surfaceRaised, {}, h / 2);
         return;
     }
     case CE_ProgressBarContents: {
         const auto* bar = qstyleoption_cast<const QStyleOptionProgressBar*>(option);
         if (!bar) break;
-        if (bar->minimum == 0 && bar->maximum == 0) break;
+        if (bar->minimum == 0 && bar->maximum == 0) {
+            auto* progress = qobject_cast<QProgressBar*>(const_cast<QWidget*>(widget));
+            const bool animate = progressAnimationEnabled(widget, option);
+            qreal phase = progress ? progress->property("graphiteBusyPhase").toDouble() : 0;
+            if (progress) {
+                auto* timer = progress->findChild<QTimer*>("graphiteBusyTimer", Qt::FindDirectChildrenOnly);
+                if (!timer) {
+                    timer = new QTimer(progress);
+                    timer->setObjectName("graphiteBusyTimer");
+                    timer->setInterval(60);
+                    QObject::connect(timer, &QTimer::timeout, progress, [progress, timer] {
+                        if (!progress->isVisible() || !progress->isEnabled() || progress->minimum() != 0 || progress->maximum() != 0
+                            || !progressAnimationEnabled(progress)) { timer->stop(); return; }
+                        progress->setProperty("graphiteBusyPhase", std::fmod(progress->property("graphiteBusyPhase").toDouble() + 0.015, 1.0));
+                        progress->update();
+                    });
+                }
+                if (animate && progress->isVisible() && progress->isEnabled()) { if (!timer->isActive()) timer->start(); }
+                else timer->stop();
+            }
+            // Qt 6.4 has no reduced-motion preference API. Honour disabled style
+            // animation; otherwise a quiet four-second sweep avoids flashing.
+            const QRectF r = option->rect;
+            const qreal h = std::min<qreal>(r.height(), 8), length = std::min(r.width(), std::max(h, r.width() * 0.28));
+            const qreal position = animate ? (1 - std::cos(phase * 2 * 3.141592653589793)) / 2 : 0.5;
+            const qreal x = r.left() + (r.width() - length) * (bar->invertedAppearance ? 1 - position : position);
+            rounded(p, QRectF(x, r.center().y() - h / 2, length, h), option->state & State_Enabled ? c.text : c.textDisabled, {}, h / 2);
+            return;
+        }
         const QRectF r = option->rect;
         const qreal h = std::min<qreal>(r.height(), 8);
         const qreal fraction = std::clamp(double(qint64(bar->progress) - bar->minimum) / std::max<qint64>(1, qint64(bar->maximum) - bar->minimum), 0.0, 1.0);
         if (fraction <= 0) return;
-        rounded(p, QRectF(r.left(), r.center().y() - h / 2, std::max(h, r.width() * fraction), h), option->state & State_Enabled ? c.accent : c.textDisabled, {}, h / 2);
+        rounded(p, QRectF(r.left(), r.center().y() - h / 2, std::max(h, r.width() * fraction), h), option->state & State_Enabled ? c.text : c.textDisabled, {}, h / 2);
         return;
     }
     case CE_ProgressBarLabel: {
@@ -1110,11 +1467,11 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
             const auto tone = widget->property("feedbackTone").toString();
             const QColor fill = tone == "success" ? c.successSurface : tone == "error" ? c.dangerSurface : c.surface;
             const QColor stroke = tone == "success" ? mix(c.success, c.successSurface, 0.45) : tone == "error" ? mix(c.danger, c.dangerSurface, 0.45) : c.border;
-            rounded(p, r, fill, stroke, Metric::radius);
+            rounded(p, r, fill, stroke, Metric::containerRadius);
             return;
         }
         if (name == "notice") {
-            rounded(p, r, c.warningSurface, mix(c.warning, c.warningSurface, 0.45), Metric::radius);
+            rounded(p, r, c.surfaceRaised, c.borderStrong, Metric::containerRadius);
             return;
         }
         if (name == "card") {
@@ -1126,12 +1483,12 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         }
         if (name == "separator") { p->fillRect(option->rect, c.border); return; }
         // A recessed area for media: previews and thumbnails sit on it.
-        if (name == "well") { rounded(p, r, c.bg, c.border, Metric::radius); return; }
-        if (name == "pill") { rounded(p, r, c.selected, c.borderStrong, std::min<qreal>(11, r.height() / 2)); return; }
+        if (name == "well") { rounded(p, r, c.well, c.border, Metric::containerRadius); return; }
+        if (name == "pill") { rounded(p, r, c.selected, c.borderStrong, Metric::smallRadius); return; }
         if (name == "unitSuffix") {
             p->save();
             p->setRenderHint(QPainter::Antialiasing);
-            p->setPen(controlStroke());
+            p->setPen(widget->isEnabled() ? controlOutline() : controlStroke());
             p->setBrush(widget->isEnabled() ? c.surfaceRaised : c.surface);
             p->drawPath(partlyRounded(r.adjusted(0.5, 0.5, -0.5, -0.5), Metric::radius, false, true));
             p->restore();
@@ -1164,8 +1521,8 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
             p->drawPixmap(QPoint(r.left(), r.center().y() - combo->iconSize.height() / 2), pixmap);
             r.setLeft(r.left() + combo->iconSize.width() + 8);
         }
-        const auto f = widget ? widget->font() : QApplication::font();
-        paintText(*p, r, combo->currentText, option->state & State_Enabled ? c.text : c.textDisabled, f, Qt::AlignLeft | Qt::AlignVCenter);
+        const auto f = compactControl(widget) ? font(Type::technical) : widget ? widget->font() : QApplication::font();
+        paintText(*p, r, combo->currentText, option->state & State_Enabled ? c.text : lockedLook(option, widget) ? c.textMuted : c.textDisabled, f, Qt::AlignLeft | Qt::AlignVCenter);
         return;
     }
     case CE_SizeGrip: return;
@@ -1180,6 +1537,21 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
     case CC_ToolButton: {
         const auto* tool = qstyleoption_cast<const QStyleOptionToolButton*>(option);
         if (!tool || tool->toolButtonStyle == Qt::ToolButtonTextUnderIcon) break;
+        if (widget && widget->property("preferenceDisclosure").toBool()) {
+            const auto body = option->rect.adjusted(space(Space::l), space(Space::m), -space(Space::l), -space(Space::m));
+            paintText(*p, body.adjusted(0, 0, -scaled(24), 0), tool->text, tool->state & State_Enabled ? c.text : c.textDisabled, font(), Qt::AlignLeft | Qt::AlignVCenter);
+            const QRect icon(body.right() + 1 - tool->iconSize.width(), body.center().y() - tool->iconSize.height() / 2, tool->iconSize.width(), tool->iconSize.height());
+            tool->icon.paint(p, icon, Qt::AlignCenter, tool->state & State_Enabled ? QIcon::Normal : QIcon::Disabled);
+            if (keyboardState(option)) rounded(p, QRectF(option->rect).adjusted(1, 1, -1, -1), {}, c.accent, Metric::containerRadius);
+            return;
+        }
+        if (widget && widget->property("preferenceAddRow").toBool()) {
+            const auto body = option->rect.adjusted(space(Space::l), 0, -space(Space::l), 0);
+            paintText(*p, body.adjusted(0, 0, -tool->iconSize.width() - space(Space::s), 0), tool->text, tool->state & State_Enabled ? c.textSecondary : c.textDisabled, font(), Qt::AlignLeft | Qt::AlignVCenter);
+            tool->icon.paint(p, QRect(body.right() + 1 - tool->iconSize.width(), body.center().y() - tool->iconSize.height() / 2, tool->iconSize.width(), tool->iconSize.height()), Qt::AlignCenter, tool->state & State_Enabled ? QIcon::Normal : QIcon::Disabled);
+            if (keyboardState(option)) rounded(p, QRectF(option->rect).adjusted(1, 1, -1, -1), {}, c.accent, Metric::containerRadius);
+            return;
+        }
         const bool split = tool->features & QStyleOptionToolButton::MenuButtonPopup;
         const bool chevron = (tool->features & QStyleOptionToolButton::HasMenu) && !split && !(widget && widget->property("noChevron").toBool())
                              && !tool->text.isEmpty() && tool->toolButtonStyle != Qt::ToolButtonIconOnly;
@@ -1187,9 +1559,9 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         if (tool->activeSubControls & SC_ToolButtonMenu) panel.state |= State_Sunken;
         if (!(tool->state & State_Enabled)) panel.state &= ~(State_MouseOver | State_Sunken);
         drawPrimitive(PE_PanelButtonTool, &panel, p, widget);
-        const auto look = buttonLook(buttonRole(widget, option), &panel, tool->state & State_AutoRaise);
+        const auto look = buttonLook(buttonRole(widget, option), &panel, tool->state & State_AutoRaise, widget);
         QStyleOptionToolButton label(*tool);
-        if (split || chevron) label.rect = option->rect.adjusted(0, 0, -(Metric::splitZone - 4), 0);
+        if (split || chevron) label.rect = option->rect.adjusted(0, 0, -(scaled(Metric::splitZone) - scaled(4)), 0);
         if (split) label.rect = subControlRect(CC_ToolButton, tool, SC_ToolButton, widget);
         drawControl(CE_ToolButtonLabel, &label, p, widget);
         if (split) {
@@ -1198,32 +1570,37 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
             p->setPen(mix(look.fill.isValid() && look.fill.alpha() ? look.fill : c.surfaceRaised, look.text, 0.25));
             p->drawLine(menu.left(), menu.top() + 9, menu.left(), menu.bottom() - 9);
             p->restore();
-            paintChevron(*p, QRectF(menu).center() + QPointF(0, 0.5), 8, Qt::DownArrow, look.text);
+            paintChevron(*p, QRectF(menu).center() + QPointF(0, 0.5), scaled(8), Qt::DownArrow, look.text);
         } else if (chevron) {
-            paintChevron(*p, QPointF(option->rect.right() - Metric::splitZone / 2.0 + 2, option->rect.center().y() + 0.5), 8, Qt::DownArrow, look.text);
+            paintChevron(*p, QPointF(option->rect.right() - scaled(Metric::splitZone) / 2.0 + 2, option->rect.center().y() + 0.5), scaled(8), Qt::DownArrow, look.text);
         }
         return;
     }
     case CC_ComboBox: {
         const auto* combo = qstyleoption_cast<const QStyleOptionComboBox*>(option);
-        if (!combo || !combo->frame) break;
+        if (!combo) break;
         const bool focused = combo->editable ? (option->state & State_HasFocus) : keyboardState(option) || (option->state & State_On);
-        field(p, option->rect, option, widget, focused);
+        if (combo->frame) field(p, option->rect, option, widget, focused);
+        // A locked value can't be opened: no chevron.
+        if (lockedLook(option, widget)) return;
         const auto arrow = subControlRect(CC_ComboBox, combo, SC_ComboBoxArrow, widget);
-        paintChevron(*p, QRectF(arrow).center() + QPointF(-2, 0.5), 9, Qt::DownArrow, option->state & State_Enabled ? c.textSecondary : c.textDisabled);
+        paintChevron(*p, QRectF(arrow).center() + QPointF(-2, 0.5), scaled(9), Qt::DownArrow, option->state & State_Enabled ? c.textSecondary : c.textDisabled);
         return;
     }
     case CC_SpinBox: {
         const auto* spin = qstyleoption_cast<const QStyleOptionSpinBox*>(option);
         if (!spin || !spin->frame) break;
         field(p, option->rect, option, widget, option->state & State_HasFocus, widget && widget->property("hasUnit").toBool());
-        if (spin->buttonSymbols == QAbstractSpinBox::NoButtons) return;
+        if (spin->buttonSymbols == QAbstractSpinBox::NoButtons || lockedLook(option, widget)) return;
         for (const auto sub : {SC_SpinBoxUp, SC_SpinBoxDown}) {
             const auto box = subControlRect(CC_SpinBox, spin, sub, widget);
             const bool enabled = (option->state & State_Enabled) && (spin->stepEnabled & (sub == SC_SpinBoxUp ? QAbstractSpinBox::StepUpEnabled : QAbstractSpinBox::StepDownEnabled));
             if (enabled && (spin->activeSubControls & sub) && (option->state & (State_MouseOver | State_Sunken)))
-                rounded(p, QRectF(box).adjusted(2, 0, 0, 0), mix(c.surfaceRaised, c.selected, (option->state & State_Sunken) ? 1.0 : 0.5), {}, 4);
-            paintChevron(*p, QRectF(box).center() + QPointF(0, sub == SC_SpinBoxUp ? 1 : -1), 8, sub == SC_SpinBoxUp ? Qt::UpArrow : Qt::DownArrow, enabled ? c.textSecondary : c.textDisabled, 1.4);
+                rounded(p, QRectF(box).adjusted(space(Space::xs) / 2.0, 0, 0, 0), mix(c.surfaceRaised, c.selected, (option->state & State_Sunken) ? 1.0 : 0.5), {}, 4);
+            p->setPen(QPen(enabled ? c.textSecondary : c.textDisabled, 1.5, Qt::SolidLine, Qt::RoundCap));
+            const QPointF centre = QRectF(box).center();
+            p->drawLine(centre + QPointF(-scaled(4), 0), centre + QPointF(scaled(4), 0));
+            if (sub == SC_SpinBoxUp) p->drawLine(centre + QPointF(0, -scaled(4)), centre + QPointF(0, scaled(4)));
         }
         return;
     }
@@ -1233,25 +1610,29 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
         const auto slider = subControlRect(CC_ScrollBar, bar, SC_ScrollBarSlider, widget);
         if (slider.isEmpty() || bar->minimum == bar->maximum) return;
         const bool active = (bar->activeSubControls & SC_ScrollBarSlider) && (option->state & (State_MouseOver | State_Sunken));
-        const QRectF handle = bar->orientation == Qt::Horizontal ? QRectF(slider).adjusted(1, 2, -1, -2) : QRectF(slider).adjusted(2, 1, -2, -1);
+        const QRectF handle = bar->orientation == Qt::Horizontal
+            ? QRectF(slider.left() + 2, slider.bottom() - 7, slider.width() - 4, 6)
+            : QRectF(slider.right() - 7, slider.top() + 2, 6, slider.height() - 4);
         rounded(p, handle, active ? c.textMuted : c.borderStrong, {}, 3);
         return;
     }
     case CC_Slider: {
         const auto* slider = qstyleoption_cast<const QStyleOptionSlider*>(option);
         if (!slider) break;
-        const auto groove = subControlRect(CC_Slider, slider, SC_SliderGroove, widget);
+        const auto track = subControlRect(CC_Slider, slider, SC_SliderGroove, widget);
         const auto handle = subControlRect(CC_Slider, slider, SC_SliderHandle, widget);
         const bool horizontal = slider->orientation == Qt::Horizontal;
+        const auto groove = horizontal ? track.adjusted((handle.width() - 1) / 2, 0, -handle.width() / 2, 0)
+                                       : track.adjusted(0, (handle.height() - 1) / 2, 0, -handle.height() / 2);
         const bool enabled = option->state & State_Enabled;
         if (horizontal) {
             const qreal y = groove.center().y() - 1.5;
-            rounded(p, QRectF(groove.left() + 2, y, groove.width() - 4, 3), c.borderStrong, {}, 1.5);
+            rounded(p, QRectF(groove.left() + 2, y, groove.width() - 4, 3), c.controlOutline, {}, 1.5);
             const qreal filled = slider->upsideDown ? groove.right() - handle.center().x() : handle.center().x() - groove.left();
             rounded(p, QRectF(slider->upsideDown ? handle.center().x() : groove.left() + 2, y, std::max<qreal>(0, filled - 2), 3), enabled ? c.accent : c.textDisabled, {}, 1.5);
         } else {
             const qreal x = groove.center().x() - 1.5;
-            rounded(p, QRectF(x, groove.top() + 2, 3, groove.height() - 4), c.borderStrong, {}, 1.5);
+            rounded(p, QRectF(x, groove.top() + 2, 3, groove.height() - 4), c.controlOutline, {}, 1.5);
         }
         p->save();
         p->setRenderHint(QPainter::Antialiasing);
@@ -1267,12 +1648,85 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
     QProxyStyle::drawComplexControl(control, option, p, widget);
 }
 
+BrowserFeedback::BrowserFeedback(QWidget* parent) : QWidget(parent) {
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(2);
+    message_ = new QLabel("Couldn't open the browser", this);
+    message_->setWordWrap(true);
+    message_->setTextFormat(Qt::PlainText);
+    VisualStyle::role(message_, "danger");
+    layout->addWidget(message_);
+    copy_ = new QPushButton(VisualStyle::icon("copy"), "Copy link", this);
+    VisualStyle::role(copy_, "textAction");
+    copy_->setProperty("graphiteFlush", true);
+    layout->addWidget(copy_, 0, Qt::AlignLeft);
+    connect(copy_, &QPushButton::clicked, this, [this] { qApp->clipboard()->setText(url_.toString(QUrl::FullyEncoded)); });
+    hide();
+}
+void BrowserFeedback::showEvent(QShowEvent* event) {
+    QWidget::showEvent(event);
+    QTimer::singleShot(0, this, [this] {
+        if (!isVisible()) return;
+        for (auto* owner = parentWidget(); owner; owner = owner->parentWidget()) if (auto* scroll = qobject_cast<QScrollArea*>(owner)) {
+            if (auto* layout = scroll->widget()->layout()) layout->activate();
+            scroll->ensureWidgetVisible(this, 24, 24);
+            break;
+        }
+    });
+}
+void BrowserFeedback::clear() { ++request_; hide(); }
+std::function<void(const QJsonObject&)> BrowserFeedback::opening(const QUrl& url) {
+    hide();
+    url_ = url;
+    const auto request = ++request_;
+    return [guard = QPointer<BrowserFeedback>(this), request](const QJsonObject& result) {
+        if (!guard || request != guard->request_) return;
+        guard->setVisible(!result["opened"].toBool());
+    };
+}
+
+void paintImageShadow(QPainter& painter, const QRectF& image) {
+    if (Theme::scheme() != Theme::Scheme::Dark || image.isEmpty()) return;
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setBrush(Qt::NoBrush);
+    // A bounded 12 px falloff: no full-frame image or effect allocation.
+    for (int spread = 12; spread >= 0; --spread) {
+        const int alpha = int(std::lround(89 * std::exp(-spread * spread / 32.0)));
+        painter.setPen(QPen(QColor(0, 0, 0, alpha), 1));
+        painter.drawRoundedRect(image.translated(0, 2).adjusted(-spread, -spread, spread, spread), spread, spread);
+    }
+    painter.restore();
+}
+void paintImageEdge(QPainter& painter, const QRectF& image) {
+    if (image.isEmpty()) return;
+    painter.save();
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(Theme::scheme() == Theme::Scheme::Dark ? QColor(255, 255, 255, 26) : QColor(0, 0, 0, 31), 1));
+    painter.drawRect(image.adjusted(0.5, 0.5, -0.5, -0.5));
+    painter.restore();
+}
+
 // ---------------------------------------------------------------- Widgets
 Surface::Surface(const char* role, Qt::Edges hairlines, QWidget* parent) : QWidget(parent), role_(role), edges_(hairlines) {}
 void Surface::paintEvent(QPaintEvent*) {
     QPainter p(this);
     const auto& c = t();
-    p.fillRect(rect(), role_ == "surface" ? c.surface : role_ == "raised" ? c.surfaceRaised : c.bg);
+    if (property("preferenceCard").toBool()) {
+        rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), Theme::preferenceCard(), Theme::preferenceBorder(), Metric::containerRadius);
+        int previous = -1;
+        if (auto* form = findChild<QFormLayout*>()) for (int row = 0; row < form->rowCount(); ++row) {
+            auto* item = form->itemAt(row, QFormLayout::FieldRole);
+            if (!item || !item->widget() || !form->isRowVisible(row)) continue;
+            const auto* field = item->widget();
+            const int y = field->mapTo(this, QPoint()).y();
+            if (previous >= 0) { p.setPen(Theme::preferenceSeparator()); p.drawLine(space(Space::l), y, width() - space(Space::l), y); }
+            previous = y;
+        }
+        return;
+    }
+    p.fillRect(rect(), role_ == "preferencePage" ? Theme::preferencePage() : role_ == "well" ? c.well : role_ == "surface" ? c.surface : role_ == "raised" ? c.surfaceRaised : c.bg);
     p.setPen(c.border);
     if (edges_ & Qt::TopEdge) p.drawLine(0, 0, width(), 0);
     if (edges_ & Qt::BottomEdge) p.drawLine(0, height() - 1, width(), height() - 1);
@@ -1288,7 +1742,7 @@ QFrame* rule(QWidget* parent, Qt::Orientation orientation) {
 }
 QLabel* label(const QString& text, const char* role, QWidget* parent) {
     auto* widget = new QLabel(text, parent);
-    if (QByteArray(role) != "body") VisualStyle::role(widget, role);
+    VisualStyle::role(widget, role);
     return widget;
 }
 QToolButton* toolButton(const QString& text, const QString& glyph, const char* role, QWidget* parent) {
@@ -1304,24 +1758,346 @@ QToolButton* toolButton(const QString& text, const QString& glyph, const char* r
     return button;
 }
 
-ElidedLabel::ElidedLabel(QWidget* parent) : QLabel(parent) { setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred); }
-QSize ElidedLabel::minimumSizeHint() const { return {std::min(QLabel::minimumSizeHint().width(), fontMetrics().averageCharWidth() * 8), QLabel::minimumSizeHint().height()}; }
+namespace {
+// The full text of a revealable label: a raised panel with a hairline, the
+// text selectable by mouse and keyboard, closed by Escape or a click outside.
+class FullTextPopup final : public Surface {
+public:
+    FullTextPopup(const QString& text, const QString& title, QWidget* owner) : Surface("raised", Qt::TopEdge | Qt::BottomEdge | Qt::LeftEdge | Qt::RightEdge, owner) {
+        setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
+        setAttribute(Qt::WA_DeleteOnClose);
+        setObjectName("elidedLabelFullText");
+        auto* layout = new QVBoxLayout(this);
+        layout->setContentsMargins(space(Space::s), space(Space::s), space(Space::s), space(Space::s));
+        layout->setSpacing(space(Space::s));
+        if (!title.isEmpty()) layout->addWidget(Graphite::label(title, "meta", this));
+        label_ = new QLabel(text, this);
+        label_->setObjectName("elidedLabelFullTextValue");
+        label_->setTextFormat(Qt::PlainText);
+        label_->setWordWrap(true);
+        readOnlyText(label_);
+        label_->setAccessibleName(text);
+        auto* scroll = new QScrollArea(this);
+        scroll->setFrameShape(QFrame::NoFrame);
+        scroll->setWidgetResizable(true);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        scroll->setWidget(label_);
+        if (!title.isEmpty()) { scroll->setProperty("graphiteFieldFrame", true); scroll->setFrameShape(QFrame::StyledPanel); label_->setMargin(8); }
+        layout->addWidget(scroll);
+        label_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+        setAccessibleName(text);
+    }
+    QLabel* label() const { return label_; }
+protected:
+    void keyPressEvent(QKeyEvent* event) override {
+        if (event->key() == Qt::Key_Escape || event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) { close(); return; }
+        Surface::keyPressEvent(event);
+    }
+private:
+    QLabel* label_;
+};
+}
+namespace {
+class AccessibleElidedLabel final : public QAccessibleWidget {
+public:
+    explicit AccessibleElidedLabel(ElidedLabel* label) : QAccessibleWidget(label) {}
+    QAccessible::Role role() const override { return label()->revealable() ? QAccessible::Button : QAccessible::StaticText; }
+    QStringList actionNames() const override {
+        auto actions = QAccessibleWidget::actionNames();
+        if (label()->revealable() && !actions.contains(QAccessibleActionInterface::pressAction())) actions.prepend(QAccessibleActionInterface::pressAction());
+        return actions;
+    }
+    QString localizedActionName(const QString& action) const override {
+        return action == QAccessibleActionInterface::pressAction() && label()->revealable() ? label()->revealActionName() : QAccessibleWidget::localizedActionName(action);
+    }
+    void doAction(const QString& action) override {
+        if (label()->revealable() && action == QAccessibleActionInterface::pressAction()) label()->reveal();
+        else QAccessibleWidget::doAction(action);
+    }
+    QStringList keyBindingsForAction(const QString& action) const override {
+        return action == QAccessibleActionInterface::pressAction() && label()->revealable() ? QStringList{"Enter", "Space"} : QAccessibleWidget::keyBindingsForAction(action);
+    }
+private:
+    ElidedLabel* label() const { return static_cast<ElidedLabel*>(widget()); }
+};
+}
+ElidedLabel::ElidedLabel(QWidget* parent) : QLabel(parent) {
+    static const bool factory = [] {
+        QAccessible::installFactory([](const QString&, QObject* object) -> QAccessibleInterface* {
+            if (auto* label = qobject_cast<ElidedLabel*>(object)) return new AccessibleElidedLabel(label);
+            return nullptr;
+        });
+        return true;
+    }();
+    Q_UNUSED(factory);
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+}
+QSize ElidedLabel::sizeHint() const { return QLabel::sizeHint() + QSize(revealable_ ? scaled(14) + 18 : 0, 0); }
+QSize ElidedLabel::minimumSizeHint() const { return {std::min(QLabel::minimumSizeHint().width(), fontMetrics().averageCharWidth() * 8) + (revealable_ ? scaled(14) + 18 : 0), QLabel::minimumSizeHint().height()}; }
+QRect ElidedLabel::textRect() const {
+    if (!revealable_) return contentsRect();
+    auto box = contentsRect().adjusted(6, 0, -scaled(14) - 12, 0);
+    // Keep the summary and its disclosure together even in a stretching footer.
+    if (!wordWrap()) box.setWidth(std::min(box.width(), int(std::ceil(QFontMetricsF(font()).horizontalAdvance(text())))));
+    return box;
+}
+bool ElidedLabel::event(QEvent* event) {
+    if (revealable_ && (event->type() == QEvent::HoverEnter || event->type() == QEvent::HoverLeave)) update();
+    return QLabel::event(event);
+}
 void ElidedLabel::setText(const QString& text) {
     QLabel::setText(text);
     setToolTip(text);
     setAccessibleName(text);
 }
+void ElidedLabel::setRevealable(bool on) {
+    revealable_ = on;
+    // Headings stay out of the tab order; an actionable summary is a stop.
+    setFocusPolicy(on ? Qt::StrongFocus : Qt::NoFocus);
+    setCursor(on ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    setAttribute(Qt::WA_Hover, on);
+    setAccessibleDescription(on ? QStringLiteral("Output details. Press Enter to show the full text.") : QString());
+    setMinimumHeight(on ? 32 : 0);
+    updateGeometry();
+    update();
+}
+int ElidedLabel::heightForWidth(int width) const { return QLabel::heightForWidth(width - (revealable_ ? scaled(14) + 18 : 0)); }
+bool ElidedLabel::elided() const { return QFontMetricsF(font()).horizontalAdvance(text()) > textRect().width(); }
+void ElidedLabel::reveal() {
+    if ((!revealable_ && revealTitle_.isEmpty()) || text().isEmpty()) return;
+    if (popup_) popup_->close();
+    auto* popup = new FullTextPopup(revealText_.isEmpty() ? text() : revealText_, revealTitle_, this);
+    popup_ = popup;
+    const auto screen = (window() && window()->screen() ? window()->screen() : QGuiApplication::primaryScreen())->availableGeometry();
+    const auto margins = popup->layout()->contentsMargins();
+    const int padding = margins.left() + margins.right() + 2 * popup->label()->margin() + space(Space::s);
+    const int natural = int(std::ceil(QFontMetricsF(popup->label()->font()).size(Qt::TextExpandTabs, popup->label()->text()).width()));
+    const int maximum = std::max(1, std::min(scaled(560), screen.width() - 16));
+    const int width = std::clamp(natural + padding, std::min(scaled(360), maximum), maximum);
+    popup->setFixedWidth(width);
+    const int maxHeight = std::min(screen.height() - 16, window() ? window()->height() - 16 : screen.height() - 16);
+    popup->label()->setMinimumHeight(popup->label()->heightForWidth(std::max(1, width - padding)));
+    popup->resize(width, std::min(maxHeight, popup->label()->minimumHeight() + (revealTitle_.isEmpty() ? 20 : scaled(48))));
+    // Above a label in the lower half of its window (the status band), below
+    // one higher up; the other side when the screen has no room.
+    const QPoint above = mapToGlobal(QPoint(0, -popup->height() - 4)), below = mapToGlobal(QPoint(0, height() + 4));
+    const bool lower = window() && mapTo(window(), QPoint(0, 0)).y() > window()->height() / 2;
+    QPoint at = lower ? above : below;
+    if (lower && at.y() < screen.top()) at = below;
+    else if (!lower && at.y() + popup->height() > screen.bottom()) at = above;
+    at.setX(std::clamp(at.x(), screen.left() + 8, std::max(screen.left() + 8, screen.right() - width - 8)));
+    at.setY(std::max(at.y(), screen.top() + 8));
+    popup->move(at);
+    popup->show();
+    popup->label()->setFocus(Qt::PopupFocusReason);
+}
+void ElidedLabel::keyPressEvent(QKeyEvent* event) {
+    if (revealable_ && (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter || event->key() == Qt::Key_Space)) { reveal(); return; }
+    QLabel::keyPressEvent(event);
+}
+void ElidedLabel::mouseReleaseEvent(QMouseEvent* event) {
+    if (revealable_ && event->button() == Qt::LeftButton && rect().contains(event->position().toPoint())) { reveal(); return; }
+    QLabel::mouseReleaseEvent(event);
+}
+void ElidedLabel::focusInEvent(QFocusEvent* event) { QLabel::focusInEvent(event); update(); }
+void ElidedLabel::focusOutEvent(QFocusEvent* event) { QLabel::focusOutEvent(event); update(); }
 void ElidedLabel::paintEvent(QPaintEvent*) {
     QPainter p(this);
-    paintText(p, contentsRect(), text(), palette().color(isEnabled() ? QPalette::Normal : QPalette::Disabled, foregroundRole()), font(),
-              alignment(), Qt::ElideMiddle);
+    p.setRenderHint(QPainter::Antialiasing);
+    if (revealable_) {
+        if (isEnabled() && underMouse()) rounded(&p, QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), t().surfaceRaised, {}, 4);
+        const auto box = textRect();
+        if (wordWrap()) {
+            paintChevron(p, QPointF(box.right() + 7 + scaled(14) / 2.0, box.center().y()), scaled(8), Qt::DownArrow, isEnabled() ? t().textSecondary : t().textDisabled);
+        } else VisualStyle::icon("info").paint(&p, QRect(box.right() + 7, box.center().y() - scaled(14) / 2, scaled(14), scaled(14)), Qt::AlignCenter, isEnabled() ? QIcon::Normal : QIcon::Disabled);
+    }
+    // A revealable summary's keyboard focus: the amber ring around its text.
+    if (revealable_ && keyboardFocus(this)) {
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setPen(QPen(t().accent, 1));
+        p.setBrush(Qt::NoBrush);
+        p.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
+    }
+    const QColor ink = property("headerInactive").toBool() ? t().textMuted : palette().color(isEnabled() ? QPalette::Normal : QPalette::Disabled, foregroundRole());
+    if (wordWrap()) {
+        p.setFont(font());
+        p.setPen(ink);
+        p.drawText(textRect(), alignment() | Qt::TextWordWrap, text());
+    } else paintText(p, textRect(), text(), ink, font(), alignment(), elideMode_);
+}
+
+namespace {
+class WarningLabel final : public QLabel {
+public:
+    WarningLabel(const QString& text, QWidget* parent) : QLabel(text, parent) { setWordWrap(true); }
+protected:
+    bool event(QEvent* event) override {
+        if (event->type() == QEvent::DynamicPropertyChange || event->type() == QEvent::FontChange) {
+            const int gap = property("graphiteWarningGap").isValid() ? property("graphiteWarningGap").toInt() : 8;
+            setContentsMargins(role(this) == "warning" ? scaled(Metric::icon) + gap : 0, 0, 0, 0);
+        }
+        return QLabel::event(event);
+    }
+    void paintEvent(QPaintEvent* event) override {
+        QLabel::paintEvent(event);
+        if (role(this) != "warning") return;
+        QPainter p(this);
+        const int side = scaled(Metric::icon);
+        const auto glyph = IconArt::symbol("alert", t().warning, std::max(1, (side + 23) / 24), t().warning);
+        p.drawImage(QRect(0, std::max(0, (fontMetrics().height() - side) / 2), side, side), glyph);
+    }
+};
+}
+void readOnlyText(QLabel* label) {
+    label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    label->setFocusPolicy(Qt::StrongFocus);
+    // Keyboard selection gives QLabel a caret, which reads as an editable field.
+    for (auto* control : label->findChildren<QObject*>(QString(), Qt::FindDirectChildrenOnly))
+        if (QByteArray(control->metaObject()->className()) == "QWidgetTextControl") control->setProperty("cursorWidth", 0);
+}
+QLabel* warningLabel(const QString& text, QWidget* parent) {
+    auto* label = new WarningLabel(text, parent);
+    VisualStyle::role(label, "warning");
+    return label;
+}
+Banner::Banner(Tone tone, const QString& text, QWidget* parent) : QWidget(parent), tone_(tone) {
+    setAttribute(Qt::WA_OpaquePaintEvent);
+    setAccessibleName(text);
+    row_ = new QGridLayout(this);
+    row_->setContentsMargins(space(Space::m) + scaled(Metric::icon) + space(Space::s), space(Space::s), space(Space::m), space(Space::s));
+    row_->setHorizontalSpacing(space(Space::s));
+    row_->setVerticalSpacing(space(Space::xs));
+    row_->setColumnStretch(0, 1);
+    text_ = label(text, "body", this);
+    text_->setTextFormat(Qt::PlainText);
+    text_->setWordWrap(true);
+    text_->setMinimumWidth(0);
+    content_ = text_;
+    row_->addWidget(content_, 0, 0, Qt::AlignVCenter);
+    action_ = new QPushButton(this);
+    VisualStyle::role(action_, "textAction");
+    row_->addWidget(action_, 0, 1, Qt::AlignTop);
+    action_->hide();
+    dismiss_ = toolButton({}, {}, "quiet", this);
+    dismiss_->setIcon(chromeIcon("close"));
+    dismiss_->setFixedSize(scaled(Metric::iconTarget), scaled(Metric::iconTarget));
+    row_->addWidget(dismiss_, 0, 2, Qt::AlignTop);
+    setDismissible(false);
+    styleContent();
+    connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
+}
+void Banner::setTone(Tone tone) { tone_ = tone; styleContent(); placeAction(); update(); }
+void Banner::setText(const QString& text) { text_->setText(text); setAccessibleName(text); placeAction(); }
+void Banner::setIcon(const QIcon& icon) { icon_ = icon; update(); }
+void Banner::setAction(const QString& text) {
+    action_->setText(text);
+    action_->setVisible(!text.isEmpty());
+    styleContent();
+    placeAction();
+}
+void Banner::setDismissible(bool visible, const QString& name) {
+    dismiss_->setAccessibleName(name);
+    dismiss_->setToolTip(name);
+    dismiss_->setVisible(visible);
+    placeAction();
+}
+void Banner::setContentWidget(QWidget* widget) {
+    if (!widget || widget == content_) return;
+    row_->removeWidget(content_);
+    content_->hide();
+    content_ = widget;
+    row_->addWidget(content_, 0, 0);
+    content_->show();
+    styleContent();
+    placeAction();
+}
+void Banner::styleContent() {
+    // Error content belongs to the component, including callers with custom rows.
+    for (auto* label : findChildren<QLabel*>()) {
+        label->setProperty("graphiteBannerMessage", tone_ == Tone::Error);
+        label->style()->unpolish(label);
+        label->style()->polish(label);
+    }
+    for (auto* button : findChildren<QAbstractButton*>()) {
+        if (!qobject_cast<QPushButton*>(button) && !qobject_cast<QToolButton*>(button)) continue;
+        button->setProperty("graphiteStrong", true);
+        VisualStyle::role(button, button == dismiss_ || button->text().isEmpty() ? "quiet" : "textAction");
+    }
+}
+void Banner::announce(const QString& message) {
+    if (!message.isEmpty()) setAccessibleName(message);
+    QAccessibleEvent event(this, QAccessible::Alert);
+    QAccessible::updateAccessibility(&event);
+}
+void Banner::placeAction() {
+    const auto margins = row_->contentsMargins();
+    const int available = width() - margins.left() - margins.right() - (dismiss_->isHidden() ? 0 : dismiss_->sizeHint().width() + 8);
+    const bool stacked = !action_->isHidden() && content_->sizeHint().width() + action_->sizeHint().width() + 8 > available;
+    if (stacked == stacked_) return;
+    stacked_ = stacked;
+    row_->removeWidget(action_);
+    row_->addWidget(action_, stacked ? 1 : 0, stacked ? 0 : 1, Qt::AlignLeft | Qt::AlignTop);
+    row_->invalidate();
+}
+void Banner::resizeEvent(QResizeEvent* event) { QWidget::resizeEvent(event); placeAction(); }
+void Banner::paintEvent(QPaintEvent*) {
+    const auto& colors = t();
+    const QColor tone = tone_ == Tone::Warning ? colors.warning : tone_ == Tone::Error ? colors.danger : tone_ == Tone::Success ? colors.success : colors.textMuted;
+    QPainter painter(this);
+    painter.fillRect(rect(), colors.bg);
+    const bool fillOnly = fillOnly_ || tone_ == Tone::Error;
+    const QColor fill = fillOnly ? (tone_ == Tone::Error ? colors.dangerSurface : tone_ == Tone::Warning ? colors.warningSurface : tone_ == Tone::Success ? colors.successSurface : colors.surface) : colors.surface;
+    rounded(&painter, rect(), fill, fillOnly ? QColor() : colors.borderStrong, Metric::containerRadius);
+    const int side = scaled(Metric::icon);
+    QRect firstRow = content_->geometry();
+    int lineHeight = text_->fontMetrics().lineSpacing();
+    if (content_ != text_ && content_->layout() && content_->layout()->count()) {
+        firstRow = content_->layout()->itemAt(0)->geometry().translated(content_->pos());
+        lineHeight = firstRow.height();
+    }
+    const QRect glyph(space(Space::m), firstRow.y() + (lineHeight - side) / 2, side, side);
+    if (!icon_.isNull()) icon_.paint(&painter, glyph);
+    else if (tone_ == Tone::Success) paintChromeGlyph(painter, glyph, "check", tone);
+    else if (tone_ == Tone::Info) {
+        const int helpSide = scaled(14);
+        painter.drawImage(QRect(glyph.center() - QPoint(helpSide / 2, helpSide / 2), QSize(helpSide, helpSide)), IconArt::symbol("info", colors.textMuted, std::max(1, (helpSide + 23) / 24)));
+    } else painter.drawImage(glyph, IconArt::symbol("alert", tone, std::max(1, (side + 23) / 24), tone));
+}
+QString blurWarningText() {
+    return QStringLiteral("Blur may be reversible.");
+}
+QWidget* blurWarning(const std::function<void()>& useRedact, QWidget* parent) {
+    auto* warning = new QWidget(parent);
+    auto* layout = new QVBoxLayout(warning);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(space(Space::s));
+    auto* text = warningLabel(blurWarningText(), warning);
+    text->setObjectName("blurWarningText");
+    layout->addWidget(text);
+    // It switches tools; unlike the review's Use Redact it converts nothing.
+    auto* action = toolButton("Choose Redact tool", {}, "textAction", warning);
+    action->setObjectName("useRedact");
+    action->setToolTip(QStringLiteral("Existing blur marks are unchanged."));
+    action->setAccessibleDescription(QStringLiteral("Blur may be reversible. Choose Redact tool for private information. Existing blur marks are unchanged."));
+    action->setProperty("graphiteFlush", true);
+    auto* actions = new QHBoxLayout;
+    actions->setContentsMargins(text->contentsMargins().left(), 0, 0, 0);
+    actions->addWidget(action, 0, Qt::AlignLeft);
+    actions->addStretch();
+    layout->addLayout(actions);
+    QObject::connect(action, &QToolButton::clicked, warning, useRedact);
+    return warning;
+}
+void paintSelection(QPainter& painter, const QRectF& rect, bool keyboardFocused, qreal radius) {
+    rounded(&painter, rect, t().selected, keyboardFocused ? t().accent : QColor(), radius);
 }
 
 NavigationDelegate::NavigationDelegate(QObject* parent, int rowHeight) : QStyledItemDelegate(parent), rowHeight_(rowHeight) {}
 QSize NavigationDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
     const bool two = !index.data(SecondLineRole).toString().isEmpty();
     const QFontMetrics metrics(Graphite::font());
-    const int natural = two ? metrics.height() + QFontMetrics(Graphite::font(Type::metadata)).height() + 22 : metrics.height() + 16;
+    const bool wrap = index.data(WrapLabelRole).toBool() && QFontMetrics(Graphite::labelFont(true)).horizontalAdvance(index.data().toString()) > option.rect.width() - scaled(Metric::icon) - 38;
+    const int natural = wrap ? 2 * metrics.height() + 16 : two ? metrics.height() + QFontMetrics(Graphite::font(Type::metadata)).height() + 22 : metrics.height() + 16;
     return {option.rect.width(), std::max(scaled(two && rowHeight_ < Metric::destinationRow ? Metric::destinationRow : rowHeight_), natural)};
 }
 void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, const QModelIndex& index) const {
@@ -1330,70 +2106,146 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
     const bool enabled = option.state & QStyle::State_Enabled;
     const QRectF box = QRectF(option.rect).adjusted(2, 2, -2, -2);
     if (selected || hover) rounded(p, box, selected ? c.selected : mix(c.surface, c.surfaceRaised, 0.7), {}, 6);
+    if (selected) p->fillRect(QRectF(box.left(), box.top() + 8, 2, box.height() - 16), c.accent);
     const auto* view = qobject_cast<const QAbstractItemView*>(option.widget);
     if (selected && view && keyboardFocus(view)) rounded(p, box, {}, c.accent, 6);
     const auto icon = index.data(Qt::DecorationRole).value<QIcon>();
     qreal x = box.left() + 12;
     if (!icon.isNull()) {
-        const auto pixmap = icon.pixmap(QSize(Metric::icon, Metric::icon), dpr(option.widget), enabled ? QIcon::Normal : QIcon::Disabled);
-        p->drawPixmap(QPointF(x, box.center().y() - Metric::icon / 2.0), pixmap);
-        x += Metric::icon + 10;
+        const auto pixmap = icon.pixmap(QSize(scaled(Metric::icon), scaled(Metric::icon)), dpr(option.widget), !enabled ? QIcon::Disabled : selected ? QIcon::Selected : QIcon::Normal);
+        p->drawPixmap(QPointF(x, box.center().y() - scaled(Metric::icon) / 2.0), pixmap);
+        x += scaled(Metric::icon) + 10;
     }
     const auto first = index.data(Qt::DisplayRole).toString(), second = index.data(SecondLineRole).toString();
     const QColor ink = !enabled ? c.textDisabled : selected ? c.text : c.textSecondary;
     const QRectF text(x, box.top(), box.right() - 10 - x, box.height());
-    if (second.isEmpty()) paintText(*p, text, first, ink, Graphite::font(Type::body, selected));
+    if (second.isEmpty() && index.data(WrapLabelRole).toBool()) {
+        const auto labelFont = (selected ? Graphite::labelFont(true) : Graphite::font(Type::body));
+        const QFontMetrics metrics(labelFont);
+        if (metrics.horizontalAdvance(first) <= text.width()) paintText(*p, text, first, ink, labelFont);
+        else {
+            int split = first.lastIndexOf(' ');
+            for (int i = first.indexOf(' '); i >= 0; i = first.indexOf(' ', i + 1)) {
+                if (metrics.horizontalAdvance(first.left(i)) > text.width()) break;
+                split = i;
+            }
+            const qreal top = text.center().y() - metrics.height();
+            paintText(*p, QRectF(text.left(), top, text.width(), metrics.height()), first.left(split), ink, labelFont, Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
+            paintText(*p, QRectF(text.left(), top + metrics.height(), text.width(), metrics.height()), first.mid(split + 1), ink, labelFont, Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
+        }
+    }
+    else if (second.isEmpty()) paintText(*p, text, first, ink, (selected ? Graphite::labelFont(true) : Graphite::font(Type::body)));
     else {
         const qreal h = box.height();
-        paintText(*p, QRectF(text.left(), box.top() + h * 0.18, text.width(), h * 0.36), first, ink, Graphite::font(Type::body, selected));
+        paintText(*p, QRectF(text.left(), box.top() + h * 0.18, text.width(), h * 0.36), first, ink, (selected ? Graphite::labelFont(true) : Graphite::font(Type::body)));
         paintText(*p, QRectF(text.left(), box.top() + h * 0.52, text.width(), h * 0.32), second, enabled ? c.textMuted : c.textDisabled, Graphite::font(Type::metadata));
     }
 }
 
-bool confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, bool destructive) {
-    QMessageBox box(QMessageBox::Question, title, text, QMessageBox::Yes | QMessageBox::Cancel, parent);
-    box.setObjectName(QStringLiteral("confirmAction"));
-    box.setTextFormat(Qt::PlainText);
-    box.setIcon(QMessageBox::NoIcon);
-    auto* yes = box.button(QMessageBox::Yes);
+namespace {
+class Confirmation final : public QMessageBox {
+public:
+    using QMessageBox::QMessageBox;
+protected:
+    void showEvent(QShowEvent* event) override {
+        QMessageBox::showEvent(event);
+        auto* grid = qobject_cast<QGridLayout*>(layout());
+        auto* title = findChild<QLabel*>("qt_msgbox_label");
+        auto* body = findChild<QLabel*>("qt_msgbox_informativelabel");
+        auto* buttons = findChild<QDialogButtonBox*>();
+        if (!grid || !title || !buttons) return;
+        while (auto* item = grid->takeAt(0)) delete item;
+        for (int row = 0; row < grid->rowCount(); ++row) { grid->setRowMinimumHeight(row, 0); grid->setRowStretch(row, 0); }
+        grid->setSpacing(0);
+        grid->setContentsMargins(space(Space::xl), space(Space::l) + space(Space::xs), space(Space::xl), space(Space::l));
+        for (int column = 0; column < grid->columnCount(); ++column) { grid->setColumnMinimumWidth(column, 0); grid->setColumnStretch(column, 0); }
+        title->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+        grid->addWidget(title, 0, 0);
+        if (body) {
+            body->setContentsMargins(0, 0, 0, 0);
+            body->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+            grid->setRowMinimumHeight(1, space(Space::m));
+            grid->addWidget(body, 2, 0);
+        }
+        grid->setRowMinimumHeight(3, space(Space::l));
+        grid->addWidget(buttons, 4, 0);
+        const auto margins = grid->contentsMargins();
+        const int available = screen()->availableGeometry().width() - 2 * space(Space::xl) - margins.left() - margins.right();
+        title->ensurePolished();
+        const int naturalTitle = title->fontMetrics().size(Qt::TextExpandTabs, title->text()).width();
+        const int natural = std::max(naturalTitle,
+            body ? body->fontMetrics().size(Qt::TextExpandTabs, body->text()).width() : 0);
+        const int contentWidth = std::max(1, std::min({scaled(420), available, natural}));
+        int titleWidth = contentWidth;
+        if (naturalTitle > contentWidth) {
+            const auto linesAt = [&](int width) {
+                QTextLayout text(title->text(), title->font());
+                QTextOption option; option.setWrapMode(QTextOption::WordWrap); text.setTextOption(option);
+                text.beginLayout();
+                int lines = 0;
+                for (auto line = text.createLine(); line.isValid(); line = text.createLine()) { line.setLineWidth(width); ++lines; }
+                text.endLayout();
+                return lines;
+            };
+            const int lines = linesAt(contentWidth);
+            int low = 1, high = contentWidth;
+            // Balance the title without changing its text or the shared column.
+            while (low < high) {
+                const int middle = (low + high) / 2;
+                if (linesAt(middle) <= lines) high = middle;
+                else low = middle + 1;
+            }
+            titleWidth = low;
+        }
+        title->setContentsMargins(0, 0, contentWidth - titleWidth, 0);
+        title->setFixedWidth(contentWidth);
+        if (body) body->setFixedWidth(contentWidth);
+        grid->activate();
+        adjustSize();
+    }
+};
+}
+QMessageBox* confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, const QString& safe, bool destructive) {
+    const int split = text.indexOf('\n');
+    auto* box = new Confirmation(QMessageBox::NoIcon, title, split < 0 ? text : text.left(split), QMessageBox::Yes | QMessageBox::Cancel, parent);
+    box->setObjectName(QStringLiteral("confirmAction"));
+    box->setProperty("confirmationText", text);
+    // QMessageBox constructed its button box before it had our component name.
+    if (auto* buttons = box->findChild<QDialogButtonBox*>()) {
+        QEvent change(QEvent::StyleChange);
+        QCoreApplication::sendEvent(buttons, &change);
+    }
+    box->setTextFormat(Qt::PlainText);
+    if (split >= 0) box->setInformativeText(text.mid(split + 1).trimmed());
+    if (auto* question = box->findChild<QLabel*>("qt_msgbox_label")) VisualStyle::role(question, "strong");
+    if (auto* consequence = box->findChild<QLabel*>("qt_msgbox_informativelabel")) VisualStyle::role(consequence, "secondary");
+    if (auto* grid = qobject_cast<QGridLayout*>(box->layout())) grid->setVerticalSpacing(4);
+    auto* yes = box->button(QMessageBox::Yes);
+    yes->setObjectName("confirmDiscard");
     yes->setText(action);
     yes->setAccessibleName(action);
     yes->setProperty("visualRole", destructive ? "danger" : "primary");
-    box.setDefaultButton(QMessageBox::Cancel);
-    box.setEscapeButton(QMessageBox::Cancel);
-    box.button(QMessageBox::Cancel)->setFocus();
-    return box.exec() == QMessageBox::Yes;
+    auto* keep = box->button(QMessageBox::Cancel);
+    keep->setText(safe);
+    keep->setAccessibleName(safe);
+    box->setDefaultButton(QMessageBox::Cancel);
+    box->setEscapeButton(QMessageBox::Cancel);
+    box->setWindowModality(Qt::WindowModal);
+    keep->setFocus();
+    return box;
 }
 
-void alignForms(QWidget* page) {
+bool confirm(QWidget* parent, const QString& title, const QString& text, const QString& action, bool destructive) {
+    std::unique_ptr<QMessageBox> box(confirm(parent, title, text, action, QStringLiteral("Cancel"), destructive));
+    return box->exec() == QMessageBox::Yes;
+}
+
+void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
     const auto forms = page->findChildren<QFormLayout*>();
-    int gutter = 0;
-    for (auto* form : forms)
-        for (int row = 0; row < form->rowCount(); ++row)
-            if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) gutter = std::max(gutter, item->widget()->sizeHint().width());
-    gutter = std::min(gutter, scaled(240));
-    // Too narrow for the gutter and a usable field (large text, a small
-    // window): every form on the page puts its labels above instead.
-    class FormMode final : public QObject {
-    public:
-        FormMode(QWidget* page, QList<QFormLayout*> forms, int needed) : QObject(page), forms_(std::move(forms)), needed_(needed) { page->installEventFilter(this); apply(page->width()); }
-    protected:
-        bool eventFilter(QObject* watched, QEvent* event) override {
-            if (event->type() == QEvent::Resize) apply(static_cast<QWidget*>(watched)->width());
-            return false;
-        }
-    private:
-        void apply(int width) {
-            const auto policy = width > 0 && width < needed_ ? QFormLayout::WrapAllRows : QFormLayout::DontWrapRows;
-            for (auto* form : forms_) if (form && form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);
-        }
-        QList<QFormLayout*> forms_;
-        int needed_;
-    };
-    new FormMode(page, forms, gutter + scaled(360) + 120);
     for (auto* form : forms) {
+        form->setLabelAlignment(Qt::AlignLeft | Qt::AlignBaseline);
         for (int row = 0; row < form->rowCount(); ++row) {
-            if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) item->widget()->setMinimumWidth(gutter);
+            if (auto* label = form->itemAt(row, QFormLayout::LabelRole); label && label->widget()) label->widget()->setFixedHeight(scaled(Metric::control));
             auto* field = form->itemAt(row, QFormLayout::FieldRole);
             if (!field) continue;
             QList<QWidget*> controls;
@@ -1402,6 +2254,7 @@ void alignForms(QWidget* page) {
                 const bool unitted = qobject_cast<QLineEdit*>(control) && control->parentWidget() && !qobject_cast<QComboBox*>(control->parentWidget())
                     && std::any_of(control->parentWidget()->children().cbegin(), control->parentWidget()->children().cend(), [](QObject* o) { return o->property("visualRole").toString() == "unitSuffix"; });
                 if (!qobject_cast<QComboBox*>(control) && !qobject_cast<QAbstractSpinBox*>(control) && !unitted) continue;
+                if (control->property("graphiteFullWidth").toBool()) continue;
                 // A long choice is a preferred width, not the form's minimum.
                 // Keep its natural size when there is room and let the style
                 // elide the closed value when an enlarged-text form is narrow.
@@ -1421,13 +2274,124 @@ void alignForms(QWidget* page) {
                     QList<QLayout*> layouts = parent->findChildren<QLayout*>(Qt::FindDirectChildrenOnly);
                     if (parent->layout()) layouts.prepend(parent->layout());
                     for (int i = 0; i < layouts.size(); ++i) {
-                        if (layouts[i]->setAlignment(control, Qt::AlignLeft | Qt::AlignVCenter)) break;
+                        if (layouts[i]->setAlignment(control, Qt::AlignLeft | Qt::AlignBaseline)) break;
                         for (int j = 0; j < layouts[i]->count(); ++j) if (auto* nested = layouts[i]->itemAt(j)->layout()) layouts << nested;
                     }
                 }
             }
         }
     }
+    // Share within one form family, including its other provider forms.
+    // Measure fields after their control sizing, and watch reflow and visibility.
+    class FormMode final : public QObject {
+    public:
+        FormMode(QWidget* page, const QList<QFormLayout*>& forms, const QList<QFormLayout*>& sharedForms)
+            : QObject(page), page_(page), forms_(forms), sharedForms_(sharedForms.isEmpty() ? forms : sharedForms), shared_(!sharedForms.isEmpty()) {
+            page->installEventFilter(this);
+            if (page->parentWidget()) page->parentWidget()->installEventFilter(this);
+            for (auto* form : forms_) {
+                form->parentWidget()->installEventFilter(this);
+                for (auto* child : form->parentWidget()->findChildren<QWidget*>()) child->installEventFilter(this);
+                form->setRowWrapPolicy(QFormLayout::WrapAllRows);
+            }
+            schedule();
+        }
+    protected:
+        bool eventFilter(QObject*, QEvent* event) override {
+            if (event->type() == QEvent::Resize || event->type() == QEvent::LayoutRequest || event->type() == QEvent::Show || event->type() == QEvent::Hide || event->type() == QEvent::FontChange)
+                schedule();
+            return false;
+        }
+    private:
+        void schedule() {
+            if (pending_) return;
+            pending_ = true;
+            QTimer::singleShot(0, this, [this] { apply(); pending_ = false; });
+        }
+        bool measured(QFormLayout* form, int row) const {
+            QWidget* body = form->parentWidget();
+            for (auto* widget = body; widget; widget = widget->parentWidget())
+                if (auto* scroll = qobject_cast<QScrollArea*>(widget)) { body = scroll->widget(); break; }
+            return form->isRowVisible(row) && form->parentWidget()->isVisibleTo(body);
+        }
+        void apply() {
+            QString measurement;
+            for (auto* form : sharedForms_)
+                for (int row = 0; row < form->rowCount(); ++row)
+                    if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) {
+                        auto* label = item->widget();
+                        measurement += QString::number(measured(form, row)) + label->font().key();
+                        for (auto* text : label->findChildren<QLabel*>()) measurement += text->text();
+                        for (auto* text : label->findChildren<QAbstractButton*>()) measurement += text->text();
+                        if (auto* text = qobject_cast<QLabel*>(label)) measurement += text->text();
+                    }
+            if (measurement != measurement_) {
+                measurement_ = measurement;
+                int gutter = 0;
+                for (auto* form : sharedForms_)
+                    for (int row = 0; row < form->rowCount(); ++row)
+                        if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) {
+                            auto* label = item->widget();
+                            label->setFixedHeight(scaled(Metric::control));
+                            label->setMinimumWidth(0);
+                            int intrinsic = 0, parts = 0;
+                            if (auto* text = qobject_cast<QLabel*>(label)) intrinsic = text->fontMetrics().horizontalAdvance(QString(text->text()).replace("&&", "&"));
+                            else {
+                                for (auto* text : label->findChildren<QLabel*>(Qt::FindDirectChildrenOnly)) { intrinsic += text->fontMetrics().horizontalAdvance(QString(text->text()).replace("&&", "&")); ++parts; }
+                                for (auto* button : label->findChildren<QAbstractButton*>(Qt::FindDirectChildrenOnly)) { intrinsic += button->minimumWidth() == button->maximumWidth() ? button->width() : button->sizeHint().width(); ++parts; }
+                                if (parts > 1 && label->layout()) intrinsic += (parts - 1) * label->layout()->spacing();
+                            }
+                            gutter = std::max(gutter, intrinsic);
+                        }
+                // The 16 px gap is included in the unscaled cap.
+                gutter_ = std::max(0, std::min(gutter + 16, Metric::labelGutter) - 16);
+                for (auto* form : sharedForms_)
+                    for (int row = 0; row < form->rowCount(); ++row)
+                        if (auto* item = form->itemAt(row, QFormLayout::LabelRole); item && item->widget()) {
+                            auto* label = item->widget();
+                            label->setFixedWidth(gutter_);
+                            for (auto* text : label->findChildren<QLabel*>()) text->setWordWrap(true);
+                            if (auto* text = qobject_cast<QLabel*>(label)) text->setWordWrap(true);
+                            label->setFixedHeight(std::max(scaled(Metric::control), label->heightForWidth(gutter_)));
+                        }
+            }
+            bool stack = false;
+            const int pageWidth = page_->parentWidget() ? std::min(page_->width(), page_->parentWidget()->width()) : page_->width();
+            for (auto* form : forms_) {
+                if (!form->parentWidget()->isVisibleTo(page_)) continue;
+                int fieldWidth = 0;
+                bool labelled = false;
+                for (int row = 0; row < form->rowCount(); ++row) {
+                    if (!form->isRowVisible(row)) continue;
+                    auto* label = form->itemAt(row, QFormLayout::LabelRole);
+                    auto* field = form->itemAt(row, QFormLayout::FieldRole);
+                    if (!label || !field) continue;
+                    labelled = true;
+                    fieldWidth = std::max(fieldWidth, field->minimumSize().width());
+                }
+                if (!labelled) continue;
+                int margins = 0;
+                for (auto* owner = static_cast<QObject*>(form); owner && !qobject_cast<QWidget*>(owner); owner = owner->parent())
+                    if (auto* layout = qobject_cast<QLayout*>(owner)) margins += layout->contentsMargins().left() + layout->contentsMargins().right();
+                for (auto* widget = form->parentWidget()->parentWidget(); widget; widget = widget->parentWidget()) {
+                    if (auto* layout = widget->layout()) margins += layout->contentsMargins().left() + layout->contentsMargins().right();
+                    if (widget == page_) break;
+                }
+                const int available = pageWidth - margins;
+                // A family shares a useful minimum control width.
+                stack |= available < gutter_ + std::max(0, form->horizontalSpacing()) + (shared_ ? std::max(240, std::min(320, fieldWidth)) : fieldWidth);
+            }
+            const auto policy = stack ? QFormLayout::WrapAllRows : QFormLayout::DontWrapRows;
+            for (auto* form : forms_) if (form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);
+        }
+        QWidget* page_;
+        QList<QFormLayout*> forms_, sharedForms_;
+        bool shared_;
+        int gutter_ = 0;
+        QString measurement_;
+        bool pending_ = false;
+    };
+    new FormMode(page, forms, sharedForms);
 }
 namespace {
 class ColumnSwitch final : public QObject {
@@ -1448,6 +2412,34 @@ private:
 };
 }
 void responsiveColumns(QBoxLayout* layout, QWidget* watched, int threshold) { new ColumnSwitch(layout, watched, threshold); }
+
+void focusTooltips(QAbstractButton* button) {
+    if (button->property("graphiteFocusTooltip").toBool()) return;
+    button->setProperty("graphiteFocusTooltip", true);
+    class FocusTooltip final : public QObject {
+    public:
+        explicit FocusTooltip(QAbstractButton* button) : QObject(button), button_(button) { button->installEventFilter(this); }
+    protected:
+        bool eventFilter(QObject*, QEvent* event) override {
+            if (event->type() == QEvent::FocusIn) {
+                const auto reason = static_cast<QFocusEvent*>(event)->reason();
+                const auto* tool = qobject_cast<QToolButton*>(button_);
+                const bool iconOnly = tool ? tool->toolButtonStyle() == Qt::ToolButtonIconOnly : button_->text().isEmpty();
+                if (iconOnly && (reason == Qt::TabFocusReason || reason == Qt::BacktabFocusReason || reason == Qt::ShortcutFocusReason)) {
+                    const auto text = button_->toolTip().isEmpty() ? button_->accessibleName() : button_->toolTip();
+                    if (!text.isEmpty()) { shown_ = true; QToolTip::showText(button_->mapToGlobal(QPoint(button_->width() / 2, button_->height())), text, button_); }
+                }
+            } else if (shown_ && (event->type() == QEvent::FocusOut || event->type() == QEvent::Hide || event->type() == QEvent::MouseButtonPress)) {
+                QToolTip::hideText(); shown_ = false;
+            }
+            return false;
+        }
+    private:
+        QAbstractButton* button_;
+        bool shown_ = false;
+    };
+    new FocusTooltip(button);
+}
 
 void showTextStartWhenUnfocused(QLineEdit* edit) {
     class TextStart final : public QObject {
@@ -1482,6 +2474,8 @@ void transparentView(QAbstractScrollArea* view) {
 
 void disclosure(QToolButton* button) {
     button->setCheckable(true);
+    button->setProperty("graphiteDisclosure", true);
+    button->setProperty("graphiteFlush", true);
     button->setProperty("visualRole", "quiet");
     button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     button->setIconSize(QSize(14, 14));
@@ -1504,7 +2498,7 @@ Segmented::Segmented(QWidget* parent) : QTabBar(parent) {
     setAttribute(Qt::WA_Hover);
 }
 QSize Segmented::tabSizeHint(int index) const {
-    const QFontMetrics metrics(Graphite::font(Type::body, true));
+    const QFontMetrics metrics(Graphite::labelFont(true));
     return {std::max(110, metrics.horizontalAdvance(tabText(index)) + 44), std::max(scaled(40), metrics.height() + 20)};
 }
 QSize Segmented::sizeHint() const {
@@ -1516,19 +2510,33 @@ QSize Segmented::minimumSizeHint() const { return sizeHint(); }
 void Segmented::paintEvent(QPaintEvent*) {
     QPainter p(this);
     const auto& c = t();
-    QRectF track;
-    for (int i = 0; i < count(); ++i) track |= QRectF(tabRect(i));
-    rounded(&p, track.adjusted(0.5, 2.5, -0.5, -2.5), mix(c.bg, c.surface, 0.6), c.border, Metric::trackRadius);
     const int hovered = underMouse() ? tabAt(mapFromGlobal(QCursor::pos())) : -1;
     for (int i = 0; i < count(); ++i) {
-        const QRectF r = QRectF(tabRect(i)).adjusted(3, 5, -3, -5);
+        const QRectF r = QRectF(tabRect(i)).adjusted(Metric::segmentInset, Metric::segmentInset + 2, -Metric::segmentInset, -Metric::segmentInset - 2);
         const bool on = i == currentIndex();
-        if (on) rounded(&p, r, c.selected, mix(c.borderStrong, c.selected, 0.6), Metric::segmentRadius);
+        if (on) p.fillRect(QRectF(r.center().x() - 12, r.bottom() - 3, 24, 2), c.accent);
         if (on && keyboardFocus(this)) rounded(&p, r, {}, c.accent, Metric::segmentRadius, 1.5);
         const QColor ink = !isTabEnabled(i) ? c.textDisabled : on ? c.text : i == hovered ? c.textSecondary : c.textMuted;
-        paintText(p, r, tabText(i), ink, Graphite::font(Type::body, on), Qt::AlignCenter);
+        paintText(p, r, tabText(i), ink, Graphite::labelFont(on), Qt::AlignCenter);
     }
 }
+
+SegmentTrack::SegmentTrack(QWidget* parent) : QWidget(parent) {
+    auto* row = new QHBoxLayout(this);
+    row->setContentsMargins(Metric::segmentInset / 2, Metric::segmentInset / 2, Metric::segmentInset / 2, Metric::segmentInset / 2);
+    row->setSpacing(2);
+}
+void SegmentTrack::addButton(QToolButton* button) {
+    button->setParent(this);
+    button->setCheckable(true);
+    button->setAutoExclusive(true);
+    button->setProperty("visualRole", "quiet");
+    // Split the visual inset between layout and paint; the target remains
+    // 32 px inside a 36 px track, with 4 px around the selected fill.
+    button->setFixedHeight(std::max(Metric::iconTarget, scaled(Metric::control) - Metric::segmentInset));
+    static_cast<QHBoxLayout*>(layout())->addWidget(button);
+}
+void SegmentTrack::paintEvent(QPaintEvent*) {}
 
 // ---------------------------------------------------------------- Window chrome
 namespace {
@@ -1597,9 +2605,10 @@ QToolButton* chromeButton(const QString& glyph, const QString& name, QWidget* pa
     auto* button = new QToolButton(parent);
     button->setIcon(chromeIcon(glyph));
     button->setIconSize(QSize(20, 20));
-    button->setFixedSize(Metric::iconTarget, Metric::iconTarget);
+    button->setFixedSize(scaled(Metric::iconTarget), scaled(Metric::iconTarget));
     button->setProperty("visualRole", "quiet");
     button->setProperty("noChevron", true);
+    button->setProperty("graphiteChrome", true);
     button->setAccessibleName(name);
     button->setToolTip(name);
     button->setFocusPolicy(Qt::TabFocus);
@@ -1607,17 +2616,49 @@ QToolButton* chromeButton(const QString& glyph, const QString& name, QWidget* pa
 }
 }
 
+namespace {
+int& customFrameOverride() { static int forced = 0; return forced; }
+}
+void WindowHeader::chromeAfter(QWidget* last) {
+    for (auto* button : chromeOrder_) { QWidget::setTabOrder(last, button); last = button; }
+    if (menu_) QWidget::setTabOrder(last, menu_);
+}
+void WindowHeader::setCustomFrameOverride(int forced) { customFrameOverride() = forced; }
 bool WindowHeader::customFrame() {
+    if (customFrameOverride()) return customFrameOverride() > 0;
     if (qEnvironmentVariable("PUTGD_SYSTEM_DECORATIONS") == QLatin1String("1")) return false;
     const auto platform = QGuiApplication::platformName();
     return platform == QLatin1String("xcb") || platform.startsWith(QLatin1String("wayland"));
 }
 
-WindowHeader::WindowHeader(QWidget* window, QMenu* menu) : QWidget(window), window_(window) {
+void WindowHeader::setButtonLayout(const WindowButtonLayout& layout) {
+    if (!leftButtons_) return;
+    for (auto* group : {leftButtons_, rightButtons_})
+        while (auto* item = group->layout()->takeAt(0)) delete item;
+    for (auto* button : {minimize_, maximize_, close_}) button->hide();
+    chromeOrder_.clear();
+    auto place = [this](QWidget* group, const QStringList& names) {
+        for (const auto& name : names) {
+            auto* button = name == "minimize" ? minimize_ : name == "maximize" ? maximize_ : name == "close" ? close_ : nullptr;
+            if (!button || chromeOrder_.contains(button)) continue;
+            group->layout()->addWidget(button);
+            button->show();
+            chromeOrder_.append(button);
+        }
+        group->setVisible(group->layout()->count() > 0);
+    };
+    place(leftButtons_, layout.left);
+    place(rightButtons_, layout.right);
+    leftButtons_->setContentsMargins(0, 0, layout.left.isEmpty() ? 0 : std::max(0, space(Space::l) - leading_->layout()->spacing()), 0);
+    for (int i = 1; i < chromeOrder_.size(); ++i) QWidget::setTabOrder(chromeOrder_[i - 1], chromeOrder_[i]);
+    if (row_->indexOf(trailing_) >= 0) syncWindowState();
+}
+
+WindowHeader::WindowHeader(QWidget* window, QMenu* menu, Density density) : QWidget(window), density_(density), window_(window) {
     setObjectName(QStringLiteral("windowHeader"));
-    setFixedHeight(scaled(Metric::header));
+    setProperty("headerDensity", density == Density::Compact ? QStringLiteral("compact") : QStringLiteral("standard"));
     row_ = new QHBoxLayout(this);
-    row_->setContentsMargins(12, 0, 12, 0);
+    row_->setContentsMargins(density == Density::Compact ? 10 : 12, 0, density == Density::Compact ? 4 : 12, 0);
     row_->setSpacing(6);
     leading_ = new QWidget(this);
     auto* leading = new QHBoxLayout(leading_);
@@ -1630,9 +2671,11 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu) : QWidget(window), wind
     if (menu) menu_->setMenu(menu);
     menu_->setVisible(menu);
     leading->addWidget(menu_);
-    name_ = new QLabel(QStringLiteral("put.gd"), leading_);
+    name_ = new ElidedLabel(leading_);
+    name_->setText(QStringLiteral("put.gd"));
     name_->setObjectName(QStringLiteral("brandName"));
-    VisualStyle::role(name_, "sectionTitle");
+    // The compact band sets the brand at the title's size, so one text line fits it.
+    VisualStyle::role(name_, density == Density::Compact ? "strong" : "sectionTitle");
     leading->addWidget(name_);
     leading->addStretch();
     row_->addWidget(leading_);
@@ -1644,14 +2687,24 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu) : QWidget(window), wind
     trailingRow_->setSpacing(4);
     trailingRow_->addStretch();
     if (customFrame()) {
+        leftButtons_ = new QWidget(leading_);
+        rightButtons_ = new QWidget(trailing_);
+        for (auto* group : {leftButtons_, rightButtons_}) {
+            auto* buttons = new QHBoxLayout(group);
+            buttons->setContentsMargins(0, 0, 0, 0);
+            buttons->setSpacing(4);
+        }
+        leading->insertWidget(0, leftButtons_);
+        trailingRow_->addWidget(rightButtons_);
         minimize_ = chromeButton(QStringLiteral("minimize"), QStringLiteral("Minimize"), trailing_);
         maximize_ = chromeButton(QStringLiteral("maximize"), QStringLiteral("Maximize"), trailing_);
         close_ = chromeButton(QStringLiteral("close"), QStringLiteral("Close window"), trailing_);
         minimize_->setObjectName(QStringLiteral("windowMinimize"));
         maximize_->setObjectName(QStringLiteral("windowMaximize"));
         close_->setObjectName(QStringLiteral("windowClose"));
-        trailingRow_->addSpacing(8);
-        for (auto* button : {minimize_, maximize_, close_}) trailingRow_->addWidget(button);
+        auto& buttons = WindowButtons::instance();
+        setButtonLayout(buttons.layout());
+        connect(&buttons, &WindowButtons::changed, this, [this, &buttons] { setButtonLayout(buttons.layout()); });
         connect(minimize_, &QToolButton::clicked, this, [this] { if (window_) window_->showMinimized(); });
         connect(maximize_, &QToolButton::clicked, this, [this] {
             if (!window_) return;
@@ -1662,14 +2715,63 @@ WindowHeader::WindowHeader(QWidget* window, QMenu* menu) : QWidget(window), wind
     }
     row_->addWidget(trailing_);
     window->installEventFilter(this);
+    connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, [this] {
+        auto palette = name_->palette();
+        palette.setColor(QPalette::WindowText, property("headerInactive").toBool() ? t().textMuted : t().text);
+        name_->setPalette(palette);
+    });
+    // Media chrome draws its glyphs at the body icon size.
+    if (density == Density::Compact)
+        for (auto* button : findChildren<QToolButton*>()) if (button->property("graphiteChrome").toBool()) { button->setProperty("graphiteIconBase", QSize(16, 16)); button->setIconSize(QSize(scaled(16), scaled(16))); }
+    fitHeight();
+    // Without put.gd's frame the desktop's title bar names the window; a compact
+    // header would only repeat it and take the content's height.
+    if (density == Density::Compact && !customFrame()) hide();
     syncWindowState();
+}
+int WindowHeader::compactHeight() const {
+    // Compact media chrome follows what it holds: the title's glyphs with 3 px
+    // around them, window glyphs with 4 px, and its centre controls; the frame
+    // below, not a scaled pointer target, takes the remaining height.
+    const QFontMetrics title(Graphite::font(Type::body, true));
+    int glyph = 0;
+    for (const auto* button : findChildren<QToolButton*>()) if (button->property("graphiteChrome").toBool() && !button->isHidden()) glyph = std::max(glyph, button->iconSize().height() + 2 * 4);
+    const int centre = centre_ ? centre_->sizeHint().height() : 0;
+    return std::max({int(Metric::iconTarget), title.tightBoundingRect(QStringLiteral("Hg")).height() + 2 * 3, glyph, centre});
+}
+void WindowHeader::fitHeight() {
+    const int height = density_ == Density::Compact ? compactHeight() : scaled(Metric::header);
+    setFixedHeight(height);
+    // Compact window buttons keep their scaled width and share the header's height.
+    if (density_ == Density::Compact)
+        for (auto* button : findChildren<QToolButton*>()) if (button->property("graphiteChrome").toBool()) button->setFixedHeight(height);
+}
+void WindowHeader::resizeEvent(QResizeEvent* event) { QWidget::resizeEvent(event); syncWindowState(); }
+void WindowHeader::changeEvent(QEvent* event) {
+    // A later application font (enlarged text) changes the line height.
+    if (event->type() == QEvent::FontChange || event->type() == QEvent::StyleChange) fitHeight();
+    QWidget::changeEvent(event);
 }
 void WindowHeader::setCentre(QWidget* centre) {
     if (centre_) { row_->removeWidget(centre_); centre_->hide(); }
     centre_ = centre;
     centre->setParent(this);
+    centre->installEventFilter(this);
     row_->insertWidget(2, centre, 0, Qt::AlignCenter);
     centre->show();
+    fitHeight();
+    syncWindowState();
+}
+void WindowHeader::setLeading(QWidget* content) {
+    if (leadingContent_ != content) {
+        if (leadingContent_) { leading_->layout()->removeWidget(leadingContent_); leadingContent_->hide(); }
+        leadingContent_ = content;
+        if (content) {
+            static_cast<QHBoxLayout*>(leading_->layout())->insertWidget(1, content, 1);
+            content->show();
+        } else name_->show();
+    }
+    syncWindowState();
 }
 void WindowHeader::setDocument(const QString& name, const QString& state) {
     if (!docName_) {
@@ -1687,7 +2789,8 @@ void WindowHeader::setDocument(const QString& name, const QString& state) {
         docState_->setObjectName(QStringLiteral("documentState"));
         docState_->setAlignment(Qt::AlignCenter);
         docState_->setTextFormat(Qt::PlainText);
-        VisualStyle::role(docState_, "micro");
+        // Metadata (12 px), not micro: the state is read, not decoration.
+        VisualStyle::role(docState_, "meta");
         lines->addWidget(docName_);
         lines->addWidget(docState_);
         setCentre(block);
@@ -1695,7 +2798,9 @@ void WindowHeader::setDocument(const QString& name, const QString& state) {
     docName_->setText(name);
     docName_->setToolTip(name);
     docState_->setText(state);
-    docState_->setVisible(!state.isEmpty());
+    // One line in the compact band: its state belongs to the window's footer.
+    docState_->setVisible(!state.isEmpty() && density_ != Density::Compact);
+    syncWindowState();
 }
 void WindowHeader::addTrailing(QWidget* widget) {
     trailingRow_->insertWidget(1, widget);
@@ -1708,15 +2813,54 @@ void WindowHeader::syncWindowState() {
         maximize_->setAccessibleName(maximized ? QStringLiteral("Restore") : QStringLiteral("Maximize"));
         maximize_->setToolTip(maximize_->accessibleName());
     }
-    // The centre stays centred: both sides take the wider side's width.
+    if (leadingContent_) {
+        name_->hide();
+        leading_->setMinimumWidth(0);
+        trailing_->setMinimumWidth(0);
+        row_->setStretch(0, 1);
+        row_->setStretch(1, 0);
+        row_->setStretch(row_->count() - 2, 0);
+        setProperty("balancedTitle", false);
+        // Review opts into equal side slots around its playback controls.
+        if (!property("balancedLeading").toBool()) return;
+    }
+    row_->setStretch(0, 0);
+    if (density_ == Density::Compact && !leadingContent_) {
+        // The transport gets the space first; a partial window name adds noise.
+        const auto margins = row_->contentsMargins();
+        const int nameWidth = int(std::ceil(QFontMetricsF(name_->font()).horizontalAdvance(name_->text())));
+        const int menuWidth = menu_->isHidden() ? 0 : menu_->sizeHint().width() + leading_->layout()->spacing();
+        const int titleWidth = docName_ ? int(std::ceil(QFontMetricsF(docName_->font()).horizontalAdvance(docName_->text()))) : 0;
+        const int centreWidth = docName_ ? titleWidth : centre_ ? centre_->sizeHint().width() : 0;
+        const int available = width() - margins.left() - margins.right() - trailing_->sizeHint().width() - menuWidth - (leftButtons_ && !leftButtons_->isHidden() ? leftButtons_->sizeHint().width() + leading_->layout()->spacing() : 0) - 4 * row_->spacing();
+        name_->setVisible(available >= nameWidth + centreWidth);
+        if (docName_) docName_->setVisible(available >= titleWidth + (name_->isHidden() ? 0 : nameWidth));
+    }
     leading_->setMinimumWidth(0);
     trailing_->setMinimumWidth(0);
     const int side = std::max(leading_->sizeHint().width(), trailing_->sizeHint().width());
-    leading_->setMinimumWidth(side);
-    trailing_->setMinimumWidth(side);
+    const auto margins = row_->contentsMargins();
+    const int titleWidth = docName_ ? docName_->fontMetrics().horizontalAdvance(docName_->text()) : centre_ ? centre_->sizeHint().width() : 0;
+    const bool balanced = width() >= margins.left() + margins.right() + 2 * side + titleWidth + 4 * row_->spacing();
+    if (balanced) { leading_->setMinimumWidth(side); trailing_->setMinimumWidth(side); }
+    if (docName_) { docName_->setAlignment(balanced ? Qt::AlignCenter : Qt::AlignLeft | Qt::AlignVCenter); docState_->setAlignment(docName_->alignment()); }
+    row_->setStretch(1, balanced ? 1 : 0);
+    // Before setCentre() there are only four items; the trailing widget
+    // must never inherit the stretch intended for the spacer before it.
+    row_->setStretch(row_->count() - 2, 1);
+    setProperty("balancedTitle", balanced);
 }
 bool WindowHeader::eventFilter(QObject* watched, QEvent* event) {
-    if (watched == window_ && (event->type() == QEvent::WindowStateChange || event->type() == QEvent::Show)) syncWindowState();
+    // Compact chrome follows its centre controls as they settle.
+    if (density_ == Density::Compact && ((watched == centre_ && event->type() == QEvent::LayoutRequest) || (watched == window_ && event->type() == QEvent::Show)) && height() != compactHeight()) fitHeight();
+    if (watched == window_ && (event->type() == QEvent::WindowStateChange || event->type() == QEvent::Show || event->type() == QEvent::Resize)) syncWindowState();
+    if (watched == window_ && (event->type() == QEvent::WindowActivate || event->type() == QEvent::WindowDeactivate)) {
+        const bool inactive = event->type() == QEvent::WindowDeactivate;
+        setProperty("headerInactive", inactive);
+        for (auto* child : findChildren<QWidget*>()) { child->setProperty("headerInactive", inactive); child->update(); }
+        auto palette = name_->palette(); palette.setColor(QPalette::WindowText, inactive ? t().textMuted : t().text); name_->setPalette(palette);
+        update();
+    }
     if (watched == window_ && event->type() == QEvent::WindowTitleChange && !docName_) name_->setToolTip(window_->windowTitle());
     return QWidget::eventFilter(watched, event);
 }
@@ -1737,20 +2881,36 @@ void WindowHeader::mouseDoubleClickEvent(QMouseEvent* event) {
     }
     QWidget::mouseDoubleClickEvent(event);
 }
+void WindowHeader::contextMenuEvent(QContextMenuEvent* event) {
+    if (!customFrame() || !window_) { QWidget::contextMenuEvent(event); return; }
+    auto* menu = new QMenu(this);
+    menu->setObjectName("windowContextMenu");
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+    menu->addAction("Minimize", window_, &QWidget::showMinimized);
+    menu->addAction(window_->isMaximized() ? "Restore" : "Maximize", this, [this] {
+        if (window_->isMaximized()) window_->showNormal();
+        else window_->showMaximized();
+    });
+    menu->addSeparator();
+    menu->addAction("Close", window_, &QWidget::close);
+    menu->popup(event->globalPos());
+    event->accept();
+}
 void WindowHeader::paintEvent(QPaintEvent*) {
+    if (property("graphiteChromePlane").toBool()) return;
     QPainter p(this);
     p.fillRect(rect(), t().bg);
     p.setPen(t().border);
     p.drawLine(0, height() - 1, width(), height() - 1);
 }
-WindowHeader* WindowHeader::install(QWidget* window, QBoxLayout* rootLayout, QMenu* menu) {
+WindowHeader* WindowHeader::install(QWidget* window, QBoxLayout* rootLayout, QMenu* menu, Density density) {
     if (customFrame()) {
         window->setWindowFlag(Qt::FramelessWindowHint, true);
         new WindowEdges(window);
     }
-    auto* header = new WindowHeader(window, menu);
-    if (auto* main = qobject_cast<QMainWindow*>(window)) main->setMenuWidget(header);
-    else if (rootLayout) rootLayout->insertWidget(0, header);
+    auto* header = new WindowHeader(window, menu, density);
+    if (rootLayout) rootLayout->insertWidget(0, header);
+    else if (auto* main = qobject_cast<QMainWindow*>(window)) main->setMenuWidget(header);
     return header;
 }
 }

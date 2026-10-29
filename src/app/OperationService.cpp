@@ -5,6 +5,7 @@
 #include "core/RunMarker.h"
 #include "core/ReleaseLink.h"
 #include <QElapsedTimer>
+#include <QImageReader>
 #ifdef __GLIBC__
 #include <malloc.h>
 #endif
@@ -47,14 +48,24 @@ ActionSettings routeOf(const Operation& op) {
  if(op.action==OperationService::diagnosticsAction)return {"upload",op.destination.profileId,{},"share"};
  return op.settings.actions.value(op.action);
 }
+QJsonObject uploadReviewOptions(const Operation& op,const ProviderRegistry& providers) {
+ const auto route=op.settings.actions.value(op.action);
+ if(route.destination!="upload"||op.destination.profileId.isEmpty())return {{"destination","local"},{"sharingMode","local"},{"summary",op.settings.archive.keepUploads?"Save to the local archive":"No output enabled · Save a copy is available"}};
+ const auto profile=op.settings.profiles.value(op.destination.profileId);
+ auto mode=route.publicationMode;
+ if(mode=="default")if(auto provider=providers.find(op.destination.providerId))mode=provider->defaultPublicationMode(op.destination);
+ const auto label=profile["label"].toString(op.destination.profileId);
+ const auto summary=mode=="private"?QStringLiteral("Private upload to %1").arg(label):QStringLiteral("Upload to %1 · Shared link").arg(label);
+ return {{"destination",label},{"sharingMode",mode},{"summary",summary}};
+}
 // On-demand previews (#190) answer within historyPreviewReplyMs: at most this
 // long queued, then a local copy check and a decode of up to 10 s each.
 constexpr qsizetype maximumQueuedPreviews=3;
 constexpr qint64 maximumPreviewWaitMs=20000;
 constexpr int maximumPreviewVerifyMs=10000;
 static_assert(maximumPreviewWaitMs+maximumPreviewVerifyMs+10000<historyPreviewReplyMs);
-// A local copy stands in for a cleaned-up artifact only while it is the same
-// file: a regular file with the artifact's size and SHA-256.
+// Regeneration uses a retained artifact or local copy only while its size
+// and SHA-256 still match the stored file.
 Error sameFile(const Artifact& copy,const std::shared_ptr<std::atomic_bool>& cancelled,int deadlineMs) {
  const Error missing{"preview_source_missing","Neither the stored file nor a local copy is available",{}};
  const QFileInfo info(copy.path);if(!info.isFile()||info.isSymLink()||info.size()!=copy.bytes||copy.sha256.isEmpty())return missing;
@@ -62,11 +73,11 @@ Error sameFile(const Artifact& copy,const std::shared_ptr<std::atomic_bool>& can
  QCryptographicHash hash(QCryptographicHash::Sha256);QByteArray chunk(1<<20,Qt::Uninitialized);QElapsedTimer clock;clock.start();
  for(;;) {
   if(cancelled->load())return {"cancelled","Preview cancelled",{}};
-  if(clock.elapsed()>deadlineMs)return {"preview_timeout","The local copy took too long to check",{}};
+  if(clock.elapsed()>deadlineMs)return {"preview_timeout","The retained file took too long to check",{}};
   const auto read=file.read(chunk.data(),chunk.size());if(read<0)return missing;if(read==0)break;
   hash.addData(QByteArrayView(chunk.constData(),read));
  }
- if(QString::fromLatin1(hash.result().toHex())!=copy.sha256)return {"preview_source_changed","The local copy is no longer the stored file",{}};
+ if(QString::fromLatin1(hash.result().toHex())!=copy.sha256)return {"preview_source_changed","The retained file no longer matches the stored file",{}};
  return {};
 }
 }
@@ -83,6 +94,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);
  connect(&settings_,&SettingsService::accepted,this,[this]{uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);pump();});
  RecordingService::Host host;
+ host.reviewOptions=[this](const Operation& op){return uploadReviewOptions(op,providers_);};
  host.settings=[this]{return settings_.snapshot();};
  host.accept=[this](Operation& op){return acceptRecording(op);};
  host.persist=[this](const Operation& op,std::function<void(Error)> done){const auto path=databasePath();background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[done](Error e,QJsonObject){done(e);});};
@@ -230,7 +242,7 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  if(interactive&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another interactive acquisition is active",{}},{});return;}
  const auto route=snapshot.actions.value(action);
  const bool upload=route.destination=="upload"&&!route.profileId.isEmpty();
- if(!upload&&!snapshot.archive.keepUploads){reply({"output_required","No output is enabled. Choose a destination in Settings → Capture or enable Keep a local copy in Settings → General.",{}},{});return;}
+ if(!upload&&!snapshot.archive.keepUploads&&!(action=="edit"&&(source=="clipboard"||source=="file"))){reply({"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}},{});return;}
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();}
@@ -267,7 +279,11 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
   // A file is read and decoded by the editor stage; no native source is involved.
   acquisition=[sourcePath](const ResourceLimits&,std::function<void(PayloadResult)> deliver){ClipboardPayload payload;payload.kind="files";payload.files={sourcePath};deliver({payload,{}});};
   released();
- }else acquisition=source_.prepareAcquisition(source,snapshot.limits,std::move(earlyTerminal),std::move(released));
+ }else {
+  const auto output=uploadReviewOptions(op,providers_);
+  source_.setCaptureOutcome(action=="edit"?QStringLiteral("Opens the image editor"):upload?QStringLiteral("Uploads right away to %1 · %2").arg(output["destination"].toString(),output["sharingMode"]=="private"?QStringLiteral("Private upload"):QStringLiteral("Shared link")):QStringLiteral("Saves locally"));
+  acquisition=source_.prepareAcquisition(source,snapshot.limits,std::move(earlyTerminal),std::move(released));
+ }
  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition,earlyError](Error e,QJsonObject result) mutable {
   if(e) {abandonUploadCopies(op.id);releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();if(editingId_==op.id){editor_.reset();editingId_.clear();}reply(e,{});return;}
   observe(op.publicJson());reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);emit observationsChanged();
@@ -341,10 +357,7 @@ void OperationService::enqueue(Job job) {
  job.op.phase="queued";observe(job.op.publicJson());queue_.enqueue(std::move(job));pump();
 }
 QString OperationService::editorDestination(const Operation& op) const {
- const auto route=op.settings.actions.value(op.action);
- if(route.destination!="upload"||route.profileId.isEmpty())return "Save to the local archive";
- const auto label=op.settings.profiles.value(route.profileId)["label"].toString();
- return label.isEmpty()?QStringLiteral("Upload"):QStringLiteral("Upload to %1").arg(label.left(160));
+ return uploadReviewOptions(op,providers_)["summary"].toString();
 }
 // The acquired source stays private to the editor stage. Only the editor's
 // validated PNG becomes an artifact, preview, archive or publication input.
@@ -354,6 +367,7 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  if(!(payload.kind=="image"||(payload.kind=="files"&&payload.files.size()==1))){op.error={"edit_source_unsupported","The editor needs exactly one static PNG or JPEG image",{}};op.state="failed";finish(op);return;}
  op.state="editing";op.phase="editing";
  const auto path=databasePath(),staging=root_+"/editing",helper=editorHelper_,destination=editorDestination(op);
+ const auto route=routeOf(op);const Error submissionError=(route.destination!="upload"||route.profileId.isEmpty())&&!op.settings.archive.keepUploads?Error{"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}}:Error{};
  const auto recentColors=settings_.snapshot().editorRecentColors;const auto appearance=editorAppearance_;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
  auto image=std::make_shared<QImage>(payload.kind=="image"?std::move(payload.image):QImage());
@@ -374,11 +388,11 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
-    *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).runFile(file,maximum,destination,outputBytes,session);
+    *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withSubmissionError(submissionError).runFile(file,maximum,destination,outputBytes,session);
     if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
-   *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).run(*image,destination,outputBytes,session);
+   *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withSubmissionError(submissionError).run(*image,destination,outputBytes,session);
    return QJsonObject{};
   },[=,this](Error,QJsonObject) mutable {
    if(editingId_==op.id){editor_.reset();editingId_.clear();}
@@ -412,7 +426,7 @@ Error OperationService::acceptRecording(Operation& op) {
  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Pending operation limit reached",{}};
  const auto route=snapshot.actions.value(Settings::recordingActionName());
  const bool upload=route.destination=="upload"&&!route.profileId.isEmpty();
- if(!upload&&!snapshot.archive.keepUploads)return {"output_required","No output is enabled. Choose a destination in Settings → Capture or enable Keep a local copy in Settings → General.",{}};
+ if(!upload&&!snapshot.archive.keepUploads)return {"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}};
  op.id=uuid();op.action=Settings::recordingActionName();op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,false);
@@ -746,11 +760,12 @@ void OperationService::queuePosters(const Operation& op) {
  }
  pumpPosters();
 }
-void OperationService::makePreview(const QString& id,JsonReply reply) {
+void OperationService::makePreview(const QString& id,JsonReply reply,bool retry) {
  if(!ready_){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
  if(stopping_){reply({"cancelled","The resident is stopping",{}},{});return;}
  const auto snapshot=settings_.snapshot();
  if(snapshot.previewCacheBytes<=0){reply({"previews_disabled","Previews are turned off (retention.previewCacheBytes is 0)",{}},{});return;}
+ if(retry)previewFailures_.remove(id);
  if(const auto failed=previewFailures_.find(id);failed!=previewFailures_.end()){reply(failed.value(),{});return;}
  // Asked for again (or already queued after its operation): answer both when it is made.
  for(auto& task:posterQueue_)if(task.itemId==id&&task.onDemand){task.replies.append(std::move(reply));return;}
@@ -782,12 +797,19 @@ void OperationService::pumpPosters() {
   const auto& item=*found;const auto category=item.artifact.category;
   if(category!="videos"&&category!="images"){e={"preview_unsupported","Previews are made for images and videos only",{}};return QJsonObject{};}
   QJsonObject result{{"id",task.itemId},{"operationId",operationId}};
-  if(!item.artifact.previewPath.isEmpty()&&QFileInfo(item.artifact.previewPath).isFile()){result["state"]="ready";result["previewPath"]=item.artifact.previewPath;return result;}
+  const auto cached=item.artifact.previewPath;
+  if(!cached.isEmpty()&&(QFileInfo(cached).exists()||QFileInfo(cached).isSymLink())){
+   const QFileInfo file(cached);QImageReader reader(cached,"png");reader.setAutoDetectImageFormat(false);const auto size=reader.size();
+   if(!file.isSymLink()&&file.size()<=8*1024*1024&&size.isValid()&&qint64(size.width())*size.height()<=16000000&&!reader.read().isNull()){result["state"]="ready";result["previewPath"]=cached;return result;}
+   // Only this item's cache entry belongs to us; never remove a source or a foreign path.
+   const auto expected=QDir(root+"/previews").absoluteFilePath(task.itemId+".png");
+   if(QUuid(task.itemId).isNull()||QDir::cleanPath(file.absoluteFilePath())!=QDir::cleanPath(expected)||file.isSymLink()||QFileInfo(file.path()).isSymLink()||file.canonicalFilePath()==QFileInfo(item.artifact.path).canonicalFilePath()||file.canonicalFilePath()==QFileInfo(item.local.path).canonicalFilePath()||!QFile::remove(cached)){e={"preview_cache_invalid","The cached preview is invalid and could not be safely removed",{}};return QJsonObject{};}
+  }
   if(Operation::activeState(op.state)){e={"operation_active","The preview is made when the operation finishes",{}};return QJsonObject{};}
   // The retained artifact, or else the local copy when it is still the same file.
   Artifact source=item.artifact;QString from;
   const QFileInfo stored(source.path);
-  if(stored.isFile()&&!stored.isSymLink()&&stored.size()==source.bytes)from="artifact";
+  if(stored.isFile()&&!stored.isSymLink()&&stored.size()==source.bytes){if(auto mismatch=sameFile(source,cancelled,maximumPreviewVerifyMs)){e=mismatch;return QJsonObject{};}from="artifact";}
   else if(item.local.status=="saved"&&!item.local.path.isEmpty()) {
    source.path=item.local.path;
    if(auto mismatch=sameFile(source,cancelled,maximumPreviewVerifyMs)){e=mismatch;return QJsonObject{};}
@@ -887,7 +909,7 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
  },[this,id,reply](Error e,QJsonObject r) {
   clearObservation(id);emit changed(id);emit observationsChanged();releaseActive(id);
   bool failed=bool(e);for(const auto& value:r["items"].toArray())failed=failed||value.toObject()["local"].toObject()["status"]=="failed";
-  if(failed)emit operationError();
+  if(failed)emit operationError(id);
   reply(e,r);
  });
 }
@@ -1011,7 +1033,7 @@ QJsonObject OperationService::capabilities() const {
   {"editor",QJsonObject{{"available",editor},{"admissionPixels",double(EditorJob::admissionPixels)},{"open",!editingId_.isEmpty()},
    {"sources",QJsonArray{"region","window","desktop","clipboard","file"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
    {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight"}},
-   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","fileDialog","submit","cancel","raise"}}}},
+   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","fileDialog","view","submit","cancel","raise"}}}},
   {"recording",recording_->capabilities()}};
 }
 QJsonObject OperationService::diagnostics() const {

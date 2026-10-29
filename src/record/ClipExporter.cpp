@@ -356,7 +356,7 @@ Error driveVideo(const QString& path, Graph& graph, qint64 fromUs, qint64 untilU
         }
     };
     while (!inputDone) {
-        if (cancelled.load()) return {"cancelled", "Export cancelled", {}};
+        if (cancelled.load()) return {"cancelled", "Export canceled", {}};
         int rc = input.read(packet.get());
         if (rc == AVERROR_EOF) { avcodec_send_packet(input.video, nullptr); inputDone = true; }
         else if (rc < 0) return fail("recording_export_failed", "Reading the working clip failed", rc);
@@ -512,7 +512,7 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
         bool done = false;
         const auto untilPts = end + av_rescale_q(2000000, microseconds, audioTimeBase);
         while (!done) {
-            if (cancelled.load()) return {"cancelled", "Export cancelled", {}};
+            if (cancelled.load()) return {"cancelled", "Export canceled", {}};
             int r = input.read(packet.get());
             if (r == AVERROR_EOF) { avcodec_send_packet(input.audio, nullptr); done = true; }
             else if (r < 0) return fail("recording_export_failed", "Reading the clip audio failed", r);

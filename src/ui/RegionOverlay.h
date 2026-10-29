@@ -6,17 +6,19 @@ namespace putgd {
 class RegionOverlay final:public RegionSelector {
  Q_OBJECT
 public:
- explicit RegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr);
+ explicit RegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr,QString outcome={});
  ~RegionOverlay() override;
  void start() override;
- void cancel(Error error={"cancelled","Region selection cancelled",{}}) override;
+ void cancel(Error error={"cancelled","Region selection canceled",{}}) override;
 private:
  class Surface;
  void press(QPointF);
  void move(QPointF);
  void release(QPointF);
  void finish();
+ int keyboardScreen_=-1;
  QList<CaptureFrame> frames_;
+ QString outcome_;
  QList<Surface*> surfaces_;
  QRectF selection_;
  QPointF anchor_;

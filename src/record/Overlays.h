@@ -11,6 +11,7 @@
 
 class QCheckBox;
 class QComboBox;
+class QHBoxLayout;
 class QLabel;
 class QPushButton;
 class QTimer;
@@ -33,7 +34,7 @@ public:
     explicit SelectionOverlay(QObject* parent = nullptr);
     ~SelectionOverlay() override;
     void start();
-    void cancel(Error error = {"cancelled", "Region selection cancelled", {}});
+    void cancel(Error error = {"cancelled", "Region selection canceled", {}});
     // Completes the selection with root pixels, as a drag release would.
     void complete(const QRect& rootRect);
 signals:
@@ -46,6 +47,7 @@ private:
     void move(QPointF);
     void release(QPointF);
     void finish();
+    int keyboardScreen_ = -1;
     QList<Surface*> surfaces_;
     QRectF selection_;
     QPointF anchor_;
@@ -81,11 +83,14 @@ private:
 
 // The floating controls: state dot and retained time, target and output,
 // system-audio and format choices before Record, and Record / Pause / Resume /
-// Stop / Cancel. It is placed outside the recorded rectangle when it fits
+// Stop / Discard…. It is placed outside the recorded rectangle when it fits
 // (placeBar) and placed again whenever its size changes, so it never leaves its
 // screen. When it has to sit inside, it collapses to a handle (state dot,
 // Resume while paused, Stop) from Record on. On X11 it can be dragged; a bar
-// outside the rectangle cannot be dragged into it.
+// outside the rectangle cannot be dragged into it. On a narrow screen (or at
+// a large text size) it takes two rows: state and Start/Pause/Stop/Discard on
+// the first, target, audio and format on the second. Discard… once recording
+// has begun asks in the bar itself, with Keep recording or Keep paused first.
 class ControlBar final : public QWidget {
     Q_OBJECT
 public:
@@ -106,7 +111,16 @@ public:
     QRect recordedArea() const { return recorded_; }
     void setState(const QString& state);  // ready | recording | paused | stopping
     void setRetained(qint64 us);
+    // One row or two for this screen (Qt logical pixels); placement calls it
+    // for the recorded area's screen, construction for the primary screen.
+    void fitTo(const QRect& screen);
+    bool twoRows() const { return twoRows_; }
+    // The in-bar discard question is showing (Discard… while recording or paused).
+    bool confirming() const { return confirming_; }
     RecordingConfig config() const { return config_; }
+    bool requestedAudio() const { return audioIntent_; }
+    bool effectiveAudio() const { return config_.audio.system; }
+    QJsonObject audioState() const { return {{"requested", requestedAudio()}, {"effective", effectiveAudio()}}; }
 signals:
     void recordRequested();
     void pauseRequested();
@@ -123,6 +137,9 @@ protected:
 private:
     enum class Placed { None, Root, Layer };
     void refresh();
+    void arrange(bool twoRows);
+    void askDiscard();
+    void keepRecording();
     // Places the bar again for its current size: by the placement rules, or,
     // after a drag, kept by its right edge on the screen it was dropped on.
     void reposition();
@@ -130,17 +147,22 @@ private:
     // The largest size the full bar takes in any state; placement decides with it.
     QSize widestSize();
     RecordingConfig config_;
+    bool audioIntent_ = false;
     Options options_;
     QString state_ = "ready";
     Placed placed_ = Placed::None;
     QRect recorded_, spot_;
-    int screen_ = -1, layerScreen_ = -1;
-    bool outside_ = false, handle_ = false, dragged_ = false, dragging_ = false;
+    int screen_ = -1, layerScreen_ = -1, fitWidth_ = 0;
+    bool outside_ = false, handle_ = false, dragged_ = false, dragging_ = false, twoRows_ = false, confirming_ = false;
     QPoint dragOffset_;
-    QLabel *dot_ = nullptr, *state_label_ = nullptr, *time_ = nullptr, *target_ = nullptr;
+    QLabel *formatAudio_ = nullptr, *lockedAudio_ = nullptr, *lockedFormat_ = nullptr, *lockedFacts_ = nullptr;
+    QLabel *dot_ = nullptr, *state_label_ = nullptr, *time_ = nullptr, *target_ = nullptr, *question_ = nullptr;
     QCheckBox* audio_ = nullptr;
     QComboBox* format_ = nullptr;
-    QPushButton *record_ = nullptr, *pause_ = nullptr, *resume_ = nullptr, *stop_ = nullptr, *cancel_ = nullptr;
+    QPushButton *record_ = nullptr, *pause_ = nullptr, *resume_ = nullptr, *stop_ = nullptr, *cancel_ = nullptr, *keep_ = nullptr, *discard_ = nullptr;
+    // Target, audio and format: inline after the time, or the second row.
+    QWidget* choices_ = nullptr;
+    QHBoxLayout* top_ = nullptr;
 };
 // #198: the helper's windows in the interface's scheme. A stylesheet template
 // with %token% placeholders (and %INDICATORS% for the painted tick) becomes the

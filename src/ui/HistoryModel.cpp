@@ -4,9 +4,11 @@
 #include <QDateTime>
 #include <QFileInfo>
 #include <QImageReader>
+#include <QJsonDocument>
 #include <QPointer>
 #include <algorithm>
 #include <utility>
+#include <tuple>
 namespace putgd {
 namespace {
 QDateTime created(const QJsonObject& r){auto d=QDateTime::fromString(r["created"].toString(),Qt::ISODateWithMs);if(!d.isValid())d=QDateTime::fromString(r["created"].toString(),Qt::ISODate);return d.toLocalTime();}
@@ -33,23 +35,65 @@ bool localSaveFailed(const QJsonObject& r){
 bool active(const QJsonObject& r){return Operation::activeState(r["operation"].toObject()["state"].toString());}
 }
 QString HistoryModel::relativeTime(const QJsonObject& r){return relative(r);}
-QString HistoryModel::fileSize(qint64 bytes){if(bytes<1024)return QString("%1 B").arg(bytes);if(bytes<1024*1024)return QString("%1 KiB").arg(QString::number(double(bytes)/1024,'f',bytes<10*1024?1:0));return ByteSize::summary(bytes);}
+QString HistoryModel::fileSize(qint64 bytes){return ByteSize::fileSummary(bytes);}
 QString HistoryModel::duration(qint64 ms){if(ms<=0)return {};const qint64 s=(ms+999)/1000;return s>=3600?QString("%1:%2:%3").arg(s/3600).arg(s/60%60,2,10,QChar('0')).arg(s%60,2,10,QChar('0')):QString("%1:%2").arg(s/60).arg(s%60,2,10,QChar('0'));}
 HistoryModel::HistoryModel(UiSession& history,QObject* parent):QAbstractListModel(parent),history_(history){}
 int HistoryModel::rowCount(const QModelIndex& parent)const{return parent.isValid()?0:rows_.size();}
 QJsonObject HistoryModel::record(int row)const{return row>=0&&row<rows_.size()?rows_.at(row):QJsonObject{};}
+QJsonArray HistoryModel::activeOperations()const{QJsonArray result;for(const auto& v:operations_)if(Operation::activeState(v.toObject()["state"].toString()))result.append(v);return result;}
+int HistoryModel::operationProgress(const QJsonObject& operation){return aggregateProgress(operation).percent();}
 bool HistoryModel::linkAvailable(int row)const{return record(row)["linkAvailable"].toBool();}
+bool HistoryModel::multipleDestinations()const{
+ QSet<QString> destinations;
+ for(const auto& row:rows_){auto files=row["records"].toArray();if(files.isEmpty())files.append(row);for(const auto& value:files){const auto file=value.toObject(),destination=file["receipt"].toObject()["destination"].toObject();auto id=file["profileId"].toString();if(id.isEmpty())id=destination["profileId"].toString();if(id.isEmpty())id=row["operation"].toObject()["destination"].toObject()["profileId"].toString();id=file["uploadStatus"]=="local_only"?QString("local:"):!id.isEmpty()?"profile:"+id:"receipt:"+QString::fromUtf8(QJsonDocument(destination).toJson(QJsonDocument::Compact));destinations.insert(id);if(destinations.size()>1)return true;}}
+ return false;
+}
+QString HistoryModel::commonDestination()const{return rows_.isEmpty()||multipleDestinations()?QString{}:data(index(0),OutputRole).toString();}
 QString HistoryModel::friendlyAction(const QString& action){if(action=="region")return "Region";if(action=="window")return "Window";if(action=="desktop")return "Full desktop";if(action=="clipboard")return "Clipboard";if(action=="edit")return "Region & edit";if(action=="record")return "Recording";if(action=="images"||action=="image")return "Image";if(action=="text")return "Text";if(action=="videos"||action=="video")return "Video";return "File";}
 bool HistoryModel::storedNothing(const QJsonObject& r){return r["records"].toArray().isEmpty()&&r["operation"].toObject()["items"].toArray().isEmpty();}
 QString HistoryModel::failureLabel(const QJsonObject& r){
- if(r["uploadStatus"]=="local_only")return "Local save failed";
- if(!storedNothing(r))return "Upload failed";
+ if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
+ if(!storedNothing(r)||r["operation"].toObject().isEmpty())return "Upload failed";
  const auto action=r["operation"].toObject()["action"].toString();
  return action=="edit"?"Edit failed":action=="clipboard"?"Upload failed":"Capture failed";
 }
+bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||state=="failed"||state=="partial";}
+bool HistoryModel::retryUpload(const QJsonObject& r){return (r["uploadStatus"]=="failed"||r["operation"].toObject()["state"]=="failed"||r["operation"].toObject()["state"]=="partial")&&!active(r)&&r["uploadStatus"]!="local_only"&&r["uploadStatus"]!="uploaded"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
+// Any failed local copy can be saved again from the retained artifact,
+// including one whose upload succeeded.
+bool HistoryModel::retryLocalSave(const QJsonObject& r){return localSaveFailed(r)&&!active(r)&&!r["operationId"].toString().isEmpty();}
+bool HistoryModel::copyLocalResult(const QJsonObject& r){return r["uploadStatus"]=="local_only"&&!localSaveFailed(r)&&r["local"].toObject()["status"]=="saved"&&!active(r)&&!r["operationId"].toString().isEmpty();}
+// delete.prepare accepts confirmed uploads whose remote outcome is settled;
+// a target already gone has nothing left to delete.
+bool HistoryModel::remoteDeletable(const QJsonObject& f){return f["uploadStatus"]=="uploaded"&&!QStringList{"pending","deleting","unknown","changed","hidden_version_retained","removed","already_missing"}.contains(f["remoteStatus"].toString());}
+QString HistoryModel::remoteStateText(const QJsonObject& r){
+ // Current outcomes outrank an earlier clipboard success, including in a batch.
+ auto files=r["records"].toArray();files.prepend(r);
+ for(const auto& [key,state,label]:QList<std::tuple<QString,QString,QString>>{
+  {"remoteStatus","failed","Deletion failed"},{"remoteStatus","unknown","Remote outcome needs inspection"},{"remoteStatus","changed","Remote file changed"},
+  {"remoteStatus","deleting","Deleting from destination"},{"remoteStatus","pending","Waiting for deletion"},
+  {"remoteStatus","removed","Deleted from destination"},{"remoteStatus","already_missing","Deleted from destination"},
+  {"shareStatus","failed","Sharing failed"},{"shareStatus","unknown","Sharing outcome needs inspection"},{"shareStatus","changed","Share link changed"},
+  {"shareStatus","pending","Creating share link"},{"shareStatus","revoked","Link revoked"},
+  {"remoteStatus","hidden_version_retained","Hidden; original version remains"},{"remoteStatus","version_retained","Original version retained"},
+  {"remoteStatus","unsupported_safe_removal","Safe removal unavailable"},{"remoteStatus","superseded","Replaced by a newer upload"}})
+  for(const auto& file:files)if(file.toObject()[key]==state)return label;
+ return {};
+}
+bool HistoryModel::localCopyUnavailable(const QJsonObject& r){return (r["local"].toObject()["status"]=="saved"||r["uploadStatus"]=="local_only")&&!QFileInfo(r["local"].toObject()["path"].toString()).isFile();}
 QString HistoryModel::statusText(const QJsonObject& r){
  const auto op=r["operation"].toObject();const auto state=op["state"].toString();const auto phase=op["phase"].toString();
  if(active(r)){
+  if(op["action"]=="record"){
+   if(phase=="preparing")return "Setting up the recording…";
+   if(phase=="ready")return "Ready to record";
+   if(phase=="recording")return "Recording";
+   if(phase=="paused")return "Recording paused";
+   if(phase=="stopping")return "Stopping the recording…";
+   if(phase=="reviewing")return "Review recording";
+   if(phase=="exporting")return "Saving a recording copy…";
+   if(phase=="encoding")return "Encoding recording…";
+  }
   if(phase=="queued")return "Waiting to upload…";
   if(state=="editing"||phase=="editing")return "Editing · Upload or cancel in the editor window";
   if(op["action"]=="edit"&&(state=="acquiring"||phase=="acquiring"))return "Choose what to edit… · Press Esc to cancel";
@@ -60,7 +104,7 @@ QString HistoryModel::statusText(const QJsonObject& r){
    if(items.size()>1){int running=0,waiting=0,done=0,failed=0,cancelled=0;
     for(const auto& value:items){const auto item=value.toObject();const auto status=item["uploadStatus"].toString(),itemPhase=item["phase"].toString();
      if(status=="cancelled")++cancelled;else if(status=="failed"||status=="unknown")++failed;else if(QStringList{"uploaded","skipped","conflict"}.contains(status))++done;else if(itemPhase=="queued")++waiting;else if(status=="uploading")++running;}
-    QStringList parts;if(running)parts<<QString("%1 uploading").arg(running);if(waiting)parts<<QString("%1 waiting").arg(waiting);if(done)parts<<QString("%1 done").arg(done);if(failed)parts<<QString("%1 failed").arg(failed);if(cancelled)parts<<QString("%1 cancelled").arg(cancelled);
+    QStringList parts;if(running)parts<<QString("%1 uploading").arg(running);if(waiting)parts<<QString("%1 waiting").arg(waiting);if(done)parts<<QString("%1 done").arg(done);if(failed)parts<<QString("%1 failed").arg(failed);if(cancelled)parts<<QString("%1 canceled").arg(cancelled);
     if(!parts.isEmpty())files=" · "+parts.join(", ");}
    const auto progress=aggregateProgress(op);if(progress.total>0)return QString("Uploading · %1%").arg(progress.percent())+files;if(progress.known)return "Uploading · "+ByteSize::summary(progress.sent)+" transferred"+files;return "Uploading…"+files;}
   if(phase=="preflight")return "Checking the destination…";
@@ -68,18 +112,19 @@ QString HistoryModel::statusText(const QJsonObject& r){
   return "Preparing capture…";
  }
  auto message=r["error"].toObject()["message"].toString();if(message.isEmpty())message=op["error"].toObject()["message"].toString();
+ const auto remote=remoteStateText(r);if(!remote.isEmpty())return remote;
+ if(r["uploadStatus"]=="local_only"&&localCopyUnavailable(r)&&!localSaveFailed(r))return "Saved previously · Local file unavailable";
  if(r["uploadStatus"]=="local_only")return localSaveFailed(r)?QString("Local save failed"):op["copyStatus"]=="copied"?QString("Saved locally · Copied to clipboard"):op["copyStatus"]=="suppressed"?QString("Saved locally · Not copied (clipboard changed). Copy it again."):QString("Saved locally");
- if(r["uploadStatus"]=="uploaded"&&QStringList{"failed","unknown","changed"}.contains(r["shareStatus"].toString()))return message.isEmpty()?QString("Share link needs attention"):message;
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
- if(r["uploadStatus"]=="failed"||state=="failed"||state=="partial")return (message.isEmpty()?failureLabel(r):message)+(r["local"].toObject()["status"]=="saved"?" · Saved locally":QString{});
- if(state=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled")return "Cancelled";
- if(r["remoteStatus"]=="removed"||r["remoteStatus"]=="already_missing")return "Deleted from destination";
- if(r["remoteStatus"]=="changed"||r["remoteStatus"]=="unknown")return "Remote outcome needs inspection";
- if(r["shareStatus"]=="revoked")return "Share link revoked";
- if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="failed")return "Uploaded · Could not copy link. Copy it again.";
+ if(r["uploadStatus"]=="failed"||state=="failed"||state=="partial"){
+  message.replace(" Try again.","").replace(" Try again","");message=message.trimmed();while(!message.isEmpty()&&QStringLiteral(".!?…").contains(message.back()))message.chop(1);
+  auto text=failureLabel(r);if(!message.isEmpty()&&message!=text)text+=" · "+message;if(r["local"].toObject()["status"]=="saved")text+=localCopyUnavailable(r)?" · Saved previously · Local file unavailable":" · Saved locally";return text;
+ }
+ if(state=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled")return "Canceled";
+ if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="failed")return "Uploaded · Couldn't copy link. Copy it again.";
  // The automatic copy was refused because the clipboard moved on (#473); Copy link is the way back.
  if(r["uploadStatus"]=="uploaded"&&op["copyStatus"]=="suppressed")return "Uploaded · Link not copied (clipboard changed). Copy it again.";
- if(r["uploadStatus"]=="uploaded")return op["copyStatus"]=="copied"?"Uploaded · Link copied":"Uploaded";
+ if(r["uploadStatus"]=="uploaded")return op["copyStatus"]=="copied"?"Uploaded · Shared link":"Uploaded";
  if(r["local"].toObject()["status"]=="saved"||r["uploadStatus"]=="local_only")return op["copyStatus"]=="copied"?"Saved locally · Copied to clipboard":op["copyStatus"]=="suppressed"?"Saved locally · Not copied (clipboard changed). Copy it again.":"Saved locally";
  return "Capture complete";
 }
@@ -92,8 +137,8 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==Qt::ToolTipRole)return r["name"].toString()+"\n"+statusText(r);
  if(role==DayRole){const auto currentDay=day(r);return i.row()==0||currentDay!=day(record(i.row()-1))?currentDay:QString{};}
  if(role==ActiveRole)return active(r);
- if(role==FailedRole){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);return r["uploadStatus"]=="failed"||op["state"]=="failed"||op["state"]=="partial";}
- if(role==PrimaryActionRole){if(active(r))return "Cancel";if(r["uploadStatus"]=="local_only"){if(localSaveFailed(r))return "Retry local save";if(r["local"].toObject()["status"]=="saved")return "Copy result";}if(data(i,FailedRole).toBool()&&storedNothing(r))return QString{};if(data(i,FailedRole).toBool()&&!r["operationId"].toString().isEmpty())return "Retry upload";if(linkAvailable(i.row()))return "Copy link";return QString{};}
+ if(role==FailedRole)return failed(r);
+ if(role==PrimaryActionRole){if(active(r))return QString{};if(r["remoteStatus"]=="failed"&&!r["deleteOperationId"].toString().isEmpty())return "Retry deletion";if(copyLocalResult(r))return "Copy result";if(retryUpload(r))return "Retry upload";if(retryLocalSave(r))return "Retry local save";if(linkAvailable(i.row()))return "Copy link";return QString{};}
  if(role==ProgressRole)return aggregateProgress(op).percent();
  if(role==CreatedRole)return relative(r);
  if(role==OutputRole){
@@ -106,12 +151,12 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
   if(provider=="proton-drive")return QStringLiteral("Proton Drive");if(provider=="backblaze-b2")return QStringLiteral("Backblaze B2");if(provider=="s3")return QStringLiteral("S3 destination");
   return r["local"].toObject()["status"]=="saved"?QStringLiteral("This device"):QString{};
  }
- if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled")return statusText(r);auto text=friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());const auto time=relative(r);if(!time.isEmpty())text+=" · "+time;if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Link copied";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Could not copy result":" · Could not copy link";else if(op["copyStatus"]=="suppressed")text+=r["uploadStatus"]=="local_only"?" · Result not copied":" · Link not copied";if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
+ if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled"||(r["uploadStatus"]=="local_only"&&localCopyUnavailable(r)))return statusText(r);const auto remote=remoteStateText(r);auto text=friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());if(!remote.isEmpty())text+=" · "+remote;else{if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Shared link";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Couldn't copy result":" · Couldn't copy link";else if(op["copyStatus"]=="suppressed")text+=r["uploadStatus"]=="local_only"?" · Result not copied":" · Link not copied";}const auto time=relative(r);if(!time.isEmpty())text+=" · "+time;if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
  if(role==ThumbnailRole){const auto path=r["previewPath"].toString();if(path.isEmpty())return {};if(auto* img=thumbnails_.object(path))return *img;loadThumbnail(path);}
  return {};
 }
-void HistoryModel::setQuery(const UiHistoryQuery& query){query_=query;query_.limit=qBound(1,query.limit,200);query_.offset=qMax(0,query.offset);++request_;refresh();}
-void HistoryModel::setShowCancelled(bool show){if(showCancelled_==show)return;showCancelled_=show;rebuild();}
+void HistoryModel::setQuery(const UiHistoryQuery& query){query_=query;query_.limit=qBound(1,query.limit,200);query_.offset=qMax(0,query.offset);++request_;if(!queryBusy_){queryBusy_=true;emit busyChanged(true);}beginResetModel();rows_.clear();records_={};total_=0;endResetModel();refresh();}
+void HistoryModel::setShowCancelled(bool show){if(showCancelled_==show)return;showCancelled_=show;if(!queryBusy_)rebuild();}
 void HistoryModel::refresh(){
  if(loadInFlight_){loadPending_=true;return;}const auto seq=request_;loadInFlight_=true;
  // Read the operation snapshot first: its ledger rows must already exist when
@@ -119,11 +164,12 @@ void HistoryModel::refresh(){
  // briefly erase an acquiring row as its new operation became terminal.
  history_.request("operation.recent",{},this,[g=QPointer<HistoryModel>(this),seq](Error operationError,QJsonObject recent){
   if(!g)return;
+  if(!operationError){g->operations_=recent["operations"].toArray();emit g->activityChanged();}
   const auto query=g->query_;
-  g->history_.request("history.list",{{"limit",query.limit},{"offset",query.offset},{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",query.uploadStatus},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to}},g,[g,seq,recent,operationError](Error e,QJsonObject data){
+  g->history_.request("history.list",{{"limit",query.limit},{"offset",query.offset},{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",query.uploadStatus},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to}},g,[g,seq,operationError](Error e,QJsonObject data){
    if(!g)return;
    g->loadInFlight_=false;const bool again=std::exchange(g->loadPending_,false);
-   if(g->request_==seq){if(e)emit g->error(e.message);else{g->records_=data["records"].toArray();g->total_=data["total"].toInteger();g->operations_=recent["operations"].toArray();g->rebuild();if(operationError)emit g->error("Recent captures unavailable: "+operationError.message);}}
+   if(g->request_==seq){if(g->queryBusy_){g->queryBusy_=false;emit g->busyChanged(false);}if(e)emit g->error(e.message);else{g->records_=data["records"].toArray();g->total_=data["total"].toInteger();g->rebuild();if(operationError)emit g->error("Recent captures unavailable: "+operationError.message);}}
    if(again)g->refresh();
   });
  });
@@ -131,11 +177,12 @@ void HistoryModel::refresh(){
 void HistoryModel::rebuild(){
  QList<QJsonObject> groups;QHash<QString,int> grouped;
  for(const auto& v:records_){const auto r=v.toObject();const auto key=r["operationId"].toString(r["id"].toString());if(grouped.contains(key)){auto& group=groups[grouped[key]];auto children=group["records"].toArray();children.append(r);group["records"]=children;group["bytes"]=double(group["bytes"].toInteger()+r["bytes"].toInteger());if(r["uploadStatus"]=="failed")group["error"]=r["error"],group["uploadStatus"]="failed";}else{auto group=r;group["records"]=QJsonArray{r};grouped[key]=groups.size();groups.append(group);}}
- const bool specific=!query_.category.isEmpty()||!query_.mime.isEmpty()||!query_.profileId.isEmpty()||!query_.uploadStatus.isEmpty()||!query_.localStatus.isEmpty()||!query_.remoteStatus.isEmpty()||!query_.from.isEmpty()||!query_.to.isEmpty();
+ const bool specific=!query_.category.isEmpty()||!query_.mime.isEmpty()||!query_.profileId.isEmpty()||!query_.localStatus.isEmpty()||!query_.remoteStatus.isEmpty()||!query_.from.isEmpty()||!query_.to.isEmpty();
  for(const auto& v:operations_){const auto op=v.toObject();const auto id=op["id"].toString();if(grouped.contains(id)){groups[grouped[id]]["operation"]=op;continue;}
   // A cleared history stays clear. Only a live or no-file failed/cancelled capture
   // needs an activity-only row; completed captures come from the durable ledger.
-  if(query_.offset||specific||(!Operation::activeState(op["state"].toString())&&!op["items"].toArray().isEmpty()))continue;
+  const bool uploading=query_.uploadStatus=="uploading"&&Operation::activeState(op["state"].toString())&&op["phase"]=="uploading";
+  if(query_.offset||specific||(!query_.uploadStatus.isEmpty()&&!uploading)||(!Operation::activeState(op["state"].toString())&&!op["items"].toArray().isEmpty()))continue;
   if(!Operation::activeState(op["state"].toString())&&!QStringList{"failed","cancelled"}.contains(op["state"].toString()))continue;
   QJsonObject group{{"id","operation:"+id},{"operationId",id},{"created",op["created"]},{"operation",op},{"name",friendlyAction(op["action"].toString())+" capture"},{"records",QJsonArray{}}};
   if(!query_.search.isEmpty()&&!group["name"].toString().contains(query_.search,Qt::CaseInsensitive))continue;

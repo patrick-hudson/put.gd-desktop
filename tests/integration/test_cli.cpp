@@ -6,6 +6,8 @@
 #include <QLocalServer>
 #include <QTimer>
 #include <QProcess>
+#include <QImage>
+#include <QScopeGuard>
 #include <QElapsedTimer>
 #include <QProcessEnvironment>
 #include <QDir>
@@ -16,6 +18,31 @@ class CliContract:public QObject {
  Q_OBJECT
  static QJsonObject raw(const QString& path,const QByteArray& bytes) {QLocalSocket socket;socket.connectToServer(path);if(!socket.waitForConnected(1000))return {};socket.write(bytes);QElapsedTimer timer;timer.start();QByteArray response;while(timer.elapsed()<putgd::test::scaled(5000)&&!response.contains('\n')) {QCoreApplication::processEvents();response+=socket.readAll();putgd::test::settle(1);}return QJsonDocument::fromJson(response).object();}
 private slots:
+ void editorViewControlsCrossCliResidentAndHelper(){
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;source.payload.kind="image";source.payload.image=QImage(320,200,QImage::Format_RGB32);source.payload.image.fill(Qt::cyan);
+  OperationService operations(d.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);const auto runtime=d.filePath("runtime");QVERIFY(QFile::encodeName(runtime+"/session.sock").size()<=107);QVERIFY(server.listen(runtime));PUTGD_TRY_VERIFY(operations.ready());
+  auto request=[&](const QString& method,const QJsonObject& params){QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),method,QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact))});(void)putgd::test::waitFor([&]{return client.state()==QProcess::NotRunning;});return QJsonDocument::fromJson(client.readAllStandardOutput()).object();};
+  const auto invoked=request("action.invoke",{{"action","edit"}});QVERIFY2(invoked["ok"].toBool(),QJsonDocument(invoked).toJson().constData());const auto id=invoked["result"].toObject()["operationId"].toString();QVERIFY(!id.isEmpty());auto cleanup=qScopeGuard([&]{request("editor.cancel",{{"id",id}});});
+  QJsonObject ready;PUTGD_TRY_VERIFY(([&]{ready=request("editor.view",{{"id",id},{"action","inspect"}});return ready["ok"].toBool();})());QVERIFY(!ready["result"].toObject()["keyboardHelp"].toObject()["open"].toBool());
+  const auto opened=request("editor.view",{{"id",id},{"action","keyboardHelp"}});QVERIFY2(opened["ok"].toBool(),QJsonDocument(opened).toJson().constData());QVERIFY(opened["result"].toObject()["keyboardHelp"].toObject()["open"].toBool());QVERIFY(request("editor.view",{{"id",id},{"action","inspect"}})["result"].toObject()["keyboardHelp"].toObject()["open"].toBool());
+  const auto closed=request("editor.view",{{"id",id},{"action","keyboardHelp"}});QVERIFY(closed["ok"].toBool());QVERIFY(!closed["result"].toObject()["keyboardHelp"].toObject()["open"].toBool());QCOMPARE(source.reads,1);
+  const auto geometry=request("editor.view",{{"id",id},{"action","geometryDetails"}});QVERIFY2(geometry["ok"].toBool(),QJsonDocument(geometry).toJson().constData());QVERIFY(geometry["result"].toObject()["geometryDetails"].toObject()["open"].toBool());
+  QVERIFY(request("editor.view",{{"id",id},{"action","geometryDetails"}})["ok"].toBool());
+  // Requests retain the 200 px API floor; the reply reports the UI's bounded width.
+  const auto panel=request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",220}});QVERIFY2(panel["ok"].toBool(),QJsonDocument(panel).toJson().constData());QCOMPARE(panel["result"].toObject()["propertiesWidth"].toInt(),240);
+  const auto wider=request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",280}});QVERIFY2(wider["ok"].toBool(),QJsonDocument(wider).toJson().constData());const int bounded=wider["result"].toObject()["propertiesWidth"].toInt();QVERIFY(bounded>=240&&bounded<=280);
+  QCOMPARE(request("editor.view",{{"id",id},{"action","inspect"}})["result"].toObject()["propertiesWidth"].toInt(),bounded);
+  QVERIFY(!request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",199}})["ok"].toBool());
+  const auto applied=request("editor.apply",{{"id",id},{"commands",QJsonArray{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{310,190}},{"text","Clipped annotation"}}}}}}});QVERIFY2(applied["ok"].toBool(),QJsonDocument(applied).toJson().constData());
+  const auto affected=request("editor.view",{{"id",id},{"action","selectAffectedText"}});QVERIFY2(affected["ok"].toBool(),QJsonDocument(affected).toJson().constData());QVERIFY(affected["result"].toObject()["selectedShapeId"].toDouble()>0);QVERIFY(affected["result"].toObject()["textOutsideImage"].toBool());
+  const auto saved=request("editor.saveCopy",{{"id",id},{"path",d.filePath("synthetic-copy.png")}});QVERIFY2(saved["ok"].toBool(),QJsonDocument(saved).toJson().constData());
+  QVERIFY(request("editor.view",{{"id",id}})["result"].toObject()["saveFeedbackVisible"].toBool());
+  const auto failed=request("editor.saveCopy",{{"id",id},{"path",d.filePath("missing/denied.png")}});QVERIFY(!failed["ok"].toBool());
+  auto details=request("editor.view",{{"id",id},{"action","saveDetails"}});QVERIFY2(details["ok"].toBool(),QJsonDocument(details).toJson().constData());QVERIFY(details["result"].toObject()["saveDetailsOpen"].toBool());
+  details=request("editor.view",{{"id",id},{"action","saveDetails"}});QVERIFY(details["ok"].toBool());QVERIFY(!details["result"].toObject()["saveDetailsOpen"].toBool());
+  const auto dismissed=request("editor.view",{{"id",id},{"action","dismissSavedCopy"}});QVERIFY2(dismissed["ok"].toBool(),QJsonDocument(dismissed).toJson().constData());QVERIFY(!dismissed["result"].toObject()["saveFeedbackVisible"].toBool());QCOMPARE(dismissed["result"].toObject()["lastSave"].toObject()["status"].toString(),QString("failed"));
+
+ }
  void recordToggleWaitsForASlowStopThroughTheRealClient(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;
   OperationService ops(d.filePath("data"),settings,registry,source);auto owned=std::make_unique<FakeRecordingBackend>();auto* backend=owned.get();ops.setRecordingBackend(std::move(owned));
@@ -84,6 +111,8 @@ private slots:
   QTemporaryDir d;ProviderRegistry providers;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);QVERIFY(server.listen(d.filePath("runtime")));QString view;
   server.setUiActivation([&](const QString& requested,std::function<void(Error)> ack){view=requested;ack({});});
   QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"history\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);QCOMPARE(view,QString("history"));
+  view.clear();client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"destinations\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);QCOMPARE(view,QString("destinations"));
+  const auto destinationReply=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QVERIFY(destinationReply["ok"].toBool());QCOMPARE(destinationReply["result"].toObject()["shown"].toString(),QString("destinations"));
   // Settings scrolled to Updates (#293).
   view.clear();client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"updates\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);QCOMPARE(view,QString("updates"));
   view.clear();client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"arbitrary\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),1);QVERIFY(view.isEmpty());QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);

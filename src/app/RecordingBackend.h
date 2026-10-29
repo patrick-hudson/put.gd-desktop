@@ -26,9 +26,10 @@ public:
     // Unsolicited events: {"id", "event": "stopped"|"failed"|"progress", ...}.
     virtual void setEventSink(Event) = 0;
     // Shows ready bounds/controls and asks for any consent. Result: {canvas:[w,h]}.
-    virtual void prepare(const QString& id, const RecordingTarget&, const RecordingConfig&, const QString& stagingDirectory, Reply) = 0;
+    virtual void prepare(const QString& id, const RecordingTarget&, const RecordingConfig&, const QString& stagingDirectory, Reply, const QJsonObject& reviewOptions = {}) = 0;
     // start | pause | resume | stop | cancel | raise | overlay. Reply only once the
-    // helper reached the state. stop replies {durationUs, canvas:[w,h]}.
+    // helper reached the state. start/stop report audioEncoder (empty when silent);
+    // stop also replies {durationUs, canvas:[w,h]}.
     virtual void control(const QString& id, const QString& command, const QJsonObject& params, Reply) = 0;
     // One frame at clip time with trim/masks applied: {png: base64, timeUs}.
     virtual void preview(const QString& id, const RecordingEdit&, const RecordingConfig&, qint64 timeUs, int maxEdge, Reply) = 0;
@@ -70,7 +71,7 @@ public:
     explicit UnavailableRecordingBackend(QString reason = "recording_helper_missing") : reason_(std::move(reason)) {}
     QJsonObject capabilities() const override;
     void setEventSink(Event) override {}
-    void prepare(const QString&, const RecordingTarget&, const RecordingConfig&, const QString&, Reply reply) override { reply(unavailable(), {}); }
+    void prepare(const QString&, const RecordingTarget&, const RecordingConfig&, const QString&, Reply reply, const QJsonObject& = {}) override { reply(unavailable(), {}); }
     void control(const QString&, const QString&, const QJsonObject&, Reply reply) override { reply(unavailable(), {}); }
     void preview(const QString&, const RecordingEdit&, const RecordingConfig&, qint64, int, Reply reply) override { reply(unavailable(), {}); }
     void exportClip(const QString&, const RecordingEdit&, const RecordingConfig&, const QString&, Reply reply) override { reply(unavailable(), {}); }

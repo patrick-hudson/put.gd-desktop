@@ -254,7 +254,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(putgd_x11 STATIC src/platform/x11/X11Capture.cpp src/platform/x11/CinnamonRegionCapture.cpp
     src/platform/x11/X11CompositorSettle.cpp src/platform/x11/X11SourceAdapter.cpp src/platform/x11/NativeRegionOverlay.cpp
     src/ui/RegionOverlay.cpp src/ui/RegionSelector.h)
-  target_link_libraries(putgd_x11 PUBLIC putgd_app putgd_x11_listeners Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCB_DAMAGE Qt6::DBus)
+  target_link_libraries(putgd_x11 PUBLIC putgd_app putgd_x11_listeners putgd_visual Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCB_DAMAGE Qt6::DBus)
   add_library(putgd_capture_control STATIC src/platform/x11/CaptureControl.cpp)
   target_include_directories(putgd_capture_control PUBLIC src)
   target_link_libraries(putgd_capture_control PUBLIC Qt6::Core putgd_build_options)
@@ -310,7 +310,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${xdg_output_protocol}" "${protocol_dir}/xdg-output-unstable-v1-protocol.c"
     DEPENDS "${xdg_output_protocol}" VERBATIM)
   add_library(putgd_kde_region_process STATIC src/platform/kde/KdeRegionProcess.cpp src/platform/kde/KdeRegionProtocol.cpp)
-  target_link_libraries(putgd_kde_region_process PUBLIC putgd_app putgd_capture_control putgd_build_identity)
+  target_link_libraries(putgd_kde_region_process PUBLIC putgd_app putgd_capture_control putgd_build_identity putgd_visual)
   find_package(Threads REQUIRED)
   add_library(putgd_kde STATIC src/platform/kde/KWinTransfer.cpp src/platform/kde/KWinCapture.cpp
     src/platform/kde/KdeShortcuts.cpp src/platform/kde/KdeShortcutNormalization.cpp
@@ -343,7 +343,7 @@ target_link_libraries(putgd_client PUBLIC Qt6::Core Qt6::Network putgd_build_opt
 add_library(putgd_ui_state STATIC src/ui/ViewState.cpp)
 target_include_directories(putgd_ui_state PUBLIC src)
 target_link_libraries(putgd_ui_state PUBLIC Qt6::Core putgd_build_options)
-add_library(putgd_visual STATIC src/ui/VisualStyle.cpp src/ui/IconArt.cpp src/ui/Theme.cpp src/ui/Graphite.cpp)
+add_library(putgd_visual STATIC src/ui/VisualStyle.cpp src/ui/IconArt.cpp src/ui/Theme.cpp src/ui/Graphite.cpp src/ui/WindowButtons.cpp)
 target_include_directories(putgd_visual PUBLIC src)
 target_link_libraries(putgd_visual PUBLIC Qt6::Widgets putgd_build_options)
 # Links and folders opened on the host (#326): the desktop portal and the file
@@ -363,7 +363,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(putgd_tray PUBLIC Qt6::DBus)
 endif()
 add_library(putgd_about STATIC src/ui/AboutWindow.cpp)
-target_link_libraries(putgd_about PUBLIC putgd_visual putgd_build_identity)
+target_link_libraries(putgd_about PUBLIC putgd_visual putgd_build_identity PRIVATE putgd_host_open putgd_fonts)
 # The appearance setting resolved against the desktop's preference (#60). The
 # interface and the resident (for putgd-record's overlays, #198) share it.
 add_library(putgd_appearance STATIC src/ui/Appearance.cpp)
@@ -400,7 +400,7 @@ add_library(putgd_editor STATIC src/editor/EditDocument.cpp src/editor/EditorCom
 target_include_directories(putgd_editor PUBLIC src)
 target_link_libraries(putgd_editor PUBLIC Qt6::Widgets putgd_build_options putgd_visual)
 add_library(putgd_editor_window STATIC src/ui/EditorWindow.cpp)
-target_link_libraries(putgd_editor_window PUBLIC putgd_editor putgd_ui putgd_visual)
+target_link_libraries(putgd_editor_window PUBLIC putgd_editor putgd_ui putgd_visual PRIVATE putgd_host_open)
 add_library(putgd_ui_application STATIC src/ui/UiApplicationController.cpp)
 target_link_libraries(putgd_ui_application PUBLIC putgd_ui putgd_about putgd_ui_control)
 # The release signer's minisign keys (#293): an AppImage install checks the
@@ -472,7 +472,7 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   if(PUTGD_GST_FOUND AND PUTGD_AV_FOUND)
     add_executable(putgd-record src/record/main.cpp src/record/MediaProbe.cpp src/record/EncoderCheck.cpp src/record/BundledRuntime.cpp src/record/PortalScreenCast.cpp src/record/MutterScreenCast.cpp src/record/WaylandAcquisition.cpp src/record/X11Targets.cpp src/record/RecordingPipeline.cpp src/record/PauseTimeline.cpp src/record/ClipExporter.cpp src/record/Poster.cpp src/record/RecordSession.cpp src/record/Overlays.cpp src/record/record.qrc src/record/BarPlacement.cpp src/record/ReviewWindow.cpp src/record/DebugLog.cpp src/record/AvSync.cpp src/core/RecordingModel.cpp)
     target_include_directories(putgd-record PRIVATE src)
-    target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_x11_native_snapshot putgd_visual putgd_fonts putgd_file_dialog Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
+    target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_x11_native_snapshot putgd_host_open putgd_visual putgd_fonts putgd_file_dialog Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
     if(TARGET putgd_kde)
       # KWin's screencast protocol (vendored XML) for the dialog-free KDE path.
       set(kde_screencast_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/zkde-screencast-unstable-v1.xml")
@@ -546,9 +546,9 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       set_tests_properties(bar_placement_single_monitor_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-one-monitor.json;PUTGD_TEST_SCREENS=1")
       # #283: the review window's layout, timeline, contextual mask controls and
       # the controls recording.review drives, on a 1366×768 screen.
-      add_executable(test_review_window tests/gui/test_review_window.cpp src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
+      add_executable(test_review_window tests/gui/test_review_window.cpp src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
       target_include_directories(test_review_window PRIVATE src tests)
-      target_link_libraries(test_review_window PRIVATE putgd_core putgd_build_options putgd_visual putgd_fonts putgd_file_dialog Qt6::Widgets Qt6::Test PkgConfig::PUTGD_AV)
+      target_link_libraries(test_review_window PRIVATE putgd_core putgd_build_options putgd_host_open putgd_visual putgd_fonts putgd_file_dialog Qt6::Widgets Qt6::Test PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
       add_test(NAME gui_review_window COMMAND test_review_window)
       set_tests_properties(gui_review_window PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-one-monitor.json" TIMEOUT 60)
       # #264: the helper's window icon and desktop file name, and the entry it names.
@@ -810,7 +810,7 @@ if(BUILD_TESTING)
   target_link_libraries(putgd-redesign-preview PRIVATE putgd_ui_application putgd_editor_window putgd_app putgd_s3 Qt6::Test)
   if(TARGET putgd-record)
     # The review window and control bar states (synthetic; Graphite acceptance).
-    target_sources(putgd-redesign-preview PRIVATE src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
+    target_sources(putgd-redesign-preview PRIVATE src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
     target_link_libraries(putgd-redesign-preview PRIVATE putgd_fonts putgd_file_dialog Qt6::DBus PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
     target_compile_definitions(putgd-redesign-preview PRIVATE PUTGD_PREVIEW_REVIEW=1)
   endif()
@@ -831,6 +831,10 @@ if(BUILD_TESTING)
   target_include_directories(test_gui_version PRIVATE tests)
   target_link_libraries(test_gui_version PRIVATE putgd_about Qt6::Test)
   # #60: tokens, contrast, live scheme switches, desktop and panel rules.
+  add_executable(test_gui_window_buttons tests/gui/test_window_buttons.cpp)
+  target_link_libraries(test_gui_window_buttons PRIVATE putgd_visual Qt6::Test)
+  add_test(NAME gui_window_buttons COMMAND test_gui_window_buttons)
+  set_tests_properties(gui_window_buttons PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;XDG_CURRENT_DESKTOP=" TIMEOUT 30)
   add_executable(test_gui_theme tests/gui/test_theme.cpp)
   target_include_directories(test_gui_theme PRIVATE tests)
   target_link_libraries(test_gui_theme PRIVATE putgd_ui putgd_tray Qt6::Test)
@@ -844,7 +848,9 @@ if(BUILD_TESTING)
   set_tests_properties(gui_theme gui_application PROPERTIES ENVIRONMENT_MODIFICATION "${putgd_no_desktop_scheme}")
   add_executable(test_gui_tray tests/gui/test_tray.cpp)
   target_include_directories(test_gui_tray PRIVATE tests)
-  target_link_libraries(test_gui_tray PRIVATE putgd_tray Qt6::Test)
+  target_link_libraries(test_gui_tray PRIVATE putgd_tray putgd_ui_supervisor putgd_ui_state Qt6::Test)
+  target_compile_definitions(test_gui_tray PRIVATE PUTGD_PRODUCT_UI_PATH="$<TARGET_FILE:putgd-ui>")
+  add_dependencies(test_gui_tray putgd-ui)
   add_test(NAME gui_tray COMMAND test_gui_tray)
   set_tests_properties(gui_tray PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
   add_test(NAME gui_version COMMAND test_gui_version)
@@ -1115,6 +1121,8 @@ if(BUILD_TESTING)
     # never introduce Node.js as a host or guest test dependency.
     find_program(PUTGD_GJS gjs)
     if(PUTGD_GJS)
+      add_test(NAME gnome_region_selection_contract COMMAND "${PUTGD_GJS}" -m "${PROJECT_SOURCE_DIR}/tests/desktop/test_gnome_region.mjs" "${PROJECT_SOURCE_DIR}/integrations/gnome/extension.js")
+      set_tests_properties(gnome_region_selection_contract PROPERTIES TIMEOUT 30)
       add_test(NAME gnome_ui_ownership_contract COMMAND "${PUTGD_GJS}" -m "${PROJECT_SOURCE_DIR}/tests/desktop/test_gnome_ownership.mjs" "${PROJECT_SOURCE_DIR}/integrations/gnome/extension.js")
       set_tests_properties(gnome_ui_ownership_contract PROPERTIES TIMEOUT 30)
     else()
@@ -1196,11 +1204,15 @@ if(BUILD_TESTING)
     add_test(NAME gui_${view} COMMAND test_gui_${view})
     set_tests_properties(gui_${view} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
   endforeach()
-  # Delayed saves, setup polling and shortcut deadlines expand this suite;
-  # the complete ASan/UBSan matrix takes longer than the former 60 s budget.
-  set_tests_properties(gui_settings PROPERTIES TIMEOUT 120)
+  # Delayed saves, setup polling and theme/scale cases expand this functional
+  # suite; leave time for a complete run on the shared builders.
+  set_tests_properties(gui_settings PROPERTIES TIMEOUT 180)
   # Copy image decodes the retained original in the putgd-ui image worker (#284).
   add_dependencies(test_gui_history_view putgd-ui)
+  set_tests_properties(gui_history_view PROPERTIES TIMEOUT 120)
+  # The History layout at 150% text: gallery cards, columns and the compact details view.
+  add_test(NAME gui_history_view_text150 COMMAND test_gui_history_view historyHeadingKeepsItsWordsBeforeSearchYields compactFailureDetailIsNeverShortenedBesideItsActions historyToolbarKeepsItsControlsTogether rowsReserveOnlyTheirOwnPrimaryAction remoteGroupsUseTheProductionQueryAndRestoreExactStates inspectorDeduplicatesNamesAndOutcomes galleryCardsReserveTextBeforeTheirActions columnHeadingsMatchRowColumns compactLayoutOpensDetailsOverTheList selectedRowLeavesItsPrimaryActionToTheInspector rowActionsNeverCoverFilenameOrStatus expandedFiltersKeepTwoWholeResults galleryInspectorUsesTheVisibleCardAndKeepsItsActionSpace localAvailabilityFollowsTheFileWithoutChangingTheReceipt compactFailureWrapsBeforeTheActionFooter compactRowsSpendTheirWidthOnTitles compactDetailsKeepFactsAndPrimaryOnTheFirstScreen)
+  set_tests_properties(gui_history_view_text150 PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;PUTGD_TEXT_SCALE=1.5" TIMEOUT 120)
 endif()
 
 if(BUILD_TESTING)
@@ -1235,6 +1247,24 @@ if(BUILD_TESTING)
   foreach(network_fixture test_cli test_s3 test_s3_multipart test_s3_delete test_collision_policy test_s3_module)
     target_link_libraries(${network_fixture} PRIVATE Qt6::Network)
   endforeach()
+endif()
+
+if(BUILD_TESTING)
+  add_executable(test_region_selection tests/unit/test_region_selection.cpp)
+  target_include_directories(test_region_selection PRIVATE src)
+  target_link_libraries(test_region_selection PRIVATE putgd_build_options putgd_visual Qt6::Widgets Qt6::Test)
+  add_test(NAME region_selection_contract COMMAND test_region_selection)
+  # The hint placement measures text, so the test needs a (headless) GUI platform.
+  set_tests_properties(region_selection_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endif()
+
+if(BUILD_TESTING AND TARGET putgd_kde_region_process)
+  # Exercise the production QWidget without a native layer role. Real KWin
+  # keyboard focus and transparent-frame dismissal remain desktop gates.
+  add_executable(test_kde_region_overlay tests/gui/test_kde_region_overlay.cpp src/platform/kde/KdeRegionOverlay.cpp)
+  target_link_libraries(test_kde_region_overlay PRIVATE putgd_kde_region_process Qt6::Widgets Qt6::Test)
+  add_test(NAME kde_region_overlay COMMAND test_kde_region_overlay)
+  set_tests_properties(kde_region_overlay PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
 endif()
 
 if(BUILD_TESTING AND TARGET putgd_x11)

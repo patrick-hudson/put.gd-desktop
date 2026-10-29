@@ -1,4 +1,5 @@
 #include "RecordSession.h"
+#include "EffectiveAudio.h"
 #include "DebugLog.h"
 #include "MediaProbe.h"
 #include <QBuffer>
@@ -91,8 +92,9 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
             }
             durationUs_ = durationUs;
             recorded_ = true;
+            audioCaptured_ = !pipeline_.audioEncoder().isEmpty();
             openReview();
-            emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"reason", "budget"}, {"stopDetails", details}});
+            emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"audioEncoder", pipeline_.audioEncoder()}, {"reason", "budget"}, {"stopDetails", details}});
         });
     });
 }
@@ -148,6 +150,19 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         barHidden_ = false;
         if (bar_) { bar_->show(); bar_->raise(); }
         if (review_) review_->reopen(params["error"].toString());
+        reply({}, {});
+        return;
+    }
+    if (command == "savedCopy") {
+        auto json = params["config"].toObject();
+        for (const auto* key : {"mime", "budgetBytes"}) json.remove(key);
+        RecordingConfig config;
+        qint64 revision = 0;
+        const QString path = params["path"].toString();
+        if (!QDir::isAbsolutePath(path) || !integer(params["revision"], 1, 1LL << 52, &revision) || recording::parseConfig(json, config)) {
+            reply({"invalid_request", "Invalid saved-copy result", {}}, {}); return;
+        }
+        if (review_) review_->setSavedCopy(path, quint64(revision), config);
         reply({}, {});
         return;
     }
@@ -213,6 +228,7 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     if (staging.isEmpty() || !QFileInfo(staging).isDir()) { reply({"recording_io", "The staging directory is missing", {}}, {}); return; }
     id_ = params["id"].toString();
     target_ = target;
+    reviewOptions_ = params["reviewOptions"].toObject();
     config_ = config;
     staging_ = staging;
     workingClip_ = staging + "/working.mkv";
@@ -222,7 +238,7 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
 }
 void RecordSession::acquire(Reply reply) {
     // A cancel that arrived while the selector was closing opens nothing.
-    if (cancelled_) { reply({"cancelled", "Recording cancelled before the source opened", {}}, {}); return; }
+    if (cancelled_) { reply({"cancelled", "Recording canceled before the source opened", {}}, {}); return; }
     const auto acquisition = capabilities_["acquisition"].toString();
     if (acquisition == "kde-screencast" || acquisition == "mutter-screencast") { prepareNative(std::move(reply)); return; }
     if (acquisition == "portal") { preparePortal(std::move(reply)); return; }
@@ -234,7 +250,7 @@ void RecordSession::select(Reply reply) {
     QPointer<RecordSession> guard(this);
     auto cancelled = [guard, reply](const Error& error) {
         if (!guard) return;
-        reply(error.code == "cancelled" ? Error{"cancelled", "Region selection cancelled; nothing was recorded", {}} : error, {});
+        reply(error.code == "cancelled" ? Error{"cancelled", "Region selection canceled; nothing was recorded", {}} : error, {});
     };
     const auto mode = surfaceMode();
     if (mode == SurfaceMode::X11) {
@@ -268,7 +284,7 @@ void RecordSession::select(Reply reply) {
             frame.rotation = screen->angleBetween(screen->nativeOrientation(), screen->orientation());
             frames.append(frame);
         }
-        kdeSelection_ = new KdeRegionOverlay(frames, this);
+        kdeSelection_ = new KdeRegionOverlay(frames, this, true);
         connect(kdeSelection_, &KdeRegionOverlay::selected, this, [guard, reply](const QRectF& logical) {
             if (!guard || !guard->kdeSelection_) return;
             guard->kdeSelection_->deleteLater();
@@ -433,6 +449,7 @@ void RecordSession::finishPrepare(Reply reply) {
         guard->config_ = config;
         guard->config_.budgetBytes = budget;
         emit guard->event({{"event", "configChanged"}, {"config", config.toJson()}});
+        emit guard->event({{"event", "progress"}, {"recordingAudio", guard->bar_->audioState()}});
     });
     connect(bar_, &ControlBar::recordRequested, this, [guard] {
         if (!guard || guard->pipeline_.running() || guard->recorded_) return;
@@ -482,6 +499,7 @@ void RecordSession::finishPrepare(Reply reply) {
         overlayPlacement_ = QStringLiteral("compositor");
     }
     showBar("ready");
+    emit event({{"event", "progress"}, {"recordingAudio", bar_->audioState()}});
     reply({}, {{"canvas", sizeJson(resolved_.canvas)}, {"rect", rectJson(resolved_.rect)}, {"window", double(resolved_.window)}, {"overlayExcluded", overlayExcluded_}, {"overlayPlacement", overlayPlacement_}});
 }
 void RecordSession::start(Reply reply) {
@@ -498,7 +516,7 @@ void RecordSession::start(Reply reply) {
     QTimer::singleShot(handleSettleMs, this, [guard, reply = std::move(reply)]() mutable {
         if (!guard) return;
         guard->starting_ = false;
-        if (guard->cancelled_) { reply({"cancelled", "Recording cancelled before it started", {}}, {}); return; }
+        if (guard->cancelled_) { reply({"cancelled", "Recording canceled before it started", {}}, {}); return; }
         guard->begin(std::move(reply));
     });
 }
@@ -536,6 +554,7 @@ void RecordSession::stop(Reply reply) {
         if (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile()) { reply({"recording_failed", "The recording produced no retained frames", {}}, {}); return; }
         guard->durationUs_ = durationUs;
         guard->recorded_ = true;
+        guard->audioCaptured_ = !guard->pipeline_.audioEncoder().isEmpty();
         // Lab diagnostics only: keep a private copy of the working clip for inspection.
         if (const auto keep = qEnvironmentVariable("PUTGD_RECORD_KEEP_WORKING"); !keep.isEmpty()) QFile::copy(guard->workingClip_, keep + "/" + guard->id_ + ".mkv");
         guard->openReview();
@@ -547,11 +566,14 @@ void RecordSession::openReview() {
     delete review_;
     ReviewWindow::Options options;
     options.workingClip = workingClip_;
+    options.destination = reviewOptions_["destination"].toString();
+    options.sharingMode = reviewOptions_["sharingMode"].toString();
+    options.uploadSummary = reviewOptions_["summary"].toString();
     options.durationUs = durationUs_;
     options.canvas = resolved_.canvas;
     for (const auto& value : capabilities_["formats"].toArray()) options.formats.append(value.toString());
     options.codecs = capabilities_["codecs"].toObject();
-    options.audioRecorded = config_.audio.system && !pipeline_.audioEncoder().isEmpty();
+    options.audioRecorded = audioCaptured_;
     review_ = new ReviewWindow(options, config_);
     QPointer<RecordSession> guard(this);
     connect(review_, &ReviewWindow::editProposed, this, [guard](quint64 revision, const QJsonArray& commands) { if (guard) emit guard->event({{"event", "edit"}, {"revision", double(revision)}, {"commands", commands}}); });
@@ -563,6 +585,7 @@ void RecordSession::openReview() {
         emit guard->event({{"event", "configChanged"}, {"config", config.toJson()}});
     });
     connect(review_, &ReviewWindow::uploadRequested, this, [guard](quint64 revision) { if (guard) emit guard->event({{"event", "uploadRequested"}, {"revision", double(revision)}}); });
+    connect(review_, &ReviewWindow::retryExportRequested, this, [guard] { if (guard) emit guard->event({{"event", "retryExportRequested"}}); });
     connect(review_, &ReviewWindow::saveCopyRequested, this, [guard](const QString& path, quint64 revision) { if (guard) emit guard->event({{"event", "saveCopyRequested"}, {"path", path}, {"revision", double(revision)}}); });
     connect(review_, &ReviewWindow::cancelRequested, this, [guard] { if (!guard) return; guard->cancelLocal(); emit guard->event({{"event", "cancelled"}}); });
     review_->show();
@@ -574,6 +597,7 @@ void RecordSession::emitProgress() {
     if (!pipeline_.running()) return;
     auto status = pipeline_.status();
     status["event"] = "progress";
+    if (bar_) status["recordingAudio"] = bar_->audioState();
     emit event(status);
 }
 bool RecordSession::parseEdit(const QJsonObject& json, RecordingEdit& edit) const {
@@ -625,7 +649,7 @@ void RecordSession::exportClip(const QJsonObject& params, Reply reply) {
     auto configJson = params["config"].toObject();
     for (const auto* key : {"mime", "budgetBytes"}) configJson.remove(key);
     if (!parseEdit(params["edit"].toObject(), request.edit) || request.output.isEmpty() || recording::parseConfig(configJson, request.config)) { reply({"invalid_request", "Invalid export request", {}}, {}); return; }
-    request.config.audio.system = request.config.audio.system && config_.audio.system;
+    request.config.audio.system = effectiveAudio(request.config, audioCaptured_, request.config.audio.system);
     auto cancel = std::make_shared<std::atomic_bool>(false);
     exportCancel_ = cancel;
     auto result = std::make_shared<ExportResult>();
@@ -648,7 +672,9 @@ void RecordSession::exportClip(const QJsonObject& params, Reply reply) {
         thread->deleteLater();
         if (exportThread_ == thread) exportThread_ = nullptr;
         exportCancel_.reset();
-        if (review_) review_->setExporting(false, *error ? QStringLiteral("Export failed: %1").arg(error->message) : QStringLiteral("Exported %1 (%2 KiB)").arg(request.config.format.toUpper()).arg(result->bytes / 1024));
+        // A failure is an error in the review's status row, kept until dismissed.
+        if (review_) review_->setExporting(false, {});
+        if (review_ && *error) review_->showError(QStringLiteral("Export failed: %1").arg(error->message));
         if (*error) { QFile::remove(request.output); reply(*error, {}); return; }
         reply({}, {{"bytes", double(result->bytes)}, {"durationUs", double(result->durationUs)}, {"frames", result->frames}, {"videoEncoder", result->videoEncoder}, {"audioEncoder", result->audioEncoder}, {"size", sizeJson(result->size)}});
     });

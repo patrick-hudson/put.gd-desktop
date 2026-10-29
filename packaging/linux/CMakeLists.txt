@@ -127,6 +127,9 @@ foreach(embedded IN ITEMS "src/aws-cpp-sdk-core/source/external/cjson/cJSON.cpp|
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/aws/${embedded_name}" DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 endforeach()
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/LICENSE" "${CMAKE_INSTALL_DATADIR}/doc/putgd")
+foreach(font_notice IN ITEMS OFL-sans.txt OFL-mono.txt SOURCE.md)
+  putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/ui/fonts/${font_notice}" "${CMAKE_INSTALL_DATADIR}/doc/putgd/fonts")
+endforeach()
 
 # Tagged DEB/RPM builds add their channel's signed repository at pkg.put.gd
 # (#293), trusting only that channel's key. apt keeps a deleted conffile deleted

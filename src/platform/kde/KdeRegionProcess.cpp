@@ -42,7 +42,7 @@ void KdeRegionProcess::shutdown() {
 QJsonObject KdeRegionProcess::diagnostics() const {
  return {{"active",busy()},{"processId",processId()},{"lastExit",lastExit_},{"cleanupRequired",cleanupRequired_},{"build",build()}};
 }
-void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<void(QRectF,Error)> callback) {
+void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<void(QRectF,Error)> callback,QString outcome) {
  if(closing_) { callback({},unavailable("cancelled")); return; }
  if(busy()) { callback({},unavailable("busy_selecting")); return; }
  if(cleanupRequired_) { callback({},{"capture_cleanup_pending","Restart put.gd before capturing again: the region helper did not confirm surface cleanup",{}}); return; }
@@ -65,13 +65,13 @@ void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<voi
  connect(control_,&CaptureControl::failed,this,[this,child,epoch](Error error){
   if(process_==child && generation_==epoch) fail(std::move(error));
  });
- connect(child,&QProcess::started,this,[this,child,epoch,layout]{
+ connect(child,&QProcess::started,this,[this,child,epoch,layout,outcome]{
   if(process_!=child || generation_!=epoch) return;
   launchPid_=child->processId(); launchStartTicks_=processStartTicks(launchPid_);
   output_.started(launchPid_,{{"generation",QString::number(generation_)}});
   if(launchStartTicks_.isEmpty()) { fail(unavailable("capture_start_failed")); return; }
   if(!control_->send("bootstrap",{{"build",build()},{"nonce",nonce_},
-     {"generation",QString::number(generation_)},{"layout",layout}})) fail(unavailable("capture_protocol"));
+     {"generation",QString::number(generation_)},{"layout",layout},{"outcome",outcome}})) fail(unavailable("capture_protocol"));
  });
  connect(child,&QProcess::errorOccurred,this,[this,child,epoch](QProcess::ProcessError error){
   if(process_!=child || generation_!=epoch) return;

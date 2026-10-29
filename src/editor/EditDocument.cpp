@@ -6,6 +6,7 @@
 #include <QImageWriter>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPainterPathStroker>
 #include <QtMath>
 #include <algorithm>
 #include <cstring>
@@ -30,6 +31,10 @@ void boxLine(QRgb* line,int count,qsizetype step,int radius,std::vector<QRgb>& s
  }
 }
 QColor contrast(const QColor& color){return color.lightnessF()>0.6?QColor(20,20,20):QColor(255,255,255);}
+QPainterPath textPath(const Shape& shape){
+ const auto font=textFont(shape.fontFamily,shape.fontPixels);QPainterPath path;
+ path.addText(QPointF(shape.rect.left(),shape.rect.top()+QFontMetrics(font).ascent()),font,shape.text);return path;
+}
 }
 
 QRect Shape::bounds() const {
@@ -54,6 +59,11 @@ QFont textFont(const QString& family,int pixels){
  QFont font;if(!family.isEmpty())font.setFamily(family);
  font.setPixelSize(std::max(4,pixels));font.setBold(true);return font;
 }
+QRectF textOutputBounds(const Shape& shape){
+ const auto path=textPath(shape);if(path.isEmpty())return {};
+ QPainterPathStroker stroke;stroke.setWidth(std::max(2.0,shape.fontPixels/7.0));stroke.setCapStyle(Qt::RoundCap);stroke.setJoinStyle(Qt::RoundJoin);
+ return path.boundingRect().united(stroke.createStroke(path).boundingRect());
+}
 qint64 EditDocument::bytesOf(const State& state){
  qint64 total=qint64(sizeof(State))+qint64(state.shapes.size())*qint64(sizeof(Shape));
  for(const auto& shape:state.shapes)total+=qint64(shape.text.size()+shape.fontFamily.size())*qint64(sizeof(QChar));
@@ -73,39 +83,41 @@ quint64 EditDocument::add(Shape shape){
  shape.id=nextId_++;
  shape.text.truncate(maximumTextCharacters);
  shape.strength=std::clamp(shape.strength,minimumBlur,maximumBlur);
- auto before=state_;state_.shapes.append(shape);if(!gesture_)push(std::move(before));
+ auto before=state_;state_.shapes.append(shape);++generation_;if(!gesture_)push(std::move(before));
  return shape.id;
 }
 bool EditDocument::replace(const Shape& changed){
- for(auto& shape:state_.shapes)if(shape.id==changed.id){
+ for(qsizetype i=0;i<state_.shapes.size();++i)if(state_.shapes.at(i).id==changed.id){
   auto next=changed;next.text.truncate(maximumTextCharacters);next.strength=std::clamp(next.strength,minimumBlur,maximumBlur);
-  if(shape==next)return false;
-  auto before=state_;shape=next;if(!gesture_)push(std::move(before));return true;
+  if(state_.shapes.at(i)==next)return false;
+  // Copy first, then write through the list: it detaches from the snapshot.
+  // (A reference taken before the copy wrote into both, losing the step.)
+  auto before=state_;state_.shapes[i]=next;++generation_;if(!gesture_)push(std::move(before));return true;
  }
  return false;
 }
 void EditDocument::preview(const Shape& shape){const bool live=gesture_;gesture_=true;replace(shape);gesture_=live;}
 bool EditDocument::remove(quint64 id){
- for(qsizetype i=0;i<state_.shapes.size();++i)if(state_.shapes[i].id==id){auto before=state_;state_.shapes.removeAt(i);if(!gesture_)push(std::move(before));return true;}
+ for(qsizetype i=0;i<state_.shapes.size();++i)if(state_.shapes[i].id==id){auto before=state_;state_.shapes.removeAt(i);++generation_;if(!gesture_)push(std::move(before));return true;}
  return false;
 }
 bool EditDocument::setCrop(const QRect& requested){
  const auto crop=clampRect(requested,base_.rect());
  if(crop.width()<1||crop.height()<1||crop==state_.crop)return false;
- auto before=state_;state_.crop=crop;if(!gesture_)push(std::move(before));return true;
+ auto before=state_;state_.crop=crop;++generation_;if(!gesture_)push(std::move(before));return true;
 }
 void EditDocument::beginGesture(){if(!gesture_){gestureStart_=state_;gesture_=true;}}
 void EditDocument::commitGesture(){if(!gesture_)return;gesture_=false;push(std::exchange(gestureStart_,{}));}
-void EditDocument::cancelGesture(){if(!gesture_)return;gesture_=false;state_=std::exchange(gestureStart_,{});}
+void EditDocument::cancelGesture(){if(!gesture_)return;gesture_=false;state_=std::exchange(gestureStart_,{});++generation_;}
 bool EditDocument::undo(){
  if(gesture_||undo_.isEmpty())return false;
  historyBytes_-=bytesOf(undo_.last());auto previous=undo_.takeLast();
- historyBytes_+=bytesOf(state_);redo_.append(std::exchange(state_,std::move(previous)));return true;
+ historyBytes_+=bytesOf(state_);redo_.append(std::exchange(state_,std::move(previous)));++generation_;return true;
 }
 bool EditDocument::redo(){
  if(gesture_||redo_.isEmpty())return false;
  historyBytes_-=bytesOf(redo_.last());auto next=redo_.takeLast();
- historyBytes_+=bytesOf(state_);undo_.append(std::exchange(state_,std::move(next)));return true;
+ historyBytes_+=bytesOf(state_);undo_.append(std::exchange(state_,std::move(next)));++generation_;return true;
 }
 
 void EditDocument::blurInPlace(QImage& image,const QRect& requested,int radius){
@@ -131,7 +143,7 @@ void EditDocument::applyRedactions(QImage& image,const QRect& within) const {
  }
 }
 
-void EditDocument::paintAnnotation(QPainter& painter,const Shape& shape){
+void EditDocument::paintAnnotation(QPainter& painter,const Shape& shape,const QPainterPath* frozenText){
  painter.save();painter.setRenderHint(QPainter::Antialiasing,true);painter.setRenderHint(QPainter::TextAntialiasing,true);
  switch(shape.kind){
  case Shape::Kind::Rectangle:{
@@ -154,14 +166,25 @@ void EditDocument::paintAnnotation(QPainter& painter,const Shape& shape){
  }
  case Shape::Kind::Text:{
   if(shape.text.isEmpty())break;
-  const auto font=textFont(shape.fontFamily,shape.fontPixels);
-  QPainterPath path;path.addText(QPointF(shape.rect.left(),shape.rect.top()+QFontMetrics(font).ascent()),font,shape.text);
+  const auto path=frozenText?*frozenText:textPath(shape);
   painter.setPen(QPen(contrast(shape.color),std::max(2.0,shape.fontPixels/7.0),Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));painter.setBrush(Qt::NoBrush);painter.drawPath(path);
   painter.setPen(Qt::NoPen);painter.setBrush(shape.color);painter.drawPath(path);break;
  }
  case Shape::Kind::Redact:case Shape::Kind::Blur:break;
  }
  painter.restore();
+}
+
+EditDocument EditDocument::snapshotForExport() const {
+ // Qt's FreeType outlines can change after a canvas repaint, even with the
+ // same font and draft. Reuse one set for every copy and Upload of that draft.
+ const QFont defaultFont;
+ if(textPathsGeneration_!=generation_||textPathsFont_!=defaultFont){
+  textPaths_.clear();textPathsGeneration_=generation_;textPathsFont_=defaultFont;
+  for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Text)textPaths_.insert(shape.id,textPath(shape));
+ }
+ // A worker keeps the GUI's resolved outlines regardless of its default font.
+ auto snapshot=*this;snapshot.textPathsFrozen_=true;return snapshot;
 }
 
 QImage EditDocument::render() const {
@@ -174,7 +197,7 @@ QImage EditDocument::render() const {
  for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Blur)blurInPlace(out,shape.rect.translated(-crop.topLeft()),shape.strength);
  {
   QPainter painter(&out);painter.translate(-crop.topLeft());
-  for(const auto& shape:state_.shapes)if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur)paintAnnotation(painter,shape);
+  for(const auto& shape:state_.shapes)if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur){const auto path=textPaths_.constFind(shape.id);paintAnnotation(painter,shape,textPathsGeneration_==generation_&&(textPathsFrozen_||textPathsFont_==QFont())&&path!=textPaths_.cend()?&path.value():nullptr);}
  }
  if(out.hasAlphaChannel())for(int y=0;y<out.height();++y){auto* line=reinterpret_cast<QRgb*>(out.scanLine(y));for(int x=0;x<out.width();++x)if(qAlpha(line[x])==0)line[x]=0;}
  return out;

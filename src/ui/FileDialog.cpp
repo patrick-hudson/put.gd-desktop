@@ -1,5 +1,6 @@
 #include "FileDialog.h"
 #include "Theme.h"
+#include "Graphite.h"
 #include "VisualStyle.h"
 #include <QAbstractItemView>
 #include <QApplication>
@@ -221,12 +222,12 @@ void FileDialog::openFallback(const QString& reason){
  if(!filters.isEmpty())dialog->setNameFilters(filters);
  theme(dialog);
  // Qt's default leaves the detail columns too narrow for their own values.
- QSize size(820,520);
+ QSize size(Graphite::scaled(820),Graphite::scaled(520));
  if(const auto* screen=owner_->window()->screen())size=size.boundedTo(screen->availableGeometry().size()*0.9);
  dialog->resize(size.expandedTo(dialog->minimumSizeHint()));
  if(auto* tree=dialog->findChild<QTreeView*>("treeView");tree&&tree->header()->count()>=4){
   const auto metrics=tree->fontMetrics();const int padding=32;
-  tree->header()->resizeSection(1,metrics.horizontalAdvance(QStringLiteral("1023.9 KiB"))+padding);
+  tree->header()->resizeSection(1,metrics.horizontalAdvance(QStringLiteral("1023.9 KB"))+padding);
   tree->header()->resizeSection(2,metrics.horizontalAdvance(QStringLiteral("MP4 video file"))+padding);
   tree->header()->resizeSection(3,metrics.horizontalAdvance(QLocale().toString(QDateTime(QDate(2026,12,30),QTime(23,59)),QLocale::ShortFormat))+padding);
  }
@@ -255,9 +256,10 @@ void FileDialog::finish(const QString& status,const QString& path,const QString&
  qCInfo(lcFileDialog).noquote()<<"file dialog"<<status<<"via"<<backend_;
  phase_=Phase::Idle;
  auto done=std::exchange(done_,nullptr);
+ const Result result{status=="chosen"?Result::Status::Chosen:status=="failed"?Result::Status::Failed:Result::Status::Cancelled,path,error};
  QPointer<FileDialog> guard(this);
  emit stateChanged();
- if(guard&&done)done(path);
+ if(guard&&done)done(result);
 }
 void FileDialog::block(bool on){
  // Modal like the dialog it replaces: the window takes no input while the

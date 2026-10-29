@@ -1,7 +1,9 @@
 #include "core/EditorJob.h"
 #include "core/SanitizedPng.h"
 #include <QDir>
+#include <QCryptographicHash>
 #include <QDirIterator>
+#include <QFileInfo>
 #include <QImage>
 #include <QImageWriter>
 #include <QJsonArray>
@@ -52,6 +54,21 @@ int filesUnder(const QString& root){int count=0;QDirIterator it(root,QDir::Files
 class EditorJobTest:public QObject {
  Q_OBJECT
 private slots:
+ void saveCopyRepliesAfterWorkerCompletionWhileViewStaysAvailable(){
+  QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;auto image=noise({3000,2000},37);
+  std::thread worker([&]{result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Synthetic local copy",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});QVERIFY(waitPhase(*session,"editing"));
+  QSemaphore finished;Answer saved;const auto path=root.filePath("worker.png");
+  session->request("saveCopy",{{"path",path}},[&](Error error,QJsonObject reply){saved={error,reply};finished.release();});
+  const auto view=ask(*session,"view");QVERIFY2(!view.error,qPrintable(view.error.message));QVERIFY(view.result["savingCopy"].toBool());
+  QCOMPARE(view.result["lastSave"].toObject()["status"].toString(),QString("saving"));
+  QCOMPARE(ask(*session,"saveCopy",{{"path",root.filePath("overlap.png")}}).error.code,QString("editor_busy"));
+  QVERIFY(finished.tryAcquire(1,15000));QVERIFY2(!saved.error,qPrintable(saved.error.message));QVERIFY(saved.result["saved"].toBool());QCOMPARE(saved.result["path"].toString(),path);
+  QFile file(path);QVERIFY(file.open(QIODevice::ReadOnly));const auto bytes=file.readAll();QCOMPARE(saved.result["bytes"].toDouble(),double(bytes.size()));
+  QCOMPARE(saved.result["sha256"].toString(),QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex()));
+  QVERIFY(!ask(*session,"view").result["savingCopy"].toBool());QVERIFY(!ask(*session,"cancel").error);
+  worker.join();QCOMPARE(result.error.code,QString("cancelled"));
+ }
  void agentEditsPreviewSaveAndSubmitSanitizedResult(){
   QTemporaryDir root;const auto staging=root.filePath("editing");
   const auto original=noise({320,200},21);const QRect secret(40,30,80,40);
@@ -74,16 +91,33 @@ private slots:
   auto bad=ask(*session,"apply",{{"commands",QJsonArray{QJsonObject{{"op","remove"},{"shapeId",999}}}}});QCOMPARE(bad.error.code,QString("edit_shape_missing"));
   QCOMPARE(ask(*session,"inspect").result["shapes"].toArray().size(),6);
   auto undo=ask(*session,"apply",{{"commands",QJsonArray{QJsonObject{{"op","undo"}},QJsonObject{{"op","redo"}}}}});QVERIFY(!undo.error);
+  // editor.view drives the window's own tool, zoom and crop controls; inspect reports them.
+  auto view=ask(*session,"view",{{"action","tool"},{"tool","crop"}});QVERIFY2(!view.error,qPrintable(view.error.message));
+  QCOMPARE(view.result["tool"].toString(),QString("crop"));QVERIFY(view.result["cropPending"].toBool());QCOMPARE(view.result["geometry"].toArray(),QJsonArray({10,10,300,180}));
+  QVERIFY(!ask(*session,"view",{{"action","cancelCrop"}}).error);
+  auto zoomed=ask(*session,"view",{{"action","zoom"},{"percent",200}});QVERIFY(!zoomed.error);QCOMPARE(zoomed.result["zoomPercent"].toDouble(),200.0);
+  QCOMPARE(ask(*session,"inspect").result["view"].toObject()["zoomPercent"].toDouble(),200.0);
+  QCOMPARE(ask(*session,"view",{{"action","explode"}}).error.code,QString("invalid_request"));
+  QCOMPARE(ask(*session,"view",{{"action","select"},{"shapeId",999}}).error.code,QString("edit_shape_missing"));
+  // A failed copy names its reason and the window offers another location; the draft stays.
+  auto refused=ask(*session,"saveCopy",{{"path",root.filePath("missing-folder/copy.png")}});QCOMPARE(refused.error.code,QString("save_failed"));
+  QCOMPARE(ask(*session,"view").result["lastSave"].toObject()["status"].toString(),QString("failed"));
   auto preview=ask(*session,"preview",{{"maxEdge",150}});QVERIFY2(!preview.error,qPrintable(preview.error.code));
   const auto previewImage=QImage::fromData(QByteArray::fromBase64(preview.result["png"].toString().toLatin1()),"PNG");
   QCOMPARE(previewImage.width(),150);QCOMPARE(preview.result["sourceWidth"].toInt(),300);
   QCOMPARE(ask(*session,"preview",{{"maxEdge",10}}).error.code,QString("invalid_request"));
   const auto copy=root.filePath("copy.png");
   auto saved=ask(*session,"saveCopy",{{"path",copy}});QVERIFY2(!saved.error,qPrintable(saved.error.message));
+  QCOMPARE(ask(*session,"view").result["lastSave"].toObject()["path"].toString(),QFileInfo(copy).absoluteFilePath());
   QCOMPARE(ask(*session,"saveCopy",{{"path",copy}}).error.code,QString("file_exists"));
   QCOMPARE(ask(*session,"saveCopy",{{"path","relative.png"}}).error.code,QString("invalid_request"));
   QCOMPARE(ask(*session,"shell").error.code,QString("invalid_request"));
   QVERIFY(!ask(*session,"raise").error);
+  // View-only work must not change another copy or the bytes handed to Upload.
+  QVERIFY(!ask(*session,"view",{{"action","zoom"},{"percent",125}}).error);
+  QVERIFY(!ask(*session,"preview",{{"maxEdge",128}}).error);
+  const auto repeated=ask(*session,"saveCopy",{{"path",root.filePath("copy-after-preview.png")}});
+  QVERIFY2(!repeated.error,qPrintable(repeated.error.message));QCOMPARE(repeated.result["sha256"],saved.result["sha256"]);
   QVERIFY(!ask(*session,"submit").error);
   if(worker.joinable())worker.join();
   QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));
@@ -95,6 +129,29 @@ private slots:
   QFile copyFile(copy);QVERIFY(copyFile.open(QIODevice::ReadOnly));QCOMPARE(copyFile.readAll(),result.png);
   QCOMPARE(filesUnder(staging),0);QCOMPARE(session->phase(),QString("closed"));
   QCOMPARE(ask(*session,"inspect").error.code,QString("editor_finalizing"));
+ }
+ // An oversized result is recoverable: nothing is handed off, editing and
+ // the resident's phase resume, inspect says why, and a smaller result uploads.
+ void oversizedResultReturnsToEditing(){
+  QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::thread worker([&]{auto image=noise({320,200},5);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).run(image,"Upload to synthetic destination",4096,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  QVERIFY(!ask(*session,"submit").error);
+  Answer state;
+  for(int waited=0;waited<20000;waited+=50){state=ask(*session,"inspect");if(!state.error&&state.result["preparation"].isObject())break;QTest::qSleep(50);}
+  QVERIFY2(!state.error,qPrintable(state.error.code));
+  const auto preparation=state.result["preparation"].toObject();
+  QCOMPARE(preparation["status"].toString(),QString("failed"));QCOMPARE(preparation["code"].toString(),QString("input_excessive"));
+  QVERIFY(preparation["reason"].toString().contains("limit"));
+  QCOMPARE(state.result["phase"].toString(),QString("editing"));QCOMPARE(session->phase(),QString("editing"));
+  const auto view=state.result["view"].toObject();QVERIFY(!view["busy"].toBool());QCOMPARE(view["preparationFailure"].toObject()["text"].toString(),preparation["reason"].toString());
+  // Editing goes on: crop to something small enough, then upload it.
+  QVERIFY(!ask(*session,"apply",{{"commands",QJsonArray{QJsonObject{{"op","crop"},{"rect",QJsonArray{0,0,8,8}}}}}}).error);
+  QVERIFY(!ask(*session,"submit").error);
+  if(worker.joinable())worker.join();
+  QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));
+  QCOMPARE(QSize(result.width,result.height),QSize(8,8));QVERIFY(!inspectSanitizedPng(result.png));QCOMPARE(filesUnder(staging),0);
  }
  void agentCancelDiscardsWithoutOutput(){
   QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;
@@ -156,12 +213,16 @@ private slots:
   const auto result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Upload",1024*1024,session);
   QCOMPARE(result.error.code,QString("edit_input_too_large"));QVERIFY(image.isNull());QVERIFY(!QDir(root.filePath("editing")).exists());
  }
- void exportLargerThanBudgetFails(){
+ // Over the budget the edit stays open (oversizedResultReturnsToEditing);
+ // discarding it then still hands nothing off.
+ void exportLargerThanBudgetKeepsEditingUntilDiscarded(){
   QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;
   std::thread worker([&]{auto image=noise({200,200},4);result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Upload",1000,session);});
   auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
-  QVERIFY(waitPhase(*session,"editing"));QVERIFY(!ask(*session,"submit").error);if(worker.joinable())worker.join();
-  QCOMPARE(result.error.code,QString("edit_input_too_large"));QVERIFY(result.png.isEmpty());
+  QVERIFY(waitPhase(*session,"editing"));QVERIFY(!ask(*session,"submit").error);
+  bool recovered=false;for(int waited=0;waited<20000&&!recovered;waited+=50){const auto state=ask(*session,"inspect");recovered=!state.error&&state.result["preparation"].isObject();if(!recovered)QTest::qSleep(50);}
+  QVERIFY(recovered);QVERIFY(!ask(*session,"cancel").error);if(worker.joinable())worker.join();
+  QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(root.filePath("editing")),0);
  }
  void fileSourceIsDecodedOnlyByTheHelper(){
   // A JPEG carrying an EXIF 90-degree rotation opens upright, decoded in the helper.

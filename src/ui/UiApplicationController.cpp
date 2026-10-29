@@ -6,6 +6,7 @@
 #include "AboutWindow.h"
 #include "ViewState.h"
 #include <QApplication>
+#include <QJsonDocument>
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QWindow>
@@ -60,7 +61,7 @@ UiApplicationController::~UiApplicationController(){
   if(window){window->removeEventFilter(this);disconnect(window,nullptr,this,nullptr);}
 }
 QWidget* UiApplicationController::view(const QString& name){
- if(QStringList{"settings","updates","history","activity","destinations","editFile"}.contains(name)){
+ if(name.startsWith("historyCancelAll:")||name=="historyFailed"||name.startsWith("actionRecovery:")||QStringList{"settings","updates","history","activity","destinations","editFile","captureSettings"}.contains(name)){
   if(!main_){
    main_=std::make_unique<MainWindow>(session_);
    connect(main_.get(),&MainWindow::settingsCreated,this,[this](SettingsWindow* settings){
@@ -88,7 +89,11 @@ QWidget* UiApplicationController::view(const QString& name){
   // The tray's "Edit image > From a file" shows the main window, then its picker.
   if(name=="editFile"){QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->chooseImageToEdit();});return main_.get();}
   // Scrolled once the window is shown and laid out, as editFile opens its picker.
+  if(name=="captureSettings"){main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->showCaptureSettings();});return main_.get();}
   if(name=="updates"){main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->settings()->showUpdates();});return main_.get();}
+  if(name=="historyFailed"){main_->navigate("history");main_->history()->showFailedUploads();return main_.get();}
+  if(name.startsWith("historyCancelAll:")){QStringList ids;for(const auto& id:QJsonDocument::fromJson(name.mid(17).toUtf8()).array())if(id.isString())ids<<id.toString();main_->navigate("history");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get()),ids]{if(main)main->history()->confirmUploads(ids);});return main_.get();}
+  if(name.startsWith("actionRecovery:")){const auto data=QJsonDocument::fromJson(name.mid(15).toUtf8()).object();main_->showActionFailure(data["action"].toString(),{data["code"].toString(),data["message"].toString(),{}});return main_.get();}
   main_->navigate(name);return main_.get();
  }
  if(name=="about"){
@@ -167,8 +172,8 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   auto answer=[guard=QPointer<UiApplicationController>(this),sequence](Error error,QJsonObject result){if(guard&&!guard->exiting_)guard->control_.send("commandResult",{{"replyTo",sequence},{"error",error.toJson()},{"result",result}});};
   Error error;QJsonObject result;
   if(payload["version"]!=1)error={"ui_command_unsupported","This window does not support that command version.",{{"version",payload["version"]}}};
-  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","fileDialog"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
-  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"?"Open History before driving it.":name=="fileDialog"?"Open put.gd's window (History or Settings) before driving it.":"Open Settings before driving it.",{}};
+  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","history","fileDialog"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
+  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"||name=="history"?"Open History before driving it.":name=="fileDialog"?"Open put.gd's window (History or Settings) before driving it.":"Open Settings before driving it.",{}};
   // #259: the open, save and folder choosers, as their buttons open them.
   else if(name=="fileDialog"){
    const auto dialog=params["dialog"].toString(),action=params["action"].toString();
@@ -186,6 +191,7 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   // These finish asynchronously (a session request) and answer through `answer`.
   else if(name=="diagnostics"){main_->settings()->diagnosticsCommand(params,answer);return;}
   else if(name=="historySaveDiagnostics"){main_->history()->saveDiagnosticsFor(params["id"].toString(),answer);return;}
+  else if(name=="history"){main_->history()->command(params,answer);return;}
   else error=main_->settings()->moveSelectedDestination(params["direction"].toString()=="up"?-1:1,params["profileId"].toString(),result);
   answer(error,result);return;
  }

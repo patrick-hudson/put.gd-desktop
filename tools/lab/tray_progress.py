@@ -29,13 +29,13 @@ IDLE = 'put.gd — Share and local capture'
 LABELS = {'preflight': 'Checking destination', 'saving_local': 'Saving local copy',
           'sharing': 'Creating share link', 'reconciling': 'Checking previous upload'}
 # Theme::trayTints (src/ui/Theme.cpp): the panel the icon sits on, not the app
-# theme, picks the set (#60). uploadDim is IconArt's unfilled remainder of the
-# progress fill, upload.darker(230).
+# theme, picks the set (#60). IconArt uses encoding for the progress fill over
+# the idle glyph; upload is reserved for confirmed completion.
 TRAY_TINTS = {
-    'dark': {'idle': '#d6d6d2', 'upload': '#62d69b', 'uploadDim': '#2b5d43',
-             'encoding': '#f3c66f', 'error': '#ffb4ab'},
-    'light': {'idle': '#454540', 'upload': '#146c42', 'uploadDim': '#092f1d',
-              'encoding': '#8a5300', 'error': '#b4312a'},
+    'dark': {'idle': '#d6d6d2', 'upload': '#91bca2',
+             'encoding': '#e8b66d', 'error': '#e59b93', 'live': '#f0524f'},
+    'light': {'idle': '#383834', 'upload': '#386a4b',
+              'encoding': '#8f5b20', 'error': '#a44139', 'live': '#c8302b'},
 }
 
 
@@ -227,9 +227,15 @@ def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False, tints=
     require(idle or snapshot.get('title') == 'put.gd — Working', 'Unexpected tray title')
     icons = snapshot.get('icons', [])
     colors = (((tints['idle'],), (tints['error'],)) if error_pulse else
-              ((tints['idle'],),) if idle else ((tints['idle'],), (tints['upload'], tints['uploadDim'])))
+              ((tints['idle'],),) if idle else
+              ((tints['upload'],),) if text == 'Upload complete' else
+              ((tints['idle'],), (tints['encoding'],)))
     present = [family[0] for family in colors if icons and
                all(any(icon.get('opaqueColors', {}).get(color, 0) > 0 for color in family) for icon in icons)]
+    # Partial progress retains idle pixels alongside the encoding fill. Every
+    # advertised size must contain the fill before it earns storage coverage.
+    if not idle and not error_pulse and present == [tints['idle'], tints['encoding']]:
+        present = [tints['encoding']]
     require(len(present) == 1,
             'SNI icon does not have the required idle/active brand color')
     if idle:
@@ -240,13 +246,13 @@ def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False, tints=
     if text == 'Upload complete':
         observed(not records and present == [tints['upload']], 'Completion fill must be green with no remaining work')
         require(all(icon.get('opaqueColors', {}).get(tints['upload'], 0) > 0 and
-                    not icon.get('opaqueColors', {}).get(tints['uploadDim'], 0) for icon in icons),
-                'Completion frame must be fully bright green')
+                    not icon.get('opaqueColors', {}).get(tints['encoding'], 0) for icon in icons),
+                'Completion frame must be fully green without a progress fill')
         return {'idle': False, 'storageActive': False, 'counter': False, 'phases': []}
     observed(text, 'Working tray has no activity text')
     labels = {LABELS.get(record['phase'], record['phase'].replace('_', ' ').capitalize()): record['phase']
               for record in records}
-    result = {'idle': False, 'storageActive': present[0] == tints['upload'], 'counter': False, 'phases': []}
+    result = {'idle': False, 'storageActive': present[0] == tints['encoding'], 'counter': False, 'phases': []}
     if error_pulse:
         result['errorColor'] = present[0]
     for row_index, line in enumerate(text.splitlines()):
@@ -673,7 +679,7 @@ class Replay:
             # operation trails the resident's pulse clock. Neither grants pulse
             # coverage; green in the established pulse must fail error priority.
             if pulse_active and any(icon.get('opaqueColors', {}).get(color, 0) for icon in snapshot.get('icons', [])
-                                    for color in (self.tints['upload'], self.tints['uploadDim'])):
+                                    for color in (self.tints['upload'], self.tints['encoding'])):
                 pulse = self.error_pulse
                 before_failed = {op['id'] for op in before if op['state'] in {'failed', 'partial', 'interrupted'}}
                 bracketed_failure = not set(pulse['failedOperationIds']) <= before_failed
@@ -1007,7 +1013,7 @@ print(json.dumps(results))
         require(self.result['coverage']['queue']['active'] and self.result['coverage']['queue']['counter']
                 and self.result['coverage']['queue']['queued'], 'Queued active work/counters were not observed; preserve this run')
         require(self.result['coverage']['queue']['storageActive'],
-                'Queued upload green storage activity was not observed; preserve this run')
+                'Queued upload storage progress fill was not observed; preserve this run')
         self.independent_paste(queued[queue_ids[-1]], 'upload')
         if self.args.provider == 's3':
             self.s3_public_bytes(queued[queue_ids[-1]])
@@ -1038,7 +1044,7 @@ print(json.dumps(results))
         retried = self.settled([cancelled_id], 'retry')
         self.successful_uploads(retried)
         require(self.result['coverage']['retry']['storageActive'],
-                'Retry green storage activity was not observed; preserve this run')
+                'Retry storage progress fill was not observed; preserve this run')
         require([item['artifact']['id'] for item in original['items']] ==
                 [item['artifact']['id'] for item in retried[cancelled_id]['items']], 'Retry changed retained artifact identity')
         require([item['publicationId'] for item in original['items']] ==
