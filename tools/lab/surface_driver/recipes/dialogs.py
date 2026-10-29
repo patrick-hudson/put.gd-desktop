@@ -124,6 +124,8 @@ def _exercise(ctx, backend, mode, request, consumer, path, *, mcp=False):
         ctx.expect(cancelled['last']['status'] == 'cancelled', 'Escape reports cancellation')
         ctx.expect(consumer() == before, 'cancel leaves the owning surface unchanged')
         _frame(ctx, 'after-cancel', backend)
+        if mcp:
+            command('cancel')
         command('open')
         _ready(ctx, lambda: command('inspect'), backend, mode)
         _input(ctx, backend, path, mode)
@@ -136,8 +138,10 @@ def _exercise(ctx, backend, mode, request, consumer, path, *, mcp=False):
         _frame(ctx, 'dialog-failure', backend)
         raise
     finally:
-        # Cancel only this chooser, including on AT-SPI/selection failures.
-        command('cancel')
+        # Review disables mutating controls during export. Do not send a
+        # redundant cancel after a successful choice has started that export.
+        if command('inspect')['open']:
+            command('cancel')
 
 
 def _settings(ctx):
@@ -205,6 +209,8 @@ def _run(ctx, backend, scenario):
     elif scenario == 'history-save-as':
         fixture = ctx.fixture('local-history')
         ctx.view('ui.show', {'view': 'history'})
+        ctx.wait(lambda: not ctx.call('ui.history', {'action': 'inspect'})['busy'], 'history loaded')
+        ctx.call('ui.history', {'action': 'select', 'ids': [fixture['history_id']]})
         path = files['root'] + '/History copy.png'
         _exercise(ctx, backend, 'save', _ui_request('historySaveAs', id=fixture['history_id']),
                   lambda: ctx.call('ui.history', {'action': 'inspect'})['savedPath'], path)
@@ -219,10 +225,12 @@ def _run(ctx, backend, scenario):
             ctx.view('editor.view', {'id': op, 'action': 'fit'})
             path = files['root'] + '/Edited copy.png'
             def consumer():
-                return ctx.call('editor.inspect', {'id': op})['view']['lastSave']
+                state = ctx.call('editor.inspect', {'id': op})
+                return {'document': {k: v for k, v in state.items() if k != 'view'},
+                        'lastSave': state['view']['lastSave']}
             _exercise(ctx, backend, 'save', ('editor.fileDialog', {'id': op}), consumer, path)
-            ctx.wait(lambda: (consumer() or {}).get('status') == 'saved', 'resident finished saving edit')
-            ctx.expect(consumer()['path'] == path, 'editor saved path')
+            ctx.wait(lambda: (consumer()['lastSave'] or {}).get('status') == 'saved', 'resident finished saving edit')
+            ctx.expect(consumer()['lastSave']['path'] == path, 'editor saved path')
             _png(ctx, path)
             _frame(ctx, 'after', backend)
         finally:
@@ -233,7 +241,8 @@ def _run(ctx, backend, scenario):
         ctx.view('recording.review', {'id': op, 'action': 'inspect'})
         path = files['root'] + '/Recording copy.' + fixture['extension']
         def consumer():
-            return ctx.call('recording.review', {'id': op, 'action': 'inspect'})['savedCopy']
+            state = ctx.call('recording.review', {'id': op, 'action': 'inspect'})
+            return {'savedCopy': state['savedCopy'], 'edit': state['edit']}
         # Review exposes its chooser under its own surface method, not ui.fileDialog.
         class ReviewContext:
             def __getattr__(self, name):
@@ -244,7 +253,7 @@ def _run(ctx, backend, scenario):
                     return ctx.call('recording.review', {'id': op, 'action': actions[params['action']]})['fileDialog']
                 return ctx.call(method, params)
         _exercise(ReviewContext(), backend, 'save', ('recording.review.dialog', {}), consumer, path)
-        ctx.wait(lambda: consumer()['path'] == path, 'review reports saved copy')
+        ctx.wait(lambda: consumer()['savedCopy']['path'] == path, 'review reports saved copy')
         _shell(ctx, 'test -s ' + shlex.quote(path))
         _frame(ctx, 'after', backend)
     elif scenario == 'edit-image':

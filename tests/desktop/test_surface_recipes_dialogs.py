@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import importlib
 import json
 from pathlib import Path
 import sys
@@ -64,7 +63,7 @@ class FakeContext(Context):
         if method == 'settings.get':
             return {'document': copy.deepcopy(self.document)}
         if method == 'ui.history':
-            return {'savedPath': self.history_path, 'copyJob': {'status': 'saved'}}
+            return {'savedPath': self.history_path, 'copyJob': {'status': 'saved'}, 'busy': False}
         if method == 'ui.diagnostics':
             return {'package': {'folder': self.package_folder}}
         if method == 'editor.open':
@@ -79,7 +78,9 @@ class FakeContext(Context):
             action = params['action']
             if action in ('saveCopyDialog', 'closeFileDialog'):
                 self._chooser(method, {'action': 'open' if action == 'saveCopyDialog' else 'cancel', 'dialog': 'review'})
-            return {'fileDialog': copy.deepcopy(self.dialog), 'savedCopy': copy.deepcopy(self.saved_copy)}
+            if action == 'closeFileDialog' and not self.dialog['open'] and self.saved_copy['path']:
+                raise AssertionError('Review controls cannot mutate during export')
+            return {'fileDialog': copy.deepcopy(self.dialog), 'savedCopy': copy.deepcopy(self.saved_copy), 'edit': {'revision': 1}}
         raise AssertionError('Unexpected method: ' + method)
 
     def _chooser(self, method, params):
