@@ -2047,7 +2047,7 @@ void ReviewWindow::refreshStatus() {
         auto* row = new QHBoxLayout(line);
         row->setContentsMargins(0, 0, 0, 0);
         row->setSpacing(reviewSpace(Graphite::Space::xs));
-        // The words carry the tone; colour only repeats it.
+        // The words and banner glyph carry the tone; keep the inline copy neutral.
         const bool saved = std::any_of(entry.actions.cbegin(), entry.actions.cend(), [](const auto& action) { return action.second["action"] == "copyPath"; });
         QLabel* text;
         if (saved) {
@@ -2061,7 +2061,6 @@ void ReviewWindow::refreshStatus() {
         text->setWordWrap(!saved);
         text->setTextInteractionFlags(Qt::TextSelectableByMouse);
         text->setAccessibleName(entry.text);
-        VisualStyle::role(text, entry.tone == "success" ? "success" : "secondary");
         VisualStyle::role(text, "meta");
         // Keep recovery at the right edge while a long message can still wrap.
         text->setMaximumWidth(text->fontMetrics().horizontalAdvance(entry.text) + 4);
@@ -2075,7 +2074,6 @@ void ReviewWindow::refreshStatus() {
             auto* button = new QPushButton(label, line);
             button->setProperty("graphiteDensity", "compact");
             button->setObjectName(params["action"] == "useSolidCover" ? "useRedact" : "statusAction");
-            VisualStyle::role(button, "label");
             if (params["action"] == "dismissStatus" || params["action"] == "dismissBlurTip") {
                 button->setText({});
                 button->setIcon(Graphite::chromeIcon("close"));
