@@ -69,6 +69,10 @@ class FakeContext(Context):
     def view(self, method, params=None):
         if method == "recording.prepare":
             return self.call(method, params)
+        if method == "action.invoke":
+            oid = self._operation(params["action"])
+            self.surface, self.selection, self.head = "region", None, 0
+            return {"operationId": oid}
         assert method == "ui.show" and params == {"view": "history"}
         self.surface = "history"
         return {"shown": "history"}
@@ -398,6 +402,18 @@ class SelectorRecipes(unittest.TestCase):
             selectors.region_keyboard(ctx)
         self.assertEqual(ctx.surface, "history")
         self.assertEqual(ctx.document, ctx.original)
+
+    def test_bar_cancel_failure_retires_session_before_next_recipe(self):
+        ctx = FakeContext()
+        real_click = ctx.click
+        def unavailable_control(control, **kwargs):
+            if control == "cancel":
+                raise RecipeBlocked("catalog aspect mismatch")
+            return real_click(control, **kwargs)
+        ctx.click = unavailable_control
+        with self.assertRaisesRegex(RecipeBlocked, "catalog aspect"):
+            selectors.bar_discard(ctx)
+        self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
 
     def test_unavailable_fixture_is_blocked(self):
         ctx = FakeContext()

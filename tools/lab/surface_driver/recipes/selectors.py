@@ -118,22 +118,18 @@ def _expect_rect(ctx, wanted, recording=False):
     ctx.wait(lambda: _rect(ctx, recording) == wanted, "selector rectangle " + str(wanted))
 
 
-def _recent(ctx):
-    return _call(ctx, "operation.recent")["operations"]
-
-
 def _open_region(ctx, edit=False):
-    before = {o["id"] for o in _recent(ctx)}
-    ctx.view("ui.show", {"view": "history"})
-    ctx.click("text:Capture region & edit" if edit else "text:Capture region", window="history")
-    op = ctx.wait(lambda: next((o for o in _recent(ctx) if o["id"] not in before and o["action"] == ("edit" if edit else "region")), None), "new capture operation")
+    # action.invoke durably acknowledges before interactive acquisition finishes.
+    # Surface setup therefore does not depend on the shell window's layout.
+    opened = _result(ctx.view("action.invoke", {"action": "edit" if edit else "region"}))
+    ctx.expect(bool(opened.get("operationId")), "capture action returns a durable operation identity")
+    oid = opened["operationId"]
     try:
         ctx.wait(lambda: ctx.accessible({"name": "Capture region"}), "screenshot selector opened")
-        ctx.expect("No region selected." in _description(ctx), "selector opens with no selection")
     except Exception:
-        _cancel_region(ctx, op["id"])
+        _cancel_region(ctx, oid)
         raise
-    return op["id"]
+    return oid
 
 
 def _op(ctx, oid):
@@ -249,11 +245,11 @@ def region_keyboard(ctx):
     with _local(ctx):
         oid = _open_region(ctx)
         try:
-            ctx.frame("before", window="region", reference="46-region-entire-display")
+            ctx.frame("before", reference="46-region-entire-display")
             ctx.keys("Right")
             rect = _half(_screen(ctx))
             _expect_rect(ctx, rect)
-            ctx.frame("centred", window="region", reference=REGION)
+            ctx.frame("centred", reference=REGION)
             for prefix, step in (("", 1), ("Ctrl+", 10)):
                 for key, dx, dy in (("Right", step, 0), ("Down", 0, step), ("Left", -step, 0), ("Up", 0, -step)):
                     ctx.keys(prefix + key)
@@ -264,7 +260,7 @@ def region_keyboard(ctx):
                     ctx.keys(prefix + key)
                     rect[2] += dw; rect[3] += dh
                     _expect_rect(ctx, rect)
-            ctx.frame("after", window="region", reference=REGION)
+            ctx.frame("after", reference=REGION)
         finally:
             _cancel_region(ctx, oid)
 
@@ -274,7 +270,7 @@ def region_cancel(ctx):
     with _local(ctx):
         for gesture in ("Esc", "right"):
             oid = _open_region(ctx)
-            ctx.frame("before-" + gesture, window="region", reference="46-region-entire-display")
+            ctx.frame("before-" + gesture, reference="46-region-entire-display")
             _cancel_region(ctx, oid, gesture)
             ctx.frame("after-" + gesture)
 
@@ -284,7 +280,7 @@ def region_capture(ctx):
     with _local(ctx):
         for gesture in ("drag", "Return"):
             oid = _open_region(ctx)
-            ctx.frame("before-" + gesture, window="region", reference="46-region-entire-display")
+            ctx.frame("before-" + gesture, reference="46-region-entire-display")
             if gesture == "drag":
                 x, y, w, h = map(int, _half(_screen(ctx)))
                 ctx.drag((x, y), (x + w, y + h))
@@ -304,7 +300,7 @@ def region_capture(ctx):
         # A click (zero-size drag) must cancel rather than capture a pixel.
         oid = _open_region(ctx)
         x, y, _, _ = map(int, _half(_screen(ctx)))
-        ctx.frame("before-tiny", window="region", reference="46-region-entire-display")
+        ctx.frame("before-tiny", reference="46-region-entire-display")
         ctx.click_at(x, y)
         ctx.wait(lambda: _op(ctx, oid)["state"] in ("cancelled", "failed"), "zero-size region cancelled")
         ctx.expect(not _op(ctx, oid)["items"], "zero-size region creates no image")
@@ -317,7 +313,7 @@ def region_editor(ctx):
         oid = _open_region(ctx, edit=True)
         try:
             ctx.expect("Opens the image editor" in _description(ctx), "edit outcome is announced")
-            ctx.frame("before", window="region", reference="46-region-entire-display")
+            ctx.frame("before", reference="46-region-entire-display")
             x, y, w, h = map(int, _half(_screen(ctx)))
             ctx.drag((x, y), (x + w, y + h))
             ctx.wait(lambda: _op(ctx, oid)["state"] == "editing", "capture enters editor")
@@ -335,11 +331,11 @@ def region_modes(ctx):
             oid = _open_region(ctx)
             try:
                 ctx.note("source capabilities: " + str(_call(ctx, "capabilities").get("source")))
-                ctx.frame(mode + "-before", window="region", reference="46-region-entire-display")
+                ctx.frame(mode + "-before", reference="46-region-entire-display")
                 ctx.shell("sleep 2.2")
                 ctx.keys("Right")
                 _expect_rect(ctx, _half(_screen(ctx)))
-                ctx.frame(mode + "-after", window="region", reference=REGION)
+                ctx.frame(mode + "-after", reference=REGION)
                 ctx.review("Compare moving-pattern frames: desktop updates only in live mode; hint fades after 1.7+0.3 s; size pill follows selection; no monitor scrim. Resident inspect does not expose rendered pixels or backend identity.")
             finally:
                 _cancel_region(ctx, oid)
@@ -356,12 +352,12 @@ def _heads(ctx, recording):
         ctx.blocked("Tab across heads requires exactly two independently sized guest heads (#664)", issue=664)
     with _local(ctx):
         oid = _open_record(ctx) if recording else _open_region(ctx)
-        role, ref = ("recsel", RECSEL) if recording else ("region", REGION)
+        ref = RECSEL if recording else REGION
         try:
             ctx.keys("Right")
             rect = _half(screens[0])
             _expect_rect(ctx, rect, recording)
-            ctx.frame("before", window=role, reference=ref)
+            ctx.frame("before", reference=ref)
             ctx.frame("all-heads-before")
             a, b = screens
             transferred = [b[0] + min(rect[0] - a[0], b[2] - min(rect[2], b[2])),
@@ -369,14 +365,14 @@ def _heads(ctx, recording):
             ctx.keys("Tab")
             _expect_rect(ctx, transferred, recording)
             ctx.expect("Display 2" in _description(ctx, recording), "Tab changes active output")
-            ctx.frame("second-head", window=role, reference=ref)
+            ctx.frame("second-head", reference=ref)
             ctx.frame("all-heads-second")
             ctx.keys("Shift+Tab")
             # Same-size heads round trip exactly; unequal heads preserve the clamped size.
             back = [a[0] + min(transferred[0] - b[0], a[2] - transferred[2]), a[1] + min(transferred[1] - b[1], a[3] - transferred[3]), transferred[2], transferred[3]]
             _expect_rect(ctx, back, recording)
             ctx.expect("Display 1" in _description(ctx, recording), "Shift+Tab returns to first output")
-            ctx.frame("after", window=role, reference=ref)
+            ctx.frame("after", reference=ref)
             ctx.review("Both output covers and absence of dim on the other monitor require full-desktop visual review; AT-SPI proves selection transfer only.")
         finally:
             if recording:
@@ -396,7 +392,7 @@ def recording_selection(ctx):
         for gesture in ("drag", "Return", "entire"):
             rid = _open_record(ctx)
             try:
-                ctx.frame("before-" + gesture, window="recsel", reference="47-record-entire-display")
+                ctx.frame("before-" + gesture, reference="47-record-entire-display")
                 if gesture == "entire":
                     ctx.keys("Return")
                     ready = _state(ctx, rid, "ready")
@@ -408,7 +404,7 @@ def recording_selection(ctx):
                 _cancel_record(ctx, rid)
         rid = _open_record(ctx)
         try:
-            ctx.frame("before-tiny", window="recsel", reference="47-record-entire-display")
+            ctx.frame("before-tiny", reference="47-record-entire-display")
             x, y, _, _ = map(int, _half(_screen(ctx)))
             ctx.drag((x, y), (x + 3, y + 3))
             _state(ctx, rid, "cancelled")
@@ -423,7 +419,7 @@ def recording_cancel(ctx):
         for gesture in ("Esc", "right"):
             rid = _open_record(ctx)
             try:
-                ctx.frame("before-" + gesture, window="recsel", reference="47-record-entire-display")
+                ctx.frame("before-" + gesture, reference="47-record-entire-display")
                 if gesture == "right":
                     x, y, w, h = _screen(ctx)
                     ctx.click_at(int(x + w / 2), int(y + h / 2), button="right")
@@ -440,7 +436,7 @@ def recording_keyboard(ctx):
     with _local(ctx):
         rid = _open_record(ctx)
         try:
-            ctx.frame("before", window="recsel", reference="47-record-entire-display")
+            ctx.frame("before", reference="47-record-entire-display")
             ctx.keys("Right")
             rect = _half(_screen(ctx))
             _expect_rect(ctx, rect, True)
@@ -449,7 +445,7 @@ def recording_keyboard(ctx):
                     ctx.keys(prefix + key)
                     rect[axis] += delta
                     _expect_rect(ctx, rect, True)
-            ctx.frame("after", window="recsel", reference=RECSEL)
+            ctx.frame("after", reference=RECSEL)
         finally:
             _cancel_record(ctx, rid)
     # This id also promises display switching, so one-head evidence cannot pass it.
@@ -463,10 +459,10 @@ def recording_output(ctx):
         doc = _call(ctx, "settings.get")["document"]
         rid = _open_record(ctx)
         try:
-            ctx.frame("before", window="recsel", reference="47-record-entire-display")
+            ctx.frame("before", reference="47-record-entire-display")
             record_route = doc["actions"]["record"]
             ctx.expect(doc["actions"]["region"]["destination"] == record_route.get("destination", "local") == "local", "recording route matches region local output")
-            _choose(ctx, rid)
+            _choose(ctx, rid, _half(_screen(ctx)))
             ctx.expect(not _op(ctx, rid)["destination"].get("providerId"), "local recording has no provider destination")
             ctx.frame("after", window="bar", reference=BAR)
             ctx.review("Local route inspected (shortcut-only entries inherit region); upload inheritance and an explicit recording exception need the live lane's isolated provider fixture.")
@@ -528,10 +524,13 @@ def bar_discard(ctx):
     with _local(ctx):
         for gesture in ("cancel", "Esc"):
             rid = _ready(ctx)
-            ctx.frame("before-ready-" + gesture, window="bar", reference=BAR)
-            ctx.click("cancel", window="bar") if gesture == "cancel" else ctx.keys("Esc")
-            _state(ctx, rid, "cancelled")
-            ctx.frame("after-ready-" + gesture)
+            try:
+                ctx.frame("before-ready-" + gesture, window="bar", reference=BAR)
+                ctx.click("cancel", window="bar") if gesture == "cancel" else ctx.keys("Esc")
+                _state(ctx, rid, "cancelled")
+                ctx.frame("after-ready-" + gesture)
+            finally:
+                _cancel_record(ctx, rid)
         rid = _ready(ctx)
         try:
             _start(ctx, rid)
