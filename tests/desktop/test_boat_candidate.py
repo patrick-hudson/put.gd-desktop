@@ -191,7 +191,8 @@ class CandidateContracts(unittest.TestCase):
             def boat(*args, **kwargs):
                 if args[0] == 'delete':
                     self.assertEqual(args[1], 'bx_owned')
-                    return {'deleted': True}
+                    return {'operation': {'id': 'bdop_owned', 'targetId': 'bx_owned',
+                                          'kind': 'sandbox', 'status': 'pending', 'stage': 'removing'}}
                 self.assertEqual(args, ('list',))
                 return {'sandboxes': [{'id': 'bx_unrelated'}]}
             args = argparse.Namespace(commit=SHA, type='large', ttl=10800)
@@ -200,6 +201,9 @@ class CandidateContracts(unittest.TestCase):
             self.assertEqual(result['state'], 'failed')
             self.assertTrue(result['cleanupVerified'])
             self.assertEqual(result['sandboxId'], 'bx_owned')
+            self.assertEqual(result['deletion']['id'], 'bdop_owned')
+            self.assertEqual(result['deletion']['targetId'], 'bx_owned')
+            self.assertEqual(result['deletion']['status'], 'pending')
 
 
 if __name__ == '__main__':

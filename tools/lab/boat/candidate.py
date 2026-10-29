@@ -8,7 +8,6 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import shlex
@@ -342,7 +341,10 @@ sudo -n chown -R user:user /home/user/candidate/output
         if sandbox_id:
             try:
                 deletion = boat('delete', sandbox_id, '--yes', cleanup=True)
-                receipt['deletion'] = {key: deletion.get(key) for key in ('id', 'deleted', 'success', 'status')}
+                operation = deletion.get('operation', {})
+                receipt['deletion'] = {key: operation.get(key) for key in
+                                       ('id', 'targetId', 'kind', 'status', 'stage',
+                                        'requestedAt', 'completedAt')}
                 listing = boat('list', cleanup=True)
                 if any(item['id'] == sandbox_id for item in listing['sandboxes']):
                     raise RuntimeError('Deleted worker still listed; manual cleanup required')
