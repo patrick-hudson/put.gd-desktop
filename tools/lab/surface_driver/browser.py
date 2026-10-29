@@ -108,6 +108,10 @@ def open_and_verify(ctx, trigger, expect):
         raise
 
 
+class _TargetError(RuntimeError):
+    """Static, secret-free target error suitable for a receipt."""
+
+
 class _Marionette:
     def __init__(self, port):
         self.sock = socket.create_connection(('127.0.0.1', port), timeout=5)
@@ -116,7 +120,7 @@ class _Marionette:
         try:
             hello = self.read()
             if hello.get('marionetteProtocol') != 3:
-                raise RuntimeError('Unsupported Firefox protocol')
+                raise _TargetError('Unsupported Firefox protocol')
             self.call('WebDriver:NewSession', {'capabilities': {}})
         except BaseException:
             self.stream.close()
@@ -130,14 +134,14 @@ class _Marionette:
             if char == b':':
                 break
             if not char or not char.isdigit() or len(header) >= 9:
-                raise RuntimeError('Invalid Firefox frame')
+                raise _TargetError('Invalid Firefox frame')
             header.extend(char)
         size = int(header)
         if size > 8 * 1024 * 1024:
-            raise RuntimeError('Oversized Firefox frame')
+            raise _TargetError('Oversized Firefox frame')
         data = self.stream.read(size)
         if len(data) != size:
-            raise RuntimeError('Incomplete Firefox frame')
+            raise _TargetError('Incomplete Firefox frame')
         return json.loads(data)
 
     def call(self, method, params=None):
@@ -147,7 +151,7 @@ class _Marionette:
         value = self.read()
         if value[:2] != [1, self.sequence] or value[2] is not None:
             # Firefox errors can contain URLs. Never include the response.
-            raise RuntimeError('Firefox protocol command failed')
+            raise _TargetError('Firefox protocol command failed')
         result = value[3]
         return result["value"] if isinstance(result, dict) and set(result) == {"value"} else result
 
@@ -215,7 +219,7 @@ def _snapshot(paths):
     result = []
     for path in paths:
         if path.is_symlink() or (path.exists() and not path.is_file()):
-            raise RuntimeError('MIME file must be a regular file')
+            raise _TargetError('MIME file must be a regular file')
         data = path.read_bytes() if path.exists() else None
         result.append({'path': str(path), 'bytes': base64.b64encode(data).decode() if data is not None else None,
                        'sha256': hashlib.sha256(data).hexdigest() if data is not None else None,
@@ -228,10 +232,10 @@ def _restore_mime(backups):
         path = Path(item['path'])
         if item['bytes'] is None:
             if path.is_symlink():
-                raise RuntimeError('MIME path became a symlink; backup retained')
+                raise _TargetError('MIME path became a symlink; backup retained')
             path.unlink(missing_ok=True)
             if path.exists():
-                raise RuntimeError('MIME removal failed')
+                raise _TargetError('MIME removal failed')
         else:
             data = base64.b64decode(item['bytes'])
             descriptor, temporary = tempfile.mkstemp(prefix='.putgd-restore-', dir=path.parent)
@@ -245,7 +249,7 @@ def _restore_mime(backups):
             finally:
                 Path(temporary).unlink(missing_ok=True)
             if hashlib.sha256(path.read_bytes()).hexdigest() != item['sha256']:
-                raise RuntimeError('MIME restoration hash mismatch; backup retained')
+                raise _TargetError('MIME restoration hash mismatch; backup retained')
 
 
 def _environment(config, data):
@@ -309,7 +313,7 @@ def _prepare(options):
                 break
             except (OSError, RuntimeError):
                 if process.poll() is not None or time.monotonic() >= deadline:
-                    raise RuntimeError('Private Firefox did not become ready') from None
+                    raise _TargetError('Private Firefox did not become ready') from None
                 time.sleep(.25)
         for scheme in ('http', 'https'):
             subprocess.run(['xdg-mime', 'default', desktop.name, 'x-scheme-handler/' + scheme],
@@ -317,7 +321,7 @@ def _prepare(options):
             check = subprocess.run(['xdg-mime', 'query', 'default', 'x-scheme-handler/' + scheme],
                                    env=env, capture_output=True, text=True, check=True, timeout=10)
             if check.stdout.strip() != desktop.name:
-                raise RuntimeError('Real MIME handler verification failed')
+                raise _TargetError('Real MIME handler verification failed')
         return {'directory': str(directory), 'port': state['port']}
     except BaseException:
         _restore(state)
@@ -377,5 +381,6 @@ if __name__ == '__main__':
     try:
         answer = _target(sys.argv[1], json.loads(base64.b64decode(sys.argv[2])))
     except BaseException as error:
-        answer = {'error': type(error).__name__}  # no exception text/tracebacks
+        answer = {'error': str(error) if isinstance(error, _TargetError) else type(error).__name__}
+        # Only our static allowlisted errors, never protocol/OS text or traces.
     print(json.dumps(answer))
