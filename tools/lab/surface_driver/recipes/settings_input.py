@@ -2,6 +2,8 @@
 import json
 import shlex
 
+from tools.lab.surface_driver.api import RecipeFailed
+
 
 def observe(ctx, geometry, *, foreground=False):
     key = 'foreground_script' if foreground else 'input_state_script'
@@ -29,8 +31,13 @@ def click(ctx, control):
     top, bottom = options['viewport_insets']
     for attempt in range(12):
         geometry = ctx.geometry('settings')
-        matches = [row for row in ctx.accessible(query)
-                   if row.get('pid') == owner['pid'] and row.get('rect') and row['rect'][2] > 0]
+        def matching():
+            return [row for row in ctx.accessible(query)
+                    if row.get('pid') == owner['pid'] and row.get('rect') and row['rect'][2] > 0]
+        try:
+            matches = ctx.wait(matching, 'Settings accessibility exposes ' + control)
+        except RecipeFailed:
+            ctx.blocked('Settings live control is missing or ambiguous: ' + control)
         if len(matches) != 1:
             ctx.blocked('Settings live control is missing or ambiguous: ' + control)
         x, y, width, height = matches[0]['rect']
