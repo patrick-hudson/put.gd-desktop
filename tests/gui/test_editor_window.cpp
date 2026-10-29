@@ -7,6 +7,10 @@
 #include "platform/HostOpen.h"
 #include <QApplication>
 #include <QAccessible>
+#ifdef Q_OS_LINUX
+#include <QDBusConnection>
+#include <QDBusMessage>
+#endif
 #include <algorithm>
 #include <QClipboard>
 #include <QComboBox>
@@ -31,6 +35,8 @@
 #include <QSplitter>
 #include <QSlider>
 #include <QProgressBar>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QStyleOptionSlider>
 #include <QStyleOptionComboBox>
 #include <QTimer>
@@ -249,7 +255,21 @@ private slots:
   static QObject* alerted=nullptr;alerted=nullptr;const bool active=QAccessible::isActive();
   const auto previous=QAccessible::installUpdateHandler([](QAccessibleEvent* event){if(event->type()==QAccessible::Alert)alerted=event->object();});QAccessible::setActive(true);
   auto restore=qScopeGuard([previous,active]{QAccessible::installUpdateHandler(previous);QAccessible::setActive(active);});
+#ifdef Q_OS_LINUX
+  // Qt 6.4's setActive only notifies observers. Its offscreen backend stays
+  // inactive, so exercise the real alert with AT-SPI on an isolated X server.
+  if(!QAccessible::isActive()&&QGuiApplication::platformName()=="offscreen"){
+   QProcess process;process.setProcessChannelMode(QProcess::MergedChannels);auto environment=QProcessEnvironment::systemEnvironment();environment.insert("QT_QPA_PLATFORM","xcb");environment.insert("QT_LINUX_ACCESSIBILITY_ALWAYS_ON","1");environment.remove("AT_SPI_BUS_ADDRESS");environment.remove("DISPLAY");environment.remove("WAYLAND_DISPLAY");process.setProcessEnvironment(environment);
+   process.start("dbus-run-session",{"--","xvfb-run","-a","-s","-screen 0 1280x800x24 -noreset",QCoreApplication::applicationFilePath(),"saveFailuresAnnounceTheirReason"});
+   QVERIFY(putgd::test::waitFor([&]{return process.state()==QProcess::NotRunning;},15000));
+   QCOMPARE(process.exitStatus(),QProcess::NormalExit);QVERIFY2(process.exitCode()==0,process.readAll().constData());return;
+  }
+#endif
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+#ifdef Q_OS_LINUX
+  if(!QAccessible::isActive())QDBusConnection::sessionBus().call(QDBusMessage::createMethodCall("org.a11y.Bus","/org/a11y/bus","org.a11y.Bus","GetAddress"));
+#endif
+  PUTGD_TRY_VERIFY(QAccessible::isActive());
   auto* feedback=window.findChild<Graphite::Banner*>("editorSaveFeedback");window.showSaveFailed("/synthetic/copy.png","Disk full");QCOMPARE(alerted,feedback);QVERIFY(feedback->accessibleName().contains("Disk full",Qt::CaseInsensitive));
   window.showSaved("/synthetic/new copy.png");QVERIFY(!feedback->accessibleName().contains("full"));
  }
