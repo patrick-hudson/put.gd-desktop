@@ -1,6 +1,7 @@
 #include "OutputBudget.h"
 #include "ProtonProvider.h"
 #include "core/HostEnvironment.h"
+#include "core/DisplaySize.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDateTime>
@@ -182,7 +183,7 @@ void ProtonProvider::upload(const UploadRequest& req,std::function<void(UploadRe
  auto error=e?e:parseError(r["error"].toObject());
  // The plan's per-file limit is Proton's own (#147): name the file's size beside it.
  if(error.code=="destination_file_too_large_for_plan"){
-  error.message=QStringLiteral("Proton refused this %1 file: it is larger than your Proton plan allows for a single file. Upload a smaller file, or upgrade the Proton plan, then Retry.").arg(QLocale::c().formattedDataSize(req.artifact.bytes,1));
+  error.message=QStringLiteral("Proton refused this %1 file: it is larger than your Proton plan allows for a single file. Upload a smaller file, or upgrade the Proton plan, then Retry.").arg(DisplaySize::localized(req.artifact.bytes,1));
   error.details["bytes"]=double(req.artifact.bytes);
  }
  reply({e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),error});

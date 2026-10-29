@@ -383,7 +383,7 @@ private slots:
   PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(0%)"));
   const auto emptyIcon=pixels();
   provider->requests.first().progress({"uploading",2*1024*1024,4*1024*1024});
-  PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("2 MiB of 4 MiB"));
+  PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("2 MB of 4 MB"));
   PUTGD_TRY_VERIFY(amber(pixels())>amber(emptyIcon));const auto activeIcon=pixels();QVERIFY(activeIcon!=idleIcon);
   provider->requests.first().progress({"uploading",4*1024*1024,4*1024*1024});
   PUTGD_TRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(100%)"));
@@ -413,7 +413,7 @@ private slots:
    }
    if(record["message"]=="Tray tooltip changed") {
     QCOMPARE(record["level"].toString(),QString("debug"));
-    progress=progress||fields["activity"].toString().contains("2 MiB of 4 MiB");
+    progress=progress||fields["activity"].toString().contains("2 MB of 4 MB");
     idleAgain=idleAgain||(fields["activity"].toString().isEmpty()&&fields["title"]=="put.gd");
    }
   }
@@ -429,19 +429,19 @@ private slots:
   const auto service=watcher.registrations.last();
   QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewIcon",&observer,SLOT(iconChanged())));
   QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewToolTip",&observer,SLOT(tooltipChanged())));
-  tray.setActivity(Theme::trayTints(false).idle,"Uploading: 2 MiB of 4 MiB (50%)",50);PUTGD_TRY_COMPARE(observer.icons,1);PUTGD_TRY_COMPARE(observer.tooltips,1);
-  tray.setActivity(Theme::trayTints(false).idle,"Uploading: 3 MiB of 4 MiB (75%)",75);PUTGD_TRY_COMPARE(observer.tooltips,2);PUTGD_TRY_COMPARE(observer.icons,2);
-  tray.setActivity(Theme::trayTints(false).idle,"Uploading: 3 MiB of 4 MiB (75%)",75);putgd::test::settle(50);PUTGD_TRY_COMPARE(observer.tooltips,2);PUTGD_TRY_COMPARE(observer.icons,2);
-  changeHost(false);PUTGD_TRY_VERIFY(!tray.available());tray.setActivity(Theme::trayTints(false).idle,"Finalizing: 4 MiB of 4 MiB (100%)",100);
+  tray.setActivity(Theme::trayTints(false).idle,"Uploading: 2 MB of 4 MB (50%)",50);PUTGD_TRY_COMPARE(observer.icons,1);PUTGD_TRY_COMPARE(observer.tooltips,1);
+  tray.setActivity(Theme::trayTints(false).idle,"Uploading: 3 MB of 4 MB (75%)",75);PUTGD_TRY_COMPARE(observer.tooltips,2);PUTGD_TRY_COMPARE(observer.icons,2);
+  tray.setActivity(Theme::trayTints(false).idle,"Uploading: 3 MB of 4 MB (75%)",75);putgd::test::settle(50);PUTGD_TRY_COMPARE(observer.tooltips,2);PUTGD_TRY_COMPARE(observer.icons,2);
+  changeHost(false);PUTGD_TRY_VERIFY(!tray.available());tray.setActivity(Theme::trayTints(false).idle,"Finalizing: 4 MB of 4 MB (100%)",100);
   changeHost(true);PUTGD_TRY_VERIFY(tray.available());
   auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});
   const auto props=qdbus_cast<QVariantMap>(result.arguments().first());
-  QCOMPARE(qdbus_cast<WireTooltip>(props["ToolTip"]).description,QString("Finalizing: 4 MiB of 4 MiB (100%)"));
+  QCOMPARE(qdbus_cast<WireTooltip>(props["ToolTip"]).description,QString("Finalizing: 4 MB of 4 MB (100%)"));
   const auto pixels=qdbus_cast<WireImages>(props["IconPixmap"]).first().bytes;const auto amber=Theme::trayTints(false).encoding;int opaqueAmber=0;
   for(int index=0;index<pixels.size();index+=4)if(uchar(pixels[index])==255&&uchar(pixels[index+1])==amber.red()&&uchar(pixels[index+2])==amber.green()&&uchar(pixels[index+3])==amber.blue())++opaqueAmber;
   QVERIFY(opaqueAmber>10);
   const auto tooltips=observer.tooltips;
-  tray.setActivity(Theme::trayTints(false).error,"Finalizing: 4 MiB of 4 MiB (100%)",100);PUTGD_TRY_COMPARE(observer.icons,4);
+  tray.setActivity(Theme::trayTints(false).error,"Finalizing: 4 MB of 4 MB (100%)",100);PUTGD_TRY_COMPARE(observer.icons,4);
   QCOMPARE(observer.tooltips,tooltips);
   tray.setActivity(QColor("#9bbcff"),{});PUTGD_TRY_COMPARE(observer.icons,5);
  }

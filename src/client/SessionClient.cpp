@@ -1,3 +1,4 @@
+#include "core/DisplaySize.h"
 #include "SessionClient.h"
 #include <QJsonDocument>
 #include <QJsonParseError>
@@ -82,7 +83,7 @@ SessionClient::RequestId SessionClient::request(const QString& method, const QJs
         {"schemaVersion", 1}, {"requestId", pending->wireId}, {"session", socketPath_},
         {"method", method}, {"params", params}}).toJson(QJsonDocument::Compact) + '\n';
     if (pending->outgoing.size() > maximumRequest) {
-        finish(id, {"request_too_large", "Request exceeds 1 MiB", {}});
+        finish(id, {"request_too_large", DisplaySize::labels("Request exceeds 1 MiB"), {}});
         return id;
     }
 

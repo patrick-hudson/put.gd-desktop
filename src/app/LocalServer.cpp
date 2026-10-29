@@ -1,3 +1,4 @@
+#include "core/DisplaySize.h"
 #include "LocalServer.h"
 #include "RecordingBackend.h"
 #include "client/SessionClient.h"
@@ -84,7 +85,7 @@ void LocalServer::accept() {
    if(socket->property("handled").toBool())return;
    auto bytes=socket->property("bytes").toByteArray();bytes+=socket->readAll();
    auto send=[socket](QString id,Error e,QJsonObject result) {logRejection({},e);socket->sendAndClose(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');};
-   if(bytes.size()>maximumRequest) {socket->setProperty("bytes",QByteArray{});socket->setProperty("handled",true);socket->stopReading();deadline->stop();send({}, {"request_too_large","Request exceeds 1 MiB",{}},{});return;}
+   if(bytes.size()>maximumRequest) {socket->setProperty("bytes",QByteArray{});socket->setProperty("handled",true);socket->stopReading();deadline->stop();send({}, {"request_too_large",DisplaySize::labels("Request exceeds 1 MiB"),{}},{});return;}
    if(!bytes.contains('\n')) {socket->setProperty("bytes",bytes);return;}
    socket->setProperty("bytes",QByteArray{});
    socket->setProperty("handled",true);socket->stopReading();deadline->stop();

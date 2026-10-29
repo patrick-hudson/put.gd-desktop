@@ -1,6 +1,7 @@
 #pragma once
 #include <QJsonValue>
 #include <QString>
+#include "core/DisplaySize.h"
 
 namespace putgd::ByteSize {
 inline constexpr qint64 MiB = 1024 * 1024;
@@ -58,27 +59,7 @@ inline QJsonValue fromDecimal(const QString& text, qint64 unit = MiB) {
     return ok ? QJsonValue(bytes) : QJsonValue(text);
 }
 
-inline QString summary(qint64 bytes) {
-    const auto unit = bytes >= GiB ? GiB : MiB;
-    const auto suffix = bytes >= GiB ? QString(" GB") : QString(" MB");
-    auto whole = bytes / unit;
-    auto hundredths = ((bytes % unit) * 100 + unit / 2) / unit;
-    if (bytes > 0 && !whole && !hundredths) return "<0.01 MB";
-    if (hundredths == 100) {
-        ++whole;
-        hundredths = 0;
-    }
-    QString result = QString::number(whole);
-    if (hundredths) {
-        auto fraction = QString::number(hundredths).rightJustified(2, '0');
-        while (fraction.endsWith('0')) fraction.chop(1);
-        result += '.' + fraction;
-    }
-    return result + suffix;
-}// Traditional display labels, with the same 1024-based arithmetic everywhere.
-inline QString fileSummary(qint64 bytes) {
-    if (bytes < MiB) return QString("%1 KB").arg(QString::number(double(bytes) / 1024, 'f', bytes < 10 * 1024 ? 1 : 0));
-    return summary(bytes);
-}
+inline QString summary(qint64 bytes) { return DisplaySize::summary(bytes); }
+inline QString fileSummary(qint64 bytes) { return DisplaySize::fileSummary(bytes); }
 
 }

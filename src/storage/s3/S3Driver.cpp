@@ -1,3 +1,4 @@
+#include "core/DisplaySize.h"
 #include "S3Driver.h"
 #include "S3SdkContext.h"
 #include "PublicUrl.h"
@@ -71,15 +72,15 @@ QString requestGuidance(const QString& name, int status, const QString& stage, i
     if (name == "AuthorizationHeaderMalformed" || name == "PermanentRedirect" || status == 301) return "S3 rejected the destination region or endpoint. Check that the region and endpoint match the bucket's location.";
     if (name == "AccessControlListNotSupported") return "This bucket does not accept ACLs. Set Upload access request to Use bucket policy, and ensure its public-read policy supports the intended links.";
     if (name == "NoSuchUpload") return "S3 no longer has this multipart upload; it was completed, aborted or expired by a bucket lifecycle rule. Retry to upload the file again.";
-    if (name == "EntityTooLarge") return "The storage service rejected the file size. Check its object and part size limits; Amazon S3 accepts objects up to 5 TiB.";
-    if (name == "EntityTooSmall" || name == "InvalidPart" || name == "InvalidPartOrder") return "The storage service rejected the uploaded parts. It may not support S3 multipart uploads of 5 MiB or larger parts; check its multipart limits.";
+    if (name == "EntityTooLarge") return DisplaySize::labels("The storage service rejected the file size. Check its object and part size limits; Amazon S3 accepts objects up to 5 TiB.");
+    if (name == "EntityTooSmall" || name == "InvalidPart" || name == "InvalidPartOrder") return DisplaySize::labels("The storage service rejected the uploaded parts. It may not support S3 multipart uploads of 5 MiB or larger parts; check its multipart limits.");
     if (name == "BadDigest" || name == "XAmzContentSHA256Mismatch") return "The storage service received different bytes than put.gd sent. Retry the upload; if it continues, check proxies or network equipment that change request bodies.";
     if ((name == "NotImplemented" || status == 501) && (stage == "upload_put" || stage == "upload_complete"))
         return "The storage service does not support conditional writes (If-None-Match and If-Match), which put.gd uses so an upload never replaces another file. Use a storage service or endpoint that implements S3 conditional writes.";
     if (name == "NotImplemented" || status == 501) return "The storage service does not support a request put.gd needs, such as conditional multipart completion. Check that the endpoint implements S3 conditional writes for multipart uploads.";
     if (status == 403) {
         if (stage == "upload_put") return "S3 denied the upload. Check s3:PutObject in IAM and the bucket policy. Request public read also needs s3:PutObjectAcl and bucket settings that permit public ACLs.";
-        if (stage == "upload_create" || stage == "upload_part" || stage == "upload_complete") return "S3 denied the multipart upload that files over 64 MiB use. Check s3:PutObject in IAM and the bucket policy; it covers every part. Request public read also needs s3:PutObjectAcl and bucket settings that permit public ACLs.";
+        if (stage == "upload_create" || stage == "upload_part" || stage == "upload_complete") return DisplaySize::labels("S3 denied the multipart upload that files over 64 MiB use. Check s3:PutObject in IAM and the bucket policy; it covers every part. Request public read also needs s3:PutObjectAcl and bucket settings that permit public ACLs.");
         if (stage == "upload_abort") return "S3 denied removing an incomplete multipart upload, so its uploaded parts keep using storage. Check s3:AbortMultipartUpload in IAM and the bucket policy, or add a bucket lifecycle rule that aborts incomplete multipart uploads.";
         if (stage == "upload_list_parts") return "S3 denied listing the parts of an interrupted multipart upload, so put.gd sends every part again. Check s3:ListMultipartUploadParts in IAM and the bucket policy.";
         if (stage == "delete_versioning") return "S3 denied the bucket versioning check required for safe cleanup. Check s3:GetBucketVersioning in IAM and the bucket policy.";
@@ -1359,11 +1360,11 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                     const auto abort = result["multipart"].toObject()["abort"].toString();
                     QString message = multipart.message;
                     if (stage == "upload_list_parts" && multipart.details["httpStatus"].toInt() == 403)
-                        message = "Uploads work, but S3 denied s3:ListMultipartUploadParts. Files over 64 MiB still upload in parts, but an interrupted upload sends every part again instead of resuming. Grant s3:ListMultipartUploadParts in IAM and the bucket policy.";
+                        message = DisplaySize::labels("Uploads work, but S3 denied s3:ListMultipartUploadParts. Files over 64 MiB still upload in parts, but an interrupted upload sends every part again instead of resuming. Grant s3:ListMultipartUploadParts in IAM and the bucket policy.");
                     else if (stage == "upload_abort" && multipart.details["httpStatus"].toInt() == 403)
-                        message = "Uploads work, but S3 denied s3:AbortMultipartUpload. A cancelled or failed upload of a file over 64 MiB can leave incomplete parts that keep using storage. Grant s3:AbortMultipartUpload, or add a bucket lifecycle rule that aborts incomplete multipart uploads.";
+                        message = DisplaySize::labels("Uploads work, but S3 denied s3:AbortMultipartUpload. A cancelled or failed upload of a file over 64 MiB can leave incomplete parts that keep using storage. Grant s3:AbortMultipartUpload, or add a bucket lifecycle rule that aborts incomplete multipart uploads.");
                     else if (stage == "upload_create" && multipart.details["httpStatus"].toInt() == 403)
-                        message = "Uploads work, but S3 denied starting a multipart upload, which files over 64 MiB use. Check s3:PutObject in IAM and the bucket policy, and s3:PutObjectAcl when requesting public read.";
+                        message = DisplaySize::labels("Uploads work, but S3 denied starting a multipart upload, which files over 64 MiB use. Check s3:PutObject in IAM and the bucket policy, and s3:PutObjectAcl when requesting public read.");
                     if (abort != "aborted" && abort != "")
                         message += " The test's incomplete multipart upload could not be removed; its recorded target is retained.";
                     reply(result, {"s3_multipart_permission", message, multipart.details});

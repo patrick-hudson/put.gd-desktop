@@ -5,6 +5,7 @@
 #include "ui/Graphite.h"
 #include "ui/PreferenceRows.h"
 #include "ui/Fonts.h"
+#include "ui/ByteSize.h"
 #include <QToolTip>
 #include <QPainter>
 #include <QStyleOptionViewItem>
@@ -2032,7 +2033,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
 
  }
  void advancedCompactValuesEndInTheSharedColumn(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.resize(1440,1100);window.show();auto* field=window.findChild<QLineEdit*>("failedArtifactDays");auto* count=window.findChild<QLineEdit*>("recentActivityLimit");auto* choice=window.findChild<QComboBox*>("historyRetentionChoice");QVERIFY(field&&count&&choice);putgd::test::settle(50);auto* retry=window.findChild<QComboBox*>("failedArtifactChoice");QVERIFY(retry);QCOMPARE(retry->parentWidget()->width(),choice->parentWidget()->width());QCOMPARE(count->width(),Graphite::scaled(120));QCOMPARE(count->alignment(),Qt::AlignRight);QCOMPARE(count->mapTo(&window,QPoint(count->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());auto* unit=window.findChild<QLabel*>("failedArtifactDaysUnit");QVERIFY(unit&&unit->isHidden());QCOMPARE(retry->mapTo(&window,QPoint(retry->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.resize(1440,1100);window.show();auto* field=window.findChild<QLineEdit*>("failedArtifactDays");auto* count=window.findChild<QLineEdit*>("recentActivityLimit");auto* choice=window.findChild<QComboBox*>("historyRetentionChoice");QVERIFY(field&&count&&choice);putgd::test::settle(50);auto* retry=window.findChild<QComboBox*>("failedArtifactChoice");QVERIFY(retry);QCOMPARE(retry->parentWidget()->width(),choice->parentWidget()->width());QCOMPARE(count->width(),Graphite::scaled(120));QCOMPARE(count->alignment(),Qt::AlignRight);QCOMPARE(count->mapTo(&window,QPoint(count->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());QVERIFY(!window.findChild<QLabel*>("failedArtifactDaysUnit"));QCOMPARE(retry->mapTo(&window,QPoint(retry->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());
  }
  void checkboxCaptionsUseTheirAvailableWidthBeforeWrapping(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.resize(1440,960);window.show();auto* check=window.findChild<QCheckBox*>("unlockCredentialsAtStartup");QLabel* caption=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->buddy()==check)caption=label;auto* help=window.findChild<QToolButton*>("unlockCredentialsAtStartupHelp");QVERIFY(caption&&help);PUTGD_TRY_VERIFY(caption->width()>=caption->fontMetrics().horizontalAdvance(caption->text()));QCOMPARE(help->mapTo(caption->parentWidget(),QPoint()).x(),caption->width()+Graphite::space(Graphite::Space::xs));

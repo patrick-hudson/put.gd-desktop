@@ -1,3 +1,4 @@
+#include "core/DisplaySize.h"
 #include "Settings.h"
 #include "UploadNaming.h"
 #include <QDir>
@@ -241,7 +242,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (key == "concurrentUploads") maximum = 32;
         if (key == "imagePixels") maximum = 1000000000;
         if (artifactByteLimitKeys().contains(key)) {
-            if (!byteLimit(limits[key])) return invalid("/limits/" + key, "File, batch and waiting-upload limits are a positive byte count up to 1 TiB, \"auto\" or null for no limit.");
+            if (!byteLimit(limits[key])) return invalid("/limits/" + key, DisplaySize::labels("File, batch and waiting-upload limits are a positive byte count up to 1 TiB, \"auto\" or null for no limit."));
             continue;
         }
         if (!integer(limits[key], 1, maximum)) return invalid("/limits/" + key, "Resource limits must be positive bounded integers.");
@@ -258,7 +259,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     if (retention.contains("logDays") && !integer(retention["logDays"], 1, 365))
         return invalid("/retention/logDays", "Log retention is 1 to 365 days.");
     if (retention.contains("logBytes") && !integer(retention["logBytes"], 1048576, 1073741824))
-        return invalid("/retention/logBytes", "Log storage is 1 MiB to 1 GiB.");
+        return invalid("/retention/logBytes", DisplaySize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
     for (const auto* optional : {"uploadClipboardBehavior", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates"})

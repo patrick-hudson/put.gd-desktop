@@ -110,7 +110,7 @@ private slots:
   ProtonProvider provider;UploadRequest req;req.destination=destination("plan-limit");req.condition="absent";req.candidate="synthetic.txt";req.publicationId="synthetic";req.artifact.bytes=3LL*1024*1024*1024;
   UploadResult r;provider.upload(req,[&](UploadResult value){r=value;});
   QCOMPARE(r.error.code,QString("destination_file_too_large_for_plan"));QCOMPARE(r.status,QString("unknown"));
-  QVERIFY2(r.error.message.contains("3.0 GiB")&&r.error.message.contains("Proton plan"),qPrintable(r.error.message));
+  QVERIFY2(r.error.message.contains("3.0 GB")&&r.error.message.contains("Proton plan"),qPrintable(r.error.message));
   QCOMPARE(r.error.details["bytes"].toDouble(),double(3LL*1024*1024*1024));QVERIFY(!r.error.message.contains("capacity"));
  }
  void planFileLimitWithNothingCreatedSettlesAsFailed(){
@@ -118,7 +118,7 @@ private slots:
   ProtonProvider provider;UploadRequest req;req.destination=destination("plan-limit-settled");req.condition="absent";req.candidate="synthetic.txt";req.publicationId="synthetic";req.artifact.bytes=3LL*1024*1024*1024;
   UploadResult r;provider.upload(req,[&](UploadResult value){r=value;});
   QCOMPARE(r.status,QString("failed"));QCOMPARE(r.error.code,QString("destination_file_too_large_for_plan"));
-  QVERIFY2(r.error.message.contains("3.0 GiB")&&r.error.message.contains("Proton plan"),qPrintable(r.error.message));
+  QVERIFY2(r.error.message.contains("3.0 GB")&&r.error.message.contains("Proton plan"),qPrintable(r.error.message));
   QCOMPARE(r.error.details["bytes"].toDouble(),double(3LL*1024*1024*1024));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
  }
  void progressFramesPrecedeCompletion(){
@@ -128,8 +128,8 @@ private slots:
  void invalidOrUnboundedProgressIsUnknown_data(){
   QTest::addColumn<QString>("fixture");QTest::addColumn<int>("timeoutMs");QTest::addColumn<QString>("message");
   for(const auto& name:QStringList{"bad-progress-negative","bad-progress-fraction","bad-progress-too-large","bad-progress-extra","bad-progress-total","bad-progress-phase"})QTest::newRow(qPrintable(name))<<name<<1000<<"Unexpected or invalid upload progress";
-  // The flood trips the output budget on byte count alone (2.8 MB against a 2 MiB burst
-  // and 1 KiB/s refill), however slowly it is read. Parsing 40000 lines can outlast a
+  // The flood trips the output budget on byte count alone (2.8 MB against a 2 MB burst
+  // and 1 KB/s refill), however slowly it is read. Parsing 40000 lines can outlast a
   // 1 s deadline on a loaded runner, so give this row a deadline it cannot reach (#236).
   QTest::newRow("flood")<<"flood"<<120000<<"Helper response exceeded its bound";
   QTest::newRow("after-result")<<"after-result"<<1000<<"Unexpected or invalid upload progress";

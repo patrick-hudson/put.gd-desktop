@@ -55,7 +55,7 @@ private slots:
   QCOMPARE(result.error.code,QString("destination_object_too_large"));QCOMPARE(result.error.details["itemIndex"].toInt(),1);
   QVERIFY(result.error.message.contains("large.bin"));QVERIFY(result.artifacts.isEmpty());
   QVERIFY(QDir(d.filePath("spool")).entryList(QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot).isEmpty());
-  // The reserve is min(5%, 4 GiB), at least 1 GiB (#213).
+  // The reserve is min(5%, 4 GB), at least 1 GB (#213).
   constexpr qint64 gib=1LL<<30;
   QCOMPARE(ArtifactStore::reserveFor(100*gib),4*gib);QCOMPARE(ArtifactStore::reserveFor(40*gib),2*gib);QCOMPARE(ArtifactStore::reserveFor(20*gib),gib);
   QCOMPARE(ArtifactStore::reserveFor(4*gib),gib);QCOMPARE(ArtifactStore::reserveFor(-1),gib);
