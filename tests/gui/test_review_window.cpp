@@ -377,6 +377,18 @@ private slots:
         window.drive({{"action", "selectMask"}, {"maskId", "m-blur"}});
         QVERIFY(!visible());
     }
+    void savedCopyUsesTheBannerDismissAction() {
+        ReviewWindow window(options(), config()); window.show();
+        window.setSavedCopy("/nonexistent/synthetic.mp4", 0, config());
+        putgd::test::settle(10);
+        auto* band = window.findChild<Graphite::Banner*>("statusLine"); QVERIFY(band);
+        auto* dismiss = band->dismissButton(); QVERIFY(dismiss->isVisibleTo(&window));
+        QVERIFY(dismiss->text().isEmpty()); QVERIFY(!dismiss->icon().isNull());
+        QCOMPARE(dismiss->accessibleName(), QString("Dismiss"));
+        QCOMPARE(dismiss->property("driveAction").toJsonObject()["action"].toString(), QString("dismissSavedCopy"));
+        dismiss->setFocus(Qt::TabFocusReason); QTest::keyClick(dismiss, Qt::Key_Space);
+        QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
+    }
     void disabledBlurGlyphKeepsReadableScaledInk() {
         const auto original = qApp->font();
         auto restore = qScopeGuard([&] { qApp->setFont(original); });
@@ -450,11 +462,11 @@ private slots:
             QCOMPARE(text->palette().color(QPalette::WindowText), colors.text);
             QVERIFY(Theme::contrast(text->palette().color(QPalette::WindowText), colors.dangerSurface) >= 4.5);
             for (auto* button : {buttonNamed(window, "Details…"), buttonNamed(window, "Dismiss")}) {
-                QVERIFY(button); QCOMPARE(button->property("visualRole").toString(), QString("quiet"));
+                QVERIFY(button); QCOMPARE(button->property("visualRole").toString(), button->text().isEmpty() ? QString("quiet") : QString("textAction"));
                 QVERIFY(Theme::contrast(button->palette().color(QPalette::ButtonText), colors.dangerSurface) >= 4.5);
             }
             for (auto* button : band->findChildren<QPushButton*>()) {
-                QCOMPARE(button->property("visualRole").toString(), QString("quiet"));
+                QCOMPARE(button->property("visualRole").toString(), button->text().isEmpty() ? QString("quiet") : QString("textAction"));
                 QVERIFY(button->property("graphiteStrong").toBool());
                 QCOMPARE(button->font().weight(), QFont::DemiBold);
             }

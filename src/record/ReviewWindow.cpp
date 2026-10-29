@@ -2071,17 +2071,19 @@ void ReviewWindow::refreshStatus() {
                 row->addWidget(errorDetails_);
                 errorDetails_->show();
             }
+            const auto action = params["action"].toString();
+            if (action == "dismissStatus" || action == "dismissBlurTip" || action == "dismissSavedCopy") {
+                band->setDismissible(true, label);
+                auto* dismiss = band->dismissButton();
+                dismiss->setObjectName("statusAction");
+                dismiss->setFixedSize(iconTarget(), std::max(32, textControlHeight(dismiss)));
+                dismiss->setProperty("driveAction", params);
+                connect(dismiss, &QToolButton::clicked, this, [this, params] { drive(params); });
+                continue;
+            }
             auto* button = new QPushButton(label, line);
             button->setProperty("graphiteDensity", "compact");
             button->setObjectName(params["action"] == "useSolidCover" ? "useRedact" : "statusAction");
-            if (params["action"] == "dismissStatus" || params["action"] == "dismissBlurTip") {
-                button->setText({});
-                button->setIcon(Graphite::chromeIcon("close"));
-                connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, button, [button] { button->setIcon(Graphite::chromeIcon("close")); });
-                button->setAccessibleName(label);
-                button->setToolTip(label);
-                button->setFixedWidth(iconTarget());
-            }
             button->setProperty("graphiteTight", params["action"] == "retryExport");
             button->setProperty("graphiteFlush", true);
             VisualStyle::role(button, "quiet");
