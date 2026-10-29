@@ -228,12 +228,12 @@ def verify_identity(directory, commit, target):
     return identity
 
 
-def collect_artifacts(argv, receipt, build_error):
-    """Reserve 150 of the final 180 seconds for evidence, retaining both failures."""
+def collect_artifacts(argv, receipt, build_error, *, timeout=150):
+    """Keep a 150s reserve, plus any unused build budget for larger file trees."""
     started = time.monotonic()
     collection_error = None
     try:
-        run(argv, timeout=150)
+        run(argv, timeout=max(150, timeout))
     except Exception as error:
         collection_error = error
         receipt['collectionError'] = str(error)
@@ -343,7 +343,7 @@ sudo -n chown -R user:user /home/user/candidate/output
             build_error = error
         receipt['buildSeconds'] = round(time.monotonic() - build_start, 3)
         collect_artifacts(['scp', *options, '-P', port, '-r', f'user@{host}:/home/user/candidate/output/.',
-                           str(directory / 'artifacts')], receipt, build_error)
+                           str(directory / 'artifacts')], receipt, build_error, timeout=remaining())
         receipt['identity'] = verify_identity(directory / 'artifacts', args.commit, target)
         receipt['files'] = inventory(directory / 'artifacts')
         receipt['state'] = 'passed'

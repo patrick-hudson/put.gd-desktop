@@ -201,6 +201,12 @@ class CandidateContracts(unittest.TestCase):
         run.assert_called_once_with(['scp', 'source', 'destination'], timeout=150)
         self.assertIn('collectionSeconds', receipt)
 
+    def test_collection_keeps_unused_build_budget_but_never_loses_its_reserve(self):
+        for remaining, expected in ((1, 150), (600, 600)):
+            with self.subTest(remaining=remaining), patch.object(candidate, 'run', return_value='') as run:
+                candidate.collect_artifacts(['scp'], {}, None, timeout=remaining)
+            run.assert_called_once_with(['scp'], timeout=expected)
+
     def test_build_failure_remains_primary_when_collection_also_fails(self):
         receipt = {}
         with patch.object(candidate, 'run', side_effect=TimeoutError('copy failed')), \
