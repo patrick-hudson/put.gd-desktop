@@ -40,6 +40,11 @@ class FakeContext(Context):
         if method == 'editor.cancel': self.phase='cancelled'; return {}
         raise AssertionError(method)
 
+    def cli(self, method, params, **kwargs):
+        self.events.append(('cli',method,params))
+        assert method=='editor.inspect'
+        return {'returncode':0,'stdout':json.dumps({'ok':True,'result':self.state}),'stderr':''}
+
     def view(self, method, params=None):
         self.events.append(('view',method,params))
         assert method == 'editor.view'

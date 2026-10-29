@@ -48,7 +48,10 @@ def _session(ctx, opener=None):
     op = opened['operationId']
     try:
         def ready():
-            reply = ctx.call('editor.inspect', {'id': op})
+            # call() raises for resident errors; readiness needs the raw CLI
+            # envelope to distinguish a transient helper start from failure.
+            response = ctx.cli('editor.inspect', json.dumps({'id':op}))
+            reply = json.loads(response['stdout'])
             if reply.get('ok') is False and reply.get('error', {}).get('code') == 'editor_starting':
                 return None
             return _result(reply)
