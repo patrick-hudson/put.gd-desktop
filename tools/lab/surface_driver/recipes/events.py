@@ -241,7 +241,7 @@ def network_stall(ctx: Context):
     f = _upload(ctx)
     address = ipaddress.ip_address(f['address'])
     port = f['port']
-    ctx.expect(isinstance(port, int) and 1024 <= port <= 65535, 'isolated fixture port')
+    ctx.expect(isinstance(port, int) and not isinstance(port, bool) and 1 <= port <= 65535, 'exact destination TCP port')
     # One table per exact operation; the name is bounded and shell-safe.
     import hashlib
     table = 'pg_ev_' + hashlib.sha256(f['operationId'].encode()).hexdigest()[:12]
@@ -260,7 +260,9 @@ def network_stall(ctx: Context):
         count = sum(expr['counter'].get('packets', 0) for row in counters['nftables']
                     for expr in row.get('rule', {}).get('expr', []) if 'counter' in expr)
         ctx.expect(count > 0, 'nft actually dropped upload packets')
-        ctx.expect(any(i.get('uploadStatus') == 'failed' and i.get('error', {}).get('code') for i in op['items']), 'inspect exposes per-item upload error')
+        ctx.expect(any(i.get('uploadStatus') in ('failed', 'unknown') and i.get('error', {}).get('code') for i in op['items']), 'inspect exposes per-item upload error or retained unknown outcome')
+        if any(i.get('uploadStatus') == 'unknown' for i in op['items']):
+            ctx.note('Publication outcome remains unknown for operation ' + f['operationId'] + '; reconcile its retained identity before any retry')
         _notice(ctx, 'failed')
         ctx.frame('after', window='history')
         ctx.review('Inspect the saved tray frame for the attention latch; resident tray state does not expose the latch.')

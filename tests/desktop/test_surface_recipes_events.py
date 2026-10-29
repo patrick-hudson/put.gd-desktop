@@ -206,6 +206,22 @@ class EventRecipes(unittest.TestCase):
         self.assertIn('nft delete table inet pg_ev_', scripts[2])
         self.assertFalse(any('tc ' in s or 'flush ruleset' in s for s in scripts))
 
+    def test_later_host_proton_https_preserves_unknown_outcome(self):
+        ctx = Fake().upload()
+        ctx.host, ctx.destination = 'm74', 'proton'
+        ctx.fixtures['events.slow-upload'].update(destination='proton', address='192.0.2.10', port=443)
+        original_shell = ctx.shell
+        def shell(script, timeout=60):
+            result = original_shell(script, timeout)
+            if 'sudo -n nft -f' in script:
+                ctx.op.update(state='partial', items=[{'uploadStatus': 'unknown', 'error': {'code': 'proton_request_timeout'}, 'publicationId': 'synthetic-publication'}])
+            return result
+        ctx.shell = shell
+        events.network_stall(ctx)
+        self.assertTrue(any(a[0] == 'shell' and 'tcp dport 443 counter drop' in a[1] for a in ctx.actions))
+        self.assertTrue(any(a[0] == 'note' and 'remains unknown' in a[1] for a in ctx.actions))
+        self.assertFalse(any(a[:2] == ('call', 'operation.retry') for a in ctx.actions))
+
     def test_nft_cleanup_even_on_failed_assertion(self):
         ctx = Fake().upload()
         ctx.drop_packets = 0
