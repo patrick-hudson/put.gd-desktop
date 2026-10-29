@@ -17,7 +17,7 @@ from tools.lab.surface_driver.catalog import Catalog, compare, control_point
 from tools.lab.surface_driver.context import DriverContext, parse_notifications
 from tools.lab.surface_driver.profiles import load_profile, merge
 from tools.lab.surface_driver.receipts import write_receipts
-from tools.lab.surface_driver.run import discover, run_recipes, validate_recipes
+from tools.lab.surface_driver.run import discover, main, run_recipes, validate_recipes
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
 from PIL import Image
@@ -191,6 +191,29 @@ class Running(unittest.TestCase):
         self.assertEqual(sent,[])
         self.ctx.type_text('Ab!')
         self.assertEqual(sent,[['shift','a'],['b'],['shift','1']])
+
+    def test_main_checks_identity_and_configures_local_output(self):
+        target=FakeTarget();target.info={'id':'run-id','profile':'cinnamon-x11'};target.run=self.path
+        target.start=lambda:None;target.close=lambda:None
+        calls=[]
+        def cli(*args,timeout=60):
+            calls.append(args)
+            result={'ui.snapshot':{'build':{'gitCommit':'abcdef','dirty':False}},
+                    'settings.get':{'metadata':{'observedRevision':'revision'}}}.get(args[0],{})
+            return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
+        target.cli=cli;target.execute=lambda script,timeout=60:{'returncode':0,'stdout':'123','stderr':''}
+        recipe=Recipe(('editor.undo',),lambda c:None)
+        args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
+              '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination','local',
+              '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(self.path/'run'),
+              '--coverage',str(self.path/'main-coverage.json')]
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]):
+            self.assertEqual(main(args),0)
+        mutation=next(json.loads(a[1]) for a in calls if a[0]=='settings.patch')
+        self.assertEqual(mutation['patch']['actions']['edit']['destination'],'local')
+        self.assertTrue(mutation['patch']['archive']['root'].startswith(target.root))
+        self.assertTrue(mutation['patch']['archive']['keepUploads'])
+        self.assertEqual(json.loads((self.path/'run/receipt.json').read_text())['environment']['observed_build']['gitCommit'],'abcdef')
 
     def test_notification_correlation(self):
         raw='''method call time=100.1 sender=:1.2 -> destination=org.freedesktop.Notifications serial=45 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify

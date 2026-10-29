@@ -168,8 +168,12 @@ def main(argv=None):
         if observed.get('dirty'):
             raise RecipeBlocked('resident reports a dirty build; use an identified clean artifact')
         settings=context.call('settings.get')
-        context.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
-                                      'patch':{'archive':{'root':target.root+'/files'},'preferences':{'launchAtLogin':False}}})
+        patch={'archive':{'root':target.root+'/files'},'preferences':{'launchAtLogin':False}}
+        if args.destination=='local':
+            patch['archive']['keepUploads']=True
+            patch['actions']={action:{'destination':'local','profileId':None}
+                              for action in ('region','window','desktop','clipboard','edit')}
+        context.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],'patch':patch})
         context.start_notifications()
         rows=run_recipes(context,recipes,environment,args.out,args.campaign,coverage)
         return 0 if all(r.functional=='passed' for r in rows) else 1

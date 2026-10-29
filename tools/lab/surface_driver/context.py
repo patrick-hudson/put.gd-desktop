@@ -26,6 +26,7 @@ class DriverContext(Context):
         for key in ('desktop','host','placement','package','destination'):
             setattr(self,key,environment[key])
         self.catalog, self.out = Catalog(catalog,profile), Path(out)
+        self.profile = dict(profile, guest=environment.get('guest') if not getattr(target,'physical',None) else None)
         self._fixtures = {}
         self._captures = {}
         self._current_window = None
@@ -287,7 +288,7 @@ asyncio.run(main())
                 raise RecipeBlocked('remote upload fixture requires the live lane isolated destination/credential bridge; core never provisions credentials')
             settings = self.call('settings.get')
             self.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
-                                       'patch':{'archive':{'root':self.target.root+'/files'},'actions':{'desktop':{'destination':'local','profileId':None}}}})
+                                       'patch':{'archive':{'root':self.target.root+'/files','keepUploads':True},'actions':{'desktop':{'destination':'local','profileId':None}}}})
             path=self.fixture('image')['path']
             settings=self.call('settings.get')
             self.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
@@ -383,13 +384,17 @@ def parse_notifications(text,since=0):
             strings = re.findall(r'^\s*string "(.*)"\s*$',block,re.M)
             integers = re.findall(r'^\s*uint32 (\d+)',block,re.M)
             serial = re.search(r'\bserial=(\d+)',block)
-            if len(strings)>=4 and serial:
-                row={'summary':strings[2],'body':strings[3],'actions':strings[4:],'id':None,
+            sender = re.search(r'\bsender=(\S+)',block)
+            if len(strings)>=4 and strings[0]=='put.gd' and serial and sender:
+                actions=re.search(r'array \[\s*(.*?)\s*\]',block,re.S)
+                action_strings=re.findall(r'string "(.*?)"',actions[1]) if actions else []
+                row={'summary':strings[2],'body':strings[3],'actions':action_strings,'id':None,
                      'replaces_id':int(integers[0]) if integers else 0,'at':float(timestamp[1])}
-                rows.append(row);pending[serial[1]]=row
+                rows.append(row);pending[(sender[1],serial[1])]=row
         elif 'method return' in block:
             serial = re.search(r'\breply_serial=(\d+)',block)
             identity = re.search(r'uint32 (\d+)',block)
-            if serial and identity and serial[1] in pending:
-                pending[serial[1]]['id']=int(identity[1])
+            destination=re.search(r'\bdestination=(\S+)',block)
+            if serial and identity and destination and (destination[1],serial[1]) in pending:
+                pending[(destination[1],serial[1])]['id']=int(identity[1])
     return rows
