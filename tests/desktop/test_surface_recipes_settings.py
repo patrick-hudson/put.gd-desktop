@@ -312,6 +312,21 @@ class Contracts(unittest.TestCase):
                 self.assertEqual(ctx.disk, ctx.document)
                 self.assertTrue(any(method == 'ui.viewState' for method, _ in ctx.calls))
 
+    def test_channel_probe_restores_notifications_on_save_failure(self):
+        for channel, function in (('cli', lane.cli_settings), ('mcp', lane.mcp_configuration)):
+            with self.subTest(channel=channel):
+                ctx = Fake()
+                original = ctx.document['preferences']['notifications']
+                invoke = getattr(ctx, channel)
+                def fail_disk(method, *args, **kwargs):
+                    if method in ('settings.patch', 'patch_configuration'):
+                        ctx.disk_writable = False
+                    return invoke(method, *args, **kwargs)
+                setattr(ctx, channel, fail_disk)
+                with self.assertRaisesRegex(RecipeFailed, 'persisted'):
+                    function(ctx)
+                self.assertEqual(ctx.document['preferences']['notifications'], original)
+
     def test_first_launch_helper_reopens_after_accessibility_enablement(self):
         from tools.lab.surface_driver.recipes.settings_input import ensure_accessible
         ctx = Fake()
