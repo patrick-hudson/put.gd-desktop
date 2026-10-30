@@ -287,12 +287,82 @@ def compositor_pick(compositor, point):
     raise RuntimeError('no compositor hit-test witness configured for this Wayland profile')
 
 
+KWIN_SCRIPT = r"""
+const rect = g => [Math.round(g.x), Math.round(g.y), Math.round(g.width), Math.round(g.height)];
+const list = workspace.stackingOrder;
+const windows = [];
+for (let i = 0; i < list.length; i++) {
+    const w = list[i];
+    windows.push({id: w.internalId.toString(), title: w.caption, pid: w.pid, wm_class: w.resourceClass,
+                  frame: rect(w.frameGeometry), content: rect(w.clientGeometry), focus: w.active,
+                  minimized: w.minimized, hidden: !!w.hidden, popup: !!w.popupWindow, dock: !!w.dock,
+                  desktop: !!w.desktopWindow, normal: !!w.normalWindow, notification: !!(w.notification || w.criticalNotification),
+                  stack: i, transient_for: w.transientFor ? w.transientFor.internalId.toString() : null});
+}
+callDBus(RECEIVER, "/", "org.putgd.LabWitness", "Report", JSON.stringify({windows: windows}));
+"""
+
+
 def kwin_windows():
-    raise RuntimeError('KWin window witness is not implemented in this probe')
+    """KWin's own stacking order through a one-shot read-only KWin script.
+
+    The script reports back over D-Bus to a private receiver name owned by
+    this probe process; it is unloaded afterwards. clientGeometry is KWin's
+    exact content rect, so no decoration split is guessed.
+    """
+    import tempfile
+    import dbus
+    import dbus.service
+    import dbus.mainloop.glib
+    from gi.repository import GLib
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    bus = dbus.SessionBus()
+    receiver = 'org.putgd.LabWitness.p%d' % os.getpid()
+    loop, reply = GLib.MainLoop(), {}
+    class Receiver(dbus.service.Object):
+        @dbus.service.method('org.putgd.LabWitness', in_signature='s')
+        def Report(self, text):
+            reply['text'] = str(text)
+            loop.quit()
+    owned_name = dbus.service.BusName(receiver, bus)
+    Receiver(bus, '/')
+    plugin = 'putgd-lab-witness-%d' % os.getpid()
+    with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as stream:
+        stream.write('const RECEIVER = ' + json.dumps(receiver) + ';\n' + KWIN_SCRIPT)
+        path = stream.name
+    scripting = dbus.Interface(bus.get_object('org.kde.KWin', '/Scripting'), 'org.kde.kwin.Scripting')
+    try:
+        identifier = int(scripting.loadScript(path, plugin))
+        script = bus.get_object('org.kde.KWin', '/Scripting/Script%d' % identifier)
+        dbus.Interface(script, 'org.kde.kwin.Script').run()
+        GLib.timeout_add(3000, loop.quit)
+        loop.run()
+    finally:
+        try:
+            scripting.unloadScript(plugin)
+        except dbus.DBusException:
+            pass
+        os.unlink(path)
+        del owned_name
+    if 'text' not in reply:
+        raise RuntimeError('KWin witness script did not report within 3 s')
+    document = json.loads(reply['text'])
+    for window in document['windows']:
+        window['minimized'] = window['minimized'] or window['hidden']
+        window['type'] = 9 if window['popup'] else 0
+    return document
 
 
 def kwin_pick(point):
-    raise RuntimeError('KWin hit-test witness is not implemented in this probe')
+    """Topmost visible KWin window containing the point (panels and notifications included)."""
+    x, y = point
+    for window in reversed(kwin_windows()['windows']):
+        if window['minimized'] or window['desktop']:
+            continue
+        fx, fy, fw, fh = window['frame']
+        if fx <= x < fx + fw and fy <= y < fy + fh:
+            return {'window': window, 'chain': []}
+    return {'window': None, 'chain': [{'name': 'desktop'}]}
 
 
 class WaylandPlacement:
@@ -334,6 +404,12 @@ class WaylandPlacement:
             raise RuntimeError('compositor window for %r (pid %s, %dx%d) is missing or ambiguous (%d matches)'
                                % (title, pid, width, height, len(found)))
         frame = found[0]['frame']
+        content = found[0].get('content')
+        if content:
+            # The compositor knows the client area exactly (KWin clientGeometry).
+            if abs(content[2] - width) > 2 or abs(content[3] - height) > 2:
+                raise RuntimeError('compositor content %s does not match %r content %dx%d' % (content, title, width, height))
+            return {'dx': content[0] - x, 'dy': content[1] - y, 'window_id': found[0]['id'], 'frame': frame}
         horizontal, vertical = frame[2] - width, frame[3] - height
         side = horizontal // 2
         top = vertical - side
