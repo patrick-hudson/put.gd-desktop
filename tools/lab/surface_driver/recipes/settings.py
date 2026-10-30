@@ -296,7 +296,7 @@ def category_folders(ctx):
         patch(ctx, {'archive': {'folders': original}})
 
 
-@recipe('capture.naming')
+@recipe('capture.naming', timeout=240)
 def naming(ctx):
     opened(ctx, 1)
     original = get(ctx)['document']['naming']
@@ -346,6 +346,14 @@ def shortcut_campaign(ctx, check):
         for action in ('region', 'window', 'desktop', 'clipboard', 'edit', 'record'):
             control = 'record' + action.title() + 'Shortcut'
             chord = 'Ctrl+Alt+Shift+9'
+            if check == 'record':
+                # Preserve the Escape -> save -> second-click sequence that
+                # exposed #731, independently of the other shortcut verdicts.
+                live_click(ctx, control)
+                ctx.wait(lambda: recording(ctx, action), 'recorder ready before Escape')
+                ctx.keys('Esc')
+                ctx.wait(lambda: not recording(ctx, action), 'Escape ends shortcut recording')
+                saved(ctx, 'actions.' + action + '.shortcut', original[action]['shortcut'], 2)
             live_click(ctx, control)
             ctx.wait(lambda: recording(ctx, action), 'shortcut recorder pauses the desktop channel')
             if check == 'escape':
