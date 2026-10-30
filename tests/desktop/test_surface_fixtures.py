@@ -236,11 +236,22 @@ class Fixtures(unittest.TestCase):
     def test_history_header_point_avoids_live_navigation(self):
         box=dict(x=100,y=50,width=1320,height=880,pid=42)
         self.ctx.view=lambda *a:None;self.ctx.focus=lambda *a:None
+        observations=[]
+        def windows(query):
+            observations.append('windows')
+            return [] if len(observations)==1 else [box]
+        self.ctx.windows=windows
         self.ctx.geometry=lambda *a:box
-        self.ctx.accessible=lambda q:[{'name':'Application menu','role':'push button','rect':[112,62,36,36]},
+        nodes=[{'name':'Application menu','role':'push button','rect':[112,62,36,36]},
                                      {'name':'Main navigation','role':'page tab list','rect':[600,62,300,36]},
                                      {'name':'Close window','role':'push button','rect':[1370,62,36,36]}]
+        def accessible(query):
+            observations.append('accessible')
+            return [] if observations.count('accessible')==1 else nodes
+        self.ctx.accessible=accessible
         point=self.ctx.fixture('history_window').header_drag_point
+        self.assertEqual(observations[:2],['windows','windows'])
+        self.assertEqual(observations.count('accessible'),2)
         self.assertEqual(point[1],80)
         self.assertTrue(150<point[0]<598 or 902<point[0]<1368)
 

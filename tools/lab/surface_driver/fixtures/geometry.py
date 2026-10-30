@@ -11,15 +11,22 @@ def history_window(scope):
     ctx=scope.ctx
     ctx.fixture('app-profile')
     ctx.view('ui.show',{'view':'history'})
-    box=ctx.wait(lambda:ctx.geometry('history'),'history window geometry')
+    title=ctx.profile.get('windows',{}).get('history',{}).get('title') or ctx.profile.get('window_titles',{}).get('history',r'^put\.gd$')
+    # Core 2a geometry deliberately raises for absent windows. Poll the
+    # read-only presence API, then wait for the accessible header to be ready.
+    ctx.wait(lambda:ctx.windows({'title':title}),'visible history window')
     ctx.focus('history')
-    nodes=ctx.accessible({'owned':True,'visible':True,'pid':box['pid'],'within':[box[k] for k in ('x','y','width','height')]})
-    menus=[n for n in nodes if n.get('name')=='Application menu' and n.get('rect')]
-    if len(menus)!=1:
-        raise RecipeBlocked('history header needs one live Application menu anchor',issue=675)
+    def layout():
+        box=ctx.geometry('history')
+        nodes=ctx.accessible({'owned':True,'visible':True,'pid':box['pid'],'within':[box[k] for k in ('x','y','width','height')]})
+        menus=[n for n in nodes if n.get('name')=='Application menu' and n.get('rect')]
+        if len(menus)>1:
+            raise RecipeBlocked('history header has ambiguous Application menu anchors',issue=675)
+        return (box,nodes,menus[0]) if menus else None
+    box,nodes,menu=ctx.wait(layout,'accessible history header')
     # The header's blank area is between actual live controls, never its center
     # (which contains navigation). Subtract every visible node at anchor height.
-    _,y,_,h=menus[0]['rect'];y+=h/2
+    _,y,_,h=menu['rect'];y+=h/2
     intervals=[(box['x']+2,box['x']+box['width']-2)]
     for node in nodes:
         rect=node.get('rect')
