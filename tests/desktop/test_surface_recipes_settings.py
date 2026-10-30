@@ -581,6 +581,22 @@ class Contracts(unittest.TestCase):
             lane.replace(ctx, 'fileTemplate', 'surface-{name}.{ext}')
         self.assertFalse(ctx.inputs)
 
+    def test_transient_clipboard_owner_does_not_skip_content_check(self):
+        ctx = Fake()
+        attempts = []
+        def clipboard():
+            attempts.append(True)
+            if len(attempts) == 1:
+                raise RecipeBlocked('clipboard text unavailable (no text owner)')
+            return ctx.clipboard
+        ctx.clipboard_text = clipboard
+        lane.replace(ctx, 'fileTemplate', 'surface-{name}.{ext}')
+        self.assertGreaterEqual(len(attempts), 2)
+        self.assertEqual(ctx.document['naming']['fileTemplate'], 'surface-{name}.{ext}')
+        ctx.clipboard_text = lambda: (_ for _ in ()).throw(RecipeBlocked('ownership refused'))
+        with self.assertRaisesRegex(RecipeBlocked, 'ownership refused'):
+            lane.clipboard_text(ctx)
+
     def test_template_clipboard_is_ready_before_selection(self):
         ctx = Fake()
         lane.replace(ctx, 'fileTemplate', 'surface-{name}.{ext}')

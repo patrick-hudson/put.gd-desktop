@@ -165,6 +165,17 @@ def choose(ctx, control, index):
     ctx.frame('keys-after-' + control)
 
 
+def clipboard_text(ctx):
+    # Native clipboard writers acquire ownership asynchronously. A missing
+    # owner is not a content match; let the caller's bounded wait retry it.
+    try:
+        return ctx.clipboard_text()
+    except RecipeBlocked as error:
+        if not error.reason.startswith('clipboard text unavailable'):
+            raise
+        return ''
+
+
 def replace(ctx, control, text):
     paste = control.endswith('Template')
     if paste:
@@ -174,7 +185,7 @@ def replace(ctx, control, text):
         reply = ctx.shell('printf %s ' + shlex.quote(text) + ' | ' + writer + ' >/dev/null 2>&1')
         if reply['returncode'] != 0:
             ctx.blocked('Profile synthetic clipboard writer unavailable; template input withheld.')
-        ctx.wait(lambda: ctx.clipboard_text() == text, 'synthetic template clipboard is ready')
+        ctx.wait(lambda: clipboard_text(ctx) == text, 'synthetic template clipboard is ready')
     field_click(ctx, control)
     # Clipboard ownership changes can clear the X11 text selection. Prepare
     # the clipboard first, then select and paste without an intervening probe.
@@ -468,7 +479,7 @@ def desktop_support(ctx):
     ctx.use_catalog('settings', 'settings-desktop-support-expanded')
     scroll_click(ctx, 'refreshDesktopSupport')
     scroll_click(ctx, 'copyDesktopDetails')
-    ctx.wait(lambda: 'capabilities' in ctx.clipboard_text(), 'copied desktop diagnostics')
+    ctx.wait(lambda: 'capabilities' in clipboard_text(ctx), 'copied desktop diagnostics')
     ctx.expect(persisted(ctx) == get(ctx)['document'], 'support inspection preserves configuration')
     frame(ctx, 'after', 3)
 
@@ -573,7 +584,7 @@ def package_upload(ctx):
                        'diagnostics saved and uploaded', timeout=90)
     ctx.expect(not outcome.get('uploadError'), 'diagnostics upload succeeded')
     ctx.expect(bool(outcome.get('link')) and outcome.get('linkCopied') is True, 'upload returned and copied link')
-    ctx.expect(ctx.clipboard_text() == outcome['link'], 'clipboard contains exact returned link')
+    ctx.expect(clipboard_text(ctx) == outcome['link'], 'clipboard contains exact returned link')
     ctx.expect(persisted(ctx) == get(ctx)['document'], 'diagnostics upload preserves configuration')
     package_frame(ctx, 'after')
     package_click(ctx, 'closePackage')
@@ -705,8 +716,8 @@ def about_details(ctx):
         ctx.expect(any(row.get('description') == commit or row.get('text') == commit[:12]
                        for row in facts), 'About displays this resident build commit')
         ctx.click('copyBuildDetails', window='about')
-        ctx.wait(lambda: ctx.clipboard_text().startswith('{'), 'build JSON copied')
-        ctx.expect(json.loads(ctx.clipboard_text()) == expected, 'copied build details exactly match resident')
+        ctx.wait(lambda: clipboard_text(ctx).startswith('{'), 'build JSON copied')
+        ctx.expect(json.loads(clipboard_text(ctx)) == expected, 'copied build details exactly match resident')
         ctx.frame('about-expanded', window='about', reference='about-build-details')
         ctx.click('buildDetails', window='about')
         ctx.wait(lambda: not ctx.accessible({'owned': True, 'window': 'About put.gd',
@@ -772,7 +783,7 @@ def about_version(ctx):
         ctx.expect(len(rows) == 1, 'About version label matches build')
         ctx.click('text:' + expected, window='about')
         ctx.keys('Ctrl+A', 'Ctrl+C')
-        ctx.wait(lambda: ctx.clipboard_text() == expected, 'version text can be selected and copied')
+        ctx.wait(lambda: clipboard_text(ctx) == expected, 'version text can be selected and copied')
         ctx.frame('about-version-selected', window='about', reference='about')
     finally:
         ctx.focus('about')
