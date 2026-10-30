@@ -11,6 +11,9 @@ from .api import Context, Frame, RecipeBlocked, RecipeFailed
 from .catalog import Catalog, compare, image_modules
 from .target import input_release, qcodes
 
+# Seconds; a cleanup call's own budget may not grow past this.
+CLEANUP_TIMEOUT_CAP = 600
+
 
 from .fixtures import Fixture, FixtureManager
 
@@ -431,8 +434,25 @@ class DriverContext(Context):
         self._check_time()
         return self.target.cli(*args,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
 
-    def shell(self,script,timeout=60):
+    def shell(self,script,timeout=None,cleanup=False):
+        if cleanup:
+            # Deadline-exempt restoration (api.Context.shell). Physical targets
+            # force the lock heartbeat inside execute; guests prove ownership here.
+            timeout=min(30.0 if timeout is None else timeout,CLEANUP_TIMEOUT_CAP)
+            # Defer, never cancel, run.py's recipe alarm for the whole bounded
+            # call: an alarm that falls due fails the recipe once the restore
+            # has reached the target, instead of killing the transport first.
+            # One already due when this is called is raised before any work;
+            # callers that must restore regardless block it first (browser).
+            with input_release():
+                if not self.target.physical:
+                    try:
+                        lab.verify_owned_guest(self.target.run)
+                    except lab.LabError as error:
+                        raise RecipeBlocked('cleanup refused: '+str(error)) from error
+                return self.target.execute(script,timeout=timeout)
         self._check_time()
+        timeout=60 if timeout is None else timeout
         return self.target.execute(script,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
 
     def mcp(self,tool,arguments=None):
