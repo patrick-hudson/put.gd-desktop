@@ -24,12 +24,6 @@
     "textFont": [
       "Font"
     ],
-    "blurStrengthValue": [
-      "Blur radius"
-    ],
-    "textSize": [
-      "Text size in image pixels"
-    ],
     "colorSwatchRed": [
       "Color Red"
     ],
@@ -63,6 +57,16 @@
       "Place highlight",
       "Place text label"
     ]
+  },
+  "live_controls": {
+    "blurStrengthValue": {
+      "name": "Blur radius",
+      "role": "spin button"
+    },
+    "textSize": {
+      "name": "Text size in image pixels",
+      "role": "spin button"
+    }
   },
   "catalog_windows": {
     "editorDiscard": [
