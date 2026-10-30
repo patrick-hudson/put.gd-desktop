@@ -887,7 +887,7 @@ def mcp_inspect(ctx):
 
 
 # Gallery observation runs last so a failed native probe cannot hide unrelated window/menu results.
-@recipe('history.view-gallery', 'history.view-list', needs=('history-row',))
+@recipe('history.view-gallery', 'history.view-list', needs=('history-row',), timeout=240)
 def view_modes(ctx):
     row = _row(ctx)
     _frame(ctx, 'before')
@@ -904,7 +904,7 @@ def view_modes(ctx):
 
 
 
-@recipe('history.key-enter', needs=('history-row',))
+@recipe('history.key-enter', needs=('history-row',), timeout=180)
 def enter_details(ctx):
     row = _row(ctx)
     _gallery(ctx)
