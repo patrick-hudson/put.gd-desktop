@@ -12,8 +12,6 @@ Fixture requests (all data is synthetic, private and reset before each recipe):
 * history_active_uploads: {operation_ids: [id, id]}; stalled loopback S3 uploads.
 * history_delete: {id, name}; disposable loopback S3 receipt with an unchanged local copy.
 * history_saved_copy: {id, name, path}; completed save-as in the private profile.
-* history_window: {header_drag_point: [screen_x, screen_y]}; a current-build
-  blank header hit target and normal 1320x880 shell, with room to move/grow.
 
 Each mutating fixture must be fresh per recipe, not merely cached across a run.
 No live endpoint, Proton account, user history or secret is accepted here.
@@ -432,14 +430,96 @@ def clear_history(ctx):
     ctx.review('Catalog has no empty-history reference or confirmation controls dump; inspect saved frames for empty state and both safe defaults.')
 
 
-@recipe('shell.header-drag', needs=('history-row', 'history_window'))
+def _header_point(ctx, box):
+    """Find blank chrome from live accessible controls, on either display server."""
+    query = {'owned': True, 'visible': True, 'pid': box['pid'],
+             'within': [box[k] for k in ('x', 'y', 'width', 'height')]}
+    def layout():
+        nodes = ctx.accessible(query)
+        anchors = [n for n in nodes if n.get('name') == 'Application menu' and n.get('rect')]
+        if len(anchors) > 1:
+            ctx.blocked('History has ambiguous live Application menu anchors.', issue=675)
+        return (nodes, anchors[0]) if anchors else None
+    nodes, anchor = ctx.wait(layout, 'accessible History header')
+    _, top, _, height = anchor['rect']
+    y = top + height / 2
+    intervals = [(box['x'] + 2, box['x'] + box['width'] - 2)]
+    for node in nodes:
+        rect = node.get('rect')
+        if not rect or node.get('role') in ('frame', 'panel', 'filler', 'root pane', 'application'):
+            continue
+        x, top, width, height = rect
+        if top <= y < top + height:
+            intervals = [part for left, right in intervals
+                         for part in ((left, min(right, x - 2)), (max(left, x + width + 2), right))
+                         if part[1] > part[0]]
+    if not intervals or max(right - left for left, right in intervals) < 16:
+        ctx.blocked('History has no verified blank header drag target.', issue=675)
+    left, right = max(intervals, key=lambda v: v[1] - v[0])
+    point = ((left + right) / 2, y)
+    return tuple(round((point[i] - box.get(('screen_x', 'screen_y')[i], 0))
+                       * box.get('scale', 1)) for i in (0, 1))
+
+
+def _menu_names(ctx):
+    return {n.get('name') for n in ctx.accessible({'owned': True, 'visible': True, 'role': 'menu item'})}
+
+
+def _application_menu(ctx):
+    ctx.click('applicationMenu', window='history')
+    expected = {'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'}
+    ctx.wait(lambda: expected <= _menu_names(ctx), 'application menu exposes all four commands')
+
+
+@recipe('shell.app-menu', needs=('history-row',))
+def application_menu(ctx):
+    row = _row(ctx)
+    _frame(ctx, 'before')
+    _application_menu(ctx)
+    ctx.frame('menu', window='applicationMenuPopup')
+    ctx.keys('Esc')
+    ctx.wait(lambda: 'Quit put.gd' not in _menu_names(ctx), 'Escape dismisses application menu')
+    ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'],
+               'dismissing menu preserves history and resident')
+    _frame(ctx, 'after')
+
+
+@recipe('shell.app-menu-capture-help', needs=('history-row',))
+def capture_help(ctx):
+    _row(ctx)
+    _frame(ctx, 'before')
+    _application_menu(ctx)
+    ctx.click('captureActionsHelp', window='applicationMenuPopup')
+    ctx.wait(lambda: ctx.accessible({'owned': True, 'visible': True, 'name': 'Capture actions'}),
+             'Capture actions help is visible')
+    ctx.frame('help', window='captureHelp')
+    ctx.click('text:Close', window='captureHelp')
+    ctx.wait(lambda: not ctx.accessible({'owned': True, 'visible': True, 'role': 'dialog', 'name': 'Help'}),
+             'Close dismisses capture help')
+    ctx.call('ui.viewState')
+    _frame(ctx, 'after')
+
+
+@recipe('shell.header-context-menu', needs=('history-row',))
+def header_context_menu(ctx):
+    _row(ctx)
+    _frame(ctx, 'before')
+    ctx.click_at(*_header_point(ctx, ctx.geometry('history')), button='right')
+    ctx.wait(lambda: {'Minimize', 'Maximize', 'Close'} <= _menu_names(ctx),
+             'header context menu exposes the native window commands')
+    ctx.frame('menu', window='windowContextMenu')
+    ctx.keys('Esc')
+    ctx.wait(lambda: 'Minimize' not in _menu_names(ctx), 'Escape dismisses header menu')
+    ctx.call('ui.viewState')
+    _frame(ctx, 'after')
+
+
+@recipe('shell.header-drag', needs=('history-row',))
 def header_drag(ctx):
     _row(ctx)
     box = ctx.geometry('history')
     _frame(ctx, 'before')
-    # Do not guess at header center: it contains mainNavigation. The core
-    # resolves a blank hit target from the live layout/current-build catalog.
-    start = tuple(ctx.fixture('history_window')['header_drag_point'])
+    start = _header_point(ctx, box)
     ctx.expect(box['x'] <= start[0] < box['x'] + box['width']
                and box['y'] <= start[1] < box['y'] + box['height'], 'header hit point is inside shell')
     ctx.drag(start, (start[0] + 64, start[1] + 48))
@@ -450,10 +530,9 @@ def header_drag(ctx):
     ctx.drag((start[0] + moved['x'] - box['x'], start[1] + moved['y'] - box['y']), start)
 
 
-@recipe('shell.edge-resize', 'shell.minimum-size', needs=('history-row', 'history_window'))
+@recipe('shell.edge-resize', 'shell.minimum-size', needs=('history-row',))
 def edge_resize(ctx):
     _row(ctx)
-    ctx.fixture('history_window')
     box = ctx.geometry('history')
     _frame(ctx, 'before')
     edge = (box['x'] + box['width'] - 1, box['y'] + box['height'] - 1)
@@ -576,20 +655,17 @@ def mcp_inspect(ctx):
 # independently included in the per-ID acceptance table generated from REGISTRY.
 BLOCKED = {
     'history.list': 'Double-click is available, but row/tile hit targets still need verified runtime delegate geometry (#675/#712); clicking the list center cannot identify the selected row.',
-    'history.filters': 'Needs full date/MIME/destination/state fixture matrix and dynamic + Filter menu capture; clear-filters recipe exercises one upload filter only.',
-    'history.row-primary': 'Needs historyRowPrimary controls captures for selected/hovered Retry upload/local save/deletion and Copy result variants; baseline catalog alone cannot resolve all states.',
-    'history.row-menu': 'Fresh upload/local-save/cancel rows now exist, but queued/failed deletion variants and verified runtime row menus are still missing (#675/#712); link opening stays with links.',
+    'history.filters': 'Needs full date/MIME/destination/state fixture matrix and deterministic result oracles for every + Filter choice; clear-filters recipe exercises one upload filter only.',
+    'history.row-primary': 'Needs historyRowPrimary controls captures for selected/hovered Retry upload/local save/deletion and Copy result variants; fixture variants do not yet cover all states.',
+    'history.row-menu': 'Fresh upload/local-save/cancel rows now exist, but queued/failed deletion variants still need deterministic failed/queued deletion fixtures (#675); link opening stays with links.',
     'history.edit-again': 'Retained history images now exist; GUI Edit still needs a returned editor identity and an immutable-source oracle to prove the new editing session (#675).',
     'history.retry-deletion': 'Needs tray_progress-style moto failed-delete fixture with stable deletion ID plus queued Cancel deletion variant.',
-    'history.save-diagnostics': 'Failed-row fixtures now exist; diagnostics still needs its private output-directory/archive manifest oracle and verified runtime menu controls (#675).',
+    'history.save-diagnostics': 'Failed-row fixtures now exist; diagnostics still needs its private output-directory/archive manifest oracle (#675).',
     'history.local-copy-settings': 'Needs missing-local-copy guidance fixture; ui.viewState does not report the selected Settings tab.',
     'history.empty-states': 'Private empty history is available, but the composite empty/load-error/retry surface still needs deterministic production load-failure setup (#675).',
-    'history.compact': 'Live geometry is available; compact Back to list/gallery transitions still need a verified resize and current controls after the #718 drag blocker is resolved.',
-    'shell.app-menu': 'Needs application-menu capture with dynamic actions; baseline history catalog contains its button only.',
-    'shell.app-menu-capture-help': 'Needs capture-help dialog control inventory and close oracle.',
+    'history.compact': 'Live geometry is available; compact Back to list/gallery transitions still need a verified resize and current controls with a complete compact-layout oracle (#675).',
     'shell.app-menu-quit': 'Needs isolated resident lifecycle fixture/restart boundary; quitting a shared run would invalidate later recipes.',
     'shell.nav': 'Needs mainNavigation tab hit rectangles and active main.page oracle; ui.viewState currently exposes state/appearance/captureRouting only.',
-    'shell.header-context-menu': 'Needs safe header hit target and custom system menu capture; menu is absent from baseline catalog.',
     'shell.button-layout': 'Needs isolated left/right GNOME button-layout fixture and current-build control rectangles; never mutate a shared desktop setting.',
     'shell.command-capture-region': 'Needs capture selector fixture, selection bounds and artifact oracle; must complete/cancel real selector before next recipe.',
     'shell.command-capture-window': 'Needs independent synthetic target window, real window selector completion and operation identity.',
@@ -602,7 +678,7 @@ BLOCKED = {
     'shell.command-tooltips': 'Hover is available, but the complete command tooltip/output/unavailability matrix needs current native capture and disabled-output fixtures plus a live tooltip ownership witness (#675).',
     'shell.narrow-labels': 'Needs command-band accessible label/style projection at multiple widths; ui.viewState has no shell label oracle.',
     'shell.output-summary': 'Needs output-summary popup capture and Settings Capture navigation oracle.',
-    'shell.output-warning': 'settings-no-output now supplies configuration; current warning-strip controls and Settings Capture navigation still need live shell projection (#675).',
+    'shell.output-warning': 'settings-no-output now supplies configuration; the full warning-text matrix and Settings Capture navigation still need live assertions (#675).',
     'shell.action-recovery-banner': 'Needs rejected-action fixture for Change output/Keep local copies/Review destination variants.',
     'shell.autosave-status': 'Needs accepted/refused autosave fixtures and saved-status accessible projection.',
     'shell.edit-chooser-failure': 'chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).',

@@ -25,6 +25,22 @@
     "historyManagementMenu": {
       "owner": "history",
       "popup": true
+    },
+    "applicationMenuPopup": {
+      "owner": "history",
+      "popup": true
+    },
+    "windowContextMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "captureHelp": {
+      "title": "^Help$",
+      "accessible": {
+        "owned": true,
+        "role": "dialog",
+        "name": "Help"
+      }
     }
   }
 }

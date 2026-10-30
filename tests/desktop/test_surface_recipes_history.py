@@ -34,7 +34,7 @@ class FakeContext(Context):
         self.typed = ''
         self.clipboard = ''
         self.category_index = 0
-        self.window = dict(x=100, y=80, width=1400, height=950, scale=1)
+        self.window = dict(x=100, y=80, width=1400, height=950, scale=1, pid=123)
         self.minimized = False
         self.closed = False
         self.saved_window = None
@@ -42,6 +42,8 @@ class FakeContext(Context):
         self.receipt = False
         self.chooser = False
         self.question = None
+        self.menu = None
+        self.help = False
         self.total = 60 if 'history_paging' in needs else 2 if 'history_pair' in needs else 5
         self.operations = {i: {'id': i, 'state': 'running'} for i in ('op-1', 'op-2')}
         self.local = {'status': 'saved', 'path': '/tmp/private/copy.png'}
@@ -147,7 +149,14 @@ class FakeContext(Context):
     def click(self, control, window, button='left', offset=None):
         self.events.append(('click', control, window, button))
         self.focus = control
-        if control == 'historyGridMode':
+        if control == 'applicationMenu':
+            self.menu = 'app'
+        elif control == 'captureActionsHelp':
+            self.menu = None
+            self.help = True
+        elif control == 'text:Close':
+            self.help = False
+        elif control == 'historyGridMode':
             self.grid = True
         elif control == 'historyListMode':
             self.grid = False
@@ -257,6 +266,7 @@ class FakeContext(Context):
             elif key == 'Shift+Down':
                 self.selected = ['image-1', 'image-2']
             elif key == 'Esc':
+                self.menu = None
                 if self.preview:
                     self.preview = False
                     self.focus = 'historyPreview'
@@ -274,7 +284,22 @@ class FakeContext(Context):
         if text:
             self.typed = text
 
+    def click_at(self, x, y, button='left', head=None):
+        self.events.append(('click', 'header', 'history', button))
+        self.menu = 'header'
+
     def accessible(self, query):
+        if query.get('role') == 'menu item':
+            return [{'name': n} for n in ({'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'} if self.menu == 'app' else {'Minimize', 'Maximize', 'Close'} if self.menu == 'header' else set())]
+        if query.get('name') == 'Capture actions':
+            return [{'name': 'Capture actions'}] if self.help else []
+        if query.get('name') == 'Help':
+            return [{'name': 'Help'}] if self.help else []
+        if 'within' in query:
+            return [{'name': 'Application menu', 'role': 'push button',
+                     'rect': [self.window['x'] + 5, self.window['y'] + 5, 24, 28]},
+                    {'name': 'Navigation', 'role': 'page tab list',
+                     'rect': [self.window['x'] + 450, self.window['y'] + 5, 300, 28]}]
         return [{'name': 'Total size: 3 MB' if query['name'].startswith('Total') else 'Size: 1 MB · 640×320'}]
 
     def clipboard_text(self):
@@ -474,6 +499,28 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertEqual(error.exception.issue, 675)
         self.assertIn('putgd-cli', error.exception.reason)
         self.assertFalse(any(e == ('cli', ('--version-json',)) for e in ctx.events))
+
+    def test_geometry_rows_use_supported_accessibility_filters_without_window_fixture(self):
+        class NativeContext(FakeContext):
+            def windows(self, query=None):
+                raise AssertionError('geometry must not send X11 title queries')
+            def accessible(self, query):
+                if set(query) - {'owned', 'visible', 'pid', 'within'}:
+                    raise AssertionError('unsupported accessible header query')
+                return super().accessible(query)
+        for action in (history.header_drag, history.edge_resize):
+            entry = next(r for r in LANE if r.function == action)
+            self.assertEqual(entry.needs, ('history-row',))
+            action(NativeContext(entry.needs))
+
+    def test_header_point_excludes_navigation_and_refuses_covered_header(self):
+        ctx = FakeContext()
+        point = history._header_point(ctx, ctx.window)
+        self.assertFalse(550 <= point[0] <= 850)
+        ctx.accessible = lambda query: [
+            {'name': 'Application menu', 'role': 'push button', 'rect': [100, 80, 1400, 40]}]
+        with self.assertRaisesRegex(RecipeBlocked, 'no verified blank header'):
+            history._header_point(ctx, ctx.window)
 
     def test_native_window_observation_uses_accessible_query_and_iconified_state(self):
         from tools.lab.surface_driver.profiles import load_profile
