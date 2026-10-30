@@ -379,7 +379,7 @@ def destination(ctx):
     with _session(ctx) as op:
         text = _inspect(ctx, op)['view']['destination']['text']
         ctx.expect(bool(text), 'destination identifies the isolated local output')
-        _click_editor_text(ctx, text, ('label',))
+        _click_editor_text(ctx, text, ('push button',))
         ctx.expect(_inspect(ctx, op)['view']['destination']['text']==text, 'destination remains visible after real pointer input')
         _frame(ctx, 'after')
 
@@ -756,6 +756,7 @@ def save_feedback(ctx):
         failure=ctx.cli('editor.saveCopy',json.dumps({'id':op,'path':path+'/missing.png'}))
         ctx.expect(failure['returncode']!=0,'invalid private target fails without upload')
         ctx.expect(_inspect(ctx,op)['view']['saveFeedbackVisible'],'write failure presents recovery banner')
+        _frame(ctx,'write-failure','28-editor-save-failed')
         ctx.click('editorSaveDetails',window='editor')
         ctx.expect(_inspect(ctx,op)['view']['saveDetailsOpen'],'Details reveals save failure')
         _frame(ctx,'details','28a-editor-save-path')
