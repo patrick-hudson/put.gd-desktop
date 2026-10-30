@@ -165,12 +165,25 @@ struct Native {
 };
 bool waitUntil(const std::function<bool()>& condition){return putgd::test::waitFor(condition,8000);}
 // Scroll a control into view after pending layout (a resize, a banner) settles.
-void reveal(QScrollArea* scroll,QWidget* widget,int margin){for(int pass=0;pass<2;++pass){putgd::test::settle(100);scroll->ensureWidgetVisible(widget,0,margin);}}
+// ensureWidgetVisible moves the least distance from where the page is, so start
+// from the top (as a user would scroll, which also ends any page-driven follow).
+void reveal(QScrollArea* scroll,QWidget* widget,int margin){for(int pass=0;pass<2;++pass){putgd::test::settle(100);scroll->verticalScrollBar()->triggerAction(QAbstractSlider::SliderToMinimum);scroll->ensureWidgetVisible(widget,0,margin);}}
 // The busy indicator sweeps with time (Ui::Style); captures show it mid-sweep.
 void freezeBusy(QWidget& root){for(auto* bar:root.findChildren<QProgressBar*>())if(bar->minimum()==0&&bar->maximum()==0)bar->setProperty("uiBusyPhase",0.25);}
-// A capture for the reference images: on a loaded machine debounced relayouts
-// can still be landing, so grab until two frames 150 ms apart are identical.
+// History loads list thumbnails in the background: true once every visible row
+// with a preview file on disk has its thumbnail.
+bool thumbnailsLoaded(QWidget& root){
+ for(auto* rows:root.findChildren<QListView*>("historyList")){
+  auto* model=qobject_cast<HistoryModel*>(rows->model());if(!model||!rows->isVisible())continue;
+  for(int r=0;r<model->rowCount();++r){const auto index=model->index(r);const auto path=model->record(r)["previewPath"].toString();if(rows->viewport()->rect().intersects(rows->visualRect(index))&&!path.isEmpty()&&QFileInfo(path).isFile()&&model->data(index,HistoryModel::ThumbnailRole).isNull())return false;}
+ }
+ return true;
+}
+// A capture for the reference images: wait for History's thumbnails, then,
+// since on a loaded machine debounced relayouts can still be landing, grab
+// until two frames 150 ms apart are identical.
 QPixmap steadyGrab(QWidget& root){
+ if(!waitUntil([&]{return thumbnailsLoaded(root);}))qWarning("Thumbnails of %s did not load",qPrintable(root.objectName()));
  freezeBusy(root);auto frame=root.grab();
  for(int attempt=0;attempt<12;++attempt){putgd::test::settle(150);freezeBusy(root);auto next=root.grab();if(next.toImage()==frame.toImage())return next;frame=next;}
  qWarning("Capture of %s did not settle",qPrintable(root.objectName()));return frame;
@@ -328,9 +341,8 @@ int main(int argc,char** argv){
   specimen.adjustSize();specimen.show();putgd::test::settle(30);if(!steadyGrab(specimen).save(QDir(output).filePath("00-inactive-locked-controls.png")))return 2;
  }
  QJsonArray captures,skippedCaptures;auto save=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(name=="01a-history-preview-focus"||name=="10a-history-compact-preview-focus"){window.activateWindow();auto* focusedPreview=window.findChild<QLabel*>("historyPreview");if(QGuiApplication::platformName()=="offscreen"&&!focusedPreview->isVisible()){skippedCaptures.append(QJsonObject{{"state",name},{"reason","inspector_hidden"}});return true;}focusedPreview->setFocus(Qt::TabFocusReason);app.processEvents();if(!focusedPreview->hasFocus())return false;}if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}
-  // History loads list thumbnails and the selected preview in the background;
-  // wait for each visible row's thumbnail, then for the inspector's relayout.
-  if(auto* rows=window.findChild<QListView*>("historyList");rows&&rows->isVisible()){if(auto* model=qobject_cast<HistoryModel*>(rows->model());model&&!waitUntil([&]{for(int r=0;r<model->rowCount();++r){const auto index=model->index(r);const auto path=model->record(r)["previewPath"].toString();if(rows->viewport()->rect().intersects(rows->visualRect(index))&&!path.isEmpty()&&QFileInfo(path).isFile()&&model->data(index,HistoryModel::ThumbnailRole).isNull())return false;}return true;}))return false;putgd::test::settle(100);app.processEvents();}
+  // The selected preview's arrival relayouts the inspector; steadyGrab waits for the list's thumbnails.
+  putgd::test::settle(100);app.processEvents();
   if(!checkSteppers(window))return false;if(name=="10-history-compact"){QJsonArray commands;auto* band=window.findChild<QWidget*>("commandBand");for(auto* button:band->findChildren<QToolButton*>("captureActionButton"))commands.append(QJsonObject{{"action",button->property("captureAction").toString()},{"label",button->text()},{"labelVisible",button->toolButtonStyle()!=Qt::ToolButtonIconOnly},{"width",button->width()},{"sizeHint",button->sizeHint().width()}});QFile measurements(QDir(output).filePath("command-band-measurements.json"));if(!measurements.open(QIODevice::WriteOnly))return false;measurements.write(QJsonDocument(QJsonObject{{"windowWidth",window.width()},{"bandWidth",band->width()},{"requiredWidth",band->layout()->sizeHint().width()},{"gap",qobject_cast<QGridLayout*>(band->layout())->horizontalSpacing()},{"commands",commands}}).toJson());}const auto image=steadyGrab(window);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name)||!writeInventory(output,name,window))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
  const bool recordOnly=qEnvironmentVariableIsSet("PUTGD_CATALOG_RECORD_ONLY");
  const bool editorOnly=qEnvironmentVariableIsSet("PUTGD_CATALOG_EDITOR_ONLY");
@@ -455,7 +467,11 @@ int main(int argc,char** argv){
  window.navigate("destinations");window.findChild<QLineEdit*>("credentialAccessKey")->setText("EXAM-synthetic-conflict");{auto doc=settings.document();auto prefs=doc["preferences"].toObject();prefs["notifications"]=!prefs["notifications"].toBool();doc["preferences"]=prefs;if(!settings.save(doc,settings.revision()))return 2;}
  if(!waitUntil([&]{return window.settings()->saveViewState()["conflict"].toBool();}))return 2;if(!save("52-destinations-conflict"))return 2;putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("credentialActions")->parentWidget(),0,16);if(!save("64-credential-store-conflict"))return 2;
  window.navigate("settings");tabs->setCurrentIndex(0);if(!save("51-settings-conflict"))return 2;
- {const auto size=window.size();catalogUpdate={{"supported",true},{"result",QJsonObject{{"updateAvailable",true},{"latest","26.1231.99999-nightly"}}}};fixture.session.refreshSnapshot();if(!waitUntil([&]{return window.findChild<QPushButton*>("updateAvailable")->isVisible();}))return 2;window.resize(1060,680);putgd::test::settle(100);qobject_cast<QScrollArea*>(tabs->currentWidget())->verticalScrollBar()->setValue(0);if(!save("51a-settings-conflict-compact-update"))return 2;window.resize(size);catalogUpdate={};fixture.session.refreshSnapshot();if(!waitUntil([&]{return window.findChild<QPushButton*>("updateAvailable")->isHidden();}))return 2;}
+ {const auto size=window.size();catalogUpdate={{"supported",true},{"result",QJsonObject{{"updateAvailable",true},{"latest","26.1231.99999-nightly"}}}};fixture.session.refreshSnapshot();if(!waitUntil([&]{return window.findChild<QPushButton*>("updateAvailable")->isVisible();}))return 2;window.resize(1060,680);putgd::test::settle(100);
+  // A user scroll to the top, which also ends Settings' "reveal Updates" follow. The
+  // page header can still keep a stale height here (#778), so this state is exempt
+  // from image comparison (tools/ci/check_catalog_references.py IMAGE_EXEMPT).
+  qobject_cast<QScrollArea*>(tabs->currentWidget())->verticalScrollBar()->triggerAction(QAbstractSlider::SliderToMinimum);if(!save("51a-settings-conflict-compact-update"))return 2;window.resize(size);catalogUpdate={};fixture.session.refreshSnapshot();if(!waitUntil([&]{return window.findChild<QPushButton*>("updateAvailable")->isHidden();}))return 2;}
  {bool confirmed=false;QTimer::singleShot(500,&app,[&]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->isVisible()){confirmed=saveDialog(output,"53-reload-confirm",*box,captures);box->button(QMessageBox::Yes)->click();}});
   window.findChild<QPushButton*>("reloadConflict")->click();if(!confirmed||!waitUntil([&]{return !window.settings()->saveViewState()["conflict"].toBool();}))return 2;}
  // The 2026-10-26 settings pass: an overridden action among compact rows,
