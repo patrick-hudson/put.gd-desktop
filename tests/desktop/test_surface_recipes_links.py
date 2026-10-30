@@ -83,8 +83,9 @@ class FakeContext(Context):
     def review(self, reason):
         self.events.append(('review', reason))
 
-    def frame(self, label, window=None, reference=None):
+    def frame(self, label, window=None, reference=None, *, desktop_safe=None):
         self.events.append(('frame', label, window))
+        self.declarations = getattr(self, 'declarations', []) + [desktop_safe]
         return Frame(label, label + '.png', window)
 
 
@@ -125,6 +126,9 @@ class BrowserContracts(unittest.TestCase):
                     browser.open_and_verify(self.context, fail, self.context.upload['expect'])
         self.assertEqual(sum(event == ('remote', 'blank') for event in self.context.events), 2)
         self.assertIn(('frame', 'browser-failure-safe-desktop', None), self.context.events)
+        # Live evidence keeps a full-desktop frame only with the kiosk declaration.
+        from tools.lab.surface_driver.browser import KIOSK_SAFE
+        self.assertEqual(set(self.context.declarations), {KIOSK_SAFE})
         self.assertIn(('remote', 'restore'), self.context.events)
 
     def test_failure_frame_withheld_when_another_browser_owns_foreground(self):

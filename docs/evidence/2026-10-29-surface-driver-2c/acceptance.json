@@ -1,0 +1,91 @@
+{
+  "driver_source": "94c2f7fae366abe426066bb4b5201ca04bf364c6",
+  "guest_tested_artifact": {
+    "baseVersion": "26.1030.2323",
+    "commitCount": 2323,
+    "dirty": false,
+    "gitCommit": "0348fc368e62b9367b71f79a58e8bba95cfaf932",
+    "gitTree": "c953d40d074d2b52c4bdc95b3f62a78bf257f988",
+    "packageVersion": "26.1030.2323~dev+g0348fc368e62",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2323-dev+g0348fc368e62"
+  },
+  "host": "bx_qtz97pf4",
+  "guest_run_id": "4b2b58a9-b0c6-4c0b-89bd-a83821e2b114",
+  "canonical_run": "/home/user/s2c/src/work/lab-runs/core2c-final",
+  "guest": {
+    "hostname": "putgd-lab",
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "os": {
+      "ID": "linuxmint",
+      "VERSION_ID": "22.3",
+      "VARIANT_ID": null
+    },
+    "session_type": "x11",
+    "desktop": "X-Cinnamon",
+    "qt_platform": "xcb"
+  },
+  "privacy": {
+    "passed": true,
+    "frames": 4,
+    "scan": {
+      "passed": true,
+      "files": 9,
+      "pngs": 4,
+      "image_audit": "ocr-and-known-regions",
+      "findings": []
+    },
+    "fixture_url": {
+      "host": "127.0.0.1",
+      "hash": "3d47cf0da54f2c1a47a5d2b55ee2541f9a85fc274be5cd602bcbd11b7e50942d",
+      "length": 94,
+      "present": true
+    },
+    "clipboard_url": {
+      "host": "127.0.0.1",
+      "hash": "3d47cf0da54f2c1a47a5d2b55ee2541f9a85fc274be5cd602bcbd11b7e50942d",
+      "length": 94,
+      "present": true
+    },
+    "clipboard_copy_attempts": 1,
+    "rectangle_source": "measured X11 window and explicit synthetic fixture CSS band",
+    "synthetic_row_excluded_from_map": true
+  },
+  "core_demo": {
+    "passed": true,
+    "recipes": 3,
+    "rows": 4,
+    "scan": {
+      "passed": true,
+      "files": 12,
+      "pngs": 9,
+      "image_audit": "ocr-and-known-regions",
+      "findings": []
+    },
+    "review_rows": []
+  },
+  "unit_tests": {
+    "passed": true,
+    "count": 61
+  },
+  "negative_control": {
+    "returncode": 1,
+    "scan": {
+      "passed": false,
+      "files": 2,
+      "pngs": 0,
+      "image_audit": "ocr-and-known-regions",
+      "findings": [
+        {
+          "file_index": 0,
+          "kind": "url"
+        }
+      ]
+    },
+    "stderr_empty": true
+  },
+  "product_cpp_changes_since_guest_artifact": [],
+  "scope": "Synthetic driver safety development proof; no real provider, real credential or physical desktop gate."
+}

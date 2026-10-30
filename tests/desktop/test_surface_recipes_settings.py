@@ -362,8 +362,14 @@ class Contracts(unittest.TestCase):
 
     def test_runnable_recipes_use_input_and_referenced_frames(self):
         partial = {'cli.settings', 'cli.ui', 'cli.diagnostics', 'mcp.diagnostics'}
+        fixture_recipes = {'capture.default-destination', 'capture.default-sharing', 'capture.no-output',
+                           'capture.exceptions', 'capture.browse', 'capture.help-toggles',
+                           'shortcuts-page.help', 'shortcuts-page.refresh'}
         for rec in RECIPES:
-            if rec.interactions[0] in lane.BLOCKED:
+            # This legacy model has no real fixture family/restart or native
+            # chooser. Their recipe boundaries have dedicated tests below and
+            # their effects require the saved desktop replays.
+            if rec.interactions[0] in lane.BLOCKED or rec.interactions[0] in fixture_recipes:
                 continue
             with self.subTest(recipe=rec.name):
                 ctx = Fake()
@@ -377,6 +383,158 @@ class Contracts(unittest.TestCase):
                 self.assertTrue(all(ref in (None, *lane.REFERENCES, '07-settings-general-light', '58-diagnostics-package', 'about', 'about-build-details', 'confirm-reset-limits', '53-reload-confirm') for _, _, ref in ctx.frames))
                 self.assertEqual(ctx.disk, ctx.document)
                 self.assertTrue(any(method == 'ui.viewState' for method, _ in ctx.calls))
+
+    def test_adopted_rows_require_the_real_fixture_before_effects(self):
+        cases = ((lane.default_destination, 'settings-destinations'),
+                 (lane.default_sharing, 'settings-share-destination'),
+                 (lane.capture_exceptions, 'settings-action-routes'),
+                 (lane.browse, 'file-dialog-fallback'))
+        for function, expected in cases:
+            ctx = Fake()
+            seen = []
+            def fixture(name):
+                seen.append(name)
+                raise RecipeBlocked('fixture unavailable')
+            ctx.fixture = fixture
+            with self.subTest(function=function.__name__), self.assertRaisesRegex(RecipeBlocked, 'fixture unavailable'):
+                function(ctx)
+            self.assertEqual(seen, [expected])
+            self.assertFalse(ctx.inputs)
+
+    def test_native_scroll_retries_only_clipped_or_absent_controls(self):
+        from tools.lab.surface_driver.recipes.settings_input import click
+        for invoke, refusal in ((invoke, reason) for invoke in (click, lane.scroll_click) for reason in
+                                ('control: archiveRoot (0 matches)', 'placed rectangle falls outside compositor frame')):
+            ctx = Fake()
+            ctx.profile['settings'].pop('foreground_script')
+            ctx.profile['settings'].pop('live_controls')
+            clicks, scrolls = [], []
+            def attempt(control, **kwargs):
+                clicks.append(control)
+                if len(clicks) < 3:
+                    raise RecipeBlocked(refusal)
+            ctx.click = attempt
+            ctx.geometry = lambda window: {'x': 200, 'y': 100, 'width': 600, 'height': 400,
+                                          'screen_x': 100, 'screen_y': 0, 'scale': 2, 'head': 1}
+            ctx.scroll = lambda x, y, steps, **kw: scrolls.append((x, y, steps, kw))
+            invoke(ctx, 'archiveRoot')
+            self.assertEqual(len(clicks), 3)
+            self.assertEqual(scrolls, [(1352, 600, 40, {'head': 1}), (1352, 600, -3, {'head': 1})])
+        for refusal in ('control has 2 matches', 'foreground is obstructed', 'compositor witness unavailable'):
+            ctx = Fake()
+            ctx.profile['settings'].pop('foreground_script')
+            ctx.click = lambda *a, **k: ctx.blocked(refusal)
+            ctx.scroll = lambda *a, **k: self.fail('a non-clipping guard refusal must not scroll')
+            with self.assertRaisesRegex(RecipeBlocked, refusal):
+                click(ctx, 'archiveRoot')
+
+    def test_native_viewport_uses_expanded_capture_class_without_coordinates(self):
+        from types import SimpleNamespace
+        from tools.lab.surface_driver.recipes.settings_input import native_viewport
+        ctx = Fake()
+        ctx.catalog = SimpleNamespace(candidates=lambda *a: [], inventories={
+            'expanded': {'controls': [{'name': 'profileRegion', 'class': 'QComboBox', 'rect': [1, 1, 1, 1]}]}})
+        queries = []
+        def accessible(query):
+            queries.append(query)
+            return [{'rect': [700, 220, 180, 36], 'ancestors': [{'role': 'filler', 'rect': [336, 148, 1200, 744]}]}]
+        ctx.accessible = accessible
+        geometry = {'pid': 123, 'x': 120, 'y': 40, 'width': 1440, 'height': 960}
+        self.assertIsNone(native_viewport(ctx, 'profileRegion', geometry, 0))
+        self.assertEqual(queries[0]['role'], 'combo box')
+        self.assertNotIn('within', queries[0])
+        self.assertIn('[700, 220, 180, 36]', ctx.notes[-1])
+
+    def test_native_footer_clipping_scrolls_before_any_click(self):
+        from tools.lab.surface_driver.recipes.settings_input import click
+        ctx = Fake()
+        ctx.profile['session'] = 'wayland'
+        ctx.profile['settings'].pop('foreground_script')
+        ctx.geometry = lambda window: {'pid': 123, 'x': 300, 'y': 73, 'width': 1320, 'height': 880}
+        scrolls, clicks = [], []
+        ctx.accessible = lambda query: [{'rect': [1140, 850 if scrolls else 903, 150, 36], 'ancestors': [
+            {'role': 'desktop frame', 'rect': [0, 0, 1024, 768]},
+            {'role': 'frame', 'rect': [300, 73, 1320, 880]},
+            {'role': 'filler', 'rect': [516, 181, 1092, 732]}]}]
+        def wheel(*args, **kwargs):
+            self.assertFalse(clicks)
+            scrolls.append((args, kwargs))
+        ctx.scroll = wheel
+        ctx.click = lambda *a, **k: clicks.append((a, k))
+        click(ctx, 'recordClipboardShortcut')
+        self.assertEqual(len(scrolls), 1)
+        self.assertEqual(len(clicks), 1)
+        self.assertIn('Verified native Settings viewport', ctx.notes[-1])
+        ctx.accessible = lambda query: [{'rect': [1140, 903, 150, 36]}]
+        clicks.clear()
+        with self.assertRaisesRegex(RecipeBlocked, 'ancestry is unavailable'):
+            click(ctx, 'recordClipboardShortcut')
+        self.assertFalse(clicks)
+
+    def test_native_field_focus_is_proved_before_typing(self):
+        ctx = Fake()
+        ctx.profile['session'] = 'wayland'
+        ctx.profile['settings'].pop('foreground_script')
+        ctx.geometry = lambda window: {'window_id': '42', 'pid': 123, 'x': 120, 'y': 40, 'width': 1440, 'height': 960}
+        scrolled = []
+        def accessible(query):
+            if query.get('states', {}).get('focused'):
+                return [{'objectName': 'qt_spinbox_lineedit', 'accessibleId': 'QApplication.putgdMainWindow.recentActivityLimit.qt_spinbox_lineedit'}] if scrolled else [{'objectName': 'otherField'}]
+            return [{'rect': [700, 920, 180, 28], 'ancestors': [{'role': 'filler', 'rect': [336, 148, 1200, 800]}]}]
+        ctx.accessible = accessible
+        ctx.scroll = lambda *a, **k: scrolled.append((a, k))
+        lane.replace(ctx, 'recentActivityLimit', '37')
+        self.assertEqual(len(scrolled), 1)
+        self.assertEqual(ctx.document['retention']['recentActivityLimit'], 37)
+        self.assertIn('native Settings field keyboard focus: recentActivityLimit', ctx.notes)
+        ctx = Fake()
+        ctx.profile['session'] = 'wayland'
+        ctx.profile['settings'].pop('foreground_script')
+        ctx.geometry = lambda window: {'window_id': '42', 'pid': 123, 'x': 120, 'y': 40, 'width': 1440, 'height': 960}
+        ctx.accessible = lambda query: [{'objectName': 'otherField', 'rect': [700, 920, 180, 28], 'ancestors': [{'role': 'filler', 'rect': [336, 148, 1200, 800]}]}]
+        ctx.scroll = lambda *a, **k: None
+        with self.assertRaises(RecipeBlocked) as caught:
+            lane.replace(ctx, 'archiveRoot', '/tmp/synthetic')
+        self.assertEqual(caught.exception.issue, 856)
+        self.assertFalse(any(item[0] in ('keys', 'type') for item in ctx.inputs))
+
+    def test_help_catalog_defaults_visibility_when_flag_is_omitted(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        ctx = Fake()
+        ctx.catalog = SimpleNamespace(candidates=lambda *a: [
+            {'name': 'visibleHelp', 'class': 'QToolButton'},
+            {'name': 'hiddenHelp', 'class': 'QToolButton', 'visible': False}])
+        with patch.object(lane, 'opened'), patch.object(lane, 'exercise_disclosure') as exercise:
+            lane.capture_help(ctx)
+        exercise.assert_called_once_with(ctx, 'visibleHelp', 1)
+
+    def test_disclosure_requires_rendered_text_and_collapse(self):
+        from types import SimpleNamespace
+        ctx = Fake()
+        expanded = [False]
+        ctx.profile['settings'].pop('foreground_script')
+        ctx.click = lambda *a, **k: expanded.__setitem__(0, not expanded[0])
+        ctx.fixture = lambda name: SimpleNamespace(disclosure=lambda control: SimpleNamespace(
+            expanded=expanded[0], control={'description': 'Explanation shown. Synthetic help body' if expanded[0] else 'Synthetic help body'},
+            text=['Synthetic help body'] if expanded[0] else []))
+        lane.exercise_disclosure(ctx, 'syntheticHelp', 1)
+        self.assertFalse(expanded[0])
+        ctx.fixture = lambda name: SimpleNamespace(disclosure=lambda control: SimpleNamespace(
+            expanded=expanded[0], control={'description': 'Synthetic help body'}, text=[]))
+        with self.assertRaisesRegex(RecipeFailed, 'renders its actual help description'):
+            lane.exercise_disclosure(ctx, 'syntheticHelp', 1)
+
+    def test_disclosure_cannot_pass_when_body_remains_after_collapse(self):
+        from types import SimpleNamespace
+        ctx = Fake()
+        expanded = [False]
+        ctx.profile['settings'].pop('foreground_script')
+        ctx.click = lambda *a, **k: expanded.__setitem__(0, not expanded[0])
+        ctx.fixture = lambda name: SimpleNamespace(disclosure=lambda control: SimpleNamespace(
+            expanded=expanded[0], control={'description': 'Synthetic help body'}, text=['Synthetic help body']))
+        with self.assertRaisesRegex(RecipeFailed, 'hides its help body'):
+            lane.exercise_disclosure(ctx, 'syntheticHelp', 1)
 
     def test_channel_probe_restores_notifications_on_save_failure(self):
         for channel, function in (('cli', lane.cli_settings), ('mcp', lane.mcp_configuration)):
@@ -477,6 +635,22 @@ class Contracts(unittest.TestCase):
             lane.replace(ctx, 'fileTemplate', 'surface-{name}.{ext}')
         self.assertFalse(ctx.inputs)
 
+    def test_transient_clipboard_owner_does_not_skip_content_check(self):
+        ctx = Fake()
+        attempts = []
+        def clipboard():
+            attempts.append(True)
+            if len(attempts) == 1:
+                raise RecipeBlocked('clipboard text unavailable (no text owner)')
+            return ctx.clipboard
+        ctx.clipboard_text = clipboard
+        lane.replace(ctx, 'fileTemplate', 'surface-{name}.{ext}')
+        self.assertGreaterEqual(len(attempts), 2)
+        self.assertEqual(ctx.document['naming']['fileTemplate'], 'surface-{name}.{ext}')
+        ctx.clipboard_text = lambda: (_ for _ in ()).throw(RecipeBlocked('ownership refused'))
+        with self.assertRaisesRegex(RecipeBlocked, 'ownership refused'):
+            lane.clipboard_text(ctx)
+
     def test_template_clipboard_is_ready_before_selection(self):
         ctx = Fake()
         lane.replace(ctx, 'fileTemplate', 'surface-{name}.{ext}')
@@ -575,6 +749,37 @@ class Contracts(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'injected'):
             next(r for r in RECIPES if r.interactions == ('settings.notifications',)).function(ctx)
 
+    def test_binding_requires_confirmed_layout_normalized_sequence(self):
+        from unittest.mock import patch
+        ctx = Fake()
+        entry = {'requested': 'Ctrl+Alt+Shift+9', 'effective': 'Ctrl+Alt+(',
+                 'actual': ['Ctrl+Alt+('], 'bound': True, 'state': 'bound'}
+        with patch.object(lane, 'shortcut_status', return_value={'available': True, 'bindings': {'region': entry}}):
+            lane.binding(ctx, 'region', 'Ctrl+Alt+Shift+9')
+            entry['actual'] = ['Ctrl+Alt+8']
+            with self.assertRaises(RecipeFailed):
+                lane.binding(ctx, 'region', 'Ctrl+Alt+Shift+9')
+            entry.update(actual=['Ctrl+Alt+('], requested='Ctrl+Alt+8')
+            with self.assertRaises(RecipeFailed):
+                lane.binding(ctx, 'region', 'Ctrl+Alt+Shift+9')
+
+    def test_second_click_failure_is_framed_before_escape_cleanup(self):
+        ctx = Fake()
+        click = ctx.click
+        counts = []
+        def refuse_second_cancel(control, window, **kwargs):
+            if control == 'recordRegionShortcut':
+                counts.append(control)
+                if len(counts) == 4:
+                    return
+            return click(control, window, **kwargs)
+        ctx.click = refuse_second_cancel
+        with self.assertRaisesRegex(RecipeFailed, 'second keycap click cancels'):
+            lane.shortcut_recording(ctx)
+        self.assertIn(('shortcut-second-click-failed-region', 'settings', lane.REFERENCES[2]), ctx.frames)
+        self.assertIsNone(ctx.recording_action)
+        self.assertEqual(ctx.document['actions']['region']['shortcut'], '')
+
     def test_binding_configuration_is_not_desktop_proof(self):
         ctx = Fake()
         ctx.available = False
@@ -618,7 +823,7 @@ class Contracts(unittest.TestCase):
         ctx.fixture = lambda *a, **k: self.fail('fixture must not mutate before native input preflight')
         with self.assertRaises(RecipeBlocked) as caught:
             lane.opened(ctx, 0)
-        self.assertEqual(caught.exception.issue, 750)
+        self.assertEqual(caught.exception.issue, lane.CORE_ISSUE)
         self.assertEqual(ctx.inputs, [])
 
     def test_wayland_about_lifecycle_uses_native_inventory_queries(self):

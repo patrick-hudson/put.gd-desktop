@@ -1,0 +1,242 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "guest",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "local",
+    "build": "219e43f40902",
+    "placement_details": {
+      "run_id": "88e0f156-f30f-4745-b6dc-3a5ac6d6378f",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/work/put.gd/src/work/lab-runs/c800",
+      "session_root": "/tmp/sd-ba839019",
+      "socket": "/tmp/sd-ba839019/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2491",
+      "commitCount": 2491,
+      "dirty": false,
+      "gitCommit": "219e43f4090246618c2da3f7e64a2bf11292c0cf",
+      "gitTree": "1475dd1e60619d25e98054faee22a983c7f277ed",
+      "packageVersion": "26.1030.2491~dev+g219e43f40902",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2491-dev+g219e43f40902"
+    },
+    "operation_ids": [
+      {
+        "operationId": "ce4c1f3b-be91-409c-b7b1-11a1f3d369fd"
+      },
+      {
+        "operationId": "fd0eb41f-3234-4cdc-9807-aa535b2d64aa"
+      },
+      {
+        "operationId": "3266680a-d0e1-4e17-8486-40bbc8618431"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.tool-text",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/gate/out-local/receipt.json",
+      "note": "operationId=ce4c1f3b-be91-409c-b7b1-11a1f3d369fd",
+      "host": "boat",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.text_tool/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "text-tool",
+          "path": "frames/core_demo.text_tool/01-text-tool.png",
+          "window": "editor",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.text_tool/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.text_tool",
+      "build": "219e43f40902",
+      "at": "2026-10-30T09:48:55Z"
+    },
+    {
+      "interaction": "editor.tool-redact",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/gate/out-local/receipt.json",
+      "note": "operationId=fd0eb41f-3234-4cdc-9807-aa535b2d64aa",
+      "host": "boat",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/sd726/gate/out-local/frames/core_demo.redact_tool/01-redact-tool.png reference=/home/user/sd726/catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.redact_tool/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "redact-tool",
+          "path": "frames/core_demo.redact_tool/01-redact-tool.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584112259001,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.redact_tool/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.redact_tool",
+      "build": "219e43f40902",
+      "at": "2026-10-30T09:49:06Z"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/gate/out-local/receipt.json",
+      "note": "operationId=3266680a-d0e1-4e17-8486-40bbc8618431",
+      "host": "boat",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.undo_redo/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "redone",
+          "path": "frames/core_demo.undo_redo/01-redone.png",
+          "window": "editor",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.undo_redo/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.undo_redo",
+      "build": "219e43f40902",
+      "at": "2026-10-30T09:49:17Z"
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/gate/out-local/receipt.json",
+      "note": "operationId=3266680a-d0e1-4e17-8486-40bbc8618431",
+      "host": "boat",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.undo_redo/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "redone",
+          "path": "frames/core_demo.undo_redo/01-redone.png",
+          "window": "editor",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.undo_redo/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.undo_redo",
+      "build": "219e43f40902",
+      "at": "2026-10-30T09:49:17Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 14,
+    "pngs": 9,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

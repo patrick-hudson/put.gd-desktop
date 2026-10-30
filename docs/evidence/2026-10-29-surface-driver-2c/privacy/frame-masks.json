@@ -1,0 +1,92 @@
+{
+  "frames": {
+    "frames/__main__.share/00-before.png": {
+      "sha256": "c6ae2de1b7f7cccb73dca84d4e04411113ff19a41ea9ad6b085f4dce9f032ee6",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          60,
+          282,
+          1144,
+          200
+        ],
+        [
+          60,
+          72,
+          1144,
+          160
+        ]
+      ],
+      "fallback": false
+    },
+    "frames/__main__.share/01-share-link-full-desktop.png": {
+      "sha256": "51bf5998832d2e4ba63cf3078521c042e87198d97e1317d7442ad466b95cde8d",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          60,
+          282,
+          1144,
+          200
+        ],
+        [
+          60,
+          72,
+          1144,
+          160
+        ]
+      ],
+      "fallback": false
+    },
+    "frames/__main__.share/02-share-link-window.png": {
+      "sha256": "762d05f3e489ccc3bb47b46b83bf0cdbe0dd9b9b4b75fd07b69c9e98180101d3",
+      "size": [
+        1144,
+        679
+      ],
+      "regions": [
+        [
+          0,
+          210,
+          1144,
+          200
+        ],
+        [
+          0,
+          0,
+          1144,
+          160
+        ]
+      ],
+      "fallback": false
+    },
+    "frames/__main__.share/03-after.png": {
+      "sha256": "af02a108dfcd67256f7aa58d3679454ecf879fd7a795d7840049a427b09c7aab",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          60,
+          282,
+          1144,
+          200
+        ],
+        [
+          60,
+          72,
+          1144,
+          160
+        ]
+      ],
+      "fallback": false
+    }
+  }
+}

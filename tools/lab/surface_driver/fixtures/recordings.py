@@ -5,8 +5,24 @@ import shlex
 import time
 
 from ..api import RecipeBlocked, RecipeFailed
+from . import consent, media
 from .base import Fixture
 from .uploads import track
+
+GTK_SINK = '''import gi
+gi.require_version('Gst','1.0')
+from gi.repository import Gst
+Gst.init(None)
+raise SystemExit(0 if Gst.ElementFactory.find('gtksink') else 3)
+'''
+
+
+def media_preflight(scope):
+    """The visible pattern plays through GStreamer's GTK3 sink (#784)."""
+    result=scope.ctx.shell("python3 - <<'SD_GTKSINK'\n"+GTK_SINK+'SD_GTKSINK\n')
+    if result['returncode']:
+        raise RecipeBlocked('recording source needs GStreamer gtksink (gstreamer1.0-gtk3 / gstreamer1-plugins-good-gtk); '
+                            'stage it in the disposable overlay with profiles/provision-probes.sh --recording-overlay',issue=784)
 
 
 def desktop_contract(scope):
@@ -41,6 +57,7 @@ def pattern(scope):
     source=source.replace('def on_stdin(channel, condition):', 'def on_stdin(channel, condition):\n        from gi.repository import Gst')
     source=source.replace("if command == 'quit':", "if command == 'freeze' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PAUSED)\n        if command == 'resume' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PLAYING)\n        if command == 'raise':\n            window.present()\n        if command == 'quit':")
     scope.write(scope.root+'/cover.py',source.encode())
+    media_preflight(scope)
     desktop=desktop_contract(scope)
     fifo=scope.root+'/pattern.fifo'
     scope.python('import os\nos.mkfifo('+repr(fifo)+',0o600)')
@@ -92,11 +109,13 @@ def actual_working(scope, identity):
 def capture(scope, scene, *, seconds=4.5, automatic=False):
     ctx=scope.ctx
     scene.command('raise')
+    # Observe the portal before prepare: consent is driven only for this request.
+    watch=consent.start(scope)
     prepared=ctx.call('recording.prepare',scene.prepare)
     identity=prepared.get('recordingId') or prepared.get('id')
     if not identity:raise RecipeBlocked('recording.prepare returned no identity',issue=672)
     track(scope,'recording.cancel',identity)
-    ctx.wait(lambda:ctx.call('recording.inspect',{'id':identity})['state']=='ready','synthetic recording ready',timeout=40)
+    consent.await_ready(scope,identity,watch,timeout=40)
     ctx.call('recording.start',{'id':identity})
     if automatic:
         ctx.wait(lambda:ctx.call('recording.inspect',{'id':identity})['state']=='reviewing',
@@ -123,6 +142,7 @@ def capture(scope, scene, *, seconds=4.5, automatic=False):
 def recording(scope, *, automatic=False):
     ctx=scope.ctx
     ctx.fixture('destination') # route/settings snapshot must precede prepare
+    media.register(scope) # private hashed copies before any clip is removed
     scene=ctx.fixture('events.recording-source')
     scene.command('freeze')
     frozen,frozen_path=capture(scope,scene)

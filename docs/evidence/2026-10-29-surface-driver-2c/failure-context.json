@@ -1,0 +1,53 @@
+{
+  "source": "94c2f7fae366abe426066bb4b5201ca04bf364c6",
+  "synthetic_only": true,
+  "private_archives": "work/s2c/evidence/archive-index.json",
+  "attempts": [
+    {
+      "attempt": "initial configuration",
+      "failure": "Proton bundle provisioning was not present in the snapshot",
+      "correction": "Disable the out-of-scope Proton bundle; retain official pinned AWS SDK and distro Qt; no substitute toolchain."
+    },
+    {
+      "attempt": "initial CLI integration",
+      "failure": "Inherited display and unscaled timeout failed",
+      "correction": "Documented headless environment plus PUTGD_TEST_TIME_SCALE=3; editor_contract/local_ipc_contract/cli_integration then passed 3/3."
+    },
+    {
+      "attempt": "first VM install",
+      "failure": "Cold apt package installation exceeded 180 seconds",
+      "correction": "Prepared distro dependencies with a bounded 600-second session then normal lab install with package verification."
+    },
+    {
+      "attempt": "accept-1",
+      "failure": "Loopback HTML fixture byte-literal typo",
+      "correction": "Corrected the synthetic fixture source; saved masked failure witness."
+    },
+    {
+      "attempt": "accept-2",
+      "failure": "Firefox AT-SPI frame readiness unavailable to current probe",
+      "correction": "Allowed explicit-rectangle fallback, measured X11 bounds and fixed synthetic CSS band. No live Firefox AT-SPI claim."
+    },
+    {
+      "attempt": "accept-3",
+      "failure": "Fixture assertion plus full-size OCR deadline; audit replaced earlier failure reason",
+      "correction": "Preserved failed receipt, bounded installed tesseract with OMP_THREAD_LIMIT=1 and append audit reason. Rechecks and final runs pass."
+    },
+    {
+      "attempt": "first overlay retirement",
+      "failure": "Guard refused noncanonical run directory",
+      "correction": "Stopped VM; under lifecycle/image locks verified backing chain, inode, SHA and nonreference state. Moved stopped run metadata/disk into canonical runs, retained original and migrated state, used guarded cleanup. Golden untouched."
+    },
+    {
+      "attempt": "accept-8",
+      "failure": "Clipboard did not equal expected synthetic URL",
+      "correction": "Explicit browser foreground recheck immediately before copy plus at most three attempts; final accept-9 passed first attempt."
+    }
+  ],
+  "final": {
+    "privacy": "accept-9 passed; positive scan exit 0, planted-leak scan exit 1",
+    "core_demo": "demo-6: 3 recipes, 4 functional passes; editor.tool-redact keeps catalog review flag",
+    "cleanup": "Both stopped disposable overlays retired via guarded cleanup after verified export"
+  },
+  "retention": "Private checked archives retain useful failure receipts, witnesses, build logs and cleanup context. Initial configure error was recorded, but its full early log was overwritten. Raw deliberately planted URLs and old unsalted-digest proof were excluded from exported evidence; final proof contains only salted host/hash derivatives."
+}

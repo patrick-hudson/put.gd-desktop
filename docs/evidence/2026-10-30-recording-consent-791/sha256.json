@@ -1,0 +1,17 @@
+{
+ "README.md": "9639a712d555382cd91ed4bba788c740cc87db77f2699db550a49342b6130c6c",
+ "cinnamon/media-manifest-preview-error.json": "dbc87439fd4625c41dbe7ed53e9ddf1261fb1164cf1e328a7646b2e0f16df8aa",
+ "cinnamon/receipt.json": "32fd1ed5b9dcd832ec8d21c835225a473364f2dcac7b9efa070951674edac5e4",
+ "cinnamon/redecode.json": "a67fe12427efc74200ae028bcccdadb836e1c623361cc5df3e8ec03ab0a4fb68",
+ "cinnamon/retire-cleanup.json": "073e9cabc9f78b6b07a2565e2874d2b6c1634e49ac2475e23f03a1bfc9ebace2",
+ "cinnamon/retire-manifest.json": "715d1e92ec9e063f2c3a32df629405ec31650c199a75d4c7c6d44c8f3be85656",
+ "gnome/consent-after-raw.png": "76ea9780cd3e5478ec9d436522ed2d283cbc51a63ec511454ca311c6b8fa15dd",
+ "gnome/consent-after.png": "0ba37da2e774917ba7c2501f6e570291044ef849e999571b1f2a17ea091a5540",
+ "gnome/consent-before-raw.png": "e2c741f82a4b393ca2a0f0f97a2763c5d477f3963dc3c7addf981ea294ab3659",
+ "gnome/consent-before.png": "496dc724889cb9a59f1ed38fc9d1a31f890693ca8be9533894900b541c61e321",
+ "gnome/media-manifest-preview-error.json": "c12f1fb5cf45d24a359d7db7481e61c85bcbf56b51ec6f4d44111e827abe41fd",
+ "gnome/receipt.json": "2ab30c0328730f6e46c00fdbca569bac11accf69204633803cb83d1cfb112716",
+ "gnome/redecode.json": "42858e7315583d8af16ba54d32fef82c55653fe9a913444f8cece4ffdc1e1976",
+ "gnome/retire-cleanup.json": "f47b33c6e632df32ec55182eee2def0b570dd775c90a41caa295e86d9382eb2f",
+ "gnome/retire-manifest.json": "6ed2f9acddb61261e00d0f474a368ebb928c3289890dd5b8f4ad20e475f9422c"
+}

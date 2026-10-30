@@ -275,7 +275,7 @@ def open_and_verify(ctx, trigger, expect):
                    'external dispatch reached the private Marionette Firefox, '
                    'not a Firefox started outside its profile')
         ctx.expect(result.get('matched'), 'real Firefox URL, title and page content match')
-        frames.append(asdict(ctx.frame('browser-content', window=None)))
+        frames.append(asdict(ctx.frame('browser-content', window=None, desktop_safe=KIOSK_SAFE)))
         receipt = {key: result[key] for key in ('url_host', 'title', 'matched')}
         receipt['frames'] = frames
         ctx.note(json.dumps({key: receipt[key] for key in ('url_host', 'title', 'matched')}))
@@ -285,6 +285,13 @@ def open_and_verify(ctx, trigger, expect):
         # still runs in default_browser.
         _failure_frame(ctx, state, timeouts, frames)
         raise
+
+
+# Live-evidence declaration for these full-desktop frames: the private
+# Marionette kiosk has no address bar and was proven to own the foreground
+# (blanked first for failures). Notification areas, other browser chrome,
+# leaking titles and owned secret fields stay masked; OCR still audits.
+KIOSK_SAFE = 'private Firefox kiosk without address bar owns the verified foreground'
 
 
 def _failure_frame(ctx, state, timeouts, frames):
@@ -305,7 +312,7 @@ def _failure_frame(ctx, state, timeouts, frames):
                    'or another Firefox was started; core needs a redacted full-desktop failure frame')
         return
     try:
-        frames.append(asdict(ctx.frame('browser-failure-safe-desktop', window=None)))
+        frames.append(asdict(ctx.frame('browser-failure-safe-desktop', window=None, desktop_safe=KIOSK_SAFE)))
     except Exception as error:
         ctx.review('Failure frame unavailable (' + str(error)[:200] + ')')
 

@@ -1,0 +1,13 @@
+...........{"recipe": "test_surface_driver.<lambda>", "functional": "passed", "visual": "frames", "review": false}
+{"recipe": "test_surface_driver.<lambda>", "functional": "passed", "visual": "frames", "review": false}
+........{"recipe": "test_surface_driver.good", "functional": "passed", "visual": "frames", "review": false}
+{"recipe": "test_surface_driver.bad", "functional": "failed", "visual": "frames", "review": false}
+{"recipe": "test_surface_driver.blocked", "functional": "blocked", "visual": "frames", "review": false}
+..{"recipe": "test_surface_driver.good", "functional": "passed", "visual": "reviewed-ok", "review": false}
+{"recipe": "test_surface_driver.bad", "functional": "passed", "visual": "frames", "review": true}
+................................{"recipe": "test_surface_redact.plant", "functional": "passed", "visual": "frames", "review": false}
+........
+----------------------------------------------------------------------
+Ran 61 tests in 7.944s
+
+OK

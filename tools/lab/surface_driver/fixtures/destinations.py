@@ -1,13 +1,15 @@
 """Loopback-only destination profiles and an owned blank-password collection.
 
-Uses the GNOME Secret Service calls already used by lab_keyring.py, without
-moving the desktop's default alias or reading any existing item.
+Uses unique collections without changing a default alias. KDE guests use a
+fixture-owned Secret Service with private storage and an exact process identity;
+the desktop's KWallet is never opened or modified.
 """
 import json
 from pathlib import Path
 
 from ..api import RecipeBlocked
 from .base import Fixture
+from .keyring import isolated_service
 
 # Query/return metadata only. Fake material is generated/read solely on target.
 KEYRING = '''import base64,json,os,secrets
@@ -27,6 +29,8 @@ def fake_keyring(scope):
     if ctx.placement not in ('guest','boat') or (ctx.host=='boat' and not ctx.profile.get('guest')):
         raise RecipeBlocked('fake credential collection is restricted to a disposable nested guest',issue=666)
     scope.initialize()
+    if ctx.profile.get('compositor',{}).get('kind')=='kwin-script':
+        isolated_service(scope)
     reference='putgd-lab-'+str(__import__('uuid').uuid4())
     path=scope.root+'/fake-input.json'
     scope.defer('fake credential input',lambda:scope.python('from pathlib import Path\nPath('+repr(path)+').unlink(missing_ok=True)'),priority=1000)
@@ -54,6 +58,7 @@ print(json.dumps({'collection':collection,'reference':REFERENCE}))
 p=COLLECTION
 label=call(p,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Label')),'(v)')[0]
 assert label==LABEL
+assert call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]!=p
 prompt=call(p,'org.freedesktop.Secret.Collection','Delete',None,'(o)')[0]
 assert prompt=='/'
 '''.replace('COLLECTION',repr(created['collection'])).replace('LABEL',repr('putgd fixture '+scope.token))))
@@ -100,7 +105,7 @@ os.replace(name,p)
 '''.replace('ROOT',repr(scope.root)).replace('VALUES',repr(values)))
 
 
-def destinations(scope, kind='s3'):
+def destinations(scope, kind='s3', *, uncached=False):
     if kind=='empty':
         profile=scope.ctx.fixture('app-profile')
         scope.patch({'profiles':[],'captureDefaults':{'destination':'local','profileId':None,'publicationMode':'default'}})
@@ -116,7 +121,13 @@ def destinations(scope, kind='s3'):
         profile['settings']={'apiUrl':endpoint,'bucket':'surface-fixture','objectPrefix':'campaign-'+scope.token[:12],
                              'linkMode':'public','linkValidityDays':7,'publicUrlBase':endpoint+'/surface-fixture',
                              'connectTimeoutMs':1000,'requestTimeoutMs':15000}
-    return Fixture(fixture,profile=profile,kind=kind,configuration_only=kind=='b2')
+    def reset_cache():
+        # Production credentials are session-only. Restart this private
+        # resident without disturbing the actual desktop Secret Service.
+        scope.restart({})
+    if uncached:reset_cache()
+    return Fixture(fixture,profile=profile,kind=kind,configuration_only=kind=='b2',
+                   reset_credentials=reset_cache,credentials_cached=not uncached)
 
 
 def destination(scope):
@@ -128,3 +139,23 @@ def destination(scope):
     value=scope.ctx.fixture('loopback-s3')
     scope.patch({'actions':{'record':{'destination':'upload','profileId':value.profile_id}}})
     return Fixture(id=value.profile_id,label=value.profile['label'])
+
+
+def locked_keyring(scope):
+    """Lock only the unique synthetic collection; never change a default alias."""
+    value=scope.ctx.fixture('fake-keyring')
+    def lock():
+        scope.python(KEYRING+'''
+locked,prompt=call(service,'org.freedesktop.Secret.Service','Lock',GLib.Variant('(ao)',([COLLECTION],)),'(aoo)')
+assert COLLECTION in locked and prompt=='/'
+'''.replace('COLLECTION',repr(value.collection)))
+    def unlock():
+        scope.python(KEYRING+'''
+locked=call(COLLECTION,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Locked')),'(v)')[0]
+if locked:
+ unlocked,prompt=call(service,'org.freedesktop.Secret.Service','Unlock',GLib.Variant('(ao)',([COLLECTION],)),'(aoo)')
+ assert prompt=='/' and COLLECTION in unlocked
+'''.replace('COLLECTION',repr(value.collection)))
+    scope.defer('unlock owned blank-password collection',unlock,priority=60)
+    lock()
+    return Fixture(value,locked=True,lock=lock,unlock=unlock)

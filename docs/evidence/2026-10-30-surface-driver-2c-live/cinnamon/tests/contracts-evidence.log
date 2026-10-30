@@ -1,0 +1,530 @@
+{
+  "scope": "Saved-evidence replay; no fresh desktop or live S3 acceptance",
+  "runs": [
+    {
+      "scope": "Saved-evidence replay; no fresh desktop or live S3 acceptance",
+      "archive": "cinnamon114.tar.gz",
+      "archiveSha256": "a2c63ada09b760127bb4de55135e0f10d21a0907bf869084c168c18e040bb782",
+      "memberHashesAndBoundsPassed": true,
+      "exactSavedResultMatched": true,
+      "result": {
+        "schemaVersion": 1,
+        "scope": "Measured Cinnamon VM live-S3 workload through production CLI/native acquisition; saved-evidence replay; not a fresh desktop test or full native-hotkey matrix",
+        "sourceCommit": "0258600b752dae6304ba61d48b67d56883dfb6b2",
+        "version": "0.1.1-dev.114+g0258600b752d",
+        "post_s3_idle_rss_mib": 29.05859375,
+        "post_s3_idle_rss_plus_swap_mib": 29.05859375,
+        "idle_cpu_percent_one_core": 0.00999695636172221,
+        "max_swap_mib": 0.0,
+        "quiet_seconds": 300.09133694799675,
+        "quiet_family_max": 1,
+        "quiet_active_operations_max": 0,
+        "quiet_ui_pid_max": 0,
+        "resident_identity_unchanged": true,
+        "build_clean": true,
+        "all_six_live_source_types_verified": true,
+        "public_bytes_and_native_url_paste_verified": true,
+        "exact_scoped_cleanup_verified": true,
+        "confirmed_remote_objects": 31,
+        "workload_operation_counts": {
+          "clipboard-text": 11,
+          "clipboard-files": 1,
+          "region": 15,
+          "window": 1,
+          "clipboard-image": 1,
+          "desktop": 1
+        },
+        "quiet_samples": 301,
+        "diagnostic_samples": 30,
+        "phases": [
+          {
+            "stage": "cold",
+            "samples": 39,
+            "lastResidentRssMiB": 25.4921875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-text-batch-7ba8d0a133",
+            "samples": 5,
+            "lastResidentRssMiB": 27.0625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-text-batch-7ba8d0a133",
+            "samples": 32,
+            "lastResidentRssMiB": 26.73046875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-text-batch-0443857917",
+            "samples": 20,
+            "lastResidentRssMiB": 27.25390625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-text-batch-0443857917",
+            "samples": 21,
+            "lastResidentRssMiB": 26.91015625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-text-batch-68d8de264a",
+            "samples": 19,
+            "lastResidentRssMiB": 27.39453125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-text-batch-68d8de264a",
+            "samples": 22,
+            "lastResidentRssMiB": 27.03515625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-region-batch-e9491de7a0",
+            "samples": 24,
+            "lastResidentRssMiB": 27.4375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-region-batch-e9491de7a0",
+            "samples": 21,
+            "lastResidentRssMiB": 27.46484375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-region-batch-f65c96b401",
+            "samples": 27,
+            "lastResidentRssMiB": 28.1171875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-region-batch-f65c96b401",
+            "samples": 21,
+            "lastResidentRssMiB": 27.75,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-region-batch-aaf406cfbf",
+            "samples": 24,
+            "lastResidentRssMiB": 28.26953125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-region-batch-aaf406cfbf",
+            "samples": 21,
+            "lastResidentRssMiB": 27.41796875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-image-batch-d9dc08ab12",
+            "samples": 5,
+            "lastResidentRssMiB": 28.3046875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-image-batch-d9dc08ab12",
+            "samples": 21,
+            "lastResidentRssMiB": 27.5703125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-files-batch-3272d9602a",
+            "samples": 7,
+            "lastResidentRssMiB": 27.67578125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-files-batch-3272d9602a",
+            "samples": 21,
+            "lastResidentRssMiB": 27.6875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-window-batch-c13c90ac18",
+            "samples": 4,
+            "lastResidentRssMiB": 29.4765625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-window-batch-c13c90ac18",
+            "samples": 21,
+            "lastResidentRssMiB": 28.6640625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-desktop-batch-fb02a5d694",
+            "samples": 4,
+            "lastResidentRssMiB": 29.46875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-desktop-batch-fb02a5d694",
+            "samples": 21,
+            "lastResidentRssMiB": 29.05859375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "candidate-final-quiet",
+            "samples": 317,
+            "lastResidentRssMiB": 29.05859375,
+            "lastResidentSwapMiB": 0.0
+          }
+        ],
+        "cold_last_rss_mib": 25.4921875,
+        "final_pss_mib": 13.7890625,
+        "final_anonymous_mib": 4.92578125,
+        "reproduction_gate": false
+      }
+    },
+    {
+      "scope": "Saved-evidence replay; no fresh desktop or live S3 acceptance",
+      "archive": "kde114.tar.gz",
+      "archiveSha256": "8e413effebf9f58410d741906f055cbc68a0659075c1c8d42a871f60a21e6c71",
+      "memberHashesAndBoundsPassed": true,
+      "exactSavedResultMatched": true,
+      "result": {
+        "schemaVersion": 1,
+        "scope": "Measured kde-wayland VM live-S3 workload through production CLI/native acquisition; saved-evidence replay; not a fresh desktop test or full native-hotkey matrix",
+        "sourceCommit": "0258600b752dae6304ba61d48b67d56883dfb6b2",
+        "version": "0.1.1-dev.114+g0258600b752d",
+        "post_s3_idle_rss_mib": 31.28515625,
+        "post_s3_idle_rss_plus_swap_mib": 31.28515625,
+        "idle_cpu_percent_one_core": 0.019992323264078574,
+        "max_swap_mib": 0.0,
+        "quiet_seconds": 300.115195254999,
+        "quiet_family_max": 1,
+        "quiet_active_operations_max": 0,
+        "quiet_ui_pid_max": 0,
+        "resident_identity_unchanged": true,
+        "build_clean": true,
+        "all_six_live_source_types_verified": true,
+        "public_bytes_and_native_url_paste_verified": true,
+        "exact_scoped_cleanup_verified": true,
+        "confirmed_remote_objects": 31,
+        "workload_operation_counts": {
+          "region": 15,
+          "window": 1,
+          "clipboard-image": 1,
+          "clipboard-files": 1,
+          "clipboard-text": 11,
+          "desktop": 1
+        },
+        "quiet_samples": 301,
+        "diagnostic_samples": 30,
+        "phases": [
+          {
+            "stage": "cold",
+            "samples": 18,
+            "lastResidentRssMiB": 28.9609375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-text-batch-8a1b3a104f",
+            "samples": 4,
+            "lastResidentRssMiB": 29.921875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-text-batch-8a1b3a104f",
+            "samples": 22,
+            "lastResidentRssMiB": 29.6171875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-text-batch-934a20fcd0",
+            "samples": 18,
+            "lastResidentRssMiB": 30.06640625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-text-batch-934a20fcd0",
+            "samples": 22,
+            "lastResidentRssMiB": 29.7109375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-text-batch-982f60d8e6",
+            "samples": 16,
+            "lastResidentRssMiB": 30.11328125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-text-batch-982f60d8e6",
+            "samples": 22,
+            "lastResidentRssMiB": 29.7890625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-region-batch-b1ce8ab303",
+            "samples": 19,
+            "lastResidentRssMiB": 31.0078125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-region-batch-b1ce8ab303",
+            "samples": 22,
+            "lastResidentRssMiB": 30.484375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-region-batch-6bc7c585fa",
+            "samples": 22,
+            "lastResidentRssMiB": 31.015625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-region-batch-6bc7c585fa",
+            "samples": 22,
+            "lastResidentRssMiB": 30.58203125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-region-batch-02f44c9258",
+            "samples": 21,
+            "lastResidentRssMiB": 31.1640625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-region-batch-02f44c9258",
+            "samples": 22,
+            "lastResidentRssMiB": 30.61328125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-image-batch-2f180ead89",
+            "samples": 5,
+            "lastResidentRssMiB": 31.2890625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-image-batch-2f180ead89",
+            "samples": 22,
+            "lastResidentRssMiB": 30.55859375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-files-batch-3f660feac6",
+            "samples": 6,
+            "lastResidentRssMiB": 31.01171875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-files-batch-3f660feac6",
+            "samples": 21,
+            "lastResidentRssMiB": 31.02734375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-window-batch-24d716b669",
+            "samples": 7,
+            "lastResidentRssMiB": 31.6875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-window-batch-24d716b669",
+            "samples": 22,
+            "lastResidentRssMiB": 31.06640625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-desktop-batch-fc1efbe2e4",
+            "samples": 5,
+            "lastResidentRssMiB": 31.69140625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-desktop-batch-fc1efbe2e4",
+            "samples": 81,
+            "lastResidentRssMiB": 31.28515625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "candidate-final-quiet",
+            "samples": 321,
+            "lastResidentRssMiB": 31.28515625,
+            "lastResidentSwapMiB": 0.0
+          }
+        ],
+        "cold_last_rss_mib": 28.9609375,
+        "final_pss_mib": 8.1259765625,
+        "final_anonymous_mib": 3.9453125,
+        "reproduction_gate": false
+      }
+    },
+    {
+      "scope": "Saved-evidence replay; no fresh desktop or live S3 acceptance",
+      "archive": "gnome114.tar.gz",
+      "archiveSha256": "e6e3691f9f145b6078a3bd24fd137d7cfab774a0aab18a2f2ee03d32558221a0",
+      "memberHashesAndBoundsPassed": true,
+      "exactSavedResultMatched": true,
+      "result": {
+        "schemaVersion": 1,
+        "scope": "Measured gnome-wayland VM live-S3 workload through production CLI/native acquisition; saved-evidence replay; not a fresh desktop test or full native-hotkey matrix",
+        "sourceCommit": "0258600b752dae6304ba61d48b67d56883dfb6b2",
+        "version": "0.1.1-dev.114+g0258600b752d",
+        "post_s3_idle_rss_mib": 36.078125,
+        "post_s3_idle_rss_plus_swap_mib": 36.078125,
+        "idle_cpu_percent_one_core": 0.016659779387198086,
+        "max_swap_mib": 0.0,
+        "quiet_seconds": 300.1240222810011,
+        "quiet_family_max": 1,
+        "quiet_active_operations_max": 0,
+        "quiet_ui_pid_max": 0,
+        "resident_identity_unchanged": true,
+        "build_clean": true,
+        "all_six_live_source_types_verified": true,
+        "public_bytes_and_native_url_paste_verified": true,
+        "exact_scoped_cleanup_verified": true,
+        "confirmed_remote_objects": 31,
+        "workload_operation_counts": {
+          "clipboard-text": 11,
+          "clipboard-files": 1,
+          "desktop": 1,
+          "clipboard-image": 1,
+          "window": 1,
+          "region": 15
+        },
+        "quiet_samples": 301,
+        "diagnostic_samples": 30,
+        "phases": [
+          {
+            "stage": "cold",
+            "samples": 168,
+            "lastResidentRssMiB": 27.421875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-text-batch-d0afb28f70",
+            "samples": 4,
+            "lastResidentRssMiB": 29.1328125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-text-batch-d0afb28f70",
+            "samples": 90,
+            "lastResidentRssMiB": 28.953125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-text-batch-0c901d07d3",
+            "samples": 27,
+            "lastResidentRssMiB": 28.921875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-text-batch-0c901d07d3",
+            "samples": 23,
+            "lastResidentRssMiB": 28.94140625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-text-batch-8499ad727e",
+            "samples": 31,
+            "lastResidentRssMiB": 29.359375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-text-batch-8499ad727e",
+            "samples": 24,
+            "lastResidentRssMiB": 29.046875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-region-batch-ecff485cfc",
+            "samples": 30,
+            "lastResidentRssMiB": 36.24609375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-region-batch-ecff485cfc",
+            "samples": 23,
+            "lastResidentRssMiB": 34.125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-region-batch-725cef0651",
+            "samples": 32,
+            "lastResidentRssMiB": 36.30078125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-region-batch-725cef0651",
+            "samples": 24,
+            "lastResidentRssMiB": 34.0546875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-region-batch-e5177a9d65",
+            "samples": 29,
+            "lastResidentRssMiB": 36.453125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-region-batch-e5177a9d65",
+            "samples": 23,
+            "lastResidentRssMiB": 34.23828125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-image-batch-541961bfeb",
+            "samples": 7,
+            "lastResidentRssMiB": 34.234375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-image-batch-541961bfeb",
+            "samples": 23,
+            "lastResidentRssMiB": 34.24609375,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-clipboard-files-batch-0f5b33dc17",
+            "samples": 5,
+            "lastResidentRssMiB": 35.59765625,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-clipboard-files-batch-0f5b33dc17",
+            "samples": 22,
+            "lastResidentRssMiB": 34.76171875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-window-batch-5839af973e",
+            "samples": 5,
+            "lastResidentRssMiB": 38.0703125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-window-batch-5839af973e",
+            "samples": 22,
+            "lastResidentRssMiB": 37.28125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "upload-desktop-batch-520c793e96",
+            "samples": 6,
+            "lastResidentRssMiB": 37.57421875,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "idle-after-desktop-batch-520c793e96",
+            "samples": 32,
+            "lastResidentRssMiB": 36.078125,
+            "lastResidentSwapMiB": 0.0
+          },
+          {
+            "stage": "candidate-final-quiet",
+            "samples": 361,
+            "lastResidentRssMiB": 36.078125,
+            "lastResidentSwapMiB": 0.0
+          }
+        ],
+        "cold_last_rss_mib": 27.421875,
+        "final_pss_mib": 19.3720703125,
+        "final_anonymous_mib": 9.5390625,
+        "reproduction_gate": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "ubuntu-gnome-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "gnome-wayland",
+    "package": "deb",
+    "destination": "s3",
+    "build": "ccc3f98bf3744aec93b35d5e3c818a79d881e57b",
+    "driver_source": "238257fa89c0a76f322ed4cc6b88c061131d7a70",
+    "placement_details": {
+      "boat_sandbox_id": "bx_kn72kkcv",
+      "run_id": "0189a37a-5e7a-46f9-b203-f4c0ef2bbb43"
+    },
+    "operation_ids": [
+      {
+        "operationId": "d054ad15-4c30-4f9d-9fe9-76f44bdd0e4b"
+      },
+      {
+        "operationId": "3404ca72-2094-407d-9006-b1c0763d664b"
+      },
+      {
+        "operationId": "635244e9-7a12-4354-8e6b-e4fd6ee4d08e"
+      },
+      {
+        "operationId": "73975f96-341d-4145-8389-4eb22850bb6f"
+      }
+    ],
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.undo",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/live-g7/live/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; session token [redacted] rejected",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.registered/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.registered/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.registered",
+      "build": "ccc3f98bf3744aec93b35d5e3c818a79d881e57b",
+      "at": "2026-10-30T08:30:09Z"
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/live-g7/live/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; History shows [url {\"hash\": \"ba13134d4dcbf4ac156538acb24e030bad73630361805d1c4c263aeca58beb76\", \"host\": \"f004.backblazeb2.com\", \"length\": 64, \"present\": true}] and [url {\"hash\": \"28627f168cbfcc98a956911a7f39544337ece8297cd8902188c80f7401fd3f7a\", \"host\": \"objects.sd726.internal\", \"length\": 66, \"present\": true}]",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.schemeless/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.schemeless/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.schemeless",
+      "build": "ccc3f98bf3744aec93b35d5e3c818a79d881e57b",
+      "at": "2026-10-30T08:30:13Z"
+    },
+    {
+      "interaction": "editor.tool-text",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/live-g7/live/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.raw/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.raw/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.raw",
+      "build": "ccc3f98bf3744aec93b35d5e3c818a79d881e57b",
+      "at": "2026-10-30T08:30:17Z"
+    },
+    {
+      "interaction": "editor.tool-redact",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/live-g7/live/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.framed/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "recipe-history",
+          "path": "frames/__main__.framed/01-recipe-history.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.framed/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.framed",
+      "build": "ccc3f98bf3744aec93b35d5e3c818a79d881e57b",
+      "at": "2026-10-30T08:30:27Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 34,
+    "pngs": 29,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

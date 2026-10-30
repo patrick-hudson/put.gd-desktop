@@ -56,7 +56,10 @@ class Geometry(unittest.TestCase):
         target._outputs = [{'width': 1280, 'height': 800, 'x': 0, 'y': 0},
                            {'width': 1024, 'height': 768, 'x': 1280, 'y': 0}]
         sent = []
-        target.events = lambda *args: sent.append(args)
+        target.run = Path('/owned/run')
+        sending = patch('tools.lab.surface_driver.target.lab.input_events', side_effect=lambda run,*args:sent.append(args))
+        sending.start()
+        self.addCleanup(sending.stop)
         target.pointer(320, 200, 1280, 800, head=0)
         self.assertEqual(len(sent[0]), 1)  # no display/head-bound tablet
         self.assertEqual([e['data']['value'] for e in sent[0][0]], [math.ceil(320*32768/2304), 8192])
@@ -296,11 +299,26 @@ class Hygiene(unittest.TestCase):
             target._close_probe()
 
     def test_timed_out_probe_cannot_consume_a_late_witness_on_retry(self):
+        # A deadline-cut wait leaves its reply in flight (#834): the retry
+        # discards that late witness and answers with its own observation.
         target = self.probe_target()
-        source = 'import time\ndef geometry(query):\n time.sleep(.2)\n return {}\n'
+        source = 'import time\ncounter=0\ndef geometry(query):\n global counter\n counter+=1\n time.sleep(.2)\n return counter\n'
         try:
             with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                with self.assertRaisesRegex(RecipeBlocked,'timed out'):
+                with self.assertRaisesRegex(RecipeBlocked,'outlived the recipe deadline'):
+                    target.probe('geometry',{},source,timeout=.01)
+                self.assertEqual(target.probe('geometry',{},source)['result'],2)
+                self.assertFalse(target._probe_failed)
+        finally:
+            target._close_probe()
+
+    def test_silent_channel_at_the_full_reply_bound_still_poisons(self):
+        target = self.probe_target()
+        source = 'import time\ndef geometry(query):\n time.sleep(.3)\n return {}\n'
+        try:
+            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']), \
+                 patch('tools.lab.surface_driver.target.PROBE_REPLY_SECONDS',.01):
+                with self.assertRaisesRegex(RecipeBlocked,'timed out: .*further input withheld'):
                     target.probe('geometry',{},source,timeout=.01)
                 with self.assertRaisesRegex(RecipeBlocked,'start a new run'):
                     target.probe('geometry',{},source)
@@ -314,14 +332,18 @@ counter=0
 def control_geometry(query):
  global counter
  counter+=1
- return {'counter':counter,'pid':os.getpid()}
+ return {'counter':counter,'pid':os.getpid(),'argv':sys.argv,'query':query}
 def main():
  print(json.dumps({'ok':True,'result':control_geometry(json.loads(sys.argv[1])['query'])}))
 if __name__=='__main__':main()
 '''
         try:
             with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                first = target.probe('control',{},source)['result']
+                first = target.probe('control',{'title':'synthetic-private-title-726'},source)['result']
+                self.assertNotIn('synthetic-private-title-726',repr(target._probe_process.args))
+                self.assertNotIn(source,repr(target._probe_process.args))
+                self.assertEqual(first['argv'],['-'])
+                self.assertEqual(first['query'],{'title':'synthetic-private-title-726'})
                 channel = target._probe_process.pid
                 second = target.probe('control',{},source)['result']
                 self.assertEqual((first['counter'],second['counter']),(1,1))

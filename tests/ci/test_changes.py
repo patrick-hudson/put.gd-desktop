@@ -31,6 +31,14 @@ class Selection(unittest.TestCase):
                             '.github/renovate.json', '.github/dependabot.yml', 'tools/maintenance/refresh_pins.py'],
                            False, False)
 
+    def test_surface_driver_pin_and_classifier_render_the_catalog(self):
+        # The build matrix's 26.04 job renders the catalog and runs gate check-catalog.
+        for path in ('tools/lab/surface_driver/secret-states.json', 'tools/lab/surface_driver/redact.py',
+                     'tools/lab/surface_driver/gate.py'):
+            with self.subTest(path=path):
+                self.assertSelects([path], True, False)
+        self.assertSelects(['tools/lab/surface_driver/context.py'], False, False)
+
     def test_compiled_or_ctest_inputs_build(self):
         for path in ('src/core/Settings.cpp', 'tests/unit/test_settings.cpp', 'tests/desktop/x11/test_x11.cpp',
                      'tests/desktop/test_gnome_ownership.mjs', 'tests/performance/bench_capture.cpp',

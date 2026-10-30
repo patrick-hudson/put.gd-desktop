@@ -141,14 +141,14 @@ class CliAdapter:
         args = [self.cli, '--request-id', request_id]
         if self.socket is not None:
             args += ['--socket', self.socket]
-        args += [method, encoded]
+        args += ['--params-stdin', method]
         try:
             process = await asyncio.create_subprocess_exec(
-                *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
+                *args, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
         except OSError:
             return failure('cli_unavailable', 'Cannot launch the configured production CLI', request_id)
         try:
-            stdout, _ = await asyncio.wait_for(process.communicate(), timeout)
+            stdout, _ = await asyncio.wait_for(process.communicate(encoded.encode()), timeout)
         except TimeoutError:
             if process.returncode is None:
                 process.kill()

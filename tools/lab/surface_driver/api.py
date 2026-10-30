@@ -21,6 +21,17 @@ Recipes never fork per desktop. Per-desktop differences (tolerances, input
 backend, notification server, browser, known gaps) live in
 `profiles/<desktop-id>.json` and fragments `profiles/<desktop-id>.d/<lane>.json`,
 read through `ctx.profile`.
+
+Trust boundary for live destinations (S3, B2, Proton). The secret-safe
+evidence gate (gate.py) protects what the driver writes against
+misconfiguration and accident: it admits a live context only for a proven
+disposable placement, an exact clean build, that build's pinned catalog and a
+working OCR, and run_recipes refuses contexts it did not admit. It does not
+defend against recipe code. Recipes and fixtures run in the driver's process
+and are reviewed source: one could replace `DriverContext.live_gate`, set
+`_live_admitted`, or move data out through `ctx.call`, `ctx.cli`, `ctx.shell`
+or `ctx.mcp` (which reach the resident and the target directly). Review recipe
+changes for that; never run unreviewed recipe code against a live destination.
 """
 from __future__ import annotations
 
@@ -121,13 +132,19 @@ class Context:
         raise NotImplementedError
 
     def click(self, control: str, window: str, button: str = 'left', offset: Optional[tuple] = None) -> None:
-        """Click a control resolved from the current build's NAME.controls.json, mapped onto the live window."""
+        """Click a control resolved from the current build's NAME.controls.json, mapped onto the live window.
+
+        A profile's live_controls {control: {name, role}} names a control that no
+        catalog exports (a view's rows): the live row with exactly that
+        accessible name and role is the target. The same guards apply.
+        """
         raise NotImplementedError
 
     def click_at(self, x: int, y: int, button: str = 'left', head: Optional[int] = None) -> None:
         raise NotImplementedError
 
-    def drag(self, start: tuple, end: tuple, button: str = 'left', steps: int = 12, head: Optional[int] = None) -> None:
+    def drag(self, start: tuple, end: tuple, button: str = 'left', steps: int = 12, head: Optional[int] = None, *, require_resize: bool = False) -> None:
+        """require_resize binds a new Mutter resize-begin signal to the target or blocks."""
         raise NotImplementedError
 
     def keys(self, *sequence: str) -> None:
@@ -159,7 +176,7 @@ class Context:
         Missing exported object IDs never match by name.
         Results: name, role, text, description, states (bool map), rect
         [x,y,width,height] or null, bounds {x,y,width,height} or null, pid,
-        application, window, owned, objectName, accelerator, attributes,
+        application, window, owned, objectName, accessibleId, accelerator, attributes,
         visible/showing/enabled, protected, popup and ancestors, plus
         coordinate_space ('desktop' or 'window-relative'), coordinate_error and
         window_id (compositor identity) where placement applies. rect is in
@@ -169,9 +186,14 @@ class Context:
         without one (or when placement is implausible) rect/bounds are null with
         coordinate_error, never a guess. Rows also include out-of-tree accessibles
         seen by the run's observer: showing QMenu popups and the focused widget
-        (start_notifications starts it). role 'button' is normalized to
-        'push button'. Password text is never read. RecipeBlocked when
-        unavailable, including profile gaps.
+        (start_notifications starts it). Roles retain the server spelling;
+        button/push button synonyms are normalized for matching. objectName
+        comes from the exported attributes or, when Qt exports none (Qt 6.10),
+        from its AccessibleId path (accessibleId); view items repeating their
+        container's id have none. Every AT-SPI call is bounded; an unanswered
+        call or a walk over its time budget is RecipeBlocked naming the
+        application, never a partial result. Password text is never read.
+        RecipeBlocked when unavailable, including profile gaps.
         """
         raise NotImplementedError
 
@@ -184,7 +206,7 @@ class Context:
         """
         raise NotImplementedError
 
-    def focus(self, window: str, raise_window: bool = True) -> dict:
+    def focus(self, window: str, raise_window: bool = False) -> dict:
         """Select and verify an input target; optionally raise it using desktop policy.
 
         Every input rechecks focus/stacking. Obstruction is RecipeFailed naming
@@ -220,6 +242,14 @@ class Context:
         """
         raise NotImplementedError
 
+    def double_click_accessible(self, query: dict, button: str = 'left') -> dict:
+        """One guarded desktop double-click; resolve and hit-test once for the pair."""
+        raise NotImplementedError
+
+    def scroll_accessible(self, query: dict, clicks: int) -> dict:
+        """Wheel pulses at an owned desktop node; fresh hit-test before each pulse."""
+        raise NotImplementedError
+
     def hover_accessible(self, query: dict) -> dict:
         """Move the real pointer over one owned desktop node, verifying its hit-test."""
         raise NotImplementedError
@@ -236,8 +266,12 @@ class Context:
     def tray(self) -> list[dict]:
         """Read-only private-family SNI identities, tooltips and icon-pixmap hashes.
 
-        Rows include pid/service/path/id/title/status/icon_name/icon_pixmaps/
+        Rows include pid/start/owner/service/path/id/title/status/icon_name/icon_pixmaps/
         tooltip/menu. Menu activation still requires real desktop input.
+        start is the Linux process start tick; owner is the pinned unique bus
+        name. Both are rechecked with private-family membership after reading
+        properties. KDE bus/path and GNOME bus@/path watcher formats are accepted;
+        stale, invalid or changed-owner items are omitted.
         """
         raise NotImplementedError
 
@@ -272,11 +306,146 @@ class Context:
 
     # Fixtures shared between recipes in one run (an upload, a recording, a history row)
     def fixture(self, name: str, **options: Any) -> Any:
+        """Resolve a per-recipe owned descriptor (mapping and attribute access).
+
+        Additive round-3 contracts, restricted to private profiles/synthetic
+        loopback destinations. Finalizers restore faults before restoring the
+        accepted configuration, and run outside the recipe deadline:
+
+        * file-dialog-portal / file-dialog-fallback: fresh private family,
+          available/reason/backend/environment, resident() authenticated
+          PID/start and observe(dialog='outputFolder', field=None) returning
+          the production chooser state unchanged. Native buses/display stay
+          intact. Portal-to-fallback failures are not Failed chooser results;
+          chooser-failure blocks on #671 until an isolated boundary exists.
+          Missing fallback catalog references remain review-required.
+        * destinations-uncached: the destinations contract after a private
+          resident restart; credentials_cached=False. destinations also exposes
+          reset_credentials() to retire its session credential cache without
+          locking the desktop or changing any keyring alias/item. Credential
+          material remains target-only in the owned private synthetic file.
+
+        * settings-multi-profile / settings-destinations / settings-share-destination:
+          profiles, profile_ids, share_profile_id, publication_modes and
+          private_supported. S3 supports default/share; it cannot prove private
+          Proton publication. No live provider is enabled.
+        * settings-no-output: accepted inherited routes with no profile/local
+          copy, recovery_actions; assertions/input remain the recipe's job.
+        * settings-action-routes: add(action, profile_id, publication_mode),
+          remove(action), observe(). Removes recording's optional overrides by
+          full settings.save, preserving shortcuts.
+        * settings-save-failure: restore()/retry() remove an actual directory
+          write fault before UI Retry; observe() returns real footer text, retry
+          accessible rows, settings draft state and visible nonsecret nodes;
+          external_change(patch) uses the existing atomic revision guard. It
+          never manufactures a successful save, conflict or footer error.
+        * settings-observations: observe(), disclosure(id, window='settings')
+          returns control, expanded and visible accessible text; recording_status()
+          reads the live accessible shortcut-recording label (None if absent).
+          It uses accessible text or description; a visible label without
+          current text blocks on #862. Ambiguous exports block.
+        * settings-focus-loss: focus()/deactivate()/hide()/restore(), process,
+          role, observe(). Native minimize is X11-only; Wayland focus uses the
+          existing compositor witness. settings-input-events provides
+          overlap(first, second, modifiers), altgr(key), shifted_digit(digit)
+          through Context.held_keys/keys, with their unchanged input guards.
+        * settings-binding-{conflict,unavailable,pending,unsupported}: state,
+          controlled, observe(), release() for an owned X11 conflict. Other
+          states must actually exist in the native channel or block; desktop
+          environment labels and diagnostics replies are never substituted.
+          observe() reads ui.snapshot.diagnostics.shortcuts unchanged; X11
+          conflicts use error='shortcut_conflict', not a fabricated state.
+          In a disposable GNOME lab guest, unavailable disables only the
+          already-enabled putgd@put.gd helper, then restores it and verifies
+          native availability. The independent compositor witness stays enabled.
+        * locked-keyring: unique blank-password synthetic collection,
+          lock()/unlock(); no personal item/default alias is read or changed.
+        * events.update-feed / settings-update-feed: url/root/residentPid,
+          resident() (authenticated peer PID/start), channel/version/supported,
+          publish(schema-1 feed), ledger() (sequence/method/route/channel/status/
+          bytes and privacy booleans queryEmpty/authorizationAbsent/cookieAbsent/
+          bodyEmpty/genericAgent plus unexpectedHeaderCount). No header values,
+          queries or raw URLs are logged, including rejected HTTP methods.
+          Feed, release and mirror overrides are literal loopback endpoints.
+        * settings-update-lifecycle / events.update-lifecycle: updates.bundle
+          in the profile must point to authentic tagged AppImage releases and
+          signed checksum files (see updates.lifecycle). Returns image, build,
+          releases, install(**params), restart(**params) plus feed contract.
+          Production signature verification stays enabled. Missing bundles
+          block before switching; development bytes are never relabelled.
+        * recording-lifecycle: fresh synthetic scene, prepare parameters,
+          prepare_recording(**overrides), recording_ids, output_dir, destination
+          and capabilities. Callers exercise the production CLI/MCP lifecycle;
+          native recording consent is supplied separately, never bypassed.
+          events.recording-source preflights/stages the distro GTK3 GStreamer
+          sink and ffmpeg/ffprobe in disposable guests, before scene/capture
+          setup; an unavailable decoder prerequisite blocks precisely.
+        * events.expired-multipart: real failed SDK operation/journal,
+          operationId/itemId, listing()/requests() independent loopback S3
+          evidence; automatic_cleanup() ages only that stopped owned journal
+          and restarts once for the genuine 60-second startup cleanup. No
+          manual cache.clear is counted as an automatic notice. Recipe timeout
+          must cover fixture setup plus automatic_delay_seconds (60).
+        * upload-incomplete now adds automatic=True and cleanup_result to its
+          operationId/itemId descriptor: it waits for that genuine automatic
+          cleanup, so the tray's native notification is observed since recipe
+          start. events.incomplete-multipart retains the fresh-failure contract.
+        * resident-lifecycle: initial/identity() (authenticated PID/start),
+          stopped(), quit(), launch() after real Quit, restart(). A finalizer
+          launches a quit private resident before settings restoration.
+        * tray-qt-fallback: a real QApplication resident through the native
+          -platform xcb/wayland override, preserving desktop/session identity;
+          restores the original executable route. No desktop is impersonated.
+        * tray-attention: genuine retained local-save failure and retry();
+          tray-two-uploads: two independently identified loopback operations,
+          inspect()/cancel(id); tray-active-recording: live synthetic recording
+          id/inspect()/pause()/resume()/stop(); tray-output: the action-routes
+          contract; tray-update-available: an actual checked signed-release
+          bundle via settings-update-lifecycle, never a relabelled source build.
+        * shortcut-other-menu: separate real popup process/role/observe()/focus().
+          keyboard_grab_verified=False explicitly withholds any native grab
+          claim; callers must obtain that witness from their input backend.
+        * shortcut-settings-recorder: start(action), cancel(), status(),
+          recording_status(), no_operation_baseline() through real controls and
+          the actual native shortcut channel. shortcut-keyboard-layout(layout)
+          changes/restores an owned X11 map exactly; Wayland blocks without its
+          native input-source controller. No lock/unlock or ended-session
+          lifecycle is inferred from these fixtures.
+        """
         raise NotImplementedError
 
     # Evidence and verdicts
-    def frame(self, label: str, window: Optional[str] = None, reference: Optional[str] = None) -> Frame:
-        """Save a frame. With `reference`, the runner compares it with that catalog capture."""
+    def frame(self, label: str, window: Optional[str] = None, reference: Optional[str] = None, *,
+              desktop_safe: Optional[str] = None) -> Frame:
+        """Save a frame. With `reference`, the runner compares it with that catalog capture.
+
+        Live destinations (and local runs once a link was seen) keep only the
+        owned `window`'s pixels; a desktop frame is fully masked unless
+        `desktop_safe` states why everything on the desktop is safe to keep.
+        """
+        raise NotImplementedError
+
+    def sensitive(self, value: Any) -> Any:
+        """Wrap memory-only data; str/repr/JSON redact it; reveal() explicitly unwraps."""
+        raise NotImplementedError
+
+    def url_evidence(self, value: Any) -> dict:
+        """Only host, run-salted hash, length and presence may leave memory.
+
+        Use this for every link a recipe reports, including failure messages:
+        ``raise RecipeFailed('History link differs: %s' % ctx.url_evidence(url))``.
+        Never format a link, a path/token taken from one, or a scheme-less
+        host/path into notes or messages; the runner redacts link-shaped text
+        by pattern as a backstop, but registered values are the contract.
+        """
+        raise NotImplementedError
+
+    def sensitive_region(self, region: Iterable[float], *, head: int = 0) -> None:
+        """Persistently guard a framebuffer x/y/width/height before exposing a secret."""
+        raise NotImplementedError
+
+    def sensitive_control(self, control: str, window: str) -> None:
+        """Persistently guard a catalog control with current live/AT-SPI geometry."""
         raise NotImplementedError
 
     def expect(self, condition: Any, what: str) -> None:

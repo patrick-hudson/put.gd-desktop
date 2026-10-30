@@ -63,10 +63,9 @@ print(json.dumps({'session': session, 'missing': missing}))
 '''
 
 
-# Clipboard bytes never cross SSH, enter a log, or touch disk. The process
-# serves the restored MIME data until the desktop clipboard manager or the
-# next copy takes ownership; quitting immediately would clear X11 selections.
-CLIPBOARD = r'''
+# Exact source fingerprint for recovering pre-#860 orphaned keepers only.
+# New keepers use the event-driven, run-bound clipboard.py lease.
+LEGACY_CLIPBOARD = r'''
 import os, signal, sys
 from pathlib import Path
 from PyQt6.QtCore import QMimeData, QTimer
@@ -107,12 +106,21 @@ app.exec()
 
 
 PROBE_SERVER = r'''
-import json, os, subprocess, sys
+import json, os, re, subprocess, sys
+def stalled(stderr):
+    # The fresh child's faulthandler dump (11 s): innermost frames first.
+    if isinstance(stderr, bytes):
+        stderr = stderr.decode('utf-8', 'replace')
+    frames = re.findall(r'line (\d+) in (\w+)', stderr or '')
+    if not frames:
+        return ' before reporting where it stalled'
+    return ' in ' + ' <- '.join(name + ':' + line for line, name in frames[:4])
 namespace = {'__name__': 'surface_driver_probe'}
 exec(compile(SOURCE, 'surface_driver_probe.py', 'exec'), namespace)
 functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
-             'foreground':'foreground', 'windows':'windows', 'tray':'tray',
-             'notification_log':'notification_log', 'shell_state':'shell_state'}
+             'foreground':'foreground', 'windows':'windows', 'tray':'tray', 'layout':'layout',
+             'notification_read':'notification_read', 'server_pid':'server_pid', 'resize':'resize_witness',
+             'shell_state':'shell_state', 'compositor_windows':'compositor_windows_probe'}
 while True:
     line = sys.stdin.buffer.readline(1024 * 1024 + 1)
     if not line:
@@ -127,15 +135,29 @@ while True:
         # checks stay in-process, so typing and drag steps pay no startup cost.
         name, query = request['probe'], request['query']
         fresh = (name in ('accessible','control') or bool(query.get('accessible')) or
+                 (name == 'foreground' and (query.get('keyboard_grab') or
+                  (bool(query.get('shell_cover')) and query.get('point') is not None))) or
                  (os.environ.get('XDG_SESSION_TYPE') == 'wayland' and
-                  name in ('geometry','foreground','windows')))
+                  name in ('geometry','foreground','windows','layout','compositor_windows')))
         if fresh:
             try:
-                child = subprocess.run([sys.executable,'-c',SOURCE,json.dumps(request)],
-                                       stdin=subprocess.DEVNULL, capture_output=True,
+                # Source and query reach the child on stdin only (#726). Its
+                # walk budget starts here, a stall leaves frames on stderr before
+                # the 12 s kill, and the probe's own error reaches the caller
+                # verbatim instead of a bare non-zero exit (#805).
+                child_source = ("__name__ = 'surface_driver_probe'\n" + SOURCE +
+                                "\nimport faulthandler as _fh, json as _json, time as _time\n"
+                                "_fh.dump_traceback_later(11, exit=False)\n"
+                                "PROCESS_STARTED = _time.monotonic()\n"
+                                "try:\n    _reply = {'ok': True, 'result': " + functions[name] + '(' + repr(query) + ")}\n"
+                                "except Exception as _error:\n"
+                                "    _reply = {'ok': False, 'error': type(_error).__name__ + ': ' + str(_error)}\n"
+                                "print(_json.dumps(_reply))\n")
+                child = subprocess.run([sys.executable,'-'],
+                                       input=child_source, capture_output=True,
                                        text=True, timeout=12)
-            except subprocess.TimeoutExpired:
-                raise RuntimeError('fresh accessibility probe timed out') from None
+            except subprocess.TimeoutExpired as expired:
+                raise RuntimeError('fresh accessibility probe timed out' + stalled(expired.stderr)) from None
             if child.returncode:
                 raise RuntimeError('fresh accessibility probe exited unsuccessfully')
             response = json.loads(child.stdout)
@@ -147,6 +169,14 @@ while True:
     sys.stdout.write(json.dumps(response) + '\n')
     sys.stdout.flush()
 '''
+
+
+# The server answers every request within its 12 s fresh-child bound.
+PROBE_REPLY_SECONDS = 15
+
+
+class ProbeDeadline(Exception):
+    """A wait shortened by the caller's deadline ran out; the reply is still coming."""
 
 
 def probe_mutates(name, query):
@@ -195,7 +225,7 @@ def desktop_transport(function):
 
 
 class Target:
-    def __init__(self, *, run=None, host_profile=None, session_root=None, bin_dir=None, app_executable="putgd"):
+    def __init__(self, *, run=None, host_profile=None, session_root=None, bin_dir=None, app_executable="putgd", placement=None):
         self.physical = PhysicalHost(json.loads(Path(host_profile).read_text())) if host_profile else None
         self.run = self.physical.run if self.physical else Path(run).resolve()
         if self.physical:
@@ -206,7 +236,6 @@ class Target:
         self.socket = checked_socket(self.root + '/runtime/putgd/session.sock')
         checked_socket(str(self.run / 'qmp.sock'))
         self.started = False
-        self._created_root = False
         self.bin_dir = bin_dir
         self.app_executable = app_executable
         self.monitor_pid = None
@@ -216,11 +245,16 @@ class Target:
         self._lock_valid_until = 0
         self._created_root = False
         self.clipboard_pid = None
+        self.placement = placement or ('native' if self.physical else 'guest')
+        self.clipboard_report = {}
         self._outputs = None
         self._probe_process = None
         self._probe_buffer = b''
         self._probe_source = None
         self._probe_failed = False
+        self._probe_stale = 0
+        self._probe_stale_since = None
+        self._probe_failure = None
         self._io_deadline = None
 
     def io_timeout(self, default):
@@ -294,7 +328,7 @@ class Target:
         # Shell commands include resident launch, raises and CLI mutations. Treat
         # every physical execute as mutating rather than infer safety from text.
         self.heartbeat(force=bool(self.physical))
-        code = 'import subprocess,json\np=subprocess.run('+repr(script)+',shell=True,text=True,capture_output=True,timeout='+repr(timeout)+')\nprint(json.dumps({"returncode":p.returncode,"stdout":p.stdout,"stderr":p.stderr}))\n'
+        code = 'import subprocess,json\np=subprocess.run(["sh","-s"],input='+repr(script)+',text=True,capture_output=True,timeout='+repr(timeout)+')\nprint(json.dumps({"returncode":p.returncode,"stdout":p.stdout,"stderr":p.stderr}))\n'
         try:
             return json.loads(self.session(self.prefix() + "python3 - <<'SD_PY'\n" + code + 'SD_PY\n', timeout + 10))
         except (lab.LabError, subprocess.TimeoutExpired, ValueError) as error:
@@ -344,6 +378,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if result['returncode']:
             raise RecipeBlocked('could not start isolated resident')
         self.started = True
+        self._owns_root = True
         deadline = time.monotonic() + 25
         while True:
             response = self.cli('capabilities')
@@ -368,29 +403,28 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         return report
 
     def preserve_clipboard(self):
-        path = self.root + '/clipboard-keeper.py'
-        script = "python3 - <<'SD_KEEPER'\nfrom pathlib import Path\nPath(" + repr(path) + ').write_text(' + repr(CLIPBOARD) + ')\nSD_KEEPER\n'
-        script += 'nohup python3 ' + shlex.quote(path) + ' ' + shlex.quote(self.root + '/clipboard-state') + ' >/dev/null 2>&1 </dev/null & echo $!\n'
-        result = self.execute(script)
-        if result['returncode']:
-            raise RecipeBlocked('cannot start private in-memory clipboard preservation')
-        self.clipboard_pid = int(result['stdout'].strip())
-        result = self.execute('for n in $(seq 1 50); do test -f ' + shlex.quote(self.root + '/clipboard-state') +
-                              ' && exit 0; kill -0 ' + str(self.clipboard_pid) + ' 2>/dev/null || exit 1; sleep .1; done; exit 1', timeout=8)
-        if result['returncode']:
-            raise RecipeBlocked('clipboard preservation unavailable or existing MIME data exceeds 32 MiB; no resident started')
+        from .clipboard import Lease
+        self._clipboard_lease = Lease(self, LEGACY_CLIPBOARD)
+        self.clipboard_report = self._clipboard_lease.report
+        self._clipboard_lease.start()
+        self.clipboard_pid = self._clipboard_lease.identity['pid']
 
+    @entry
     def restore_clipboard(self):
-        if not self.clipboard_pid:
-            return
-        result = self.execute('kill -USR1 ' + str(self.clipboard_pid) + '\nfor n in $(seq 1 50); do test "$(cat ' +
-                              shlex.quote(self.root + '/clipboard-state') + ' 2>/dev/null)" = restored && exit 0; sleep .1; done; exit 1', timeout=8)
-        if result['returncode']:
-            raise RecipeBlocked('previous clipboard could not be restored')
-        self.clipboard_pid = None
+        with critical(label='clipboard restoration'):
+            lease = getattr(self, '_clipboard_lease', None)
+            if lease is None:
+                return
+            lease.close()
+            self.clipboard_pid = None
 
     def cli(self, *args, timeout=60):
-        return self.execute(shlex.join(['putgd-cli','--socket',self.socket,*args]), timeout)
+        # JSON never becomes a process argument, including in the CLI child.
+        if not args:
+            raise RecipeBlocked('CLI method required')
+        payload = args[1] if len(args) > 1 else '{}'
+        code = 'import subprocess,sys\np=subprocess.run('+repr(['putgd-cli','--socket',self.socket,'--params-stdin',args[0]])+',input='+repr(payload.encode())+',stdout=subprocess.PIPE,stderr=subprocess.PIPE)\nsys.stdout.buffer.write(p.stdout);sys.stderr.buffer.write(p.stderr);sys.exit(p.returncode)\n'
+        return self.execute("python3 - <<'SD_CLI'\n"+code+'SD_CLI\n', timeout)
 
     def probe(self, name, query, source, timeout=15):
         """One owned SSH channel, with a fresh native witness for every request.
@@ -401,9 +435,12 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         A request that can change the desktop (foreground raise: xdotool
         windowactivate/windowraise) forces the lock heartbeat, like real input.
         """
+        started = time.monotonic()
         self.heartbeat(force=probe_mutates(name, query))
         if self._probe_failed:
-            raise RecipeBlocked('persistent desktop probe failed; start a new run before further input')
+            detail = getattr(self,'_probe_failure',None)
+            raise RecipeBlocked('persistent desktop probe failed; '+(detail+'; ' if detail else '')+
+                                'start a new run before further input')
         if self._probe_process is None:
             # Discover through the same native-session adapter as one-shot
             # probes. Only desktop connection variables cross this boundary.
@@ -413,11 +450,15 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             script = "python3 - <<'SD_PROBE_ENV'\nimport os,json\nprint(json.dumps({k:os.environ[k] for k in " + repr(keys) + " if k in os.environ}))\nSD_PROBE_ENV\n"
             native = json.loads(self.session(script, timeout=timeout))
             command = 'set -eu\n' + ''.join('export '+k+'='+shlex.quote(v)+'\n' for k,v in native.items())
-            command += self.prefix() + 'exec python3 -u -c ' + shlex.quote('SOURCE='+repr(source)+chr(10)+PROBE_SERVER)
+            # A static bootstrap reads the server source from stdin; source and
+            # queries never enter either the SSH or guest process command line.
+            bootstrap = "import json,sys;exec(compile(json.loads(sys.stdin.buffer.readline()),'surface_probe_server','exec'))"
+            command += self.prefix() + 'exec python3 -u -c ' + shlex.quote(bootstrap)
             args = self.physical.ssh_arguments + [self.physical.endpoint] if self.physical else lab.ssh_args(self.run)
             self._probe_process = subprocess.Popen(args+[command], stdin=subprocess.PIPE,
                                                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
             self._probe_source = source
+            self._probe_bootstrap = (json.dumps('SOURCE='+repr(source)+chr(10)+PROBE_SERVER)+'\n').encode()
         elif source != self._probe_source:
             self._probe_failed = True
             raise RecipeBlocked('desktop probe source changed during the run; start a new identified run')
@@ -425,37 +466,111 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         payload = (json.dumps({'probe':name,'query':query})+'\n').encode()
         if len(payload) > 1024 * 1024:
             raise RecipeBlocked('desktop probe request exceeded 1 MiB')
+        # Session discovery/startup spends this same request budget. Do not
+        # dispatch a request once it has expired or renew it after startup.
+        deadline = started + timeout
+        if time.monotonic() >= deadline:
+            raise RecipeBlocked(name+' probe budget exhausted before dispatch; no request sent')
+        sent_all = replied = False
         try:
+            if getattr(self, '_probe_stale', 0):
+                self._drain_stale(process, name, started, timeout, deadline)
+            payload = getattr(self, '_probe_bootstrap', b'') + payload
+            self._probe_bootstrap = b''
             remaining_payload = memoryview(payload)
             while remaining_payload:
                 sent = process.stdin.write(remaining_payload)
                 if not sent:
                     raise RecipeBlocked('persistent desktop probe request was not sent')
                 remaining_payload = remaining_payload[sent:]
-            deadline = time.monotonic()+timeout
-            with selectors.DefaultSelector() as ready:
-                ready.register(process.stdout, selectors.EVENT_READ)
-                while b'\n' not in self._probe_buffer:
-                    remaining = deadline-time.monotonic()
-                    if remaining <= 0 or not ready.select(remaining):
-                        raise RecipeBlocked('persistent desktop probe timed out; further input withheld')
-                    data = os.read(process.stdout.fileno(),65536)
-                    if not data:
-                        raise RecipeBlocked('persistent desktop probe closed; further input withheld')
-                    self._probe_buffer += data
-                    if len(self._probe_buffer) > 16 * 1024 * 1024:
-                        raise RecipeBlocked('desktop probe response exceeded 16 MiB')
-            line, self._probe_buffer = self._probe_buffer.split(b'\n',1)
+            sent_all = True
+            sent_at = time.monotonic()
+            line = self._read_probe_line(process, name, started, timeout, deadline)
+            replied = True
             return json.loads(line)
-        except RecipeBlocked:
+        except ProbeDeadline as error:
+            # The caller's deadline cut the wait short, not the channel (#834):
+            # one reply stays outstanding and the next request drains it.
+            if sent_all and not replied:
+                self._probe_stale = getattr(self, '_probe_stale', 0) + 1
+                self._probe_stale_since = getattr(self, '_probe_stale_since', None) or sent_at
+            raise RecipeBlocked(str(error)) from None
+        except RecipeBlocked as error:
             self._probe_failed = True
+            self._probe_failure_note(name,started,timeout,error.reason)
             raise
         except (OSError, ValueError) as error:
             self._probe_failed = True
-            raise RecipeBlocked('persistent desktop probe transport unavailable') from error
-        except BaseException:
-            self._probe_failed = True
+            self._probe_failure_note(name,started,timeout,type(error).__name__)
+            raise RecipeBlocked('persistent desktop probe transport unavailable; '+self._probe_failure) from error
+        except BaseException as error:
+            # A recipe alarm after the whole request went out and before its
+            # reply was read leaves exactly one reply outstanding: resync.
+            # Anything else (partial request, drain interrupted) poisons.
+            if sent_all and not replied and isinstance(error, Exception):
+                self._probe_stale = getattr(self, '_probe_stale', 0) + 1
+                self._probe_stale_since = getattr(self, '_probe_stale_since', None) or sent_at
+            else:
+                self._probe_failed = True
+                self._probe_failure_note(name,started,timeout,'interrupted by '+type(error).__name__)
             raise
+
+    def _drain_stale(self, process, name, started, timeout, deadline):
+        """Read and discard replies a deadline abandoned, within this request's budget.
+
+        The server answers every request within its 12 s fresh-child bound.
+        A reply still missing PROBE_REPLY_SECONDS after it was sent means
+        the channel is lost (poison). If this request's own budget ends
+        first, nothing is dispatched and the reply stays outstanding.
+        """
+        while self._probe_stale:
+            lost = self._probe_stale_since + PROBE_REPLY_SECONDS
+            if time.monotonic() >= lost:
+                raise RecipeBlocked('an abandoned persistent desktop probe reply never arrived; further input withheld; '
+                                    'start a new run')
+            try:
+                self._read_probe_line(process, name, started, timeout, min(deadline, lost))
+            except ProbeDeadline:
+                if time.monotonic() >= lost:
+                    raise RecipeBlocked('an abandoned persistent desktop probe reply never arrived; further input withheld; '
+                                        'start a new run') from None
+                raise ProbeDeadline(name+' probe: an earlier reply outlived the recipe deadline and is still '
+                                    'outstanding; no request sent; the next request resynchronizes') from None
+            self._probe_stale -= 1
+            self._probe_stale_since = time.monotonic() if self._probe_stale else None
+
+    def _read_probe_line(self, process, name, started, timeout, deadline):
+        with selectors.DefaultSelector() as ready:
+            ready.register(process.stdout, selectors.EVENT_READ)
+            while b'\n' not in self._probe_buffer:
+                remaining = deadline-time.monotonic()
+                if remaining <= 0 or not ready.select(remaining):
+                    status = process.poll()
+                    state = 'SSH process still running; reply outstanding' if status is None else 'SSH exit '+str(status)
+                    detail = '%s; elapsed %.3fs, budget %.3fs; ' % (name, time.monotonic()-started, timeout) + state
+                    if status is None and timeout < PROBE_REPLY_SECONDS:
+                        raise ProbeDeadline('persistent desktop probe reply outlived the recipe deadline: '+detail+
+                                            '; the next request resynchronizes')
+                    raise RecipeBlocked('persistent desktop probe timed out: '+detail+'; further input withheld; start a new run')
+                data = os.read(process.stdout.fileno(),65536)
+                if not data:
+                    raise RecipeBlocked('persistent desktop probe closed during '+name+
+                                        '; SSH exit '+str(process.poll())+'; further input withheld')
+                self._probe_buffer += data
+                if len(self._probe_buffer) > 16 * 1024 * 1024:
+                    raise RecipeBlocked('desktop probe response exceeded 16 MiB')
+        line, self._probe_buffer = self._probe_buffer.split(b'\n',1)
+        return line
+
+    def _probe_failure_note(self,name,started,timeout,reason):
+        # Record transport state without request values or stderr. The failure
+        # flag is set before this diagnostic, including on recipe alarms.
+        try:
+            status = self._probe_process.poll()
+        except OSError:
+            status = 'unknown'
+        state = 'SSH process still running; reply outstanding' if status is None else 'SSH exit '+str(status)
+        self._probe_failure = name+'; '+reason+'; elapsed %.3fs, budget %.3fs; '%(time.monotonic()-started,timeout)+state
 
     def _close_probe(self):
         process = getattr(self, '_probe_process', None)
@@ -531,7 +646,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
     def key_state(self, codes, down):
         if self.physical:
             raise RecipeBlocked('physical held keys require input-agent scoped cleanup across lock loss; guest QMP only')
-        self.events([{'type':'key','data':{'down':down,'key':{'type':'qcode','data':code}}} for code in codes])
+        lab.input_events(self.run,[{'type':'key','data':{'down':down,'key':{'type':'qcode','data':code}}} for code in codes])
 
     @desktop_transport
     def pointer(self, x, y, width, height, down=None, button='left', head=0):
@@ -558,17 +673,30 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             events=[{'type':'abs','data':{'axis':a,'value':min(32767,max(0,math.ceil(v*32768/e)))}} for a,v,e in [('x',x,width),('y',y,height)]]
             if down is not None:
                 events.append({'type':'btn','data':{'button':button,'down':down}})
-            self.events(events)
+            lab.input_events(self.run,events)
         else:
             lab.pointer(self.run,x,y,width,height,down,button)
 
     @desktop_transport
-    def screenshot(self, path, head=0):
+    def capture_image(self, head=0):
+        """Read pixels through shared VNC, with no raw QMP witness on disk."""
         Image,_,_ = image_modules()
-        witness = self.physical.screenshot(self.run, 'sd-'+uuid.uuid4().hex[:8], head) if self.physical else lab.screenshot(self.run,'sd-'+uuid.uuid4().hex[:8],head)
-        with Image.open(witness['path']) as im:
-            im.save(path)
-        return witness
+        port = self.physical.config['vnc_port'] if self.physical else 5900+self.info['vnc_display']+head
+        if self.info.get('heads'):
+            port = next(row['port'] for row in self.info['heads'] if row['head']==head)
+        client = rfb.RFB(port)
+        try:
+            width, height, pixels = client.frame()
+            return Image.frombytes('RGB', (width, height), pixels, 'raw', 'BGRX')
+        finally:
+            client.close()
+
+    def screenshot(self, path, head=0):
+        # Legacy direct callers have no sensitivity geometry: fail closed with
+        # a full mask. DriverContext uses capture_image and registers its masks.
+        from .redact import save_frame
+        image = self.capture_image(head)
+        return save_frame(image, path, [(0,0,image.width,image.height)], fallback=True)
 
     @desktop_transport
     def scroll_vnc(self, x, y, clicks):
@@ -612,7 +740,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                     self.started=False
             except RecipeBlocked:
                 errors.append('resident quit transport unavailable; private session retained')
-        if getattr(self, 'clipboard_pid', None):
+        if getattr(self, 'clipboard_pid', None) or getattr(self, '_clipboard_lease', None):
             try:
                 self.restore_clipboard()
             except RecipeBlocked:
@@ -648,6 +776,8 @@ shutil.rmtree(root)
                     errors.append('private session root cleanup refused')
                 else:
                     self._created_root=False
+                    self._owns_root=False
+                    self.private_cleanup = 'resident-log-and-state-root-removed'
             except RecipeBlocked:
                 errors.append('private session root cleanup unavailable')
         return errors

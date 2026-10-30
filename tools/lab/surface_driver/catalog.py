@@ -1,6 +1,7 @@
 """The build's ui-catalog sidecars are the only source of control rectangles."""
 import json
 import fnmatch
+import re
 from pathlib import Path
 from tools.lab.surface_map.surface_map import control_matches
 from .api import RecipeBlocked
@@ -111,7 +112,16 @@ class Catalog:
 
     def candidates(self, selector, window, capture=None):
         """Semantic hints for live resolution; never select a runtime menu by coordinates."""
-        return [control for _,_,control in self._matches(selector, window, capture)]
+        found = [control for _,_,control in self._matches(selector, window, capture)]
+        # Qt 6.4 does not export objectName. Recent swatches are runtime-created
+        # and cannot be enumerated in a fixed catalog. The application's stable
+        # ID encodes the exact QColor and makeSwatch's accessible name.
+        recent = re.fullmatch(r'recentColorSwatch_([0-9a-f]{6})', selector)
+        if not found and window == 'editor' and recent:
+            found = [{'name':selector, 'class':'QToolButton',
+                      'accessibleName':'Color #'+recent[1],
+                      'toolTip':'Recent custom color #'+recent[1]}]
+        return found
 
     def resolve(self, selector, window, capture=None):
         found = [v for v in self._matches(selector, window, capture)

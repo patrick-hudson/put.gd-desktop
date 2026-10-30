@@ -68,6 +68,10 @@ class Handler(BaseHTTPRequestHandler):
                 identity=uuid.uuid4().hex
                 self.server.uploads[identity]={'key':key,'parts':{},'headers':self.metadata()}
                 return self.xml('InitiateMultipartUploadResult','<Bucket>'+escape(key.split('/')[0])+'</Bucket><Key>'+escape(key.split('/',1)[-1])+'</Key><UploadId>'+identity+'</UploadId>')
+            if 'uploads' in query and command=='GET':
+                return self.xml('ListMultipartUploadsResult','<IsTruncated>false</IsTruncated>'+''.join(
+                    '<Upload><Key>'+escape(upload['key'].split('/',1)[-1])+'</Key><UploadId>'+identity+'</UploadId></Upload>'
+                    for identity,upload in self.server.uploads.items() if upload['key'].split('/')[0]==key))
             if 'uploadId' in query:
                 identity=query['uploadId'][0];upload=self.server.uploads.get(identity)
                 if not upload:return self.error(404,'NoSuchUpload')

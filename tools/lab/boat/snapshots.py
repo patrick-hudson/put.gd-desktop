@@ -162,7 +162,7 @@ def host_script(checkout, commit, count, prepare):
     capacity_code = "import os,json; s=os.statvfs(" + repr(str(checkout.resolve())) + "); print(json.dumps(dict(availableBytes=s.f_bavail*s.f_frsize,availableInodes=s.f_favail))); assert s.f_bavail*s.f_frsize >= 14*1024**3 and s.f_favail > 1024"
     script += "python3 -c " + q(capacity_code) + "\n"
     if prepare:
-        script += 'sudo -n apt-get update\nsudo -n env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get install -y --allow-downgrades ' + shlex.join([*(p + '/noble' if p in ('nodejs', 'npm') else p for p in packages), 'zstd', 'qemu-system-x86', 'acl', 'x11vnc']) + '\n'
+        script += 'sudo -n apt-get update\nsudo -n env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get install -y --allow-downgrades ' + shlex.join([*(p + '/noble' if p in ('nodejs', 'npm') else p for p in packages), 'zstd', 'qemu-system-x86', 'acl', 'x11vnc', 'tesseract-ocr']) + '\n'
         script += 'id -u putgd-ci >/dev/null 2>&1 || sudo -n useradd --create-home --shell /bin/bash putgd-ci\n'
         sdk = (checkout / 'tools/ci/provision-linux-sdk.sh').read_text()
         if sdk.count('bash tools/ci/sdk-source.sh\n') != 1:

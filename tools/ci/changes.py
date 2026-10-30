@@ -73,11 +73,18 @@ def _sanitized(path):
     return path.startswith(SANITIZER_PREFIXES) and not (path.startswith('tests/') and path.endswith('.py'))
 
 
+# The surface driver's secret-control pin and the classifier that produces it
+# (redact.SECRET_FIELD, gate.NOT_SECRET_CLASSES): a change must be checked
+# against a freshly rendered catalog, which only the build matrix renders.
+CATALOG_CHECK_FILES = frozenset({'tools/lab/surface_driver/secret-states.json', 'tools/lab/surface_driver/redact.py',
+                                 'tools/lab/surface_driver/gate.py'})
+
+
 def select(paths):
     paths = sorted(set(paths))
     packages = any(_packaging(path) for path in paths)
-    build = packages or any(not _documentation(path) and not _contract_only(path)
-                            and not path.startswith(PIPEWIRE_CHECK_PREFIXES) for path in paths)
+    build = packages or any(path in CATALOG_CHECK_FILES or (not _documentation(path) and not _contract_only(path)
+                            and not path.startswith(PIPEWIRE_CHECK_PREFIXES)) for path in paths)
     sanitizers = any(_sanitized(path) for path in paths)
     pipewire = packages or any(path.startswith(PIPEWIRE_PREFIXES) for path in paths)
     return {'build': build, 'packages': packages, 'sanitizers': sanitizers, 'pipewire': pipewire,
