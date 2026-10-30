@@ -347,6 +347,25 @@ class TrayRecipesTest(unittest.TestCase):
         with self.assertRaises(RecipeFailed):
             tray._action(ctx, ctx.notices[0], 'default')
 
+    def test_profile_restart_waits_for_journal_readiness_before_input(self):
+        ctx = FakeContext()
+        original = ctx.call
+        ready = iter((False, True, False, True))
+        def call(method, params=None):
+            result = original(method, params)
+            if method == 'ui.snapshot':
+                result['operationsReady'] = next(ready)
+            return result
+        def wait(predicate, what, **kwargs):
+            for _ in range(3):
+                value = predicate()
+                if value:
+                    return value
+            raise RecipeFailed(what)
+        ctx.call, ctx.wait = call, wait
+        tray.activate(ctx)
+        self.assertIn(('click', 'put.gd', 'left'), ctx.events)
+
     def test_shortcuts_read_native_diagnostics_from_the_ui_snapshot(self):
         ctx = FakeContext()
         tray.shortcut_clipboard(ctx)
