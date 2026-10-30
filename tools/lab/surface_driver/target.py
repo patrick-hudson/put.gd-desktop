@@ -52,7 +52,7 @@ def desktop_transport(function):
     @wraps(function)
     def invoke(*args, **kwargs):
         try:
-            args[0].heartbeat()
+            args[0].heartbeat(force=True)
             return function(*args, **kwargs)
         except RecipeBlocked:
             raise
@@ -99,7 +99,7 @@ class Target:
             value=json.loads(self.physical.ssh(self.run,script))
         except (lab.LabError,OSError,ValueError) as error:
             raise RecipeBlocked('physical desktop lock heartbeat unavailable') from error
-        if not value.get('ok') or value.get('state')!='held':
+        if not value.get('ok') or value.get('state')!='held' or value.get('expiresInSeconds',0)<=0:
             raise RecipeBlocked('physical desktop lock is no longer held by this session')
         self._last_heartbeat=time.monotonic()
         self._lock_valid_until=self._last_heartbeat+max(0,value.get('expiresInSeconds',0)-1)

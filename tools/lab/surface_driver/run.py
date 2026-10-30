@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import signal
+import subprocess
 import sys
 import time
 
@@ -25,6 +26,54 @@ from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.receipts import stamp, write_receipts
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
+
+
+def guard_target(args, target):
+    """Authorize the actual transport before any desktop command or capture."""
+    if target.physical:
+        if args.placement == 'guest':
+            raise RecipeBlocked('--host-profile cannot use placement=guest')
+        from tools.lab import desktop_lock
+        config = target.physical.config
+        builder = next((host for host, (address, _) in desktop_lock.HOSTS.items()
+                        if config.get('host') == address), None)
+        if builder:
+            if args.host != builder or args.placement != 'native':
+                raise RecipeBlocked('builder host-profile requires its actual --host '+builder+' and placement=native')
+            if config.get('user') != desktop_lock.USER or config.get('ssh_port', 22) != 22:
+                raise RecipeBlocked('builder host-profile must use the desktop lock account and pinned SSH endpoint')
+            if not args.lock_session:
+                raise RecipeBlocked('physical desktop input requires its held --lock-session')
+            target.require_lock(builder, args.lock_session)
+            return
+        # A label, profile name or supplied sandbox id is not identity evidence.
+        # Permit a boat head only on that sandbox's own runner, over local SSH.
+        if args.host == 'boat' and args.placement == 'boat' and args.boat_id:
+            if config.get('host') in ('127.0.0.1', '::1') and config.get('ssh_port', 22) == 22:
+                try:
+                    reply = subprocess.run(['boat', 'info', 'self', '--json'], check=True,
+                                           capture_output=True, text=True, timeout=15)
+                    info = json.loads(reply.stdout)['sandbox']
+                    if info.get('id') == args.boat_id and info.get('hydrated') is True:
+                        boot = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+                        observed = target.physical.ssh(target.run, 'cat /proc/sys/kernel/random/boot_id').strip()
+                        if boot and observed == boot:
+                            return
+                except (OSError, ValueError, KeyError, subprocess.SubprocessError, lab.LabError):
+                    pass
+        raise RecipeBlocked('unverified host-profile is a physical target; no matching builder desktop lock')
+    if args.placement == 'native':
+        raise RecipeBlocked('native input requires a builder --host-profile and held --lock-session')
+    # physical.py also writes state.json and uses a QMP-compatible host-input
+    # socket. Prove this is an owned QEMU overlay, including its exact QMP path.
+    try:
+        info = lab.verify_owned_guest(target.run)
+        arguments = (Path('/proc') / str(info['pid']) / 'cmdline').read_bytes().split(b'\0')
+        endpoint = ('unix:'+str(target.run / 'qmp.sock')+',server=on,wait=off').encode()
+        if not any(a == b'-qmp' and b == endpoint for a, b in zip(arguments, arguments[1:])):
+            raise ValueError('QMP endpoint does not belong to the owned guest')
+    except (lab.LabError, OSError, ValueError, KeyError, RuntimeError) as error:
+        raise RecipeBlocked('unverified input target is physical; an owned QMP guest or builder desktop lock is required') from error
 
 
 def discover(pattern, recipe_dir=None):
@@ -135,10 +184,6 @@ def main(argv=None):
         raise SystemExit('native placement cannot name a guest')
     if args.placement=='boat' and not args.boat_id:
         raise SystemExit('--placement boat requires --boat-id')
-    if args.host_profile and args.host != 'boat' and (args.placement != 'native' or not args.lock_session):
-        raise SystemExit('builder host-profile requires placement=native and its held --lock-session')
-    if args.placement=='native' and not (args.host_profile and args.lock_session):
-        raise SystemExit('native input requires --host-profile and --lock-session held by this campaign')
     run=args.run or args.guest
     if not args.host_profile:
         if not run:
@@ -150,6 +195,7 @@ def main(argv=None):
     environment['placement_details']={'boat_sandbox_id':args.boat_id} if args.boat_id else {}
     coverage=args.coverage or ROOT/'tools/lab/surface_map/coverage'/(stamp()[:10]+'-'+args.campaign+'.json')
     target=None
+    authorized=False
     rows=[]
     recipes=[]
     exit_code=2
@@ -158,12 +204,12 @@ def main(argv=None):
         recipes=discover(args.recipes);validate_recipes(recipes)
         target=Target(run=run,host_profile=args.host_profile,bin_dir=args.bin_dir,
                       app_executable='putgd-launcher' if args.package=='appimage' else 'putgd')
+        guard_target(args,target)
+        authorized=True
         environment['placement_details'].update(run_id=target.info['id'],lab_profile=target.info['profile'],
                                                  run_directory=str(target.run),session_root=target.root,socket=target.socket,
                                                  input_backend=('host-input' if (target.run/'qmp.sock').exists() else 'vnc') if target.physical else 'qmp',
                                                  frame_backend='vnc' if target.physical else 'qmp')
-        if args.placement=='native':
-            target.require_lock(args.host,args.lock_session)
         environment['target']=target.identity()
         if environment['target'].get('session_type')!=profile['session']:
             raise RecipeBlocked('native session type does not match the selected desktop profile')
@@ -189,7 +235,7 @@ def main(argv=None):
         exit_code=0 if all(r.functional=='passed' for r in rows) else 1
     except (RecipeBlocked,RecipeFailed,lab.LabError,ValueError,FileNotFoundError) as error:
         environment['blocked']=str(error)
-        if target:
+        if target and authorized:
             try:
                 target.screenshot(args.out/'startup-failed.png')
                 environment['failure_frames']=['startup-failed.png']
