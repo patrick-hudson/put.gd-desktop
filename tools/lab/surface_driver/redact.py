@@ -29,6 +29,10 @@ URL = re.compile(r'https?://[^\s<>\x00"\'`\\]+', re.I)
 URL_SPAN = re.compile(r'\[url \{[^{}\r\n]+\}\]')
 REDACTED_SPANS = ('[redacted]', '[redacted AWS key]', '[redacted session/authorization]', '[redacted object]')
 AWS = re.compile(r'\b(?:AKIA|ASIA|AIDA|AROA)[A-Z0-9]{16}\b')
+# Recognizable API/JWT tokens and long mixed-case, numeric, high-entropy
+# credentials may arrive inside otherwise ordinary annotation/notification text.
+CREDENTIAL_TOKEN = re.compile(r'(?<![\w./-])(?:eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'
+                              r'|[A-Za-z0-9_+/-]{24,}={0,2})(?![\w./-])')
 SECRET_FIELD = re.compile(r'(?:password|secret(?!_scan)|token|authorization|^(?:session(?:[._-]?(?:id|uid|data))?|proton[._-]?session|x-pm-(?:uid|session))$|private.?key|access.?key|url$|link$)', re.I)
 # Object-store hosts whose scheme-less host/path form is itself a working link:
 # AWS S3, Backblaze B2 (friendly and S3 endpoints), common S3-compatible
@@ -59,6 +63,16 @@ def distinctive(value):
     if len(value) < 8 or value.lower() in ENUMS or len(set(value)) < 5:
         return False
     return -sum((n/len(value))*math.log2(n/len(value)) for n in collections.Counter(value).values()) >= 2.5
+
+
+def credential_tokens(text):
+    for match in CREDENTIAL_TOKEN.finditer(text):
+        token = match[0]
+        if (token.startswith(('sk-', 'ghp_', 'gho_', 'ghu_', 'ghs_', 'ghr_', 'github_pat_', 'xoxb-', 'xoxp-'))
+                or token.startswith('eyJ') and token.count('.') == 2
+                or len(token) >= 32 and all(re.search(p, token) for p in ('[a-z]', '[A-Z]', '[0-9]'))
+                and -sum((n/len(token))*math.log2(n/len(token)) for n in collections.Counter(token).values()) >= 4):
+            yield token
 
 
 def public_url(value):
@@ -227,6 +241,7 @@ class Redactor:
             if opaque and distinctive(value) and (force or not public_url(value)):
                 self._secrets.add(value)
             self._secrets.update(match[0] for match in AWS.finditer(value))
+            self._secrets.update(credential_tokens(value))
             for match in MARKER.finditer(value):
                 token = match[0]
                 if not re.match(r'bearer\s', token, re.I):

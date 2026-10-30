@@ -95,7 +95,9 @@ class Observations(unittest.TestCase):
         values = (LINK, 'f005.backblazeb2.com/file/synthetic-bucket/'+TOKEN+'.png',
                   'bucket.s3.us-west-004.backblazeb2.com/'+TOKEN+'.png?X-Amz-Signature='+SECRET,
                   'objects.fixture.internal:9000/bucket/'+TOKEN+'.png',
-                  'Authorization: Bearer '+SECRET, 'X-PM-UID: '+SECRET, KEY)
+                  'Authorization: Bearer '+SECRET, 'X-PM-UID: '+SECRET, KEY, SECRET,
+                  'ghp_syntheticFixtureToken1234567890',
+                  'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzeW50aGV0aWMifQ.c3ludGhldGljc2lnbmF0dXJl')
         for channel in ('mcp', 'notifications'):
             for value in values:
                 with self.subTest(channel=channel, value_index=values.index(value)):
