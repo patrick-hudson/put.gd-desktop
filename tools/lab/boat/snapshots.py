@@ -677,8 +677,12 @@ def guest(args):
             exclusive_json(evidence / 'session-policy.json', json.loads(lab.ssh(run_dir, cinnamon_policy_script(args.install))))
         if args.profile == 'kde-wayland':
             exclusive_json(evidence / 'session-policy.json', json.loads(lab.ssh(run_dir, kde_policy_script(args.install))))
-            exclusive_json(evidence / 'automatic-updates.json', json.loads(lab.ssh(
-                run_dir, kde_update_policy_script(args.install), timeout=120)))
+            checked = lab.command(lab.ssh_args(run_dir) + ['sh', '-s'],
+                input=kde_update_policy_script(args.install), timeout=120, check=False)
+            (evidence / 'automatic-updates-check.log').write_text(checked.stdout + checked.stderr)
+            if checked.returncode:
+                raise ValueError('automatic update policy refused; readback log preserved')
+            exclusive_json(evidence / 'automatic-updates.json', json.loads(checked.stdout))
         capacity_script = "python3 - <<'CAPACITY'\nimport os,json\nr={}\nfor p in (os.path.expanduser('~'), '/tmp'):\n s=os.statvfs(p); r[p]=dict(availableBytes=s.f_bavail*s.f_frsize,availableInodes=s.f_favail); assert s.f_bavail*s.f_frsize >= 2*1024**3 and s.f_favail > 1024\nprint(json.dumps(r))\nCAPACITY\n"
         (evidence / 'guest-capacity.json').write_text(lab.ssh(run_dir, capacity_script))
         with lab.QMP(run_dir / 'qmp.sock') as qmp:
