@@ -1,12 +1,14 @@
-# Proton session lending on every builder, 2026-10-29
+# Proton session lending on every builder, 2026-10-29 and 2026-10-30
 
 Each builder holds its own put.gd Proton session for the test account
 ([lab sessions](../../proton-drive.md#lab-sessions-on-the-builders)). Until this run,
-only f44 and d69 could lend theirs to a VM. On 2026-10-29:
-- m74 and aurora-amd were set up to lend;
-- all four builders that can host a VM proved a lend into a fresh overlay;
-- k72 is blocked, because its firmware has VT-x turned off
+only f44 and d69 could lend theirs to a VM. Now all five can:
+- **2026-10-29:** m74 and aurora-amd were set up to lend, and f44, d69, m74 and
+  aurora-amd each proved a lend into a fresh overlay. k72 couldn't host a VM,
+  because its firmware had VT-x turned off
   ([#659](https://github.com/patrick-hudson/put.gd-desktop/issues/659)).
+- **2026-10-30:** another session enabled VT-x on k72 (00:13Z reboot). k72 was then
+  set up the same way and proved its lends.
 
 The tools came from [#660](https://github.com/patrick-hudson/put.gd-desktop/pull/660):
 - `register-guests` records the guest bridge and the lendable goldens in the registry;
@@ -21,7 +23,7 @@ The tools came from [#660](https://github.com/patrick-hudson/put.gd-desktop/pull
 | d69 Debian 13 | `~/putgd-lab/proton/guest-bridge/` (since 2026-10-23) | Cinnamon, GNOME, KDE | `pgb-d69-gw` (GNOME) passed | **yes** | passed |
 | m74 Mint 22.3 | `~/putgd-lab/proton/guest-bridge/` (since 2026-10-23) | Cinnamon, GNOME (copied today) | `pgb-m74-gw` (GNOME) and `pgb-m74-cin` (Cinnamon) passed | **yes** (GNOME), no (Cinnamon) | passed both times |
 | aurora-amd Aurora 45 | `/var/home/patrick/putgd-lab/proton/guest-bridge/` (installed today) | Cinnamon, GNOME (copied today) | `pgb-aurora-gw2` (GNOME) and `pgb-aurora-cin` (Cinnamon) passed; `pgb-aurora-gw` failed at install, below | no | passed both times |
-| k72 Kubuntu 26.04 | `~/putgd-lab/proton/guest-bridge/` (since 2026-10-23) | none | blocked: `kvm_intel: VMX not enabled (by BIOS)`, [#659](https://github.com/patrick-hudson/put.gd-desktop/issues/659) | | not run |
+| k72 Kubuntu 26.04 | `~/putgd-lab/proton/guest-bridge/` (since 2026-10-23) | Cinnamon, GNOME (copied 2026-10-30) | `pgb-k72-gw` (GNOME) and `pgb-k72-cin2` (Cinnamon) passed; `pgb-k72-cin` failed in the smoke test, below | no | passed every time |
 
 The guest bridge is one build, byte-identical on all five builders:
 - relay `putgd-lab-secret-bridge`, built against Qt 6.4.2 on m74, SHA-256 `12b70c49c80fbace…`;
@@ -54,7 +56,7 @@ and guest capacity preflights passing first. One guest at a time ran on each 4-c
 
 ![History in each lent guest: the synthetic upload to Proton (lent), link revoked](lent-guest-history.png)
 
-![Destinations in the m74 and aurora-amd guests: the lent Proton account and the run's new folder](lent-guest-destinations.png)
+![Destinations in the k72, m74 and aurora-amd guests: the lent Proton account and the run's new folder](lent-guest-destinations.png)
 
 The f44 and d69 runs ran before the smoke test framed Destinations. Their Settings
 picture shows General, so it is not included. Their History pictures and receipts
@@ -71,6 +73,12 @@ The other lends left the token unchanged, and their carry-back confirmed identic
 bytes.
 
 ## What changed on the builders
+
+- **k72:**
+  - The same two goldens: `transfer-eff2bd963713` (GNOME) and
+    `transfer-4ecf0e847901` (Cinnamon).
+  - New `lab-bootstrap-k72/`.
+  - Its QEMU 10.2.1 was already installed.
 
 - **m74:**
   - Two goldens copied from f44 into new directories:
@@ -93,12 +101,20 @@ bytes.
   - **Checks:** each copy matched the inventory SHA-256 (`563730cc…`, `4a21566d…`)
     and passed `qemu-img info` and `qemu-img check` before promotion.
   - **Receipts:** under the workstation's `work/verification/golden-transfer-<id>/`.
-- **Registries:** every builder except k72 now has `guests` and `lastLend` entries.
+- **Registries:** every builder now has `guests` and `lastLend` entries.
   [registries.jsonl](registries.jsonl) is the five registries as they were afterwards.
   It holds paths, hashes, states and the test account's address only. f44's
   `lastCheck` there is a later check by another session (`live-recipes`, 23:19Z).
 
 ## Failures and fixes
+
+- **`pgb-k72-cin`:** the lend itself worked: the session was carried back with
+  `replace_confirmed`, and the host `check` passed. The smoke test failed, though.
+  It treated the upload's `acquiring` state as final and reported a still-running
+  upload as failed, `testExit 1`. Its wait list predates the app's current active
+  states (`Operation::activeState`). The fix in #660 waits through every active state,
+  and a test now ties that list to the source. `pgb-k72-cin2` passed with it in a
+  new overlay. The failed overlay was retired as `failed`.
 
 - **`pgb-aurora-gw`:** `lab.py install` failed, because aurora-amd had no `dpkg-deb`,
   which install uses to hash the package's binaries. The guest had booted under KVM,
@@ -122,6 +138,10 @@ one synthetic 256×160 PNG with a revoked link:
 - `putgd-lab-cinnamon-x11-20261029T232600Z` (m74)
 - `putgd-lab-gnome-wayland-20261029T230619Z` (aurora-amd)
 - `putgd-lab-cinnamon-x11-20261029T232449Z` (aurora-amd)
+- `putgd-lab-gnome-wayland-20261030T002921Z` (k72)
+- `putgd-lab-cinnamon-x11-20261030T004433Z` (k72)
+- `putgd-lab-cinnamon-x11-20261030T003943Z` (k72, `pgb-k72-cin`): the guest app quit
+  while the upload was still acquiring, so this folder may be empty; no link was created
 
 ## Records
 

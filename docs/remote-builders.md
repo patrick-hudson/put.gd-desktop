@@ -605,14 +605,14 @@ evidence is in [the 2026-10-23 lab sessions](evidence/2026-10-23-proton-lab-sess
 | --- | --- | --- | --- | --- |
 | f44 | `putgd/proton/lab-f44` | gnome-keyring `putgd lab` | extracted AppImage | Cinnamon, GNOME and KDE goldens |
 | d69 | `putgd/proton/lab-d69` | gnome-keyring `putgd lab` | extracted debian13 .deb (#518) | Cinnamon, GNOME and KDE goldens |
-| k72 | `putgd/proton/lab-k72` | KWallet `putgdlab` | extracted ubuntu26.04 .deb (#518) | none: VT-x is off in its firmware ([#659](https://github.com/patrick-hudson/put.gd-desktop/issues/659)); guest bridge installed |
+| k72 | `putgd/proton/lab-k72` | KWallet `putgdlab` | extracted ubuntu26.04 .deb (#518) | Cinnamon and GNOME goldens (VT-x enabled 2026-10-30, [#659](https://github.com/patrick-hudson/put.gd-desktop/issues/659)) |
 | m74 | `putgd/proton/lab-m74` | gnome-keyring `putgd lab` | extracted AppImage | Cinnamon and GNOME goldens |
 | aurora-amd | `putgd/proton/lab-aurora-amd` | KWallet `putgd lab` | installed native source build; use `putgd-proton-lab` | Cinnamon and GNOME goldens |
 
 Each builder's registry (`~/putgd-lab/locks/proton-registry.json`) lists the goldens it
 lends to under `guests`, with each one's path, SHA-256, bootstrap key and host-key
-pins, recorded by `proton_lab.py register-guests`. Every lendable builder passed a
-lend proof on 2026-10-29 ([evidence](evidence/2026-10-29-proton-guest-bridge/README.md)).
+pins, recorded by `proton_lab.py register-guests`. Every builder passed a
+lend proof on 2026-10-29 and 2026-10-30 ([evidence](evidence/2026-10-29-proton-guest-bridge/README.md)).
 
 - **The Proton lock.** Take `desktop_lock.py acquire HOST --resource proton` before
   using a builder's session in any way: its lab app, a check, or lending it to a VM.
@@ -635,8 +635,8 @@ lend proof on 2026-10-29 ([evidence](evidence/2026-10-29-proton-guest-bridge/REA
     host key. The GNOME golden needs `lab-bootstrap-f44/known_hosts-gnome`, the same key
     d69 pins for that golden, remapped to 22220.
   - KDE uses `known_hosts-kde` (port 22234 on d69, 22434 on f44).
-  - m74 and aurora-amd have `lab-bootstrap-m74/` and `lab-bootstrap-aurora-amd/`,
-    copied from f44's: `identity`, `known_hosts` (Cinnamon golden on port 22220) and
+  - k72, m74 and aurora-amd have `lab-bootstrap-k72/`, `lab-bootstrap-m74/` and
+    `lab-bootstrap-aurora-amd/`, copied from f44's: `identity`, `known_hosts` (Cinnamon golden on port 22220) and
     `known_hosts-gnome` (GNOME golden on port 22220). The workstation keeps a
     copy of the pins and public key under `work/lab-bootstrap-<host>/`; the
     private key is the workstation's `work/lab-bootstrap/identity`.

@@ -247,6 +247,168 @@
    "completion": "passed"
   },
   {
+   "host": "k72",
+   "run": "pgb-k72-cin",
+   "runId": "5dbde56c-db5e-4e84-89b0-e81479e5c452",
+   "profile": "cinnamon-x11",
+   "golden": "/home/patrick/work/put.gd/work/lab-images/transfer-4ecf0e847901/image.qcow2",
+   "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+   "goldenSha256After": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+   "acceleration": "kvm",
+   "package": "putgd-26.1029.2229-nightly-ubuntu24.04-x86_64.deb",
+   "packageSha256": "b16d1740525d5d1c53847cd02d07fbbc47dfa371b5cc70e71c5f3fc50128734b",
+   "hostPreflight": {
+    "passed": true,
+    "kvm": true,
+    "cpus": 4,
+    "load1": 1.87841796875,
+    "memAvailableGiB": 14.1,
+    "workFreeGiB": 38.3,
+    "runningQemu": []
+   },
+   "lend": {
+    "step": "cleaned",
+    "rotated": false,
+    "testExit": 1,
+    "guestReference": "putgd-lab-89220446-9737-4e5e-a984-2014607f1bef",
+    "receipts": {
+     "provision.json": "cleanup_confirmed",
+     "carry-back-1.json": "replace_confirmed"
+    }
+   },
+   "smoke": {
+    "passed": false,
+    "account": "phudson2@gmail.com",
+    "folder": "putgd-lab-cinnamon-x11-20261030T003943Z",
+    "checkAccountAndFolder": "account-folder",
+    "historyId": null,
+    "operationId": "4df32b95-1da2-4c7d-b0d0-2be6512f36ca",
+    "links": {
+     "history.share": null,
+     "history.inspectLink": null,
+     "history.revokeLink": null
+    },
+    "failed": "The synthetic upload did not complete: {\"action\": \"edit\", \"cancelled\": false, \"clipboardRevision\": \"1\", \"copyStatus\": \"pending\", \"created\": \"2026-10-30T00:39:57.469Z\", \"destination\": {\"credentials\": {\"mode\": \"keychain\", \"reference\": \"putgd-lab-89220446-9737-4e5e-a984-2014607f1bef\"}, \"profileId\": \"proton-lent\", \"profileRevision\": \"273baf369deb4ad765dd590d92f9933daae5b647f51fa9b0238ec12e2806c797\", \""
+   },
+   "hostCheckAfter": {
+    "passed": true,
+    "state": "ok",
+    "testScope": "account-folder",
+    "at": "2026-10-30T00:40:00Z"
+   },
+   "installError": null,
+   "overlayRetired": true,
+   "completion": "failed"
+  },
+  {
+   "host": "k72",
+   "run": "pgb-k72-cin2",
+   "runId": "69d48d21-c2b9-4729-96fe-f20237d0bb62",
+   "profile": "cinnamon-x11",
+   "golden": "/home/patrick/work/put.gd/work/lab-images/transfer-4ecf0e847901/image.qcow2",
+   "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+   "goldenSha256After": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+   "acceleration": "kvm",
+   "package": "putgd-26.1029.2229-nightly-ubuntu24.04-x86_64.deb",
+   "packageSha256": "b16d1740525d5d1c53847cd02d07fbbc47dfa371b5cc70e71c5f3fc50128734b",
+   "hostPreflight": {
+    "passed": true,
+    "kvm": true,
+    "cpus": 4,
+    "load1": 3.8466796875,
+    "memAvailableGiB": 13.8,
+    "workFreeGiB": 38.1,
+    "runningQemu": []
+   },
+   "lend": {
+    "step": "cleaned",
+    "rotated": false,
+    "testExit": 0,
+    "guestReference": "putgd-lab-b446e7a6-a137-4583-b0d5-0907813a504a",
+    "receipts": {
+     "provision.json": "cleanup_confirmed",
+     "carry-back-1.json": "replace_confirmed"
+    }
+   },
+   "smoke": {
+    "passed": true,
+    "account": "phudson2@gmail.com",
+    "folder": "putgd-lab-cinnamon-x11-20261030T004433Z",
+    "checkAccountAndFolder": "account-folder",
+    "historyId": "82f898d9-2663-41b5-b78e-36ee499ab5a1",
+    "operationId": "2daecdbd-f8e9-4f64-af1e-0c87138cbb35",
+    "links": {
+     "history.share": "shared",
+     "history.inspectLink": "shared",
+     "history.revokeLink": "revoked"
+    },
+    "failed": null
+   },
+   "hostCheckAfter": {
+    "passed": true,
+    "state": "ok",
+    "testScope": "account-folder",
+    "at": "2026-10-30T00:45:38Z"
+   },
+   "installError": null,
+   "overlayRetired": true,
+   "completion": "passed"
+  },
+  {
+   "host": "k72",
+   "run": "pgb-k72-gw",
+   "runId": "60d119e6-796e-4ecc-b1ce-5c2e5fbd5bc1",
+   "profile": "gnome-wayland",
+   "golden": "/home/patrick/work/put.gd/work/lab-images/transfer-eff2bd963713/image.qcow2",
+   "goldenSha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+   "goldenSha256After": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+   "acceleration": "kvm",
+   "package": "putgd-26.1029.2229-nightly-ubuntu26.04-x86_64.deb",
+   "packageSha256": "4e58a7d6eae64ba33e8621239aeb9cd5be885cebd7f64ca62781360bcddaa55c",
+   "hostPreflight": {
+    "passed": true,
+    "kvm": true,
+    "cpus": 4,
+    "load1": 0.76318359375,
+    "memAvailableGiB": 14.1,
+    "workFreeGiB": 50.5,
+    "runningQemu": []
+   },
+   "lend": {
+    "step": "cleaned",
+    "rotated": false,
+    "testExit": 0,
+    "guestReference": "putgd-lab-14c7cb64-ab79-48a5-9e0e-c06245636cf7",
+    "receipts": {
+     "provision.json": "cleanup_confirmed",
+     "carry-back-1.json": "replace_confirmed"
+    }
+   },
+   "smoke": {
+    "passed": true,
+    "account": "phudson2@gmail.com",
+    "folder": "putgd-lab-gnome-wayland-20261030T002921Z",
+    "checkAccountAndFolder": "account-folder",
+    "historyId": "90a6fb31-e8bf-4fa0-af94-30f17aa19a74",
+    "operationId": "a1cb7ac5-8c71-4031-8f87-7e5901b0fa08",
+    "links": {
+     "history.share": "shared",
+     "history.inspectLink": "shared",
+     "history.revokeLink": "revoked"
+    },
+    "failed": null
+   },
+   "hostCheckAfter": {
+    "passed": true,
+    "state": "ok",
+    "testScope": "account-folder",
+    "at": "2026-10-30T00:30:44Z"
+   },
+   "installError": null,
+   "overlayRetired": true,
+   "completion": "passed"
+  },
+  {
    "host": "m74",
    "run": "pgb-m74-cin",
    "runId": "0f756bac-7373-47b1-9f58-d21f4921da7a",

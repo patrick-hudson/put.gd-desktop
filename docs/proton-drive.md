@@ -213,9 +213,9 @@ The [Aurora builder guide](remote-builders.md#aurora-amd-fedora-45-builder)
 records the build, keyring and keep-alive setup. Its host has QEMU and `dpkg`
 for guests, so it lends its session to VMs like the other builders.
 
-Every builder except k72 can lend its session to a VM it hosts; k72's firmware
-has VT-x turned off ([#659](https://github.com/patrick-hudson/put.gd-desktop/issues/659)).
-The goldens each builder lends to are in
+Every builder can lend its session to a VM it hosts. k72 joined on 2026-10-30,
+after VT-x was enabled in its firmware
+([#659](https://github.com/patrick-hudson/put.gd-desktop/issues/659)). The goldens each builder lends to are in
 [the builders' Proton sessions](remote-builders.md#proton-sessions-on-the-builders).
 
 ### Where each session lives
