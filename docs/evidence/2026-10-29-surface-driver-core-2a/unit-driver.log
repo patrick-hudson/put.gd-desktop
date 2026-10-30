@@ -1,4 +1,4 @@
-........................................{"recipe": "__main__.<lambda>", "functional": "passed", "visual": "frames", "review": false}
+.........................................{"recipe": "__main__.<lambda>", "functional": "passed", "visual": "frames", "review": false}
 {"recipe": "__main__.<lambda>", "functional": "passed", "visual": "frames", "review": false}
 ........{"recipe": "__main__.good", "functional": "passed", "visual": "frames", "review": false}
 {"recipe": "__main__.bad", "functional": "failed", "visual": "frames", "review": false}
@@ -7,6 +7,6 @@
 {"recipe": "__main__.bad", "functional": "passed", "visual": "frames", "review": true}
 ..
 ----------------------------------------------------------------------
-Ran 52 tests in 0.492s
+Ran 53 tests in 0.512s
 
 OK

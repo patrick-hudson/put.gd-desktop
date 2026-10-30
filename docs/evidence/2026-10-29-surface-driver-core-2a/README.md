@@ -37,7 +37,7 @@ GNOME's final capacity gate passed. Goldens were not booted or modified.
 | Notification default/button input | Blocked on both desktops. Cinnamon's reported rectangle hit `put.gd`, and button correlation failed. GNOME did not expose the requested toast; its saved frame shows a pre-existing Software Updater banner. Cinnamon actions are explicitly blocked; GNOME notification action verification is marked false. No GNOME product/AT-SPI bug is established. |
 | Runtime context/row menus | Blocked: zero matching live controls in Cinnamon. The resolver's positive unit cases are not desktop proof. |
 | General Wayland foreground verification | Blocked until a compositor witness is configured. Resident view-state has no public focus/occlusion field. |
-| Unit suites | 52 driver tests and 23 surface-map tests passed; logs below. |
+| Unit suites | 53 driver tests and 23 surface-map tests passed; logs below. |
 | Three `core_demo` recipes on the boat guest | Not rerun after the two-attempt stop. The custom Text-key check is not the complete demo gate. |
 
 ![Cinnamon editor foreground with Text selected](00-fresh-editor-foreground.png)
