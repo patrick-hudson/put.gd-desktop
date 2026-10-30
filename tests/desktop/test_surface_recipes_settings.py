@@ -428,6 +428,23 @@ class Contracts(unittest.TestCase):
             with self.assertRaisesRegex(RecipeBlocked, refusal):
                 click(ctx, 'archiveRoot')
 
+    def test_native_viewport_uses_expanded_capture_class_without_coordinates(self):
+        from types import SimpleNamespace
+        from tools.lab.surface_driver.recipes.settings_input import native_viewport
+        ctx = Fake()
+        ctx.catalog = SimpleNamespace(candidates=lambda *a: [], inventories={
+            'expanded': {'controls': [{'name': 'profileRegion', 'class': 'QComboBox', 'rect': [1, 1, 1, 1]}]}})
+        queries = []
+        def accessible(query):
+            queries.append(query)
+            return [{'rect': [700, 220, 180, 36], 'ancestors': [{'role': 'filler', 'rect': [336, 148, 1200, 744]}]}]
+        ctx.accessible = accessible
+        geometry = {'pid': 123, 'x': 120, 'y': 40, 'width': 1440, 'height': 960}
+        self.assertIsNone(native_viewport(ctx, 'profileRegion', geometry, 0))
+        self.assertEqual(queries[0]['role'], 'combo box')
+        self.assertNotIn('within', queries[0])
+        self.assertIn('[700, 220, 180, 36]', ctx.notes[-1])
+
     def test_native_footer_clipping_scrolls_before_any_click(self):
         from tools.lab.surface_driver.recipes.settings_input import click
         ctx = Fake()

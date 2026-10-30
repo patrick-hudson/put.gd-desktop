@@ -225,10 +225,6 @@
         "name": "Different output for some actions",
         "role": "check box"
       },
-      "addCaptureException": {
-        "name": "Add an exception\u2026",
-        "role": "push button"
-      },
       "profileRegion": {
         "name": "Capture region destination",
         "role": "combo box"
@@ -320,6 +316,10 @@
       "refreshShortcutSupport": {
         "name": "Check shortcuts again",
         "role": "push button"
+      },
+      "text:Add an exception\u2026": {
+        "name": "Add an exception\u2026",
+        "role": "*"
       }
     },
     "theme_references": {
@@ -348,10 +348,6 @@
   "live_controls": {
     "captureExceptionsToggle": {
       "name": "Different output for some actions",
-      "role": "push button"
-    },
-    "addCaptureException": {
-      "name": "Add an exception\u2026",
       "role": "push button"
     }
   },

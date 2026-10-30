@@ -88,10 +88,6 @@
       "name": "Different output for some actions",
       "role": "check box"
     },
-    "addCaptureException": {
-      "name": "Add an exception\u2026",
-      "role": "push button"
-    },
     "recordRegionShortcut": {
       "name": "Change capture region shortcut",
       "role": "push button"

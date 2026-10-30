@@ -941,7 +941,7 @@ def capture_exceptions(ctx):
     for action, label in (('region', 'Capture region'), ('window', 'Capture window'),
                           ('desktop', 'Capture desktop'), ('edit', 'Capture region & edit'),
                           ('clipboard', 'Upload clipboard'), ('record', 'Record screen')):
-        live_click(ctx, 'addCaptureException')
+        live_click(ctx, 'text:Add an exception…')
         ctx.click_accessible({'owned': True, 'pid': ctx.geometry('settings')['pid'],
                               'role': 'menu item', 'name': label, 'visible': True, 'showing': True})
         ctx.wait(lambda: not routing(ctx)[action]['inherited'], action + ' exception added')

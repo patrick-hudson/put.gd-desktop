@@ -40,7 +40,7 @@ while stack and visited < 6000:
             viewport = bounds
         if query.get('label') == name and role == 'label':
             anchors.append(list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)))
-        if fnmatch.fnmatchcase(name, query['name']) and role == query['role']:
+        if fnmatch.fnmatchcase(name, query['name']) and fnmatch.fnmatchcase(role, query['role']):
             rect = list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
             rows.append({'pid': pid, 'name': name, 'role': role, 'rect': rect,
                          'viewport': viewport,
@@ -158,6 +158,11 @@ def native_viewport(ctx, control, geometry, attempt):
         query['objectName'] = control
         if hasattr(ctx, 'catalog'):
             candidates = ctx.catalog.candidates(control, 'settings')
+            if not candidates:
+                # Expanded-state captures still supply class semantics. Live
+                # AT-SPI supplies all geometry and current visibility.
+                candidates = [item for inventory in getattr(ctx.catalog, 'inventories', {}).values()
+                              for item in inventory.get('controls', []) if item.get('name') == control]
             classes = {c.get('class') for c in candidates}
             roles = {'QPushButton': 'push button', 'QLineEdit': 'text',
                      'QSpinBox': 'spin button', 'QComboBox': 'combo box',
@@ -270,7 +275,7 @@ def click(ctx, control, *, after_window=None):
     # The right end of a keycap contains its independent Clear button.
     point = (round(x + width / 3), round(y + height / 2))
     ctx.frame('input-before-' + control)
-    ctx.note('settings live target: ' + json.dumps({'control': control, 'accessible_name': matches[0].get('name'),
+    ctx.note('settings live target: ' + json.dumps({'control': control, 'accessible_name': matches[0].get('name'), 'role': matches[0].get('role'),
                                                    'rect': [x, y, width, height],
                                                    'viewport': matches[0].get('viewport'),
                                                    'point': point, 'geometry': geometry}, sort_keys=True))
