@@ -1,0 +1,14 @@
+{
+  "id": "bx_4vhusf6d",
+  "name": "catalog-tray-mapping",
+  "type": "default",
+  "vcpu": 4,
+  "memoryGB": 8,
+  "machineProvider": "baremetal",
+  "createdAt": "2026-10-30T01:08:27.707Z",
+  "hydrated": true,
+  "hydratedAt": "2026-10-30T01:11:07.689Z",
+  "ttlSeconds": 7200,
+  "baseSnapshot": "putgd-build-base",
+  "accountEnvironment": "--no-env"
+}
