@@ -1,0 +1,67 @@
+[
+  {
+    "signal": "SIGTERM",
+    "runnerPid": 127218,
+    "runnerExit": 0,
+    "keeper": {
+      "pid": 69918,
+      "start": "230728",
+      "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+      "argv": [
+        "python3",
+        "/tmp/sd-7caef812/clipboard-keeper.py",
+        "/tmp/sd-7caef812",
+        "--disposable"
+      ],
+      "uid": 1000,
+      "state": "R",
+      "parent": 69917,
+      "protocol": "putgd-clipboard-lease-v1",
+      "source_sha256": "e8b5419d777fe9896f3fde7d2f1f566747bba84e2046f13d718eb719968c7b87"
+    },
+    "keeperAlive": false,
+    "byteExact": true,
+    "before": {
+      "text/plain;charset=utf-8": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37",
+      "text/plain": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+    },
+    "after": {
+      "text/plain;charset=utf-8": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37",
+      "text/plain": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+    },
+    "frame": "v2-head-kill-SIGTERM.png"
+  },
+  {
+    "signal": "SIGKILL",
+    "runnerPid": 127324,
+    "runnerExit": -9,
+    "keeper": {
+      "pid": 71833,
+      "start": "232523",
+      "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+      "argv": [
+        "python3",
+        "/tmp/sd-b7ccbfc7/clipboard-keeper.py",
+        "/tmp/sd-b7ccbfc7",
+        "--disposable"
+      ],
+      "uid": 1000,
+      "state": "R",
+      "parent": 71832,
+      "protocol": "putgd-clipboard-lease-v1",
+      "source_sha256": "e8b5419d777fe9896f3fde7d2f1f566747bba84e2046f13d718eb719968c7b87"
+    },
+    "keeperAlive": false,
+    "byteExact": true,
+    "before": {
+      "text/plain;charset=utf-8": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37",
+      "text/plain": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+    },
+    "after": {
+      "text/plain;charset=utf-8": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37",
+      "text/plain": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+    },
+    "frame": "v2-head-kill-SIGKILL.png",
+    "cleanupErrors": []
+  }
+]

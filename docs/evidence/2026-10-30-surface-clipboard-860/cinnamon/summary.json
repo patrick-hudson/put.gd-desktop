@@ -1,0 +1,374 @@
+{
+  "head": "32892d2d2e4378cd035e19b2e83e0b5af314c621",
+  "run": {
+    "schemaVersion": 1,
+    "id": "ea31c76f-a444-4f6a-9413-76dbe0f4680e",
+    "profile": "cinnamon-x11",
+    "guest_user": "lab",
+    "ssh_port": 22220,
+    "vnc_display": 20,
+    "acceleration": "kvm",
+    "golden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+    "golden_sha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+    "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+    "known_hosts": "/home/user/keeper860-src/work/lab-runs/k1/known_hosts",
+    "overlay": "/home/user/keeper860-src/work/lab-runs/k1/disk.qcow2",
+    "pid": 42431
+  },
+  "generatedUtc": "2026-10-30T12:30:23.171683+00:00",
+  "lanes": {
+    "baseline-v2-cinnamon": {
+      "keeperPid": 73909,
+      "samples": 42,
+      "keeperMeanCpu": 0.4066193830005484,
+      "keeperMaxCpu": 2.4789659061150497,
+      "keeperZeroSamples": 18,
+      "minLoad1": 0.0615234375,
+      "maxLoad1": 0.216796875,
+      "lastLoad1": 0.0712890625,
+      "gtk": {
+        "1051": {
+          "comm": "ibus-extension-",
+          "start": "968",
+          "count": 44,
+          "mean": 0.022544700903517175,
+          "maximum": 0.9919668397547556
+        },
+        "1527": {
+          "comm": "evolution-alarm",
+          "start": "1367",
+          "count": 44,
+          "mean": 0.022459828049178555,
+          "maximum": 0.4959834198773778
+        },
+        "2266": {
+          "comm": "xdg-desktop-por",
+          "start": "12643",
+          "count": 44,
+          "mean": 0.10144167152296486,
+          "maximum": 0.4968335868912713
+        },
+        "2287": {
+          "comm": "xdg-desktop-por",
+          "start": "12659",
+          "count": 44,
+          "mean": 0.045146885276523045,
+          "maximum": 0.9936671737825425
+        },
+        "2361": {
+          "comm": "xdg-desktop-por",
+          "start": "12723",
+          "count": 44,
+          "mean": 0.06770242625137401,
+          "maximum": 1.4897534489625448
+        }
+      },
+      "recipes": {
+        "editor.redact": "passed",
+        "editor.cli_editor": "passed"
+      },
+      "byteExact": true,
+      "keeperAliveAfter": true,
+      "cleanupErrors": [],
+      "clipboard": {}
+    },
+    "editor-after": {
+      "keeperPid": 8738,
+      "samples": 36,
+      "keeperMeanCpu": 0.0,
+      "keeperMaxCpu": 0.0,
+      "keeperZeroSamples": 36,
+      "minLoad1": 0.00830078125,
+      "maxLoad1": 1.03564453125,
+      "lastLoad1": 0.63232421875,
+      "gtk": {
+        "1051": {
+          "comm": "ibus-extension-",
+          "start": "968",
+          "count": 41,
+          "mean": 0.02362021001936269,
+          "maximum": 0.49635931930010824
+        },
+        "1527": {
+          "comm": "evolution-alarm",
+          "start": "1367",
+          "count": 41,
+          "mean": 0.03575029859943417,
+          "maximum": 0.49701999040444
+        },
+        "2266": {
+          "comm": "xdg-desktop-por",
+          "start": "12643",
+          "count": 41,
+          "mean": 0.06059676268367931,
+          "maximum": 0.4973709592805993
+        },
+        "2287": {
+          "comm": "xdg-desktop-por",
+          "start": "12659",
+          "count": 41,
+          "mean": 0.01212119938645954,
+          "maximum": 0.49696917484484116
+        },
+        "2361": {
+          "comm": "xdg-desktop-por",
+          "start": "12723",
+          "count": 41,
+          "mean": 0.02424878875624921,
+          "maximum": 0.49735555182722424
+        }
+      },
+      "recipes": {
+        "editor.redact": "passed",
+        "editor.cli_editor": "passed"
+      },
+      "byteExact": true,
+      "keeperAliveAfter": false,
+      "cleanupErrors": [],
+      "clipboard": {}
+    },
+    "final-head": {
+      "keeperPid": 58531,
+      "samples": 49,
+      "keeperMeanCpu": 0.0,
+      "keeperMaxCpu": 0.0,
+      "keeperZeroSamples": 49,
+      "minLoad1": 0.111328125,
+      "maxLoad1": 1.23193359375,
+      "lastLoad1": 1.1328125,
+      "gtk": {
+        "1051": {
+          "comm": "ibus-extension-",
+          "start": "968",
+          "count": 55,
+          "mean": 0.06281560995311748,
+          "maximum": 2.4839321113493176
+        },
+        "1527": {
+          "comm": "evolution-alarm",
+          "start": "1367",
+          "count": 55,
+          "mean": 0.018046978441255555,
+          "maximum": 0.4967864222698635
+        },
+        "2266": {
+          "comm": "xdg-desktop-por",
+          "start": "12643",
+          "count": 55,
+          "mean": 0.23446956585332995,
+          "maximum": 3.9756769870982542
+        },
+        "2287": {
+          "comm": "xdg-desktop-por",
+          "start": "12659",
+          "count": 55,
+          "mean": 0.1625426459273491,
+          "maximum": 5.466555857260099
+        },
+        "2361": {
+          "comm": "xdg-desktop-por",
+          "start": "12723",
+          "count": 55,
+          "mean": 0.5601149678464719,
+          "maximum": 28.82365815646234
+        }
+      },
+      "recipes": {
+        "editor.redact": "passed",
+        "editor.cli_editor": "passed"
+      },
+      "byteExact": true,
+      "keeperAliveAfter": false,
+      "cleanupErrors": [],
+      "clipboard": {
+        "restored_and_stopped": true,
+        "reviews": [],
+        "ready": true,
+        "preserved_mimes": [
+          "text/plain;charset=utf-8",
+          "text/plain"
+        ],
+        "transport": "xcb",
+        "pid": 58531,
+        "start": "234785",
+        "boot": "cd1d40aa-6aff-4adf-81cf-f20e4f76b4f9",
+        "reaped_pids": []
+      }
+    },
+    "final-v2": {
+      "keeperPid": 66266,
+      "samples": 48,
+      "keeperMeanCpu": 0.020479694877316653,
+      "keeperMaxCpu": 0.9830253541111993,
+      "keeperZeroSamples": 47,
+      "minLoad1": 0.1552734375,
+      "maxLoad1": 0.93408203125,
+      "lastLoad1": 0.87060546875,
+      "gtk": {
+        "1051": {
+          "comm": "ibus-extension-",
+          "start": "968",
+          "count": 54,
+          "mean": 0.01821099911090452,
+          "maximum": 0.49629557710515065
+        },
+        "1527": {
+          "comm": "evolution-alarm",
+          "start": "1367",
+          "count": 54,
+          "mean": 0.02740165794618509,
+          "maximum": 0.9925911542103013
+        },
+        "2266": {
+          "comm": "xdg-desktop-por",
+          "start": "12643",
+          "count": 54,
+          "mean": 0.10955802021953803,
+          "maximum": 0.9886283049001162
+        },
+        "2287": {
+          "comm": "xdg-desktop-por",
+          "start": "12659",
+          "count": 54,
+          "mean": 0.06364485365087892,
+          "maximum": 1.4612951246510806
+        },
+        "2361": {
+          "comm": "xdg-desktop-por",
+          "start": "12723",
+          "count": 54,
+          "mean": 0.03625409410036483,
+          "maximum": 0.49349405541822033
+        }
+      },
+      "recipes": {
+        "editor.redact": "passed",
+        "editor.cli_editor": "passed"
+      },
+      "byteExact": true,
+      "keeperAliveAfter": false,
+      "cleanupErrors": [],
+      "clipboard": {
+        "restored_and_stopped": true,
+        "reviews": [],
+        "ready": true,
+        "preserved_mimes": [
+          "application/x-putgd-860",
+          "text/html",
+          "text/plain"
+        ],
+        "transport": "xcb",
+        "pid": 66266,
+        "start": "292575",
+        "boot": "cd1d40aa-6aff-4adf-81cf-f20e4f76b4f9",
+        "reaped_pids": []
+      }
+    },
+    "editor-after-full": {
+      "keeperPid": 15945,
+      "samples": 334,
+      "keeperMeanCpu": 0.5027151521705888,
+      "keeperMaxCpu": 109.83053624033492,
+      "keeperZeroSamples": 328,
+      "minLoad1": 0.0615234375,
+      "maxLoad1": 2.26220703125,
+      "lastLoad1": 1.0380859375,
+      "gtk": {
+        "1051": {
+          "comm": "ibus-extension-",
+          "start": "968",
+          "count": 343,
+          "mean": 0.03722028305158165,
+          "maximum": 1.4865406506039691
+        },
+        "1527": {
+          "comm": "evolution-alarm",
+          "start": "1367",
+          "count": 343,
+          "mean": 0.02582122655398069,
+          "maximum": 0.49748833091247624
+        },
+        "2266": {
+          "comm": "xdg-desktop-por",
+          "start": "12643",
+          "count": 343,
+          "mean": 0.08344577796365017,
+          "maximum": 1.4758577993124231
+        },
+        "2287": {
+          "comm": "xdg-desktop-por",
+          "start": "12659",
+          "count": 343,
+          "mean": 0.06622395155867622,
+          "maximum": 1.980829109014281
+        },
+        "2361": {
+          "comm": "xdg-desktop-por",
+          "start": "12723",
+          "count": 343,
+          "mean": 0.047497801020604836,
+          "maximum": 1.4856218317607108
+        }
+      },
+      "recipes": {
+        "editor.redact": "passed",
+        "editor.annotation_tools": "passed",
+        "editor.blur": "passed",
+        "editor.text_entry": "passed",
+        "editor.mark_history": "failed",
+        "editor.selection_geometry": "passed",
+        "editor.crop": "passed",
+        "editor.properties": "passed",
+        "editor.keyboard_help": "passed",
+        "editor.destination": "passed",
+        "editor.zoom_pan": "failed",
+        "editor.key_pan": "passed",
+        "editor.mouse_pan": "passed",
+        "editor.discard": "blocked",
+        "editor.upload": "failed",
+        "editor.cli_editor": "passed",
+        "editor.double_click": "passed",
+        "editor.preparation_failure": "blocked"
+      },
+      "byteExact": true,
+      "keeperAliveAfter": false,
+      "cleanupErrors": [],
+      "clipboard": {
+        "restored_and_stopped": true,
+        "reviews": [],
+        "reaped_pids": [],
+        "ready": true,
+        "preserved_mimes": [
+          "text/plain",
+          "text/plain;charset=utf-8"
+        ],
+        "transport": "xcb",
+        "pid": 15945,
+        "start": "150972",
+        "boot": "cd1d40aa-6aff-4adf-81cf-f20e4f76b4f9"
+      }
+    }
+  },
+  "endProcesses": {
+    "liveKeepers": []
+  },
+  "target": {
+    "hostname": "putgd-lab",
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "os": {
+      "ID": "linuxmint",
+      "VERSION_ID": "22.3",
+      "VARIANT_ID": null
+    },
+    "session_type": "x11",
+    "desktop": "X-Cinnamon",
+    "qt_platform": "xcb"
+  },
+  "host": {
+    "hostname": "box-node-6e56d1f39f4aa586",
+    "kernel": "6.8.0-117-generic",
+    "qemu": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)"
+  },
+  "goldenAfter": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7"
+}

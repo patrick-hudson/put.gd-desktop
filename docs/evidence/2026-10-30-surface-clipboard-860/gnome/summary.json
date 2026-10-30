@@ -1,0 +1,436 @@
+{
+  "head": "32892d2d2e4378cd035e19b2e83e0b5af314c621",
+  "run": {
+    "schemaVersion": 1,
+    "id": "3d8b48d4-c388-45db-85b1-6f163e295ae4",
+    "profile": "gnome-wayland",
+    "guest_user": "lab",
+    "ssh_port": 22220,
+    "vnc_display": 20,
+    "acceleration": "kvm",
+    "golden": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v4/image.qcow2",
+    "golden_sha256": "8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4",
+    "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+    "known_hosts": "/home/user/keeper860-src/work/lab-runs/k1/known_hosts",
+    "overlay": "/home/user/keeper860-src/work/lab-runs/k1/disk.qcow2",
+    "pid": 88918
+  },
+  "generatedUtc": "2026-10-30T12:25:51.933486+00:00",
+  "lanes": {
+    "editor-after": {
+      "keeperPid": 14741,
+      "samples": 0,
+      "keeperMeanCpu": null,
+      "keeperMaxCpu": null,
+      "keeperZeroSamples": 0,
+      "minLoad1": 0.68408203125,
+      "maxLoad1": 2.33447265625,
+      "lastLoad1": 1.3896484375,
+      "gtk": {
+        "1987": {
+          "comm": "evolution-alarm",
+          "start": "1900",
+          "count": 59,
+          "mean": 0.05048489643639782,
+          "maximum": 0.992559533537252
+        },
+        "2130": {
+          "comm": "ibus-extension-",
+          "start": "1992",
+          "count": 59,
+          "mean": 0.04206199936374733,
+          "maximum": 0.49725885731685976
+        },
+        "2465": {
+          "comm": "xdg-desktop-por",
+          "start": "2304",
+          "count": 59,
+          "mean": 0.06726637630035379,
+          "maximum": 0.49681769585460994
+        },
+        "2483": {
+          "comm": "xdg-desktop-por",
+          "start": "2323",
+          "count": 59,
+          "mean": 0.025251455075205948,
+          "maximum": 0.49708184795563687
+        },
+        "2550": {
+          "comm": "xdg-desktop-por",
+          "start": "2584",
+          "count": 59,
+          "mean": 0.05048071605593368,
+          "maximum": 0.49695611917075844
+        }
+      },
+      "recipes": {
+        "editor.redact": "passed",
+        "editor.cli_editor": "passed"
+      },
+      "byteExact": false,
+      "keeperAliveAfter": false,
+      "cleanupErrors": [],
+      "clipboard": {}
+    },
+    "final-v2-idle": {
+      "keeperPid": 75974,
+      "samples": 53,
+      "keeperMeanCpu": 0.02812578272882392,
+      "keeperMaxCpu": 0.49774207297357603,
+      "keeperZeroSamples": 50,
+      "minLoad1": 0.38671875,
+      "maxLoad1": 0.6640625,
+      "lastLoad1": 0.61083984375,
+      "gtk": {
+        "1987": {
+          "comm": "evolution-alarm",
+          "start": "1900",
+          "count": 58,
+          "mean": 0.016489763135495463,
+          "maximum": 0.4951990413327459
+        },
+        "2130": {
+          "comm": "ibus-extension-",
+          "start": "1992",
+          "count": 58,
+          "mean": 0.017160676383180775,
+          "maximum": 0.49774207297357603
+        },
+        "2465": {
+          "comm": "xdg-desktop-por",
+          "start": "2304",
+          "count": 58,
+          "mean": 0.03408702651952607,
+          "maximum": 0.4973911542982622
+        },
+        "2483": {
+          "comm": "xdg-desktop-por",
+          "start": "2323",
+          "count": 58,
+          "mean": 0.017126230659909043,
+          "maximum": 0.49684181457197363
+        },
+        "2550": {
+          "comm": "xdg-desktop-por",
+          "start": "2584",
+          "count": 58,
+          "mean": 0.03307406117738512,
+          "maximum": 0.9224144410519817
+        }
+      },
+      "recipes": {
+        "editor.redact": "passed",
+        "editor.cli_editor": "passed"
+      },
+      "byteExact": true,
+      "keeperAliveAfter": false,
+      "cleanupErrors": [],
+      "clipboard": {
+        "restored_and_stopped": true,
+        "reviews": [
+          "Disposable GNOME clipboard restoration preserves text/plain;charset=utf-8; other MIME types were not restorable: text/plain"
+        ],
+        "ready": true,
+        "preserved_mimes": [
+          "text/plain;charset=utf-8"
+        ],
+        "transport": "x11-selection-bridge",
+        "pid": 75974,
+        "start": "247080",
+        "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+        "reaped_pids": []
+      }
+    },
+    "final-head": {
+      "keeperPid": 46718,
+      "samples": 59,
+      "keeperMeanCpu": 0.15613415221341934,
+      "keeperMaxCpu": 7.246240151705682,
+      "keeperZeroSamples": 54,
+      "minLoad1": 0.2080078125,
+      "maxLoad1": 0.623046875,
+      "lastLoad1": 0.2080078125,
+      "gtk": {
+        "1987": {
+          "comm": "evolution-alarm",
+          "start": "1900",
+          "count": 66,
+          "mean": 0.058974726078986905,
+          "maximum": 1.9051236151602775
+        },
+        "2130": {
+          "comm": "ibus-extension-",
+          "start": "1992",
+          "count": 66,
+          "mean": 0.042949647489599625,
+          "maximum": 1.4288427113702078
+        },
+        "2465": {
+          "comm": "xdg-desktop-por",
+          "start": "2304",
+          "count": 66,
+          "mean": 0.037368435016304484,
+          "maximum": 0.4968535457396994
+        },
+        "2483": {
+          "comm": "xdg-desktop-por",
+          "start": "2323",
+          "count": 66,
+          "mean": 0.10627570819835545,
+          "maximum": 4.5287861668161105
+        },
+        "2550": {
+          "comm": "xdg-desktop-por",
+          "start": "2584",
+          "count": 66,
+          "mean": 0.04434375726962091,
+          "maximum": 0.9525618075801388
+        }
+      },
+      "recipes": {
+        "editor.redact": "passed",
+        "editor.cli_editor": "passed"
+      },
+      "byteExact": true,
+      "keeperAliveAfter": false,
+      "cleanupErrors": [],
+      "clipboard": {
+        "restored_and_stopped": true,
+        "reviews": [
+          "Disposable GNOME clipboard restoration preserves text/plain;charset=utf-8; other MIME types were not restorable: text/plain"
+        ],
+        "ready": true,
+        "preserved_mimes": [
+          "text/plain;charset=utf-8"
+        ],
+        "transport": "x11-selection-bridge",
+        "pid": 46718,
+        "start": "166255",
+        "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+        "reaped_pids": []
+      }
+    },
+    "final-v2": {
+      "keeperPid": 59045,
+      "samples": 29,
+      "keeperMeanCpu": 0.0681320024385492,
+      "keeperMaxCpu": 0.496267333193608,
+      "keeperZeroSamples": 25,
+      "minLoad1": 0.58251953125,
+      "maxLoad1": 2.45751953125,
+      "lastLoad1": 2.45751953125,
+      "gtk": {
+        "1987": {
+          "comm": "evolution-alarm",
+          "start": "1900",
+          "count": 36,
+          "mean": 0.04133044258672694,
+          "maximum": 0.4970144026742343
+        },
+        "2130": {
+          "comm": "ibus-extension-",
+          "start": "1992",
+          "count": 36,
+          "mean": 0.04135022838324506,
+          "maximum": 0.4970144026742343
+        },
+        "2465": {
+          "comm": "xdg-desktop-por",
+          "start": "2304",
+          "count": 36,
+          "mean": 0.04071194940308348,
+          "maximum": 0.496267333193608
+        },
+        "2483": {
+          "comm": "xdg-desktop-por",
+          "start": "2323",
+          "count": 36,
+          "mean": 0.027442641654805852,
+          "maximum": 0.4972734748980823
+        },
+        "2550": {
+          "comm": "xdg-desktop-por",
+          "start": "2584",
+          "count": 36,
+          "mean": 0.041286982494815994,
+          "maximum": 0.4970144026742343
+        }
+      },
+      "recipes": {
+        "editor.redact": "failed",
+        "editor.cli_editor": "blocked"
+      },
+      "byteExact": null,
+      "keeperAliveAfter": null,
+      "cleanupErrors": null,
+      "clipboard": {
+        "restored_and_stopped": true,
+        "reviews": [
+          "Disposable GNOME clipboard restoration preserves text/plain;charset=utf-8; other MIME types were not restorable: text/plain"
+        ],
+        "ready": true,
+        "preserved_mimes": [
+          "text/plain;charset=utf-8"
+        ],
+        "transport": "x11-selection-bridge",
+        "pid": 59045,
+        "start": "223664",
+        "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+        "reaped_pids": []
+      }
+    },
+    "editor-after-full": {
+      "keeperPid": 22803,
+      "samples": 182,
+      "keeperMeanCpu": 0.08981177391206546,
+      "keeperMaxCpu": 1.9787614781522782,
+      "keeperZeroSamples": 155,
+      "minLoad1": 0.25048828125,
+      "maxLoad1": 1.74169921875,
+      "lastLoad1": 1.00341796875,
+      "gtk": {
+        "1987": {
+          "comm": "evolution-alarm",
+          "start": "1900",
+          "count": 189,
+          "mean": 0.08914028283259427,
+          "maximum": 0.9952310894842227
+        },
+        "2130": {
+          "comm": "ibus-extension-",
+          "start": "1992",
+          "count": 189,
+          "mean": 0.13631521558239207,
+          "maximum": 0.9952310894842227
+        },
+        "2465": {
+          "comm": "xdg-desktop-por",
+          "start": "2304",
+          "count": 189,
+          "mean": 0.07332577349256245,
+          "maximum": 0.986016216458519
+        },
+        "2483": {
+          "comm": "xdg-desktop-por",
+          "start": "2323",
+          "count": 189,
+          "mean": 0.01049175690743467,
+          "maximum": 0.4973243710123804
+        },
+        "2550": {
+          "comm": "xdg-desktop-por",
+          "start": "2584",
+          "count": 189,
+          "mean": 0.11534076972502406,
+          "maximum": 0.9936903040611703
+        }
+      },
+      "recipes": {
+        "editor.redact": "passed",
+        "editor.annotation_tools": "failed",
+        "editor.blur": "blocked",
+        "editor.text_entry": "blocked",
+        "editor.mark_history": "blocked",
+        "editor.selection_geometry": "blocked",
+        "editor.crop": "blocked",
+        "editor.properties": "blocked",
+        "editor.keyboard_help": "failed"
+      },
+      "byteExact": true,
+      "keeperAliveAfter": false,
+      "cleanupErrors": [],
+      "clipboard": {
+        "restored_and_stopped": true,
+        "reviews": [
+          "Disposable GNOME clipboard restoration preserves text/plain;charset=utf-8; other MIME types were not restorable: text/plain"
+        ],
+        "reaped_pids": [],
+        "ready": true,
+        "preserved_mimes": [
+          "text/plain;charset=utf-8"
+        ],
+        "transport": "x11-selection-bridge",
+        "pid": 22803,
+        "start": "82312",
+        "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc"
+      }
+    },
+    "editor-before": {
+      "keeperPid": 6257,
+      "samples": 59,
+      "keeperMeanCpu": 0.6723872729108593,
+      "keeperMaxCpu": 1.4881264260067624,
+      "keeperZeroSamples": 2,
+      "minLoad1": 0.16162109375,
+      "maxLoad1": 1.1318359375,
+      "lastLoad1": 0.9541015625,
+      "gtk": {
+        "1987": {
+          "comm": "evolution-alarm",
+          "start": "1900",
+          "count": 64,
+          "mean": 0.030986273147171204,
+          "maximum": 0.49679717247532773
+        },
+        "2130": {
+          "comm": "ibus-extension-",
+          "start": "1992",
+          "count": 64,
+          "mean": 0.03872859826467659,
+          "maximum": 0.4977144945433325
+        },
+        "2465": {
+          "comm": "xdg-desktop-por",
+          "start": "2304",
+          "count": 64,
+          "mean": 0.06197119483556842,
+          "maximum": 0.4967327586590256
+        },
+        "2483": {
+          "comm": "xdg-desktop-por",
+          "start": "2323",
+          "count": 64,
+          "mean": 0.015476895711810396,
+          "maximum": 0.49596880842640984
+        },
+        "2550": {
+          "comm": "xdg-desktop-por",
+          "start": "2584",
+          "count": 64,
+          "mean": 0.038755888745823475,
+          "maximum": 0.4977144945433325
+        }
+      },
+      "recipes": {
+        "editor.redact": "passed",
+        "editor.cli_editor": "passed"
+      },
+      "byteExact": false,
+      "keeperAliveAfter": false,
+      "cleanupErrors": [],
+      "clipboard": {}
+    }
+  },
+  "endProcesses": {
+    "liveKeepers": []
+  },
+  "target": {
+    "hostname": "putgd-ubuntu-lab",
+    "kernel": "7.0.0-38-generic",
+    "machine": "x86_64",
+    "os": {
+      "ID": "ubuntu",
+      "VERSION_ID": "26.04",
+      "VARIANT_ID": null
+    },
+    "session_type": "wayland",
+    "desktop": "ubuntu:GNOME",
+    "qt_platform": "wayland"
+  },
+  "host": {
+    "hostname": "box-node-6c328f1c8bd084fb",
+    "kernel": "6.8.0-117-generic",
+    "qemu": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)"
+  },
+  "goldenAfter": "8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4"
+}
