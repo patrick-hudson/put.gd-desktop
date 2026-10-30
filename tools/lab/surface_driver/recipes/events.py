@@ -444,15 +444,19 @@ def _share_session_dconf(ctx: Context, relative):
     ctx.expect(parts and not relative.startswith('/') and all(p not in ('', '.', '..') for p in parts),
                'profile names the session dconf directory relative to the home directory')
     session = '"$HOME"/' + shlex.quote(relative)
+    # One test per line: set -e ignores a failure before the last command of an && list.
     _shell(ctx, 'set -eu\nlink="$XDG_CONFIG_HOME/dconf"\n'
-                'test -d ' + session + ' && test ! -L ' + session + '\n'
-                'test ! -e "$link" && test ! -L "$link"\n'
+                'test -d ' + session + '\n'
+                'test ! -L ' + session + '\n'
+                'test ! -e "$link"\n'
+                'test ! -L "$link"\n'
                 'ln -s ' + session + ' "$link"\n'
                 'test "$(readlink "$link")" = ' + session + '\n',
            'share the session dconf database with the private profile')
     return ('set -eu\nlink="$XDG_CONFIG_HOME/dconf"\n'
             'if test -L "$link" && test "$(readlink "$link")" = ' + session + '; then rm "$link"; fi\n'
-            'test ! -e "$link" && test ! -L "$link"\n')
+            'test ! -e "$link"\n'
+            'test ! -L "$link"\n')
 
 
 def _panel_theme_event(ctx: Context, spec, read, write):

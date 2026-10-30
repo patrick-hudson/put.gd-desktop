@@ -396,6 +396,24 @@ class EventRecipes(unittest.TestCase):
         self.assertIn('rm "$link"', scripts[-1])
         self.assertFalse(state['linked'])
 
+    def test_panel_theme_stops_when_session_dconf_is_missing(self):
+        ctx, scripts, state = self._theme_ctx(follows=True)
+        hook = ctx.shell_hook
+        def shell(script):
+            if 'ln -s' in script:
+                scripts.append(script)
+                return {'returncode': 1, 'stdout': '', 'stderr': 'no session dconf directory'}
+            return hook(script)
+        ctx.shell_hook = shell
+        with self.assertRaisesRegex(RecipeFailed, 'share the session dconf'):
+            events.panel_theme_changed(ctx)
+        # Every precondition is its own command, so set -e stops before ln.
+        lines = scripts[0].splitlines()
+        self.assertLess(lines.index('test -d "$HOME"/.config/dconf'), lines.index('ln -s "$HOME"/.config/dconf "$link"'))
+        self.assertFalse(any('&&' in line for line in lines))
+        self.assertEqual(len(scripts), 1)
+        self.assertFalse(state['linked'])
+
     def test_panel_theme_refuses_dconf_path_outside_home(self):
         for path in ('/home/lab/.config/dconf', '../other/dconf', '.config/../../dconf', '', '.config//dconf'):
             ctx, scripts, _ = self._theme_ctx(follows=True)
