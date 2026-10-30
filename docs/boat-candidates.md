@@ -61,17 +61,23 @@ Each receipt's `ciDifferences` lists the remaining boundaries:
 - Native packages use CI's pinned container digests. All workers build cold on
   Boat without Actions cache restore/save, hosted preinstalled packages or
   Actions upload steps. The compiler cache is private and capped at 256 MiB;
-  `/usr/bin` takes precedence in `PATH`.
+  `/usr/bin` takes precedence in `PATH`. No weekly native package snapshot or
+  its offline install fallback is available.
 - AppImage uses the pinned Ubuntu 24.04 native container rather than GitHub's
   mutable `ubuntu-24.04` hosted VM. It runs `hosted_apt_mirrors.py`, installs Qt
   through fresh aqtinstall 3.3.* / py7zr 1.1.0 rather than the cached Action, and
   exports `QT_PLUGIN_PATH` and `QML2_IMPORT_PATH`. Python is bootstrapped
   before the mirror helper because the minimal container does not preinstall it.
   The retained package inventory identifies the actual distro packages. Hosted preinstalled desktop links can
-  differ; inspect `appimage-build.json`'s `rootDesktopEntry.removedLinks`.
+  differ; inspect `appimage-build.json`'s `rootDesktopEntry.removedLinks`. The
+  cold container uses `install-packages.sh` defaults: four attempts, 900-second
+  overall and 600-second stall limits per attempt, with distro/manager labels.
+  The AppImage CI dependency step instead sets three attempts, 300 seconds
+  overall and 120 seconds stalled, with an AppImage label.
 - UI catalog uses the package matrix's pinned Ubuntu 26.04 digest; CI's linux
   job uses the floating `ubuntu:26.04` tag. Dependency/build/render run blocks
-  are reused; the full CTest suite is separate.
+  are reused; the full CTest suite is separate. The private compiler cache is
+  capped at 256 MiB rather than CI linux's 1 GiB.
 - The fixture package's Debian **Package** field and filename are
   `putgd-lab-fixture`, not `putgd`. Its package target is empty and
   `PUTGD_UPDATE_CHECK=OFF`; it cannot advertise a production update target.

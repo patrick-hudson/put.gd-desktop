@@ -1,0 +1,319 @@
+{
+  "scope": "Interim campaign evidence; AppImage retry remains pending",
+  "commit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+  "allArtifactsPassed": false,
+  "artifacts": [
+    {
+      "artifact": "debian13",
+      "sandboxId": "bx_mns2fsm6",
+      "containerImage": "debian:13@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5",
+      "identity": {
+        "baseVersion": "26.1030.2322",
+        "commitCount": 2322,
+        "dirty": false,
+        "gitCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+        "gitTree": "54e5d22b410c22d078287e77240c335afa81a210",
+        "packageVersion": "26.1030.2322~dev+g573a11c831c2",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1030.2322-dev+g573a11c831c2"
+      },
+      "buildSeconds": 488.946,
+      "collectionSeconds": 124.922,
+      "legacyScpSeconds": null,
+      "legacyScpBytesMatch": null,
+      "transport": {
+        "bytes": 59975680,
+        "kind": "tar",
+        "sha256": "cd17cd51c64e6eedc2b13be07142dbc7339b64729de62002f0295eb18cf7b267"
+      },
+      "cleanup": {
+        "deletedIds": [
+          "bx_mns2fsm6"
+        ],
+        "finalState": "absent",
+        "name": "putgd-573a11c831c2-debian13",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_12ec88bb42554d5abc08d2de27effd68",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T01:06:39.083Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_mns2fsm6"
+            },
+            "sandboxId": "bx_mns2fsm6"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793322401.5192292
+      }
+    },
+    {
+      "artifact": "fedora44",
+      "sandboxId": "bx_mgrzcdm7",
+      "containerImage": "fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+      "identity": {
+        "baseVersion": "26.1030.2322",
+        "commitCount": 2322,
+        "dirty": false,
+        "gitCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+        "gitTree": "54e5d22b410c22d078287e77240c335afa81a210",
+        "packageVersion": "26.1030.2322~dev+g573a11c831c2",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1030.2322-dev+g573a11c831c2"
+      },
+      "buildSeconds": 419.586,
+      "collectionSeconds": 26.424,
+      "legacyScpSeconds": null,
+      "legacyScpBytesMatch": null,
+      "transport": {
+        "bytes": 47339520,
+        "kind": "tar",
+        "sha256": "68ae9cb460e5bacd80e7b8ca36aec2e141b4111f172a0301cf9e0e096e20faf7"
+      },
+      "cleanup": {
+        "deletedIds": [
+          "bx_mgrzcdm7"
+        ],
+        "finalState": "absent",
+        "name": "putgd-573a11c831c2-fedora44",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_3a9e8b51fcf443cdb46e8a897d4938dd",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T01:03:53.743Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_mgrzcdm7"
+            },
+            "sandboxId": "bx_mgrzcdm7"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793322236.1710248
+      }
+    },
+    {
+      "artifact": "lab-fixture",
+      "sandboxId": "bx_veyd2y38",
+      "containerImage": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55",
+      "identity": {
+        "baseVersion": "26.1030.2322",
+        "commitCount": 2322,
+        "dirty": false,
+        "gitCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+        "gitTree": "54e5d22b410c22d078287e77240c335afa81a210",
+        "packageVersion": "26.1030.2322~dev+g573a11c831c2",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1030.2322-dev+g573a11c831c2"
+      },
+      "buildSeconds": 488.999,
+      "collectionSeconds": 407.546,
+      "legacyScpSeconds": null,
+      "legacyScpBytesMatch": null,
+      "transport": {
+        "bytes": 61829120,
+        "kind": "tar",
+        "sha256": "2087bda03e82a76e3ab52de11b546a9e68da59e60240c69942776898e91f9dca"
+      },
+      "cleanup": {
+        "deletedIds": [
+          "bx_veyd2y38"
+        ],
+        "finalState": "absent",
+        "name": "putgd-573a11c831c2-lab-fixture",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_35744445560f4fb9b210261d3e44d336",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T01:11:18.066Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_veyd2y38"
+            },
+            "sandboxId": "bx_veyd2y38"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793322680.7159917
+      }
+    },
+    {
+      "artifact": "ubuntu24.04",
+      "sandboxId": "bx_ta596w8d",
+      "containerImage": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55",
+      "identity": {
+        "baseVersion": "26.1030.2322",
+        "commitCount": 2322,
+        "dirty": false,
+        "gitCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+        "gitTree": "54e5d22b410c22d078287e77240c335afa81a210",
+        "packageVersion": "26.1030.2322~dev+g573a11c831c2",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1030.2322-dev+g573a11c831c2"
+      },
+      "buildSeconds": 1434.788,
+      "collectionSeconds": 26.59,
+      "legacyScpSeconds": null,
+      "legacyScpBytesMatch": null,
+      "transport": {
+        "bytes": 64931840,
+        "kind": "tar",
+        "sha256": "b0b60f78de07cb55bea8eeeaee4b67eb24020407ad75acb29bfafdc6d6dc0833"
+      },
+      "cleanup": {
+        "deletedIds": [
+          "bx_ta596w8d"
+        ],
+        "finalState": "absent",
+        "name": "putgd-573a11c831c2-ubuntu24.04",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_14e951c0839046b2bbd5d99a8d13aba6",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T01:21:17.880Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_ta596w8d"
+            },
+            "sandboxId": "bx_ta596w8d"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793323280.3190117
+      }
+    },
+    {
+      "artifact": "ubuntu26.04",
+      "sandboxId": "bx_zk8g6pwh",
+      "containerImage": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7",
+      "identity": {
+        "baseVersion": "26.1030.2322",
+        "commitCount": 2322,
+        "dirty": false,
+        "gitCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+        "gitTree": "54e5d22b410c22d078287e77240c335afa81a210",
+        "packageVersion": "26.1030.2322~dev+g573a11c831c2",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1030.2322-dev+g573a11c831c2"
+      },
+      "buildSeconds": 552.157,
+      "collectionSeconds": 17.698,
+      "legacyScpSeconds": null,
+      "legacyScpBytesMatch": null,
+      "transport": {
+        "bytes": 60538880,
+        "kind": "tar",
+        "sha256": "a7505221c8d732d242a24f05416e3aea90214574bebbaa96016808f3f3b0041c"
+      },
+      "cleanup": {
+        "deletedIds": [
+          "bx_zk8g6pwh"
+        ],
+        "finalState": "absent",
+        "name": "putgd-573a11c831c2-ubuntu26.04",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_fcf30a4ed0aa477b8772e4261a26d84f",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T01:06:03.577Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_zk8g6pwh"
+            },
+            "sandboxId": "bx_zk8g6pwh"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793322366.0100265
+      }
+    },
+    {
+      "artifact": "ui-catalog",
+      "sandboxId": "bx_vbpp4vva",
+      "containerImage": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7",
+      "identity": {
+        "baseVersion": "26.1030.2322",
+        "commitCount": 2322,
+        "dirty": false,
+        "gitCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+        "gitTree": "54e5d22b410c22d078287e77240c335afa81a210",
+        "packageVersion": "26.1030.2322~dev+g573a11c831c2",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1030.2322-dev+g573a11c831c2"
+      },
+      "buildSeconds": 718.307,
+      "collectionSeconds": 9.234,
+      "legacyScpSeconds": 206.097,
+      "legacyScpBytesMatch": true,
+      "transport": {
+        "bytes": 18821120,
+        "kind": "tar",
+        "sha256": "5be4b26d3fab2f603a155360d1f4ff5308e04c8281d307c424c0a1f16fcd3eec"
+      },
+      "cleanup": {
+        "deletedIds": [
+          "bx_vbpp4vva"
+        ],
+        "finalState": "absent",
+        "name": "putgd-573a11c831c2-ui-catalog",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_b407ef21a3e542018bb9de0ca4f056df",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T01:12:11.422Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_vbpp4vva"
+            },
+            "sandboxId": "bx_vbpp4vva"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793322733.9638968
+      }
+    }
+  ]
+}
