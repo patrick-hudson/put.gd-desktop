@@ -311,7 +311,7 @@ class Running(unittest.TestCase):
         calls=[]
         target.physical=SimpleNamespace(ssh=lambda *args:calls.append(args) or json.dumps({'ok':True,'state':'expired','expiresInSeconds':0}))
         target.run=self.path
-        with patch('tools.lab.surface_driver.target.time.monotonic',return_value=110):
+        with patch('tools.lab.surface_driver.target.time.clock_gettime',return_value=110):
             with self.assertRaisesRegex(RecipeBlocked,'no longer held'):target.heartbeat()
         self.assertEqual(len(calls),1)
 
@@ -724,9 +724,12 @@ class TargetSafety(unittest.TestCase):
         endpoint_check=patch('tools.lab.surface_driver.run.verify_physical_endpoints')
         self.endpoint_check=endpoint_check.start()
         self.addCleanup(endpoint_check.stop)
+        guest_check=patch('tools.lab.surface_driver.run.verify_guest_endpoint')
+        self.guest_check=guest_check.start()
+        self.addCleanup(guest_check.stop)
 
     def arguments(self, host='f44', placement='native', session='owned-session'):
-        return SimpleNamespace(host=host, placement=placement, lock_session=session, boat_id='bx_test')
+        return SimpleNamespace(host=host, placement=placement, lock_session=session, boat_id='bx_test', boat_cli='/trusted/boat')
 
     def target(self, address='192.168.68.70', user='patrick', port=22):
         return SimpleNamespace(physical=SimpleNamespace(config={'host':address,'user':user,'ssh_port':port}),
@@ -838,7 +841,7 @@ class TargetSafety(unittest.TestCase):
                       '--destination','local','--recipes','core_demo','--catalog',str(root),'--build','abcdef',
                       '--out',str(root/str(number)),'--coverage',str(root/'coverage.json')]
                 if session:args+=['--lock-session',session]
-                with patch('tools.lab.surface_driver.run.Target',return_value=target):
+                with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
                     self.assertEqual(main(args),2)
                 for operation in (target.start,target.identity,target.key,target.screenshot):operation.assert_not_called()
                 self.assertIn('blocked',json.loads((root/str(number)/'receipt.json').read_text())['environment'])
@@ -851,7 +854,7 @@ class TargetSafety(unittest.TestCase):
             target.physical=SimpleNamespace(ssh=Mock(side_effect=[
                 json.dumps({'ok':True,'state':'held','expiresInSeconds':30}),
                 json.dumps({'ok':False,'state':'held','expiresInSeconds':29})]))
-            with patch('tools.lab.surface_driver.target.time.monotonic',return_value=101),patch.object(lab,'input_events') as events,patch.object(lab,'key') as key,patch.object(lab,'pointer') as pointer:
+            with patch('tools.lab.surface_driver.target.time.clock_gettime',return_value=101),patch.object(lab,'input_events') as events,patch.object(lab,'key') as key,patch.object(lab,'pointer') as pointer:
                 getattr(target,method)(*arguments)
                 with self.assertRaises(RecipeBlocked):getattr(target,method)(*arguments)
                 self.assertEqual(target.physical.ssh.call_count,2)
@@ -874,7 +877,7 @@ class TargetSafety(unittest.TestCase):
         target=Target.__new__(Target);target.run=Path(private.name);target._rfb=Mock()
         target._lock=('f44','owned-session')
         target.physical=SimpleNamespace(ssh=Mock(return_value=json.dumps({'ok':True,'state':'held','expiresInSeconds':2})))
-        with patch('tools.lab.surface_driver.target.time.monotonic',side_effect=[100,102]):
+        with patch('tools.lab.surface_driver.target.time.clock_gettime',side_effect=[100,102]):
             with self.assertRaises(RecipeBlocked):target.key(['t'])
         target._rfb.key.assert_not_called()
 
@@ -1041,7 +1044,7 @@ class EndpointSafety(unittest.TestCase):
               '--host-profile','pinned.json','--package','deb','--destination','local','--recipes','core_demo',
               '--catalog',str(self.run),'--build','abcdef','--out',str(self.run/'result'),
               '--coverage',str(self.run/'coverage.json')]
-        with patch('tools.lab.surface_driver.run.Target',return_value=self.target):
+        with patch('tools.lab.surface_driver.run.Target',return_value=self.target),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),2)
         self.target.require_lock.assert_called_once_with('f44','owned')
         for operation in (self.target.start,self.target.identity,self.target.screenshot):operation.assert_not_called()
