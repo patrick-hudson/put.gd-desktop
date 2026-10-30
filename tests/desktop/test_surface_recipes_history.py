@@ -763,6 +763,9 @@ class HistoryRecipeTests(unittest.TestCase):
                     return SimpleNamespace(profile_ids=['route-0', 'route-1'], add=lambda *args: None)
                 return super().fixture(name)
             def accessible(self, query):
+                if query.get('name') == 'Change output' and query.get('role') == 'menu item':
+                    return [{'pid': 123, 'popup': {'pid': 123}, 'coordinate_space': 'desktop',
+                             'ancestors': [{'pid': 123, 'role': 'popup menu', 'rect': [300, 400, 480, 200]}]}]
                 # The production OutputLabel QWidget has no native label role.
                 if query.get('role') == 'label' or query.get('within') != [300, 400, 480, 200]:
                     return []
@@ -772,7 +775,7 @@ class HistoryRecipeTests(unittest.TestCase):
         with patch.object(ctx, 'click'), patch.object(history, '_open'), patch.object(history, '_frame'), \
              patch.object(history, '_click_history_node'), patch.object(history, '_wait_menu'), \
              patch.object(history, '_capture_settings'), patch.object(history, '_wait_window',
-                 return_value=dict(x=300, y=400, width=480, height=200)):
+                 side_effect=AssertionError('an untitled runtime popup has no standalone window')):
             history.output_summary(ctx)
 
     def test_dynamic_row_alias_is_restored_when_a_double_click_is_refused(self):
