@@ -26,6 +26,7 @@ from tools.lab.surface_driver.run import discover, guard_target, main, native_en
 from tools.lab import desktop_lock, lab
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
+from tools.lab import lab
 try:
     from PIL import Image
 except ImportError:
@@ -369,6 +370,120 @@ method return time=100.2 sender=:1.3 -> destination=:1.2 serial=9 reply_serial=4
         self.assertEqual(parse_notifications(raw,101),[])
 
 
+class CleanupShell(unittest.TestCase):
+    """Context.shell(cleanup=True): restoration that outlives the recipe deadline."""
+    def setUp(self):
+        self.calls=[]
+        target=FakeTarget();target.run=Path('/tmp/sd-test-run')
+        target.execute=lambda script,timeout=60:self.calls.append((script,timeout)) or {'returncode':0,'stdout':'ran','stderr':''}
+        self.target=target
+        self.ctx=DriverContext(target,dict(desktop='mint-cinnamon-x11',host='boat',placement='guest',package='deb',destination='local'),
+                               load_profile('mint-cinnamon-x11'),'/tmp','/tmp')
+        self.ctx._deadline=time.monotonic()-1  # The recipe has overrun.
+
+    def test_cleanup_call_after_the_deadline_still_runs(self):
+        with patch.object(lab,'verify_owned_guest') as owned:
+            self.assertEqual(self.ctx.shell('restore',cleanup=True)['stdout'],'ran')
+            self.assertEqual(self.ctx.shell('restore',timeout=180,cleanup=True)['stdout'],'ran')
+        # Its own bounded timeout (30 s by default), never the clipped remainder.
+        self.assertEqual([c[1] for c in self.calls],[30.0,180])
+        self.assertEqual(owned.call_count,2)
+        with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
+            self.ctx.shell('ordinary')
+        self.assertEqual(len(self.calls),2)
+
+    def test_cleanup_keeps_the_target_safety_checks(self):
+        with patch.object(lab,'verify_owned_guest',side_effect=lab.LabError('Guest preflight requires an owned disposable overlay')):
+            with self.assertRaisesRegex(RecipeBlocked,'owned disposable overlay'):
+                self.ctx.shell('restore',cleanup=True)
+        self.assertFalse(self.calls)
+        # Physical targets: the desktop-lock heartbeat lives in Target.execute.
+        self.target.physical=object()
+        with patch.object(lab,'verify_owned_guest') as owned:
+            self.ctx.shell('restore',cleanup=True)
+        owned.assert_not_called()
+        self.assertEqual(len(self.calls),1)
+
+
+class CleanupShellBounds(unittest.TestCase):
+    """Validator B2, N1 and N3 on #680: the cleanup hook's own boundaries."""
+    env=dict(desktop='mint-cinnamon-x11',host='boat',placement='guest',package='deb',destination='local')
+
+    def context(self,target):
+        return DriverContext(target,self.env,load_profile('mint-cinnamon-x11'),'/tmp','/tmp')
+
+    def test_recipe_alarm_is_deferred_until_a_cleanup_call_completes(self):
+        # run.py's SIGALRM fired 0.05 s into a restore and killed the transport
+        # before the script reached the target. A real subprocess stands in.
+        with tempfile.TemporaryDirectory() as temporary:
+            marker=Path(temporary)/'restored'
+            target=FakeTarget();target.run=Path('/tmp/sd-test-run')
+            def execute(script,timeout=60):
+                subprocess.run([sys.executable,'-c','import pathlib,sys,time\ntime.sleep(.3)\npathlib.Path(sys.argv[1]).write_text("done")',
+                                str(marker)],check=True,timeout=timeout)
+                return {'returncode':0,'stdout':'ran','stderr':''}
+            target.execute=execute
+            ctx=self.context(target)
+            def deadline(_signum,_frame):
+                raise RecipeFailed('recipe deadline exceeded: links.open')
+            previous=signal.signal(signal.SIGALRM,deadline)
+            try:
+                signal.setitimer(signal.ITIMER_REAL,.05)
+                with patch.object(lab,'verify_owned_guest'):
+                    with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
+                        ctx.shell('restore',timeout=30,cleanup=True)
+                        time.sleep(1)  # Not reached: the pending alarm fires on return.
+            finally:
+                signal.setitimer(signal.ITIMER_REAL,0)
+                signal.signal(signal.SIGALRM,previous)
+            self.assertEqual(marker.read_text(),'done')
+            self.assertNotIn(signal.SIGALRM,signal.pthread_sigmask(signal.SIG_BLOCK,[]))
+
+    def test_input_release_never_leaves_the_alarm_blocked(self):
+        # An alarm already due runs its handler inside the blocking
+        # pthread_sigmask call, after the mask changed (CPython checks signals
+        # there). Emulate exactly that; the previous mask must still return.
+        from tools.lab.surface_driver import target as target_module
+        real=signal.pthread_sigmask
+        def due(how,mask):
+            previous=real(how,mask)
+            if how==signal.SIG_BLOCK and signal.SIGALRM in set(mask):
+                raise RecipeFailed('recipe deadline exceeded: links.open')
+            return previous
+        with patch.object(target_module.signal,'pthread_sigmask',side_effect=due):
+            with self.assertRaisesRegex(RecipeFailed,'deadline'):
+                with target_module.input_release():
+                    self.fail('release must not run after the alarm')
+        self.assertNotIn(signal.SIGALRM,real(signal.SIG_BLOCK,()))
+
+    def test_cleanup_timeouts_are_capped(self):
+        calls=[]
+        target=FakeTarget();target.run=Path('/tmp/sd-test-run')
+        target.execute=lambda script,timeout=60:calls.append(timeout) or {'returncode':0,'stdout':'','stderr':''}
+        with patch.object(lab,'verify_owned_guest'):
+            self.context(target).shell('restore',timeout=86400,cleanup=True)
+        self.assertEqual(calls,[600])
+
+    def test_physical_cleanup_rechecks_the_lock_before_every_command(self):
+        # A heartbeat seconds old must not stand in for a lease since lost.
+        sent=[]
+        def ssh(run,script,timeout=None):
+            if 'SD_LOCK' in script:
+                sent.append('lock')
+                return json.dumps({'ok':True,'state':'released'})
+            sent.append('command')
+            return '{}' if 'session_environment' in script else json.dumps({'returncode':0,'stdout':'','stderr':''})
+        target=Target.__new__(Target)
+        target.physical=SimpleNamespace(ssh=ssh,config={'profile':{'name':'mint-cinnamon-x11'}})
+        target.run,target.root,target.bin_dir=Path('/tmp/sd-test-run'),'/tmp/sd-test',None
+        target._lock=('k72','session-1')
+        target._last_heartbeat=time.clock_gettime(time.CLOCK_BOOTTIME)
+        target._lock_valid_until=target._last_heartbeat+1800
+        with self.assertRaisesRegex(RecipeBlocked,'no longer held'):
+            self.context(target).shell('restore',timeout=180,cleanup=True)
+        self.assertEqual(sent,['lock'])
+
+
 class InputFoundations(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
@@ -617,7 +732,7 @@ class InputFoundations(unittest.TestCase):
         def run(*args):
             if args[0]=='xprop' and args[1]=='-root':return 'window id # 0x14'
             if args[1]=='getwindowpid':raise subprocess.CalledProcessError(1,args)
-            if args[1]=='getwindowgeometry':return 'X=0\nY=0\nWIDTH=100\nHEIGHT=80'
+            if args[0]=='xwininfo':return '  Absolute upper-left X:  0\n  Absolute upper-left Y:  0\n  Width: 100\n  Height: 80\n  Override Redirect State: no\n'
             if args[1]=='getwindowname':return 'Other client without PID'
             return ''
         with patch.object(probe.subprocess,'run',return_value=SimpleNamespace(stdout='20')),patch.object(probe,'run',side_effect=run):
@@ -680,15 +795,19 @@ class InputFoundations(unittest.TestCase):
         self.ctx.profile['notifications']['actions_available']=True
         notices=[{'id':72,'summary':'Synthetic notice','actions':['default','Show'],'action_events':[]}]
         self.ctx.notifications=lambda:notices
-        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20]}
-        self.ctx.accessible=lambda query:[node]
-        clicks=[]
-        def click(query):
-            clicks.append(query);notices[0]['action_events'].append({'action':'default'})
-        self.ctx.click_accessible=click
+        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20],'application':'cinnamon'}
+        queries=[];self.ctx.accessible=lambda query:queries.append(query) or [node]
+        picks=[];self.ctx._probe=lambda name,query:picks.append(query) or {'ok':True}
+        events=[]
+        def pointer(*args,**kwargs):
+            events.append(args)
+            if len(args)>4 and args[4] is False:notices[0]['action_events'].append({'action':'default'})
+        self.ctx.target.pointer=pointer
         self.ctx.notification_action(72)
-        self.assertEqual(clicks[0]['pid'],50)
-        self.assertIn('application',clicks[0])
+        # One owned title lookup, hover first, then press/release on the title.
+        self.assertEqual(len(queries),1);self.assertIn('application',queries[0])
+        self.assertEqual(events[0],(50,20,200,200));self.assertEqual([e[4] for e in events[1:]],[True,False])
+        self.assertTrue(all(q['desktop_node'] is node and q['point']==(50,20) for q in picks))
         notices[0]['closed']={'reason':1}
         with self.assertRaisesRegex(RecipeBlocked,'closed'):
             self.ctx.notification_action(72)
@@ -700,19 +819,24 @@ class InputFoundations(unittest.TestCase):
                'ancestors':[{'role':'notification','rect':[0,0,200,150]},
                             {'role':'panel','rect':[20,10,80,20]}]}
         button={'name':'Retry','pid':50,'role':'push button','rect':[20,100,80,20]}
+        outside={'name':'Retry','pid':50,'role':'push button','rect':[20,170,80,20]}
         self.ctx.notifications=lambda:[notice]
-        self.ctx.accessible=lambda query:[title if query['name']=='Synthetic notice' else button]
-        clicked=[]
-        def click(query):
-            clicked.append(query);notice['action_events'].append({'action':'retry'})
-        self.ctx.click_accessible=click
-        self.ctx.hover_accessible=lambda query:None
+        self.ctx.accessible=lambda query:[title] if query['name']=='Synthetic notice' else [button,outside]
+        self.ctx._probe=lambda name,query:{'ok':True}
+        events=[]
+        def pointer(*args,**kwargs):
+            events.append(args)
+            if len(args)>4 and args[4] is False:notice['action_events'].append({'action':'retry'})
+        self.ctx.target.pointer=pointer
         self.ctx.notification_action(72,'retry')
-        self.assertEqual(clicked[0]['within'],[0,0,200,150])
+        self.assertEqual(events[0][:2],(60,20))
+        self.assertEqual([e[:2] for e in events[1:]],[(60,110),(60,110)])
 
     def test_declared_notification_input_gap_blocks_before_observation(self):
+        self.ctx.profile['notifications']=dict(self.ctx.profile['notifications'],actions_available=False,
+                                               reason='Declared desktop gap (#670)')
         self.ctx.notifications=lambda: self.fail('gap must withhold all input before observation')
-        with self.assertRaisesRegex(RecipeBlocked,'Two boat guest attempts') as error:
+        with self.assertRaisesRegex(RecipeBlocked,'Declared desktop gap') as error:
             self.ctx.notification_action(72)
         self.assertEqual(error.exception.issue,670)
 

@@ -34,8 +34,11 @@ def input_release():
     Do not cancel/rearm the timer: a pending deadline must still fail the
     recipe. QMP and RFB have socket timeouts independent of SIGALRM.
     """
-    previous = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+    # Read first: an alarm already due is raised by the blocking call itself,
+    # after it changed the mask, and must not leave SIGALRM blocked for good.
+    previous = signal.pthread_sigmask(signal.SIG_BLOCK, ())
     try:
+        signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
         yield
     finally:
         signal.pthread_sigmask(signal.SIG_SETMASK, previous)
@@ -142,6 +145,11 @@ while True:
     sys.stdout.write(json.dumps(response) + '\n')
     sys.stdout.flush()
 '''
+
+
+def probe_mutates(name, query):
+    """Probe requests that act on the desktop rather than only observing it."""
+    return name == 'foreground' and bool(query.get('raise') or query.get('settle'))
 
 
 def qcodes(chord):
@@ -369,8 +377,10 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         Keeping the X11 interpreter alive removes SSH startup from each
         character and drag step. Accessibility reads use fresh children on
         that channel. No witness is cached; a lost channel blocks input.
+        A request that can change the desktop (foreground raise: xdotool
+        windowactivate/windowraise) forces the lock heartbeat, like real input.
         """
-        self.heartbeat()
+        self.heartbeat(force=probe_mutates(name, query))
         if self._probe_failed:
             raise RecipeBlocked('persistent desktop probe failed; start a new run before further input')
         if self._probe_process is None:
