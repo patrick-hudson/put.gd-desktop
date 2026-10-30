@@ -1206,6 +1206,8 @@ def layout(query):
         for w in x11_windows({'title': '.*', 'owned': False}):
             frame = w.get('frame') or {k: w[k] for k in ('x', 'y', 'width', 'height')}
             chain = x11_ancestors(w['window_id'])
+            if len(chain) == 1 and w['window_id'] not in rank:
+                continue  # the root window itself (xdotool search matches it)
             top = chain[-2] if len(chain) > 1 else chain[-1]
             rows.append({'id': w['window_id'], 'title': w['name'], 'pid': w['pid'],
                          'owned': bool(w['pid'] and owned(w['pid'])),

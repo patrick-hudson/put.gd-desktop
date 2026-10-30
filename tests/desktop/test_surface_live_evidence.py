@@ -423,15 +423,16 @@ class LayoutProbe(unittest.TestCase):
 '''
         windows = [{'window_id': str(i), 'name': n, 'pid': pid, 'x': 0, 'y': 0, 'width': 1280, 'height': 760,
                     'frame': None, 'states': {'minimized': False}} for i, n, pid in
-                   ((0x500, 'put.gd', 7), (0x300, 'Desktop', 8), (0x210, 'mutter guard window', 9))]
+                   ((0x500, 'put.gd', 7), (0x300, 'Desktop', 8), (0x210, 'mutter guard window', 9), (0x21d, '', None))]
         with patch.dict(probe.os.environ, {'XDG_SESSION_TYPE': 'x11'}), \
              patch.object(probe, 'run', return_value=tree), patch.object(probe, 'x11_windows', return_value=windows), \
-             patch.object(probe, 'x11_ancestors', side_effect=lambda wid: [wid, str(0x21d)]), \
+             patch.object(probe, 'x11_ancestors', side_effect=lambda wid: [wid] if wid == str(0x21d) else [wid, str(0x21d)]), \
              patch.object(probe, 'owned', side_effect=lambda pid: pid == 7):
             rows = {r['title']: r for r in probe.layout({})['windows']}
         self.assertGreater(rows['put.gd']['stack'], rows['Desktop']['stack'])
         self.assertGreater(rows['Desktop']['stack'], rows['mutter guard window']['stack'])
         self.assertTrue(rows['put.gd']['owned'])
+        self.assertNotIn('', rows)  # the root window is never an occluder
 
 
 class NaFinalBytes(Base):
