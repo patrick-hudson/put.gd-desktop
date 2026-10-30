@@ -25,6 +25,8 @@ class FakeContext(Context):
     def __init__(self):
         self.profile = json.loads((ROOT / 'tools/lab/surface_driver/profiles/mint-cinnamon-x11.d/tray.json').read_text())
         # Exercise recipe logic with a capable fake; never desktop evidence.
+        self.profile['tray'].update(notification_prepare_cli=False, menu_prepare_background=False)
+        self.profile['session']='x11'
         self.profile['tray']['icon'] = {'name': 'put.gd', 'application': 'cinnamon'}
         self.profile.setdefault('notifications', {})['accessible'] = {'application': 'cinnamon*'}
         self.events = []
@@ -57,6 +59,13 @@ class FakeContext(Context):
         if name == 'events.clipboard':
             self.clipboard = 'putgd synthetic clipboard text'
             return Fixture(text=self.clipboard)
+        if name == 'tray-attention':
+            self.obstruction = True
+            self._invoke('clipboard')
+            self.obstruction = False
+            op = copy.deepcopy(self.operations[-1])
+            return Fixture(operation_id=op['id'], state=op,
+                           retry=lambda: self.call('operation.retryLocalSave', {'id': op['id']}))
         if name == 'upload':
             self.notices.append({'id': 1, 'summary': 'Upload complete'})
             return Fixture(state={'state': 'completed'})
@@ -70,6 +79,13 @@ class FakeContext(Context):
         assert len(nodes) == 1
         self.click_at(*tray._point(self, nodes[0]), button=button)
         return nodes[0]
+
+    def double_click_accessible(self, query, button='left'):
+        self.events.append(('double_click_accessible', query, button))
+        return self.click_accessible(query, button)
+
+    def scroll_accessible(self, query, clicks):
+        self.events.append(('scroll_accessible', query, clicks))
 
     def hover_accessible(self, query):
         self.events.append(('hover', query))
@@ -270,7 +286,7 @@ class FakeContext(Context):
             output = 'putgd-diagnostics-20261029-000000Z.zip'
         return {'returncode': 0, 'stdout': output, 'stderr': ''}
 
-    def frame(self, label, window=None, reference=None):
+    def frame(self, label, window=None, reference=None, **options):
         self.events.append(('frame', label, reference))
 
     def clipboard_text(self):
@@ -300,6 +316,32 @@ class FakeContext(Context):
 class TrayRecipesTest(unittest.TestCase):
     def recipes(self):
         return [r for r in REGISTRY if r.function.__module__ == tray.__name__]
+
+    def test_available_scenarios_resolve_the_core_fixture(self):
+        cases = [(tray.recording_icon, 'tray-active-recording'), (tray.cancel_uploads, 'tray-two-uploads'),
+                 (tray.update_available, 'tray-update-available'), (tray.quit_resident, 'resident-lifecycle'),
+                 (tray.qt_fallback, 'tray-qt-fallback'), (tray.other_client_menu, 'shortcut-other-menu'),
+                 (tray.recorder_ignores_shortcut, 'shortcut-settings-recorder'),
+                 (tray.recorder_releases_grabs, 'shortcut-settings-recorder'),
+                 (tray.keyboard_layout_change, 'shortcut-keyboard-layout'),
+                 (tray.action_rejected, 'settings-no-output')]
+        for function, name in cases:
+            with self.subTest(recipe=function.__name__):
+                ctx = FakeContext()
+                fixture = ctx.fixture
+                def unavailable(requested, **options):
+                    if requested == name:
+                        ctx.events.append(('fixture', requested))
+                        raise RecipeBlocked('fixture unavailable in contract fake', 670)
+                    return fixture(requested, **options)
+                ctx.fixture = unavailable
+                with self.assertRaises(RecipeBlocked):
+                    function(ctx)
+                self.assertIn(('fixture', name), ctx.events)
+
+    def test_automatic_cleanup_notice_has_restart_and_delay_budget(self):
+        entry = next(r for r in self.recipes() if 'notification.incomplete-uploads' in r.interactions)
+        self.assertGreaterEqual(entry.timeout, 240)
 
     def test_exact_ownership_and_no_missing_or_duplicate_ids(self):
         owners = json.loads((ROOT / 'tools/lab/surface_driver/ownership.json').read_text())['owners']
@@ -399,14 +441,13 @@ class TrayRecipesTest(unittest.TestCase):
         with self.assertRaises(RecipeFailed):
             tray.tray_menu_change_output(ctx)
 
-    def test_gnome_gestures_block_before_incorrect_single_click(self):
-        for function in (tray.activate, tray.scroll_noop):
-            ctx = FakeContext()
-            ctx.profile['tray']['activation_clicks'] = 2
-            with self.assertRaises(RecipeBlocked) as caught:
-                function(ctx)
-            self.assertEqual(caught.exception.issue, 831)
-            self.assertEqual(ctx.events, [])
+    def test_desktop_gestures_use_public_guarded_apis(self):
+        ctx = FakeContext()
+        ctx.profile['tray']['activation_clicks'] = 2
+        tray.activate(ctx)
+        self.assertTrue(any(e[0] == 'double_click_accessible' for e in ctx.events))
+        tray.scroll_noop(ctx)
+        self.assertEqual([e[2] for e in ctx.events if e[0] == 'scroll_accessible'], [2, -2])
 
     def test_hover_is_guarded_before_the_gnome_icon_click(self):
         ctx = FakeContext()
@@ -499,11 +540,19 @@ class TrayRecipesTest(unittest.TestCase):
         tray.shortcut_region(ctx)
         self.assertEqual(sum(e == ('keys', ('Esc',)) for e in ctx.events), 1)
 
-    def test_record_selector_alone_cannot_prove_the_full_toggle(self):
+    def test_record_toggle_adopts_active_recording_after_selector_cancel(self):
         ctx = FakeContext()
-        with self.assertRaisesRegex(RecipeBlocked, 'start/stop/raise'):
+        fixture = ctx.fixture
+        def unavailable(name, **options):
+            if name == 'tray-active-recording':
+                ctx.events.append(('fixture', name))
+                raise RecipeBlocked('synthetic recording unavailable', 672)
+            return fixture(name, **options)
+        ctx.fixture = unavailable
+        with self.assertRaises(RecipeBlocked) as error:
             tray.shortcut_record(ctx)
-        self.assertEqual(sum(e == ('keys', ('Esc',)) for e in ctx.events), 1)
+        self.assertEqual(error.exception.issue, 672)
+        self.assertIn(('fixture', 'tray-active-recording'), ctx.events)
 
     def test_refused_recording_selector_guard_does_not_retry_keyboard_cleanup(self):
         ctx = FakeContext()
@@ -515,15 +564,14 @@ class TrayRecipesTest(unittest.TestCase):
         self.assertEqual([e for e in ctx.events if e[0] == 'keys'],
                          [('keys', (tray.CHORDS['record'],))])
 
-    def test_native_selector_keyboard_grab_gap_blocks_without_retry(self):
+    def test_refused_native_grab_is_not_relabelled_as_fixed_issue_802(self):
         ctx = FakeContext()
-        ctx.focus = lambda *a: (_ for _ in ()).throw(RecipeFailed(
-            "keyboard focus 'put.gd' (override-redirect target does not take keyboard focus)"))
-        with self.assertRaises(RecipeBlocked) as caught:
-            tray.shortcut_record(ctx)
-        self.assertEqual(caught.exception.issue, 802)
-        self.assertEqual([e for e in ctx.events if e[0] == 'keys'],
-                         [('keys', (tray.CHORDS['record'],))])
+        def refused(*args, **kwargs):
+            raise RecipeFailed('override-redirect target does not take keyboard focus')
+        ctx.focus = refused
+        with self.assertRaises(RecipeFailed):
+            tray.shortcut_region(ctx)
+        self.assertEqual([e for e in ctx.events if e[0] == 'keys'], [('keys', ('Ctrl+Shift+1',))])
 
     def test_missing_shortcut_channel_blocks_without_pressing_the_shortcut(self):
         ctx = FakeContext()
