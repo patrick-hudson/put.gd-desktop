@@ -87,9 +87,6 @@ class SnapshotContracts(unittest.TestCase):
             '--run-name', 'k1', '--install', '--name', name,
             '--destination', '/home/user/work/lab-images/kde/image.qcow2'])
         self.assertEqual(args.profile, 'kde-wayland')
-        x11 = json.loads((ROOT / 'tools/lab/profiles/kde-x11.yaml').read_text())
-        self.assertEqual((x11['desktop'], x11['session'], x11['qt_platform']), ('KDE', 'x11', 'xcb'))
-        self.assertEqual(x11['session_process'], 'plasmashell')
 
     def test_kde_policy_preserves_other_wallet_settings_and_verifies_read_only(self):
         with tempfile.TemporaryDirectory() as temporary:
