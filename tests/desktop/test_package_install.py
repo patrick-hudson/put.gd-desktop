@@ -1,5 +1,6 @@
 """Run each supervisor in its own process: it adopts only its package descendants."""
 import json
+import importlib.util
 import os
 from pathlib import Path
 import subprocess
@@ -35,6 +36,52 @@ print(json.dumps({'result': result, 'queries': queries}))
             assert (Path(directory) / 'progress.json').is_file()
             assert (Path(directory) / 'result.json').is_file()
             return json.loads(result.stdout), (Path(directory) / 'apt.log').read_text()
+
+    def test_output_rejects_symlinks_and_hardlinks_without_truncating_target(self):
+        spec = importlib.util.spec_from_file_location('package_install', ROOT / 'tools/lab/package_install.py')
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / 'protected'
+            target.write_text('preserved')
+            for name, create in (('apt.log', lambda p: p.symlink_to(target)),
+                                 ('progress.tmp', lambda p: p.symlink_to(target)),
+                                 ('result.tmp', lambda p: os.link(target, p))):
+                path = root / name
+                create(path)
+                with self.subTest(name=name), self.assertRaises((OSError, ValueError)):
+                    with helper.output_file(path):
+                        pass
+                self.assertEqual(target.read_text(), 'preserved')
+                path.unlink()
+
+    def test_directory_rejects_symlink_and_wrong_owner_and_pins_inode(self):
+        spec = importlib.util.spec_from_file_location('package_install', ROOT / 'tools/lab/package_install.py')
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        old = os.open('.', os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                run = root / 'run'
+                run.mkdir(mode=0o700)
+                link = root / 'link'
+                link.symlink_to(run)
+                with self.assertRaises(OSError):
+                    helper.enter_directory(link, os.getuid())
+                with self.assertRaises(ValueError):
+                    helper.enter_directory(run, os.getuid() + 1)
+                helper.enter_directory(run, os.getuid())
+                run.rename(root / 'moved')
+                run.symlink_to(root)
+                helper.save(Path('result.json'), {'ok': True})
+                self.assertTrue((root / 'moved/result.json').is_file())
+                self.assertFalse((root / 'result.json').exists())
+                os.fchdir(old)
+        finally:
+            os.fchdir(old)
+            os.close(old)
 
     def test_timeout_waits_for_exact_descendants_then_verifies_package(self):
         output, log = self.run_supervisor(

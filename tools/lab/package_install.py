@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded disposable-guest apt supervisor. Installed root-owned by bootstrap."""
+"""Bounded disposable-guest apt supervisor. Staged root-owned in each disposable overlay."""
 import argparse
 import ctypes
 import json
@@ -7,14 +7,54 @@ import os
 from pathlib import Path
 import select
 import signal
+import stat
 import subprocess
 import time
 
 
+def output_file(path):
+    # Never truncate before checking: the lab user can plant links or special
+    # files in this directory while the supervisor runs as root.
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.geteuid():
+            raise ValueError('Output must be an owned single-link regular file')
+        # The invoking lab user collects these root-owned artifacts over SSH;
+        # the containing pinned directory remains private (0700).
+        os.fchmod(fd, 0o644)
+        os.ftruncate(fd, 0)
+        stream = os.fdopen(fd, 'w')
+    except BaseException:
+        os.close(fd)
+        raise
+    return stream
+
+
 def save(path, value):
     temporary = path.with_suffix('.tmp')
-    temporary.write_text(json.dumps(value, indent=2) + '\n')
+    with output_file(temporary) as stream:
+        stream.write(json.dumps(value, indent=2) + '\n')
+    # rename replaces a planted destination link; it never follows it.
     temporary.replace(path)
+
+
+def enter_directory(path, owner):
+    # Pin every component without resolving symlinks. Subsequent relative IO
+    # stays in this inode even if the lab user renames/replaces its parent.
+    path = Path(os.path.abspath(path))
+    fd = os.open('/', os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for component in path.parts[1:]:
+            child = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = child
+        info = os.fstat(fd)
+        if info.st_uid != owner or info.st_mode & 0o077:
+            raise ValueError('Install directory must be private and owned by the invoking user')
+        os.fchdir(fd)
+    finally:
+        os.close(fd)
 
 
 class OwnedProcesses:
@@ -94,7 +134,7 @@ def supervise(commands, directory, timeout, recovery, package='putgd'):
               'timedOut': False, 'aborted': False, 'ownedProcesses': [], 'exitCodes': []}
     try:
         save(directory / 'progress.json', report)
-        with (directory / 'apt.log').open('w') as log:
+        with output_file(directory / 'apt.log') as log:
             for arguments in commands:
                 # Never start the next apt command after the initial budget expires.
                 if report['timedOut'] or time.monotonic() - started >= timeout:
@@ -171,11 +211,12 @@ def main():
     args = parser.parse_args()
     if args.timeout <= 0 or args.recovery <= 0:
         parser.error('Timeouts must be positive seconds')
-    directory = args.directory.resolve(strict=True)
+    enter_directory(args.directory, int(os.environ.get('SUDO_UID', os.getuid())))
+    directory = Path('.')
     # This fixed helper is the only newly privileged entrypoint; it cannot execute
     # caller-selected commands. The guest already permits arbitrary DEB installs.
     supervise([['apt-get', 'update'], ['apt-get', 'install', '--reinstall', '-y',
-               str(directory / 'package.deb')]], directory, args.timeout, args.recovery)
+               './package.deb']], directory, args.timeout, args.recovery)
 
 
 if __name__ == '__main__':

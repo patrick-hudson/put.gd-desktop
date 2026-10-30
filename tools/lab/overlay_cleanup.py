@@ -149,7 +149,9 @@ def _run_state(run, images_root=None):
     run = _no_symlinks(run)
     allowed = [ROOT / 'work/lab-runs', ROOT / 'work/windows/runs']
     if run.parent not in allowed or not run.is_dir() or run.stat().st_uid != os.getuid():
-        raise CleanupError('Cleanup requires a direct owned run under a canonical lab runs directory')
+        raise CleanupError('Cleanup requires a direct owned run under a canonical lab runs directory; '
+                           'for a pre-existing outside run, stop and relocate it using '
+                           'docs/vm-lab.md#retire-a-pre-existing-run-outside-the-canonical-root')
     if (run / 'manifest.json').exists() or (run / 'manifest.json').is_symlink():
         raise CleanupError('Sealed bundles are not disposable overlays')
     info = _read_json(run / 'state.json')

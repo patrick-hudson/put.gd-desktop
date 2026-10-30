@@ -237,6 +237,18 @@ class OverlayCleanup(unittest.TestCase):
                 with self.assertRaisesRegex(cleanup.CleanupError, 'not fully visible'):
                     self.process_probe(self.run, self.run / 'disk.qcow2', lock_process=lock)
 
+    def test_legacy_outside_run_requires_stopped_relocation_before_cleanup(self):
+        outside = self.root / 'legacy-run'
+        self.run.rename(outside)
+        with self.assertRaisesRegex(cleanup.CleanupError, 'canonical.*stop and relocate.*docs/vm-lab.md'):
+            cleanup.cleanup(outside)
+        self.assertTrue((outside / 'disk.qcow2').exists())
+        # Relocating the stopped bundle back restores its recorded paths. A
+        # different canonical destination also requires updating state/evidence.
+        outside.rename(self.run)
+        cleanup.cleanup(self.run)
+        self.assertFalse((self.run / 'disk.qcow2').exists())
+
     def test_symlink_evidence_state_or_run_and_multilink_disk_refuse(self):
         original = self.run / 'tests/final/frame.ppm'
         retained = self.root / 'frame'

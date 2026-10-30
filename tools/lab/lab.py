@@ -756,6 +756,11 @@ def launch(args):
         raise LabError(f'Run must be a direct child of canonical {root}; use --run {root}/c1. '
                        'Keep the run name short; if needed use a checkout at a shorter real path '
                        'and check resolved Unix socket paths against the 107-byte limit.')
+    sockets = [run / name for name in ('qmp.sock', 'vnc.sock')]
+    checked = command([sys.executable, HERE.parent / 'diagnostics/check_socket_paths.py',
+                       '--socket', *sockets], check=False)
+    if checked.returncode:
+        raise LabError('Run Unix socket paths exceed the 107-byte limit: ' + checked.stdout.strip())
     profile = load_profile(args.profile)
     golden = Path(args.golden).resolve()
     if not golden.is_file():
@@ -1664,6 +1669,31 @@ def verify_installed_binaries(run, deb):
     return expected
 
 
+def stage_install_helper(run, remote, helper, digest):
+    # Old immutable goldens grant apt-get, not this new helper. Use that existing
+    # authority only in the disposable overlay. Abort update in its first hook:
+    # repository/network work belongs exclusively to the bounded supervisor.
+    hook = (f'set -eu; install -d -m 755 /usr/local/lib/putgd-lab; '
+            f'install -o root -g root -m 755 "SOURCE" {helper}; '
+            f'echo "{digest}  {helper}" | sha256sum -c -; '
+            'printf "lab ALL=(root) NOPASSWD: /usr/local/lib/putgd-lab/package_install.py\\n" '
+            '> /etc/sudoers.d/putgd-lab-install; '
+            'chmod 440 /etc/sudoers.d/putgd-lab-install; '
+            'visudo -cf /etc/sudoers.d/putgd-lab-install; exit 1')
+    # sudo resets HOME on some guests, so expand the caller's path before sudo.
+    before, after = hook.split('SOURCE')
+    script = (f'set -eu\nsource="$HOME/{remote}/package_install.py"\n'
+              f'echo "{digest}  $source" | sha256sum -c -\n'
+              f'hook={shlex.quote(before)}"$source"{shlex.quote(after)}\n'
+              'sudo -n /usr/bin/apt-get -o "APT::Update::Pre-Invoke::=$hook" update '
+              '> ~/putgd-lab/' + remote.split('/')[-1] + '/staging.log 2>&1 || true\n'
+              f'test -x {helper}\n'
+              f'echo "{digest}  {helper}" | sha256sum -c -\n'
+              f'test "$(stat -c %u:%a {helper})" = 0:755\n'
+              f'sudo -n -l {helper} /tmp/check 1 1 >/dev/null\n')
+    ssh(run, script)
+
+
 def install_package(run, deb, install_timeout=None, install_recovery_timeout=None):
     if Path(deb).suffix.lower() != '.deb':
         raise LabError('Guest apt installation requires a .deb package; RPM/dnf installation uses physical.py')
@@ -1675,14 +1705,6 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
         raise LabError('Install and recovery timeouts must be positive integer seconds')
     helper = '/usr/local/lib/putgd-lab/package_install.py'
     helper_sha256 = hash_file(HERE / 'package_install.py')
-    # Missing or stale privileged code must fail before apt starts, including on old goldens.
-    try:
-        ssh(run, f'test -x {helper} && '
-                 f'[ "$(sha256sum {helper} | cut -d\" \" -f1)" = {helper_sha256} ] && '
-                 f'sudo -n -l {helper} /tmp/check 1 1 >/dev/null\n')
-    except LabError as error:
-        raise LabError('Guest requires the current root-owned package_install.py bootstrap helper; '
-                       'refresh bootstrap in this disposable overlay before installing. Apt was not started.') from error
     token = 'install-' + uuid.uuid4().hex
     def release_lock():
         # Do not clear a replacement job if an operator reconciled this one.
@@ -1690,17 +1712,37 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
                  'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\nfi\n')
     remote = 'putgd-lab/' + token
     evidence = Path(run) / token
-    evidence.mkdir(mode=0o700)
-    write_json(evidence / 'request.json', {'timeoutSeconds': timeout, 'recoverySeconds': recovery,
-                                         'remoteDirectory': remote, 'helperSha256': helper_sha256})
-    # An unresolved call retains the lock: a blind retry cannot race its dpkg.
-    ssh(run, f'set -eu\numask 077\nmkdir -p ~/putgd-lab\n'
-             f'mkdir ~/putgd-lab/install-active\nmkdir ~/{remote}\n'
-             f'printf %s {token} > ~/putgd-lab/install-active/job\n')
+    # Acquire before staging or creating host evidence. A refused retry reports
+    # the held job's durable state and leaves no empty host install directory.
+    held = ssh(run, f'set -eu\numask 077\nmkdir -p ~/putgd-lab\n'
+        f'if mkdir ~/putgd-lab/install-active 2>/dev/null; then\n'
+        f'printf %s {token} > ~/putgd-lab/install-active/job\nmkdir ~/{remote}\n'
+        "else\npython3 - <<'PYLOCK'\n"
+        'import json, pathlib, re\n'
+        'root = pathlib.Path.home() / "putgd-lab"\n'
+        'try: job = (root / "install-active/job").read_text().strip()\n'
+        'except OSError: job = "unknown"\n'
+        'status = "lock acquired; job metadata not yet available"\n'
+        'if re.fullmatch(r"install-[0-9a-f]{32}", job):\n'
+        '    for name in ("result.json", "progress.json"):\n'
+        '        try: status = {"file": name, "report": json.loads((root / job / name).read_text())}; break\n'
+        '        except (OSError, ValueError): pass\n'
+        'print(json.dumps({"heldJob": job, "state": status}))\n'
+        'PYLOCK\nfi\n')
+    if held.strip():
+        raise LabError('Install retry refused: ' + held.strip() + '; inspect this job before recovery.')
     try:
+        evidence.mkdir(mode=0o700)
+        write_json(evidence / 'request.json', {'timeoutSeconds': timeout, 'recoverySeconds': recovery,
+                                             'remoteDirectory': remote, 'helperSha256': helper_sha256})
+        put(run, str(HERE / 'package_install.py'), remote + '/package_install.py')
+        stage_install_helper(run, remote, helper, helper_sha256)
+        write_json(evidence / 'helper.json', {'sha256': helper_sha256, 'verified': True,
+                   'source': remote + '/package_install.py', 'installedPath': helper,
+                   'route': 'existing passwordless apt-get Pre-Invoke; staging update aborted'})
         put(run, str(Path(deb).resolve()), remote + '/package.deb')
     except BaseException:
-        # The helper has not started. A retry cannot race apt/dpkg from this job.
+        # The supervisor has not started. Staging aborts apt before repo work.
         release_lock()
         raise
     try:
@@ -1712,22 +1754,38 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
         pass
     # The detached guest watchdog survives a controller/SSH timeout. Never start
     # a replacement. Its own pidfds bound package recovery independently of SSH.
+    startup_error = None
+    startup_deadline = time.monotonic() + 15
     deadline = time.monotonic() + timeout + recovery + 120
     while True:
         try:
-            output = ssh(run, f'if test -f ~/{remote}/result.json; then cat ~/{remote}/result.json; fi\n', timeout=10)
+            output = ssh(run, f'if test -f ~/{remote}/result.json; then cat ~/{remote}/result.json; '
+                         f'elif ! test -f ~/{remote}/progress.json; then '
+                         "printf '%s\\n' '{\"startupPending\":true}'; fi\n", timeout=10)
             if output.strip():
                 report = json.loads(output)
-                break
+                if not report.get('startupPending'):
+                    break
+                if time.monotonic() >= startup_deadline:
+                    try:
+                        get(run, remote + '/supervisor.log', evidence / 'supervisor.log')
+                    except (LabError, subprocess.TimeoutExpired):
+                        pass
+                    startup_error = (f'Install supervisor did not start: no progress.json after 15 seconds; '
+                                   f'inspect {evidence}/supervisor.log (may be missing); '
+                                   f'job {token} retains install-active pending reconciliation.')
+                    break
         except (LabError, subprocess.TimeoutExpired):
             pass
         if time.monotonic() >= deadline:
             raise LabError(f'Install outcome unavailable; guest watchdog owns recovery in ~/{remote}; '
                            'install-active blocks retries. Inspect result.json and dpkg state before recovery.')
         time.sleep(1)
+    if startup_error:
+        raise LabError(startup_error)
     write_json(evidence / 'result.json', report)
     try:
-        for name in ('apt.log', 'progress.json', 'supervisor.log'):
+        for name in ('apt.log', 'progress.json', 'supervisor.log', 'staging.log'):
             get(run, remote + '/' + name, evidence / name)
         if not report.get('ok'):
             raise LabError(f'Install failed; dpkg state and owned PIDs retained in {evidence}/result.json; '
