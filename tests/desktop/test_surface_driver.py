@@ -617,7 +617,7 @@ class InputFoundations(unittest.TestCase):
         def run(*args):
             if args[0]=='xprop' and args[1]=='-root':return 'window id # 0x14'
             if args[1]=='getwindowpid':raise subprocess.CalledProcessError(1,args)
-            if args[1]=='getwindowgeometry':return 'X=0\nY=0\nWIDTH=100\nHEIGHT=80'
+            if args[0]=='xwininfo':return '  Absolute upper-left X:  0\n  Absolute upper-left Y:  0\n  Width: 100\n  Height: 80\n  Override Redirect State: no\n'
             if args[1]=='getwindowname':return 'Other client without PID'
             return ''
         with patch.object(probe.subprocess,'run',return_value=SimpleNamespace(stdout='20')),patch.object(probe,'run',side_effect=run):
@@ -680,15 +680,19 @@ class InputFoundations(unittest.TestCase):
         self.ctx.profile['notifications']['actions_available']=True
         notices=[{'id':72,'summary':'Synthetic notice','actions':['default','Show'],'action_events':[]}]
         self.ctx.notifications=lambda:notices
-        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20]}
-        self.ctx.accessible=lambda query:[node]
-        clicks=[]
-        def click(query):
-            clicks.append(query);notices[0]['action_events'].append({'action':'default'})
-        self.ctx.click_accessible=click
+        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20],'application':'cinnamon'}
+        queries=[];self.ctx.accessible=lambda query:queries.append(query) or [node]
+        picks=[];self.ctx._probe=lambda name,query:picks.append(query) or {'ok':True}
+        events=[]
+        def pointer(*args,**kwargs):
+            events.append(args)
+            if len(args)>4 and args[4] is False:notices[0]['action_events'].append({'action':'default'})
+        self.ctx.target.pointer=pointer
         self.ctx.notification_action(72)
-        self.assertEqual(clicks[0]['pid'],50)
-        self.assertIn('application',clicks[0])
+        # One owned title lookup, hover first, then press/release on the title.
+        self.assertEqual(len(queries),1);self.assertIn('application',queries[0])
+        self.assertEqual(events[0],(50,20,200,200));self.assertEqual([e[4] for e in events[1:]],[True,False])
+        self.assertTrue(all(q['desktop_node'] is node and q['point']==(50,20) for q in picks))
         notices[0]['closed']={'reason':1}
         with self.assertRaisesRegex(RecipeBlocked,'closed'):
             self.ctx.notification_action(72)
@@ -700,19 +704,24 @@ class InputFoundations(unittest.TestCase):
                'ancestors':[{'role':'notification','rect':[0,0,200,150]},
                             {'role':'panel','rect':[20,10,80,20]}]}
         button={'name':'Retry','pid':50,'role':'push button','rect':[20,100,80,20]}
+        outside={'name':'Retry','pid':50,'role':'push button','rect':[20,170,80,20]}
         self.ctx.notifications=lambda:[notice]
-        self.ctx.accessible=lambda query:[title if query['name']=='Synthetic notice' else button]
-        clicked=[]
-        def click(query):
-            clicked.append(query);notice['action_events'].append({'action':'retry'})
-        self.ctx.click_accessible=click
-        self.ctx.hover_accessible=lambda query:None
+        self.ctx.accessible=lambda query:[title] if query['name']=='Synthetic notice' else [button,outside]
+        self.ctx._probe=lambda name,query:{'ok':True}
+        events=[]
+        def pointer(*args,**kwargs):
+            events.append(args)
+            if len(args)>4 and args[4] is False:notice['action_events'].append({'action':'retry'})
+        self.ctx.target.pointer=pointer
         self.ctx.notification_action(72,'retry')
-        self.assertEqual(clicked[0]['within'],[0,0,200,150])
+        self.assertEqual(events[0][:2],(60,20))
+        self.assertEqual([e[:2] for e in events[1:]],[(60,110),(60,110)])
 
     def test_declared_notification_input_gap_blocks_before_observation(self):
+        self.ctx.profile['notifications']=dict(self.ctx.profile['notifications'],actions_available=False,
+                                               reason='Declared desktop gap (#670)')
         self.ctx.notifications=lambda: self.fail('gap must withhold all input before observation')
-        with self.assertRaisesRegex(RecipeBlocked,'Two boat guest attempts') as error:
+        with self.assertRaisesRegex(RecipeBlocked,'Declared desktop gap') as error:
             self.ctx.notification_action(72)
         self.assertEqual(error.exception.issue,670)
 
