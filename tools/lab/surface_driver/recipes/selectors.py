@@ -227,20 +227,29 @@ with os.fdopen(fd,'rb') as f:
  s=os.fstat(f.fileno());assert stat.S_ISREG(s.st_mode) and s.st_uid==os.getuid() and 0<s.st_size<=32*1024*1024
  data=f.read(32*1024*1024+1);assert len(data)==s.st_size
 assert data.startswith(bytes([137,80,78,71,13,10,26,10])) if KIND=='png' else data[4:8]==b'ftyp'
-print(json.dumps({'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'data':base64.b64encode(data).decode()}))
+print(json.dumps({'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}))
 '''.replace('PATH', repr(path)).replace('ROOT', repr(ctx.target.root)).replace('KIND', repr(kind))
     reply = ctx.shell("python3 - <<'SD_RETAIN'\n" + program + 'SD_RETAIN\n')
     ctx.expect(reply.get("returncode") == 0, "synthetic functional artifact readback succeeded")
     value = json.loads(reply["stdout"])
-    data = base64.b64decode(value["data"], validate=True)
+    # Payload bytes are not command evidence. Keep them memory-only on the
+    # authenticated target transport; the evidence redactor sees size/hash only.
+    transfer = program[:program.index('print(json.dumps(')] + 'print(base64.b64encode(data).decode())\n'
+    payload = ctx.target.execute("python3 - <<'SD_RETAIN_BYTES'\n" + transfer + 'SD_RETAIN_BYTES\n', timeout=30)
+    ctx.expect(payload.get("returncode") == 0, "synthetic artifact payload transport succeeded")
+    data = base64.b64decode(payload["stdout"].strip(), validate=True)
     digest = hashlib.sha256(data).hexdigest()
     ctx.expect(len(data) == value["bytes"] and digest == value["sha256"], "functional artifact transport hash matches")
-    directory = ctx.out / "functional"
+    # Original PNG/MP4 payloads belong in a private functional archive, outside
+    # the core's text/visible-frame audit. Their hashes remain in the receipt.
+    directory = ctx.out.with_name(ctx.out.name + "-functional")
     directory.mkdir(mode=0o700, exist_ok=True)
     output = directory / (digest + "." + kind)
+    ctx.expect(not output.is_symlink(), "functional artifact destination is a regular owned file")
     if not output.exists():
         with output.open("xb") as stream:
             stream.write(data)
+        output.chmod(0o600)
     ctx.expect(hashlib.sha256(output.read_bytes()).hexdigest() == digest, "retained functional artifact hash matches")
     output.with_suffix(output.suffix + ".json").write_text(json.dumps({"source": path, "bytes": len(data), "sha256": digest, "kind": kind}) + "\n")
     ctx.note("Retained synthetic " + kind + " sha256=" + digest)

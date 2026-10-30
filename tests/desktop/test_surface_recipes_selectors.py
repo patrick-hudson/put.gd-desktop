@@ -37,8 +37,9 @@ class FakeContext(Context):
 
     def __init__(self, heads=1):
         self._output = tempfile.TemporaryDirectory(prefix="selectors-unit-")
-        self.out = Path(self._output.name)
-        self.target = SimpleNamespace(root="/tmp/selectors-unit")
+        self.out = Path(self._output.name) / "evidence"
+        self.out.mkdir()
+        self.target = SimpleNamespace(root="/tmp/selectors-unit", execute=lambda script, timeout=60: FakeContext.shell(self, script, timeout))
         self.pattern_commands = []
         self.env = {"command": self.pattern_commands.append, "screens": [[0, 0, 1280, 800], [1280, 0, 1024, 768]][:heads],
                     "output_dir": "/tmp/sel-artifacts", "record_helper": "/opt/test/putgd-record"}
@@ -324,9 +325,10 @@ class FakeContext(Context):
 
     def shell(self, script, timeout=60):
         if "SD_RETAIN" in script:
-            data = b"\x89PNG\r\n\x1a\nunit" if "'png'" in script else b"\0\0\0\x10ftypunit"
-            return {"returncode": 0, "stdout": json.dumps({"data": base64.b64encode(data).decode(),
-                    "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})}
+            data = b"\0\0\0\x10ftypunit" if "if 'mp4'==" in script else b"\x89PNG\r\n\x1a\nunit"
+            if "SD_RETAIN_BYTES" in script:
+                return {"returncode": 0, "stdout": base64.b64encode(data).decode()}
+            return {"returncode": 0, "stdout": json.dumps({"bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})}
         if "--motion" in script:
             return {"returncode": 0, "stdout": f"motion={self.motion}\n"}
         if "struct.unpack" in script:
@@ -396,7 +398,21 @@ class SelectorRecipes(unittest.TestCase):
         ctx.shell = lambda *a, **k: {"returncode": 0, "stdout": json.dumps({"data": "dW5pdA==", "bytes": 4, "sha256": "0" * 64})}
         with self.assertRaisesRegex(RecipeFailed, "transport hash"):
             selectors._retain(ctx, "/tmp/selectors-unit/synthetic.png", "png")
+        self.assertFalse(ctx.out.with_name(ctx.out.name + "-functional").exists())
+
+    def test_functional_payload_never_enters_command_evidence(self):
+        ctx = FakeContext()
+        calls = []
+        original = ctx.shell
+        def metadata(script, timeout=60):
+            calls.append(script)
+            return original(script, timeout)
+        ctx.shell = metadata
+        selectors._retain(ctx, "/tmp/selectors-unit/synthetic.png", "png")
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn("SD_RETAIN_BYTES", calls[0])
         self.assertFalse((ctx.out / "functional").exists())
+        self.assertTrue(list(ctx.out.with_name(ctx.out.name + "-functional").glob("*.png")))
 
     def test_desktop_declaration_is_limited_to_local_disposable_guests(self):
         for placement, destination, guest, allowed in (("boat", "local", "unit", True),
@@ -475,7 +491,7 @@ class SelectorRecipes(unittest.TestCase):
         ctx.drag = lambda *a, **k: self.fail("Return capture must not depend on a drag")
         selectors.region_enter(ctx)
         self.assertIn(("key", "Return"), ctx.inputs)
-        self.assertTrue((ctx.out / "functional").is_dir())
+        self.assertTrue(ctx.out.with_name(ctx.out.name + "-functional").is_dir())
         self.assertEqual(ctx.document, ctx.original)
 
     def test_all_references_exist_in_catalog_source(self):
