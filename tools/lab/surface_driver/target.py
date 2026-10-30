@@ -112,7 +112,8 @@ namespace = {'__name__': 'surface_driver_probe'}
 exec(compile(SOURCE, 'surface_driver_probe.py', 'exec'), namespace)
 functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
              'foreground':'foreground', 'windows':'windows', 'tray':'tray',
-             'notification_log':'notification_log', 'resize':'resize_witness', 'shell_state':'shell_state'}
+             'notification_log':'notification_log', 'server_pid':'server_pid', 'resize':'resize_witness',
+             'shell_state':'shell_state'}
 while True:
     line = sys.stdin.buffer.readline(1024 * 1024 + 1)
     if not line:
@@ -130,7 +131,7 @@ while True:
                  (name == 'foreground' and (query.get('keyboard_grab') or
                   (bool(query.get('shell_cover')) and query.get('point') is not None))) or
                  (os.environ.get('XDG_SESSION_TYPE') == 'wayland' and
-                  name in ('geometry','foreground','windows')))
+                  name in ('geometry','foreground','windows','compositor_windows')))
         if fresh:
             try:
                 child = subprocess.run([sys.executable,'-c',SOURCE,json.dumps(request)],

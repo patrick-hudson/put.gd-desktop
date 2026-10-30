@@ -605,13 +605,24 @@ asyncio.run(main())
         self._notification_server = owner[0].strip("'") if owner else None
         root = self.target.root
         program, log = root+'/notification-monitor.py', root+'/notifications.log'
-        request = json.dumps({'probe':'notification_monitor','query':{'server':self._notification_server,'log':log}})
+        request = json.dumps({'probe':'notification_monitor','query':{'server':self._notification_server,'log':log,
+                                                                       'parent':self._channel_identity()}})
         source = Path(__file__).with_name('probe.py').read_text()
         script = ('cat > '+shlex.quote(program)+" <<'SD_PROBE'\n"+source+'\nSD_PROBE\n'
                   'nohup python3 '+shlex.quote(program)+' '+shlex.quote(request)+' > /dev/null 2>&1 < /dev/null & echo $!')
         result = self.shell(script)
         if result['returncode'] == 0:
             self.target.monitor_pid = int(result['stdout'].strip())
+
+    def _channel_identity(self):
+        """The persistent probe server's PID + start time: run monitors exit with
+        it when the guest SSH channel drops. None for one-shot probe targets."""
+        if not getattr(self.target, 'probe', None):
+            return None
+        try:
+            return self._probe('server_pid', {})
+        except RecipeBlocked:
+            return None
 
     def notifications(self):
         if not self.target.monitor_pid:

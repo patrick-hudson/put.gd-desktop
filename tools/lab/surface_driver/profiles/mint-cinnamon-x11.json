@@ -136,5 +136,11 @@
       "owned": true
     },
     "via": "run observer focus event: NativeRegionAccessible is not one of Qt's application children, so a tree walk misses it (#701)"
+  },
+  "recording": {
+    "consent": {
+      "kind": "none",
+      "reason": "X11 capture reads the X server (ximagesrc); no portal consent dialog may appear"
+    }
   }
 }
