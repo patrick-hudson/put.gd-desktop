@@ -147,24 +147,35 @@ the GNOME golden overlay.
 
 Before `recording.prepare`, the fixture starts an owned `dbus-monitor` filter. It writes JSON records only: no options or restore tokens. The fixture clicks the backend's accept button once with the real pointer, and only when all of these hold:
 
-- exactly one impl ScreenCast/RemoteDesktop `Start` is pending;
-- its request handle comes from a `putgd_record_*` `Start` sent by a private-family process;
-- its destination is a declared backend executable;
-- the dialog window belongs to that process and is new since prepare;
-- the compositor witness picks that window at the click point.
+- **One pending request, and it is ours.** Across the whole monitor log, not just this capture's part, exactly one impl ScreenCast/RemoteDesktop `Start` is pending. Its request handle comes from this capture's `putgd_record_*` `Start`, sent by a private-family process.
+- **The declared backend, idle beforehand.** The impl call's destination is a declared backend executable. Before prepare, the process owning its bus name (`backend_bus`) showed no window.
+- **One new window.** Exactly one window of that process is new since prepare, whatever its title, and it carries the declared title.
+- **The prompt names our application.** The dialog's prompt names the application that xdg-desktop-portal resolved for *this* request: the impl `Start`'s `app_id`, through its desktop entry's `Name` (`putgd-record` → "put.gd screen recorder"). An app-less foreign request shows "An app wants to share your screen".
+- **A settled button.** The accept button was sensitive, showing and unmoved across two observations at least 0.25 s apart. A newly drawn GTK4 dialog can ignore an early press.
+- **The point is the dialog's.** The compositor witness picks that window at the button's centre.
+- **Nothing changed.** A fresh read of the bus and the backend's windows, taken after that pick, still shows only this request and this window.
 
-The step needs `Response 0` for that handle. It saves `screencast-consent-before` and `-after` frames. Anything it cannot prove or drive raises `RecipeBlocked` (#791) with the reason; a ready timeout names the last consent state. The step never pre-grants through the permission store.
+Nothing else ties a GNOME dialog to its request. put.gd passes no parent window, so the dialog has no transient-for, and the GTK4 accessibility tree holds no request handle. The prompt's app name is the only per-request text the backend draws.
+
+The click is marked before dispatch and is never repeated. `drive()` refuses a second click itself. The step also refuses physical desktops: the dialog's pre-ticked "Remember this selection" stores a ScreenCast grant in the desktop's permission store, keyed by app id. That is lab state that only a disposable overlay may keep, and retiring the overlay discards it. The step needs `Response 0` for our handle. It saves `screencast-consent-before` and `-after` frames.
+
+Anything the step cannot prove or drive raises `RecipeBlocked` (#791) with the reason; a ready timeout names the last consent state. The step never pre-grants through the permission store.
+
+**Remaining window.** A foreign request sent after the post-pick re-read can still get its dialog drawn under the point in the milliseconds before the press. Live, a foreign `Start` fired by the guard's own `Pick` call was caught by the re-read. [Adversarial and live evidence](evidence/2026-10-30-recording-consent-817-validation/README.md).
+
+**Monitors on channel loss.** Both run monitors (the portal consent filter and the notification observer) follow the run's persistent probe process, matched by PID and start time. They exit with it when the guest SSH channel drops. The private session root and resident can outlive a dropped channel; overlay retirement removes them with the disk.
 
 On GNOME 50, xdg-desktop-portal-gnome is GTK4. GTK4 reports screen extents as (0,0) and exposes `sensitive` instead of `enabled`. The GNOME profiles therefore query window-relative extents. Those extents leave out the header bar padding (7,6 px measured). The profiles declare an 8 px `placement_tolerance`, and the accept button's centre must stay inside the button under that tolerance. KDE's native zkde_screencast path needs no consent. Its xdg-desktop-portal-kde fallback is declared but has not been observed in the lab yet. Profiles without a compositor witness block if a dialog appears. [Evidence](evidence/2026-10-30-recording-consent-791/README.md).
 
 **Retained media (#796).** Before scope cleanup, the recording fixture copies the regular `.mkv`, `.mp4`, `.webm`, `.gif` and `.webp` files under its owned root to `<run out>/private-media/<recipe>/<scope>/`. These are the working and frozen clips and the exports that recipes verified there. Each copy:
 
-- has mode 0600, in directories with mode 0700;
+- has mode 0600, and every directory level the fixture creates has mode 0700 (umask-proof);
 - is verified against the guest's SHA-256 and listed in `manifest.json`.
 
 Limits:
 
 - **Size caps.** 32 MiB per file and 128 MiB per run. A file over a cap is hashed and listed as not retained.
+- **Time budget.** Retention has its own 60 s budget. Files it cannot copy in time are listed as not retained. The later cleanup steps keep the time they had when retention started.
 - **Scope.** Nothing outside the fixture root is read.
 - **Location.** A run directory inside the checkout must be git-ignored. The media stays private run evidence: never repository content, receipts or coverage. That holds until secret-safe evidence export (#726) handles it.
 
