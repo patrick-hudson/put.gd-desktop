@@ -294,8 +294,28 @@ try:
     controller_identity={'pid':controller.pid,'startTicks':int(Path(f'/proc/{controller.pid}/stat').read_text().rsplit(')',1)[1].split()[19])}
     desktop=lab.load_profile(lab.state(RUN)['profile'])['session_process']
     logout='cinnamon-session-quit' if desktop=='cinnamon' else 'gnome-session-quit'
+    session_probe="""import json,subprocess
+rows=subprocess.check_output(['loginctl','list-sessions','--no-legend'],text=True).splitlines()
+ids=[]
+for row in rows:
+    fields=row.split()
+    if len(fields)>2 and fields[1]=='1000':
+        kind=subprocess.check_output(['loginctl','show-session',fields[0],'--property=Type','--value'],text=True).strip()
+        if kind in ('x11','wayland'):ids.append(fields[0])
+print(json.dumps(ids))
+"""
+    desktop_sessions=json.loads(root_guest('python3 -c '+shlex.quote(session_probe)+'\n'))
+    assert len(desktop_sessions)==1,desktop_sessions
     logout_result=lab.guest_session(RUN,'timeout 10 '+logout+' --logout --no-prompt\n',timeout=15)
     controller.kill();controller.wait(timeout=5);killed_at=time.monotonic()
+    # Session-manager logout can leave a closing logind session occupied by
+    # desktop agents. End that exact recorded login too: otherwise user@ never
+    # stops and the watchdog lifetime condition has not actually been tested.
+    for session in desktop_sessions:
+        assert session.isalnum()
+        root_guest('test "$(loginctl show-session '+session+' --property=User --value)" = 1000\n'
+                   'loginctl terminate-session '+session+'\n')
+
     snapshots=[];inactive_at=None
     deadline=time.monotonic()+55
     while time.monotonic()<deadline:
@@ -311,6 +331,8 @@ print(json.dumps({'managerState':state,'supervisorAlive':alive,'sessions':subpro
 """
         current=json.loads(root_guest('python3 -c '+shlex.quote(probe)+'\n'))
         current['secondsAfterControllerKill']=time.monotonic()-killed_at;snapshots.append(current)
+        save('logout-progress.json',{'rootSupervisor':supervisor,'controllerKilled':controller_identity,
+                                    'terminatedDesktopSessions':desktop_sessions,'snapshots':snapshots})
         assert current['supervisorAlive'],current
         if current['managerState']=='inactive':
             inactive_at=inactive_at or time.monotonic()
@@ -335,11 +357,16 @@ print(json.dumps({'managerState':state,'supervisorAlive':alive,'sessions':subpro
                '\nrm /home/lab/putgd-lab/install-active/job\nrmdir /home/lab/putgd-lab/install-active\n')
     results.append({'case':'logout-controller-sigkill-detached-watchdog','controllerKilled':controller_identity,
                     'rootSupervisor':supervisor,'logoutCommand':logout,'lingerEnabled':False,
+                    'terminatedDesktopSessions':desktop_sessions,
                     'userManagerSnapshots':snapshots,'managerAfterResult':manager_after,
                     'result':result,'wrapperTerminal':terminal,'visual':visual,
                     'terminalFixtureLockAcknowledged':True})
     save('results.json',{'passed':True,'placement':'boat','results':results})
     print(json.dumps({'passed':True,'cases':len(results)}),flush=True)
+except BaseException as error:
+    save('logout-failure.json',{'errorType':type(error).__name__,'message':str(error)})
+    witness('logout-failed')
+    raise
 finally:
     if controller.poll() is None:controller.kill();controller.wait(timeout=5)
     if not released:root_guest('touch /home/lab/'+watchdog_remote+'/watchdog-finish\n')
