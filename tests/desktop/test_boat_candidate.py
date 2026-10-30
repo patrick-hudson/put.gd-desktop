@@ -649,7 +649,7 @@ with (root/'lock').open('a') as lock:
             limits = {'canStart': True, 'maxActiveSandboxes': 10, 'activeSandboxes': 0,
                       'starts': {p: {'remaining': 10} for p in ('minute', 'hour', 'day')},
                       'machineTypes': [{'type': 'large', 'available': True}]}
-            snapshots = {'named': [{'name': 'putgd-build-base', 'snapshotId': 'test', 'createdAt': 'test'}]}
+            snapshots = {'named': [{'name': 'putgd-build-base-v3', 'snapshotId': 'test', 'createdAt': 'test'}]}
             receipt = {'artifact': 'appimage', 'state': 'passed', 'cleanupVerified': 'qualified',
                        'name': 'unresolved-create', 'files': []}
             with patch.object(candidate, 'boat', side_effect=[limits, snapshots]), \
