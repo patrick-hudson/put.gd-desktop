@@ -60,7 +60,14 @@ def _resize(ctx, width, height):
         except RecipeFailed:
             observed=ctx.geometry('editor')
             ctx.note(f'editor resize requested {width}x{height}; observed {observed["width"]}x{observed["height"]}')
-            raise
+            if abs(observed['width']-width)>4 or abs(observed['height']-height)>4:
+                raise
+            # A compositor can round the initial system-resize grab by a few
+            # pixels. Make one real corrective drag; keep exact final bounds.
+            start=(observed['x']+observed['width']-5,observed['y']+observed['height']-5)
+            end=(observed['x']+width-5,observed['y']+height-5)
+            ctx.drag(start,end)
+            ctx.wait(sized,'editor correction reaches exact catalog dimensions')
 
 
 
@@ -701,9 +708,22 @@ def _mcp(ctx, tool, arguments):
     return reply.get('structuredContent') or reply
 
 
+def _mcp_open(ctx, params):
+    opened = _result(_mcp(ctx, 'open_editor', params))
+    def ready():
+        reply = _mcp(ctx, 'get_editor', {'id':opened['operationId']})
+        if reply.get('ok') is False and reply.get('error',{}).get('code')=='editor_starting':
+            return None
+        return _result(reply)
+    # The SDK acceptance driver also awaits get_editor readiness. Observe the
+    # opaque editor state before the first editor frame reaches the guard.
+    ctx.wait(ready, 'MCP editor ready before editor evidence', timeout=30)
+    return opened
+
+
 @recipe('mcp.editor', 'mcp.editor-output', needs=IMAGE)
 def mcp_editor(ctx):
-    def open_editor(params): return _result(_mcp(ctx,'open_editor',params))
+    def open_editor(params): return _mcp_open(ctx, params)
     with _session(ctx, open_editor) as op:
         def tool(name, **args): return _result(_mcp(ctx,name,{'id':op, **args}))
         tool('raise_editor')

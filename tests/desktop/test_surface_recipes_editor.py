@@ -202,6 +202,20 @@ class EditorRecipes(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed,'new selected rectangle'):
             editor._place(ctx,'op-1','rectangle')
 
+    def test_mcp_open_awaits_starting_editor_before_frames(self):
+        ctx=FakeContext();calls=[]
+        replies=iter([{'ok':True,'result':{'operationId':'op-1'}},
+                      {'ok':False,'error':{'code':'editor_starting'}},
+                      {'ok':True,'result':{'phase':'editing'}}])
+        def mcp(tool, arguments):
+            calls.append(tool)
+            return next(replies)
+        ctx.mcp=mcp
+        ctx.wait=lambda predicate,what,**kwargs: predicate() or predicate()
+        self.assertEqual({'operationId':'op-1'},editor._mcp_open(ctx,{'source':'file','path':'/private/fixture.png'}))
+        self.assertEqual(['open_editor','get_editor','get_editor'],calls)
+        self.assertFalse(any(e[0]=='frame' for e in ctx.events))
+
     def test_help_click_ignores_the_same_label_tooltip(self):
         ctx=FakeContext()
         ctx.accessible=lambda query: [
