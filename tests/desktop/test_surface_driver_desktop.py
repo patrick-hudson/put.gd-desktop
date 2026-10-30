@@ -228,7 +228,7 @@ class NotificationPrivacy(unittest.TestCase):
 class FakeNode(list):
     def __init__(self,name,role,rect,pid=50,children=()):
         super().__init__(children);self.name,self.role,self.rect,self.pid=name,role,rect,pid
-        self.description='';self.path='/n/'+name;self.extent_reads=0
+        self.description='';self.path='/n/%x'%id(self);self.extent_reads=0
     def getRoleName(self):return self.role
     def get_process_id(self):return self.pid
     def getAttributes(self):return []
@@ -262,6 +262,38 @@ class LazyWalk(unittest.TestCase):
         self.assertEqual([a['rect'] for a in rows[0]['ancestors']][-2:],[[0,0,1280,800],[780,10,480,80]])
         self.assertTrue(all('_node' not in a for a in rows[0]['ancestors']))
         self.assertEqual(sum(n.extent_reads for n in other),0)
+
+
+class PickNode(FakeNode):
+    def __init__(self,name,role,rect,child=None):
+        super().__init__(name,role,rect);self.child=child
+    def queryComponent(self):
+        from types import SimpleNamespace
+        return SimpleNamespace(getExtents=lambda _:self.rect,getAccessibleAtPoint=lambda x,y,_:self.child)
+
+
+class ShellChrome(unittest.TestCase):
+    def pyatspi(self,child):
+        from types import SimpleNamespace
+        stage=PickNode('','window',[0,0,1280,800],child)
+        app=FakeNode('cinnamon','application',None,children=[stage])
+        return SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:[app]),DESKTOP_COORDS=0,STATE_SHOWING='showing')
+
+    def test_banner_over_a_client_point_is_reported(self):
+        banner=PickNode('','panel',[781,10,479,138],PickNode('','notification',[781,10,479,138],PickNode('Upload complete','label',[827,31,392,16])))
+        with patch.dict(sys.modules,pyatspi=self.pyatspi(PickNode('','panel',[0,0,1280,800],banner))):
+            cover=probe.shell_cover((1000,40),'cinnamon*')
+        self.assertIn('notification',cover);self.assertIn("'Upload complete'",cover)
+
+    def test_full_stage_container_is_not_chrome(self):
+        with patch.dict(sys.modules,pyatspi=self.pyatspi(PickNode('','panel',[0,0,1280,800],PickNode('','panel',[0,0,1280,800])))):
+            self.assertIsNone(probe.shell_cover((300,400),'cinnamon*'))
+
+    def test_x11_guard_refuses_input_under_shell_chrome(self):
+        target={'x':0,'y':0,'width':900,'height':600,'pid':7,'window_id':'10'}
+        with patch.object(probe,'shell_cover',return_value='cinnamon notification at [781, 10, 479, 138]'):
+            result=probe.x11_foreground({'geometry':target,'point':[850,140],'shell_cover':'cinnamon*'})
+        self.assertFalse(result['ok']);self.assertIn('notification',result['obscuring_window'])
 
 
 if __name__=='__main__':

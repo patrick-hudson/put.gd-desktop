@@ -194,6 +194,9 @@ class DriverContext(Context):
         query = {'geometry': geometry, 'point': point, 'popup': popup or self._popup,
                  'raise': raise_window or self.profile.get('focus',{}).get('raise_before_input',False),
                  'compositor_script': self.profile.get('focus', {}).get('compositor_script')}
+        if self.profile.get('focus',{}).get('desktop_hit_test') in ('shell-at-spi','gnome-shell-at-spi'):
+            # X11 shells draw banners/panels in their stage, invisible to the X hit-test.
+            query['shell_cover'] = self.profile.get('notifications',{}).get('accessible',{}).get('application') or None
         witness = self._probe('foreground', query)
         if not witness.get('ok'):
             raise RecipeFailed('input target '+repr(role)+' is obscured by '+repr(witness.get('obscuring_window', 'unknown window'))+

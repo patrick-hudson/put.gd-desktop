@@ -625,6 +625,11 @@ def x11_foreground(query):
     if popup_ok and not obstruction:
         ok = True
     obscurer = obstruction or (active_window if active != wid else {})
+    if point and query.get('shell_cover'):
+        cover = shell_cover(point, query['shell_cover'])
+        if cover:
+            return {'ok': False, 'backend': 'shell-at-spi-cover', 'target': wid, 'obscuring_window': cover,
+                    'obscuring_window_id': None}
     if point:
         hit = x11_hit(point)
         hit_ok = wid in hit['path'] or (popup_ok and hit['pid'] == target.get('pid'))
@@ -721,6 +726,41 @@ def x11_unmanaged_foreground(query):
 
 
 SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi')
+
+
+def shell_cover(point, application):
+    """Shell-drawn chrome over an X11 point (banners, panels, shell menus).
+
+    Muffin/Mutter X11 shells draw these in their stage, not as X windows, so
+    the server hit-test reaches the client beneath them. Ask the shell's own
+    AT-SPI pick: over client windows and bare desktop its deepest showing node
+    is a full-stage container; anything smaller is chrome on top.
+    """
+    import pyatspi
+    x, y = int(point[0]), int(point[1])
+    for app in pyatspi.Registry.getDesktop(0):
+        try:
+            if not app or not fnmatch.fnmatchcase(app.name or '', application):
+                continue
+            for window in app:
+                stage = list(window.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
+                node, chain = window.queryComponent().getAccessibleAtPoint(x, y, pyatspi.DESKTOP_COORDS), []
+                for _ in range(40):
+                    if node is None or not node.getState().contains(pyatspi.STATE_SHOWING):
+                        break
+                    chain.append((normalize_role(node.getRoleName()), node.name or '',
+                                  list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))))
+                    child = node.queryComponent().getAccessibleAtPoint(x, y, pyatspi.DESKTOP_COORDS)
+                    if child is None or child.path == node.path:
+                        break
+                    node = child
+                if chain and chain[-1][2] != stage:
+                    kind = next((role for role, _, _ in chain if role in ('notification', 'alert') + POPUP_ROLES), chain[-1][0])
+                    named = next((name for _, name, _ in reversed(chain) if name), '')
+                    return (app.name or 'shell') + ' ' + kind + (' ' + repr(named) if named else '') + ' at ' + str(chain[-1][2])
+        except (RuntimeError, NotImplementedError, AttributeError):
+            continue
+    return None
 
 
 def shell_hit(query):
