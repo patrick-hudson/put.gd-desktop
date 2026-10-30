@@ -121,7 +121,12 @@ class Context:
         raise NotImplementedError
 
     def click(self, control: str, window: str, button: str = 'left', offset: Optional[tuple] = None) -> None:
-        """Click a control resolved from the current build's NAME.controls.json, mapped onto the live window."""
+        """Click a control resolved from the current build's NAME.controls.json, mapped onto the live window.
+
+        A profile's live_controls {control: {name, role}} names a control that no
+        catalog exports (a view's rows): the live row with exactly that
+        accessible name and role is the target. The same guards apply.
+        """
         raise NotImplementedError
 
     def click_at(self, x: int, y: int, button: str = 'left', head: Optional[int] = None) -> None:
@@ -159,7 +164,7 @@ class Context:
         Missing exported object IDs never match by name.
         Results: name, role, text, description, states (bool map), rect
         [x,y,width,height] or null, bounds {x,y,width,height} or null, pid,
-        application, window, owned, objectName, accelerator, attributes,
+        application, window, owned, objectName, accessibleId, accelerator, attributes,
         visible/showing/enabled, protected, popup and ancestors, plus
         coordinate_space ('desktop' or 'window-relative'), coordinate_error and
         window_id (compositor identity) where placement applies. rect is in
@@ -170,8 +175,13 @@ class Context:
         coordinate_error, never a guess. Rows also include out-of-tree accessibles
         seen by the run's observer: showing QMenu popups and the focused widget
         (start_notifications starts it). role 'button' is normalized to
-        'push button'. Password text is never read. RecipeBlocked when
-        unavailable, including profile gaps.
+        'push button'. objectName comes from the exported attributes or, when
+        Qt exports none (Qt 6.10), from its AccessibleId path (accessibleId);
+        view items repeating their container's id have none. Every AT-SPI call
+        is bounded; an unanswered call or a walk over its time budget is
+        RecipeBlocked naming the application, never a partial result.
+        Password text is never read. RecipeBlocked when unavailable, including
+        profile gaps.
         """
         raise NotImplementedError
 

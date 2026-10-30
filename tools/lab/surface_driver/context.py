@@ -216,10 +216,18 @@ class DriverContext(Context):
     def _live_control(self, selector, window, geometry, candidates):
         if not self.profile.get('at_spi', {}).get('available'):
             raise RecipeBlocked('live AT-SPI control geometry: '+self.profile.get('at_spi', {}).get('reason', 'unavailable'))
-        return self._probe('control', {'selector': selector, 'candidates': candidates,
-                                      'title': self._window_query(window)['title'],
-                                      'pid': geometry.get('pid'),
-                                      'popup': self.profile.get('windows', {}).get(window, {}).get('popup', False)})
+        query = {'selector': selector, 'candidates': candidates,
+                 'title': self._window_query(window)['title'],
+                 'pid': geometry.get('pid'),
+                 'popup': self.profile.get('windows', {}).get(window, {}).get('popup', False)}
+        live = self.profile.get('live_controls', {}).get(selector)
+        if live is not None:
+            # A control no catalog exports (a view's row): exact live name and role.
+            if not (isinstance(live, dict) and isinstance(live.get('name'), str) and live['name']
+                    and isinstance(live.get('role'), str) and live['role']):
+                raise RecipeBlocked('profile live_controls entry for '+repr(selector)+' needs a name and a role')
+            query.update(selector='text:'+live['name'], role=live['role'], candidates=[])
+        return self._probe('control', query)
 
     def click(self, control, window, button='left', offset=None):
         # Resolve semantics from every state, then resolve geometry from the

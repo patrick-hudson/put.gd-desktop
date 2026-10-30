@@ -22,6 +22,46 @@ WINDOW_ROLES = ('frame', 'dialog', 'window', 'file chooser', 'alert')
 POPUP_ROLES = ('menu', 'popup menu', 'tool tip')
 QUERY_KEYS = {'name', 'text', 'description', 'role', 'pid', 'application', 'window',
               'objectName', 'owned', 'visible', 'showing', 'enabled', 'states', 'within', 'compositor'}
+# Every AT-SPI call answers or fails within CALL_TIMEOUT_MS. libatspi's own
+# default allows a much longer wait for applications it registered recently,
+# which in a fresh probe process is every application. A walk that cannot
+# finish within WALK_SECONDS (the fresh child is killed at 12 s) stops with
+# the slowest application named instead of a bare timeout (#805).
+CALL_TIMEOUT_MS = 2000
+WALK_SECONDS = 9.0
+
+
+def bound_calls():
+    # pyatspi has loaded libatspi's binding; the timeout is process-wide.
+    atspi = sys.modules.get('gi.repository.Atspi')
+    if atspi is not None:
+        atspi.set_timeout(CALL_TIMEOUT_MS, 0)
+
+
+def unanswered(error):
+    """A D-Bus call that timed out (libatspi GLib.Error or dbus-python), not a vanished object."""
+    text = str(error)
+    return any(marker in text for marker in ('Timeout was reached', 'NoReply', 'Did not receive a reply', 'timed out'))
+
+
+def accessible_id(node):
+    try:
+        return str(node.get_accessible_id() or '')
+    except (AttributeError, NotImplementedError, RuntimeError):
+        return ''
+
+
+def id_object_name(identifier, parent_identifier):
+    """objectName from Qt's AT-SPI AccessibleId (Qt 6.10 exports no objectName attribute, #819).
+
+    Qt joins the object ancestry as 'QApplication.window.….objectName' and
+    uses the class name for objects without one. Items of a view (list rows,
+    page tabs) repeat their container's id: they have no objectName of their own.
+    """
+    if not identifier or identifier == parent_identifier:
+        return ''
+    last = identifier.rsplit('.', 1)[-1]
+    return '' if '::' in last or re.match(r'Q[A-Z]', last) else last
 
 
 def owned(pid):
@@ -84,6 +124,7 @@ def popup_watch(query):
     """
     import pyatspi
     import signal
+    bound_calls()
     path, current, focus = popup_file(), {}, {}
     def write():
         temporary = path + '.tmp'
@@ -454,13 +495,23 @@ def extents(node):
     import pyatspi
     try:
         value = node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)
-    except (NotImplementedError, RuntimeError):
+    except (NotImplementedError, RuntimeError) as error:
+        if unanswered(error):
+            raise
         return None
     return list(value) if value is not None else None
 
 
-def accessible(query):
+def accessible(query, toplevel=False, detail=True):
+    """Bounded walk of the live accessibility tree.
+
+    toplevel: stop at window level (application children); geometry and
+    windows() only ever return those rows, so a hidden Settings page or an
+    editor's controls are not read for them. detail=False skips text,
+    description and key bindings, which control_geometry() never uses.
+    """
     import pyatspi
+    bound_calls()
     owners = {}
     def is_owned(pid):
         if pid not in owners:
@@ -508,17 +559,28 @@ def accessible(query):
     extra_keys = {id(root[0]): key for key, root in extra}
     seen = set()
     visited, truncated = 0, False
+    deadline = time.monotonic() + WALK_SECONDS
+    spent, silent = {}, {}
     while stack and visited < 20000:
+        if time.monotonic() > deadline:
+            raise RuntimeError(walk_budget_error(spent, visited))
         node, depth, window, application, popup, ancestors = stack.pop()
         visited += 1
+        started, pid = time.monotonic(), None
         try:
             if id(node) in extra_keys:
                 if extra_keys[id(node)] in seen:
                     continue
             elif extra_keys:
                 seen.add((node.get_process_id(), node.path))
-            role, name = normalize_role(node.getRoleName()), node.name or ''
+            if depth == 1 and (query.get('pid') is not None or query.get('owned')):
+                # Applications are scoped by the bus's pid before any call into
+                # them: a busy or hung foreign application is never contacted.
+                pid = node.get_process_id()
+                if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not is_owned(pid)):
+                    continue
             pid = node.get_process_id()
+            role, name = normalize_role(node.getRoleName()), node.name or ''
             # Do not walk unrelated applications for owned-control queries.
             if role == 'application':
                 application = name
@@ -526,7 +588,7 @@ def accessible(query):
                     continue
                 if query.get('pid') is not None and pid != query['pid']:
                     continue
-                if query.get('owned') and not owned(pid):
+                if query.get('owned') and not is_owned(pid):
                     continue
             if role in WINDOW_ROLES or (ancestors and ancestors[-1]['role']=='application' and role not in POPUP_ROLES):
                 window, popup = name, None
@@ -553,23 +615,34 @@ def accessible(query):
                 attributes = dict(a.split(':', 1) for a in node.getAttributes() if ':' in a)
                 protected = role == 'password text'
                 text = ''
-                if not protected:
+                if detail and not protected:
                     try:
                         interface = node.queryText()
                         text = interface.getText(0, min(interface.characterCount, 65536))
-                    except (NotImplementedError, RuntimeError):
-                        pass
+                    except (NotImplementedError, RuntimeError) as error:
+                        if unanswered(error):
+                            raise
                 accelerator = ''
-                try:
-                    action = node.queryAction()
-                    accelerator = ';'.join(action.getKeyBinding(i) for i in range(action.nActions))
-                except (NotImplementedError, RuntimeError):
-                    pass
+                if detail:
+                    try:
+                        action = node.queryAction()
+                        accelerator = ';'.join(action.getKeyBinding(i) for i in range(action.nActions))
+                    except (NotImplementedError, RuntimeError) as error:
+                        if unanswered(error):
+                            raise
                 object_name = next((attributes[k] for k in ('id', 'objectName', 'object-name', 'accessible-id') if k in attributes), '')
+                identifier = ''
+                if not object_name:
+                    identifier = accessible_id(node)
+                    parent = ancestors[-1] if ancestors else {}
+                    if identifier and parent.get('_node') is not None and '_id' not in parent:
+                        parent['_id'] = accessible_id(parent['_node'])
+                    object_name = id_object_name(identifier, parent.get('_id'))
                 row = {'window': window, 'application': application, 'name': name, 'role': role,
-                       'text': text, 'description': '' if protected else (node.description or ''),
+                       'text': text, 'description': '' if protected or not detail else (node.description or ''),
                        'states': states, 'rect': rect, 'attributes': attributes, 'pid': pid,
-                       'owned': is_owned(pid), 'objectName': object_name, 'accelerator': accelerator,
+                       'owned': is_owned(pid), 'objectName': object_name, 'accessibleId': identifier,
+                       'accelerator': accelerator,
                        'visible': states['visible'], 'showing': states['showing'], 'enabled': states['enabled'],
                        'protected': protected, 'popup': popup, 'ancestors': ancestors}
                 row['bounds'] = dict(zip(('x', 'y', 'width', 'height'), rect)) if rect else None
@@ -591,18 +664,40 @@ def accessible(query):
                         if ancestor['rect'] is UNREAD:
                             ancestor['rect'] = extents(ancestor['_node'])
                     matches_.append(row)
-            if depth < 50:
+            if toplevel and depth >= 2:
+                pass
+            elif depth < 50:
                 ancestry = ancestors + [{'name':name,'role':role,'rect':rect,'pid':pid,'_node':node}]
                 stack.extend((child, depth + 1, window, application, popup, ancestry) for child in node if child is not None)
             elif getattr(node,'childCount',0):
                 truncated = True
-        except (RuntimeError, AttributeError, NotImplementedError):
+        except (RuntimeError, AttributeError, NotImplementedError) as error:
+            # A vanished object is skipped as before; an unanswered call makes
+            # the walk incomplete, so absence and ambiguity are not provable.
+            if unanswered(error):
+                entry = silent.setdefault((application, pid), [0, str(error)[:160]])
+                entry[0] += 1
             continue
+        finally:
+            used = spent.setdefault((application, pid), [0, 0.0])
+            used[0] += 1
+            used[1] += time.monotonic() - started
     if stack or truncated:
         raise RuntimeError('accessibility scan exceeded bounded tree size/depth')
+    if silent:
+        (application, pid), (count, error) = max(silent.items(), key=lambda item: item[1][0])
+        raise RuntimeError('accessibility walk incomplete: %s (pid %s) did not answer %d call(s) within %d ms (%s)'
+                           % (application or 'an application', pid, count, CALL_TIMEOUT_MS, error))
     for row in matches_:
-        row['ancestors'] = [{k: (None if v is UNREAD else v) for k, v in a.items() if k != '_node'} for a in row['ancestors']]
+        row['ancestors'] = [{k: (None if v is UNREAD else v) for k, v in a.items() if not k.startswith('_')} for a in row['ancestors']]
     return matches_
+
+
+def walk_budget_error(spent, visited):
+    (application, pid), (nodes, seconds) = max(spent.items(), key=lambda item: item[1][1])
+    return ('accessibility walk exceeded its %g s budget after %d nodes: %s (pid %s) took %.1f s for %d nodes '
+            '(%.1f ms per node); its accessibility replies are too slow to observe'
+            % (WALK_SECONDS, visited, application or 'an application', pid, seconds, nodes, 1000 * seconds / max(nodes, 1)))
 
 
 def label(value):
@@ -650,8 +745,9 @@ def control_geometry(query):
     # name, and objectName matches must not be filtered out by labels.
     filters = {'owned':True,'visible':True,'showing':True,
                **({'pid':query['pid']} if query.get('pid') else {}),
+               **({'role':query['role']} if query.get('role') else {}),
                **({'compositor':query['compositor']} if query.get('compositor') else {})}
-    rows = accessible(filters)
+    rows = accessible(filters, detail=False)
     unplaced = [row for row in rows if row.get('coordinate_error') and
                 (selector_matches(row, query.get('selector',''), query.get('candidates', [])) is not None)]
     selected = []
@@ -772,7 +868,7 @@ def geometry(query):
             found = [w for w in found if w['x'] <= px < w['x']+w['width'] and w['y'] <= py < w['y']+w['height']]
     else:
         compositor = {'compositor': query['compositor']} if query.get('compositor') else {}
-        rows = accessible({'owned': True, **query.get('accessible', {}), **compositor})
+        rows = accessible({'owned': True, **query.get('accessible', {}), **compositor}, toplevel=True)
         found, unplaced = [], []
         for row in rows:
             top = row['role'] in WINDOW_ROLES or (row.get('ancestors') and row['ancestors'][-1]['role']=='application')
@@ -1069,6 +1165,7 @@ def shell_cover(point, application):
     is a full-stage container; anything smaller is chrome on top.
     """
     import pyatspi
+    bound_calls()
     x, y = int(point[0]), int(point[1])
     for app in pyatspi.Registry.getDesktop(0):
         try:
@@ -1098,6 +1195,7 @@ def shell_cover(point, application):
 def shell_hit(query):
     """The compositor shell's own AT-SPI stage pick (GNOME Shell, Cinnamon), not an app-local pick."""
     import pyatspi
+    bound_calls()
     expected = query['desktop_node']
     if not fnmatch.fnmatchcase(expected.get('application',''), query['shell_application']):
         raise RuntimeError('desktop hit-test requires the profile compositor application')
@@ -1190,7 +1288,7 @@ def foreground(query):
 def windows(query):
     if os.environ.get('XDG_SESSION_TYPE') == 'x11':
         return x11_windows(query)
-    return [row for row in accessible(query) if row['role'] in WINDOW_ROLES or
+    return [row for row in accessible(query, toplevel=True) if row['role'] in WINDOW_ROLES or
             (row.get('ancestors') and row['ancestors'][-1]['role']=='application')]
 
 
@@ -1352,8 +1450,16 @@ def notification_log(query):
     return {'alive': alive, 'text': data.decode('utf-8', 'replace')}
 
 
+LONG_RUNNING = ('notification_monitor', 'popup_watch')
+
+
 def main():
     request = json.loads(sys.argv[1])
+    if request.get('probe') not in LONG_RUNNING:
+        # Before the persistent channel kills a fresh child (12 s), leave the
+        # stalled frame on stderr so the timeout names where it stopped.
+        import faulthandler
+        faulthandler.dump_traceback_later(11, exit=False)
     try:
         function = {'accessible': accessible, 'geometry': geometry, 'control': control_geometry,
                     'foreground': foreground, 'windows': windows, 'tray':tray,

@@ -105,7 +105,15 @@ app.exec()
 
 
 PROBE_SERVER = r'''
-import json, os, subprocess, sys
+import json, os, re, subprocess, sys
+def stalled(stderr):
+    # The child's faulthandler dump (probe.main, 11 s): innermost frames first.
+    if isinstance(stderr, bytes):
+        stderr = stderr.decode('utf-8', 'replace')
+    frames = re.findall(r'line (\d+) in (\w+)', stderr or '')
+    if not frames:
+        return ' before reporting where it stalled'
+    return ' in ' + ' <- '.join(name + ':' + line for line, name in frames[:4])
 namespace = {'__name__': 'surface_driver_probe'}
 exec(compile(SOURCE, 'surface_driver_probe.py', 'exec'), namespace)
 functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
@@ -132,8 +140,8 @@ while True:
                 child = subprocess.run([sys.executable,'-c',SOURCE,json.dumps(request)],
                                        stdin=subprocess.DEVNULL, capture_output=True,
                                        text=True, timeout=12)
-            except subprocess.TimeoutExpired:
-                raise RuntimeError('fresh accessibility probe timed out') from None
+            except subprocess.TimeoutExpired as expired:
+                raise RuntimeError('fresh accessibility probe timed out' + stalled(expired.stderr)) from None
             if child.returncode:
                 raise RuntimeError('fresh accessibility probe exited unsuccessfully')
             response = json.loads(child.stdout)
