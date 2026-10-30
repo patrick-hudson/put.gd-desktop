@@ -209,6 +209,8 @@ class SnapshotContracts(unittest.TestCase):
         self.assertIn('python3 tools/verify_dependencies.py build/dependencies/aws-sdk-cpp', script)
         self.assertIn('python3 tools/proton/provision_runtime.py', script)
         self.assertIn('nice -n 10', script)
+        install = next(line for line in script.splitlines() if 'apt-get install -y --allow-downgrades' in line)
+        self.assertIn('tesseract-ocr', install.split())
 
     def test_probe_check_is_read_only_and_covers_every_tool(self):
         script = snapshots.probe_script()

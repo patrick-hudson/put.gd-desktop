@@ -35,7 +35,7 @@ from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.critical import armed, critical, entry
 from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.receipts import Evidence, stamp, write_receipts, write_json, fail_coverage
-from tools.lab.surface_driver.redact import scan_run, detected
+from tools.lab.surface_driver.redact import scan_run, detected, require_host_ocr
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
 
@@ -718,6 +718,11 @@ def main(argv=None):
         physical = bool(args.host_profile)
         if blockers := secret_safe_evidence_blockers(args.placement, args.catalog, args.build, physical):
             raise SystemExit('live destination '+args.destination+' blocked by secret-safe evidence: '+', '.join(blockers))
+    else:
+        try:
+            require_host_ocr()
+        except RecipeBlocked as error:
+            raise SystemExit(str(error)) from None
     run=args.run or args.guest
     if not args.host_profile:
         if not run:

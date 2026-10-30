@@ -200,7 +200,7 @@ def secret_safe_evidence_blockers(placement=None, catalog=None, build=None, phys
             or getattr(run.run_recipes, 'final_audit', None) is not run.finish_evidence):
         blockers.append('end-run-scan-not-wired')
     if not (ocr := shutil.which('tesseract')):
-        blockers.append('ocr-unavailable-install-tesseract-in-disposable-target')
+        blockers.append('ocr-unavailable-install-tesseract-ocr-on-driver-host-not-only-guest')
     else:
         try:
             if not redact.ocr_self_test(ocr):
