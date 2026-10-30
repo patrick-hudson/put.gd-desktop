@@ -143,6 +143,9 @@ post-test identity is retained without claiming a repeated full hash.
 The unmodified guarded cleanup retired each overlay only after verified
 export. Receipts match the restored manifest digests:
 [Mint cleanup](cinnamon-cleanup.json), [Ubuntu cleanup](ubuntu-cleanup.json).
+The Mint pre-cleanup dry-run receipt was not retained; its
+[preview file](cinnamon-cleanup-preview.json) records why. The Ubuntu
+[preview](ubuntu-cleanup-preview.json) is the original dry run.
 Both [Mint](cinnamon-post-cleanup.json) and [Ubuntu](ubuntu-post-cleanup.json)
 postchecks show no QEMU, no overlay and a free host controller flock. Both
 sandbox deletion operations completed:

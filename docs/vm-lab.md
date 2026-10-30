@@ -174,20 +174,21 @@ mkfs.vfat -n PUTGDLAB "$provision_control/seed.img"
 mcopy -i "$provision_control/seed.img" tools/lab/bootstrap-guest.sh ::bootstrap.sh
 mcopy -i "$provision_control/seed.img" tools/lab/guest_idle.py ::guest_idle.py
 mcopy -i "$provision_control/seed.img" tools/lab/package_install.py ::package_install.py
+mcopy -i "$provision_control/seed.img" tools/lab/package_scope.py ::package_scope.py
 mcopy -i "$provision_control/seed.img" "$provision_control/identity.pub" ::identity.pub
 ```
 
 Shut down this new provisioning guest before restarting it. With the ISO
 detached (`-boot order=c`, remove `-cdrom`), add
 `-drive "file=$provision_control/seed.img,format=raw,if=virtio"` to the one-time
-QEMU command for this same unprovisioned disk. The seed contains the public key, bootstrap script, visibility helper and package supervisor only. In the guest terminal:
+QEMU command for this same unprovisioned disk. The seed contains the public key, bootstrap script, visibility helper, package supervisor and scope launcher only. In the guest terminal:
 
 ```sh
 sudo mount /dev/disk/by-label/PUTGDLAB /mnt
 sudo sh /mnt/bootstrap.sh /mnt/identity.pub
 ```
 
-Copy `tools/lab/bootstrap-guest.sh`, its companions `tools/lab/guest_idle.py` and `tools/lab/package_install.py`, and the public key into the disposable guest, keeping all three files together. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
+Copy `tools/lab/bootstrap-guest.sh`, its companions `tools/lab/guest_idle.py`, `tools/lab/package_install.py` and `tools/lab/package_scope.py`, and the public key into the disposable guest, keeping all four files together. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation and the fixed scope launcher to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
 
 Verify the SSH host fingerprint
 against the guest console before recording the host key. Keep the private key outside
@@ -263,10 +264,11 @@ New guest bootstrap installs the root-owned fixed supervisor at
 `/usr/local/lib/putgd-lab/package_install.py`. Every DEB `install` also stages
 its controller's helper into the fresh run overlay over that run's SSH
 connection, so existing immutable goldens need no refresh. The controller checks
-the uploaded SHA-256, uses the guest's existing passwordless `/usr/bin/apt-get`
-rule with an `APT::Update::Pre-Invoke` hook to install the root-owned helper and
-its fixed-command sudo rule, then checks the installed SHA-256, ownership,
-permissions and sudo access before starting the supervisor. The staging update uses `/dev/null` as its source list, disables source parts
+the uploaded SHA-256 values, uses the guest's existing passwordless `/usr/bin/apt-get`
+rule with an `APT::Update::Pre-Invoke` hook to install the root-owned helper,
+the root-owned scope launcher `/usr/local/lib/putgd-lab/package_scope.py` and
+one sudo rule naming only those two files, then checks the installed SHA-256
+values, ownership, permissions and sudo access before starting the supervisor. The staging update uses `/dev/null` as its source list, disables source parts
 and list cleanup, and therefore neither fetches repositories nor deletes cached
 indexes. Its hook intentionally exits unsuccessfully; that expected apt exit is
 checked through the installed helper's postconditions. The normal update/install
@@ -283,17 +285,31 @@ Staging runs under a detached, unprivileged guest subreaper in a new Linux
 session (`setsid`), in that job's private `~/putgd-lab/install-<id>` directory.
 `staging-process.json` records the session ID, session leader PID and `/proc`
 start ticks before any privileged staging work. With the system-scope
-prerequisites below, the launcher uses passwordless sudo to create a dedicated
-`systemd-run --system --scope --property=Delegate=yes` unit under
+prerequisites below, the launcher runs the scope launcher through passwordless
+sudo. Its fixed `systemd-run --system --scope --property=Delegate=yes`
+arguments create a dedicated unit under
 `/system.slice/putgd-staging-install-<id>.scope`. Inside it, `setpriv` drops
-back to the invoking guest user's UID, GID and supplementary groups before
-executing the unprivileged wrapper. The system manager (PID 1) owns the scope;
-it is independent of the user's login sessions and `user@UID.service`. The identity then also records
+back to the sudo caller's UID, GID and supplementary groups, with a clean
+environment, before the unprivileged wrapper runs. The system manager (PID 1)
+owns the scope; it is independent of the user's login sessions and
+`user@UID.service`. The identity then also records
 `tracking: "cgroup-v2"`, its cgroup path/device/inode, the cgroup mount identity
-and boot ID. The job's tracked scope is separate from the SSH connection's
-`session-N.scope`; the outer sudo launch client can remain in that login scope
-after the connection ends. Ending that login must leave the system-scope
-watchdog alive. `staging-result.json` is
+and boot ID.
+
+The outer sudo stays in the SSH connection's `session-N.scope`, outside the
+job's scope. Ending that login (`systemctl stop session-N.scope`,
+`loginctl terminate-session` or `terminate-user`) sends its processes SIGTERM
+and SIGHUP, and sudo relays them to its child (with a pty, to the child's
+process group). A scope separates cgroups, not signals. So the wrapper's first
+step inside the scope is to fork: only a waiter stays sudo's child and reports
+the wrapper's exit status, while the wrapper continues in a new session in the
+scope, reparented to PID 1. A relayed signal ends only sudo and the waiter; the
+wrapper and everything it started keep running and write their terminal
+receipts. The wrapper itself stays killable directly. Session-fallback jobs run
+in the login's own scope and do not outlive a stopped login. Logind does not
+stop a login that is already closing again on `terminate-user` (Mint 22.3,
+`KillUserProcesses=no`); sudo then stays until that login is stopped.
+`staging-result.json` is
 written only after the staging shell and all its descendants have exited. A
 lost SSH reply, timeout, or Ctrl-C therefore does not establish completion.
 Failed staging reconciles the same job for up to 30 seconds, independently of
@@ -331,9 +347,10 @@ any reason. While the controller is alive, recovery refuses. That includes the
 window after successful staging while it writes `helper.json`, uploads
 `package.deb` and launches the supervisor, when the guest shows no
 supervisor progress yet. A second `install` on the same run is refused the same
-way. The command then authenticates the owned running overlay, rejects a changed
-lock token and any package-supervisor progress/result, and repeats the bounded
-guest lifetime check before releasing that token.
+way. The command then authenticates the owned running overlay and rejects a
+changed lock token. If the package supervisor has started (`progress.json` or
+`result.json` exists), it switches to the supervisor release below. Otherwise
+it repeats the bounded guest lifetime check before releasing that token.
 
 The root package supervisor is launched through the same system-scope mechanism,
 in a separate `putgd-supervisor-install-<id>.scope`. Its wrapper records
@@ -350,14 +367,29 @@ failure before admission leaves no progress or result, so the job stays
 recoverable. After admission, the supervisor's own failures also end in
 `result.json`.
 
-Recovery checks the token and the absence of `progress.json` and `result.json`
-twice. The first check happens before reconciling staging. The second happens
+Staging recovery checks the token and the absence of `progress.json` and
+`result.json` twice. The first check happens before reconciling staging. The second happens
 in the release, which holds `install-guard`. Each check is a separate
 fail-closed shell statement. A delayed supervisor start therefore either
 leaves `progress.json` before the release (recovery refuses and keeps the lock),
 or finds the token gone or replaced. In that case it exits with
 `Install supervisor refused to start` and writes no progress or result. The
 supervisor never runs without the lock.
+
+A controller that dies after admission leaves `install-active` held by a
+supervisor that keeps running and finishes on its own. `recover-staging`, with
+or without `--abandoned`, releases that job only when all of these hold: the
+supervisor's terminal `result.json` exists (a root-owned, single-link regular
+file with `ok`, `aborted` and `remainingPids`); its wrapper's `staging.lock`
+flock is free; its recorded `putgd-supervisor-install-<id>.scope` reports
+`populated 0` or is authenticated gone (same rules as below); and the wrapper's
+leader is dead with an empty session. The release re-checks the token and
+`result.json` under `install-guard`, then writes `supervisor-recovery.json` on
+the host. `progress.json` without a terminal result, a populated or unreadable
+cgroup, and a session-tracked or identity-less supervisor (no scope can prove
+its root descendants exited) keep the lock. A failed install (`ok: false`) is
+released with a warning; inspect `result.json` and dpkg state before the next
+install. Each refusal names its reason (the guest's stderr stays hidden).
 
 Recovery that reconciles a started staging requires a verifiable session leader
 identity and no live process in the recorded session. That covers ordinary
@@ -409,13 +441,25 @@ children still run. Children that remain in the staging session keep recovery
 blocked until they exit. Zombie or exited processes do not count as live.
 
 The launcher probes the cgroup v2 mount, `systemd-run`, `systemctl`, `sudo`,
-`setpriv`, system-manager bus access and passwordless sudo authority for
-`systemd-run` by actually executing `sudo -n -- systemd-run --version`
-(a successful sudo policy listing alone is insufficient). New guest bootstrap
-installs `setpriv` through `util-linux` and grants the disposable guest user
-passwordless `/usr/bin/systemd-run`. Older images without that authority use
-the explicit session fallback until reprovisioned or granted it in their owned
-overlay. The launcher requires **systemd 254 or newer**, checks the version before
+the scope launcher (root-owned, not group- or world-writable), system-manager
+bus access and passwordless sudo authority by actually executing
+`sudo -n -- /usr/local/lib/putgd-lab/package_scope.py --probe` (a successful
+sudo policy listing alone is insufficient). The probe checks `systemd-run`,
+`setpriv` and `env` as root and creates no unit. The lab user is never granted
+`systemd-run` itself: with caller-chosen arguments it is root-equivalent. The
+launcher accepts only `staging` or `supervisor` and an `install-<32 hex>` job
+ID; the unit name, every `systemd-run` property, the `setpriv` drop to the sudo
+caller and the clean environment are fixed. Only words after those reach the
+unprivileged command.
+
+New guest bootstrap installs `setpriv` through `util-linux`, installs the
+launcher and grants it beside apt and the supervisor. Existing goldens and
+snapshots are never changed: every DEB `install` stages the launcher and its
+rule into that run's own overlay, with the overlay's existing apt authority, as
+it does the supervisor. A fresh overlay's first staging therefore uses the
+session fallback (`fallbackReason`: the scope launcher is not installed); its
+supervisor and every later job in that overlay use system scopes. The launcher
+requires **systemd 254 or newer**, checks the version before
 using `--expand-environment=no`, and falls back clearly on an older or
 unverifiable version. The user manager and user bus are not prerequisites;
 no linger setting is changed. Each failed prerequisite has its own
@@ -431,15 +475,28 @@ Mint 22.3 and Ubuntu 26.04 logout/controller-SIGKILL evidence uses the new
 system-manager mechanism: both the graphical login and any closing SSH login
 were ended, `Linger=no` was retained, and `user@1000.service` was observed
 inactive while the root helper survived and then wrote `result.json`. See the
-[B1 evidence](evidence/2026-10-30-staging-cgroup-b1/README.md). Other guest profiles use the same runtime checks;
+[B1 evidence](evidence/2026-10-30-staging-cgroup-b1/README.md). That run
+ended the closing login with `kill-session --signal=KILL`, which sudo cannot
+relay. Independent validation then showed a plain stop of that login killing
+the supervisor wrapper on both guests, and `terminate-user` killing it on
+Ubuntu (sudo-rs), through sudo's relay. The
+[login-end evidence](evidence/2026-10-30-staging-cgroup-f1/README.md) repeats
+plain `systemctl stop session-N.scope` and `loginctl terminate-user` during
+both staging and the supervisor on Mint 22.3 and Ubuntu 26.04, with the real
+`install` controller killed, then releases each finished job through
+`recover-staging`. Other guest profiles use the same runtime checks;
 Aurora/rpm-ostree's AppImage route does not run the APT path.
 
 Cgroup tracking covers normal inherited descendants, including `setsid()`.
 A privileged hook can deliberately leave the scope by writing `cgroup.procs`,
 starting a new unit with `systemd-run`, or asking `systemctl start` to launch a
 service elsewhere. The required session scan remains as a second guard for
-out-of-cgroup processes that retain the recorded session ID. A root process
-that both leaves the cgroup and changes session can escape both checks.
+out-of-cgroup processes that retain the recorded session ID. Leaving needs no
+root, either: while the lab user's manager runs, any of the job's processes
+running as that user can start `systemd-run --user --scope` and move into
+`user@1000.service`, which its own user manager owns. The same session scan
+applies to it. A process that both leaves the cgroup and changes session
+(root or not) can escape both checks.
 Tracking is a lifetime fence for the staged command tree, not a security
 boundary against a deliberately privileged migrator.
 
@@ -470,7 +527,7 @@ records a `staging-abandoned` report in the host's `staging-recovery.json`, and
 clears only the matching install token. The missing terminal receipt remains
 missing; recovery proves process quiescence rather than a successful helper
 installation. These rules apply only to disposable overlays; immutable goldens
-and the separate package supervisor's recovery remain unchanged.
+are never changed.
 See the [Cinnamon cancellation proof](evidence/2026-10-30-lab-staging-748/README.md)
 for the earlier exact identities, refused retries, later successful install and cleanup.
 The [cgroup recovery regression](evidence/2026-10-30-staging-cgroup-780/README.md)
