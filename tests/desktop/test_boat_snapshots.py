@@ -23,7 +23,8 @@ class SnapshotContracts(unittest.TestCase):
         records = sorted((ROOT / 'tools/lab/boat/manifests').glob('*.json'))
         self.assertEqual({path.stem for path in records}, {
             'putgd-build-base-v2', 'putgd-build-base-v3', 'putgd-lab-cinnamon-v2',
-            'putgd-lab-cinnamon-v3', 'putgd-lab-ubuntu-gnome-v3', 'putgd-lab-ubuntu-gnome-v4'})
+            'putgd-lab-cinnamon-v3', 'putgd-lab-ubuntu-gnome-v3', 'putgd-lab-ubuntu-gnome-v4',
+            'putgd-lab-kubuntu-kde-v1'})
         for path in records:
             data = json.loads(path.read_text())
             with self.subTest(snapshot=data['snapshotName']):
