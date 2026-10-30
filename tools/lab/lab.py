@@ -1671,8 +1671,8 @@ def verify_installed_binaries(run, deb):
 
 def stage_install_helper(run, remote, helper, digest):
     # Old immutable goldens grant apt-get, not this new helper. Use that existing
-    # authority only in the disposable overlay. Abort update in its first hook:
-    # repository/network work belongs exclusively to the bounded supervisor.
+    # authority only in the disposable overlay. Staging uses no repositories
+    # and disables list cleanup; normal apt work belongs to the supervisor.
     hook = (f'set -eu; install -d -m 755 /usr/local/lib/putgd-lab; '
             f'install -o root -g root -m 755 "SOURCE" {helper}; '
             f'echo "{digest}  {helper}" | sha256sum -c -; '
@@ -1685,7 +1685,9 @@ def stage_install_helper(run, remote, helper, digest):
     script = (f'set -eu\nsource="$HOME/{remote}/package_install.py"\n'
               f'echo "{digest}  $source" | sha256sum -c -\n'
               f'hook={shlex.quote(before)}"$source"{shlex.quote(after)}\n'
-              'sudo -n /usr/bin/apt-get -o "APT::Update::Pre-Invoke::=$hook" update '
+              'sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null '
+              '-o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 '
+              '-o "APT::Update::Pre-Invoke::=$hook" update '
               '> ~/putgd-lab/' + remote.split('/')[-1] + '/staging.log 2>&1 || true\n'
               f'test -x {helper}\n'
               f'echo "{digest}  {helper}" | sha256sum -c -\n'
@@ -1739,10 +1741,10 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
         stage_install_helper(run, remote, helper, helper_sha256)
         write_json(evidence / 'helper.json', {'sha256': helper_sha256, 'verified': True,
                    'source': remote + '/package_install.py', 'installedPath': helper,
-                   'route': 'existing passwordless apt-get Pre-Invoke; staging update aborted'})
+                   'route': 'existing passwordless apt-get Pre-Invoke; no sources or list cleanup'})
         put(run, str(Path(deb).resolve()), remote + '/package.deb')
     except BaseException:
-        # The supervisor has not started. Staging aborts apt before repo work.
+        # The supervisor has not started. Staging has no repositories or dpkg work.
         release_lock()
         raise
     try:
