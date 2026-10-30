@@ -57,21 +57,24 @@ Evidence.frame.prewrite_gate = save_frame
 Evidence.scan.run_audit = scan_run
 
 
-def fail_coverage(path, rows):
+def fail_coverage(path, rows, *, redactor=None):
     """Invalidate this receipt's rows, preserving unrelated campaign evidence."""
     path = Path(path)
     if not path.exists():
-        return
+        return 0
     fields = ('interaction','desktop','package','host','placement','guest','destination','recipe','build')
     identity = lambda row: tuple(row.get(key) for key in fields)
     failed = {identity(row) for row in rows}
     with open(str(path)+'.lock', 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         value = json.loads(path.read_text())
+        invalidated = 0
         for row in value.get('entries', []):
             if identity(row) in failed:
                 row['functional'] = 'failed'
-        write_json(path, value)
+                invalidated += 1
+        write_json(path, value, redactor=redactor)
+        return invalidated
 
 
 def stamp():

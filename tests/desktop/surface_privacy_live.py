@@ -18,7 +18,7 @@ from tools.lab.surface_driver.api import Recipe
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.receipts import write_json, write_receipts
-from tools.lab.surface_driver.run import run_recipes, discover
+from tools.lab.surface_driver.run import run_recipes, discover, guard_target
 from tools.lab.surface_driver.target import Target, checked_socket
 
 LINK = 'https://put.gd/Zq9xK2mLpW4vR7tY.png'
@@ -34,11 +34,12 @@ def main():
     args.out.mkdir(mode=0o700, parents=True, exist_ok=False)
     source = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     target = Target(run=args.run)
+    guard_target(argparse.Namespace(placement='boat'), target)
     checked_socket(target.socket); checked_socket(target.root+'/notify.sock')
     profile = load_profile('mint-cinnamon-x11')
     catalog = args.out/'catalog'; catalog.mkdir(mode=0o700)
     env = dict(desktop='mint-cinnamon-x11', host='boat', placement='boat', guest='cinnamon-x11',
-               package='nightly-deb', destination='local', build=source, driver_source=source,
+               package='deb', destination='local', build=source, driver_source=source,
                placement_details={'boat_sandbox_id':args.boat_id, 'run_id':target.info['id'],
                                   'input_backend':'qmp','frame_backend':'vnc-in-memory'}, synthetic_only=True)
     env['target'] = target.identity()
@@ -105,7 +106,7 @@ window.show_all();Gtk.main()
             assert not (context.out/'planted.log').exists() and not (context.out/'planted.png').exists()
             if kind == 'ocr-visible':
                 assert any(f['kind'].startswith('png-text-') for f in scan['findings'])
-            summary[kind]={'functional':'failed','scan':scan,'offender_removed':True}
+            summary.setdefault('negative_cases',[]).append({'kind':kind,'functional':'failed','scan':scan,'offender_removed':True})
 
         # Build a baseline using the same public fixture, then run the actual recipes.
         from tools.lab.surface_driver.recipes.core_demo import opened, cancelled
@@ -130,7 +131,7 @@ window.show_all();Gtk.main()
     except BaseException as error:
         summary['failure_type']=type(error).__name__
         target.screenshot(args.out/'failure.png')  # Full mask; never persist unexpected raw pixels.
-        raise
+        raise RuntimeError('privacy campaign failed: '+type(error).__name__) from None
     finally:
         if pid:
             target.execute('kill '+str(pid)+' 2>/dev/null || true')

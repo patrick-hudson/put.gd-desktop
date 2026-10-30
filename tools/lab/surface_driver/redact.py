@@ -29,7 +29,7 @@ URL_SPAN = re.compile(r'\[url \{[^{}\r\n]+\}\]')
 REDACTED_SPANS = ('[redacted]', '[redacted AWS key]', '[redacted session/authorization]', '[redacted object]')
 AWS = re.compile(r'\b(?:AKIA|ASIA|AIDA|AROA)[A-Z0-9]{16}\b')
 SECRET_FIELD = re.compile(r'(?:password|secret(?!_scan)|token|authorization|^(?:session(?:[._-]?(?:id|uid|data))?|proton[._-]?session|x-pm-(?:uid|session))$|private.?key|access.?key|url$|link$)', re.I)
-SHARE = re.compile(r'(?:hxxps?://[^\s<>"\'`\\]+|(?<![\w./])(?://)?(?:put\.gd/[^\s<>"\'`\\]+|drive\.proton\.me/urls/[^\s<>"\'`\\]+))', re.I)
+SHARE = re.compile(r'(?:hxxps?://[^\s<>"\'`\\]+|(?<![\w./])(?://)?(?:put\.gd/[^\s<>"\'`\\]+|drive\.proton\.me/urls/[^\s<>"\'`\\]+|(?:[a-z0-9.-]+\.)?s3(?:[.-][a-z0-9-]+)*\.amazonaws\.com(?:\.cn)?/[^\s<>"\'`\\]+))', re.I)
 ENUMS = frozenset(('text', 'image', 'files', 'local', 'tty', 'clipboard', 'wayland', 'x11', 'completed', 'cancelled', 'pending', 'recording', 'uploading', 'initializing', 'background', 'foreground', 'available', 'unavailable'))
 
 
@@ -157,6 +157,7 @@ class Redactor:
             value, opaque = value.reveal(), True
         if isinstance(value, dict):
             for key, item in value.items():
+                self.remember(key)  # Link-shaped keys are data too; schema names stay public.
                 identity = key in STRUCTURAL_FIELDS or key in ('id', 'historyId', 'state', 'status', 'code', 'url_host', 'length', 'present', 'type', 'tool', 'mode', 'format', 'formats', 'category', 'sourceKind', 'mime', 'mimeType')
                 self.remember(item, opaque=not identity and (opaque or bool(SECRET_FIELD.search(str(key)))))
         elif isinstance(value, (list, tuple)):
@@ -183,10 +184,11 @@ class Redactor:
                     parsed = urlsplit(normalized)
                     parts = [normalized.split('://', 1)[1], parsed.path, parsed.path.lstrip('/'),
                              parsed.path+('?' + parsed.query if parsed.query else '')+('#'+parsed.fragment if parsed.fragment else ''),
-                             parsed.query, parsed.fragment]
-                    parts += parsed.path.split('/')
-                    parts += [Path(part).stem for part in parsed.path.split('/')]
+                             parsed.query, parsed.fragment, parsed.username or '', parsed.password or '']
+                    parts += parsed.path.split('/') + unquote(parsed.path).split('/')
+                    parts += [Path(part).stem for part in unquote(parsed.path).split('/')]
                     parts += [v for _,v in parse_qsl(parsed.query, keep_blank_values=True)]
+                    parts += re.split(r'[=&/!:]', unquote(parsed.fragment))
                     for part in parts:
                         for spelling in (part, unquote(part)):
                             if distinctive(spelling):
@@ -538,6 +540,10 @@ def main(argv=None):
         literals = json.loads(args.literals_file.read_text())
         if not isinstance(literals, list) or not all(isinstance(v, str) and distinctive(v) for v in literals):
             parser.error('literals file must contain distinctive strings')
+    redactor = Redactor()
+    for literal in literals:
+        redactor.remember(Sensitive(literal))
+    literals = redactor.audit_literals
     receipt = args.run/'receipt.json'
     try:
         value = json.loads(receipt.read_text()) if receipt.exists() else None
@@ -557,9 +563,9 @@ def main(argv=None):
         if not result['passed']:
             for row in value.get('interactions', []):
                 row['functional'] = 'failed'
-        write_json(receipt, value)
+        write_json(receipt, value, redactor=redactor)
         if not result['passed']:
-            fail_coverage(args.coverage or args.run/'coverage.json', value.get('interactions', []))
+            fail_coverage(args.coverage or args.run/'coverage.json', value.get('interactions', []), redactor=redactor)
     print(json.dumps(result))
     return 0 if result['passed'] else 1
 

@@ -449,5 +449,64 @@ class Adv(unittest.TestCase):
         self.assertTrue(r.has_sensitive_url('custom.example.invalid/SyntheticObjectId726'))
 
 
+    def test_decoded_path_segments_fragment_fields_and_url_userinfo(self):
+        link='https://UserName726Secret:Password726Secret@example.invalid/a%2FPathToken726Z9?q=QueryToken726Z9#password=FragmentToken726Z9&k=ExtraToken726Z9'
+        r=Redactor();r.remember({'directUrl':link})
+        for token in ('UserName726Secret','Password726Secret','PathToken726Z9','QueryToken726Z9','FragmentToken726Z9','ExtraToken726Z9'):
+            self.assertIn(token,r.audit_literals)
+            self.assertNotIn(token,r.text('piece '+token))
+
+
+    def test_unregistered_schemeless_s3_endpoint_is_a_link_shape(self):
+        self.out.mkdir()
+        (self.out/'leak.log').write_text('bucket.s3.us-east-2.amazonaws.com/'+TOKEN+'.png')
+        result=scan_run(self.out)
+        self.assertFalse(result['passed'])
+        self.assertIn('url',{f['kind'] for f in result['findings']})
+
+
+    def test_standalone_audit_never_restores_a_quarantined_receipt_secret(self):
+        import subprocess
+        self.out.mkdir()
+        row={'interaction':'editor.undo','functional':'passed','note':TOKEN}
+        (self.out/'receipt.json').write_text(json.dumps({'interactions':[row]}))
+        external=self.out.parent/'coverage.json'
+        external.write_text(json.dumps({'entries':[row]}))
+        literals=self.out.parent/'literals.json'
+        literals.write_text(json.dumps([PUTGD]));literals.chmod(0o600)
+        result=subprocess.run([sys.executable,'-m','tools.lab.surface_driver.redact',str(self.out),'--literals-file',str(literals),'--coverage',str(external)],capture_output=True,text=True)
+        self.assertEqual(result.returncode,1)
+        self.assertNotIn(TOKEN,result.stdout+result.stderr)
+        self.assertFalse(self.files_contain(TOKEN))
+        self.assertNotIn(TOKEN,external.read_text())
+        self.assertEqual(json.loads(external.read_text())['entries'][0]['functional'],'failed')
+        self.assertFalse(json.loads((self.out/'receipt.json').read_text())['secret_scan']['passed'])
+
+    @unittest.skipUnless(Image, 'requires python3-pil')
+    def test_late_leak_invalidates_previous_coverage_without_restoring_secrets(self):
+        from tools.lab.surface_driver.run import finish_evidence
+        external=self.out.parent/'export'/'coverage.json'
+        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),lambda ctx:None)],self.env,self.out,'safe',external)
+        self.assertEqual(rows[0].functional,'passed')
+        value=json.loads(external.read_text())
+        value['entries'].append(dict(value['entries'][0],interaction='editor.redo'))
+        external.write_text(json.dumps(value))
+        self.ctx.sensitive(PUTGD)
+        (self.out/'late.log').write_text(TOKEN)
+        result=finish_evidence(self.ctx.evidence,self.out,self.env,rows,'safe',external)
+        self.assertFalse(result['passed'])
+        self.assertEqual(result['invalidated_coverage_rows'],1)
+        self.assertEqual([r['functional'] for r in json.loads(external.read_text())['entries']],['failed','passed'])
+        self.assertNotIn(TOKEN,external.read_text())
+        self.assertFalse((self.out/'late.log').exists())
+
+
+    def test_link_shaped_resident_dictionary_keys_feed_the_registry(self):
+        self.ctx.target.cli=lambda *a,**kw:{'returncode':0,'stdout':json.dumps({'ok':True,'result':{PUTGD:'local'}}),'stderr':''}
+        self.ctx.call('history.detail')
+        self.assertIn(TOKEN,self.ctx.evidence.redactor.audit_literals)
+        self.assertNotIn(TOKEN,self.ctx.evidence.redactor.text('piece '+TOKEN))
+
+
 if __name__ == '__main__':
     unittest.main()

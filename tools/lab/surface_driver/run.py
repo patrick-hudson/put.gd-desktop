@@ -33,7 +33,7 @@ if str(ROOT) not in sys.path:
 from tools.lab.surface_driver.api import REGISTRY, ReceiptRow, RecipeBlocked, RecipeFailed, PACKAGES, PLACEMENTS, DESTINATIONS, HOSTS
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.profiles import load_profile
-from tools.lab.surface_driver.receipts import Evidence, stamp, write_receipts, write_json
+from tools.lab.surface_driver.receipts import Evidence, stamp, write_receipts, write_json, fail_coverage
 from tools.lab.surface_driver.redact import scan_run, detected
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
@@ -447,11 +447,14 @@ def finish_evidence(evidence, out, environment, rows, campaign, coverage):
         result = evidence.scan()
     except Exception:
         result = {'passed': False, 'findings': [{'kind': 'audit-unavailable'}], 'quarantine': []}
+        evidence.failed_scan = result
     if not result['passed']:
         for row in rows:
             row.functional = 'failed'
             if 'secret evidence audit failed' not in (row.note or ''):
                 row.note = ((row.note+'; ') if row.note else '')+'secret evidence audit failed'
+        if Path(coverage).resolve() != local.resolve() and Path(coverage).exists():
+            result['invalidated_coverage_rows'] = fail_coverage(coverage, [row.to_json() for row in rows], redactor=evidence.redactor)
     write_receipts(out, environment, rows, campaign, local, evidence=evidence, scan=result)
     if result['passed'] and Path(coverage).resolve() != local.resolve():
         # Merge under the campaign lock, then scan a private staged copy before publishing.
@@ -483,7 +486,7 @@ def finish_evidence(evidence, out, environment, rows, campaign, coverage):
             environment['coverage_export'] = {'scanned_before_copy': True, 'copy_scan_passed': copy_scan['passed']}
             if not copy_scan['passed']:
                 evidence.failed_scan = copy_scan
-                return finish_evidence(evidence, out, environment, rows, campaign, local)
+                return finish_evidence(evidence, out, environment, rows, campaign, coverage)
         write_receipts(out, environment, rows, campaign, local, evidence=evidence, scan=result)
     return result
 
@@ -581,7 +584,7 @@ def main(argv=None):
                               for action in ('region','window','desktop','clipboard','edit')}
         context.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],'patch':patch})
         context.start_notifications()
-        rows=run_recipes(context,recipes,environment,args.out,args.campaign,coverage)
+        rows=run_recipes(context,recipes,environment,args.out,args.campaign,args.out/'coverage.json')
         exit_code=0 if all(r.functional=='passed' for r in rows) else 1
     except BaseException as error:
         failure=evidence.redactor.exception(error)
