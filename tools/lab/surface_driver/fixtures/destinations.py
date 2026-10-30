@@ -84,7 +84,11 @@ assert call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(
         # Collection Delete removes only that wallet; verify the salt inode too.
         scope.defer('owned wallet salt',lambda:scope.python(KEYRING+KDE_SALT_CLEANUP.replace('LABEL',repr(label))
                     .replace('SALT_DEVICE',repr(created['salt_device'])).replace('SALT_INODE',repr(created['salt_inode']))),priority=-10)
-        scope.restart({'QTKEYCHAIN_BACKEND':'libsecret'})
+        # QtKeychain 0.15 lacks QTKEYCHAIN_BACKEND. Its unknown-version
+        # branch selects libsecret; change only this private resident's hint.
+        # The actual KDE desktop, Wayland transport and native adapter stay
+        # selected by XDG_CURRENT_DESKTOP=KDE, verified by the driver.
+        scope.restart({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
     return Fixture(reference=reference,collection=created['collection'],credentials_file=path,blank_password=True,private=True)
 
 

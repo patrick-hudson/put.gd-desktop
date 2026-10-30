@@ -63,6 +63,20 @@ class PlasmaPick(unittest.TestCase):
         self.assertFalse(probe.foreground(self.query)['ok'])
 
 
+    def test_shell_pid_uses_the_bounded_bus_daemon_api(self):
+        daemon=Mock();daemon.GetConnectionUnixProcessID.return_value=70
+        dbus=SimpleNamespace(SessionBus=Mock(return_value=Mock()),Interface=Mock(return_value=daemon))
+        with patch.dict(sys.modules,dbus=dbus):
+            # setUp mocks the high-level function for pick tests; call its
+            # actual source separately to exercise the dbus-python surface.
+            namespace={};source=Path(probe.__file__).read_text()
+            import ast
+            function=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name=='plasma_pid')
+            exec(compile(ast.Module(body=[function],type_ignores=[]),'<pid>','exec'),namespace)
+            self.assertEqual(namespace['plasma_pid'](),70)
+        daemon.GetConnectionUnixProcessID.assert_called_once_with('org.kde.plasmashell',timeout=3)
+
+
 class Provisioning(unittest.TestCase):
     def test_kde_profile_selects_kwin_shell_guard_and_crash_policy(self):
         profile=load_profile('kubuntu-kde-wayland')
@@ -94,7 +108,7 @@ class KDEKeyring(FixtureCase):
         with patch.object(scope,'json',side_effect=lambda s:scripts.append(s) or {'collection':'/owned','salt_device':1,'salt_inode':2}),\
              patch.object(scope,'python',side_effect=lambda s:scripts.append(s) or ''),patch.object(scope,'restart') as restart:
             self.ctx.fixture('fake-keyring');self.ctx.manager.close()
-            restart.assert_called_once_with({'QTKEYCHAIN_BACKEND':'libsecret'})
+            restart.assert_called_once_with({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
         source='\n'.join(scripts)
         self.assertIn('org.kde.secretservicecompat',source);self.assertIn("'pamOpen'",source)
         self.assertIn('putgd-fixture-'+scope.token,source)

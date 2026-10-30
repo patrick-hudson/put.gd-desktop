@@ -1715,7 +1715,8 @@ def glob_escape(value):
 def plasma_pid():
     import dbus
     bus = dbus.SessionBus()
-    return int(bus.get_unix_process_id('org.kde.plasmashell'))
+    daemon = dbus.Interface(bus.get_object('org.freedesktop.DBus', '/org/freedesktop/DBus'), 'org.freedesktop.DBus')
+    return int(daemon.GetConnectionUnixProcessID('org.kde.plasmashell', timeout=3))
 
 
 def shell_state(query):
