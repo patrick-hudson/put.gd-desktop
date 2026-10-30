@@ -145,6 +145,7 @@ class Fake(Context):
         raise RecipeFailed(what)
 
     def click(self, control, window, **kwargs):
+        control = {'text:Include file names': 'includeFileNames', 'text:Package contents': 'packageContentsToggle', 'text:Also upload and copy a link': 'uploadPackage', 'text:Save package': 'savePackage', 'text:Save and upload': 'savePackage', 'text:Cancel': 'closePackage', 'text:Close': 'closePackage'}.get(control, control)
         if control == 'closeAbout': self.about_visible = False
         if control == 'buildDetails': self.about_expanded = not self.about_expanded
         if control == 'copyBuildDetails': self.clipboard = json.dumps(self.build)

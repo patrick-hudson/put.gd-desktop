@@ -479,6 +479,21 @@ def open_package(ctx):
     ctx.expect(package(ctx)['includeNames'] is False, 'file names excluded on every new dialog')
 
 
+def package_click(ctx, control):
+    # Diagnostics is runtime-generated; select its actual visible labels. The
+    # core still resolves the private live control and verifies foreground input.
+    labels = {'includeFileNames': 'Include file names',
+              'packageContentsToggle': 'Package contents',
+              'uploadPackage': 'Also upload and copy a link'}
+    if control == 'closePackage':
+        label = 'Close' if package(ctx).get('saved') else 'Cancel'
+    elif control == 'savePackage':
+        label = 'Save and upload' if package(ctx).get('upload') else 'Save package'
+    else:
+        label = labels[control]
+    ctx.click('text:' + label, window='diagnostics')
+
+
 def package_frame(ctx, label):
     ctx.frame(label, window='diagnostics', reference='58-diagnostics-package')
 
@@ -492,17 +507,17 @@ def package_options(ctx):
     ctx.wait(lambda: package(ctx).get('open') and not package(ctx).get('previewing'), 'package opened by real click')
     package_frame(ctx, 'before-options')
     ctx.expect(package(ctx)['includeNames'] is False, 'names initially excluded')
-    ctx.click('includeFileNames', window='diagnostics')
+    package_click(ctx, 'includeFileNames')
     ctx.wait(lambda: package(ctx)['includeNames'] and not package(ctx)['previewing'], 'names included in preview')
-    ctx.click('packageContentsToggle', window='diagnostics')
+    package_click(ctx, 'packageContentsToggle')
     ctx.expect(bool(package(ctx)['contents']) and bool(package(ctx)['redaction']), 'preview lists package contents and redaction')
     package_frame(ctx, 'after-options')
-    ctx.click('closePackage', window='diagnostics')
+    package_click(ctx, 'closePackage')
     ctx.wait(lambda: not package(ctx)['open'], 'package dialog closes')
     # Opening again must reset the privacy choice.
     result(ctx, ctx.view('ui.diagnostics', {'action': 'openPackage'}))
     ctx.expect(package(ctx)['includeNames'] is False, 'reopening resets file-name consent')
-    ctx.click('closePackage', window='diagnostics')
+    package_click(ctx, 'closePackage')
     persisted(ctx)
 
 
@@ -511,9 +526,9 @@ def package_save(ctx):
     open_package(ctx)
     ctx.wait(lambda: not package(ctx)['uploadTarget']['checking'], 'upload-target check finishes', timeout=90)
     if package(ctx)['upload']:
-        ctx.click('uploadPackage', window='diagnostics')
+        package_click(ctx, 'uploadPackage')
     package_frame(ctx, 'before')
-    ctx.click('savePackage', window='diagnostics')
+    package_click(ctx, 'savePackage')
     saved_package = ctx.wait(lambda: package(ctx).get('saved'), 'package saved locally')
     ctx.expect(not saved_package.get('uploadError'), 'local save has no upload error')
     path = saved_package['path']
@@ -522,7 +537,7 @@ def package_save(ctx):
     ctx.expect(response['returncode'] == 0, 'saved package is a readable nonempty ZIP')
     ctx.expect(persisted(ctx) == get(ctx)['document'], 'package save preserves configuration')
     package_frame(ctx, 'after')
-    ctx.click('closePackage', window='diagnostics')
+    package_click(ctx, 'closePackage')
 
 
 @recipe('diagnostics.upload', needs=('diagnostics-upload',), destinations=('local', 's3'))
@@ -543,11 +558,11 @@ def package_upload(ctx):
     package_frame(ctx, 'before')
     # Exercise the opt-in checkbox with real input, then send through Save.
     if package(ctx)['upload']:
-        ctx.click('uploadPackage', window='diagnostics')
+        package_click(ctx, 'uploadPackage')
     ctx.expect(package(ctx)['upload'] is False, 'upload checkbox can opt out')
-    ctx.click('uploadPackage', window='diagnostics')
+    package_click(ctx, 'uploadPackage')
     ctx.expect(package(ctx)['upload'] is True, 'explicit upload enabled')
-    ctx.click('savePackage', window='diagnostics')
+    package_click(ctx, 'savePackage')
     outcome = ctx.wait(lambda: package(ctx).get('saved') if not package(ctx).get('saving') else None,
                        'diagnostics saved and uploaded', timeout=90)
     ctx.expect(not outcome.get('uploadError'), 'diagnostics upload succeeded')
@@ -555,7 +570,7 @@ def package_upload(ctx):
     ctx.expect(ctx.clipboard_text() == outcome['link'], 'clipboard contains exact returned link')
     ctx.expect(persisted(ctx) == get(ctx)['document'], 'diagnostics upload preserves configuration')
     package_frame(ctx, 'after')
-    ctx.click('closePackage', window='diagnostics')
+    package_click(ctx, 'closePackage')
 
 
 @recipe('cli.settings')
@@ -816,7 +831,7 @@ BLOCKED = {
 }
 for _identifier in ('settings.update-privacy', 'settings.update-toggle', 'settings.update-status',
                     'settings.update-install', 'settings.update-restart', 'settings.update-commands'):
-    BLOCKED[_identifier] = 'Ownership conflict: ownership.json assigns settings, but task assigns all update settings to events; core must reconcile ownership.'
+    BLOCKED[_identifier] = 'Needs an isolated update request ledger and install/restart lifecycle fixture; source builds cannot establish package installation or privacy network effects.'
 
 
 def _declare_blocked(identifier, reason):

@@ -1,0 +1,29 @@
+{
+  "window_titles": {
+    "settings": "^put.gd$",
+    "about": "^About put.gd$",
+    "diagnostics": "^Create diagnostics package$"
+  },
+  "settings": {
+    "theme_references": {
+      "dark": "07-settings-general",
+      "light": "07-settings-general-light"
+    },
+    "clipboard_write_command": "wl-copy"
+  },
+  "catalog_windows": {
+    "settings": [
+      "07-settings-general",
+      "08-settings-capture",
+      "06-settings-shortcuts",
+      "05-settings-advanced"
+    ],
+    "about": [
+      "about",
+      "about-build-details"
+    ],
+    "diagnostics": [
+      "58-diagnostics-package"
+    ]
+  }
+}
