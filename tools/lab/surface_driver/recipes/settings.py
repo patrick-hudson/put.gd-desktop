@@ -1027,7 +1027,7 @@ def browse(ctx):
 # Honest declarations for edges that the current interface cannot prepare or
 # observe. Each gets its own blocked receipt (and never a visual-only pass).
 BLOCKED = {
-    'settings.footer': 'Conflict fixture is available; needs deterministic failed-save/retry fixture and footer/retry observation. Accepted config alone cannot prove retry UI.',
+    'settings.footer': 'settings-save-failure and conflict fixtures exist; the core footer bundle still needs a live proof of autosave state, Retry saving and conflict handling (#681). Accepted config alone cannot prove retry UI.',
     'shortcuts-page.chord': 'Input-events fixture exists; current recording status text must be accessible before proving overlapping-key, AltGr and shifted-digit outcomes (#862).',
     'shortcuts-page.focus-loss': 'External focus fixture exists; current recording outcome text is not accessible on Qt 6.4 (#862), and Wayland hide still needs native minimize support.',
     'shortcuts-page.unsupported-desktop': 'Required desktop profiles have a shortcut channel; needs an explicitly unsupported Wayland profile.',
@@ -1043,7 +1043,7 @@ BLOCKED = {
 }
 for _identifier in ('settings.update-privacy', 'settings.update-toggle', 'settings.update-status',
                     'settings.update-install', 'settings.update-restart', 'settings.update-commands'):
-    BLOCKED[_identifier] = 'Needs an isolated update request ledger and install/restart lifecycle fixture; source builds cannot establish package installation or privacy network effects.'
+    BLOCKED[_identifier] = 'Update feed/lifecycle APIs exist; updates.bundle is not provisioned in snapshot/profiles. Await the core update bundle for request-ledger, install and restart evidence (#681).'
 
 
 def _declare_blocked(identifier, reason):
