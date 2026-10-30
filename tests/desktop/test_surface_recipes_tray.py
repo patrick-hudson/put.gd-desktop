@@ -324,6 +324,23 @@ class TrayRecipesTest(unittest.TestCase):
         self.assertIn(('call', 'action.invoke', {'action': 'clipboard'}), ctx.events)
         self.assertTrue(any(e[0] == 'notification_action' and e[2] == 'save-diagnostics' for e in ctx.events))
 
+    def test_background_menu_avoids_qt_window_and_closes_via_shell(self):
+        ctx = FakeContext()
+        ctx.profile['tray']['menu_prepare_background'] = True
+        tray.context_menu(ctx)
+        self.assertFalse(any(e[0] in ('view', 'keys') for e in ctx.events))
+        self.assertEqual([e for e in ctx.events if e[0] == 'click'],
+                         [('click', 'put.gd', 'right'), ('click', 'put.gd', 'right')])
+
+    def test_failed_menu_open_receives_no_cleanup_input(self):
+        ctx = FakeContext()
+        def refused(*args, **kwargs):
+            raise RecipeFailed('desktop input is obscured')
+        ctx.click_accessible = refused
+        with self.assertRaises(RecipeFailed):
+            tray.context_menu(ctx)
+        self.assertFalse(any(e[0] in ('keys', 'click') for e in ctx.events))
+
     def test_gnome_gestures_block_before_incorrect_single_click(self):
         for function in (tray.activate, tray.scroll_noop):
             ctx = FakeContext()

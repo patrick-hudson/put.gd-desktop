@@ -274,15 +274,22 @@ def activate(ctx):
 
 @recipe('tray.context-menu', desktop_drawn=True)
 def context_menu(ctx):
-    _begin(ctx)
+    background = _profile(ctx).get('menu_prepare_background', False)
+    _begin(ctx, show_ui=not background)
     ctx.frame('before')
+    opened = False
     try:
         _menu(ctx)
+        opened = True
         for name in ('Capture region', 'History', 'Destinations', 'Settings', 'About put.gd', 'Quit put.gd'):
             _node(ctx, name, 'menu item')
         _menu_frame(ctx, 'after')
     finally:
-        ctx.keys('Esc')
+        if opened:
+            if background:
+                _icon_input(ctx, 'right')
+            else:
+                ctx.keys('Esc')
 
 
 def _navigation(interaction, label, target):

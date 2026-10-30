@@ -18,7 +18,8 @@
     },
     "hover_before_click": true,
     "notification_prepare_cli": true,
-    "activation_clicks": 2
+    "activation_clicks": 2,
+    "menu_prepare_background": true
   },
   "windows": {
     "trayFixture": {
