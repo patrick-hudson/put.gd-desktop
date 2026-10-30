@@ -131,7 +131,7 @@ def _description(ctx, recording=False):
     nodes = ctx.accessible({"name": name})
     descriptions = [n.get("description", "") for n in nodes if n.get("description")]
     if not descriptions:
-        ctx.blocked("Live selector accessibility description unavailable; no resident selection inspect (#701)", issue=701)
+        ctx.blocked("Live selector accessibility description unavailable; no resident selection inspect (#942)", issue=942)
     return descriptions[0]
 
 
@@ -201,7 +201,7 @@ def _open_region(ctx, edit=False, accessible=True):
         if observed["state"] in ("accepted", "acquiring"):
             # Cleanup only; a blocked input is never represented as a cancel pass.
             _call(ctx, "operation.cancel", {"id": oid})
-            ctx.blocked("Capture selector has no live AT-SPI node or authorized geometry in this session (#701): " + str(error), issue=701)
+            ctx.blocked("Capture selector has no live AT-SPI node or authorized geometry in this session (#942): " + str(error), issue=942)
         raise
     return oid
 
@@ -283,7 +283,7 @@ def _open_record(ctx, entire=False, rect=None):
             observed = _inspect(ctx, rid)
             _cancel_record(ctx, rid)
             ctx.expect(observed["state"] != "failed", "recording failed before selector input")
-            ctx.blocked("Recording selector input/readback unavailable (#701/#705): " + str(error), issue=701)
+            ctx.blocked("Recording selector input/readback unavailable (#942): " + str(error), issue=942)
     return rid
 
 
@@ -515,7 +515,7 @@ def _heads(ctx, recording):
     if len(screens) != 2:
         ctx.blocked("Tab across heads requires exactly two independently sized guest heads (#664)", issue=664)
     if not recording and screens[0][2:] == screens[1][2:]:
-        ctx.blocked("Screenshot Tab readback needs unequal head sizes to identify the completed output without AT-SPI (#701)", issue=701)
+        ctx.blocked("Screenshot Tab readback needs unequal head sizes to identify the completed output without AT-SPI (#942)", issue=942)
     if any(s.get("scale", 1) != 1 for s in ctx.profile.get("screens", [])):
         ctx.blocked("Completed-output Tab probe currently requires unit-scale fixture heads")
     with _local(ctx):
@@ -549,7 +549,7 @@ def _heads(ctx, recording):
                     _cancel_record(ctx, oid)
                 elif not accepted and _op(ctx, oid)["state"] in ("accepted", "acquiring"):
                     _cancel_region(ctx, oid)
-        ctx.review("Completed output proves Tab/Shift+Tab monitor choice. Selected-rectangle transfer/clamping and both covers still require live readback/full two-head visual review (#664/#701).")
+        ctx.review("Completed output proves Tab/Shift+Tab monitor choice. Selected-rectangle transfer/clamping and both covers still require live readback/full two-head visual review (#664/#942).")
 
 
 @recipe("region.to-upload", needs=NEEDS, destinations=("local",))

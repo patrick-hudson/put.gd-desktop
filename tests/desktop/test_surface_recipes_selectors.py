@@ -388,6 +388,20 @@ class SelectorRecipes(unittest.TestCase):
             selectors._retain(ctx, "/tmp/selectors-unit/synthetic.png", "png")
         self.assertFalse((ctx.out / "functional").exists())
 
+    def test_desktop_declaration_is_limited_to_local_disposable_guests(self):
+        for placement, destination, guest, allowed in (("boat", "local", "unit", True),
+                                                     ("guest", "local", "unit", True),
+                                                     ("native", "local", "unit", False),
+                                                     ("boat", "s3", "unit", False),
+                                                     ("boat", "local", None, False)):
+            with self.subTest(placement=placement, destination=destination, guest=guest):
+                ctx = FakeContext()
+                ctx.placement, ctx.destination, ctx.profile = placement, destination, {"guest": guest}
+                frames = []
+                ctx.frame = lambda label, **options: frames.append(options)
+                selectors._frame(ctx, "synthetic")
+                self.assertEqual(bool(frames[0].get("desktop_safe")), allowed)
+
     def test_wayland_preparation_uses_core_consent_and_closes_monitor(self):
         ctx = FakeContext()
         ctx.profile = {"session": "wayland"}
@@ -583,7 +597,7 @@ class SelectorRecipes(unittest.TestCase):
                 def refused(*args, **kwargs):
                     raise RecipeBlocked("live window match is missing or ambiguous")
                 ctx.focus = refused
-                with self.assertRaisesRegex(RecipeBlocked, "#701"):
+                with self.assertRaisesRegex(RecipeBlocked, "#942"):
                     function(ctx)
                 self.assertFalse(ctx.inputs)
                 self.assertTrue(all(op["state"] == "cancelled" for op in ctx.operations.values()))
