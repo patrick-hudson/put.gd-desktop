@@ -13,7 +13,7 @@ import tempfile
 import time
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
@@ -26,6 +26,7 @@ from tools.lab.surface_driver.run import discover, guard_target, main, native_en
 from tools.lab import desktop_lock, lab
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
+from tools.lab import lab
 try:
     from PIL import Image
 except ImportError:
@@ -56,11 +57,11 @@ class Mapping(unittest.TestCase):
     def test_scale_hidpi_and_negative_monitor_origin(self):
         inv={'width':100,'height':50};control={'rect':[10,5,20,10]}
         self.assertEqual(control_point(inv,control,{'x':30,'y':40,'width':100,'height':50,'scale':1}),(50,50))
-        self.assertEqual(control_point(inv,control,{'x':-1900,'y':10,'width':200,'height':100,'scale':2,'screen_x':-1920}),(120,60))
+        self.assertEqual(control_point(inv,control,{'x':-1900,'y':10,'width':100,'height':50,'scale':2,'screen_x':-1920}),(80,40))
         self.assertEqual(control_point(inv,control,{'x':0,'y':0,'width':100,'height':50},(0,0)),(10,5))
 
     def test_nonuniform_resize_refused(self):
-        with self.assertRaisesRegex(RecipeBlocked,'aspect'):
+        with self.assertRaisesRegex(RecipeBlocked,'size differs'):
             control_point({'width':100,'height':50},{'rect':[0,0,10,10]}, {'x':0,'y':0,'width':200,'height':50})
 
     def test_selectors_and_ambiguity(self):
@@ -282,21 +283,25 @@ class Running(unittest.TestCase):
                     'settings.get':{'metadata':{'observedRevision':'revision'}}}.get(args[0],{})
             return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
         target.cli=cli;target.execute=lambda script,timeout=60:{'returncode':0,'stdout':'123','stderr':''}
+        shell={'process':'cinnamon','instances':[{'pid':5,'start':1,'dumping':False}],'crash_windows':[],'cores':[]}
+        target.probe=lambda name,query,source,timeout=15:{'ok':True,'result':shell} if name=='shell_state' else {'ok':False,'error':name}
         recipe=Recipe(('editor.undo',),lambda c:None)
         args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
               '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination','local',
               '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(self.path/'run'),
               '--coverage',str(self.path/'main-coverage.json')]
-        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'):
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),0)
         mutation=next(json.loads(a[1]) for a in calls if a[0]=='settings.patch')
         self.assertEqual(mutation['patch']['actions']['edit']['destination'],'local')
         self.assertTrue(mutation['patch']['archive']['root'].startswith(target.root))
         self.assertTrue(mutation['patch']['archive']['keepUploads'])
-        self.assertEqual(json.loads((self.path/'run/receipt.json').read_text())['environment']['observed_build']['gitCommit'],'abcdef')
+        environment=json.loads((self.path/'run/receipt.json').read_text())['environment']
+        self.assertEqual(environment['observed_build']['gitCommit'],'abcdef')
+        self.assertEqual(environment['shell_health'],{'process':'cinnamon','pid':5,'start':1,'cores_readable':True})
         target.close=lambda:['cleanup incomplete']
         args[args.index('--out')+1]=str(self.path/'run-error')
-        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'):
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),2)
         self.assertEqual(json.loads((self.path/'run-error/receipt.json').read_text())['environment']['cleanup_errors'],['cleanup incomplete'])
 
@@ -312,6 +317,27 @@ class Running(unittest.TestCase):
         self.assertFalse(target.started)
         self.assertEqual(errors,['notification monitor cleanup unavailable'])
 
+    def test_target_removes_only_its_private_session_root_after_exit(self):
+        target=Target.__new__(Target)
+        target._rfb=None;target.monitor_pid=None;target.started=False;target._created_root=True
+        target.root=str(self.path/'owned space');Path(target.root).mkdir(mode=0o700)
+        sibling=self.path/'preserve';sibling.write_text('unrelated')
+        def execute(script,**kwargs):
+            reply=subprocess.run(script,shell=True,text=True,capture_output=True,timeout=10)
+            return {'returncode':reply.returncode,'stdout':reply.stdout,'stderr':reply.stderr}
+        target.execute=execute
+        self.assertEqual(target.close(),[])
+        self.assertFalse(Path(target.root).exists());self.assertEqual(sibling.read_text(),'unrelated')
+        Path(target.root).mkdir(mode=0o700);target._created_root=True
+        (Path(target.root)/'fx-pending').mkdir(mode=0o700)
+        self.assertEqual(target.close(),['private session root cleanup refused'])
+        self.assertTrue(Path(target.root).exists())
+        (Path(target.root)/'fx-pending').rmdir()
+        mountinfo='1 0 0:1 / '+target.root.replace(' ',chr(92)+'040')+' rw - tmpfs tmpfs rw\n'
+        target.execute=lambda script,**kwargs:execute(script.replace("Path('/proc/self/mountinfo').read_text()",repr(mountinfo)),**kwargs)
+        self.assertEqual(target.close(),['private session root cleanup refused'])
+        self.assertTrue(Path(target.root).exists())
+
     def test_resident_operation_identity_is_retained(self):
         self.ctx.target.cli=lambda *args,**kwargs:{'returncode':0,'stderr':'','stdout':
             json.dumps({'ok':True,'result':{'operationId':'test-operation-123'}})}
@@ -323,9 +349,9 @@ class Running(unittest.TestCase):
         target=Target.__new__(Target)
         target._lock=('f44','owned-session');target._last_heartbeat=100;target._lock_valid_until=105
         calls=[]
-        target.physical=SimpleNamespace(ssh=lambda *args:calls.append(args) or json.dumps({'ok':True,'state':'expired','expiresInSeconds':0}))
+        target.physical=SimpleNamespace(ssh=lambda *args,**_:calls.append(args) or json.dumps({'ok':True,'state':'expired','expiresInSeconds':0}))
         target.run=self.path
-        with patch('tools.lab.surface_driver.target.time.monotonic',return_value=110):
+        with patch('tools.lab.surface_driver.target.time.clock_gettime',return_value=110):
             with self.assertRaisesRegex(RecipeBlocked,'no longer held'):target.heartbeat()
         self.assertEqual(len(calls),1)
 
@@ -346,6 +372,120 @@ method return time=100.2 sender=:1.3 -> destination=:1.2 serial=9 reply_serial=4
         row=parse_notifications(raw,100)[0]
         self.assertEqual((row['summary'],row['body'],row['id']),('Saved locally','Synthetic file',72))
         self.assertEqual(parse_notifications(raw,101),[])
+
+
+class CleanupShell(unittest.TestCase):
+    """Context.shell(cleanup=True): restoration that outlives the recipe deadline."""
+    def setUp(self):
+        self.calls=[]
+        target=FakeTarget();target.run=Path('/tmp/sd-test-run')
+        target.execute=lambda script,timeout=60:self.calls.append((script,timeout)) or {'returncode':0,'stdout':'ran','stderr':''}
+        self.target=target
+        self.ctx=DriverContext(target,dict(desktop='mint-cinnamon-x11',host='boat',placement='guest',package='deb',destination='local'),
+                               load_profile('mint-cinnamon-x11'),'/tmp','/tmp')
+        self.ctx._deadline=time.monotonic()-1  # The recipe has overrun.
+
+    def test_cleanup_call_after_the_deadline_still_runs(self):
+        with patch.object(lab,'verify_owned_guest') as owned:
+            self.assertEqual(self.ctx.shell('restore',cleanup=True)['stdout'],'ran')
+            self.assertEqual(self.ctx.shell('restore',timeout=180,cleanup=True)['stdout'],'ran')
+        # Its own bounded timeout (30 s by default), never the clipped remainder.
+        self.assertEqual([c[1] for c in self.calls],[30.0,180])
+        self.assertEqual(owned.call_count,2)
+        with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
+            self.ctx.shell('ordinary')
+        self.assertEqual(len(self.calls),2)
+
+    def test_cleanup_keeps_the_target_safety_checks(self):
+        with patch.object(lab,'verify_owned_guest',side_effect=lab.LabError('Guest preflight requires an owned disposable overlay')):
+            with self.assertRaisesRegex(RecipeBlocked,'owned disposable overlay'):
+                self.ctx.shell('restore',cleanup=True)
+        self.assertFalse(self.calls)
+        # Physical targets: the desktop-lock heartbeat lives in Target.execute.
+        self.target.physical=object()
+        with patch.object(lab,'verify_owned_guest') as owned:
+            self.ctx.shell('restore',cleanup=True)
+        owned.assert_not_called()
+        self.assertEqual(len(self.calls),1)
+
+
+class CleanupShellBounds(unittest.TestCase):
+    """Validator B2, N1 and N3 on #680: the cleanup hook's own boundaries."""
+    env=dict(desktop='mint-cinnamon-x11',host='boat',placement='guest',package='deb',destination='local')
+
+    def context(self,target):
+        return DriverContext(target,self.env,load_profile('mint-cinnamon-x11'),'/tmp','/tmp')
+
+    def test_recipe_alarm_is_deferred_until_a_cleanup_call_completes(self):
+        # run.py's SIGALRM fired 0.05 s into a restore and killed the transport
+        # before the script reached the target. A real subprocess stands in.
+        with tempfile.TemporaryDirectory() as temporary:
+            marker=Path(temporary)/'restored'
+            target=FakeTarget();target.run=Path('/tmp/sd-test-run')
+            def execute(script,timeout=60):
+                subprocess.run([sys.executable,'-c','import pathlib,sys,time\ntime.sleep(.3)\npathlib.Path(sys.argv[1]).write_text("done")',
+                                str(marker)],check=True,timeout=timeout)
+                return {'returncode':0,'stdout':'ran','stderr':''}
+            target.execute=execute
+            ctx=self.context(target)
+            def deadline(_signum,_frame):
+                raise RecipeFailed('recipe deadline exceeded: links.open')
+            previous=signal.signal(signal.SIGALRM,deadline)
+            try:
+                signal.setitimer(signal.ITIMER_REAL,.05)
+                with patch.object(lab,'verify_owned_guest'):
+                    with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
+                        ctx.shell('restore',timeout=30,cleanup=True)
+                        time.sleep(1)  # Not reached: the pending alarm fires on return.
+            finally:
+                signal.setitimer(signal.ITIMER_REAL,0)
+                signal.signal(signal.SIGALRM,previous)
+            self.assertEqual(marker.read_text(),'done')
+            self.assertNotIn(signal.SIGALRM,signal.pthread_sigmask(signal.SIG_BLOCK,[]))
+
+    def test_input_release_never_leaves_the_alarm_blocked(self):
+        # An alarm already due runs its handler inside the blocking
+        # pthread_sigmask call, after the mask changed (CPython checks signals
+        # there). Emulate exactly that; the previous mask must still return.
+        from tools.lab.surface_driver import critical as critical_module, target as target_module
+        real=critical_module._signal.pthread_sigmask  # The C call critical.py makes.
+        def due(how,mask):
+            previous=real(how,mask)
+            if how==signal.SIG_BLOCK and signal.SIGALRM in set(mask):
+                raise RecipeFailed('recipe deadline exceeded: links.open')
+            return previous
+        with patch.object(critical_module._signal,'pthread_sigmask',side_effect=due):
+            with self.assertRaisesRegex(RecipeFailed,'deadline'):
+                with target_module.input_release():
+                    self.fail('release must not run after the alarm')
+        self.assertNotIn(signal.SIGALRM,real(signal.SIG_BLOCK,()))
+
+    def test_cleanup_timeouts_are_capped(self):
+        calls=[]
+        target=FakeTarget();target.run=Path('/tmp/sd-test-run')
+        target.execute=lambda script,timeout=60:calls.append(timeout) or {'returncode':0,'stdout':'','stderr':''}
+        with patch.object(lab,'verify_owned_guest'):
+            self.context(target).shell('restore',timeout=86400,cleanup=True)
+        self.assertEqual(calls,[600])
+
+    def test_physical_cleanup_rechecks_the_lock_before_every_command(self):
+        # A heartbeat seconds old must not stand in for a lease since lost.
+        sent=[]
+        def ssh(run,script,timeout=None):
+            if 'SD_LOCK' in script:
+                sent.append('lock')
+                return json.dumps({'ok':True,'state':'released'})
+            sent.append('command')
+            return '{}' if 'session_environment' in script else json.dumps({'returncode':0,'stdout':'','stderr':''})
+        target=Target.__new__(Target)
+        target.physical=SimpleNamespace(ssh=ssh,config={'profile':{'name':'mint-cinnamon-x11'}})
+        target.run,target.root,target.bin_dir=Path('/tmp/sd-test-run'),'/tmp/sd-test',None
+        target._lock=('k72','session-1')
+        target._last_heartbeat=time.clock_gettime(time.CLOCK_BOOTTIME)
+        target._lock_valid_until=target._last_heartbeat+1800
+        with self.assertRaisesRegex(RecipeBlocked,'no longer held'):
+            self.context(target).shell('restore',timeout=180,cleanup=True)
+        self.assertEqual(sent,['lock'])
 
 
 class InputFoundations(unittest.TestCase):
@@ -564,10 +704,10 @@ class InputFoundations(unittest.TestCase):
         window=SimpleNamespace(queryComponent=lambda:component)
         class App(list):
             def get_process_id(self):return 50
-        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:[App([window])]),DESKTOP_COORDS=0)
+        fake=SimpleNamespace(DESKTOP_COORDS=0)
         query={'desktop_node':{'application':'gnome-shell','name':'Synthetic notice','role':'label','pid':50},
                'point':[40,30],'shell_application':'gnome-shell*'}
-        with patch.dict(sys.modules,pyatspi=fake):
+        with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'desktop_root',return_value=[App([window])]):
             self.assertTrue(probe.shell_hit(query)['ok'])
             query['desktop_node']['application']='other app'
             with self.assertRaisesRegex(RuntimeError,'profile compositor'):
@@ -596,7 +736,7 @@ class InputFoundations(unittest.TestCase):
         def run(*args):
             if args[0]=='xprop' and args[1]=='-root':return 'window id # 0x14'
             if args[1]=='getwindowpid':raise subprocess.CalledProcessError(1,args)
-            if args[1]=='getwindowgeometry':return 'X=0\nY=0\nWIDTH=100\nHEIGHT=80'
+            if args[0]=='xwininfo':return '  Absolute upper-left X:  0\n  Absolute upper-left Y:  0\n  Width: 100\n  Height: 80\n  Override Redirect State: no\n'
             if args[1]=='getwindowname':return 'Other client without PID'
             return ''
         with patch.object(probe.subprocess,'run',return_value=SimpleNamespace(stdout='20')),patch.object(probe,'run',side_effect=run):
@@ -606,6 +746,7 @@ class InputFoundations(unittest.TestCase):
 
     def test_private_seed_precedes_launch_and_first_launch_is_explicit(self):
         target=Target.__new__(Target);target.root='/tmp/sd-seed';target.app_executable='putgd';target.started=False
+        target.preflight=lambda:None;target.preserve_clipboard=lambda:None
         calls=[]
         target.execute=lambda script,**kw:calls.append(script) or {'returncode':0}
         target.cli=lambda *a:{'returncode':0,'stdout':'{"ok":true,"result":{}}'}
@@ -639,9 +780,9 @@ class InputFoundations(unittest.TestCase):
         secret=Node('Password','password text','must stay private')
         app=Node('putgd-ui','application',children=[Node('Open image','file chooser',children=[field,secret]),
                  Node('Edit image','filler',children=[Node('Image being edited','filler')])])
-        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:Node('desktop','desktop frame',children=[app])),DESKTOP_COORDS=0,
-                             **{'STATE_'+k.upper():k for k in ('visible','showing','enabled')})
-        with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'owned',return_value=True):
+        fake=SimpleNamespace(DESKTOP_COORDS=0,**{'STATE_'+k.upper():k for k in ('visible','showing','enabled')})
+        with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'owned',return_value=True),\
+             patch.object(probe,'desktop_root',return_value=Node('desktop','desktop frame',children=[app])):
             rows=probe.accessible({'text':'/tmp/*.png','role':'text','owned':True})
             self.assertEqual(len(rows),1)
             row=rows[0]
@@ -658,15 +799,19 @@ class InputFoundations(unittest.TestCase):
         self.ctx.profile['notifications']['actions_available']=True
         notices=[{'id':72,'summary':'Synthetic notice','actions':['default','Show'],'action_events':[]}]
         self.ctx.notifications=lambda:notices
-        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20]}
-        self.ctx.accessible=lambda query:[node]
-        clicks=[]
-        def click(query):
-            clicks.append(query);notices[0]['action_events'].append({'action':'default'})
-        self.ctx.click_accessible=click
+        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20],'application':'cinnamon'}
+        queries=[];self.ctx.accessible=lambda query:queries.append(query) or [node]
+        picks=[];self.ctx._probe=lambda name,query:picks.append(query) or {'ok':True}
+        events=[]
+        def pointer(*args,**kwargs):
+            events.append(args)
+            if len(args)>4 and args[4] is False:notices[0]['action_events'].append({'action':'default'})
+        self.ctx.target.pointer=pointer
         self.ctx.notification_action(72)
-        self.assertEqual(clicks[0]['pid'],50)
-        self.assertIn('application',clicks[0])
+        # One owned title lookup, hover first, then press/release on the title.
+        self.assertEqual(len(queries),1);self.assertIn('application',queries[0])
+        self.assertEqual(events[0],(50,20,200,200));self.assertEqual([e[4] for e in events[1:]],[True,False])
+        self.assertTrue(all(q['desktop_node'] is node and q['point']==(50,20) for q in picks))
         notices[0]['closed']={'reason':1}
         with self.assertRaisesRegex(RecipeBlocked,'closed'):
             self.ctx.notification_action(72)
@@ -678,19 +823,24 @@ class InputFoundations(unittest.TestCase):
                'ancestors':[{'role':'notification','rect':[0,0,200,150]},
                             {'role':'panel','rect':[20,10,80,20]}]}
         button={'name':'Retry','pid':50,'role':'push button','rect':[20,100,80,20]}
+        outside={'name':'Retry','pid':50,'role':'push button','rect':[20,170,80,20]}
         self.ctx.notifications=lambda:[notice]
-        self.ctx.accessible=lambda query:[title if query['name']=='Synthetic notice' else button]
-        clicked=[]
-        def click(query):
-            clicked.append(query);notice['action_events'].append({'action':'retry'})
-        self.ctx.click_accessible=click
-        self.ctx.hover_accessible=lambda query:None
+        self.ctx.accessible=lambda query:[title] if query['name']=='Synthetic notice' else [button,outside]
+        self.ctx._probe=lambda name,query:{'ok':True}
+        events=[]
+        def pointer(*args,**kwargs):
+            events.append(args)
+            if len(args)>4 and args[4] is False:notice['action_events'].append({'action':'retry'})
+        self.ctx.target.pointer=pointer
         self.ctx.notification_action(72,'retry')
-        self.assertEqual(clicked[0]['within'],[0,0,200,150])
+        self.assertEqual(events[0][:2],(60,20))
+        self.assertEqual([e[:2] for e in events[1:]],[(60,110),(60,110)])
 
     def test_declared_notification_input_gap_blocks_before_observation(self):
+        self.ctx.profile['notifications']=dict(self.ctx.profile['notifications'],actions_available=False,
+                                               reason='Declared desktop gap (#670)')
         self.ctx.notifications=lambda: self.fail('gap must withhold all input before observation')
-        with self.assertRaisesRegex(RecipeBlocked,'Two boat guest attempts') as error:
+        with self.assertRaisesRegex(RecipeBlocked,'Declared desktop gap') as error:
             self.ctx.notification_action(72)
         self.assertEqual(error.exception.issue,670)
 
@@ -738,9 +888,12 @@ class TargetSafety(unittest.TestCase):
         endpoint_check=patch('tools.lab.surface_driver.run.verify_physical_endpoints')
         self.endpoint_check=endpoint_check.start()
         self.addCleanup(endpoint_check.stop)
+        guest_check=patch('tools.lab.surface_driver.run.verify_guest_endpoint')
+        self.guest_check=guest_check.start()
+        self.addCleanup(guest_check.stop)
 
     def arguments(self, host='f44', placement='native', session='owned-session'):
-        return SimpleNamespace(host=host, placement=placement, lock_session=session, boat_id='bx_test')
+        return SimpleNamespace(host=host, placement=placement, lock_session=session, boat_id='bx_test', boat_cli='/trusted/boat')
 
     def target(self, address='192.168.68.70', user='patrick', port=22):
         return SimpleNamespace(physical=SimpleNamespace(config={'host':address,'user':user,'ssh_port':port}),
@@ -852,7 +1005,7 @@ class TargetSafety(unittest.TestCase):
                       '--destination','local','--recipes','core_demo','--catalog',str(root),'--build','abcdef',
                       '--out',str(root/str(number)),'--coverage',str(root/'coverage.json')]
                 if session:args+=['--lock-session',session]
-                with patch('tools.lab.surface_driver.run.Target',return_value=target):
+                with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
                     self.assertEqual(main(args),2)
                 for operation in (target.start,target.identity,target.key,target.screenshot):operation.assert_not_called()
                 self.assertIn('blocked',json.loads((root/str(number)/'receipt.json').read_text())['environment'])
@@ -865,11 +1018,17 @@ class TargetSafety(unittest.TestCase):
             target.physical=SimpleNamespace(ssh=Mock(side_effect=[
                 json.dumps({'ok':True,'state':'held','expiresInSeconds':30}),
                 json.dumps({'ok':False,'state':'held','expiresInSeconds':29})]))
-            with patch('tools.lab.surface_driver.target.time.monotonic',return_value=101),patch.object(lab,'input_events') as events,patch.object(lab,'key') as key,patch.object(lab,'pointer') as pointer:
+            with patch('tools.lab.surface_driver.target.time.clock_gettime',return_value=101),patch.object(lab,'input_events') as events,patch.object(lab,'key') as key,patch.object(lab,'pointer') as pointer:
                 getattr(target,method)(*arguments)
                 with self.assertRaises(RecipeBlocked):getattr(target,method)(*arguments)
                 self.assertEqual(target.physical.ssh.call_count,2)
-                self.assertEqual(sum(m.call_count for m in (events,key,pointer,target._rfb.key,target._rfb.pointer_button,target._rfb.scroll)),1)
+                # A wheel gesture consists of press plus deadline-safe release;
+                # the rejected second gesture must dispatch neither packet.
+                expected = 2 if method == 'scroll_vnc' else 1
+                self.assertEqual(sum(m.call_count for m in (events,key,pointer,target._rfb.key,target._rfb.pointer_button,target._rfb.scroll)),expected)
+                if method == 'scroll_vnc':
+                    self.assertEqual(target._rfb.pointer_button.call_args_list,
+                                     [call(1,1,'wheel-up',True),call(1,1,'wheel-up',False)])
 
     def test_unexpired_held_lock_required_at_start(self):
         for reply in ({'ok':True,'state':'expired','expiresInSeconds':0},
@@ -888,7 +1047,7 @@ class TargetSafety(unittest.TestCase):
         target=Target.__new__(Target);target.run=Path(private.name);target._rfb=Mock()
         target._lock=('f44','owned-session')
         target.physical=SimpleNamespace(ssh=Mock(return_value=json.dumps({'ok':True,'state':'held','expiresInSeconds':2})))
-        with patch('tools.lab.surface_driver.target.time.monotonic',side_effect=[100,102]):
+        with patch('tools.lab.surface_driver.target.time.clock_gettime',side_effect=[100,102]):
             with self.assertRaises(RecipeBlocked):target.key(['t'])
         target._rfb.key.assert_not_called()
 
@@ -944,7 +1103,7 @@ class EndpointSafety(unittest.TestCase):
         self.addCleanup(self.listener.close)
         self.target=SimpleNamespace(run=self.run,physical=SimpleNamespace(
             config={'host':'192.168.68.70','user':'patrick','known_hosts':'/pins','vnc_port':5970},
-            ssh=lambda run,command:'1000' if command=='id -u' else ('{"verified":true}' if 'SD_ENDPOINT' in command else 'boot-id')))
+            ssh=lambda run,command,timeout=None:'1000' if command=='id -u' else ('{"verified":true}' if 'SD_ENDPOINT' in command else 'boot-id')))
         self.argv=['ssh','-NT','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile=/pins','-o','ExitOnForwardFailure=yes',
                    '-L','127.0.0.1:5970:127.0.0.1:5901',
                    '-L',str(self.path)+':/run/user/1000/putgd-lab-input.sock','patrick@192.168.68.70']
@@ -995,7 +1154,7 @@ class EndpointSafety(unittest.TestCase):
 
     def test_forwarded_service_must_be_native_on_the_authenticated_host(self):
         for reply in ('{"verified":false}', 'null', 'not-json'):
-            self.target.physical.ssh=lambda run,command:'1000' if command=='id -u' else reply
+            self.target.physical.ssh=lambda run,command,timeout=None:'1000' if command=='id -u' else reply
             with self.subTest(reply=reply):
                 with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
 
@@ -1025,7 +1184,7 @@ class EndpointSafety(unittest.TestCase):
     def test_direct_native_vnc_requires_the_same_authenticated_machine(self):
         self.path.unlink();self.executable='w0vncserver'
         verify_physical_endpoints(self.target)
-        self.target.physical.ssh=lambda *args:'another-boot'
+        self.target.physical.ssh=lambda *args,**_:'another-boot'
         with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
 
     def test_direct_host_input_requires_its_exact_socket(self):
@@ -1055,7 +1214,7 @@ class EndpointSafety(unittest.TestCase):
               '--host-profile','pinned.json','--package','deb','--destination','local','--recipes','core_demo',
               '--catalog',str(self.run),'--build','abcdef','--out',str(self.run/'result'),
               '--coverage',str(self.run/'coverage.json')]
-        with patch('tools.lab.surface_driver.run.Target',return_value=self.target):
+        with patch('tools.lab.surface_driver.run.Target',return_value=self.target),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),2)
         self.target.require_lock.assert_called_once_with('f44','owned')
         for operation in (self.target.start,self.target.identity,self.target.screenshot):operation.assert_not_called()

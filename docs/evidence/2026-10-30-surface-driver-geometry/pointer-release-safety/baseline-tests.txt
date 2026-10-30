@@ -1,0 +1,320 @@
+FFFFFFFFFFFFFFFF                                                         [100%]
+=================================== FAILURES ===================================
+__ PhysicalPointerSafety.test_changed_endpoint_refuses_click_without_release ___
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_changed_endpoint_refuses_click_without_release>
+
+    def test_changed_endpoint_refuses_click_without_release(self):
+        self.target._verify_endpoints.side_effect = RecipeBlocked('endpoint identity changed')
+>       self.refused(self.click, 'endpoint identity changed')
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:116: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:104: in refused
+    self.target._rfb.pointer_button.assert_not_called()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='mock.pointer_button' id='130922185261952'>
+
+    def assert_not_called(self):
+        """assert that the mock was never called.
+        """
+        if self.call_count != 0:
+            msg = ("Expected '%s' to not have been called. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'pointer_button' to not have been called. Called 1 times.
+E           Calls: [call(10, 10, 'right', False)].
+
+/usr/lib/python3.12/unittest/mock.py:905: AssertionError
+___ PhysicalPointerSafety.test_changed_endpoint_refuses_drag_without_release ___
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_changed_endpoint_refuses_drag_without_release>
+
+    def test_changed_endpoint_refuses_drag_without_release(self):
+        self.target._verify_endpoints.side_effect = RecipeBlocked('endpoint identity changed')
+>       self.refused(self.drag, 'endpoint identity changed')
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:120: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:104: in refused
+    self.target._rfb.pointer_button.assert_not_called()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='mock.pointer_button' id='130922185270448'>
+
+    def assert_not_called(self):
+        """assert that the mock was never called.
+        """
+        if self.call_count != 0:
+            msg = ("Expected '%s' to not have been called. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'pointer_button' to not have been called. Called 1 times.
+E           Calls: [call(10, 10, 'right', False)].
+
+/usr/lib/python3.12/unittest/mock.py:905: AssertionError
+_ PhysicalPointerSafety.test_deadline_after_physical_press_dispatch_still_releases_with_checks _
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_deadline_after_physical_press_dispatch_still_releases_with_checks>
+
+    def test_deadline_after_physical_press_dispatch_still_releases_with_checks(self):
+        def dispatch(x, y, button, down):
+            if down:
+                signal.raise_signal(signal.SIGALRM)
+        self.target._rfb.pointer_button.side_effect = dispatch
+        def deadline(*_):
+            raise RecipeFailed('forced press deadline')
+        previous = signal.signal(signal.SIGALRM, deadline)
+        try:
+            with self.assertRaisesRegex(RecipeFailed, 'forced press deadline'):
+                self.click()
+        finally:
+            signal.signal(signal.SIGALRM, previous)
+        self.assertEqual(self.target._rfb.pointer_button.call_args_list,
+                         [call(10, 10, 'right', True), call(10, 10, 'right', False)])
+>       self.assertEqual(self.target._verify_endpoints.call_count, 2)
+E       AssertionError: 1 != 2
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:194: AssertionError
+_ PhysicalPointerSafety.test_endpoint_lost_mid_drag_withholds_release_and_names_host_and_button _
+tools.lab.surface_driver.api.RecipeBlocked: endpoint identity changed
+
+During handling of the above exception, another exception occurred:
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_endpoint_lost_mid_drag_withholds_release_and_names_host_and_button>
+
+    def test_endpoint_lost_mid_drag_withholds_release_and_names_host_and_button(self):
+        self.target._verify_endpoints.side_effect = [None, None,
+            RecipeBlocked('endpoint identity changed'), RecipeBlocked('endpoint identity changed')]
+>       with self.assertRaisesRegex(RecipeBlocked, 'f44.*right.*may still be pressed'):
+E       AssertionError: "f44.*right.*may still be pressed" does not match "endpoint identity changed"
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:142: AssertionError
+____ PhysicalPointerSafety.test_expired_lock_refuses_click_without_release _____
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_expired_lock_refuses_click_without_release>
+
+    def test_expired_lock_refuses_click_without_release(self):
+        self.target.physical.ssh.return_value = self.expired
+>       self.refused(self.click, 'lock is no longer held')
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:104: in refused
+    self.target._rfb.pointer_button.assert_not_called()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='mock.pointer_button' id='130922188279056'>
+
+    def assert_not_called(self):
+        """assert that the mock was never called.
+        """
+        if self.call_count != 0:
+            msg = ("Expected '%s' to not have been called. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'pointer_button' to not have been called. Called 1 times.
+E           Calls: [call(10, 10, 'right', False)].
+
+/usr/lib/python3.12/unittest/mock.py:905: AssertionError
+_____ PhysicalPointerSafety.test_expired_lock_refuses_drag_without_release _____
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_expired_lock_refuses_drag_without_release>
+
+    def test_expired_lock_refuses_drag_without_release(self):
+        self.target.physical.ssh.return_value = self.expired
+>       self.refused(self.drag, 'lock is no longer held')
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:112: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:104: in refused
+    self.target._rfb.pointer_button.assert_not_called()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='mock.pointer_button' id='130922182737024'>
+
+    def assert_not_called(self):
+        """assert that the mock was never called.
+        """
+        if self.call_count != 0:
+            msg = ("Expected '%s' to not have been called. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'pointer_button' to not have been called. Called 1 times.
+E           Calls: [call(10, 10, 'right', False)].
+
+/usr/lib/python3.12/unittest/mock.py:905: AssertionError
+_ PhysicalPointerSafety.test_guest_completed_drag_releases_after_owned_endpoint_check _
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_guest_completed_drag_releases_after_owned_endpoint_check>
+
+    def test_guest_completed_drag_releases_after_owned_endpoint_check(self):
+>       self.guest_drag_always_releases(None)
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:222: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:212: in guest_drag_always_releases
+    self.assertEqual(self.target._verify_endpoints.call_count,
+E   AssertionError: 3 != 4
+_ PhysicalPointerSafety.test_guest_interrupted_drag_always_releases_after_owned_endpoint_check _
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_guest_interrupted_drag_always_releases_after_owned_endpoint_check>
+
+    def test_guest_interrupted_drag_always_releases_after_owned_endpoint_check(self):
+>       self.guest_drag_always_releases('move')
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:219: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:212: in guest_drag_always_releases
+    self.assertEqual(self.target._verify_endpoints.call_count,
+E   AssertionError: 2 != 3
+_ PhysicalPointerSafety.test_guest_uncertain_press_always_releases_after_owned_endpoint_check _
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_guest_uncertain_press_always_releases_after_owned_endpoint_check>
+
+    def test_guest_uncertain_press_always_releases_after_owned_endpoint_check(self):
+>       self.guest_drag_always_releases('press')
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:216: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:212: in guest_drag_always_releases
+    self.assertEqual(self.target._verify_endpoints.call_count,
+E   AssertionError: 1 != 2
+_ PhysicalPointerSafety.test_held_lock_releases_dispatched_click_after_fresh_checks _
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_held_lock_releases_dispatched_click_after_fresh_checks>
+
+    def test_held_lock_releases_dispatched_click_after_fresh_checks(self):
+        self.click()
+        self.assertEqual(self.target._rfb.pointer_button.call_args_list,
+                         [call(10, 10, 'right', True), call(10, 10, 'right', False)])
+>       self.assertEqual(self.target._verify_endpoints.call_count, 2)
+E       AssertionError: 1 != 2
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:152: AssertionError
+_ PhysicalPointerSafety.test_held_lock_releases_dispatched_drag_after_fresh_checks _
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_held_lock_releases_dispatched_drag_after_fresh_checks>
+
+    def test_held_lock_releases_dispatched_drag_after_fresh_checks(self):
+        self.drag()
+        self.assertEqual(self.target._rfb.pointer_button.call_args_list,
+                         [call(10, 10, 'right', True), call(20, 20, 'left', None),
+                          call(30, 30, 'left', None), call(30, 30, 'right', False)])
+>       self.assertEqual(self.target._verify_endpoints.call_count, 4)
+E       AssertionError: 3 != 4
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:160: AssertionError
+_ PhysicalPointerSafety.test_lock_lost_mid_drag_withholds_release_and_names_host_and_button _
+tools.lab.surface_driver.api.RecipeBlocked: physical desktop lock is no longer held by this session
+
+During handling of the above exception, another exception occurred:
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_lock_lost_mid_drag_withholds_release_and_names_host_and_button>
+
+    def test_lock_lost_mid_drag_withholds_release_and_names_host_and_button(self):
+        self.target.physical.ssh.side_effect = [self.held, self.held, self.expired, self.expired]
+>       with self.assertRaisesRegex(RecipeBlocked, 'f44.*right.*may still be pressed'):
+E       AssertionError: "f44.*right.*may still be pressed" does not match "physical desktop lock is no longer held by this session"
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:133: AssertionError
+_ PhysicalPointerSafety.test_lost_lock_is_recorded_as_blocked_with_host_and_button _
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_lost_lock_is_recorded_as_blocked_with_host_and_button>
+
+    def test_lost_lock_is_recorded_as_blocked_with_host_and_button(self):
+        self.target.physical.ssh.side_effect = [self.held, self.expired, self.expired]
+        rows = run_recipes(self.ctx, [Recipe(('editor.undo',), lambda ctx: self.drag())],
+                           self.environment, self.out, 'physical-pointer-fakes', self.out/'coverage.json')
+        self.assertEqual(rows[0].functional, 'blocked')
+        receipt = json.loads((self.out/'receipt.json').read_text())['interactions'][0]
+>       self.assertRegex(receipt['note'], 'f44.*right.*may still be pressed')
+E       AssertionError: Regex didn't match: 'f44.*right.*may still be pressed' not found in 'physical desktop lock is no longer held by this session'
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:230: AssertionError
+----------------------------- Captured stdout call -----------------------------
+{"recipe": "test_surface_driver_geometry.<lambda>", "functional": "blocked", "visual": null, "review": false}
+__ PhysicalPointerSafety.test_refused_press_never_opens_a_lazy_rfb_connection __
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_refused_press_never_opens_a_lazy_rfb_connection>
+
+    def test_refused_press_never_opens_a_lazy_rfb_connection(self):
+        self.target._rfb = None
+        self.target._verify_endpoints.side_effect = RecipeBlocked('endpoint identity changed')
+        with patch('tools.lab.surface_driver.target.rfb.RFB') as connect:
+            for action in (self.click, self.drag):
+                with self.assertRaisesRegex(RecipeBlocked, 'endpoint identity changed'):
+                    action()
+>           connect.assert_not_called()
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:129: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='RFB' id='130922182634016'>
+
+    def assert_not_called(self):
+        """assert that the mock was never called.
+        """
+        if self.call_count != 0:
+            msg = ("Expected '%s' to not have been called. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'RFB' to not have been called. Called 1 times.
+E           Calls: [call(59999),
+E            call().pointer_button(10, 10, 'right', False),
+E            call().pointer_button(10, 10, 'right', False)].
+
+/usr/lib/python3.12/unittest/mock.py:905: AssertionError
+_ PhysicalPointerSafety.test_release_endpoint_failure_never_opens_a_lazy_rfb_connection _
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_release_endpoint_failure_never_opens_a_lazy_rfb_connection>
+
+    def test_release_endpoint_failure_never_opens_a_lazy_rfb_connection(self):
+        self.target._rfb = None
+        self.target._verify_endpoints.side_effect = RecipeBlocked('endpoint identity changed')
+        with patch('tools.lab.surface_driver.target.rfb.RFB') as connect:
+>           with self.assertRaisesRegex(RecipeBlocked, 'f44.*right.*may still be pressed'):
+E           AssertionError: RecipeBlocked not raised
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:175: AssertionError
+_ PhysicalPointerSafety.test_release_forces_a_heartbeat_even_with_a_cached_lease _
+
+self = <test_surface_driver_geometry.PhysicalPointerSafety testMethod=test_release_forces_a_heartbeat_even_with_a_cached_lease>
+
+    def test_release_forces_a_heartbeat_even_with_a_cached_lease(self):
+        self.target._last_heartbeat = time.monotonic()
+        self.target._lock_valid_until = time.monotonic() + 600
+        self.target.physical.ssh.return_value = self.expired
+>       with self.assertRaisesRegex(RecipeBlocked, 'f44.*right.*may still be pressed'):
+E       AssertionError: RecipeBlocked not raised
+
+work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py:167: AssertionError
+=========================== short test summary info ============================
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_changed_endpoint_refuses_click_without_release
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_changed_endpoint_refuses_drag_without_release
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_deadline_after_physical_press_dispatch_still_releases_with_checks
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_endpoint_lost_mid_drag_withholds_release_and_names_host_and_button
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_expired_lock_refuses_click_without_release
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_expired_lock_refuses_drag_without_release
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_guest_completed_drag_releases_after_owned_endpoint_check
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_guest_interrupted_drag_always_releases_after_owned_endpoint_check
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_guest_uncertain_press_always_releases_after_owned_endpoint_check
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_held_lock_releases_dispatched_click_after_fresh_checks
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_held_lock_releases_dispatched_drag_after_fresh_checks
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_lock_lost_mid_drag_withholds_release_and_names_host_and_button
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_lost_lock_is_recorded_as_blocked_with_host_and_button
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_refused_press_never_opens_a_lazy_rfb_connection
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_release_endpoint_failure_never_opens_a_lazy_rfb_connection
+FAILED work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety::test_release_forces_a_heartbeat_even_with_a_cached_lease
+16 failed in 1.19s
