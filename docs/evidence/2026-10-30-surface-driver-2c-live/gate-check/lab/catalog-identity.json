@@ -1,0 +1,15 @@
+{
+ "kind": "synthetic-ui-catalog",
+ "build": {
+  "baseVersion": "26.1030.2491",
+  "commitCount": 2491,
+  "dirty": false,
+  "gitCommit": "219e43f4090246618c2da3f7e64a2bf11292c0cf",
+  "gitTree": "1475dd1e60619d25e98054faee22a983c7f277ed",
+  "packageVersion": "26.1030.2491~dev+g219e43f40902",
+  "schemaVersion": 1,
+  "sourceProvenance": "git",
+  "version": "26.1030.2491-dev+g219e43f40902"
+ },
+ "captures": 192
+}

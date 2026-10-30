@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "rows": 4,
+  "interactions": [
+    "editor.tool-text",
+    "editor.tool-redact",
+    "editor.undo",
+    "editor.redo"
+  ],
+  "review_rows": [],
+  "driver_source": "94c2f7fae366abe426066bb4b5201ca04bf364c6",
+  "receipt_sha256": "50ed6bb1f5af816c3a1884a154764d85f08a3097129ddd78055e15445bc0ab58"
+}

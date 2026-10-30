@@ -1,0 +1,17 @@
+{
+  "note": "Every live attempt, in order. Earlier attempts are failure context; each fix is a commit on PR #726. Synthetic values only. Byte leak checks found nothing in c1, c3, c4, c5 and g2-g7; g1 wrote no frames; c2 was deleted with its sandbox before a byte check.",
+  "attempts": [
+    {"run": "cinnamon live-c1", "sandbox": "bx_3b94gv6d", "driver": "7e2d7ef62a08", "outcome": "no leak; every window frame fully masked (live-geometry-unknown)", "cause": "Qt 6.4 exports no AT-SPI objectName and no selected tab state; override-redirect windows counted as topmost", "fix": "ba483b94"},
+    {"run": "cinnamon live-c2", "sandbox": "bx_3b94gv6d", "driver": "ba483b94", "outcome": "no leak; window frames still black", "cause": "xdotool search returns the X root window; no parent, unknown stacking, treated as an occluder covering everything", "fix": "743a3ff1"},
+    {"run": "cinnamon live-c3", "sandbox": "bx_3b94gv6d", "driver": "743a3ff1", "outcome": "no leak; History/foreign/notification frames useful; credential plant not reached", "cause": "credential fields below the scroll viewport; driver script passed the head as the click button", "fix": "driver: scroll + Tab focus"},
+    {"run": "cinnamon live-c4", "sandbox": "bx_3b94gv6d", "driver": "743a3ff1 (+ccc3f98b gate)", "outcome": "all cases passed; gate refusals proven", "cause": "gate wrongly required controls files for captures that declare none", "fix": "ccc3f98b"},
+    {"run": "gnome live-g1", "sandbox": "bx_kn72kkcv", "driver": "743a3ff1", "outcome": "blocked before any frame", "cause": "published nightly putgd-cli lacks this PR's --params-stdin; its resident stayed alive and was later stopped by exact PID", "fix": "ubuntu26.04 candidate DEB of ccc3f98b"},
+    {"run": "gnome live-g2", "sandbox": "bx_kn72kkcv", "driver": "ccc3f98b", "outcome": "no leak; a declared desktop frame kept part of a foreign link window (constant 'Algorithm=AWS4-HMAC-' fragment)", "cause": "declared desktop frames did not mask foreign app windows", "fix": "e02f46e2"},
+    {"run": "gnome live-g3", "sandbox": "bx_kn72kkcv", "driver": "e02f46e2", "outcome": "no leak; Destinations blocked", "cause": "Wayland geometry walked hidden pages (1469 nodes, 14-38 s) past the 12 s probe deadline", "fix": "7577c2e6"},
+    {"run": "gnome live-g4", "sandbox": "bx_kn72kkcv", "driver": "7577c2e6", "outcome": "no leak; Destinations failed closed", "cause": "credential fields scrolled past the window edge had no placed rectangle", "fix": "f0210884"},
+    {"run": "gnome live-g5", "sandbox": "bx_kn72kkcv", "driver": "f0210884", "outcome": "all cases passed", "cause": "declared desktop frames also masked GNOME's top bar and dock (desktop-icons window)", "fix": "238257fa"},
+    {"run": "gnome live-g6", "sandbox": "bx_kn72kkcv", "driver": "238257fa", "outcome": "no leak; AT-SPI probe timeouts after ~2 h of residents in one session", "cause": "guest session degradation", "fix": "guest reboot (overlay only), rerun"},
+    {"run": "cinnamon live-c5 (final)", "sandbox": "bx_nhk7d37m", "driver": "7577c2e6", "outcome": "all cases passed"},
+    {"run": "gnome live-g7 (final)", "sandbox": "bx_kn72kkcv", "driver": "238257fa", "outcome": "all cases passed"}
+  ]
+}

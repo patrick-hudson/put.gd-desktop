@@ -1,0 +1,29 @@
+driver 38b0b965ec79b25bc5868052a33bdad15f0cdb81  app+catalog 38b0b965ec79b25bc5868052a33bdad15f0cdb81  build-arg 38b0b965ec79
+== A. correct configuration, destination s3
+gate: admitted
+exit=1 out_exists=yes
+resident build 38b0b965ec79b25bc5868052a33bdad15f0cdb81 dirty False blocked: None secret_scan True
+== B1. edited local pin: write-pin on a catalog without the credential states
+removed 6 credential states
+pinned 22 secret-control states
+ M tools/lab/surface_driver/secret-states.json
+live destination s3 blocked by secret-safe evidence: driver-pin-differs-from-build, catalog-secret-states-differ-from-pin
+exit=1 out_exists=no
+pin restored
+== B2. one control removed from one state, in both the local pin and the catalog
+removed credentialAccessKey from 04-destinations-s3 (its only secret control) in catalog and local pin
+secret-control states match the pin (27 states)
+local check-catalog exit=0 (the checkout's own pin agrees)
+live destination s3 blocked by secret-safe evidence: driver-pin-differs-from-build, catalog-secret-states-differ-from-pin
+exit=1 out_exists=no
+pin restored
+== B3. a build whose own committed pin differs: 3d9cb9db's catalog with --build 3d9cb9db (driver pin is newer)
+live destination s3 blocked by secret-safe evidence: driver-pin-differs-from-build, catalog-secret-states-differ-from-pin
+exit=1 out_exists=no
+== C. placement label: direct DriverContext construction
+placement boat on a physical (builder-like) target -> refused: placement-unproven | out exists: False
+placement guest on a physical target -> refused: physical-desktop-refused | out exists: False
+placement boat on a copied run directory with no owned QEMU -> refused: placement-unproven | out exists: False
+placement guest on the real owned QEMU guest -> admitted, live_admitted = True | out exists: False
+placement boat on the real owned QEMU guest (nested guest on boat) -> admitted, live_admitted = True | out exists: False
+DONE
