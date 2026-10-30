@@ -1672,9 +1672,12 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
     if any(type(value) is not int or value <= 0 for value in (timeout, recovery)):
         raise LabError('Install and recovery timeouts must be positive integer seconds')
     helper = '/usr/local/lib/putgd-lab/package_install.py'
-    # A missing privileged helper must fail before starting apt, including on old goldens.
+    helper_sha256 = hash_file(HERE / 'package_install.py')
+    # Missing or stale privileged code must fail before apt starts, including on old goldens.
     try:
-        ssh(run, f'test -x {helper} && sudo -n -l {helper} /tmp/check 1 1 >/dev/null\n')
+        ssh(run, f'test -x {helper} && '
+                 f'[ "$(sha256sum {helper} | cut -d\" \" -f1)" = {helper_sha256} ] && '
+                 f'sudo -n -l {helper} /tmp/check 1 1 >/dev/null\n')
     except LabError as error:
         raise LabError('Guest requires the current root-owned package_install.py bootstrap helper; '
                        'refresh bootstrap in this disposable overlay before installing. Apt was not started.') from error
@@ -1683,7 +1686,7 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
     evidence = Path(run) / token
     evidence.mkdir(mode=0o700)
     write_json(evidence / 'request.json', {'timeoutSeconds': timeout, 'recoverySeconds': recovery,
-                                         'remoteDirectory': remote})
+                                         'remoteDirectory': remote, 'helperSha256': helper_sha256})
     # An unresolved call retains the lock: a blind retry cannot race its dpkg.
     ssh(run, f'set -eu\numask 077\nmkdir -p ~/putgd-lab\n'
              f'mkdir ~/putgd-lab/install-active\nmkdir ~/{remote}\n'

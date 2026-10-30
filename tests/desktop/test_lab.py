@@ -367,6 +367,41 @@ class LabContracts(unittest.TestCase):
             self.assertTrue(any('1200 300' in call for call in calls))
             self.assertEqual(sum('nohup sudo' in call for call in calls), 1)
 
+    def test_install_missing_or_stale_helper_starts_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+            with patch.object(lab, 'ssh', side_effect=lab.LabError('helper mismatch')), \
+                    patch.object(lab, 'put') as put:
+                with self.assertRaisesRegex(lab.LabError, 'bootstrap helper.*Apt was not started'):
+                    lab.install_package(run, 'synthetic.deb')
+                put.assert_not_called()
+            self.assertEqual([p.name for p in run.iterdir()], ['state.json'])
+
+    def test_install_transport_timeout_reconciles_same_job_without_restart(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            deb = run / 'synthetic.deb'
+            deb.write_bytes(b'synthetic')
+            lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+            polls = 0
+            calls = []
+            def ssh(_run, script, **kwargs):
+                nonlocal polls
+                calls.append(script)
+                if 'cat ~/' in script:
+                    polls += 1
+                    if polls == 1:
+                        raise lab.subprocess.TimeoutExpired('ssh', 10)
+                    return json.dumps({'ok': True, 'timedOut': True})
+                return ''
+            with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), \
+                    patch.object(lab, 'get'), patch.object(lab.time, 'sleep'), \
+                    patch.object(lab, 'verify_installed_binaries', return_value={}):
+                lab.install_package(run, deb)
+            self.assertEqual(polls, 2)
+            self.assertEqual(sum('nohup sudo' in call for call in calls), 1)
+
     def test_install_profile_timeouts_and_abort_block_blind_retry(self):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
