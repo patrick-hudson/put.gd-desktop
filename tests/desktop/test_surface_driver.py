@@ -50,11 +50,11 @@ class Mapping(unittest.TestCase):
     def test_scale_hidpi_and_negative_monitor_origin(self):
         inv={'width':100,'height':50};control={'rect':[10,5,20,10]}
         self.assertEqual(control_point(inv,control,{'x':30,'y':40,'width':100,'height':50,'scale':1}),(50,50))
-        self.assertEqual(control_point(inv,control,{'x':-1900,'y':10,'width':200,'height':100,'scale':2,'screen_x':-1920}),(120,60))
+        self.assertEqual(control_point(inv,control,{'x':-1900,'y':10,'width':100,'height':50,'scale':2,'screen_x':-1920}),(80,40))
         self.assertEqual(control_point(inv,control,{'x':0,'y':0,'width':100,'height':50},(0,0)),(10,5))
 
     def test_nonuniform_resize_refused(self):
-        with self.assertRaisesRegex(RecipeBlocked,'aspect'):
+        with self.assertRaisesRegex(RecipeBlocked,'size differs'):
             control_point({'width':100,'height':50},{'rect':[0,0,10,10]}, {'x':0,'y':0,'width':200,'height':50})
 
     def test_selectors_and_ambiguity(self):
@@ -558,6 +558,7 @@ class InputFoundations(unittest.TestCase):
 
     def test_private_seed_precedes_launch_and_first_launch_is_explicit(self):
         target=Target.__new__(Target);target.root='/tmp/sd-seed';target.app_executable='putgd';target.started=False
+        target.preflight=lambda:None;target.preserve_clipboard=lambda:None
         calls=[]
         target.execute=lambda script,**kw:calls.append(script) or {'returncode':0}
         target.cli=lambda *a:{'returncode':0,'stdout':'{"ok":true,"result":{}}'}

@@ -1,0 +1,14 @@
+{
+  "historyListMode": [
+    "Show history as a list"
+  ],
+  "historyGridMode": [
+    "Show history as a thumbnail gallery"
+  ],
+  "historySearch": [
+    "Search history by file name"
+  ],
+  "historyFiltersExpanded": [
+    "Show advanced history filters"
+  ]
+}
