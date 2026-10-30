@@ -63,10 +63,9 @@ print(json.dumps({'session': session, 'missing': missing}))
 '''
 
 
-# Clipboard bytes never cross SSH, enter a log, or touch disk. The process
-# serves the restored MIME data until the desktop clipboard manager or the
-# next copy takes ownership; quitting immediately would clear X11 selections.
-CLIPBOARD = r'''
+# Exact source fingerprint for recovering pre-#860 orphaned keepers only.
+# New keepers use the event-driven, run-bound clipboard.py lease.
+LEGACY_CLIPBOARD = r'''
 import os, signal, sys
 from pathlib import Path
 from PyQt6.QtCore import QMimeData, QTimer
@@ -195,7 +194,7 @@ def desktop_transport(function):
 
 
 class Target:
-    def __init__(self, *, run=None, host_profile=None, session_root=None, bin_dir=None, app_executable="putgd"):
+    def __init__(self, *, run=None, host_profile=None, session_root=None, bin_dir=None, app_executable="putgd", placement=None):
         self.physical = PhysicalHost(json.loads(Path(host_profile).read_text())) if host_profile else None
         self.run = self.physical.run if self.physical else Path(run).resolve()
         if self.physical:
@@ -216,6 +215,8 @@ class Target:
         self._lock_valid_until = 0
         self._created_root = False
         self.clipboard_pid = None
+        self.placement = placement or ('native' if self.physical else 'guest')
+        self.clipboard_report = {}
         self._outputs = None
         self._probe_process = None
         self._probe_buffer = b''
@@ -368,26 +369,20 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         return report
 
     def preserve_clipboard(self):
-        path = self.root + '/clipboard-keeper.py'
-        script = "python3 - <<'SD_KEEPER'\nfrom pathlib import Path\nPath(" + repr(path) + ').write_text(' + repr(CLIPBOARD) + ')\nSD_KEEPER\n'
-        script += 'nohup python3 ' + shlex.quote(path) + ' ' + shlex.quote(self.root + '/clipboard-state') + ' >/dev/null 2>&1 </dev/null & echo $!\n'
-        result = self.execute(script)
-        if result['returncode']:
-            raise RecipeBlocked('cannot start private in-memory clipboard preservation')
-        self.clipboard_pid = int(result['stdout'].strip())
-        result = self.execute('for n in $(seq 1 50); do test -f ' + shlex.quote(self.root + '/clipboard-state') +
-                              ' && exit 0; kill -0 ' + str(self.clipboard_pid) + ' 2>/dev/null || exit 1; sleep .1; done; exit 1', timeout=8)
-        if result['returncode']:
-            raise RecipeBlocked('clipboard preservation unavailable or existing MIME data exceeds 32 MiB; no resident started')
+        from .clipboard import Lease
+        self._clipboard_lease = Lease(self, LEGACY_CLIPBOARD)
+        self.clipboard_report = self._clipboard_lease.report
+        self._clipboard_lease.start()
+        self.clipboard_pid = self._clipboard_lease.identity['pid']
 
+    @entry
     def restore_clipboard(self):
-        if not self.clipboard_pid:
-            return
-        result = self.execute('kill -USR1 ' + str(self.clipboard_pid) + '\nfor n in $(seq 1 50); do test "$(cat ' +
-                              shlex.quote(self.root + '/clipboard-state') + ' 2>/dev/null)" = restored && exit 0; sleep .1; done; exit 1', timeout=8)
-        if result['returncode']:
-            raise RecipeBlocked('previous clipboard could not be restored')
-        self.clipboard_pid = None
+        with critical(label='clipboard restoration'):
+            lease = getattr(self, '_clipboard_lease', None)
+            if lease is None:
+                return
+            lease.close()
+            self.clipboard_pid = None
 
     def cli(self, *args, timeout=60):
         return self.execute(shlex.join(['putgd-cli','--socket',self.socket,*args]), timeout)
@@ -612,7 +607,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                     self.started=False
             except RecipeBlocked:
                 errors.append('resident quit transport unavailable; private session retained')
-        if getattr(self, 'clipboard_pid', None):
+        if getattr(self, 'clipboard_pid', None) or getattr(self, '_clipboard_lease', None):
             try:
                 self.restore_clipboard()
             except RecipeBlocked:
