@@ -177,5 +177,7 @@
   "obscuring_window_failure": "input target 'editor' is obscured by 'Core 2a obstruction' (window 75497524)",
   "private_export_sha256": "d18e98ad06f610c950686626521899a5b1bec6d26dfdbb1fdcf1c5082c1fb719",
   "cleanup": "completed",
-  "acceptance": "partial; menu and notification gates blocked after two real attempts"
+  "acceptance": "partial; menu and notification gates blocked after two real attempts",
+  "cleanup_export_sha256": "04822b2efbe18bcf46e382d2a864b17e213ccd4e3f455cf315189df1c9f1e8b8",
+  "sandbox_deleted": true
 }

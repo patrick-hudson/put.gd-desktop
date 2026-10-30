@@ -172,5 +172,7 @@
     "issue": 721,
     "sandbox_deletion_requested": true
   },
-  "application_build_archive_sha256": "0504c1657aa4a9d2c13ce5a71a73e940f073d552161f2841349d3c5326be31ad"
+  "application_build_archive_sha256": "0504c1657aa4a9d2c13ce5a71a73e940f073d552161f2841349d3c5326be31ad",
+  "cleanup_export_sha256": "4fb590f570f467ea68b9d5bc99beae850cd224aa3de271a6e8ff11e2395240ab",
+  "sandbox_deleted": true
 }
