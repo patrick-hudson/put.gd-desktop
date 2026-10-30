@@ -495,6 +495,7 @@ class WaylandPlacement:
     top), and refuse anything implausible instead of guessing.
     """
     MAX_SIDE, MAX_TOP = 24, 120
+    MAP_SETTLE = 2.5
 
     def __init__(self, compositor):
         self.compositor = compositor
@@ -517,9 +518,22 @@ class WaylandPlacement:
 
     def _toplevel(self, pid, title, rect):
         x, y, width, height = rect
-        found = [w for w in self.windows() if w['pid'] == pid and w['title'] == title and
-                 w.get('type') not in POPUP_WINDOW_TYPES and
-                 0 <= w['frame'][2] - width <= 2 * self.MAX_SIDE and 0 <= w['frame'][3] - height <= self.MAX_TOP + self.MAX_SIDE]
+        deadline = time.monotonic() + self.MAP_SETTLE
+        while True:
+            found = [w for w in self.windows() if w['pid'] == pid and w['title'] == title and
+                     w.get('type') not in POPUP_WINDOW_TYPES and
+                     0 <= w['frame'][2] - width <= 2 * self.MAX_SIDE and 0 <= w['frame'][3] - height <= self.MAX_TOP + self.MAX_SIDE]
+            # Qt reports a new (modal) window as showing before Mutter maps it:
+            # the compositor lists it with an empty frame. Re-observe, bounded.
+            unmapped = not found and any(w['pid'] == pid and w['title'] == title and not (w['frame'][2] and w['frame'][3])
+                                         for w in self.windows())
+            if not unmapped or time.monotonic() >= deadline:
+                break
+            time.sleep(.1)
+            self._windows = None
+        if unmapped:
+            raise RuntimeError('compositor window for %r (pid %s) is not mapped after %g s (empty frame)%s'
+                               % (title, pid, self.MAP_SETTLE, self.same_process(pid)))
         if len(found) != 1:
             raise RuntimeError('compositor window for %r (pid %s, %dx%d) is missing or ambiguous (%d matches)%s'
                                % (title, pid, width, height, len(found), self.same_process(pid)))

@@ -240,6 +240,36 @@ class PlacementRefusal(unittest.TestCase):
             placement.toplevel(50, 'Save original file as', [0, 0, 820, 520])
 
 
+class JustMappedWindow(unittest.TestCase):
+    # Observed: Qt reports the History preview dialog as showing while Mutter
+    # still lists it as a modal dialog (type 4) with frame [0, 0, 0, 0].
+    UNMAPPED = {'windows': [dict(FRAMES['windows'][0]), dict(FRAMES['windows'][0], id=31, title='Preview', type=4,
+                                                               frame=[0, 0, 0, 0], focus=False)]}
+    MAPPED = {'windows': [dict(FRAMES['windows'][0]), dict(FRAMES['windows'][0], id=31, title='Preview', type=4,
+                                                             frame=[200, 100, 932, 600], focus=True)]}
+
+    def test_waits_for_the_compositor_to_map_the_window(self):
+        placement = probe.WaylandPlacement(WITNESS)
+        with patch.object(probe, 'compositor_windows', side_effect=[self.UNMAPPED, self.UNMAPPED, self.MAPPED]) as asked, \
+             patch.object(probe.time, 'sleep'):
+            where = placement.toplevel(50, 'Preview', [0, 0, 932, 563])
+        self.assertEqual((where['window_id'], where['frame'], asked.call_count), (31, [200, 100, 932, 600], 3))
+
+    def test_still_unmapped_is_refused_by_name_not_guessed(self):
+        placement = probe.WaylandPlacement(WITNESS)
+        placement.MAP_SETTLE = 0
+        with patch.object(probe, 'compositor_windows', return_value=self.UNMAPPED):
+            with self.assertRaisesRegex(RuntimeError, r"'Preview' \(pid 50\) is not mapped after 0 s \(empty frame\)"):
+                placement.toplevel(50, 'Preview', [0, 0, 932, 563])
+
+    def test_a_missing_window_is_not_waited_for(self):
+        placement = probe.WaylandPlacement(WITNESS)
+        with patch.object(probe, 'compositor_windows', return_value=FRAMES) as asked:
+            with self.assertRaisesRegex(RuntimeError, r'missing or ambiguous \(0 matches\)'):
+                placement.toplevel(50, 'Preview', [0, 0, 932, 563])
+        self.assertEqual(asked.call_count, 1)
+
+
 class QtAccessibleId(Walk):
     def control(self, selector, candidates=(), **extra):
         app, frame, nodes = settings_window()
