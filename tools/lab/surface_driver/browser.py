@@ -22,7 +22,10 @@ that process is stopped at restore, since its window may show the link.
 Restoration does not depend on the controller surviving. It runs outside the
 recipe deadline; the target helper ignores the SSH hangup and leaves the
 session's process group, so a step in progress completes; and every setup
-first restores any transaction an interrupted run left behind.
+first restores any transaction an interrupted run left behind. Each MIME file
+is restored on its own, real-profile files first; a private XDG root that has
+since gone (reboot, tmpfiles) counts as already cleaned. A file that cannot be
+restored keeps its backup for the next setup without blocking the others.
 """
 from __future__ import annotations
 
@@ -101,14 +104,15 @@ def default_browser(ctx, browser='firefox'):
         # The target step may have outlived its transport (deadline, dropped
         # session): restore whatever it left before reporting the failure.
         try:
-            _remote(ctx, 'recover', {**options, 'wait': timeouts['cleanup'] - 30},
-                    timeout=timeouts['cleanup'], cleanup=True)
+            _note_dropped(ctx, _remote(ctx, 'recover', {**options, 'wait': timeouts['cleanup'] - 30},
+                                       timeout=timeouts['cleanup'], cleanup=True))
         except Exception as error:
             ctx.review('Interrupted Firefox setup not yet recovered (' + str(error)[:200] +
                        '); the next default_browser entry on this account restores it')
         raise
     if state.get('recovered'):
         ctx.note('Restored %d unfinished Firefox handler transaction(s) before setup' % state['recovered'])
+    _note_dropped(ctx, state)
     _ACTIVE[id(ctx)] = {'state': state, 'timeouts': timeouts}
     try:
         yield
@@ -124,18 +128,27 @@ def default_browser(ctx, browser='firefox'):
         _ACTIVE.pop(id(ctx), None)
 
 
+def _note_dropped(ctx, answer):
+    if answer.get('dropped'):
+        ctx.note('Skipped %d MIME backup(s) whose private XDG root no longer exists (already cleaned)'
+                 % answer['dropped'])
+
+
 def _restore_transaction(ctx, state, timeouts, failing):
     try:
         restored = _remote(ctx, 'restore', {'directory': state['directory']},
                            timeout=timeouts['cleanup'], cleanup=True)
     except Exception as error:
-        ctx.review('Firefox handler restore incomplete (' + str(error)[:200] +
-                   '); the next default_browser entry on this account restores it')
+        # A recipe alarm deferred over the call arrives here even after the
+        # target finished restoring, so the outcome is unconfirmed, not failed.
+        ctx.review('Firefox handler restore unconfirmed (' + str(error)[:200] +
+                   '); if incomplete, the next default_browser entry on this account restores it')
         raise
     if restored.get('restored') is not True:
         ctx.review('Firefox handler restore unconfirmed; the next default_browser entry on this account restores it')
         ctx.expect(False, 'browser MIME bytes and hashes restored')
     ctx.note('Firefox handler restored; MIME SHA-256 checks passed')
+    _note_dropped(ctx, restored)
     if restored.get('foreign'):
         ctx.note('Stopped %d Firefox process(es) started outside the private profile' % restored['foreign'])
         if not failing:
@@ -392,29 +405,75 @@ def _snapshot(paths):
     return result
 
 
+def _backups(profiles):
+    """Byte backups of every guarded MIME file, the real profile's first.
+
+    Private (app XDG) entries name their root: when that root has gone, there
+    is nothing left to restore into.
+    """
+    (config, data), private = profiles[0], profiles[1:]
+    real = _mime_paths(config, data)
+    backups = [dict(item, scope='real') for item in _snapshot(real)]
+    for profile_config, profile_data in private:
+        paths = [path for path in _mime_paths(profile_config, profile_data) if path not in real]
+        for path, item in zip(paths, _snapshot(paths)):
+            root = profile_config if path.parent == profile_config else profile_data
+            backups.append(dict(item, scope='private', root=str(root)))
+    return backups
+
+
+def _private_scope(item):
+    """(private, root) for one backup; records without a scope predate it."""
+    if 'scope' in item:
+        return item['scope'] == 'private', item.get('root')
+    path, home = Path(item['path']), Path(pwd.getpwuid(os.getuid()).pw_dir)
+    if path.is_relative_to(home) or path.is_relative_to(home.resolve()):
+        return False, None
+    return True, str(path.parent)
+
+
+def _restore_entry(item):
+    path = Path(item['path'])
+    if item['bytes'] is None:
+        if path.is_symlink():
+            raise _TargetError('MIME path became a symlink; backup retained')
+        path.unlink(missing_ok=True)
+        if path.exists():
+            raise _TargetError('MIME removal failed')
+        return
+    data = base64.b64decode(item['bytes'])
+    descriptor, temporary = tempfile.mkstemp(prefix='.putgd-restore-', dir=path.parent)
+    try:
+        with os.fdopen(descriptor, 'wb') as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+            os.fchmod(handle.fileno(), item['mode'])
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+    if hashlib.sha256(path.read_bytes()).hexdigest() != item['sha256']:
+        raise _TargetError('MIME restoration hash mismatch; backup retained')
+
+
 def _restore_mime(backups):
-    for item in backups:
-        path = Path(item['path'])
-        if item['bytes'] is None:
-            if path.is_symlink():
-                raise _TargetError('MIME path became a symlink; backup retained')
-            path.unlink(missing_ok=True)
-            if path.exists():
-                raise _TargetError('MIME removal failed')
-        else:
-            data = base64.b64decode(item['bytes'])
-            descriptor, temporary = tempfile.mkstemp(prefix='.putgd-restore-', dir=path.parent)
-            try:
-                with os.fdopen(descriptor, 'wb') as handle:
-                    handle.write(data)
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                    os.fchmod(handle.fileno(), item['mode'])
-                os.replace(temporary, path)
-            finally:
-                Path(temporary).unlink(missing_ok=True)
-            if hashlib.sha256(path.read_bytes()).hexdigest() != item['sha256']:
-                raise _TargetError('MIME restoration hash mismatch; backup retained')
+    """Restore each entry independently, real-profile files first.
+
+    Returns (retained, dropped): the entries that could not be restored, kept
+    for the next recovery, and the number of private entries whose XDG root no
+    longer exists. Path order is no guide: /tmp sorts before /var/home.
+    """
+    retained, dropped = [], 0
+    for item in sorted(backups, key=lambda item: _private_scope(item)[0]):
+        private, root = _private_scope(item)
+        if private and root and not os.path.lexists(root):
+            dropped += 1  # Already cleaned with its private root.
+            continue
+        try:
+            _restore_entry(item)
+        except Exception:
+            retained.append(item)  # Never blocks the others.
+    return retained, dropped
 
 
 def _environment(config, data):
@@ -464,6 +523,34 @@ def _foreign(state):
     profile = state['directory'].encode()
     return [[pid, start] for pid, start, argv in _firefox_mains()
             if profile not in argv and int(start) >= state['since']]
+
+
+def _boot_id():
+    return Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+
+
+def _session_members(pid, start):
+    """Exact (pid, start) identities still in the private Firefox's session.
+
+    Popen(start_new_session=True) makes Firefox a session leader; children
+    that outlive it are reparented but keep its session id. Linux does not
+    reuse a PID that still names a live session, so the members are ours
+    while that PID is free or still the exact leader.
+    """
+    if _start_ticks_or_none(pid) not in (None, start):
+        return []
+    found = []
+    for entry in Path('/proc').iterdir():
+        if entry.name.isdigit() and int(entry.name) != pid:
+            try:
+                if entry.stat().st_uid != os.getuid():
+                    continue
+                fields = (entry / 'stat').read_text().rsplit(')', 1)[1].split()
+                if int(fields[3]) == pid and int(fields[19]) >= int(start):
+                    found.append([int(entry.name), fields[19]])
+            except (OSError, IndexError, ValueError):
+                continue
+    return found
 
 
 def _descendants(pid, start):
@@ -558,7 +645,7 @@ def _recover(root, wait):
     record present at setup is abandoned, unless the helper that is still
     preparing it is alive (a controller whose transport failed mid-setup).
     """
-    count = 0
+    count, dropped, failure = 0, 0, None
     for stored in sorted(root.glob('putgd-surface-*/transaction.json')):
         state = json.loads(stored.read_text())
         deadline = time.monotonic() + wait
@@ -568,9 +655,15 @@ def _recover(root, wait):
             time.sleep(.25)
         # Recorded identities only: a fresh scan this long after the
         # transaction began could reach an unrelated, later Firefox.
-        _restore({'directory': str(stored.parent)}, scan=False)
+        try:
+            dropped += _restore({'directory': str(stored.parent)}, scan=False).get('dropped', 0)
+        except _TargetError as error:
+            failure = error  # The other transactions still restore.
+            continue
         count += 1
-    return count
+    if failure:
+        raise failure
+    return {'recovered': count, **({'dropped': dropped} if dropped else {})}
 
 
 def _prepare(options):
@@ -588,7 +681,7 @@ def _prepare(options):
     for directory in sorted({*(c for c, d in profiles), *(d / 'applications' for c, d in profiles)}):
         _make_directories(directory, created)
     try:
-        backups = _snapshot(sorted({path for c, d in profiles for path in _mime_paths(c, d)}))
+        backups = _backups(profiles)
         directory = Path(tempfile.mkdtemp(prefix='putgd-surface-', dir=root))
     except BaseException:
         _remove_created(created, browser_created)
@@ -599,7 +692,7 @@ def _prepare(options):
     desktop = desktops[0]
     state = {'directory': str(directory), 'desktops': [str(p) for p in desktops], 'created': created,
              'browser_created': browser_created,
-             'backups': backups, 'pid': None, 'since': _uptime_ticks(), 'foreign': [],
+             'backups': backups, 'pid': None, 'since': _uptime_ticks(), 'boot': _boot_id(), 'foreign': [],
              'helper': [os.getpid(), _start_ticks(os.getpid())], 'timeouts': timeouts}
     try:
         # Recorded before anything else changes, so recovery can undo any step.
@@ -661,29 +754,47 @@ def _prepare(options):
                                        env=mime_env, capture_output=True, text=True, check=True, timeout=10)
                 if check.stdout.strip() != desktop.name:
                     raise _TargetError('Real or isolated MIME handler verification failed')
-        return {'directory': str(directory), 'port': state['port'], 'recovered': recovered}
+        return {'directory': str(directory), 'port': state['port'], **recovered}
     except BaseException:
         _restore(state)
         raise
 
 
+# What a first private Firefox start writes beside its --profile: crash and
+# ping state in the profile root, an empty ~/.mozilla/extensions above it.
+_FIREFOX_STATE = {'Crash Reports', 'Pending Pings', 'Profile Groups', 'installs.ini', 'profiles.ini'}
+
+
+def _firefox_state(path):
+    if path.is_symlink():
+        return False
+    if path.name == 'extensions':
+        return path.is_dir() and not any(path.iterdir())
+    return path.name in _FIREFOX_STATE
+
+
 def _remove_created(created, browser_created=()):
-    # A created profile root's tree holds only what the transaction's Firefox
-    # wrote (Crash Reports, Profile Groups, snap's revision directory), so it
-    # goes whole: the shallowest created directory covers the rest.
-    if browser_created:
-        top = Path(browser_created[0])
-        if top.is_dir() and not top.is_symlink():
-            shutil.rmtree(top, ignore_errors=True)
-    # Elsewhere (MIME and applications directories, which the app under test
-    # may also write) deepest first: empty directories go; a directory holding
-    # any file stays, with the file. Firefox adds an empty ~/.mozilla/extensions.
-    for directory in reversed(created):
-        for parent, _, _ in os.walk(directory, topdown=False):
-            try:
-                os.rmdir(parent)
-            except OSError:
-                pass
+    """Remove exactly the directories setup recorded, deepest first.
+
+    A directory goes only when empty, or, if setup made it for the browser,
+    when it holds only Firefox's own state named above. Anything else
+    (another snap's data, a file or empty directory the app or desktop wrote)
+    keeps that directory and every ancestor.
+    """
+    for directory in sorted(map(Path, created), key=lambda path: len(path.parts), reverse=True):
+        try:
+            if directory.is_symlink() or not directory.is_dir():
+                continue
+            entries = list(directory.iterdir())
+            if str(directory) in browser_created and all(_firefox_state(entry) for entry in entries):
+                for entry in entries:
+                    if entry.is_dir():
+                        shutil.rmtree(entry)
+                    else:
+                        entry.unlink()
+            os.rmdir(directory)
+        except OSError:
+            pass  # Holds something setup did not record: it stays.
 
 
 def _restore(state, scan=True):
@@ -696,22 +807,35 @@ def _restore(state, scan=True):
         if not os.path.lexists(directory):
             return {'restored': True, 'foreign': 0}  # Already restored, e.g. by recovery.
         raise _TargetError('Firefox transaction record missing; profile retained')
-    _restore_mime(state['backups'])
+    retained, dropped = _restore_mime(state['backups'])
+    # After a reboot every recorded identity (and session id) is stale.
+    current = state.get('boot') in (None, _boot_id())
     # Exact identities only: our launch, any instance on our private profile
     # (a handler-started one), and Firefox processes started outside it during
     # this transaction, whether observation recorded them or not.
-    targets = [[state['pid'], state.get('pid_start')]] if state.get('pid') else []
+    launch = [state['pid'], state.get('pid_start')] if state.get('pid') and current else None
+    targets = [launch] if launch else []
     profile = state['directory'].encode()
     targets += [[pid, start] for pid, start, argv in _firefox_mains() if profile in argv]
-    foreign = state.get('foreign', [])
+    foreign = state.get('foreign', []) if current else []
     foreign += [item for item in (_foreign(state) if scan else []) if item not in foreign]
     # Children are recorded first: once a parent exits they are reparented,
     # and Firefox's crash helper still writes into the profile root then.
+    # Those of our launch stay in its session even after it has exited.
     descendants = [child for pid, start in targets + foreign for child in _descendants(pid, start)]
+    if launch and launch[1]:
+        descendants += [item for item in _session_members(*launch) if item not in descendants]
     for pid, start in targets + foreign + descendants:
         _terminate(pid, start)
     for desktop in state['desktops']:
-        Path(desktop).unlink(missing_ok=True)
+        try:
+            Path(desktop).unlink(missing_ok=True)
+        except OSError:
+            pass  # A vanished private root has taken its handler with it.
+    if retained:
+        state['backups'] = retained
+        _write_transaction(state)
+        raise _TargetError('MIME restoration failed for %d file(s); backup retained' % len(retained))
     # The record goes last, so an interrupted restore is still recoverable.
     if directory.exists():
         for child in directory.iterdir():
@@ -724,7 +848,7 @@ def _restore(state, scan=True):
         stored.unlink(missing_ok=True)
         directory.rmdir()
     _remove_created(state.get('created', []), state.get('browser_created', []))
-    return {'restored': True, 'foreign': len(foreign)}
+    return {'restored': True, 'foreign': len(foreign), **({'dropped': dropped} if dropped else {})}
 
 
 def _blank(client, timeout):
@@ -790,7 +914,7 @@ def _target(action, values):
     if action in ('prepare', 'recover'):
         if action == 'prepare':
             return _prepare(values)
-        return {'recovered': _recover(_locations(values)[2], values.get('wait', 0))}
+        return _recover(_locations(values)[2], values.get('wait', 0))
     if action == 'restore':
         return _restore(values)
     stored = Path(values['directory']) / 'transaction.json'

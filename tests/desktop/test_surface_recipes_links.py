@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import shutil
 import signal
 import subprocess
 import socket
@@ -18,6 +19,7 @@ import tempfile
 import time
 from types import SimpleNamespace
 import unittest
+import unittest.mock
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -539,8 +541,9 @@ class MimeTransactions(unittest.TestCase):
             self.assertFalse(list(home.rglob('putgdsurface*.desktop')))
 
 
-def _real_setup(home, configs, originals):
+def _real_setup(home, configs, originals, private_data=None):
     """Patches for running the real target helper in-process under a fake home."""
+    private_data = private_data or home / 'isolated/data'
     for config, original in zip(configs, originals):
         config.mkdir(parents=True, exist_ok=True)
         (config / 'mimeapps.list').write_bytes(original)
@@ -560,7 +563,7 @@ def _real_setup(home, configs, originals):
                              call=lambda *args: ['tab'] if args[0].endswith('GetWindowHandles') else None,
                              script=lambda *args, **kwargs: True)
     return [patch.dict(browser.os.environ, {'XDG_CONFIG_HOME': str(configs[1]),
-                                            'XDG_DATA_HOME': str(home / 'isolated/data')}),
+                                            'XDG_DATA_HOME': str(private_data)}),
             patch.object(browser.pwd, 'getpwuid', return_value=SimpleNamespace(pw_dir=str(home))),
             patch.object(browser.subprocess, 'Popen', return_value=process),
             patch.object(browser, '_Marionette', return_value=client),
@@ -988,6 +991,137 @@ class CreatedDirectories(unittest.TestCase):
             self.assertFalse((home / '.mozilla').exists())
             self.assertEqual((home / 'isolated/data/applications/user-file.desktop').read_bytes(), b'not ours')
 
+
+class MissingPrivateRoot(unittest.TestCase):
+    """Validator B1: an abandoned transaction whose private XDG root has gone."""
+
+    def abandoned(self, stack, home, configs, originals, private):
+        for item in _real_setup(home, configs, originals, private / 'data'):
+            stack.enter_context(item)
+        stack.enter_context(patch.dict(browser.os.environ, {'XDG_CURRENT_DESKTOP': ''}))
+        terminate = stack.enter_context(patch.object(browser, '_terminate'))
+        directory = Path(browser._prepare({})['directory'])  # Its controller vanished.
+        stored = json.loads((directory / 'transaction.json').read_text())
+        stored['helper'] = [999999998, '1']  # That helper has exited.
+        (directory / 'transaction.json').write_text(json.dumps(stored))
+        return directory, terminate
+
+    def test_vanished_private_root_is_already_cleaned_and_setup_proceeds(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            # Aurora: the real home is under /var/home, and /tmp sorts first.
+            home, private = Path(temporary) / 'var/home/user', Path(temporary) / 'tmp/sd-abandoned'
+            configs = [home / '.config', private / 'config']
+            originals = [b'[Default Applications]\r\nx-scheme-handler/https=recorder.desktop;\r\n', b'# private\n']
+            with contextlib.ExitStack() as stack:
+                abandoned, terminate = self.abandoned(stack, home, configs, originals, private)
+                self.assertNotEqual((home / '.config/mimeapps.list').read_bytes(), originals[0])
+                shutil.rmtree(private)  # Reboot or tmpfiles cleanup.
+                fresh = Path(temporary) / 'tmp/sd-next'  # The next run's private root.
+                (fresh / 'config').mkdir(parents=True)
+                stack.enter_context(patch.dict(browser.os.environ, {'XDG_CONFIG_HOME': str(fresh / 'config'),
+                                                                    'XDG_DATA_HOME': str(fresh / 'data')}))
+                state = browser._prepare({})
+                self.assertEqual((state['recovered'], state['dropped']), (1, 2))
+                self.assertFalse(abandoned.exists())
+                # The real file was restored first, then backed up afresh.
+                current = json.loads((Path(state['directory']) / 'transaction.json').read_text())
+                self.assertIn(base64.b64encode(originals[0]).decode(), [b['bytes'] for b in current['backups']])
+                self.assertEqual(terminate.call_args_list[0], unittest.mock.call(999999999, '7'))
+                self.assertTrue(browser._restore(state)['restored'])
+            path = home / '.config/mimeapps.list'
+            self.assertEqual(path.read_bytes(), originals[0])
+            self.assertEqual(path.stat().st_mode & 0o777, 0o640)
+            self.assertFalse(list(Path(temporary).rglob('putgdsurface*.desktop')))
+            self.assertFalse((home / '.mozilla').exists())
+
+    def test_one_failed_entry_does_not_block_the_real_profile(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home, private = Path(temporary) / 'var/home/user', Path(temporary) / 'tmp/sd-x'
+            configs = [home / '.config', private / 'config']
+            originals = [b'# real\r\n', b'# private\n']
+            with contextlib.ExitStack() as stack:
+                abandoned, terminate = self.abandoned(stack, home, configs, originals, private)
+                blocked = configs[1] / 'mimeapps.list'
+                blocked.unlink()
+                blocked.mkdir()  # This one entry cannot be restored.
+                with self.assertRaisesRegex(browser._TargetError, r'failed for 1 file\(s\); backup retained'):
+                    browser._prepare({})
+                self.assertEqual((home / '.config/mimeapps.list').read_bytes(), originals[0])
+                self.assertFalse(list(Path(temporary).rglob('putgdsurface*.desktop')))
+                terminate.assert_called_with(999999999, '7')
+                retained = json.loads((abandoned / 'transaction.json').read_text())['backups']
+                self.assertEqual([b['path'] for b in retained], [str(blocked)])
+                blocked.rmdir()
+                self.assertEqual(browser._recover(abandoned.parent, 0), {'recovered': 1})
+            self.assertEqual(blocked.read_bytes(), originals[1])
+            self.assertFalse(abandoned.exists())
+
+
+class CreatedDirectoriesExact(unittest.TestCase):
+    def test_restore_never_removes_what_setup_did_not_record(self):
+        # Validator N2: an empty directory another program made inside a
+        # created directory, and a created ~/snap that now holds other snaps.
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            configs = [home / '.config', home / 'isolated/config']
+            with contextlib.ExitStack() as stack:
+                for item in _real_setup(home, configs, [b'a', b'b']):
+                    stack.enter_context(item)
+                stack.enter_context(patch.object(browser, '_terminate'))
+                state = browser._prepare({'profile_root': '~/snap/firefox/common'})
+                created = json.loads((Path(state['directory']) / 'transaction.json').read_text())['created']
+                self.assertEqual(created[:3], [str(home / p) for p in ('snap', 'snap/firefox', 'snap/firefox/common')])
+                (home / 'snap/firefox/common/Crash Reports').mkdir()
+                (home / 'snap/firefox/1234').mkdir()  # snapd's revision data.
+                (home / 'snap/chromium/common').mkdir(parents=True)  # Another snap.
+                (home / 'isolated/data/applications/other-empty').mkdir()
+                browser._restore(state)
+            self.assertFalse((home / 'snap/firefox/common').exists())
+            self.assertTrue((home / 'snap/firefox/1234').is_dir())
+            self.assertTrue((home / 'snap/chromium/common').is_dir())
+            self.assertTrue((home / 'isolated/data/applications/other-empty').is_dir())
+            self.assertFalse(list(home.rglob('putgdsurface*.desktop')))
+
+
+class ProcessSession(unittest.TestCase):
+    def test_restore_stops_session_members_after_firefox_has_exited(self):
+        # CodeRabbit (browser.py:683): once the parent has exited, its children
+        # are reparented. They keep the session it led (start_new_session).
+        parent = subprocess.Popen([sys.executable, '-c',
+                                   'import subprocess,sys\n'
+                                   'child=subprocess.Popen([sys.executable,"-c","import time; time.sleep(60)"])\n'
+                                   'print(child.pid,flush=True)'],
+                                  stdout=subprocess.PIPE, text=True, start_new_session=True)
+        start = browser._start_ticks(parent.pid)
+        child = int(parent.stdout.readline())
+        parent.stdout.close()
+        child_start = browser._start_ticks(child)
+        self.addCleanup(lambda: browser._terminate(child, child_start))
+        parent.wait(timeout=10)  # Exited and reaped: nothing links them now.
+        self.assertTrue(browser._alive([child, child_start]))
+        self.assertEqual(browser._descendants(parent.pid, start), [])
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / 'putgd-surface-x'
+            directory.mkdir()
+            (directory / 'transaction.json').write_text(json.dumps(
+                {'directory': str(directory), 'since': 10 ** 18, 'foreign': [], 'desktops': [], 'backups': [],
+                 'pid': parent.pid, 'pid_start': start,
+                 'boot': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}))
+            browser._restore({'directory': str(directory)})
+        self.assertFalse(browser._alive([child, child_start]))
+
+    def test_identities_from_an_earlier_boot_are_never_signalled(self):
+        process = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+        self.addCleanup(process.wait)
+        self.addCleanup(process.kill)
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / 'putgd-surface-x'
+            directory.mkdir()
+            (directory / 'transaction.json').write_text(json.dumps(
+                {'directory': str(directory), 'since': 10 ** 18, 'foreign': [], 'desktops': [], 'backups': [],
+                 'pid': process.pid, 'pid_start': browser._start_ticks(process.pid), 'boot': 'an-earlier-boot'}))
+            browser._restore({'directory': str(directory)})
+        self.assertIsNone(process.poll())
 
 class ProcessTree(unittest.TestCase):
     def test_restore_also_stops_children_that_outlive_firefox(self):
