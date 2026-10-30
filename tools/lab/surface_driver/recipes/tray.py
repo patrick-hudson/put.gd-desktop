@@ -986,6 +986,24 @@ def action_rejected(ctx):
     _frame(ctx, 'rejected')
 
 
+@recipe('notification.upload-failed', desktop_drawn=True, timeout=240)
+def upload_failed_notice(ctx):
+    failed = ctx.fixture('tray-failed')
+    ctx.expect(failed.state['state'] == 'failed', 'loopback write fault fails the owned upload')
+    notice = _notice(ctx, 'Upload failed')
+    ctx.expect(bool(notice.get('body')), 'failure notice includes a reason')
+    _drawn_notice(ctx, notice)
+    _frame(ctx, 'failed-upload')
+    before = {n['id'] for n in ctx.notifications()}
+    cancelled = ctx.fixture('tray-cancelled')
+    ctx.expect(cancelled.state['state'] == 'cancelled', 'separate upload was cancelled')
+    fresh = [n for n in ctx.notifications() if n.get('id') not in before]
+    ctx.expect(not any(n.get('summary') in ('Upload failed', 'Upload interrupted') for n in fresh),
+               'cancelled upload emits no failure toast')
+    _frame(ctx, 'cancelled-without-failure-toast')
+    ctx.blocked('Failed-upload and cancellation variants exercised; interrupted upload with retained local copy still needs a core fixture', 670)
+
+
 # Explicit declarations are independent rows, so unavailable scenarios never
 # silently disappear from a lane run. Issue numbers are filled by the follow-up
 # tracker; no provider session is borrowed to cover an offline-only campaign.
@@ -993,7 +1011,6 @@ BLOCKED = {
     'tray.icon-complete': 'upload fixture completes before control returns; needs a held completion state and sub-600-ms icon sampling',
     'shortcut.locked-session': 'Needs core-owned visible session lock/unlock lifecycle and protected login handling',
     'notification.completed-with-problem': 'Needs offline mixed-success batch fixture with inspected per-item outcomes',
-    'notification.upload-failed': 'tray-failed supplies one failure; full row still needs interrupted-upload and retained-local-copy variants',
     'notification.in-flight-limit': 'Needs a delayed-reply notification server fixture; eight outstanding Notify calls are not eight visible toasts',
 }
 
