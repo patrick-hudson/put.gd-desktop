@@ -302,6 +302,22 @@ class Fixtures(unittest.TestCase):
                 self.assertIn(signal.Signals(sig).name,rows[0].note)
                 self.assertEqual(signal.getsignal(sig),previous)
 
+    def test_recipe_cleanup_interrupt_still_unwinds_fixture_finalizers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cleaned=[]
+            context=SimpleNamespace(begin=lambda r:None,frame=lambda *a:None,frames=[],reviews=[],notes=[],
+                                    review=lambda v:None,note=lambda v:None,_cleanup_fixtures=lambda:cleaned.append(True) or [])
+            def recipe(ctx):pass
+            def interrupt(ctx):raise KeyboardInterrupt
+            recipe.cleanup=interrupt
+            env=dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',guest='cinnamon-x11',package='deb',destination='local',build='abcdef')
+            alarm=signal.getsignal(signal.SIGALRM)
+            with self.assertRaises(KeyboardInterrupt):
+                run_recipes(context,[Recipe(('editor.undo',),recipe)],env,directory,'interrupt-test',Path(directory)/'coverage.json')
+            self.assertEqual(cleaned,[True])
+            self.assertEqual(signal.getsignal(signal.SIGALRM),alarm)
+            self.assertEqual(signal.getitimer(signal.ITIMER_REAL)[0],0)
+
     def test_recording_family_cancels_both_ids_and_removes_clips(self):
         scope=self.ctx.manager.scope;commands=[]
         def capture(s,scene,**kw):
