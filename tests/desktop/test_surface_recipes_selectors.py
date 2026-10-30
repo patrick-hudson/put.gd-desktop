@@ -55,7 +55,7 @@ class FakeContext(Context):
         self.head = 0
         self.question = False
         self.audio_intent = False
-        self.bar = dict(x=170, y=650, width=850, height=100, scale=1)
+        self.bar = dict(x=170, y=650, width=850, height=100, scale=1, pid=4242)
         self.frames = []
         self.inputs = []
         self.calls = []
@@ -161,6 +161,9 @@ class FakeContext(Context):
     def accessible(self, query):
         if self.no_accessibility:
             return []
+        if self.surface == "format" and query.get("name") in selectors.FORMAT_LABELS.values():
+            return [{"name": query["name"], "role": "list item", "pid": 4242,
+                     "enabled": True, "visible": True, "showing": True, "rect": [30, 40, 200, 40]}]
         if query["name"] == "Discard this recording?":
             return [{"name": query["name"], "rect": [10, 10, 300, 24] if self.question else [0, 0, 0, 0]}]
         if query["name"] != {"region": "Capture region", "recsel": "Recording region"}.get(self.surface):
@@ -226,6 +229,13 @@ class FakeContext(Context):
             self.combo_index = 0
         else:
             raise AssertionError(control)
+
+    def click_accessible(self, query, button="left"):
+        assert self.surface == "format" and query["owned"] and query["pid"] == 4242 and query["role"] == "list item"
+        self.inputs.append(("accessible_click", query["name"]))
+        fmt, codec = next(pair for pair, label in selectors.FORMAT_LABELS.items() if label == query["name"])
+        self._record()["config"].update(format=fmt, codec=codec, audio={"system": self.audio_intent and fmt not in ("gif", "webp")})
+        self.surface = "bar"
 
     def _cancel(self):
         if self.surface == "recsel":
@@ -447,6 +457,21 @@ class SelectorRecipes(unittest.TestCase):
         with self.assertRaisesRegex(RecipeBlocked, "2 matches"):
             selectors._focus_selector(ctx, "recsel")
         self.assertEqual(calls, ["recsel"])
+
+    def test_format_popup_uses_owned_item_clicks_without_parent_keys(self):
+        ctx = FakeContext()
+        selectors.bar_options(ctx)
+        self.assertEqual(len([i for i in ctx.inputs if i[0] == "accessible_click"]), 6)
+        self.assertFalse(any(i[0] == "key" for i in ctx.inputs))
+        self.assertEqual(ctx.document, ctx.original)
+
+    def test_return_capture_is_independent_of_drag_transport(self):
+        ctx = FakeContext()
+        ctx.drag = lambda *a, **k: self.fail("Return capture must not depend on a drag")
+        selectors.region_enter(ctx)
+        self.assertIn(("key", "Return"), ctx.inputs)
+        self.assertTrue((ctx.out / "functional").is_dir())
+        self.assertEqual(ctx.document, ctx.original)
 
     def test_all_references_exist_in_catalog_source(self):
         source = (ROOT / "tests/gui/ui_catalog.cpp").read_text()

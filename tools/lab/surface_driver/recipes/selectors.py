@@ -440,26 +440,38 @@ def region_cancel(ctx):
             _frame(ctx, "after-" + gesture)
 
 
-@recipe("region.drag", "region.to-local", "region.key-enter", needs=NEEDS)
+def _capture(ctx, gesture):
+    oid = _open_region(ctx, accessible=False)
+    try:
+        _frame(ctx, "before-" + gesture, reference="46-region-entire-display")
+        if gesture == "drag":
+            x, y, w, h = map(int, _half(_screen(ctx)))
+            ctx.drag((x, y), (x + w, y + h))
+        else:
+            ctx.keys("Return")
+            _, _, w, h = _screen(ctx)
+        op = ctx.wait(lambda: (o if (o := _op(ctx, oid))["state"] == "completed" else None), "local capture completed")
+        ctx.expect(bool(op["items"]), "capture produced an item")
+        for item in op["items"]:
+            ctx.expect(item["local"]["status"] == "saved", "capture saved locally")
+            ctx.expect(item["uploadStatus"] != "uploaded", "local route did not publish")
+            _png_dimensions(ctx, item["local"]["path"], w, h)
+        _frame(ctx, "after-" + gesture)
+    finally:
+        if _op(ctx, oid)["state"] in ("accepted", "acquiring"):
+            _call(ctx, "operation.cancel", {"id": oid})
+
+
+@recipe("region.to-local", "region.key-enter", needs=NEEDS)
+def region_enter(ctx):
+    with _local(ctx):
+        _capture(ctx, "Return")
+
+
+@recipe("region.drag", needs=NEEDS)
 def region_capture(ctx):
     with _local(ctx):
-        for gesture in ("drag", "Return"):
-            oid = _open_region(ctx, accessible=False)
-            _frame(ctx, "before-" + gesture, reference="46-region-entire-display")
-            if gesture == "drag":
-                x, y, w, h = map(int, _half(_screen(ctx)))
-                ctx.drag((x, y), (x + w, y + h))
-            else:
-                ctx.keys("Return")
-                _, _, w, h = _screen(ctx)
-            op = ctx.wait(lambda: (o if (o := _op(ctx, oid))["state"] == "completed" else None), "local capture completed")
-            ctx.expect(bool(op["items"]), "capture produced an item")
-            for item in op["items"]:
-                ctx.expect(item["local"]["status"] == "saved", "capture saved locally")
-                ctx.expect(item["uploadStatus"] != "uploaded", "local route did not publish")
-                # Decode only our synthetic capture, on the guest, to check accepted bounds.
-                _png_dimensions(ctx, item["local"]["path"], w, h)
-            _frame(ctx, "after-" + gesture)
+        _capture(ctx, "drag")
         # A click (zero-size drag) must cancel rather than capture a pixel.
         oid = _open_region(ctx, accessible=False)
         x, y, _, _ = map(int, _half(_screen(ctx)))
@@ -657,6 +669,26 @@ def recording_output(ctx):
             _cancel_record(ctx, rid)
 
 
+FORMAT_LABELS = {
+    ("mp4", "h264"): "Compatible video — MP4 (H.264) · Recommended",
+    ("mp4", "h265"): "Smaller video — MP4 (H.265)",
+    ("webm", "vp9"): "Browser video — WebM (VP9)",
+    ("gif", ""): "Animated GIF",
+    ("webp", ""): "Animated WebP — silent",
+}
+
+
+def _format(ctx, fmt, codec):
+    # The combo popup has its own input focus, outside the unmanaged bar.
+    # Resolve the drawn item in the bar's exact private helper PID, then use
+    # the core's fresh compositor/server hit-test and real pointer input.
+    pid = ctx.geometry("bar")["pid"]
+    _bar_click(ctx, "format", window="bar-ready")
+    query = {"owned": True, "pid": pid, "role": "list item", "name": FORMAT_LABELS[(fmt, codec)]}
+    ctx.wait(lambda: ctx.accessible(dict(query, visible=True, showing=True)), "recording format popup item")
+    ctx.click_accessible(query)
+
+
 @recipe("bar.format", "bar.system-audio", needs=NEEDS)
 def bar_options(ctx):
     with _local(ctx):
@@ -668,17 +700,14 @@ def bar_options(ctx):
                 ctx.blocked("System audio unavailable on this desktop")
             _bar_click(ctx, "text:System audio", window="bar-ready")
             ctx.wait(lambda: _inspect(ctx, rid)["config"]["audio"]["system"], "system audio enabled")
-            # Format order is the catalog's real combo order, not a translated label.
-            for index, (fmt, codec) in enumerate((("mp4", "h264"), ("mp4", "h265"), ("webm", "vp9"), ("gif", ""), ("webp", ""))):
+            for fmt, codec in FORMAT_LABELS:
                 if fmt not in caps["formats"] or (codec and codec not in caps.get("codecs", {}).get(fmt, [])):
                     ctx.blocked("Required recording format unavailable: " + fmt + "/" + codec)
-                _bar_click(ctx, "format", window="bar-ready")
-                ctx.keys("Home", *(["Down"] * index), "Return")
+                _format(ctx, fmt, codec)
                 info = ctx.wait(lambda: (s if (s := _inspect(ctx, rid))["config"]["format"] == fmt and s["config"]["codec"] == codec else None), "format " + fmt + "/" + codec)
                 ctx.expect(info["config"]["audio"]["system"] == (fmt not in ("gif", "webp")), "animation formats are silent")
                 _frame(ctx, "format-" + fmt + "-" + codec, window="bar", reference="33a-record-gif-requested-audio" if fmt == "gif" else BAR)
-            _bar_click(ctx, "format", window="bar-ready")
-            ctx.keys("Home", "Return")
+            _format(ctx, "mp4", "h264")
             ctx.wait(lambda: _inspect(ctx, rid)["config"]["audio"]["system"], "video restores audio intent")
             _frame(ctx, "after", window="bar", reference="33b-record-restored-audio")
         finally:
