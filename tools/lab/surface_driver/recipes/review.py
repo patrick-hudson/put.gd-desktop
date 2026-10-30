@@ -626,8 +626,7 @@ def cli_recording(ctx):
     ctx.blocked('CLI review-stage entries exercised; capture prepare/start/pause/resume/stop/select/overlay need a capture fixture (#672)', issue=672)
 
 
-@recipe('mcp.recording', 'mcp.recording-review', needs=('recording', 'mcp'))
-def mcp_recording(ctx):
+def _mcp_review(ctx):
     rid = _open(ctx)
     _reply(ctx, ctx.mcp('get_recording_capabilities'))
     info = _reply(ctx, ctx.mcp('get_recording', {'id': rid}))
@@ -645,4 +644,29 @@ def mcp_recording(ctx):
     ctx.click('play', window='review')
     ctx.keys('Space')
     _frame(ctx, 'after')
-    ctx.blocked('MCP review/edit/preview/save exercised; capture lifecycle and upload_recording need fresh capture/destination fixtures (#672)', issue=672)
+    return rid, _inspect(ctx, rid)
+
+
+@recipe('mcp.recording', needs=('recording', 'mcp'))
+def mcp_recording(ctx):
+    _mcp_review(ctx)
+    ctx.blocked('MCP review/edit/preview/save exercised; prepare/control/select/overlay capture lifecycle remains unexercised (#672)', issue=672)
+
+
+@recipe('mcp.recording-review', needs=('recording', 'mcp', 'destination'), timeout=240)
+def mcp_recording_review(ctx):
+    rid, before = _mcp_review(ctx)
+    ctx.expect(ctx.destination == 'local', 'MCP review upload uses the isolated local destination')
+    submitted = _reply(ctx, ctx.mcp('upload_recording', {'id': rid, 'revision': before['edit']['revision']}))
+    operation_id = submitted['operationId']
+    def terminal():
+        op = _reply(ctx, ctx.mcp('get_operation', {'id': operation_id}))
+        return op if op['state'] in ('completed', 'failed', 'cancelled') else None
+    op = ctx.wait(terminal, 'MCP explicit Upload finishes', timeout=180)
+    ctx.expect(op['state'] == 'completed', 'MCP Upload pipeline completes')
+    paths = [i['local']['path'] for i in op.get('items', []) if i.get('local', {}).get('status') == 'saved']
+    ctx.expect(bool(paths), 'MCP upload retains a local file for decoded verification')
+    for path in paths:
+        _verify(ctx, rid, path, before)
+    ctx.view('ui.history')
+    _frame(ctx, 'uploaded', '01-history-list', 'history')

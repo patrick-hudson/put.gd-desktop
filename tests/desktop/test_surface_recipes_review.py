@@ -399,6 +399,22 @@ class ReviewRecipes(unittest.TestCase):
         with self.assertRaises(RecipeFailed):
             review._reply(FakeContext(), {'isError':True})
 
+    def test_mcp_review_upload_uses_reviewed_revision_and_decodes(self):
+        ctx = FakeContext()
+        ctx.info['edit']['revision'] = 3
+        calls = []
+        def mcp(tool, params):
+            calls.append((tool, params))
+            return {'ok':True, 'result': {'operationId':'upload-id'} if tool == 'upload_recording' else
+                    {'state':'completed', 'items':[{'local':{'status':'saved','path':'/tmp/result.webm'}}]}}
+        ctx.mcp = mcp
+        with patch.object(review, '_mcp_review', return_value=('recording-id', ctx.info)):
+            review.mcp_recording_review(ctx)
+        self.assertEqual(calls[0], ('upload_recording', {'id':'recording-id','revision':3}))
+        self.assertEqual(calls[1], ('get_operation', {'id':'upload-id'}))
+        self.assertTrue(any(t[0] == 'shell' for t in ctx.trace))
+        self.assertEqual(ctx.frames[-1]['reference'], '01-history-list')
+
     def test_screen_coordinates_follow_live_geometry(self):
         ctx = FakeContext()
         state = ctx.call('recording.review')
