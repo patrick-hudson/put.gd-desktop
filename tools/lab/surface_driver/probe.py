@@ -363,13 +363,23 @@ UNREAD = object()
 POPUP_WINDOW_TYPES = {8, 9, 10, 13}
 
 
+def gnome_witness(method, *args):
+    """One bounded call to the lab witness inside gnome-shell; a silent shell is named, not a raw D-Bus error."""
+    import dbus
+    try:
+        witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
+        return getattr(witness, method)(*args, dbus_interface='org.putgd.LabWitness', timeout=3)
+    except dbus.DBusException as error:
+        if unanswered(error):
+            raise RuntimeError('compositor witness (gnome-shell) did not answer %s within 3 s' % method) from None
+        raise RuntimeError('compositor witness (gnome-shell) %s failed: %s' % (method, error.get_dbus_name())) from None
+
+
 def compositor_windows(compositor):
     """The compositor's own window list: frame/buffer rects, pid, focus, stacking."""
     kind = (compositor or {}).get('kind')
     if kind == 'gnome-lab-witness':
-        import dbus
-        witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
-        return json.loads(str(witness.Windows(dbus_interface='org.putgd.LabWitness', timeout=3)))
+        return json.loads(str(gnome_witness('Windows')))
     if kind == 'kwin-script':
         return kwin_windows()
     raise RuntimeError('no compositor window witness configured for this Wayland profile')
@@ -380,8 +390,7 @@ def compositor_activate(compositor, window_id):
     kind = (compositor or {}).get('kind')
     if kind == 'gnome-lab-witness':
         import dbus
-        witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
-        return bool(witness.Activate(dbus.UInt64(window_id), dbus_interface='org.putgd.LabWitness', timeout=3))
+        return bool(gnome_witness('Activate', dbus.UInt64(window_id)))
     raise RuntimeError('this compositor witness cannot raise windows')
 
 
@@ -389,9 +398,7 @@ def compositor_pick(compositor, point):
     """The compositor's hit-test at a desktop point: {window, chain}."""
     kind = (compositor or {}).get('kind')
     if kind == 'gnome-lab-witness':
-        import dbus
-        witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
-        return json.loads(str(witness.Pick(int(point[0]), int(point[1]), dbus_interface='org.putgd.LabWitness', timeout=3)))
+        return json.loads(str(gnome_witness('Pick', int(point[0]), int(point[1]))))
     if kind == 'kwin-script':
         return kwin_pick(point)
     raise RuntimeError('no compositor hit-test witness configured for this Wayland profile')
@@ -500,11 +507,17 @@ class WaylandPlacement:
     def __init__(self, compositor):
         self.compositor = compositor
         self.shell = compositor.get('shell_application', '')
-        self._windows, self._cache = None, {}
+        self._windows, self._cache, self._failed = None, {}, None
 
     def windows(self):
+        if self._failed:
+            raise RuntimeError(self._failed)  # one silent witness per walk, not one wait per row
         if self._windows is None:
-            self._windows = [w for w in compositor_windows(self.compositor)['windows'] if not w.get('minimized')]
+            try:
+                self._windows = [w for w in compositor_windows(self.compositor)['windows'] if not w.get('minimized')]
+            except RuntimeError as error:
+                self._failed = str(error)
+                raise
         return self._windows
 
     def absolute(self, application):

@@ -270,6 +270,30 @@ class JustMappedWindow(unittest.TestCase):
         self.assertEqual(asked.call_count, 1)
 
 
+class SilentWitness(unittest.TestCase):
+    def test_silent_shell_is_named_not_a_raw_dbus_error(self):
+        class DBusException(Exception):
+            def get_dbus_name(self):
+                return 'org.freedesktop.DBus.Error.NoReply'
+        def call(*args, **kwargs):
+            raise DBusException('org.freedesktop.DBus.Error.NoReply: Did not receive a reply')
+        proxy = SimpleNamespace(Pick=call)
+        dbus = SimpleNamespace(DBusException=DBusException, SessionBus=lambda: SimpleNamespace(get_object=lambda *_: proxy))
+        with patch.dict(sys.modules, dbus=dbus), \
+             self.assertRaisesRegex(RuntimeError, r'^compositor witness \(gnome-shell\) did not answer Pick within 3 s$'):
+            probe.compositor_pick(WITNESS, (10, 20))
+
+
+    def test_a_silent_witness_is_asked_once_per_walk(self):
+        placement = probe.WaylandPlacement(WITNESS)
+        error = RuntimeError('compositor witness (gnome-shell) did not answer Windows within 3 s')
+        with patch.object(probe, 'compositor_windows', side_effect=error) as asked:
+            for title in ('put.gd', 'Preview'):
+                with self.assertRaisesRegex(RuntimeError, 'did not answer Windows'):
+                    placement.toplevel(50, title, [0, 0, 900, 600])
+        self.assertEqual(asked.call_count, 1)
+
+
 class QtAccessibleId(Walk):
     def control(self, selector, candidates=(), **extra):
         app, frame, nodes = settings_window()
