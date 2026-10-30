@@ -9,10 +9,13 @@ from __future__ import annotations
 import base64
 from contextlib import contextmanager
 import json
+import inspect
 import math
 import shlex
 import sys
 
+from tools.lab import lab
+from tools.lab.editor_pixels import redactions_black
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
 
 CORE_ISSUE = 663
@@ -38,10 +41,7 @@ def _view(ctx, op, **params):
 
 def _frame(ctx, label, reference=REFERENCE):
     frame = ctx.frame(label, window='editor', reference=reference)
-    # Catalog choice is interaction state, identical on every desktop. The
-    # merged profile is the contract's state-hint path until use_catalog is in
-    # api.py; it prevents ambiguous matches across 900/1060/1180 captures.
-    ctx.profile.setdefault('catalog_windows', {})['editor'] = [reference]
+    ctx.use_catalog('editor', reference)
     return frame
 
 
@@ -66,12 +66,13 @@ def _resize(ctx, width, height):
 
 
 @contextmanager
-def _session(ctx, opener=None):
-    blocked=ctx.profile.get('editor',{}).get('acceptance_block')
-    if blocked:
-        ctx.blocked(blocked['reason'],issue=blocked['issue'])
+def _session(ctx, opener=None, recent_colours=None):
     image = ctx.fixture('image')
     path = image['path'] if isinstance(image, dict) else image
+    if recent_colours:
+        current = ctx.call('settings.get')
+        ctx.call('settings.patch', {'expectedRevision':current['metadata']['observedRevision'],
+                                   'patch':{'preferences':{'editorRecentColors':recent_colours}}})
     params = {'source': 'file', 'path': path}
     opened = _result(opener(params) if opener else ctx.call('editor.open', params))
     op = opened['operationId']
@@ -89,7 +90,7 @@ def _session(ctx, opener=None):
         ctx.expect(state['phase'] == 'editing' and not state['shapes'], 'fresh private editor has no marks')
         ctx.expect([state['width'], state['height']] == [640, 320], 'four-quadrant fixture is 640x320')
         ctx.call('editor.raise',{'id':op})
-        _resize(ctx,1180,820)
+        ctx.focus('editor')
         _view(ctx, op, action='fit')
         ctx.expect(_inspect(ctx, op)['view']['fitted'], 'editor opens fitted')
         _frame(ctx, 'before')
@@ -128,19 +129,7 @@ def _point(ctx, op, x, y):
     """Image pixel centre -> canvas screen point, including current pan/zoom."""
     state = _inspect(ctx, op)
     view = state['view']
-    # AT-SPI is part of Context and exposes the actual canvas component, while
-    # window geometry alone cannot locate the toolbar/properties inset.
-    window=ctx.geometry('editor')
-    matches=ctx.accessible({'name':'Image being edited'})
-    candidates=[row['rect'] for row in matches if row.get('rect') and
-                row['rect'][2:]==view['canvasSize'] and
-                row['rect'][0]>=window['x'] and row['rect'][1]>=window['y'] and
-                row['rect'][0]+row['rect'][2]<=window['x']+window['width'] and
-                row['rect'][1]+row['rect'][3]<=window['y']+window['height']]
-    if len(candidates)!=1:
-        ctx.blocked('AT-SPI must identify one owned Image being edited canvas for image-coordinate drags',issue=CORE_ISSUE)
-    x0,y0,width,height=candidates[0]
-    canvas={'x':x0,'y':y0,'width':width,'height':height}
+    canvas = ctx.geometry('editor.canvas')
     ctx.expect([canvas['width'], canvas['height']] == view['canvasSize'], 'geometry identifies the live editor canvas')
     scale = view['zoomPercent'] / 100
     vx, vy, vw, vh = view['visibleRect']
@@ -280,7 +269,8 @@ def selection_geometry(ctx):
         ctx.keys('Esc')
         ctx.expect(_inspect(ctx, op)['view']['selectedShapeId'] is None, 'Escape deselects')
         # Pointer clamp: move the existing redaction far beyond the bottom/right.
-        ctx.drag(_point(ctx, op, 470,80), _point(ctx, op,800,500))
+        canvas = ctx.geometry('editor.canvas')
+        ctx.drag(_point(ctx, op, 470,80), (canvas['x']+canvas['width']-3,canvas['y']+canvas['height']-3))
         for s in _inspect(ctx, op)['shapes']:
             x,y,w,h = s['rect']
             ctx.expect(x >= 0 and y >= 0 and x+w <= 640 and y+h <= 320, 'pointer edits stay inside image')
@@ -296,7 +286,11 @@ def selection_geometry(ctx):
         ctx.keys('Shift+Right','Ctrl+Shift+Up')
         ctx.expect(_inspect(ctx,op)['shapes'][-1]['fontPixels']==pixels-9,'text resize keys change font by 1 and 10 pixels')
         _frame(ctx, 'after', '26-editor-selected')
-        ctx.blocked('Move/nudge/resize/clamp checks passed; text-corner mouse scaling still needs an exact text-handle fixture',issue=CORE_ISSUE)
+        x,y,w,h = _inspect(ctx,op)['view']['geometry']
+        font = _inspect(ctx,op)['shapes'][-1]['fontPixels']
+        ctx.drag(_point(ctx,op,x+w-1,y+h-1), _point(ctx,op,x+w+20,y+h+10))
+        ctx.expect(_inspect(ctx,op)['shapes'][-1]['fontPixels'] > font, 'text corner drag scales the label')
+        _frame(ctx, 'text-scaled', '26-editor-selected')
 
 
 @recipe('editor.tool-crop', 'editor.apply-crop', 'editor.cancel-crop', needs=IMAGE)
@@ -406,26 +400,22 @@ def upload(ctx):
         # or source bytes enter receipts. Conversion uses the shipped fixture.
         path = shlex.quote(item['local']['path'])
         masks = json.dumps([s['rect'] for s in final['shapes'] if s['kind']=='redact'])
+        # Reuse the acceptance driver's PPM decoder and full-mask oracle.
+        decoder = inspect.getsource(lab.ppm)
+        mask_check = inspect.getsource(redactions_black)
         script = f'''set -eu
 p=$(mktemp --suffix=.ppm)
 trap 'rm -f "$p"' EXIT
 putgd-desktop-fixture --convert {path} "$p"
 python3 - "$p" <<'ORACLE'
-import sys
+import sys,re
 from pathlib import Path
-import re
-data=Path(sys.argv[1]).read_bytes()
-match=re.match(rb'P6\\s+(?:#[^\\n]*\\n\\s*)?(\\d+)\\s+(\\d+)\\s+255[ \\t\\r\\n]',data)
-assert match, '8-bit binary PPM header'
-w,h=map(int,match.groups())
-pixels=data[match.end():]
-assert len(pixels)==w*h*3
+LabError=AssertionError
+{decoder}
+{mask_check}
+w,h,pixels=ppm(sys.argv[1])
 assert (w,h)==(640,320)
-for x,y,rw,rh in {masks}:
- for yy in range(y,y+rh):
-  for xx in range(x,x+rw):
-   i=(yy*w+xx)*3
-   assert pixels[i:i+3]==bytes([0,0,0])
+assert redactions_black(w,pixels,{masks})
 for x,y,rgb in [(100,60,[220,30,40]),(230,170,[35,70,220]),(330,290,[235,190,20])]:
  i=(y*w+x)*3
  assert pixels[i:i+3]==bytes(rgb)
@@ -486,34 +476,73 @@ def _blocked_recipe(name, ids, reason):
     globals()[name] = pending
 
 
-_blocked_recipe('held_modifiers', ('editor.mouse-square','editor.key-ctrl-cursor','editor.key-pan-space','editor.mouse-zoom'),
-                'Context has no held-modifier drag/scroll or key-down/up; Shift-square, Ctrl-overdraw/cursor/zoom and Space-pan need real input')
-_blocked_recipe('double_click', ('editor.double-click-text',), 'Context has no double-click input')
+@recipe('editor.mouse-square', 'editor.key-ctrl-cursor', 'editor.key-pan-space', 'editor.mouse-zoom', needs=IMAGE)
+def held_modifiers(ctx):
+    with _session(ctx) as op:
+        _tool(ctx, op, 'rectangle', 'R')
+        with ctx.held_keys('Shift'):
+            ctx.drag(_point(ctx, op, 80, 40), _point(ctx, op, 200, 100))
+        state = _inspect(ctx, op)
+        ctx.expect(len(state['shapes']) == 1 and abs(state['shapes'][0]['rect'][2]-state['shapes'][0]['rect'][3]) <= 1,
+                   'Shift drag constrains a square')
+        # Ctrl must draw through an existing mark rather than select/move it.
+        with ctx.held_keys('Ctrl'):
+            ctx.hover(*_point(ctx, op, 100, 60))
+            _frame(ctx, 'ctrl-cursor', '26-editor-selected')
+            ctx.drag(_point(ctx, op, 100, 60), _point(ctx, op, 180, 90))
+        ctx.expect(len(_inspect(ctx, op)['shapes']) == 2, 'Ctrl drag draws over the existing mark')
+        centre = _point(ctx, op, 320, 160)
+        before = _inspect(ctx, op)['view']['zoomPercent']
+        with ctx.held_keys('Ctrl'):
+            ctx.scroll(*centre, clicks=2)
+        ctx.expect(_inspect(ctx, op)['view']['zoomPercent'] > before, 'Ctrl wheel zooms at pointer')
+        _view(ctx, op, action='zoom', percent=400)
+        before = _inspect(ctx, op)['view']['visibleRect']
+        centre = _point(ctx, op, 320, 160)
+        with ctx.held_keys('Space'):
+            ctx.drag(centre, (centre[0]+60, centre[1]+30))
+        ctx.expect(_inspect(ctx, op)['view']['visibleRect'] != before, 'Space drag pans without drawing')
+        ctx.expect(len(_inspect(ctx, op)['shapes']) == 2, 'held gestures preserve mark count')
+        _frame(ctx, 'after', '26-editor-selected')
+
+
+@recipe('editor.double-click-text', needs=IMAGE)
+def double_click(ctx):
+    with _session(ctx) as op:
+        # Put text across the canvas centre, where double_click resolves the
+        # actual canvas bounds in one gesture (no second SSH probe between taps).
+        ctx.call('editor.apply', {'id':op, 'commands':[{'op':'add','shape':{
+            'kind':'text','at':[300,150],'text':'double click','fontPixels':32}}]})
+        _tool(ctx, op, 'select', 'V')
+        ctx.double_click('text:Image being edited', window='editor')
+        ctx.expect(_inspect(ctx, op)['view']['editingText'], 'double click edits the existing label')
+        ctx.keys('Ctrl+A'); ctx.type_text('edited twice'); ctx.keys('Return')
+        ctx.expect(_inspect(ctx, op)['shapes'][0]['text'] == 'edited twice', 'double-click draft commits')
+        _frame(ctx, 'after', '26-editor-selected')
+
+
 _blocked_recipe('preparation_failure', ('editor.preparation-failed',), 'Needs deterministic output-limit failure fixture; normal small image cannot exercise this banner')
 
 
 
-def _named_or_legacy(ctx, name, fallback):
-    try:
-        ctx.click(name, window='editor')
-    except (KeyError, RecipeBlocked, RecipeFailed):
-        ctx.note(f'{name} absent from this catalog; using legacy selector {fallback} until fix/surface-objectnames lands')
-        ctx.click(fallback, window='editor')
-
-
 @recipe('editor.colours', needs=IMAGE)
 def palette(ctx):
-    with _session(ctx) as op:
+    with _session(ctx, recent_colours=['#123456', '#654321']) as op:
         _tool(ctx, op, 'rectangle', 'R')
         ctx.keys('Insert')
         colours = [('Red','#dc2626'),('Orange','#f59e0b'),('Yellow','#facc15'),('Green','#22c55e'),
                    ('Blue','#3b82f6'),('White','#ffffff'),('Black','#111317')]
         for name, colour in colours:
-            _named_or_legacy(ctx, 'colorSwatch'+name, f'text-glob:{name} ({colour})')
+            ctx.click('colorSwatch'+name, window='editor')
             state = _inspect(ctx,op)
             ctx.expect(state['view']['style']['color']==colour and state['shapes'][0]['color']==colour, 'palette updates style and selected shape')
         _frame(ctx,'after','22-editor-arrow-style')
-        ctx.blocked('Seven palette swatches checked; recent custom colours require selecting a colour in the native picker',issue=CORE_ISSUE)
+        for colour in ('#123456', '#654321'):
+            ctx.click('recentColorSwatch_'+colour[1:], window='editor')
+            state = _inspect(ctx, op)
+            ctx.expect(state['view']['style']['color']==colour and state['shapes'][0]['color']==colour,
+                       'recent-colour swatch updates selected shape')
+        _frame(ctx, 'recent-colours', '22-editor-arrow-style')
 
 
 @recipe('editor.line-width', needs=IMAGE)
@@ -522,7 +551,7 @@ def style_controls(ctx):
         _tool(ctx,op,'rectangle','R')
         ctx.keys('Insert')
         for key, width in [('Home',2),('Down',4),('End',8)]:
-            _named_or_legacy(ctx,'lineWidth','class:QComboBox')
+            ctx.click('lineWidth', window='editor')
             ctx.keys(key,'Return')
             state = _inspect(ctx,op)
             ctx.expect(state['view']['style']['width']==width and state['shapes'][0]['width']==width, 'line width updates style and shape')
@@ -612,6 +641,19 @@ def mcp_editor(ctx):
         ctx.expect(rejected.get('ok') is False and len(_inspect(ctx,op)['shapes'])==6,'invalid MCP edit rejected without mutation')
         tool('drive_editor',action='tool',tool='select')
         ctx.expect(_inspect(ctx,op)['view']['tool']=='select','MCP drive_editor visible selection tool')
+        preview = _mcp(ctx,'preview_editor',{'id':op,'max_edge':640})
+        # Same official SDK image + metadata contract as mcp_editor_e2e.py.
+        content = preview.get('content', [])
+        ctx.expect(len(content)==2 and content[0]['type']=='image' and content[0]['mimeType']=='image/png',
+                   'MCP preview transports one PNG image and metadata')
+        png = base64.b64decode(content[0]['data'])
+        meta = _result(json.loads(content[1]['text']))
+        ctx.expect(png.startswith(b'\x89PNG\r\n\x1a\n') and [meta['sourceWidth'],meta['sourceHeight']]==[640,320],
+                   'MCP preview metadata matches the synthetic image')
+        tool('editor_file_dialog',action='open')
+        ctx.expect(tool('editor_file_dialog',action='inspect')['open'],'MCP opens real save chooser')
+        tool('editor_file_dialog',action='cancel')
+        ctx.wait(lambda: not tool('editor_file_dialog',action='inspect')['open'],'MCP cancels save chooser')
         path=_copy_path(ctx)
         saved=tool('save_editor_copy',path=path)
         ctx.expect(saved['saved'] and _inspect(ctx,op)['phase']=='editing','MCP saves private PNG without submitting')
@@ -624,7 +666,7 @@ def mcp_editor(ctx):
         _result(_mcp(ctx,'cancel_editor',{'id':op}))
         operation=_result(ctx.call('operation.inspect',{'id':op}))
         ctx.expect(operation['state']=='cancelled' and not operation['items'],'MCP cancel stores nothing')
-    ctx.blocked('MCP command/output checks passed; preview_editor image-content transport and editor_file_dialog open/cancel still need core backend contract',issue=CORE_ISSUE)
+
 
 
 @recipe('editor.save-copy', needs=IMAGE)

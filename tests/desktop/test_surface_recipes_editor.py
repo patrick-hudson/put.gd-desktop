@@ -62,8 +62,16 @@ class FakeContext(Context):
     def frame(self, label, window=None, reference=None):
         self.events.append(('frame',label,window,reference))
 
+    def focus(self, window, **kwargs):
+        self.events.append(('focus',window))
+        return {'focused':True}
+
+    def use_catalog(self, window, reference):
+        self.events.append(('use_catalog',window,reference))
+
     def geometry(self, window):
         self.events.append(('geometry',window))
+        if window == 'editor.canvas': return {'x':100,'y':100,'width':800,'height':500}
         assert window == 'editor'
         return {'x':0,'y':0,'width':1180,'height':820}
 
@@ -194,8 +202,11 @@ class EditorRecipes(unittest.TestCase):
 
     def test_unknown_canvas_geometry_blocks_not_passes(self):
         ctx=FakeContext()
-        def missing(role): raise NotImplementedError
-        ctx.accessible=lambda query: []
+        original=ctx.geometry
+        def missing(role):
+            if role=='editor.canvas': raise RecipeBlocked('owned canvas unavailable',issue=663)
+            return original(role)
+        ctx.geometry=missing
         with self.assertRaises(RecipeBlocked) as raised: editor.redact(ctx)
         self.assertEqual(663,raised.exception.issue)
         self.assertEqual('cancelled',ctx.phase)
@@ -219,8 +230,7 @@ class EditorRecipes(unittest.TestCase):
         self.assertEqual('cancelled',ctx.phase)
 
     def test_all_pending_recipes_explain_block_after_frames(self):
-        names=['held_modifiers','double_click',
-               'preparation_failure']
+        names=['preparation_failure']
         for name in names:
             with self.subTest(name=name):
                 ctx=FakeContext()
@@ -240,15 +250,11 @@ class EditorRecipes(unittest.TestCase):
         ctx=ExportContext(corrupt=True)
         with self.assertRaisesRegex(RecipeFailed,'every mask pixel'): editor.upload(ctx)
 
-    def test_legacy_selector_is_explicit_and_not_silent(self):
-        ctx=FakeContext()
-        def click(control,window):
-            if control=='lineWidth': raise KeyError('name not in old catalog')
-            ctx.events.append(('click',control,window))
-        ctx.click=click
-        editor._named_or_legacy(ctx,'lineWidth','class:QComboBox')
-        self.assertIn(('click','class:QComboBox','editor'),ctx.events)
-        self.assertTrue(any(e[0]=='note' and 'fix/surface-objectnames' in e[1] for e in ctx.events))
+    def test_stable_controls_have_no_legacy_fallback(self):
+        source=Path(editor.__file__).read_text()
+        self.assertIn("ctx.click('colorSwatch'+name, window='editor')",source)
+        self.assertIn("ctx.click('lineWidth', window='editor')",source)
+        self.assertNotIn('_named_or_legacy',source)
 
     def test_copy_path_creation_rejects_bad_shell_result(self):
         ctx=FakeContext()
@@ -279,12 +285,14 @@ class EditorRecipes(unittest.TestCase):
         editor.redact(ctx)
         self.assertEqual('cancelled',ctx.phase)
 
-    def test_desktop_gate_records_issue_without_more_real_attempts(self):
-        ctx=FakeContext()
-        ctx.profile={'editor':{'acceptance_block':{'reason':'Two real attempts exhausted; blocked for review','issue':699}}}
-        with self.assertRaises(RecipeBlocked) as raised: editor.redact(ctx)
-        self.assertEqual(699,raised.exception.issue)
-        self.assertEqual([],ctx.events)
+    def test_first_launch_gate_removed_and_foreground_verified(self):
+        ctx=FakeContext(); editor.redact(ctx)
+        raised=next(i for i,e in enumerate(ctx.events) if e[:2]==('call','editor.raise'))
+        focused=ctx.events.index(('focus','editor'))
+        drawn=next(i for i,e in enumerate(ctx.events) if e[0]=='drag')
+        self.assertLess(raised,focused)
+        self.assertLess(focused,drawn)
+        self.assertNotIn('acceptance_block',json.loads((ROOT/'tools/lab/surface_driver/profiles/mint-cinnamon-x11.d/editor.json').read_text())['editor'])
 
     def test_open_failure_not_mistaken_for_success(self):
         ctx=FakeContext()

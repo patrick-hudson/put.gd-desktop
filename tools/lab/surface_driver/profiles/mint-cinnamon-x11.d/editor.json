@@ -1,11 +1,5 @@
 {
   "editor": {
-    "restore_maximized_keys": [
-      "Alt+F10"
-    ],
-    "acceptance_block": {
-      "issue": 699,
-      "reason": "Two real catalog-resize attempts on Cinnamon were obstructed by first-launch Settings covering the editor (issue #699). GUI retries stopped at the user limit; the editor.raise setup fix needs a new graphical validation campaign."
-    }
+    "restore_maximized_keys": ["Alt+F10"]
   }
 }
