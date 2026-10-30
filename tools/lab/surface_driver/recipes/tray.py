@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import json
+import glob
 import shlex
 
 from tools.lab.surface_driver.api import RecipeFailed, recipe
@@ -715,7 +716,8 @@ def _drawn_notice(ctx, notice):
     if not policy:
         ctx.blocked('Notification profile has no shell ownership selector', 670)
     def drawn():
-        nodes = ctx.accessible({**policy, 'name': notice['summary'], 'visible': True, 'showing': True})
+        name = ctx.profile.get('notifications', {}).get('title_name_glob', '{summary}').replace('{summary}', glob.escape(notice['summary']))
+        nodes = ctx.accessible({**policy, 'name': name, 'visible': True, 'showing': True})
         def on_screen(node):
             rect = node.get('rect')
             if isinstance(rect, dict):
