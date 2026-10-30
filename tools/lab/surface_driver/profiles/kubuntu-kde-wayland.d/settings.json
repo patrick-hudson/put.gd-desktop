@@ -86,7 +86,7 @@
     },
     "captureExceptionsToggle": {
       "name": "Different output for some actions",
-      "role": "push button"
+      "role": "check box"
     },
     "addCaptureException": {
       "name": "Add an exception\u2026",
