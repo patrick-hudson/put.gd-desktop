@@ -1,0 +1,1 @@
+{"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/home/user/s2c/src/work/lab-runs/core2c-final/qmp.sock", "utf8Bytes": 54, "passed": true}, {"path": "/tmp/sd-12345678/runtime/putgd/session.sock", "utf8Bytes": 43, "passed": true}, {"path": "/tmp/sd-12345678/notify.sock", "utf8Bytes": 28, "passed": true}]}

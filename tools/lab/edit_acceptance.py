@@ -212,7 +212,8 @@ try:
         offset = (y * aw + x) * 3
         return list(pixels[offset:offset + 3])
     redactions = [s['rect'] for s in final_state['shapes'] if s['kind'] == 'redact']
-    black = all(rgb(x, y) == [0, 0, 0] for (rx, ry, rw, rh) in redactions for y in range(ry, ry + rh) for x in range(rx, rx + rw))
+    from editor_pixels import redactions_black
+    black = redactions_black(aw, pixels, redactions)
     check('everyRedactedPixelBlack', black, redactions)
     # Independent oracle: untouched quadrant interiors keep the fixture colours.
     oracle = {'width': 640, 'height': 320, 'areas': [

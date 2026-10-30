@@ -139,5 +139,61 @@
       "application": "gnome-shell*"
     },
     "via": "put.gd Shell extension St actor in gnome-shell's own tree"
+  },
+  "evidence": {
+    "note": "Live/sensitive frames: banner areas of this desktop's notification server (top and bottom positions) are always masked; in declared desktop frames non-owned windows other than browsers and the shell's own processes are masked, browser chrome is masked from live window geometry, and window-list panels only when a window title carries a link or registered value.",
+    "notification_areas": [
+      {
+        "anchor": "top-center",
+        "width": 560,
+        "height": 0.45
+      }
+    ],
+    "window_list_panels": [
+      {
+        "anchor": "top",
+        "height": 40
+      }
+    ],
+    "browser": {
+      "title": "(Mozilla Firefox|Firefox|Chromium|Google Chrome|Web)$",
+      "chrome_height": 170
+    },
+    "shell_processes": [
+      "gnome-shell"
+    ],
+    "shell_areas": [
+      {
+        "anchor": "top",
+        "height": 40
+      },
+      {
+        "anchor": "left",
+        "width": 72
+      }
+    ]
+  },
+  "recording": {
+    "consent": {
+      "kind": "portal-dialog",
+      "reason": "Portal acquisition on GNOME Wayland: xdg-desktop-portal-gnome (GTK4) draws Share Screen for each new ScreenCast Start until the stored restore token is accepted (#791). GTK4 answers screen extents as (0,0); its window-relative extents omit the header bar padding (measured 7,6 px on GNOME 50.1), within the declared 8 px tolerance",
+      "backends": [
+        "xdg-desktop-portal-gnome"
+      ],
+      "shell_backends": [
+        "gnome-shell"
+      ],
+      "dialog": {
+        "title": "Share Screen",
+        "prompt": "{app} wants to share your screen*"
+      },
+      "accept": {
+        "role": "push button",
+        "name": "Share",
+        "coordinates": "window",
+        "placement_tolerance": 8
+      },
+      "backend_bus": "org.freedesktop.impl.portal.desktop.gnome"
+    }
   }
 }

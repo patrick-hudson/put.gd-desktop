@@ -4,12 +4,14 @@
 // focus(raise_window=True) on Wayland: the same activation a dock click does.
 // It never moves, resizes or closes anything.
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const PATH = '/org/putgd/LabWitness';
 const XML = `<node><interface name="org.putgd.LabWitness">
+<method name="Grabs"><arg type="s" direction="out"/></method>
 <method name="Windows"><arg type="s" direction="out"/></method>
 <method name="Pick"><arg type="i" direction="in"/><arg type="i" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Activate"><arg type="t" direction="in"/><arg type="b" direction="out"/></method>
@@ -31,15 +33,66 @@ function describe(window, stack) {
     };
 }
 
+function actorDescription(actor) {
+    const [x, y] = actor.get_transformed_position();
+    const [w, h] = actor.get_transformed_size();
+    return {type: actor.constructor?.name ?? '', name: actor.get_name?.() ?? '',
+        style: actor.style_class ?? '', accessible: actor.get_accessible_name?.() ?? '',
+        text: actor.get_text?.() ?? '', role: Number(actor.accessible_role ?? -1),
+        rect: [x, y, w, h].map(Math.round)};
+}
+
+function pickedShellNodes(picked, x, y) {
+    // Only the actual input actor's descendants qualify. Walking the whole
+    // stage could find an old menu behind the actor currently covering it.
+    if (!picked || picked === global.stage)
+        return [];
+    const pending = [picked], nodes = [];
+    for (let count = 0; pending.length && count < 512; count++) {
+        const actor = pending.pop();
+        if (!actor.visible || !actor.mapped)
+            continue;
+        const description = actorDescription(actor);
+        const [left, top, w, h] = description.rect;
+        if (!(left <= x && x < left + w && top <= y && y < top + h))
+            continue;
+        nodes.push(description);
+        pending.push(...actor.get_children());
+    }
+    return nodes;
+}
+
 export default class LabWitness extends Extension {
     enable() {
+        this._epoch = GLib.uuid_string_random();
+        this._serial = 0;
+        this._grabs = [];
+        this._signals = ['grab-op-begin', 'grab-op-end'].map(signal =>
+            global.display.connect(signal, (_display, window, operation) => {
+                const name = Object.keys(Meta.GrabOp).find(key =>
+                    /^(RESIZING|MOVING)/.test(key) && Meta.GrabOp[key] === operation) ?? String(operation);
+                this._grabs.push({serial: ++this._serial, window_id: window?.get_id() ?? null,
+                    pid: window?.get_pid() ?? null, operation: name,
+                    kind: name.startsWith('RESIZING_') ? 'resize' : name.startsWith('MOVING') ? 'move' : 'other',
+                    phase: signal === 'grab-op-begin' ? 'begin' : 'end',
+                    monotonic_us: GLib.get_monotonic_time()});
+                this._grabs = this._grabs.slice(-256);
+            }));
         this._dbus = Gio.DBusExportedObject.wrapJSObject(XML, this);
         this._dbus.export(Gio.DBus.session, PATH);
     }
 
     disable() {
+        for (const id of this._signals ?? [])
+            global.display.disconnect(id);
+        this._signals = [];
+        this._grabs = [];
         this._dbus?.unexport();
         this._dbus = null;
+    }
+
+    Grabs() {
+        return JSON.stringify({epoch: this._epoch, serial: this._serial, events: this._grabs});
     }
 
     Windows() {
@@ -61,18 +114,19 @@ export default class LabWitness extends Extension {
 
     Pick(x, y) {
         const index = new Map(windowActors().map((actor, i) => [actor, i]));
+        const pid = Number(GLib.file_read_link('/proc/self'));
         for (const mode of [Clutter.PickMode.REACTIVE, Clutter.PickMode.ALL]) {
             const chain = [];
-            for (let actor = global.stage.get_actor_at_pos(mode, x, y); actor; actor = actor.get_parent()) {
+            const picked = global.stage.get_actor_at_pos(mode, x, y);
+            for (let actor = picked; actor; actor = actor.get_parent()) {
                 if (actor instanceof Meta.WindowActor)
-                    return JSON.stringify({window: describe(actor.meta_window, index.get(actor) ?? -1), chain, mode});
-                chain.push({type: actor.constructor?.name ?? '', name: actor.get_name?.() ?? '',
-                            style: actor.style_class ?? '', accessible: actor.get_accessible_name?.() ?? ''});
+                    return JSON.stringify({pid, window: describe(actor.meta_window, index.get(actor) ?? -1), chain, mode});
+                chain.push(actorDescription(actor));
             }
             // Shell chrome (panel, banner, menu) is reactive: report it.
             if (mode === Clutter.PickMode.REACTIVE && chain.length > 1)
-                return JSON.stringify({window: null, chain, mode});
+                return JSON.stringify({pid, window: null, chain, mode, shell_nodes: [...pickedShellNodes(picked, x, y), ...chain]});
         }
-        return JSON.stringify({window: null, chain: [], mode: null});
+        return JSON.stringify({pid, window: null, chain: [], mode: null, shell_nodes: []});
     }
 }

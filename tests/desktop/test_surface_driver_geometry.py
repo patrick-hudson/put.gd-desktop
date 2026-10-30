@@ -13,7 +13,7 @@ from unittest.mock import Mock, call, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver.api import Recipe, RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.catalog import Catalog, compare, control_point
-from tools.lab.surface_driver.target import Target, input_release
+from tools.lab.surface_driver.target import RELEASE_TIMEOUT, Target, input_release
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.run import run_recipes
 
@@ -56,7 +56,10 @@ class Geometry(unittest.TestCase):
         target._outputs = [{'width': 1280, 'height': 800, 'x': 0, 'y': 0},
                            {'width': 1024, 'height': 768, 'x': 1280, 'y': 0}]
         sent = []
-        target.events = lambda *args: sent.append(args)
+        target.run = Path('/owned/run')
+        sending = patch('tools.lab.surface_driver.target.lab.input_events', side_effect=lambda run,*args:sent.append(args))
+        sending.start()
+        self.addCleanup(sending.stop)
         target.pointer(320, 200, 1280, 800, head=0)
         self.assertEqual(len(sent[0]), 1)  # no display/head-bound tablet
         self.assertEqual([e['data']['value'] for e in sent[0][0]], [math.ceil(320*32768/2304), 8192])
@@ -205,8 +208,11 @@ class PhysicalPointerSafety(unittest.TestCase):
                     self.drag()
             else:
                 self.drag()
-        send.assert_called_once_with(self.target.run,
-            [{'type': 'btn', 'data': {'button': 'right', 'down': False}}])
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args, (self.target.run,
+            [{'type': 'btn', 'data': {'button': 'right', 'down': False}}]))
+        # Its own short budget: a deferred deadline is not held for long (#815).
+        self.assertLessEqual(send.call_args.kwargs['timeout'], RELEASE_TIMEOUT)
         # One press, zero/two move attempts, then a fresh owned-endpoint
         # check before the button-up-only QMP packet.
         self.assertEqual(self.target._verify_endpoints.call_count,
@@ -312,7 +318,7 @@ class Hygiene(unittest.TestCase):
         try:
             with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']), \
                  patch('tools.lab.surface_driver.target.PROBE_REPLY_SECONDS',.01):
-                with self.assertRaisesRegex(RecipeBlocked,'timed out; further input withheld'):
+                with self.assertRaisesRegex(RecipeBlocked,'timed out: .*further input withheld'):
                     target.probe('geometry',{},source,timeout=.01)
                 with self.assertRaisesRegex(RecipeBlocked,'start a new run'):
                     target.probe('geometry',{},source)
@@ -326,14 +332,18 @@ counter=0
 def control_geometry(query):
  global counter
  counter+=1
- return {'counter':counter,'pid':os.getpid()}
+ return {'counter':counter,'pid':os.getpid(),'argv':sys.argv,'query':query}
 def main():
  print(json.dumps({'ok':True,'result':control_geometry(json.loads(sys.argv[1])['query'])}))
 if __name__=='__main__':main()
 '''
         try:
             with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                first = target.probe('control',{},source)['result']
+                first = target.probe('control',{'title':'synthetic-private-title-726'},source)['result']
+                self.assertNotIn('synthetic-private-title-726',repr(target._probe_process.args))
+                self.assertNotIn(source,repr(target._probe_process.args))
+                self.assertEqual(first['argv'],['-'])
+                self.assertEqual(first['query'],{'title':'synthetic-private-title-726'})
                 channel = target._probe_process.pid
                 second = target.probe('control',{},source)['result']
                 self.assertEqual((first['counter'],second['counter']),(1,1))

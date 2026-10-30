@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "ubuntu-gnome-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "gnome-wayland",
+    "package": "deb",
+    "destination": "local",
+    "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+    "placement_details": {
+      "boat_sandbox_id": "bx_n3uk8bvu",
+      "run_id": "cac969c6-b780-4d9e-8182-49be623fa6a6",
+      "lab_profile": "gnome-wayland",
+      "run_directory": "/home/user/i847/work/lab-runs/g1",
+      "session_root": "/tmp/sd-91bab0c9",
+      "socket": "/tmp/sd-91bab0c9/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-ubuntu-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "ubuntu:GNOME",
+      "qt_platform": "wayland"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2582",
+      "commitCount": 2582,
+      "dirty": false,
+      "gitCommit": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "gitTree": "59017513d373a0053268a5c13dc020ec6a53eecc",
+      "packageVersion": "26.1030.2582~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2582-nightly"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "dialog.diagnostics-folder",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "evidence/diagnostics-row-before-retry/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=folder, title=Save diagnostics packages to; Chooser state at failure: {\"backend\": \"portal\", \"dialog\": \"diagnosticsFolder\", \"fallbackReason\": null, \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": \"\", \"title\": \"Save diagnostics packages to\"}; timeout: chooser cancelled",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.diagnostics_folder_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.diagnostics_folder_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.diagnostics_folder_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-failure",
+          "path": "frames/dialogs.diagnostics_folder_portal/03-dialog-failure.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.diagnostics_folder_portal/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.diagnostics_folder_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:07:17Z"
+    }
+  ]
+}

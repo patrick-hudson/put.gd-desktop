@@ -1,0 +1,232 @@
+{
+  "window_titles": {
+    "settings": "^put.gd$",
+    "diagnostics": "^Create diagnostics package$",
+    "about": "^About put.gd$",
+    "settingsConfirm": "^(Reset limits to defaults|Reload settings from file|Clear logs)$"
+  },
+  "settings": {
+    "prepare_script": "set -eu\nbusctl --user set-property org.a11y.Bus /org/a11y/bus org.a11y.Status IsEnabled b true\nbusctl --user set-property org.a11y.Bus /org/a11y/bus org.a11y.Status ScreenReaderEnabled b true\nsettings_output=$(xrandr --query | awk '/ connected primary / {print $1; exit}')\ntest -n \"$settings_output\" && xrandr --output \"$settings_output\" --mode 1920x1080\ntest -n \"$settings_window\" && xdotool windowsize \"$settings_window\" 1440 960 windowmove \"$settings_window\" 120 40\nxdotool windowactivate --sync \"$settings_window\" windowraise \"$settings_window\"",
+    "foreground_script": "export settings_window\npython3 - <<'SETTINGS_INPUT'\nimport json, os, pathlib, subprocess\nwindow = os.environ['settings_window']\nassert window.isdecimal()\ndef command(*args):\n    return subprocess.check_output(['xdotool', *args], text=True).strip()\npid = int(command('getwindowpid', window))\nenvironment = pathlib.Path('/proc/' + str(pid) + '/environ').read_bytes().split(b'\\0')\nassert ('XDG_RUNTIME_DIR=' + os.environ['XDG_RUNTIME_DIR']).encode() in environment\nif command('getactivewindow') != window:\n    command('windowraise', window, 'windowactivate', '--sync', window)\npointer = dict(line.split('=', 1) for line in command('getmouselocation', '--shell').splitlines())\nprint(json.dumps({'window': window, 'pid': pid, 'active': command('getactivewindow'),\n                  'focus': command('getwindowfocus'), 'x': int(pointer['X']), 'y': int(pointer['Y'])}))\nSETTINGS_INPUT",
+    "input_state_script": "export settings_window\npython3 - <<'SETTINGS_INPUT'\nimport json, os, pathlib, subprocess\nwindow = os.environ['settings_window']\nassert window.isdecimal()\ndef command(*args):\n    return subprocess.check_output(['xdotool', *args], text=True).strip()\npid = int(command('getwindowpid', window))\nenvironment = pathlib.Path('/proc/' + str(pid) + '/environ').read_bytes().split(b'\\0')\nassert ('XDG_RUNTIME_DIR=' + os.environ['XDG_RUNTIME_DIR']).encode() in environment\n\npointer = dict(line.split('=', 1) for line in command('getmouselocation', '--shell').splitlines())\nprint(json.dumps({'window': window, 'pid': pid, 'active': command('getactivewindow'),\n                  'focus': command('getwindowfocus'), 'x': int(pointer['X']), 'y': int(pointer['Y'])}))\nSETTINGS_INPUT",
+    "viewport_insets": [
+      110,
+      40
+    ],
+    "live_controls": {
+      "archiveRoot": {
+        "name": "Save to",
+        "role": "text"
+      },
+      "namingMode": {
+        "name": "*",
+        "role": "combo box",
+        "label": "Naming"
+      },
+      "collisionPolicy": {
+        "name": "*",
+        "role": "combo box",
+        "label": "When a name exists"
+      },
+      "fileTemplate": {
+        "name": "Copied & uploaded files",
+        "role": "text"
+      },
+      "captureTemplate": {
+        "name": "Screen captures",
+        "role": "text"
+      },
+      "imageTemplate": {
+        "name": "Clipboard images",
+        "role": "text"
+      },
+      "textTemplate": {
+        "name": "Clipboard text",
+        "role": "text"
+      },
+      "recordRegionShortcut": {
+        "name": "Change capture region shortcut",
+        "role": "push button"
+      },
+      "clearRegionShortcut": {
+        "name": "Clear capture region shortcut",
+        "role": "push button"
+      },
+      "recordWindowShortcut": {
+        "name": "Change capture window shortcut",
+        "role": "push button"
+      },
+      "clearWindowShortcut": {
+        "name": "Clear capture window shortcut",
+        "role": "push button"
+      },
+      "recordDesktopShortcut": {
+        "name": "Change capture desktop shortcut",
+        "role": "push button"
+      },
+      "clearDesktopShortcut": {
+        "name": "Clear capture desktop shortcut",
+        "role": "push button"
+      },
+      "recordEditShortcut": {
+        "name": "Change capture region & edit shortcut",
+        "role": "push button"
+      },
+      "clearEditShortcut": {
+        "name": "Clear capture region & edit shortcut",
+        "role": "push button"
+      },
+      "recordRecordShortcut": {
+        "name": "Change record screen shortcut",
+        "role": "push button"
+      },
+      "clearRecordShortcut": {
+        "name": "Clear record screen shortcut",
+        "role": "push button"
+      },
+      "recordClipboardShortcut": {
+        "name": "Change upload clipboard shortcut",
+        "role": "push button"
+      },
+      "clearClipboardShortcut": {
+        "name": "Clear upload clipboard shortcut",
+        "role": "push button"
+      },
+      "settingsSection0": {
+        "name": "General",
+        "role": "list item"
+      },
+      "settingsSection1": {
+        "name": "Capture",
+        "role": "list item"
+      },
+      "settingsSection2": {
+        "name": "Shortcuts",
+        "role": "list item"
+      },
+      "settingsSection3": {
+        "name": "Advanced",
+        "role": "list item"
+      },
+      "categoryFoldersToggle": {
+        "name": "Different folders by file type",
+        "role": "check box"
+      },
+      "launchAtLogin": {
+        "name": "Launch at login",
+        "role": "check box"
+      },
+      "unlockCredentialsAtStartup": {
+        "name": "Unlock saved credentials when put.gd starts",
+        "role": "check box"
+      },
+      "notifications": {
+        "name": "Show desktop notifications",
+        "role": "check box"
+      },
+      "keepUploadCopies": {
+        "name": "Keep a local copy",
+        "role": "check box"
+      },
+      "debugLogging": {
+        "name": "Keep detailed debug logs for 24 hours",
+        "role": "check box"
+      },
+      "appearanceTheme": {
+        "name": "*",
+        "role": "combo box",
+        "label": "Theme"
+      },
+      "uploadClipboardBehavior": {
+        "name": "*",
+        "role": "combo box",
+        "label": "After uploading"
+      },
+      "regionSelectionMode": {
+        "name": "*",
+        "role": "combo box",
+        "label": "While selecting"
+      },
+      "historyRetentionChoice": {
+        "name": "*",
+        "role": "combo box",
+        "label": "Keep history for"
+      },
+      "failedArtifactChoice": {
+        "name": "*",
+        "role": "combo box",
+        "label": "Keep files for retry"
+      },
+      "recentActivityLimit": {
+        "name": "Items in recent list",
+        "role": "text"
+      },
+      "folderImages": {
+        "name": "Images",
+        "role": "text"
+      },
+      "folderVideos": {
+        "name": "Recordings",
+        "role": "text"
+      },
+      "folderText": {
+        "name": "Clipboard text",
+        "role": "text"
+      },
+      "folderOther": {
+        "name": "Other files",
+        "role": "text"
+      },
+      "desktopSupportDetailsToggle": {
+        "name": "Desktop support details",
+        "role": "check box"
+      },
+      "resourceLimitsToggle": {
+        "name": "Resource limits",
+        "role": "check box"
+      },
+      "createDiagnosticsPackage": {
+        "name": "Create diagnostics package",
+        "role": "push button"
+      },
+      "refreshDesktopSupport": {
+        "name": "Refresh desktop support",
+        "role": "push button"
+      },
+      "copyDesktopDetails": {
+        "name": "Copy details",
+        "role": "push button"
+      },
+      "resetAdvancedDefaults": {
+        "name": "Reset resource and history limits\u2026",
+        "role": "push button"
+      },
+      "reloadSettings": {
+        "name": "Reload from file\u2026",
+        "role": "push button"
+      }
+    },
+    "theme_references": {
+      "dark": "07-settings-general",
+      "light": "07-settings-general-light"
+    },
+    "clipboard_write_command": "xclip -selection clipboard"
+  },
+  "catalog_windows": {
+    "settings": [
+      "07-settings-general",
+      "08-settings-capture",
+      "06-settings-shortcuts",
+      "05-settings-advanced"
+    ],
+    "diagnostics": [
+      "58-diagnostics-package"
+    ],
+    "about": [
+      "about",
+      "about-build-details"
+    ]
+  },
+  "mcp_python": "/home/lab/putgd-surface-mcp/.venv/bin/python",
+  "mcp_helper": "/home/lab/putgd-surface-mcp/.venv/bin/putgd-mcp"
+}

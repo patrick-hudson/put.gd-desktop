@@ -43,6 +43,7 @@ import signal
 import socket
 import stat
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -84,9 +85,11 @@ def _remote(ctx, action, values, timeout=_TIMEOUTS['helper'], cleanup=False):
     return value
 
 
-# run.py's recipe deadline: a one-shot SIGALRM whose handler raises. The
-# controller is single-threaded, so blocking it in this thread defers it.
-_ALARM = {signal.SIGALRM}
+try:
+    from .critical import armed, critical, entry
+except ImportError:  # Standalone on the target: only the helper actions run there.
+    def entry(function):
+        return function
 
 
 class default_browser:
@@ -96,13 +99,16 @@ class default_browser:
     leaves unrelated desktop entries (including the guarded recorder) alone.
     Restoration errors are fatal and leave the private backup for recovery.
 
-    No recipe alarm can skip the restore. CPython runs a due signal handler
-    as a function starts, before its first line, so while the transaction is
-    open the recipe's handler is wrapped: an alarm that falls due once the
-    body has ended (in ``__exit__`` itself) is deferred, and ``__exit__``
-    blocks the alarm first thing. The deferred alarm is delivered after the
-    restore and fails the recipe, unless the body had already failed: that
-    failure stays the result.
+    No recipe deadline or termination signal can skip the restore. The
+    transaction is armed (critical.py) from entry to exit: a SIGALRM,
+    SIGTERM, SIGHUP or SIGINT that falls due as ``__exit__`` starts, or during
+    the restore, is deferred and delivered after it. It fails the recipe,
+    unless the body had already failed: that failure stays the result and the
+    deferred signal is reviewed. Setup recovery is deferred the same way.
+    Recipes must not replace those handlers inside the ``with``: that is
+    reviewed, and the exit puts back the handlers from entry. A transaction
+    whose ``__exit__`` never ran is restored at fixture cleanup
+    (``restore_abandoned``).
     """
 
     def __init__(self, ctx, browser='firefox'):
@@ -115,87 +121,81 @@ class default_browser:
         if id(ctx) in _ACTIVE:
             raise RuntimeError('Nested default_browser transactions are unsupported')
         options = ctx.profile.get('browser', {})
-        self.timeouts = timeouts = _timeouts(options)
-        self.mask = signal.pthread_sigmask(signal.SIG_BLOCK, ())  # Read only.
-        self.handler, self.wrapped, self.deferred, self.late = signal.getsignal(signal.SIGALRM), False, False, None
+        self.timeouts = _timeouts(options)
+        self.guard = armed(ctx.review, label='the Firefox restore')
+        self.guard.__enter__()
         try:
-            self.state = _remote(ctx, 'prepare', options, timeout=timeouts['helper'] + timeouts['ready'])
+            self.state = _remote(ctx, 'prepare', options, timeout=self.timeouts['helper'] + self.timeouts['ready'])
         except BaseException:
+            self._recover(options)
+            raise
+        try:
+            _ACTIVE[id(ctx)] = {'state': self.state, 'timeouts': self.timeouts, 'manager': self}
+            if self.state.get('recovered'):
+                ctx.note('Restored %d unfinished Firefox handler transaction(s) before setup'
+                         % self.state['recovered'])
+            _note_dropped(ctx, self.state)
+        except BaseException:
+            self._abort()
+            raise
+        return self
+
+    @entry
+    def _recover(self, options):
+        # The target step may have outlived its transport (deadline, dropped
+        # session): restore whatever it left before reporting the failure.
+        ctx, timeouts = self.ctx, self.timeouts
+        with critical(ctx.review, failed=True, label='the Firefox setup recovery', release=self.guard):
             try:
-                signal.pthread_sigmask(signal.SIG_BLOCK, _ALARM)
-            except BaseException as alarm:
-                self.late = alarm  # Already due; the mask holds from the call on.
-                signal.pthread_sigmask(signal.SIG_BLOCK, _ALARM)
-            try:
-                # The target step may have outlived its transport (deadline, dropped
-                # session): restore whatever it left before reporting the failure.
                 _note_dropped(ctx, _remote(ctx, 'recover', {**options, 'wait': timeouts['cleanup'] - 30},
                                            timeout=timeouts['cleanup'], cleanup=True))
             except Exception as error:
                 ctx.review('Interrupted Firefox setup not yet recovered (' + str(error)[:200] +
                            '); the next default_browser entry on this account restores it')
-            finally:
-                self._release()
-            raise
-        try:
-            _ACTIVE[id(ctx)] = {'state': self.state, 'timeouts': timeouts}
-            if callable(self.handler):
-                signal.signal(signal.SIGALRM, self._alarm)
-                self.wrapped = True
-            if self.state.get('recovered'):
-                ctx.note('Restored %d unfinished Firefox handler transaction(s) before setup'
-                         % self.state['recovered'])
-            _note_dropped(ctx, self.state)
-        except BaseException as error:
-            self.__exit__(type(error), error, error.__traceback__)
-            raise
-        return self
 
-    def _alarm(self, signum, frame):
-        if frame is not None and frame.f_code is default_browser.__exit__.__code__:
-            self.deferred = True  # The body has ended: deliver after the restore.
-            return None
-        return self.handler(signum, frame)
+    @entry
+    def _abort(self):
+        self.__exit__(*sys.exc_info())
 
+    @entry
     def __exit__(self, kind, value, traceback):
-        # First, before any other work: block the alarm. One already due was
-        # deferred by _alarm, or is raised (and taken) by this very call.
-        try:
-            signal.pthread_sigmask(signal.SIG_BLOCK, _ALARM)
-        except BaseException as alarm:
-            self.late = alarm
-            signal.pthread_sigmask(signal.SIG_BLOCK, _ALARM)
-        try:
-            problem = _restore_transaction(self.ctx, self.state, self.timeouts,
-                                           failing=kind is not None or self.deferred or self.late is not None)
-        finally:
-            _ACTIVE.pop(id(self.ctx), None)
-            self._release()
-        if kind is not None:
-            if self.late is not None:
-                self.ctx.review('Recipe deadline fell due during the Firefox restore; the recipe had already failed')
-            return False  # The recipe's own failure stays the result.
-        if self.late is not None:
-            raise self.late  # Never swallowed: the recipe overran its deadline.
-        if problem is not None:
-            raise problem
-        return False
-
-    def _release(self):
-        """Put the recipe's handler and mask back; take a deferred alarm."""
-        if self.wrapped:
-            signal.signal(signal.SIGALRM, self.handler)
-            self.wrapped = False
-        try:
-            signal.pthread_sigmask(signal.SIG_SETMASK, self.mask)  # A pending alarm arrives here.
-        except BaseException as alarm:
-            self.late = self.late or alarm
-        if self.deferred and self.late is None:
-            self.deferred = False
+        # Registered: a signal due as this starts is deferred, not raised here.
+        ctx = self.ctx
+        with critical(ctx.review, failed=kind is not None, label='the Firefox restore',
+                      release=self.guard) as section:
+            replaced = self.guard.replaced()
+            if replaced:
+                ctx.review('Recipe replaced the ' + '/'.join(signal.Signals(s).name for s in replaced) +
+                           ' handler inside default_browser; deferral was off, and the handler from entry is back')
             try:
-                self.handler(signal.SIGALRM, None)
-            except BaseException as alarm:
-                self.late = alarm
+                problem = _restore_transaction(ctx, self.state, self.timeouts,
+                                               failing=kind is not None or section.pending())
+            finally:
+                _ACTIVE.pop(id(ctx), None)
+            if problem is not None and kind is None:
+                raise problem  # The deferred signal, if any, is reviewed.
+        return False  # The recipe's own failure stays the result.
+
+
+@entry
+def restore_abandoned(ctx):
+    """Restore a transaction whose ``__exit__`` never ran; returns cleanup errors.
+
+    Only a handler that bypassed the deferral (a recipe replaced it) or a
+    manual ``__enter__`` can leave one open. run.py calls this in its fixture
+    cleanup section, after the recipe; handlers stay as run.py set them.
+    """
+    active = _ACTIVE.get(id(ctx))
+    if not active:
+        return []
+    with critical(ctx.review, failed=True, label='the abandoned Firefox restore'):
+        ctx.review('default_browser transaction was still open at fixture cleanup; restoring it there')
+        try:
+            active['manager'].guard.abandon()
+            problem = _restore_transaction(ctx, active['state'], active['timeouts'], failing=True)
+        finally:
+            _ACTIVE.pop(id(ctx), None)
+    return [] if problem is None else ['Firefox handler restore: ' + type(problem).__name__]
 
 
 def _note_dropped(ctx, answer):
@@ -275,7 +275,7 @@ def open_and_verify(ctx, trigger, expect):
                    'external dispatch reached the private Marionette Firefox, '
                    'not a Firefox started outside its profile')
         ctx.expect(result.get('matched'), 'real Firefox URL, title and page content match')
-        frames.append(asdict(ctx.frame('browser-content', window=None)))
+        frames.append(asdict(ctx.frame('browser-content', window=None, desktop_safe=KIOSK_SAFE)))
         receipt = {key: result[key] for key in ('url_host', 'title', 'matched')}
         receipt['frames'] = frames
         ctx.note(json.dumps({key: receipt[key] for key in ('url_host', 'title', 'matched')}))
@@ -285,6 +285,13 @@ def open_and_verify(ctx, trigger, expect):
         # still runs in default_browser.
         _failure_frame(ctx, state, timeouts, frames)
         raise
+
+
+# Live-evidence declaration for these full-desktop frames: the private
+# Marionette kiosk has no address bar and was proven to own the foreground
+# (blanked first for failures). Notification areas, other browser chrome,
+# leaking titles and owned secret fields stay masked; OCR still audits.
+KIOSK_SAFE = 'private Firefox kiosk without address bar owns the verified foreground'
 
 
 def _failure_frame(ctx, state, timeouts, frames):
@@ -305,7 +312,7 @@ def _failure_frame(ctx, state, timeouts, frames):
                    'or another Firefox was started; core needs a redacted full-desktop failure frame')
         return
     try:
-        frames.append(asdict(ctx.frame('browser-failure-safe-desktop', window=None)))
+        frames.append(asdict(ctx.frame('browser-failure-safe-desktop', window=None, desktop_safe=KIOSK_SAFE)))
     except Exception as error:
         ctx.review('Failure frame unavailable (' + str(error)[:200] + ')')
 

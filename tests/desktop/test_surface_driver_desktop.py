@@ -218,11 +218,74 @@ class NotificationPrivacy(unittest.TestCase):
         rows=parse_notifications(text)
         self.assertEqual([(r['id'],r['summary'],[e['action'] for e in r['action_events']]) for r in rows],[(5,'Done',['default'])])
 
-    def test_reader_reports_a_dead_monitor(self):
-        with tempfile.NamedTemporaryFile() as log:
-            self.assertFalse(probe.notification_log({'log':log.name,'pid':2**22+7})['alive'])
-            import os
-            self.assertTrue(probe.notification_log({'log':log.name,'pid':os.getpid()})['alive'])
+    def test_reader_reports_a_dead_monitor_and_reads_memory_over_a_private_socket(self):
+        import os,socket,threading
+        with tempfile.TemporaryDirectory() as directory:
+            path=directory+'/notify.sock'
+            self.assertFalse(probe.notification_read({'socket':path,'pid':2**22+7})['alive'])
+            server=socket.socket(socket.AF_UNIX);server.bind(path);os.chmod(path,0o600);server.listen(1)
+            def serve():
+                connection,_=server.accept()
+                with connection:connection.sendall(b'kept block')
+            worker=threading.Thread(target=serve);worker.start()
+            reply=probe.notification_read({'socket':path,'pid':os.getpid()})
+            worker.join(5);server.close()
+            self.assertEqual(reply,{'alive':True,'text':'kept block'})
+            os.chmod(path,0o666)
+            with self.assertRaises(RuntimeError):
+                probe.notification_read({'socket':path,'pid':os.getpid()})
+
+    def test_monitor_keeps_bodies_in_memory_never_a_file(self):
+        import inspect
+        source=inspect.getsource(probe.notification_monitor)
+        import re
+        self.assertIsNone(re.search(r'(?<![P.])open\(|os\.open\(|os\.write\(',source))
+        self.assertIn('deque(',source)
+        self.assertIn('popup_watch',source)
+        self.assertIn('NotificationFilter',source)
+
+    def test_monitor_exits_with_the_probe_channel_and_takes_its_children(self):
+        # #817's lifetime binding on the socket monitor: once the run's probe
+        # channel is gone, the watcher and dbus-monitor end and the socket goes.
+        import json,os,signal,subprocess,time
+        for server in (':1.42',None):
+            with self.subTest(server=server),tempfile.TemporaryDirectory() as temp:
+                temp=Path(temp);(temp/'bin').mkdir()
+                stub=temp/'bin'/'dbus-monitor';stub.write_text('#!/bin/sh\nexec sleep 60\n');stub.chmod(0o700)
+                watcher=temp/'watcher.py';watcher.write_text('import time\ntime.sleep(60)\n')
+                parent=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'])
+                path=str(temp/'notify.sock')
+                code=('import sys; sys.path.insert(0,%r); sys.argv[0]=%r\n'
+                      'from tools.lab.surface_driver.probe import notification_monitor, process_start\n'
+                      'notification_monitor({"server":%r,"socket":%r,"parent":{"pid":%d,"start":process_start(%d)}})\n'
+                      )%(str(ROOT),str(watcher),server,path,parent.pid,parent.pid)
+                monitor=subprocess.Popen([sys.executable,'-c',code],env=dict(os.environ,PATH=str(temp/'bin')+':'+os.environ['PATH']))
+                children=[]
+                try:
+                    deadline=time.monotonic()+10
+                    while time.monotonic()<deadline and len(children)<(2 if server else 1):
+                        time.sleep(.1)
+                        children=[int(c) for c in Path('/proc/%d/task/%d/children'%(monitor.pid,monitor.pid)).read_text().split()]
+                    self.assertEqual(len(children),2 if server else 1)
+                    self.assertTrue(os.path.exists(path))
+                    self.assertIsNone(monitor.poll())  # channel alive: keeps running
+                    parent.kill();parent.wait()
+                    self.assertEqual(monitor.wait(timeout=10),0)
+                    self.assertFalse(os.path.exists(path))
+                    for child in children:
+                        deadline=time.monotonic()+5
+                        while time.monotonic()<deadline and Path('/proc/%d'%child).exists() and \
+                                Path('/proc/%d/stat'%child).read_text().split(') ')[1][0]!='Z':
+                            time.sleep(.05)
+                        alive=Path('/proc/%d'%child).exists() and Path('/proc/%d/stat'%child).read_text().split(') ')[1][0]!='Z'
+                        self.assertFalse(alive,'monitor child %d outlived the channel'%child)
+                finally:
+                    for process in (parent,monitor):
+                        if process.poll() is None:
+                            process.kill();process.wait()
+                    for child in children:
+                        try:os.kill(child,signal.SIGKILL)
+                        except OSError:pass
 
 
 class FakeNode(list):
@@ -253,9 +316,8 @@ class LazyWalk(unittest.TestCase):
         stage=FakeNode('','window',[0,0,1280,800],children=[banner,*other])
         app=FakeNode('cinnamon','application',None,children=[stage])
         desktop=FakeNode('main','desktop frame',[0,0,1280,800],children=[app])
-        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:desktop),DESKTOP_COORDS=0,
-                             STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
-        with patch.dict(sys.modules,pyatspi=fake):
+        fake=SimpleNamespace(DESKTOP_COORDS=0,STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
+        with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'desktop_root',return_value=desktop):
             rows=probe.accessible({'application':'cinnamon*','name':'Upload complete','showing':True})
         self.assertEqual(len(rows),1)
         self.assertEqual(rows[0]['rect'],[830,30,200,20])
@@ -273,20 +335,24 @@ class PickNode(FakeNode):
 
 
 class ShellChrome(unittest.TestCase):
-    def pyatspi(self,child):
+    def desktop(self,child):
+        from contextlib import ExitStack
         from types import SimpleNamespace
         stage=PickNode('','window',[0,0,1280,800],child)
         app=FakeNode('cinnamon','application',None,children=[stage])
-        return SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:[app]),DESKTOP_COORDS=0,STATE_SHOWING='showing')
+        stack=ExitStack()
+        stack.enter_context(patch.dict(sys.modules,pyatspi=SimpleNamespace(DESKTOP_COORDS=0,STATE_SHOWING='showing')))
+        stack.enter_context(patch.object(probe,'desktop_root',return_value=[app]))
+        return stack
 
     def test_banner_over_a_client_point_is_reported(self):
         banner=PickNode('','panel',[781,10,479,138],PickNode('','notification',[781,10,479,138],PickNode('Upload complete','label',[827,31,392,16])))
-        with patch.dict(sys.modules,pyatspi=self.pyatspi(PickNode('','panel',[0,0,1280,800],banner))):
+        with self.desktop(PickNode('','panel',[0,0,1280,800],banner)):
             cover=probe.shell_cover((1000,40),'cinnamon*')
         self.assertIn('notification',cover);self.assertIn("'Upload complete'",cover)
 
     def test_full_stage_container_is_not_chrome(self):
-        with patch.dict(sys.modules,pyatspi=self.pyatspi(PickNode('','panel',[0,0,1280,800],PickNode('','panel',[0,0,1280,800])))):
+        with self.desktop(PickNode('','panel',[0,0,1280,800],PickNode('','panel',[0,0,1280,800]))):
             self.assertIsNone(probe.shell_cover((300,400),'cinnamon*'))
 
     def test_x11_guard_refuses_input_under_shell_chrome(self):
@@ -327,9 +393,9 @@ class WaylandCoordinates(unittest.TestCase):
         shell_label=FakeNode('Upload complete','label',[830,30,200,20],pid=40)
         shell=FakeNode('gnome-shell','application',None,children=[FakeNode('','window',[0,0,1280,800],pid=40,children=[shell_label])])
         desktop=FakeNode('main','desktop frame',[0,0,1280,800],children=[app,shell])
-        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:desktop),DESKTOP_COORDS=0,
-                             STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
+        fake=SimpleNamespace(DESKTOP_COORDS=0,STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
         with patch.dict(sys.modules,pyatspi=fake),patch.dict('os.environ',{'XDG_SESSION_TYPE':'wayland'}),\
+             patch.object(probe,'desktop_root',return_value=desktop),\
              patch.object(probe,'compositor_windows',return_value=FRAMES),patch.object(probe,'popup_roots',return_value=[]):
             return probe.accessible(rows)
 
@@ -403,11 +469,11 @@ class StartupFocus(unittest.TestCase):
             return probe.x11_settle(self.editor),calls
 
     def test_window_zero_activates_the_target_once_then_waits(self):
-        ok,calls=self.settle(['0','0','10'],{})
+        ok,calls=self.settle(['0','0','0','10'],{})
         self.assertTrue(ok);self.assertEqual(calls,[['xdotool','windowactivate','--sync','10']])
 
     def test_same_process_window_is_replaced_by_the_target(self):
-        ok,calls=self.settle(['20','10'],{'20':7})
+        ok,calls=self.settle(['20','20','10'],{'20':7})
         self.assertTrue(ok);self.assertEqual(len(calls),1)
 
     def test_a_foreign_active_window_is_never_displaced(self):

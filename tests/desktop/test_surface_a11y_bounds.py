@@ -115,7 +115,9 @@ def settings_window():
 
 class Walk(unittest.TestCase):
     def run_probe(self, function, query, *applications, session='wayland'):
-        with patch.dict(sys.modules, pyatspi=fake_pyatspi(*applications)), \
+        api = fake_pyatspi(*applications)
+        with patch.dict(sys.modules, pyatspi=api), \
+             patch.object(probe, 'desktop_root', return_value=api.Registry.getDesktop(0)), \
              patch.dict('os.environ', {'XDG_SESSION_TYPE': session}), \
              patch.object(probe, 'owned', side_effect=lambda pid: pid == 50), \
              patch.object(probe, 'compositor_windows', return_value=FRAMES), \
@@ -157,14 +159,14 @@ class BoundedCalls(Walk):
         app, frame, nodes = settings_window()
         clock = iter(range(0, 10000))
         with patch.object(probe.time, 'monotonic', side_effect=lambda: next(clock)), \
-             self.assertRaisesRegex(RuntimeError, r'exceeded its 8 s budget after \d+ nodes: putgd-ui \(pid 50\)'):
+             self.assertRaisesRegex(RuntimeError, r'exceeded its 7.5 s budget after \d+ nodes: putgd-ui \(pid 50\)'):
             self.run_probe(probe.accessible, {'owned': True, 'name': 'Launch at login'}, app)
 
     def test_budget_counts_from_the_fresh_process_start(self):
         # Setup (compositor witness, popup roots) shares the 12 s the child has.
         app, frame, nodes = settings_window()
         with patch.object(probe, 'PROCESS_STARTED', probe.time.monotonic() - probe.WALK_SECONDS - 1), \
-             self.assertRaisesRegex(RuntimeError, r'exceeded its 8 s budget after 0 nodes'):
+             self.assertRaisesRegex(RuntimeError, r'exceeded its 7.5 s budget after 0 nodes'):
             self.run_probe(probe.accessible, {'owned': True, 'name': 'Launch at login'}, app)
 
     def test_unowned_applications_are_never_contacted_for_owned_queries(self):
@@ -180,7 +182,8 @@ class BoundedCalls(Walk):
         with patch.dict(sys.modules, {'gi.repository.Atspi': atspi}):
             probe.bound_calls()
         self.assertEqual(calls, [(probe.CALL_TIMEOUT_MS, 0)])
-        self.assertLess(probe.CALL_TIMEOUT_MS * 3, probe.WALK_SECONDS * 1000)
+        # Budget plus one slow call ends before the 11 s stall dump and 12 s kill.
+        self.assertLess(probe.WALK_SECONDS + probe.CALL_TIMEOUT_MS / 1000, 11)
 
     def test_timed_out_child_reports_where_it_stalled(self):
         tree = ast.parse(target_module.PROBE_SERVER)
@@ -197,7 +200,7 @@ class BoundedCalls(Walk):
 class ApplicationNames(Walk):
     def shell_query(self, names, *applications):
         for app in applications:
-            app.app = SimpleNamespace(bus_name=':1.%d' % app.pid)
+            app.bus = ':1.%d' % app.pid  # RawNode's bus name
         with patch.object(probe, 'application_names', return_value=names) as asked, \
              patch.object(probe, 'executable', side_effect=lambda pid: {60: ['evolution-alarm-notify'],
                                                                           61: ['gnome-shell']}.get(pid, [])):
@@ -377,7 +380,7 @@ class ProbeChannel(unittest.TestCase):
     def test_full_cap_silence_still_poisons_the_channel(self):
         target = self.channel()
         with patch.object(target_module, 'PROBE_REPLY_SECONDS', .05), \
-             self.assertRaisesRegex(RecipeBlocked, 'timed out; further input withheld'):
+             self.assertRaisesRegex(RecipeBlocked, 'timed out: .*further input withheld'):
             target.probe('geometry', {'delay': .5}, 'source', timeout=.05)
         self.assertTrue(target._probe_failed)
         with self.assertRaisesRegex(RecipeBlocked, 'start a new run'):

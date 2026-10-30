@@ -1,0 +1,32 @@
+{
+ "schemaVersion": 1,
+ "kind": "vm-overlay-cleanup-evidence",
+ "run": "/home/user/work/put.gd/src/work/lab-runs/c800",
+ "runId": "88e0f156-f30f-4745-b6dc-3a5ac6d6378f",
+ "completed": true,
+ "outcome": "passed",
+ "files": {
+  "c800-install.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "c800-install.json": "691e223e5f140308ee7a50e8825446639af2b6bbbb8ff0a6eef9829d6df90284",
+  "c800-launch.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "c800-launch.json": "27b99c55df8b28e578d34bd7ec987470abf3c88889ee479a1df42828c9ab9184",
+  "c800-preflight.json": "643f7b38bd4cf2d7abb1cb34d668d0a9a5ef941e210e6f9adf39178a784c0ebb",
+  "completion.json": "afa3d695c1c0431636143f61c868e9bb39aa5c9c041a7fb5d1f52507c8af3c30",
+  "gate-live-final.log": "decb0088e18800dc61a4a75d301afb2baa8d26cef59a6e0070dbaf37c7b8d690",
+  "out-local/commands.jsonl": "7b757ea6f6abfe13f9908a242f7d8e9962372e0fb4a5544f776de29d507b1b90",
+  "out-local/coverage-export.json": "aba7326f35455b7ef8647bba9a133044f993f92d6ab794b401ecb5f0f464ad07",
+  "out-local/coverage.json": "aba7326f35455b7ef8647bba9a133044f993f92d6ab794b401ecb5f0f464ad07",
+  "out-local/coverage.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "out-local/frame-masks.json": "1cb943de25b5e80111a1f6367c649101e633db4ecebe3ab0dcc399c21a902669",
+  "out-local/frames/core_demo.redact_tool/00-before.png": "ecf13ec66535bb9cf212a425e2508b7ce535e991445298eafb8763c581c718cb",
+  "out-local/frames/core_demo.redact_tool/01-redact-tool.png": "9c6294ef99e13f39706464ad86a16a16e526968cb484aef1b455119b407bf3e3",
+  "out-local/frames/core_demo.redact_tool/02-after.png": "0d36cfa77c85f449aa81e1542d07a6c75a3c4992a8671562d0b967cfa3573bce",
+  "out-local/frames/core_demo.text_tool/00-before.png": "ecf13ec66535bb9cf212a425e2508b7ce535e991445298eafb8763c581c718cb",
+  "out-local/frames/core_demo.text_tool/01-text-tool.png": "6b29a49213bb5618fc475ff66e469d18d93c17a05177f87dd42cda007cfd80e3",
+  "out-local/frames/core_demo.text_tool/02-after.png": "ecf13ec66535bb9cf212a425e2508b7ce535e991445298eafb8763c581c718cb",
+  "out-local/frames/core_demo.undo_redo/00-before.png": "0d36cfa77c85f449aa81e1542d07a6c75a3c4992a8671562d0b967cfa3573bce",
+  "out-local/frames/core_demo.undo_redo/01-redone.png": "65b0a3d518e3f9e95ee8c5632a1d82517d8ca86cf61a9928d72fab5d98a3bef6",
+  "out-local/frames/core_demo.undo_redo/02-after.png": "0d36cfa77c85f449aa81e1542d07a6c75a3c4992a8671562d0b967cfa3573bce",
+  "out-local/receipt.json": "40eca5f8853ab161d73c6d29aa3e3f39d51345d951dfbabe20b7c8db8438895d"
+ }
+}

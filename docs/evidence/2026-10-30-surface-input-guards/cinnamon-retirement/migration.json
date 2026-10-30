@@ -1,0 +1,9 @@
+{
+  "oldRun": "/home/user/v3",
+  "newRun": "/home/user/r3/work/lab-runs/core-r3",
+  "runId": "4cd3d592-2451-4ad3-ab17-2ba5e1d692e8",
+  "stoppedBeforeMove": true,
+  "sameDiskInode": true,
+  "originalOverlay": "/home/user/v3/disk.qcow2",
+  "retirementOverlay": "/home/user/r3/work/lab-runs/core-r3/disk.qcow2"
+}

@@ -1,0 +1,18 @@
+Test project /home/user/work/put.gd/src/build/dev
+    Start 17: x11_core_clipboard
+1/5 Test #17: x11_core_clipboard ...............   Passed   18.40 sec
+    Start 18: x11_clipboard_import
+2/5 Test #18: x11_clipboard_import .............   Passed    0.90 sec
+    Start 27: kde_clipboard_import
+3/5 Test #27: kde_clipboard_import .............   Passed    0.14 sec
+    Start 37: session_client_integration
+4/5 Test #37: session_client_integration .......   Passed   16.79 sec
+    Start 85: cli_integration
+5/5 Test #85: cli_integration ..................   Passed   45.05 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Label Time Summary:
+integration    =  81.29 sec*proc (5 tests)
+
+Total Test time (real) =  81.30 sec

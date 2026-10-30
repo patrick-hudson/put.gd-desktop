@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 2,
+  "campaign": "secret-2c",
+  "entries": [
+    {
+      "interaction": "driver.secret-evidence",
+      "desktop": "mint-cinnamon-x11",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/s2c/accept-9/receipt.json",
+      "note": "foreground verified and synthetic URL entered; loopback server confirmed page request; expected synthetic page title verified; synthetic URL equality verified; host and salted hash retained only",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.share/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "share-link-full-desktop",
+          "path": "frames/__main__.share/01-share-link-full-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "share-link-window",
+          "path": "frames/__main__.share/02-share-link-window.png",
+          "window": "fixture-browser",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.share/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.share",
+      "build": "0348fc368e62b9367b71f79a58e8bba95cfaf932",
+      "at": "2026-10-30T01:39:52Z"
+    }
+  ]
+}

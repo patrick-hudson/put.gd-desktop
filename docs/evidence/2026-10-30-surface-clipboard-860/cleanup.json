@@ -1,0 +1,47 @@
+{
+  "local": {
+    "tunnelsStopped": true,
+    "wallEntriesRemoved": true,
+    "controls": [
+      {
+        "host": "5.135.136.200",
+        "controlExit": 0
+      },
+      {
+        "host": "5.135.141.116",
+        "controlExit": 0
+      }
+    ],
+    "taskAgentStopped": 2522393
+  },
+  "deletions": {
+    "gnome": {
+      "operation": {
+        "attemptCount": 1,
+        "completedAt": "2026-10-30T12:37:44.247Z",
+        "expectedBy": null,
+        "id": "bdop_0103e80b07354678895d8941fa396513",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T12:37:18.191Z",
+        "stage": "completed",
+        "status": "completed",
+        "targetId": "bx_28gwqyx4"
+      }
+    },
+    "cinnamon": {
+      "operation": {
+        "attemptCount": 1,
+        "completedAt": "2026-10-30T12:37:48.974Z",
+        "expectedBy": null,
+        "id": "bdop_3d1a3e9ba5734b5487d258e38359e217",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T12:37:18.432Z",
+        "stage": "completed",
+        "status": "completed",
+        "targetId": "bx_ntujnxhw"
+      }
+    }
+  }
+}

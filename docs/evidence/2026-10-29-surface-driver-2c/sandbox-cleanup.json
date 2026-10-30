@@ -1,0 +1,24 @@
+{
+  "sandbox": "bx_qtz97pf4",
+  "driver_source": "94c2f7fae366abe426066bb4b5201ca04bf364c6",
+  "wall_entry_removed": true,
+  "other_wall_entries_preserved": 12,
+  "tunnel_stopped": true,
+  "owned_agent_stopped": true,
+  "agent_socket_removed": true,
+  "deletion": {
+    "operation": {
+      "attemptCount": 1,
+      "completedAt": "2026-10-30T01:50:14.605Z",
+      "expectedBy": null,
+      "id": "bdop_0f8163aa28b34e918ac852f59ea2e645",
+      "kind": "sandbox",
+      "reason": "explicit",
+      "requestedAt": "2026-10-30T01:49:23.858Z",
+      "stage": "completed",
+      "status": "completed",
+      "targetId": "bx_qtz97pf4"
+    }
+  },
+  "absent_from_post_delete_list": true
+}

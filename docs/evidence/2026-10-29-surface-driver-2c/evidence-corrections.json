@@ -1,0 +1,8 @@
+{
+  "summary_review_rows": [],
+  "receipt_review_rows": [
+    "editor.tool-redact"
+  ],
+  "reason": "surface_map.import_receipt omits recipe visual review flags. The unchanged runtime receipt is authoritative; this evidence does not claim reviewed-ok.",
+  "original_summary_preserved": true
+}

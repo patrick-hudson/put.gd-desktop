@@ -124,5 +124,54 @@
         "application": "putgd*"
       }
     }
+  },
+  "evidence": {
+    "note": "Live/sensitive frames: banner areas of this desktop's notification server (top and bottom positions) are always masked; in declared desktop frames non-owned windows other than browsers and the shell's own processes are masked, browser chrome is masked from live window geometry, and window-list panels only when a window title carries a link or registered value.",
+    "notification_areas": [
+      {
+        "anchor": "bottom-right",
+        "width": 520,
+        "height": 0.6
+      }
+    ],
+    "window_list_panels": [
+      {
+        "anchor": "bottom",
+        "height": 52
+      }
+    ],
+    "browser": {
+      "title": "(Mozilla Firefox|Firefox|Chromium|Google Chrome|Web)$",
+      "chrome_height": 170
+    },
+    "shell_processes": [
+      "plasmashell",
+      "kwin_wayland",
+      "kwin_x11"
+    ],
+    "shell_areas": [
+      {
+        "anchor": "bottom",
+        "height": 52
+      }
+    ]
+  },
+  "recording": {
+    "consent": {
+      "kind": "portal-dialog",
+      "reason": "KWin's zkde_screencast native path needs no consent; the portal fallback shows xdg-desktop-portal-kde's screen chooser. Its dialog title and prompt are not yet observed on a lab guest, so only the backend process and accept button are pinned (#791, #822)",
+      "backends": [
+        "xdg-desktop-portal-kde"
+      ],
+      "shell_backends": [],
+      "dialog": {
+        "title": "*"
+      },
+      "accept": {
+        "role": "push button",
+        "name": "Share"
+      },
+      "backend_bus": "org.freedesktop.impl.portal.desktop.kde"
+    }
   }
 }

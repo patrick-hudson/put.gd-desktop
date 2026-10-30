@@ -1,0 +1,17 @@
+.........................................{"recipe": "test_surface_driver.<lambda>", "functional": "passed", "visual": "frames", "review": false}
+{"recipe": "test_surface_driver.<lambda>", "functional": "passed", "visual": "frames", "review": false}
+........{"recipe": "test_surface_driver.good", "functional": "passed", "visual": "frames", "review": false}
+{"recipe": "test_surface_driver.bad", "functional": "failed", "visual": "frames", "review": false}
+{"recipe": "test_surface_driver.blocked", "functional": "blocked", "visual": "frames", "review": false}
+..{"recipe": "test_surface_driver.good", "functional": "passed", "visual": "reviewed-ok", "review": false}
+{"recipe": "test_surface_driver.bad", "functional": "passed", "visual": "frames", "review": true}
+......................................................../tmp/tmpru831vex/native/map.html: 394 interactions, 0 passed, 1 partial, 0 failed, 0 blocked, 393 untested
+/tmp/tmp4ul6yb2_/unresolved/map.html: 394 interactions, 0 passed, 0 partial, 1 failed, 0 blocked, 393 untested
+/tmp/tmp4ul6yb2_/unresolved/map.html: 394 interactions, 0 passed, 0 partial, 1 failed, 0 blocked, 393 untested
+{"interaction": "editor.undo", "desktop": "aurora-kde-wayland", "package": "source", "source": "mark", "at": "2026-10-30T01:55:27Z", "host": "aurora-amd", "placement": "native", "destination": "local", "review": true, "review_reason": "Desktop drawn"}
+{"recipe": "test_surface_redact.plant", "functional": "passed", "visual": "frames", "review": false}
+........
+----------------------------------------------------------------------
+Ran 115 tests in 1.404s
+
+OK

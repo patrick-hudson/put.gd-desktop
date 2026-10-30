@@ -1,0 +1,27 @@
+method call time=1793339808.314300 sender=:1.246 -> destination=org.freedesktop.Notifications serial=59 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
+   string "put.gd"
+   uint32 0
+   string "putgd"
+   string "Local save failed"
+   string "Local save failed: cannot create local copy; retry the retained artifact."
+   array [
+      string "save-diagnostics"
+      string "Save diagnostics for this upload"
+   ]
+   array [
+      dict entry(
+         string "desktop-entry"
+         variant             string "putgd"
+      )
+      dict entry(
+         string "resident"
+         variant             boolean true
+      )
+      dict entry(
+         string "urgency"
+         variant             byte 2
+      )
+   ]
+   int32 0
+method return time=1793339808.343552 sender=:1.67 -> destination=:1.246 serial=1343 reply_serial=59
+   uint32 5

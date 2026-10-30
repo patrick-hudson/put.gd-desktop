@@ -1,0 +1,33 @@
+{
+ "caps": {
+  "file_bytes": 33554432,
+  "run_bytes": 134217728
+ },
+ "files": [
+  {
+   "host_path": "private-media/review.preview_error/6ccfd28b/data/putgd/recording/b08ba446-6026-45a6-87fe-52e0aa276cb8/working.mkv",
+   "path": "data/putgd/recording/b08ba446-6026-45a6-87fe-52e0aa276cb8/working.mkv",
+   "retained": true,
+   "sha256": "a79bb37a4289a7143e492635404eae26eb59c5e0dc56a662a32d954ce7a74769",
+   "size": 110359
+  },
+  {
+   "host_path": "private-media/review.preview_error/6ccfd28b/working/b08ba446-6026-45a6-87fe-52e0aa276cb8.mkv",
+   "path": "working/b08ba446-6026-45a6-87fe-52e0aa276cb8.mkv",
+   "retained": true,
+   "sha256": "a79bb37a4289a7143e492635404eae26eb59c5e0dc56a662a32d954ce7a74769",
+   "size": 110359
+  },
+  {
+   "host_path": "private-media/review.preview_error/6ccfd28b/working/fae56a64-c023-42ed-8d43-9cfbd583bc86.mkv",
+   "path": "working/fae56a64-c023-42ed-8d43-9cfbd583bc86.mkv",
+   "retained": true,
+   "sha256": "cad21e975353ae6069dd4183cb802943f2b9c5b9acd761f81cc32c99249083ee",
+   "size": 12277
+  }
+ ],
+ "private": true,
+ "recipe": "review.preview_error",
+ "schema": 1,
+ "synthetic": true
+}

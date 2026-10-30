@@ -1,0 +1,40 @@
+head 219e43f4090246618c2da3f7e64a2bf11292c0cf  build-arg 219e43f40902
+tesseract 5.3.4
+== pin: catalog secret-control states vs committed pin
+secret-control states match the pin (29 states)
+exit=0
+== A. correct configuration: guest placement, exact build, pinned catalog, real OCR, destination s3
+gate: admitted (no secret-safe evidence blocker)
+exit=1 out_exists=yes
+resident build 219e43f4090246618c2da3f7e64a2bf11292c0cf blocked: None
+rows [('blocked', 'desktop frame after masked by live evidence policy; recipe does not su')]
+secret_scan True
+== B1. build identity
+-- --build 2
+--build must be 12-40 hex characters of the exact commit (never a version string)
+exit=1 out_exists=no
+-- --build 219e43f4
+--build must be 12-40 hex characters of the exact commit (never a version string)
+exit=1 out_exists=no
+-- --build 26.1030.2490-dev
+--build must be 12-40 hex characters of the exact commit (never a version string)
+exit=1 out_exists=no
+-- --build ffffffffffff (12 hex, another commit)
+live destination s3 blocked by secret-safe evidence: ocr-self-test-failed, catalog-build-mismatch
+exit=1 out_exists=no
+== B2. catalog with all destination/credential secret states but one removed (manifest edited to match)
+removed 8 of 9 destination/credential secret states
+live destination s3 blocked by secret-safe evidence: catalog-secret-states-differ-from-pin
+exit=1 out_exists=no
+== B3. OCR that replays a fixed probe token
+live destination s3 blocked by secret-safe evidence: ocr-self-test-failed
+exit=1 out_exists=no
+== B4. bypass run.main: DriverContext / run_recipes directly (the old evidence-driver path)
+reduced catalog -> refused: catalog-secret-states-differ-from-pin | out exists: False
+native placement -> refused: placement-not-disposable | out exists: False
+version build -> refused: catalog-build-mismatch | out exists: False
+run_recipes with an unadmitted context -> refused: live destination blocked: the context was not admitted by the secret-safe evidence gate | receipt exists: False
+== C. core_demo, local destination
+exit=0
+[('editor.tool-text', 'passed', 'frames'), ('editor.tool-redact', 'passed', 'frames'), ('editor.undo', 'passed', 'frames'), ('editor.redo', 'passed', 'frames')]
+secret_scan True
