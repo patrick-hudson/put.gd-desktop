@@ -65,7 +65,9 @@ def observe(scope):
     state=ctx.call('ui.viewState')
     pid=ctx.geometry('settings')['pid']
     rows=ctx.accessible({'owned':True,'pid':pid,'visible':True,'showing':True})
-    return Fixture(settings=state.get('settings',{}),nodes=rows)
+    footer=ctx.call('ui.diagnostics',{'action':'inspect'}).get('autosave')
+    return Fixture(settings=state.get('settings',{}),nodes=rows,footer=footer,
+                   retry=[row for row in rows if row.get('name')=='Retry saving' and row.get('role') in ('push button','button')])
 
 
 def observations(scope):

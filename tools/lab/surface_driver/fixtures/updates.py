@@ -95,6 +95,7 @@ print(json.dumps(doc))
         scope.restart({'APPIMAGE':''})
     scope.defer('original resident executable',restore,priority=-450)
     ctx.target.app_executable=image
+    scope._environment['APPIMAGE_EXTRACT_AND_RUN']='1'
     fixture=ctx.fixture('events.update-feed')
     releases=[]
     for release in manifest['releases']:

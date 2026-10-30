@@ -96,6 +96,29 @@ class Round3(fixture_tests.Fixtures):
         self.assertEqual(self.ctx.calls,[])
         self.assertEqual(self.ctx.target.app_executable,'putgd')
 
+    def test_uncached_destination_restarts_only_private_resident(self):
+        service=Fixture(profile={'id':'synthetic','provider':'s3','settings':{}},private=True)
+        with patch.dict(FACTORIES,{'loopback-s3':lambda scope:service}):
+            value=self.ctx.fixture('destinations-uncached')
+            self.assertFalse(value.credentials_cached)
+            value.reset_credentials()
+        from tools.lab.surface_driver.fixtures.base import Scope
+        self.assertEqual(Scope.restart.call_args.args,({},))
+
+    def test_external_focus_requests_explicit_raise_and_restores_role(self):
+        scope=self.ctx.manager.scope
+        self.ctx.fixture('app-profile')
+        previous={'settings':{'title':'put.gd'}}
+        self.ctx.profile['windows']=previous
+        from unittest.mock import Mock
+        self.ctx.focus=Mock(return_value={});self.ctx.windows=lambda query:[{'pid':42}]
+        with patch.object(scope,'launch',return_value={'pid':42}):value=self.ctx.fixture('settings-focus-loss')
+        value.focus();value.restore()
+        self.assertEqual(self.ctx.focus.call_args_list[-1].kwargs,{'raise_window':True})
+        self.assertIn(value.role,self.ctx.profile['windows'])
+        self.ctx.manager.close()
+        self.assertIs(self.ctx.profile['windows'],previous)
+
     def test_recording_lifecycle_tracks_each_fresh_prepared_id(self):
         scene=Fixture(prepare={'target':{'kind':'region','rect':[0,0,640,320]}},command=lambda v:None,output_dir='/owned/out')
         self.ctx.call_original=self.ctx.call

@@ -38,8 +38,9 @@ app.exec()
         result=ctx.shell('xdotool windowminimize -- '+shlex.quote(str(identity)))
         if result['returncode']:
             raise RecipeBlocked('owned Settings window did not minimize',issue=681)
-    return Fixture(process=process,role=role,focus=lambda:ctx.focus(role),deactivate=lambda:ctx.focus(role),hide=hide,
-                   restore=lambda:ctx.focus('settings'),observe=lambda:ctx.call('diagnostics').get('shortcuts',{}))
+    return Fixture(process=process,role=role,focus=lambda:ctx.focus(role,raise_window=True),
+                   deactivate=lambda:ctx.focus(role,raise_window=True),hide=hide,
+                   restore=lambda:ctx.focus('settings',raise_window=True),observe=lambda:ctx.call('diagnostics').get('shortcuts',{}))
 
 
 def input_events(scope):
@@ -63,7 +64,7 @@ def binding(scope, state='conflict'):
     if state!='conflict' or ctx.profile.get('session')!='x11':
         current=ctx.call('diagnostics').get('shortcuts',{})
         bindings=current.get('bindings',{})
-        if any(value.get('state')==state for value in bindings.values()):
+        if any(value.get('state')==state for value in bindings.values()) or (state=='unavailable' and current.get('available') is False):
             return Fixture(state=state,observe=lambda:ctx.call('diagnostics').get('shortcuts',{}),controlled=False)
         raise RecipeBlocked('requested native shortcut state '+state+' is absent; no production state injection or substituted desktop identity is used',issue=681)
     shortcut='Ctrl+Shift+F12'

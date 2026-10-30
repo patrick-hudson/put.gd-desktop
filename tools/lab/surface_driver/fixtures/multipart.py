@@ -50,8 +50,10 @@ print(json.dumps([{'uploadId':node.findtext('{*}UploadId'),'key':node.findtext('
         current=ctx.call('settings.get')
         identity=ctx.call('setup.unlockCredentials',{'profileId':service.profile_id,
                           'expectedRevision':current['metadata']['observedRevision']})['setupId']
-        ctx.wait(lambda:(s if (s:=ctx.call('setup.inspect',{'id':identity}))['state']!='running' else None),
-                 'synthetic credentials after cleanup restart',timeout=30)
+        result=ctx.wait(lambda:(s if (s:=ctx.call('setup.inspect',{'id':identity}))['state']!='running' else None),
+                        'synthetic credentials after cleanup restart',timeout=30)
+        if result['state']!='completed':
+            raise RecipeBlocked('owned synthetic credentials failed to unlock after cleanup restart',issue=682)
         def automatic():
             cleanup=ctx.call('diagnostics').get('artifactCleanup',{}).get('last') or {}
             if cleanup.get('trigger')=='automatic' and any(row.get('operationId')==value.operationId for row in cleanup.get('incompleteUploads',[])):

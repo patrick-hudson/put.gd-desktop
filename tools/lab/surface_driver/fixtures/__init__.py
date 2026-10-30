@@ -39,6 +39,7 @@ FACTORIES={
     'upload-incomplete':events.incomplete,
     'upload-in-flight':partial(uploads.submit,remote=True,active=True),
     'destinations':destinations.destinations,
+    'destinations-uncached':partial(destinations.destinations,uncached=True),
     'destinations-s3':destinations.destinations,
     'destinations-generic':partial(destinations.destinations,kind='generic'),
     'destinations-b2':partial(destinations.destinations,kind='b2'),

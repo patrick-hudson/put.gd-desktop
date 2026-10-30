@@ -100,7 +100,7 @@ os.replace(name,p)
 '''.replace('ROOT',repr(scope.root)).replace('VALUES',repr(values)))
 
 
-def destinations(scope, kind='s3'):
+def destinations(scope, kind='s3', *, uncached=False):
     if kind=='empty':
         profile=scope.ctx.fixture('app-profile')
         scope.patch({'profiles':[],'captureDefaults':{'destination':'local','profileId':None,'publicationMode':'default'}})
@@ -116,7 +116,13 @@ def destinations(scope, kind='s3'):
         profile['settings']={'apiUrl':endpoint,'bucket':'surface-fixture','objectPrefix':'campaign-'+scope.token[:12],
                              'linkMode':'public','linkValidityDays':7,'publicUrlBase':endpoint+'/surface-fixture',
                              'connectTimeoutMs':1000,'requestTimeoutMs':15000}
-    return Fixture(fixture,profile=profile,kind=kind,configuration_only=kind=='b2')
+    def reset_cache():
+        # Production credentials are session-only. Restart this private
+        # resident without disturbing the actual desktop Secret Service.
+        scope.restart({})
+    if uncached:reset_cache()
+    return Fixture(fixture,profile=profile,kind=kind,configuration_only=kind=='b2',
+                   reset_credentials=reset_cache,credentials_cached=not uncached)
 
 
 def destination(scope):

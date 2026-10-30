@@ -277,6 +277,12 @@ class Context:
         loopback destinations. Finalizers restore faults before restoring the
         accepted configuration, and run outside the recipe deadline:
 
+        * destinations-uncached: the destinations contract after a private
+          resident restart; credentials_cached=False. destinations also exposes
+          reset_credentials() to retire its session credential cache without
+          locking the desktop or changing any keyring alias/item. Credential
+          material remains target-only in the owned private synthetic file.
+
         * settings-multi-profile / settings-destinations / settings-share-destination:
           profiles, profile_ids, share_profile_id, publication_modes and
           private_supported. S3 supports default/share; it cannot prove private
@@ -287,7 +293,8 @@ class Context:
           remove(action), observe(). Removes recording's optional overrides by
           full settings.save, preserving shortcuts.
         * settings-save-failure: restore()/retry() remove an actual directory
-          write fault before UI Retry; observe() reads real footer/draft nodes;
+          write fault before UI Retry; observe() returns real footer text, retry
+          accessible rows, settings draft state and visible nonsecret nodes;
           external_change(patch) uses the existing atomic revision guard. It
           never manufactures a successful save, conflict or footer error.
         * settings-observations: observe(), disclosure(id, window='settings')
