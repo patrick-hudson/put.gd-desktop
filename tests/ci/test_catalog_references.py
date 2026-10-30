@@ -120,17 +120,24 @@ class Updating(Fixture):
             finally:
                 sys.stdout = saved
 
-        for document in (None, {'kind': 'synthetic-ui-catalog'},
-                         {'kind': 'synthetic-ui-catalog', 'sourceReads': 1, 'captures': [{'file': '10-same.png'}]},
-                         {'kind': 'synthetic-ui-catalog', 'sourceReads': 0,
-                          'captures': [{'file': '10-same.png'}, {'file': '11-noise.png'}]}):
+        def manifest_with(**changes):
+            base = {'kind': 'synthetic-ui-catalog', 'sourceReads': 0, 'platform': 'offscreen',
+                    'scope': dict(check.FULL_SCOPE), 'captures': [{'file': '10-same.png'}], 'images': ['10-same.png']}
+            base.update(changes)
+            return base
+
+        for document in (None, {'kind': 'synthetic-ui-catalog'}, manifest_with(sourceReads=1),
+                         manifest_with(captures=[{'file': '10-same.png'}, {'file': '11-noise.png'}]),
+                         manifest_with(images=['10-same.png', '00-icon-specimen.png']),
+                         manifest_with(scope=dict(check.FULL_SCOPE, editorOnly=True)),
+                         manifest_with(scope=dict(check.FULL_SCOPE, review=False)),
+                         manifest_with(scope=None), manifest_with(platform='xcb')):
             if document is not None:
                 manifest.write_text(json.dumps(document))
             with self.subTest(document=document), self.assertRaises(SystemExit):
                 run(self.refs)
         self.assertTrue((self.refs / '13-gone.png').exists(), 'a rejected render deleted a reference')
-        manifest.write_text(json.dumps({'kind': 'synthetic-ui-catalog', 'sourceReads': 0,
-                                        'captures': [{'file': '10-same.png'}]}))
+        manifest.write_text(json.dumps(manifest_with()))
         refs = self.root / 'fresh'
         run(refs)
         self.assertEqual([p.name for p in (refs / 'dark').iterdir()], ['10-same.png'])

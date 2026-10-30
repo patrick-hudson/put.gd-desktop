@@ -40,6 +40,7 @@ CLOCK = '2026-06-15 12:00:00'
 # The catalog's data folders show in Settings, so their paths are fixed too.
 DATA_ROOT = Path('/tmp')
 DATA_MARKER = '.putgd-catalog-data'
+FULL_SCOPE = {'review': True, 'recordOnly': False, 'editorOnly': False, 'handshake': False}
 # The desktop's colour scheme must not decide the render (CMakeLists.txt, #251).
 UNSET = ('DBUS_SESSION_BUS_ADDRESS', 'XDG_CURRENT_DESKTOP', 'QT_QPA_PLATFORMTHEME', 'WAYLAND_DISPLAY', 'DISPLAY')
 TOLERANCE = image_diff.Tolerance()
@@ -108,7 +109,7 @@ def render(binary, scheme, output, text_scale=None, log=sys.stderr):
 def render_problem(directory):
     """Why DIRECTORY is not a complete, clean catalog render, or '' when it is.
 
-    putgd-ui-catalog writes manifest.json last, listing every capture it saved.
+    putgd-ui-catalog writes manifest.json last, with its scope and every image it saved.
     """
     try:
         manifest = json.loads((Path(directory) / 'manifest.json').read_text())
@@ -116,12 +117,17 @@ def render_problem(directory):
         return 'no readable manifest.json; the catalog did not finish'
     if manifest.get('kind') != 'synthetic-ui-catalog' or manifest.get('sourceReads') != 0:
         return 'manifest.json is not a clean synthetic catalog run'
+    # Every state needs a full offscreen run of a build with the review states.
+    if manifest.get('platform') != 'offscreen' or manifest.get('scope') != FULL_SCOPE:
+        return 'not a full offscreen catalog run (platform %r, scope %r)' % (manifest.get('platform'),
+                                                                             manifest.get('scope'))
+    images = manifest.get('images') or []
     captures = [c.get('file') for c in manifest.get('captures') or []]
-    if not captures:
-        return 'manifest.json lists no captures'
-    missing = [name for name in captures if not name or not (Path(directory) / name).is_file()]
+    if not captures or not images:
+        return 'manifest.json lists no images'
+    missing = [name for name in images + captures if not name or not (Path(directory) / name).is_file()]
     if missing:
-        return 'captures listed in manifest.json are missing: ' + ', '.join(map(str, missing[:10]))
+        return 'images listed in manifest.json are missing: ' + ', '.join(map(str, missing[:10]))
     return ''
 
 

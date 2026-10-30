@@ -660,5 +660,15 @@ int main(int argc,char** argv){
  // The custom frame under real input: the driver moves, maximizes, restores,
  // resizes and finally closes the main window.
  window.resize(1060,680);window.showNormal();if(!native.chrome(window,"90-chrome"))return 2;
- QSaveFile manifest(QDir(output).filePath("manifest.json"));if(!manifest.open(QIODevice::WriteOnly))return 2;manifest.write(QJsonDocument(QJsonObject{{"kind","synthetic-ui-catalog"},{"qtVersion",QString::fromLatin1(qVersion())},{"desktopAcceptance",false},{"platform",QGuiApplication::platformName()},{"networkActions",0},{"credentialFixture","synthetic session only"},{"sourceReads",source.reads},{"captures",captures},{"skippedCaptures",skippedCaptures}}).toJson(QJsonDocument::Indented));if(!manifest.commit())return 2;return source.reads==0?0:2;
+ QSaveFile manifest(QDir(output).filePath("manifest.json"));if(!manifest.open(QIODevice::WriteOnly))return 2;manifest.write(QJsonDocument(QJsonObject{{"kind","synthetic-ui-catalog"},{"qtVersion",QString::fromLatin1(qVersion())},{"desktopAcceptance",false},{"platform",QGuiApplication::platformName()},{"networkActions",0},{"credentialFixture","synthetic session only"},{"sourceReads",source.reads},{"captures",captures},{"skippedCaptures",skippedCaptures},
+  // What this run covered, and every image it wrote (not all are captures),
+  // so a partial render cannot pass for a complete one.
+  {"scope",QJsonObject{{"review",
+#ifdef PUTGD_CATALOG_REVIEW
+   true
+#else
+   false
+#endif
+  },{"recordOnly",recordOnly},{"editorOnly",editorOnly},{"handshake",native.active()}}},
+  {"images",QJsonArray::fromStringList(QDir(output).entryList({"*.png"},QDir::Files,QDir::Name))}}).toJson(QJsonDocument::Indented));if(!manifest.commit())return 2;return source.reads==0?0:2;
 }
