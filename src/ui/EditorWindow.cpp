@@ -171,7 +171,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* grid=new QGridLayout;grid->setContentsMargins(0,0,0,0);grid->setSpacing(Ui::space(Space::xs));int cell=0;
  const QStringList colorNames{"Red","Orange","Yellow","Green","Blue","White","Black"};
  for(const auto& color:{QColor(220,38,38),QColor(245,158,11),QColor(250,204,21),QColor(34,197,94),QColor(59,130,246),QColor(255,255,255),QColor(17,19,23)}){
-  auto* swatch=makeSwatch(color);swatch->setAccessibleName("Color "+colorNames[cell]);swatch->setAccessibleDescription(color.name());swatch->setToolTip(colorNames[cell]+" ("+color.name()+")");swatches_.append(swatch);grid->addWidget(swatch,cell/4,cell%4);++cell;
+  auto* swatch=makeSwatch(color);swatch->setObjectName("colorSwatch"+colorNames[cell]);swatch->setAccessibleName("Color "+colorNames[cell]);swatch->setAccessibleDescription(color.name());swatch->setToolTip(colorNames[cell]+" ("+color.name()+")");swatches_.append(swatch);grid->addWidget(swatch,cell/4,cell%4);++cell;
  }
  // The custom picker follows the palette, making two even rows of four rather
  // than six and an orphaned pair; recent custom colours get their own row.
@@ -182,7 +182,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* recent=new QWidget(colorRow_);recentLayout_=new QHBoxLayout(recent);recentLayout_->setContentsMargins(0,0,0,0);recentLayout_->setSpacing(Ui::space(Space::xs));recentLayout_->addStretch(1);recent->setObjectName("recentColors");recent->setAccessibleName("Recent custom colors");layout->addWidget(recent);
  properties->addWidget(colorRow_);
  widthRow_=column(panel,layout);layout->addWidget(fieldLabel("Line width",widthRow_));
- width_=Ui::choiceBox(widthRow_);width_->addItem("Thin · 2 px",2);width_->addItem("Medium · 4 px",4);width_->addItem("Thick · 8 px",8);width_->setCurrentIndex(1);width_->setAccessibleName("Line width");layout->addWidget(width_);
+ width_=Ui::choiceBox(widthRow_);width_->setObjectName("lineWidth");width_->addItem("Thin · 2 px",2);width_->addItem("Medium · 4 px",4);width_->addItem("Thick · 8 px",8);width_->setCurrentIndex(1);width_->setAccessibleName("Line width");layout->addWidget(width_);
  properties->addWidget(widthRow_);
  auto* blurRadius=new BlurRadius(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur,12,false,panel);blurRow_=blurRadius;Ui::role(blurRadius->label(),"caption");blurRadius->layout()->setSpacing(Ui::space(Space::s));
  strength_=blurRadius->slider();strength_->setObjectName("blurStrength");strengthValue_=blurRadius->spinBox();strengthValue_->setObjectName("blurStrengthValue");
@@ -383,8 +383,9 @@ void EditorWindow::setRecentColors(const QStringList& colors){
 }
 
 void EditorWindow::rebuildRecentColors(){
- for(auto* swatch:std::exchange(recentSwatches_,{})){swatchGroup_->removeButton(swatch);swatch->deleteLater();}
- for(const auto& name:recentColors_){auto* swatch=makeSwatch(QColor(name));swatch->setToolTip("Recent custom color "+name);recentSwatches_.append(swatch);recentLayout_->insertWidget(recentLayout_->count()-1,swatch);}
+ // Retired swatches stay alive until deferred deletion, but must stop matching selectors immediately.
+ for(auto* swatch:std::exchange(recentSwatches_,{})){swatchGroup_->removeButton(swatch);swatch->setObjectName({});swatch->hide();recentLayout_->removeWidget(swatch);swatch->deleteLater();}
+ for(const auto& name:recentColors_){auto* swatch=makeSwatch(QColor(name));swatch->setObjectName("recentColorSwatch_"+name.mid(1));swatch->setToolTip("Recent custom color "+name);recentSwatches_.append(swatch);recentLayout_->insertWidget(recentLayout_->count()-1,swatch);}
  recentLayout_->parentWidget()->setVisible(!recentColors_.isEmpty());
 }
 
