@@ -99,6 +99,13 @@ class Provisioning(unittest.TestCase):
         # Plasma Qt extents must continue to be placed via clientGeometry.
         self.assertFalse(probe.WaylandPlacement(profile['compositor']).absolute('plasmashell'))
 
+    def test_icon_selector_excludes_the_same_named_plasma_task_button(self):
+        selector=load_profile('kubuntu-kde-wayland')['tray']['icon']
+        sni={'name':'put.gd','role':'button','application':'plasmashell','objectName':''}
+        task=dict(sni,objectName='Task_QMLTYPE_358')
+        self.assertTrue(probe.matches(sni,selector))
+        self.assertFalse(probe.matches(task,selector))
+
     def test_staging_authenticates_overlay_twice_and_never_enables_screen_reader(self):
         with patch.object(stage.lab,'verify_owned_guest') as verify,patch.object(stage.lab,'state',return_value={'profile':'kde-wayland'}),\
              patch.object(stage.lab,'load_profile',return_value={'session_process':'plasmashell','session':'wayland'}),\
