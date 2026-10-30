@@ -1289,7 +1289,7 @@ def _shell_command_recipe(interaction, action):
         _frame(ctx, 'after')
     command.__name__ = 'command_' + action
     recipe(interaction, needs=('app-profile', 'events.clipboard') if action == 'clipboard'
-           else ('app-profile', 'selector-desktop'), timeout=240)(command)
+           else ('app-profile', 'selector-desktop'), timeout=360)(command)
     return command
 
 
