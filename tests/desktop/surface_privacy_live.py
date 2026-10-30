@@ -37,6 +37,7 @@ def main():
     guard_target(argparse.Namespace(placement='boat'), target)
     checked_socket(target.socket); checked_socket(target.root+'/notify.sock')
     profile = load_profile('mint-cinnamon-x11')
+    profile.setdefault('windows', {})['privacy-fixture'] = {'title':'^Synthetic privacy fixture$'}
     catalog = args.out/'catalog'; catalog.mkdir(mode=0o700)
     env = dict(desktop='mint-cinnamon-x11', host='boat', placement='boat', guest='cinnamon-x11',
                package='deb', destination='local', build=source, driver_source=source,
@@ -53,16 +54,19 @@ def main():
         assert observed.get('gitCommit') == source, 'installed app must match final driver source'
         assert not ctx._sensitive_seen, 'docs/release URLs must not poison the context'
         fixture = '''import gi,signal
+gi.require_version('Gtk','3.0')
 from gi.repository import Gtk,GLib
 window=Gtk.Window(title='Synthetic privacy fixture');window.set_default_size(1150,300);window.move(40,220)
-label=Gtk.Label();label.set_markup('<span font_desc="DejaVu Sans Mono 30">'+LINK+'</span>');window.add(label)
+label=Gtk.Label();label.set_markup('<span font_desc="DejaVu Sans Mono 24">'+LINK+'</span>');window.add(label)
 window.connect('destroy',Gtk.main_quit);signal.signal(signal.SIGTERM,lambda *_:GLib.idle_add(Gtk.main_quit))
 window.show_all();Gtk.main()
 '''
         script = "python3 - <<'PRIVACY_FIXTURE' >/dev/null 2>&1 &\nLINK="+repr(LINK)+'\n'+fixture+'PRIVACY_FIXTURE\necho $!\n'
         result = ctx.shell(script)
         pid = int(result['stdout'].strip())
-        time.sleep(2)
+        ctx.wait(lambda: ctx.windows({'title':'^Synthetic privacy fixture$'}), 'privacy fixture visible', 20)
+        ctx.focus('privacy-fixture')
+        ctx.expect(len(ctx.accessible({'name':LINK,'owned':True,'visible':True,'showing':True})) == 1, 'complete synthetic link is drawn')
         # Fresh context has not seen the URL in stdout/CLI or declared a secret.
         ctx = DriverContext(target, dict(env), profile, catalog, args.out/'undeclared')
         assert not ctx._sensitive_seen and not ctx.evidence.redactor.audit_literals
