@@ -7,6 +7,8 @@
 #include "ui/FileDialog.h"
 #include "ui/TrayController.h"
 #include <QFileDialog>
+#include "fixtures/TrayCatalog.h"
+#include "fixtures/CatalogLabels.h"
 #include "ui/SettingsWindow.h"
 #include "platform/HostOpen.h"
 #include "storage/proton/ProtonProvider.h"
@@ -105,7 +107,7 @@ QJsonObject inventory(QWidget& root){
   else if(auto* s=qobject_cast<QAbstractSlider*>(w)){if(qobject_cast<QScrollBar*>(w))continue;add(w,"slider",w->toolTip(),{{"value",s->value()},{"min",s->minimum()},{"max",s->maximum()}});}
   else if(auto* v=qobject_cast<QAbstractItemView*>(w))add(w,"list",w->toolTip(),{{"rows",v->model()?v->model()->rowCount():0}});
   else if(auto* t=qobject_cast<QTabBar*>(w)){QJsonArray tabs;for(int i=0;i<t->count();++i){const auto r=t->tabRect(i);const auto tl=t->mapTo(&root,r.topLeft());tabs.append(QJsonObject{{"text",t->tabText(i)},{"rect",QJsonArray{tl.x(),tl.y(),r.width(),r.height()}},{"current",i==t->currentIndex()}});}add(w,"tabs",QString(),{{"tabs",tabs}});}
-  else if(auto* l=qobject_cast<QLabel*>(w)){if((l->textInteractionFlags()&Qt::LinksAccessibleByMouse)&&l->text().contains("<a "))add(w,"link",l->text());else if(!w->objectName().isEmpty()&&w->focusPolicy()!=Qt::NoFocus)add(w,"focusable",l->text());}
+  else if(auto* l=qobject_cast<QLabel*>(w)){const auto kind=catalogLabelKind(*l);if(!kind.isEmpty())add(w,kind,l->text());}
   else if(!w->objectName().isEmpty()&&w->focusPolicy()!=Qt::NoFocus&&!qobject_cast<QAbstractScrollArea*>(w)&&!qobject_cast<QMenu*>(w))add(w,"focusable",w->toolTip());
  }
  for(auto* a:root.findChildren<QAction*>()){QJsonArray s;for(const auto& k:a->shortcuts())if(!k.isEmpty())s.append(k.toString(QKeySequence::PortableText));if(s.isEmpty())continue;keys.append(QJsonObject{{"name",a->objectName()},{"text",a->text()},{"keys",s},{"enabled",a->isEnabled()},{"context",int(a->shortcutContext())}});}
@@ -115,6 +117,10 @@ QJsonObject inventory(QWidget& root){
 bool writeInventory(const QString& output,const QString& name,QWidget& root){
  QSaveFile f(QDir(output).filePath(name+".controls.json"));
  return f.open(QIODevice::WriteOnly)&&f.write(QJsonDocument(inventory(root)).toJson())>0&&f.commit();
+}
+bool saveDialog(const QString& output,const QString& name,QWidget& dialog,QJsonArray& captures){
+ const auto image=dialog.grab();if(!image.save(QDir(output).filePath(name+".png"))||!writeInventory(output,name,dialog))return false;
+ captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;
 }
 // Native capture mode (2026-10-26): with
 // PUTGD_CATALOG_HANDSHAKE=DIR the tool runs on the real platform under an
@@ -202,33 +208,17 @@ QJsonObject catalogConfig(const QString& root){
  auto doc=Settings::developmentTemplate();auto s3=doc["profiles"].toArray().first().toObject();s3["id"]="synthetic-archive";s3["label"]="Project archive";auto s=s3["settings"].toObject();s["bucket"]="design-captures";s["region"]="us-east-1";s["endpoint"]="https://s3.us-east-1.amazonaws.com";s["objectPrefix"]="screenshots/";s["aclMode"]="omit";s["publicUrlBase"]="https://captures.example.invalid";s3["settings"]=s;s3["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};
  QJsonObject proton{{"id","synthetic-proton"},{"label","Proton Drive"},{"provider","proton-drive"},{"settings",QJsonObject{{"accountRootUid","synthetic-root"},{"folderUid","synthetic-folder"},{"folderName","put.gd"},{"shareByDefault",true},{"linkExpirationDays",0},{"sharePasswordReference",QJsonValue::Null},{"requestTimeoutMs",120000}}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}};doc["profiles"]=QJsonArray{proton,s3};auto actions=doc["actions"].toObject();int index=1;for(const auto& name:Settings::actionNames()){auto a=actions[name].toObject();a["profileId"]="synthetic-proton";a["shortcut"]="Ctrl+"+QString::number(index++);actions[name]=a;}doc["actions"]=actions;auto archive=doc["archive"].toObject();archive["root"]=root+"/local-copies";archive["keepUploads"]=true;doc["archive"]=archive;auto limits=doc["limits"].toObject();limits["concurrentUploads"]=2;doc["limits"]=limits;return doc;
 }
-// A provider fixture, never ProtonProvider: hold one real OperationService upload
-// until its menu has been captured, then return the Proton account-busy error.
-// This exercises resultReady -> TrayController::latchFailure without a session,
-// provider process or network request.
-class TrayCatalogProvider final:public StorageProvider {
-public:
- QObject dispatcher;std::function<void()> finish;
- ProviderCapabilities capabilities(const Destination&)const override {ProviderCapabilities c;c.conditionalCreate=true;c.conditionalReplace=true;c.urls=true;c.sharing=true;c.privateUploads=true;return c;}
- QString serializationKey(const Destination&,const QJsonObject&,const QString& name)const override{return name;}
- Error validateSettings(const QJsonObject&)const override{return {};}
- void checkName(const Destination&,const QString& name,std::function<void(NameCheck)> done,std::shared_ptr<std::atomic_bool> = {})override {done({"absent",{{"syntheticName",name}},{},{}});}
- void upload(const UploadRequest&,std::function<void(UploadResult)> done)override {
-  QMetaObject::invokeMethod(&dispatcher,[this,done]{finish=[done]{done({"failed",{},{"proton_account_busy","Synthetic Proton account is busy",{}}});};},Qt::QueuedConnection);
- }
- void stat(const StorageReceipt&,std::function<void(StatResult)> done)override {done({"unknown",{},{}});}
- void reconcile(const UploadRequest&,std::function<void(StatResult)> done)override {done({"unknown",{},{}});}
- void remove(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)> done)override {done({"failed",{},{"synthetic_only","No remote objects exist",{}}});}
-};
 bool captureTrayMenus(const QString& output,QJsonArray& captures){
  QTemporaryDir data("/tmp/pgt-XXXXXX");if(!data.isValid())return false;
  SettingsService settings(data.filePath("config.json"),[](const QString&,const QJsonObject&){return Error{};});
  auto config=catalogConfig(data.path());auto preferences=config["preferences"].toObject();preferences["notifications"]=false;config["preferences"]=preferences;if(!settings.save(config,{}))return false;
  ProviderRegistry registry;auto provider=std::make_shared<TrayCatalogProvider>();registry.add("proton-drive",provider);
+ // Reply storage outlives the drain guard, including replies arriving after a timeout.
+ Error invokeError;QString operationId;QJsonObject failed;bool inspected=false;
  Source source;source.payload=textPayload();OperationService operations(data.filePath("data"),settings,registry,source);
  if(!waitUntil([&]{return operations.ready();}))return false;
- // Complete any held upload on failure too, before destroying its dispatcher.
- auto drain=qScopeGuard([&]{if(provider->finish){std::exchange(provider->finish,{})();waitUntil([&]{return operations.diagnostics()["activeOperations"].toInt()==0;});}});
+ // Release future callbacks too: a timed-out wait can precede upload().
+ auto drain=qScopeGuard([&]{provider->release();waitUntil([&]{return operations.diagnostics()["activeOperations"].toInt()==0;});});
  TrayController controller(operations,[](const QString&){},[]{});
  auto* tray=controller.findChild<QSystemTrayIcon*>();if(!tray||!tray->contextMenu())return false;
  auto* menu=tray->contextMenu();
@@ -239,29 +229,24 @@ bool captureTrayMenus(const QString& output,QJsonArray& captures){
   // row in the reference instead of cropping its About/Quit group.
   root.ensurePolished();root.resize(root.sizeHint());root.show();putgd::test::settle(40);
   // Unlike the general widget inventory, a menu inventory contains exactly its
-  // visible rows, including separators and QWidgetAction output labels. Hidden
+  // visible action rows, including QWidgetAction output labels. Hidden
   // conditional actions have no click target; child QLabel geometry is not a row.
-  QJsonArray rows;int index=0;
-  for(auto* action:root.actions()){
-   if(!action->isVisible())continue;
-   const auto rect=root.actionGeometry(action);
-   if(rect.isEmpty()||!root.rect().contains(rect)){qCritical("Tray menu row does not fit: %s",qPrintable(action->text()));return false;}
-   auto id=action->objectName();if(id.isEmpty())id=action->data().toString();if(id.isEmpty())id=QString("trayMenuRow%1").arg(index);++index;
-   rows.append(QJsonObject{{"name",id},{"class","QAction"},{"kind",action->isSeparator()?"separator":"menu-item"},{"text",action->text()},{"rect",QJsonArray{rect.x(),rect.y(),rect.width(),rect.height()}},{"enabled",action->isEnabled()},{"submenu",action->menu()!=nullptr}});
-  }
+  const auto rows=catalogMenuRows(root);if(!rows)return false;
   const auto image=root.grab();QSaveFile controls(QDir(output).filePath(name+".controls.json"));
-  if(!image.save(QDir(output).filePath(name+".png"))||!controls.open(QIODevice::WriteOnly)||controls.write(QJsonDocument(QJsonObject{{"width",root.width()},{"height",root.height()},{"class","QMenu"},{"controls",rows},{"keys",QJsonArray{}}}).toJson())<=0||!controls.commit())return false;
+  if(!image.save(QDir(output).filePath(name+".png"))||!controls.open(QIODevice::WriteOnly)||controls.write(QJsonDocument(QJsonObject{{"width",root.width()},{"height",root.height()},{"class","QMenu"},{"controls",*rows},{"keys",QJsonArray{}}}).toJson())<=0||!controls.commit())return false;
   captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});root.close();return true;
  };
  if(!shot(*menu,"00-tray-menu-idle"))return false;
+ QAction* editSources=nullptr;for(auto* action:menu->actions())if(action->data()=="edit-sources")editSources=action;
+ if(!editSources||!editSources->menu()||!shot(*editSources->menu(),"00-tray-edit-submenu"))return false;
  auto* summary=menu->findChild<QAction*>("trayOutputSummary");if(!summary||!summary->menu()||!shot(*summary->menu(),"00-tray-output-submenu"))return false;
  auto* uploading=menu->findChild<QAction*>("trayUploadStatus");auto* attention=menu->findChild<QAction*>("trayFailedUploads");if(!uploading||!attention)return false;
- Error invokeError;QString operationId;operations.invoke("clipboard",[&](Error error,QJsonObject result){invokeError=error;operationId=result["operationId"].toString();});
- if(!waitUntil([&]{return invokeError||(!operationId.isEmpty()&&bool(provider->finish)&&uploading->isVisible());})||invokeError)return false;
+ operations.invoke("clipboard",[&](Error error,QJsonObject result){invokeError=error;operationId=result["operationId"].toString();});
+ if(!waitUntil([&]{return invokeError||(!operationId.isEmpty()&&provider->held()&&uploading->isVisible());})||invokeError)return false;
  if(!shot(*menu,"00-tray-menu-uploading"))return false;
- std::exchange(provider->finish,{})();
+ provider->release();
  if(!waitUntil([&]{return attention->isVisible()&&attention->text()=="Failed uploads (1)"&&!uploading->isVisible();}))return false;
- QJsonObject failed;bool inspected=false;operations.inspect(operationId,[&](Error error,QJsonObject value){invokeError=error;failed=value;inspected=true;});
+ operations.inspect(operationId,[&](Error error,QJsonObject value){invokeError=error;failed=value;inspected=true;});
  if(!waitUntil([&]{return inspected;})||invokeError||!QStringList{"failed","partial"}.contains(failed["state"].toString())||failed["items"].toArray().isEmpty()||failed["items"].toArray().first().toObject()["error"].toObject()["code"]!="proton_account_busy")return false;
  return shot(*menu,"00-tray-menu-proton-busy");
 }
@@ -346,7 +331,14 @@ int main(int argc,char** argv){
   for(int row:{1,2}){const auto file=model->record(row)["records"].toArray().first().toObject();names[file["id"].toString()]=file["name"].toString();auto receipt=file["receipt"].toObject();receipt["objectReference"]=QJsonObject{{"schemaVersion",1},{"key","screenshots/"+file["name"].toString()},{"versionId",QString("3HL4kqtJlcpXroDTDmJ%1rP0Ae").arg(row)},{"sha256",QString(64,'a')},{"bytes",36000}};
    targets.append(QJsonObject{{"historyId",file["id"]},{"receipt",receipt},{"effect","Deletes exactly this object version. Older versions and other objects in the bucket remain."}});}
   const auto beforeConfirmation=window.size();window.resize(1060,680);QPointer<QDialog> confirmation=HistoryWindow::deletionConfirmation(&window,{{"targets",targets},{"acknowledgement",QString(64,'0')},{"localCopiesPreserved",true},{"cacheNotice","Origin deletion does not invalidate browser or CDN caches"}},names,fixture.session.document()["profiles"].toArray(),1);
-  confirmation->show();putgd::test::settle(450);app.processEvents();{const auto image=confirmation->grab();if(!image.save(QDir(output).filePath("42-history-delete-confirmation.png")))return 2;captures.append(QJsonObject{{"file","42-history-delete-confirmation.png"},{"width",image.width()},{"height",image.height()}});}delete confirmation.data();window.resize(beforeConfirmation);
+  confirmation->show();putgd::test::settle(450);app.processEvents();{if(!saveDialog(output,"42-history-delete-confirmation",*confirmation,captures))return 2;}delete confirmation.data();window.resize(beforeConfirmation);
+  // Proton deletion is intentionally unsupported. A separate S3 receipt set
+  // exercises the production dialog's affirmative action without deleting it.
+  QJsonArray supportedTargets;const auto s3=config["profiles"].toArray().last().toObject();
+  const Destination s3Destination{"s3","synthetic-archive",settings.revision(),s3["settings"].toObject(),s3["credentials"].toObject()};
+  for(const auto& value:targets){auto target=value.toObject();auto receipt=target["receipt"].toObject();receipt["destination"]=s3Destination.toJson();receipt["directUrl"]=QJsonValue::Null;target["receipt"]=receipt;supportedTargets.append(target);}
+  confirmation=HistoryWindow::deletionConfirmation(&window,{{"targets",supportedTargets}},names,config["profiles"].toArray());confirmation->show();putgd::test::settle(100);
+  if(!confirmation->findChild<QPushButton*>("confirmActionButton")||!saveDialog(output,"confirm-history-delete-supported",*confirmation,captures))return 2;delete confirmation.data();
   confirmation=HistoryWindow::deletionConfirmation(&window,{{"targets",targets}},names,fixture.session.document()["profiles"].toArray());confirmation->setMaximumHeight(640);confirmation->resize(confirmation->width(),qMin(640,confirmation->height()));confirmation->findChild<QToolButton*>("deleteConfirmationDetailsExpanded")->setChecked(true);confirmation->show();putgd::test::settle(100);auto* targetScroll=confirmation->findChild<QScrollArea*>("deleteConfirmationTargets");targetScroll->verticalScrollBar()->setValue(targetScroll->verticalScrollBar()->maximum());putgd::test::settle(50);const auto technicalShot=confirmation->findChild<QPlainTextEdit*>("deleteConfirmationDetails")->window()->grab();if(!technicalShot.save(QDir(output).filePath("49-history-delete-details.png")))return 2;captures.append(QJsonObject{{"file","49-history-delete-details.png"},{"width",technicalShot.width()},{"height",technicalShot.height()}});delete confirmation.data();
   list->clearSelection();auto* search=window.findChild<QLineEdit*>("historySearch");fixture.client.replyDelayMs["history.list"]=1200;search->setText("quarterly budget");QMetaObject::invokeMethod(search,"returnPressed");if(!save("47-history-filtering"))return 2;if(!waitUntil([&]{return !page->historyState()["busy"].toBool();}))return 2;fixture.client.replyDelayMs.remove("history.list");search->setText("quarterly budget");QMetaObject::invokeMethod(search,"returnPressed");if(!waitUntil([&]{return list->model()->rowCount()==0&&!page->historyState()["busy"].toBool();})||!save("43-history-no-matches"))return 2;
   window.findChild<QPushButton*>("historyResetView")->click();if(!waitUntil([&]{return list->model()->rowCount()==8;}))return 2;
@@ -361,6 +353,36 @@ int main(int argc,char** argv){
  tabs->setCurrentIndex(2);if(!save("06-settings-shortcuts"))return 2;tabs->setCurrentIndex(0);if(!save("07-settings-general"))return 2;tabs->setCurrentIndex(1);if(!save("08-settings-capture"))return 2;window.findChild<QToolButton*>("customFileNamePatternToggle")->setChecked(true);{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("customFileNamePattern"),0,24);if(!save("settings-custom-name-pattern"))return 2;window.findChild<QToolButton*>("customFileNamePatternToggle")->setChecked(false);scroll->verticalScrollBar()->setValue(0);}
  window.navigate("destinations");destinations->setCurrentRow(1);window.findChild<QLineEdit*>("credentialAccessKey")->setText("EXAM-synthetic-preview-access");window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-preview-secret");window.findChild<QPushButton*>("storeCredentials")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("storedCredentialHint")->text().contains("EXAM");}))return 2;auto* destinationScroll=window.findChild<QScrollArea*>("destinationScroll");destinationScroll->verticalScrollBar()->setValue(destinationScroll->verticalScrollBar()->maximum());if(!save("09-stored-credential-hint"))return 2;
  window.resize(1060,680);window.navigate("history");if(!save("10-history-compact")||window.width()!=1060||window.height()!=680)return 2;{window.history()->command({{"action","openDetails"}},[](Error,QJsonObject){});window.activateWindow();putgd::test::settle(30);auto* focusedPreview=window.findChild<QLabel*>("historyPreview");focusedPreview->setFocus(Qt::TabFocusReason);if(!waitUntil([&]{return focusedPreview->hasFocus();}))return 2;if(!save("10a-history-compact-preview-focus"))return 2;window.history()->command({{"action","closeDetails"}},[](Error,QJsonObject){});}window.findChild<QToolButton*>("historyManagementExpanded")->setChecked(true);if(!save("46-history-maintenance-compact"))return 2;{auto* menu=window.findChild<QMenu*>("historyManagementMenu");if(!menu||!menu->isVisible())return 2;const auto image=menu->grab();if(!image.save(QDir(output).filePath("57-history-management-menu.png")))return 2;captures.append(QJsonObject{{"file","57-history-management-menu.png"},{"width",image.width()},{"height",image.height()}});}window.findChild<QToolButton*>("historyManagementExpanded")->setChecked(false);
+ // Actual SettingsWindow actions build these dialogs; no copied dialog text.
+ window.navigate("destinations");destinations->setCurrentRow(1);
+ auto captureQuestion=[&](const QString& name,const std::function<void()>& open){
+  bool captured=false;QTimer timer;timer.setSingleShot(true);QObject::connect(&timer,&QTimer::timeout,&app,[&]{
+   if(auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget())){captured=saveDialog(output,name,*dialog,captures);dialog->reject();}
+  });timer.start(100);open();if(!captured)qCritical("Confirmation capture did not open: %s",qPrintable(name));return captured;
+ };
+ if(!captureQuestion("confirm-make-default-untested",[&]{window.findChild<QPushButton*>("makeDefaultDestination")->click();})||
+    !captureQuestion("confirm-remove-destination",[&]{window.findChild<QPushButton*>("removeDestination")->click();})||
+    !captureQuestion("confirm-add-destination-name",[&]{auto* add=window.findChild<QPushButton*>("addS3Destination");add->menu()->actions().first()->trigger();}))return 2;
+ destinations->setCurrentRow(0);
+ if(!captureQuestion("confirm-new-proton-folder",[&]{window.findChild<QPushButton*>("createProtonFolder")->click();}))return 2;
+ destinations->setCurrentRow(1);
+ window.navigate("settings");tabs->setCurrentIndex(3);
+ if(!captureQuestion("confirm-reset-limits",[&]{window.findChild<QPushButton*>("resetAdvancedDefaults")->click();})||
+    !captureQuestion("confirm-clear-logs",[&]{window.findChild<QPushButton*>("clearLogs")->click();}))return 2;
+ const auto previousUpdate=catalogUpdate;
+ catalogUpdate={{"supported",true},{"build",QJsonObject{{"version","26.1029.1"},{"channel","nightly"}}},
+                {"install",QJsonObject{{"available",true},{"image","/tmp/synthetic-putgd.AppImage"},
+                  {"switch",QJsonObject{{"to","stable"},{"version","26.1028.1"},{"older",true}}}}}};
+ fixture.session.refreshSnapshot();
+ if(!waitUntil([&]{return fixture.session.diagnostics()["update"].toObject()==catalogUpdate;})||
+    !captureQuestion("confirm-switch-older",[&]{window.findChild<QPushButton*>("installUpdate")->click();}))return 2;
+ catalogUpdate=previousUpdate;fixture.session.refreshSnapshot();
+ window.navigate("history");
+ auto* management=window.history()->findChild<QMenu*>("historyManagementMenu");
+ if(!management||!captureQuestion("confirm-clear-history",[&]{management->actions()[0]->trigger();})||
+    !captureQuestion("confirm-clear-cache",[&]{management->actions()[1]->trigger();}))return 2;
+ // Revoke asks before dispatching any request, even in this offline fixture.
+ if(!captureQuestion("confirm-revoke-link",[&]{window.findChild<QPushButton*>("revokeHistoryLink")->click();}))return 2;
  // Below the side-by-side breakpoint (150% text) the inspector opens over the list.
  {bool opened=false;window.history()->command({{"action","openDetails"}},[&](Error,QJsonObject state){opened=state["detailsOpen"].toBool();});if(opened&&!save("44-history-compact-details"))return 2;window.history()->command({{"action","closeDetails"}},[](Error,QJsonObject){});}
  window.findChild<QToolButton*>("historyGridMode")->click();if(!save("history-gallery-compact"))return 2;window.history()->command({{"action","openDetails"}},[](Error,QJsonObject){});if(!save("67-history-gallery-compact-details"))return 2;
@@ -397,7 +419,7 @@ int main(int argc,char** argv){
  if(!waitUntil([&]{return window.settings()->saveViewState()["conflict"].toBool();}))return 2;if(!save("52-destinations-conflict"))return 2;putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("credentialActions")->parentWidget(),0,16);if(!save("64-credential-store-conflict"))return 2;
  window.navigate("settings");tabs->setCurrentIndex(0);if(!save("51-settings-conflict"))return 2;
  {const auto size=window.size();catalogUpdate={{"supported",true},{"result",QJsonObject{{"updateAvailable",true},{"latest","26.1231.99999-nightly"}}}};fixture.session.refreshSnapshot();if(!waitUntil([&]{return window.findChild<QPushButton*>("updateAvailable")->isVisible();}))return 2;window.resize(1060,680);if(!save("51a-settings-conflict-compact-update"))return 2;window.resize(size);catalogUpdate={};fixture.session.refreshSnapshot();if(!waitUntil([&]{return window.findChild<QPushButton*>("updateAvailable")->isHidden();}))return 2;}
- {bool confirmed=false;QTimer::singleShot(500,&app,[&]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->isVisible()){const auto image=box->grab();confirmed=image.save(QDir(output).filePath("53-reload-confirm.png"));captures.append(QJsonObject{{"file","53-reload-confirm.png"},{"width",image.width()},{"height",image.height()}});box->button(QMessageBox::Yes)->click();}});
+ {bool confirmed=false;QTimer::singleShot(500,&app,[&]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->isVisible()){confirmed=saveDialog(output,"53-reload-confirm",*box,captures);box->button(QMessageBox::Yes)->click();}});
   window.findChild<QPushButton*>("reloadConflict")->click();if(!confirmed||!waitUntil([&]{return !window.settings()->saveViewState()["conflict"].toBool();}))return 2;}
  // The 2026-10-26 settings pass: an overridden action among compact rows,
  // chooser failures beside their actions, the status-band summary's full text
@@ -434,7 +456,7 @@ int main(int argc,char** argv){
  window.navigate("history");window.history()->command({{"action","closeDetails"}},[](Error,QJsonObject){});window.findChild<QToolButton*>("historyListMode")->click();
  {HistoryStore ledger(operations.databasePath());for(int i=0;i<24;++i){Operation op;op.id=QString("synthetic-many-active-%1").arg(i);op.created=now.addSecs(i+100).toString(Qt::ISODateWithMs);op.action="clipboard";op.state="running";op.phase="uploading";op.settings=settings.snapshot();if(ledger.saveOperation(op))return 2;}}
  window.history()->refresh();if(!waitUntil([&]{return window.findChild<QPushButton*>("historyMoreActive")->text()=="23 more active";})||!save("history-many-active"))return 2;
- window.history()->command({{"action","cancelAll"}},[](Error,QJsonObject){});{auto* dialog=window.history()->findChild<QDialog*>("historyCancelAllConfirmation");if(!dialog||!dialog->isVisible())return 2;putgd::test::settle(100);const auto image=dialog->grab();if(!image.save(QDir(output).filePath("history-cancel-all-confirmation.png")))return 2;captures.append(QJsonObject{{"file","history-cancel-all-confirmation.png"},{"width",image.width()},{"height",image.height()}});}window.history()->command({{"action","keepUploading"}},[](Error,QJsonObject){});
+ window.history()->command({{"action","cancelAll"}},[](Error,QJsonObject){});{auto* dialog=window.history()->findChild<QDialog*>("historyCancelAllConfirmation");if(!dialog||!dialog->isVisible())return 2;putgd::test::settle(100);if(!saveDialog(output,"history-cancel-all-confirmation",*dialog,captures))return 2;}window.history()->command({{"action","keepUploading"}},[](Error,QJsonObject){});
  }
  // Editor: the same widgets the --edit-image helper shows, over a synthetic capture.
  if(!editorIcons().save(QDir(output).filePath("00-editor-icons.png")))return 2;
@@ -477,7 +499,7 @@ int main(int argc,char** argv){
   {auto* target=editor.findChild<Ui::ElidedLabel*>("editorSaveError");editor.findChild<QToolButton*>("editorSaveDetails")->click();if(!target->fullTextPopup())return 2;if(!grab("28a-editor-save-path"))return 2;const auto popup=target->fullTextPopup()->grab();if(!popup.save(QDir(output).filePath("28b-editor-save-path-popup.png")))return 2;captures.append(QJsonObject{{"file","28b-editor-save-path-popup.png"},{"width",popup.width()},{"height",popup.height()}});target->fullTextPopup()->close();}
   editor.canvas().select(0);editor.resize(900,620);
   // Discard… asks first; the dialog alone, as the desktop shows it over the editor.
-  editor.viewCommand({{"action","discard"}},code,message);if(auto* box=editor.findChild<QDialog*>("confirmAction")){putgd::test::settle(450);app.processEvents();const auto image=box->grab();if(!image.save(QDir(output).filePath("19-editor-discard-confirm.png")))return 2;captures.append(QJsonObject{{"file","19-editor-discard-confirm.png"},{"width",image.width()},{"height",image.height()}});}else return 2;
+  editor.viewCommand({{"action","discard"}},code,message);if(auto* box=editor.findChild<QDialog*>("confirmAction")){putgd::test::settle(450);app.processEvents();if(!saveDialog(output,"19-editor-discard-confirm",*box,captures))return 2;}else return 2;
   editor.viewCommand({{"action","keepEditing"}},code,message);
   {QTemporaryDir copy;const auto target=copy.filePath("preview-copy.png");if(!editor.writeCopy(target))return 2;
    if(!editor.grab().save(QDir(output).filePath("29a-editor-saving.png")))return 2;
@@ -489,7 +511,11 @@ int main(int argc,char** argv){
   // destination too long to sit beside the actions wraps above them.
   editor.setDestination("Upload to Production screenshots for customer support (EU) · Shared link");
   editor.showPreparationFailed("The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.");if(!grab("29-editor-preparation-failed"))return 2;
-  // A separate state verifies recent-colour selectors without changing the existing editor captures.
+  // Clear state 29's failure and the earlier saved-copy feedback before the swatches.
+  editor.viewCommand({{"action","keepEditing"}},code,message);if(!code.isEmpty())return 2;
+  editor.viewCommand({{"action","dismissSavedCopy"}},code,message);if(!code.isEmpty())return 2;
+  editor.setDestination("Private upload to Project archive");
+  const auto clean=editor.viewState();if(!clean["preparationFailure"].isNull()||clean["saveFeedbackVisible"].toBool()||!clean["message"].isNull())return 2;
   editor.selectTool(editor::Tool::Arrow);editor.setRecentColors({"#123456","#abcdef"});if(!grab("29b-editor-recent-colours"))return 2;
   editor.allowClose();editor.close();
  }

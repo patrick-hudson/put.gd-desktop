@@ -253,9 +253,13 @@ function surfaceCard(s){
  const good = items.filter(i => { const st = status(i); return st.f === 'passed' && (st.v === 'reviewed-ok' || st.v === 'n/a'); }).length;
  card.innerHTML = '<h3>' + esc(s.label) + (s.kind ? ' <small>' + esc(s.kind) + '</small>' : '') + '<span class="n"><span class="bar"><i style="width:' + (items.length ? Math.round(100*good/items.length) : 0) + '%"></i></span> ' + good + '/' + items.length + '</span></h3>';
  const top = document.createElement('div'); top.className = 'top';
- const shot = document.createElement('div'); shot.className = 'shot';
+ const gallery = document.createElement('div');
  const W = 340;
  const hot = {};
+ (s.captures && s.captures.length ? s.captures : [s]).forEach(state => {
+ const s = state;
+ if(state.capture){ const caption = document.createElement('div'); caption.className = 'sub'; caption.textContent = state.capture; gallery.appendChild(caption); }
+ const shot = document.createElement('div'); shot.className = 'shot';
  if(s.image && s.imageSize){
   const scale = W / s.imageSize[0];
   shot.style.width = W + 'px'; shot.style.height = Math.round(s.imageSize[1] * scale) + 'px';
@@ -279,7 +283,9 @@ function surfaceCard(s){
   shot.style.width = W + 'px'; shot.style.height = '120px';
   shot.innerHTML = '<div class="ph" style="height:100%">' + esc(s.placeholder || 'drawn by the desktop; no synthetic capture') + '</div>';
  }
- top.appendChild(shot);
+ gallery.appendChild(shot);
+ });
+ top.appendChild(gallery);
  const side = document.createElement('div'); side.className = 'side';
  const reached = DATA.interactions.filter(i => i.to === s.id && i.surface !== s.id);
  if(reached.length){ side.insertAdjacentHTML('beforeend', '<div class="sub" style="margin-top:0">Reached from</div>'); reached.forEach(i => side.appendChild(rowHtml(i, ' · ' + surfaceById[i.surface].label))); }
@@ -296,6 +302,8 @@ function surfaceCard(s){
   keys.forEach(i => { const k = document.createElement('span'); k.className = 'k'; k.innerHTML = keysHtml(i.keys) + ' ' + esc(i.label); k.appendChild(dot(i)); strip.appendChild(k); });
   card.appendChild(strip);
  }
+ (s.captures && s.captures.length ? s.captures : [s]).forEach(state => {
+ const s = state;
  if(s.hasControls && (s.unmodelledControls.length || s.unmodelledKeys.length)){
   const det = document.createElement('details');
   det.innerHTML = '<summary>' + (s.unmodelledControls.length + s.unmodelledKeys.length) + ' controls or keys in the build that the inventory does not list</summary><ul>' +
@@ -305,6 +313,7 @@ function surfaceCard(s){
  } else if(!s.hasControls && s.image) {
   card.insertAdjacentHTML('beforeend', '<details><summary>no controls dump for this capture</summary>rebuild the catalog with the inventory writer to get hotspots</details>');
  }
+ });
  return card;
 }
 
