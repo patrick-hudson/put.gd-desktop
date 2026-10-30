@@ -2,7 +2,6 @@
 from pathlib import Path
 import json
 import io
-import os
 import sys
 import tempfile
 import unittest
@@ -104,31 +103,6 @@ class LocalFrames(Base):
         self.assertTrue(result['passed'],result)
         self.assertEqual(rows[0].functional,'passed')
         self.assertTrue(json.loads((self.out/'receipt.json').read_text())['secret_scan']['passed'])
-
-
-class SnapOwnership(unittest.TestCase):
-    def test_private_profile_lease_rejects_reused_pid_other_runtime_and_public_record(self):
-        with tempfile.TemporaryDirectory() as td:
-            root=Path(td);process=root/'proc'/'7';process.mkdir(parents=True)
-            (process/'exe').symlink_to('/snap/firefox/current/firefox')
-            profile=root/'putgd-surface-fixture';profile.mkdir(mode=0o700)
-            (process/'cmdline').write_bytes(b'firefox\0--profile\0'+os.fsencode(profile)+b'\0')
-            (process/'stat').write_text('7 (firefox) S '+' '.join(['0']*18)+' 100 0')
-            boot=root/'boot';boot.write_text('boot')
-            state=dict(directory=str(profile),runtime='/private/runtime',boot='boot',owners=[[7,'100']])
-            stored=profile/'transaction.json';stored.write_text(json.dumps(state));stored.chmod(0o600)
-            real_path=Path
-            def mapped(path):
-                if path=='/proc':return root/'proc'
-                if path=='/proc/sys/kernel/random/boot_id':return boot
-                return real_path(path)
-            with patch('pathlib.Path',side_effect=mapped),patch.dict(os.environ,XDG_RUNTIME_DIR='/private/runtime'):
-                self.assertTrue(probe.private_firefox(7))
-                for key,value in (('runtime','/other/runtime'),('owners',[[7,'99']]),('boot','earlier-boot')):
-                    stored.write_text(json.dumps(dict(state,**{key:value})))
-                    self.assertFalse(probe.private_firefox(7))
-                stored.write_text(json.dumps(state));stored.chmod(0o644)
-                self.assertFalse(probe.private_firefox(7))
 
 
 class PlasmaProperties(unittest.TestCase):

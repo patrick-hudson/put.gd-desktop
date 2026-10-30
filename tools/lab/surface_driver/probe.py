@@ -137,38 +137,8 @@ def id_object_name(identifier, role):
 def owned(pid):
     try:
         with open('/proc/' + str(pid) + '/environ', 'rb') as stream:
-            if ('XDG_RUNTIME_DIR=' + os.environ['XDG_RUNTIME_DIR']).encode() in stream.read().split(b'\0'):
-                return True
+            return ('XDG_RUNTIME_DIR=' + os.environ['XDG_RUNTIME_DIR']).encode() in stream.read().split(b'\0')
     except (OSError, KeyError):
-        return False
-    return private_firefox(pid)
-
-
-def private_firefox(pid):
-    """Snap's runtime differs: only #680's live, private profile lease owns it."""
-    from pathlib import Path
-    import stat
-    try:
-        process = Path('/proc') / str(pid)
-        if process.stat().st_uid != os.getuid() or (process/'exe').readlink().name not in ('firefox', 'firefox-bin', 'firefox-esr'):
-            return False
-        argv = (process/'cmdline').read_bytes().split(b'\0')
-        profile = Path(os.fsdecode(argv[argv.index(b'--profile')+1]))
-        if not profile.name.startswith('putgd-surface-') or profile.resolve() != profile:
-            return False
-        stored = profile/'transaction.json'
-        for path in (profile, stored):
-            info = path.lstat()
-            if info.st_uid != os.getuid() or info.st_mode & 0o077 or stat.S_ISLNK(info.st_mode):
-                return False
-        if not stored.is_file() or stored.stat().st_size > 1024*1024:
-            return False
-        state = json.loads(stored.read_text())
-        start = (process/'stat').read_text().rsplit(')', 1)[1].split()[19]
-        return (state.get('directory') == str(profile) and state.get('runtime') == os.environ['XDG_RUNTIME_DIR'] and
-                state.get('boot') == Path('/proc/sys/kernel/random/boot_id').read_text().strip() and
-                [pid, start] in state.get('owners', []))
-    except (OSError, ValueError, KeyError, IndexError, TypeError):
         return False
 
 
