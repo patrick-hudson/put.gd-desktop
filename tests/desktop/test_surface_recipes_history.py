@@ -571,6 +571,21 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertEqual((ctx.window['x'], ctx.window['y']), (26, 74))
         self.assertEqual((ctx.window['width'], ctx.window['height']), size)
 
+    def test_edit_command_accepts_native_menu_role_without_losing_owner_bounds(self):
+        ctx = FakeContext()
+        queries, points = [], []
+        def accessible(query):
+            queries.append(query)
+            if query.get('role'):
+                return []
+            return [{'name': 'Capture region edit', 'role': 'menu', 'rect': [700, 200, 120, 40]}]
+        ctx.accessible = accessible
+        ctx.hover = lambda x, y, **options: points.append((x, y))
+        node = history._hover_history_node(ctx, history._command_control('edit'))
+        self.assertEqual(node['role'], 'menu')
+        self.assertEqual(points, [(760, 220)])
+        self.assertTrue(all(q['owned'] and q['pid'] == 123 and q['within'] for q in queries))
+
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):
             history.preview(FakeContext(('history-row',), fault='preview-no-effect'))

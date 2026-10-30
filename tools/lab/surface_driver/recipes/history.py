@@ -950,10 +950,20 @@ def autosave_status(ctx):
     ctx.review('Inspect the status-band captions in saved frames: Settings save automatically and Changes not saved.')
 
 
+COMMAND_LABELS = {'region': 'Capture region', 'window': 'Capture window', 'desktop': 'Capture desktop',
+                  'edit': 'Capture region & edit', 'record': 'Record screen', 'clipboard': 'Upload clipboard'}
+
+
+def _command_control(action):
+    # Qt exports the split Edit source control as a menu on some versions.
+    # Its unique native name, owned PID and live bounds still bind the input.
+    return {'name': 'Capture region*edit' if action == 'edit' else COMMAND_LABELS[action],
+            **({'role': 'push button'} if action != 'edit' else {})}
+
+
 @recipe('shell.command-tooltips', needs=('app-profile',), timeout=240)
 def command_tooltips(ctx):
-    labels = {'region': 'Capture region', 'window': 'Capture window', 'desktop': 'Capture desktop',
-              'edit': 'Capture region & edit', 'record': 'Record screen', 'clipboard': 'Upload clipboard'}
+    labels = COMMAND_LABELS
     for unavailable in (False, True):
         if unavailable:
             ctx.fixture('settings-no-output')
@@ -962,7 +972,7 @@ def command_tooltips(ctx):
             _frame(ctx, 'before')
         config = _result(ctx.call('settings.get'))['document']
         for action, label in labels.items():
-            node = _hover_history_node(ctx, {'name': 'Capture region*edit' if action == 'edit' else label, 'role': 'push button'})
+            node = _hover_history_node(ctx, _command_control(action))
             def tooltip():
                 rows = _nodes(ctx, role='tool tip')
                 texts = [html.unescape(n.get('text') or n.get('name', '')) for n in rows]
@@ -1249,9 +1259,7 @@ def _shell_command_recipe(interaction, action):
             ctx.fixture('selector-desktop').command('raise')
         _open(ctx)
         _frame(ctx, 'before')
-        _exercise_command(ctx, action, lambda _: _click_history_node(ctx, {'name': {
-            'region': 'Capture region', 'window': 'Capture window', 'desktop': 'Capture desktop',
-            'edit': 'Capture region*edit', 'record': 'Record screen', 'clipboard': 'Upload clipboard'}[action], 'role': 'push button'}), external_focus=False)
+        _exercise_command(ctx, action, lambda _: _click_history_node(ctx, _command_control(action)), external_focus=False)
         _open(ctx)
         _frame(ctx, 'after')
     command.__name__ = 'command_' + action
