@@ -28,6 +28,10 @@ ROOT = Path(__file__).resolve().parents[2]
 _PROC = Path('/proc')
 _thread_lock = threading.RLock()
 _lock_depth = threading.local()
+# Cold, remotely hydrated qcow2 metadata can exceed the old 60-second bound.
+# Keep inspection bounded and fail closed; no dependency result is cached or
+# omitted, and the native lock/process checks still surround the entire pass.
+CHAIN_INSPECTION_TIMEOUT = 180
 
 
 class CleanupError(RuntimeError):
@@ -257,8 +261,17 @@ def _evidence(run, run_id, explicit):
 
 
 def _chain(disk):
-    result = subprocess.run(['qemu-img', 'info', '--force-share', '--output=json', '--backing-chain', str(disk)],
-                            capture_output=True, text=True, timeout=60)
+    started = time.monotonic()
+    try:
+        result = subprocess.run(['qemu-img', 'info', '--force-share', '--output=json', '--backing-chain', str(disk)],
+                                capture_output=True, text=True, timeout=CHAIN_INSPECTION_TIMEOUT)
+    except subprocess.TimeoutExpired as error:
+        # This is the only prerequisite subprocess timeout that used to escape
+        # to cleanup's generic handler. Name the actual slow phase without
+        # exposing its command line, stdout/stderr or unrelated image paths.
+        elapsed = time.monotonic() - started
+        raise CleanupError('Cleanup prerequisite timed out: qemu-img backing-chain inspection '
+                           f'({elapsed:.1f}s elapsed, {CHAIN_INSPECTION_TIMEOUT}s limit); overlay retained') from error
     if result.returncode:
         raise CleanupError('Cannot inspect a lab image backing chain; cleanup refused')
     chain = json.loads(result.stdout)
