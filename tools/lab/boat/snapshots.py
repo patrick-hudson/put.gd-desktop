@@ -679,7 +679,7 @@ def host_package(args):
                     if time.monotonic() >= deadline:
                         raise TimeoutError('installed app did not answer capabilities')
                     time.sleep(.5)
-                version = json.loads(subprocess.check_output(['/usr/bin/putgd-cli', '--version-json'], env=env, text=True))
+                version = json.loads(subprocess.check_output(['/usr/bin/putgd-cli', '--version-json'], env=env, text=True, timeout=30))
                 if version != package['buildInfo']:
                     raise ValueError('installed version does not match the build')
                 exclusive_json(output / 'installed-version.json', version)
