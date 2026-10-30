@@ -301,6 +301,24 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
             signal.signal(sig,handler)
 
 
+def shell_check(context):
+    """Why the desktop shell can no longer be trusted, or None (#814).
+
+    Runs between recipes, so it has its own bounded budget rather than the
+    previous recipe's (possibly expired) deadline. Only an observed crash
+    counts: a lost probe channel is not one, and it already withholds input
+    from every later probe with its own reason.
+    """
+    if not hasattr(context,'shell_failure'):
+        return None
+    if hasattr(context,'_deadline'):
+        context._deadline=time.monotonic()+15
+    try:
+        return context.shell_failure()
+    except (RecipeBlocked,RecipeFailed):
+        return None
+
+
 @entry
 def _cleanup_fixtures(context, previous, failed):
     """Fixture cleanup after a recipe; returns (errors, a deferred signal's exception).
@@ -324,12 +342,23 @@ def _cleanup_fixtures(context, previous, failed):
 def _run_recipes(context, recipes, environment, out, campaign, coverage, interrupted):
     rows=[]
     cleanup_block=None
+    shell_block=None
     receipt=Path(out)/'receipt.json'
     try:
         receipt_name=str(receipt.resolve().relative_to(ROOT))
     except ValueError:
         receipt_name=str(receipt.resolve())
     for recipe in recipes:
+        shell_block=shell_block or shell_check(context)
+        if shell_block:
+            # A crashed shell ends the run: no frames, fixtures or input on it.
+            for identity in recipe.interactions:
+                rows.append(ReceiptRow(identity,environment['desktop'],environment['package'],'blocked',None,
+                    receipt_name,814,shell_block,environment['host'],environment['placement'],environment.get('guest'),
+                    environment['destination'],False,None,[],recipe.name,environment['build'],stamp()))
+            write_receipts(out,environment,rows,campaign,coverage)
+            print(json.dumps({'recipe':recipe.name,'functional':'blocked','shell':'crashed'}),flush=True)
+            continue
         context.begin(recipe)
         functional, issue, failure = 'passed',None,None
         def deadline(_signum,_frame):
@@ -396,6 +425,12 @@ def _run_recipes(context, recipes, environment, out, campaign, coverage, interru
             cleanup_failure = 'fixture cleanup failed: ' + '; '.join(cleanup)
             functional = 'failed'
             failure = failure + '; ' + cleanup_failure if failure else cleanup_failure
+        shell_block = shell_check(context)
+        if shell_block:
+            # The shell died while this recipe ran: its own verdict is not evidence either.
+            if failure != shell_block:
+                failure = shell_block + '; recipe result on the crashed desktop: ' + functional + (' (' + failure + ')' if failure else '')
+            functional, issue = 'blocked', 814
         if failure:
             context.note(failure)
         if recipe.desktop_drawn and context.frames:
@@ -501,6 +536,9 @@ def main(argv=None):
                               for action in ('region','window','desktop','clipboard','edit')}
         context.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],'patch':patch})
         context.start_notifications()
+        shell=context.shell_baseline()
+        if shell:
+            environment['shell_health']=shell
         rows=run_recipes(context,recipes,environment,args.out,args.campaign,coverage)
         exit_code=0 if all(r.functional=='passed' for r in rows) else 1
     except (RecipeBlocked,RecipeFailed,lab.LabError,ValueError,FileNotFoundError) as error:

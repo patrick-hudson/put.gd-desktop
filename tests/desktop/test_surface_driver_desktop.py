@@ -253,9 +253,8 @@ class LazyWalk(unittest.TestCase):
         stage=FakeNode('','window',[0,0,1280,800],children=[banner,*other])
         app=FakeNode('cinnamon','application',None,children=[stage])
         desktop=FakeNode('main','desktop frame',[0,0,1280,800],children=[app])
-        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:desktop),DESKTOP_COORDS=0,
-                             STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
-        with patch.dict(sys.modules,pyatspi=fake):
+        fake=SimpleNamespace(DESKTOP_COORDS=0,STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
+        with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'desktop_root',return_value=desktop):
             rows=probe.accessible({'application':'cinnamon*','name':'Upload complete','showing':True})
         self.assertEqual(len(rows),1)
         self.assertEqual(rows[0]['rect'],[830,30,200,20])
@@ -273,20 +272,24 @@ class PickNode(FakeNode):
 
 
 class ShellChrome(unittest.TestCase):
-    def pyatspi(self,child):
+    def desktop(self,child):
+        from contextlib import ExitStack
         from types import SimpleNamespace
         stage=PickNode('','window',[0,0,1280,800],child)
         app=FakeNode('cinnamon','application',None,children=[stage])
-        return SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:[app]),DESKTOP_COORDS=0,STATE_SHOWING='showing')
+        stack=ExitStack()
+        stack.enter_context(patch.dict(sys.modules,pyatspi=SimpleNamespace(DESKTOP_COORDS=0,STATE_SHOWING='showing')))
+        stack.enter_context(patch.object(probe,'desktop_root',return_value=[app]))
+        return stack
 
     def test_banner_over_a_client_point_is_reported(self):
         banner=PickNode('','panel',[781,10,479,138],PickNode('','notification',[781,10,479,138],PickNode('Upload complete','label',[827,31,392,16])))
-        with patch.dict(sys.modules,pyatspi=self.pyatspi(PickNode('','panel',[0,0,1280,800],banner))):
+        with self.desktop(PickNode('','panel',[0,0,1280,800],banner)):
             cover=probe.shell_cover((1000,40),'cinnamon*')
         self.assertIn('notification',cover);self.assertIn("'Upload complete'",cover)
 
     def test_full_stage_container_is_not_chrome(self):
-        with patch.dict(sys.modules,pyatspi=self.pyatspi(PickNode('','panel',[0,0,1280,800],PickNode('','panel',[0,0,1280,800])))):
+        with self.desktop(PickNode('','panel',[0,0,1280,800],PickNode('','panel',[0,0,1280,800]))):
             self.assertIsNone(probe.shell_cover((300,400),'cinnamon*'))
 
     def test_x11_guard_refuses_input_under_shell_chrome(self):
@@ -327,9 +330,9 @@ class WaylandCoordinates(unittest.TestCase):
         shell_label=FakeNode('Upload complete','label',[830,30,200,20],pid=40)
         shell=FakeNode('gnome-shell','application',None,children=[FakeNode('','window',[0,0,1280,800],pid=40,children=[shell_label])])
         desktop=FakeNode('main','desktop frame',[0,0,1280,800],children=[app,shell])
-        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:desktop),DESKTOP_COORDS=0,
-                             STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
+        fake=SimpleNamespace(DESKTOP_COORDS=0,STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
         with patch.dict(sys.modules,pyatspi=fake),patch.dict('os.environ',{'XDG_SESSION_TYPE':'wayland'}),\
+             patch.object(probe,'desktop_root',return_value=desktop),\
              patch.object(probe,'compositor_windows',return_value=FRAMES),patch.object(probe,'popup_roots',return_value=[]):
             return probe.accessible(rows)
 
