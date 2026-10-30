@@ -149,38 +149,41 @@ CLASS_ROLES = {'QPushButton': ('push button',), 'QToolButton': ('push button', '
                'QCheckBox': ('check box',), 'QAction': ('menu item', 'check menu item', 'radio menu item')}
 
 
+def candidate_labels(candidate):
+    """Every label a catalog control can carry live: aliases, accessibleName, toolTip, text."""
+    values = list(candidate.get('accessibleNames') or [])
+    values += [candidate.get(key) for key in ('accessibleName', 'toolTip', 'text')]
+    return {label(value) for value in values if isinstance(value, str) and label(value)}
+
+
 def selector_matches(row, selector, candidates):
-    name = row.get('objectName')
-    if selector.startswith('text:'):
-        return label(row['name']) == selector[5:]
-    if selector.startswith('text-glob:'):
-        return fnmatch.fnmatchcase(label(row['name']), selector[10:])
+    """Match rank for one live row: 0 exported objectName, 1 label, None no match.
+
+    The live objectName wins. Labels come from the selector itself (text:/
+    text-glob:) and from every catalog candidate's aliases, accessibleName,
+    toolTip and text, so "List" also finds "Show history as a list".
+    Rectangle/layout equality is never a substitute for runtime state.
+    """
+    name, live = row.get('objectName'), label(row.get('name'))
     if selector.startswith('class:'):
-        return row['role'] in CLASS_ROLES.get(selector[6:], ())
-    if selector.startswith('glob:') and name:
-        return fnmatch.fnmatchcase(name, selector[5:])
-    if name and name == selector:
-        return True
-    # Catalog semantics identify unnamed live Qt accessibles. Rectangle/layout
-    # equality is never used as a substitute for runtime state.
-    return any((c.get('name') and c['name'] == name) or
-               (c.get('text') and label(c['text']) == label(row['name'])) for c in candidates)
+        return 1 if row['role'] in CLASS_ROLES.get(selector[6:], ()) else None
+    if name and (selector == name or (selector.startswith('glob:') and fnmatch.fnmatchcase(name, selector[5:])) or
+                 any(c.get('name') == name for c in candidates)):
+        return 0
+    if not live:
+        return None
+    if selector.startswith('text:') and live == selector[5:]:
+        return 1
+    if selector.startswith('text-glob:') and fnmatch.fnmatchcase(live, selector[10:]):
+        return 1
+    return 1 if any(live in candidate_labels(c) for c in candidates) else None
 
 
 def control_geometry(query):
+    # No name prefilter: catalog text often differs from the live accessible
+    # name, and objectName matches must not be filtered out by labels.
     filters = {'owned':True,'visible':True,'showing':True,
                **({'pid':query['pid']} if query.get('pid') else {})}
-    selector = query.get('selector','')
-    if selector.startswith('text:'):
-        import glob
-        filters['name'] = glob.escape(selector[5:])
-    elif selector.startswith('text-glob:'):
-        filters['name'] = selector[10:]
-    else:
-        labels = {label(c.get('text')) for c in query.get('candidates',[]) if c.get('text')}
-        if len(labels)==1:
-            import glob
-            filters['name'] = glob.escape(next(iter(labels)))
     rows = accessible(filters)
     selected = []
     for row in rows:
@@ -192,11 +195,14 @@ def control_geometry(query):
         if query.get('popup') and not row['popup']:
             continue
         if query.get('objectName'):
-            match = row['objectName'] == query['objectName']
+            rank = 0 if row['objectName'] == query['objectName'] else None
         else:
-            match = selector_matches(row, query['selector'], query.get('candidates', []))
-        if match:
-            selected.append(row)
+            rank = selector_matches(row, query['selector'], query.get('candidates', []))
+        if rank is not None:
+            selected.append((rank, row))
+    if selected:
+        best = min(rank for rank, _ in selected)
+        selected = [row for rank, row in selected if rank == best]
     # An open menu takes precedence over a same-label sidebar/button.
     popups = [row for row in selected if row['popup']]
     if popups:
