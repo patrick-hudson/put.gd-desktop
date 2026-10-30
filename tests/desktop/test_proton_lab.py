@@ -476,6 +476,13 @@ class SmokeCheck(unittest.TestCase):
         self.assertEqual(test.result['testScope'], 'account-folder')
         self.assertEqual(test.result['steps'][-1]['step'], 'checked')
 
+    def test_the_upload_wait_covers_every_active_operation_state(self):
+        source = (ROOT / 'src/core/Operation.cpp').read_text()
+        active = source.split('Operation::activeState', 1)[1].split('}', 1)[0]
+        import re
+        for state in re.findall(r'state=="([a-z]+)"', active):
+            self.assertIn(state, smoke.ACTIVE_STATES)
+
     def test_an_account_only_check_does_not_pass(self):
         test = self.smoke('account')
         with mock.patch('sys.stdout'), self.assertRaises(smoke.lab.LabError):

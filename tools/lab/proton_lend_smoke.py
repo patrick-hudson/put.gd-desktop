@@ -31,6 +31,8 @@ _spec.loader.exec_module(lab)
 PROFILE_ID = 'proton-lent'
 DEADLINE = 300
 SECRET_KEYS = ('url', 'link', 'shareUrl', 'publicUrl', 'directUrl')
+# Operation::activeState in src/core/Operation.cpp, plus the older 'queued'.
+ACTIVE_STATES = ('accepted', 'acquiring', 'editing', 'recording', 'stored', 'running', 'queued')
 
 
 def scrub(value):
@@ -146,7 +148,7 @@ PY
         operation = opened['operationId']
         self.cli('editor.submit', {'id': operation})
         final = self.wait(lambda: self.cli('operation.inspect', {'id': operation}),
-                          lambda value: value.get('state') not in ('accepted', 'running', 'queued', 'editing'),
+                          lambda value: value.get('state') not in ACTIVE_STATES,
                           'upload')
         self.result['operationId'] = operation
         self.step('uploaded', operationId=operation, state=final.get('state'), file=Path(path).name)
