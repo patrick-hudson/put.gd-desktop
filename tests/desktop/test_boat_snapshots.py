@@ -75,6 +75,44 @@ class SnapshotContracts(unittest.TestCase):
             self.assertIn('Hidden=true', text)
             self.assertIn('X-GNOME-Autostart-enabled=false', text)
 
+    def test_kde_first_snapshot_uses_native_target_and_guest_profile(self):
+        name = 'putgd-lab-kubuntu-kde-v1'
+        self.assertEqual(snapshots.snapshot_name(name), name)
+        self.assertEqual(snapshots.package_metadata(name)['packageTarget'], 'ubuntu26.04')
+        with self.assertRaises(ValueError):
+            snapshots.package_metadata(name, 'ubuntu24.04')
+        args = snapshots.parser().parse_args(['guest', '--checkout', '/source', '--commit', SHA,
+            '--source', '/image', '--source-sha256', 'b' * 64, '--bootstrap-key', '/public',
+            '--known-hosts', '/pins', '--evidence', '/evidence', '--profile', 'kde-wayland',
+            '--run-name', 'k1', '--install', '--name', name,
+            '--destination', '/home/user/work/lab-images/kde/image.qcow2'])
+        self.assertEqual(args.profile, 'kde-wayland')
+        x11 = json.loads((ROOT / 'tools/lab/profiles/kde-x11.yaml').read_text())
+        self.assertEqual((x11['desktop'], x11['session'], x11['qt_platform']), ('KDE', 'x11', 'xcb'))
+        self.assertEqual(x11['session_process'], 'plasmashell')
+
+    def test_kde_policy_preserves_other_wallet_settings_and_verifies_read_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'proc').mkdir()
+            (root / '.config').mkdir()
+            (root / '.config/kwalletrc').write_text('[Other]\nKeep=this\n')
+            (root / 'system.desktop').write_text('[Desktop Entry]\nExec=DiscoverNotifier\n')
+            for install in (True, False):
+                script = snapshots.kde_policy_script(install)
+                if not install:
+                    self.assertNotIn('write_text', script)
+                    self.assertNotIn('os.kill', script)
+                    self.assertNotIn(".open('w')", script)
+                body = script.split('\n', 1)[1].rsplit('POLICY', 1)[0]
+                body = body.replace("Path('/proc')", 'Path(' + repr(str(root / 'proc')) + ')')
+                body = body.replace("Path('/etc/xdg/autostart/org.kde.discover.notifier.desktop')",
+                                    'Path(' + repr(str(root / 'system.desktop')) + ')')
+                with patch.object(Path, 'home', return_value=root), contextlib.redirect_stdout(io.StringIO()):
+                    exec(compile(body, '<kde-policy>', 'exec'), {})
+            self.assertIn('Keep = this', (root / '.config/kwalletrc').read_text())
+            self.assertIn('Hidden=true', (root / '.config/autostart/system.desktop').read_text())
+
     def test_guest_verification_can_use_exact_controller_and_negative_cleanup(self):
         args = snapshots.parser().parse_args(['guest', '--checkout', '/source', '--commit', SHA,
             '--source', '/image', '--source-sha256', 'b' * 64, '--bootstrap-key', '/public',
