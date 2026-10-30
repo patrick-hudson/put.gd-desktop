@@ -1,0 +1,21 @@
+{
+ "schemaVersion": 1,
+ "kind": "vm-overlay-cleanup-evidence",
+ "run": "/home/user/work/put.gd/src/work/lab-runs/c900",
+ "runId": "17b31863-c971-46b0-be13-092aebf2fc91",
+ "completed": true,
+ "outcome": "passed",
+ "files": {
+  "c900-install.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "c900-install.json": "18199cb001ece9c24c8a99acb4b62bdadd0336f82bc05e8239df18870e6719c6",
+  "c900-install2.err": "3afed3a785479f0f408c5e7bec40c679a5e6955d11f9de3b2996d9bfba802809",
+  "c900-install2.json": "8a8788a0c377560c1fd8bf3e45bbf1d1c1b412d682e09557df505d9da862d2c3",
+  "c900-install3.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "c900-install3.json": "3c32ce1732a737b194b425f0c26e28642ae429f69a0a0f9533c43e0d49dea499",
+  "c900-launch.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "c900-launch.json": "35ef1ffc704cb7f5eb0f2545bd46945812ed5dd82f3076283412201912aa7122",
+  "c900-preflight.json": "a9e662adf47869c83e8d7aed3b6c88c6ebec3acb3690d469343be644cc27e2eb",
+  "completion.json": "341e7732d5105ec0d572241b2b159a6b9e41ee2a814bb32cef66fe7e7f54f2d4",
+  "gate4-live.log": "da1648ed5a63e5835d975f22ffa8a09f0e8d0009b07ae3ecc8a7f4a0e4b6bd05"
+ }
+}
