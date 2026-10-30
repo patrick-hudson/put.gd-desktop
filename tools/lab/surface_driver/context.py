@@ -379,8 +379,18 @@ class DriverContext(Context):
         self._check_time()
         return self.target.cli(*args,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
 
-    def shell(self,script,timeout=60):
+    def shell(self,script,timeout=None,cleanup=False):
+        if cleanup:
+            # Deadline-exempt restoration (api.Context.shell). Physical targets
+            # keep the lock heartbeat inside execute; guests prove ownership here.
+            if not self.target.physical:
+                try:
+                    lab.verify_owned_guest(self.target.run)
+                except lab.LabError as error:
+                    raise RecipeBlocked('cleanup refused: '+str(error)) from error
+            return self.target.execute(script,timeout=30.0 if timeout is None else timeout)
         self._check_time()
+        timeout=60 if timeout is None else timeout
         return self.target.execute(script,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
 
     def mcp(self,tool,arguments=None):

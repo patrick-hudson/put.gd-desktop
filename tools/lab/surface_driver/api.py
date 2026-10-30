@@ -236,8 +236,16 @@ class Context:
     def clipboard_text(self) -> str:
         raise NotImplementedError
 
-    def shell(self, script: str, timeout: float = 60.0) -> dict:
-        """Run a shell script on the target as the session user with the run's private XDG profile."""
+    def shell(self, script: str, timeout: float = 60.0, cleanup: bool = False) -> dict:
+        """Run a shell script on the target as the session user with the run's private XDG profile.
+
+        Ordinary calls fail after the recipe deadline and are clipped to the time
+        left. ``cleanup=True`` is for restoring what a recipe changed (default
+        browser, theme, dconf): it runs even after the deadline, with its own
+        timeout (30 s when none is given), never the clipped remainder. The
+        target's safety checks still apply (desktop lock for physical targets,
+        an owned overlay for guests).
+        """
         raise NotImplementedError
 
     # Fixtures shared between recipes in one run (an upload, a recording, a history row)

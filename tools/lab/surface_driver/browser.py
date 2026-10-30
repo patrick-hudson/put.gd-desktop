@@ -62,24 +62,14 @@ def _timeouts(options):
     return values
 
 
-def _cleanup_shell(ctx, script, timeout):
-    # Context.shell refuses to run after the recipe deadline and clips its
-    # timeout to whatever remains, so restoration would be skipped exactly when
-    # a recipe overran. The run's Target executes with the same private XDG
-    # profile, without that deadline.
-    target = getattr(ctx, 'target', None)
-    if callable(getattr(target, 'execute', None)):
-        return target.execute(script, timeout=timeout)
-    return ctx.shell(script, timeout=timeout)
-
-
 def _remote(ctx, action, values, timeout=_TIMEOUTS['helper'], cleanup=False):
     # Source and arguments contain no share links. No raw browser responses leave
     # the target, even on a protocol error. Do not interpolate observed URLs here.
     payload = base64.b64encode(json.dumps(values).encode()).decode()
     script = ('python3 - ' + shlex.quote(action) + ' ' + shlex.quote(payload) + " <<'PUTGD_BROWSER_PY'\n"
               + Path(__file__).read_text() + '\nPUTGD_BROWSER_PY')
-    result = _cleanup_shell(ctx, script, timeout) if cleanup else ctx.shell(script, timeout=timeout)
+    # cleanup: Context.shell's deadline-exempt restoration path.
+    result = ctx.shell(script, timeout=timeout, cleanup=True) if cleanup else ctx.shell(script, timeout=timeout)
     if result.get('returncode', 1):
         raise RuntimeError('Target browser helper failed; raw output withheld')
     try:

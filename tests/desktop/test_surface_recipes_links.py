@@ -589,7 +589,7 @@ class DeadlineRestore(unittest.TestCase):
             configs = [home / '.config', home / 'isolated/config']
             originals = [b'[Default Applications]\r\nx-scheme-handler/https=recorder.desktop;\r\n', b'# isolated\n']
             calls = []
-            target = SimpleNamespace(heartbeat=lambda: None)
+            target = SimpleNamespace(heartbeat=lambda: None, physical=None, run=Path(temporary) / 'run')
             def execute(script, timeout=60):
                 calls.append((shlex.split(script.split('\n', 1)[0])[2], timeout, ctx._deadline - time.monotonic()))
                 return _run_helper(script)
@@ -605,6 +605,7 @@ class DeadlineRestore(unittest.TestCase):
                 for item in patches:
                     stack.enter_context(item)
                 terminate = stack.enter_context(patch.object(browser, '_terminate'))
+                owned = stack.enter_context(patch('tools.lab.lab.verify_owned_guest'))
                 with self.assertRaisesRegex(RecipeFailed, '^recipe deadline exceeded$'):
                     with browser.default_browser(ctx, 'firefox'):
                         browser.open_and_verify(ctx, trigger, {'kind': 'local', 'name': 'f.txt', 'preview': False})
@@ -621,6 +622,7 @@ class DeadlineRestore(unittest.TestCase):
             self.assertFalse((home / '.mozilla').exists())
             self.assertFalse((home / '.local/share/applications').exists())
             terminate.assert_called_once_with(999999999, '7')
+            owned.assert_called_once_with(target.run)  # Context.shell(cleanup=True)'s guest check.
             self.assertFalse(ctx.frames)
             self.assertTrue(any('could not be blanked' in review for review in ctx.reviews))
             self.assertNotIn(id(ctx), browser._ACTIVE)

@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -20,6 +21,7 @@ from tools.lab.surface_driver.receipts import write_receipts
 from tools.lab.surface_driver.run import discover, main, run_recipes, validate_recipes
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
+from tools.lab import lab
 try:
     from PIL import Image
 except ImportError:
@@ -298,6 +300,41 @@ method return time=100.2 sender=:1.3 -> destination=:1.2 serial=9 reply_serial=4
         row=parse_notifications(raw,100)[0]
         self.assertEqual((row['summary'],row['body'],row['id']),('Saved locally','Synthetic file',72))
         self.assertEqual(parse_notifications(raw,101),[])
+
+
+class CleanupShell(unittest.TestCase):
+    """Context.shell(cleanup=True): restoration that outlives the recipe deadline."""
+    def setUp(self):
+        self.calls=[]
+        target=FakeTarget();target.run=Path('/tmp/sd-test-run')
+        target.execute=lambda script,timeout=60:self.calls.append((script,timeout)) or {'returncode':0,'stdout':'ran','stderr':''}
+        self.target=target
+        self.ctx=DriverContext(target,dict(desktop='mint-cinnamon-x11',host='boat',placement='guest',package='deb',destination='local'),
+                               load_profile('mint-cinnamon-x11'),'/tmp','/tmp')
+        self.ctx._deadline=time.monotonic()-1  # The recipe has overrun.
+
+    def test_cleanup_call_after_the_deadline_still_runs(self):
+        with patch.object(lab,'verify_owned_guest') as owned:
+            self.assertEqual(self.ctx.shell('restore',cleanup=True)['stdout'],'ran')
+            self.assertEqual(self.ctx.shell('restore',timeout=180,cleanup=True)['stdout'],'ran')
+        # Its own bounded timeout (30 s by default), never the clipped remainder.
+        self.assertEqual([c[1] for c in self.calls],[30.0,180])
+        self.assertEqual(owned.call_count,2)
+        with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
+            self.ctx.shell('ordinary')
+        self.assertEqual(len(self.calls),2)
+
+    def test_cleanup_keeps_the_target_safety_checks(self):
+        with patch.object(lab,'verify_owned_guest',side_effect=lab.LabError('Guest preflight requires an owned disposable overlay')):
+            with self.assertRaisesRegex(RecipeBlocked,'owned disposable overlay'):
+                self.ctx.shell('restore',cleanup=True)
+        self.assertFalse(self.calls)
+        # Physical targets: the desktop-lock heartbeat lives in Target.execute.
+        self.target.physical=object()
+        with patch.object(lab,'verify_owned_guest') as owned:
+            self.ctx.shell('restore',cleanup=True)
+        owned.assert_not_called()
+        self.assertEqual(len(self.calls),1)
 
 
 class InputFoundations(unittest.TestCase):
