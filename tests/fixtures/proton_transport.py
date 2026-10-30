@@ -62,7 +62,7 @@ if case == 'timeout':
     # guessing how long account-lock persistence and helper startup will take.
     received = request['destination']['settings'].get('receivedFile')
     if received:
-        parent = os.getppid()
+        parent = request['destination']['settings']['expectedParentPid']
         timeout = request.get('requestTimeoutMs')
         if timeout is None:
             timeout = request['destination']['settings'].get('requestTimeoutMs', 120000)
@@ -71,7 +71,7 @@ if case == 'timeout':
             marker.write(request['method'])
         # Stay pending while the observer is delayed, but retire after a parent
         # crash, the accepted deadline, or assertion-failure teardown.
-        while parent > 1 and os.getppid() == parent and not os.path.exists(received + '.stop'):
+        while os.getppid() == parent and not os.path.exists(received + '.stop'):
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break

@@ -42,6 +42,7 @@ private slots:
   QTemporaryDir dir;QVERIFY(dir.isValid());const auto received=dir.filePath("received");
   ProtonProvider provider;auto d=destination("timeout");d.settings["requestTimeoutMs"]=120000;
   d.settings["receivedFile"]=received;
+  d.settings["expectedParentPid"]=QCoreApplication::applicationPid();
   auto cancellation=std::make_shared<std::atomic_bool>(false);
   NameCheck result;std::atomic_bool completed=false;Clock::time_point finished;
   std::jthread worker([&]{provider.checkName(d,"synthetic.txt",[&](NameCheck value){result=value;},cancellation);finished=Clock::now();completed.store(true);});
@@ -178,6 +179,7 @@ private slots:
  void reconciliationCancellationStopsExtendedRequest(){
   QTemporaryDir dir;QVERIFY(dir.isValid());const auto received=dir.filePath("received");
   ProtonProvider provider;UploadRequest request;request.destination=destination("timeout");request.destination.settings["receivedFile"]=received;request.requestTimeoutMs=30000;request.cancellation=std::make_shared<std::atomic_bool>(false);
+  request.destination.settings["expectedParentPid"]=QCoreApplication::applicationPid();
   StatResult result;std::atomic_bool completed=false;Clock::time_point finished;
   std::jthread worker([&]{provider.reconcile(request,[&](StatResult value){result=value;});finished=Clock::now();completed.store(true);});
   auto cancelOnExit=qScopeGuard([&]{request.cancellation->store(true);finishFixture(received);});
