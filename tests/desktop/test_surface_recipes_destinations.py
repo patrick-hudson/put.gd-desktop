@@ -444,6 +444,17 @@ class DestinationsContracts(unittest.TestCase):
         with self.assertRaises(RecipeFailed):
             lane.test_connection(ctx)
 
+    def test_native_secret_entry_withholds_input_until_focus_is_verified(self):
+        from unittest.mock import patch
+        ctx = self.context()
+        ctx.profile['session'] = 'wayland'
+        with patch('tools.lab.surface_driver.recipes.settings_input.field_click',
+                   side_effect=RecipeBlocked('focus not verified', issue=856)):
+            with self.assertRaises(RecipeBlocked):
+                lane.credential_fields(ctx)
+        self.assertEqual(len([e for e in ctx.events if e[0] == 'sensitive_control']), 3)
+        self.assertFalse(any(e[0] == 'type_text' for e in ctx.events))
+
     def test_credential_input_refuses_a_non_owned_path_before_reading(self):
         ctx = self.context()
         ctx.f['credentials_file'] = '/tmp/foreign-input.json'

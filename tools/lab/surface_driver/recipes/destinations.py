@@ -206,14 +206,14 @@ def _selected(ctx, index):
 
 
 def _accessible(ctx, control):
-    query = {'owned': True, 'objectName': control}
+    query = {'owned': True, 'visible': True, 'objectName': control}
     rows = ctx.accessible(query)
     if not rows:
         # Qt 6.4 omits exported IDs; use the profile's exact accessible label
         # and role. Geometry and foreground still come from core witnesses.
         alias = ctx.profile.get('live_controls', {}).get(control)
         if alias:
-            rows = ctx.accessible({'owned': True, **alias})
+            rows = ctx.accessible({'owned': True, 'visible': True, **alias})
     if len(rows) != 1 or not isinstance(rows[0], dict):
         ctx.blocked('Need one current non-secret accessible control: ' + control, issue=856)
     return rows[0]
@@ -241,7 +241,7 @@ def _state(ctx, control, key):
     if control == 'destinationConflictBanner' and key == 'visible':
         return ctx.call('ui.viewState')['settings']['conflict']
     if control == 's3BucketError' and key == 'text':
-        rows = ctx.accessible({'owned': True, 'objectName': control})
+        rows = ctx.accessible({'owned': True, 'visible': True, 'objectName': control})
         if rows:
             ctx.expect(len(rows) == 1, 'one owned bucket validation label')
             row = rows[0]
@@ -530,8 +530,12 @@ def _enter_credentials(ctx):
     ctx.use_catalog('destinations', '09-stored-credential-hint')
     for control, key in (('credentialAccessKey', 'accessKey'), ('credentialSecretKey', 'secretKey'),
                          ('credentialSessionToken', 'sessionToken')):
-        _click(ctx, control)
-        ctx.expect(_state(ctx, control, 'focused') is True, 'synthetic credential field has focus')
+        if ctx.profile.get('session') == 'wayland':
+            from .settings_input import field_click
+            field_click(ctx, control)
+        else:
+            _click(ctx, control)
+            ctx.expect(_state(ctx, control, 'focused') is True, 'synthetic credential field has focus')
         ctx.keys('Ctrl+A')
         ctx.type_text(values[key])
         ctx.keys('Tab')
