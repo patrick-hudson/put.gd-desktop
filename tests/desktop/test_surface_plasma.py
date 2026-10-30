@@ -119,6 +119,7 @@ class WalletScript(unittest.TestCase):
         def call(path,iface,method,params,reply):
             calls.append((path,method,params))
             if method=='wallets':return (state['wallets'],)
+            if method in ('networkWallet','localWallet'):return ('default-wallet',)
             if method=='pamOpen':state['wallets']=[self.wallet];return ()
             if method=='deleteWallet':state['wallets']=[];return (0,)
             if method=='Get':

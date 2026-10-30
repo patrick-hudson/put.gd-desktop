@@ -42,6 +42,7 @@ collection=call(service,'org.gnome.keyring.InternalUnsupportedGuiltRiddenInterfa
     created=scope.json((KEYRING+('''
 bus.call_sync('org.kde.secretservicecompat','/','org.freedesktop.DBus.Peer','Ping',None,None,Gio.DBusCallFlags.NONE,20000,None)
 ''' if kde else '')+'''
+default=call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]
 session=call(service,'org.freedesktop.Secret.Service','OpenSession',GLib.Variant('(sv)',('plain',GLib.Variant('s',''))),'(vo)')[1]
 '''+create+'''
 try:
@@ -53,11 +54,15 @@ try:
   GLib.Variant('(a{sv}(oayays)b)',({'org.freedesktop.Secret.Item.Label':GLib.Variant('s',LABEL),
   'org.freedesktop.Secret.Item.Attributes':GLib.Variant('a{ss}',attrs)},(session,b'',secret,'text/plain'),False)),'(oo)')
  assert prompt=='/'
+ assert call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]==default
 except BaseException:
  try:
-  call(collection,'org.freedesktop.Secret.Collection','Delete',None,'(o)')
+  current=call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]
+  assert current!=collection, 'refuse deleting a default collection after setup failure'
+  assert call(collection,'org.freedesktop.Secret.Collection','Delete',None,'(o)')[0]=='/'
  finally:
   if KDE and salt.exists():
+   assert wallet not in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]
    current=salt.lstat();assert (current.st_dev,current.st_ino)==(identity.st_dev,identity.st_ino)
    salt.unlink()
  raise
@@ -69,8 +74,11 @@ print(json.dumps(metadata))
 p=COLLECTION
 label=call(p,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Label')),'(v)')[0]
 assert label==LABEL
+default=call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]
+assert default!=p, 'refuse deleting a default collection'
 prompt=call(p,'org.freedesktop.Secret.Collection','Delete',None,'(o)')[0]
 assert prompt=='/'
+assert call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]==default
 '''.replace('COLLECTION',repr(created['collection'])).replace('LABEL',repr(label))))
     if kde:
         # Collection Delete removes only that wallet; verify the salt inode too.

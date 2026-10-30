@@ -37,6 +37,8 @@ try:
 except BaseException:
  # A partial creation may have a wallet: remove only the unique owned name.
  if wallet in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]:
+  assert call('/ksecretd','org.kde.KWallet','networkWallet',None,'(s)')[0]!=wallet, 'retain a default wallet'
+  assert call('/ksecretd','org.kde.KWallet','localWallet',None,'(s)')[0]!=wallet, 'retain a default wallet'
   assert call('/ksecretd','org.kde.KWallet','deleteWallet',GLib.Variant('(s)',(wallet,)),'(i)')[0]==0
  if salt.exists():
   current=salt.lstat();assert (current.st_dev,current.st_ino)==(identity.st_dev,identity.st_ino)
