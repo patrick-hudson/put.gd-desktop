@@ -304,7 +304,7 @@ class Fake(Context):
         shift = 50 if self.recording_action or any('Esc' in str(i) for i in self.inputs) else 0
         rectangle = [700, 240 + shift, 180, 36]
         self.targets = {(760, 258 + shift): control}
-        return [{'pid': 123, 'rect': rectangle, 'checked': self.category_expanded if control == 'categoryFoldersToggle' else False,
+        return [{'pid': 123, 'enabled': True, 'rect': rectangle, 'checked': self.category_expanded if control == 'categoryFoldersToggle' else False,
                  'focused': self.focused_control == control}]
 
     def click_accessible(self, query, button='left'):
@@ -438,7 +438,7 @@ class Contracts(unittest.TestCase):
         scrolled = []
         def query(control):
             if not scrolled:
-                return [{'pid': 123, 'rect': [700, 1100, 180, 36]}]
+                return [{'pid': 123, 'enabled': True, 'rect': [700, 1100, 180, 36]}]
             return accessible(control)
         ctx.accessible = query
         ctx.scroll = lambda x, y, clicks: scrolled.append((x, y, clicks))
@@ -446,6 +446,29 @@ class Contracts(unittest.TestCase):
         click(ctx, 'archiveRoot')
         self.assertEqual(scrolled, [(1536, 520, -3)])
         self.assertEqual(ctx.focused_control, 'archiveRoot')
+
+    def test_clipped_control_cannot_click_the_conflict_footer(self):
+        ctx = Fake()
+        accessible, scrolled = ctx.accessible, []
+        def query(control):
+            if not scrolled:
+                return [{'pid': 123, 'enabled': True, 'rect': [700, 920, 180, 28],
+                         'viewport': [336, 148, 1200, 744]}]
+            return accessible(control)
+        ctx.accessible = query
+        ctx.scroll = lambda x, y, clicks: scrolled.append((x, y, clicks))
+        from tools.lab.surface_driver.recipes.settings_input import click
+        click(ctx, 'archiveRoot')
+        self.assertEqual(scrolled, [(1536, 520, -3)])
+        self.assertEqual(ctx.focused_control, 'archiveRoot')
+
+    def test_disabled_live_control_withholds_input(self):
+        ctx = Fake()
+        ctx.accessible = lambda query: [{'pid': 123, 'enabled': False, 'rect': [700, 240, 180, 36]}]
+        from tools.lab.surface_driver.recipes.settings_input import click
+        with self.assertRaisesRegex(RecipeBlocked, 'disabled'):
+            click(ctx, 'archiveRoot')
+        self.assertFalse(ctx.inputs)
 
     def test_unavailable_clipboard_writer_withholds_input(self):
         ctx = Fake()
@@ -482,7 +505,7 @@ class Contracts(unittest.TestCase):
 
     def test_zero_height_control_cannot_receive_a_click(self):
         ctx = Fake()
-        ctx.accessible = lambda query: [{'pid': 123, 'rect': [700, 240, 180, 0]}]
+        ctx.accessible = lambda query: [{'pid': 123, 'enabled': True, 'rect': [700, 240, 180, 0]}]
         from tools.lab.surface_driver.recipes.settings_input import click
         with self.assertRaisesRegex(RecipeBlocked, 'missing or ambiguous'):
             click(ctx, 'settingsSection0')
@@ -490,7 +513,7 @@ class Contracts(unittest.TestCase):
 
     def test_wrong_owner_accessibility_is_withheld(self):
         ctx = Fake()
-        ctx.accessible = lambda query: [{'pid': 999, 'rect': [700, 240, 180, 36]}]
+        ctx.accessible = lambda query: [{'pid': 999, 'enabled': True, 'rect': [700, 240, 180, 36]}]
         from tools.lab.surface_driver.recipes.settings_input import click
         with self.assertRaisesRegex(RecipeBlocked, 'missing or ambiguous'):
             click(ctx, 'archiveRoot')
