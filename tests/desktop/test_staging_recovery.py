@@ -500,6 +500,34 @@ class StagingRecoveryContracts(unittest.TestCase):
         self.assertIn('TimeoutError', error)
         self.assertFalse((self.remote / 'progress.json').exists())
 
+    def test_reconcile_waits_for_leader_that_released_flock_but_is_still_exiting(self):
+        # run() drops staging.lock at return, before interpreter shutdown ends.
+        leader = subprocess.Popen([sys.executable, '-c',
+            'import fcntl, json, os, sys, time; from pathlib import Path\n'
+            'fence = open("staging.lock", "a"); fcntl.flock(fence, fcntl.LOCK_EX)\n'
+            'me = {"pid": os.getpid(), "sessionId": os.getsid(0), "startTicks": '
+            'int(Path("/proc/self/stat").read_text().rsplit(")", 1)[1].split()[19])}\n'
+            'Path("staging-process.json").write_text(json.dumps(me))\n'
+            'Path("staging-result.json").write_text(json.dumps({**me, "finished": True, "exitCode": 0}))\n'
+            'fence.close(); print("released", flush=True)\n'
+            'while not Path("exit").exists(): time.sleep(.01)\n'],
+            cwd=self.remote, stdout=subprocess.PIPE, text=True, start_new_session=True)
+        try:
+            self.assertEqual(leader.stdout.readline().strip(), 'released')
+            reconcile = subprocess.Popen([sys.executable, str(STAGING), 'reconcile', str(self.remote), '5'],
+                                         stdout=subprocess.PIPE, text=True)
+            time.sleep(.5)
+            self.assertIsNone(reconcile.poll())  # Still waiting for the live leader.
+            (self.remote / 'exit').touch()
+            leader.wait(timeout=3)
+            report = json.loads(reconcile.communicate(timeout=10)[0])
+            self.assertEqual(report['state'], 'staging-finished')
+            self.assertTrue(report['finished'])
+        finally:
+            (self.remote / 'exit').touch()
+            leader.wait(timeout=3)
+            leader.stdout.close()
+
     def test_dead_leader_with_live_session_reports_session_pids(self):
         # F3: the leader is reaped but its PID stays referenced as the session
         # ID. Kernels such as 6.14 then fail pidfd_open with EINVAL; others

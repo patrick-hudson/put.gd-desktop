@@ -143,6 +143,13 @@ def reconcile(seconds, abandoned=False):
         if not Path('staging-process.json').exists() and not abandoned:
             return {'finished': True, 'state': 'staging-not-started'}
         status = process_status()
+        # The wrapper releases the flock just before it exits, and session
+        # members may still be finishing. Wait out confirmed liveness within the
+        # deadline; never wait out uncertain (None) inspection.
+        while ((status['exactProcessAlive'] is True or status['sessionAlive'] is True)
+               and time.monotonic() < deadline):
+            time.sleep(.1)
+            status = process_status()
         # A free flock or terminal receipt does not establish that a killed
         # wrapper's privileged descendants exited. Both paths require a complete
         # session scan and a verifiable, no-longer-live session leader.
