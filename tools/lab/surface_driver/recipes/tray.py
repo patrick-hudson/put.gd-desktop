@@ -947,7 +947,8 @@ def recorder_ignores_shortcut(ctx):
 @recipe('shortcut.paused-while-settings-records', desktop_drawn=True)
 def recorder_releases_grabs(ctx):
     recorder = ctx.fixture('shortcut-settings-recorder')
-    before = recorder.status()['bindings']
+    before = ctx.wait(lambda: (b if any(v.get('bound') for v in (b := recorder.status()['bindings']).values()) else None),
+                      'native bindings ready before shortcut recording')
     expected = {k for k,v in before.items() if v.get('bound')}
     ctx.expect(bool(expected), 'native bindings are present before recording')
     recorder.start('region')
@@ -981,7 +982,8 @@ def action_rejected(ctx):
     ctx.view('ui.show', {'view': 'settings'})
     _clipboard(ctx)
     before = {o['id'] for o in _recent(ctx)}
-    ctx.expect(ctx.call('ui.snapshot')['diagnostics']['shortcuts']['bindings']['clipboard'].get('bound'), 'native clipboard binding available')
+    ctx.wait(lambda: ctx.call('ui.snapshot')['diagnostics']['shortcuts']['bindings']['clipboard'].get('bound'),
+             'native clipboard binding available')
     ctx.keys(CHORDS['clipboard'])
     notice = _notice(ctx, 'put.gd')
     # The app title also names the tray icon; require the actual error body.
