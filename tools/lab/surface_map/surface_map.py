@@ -49,7 +49,10 @@ DESTINATIONS = ('local', 's3', 'b2', 'proton')
 ROW_FIELDS = ('host', 'placement', 'guest', 'destination', 'review', 'review_reason',
               'frames', 'recipe', 'build')
 # Synthetic captures putgd-ui-catalog draws only offscreen (tests/gui/ui_catalog.cpp).
-OFFSCREEN_ONLY_CAPTURES = {'00-tray-upload-status'}
+OFFSCREEN_ONLY_CAPTURES = {
+    '00-tray-upload-status', '00-tray-menu-idle', '00-tray-menu-uploading',
+    '00-tray-menu-proton-busy', '00-tray-output-submenu',
+}
 
 
 class ModelError(ValueError):
