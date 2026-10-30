@@ -147,13 +147,13 @@ def scroll_click(ctx, control, window='settings'):
 
 
 def choose(ctx, control, index):
-    if control in ('namingMode', 'collisionPolicy'):
+    if control in ctx.profile.get('settings', {}).get('live_controls', {}):
         live_click(ctx, control)
     else:
         ctx.click(control, window='settings')
     # Editable choices route Home to their line edit unless the popup is open.
     ctx.keys('Esc', 'Alt+Down', 'Home', *('Down',) * index, 'Return', 'Tab')
-    if control in ('namingMode', 'collisionPolicy'):
+    if control in ctx.profile.get('settings', {}).get('live_controls', {}):
         if ctx.profile.get('settings', {}).get('input_state_script'):
             input_witness(ctx, ctx.geometry('settings'))
         ctx.frame('keys-after-' + control)
@@ -169,7 +169,7 @@ def replace(ctx, control, text):
         if reply['returncode'] != 0:
             ctx.blocked('Profile synthetic clipboard writer unavailable; template input withheld.')
         ctx.wait(lambda: ctx.clipboard_text() == text, 'synthetic template clipboard is ready')
-    if control == 'archiveRoot' or paste:
+    if control in ctx.profile.get('settings', {}).get('live_controls', {}) or paste:
         live_click(ctx, control)
     else:
         ctx.click(control, window='settings')
@@ -181,7 +181,7 @@ def replace(ctx, control, text):
     else:
         ctx.type_text(text)
     ctx.keys('Tab')
-    if control == 'archiveRoot' or paste:
+    if control in ctx.profile.get('settings', {}).get('live_controls', {}) or paste:
         if ctx.profile.get('settings', {}).get('input_state_script'):
             input_witness(ctx, ctx.geometry('settings'))
         ctx.frame('keys-after-' + control)
@@ -198,7 +198,7 @@ def checkbox(identifier, control, path, section, default):
             initial = initial.get(key, default) if isinstance(initial, dict) else default
         frame(ctx, 'before', section)
         try:
-            ctx.click(control, window='settings')
+            live_click(ctx, control)
             saved(ctx, path, not initial, section)
             if identifier == 'settings.launch-at-login':
                 ctx.wait(lambda: call(ctx, 'ui.snapshot')['diagnostics'].get('loginStartup', {}).get('enabled') == (not initial)

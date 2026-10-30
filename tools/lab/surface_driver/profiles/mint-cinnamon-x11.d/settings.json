@@ -110,6 +110,55 @@
       "categoryFoldersToggle": {
         "name": "Different folders by file type",
         "role": "check box"
+      },
+      "launchAtLogin": {
+        "name": "Launch at login",
+        "role": "check box"
+      },
+      "unlockCredentialsAtStartup": {
+        "name": "Unlock saved credentials when put.gd starts",
+        "role": "check box"
+      },
+      "notifications": {
+        "name": "Show desktop notifications",
+        "role": "check box"
+      },
+      "keepUploadCopies": {
+        "name": "Keep a local copy",
+        "role": "check box"
+      },
+      "debugLogging": {
+        "name": "Keep detailed debug logs for 24 hours",
+        "role": "check box"
+      },
+      "appearanceTheme": {
+        "name": "*",
+        "role": "combo box",
+        "label": "Theme"
+      },
+      "uploadClipboardBehavior": {
+        "name": "*",
+        "role": "combo box",
+        "label": "After uploading"
+      },
+      "regionSelectionMode": {
+        "name": "*",
+        "role": "combo box",
+        "label": "While selecting"
+      },
+      "historyRetentionChoice": {
+        "name": "*",
+        "role": "combo box",
+        "label": "Keep history for"
+      },
+      "failedArtifactChoice": {
+        "name": "*",
+        "role": "combo box",
+        "label": "Keep files for retry"
+      },
+      "recentActivityLimit": {
+        "name": "Items in recent list",
+        "role": "text"
       }
     },
     "theme_references": {
