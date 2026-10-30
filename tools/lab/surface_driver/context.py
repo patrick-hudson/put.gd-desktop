@@ -1,5 +1,6 @@
 """Production Context: real desktop input, resident assertions and saved evidence."""
 import dataclasses
+from contextlib import contextmanager
 import json
 from pathlib import Path
 import re
@@ -7,17 +8,11 @@ import shlex
 import time
 from tools.lab import lab
 from .api import Context, Frame, RecipeBlocked, RecipeFailed
-from .catalog import Catalog, compare, control_point, image_modules
-from .target import qcodes
+from .catalog import Catalog, compare, image_modules
+from .target import input_release, qcodes
 
 
-class Fixture(dict):
-    """Descriptors support both the contract's attributes and mapping recipes."""
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError as error:
-            raise AttributeError(name) from error
+from .fixtures import Fixture, FixtureManager
 
 
 class DriverContext(Context):
@@ -26,16 +21,24 @@ class DriverContext(Context):
         for key in ('desktop','host','placement','package','destination'):
             setattr(self,key,environment[key])
         self.catalog, self.out = Catalog(catalog,profile), Path(out)
+        self.profile = dict(profile, guest=environment.get('guest'))
         self._fixtures = {}
         self._captures = {}
         self._current_window = None
         self._ids = {}
         self._screen_dimensions = {}
+        self._input_head = 0
+        self._held_codes = []
+        self._input_poisoned = False
+        self._popup = None
+        self._click_count = 1
         self.begin(None)
 
     def begin(self, recipe):
         self.recipe = recipe
+        self._current_window, self._popup, self._input_head = None, None, 0
         self.frames, self.notes, self.reviews = [], [], []
+        self._noted_ids=set()
         self._notifications_since = time.time()
         self._deadline = time.monotonic() + (recipe.timeout if recipe else 120)
 
@@ -53,7 +56,13 @@ class DriverContext(Context):
             except ValueError as error:
                 raise RecipeBlocked('production CLI returned no JSON envelope') from error
             if envelope.get('ok'):
-                return envelope['result']
+                result=envelope['result']
+                for field in ('operationId','recordingId','shareOperationId'):
+                    identity=result.get(field)
+                    if isinstance(identity,str) and re.fullmatch('[A-Za-z0-9_-]{1,128}',identity) and identity not in self._noted_ids:
+                        self.note(field+'='+identity)
+                        self._noted_ids.add(identity)
+                return result
             code=envelope.get('error',{}).get('code','unknown')
             # Startup acknowledgement precedes helper construction. Retry only
             # observational commands, never a mutation whose effect is uncertain.
@@ -97,43 +106,136 @@ class DriverContext(Context):
             time.sleep(min(interval,max(0,deadline-time.monotonic())))
 
     def _probe(self, name, query):
+        self._check_time()
         source = Path(__file__).with_name('probe.py').read_text()
         # stdin contains code only. Query is a separate, shell-quoted JSON argument.
         script = 'python3 - '+shlex.quote(json.dumps({'probe':name,'query':query}))+" <<'SD_PROBE'\n"+source+'\nSD_PROBE\n'
-        result = self.shell(script)
-        if result['returncode']:
-            raise RecipeBlocked(name+' probe failed (missing desktop probe dependencies)')
-        result = json.loads(result['stdout'])
+        persistent = getattr(self.target, 'probe', None)
+        if persistent:
+            result = persistent(name, query, source, timeout=min(15,max(.1,self._deadline-time.monotonic())))
+        else:
+            result = self.shell(script)
+            if result['returncode']:
+                raise RecipeBlocked(name+' probe failed (missing desktop probe dependencies)')
+            result = json.loads(result['stdout'])
+        if not isinstance(result,dict) or 'ok' not in result:
+            raise RecipeBlocked(name+' probe returned an invalid response')
         if not result['ok']:
             raise RecipeBlocked(name+': '+result['error'])
         return result['result']
 
-    def geometry(self, window):
-        if self.profile.get('session') == 'wayland' and not self.profile.get('at_spi',{}).get('available',False):
-            raise RecipeBlocked('window geometry: '+self.profile['at_spi'].get('reason','AT-SPI unavailable'))
-        result = self._probe('geometry',{'title':self.profile.get('window_titles',{}).get(window,window),
-                                         'scale':self.profile.get('scale',1)})
-        # Per-head transforms are explicit profile fragments, never guessed from
-        # a full-desktop pixel size. X11 probes already report device pixels.
-        screens = self.profile.get('screens',[])
-        for screen in screens:
+    def _window_query(self, window):
+        spec = self.profile.get('windows', {}).get(window, {})
+        return {'title': spec.get('title', self.profile.get('window_titles', {}).get(window, window)),
+                'scale': self.profile.get('scale', 1), **spec}
+
+    def _map_geometry(self, result):
+        result = dict(result)
+        for screen in self.profile.get('screens', []):
             if screen['x'] <= result['x'] < screen['x']+screen['width'] and screen['y'] <= result['y'] < screen['y']+screen['height']:
-                result.update(screen_x=screen['x'],screen_y=screen['y'],head=screen.get('head',0))
+                result.update(screen_x=screen['x'], screen_y=screen['y'], head=screen.get('head', 0))
                 if result.get('coordinate_space') != 'framebuffer':
-                    result['scale'] = screen.get('scale',1)
+                    result['scale'] = screen.get('scale', 1)
                 break
+        result.setdefault('head', 0)
+        self._input_head = result['head']
         return result
 
+    def geometry(self, window):
+        """Live geometry; absent/ambiguous roles raise RecipeBlocked, never {}.
+
+        editor.canvas is a live accessible child, not a scaled catalog estimate.
+        windows() is the read-only presence/lifecycle query (an empty list proves
+        no matching visible window at the observation time).
+        """
+        if window == 'editor.canvas':
+            parent = self.geometry('editor')
+            row = self._live_control('text:Image being edited', 'editor', parent, [])
+            return self._map_geometry(dict(zip(('x','y','width','height'), row['rect'])) |
+                                      {k:parent[k] for k in ('scale','pid','coordinate_space') if k in parent})
+        if self.profile.get('session')=='wayland' and not self.profile.get('at_spi',{}).get('available'):
+            raise RecipeBlocked('window geometry: '+self.profile.get('at_spi',{}).get('reason','AT-SPI unavailable'))
+        result = self._probe('geometry', self._window_query(window))
+        if window in ('region', 'recsel'):
+            self._current_window = window
+        return self._map_geometry(result)
+
+    def windows(self, query=None):
+        """Read-only shell window inventory, scoped to the private family by default."""
+        return self._probe('windows', {'owned': True, **(query or {})})
+
+    def focus(self, window, raise_window=True):
+        """Select an input target and verify/optionally raise it before input."""
+        owner = self.profile.get('windows',{}).get(window,{}).get('owner',window)
+        self._current_window, self._popup = owner, None
+        return self._guard(window=owner, raise_window=raise_window)
+
+    def _guard(self, window=None, point=None, geometry=None, popup=None, raise_window=False):
+        self._check_time()
+        if self._input_poisoned:
+            raise RecipeBlocked('input release was not confirmed; further input is withheld for this run')
+        role = window or self._current_window
+        if not role:
+            raise RecipeBlocked('real input has no target window; use view(), focus(), or click(window=...)')
+        geometry = geometry or self.geometry(role)
+        query = {'geometry': geometry, 'point': point, 'popup': popup or self._popup,
+                 'raise': raise_window or self.profile.get('focus',{}).get('raise_before_input',False),
+                 'compositor_script': self.profile.get('focus', {}).get('compositor_script')}
+        witness = self._probe('foreground', query)
+        if not witness.get('ok'):
+            raise RecipeFailed('input target '+repr(role)+' is obscured by '+repr(witness.get('obscuring_window', 'unknown window'))+
+                               ' (window '+str(witness.get('obscuring_window_id') or witness.get('active'))+')')
+        return witness
+
     def use_catalog(self, window, reference):
-        """Optional state hint for controls shared by several catalog captures."""
         self.catalog.reference(reference)
         self._captures[window] = reference
 
+    def _live_control(self, selector, window, geometry, candidates):
+        if not self.profile.get('at_spi', {}).get('available'):
+            raise RecipeBlocked('live AT-SPI control geometry: '+self.profile.get('at_spi', {}).get('reason', 'unavailable'))
+        return self._probe('control', {'selector': selector, 'candidates': candidates,
+                                      'title': self._window_query(window)['title'],
+                                      'pid': geometry.get('pid'),
+                                      'popup': self.profile.get('windows', {}).get(window, {}).get('popup', False)})
+
     def click(self, control, window, button='left', offset=None):
-        name, inventory, row = self.catalog.resolve(control,window,self._captures.get(window))
-        geometry = self.geometry(window)
-        x,y = control_point(inventory,row,geometry,offset)
-        self._pointer_click(x,y,button,geometry.get('head',0))
+        # Resolve semantics from every state, then resolve geometry from the
+        # current tree. Dynamic menus need no catalog dump or stale rectangle.
+        candidates = self.catalog.candidates(control, window, self._captures.get(window))
+        owner = self.profile.get('windows', {}).get(window, {}).get('owner', window)
+        geometry = self.geometry(owner)
+        self._current_window = owner
+        if self.profile.get('at_spi', {}).get('available'):
+            row = self._live_control(control, window, geometry, candidates)
+            x,y,w,h = row['rect']
+            if offset is None:
+                dx,dy = w/2,h/2
+            else:
+                sizes = {tuple(c['rect'][2:]) for c in candidates}
+                if len(sizes) != 1:
+                    raise RecipeBlocked('offset requires an unambiguous catalog control size')
+                cw,ch = next(iter(sizes))
+                dx,dy = offset[0]*w/cw,offset[1]*h/ch
+            point = (x+dx,y+dy)
+            mapped = self._map_geometry(dict(geometry, x=point[0], y=point[1]))
+            scale = mapped.get('scale', 1)
+            px,py = (round((point[i]-mapped.get(('screen_x','screen_y')[i],0))*scale) for i in (0,1))
+            self._popup = row.get('popup')
+            try:
+                self._guard(window=owner, point=point, geometry=geometry, popup=self._popup)
+                self._pointer_click(px,py,button,mapped['head'], guarded=True)
+            finally:
+                self._popup = None
+        else:
+            raise RecipeBlocked('live AT-SPI control geometry: '+self.profile.get('at_spi',{}).get('reason','unavailable'))
+
+    def _global_point(self, x, y, head):
+        for screen in self.profile.get('screens', []):
+            if screen.get('head', 0) == head:
+                scale = screen.get('scale', 1) if self.profile.get('session') != 'x11' else 1
+                return (x/scale+screen['x'], y/scale+screen['y'])
+        return (x,y)
 
     def _dimensions(self, head=0):
         screens = self.profile.get('screens',[])
@@ -150,62 +252,161 @@ class DriverContext(Context):
             self._screen_dimensions[head] = im.size
             return im.size
 
-    def _pointer_click(self,x,y,button,head=0):
+    def _pointer_click(self,x,y,button,head=0,guarded=False):
         self._check_time()
         w,h = self._dimensions(head)
         if not 0 <= x < w or not 0 <= y < h:
             raise RecipeBlocked('input point outside selected head')
-        self.target.pointer(x,y,w,h,True,button,head)
+        if not guarded:
+            self._guard(point=self._global_point(x,y,head))
+        for index in range(self._click_count):
+            dispatched = False
+            try:
+                # A refused physical press must never cause a release packet.
+                # Defer alarms until dispatch is recorded, so an alarm just
+                # after a successful send cannot hide the matching press.
+                with input_release():
+                    self.target.pointer(x,y,w,h,True,button,head)
+                    dispatched = True
+                time.sleep(.04)
+            finally:
+                if dispatched or not self.target.physical:
+                    self._release_pointer((x,y),w,h,button,head)
+            if index+1 < self._click_count:
+                time.sleep(.06)
+
+    def click_at(self,x,y,button='left',head=None):
+        self._pointer_click(x,y,button,self._input_head if head is None else head)
+
+    def double_click(self, control, window, button='left'):
+        # One physical gesture: resolving/probing again between clicks can take
+        # longer than the desktop's double-click interval over guest SSH.
+        self._click_count = 2
         try:
-            time.sleep(.08)
+            self.click(control,window,button)
         finally:
-            self.target.pointer(x,y,w,h,False,button,head)
+            self._click_count = 1
 
-    def click_at(self,x,y,button='left'):
-        self._pointer_click(x,y,button)
+    def hover(self,x,y,head=None):
+        head = self._input_head if head is None else head
+        w,h = self._dimensions(head)
+        if not 0 <= x < w or not 0 <= y < h:
+            raise RecipeBlocked('hover point outside selected head')
+        self._guard(point=self._global_point(x,y,head))
+        self.target.pointer(x,y,w,h,head=head)
 
-    def drag(self,start,end,button='left',steps=12):
+    def drag(self,start,end,button='left',steps=12,head=None):
         if steps < 1:
             raise ValueError('drag steps must be positive')
-        w,h = self._dimensions()
+        head = self._input_head if head is None else head
+        w,h = self._dimensions(head)
         if any(not 0 <= x < w or not 0 <= y < h for x,y in (start,end)):
             raise RecipeBlocked('drag point outside selected head')
-        self.target.pointer(*start,w,h,True,button)
+        witness = self._guard(point=self._global_point(*start,head))
+        unmanaged = bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test')
+        last = start
+        dispatched = False
         try:
+            with input_release():
+                self.target.pointer(*start,w,h,True,button,head)
+                dispatched = True
+            # Managed header/resize grabs can leave the client. Unmanaged
+            # selector covers/bars need pointer witnesses, not keyboard focus:
+            # WA_ShowWithoutActivating deliberately leaves that elsewhere.
             for step in range(1,steps+1):
                 self._check_time()
                 x,y = (round(a+(b-a)*step/steps) for a,b in zip(start,end))
-                self.target.pointer(x,y,w,h)
+                self._guard(**({'point':self._global_point(x,y,head)} if unmanaged else {}))
+                self.target.pointer(x,y,w,h,head=head)
+                last = (x,y)
                 time.sleep(.025)
         finally:
-            self.target.pointer(*end,w,h,False,button)
+            if dispatched or not self.target.physical:
+                self._release_pointer(last,w,h,button,head)
+
+    def _release_pointer(self, point, width, height, button, head):
+        with input_release():
+            try:
+                release = getattr(self.target, 'release_pointer', None)
+                if release:
+                    release(*point,width,height,button,head)
+                else:
+                    self.target.pointer(*point,width,height,False,button,head)
+            except BaseException:
+                self._input_poisoned = True
+                raise
 
     def keys(self,*sequence):
-        for chord in sequence:
-            self._check_time()
-            self.target.key(qcodes(chord))
+        codes = [qcodes(chord) for chord in sequence]
+        if any(set(chord) & set(self._held_codes) for chord in codes):
+            raise RecipeBlocked('key chord would release a key held by held_keys()')
+        for chord in codes:
+            self._guard()
+            with input_release():
+                self.target.key(chord)
+        self._popup = None
+
+    @contextmanager
+    def held_keys(self,*keys):
+        codes = [code for key in keys for code in qcodes(key)]
+        if len(set(codes)) != len(codes) or set(codes) & set(self._held_codes):
+            raise ValueError('held keys must be distinct and not already held')
+        if self.target.physical:
+            raise RecipeBlocked('physical held keys require input-agent scoped cleanup across lock loss; guest QMP only')
+        self._guard()
+        self._held_codes.extend(codes)
+        def release():
+            with input_release():
+                try:
+                    self.target.key_state(list(reversed(codes)),False)
+                except BaseException:
+                    self._input_poisoned = True
+                    raise
+        try:
+            # Dispatch can succeed before a reply/deadline failure. Acquisition
+            # belongs inside the cleanup scope too.
+            self.target.key_state(codes,True)
+            yield
+        except BaseException:
+            try:
+                release()
+            except Exception:
+                self.note('held-key release unavailable after interrupted input')
+            raise
+        else:
+            release()
+        finally:
+            self._held_codes = [c for c in self._held_codes if c not in codes]
 
     def type_text(self,text):
-        # Validate the whole string before sending any input.
         chords = [(['shift'] if c.isascii() and c.isupper() else []) + qcodes({' ':'Space','\n':'Return','\t':'Tab'}.get(c,c)) for c in text]
+        if any(set(chord) & set(self._held_codes) for chord in chords):
+            raise RecipeBlocked('typed text would release a key held by held_keys()')
         for chord in chords:
-            self._check_time(); self.target.key(chord)
+            self._guard()
+            with input_release():
+                self.target.key(chord)
 
-    def scroll(self,x,y,clicks):
-        w,h = self._dimensions()
+    def scroll(self,x,y,clicks,head=None):
+        head = self._input_head if head is None else head
+        w,h = self._dimensions(head)
+        if not 0 <= x < w or not 0 <= y < h:
+            raise RecipeBlocked('scroll point outside selected head')
+        self._guard(point=self._global_point(x,y,head))
         if self.target.physical:
-            from tools.lab.rfb import RFB
-            client = RFB(self.target.physical.config['vnc_port'])
-            try:
-                client.scroll(x,y,clicks)
-            finally:
-                client.close()
+            if head:
+                raise RecipeBlocked('physical VNC scroll supports only the configured head')
+            self.target.scroll_vnc(x,y,clicks)
         else:
-            self.target.pointer(x,y,w,h)
+            self.target.pointer(x,y,w,h,head=head)
             for _ in range(abs(clicks)):
-                self._check_time()
-                for down in (True,False):
-                    self.target.events([{'type':'btn','data':{'button':'wheel-up' if clicks>0 else 'wheel-down','down':down}}])
+                self._guard(point=self._global_point(x,y,head))
+                button = 'wheel-up' if clicks>0 else 'wheel-down'
+                try:
+                    self.target.events([{'type':'btn','data':{'button':button,'down':True}}],head)
+                finally:
+                    with input_release():
+                        self.target.events([{'type':'btn','data':{'button':button,'down':False}}],head)
 
     def cli(self,*args,timeout=60):
         self._check_time()
@@ -220,16 +421,13 @@ class DriverContext(Context):
         # executable is configurable for a locked tools/mcp/.venv installation.
         python = self.profile.get('mcp_python','python3')
         helper = self.profile.get('mcp_helper','putgd-mcp')
-        code = '''import asyncio,json
-from mcp import ClientSession,StdioServerParameters
-from mcp.client.stdio import stdio_client
+        import inspect
+        from tools.lab.mcp_client import helper_session
+        code='import asyncio,json\nfrom contextlib import asynccontextmanager\n'+inspect.getsource(helper_session)+'''
 async def main():
-    p=StdioServerParameters(command=HELPER,args=['--cli','putgd-cli','--socket',SOCKET,'--timeout','60'])
-    async with stdio_client(p) as (read,write):
-        async with ClientSession(read,write) as session:
-            await session.initialize()
-            reply=await session.call_tool(TOOL,ARGS)
-            print(json.dumps(reply.structuredContent if reply.structuredContent is not None else {'content':[v.model_dump(mode='json') for v in reply.content],'isError':reply.isError}))
+    async with helper_session(HELPER,['--cli','putgd-cli','--socket',SOCKET,'--timeout','60']) as session:
+        reply=await session.call_tool(TOOL,ARGS)
+        print(json.dumps(reply.structuredContent if reply.structuredContent is not None else {'content':[v.model_dump(mode='json') for v in reply.content],'isError':reply.isError}))
 asyncio.run(main())
 '''
         code = 'HELPER='+repr(helper)+'\nSOCKET='+repr(self.target.socket)+'\nTOOL='+repr(tool)+'\nARGS='+repr(arguments or {})+'\n'+code
@@ -244,7 +442,17 @@ asyncio.run(main())
         return self._probe('accessible',query)
 
     def start_notifications(self):
-        script = 'nohup dbus-monitor --session '+shlex.quote("type='method_call',interface='org.freedesktop.Notifications',member='Notify'")+' '+shlex.quote("type='method_return',sender='org.freedesktop.Notifications'")+' > '+shlex.quote(self.target.root+'/notifications.log')+' 2>&1 < /dev/null & echo $!'
+        # Resolve the unique server owner so method-return filtering works on
+        # dbus-monitor implementations which do not resolve well-known senders.
+        result = self.shell("gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.GetNameOwner org.freedesktop.Notifications")
+        owner = re.search(r"':[0-9]+\.[0-9]+'", result['stdout']) if result['returncode'] == 0 else None
+        if not owner:
+            return
+        self._notification_server = owner[0].strip("'")
+        filters = ["type='method_call',interface='org.freedesktop.Notifications',member='Notify',arg0='put.gd'",
+                   "type='method_return',sender='"+self._notification_server+"'",
+                   "type='signal',interface='org.freedesktop.Notifications',sender='"+self._notification_server+"'"]
+        script = 'nohup dbus-monitor --session '+shlex.join(filters)+' > '+shlex.quote(self.target.root+'/notifications.log')+' 2>&1 < /dev/null & echo $!'
         result = self.shell(script)
         if result['returncode'] == 0:
             self.target.monitor_pid = int(result['stdout'].strip())
@@ -257,6 +465,109 @@ asyncio.run(main())
             raise RecipeBlocked('session bus refused notification monitoring or dbus-monitor is unavailable')
         return parse_notifications(result['stdout'],self._notifications_since)
 
+    def click_accessible(self, query, button='left'):
+        return self._accessible_pointer(query,button)
+
+    def hover_accessible(self, query):
+        return self._accessible_pointer(query,None)
+
+    def _accessible_pointer(self, query, button):
+        """Real pointer input to one visible desktop node, with a fresh hit-test.
+
+        This is for desktop-drawn content (notifications/tray/browser), not a
+        D-Bus Activate/AT-SPI doAction shortcut. Query must include ownership
+        (pid/application/owned); arbitrary first-match selection is forbidden.
+        """
+        if not any(k in query for k in ('pid','application','owned')):
+            raise RecipeBlocked('desktop input query requires pid, application, or owned')
+        nodes = self.accessible(dict(query, visible=True, showing=True))
+        nodes = [n for n in nodes if n.get('rect') and min(n['rect'][2:]) > 0 and
+                 (n.get('enabled') or n.get('role') in ('label','text','notification'))]
+        if len(nodes) != 1:
+            raise RecipeBlocked('desktop input control is missing or ambiguous')
+        node = nodes[0]
+        x,y,w,h = node['rect']
+        point = (x+w/2,y+h/2)
+        witness = self._probe('foreground', {'desktop_node':node,'point':point,
+                              'compositor_script':self.profile.get('focus',{}).get('compositor_script'),
+                              'desktop_hit_test':self.profile.get('focus',{}).get('desktop_hit_test'),
+                              'shell_application':self.profile.get('notifications',{}).get('accessible',{}).get('application','')})
+        if not witness.get('ok'):
+            raise RecipeFailed('desktop input is obscured by '+repr(witness.get('obscuring_window','unknown window')))
+        mapped = self._map_geometry({'x':point[0],'y':point[1], 'coordinate_space':
+                                      'framebuffer' if self.profile['session']=='x11' else 'logical'})
+        scale = mapped.get('scale',1)
+        px,py = (round((point[i]-mapped.get(('screen_x','screen_y')[i],0))*scale) for i in (0,1))
+        if button is None:
+            w,h = self._dimensions(mapped['head'])
+            if not 0 <= px < w or not 0 <= py < h:
+                raise RecipeBlocked('desktop hover point outside selected head')
+            self.target.pointer(px,py,w,h,head=mapped['head'])
+        else:
+            self._pointer_click(px,py,button,mapped['head'],guarded=True)
+        return node
+
+    def notification_action(self, identity, action='default'):
+        """Click a currently drawn notification; correlate ActionInvoked by ID.
+
+        Profiles select shell accessibility ownership. A Notify call alone is
+        never treated as proof that the desktop drew the notification.
+        """
+        if self.profile.get('notifications',{}).get('actions_available') is False:
+            raise RecipeBlocked(self.profile['notifications'].get('reason','notification input unavailable'),issue=670)
+        rows = [n for n in self.notifications() if n['id'] == identity and not n.get('closed')]
+        if len(rows) != 1:
+            raise RecipeBlocked('notification identity is missing, replaced, closed or ambiguous')
+        notice = rows[0]
+        actions = dict(zip(notice['actions'][::2],notice['actions'][1::2]))
+        if action not in actions:
+            raise RecipeBlocked('notification does not offer the requested action')
+        policy = self.profile.get('notifications', {}).get('accessible')
+        if not policy:
+            raise RecipeBlocked('profile has no notification accessibility ownership selector')
+        # Restrict the summary/body witness to this notification server's tree.
+        import glob
+        name = self.profile.get('notifications',{}).get('title_name_glob','{summary}').replace('{summary}',glob.escape(notice['summary']))
+        titles = self.accessible({**policy, 'name':name, 'visible':True, 'showing':True})
+        titles = [n for n in titles if n.get('rect') and min(n['rect'][2:])>0]
+        exact = [n for n in titles if n['name']==notice['summary']]
+        if exact:
+            titles = exact
+        if len(titles) != 1:
+            raise RecipeBlocked('notification is not uniquely drawn in the desktop accessibility tree')
+        title = titles[0]
+        if action == 'default':
+            query = {**policy, 'pid':title['pid'], 'name':glob.escape(title['name']), 'role':title['role']}
+        else:
+            self.hover_accessible({**policy,'pid':title['pid'],'name':glob.escape(title['name']),'role':title['role']})
+            containers = [n for n in title.get('ancestors',[]) if n['role'] in ('notification','panel','alert') and n.get('rect')]
+            buttons = self.accessible({**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
+                                       'visible':True,'showing':True,'enabled':True})
+            query = None
+            # A title's nearest panel can contain just its text/icon. Select
+            # the smallest common ancestor which also contains one action.
+            for ancestor in reversed(containers):
+                container = ancestor['rect']
+                inside = [n for n in buttons if n.get('rect') and min(n['rect'][2:])>0 and
+                          container[0] <= n['rect'][0]+n['rect'][2]/2 < container[0]+container[2] and
+                          container[1] <= n['rect'][1]+n['rect'][3]/2 < container[1]+container[3]]
+                if len(inside)==1:
+                    query = {**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
+                             'role':inside[0]['role'],'within':container}
+                    break
+            if query is None:
+                raise RecipeBlocked('notification button is not uniquely inside the drawn notification')
+        previous = len(notice.get('action_events',[]))
+        self.click_accessible(query)
+        def invoked():
+            return any(e['action']==action for n in self.notifications()
+                       if n['id']==identity and all(n.get(k)==notice.get(k) for k in ('at','sender','server'))
+                       for e in n.get('action_events',[])[previous:])
+        self.wait(invoked, 'real notification action '+action, timeout=5)
+
+    def tray(self):
+        return self._probe('tray', {})
+
     def clipboard_text(self):
         command = 'wl-paste --no-newline --type text' if self.profile['session']=='wayland' else 'xclip -selection clipboard -out'
         result = self.shell(command)
@@ -264,67 +575,13 @@ asyncio.run(main())
             raise RecipeBlocked('clipboard text unavailable (requires wl-clipboard or xclip and a text owner)')
         return result['stdout']
 
-    def fixture(self,name):
-        if name in self._fixtures:
-            return self._fixtures[name]
-        if name == 'image':
-            import base64, io
-            Image,_,_=image_modules()
-            image=Image.new('RGB',(640,320))
-            for i,color in enumerate(lab.FIXTURE_RGB):
-                x,y=(i%2)*320,(i//2)*160
-                image.paste(color,(x,y,x+320,y+160))
-            stream=io.BytesIO();image.save(stream,format='PNG')
-            path=self.target.root+'/files/synthetic.png'
-            result=self.shell("python3 - <<'SD_FIXTURE'\nimport base64\nfrom pathlib import Path\nPath("+repr(path)+").write_bytes(base64.b64decode("+repr(base64.b64encode(stream.getvalue()).decode())+"))\nSD_FIXTURE\n")
-            if result['returncode']:
-                raise RecipeBlocked('cannot write synthetic image on target')
-            value=Fixture(path=path,width=640,height=320)
-            self._fixtures[name]=value
-            return value
-        if name in ('upload','history','history-row'):
-            if self.destination != 'local':
-                raise RecipeBlocked('remote upload fixture requires the live lane isolated destination/credential bridge; core never provisions credentials')
-            settings = self.call('settings.get')
-            self.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
-                                       'patch':{'archive':{'root':self.target.root+'/files'},'actions':{'desktop':{'destination':'local','profileId':None}}}})
-            path=self.fixture('image')['path']
-            settings=self.call('settings.get')
-            self.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
-                                       'patch':{'actions':{'edit':{'destination':'local','profileId':None}}}})
-            operation=self.call('editor.open',{'source':'file','path':path})['operationId']
-            def editor_ready():
-                reply=self.cli('editor.inspect',json.dumps({'id':operation}))
-                envelope=json.loads(reply['stdout'])
-                return envelope.get('ok')
-            self.wait(editor_ready,'synthetic fixture editor ready',30)
-            self.call('editor.submit',{'id':operation})
-            state = self.wait(lambda:self._completed_operation(operation),'local capture fixture',30)
-            rows = self.call('history.list',{'limit':50}).get('records',[])
-            row = next((r for r in rows if r.get('operationId')==operation),None)
-            if not row:
-                raise RecipeBlocked('resident completed fixture but did not expose its history row')
-            value = Fixture(id=row['id'],history_id=row['id'],operation_id=operation,
-                                    link=row.get('link',''),path=row.get('local',{}).get('path'),state=state,row=row)
-            self._fixtures[name] = value
-            return value
-        if name == 'recording':
-            target=self.profile.get('recording_fixture_target')
-            if not target:
-                raise RecipeBlocked('recording fixture needs a profile recording_fixture_target covering a visible synthetic pattern')
-            prepared = self.call('recording.prepare',{'target':target,'format':'mp4','audio':{'system':False}})
-            rid = prepared.get('id') or prepared.get('recordingId')
-            if not rid:
-                raise RecipeBlocked('recording.prepare returned no recording identity')
-            self._ids['review'] = rid
-            self.wait(lambda: self.call('recording.inspect',{'id':rid}).get('state')=='ready','recording fixture prepared',30)
-            self.call('recording.start',{'id':rid}); time.sleep(1)
-            self.call('recording.stop',{'id':rid})
-            self.wait(lambda:self.call('recording.inspect',{'id':rid}).get('state')=='reviewing','recording fixture review',45)
-            value = Fixture(id=rid,recording_id=rid)
-            self._fixtures[name] = value
-            return value
-        raise RecipeBlocked('unknown fixture: '+name)
+    def fixture(self, name, **options):
+        if not hasattr(self, '_fixture_manager'):
+            self._fixture_manager = FixtureManager(self)
+        return self._fixture_manager.get(name, **options)
+
+    def _cleanup_fixtures(self):
+        return self._fixture_manager.close() if hasattr(self, '_fixture_manager') else []
 
     def _completed_operation(self,identity):
         state = self.call('operation.inspect',{'id':identity})
@@ -373,23 +630,59 @@ asyncio.run(main())
 
 
 def parse_notifications(text,since=0):
-    blocks = re.split(r'(?m)(?=^(?:method call|method return) )',text)
-    rows, pending = [], {}
+    """Correlate Notify replies and action/close signals by unique bus owner + ID."""
+    import ast
+    def strings(block):
+        values = re.findall(r'^\s*string ("(?:[^"\\]|\\.)*")\s*$',block,re.M)
+        return [ast.literal_eval(v) for v in values]
+    blocks = re.split(r'(?m)(?=^(?:method call|method return|signal) )',text)
+    rows, pending, active = [], {}, {}
     for block in blocks:
         timestamp = re.search(r'time=([0-9.]+)',block)
-        if not timestamp or float(timestamp[1]) < since:
+        if not timestamp:
             continue
+        at = float(timestamp[1])
+        sender = re.search(r'\bsender=(\S+)',block)
         if 'member=Notify' in block:
-            strings = re.findall(r'^\s*string "(.*)"\s*$',block,re.M)
+            values = strings(block)
             integers = re.findall(r'^\s*uint32 (\d+)',block,re.M)
             serial = re.search(r'\bserial=(\d+)',block)
-            if len(strings)>=4 and serial:
-                row={'summary':strings[2],'body':strings[3],'actions':strings[4:],'id':None,
-                     'replaces_id':int(integers[0]) if integers else 0,'at':float(timestamp[1])}
-                rows.append(row);pending[serial[1]]=row
-        elif 'method return' in block:
+            if len(values)>=4 and values[0]=='put.gd' and serial and sender:
+                actions = re.search(r'array \[\s*(.*?)\s*\]',block,re.S)
+                action_strings = strings(actions[1]) if actions else []
+                timeout = re.findall(r'^\s*int32 (-?\d+)',block,re.M)
+                hints = {}
+                for entry in re.findall(r'dict entry \((.*?)\)',block,re.S):
+                    key = strings(entry)
+                    value = re.search(r'variant\s+(boolean|int32|uint32|byte|double) (true|false|[-0-9.]+)',entry)
+                    if key and value:
+                        hints[key[0]] = (value[2]=='true' if value[1]=='boolean' else float(value[2]) if value[1]=='double' else int(value[2]))
+                row = {'summary':values[2],'body':values[3],'actions':action_strings,'id':None,
+                       'sender':sender[1],'server':None,'timeout':int(timeout[-1]) if timeout else None,
+                       'hints':hints, 'resident':hints.get('resident',False),
+                       'replaces_id':int(integers[0]) if integers else 0,'at':at,
+                       'action_events':[], 'closed':None}
+                rows.append(row);pending[(sender[1],serial[1])]=row
+        elif block.startswith('method return'):
             serial = re.search(r'\breply_serial=(\d+)',block)
             identity = re.search(r'uint32 (\d+)',block)
-            if serial and identity and serial[1] in pending:
-                pending[serial[1]]['id']=int(identity[1])
-    return rows
+            destination = re.search(r'\bdestination=(\S+)',block)
+            key = (destination[1],serial[1]) if serial and destination else None
+            if identity and sender and key in pending:
+                row = pending.pop(key)
+                row.update(id=int(identity[1]),server=sender[1])
+                previous = active.get((sender[1],row['id']))
+                if previous:
+                    previous['closed'] = {'at':at,'reason':'replaced'}
+                active[(sender[1],row['id'])] = row
+        elif sender and ('member=ActionInvoked' in block or 'member=NotificationClosed' in block):
+            integers = re.findall(r'^\s*uint32 (\d+)',block,re.M)
+            row = active.get((sender[1],int(integers[0]))) if integers else None
+            if row is not None:
+                if 'member=ActionInvoked' in block:
+                    values = strings(block)
+                    if values:
+                        row['action_events'].append({'action':values[0],'at':at})
+                elif len(integers)>1:
+                    row['closed'] = {'reason':int(integers[1]),'at':at}
+    return [row for row in rows if row['at']>=since]

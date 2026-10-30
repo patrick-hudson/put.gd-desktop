@@ -1,0 +1,9 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/patrick/.t3/worktrees/put.gd/t3-c30017f0
+collected 44 items
+
+tests/desktop/test_surface_map.py ...................................... [ 86%]
+......                                                                   [100%]
+
+============================== 44 passed in 0.68s ==============================
