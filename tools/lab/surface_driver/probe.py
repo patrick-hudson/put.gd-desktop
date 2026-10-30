@@ -80,26 +80,37 @@ def popup_watch(query):
     """
     import pyatspi
     import signal
-    path, current = popup_file(), {}
+    path, current, focus = popup_file(), {}, {}
     def write():
         temporary = path + '.tmp'
         descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         try:
-            os.write(descriptor, json.dumps(list(current.values())).encode())
+            os.write(descriptor, json.dumps(list(current.values()) + list(focus.values())).encode())
         finally:
             os.close(descriptor)
         os.replace(temporary, path)
     def changed(event):
         try:
             node = event.source
-            if normalize_role(node.getRoleName()) not in POPUP_ROLES:
-                return
             pid = node.get_process_id()
             if not owned(pid):
                 return
             bus = node.app.bus_name
             key = bus + node.path
-            if event.detail1:
+            if event.type.endswith(':focused'):
+                # Widgets parented to a view's viewport (History's row "More
+                # actions" button) are outside Qt's accessible tree too; the
+                # focused one is found here.
+                if not event.detail1:
+                    if key not in focus:
+                        return
+                    focus.clear()
+                else:
+                    focus.clear()
+                    focus[key] = {'bus': bus, 'path': node.path, 'pid': pid, 'focus': True}
+            elif normalize_role(node.getRoleName()) not in POPUP_ROLES:
+                return
+            elif event.detail1:
                 current[key] = {'bus': bus, 'path': node.path, 'pid': pid}
             elif current.pop(key, None) is None:
                 return
@@ -107,7 +118,7 @@ def popup_watch(query):
         except Exception:
             pass
     write()
-    pyatspi.Registry.registerEventListener(changed, 'object:state-changed:showing')
+    pyatspi.Registry.registerEventListener(changed, 'object:state-changed:showing', 'object:state-changed:focused')
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     pyatspi.Registry.start()
     return {}
@@ -178,6 +189,22 @@ class RawNode:
         return iter([RawNode(self.connection, str(bus), str(path), self.pid)
                      for bus, path in self._call(self.ACCESSIBLE, 'GetChildren')])
 
+    def parent(self):
+        bus, path = self._call('org.freedesktop.DBus.Properties', 'Get', self.ACCESSIBLE, 'Parent')
+        return RawNode(self.connection, str(bus), str(path), self.pid) if str(path) != '/org/a11y/atspi/null' else None
+
+    def window(self):
+        """Name of the top-level accessible (child of the application root) above this node."""
+        node = self
+        for _ in range(40):
+            parent = node.parent()
+            if parent is None:
+                return ''
+            if parent.path.endswith('/accessible/root'):
+                return node.name
+            node = parent
+        return ''
+
 
 def popup_roots(query):
     """Extra walk roots for the watcher's showing popups, with the same app scoping."""
@@ -201,14 +228,19 @@ def popup_roots(query):
             continue
         try:
             node = RawNode(connection, entry['bus'], entry['path'], pid)
-            if not node.getState().contains(pyatspi.STATE_SHOWING):
+            states = node.getState()
+            if not states.contains(pyatspi.STATE_SHOWING) or (entry.get('focus') and not states.contains(pyatspi.STATE_FOCUSED)):
                 continue
             name = RawNode(connection, entry['bus'], '/org/a11y/atspi/accessible/root', pid).name
+            window = node.window() if entry.get('focus') else ''
         except NotImplementedError:
             continue
         if query.get('application') and not fnmatch.fnmatchcase(name, query['application']):
             continue
-        roots.append(((pid, entry['path']), (node, 2, '', name, None, [{'name': name, 'role': 'application', 'rect': None, 'pid': pid}])))
+        app = {'name': name, 'role': 'application', 'rect': None, 'pid': pid}
+        # Depth 3 keeps the walk from treating a focused widget as a top-level window.
+        roots.append(((pid, entry['path']), (node, 3 if entry.get('focus') else 2, window, name, None,
+                      [app, {'name': window, 'role': 'frame', 'rect': None, 'pid': pid}] if entry.get('focus') else [app])))
     return roots
 
 
@@ -250,7 +282,7 @@ def accessible(query):
             if id(node) in extra_keys:
                 if extra_keys[id(node)] in seen:
                     continue
-            elif normalize_role(node.getRoleName()) in POPUP_ROLES:
+            elif extra_keys:
                 seen.add((node.get_process_id(), node.path))
             role, name = normalize_role(node.getRoleName()), node.name or ''
             pid = node.get_process_id()
