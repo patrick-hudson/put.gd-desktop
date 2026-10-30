@@ -4,12 +4,14 @@
 // focus(raise_window=True) on Wayland: the same activation a dock click does.
 // It never moves, resizes or closes anything.
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const PATH = '/org/putgd/LabWitness';
 const XML = `<node><interface name="org.putgd.LabWitness">
+<method name="Grabs"><arg type="s" direction="out"/></method>
 <method name="Windows"><arg type="s" direction="out"/></method>
 <method name="Pick"><arg type="i" direction="in"/><arg type="i" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Activate"><arg type="t" direction="in"/><arg type="b" direction="out"/></method>
@@ -33,13 +35,35 @@ function describe(window, stack) {
 
 export default class LabWitness extends Extension {
     enable() {
+        this._epoch = GLib.uuid_string_random();
+        this._serial = 0;
+        this._grabs = [];
+        this._signals = ['grab-op-begin', 'grab-op-end'].map(signal =>
+            global.display.connect(signal, (_display, window, operation) => {
+                const name = Object.keys(Meta.GrabOp).find(key =>
+                    /^(RESIZING|MOVING)/.test(key) && Meta.GrabOp[key] === operation) ?? String(operation);
+                this._grabs.push({serial: ++this._serial, window_id: window?.get_id() ?? null,
+                    pid: window?.get_pid() ?? null, operation: name,
+                    kind: name.startsWith('RESIZING_') ? 'resize' : name.startsWith('MOVING') ? 'move' : 'other',
+                    phase: signal === 'grab-op-begin' ? 'begin' : 'end',
+                    monotonic_us: GLib.get_monotonic_time()});
+                this._grabs = this._grabs.slice(-256);
+            }));
         this._dbus = Gio.DBusExportedObject.wrapJSObject(XML, this);
         this._dbus.export(Gio.DBus.session, PATH);
     }
 
     disable() {
+        for (const id of this._signals ?? [])
+            global.display.disconnect(id);
+        this._signals = [];
+        this._grabs = [];
         this._dbus?.unexport();
         this._dbus = null;
+    }
+
+    Grabs() {
+        return JSON.stringify({epoch: this._epoch, serial: this._serial, events: this._grabs});
     }
 
     Windows() {

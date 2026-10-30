@@ -33,7 +33,8 @@ def owned(pid):
 
 
 # at-spi2-core renamed ATSPI_ROLE_PUSH_BUTTON's name to "button" (Qt 6.10 on
-# GNOME 50 reports it); older servers say "push button". One canonical name.
+# GNOME 50 reports it); older servers say "push button". Normalize for matching
+# only; observations retain the server's spelling.
 ROLE_SYNONYMS = {'button': 'push button'}
 
 
@@ -52,7 +53,7 @@ def matches(row, query):
             if not fnmatch.fnmatchcase(row.get(key, ''), value):
                 return False
         elif key == 'role':
-            if row['role'] != normalize_role(value):
+            if normalize_role(row['role']) != normalize_role(value):
                 return False
         elif key == 'within':
             rect = row.get('rect')
@@ -275,6 +276,28 @@ def compositor_activate(compositor, window_id):
         witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
         return bool(witness.Activate(dbus.UInt64(window_id), dbus_interface='org.putgd.LabWitness', timeout=3))
     raise RuntimeError('this compositor witness cannot raise windows')
+
+
+def resize_witness(query):
+    """Read Mutter grab signals; geometry changes alone never prove resize start."""
+    compositor = query.get('compositor') or {}
+    if compositor.get('kind') != 'gnome-lab-witness':
+        raise RuntimeError('resize-start witness unavailable for this compositor')
+    import dbus
+    witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
+    return json.loads(str(witness.Grabs(dbus_interface='org.putgd.LabWitness', timeout=3)))
+
+
+def resize_started(before, after, target):
+    """Bind a new begin event to this extension instance and this owned client."""
+    if not before.get('epoch') or after.get('epoch') != before['epoch']:
+        raise RuntimeError('resize-start witness restarted during the gesture')
+    if after['serial'] < before['serial'] or (after['events'] and after['events'][0]['serial'] > before['serial'] + 1):
+        raise RuntimeError('resize-start witness lost events during the gesture')
+    return next((event for event in after['events']
+                 if before['serial'] < event['serial'] <= after['serial'] and event['phase'] == 'begin'
+                 and event['window_id'] == target['window_id'] and event['pid'] == target['pid']
+                 and event['kind'] == 'resize' and event['operation'].startswith('RESIZING_')), None)
 
 
 def compositor_pick(compositor, point):
@@ -517,7 +540,8 @@ def accessible(query):
                     continue
             elif extra_keys:
                 seen.add((node.get_process_id(), node.path))
-            role, name = normalize_role(node.getRoleName()), node.name or ''
+            server_role = node.getRoleName()
+            role, name = normalize_role(server_role), node.name or ''
             pid = node.get_process_id()
             # Do not walk unrelated applications for owned-control queries.
             if role == 'application':
@@ -566,7 +590,7 @@ def accessible(query):
                 except (NotImplementedError, RuntimeError):
                     pass
                 object_name = next((attributes[k] for k in ('id', 'objectName', 'object-name', 'accessible-id') if k in attributes), '')
-                row = {'window': window, 'application': application, 'name': name, 'role': role,
+                row = {'window': window, 'application': application, 'name': name, 'role': server_role,
                        'text': text, 'description': '' if protected else (node.description or ''),
                        'states': states, 'rect': rect, 'attributes': attributes, 'pid': pid,
                        'owned': is_owned(pid), 'objectName': object_name, 'accelerator': accelerator,
@@ -592,7 +616,7 @@ def accessible(query):
                             ancestor['rect'] = extents(ancestor['_node'])
                     matches_.append(row)
             if depth < 50:
-                ancestry = ancestors + [{'name':name,'role':role,'rect':rect,'pid':pid,'_node':node}]
+                ancestry = ancestors + [{'name':name,'role':server_role,'rect':rect,'pid':pid,'_node':node}]
                 stack.extend((child, depth + 1, window, application, popup, ancestry) for child in node if child is not None)
             elif getattr(node,'childCount',0):
                 truncated = True
@@ -632,7 +656,7 @@ def selector_matches(row, selector, candidates):
     """
     name, live = row.get('objectName'), label(row.get('name'))
     if selector.startswith('class:'):
-        return 1 if row['role'] in CLASS_ROLES.get(selector[6:], ()) else None
+        return 1 if normalize_role(row['role']) in CLASS_ROLES.get(selector[6:], ()) else None
     if name and (selector == name or (selector.startswith('glob:') and fnmatch.fnmatchcase(name, selector[5:])) or
                  any(c.get('name') == name for c in candidates)):
         return 0
@@ -854,24 +878,47 @@ def x11_hit(point):
             if found is None:
                 break
             path.append(str(found)); current = found
-        pid, name = None, ''
-        for wid in reversed(path):
-            if not name:
-                try:
-                    name = run('xdotool','getwindowname',wid)
-                except subprocess.CalledProcessError:
-                    pass
-            if pid is None:
-                try:
-                    pid = int(run('xdotool','getwindowpid',wid))
-                except (subprocess.CalledProcessError,ValueError):
-                    pass
-        return {'path':path,'pid':pid,'name':name or 'unnamed X11 window'}
+        return x11_hit_identity(path)
+
     finally:
         try:
             xlib.XCloseDisplay(display)
         finally:
             xlib.XSetErrorHandler(previous_handler)
+
+
+def x11_hit_identity(path):
+    """Resolve a WM decoration hit to its unique EWMH client, not the WM frame."""
+    pid, name, client = None, '', None
+    for wid in reversed(path):
+        if not name:
+            try:
+                name = run('xdotool','getwindowname',wid)
+            except subprocess.CalledProcessError:
+                pass
+        if pid is None:
+            try:
+                pid = int(run('xdotool','getwindowpid',wid))
+            except (subprocess.CalledProcessError,ValueError):
+                pass
+    if path and (not name or pid is None):
+        clients = [str(int(value,16)) for value in re.findall(
+            r'0x[0-9a-fA-F]+', run('xprop','-root','_NET_CLIENT_LIST'))]
+        candidates = []
+        for wid in clients:
+            try:
+                if set(x11_ancestors(wid)) & set(path):
+                    candidates.append(wid)
+            except subprocess.CalledProcessError:
+                continue  # A client closed during observation.
+        if len(candidates) == 1:
+            client = candidates[0]
+            try:
+                name = run('xdotool','getwindowname',client) or name
+                pid = int(run('xdotool','getwindowpid',client))
+            except (subprocess.CalledProcessError,ValueError):
+                pass
+    return {'path':path,'pid':pid,'name':name or 'unnamed X11 window','client':client}
 
 
 def x11_active():
@@ -905,6 +952,11 @@ def x11_settle(target, bound=2.5):
         if time.monotonic() >= deadline:
             return False
         if not activated:
+            # PID lookup and the deadline check can let a new foreground land.
+            # Repeat the complete eligibility check immediately before sending
+            # activation; a changed foreground is evaluated on the next pass.
+            if x11_active() != active:
+                continue
             subprocess.run(['xdotool', 'windowactivate', '--sync', wid], timeout=2,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             activated = True
@@ -1090,8 +1142,49 @@ def shell_cover(point, application):
                     kind = next((role for role, _, _ in chain if role in ('notification', 'alert') + POPUP_ROLES), chain[-1][0])
                     named = next((name for _, name, _ in reversed(chain) if name), '')
                     return (app.name or 'shell') + ' ' + kind + (' ' + repr(named) if named else '') + ' at ' + str(chain[-1][2])
-        except (RuntimeError, NotImplementedError, AttributeError):
+                cover = shell_tree_cover(window, (x,y), app.name or 'shell', pyatspi)
+                if cover:
+                    return cover
+        except (NotImplementedError, AttributeError) as error:
+            raise RuntimeError('shell cover observation unavailable: '+type(error).__name__) from error
+    return None
+
+
+def shell_tree_cover(window, point, application, api):
+    """Fallback when Cinnamon's stage pick stops at a full-stage container.
+
+    A showing notification can be a non-reactive actor: AT-SPI's point pick
+    misses it, though the exported tree still witnesses its drawn rectangle.
+    Only semantic shell covers containing the point qualify, never a label or
+    a full-stage container. Read names inside that cover to identify it.
+    """
+    stack, visited = [window], set()
+    while stack:
+        node = stack.pop()
+        key = getattr(node,'path',id(node))
+        if key in visited:
             continue
+        visited.add(key)
+        if len(visited) > 5000:
+            raise RuntimeError('shell cover tree exceeded 5000 nodes; occlusion unverified')
+        if not node.getState().contains(api.STATE_SHOWING):
+            continue
+        role = normalize_role(node.getRoleName())
+        if role in ('notification','alert') + POPUP_ROLES:
+            rect = list(node.queryComponent().getExtents(api.DESKTOP_COORDS))
+            if rect[0] <= point[0] < rect[0]+rect[2] and rect[1] <= point[1] < rect[1]+rect[3]:
+                names, pending = [], [node]
+                for _ in range(80):
+                    if not pending:
+                        break
+                    child = pending.pop()
+                    if not child.getState().contains(api.STATE_SHOWING):
+                        continue
+                    if normalize_role(child.getRoleName()) != 'password text' and child.name:
+                        names.append(child.name)
+                    pending.extend(c for c in child if c is not None)
+                return application+' '+role+(' '+repr(' / '.join(names)) if names else '')+' at '+str(rect)
+        stack.extend(child for child in node if child is not None)
     return None
 
 
@@ -1111,7 +1204,7 @@ def shell_hit(query):
                 for _ in range(50):
                     if node is None:
                         break
-                    if node.get_process_id()==expected['pid'] and (node.name or '')==expected['name'] and normalize_role(node.getRoleName())==expected['role']:
+                    if node.get_process_id()==expected['pid'] and (node.name or '')==expected['name'] and normalize_role(node.getRoleName())==normalize_role(expected['role']):
                         return {'ok':True,'backend':'shell-at-spi-pick','obscuring_window':None}
                     child = node.queryComponent().getAccessibleAtPoint(int(point[0]),int(point[1]),pyatspi.DESKTOP_COORDS)
                     if child == node:
@@ -1356,7 +1449,7 @@ def main():
     request = json.loads(sys.argv[1])
     try:
         function = {'accessible': accessible, 'geometry': geometry, 'control': control_geometry,
-                    'foreground': foreground, 'windows': windows, 'tray':tray,
+                    'foreground': foreground, 'windows': windows, 'tray':tray, 'resize':resize_witness,
                     'notification_monitor': notification_monitor, 'notification_log': notification_log,
                     'popup_watch': popup_watch}[request['probe']]
         print(json.dumps({'ok': True, 'result': function(request['query'])}))

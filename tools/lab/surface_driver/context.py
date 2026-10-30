@@ -111,7 +111,7 @@ class DriverContext(Context):
     def _probe(self, name, query):
         self._check_time()
         compositor = self.profile.get('compositor')
-        if compositor and self.profile.get('session') == 'wayland' and name in ('accessible','geometry','control','foreground','windows'):
+        if compositor and self.profile.get('session') == 'wayland' and name in ('accessible','geometry','control','foreground','windows','resize'):
             # Wayland AT-SPI extents are window-relative: the compositor witness
             # places them on the desktop and answers focus/hit-tests.
             query = dict(query, compositor=compositor)
@@ -120,7 +120,15 @@ class DriverContext(Context):
         script = 'python3 - '+shlex.quote(json.dumps({'probe':name,'query':query}))+" <<'SD_PROBE'\n"+source+'\nSD_PROBE\n'
         persistent = getattr(self.target, 'probe', None)
         if persistent:
-            result = persistent(name, query, source, timeout=min(15,max(.1,self._deadline-time.monotonic())))
+            remaining = self._deadline-time.monotonic()
+            if remaining <= 0:
+                raise RecipeFailed('recipe deadline exceeded before '+name+' probe; no request sent')
+            try:
+                result = persistent(name, query, source, timeout=min(15,remaining))
+            except RecipeBlocked as error:
+                if remaining < 15 and time.monotonic() >= self._deadline:
+                    raise RecipeBlocked('recipe deadline exhausted during '+name+' probe; '+error.reason) from error
+                raise
         else:
             result = self.shell(script)
             if result['returncode']:
@@ -172,7 +180,7 @@ class DriverContext(Context):
         """Read-only shell window inventory, scoped to the private family by default."""
         return self._probe('windows', {'owned': True, **(query or {})})
 
-    def focus(self, window, raise_window=True):
+    def focus(self, window, raise_window=False):
         """Select an input target and verify/optionally raise it before input."""
         owner = self.profile.get('windows',{}).get(window,{}).get('owner',window)
         self._current_window, self._popup = owner, None
@@ -317,14 +325,21 @@ class DriverContext(Context):
         self._guard(point=self._global_point(x,y,head))
         self.target.pointer(x,y,w,h,head=head)
 
-    def drag(self,start,end,button='left',steps=12,head=None):
+    def drag(self,start,end,button='left',steps=12,head=None,*,require_resize=False):
         if steps < 1:
             raise ValueError('drag steps must be positive')
         head = self._input_head if head is None else head
         w,h = self._dimensions(head)
         if any(not 0 <= x < w or not 0 <= y < h for x,y in (start,end)):
             raise RecipeBlocked('drag point outside selected head')
+        resize_before = resize_target = None
+        if require_resize:
+            if self.profile.get('compositor',{}).get('kind') != 'gnome-lab-witness':
+                raise RecipeBlocked('resize-start witness unavailable for this compositor')
+            resize_target = self.geometry(self._current_window)
         witness = self._guard(point=self._global_point(*start,head))
+        if require_resize:
+            resize_before = self._probe('resize', {})
         unmanaged = bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test')
         last = start
         dispatched = False
@@ -342,6 +357,22 @@ class DriverContext(Context):
                 self.target.pointer(x,y,w,h,head=head)
                 last = (x,y)
                 time.sleep(.025)
+                if require_resize and step == 1:
+                    from .probe import resize_started
+                    deadline = min(self._deadline, time.monotonic()+2)
+                    while True:
+                        after = self._probe('resize', {})
+                        try:
+                            proof = resize_started(resize_before, after, resize_target)
+                        except (RuntimeError, KeyError, TypeError) as error:
+                            raise RecipeBlocked('resize-start witness invalid: '+str(error)) from error
+                        if proof:
+                            self.note('resize-start '+json.dumps(dict(proof,epoch=after['epoch']),sort_keys=True))
+                            break
+                        if time.monotonic() >= deadline:
+                            raise RecipeBlocked('resize-start not witnessed: Mutter emitted no new interactive resize begin '
+                                                'for window '+str(resize_target['window_id'])+' after guarded press and first motion')
+                        time.sleep(.05)
         finally:
             if dispatched or not self.target.physical:
                 self._release_pointer(last,w,h,button,head)

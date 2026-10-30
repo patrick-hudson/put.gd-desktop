@@ -403,11 +403,11 @@ class StartupFocus(unittest.TestCase):
             return probe.x11_settle(self.editor),calls
 
     def test_window_zero_activates_the_target_once_then_waits(self):
-        ok,calls=self.settle(['0','0','10'],{})
+        ok,calls=self.settle(['0','0','0','10'],{})
         self.assertTrue(ok);self.assertEqual(calls,[['xdotool','windowactivate','--sync','10']])
 
     def test_same_process_window_is_replaced_by_the_target(self):
-        ok,calls=self.settle(['20','10'],{'20':7})
+        ok,calls=self.settle(['20','20','10'],{'20':7})
         self.assertTrue(ok);self.assertEqual(len(calls),1)
 
     def test_a_foreign_active_window_is_never_displaced(self):

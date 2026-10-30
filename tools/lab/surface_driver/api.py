@@ -127,7 +127,8 @@ class Context:
     def click_at(self, x: int, y: int, button: str = 'left', head: Optional[int] = None) -> None:
         raise NotImplementedError
 
-    def drag(self, start: tuple, end: tuple, button: str = 'left', steps: int = 12, head: Optional[int] = None) -> None:
+    def drag(self, start: tuple, end: tuple, button: str = 'left', steps: int = 12, head: Optional[int] = None, *, require_resize: bool = False) -> None:
+        """require_resize binds a new Mutter resize-begin signal to the target or blocks."""
         raise NotImplementedError
 
     def keys(self, *sequence: str) -> None:
@@ -184,7 +185,7 @@ class Context:
         """
         raise NotImplementedError
 
-    def focus(self, window: str, raise_window: bool = True) -> dict:
+    def focus(self, window: str, raise_window: bool = False) -> dict:
         """Select and verify an input target; optionally raise it using desktop policy.
 
         Every input rechecks focus/stacking. Obstruction is RecipeFailed naming

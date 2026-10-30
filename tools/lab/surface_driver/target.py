@@ -110,7 +110,7 @@ namespace = {'__name__': 'surface_driver_probe'}
 exec(compile(SOURCE, 'surface_driver_probe.py', 'exec'), namespace)
 functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
              'foreground':'foreground', 'windows':'windows', 'tray':'tray',
-             'notification_log':'notification_log'}
+             'notification_log':'notification_log', 'resize':'resize_witness'}
 while True:
     line = sys.stdin.buffer.readline(1024 * 1024 + 1)
     if not line:
@@ -125,6 +125,7 @@ while True:
         # checks stay in-process, so typing and drag steps pay no startup cost.
         name, query = request['probe'], request['query']
         fresh = (name in ('accessible','control') or bool(query.get('accessible')) or
+                 (name == 'foreground' and bool(query.get('shell_cover')) and query.get('point') is not None) or
                  (os.environ.get('XDG_SESSION_TYPE') == 'wayland' and
                   name in ('geometry','foreground','windows')))
         if fresh:
@@ -380,6 +381,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         A request that can change the desktop (foreground raise: xdotool
         windowactivate/windowraise) forces the lock heartbeat, like real input.
         """
+        started = time.monotonic()
         self.heartbeat(force=probe_mutates(name, query))
         if self._probe_failed:
             raise RecipeBlocked('persistent desktop probe failed; start a new run before further input')
@@ -404,6 +406,11 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         payload = (json.dumps({'probe':name,'query':query})+'\n').encode()
         if len(payload) > 1024 * 1024:
             raise RecipeBlocked('desktop probe request exceeded 1 MiB')
+        # Session discovery/startup spends this same request budget. Do not
+        # dispatch a request once it has expired or renew it after startup.
+        deadline = started + timeout
+        if time.monotonic() >= deadline:
+            raise RecipeBlocked(name+' probe budget exhausted before dispatch; no request sent')
         try:
             remaining_payload = memoryview(payload)
             while remaining_payload:
@@ -411,13 +418,16 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                 if not sent:
                     raise RecipeBlocked('persistent desktop probe request was not sent')
                 remaining_payload = remaining_payload[sent:]
-            deadline = time.monotonic()+timeout
             with selectors.DefaultSelector() as ready:
                 ready.register(process.stdout, selectors.EVENT_READ)
                 while b'\n' not in self._probe_buffer:
                     remaining = deadline-time.monotonic()
                     if remaining <= 0 or not ready.select(remaining):
-                        raise RecipeBlocked('persistent desktop probe timed out; further input withheld')
+                        status = process.poll()
+                        state = 'SSH process still running; reply outstanding' if status is None else 'SSH exit '+str(status)
+                        raise RecipeBlocked('persistent desktop probe timed out: '+name+'; elapsed %.3fs, budget %.3fs; '
+                                            % (time.monotonic()-started, timeout) + state +
+                                            '; further input withheld; start a new run')
                     data = os.read(process.stdout.fileno(),65536)
                     if not data:
                         raise RecipeBlocked('persistent desktop probe closed; further input withheld')
@@ -491,7 +501,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
     def key_state(self, codes, down):
         if self.physical:
             raise RecipeBlocked('physical held keys require input-agent scoped cleanup across lock loss; guest QMP only')
-        self.events([{'type':'key','data':{'down':down,'key':{'type':'qcode','data':code}}} for code in codes])
+        lab.input_events(self.run,[{'type':'key','data':{'down':down,'key':{'type':'qcode','data':code}}} for code in codes])
 
     @desktop_transport
     def pointer(self, x, y, width, height, down=None, button='left', head=0):
@@ -518,7 +528,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             events=[{'type':'abs','data':{'axis':a,'value':min(32767,max(0,math.ceil(v*32768/e)))}} for a,v,e in [('x',x,width),('y',y,height)]]
             if down is not None:
                 events.append({'type':'btn','data':{'button':button,'down':down}})
-            self.events(events)
+            lab.input_events(self.run,events)
         else:
             lab.pointer(self.run,x,y,width,height,down,button)
 
