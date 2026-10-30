@@ -10,16 +10,44 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 
+# The fixture waits for actual supervisor observations, including after atomic
+# progress.json replacements. Register before reading so no update is lost.
+WAIT_FOR_PROGRESS = '''
+import ctypes, json, os, select, time
+from pathlib import Path
+def wait_for_progress(directory, predicate):
+    libc = ctypes.CDLL(None, use_errno=True)
+    fd = libc.inotify_init1(os.O_CLOEXEC | os.O_NONBLOCK)
+    assert fd >= 0, ctypes.get_errno()
+    try:
+        assert libc.inotify_add_watch(fd, os.fsencode(directory), 0x80) >= 0, ctypes.get_errno()  # IN_MOVED_TO
+        deadline = time.monotonic() + 10
+        while True:
+            try:
+                progress = json.loads((Path(directory) / 'progress.json').read_text())
+            except FileNotFoundError:
+                progress = {}
+            if predicate(progress):
+                return
+            remaining = deadline - time.monotonic()
+            assert remaining > 0 and select.select([fd], [], [], remaining)[0], progress
+            os.read(fd, 65536)
+    finally:
+        os.close(fd)
+'''
+
 
 class PackageInstallContracts(unittest.TestCase):
-    def run_supervisor(self, body, timeout, recovery, status='Status: install ok installed\n', query_error=False):
+    def run_supervisor(self, body, timeout, recovery, status='Status: install ok installed\n', query_error=False,
+                       setup=''):
         with tempfile.TemporaryDirectory() as directory:
             script = '''import json, sys
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0, sys.argv[1])
 import package_install as install
-commands = [[sys.executable, '-c', sys.argv[3]]]
+exec(sys.argv[8])
+commands = [[sys.executable, '-c', sys.argv[3], sys.argv[2]]]
 queries = []
 def query(args, **kwargs):
     queries.append(args)
@@ -31,7 +59,7 @@ with patch.object(install.subprocess, 'run', side_effect=query):
 print(json.dumps({'result': result, 'queries': queries}))
 '''
             result = subprocess.run([sys.executable, '-c', script, str(ROOT / 'tools/lab'), directory,
-                                     body, str(timeout), str(recovery), status, str(query_error)],
+                                     body, str(timeout), str(recovery), status, str(query_error), setup],
                                     text=True, capture_output=True, timeout=20, check=True)
             assert (Path(directory) / 'progress.json').is_file()
             assert (Path(directory) / 'result.json').is_file()
@@ -84,9 +112,27 @@ print(json.dumps({'result': result, 'queries': queries}))
             os.close(old)
 
     def test_timeout_waits_for_exact_descendants_then_verifies_package(self):
+        child = WAIT_FOR_PROGRESS + '''
+import sys
+directory, parent = sys.argv[1], int(sys.argv[2])
+# Stay alive until the supervisor has timed out, and the original command's
+# exit has reparented us to the subreaper. Preserve the .8-second lower bound
+# without racing a fixed sleep against startup or scheduler delays.
+wait_for_progress(directory, lambda p: p.get('timedOut') and p.get('elapsedSeconds', 0) >= .8
+                  and os.getppid() != parent)
+print('descendant finished', flush=True)
+'''
         output, log = self.run_supervisor(
-            "import subprocess,sys; print('partial apt output', flush=True); "
-            "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(.8)'])", .2, 3)
+            WAIT_FOR_PROGRESS + f'''
+import subprocess, sys
+print('partial apt output', flush=True)
+child = subprocess.Popen([sys.executable, '-c', {child!r}, sys.argv[1], str(os.getpid())])
+# A short-lived command can finish before the first /proc inventory. Keep both
+# identities alive until they are recorded, then exercise orphan adoption.
+wait_for_progress(sys.argv[1], lambda p: {{os.getpid(), child.pid}} <=
+                  {{identity['pid'] for identity in p.get('ownedProcesses', [])}})
+print(json.dumps({{'parent': os.getpid(), 'child': child.pid}}), flush=True)
+''', 2, 3)
         result = output['result']
         self.assertTrue(result['timedOut'])
         self.assertTrue(result['ok'], result)
@@ -95,6 +141,62 @@ print(json.dumps({'result': result, 'queries': queries}))
         self.assertEqual(result['remainingPids'], [])
         self.assertEqual(output['queries'], [['dpkg', '-s', 'putgd'], ['dpkg', '--audit']])
         self.assertIn('partial apt output', log)
+        self.assertIn('descendant finished', log)
+        identities = next(json.loads(line) for line in log.splitlines() if line.startswith('{'))
+        self.assertEqual({p['pid'] for p in result['ownedProcesses']}, set(identities.values()))
+
+    def test_parent_exiting_during_discovery_cannot_hide_adopted_child(self):
+        # Release the parent only after taking a stale /proc children snapshot,
+        # then wait on its pidfd before validating that snapshot. This forces the
+        # real adoption race without depending on scheduler timing or sleeps.
+        setup = '''
+import os, select
+release_read, release_write = os.pipe()
+real_popen = install.subprocess.Popen
+def spawn(*args, **kwargs):
+    kwargs['pass_fds'] = (release_read,)
+    kwargs['env']['PUTGD_TEST_RELEASE_FD'] = str(release_read)
+    return real_popen(*args, **kwargs)
+install.subprocess.Popen = spawn
+real_read_text = Path.read_text
+released = False
+def read_text(path, *args, **kwargs):
+    global released
+    text = real_read_text(path, *args, **kwargs)
+    if str(path) == f'/proc/{os.getpid()}/task/{os.getpid()}/children' and text and not released:
+        released = True
+        fd = os.pidfd_open(int(text.split()[0]))
+        try:
+            os.write(release_write, b'go')
+            assert select.select([fd], [], [], 5)[0], 'original command did not exit'
+        finally:
+            os.close(fd)
+    return text
+Path.read_text = read_text
+'''
+        child = WAIT_FOR_PROGRESS + '''
+import sys
+wait_for_progress(sys.argv[1], lambda p: p.get('timedOut') and p.get('elapsedSeconds', 0) >= .8)
+print('adopted child finished', flush=True)
+'''
+        output, log = self.run_supervisor(f'''
+import json, os, subprocess, sys
+child = subprocess.Popen([sys.executable, '-c', {child!r}, sys.argv[1]])
+print(json.dumps({{'child': child.pid}}), flush=True)
+import select
+fd = int(os.environ['PUTGD_TEST_RELEASE_FD'])
+assert select.select([fd], [], [], 5)[0], 'supervisor did not take snapshot'
+os.read(fd, 2)
+''', 2, 3, setup=setup)
+        result = output['result']
+        self.assertTrue(result['timedOut'], result)
+        self.assertTrue(result['ok'], result)
+        self.assertGreaterEqual(result['elapsedSeconds'], .8)
+        self.assertEqual(result['remainingPids'], [])
+        child_pid = next(json.loads(line)['child'] for line in log.splitlines() if line.startswith('{'))
+        self.assertEqual([p['pid'] for p in result['ownedProcesses']], [child_pid])
+        self.assertIn('adopted child finished', log)
+        self.assertEqual(output['queries'], [['dpkg', '-s', 'putgd'], ['dpkg', '--audit']])
 
     def test_abort_kills_only_owned_pids_and_reports_recovery_state(self):
         stranger = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])

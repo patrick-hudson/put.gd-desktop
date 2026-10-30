@@ -1,0 +1,132 @@
+{
+  "desktop": "fedora-gnome-wayland",
+  "input_backend": {
+    "guest": "qmp",
+    "native": "vnc-or-host-input"
+  },
+  "catalog_tolerance": 0.025,
+  "notification_server": "gnome-shell",
+  "default_browser_kind": "firefox",
+  "at_spi": {
+    "available": true,
+    "reason": ""
+  },
+  "session": "wayland",
+  "known_gaps": [
+    "Catalogs are synthetic content; desktop drawn surfaces require human review"
+  ],
+  "window_titles": {
+    "history": "^put\\.gd$",
+    "settings": "^put\\.gd$",
+    "main": "^put\\.gd$",
+    "editor": "^Edit (image|& upload)",
+    "review": "Review",
+    "diagnostics": "Diagnostics",
+    "about": "About",
+    "destinations": "^put\\.gd$",
+    "updates": "^put\\.gd$",
+    "bar": "^put\\.gd recording controls$",
+    "fileDialog": ".*",
+    "putgdFileDialog": ".*",
+    "region": ".*",
+    "recsel": ".*"
+  },
+  "catalog_windows": {},
+  "focus": {
+    "backend": "profile-compositor",
+    "raise_before_input": false,
+    "reason": "Requires compositor_script returning verified focus/stacking; public resident view-state does not expose focus",
+    "desktop_hit_test": "gnome-shell-at-spi"
+  },
+  "notifications": {
+    "accessible": {
+      "application": "gnome-shell*"
+    },
+    "title_name_glob": "*{summary}*",
+    "reason": "Two Ubuntu GNOME guest attempts did not observe the requested toast; saved frames show a pre-existing Software Updater banner (#670)",
+    "actions_verified": false
+  },
+  "windows": {
+    "editor.canvas": {
+      "owner": "editor",
+      "accessible": {
+        "name": "Image being edited"
+      }
+    },
+    "fileDialog": {
+      "title": ".*",
+      "accessible": {
+        "role": "file chooser",
+        "application": "putgd*"
+      }
+    },
+    "putgdFileDialog": {
+      "title": ".*",
+      "accessible": {
+        "role": "file chooser",
+        "application": "putgd*"
+      }
+    },
+    "region": {
+      "title": ".*",
+      "accessible": {
+        "name": "Capture region",
+        "application": "putgd*"
+      }
+    },
+    "recsel": {
+      "title": ".*",
+      "accessible": {
+        "name": "Recording region",
+        "application": "putgd*"
+      }
+    },
+    "historyContextMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "historyRowMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "maskOptionsMenu": {
+      "owner": "review",
+      "popup": true
+    },
+    "confirmAction": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirm": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationDefault": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationReload": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationRemove": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    }
+  }
+}

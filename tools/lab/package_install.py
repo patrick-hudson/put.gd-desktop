@@ -152,7 +152,16 @@ def supervise(commands, directory, timeout, recovery, package='putgd'):
                     # Wait for descendants too, even if the original apt exited.
                     status = process.poll()
                     if status is not None and not owned.alive():
-                        break
+                        # A parent can exit between the /proc children snapshot
+                        # and pidfd validation, adopting a still-live child here
+                        # that discover() has not seen yet. Only ECHILD proves
+                        # the subreaper's entire package tree has finished. A
+                        # zero waitpid result keeps discovery/recovery running.
+                        try:
+                            while os.waitpid(-1, os.WNOHANG)[0]:
+                                pass
+                        except ChildProcessError:
+                            break
                     if time.monotonic() - started >= timeout + recovery:
                         report['aborted'] = True
                         report['stoppedPids'] = owned.abort()

@@ -249,7 +249,7 @@ TrayController::TrayController(OperationService& operations,
  // The panel's colour, not the app theme, picks the tint (#60): re-tint the
  // icon and its menu glyphs when the desktop switches.
  connect(&panel_,&PanelTone::changed,this,[this]{iconColor_=QColor();retintMenu();refreshActivity();});
- connect(&operations_,&OperationService::operationError,this,[this](const QString& id){operations_.inspect(id,[guard=QPointer<TrayController>(this),id](Error,QJsonObject operation){if(guard){operation["id"]=id;guard->latchFailure({"archive_failed","Local save failed",{}},operation);}});});
+ connect(&operations_,&OperationService::operationError,this,[this](const QString& id,QJsonObject operation){operation["id"]=id;latchFailure({"archive_failed","Local save failed",{}},operation);});
  connect(&operations_,&OperationService::storageActivityChanged,this,&TrayController::refreshActivity);
  connect(&operations_, &OperationService::observationsChanged, this, &TrayController::refreshActivity);
  refreshActivity();
