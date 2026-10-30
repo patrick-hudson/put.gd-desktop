@@ -488,7 +488,7 @@ sudo -n chown -R user:user /home/user/candidate/output
         if target == 'ui-catalog' and getattr(args, 'benchmark_catalog_scp', False) and not build_error:
             legacy_started = time.monotonic()
             run(['scp', *options, '-P', port, '-r', f'user@{host}:/home/user/candidate/output/.',
-                 str(directory / 'legacy-scp')], timeout=max(150, remaining()))
+                 str(directory / 'legacy-scp')], timeout=remaining())
             receipt['legacyScpSeconds'] = round(time.monotonic() - legacy_started, 3)
         collect_artifacts(ssh, options, host, port, directory, receipt, build_error, timeout=remaining())
         receipt['identity'] = verify_identity(directory / 'artifacts', args.commit, target)
