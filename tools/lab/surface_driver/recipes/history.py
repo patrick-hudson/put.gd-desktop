@@ -20,6 +20,7 @@ Missing fixtures must block in the core; do not emulate their success.
 from __future__ import annotations
 
 import json
+import html
 from decimal import Decimal, ROUND_HALF_UP
 
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
@@ -957,11 +958,11 @@ def command_tooltips(ctx):
             _frame(ctx, 'before')
         config = _result(ctx.call('settings.get'))['document']
         for action, label in labels.items():
-            _hover_history_node(ctx, {'name': label, 'role': 'push button'})
+            node = _hover_history_node(ctx, {'name': 'Capture region*edit' if action == 'edit' else label, 'role': 'push button'})
             def tooltip():
                 rows = _nodes(ctx, role='tool tip')
-                texts = [n.get('text') or n.get('name', '') for n in rows]
-                return next((text for text in texts if label in text), None)
+                texts = [html.unescape(n.get('text') or n.get('name', '')) for n in rows]
+                return next((text for text in texts if label in text or node.get('name', label) in text), None)
             text = ctx.wait(tooltip, 'owned tooltip for ' + action)
             ctx.expect('Output' in text or 'local' in text.lower() or 'Nothing is saved or uploaded' in text,
                        'command tooltip includes actual output behavior')
@@ -970,7 +971,7 @@ def command_tooltips(ctx):
                 ctx.expect(shortcut in text, 'tooltip includes configured shortcut')
             if unavailable:
                 ctx.expect('New captures have no output' in text, 'tooltip includes unavailability reason')
-            ctx.frame('tooltip-' + action + ('-unavailable' if unavailable else '-local'))
+            _frame(ctx, 'tooltip-' + action + ('-unavailable' if unavailable else '-local'), None)
             ctx.keys('Esc')
     _frame(ctx, 'after')
 
@@ -1246,7 +1247,7 @@ def _shell_command_recipe(interaction, action):
         _frame(ctx, 'before')
         _exercise_command(ctx, action, lambda _: _click_history_node(ctx, {'name': {
             'region': 'Capture region', 'window': 'Capture window', 'desktop': 'Capture desktop',
-            'edit': 'Capture region & edit', 'record': 'Record screen', 'clipboard': 'Upload clipboard'}[action], 'role': 'push button'}), external_focus=False)
+            'edit': 'Capture region*edit', 'record': 'Record screen', 'clipboard': 'Upload clipboard'}[action], 'role': 'push button'}), external_focus=False)
         _open(ctx)
         _frame(ctx, 'after')
     command.__name__ = 'command_' + action
