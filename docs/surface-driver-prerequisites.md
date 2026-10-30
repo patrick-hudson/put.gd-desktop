@@ -11,7 +11,7 @@ these normal distribution packages **inside a disposable guest**:
 ```sh
 sudo -n apt-get update
 sudo -n apt-get install -y --no-install-recommends \
-  python3 python3-pyatspi python3-pyqt6 dbus-bin libglib2.0-bin libx11-6 \
+  python3 python3-pyatspi python3-dbus python3-pyqt6 dbus-bin libglib2.0-bin libx11-6 \
   xdotool x11-utils x11-xserver-utils xclip wl-clipboard
 ```
 
@@ -20,7 +20,7 @@ The executable provisioning step is
 executables after installation. `xdotool`, `xprop` and `xrandr` provide X11 window,
 stacking and head observations; `xclip` reads X11 clipboard data. Wayland profiles
 use `wl-paste` and `wl-copy`. `python3-pyatspi` supplies the accessibility probe;
-`dbus-bin` supplies `dbus-monitor`, and `libglib2.0-bin` supplies `gdbus`.
+`python3-dbus` supplies the tray observer's D-Bus client. `dbus-bin` supplies `dbus-monitor`, and `libglib2.0-bin` supplies `gdbus`.
 `python3-pyqt6` preserves clipboard MIME data in the native Qt clipboard backend.
 The X11 hit-test also requires the distro X11 library.
 
