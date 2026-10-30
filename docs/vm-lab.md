@@ -516,9 +516,21 @@ operations and overlay cleanup share a host lock. Cleanup also checks actual
 process/open-file identities and QEMU backing chains, identified by their image
 headers rather than filename extensions. It holds a native QEMU image lock
 through final verification and unlink, preventing a competing writer from
-opening the disk. Unrelated nondumpable applications may hide their memory maps;
-the held image lock handles that normal host restriction, while hidden VM
-processes and incomplete image inventories still refuse cleanup. It refuses running,
+opening the disk. The process inventory must also rule out ordinary read-only
+file descriptors and mappings, including those held by root or another user.
+If a process is unreadable, cleanup retries the same read-only inventory with
+`sudo -n -- /usr/bin/python3 -I -B`; it does not run the lab controller, import
+checkout modules at elevation or delete files as root. The elevated program is
+the scan function's source, captured once when cleanup is imported. A regular
+user can't read `/proc/1/fd`, so in practice every host takes this path: boat's
+`user` runner and all five builders already allow `/usr/bin/python3` through
+`sudo -n` without a prompt. No sudo rule is installed or changed. The direct
+scan alone is enough only where every process is readable, such as cleanup run
+as root.
+Unavailable sudo, unreadable elevated inventory, changed process identities,
+`hidepid` and nested PID namespaces refuse cleanup; a native image lock alone
+cannot establish that an opaque process has no read-only descriptor.
+Incomplete image inventories also refuse cleanup. It refuses running,
 referenced, symlinked or mismatched disks, changed evidence and unrecorded
 completion. It only removes `disk.qcow2`; screenshots, logs, parameters, results,
 keys, firmware/TPM state and historical metadata remain in place. The separate
