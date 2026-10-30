@@ -404,6 +404,26 @@ class DestinationsContracts(unittest.TestCase):
         self.assertEqual(profiles[0]['id'], ctx.f['profile']['id'])
         self.assertEqual(profiles[0]['credentials'], ctx.f['profile']['credentials'])
 
+    def test_native_edit_withholds_text_when_focus_cannot_be_verified(self):
+        from unittest.mock import patch
+        ctx = self.context()
+        ctx.profile['session'] = 'wayland'
+        with patch('tools.lab.surface_driver.recipes.settings_input.field_click',
+                   side_effect=RecipeBlocked('focus not verified', issue=856)):
+            with self.assertRaises(RecipeBlocked):
+                lane._edit(ctx, 's3Bucket', 'surface-valid-bucket')
+        self.assertFalse(any(e[0] in ('type_text', 'keys') for e in ctx.events))
+
+    def test_service_endpoint_edits_remain_on_loopback(self):
+        from urllib.parse import urlsplit
+        import ipaddress
+        ctx = self.context()
+        lane.service(ctx)
+        endpoints = [e[1] for e in ctx.events if e[0] == 'type_text']
+        self.assertEqual(len(endpoints), 2)
+        self.assertTrue(all(ipaddress.ip_address(urlsplit(value).hostname).is_loopback
+                            for value in endpoints))
+
     def test_credential_input_refuses_a_non_owned_path_before_reading(self):
         ctx = self.context()
         ctx.f['credentials_file'] = '/tmp/foreign-input.json'

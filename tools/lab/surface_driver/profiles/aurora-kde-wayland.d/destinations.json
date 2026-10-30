@@ -168,6 +168,98 @@
         "name": "*",
         "role": "combo box",
         "label": "Credential storage"
+      },
+      "destinationList": {
+        "name": "Destinations",
+        "role": "list"
+      },
+      "destinationLabel": {
+        "name": "Destination name",
+        "role": "text"
+      },
+      "addDestinationCredentials": {
+        "name": "Add credentials\u2026",
+        "role": "push button"
+      },
+      "s3Bucket": {
+        "name": "Bucket",
+        "role": "text"
+      },
+      "s3ObjectPrefix": {
+        "name": "Folder in bucket",
+        "role": "text"
+      },
+      "s3PublicUrlBase": {
+        "name": "Link domain",
+        "role": "text"
+      },
+      "advancedSettings": {
+        "name": "Advanced connection settings",
+        "role": "check box"
+      },
+      "customEndpoint": {
+        "name": "Use a custom endpoint",
+        "role": "check box"
+      },
+      "s3Endpoint": {
+        "name": "Endpoint",
+        "role": "text"
+      },
+      "s3StorageClass": {
+        "name": "Storage class",
+        "role": "text"
+      },
+      "s3ConnectTimeoutMsControl": {
+        "name": "Connect timeout",
+        "role": "spin button"
+      },
+      "s3StorageClassReset": {
+        "name": "Reset Storage class",
+        "role": "push button"
+      },
+      "s3ConnectTimeoutMsReset": {
+        "name": "Reset Connect timeout",
+        "role": "push button"
+      },
+      "credentialAccessKey": {
+        "name": "Access key ID",
+        "role": "text"
+      },
+      "credentialSecretKey": {
+        "name": "Secret access key",
+        "role": "password text"
+      },
+      "credentialSessionToken": {
+        "name": "Session token",
+        "role": "password text"
+      },
+      "storeCredentials": {
+        "name": "Use for this session",
+        "role": "push button"
+      },
+      "s3AclModeHelp": {
+        "name": "Help for Upload access request",
+        "role": "check box"
+      },
+      "destinationStatus": {
+        "name": "Destination status",
+        "role": "label"
+      },
+      "text:Show secret access key": {
+        "name": "Show secret access key",
+        "role": "push button"
+      },
+      "text:Hide secret access key": {
+        "name": "Hide secret access key",
+        "role": "push button"
+      },
+      "text:Unlock saved credentials": {
+        "name": "Unlock saved credentials",
+        "role": "push button"
+      },
+      "testDestination": {
+        "name": "Test upload and link",
+        "role": "push button"
       }
     }
   }

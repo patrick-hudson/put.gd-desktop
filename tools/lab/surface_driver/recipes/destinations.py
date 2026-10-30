@@ -117,6 +117,9 @@ def _open(ctx, count=1, *, saved_credentials=False, fixture='destinations'):
                  'preferences': {'unlockCredentialsAtStartup': False,
                                  'appearance': {'theme': 'dark'}}})
     ctx.view('ui.show', {'view': 'destinations'})
+    if ctx.profile.get('settings', {}).get('foreground_script'):
+        from .settings_input import prepare
+        prepare(ctx)
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'known destination fixture')
     ctx.use_catalog('destinations', REFERENCE)
     geometry = ctx.geometry('destinations')
@@ -166,7 +169,8 @@ def _wheel(ctx, clicks):
 
 def _click(ctx, control, *, window='destinations'):
     options = ctx.profile.get('settings', {})
-    if window == 'destinations' and options.get('foreground_script') and control in options.get('live_controls', {}):
+    if window == 'destinations' and (ctx.profile.get('session') == 'wayland' or
+            (options.get('foreground_script') and control in options.get('live_controls', {}))):
         from .settings_input import click
         return click(ctx, control)
     for attempt in range(12 if window == 'destinations' else 1):
@@ -181,7 +185,11 @@ def _click(ctx, control, *, window='destinations'):
 
 
 def _edit(ctx, control, text):
-    _click(ctx, control)
+    if ctx.profile.get('session') == 'wayland':
+        from .settings_input import field_click
+        field_click(ctx, control)
+    else:
+        _click(ctx, control)
     ctx.keys('Ctrl+A')
     ctx.type_text(text)
     ctx.keys('Tab')
@@ -298,9 +306,11 @@ def acl(ctx):
 @_failure_frame
 def service(ctx):
     _, profiles = _open(ctx)
-    # The selector opens endpoint editing; it does not supply an account's
-    # endpoint. No test/upload is invoked for these reserved fixture addresses.
-    for index, endpoint in ((1, 'https://surface.invalid.r2.cloudflarestorage.com'),
+    # Exercise the R2/custom editing affordance with loopback addresses only.
+    # Selecting a service never invokes its test/upload action.
+    original = urlsplit(profiles[0]['settings']['endpoint'])
+    alternate = original._replace(netloc='127.0.0.2:' + str(original.port)).geturl()
+    for index, endpoint in ((1, alternate),
                              (2, profiles[0]['settings']['endpoint'])):
         _choose(ctx, 's3Service', index)
         if not _state(ctx, 'advancedSettings', 'checked'):
