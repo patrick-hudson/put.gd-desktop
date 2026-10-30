@@ -1,0 +1,7 @@
+{
+  "run": "/home/user/r3/work/lab-runs/core-r3",
+  "runId": "68f9d2d3-bd17-40f7-86e9-33e0c3da2763",
+  "completed": true,
+  "outcome": "failed",
+  "note": "Reviewed mixed development campaign; raw failures and blocked gates retained, not relabelled as passed."
+}

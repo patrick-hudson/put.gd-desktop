@@ -56,7 +56,10 @@ class Geometry(unittest.TestCase):
         target._outputs = [{'width': 1280, 'height': 800, 'x': 0, 'y': 0},
                            {'width': 1024, 'height': 768, 'x': 1280, 'y': 0}]
         sent = []
-        target.events = lambda *args: sent.append(args)
+        target.run = Path('/owned/run')
+        sending = patch('tools.lab.surface_driver.target.lab.input_events', side_effect=lambda run,*args:sent.append(args))
+        sending.start()
+        self.addCleanup(sending.stop)
         target.pointer(320, 200, 1280, 800, head=0)
         self.assertEqual(len(sent[0]), 1)  # no display/head-bound tablet
         self.assertEqual([e['data']['value'] for e in sent[0][0]], [math.ceil(320*32768/2304), 8192])
