@@ -422,6 +422,7 @@ class HistoryRecipeTests(unittest.TestCase):
                 with self.assertRaises(RecipeBlocked) as error:
                     item.function(FakeContext())
                 self.assertEqual(error.exception.reason, history.BLOCKED[item.interactions[0]])
+                self.assertEqual(error.exception.issue, 820)
                 self.assertGreater(len(error.exception.reason), 50)
 
     def test_references_name_existing_catalog_captures(self):

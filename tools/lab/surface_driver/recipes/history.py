@@ -760,7 +760,7 @@ BLOCKED = {
 
 def _declare_blocked(interaction, reason):
     def declaration(ctx):
-        ctx.blocked(reason, issue=675)
+        ctx.blocked(reason, issue=820)
     declaration.__name__ = 'blocked_' + interaction.replace('.', '_').replace('-', '_')
     recipe(interaction)(declaration)
 
