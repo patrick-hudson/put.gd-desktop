@@ -695,6 +695,20 @@ class Contracts(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'injected'):
             next(r for r in RECIPES if r.interactions == ('settings.notifications',)).function(ctx)
 
+    def test_binding_requires_confirmed_layout_normalized_sequence(self):
+        from unittest.mock import patch
+        ctx = Fake()
+        entry = {'requested': 'Ctrl+Alt+Shift+9', 'effective': 'Ctrl+Alt+(',
+                 'actual': ['Ctrl+Alt+('], 'bound': True, 'state': 'bound'}
+        with patch.object(lane, 'shortcut_status', return_value={'available': True, 'bindings': {'region': entry}}):
+            lane.binding(ctx, 'region', 'Ctrl+Alt+Shift+9')
+            entry['actual'] = ['Ctrl+Alt+8']
+            with self.assertRaises(RecipeFailed):
+                lane.binding(ctx, 'region', 'Ctrl+Alt+Shift+9')
+            entry.update(actual=['Ctrl+Alt+('], requested='Ctrl+Alt+8')
+            with self.assertRaises(RecipeFailed):
+                lane.binding(ctx, 'region', 'Ctrl+Alt+Shift+9')
+
     def test_binding_configuration_is_not_desktop_proof(self):
         ctx = Fake()
         ctx.available = False

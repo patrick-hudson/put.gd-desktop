@@ -392,7 +392,12 @@ def binding(ctx, action, chord):
             ctx.note('native shortcut binding ' + action + ': ' + json.dumps(current, sort_keys=True))
             observed = current
         actual = entry.get('actual')
-        return entry.get('bound') is True and not entry.get('error') and actual in (chord, [chord])
+        # KGlobalAccel confirms the layout-normalized sequence (for example a
+        # shifted digit), while requested retains the person's saved chord.
+        effective = entry.get('effective', chord)
+        return (entry.get('requested', chord) == chord and bool(effective) and
+                entry.get('bound') is True and not entry.get('error') and
+                actual in (effective, [effective]))
     ctx.wait(matches, action + ' binding confirmed by desktop')
 
 
