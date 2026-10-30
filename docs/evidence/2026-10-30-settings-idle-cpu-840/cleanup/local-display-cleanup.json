@@ -1,0 +1,29 @@
+{
+  "removedEntries": [
+    {
+      "name": "Issue 840 GNOME Settings CPU",
+      "port": 59840,
+      "type": "vm",
+      "hostIp": "213.32.24.165"
+    },
+    {
+      "name": "Issue 840 Cinnamon Settings CPU",
+      "port": 59841,
+      "type": "vm",
+      "hostIp": "178.33.123.71"
+    }
+  ],
+  "beforeCount": 20,
+  "afterCount": 18,
+  "unrelatedEntriesPreserved": true,
+  "tunnels": {
+    "putgd-vm-s840g.service": {
+      "exitCode": 4,
+      "state": "inactive"
+    },
+    "putgd-vm-s840c.service": {
+      "exitCode": 4,
+      "state": "inactive"
+    }
+  }
+}

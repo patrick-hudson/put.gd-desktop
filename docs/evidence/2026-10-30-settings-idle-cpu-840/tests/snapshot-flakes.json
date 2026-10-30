@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "kind": "boat-direct-ctest",
+    "commit": "be8bc6b13f28afd03c835211f98f608909b84b6f"
+  },
+  "command": [
+    "ctest",
+    "--preset",
+    "dev",
+    "--parallel",
+    "12",
+    "--resource-spec-file",
+    "/home/user/work/put.gd/src/tools/ci/ctest-resources.json"
+  ],
+  "exitCode": 0,
+  "retryEnabled": false,
+  "summary": {
+    "tests": 114,
+    "failedFirst": [],
+    "failed": [],
+    "retried": [],
+    "passedOnRetry": [],
+    "blocking": [],
+    "unexplainedCtestFailure": false,
+    "ok": true
+  }
+}
