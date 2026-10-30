@@ -212,6 +212,8 @@ bool captureTrayMenus(const QString& output,QJsonArray& captures){
  SettingsService settings(data.filePath("config.json"),[](const QString&,const QJsonObject&){return Error{};});
  auto config=catalogConfig(data.path());auto preferences=config["preferences"].toObject();preferences["notifications"]=false;config["preferences"]=preferences;if(!settings.save(config,{}))return false;
  ProviderRegistry registry;auto provider=std::make_shared<TrayCatalogProvider>();registry.add("proton-drive",provider);
+ // Reply storage outlives the drain guard, including replies arriving after a timeout.
+ Error invokeError;QString operationId;QJsonObject failed;bool inspected=false;
  Source source;source.payload=textPayload();OperationService operations(data.filePath("data"),settings,registry,source);
  if(!waitUntil([&]{return operations.ready();}))return false;
  // Release future callbacks too: a timed-out wait can precede upload().
@@ -238,12 +240,12 @@ bool captureTrayMenus(const QString& output,QJsonArray& captures){
  if(!editSources||!editSources->menu()||!shot(*editSources->menu(),"00-tray-edit-submenu"))return false;
  auto* summary=menu->findChild<QAction*>("trayOutputSummary");if(!summary||!summary->menu()||!shot(*summary->menu(),"00-tray-output-submenu"))return false;
  auto* uploading=menu->findChild<QAction*>("trayUploadStatus");auto* attention=menu->findChild<QAction*>("trayFailedUploads");if(!uploading||!attention)return false;
- Error invokeError;QString operationId;operations.invoke("clipboard",[&](Error error,QJsonObject result){invokeError=error;operationId=result["operationId"].toString();});
+ operations.invoke("clipboard",[&](Error error,QJsonObject result){invokeError=error;operationId=result["operationId"].toString();});
  if(!waitUntil([&]{return invokeError||(!operationId.isEmpty()&&provider->held()&&uploading->isVisible());})||invokeError)return false;
  if(!shot(*menu,"00-tray-menu-uploading"))return false;
  provider->release();
  if(!waitUntil([&]{return attention->isVisible()&&attention->text()=="Failed uploads (1)"&&!uploading->isVisible();}))return false;
- QJsonObject failed;bool inspected=false;operations.inspect(operationId,[&](Error error,QJsonObject value){invokeError=error;failed=value;inspected=true;});
+ operations.inspect(operationId,[&](Error error,QJsonObject value){invokeError=error;failed=value;inspected=true;});
  if(!waitUntil([&]{return inspected;})||invokeError||!QStringList{"failed","partial"}.contains(failed["state"].toString())||failed["items"].toArray().isEmpty()||failed["items"].toArray().first().toObject()["error"].toObject()["code"]!="proton_account_busy")return false;
  return shot(*menu,"00-tray-menu-proton-busy");
 }
