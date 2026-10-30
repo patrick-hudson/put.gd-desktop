@@ -57,6 +57,12 @@ if case.startswith('share-expiry'):
         'expiresAt': expires, 'progress': {'schemaVersion': 1}, 'error': {}}}), flush=True)
     sys.exit(0)
 if case == 'timeout':
+    # The cancellation tests must know the request was dispatched, rather than
+    # guessing how long account-lock persistence and helper startup will take.
+    received = request['destination']['settings'].get('receivedFile')
+    if received:
+        with open(received, 'x') as marker:
+            marker.write(request['method'])
     time.sleep(3)
 elif case == 'malformed':
     print('malformed', flush=True)
