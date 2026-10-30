@@ -3,6 +3,7 @@
 Real local Linux processes and guest shell guards only; no apt, VM or desktop.
 """
 import contextlib
+import errno
 import importlib.util
 import io
 import json
@@ -327,6 +328,286 @@ class StagingRecoveryContracts(unittest.TestCase):
                         wait_for(lambda: dead(lab.read_json(remote / 'staging-process.json')['pid']))
 
 
+    def hold(self, path):
+        # A real process holding a flock, as a live controller or guard holder would.
+        holder = subprocess.Popen([sys.executable, '-c',
+            f'import fcntl,sys; f=open({str(path)!r},"a"); fcntl.flock(f,fcntl.LOCK_EX); '
+            'print("held",flush=True); sys.stdin.read()'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        self.assertEqual(holder.stdout.readline().strip(), 'held')
+        def release():
+            if holder.poll() is None:
+                holder.stdin.close()
+                holder.wait(timeout=3)
+            holder.stdout.close()
+        self.addCleanup(release)
+        return release
+
+    def test_validator_missing_receipt_recovery_refused_during_live_controller_window(self):
+        # F1 (rev761b test_missing_receipt_recovery_during_live_controller_window):
+        # staging succeeded and the controller is still uploading package.deb or
+        # launching the supervisor, so there is no progress.json and no receipt.
+        wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
+        self.assertEqual(wrapper.wait(timeout=3), 0)
+        (self.evidence / 'staging-failed.json').unlink()
+        release = self.hold(self.home / 'install.lock')
+        for abandoned in (False, True):
+            with self.subTest(abandoned=abandoned):
+                with self.assertRaisesRegex(lab.LabError, 'install controller .* is still running'):
+                    self.recover(abandoned=abandoned)
+                self.assertEqual((self.active / 'job').read_text(), JOB)
+                self.assertFalse((self.evidence / 'staging-recovery.json').exists())
+        release()
+        # The same guest state stays recoverable once the controller is dead.
+        self.assertEqual(self.recover(abandoned=False)['state'], 'staging-finished')
+        self.assertFalse(self.active.exists())
+
+    def test_live_controller_upload_window_refuses_recovery_end_to_end(self):
+        with tempfile.TemporaryDirectory(prefix='stg761-') as directory:
+            home = Path(directory)
+            controller = subprocess.Popen([sys.executable, '-c', UPLOADING_CONTROLLER,
+                str(ROOT / 'tools/lab/lab.py'), str(home), str(STAGING)],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            remote, evidence = home / 'putgd-lab' / JOB, home / JOB
+            try:
+                self.assertEqual(controller.stdout.readline().strip(), 'uploading')
+                self.assertTrue((evidence / 'helper.json').exists())  # Staging succeeded.
+                self.assertTrue((remote / 'staging-result.json').exists())
+                self.assertFalse((remote / 'progress.json').exists())
+                def ssh(_run, script, **kwargs):
+                    return subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
+                        env={**os.environ, 'HOME': directory}, check=True, timeout=5).stdout
+                for abandoned in (False, True):
+                    with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', side_effect=ssh), \
+                            self.assertRaisesRegex(lab.LabError, 'install controller .* is still running'):
+                        lab.recover_staging(home, JOB, abandoned=abandoned)
+                    self.assertEqual((home / 'putgd-lab/install-active/job').read_text(), JOB)
+                # A concurrent install controller is refused on the host as well.
+                with patch.object(lab, 'ssh') as guest, self.assertRaisesRegex(lab.LabError, 'Install refused'):
+                    lab.install_package(home, 'synthetic.deb')
+                guest.assert_not_called()
+                (home / 'upload-failed').touch()
+                _, error = controller.communicate(timeout=10)
+                self.assertNotEqual(controller.returncode, 0)
+                self.assertIn('upload failed', error)
+                # Only the controller itself released its lock.
+                self.assertFalse((home / 'putgd-lab/install-active').exists())
+                self.assertFalse((evidence / 'staging-recovery.json').exists())
+            finally:
+                (home / 'upload-failed').touch()
+                if controller.poll() is None:
+                    controller.communicate(timeout=10)
+
+    def supervisor(self, wait=None, sudo_uid=None):
+        # The real root helper as the lab user. Fake apt/dpkg record any start,
+        # so an unadmitted supervisor on old code cannot touch the workstation.
+        self.remote.chmod(0o700)
+        tools = self.home / 'fake-bin'
+        tools.mkdir(exist_ok=True)
+        for name in ('apt-get', 'dpkg'):
+            (tools / name).write_text(f'#!/bin/sh\necho {name} "$@" >> {self.home}/apt-started\nexit 1\n')
+            (tools / name).chmod(0o700)
+        env = {key: value for key, value in os.environ.items() if key != 'SUDO_UID'}
+        env['PATH'] = f'{tools}:{env["PATH"]}'
+        helper = str(ROOT / 'tools/lab/package_install.py')
+        if wait is None:
+            return subprocess.run([sys.executable, helper, str(self.remote), '5', '5'],
+                text=True, capture_output=True, env=env, timeout=30)
+        return subprocess.Popen([sys.executable, '-c',
+            'import importlib.util, os, sys; spec = importlib.util.spec_from_file_location("helper", sys.argv[1]); '
+            'helper = importlib.util.module_from_spec(spec); spec.loader.exec_module(helper); '
+            'helper.enter_directory(sys.argv[2], os.getuid()); '
+            'helper.admit(os.path.basename(sys.argv[2]), os.getuid(), wait=float(sys.argv[3]))',
+            helper, str(self.remote), str(wait)], text=True, stderr=subprocess.PIPE, env=env)
+
+    def assert_supervisor_never_started(self, result):
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.remote / 'progress.json').exists())
+        self.assertFalse((self.remote / 'result.json').exists())
+        self.assertFalse((self.home / 'apt-started').exists())
+
+    def test_supervisor_refuses_to_run_without_its_install_token(self):
+        (self.home / 'putgd-lab/install-guard').touch()
+        for case in ('released', 'replacement', 'linked-job', 'missing-guard'):
+            with self.subTest(case=case):
+                if case == 'released':
+                    (self.active / 'job').unlink()
+                    self.active.rmdir()
+                elif case == 'replacement':
+                    (self.active / 'job').write_text('install-' + 'c' * 32)
+                elif case == 'linked-job':
+                    (self.active / 'job').unlink()
+                    (self.home / 'elsewhere').write_text(JOB)
+                    (self.active / 'job').symlink_to(self.home / 'elsewhere')
+                else:
+                    (self.home / 'putgd-lab/install-guard').unlink()
+                result = self.supervisor()
+                self.assertIn('Install supervisor refused to start', result.stderr)
+                self.assert_supervisor_never_started(result)
+                if case == 'released':
+                    self.active.mkdir()
+                (self.active / 'job').unlink(missing_ok=True)
+                (self.active / 'job').write_text(JOB)
+                (self.home / 'putgd-lab/install-guard').touch()
+
+    def test_supervisor_admission_records_start_while_holding_token(self):
+        (self.home / 'putgd-lab/install-guard').touch()
+        admission = self.supervisor(wait=1)
+        _, error = admission.communicate(timeout=10)
+        self.assertEqual(admission.returncode, 0, error)
+        self.assertEqual(lab.read_json(self.remote / 'progress.json')['admittedJob'], JOB)
+        # The supervisor has started: guarded recovery now refuses and keeps the token.
+        wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
+        self.assertEqual(wrapper.wait(timeout=3), 0)
+        for abandoned in (False, True):
+            with self.assertRaisesRegex(lab.LabError, 'guest guard refused'):
+                self.recover(abandoned=abandoned)
+            self.assertEqual((self.active / 'job').read_text(), JOB)
+
+    def test_delayed_supervisor_start_after_recovery_never_runs_unlocked(self):
+        # The controller died after a launch whose sudo start was delayed.
+        wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
+        self.assertEqual(wrapper.wait(timeout=3), 0)
+        (self.evidence / 'staging-failed.json').unlink()
+        self.assertEqual(self.recover(abandoned=False)['state'], 'staging-finished')
+        self.assertFalse(self.active.exists())
+        self.assert_supervisor_never_started(self.supervisor())
+        # A replacement job's token does not admit this job's supervisor either.
+        self.active.mkdir()
+        (self.active / 'job').write_text('install-' + 'c' * 32)
+        self.assert_supervisor_never_started(self.supervisor())
+
+    def test_recovery_release_and_supervisor_admission_serialize_on_install_guard(self):
+        guard = self.home / 'putgd-lab/install-guard'
+        # Recovery's guarded release holds install-guard; admission must wait for it.
+        release = self.hold(guard)
+        admission = self.supervisor(wait=5)
+        time.sleep(.3)
+        self.assertIsNone(admission.poll())
+        self.assertFalse((self.remote / 'progress.json').exists())
+        (self.active / 'job').unlink()
+        self.active.rmdir()
+        release()
+        _, error = admission.communicate(timeout=10)
+        self.assertNotEqual(admission.returncode, 0)
+        self.assertIn('install-active', error)
+        self.assertFalse((self.remote / 'progress.json').exists())
+        # Admission cannot outwait a guard that stays held.
+        self.active.mkdir()
+        (self.active / 'job').write_text(JOB)
+        self.hold(guard)
+        admission = self.supervisor(wait=.3)
+        _, error = admission.communicate(timeout=10)
+        self.assertIn('TimeoutError', error)
+        self.assertFalse((self.remote / 'progress.json').exists())
+
+    def test_dead_leader_with_live_session_reports_session_pids(self):
+        # F3: the leader is reaped but its PID stays referenced as the session
+        # ID, so pidfd_open fails with EINVAL rather than ESRCH.
+        member = None
+        leader = subprocess.Popen(['setsid', 'sh', '-c',
+            'while [ ! -e finish ]; do sleep .02; done & echo $!; exit 0'],
+            cwd=self.remote, stdout=subprocess.PIPE, text=True)
+        try:
+            member = int(leader.stdout.readline())
+            leader.wait(timeout=3)
+            self.assertEqual(os.getsid(member), leader.pid)
+            with self.assertRaises(OSError) as einval:
+                os.close(os.pidfd_open(leader.pid))
+            self.assertEqual(einval.exception.errno, errno.EINVAL)
+            lab.write_json(self.remote / 'staging-process.json',
+                           {'pid': leader.pid, 'sessionId': leader.pid, 'startTicks': 1})
+            for mode in ('pidfd', 'missing', 'enosys'):
+                for abandoned in (False, True):
+                    with self.subTest(mode=mode, abandoned=abandoned):
+                        report = self.reconcile(mode, abandoned)
+                        self.assertNotIn('inspectionError', report)
+                        self.assertIs(report['exactProcessAlive'], False)
+                        self.assertIs(report['sessionAlive'], True)
+                        self.assertIn(member, report['sessionPids'])
+                        self.assertFalse(report['finished'])
+            with self.assertRaisesRegex(lab.LabError, rf'session processes are still running: PIDs \[.*{member}'):
+                self.recover()
+            self.assertEqual((self.active / 'job').read_text(), JOB)
+            (self.remote / 'finish').touch()
+            wait_for(lambda: dead(member))
+            report = self.recover()
+            self.assertEqual(report['state'], 'staging-abandoned')
+            self.assertFalse(self.active.exists())
+        finally:
+            (self.remote / 'finish').touch()
+            leader.stdout.close()
+            if member:
+                wait_for(lambda: dead(member))
+
+    def test_validator_orphaned_grandchild_and_reused_session_leader_refuse(self):
+        # rev761b test_grandchild_in_session_refused and test_sid_reused_by_unrelated.
+        wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote),
+            '(sh -c \'echo $$ > grandchild.pid; while [ ! -e finish ]; do sleep .02; done\' &); '
+            'while [ ! -e finish ]; do sleep .02; done'], start_new_session=True)
+        grandchild = None
+        try:
+            wait_for(lambda: (self.remote / 'grandchild.pid').exists() and
+                (self.remote / 'grandchild.pid').read_text().strip())
+            grandchild = int((self.remote / 'grandchild.pid').read_text())
+            wrapper.kill()  # Only the exact wrapper started by this test.
+            wrapper.wait(timeout=3)
+            self.assertEqual(os.getsid(grandchild), wrapper.pid)
+            for mode in ('pidfd', 'missing', 'enosys'):
+                for abandoned in (False, True):
+                    with self.assertRaisesRegex(lab.LabError, 'remains held'):
+                        self.recover(mode, abandoned)
+            self.assertEqual((self.active / 'job').read_text(), JOB)
+        finally:
+            (self.remote / 'finish').touch()
+            if grandchild:
+                wait_for(lambda: dead(grandchild))
+        unrelated = subprocess.Popen(['setsid', 'sh', '-c', 'while [ ! -e finish-unrelated ]; do sleep .02; done'],
+                                     cwd=self.remote)
+        try:
+            wait_for(lambda: os.getsid(unrelated.pid) == unrelated.pid)
+            saved = identity(unrelated.pid)
+            saved['startTicks'] -= 1  # The recorded leader died; its PID now leads a stranger's session.
+            lab.write_json(self.remote / 'staging-process.json', saved)
+            for mode in ('pidfd', 'missing', 'enosys'):
+                with self.assertRaisesRegex(lab.LabError, 'remains held'):
+                    self.recover(mode)
+            self.assertEqual((self.active / 'job').read_text(), JOB)
+            self.assertIsNone(unrelated.poll())  # Never signalled.
+        finally:
+            (self.remote / 'finish-unrelated').touch()
+            unrelated.wait(timeout=3)
+
+    def test_validator_setsid_escape_is_the_documented_abandoned_limit(self):
+        # rev761b test_grandchild_setsid_escapes. While the wrapper lives it waits,
+        # as subreaper, for a descendant that left the session. After the wrapper
+        # is killed only the session scan remains; the report states that limit.
+        wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote),
+            'setsid sh -c \'echo $$ > escaped.pid; while [ ! -e finish ]; do sleep .02; done\' & exit 0'],
+            start_new_session=True)
+        escaped = None
+        try:
+            wait_for(lambda: (self.remote / 'escaped.pid').exists() and
+                (self.remote / 'escaped.pid').read_text().strip())
+            escaped = int((self.remote / 'escaped.pid').read_text())
+            self.assertNotEqual(os.getsid(escaped), wrapper.pid)
+            time.sleep(.2)
+            self.assertIsNone(wrapper.poll())  # No terminal receipt while it lives.
+            with self.assertRaisesRegex(lab.LabError, 'staging-running'):
+                self.recover(abandoned=False)
+            wrapper.kill()  # Only the exact wrapper started by this test.
+            wrapper.wait(timeout=3)
+            with self.assertRaisesRegex(lab.LabError, 'remains held'):
+                self.recover(abandoned=False)
+            report = self.recover(abandoned=True)
+            self.assertIn('setsid()', report['limit'])
+            self.assertEqual(lab.read_json(self.evidence / 'staging-recovery.json')['limit'], report['limit'])
+        finally:
+            (self.remote / 'finish').touch()
+            if wrapper.poll() is None:
+                wrapper.wait(timeout=3)
+            if escaped:
+                wait_for(lambda: dead(escaped))
+
 # The independent validator's double-SIGINT controller, with explicit handshakes
 # and a finish gate instead of time-based staging completion.
 INTERRUPTED_CONTROLLER = r'''
@@ -364,6 +645,34 @@ def rec(*a, **kw):
 with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), patch.object(lab, 'get', side_effect=get), \
         patch.object(lab, 'stage_install_helper', side_effect=stage), patch.object(lab, 'write_json', side_effect=write_json), \
         patch.object(lab, 'reconcile_staging', side_effect=rec):
+    lab.install_package(home, 'synthetic.deb')
+'''
+
+
+# A real controller after successful staging, blocked in the package upload
+# (no progress.json yet), then failing that upload.
+UPLOADING_CONTROLLER = r'''
+import importlib.util, os, sys, time, types, subprocess
+from pathlib import Path
+from unittest.mock import patch
+spec = importlib.util.spec_from_file_location('putgd_lab', sys.argv[1])
+lab = importlib.util.module_from_spec(spec); spec.loader.exec_module(lab)
+home = Path(sys.argv[2]); staging = sys.argv[3]
+lab.write_json(home / 'state.json', {'profile': 'cinnamon-x11'})
+lab.uuid.uuid4 = lambda: types.SimpleNamespace(hex='e' * 32)
+def ssh(_run, script, timeout=5, **kw):
+    return subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
+        env={**os.environ, 'HOME': str(home)}, timeout=timeout, check=True).stdout
+def stage(run, remote, helper, digest):
+    if subprocess.run([sys.executable, staging, 'run', str(home / remote), 'true']).returncode:
+        raise lab.LabError('staging failed')
+def put(run, local, remote):
+    if remote.endswith('package.deb'):
+        print('uploading', flush=True)
+        while not (home / 'upload-failed').exists(): time.sleep(.01)
+        raise lab.LabError('upload failed')
+with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put', side_effect=put), patch.object(lab, 'get'), \
+        patch.object(lab, 'stage_install_helper', side_effect=stage):
     lab.install_package(home, 'synthetic.deb')
 '''
 

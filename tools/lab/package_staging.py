@@ -44,6 +44,16 @@ def run(script):
         return code
 
 
+# A wrapper that reached its terminal receipt also waited, as subreaper, for
+# descendants that called setsid(). After the wrapper is killed, only the session
+# scan remains, and it cannot see those: the in-tree hook and apt-get update with
+# no sources start none, but a guest's own APT Pre-Invoke hook could.
+ABANDONED_LIMIT = ('Abandonment proves only that no process remains in the staging session. A '
+                   'descendant that called setsid() (for example a daemonizing guest APT Pre-Invoke '
+                   'hook) left that session and is not checked; inspect the guest process list if '
+                   'its hooks can daemonize.')
+
+
 def proc_fields(pid):
     # stat field 6 is the session ID, even for root-owned descendants. The
     # command name can itself contain spaces and parentheses.
@@ -87,12 +97,17 @@ def process_status():
         status['process'] = identity
         try:
             # Missing API and ENOSYS (new Python on an older kernel) both use
-            # /proc. All other failures leave the leader's identity uncertain.
+            # /proc. EINVAL means the PID is still referenced (as this session's
+            # ID) but no process has it: the leader is dead and the PID cannot
+            # be reused, so the session scan decides. All other failures leave
+            # the leader's identity uncertain.
             pidfd_open = getattr(os, 'pidfd_open', None)
             if pidfd_open is not None:
                 try:
                     handle = pidfd_open(pid)
                 except OSError as error:
+                    if error.errno == errno.EINVAL:
+                        raise ProcessLookupError(error.errno, 'Session leader exited') from None
                     if error.errno != errno.ENOSYS:
                         raise
             fields = proc_fields(pid)
@@ -134,7 +149,7 @@ def reconcile(seconds, abandoned=False):
         if status['exactProcessAlive'] is not False or status['sessionAlive'] is not False:
             return {'finished': False, 'state': 'staging-outcome-unknown', **status}
         if abandoned:
-            return {'finished': True, 'state': 'staging-abandoned', **status}
+            return {'finished': True, 'state': 'staging-abandoned', **status, 'limit': ABANDONED_LIMIT}
         if Path('staging-result.json').exists():
             result = json.loads(Path('staging-result.json').read_text())
             identity = status['process']

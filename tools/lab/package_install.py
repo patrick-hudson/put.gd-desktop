@@ -2,9 +2,11 @@
 """Bounded disposable-guest apt supervisor. Staged root-owned in each disposable overlay."""
 import argparse
 import ctypes
+import fcntl
 import json
 import os
 from pathlib import Path
+import re
 import select
 import signal
 import stat
@@ -55,6 +57,57 @@ def enter_directory(path, owner):
         os.fchdir(fd)
     finally:
         os.close(fd)
+
+
+def admit(token, owner, wait=10):
+    """Record this supervisor's start while its job still holds install-active.
+
+    Staging recovery releases install-active under the same install-guard flock
+    and only while progress.json is absent. Taking the guard, checking the token
+    and writing progress.json before releasing it means either recovery refuses
+    or this supervisor never starts: it can never run without the install lock.
+    Runs inside the pinned job directory; every lookup is relative and refuses
+    links, as the lab user owns the parent.
+    """
+    if not re.fullmatch(r'install-[0-9a-f]{32}', token):
+        raise ValueError('Install directory must be named by its install job')
+    parent = os.open('..', os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        here, named = os.stat('.'), os.stat(token, dir_fd=parent, follow_symlinks=False)
+        if (named.st_dev, named.st_ino) != (here.st_dev, here.st_ino):
+            raise ValueError('Install directory is no longer its job directory')
+        guard = os.open('install-guard', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+        try:
+            info = os.fstat(guard)
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != owner:
+                raise ValueError('install-guard must be a regular file owned by the invoking user')
+            deadline = time.monotonic() + wait
+            while True:
+                try:
+                    fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError('install-guard stayed busy') from None
+                    time.sleep(.05)
+            active = os.open('install-active', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
+            try:
+                job = os.open('job', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=active)
+                try:
+                    if not stat.S_ISREG(os.fstat(job).st_mode):
+                        raise ValueError('install-active/job must be a regular file')
+                    held = os.read(job, 128).decode('ascii', 'replace').strip()
+                finally:
+                    os.close(job)
+            finally:
+                os.close(active)
+            if held != token:
+                raise PermissionError(f'{token} does not hold install-active')
+            save(Path('progress.json'), {'schemaVersion': 1, 'admittedJob': token})
+        finally:
+            os.close(guard)  # Releases the flock only after progress.json exists.
+    finally:
+        os.close(parent)
 
 
 class OwnedProcesses:
@@ -220,7 +273,14 @@ def main():
     args = parser.parse_args()
     if args.timeout <= 0 or args.recovery <= 0:
         parser.error('Timeouts must be positive seconds')
-    enter_directory(args.directory, int(os.environ.get('SUDO_UID', os.getuid())))
+    owner = int(os.environ.get('SUDO_UID', os.getuid()))
+    enter_directory(args.directory, owner)
+    try:
+        admit(args.directory.name, owner)
+    except (OSError, ValueError) as error:
+        # No progress.json or result.json: the job (if it still holds the lock)
+        # stays recoverable through lab.py recover-staging.
+        raise SystemExit(f'Install supervisor refused to start: {error}') from None
     directory = Path('.')
     # This fixed helper is the only newly privileged entrypoint; it cannot execute
     # caller-selected commands. The guest already permits arbitrary DEB installs.
