@@ -511,6 +511,7 @@ private slots:
   QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
   auto restore=qScopeGuard([nativeDialogsDisabled]{QApplication::setAttribute(Qt::AA_DontUseNativeDialogs,nativeDialogsDisabled);});
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  window.selectTool(Tool::Arrow);
   auto* custom=window.findChild<QToolButton*>("customColor");QVERIFY(custom);
   auto pick=[&](const QColor& color){
    QTimer::singleShot(0,&window,[&]{auto* dialog=window.findChild<QColorDialog*>();QVERIFY(dialog);dialog->setCurrentColor(color);dialog->accept();});
