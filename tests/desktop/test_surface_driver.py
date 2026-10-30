@@ -349,7 +349,7 @@ class Running(unittest.TestCase):
         target=Target.__new__(Target)
         target._lock=('f44','owned-session');target._last_heartbeat=100;target._lock_valid_until=105
         calls=[]
-        target.physical=SimpleNamespace(ssh=lambda *args:calls.append(args) or json.dumps({'ok':True,'state':'expired','expiresInSeconds':0}))
+        target.physical=SimpleNamespace(ssh=lambda *args,**_:calls.append(args) or json.dumps({'ok':True,'state':'expired','expiresInSeconds':0}))
         target.run=self.path
         with patch('tools.lab.surface_driver.target.time.clock_gettime',return_value=110):
             with self.assertRaisesRegex(RecipeBlocked,'no longer held'):target.heartbeat()
@@ -447,14 +447,14 @@ class CleanupShellBounds(unittest.TestCase):
         # An alarm already due runs its handler inside the blocking
         # pthread_sigmask call, after the mask changed (CPython checks signals
         # there). Emulate exactly that; the previous mask must still return.
-        from tools.lab.surface_driver import target as target_module
-        real=signal.pthread_sigmask
+        from tools.lab.surface_driver import critical as critical_module, target as target_module
+        real=critical_module._signal.pthread_sigmask  # The C call critical.py makes.
         def due(how,mask):
             previous=real(how,mask)
             if how==signal.SIG_BLOCK and signal.SIGALRM in set(mask):
                 raise RecipeFailed('recipe deadline exceeded: links.open')
             return previous
-        with patch.object(target_module.signal,'pthread_sigmask',side_effect=due):
+        with patch.object(critical_module._signal,'pthread_sigmask',side_effect=due):
             with self.assertRaisesRegex(RecipeFailed,'deadline'):
                 with target_module.input_release():
                     self.fail('release must not run after the alarm')
@@ -1103,7 +1103,7 @@ class EndpointSafety(unittest.TestCase):
         self.addCleanup(self.listener.close)
         self.target=SimpleNamespace(run=self.run,physical=SimpleNamespace(
             config={'host':'192.168.68.70','user':'patrick','known_hosts':'/pins','vnc_port':5970},
-            ssh=lambda run,command:'1000' if command=='id -u' else ('{"verified":true}' if 'SD_ENDPOINT' in command else 'boot-id')))
+            ssh=lambda run,command,timeout=None:'1000' if command=='id -u' else ('{"verified":true}' if 'SD_ENDPOINT' in command else 'boot-id')))
         self.argv=['ssh','-NT','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile=/pins','-o','ExitOnForwardFailure=yes',
                    '-L','127.0.0.1:5970:127.0.0.1:5901',
                    '-L',str(self.path)+':/run/user/1000/putgd-lab-input.sock','patrick@192.168.68.70']
@@ -1154,7 +1154,7 @@ class EndpointSafety(unittest.TestCase):
 
     def test_forwarded_service_must_be_native_on_the_authenticated_host(self):
         for reply in ('{"verified":false}', 'null', 'not-json'):
-            self.target.physical.ssh=lambda run,command:'1000' if command=='id -u' else reply
+            self.target.physical.ssh=lambda run,command,timeout=None:'1000' if command=='id -u' else reply
             with self.subTest(reply=reply):
                 with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
 
@@ -1184,7 +1184,7 @@ class EndpointSafety(unittest.TestCase):
     def test_direct_native_vnc_requires_the_same_authenticated_machine(self):
         self.path.unlink();self.executable='w0vncserver'
         verify_physical_endpoints(self.target)
-        self.target.physical.ssh=lambda *args:'another-boot'
+        self.target.physical.ssh=lambda *args,**_:'another-boot'
         with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
 
     def test_direct_host_input_requires_its_exact_socket(self):
