@@ -73,7 +73,7 @@ from pathlib import Path
 p=Path(ROOT)
 assert p.resolve()==p and not p.is_symlink() and (p/'owner').read_text()==TOKEN
 for line in Path('/proc/self/mountinfo').read_text().splitlines():
- mount=Path(line.split()[4].replace('\\040',' '))
+ mount=Path(line.split()[4].replace(chr(92)+'040',' '))
  assert mount!=p and not mount.is_relative_to(p)
 for identity in PROCESSES:
  proc=Path('/proc')/str(identity['pid'])/'stat'

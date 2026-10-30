@@ -290,7 +290,7 @@ info=root.lstat()
 assert root.resolve()==root and stat.S_ISDIR(info.st_mode) and info.st_uid==os.getuid() and stat.S_IMODE(info.st_mode)==0o700
 assert not list(root.glob('fx-*')), 'fixture cleanup still pending'
 for line in Path('/proc/self/mountinfo').read_text().splitlines():
- mount=Path(line.split()[4].replace('\\040',' '))
+ mount=Path(line.split()[4].replace(chr(92)+'040',' '))
  assert mount!=root and not mount.is_relative_to(root)
 shutil.rmtree(root)
 '''.replace('ROOT',repr(self.root))

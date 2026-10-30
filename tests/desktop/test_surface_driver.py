@@ -301,7 +301,7 @@ class Running(unittest.TestCase):
     def test_target_removes_only_its_private_session_root_after_exit(self):
         target=Target.__new__(Target)
         target._rfb=None;target.monitor_pid=None;target.started=False;target._created_root=True
-        target.root=str(self.path/'owned');Path(target.root).mkdir(mode=0o700)
+        target.root=str(self.path/'owned space');Path(target.root).mkdir(mode=0o700)
         sibling=self.path/'preserve';sibling.write_text('unrelated')
         def execute(script,**kwargs):
             reply=subprocess.run(script,shell=True,text=True,capture_output=True,timeout=10)
@@ -311,6 +311,11 @@ class Running(unittest.TestCase):
         self.assertFalse(Path(target.root).exists());self.assertEqual(sibling.read_text(),'unrelated')
         Path(target.root).mkdir(mode=0o700);target._created_root=True
         (Path(target.root)/'fx-pending').mkdir(mode=0o700)
+        self.assertEqual(target.close(),['private session root cleanup refused'])
+        self.assertTrue(Path(target.root).exists())
+        (Path(target.root)/'fx-pending').rmdir()
+        mountinfo='1 0 0:1 / '+target.root.replace(' ',chr(92)+'040')+' rw - tmpfs tmpfs rw\n'
+        target.execute=lambda script,**kwargs:execute(script.replace("Path('/proc/self/mountinfo').read_text()",repr(mountinfo)),**kwargs)
         self.assertEqual(target.close(),['private session root cleanup refused'])
         self.assertTrue(Path(target.root).exists())
 

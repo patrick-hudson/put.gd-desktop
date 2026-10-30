@@ -589,6 +589,17 @@ class Fixtures(unittest.TestCase):
         self.ctx.fixture('image');self.ctx.manager.close()
         self.assertEqual(sibling.read_text(),'preserve')
 
+    def test_cleanup_preserves_a_mount_with_escaped_spaces(self):
+        scope=Scope(self.ctx);scope.root=str(self.root/'fx with space');scope.initialize()
+        scope.write(scope.root+'/preserve',b'synthetic mounted data')
+        original=scope.python
+        mountinfo='1 0 0:1 / '+scope.root.replace(' ',chr(92)+'040')+' rw - tmpfs tmpfs rw\n'
+        def mounted(code,**kwargs):
+            return original(code.replace("Path('/proc/self/mountinfo').read_text()",repr(mountinfo)),**kwargs)
+        with patch.object(scope,'python',mounted):
+            self.assertEqual(scope.close(),['owned directory: RecipeBlocked'])
+        self.assertTrue(Path(scope.root+'/preserve').is_file())
+
 
 class Loopback(unittest.TestCase):
     def setUp(self):
