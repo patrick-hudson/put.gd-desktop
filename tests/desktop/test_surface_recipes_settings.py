@@ -381,6 +381,14 @@ class Contracts(unittest.TestCase):
         self.assertEqual(scrolled, [(1536, 520, -3)])
         self.assertEqual(ctx.focus, 'archiveRoot')
 
+    def test_zero_height_control_cannot_receive_a_click(self):
+        ctx = Fake()
+        ctx.accessible = lambda query: [{'pid': 123, 'rect': [700, 240, 180, 0]}]
+        from tools.lab.surface_driver.recipes.settings_input import click
+        with self.assertRaisesRegex(RecipeBlocked, 'missing or ambiguous'):
+            click(ctx, 'settingsSection0')
+        self.assertFalse(ctx.inputs)
+
     def test_wrong_owner_accessibility_is_withheld(self):
         ctx = Fake()
         ctx.accessible = lambda query: [{'pid': 999, 'rect': [700, 240, 180, 36]}]

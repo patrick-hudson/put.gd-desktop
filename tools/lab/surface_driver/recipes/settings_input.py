@@ -124,7 +124,7 @@ def click(ctx, control):
         rows = controls(ctx, query, owner['pid'])
         if any(row.get('pid') != owner['pid'] for row in rows):
             ctx.blocked('Settings live control is missing or ambiguous: ' + control)
-        matches = [row for row in rows if row.get('rect') and row['rect'][2] > 0]
+        matches = [row for row in rows if row.get('rect') and row['rect'][2] > 0 and row['rect'][3] > 0]
         if not matches:
             if control.startswith('settingsSection'):
                 ctx.blocked('Settings live control is missing or ambiguous: ' + control)
