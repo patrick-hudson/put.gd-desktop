@@ -321,6 +321,7 @@ class DialogRecipes(unittest.TestCase):
         ctx.accessible = delayed_window
         dialogs.cancel_portal(ctx)
         self.assertGreaterEqual(len(queries), 2)
+        self.assertTrue(all(q.get('owned') is False for q in queries))
 
     def test_failure_recipe_uses_core_fixture_before_backend_launch(self):
         for backend in dialogs.BACKENDS:

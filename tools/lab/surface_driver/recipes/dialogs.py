@@ -88,7 +88,8 @@ def _ready(ctx, inspect, backend, mode):
             if current.get('backend') != backend:
                 ctx.blocked('Portal changed backend before becoming ready; fallbackReason=' +
                             str(current.get('fallbackReason')), issue=671)
-            nodes = ctx.accessible({'name': current['title'], 'visible': True, 'showing': True})
+            nodes = ctx.accessible({'name': current['title'], 'owned': False,
+                                    'visible': True, 'showing': True})
             # GTK can expose the title label before its window enters AT-SPI.
             # Readiness requires the unique input target, not any named child.
             top = [node for node in nodes if node.get('role') in ('dialog', 'file chooser', 'frame')]
