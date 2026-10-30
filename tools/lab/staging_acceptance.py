@@ -311,11 +311,20 @@ print(json.dumps(ids))
     # Session-manager logout can leave a closing logind session occupied by
     # desktop agents. End that exact recorded login too: otherwise user@ never
     # stops and the watchdog lifetime condition has not actually been tested.
-    for session in desktop_sessions:
-        assert session.isalnum()
-        root_guest('test "$(loginctl show-session '+session+' --property=User --value)" = 1000\n'
-                   'loginctl kill-session --signal=KILL '+session+'\n'
-                   'loginctl terminate-session '+session+'\n')
+    end_login="""import json,subprocess,sys
+session=sys.argv[1]
+assert session.isalnum()
+probe=subprocess.run(['loginctl','show-session',session,'--property=User','--value'],text=True,capture_output=True)
+record={'session':session,'alreadyGone':probe.returncode!=0}
+if probe.returncode==0:
+    assert probe.stdout.strip()=='1000'
+    record['killExit']=subprocess.run(['loginctl','kill-session','--signal=KILL',session],capture_output=True).returncode
+    record['terminateExit']=subprocess.run(['loginctl','terminate-session',session],capture_output=True).returncode
+print(json.dumps(record))
+"""
+    ended_logins=[json.loads(root_guest('python3 -c '+shlex.quote(end_login)+' '+shlex.quote(session)+'\n'))
+                  for session in desktop_sessions]
+    save('desktop-login-ended.json',ended_logins)
 
     snapshots=[];inactive_at=None
     deadline=time.monotonic()+90
@@ -358,7 +367,7 @@ print(json.dumps({'managerState':state,'supervisorAlive':alive,'sessions':subpro
                '\nrm /home/lab/putgd-lab/install-active/job\nrmdir /home/lab/putgd-lab/install-active\n')
     results.append({'case':'logout-controller-sigkill-detached-watchdog','controllerKilled':controller_identity,
                     'rootSupervisor':supervisor,'logoutCommand':logout,'lingerEnabled':False,
-                    'terminatedDesktopSessions':desktop_sessions,
+                    'terminatedDesktopSessions':desktop_sessions,'loginEndResults':ended_logins,
                     'userManagerSnapshots':snapshots,'managerAfterResult':manager_after,
                     'result':result,'wrapperTerminal':terminal,'visual':visual,
                     'terminalFixtureLockAcknowledged':True})
