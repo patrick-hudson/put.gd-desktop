@@ -460,6 +460,18 @@ class LayoutProbe(unittest.TestCase):
         self.assertNotIn('', rows)  # the root window is never an occluder
 
 
+class WaylandGeometryProbe(unittest.TestCase):
+    def test_geometry_walk_prunes_hidden_subtrees(self):
+        from tools.lab.surface_driver import probe
+        seen = []
+        row = {'role': 'frame', 'name': 'put.gd', 'visible': True, 'showing': True, 'rect': [0, 0, 10, 10],
+               'pid': 7, 'states': {}, 'ancestors': [{'role': 'application'}]}
+        with patch.dict(probe.os.environ, {'XDG_SESSION_TYPE': 'wayland'}), \
+             patch.object(probe, 'accessible', side_effect=lambda q: seen.append(q) or [row]):
+            self.assertEqual(probe.geometry({'title': '^put\\.gd$', 'compositor': {'kind': 'x'}})['pid'], 7)
+        self.assertTrue(seen[0]['visible'] and seen[0]['showing'] and seen[0]['owned'])
+
+
 class NaFinalBytes(Base):
     def test_final_receipt_and_coverage_bytes_are_the_last_scanned(self):
         ctx = self.context()

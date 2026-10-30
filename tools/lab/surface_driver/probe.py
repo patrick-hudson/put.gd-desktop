@@ -772,7 +772,10 @@ def geometry(query):
             found = [w for w in found if w['x'] <= px < w['x']+w['width'] and w['y'] <= py < w['y']+w['height']]
     else:
         compositor = {'compositor': query['compositor']} if query.get('compositor') else {}
-        rows = accessible({'owned': True, **query.get('accessible', {}), **compositor})
+        # Only visible, showing windows are kept below; pruning hidden subtrees
+        # (other pages) keeps a big window's walk inside the probe deadline
+        # (Settings on GNOME: 1469 nodes, 38 s, versus 92 showing, 3 s).
+        rows = accessible({'owned': True, 'visible': True, 'showing': True, **query.get('accessible', {}), **compositor})
         found, unplaced = [], []
         for row in rows:
             top = row['role'] in WINDOW_ROLES or (row.get('ancestors') and row['ancestors'][-1]['role']=='application')
