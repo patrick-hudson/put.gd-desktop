@@ -71,6 +71,10 @@ class FakeContext(Context):
         self.click_at(*tray._point(self, nodes[0]), button=button)
         return nodes[0]
 
+    def hover_accessible(self, query):
+        self.events.append(('hover', query))
+        return self.accessible(query)[0]
+
     def focus(self, window, raise_window=True):
         self.events.append(('focus', window))
 
@@ -82,6 +86,9 @@ class FakeContext(Context):
 
     def call(self, method, params=None):
         self.events.append(('call', method, params))
+        if method == 'action.invoke':
+            self._invoke(params['action'])
+            return {'operationId': self.operations[-1]['id']}
         if method == 'ui.snapshot':
             return {'operationsReady': True, 'settings': {'document': copy.deepcopy(self.document)},
                     'diagnostics': {'trayAvailable': True, 'activeOperations': 0,
@@ -308,6 +315,30 @@ class TrayRecipesTest(unittest.TestCase):
                 self.assertTrue(any(e[0] in ('click', 'keys') for e in ctx.events))
                 self.assertFalse(any(e[0] == 'call' and e[1] == 'action.invoke' for e in ctx.events))
                 self.assertFalse(any(e[0] == 'shell' and 'kill --' in e[1] for e in ctx.events))
+
+    def test_gnome_notification_preparation_avoids_unneeded_qt_input(self):
+        ctx = FakeContext()
+        ctx.profile['tray']['notification_prepare_cli'] = True
+        tray.save_diagnostics(ctx)
+        self.assertFalse(any(e[0] in ('view', 'keys') for e in ctx.events))
+        self.assertIn(('call', 'action.invoke', {'action': 'clipboard'}), ctx.events)
+        self.assertTrue(any(e[0] == 'notification_action' and e[2] == 'save-diagnostics' for e in ctx.events))
+
+    def test_gnome_gestures_block_before_incorrect_single_click(self):
+        for function in (tray.activate, tray.scroll_noop):
+            ctx = FakeContext()
+            ctx.profile['tray']['activation_clicks'] = 2
+            with self.assertRaises(RecipeBlocked) as caught:
+                function(ctx)
+            self.assertEqual(caught.exception.issue, 831)
+            self.assertEqual(ctx.events, [])
+
+    def test_hover_is_guarded_before_the_gnome_icon_click(self):
+        ctx = FakeContext()
+        ctx.profile['tray']['hover_before_click'] = True
+        tray._icon_input(ctx, 'right')
+        self.assertLess(next(i for i,e in enumerate(ctx.events) if e[0] == 'hover'),
+                        next(i for i,e in enumerate(ctx.events) if e[0] == 'click'))
 
     def test_explicit_blocked_rows_have_issue(self):
         for interaction, reason in tray.BLOCKED.items():

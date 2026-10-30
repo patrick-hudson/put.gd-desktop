@@ -118,10 +118,11 @@ def _ready(ctx):
                     'resident journal is ready', timeout=30)
 
 
-def _begin(ctx):
+def _begin(ctx, *, show_ui=True):
     _ready(ctx)
     ctx.fixture('app-profile')
-    ctx.view('ui.show', {'view': 'settings'})
+    if show_ui:
+        ctx.view('ui.show', {'view': 'settings'})
     snapshot = _ready(ctx)
     if not snapshot['diagnostics'].get('trayAvailable'):
         ctx.blocked('Resident reports no desktop tray host', 670)
@@ -152,6 +153,9 @@ def _icon(ctx):
 
 def _icon_input(ctx, button='left'):
     _icon(ctx)
+    if _profile(ctx).get('hover_before_click'):
+        ctx.hover_accessible(_profile(ctx)['icon'])
+        _shell(ctx, "python3 -c 'import time; time.sleep(.25)'\n")
     ctx.click_accessible(_profile(ctx)['icon'], button=button)
 
 
@@ -200,9 +204,9 @@ def _settled(ctx, operation):
 
 
 @contextmanager
-def _local(ctx, *, failure=False, notifications=True):
+def _local(ctx, *, failure=False, notifications=True, notification_only=False):
     """Core owns profile restoration and helper cleanup, including timeouts."""
-    _begin(ctx)
+    _begin(ctx, show_ui=not (notification_only and _profile(ctx).get('notification_prepare_cli')))
     profile = ctx.fixture('app-profile')
     root = profile.root
     archive = profile.output_dir
@@ -227,9 +231,14 @@ def _clipboard(ctx, image=False):
     ctx.wait(lambda: ctx.clipboard_text() == fixture.text, 'synthetic clipboard ownership')
 
 
-def _local_input(ctx):
+def _local_input(ctx, *, notification_only=False):
     _clipboard(ctx)
     previous = {o['id'] for o in _recent(ctx)}
+    if notification_only and _profile(ctx).get('notification_prepare_cli'):
+        # State preparation only. Notification actions still require a drawn
+        # banner, guarded real input and exact ActionInvoked correlation.
+        ctx.call('action.invoke', {'action': 'clipboard'})
+        return previous
     # Emit the toast through real input without spending its short draw window
     # navigating or framing a tray menu. The native binding is checked first.
     binding = ctx.call('ui.snapshot')['diagnostics'].get('shortcuts', {}).get('bindings', {}).get('clipboard', {})
@@ -238,8 +247,8 @@ def _local_input(ctx):
     return previous
 
 
-def _local_upload(ctx):
-    return _settled(ctx, _new_operation(ctx, _local_input(ctx), 'clipboard'))
+def _local_upload(ctx, *, notification_only=False):
+    return _settled(ctx, _new_operation(ctx, _local_input(ctx, notification_only=notification_only), 'clipboard'))
 
 
 def _notice(ctx, summary, body=None, exclude=()):
@@ -252,6 +261,8 @@ def _notice(ctx, summary, body=None, exclude=()):
 
 @recipe('tray.activate', desktop_drawn=True)
 def activate(ctx):
+    if _profile(ctx).get('activation_clicks', 1) != 1:
+        ctx.blocked('GNOME tray activation requires an atomic guarded desktop double-click', 831)
     _begin(ctx)
     ctx.frame('before')
     _icon_input(ctx)
@@ -450,8 +461,8 @@ def edit_clipboard(ctx):
 
 @recipe('notification.saved-locally', desktop_drawn=True)
 def saved_locally(ctx):
-    with _local(ctx):
-        op = _local_upload(ctx)
+    with _local(ctx, notification_only=True):
+        op = _local_upload(ctx, notification_only=True)
         ctx.expect(op['state'] == 'completed' and op['items'], 'local clipboard operation completed')
         ctx.expect(all(i['local']['status'] == 'saved' and i['uploadStatus'] == 'local_only' for i in op['items']),
                    'saved-local toast agrees with operation inspection')
@@ -500,12 +511,12 @@ def attention_with_busy_latch(ctx):
 
 @recipe('notification.preference-off', desktop_drawn=True)
 def notifications_off(ctx):
-    with _local(ctx, notifications=False):
+    with _local(ctx, notifications=False, notification_only=True):
         # A Notify call can be observed before its method return supplies the
         # notification ID. Preserve the monitor timestamp in the identity.
         identity = lambda n: (n.get('id'), n.get('at'), n.get('summary'), n.get('body'))
         old_ids = {identity(n) for n in ctx.notifications()}
-        op = _local_upload(ctx)
+        op = _local_upload(ctx, notification_only=True)
         ctx.expect(op['state'] == 'completed', 'operation still completes with notifications disabled')
         # Observe a bounded quiet window as well as the terminal resident state.
         _shell(ctx, "python3 -c 'import time; time.sleep(1)'\n")
@@ -545,18 +556,18 @@ PYLOG
 
 
 def _diagnostics(ctx, *, reveal=False, denied=False, resident=False):
-    with _local(ctx, failure=True) as root:
+    with _local(ctx, failure=True, notification_only=True) as root:
         folder = root + '/diagnostics'
         _shell(ctx, 'mkdir -m ' + ('500' if denied else '700') + ' -- ' + shlex.quote(folder))
         _patch(ctx, {'preferences': {'diagnostics': {'debugLogging': False, 'packageFolder': folder}}})
-        previous = _local_input(ctx)
+        previous = _local_input(ctx, notification_only=True)
         notice = _notice(ctx, 'Local save failed')
         if resident:
             expected = _profile(ctx)['resident_notifications']
             ctx.expect(bool(notice.get('hints', {}).get('resident')) == expected,
                        'resident hint agrees with desktop policy')
-            if expected:
-                ctx.expect(notice.get('timeout') == 0, 'resident action banner has no server timeout')
+            ctx.expect(notice.get('timeout') == (0 if expected else 10000),
+                       'action banner timeout agrees with desktop policy')
         _action(ctx, notice, 'save-diagnostics')
         result = _notice(ctx, 'put.gd — diagnostics not saved' if denied else 'put.gd — diagnostics saved')
         if denied:
@@ -626,6 +637,8 @@ def incomplete_uploads(ctx):
 
 @recipe('tray.scroll-noop', desktop_drawn=True)
 def scroll_noop(ctx):
+    if _profile(ctx).get('activation_clicks', 1) != 1:
+        ctx.blocked('Desktop wheel input needs a live shell-node foreground guard', 831)
     _begin(ctx)
     _page(ctx, 'Settings')
     before = {o['id'] for o in _recent(ctx)}
