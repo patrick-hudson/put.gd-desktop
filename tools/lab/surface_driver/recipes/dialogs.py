@@ -145,7 +145,7 @@ def _save_name_focus(ctx, settings):
     pid = ctx.profile['dialogs']['portal_identity']['pid']
     scope = {'pid': pid, 'visible': True, 'showing': True, 'states': {'focused': True}}
     for _ in range(24):
-        fields = ctx.accessible({**scope, 'role': 'text', 'states': {'focused': True, 'editable': True}})
+        fields = ctx.accessible({**scope, 'states': {'focused': True, 'editable': True}})
         fields = [n for n in fields if any(isinstance(n.get(k), str) and n[k] and
                   not n[k].startswith('/') for k in ('text', 'value'))]
         if len(fields) == 1:

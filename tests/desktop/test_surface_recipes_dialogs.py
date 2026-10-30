@@ -352,7 +352,7 @@ class DialogRecipes(unittest.TestCase):
                 ctx.typed = '/tmp/pgfd.test/' + ctx.typed
             original_keys(*sequence)
         def accessible(query):
-            if query.get('role') == 'text' and 'states' in query:
+            if query.get('states', {}).get('editable'):
                 return [{'text': 'Original.png'}] if phase[0] == 'filename' else []
             if query.get('description') == 'Edit File Name':
                 return [{'role': 'push button'}] if phase[0] == 'button' else []
@@ -367,7 +367,7 @@ class DialogRecipes(unittest.TestCase):
         ctx = FakeContext('portal')
         ctx.profile['dialogs']['portal_identity'] = {'pid': 123}
         ctx.accessible = lambda query: ([{'text': 'a.png'}, {'text': 'b.png'}]
-                                        if query.get('role') == 'text' else [])
+                                        if query.get('states', {}).get('editable') else [])
         with self.assertRaisesRegex(RecipeBlocked, 'filename field'):
             dialogs._save_name_focus(ctx, {'save_name_button': 'Edit File Name'})
         self.assertFalse(any(i[0] == 'type' for i in ctx.inputs))
