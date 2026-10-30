@@ -1737,8 +1737,8 @@ private slots:
         qputenv("PATH", bin.path().toLocal8Bit() + ":" + saved[0]);
         qputenv("XDG_CURRENT_DESKTOP", "X-Cinnamon");
         auto readCount = [&] { QFile file(reads); return file.open(QIODevice::ReadOnly) ? file.readAll().count('\n') : 0; };
-        auto notice = [](const QString& prefix, const QStringList& changes) {
-            auto signal = QDBusMessage::createSignal("/ca/desrt/dconf/Writer/user", "ca.desrt.dconf.Writer", "Notify");
+        auto notice = [](const QString& prefix, const QStringList& changes, const QString& writer = "user") {
+            auto signal = QDBusMessage::createSignal("/ca/desrt/dconf/Writer/" + writer, "ca.desrt.dconf.Writer", "Notify");
             signal << prefix << changes << QString(":1.1:user:1");
             QVERIFY(QDBusConnection::sessionBus().send(signal));
         };
@@ -1757,9 +1757,10 @@ private slots:
         PUTGD_TRY_VERIFY(tone.light());
         QCOMPARE(readCount(), 2);
         QCOMPARE(changed.count(), 1);
-        // And back, as a reset of the whole Cinnamon tree reports it.
+        // And back, as a reset of the whole Cinnamon tree reports it, from a
+        // profile whose user-db is not named "user".
         QVERIFY(write(theme, "Mint-Y-Dark"));
-        notice("/org/cinnamon/", {""});
+        notice("/org/cinnamon/", {""}, "custom");
         PUTGD_TRY_VERIFY(!tone.light());
         QCOMPARE(changed.count(), 2);
 #endif

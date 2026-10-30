@@ -84,9 +84,10 @@ PanelTone::PanelTone(QObject* parent):QObject(parent){
  QDBusConnection::sessionBus().connect("org.freedesktop.portal.Desktop","/org/freedesktop/portal/desktop","org.freedesktop.portal.Settings","SettingChanged",&debounce_,SLOT(start()));
  // Cinnamon's XApp portal does not serve org.cinnamon.theme, so a desktop theme
  // chosen on its own (Themes, Advanced settings, Desktop) only shows as dconf's
- // change notice (#702).
+ // change notice (#702). It comes from /ca/desrt/dconf/Writer/NAME, NAME being
+ // the profile's user-db (usually "user"), so any writer path is accepted.
  if(desktops().contains("x-cinnamon")||desktops().contains("cinnamon"))
-  QDBusConnection::sessionBus().connect(QString(),"/ca/desrt/dconf/Writer/user","ca.desrt.dconf.Writer","Notify",this,SLOT(dconfNotified(QString,QStringList,QString)));
+  QDBusConnection::sessionBus().connect(QString(),QString(),"ca.desrt.dconf.Writer","Notify",this,SLOT(dconfNotified(QString,QStringList,QString)));
 #endif
  refresh();
 }
