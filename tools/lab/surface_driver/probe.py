@@ -920,6 +920,13 @@ def x11_foreground(query):
     wid = str(target['window_id'])
     if target.get('override_redirect'):
         return x11_unmanaged_foreground(query)
+    point = query.get('point')
+    if point and query.get('shell_cover'):
+        # Shell-drawn chrome over the point refuses input before any stacking read.
+        cover = shell_cover(point, query['shell_cover'])
+        if cover:
+            return {'ok': False, 'backend': 'shell-at-spi-cover', 'target': wid, 'obscuring_window': cover,
+                    'obscuring_window_id': None}
     if query.get('settle'):
         x11_settle(target)
     if query.get('raise'):
@@ -955,11 +962,6 @@ def x11_foreground(query):
     if popup_ok and not obstruction:
         ok = True
     obscurer = obstruction or (active_window if active != wid else {})
-    if point and query.get('shell_cover'):
-        cover = shell_cover(point, query['shell_cover'])
-        if cover:
-            return {'ok': False, 'backend': 'shell-at-spi-cover', 'target': wid, 'obscuring_window': cover,
-                    'obscuring_window_id': None}
     if point:
         hit = x11_hit(point)
         hit_ok = wid in hit['path'] or (popup_ok and hit['pid'] == target.get('pid'))
