@@ -9,12 +9,25 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver import probe
+from tools.lab.surface_driver.api import RecipeBlocked
+from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.compositor import stage_plasma_accessibility as plasma
 from tools.lab.surface_driver.fixtures import keyring
 from tests.desktop.test_surface_live_evidence import Base
 
 
 class SelectorMapping(unittest.TestCase):
+    def test_wayland_selector_checks_the_next_drag_point_before_motion(self):
+        ctx=DriverContext.__new__(DriverContext)
+        ctx._input_head=0;ctx._current_window='region';ctx._press_open=False;ctx.profile={}
+        ctx.target=Mock(physical=None);ctx._dimensions=lambda _: (1280,800)
+        ctx._check_time=Mock();ctx._press=Mock();ctx._release_pointer=Mock();ctx.review=Mock()
+        ctx._guard=Mock(side_effect=[{'backend':'gnome-owned-selector-pick'},RecipeBlocked('covered')])
+        with self.assertRaisesRegex(RecipeBlocked,'covered'):ctx.drag((20,20),(620,300),steps=2)
+        self.assertEqual(ctx._guard.call_args.kwargs,dict(holding=True,point=(320,160)))
+        ctx.target.pointer.assert_not_called()
+        ctx._release_pointer.assert_called_once()
+
     def test_shell_selector_request_and_pointer_are_rechecked_before_input(self):
         selector=dict(request_id='request-1',client_pid=7,name='Capture region',rect=[0,0,1280,800],pointer=True,keyboard=True)
         query=dict(selector=True,accessible={'name':'Capture region'},compositor={'kind':'gnome-lab-witness'})

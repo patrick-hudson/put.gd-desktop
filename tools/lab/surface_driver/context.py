@@ -501,7 +501,8 @@ class DriverContext(Context):
         witness = self._guard(point=self._global_point(*start,head))
         if require_resize:
             resize_before = self._probe('resize', {})
-        unmanaged = bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test')
+        unmanaged = (bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test') or
+                     self._current_window in ('region', 'recsel'))
         last = start
         with armed(self.review):
             try:
