@@ -256,6 +256,8 @@ class FakeContext(Context):
             else:
                 self.saved_window = copy.deepcopy(self.window)
                 self.window.update(x=0, y=0, width=1920, height=1080)
+        elif control == 'historyAddFilteruploadStatus':
+            self.focused_control = 'historyChoiceuploadStatus'
         elif control not in {
             'historySearch', 'historyCategories', 'historyFiltersExpanded', 'historyAddFilter',
             'historyAddFilteruploadStatus', 'historyChoiceuploadStatus', 'historyDetails',

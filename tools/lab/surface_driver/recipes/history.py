@@ -243,7 +243,10 @@ def clear_filters(ctx):
     ctx.click('historyFiltersExpanded', window='history')
     ctx.click('text:Add a history filter', window='history')
     ctx.click('text:Upload state', window='historyAddFilterMenu')
-    _click_history_node(ctx, {'name': 'Upload state', 'role': 'combo box'})
+    # The real Add Filter action focuses its newly revealed control. Bind the
+    # owning window, then prove that focus by the resulting query change.
+    ctx.focus('history', raise_window=False)
+    _frame(ctx, 'filter-revealed', None)
     ctx.keys('Home', 'Down', 'Return')
     ctx.wait(lambda: bool(_state(ctx)['query']['uploadStatus']), 'upload filter applied')
     _frame(ctx, 'filtered', '40-history-filters-active')
@@ -344,11 +347,14 @@ def paging(ctx):
 def key_menu(ctx):
     row = _row(ctx)
     _frame(ctx, 'before')
-    for key in ('Menu', 'Shift+F10'):
+    for key in ('Shift+F10', 'Menu'):
+        ctx.view('ui.history', {'action': 'clearSelection'})
+        ctx.expect(not _state(ctx)['selectedIds'], 'selection cleared before keyboard delivery proof')
         _focus_items(ctx)
         # A selection does not establish QListView.currentIndex(). Home does.
         ctx.keys('Home')
         ctx.wait(lambda: _state(ctx)['selectedIds'] == [row['id']], 'current keyboard row has exact receipt identity')
+        _frame(ctx, 'selected-' + key)
         ctx.keys(key)
         _wait_window(ctx, 'historyRowMenu')
         ctx.frame('menu-' + key)
