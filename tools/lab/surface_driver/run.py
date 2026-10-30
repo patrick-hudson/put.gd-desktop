@@ -280,6 +280,19 @@ def validate_recipes(recipes):
 
 
 def run_recipes(context, recipes, environment, out, campaign, coverage):
+    interrupted=[]
+    def terminate(signum, _frame):
+        interrupted.append(signum)
+        raise RecipeFailed('runner interrupted by '+signal.Signals(signum).name)
+    previous={sig:signal.signal(sig,terminate) for sig in (signal.SIGTERM,signal.SIGHUP)}
+    try:
+        return _run_recipes(context,recipes,environment,out,campaign,coverage,interrupted)
+    finally:
+        for sig,handler in previous.items():
+            signal.signal(sig,handler)
+
+
+def _run_recipes(context, recipes, environment, out, campaign, coverage, interrupted):
     rows=[]
     cleanup_block=None
     receipt=Path(out)/'receipt.json'
@@ -312,34 +325,48 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
             failure=str(error) if isinstance(error,RecipeFailed) else 'driver error: '+type(error).__name__
         finally:
             signal.setitimer(signal.ITIMER_REAL,0)
-            # Teardown owns a separate bounded budget. An action deadline must
-            # not strand a window and contaminate the next recipe's before frame.
-            cleanup=getattr(recipe.function,'cleanup',None)
-            if cleanup:
+            try:
+                # Teardown owns a separate bounded budget. An action deadline must
+                # not strand a window and contaminate the next recipe's before frame.
+                cleanup=getattr(recipe.function,'cleanup',None)
+                if cleanup:
+                    try:
+                        if hasattr(context,'_deadline'):
+                            context._deadline=time.monotonic()+10
+                        def cleanup_deadline(_signum,_frame):
+                            raise RecipeFailed('recipe cleanup deadline exceeded: '+recipe.name)
+                        signal.signal(signal.SIGALRM,cleanup_deadline)
+                        signal.setitimer(signal.ITIMER_REAL,10)
+                        cleanup(context)
+                    except Exception as error:
+                        reason=str(error) if isinstance(error,RecipeFailed) else type(error).__name__
+                        cleanup_block='previous recipe cleanup did not finish; further actions blocked'
+                        context.review('recipe cleanup failed: '+reason)
+                        failure='; '.join(filter(None,(failure,'recipe cleanup failed: '+reason)))
+                        if functional=='passed':
+                            functional='failed'
+                    finally:
+                        signal.setitimer(signal.ITIMER_REAL,0)
+                signal.signal(signal.SIGALRM,previous)
                 try:
                     if hasattr(context,'_deadline'):
                         context._deadline=time.monotonic()+10
-                    def cleanup_deadline(_signum,_frame):
-                        raise RecipeFailed('recipe cleanup deadline exceeded: '+recipe.name)
-                    signal.signal(signal.SIGALRM,cleanup_deadline)
-                    signal.setitimer(signal.ITIMER_REAL,10)
-                    cleanup(context)
+                    context.frame('after')
                 except Exception as error:
-                    reason=str(error) if isinstance(error,RecipeFailed) else type(error).__name__
-                    cleanup_block='previous recipe cleanup did not finish; further actions blocked'
-                    context.review('recipe cleanup failed: '+reason)
-                    failure='; '.join(filter(None,(failure,'recipe cleanup failed: '+reason)))
-                    if functional=='passed':
-                        functional='failed'
+                    context.review('after-frame unavailable: '+type(error).__name__)
+            finally:
+                signal.setitimer(signal.ITIMER_REAL,0)
+                signal.signal(signal.SIGALRM,previous)
+                # A second termination must not interrupt mount/nft/keyring cleanup.
+                handlers={sig:signal.signal(sig,signal.SIG_IGN) for sig in (signal.SIGTERM,signal.SIGHUP)}
+                try:
+                    cleanup = context._cleanup_fixtures() if hasattr(context, '_cleanup_fixtures') else []
                 finally:
-                    signal.setitimer(signal.ITIMER_REAL,0)
-            signal.signal(signal.SIGALRM,previous)
-            try:
-                if hasattr(context,'_deadline'):
-                    context._deadline=time.monotonic()+10
-                context.frame('after')
-            except Exception as error:
-                context.review('after-frame unavailable: '+type(error).__name__)
+                    for sig,handler in handlers.items():signal.signal(sig,handler)
+        if cleanup:
+            cleanup_failure = 'fixture cleanup failed: ' + '; '.join(cleanup)
+            functional = 'failed'
+            failure = failure + '; ' + cleanup_failure if failure else cleanup_failure
         if failure:
             context.note(failure)
         if recipe.desktop_drawn and context.frames:
@@ -354,6 +381,8 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
                 frames,recipe.name,environment['build'],stamp()))
         write_receipts(out,environment,rows,campaign,coverage)
         print(json.dumps({'recipe':recipe.name,'functional':functional,'visual':visual,'review':bool(context.reviews)}),flush=True)
+        if interrupted:
+            break
     return rows
 
 

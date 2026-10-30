@@ -75,6 +75,7 @@ class Target:
         self.socket = checked_socket(self.root + '/runtime/putgd/session.sock')
         checked_socket(str(self.run / 'qmp.sock'))
         self.started = False
+        self._created_root = False
         self.bin_dir = bin_dir
         self.app_executable = app_executable
         self.monitor_pid = None
@@ -164,6 +165,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                               ' '.join(shlex.quote(self.root+'/'+s) for s in ('runtime','config','data','cache','state','files')))
         if result['returncode']:
             raise RecipeBlocked('private session directory already exists or cannot be created')
+        self._created_root = True
         if not first_launch:
             # Use the checked-in schema example as a baseline; discard every
             # provider and credential reference before sending it to the guest.
@@ -270,4 +272,37 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                     self.started=False
             except RecipeBlocked:
                 errors.append('resident quit transport unavailable; private session retained')
+        if getattr(self, '_created_root', False) and not errors and not self.started:
+            # Never remove another session or recurse through a retained mount.
+            # Wait for the private process family, including fixture helpers.
+            code='''import os,shutil,stat,time
+from pathlib import Path
+root=Path(ROOT)
+for attempt in range(50):
+ live=[]
+ for proc in Path('/proc').glob('[0-9]*'):
+  try:
+   env=(proc/'environ').read_bytes().split(b'\\0')
+   if ('XDG_RUNTIME_DIR='+str(root/'runtime')).encode() in env and (proc/'comm').read_text().strip().startswith('putgd'):
+    live.append(proc.name)
+  except OSError:pass
+ if not live:break
+ time.sleep(.1)
+else:raise RuntimeError('private resident still running')
+info=root.lstat()
+assert root.resolve()==root and stat.S_ISDIR(info.st_mode) and info.st_uid==os.getuid() and stat.S_IMODE(info.st_mode)==0o700
+assert not list(root.glob('fx-*')), 'fixture cleanup still pending'
+for line in Path('/proc/self/mountinfo').read_text().splitlines():
+ mount=Path(line.split()[4].replace(chr(92)+'040',' '))
+ assert mount!=root and not mount.is_relative_to(root)
+shutil.rmtree(root)
+'''.replace('ROOT',repr(self.root))
+            try:
+                result=self.execute("python3 - <<'SD_CLEANUP'\n"+code+'\nSD_CLEANUP\n',timeout=8)
+                if result['returncode']:
+                    errors.append('private session root cleanup refused')
+                else:
+                    self._created_root=False
+            except RecipeBlocked:
+                errors.append('private session root cleanup unavailable')
         return errors
