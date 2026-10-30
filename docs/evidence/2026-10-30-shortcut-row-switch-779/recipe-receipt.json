@@ -1,0 +1,538 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "c779",
+    "package": "deb",
+    "destination": "local",
+    "build": "3907e2ebc069ffe0acf024f6eeccd18342185b5b",
+    "placement_details": {
+      "boat_sandbox_id": "bx_w4wz6wub",
+      "run_id": "cc34e70d-51ba-42b8-a00b-bf4f25350f05",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/work/put.gd/src/work/lab-runs/c779",
+      "session_root": "/tmp/sd-aa8c1ae7",
+      "socket": "/tmp/sd-aa8c1ae7/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2479",
+      "commitCount": 2479,
+      "dirty": false,
+      "gitCommit": "3907e2ebc069ffe0acf024f6eeccd18342185b5b",
+      "gitTree": "b663fdb8638d7a6c0095eb7cbce13749042340bc",
+      "packageVersion": "26.1030.2479~dev+g3907e2ebc069",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2479-dev+g3907e2ebc069"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "shortcuts-page.record",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "reviewed-ok",
+      "receipt": "/home/user/779/recipe/receipt.json",
+      "note": "settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 640, \"y\": 400}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 640, \"y\": 400}; settings live target: {\"accessible_name\": \"Shortcuts\", \"control\": \"settingsSection2\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [197, 259], \"rect\": [136, 240, 184, 38]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 640, \"y\": 400}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 197, \"y\": 259}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 197, \"y\": 259}; settings live target: {\"accessible_name\": \"Change capture region shortcut\", \"control\": \"recordRegionShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 275], \"rect\": [1019, 257, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 197, \"y\": 259}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 275}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 275}; settings live target: {\"accessible_name\": \"Change capture region shortcut\", \"control\": \"recordRegionShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 326], \"rect\": [1019, 308, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 275}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 326}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 326}; settings live target: {\"accessible_name\": \"Change capture region shortcut\", \"control\": \"recordRegionShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 326], \"rect\": [961, 308, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 326}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 326}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 326}; settings live target: {\"accessible_name\": \"Change capture region shortcut\", \"control\": \"recordRegionShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 326], \"rect\": [961, 308, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 326}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 326}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 326}; settings live target: {\"accessible_name\": \"Change capture window shortcut\", \"control\": \"recordWindowShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 378], \"rect\": [1019, 360, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 326}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 378}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 378}; settings live target: {\"accessible_name\": \"Change capture window shortcut\", \"control\": \"recordWindowShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 378], \"rect\": [1019, 360, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 378}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 378}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 378}; settings live target: {\"accessible_name\": \"Change capture window shortcut\", \"control\": \"recordWindowShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 378], \"rect\": [961, 360, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 378}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 378}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 378}; settings live target: {\"accessible_name\": \"Change capture window shortcut\", \"control\": \"recordWindowShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 437], \"rect\": [961, 419, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 378}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 437}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 437}; settings live target: {\"accessible_name\": \"Change capture desktop shortcut\", \"control\": \"recordDesktopShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 430], \"rect\": [1019, 412, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 437}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 430}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 430}; settings live target: {\"accessible_name\": \"Change capture desktop shortcut\", \"control\": \"recordDesktopShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 430], \"rect\": [1019, 412, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 430}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 430}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 430}; settings live target: {\"accessible_name\": \"Change capture desktop shortcut\", \"control\": \"recordDesktopShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 430], \"rect\": [961, 412, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 430}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 430}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 430}; settings live target: {\"accessible_name\": \"Change capture desktop shortcut\", \"control\": \"recordDesktopShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 548], \"rect\": [961, 530, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 430}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 548}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 548}; settings live target: {\"accessible_name\": \"Change upload clipboard shortcut\", \"control\": \"recordClipboardShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 586], \"rect\": [1019, 568, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 548}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 586}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 586}; settings live target: {\"accessible_name\": \"Change upload clipboard shortcut\", \"control\": \"recordClipboardShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 586], \"rect\": [1019, 568, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 586}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 586}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 586}; settings live target: {\"accessible_name\": \"Change upload clipboard shortcut\", \"control\": \"recordClipboardShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 586], \"rect\": [961, 568, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 586}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 586}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 586}; settings live target: {\"accessible_name\": \"Change upload clipboard shortcut\", \"control\": \"recordClipboardShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 881], \"rect\": [961, 863, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 586}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 881}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 881}; settings live target: {\"accessible_name\": \"Change capture region & edit shortcut\", \"control\": \"recordEditShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 482], \"rect\": [1019, 464, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 881}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 482}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 482}; settings live target: {\"accessible_name\": \"Change capture region & edit shortcut\", \"control\": \"recordEditShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 482], \"rect\": [1019, 464, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 482}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 482}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 482}; settings live target: {\"accessible_name\": \"Change capture region & edit shortcut\", \"control\": \"recordEditShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 482], \"rect\": [961, 464, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 482}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 482}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 482}; settings live target: {\"accessible_name\": \"Change capture region & edit shortcut\", \"control\": \"recordEditShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 659], \"rect\": [961, 641, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 482}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 659}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 659}; settings live target: {\"accessible_name\": \"Change record screen shortcut\", \"control\": \"recordRecordShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 534], \"rect\": [1019, 516, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 659}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 534}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 534}; settings live target: {\"accessible_name\": \"Change record screen shortcut\", \"control\": \"recordRecordShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1050, 534], \"rect\": [1019, 516, 93, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 534}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 534}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 534}; settings live target: {\"accessible_name\": \"Change record screen shortcut\", \"control\": \"recordRecordShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 534], \"rect\": [961, 516, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1050, \"y\": 534}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 534}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 534}; settings live target: {\"accessible_name\": \"Change record screen shortcut\", \"control\": \"recordRecordShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 5160, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 770], \"rect\": [961, 752, 151, 36]}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 534}; settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 5160, \"window\": \"77594630\", \"x\": 1011, \"y\": 770}",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "c779",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/settings.shortcut_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-settingsSection2",
+          "path": "frames/settings.shortcut_recording/01-input-before-settingsSection2.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-settingsSection2",
+          "path": "frames/settings.shortcut_recording/02-input-after-settingsSection2.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/settings.shortcut_recording/03-before.png",
+          "window": "settings",
+          "reference": "06-settings-shortcuts",
+          "distance": 0.0023118834725248125,
+          "tolerance": 0.025
+        },
+        {
+          "label": "input-before-recordRegionShortcut",
+          "path": "frames/settings.shortcut_recording/04-input-before-recordRegionShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordRegionShortcut",
+          "path": "frames/settings.shortcut_recording/05-input-after-recordRegionShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordRegionShortcut",
+          "path": "frames/settings.shortcut_recording/06-input-before-recordRegionShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordRegionShortcut",
+          "path": "frames/settings.shortcut_recording/07-input-after-recordRegionShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordRegionShortcut",
+          "path": "frames/settings.shortcut_recording/08-input-before-recordRegionShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordRegionShortcut",
+          "path": "frames/settings.shortcut_recording/09-input-after-recordRegionShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordRegionShortcut",
+          "path": "frames/settings.shortcut_recording/10-input-before-recordRegionShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordRegionShortcut",
+          "path": "frames/settings.shortcut_recording/11-input-after-recordRegionShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-region",
+          "path": "frames/settings.shortcut_recording/12-after-region.png",
+          "window": "settings",
+          "reference": "06-settings-shortcuts",
+          "distance": 0.007378261354696199,
+          "tolerance": 0.025
+        },
+        {
+          "label": "input-before-recordWindowShortcut",
+          "path": "frames/settings.shortcut_recording/13-input-before-recordWindowShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordWindowShortcut",
+          "path": "frames/settings.shortcut_recording/14-input-after-recordWindowShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordWindowShortcut",
+          "path": "frames/settings.shortcut_recording/15-input-before-recordWindowShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordWindowShortcut",
+          "path": "frames/settings.shortcut_recording/16-input-after-recordWindowShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordWindowShortcut",
+          "path": "frames/settings.shortcut_recording/17-input-before-recordWindowShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordWindowShortcut",
+          "path": "frames/settings.shortcut_recording/18-input-after-recordWindowShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordWindowShortcut",
+          "path": "frames/settings.shortcut_recording/19-input-before-recordWindowShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordWindowShortcut",
+          "path": "frames/settings.shortcut_recording/20-input-after-recordWindowShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-window",
+          "path": "frames/settings.shortcut_recording/21-after-window.png",
+          "window": "settings",
+          "reference": "06-settings-shortcuts",
+          "distance": 0.007377656174352457,
+          "tolerance": 0.025
+        },
+        {
+          "label": "input-before-recordDesktopShortcut",
+          "path": "frames/settings.shortcut_recording/22-input-before-recordDesktopShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordDesktopShortcut",
+          "path": "frames/settings.shortcut_recording/23-input-after-recordDesktopShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordDesktopShortcut",
+          "path": "frames/settings.shortcut_recording/24-input-before-recordDesktopShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordDesktopShortcut",
+          "path": "frames/settings.shortcut_recording/25-input-after-recordDesktopShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordDesktopShortcut",
+          "path": "frames/settings.shortcut_recording/26-input-before-recordDesktopShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordDesktopShortcut",
+          "path": "frames/settings.shortcut_recording/27-input-after-recordDesktopShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordDesktopShortcut",
+          "path": "frames/settings.shortcut_recording/28-input-before-recordDesktopShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordDesktopShortcut",
+          "path": "frames/settings.shortcut_recording/29-input-after-recordDesktopShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-desktop",
+          "path": "frames/settings.shortcut_recording/30-after-desktop.png",
+          "window": "settings",
+          "reference": "06-settings-shortcuts",
+          "distance": 0.007378976223977245,
+          "tolerance": 0.025
+        },
+        {
+          "label": "input-before-recordClipboardShortcut",
+          "path": "frames/settings.shortcut_recording/31-input-before-recordClipboardShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordClipboardShortcut",
+          "path": "frames/settings.shortcut_recording/32-input-after-recordClipboardShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordClipboardShortcut",
+          "path": "frames/settings.shortcut_recording/33-input-before-recordClipboardShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordClipboardShortcut",
+          "path": "frames/settings.shortcut_recording/34-input-after-recordClipboardShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordClipboardShortcut",
+          "path": "frames/settings.shortcut_recording/35-input-before-recordClipboardShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordClipboardShortcut",
+          "path": "frames/settings.shortcut_recording/36-input-after-recordClipboardShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordClipboardShortcut",
+          "path": "frames/settings.shortcut_recording/37-input-before-recordClipboardShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordClipboardShortcut",
+          "path": "frames/settings.shortcut_recording/38-input-after-recordClipboardShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-clipboard",
+          "path": "frames/settings.shortcut_recording/39-after-clipboard.png",
+          "window": "settings",
+          "reference": "06-settings-shortcuts",
+          "distance": 0.007429527694565481,
+          "tolerance": 0.025
+        },
+        {
+          "label": "input-before-recordEditShortcut",
+          "path": "frames/settings.shortcut_recording/40-input-before-recordEditShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordEditShortcut",
+          "path": "frames/settings.shortcut_recording/41-input-after-recordEditShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordEditShortcut",
+          "path": "frames/settings.shortcut_recording/42-input-before-recordEditShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordEditShortcut",
+          "path": "frames/settings.shortcut_recording/43-input-after-recordEditShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordEditShortcut",
+          "path": "frames/settings.shortcut_recording/44-input-before-recordEditShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordEditShortcut",
+          "path": "frames/settings.shortcut_recording/45-input-after-recordEditShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordEditShortcut",
+          "path": "frames/settings.shortcut_recording/46-input-before-recordEditShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordEditShortcut",
+          "path": "frames/settings.shortcut_recording/47-input-after-recordEditShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-edit",
+          "path": "frames/settings.shortcut_recording/48-after-edit.png",
+          "window": "settings",
+          "reference": "06-settings-shortcuts",
+          "distance": 0.007380810676894214,
+          "tolerance": 0.025
+        },
+        {
+          "label": "input-before-recordRecordShortcut",
+          "path": "frames/settings.shortcut_recording/49-input-before-recordRecordShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordRecordShortcut",
+          "path": "frames/settings.shortcut_recording/50-input-after-recordRecordShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordRecordShortcut",
+          "path": "frames/settings.shortcut_recording/51-input-before-recordRecordShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordRecordShortcut",
+          "path": "frames/settings.shortcut_recording/52-input-after-recordRecordShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordRecordShortcut",
+          "path": "frames/settings.shortcut_recording/53-input-before-recordRecordShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordRecordShortcut",
+          "path": "frames/settings.shortcut_recording/54-input-after-recordRecordShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-before-recordRecordShortcut",
+          "path": "frames/settings.shortcut_recording/55-input-before-recordRecordShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "input-after-recordRecordShortcut",
+          "path": "frames/settings.shortcut_recording/56-input-after-recordRecordShortcut.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-record",
+          "path": "frames/settings.shortcut_recording/57-after-record.png",
+          "window": "settings",
+          "reference": "06-settings-shortcuts",
+          "distance": 0.007376614129448075,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/settings.shortcut_recording/58-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "settings.shortcut_recording",
+      "build": "3907e2ebc069ffe0acf024f6eeccd18342185b5b",
+      "at": "2026-10-30T04:59:25Z"
+    }
+  ]
+}

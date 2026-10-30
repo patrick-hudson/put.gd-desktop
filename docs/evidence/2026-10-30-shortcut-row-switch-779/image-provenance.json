@@ -1,0 +1,16 @@
+[
+  {
+    "raw": "frames/setup/04-held-row-switch.png",
+    "rawSha256": "520861a9559cac54866e691a86c3c35824805af6ba27274b13bf285b867fe44e",
+    "annotated": "held-switch-annotated.png",
+    "annotatedSha256": "e90b5f6ff054d1bd3d500f780251ee5c738567911ea03d2bea941582f1b75bc8",
+    "annotation": "Caption, boxes and arrows are overlays; the source frame is retained unchanged in the verified archive."
+  },
+  {
+    "raw": "frames/setup/06-window-saved-correct-action.png",
+    "rawSha256": "0fd0a35a3f2a0d9e113b41a77eede7c8e49bfc2a6e8fe098902ae64423b1ca50",
+    "annotated": "saved-action-annotated.png",
+    "annotatedSha256": "20bf1de0dd5f6da4da705c3956c57adf21e82207183c7cb5541b7f42784e9405",
+    "annotation": "Caption, boxes and arrows are overlays; the source frame is retained unchanged in the verified archive."
+  }
+]
