@@ -82,7 +82,9 @@ class FakeContext(Context):
         self.events.append(('call', method, params))
         if method == 'ui.snapshot':
             return {'operationsReady': True, 'settings': {'document': copy.deepcopy(self.document)},
-                    'diagnostics': {'trayAvailable': True, 'activeOperations': 0}}
+                    'diagnostics': {'trayAvailable': True, 'activeOperations': 0,
+                        'shortcuts': {'available': self.shortcut_available,
+                                      'bindings': {a: {'bound': True} for a in tray.CHORDS}}}}
         if method == 'settings.get':
             return {'document': copy.deepcopy(self.document), 'metadata': {'acceptedRevision': 'r1'}}
         if method == 'settings.patch':
@@ -113,8 +115,7 @@ class FakeContext(Context):
         if method == 'ui.fileDialog':
             return {'open': self.target == 'file-dialog'}
         if method == 'diagnostics':
-            return {'shortcuts': {'available': self.shortcut_available,
-                    'bindings': {a: {'bound': True} for a in tray.CHORDS}}}
+            return {'capabilities': {'source': {}}}
         if method == 'editor.inspect':
             return {'phase': 'editing', 'width': 96, 'height': 64}
         if method == 'editor.cancel':
@@ -311,6 +312,12 @@ class TrayRecipesTest(unittest.TestCase):
                 function(ctx)
             self.assertEqual(caught.exception.issue, 670)
             self.assertFalse(ctx.events)
+
+    def test_shortcuts_read_native_diagnostics_from_the_ui_snapshot(self):
+        ctx = FakeContext()
+        tray.shortcut_clipboard(ctx)
+        self.assertFalse(any(e[0] == 'call' and e[1] == 'diagnostics' for e in ctx.events))
+        self.assertIn(('keys', (tray.CHORDS['clipboard'],)), ctx.events)
 
     def test_missing_shortcut_channel_blocks_without_pressing_the_shortcut(self):
         ctx = FakeContext()

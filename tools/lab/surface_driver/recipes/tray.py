@@ -339,7 +339,7 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
     def action_recipe(ctx):
         with _local(ctx):
             if shortcut:
-                status = ctx.call('diagnostics').get('shortcuts', {})
+                status = ctx.call('ui.snapshot')['diagnostics'].get('shortcuts', {})
                 if not status.get('available'):
                     ctx.blocked('Resident reports no global shortcut channel: ' +
                                 _profile(ctx).get('shortcut_reason', 'desktop channel unavailable'),
