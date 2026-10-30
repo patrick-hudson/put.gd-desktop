@@ -97,7 +97,12 @@ def observations(scope):
     def recording_status():
         rows=scope.ctx.accessible({'owned':True,'name':'Shortcut recording status','visible':True,'showing':True})
         if len(rows)>1:raise RecipeBlocked('shortcut recording status is ambiguous',issue=681)
-        return rows[0] if rows else None
+        if not rows:return None
+        row=rows[0]
+        text=row.get('text') or row.get('description')
+        if row.get('protected') or not text:
+            raise RecipeBlocked('visible shortcut recording status exports no current accessible text or description',issue=862)
+        return Fixture(row,text=text)
     return Fixture(observe=lambda:observe(scope),disclosure=disclosure,recording_status=recording_status)
 
 

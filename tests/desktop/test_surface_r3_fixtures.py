@@ -111,6 +111,15 @@ class Round3(fixture_tests.Fixtures):
         self.assertEqual(self.ctx.calls,[])
         self.assertEqual(self.ctx.target.app_executable,'putgd')
 
+    def test_recording_status_requires_current_accessible_text(self):
+        row={'name':'Shortcut recording status','role':'label','text':'','description':''}
+        self.ctx.accessible=lambda query:[row]
+        value=self.ctx.fixture('settings-observations')
+        with self.assertRaises(RecipeBlocked) as error:value.recording_status()
+        self.assertEqual(error.exception.issue,862)
+        row['description']='Recording canceled. The draft shortcut is unchanged.'
+        self.assertEqual(value.recording_status().text,row['description'])
+
     def test_update_manifest_rejects_tampering_and_dirty_or_mismatched_builds(self):
         # Execute the exact target-side validator, mocking only the immutable
         # release's process response. No test asset is a signed release.

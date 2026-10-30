@@ -304,7 +304,8 @@ class Context:
         * settings-observations: observe(), disclosure(id, window='settings')
           returns control, expanded and visible accessible text; recording_status()
           reads the live accessible shortcut-recording label (None if absent).
-          Missing/ambiguous exports block.
+          It uses accessible text or description; a visible label without
+          current text blocks on #862. Ambiguous exports block.
         * settings-focus-loss: focus()/deactivate()/hide()/restore(), process,
           role, observe(). Native minimize is X11-only; Wayland focus uses the
           existing compositor witness. settings-input-events provides
