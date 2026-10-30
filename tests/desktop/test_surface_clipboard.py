@@ -90,7 +90,7 @@ class ClipboardLeaseTests(unittest.TestCase):
         root = str(Path(directory).resolve())
         code = FAKE_QT + '\nnamespace={"__name__":"clipboard_test"}\nexec(compile(' + repr(source) + ',"clipboard_test","exec"),namespace)\n'
         if current:
-            code += 'namespace["serve"](sys.argv[1])\nsummary()\n'
+            code += 'namespace["serve"](sys.argv[1],True)\nsummary()\n'
         else:
             # Legacy code executes at module scope and takes its state-file path.
             code = FAKE_QT + '\nsys.argv.append(sys.argv[1]);sys.argv[1]+="/clipboard-state"\nexec(compile(' + repr(source) + ',"clipboard_test","exec"))\n'
@@ -154,6 +154,15 @@ class ClipboardLeaseTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'identity changed'):
             stop_exact(identity)
         self.assertIsNone(child.poll())
+
+    def test_native_clipboard_requires_a_verified_persistence_manager(self):
+        from tools.lab.surface_driver.clipboard import restoration_plan
+        payloads = {'text/plain': b'original', 'application/x-unit': b'\x00\xff'}
+        with self.assertRaisesRegex(RuntimeError, 'native clipboard has no verified persistence manager'):
+            restoration_plan(payloads, gnome=False, disposable=False, persistence=False)
+        self.assertEqual(restoration_plan(payloads, gnome=False, disposable=True, persistence=False),
+                         (list(payloads), []))
+        self.assertEqual(restoration_plan({}, gnome=False, disposable=False, persistence=False), ([], []))
 
     def test_native_gnome_refuses_multimime_before_ownership_changes(self):
         from tools.lab.surface_driver.clipboard import restoration_plan

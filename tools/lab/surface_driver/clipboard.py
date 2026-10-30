@@ -180,10 +180,39 @@ GNOME_MIMES = ('image/tiff', 'image/bmp', 'image/gif', 'image/jpeg', 'image/webp
 PROTOCOL_TARGETS = frozenset(('TARGETS', 'MULTIPLE', 'TIMESTAMP', 'SAVE_TARGETS'))
 
 
-def restoration_plan(payloads, *, gnome, disposable):
+def x11_persistence_available():
+    """The ICCCM persistence manager, queried without changing any selection."""
+    import ctypes.util
+    library = ctypes.util.find_library('X11')
+    if not library:
+        return False
+    x11 = ctypes.CDLL(library)
+    x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+    x11.XOpenDisplay.restype = ctypes.c_void_p
+    x11.XInternAtom.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+    x11.XInternAtom.restype = ctypes.c_ulong
+    x11.XGetSelectionOwner.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+    x11.XGetSelectionOwner.restype = ctypes.c_ulong
+    x11.XCloseDisplay.argtypes = [ctypes.c_void_p]
+    display = x11.XOpenDisplay(None)
+    if not display:
+        return False
+    try:
+        atom = x11.XInternAtom(display, b'CLIPBOARD_MANAGER', True)
+        return bool(atom and x11.XGetSelectionOwner(display, atom))
+    finally:
+        x11.XCloseDisplay(display)
+
+
+def restoration_plan(payloads, *, gnome, disposable, persistence=True):
     """Return the formats that can survive owner exit, plus explicit review notes."""
     formats = list(payloads)
-    if not gnome or not formats:
+    if not formats:
+        return formats, []
+    if not gnome:
+        if not disposable and not persistence:
+            raise RuntimeError('native clipboard has no verified persistence manager; cannot restore MIME types '
+                               'after keeper exit: ' + ', '.join(formats))
         return formats, []
     supported = [mime for mime in GNOME_MIMES if mime in payloads]
     preferred = supported[-1:]  # Same preference order as Mutter.
@@ -268,7 +297,8 @@ def serve(root, disposable=False):
             payloads[mime] = bytes(data)
     gnome = os.environ.get('XDG_SESSION_TYPE') == 'wayland' and 'GNOME' in os.environ.get('XDG_CURRENT_DESKTOP', '')
     try:
-        formats, reviews = restoration_plan(payloads, gnome=gnome, disposable=disposable)
+        persistence = disposable or gnome or (app.platformName() == 'xcb' and x11_persistence_available())
+        formats, reviews = restoration_plan(payloads, gnome=gnome, disposable=disposable, persistence=persistence)
     except RuntimeError as error:
         print(json.dumps({'blocked': str(error)}), flush=True)
         return
