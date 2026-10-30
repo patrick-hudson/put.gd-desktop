@@ -249,6 +249,22 @@ class Context:
         """Save a frame. With `reference`, the runner compares it with that catalog capture."""
         raise NotImplementedError
 
+    def sensitive(self, value: Any) -> Any:
+        """Wrap memory-only data; str/repr/JSON redact it; reveal() explicitly unwraps."""
+        raise NotImplementedError
+
+    def url_evidence(self, value: Any) -> dict:
+        """Only host, run-salted hash, length and presence may leave memory."""
+        raise NotImplementedError
+
+    def sensitive_region(self, region: Iterable[float], *, head: int = 0) -> None:
+        """Persistently guard a framebuffer x/y/width/height before exposing a secret."""
+        raise NotImplementedError
+
+    def sensitive_control(self, control: str, window: str) -> None:
+        """Persistently guard a catalog control with current live/AT-SPI geometry."""
+        raise NotImplementedError
+
     def expect(self, condition: Any, what: str) -> None:
         if not condition:
             raise RecipeFailed(what)

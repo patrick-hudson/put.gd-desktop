@@ -10,6 +10,8 @@ from tools.lab import lab
 from .api import Context, Frame, RecipeBlocked, RecipeFailed
 from .catalog import Catalog, compare, image_modules
 from .target import qcodes
+from .receipts import Evidence
+from .redact import Sensitive, SECRET_FIELD, URL, rect
 
 
 class Fixture(dict):
@@ -38,6 +40,11 @@ class DriverContext(Context):
         self._input_poisoned = False
         self._popup = None
         self._click_count = 1
+
+        self.evidence = Evidence(self.out)
+        self._sensitive_regions = []
+        self._sensitive_controls = []
+        self._sensitive_seen = self.destination != 'local'
         self.begin(None)
 
     def begin(self, recipe):
@@ -63,9 +70,16 @@ class DriverContext(Context):
                 raise RecipeBlocked('production CLI returned no JSON envelope') from error
             if envelope.get('ok'):
                 result=envelope['result']
+                self.evidence.redactor.remember(result, opaque=method in ('history.detail', 'share.inspect', 'operation.inspect'))
+                if method in ('history.detail', 'share.inspect', 'operation.inspect'):
+                    self._sensitive_seen = self._sensitive_seen or bool(URL.search(response['stdout']))
                 for field in ('operationId','recordingId','shareOperationId'):
                     identity=result.get(field)
                     if isinstance(identity,str) and re.fullmatch('[A-Za-z0-9_-]{1,128}',identity) and identity not in self._noted_ids:
+                        reference = {field: identity}
+                        identities = self.environment.setdefault('operation_ids', [])
+                        if reference not in identities:
+                            identities.append(reference)
                         self.note(field+'='+identity)
                         self._noted_ids.add(identity)
                 return result
@@ -245,13 +259,10 @@ class DriverContext(Context):
                 return round(screen['width']*screen.get('scale',1)),round(screen['height']*screen.get('scale',1))
         if head in self._screen_dimensions:
             return self._screen_dimensions[head]
-        # A QMP screendump independently measures the actual framebuffer.
-        path = self.out / '_screen.png'
-        self.target.screenshot(path,head)
-        Image,_,_ = image_modules()
-        with Image.open(path) as im:
-            self._screen_dimensions[head] = im.size
-            return im.size
+        # Read the actual framebuffer without creating an unredacted witness.
+        image = self.target.capture_image(head)
+        self._screen_dimensions[head] = image.size
+        return image.size
 
     def _pointer_click(self,x,y,button,head=0,guarded=False):
         self._check_time()
@@ -351,6 +362,9 @@ class DriverContext(Context):
             self._held_codes = [c for c in self._held_codes if c not in codes]
 
     def type_text(self,text):
+        self.evidence.redactor.remember(text, opaque=True)
+        self._sensitive_seen = self._sensitive_seen or bool(URL.search(text))
+        # Validate the whole string before sending any input.
         chords = [(['shift'] if c.isascii() and c.isupper() else []) + qcodes({' ':'Space','\n':'Return','\t':'Tab'}.get(c,c)) for c in text]
         if any(set(chord) & set(self._held_codes) for chord in chords):
             raise RecipeBlocked('typed text would release a key held by held_keys()')
@@ -377,11 +391,27 @@ class DriverContext(Context):
 
     def cli(self,*args,timeout=60):
         self._check_time()
-        return self.target.cli(*args,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
+        self.evidence.redactor.remember(list(args))
+        result = self.target.cli(*args,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
+        self.evidence.command('cli', result)
+        self._sensitive_seen = self._sensitive_seen or bool(URL.search(result.get('stdout', '')))
+        try:
+            self.evidence.redactor.remember(json.loads(result['stdout']))
+        except (ValueError, KeyError):
+            self.evidence.redactor.remember(result.get('stdout', ''), opaque=True)
+        return result
 
     def shell(self,script,timeout=60):
         self._check_time()
-        return self.target.execute(script,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
+        self.evidence.redactor.remember(script)
+        result = self.target.execute(script,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
+        self.evidence.command('shell', result)
+        self._sensitive_seen = self._sensitive_seen or bool(URL.search(result.get('stdout', '')))
+        try:
+            self.evidence.redactor.remember(json.loads(result['stdout']))
+        except (ValueError, KeyError):
+            self.evidence.redactor.remember(result.get('stdout', ''), opaque=True)
+        return result
 
     def mcp(self,tool,arguments=None):
         # Official client and installed helper, as in mcp_editor_e2e.py. The
@@ -401,7 +431,10 @@ asyncio.run(main())
         result = self.shell(shlex.quote(python)+" - <<'SD_MCP'\n"+code+'SD_MCP\n')
         if result['returncode']:
             raise RecipeBlocked('official MCP client/helper unavailable or failed; configure mcp_python and mcp_helper in profile')
-        return json.loads(result['stdout'])
+        value = json.loads(result['stdout'])
+        self.evidence.redactor.remember(value, opaque=True)
+        self._sensitive_seen = True
+        return value
 
     def accessible(self,query):
         if not self.profile.get('at_spi',{}).get('available',False):
@@ -416,21 +449,30 @@ asyncio.run(main())
         if not owner:
             return
         self._notification_server = owner[0].strip("'")
-        filters = ["type='method_call',interface='org.freedesktop.Notifications',member='Notify',arg0='put.gd'",
-                   "type='method_return',sender='"+self._notification_server+"'",
-                   "type='signal',interface='org.freedesktop.Notifications',sender='"+self._notification_server+"'"]
-        script = 'nohup dbus-monitor --session '+shlex.join(filters)+' > '+shlex.quote(self.target.root+'/notifications.log')+' 2>&1 < /dev/null & echo $!'
+        import inspect
+        from .redact import notification_monitor
+        from .target import checked_socket
+        path = checked_socket(self.target.root+'/notify.sock')
+        code = inspect.getsource(notification_monitor)+'\nnotification_monitor('+repr(path)+', '+repr(self._notification_server)+')\n'
+        script = 'nohup python3 -c '+shlex.quote(code)+' >/dev/null 2>&1 </dev/null & echo $!'
         result = self.shell(script)
         if result['returncode'] == 0:
             self.target.monitor_pid = int(result['stdout'].strip())
+            ready = 'kill -0 '+str(self.target.monitor_pid)+' && test -S '+shlex.quote(path)
+            self.wait(lambda: self.shell(ready)['returncode'] == 0, 'memory notification monitor ready', 5)
 
     def notifications(self):
         if not self.target.monitor_pid:
             raise RecipeBlocked('session-bus notification monitor not started')
-        result = self.shell('kill -0 '+str(self.target.monitor_pid)+' && cat '+shlex.quote(self.target.root+'/notifications.log'))
+        path = self.target.root+'/notify.sock'
+        code = 'import socket,sys\ns=socket.socket(socket.AF_UNIX);s.settimeout(5);s.connect('+repr(path)+')\nwhile True:\n data=s.recv(65536)\n if not data: break\n sys.stdout.buffer.write(data)\ns.close()\n'
+        result = self.shell('kill -0 '+str(self.target.monitor_pid)+' && python3 -c '+shlex.quote(code))
         if result['returncode']:
             raise RecipeBlocked('session bus refused notification monitoring or dbus-monitor is unavailable')
-        return parse_notifications(result['stdout'],self._notifications_since)
+        rows = parse_notifications(result['stdout'],self._notifications_since)
+        self.evidence.redactor.remember(rows, opaque=True)
+        self._sensitive_seen = True
+        return rows
 
     def click_accessible(self, query, button='left'):
         return self._accessible_pointer(query,button)
@@ -540,6 +582,8 @@ asyncio.run(main())
         result = self.shell(command)
         if result['returncode']:
             raise RecipeBlocked('clipboard text unavailable (requires wl-clipboard or xclip and a text owner)')
+        self.evidence.redactor.remember(result['stdout'], opaque=True)
+        self._sensitive_seen = True
         return result['stdout']
 
     def fixture(self,name):
@@ -610,8 +654,69 @@ asyncio.run(main())
             raise RecipeFailed('fixture operation ended '+state['state'])
         return state if state.get('state')=='completed' else None
 
+    def sensitive(self, value):
+        wrapped = Sensitive(value)
+        self.evidence.redactor.remember(wrapped)
+        self._sensitive_seen = True
+        return wrapped
+
+    def url_evidence(self, value):
+        self._sensitive_seen = True
+        return self.evidence.redactor.url(value)
+
+    def sensitive_region(self, region, *, head=0):
+        # Device pixels on the selected framebuffer (not window-relative).
+        self._sensitive_regions.append((head, rect(region)))
+        self._sensitive_seen = True
+
+    def sensitive_control(self, control, window):
+        self._sensitive_controls.append((control, window))
+        self._sensitive_seen = True
+
+    def _frame_regions(self, image, head):
+        regions = [region for selected, region in self._sensitive_regions if selected == head]
+        config = self.profile.get('evidence', {})
+        bars = [rect(item['rect']) for item in config.get('browser_address_bars', []) if item.get('head', 0) == head]
+        unresolved = False
+        controls = list(self._sensitive_controls)
+        # Catalog text fields (including History's direct/previous URL) are
+        # automatic guards. Their live geometry is used after layout changes.
+        for name, inventory in self.catalog.inventories.items():
+            for row in inventory.get('controls', []):
+                if SECRET_FIELD.search(row.get('name', '')) or row.get('sensitive'):
+                    if row.get('class') in ('QPushButton', 'QToolButton', 'QCheckBox'):
+                        continue
+                    for role in ('history', 'settings', 'editor', 'review', 'destinations'):
+                        if role in name:
+                            controls.append((row['name'], role))
+        for selector, role in set(controls):
+            try:
+                candidates = self.catalog.candidates(selector, role, self._captures.get(role))
+                geometry = self.geometry(role)
+                if geometry.get('head', 0) != head:
+                    continue
+                # Share 2a's current owned-control witness and result shape;
+                # equal window dimensions do not prove an unchanged layout.
+                row = self._live_control(selector, role, geometry, candidates)
+                x, y, w, h = row['rect']
+                scale = geometry.get('scale', 1)
+                regions.append(rect([(x-geometry.get('screen_x', 0))*scale,
+                                     (y-geometry.get('screen_y', 0))*scale, w*scale, h*scale]))
+            except (RecipeBlocked, ValueError, KeyError):
+                unresolved = True
+        # Unknown geometry never permits a secret-bearing frame to be saved.
+        # Until the profile/recipe supplies verified bounds, retain a black
+        # failure witness with an explicit fallback rather than raw pixels.
+        intersects = lambda r: r[0] < image.width and r[1] < image.height and r[0]+r[2] > 0 and r[1]+r[3] > 0
+        fallback = self._sensitive_seen and (unresolved or not any(map(intersects, regions)) or not any(map(intersects, bars)))
+        regions += bars
+        if fallback:
+            regions = [[0, 0, image.width, image.height]]
+        return regions, fallback
+
     def frame(self,label,window=None,reference=None):
         self._check_time()
+        label = self.evidence.redactor.text(label)
         safe = re.sub('[^a-zA-Z0-9_.-]','_',label)[:80] or 'frame'
         recipe = self.recipe.name if self.recipe else 'setup'
         directory = self.out/'frames'/recipe
@@ -619,17 +724,18 @@ asyncio.run(main())
         path = directory/(str(len(self.frames)).zfill(2)+'-'+safe+'.png')
         role = window or (self._current_window if reference else None)
         geometry = self.geometry(role) if role else None
-        self.target.screenshot(path,geometry.get('head',0) if geometry else 0)
+        head = geometry.get('head',0) if geometry else 0
+        image = self.target.capture_image(head)
+        regions, fallback = self._frame_regions(image, head)
+        crop = None
         if geometry:
-            Image,_,_ = image_modules()
             x,y,w,h = (geometry[k] for k in ('x','y','width','height'))
             scale = geometry.get('scale',1)
             x=(x-geometry.get('screen_x',0))*scale;y=(y-geometry.get('screen_y',0))*scale
-            box = tuple(round(v) for v in (x,y,x+w*scale,y+h*scale))
-            with Image.open(path) as im:
-                if box[0]<0 or box[1]<0 or box[2]>im.width or box[3]>im.height:
-                    raise RecipeBlocked('window crop extends outside the captured head')
-                im.crop(box).save(path)
+            crop = [x,y,w*scale,h*scale]
+        self.evidence.frame(image,path,regions,crop=crop,fallback=fallback)
+        if fallback:
+            self.review('frame fully masked: verified sensitive-field/browser geometry unavailable')
         frame = Frame(label,str(path.relative_to(self.out)),role,reference)
         self.frames.append(frame)
         if reference and not (self.recipe and self.recipe.desktop_drawn):
@@ -644,10 +750,10 @@ asyncio.run(main())
         return frame
 
     def note(self,text):
-        self.notes.append(str(text))
+        self.notes.append(self.evidence.redactor.text(text))
 
     def review(self,reason):
-        self.reviews.append(str(reason))
+        self.reviews.append(self.evidence.redactor.text(reason))
 
 
 def parse_notifications(text,since=0):

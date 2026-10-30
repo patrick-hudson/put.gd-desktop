@@ -8,6 +8,8 @@ import argparse
 import dataclasses
 import fnmatch
 import importlib
+import io
+from contextlib import redirect_stdout, redirect_stderr
 import json
 import os
 from pathlib import Path
@@ -22,7 +24,7 @@ if str(ROOT) not in sys.path:
 from tools.lab.surface_driver.api import REGISTRY, ReceiptRow, RecipeBlocked, RecipeFailed, PACKAGES, PLACEMENTS, DESTINATIONS, HOSTS
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.profiles import load_profile
-from tools.lab.surface_driver.receipts import stamp, write_receipts
+from tools.lab.surface_driver.receipts import Evidence, stamp, write_receipts
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
 
@@ -60,27 +62,34 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
     for recipe in recipes:
         context.begin(recipe)
         functional, issue, failure = 'passed',None,None
+        interrupted = False
         def deadline(_signum,_frame):
             raise RecipeFailed('recipe deadline exceeded: '+recipe.name)
         previous = signal.signal(signal.SIGALRM,deadline)
         signal.setitimer(signal.ITIMER_REAL,recipe.timeout)
+        stdout, stderr = io.StringIO(), io.StringIO()
         try:
             if environment['destination'] not in recipe.destinations:
                 raise RecipeBlocked('recipe does not support destination '+environment['destination'])
-            context.frame('before')
-            for need in recipe.needs:
-                context.fixture(need)
-            recipe.function(context)
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                context.frame('before')
+                for need in recipe.needs:
+                    context.fixture(need)
+                recipe.function(context)
         except RecipeBlocked as error:
-            functional,issue,failure='blocked',error.issue,error.reason
-        except Exception as error:
+            functional,issue,failure='blocked',error.issue,context.evidence.redactor.exception(error)
+        except BaseException as error:
             functional='failed'
             # Driver exceptions may contain command payloads. Only declared
             # RecipeFailed messages are safe to put in coverage by default.
-            failure=str(error) if isinstance(error,RecipeFailed) else 'driver error: '+type(error).__name__
+            failure=context.evidence.redactor.exception(error)
+            interrupted = not isinstance(error, Exception)
+            if interrupted:
+                environment['interrupted'] = True
         finally:
             signal.setitimer(signal.ITIMER_REAL,0)
             signal.signal(signal.SIGALRM,previous)
+            context.evidence.command('recipe-output', {'stdout': stdout.getvalue(), 'stderr': stderr.getvalue()})
             try:
                 if hasattr(context,'_deadline'):
                     context._deadline=time.monotonic()+10
@@ -99,9 +108,28 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
                 receipt_name,issue,'; '.join(context.notes) or None,environment['host'],environment['placement'],
                 environment.get('guest'),environment['destination'],bool(context.reviews),'; '.join(context.reviews) or None,
                 frames,recipe.name,environment['build'],stamp()))
-        write_receipts(out,environment,rows,campaign,coverage)
+        write_receipts(out,environment,rows,campaign,coverage,evidence=context.evidence)
         print(json.dumps({'recipe':recipe.name,'functional':functional,'visual':visual,'review':bool(context.reviews)}),flush=True)
+        if interrupted:
+            break
+    finish_evidence(context.evidence, out, environment, rows, campaign, coverage)
     return rows
+
+
+def finish_evidence(evidence, out, environment, rows, campaign, coverage):
+    # Scan after all writers/cleanup. A leak overrides a functional pass and
+    # updates coverage too, so map.put.gd cannot credit unsafe evidence.
+    write_receipts(out, environment, rows, campaign, coverage, evidence=evidence)
+    try:
+        result = evidence.scan()
+    except Exception:
+        result = {'passed': False, 'findings': [{'kind': 'audit-unavailable'}]}
+    if not result['passed']:
+        for row in rows:
+            row.functional = 'failed'
+            row.note = ((row.note+'; ') if row.note else '')+'secret evidence audit failed'
+    write_receipts(out, environment, rows, campaign, coverage, evidence=evidence, scan=result)
+    return result
 
 
 def parser():
@@ -153,6 +181,7 @@ def main(argv=None):
     rows=[]
     recipes=[]
     exit_code=2
+    evidence=Evidence(args.out)
     try:
         profile=load_profile(args.desktop,args.profiles)
         recipes=discover(args.recipes);validate_recipes(recipes)
@@ -161,7 +190,7 @@ def main(argv=None):
         environment['placement_details'].update(run_id=target.info['id'],lab_profile=target.info['profile'],
                                                  run_directory=str(target.run),session_root=target.root,socket=target.socket,
                                                  input_backend=('host-input' if (target.run/'qmp.sock').exists() else 'vnc') if target.physical else 'qmp',
-                                                 frame_backend='vnc' if target.physical else 'qmp')
+                                                 frame_backend='vnc-in-memory')
         if args.placement=='native':
             target.require_lock(args.host,args.lock_session)
         environment['target']=target.identity()
@@ -169,6 +198,7 @@ def main(argv=None):
             raise RecipeBlocked('native session type does not match the selected desktop profile')
         target.start()
         context=DriverContext(target,environment,profile,args.catalog,args.out)
+        evidence=context.evidence
         snapshot=context.call('ui.snapshot')
         observed=snapshot.get('build',{})
         environment['observed_build']=observed
@@ -187,29 +217,37 @@ def main(argv=None):
         context.start_notifications()
         rows=run_recipes(context,recipes,environment,args.out,args.campaign,coverage)
         exit_code=0 if all(r.functional=='passed' for r in rows) else 1
-    except (RecipeBlocked,RecipeFailed,lab.LabError,ValueError,FileNotFoundError) as error:
-        environment['blocked']=str(error)
+    except BaseException as error:
+        failure=evidence.redactor.exception(error)
+        environment['blocked']=failure
         if target:
             try:
-                target.screenshot(args.out/'startup-failed.png')
+                image=target.capture_image()
+                evidence.frame(image,args.out/'startup-failed.png',[[0,0,image.width,image.height]],fallback=True)
                 environment['failure_frames']=['startup-failed.png']
             except Exception:
                 environment['failure_frames_unavailable']=True
         if not rows:
             rows=[ReceiptRow(i,args.desktop,args.package,'blocked',receipt=str(args.out/'receipt.json'),
-                  note=str(error),host=args.host,placement=args.placement,guest=args.guest,
+                  note=failure,host=args.host,placement=args.placement,guest=args.guest,
                   destination=args.destination,recipe=r.name,build=args.build,at=stamp()) for r in recipes for i in r.interactions]
-        write_receipts(args.out,environment,rows,args.campaign,coverage)
-        print(json.dumps({'blocked':str(error)}),file=sys.stderr)
+        write_receipts(args.out,environment,rows,args.campaign,coverage,evidence=evidence)
+        print(json.dumps({'blocked':failure}),file=sys.stderr)
         exit_code=2
     finally:
         if target:
-            cleanup=target.close()
+            try:
+                cleanup=target.close()
+            except Exception as error:
+                cleanup=[evidence.redactor.exception(error)]
             if cleanup:
                 environment['cleanup_errors']=cleanup
-                write_receipts(args.out,environment,rows,args.campaign,coverage)
+                write_receipts(args.out,environment,rows,args.campaign,coverage,evidence=evidence)
                 if exit_code==0:
                     exit_code=2
+        audit=finish_evidence(evidence,args.out,environment,rows,args.campaign,coverage)
+        if not audit['passed']:
+            exit_code=1
     return exit_code
 
 

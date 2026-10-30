@@ -224,12 +224,25 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             lab.pointer(self.run,x,y,width,height,down,button)
 
     @desktop_transport
-    def screenshot(self, path, head=0):
+    def capture_image(self, head=0):
+        """Read pixels through shared VNC, with no raw QMP witness on disk."""
         Image,_,_ = image_modules()
-        witness = self.physical.screenshot(self.run, 'sd-'+uuid.uuid4().hex[:8], head) if self.physical else lab.screenshot(self.run,'sd-'+uuid.uuid4().hex[:8],head)
-        with Image.open(witness['path']) as im:
-            im.save(path)
-        return witness
+        port = self.physical.config['vnc_port'] if self.physical else 5900+self.info['vnc_display']+head
+        if self.info.get('heads'):
+            port = next(row['port'] for row in self.info['heads'] if row['head']==head)
+        client = rfb.RFB(port)
+        try:
+            width, height, pixels = client.frame()
+            return Image.frombytes('RGB', (width, height), pixels, 'raw', 'BGRX')
+        finally:
+            client.close()
+
+    def screenshot(self, path, head=0):
+        # Legacy direct callers have no sensitivity geometry: fail closed with
+        # a full mask. DriverContext uses capture_image and registers its masks.
+        from .redact import save_frame
+        image = self.capture_image(head)
+        return save_frame(image, path, [(0,0,image.width,image.height)], fallback=True)
 
     @desktop_transport
     def scroll_vnc(self, x, y, clicks):

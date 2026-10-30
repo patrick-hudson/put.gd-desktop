@@ -84,8 +84,8 @@ class Mapping(unittest.TestCase):
 
 class FakeTarget:
     root='/tmp/sd-test';socket=root+'/runtime/putgd/session.sock';physical=None
-    def screenshot(self,path,head=0):
-        Image.new('RGB',(20,10),'white').save(path)
+    def capture_image(self,head=0):
+        return Image.new('RGB',(20,10),'white')
     def cli(self,*args,timeout=60):
         return {'returncode':0,'stdout':'{"ok":true,"result":{"ready":true}}','stderr':''}
     def execute(self,script,timeout=60):
@@ -129,18 +129,21 @@ class Running(unittest.TestCase):
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_visual_within_and_outside_tolerance(self):
-        Image.new('RGB',(20,10),'white').save(self.path/'good.png')
-        Image.new('RGB',(20,10),'black').save(self.path/'bad.png')
-        self.assertEqual(compare(self.path/'good.png',self.path/'good.png',.025),0)
-        self.assertEqual(compare(self.path/'good.png',self.path/'bad.png',.025),1)
+        catalog=self.path/'catalog';catalog.mkdir()
+        self.ctx.catalog=Catalog(catalog,{})
+        Image.new('RGB',(20,10),'white').save(catalog/'good.png')
+        Image.new('RGB',(20,10),'black').save(catalog/'bad.png')
+        self.assertEqual(compare(catalog/'good.png',catalog/'good.png',.025),0)
+        self.assertEqual(compare(catalog/'good.png',catalog/'bad.png',.025),1)
         self.ctx.geometry=lambda role:{'x':0,'y':0,'width':20,'height':10,'scale':1}
         def good(ctx):ctx.frame('match',window='editor',reference='good')
         def bad(ctx):ctx.frame('mismatch',window='editor',reference='bad')
-        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),good),Recipe(('editor.redo',),bad)],self.env,self.path,'test',self.path/'coverage.json')
+        self.ctx.out=self.path/'run';self.ctx.evidence.out=self.ctx.out
+        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),good),Recipe(('editor.redo',),bad)],self.env,self.ctx.out,'test',self.path/'coverage.json')
         self.assertEqual(rows[0].visual,'reviewed-ok');self.assertFalse(rows[0].review)
         self.assertEqual(rows[1].visual,'frames');self.assertTrue(rows[1].review)
-        self.assertIn(str(self.path/'bad.png'),rows[1].review_reason)
-        self.assertIn(str(self.path/'frames'),rows[1].review_reason)
+        self.assertIn(str(catalog/'bad.png'),rows[1].review_reason)
+        self.assertIn(str(self.ctx.out/'frames'),rows[1].review_reason)
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_desktop_drawn_never_compares(self):
@@ -269,6 +272,10 @@ class Running(unittest.TestCase):
             json.dumps({'ok':True,'result':{'operationId':'test-operation-123'}})}
         self.ctx.call('editor.open',{'source':'file','path':'/tmp/synthetic.png'})
         self.assertEqual(self.ctx.notes,['operationId=test-operation-123'])
+        self.ctx.evidence.redactor.remember('e', opaque=True)
+        write_receipts(self.path,self.env,[],'test',self.path/'coverage.json',evidence=self.ctx.evidence)
+        receipt=json.loads((self.path/'receipt.json').read_text())
+        self.assertEqual(receipt['environment']['operation_ids'],[{'operationId':'test-operation-123'}])
 
     def test_cached_heartbeat_does_not_allow_input_past_expiry(self):
         from types import SimpleNamespace
