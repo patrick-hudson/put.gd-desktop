@@ -104,6 +104,7 @@ def _ready(ctx, inspect, backend, mode):
     else:
         ctx.profile.setdefault('windows', {}).setdefault('putgdFileDialog', {})['title'] = '^' + re.escape(state['title']) + '$'
         ctx.focus('putgdFileDialog', raise_window=False)
+    ctx.note('Chooser ready: backend=' + backend + ', mode=' + mode + ', title=' + state['title'])
     _frame(ctx, 'dialog-ready', backend, mode)
     return state
 
@@ -129,6 +130,7 @@ def _input(ctx, backend, path, mode, inspect):
                 ctx.blocked('AT-SPI probe exposes names only; cannot prove typed chooser path', issue=671)
             return matches
         ctx.wait(contains_path, 'desktop chooser contains the typed path')
+    _frame(ctx, 'path-entered', backend)
     ctx.keys('Return')
     if backend == 'portal' and mode == 'folder' and inspect()['open']:
         ctx.keys(*ctx.profile['dialogs']['backends'][backend]['folder_accept_keys'])
@@ -256,6 +258,7 @@ def _run(ctx, backend, scenario):
                  'resident finished saving original')
         ctx.expect(ctx.call('ui.history', {'action': 'inspect'})['savedPath'] == path, 'history saved path')
         _shell(ctx, 'cmp -- ' + shlex.quote(fixture.path) + ' ' + shlex.quote(path))
+        ctx.note('Saved original: ' + _shell(ctx, 'sha256sum -- ' + shlex.quote(path)))
         _frame(ctx, 'after', backend)
     elif scenario == 'editor-save-copy':
         op = ctx.call('editor.open', {'source': 'file', 'path': files['image']})['operationId']
@@ -294,6 +297,7 @@ def _run(ctx, backend, scenario):
         _exercise(ReviewContext(), backend, 'save', ('recording.review.dialog', {}), consumer, path)
         ctx.wait(lambda: consumer()['savedCopy']['path'] == path, 'review reports saved copy')
         _shell(ctx, 'test -s ' + shlex.quote(path))
+        ctx.note('Saved recording: ' + _shell(ctx, 'sha256sum -- ' + shlex.quote(path)))
         _frame(ctx, 'after', backend)
     elif scenario == 'edit-image':
         ctx.view('ui.show', {'view': 'history'})
@@ -316,6 +320,7 @@ def _png(ctx, path):
     script = "import pathlib,struct; p=pathlib.Path(" + repr(path) + ").read_bytes(); "
     script += "assert p[:8] == b'\\x89PNG\\r\\n\\x1a\\n'; assert struct.unpack('>II', p[16:24]) == (32,24)"
     _shell(ctx, 'python3 -c ' + shlex.quote(script))
+    ctx.note('Saved PNG: ' + _shell(ctx, 'sha256sum -- ' + shlex.quote(path)))
 
 
 def _register(scenario, backend):
