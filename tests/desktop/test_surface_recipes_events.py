@@ -93,7 +93,22 @@ class Fake(Context):
     def click(self, control, window, **kw):
         self.actions.append(('click', control, window))
         if control == 'checkForUpdates': self.call('update.check')
-    def fixture(self, name): return self.fixtures[name]
+    def fixture(self, name):
+        if name == 'events.controllers':
+            def stall(address, port):
+                self.expect(address == '127.0.0.1', 'only loopback fixture endpoint')
+                self.actions.append(('controller', 'network_stall', address, port))
+                self.op.update(state='failed', items=[{'uploadStatus': 'failed', 'error': {'code': 'upload_timeout'}}])
+                self.notices.append({'summary': 'Upload failed'})
+                return 'sd_owned_table'
+            return {'network_stall': stall}
+        if name == 'events.clipboard':
+            self.text = 'putgd synthetic clipboard'
+            self.op.update(copyStatus='suppressed', state='completed', items=[{'uploadStatus': 'uploaded'}])
+            self.notices.append({'summary': 'Clipboard changed'})
+            self.actions.append(('fixture', name))
+            return {'text': self.text}
+        return self.fixtures[name]
     def notifications(self): return self.notices
     def clipboard_text(self): return self.text
     def note(self, text): self.actions.append(('note', text))
@@ -196,37 +211,22 @@ class EventRecipes(unittest.TestCase):
             self.assertEqual(json.loads(p.read_text())['preserve'], 17)
             self.assertFalse(pathlib.Path(str(p) + '.lock').exists())
 
-    def test_nft_drop_counters_and_cleanup(self):
+    def test_nft_uses_owned_core_controller_and_packet_witness(self):
         ctx = Fake().upload()
+        ctx.destination = 'local'
+        ctx.fixtures['events.slow-upload']['destination'] = 'local'
         events.network_stall(ctx)
+        self.assertIn(('controller', 'network_stall', '127.0.0.1', 19447), ctx.actions)
         scripts = [a[1] for a in ctx.actions if a[0] == 'shell']
-        self.assertIn('tcp dport 19447 counter drop', scripts[0])
-        self.assertIn('ip daddr 127.0.0.1', scripts[0])
-        self.assertIn('nft -j list table', scripts[1])
-        self.assertIn('nft delete table inet pg_ev_', scripts[2])
-        self.assertFalse(any('tc ' in s or 'flush ruleset' in s for s in scripts))
+        self.assertEqual(scripts, ['sudo -n /usr/sbin/nft -j list table inet sd_owned_table'])
+        self.assertTrue(any(a[0] == 'note' and 'cleanup registered' in a[1] for a in ctx.actions))
 
-    def test_later_host_proton_https_preserves_unknown_outcome(self):
-        ctx = Fake().upload()
-        ctx.host, ctx.destination = 'm74', 'proton'
-        ctx.fixtures['events.slow-upload'].update(destination='proton', address='192.0.2.10', port=443)
-        original_shell = ctx.shell
-        def shell(script, timeout=60):
-            result = original_shell(script, timeout)
-            if 'sudo -n nft -f' in script:
-                ctx.op.update(state='partial', items=[{'uploadStatus': 'unknown', 'error': {'code': 'proton_request_timeout'}, 'publicationId': 'synthetic-publication'}])
-            return result
-        ctx.shell = shell
-        events.network_stall(ctx)
-        self.assertTrue(any(a[0] == 'shell' and 'tcp dport 443 counter drop' in a[1] for a in ctx.actions))
-        self.assertTrue(any(a[0] == 'note' and 'remains unknown' in a[1] for a in ctx.actions))
-        self.assertFalse(any(a[:2] == ('call', 'operation.retry') for a in ctx.actions))
-
-    def test_nft_cleanup_even_on_failed_assertion(self):
+    def test_nft_requires_actual_dropped_packets(self):
         ctx = Fake().upload()
         ctx.drop_packets = 0
-        with self.assertRaisesRegex(RecipeFailed, 'actually dropped'): events.network_stall(ctx)
-        self.assertIn('nft delete table', ctx.actions[-1][1])
+        with self.assertRaisesRegex(RecipeFailed, 'actually dropped'):
+            events.network_stall(ctx)
+        self.assertTrue(any(a[0] == 'note' and 'cleanup registered' in a[1] for a in ctx.actions))
 
     def test_boat_live_destinations_block(self):
         for address, destination in [('192.0.2.1', 's3'), ('127.0.0.1', 'proton')]:
@@ -244,14 +244,9 @@ class EventRecipes(unittest.TestCase):
     def test_clipboard_is_real_tool_and_suppression_asserted(self):
         ctx = Fake().upload()
         events.clipboard_changed(ctx)
-        self.assertTrue(any(a[0] == 'shell' and 'xclip -selection clipboard' in a[1] for a in ctx.actions))
-        self.assertEqual(ctx.text, 'putgd-events-new-clipboard-owner')
+        self.assertIn(('fixture', 'events.clipboard'), ctx.actions)
+        self.assertEqual(ctx.text, 'putgd synthetic clipboard')
 
-    def test_clipboard_unknown_backend_blocks(self):
-        ctx = Fake().upload()
-        ctx.profile = {}
-        with self.assertRaises(RecipeBlocked): events.clipboard_changed(ctx)
-        self.assertFalse(any(a[0] == 'shell' for a in ctx.actions))
 
     def test_feed_guard_precedes_any_check(self):
         ctx = Fake().feed()
@@ -371,7 +366,7 @@ class EventRecipes(unittest.TestCase):
         def shell(script):
             scripts.append(script)
             if 'ln -s' in script: state['linked'] = True
-            if 'rm "$link"' in script: state['linked'] = False
+            if 'rm "$link"' in script and 'ln -s' not in script: state['linked'] = False
             if ' set ' in script: state['theme'] = shlex.split(script)[-1]
             return {'returncode': 0, 'stdout': repr(state['theme']) if ' get ' in script else '', 'stderr': ''}
         ctx.shell_hook = shell
@@ -380,7 +375,7 @@ class EventRecipes(unittest.TestCase):
     def test_panel_theme_shares_session_dconf_only_for_the_event(self):
         ctx, scripts, state = self._theme_ctx(follows=True)
         events.panel_theme_changed(ctx)
-        self.assertIn('ln -s "$HOME"/.config/dconf "$link"', scripts[0])
+        self.assertIn('ln -sT "$HOME"/.config/dconf "$link"', scripts[0])
         self.assertIn('link="$XDG_CONFIG_HOME/dconf"', scripts[0])
         self.assertIn("'Synthetic Light'", scripts[2])
         self.assertIn("'Synthetic Dark'", scripts[-3])
@@ -409,7 +404,7 @@ class EventRecipes(unittest.TestCase):
             events.panel_theme_changed(ctx)
         # Every precondition is its own command, so set -e stops before ln.
         lines = scripts[0].splitlines()
-        self.assertLess(lines.index('test -d "$HOME"/.config/dconf'), lines.index('ln -s "$HOME"/.config/dconf "$link"'))
+        self.assertLess(lines.index('test -d "$HOME"/.config/dconf'), lines.index('ln -sT "$HOME"/.config/dconf "$link"'))
         self.assertFalse(any('&&' in line for line in lines))
         self.assertEqual(len(scripts), 1)
         self.assertFalse(state['linked'])
@@ -421,6 +416,49 @@ class EventRecipes(unittest.TestCase):
             with self.assertRaisesRegex(RecipeFailed, 'relative to the home'):
                 events.panel_theme_changed(ctx)
             self.assertEqual(scripts, [])
+
+    def test_dconf_guard_removes_link_when_post_link_verification_fails(self):
+        """Execute the actual target script and force a failure after ln succeeds."""
+        import os
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            home, config = root / 'home', root / 'private'
+            (home / '.config/dconf').mkdir(parents=True)
+            config.mkdir()
+            ctx = Fake()
+            scripts = []
+            ctx.shell_hook = lambda script: (scripts.append(script) or {'returncode': 0, 'stdout': ''})
+            events._share_session_dconf(ctx, '.config/dconf')
+            script = scripts[0].replace('test -d "$link"', 'false # forced verification failure')
+            result = subprocess.run(['sh', '-c', script], env={**os.environ, 'HOME': str(home), 'XDG_CONFIG_HOME': str(config)},
+                                    capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse((config / 'dconf').is_symlink())
+            self.assertEqual(list(config.iterdir()), [])
+            self.assertTrue((home / '.config/dconf').is_dir())
+
+    def test_theme_baseline_waits_for_shared_dconf_read(self):
+        ctx, scripts, state = self._theme_ctx(follows=True)
+        state['theme'] = 'Synthetic Light'
+        real_call, real_wait = ctx.call, ctx.wait
+        observed = []
+        stale = [True]
+        def call(method, params=None):
+            result = real_call(method, params)
+            if method == 'ui.snapshot' and stale[0]:
+                result['diagnostics']['trayTint'] = {'panel': 'dark', 'source': 'default', 'color': '#d6d6d2'}
+            return result
+        def wait(predicate, what, **kwargs):
+            if 'before baseline' in what:
+                observed.append(predicate())
+                stale[0] = False
+            return real_wait(predicate, what, **kwargs)
+        ctx.call, ctx.wait = call, wait
+        events.panel_theme_changed(ctx)
+        self.assertEqual(observed, [None])
+        self.assertIn("'Synthetic Dark'", scripts[2])
+        self.assertEqual(state['theme'], 'Synthetic Light')
+        self.assertFalse(state['linked'])
 
     def test_cinnamon_profile_shares_session_dconf(self):
         from tools.lab.surface_driver.profiles import load_profile

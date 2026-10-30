@@ -18,7 +18,6 @@ BLOCKED = {
     'event.autostart-login': 'Needs a guest re-login controller, masked console login, and private XDG autostart propagation; executing start.sh is not login evidence.',
     'event.session-logout': 'Needs a guest logout/re-login controller retaining the old resident PID/start identity and saved console frames; ui.quit is not logout evidence.',
     'event.resident-retired': 'Needs a resident tied to an ended real logind session and a fresh login launcher; changing XDG_SESSION_ID does not create an ended session.',
-    'event.display-changed': 'Needs guest QMP/SetDesktopSize head mutation while the native selector is open, topology restoration, and display_changed operation evidence.',
     'event.keyring-unlock': 'Needs an isolated locked OS keyring and protected console unlock input; never lock or use a personal keyring.',
 }
 
@@ -84,7 +83,7 @@ def _upload(ctx: Context):
     _guest(ctx)
     f = _fixture(ctx, 'events.slow-upload')
     ctx.expect(f['destination'] == ctx.destination, 'fixture uses the selected destination')
-    if ctx.host == 'boat' and (ctx.destination != 's3' or f['address'] != '127.0.0.1'):
+    if ctx.host == 'boat' and (ctx.destination not in ('local', 's3') or f['address'] != '127.0.0.1'):
         ctx.blocked('Boat events use only the loopback S3 fixture')
     op = _operation(ctx, f['operationId'])
     ctx.expect(any(i.get('uploadStatus') == 'uploading' for i in op.get('items', [])),
@@ -215,16 +214,13 @@ PYKILL'''.replace('PID', str(pid))
     ctx.frame('recovered', window='history')
 
 
-@recipe('event.clipboard-changed', needs=('events.slow-upload',), destinations=('s3', 'proton'), desktop_drawn=True)
+@recipe('event.clipboard-changed', needs=('events.slow-upload',), destinations=('local', 's3', 'proton'), desktop_drawn=True)
 def clipboard_changed(ctx: Context):
     f = _upload(ctx)
     ctx.view('ui.show', {'view': 'history'})
     ctx.frame('before', window='history')
-    command = ctx.profile.get('events', {}).get('clipboardWrite')
-    if command not in ('xclip -selection clipboard', 'wl-copy'):
-        ctx.blocked('Profile needs events.clipboardWrite (xclip or wl-copy)')
-    text = 'putgd-events-new-clipboard-owner'
-    _shell(ctx, 'printf %s ' + shlex.quote(text) + ' | ' + command, 'change the real native clipboard owner')
+    clipboard = _fixture(ctx, 'events.clipboard')
+    text = clipboard['text']
     ctx.wait(lambda: ctx.clipboard_text() == text, 'new clipboard text is owned by external tool')
     op = ctx.wait(lambda: (o if (o := _operation(ctx, f['operationId'])).get('copyStatus') == 'suppressed' else None),
                   'automatic link copy suppressed', timeout=f['timeoutSeconds'])
@@ -234,29 +230,20 @@ def clipboard_changed(ctx: Context):
     ctx.frame('after', window='history')
 
 
-@recipe('event.network-stall', needs=('events.slow-upload',), destinations=('s3', 'proton'), desktop_drawn=True, timeout=180)
+@recipe('event.network-stall', needs=('events.slow-upload',), destinations=('local', 's3', 'proton'), desktop_drawn=True, timeout=180)
 def network_stall(ctx: Context):
     """Drop packets to precisely the fixture port; never change a global policy."""
-    import ipaddress
     f = _upload(ctx)
-    address = ipaddress.ip_address(f['address'])
-    port = f['port']
-    ctx.expect(isinstance(port, int) and not isinstance(port, bool) and 1 <= port <= 65535, 'exact destination TCP port')
-    # One table per exact operation; the name is bounded and shell-safe.
-    import hashlib
-    table = 'pg_ev_' + hashlib.sha256(f['operationId'].encode()).hexdigest()[:12]
-    family = 'ip' if address.version == 4 else 'ip6'
-    rule = f'add rule inet {table} output {family} daddr {address} tcp dport {port} counter drop'
-    script = f"sudo -n nft -f - <<'NFT'\ncreate table inet {table}\nadd chain inet {table} output {{ type filter hook output priority -10; policy accept; }}\n{rule}\nNFT"
+    controllers = _fixture(ctx, 'events.controllers')
     ctx.view('ui.show', {'view': 'history'})
     ctx.frame('before', window='history')
-    installed = False
+    # The core stages the narrow privileged rule and registers rollback before
+    # mutation. Its independent finalizer also covers setup/deadline failures.
+    table = controllers['network_stall'](f['address'], f['port'])
     try:
-        _shell(ctx, script, 'install endpoint-scoped nft packet drop')
-        installed = True
         op = ctx.wait(lambda: (o if (o := _operation(ctx, f['operationId'])).get('state') in ('failed', 'partial') else None),
                       'stalled upload reaches bounded failure', timeout=f['timeoutSeconds'])
-        counters = json.loads(_shell(ctx, f'sudo -n nft -j list table inet {table}', 'read real packet-drop counters'))
+        counters = json.loads(_shell(ctx, f'sudo -n /usr/sbin/nft -j list table inet {table}', 'read real packet-drop counters'))
         count = sum(expr['counter'].get('packets', 0) for row in counters['nftables']
                     for expr in row.get('rule', {}).get('expr', []) if 'counter' in expr)
         ctx.expect(count > 0, 'nft actually dropped upload packets')
@@ -270,8 +257,8 @@ def network_stall(ctx: Context):
         _failure_frame(ctx)
         raise
     finally:
-        if installed:
-            _shell(ctx, f'sudo -n nft delete table inet {table}', 'remove only this recipe nft table')
+        # Core owns idempotent teardown, including on an expired recipe deadline.
+        ctx.note('Owned nft table cleanup registered with events.controllers: ' + table)
 
 
 def _feed(ctx: Context, fixture_name='events.update-feed'):
@@ -413,6 +400,36 @@ def switch_older(ctx: Context):
     ctx.blocked('Needs signed disposable AppImage switch fixture and confirmation controls; no install against a real release')
 
 
+@recipe('event.display-changed', needs=('events.controllers',), desktop_drawn=True)
+def display_changed(ctx: Context):
+    """Change real guest topology while the production region selector is open."""
+    _guest(ctx)
+    controllers = _fixture(ctx, 'events.controllers')
+    identity = _result(ctx, 'action.invoke', {'action': 'region'})['operationId']
+    terminal = False
+    try:
+        ctx.wait(lambda: _operation(ctx, identity)['state'] == 'acquiring', 'region selection is acquiring')
+        try:
+            bounds = ctx.geometry('region')
+        except Exception:
+            ctx.blocked('Native selector geometry is unavailable; topology event requires a visibly open selector', issue=750)
+        ctx.expect(bounds['width'] > 0 and bounds['height'] > 0, 'live selector has nonempty geometry')
+        ctx.frame('selector-before-display-change')
+        # Pick a different size from the live selector, not a fixed assumed mode.
+        size = '1280x720+0+0' if bounds['width'] != 1280 else '1600x900+0+0'
+        changed = controllers['display_change'](size)
+        ctx.expect(changed['ok'], 'QMP and native output readback verify topology mutation')
+        op = ctx.wait(lambda: (o if (o := _operation(ctx, identity))['state'] in ('failed', 'cancelled') else None),
+                      'display change terminates selection')
+        terminal = True
+        ctx.expect(op['error']['code'] == 'display_changed', 'selection reports the actual topology event')
+        ctx.expect(not op.get('items'), 'display change does not publish a capture')
+        ctx.frame('after-display-change')
+    finally:
+        if not terminal:
+            _result(ctx, 'operation.cancel', {'id': identity})
+
+
 @recipe('event.panel-theme-changed', desktop_drawn=True)
 def panel_theme_changed(ctx: Context):
     _guest(ctx)
@@ -444,14 +461,23 @@ def _share_session_dconf(ctx: Context, relative):
     ctx.expect(parts and not relative.startswith('/') and all(p not in ('', '.', '..') for p in parts),
                'profile names the session dconf directory relative to the home directory')
     session = '"$HOME"/' + shlex.quote(relative)
-    # One test per line: set -e ignores a failure before the last command of an && list.
+    # Keep mutation, verification and failure rollback in one target script.
     _shell(ctx, 'set -eu\nlink="$XDG_CONFIG_HOME/dconf"\n'
                 'test -d ' + session + '\n'
                 'test ! -L ' + session + '\n'
                 'test ! -e "$link"\n'
                 'test ! -L "$link"\n'
-                'ln -s ' + session + ' "$link"\n'
-                'test "$(readlink "$link")" = ' + session + '\n',
+                'created=0\n'
+                'rollback() { if test "$created" = 1; then\n'
+                ' if test -L "$link"; then\n'
+                '  if test "$(readlink "$link")" = ' + session + '; then rm "$link"; fi\n'
+                ' fi\nfi; }\n'
+                'trap rollback EXIT\n'
+                'ln -sT ' + session + ' "$link"\n'
+                'created=1\n'
+                'test "$(readlink "$link")" = ' + session + '\n'
+                'test -d "$link"\n'
+                'trap - EXIT\n',
            'share the session dconf database with the private profile')
     return ('set -eu\nlink="$XDG_CONFIG_HOME/dconf"\n'
             'if test -L "$link" && test "$(readlink "$link")" = ' + session + '; then rm "$link"; fi\n'
@@ -460,12 +486,20 @@ def _share_session_dconf(ctx: Context, relative):
 
 
 def _panel_theme_event(ctx: Context, spec, read, write):
-    before = _result(ctx, 'ui.snapshot')['diagnostics']['trayTint']
     original = _shell(ctx, shlex.join(read), 'read existing native panel theme').strip()
     # gsettings prints a GVariant string; parse it as one shell word, then quote
     # it again. Do not execute arbitrary output from a desktop setting.
     values = shlex.split(original)
     ctx.expect(len(values) == 1, 'one native theme name')
+    # A newly shared dconf database is observed by the resident's periodic
+    # gsettings read. Do not choose the opposite tint from its stale baseline.
+    if spec.get('sessionDconf'):
+        expected = 'dark' if 'dark' in values[0].casefold() else 'light'
+        before = ctx.wait(lambda: (t if (t := _result(ctx, 'ui.snapshot')['diagnostics']['trayTint'])['source'] == 'cinnamon-theme'
+                                  and t['panel'] == expected else None),
+                          'resident re-reads the shared native theme before baseline', timeout=15)
+    else:
+        before = _result(ctx, 'ui.snapshot')['diagnostics']['trayTint']
     target = spec['light'] if before['panel'] == 'dark' else spec['dark']
     ctx.note('Panel theme original: ' + values[0] + '; target: ' + target + '; resident tint: ' + json.dumps(before, sort_keys=True))
     ctx.view('ui.show', {'view': 'history'})
@@ -564,9 +598,9 @@ def _space_error(ctx: Context, method, params):
 
 @recipe('event.disk-full-import', needs=('events.import-storage',), desktop_drawn=True)
 def disk_full_import(ctx: Context):
-    # Fixture owns a real native text/uri-list clipboard source pointing at one
-    # synthetic regular file; the clipboard action imports it through production.
+    # Import synthetic native clipboard text through production disk admission.
     script, cleanup = _fill_storage(ctx, 'events.import-storage')
+    _fixture(ctx, 'events.clipboard')
     ctx.view('ui.show', {'view': 'history'})
     ctx.frame('before', window='history')
     try:
@@ -644,7 +678,7 @@ def recording_budget_stop(ctx: Context):
             _result(ctx, 'settings.patch', {'expectedRevision': current['metadata']['observedRevision'], 'patch': {'limits': {'maxFileBytes': old_limit}}})
 
 
-@recipe('event.incomplete-uploads-kept', needs=('events.incomplete-multipart',), destinations=('s3',), desktop_drawn=True)
+@recipe('event.incomplete-uploads-kept', needs=('events.incomplete-multipart',), destinations=('local', 's3'), desktop_drawn=True)
 def incomplete_uploads_kept(ctx: Context):
     """Real local S3 abort denial, not a fabricated resident notification.
 
@@ -656,7 +690,7 @@ def incomplete_uploads_kept(ctx: Context):
     _guest(ctx)
     f = _fixture(ctx, 'events.incomplete-multipart')
     ctx.expect(f['address'] == '127.0.0.1', 'multipart denial only on local S3 fixture')
-    ctx.expect(ctx.destination == 's3', 'S3 multipart lane selected')
+    ctx.expect(ctx.destination in ('local', 's3'), 'loopback S3 multipart fixture selected')
     ctx.note('Incomplete multipart operation: ' + f['operationId'] + '; item: ' + f['itemId'])
     op = _operation(ctx, f['operationId'])
     ctx.expect(any(i['artifact']['id'] == f['itemId'] for i in op['items']), 'exact multipart item is journalled')
