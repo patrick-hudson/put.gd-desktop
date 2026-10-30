@@ -59,6 +59,7 @@ class Fake(Context):
                         'folders': {k: None for k in ('images', 'videos', 'text', 'other')}},
             'retention': {'recentActivityLimit': 100, 'historyRetentionDays': None, 'failedArtifactDays': 7},
             'limits': {'maxFiles': 100},
+            'profiles': [{'id': 'synthetic-' + str(n)} for n in range(3)],
             'naming': {'mode': 'original', 'collisionPolicy': 'rename'},
             'actions': {k: {'shortcut': ''} for k in ('region', 'window', 'desktop', 'clipboard', 'edit', 'record')},
         }
@@ -85,6 +86,7 @@ class Fake(Context):
         self.confirmation = None
         self.build = {'gitCommit': 'a' * 40, 'version': '26.1029.1-dev+gaaaaaaaa'}
         self.fixtures['settings'] = {}
+        self.fixtures['settings-multi-profile'] = {}
         self.fixtures['settings-conflict'] = {'external_change': lambda patch: merge(self.disk, patch)}
 
     def checkpoint(self):
@@ -106,6 +108,17 @@ class Fake(Context):
             merge(self.document, params['patch'])
             self.checkpoint()
             return {}
+        if method == 'settings.save':
+            self.document = copy.deepcopy(params['document']); self.checkpoint(); return {}
+        if method == 'settings.reorderProfiles':
+            profiles = {p['id']: p for p in self.document['profiles']}
+            self.document['profiles'] = [profiles[p] for p in params['order']]
+            self.checkpoint(); return {}
+        if method == 'ui.moveDestination':
+            profiles = self.document['profiles']
+            index = next(i for i, p in enumerate(profiles) if p['id'] == params['profileId'])
+            profiles[index - 1], profiles[index] = profiles[index], profiles[index - 1]
+            self.checkpoint(); return {}
         if method == 'ui.show':
             if params['view'] == 'about': self.about_visible = True
             return {'shown': params['view']}
@@ -322,8 +335,8 @@ class Fake(Context):
     def mcp(self, tool, arguments=None):
         arguments = arguments or {}
         mapping = {'patch_configuration': 'settings.patch', 'reload_configuration': 'settings.reload',
-                   'settings_diagnostics': 'ui.diagnostics', 'create_diagnostics_bundle': 'diagnostics.bundle'}
-        translated = { {'expected_revision': 'expectedRevision', 'include_names': 'includeNames'}.get(k, k): v for k, v in arguments.items() }
+                   'settings_diagnostics': 'ui.diagnostics', 'create_diagnostics_bundle': 'diagnostics.bundle', 'reorder_destinations': 'settings.reorderProfiles', 'move_destination': 'ui.moveDestination'}
+        translated = { {'expected_revision': 'expectedRevision', 'include_names': 'includeNames', 'profile_id': 'profileId'}.get(k, k): v for k, v in arguments.items() }
         return {'ok': True, 'result': self.call(mapping[tool], translated)}
 
 
@@ -344,7 +357,7 @@ class Contracts(unittest.TestCase):
                 self.assertEqual(caught.exception.reason, lane.BLOCKED[rec.interactions[0]])
 
     def test_runnable_recipes_use_input_and_referenced_frames(self):
-        partial = {'cli.settings', 'cli.ui', 'cli.diagnostics', 'mcp.configuration', 'mcp.diagnostics'}
+        partial = {'cli.settings', 'cli.ui', 'cli.diagnostics', 'mcp.diagnostics'}
         for rec in RECIPES:
             if rec.interactions[0] in lane.BLOCKED:
                 continue

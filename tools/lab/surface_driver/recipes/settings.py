@@ -626,8 +626,9 @@ def cli_diagnostics(ctx):
     ctx.blocked('Partial diagnostics CLI evidence saved; operation/since/output/upload/reveal/clear variants require isolated diagnostics fixtures.', issue=CORE_ISSUE)
 
 
-@recipe('mcp.configuration')
+@recipe('mcp.configuration', needs=('settings-multi-profile',), timeout=180)
 def mcp_configuration(ctx):
+    ctx.fixture('settings-multi-profile')
     opened(ctx, 0)
     frame(ctx, 'before', 0)
     old = get(ctx)
@@ -637,10 +638,26 @@ def mcp_configuration(ctx):
                            'expected_revision': old['metadata']['observedRevision']}))
         saved(ctx, 'preferences.notifications', expected, 0)
         result(ctx, ctx.mcp('reload_configuration'))
+        order = [profile['id'] for profile in old['document']['profiles']]
+        ctx.expect(len(order) >= 3, 'multi-profile fixture provides reorderable destinations')
+        reversed_order = list(reversed(order))
+        result(ctx, ctx.mcp('reorder_destinations', {'order': reversed_order,
+                           'expected_revision': get(ctx)['metadata']['observedRevision']}))
+        ctx.wait(lambda: [p['id'] for p in persisted(ctx)['profiles']] == reversed_order,
+                 'MCP reorder persisted exact profile IDs')
+        result(ctx, ctx.mcp('move_destination', {'direction': 'up', 'profile_id': order[0]}))
+        moved = reversed_order[:]
+        index = moved.index(order[0])
+        moved[index - 1], moved[index] = moved[index], moved[index - 1]
+        ctx.wait(lambda: [p['id'] for p in get(ctx)['document']['profiles']] == moved
+                 and [p['id'] for p in persisted(ctx)['profiles']] == moved,
+                 'MCP move persisted the requested adjacent order')
+        opened(ctx, 0)
         frame(ctx, 'after', 0)
     finally:
-        patch(ctx, {'preferences': {'notifications': not expected}})
-    ctx.blocked('Partial MCP configuration evidence saved; reorder_destinations/move_destination need isolated multi-profile fixture.', issue=CORE_ISSUE)
+        current = get(ctx)
+        call(ctx, 'settings.save', {'document': old['document'],
+                                  'expectedRevision': current['metadata']['observedRevision']})
 
 
 @recipe('mcp.diagnostics')
