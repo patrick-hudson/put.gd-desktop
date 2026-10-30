@@ -197,8 +197,11 @@ class PersistentBudgets(unittest.TestCase):
             with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
                 with self.assertRaisesRegex(RecipeBlocked,'geometry; elapsed .*budget .*SSH process still running; reply outstanding'):
                     target.probe('geometry',{},source,timeout=.03)
-                with self.assertRaisesRegex(RecipeBlocked,'start a new run'):
-                    target.probe('geometry',{},source)
+                # A deadline-cut wait leaves one reply outstanding (#834): the
+                # next request drains it and is answered by its own reply.
+                self.assertEqual(target._probe_stale,1)
+                self.assertEqual(target.probe('geometry',{},source),{'ok':True,'result':{}})
+                self.assertEqual((target._probe_stale,target._probe_failed),(0,False))
         finally:
             target._close_probe()
 
@@ -248,8 +251,11 @@ if __name__=='__main__':
                  patch('tools.lab.surface_driver.target.selectors.DefaultSelector.select',side_effect=RecipeFailed('recipe deadline exceeded')):
                 with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
                     target.probe('geometry',{},source)
-            with self.assertRaisesRegex(RecipeBlocked,'geometry; interrupted by RecipeFailed.*SSH process still running.*start a new run'):
-                target.probe('geometry',{},source)
+            # The alarm hit after the whole request went out: its reply is
+            # outstanding, not lost (#834). The next request drains it first.
+            self.assertEqual((target._probe_stale,target._probe_failed),(1,False))
+            self.assertEqual(target.probe('geometry',{},source),{'ok':True,'result':{}})
+            self.assertEqual(target._probe_stale,0)
         finally:
             target._close_probe()
 

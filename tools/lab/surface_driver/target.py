@@ -106,7 +106,15 @@ app.exec()
 
 
 PROBE_SERVER = r'''
-import json, os, subprocess, sys
+import json, os, re, subprocess, sys
+def stalled(stderr):
+    # The fresh child's faulthandler dump (11 s): innermost frames first.
+    if isinstance(stderr, bytes):
+        stderr = stderr.decode('utf-8', 'replace')
+    frames = re.findall(r'line (\d+) in (\w+)', stderr or '')
+    if not frames:
+        return ' before reporting where it stalled'
+    return ' in ' + ' <- '.join(name + ':' + line for line, name in frames[:4])
 namespace = {'__name__': 'surface_driver_probe'}
 exec(compile(SOURCE, 'surface_driver_probe.py', 'exec'), namespace)
 functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
@@ -133,14 +141,23 @@ while True:
                   name in ('geometry','foreground','windows','layout','compositor_windows')))
         if fresh:
             try:
+                # Source and query reach the child on stdin only (#726). Its
+                # walk budget starts here, a stall leaves frames on stderr before
+                # the 12 s kill, and the probe's own error reaches the caller
+                # verbatim instead of a bare non-zero exit (#805).
                 child_source = ("__name__ = 'surface_driver_probe'\n" + SOURCE +
-                                "\nimport json\nprint(json.dumps({'ok':True,'result':" +
-                                functions[name] + '(' + repr(query) + ")}))\n")
+                                "\nimport faulthandler as _fh, json as _json, time as _time\n"
+                                "_fh.dump_traceback_later(11, exit=False)\n"
+                                "PROCESS_STARTED = _time.monotonic()\n"
+                                "try:\n    _reply = {'ok': True, 'result': " + functions[name] + '(' + repr(query) + ")}\n"
+                                "except Exception as _error:\n"
+                                "    _reply = {'ok': False, 'error': type(_error).__name__ + ': ' + str(_error)}\n"
+                                "print(_json.dumps(_reply))\n")
                 child = subprocess.run([sys.executable,'-'],
                                        input=child_source, capture_output=True,
                                        text=True, timeout=12)
-            except subprocess.TimeoutExpired:
-                raise RuntimeError('fresh accessibility probe timed out') from None
+            except subprocess.TimeoutExpired as expired:
+                raise RuntimeError('fresh accessibility probe timed out' + stalled(expired.stderr)) from None
             if child.returncode:
                 raise RuntimeError('fresh accessibility probe exited unsuccessfully')
             response = json.loads(child.stdout)
@@ -152,6 +169,14 @@ while True:
     sys.stdout.write(json.dumps(response) + '\n')
     sys.stdout.flush()
 '''
+
+
+# The server answers every request within its 12 s fresh-child bound.
+PROBE_REPLY_SECONDS = 15
+
+
+class ProbeDeadline(Exception):
+    """A wait shortened by the caller's deadline ran out; the reply is still coming."""
 
 
 def probe_mutates(name, query):
@@ -227,6 +252,8 @@ class Target:
         self._probe_buffer = b''
         self._probe_source = None
         self._probe_failed = False
+        self._probe_stale = 0
+        self._probe_stale_since = None
         self._probe_failure = None
         self._io_deadline = None
 
@@ -444,7 +471,10 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         deadline = started + timeout
         if time.monotonic() >= deadline:
             raise RecipeBlocked(name+' probe budget exhausted before dispatch; no request sent')
+        sent_all = replied = False
         try:
+            if getattr(self, '_probe_stale', 0):
+                self._drain_stale(process, name, started, timeout, deadline)
             payload = getattr(self, '_probe_bootstrap', b'') + payload
             self._probe_bootstrap = b''
             remaining_payload = memoryview(payload)
@@ -453,25 +483,18 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                 if not sent:
                     raise RecipeBlocked('persistent desktop probe request was not sent')
                 remaining_payload = remaining_payload[sent:]
-            with selectors.DefaultSelector() as ready:
-                ready.register(process.stdout, selectors.EVENT_READ)
-                while b'\n' not in self._probe_buffer:
-                    remaining = deadline-time.monotonic()
-                    if remaining <= 0 or not ready.select(remaining):
-                        status = process.poll()
-                        state = 'SSH process still running; reply outstanding' if status is None else 'SSH exit '+str(status)
-                        raise RecipeBlocked('persistent desktop probe timed out: '+name+'; elapsed %.3fs, budget %.3fs; '
-                                            % (time.monotonic()-started, timeout) + state +
-                                            '; further input withheld; start a new run')
-                    data = os.read(process.stdout.fileno(),65536)
-                    if not data:
-                        raise RecipeBlocked('persistent desktop probe closed during '+name+
-                                            '; SSH exit '+str(process.poll())+'; further input withheld')
-                    self._probe_buffer += data
-                    if len(self._probe_buffer) > 16 * 1024 * 1024:
-                        raise RecipeBlocked('desktop probe response exceeded 16 MiB')
-            line, self._probe_buffer = self._probe_buffer.split(b'\n',1)
+            sent_all = True
+            sent_at = time.monotonic()
+            line = self._read_probe_line(process, name, started, timeout, deadline)
+            replied = True
             return json.loads(line)
+        except ProbeDeadline as error:
+            # The caller's deadline cut the wait short, not the channel (#834):
+            # one reply stays outstanding and the next request drains it.
+            if sent_all and not replied:
+                self._probe_stale = getattr(self, '_probe_stale', 0) + 1
+                self._probe_stale_since = getattr(self, '_probe_stale_since', None) or sent_at
+            raise RecipeBlocked(str(error)) from None
         except RecipeBlocked as error:
             self._probe_failed = True
             self._probe_failure_note(name,started,timeout,error.reason)
@@ -481,9 +504,63 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             self._probe_failure_note(name,started,timeout,type(error).__name__)
             raise RecipeBlocked('persistent desktop probe transport unavailable; '+self._probe_failure) from error
         except BaseException as error:
-            self._probe_failed = True
-            self._probe_failure_note(name,started,timeout,'interrupted by '+type(error).__name__)
+            # A recipe alarm after the whole request went out and before its
+            # reply was read leaves exactly one reply outstanding: resync.
+            # Anything else (partial request, drain interrupted) poisons.
+            if sent_all and not replied and isinstance(error, Exception):
+                self._probe_stale = getattr(self, '_probe_stale', 0) + 1
+                self._probe_stale_since = getattr(self, '_probe_stale_since', None) or sent_at
+            else:
+                self._probe_failed = True
+                self._probe_failure_note(name,started,timeout,'interrupted by '+type(error).__name__)
             raise
+
+    def _drain_stale(self, process, name, started, timeout, deadline):
+        """Read and discard replies a deadline abandoned, within this request's budget.
+
+        The server answers every request within its 12 s fresh-child bound.
+        A reply still missing PROBE_REPLY_SECONDS after it was sent means
+        the channel is lost (poison). If this request's own budget ends
+        first, nothing is dispatched and the reply stays outstanding.
+        """
+        while self._probe_stale:
+            lost = self._probe_stale_since + PROBE_REPLY_SECONDS
+            if time.monotonic() >= lost:
+                raise RecipeBlocked('an abandoned persistent desktop probe reply never arrived; further input withheld; '
+                                    'start a new run')
+            try:
+                self._read_probe_line(process, name, started, timeout, min(deadline, lost))
+            except ProbeDeadline:
+                if time.monotonic() >= lost:
+                    raise RecipeBlocked('an abandoned persistent desktop probe reply never arrived; further input withheld; '
+                                        'start a new run') from None
+                raise ProbeDeadline(name+' probe: an earlier reply outlived the recipe deadline and is still '
+                                    'outstanding; no request sent; the next request resynchronizes') from None
+            self._probe_stale -= 1
+            self._probe_stale_since = time.monotonic() if self._probe_stale else None
+
+    def _read_probe_line(self, process, name, started, timeout, deadline):
+        with selectors.DefaultSelector() as ready:
+            ready.register(process.stdout, selectors.EVENT_READ)
+            while b'\n' not in self._probe_buffer:
+                remaining = deadline-time.monotonic()
+                if remaining <= 0 or not ready.select(remaining):
+                    status = process.poll()
+                    state = 'SSH process still running; reply outstanding' if status is None else 'SSH exit '+str(status)
+                    detail = '%s; elapsed %.3fs, budget %.3fs; ' % (name, time.monotonic()-started, timeout) + state
+                    if status is None and timeout < PROBE_REPLY_SECONDS:
+                        raise ProbeDeadline('persistent desktop probe reply outlived the recipe deadline: '+detail+
+                                            '; the next request resynchronizes')
+                    raise RecipeBlocked('persistent desktop probe timed out: '+detail+'; further input withheld; start a new run')
+                data = os.read(process.stdout.fileno(),65536)
+                if not data:
+                    raise RecipeBlocked('persistent desktop probe closed during '+name+
+                                        '; SSH exit '+str(process.poll())+'; further input withheld')
+                self._probe_buffer += data
+                if len(self._probe_buffer) > 16 * 1024 * 1024:
+                    raise RecipeBlocked('desktop probe response exceeded 16 MiB')
+        line, self._probe_buffer = self._probe_buffer.split(b'\n',1)
+        return line
 
     def _probe_failure_note(self,name,started,timeout,reason):
         # Record transport state without request values or stderr. The failure

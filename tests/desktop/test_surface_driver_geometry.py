@@ -299,11 +299,26 @@ class Hygiene(unittest.TestCase):
             target._close_probe()
 
     def test_timed_out_probe_cannot_consume_a_late_witness_on_retry(self):
+        # A deadline-cut wait leaves its reply in flight (#834): the retry
+        # discards that late witness and answers with its own observation.
         target = self.probe_target()
-        source = 'import time\ndef geometry(query):\n time.sleep(.2)\n return {}\n'
+        source = 'import time\ncounter=0\ndef geometry(query):\n global counter\n counter+=1\n time.sleep(.2)\n return counter\n'
         try:
             with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                with self.assertRaisesRegex(RecipeBlocked,'timed out'):
+                with self.assertRaisesRegex(RecipeBlocked,'outlived the recipe deadline'):
+                    target.probe('geometry',{},source,timeout=.01)
+                self.assertEqual(target.probe('geometry',{},source)['result'],2)
+                self.assertFalse(target._probe_failed)
+        finally:
+            target._close_probe()
+
+    def test_silent_channel_at_the_full_reply_bound_still_poisons(self):
+        target = self.probe_target()
+        source = 'import time\ndef geometry(query):\n time.sleep(.3)\n return {}\n'
+        try:
+            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']), \
+                 patch('tools.lab.surface_driver.target.PROBE_REPLY_SECONDS',.01):
+                with self.assertRaisesRegex(RecipeBlocked,'timed out: .*further input withheld'):
                     target.probe('geometry',{},source,timeout=.01)
                 with self.assertRaisesRegex(RecipeBlocked,'start a new run'):
                     target.probe('geometry',{},source)
