@@ -362,8 +362,14 @@ class Contracts(unittest.TestCase):
 
     def test_runnable_recipes_use_input_and_referenced_frames(self):
         partial = {'cli.settings', 'cli.ui', 'cli.diagnostics', 'mcp.diagnostics'}
+        fixture_recipes = {'capture.default-destination', 'capture.default-sharing', 'capture.no-output',
+                           'capture.exceptions', 'capture.browse', 'capture.help-toggles',
+                           'shortcuts-page.help', 'shortcuts-page.refresh'}
         for rec in RECIPES:
-            if rec.interactions[0] in lane.BLOCKED:
+            # This legacy model has no real fixture family/restart or native
+            # chooser. Their recipe boundaries have dedicated tests below and
+            # their effects require the saved desktop replays.
+            if rec.interactions[0] in lane.BLOCKED or rec.interactions[0] in fixture_recipes:
                 continue
             with self.subTest(recipe=rec.name):
                 ctx = Fake()
@@ -377,6 +383,64 @@ class Contracts(unittest.TestCase):
                 self.assertTrue(all(ref in (None, *lane.REFERENCES, '07-settings-general-light', '58-diagnostics-package', 'about', 'about-build-details', 'confirm-reset-limits', '53-reload-confirm') for _, _, ref in ctx.frames))
                 self.assertEqual(ctx.disk, ctx.document)
                 self.assertTrue(any(method == 'ui.viewState' for method, _ in ctx.calls))
+
+    def test_adopted_rows_require_the_real_fixture_before_effects(self):
+        cases = ((lane.default_destination, 'settings-destinations'),
+                 (lane.default_sharing, 'settings-share-destination'),
+                 (lane.capture_exceptions, 'settings-action-routes'),
+                 (lane.browse, 'file-dialog-fallback'))
+        for function, expected in cases:
+            ctx = Fake()
+            seen = []
+            def fixture(name):
+                seen.append(name)
+                raise RecipeBlocked('fixture unavailable')
+            ctx.fixture = fixture
+            with self.subTest(function=function.__name__), self.assertRaisesRegex(RecipeBlocked, 'fixture unavailable'):
+                function(ctx)
+            self.assertEqual(seen, [expected])
+            self.assertFalse(ctx.inputs)
+
+    def test_native_scroll_retries_only_clipped_or_absent_controls(self):
+        from tools.lab.surface_driver.recipes.settings_input import click
+        for refusal in ('control: archiveRoot (0 matches)', 'placed rectangle falls outside compositor frame'):
+            ctx = Fake()
+            ctx.profile['settings'].pop('foreground_script')
+            clicks, scrolls = [], []
+            def attempt(control, **kwargs):
+                clicks.append(control)
+                if len(clicks) < 3:
+                    raise RecipeBlocked(refusal)
+            ctx.click = attempt
+            ctx.geometry = lambda window: {'x': 200, 'y': 100, 'width': 600, 'height': 400,
+                                          'screen_x': 100, 'screen_y': 0, 'scale': 2, 'head': 1}
+            ctx.scroll = lambda x, y, steps, **kw: scrolls.append((x, y, steps, kw))
+            click(ctx, 'archiveRoot')
+            self.assertEqual(len(clicks), 3)
+            self.assertEqual(scrolls, [(1352, 600, 40, {'head': 1}), (1352, 600, -3, {'head': 1})])
+        for refusal in ('control has 2 matches', 'foreground is obstructed', 'compositor witness unavailable'):
+            ctx = Fake()
+            ctx.profile['settings'].pop('foreground_script')
+            ctx.click = lambda *a, **k: ctx.blocked(refusal)
+            ctx.scroll = lambda *a, **k: self.fail('a non-clipping guard refusal must not scroll')
+            with self.assertRaisesRegex(RecipeBlocked, refusal):
+                click(ctx, 'archiveRoot')
+
+    def test_disclosure_requires_rendered_text_and_collapse(self):
+        from types import SimpleNamespace
+        ctx = Fake()
+        expanded = [False]
+        ctx.profile['settings'].pop('foreground_script')
+        ctx.click = lambda *a, **k: expanded.__setitem__(0, not expanded[0])
+        ctx.fixture = lambda name: SimpleNamespace(disclosure=lambda control: SimpleNamespace(
+            expanded=expanded[0], control={'description': 'Synthetic help body'},
+            text=['Synthetic help body'] if expanded[0] else []))
+        lane.exercise_disclosure(ctx, 'syntheticHelp', 1)
+        self.assertFalse(expanded[0])
+        ctx.fixture = lambda name: SimpleNamespace(disclosure=lambda control: SimpleNamespace(
+            expanded=expanded[0], control={'description': 'Synthetic help body'}, text=[]))
+        with self.assertRaisesRegex(RecipeFailed, 'renders its actual help description'):
+            lane.exercise_disclosure(ctx, 'syntheticHelp', 1)
 
     def test_channel_probe_restores_notifications_on_save_failure(self):
         for channel, function in (('cli', lane.cli_settings), ('mcp', lane.mcp_configuration)):

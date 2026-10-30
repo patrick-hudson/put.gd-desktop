@@ -1,0 +1,88 @@
+{
+  "window_titles": {
+    "settings": "^put.gd$",
+    "about": "^About put.gd$",
+    "diagnostics": "^Create diagnostics package$",
+    "settingsConfirm": "^(Reset limits to defaults|Reload settings from file|Clear logs)$"
+  },
+  "windows": {
+    "settings": {
+      "accessible": {
+        "name": "put.gd",
+        "visible": true,
+        "showing": true
+      }
+    },
+    "about": {
+      "accessible": {
+        "name": "About put.gd",
+        "visible": true,
+        "showing": true
+      }
+    },
+    "diagnostics": {
+      "accessible": {
+        "name": "Create diagnostics package",
+        "visible": true,
+        "showing": true
+      }
+    },
+    "settingsConfirm": {
+      "accessible": {
+        "role": "alert",
+        "visible": true,
+        "showing": true
+      }
+    }
+  },
+  "settings": {
+    "theme_references": {
+      "dark": "07-settings-general",
+      "light": "07-settings-general-light"
+    },
+    "clipboard_write_command": "wl-copy"
+  },
+  "mcp_python": "/home/lab/putgd-surface-mcp/.venv/bin/python",
+  "mcp_helper": "/home/lab/putgd-surface-mcp/.venv/bin/putgd-mcp",
+  "catalog_windows": {
+    "settings": [
+      "07-settings-general",
+      "08-settings-capture",
+      "06-settings-shortcuts",
+      "05-settings-advanced"
+    ],
+    "about": [
+      "about",
+      "about-build-details"
+    ],
+    "diagnostics": [
+      "58-diagnostics-package"
+    ]
+  },
+  "live_controls": {
+    "settingsSection0": {
+      "name": "General",
+      "role": "list item"
+    },
+    "settingsSection1": {
+      "name": "Capture",
+      "role": "list item"
+    },
+    "settingsSection2": {
+      "name": "Shortcuts",
+      "role": "list item"
+    },
+    "settingsSection3": {
+      "name": "Advanced",
+      "role": "list item"
+    },
+    "clearRecordShortcut": {
+      "name": "Clear record screen shortcut",
+      "role": "push button"
+    },
+    "resetAdvancedDefaults": {
+      "name": "Reset resource and history limits\u2026",
+      "role": "push button"
+    }
+  }
+}

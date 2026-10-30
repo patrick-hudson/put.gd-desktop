@@ -144,8 +144,27 @@ def ensure_accessible(ctx):
 def click(ctx, control, *, after_window=None):
     """Resolve each click anew, including scroll/status/disclosure layout changes."""
     options = ctx.profile.get('settings', {})
-    if not options.get('foreground_script'):
-        return ctx.click(control, window='settings')
+    if not options.get('foreground_script') or control not in options.get('live_controls', {}):
+        # Qt omits fully clipped controls and the native guard refuses partly
+        # clipped rectangles. Scroll the page, then resolve the control again;
+        # never reuse a refused rectangle or relax compositor ownership.
+        for attempt in range(12):
+            try:
+                return ctx.click(control, window='settings')
+            except RecipeBlocked as error:
+                if not any(reason in error.reason for reason in
+                           ('0 matches', 'falls outside compositor frame')):
+                    raise
+                if control.startswith('settingsSection'):
+                    raise
+                geometry = live_geometry(ctx)
+                ctx.focus('settings')
+                scale = geometry.get('scale', 1)
+                x = round((geometry['x'] - geometry.get('screen_x', 0) + geometry['width'] - 24) * scale)
+                y = round((geometry['y'] - geometry.get('screen_y', 0) + geometry['height'] / 2) * scale)
+                ctx.note('Searching the native Settings page for ' + control)
+                ctx.scroll(x, y, 40 if attempt == 0 else -3, head=geometry.get('head'))
+        ctx.blocked('Settings control remains clipped or absent after bounded wheel search: ' + control, issue=856)
     query = options.get('live_controls', {}).get(control)
     if not query:
         ctx.blocked('Settings live control query missing: ' + control)
@@ -215,6 +234,12 @@ def click(ctx, control, *, after_window=None):
 
 
 def collapse(ctx, control):
+    if control not in ctx.profile.get('settings', {}).get('live_controls', {}) or not ctx.profile.get('settings', {}).get('foreground_script'):
+        disclosure = ctx.fixture('settings-observations').disclosure
+        if disclosure(control).expanded:
+            click(ctx, control)
+            ctx.wait(lambda: not disclosure(control).expanded, 'Settings disclosure collapses: ' + control)
+        return
     query = ctx.profile['settings']['live_controls'][control]
     owner = observe(ctx, live_geometry(ctx), foreground=True)
     def checked():

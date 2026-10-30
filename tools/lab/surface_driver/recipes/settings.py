@@ -85,7 +85,7 @@ def state(ctx):
     return call(ctx, 'ui.viewState')
 
 
-def opened(ctx, section):
+def opened(ctx, section, *, fixture='settings', keep_output=True):
     if ctx.profile.get('session') == 'wayland':
         # Prove native input is available before restarting a fixture family.
         # Missing compositor coordinates/focus remain blocked, never bypassed
@@ -96,14 +96,14 @@ def opened(ctx, section):
             ctx.focus('settings')
         except RecipeBlocked as error:
             ctx.blocked('Native Wayland Settings input preflight: ' + error.reason, issue=750)
-    ctx.fixture('settings')
+    ctx.fixture(fixture)
     persisted(ctx)  # fail closed before any mutation, including resident setup
     # The primary catalog has a working local output and the dark scheme.
     # Without local output, the resident adds a warning above the page and all
     # catalog control rectangles move. Seed only this private run's preferences.
     document = get(ctx)['document']
     baseline = {}
-    if not document['archive']['keepUploads']:
+    if keep_output and not document['archive']['keepUploads']:
         baseline['archive'] = {'keepUploads': True}
     if document['preferences'].get('appearance', {}).get('theme', 'system') != 'dark':
         baseline['preferences'] = {'appearance': {'theme': 'dark'}}
@@ -159,16 +159,10 @@ def scroll_click(ctx, control, window='settings', *, after_window=None):
 
 
 def choose(ctx, control, index):
-    if control in ctx.profile.get('settings', {}).get('live_controls', {}):
-        live_click(ctx, control)
-    else:
-        ctx.click(control, window='settings')
-    # Editable choices route Home to their line edit unless the popup is open.
+    live_click(ctx, control)
+    # Open the popup so Home does not edit an editable choice's line edit.
     ctx.keys('Esc', 'Alt+Down', 'Home', *('Down',) * index, 'Return', 'Tab')
-    if control in ctx.profile.get('settings', {}).get('live_controls', {}):
-        if ctx.profile.get('settings', {}).get('input_state_script'):
-            input_witness(ctx, ctx.geometry('settings'))
-        ctx.frame('keys-after-' + control)
+    ctx.frame('keys-after-' + control)
 
 
 def replace(ctx, control, text):
@@ -181,10 +175,7 @@ def replace(ctx, control, text):
         if reply['returncode'] != 0:
             ctx.blocked('Profile synthetic clipboard writer unavailable; template input withheld.')
         ctx.wait(lambda: ctx.clipboard_text() == text, 'synthetic template clipboard is ready')
-    if control in ctx.profile.get('settings', {}).get('live_controls', {}) or paste:
-        live_click(ctx, control)
-    else:
-        ctx.click(control, window='settings')
+    live_click(ctx, control)
     # Clipboard ownership changes can clear the X11 text selection. Prepare
     # the clipboard first, then select and paste without an intervening probe.
     ctx.keys('Ctrl+A')
@@ -330,7 +321,7 @@ def category_folders(ctx):
     frame(ctx, 'before', 1)
     # Empty overrides ensure the disclosure starts closed when the page opens.
     patch(ctx, {'archive': {'folders': {k: None for k in ('images', 'videos', 'text', 'other')}}})
-    ctx.click('categoryFoldersToggle', window='settings')
+    live_click(ctx, 'categoryFoldersToggle')
     ctx.use_catalog('settings', 'settings-category-folders')
     try:
         for category in ('images', 'videos', 'text', 'other'):
@@ -855,20 +846,184 @@ def reload_confirmation(ctx):
     frame(ctx, 'reload-after', 3)
 
 
+def routing(ctx):
+    return state(ctx)['settings']['captureRouting']
+
+
+@recipe('capture.default-destination')
+def default_destination(ctx):
+    fixture = ctx.fixture('settings-destinations')
+    opened(ctx, 1)
+    for index, profile_id in enumerate(fixture.profile_ids, 1):
+        choose(ctx, 'defaultCaptureDestination', index)
+        saved(ctx, 'captureDefaults.profileId', profile_id, 1)
+        ctx.wait(lambda: routing(ctx)['default']['profileId'] == profile_id,
+                 'default destination is reflected in the live route')
+        for action in ('region', 'window', 'desktop', 'clipboard', 'edit'):
+            ctx.expect(routing(ctx)[action]['inherited'] is True and
+                       routing(ctx)[action]['profileId'] == profile_id,
+                       action + ' inherits the selected destination')
+    frame(ctx, 'destinations-after', 1)
+
+
+@recipe('capture.default-sharing')
+def default_sharing(ctx):
+    fixture = ctx.fixture('settings-share-destination')
+    opened(ctx, 1)
+    for index, mode in ((1, 'share'), (0, 'default')):
+        choose(ctx, 'defaultCaptureSharing', index)
+        saved(ctx, 'captureDefaults.publicationMode', mode, 1)
+        ctx.wait(lambda: routing(ctx)['default']['publicationMode'] == mode and
+                 routing(ctx)['default']['effectivePublicationMode'] == 'share',
+                 'default/share publication matches the loopback destination')
+        frame(ctx, 'sharing-' + mode, 1)
+    if fixture.private_supported:
+        choose(ctx, 'defaultCaptureSharing', 2)
+        saved(ctx, 'captureDefaults.publicationMode', 'private', 1)
+        ctx.wait(lambda: routing(ctx)['default']['effectivePublicationMode'] == 'private', 'private publication is reflected in the live route')
+    else:
+        ctx.blocked('Default and share proved with settings-share-destination; Keep private requires a private-capable synthetic provider, which loopback S3 does not supply.', issue=681)
+
+
+@recipe('capture.no-output')
+def no_output(ctx):
+    # Keep the owned choices while removing every output, so both recovery
+    # controls can be exercised without uploading or acquiring a source.
+    fixture = ctx.fixture('settings-destinations')
+    opened(ctx, 1, fixture='settings-no-output', keep_output=False)
+    notice = lambda: ctx.accessible({'owned': True, 'name': 'New captures have no output.*', 'visible': True, 'showing': True})
+    ctx.wait(notice, 'no-output warning is drawn before source acquisition')
+    live_click(ctx, 'chooseCaptureDestination')
+    ctx.keys('Home', 'Down', 'Return', 'Tab')
+    saved(ctx, 'captureDefaults.profileId', fixture.profile_ids[0], 1)
+    ctx.wait(lambda: not notice(), 'choosing a destination clears no-output warning')
+    frame(ctx, 'destination-recovery', 1)
+    patch(ctx, {'captureDefaults': {'destination': 'upload', 'profileId': None, 'publicationMode': 'default'}})
+    ctx.wait(lambda: bool(notice()), 'no-output warning returns')
+    live_click(ctx, 'enableLocalCopies')
+    saved(ctx, 'archive.keepUploads', True, 1)
+    ctx.wait(lambda: not notice(), 'local copies clear no-output warning')
+    frame(ctx, 'local-recovery', 1)
+
+
+@recipe('capture.exceptions', timeout=240)
+def capture_exceptions(ctx):
+    fixture = ctx.fixture('settings-action-routes')
+    opened(ctx, 1)
+    live_click(ctx, 'captureExceptionsToggle')
+    for action, label in (('region', 'Capture region'), ('window', 'Capture window'),
+                          ('desktop', 'Capture desktop'), ('edit', 'Capture region & edit'),
+                          ('clipboard', 'Upload clipboard'), ('record', 'Record screen')):
+        live_click(ctx, 'addCaptureException')
+        ctx.click('text:' + label, window='settings')
+        ctx.wait(lambda: not routing(ctx)[action]['inherited'], action + ' exception added')
+        choose(ctx, 'profile' + action.title(), 2)
+        saved(ctx, 'actions.' + action + '.profileId', fixture.profile_ids[1], 1)
+        for index, mode in ((1, 'share'), (0, 'default')):
+            choose(ctx, 'publication' + action.title(), index)
+            saved(ctx, 'actions.' + action + '.publicationMode', mode, 1)
+            ctx.wait(lambda: routing(ctx)[action]['publicationMode'] == mode,
+                     action + ' exception sharing reflected in live route')
+        frame(ctx, action + '-exception', 1)
+        live_click(ctx, 'remove' + action.title() + 'Exception')
+        ctx.wait(lambda: routing(ctx)[action]['inherited'], action + ' exception removed')
+        ctx.expect(routing(ctx)[action]['profileId'] == routing(ctx)['region' if action == 'record' else 'default']['profileId'],
+                   action + ' output inherits again')
+        persisted(ctx)
+
+
+def exercise_disclosure(ctx, control, section):
+    observe = ctx.fixture('settings-observations').disclosure
+    # Bring a clipped disclosure back before inspecting its showing state.
+    live_click(ctx, control)
+    opened_state = observe(control)
+    if not opened_state.expanded:
+        live_click(ctx, control)
+        opened_state = ctx.wait(lambda: (s if s.expanded else None)
+                               if (s := observe(control)) else None, control + ' expands')
+    description = opened_state.control.get('description', '')
+    if control == 'shortcutHelpToggle':
+        ctx.expect(any('Escape cancels' in text for text in opened_state.text), 'shortcut instructions are rendered accessibly')
+    else:
+        ctx.expect(bool(description) and any(description in text for text in opened_state.text),
+                   control + ' renders its actual help description')
+    frame(ctx, control + '-expanded', section)
+    live_click(ctx, control)
+    ctx.wait(lambda: not observe(control).expanded, control + ' collapses')
+    frame(ctx, control + '-collapsed', section)
+
+
+@recipe('capture.help-toggles', timeout=240)
+def capture_help(ctx):
+    opened(ctx, 1)
+    controls = ctx.catalog.candidates('glob:*Help', 'settings', REFERENCES[1])
+    names = sorted({c['name'] for c in controls if c.get('visible') and c.get('class') == 'QToolButton'})
+    ctx.expect(bool(names), 'capture catalog declares visible per-setting help')
+    for name in names:
+        exercise_disclosure(ctx, name, 1)
+
+
+@recipe('shortcuts-page.help')
+def shortcut_help(ctx):
+    opened(ctx, 2)
+    exercise_disclosure(ctx, 'shortcutHelpToggle', 2)
+
+
+@recipe('shortcuts-page.refresh', timeout=120)
+def shortcut_refresh(ctx):
+    opened(ctx, 2)
+    fixture = ctx.fixture('settings-binding-conflict' if ctx.profile.get('session') == 'x11' else 'settings-binding-unavailable')
+    # The fixture restarts the private helper to establish actual channel state.
+    opened(ctx, 2)
+    before = get(ctx)['document']['actions']
+    if fixture.state == 'conflict':
+        ctx.wait(lambda: fixture.observe().get('bindings', {}).get('region', {}).get('bound') is False,
+                 'external contender prevents native region binding')
+        fixture.release()
+    else:
+        ctx.blocked('Native unavailable state observed; this desktop fixture cannot reversibly restore the shortcut channel for a refresh effect assertion.', issue=681)
+    live_click(ctx, 'refreshShortcutSupport')
+    if fixture.state == 'conflict':
+        ctx.wait(lambda: fixture.observe().get('bindings', {}).get('region', {}).get('bound') is True,
+                 'refresh acquires the released native shortcut')
+    ctx.expect(get(ctx)['document']['actions'] == before, 'refresh preserves configured shortcuts')
+    frame(ctx, 'shortcuts-refreshed', 2)
+
+
+@recipe('capture.browse', timeout=120)
+def browse(ctx):
+    from . import dialogs
+    backend = 'fallback'
+    fixture = ctx.fixture('file-dialog-' + backend)
+    if not fixture.available:
+        ctx.blocked(fixture.reason, issue=671)
+    opened(ctx, 1)
+    files = dialogs._files(ctx)
+    inspect = lambda: fixture.observe('outputFolder', 'root')
+    original = get(ctx)['document']['archive']['root']
+    live_click(ctx, 'text:Choose default output folder')
+    try:
+        dialogs._ready(ctx, inspect, backend, 'folder')
+        dialogs._input(ctx, backend, files['folder'], 'folder', inspect)
+        selected = ctx.wait(lambda: (s if not s['open'] else None)
+                            if (s := inspect()) else None, 'folder chooser completed')
+        ctx.expect(selected['last']['status'] == 'chosen' and
+                   selected['last']['path'].rstrip('/') == files['folder'], 'chooser selected the exact synthetic folder')
+        saved(ctx, 'archive.root', files['folder'], 1)
+        frame(ctx, 'browse-chosen', 1)
+    finally:
+        if inspect()['open']:
+            call(ctx, 'ui.fileDialog', {'dialog': 'outputFolder', 'action': 'cancel', 'field': 'root'})
+        patch(ctx, {'archive': {'root': original}})
+    ctx.blocked('Fallback Browse open/choose and persisted folder proved; deterministic Failed result and Try again still require the production chooser-failure boundary (#671).', issue=671)
+
+
 # Honest declarations for edges that the current interface cannot prepare or
 # observe. Each gets its own blocked receipt (and never a visual-only pass).
 BLOCKED = {
     'settings.footer': 'Conflict fixture is available; needs deterministic failed-save/retry fixture and footer/retry observation. Accepted config alone cannot prove retry UI.',
-    'capture.default-destination': 'Needs isolated destination choices with known profile IDs and full capture-route assertions.',
-    'capture.default-sharing': 'Needs isolated share/private capable destination with capture-route assertions.',
-    'capture.no-output': 'Needs no-output fixture and assertions for both recovery buttons before source acquisition.',
-    'capture.exceptions': 'Needs isolated action-route fixture covering add, per-action sharing/destination and remove.',
-    'capture.browse': 'Needs native folder chooser fixture and deterministic failed-open/retry channel from dialogs lane.',
-    'capture.help-toggles': 'Help disclosures are absent from resident view state; needs accessible expanded/text observation for every setting.',
-    'shortcuts-page.chord': 'Context.keys cannot hold overlapping second-key/AltGr events or assert physical unshifted digits; needs input event fixture.',
-    'shortcuts-page.focus-loss': 'Recording status is observed; needs controlled external focus/hide/deactivation fixture with native-channel assertions.',
-    'shortcuts-page.refresh': 'Refresh is hidden on healthy bindings; needs conflict/unavailable/pending desktop-channel fixture.',
-    'shortcuts-page.help': 'Help visibility absent from resident view state; needs accessible expanded/text observation.',
+    'shortcuts-page.chord': 'Input-events fixture exists; current recording status text must be accessible before proving overlapping-key, AltGr and shifted-digit outcomes (#862).',
+    'shortcuts-page.focus-loss': 'External focus fixture exists; current recording outcome text is not accessible on Qt 6.4 (#862), and Wayland hide still needs native minimize support.',
     'shortcuts-page.unsupported-desktop': 'Required desktop profiles have a shortcut channel; needs an explicitly unsupported Wayland profile.',
     'advanced.resource-limits': 'Needs complete resource-field exercise including Auto/No limit, resolved hints and per-field resets; partial value checks cannot prove this ID.',
     'advanced.clear-logs': 'Needs seeded persistent logs and confirmation control inventory with accept/cancel assertions.',
@@ -888,7 +1043,7 @@ for _identifier in ('settings.update-privacy', 'settings.update-toggle', 'settin
 def _declare_blocked(identifier, reason):
     @recipe(identifier)
     def unavailable(ctx):
-        ctx.blocked(reason, issue=CORE_ISSUE)
+        ctx.blocked(reason, issue=862 if identifier in ('shortcuts-page.chord', 'shortcuts-page.focus-loss') else 671 if identifier in ('diagnostics.folder',) else CORE_ISSUE)
     unavailable.__name__ = 'blocked_' + identifier.replace('-', '_').replace('.', '_')
 
 
