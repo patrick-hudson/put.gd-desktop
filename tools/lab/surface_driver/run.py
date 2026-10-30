@@ -31,7 +31,7 @@ from tools.lab.surface_driver.api import REGISTRY, ReceiptRow, RecipeBlocked, Re
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.receipts import Evidence, stamp, write_receipts, write_json
-from tools.lab.surface_driver.redact import scan_run
+from tools.lab.surface_driver.redact import scan_run, detected
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
 
@@ -391,6 +391,9 @@ def finish_evidence(evidence, out, environment, rows, campaign, coverage):
         # Merge under the campaign lock, then scan a private staged copy before publishing.
         import fcntl
         destination = Path(coverage)
+        if kinds := detected(str(destination), evidence.redactor.audit_literals):
+            evidence.failed_scan = {'passed': False, 'findings': [{'kind': 'coverage-export-filename-'+kind} for kind in kinds], 'quarantine': []}
+            return finish_evidence(evidence, out, environment, rows, campaign, local)
         destination.parent.mkdir(parents=True, exist_ok=True)
         with open(str(destination)+'.lock', 'a') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)

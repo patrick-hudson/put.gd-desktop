@@ -397,5 +397,16 @@ class Adv(unittest.TestCase):
             self.assertNotIn(encoded,r.text(span))
 
 
+    @unittest.skipUnless(Image, 'requires python3-pil')
+    def test_coverage_destination_filename_checked_before_creating_it(self):
+        external=self.out.parent/TOKEN/'coverage.json'
+        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),lambda ctx:ctx.sensitive(PUTGD))],self.env,self.out,'safe',external)
+        self.assertEqual(rows[0].functional,'failed')
+        self.assertFalse(external.parent.exists())
+        receipt=(self.out/'receipt.json').read_text()
+        self.assertNotIn(TOKEN,receipt)
+        self.assertIn('coverage-export-filename-registered-secret',receipt)
+
+
 if __name__ == '__main__':
     unittest.main()
