@@ -32,6 +32,20 @@ class Round3(fixture_tests.Fixtures):
         self.assertEqual(set(value.recovery_actions),{'chooseCaptureDestination','enableLocalCopies'})
         self.assertTrue(all(v['destination']=='default' and v['profileId'] is None for k,v in self.ctx.document['actions'].items() if k!='record'))
 
+    def test_dialog_backend_observes_actual_production_state_and_peer(self):
+        self.ctx.fixture('app-profile')
+        state={'open':True,'backend':'fallback','fallbackReason':'disabled','mode':'folder'}
+        original=self.ctx.call
+        self.ctx.call=lambda method,params=None: state if method=='ui.fileDialog' else original(method,params)
+        with patch('tools.lab.surface_driver.fixtures.resident.identity',return_value={'pid':42,'start':'owned'}) as peer:
+            value=self.ctx.fixture('file-dialog-fallback')
+            self.assertEqual(value.backend,'fallback')
+            self.assertIs(value.observe(field='root'),state)
+            self.assertEqual(value.resident(),{'pid':42,'start':'owned'})
+            peer.assert_called_once_with(self.ctx.manager.scope)
+            with self.assertRaises(ValueError):value.observe('foreign')
+            with self.assertRaises(ValueError):value.observe('editImage',field='root')
+
     def test_known_loopback_choices_and_route_removal_preserve_shortcuts(self):
         baseline=copy.deepcopy(self.ctx.document)
         service=Fixture(profile={'id':'owned','provider':'s3','settings':{'endpoint':'http://127.0.0.1:1234'},'credentials':{'reference':'synthetic'}})

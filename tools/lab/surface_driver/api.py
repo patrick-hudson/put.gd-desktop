@@ -281,6 +281,13 @@ class Context:
         loopback destinations. Finalizers restore faults before restoring the
         accepted configuration, and run outside the recipe deadline:
 
+        * file-dialog-portal / file-dialog-fallback: fresh private family,
+          available/reason/backend/environment, resident() authenticated
+          PID/start and observe(dialog='outputFolder', field=None) returning
+          the production chooser state unchanged. Native buses/display stay
+          intact. Portal-to-fallback failures are not Failed chooser results;
+          chooser-failure blocks on #671 until an isolated boundary exists.
+          Missing fallback catalog references remain review-required.
         * destinations-uncached: the destinations contract after a private
           resident restart; credentials_cached=False. destinations also exposes
           reset_credentials() to retire its session credential cache without

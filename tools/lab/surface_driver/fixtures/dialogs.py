@@ -11,12 +11,23 @@ def backend(scope, name):
         raise RecipeBlocked('chooser fixture must preserve the native session buses and display',issue=671)
     env['PUTGD_FILE_DIALOG']='fallback' if name=='fallback' else ''
     scope.restart(env)
+    def observe(dialog='outputFolder',field=None):
+        if dialog not in ('editImage','historySaveAs','outputFolder','diagnosticsFolder'):
+            raise ValueError('unknown production chooser')
+        params={'dialog':dialog,'action':'inspect'}
+        if field is not None:
+            if dialog!='outputFolder' or field not in ('root','images','videos','text','other'):
+                raise ValueError('unknown output folder field')
+            params['field']=field
+        return scope.ctx.call('ui.fileDialog',params)
+    from .resident import identity
+    value=Fixture(backend=name,environment=env,resident=lambda:identity(scope),observe=observe)
     # Availability of the real session portal is observational, never a fake.
     if name=='portal':
         result=scope.ctx.shell("gdbus call --session --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop --method org.freedesktop.DBus.Properties.Get org.freedesktop.portal.FileChooser version")
         if result['returncode']:
-            return Fixture(available=False,reason='native session FileChooser portal unavailable')
-    return Fixture(available=True,reason='',backend=name,environment=env)
+            return Fixture(value,available=False,reason='native session FileChooser portal unavailable')
+    return Fixture(value,available=True,reason='')
 
 
 def failure(scope):
