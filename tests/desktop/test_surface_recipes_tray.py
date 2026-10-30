@@ -29,6 +29,8 @@ class FakeContext(Context):
         self.profile['tray'].pop('preflight_blocked', None)
         self.profile['tray']['icon'] = {'name': 'put.gd'}
         self.events = []
+        self.rects = {}
+        self.about_open = False
         self.menu = False
         self.output = False
         self.edit_sources = False
@@ -120,15 +122,20 @@ class FakeContext(Context):
             return []
         # A different rectangle per label ensures that tests track the node
         # which input actually targets, rather than accepting any click.
-        self.last_node = name
+        if name not in self.rects:
+            index = len(self.rects)
+            self.rects[name] = (40 + 100 * (index % 8), 50 + 40 * (index // 8), 20, 10)
+        rx, ry, rw, rh = self.rects[name]
         return [{'name': name, 'role': query.get('role', 'label'),
-                 'rect': {'x': 40, 'y': 50, 'width': 20, 'height': 10},
+                 'rect': {'x': rx, 'y': ry, 'width': rw, 'height': rh},
                  'enabled': not name.endswith(': Local only'), 'visible': True,
                  'selected': name == self.target}]
 
     def click_at(self, x, y, button='left'):
-        assert (x, y) == (50, 55)
-        name = self.last_node
+        matches = [name for name, (rx, ry, rw, rh) in self.rects.items()
+                   if rx <= x < rx + rw and ry <= y < ry + rh]
+        assert len(matches) == 1, 'click must hit one observed rectangle'
+        name = matches[0]
         self.events.append(('click', name, button))
         if self.ignored_input:
             return
@@ -164,6 +171,8 @@ class FakeContext(Context):
         elif name == 'Show in folder':
             self.target = 'putgd-diagnostics-20261029-000000Z.zip'
         elif name != tray.FIXTURE_TITLE:
+            if name == 'About put.gd':
+                self.about_open = True
             self.target = {'Change output…': 'Capture'}.get(name, name)
             self.menu = False
 
@@ -191,6 +200,7 @@ class FakeContext(Context):
             elif key in tray.CHORDS.values():
                 self._invoke(next(a for a, chord in tray.CHORDS.items() if key == chord))
             elif key == 'Esc':
+                self.about_open = False
                 self.menu = self.output = self.edit_sources = False
                 if self.operations and self.operations[-1]['state'] in ('acquiring', 'editing'):
                     self.operations[-1]['state'] = 'cancelled'
@@ -351,6 +361,29 @@ class TrayRecipesTest(unittest.TestCase):
         with self.assertRaisesRegex(RecipeBlocked, 'Cinnamon locator'):
             tray.context_menu(ctx)
         self.assertFalse(any(e[0] == 'click' for e in ctx.events))
+
+    def test_about_dialog_is_closed_after_its_evidence_frame(self):
+        ctx = FakeContext()
+        tray.tray_menu_about(ctx)
+        self.assertFalse(ctx.about_open)
+        self.assertEqual(ctx.events[-1], ('keys', ('Esc',)))
+
+    def test_navigation_failure_closes_the_open_menu(self):
+        ctx = FakeContext()
+        def fail_frame(*args, **kwargs):
+            raise RecipeFailed('synthetic frame failure')
+        ctx.frame = fail_frame
+        with self.assertRaises(RecipeFailed):
+            tray.tray_menu_about(ctx)
+        self.assertFalse(ctx.menu)
+
+    def test_fake_click_targets_coordinates_not_the_last_queried_node(self):
+        ctx = FakeContext()
+        ctx.accessible({'name': 'Settings'})
+        rx, ry, rw, rh = ctx.rects['Settings']
+        ctx.accessible({'name': 'History'})
+        ctx.click_at(rx + rw // 2, ry + rh // 2)
+        self.assertEqual(ctx.events[-1], ('click', 'Settings', 'left'))
 
     def test_profile_fragments_cover_model_desktops_and_are_lane_scoped(self):
         for desktop in json.loads((ROOT / 'tools/lab/surface_map/model.json').read_text())['desktops']:

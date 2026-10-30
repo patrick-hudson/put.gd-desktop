@@ -253,24 +253,25 @@ def _navigation(interaction, label, target):
         _begin(ctx)
         if target == 'settings':
             ctx.view('ui.show', {'view': 'history'})
-        _menu(ctx)
-        _menu_frame(ctx, 'before')
-        _press(ctx, label, 'menu item')
-        if target == 'history':
-            ctx.expect(bool(ctx.call('ui.history', {'action': 'inspect'})), 'History inspector answers')
-            _page(ctx, 'History')
-        elif target in ('settings', 'destinations'):
-            _page(ctx, target.title())
-        elif target == 'capture':
-            ctx.wait(lambda: ctx.call('ui.viewState').get('settings', {}).get('section') == 1,
-                     'Settings Capture section')
-        elif target == 'editFile':
-            state = ctx.call('ui.fileDialog', {'dialog': 'editImage', 'action': 'inspect'})
-            ctx.expect(state.get('open'), 'edit image file chooser is open')
-        if target == 'about':
-            _node(ctx, 'About put.gd', 'dialog')
-        ctx.frame('after')
-        if target == 'editFile':
+        try:
+            _menu(ctx)
+            _menu_frame(ctx, 'before')
+            _press(ctx, label, 'menu item')
+            if target == 'history':
+                ctx.expect(bool(ctx.call('ui.history', {'action': 'inspect'})), 'History inspector answers')
+                _page(ctx, 'History')
+            elif target in ('settings', 'destinations'):
+                _page(ctx, target.title())
+            elif target == 'capture':
+                ctx.wait(lambda: ctx.call('ui.viewState').get('settings', {}).get('section') == 1,
+                         'Settings Capture section')
+            elif target == 'editFile':
+                state = ctx.call('ui.fileDialog', {'dialog': 'editImage', 'action': 'inspect'})
+                ctx.expect(state.get('open'), 'edit image file chooser is open')
+            if target == 'about':
+                _node(ctx, 'About put.gd', 'dialog')
+            ctx.frame('after')
+        finally:
             ctx.keys('Esc')
     navigate.__name__ = interaction.replace('.', '_').replace('-', '_')
     return navigate
