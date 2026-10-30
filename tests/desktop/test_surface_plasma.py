@@ -111,7 +111,7 @@ class KDEKeyring(FixtureCase):
 
 
 class WalletScript(unittest.TestCase):
-    def run_create(self, *, collision=False, resolve=True):
+    def run_create(self, *, collision=False, resolve=True, default=False):
         from tools.lab.surface_driver.fixtures.keyring import KDE_CREATE
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         home=Path(self.temp.name);self.wallet='putgd-fixture-'+'a'*32
@@ -119,7 +119,7 @@ class WalletScript(unittest.TestCase):
         def call(path,iface,method,params,reply):
             calls.append((path,method,params))
             if method=='wallets':return (state['wallets'],)
-            if method in ('networkWallet','localWallet'):return ('default-wallet',)
+            if method in ('networkWallet','localWallet'):return (self.wallet if default else 'default-wallet',)
             if method=='pamOpen':state['wallets']=[self.wallet];return ()
             if method=='deleteWallet':state['wallets']=[];return (0,)
             if method=='Get':
@@ -153,6 +153,13 @@ class WalletScript(unittest.TestCase):
         self.assertEqual(state['wallets'],[])
         self.assertIn(('/ksecretd','deleteWallet',(self.wallet,)),calls)
         self.assertFalse((home/'.local/share/kwalletd'/(self.wallet+'.salt')).exists())
+
+
+    def test_partial_creation_never_deletes_a_wallet_that_became_default(self):
+        home,_,calls,state=self.run_create(resolve=False,default=True)
+        self.assertEqual(state['wallets'],[self.wallet])
+        self.assertFalse(any(method=='deleteWallet' for _,method,_ in calls))
+        self.assertTrue((home/'.local/share/kwalletd'/(self.wallet+'.salt')).exists())
 
 
 class PlasmaCrash(unittest.TestCase):
