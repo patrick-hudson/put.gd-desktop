@@ -228,6 +228,33 @@ Without a witness, or when placement is implausible, a row's `rect` is null and
 `coordinate_error` gives the reason; window-relative numbers are never used. On
 GNOME, client-side decorations are split symmetrically, within bounds.
 
+Fresh accessibility walks are bounded (#805). They have to be: on GNOME 50 the
+private Settings window keeps `putgd-ui` at a full core (#840), and some GTK
+session services never answer AT-SPI at all.
+
+- Every AT-SPI call (raw D-Bus) has a 3 s timeout. libatspi, where still
+  used, gets the same bound instead of its longer default wait for recently
+  registered applications, which in a fresh process is all of them.
+- Each walk has a 7.5 s budget, counted from the fresh child's start; the
+  persistent channel kills the child at 12 s.
+- An unanswered call, or a walk over budget, gives RecipeBlocked naming the
+  application, its pid and its time per node. It never returns a partial
+  result, because a partial walk cannot prove absence or uniqueness.
+- Wayland `geometry()` and `windows()` read only application children (window
+  level). Control lookups skip text, descriptions and key bindings.
+- Queries scoped by pid or `owned` never contact other applications. Unscoped
+  queries ask every application's name concurrently. A silent application is
+  skipped only if its executable cannot match the queried `application`.
+
+Qt 6.10 exports no objectName attribute (#819). `objectName` then comes from
+the last segment of the AT-SPI `AccessibleId` path (row field `accessibleId`).
+Class names do not count. Neither do view items (list, table and tree items,
+headers, page tabs), which repeat their view's id. A control that no catalog
+exports, such as a Settings sidebar row, is declared in the profile as
+`live_controls: {"settingsSection0": {"name": "General", "role": "list item"}}`.
+`click()` then targets the live row with exactly that name and role, behind the
+same guards.
+
 Selector readback is per desktop (`selector_accessible` in the profile). On
 Cinnamon it is the private family's `Capture region` pane, found through its
 focus event. On GNOME it is the put.gd Shell extension's St actor in
