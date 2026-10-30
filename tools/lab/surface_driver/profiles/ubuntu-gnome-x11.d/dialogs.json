@@ -27,10 +27,8 @@
   },
   "windows": {
     "putgdFileDialog": {
-      "accessible": {
-        "role": "file chooser",
-        "application": "putgd*"
-      }
+      "accessible": null,
+      "owned": true
     }
   }
 }

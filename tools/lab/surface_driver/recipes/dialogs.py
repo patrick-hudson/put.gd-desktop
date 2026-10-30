@@ -106,6 +106,9 @@ def _ready(ctx, inspect, backend, mode):
         ctx.expect(geometry['pid'] == identity['pid'], 'native chooser and AT-SPI process identities agree')
         ctx.focus('portalFileDialog', raise_window=False)
     else:
+        nodes = ctx.accessible({'name': state['title'], 'owned': True, 'visible': True, 'showing': True})
+        ctx.note('Fallback accessible surfaces: ' + json.dumps([{key: n.get(key) for key in
+                 ('name', 'role', 'application', 'pid', 'rect')} for n in nodes], sort_keys=True))
         ctx.profile.setdefault('windows', {}).setdefault('putgdFileDialog', {})['title'] = '^' + re.escape(state['title']) + '$'
         ctx.focus('putgdFileDialog', raise_window=False)
     ctx.note('Chooser ready: backend=' + backend + ', mode=' + mode + ', title=' + state['title'])
