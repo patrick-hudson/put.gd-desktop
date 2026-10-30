@@ -361,7 +361,7 @@ class LabContracts(unittest.TestCase):
                 return json.dumps(report) if 'cat ~/' in script else ''
             with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), \
                     patch.object(lab, 'get'), patch.object(lab, 'verify_installed_binaries', return_value={'/usr/bin/putgd': 'a' * 64}):
-                result = lab.install_package(run, deb, 1200, 300)
+                result = lab.install(run, deb=deb, install_timeout=1200, install_recovery_timeout=300)
             self.assertTrue(result['timedOut'])
             self.assertEqual(lab.read_json(Path(result['installEvidence']) / 'result.json'), report)
             self.assertTrue(any('1200 300' in call for call in calls))

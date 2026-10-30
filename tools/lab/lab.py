@@ -1793,7 +1793,8 @@ def install(run, deb=None, appimage=None, install_timeout=None, install_recovery
     receipt = (install_appimage(run, appimage) if appimage is not None else
                install_package(run, deb, install_timeout, install_recovery_timeout))
     write_json(Path(run) / 'package.json', receipt)
-    return {'status': 'installed', 'format': receipt.get('format', 'deb'), 'sha256': receipt['sha256']}
+    return {'status': 'installed', 'format': receipt.get('format', 'deb'), 'sha256': receipt['sha256'],
+            **{key: receipt[key] for key in ('installEvidence', 'timedOut') if key in receipt}}
 
 
 def start(run, timeout=30):
