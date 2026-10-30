@@ -69,6 +69,12 @@ def _window_ready(ctx: Context, window):
         raise
 
 
+def _show_window(ctx: Context, view):
+    """ui.show acknowledges a launch before the helper's native window maps."""
+    ctx.view('ui.show', {'view': view})
+    ctx.wait(lambda: _window_ready(ctx, view), view + ' helper maps before event frames', timeout=15)
+
+
 def _failure_frame(ctx: Context):
     try:
         ctx.frame('failure-before-cleanup')
@@ -107,7 +113,7 @@ def _upload(ctx: Context):
 def config_changed(ctx: Context):
     """Exercise the file watcher, not settings.reload or settings.patch."""
     _guest(ctx)
-    ctx.view('ui.show', {'view': 'settings'})
+    _show_window(ctx, 'settings')
     before = _result(ctx, 'settings.get')
     metadata = before['metadata']
     document = before['document']
@@ -177,7 +183,7 @@ PYCONFIG'''
 def single_instance(ctx: Context):
     _guest(ctx)
     before = _result(ctx, 'ui.snapshot')
-    ctx.view('ui.show', {'view': 'history'})
+    _show_window(ctx, 'history')
     _shell(ctx, 'putgd-launcher --background', 'second installed launcher hands off', timeout=15)
     after = _result(ctx, 'ui.snapshot')
     ctx.expect(after['residentEpoch'] == before['residentEpoch'], 'second launch preserves the original resident epoch')
@@ -187,7 +193,7 @@ def single_instance(ctx: Context):
 @recipe('event.ui-helper-crash', desktop_drawn=True)
 def ui_helper_crash(ctx: Context):
     _guest(ctx)
-    ctx.view('ui.show', {'view': 'history'})
+    _show_window(ctx, 'history')
     before = _result(ctx, 'ui.snapshot')
     pid = before['diagnostics']['ui']['pid']
     ctx.expect(isinstance(pid, int) and pid > 1, 'inspect identifies the live UI helper PID')
@@ -219,7 +225,7 @@ PYKILL'''.replace('PID', str(pid))
         _failure_frame(ctx)
         raise
     finally:
-        ctx.view('ui.show', {'view': 'history'})
+        _show_window(ctx, 'history')
     restarted = _result(ctx, 'ui.snapshot')['diagnostics']['ui']['pid']
     ctx.expect(restarted > 1 and restarted != pid, 'next view creates a new UI helper')
     ctx.frame('recovered', window='history')
@@ -228,7 +234,7 @@ PYKILL'''.replace('PID', str(pid))
 @recipe('event.clipboard-changed', needs=('events.slow-upload',), destinations=('local', 's3', 'proton'), desktop_drawn=True)
 def clipboard_changed(ctx: Context):
     f = _upload(ctx)
-    ctx.view('ui.show', {'view': 'history'})
+    _show_window(ctx, 'history')
     ctx.frame('before', window='history')
     clipboard = _fixture(ctx, 'events.clipboard')
     text = clipboard['text']
@@ -246,7 +252,7 @@ def network_stall(ctx: Context):
     """Drop packets to precisely the fixture port; never change a global policy."""
     f = _upload(ctx)
     controllers = _fixture(ctx, 'events.controllers')
-    ctx.view('ui.show', {'view': 'history'})
+    _show_window(ctx, 'history')
     ctx.frame('before', window='history')
     # The core stages the narrow privileged rule and registers rollback before
     # mutation. Its independent finalizer also covers setup/deadline failures.
@@ -331,7 +337,7 @@ def _available(ctx: Context, f):
 @recipe('event.update-found', needs=('events.update-feed',), desktop_drawn=True)
 def update_found(ctx: Context):
     f = _feed(ctx)
-    ctx.view('ui.show', {'view': 'history'})
+    _show_window(ctx, 'history')
     ctx.frame('before', window='history')
     _result(ctx, 'update.check')
     _available(ctx, f)
@@ -343,7 +349,7 @@ def update_found(ctx: Context):
 @recipe('shell.app-menu-check-updates', needs=('events.update-feed',))
 def app_menu_check_updates(ctx: Context):
     f = _feed(ctx)
-    ctx.view('ui.show', {'view': 'history'})
+    _show_window(ctx, 'history')
     before = _result(ctx, 'update.status').get('attemptedAt')
     ctx.frame('before', window='history')
     ctx.click('applicationMenu', window='history')
@@ -360,7 +366,7 @@ def update_available_link(ctx: Context):
     f = _feed(ctx)
     _result(ctx, 'update.check')
     _available(ctx, f)
-    ctx.view('ui.show', {'view': 'history'})
+    _show_window(ctx, 'history')
     ctx.frame('before', window='history')
     ctx.click('updateAvailable', window='history')
     _result(ctx, 'ui.viewState')
@@ -519,7 +525,7 @@ def _panel_theme_event(ctx: Context, spec, read, write):
         before = _result(ctx, 'ui.snapshot')['diagnostics']['trayTint']
     target = spec['light'] if before['panel'] == 'dark' else spec['dark']
     ctx.note('Panel theme original: ' + values[0] + '; target: ' + target + '; resident tint: ' + json.dumps(before, sort_keys=True))
-    ctx.view('ui.show', {'view': 'history'})
+    _show_window(ctx, 'history')
     ctx.frame('before')
     try:
         _shell(ctx, shlex.join(write + [target]), 'change real desktop panel theme')
@@ -618,7 +624,7 @@ def disk_full_import(ctx: Context):
     # Import synthetic native clipboard text through production disk admission.
     script, cleanup = _fill_storage(ctx, 'events.import-storage')
     _fixture(ctx, 'events.clipboard')
-    ctx.view('ui.show', {'view': 'history'})
+    _show_window(ctx, 'history')
     ctx.frame('before', window='history')
     try:
         _shell(ctx, script, 'fill isolated artifact tmpfs below reserve')
@@ -636,7 +642,7 @@ def disk_full_import(ctx: Context):
 @recipe('event.disk-full-record', needs=('events.record-storage',), desktop_drawn=True)
 def disk_full_record(ctx: Context):
     script, cleanup = _fill_storage(ctx, 'events.record-storage')
-    ctx.view('ui.show', {'view': 'history'})
+    _show_window(ctx, 'history')
     ctx.frame('before', window='history')
     try:
         _shell(ctx, script, 'fill isolated recording tmpfs below reserve')
