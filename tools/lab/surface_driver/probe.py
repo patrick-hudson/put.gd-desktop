@@ -1059,7 +1059,27 @@ def control_geometry(query):
         raise RuntimeError('owned live control has no desktop placement: ' + unplaced[0]['coordinate_error'])
     if len(selected) != 1:
         raise RuntimeError('owned live control is missing, hidden, disabled or ambiguous (' + str(len(selected)) + ' matches)')
-    return selected[0]
+    row = selected[0]
+    # Qt can mark a partly clipped child SHOWING and export its full bounds.
+    # Check the final resolved node, after any recipe scrolling/layout changes;
+    # a safe centre alone does not prove the whole control is visible (#915).
+    x, y, width, height = row['rect']
+    ancestors = row.get('ancestors', [])
+    # A native popup is a separate surface: its logical owner (or parent
+    # menu) does not clip it. Its own descendants still must fit inside it.
+    if row.get('popup'):
+        for index in range(len(ancestors) - 1, -1, -1):
+            if normalize_role(ancestors[index].get('role', '')) in POPUP_ROLES:
+                ancestors = ancestors[index:]
+                break
+    for ancestor in ancestors:
+        rect = ancestor.get('rect')
+        if normalize_role(ancestor.get('role', '')) in ('desktop frame', 'application') or not rect or min(rect[2:]) <= 0:
+            continue
+        left, top, w, h = rect
+        if not (left <= x and top <= y and x + width <= left + w and y + height <= top + h):
+            raise RuntimeError('owned live control is clipped by ancestor ' + repr(ancestor.get('role')) + ' at ' + str(rect))
+    return row
 
 
 def run(*args):
@@ -1496,6 +1516,29 @@ def native_capture_process(pid):
 SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi')
 
 
+def shell_applications(application):
+    """Select the compositor by its bus-owner executable before reading AT-SPI.
+
+    The registry can retain foreign clients with unsupported or stale Name
+    properties. They cannot establish anything about the shell's stage (#898).
+    A failed daemon ownership query or a failed matching shell still refuses.
+    """
+    for app in desktop_root():
+        if app is None:
+            continue
+        try:
+            pid = app.get_process_id()
+        except NotImplementedError as error:
+            # The bus daemon definitively reports a disconnected client. All
+            # other failures, including timeouts, leave ownership unverified.
+            cause = error.__cause__
+            if getattr(cause, 'get_dbus_name', lambda: '')() == 'org.freedesktop.DBus.Error.NameHasNoOwner':
+                continue
+            raise
+        if any(fnmatch.fnmatchcase(name, application) for name in executable(pid)):
+            yield app
+
+
 def shell_cover(point, application):
     """Shell-drawn chrome over an X11 point (banners, panels, shell menus).
 
@@ -1507,12 +1550,14 @@ def shell_cover(point, application):
     import pyatspi
     bound_calls()
     x, y = int(point[0]), int(point[1])
-    for app in desktop_root():
+    observed = False
+    for app in shell_applications(application):
         try:
             if not app or not fnmatch.fnmatchcase(app.name or '', application):
                 continue
             for window in app:
                 stage = list(window.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
+                observed = True
                 node, chain = window.queryComponent().getAccessibleAtPoint(x, y, pyatspi.DESKTOP_COORDS), []
                 for _ in range(40):
                     if node is None or not node.getState().contains(pyatspi.STATE_SHOWING):
@@ -1532,6 +1577,8 @@ def shell_cover(point, application):
                     return cover
         except (NotImplementedError, AttributeError) as error:
             raise RuntimeError('shell cover observation unavailable: '+type(error).__name__) from error
+    if not observed:
+        raise RuntimeError('shell cover observation unavailable: compositor stage was not observed')
     return None
 
 

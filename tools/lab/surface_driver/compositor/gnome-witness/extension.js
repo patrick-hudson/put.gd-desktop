@@ -36,9 +36,12 @@ function describe(window, stack) {
 function actorDescription(actor) {
     const [x, y] = actor.get_transformed_position();
     const [w, h] = actor.get_transformed_size();
+    // Actor properties are overrides. StLabel/StButton supply their default
+    // semantic role and name on the actual ATK object exported to AT-SPI.
+    const accessible = actor.get_accessible?.();
     return {type: actor.constructor?.name ?? '', name: actor.get_name?.() ?? '',
-        style: actor.style_class ?? '', accessible: actor.get_accessible_name?.() ?? '',
-        text: actor.get_text?.() ?? '', role: Number(actor.accessible_role ?? -1),
+        style: actor.style_class ?? '', accessible: accessible?.get_name() ?? '',
+        text: actor.get_text?.() ?? '', role: Number(accessible?.get_role() ?? -1),
         rect: [x, y, w, h].map(Math.round)};
 }
 

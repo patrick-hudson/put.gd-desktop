@@ -335,6 +335,11 @@ class PickNode(FakeNode):
 
 
 class ShellChrome(unittest.TestCase):
+    def setUp(self):
+        patcher = patch.object(probe, 'executable', return_value=['cinnamon'])
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def desktop(self,child):
         from contextlib import ExitStack
         from types import SimpleNamespace

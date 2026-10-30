@@ -223,7 +223,7 @@ def click(ctx, control, *, after_window=None):
                 return ctx.click(control, window='settings')
             except RecipeBlocked as error:
                 if not any(reason in error.reason for reason in
-                           ('0 matches', 'falls outside compositor frame')):
+                           ('0 matches', 'falls outside compositor frame', 'clipped by ancestor')):
                     raise
                 if control.startswith('settingsSection'):
                     raise

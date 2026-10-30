@@ -3,5 +3,5 @@
   "name": "put.gd lab compositor witness",
   "description": "Lab-only, for disposable guests: window geometry, focus, stacking, stage hit-tests, interactive-grab signals and explicit activation for the surface driver. Never ship or install on a real desktop.",
   "shell-version": ["46", "47", "48", "49", "50"],
-  "version": 4
+  "version": 5
 }

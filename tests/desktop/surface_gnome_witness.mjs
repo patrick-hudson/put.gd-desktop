@@ -21,4 +21,17 @@ assert.equal(snapshot.events[0].phase,'begin');assert.equal(snapshot.events[1].p
 for(let i=0;i<300;i++)callbacks.get('grab-op-begin')(native.display,window,1);
 snapshot=JSON.parse(w.Grabs());assert.equal(snapshot.events.length,256);assert.equal(snapshot.serial,302);
 w.disable();assert.equal(callbacks.size,0);assert.equal(unexported,true);
+// StLabel's accessible object supplies its role/name even when the actor's
+// override properties still contain their defaults. Match the exported ATK
+// object, as the live AT-SPI banner does (#926).
+const labelActor = {
+    get_transformed_position: () => [830, 30], get_transformed_size: () => [200, 20],
+    get_accessible_name: () => null, accessible_role: 0,
+    get_text: () => 'Upload complete',
+    get_accessible: () => ({get_name: () => 'Upload complete', get_role: () => 28}),
+};
+fake.labelActor = labelActor;
+const description = vm.runInContext('actorDescription(labelActor)', fake);
+assert.equal(description.role, 28);
+assert.equal(description.accessible, 'Upload complete');
 console.log('GNOME witness signal lifecycle passed');
