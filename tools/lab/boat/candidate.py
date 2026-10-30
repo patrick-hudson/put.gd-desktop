@@ -351,7 +351,7 @@ def cleanup_workers(name, sandbox_id=None, *, recovery_seconds=0, timeout=120):
 
 def ci_differences(target):
     common = [
-        'Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls.',
+        'Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.',
         'No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.',
         'Untagged development identity for the exact SHA; no release tag supplied.',
         'PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.',
@@ -360,9 +360,10 @@ def ci_differences(target):
         common += [
             'Pinned native Ubuntu 24.04 container instead of mutable GitHub ubuntu-24.04 hosted VM; package inventory retained. Hosted preinstalled desktop links can differ (appimage-build.json rootDesktopEntry.removedLinks).',
             'Run hosted_apt_mirrors.py and export QT_PLUGIN_PATH/QML2_IMPORT_PATH as install-qt-action does; provision locked Qt with aqtinstall 3.3.* / py7zr 1.1.0 in a fresh venv instead of the cached Action.',
+            'Installer uses install-packages.sh defaults (4 attempts, 900s overall and 600s stall per attempt), rather than the AppImage CI dependency step environment (3 attempts, 300s overall, 120s stall). Installer labels default to distro/manager.',
         ]
     elif target == 'ui-catalog':
-        common += ['Pinned package-matrix Ubuntu 26.04 digest instead of CI linux floating ubuntu:26.04 tag; same dependency/build/catalog run blocks, no ctest.']
+        common += ['Pinned package-matrix Ubuntu 26.04 digest instead of CI linux floating ubuntu:26.04 tag; same dependency/build/catalog run blocks, no ctest. Compiler cache capped at 256M instead of CI linux 1G.']
     elif target == 'lab-fixture':
         common += [
             'Test-only DEB named putgd-lab-fixture; PUTGD_PACKAGE_TARGET empty and PUTGD_UPDATE_CHECK OFF. It must not enter production staging.',
