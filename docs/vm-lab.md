@@ -283,9 +283,11 @@ Profiles can set positive integer `install_timeout` and
 `--install-recovery-timeout` override them. The guest supervisor survives an SSH or
 controller disconnect, waits for only its own descendants after the apt budget
 expires, and never starts a replacement apt command during recovery. It verifies
-`dpkg -s putgd`, a clean `dpkg --audit`, and the installed binary hashes before
-certifying success. Recovery can succeed after the initial timeout if the owned
-install finishes; that timeout remains recorded in the receipt.
+`dpkg -s putgd` and a clean `dpkg --audit` before recording success in
+`result.json`. The controller then verifies the installed binary hashes in the
+guest before recording the package receipt. Recovery can succeed after the
+initial timeout if the owned install finishes; that timeout remains recorded in
+the receipt.
 
 Each attempt retains `apt.log`, PID/start identities, `progress.json`, and
 `result.json` (including dpkg state) under `~/putgd-lab/install-<id>` in the guest

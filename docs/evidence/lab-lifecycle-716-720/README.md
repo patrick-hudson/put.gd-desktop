@@ -19,6 +19,30 @@ retirement guidance. The final-source follow-up acceptance and private evidence
 archive identity are recorded in the [code PR's acceptance comment](https://github.com/patrick-hudson/put.gd-desktop/pull/727).
 This does not upgrade the earlier runs into final-source evidence.
 
+[Final staging validation](staging-validation.json) records source
+`7238d5ffad8d2104f74c2f07466882e3cbffdc86`, matched controller/helper/test file
+hashes, and a fresh unchanged-golden run in the single TTL-limited Boat sandbox
+`bx_47q5huya`. The helper and package were absent beforehand. The controller
+staged and verified the helper without bootstrap refresh; staging fetched no
+repositories, and the run's authorized keys stayed unchanged. The unchanged
+Debug DEB and real distro dependencies completed in **392.04 seconds** with
+128 KiB/s download limits, a 180-second apt budget and 900-second recovery.
+Both apt commands exited zero, dpkg/audit were clean, requested installed binary
+hashes matched, and no owned PIDs remained. The full controller call was 417.38
+seconds, including staging, upload, collection and binary verification.
+
+All 72 targeted tests passed. Live fault tests retained the job lock and reported
+missing startup in 18.13 seconds, refused an active-job retry without an orphan
+evidence directory, and proved unchanged apt index hashes during staging. A
+controlled apt post-invoke sleep exercised forced abort with 1-second install
+and recovery limits: only four recorded descendants were killed, no owned PIDs
+remained, and the unrelated sentinel's PID/start identity survived. The original
+218.48-second delayed-postinst experiment and earlier setup/assertion failures
+remain private context; they are not substituted for the final unchanged-package
+cold run above. Saved QMP visuals, full reports, injected-fault drivers, exact
+source, verified restore indexes and guarded retirement receipts remain in the
+private follow-up archive recorded in the code PR acceptance comment.
+
 ## Original campaign
 
 The original controller/supervisor source is recorded in [source-identity.json](source-identity.json).
