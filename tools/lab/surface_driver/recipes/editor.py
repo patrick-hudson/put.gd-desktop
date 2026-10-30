@@ -14,7 +14,6 @@ import math
 import shlex
 import sys
 
-from tools.lab import lab
 from tools.lab.editor_pixels import redactions_black
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
 

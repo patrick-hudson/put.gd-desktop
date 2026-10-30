@@ -40,6 +40,14 @@
     "windowMaximize": [
       "Maximize",
       "Restore"
+    ],
+    "placeMark": [
+      "Place redaction",
+      "Place blur",
+      "Place arrow",
+      "Place rectangle",
+      "Place highlight",
+      "Place text label"
     ]
   }
 }
