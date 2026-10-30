@@ -35,7 +35,7 @@ class PlasmaPick(unittest.TestCase):
                       patch.object(probe,'compositor_pick',return_value={'window':self.window}),
                       patch.object(probe,'RawNode',return_value=self.target),patch.object(probe,'a11y_bus'),
                       patch.object(probe,'accessible',side_effect=lambda q:[dict(self.node)]),
-                      patch.object(probe,'desktop_root',return_value=[self.app]),
+                      patch.object(probe,'desktop_root',return_value=[self.app]),patch.object(probe,'popup_roots',return_value=[]),
                       patch.object(probe,'extents',return_value=[0,0,1280,48])]
         for p in self.patches:p.start();self.addCleanup(p.stop)
 
@@ -75,6 +75,18 @@ class PlasmaPick(unittest.TestCase):
             exec(compile(ast.Module(body=[function],type_ignores=[]),'<pid>','exec'),namespace)
             self.assertEqual(namespace['plasma_pid'](),70)
         daemon.GetConnectionUnixProcessID.assert_called_once_with('org.kde.plasmashell',timeout=3)
+
+
+    def test_plasma_showing_popups_require_the_exact_live_shell_pid(self):
+        query={'compositor':{'kind':'kwin-script'}}
+        self.assertTrue(probe.plasma_popup_sender(70,'showing',query))
+        self.assertFalse(probe.plasma_popup_sender(71,'showing',query))
+        self.assertFalse(probe.plasma_popup_sender(70,'focused',query))
+        self.assertFalse(probe.plasma_popup_sender(70,'showing',{}))
+
+    def test_out_of_tree_menu_pick_still_requires_exact_actor_and_surface(self):
+        with patch.object(probe,'desktop_root',return_value=[]),patch.object(probe,'popup_roots',return_value=[((70,'/menu'),(self.top,2,'','plasmashell',None,[]))]):
+            self.assertTrue(probe.foreground(self.query)['ok'])
 
 
 class Provisioning(unittest.TestCase):

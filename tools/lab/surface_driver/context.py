@@ -705,6 +705,7 @@ asyncio.run(main())
         root = self.target.root
         program, path = root+'/notification-monitor.py', checked_socket(root+'/notify.sock')
         request = json.dumps({'probe':'notification_monitor','query':{'server':self._notification_server,'socket':path,
+                                                                       'compositor':self.profile.get('compositor'),
                                                                        'parent':self._channel_identity()}})
         source = Path(__file__).with_name('probe.py').read_text()
         # The program file is the probe source only; filtered notification

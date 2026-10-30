@@ -272,7 +272,8 @@ def popup_watch(query):
             if str(minor) not in ('showing', 'focused') or not sender or not path:
                 return
             pid = bus_pid(connection, str(sender))
-            if not owned(pid):
+            shell = plasma_popup_sender(pid, str(minor), query)
+            if not owned(pid) and not shell:
                 return
             bus, node_path = str(sender), str(path)
             key = bus + node_path
@@ -290,7 +291,7 @@ def popup_watch(query):
             elif normalize_role(RawNode(connection, bus, node_path, pid).getRoleName()) not in POPUP_ROLES:
                 return
             elif detail1:
-                current[key] = {'bus': bus, 'path': node_path, 'pid': pid}
+                current[key] = {'bus': bus, 'path': node_path, 'pid': pid, 'plasma': shell}
             elif current.pop(key, None) is None:
                 return
             write()
@@ -306,6 +307,12 @@ def popup_watch(query):
     signal.signal(signal.SIGTERM, lambda *_: loop.quit())
     loop.run()
     return {}
+
+
+def plasma_popup_sender(pid, event, query):
+    """Only showing popups from the live compositor shell; never foreign focus."""
+    return (event == 'showing' and (query.get('compositor') or {}).get('kind') == 'kwin-script'
+            and type(pid) is int and pid > 0 and pid == plasma_pid())
 
 
 class RawNode:
@@ -460,6 +467,9 @@ def popup_roots(query):
         if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not owned(pid)):
             continue
         try:
+            if entry.get('plasma') and (not plasma_popup_sender(pid, 'showing', query)
+                                       or bus_pid(connection, entry['bus']) != pid):
+                continue
             node = RawNode(connection, entry['bus'], entry['path'], pid)
             states = node.getState()
             if not states.contains(pyatspi.STATE_SHOWING) or (entry.get('focus') and not states.contains(pyatspi.STATE_FOCUSED)):
@@ -1682,28 +1692,27 @@ def plasma_witness_hit(query):
     # Translate using this surface's measured client area and raw top-level
     # origin. getAccessibleAtPoint then supplies the deepest actor, not a
     # same-process cover, a duplicate label or a guessed panel coordinate.
-    for app in desktop_root():
-        if app is None or app.get_process_id() != pid:
+    tops = [top for app in desktop_root() if app is not None and app.get_process_id() == pid for top in app]
+    tops.extend(root[0] for _, root in popup_roots({'pid':pid, 'compositor':query['compositor']}))
+    for top in tops:
+        if (top.name or '') != expected.get('window'):
             continue
-        for top in app:
-            if (top.name or '') != expected.get('window'):
-                continue
-            raw = extents(top)
-            content = window.get('content')
-            if not raw or not content or any(abs(a-b)>2 for a,b in zip(raw[2:],content[2:])):
-                continue
-            x, y = int(point[0]-content[0]+raw[0]), int(point[1]-content[1]+raw[1])
-            node = top
-            picked = []
-            for _ in range(50):
-                child = node.queryComponent().getAccessibleAtPoint(x,y,pyatspi.DESKTOP_COORDS)
-                if child is None or child == node:
-                    break
-                node = child
-                picked.append(node)
-            # The target may be a semantic parent of the picked text/icon.
-            if target in picked and all(n.get_process_id() == pid for n in picked):
-                return {'ok':True, 'backend':'kwin-plasma-pick', 'obscuring_window':None}
+        raw = extents(top)
+        content = window.get('content')
+        if not raw or not content or any(abs(a-b)>2 for a,b in zip(raw[2:],content[2:])):
+            continue
+        x, y = int(point[0]-content[0]+raw[0]), int(point[1]-content[1]+raw[1])
+        node = top
+        picked = []
+        for _ in range(50):
+            child = node.queryComponent().getAccessibleAtPoint(x,y,pyatspi.DESKTOP_COORDS)
+            if child is None or child == node:
+                break
+            node = child
+            picked.append(node)
+        # The target may be a semantic parent of the picked text/icon.
+        if target in picked and all(n.get_process_id() == pid for n in picked):
+            return {'ok':True, 'backend':'kwin-plasma-pick', 'obscuring_window':None}
     return refused('Plasma component pick did not reach the exact live actor')
 
 
@@ -2057,7 +2066,8 @@ def notification_monitor(query):
     import threading
     def die_with_parent():
         ctypes.CDLL(None).prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
-    watcher = subprocess.Popen([sys.executable, sys.argv[0], json.dumps({'probe': 'popup_watch', 'query': {}})],
+    watcher = subprocess.Popen([sys.executable, sys.argv[0], json.dumps({'probe': 'popup_watch',
+                                'query': {'compositor':query.get('compositor')}})],
                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                preexec_fn=die_with_parent)
     kept, lock, children = collections.deque(maxlen=4096), threading.Lock(), [watcher]
