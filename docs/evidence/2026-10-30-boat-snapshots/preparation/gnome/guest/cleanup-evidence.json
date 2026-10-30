@@ -1,0 +1,28 @@
+{
+  "completed": true,
+  "files": {
+    "app-started.ppm": "19991d1bf4fa423f36ff97f104755b658b68d219f10141a2db42b86d7fcf3e3f",
+    "capacity.json": "889a6a2588e8cbc4caefc888d816f246875cd505ffb851bc8bd91b7f8aad6698",
+    "completion.json": "73b41d4b9a2eb2e4d749b107b518981d1eada5540b9332891cda095d5f9bee9d",
+    "controller.json": "a667dd10346cba26c06db5a8675514fbd4069b46a1e3180aa1337622186c3c66",
+    "desktop-after.ppm": "aa39ff31011c339188480f41b90af60c5143a170f4a7d92e7842c86560f09c97",
+    "desktop.ppm": "18b7d84f4c73d50b5fe642a01a0a30ac1ed7d1288fef65698faaecc54884136f",
+    "golden.json": "f92f4680d758bc26a94809274d752a701411c5ab731ef8c49ac96cc46229b8d8",
+    "guest-capacity.json": "e672c42a3ae87913a414eb7f4507a81a2c93fa8907f00c9d53b926f4580edda8",
+    "idle-policy.json": "e779d8bd2f23115ec45c99146ccb7d43d3b5b87ba40a8dfbb47c3484972216b4",
+    "install.json": "6e0352b234a73c4853a399a988a7dee2380675d80f2847cbb7e05e448bc44bed",
+    "installed-version.json": "644bb06e9eddd7326be742d40336d75c147f86342b06938b5f7e4e13aab64b1c",
+    "launch.json": "1a88d4b5e870a718bd492ba46a736cc7d9eccf34523e98fbb646fb231e4619dc",
+    "package-artifact.json": "00ebb1d443bb834a551b8c079aec7c9098b5c60f56f80ac41b2ea14a5cd0d7c9",
+    "platform.json": "b6acfdad7139f0e578a8a7369317d7f0c72fac1b95970956952ef1aea8ab127e",
+    "probes.log": "fa0e7d8509b498aab12e5523f507230792e5fe8aa97240dbe23a8dfd903d68bb",
+    "reset.json": "3d75dbff9120b2ccf30fff81f4ea57ae44b5ba3f7e7ef9587f83356849b661e5",
+    "socket-preflight.json": "2b38b09619dd3a34a6aaf6c57ac10c2349bf0ac121e7456a8845fcce61ce8faa",
+    "start.json": "22e6ae39b1f6ff0ce0660953007babaf3a7bbb2811497aefa557ecc5e5279606"
+  },
+  "kind": "vm-overlay-cleanup-evidence",
+  "outcome": "passed",
+  "run": "/home/user/lab-driver/work/lab-runs/pg4c",
+  "runId": "d90afd11-c236-4069-909d-9b208630b158",
+  "schemaVersion": 1
+}

@@ -59,6 +59,8 @@ That is not a permanent integrity guarantee, so recheck the hash before use.
 
 ### Verified Boat snapshot copies
 
+These historical copies are preserved. New lanes use the [probe-equipped replacements](#probe-equipped-boat-copies) below.
+
 The Boat copies use profile directories below
 `/home/user/work/put.gd/work/lab-images/`. A directory's profile name is not the
 source image identity from the inventory above:
@@ -104,6 +106,47 @@ show it gives the same results, and the matrix must then be updated.
 | `aurora-testing-45.20261022.1-852d34e885c1` (Fedora 45 base, use for acceptance) | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | same name | same name; SHA-256 and sidecars verified 2026-10-23 (receipt `work/verification/golden-transfer-1d422e725efb`) |
 | `aurora-stable-44.20260908.1-v3-492c3f8945d1` (Fedora 44 base) | `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` | same name | none |
 | `aurora-stable-44.20260908.1-v2-af46889e2a54`, `-f9c006a376e1` (history) | see [Aurora VM](aurora-vm.md#goldens-on-f44) | same name | none |
+
+### Probe-equipped Boat copies
+
+Use `putgd-lab-cinnamon-v3` and `putgd-lab-ubuntu-gnome-v4` for new development.
+The old names and the intermediate Cinnamon v2 / GNOME v3 remain intact but
+are superseded. All disks below are standalone qcow2 Boat derivatives under
+`/home/user/work/put.gd/work/lab-images/`; the physical-builder/S3 source
+inventory above is unchanged. Their adjacent manifests record both image
+hashes and provisioning packages. The repository manifests in
+`tools/lab/boat/manifests/` also bind the snapshot ID and cached build commit.
+
+| Snapshot | Golden folder | SHA-256 | App package target |
+| --- | --- | --- | --- |
+| `putgd-lab-cinnamon-v2` (superseded) | `cinnamon-x11-probes-v2` | `518e3e45034c459e91118f95e3987971e19ea346486ab8219970b8484a892e48` | `ubuntu24.04` |
+| `putgd-lab-cinnamon-v3` | `cinnamon-x11-probes-v3-session` | `23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7` | `ubuntu24.04` |
+| `putgd-lab-ubuntu-gnome-v3` (superseded) | `gnome-wayland-probes-v2` | `349698ea91542e77a73801299aea300ff221ab11f07c4b5daf246fc72815c656` | `ubuntu26.04` |
+| `putgd-lab-ubuntu-gnome-v4` | `gnome-wayland-probes-v4` | `8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4` | `ubuntu26.04` |
+
+Append `/image.qcow2` to each folder. Cinnamon's original source is
+`4a21566d…5693da`; its retained compressed intermediate is
+`cinnamon-x11-probes-v3/image.qcow2`, SHA-256
+`218f91afeda30448d82de38ce127ba3a77f3fbb2e0a8c2fbcf8ac27dc277c1b9`.
+GNOME's original provisioned source is `563730cc…42bb`. Full parent chains are
+in the manifests. Build-base v3 preserves its inherited canonical Cinnamon
+image unchanged; it makes no guest-probe claim.
+
+The new images add the pinned surface-driver probe contract plus tesseract.
+GNOME retains the verified guest host pin and the lab idle policy. Cinnamon
+v3 adds a per-user XDG override disabling Mint Update autostart. Both
+recommended lab snapshots contain matching audited DEBs and the merged #787
+lab controller. GNOME's host is Ubuntu 24.04; its Qt 6.10 guest requires the
+Ubuntu 26.04 target container package, not a host-built Noble DEB.
+
+The final GNOME preparation also relocated its unused legacy outside-root
+copy into `gnome-legacy-source-563730cc/` only after a hash, complete backing
+reference and open-file inventory. Its bytes and SHA-256 stayed unchanged;
+no referenced base or original named snapshot was moved or changed.
+[The campaign record](evidence/2026-10-30-boat-snapshots/README.md) retains the
+inventory, failed attempts, fresh launch/reset/held-overlay-refusal/guarded-cleanup
+receipts and worker deletion proof. Follow the [recipe](boat-snapshots.md) to
+make another new version; never overwrite these images or snapshot names.
 
 ### Aurora Fedora 45 cloud golden and Boat snapshot
 
