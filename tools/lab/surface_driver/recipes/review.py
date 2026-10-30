@@ -560,9 +560,15 @@ def window_close(ctx):
     ctx.expect(_inspect(ctx, rid)['state'] == 'reviewing', 'Escape keeps recording')
 
 
-@recipe('review.advice', needs=('recording', 'review-controls'))
+@recipe('review.advice', needs=('recording', 'review-controls', 'recording-export-failure'))
 def advice(ctx):
-    rid = _open(ctx)
+    rid = _open(ctx, 'recording-export-failure')
+    ctx.click('errorDetails', window='review')
+    ctx.wait(lambda: _state(ctx, rid)['adviceDialog']['open'], 'genuine export failure opens details')
+    ctx.expect(bool(_state(ctx, rid)['adviceDialog']['text']), 'export failure advice contains actual details')
+    _frame(ctx, 'export-advice', '68-review-error-details', 'confirmAction')
+    ctx.focus('confirmAction')
+    ctx.keys('Esc')
     _choose_format(ctx, rid, 'mp4', 'h265')
     ctx.click('formatAdvice', window='review')
     ctx.wait(lambda: _state(ctx, rid)['adviceDialog']['open'], 'Format tips opens')
@@ -571,7 +577,7 @@ def advice(ctx):
     ctx.focus('confirmAction')
     ctx.keys('Esc')
     ctx.expect(_inspect(ctx, rid)['state'] == 'reviewing', 'advice leaves recording in review')
-    ctx.blocked('Format tips exercised; Export failed/Recording error advice variants need fault fixtures (#672)', issue=672)
+    ctx.blocked('Export failure details and format tips exercised; terminal Recording error advice still needs a reversible capture failure fixture (#672)', issue=672)
 
 
 @recipe('review.notice', needs=('recording-budget-stop',), timeout=240)
@@ -621,7 +627,68 @@ def _api_edits(info):
                                       'start': 1_200_000, 'end': 2_800_000}}]
 
 
-@recipe('cli.recording', needs=('recording',))
+def _capture_lifecycle(ctx, invoke):
+    """Exercise a second, fresh capture through the requested public transport.
+
+    The review fixture has already established the owned synthetic scene and
+    consent. Always cancel this transport-created identity, including on failure.
+    """
+    fixture = ctx.fixture('recording-lifecycle')
+    fixture['scene'].command('raise')
+    prepared = invoke('prepare', {'target': {'kind': 'region'}, 'format': 'mp4'})
+    rid = prepared.get('recordingId') or prepared.get('id')
+    ctx.expect(bool(rid), 'transport prepare returns a fresh recording identity')
+    try:
+        selecting = ctx.wait(lambda: (s if (s := invoke('inspect', {'id': rid})).get('selecting')
+                                     or s.get('state') in ('ready', 'failed') else None),
+                             'transport prepare opens region selection', timeout=40)
+        ctx.expect(selecting.get('selecting'), 'fresh region prepare exposes its selector')
+        invoke('select', {'id': rid, 'rect': fixture['scene']['rect']})
+        ready = ctx.wait(lambda: (s if (s := invoke('inspect', {'id': rid}))['state'] == 'ready' else None),
+                         'transport selection reaches ready', timeout=40)
+        ctx.expect(ready['target']['rect'] == fixture['scene']['rect'], 'selected capture bounds are resident')
+        for command, state in [('start', 'recording'), ('pause', 'paused')]:
+            invoke(command, {'id': rid})
+            ctx.wait(lambda: invoke('inspect', {'id': rid})['state'] == state, 'transport ' + command)
+        invoke('overlay', {'id': rid, 'visible': False})
+        invoke('overlay', {'id': rid, 'visible': True})
+        invoke('raise', {'id': rid})
+        invoke('resume', {'id': rid})
+        ctx.wait(lambda: (s if (s := invoke('inspect', {'id': rid}))['state'] == 'recording'
+                         and s['durationUs'] >= 4_000_000 else None),
+                 'transport resumed capture retains four seconds', timeout=15)
+        invoke('stop', {'id': rid})
+        stopped = ctx.wait(lambda: (s if (s := invoke('inspect', {'id': rid}))['state'] == 'reviewing' else None),
+                           'transport stop opens private review', timeout=40)
+        ctx.expect(stopped['stopReason'] == 'user' and stopped['durationUs'] >= 4_000_000,
+                   'transport stop retains a real user-stopped recording')
+        ctx.expect(not ctx.call('operation.inspect', {'id': rid}).get('items'), 'capture lifecycle uploads nothing')
+        ctx.frame('capture-lifecycle')
+    finally:
+        invoke('cancel', {'id': rid})
+    ctx.wait(lambda: ctx.call('operation.inspect', {'id': rid})['state'] == 'cancelled',
+             'transport cancel discards only its recording')
+
+
+def _cli_recording(ctx, command, params):
+    return _reply(ctx, ctx.cli('recording.' + command, json.dumps(params)))
+
+
+def _mcp_recording(ctx, command, params):
+    if command == 'prepare':
+        tool, values = 'prepare_recording', params
+    elif command == 'inspect':
+        tool, values = 'get_recording', params
+    elif command == 'select':
+        tool, values = 'select_recording_region', params
+    elif command == 'overlay':
+        tool, values = 'set_recording_overlay', params
+    else:
+        tool, values = 'control_recording', {**params, 'command': command}
+    return _reply(ctx, ctx.mcp(tool, values))
+
+
+@recipe('cli.recording', needs=('recording', 'recording-lifecycle'), timeout=300)
 def cli_recording(ctx):
     rid = _open(ctx, frame_review=False)
     initial = _inspect(ctx, rid)
@@ -639,7 +706,8 @@ def cli_recording(ctx):
     _reply(ctx, ctx.cli('recording.saveCopy', json.dumps({'id': rid, 'path': path})))
     _saved(ctx, rid, path)
     ctx.frame('after')
-    ctx.blocked('CLI review-stage entries exercised; capture prepare/start/pause/resume/stop/select/overlay need a capture fixture (#672)', issue=672)
+    _cli_recording(ctx, 'cancel', {'id': rid})
+    _capture_lifecycle(ctx, lambda command, params: _cli_recording(ctx, command, params))
 
 
 def _mcp_review(ctx):
@@ -661,10 +729,11 @@ def _mcp_review(ctx):
     return rid, _inspect(ctx, rid)
 
 
-@recipe('mcp.recording', needs=('recording', 'mcp'))
+@recipe('mcp.recording', needs=('recording', 'mcp', 'recording-lifecycle'), timeout=300)
 def mcp_recording(ctx):
-    _mcp_review(ctx)
-    ctx.blocked('MCP review/edit/preview/save exercised; prepare/control/select/overlay capture lifecycle remains unexercised (#672)', issue=672)
+    rid, _ = _mcp_review(ctx)
+    _mcp_recording(ctx, 'cancel', {'id': rid})
+    _capture_lifecycle(ctx, lambda command, params: _mcp_recording(ctx, command, params))
 
 
 @recipe('mcp.recording-review', needs=('recording', 'mcp', 'destination'), timeout=240)

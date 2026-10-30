@@ -442,6 +442,60 @@ class ReviewRecipes(unittest.TestCase):
         self.assertLess(trim['start'], mask['mask']['start'])
         self.assertLess(mask['mask']['end'], trim['end'])
 
+    def test_fresh_transport_capture_drives_lifecycle_and_cancels(self):
+        ctx = FakeContext()
+        scene = types.SimpleNamespace(command=lambda command: None)
+        class Scene(dict):
+            command = staticmethod(scene.command)
+        ctx.fixture_data['recording-lifecycle'] = {'scene': Scene(rect=[10, 20, 640, 320])}
+        state = {'state': 'preparing', 'selecting': True, 'durationUs': 0}
+        calls = []
+        def invoke(command, params):
+            calls.append((command, copy.deepcopy(params)))
+            if command == 'prepare':
+                return {'recordingId': 'fresh-id'}
+            if command == 'select':
+                state.update(state='ready', selecting=False, target={'rect': params['rect']})
+            if command in ('start', 'resume', 'pause', 'stop'):
+                state.update(state={'start':'recording', 'resume':'recording', 'pause':'paused', 'stop':'reviewing'}[command],
+                             durationUs=4_500_000, stopReason='user')
+            if command == 'cancel':
+                ctx.operation['state'] = 'cancelled'
+            return copy.deepcopy(state)
+        review._capture_lifecycle(ctx, invoke)
+        commands = [c for c, _ in calls]
+        for command in ('prepare', 'select', 'start', 'pause', 'resume', 'overlay', 'raise', 'stop', 'cancel'):
+            self.assertIn(command, commands)
+        self.assertEqual([p['visible'] for c, p in calls if c == 'overlay'], [False, True])
+        self.assertEqual(commands[-1], 'cancel')
+        self.assertEqual(ctx.frames[-1]['label'], 'capture-lifecycle')
+
+    def test_transport_capture_failure_still_cancels_owned_id(self):
+        ctx = FakeContext()
+        class Scene(dict):
+            def command(self, command): pass
+        ctx.fixture_data['recording-lifecycle'] = {'scene': Scene(rect=[0, 0, 640, 320])}
+        calls = []
+        def invoke(command, params):
+            calls.append((command, params))
+            if command == 'prepare': return {'id': 'fresh-id'}
+            if command == 'inspect': return {'state':'preparing', 'selecting':False}
+            return {}
+        with self.assertRaisesRegex(RecipeFailed, 'region selection'):
+            review._capture_lifecycle(ctx, invoke)
+        self.assertEqual(calls[-1], ('cancel', {'id':'fresh-id'}))
+
+    def test_mcp_capture_commands_use_official_tool_shapes(self):
+        ctx = FakeContext()
+        calls = []
+        ctx.mcp = lambda tool, params: calls.append((tool, params)) or {'ok': True, 'result': {}}
+        review._mcp_recording(ctx, 'select', {'id':'fresh-id','rect':[0,0,640,320]})
+        review._mcp_recording(ctx, 'pause', {'id':'fresh-id'})
+        review._mcp_recording(ctx, 'overlay', {'id':'fresh-id','visible':False})
+        self.assertEqual(calls, [('select_recording_region', {'id':'fresh-id','rect':[0,0,640,320]}),
+                                 ('control_recording', {'id':'fresh-id','command':'pause'}),
+                                 ('set_recording_overlay', {'id':'fresh-id','visible':False})])
+
     def test_mcp_review_upload_uses_reviewed_revision_and_decodes(self):
         ctx = FakeContext()
         ctx.info['edit']['revision'] = 3
