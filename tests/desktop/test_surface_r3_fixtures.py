@@ -24,7 +24,7 @@ from tools.lab.surface_driver.fixtures.update_server import Server
 from tools.lab.surface_driver.probe import selector_matches
 
 
-class Round3(fixture_tests.Fixtures):
+class Round3(fixture_tests.FixtureCase):
     def test_no_output_includes_defaults_and_all_inherited_still_routes(self):
         value=self.ctx.fixture('settings-no-output')
         self.assertFalse(self.ctx.document['archive']['keepUploads'])

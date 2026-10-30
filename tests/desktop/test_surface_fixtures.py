@@ -97,7 +97,9 @@ class Context:
         return {'returncode':0,'stdout':json.dumps({'ok':True,'result':self.call(method,json.loads(params))}),'stderr':''}
 
 
-class Fixtures(unittest.TestCase):
+class FixtureCase(unittest.TestCase):
+    """Private roots and a Context; the round-3 and tray suites reuse it without
+    re-running Fixtures' tests (they were collected three times)."""
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(prefix='sd-')
         self.root=Path(self.temp.name);self.root.chmod(0o700)
@@ -107,6 +109,9 @@ class Fixtures(unittest.TestCase):
     def tearDown(self):
         errors=self.ctx.manager.close();self.restart.stop();self.temp.cleanup()
         self.assertEqual(errors,[])
+
+
+class Fixtures(FixtureCase):
     def test_external_config_controller_uses_atomic_revision_guard(self):
         from tools.lab.surface_driver.fixtures.events import config_change
         self.ctx.fixture('app-profile')
