@@ -470,7 +470,7 @@ class InputFoundations(unittest.TestCase):
 
     def test_physical_held_keys_and_vnc_altgr_block_before_dispatch(self):
         target=Target.__new__(Target);target.physical=object();target.run=self.path
-        target.heartbeat=lambda:None
+        target.heartbeat=lambda **kwargs:None
         target.events=lambda *a:self.fail('physical held input must not dispatch')
         target.vnc=lambda:self.fail('unsupported VNC chord must not dispatch')
         with self.assertRaisesRegex(RecipeBlocked,'scoped cleanup'):
