@@ -307,6 +307,10 @@ class Fake(Context):
         return [{'pid': 123, 'rect': rectangle, 'checked': self.category_expanded if control == 'categoryFoldersToggle' else False,
                  'focused': self.focused_control == control}]
 
+    def click_accessible(self, query, button='left'):
+        self.inputs.append(('accessible-click', query))
+        return {}
+
     def click_at(self, x, y, **kwargs):
         self.pointer = (x, y)
         self.click(self.targets[(x, y)], 'settings')

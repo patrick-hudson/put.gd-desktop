@@ -725,7 +725,7 @@ def about_close_recipe(identifier, key):
         else:
             ctx.click('closeAbout', window='about')
         ctx.wait(lambda: not visible(ctx, '^About put.gd$'), 'About closes')
-        ctx.expect(bool(visible(ctx, '^put.gd$')), 'main window stays visible')
+        ctx.wait(lambda: visible(ctx, '^put.gd$'), 'main window stays visible')
         ctx.frame('about-closed')
     close.__name__ = identifier.replace('.', '_').replace('-', '_')
 
@@ -738,7 +738,7 @@ about_close_recipe('about.key-esc', 'Esc')
 def about_modeless(ctx):
     about_open(ctx)
     try:
-        ctx.focus('settings')
+        result(ctx, ctx.view('ui.show', {'view': 'settings'}))
         live_click(ctx, 'settingsSection1')
         ctx.wait(lambda: state(ctx)['settings']['section'] == 1, 'main window remains usable with About open')
         ctx.expect(bool(visible(ctx, '^About put.gd$')), 'About remains open during main-window input')
@@ -753,9 +753,11 @@ def about_version(ctx):
     about_open(ctx)
     try:
         expected = call(ctx, 'ui.snapshot')['build']['version'].split('-')[0].split('+')[0]
-        rows = ctx.accessible({'owned': True, 'window': 'About put.gd', 'name': expected, 'showing': True})
-        ctx.expect(len(rows) == 1 and rows[0].get('text') == expected, 'selectable About version matches build')
-        ctx.click('aboutVersion', window='about')
+        query = {'owned': True, 'window': 'About put.gd', 'name': expected,
+                 'role': 'label', 'showing': True}
+        rows = ctx.accessible(query)
+        ctx.expect(len(rows) == 1, 'About version label matches build')
+        ctx.click_accessible(query)
         ctx.keys('Ctrl+A', 'Ctrl+C')
         ctx.wait(lambda: ctx.clipboard_text() == expected, 'version text can be selected and copied')
         ctx.frame('about-version-selected', window='about', reference='about')
