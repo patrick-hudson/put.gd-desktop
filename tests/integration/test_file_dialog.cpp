@@ -175,8 +175,12 @@ private slots:
   QCOMPARE(last["status"].toString(),QString("cancelled"));QCOMPARE(last["backend"].toString(),QString("portal"));QVERIFY(last["fallbackReason"].isNull());
   PUTGD_TRY_VERIFY(!QApplication::activeModalWidget());
   // Nothing opens afterwards either.
-  putgd::test::settle(200);QVERIFY(!dialog.fallbackDialog());
-  for(auto* widget:QApplication::topLevelWidgets())QVERIFY(!qobject_cast<QFileDialog*>(widget)||!widget->isVisible());
+  const auto noChooser=[&]{
+   if(dialog.fallbackDialog())return false;
+   for(auto* widget:QApplication::topLevelWidgets())if(qobject_cast<QFileDialog*>(widget)&&widget->isVisible())return false;
+   return true;
+  };
+  PUTGD_VERIFY_STEADY(noChooser(),200);
  }
  void whileOpenTheWindowIsBlockedAndCancelClosesTheRequest(){
   chooser_->answer=FakeChooser::Answer::Wait;
