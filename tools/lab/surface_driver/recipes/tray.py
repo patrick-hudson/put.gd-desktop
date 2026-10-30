@@ -509,21 +509,22 @@ def _action(ctx, notice, action):
     return current
 
 
-def _host_opened(ctx, target):
+def _host_opened(ctx, target, after=0):
     # Read only our private persistent log; do not export unrelated log records.
     script = """python3 - <<'PYLOG'
 import json,os
+from datetime import datetime
 from pathlib import Path
 rows=[]
 for path in Path(os.environ['XDG_STATE_HOME']).rglob('putgd-*.jsonl'):
  for line in path.read_text().splitlines():
   try: row=json.loads(line)
   except ValueError: continue
-  if row.get('message')=='Opened on the host' and row.get('fields',{}).get('target')==TARGET:
+  if row.get('message')=='Opened on the host' and row.get('fields',{}).get('target')==TARGET and datetime.fromisoformat(row['time'].replace('Z','+00:00')).timestamp()>=AFTER:
    rows.append(row)
 print('opened' if rows else '')
 PYLOG
-""".replace('TARGET', repr(target))
+""".replace('TARGET', repr(target)).replace('AFTER', repr(after))
     ctx.wait(lambda: _shell(ctx, script) == 'opened', 'accepted host open: ' + target)
 
 
@@ -545,7 +546,7 @@ def _diagnostics(ctx, *, reveal=False, denied=False, resident=False):
         result = _notice(ctx, 'put.gd — diagnostics not saved' if denied else 'put.gd — diagnostics saved')
         if reveal:
             _action(ctx, result, 'show-in-folder')
-            _host_opened(ctx, 'diagnostics-folder')
+            _host_opened(ctx, 'diagnostics-folder', result.get('at', 0))
         else:
             _drawn_notice(ctx, result)
         if denied:
@@ -560,6 +561,10 @@ def _diagnostics(ctx, *, reveal=False, denied=False, resident=False):
             ctx.wait(lambda: next((n.get('closed') for n in ctx.notifications() if n.get('id') == notice['id']), None),
                      'used notification closed after the action')
         ctx.frame('after')
+        if not denied and not reveal:
+            # Consume the resident result through its real button so it cannot
+            # occupy the shell's one banner slot in the next recipe.
+            _action(ctx, result, 'show-in-folder')
 
 
 @recipe('notification.save-diagnostics', 'notification.diagnostics-saved', desktop_drawn=True)
@@ -707,7 +712,7 @@ def upload_complete(ctx):
     # Click immediately: the server serializes short-lived banners.
     _action(ctx, notice, 'default')
     ctx.expect(fixture.state['state'] == 'completed', 'loopback publication completed')
-    _host_opened(ctx, 'notification-link')
+    _host_opened(ctx, 'notification-link', notice.get('at', 0))
     ctx.frame('after')
 
 
