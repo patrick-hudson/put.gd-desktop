@@ -491,6 +491,11 @@ wallet.set('Wallet', 'Enabled', 'false')
 wallet.set('Wallet', 'First Use', 'false')
 with wallet_path.open('w') as stream: wallet.write(stream)
 wallet_path.chmod(0o600)
+updates.read(updates_path)
+if not updates.has_section('Global'): updates.add_section('Global')
+updates.set('Global', 'UseUnattendedUpdates', 'false')
+with updates_path.open('w') as stream: updates.write(stream)
+updates_path.chmod(0o600)
 for pid, start in running:
     if (Path('/proc') / str(pid) / 'stat').read_text().split()[21] != start:
         raise RuntimeError('Discover Notifier PID identity changed')
@@ -501,7 +506,7 @@ while notifiers():
         raise RuntimeError('owned overlay Discover Notifier did not stop')
     time.sleep(.2)
 ''' if install else ''
-    return "python3 - <<'POLICY'\n" + r'''import configparser,json,os,signal,time
+    return "python3 - <<'POLICY'\n" + r'''import configparser,json,os,signal,subprocess,time
 from pathlib import Path
 source = Path('/etc/xdg/autostart/org.kde.discover.notifier.desktop')
 if not source.is_file():
@@ -510,6 +515,9 @@ override = Path.home() / '.config/autostart' / source.name
 wallet_path = Path.home() / '.config/kwalletrc'
 wallet = configparser.ConfigParser(interpolation=None)
 wallet.optionxform = str
+updates_path = Path.home() / '.config/PlasmaDiscoverUpdates'
+updates = configparser.ConfigParser(interpolation=None)
+updates.optionxform = str
 def notifiers():
     found=[]
     for p in Path('/proc').iterdir():
@@ -533,14 +541,76 @@ assert not entry.getboolean('Desktop Entry', 'X-GNOME-Autostart-enabled')
 wallet.read(wallet_path)
 assert wallet.getboolean('Wallet', 'Enabled') is False
 assert wallet.getboolean('Wallet', 'First Use') is False
+updates.read(updates_path)
+assert updates.getboolean('Global', 'UseUnattendedUpdates') is False
+assert subprocess.check_output(['kreadconfig6', '--file', 'PlasmaDiscoverUpdates', '--group', 'Global',
+    '--key', 'UseUnattendedUpdates', '--default', '__missing__'], text=True).strip() == 'false'
 assert not notifiers(), 'Discover Notifier must be absent in a fresh verification overlay'
 sessions={kind:sorted(p.name for p in Path(directory).glob('*.desktop'))
           for kind,directory in [('wayland','/usr/share/wayland-sessions'),('x11','/usr/share/xsessions')]}
 print(json.dumps(dict(discover=dict(autostartOverride=str(override),hidden=True,enabled=False,
+    automaticUpdatesConfig=str(updates_path),useUnattendedUpdates=False,
     priorRunningPids=[pid for pid,start in running],remainingPids=[]),
     kwallet=dict(config=str(wallet_path),enabled=False,firstUse=False),sessions=sessions)))
 POLICY
 '''
+
+
+KDE_APT_UNITS = ('apt-daily.timer', 'apt-daily-upgrade.timer', 'apt-daily.service',
+                 'apt-daily-upgrade.service', 'unattended-upgrades.service')
+KDE_APT_SETTINGS = {name: '0' for name in ('APT::Periodic::Enable', 'APT::Periodic::Update-Package-Lists',
+    'APT::Periodic::Unattended-Upgrade', 'APT::Periodic::Download-Upgradeable-Packages')}
+
+
+def kde_update_policy_script(install=False):
+    """Use the lab's existing no-sources apt hook; persist only policy, never sudo authority."""
+    setup = ''
+    if install:
+        root = """import os,subprocess
+from pathlib import Path
+assert os.geteuid() == 0
+assert subprocess.check_output(['systemd-detect-virt','--vm'],text=True).strip() in ('qemu','kvm')
+units=UNITS
+settings=SETTINGS
+p=Path('/etc/apt/apt.conf.d/zz-putgd-lab-no-auto-upgrades')
+content=''.join(key+' "'+value+'";\\n' for key,value in settings.items())
+assert not p.is_symlink()
+if p.exists():
+    assert p.stat().st_uid == 0 and p.read_text() == content, 'unknown existing apt policy preserved'
+else:
+    with p.open('x') as stream: stream.write(content)
+p.chmod(0o644)
+subprocess.run(['systemctl','disable',*units],check=True)
+subprocess.run(['systemctl','mask',*units],check=True)
+# Do not wait under apt's lists lock. Readback below waits after apt exits.
+subprocess.run(['systemctl','--no-block','stop',*units],check=True)
+""".replace('UNITS', repr(KDE_APT_UNITS)).replace('SETTINGS', repr(KDE_APT_SETTINGS))
+        hook = '/usr/bin/python3 -c ' + shlex.quote(root) + '; exit 1'
+        setup = ('sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null '
+                 '-o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 -o '
+                 + shlex.quote('APT::Update::Pre-Invoke::=' + hook) + ' update >/dev/null 2>&1 || true\n')
+    check = r'''import json,subprocess,time
+from pathlib import Path
+units=UNITS
+settings=SETTINGS
+deadline=time.monotonic()+WAIT
+while True:
+    rows={}
+    for unit in units:
+        text=subprocess.check_output(['systemctl','show','--property=LoadState,ActiveState,UnitFileState',unit],text=True)
+        rows[unit]=dict(line.split('=',1) for line in text.splitlines() if '=' in line)
+    if all(row.get('LoadState')=='masked' and row.get('UnitFileState')=='masked'
+           and row.get('ActiveState')=='inactive' for row in rows.values()): break
+    if time.monotonic()>=deadline: raise RuntimeError('automatic update units not masked/inactive: '+json.dumps(rows))
+    time.sleep(.2)
+p=Path('/etc/apt/apt.conf.d/zz-putgd-lab-no-auto-upgrades')
+assert not p.is_symlink() and p.stat().st_uid==0 and not p.stat().st_mode & 0o022
+for key,value in settings.items():
+    actual=subprocess.check_output(['apt-config','shell','value',key],text=True).strip().rstrip(';')
+    assert actual=="value='"+value+"'", 'effective apt policy differs: '+key
+print(json.dumps(dict(units=rows,aptConfig=str(p),periodic=settings,scope='owned disposable guest only')))
+'''.replace('UNITS', repr(KDE_APT_UNITS)).replace('SETTINGS', repr(KDE_APT_SETTINGS)).replace('WAIT', '60' if install else '0')
+    return setup + "python3 - <<'UPDATES'\n" + check + 'UPDATES\n'
 
 
 def guest(args):
@@ -603,6 +673,8 @@ def guest(args):
             exclusive_json(evidence / 'session-policy.json', json.loads(lab.ssh(run_dir, cinnamon_policy_script(args.install))))
         if args.profile == 'kde-wayland':
             exclusive_json(evidence / 'session-policy.json', json.loads(lab.ssh(run_dir, kde_policy_script(args.install))))
+            exclusive_json(evidence / 'automatic-updates.json', json.loads(lab.ssh(
+                run_dir, kde_update_policy_script(args.install), timeout=120)))
         capacity_script = "python3 - <<'CAPACITY'\nimport os,json\nr={}\nfor p in (os.path.expanduser('~'), '/tmp'):\n s=os.statvfs(p); r[p]=dict(availableBytes=s.f_bavail*s.f_frsize,availableInodes=s.f_favail); assert s.f_bavail*s.f_frsize >= 2*1024**3 and s.f_favail > 1024\nprint(json.dumps(r))\nCAPACITY\n"
         (evidence / 'guest-capacity.json').write_text(lab.ssh(run_dir, capacity_script))
         with lab.QMP(run_dir / 'qmp.sock') as qmp:
@@ -634,6 +706,8 @@ def guest(args):
                 exclusive_json(evidence / 'session-policy-after-start.json', json.loads(lab.ssh(run_dir, cinnamon_policy_script(False))))
             if args.profile == 'kde-wayland':
                 exclusive_json(evidence / 'session-policy-after-start.json', json.loads(lab.ssh(run_dir, kde_policy_script(False))))
+                exclusive_json(evidence / 'automatic-updates-after-start.json', json.loads(lab.ssh(
+                    run_dir, kde_update_policy_script(False))))
             # The new golden must not autostart a private smoke profile on its next boot.
             with lab.QMP(run_dir / 'qmp.sock') as qmp:
                 qmp.execute('screendump', {'filename': str(evidence / 'app-started.ppm')})
@@ -661,6 +735,7 @@ def guest(args):
         if args.profile == 'kde-wayland':
             result['guestSessionPolicy'] = {
                 'kde': json.loads((evidence / 'session-policy.json').read_text()),
+                'automaticUpdates': json.loads((evidence / 'automatic-updates.json').read_text()),
                 'idlePreflight': json.loads((evidence / 'idle-policy.json').read_text()),
                 'scope': 'disposable lab user; original golden preserved',
                 'compositorWitness': 'not baked in; surface driver loads a read-only KWin script per observation'}
