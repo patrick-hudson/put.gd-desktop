@@ -189,8 +189,7 @@ class Running(unittest.TestCase):
         (self.path/'test-editor.controls.json').write_text(json.dumps(inv))
         self.ctx.catalog=Catalog(self.path,{})
         self.ctx.geometry=lambda role:{'x':0,'y':0,'width':20,'height':10,'scale':1,'head':0}
-        self.ctx.profile['at_spi']['available']=False
-        self.ctx._probe=lambda name,query:{'ok':True}
+        self.ctx._probe=lambda name,query:({'rect':[2,2,4,4]} if name=='control' else {'ok':True})
         events=[]
         self.ctx.target.pointer=lambda *args:events.append(args)
         self.ctx.click('upload',window='editor')
@@ -476,6 +475,12 @@ class InputFoundations(unittest.TestCase):
         self.assertEqual(events[0][:2],(35,26))
         self.assertTrue(all(q['popup'] for name,q in requests if name=='control'))
         self.assertTrue(all(q['geometry']['pid']==7 for name,q in requests if name=='foreground'))
+
+    def test_matching_catalog_cannot_replace_missing_live_control_witness(self):
+        self.ctx.profile['at_spi']['available']=False
+        self.ctx.target.pointer=lambda *a,**kw:self.fail('static coordinates must not dispatch input')
+        with self.assertRaisesRegex(RecipeBlocked,'live AT-SPI control geometry'):
+            self.ctx.click('text:Save','editor')
 
     def test_live_controls_fail_closed_even_when_catalog_exists(self):
         inv={'width':100,'height':80,'controls':[{'name':'save','text':'Save','rect':[1,2,4,4]}]}

@@ -8,7 +8,7 @@ import shlex
 import time
 from tools.lab import lab
 from .api import Context, Frame, RecipeBlocked, RecipeFailed
-from .catalog import Catalog, compare, control_point, image_modules
+from .catalog import Catalog, compare, image_modules
 from .target import qcodes
 
 
@@ -204,7 +204,6 @@ class DriverContext(Context):
         # Resolve semantics from every state, then resolve geometry from the
         # current tree. Dynamic menus need no catalog dump or stale rectangle.
         candidates = self.catalog.candidates(control, window, self._captures.get(window))
-        popup_role = self.profile.get('windows', {}).get(window, {}).get('popup', False)
         owner = self.profile.get('windows', {}).get(window, {}).get('owner', window)
         geometry = self.geometry(owner)
         self._current_window = owner
@@ -230,14 +229,7 @@ class DriverContext(Context):
             finally:
                 self._popup = None
         else:
-            if popup_role:
-                raise RecipeBlocked('dynamic menu control needs live AT-SPI geometry')
-            _, inventory, row = self.catalog.resolve(control,window,self._captures.get(window))
-            if (geometry['width'],geometry['height']) != (inventory['width'],inventory['height']):
-                raise RecipeBlocked('resized catalog control needs live AT-SPI geometry')
-            x,y = control_point(inventory,row,geometry,offset)
-            self._guard(window=owner, point=self._global_point(x,y,geometry['head']), geometry=geometry)
-            self._pointer_click(x,y,button,geometry['head'],guarded=True)
+            raise RecipeBlocked('live AT-SPI control geometry: '+self.profile.get('at_spi',{}).get('reason','unavailable'))
 
     def _global_point(self, x, y, head):
         for screen in self.profile.get('screens', []):
