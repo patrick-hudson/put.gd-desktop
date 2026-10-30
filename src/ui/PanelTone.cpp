@@ -82,6 +82,11 @@ PanelTone::PanelTone(QObject* parent):QObject(parent){
  // A colour-scheme switch through the desktop's settings reaches the portal;
  // re-read the panel inputs then too.
  QDBusConnection::sessionBus().connect("org.freedesktop.portal.Desktop","/org/freedesktop/portal/desktop","org.freedesktop.portal.Settings","SettingChanged",&debounce_,SLOT(start()));
+ // Cinnamon's XApp portal does not serve org.cinnamon.theme, so a desktop theme
+ // chosen on its own (Themes, Advanced settings, Desktop) only shows as dconf's
+ // change notice (#702).
+ if(desktops().contains("x-cinnamon")||desktops().contains("cinnamon"))
+  QDBusConnection::sessionBus().connect(QString(),"/ca/desrt/dconf/Writer/user","ca.desrt.dconf.Writer","Notify",this,SLOT(dconfNotified(QString,QStringList,QString)));
 #endif
  refresh();
 }
@@ -104,6 +109,19 @@ void PanelTone::refresh(){
  // The host's gsettings, with the host's GLib (#326).
  process->setProcessEnvironment(host::environment());
  process->start("gsettings",{"get","org.cinnamon.theme","name"});
+}
+bool PanelTone::cinnamonThemeChanged(const QString& prefix,const QStringList& changes){
+ static const QString theme=QStringLiteral("/org/cinnamon/theme/");
+ // Each change is a path under the prefix: a key, or a directory (ending in
+ // "/") that may lie above the theme schema, as a reset of /org/cinnamon/ does.
+ for(const auto& change:changes.isEmpty()?QStringList{QString()}:changes){
+  const auto path=prefix+change;
+  if(path.startsWith(theme)||(path.endsWith('/')&&theme.startsWith(path)))return true;
+ }
+ return false;
+}
+void PanelTone::dconfNotified(const QString& prefix,const QStringList& changes,const QString&){
+ if(cinnamonThemeChanged(prefix,changes))debounce_.start();
 }
 QString PanelTone::plasmaStyle(){
  const auto name=iniValue(firstSetting("plasmarc","Theme","name"),"Theme","name");
