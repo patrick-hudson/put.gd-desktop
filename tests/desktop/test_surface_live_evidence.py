@@ -37,6 +37,7 @@ PRESIGNED = ('https://sd-fixture-bkt.s3.us-west-004.backblazeb2.com/Ps7Lk2Jd9Rf4
 CUSTOM = 'https://objects.sd-fixture.internal:9000/bkt/Cu5Tm0Ep4Nt8Kz1W.png'
 CUSTOM_TOKEN = 'Cu5Tm0Ep4Nt8Kz1W'
 REAL_OCR = redact.ocr_text
+TESSERACT = shutil.which('tesseract')
 real_ocr = unittest.skipUnless(shutil.which('tesseract') and Image, 'needs tesseract and python3-pil')
 
 
@@ -168,14 +169,19 @@ class F1OwnedWindowOnly(Base):
 
     @real_ocr
     def test_real_ocr_reads_small_banner_text(self):
-        font = next(ImageFont.truetype(p, 12) for p in ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-                    '/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf') if Path(p).is_file())
-        for foreground, background in (('white', '#2b2b2b'), ('black', 'white')):
-            image = Image.new('RGB', (520, 40), background)
-            ImageDraw.Draw(image).text((10, 12), 'Link copied: '+B2, font=font, fill=foreground)
-            with patch.object(redact, 'ocr_text', REAL_OCR):
-                meta = save_frame(image, self.path/'banner.png', [], literals=(B2_TOKEN,))
-            self.assertTrue(meta['fallback'], (foreground, meta['guard']))
+        # The validator's banner case with the text inside the 40 px canvas.
+        path = next(p for p in ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+                                '/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf') if Path(p).is_file())
+        results = {}
+        for link, literals in ((SHARE, ()), (B2.split('://')[1], ()), (B2, (B2_TOKEN,))):
+            for size in (11, 12, 13):
+                for foreground, background in (('white', '#2b2b2b'), ('black', 'white')):
+                    image = Image.new('RGB', (560, 40), background)
+                    ImageDraw.Draw(image).text((10, 12), 'Link copied: '+link, font=ImageFont.truetype(path, size), fill=foreground)
+                    with patch.object(redact, 'ocr_text', REAL_OCR):
+                        meta = save_frame(image, self.path/'banner.png', [], literals=literals, ocr=TESSERACT)
+                    results[(link[:12], size, foreground)] = meta['guard']
+        self.assertEqual(set(results.values()), {'ocr-sensitive-text-fully-masked'}, results)
 
 
 class F2ProbeRegistration(Base):
@@ -291,7 +297,7 @@ class F4F7Gate(Base):
     @real_ocr
     def test_real_ocr_self_test_reads_eleven_pixel_text(self):
         with patch.object(redact, 'ocr_text', REAL_OCR):
-            self.assertTrue(redact.ocr_self_test(shutil.which('tesseract')))
+            self.assertTrue(redact.ocr_self_test(TESSERACT))
 
 
 class F6VisiblePageOnly(Base):
