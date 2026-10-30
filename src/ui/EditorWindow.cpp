@@ -383,8 +383,9 @@ void EditorWindow::setRecentColors(const QStringList& colors){
 }
 
 void EditorWindow::rebuildRecentColors(){
- for(auto* swatch:std::exchange(recentSwatches_,{})){swatchGroup_->removeButton(swatch);swatch->deleteLater();}
- for(const auto& name:recentColors_){auto* swatch=makeSwatch(QColor(name));swatch->setObjectName("recentColorSwatch"+QString::number(recentSwatches_.size()));swatch->setToolTip("Recent custom color "+name);recentSwatches_.append(swatch);recentLayout_->insertWidget(recentLayout_->count()-1,swatch);}
+ // Retired swatches stay alive until deferred deletion, but must stop matching selectors immediately.
+ for(auto* swatch:std::exchange(recentSwatches_,{})){swatchGroup_->removeButton(swatch);swatch->setObjectName({});swatch->hide();recentLayout_->removeWidget(swatch);swatch->deleteLater();}
+ for(const auto& name:recentColors_){auto* swatch=makeSwatch(QColor(name));swatch->setObjectName("recentColorSwatch_"+name.mid(1));swatch->setToolTip("Recent custom color "+name);recentSwatches_.append(swatch);recentLayout_->insertWidget(recentLayout_->count()-1,swatch);}
  recentLayout_->parentWidget()->setVisible(!recentColors_.isEmpty());
 }
 
