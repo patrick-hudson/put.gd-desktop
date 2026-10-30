@@ -335,6 +335,55 @@ class QtAccessibleId(Walk):
         self.assertEqual((row['objectName'], reads), ('launchAtLogin', []))
 
 
+SLOW_SERVER = r'''
+import sys, time, json
+for count, line in enumerate(sys.stdin):
+    time.sleep(json.loads(line)['query'].get('delay', 0))
+    sys.stdout.write(json.dumps({'ok': True, 'result': count}) + '\n'); sys.stdout.flush()
+'''
+
+
+class ProbeChannel(unittest.TestCase):
+    # #834: a lane's wait loop ran its recipe deadline down to a few ms; the
+    # cut-short wait poisoned the channel and blocked every later row.
+    def channel(self):
+        import subprocess
+        target = target_module.Target.__new__(target_module.Target)
+        target.heartbeat = lambda force=False: None
+        target._probe_process = subprocess.Popen([sys.executable, '-c', SLOW_SERVER], stdin=subprocess.PIPE,
+                                                 stdout=subprocess.PIPE, bufsize=0)
+        target._probe_source, target._probe_buffer, target._probe_failed, target._probe_stale = 'source', b'', False, 0
+        self.addCleanup(lambda: (target._probe_process.stdin.close(), target._probe_process.wait(5)))
+        return target
+
+    def test_deadline_cut_wait_resynchronizes_on_the_next_request(self):
+        target = self.channel()
+        with self.assertRaisesRegex(RecipeBlocked, 'outlived the recipe deadline'):
+            target.probe('geometry', {'delay': .4}, 'source', timeout=.05)
+        self.assertEqual((target._probe_failed, target._probe_stale), (False, 1))
+        # The next request gets its own reply (#1), never the abandoned one (#0).
+        self.assertEqual(target.probe('geometry', {}, 'source', timeout=5), {'ok': True, 'result': 1})
+        self.assertEqual(target._probe_stale, 0)
+
+    def test_a_recipe_alarm_after_the_whole_request_resynchronizes(self):
+        target = self.channel()
+        def alarm(*_):
+            raise target_module.RecipeFailed('recipe deadline exceeded')
+        with patch.object(target, '_read_probe_line', side_effect=alarm), self.assertRaises(target_module.RecipeFailed):
+            target.probe('geometry', {'delay': .2}, 'source', timeout=5)
+        self.assertEqual((target._probe_failed, target._probe_stale), (False, 1))
+        self.assertEqual(target.probe('geometry', {}, 'source', timeout=5)['result'], 1)
+
+    def test_full_cap_silence_still_poisons_the_channel(self):
+        target = self.channel()
+        with patch.object(target_module, 'PROBE_REPLY_SECONDS', .05), \
+             self.assertRaisesRegex(RecipeBlocked, 'timed out; further input withheld'):
+            target.probe('geometry', {'delay': .5}, 'source', timeout=.05)
+        self.assertTrue(target._probe_failed)
+        with self.assertRaisesRegex(RecipeBlocked, 'start a new run'):
+            target.probe('geometry', {}, 'source', timeout=5)
+
+
 class Target:
     def __init__(self):
         self.queries = []

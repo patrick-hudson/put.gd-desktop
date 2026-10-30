@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import shlex
 import signal
+import sys
 import selectors
 import subprocess
 import time
@@ -155,6 +156,14 @@ while True:
 '''
 
 
+# The server answers every request within its 12 s fresh-child bound.
+PROBE_REPLY_SECONDS = 15
+
+
+class ProbeDeadline(Exception):
+    """A wait shortened by the caller's deadline ran out; the reply is still coming."""
+
+
 def probe_mutates(name, query):
     """Probe requests that act on the desktop rather than only observing it."""
     return name == 'foreground' and bool(query.get('raise') or query.get('settle'))
@@ -227,6 +236,7 @@ class Target:
         self._probe_buffer = b''
         self._probe_source = None
         self._probe_failed = False
+        self._probe_stale = 0
 
     def require_lock(self, host, session):
         self._lock = (host, session)
@@ -412,28 +422,27 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         payload = (json.dumps({'probe':name,'query':query})+'\n').encode()
         if len(payload) > 1024 * 1024:
             raise RecipeBlocked('desktop probe request exceeded 1 MiB')
+        sent_all = False
         try:
+            while getattr(self, '_probe_stale', 0):
+                # A reply a recipe deadline abandoned is still on its way (the
+                # server's fresh child is bounded at 12 s): read and discard it,
+                # so this request is answered by its own reply (#834).
+                self._read_probe_line(process, PROBE_REPLY_SECONDS, 'an abandoned persistent desktop probe reply')
+                self._probe_stale -= 1
             remaining_payload = memoryview(payload)
             while remaining_payload:
                 sent = process.stdin.write(remaining_payload)
                 if not sent:
                     raise RecipeBlocked('persistent desktop probe request was not sent')
                 remaining_payload = remaining_payload[sent:]
-            deadline = time.monotonic()+timeout
-            with selectors.DefaultSelector() as ready:
-                ready.register(process.stdout, selectors.EVENT_READ)
-                while b'\n' not in self._probe_buffer:
-                    remaining = deadline-time.monotonic()
-                    if remaining <= 0 or not ready.select(remaining):
-                        raise RecipeBlocked('persistent desktop probe timed out; further input withheld')
-                    data = os.read(process.stdout.fileno(),65536)
-                    if not data:
-                        raise RecipeBlocked('persistent desktop probe closed; further input withheld')
-                    self._probe_buffer += data
-                    if len(self._probe_buffer) > 16 * 1024 * 1024:
-                        raise RecipeBlocked('desktop probe response exceeded 16 MiB')
-            line, self._probe_buffer = self._probe_buffer.split(b'\n',1)
+            sent_all = True
+            line = self._read_probe_line(process, timeout, 'persistent desktop probe')
             return json.loads(line)
+        except ProbeDeadline as error:
+            # The caller's recipe deadline cut the wait short, not the channel.
+            self._probe_stale = getattr(self, '_probe_stale', 0) + 1
+            raise RecipeBlocked(str(error)) from None
         except RecipeBlocked:
             self._probe_failed = True
             raise
@@ -441,8 +450,32 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             self._probe_failed = True
             raise RecipeBlocked('persistent desktop probe transport unavailable') from error
         except BaseException:
-            self._probe_failed = True
+            # A recipe alarm while a whole request awaits its reply: resync on
+            # the next request. Anything else (or a partial request) poisons.
+            if sent_all and isinstance(sys.exc_info()[1], Exception):
+                self._probe_stale = getattr(self, '_probe_stale', 0) + 1
+            else:
+                self._probe_failed = True
             raise
+
+    def _read_probe_line(self, process, timeout, what):
+        deadline = time.monotonic()+timeout
+        with selectors.DefaultSelector() as ready:
+            ready.register(process.stdout, selectors.EVENT_READ)
+            while b'\n' not in self._probe_buffer:
+                remaining = deadline-time.monotonic()
+                if remaining <= 0 or not ready.select(remaining):
+                    if timeout < PROBE_REPLY_SECONDS:
+                        raise ProbeDeadline(what+' reply outlived the recipe deadline; the next request resynchronizes')
+                    raise RecipeBlocked(what+' timed out; further input withheld')
+                data = os.read(process.stdout.fileno(),65536)
+                if not data:
+                    raise RecipeBlocked('persistent desktop probe closed; further input withheld')
+                self._probe_buffer += data
+                if len(self._probe_buffer) > 16 * 1024 * 1024:
+                    raise RecipeBlocked('desktop probe response exceeded 16 MiB')
+        line, self._probe_buffer = self._probe_buffer.split(b'\n',1)
+        return line
 
     def _close_probe(self):
         process = getattr(self, '_probe_process', None)
