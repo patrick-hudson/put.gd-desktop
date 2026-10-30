@@ -22,7 +22,7 @@ the JSON. Guest displays stayed on the live wall throughout the campaign.
 | Two-head QMP drag | At 1280×800 + 1024×768, requested `[320,200,640,400]`, actual `[320,200,640,400]`; 0 px error. |
 | Preflight | Missing xdotool, xclip and python3-pyqt6 blocked before resident launch; provisioning produced an empty missing list. |
 | Hygiene | Own notification retained; foreign and spoofed native-app notification bodies absent. Text, HTML and custom clipboard MIME restored after fixture copy. Successful private roots removed. Forced deadline left X11 button mask 0. |
-| Tests | 68 Python driver tests; three CTest contracts passed. All three core_demo functional recipes passed on Cinnamon. The redact demo's synthetic-content comparison still requests review. |
+| Tests | 97 Python driver tests on the final merged branch; three CTest contracts passed. All three core_demo functional recipes passed on Cinnamon. The redact demo's synthetic-content comparison still requests review. |
 | Guard performance | 12 characters: 19.919 → 1.441 s, 24 → 0 new SSH sessions. 12-step drag: 18.291 → 1.114 s, 26 → 0 new sessions. Fresh geometry/foreground observations still run per point/character over the persistent channel. |
 
 The timing comparison precedes the peer's popup-observer-only change and uses
@@ -63,6 +63,24 @@ functionally, including the newly merged cleanup between recipes. The native
 [text-tool frame](core-demo-text.png), [merged check identities](merged-check.json),
 and [original campaign retirement summary](retirement.json) are retained here.
 The original live gates above keep their original source identities.
+
+The physical-pointer safety follow-up is driver head
+`99b516fd761b07dd64dd0fbba230f9a7611d1cda`, merging core `2cb98478`. It uses
+fake Python transports only: no live rerun, sandbox, app, VM or physical desktop.
+All 16 new safety regressions fail against the original `37217c45` driver and
+pass on the fix; the complete requested suite passes 114 tests. The validator's
+refused click and drag produce no RFB packets, and endpoint failure opens no
+connection. A lost mid-drag lock withholds further input and records a blocked
+receipt naming the host and possibly held button. See the
+[exact identities and per-test results](pointer-release-safety/pointer-release-safety.json),
+[baseline failures](pointer-release-safety/baseline-tests.txt),
+[passing suite](pointer-release-safety/fixed-tests.txt),
+[validator before](pointer-release-safety/repro-before.txt) and
+[after](pointer-release-safety/repro-after.txt), and the
+[synthetic blocked receipt](pointer-release-safety/blocked-receipt.json).
+The fake receipt's `f44` label is synthetic; it does not identify a desktop run.
+Raise-probe heartbeat changes remain with 2a-desktop and `execute` heartbeat
+changes remain with #749; this verification needs neither change.
 
 Issues #705, #714 and #709 remain open for the coordinator to close after
 independent validation and merge. #712's Rename item belongs to the

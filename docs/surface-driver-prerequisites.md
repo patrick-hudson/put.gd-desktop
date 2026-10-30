@@ -54,8 +54,16 @@ device pixel ratio differences. A normalized image score never authorizes input.
 
 Recipe alarms are deferred while input release completes through transports
 with their own timeouts. A pending alarm is delivered after release and still
-fails the recipe. Press dispatch belongs inside the cleanup scope because a
-deadline or lost reply may occur after the guest receives the press.
+fails the recipe. Physical click/drag cleanup becomes eligible only after the
+matching press passes endpoint and lock checks and dispatches successfully;
+a refused press sends no release. Alarms are deferred until successful press
+dispatch is recorded. Every physical release rechecks endpoint identity and
+forces a fresh lock heartbeat before sending input. If authorization is lost
+while a button is held, send nothing and raise `RecipeBlocked` naming the host
+and button that may still be pressed, so a person can check the desktop; the
+runner records the warning in its blocked receipt. Guest presses stay inside
+the cleanup scope because a deadline or lost reply may occur after the owned
+guest receives the press: always attempt release after the owned-endpoint check.
 
 A run uses one owned SSH probe channel instead of starting a new interpreter and
 SSH session for each observation. Every character and drag step still obtains
@@ -66,7 +74,7 @@ process. A timed-out, interrupted or invalid channel
 blocks further input; a late response cannot satisfy a later request. Closing
 the Target closes its probe process before removing the private root.
 
-Interrupted drags release at the last dispatched position. Guest QMP release
+Authorized interrupted drags release at the last dispatched position. Guest QMP release
 sends only button-up, with no absolute-axis event. The RFB fallback reuses its
 last dispatched coordinates because RFB pointer packets require coordinates;
 it never moves to an unvisited drag endpoint during cleanup.
