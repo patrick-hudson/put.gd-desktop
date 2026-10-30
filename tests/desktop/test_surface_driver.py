@@ -95,9 +95,14 @@ class FakeTarget:
 
 class Running(unittest.TestCase):
     def setUp(self):
+        self.ocr_patch = patch('tools.lab.surface_driver.redact.ocr_text', return_value='')
+        self.ocr_patch.start(); self.addCleanup(self.ocr_patch.stop)
+        self.which_patch = patch('tools.lab.surface_driver.redact.shutil.which', return_value='unit-ocr')
+        self.which_patch.start(); self.addCleanup(self.which_patch.stop)
         self.temp=tempfile.TemporaryDirectory();self.path=Path(self.temp.name)
         self.env=dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',guest='cinnamon-x11',package='deb',destination='local',build='abcdef')
-        self.ctx=DriverContext(FakeTarget(),self.env,load_profile(self.env['desktop']),self.path,self.path)
+        profile=load_profile(self.env['desktop']); profile['evidence']={'browser_address_bars':[]}
+        self.ctx=DriverContext(FakeTarget(),self.env,profile,self.path,self.path)
     def tearDown(self):self.temp.cleanup()
 
     def test_registry_selection(self):

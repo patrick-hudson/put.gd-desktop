@@ -18,6 +18,16 @@ class CliContract:public QObject {
  Q_OBJECT
  static QJsonObject raw(const QString& path,const QByteArray& bytes) {QLocalSocket socket;socket.connectToServer(path);if(!socket.waitForConnected(1000))return {};socket.write(bytes);QElapsedTimer timer;timer.start();QByteArray response;while(timer.elapsed()<putgd::test::scaled(5000)&&!response.contains('\n')) {QCoreApplication::processEvents();response+=socket.readAll();putgd::test::settle(1);}return QJsonDocument::fromJson(response).object();}
 private slots:
+ void stdinParametersStayOutOfProcessArguments(){
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;
+  OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());
+  QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"--params-stdin","settings.patch"});QVERIFY(client.waitForStarted());
+  client.write(QJsonDocument(QJsonObject{{"expectedRevision",settings.revision()},{"patch",QJsonObject{{"preferences",QJsonObject{{"notifications",false}}}}}}).toJson(QJsonDocument::Compact));client.closeWriteChannel();
+  PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);QVERIFY(!settings.snapshot().notifications);QVERIFY(QJsonDocument::fromJson(client.readAllStandardOutput()).object()["ok"].toBool());
+  client.start(PUTGD_CLI_PATH,{"--params-stdin","capabilities","{}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),1);
+  client.start(PUTGD_CLI_PATH,{"--params-stdin","capabilities"});QVERIFY(client.waitForStarted());client.write(QByteArray(1024*1024+1,'x'));client.closeWriteChannel();PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(QJsonDocument::fromJson(client.readAllStandardOutput()).object()["error"].toObject()["code"].toString(),QString("request_too_large"));
+ }
+
  void editorViewControlsCrossCliResidentAndHelper(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;source.payload.kind="image";source.payload.image=QImage(320,200,QImage::Format_RGB32);source.payload.image.fill(Qt::cyan);
   OperationService operations(d.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);const auto runtime=d.filePath("runtime");QVERIFY(QFile::encodeName(runtime+"/session.sock").size()<=107);QVERIFY(server.listen(runtime));PUTGD_TRY_VERIFY(operations.ready());

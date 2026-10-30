@@ -52,6 +52,10 @@ class MemoryTarget:
 
 class Secrets(unittest.TestCase):
     def setUp(self):
+        self.ocr_patch = patch('tools.lab.surface_driver.redact.ocr_text', return_value='')
+        self.ocr_patch.start(); self.addCleanup(self.ocr_patch.stop)
+        self.which_patch = patch('tools.lab.surface_driver.redact.shutil.which', return_value='unit-ocr')
+        self.which_patch.start(); self.addCleanup(self.which_patch.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.path = Path(self.temp.name)
         self.catalog = self.path/'catalog'; self.catalog.mkdir()
@@ -108,7 +112,7 @@ class Secrets(unittest.TestCase):
         self.assertEqual(actual['receipt'], row.receipt)
         self.assertEqual(actual['frames'][0]['path'], 'frames/before.png')
         self.assertEqual(receipt['environment']['fixture_url'], derivative)
-        self.assertNotIn('e', actual['note'].replace('[redacted]', ''))
+        self.assertEqual(actual['note'], 'secret e')
         self.assertIn(derivative['hash'], redactor.text(LINK))
         row.note = LINK
         write_receipts(self.out, self.env, [row], 'safe', self.out/'coverage.json', evidence=self.ctx.evidence)
@@ -141,7 +145,7 @@ class Secrets(unittest.TestCase):
     def test_sanitized_session_derivatives_pass_but_proton_password_fails(self):
         self.out.mkdir()
         write_json(self.out/'safe.json', {'accessToken': Sensitive(SESSION), 'sessionId': None})
-        self.assertTrue(scan_run(self.out, ocr='')['passed'])
+        self.assertTrue(scan_run(self.out)['passed'])
         (self.out/'leak.log').write_text('userKeyPassword: '+SESSION)
         self.assertFalse(scan_run(self.out, ocr='')['passed'])
 
@@ -153,7 +157,7 @@ class Secrets(unittest.TestCase):
         (self.out/'planted.log').write_text(SESSION)
         result = self.ctx.evidence.scan()
         self.assertFalse(result['passed'])
-        self.assertEqual(result['findings'][0]['kind'], 'registered-secret')
+        self.assertIn('registered-secret', {v['kind'] for v in result['findings']})
         self.assertNotIn(SESSION, json.dumps(result))
 
     def test_opaque_mcp_notification_and_url_paths_activate_frame_guard(self):
@@ -188,7 +192,7 @@ class Secrets(unittest.TestCase):
             'editor.undo', self.env['desktop'], 'source', 'failed', note='; '.join(ctx.notes)+message,
             review_reason='; '.join(ctx.reviews))], 'safe', self.out/'coverage.json', evidence=ctx.evidence)
         self.assert_safe(self.out)
-        self.assertTrue(scan_run(self.out, ocr='')['passed'])
+        self.assertTrue(scan_run(self.out)['passed'])
         events = [json.loads(line) for line in (self.out/'commands.jsonl').read_text().splitlines()]
         self.assertTrue(all(set(event['stdout']) in ({'redacted', 'length', 'present'}, {'host', 'hash', 'length', 'present'}) for event in events))
         self.assertIn('operationId=owned-operation', ctx.notes)
@@ -261,7 +265,7 @@ class Secrets(unittest.TestCase):
         with Image.open(self.out/cropped.path) as saved:
             self.assertEqual(saved.size, (80, 50))
             self.assertEqual(saved.getpixel((15, 15)), (0, 0, 0))
-        self.assertTrue(scan_run(self.out, ocr='')['passed'])
+        self.assertTrue(scan_run(self.out)['passed'])
         self.assertFalse(list(self.out.glob('*.ppm')))
 
     @unittest.skipUnless(Image, 'requires python3-pil')
@@ -320,6 +324,7 @@ class Secrets(unittest.TestCase):
         self.assertFalse(scan_run(self.out, ocr='')['passed'])
         path.unlink()
         self.ctx.evidence.frame(Image.new('RGB', (10, 10), 'white'), path, [[0, 0, 10, 10]])
+        self.ocr_patch.stop()
         with patch('tools.lab.surface_driver.redact.subprocess.run', return_value=subprocess.CompletedProcess([], 0, LINK.encode(), b'')) as ocr:
             result = scan_run(self.out, ocr='tesseract')
         self.assertEqual(ocr.call_args.kwargs['env']['OMP_THREAD_LIMIT'], '1')

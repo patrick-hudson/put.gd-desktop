@@ -41,7 +41,7 @@ class DriverContext(Context):
         self._popup = None
         self._click_count = 1
 
-        self.evidence = Evidence(self.out)
+        self.evidence = Evidence(self.out, require_ocr=self.destination != 'local')
         self._sensitive_regions = []
         self._sensitive_controls = []
         self._sensitive_seen = self.destination != 'local'
@@ -72,7 +72,7 @@ class DriverContext(Context):
                 result=envelope['result']
                 self.evidence.redactor.remember(result, opaque=method in ('history.detail', 'share.inspect', 'operation.inspect'))
                 if method in ('history.detail', 'share.inspect', 'operation.inspect'):
-                    self._sensitive_seen = self._sensitive_seen or bool(URL.search(response['stdout']))
+                    self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive(response['stdout'])
                 for field in ('operationId','recordingId','shareOperationId'):
                     identity=result.get(field)
                     if isinstance(identity,str) and re.fullmatch('[A-Za-z0-9_-]{1,128}',identity) and identity not in self._noted_ids:
@@ -127,8 +127,9 @@ class DriverContext(Context):
 
     def _probe(self, name, query):
         source = Path(__file__).with_name('probe.py').read_text()
-        # stdin contains code only. Query is a separate, shell-quoted JSON argument.
-        script = 'python3 - '+shlex.quote(json.dumps({'probe':name,'query':query}))+" <<'SD_PROBE'\n"+source+'\nSD_PROBE\n'
+        # Both source and query travel over the session's stdin, never argv.
+        source = source.replace('request = json.loads(sys.argv[1])', 'request = '+repr({'probe':name,'query':query}))
+        script = "python3 - <<'SD_PROBE'\n"+source+'\nSD_PROBE\n'
         result = self.shell(script)
         if result['returncode']:
             raise RecipeBlocked(name+' probe failed (missing desktop probe dependencies)')
@@ -363,7 +364,8 @@ class DriverContext(Context):
 
     def type_text(self,text):
         self.evidence.redactor.remember(text, opaque=True)
-        self._sensitive_seen = self._sensitive_seen or bool(URL.search(text))
+        text = text.reveal() if isinstance(text, Sensitive) else text
+        self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive(text)
         # Validate the whole string before sending any input.
         chords = [(['shift'] if c.isascii() and c.isupper() else []) + qcodes({' ':'Space','\n':'Return','\t':'Tab'}.get(c,c)) for c in text]
         if any(set(chord) & set(self._held_codes) for chord in chords):
@@ -394,7 +396,7 @@ class DriverContext(Context):
         self.evidence.redactor.remember(list(args))
         result = self.target.cli(*args,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
         self.evidence.command('cli', result)
-        self._sensitive_seen = self._sensitive_seen or bool(URL.search(result.get('stdout', '')))
+        self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive(result.get('stdout', ''))
         try:
             self.evidence.redactor.remember(json.loads(result['stdout']))
         except (ValueError, KeyError):
@@ -406,7 +408,7 @@ class DriverContext(Context):
         self.evidence.redactor.remember(script)
         result = self.target.execute(script,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
         self.evidence.command('shell', result)
-        self._sensitive_seen = self._sensitive_seen or bool(URL.search(result.get('stdout', '')))
+        self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive(result.get('stdout', ''))
         try:
             self.evidence.redactor.remember(json.loads(result['stdout']))
         except (ValueError, KeyError):
@@ -689,21 +691,25 @@ asyncio.run(main())
                     for role in ('history', 'settings', 'editor', 'review', 'destinations'):
                         if role in name:
                             controls.append((row['name'], role))
-        for selector, role in set(controls):
-            try:
-                candidates = self.catalog.candidates(selector, role, self._captures.get(role))
-                geometry = self.geometry(role)
-                if geometry.get('head', 0) != head:
-                    continue
-                # Share 2a's current owned-control witness and result shape;
-                # equal window dimensions do not prove an unchanged layout.
-                row = self._live_control(selector, role, geometry, candidates)
-                x, y, w, h = row['rect']
-                scale = geometry.get('scale', 1)
-                regions.append(rect([(x-geometry.get('screen_x', 0))*scale,
-                                     (y-geometry.get('screen_y', 0))*scale, w*scale, h*scale]))
-            except (RecipeBlocked, ValueError, KeyError):
-                unresolved = True
+        input_head = self._input_head
+        try:
+            for selector, role in set(controls):
+                try:
+                    candidates = self.catalog.candidates(selector, role, self._captures.get(role))
+                    geometry = self.geometry(role)
+                    if geometry.get('head', 0) != head:
+                        continue
+                    # Share 2a's current owned-control witness and result shape;
+                    # equal window dimensions do not prove an unchanged layout.
+                    row = self._live_control(selector, role, geometry, candidates)
+                    x, y, w, h = row['rect']
+                    scale = geometry.get('scale', 1)
+                    regions.append(rect([(x-geometry.get('screen_x', 0))*scale,
+                                         (y-geometry.get('screen_y', 0))*scale, w*scale, h*scale]))
+                except (RecipeBlocked, ValueError, KeyError):
+                    unresolved = True
+        finally:
+            self._input_head = input_head
         # Unknown geometry never permits a secret-bearing frame to be saved.
         # Until the profile/recipe supplies verified bounds, retain a black
         # failure witness with an explicit fallback rather than raw pixels.
@@ -733,9 +739,9 @@ asyncio.run(main())
             scale = geometry.get('scale',1)
             x=(x-geometry.get('screen_x',0))*scale;y=(y-geometry.get('screen_y',0))*scale
             crop = [x,y,w*scale,h*scale]
-        self.evidence.frame(image,path,regions,crop=crop,fallback=fallback)
-        if fallback:
-            self.review('frame fully masked: verified sensitive-field/browser geometry unavailable')
+        metadata = self.evidence.frame(image,path,regions,crop=crop,fallback=fallback)
+        if metadata['fallback']:
+            self.review('frame fully masked: '+metadata.get('guard', 'sensitive geometry unavailable'))
         frame = Frame(label,str(path.relative_to(self.out)),role,reference)
         self.frames.append(frame)
         if reference and not (self.recipe and self.recipe.desktop_drawn):

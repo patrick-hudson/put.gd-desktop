@@ -129,7 +129,7 @@ class Target:
 
     def execute(self, script, timeout=60):
         self.heartbeat()
-        code = 'import subprocess,json\np=subprocess.run('+repr(script)+',shell=True,text=True,capture_output=True,timeout='+repr(timeout)+')\nprint(json.dumps({"returncode":p.returncode,"stdout":p.stdout,"stderr":p.stderr}))\n'
+        code = 'import subprocess,json\np=subprocess.run(["sh","-s"],input='+repr(script)+',text=True,capture_output=True,timeout='+repr(timeout)+')\nprint(json.dumps({"returncode":p.returncode,"stdout":p.stdout,"stderr":p.stderr}))\n'
         try:
             return json.loads(self.session(self.prefix() + "python3 - <<'SD_PY'\n" + code + 'SD_PY\n', timeout + 10))
         except (lab.LabError, subprocess.TimeoutExpired, ValueError) as error:
@@ -176,6 +176,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if result['returncode']:
             raise RecipeBlocked('could not start isolated resident')
         self.started = True
+        self._owns_root = True
         deadline = time.monotonic() + 25
         while True:
             response = self.cli('capabilities')
@@ -188,7 +189,12 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             time.sleep(.25)
 
     def cli(self, *args, timeout=60):
-        return self.execute(shlex.join(['putgd-cli','--socket',self.socket,*args]), timeout)
+        # JSON never becomes a process argument, including in the CLI child.
+        if not args:
+            raise RecipeBlocked('CLI method required')
+        payload = args[1] if len(args) > 1 else '{}'
+        code = 'import subprocess,sys\np=subprocess.run('+repr(['putgd-cli','--socket',self.socket,'--params-stdin',args[0]])+',input='+repr(payload.encode())+',stdout=subprocess.PIPE,stderr=subprocess.PIPE)\nsys.stdout.buffer.write(p.stdout);sys.stderr.buffer.write(p.stderr);sys.exit(p.returncode)\n'
+        return self.execute("python3 - <<'SD_CLI'\n"+code+'SD_CLI\n', timeout)
 
     @desktop_transport
     def events(self, events, head=None):
@@ -276,4 +282,13 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                     self.started=False
             except RecipeBlocked:
                 errors.append('resident quit transport unavailable; private session retained')
+        if not errors and getattr(self, '_owns_root', False):
+            # Never export the resident log/state tree. Remove only our new private root.
+            code = 'import shutil,time\nfrom pathlib import Path\ndeadline=time.monotonic()+10\nwhile Path('+repr(self.socket)+').exists() and time.monotonic()<deadline: time.sleep(.1)\nif Path('+repr(self.socket)+').exists(): raise RuntimeError("resident socket still active")\nshutil.rmtree('+repr(self.root)+')\n'
+            result = self.execute("python3 - <<'SD_CLEAN'\n"+code+'SD_CLEAN\n')
+            if result['returncode']:
+                errors.append('private resident log/state cleanup failed')
+            else:
+                self._owns_root = False
+                self.private_cleanup = 'resident-log-and-state-root-removed'
         return errors

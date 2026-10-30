@@ -9,7 +9,9 @@ import dataclasses
 import fnmatch
 import importlib
 import io
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stdout, redirect_stderr, contextmanager
+import threading
+import functools
 import json
 import os
 from pathlib import Path
@@ -24,7 +26,8 @@ if str(ROOT) not in sys.path:
 from tools.lab.surface_driver.api import REGISTRY, ReceiptRow, RecipeBlocked, RecipeFailed, PACKAGES, PLACEMENTS, DESTINATIONS, HOSTS
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.profiles import load_profile
-from tools.lab.surface_driver.receipts import Evidence, stamp, write_receipts
+from tools.lab.surface_driver.receipts import Evidence, stamp, write_receipts, write_json
+from tools.lab.surface_driver.redact import scan_run
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
 
@@ -52,7 +55,48 @@ def validate_recipes(recipes):
             raise ValueError(recipe.name+': timeout must be positive')
 
 
+@contextmanager
+def capture_output():
+    """RAM-only drains cover Python streams, os.write, and inherited child FDs."""
+    streams, saved, readers, threads = [io.BytesIO(), io.BytesIO()], [], [], []
+    def drain(fd, stream):
+        with os.fdopen(fd, 'rb') as source:
+            while chunk := source.read(65536):
+                stream.write(chunk)
+    try:
+        for fd, stream in zip((1, 2), streams):
+            saved.append(os.dup(fd))
+            read, write = os.pipe()
+            os.dup2(write, fd)
+            os.close(write)
+            worker = threading.Thread(target=drain, args=(read, stream), daemon=True)
+            worker.start()
+            threads.append(worker)
+        python_out, python_err = io.StringIO(), io.StringIO()
+        with redirect_stdout(python_out), redirect_stderr(python_err):
+            yield
+    finally:
+        for fd, original in zip((1, 2), saved):
+            os.dup2(original, fd)
+            os.close(original)
+        # Detached children must not hold capture open or carry output to the console.
+        for thread in threads:
+            thread.join(timeout=2)
+
+
+def confined(function):
+    @functools.wraps(function)
+    def invoke(*args, **kwargs):
+        with capture_output():
+            return function(*args, **kwargs)
+    return invoke
+
+
+@confined
+
 def run_recipes(context, recipes, environment, out, campaign, coverage):
+    export_coverage = Path(coverage)
+    coverage = Path(out)/'coverage.json'
     rows=[]
     receipt=Path(out)/'receipt.json'
     try:
@@ -112,23 +156,53 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
         print(json.dumps({'recipe':recipe.name,'functional':functional,'visual':visual,'review':bool(context.reviews)}),flush=True)
         if interrupted:
             break
-    finish_evidence(context.evidence, out, environment, rows, campaign, coverage)
+    finish_evidence(context.evidence, out, environment, rows, campaign, export_coverage)
     return rows
 
 
 def finish_evidence(evidence, out, environment, rows, campaign, coverage):
-    # Scan after all writers/cleanup. A leak overrides a functional pass and
-    # updates coverage too, so map.put.gd cannot credit unsafe evidence.
-    write_receipts(out, environment, rows, campaign, coverage, evidence=evidence)
+    # Coverage stays private until the complete run has passed its gate.
+    local = Path(out)/'coverage.json'
+    write_receipts(out, environment, rows, campaign, local, evidence=evidence)
     try:
         result = evidence.scan()
     except Exception:
-        result = {'passed': False, 'findings': [{'kind': 'audit-unavailable'}]}
+        result = {'passed': False, 'findings': [{'kind': 'audit-unavailable'}], 'quarantine': []}
     if not result['passed']:
         for row in rows:
             row.functional = 'failed'
-            row.note = ((row.note+'; ') if row.note else '')+'secret evidence audit failed'
-    write_receipts(out, environment, rows, campaign, coverage, evidence=evidence, scan=result)
+            if 'secret evidence audit failed' not in (row.note or ''):
+                row.note = ((row.note+'; ') if row.note else '')+'secret evidence audit failed'
+    write_receipts(out, environment, rows, campaign, local, evidence=evidence, scan=result)
+    if result['passed'] and Path(coverage).resolve() != local.resolve():
+        # Merge under the campaign lock, then scan a private staged copy before publishing.
+        import fcntl
+        destination = Path(coverage)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with open(str(destination)+'.lock', 'a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            stage = Path(out)/'coverage-export.json'
+            if destination.exists():
+                stage.write_bytes(destination.read_bytes())
+            write_receipts(out, environment, rows, campaign, stage, evidence=evidence, scan=result)
+            copy_scan = scan_run(out, frames=evidence.frames, literals=evidence.redactor.audit_literals,
+                                 require_ocr=evidence.require_ocr, quarantine=True)
+            if copy_scan['passed']:
+                write_json(destination, json.loads(stage.read_text()), redactor=evidence.redactor)
+                # Verify the exact bytes copied, using an isolated private audit directory.
+                import tempfile
+                with tempfile.TemporaryDirectory(prefix='.coverage-audit-', dir=Path(out).parent) as tmp:
+                    copied = Path(tmp)/'coverage.json'
+                    copied.write_bytes(destination.read_bytes())
+                    copy_scan = scan_run(tmp, literals=evidence.redactor.audit_literals, require_ocr=evidence.require_ocr)
+                if not copy_scan['passed']:
+                    from tools.lab.surface_driver.redact import quarantine_files
+                    copy_scan['quarantine'] = quarantine_files(Path(out), [(0, destination)])
+            environment['coverage_export'] = {'scanned_before_copy': True, 'copy_scan_passed': copy_scan['passed']}
+            if not copy_scan['passed']:
+                evidence.failed_scan = copy_scan
+                return finish_evidence(evidence, out, environment, rows, campaign, local)
+        write_receipts(out, environment, rows, campaign, local, evidence=evidence, scan=result)
     return result
 
 
@@ -155,6 +229,7 @@ def parser():
     return p
 
 
+@confined
 def main(argv=None):
     args=parser().parse_args(argv)
     if not re.fullmatch(r'[A-Za-z0-9_.-]+',args.campaign):
@@ -231,18 +306,19 @@ def main(argv=None):
             rows=[ReceiptRow(i,args.desktop,args.package,'blocked',receipt=str(args.out/'receipt.json'),
                   note=failure,host=args.host,placement=args.placement,guest=args.guest,
                   destination=args.destination,recipe=r.name,build=args.build,at=stamp()) for r in recipes for i in r.interactions]
-        write_receipts(args.out,environment,rows,args.campaign,coverage,evidence=evidence)
+        write_receipts(args.out,environment,rows,args.campaign,args.out/'coverage.json',evidence=evidence)
         print(json.dumps({'blocked':failure}),file=sys.stderr)
         exit_code=2
     finally:
         if target:
             try:
                 cleanup=target.close()
+                environment['private_cleanup']=getattr(target, 'private_cleanup', 'not-owned-or-retained')
             except Exception as error:
                 cleanup=[evidence.redactor.exception(error)]
             if cleanup:
                 environment['cleanup_errors']=cleanup
-                write_receipts(args.out,environment,rows,args.campaign,coverage,evidence=evidence)
+                write_receipts(args.out,environment,rows,args.campaign,args.out/'coverage.json',evidence=evidence)
                 if exit_code==0:
                     exit_code=2
         audit=finish_evidence(evidence,args.out,environment,rows,args.campaign,coverage)
