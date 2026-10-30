@@ -64,7 +64,7 @@ jobs:
       - name: Install QEMU disk utilities and dwz for the contracts
         env:
           PUTGD_PKG_LABEL: contracts
-        run: sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL bash tools/ci/install-packages.sh --no-install-recommends qemu-utils dwz python3-pil python3-pytest
+        run: sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL bash tools/ci/install-packages.sh --no-install-recommends qemu-utils dwz python3-pil python3-pytest tesseract-ocr
       - name: Release, packaging and CI tool contracts
         if: always()
         run: python3 tools/ci/contracts.py release

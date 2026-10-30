@@ -163,8 +163,8 @@ class Secrets(unittest.TestCase):
         self.assertIn('registered-secret', {v['kind'] for v in result['findings']})
         self.assertNotIn(SESSION, json.dumps(result))
 
-    def test_opaque_mcp_notification_and_url_paths_activate_frame_guard(self):
-        self.ctx.target.execute = lambda *a, **kw: {'returncode': 0, 'stdout': json.dumps({'opaque': SESSION}), 'stderr': ''}
+    def test_mcp_link_and_explicit_url_paths_activate_frame_guard(self):
+        self.ctx.target.execute = lambda *a, **kw: {'returncode': 0, 'stdout': json.dumps({'link': LINK}), 'stderr': ''}
         self.ctx.mcp('synthetic_session')
         self.assertTrue(self.ctx._sensitive_seen)
         self.ctx._sensitive_seen = False
@@ -214,10 +214,11 @@ class Secrets(unittest.TestCase):
         self.assertIn(':1.42', '\n'.join(scripts))
         self.ctx._notifications_since = 0
         self.assertIn('notification_read', '\n'.join(scripts))
-        raw = 'method call time=100.1 sender=:1.2 serial=45 interface=org.freedesktop.Notifications; member=Notify\n'+''.join(' string "'+s+'"\n' for s in ('put.gd', 'putgd', 'Synthetic', SESSION))
+        body = 'Authorization: Bearer '+SESSION
+        raw = 'method call time=100.1 sender=:1.2 serial=45 interface=org.freedesktop.Notifications; member=Notify\n'+''.join(' string "'+s+'"\n' for s in ('put.gd', 'putgd', 'Synthetic', body))
         reply = json.dumps({'ok': True, 'result': {'alive': True, 'text': raw}})
         self.ctx.target.execute = lambda *a, **kw: {'returncode': 0, 'stdout': reply, 'stderr': ''}
-        self.assertEqual(self.ctx.notifications()[0]['body'], SESSION)
+        self.assertEqual(self.ctx.notifications()[0]['body'], body)
         self.assertTrue(self.ctx._sensitive_seen)
         self.ctx.note('notification body '+SESSION)
         self.assertNotIn(SESSION, '\n'.join(self.ctx.notes))

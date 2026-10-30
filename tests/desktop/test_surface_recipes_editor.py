@@ -72,6 +72,7 @@ class FakeContext(Context):
     def geometry(self, window):
         self.events.append(('geometry',window))
         if window == 'editor.canvas': return {'x':100,'y':100,'width':800,'height':500}
+        if window == 'editorDiscard': return {'x':100,'y':100,'width':400,'height':200}
         assert window == 'editor'
         return {'x':0,'y':0,'width':1180,'height':820}
 
@@ -83,7 +84,7 @@ class FakeContext(Context):
         if control=='text:Select and move': self.state['view']['tool']='select'
         elif control.startswith('text:') and control[5:].lower() in ('redact','arrow','rectangle','highlight','text','select','blur','crop'):
             self.state['view']['tool']=control[5:].lower()
-        elif control == 'placeMark': self._add({'kind':'redact','rect':[220,110,200,100]})
+        elif control == 'placeMark': self._add({'kind':self.state['view']['tool'],'rect':[220,110,200,100]})
         elif control in ('removeMark','text:Remove mark'): self.state['shapes']=[]
         elif control.startswith('text:Undo'): self.keys('Ctrl+Z')
         elif control.startswith('text:Redo'): self.keys('Ctrl+Shift+Z')
@@ -156,7 +157,7 @@ class ExportContext(FakeContext):
 
     def shell(self,script,**kwargs):
         self.oracle_script=script
-        # Execute the exact recipe pixel oracle with a controlled PPM. This
+        # Execute the exact recipe pixel oracle with a controlled PNG. This
         # tests the oracle's rejection behaviour, never an app export.
         oracle=script.split("<<'ORACLE'\n",1)[1].rsplit('\nORACLE',1)[0]
         pixels=bytearray(640*320*3)
@@ -168,8 +169,9 @@ class ExportContext(FakeContext):
                 pixels[(y*640+x)*3:(y*640+x+1)*3]=bytes(rgb)
         if self.corrupt: pixels[(50*640+400)*3]=20
         with tempfile.TemporaryDirectory() as directory:
-            path=Path(directory)/'output.ppm'
-            path.write_bytes(b'P6\n640 320\n255\n'+pixels)
+            path=Path(directory)/'output.png'
+            from PIL import Image
+            Image.frombytes('RGB',(640,320),bytes(pixels)).save(path)
             result=subprocess.run([sys.executable,'-c',oracle,str(path)],capture_output=True,text=True)
         return {'returncode':result.returncode,'stdout':result.stdout,'stderr':result.stderr}
 
@@ -182,8 +184,37 @@ class EditorRecipes(unittest.TestCase):
         self.assertEqual(owned,set(actual))
         self.assertEqual(len(actual),len(set(actual)))
         for r in recipes:
-            self.assertEqual(('image',),r.needs)
+            self.assertEqual(('image','file-dialog-fallback') if r.function.__name__=='save_copy' else ('image',),r.needs)
             self.assertEqual(('local',),r.destinations)
+
+    def test_place_reads_selected_identity_instead_of_shape_order(self):
+        ctx=FakeContext()
+        def click(control, window):
+            self.assertEqual(('placeMark','editor'),(control,window))
+            ctx.state['shapes']=[{'id':4,'kind':'blur'},{'id':9,'kind':'rectangle'}]
+            ctx.state['view']['selectedShapeId']=9
+        ctx.click=click
+        self.assertEqual(9,editor._place(ctx,'op-1','rectangle'))
+        self.assertFalse(any(e[0]=='keys' for e in ctx.events))
+
+    def test_failed_placement_reports_assertion_without_index_error(self):
+        ctx=FakeContext();ctx.click=lambda *args,**kwargs:None
+        with self.assertRaisesRegex(RecipeFailed,'new selected rectangle'):
+            editor._place(ctx,'op-1','rectangle')
+
+    def test_mcp_open_awaits_starting_editor_before_frames(self):
+        ctx=FakeContext();calls=[]
+        replies=iter([{'ok':True,'result':{'operationId':'op-1'}},
+                      {'ok':False,'error':{'code':'editor_starting'}},
+                      {'ok':True,'result':{'phase':'editing'}}])
+        def mcp(tool, arguments):
+            calls.append(tool)
+            return next(replies)
+        ctx.mcp=mcp
+        ctx.wait=lambda predicate,what,**kwargs: predicate() or predicate()
+        self.assertEqual({'operationId':'op-1'},editor._mcp_open(ctx,{'source':'file','path':'/private/fixture.png'}))
+        self.assertEqual(['open_editor','get_editor','get_editor'],calls)
+        self.assertFalse(any(e[0]=='frame' for e in ctx.events))
 
     def test_help_click_ignores_the_same_label_tooltip(self):
         ctx=FakeContext()
@@ -203,6 +234,30 @@ class EditorRecipes(unittest.TestCase):
         ctx.click_at=lambda x,y,**kwargs: clicks.append((x,y,kwargs))
         with self.assertRaises(RecipeBlocked): editor._click_keyboard_help(ctx)
         self.assertEqual([],clicks)
+
+    def test_destination_button_roles_preserve_tooltip_disambiguation(self):
+        for role in ('push button', 'button'):
+            with self.subTest(role=role):
+                ctx=FakeContext()
+                ctx.accessible=lambda query: [
+                    {'name':'Local only','role':'tool tip','enabled':True,'rect':[10,10,20,20]},
+                    {'name':'Local only','role':role,'enabled':True,'rect':[100,100,20,20]}]
+                clicks=[]
+                ctx.click_at=lambda x,y,**kwargs: clicks.append((x,y,kwargs))
+                editor.destination(ctx)
+                self.assertEqual([(110,110,{'head':0})],clicks)
+
+    def test_discard_waits_for_a_mapped_window_before_focusing(self):
+        ctx=FakeContext();calls=[]
+        def geometry(window):
+            calls.append(window)
+            if len(calls)==1: raise RecipeBlocked('window not mapped yet')
+            return {'x':100,'y':100,'width':400,'height':200}
+        ctx.geometry=geometry
+        ctx.wait=lambda predicate,what: predicate() or predicate()
+        editor._discard_ready(ctx)
+        self.assertEqual(['editorDiscard','editorDiscard'],calls)
+        self.assertEqual(('focus','editorDiscard'),ctx.events[-1])
 
     def test_fresh_session_frames_inspect_and_cleanup(self):
         ctx=FakeContext(); editor.redact(ctx)
@@ -246,8 +301,8 @@ class EditorRecipes(unittest.TestCase):
 
     def test_discard_question_keeps_then_stores_nothing(self):
         ctx=FakeContext(); editor.discard(ctx)
-        self.assertIn(('frame','question','confirm','19-editor-discard-confirm'),ctx.events)
-        self.assertIn(('click','text:Keep editing','confirm'),ctx.events)
+        self.assertIn(('frame','question','editorDiscard','19-editor-discard-confirm'),ctx.events)
+        self.assertIn(('click','text:Keep editing','editorDiscard'),ctx.events)
         self.assertEqual('cancelled',ctx.phase)
 
     def test_all_pending_recipes_explain_block_after_frames(self):
@@ -264,7 +319,7 @@ class EditorRecipes(unittest.TestCase):
     def test_export_oracle_accepts_sanitized_pixels_and_quotes_path(self):
         ctx=ExportContext(); editor.upload(ctx)
         self.assertEqual('completed',ctx.phase)
-        self.assertIn("putgd-desktop-fixture --convert '/private/output",ctx.oracle_script)
+        self.assertIn("python3 - '/private/output",ctx.oracle_script)
         self.assertNotIn('from tools.lab',ctx.oracle_script)
 
     def test_export_oracle_rejects_a_single_source_pixel_in_mask(self):

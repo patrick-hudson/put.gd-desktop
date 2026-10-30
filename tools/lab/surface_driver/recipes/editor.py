@@ -14,7 +14,6 @@ import math
 import shlex
 import sys
 
-from tools.lab import lab
 from tools.lab.editor_pixels import redactions_black
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
 
@@ -61,7 +60,14 @@ def _resize(ctx, width, height):
         except RecipeFailed:
             observed=ctx.geometry('editor')
             ctx.note(f'editor resize requested {width}x{height}; observed {observed["width"]}x{observed["height"]}')
-            raise
+            if abs(observed['width']-width)>4 or abs(observed['height']-height)>4:
+                raise
+            # A compositor can round the initial system-resize grab by a few
+            # pixels. Make one real corrective drag; keep exact final bounds.
+            start=(observed['x']+observed['width']-5,observed['y']+observed['height']-5)
+            end=(observed['x']+width-5,observed['y']+height-5)
+            ctx.drag(start,end)
+            ctx.wait(sized,'editor correction reaches exact catalog dimensions')
 
 
 
@@ -90,7 +96,7 @@ def _session(ctx, opener=None, recent_colours=None):
         ctx.expect(state['phase'] == 'editing' and not state['shapes'], 'fresh private editor has no marks')
         ctx.expect([state['width'], state['height']] == [640, 320], 'four-quadrant fixture is 640x320')
         ctx.call('editor.raise',{'id':op})
-        ctx.focus('editor')
+        ctx.focus('editor', raise_window=False)
         _view(ctx, op, action='fit')
         ctx.expect(_inspect(ctx, op)['view']['fitted'], 'editor opens fitted')
         _frame(ctx, 'before')
@@ -123,6 +129,28 @@ def _tool(ctx, op, name, key=None):
     else:
         ctx.click('text:' + ('Select and move' if name=='select' else name.title()), window='editor')
     ctx.expect(_inspect(ctx, op)['view']['tool'] == name, f'{name} tool selected by real input')
+
+
+def _place(ctx, op, kind, text=None):
+    """Place through the actual button; Insert only works with canvas focus."""
+    before = {shape['id'] for shape in _inspect(ctx, op)['shapes']}
+    ctx.click('placeMark', window='editor')
+    if kind == 'text':
+        ctx.wait(lambda: _inspect(ctx, op)['view']['editingText'], 'text placement starts editing')
+        ctx.type_text(text or 'font check')
+        ctx.keys('Return')
+    def placed():
+        state = _inspect(ctx, op)
+        selected = state['view']['selectedShapeId']
+        return next((shape for shape in state['shapes'] if shape['id'] == selected
+                     and shape['id'] not in before and shape['kind'] == kind), None)
+    return ctx.wait(placed, 'new selected '+kind+' mark from Place button')['id']
+
+
+def _shape(ctx, op, identity):
+    shape = next((shape for shape in _inspect(ctx, op)['shapes'] if shape['id'] == identity), None)
+    ctx.expect(shape is not None, 'placed mark remains in the document')
+    return shape
 
 
 def _point(ctx, op, x, y):
@@ -379,7 +407,9 @@ def destination(ctx):
     with _session(ctx) as op:
         text = _inspect(ctx, op)['view']['destination']['text']
         ctx.expect(bool(text), 'destination identifies the isolated local output')
-        _click_editor_text(ctx, text, ('push button',))
+        # Qt 6.4 exposes the revealable label as "push button"; Qt 6.10
+        # reports the same QAccessible::Button as "button".
+        _click_editor_text(ctx, text, ('push button', 'button'))
         ctx.expect(_inspect(ctx, op)['view']['destination']['text']==text, 'destination remains visible after real pointer input')
         _frame(ctx, 'after')
 
@@ -429,6 +459,20 @@ def mouse_pan(ctx):
         _frame(ctx, 'after', '26-editor-selected')
 
 
+def _mapped_window(ctx, role, description):
+    def mapped():
+        try:
+            return ctx.geometry(role)
+        except RecipeBlocked:
+            return None
+    return ctx.wait(mapped, description)
+
+
+def _discard_ready(ctx):
+    _mapped_window(ctx, 'editorDiscard', 'discard confirmation mapped by the window manager')
+    ctx.focus('editorDiscard', raise_window=False)
+
+
 @recipe('editor.cancel', 'confirm.editor-discard', needs=IMAGE)
 def discard(ctx):
     with _session(ctx) as op:
@@ -436,16 +480,18 @@ def discard(ctx):
         shapes = _inspect(ctx, op)['shapes']
         ctx.click('editorCancel', window='editor')
         ctx.expect(_inspect(ctx, op)['view']['discardConfirmation']['open'], 'dirty Cancel asks before discard')
-        ctx.frame('question', window='confirm', reference='19-editor-discard-confirm')
-        ctx.focus('confirm', raise_window=False)
+        _discard_ready(ctx)
+        ctx.frame('question', window='editorDiscard', reference='19-editor-discard-confirm')
         ctx.keys('Esc')
         ctx.expect(_inspect(ctx, op)['shapes'] == shapes and not _inspect(ctx, op)['view']['discardConfirmation']['open'], 'Escape keeps edits')
         ctx.click('editorCancel', window='editor')
-        ctx.click('text:Keep editing', window='confirm')
+        _discard_ready(ctx)
+        ctx.click('text:Keep editing', window='editorDiscard')
         ctx.expect(_inspect(ctx, op)['shapes'] == shapes, 'Keep editing preserves marks')
         _frame(ctx, 'after')
         ctx.click('editorCancel', window='editor')
-        ctx.click('confirmDiscard', window='confirm')
+        _discard_ready(ctx)
+        ctx.click('confirmDiscard', window='editorDiscard')
         operation = ctx.wait(lambda: (lambda o: o if o['state']=='cancelled' else None)(_result(ctx.call('operation.inspect', {'id':op}))), 'discard completes')
         ctx.expect(not operation['items'], 'discard stores no artifact')
 
@@ -462,23 +508,20 @@ def upload(ctx):
         item = operation['items'][0]
         ctx.expect(item['local']['status']=='saved' and item['artifact']['mime']=='image/png', 'output is a saved sanitized PNG')
         # Same independent pixel oracle as edit_acceptance.py; no preview pixels
-        # or source bytes enter receipts. Conversion uses the shipped fixture.
+        # or source bytes enter receipts. Decode the actual saved PNG independently.
         path = shlex.quote(item['local']['path'])
         masks = json.dumps([s['rect'] for s in final['shapes'] if s['kind']=='redact'])
-        # Reuse the acceptance driver's PPM decoder and full-mask oracle.
-        decoder = inspect.getsource(lab.ppm)
+        # Reuse the acceptance driver's full-mask oracle on independent PNG bytes.
         mask_check = inspect.getsource(redactions_black)
         script = f'''set -eu
-p=$(mktemp --suffix=.ppm)
-trap 'rm -f "$p"' EXIT
-putgd-desktop-fixture --convert {path} "$p"
-python3 - "$p" <<'ORACLE'
-import sys,re
-from pathlib import Path
-LabError=AssertionError
-{decoder}
+python3 - {path} <<'ORACLE'
+import sys
+from PIL import Image
 {mask_check}
-w,h,pixels=ppm(sys.argv[1])
+with Image.open(sys.argv[1]) as saved:
+ image=saved.convert("RGB")
+ w,h=image.size
+ pixels=image.tobytes()
 assert (w,h)==(640,320)
 assert redactions_black(w,pixels,{masks})
 for x,y,rgb in [(100,60,[220,30,40]),(230,170,[35,70,220]),(330,290,[235,190,20])]:
@@ -563,20 +606,20 @@ _blocked_recipe('preparation_failure', ('editor.preparation-failed',), 'Needs de
 @recipe('editor.colours', needs=IMAGE)
 def palette(ctx):
     with _session(ctx, recent_colours=['#123456', '#654321']) as op:
-        _tool(ctx, op, 'rectangle', 'R')
-        ctx.keys('Insert')
+        _tool(ctx, op, 'rectangle')
+        mark = _place(ctx, op, 'rectangle')
         ctx.use_catalog('editor', '22-editor-arrow-style')
         colours = [('Red','#dc2626'),('Orange','#f59e0b'),('Yellow','#facc15'),('Green','#22c55e'),
                    ('Blue','#3b82f6'),('White','#ffffff'),('Black','#111317')]
         for name, colour in colours:
             ctx.click('colorSwatch'+name, window='editor')
             state = _inspect(ctx,op)
-            ctx.expect(state['view']['style']['color']==colour and state['shapes'][0]['color']==colour, 'palette updates style and selected shape')
+            ctx.expect(state['view']['style']['color']==colour and _shape(ctx, op, mark)['color']==colour, 'palette updates style and selected shape')
         _frame(ctx,'after','22-editor-arrow-style')
         for colour in ('#123456', '#654321'):
             ctx.click('recentColorSwatch_'+colour[1:], window='editor')
             state = _inspect(ctx, op)
-            ctx.expect(state['view']['style']['color']==colour and state['shapes'][0]['color']==colour,
+            ctx.expect(state['view']['style']['color']==colour and _shape(ctx, op, mark)['color']==colour,
                        'recent-colour swatch updates selected shape')
         _frame(ctx, 'recent-colours', '22-editor-arrow-style')
 
@@ -584,27 +627,30 @@ def palette(ctx):
 @recipe('editor.line-width', needs=IMAGE)
 def style_controls(ctx):
     with _session(ctx) as op:
-        _tool(ctx,op,'rectangle','R')
-        ctx.keys('Insert')
+        _tool(ctx,op,'rectangle')
+        mark = _place(ctx, op, 'rectangle')
         ctx.use_catalog('editor', '22-editor-arrow-style')
-        for key, width in [('Home',2),('Down',4),('End',8)]:
-            ctx.click('lineWidth', window='editor')
-            ctx.keys(key,'Return')
+        ctx.click('lineWidth', window='editor')
+        # Return closes the popup with focus on the combo. Continue through
+        # its native keyboard controls instead of resolving a closing popup.
+        for keys, width in [(('Home','Return'),2),(('Down',),4),(('End',),8)]:
+            ctx.keys(*keys)
             state = _inspect(ctx,op)
-            ctx.expect(state['view']['style']['width']==width and state['shapes'][0]['width']==width, 'line width updates style and shape')
+            ctx.expect(state['view']['style']['width']==width and _shape(ctx, op, mark)['width']==width, 'line width updates style and shape')
+        ctx.note('line width 2/4/8 read back on the placed mark')
         _frame(ctx,'width','22-editor-arrow-style')
-        _tool(ctx, op, 'blur', 'B')
-        ctx.keys('Insert')
+        _tool(ctx, op, 'blur')
+        blur = _place(ctx, op, 'blur')
         ctx.use_catalog('editor', '21-editor-blur-warning')
         ctx.click('blurStrengthValue',window='editor'); ctx.keys('Ctrl+A'); ctx.type_text('24'); ctx.keys('Return')
-        ctx.expect(_inspect(ctx,op)['shapes'][-1]['strength']==24,'blur strength control changes mark')
-        _tool(ctx,op,'text','T')
-        ctx.keys('Insert'); ctx.type_text('font check'); ctx.keys('Return')
+        ctx.expect(_shape(ctx, op, blur)['strength']==24,'blur strength control changes mark')
+        _tool(ctx,op,'text')
+        label = _place(ctx, op, 'text', 'font check')
         ctx.use_catalog('editor', '26e-editor-text-stepper-1060')
         ctx.click('textSize',window='editor'); ctx.keys('Ctrl+A'); ctx.type_text('32'); ctx.keys('Return')
-        ctx.expect(_inspect(ctx,op)['shapes'][-1]['fontPixels']==32,'font size control changes label')
+        ctx.expect(_shape(ctx, op, label)['fontPixels']==32,'font size control changes label')
         ctx.click('textFont',window='editor'); ctx.keys('Home','Return')
-        ctx.expect(bool(_inspect(ctx,op)['shapes'][-1]['font']),'font family choice changes label')
+        ctx.expect(bool(_shape(ctx, op, label)['font']),'font family choice changes label')
         _frame(ctx,'after','26e-editor-text-stepper-1060')
 
 
@@ -662,9 +708,22 @@ def _mcp(ctx, tool, arguments):
     return reply.get('structuredContent') or reply
 
 
+def _mcp_open(ctx, params):
+    opened = _result(_mcp(ctx, 'open_editor', params))
+    def ready():
+        reply = _mcp(ctx, 'get_editor', {'id':opened['operationId']})
+        if reply.get('ok') is False and reply.get('error',{}).get('code')=='editor_starting':
+            return None
+        return _result(reply)
+    # The SDK acceptance driver also awaits get_editor readiness. Observe the
+    # opaque editor state before the first editor frame reaches the guard.
+    ctx.wait(ready, 'MCP editor ready before editor evidence', timeout=30)
+    return opened
+
+
 @recipe('mcp.editor', 'mcp.editor-output', needs=IMAGE)
 def mcp_editor(ctx):
-    def open_editor(params): return _result(_mcp(ctx,'open_editor',params))
+    def open_editor(params): return _mcp_open(ctx, params)
     with _session(ctx, open_editor) as op:
         def tool(name, **args): return _result(_mcp(ctx,name,{'id':op, **args}))
         tool('raise_editor')
@@ -710,26 +769,28 @@ def mcp_editor(ctx):
 
 
 
-@recipe('editor.save-copy', needs=IMAGE)
+@recipe('editor.save-copy', needs=IMAGE+('file-dialog-fallback',))
 def save_copy(ctx):
+    from tools.lab.surface_driver.recipes.dialogs import _backend, _ready, _input
+    _backend(ctx, 'fallback')
     with _session(ctx) as op:
-        ctx.click('editorSaveCopy',window='editor')
-        dialog = _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))
-        ctx.expect(dialog['open'],'Save a copy button opens chooser')
-        ctx.frame('chooser-open',window='fileDialog')
-        ctx.focus('fileDialog', raise_window=False)
-        ctx.keys('Esc')
+        inspect_dialog = lambda: _result(ctx.call('editor.fileDialog', {'id':op,'action':'inspect'}))
+        ctx.click('editorSaveCopy', window='editor')
+        _ready(ctx, inspect_dialog, 'fallback', 'save')
+        path = _copy_path(ctx)
+        _input(ctx, 'fallback', path, 'save', inspect_dialog)
+        ctx.wait(lambda: (last if (last := _inspect(ctx,op)['view']['lastSave']) and
+                         last.get('status') == 'saved' and last.get('path') == path else None),
+                 'chooser saves exactly the private selected copy')
         ctx.focus('editor', raise_window=False)
-        ctx.wait(lambda: not _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'], 'chooser cancels by Escape')
         ctx.keys('Ctrl+S')
-        ctx.expect(_result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'],'Ctrl+S opens chooser')
-        ctx.focus('fileDialog', raise_window=False)
+        _ready(ctx, inspect_dialog, 'fallback', 'save')
         ctx.keys('Esc')
+        ctx.wait(lambda: not inspect_dialog()['open'], 'shortcut chooser cancels')
         ctx.focus('editor', raise_window=False)
-        ctx.wait(lambda: not _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'], 'shortcut chooser cancels')
-        ctx.expect(_inspect(ctx,op)['phase']=='editing','chooser cancellation never uploads')
-        _frame(ctx,'after')
-        ctx.blocked('Save button/shortcut and chooser cancellation checked; selecting an output path requires the dialogs lane native-input fixture',issue=CORE_ISSUE)
+        ctx.expect(_inspect(ctx,op)['phase']=='editing', 'save and chooser cancel keep the private editor open')
+        ctx.expect(not _result(ctx.call('operation.inspect',{'id':op}))['items'], 'saving a copy never submits')
+        _frame(ctx,'after','27-editor-saved')
 
 
 @recipe('editor.save-feedback', needs=IMAGE)
@@ -790,12 +851,8 @@ def window_chrome(ctx):
         ctx.click('windowMaximize',window='editor')
         ctx.wait(lambda: ctx.geometry('editor')['width']>before['width'],'maximize enlarges editor')
         ctx.expect(_inspect(ctx,op)['phase']=='editing','maximize preserves private edit')
-        # The maximized layout is not a catalog scale. Use the same keyboard
-        # window-manager action to restore it, rather than map a stale rectangle.
-        restore=ctx.profile.get('editor',{}).get('restore_maximized_keys')
-        if not restore:
-            ctx.blocked('Desktop profile needs editor.restore_maximized_keys for native maximize/restore acceptance',issue=CORE_ISSUE)
-        ctx.keys(*restore)
+        # Resolve the same stable chrome object live at its maximized position.
+        ctx.click('windowMaximize',window='editor')
         ctx.wait(lambda: ctx.geometry('editor')['width']==before['width'],'restore original window')
         ctx.click('windowMinimize',window='editor')
         def minimized():
@@ -806,12 +863,12 @@ def window_chrome(ctx):
             return state.get('minimized') or state.get('iconified')
         ctx.wait(minimized,'minimize hides live editor window')
         ctx.call('editor.raise',{'id':op})
-        ctx.wait(lambda: ctx.geometry('editor'),'raise restores minimized editor')
+        _mapped_window(ctx, 'editor', 'raise restores minimized editor')
         ctx.click('placeMark',window='editor')
         ctx.click('windowClose',window='editor')
         ctx.expect(_inspect(ctx,op)['view']['discardConfirmation']['open'],'window Close asks before discarding')
-        ctx.frame('close-question',window='confirm',reference='19-editor-discard-confirm')
-        ctx.focus('confirm', raise_window=False)
+        _discard_ready(ctx)
+        ctx.frame('close-question',window='editorDiscard',reference='19-editor-discard-confirm')
         ctx.keys('Esc')
         ctx.focus('editor', raise_window=False)
         ctx.expect(_inspect(ctx,op)['phase']=='editing','Escape keeps editor after window Close')
