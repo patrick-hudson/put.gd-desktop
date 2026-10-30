@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -61,6 +62,18 @@ class Checking(Fixture):
         self.assertEqual(failures, ['12-moved.actual.png', '12-moved.diff.png', '12-moved.expected.png',
                                     '14-new.actual.png'])
 
+    def test_exempt_states_render_but_are_not_compared(self):
+        with mock.patch.dict(check.IMAGE_EXEMPT, {'12-moved': '#1', '14-new': '#2', '13-gone': '#3'}, clear=True):
+            results = check.compare(self.out, self.refs, self.out / 'failures')
+        self.assertEqual(results['12-moved']['status'], 'exempt')
+        self.assertEqual(results['14-new']['status'], 'exempt')
+        self.assertEqual(results['13-gone']['status'], 'missing', 'an exempt state must still render')
+        self.assertFalse((self.out / 'failures' / '12-moved.diff.png').exists())
+
+    def test_every_exemption_names_its_issue(self):
+        for name, issue in check.IMAGE_EXEMPT.items():
+            self.assertRegex(issue, r'^#[0-9]+$', name)
+
     def test_no_failures_directory_when_everything_matches(self):
         for name in ('12-moved', '13-gone', '14-new'):
             for directory in (self.refs, self.out):
@@ -107,6 +120,13 @@ class Updating(Fixture):
         self.assertEqual((self.refs / '14-new.png').read_bytes(), (self.out / '14-new.png').read_bytes())
         self.assertFalse((self.refs / '13-gone.png').exists())
         self.assertEqual(update.plan(self.out, self.refs), ([], [], []))
+
+    def test_exempt_states_keep_no_reference(self):
+        with mock.patch.dict(check.IMAGE_EXEMPT, {'12-moved': '#1', '14-new': '#2'}, clear=True):
+            self.assertEqual(update.plan(self.out, self.refs), ([], [], ['12-moved', '13-gone']))
+            update.apply(self.out, self.refs, out=io.StringIO())
+        self.assertFalse((self.refs / '12-moved.png').exists())
+        self.assertFalse((self.refs / '14-new.png').exists())
 
     def test_main_requires_complete_renders(self):
         source = self.root / 'artifact'

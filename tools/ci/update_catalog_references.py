@@ -33,9 +33,11 @@ ARTIFACT = 'ui-catalog-check'
 def plan(rendered, references, tolerance=check.TOLERANCE):
     """(added, changed, removed) state names for one scheme."""
     actual, expected = check.states(rendered), check.states(references)
-    added = sorted(actual.keys() - expected.keys())
-    removed = sorted(expected.keys() - actual.keys())
-    changed = sorted(name for name in actual.keys() & expected.keys()
+    exempt = set(check.IMAGE_EXEMPT)
+    added = sorted(actual.keys() - expected.keys() - exempt)
+    # An exempt state keeps no reference.
+    removed = sorted((expected.keys() - actual.keys()) | (expected.keys() & exempt))
+    changed = sorted(name for name in (actual.keys() & expected.keys()) - exempt
                      if not image_diff.compare_files(expected[name], actual[name], tolerance).matches)
     return added, changed, removed
 
