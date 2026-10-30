@@ -90,7 +90,8 @@ class Target:
     def heartbeat(self, force=False):
         if not self._lock:
             return
-        now=time.monotonic()
+        # CLOCK_BOOTTIME includes suspend; a desktop lease keeps aging asleep.
+        now=time.clock_gettime(time.CLOCK_BOOTTIME)
         if not force and now-self._last_heartbeat<60 and now<self._lock_valid_until:
             return
         from tools.lab import desktop_lock
@@ -103,9 +104,9 @@ class Target:
             raise RecipeBlocked('physical desktop lock heartbeat unavailable') from error
         expiry=value.get('expiresInSeconds',0)
         if (not value.get('ok') or value.get('state')!='held' or type(expiry) not in (int,float)
-                or not time.monotonic()-now+1 < expiry <= desktop_lock.MAX_MINUTES*60):
+                or not time.clock_gettime(time.CLOCK_BOOTTIME)-now+1 < expiry <= desktop_lock.MAX_MINUTES*60):
             raise RecipeBlocked('physical desktop lock is no longer held by this session')
-        self._last_heartbeat=time.monotonic()
+        self._last_heartbeat=time.clock_gettime(time.CLOCK_BOOTTIME)
         self._lock_valid_until=now+max(0,expiry-1)
 
     def session(self, body, timeout=60):
@@ -132,7 +133,9 @@ class Target:
             ('XDG_CACHE_HOME','cache'),('XDG_RUNTIME_DIR','runtime')))
 
     def execute(self, script, timeout=60):
-        self.heartbeat()
+        # Shell commands include resident launch, raises and CLI mutations. Treat
+        # every physical execute as mutating rather than infer safety from text.
+        self.heartbeat(force=bool(self.physical))
         code = 'import subprocess,json\np=subprocess.run('+repr(script)+',shell=True,text=True,capture_output=True,timeout='+repr(timeout)+')\nprint(json.dumps({"returncode":p.returncode,"stdout":p.stdout,"stderr":p.stderr}))\n'
         try:
             return json.loads(self.session(self.prefix() + "python3 - <<'SD_PY'\n" + code + 'SD_PY\n', timeout + 10))
