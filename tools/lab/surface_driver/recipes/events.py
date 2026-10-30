@@ -421,6 +421,41 @@ def panel_theme_changed(ctx: Context):
         ctx.blocked('Profile needs reversible native panelTheme commands and light/dark theme names')
     read, write = spec['read'], spec['write']
     ctx.expect(isinstance(read, list) and isinstance(write, list) and read and write, 'profile supplies theme argument vectors')
+    share = _share_session_dconf(ctx, spec.get('sessionDconf'))
+    try:
+        _panel_theme_event(ctx, spec, read, write)
+    finally:
+        if share:
+            _shell(ctx, share, 'unlink the session dconf database from the private profile')
+
+
+def _share_session_dconf(ctx: Context, relative):
+    """Let the resident read the session's dconf database; return the cleanup script.
+
+    The resident reads the theme with its own gsettings, whose dconf user
+    database is $XDG_CONFIG_HOME/dconf/user: in the private profile, a database
+    nothing writes, while every writer (Themes settings, gsettings, the profile's
+    write vector) goes through dconf-service into the session's (#702). Only that
+    directory is shared, by a link inside the run's private configuration home.
+    """
+    if relative is None:
+        return None
+    parts = relative.split('/') if isinstance(relative, str) else []
+    ctx.expect(parts and not relative.startswith('/') and all(p not in ('', '.', '..') for p in parts),
+               'profile names the session dconf directory relative to the home directory')
+    session = '"$HOME"/' + shlex.quote(relative)
+    _shell(ctx, 'set -eu\nlink="$XDG_CONFIG_HOME/dconf"\n'
+                'test -d ' + session + ' && test ! -L ' + session + '\n'
+                'test ! -e "$link" && test ! -L "$link"\n'
+                'ln -s ' + session + ' "$link"\n'
+                'test "$(readlink "$link")" = ' + session + '\n',
+           'share the session dconf database with the private profile')
+    return ('set -eu\nlink="$XDG_CONFIG_HOME/dconf"\n'
+            'if test -L "$link" && test "$(readlink "$link")" = ' + session + '; then rm "$link"; fi\n'
+            'test ! -e "$link" && test ! -L "$link"\n')
+
+
+def _panel_theme_event(ctx: Context, spec, read, write):
     before = _result(ctx, 'ui.snapshot')['diagnostics']['trayTint']
     original = _shell(ctx, shlex.join(read), 'read existing native panel theme').strip()
     # gsettings prints a GVariant string; parse it as one shell word, then quote

@@ -352,6 +352,64 @@ class EventRecipes(unittest.TestCase):
         self.assertIn("'Synthetic Light'", scripts[1])
         self.assertTrue(any(a[:2] == ('frame', 'failure-before-cleanup') for a in ctx.actions))
 
+    def _theme_ctx(self, follows):
+        """A resident whose tray follows the theme only through the shared dconf link (#702)."""
+        import shlex
+        ctx = Fake()
+        ctx.profile = {'events': {'panelTheme': {'read': ['gsettings', 'get', 'schema', 'key'], 'write': ['gsettings', 'set', 'schema', 'key'],
+                                                'light': 'Synthetic Light', 'dark': 'Synthetic Dark', 'sessionDconf': '.config/dconf'}}}
+        state = {'theme': 'Synthetic Dark', 'linked': False}
+        original_call = ctx.call
+        def call(method, params=None):
+            result = original_call(method, params)
+            if method == 'ui.snapshot':
+                light = follows and state['linked'] and 'Light' in state['theme']
+                result['diagnostics']['trayTint'] = {'panel': 'light' if light else 'dark', 'source': 'cinnamon-theme', 'color': '#383834' if light else '#d6d6d2'}
+            return result
+        ctx.call = call
+        scripts = []
+        def shell(script):
+            scripts.append(script)
+            if 'ln -s' in script: state['linked'] = True
+            if 'rm "$link"' in script: state['linked'] = False
+            if ' set ' in script: state['theme'] = shlex.split(script)[-1]
+            return {'returncode': 0, 'stdout': repr(state['theme']) if ' get ' in script else '', 'stderr': ''}
+        ctx.shell_hook = shell
+        return ctx, scripts, state
+
+    def test_panel_theme_shares_session_dconf_only_for_the_event(self):
+        ctx, scripts, state = self._theme_ctx(follows=True)
+        events.panel_theme_changed(ctx)
+        self.assertIn('ln -s "$HOME"/.config/dconf "$link"', scripts[0])
+        self.assertIn('link="$XDG_CONFIG_HOME/dconf"', scripts[0])
+        self.assertIn("'Synthetic Light'", scripts[2])
+        self.assertIn("'Synthetic Dark'", scripts[-3])
+        self.assertIn('rm "$link"', scripts[-1])
+        self.assertFalse(state['linked'])
+        self.assertTrue(any(a[:2] == ('frame', 'after') for a in ctx.actions))
+
+    def test_panel_theme_unlinks_session_dconf_after_a_miss(self):
+        ctx, scripts, state = self._theme_ctx(follows=False)
+        with self.assertRaisesRegex(RecipeFailed, 'tone change'):
+            events.panel_theme_changed(ctx)
+        self.assertIn("'Synthetic Dark'", scripts[-3])
+        self.assertIn('rm "$link"', scripts[-1])
+        self.assertFalse(state['linked'])
+
+    def test_panel_theme_refuses_dconf_path_outside_home(self):
+        for path in ('/home/lab/.config/dconf', '../other/dconf', '.config/../../dconf', '', '.config//dconf'):
+            ctx, scripts, _ = self._theme_ctx(follows=True)
+            ctx.profile['events']['panelTheme']['sessionDconf'] = path
+            with self.assertRaisesRegex(RecipeFailed, 'relative to the home'):
+                events.panel_theme_changed(ctx)
+            self.assertEqual(scripts, [])
+
+    def test_cinnamon_profile_shares_session_dconf(self):
+        from tools.lab.surface_driver.profiles import load_profile
+        theme = load_profile('mint-cinnamon-x11')['events']['panelTheme']
+        self.assertEqual(theme['sessionDconf'], '.config/dconf')
+        self.assertIn('#702', theme['sessionDconfNote'])
+
     def test_budget_stop_does_not_send_user_stop_or_upload(self):
         ctx = Fake()
         ctx.settings['document']['limits'] = {'maxFileBytes': 'auto'}

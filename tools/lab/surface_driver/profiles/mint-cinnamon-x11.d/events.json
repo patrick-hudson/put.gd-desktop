@@ -21,7 +21,9 @@
         "name"
       ],
       "light": "Mint-Y",
-      "dark": "Mint-Y-Dark"
+      "dark": "Mint-Y-Dark",
+      "sessionDconf": ".config/dconf",
+      "sessionDconfNote": "#702: the resident reads org.cinnamon.theme with its own gsettings, and dconf reads the user database from $XDG_CONFIG_HOME/dconf/user. Writers (Themes settings, the write vector above) go through dconf-service into the session's ~/.config/dconf whatever their XDG_CONFIG_HOME, so with the private profile alone the resident reads an empty database (the schema default) and never sees the change. The recipe links the private $XDG_CONFIG_HOME/dconf to the session's directory for this event only; every other XDG directory stays private. Measured on a fresh Mint 22 guest: private profile misses every change; with this link (or no private profile) the resident follows it, given the app fix for desktop-theme-only changes, PR #728 (Cinnamon's portal does not report org.cinnamon.theme)."
     }
   }
 }
