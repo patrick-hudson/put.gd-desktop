@@ -35,6 +35,7 @@ class DriverContext(Context):
         self._input_poisoned = False
         self._popup = None
         self._click_count = 1
+        self._shell = None
         self.begin(None)
 
     def begin(self, recipe):
@@ -185,10 +186,56 @@ class DriverContext(Context):
             return self._guard(window=owner, point=centre, geometry=geometry)
         return self._guard(window=owner, geometry=geometry, raise_window=raise_window)
 
+    def shell_baseline(self):
+        """Record the desktop shell process this run starts on (profile shell_health)."""
+        policy = self.profile.get('shell_health')
+        if not policy:
+            return None
+        since = time.time()
+        state = self._probe('shell_state', {'process': policy['process'], 'full': True,
+                                            'crash_windows': policy.get('crash_windows', []), 'since': since - 1})
+        if len(state['instances']) != 1:
+            raise RecipeBlocked('desktop shell '+policy['process']+' is not running exactly once at run start')
+        if state.get('crash_windows'):
+            raise RecipeBlocked('desktop shell already shows a crash notice at run start: '+state['crash_windows'][0]['name'])
+        self._shell = {'policy': policy, 'instance': state['instances'][0], 'since': since - 1, 'failure': None}
+        return {'process': policy['process'], **state['instances'][0], 'cores_readable': state.get('cores') is not None}
+
+    def shell_failure(self, full=True):
+        """None while the run's shell is intact, else why the desktop can no longer be trusted (#814).
+
+        A crash is final for the run: Cinnamon leaves the session in fallback
+        mode (metacity, "Cinnamon just crashed") or comes back under a new
+        PID, so later input and frames are not evidence.
+        """
+        shell = self._shell
+        if not shell:
+            return None
+        if shell['failure']:
+            return shell['failure']
+        policy, baseline = shell['policy'], shell['instance']
+        state = self._probe('shell_state', {'process': policy['process'], 'full': full,
+                                            'crash_windows': policy.get('crash_windows', []), 'since': shell['since']})
+        reasons = []
+        if baseline not in state['instances']:
+            now = ', '.join(str(i['pid']) for i in state['instances']) or 'none'
+            reasons.append(policy['process']+' pid '+str(baseline['pid'])+' ended (now: '+now+')')
+        for window in state.get('crash_windows') or []:
+            reasons.append('crash notice '+repr(window['name'])+' (window '+str(window['window_id'])+')')
+        for core in state.get('cores') or []:
+            reasons.append(policy['process']+' pid '+str(core['pid'])+' dumped core (signal '+str(core['signal'])+')')
+        if reasons:
+            shell['failure'] = 'desktop shell crashed during the run: '+'; '.join(reasons)+'; remaining rows are not evidence'
+            self.review(shell['failure'])
+        return shell['failure']
+
     def _guard(self, window=None, point=None, geometry=None, popup=None, raise_window=False):
         self._check_time()
         if self._input_poisoned:
             raise RecipeBlocked('input release was not confirmed; further input is withheld for this run')
+        failure = self.shell_failure(full=False)
+        if failure:
+            raise RecipeBlocked(failure, issue=814)
         role = window or self._current_window
         if not role:
             raise RecipeBlocked('real input has no target window; use view(), focus(), or click(window=...)')

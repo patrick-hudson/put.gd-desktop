@@ -283,6 +283,8 @@ class Running(unittest.TestCase):
                     'settings.get':{'metadata':{'observedRevision':'revision'}}}.get(args[0],{})
             return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
         target.cli=cli;target.execute=lambda script,timeout=60:{'returncode':0,'stdout':'123','stderr':''}
+        shell={'process':'cinnamon','instances':[{'pid':5,'start':1}],'crash_windows':[],'cores':[]}
+        target.probe=lambda name,query,source,timeout=15:{'ok':True,'result':shell} if name=='shell_state' else {'ok':False,'error':name}
         recipe=Recipe(('editor.undo',),lambda c:None)
         args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
               '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination','local',
@@ -294,7 +296,9 @@ class Running(unittest.TestCase):
         self.assertEqual(mutation['patch']['actions']['edit']['destination'],'local')
         self.assertTrue(mutation['patch']['archive']['root'].startswith(target.root))
         self.assertTrue(mutation['patch']['archive']['keepUploads'])
-        self.assertEqual(json.loads((self.path/'run/receipt.json').read_text())['environment']['observed_build']['gitCommit'],'abcdef')
+        environment=json.loads((self.path/'run/receipt.json').read_text())['environment']
+        self.assertEqual(environment['observed_build']['gitCommit'],'abcdef')
+        self.assertEqual(environment['shell_health'],{'process':'cinnamon','pid':5,'start':1,'cores_readable':True})
         target.close=lambda:['cleanup incomplete']
         args[args.index('--out')+1]=str(self.path/'run-error')
         with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
@@ -700,10 +704,10 @@ class InputFoundations(unittest.TestCase):
         window=SimpleNamespace(queryComponent=lambda:component)
         class App(list):
             def get_process_id(self):return 50
-        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:[App([window])]),DESKTOP_COORDS=0)
+        fake=SimpleNamespace(DESKTOP_COORDS=0)
         query={'desktop_node':{'application':'gnome-shell','name':'Synthetic notice','role':'label','pid':50},
                'point':[40,30],'shell_application':'gnome-shell*'}
-        with patch.dict(sys.modules,pyatspi=fake):
+        with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'desktop_root',return_value=[App([window])]):
             self.assertTrue(probe.shell_hit(query)['ok'])
             query['desktop_node']['application']='other app'
             with self.assertRaisesRegex(RuntimeError,'profile compositor'):
@@ -776,9 +780,9 @@ class InputFoundations(unittest.TestCase):
         secret=Node('Password','password text','must stay private')
         app=Node('putgd-ui','application',children=[Node('Open image','file chooser',children=[field,secret]),
                  Node('Edit image','filler',children=[Node('Image being edited','filler')])])
-        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:Node('desktop','desktop frame',children=[app])),DESKTOP_COORDS=0,
-                             **{'STATE_'+k.upper():k for k in ('visible','showing','enabled')})
-        with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'owned',return_value=True):
+        fake=SimpleNamespace(DESKTOP_COORDS=0,**{'STATE_'+k.upper():k for k in ('visible','showing','enabled')})
+        with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'owned',return_value=True),\
+             patch.object(probe,'desktop_root',return_value=Node('desktop','desktop frame',children=[app])):
             rows=probe.accessible({'text':'/tmp/*.png','role':'text','owned':True})
             self.assertEqual(len(rows),1)
             row=rows[0]
