@@ -59,6 +59,10 @@
     ]
   },
   "live_controls": {
+    "textFont": {
+      "name": "Font",
+      "role": "combo box"
+    },
     "blurStrengthValue": {
       "name": "Blur radius",
       "role": "spin button"
