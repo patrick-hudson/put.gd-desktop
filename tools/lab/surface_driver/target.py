@@ -116,12 +116,26 @@ while True:
         break
     try:
         request = json.loads(line)
+        persistent_accessibility = bool(namespace.get('PERSISTENT_ACCESSIBILITY', False))
+        if persistent_accessibility:
+            # Popup-aware probes opt in only when they refresh node caches.
+            # Keep their event roots alive, but never require an idle queue:
+            # a running recording can legitimately emit events continuously.
+            watch = namespace.get('watch_popups')
+            if watch:
+                watch()
+                from gi.repository import GLib
+                context = GLib.MainContext.default()
+                for _ in range(200):
+                    if not context.pending():
+                        break
+                    context.iteration(False)
         # AT-SPI keeps client-side caches and a busy recording need not leave
         # its event queue idle. Use a fresh bounded interpreter for accessibility
         # observations, over this same SSH channel. X11 geometry/foreground
         # checks stay in-process, so typing and drag steps pay no startup cost.
         name, query = request['probe'], request['query']
-        fresh = (name in ('accessible','control') or bool(query.get('accessible')) or
+        fresh = not persistent_accessibility and (name in ('accessible','control') or bool(query.get('accessible')) or
                  (os.environ.get('XDG_SESSION_TYPE') == 'wayland' and
                   name in ('geometry','foreground','windows')))
         if fresh:
