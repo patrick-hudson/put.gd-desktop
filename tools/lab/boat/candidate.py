@@ -30,6 +30,7 @@ TARGETS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44',
            'ui-catalog', 'lab-fixture')
 CANCEL = threading.Event()
 CREATE_TIMEOUT = 120
+LATE_CREATE_GRACE = 30
 LEASE_ROOT = Path.home() / '.local/state/putgd/boat-candidate-runs'
 
 
@@ -87,7 +88,7 @@ def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument('commit', type=exact_sha, nargs='?')
     result.add_argument('--cleanup', type=exact_sha, metavar='SHA',
-                        help='delete only candidate workers named for this full commit; no build')
+                        help='delete only eligible orphan candidate workers for this full commit; preserve live peers; no build')
     result.add_argument('--output', required=True, type=Path,
                         help='new private directory outside every Git checkout')
     result.add_argument('--artifact', choices=TARGETS, action='append',
@@ -113,7 +114,7 @@ def run(argv, *, timeout=120, input=None, log=None, cleanup=False):
     first = True
     while True:
         try:
-            output, _ = process.communicate(input=input if first else None, timeout=1)
+            output, _ = process.communicate(input=input if first else None, timeout=min(1, max(0, deadline - time.monotonic())))
             break
         except subprocess.TimeoutExpired:
             first = False
@@ -241,7 +242,7 @@ def recipe(target, packages, ci):
     script += step(native, 'Verify pinned SDK source') + 'bash tools/releases/provision-sdk.sh\n'
     script += step(native, 'Provision pinned Proton helper')
     script += 'cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=ON -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_BUNDLE_PROTON=ON -DCMAKE_INSTALL_PREFIX=/usr -DPUTGD_PACKAGE_TARGET= -DPUTGD_UPDATE_CHECK=OFF\n'
-    script += 'cmake --build --preset release --parallel "$(nproc)"\ncpack --config build/release/CPackConfig.cmake -G DEB -D CPACK_PACKAGE_NAME=putgd-lab-fixture -D CPACK_DEBIAN_PACKAGE_NAME=putgd-lab-fixture -D CPACK_PACKAGE_FILE_NAME=putgd-lab-fixture -D CPACK_DEBIAN_PACKAGE_CONFLICTS=putgd -D CPACK_DEBIAN_PACKAGE_REPLACES=putgd -D "CPACK_DEBIAN_PACKAGE_DESCRIPTION=Disposable lab fixture build of put.gd; test use only" -B build/lab-packages\n'
+    script += 'cmake --build --preset release --parallel "$(nproc)"\ncpack --config build/release/CPackConfig.cmake -G DEB -D CPACK_PACKAGE_NAME=putgd-lab-fixture -D CPACK_DEBIAN_PACKAGE_NAME=putgd-lab-fixture -D CPACK_PACKAGE_FILE_NAME=putgd-lab-fixture -D CPACK_DEBIAN_PACKAGE_CONFLICTS=putgd -D CPACK_DEBIAN_PACKAGE_REPLACES=putgd -D "CPACK_PACKAGE_DESCRIPTION_SUMMARY=Disposable lab fixture build of put.gd; test use only" -D "CPACK_DEBIAN_PACKAGE_DESCRIPTION=Disposable lab fixture build of put.gd; test use only" -B build/lab-packages\n'
     script += 'test "$(dpkg-deb -f build/lab-packages/*.deb Package)" = putgd-lab-fixture\n'
     script += 'dpkg-deb -f build/lab-packages/*.deb > /out/lab-package-control.txt\n'
     script += 'build/release/putgd-cli --update-info > /out/update-info.json\n'
@@ -249,11 +250,19 @@ def recipe(target, packages, ci):
     return base, script, 'release'
 
 
-def sha256(path):
+def check_collection_deadline(deadline):
+    if deadline is not None and time.monotonic() >= deadline:
+        raise TimeoutError("Collection deadline reached (bounded by sandbox TTL)")
+
+
+def sha256(path, *, deadline=None):
+    check_collection_deadline(deadline)
     digest = hashlib.sha256()
     with path.open('rb') as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            check_collection_deadline(deadline)
             digest.update(chunk)
+    check_collection_deadline(deadline)
     return digest.hexdigest()
 
 
@@ -297,15 +306,19 @@ def ssh_options(pin):
             '-o', 'ServerAliveCountMax=3']
 
 
-def restore_archive(archive, destination, expected):
-    if sha256(archive) != expected:
+def restore_archive(archive, destination, expected, *, deadline=None):
+    if sha256(archive, deadline=deadline) != expected:
         raise ValueError('Transport archive SHA-256 mismatch')
     # Validate the entire archive before writing anything. Never restore ownership,
     # permissions, links, devices or timestamps supplied by the worker.
     with tarfile.open(archive) as stream:
-        members = stream.getmembers()
+        members = []
+        for member in stream:
+            check_collection_deadline(deadline)
+            members.append(member)
         names = set()
         for member in members:
+            check_collection_deadline(deadline)
             path = Path(member.name)
             if path.is_absolute() or '..' in path.parts or not (member.isdir() or member.isfile()):
                 raise ValueError('Unsafe transport archive member: ' + member.name)
@@ -315,6 +328,7 @@ def restore_archive(archive, destination, expected):
             names.add(name)
         destination.mkdir(mode=0o700)
         for member in members:
+            check_collection_deadline(deadline)
             path = destination / member.name
             if member.isdir():
                 path.mkdir(parents=True, mode=0o700, exist_ok=True)
@@ -322,8 +336,10 @@ def restore_archive(archive, destination, expected):
                 path.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
                 with stream.extractfile(member) as source, path.open('xb') as target:
                     while chunk := source.read(1024 * 1024):
+                        check_collection_deadline(deadline)
                         target.write(chunk)
                 path.chmod(0o700 if member.mode & 0o100 else 0o600)
+    check_collection_deadline(deadline)
 
 
 def collection_budget(size, files):
@@ -332,14 +348,15 @@ def collection_budget(size, files):
     return 150 + math.ceil(size / (128 * 1024)) + math.ceil(files * 0.05)
 
 
-def collect_artifacts(ssh, options, host, port, directory, receipt, build_error, *, timeout=150):
+def collect_artifacts(ssh, options, host, port, directory, receipt, build_error, *, timeout=150, ttl_deadline=None):
     """One uncompressed archive; measured phases and a finite size-scaled budget."""
     started = time.monotonic()
-    deadline = started + max(150, timeout)
+    deadline = min(started + max(150, timeout), ttl_deadline) if ttl_deadline is not None else started + max(150, timeout)
     collection_error = None
     phases = receipt['collectionPhases'] = {}
     def remaining():
-        return max(1, deadline - time.monotonic())
+        check_collection_deadline(deadline)
+        return deadline - time.monotonic()
     def measured(name, action):
         began = time.monotonic()
         try:
@@ -356,8 +373,10 @@ def collect_artifacts(ssh, options, host, port, directory, receipt, build_error,
         lines = probe.splitlines()
         size, files = int(lines[0].split()[0]), int(lines[1])
         budget = max(150, timeout, collection_budget(size, files))
-        deadline = started + budget
-        receipt['collectionBudgetSeconds'] = round(budget, 3)
+        deadline = min(started + budget, ttl_deadline) if ttl_deadline is not None else started + budget
+        receipt['collectionBudgetSeconds'] = round(deadline - started, 3)
+        receipt['collectionTtlCapped'] = deadline < started + budget
+        check_collection_deadline(deadline)
         receipt['collectionInput'] = {'bytes': size, 'files': files, 'diskAndPressure': lines[2:]}
         digest = measured('packSeconds', lambda: run([*ssh,
             'set -eu; cd /home/user/candidate; '
@@ -368,12 +387,14 @@ def collect_artifacts(ssh, options, host, port, directory, receipt, build_error,
         archive = directory / 'artifacts.tar'
         measured('transferSeconds', lambda: run(['scp', *options, '-P', port,
             f'user@{host}:/home/user/candidate/artifacts.tar', str(archive)], timeout=remaining()))
-        measured('restoreSeconds', lambda: restore_archive(archive, directory / 'artifacts', digest))
+        measured('restoreSeconds', lambda: restore_archive(archive, directory / 'artifacts', digest, deadline=deadline))
         if time.monotonic() > deadline:
-            raise TimeoutError('Collection deadline exceeded')
+            raise TimeoutError('Collection deadline exceeded (bounded by sandbox TTL)')
         receipt['transport'] = {'kind': 'tar', 'compression': 'none',
                                 'sha256': digest, 'bytes': archive.stat().st_size}
     except Exception as error:
+        if ttl_deadline is not None and time.monotonic() >= ttl_deadline:
+            error = TimeoutError('Collection cannot finish before sandbox TTL expiry: ' + str(error))
         collection_error = error
         receipt['collectionError'] = str(error)
     receipt['collectionSeconds'] = round(time.monotonic() - started, 3)
@@ -395,14 +416,16 @@ def all_sandboxes():
 
 
 def cleanup_workers(name, sandbox_id=None, *, recovery_seconds=0, timeout=120):
-    """Delete this run's exact nonce name/ID, then await actual absence."""
+    """Delete by exact ID, or by this run's unique nonce name; await absence."""
+    if name is None and sandbox_id is None:
+        raise ValueError('Cleanup requires an exact name or sandbox ID')
     deadline = time.monotonic() + timeout
     recovery_until = time.monotonic() + recovery_seconds
     requested = set()
     result = {'name': name, 'requests': [], 'verified': False}
     while True:
         listing = all_sandboxes()
-        owned = [item for item in listing if item.get('name') == name or item['id'] == sandbox_id]
+        owned = [item for item in listing if (name is not None and item.get('name') == name) or item['id'] == sandbox_id]
         for item in owned:
             if item['id'] not in requested:
                 deletion = boat('delete', item['id'], '--yes', cleanup=True)
@@ -413,7 +436,7 @@ def cleanup_workers(name, sandbox_id=None, *, recovery_seconds=0, timeout=120):
                           deletedIds=sorted(requested), verifiedAt=time.time())
             return result
         if time.monotonic() >= deadline:
-            raise RuntimeError('Worker deletion not complete: ' + name)
+            raise RuntimeError('Worker deletion not complete: ' + str(name or sandbox_id))
         # CANCEL is deliberately ignored here, including repeated terminal signals.
         time.sleep(2)
 
@@ -428,7 +451,7 @@ def cleanup_orphans(commit, target):
         if not match:
             continue
         if orphaned(item, match[1]):
-            result['deleted'].append(cleanup_workers(item['name'], item['id']))
+            result['deleted'].append(cleanup_workers(None, item['id']))
         else:
             result['preserved'].append(item['id'])
     return result
@@ -481,7 +504,8 @@ def build_worker(target, args, output, specification):
                'placementReason': 'parallel candidate packaging; preserve quiet physical acceptance hosts',
                'ciDifferences': ci_differences(target), 'runNonce': args.run_nonce,
                'name': worker_name(args.commit, target, args.run_nonce),
-               'type': args.type, 'ttlSeconds': args.ttl, 'state': 'pending'}
+               'type': args.type, 'ttlSeconds': args.ttl, 'state': 'pending',
+               'cleanupVerified': False}
     sandbox_id = None
     deadline = started + args.ttl - 180
     def remaining():
@@ -585,7 +609,8 @@ sudo -n chown -R user:user /home/user/candidate/output
                 receipt['legacyScpStatus'] = 'failed'
                 receipt['legacyScpError'] = str(error)
             receipt['legacyScpSeconds'] = round(time.monotonic() - legacy_started, 3)
-        collect_artifacts(ssh, options, host, port, directory, receipt, build_error, timeout=remaining())
+        collect_artifacts(ssh, options, host, port, directory, receipt, build_error, timeout=remaining(),
+                          ttl_deadline=started + args.ttl)
         receipt['identity'] = verify_identity(directory / 'artifacts', args.commit, target)
         receipt['files'] = inventory(directory / 'artifacts')
         if receipt.get('legacyScpStatus') == 'passed':
@@ -598,9 +623,13 @@ sudo -n chown -R user:user /home/user/candidate/output
         receipt['state'] = 'failed'
     finally:
         try:
-            # The server may finish creating after the CLI is killed, even if an
-            # initial ID was printed. Observe the entire original create window.
-            recovery = max(0, creation_started + CREATE_TIMEOUT - time.monotonic()) if creation_started is not None else 0
+            # An ID identifies the single create, so ordinary failures need no
+            # late-create wait. Without an ID, observe the original window plus
+            # at least a short grace after the CLI has stopped (including timeout).
+            recovery = 0
+            if creation_started is not None and sandbox_id is None:
+                recovery = max(LATE_CREATE_GRACE,
+                               creation_started + CREATE_TIMEOUT - time.monotonic())
             receipt['cleanup'] = cleanup_workers(receipt['name'], sandbox_id,
                                                  recovery_seconds=recovery,
                                                  timeout=recovery + 120)
