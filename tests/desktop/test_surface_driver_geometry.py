@@ -135,6 +135,29 @@ class Hygiene(unittest.TestCase):
         finally:
             target._close_probe()
 
+    def test_accessibility_queries_get_fresh_interpreters_on_the_same_channel(self):
+        target = self.probe_target()
+        source = '''import json,os,sys
+counter=0
+def control_geometry(query):
+ global counter
+ counter+=1
+ return {'counter':counter,'pid':os.getpid()}
+def main():
+ print(json.dumps({'ok':True,'result':control_geometry(json.loads(sys.argv[1])['query'])}))
+if __name__=='__main__':main()
+'''
+        try:
+            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
+                first = target.probe('control',{},source)['result']
+                channel = target._probe_process.pid
+                second = target.probe('control',{},source)['result']
+                self.assertEqual((first['counter'],second['counter']),(1,1))
+                self.assertNotEqual(first['pid'],second['pid'])
+                self.assertEqual(target._probe_process.pid,channel)
+        finally:
+            target._close_probe()
+
     def probe_target(self):
         target = Target.__new__(Target)
         target.physical = None

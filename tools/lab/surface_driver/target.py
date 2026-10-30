@@ -102,7 +102,7 @@ app.exec()
 
 
 PROBE_SERVER = r'''
-import json, sys
+import json, os, subprocess, sys
 namespace = {'__name__': 'surface_driver_probe'}
 exec(compile(SOURCE, 'surface_driver_probe.py', 'exec'), namespace)
 functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
@@ -116,18 +116,27 @@ while True:
         break
     try:
         request = json.loads(line)
-        # AT-SPI state-change signals must be dispatched between observations;
-        # a persistent interpreter must not keep stale accessible states.
-        from gi.repository import GLib
-        context = GLib.MainContext.default()
-        for _ in range(200):
-            if not context.pending():
-                break
-            context.iteration(False)
+        # AT-SPI keeps client-side caches and a busy recording need not leave
+        # its event queue idle. Use a fresh bounded interpreter for accessibility
+        # observations, over this same SSH channel. X11 geometry/foreground
+        # checks stay in-process, so typing and drag steps pay no startup cost.
+        name, query = request['probe'], request['query']
+        fresh = (name in ('accessible','control') or bool(query.get('accessible')) or
+                 (os.environ.get('XDG_SESSION_TYPE') == 'wayland' and
+                  name in ('geometry','foreground','windows')))
+        if fresh:
+            try:
+                child = subprocess.run([sys.executable,'-c',SOURCE,json.dumps(request)],
+                                       stdin=subprocess.DEVNULL, capture_output=True,
+                                       text=True, timeout=12)
+            except subprocess.TimeoutExpired:
+                raise RuntimeError('fresh accessibility probe timed out') from None
+            if child.returncode:
+                raise RuntimeError('fresh accessibility probe exited unsuccessfully')
+            response = json.loads(child.stdout)
         else:
-            raise RuntimeError('accessibility events did not settle within the probe bound')
-        result = namespace[functions[request['probe']]](request['query'])
-        response = {'ok':True, 'result':result}
+            result = namespace[functions[name]](query)
+            response = {'ok':True, 'result':result}
     except Exception as error:
         response = {'ok':False, 'error':type(error).__name__ + ': ' + str(error)}
     sys.stdout.write(json.dumps(response) + '\n')
@@ -349,9 +358,9 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
     def probe(self, name, query, source, timeout=15):
         """One owned SSH channel, with a fresh native witness for every request.
 
-        Keeping the interpreter/bus connection alive removes SSH startup from
-        each character and drag step. No witness or accessibility result is
-        cached, and a lost channel blocks further input.
+        Keeping the X11 interpreter alive removes SSH startup from each
+        character and drag step. Accessibility reads use fresh children on
+        that channel. No witness is cached; a lost channel blocks input.
         """
         self.heartbeat()
         if self._probe_failed:
