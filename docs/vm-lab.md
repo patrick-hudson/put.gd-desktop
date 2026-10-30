@@ -262,10 +262,11 @@ connection, so existing immutable goldens need no refresh. The controller checks
 the uploaded SHA-256, uses the guest's existing passwordless `/usr/bin/apt-get`
 rule with an `APT::Update::Pre-Invoke` hook to install the root-owned helper and
 its fixed-command sudo rule, then checks the installed SHA-256, ownership,
-permissions and sudo access before starting the supervisor. The staging hook
-intentionally exits unsuccessfully before apt repository work; that expected
-apt exit is checked through the installed helper's postconditions. The normal
-update/install runs only under the bounded supervisor. `helper.json` records
+permissions and sudo access before starting the supervisor. The staging update uses `/dev/null` as its source list, disables source parts
+and list cleanup, and therefore neither fetches repositories nor deletes cached
+indexes. Its hook intentionally exits unsuccessfully; that expected apt exit is
+checked through the installed helper's postconditions. The normal update/install
+runs only under the bounded supervisor. `helper.json` records
 the verified hash and staging route; `staging.log` retains the hook result.
 
 This uses authority already granted to apt in the disposable guest. It never
