@@ -36,9 +36,11 @@ class FakeContext(Context):
         self.corrupt_disk = False
         self.private_root = True
         self.conflict = False
+        self.available = False
+        self.tested = False
         self.f = {'private': True, 'config_path': str(self.root / 'putgd/config.json'),
                   'profile': {'id': 'fixture', 'label': 'Fixture', 'provider': 's3',
-                              'credentials': {'mode': 'session', 'reference': None},
+                              'credentials': {'mode': 'keychain', 'reference': 'owned-fake-reference'},
                               'settings': {'bucket': 'surface-moto', 'region': 'us-east-1',
                                            'endpoint': 'http://127.0.0.1:5000', 'objectPrefix': '',
                                            'publicUrlBase': None, 'aclMode': 'omit',
@@ -73,6 +75,8 @@ class FakeContext(Context):
             if self.invalid:
                 self.conflict = True
             return {'result': {}}
+        if method == 'setup.credentialHint':
+            return {'available': self.available}
         raise AssertionError('undeclared resident method: ' + method)
 
     def view(self, method, params=None):
@@ -101,6 +105,9 @@ class FakeContext(Context):
     def frame(self, label, window=None, reference=None):
         self.assert_event('frame', label, window, reference)
 
+    def use_catalog(self, window, reference):
+        self.assert_event('use_catalog', window, reference)
+
     def geometry(self, window):
         return {'x': 0, 'y': 0, 'width': 1320, 'height': 880, 'scale': 1}
 
@@ -127,6 +134,10 @@ class FakeContext(Context):
             else:
                 raise AssertionError('confirmation was not opened')
             self.dialog = None
+        if control == 'unlockCredentials':
+            self.available = True
+        if control == 'testDestination':
+            self.tested = True
         if control == 'makeDefaultDestination':
             self.dialog = 'default'
         if control == 'reloadDestinationConflict':
@@ -201,7 +212,11 @@ class FakeContext(Context):
 
     def accessible(self, query):
         self.assert_event('accessible', query)
-        control = query['control']
+        self.expect(query.get('owned') is True, 'accessible reads are owned')
+        if query.get('role') == 'list item':
+            return [{'bounds': {'x': 10, 'y': i*60, 'width': 200, 'height': 60}}
+                    for i in range(len(self.document['profiles']))]
+        control = query['objectName']
         if control == 'destinationLabel':
             return [{'text': self.document['profiles'][self.selection]['label']}]
         if control == 's3BucketError':
@@ -211,14 +226,15 @@ class FakeContext(Context):
         if control == 'addDestinationCredentials':
             return [{'visible': True}]
         if control == 'credentialAccessKey':
-            return [{'focused': self.focus == 'addDestinationCredentials'}]
+            return [{'states': {'focused': self.focus == 'addDestinationCredentials'}}]
         if control == 'destinationsEmpty':
             return [{'visible': not self.document['profiles']}]
         if control == 's3BucketHelp':
-            return [{'checked': self.checked}]
+            return [{'states': {'checked': self.checked}}]
+        if control == 'destinationStatus':
+            return [{'text': 'Connection successful.' if self.tested else ''}]
         if control == 'destinationList':
-            return [{'children': [{'bounds': {'x': 10, 'y': i*60, 'width': 200, 'height': 60}}
-                                  for i in range(len(self.document['profiles']))]}]
+            return [{'rect': [0, 0, 200, 240]}]
         raise AssertionError('unclassified accessibility read: ' + control)
 
     def drag(self, start, end, **kwargs):
@@ -264,7 +280,7 @@ class DestinationsContracts(unittest.TestCase):
                 self.assertTrue(all(e[3] for e in frames))
                 self.assertTrue(any(e[0] == 'shell' for e in ctx.events))
                 calls = [e[1] for e in ctx.events if e[0] == 'call']
-                self.assertFalse(any(x.startswith('setup.') for x in calls))
+                self.assertFalse(any(x in ('setup.storeCredentials', 'setup.revealCredentialSecret') for x in calls))
 
     def test_refuse_live_or_ambiguous_fixture_before_mutation(self):
         for endpoint in ('https://s3.us-east-1.amazonaws.com', 'http://localhost:5000',
@@ -304,32 +320,39 @@ class DestinationsContracts(unittest.TestCase):
         self.assertTrue(all('Renamed surface destination' not in s for s in scripts))
         self.assertTrue(all('print(json.dumps' in s for s in scripts))
 
-    def test_current_core_accessibility_blocks_without_guessing(self):
+    def test_current_accessibility_uses_owned_object_names_and_states(self):
         ctx = self.context()
-        ctx.profile = {}
-        with self.assertRaises(RecipeBlocked) as caught:
-            lane.add_credentials(ctx)
-        self.assertEqual(caught.exception.issue, 666)
-        self.assertFalse(any(e[0] == 'accessible' for e in ctx.events))
-        self.assertIn(('frame', 'after-failure', 'destinations', lane.REFERENCE), ctx.events)
+        lane.add_credentials(ctx)
+        queries = [e[1] for e in ctx.events if e[0] == 'accessible']
+        self.assertTrue(queries)
+        self.assertTrue(all(q.get('owned') is True and 'objectName' in q for q in queries))
+        self.assertFalse(any('control' in q or 'window' in q for q in queries))
 
-    def test_offline_fields_work_when_core_has_no_lane_fixture(self):
+    def test_missing_fixture_is_not_replaced_by_offline_glue(self):
         ctx = self.context()
         def missing(_name):
             raise RecipeBlocked('unknown fixture: destinations')
         ctx.fixture = missing
-        lane.rename(ctx)
-        self.assertTrue(any(e[0] == 'note' and 'Offline' in e[1] for e in ctx.events))
-        self.assertFalse(any(e[0] == 'call' and e[1].startswith('setup.') for e in ctx.events))
+        with self.assertRaises(RecipeBlocked):
+            lane.rename(ctx)
+        self.assertFalse(any(e[:2] == ('call', 'settings.patch') for e in ctx.events))
 
-    def test_ignored_bucket_input_cannot_pass_against_offline_baseline(self):
+    def test_ignored_bucket_input_cannot_pass_against_fixture_baseline(self):
         ctx = self.context()
-        def missing(_name):
-            raise RecipeBlocked('unknown fixture: destinations')
-        ctx.fixture = missing
         ctx.commit_field = lambda: None
         with self.assertRaisesRegex(RecipeFailed, 'bucket autosaved'):
             lane.s3_fields(ctx)
+
+    def test_credential_entry_and_reveal_block_without_reading_fake_material(self):
+        ctx = self.context()
+        with self.assertRaises(RecipeBlocked) as caught:
+            lane.credential_lifecycle(ctx)
+        self.assertEqual(caught.exception.issue, 666)
+        self.assertFalse(any(e[0] == 'type_text' for e in ctx.events))
+        self.assertFalse(any(e[0] == 'shell' and 'fake-input' in e[1] for e in ctx.events))
+
+    def test_lane_runs_with_local_destination(self):
+        self.assertTrue(all(r.destinations == ('local',) for r in self.recipes()))
 
     def test_missing_confirmation_inventory_blocks_before_dialog_input(self):
         ctx = self.context()
@@ -339,7 +362,7 @@ class DestinationsContracts(unittest.TestCase):
         self.assertEqual(caught.exception.issue, 722)
         self.assertFalse(any(e[:2] == ('click', 'makeDefaultDestination') for e in ctx.events))
 
-    def test_dialog_titles_are_portable_and_do_not_claim_missing_captures(self):
+    def test_dialog_titles_are_portable_and_select_real_inventories(self):
         root = Path(__file__).resolve().parents[2] / 'tools/lab/surface_driver/profiles'
         expected = {'confirmDestinationRemove': 'Remove destination',
                     'confirmDestinationDefault': 'Use an untested destination',
@@ -351,7 +374,10 @@ class DestinationsContracts(unittest.TestCase):
             for role, title in expected.items():
                 self.assertEqual(profile['window_titles'][role], title)
                 self.assertTrue(fnmatch.fnmatchcase(title, '*' + profile['window_titles'][role] + '*'))
-                self.assertNotIn(role, profile['catalog_windows'])
+                self.assertEqual(profile['catalog_windows'][role], [{
+                    'confirmDestinationRemove': 'confirm-remove-destination',
+                    'confirmDestinationDefault': 'confirm-make-default-untested',
+                    'confirmDestinationReload': '53-reload-confirm'}[role]])
 
 
 if __name__ == '__main__':

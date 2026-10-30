@@ -8,6 +8,15 @@
   "catalog_windows": {
     "destinations": [
       "04-destinations-s3"
+    ],
+    "confirmDestinationDefault": [
+      "confirm-make-default-untested"
+    ],
+    "confirmDestinationRemove": [
+      "confirm-remove-destination"
+    ],
+    "confirmDestinationReload": [
+      "53-reload-confirm"
     ]
   }
 }

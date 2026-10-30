@@ -1,12 +1,8 @@
 """Destinations real-input recipes; no live provider accounts.
 
-Core fixture request: #666. ``destinations`` supplies ``private=True``, an
-absolute ``config_path`` and a valid ``profile`` whose S3 endpoint is loopback
-moto. It must start each recipe with a clean private resident. Credential and
-AT-SPI dependent cases explicitly block until their safe fixtures are available.
-No fixture may point at the desktop user's ordinary config or real keyring.
-Without that fixture, field-only cases use an offline loopback profile; they
-never claim a connection test or credential roundtrip.
+Uses the core's owned guest loopback server and fake keyring fixture. No live
+provider accounts or credential values enter this lane. Entry/reveal stay
+blocked until the core supplies secret-safe input and capture suppression.
 """
 from __future__ import annotations
 
@@ -25,17 +21,6 @@ CORE_ISSUE = 666
 NEEDS = ()
 
 
-def _offline_fixture(ctx):
-    ctx.note('Offline loopback field fixture; no provider connection or credentials are exercised.')
-    return {'private': True, 'config_path': _get(ctx)['metadata']['path'],
-            'profile': {'provider': 's3', 'settings': {
-                'bucket': 'surface-fixture-bucket', 'region': 'us-east-1',
-                'endpoint': 'http://127.0.0.1:5000', 'objectPrefix': '',
-                'storageClass': 'STANDARD', 'aclMode': 'omit', 'publicUrlBase': None,
-                'addressing': 'path', 'connectTimeoutMs': 5000, 'requestTimeoutMs': 60000,
-                'lowSpeedBytesPerSecond': 1, 'lowSpeedTimeSeconds': 30}}}
-
-
 def _result(value):
     return value.get('result', value)
 
@@ -45,14 +30,7 @@ def _get(ctx):
 
 
 def _fixture(ctx):
-    try:
-        f = ctx.fixture('destinations')
-    except KeyError:
-        f = _offline_fixture(ctx)
-    except RecipeBlocked as error:
-        if str(error) != 'unknown fixture: destinations':
-            raise
-        f = _offline_fixture(ctx)
+    f = ctx.fixture('destinations')
     if not isinstance(f, dict) or f.get('private') is not True:
         ctx.blocked('Need a clean private destinations resident fixture (#666).', issue=CORE_ISSUE)
     path = PurePosixPath(f.get('config_path', ''))
@@ -66,7 +44,7 @@ def _fixture(ctx):
         loopback = False
     if (p.get('provider') != 's3' or not loopback or endpoint.scheme != 'http'
             or endpoint.username or endpoint.password or endpoint.query or endpoint.fragment):
-        ctx.blocked('Only a loopback moto S3 fixture is allowed in this lane.', issue=CORE_ISSUE)
+        ctx.blocked('Only a loopback S3 fixture is allowed in this lane.', issue=CORE_ISSUE)
     ctx.expect(_get(ctx)['metadata']['path'] == str(path), 'resident uses the exact private config')
     script = """import json,os,stat
 from pathlib import Path
@@ -114,14 +92,15 @@ def _failure_frame(function):
     return capture
 
 
-def _open(ctx, count=1):
+def _open(ctx, count=1, *, saved_credentials=False):
     f, p = _fixture(ctx)
     profiles = []
     for index in range(count):
         item = deepcopy(p)
         item['id'] = 'surface-destination-' + str(index + 1)
         item['label'] = 'Surface destination ' + str(index + 1)
-        item['credentials'] = {'mode': 'session', 'reference': None}
+        if not saved_credentials:
+            item['credentials'] = {'mode': 'session', 'reference': None}
         profiles.append(item)
     # This is setup, never the interaction claimed by the recipe. Remove old
     # profile references too, including the optional recording route.
@@ -135,6 +114,7 @@ def _open(ctx, count=1):
                  'preferences': {'unlockCredentialsAtStartup': False}})
     ctx.view('ui.show', {'view': 'destinations'})
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'known destination fixture')
+    ctx.use_catalog('destinations', REFERENCE)
     geometry = ctx.geometry('destinations')
     ctx.scroll(geometry['x'] + geometry['width'] - 32,
                geometry['y'] + geometry['height']//2, 30)
@@ -190,18 +170,12 @@ def _selected(ctx, index):
 
 
 def _accessible(ctx, control):
-    """#666: exact non-secret object lookup; never query a secret field's text."""
-    if ctx.profile.get('destinations', {}).get('accessible_state_contract') != 1:
-        ctx.blocked('Core accessibility exposes names/rects only, not destination control values/states (#666).', issue=CORE_ISSUE)
-    rows = ctx.accessible({'window': 'destinations', 'control': control})
+    # The merged API uses exported objectName and explicit ownership, not the
+    # old lane-specific window/control pseudo query. Never read secret text.
+    rows = ctx.accessible({'owned': True, 'objectName': control})
     if len(rows) != 1 or not isinstance(rows[0], dict):
         ctx.blocked('Need one current non-secret accessible control: ' + control, issue=CORE_ISSUE)
     return rows[0]
-
-
-def _requires(ctx, capability):
-    if ctx.profile.get('destinations', {}).get(capability) != 1:
-        ctx.blocked('Need core destinations ' + capability + ' before changing this GUI state (#666).', issue=CORE_ISSUE)
 
 
 def _confirmation_capture(ctx, window):
@@ -211,12 +185,14 @@ def _confirmation_capture(ctx, window):
 
 def _state(ctx, control, key):
     row = _accessible(ctx, control)
+    if key in ('focused', 'checked'):
+        row = row.get('states', {})
     if key not in row:
         ctx.blocked('Accessible control lacks required non-secret state: ' + control + '/' + key, issue=CORE_ISSUE)
     return row[key]
 
 
-@recipe('destinations.add-credentials', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.add-credentials', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def add_credentials(ctx):
     _open(ctx)
@@ -227,7 +203,7 @@ def add_credentials(ctx):
     _frame(ctx, 'after', '18-destination-credentials-compact')
 
 
-@recipe('destinations.rename', 'destinations.actions-menu', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.rename', 'destinations.actions-menu', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def rename(ctx):
     _, profiles = _open(ctx)
@@ -241,7 +217,7 @@ def rename(ctx):
 
 
 @recipe('destinations.s3-bucket', 'destinations.s3-region', 'destinations.s3-prefix',
-        'destinations.s3-public-url', needs=NEEDS, destinations=('s3',))
+        'destinations.s3-public-url', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def s3_fields(ctx):
     _, profiles = _open(ctx)
@@ -256,7 +232,7 @@ def s3_fields(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('destinations.s3-acl', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.s3-acl', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def acl(ctx):
     _open(ctx)
@@ -266,11 +242,10 @@ def acl(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('destinations.s3-service', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.s3-service', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def service(ctx):
     _, profiles = _open(ctx)
-    _requires(ctx, 'capture_state_contract')
     # The selector opens endpoint editing; it does not supply an account's
     # endpoint. No test/upload is invoked for these reserved fixture addresses.
     for index, endpoint in ((1, 'https://surface.invalid.r2.cloudflarestorage.com'),
@@ -281,11 +256,10 @@ def service(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('destinations.advanced-connection', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.advanced-connection', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def advanced_connection(ctx):
     _, profiles = _open(ctx)
-    _requires(ctx, 'capture_state_contract')
     ctx.click('advancedSettings', window='destinations')
     _edit(ctx, 's3StorageClass', 'STANDARD_IA')
     _saved(ctx, lambda doc: doc['profiles'][0]['settings']['storageClass'] == 'STANDARD_IA', 'storage class saved')
@@ -299,11 +273,10 @@ def advanced_connection(ctx):
     _frame(ctx, 'after', '62-destination-connection-expanded')
 
 
-@recipe('destinations.autosave', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.autosave', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def autosave_validation(ctx):
     _open(ctx)
-    _requires(ctx, 'accessible_state_contract')
     _edit(ctx, 's3Bucket', 'invalid bucket with spaces')
     # An observed inline error makes this an eventual assertion, not a race
     # against the 400 ms autosave timer.
@@ -315,7 +288,7 @@ def autosave_validation(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('destinations.list', 'destinations.key-move', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.list', 'destinations.key-move', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def select_and_key_reorder(ctx):
     _, profiles = _open(ctx, 3)
@@ -329,13 +302,15 @@ def select_and_key_reorder(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('destinations.drag-reorder', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.drag-reorder', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def drag_reorder(ctx):
     _, profiles = _open(ctx, 3)
     # Resolve actual rendered row bounds, never scale invented row heights.
     rail = _accessible(ctx, 'destinationList')
-    rows = rail.get('children', [])
+    rows = ctx.accessible({'owned': True, 'role': 'list item', 'within': rail['rect'],
+                           'visible': True, 'showing': True})
+    rows.sort(key=lambda row: row['bounds']['y'])
     if len(rows) != 3 or any('bounds' not in row for row in rows):
         ctx.blocked('Need rendered destination row bounds for QMP drag (#666).', issue=CORE_ISSUE)
     first, last = rows[0]['bounds'], rows[2]['bounds']
@@ -346,11 +321,10 @@ def drag_reorder(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('destinations.add', 'confirm.add-destination-name', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.add', 'confirm.add-destination-name', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def add(ctx):
     _open(ctx)
-    _requires(ctx, 'capture_state_contract')
     for menu_index, provider, label in ((0, 's3', 'Added S3'), (2, 'backblaze-b2', 'Added B2')):
         ctx.click('addS3Destination', window='destinations')
         ctx.keys('Home', *(['Down'] * menu_index), 'Return')
@@ -365,12 +339,11 @@ def add(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('destinations.make-default', 'confirm.make-default-untested', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.make-default', 'confirm.make-default-untested', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def make_default(ctx):
     _, profiles = _open(ctx)
     _confirmation_capture(ctx, 'confirmDestinationDefault')
-    _requires(ctx, 'capture_state_contract')
     ctx.click('makeDefaultDestination', window='destinations')
     # First prove cancellation preserves routing, then confirm explicitly.
     ctx.keys('Escape')
@@ -382,12 +355,11 @@ def make_default(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('destinations.remove', 'confirm.remove-destination', 'destinations.empty', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.remove', 'confirm.remove-destination', 'destinations.empty', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def remove(ctx):
     _, profiles = _open(ctx)
     _confirmation_capture(ctx, 'confirmDestinationRemove')
-    _requires(ctx, 'capture_state_contract')
     # Destination actions: Rename, Storage service submenu, Remove destination.
     def request():
         ctx.click('destinationActions', window='destinations')
@@ -402,7 +374,7 @@ def remove(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('destinations.credential-mode', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.credential-mode', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def credential_mode(ctx):
     _open(ctx)
@@ -414,7 +386,7 @@ def credential_mode(ctx):
     _frame(ctx, 'after', '60-credential-storage-replacement')
 
 
-@recipe('cli.credentials-refused', needs=NEEDS, destinations=('s3',))
+@recipe('cli.credentials-refused', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def cli_credentials_refused(ctx):
     _open(ctx)
@@ -426,11 +398,10 @@ def cli_credentials_refused(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('destinations.help-toggles', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.help-toggles', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def help_toggles(ctx):
     _open(ctx)
-    _requires(ctx, 'accessible_state_contract')
     ctx.click('s3BucketHelp', window='destinations')
     ctx.expect(_state(ctx, 's3BucketHelp', 'checked') is True, 'bucket explanation expanded')
     _frame(ctx, 'expanded')
@@ -440,26 +411,54 @@ def help_toggles(ctx):
     _frame(ctx, 'after')
 
 
-# These interactions require safe synthetic input, exact setup-job inspection,
-# and a verified guest-only Secret Service fixture, all tracked in #666. Do not
-# silently turn them into settings.patch, mock keyring or screenshot-only passes.
-@recipe('destinations.credential-fields',
-        'destinations.store-credentials', 'destinations.show-secret',
-        'destinations.unlock-credentials', 'destinations.test', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.credential-fields', 'destinations.store-credentials',
+        'destinations.show-secret', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def credential_lifecycle(ctx):
     _open(ctx)
+    ctx.blocked('Fake keyring fixture is available; credential typing and reveal require '
+                'secret-safe input and frame suppression (#666, #726).', issue=666)
+
+
+@recipe('destinations.unlock-credentials', needs=NEEDS, destinations=('local',))
+@_failure_frame
+def unlock_credentials(ctx):
+    _, profiles = _open(ctx, saved_credentials=True)
+    identity = profiles[0]['id']
+    def available():
+        return ctx.call('setup.credentialHint', {'profileId': identity,
+                        'expectedRevision': _get(ctx)['metadata']['observedRevision']})['available']
+    ctx.expect(not available(), 'new profile identity starts with no cached credentials')
+    ctx.click('addDestinationCredentials', window='destinations')
+    ctx.click('unlockCredentials', window='destinations')
+    ctx.wait(available, 'explicit unlock loads the owned fake keyring item')
+    _saved(ctx, lambda doc: doc['profiles'] == profiles, 'unlock preserves credential references')
+    _frame(ctx, 'after', '09-stored-credential-hint')
+
+
+@recipe('destinations.test', needs=NEEDS, destinations=('local',))
+@_failure_frame
+def test_connection(ctx):
+    # Unique profile identity exercises the GUI unlock before a real loopback
+    # test; fixture setup is never counted as the tested interaction.
+    _, profiles = _open(ctx, saved_credentials=True)
+    ctx.click('addDestinationCredentials', window='destinations')
+    ctx.click('unlockCredentials', window='destinations')
+    ctx.wait(lambda: ctx.call('setup.credentialHint', {'profileId': profiles[0]['id'],
+                     'expectedRevision': _get(ctx)['metadata']['observedRevision']})['available'],
+             'fake credentials unlocked')
+    ctx.click('testDestination', window='destinations')
+    ctx.wait(lambda: 'Connection successful.' in _state(ctx, 'destinationStatus', 'text'),
+             'loopback test upload, link and cleanup succeeded', timeout=45)
+    _saved(ctx, lambda doc: doc['profiles'] == profiles, 'test preserves destination settings')
     _frame(ctx, 'after')
-    ctx.blocked('Need private guest lab keyring, safe synthetic typing/reveal suppression, '
-                'and setup-job IDs/inspect assertions; core request #666.', issue=CORE_ISSUE)
 
 
-@recipe('destinations.conflict', needs=NEEDS, destinations=('s3',))
+@recipe('destinations.conflict', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def conflict(ctx):
     _, profiles = _open(ctx)
     _confirmation_capture(ctx, 'confirmDestinationReload')
-    _requires(ctx, 'accessible_state_contract')
     _edit(ctx, 's3Bucket', 'invalid unsaved draft')
     ctx.wait(lambda: _state(ctx, 's3BucketError', 'text'), 'invalid draft retained')
     _patch(ctx, {'preferences': {'notifications': not _get(ctx)['document']['preferences'].get('notifications', True)}})
