@@ -18,6 +18,16 @@ def tool(scope, name):
     executable=root+'/usr/bin/'+name
     if result['returncode'] or scope.ctx.shell('test -x '+shlex.quote(executable))['returncode']:
         raise RecipeBlocked('clipboard requires '+name+'; overlay probe-tool staging unavailable',issue=682)
+    # Readers and recipe clipboardWrite commands use the same target PATH as
+    # owners. Preserve source/AppImage bin directories and restore before the
+    # baseline resident relaunch, so it never inherits a retired tool path.
+    target=scope.ctx.target
+    if '_probe_bin_path' not in scope.values:
+        previous=getattr(target,'bin_dir',None)
+        scope.values['_probe_bin_path']=previous
+        scope.defer('probe tool PATH',lambda:setattr(target,'bin_dir',previous),priority=-400)
+    current=getattr(target,'bin_dir',None)
+    target.bin_dir=root+'/usr/bin'+(':'+current if current else '')
     return executable
 
 

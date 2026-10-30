@@ -194,12 +194,18 @@ class Fixtures(unittest.TestCase):
 
     def test_clipboard_stages_missing_tool_in_owned_directory(self):
         scope=self.ctx.manager.scope;scope.initialize();commands=[]
+        self.ctx.target.bin_dir='/owned-appimage/bin'
+        restored=[]
         def shell(command,**kwargs):
             commands.append(command)
             return {'returncode':1 if command.startswith('command -v') else 0,'stdout':'','stderr':''}
         with patch.object(self.ctx,'shell',shell):
             path=clipboard.tool(scope,'xclip')
+            self.assertEqual(self.ctx.target.bin_dir,path.rsplit('/',1)[0]+':/owned-appimage/bin')
+            scope.defer('baseline relaunch',lambda:restored.append(self.ctx.target.bin_dir),priority=-500)
+            self.assertEqual(scope.close(),[])
         self.assertTrue(path.startswith(scope.root+'/'))
+        self.assertEqual(restored,['/owned-appimage/bin'])
         self.assertTrue(any('apt-get download xclip' in c and 'dpkg-deb --extract' in c for c in commands))
 
     def test_clipboard_failed_owner_does_not_return_silent_success(self):
