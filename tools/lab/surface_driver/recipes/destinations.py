@@ -643,6 +643,7 @@ def conflict(ctx):
     ctx.wait(lambda: _state(ctx, 's3BucketError', 'text'), 'invalid draft retained')
     _patch(ctx, {'preferences': {'notifications': not _get(ctx)['document']['preferences'].get('notifications', True)}})
     ctx.wait(lambda: _state(ctx, 'destinationConflictBanner', 'visible'), 'external edit raises conflict banner')
+    ctx.use_catalog('destinations', '52-destinations-conflict')
     _frame(ctx, 'conflict', '52-destinations-conflict')
     _click(ctx, 'reloadDestinationConflict', window='destinations')
     _confirmation_frame(ctx, 'confirmDestinationReload')
