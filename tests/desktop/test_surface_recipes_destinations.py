@@ -22,7 +22,7 @@ class FakeContext(Context):
         (self.root / 'putgd').mkdir(mode=0o700)
         self.profile = {'destinations': {'accessible_state_contract': 1, 'capture_state_contract': 1},
                         'catalog_windows': {name: ['unit-only-confirmation'] for name in
-                                            ('confirmDestinationRemove', 'confirmDestinationDefault', 'confirmDestinationReload')}}
+                                            ('confirmDestinationRemove', 'confirmDestinationDefault', 'confirmDestinationReload', 'confirmDestinationName')}}
         self.document = {'profiles': [], 'preferences': {}}
         self.revision = 1
         self.events = []

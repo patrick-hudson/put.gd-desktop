@@ -185,6 +185,11 @@ def _confirmation_capture(ctx, window):
         ctx.blocked('Need an actual destination confirmation capture with a controls inventory (#722).', issue=722)
 
 
+def _confirmation_frame(ctx, window):
+    reference = ctx.profile['catalog_windows'][window][0]
+    ctx.frame('confirmation', window=window, reference=reference)
+
+
 def _state(ctx, control, key):
     row = _accessible(ctx, control)
     if key in ('focused', 'checked'):
@@ -327,10 +332,12 @@ def drag_reorder(ctx):
 @_failure_frame
 def add(ctx):
     _open(ctx)
+    _confirmation_capture(ctx, 'confirmDestinationName')
     for menu_label, provider, label in (('Amazon S3 / S3-compatible', 's3', 'Added S3'),
                                         ('Backblaze B2', 'backblaze-b2', 'Added B2')):
         ctx.click('addS3Destination', window='destinations')
         ctx.click('text:' + menu_label, window='destinationAddMenu')
+        _confirmation_frame(ctx, 'confirmDestinationName')
         ctx.click('class:QLineEdit', window='confirmDestinationName')
         ctx.keys('Ctrl+A')
         ctx.type_text(label)
@@ -349,6 +356,7 @@ def make_default(ctx):
     _, profiles = _open(ctx)
     _confirmation_capture(ctx, 'confirmDestinationDefault')
     ctx.click('makeDefaultDestination', window='destinations')
+    _confirmation_frame(ctx, 'confirmDestinationDefault')
     # Target the modal itself; foreground guards must never type through it.
     ctx.click('text:Cancel', window='confirmDestinationDefault')
     _saved(ctx, lambda doc: doc['captureDefaults']['destination'] == 'local', 'cancel untested default preserves routing')
@@ -369,6 +377,7 @@ def remove(ctx):
         ctx.click('destinationActions', window='destinations')
         ctx.click('text:Remove destination…', window='destinationActionsMenu')
     request()
+    _confirmation_frame(ctx, 'confirmDestinationRemove')
     ctx.click('text:Cancel', window='confirmDestinationRemove')
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'cancel removal retains destination')
     request()
@@ -433,7 +442,11 @@ def unlock_credentials(ctx):
         return ctx.call('setup.credentialHint', {'profileId': identity,
                         'expectedRevision': _get(ctx)['metadata']['observedRevision']})['available']
     ctx.expect(not available(), 'new profile identity starts with no cached credentials')
-    ctx.click('addDestinationCredentials', window='destinations')
+    # Keychain profiles can be ready-to-test while still locked, so their
+    # header Add credentials action is hidden. Scroll to the real unlock row.
+    geometry = ctx.geometry('destinations')
+    ctx.scroll(geometry['x'] + geometry['width'] - 32,
+               geometry['y'] + geometry['height']//2, -30)
     ctx.use_catalog('destinations', '09-stored-credential-hint')
     ctx.click('text:Unlock saved credentials', window='destinations')
     ctx.wait(available, 'explicit unlock loads the owned fake keyring item')
@@ -447,7 +460,11 @@ def test_connection(ctx):
     # Unique profile identity exercises the GUI unlock before a real loopback
     # test; fixture setup is never counted as the tested interaction.
     _, profiles = _open(ctx, saved_credentials=True)
-    ctx.click('addDestinationCredentials', window='destinations')
+    # Keychain profiles can be ready-to-test while still locked, so their
+    # header Add credentials action is hidden. Scroll to the real unlock row.
+    geometry = ctx.geometry('destinations')
+    ctx.scroll(geometry['x'] + geometry['width'] - 32,
+               geometry['y'] + geometry['height']//2, -30)
     ctx.use_catalog('destinations', '09-stored-credential-hint')
     ctx.click('text:Unlock saved credentials', window='destinations')
     ctx.wait(lambda: ctx.call('setup.credentialHint', {'profileId': profiles[0]['id'],
@@ -471,6 +488,7 @@ def conflict(ctx):
     ctx.wait(lambda: _state(ctx, 'destinationConflictBanner', 'visible'), 'external edit raises conflict banner')
     _frame(ctx, 'conflict', '52-destinations-conflict')
     ctx.click('reloadDestinationConflict', window='destinations')
+    _confirmation_frame(ctx, 'confirmDestinationReload')
     ctx.click('text:Cancel', window='confirmDestinationReload')
     ctx.expect(_state(ctx, 'destinationConflictBanner', 'visible') is True, 'cancel reload keeps local draft')
     ctx.click('reloadDestinationConflict', window='destinations')
