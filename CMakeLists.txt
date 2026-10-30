@@ -928,6 +928,10 @@ if(BUILD_TESTING)
     putgd_xvfb_display(xvfb)
     add_test(NAME resident_display_loss_integration COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- $<TARGET_FILE:test_resident_lifecycle> displayLossEndsResident)
     set_tests_properties(resident_display_loss_integration PROPERTIES ENVIRONMENT "PUTGD_ISOLATED_RESIDENT_TEST=1;PUTGD_TEST_XVFB_DISPLAY=${resident_display}" TIMEOUT 90)
+    # #702: the tray tint follows a Cinnamon desktop theme chosen on its own,
+    # through dconf's change notice on a private bus.
+    add_test(NAME gui_theme_cinnamon_dconf COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- $<TARGET_FILE:test_gui_theme> panelToneFollowsCinnamonDconfNotice)
+    set_tests_properties(gui_theme_cinnamon_dconf PROPERTIES ENVIRONMENT "PUTGD_ISOLATED_DCONF_TEST=1;QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     putgd_xvfb_display(xvfb)
     add_test(NAME native_background_startup_integration COMMAND dbus-run-session -- ${PUTGD_XVFB_RUN} ${xvfb} $<TARGET_FILE:test_native_tray> backgroundStartupWaitsForLateTray)
     set_tests_properties(native_background_startup_integration PROPERTIES ENVIRONMENT "PUTGD_ISOLATED_STARTUP_TEST=1;QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 120)
