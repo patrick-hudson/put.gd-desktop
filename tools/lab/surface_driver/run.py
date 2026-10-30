@@ -9,6 +9,7 @@ import dataclasses
 import fnmatch
 import getopt
 import importlib
+import inspect
 import json
 import os
 from pathlib import Path
@@ -28,6 +29,40 @@ from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.receipts import stamp, write_receipts
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
+
+
+def native_endpoint(kind, address):
+    """Read-only service proof; also sent over the profile's pinned SSH channel."""
+    import os
+    from pathlib import Path
+    import re
+    import stat
+    import subprocess
+    if kind == 'vnc':
+        command = ['ss', '-H', '-ltnp', 'sport = :'+address.rsplit(':', 1)[1]]
+    else:
+        socket = Path(address)
+        if socket.is_symlink() or not stat.S_ISSOCK(socket.stat().st_mode) or socket.stat().st_uid != os.getuid():
+            raise ValueError('unowned native socket')
+        command = ['ss', '-H', '-lxnp']
+    reply = subprocess.run(command, check=True, capture_output=True, text=True, timeout=10)
+    pids = {pid for line in reply.stdout.splitlines() if address in line.split()
+            for pid in re.findall(r'pid=(\d+)', line)}
+    if len(pids) != 1:
+        raise ValueError('native service owner unavailable')
+    process = Path('/proc') / pids.pop()
+    if process.stat().st_uid != os.getuid():
+        raise ValueError('native service is not owned')
+    executable = (process/'exe').readlink().name.lower()
+    arguments = [a.decode() for a in (process/'cmdline').read_bytes().split(b'\0') if a]
+    if kind == 'vnc':
+        if executable not in ('x11vnc', 'x0vncserver', 'x0tigervnc', 'w0vncserver', 'wayvnc'):
+            raise ValueError('listener is not a native desktop server')
+    elif not (executable.startswith('python3') and any(Path(a).name == 'host_input.py' for a in arguments)
+              and 'serve' in arguments and '--socket' in arguments
+              and arguments[arguments.index('--socket')+1] == address):
+        raise ValueError('listener is not the native input agent')
+    return True
 
 
 def verify_physical_endpoints(target):
@@ -66,12 +101,43 @@ def verify_physical_endpoints(target):
                 options, rest = getopt.getopt(arguments[1:], '1246AaCfGgKkMNnqsTtVvXxYyB:b:c:D:E:e:F:I:i:J:L:l:m:O:o:p:Q:R:S:W:w:')
                 values = dict(options)
                 pins = [value for option, value in options if option == '-o']
+                for required in ('StrictHostKeyChecking=yes', 'UserKnownHostsFile='+config['known_hosts']):
+                    key = required.split('=', 1)[0].lower()
+                    matches = [p for p in pins if re.split(r'[=\s]', p.strip(), maxsplit=1)[0].lower() == key]
+                    if matches != [required]:
+                        raise ValueError('ambiguous SSH pin options')
+                bindings = {}
+                for option, value in options:
+                    if option != '-L':
+                        continue
+                    if value.startswith('/'):
+                        local, remote = value.split(':', 1)
+                        if not remote.startswith('/'):
+                            raise ValueError('noncanonical socket forward')
+                    else:
+                        fields = value.split(':')
+                        if len(fields) != 4 or fields[0] != '127.0.0.1':
+                            raise ValueError('noncanonical VNC forward')
+                        local = ':'.join(fields[:2])
+                    if local in bindings:
+                        raise ValueError('ambiguous local forwarding endpoint')
+                    bindings[local] = value
+                overrides = {'hostname', 'hostkeyalias', 'port', 'user', 'proxycommand', 'proxyjump', 'localforward', 'remoteforward', 'dynamicforward'}
                 if (rest != [config['user']+'@'+config['host']] or '-N' not in values
+                        or sum(option == '-p' for option, _ in options) > 1
+                        or any(option in ('-F', '-J', '-W', '-O', '-l', '-R', '-D') for option, _ in options)
+                        or any(re.split(r'[=\s]', p.strip(), maxsplit=1)[0].lower() in overrides for p in pins)
                         or int(values.get('-p', 22)) != config.get('ssh_port', 22)
-                        or 'StrictHostKeyChecking=yes' not in pins
-                        or 'UserKnownHostsFile='+config['known_hosts'] not in pins
-                        or ('-L', forward) not in options):
+                        or bindings.get(address) != forward):
                     raise ValueError('forward does not bind the authenticated host')
+                # A forward to another forward is not a native desktop proof.
+                remote_address = forward[len(address)+1:]
+                source = inspect.getsource(native_endpoint)
+                script = "python3 - <<'SD_ENDPOINT'\n"+source+'\nimport json\ntry:\n'
+                script += ' print(json.dumps({"verified":native_endpoint('+repr(kind)+','+repr(remote_address)+')}))\n'
+                script += 'except Exception:\n print(json.dumps({"verified":False}))\nSD_ENDPOINT\n'
+                if json.loads(target.physical.ssh(target.run, script)).get('verified') is not True:
+                    raise ValueError('forwarded native service cannot be verified')
             else:
                 # Direct listeners are allowed only when the pinned SSH host
                 # is this runner, and the listener is a native desktop server.
@@ -85,7 +151,7 @@ def verify_physical_endpoints(target):
                           and 'serve' in arguments and '--socket' in arguments
                           and arguments[arguments.index('--socket')+1] == address):
                     raise ValueError('unverified host-input server')
-    except (OSError, ValueError, KeyError, IndexError, UnicodeError, getopt.GetoptError,
+    except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError, UnicodeError, getopt.GetoptError,
             subprocess.SubprocessError, lab.LabError) as error:
         raise RecipeBlocked('physical VNC/input endpoint binding cannot be verified') from error
 
@@ -117,7 +183,8 @@ def guard_target(args, target):
         # A label, profile name or supplied sandbox id is not identity evidence.
         # Permit a boat head only on that sandbox's own runner, over local SSH.
         if (args.host == 'boat' and args.placement == 'boat' and args.boat_id
-                and re.fullmatch(r'bx_[a-z0-9]{1,64}', args.boat_id)):
+                and re.fullmatch(r'bx_[a-z0-9]{1,64}', args.boat_id)
+                and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]*', config.get('user', ''))):
             if config.get('host') in ('127.0.0.1', '::1') and config.get('ssh_port', 22) == 22:
                 try:
                     reply = subprocess.run(['boat', 'info', args.boat_id, '--json'], check=True,

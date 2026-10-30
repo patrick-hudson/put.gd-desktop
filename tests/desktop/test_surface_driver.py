@@ -20,7 +20,7 @@ from tools.lab.surface_driver.catalog import Catalog, compare, control_point
 from tools.lab.surface_driver.context import DriverContext, parse_notifications
 from tools.lab.surface_driver.profiles import load_profile, merge
 from tools.lab.surface_driver.receipts import write_receipts
-from tools.lab.surface_driver.run import discover, guard_target, main, run_recipes, validate_recipes, verify_physical_endpoints
+from tools.lab.surface_driver.run import discover, guard_target, main, native_endpoint, run_recipes, validate_recipes, verify_physical_endpoints
 from tools.lab import desktop_lock, lab
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
@@ -781,6 +781,10 @@ class TargetSafety(unittest.TestCase):
         with patch('tools.lab.surface_driver.run.subprocess.run') as command:
             with self.assertRaises(RecipeBlocked):guard_target(args,target)
             command.assert_not_called()
+        args.boat_id='bx_test';target.physical.config['user']='-oProxyCommand=untrusted'
+        with patch('tools.lab.surface_driver.run.subprocess.run') as command:
+            with self.assertRaises(RecipeBlocked):guard_target(args,target)
+            command.assert_not_called()
 
     def test_bypass_and_missing_native_lock_refuse_before_start_input_or_capture(self):
         with tempfile.TemporaryDirectory() as td:
@@ -871,7 +875,7 @@ class EndpointSafety(unittest.TestCase):
         self.addCleanup(self.listener.close)
         self.target=SimpleNamespace(run=self.run,physical=SimpleNamespace(
             config={'host':'192.168.68.70','user':'patrick','known_hosts':'/pins','vnc_port':5970},
-            ssh=lambda run,command:'1000' if command=='id -u' else 'boot-id'))
+            ssh=lambda run,command:'1000' if command=='id -u' else ('{"verified":true}' if 'SD_ENDPOINT' in command else 'boot-id')))
         self.argv=['ssh','-NT','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile=/pins',
                    '-L','127.0.0.1:5970:127.0.0.1:5901',
                    '-L',str(self.path)+':/run/user/1000/putgd-lab-input.sock','patrick@192.168.68.70']
@@ -908,6 +912,32 @@ class EndpointSafety(unittest.TestCase):
                 with self.assertRaisesRegex(RecipeBlocked,'endpoint binding'):verify_physical_endpoints(self.target)
         self.argv=original+['remote-command','patrick@192.168.68.70']
         with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_shadowed_pins_ports_and_forwarding_options_are_rejected(self):
+        original=list(self.argv)
+        for extra in (['-o','StrictHostKeyChecking=no'],['-o','UserKnownHostsFile /other'],
+                      ['-p','2222','-p','22'],['-o','Port=2222'],['-o','LocalForward=5970 127.0.0.1:5900'],
+                      ['-L','127.0.0.1:5970:127.0.0.1:5900'],
+                      ['-L',str(self.path)+':/another/qmp.sock'],
+                      ['-R','127.0.0.1:5901:192.168.68.69:5900'],['-F','other-config']):
+            self.argv=[original[0],*extra,*original[1:]]
+            with self.subTest(options=extra):
+                with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_forwarded_service_must_be_native_on_the_authenticated_host(self):
+        for reply in ('{"verified":false}', 'null', 'not-json'):
+            self.target.physical.ssh=lambda run,command:'1000' if command=='id -u' else reply
+            with self.subTest(reply=reply):
+                with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_native_service_proof_rejects_ssh_and_wrong_input_socket(self):
+        with self.assertRaises(ValueError):native_endpoint('vnc','127.0.0.1:5970')
+        self.executable='w0vncserver'
+        self.assertTrue(native_endpoint('vnc','127.0.0.1:5970'))
+        self.executable='python3.12';self.argv=['python3','/lab/host_input.py','serve','--socket',str(self.path)]
+        self.assertTrue(native_endpoint('input',str(self.path)))
+        self.argv[-1]=str(self.path)+'-other'
+        with self.assertRaises(ValueError):native_endpoint('input',str(self.path))
 
     def test_unknown_or_unowned_listener_is_rejected(self):
         self.rows=False
