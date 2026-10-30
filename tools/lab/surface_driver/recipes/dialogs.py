@@ -88,7 +88,7 @@ def _ready(ctx, inspect, backend, mode):
             if current.get('backend') != backend:
                 ctx.blocked('Portal changed backend before becoming ready; fallbackReason=' +
                             str(current.get('fallbackReason')))
-            return ctx.accessible({'name': current['title']})
+            return ctx.accessible({'name': current['title'], 'visible': True, 'showing': True})
         nodes = ctx.wait(drawn, 'desktop chooser is accessible and drawn')
         # Desktop-owned portal windows are outside the private app family.
         # Bind the input guard to the observed chooser title and process, never
@@ -102,6 +102,7 @@ def _ready(ctx, inspect, backend, mode):
         }
         ctx.focus('portalFileDialog', raise_window=False)
     else:
+        ctx.profile.setdefault('windows', {}).setdefault('putgdFileDialog', {})['title'] = '^' + re.escape(state['title']) + '$'
         ctx.focus('putgdFileDialog', raise_window=False)
     _frame(ctx, 'dialog-ready', backend, mode)
     return state
