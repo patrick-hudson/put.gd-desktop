@@ -38,13 +38,15 @@ host before calling it hung.
 
 ## Goldens on `f44`
 
-All four are standalone qcow2 files (virtual 48 GiB) under
+The four original goldens below are standalone qcow2 files (virtual 48 GiB) under
 `~/work/put.gd/work/lab-images/`, each with `source.manifest.json`,
 `image-info.json`, the pinned guest `known_hosts` and the bootstrap inputs.
 The [immutable-golden rules](vm-lab.md#base-protection-and-inventory) apply.
 The three Fedora 44 goldens exist only on `f44` (no Debian or S3 copy, so the
 [two-copies rule](remote-golden-images.md) is not satisfied for them); the
-Fedora 45 golden has a verified Debian copy and no S3 copy yet.
+older Fedora 45 disk has a verified Debian copy but no complete S3 image.
+The independently rebuilt Fedora 45 cloud golden has verified Fedora, Debian
+and S3 copies; see [cloud golden and Boat snapshot](remote-golden-images.md#aurora-fedora-45-cloud-golden-and-boat-snapshot).
 
 | Directory | Base | SHA-256 | State |
 | --- | --- | --- | --- |
@@ -132,7 +134,7 @@ golden directory holds `provisioning-verify.log`.
 | Deployments | Single: the Fedora 44 rollback deployment was removed with `rpm-ostree cleanup -r` (5.7 GB freed) before the poweroff. |
 | SSH | Host key unchanged (`SHA256:yeRsgHkd8AI0lIuNZ4H6YE2i4d1D7cxeFI86/uKoWiA`); `known_hosts` pins `[127.0.0.1]:22426` and `[127.0.0.1]:22427`. Only the builder bootstrap key `~/work/put.gd/work/lab-bootstrap-f44/aurora/identity` is authorized; the run-private key that `launch` appends was removed before the poweroff. |
 | Golden | standalone qcow2, 23,965,663,232 bytes, SHA-256 `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556`, `qemu-img compare` identical to the source overlay, `qemu-img check` clean, mode 0444. |
-| Copies | `f44` and `d69` (same directory name; the copy was streamed through the workstation on 2026-10-23, its SHA-256 and all sidecar hashes match, `qemu-img check` clean; receipt `work/verification/golden-transfer-1d422e725efb`). No S3 copy: the AWS session was not available to the session that made it, so the upload to `linux/aurora-testing-45.20261022.1-852d34e885c1/` waits for Patrick. |
+| Copies | `f44` and `d69` (same directory name; the copy was streamed through the workstation on 2026-10-23, its SHA-256 and all sidecar hashes match, `qemu-img check` clean; receipt `work/verification/golden-transfer-1d422e725efb`). No complete S3 copy of this older disk. Patrick approved the independently rebuilt `aurora-testing-45.20261022.1-ec2-20261029-a1` from the same pinned Aurora OS for cloud restore; it has verified Fedora, Debian and S3 copies and is in `putgd-lab-aurora`. See [cloud golden and Boat snapshot](remote-golden-images.md#aurora-fedora-45-cloud-golden-and-boat-snapshot). |
 
 ### How it was made
 
@@ -345,9 +347,9 @@ or v2, unlock the session on the wall before capture tests.
 - Provide `putgd-desktop-fixture` for this guest (a Fedora 44 userland build
   or a bundled copy) so the `run` scenarios, not only smoke/CLI checks, can
   execute on Aurora; add a Flatpak install path beside `--appimage`.
-- Upload the Fedora 45 golden to S3 (`linux/aurora-testing-45.20261022.1-852d34e885c1/`),
-  and decide with Patrick whether the Fedora 44 goldens stay `f44`-only
-  rebuildable evaluation images
+- Decide with Patrick whether the Fedora 44 goldens stay `f44`-only
+  rebuildable evaluation images. Fedora 45 cloud restore now uses the separately
+  verified EC2 golden; the older disk's byte-copy upload was cancelled
   ([#484](https://github.com/patrick-hudson/put.gd-desktop/issues/484)).
 - Make `bootstrap-aurora-guest.sh` mask `uupd.timer`, and `fstrim` before the
   next flatten; rebuild the Aurora golden from the signed `stable` tag once it

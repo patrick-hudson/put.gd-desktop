@@ -60,16 +60,94 @@ The sealed Windows bundles are listed in [Windows lab](windows-vm-lab.md#base-st
 The Aurora goldens are named directories rather than `transfer-<id>/`, and each
 holds `source.manifest.json`, `image-info.json`, the pinned guest `known_hosts`
 and the bootstrap inputs beside `image.qcow2`. They are described in
-[Aurora VM](aurora-vm.md). The S3 bucket holds none of them yet: the Fedora 44
-goldens are rebuildable evaluation images that exist only on `f44`, and the
-Fedora 45 golden's S3 copy is pending Patrick's decision (the session that made
-it could not use the AWS session; see [Aurora VM](aurora-vm.md#fedora-45-golden)).
+[Aurora VM](aurora-vm.md). The independently rebuilt Fedora 45 cloud golden
+below is verified on `f44`, `d69` and S3. It uses the same pinned Aurora OS as the
+older `-852d34e885c1` golden, with its own disk identity. The older disk still
+has no complete S3 image copy. The Fedora 44 evaluation goldens remain `f44`-only.
 
 | Name (profile `aurora-kde-wayland`) | SHA-256 | Fedora `f44` | Debian `d69` |
 | --- | --- | --- | --- |
+| `aurora-testing-45.20261022.1-ec2-20261029-a1` (Fedora 45 cloud restore base) | `a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128` | same name; verified 2026-10-30 | same name; verified 2026-10-30 |
 | `aurora-testing-45.20261022.1-852d34e885c1` (Fedora 45 base, use for acceptance) | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | same name | same name; SHA-256 and sidecars verified 2026-10-23 (receipt `work/verification/golden-transfer-1d422e725efb`) |
 | `aurora-stable-44.20260908.1-v3-492c3f8945d1` (Fedora 44 base) | `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` | same name | none |
 | `aurora-stable-44.20260908.1-v2-af46889e2a54`, `-f9c006a376e1` (history) | see [Aurora VM](aurora-vm.md#goldens-on-f44) | same name | none |
+
+### Aurora Fedora 45 cloud golden and Boat snapshot
+
+For [#665](https://github.com/patrick-hudson/put.gd-desktop/issues/665), Patrick
+approved using the EC2-built `aurora-testing-45.20261022.1-ec2-20261029-a1`
+instead of uploading the older builder disk over the home uplink. Both use
+Aurora `testing-45.20261022.1` from the same pinned OCI payload,
+`ghcr.io/ublue-os/aurora@sha256:969e4f6f164742b9f3f85e74b958faf88e357b65620e7c2f1cc28723948a9930`.
+They are separate immutable goldens; a different qcow2 hash is expected after
+independent provisioning. Existing builder disks were not replaced.
+
+| Item | Verified value |
+| --- | --- |
+| S3 image key | `linux/aurora-testing-45.20261022.1-ec2-20261029-a1/aurora-testing-45.20261022.1-ec2-20261029-a1.qcow2.zst` |
+| S3 manifest key | Same prefix, `aurora-testing-45.20261022.1-ec2-20261029-a1.manifest.json` |
+| Image SHA-256 | `a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128` |
+| Compressed SHA-256 | `10cb310ce793cc3d3666bbb2b212d2f6db81392ec5c70bc24b27c64acf600be0` |
+| Image / compressed / virtual bytes | 10,503,323,648 / 4,311,949,729 / 50,994,348,032 |
+| Storage | Glacier Instant Retrieval, SSE-S3; small sidecars use Standard |
+| S3 composite SHA-256 | `UJFDDDU3KHt+Megzp2WwAIpSImrkPoPbZQLMcTutsMQ=-65` |
+| Host copies | Both builders: `~/work/put.gd/work/lab-images/aurora-testing-45.20261022.1-ec2-20261029-a1/image.qcow2` |
+| Boat snapshot | `putgd-lab-aurora`, ready; snapshot `23bc3677-0b0d-42eb-9930-3e29cc3c47b5` |
+
+The EC2 job verified manual standard login and plasmalogin autologin as `lab`,
+Fedora 45, KDE Plasma/Wayland, the masked `uupd.timer`, and the lab idle policy.
+It verified standalone qcow2 metadata and `qemu-img check`, then downloaded the
+S3 image back to EC2 and checked both hashes and `qemu-img compare`. The Fedora
+and Debian restores have matching image and sidecar hashes. The EC2 instance
+and its temporary volume, network interface, security group, keypair and IAM
+resources were deleted after verification. These are OS-provisioning receipts,
+not application desktop acceptance.
+
+The S3 prefix also holds the provisioning evidence and
+`sidecars/job-completion.json`. UEFI code, the blank VARS template and the
+provisioned VARS are under `sidecars/firmware/` as `OVMF_CODE_4M.fd`,
+`OVMF_VARS_4M.fd` and `provisioned-vars.fd`. Their SHA-256 values and server
+checksums are in the [verification receipt](evidence/2026-10-29-aurora-golden-s3-665/receipt.json).
+Future runs must use private writable copies of VARS, preserving the archived
+firmware and golden.
+
+`putgd-lab-aurora` was created by the EC2/Boat preparation session from
+`putgd-build-base`, with `--no-env`, finite TTLs and hydration checks. It contains
+the directly restored S3 golden, a built nightly tree and persistent build
+caches. Its clean built source is `6c09178f058f93eaba64f198c54151cd67f94a2e`,
+version `26.1030.2333-dev+g6c09178f058f`, at `/home/user/work/put.gd/src`.
+The golden is that source tree's
+`work/lab-images/aurora-testing-45.20261022.1-ec2-20261029-a1/image.qcow2`.
+The host uses Ubuntu 24.04, dynamic distro Qt 6.4.2 and official AWS SDK 1.11.907.
+The golden restore verified compressed/image hashes, virtual size, standalone
+metadata and `qemu-img check` in 199.63 seconds. Its preparation CTest run had
+113 tests: `gui_tray` recovered on retry; `gui_settings` and `proton_transport`
+remained failed. These unresolved tests prevent claiming application acceptance
+from that preparation; their failures are retained in the template receipt.
+
+Create a disposable worker with
+`boat new --from putgd-lab-aurora --type large --ttl 7200 --no-env --name YOUR_RUN_NAME`.
+Wait for `hydrated: true`, then source `/home/user/aurora-builder/env.sh` before
+building. The SDK prefix and `/home/user/putgd-cache` caches are retained.
+`/usr/bin/python3 /home/user/aurora-builder/start-aurora.py --name aYOURRUN`
+creates a fresh disposable public-key overlay and private guest key on the
+worker, preflights sockets and invokes the production lab launcher; it does
+not require the workstation's private key or agent forwarding. Follow
+[VM lab](vm-lab.md) and [Aurora](aurora-vm.md) display/overlay rules before
+launching a guest. Retire completed overlays through guarded cleanup and
+delete only your worker after exporting evidence. The snapshot's separate
+fresh-fork validation belongs to its preparation session; this inventory
+receipt records the saved snapshot and makes no new graphical acceptance claim.
+
+The separate older-disk upload was cancelled at 84 verified 64 MiB parts
+(5,637,144,576 bytes), and its incomplete multipart upload was aborted. No
+complete image object was created for `aurora-testing-45.20261022.1-852d34e885c1`.
+Its already-uploaded small metadata and OVMF copies remain under that old
+prefix; they do not constitute an S3 golden image. The old f44 image and sidecar
+hashes, sizes, modes and mtimes remained unchanged. The unused worker from
+that upload session was deleted, preserving other sessions' workers and the
+EC2-built named snapshot. The receipt distinguishes these two sessions and
+identities explicitly.
 
 The KDE neon goldens are named directories like the Aurora ones. Each is on
 both builders and in S3 (`linux/<name>/<name>.qcow2.zst` and
