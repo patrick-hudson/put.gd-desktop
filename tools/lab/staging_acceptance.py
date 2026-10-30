@@ -314,6 +314,7 @@ print(json.dumps(ids))
     for session in desktop_sessions:
         assert session.isalnum()
         root_guest('test "$(loginctl show-session '+session+' --property=User --value)" = 1000\n'
+                   'loginctl kill-session --signal=KILL '+session+'\n'
                    'loginctl terminate-session '+session+'\n')
 
     snapshots=[];inactive_at=None
