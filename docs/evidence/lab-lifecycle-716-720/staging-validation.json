@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "scope": "lab package-install and overlay lifecycle; not product desktop/release acceptance",
+  "codeCommit": "7238d5ffad8d2104f74c2f07466882e3cbffdc86",
+  "sandbox": {
+    "id": "bx_47q5huya",
+    "snapshot": "putgd-lab-cinnamon",
+    "snapshotId": "370a66bc-62c4-4300-9c4a-82d87eee5cb7",
+    "createdAt": "2026-10-30T01:12:45.882Z",
+    "ttlSeconds": 7200,
+    "machineProvider": "baremetal",
+    "createdSandboxCount": 1
+  },
+  "run": {
+    "id": "4b964e55-57e2-489c-adcb-24953c69a39f",
+    "path": "/home/user/p727/work/lab-runs/c2",
+    "profile": "cinnamon-x11",
+    "acceleration": "kvm",
+    "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+    "qemuPid": 58530,
+    "socketUtf8Bytes": [
+      41,
+      41
+    ],
+    "helperAbsentBefore": true,
+    "packageAbsentBefore": true,
+    "authorizedKeysUnchanged": true
+  },
+  "sourceFiles": {
+    "commit": "7238d5ffad8d2104f74c2f07466882e3cbffdc86",
+    "files": {
+      "tools/lab/lab.py": "d52d9081b17de1e3a0e0a8109a415c934a30a1f145a19dd9b38ffc0a3b333016",
+      "tools/lab/package_install.py": "fa7abaf534a74dae0f2a15053a2b4b1cfeeaad683494010621a00137bf4c4844",
+      "tools/lab/overlay_cleanup.py": "a65168393d4d462bdaeb477a253f9160908c8e1aefcd6b2549dd2cd5340bbd72",
+      "tests/desktop/test_lab.py": "12f2b5c9aa249d2df8e48d0ac44fb250920147310097e474b185818f700c91a9",
+      "tests/desktop/test_package_install.py": "1b3773c5e40bd2df5843222e9e4fd50abead81e390e30b89230b121f838874a0",
+      "tests/desktop/test_overlay_cleanup.py": "bcbc4e14b7bc37881f109de19050b7424ba6a55651d589a1f05e68023852080b"
+    },
+    "matched": true
+  },
+  "coldInstall": {
+    "packageModified": false,
+    "inputFilename": "putgd_0.1.1~dev.907+g0071acafc975_amd64.deb",
+    "inputSha256": "f5bd05537d8e2931f464fe0a54a52dd638f6fd3b32b2134dfef5785812d1c5ec",
+    "downloadLimitKiBPerSecond": 128,
+    "timeoutSeconds": 180,
+    "recoverySeconds": 900,
+    "elapsedSeconds": 392.037633695,
+    "timedOut": true,
+    "aborted": false,
+    "exitCodes": [
+      0,
+      0
+    ],
+    "remainingPids": [],
+    "dpkgStatusInstalled": true,
+    "dpkgAuditClean": true,
+    "installedBinarySha256": {
+      "/usr/bin/putgd-ui": "fdf6765c8464f4613e713d965c9d1ae742c5eaacdc910705ac9c6993cc3b2d50",
+      "/usr/bin/putgd-kde-region": "43d7b831310d3f2350b21756376fdc9257205509e1a43f7065f2ed283f3474b5",
+      "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+      "/usr/bin/putgd": "9ab3f75078cb0e3911d86be2152f3de6bc431fa8b73f24d5c81e0c9f06d0ea8c",
+      "/usr/bin/putgd-cli": "32fcc74bdcc465e366d2efac0c2a67b392d4cb4f9849a0223b71d52984e9185c",
+      "/usr/bin/putgd-s3-worker": "e7124189c2fa269da3e5a6335ed205df3371dbe290d66379006879139aba1a51",
+      "/usr/bin/putgd-desktop-fixture": "d604b420ea1ab73ecd47d0336b7729670661d94ddef7a4fe9b58d4170e0ba901",
+      "/usr/bin/putgd-record": "ac124d9ffcba62f351b0ac0ec4842633359840e8a135704370a6e3d476540e99",
+      "/usr/bin/putgd-capture": "ea465bd4aade21f0cad02ba5872e195963c3c7283833a296884b81ae994b99c5",
+      "/usr/bin/putgd-b2-worker": "2e64ab467a20b6e8c20399bd993de2d93426de375869b6dce3de35b1db4b4bc8"
+    },
+    "helper": {
+      "sha256": "fa7abaf534a74dae0f2a15053a2b4b1cfeeaad683494010621a00137bf4c4844",
+      "verified": true,
+      "source": "putgd-lab/install-7903a0a3b42845fb957755170a1f5fca/package_install.py",
+      "installedPath": "/usr/local/lib/putgd-lab/package_install.py",
+      "route": "existing passwordless apt-get Pre-Invoke; no sources or list cleanup"
+    },
+    "stagingRepositoryFetches": 0
+  },
+  "startupFault": {
+    "elapsedSeconds": 18.127608803000044,
+    "lockRetained": true,
+    "supervisorLaunchSuppressed": true,
+    "stagingUsedNoRepositories": true,
+    "aptIndexesUnchanged": true
+  },
+  "heldRetry": {
+    "elapsedSeconds": 0.19244088200002807,
+    "jobReported": true,
+    "stateReported": true,
+    "hostEvidenceDirectoriesUnchanged": true
+  },
+  "forcedAbort": {
+    "timeoutSeconds": 1,
+    "recoverySeconds": 1,
+    "controlledAptPostInvokeSleepSeconds": 30,
+    "elapsedSeconds": 2.070111634,
+    "timedOut": true,
+    "aborted": true,
+    "stoppedPids": [
+      6485,
+      6850,
+      6851,
+      6852
+    ],
+    "remainingPids": [],
+    "stoppedPidsAllOwned": true,
+    "unrelatedSentinel": {
+      "pid": 6406,
+      "startTicks": 44904
+    },
+    "unrelatedSentinelAfter": {
+      "pid": 6406,
+      "startTicks": 44904,
+      "state": "S"
+    }
+  },
+  "targetedTests": {
+    "counts": {
+      "package-install": 6,
+      "lab": 46,
+      "overlay-cleanup": 20
+    },
+    "total": 72,
+    "passed": true
+  },
+  "retention": "Raw logs, saved QMP visuals, exact source, injected-fault drivers, failures and cleanup receipts remain private; archive indexes are separately verified."
+}

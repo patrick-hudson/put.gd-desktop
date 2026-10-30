@@ -1,0 +1,11 @@
+{
+  "placement": "boat",
+  "sandbox": "bx_kt4t3rgm",
+  "qemuAbsent": true,
+  "overlaysRetired": [
+    "c1",
+    "c2"
+  ],
+  "controllerFencesFree": true,
+  "physicalOrProtonLocksAcquired": []
+}

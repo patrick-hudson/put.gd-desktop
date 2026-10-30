@@ -1,0 +1,27 @@
+{
+  "name": null,
+  "requests": [
+    {
+      "sandboxId": "bx_rxgaakqm",
+      "operation": {
+        "attemptCount": 0,
+        "completedAt": null,
+        "expectedBy": null,
+        "id": "bdop_aa1d91a3b648490299a0577f67386798",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T05:46:22.641Z",
+        "stage": "removing",
+        "status": "pending",
+        "targetId": "bx_rxgaakqm"
+      }
+    }
+  ],
+  "verified": true,
+  "finalState": "absent",
+  "verification": "boat list --all",
+  "deletedIds": [
+    "bx_rxgaakqm"
+  ],
+  "verifiedAt": 1793339184.9497113
+}

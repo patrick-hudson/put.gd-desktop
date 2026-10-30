@@ -1,0 +1,343 @@
+$ ctest --preset dev --parallel 12 --resource-spec-file /home/user/work/put.gd/src/tools/ci/ctest-resources.json --output-junit /home/user/779/ci/ctest.xml
+Test project /home/user/work/put.gd/src/build/dev
+        Start 101: gui_settings
+        Start  83: operations_contract
+        Start  61: native_background_startup_integration
+        Start 102: gui_history_view
+        Start  76: s3_worker_supervision
+        Start  43: gui_tray
+        Start  40: gui_application
+        Start  71: s3_module_integration
+        Start  86: cli_integration
+        Start  66: x11_isolated
+        Start  73: s3_multipart_integration
+        Start  17: x11_core_clipboard
+  1/114 Test  #17: x11_core_clipboard ......................   Passed   18.32 sec
+        Start  37: session_client_integration
+  2/114 Test  #66: x11_isolated ............................   Passed   22.14 sec
+        Start  14: native_tray_integration
+  3/114 Test  #73: s3_multipart_integration ................   Passed   23.04 sec
+        Start  31: ui_process_integration
+  4/114 Test  #37: session_client_integration ..............   Passed   16.70 sec
+        Start  72: s3_integration
+  5/114 Test  #31: ui_process_integration ..................   Passed   14.13 sec
+        Start  34: edit_operations_integration
+  6/114 Test  #71: s3_module_integration ...................   Passed   37.99 sec
+        Start  70: s3_delete_integration
+  7/114 Test  #70: s3_delete_integration ...................   Passed   11.39 sec
+        Start  10: gui_review_window
+  8/114 Test  #72: s3_integration ..........................   Passed   19.14 sec
+        Start 106: local_ipc_contract
+  9/114 Test  #86: cli_integration .........................   Passed   56.95 sec
+        Start  97: crash_handler_contract
+ 10/114 Test  #76: s3_worker_supervision ...................   Passed   60.88 sec
+        Start  69: collision_policy_integration
+ 11/114 Test #106: local_ipc_contract ......................   Passed   14.17 sec
+        Start  91: gnome_core_transport_integration
+ 12/114 Test  #97: crash_handler_contract ..................   Passed   11.78 sec
+        Start  39: gui_editor_window
+ 13/114 Test  #10: gui_review_window .......................   Passed   19.90 sec
+        Start 114: b2_integration
+ 14/114 Test  #40: gui_application .........................   Passed   73.33 sec
+        Start  94: recording_helper_integration
+ 15/114 Test  #91: gnome_core_transport_integration ........   Passed   11.68 sec
+        Start  95: settings_contract
+ 16/114 Test #114: b2_integration ..........................   Passed   10.77 sec
+        Start  12: kde_region_control
+ 17/114 Test  #61: native_background_startup_integration ...   Passed   80.74 sec
+        Start 103: gui_history_view_text150
+ 18/114 Test  #14: native_tray_integration .................   Passed   60.51 sec
+        Start  26: kde_ownership_integration
+ 19/114 Test  #12: kde_region_control ......................   Passed    9.25 sec
+        Start  16: capture_process_integration
+ 20/114 Test  #26: kde_ownership_integration ...............   Passed    8.59 sec
+        Start  21: version_contract
+ 21/114 Test  #39: gui_editor_window .......................   Passed   24.68 sec
+        Start 113: proton_transport
+ 22/114 Test  #95: settings_contract .......................   Passed   13.95 sec
+        Start 112: proton_contract
+ 23/114 Test  #16: capture_process_integration .............   Passed    7.25 sec
+        Start   1: recording_storage_integration
+ 24/114 Test  #21: version_contract ........................   Passed    7.17 sec
+        Start 110: native_region_overlay
+ 25/114 Test   #1: recording_storage_integration ...........   Passed    7.75 sec
+        Start  93: recording_service_integration
+ 26/114 Test #113: proton_transport ........................   Passed   11.69 sec
+        Start 111: capture_preparation_x11
+ 27/114 Test #110: native_region_overlay ...................   Passed   11.20 sec
+        Start  23: kde_shortcuts_integration
+ 28/114 Test #111: capture_preparation_x11 .................   Passed    5.14 sec
+        Start  85: storage_contract_integration
+ 29/114 Test  #94: recording_helper_integration ............   Passed   37.32 sec
+        Start  33: editor_job_integration
+ 30/114 Test  #23: kde_shortcuts_integration ...............   Passed    5.60 sec
+        Start  99: diagnostics_bundle_contract
+ 31/114 Test  #33: editor_job_integration ..................   Passed    6.09 sec
+        Start  64: host_open_integration
+ 32/114 Test  #64: host_open_integration ...................   Passed    3.80 sec
+        Start  58: resident_retire_integration
+ 33/114 Test  #58: resident_retire_integration .............   Passed    3.52 sec
+        Start  51: update_service_schedule
+ 34/114 Test  #34: edit_operations_integration .............   Passed   88.19 sec
+        Start  82: history_contract
+ 35/114 Test  #99: diagnostics_bundle_contract .............   Passed   11.61 sec
+        Start  29: poster_job_integration
+ 36/114 Test  #29: poster_job_integration ..................   Passed    2.84 sec
+        Start  28: image_job_integration
+ 37/114 Test  #28: image_job_integration ...................   Passed    2.94 sec
+        Start  65: ui_native_lifecycle_integration
+ 38/114 Test  #65: ui_native_lifecycle_integration .........   Passed    6.93 sec
+        Start  98: diagnostics_upload_contract
+ 39/114 Test #103: gui_history_view_text150 ................   Passed   88.80 sec
+        Start 108: region_selection_contract
+ 40/114 Test #108: region_selection_contract ...............   Passed    2.04 sec
+        Start  32: editor_contract
+ 41/114 Test  #32: editor_contract .........................   Passed    1.84 sec
+        Start 105: resident_session_contract
+ 42/114 Test #105: resident_session_contract ...............   Passed    1.75 sec
+        Start  60: gui_theme_cinnamon_dconf
+ 43/114 Test  #60: gui_theme_cinnamon_dconf ................   Passed    1.49 sec
+        Start  62: file_dialog_integration
+ 44/114 Test  #69: collision_policy_integration ............   Passed  118.14 sec
+        Start   4: export_av_sync_contract
+ 45/114 Test  #82: history_contract ........................   Passed   54.15 sec
+        Start  88: storage_locations_integration
+ 46/114 Test  #62: file_dialog_integration .................   Passed    5.07 sec
+        Start  44: gui_version
+ 47/114 Test  #43: gui_tray ................................   Passed  182.81 sec
+        Start  57: native_shortcut_rejection_integration
+ 48/114 Test  #44: gui_version .............................   Passed    2.23 sec
+        Start  36: ui_control_integration
+ 49/114 Test #112: proton_contract .........................***Timeout  90.10 sec
+********* Start testing of ProtonTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : ProtonTest::initTestCase()
+PASS   : ProtonTest::credentialModesAreValidatedByProvider()
+PASS   : ProtonTest::missingShareAfterUncertainCreateRetainsIntent()
+PASS   : ProtonTest::journalFailureStopsPollingAndCanBeInspected(running-transition)
+PASS   : ProtonTest::journalFailureStopsPollingAndCanBeInspected(terminal-write)
+PASS   : ProtonTest::expiredPreviouslySharedLinkIsNotRecreatedByRetry()
+PASS   : ProtonTest::confirmedLinkExpiryIsKeptAndExpiredLinkIsNeverRecreated()
+PASS   : ProtonTest::retryPreservesExplicitLinkProtectionOptions()
+PASS   : ProtonTest::automaticSharingJournalFailureCanBeInspected()
+PASS   : ProtonTest::changedShareReceiptIsNeverExposed()
+PASS   : ProtonTest::stoppedUploadIsDefiniteFailure()
+
+        Start  18: x11_clipboard_import
+ 50/114 Test  #51: update_service_schedule .................   Passed   60.76 sec
+        Start  96: logging_contract
+ 51/114 Test  #18: x11_clipboard_import ....................   Passed    0.86 sec
+        Start  30: ui_split_services_integration
+ 52/114 Test  #36: ui_control_integration ..................   Passed    1.39 sec
+        Start  35: ui_endpoints_integration
+ 53/114 Test   #4: export_av_sync_contract .................   Passed    6.80 sec
+        Start  59: resident_display_loss_integration
+ 54/114 Test  #57: native_shortcut_rejection_integration ...   Passed    3.87 sec
+        Start   5: poster_contract
+ 55/114 Test   #5: poster_contract .........................   Passed    0.60 sec
+        Start  54: geometry_contract
+ 56/114 Test  #54: geometry_contract .......................   Passed    0.46 sec
+        Start  87: config_reload_integration
+ 57/114 Test  #59: resident_display_loss_integration .......   Passed    1.93 sec
+        Start 100: json_ref_lifetime_contract
+ 58/114 Test #100: json_ref_lifetime_contract ..............   Passed    0.54 sec
+        Start  78: sdk_contract
+ 59/114 Test  #78: sdk_contract ............................   Passed    0.26 sec
+        Start  42: gui_theme
+ 60/114 Test  #42: gui_theme ...............................   Passed    0.84 sec
+        Start  19: x11_capture_decode
+ 61/114 Test  #19: x11_capture_decode ......................   Passed    0.17 sec
+        Start  50: update_appimage_install_child
+ 62/114 Test  #87: config_reload_integration ...............   Passed    2.97 sec
+        Start  41: gui_window_buttons
+ 63/114 Test  #30: ui_split_services_integration ...........   Passed    6.02 sec
+        Start  92: kwin_transfer_contract
+ 64/114 Test  #92: kwin_transfer_contract ..................   Passed    0.17 sec
+        Start   9: bar_placement_single_monitor_contract
+ 65/114 Test   #9: bar_placement_single_monitor_contract ...   Passed    0.10 sec
+        Start  77: s3_worker_protocol
+ 66/114 Test  #77: s3_worker_protocol ......................   Passed    0.11 sec
+        Start  79: payload_contract
+ 67/114 Test  #41: gui_window_buttons ......................   Passed    0.87 sec
+        Start  38: version_integration
+ 68/114 Test  #38: version_integration .....................   Passed    0.67 sec
+        Start   8: bar_placement_contract
+ 69/114 Test   #8: bar_placement_contract ..................   Passed    0.07 sec
+        Start  27: kde_clipboard_import
+ 70/114 Test  #27: kde_clipboard_import ....................   Passed    0.12 sec
+        Start  63: file_dialog_x11_parent
+ 71/114 Test  #63: file_dialog_x11_parent ..................   Passed    0.12 sec
+        Start  89: gnome_image_decode
+ 72/114 Test  #89: gnome_image_decode ......................   Passed    0.07 sec
+        Start  68: keychain_integration
+ 73/114 Test  #68: keychain_integration ....................   Passed    0.11 sec
+        Start  20: x11_native_snapshot
+ 74/114 Test  #20: x11_native_snapshot .....................   Passed    0.04 sec
+        Start  75: build_contract
+ 75/114 Test  #75: build_contract ..........................   Passed    0.05 sec
+        Start  55: allocator_policy_contract
+ 76/114 Test  #55: allocator_policy_contract ...............   Passed    0.09 sec
+        Start  67: keychain_backend_integration
+ 77/114 Test  #67: keychain_backend_integration ............   Passed    0.01 sec
+        Start  52: host_environment_contract
+ 78/114 Test  #52: host_environment_contract ...............   Passed    0.06 sec
+        Start  81: upload_naming_contract
+ 79/114 Test  #81: upload_naming_contract ..................   Passed    0.05 sec
+        Start 109: kde_region_overlay
+ 80/114 Test #109: kde_region_overlay ......................   Passed    0.05 sec
+        Start  11: record_identity_contract
+ 81/114 Test  #11: record_identity_contract ................   Passed    0.02 sec
+        Start 104: login_startup_contract
+ 82/114 Test  #79: payload_contract ........................   Passed    2.24 sec
+        Start  47: update_check_request
+ 83/114 Test  #47: update_check_request ....................   Passed    0.02 sec
+        Start  84: recording_model_contract
+ 84/114 Test  #84: recording_model_contract ................   Passed    0.57 sec
+        Start  90: gnome_bridge_contract
+ 85/114 Test  #90: gnome_bridge_contract ...................   Passed    0.03 sec
+        Start  48: update_appimage_install_files
+ 86/114 Test  #50: update_appimage_install_child ...........   Passed    5.40 sec
+        Start   2: portal_streams_contract
+ 87/114 Test   #2: portal_streams_contract .................   Passed    0.01 sec
+        Start  80: archive_contract
+ 88/114 Test  #80: archive_contract ........................   Passed    0.20 sec
+        Start  24: kde_keyboard_map
+ 89/114 Test  #24: kde_keyboard_map ........................   Passed    0.01 sec
+        Start 107: ip_address_contract
+ 90/114 Test #107: ip_address_contract .....................   Passed    0.02 sec
+        Start  45: release_link_contract
+ 91/114 Test  #45: release_link_contract ...................   Passed    0.01 sec
+        Start  46: update_feed_contract
+ 92/114 Test  #46: update_feed_contract ....................   Passed    0.01 sec
+        Start  53: update_system_repository
+ 93/114 Test  #53: update_system_repository ................   Passed    0.01 sec
+        Start  22: kde_shortcut_normalization
+ 94/114 Test  #22: kde_shortcut_normalization ..............   Passed    0.01 sec
+        Start   7: record_runtime_contract
+ 95/114 Test   #7: record_runtime_contract .................   Passed    0.01 sec
+        Start  49: update_minisign_verify
+ 96/114 Test  #49: update_minisign_verify ..................   Passed    0.01 sec
+        Start   6: pause_timeline_contract
+ 97/114 Test   #6: pause_timeline_contract .................   Passed    0.00 sec
+        Start   3: wayland_acquisition_contract
+ 98/114 Test   #3: wayland_acquisition_contract ............   Passed    0.00 sec
+        Start  13: native_session_guards
+ 99/114 Test  #13: native_session_guards ...................   Passed    0.00 sec
+        Start  56: x11_raw_key_matcher
+100/114 Test  #56: x11_raw_key_matcher .....................   Passed    0.01 sec
+        Start  74: public_url
+101/114 Test  #74: public_url ..............................   Passed    0.00 sec
+        Start  25: shortcut_keyboard
+102/114 Test  #25: shortcut_keyboard .......................   Passed    0.00 sec
+        Start  15: capture_control_integration
+103/114 Test  #15: capture_control_integration .............   Passed    0.00 sec
+104/114 Test #104: login_startup_contract ..................   Passed    3.46 sec
+105/114 Test  #48: update_appimage_install_files ...........   Passed    3.18 sec
+106/114 Test  #98: diagnostics_upload_contract .............   Passed   57.92 sec
+107/114 Test  #35: ui_endpoints_integration ................   Passed   12.48 sec
+108/114 Test  #96: logging_contract ........................   Passed   14.61 sec
+109/114 Test  #93: recording_service_integration ...........   Passed  103.21 sec
+110/114 Test  #85: storage_contract_integration ............   Passed  101.49 sec
+111/114 Test  #88: storage_locations_integration ...........   Passed   35.26 sec
+112/114 Test #101: gui_settings ............................   Passed  267.77 sec
+113/114 Test #102: gui_history_view ........................   Passed  345.38 sec
+114/114 Test  #83: operations_contract .....................***Timeout 360.00 sec
+********* Start testing of OperationsTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : OperationsTest::initTestCase()
+PASS   : OperationsTest::screenshotOutcomeUsesResolvedRoute(local)
+PASS   : OperationsTest::screenshotOutcomeUsesResolvedRoute(proton)
+PASS   : OperationsTest::screenshotOutcomeUsesResolvedRoute(s3)
+PASS   : OperationsTest::screenshotOutcomeUsesResolvedRoute(b2)
+PASS   : OperationsTest::screenshotOutcomeUsesResolvedRoute(private)
+PASS   : OperationsTest::screenshotOutcomeUsesResolvedRoute(edit-proton)
+PASS   : OperationsTest::screenshotOutcomeUsesResolvedRoute(edit-local)
+PASS   : OperationsTest::historyImageCopiesSelectedUploadedOriginalAndRejectsChangedFiles()
+PASS   : OperationsTest::historyImageCopiesSixteenBitOriginalAboveFourBytePixelBudget()
+PASS   : OperationsTest::historyImagePreparationHonorsClipboardAndInvocationChanges(clipboard-owner)
+PASS   : OperationsTest::historyImagePreparationHonorsClipboardAndInvocationChanges(newer-copy)
+PASS   : OperationsTest::historyImageQueuedAfterCommittedCopyRebasesOnlyResidentAcknowledgements(resident-ack)
+PASS   : OperationsTest::historyImageQueuedAfterCommittedCopyRebasesOnlyResidentAcknowledgements(external-owner-after-ack)
+PASS   : OperationsTest::historyImageSupersededWorkerReleasesNewerCopy()
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(destination-0-local-0-inherit-0)
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(destination-0-local-1-inherit-0)
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(destination-1-local-0-inherit-0)
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(destination-1-local-1-inherit-0)
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(destination-0-local-0-inherit-1)
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(destination-0-local-1-inherit-1)
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(destination-1-local-0-inherit-1)
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(destination-1-local-1-inherit-1)
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(unconfigured-without-local)
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(unconfigured-with-local)
+PASS   : OperationsTest::pendingUploadsRetainTheirConfiguredClipboardMode(each-then-list)
+PASS   : OperationsTest::pendingUploadsRetainTheirConfiguredClipboardMode(list-then-each)
+PASS   : OperationsTest::cancellingBeforeNativeCommitDoesNotWriteTheLink()
+PASS   : OperationsTest::cancelledListMemberIsRemovedFromAnUnsentNativeCommit()
+PASS   : OperationsTest::historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery(suppressed)
+PASS   : OperationsTest::historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery(failed)
+PASS   : OperationsTest::historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery(native-failure)
+PASS   : OperationsTest::historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery(native-suppression)
+PASS   : OperationsTest::historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery(batch-subset)
+PASS   : OperationsTest::historyLinkCopyOnlyRecordsSuccessfulSingleItemRecovery(pending-auto-copy)
+PASS   : OperationsTest::resumedCopiesRecheckDurableRemoval(each-link)
+PASS   : OperationsTest::resumedCopiesRecheckDurableRemoval(list)
+PASS   : OperationsTest::laterCopyFailureRetainsPublishedLinksAndRecordsPartialStatus()
+PASS   : OperationsTest::deferredCopiesSerializeAndKeepPostCommitUserEdits(own-copies)
+PASS   : OperationsTest::deferredCopiesSerializeAndKeepPostCommitUserEdits(user-edit-before-callback-dispatch)
+PASS   : OperationsTest::deferredCopiesSerializeAndKeepPostCommitUserEdits(worker-reply)
+PASS   : OperationsTest::deferredCopiesSerializeAndKeepPostCommitUserEdits(worker-reply-with-user-edit)
+PASS   : OperationsTest::newImportPausesAndResumesAnUnsentLinkCopy()
+PASS   : OperationsTest::suppressedAutomaticCopyIsLoggedWithItsGuard()
+PASS   : OperationsTest::explicitHistoryCopySupersedesPendingUploadList()
+PASS   : OperationsTest::explicitActivityCopyCanOverrideACompletedListMember()
+PASS   : OperationsTest::mixedResultsAndCancellationKeepUnrelatedLinks(each-link)
+PASS   : OperationsTest::mixedResultsAndCancellationKeepUnrelatedLinks(list)
+PASS   : OperationsTest::regionSelectionModeReachesTheSource()
+PASS   : OperationsTest::queuedUploadsCopyEveryLink(each_link1)
+PASS   : OperationsTest::queuedUploadsCopyEveryLink(each_link2)
+PASS   : OperationsTest::queuedUploadsCopyEveryLink(each_link3)
+PASS   : OperationsTest::queuedUploadsCopyEveryLink(each_link-user-change)
+PASS   : OperationsTest::queuedUploadsCopyEveryLink(list1)
+PASS   : OperationsTest::queuedUploadsCopyEveryLink(list2)
+PASS   : OperationsTest::queuedUploadsCopyEveryLink(list3)
+PASS   : OperationsTest::queuedUploadsCopyEveryLink(list-user-change)
+PASS   : OperationsTest::multiFileUploadsHonorClipboardMode(each_link2)
+PASS   : OperationsTest::multiFileUploadsHonorClipboardMode(each_link3)
+PASS   : OperationsTest::multiFileUploadsHonorClipboardMode(list2)
+PASS   : OperationsTest::multiFileUploadsHonorClipboardMode(list3)
+PASS   : OperationsTest::midflightPhaseReachesInspectionAndChangeSignal()
+PASS   : OperationsTest::videoPostersFollowTheResultWithoutDelayingIt(slow)
+PASS   : OperationsTest::videoPostersFollowTheResultWithoutDelayingIt(failed)
+libpng error: Not a PNG file
+libpng error: Not a PNG file
+PASS   : OperationsTest::missingPreviewsAreMadeOnDemand()
+PASS   : OperationsTest::onDemandPreviewsAreBounded()
+PASS   : OperationsTest::inactiveCancellationNormalizesPhaseWithoutChangingItemOutcome()
+PASS   : OperationsTest::optionalProgressRoundTripsAndLegacyOperationsRemainReadable()
+PASS   : OperationsTest::cleanupBlocksRetriesUntilItsSnapshotFinishes()
+PASS   : OperationsTest::batchItemCheckpointsHaveLinearLedgerWrites()
+PASS   : OperationsTest::startupHeapCleanupRunsOnceAfterSuccessfulInitialization()
+PASS   : OperationsTest::failedInitializationDoesNotRequestHeapCleanup()
+PASS   : OperationsTest::shutdownCancelsPendingStartupHeapCleanup()
+PASS   : OperationsTest::startupHeapCleanupWaitsForBackgroundWorker()
+PASS   : OperationsTest::queuedCaptureNameUsesOriginalActionTime()
+PASS   : OperationsTest::queuedImagesRespectByteBudgetAndCancellationReleasesCapacity()
+
+
+98% tests passed, 2 tests failed out of 114
+
+Label Time Summary:
+integration    = 2714.09 sec*proc (83 tests)
+unit           =  76.94 sec*proc (31 tests)
+
+Total Test time (real) = 360.02 sec
+
+The following tests FAILED:
+	 83 - operations_contract (Timeout)                     integration
+	112 - proton_contract (Timeout)                         integration
+Errors while running CTest
+Retrying 2 failed integration test(s) once: operations_contract, proton_contract
+$ ctest --preset dev --parallel 12 --resource-spec-file /home/user/work/put.gd/src/tools/ci/ctest-resources.json --output-junit /home/user/779/ci/ctest-retry.xml -R ^(operations_contract|proton_contract)$
+Test project /home/user/work/put.gd/src/build/dev
+    Start  83: operations_contract
+    Start 112: proton_contract

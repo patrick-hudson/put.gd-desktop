@@ -1,0 +1,23 @@
+{
+  "createdIds": [
+    "bx_2jts8sa3",
+    "bx_5qayrjpd",
+    "bx_byuktmeh",
+    "bx_g8yffq3n",
+    "bx_mchzyw39",
+    "bx_mgrzcdm7",
+    "bx_mns2fsm6",
+    "bx_ta596w8d",
+    "bx_v695pu7v",
+    "bx_vbpp4vva",
+    "bx_veyd2y38",
+    "bx_vwz4dm6f",
+    "bx_xaa48327",
+    "bx_zk8g6pwh"
+  ],
+  "createdCount": 14,
+  "remaining": [],
+  "verifiedAtUtc": "2026-10-30T01:57:02.159678+00:00",
+  "verification": "boat list --all",
+  "scope": "Only this task's sandbox IDs; unrelated workers preserved"
+}

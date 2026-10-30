@@ -1,0 +1,7 @@
+{
+  "format": "deb",
+  "installEvidence": "/home/user/lab-driver/work/lab-runs/ps3/install-f4b7f03e5c5e41d99f70fa592282ad54",
+  "sha256": "dd8a58d3779e7e7873c69e364a72dbfa5439c9f3088841dc447c47afd2cdaa9f",
+  "status": "installed",
+  "timedOut": false
+}

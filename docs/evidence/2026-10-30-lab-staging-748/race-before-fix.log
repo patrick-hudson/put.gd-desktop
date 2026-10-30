@@ -1,0 +1,29 @@
+FFF
+======================================================================
+FAIL: test_concurrent_release_and_recovery_cannot_remove_replacement_lock (tests.desktop.test_lab.LabContracts.test_concurrent_release_and_recovery_cannot_remove_replacement_lock) (number=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-4f2b3aa6/tests/desktop/test_lab.py", line 751, in test_concurrent_release_and_recovery_cannot_remove_replacement_lock
+    with self.assertRaises(lab.subprocess.TimeoutExpired):
+AssertionError: TimeoutExpired not raised
+
+======================================================================
+FAIL: test_concurrent_release_and_recovery_cannot_remove_replacement_lock (tests.desktop.test_lab.LabContracts.test_concurrent_release_and_recovery_cannot_remove_replacement_lock) (number=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-4f2b3aa6/tests/desktop/test_lab.py", line 751, in test_concurrent_release_and_recovery_cannot_remove_replacement_lock
+    with self.assertRaises(lab.subprocess.TimeoutExpired):
+AssertionError: TimeoutExpired not raised
+
+======================================================================
+FAIL: test_concurrent_release_and_recovery_cannot_remove_replacement_lock (tests.desktop.test_lab.LabContracts.test_concurrent_release_and_recovery_cannot_remove_replacement_lock) (number=2)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-4f2b3aa6/tests/desktop/test_lab.py", line 751, in test_concurrent_release_and_recovery_cannot_remove_replacement_lock
+    with self.assertRaises(lab.subprocess.TimeoutExpired):
+AssertionError: TimeoutExpired not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.225s
+
+FAILED (failures=3)

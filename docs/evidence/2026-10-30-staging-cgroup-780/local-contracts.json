@@ -1,0 +1,32 @@
+{
+  "sourceCommit": "3e21fbf10db71bd4ed5b1f81acb224c53f962bfd",
+  "placement": "workstation",
+  "syntheticOnly": true,
+  "totalPassed": 133,
+  "suites": [
+    {
+      "command": "python3 tests/desktop/test_lab.py",
+      "passed": 65,
+      "log": "test-lab.log",
+      "sha256": "e7904c0f496c25969845a6a954567a99c02d205360df6147a72135807eb22bed"
+    },
+    {
+      "command": "python3 tests/desktop/test_staging_recovery.py",
+      "passed": 31,
+      "log": "test-staging.log",
+      "sha256": "23c99393246f148e24d351f5f4411e8ee1d637a52f707190c2b165532a94a2e9"
+    },
+    {
+      "command": "python3 tests/desktop/test_package_install.py",
+      "passed": 8,
+      "log": "test-package-install.log",
+      "sha256": "30e0ecc3a094e7eb83633931902a534b3d97b1fc2100d7cb5bc5e9243c604b03"
+    },
+    {
+      "command": "python3 tests/desktop/test_overlay_cleanup.py",
+      "passed": 29,
+      "log": "test-overlay-cleanup.log",
+      "sha256": "c3cbc5e5491594807f52d0d2f2552576240b571690c8b411bd48d76a03d6f1e9"
+    }
+  ]
+}

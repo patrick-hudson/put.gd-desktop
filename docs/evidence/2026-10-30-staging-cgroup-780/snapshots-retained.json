@@ -1,0 +1,8 @@
+{
+  "namedSnapshotsRetained": {
+    "putgd-lab-ubuntu-gnome-v3": "c5e00501-fc17-4478-9476-8626ecf7ab00",
+    "putgd-lab-cinnamon-v2": "78986e35-4791-42f8-a43d-5ee7b20700a9"
+  },
+  "allExpectedPresent": true,
+  "sandboxCountCreated": 2
+}

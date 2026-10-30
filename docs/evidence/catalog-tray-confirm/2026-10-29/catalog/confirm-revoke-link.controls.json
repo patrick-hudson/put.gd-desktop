@@ -1,0 +1,65 @@
+{
+    "class": "QMessageBox",
+    "controls": [
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_label",
+            "rect": [
+                24,
+                20,
+                420,
+                38
+            ],
+            "text": "Revoke the share link for ‘Screenshot 01:50:43.png’ in Proton Drive · put.gd?"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmDiscard",
+            "rect": [
+                342,
+                120,
+                102,
+                36
+            ],
+            "text": "Revoke link"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                263,
+                120,
+                73,
+                36
+            ],
+            "text": "Cancel"
+        },
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_informativelabel",
+            "rect": [
+                24,
+                70,
+                420,
+                34
+            ],
+            "text": "The uploaded file remains. Existing member access and downloaded copies remain."
+        }
+    ],
+    "height": 172,
+    "keys": [
+    ],
+    "width": 468
+}

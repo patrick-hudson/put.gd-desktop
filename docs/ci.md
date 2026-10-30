@@ -71,8 +71,9 @@ every hosted Python suite once through `tools/ci/contracts.py`:
 - `evidence`: the saved source114 live-S3 numeric replay, which is historical
   validation rather than a fresh cloud or desktop run.
 
-Each group writes a JSON report and log to the `contracts` artifact. The job
-also runs `actionlint` 1.7.12, pinned by SHA-256, on every workflow.
+Each group writes a JSON report and log to the `contracts` artifact. A failing
+suite's output, with its failing cases and tracebacks, is also printed in the
+job log. The job also runs `actionlint` 1.7.12, pinned by SHA-256, on every workflow.
 
 **linux** builds the Debug `dev` preset with the bundled Proton helper on Ubuntu
 24.04 (minimum distro Qt API) and Ubuntu 26.04 (LayerShellQt). It runs the full
@@ -82,6 +83,20 @@ and a failed integration test is retried once and reported (see
 [flaky tests](#flaky-tests)). Hosted Xvfb and
 offscreen contracts do not establish compositor support or physical memory
 acceptance. The Release-preset compile happens in the package builders, not here.
+
+On the 26.04 leg only (`-DPUTGD_UI_CATALOG_REFERENCES=ON`), the suite includes
+the [UI catalog](ui-catalog.md) tests. `ui_catalog_dark` and `ui_catalog_light`
+compare every rendered state except those in `IMAGE_EXEMPT` with
+`tests/gui/catalog-references`, within the
+`tools/ci/image_diff.py` tolerance. `ui_catalog_text_150` keeps the catalog's
+layout checks at 150% text. They run in the `cpu` pool alongside the other
+tests. When one fails, the `ui-catalog-check` artifact holds each render with
+its expected, actual and diff images. After the tests, the surface map check
+reads the dark render, which is also uploaded as the `ui-catalog` artifact
+that the nightly workflow publishes. On 2026-10-30 (#708) the three tests took
+188–197 s each. The leg's Test step took 247 s, against 241–270 s for the
+previous tests plus a separate catalog render step, and the whole run took
+787 s against 810–870 s.
 
 **sanitizers** builds the `clang-asan` preset (the `asan` preset's
 `-fsanitize=address,undefined`, compiled with clang) in an Ubuntu 26.04 container and

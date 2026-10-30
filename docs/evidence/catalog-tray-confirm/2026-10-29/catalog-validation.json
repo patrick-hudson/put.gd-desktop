@@ -1,0 +1,1004 @@
+{
+  "kind": "synthetic-offscreen-catalog-validation",
+  "surfaces": {
+    "tray": {
+      "states": [
+        {
+          "capture": "00-tray-menu-idle",
+          "hotspots": [
+            {
+              "interaction": "tray.menu-output-submenu",
+              "rect": [
+                6,
+                6,
+                315,
+                32
+              ],
+              "text": "Shared link \u00b7 Proton Drive + local copy"
+            },
+            {
+              "interaction": "tray.menu-change-output",
+              "rect": [
+                6,
+                38,
+                315,
+                32
+              ],
+              "text": "Change output\u2026"
+            },
+            {
+              "interaction": "tray.menu-capture-region",
+              "rect": [
+                6,
+                79,
+                315,
+                32
+              ],
+              "text": "Capture region"
+            },
+            {
+              "interaction": "tray.menu-capture-window",
+              "rect": [
+                6,
+                111,
+                315,
+                32
+              ],
+              "text": "Capture window"
+            },
+            {
+              "interaction": "tray.menu-capture-desktop",
+              "rect": [
+                6,
+                143,
+                315,
+                32
+              ],
+              "text": "Capture desktop"
+            },
+            {
+              "interaction": "tray.menu-capture-region-edit",
+              "rect": [
+                6,
+                175,
+                315,
+                32
+              ],
+              "text": "Capture region && edit"
+            },
+            {
+              "interaction": "tray.menu-edit-sources",
+              "rect": [
+                6,
+                207,
+                315,
+                32
+              ],
+              "text": "Edit image"
+            },
+            {
+              "interaction": "tray.menu-record",
+              "rect": [
+                6,
+                239,
+                315,
+                32
+              ],
+              "text": "Record screen"
+            },
+            {
+              "interaction": "tray.menu-upload-clipboard",
+              "rect": [
+                6,
+                271,
+                315,
+                32
+              ],
+              "text": "Upload clipboard"
+            },
+            {
+              "interaction": "tray.menu-history",
+              "rect": [
+                6,
+                312,
+                315,
+                32
+              ],
+              "text": "History"
+            },
+            {
+              "interaction": "tray.menu-destinations",
+              "rect": [
+                6,
+                344,
+                315,
+                32
+              ],
+              "text": "Destinations"
+            },
+            {
+              "interaction": "tray.menu-settings",
+              "rect": [
+                6,
+                376,
+                315,
+                32
+              ],
+              "text": "Settings"
+            },
+            {
+              "interaction": "tray.menu-update-available",
+              "rect": [
+                6,
+                408,
+                315,
+                32
+              ],
+              "text": "Update available: 26.1029.9999"
+            },
+            {
+              "interaction": "tray.menu-about",
+              "rect": [
+                6,
+                449,
+                315,
+                32
+              ],
+              "text": "About put.gd"
+            },
+            {
+              "interaction": "tray.menu-quit",
+              "rect": [
+                6,
+                481,
+                315,
+                32
+              ],
+              "text": "Quit put.gd"
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "00-tray-menu-uploading",
+          "hotspots": [
+            {
+              "interaction": "tray.menu-upload-status",
+              "rect": [
+                6,
+                6,
+                315,
+                32
+              ],
+              "text": "Uploading 1 file\u2026"
+            },
+            {
+              "interaction": "tray.menu-cancel-upload",
+              "rect": [
+                6,
+                47,
+                315,
+                32
+              ],
+              "text": "Cancel upload"
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "00-tray-output-submenu",
+          "hotspots": [
+            {
+              "interaction": "tray.menu-output-submenu",
+              "rect": [
+                6,
+                6,
+                280,
+                50
+              ],
+              "text": "Capture region: Shared link \u00b7 Proton Drive + local copy"
+            },
+            {
+              "interaction": "tray.menu-output-submenu",
+              "rect": [
+                6,
+                56,
+                280,
+                50
+              ],
+              "text": "Capture window: Shared link \u00b7 Proton Drive + local copy"
+            },
+            {
+              "interaction": "tray.menu-output-submenu",
+              "rect": [
+                6,
+                106,
+                280,
+                50
+              ],
+              "text": "Capture desktop: Shared link \u00b7 Proton Drive + local copy"
+            },
+            {
+              "interaction": "tray.menu-output-submenu",
+              "rect": [
+                6,
+                156,
+                280,
+                50
+              ],
+              "text": "Capture region && edit: Shared link \u00b7 Proton Drive + local copy"
+            },
+            {
+              "interaction": "tray.menu-output-submenu",
+              "rect": [
+                6,
+                206,
+                280,
+                50
+              ],
+              "text": "Record screen: Shared link \u00b7 Proton Drive + local copy"
+            },
+            {
+              "interaction": "tray.menu-output-submenu",
+              "rect": [
+                6,
+                256,
+                280,
+                50
+              ],
+              "text": "Upload clipboard: Shared link \u00b7 Proton Drive + local copy"
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "00-tray-edit-submenu",
+          "hotspots": [
+            {
+              "interaction": "tray.menu-edit-clipboard",
+              "rect": [
+                6,
+                6,
+                157,
+                32
+              ],
+              "text": "Edit clipboard image"
+            },
+            {
+              "interaction": "tray.menu-edit-file",
+              "rect": [
+                6,
+                38,
+                157,
+                32
+              ],
+              "text": "Edit an image file\u2026"
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "00-tray-menu-proton-busy",
+          "hotspots": [
+            {
+              "interaction": "tray.menu-attention",
+              "rect": [
+                6,
+                408,
+                315,
+                32
+              ],
+              "text": "Failed uploads (1)"
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        }
+      ],
+      "hotspotInteractions": [
+        "tray.menu-about",
+        "tray.menu-attention",
+        "tray.menu-cancel-upload",
+        "tray.menu-capture-desktop",
+        "tray.menu-capture-region",
+        "tray.menu-capture-region-edit",
+        "tray.menu-capture-window",
+        "tray.menu-change-output",
+        "tray.menu-destinations",
+        "tray.menu-edit-clipboard",
+        "tray.menu-edit-file",
+        "tray.menu-edit-sources",
+        "tray.menu-history",
+        "tray.menu-output-submenu",
+        "tray.menu-quit",
+        "tray.menu-record",
+        "tray.menu-settings",
+        "tray.menu-update-available",
+        "tray.menu-upload-clipboard",
+        "tray.menu-upload-status"
+      ],
+      "intentionallyUnpictured": [
+        "tray.icon-idle",
+        "tray.icon-uploading",
+        "tray.icon-complete",
+        "tray.icon-attention",
+        "tray.icon-recording",
+        "tray.tooltip",
+        "tray.activate",
+        "tray.context-menu",
+        "tray.scroll-noop",
+        "tray.menu-shortcut-suffix",
+        "tray.qt-fallback"
+      ]
+    },
+    "confirm": {
+      "states": [
+        {
+          "capture": "19-editor-discard-confirm",
+          "hotspots": [
+            {
+              "interaction": "confirm.editor-discard",
+              "rect": [
+                268,
+                84,
+                112,
+                36
+              ],
+              "text": "Discard edits"
+            },
+            {
+              "interaction": "confirm.editor-discard",
+              "rect": [
+                153,
+                84,
+                109,
+                36
+              ],
+              "text": "Keep editing"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                20,
+                356,
+                19
+              ],
+              "text": "Discard your edits and close the editor?"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                51,
+                356,
+                17
+              ],
+              "text": "Nothing has been uploaded. Your marks and crop will be lost."
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "41-review-discard-confirm",
+          "hotspots": [
+            {
+              "interaction": "confirm.review-discard",
+              "rect": [
+                303,
+                101,
+                141,
+                36
+              ],
+              "text": "Discard recording"
+            },
+            {
+              "interaction": "confirm.review-discard",
+              "rect": [
+                171,
+                101,
+                126,
+                36
+              ],
+              "text": "Keep reviewing"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                20,
+                420,
+                19
+              ],
+              "text": "Discard this recording and its edits?"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                51,
+                420,
+                34
+              ],
+              "text": "The recording, its trim and its masks are deleted. Nothing has been uploaded; copies you saved stay."
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "42-history-delete-confirmation",
+          "hotspots": [
+            {
+              "interaction": "confirm.history-delete",
+              "rect": [
+                24,
+                354,
+                143,
+                36
+              ],
+              "text": "Technical details"
+            },
+            {
+              "interaction": "confirm.history-delete",
+              "rect": [
+                471,
+                402,
+                65,
+                36
+              ],
+              "text": "Close"
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "confirm-history-delete-supported",
+          "hotspots": [
+            {
+              "interaction": "confirm.history-delete",
+              "rect": [
+                24,
+                420,
+                143,
+                36
+              ],
+              "text": "Technical details"
+            },
+            {
+              "interaction": "confirm.history-delete",
+              "rect": [
+                342,
+                468,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            },
+            {
+              "interaction": "confirm.history-delete",
+              "rect": [
+                423,
+                468,
+                113,
+                36
+              ],
+              "text": "Delete 2 files"
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "history-cancel-all-confirmation",
+          "hotspots": [
+            {
+              "interaction": "confirm.history-cancel-all",
+              "rect": [
+                310,
+                134,
+                146,
+                36
+              ],
+              "text": "Cancel 24 uploads"
+            },
+            {
+              "interaction": "confirm.history-cancel-all",
+              "rect": [
+                166,
+                134,
+                128,
+                36
+              ],
+              "text": "Keep uploading"
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "confirm-clear-history",
+          "hotspots": [
+            {
+              "interaction": "confirm.history-clear",
+              "rect": [
+                284,
+                74,
+                160,
+                36
+              ],
+              "text": "Clear history records"
+            },
+            {
+              "interaction": "confirm.history-clear",
+              "rect": [
+                205,
+                74,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                20,
+                420,
+                38
+              ],
+              "text": "Clear every local history record? Remote objects and user-owned local copies remain."
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "confirm-clear-cache",
+          "hotspots": [
+            {
+              "interaction": "confirm.history-clear",
+              "rect": [
+                282,
+                93,
+                162,
+                36
+              ],
+              "text": "Clear temporary files"
+            },
+            {
+              "interaction": "confirm.history-clear",
+              "rect": [
+                203,
+                93,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                20,
+                420,
+                57
+              ],
+              "text": "Removes cached previews and temporary upload files. Some failed uploads will no longer be retryable. Saved local copies and uploaded files remain."
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "53-reload-confirm",
+          "hotspots": [
+            {
+              "interaction": "confirm.settings-reload",
+              "rect": [
+                314,
+                120,
+                130,
+                36
+              ],
+              "text": "Reload from file"
+            },
+            {
+              "interaction": "confirm.settings-reload",
+              "rect": [
+                235,
+                120,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                20,
+                420,
+                38
+              ],
+              "text": "Replace this window's settings with the configuration file as it is now?"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                70,
+                420,
+                34
+              ],
+              "text": "These unsaved edits are discarded:\n\u2022 Credentials typed but not stored"
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "confirm-reset-limits",
+          "hotspots": [
+            {
+              "interaction": "confirm.reset-limits",
+              "rect": [
+                338,
+                120,
+                106,
+                36
+              ],
+              "text": "Reset limits"
+            },
+            {
+              "interaction": "confirm.reset-limits",
+              "rect": [
+                259,
+                120,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                20,
+                420,
+                38
+              ],
+              "text": "Reset the limits on this page to their defaults: uploads, images and clipboard, memory and cache, and history retention?"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                70,
+                420,
+                34
+              ],
+              "text": "Debug logging, diagnostics, the config file and every other setting stay as they are."
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "confirm-clear-logs",
+          "hotspots": [
+            {
+              "interaction": "confirm.clear-logs",
+              "rect": [
+                352,
+                74,
+                92,
+                36
+              ],
+              "text": "Clear logs"
+            },
+            {
+              "interaction": "confirm.clear-logs",
+              "rect": [
+                273,
+                74,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                20,
+                420,
+                38
+              ],
+              "text": "Delete every put.gd log file? Uploads, history, settings and saved diagnostics packages stay."
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "confirm-remove-destination",
+          "hotspots": [
+            {
+              "interaction": "confirm.remove-destination",
+              "rect": [
+                289,
+                74,
+                155,
+                36
+              ],
+              "text": "Remove destination"
+            },
+            {
+              "interaction": "confirm.remove-destination",
+              "rect": [
+                210,
+                74,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                20,
+                420,
+                38
+              ],
+              "text": "Remove \"Project archive\" from settings? Existing history and remote files remain."
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "confirm-make-default-untested",
+          "hotspots": [
+            {
+              "interaction": "confirm.make-default-untested",
+              "rect": [
+                330,
+                93,
+                114,
+                36
+              ],
+              "text": "Make default"
+            },
+            {
+              "interaction": "confirm.make-default-untested",
+              "rect": [
+                251,
+                93,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                20,
+                420,
+                57
+              ],
+              "text": "This connection has not passed a test in this session. Use \"Project archive\" as the capture default? Per-action exceptions will stay unchanged."
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "confirm-switch-older",
+          "hotspots": [
+            {
+              "interaction": "confirm.switch-older",
+              "rect": [
+                241,
+                154,
+                203,
+                36
+              ],
+              "text": "Switch to stable 26.1028.1"
+            },
+            {
+              "interaction": "confirm.switch-older",
+              "rect": [
+                162,
+                154,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                20,
+                420,
+                38
+              ],
+              "text": "Switch to stable 26.1028.1, which is older than this build (26.1029.1)?"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                70,
+                420,
+                68
+              ],
+              "text": "put.gd replaces synthetic-putgd.AppImage with stable 26.1028.1, checked against the stable release's signature, at the same path. An older version may not open settings or history saved by a newer one. This version is kept as a hidden backup until the new one has started."
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "confirm-revoke-link",
+          "hotspots": [
+            {
+              "interaction": "confirm.revoke-link",
+              "rect": [
+                342,
+                120,
+                102,
+                36
+              ],
+              "text": "Revoke link"
+            },
+            {
+              "interaction": "confirm.revoke-link",
+              "rect": [
+                263,
+                120,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                20,
+                420,
+                38
+              ],
+              "text": "Revoke the share link for \u2018Screenshot 01:50:43.png\u2019 in Proton Drive \u00b7 put.gd?"
+            },
+            {
+              "interaction": "confirm.message",
+              "rect": [
+                24,
+                70,
+                420,
+                34
+              ],
+              "text": "The uploaded file remains. Existing member access and downloaded copies remain."
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "confirm-add-destination-name",
+          "hotspots": [
+            {
+              "interaction": "confirm.add-destination-name",
+              "rect": [
+                11,
+                36,
+                178,
+                36
+              ],
+              "text": ""
+            },
+            {
+              "interaction": "confirm.add-destination-name",
+              "rect": [
+                46,
+                78,
+                64,
+                36
+              ],
+              "text": "OK"
+            },
+            {
+              "interaction": "confirm.add-destination-name",
+              "rect": [
+                116,
+                78,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        },
+        {
+          "capture": "confirm-new-proton-folder",
+          "hotspots": [
+            {
+              "interaction": "confirm.add-destination-name",
+              "rect": [
+                11,
+                36,
+                178,
+                36
+              ],
+              "text": ""
+            },
+            {
+              "interaction": "confirm.add-destination-name",
+              "rect": [
+                46,
+                78,
+                64,
+                36
+              ],
+              "text": "OK"
+            },
+            {
+              "interaction": "confirm.add-destination-name",
+              "rect": [
+                116,
+                78,
+                73,
+                36
+              ],
+              "text": "Cancel"
+            }
+          ],
+          "unmodelledControls": [],
+          "unmodelledKeys": []
+        }
+      ],
+      "hotspotInteractions": [
+        "confirm.add-destination-name",
+        "confirm.clear-logs",
+        "confirm.editor-discard",
+        "confirm.history-cancel-all",
+        "confirm.history-clear",
+        "confirm.history-delete",
+        "confirm.make-default-untested",
+        "confirm.message",
+        "confirm.remove-destination",
+        "confirm.reset-limits",
+        "confirm.review-discard",
+        "confirm.revoke-link",
+        "confirm.settings-reload",
+        "confirm.switch-older"
+      ],
+      "intentionallyUnpictured": [
+        "confirm.key-esc",
+        "confirm.in-app-notices"
+      ]
+    }
+  },
+  "stableTrayRows": true,
+  "literalOutputAmpersand": true,
+  "editorRecentColours": {
+    "swatchControls": [
+      "recentColorSwatch_123456",
+      "recentColorSwatch_abcdef"
+    ],
+    "preparationAndSavedCopyControlsAbsent": true
+  }
+}

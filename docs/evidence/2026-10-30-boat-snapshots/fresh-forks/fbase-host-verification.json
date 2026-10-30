@@ -1,0 +1,24 @@
+{
+  "placement": "boat",
+  "sandboxId": "bx_pvwpzwe7",
+  "snapshotName": "putgd-build-base-v3",
+  "builtTreeCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+  "ctestSummary": {
+    "tests": 114,
+    "failedFirst": [],
+    "failed": [],
+    "retried": [],
+    "passedOnRetry": [],
+    "blocking": [],
+    "unexplainedCtestFailure": false,
+    "ok": true
+  },
+  "retryEnabled": false,
+  "parallel": 12,
+  "timeScale": 3,
+  "automaticScratch": "/dev/shm",
+  "configureBuildWithoutInstallOrReprovision": true,
+  "inheritedManifestUnchanged": true,
+  "protonRuntimeUnchanged": true,
+  "bootstrapUnchanged": true
+}

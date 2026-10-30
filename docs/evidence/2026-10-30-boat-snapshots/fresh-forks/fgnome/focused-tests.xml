@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="2"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="box-node-92ad7400cc57c384"
+	time="20"
+	timestamp="2026-10-30T06:11:43"
+	>
+	<testcase name="editor_job_integration" classname="editor_job_integration" time="5.441" status="run">
+		<properties>
+			<property name="cmake_labels" value="integration"/>
+		</properties>
+		<system-out>********* Start testing of EditorJobTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : EditorJobTest::initTestCase()
+PASS   : EditorJobTest::saveCopyRepliesAfterWorkerCompletionWhileViewStaysAvailable()
+PASS   : EditorJobTest::agentEditsPreviewSaveAndSubmitSanitizedResult()
+PASS   : EditorJobTest::oversizedResultReturnsToEditing()
+PASS   : EditorJobTest::agentCancelDiscardsWithoutOutput()
+PASS   : EditorJobTest::helperCrashWhileEditingFailsClosed()
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(never ready (startup timeout))
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(crash while editing)
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(hang while finalizing (finalize timeout))
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(output is not a PNG)
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(output digest mismatch)
+libpng error: Wr...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="x11_isolated" classname="x11_isolated" time="20.6351" status="run">
+		<properties>
+			<property name="cmake_labels" value="integration"/>
+		</properties>
+		<system-out>********* Start testing of X11Test *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : X11Test::initTestCase()
+PASS   : X11Test::compositorSettleFollowsRepaintsOverSelection()
+PASS   : X11Test::compositedRegionReadsAfterStaleSelectorFrames()
+PASS   : X11Test::compositedRegionCancellationDuringSettle()
+PASS   : X11Test::nativeSelectionTextAndRevision()
+PASS   : X11Test::nativeFilesImageAndUrlPrecedence()
+PASS   : X11Test::remoteUriFallsThroughToText()
+PASS   : X11Test::bmpImageAndIncrementalSelection()
+PASS   : X11Test::incrementalText()
+PASS   : X11Test::invocationRevisionIncludesQueuedOwnerChange()
+PASS   : X11Test::nativeKeyActivationWithLocks()
+PASS   : X11Test::selectionOutlineStaysInsideTinyAndScaledBounds()
+PASS   : X11Test::regionCancellationAndExactSelection()
+PASS   : X11Test::cinnamonRegionCaptureDecodesMixedMonitors()
+PASS   : X11Test::cinnamonRegionCaptureWithoutCompletionWatch(complete)
+PASS   : X1...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+</testsuite>

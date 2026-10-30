@@ -1495,6 +1495,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     frame->addWidget(statusRow_);
     // One footer row when its measured content fits; metadata moves above otherwise.
     format_ = new FormatBox(this);
+    format_->setObjectName("format");
     format_->setAccessibleName("Output format");
     for (const auto& format : options.formats) {
         const auto codecs = options.codecs[format].toArray();
