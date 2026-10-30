@@ -131,6 +131,8 @@ def main(argv=None):
     args=parser().parse_args(argv)
     if not re.fullmatch(r'[A-Za-z0-9_.-]+',args.campaign):
         raise SystemExit('campaign must be a filename-safe identifier')
+    if args.placement=='native' and args.guest:
+        raise SystemExit('native placement cannot name a guest')
     if args.placement=='boat' and not args.boat_id:
         raise SystemExit('--placement boat requires --boat-id')
     if args.host_profile and args.host != 'boat' and (args.placement != 'native' or not args.lock_session):
@@ -150,14 +152,21 @@ def main(argv=None):
     target=None
     rows=[]
     recipes=[]
+    exit_code=2
     try:
         profile=load_profile(args.desktop,args.profiles)
         recipes=discover(args.recipes);validate_recipes(recipes)
-        target=Target(run=run,host_profile=args.host_profile,bin_dir=args.bin_dir)
+        target=Target(run=run,host_profile=args.host_profile,bin_dir=args.bin_dir,
+                      app_executable='putgd-launcher' if args.package=='appimage' else 'putgd')
         environment['placement_details'].update(run_id=target.info['id'],lab_profile=target.info['profile'],
-                                                 run_directory=str(target.run),session_root=target.root,socket=target.socket)
+                                                 run_directory=str(target.run),session_root=target.root,socket=target.socket,
+                                                 input_backend=('host-input' if (target.run/'qmp.sock').exists() else 'vnc') if target.physical else 'qmp',
+                                                 frame_backend='vnc' if target.physical else 'qmp')
         if args.placement=='native':
             target.require_lock(args.host,args.lock_session)
+        environment['target']=target.identity()
+        if environment['target'].get('session_type')!=profile['session']:
+            raise RecipeBlocked('native session type does not match the selected desktop profile')
         target.start()
         context=DriverContext(target,environment,profile,args.catalog,args.out)
         snapshot=context.call('ui.snapshot')
@@ -177,7 +186,7 @@ def main(argv=None):
         context.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],'patch':patch})
         context.start_notifications()
         rows=run_recipes(context,recipes,environment,args.out,args.campaign,coverage)
-        return 0 if all(r.functional=='passed' for r in rows) else 1
+        exit_code=0 if all(r.functional=='passed' for r in rows) else 1
     except (RecipeBlocked,RecipeFailed,lab.LabError,ValueError,FileNotFoundError) as error:
         environment['blocked']=str(error)
         if target:
@@ -192,13 +201,16 @@ def main(argv=None):
                   destination=args.destination,recipe=r.name,build=args.build,at=stamp()) for r in recipes for i in r.interactions]
         write_receipts(args.out,environment,rows,args.campaign,coverage)
         print(json.dumps({'blocked':str(error)}),file=sys.stderr)
-        return 2
+        exit_code=2
     finally:
         if target:
             cleanup=target.close()
             if cleanup:
                 environment['cleanup_errors']=cleanup
                 write_receipts(args.out,environment,rows,args.campaign,coverage)
+                if exit_code==0:
+                    exit_code=2
+    return exit_code
 
 
 if __name__=='__main__':
