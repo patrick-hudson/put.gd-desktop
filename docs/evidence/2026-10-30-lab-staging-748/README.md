@@ -1,7 +1,7 @@
 # Guest helper staging lifetime, issue #748
 
 Code PR: [#755](https://github.com/patrick-hudson/put.gd-desktop/pull/755).
-Tested implementation: `5fd31c196dee3e2e18e1bd8b7e0427ab320fa574`, based on
+Live-tested implementation: `5fd31c196dee3e2e18e1bd8b7e0427ab320fa574`, based on
 nightly containing #747. [Exact Python hashes](source-identity.json) match the
 committed files. This is installer/process-lifecycle evidence; no new product
 build, desktop release acceptance, physical performance, S3 or Proton use is claimed.
@@ -34,6 +34,30 @@ The socket paths were checked before allocation. Failed preparation commands and
 their corrections are retained in [preparation context](preparation-context.txt).
 The rejected `boat fork <snapshot-name>` command created no sandbox; exactly one
 `boat new --from putgd-lab-cinnamon --ttl 7200` succeeded, and it was reused throughout.
+
+## Review follow-up: atomic ownership transitions
+
+CodeRabbit's architecture summary identified a concurrent cleanup/recovery race:
+two old-token checks could pass, one release could allow a replacement install,
+and the stale release could then delete that replacement lock. This was fixed in
+`6dad974015e87b48b1cfd471bc474251358c7fd4` by sharing a five-second-bounded exclusive guest `flock` on
+`~/putgd-lab/install-guard` across acquisition and both release paths. Ownership
+validation and removal now remain under the same guard.
+
+The [deterministic regression](race-regression.log) pauses one release immediately
+after its old-token check and concurrently launches a second release and a new
+acquisition. It covers cleanup/recovery, recovery/cleanup and recovery/recovery;
+the new acquisition stays blocked until the paused release completes, and its
+replacement token survives both stale releasers. All three cases
+[fail against the pre-fix controller](race-before-fix.log). The final controller
+passes [59/59 lab tests](test-lab-final.log); the unchanged supervisor and cleanup
+suites retain their 7/7 and 20/20 passing results.
+
+[Final source identity](final-source-identity.json) is separate from the original
+live receipt. The guest lifetime helper `package_staging.py` is byte-identical
+to the live-tested file. This follow-up changes only shared ownership transitions
+in the controller and their regression test. No second sandbox or VM was created,
+and the original live run is not relabeled as a test of the later controller.
 
 ## Saved visual and retention
 

@@ -294,7 +294,10 @@ unprivileged wrapper.
 
 If the guest is unreachable, staging is still running after the bounded wait,
 or the wrapper exited without a terminal receipt, the lock stays held and
-retries are refused. Inspect `staging-process.json`, `staging-result.json`,
+retries are refused. Acquisition and both release paths serialize their token
+checks and updates under the same guest `install-guard` flock (five-second
+acquisition limit), so concurrent recovery cannot remove a replacement job.
+Inspect `staging-process.json`, `staging-result.json`,
 `staging-output.log` and `staging.log` for the reported job. When the same guest
 is reachable and staging has finished, use the exact job ID from the error:
 
