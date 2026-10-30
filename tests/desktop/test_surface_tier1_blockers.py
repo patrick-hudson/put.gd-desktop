@@ -9,7 +9,8 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver import probe
-from tools.lab.surface_driver.api import RecipeBlocked
+from tools.lab.surface_driver.api import RecipeBlocked, ReceiptRow
+from tools.lab.surface_driver import run as runner
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.compositor import stage_plasma_accessibility as plasma
 from tools.lab.surface_driver.fixtures import keyring
@@ -82,6 +83,17 @@ class LocalFrames(Base):
         self.assertEqual(metadata['regions'],[[1,2,3,4]])
         self.assertEqual(metadata['guard'],'local-secret-fields-only')
         ctx._secret_regions.assert_called_once()
+
+    def test_final_local_receipt_and_coverage_need_no_ocr_even_after_a_link(self):
+        ctx=self.context();ctx.sensitive('http://127.0.0.1:1234/synthetic.png')
+        ctx._secret_regions=Mock(return_value=[])
+        rows=[ReceiptRow('region.drag',self.env['desktop'],'deb','passed')]
+        with patch('tools.lab.surface_driver.redact.shutil.which',return_value=None):
+            ctx.frame('content')
+            result=runner.finish_evidence(ctx.evidence,self.out,self.env,rows,'local',self.path/'coverage.json')
+        self.assertTrue(result['passed'],result)
+        self.assertEqual(rows[0].functional,'passed')
+        self.assertTrue(json.loads((self.out/'receipt.json').read_text())['secret_scan']['passed'])
 
 
 class SnapOwnership(unittest.TestCase):
