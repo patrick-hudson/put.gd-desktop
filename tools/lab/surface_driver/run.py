@@ -61,7 +61,9 @@ def catalog_blockers(catalog, build):
     blockers = []
     if not (commit and commit.startswith(build)) and identity.get('version') != build or identity.get('dirty') is not False:
         blockers.append('catalog-build-mismatch')
-    if any(not (directory/c.get('controls', '\0')).is_file() for c in manifest['captures']):
+    # As surface_map's check: every declared controls file exists (some
+    # captures, e.g. native-only ones, declare none).
+    if any(c.get('controls') and not (directory/c['controls']).is_file() for c in manifest['captures']):
         blockers.append('catalog-controls-missing')
     try:
         inventories = Catalog(directory, {}).inventories

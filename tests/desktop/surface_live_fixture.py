@@ -45,6 +45,7 @@ def write_catalog(directory, build='abcdef', dirty=False, pages=('01-history-lis
                              'class': 'QLineEdit', 'rect': [5, 5, 20, 5]})
         (directory/(name+'.controls.json')).write_text(json.dumps({'width': 100, 'height': 50, 'controls': controls}))
         captures.append({'file': name+'.png', 'controls': name+'.controls.json', 'width': 100, 'height': 50})
+    captures.append({'file': '90-chrome.png', 'width': 100, 'height': 50})  # declares no inventory
     (directory/'manifest.json').write_text(json.dumps({'kind': 'synthetic-ui-catalog', 'captures': captures,
         'build': {'gitCommit': build+'0'*(40-len(build)), 'dirty': dirty, 'version': '26.1030.1-nightly'}}))
     return directory
