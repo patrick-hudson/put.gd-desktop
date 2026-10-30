@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """ScreenCast consent ownership/refusals (#791), private media retention (#796)
 and the GTK sink preflight (#784). Seconds-long; no GUI, VM or session bus."""
+import fnmatch
 import hashlib
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import tempfile
@@ -99,6 +101,22 @@ class Ownership(unittest.TestCase):
         self.assertEqual(kind, 'blocked')
         self.assertIn('not a declared portal backend', reason)
 
+    def test_two_pending_requests_of_our_own_are_refused(self):
+        second = 'putgd_record_4242_9'
+        rows = [public_start(), public_start(token=second), impl_start(),
+                impl_start(portal_request_path(OURS, second))]
+        kind, reason = consent.decision(consent.analyse(rows), POLICY)
+        self.assertEqual(kind, 'blocked')
+        self.assertIn('more than one', reason)
+
+    def test_foreign_request_before_the_offset_is_still_foreign(self):
+        rows = [impl_start(FOREIGN_HANDLE), public_start(), impl_start()]
+        self.assertEqual(consent.analyse(rows, offset=1)['foreign'][0]['handle'], FOREIGN_HANDLE)
+        # An earlier capture's own answered request is not pending.
+        earlier = portal_request_path(OURS, 'putgd_record_4242_1')
+        rows = [public_start(token='putgd_record_4242_1'), impl_start(earlier), response(earlier), public_start(), impl_start()]
+        self.assertEqual(consent.decision(consent.analyse(rows, offset=3), POLICY)[0], 'dialog')
+
     def test_token_from_another_program_is_not_ours(self):
         rows = [public_start(token='other_app_1'), impl_start(portal_request_path(OURS, 'other_app_1'))]
         self.assertEqual(consent.decision(consent.analyse(rows), POLICY)[0], 'blocked')
@@ -151,7 +169,17 @@ DIALOG = {'id': 77, 'pid': 4545, 'title': 'Share Screen', 'frame': [343, 166, 66
 SHARE = {'pid': 4545, 'window_id': 77, 'rect': [923, 172, 74, 34], 'enabled': True, 'role': 'push button', 'name': 'Share'}
 
 
+FOREIGN_DIALOG = dict(DIALOG, id=88, frame=[393, 216, 660, 500])
+FOREIGN_SHARE = dict(SHARE, window_id=88, rect=[973, 222, 74, 34])
+OUR_PROMPT = {'pid': 4545, 'window_id': 77, 'rect': [400, 240, 500, 20],
+              'name': "put.gd screen recorder wants to share your screen. Choose what you'd like to share."}
+FOREIGN_PROMPT = {'pid': 4545, 'window_id': 88, 'rect': [450, 290, 500, 20],
+                  'name': "An app wants to share your screen. Choose what you'd like to share."}
+SETTLE = 'waiting for the consent dialog to settle'
+
+
 class Drive(unittest.TestCase):
+    """drive() against a fake bus log, compositor and accessibility tree."""
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.path = Path(self.temp.name)
         env = dict(desktop='ubuntu-gnome-wayland', host='boat', placement='boat', guest='ubuntu-gnome', package='deb', destination='local')
@@ -159,16 +187,21 @@ class Drive(unittest.TestCase):
         self.target = FakeTarget()
         self.ctx = DriverContext(self.target, env, profile, self.path, self.path)
         self.windows = [DIALOG]
-        self.nodes = {'Share': [SHARE], 'prompt': [{'pid': 4545, 'window_id': 77, 'rect': [400, 240, 500, 20], 'name': 'put.gd screen recorder wants to share your screen.'}]}
+        self.shares = [SHARE]
+        self.prompts = [OUR_PROMPT]
         self.pick = {'ok': True, 'obscuring_window': None}
+        self.on_pick = None
         self.probes = []
         def probe(name, query):
             self.probes.append((name, query))
             if name == 'compositor_windows':
-                return {'windows': self.windows}
+                return {'windows': list(self.windows)}
             if name == 'accessible':
-                return self.nodes['Share' if query.get('name') == 'Share' else 'prompt']
+                rows = self.shares if query.get('name') == 'Share' else self.prompts
+                return [r for r in rows if fnmatch.fnmatchcase(r['name'], query['name'])]
             if name == 'foreground':
+                if self.on_pick:
+                    self.on_pick()
                 return self.pick
             raise AssertionError(name)
         self.ctx._probe = probe
@@ -178,16 +211,32 @@ class Drive(unittest.TestCase):
             if down is False:
                 self.windows = []  # the backend closes its dialog on Share
         self.target.pointer = pointer
-        self.watch = consent.Watch(SimpleNamespace(ctx=self.ctx), POLICY, '/dev/null', baseline={1, 2}, offset=0)
-        self.request = impl_start()
+        self.request = impl_start(app='putgd-record')
+        self.rows = [public_start(), self.request]
+        self.watch = self.make_watch(offset=0)
+        names = patch.object(consent, 'app_name', lambda ctx, app: {'putgd-record': 'put.gd screen recorder'}.get(app), create=True)
+        names.start(); self.addCleanup(names.stop)
+    def make_watch(self, offset):
+        watch = consent.Watch(SimpleNamespace(ctx=self.ctx), POLICY, '/dev/null', baseline={1, 2}, offset=offset)
+        watch.rows = lambda: list(self.rows)
+        return watch
     def tearDown(self):
         self.temp.cleanup()
 
     def clicks(self):
         return [e for e in self.target.pointer_events if e[2] is True]
 
+    def drive(self, watch=None, request=None):
+        """drive() twice, the second observation 1 s later (the settle rule)."""
+        watch, request = watch or self.watch, request or self.request
+        reason = consent.drive(watch, request)
+        if reason == SETTLE:
+            watch.stable = watch.stable[:3] + (watch.stable[3] - 1,)
+            reason = consent.drive(watch, request)
+        return reason
+
     def test_proven_dialog_gets_one_guarded_click_on_share_with_frames(self):
-        self.assertIsNone(consent.drive(self.watch, self.request))
+        self.assertIsNone(self.drive())
         self.assertEqual(self.clicks(), [(960, 189, True)])
         guard = [q for n, q in self.probes if n == 'foreground'][0]
         self.assertEqual(guard['geometry']['window_id'], 77)
@@ -196,46 +245,120 @@ class Drive(unittest.TestCase):
         self.assertEqual(self.windows, [])  # after-frame waited for the dialog to close
         self.assertTrue(self.watch.clicked)
 
+    def test_first_observation_only_waits_for_the_dialog_to_settle(self):
+        self.assertEqual(consent.drive(self.watch, self.request), SETTLE)
+        self.assertEqual(consent.drive(self.watch, self.request), SETTLE)  # < 0.25 s later
+        self.assertEqual(self.target.pointer_events, [])
+
+    def test_drive_never_clicks_twice(self):
+        self.assertIsNone(self.drive())
+        self.windows = [DIALOG]
+        with self.assertRaisesRegex(RecipeBlocked, 'never twice'):
+            consent.drive(self.watch, self.request)
+        self.assertEqual(len(self.clicks()), 1)
+
     def test_covered_share_button_is_refused_without_input(self):
         self.pick = {'ok': False, 'obscuring_window': 'Terminal', 'obscuring_window_id': 9}
         with self.assertRaisesRegex(RecipeFailed, 'obscured by'):
-            consent.drive(self.watch, self.request)
+            self.drive()
         self.assertEqual(self.target.pointer_events, [])
         self.assertFalse(self.watch.clicked)
 
     def test_foreign_or_preexisting_dialog_window_is_not_used(self):
         self.windows = [dict(DIALOG, pid=999)]  # same title, another process
-        self.assertIn('missing or ambiguous', consent.drive(self.watch, self.request))
+        self.assertIn('found 0', self.drive())
         self.windows = [dict(DIALOG, id=2)]  # backend's window, but present before prepare
-        self.assertIn('missing or ambiguous', consent.drive(self.watch, self.request))
-        self.nodes['Share'] = [dict(SHARE, window_id=2)]
+        self.assertIn('found 0', self.drive())
+        self.shares = [dict(SHARE, window_id=2)]
         self.windows = [DIALOG]  # accept button drawn in a different window of the backend
-        self.assertIn('not uniquely drawn', consent.drive(self.watch, self.request))
+        self.assertIn('not uniquely drawn', self.drive())
+        self.assertEqual(self.target.pointer_events, [])
+
+    def test_two_new_backend_windows_of_any_title_are_refused(self):
+        self.windows = [DIALOG, dict(FOREIGN_DIALOG, title='Something else')]
+        self.assertIn('exactly one new window', self.drive())
+        self.assertEqual(self.target.pointer_events, [])
+
+    def test_prompt_must_name_this_requests_application(self):
+        self.prompts = [dict(FOREIGN_PROMPT, window_id=77)]  # our window id, another app's prompt
+        self.assertIn('declared prompt', self.drive())
+        self.request = dict(self.request, app_id='')  # no app id: cannot be told apart
+        self.assertIn('cannot be told', self.drive())
+        self.assertEqual(self.target.pointer_events, [])
+
+    def test_race_foreign_request_logged_before_the_watch_offset(self):
+        # Validator race 1 (#817): a foreign Start logged before this capture's
+        # offset; only its dialog is drawn yet. 00ac5624 clicked it.
+        self.rows = [impl_start(FOREIGN_HANDLE, app='com.obsproject.Studio'), public_start(), self.request]
+        watch = self.make_watch(offset=1)
+        self.assertEqual(consent.decision(watch.state(), POLICY)[0], 'blocked')
+        self.windows, self.shares, self.prompts = [FOREIGN_DIALOG], [FOREIGN_SHARE], [FOREIGN_PROMPT]
+        reason = self.drive(watch)
+        self.assertIsNotNone(reason)
+        self.assertEqual(self.clicks(), [])
+
+    def test_race_foreign_request_after_the_decision(self):
+        # Validator race 2 (#817): the decision saw only ours; a foreign request
+        # and its dialog arrive before ours is drawn. 00ac5624 clicked it.
+        kind, request = consent.decision(consent.analyse(self.rows), POLICY)
+        self.assertEqual(kind, 'dialog')
+        self.rows.append(impl_start(FOREIGN_HANDLE))
+        self.windows, self.shares, self.prompts = [FOREIGN_DIALOG], [FOREIGN_SHARE], [FOREIGN_PROMPT]
+        self.assertIsNotNone(self.drive(request=request))
+        self.assertEqual(self.clicks(), [])
+
+    def test_race_foreign_request_between_the_guard_and_the_click(self):
+        # A foreign Start lands after the compositor pick, before the press.
+        def arrive():
+            self.rows.append(impl_start(FOREIGN_HANDLE))
+        self.on_pick = arrive
+        with self.assertRaisesRegex(RecipeBlocked, 'changed before the click'):
+            self.drive()
+        self.assertEqual(self.clicks(), [])
+
+    def test_new_backend_window_between_the_guard_and_the_click(self):
+        def draw():
+            self.windows = [DIALOG, FOREIGN_DIALOG]
+        self.on_pick = draw
+        with self.assertRaisesRegex(RecipeBlocked, 'windows changed'):
+            self.drive()
+        self.assertEqual(self.clicks(), [])
+
+    def test_physical_desktop_is_refused(self):
+        self.target.physical = object()
+        with self.assertRaisesRegex(RecipeBlocked, 'disposable lab guests'):
+            self.drive()
         self.assertEqual(self.target.pointer_events, [])
 
     def test_missing_compositor_witness_blocks(self):
         self.ctx.profile = dict(self.ctx.profile); self.ctx.profile.pop('compositor')
         with self.assertRaisesRegex(RecipeBlocked, 'compositor witness'):
-            consent.drive(self.watch, self.request)
+            self.drive()
         self.assertEqual(self.target.pointer_events, [])
 
     def test_gtk4_sensitive_button_with_window_coordinates_is_driven(self):
-        self.nodes['Share'] = [dict(SHARE, enabled=False, states={'sensitive': True})]
-        self.assertIsNone(consent.drive(self.watch, self.request))
+        self.shares = [dict(SHARE, enabled=False, states={'sensitive': True})]
+        self.assertIsNone(self.drive())
         query = [q for n, q in self.probes if n == 'accessible' and q.get('name') == 'Share'][0]
         self.assertEqual(query['coordinates'], 'window')  # declared by the GNOME profile
 
     def test_button_too_small_for_declared_tolerance_is_refused(self):
-        self.nodes['Share'] = [dict(SHARE, rect=[923, 172, 74, 16])]
-        self.assertIn('placement tolerance', consent.drive(self.watch, self.request))
+        self.shares = [dict(SHARE, rect=[923, 172, 74, 16])]
+        self.assertIn('placement tolerance', self.drive())
         self.assertEqual(self.target.pointer_events, [])
 
     def test_disabled_share_or_missing_prompt_is_refused(self):
-        self.nodes['Share'] = [dict(SHARE, enabled=False, states={'sensitive': False})]
-        self.assertIn('disabled', consent.drive(self.watch, self.request))
-        self.nodes['Share'] = [SHARE]; self.nodes['prompt'] = []
-        self.assertIn('declared prompt', consent.drive(self.watch, self.request))
+        self.shares = [dict(SHARE, enabled=False, states={'sensitive': False})]
+        self.assertIn('disabled', self.drive())
+        self.shares = [SHARE]; self.prompts = []
+        self.assertIn('declared prompt', self.drive())
         self.assertEqual(self.target.pointer_events, [])
+
+    def test_backend_window_open_before_prepare_is_refused(self):
+        with self.assertRaisesRegex(RecipeBlocked, 'already shows a window'):
+            consent.backend_idle(4545, [DIALOG])
+        consent.backend_idle(4545, [dict(DIALOG, pid=1)])
+        consent.backend_idle(None, [DIALOG])
 
     def test_ready_wait_reports_an_explicit_blocked_reason_not_a_timeout(self):
         scope = SimpleNamespace(ctx=SimpleNamespace(call=lambda m, p: {'state': 'preparing'}))
@@ -248,6 +371,14 @@ class Drive(unittest.TestCase):
         watch.state = lambda: consent.analyse([public_start(), impl_start(FOREIGN_HANDLE)])
         with self.assertRaisesRegex(RecipeBlocked, 'different request'):
             consent.await_ready(scope, 'rec', watch, timeout=5)
+
+    def test_await_ready_drives_a_request_only_once(self):
+        scope = SimpleNamespace(ctx=SimpleNamespace(call=lambda m, p: {'state': 'preparing'}, note=lambda t: None))
+        watch = SimpleNamespace(clicked=True, consent=POLICY, refusals=[],
+                                state=lambda: consent.analyse([public_start(), impl_start()]))
+        with patch.object(consent, 'drive', side_effect=AssertionError('second drive')):
+            with self.assertRaisesRegex(RecipeBlocked, 'clicked once but the backend dialog stayed pending'):
+                consent.await_ready(scope, 'rec', watch, timeout=0)
 
     def test_ready_after_click_requires_the_portal_to_have_accepted(self):
         scope = SimpleNamespace(ctx=SimpleNamespace(call=lambda m, p: {'state': 'ready'}))
@@ -309,11 +440,56 @@ class Retention(unittest.TestCase):
         manifest = media.retain(self.scope)
         self.assertIn('per-run cap', manifest['files'][0]['reason'])
 
+    def test_every_created_directory_level_is_private(self):
+        self.scope.write(self.scope.root + '/out/videos/clip.mp4', b'mp4')
+        os.umask(old := os.umask(0o002))
+        try:
+            manifest = media.retain(self.scope)
+        finally:
+            os.umask(old)
+        self.assertTrue(manifest['files'][0]['retained'])
+        path = self.out / manifest['files'][0]['host_path']
+        level = path.parent
+        while level != self.out:
+            self.assertEqual(level.stat().st_mode & 0o777, 0o700, level)
+            level = level.parent
+
+    def test_retention_has_its_own_budget_and_returns_the_rest(self):
+        self.scope.write(self.scope.root + '/working/a.mkv', b'a' * 10)
+        self.ctx._deadline = time.monotonic() + 100
+        with patch.object(media, 'BUDGET_SECONDS', 0):
+            manifest = media.retain(self.scope)
+        self.assertIn('time budget', manifest['files'][0]['reason'])
+        self.assertGreater(self.ctx._deadline - time.monotonic(), 99)  # later finalizers keep their time
+
     def test_unignored_run_directory_inside_checkout_is_refused(self):
         ctx = SimpleNamespace(out=ROOT / 'tools' / 'lab' / 'never-a-run')
         directory, reason = media.private_root(ctx)
         self.assertIsNone(directory)
         self.assertIn('not git-ignored', reason)
+
+
+class ChannelFollow(unittest.TestCase):
+    def test_monitor_exits_when_the_probe_channel_process_is_gone(self):
+        parent = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])
+        code = ('import sys,time; sys.path.insert(0, %r)\n'
+                'from tools.lab.surface_driver.probe import follow_channel, process_start\n'
+                'follow_channel({"parent": {"pid": %d, "start": process_start(%d)}})\n'
+                'time.sleep(20)\n') % (str(ROOT), parent.pid, parent.pid)
+        monitor = subprocess.Popen([sys.executable, '-c', code])
+        try:
+            time.sleep(1.5)
+            self.assertIsNone(monitor.poll())  # channel alive: keeps running
+            parent.kill(); parent.wait()
+            self.assertEqual(monitor.wait(timeout=5), -signal.SIGTERM)
+        finally:
+            for process in (parent, monitor):
+                if process.poll() is None:
+                    process.kill(); process.wait()
+
+    def test_server_pid_names_this_process(self):
+        from tools.lab.surface_driver.probe import server_pid, process_start
+        self.assertEqual(server_pid({}), {'pid': os.getpid(), 'start': process_start(os.getpid())})
 
 
 class SinkPreflight(unittest.TestCase):

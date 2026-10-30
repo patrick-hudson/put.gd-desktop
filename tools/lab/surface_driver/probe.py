@@ -1279,6 +1279,33 @@ class NotificationFilter:
         return False
 
 
+def process_start(pid):
+    try:
+        with open('/proc/%d/stat' % int(pid)) as stream:
+            return stream.read().split(') ', 1)[1].split()[19]
+    except (OSError, ValueError, IndexError, TypeError):
+        return None
+
+
+def server_pid(query):
+    """The persistent probe server's own identity; it exits when its SSH channel drops."""
+    return {'pid': os.getpid(), 'start': process_start(os.getpid())}
+
+
+def follow_channel(query):
+    """Terminate this monitor (SIGTERM → its own cleanup) once the run's probe channel is gone."""
+    parent = query.get('parent')
+    if not parent:
+        return
+    import signal
+    import threading
+    def watch():
+        while process_start(parent.get('pid')) == parent.get('start'):
+            time.sleep(1)
+        os.kill(os.getpid(), signal.SIGTERM)
+    threading.Thread(target=watch, daemon=True).start()
+
+
 def sender_pid(sender):
     reply = run('gdbus', 'call', '--session', '--dest', 'org.freedesktop.DBus', '--object-path',
                 '/org/freedesktop/DBus', '--method', 'org.freedesktop.DBus.GetConnectionUnixProcessID', sender)
@@ -1301,6 +1328,7 @@ def notification_monitor(query):
                                preexec_fn=die_with_parent)
     if not query.get('server'):
         signal.signal(signal.SIGTERM, lambda *_: (watcher.terminate(), sys.exit(0)))
+        follow_channel(query)
         return {'exit': watcher.wait()}
     owners = {}
     def sender_owned(sender):
@@ -1317,6 +1345,7 @@ def notification_monitor(query):
     child = subprocess.Popen(['dbus-monitor', '--session', *rules], stdout=subprocess.PIPE,
                              stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, preexec_fn=die_with_parent)
     signal.signal(signal.SIGTERM, lambda *_: (child.terminate(), watcher.terminate(), sys.exit(0)))
+    follow_channel(query)
     descriptor = os.open(query['log'], os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
     buffer, block = b'', []
     def flush():
@@ -1464,6 +1493,7 @@ def portal_monitor(query):
     child = subprocess.Popen(['dbus-monitor', '--session', *PORTAL_RULES], stdout=subprocess.PIPE,
                              stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, preexec_fn=die_with_parent)
     signal.signal(signal.SIGTERM, lambda *_: (child.terminate(), sys.exit(0)))
+    follow_channel(query)
     descriptor = os.open(query['log'], os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
     buffer, block, written = b'', [], [0]
     def flush():
@@ -1498,7 +1528,7 @@ def main():
         function = {'accessible': accessible, 'geometry': geometry, 'control': control_geometry,
                     'foreground': foreground, 'windows': windows, 'tray':tray,
                     'notification_monitor': notification_monitor, 'notification_log': notification_log,
-                    'popup_watch': popup_watch, 'portal_monitor': portal_monitor,
+                    'popup_watch': popup_watch, 'portal_monitor': portal_monitor, 'server_pid': server_pid,
                     'compositor_windows': lambda query: compositor_windows(query['compositor'])}[request['probe']]
         print(json.dumps({'ok': True, 'result': function(request['query'])}))
     except Exception as error:

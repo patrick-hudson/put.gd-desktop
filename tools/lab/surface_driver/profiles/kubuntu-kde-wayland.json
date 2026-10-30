@@ -133,7 +133,7 @@
   "recording": {
     "consent": {
       "kind": "portal-dialog",
-      "reason": "KWin's zkde_screencast native path needs no consent; the portal fallback shows xdg-desktop-portal-kde's screen chooser. Its dialog title and prompt are not yet observed on a lab guest, so only the backend process and accept button are pinned (#791)",
+      "reason": "KWin's zkde_screencast native path needs no consent; the portal fallback shows xdg-desktop-portal-kde's screen chooser. Its dialog title and prompt are not yet observed on a lab guest, so only the backend process and accept button are pinned (#791, #822)",
       "backends": [
         "xdg-desktop-portal-kde"
       ],
@@ -144,7 +144,8 @@
       "accept": {
         "role": "push button",
         "name": "Share"
-      }
+      },
+      "backend_bus": "org.freedesktop.impl.portal.desktop.kde"
     }
   }
 }

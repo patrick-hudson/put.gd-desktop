@@ -7,6 +7,8 @@ manifest of guest and host SHA-256s. Only regular media files inside the
 owned fixture root qualify; app configuration, credentials, VM disks and
 anything outside the scope are never read. Caps: 32 MiB per file and 128 MiB
 per run. A file over a cap is hashed on the guest and listed as not retained.
+Retention has its own 60 s budget; the remaining finalizers get back the time
+they had when it started. Every directory it creates is mode 0700.
 The directory is private run evidence, never repository content or coverage:
 a run directory inside the checkout must be git-ignored. Secret-safe export
 (#726) is not applied here; the media is the synthetic moving test pattern.
@@ -16,10 +18,12 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import subprocess
+import time
 
 FILE_CAP = 32 * 1024 * 1024
 RUN_CAP = 128 * 1024 * 1024
 CHUNK = 3 * 1024 * 1024
+BUDGET_SECONDS = 60
 SUFFIXES = ('.mkv', '.mp4', '.webm', '.gif', '.webp')
 ROOT = Path(__file__).resolve().parents[4]
 
@@ -74,11 +78,37 @@ with open(p,'rb') as f:
     return base64.b64decode(data)
 
 
+def _private_dirs(path):
+    """Create each missing level of path with mode 0700 (umask-proof)."""
+    missing = []
+    while not path.exists():
+        missing.append(path)
+        path = path.parent
+    for level in reversed(missing):
+        os.mkdir(level, 0o700)
+        os.chmod(level, 0o700)
+
+
 def retain(scope):
-    """Copy, verify and list this scope's media; returns the manifest (or None)."""
+    """Copy, verify and list this scope's media within its own time budget."""
     ctx = scope.ctx
     if not scope.initialized:
         return None
+    previous = getattr(ctx, '_deadline', None)
+    started = time.monotonic()
+    until = started + BUDGET_SECONDS
+    if previous is not None:
+        ctx._deadline = min(previous, until)
+    try:
+        return _retain(scope, until)
+    finally:
+        if previous is not None:
+            # Later finalizers keep the budget they had before retention ran.
+            ctx._deadline = time.monotonic() + max(0, previous - started)
+
+
+def _retain(scope, until):
+    ctx = scope.ctx
     directory, reason = private_root(ctx)
     recipe = getattr(getattr(ctx, 'recipe', None), 'name', None) or 'setup'
     if directory is None:
@@ -91,8 +121,10 @@ def retain(scope):
         destination = destination.with_name(scope.token[:8] + '-' + str(attempt))
     rows = inventory(scope)
     used = getattr(ctx, '_retained_media_bytes', 0)
-    destination.mkdir(mode=0o700, parents=True, exist_ok=False)
+    _private_dirs(destination.parent)
     os.chmod(directory, 0o700)
+    os.mkdir(destination, 0o700)
+    os.chmod(destination, 0o700)
     for row in rows:
         relative = PurePosixPath(row['path'])
         if relative.is_absolute() or '..' in relative.parts:
@@ -104,14 +136,24 @@ def retain(scope):
         if used + row['size'] > RUN_CAP:
             row.update(retained=False, reason='exceeds per-run cap of %d MiB' % (RUN_CAP >> 20))
             continue
+        if time.monotonic() >= until:
+            row.update(retained=False, reason='retention time budget of %d s exceeded' % BUDGET_SECONDS)
+            continue
         target = destination / Path(*relative.parts)
-        target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        digest = hashlib.sha256()
+        _private_dirs(target.parent)
+        digest, complete = hashlib.sha256(), True
         with open(os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'wb') as stream:
             for offset in range(0, row['size'], CHUNK):
+                if time.monotonic() >= until:
+                    complete = False
+                    break
                 block = _read(scope, row['path'], offset, min(CHUNK, row['size'] - offset))
                 digest.update(block)
                 stream.write(block)
+        if not complete:
+            target.unlink()
+            row.update(retained=False, reason='retention time budget of %d s exceeded' % BUDGET_SECONDS)
+            continue
         if digest.hexdigest() != row['sha256'] or target.stat().st_size != row['size']:
             target.unlink()
             row.update(retained=False, reason='host copy does not match the guest SHA-256')

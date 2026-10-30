@@ -110,7 +110,7 @@ namespace = {'__name__': 'surface_driver_probe'}
 exec(compile(SOURCE, 'surface_driver_probe.py', 'exec'), namespace)
 functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
              'foreground':'foreground', 'windows':'windows', 'tray':'tray',
-             'notification_log':'notification_log'}
+             'notification_log':'notification_log', 'server_pid':'server_pid'}
 while True:
     line = sys.stdin.buffer.readline(1024 * 1024 + 1)
     if not line:

@@ -141,14 +141,15 @@
       ],
       "dialog": {
         "title": "Share Screen",
-        "prompt": "*wants to share your screen*"
+        "prompt": "{app} wants to share your screen*"
       },
       "accept": {
         "role": "push button",
         "name": "Share",
         "coordinates": "window",
         "placement_tolerance": 8
-      }
+      },
+      "backend_bus": "org.freedesktop.impl.portal.desktop.gnome"
     }
   }
 }
