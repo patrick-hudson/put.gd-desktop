@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -65,6 +66,8 @@ class FakeContext(Context):
         if name not in self.needs:
             raise AssertionError('undeclared fixture ' + name)
         row = dict(self.fixture_row)
+        if name == 'launcher':
+            return SimpleNamespace(executable='putgd')
         if name == 'history-row':
             return SimpleNamespace(id='image-1', history_id='image-1', row=row, operation_id='op-1')
         if name == 'history_window':
@@ -143,10 +146,12 @@ class FakeContext(Context):
             if params['action'] != 'inspect':
                 raise AssertionError('file chooser mutation')
             return {'open': self.chooser, 'mode': 'save' if self.chooser else None}
+        if method == 'operation.cancel':
+            return {'cancelled': True}
         if method == 'operation.inspect':
             return copy.deepcopy(self.operations[params['id']])
         if method == 'ui.snapshot':
-            return {'build': self.build}
+            return {'build': self.build, 'residentEpoch': 'resident-1'}
         raise AssertionError('unknown production method ' + method)
 
     def click(self, control, window, button='left', offset=None):
@@ -154,6 +159,8 @@ class FakeContext(Context):
             'text:More selection actions': 'historySelectionMore', 'text:Add a history filter': 'historyAddFilter', 'text:Advanced original receipt details': 'historyDetails',
             'text:Retry upload': 'retryOperation', 'text:Retry local save': 'retryOperation',
             'text:Next': 'historyNext', 'text:Previous': 'historyPrevious',
+            'text:Maximize': 'windowMaximize', 'text:Restore': 'windowMaximize',
+            'text:Minimize': 'windowMinimize', 'text:Close window': 'windowClose',
             'text:Clear selection': 'historyClearSelection', 'text:Clear filters': 'historyClearFilters',
             'text:Keep uploading': 'historyKeepUploading', 'text:Cancel 2 uploads': 'historyConfirmCancelAll',
             'text-glob:* more active': 'historyMoreActive', 'text-glob:Cancel this upload:*': 'cancelBannerOperation',
@@ -199,6 +206,7 @@ class FakeContext(Context):
         elif control == 'historyPrevious':
             self.query['offset'] = 0
         elif control == 'text:Copy details':
+            self.menu = None
             self.clipboard = json.dumps({'records': [{'id': 'wrong' if self.fault == 'wrong-details' else 'image-1'}]})
         elif control == 'saveHistoryAsAction':
             self.chooser = True
@@ -253,6 +261,8 @@ class FakeContext(Context):
             else:
                 self.saved_window = copy.deepcopy(self.window)
                 self.window.update(x=0, y=0, width=1920, height=1080)
+        elif control == 'historyAddFilteruploadStatus':
+            self.focused_control = 'historyChoiceuploadStatus'
         elif control not in {
             'historySearch', 'historyCategories', 'historyFiltersExpanded', 'historyAddFilter',
             'historyAddFilteruploadStatus', 'historyChoiceuploadStatus', 'historyDetails',
@@ -297,6 +307,8 @@ class FakeContext(Context):
                     self.details = False
             elif key == 'Space' and self.focused_control == 'historyPreview':
                 self.preview = True
+            elif key in ('Menu', 'Shift+F10'):
+                self.menu = 'row'
             elif key == 'Ctrl+C' and self.focused_control == 'historyDetails':
                 self.clipboard = json.dumps(self.detail())
 
@@ -320,6 +332,8 @@ class FakeContext(Context):
         if (x, y) == (720, 220):
             self.events.append(('delegate', copy.deepcopy(self.last_delegate_query)))
             return self.click('historyList', 'history', button)
+        if (x, y) == (1250, 270):
+            return self.click('historyClearFilters', 'history', button)
         if (x, y) == (1220, 220):
             return self.click('historyChoiceuploadStatus', 'history', button)
         if (x, y) in ((1220, 420), (1320, 420)):
@@ -328,12 +342,14 @@ class FakeContext(Context):
         self.menu = 'header'
 
     def accessible(self, query):
-        if query.get('role') == 'push button' and query.get('name') in ('Cancel', 'Keep uploading', 'Cancel 2 uploads', 'Delete * file*', 'Clear temporary files', 'Clear history records'):
+        if query.get('role') == 'push button' and query.get('name') in ('Cancel', 'Keep uploading', 'Cancel 2 uploads', 'Delete * file*', 'Clear temporary files', 'Clear history records', 'Maximize', 'Restore', 'Minimize', 'Close window'):
             if query.get('pid') != 123 or not query.get('owned') or not query.get('within'):
                 raise AssertionError('confirmation input must constrain native owner and dialog bounds')
             self.pending_button = query['name']
-            self.pending_button_window = 'historyCancelAllConfirmation' if query['name'] in ('Keep uploading', 'Cancel 2 uploads') else 'historyConfirmAction'
+            self.pending_button_window = 'history' if query['name'] in ('Maximize', 'Restore', 'Minimize', 'Close window') else 'historyCancelAllConfirmation' if query['name'] in ('Keep uploading', 'Cancel 2 uploads') else 'historyConfirmAction'
             return [{'rect': [600, 600, 100, 40]}]
+        if query.get('name') == 'Clear filters' and query.get('role') == 'push button':
+            return [{'name': 'Clear filters', 'rect': [1200, 250, 100, 40]}]
         if query.get('name') == 'History items and upload activity':
             if query.get('states', {}).get('focused') and self.focused_control != 'historyList':
                 return []
@@ -342,7 +358,7 @@ class FakeContext(Context):
             if not query.get('owned') or query.get('pid') != 123 or query.get('within') != [320, 200, 800, 650]:
                 raise AssertionError('row input requires the owned live list bounds')
             self.last_delegate_query = query
-            return [{'rect': [320, 200, 800, 40]}]
+            return [{'rect': [320, 200, 800, 40], 'states': {'focused': self.focused_control == 'historyList'}}]
         if query.get('name') == 'Upload state' and query.get('role') == 'combo box':
             return [{'rect': [1200, 200, 40, 40]}]
         if query.get('name') == 'Expand preview':
@@ -350,9 +366,11 @@ class FakeContext(Context):
                 raise AssertionError('image and glyph share their button role')
             return [{'rect': [1200 if query['states']['focusable'] else 1300, 400, 40, 40]}]
         if query.get('role') == 'menu item':
-            return [{'name': n} for n in ({'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'} if self.menu == 'app' else {'Minimize', 'Maximize', 'Close'} if self.menu == 'header' else set())]
+            return [{'name': n} for n in ({'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'} if self.menu == 'app' else {'Minimize', 'Maximize', 'Close'} if self.menu == 'header' else {'Copy details'} if self.menu == 'row' else set())]
         if query.get('name') == 'Capture actions':
             return [{'name': 'Capture actions'}] if self.help else []
+        if query.get('role') == 'page tab':
+            return [{'name': query['name'], 'states': {'selected': query['name'] == 'History'}}]
         if query.get('name') == 'Help':
             return [{'name': 'Help'}] if self.help else []
         if 'within' in query:
@@ -383,6 +401,20 @@ class FakeContext(Context):
             self.window['width'] = max(1060, self.window['width'] + dx)
             self.window['height'] = max(680, self.window['height'] + dy)
 
+    def shell(self, script, timeout=60, cleanup=False):
+        import shlex
+        args = shlex.split(script)
+        self.assert_launcher_args(args)
+        self.events.append(('shell', script))
+        if args[1] in ('--history', '--activity'):
+            self.closed = self.minimized = False
+        value = json.dumps(self.build) if args[1] == '--version-json' else 'putgd 26.1029.42-nightly\n' if args[1] == '--version' else ''
+        return {'returncode': 0, 'stdout': value, 'stderr': ''}
+
+    def assert_launcher_args(self, args):
+        if len(args) != 2 or args[0] != 'putgd' or args[1] not in ('--version', '--version-json', '--history', '--activity'):
+            raise AssertionError('nonliteral launcher command')
+
     def cli(self, *args, timeout=60):
         self.events.append(('cli', args))
         value = self.build if args[0] == '--version-json' else {}
@@ -411,9 +443,24 @@ class FakeContext(Context):
 
 
 LANE = [r for r in REGISTRY if r.function.__module__ == history.__name__]
+# This widget simulator models the original History interactions. The shell
+# composites use independently tested admission/cleanup oracles below and real
+# three-desktop receipts, rather than simulating another compositor/lifecycle.
+SIMULATED = [r for r in LANE if r.function.__code__.co_firstlineno < history.autosave_status.__code__.co_firstlineno]
 
 
 class HistoryRecipeTests(unittest.TestCase):
+    def simulate(self, item, ctx):
+        if item.function == history.header_drag:
+            original = copy.deepcopy(ctx.window)
+            with self.assertRaises(RecipeBlocked) as error:
+                item.function(ctx)
+            self.assertEqual(error.exception.issue, 904)
+            self.assertEqual(ctx.window, original)
+            self.assertEqual(len([e for e in ctx.events if e[0] == 'drag']), 2)
+        else:
+            item.function(ctx)
+
     def test_exactly_the_owned_71_ids_once(self):
         owners = json.loads((ROOT / 'tools/lab/surface_driver/ownership.json').read_text())['owners']
         expected = {key for key, owner in owners.items() if owner == 'history'}
@@ -423,13 +470,13 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertEqual(set(actual), expected)
 
     def test_every_executable_recipe_uses_input_inspection_and_reference_frames(self):
-        for item in LANE:
+        for item in SIMULATED:
             if item.interactions[0] in history.BLOCKED:
                 continue
             with self.subTest(recipe=item.name):
                 ctx = FakeContext(item.needs)
-                item.function(ctx)
-                self.assertTrue(any(event[0] in {'click', 'drag', 'cli', 'mcp'} for event in ctx.events))
+                self.simulate(item, ctx)
+                self.assertTrue(any(event[0] in {'click', 'drag', 'cli', 'mcp', 'shell'} for event in ctx.events))
                 self.assertTrue(any(event[0] == 'call' for event in ctx.events))
                 referenced = {label for label, _, reference in ctx.frames if reference}
                 self.assertTrue({'before', 'after'} <= referenced)
@@ -447,14 +494,176 @@ class HistoryRecipeTests(unittest.TestCase):
 
     def test_references_name_existing_catalog_captures(self):
         source = (ROOT / 'tests/gui/ui_catalog.cpp').read_text()
-        for item in LANE:
+        for item in SIMULATED:
             if item.interactions[0] in history.BLOCKED:
                 continue
             ctx = FakeContext(item.needs)
-            item.function(ctx)
+            self.simulate(item, ctx)
             for _, _, reference in ctx.frames:
                 if reference:
                     self.assertIn('"' + reference, source, reference)
+
+    def test_row_menu_does_not_rely_on_home_reselecting_current_row(self):
+        class CurrentButUnselected(FakeContext):
+            def keys(self, *keys):
+                if 'Home' in keys:
+                    self.selected = []
+                    return
+                return super().keys(*keys)
+        ctx = CurrentButUnselected(('history-row',))
+        history.key_menu(ctx)
+        self.assertIn(('keys', ('Shift+F10',)), ctx.events)
+        self.assertIn(('keys', ('Menu',)), ctx.events)
+        self.assertTrue(ctx.clipboard)
+
+    def test_clear_filter_uses_reflowed_native_button_not_catalog_point(self):
+        class Reflowed(FakeContext):
+            def click(self, control, window='history', button='left'):
+                if control == 'text:Clear filters':
+                    raise AssertionError('static catalog target precedes active-filter toolbar reflow')
+                return super().click(control, window, button)
+        ctx = Reflowed(('history_rows',))
+        history.clear_filters(ctx)
+        self.assertEqual(ctx.query['uploadStatus'], '')
+        self.assertEqual(ctx.query['search'], ctx.fixture_row['name'])
+        self.assertIn(('click', 'historyClearFilters', 'history', 'left'), ctx.events)
+
+    def test_window_inventory_waits_for_clean_read_after_departed_client(self):
+        ctx = FakeContext()
+        calls = []
+        def windows(query):
+            calls.append(query)
+            if len(calls) == 1:
+                raise RecipeBlocked('accessibility walk incomplete: Message recipient disconnected from message bus without replying')
+            return []
+        ctx.windows = windows
+        self.assertEqual(history._main_windows(ctx), [])
+        self.assertEqual(len(calls), 2)
+
+    def test_refused_window_inventory_never_counts_as_absence(self):
+        ctx = FakeContext()
+        def windows(query):
+            raise RecipeBlocked('accessibility walk incomplete: Message recipient disconnected from message bus without replying')
+        ctx.windows = windows
+        with self.assertRaises(RecipeBlocked):
+            history._main_windows(ctx)
+
+    def test_chrome_uses_owned_native_names_when_catalog_control_is_absent(self):
+        class NoCatalogChrome(FakeContext):
+            def click(self, control, window='history', button='left'):
+                if control in ('windowMaximize', 'windowMinimize', 'windowClose'):
+                    raise AssertionError('catalog chrome cannot be resolved in this native toolkit')
+                return super().click(control, window, button)
+        for function in (history.maximize, history.minimize, history.close_window):
+            with self.subTest(function=function.__name__):
+                function(NoCatalogChrome(('history-row',)))
+
+    def test_chrome_setup_accepts_small_native_placement_adjustment(self):
+        class Adjusted(FakeContext):
+            def drag(self, start, end, button='left', steps=12):
+                super().drag(start, end, button, steps)
+                self.window['x'] += 2
+                self.window['y'] += 2
+        ctx = Adjusted()
+        ctx.profile = {'history_window_anchor': {'x': 24, 'y': 72}, 'history_window_anchor_tolerance': 32}
+        size = (ctx.window['width'], ctx.window['height'])
+        history._window_buttons_ready(ctx)
+        self.assertEqual((ctx.window['x'], ctx.window['y']), (26, 74))
+        self.assertEqual((ctx.window['width'], ctx.window['height']), size)
+
+    def test_edit_command_accepts_native_menu_role_without_losing_owner_bounds(self):
+        ctx = FakeContext()
+        queries, points = [], []
+        def accessible(query):
+            queries.append(query)
+            if query.get('role'):
+                return []
+            return [{'name': 'Capture region edit', 'role': 'menu', 'rect': [700, 200, 120, 40]}]
+        ctx.accessible = accessible
+        ctx.hover = lambda x, y, **options: points.append((x, y))
+        node = history._hover_history_node(ctx, history._command_control('edit'))
+        self.assertEqual(node['role'], 'menu')
+        self.assertEqual(points, [(760, 220)])
+        self.assertTrue(all(q['owned'] and q['pid'] == 123 and q['within'] for q in queries))
+
+    def test_clear_filter_dismisses_combo_grab_before_underlying_click(self):
+        class PopupGrab(FakeContext):
+            popup = False
+            def keys(self, *keys):
+                super().keys(*keys)
+                if 'Return' in keys and self.focused_control == 'historyChoiceuploadStatus':
+                    self.popup = True
+                if 'Esc' in keys:
+                    self.popup = False
+            def click(self, control, window='history', button='left'):
+                if control == 'historyClearFilters' and self.popup:
+                    self.popup = False
+                    return  # Native popup consumes the first outside click.
+                return super().click(control, window, button)
+        ctx = PopupGrab(('history_rows',))
+        history.clear_filters(ctx)
+        self.assertFalse(ctx.popup)
+        self.assertFalse(ctx.query['uploadStatus'])
+        self.assertEqual(ctx.query['search'], ctx.fixture_row['name'])
+
+    def test_one_working_row_shortcut_does_not_pass_both_bindings(self):
+        class NoMenuKey(FakeContext):
+            def keys(self, *keys):
+                if keys == ('Menu',):
+                    self.events.append(('keys', keys))
+                    return
+                return super().keys(*keys)
+        ctx = NoMenuKey(('history-row',))
+        with self.assertRaises(RecipeBlocked) as error:
+            history.key_menu(ctx)
+        self.assertEqual(error.exception.issue, 835)
+        self.assertEqual(json.loads(ctx.clipboard)['records'][0]['id'], 'image-1')
+
+    def test_local_source_digest_uses_public_structural_json_metadata(self):
+        import hashlib
+        import subprocess
+        import tempfile
+        from tools.lab.surface_driver.redact import Redactor
+        redactor = Redactor()
+        class DigestContext:
+            def shell(self, script):
+                reply = subprocess.run(script, shell=True, capture_output=True, text=True)
+                value = json.loads(reply.stdout)
+                redactor.remember(value)
+                return {'returncode': reply.returncode, 'stdout': reply.stdout}
+            def expect(self, condition, message):
+                if not condition:
+                    raise AssertionError(message)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'synthetic source.png'
+            path.write_bytes(b'synthetic-source')
+            expected = hashlib.sha256(path.read_bytes()).hexdigest()
+            self.assertEqual(history._local_digest(DigestContext(), str(path)), expected)
+            self.assertNotIn(expected, redactor.audit_literals)
+
+    def test_navigation_can_use_one_visible_body_when_tab_selection_is_absent(self):
+        ctx = FakeContext()
+        visible = {'Show history items'}
+        def accessible(query):
+            if query['role'] == 'page tab':
+                return [{'states': {}}]
+            return [{'name': query['name']}] if query['name'] in visible else []
+        ctx.accessible = accessible
+        self.assertTrue(history._selected_page(ctx, 'History'))
+        self.assertFalse(history._selected_page(ctx, 'Settings'))
+        visible.clear();visible.add('Settings categories')
+        self.assertTrue(history._selected_page(ctx, 'Settings'))
+        self.assertFalse(history._selected_page(ctx, 'History'))
+        # Cinnamon's hidden virtual General item still says SHOWING, while
+        # the actual Settings list is hidden and Destinations is visible.
+        visible.clear();visible.update(('General', 'Add destination'))
+        self.assertTrue(history._selected_page(ctx, 'Destinations'))
+        self.assertFalse(history._selected_page(ctx, 'Settings'))
+
+    def test_navigation_does_not_guess_when_multiple_page_bodies_are_showing(self):
+        ctx = FakeContext()
+        ctx.accessible = lambda query: [{'states': {}}]
+        self.assertFalse(history._selected_page(ctx, 'History'))
 
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):
@@ -542,15 +751,110 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertEqual(ctx.window, original)
         self.assertFalse(any(e[0] == 'drag' for e in ctx.events))
 
-    def test_known_cinnamon_chrome_obstruction_withholds_all_window_button_input(self):
+    def test_fixed_chrome_rows_run_on_all_three_desktops(self):
         from tools.lab.surface_driver.profiles import load_profile
-        for action in (history.maximize, history.minimize, history.close_window):
-            ctx = FakeContext(('history-row',))
-            ctx.profile = load_profile('mint-cinnamon-x11')
-            with self.assertRaises(RecipeBlocked) as error:
-                action(ctx)
-            self.assertEqual(error.exception.issue, 818)
-            self.assertFalse(ctx.events)
+        for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland', 'kubuntu-kde-wayland'):
+            self.assertNotIn('history_window_buttons_blocked', load_profile(desktop))
+
+    def test_new_composites_use_available_core_fixtures(self):
+        from tools.lab.surface_driver.fixtures import FACTORIES
+        for entry in LANE:
+            self.assertTrue(set(entry.needs) <= set(FACTORIES), entry.name)
+
+    def test_output_summary_observes_custom_widget_text_inside_its_popup(self):
+        class PopupContext(FakeContext):
+            def fixture(self, name):
+                if name == 'settings-action-routes':
+                    return SimpleNamespace(profile_ids=['route-0', 'route-1'], add=lambda *args: None)
+                return super().fixture(name)
+            def accessible(self, query):
+                if query.get('name') == 'Change output' and query.get('role') == 'menu item':
+                    return [{'pid': 123, 'popup': {'pid': 123}, 'coordinate_space': 'desktop', 'rect': [300, 540, 480, 60],
+                             'ancestors': [{'pid': 123, 'role': 'popup menu', 'rect': [300, 400, 480, 200]}]}]
+                # Native text can belong to the widget action, without a label role.
+                if query.get('role') == 'label' or query.get('within') != [300, 400, 480, 200]:
+                    return []
+                if self.native_form == 'widgets':
+                    return [{'role': 'panel', 'name': 'Default: Local only'},
+                            {'role': 'panel', 'name': 'Upload clipboard: Shared link · Synthetic 1'}]
+                return [{'role': 'menu item', self.native_form:
+                         'Default output: Local only\nUpload clipboard: Shared link · Synthetic 1'}]
+        for native_form in ('widgets', 'name', 'text'):
+            ctx = PopupContext()
+            ctx.native_form = native_form
+            with patch.object(ctx, 'click'), patch.object(history, '_open'), patch.object(history, '_frame'), \
+                 patch.object(history, '_click_history_node'), patch.object(history, '_wait_menu'), \
+                 patch.object(history, '_capture_settings'), patch.object(history, '_wait_window',
+                     side_effect=AssertionError('an untitled runtime popup has no standalone window')):
+                history.output_summary(ctx)
+
+    def test_dynamic_row_alias_is_restored_when_a_double_click_is_refused(self):
+        class RowContext(FakeContext):
+            def accessible(self, query):
+                value = super().accessible(query)
+                if query.get('role') == 'list item':
+                    value[0]['name'] = 'only synthetic row'
+                return value
+            def double_click(self, control, window, button='left'):
+                self_test.assertEqual(self.profile['live_controls'][control], {'name': 'only synthetic row', 'role': 'list item'})
+                raise RecipeFailed('gesture refused by foreground guard')
+        self_test = self
+        ctx = RowContext()
+        original = {'existing': {'name': 'Existing', 'role': 'push button'}}
+        ctx.profile = {'live_controls': original}
+        with self.assertRaisesRegex(RecipeFailed, 'foreground guard'):
+            history._double_history_row(ctx)
+        self.assertIs(ctx.profile['live_controls'], original)
+
+    def test_new_operation_ignores_existing_and_other_actions(self):
+        ctx = FakeContext()
+        with patch.object(history, '_recent', return_value=[
+                {'id': 'old', 'action': 'edit'}, {'id': 'other', 'action': 'clipboard'},
+                {'id': 'new', 'action': 'edit'}]):
+            self.assertEqual(history._new_operation(ctx, {'old'}, 'edit')['id'], 'new')
+
+    def test_duplicate_operation_admission_fails(self):
+        ctx = FakeContext()
+        with patch.object(history, '_recent', return_value=[{'id': i, 'action': 'edit'} for i in ('a', 'b')]):
+            with self.assertRaisesRegex(RecipeFailed, 'one operation'):
+                history._new_operation(ctx, set(), 'edit')
+
+    def test_selector_cleanup_runs_when_real_escape_does_not_cancel(self):
+        ctx = FakeContext()
+        with patch.object(history, '_recent', return_value=[]), patch.object(history, '_new_operation', return_value={'id': 'new', 'state': 'selecting'}), patch.object(history, '_settle', return_value={'state': 'failed'}):
+            with self.assertRaisesRegex(RecipeFailed, 'real Escape'):
+                history._exercise_command(ctx, 'region', lambda action: None)
+        self.assertIn(('call', 'operation.cancel', {'id': 'new'}), ctx.events)
+
+    def test_missing_local_artifact_cannot_pass_command(self):
+        ctx = FakeContext()
+        with patch.object(history, '_recent', return_value=[]), patch.object(history, '_new_operation', return_value={'id': 'new'}), patch.object(history, '_settle', return_value={'state': 'completed', 'items': []}):
+            with self.assertRaisesRegex(RecipeFailed, 'local command completed'):
+                history._exercise_command(ctx, 'desktop', lambda action: None)
+        self.assertIn(('call', 'operation.cancel', {'id': 'new'}), ctx.events)
+
+    def test_action_matrix_cannot_pass_after_one_success(self):
+        ctx = FakeContext(('app-profile', 'selector-desktop'))
+        attempted = []
+        def exercise(ctx, action, dispatch):
+            attempted.append(action)
+            if action == 'desktop':
+                raise RecipeFailed('fixture refuses third action')
+        with patch.object(history, '_exercise_command', side_effect=exercise):
+            with self.assertRaisesRegex(RecipeFailed, 'third action'):
+                history._action_matrix(ctx, lambda action: None)
+        self.assertEqual(attempted, ['clipboard', 'region', 'window', 'desktop'])
+
+    def test_chrome_clearance_moves_the_live_window_without_changing_its_size(self):
+        ctx = FakeContext()
+        ctx.profile = {'history_window_anchor': {'x': 24, 'y': 72}}
+        original = copy.deepcopy(ctx.window)
+        history._window_buttons_ready(ctx)
+        self.assertEqual((ctx.window['x'], ctx.window['y']), (24, 72))
+        self.assertEqual((ctx.window['width'], ctx.window['height']), (original['width'], original['height']))
+        self.assertEqual(len([e for e in ctx.events if e[0] == 'drag']), 1)
+        history._window_buttons_ready(ctx)
+        self.assertEqual(len([e for e in ctx.events if e[0] == 'drag']), 1)
 
     def test_window_buttons_require_observed_effect_and_restore_on_failure(self):
         for action, fault in ((history.minimize, 'minimize-no-effect'),
@@ -563,13 +867,12 @@ class HistoryRecipeTests(unittest.TestCase):
                 self.assertFalse(ctx.minimized)
                 self.assertEqual(ctx.events[-1], ('view', 'ui.show', {'view': 'history'}))
 
-    def test_launcher_dispatch_to_resident_client_is_a_core_blocker(self):
+    def test_launcher_flags_use_literal_commands_in_the_owned_shell(self):
         ctx = FakeContext(('launcher',), fault='launcher-routed-to-client')
-        with self.assertRaises(RecipeBlocked) as error:
-            history.cli_version(ctx)
-        self.assertEqual(error.exception.issue, 675)
-        self.assertIn('putgd-cli', error.exception.reason)
-        self.assertFalse(any(e == ('cli', ('--version-json',)) for e in ctx.events))
+        ctx.cli = lambda *a, **k: self.fail('launcher flag reached the method client')
+        history.cli_version(ctx)
+        self.assertIn(('shell', 'putgd --version'), ctx.events)
+        self.assertIn(('shell', 'putgd --version-json'), ctx.events)
 
     def test_geometry_rows_use_supported_accessibility_filters_without_window_fixture(self):
         class NativeContext(FakeContext):
@@ -582,7 +885,7 @@ class HistoryRecipeTests(unittest.TestCase):
         for action in (history.header_drag, history.edge_resize):
             entry = next(r for r in LANE if r.function == action)
             self.assertEqual(entry.needs, ('history-row',))
-            action(NativeContext(entry.needs))
+            self.simulate(entry, NativeContext(entry.needs))
 
     def test_header_point_excludes_navigation_and_refuses_covered_header(self):
         ctx = FakeContext()
@@ -683,7 +986,7 @@ class HistoryRecipeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             Path(directory, '01-history-list.controls.json').write_text(json.dumps({'controls': [
                 {'name': control, 'text': '', 'class': 'QListView'} for control in names]}))
-            for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland'):
+            for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland', 'kubuntu-kde-wayland'):
                 catalog = Catalog(directory, load_profile(desktop))
                 for control, label in names.items():
                     self.assertIn('setAccessibleName("' + label + '")', source)
@@ -723,6 +1026,10 @@ class HistoryRecipeTests(unittest.TestCase):
 
     def test_popup_frames_do_not_require_a_native_menu_window(self):
         class PopupContext(FakeContext):
+            def geometry(self, window):
+                if window.endswith(('Menu', 'Popup')):
+                    raise AssertionError('runtime menus resolve through their owner, never standalone geometry')
+                return super().geometry(window)
             def frame(self, label, window=None, reference=None):
                 if window and (window.endswith('Menu') or window.endswith('Popup')):
                     raise AssertionError('runtime popup is not an independently titled window')
@@ -764,7 +1071,7 @@ class HistoryRecipeTests(unittest.TestCase):
 
     def test_history_popup_owners_are_scoped_on_both_guests(self):
         from tools.lab.surface_driver.profiles import load_profile
-        for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland'):
+        for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland', 'kubuntu-kde-wayland'):
             profile = load_profile(desktop)
             for name in ('historyAddFilterMenu', 'historySelectionMore',
                          'historyInspectorMenu', 'historyManagementMenu'):
