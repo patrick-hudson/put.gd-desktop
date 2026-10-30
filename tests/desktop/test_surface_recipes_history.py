@@ -314,6 +314,9 @@ class FakeContext(Context):
         raise AssertionError('app children must use the normal guarded window input path')
 
     def click_at(self, x, y, button='left', head=None):
+        if (x, y) == (650, 620):
+            name = self.pending_button
+            return self.click(('text-glob:' if '*' in name else 'text:') + name, self.pending_button_window, button)
         if (x, y) == (720, 220):
             self.events.append(('delegate', copy.deepcopy(self.last_delegate_query)))
             return self.click('historyList', 'history', button)
@@ -325,6 +328,12 @@ class FakeContext(Context):
         self.menu = 'header'
 
     def accessible(self, query):
+        if query.get('role') == 'push button' and query.get('name') in ('Cancel', 'Keep uploading', 'Cancel 2 uploads', 'Delete * file*', 'Clear temporary files', 'Clear history records'):
+            if query.get('pid') != 123 or not query.get('owned') or not query.get('within'):
+                raise AssertionError('confirmation input must constrain native owner and dialog bounds')
+            self.pending_button = query['name']
+            self.pending_button_window = 'historyCancelAllConfirmation' if query['name'] in ('Keep uploading', 'Cancel 2 uploads') else 'historyConfirmAction'
+            return [{'rect': [600, 600, 100, 40]}]
         if query.get('name') == 'History items and upload activity':
             if query.get('states', {}).get('focused') and self.focused_control != 'historyList':
                 return []
@@ -624,6 +633,22 @@ class HistoryRecipeTests(unittest.TestCase):
                     raise AssertionError('glob also matches the dialog title')
                 return super().click(control, window, button, offset)
         history.cancel_all(CountedContext(('history_active_uploads',)))
+
+    def test_confirmation_uses_button_role_and_modal_window_guard(self):
+        ctx = FakeContext()
+        queries = []
+        def accessible(query):
+            queries.append(query)
+            return [{'rect': [600, 600, 100, 40]}] if query.get('role') == 'push button' else [{'rect': [600, 600, 100, 40]}] * 2
+        points = []
+        ctx.accessible = accessible
+        ctx.click_at = lambda *point, **kwargs: points.append((point, kwargs))
+        history._confirm_button(ctx, 'historyConfirmAction', 'Clear history records')
+        self.assertEqual(queries[0]['role'], 'push button')
+        self.assertEqual(queries[0]['pid'], 123)
+        self.assertEqual(queries[0]['within'], [100, 80, 1400, 950])
+        self.assertIn(('focus', 'historyConfirmAction', False), ctx.events)
+        self.assertEqual(points, [((650, 620), {'head': 0})])
 
     def test_native_window_observation_uses_accessible_query_and_iconified_state(self):
         from tools.lab.surface_driver.profiles import load_profile

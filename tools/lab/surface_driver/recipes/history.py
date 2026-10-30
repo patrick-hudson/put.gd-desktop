@@ -103,9 +103,11 @@ def _wait_window(ctx, window):
         ctx.blocked('No unambiguous live geometry after waiting for ' + window + '.', issue=820)
 
 
-def _click_history_node(ctx, query):
-    """Click an app child through its live bounds and the normal window guard."""
-    box = _wait_window(ctx, 'history')
+def _click_window_node(ctx, window, query):
+    """Click one app child through its bounds and its own window's guard."""
+    box = _wait_window(ctx, window)
+    query = dict(query)
+    query.setdefault('within', [box[k] for k in ('x', 'y', 'width', 'height')])
     def observed():
         nodes = ctx.accessible(dict(query, owned=True, visible=True, showing=True, enabled=True, pid=box['pid']))
         return nodes[0] if len(nodes) == 1 and nodes[0].get('rect') else None
@@ -123,9 +125,17 @@ def _click_history_node(ctx, query):
     scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
     point = tuple(round((value - box.get(origin, 0)) * scale)
                   for value, origin in zip(point, ('screen_x', 'screen_y')))
-    ctx.focus('history', raise_window=False)
+    ctx.focus(window, raise_window=False)
     ctx.click_at(*point, head=box.get('head', 0))
     return node
+
+
+def _click_history_node(ctx, query):
+    return _click_window_node(ctx, 'history', query)
+
+
+def _confirm_button(ctx, window, name):
+    return _click_window_node(ctx, window, {'name': name, 'role': 'push button'})
 
 
 def _row(ctx, fixture='history-row'):
@@ -427,13 +437,13 @@ def cancel_all(ctx):
     _wait_window(ctx, 'historyCancelAllConfirmation')
     _frame(ctx, 'keep-question', 'history-cancel-all-confirmation', 'historyCancelAllConfirmation')
     ctx.expect(state['open'] and set(state['operationIds']) == set(ids), 'confirmation captures exact active identities')
-    ctx.click('text:Keep uploading', window='historyCancelAllConfirmation')
+    _confirm_button(ctx, 'historyCancelAllConfirmation', 'Keep uploading')
     ctx.wait(lambda: not _state(ctx)['cancelAllConfirmation']['open'], 'Keep uploading dismisses confirmation')
     ctx.expect(_state(ctx)['activeOperationCount'] == len(ids), 'Keep uploading leaves all operations active')
     ctx.click('text-glob:Cancel all (*)…', window='history')
     second = ctx.wait(lambda: (s if (s := _state(ctx))['cancelAllConfirmation']['open'] else None), 'second cancel-all confirmation opens')
     ctx.expect(set(second['cancelAllConfirmation']['operationIds']) == set(ids), 'second confirmation captures same identities')
-    ctx.click('text:Cancel ' + str(len(ids)) + ' uploads', window='historyCancelAllConfirmation')
+    _confirm_button(ctx, 'historyCancelAllConfirmation', 'Cancel ' + str(len(ids)) + ' uploads')
     ctx.wait(lambda: all(_result(ctx.call('operation.inspect', {'id': item}))['state'] == 'cancelled' for item in ids), 'all confirmed uploads cancel', timeout=75)
     ctx.expect(_state(ctx)['activeOperationCount'] == 0, 'banner clears canceled uploads')
     _frame(ctx, 'after')
@@ -454,11 +464,11 @@ def delete_remote(ctx):
     ctx.frame('technical-details', window='Deletion technical details')
     ctx.expect([target['historyId'] for target in preparation['targets']] == [row['id']], 'dialog prepares only exact fixture identity')
     ctx.keys('Esc')
-    ctx.click('text:Cancel', window='historyConfirmAction')
+    _confirm_button(ctx, 'historyConfirmAction', 'Cancel')
     ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['remoteStatus'] == original['remoteStatus'], 'Cancel preserves remote state')
     ctx.click('text:Delete from destination…', window='history')
     _wait_window(ctx, 'historyConfirmAction')
-    ctx.click('text-glob:Delete * file*', window='historyConfirmAction')
+    _confirm_button(ctx, 'historyConfirmAction', 'Delete * file*')
     final = ctx.wait(lambda: (d if (d := _result(ctx.call('history.detail', {'id': row['id']})))['remoteStatus'] in ('removed', 'already_missing') else None), 'recorded loopback object deleted', timeout=60)
     ctx.expect(final['id'] == original['id'] and final['local'] == original['local'], 'deletion preserves history and local copy')
     _frame(ctx, 'after', '48-history-deletion-recovery')
@@ -477,19 +487,19 @@ def clear_history(ctx):
         ctx.click('text:' + action, window='historyManagementMenu')
         _wait_window(ctx, 'historyConfirmAction')
         ctx.frame('question-' + ('cache' if 'temporary' in action else 'records'), window='historyConfirmAction')
-        ctx.click('text:Cancel', window='historyConfirmAction')
+        _confirm_button(ctx, 'historyConfirmAction', 'Cancel')
         ctx.expect(_state(ctx)['total'] == before, 'Cancel preserves history')
     ctx.click('historyManagementExpanded', window='history')
     ctx.click('text:Clear temporary files…', window='historyManagementMenu')
     _wait_window(ctx, 'historyConfirmAction')
-    ctx.click('text:Clear temporary files', window='historyConfirmAction')
+    _confirm_button(ctx, 'historyConfirmAction', 'Clear temporary files')
     ctx.wait(lambda: not _state(ctx)['busy'], 'temporary file cleanup finishes')
     ctx.expect(_state(ctx)['total'] == before, 'cache cleanup preserves history records')
     ctx.expect(_result(ctx.call('history.detail', {'id': ctx.fixture('history_rows')['image']['id']}))['local'] == local_before, 'cache cleanup preserves local-copy receipt')
     ctx.click('historyManagementExpanded', window='history')
     ctx.click('text:Clear history records…', window='historyManagementMenu')
     _wait_window(ctx, 'historyConfirmAction')
-    ctx.click('text:Clear history records', window='historyConfirmAction')
+    _confirm_button(ctx, 'historyConfirmAction', 'Clear history records')
     ctx.wait(lambda: not _state(ctx)['busy'] and _state(ctx)['total'] == 0, 'confirmed clear removes local history')
     _frame(ctx, 'after')
     ctx.review('Catalog has no empty-history reference or confirmation controls dump; inspect saved frames for empty state and both safe defaults.')
