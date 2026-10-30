@@ -947,8 +947,10 @@ def recorder_ignores_shortcut(ctx):
 @recipe('shortcut.paused-while-settings-records', desktop_drawn=True)
 def recorder_releases_grabs(ctx):
     recorder = ctx.fixture('shortcut-settings-recorder')
-    before = ctx.wait(lambda: (b if any(v.get('bound') for v in (b := recorder.status()['bindings']).values()) else None),
-                      'native bindings ready before shortcut recording')
+    def bindings_ready():
+        bindings = recorder.status()['bindings']
+        return bindings if any(v.get('bound') for v in bindings.values()) else None
+    before = ctx.wait(bindings_ready, 'native bindings ready before shortcut recording')
     expected = {k for k,v in before.items() if v.get('bound')}
     ctx.expect(bool(expected), 'native bindings are present before recording')
     recorder.start('region')
