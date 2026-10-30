@@ -1718,8 +1718,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   const auto point=next->mapTo(&page,next->rect().center());
   QTest::mousePress(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,point);
   bool held=true;auto release=qScopeGuard([&]{if(held)QTest::mouseRelease(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,point);});
-  putgd::test::settle(50);
-  QCOMPARE(QApplication::focusWidget(),editor.findChild<QPushButton*>("recordWindowShortcut"));
+  PUTGD_TRY_COMPARE(QApplication::focusWidget(),editor.findChild<QPushButton*>("recordWindowShortcut"));
   // A complete chord and Backspace during the hold must change neither draft.
   QTest::keyClick(page.windowHandle(),Qt::Key_8,Qt::ControlModifier|Qt::AltModifier|Qt::ShiftModifier);
   QTest::keyClick(page.windowHandle(),Qt::Key_Backspace);
