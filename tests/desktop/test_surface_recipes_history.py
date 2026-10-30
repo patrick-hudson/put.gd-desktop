@@ -151,7 +151,7 @@ class FakeContext(Context):
         self.focus = control
         if control == 'applicationMenu':
             self.menu = 'app'
-        elif control == 'captureActionsHelp':
+        elif control == 'text:Capture actions':
             self.menu = None
             self.help = True
         elif control == 'text:Close':

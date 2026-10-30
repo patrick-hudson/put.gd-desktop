@@ -476,7 +476,7 @@ def application_menu(ctx):
     row = _row(ctx)
     _frame(ctx, 'before')
     _application_menu(ctx)
-    ctx.frame('menu', window='applicationMenuPopup')
+    ctx.frame('menu')
     ctx.keys('Esc')
     ctx.wait(lambda: 'Quit put.gd' not in _menu_names(ctx), 'Escape dismisses application menu')
     ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'],
@@ -489,12 +489,12 @@ def capture_help(ctx):
     _row(ctx)
     _frame(ctx, 'before')
     _application_menu(ctx)
-    ctx.click('captureActionsHelp', window='applicationMenuPopup')
+    ctx.click('text:Capture actions', window='applicationMenuPopup')
     ctx.wait(lambda: ctx.accessible({'owned': True, 'visible': True, 'name': 'Capture actions'}),
              'Capture actions help is visible')
     ctx.frame('help', window='captureHelp')
     ctx.click('text:Close', window='captureHelp')
-    ctx.wait(lambda: not ctx.accessible({'owned': True, 'visible': True, 'role': 'dialog', 'name': 'Help'}),
+    ctx.wait(lambda: not ctx.accessible({'owned': True, 'visible': True, 'name': 'Help'}),
              'Close dismisses capture help')
     ctx.call('ui.viewState')
     _frame(ctx, 'after')
@@ -507,7 +507,7 @@ def header_context_menu(ctx):
     ctx.click_at(*_header_point(ctx, ctx.geometry('history')), button='right')
     ctx.wait(lambda: {'Minimize', 'Maximize', 'Close'} <= _menu_names(ctx),
              'header context menu exposes the native window commands')
-    ctx.frame('menu', window='windowContextMenu')
+    ctx.frame('menu')
     ctx.keys('Esc')
     ctx.wait(lambda: 'Minimize' not in _menu_names(ctx), 'Escape dismisses header menu')
     ctx.call('ui.viewState')
