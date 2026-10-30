@@ -7,6 +7,8 @@ import json
 import os
 import select
 from pathlib import Path
+import re
+import shutil
 import subprocess
 import sys
 import time
@@ -18,7 +20,69 @@ def save(name, value):
     temporary.replace(name)
 
 
-def run(script):
+CGROUP_ROOT = Path('/sys/fs/cgroup')
+BOOT_ID = Path('/proc/sys/kernel/random/boot_id')
+
+
+def unified_mount():
+    if not any(line.split()[1:3] == ['/sys/fs/cgroup', 'cgroup2']
+               for line in Path('/proc/mounts').read_text().splitlines()):
+        raise ValueError('A cgroup v2 mount at /sys/fs/cgroup is required')
+    return CGROUP_ROOT.stat()
+
+
+def populated(directory):
+    # One read of the kernel's hierarchical, atomic emptiness flag. Never infer
+    # emptiness from cgroup.procs (which also omits delegated child cgroups).
+    values = [line.split()[1:] for line in (directory / 'cgroup.events').read_text().splitlines()
+              if line.split()[:1] == ['populated']]
+    if values not in ([['0']], [['1']]):
+        raise ValueError('Invalid cgroup.events populated flag')
+    return values == [['1']]
+
+
+def scope_identity(unit):
+    root = unified_mount()
+    paths = [line[3:] for line in Path('/proc/self/cgroup').read_text().splitlines()
+             if line.startswith('0::')]
+    if len(paths) != 1 or Path(paths[0]).name != unit:
+        raise ValueError('Staging did not enter its dedicated scope')
+    directory = CGROUP_ROOT / paths[0].lstrip('/')
+    info = directory.stat()
+    if not populated(directory):
+        raise ValueError('Running scope is not populated')
+    return {'path': paths[0], 'unit': unit, 'device': info.st_dev, 'inode': info.st_ino,
+            'mountDevice': root.st_dev, 'mountInode': root.st_ino,
+            'bootId': BOOT_ID.read_text().strip()}
+
+
+def launch(source, directory, script, supervisor=False):
+    """Choose once, before work. A failed scope launch is never retried unscoped."""
+    environment = {**os.environ, 'XDG_RUNTIME_DIR': f'/run/user/{os.getuid()}',
+                   'DBUS_SESSION_BUS_ADDRESS': f'unix:path=/run/user/{os.getuid()}/bus'}
+    reason = 'cgroup v2 or the systemd user manager is unavailable'
+    try:
+        unified_mount()
+        available = shutil.which('systemd-run') and subprocess.run(
+            ['systemctl', '--user', 'show-environment'], env=environment,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5).returncode == 0
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        available = False
+    arguments = [sys.executable, '-c', source, 'supervise' if supervisor else 'run', directory, script]
+    if available:
+        job = Path(directory).name
+        if not re.fullmatch(r'install-[0-9a-f]{32}', job):
+            raise ValueError('Scope requires an install job ID')
+        unit = ('putgd-supervisor-' if supervisor else 'putgd-staging-') + job + '.scope'
+        arguments += ['--scope', unit]
+        arguments = ['systemd-run', '--user', '--scope', '--quiet', '--property=Delegate=yes',
+                     '--unit=' + unit, '--expand-environment=no', '--', *arguments]
+    else:
+        arguments += ['--session-fallback', reason]
+    os.execvpe(arguments[0], arguments, environment)
+
+
+def run(script, unit=None, fallback='direct session-only invocation', supervisor=False):
     # Every staging descendant must remain identifiable after wrapper death.
     if os.getsid(0) != os.getpid():
         os.setsid()
@@ -32,7 +96,12 @@ def run(script):
             return 125
         identity = {'pid': os.getpid(), 'sessionId': os.getsid(0), 'startTicks': int(
             Path('/proc/self/stat').read_text().rsplit(')', 1)[1].split()[19])}
-        save('staging-process.json', identity)
+        if unit:
+            identity.update(tracking='cgroup-v2', cgroup=scope_identity(unit))
+        else:
+            identity.update(tracking='session', fallbackReason=fallback)
+        prefix = 'supervisor' if supervisor else 'staging'
+        save(prefix + '-process.json', identity)
         process = subprocess.Popen(['sh', '-c', script], stdin=subprocess.DEVNULL)
         code = process.wait()
         while True:
@@ -40,19 +109,62 @@ def run(script):
                 os.waitpid(-1, 0)
             except ChildProcessError:
                 break
-        save('staging-result.json', {**identity, 'exitCode': code, 'finished': True})
+        save(prefix + '-result.json', {**identity, 'exitCode': code, 'finished': True})
         return code
 
 
 # A wrapper that reached its terminal receipt also waited, as subreaper, for
 # descendants that called setsid(). After the wrapper is killed, only the session
-# scan remains, and it cannot see those: the in-tree hook and apt-get update with
+# scan remains on session-only guests, and it cannot see those: the in-tree hook and apt-get update with
 # no sources start none, but a guest's own APT Pre-Invoke hook could.
 ABANDONED_LIMIT = ('Abandonment proves only that no process remains in the staging session. A '
                    'descendant that called setsid() (for example a daemonizing guest APT Pre-Invoke '
                    'hook) left that session and is not checked, and the /proc scan is not atomic: '
                    'a member that keeps forking and exiting could evade both passes. Inspect the '
                    'guest process list if its hooks can daemonize.')
+
+
+def cgroup_status(identity):
+    if identity.get('tracking', 'session') == 'session' and 'cgroup' not in identity:
+        return {'tracking': 'session', 'limit': ABANDONED_LIMIT,
+                'fallbackReason': identity.get('fallbackReason', 'legacy session-only identity')}
+    status = {'tracking': 'cgroup-v2', 'cgroupPopulated': None, 'cgroupGone': False}
+    try:
+        group = identity['cgroup']
+        path = group['path']
+        unit = group['unit']
+        if (identity.get('tracking') != 'cgroup-v2' or not isinstance(path, str)
+                or not re.fullmatch(r'putgd-staging-install-[0-9a-f]{32}\.scope', unit)
+                or not path.startswith('/user.slice/') or Path(path).name != unit
+                or any(part in ('', '.', '..') for part in path.split('/')[1:])
+                or any(type(group[k]) is not int or group[k] <= 0
+                       for k in ('device', 'inode', 'mountDevice', 'mountInode'))):
+            raise ValueError('Invalid cgroup identity')
+        root = unified_mount()
+        if ((root.st_dev, root.st_ino) != (group['mountDevice'], group['mountInode'])
+                or BOOT_ID.read_text().strip() != group['bootId']):
+            raise ValueError('Cgroup mount or boot identity changed')
+        # Pin components without following symlinks. ENOENT here, with the same
+        # boot and mount, proves the recorded cgroup gone. ENOENT for EVENTS
+        # does not: a missing/unreadable events file always retains the lock.
+        fd = os.open(CGROUP_ROOT, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            try:
+                for part in path.split('/')[1:]:
+                    child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+                    os.close(fd)
+                    fd = child
+            except FileNotFoundError:
+                return {**status, 'cgroupGone': True, 'cgroupPopulated': False}
+            info = os.fstat(fd)
+            if (info.st_dev, info.st_ino) != (group['device'], group['inode']):
+                raise ValueError('Recorded cgroup was replaced')
+            status['cgroupPopulated'] = populated(Path(f'/proc/self/fd/{fd}'))
+        finally:
+            os.close(fd)
+        return status
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return {**status, 'inspectionError': 'Cannot inspect staging cgroup: ' + type(error).__name__}
 
 
 def proc_fields(pid):
@@ -125,7 +237,7 @@ def process_status():
             status['exactProcessAlive'] = alive
         except (ProcessLookupError, FileNotFoundError):
             status['exactProcessAlive'] = False
-        return {**status, **session_status(identity['sessionId'])}
+        return {**status, **session_status(identity['sessionId']), **cgroup_status(identity)}
     except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
         return {**status, 'inspectionError':
                 'Cannot establish staging session leader identity: ' + type(error).__name__}
@@ -154,17 +266,19 @@ def reconcile(seconds, abandoned=False):
         # The wrapper releases the flock just before it exits, and session
         # members may still be finishing. Wait out confirmed liveness within the
         # deadline; never wait out uncertain (None) inspection.
-        while ((status['exactProcessAlive'] is True or status['sessionAlive'] is True)
+        while ((status['exactProcessAlive'] is True or status['sessionAlive'] is True
+                or status.get('cgroupPopulated') is True)
                and time.monotonic() < deadline):
             time.sleep(.1)
             status = process_status()
         # A free flock or terminal receipt does not establish that a killed
         # wrapper's privileged descendants exited. Both paths require a complete
         # session scan and a verifiable, no-longer-live session leader.
-        if status['exactProcessAlive'] is not False or status['sessionAlive'] is not False:
+        if (status['exactProcessAlive'] is not False or status['sessionAlive'] is not False
+                or (status.get('tracking') == 'cgroup-v2' and status.get('cgroupPopulated') is not False)):
             return {'finished': False, 'state': 'staging-outcome-unknown', **status}
         if abandoned:
-            return {'finished': True, 'state': 'staging-abandoned', **status, 'limit': ABANDONED_LIMIT}
+            return {'finished': True, 'state': 'staging-abandoned', **status}
         if Path('staging-result.json').exists():
             result = json.loads(Path('staging-result.json').read_text())
             identity = status['process']
@@ -178,8 +292,12 @@ def reconcile(seconds, abandoned=False):
 def main():
     os.umask(0o077)
     os.chdir(sys.argv[2])
-    if sys.argv[1] == 'run':
-        return run(sys.argv[3])
+    if sys.argv[1] in ('launch', 'launch-supervisor'):
+        return launch(sys.argv[4], sys.argv[2], sys.argv[3], sys.argv[1] == 'launch-supervisor')
+    if sys.argv[1] in ('run', 'supervise'):
+        return run(sys.argv[3], unit=sys.argv[5] if sys.argv[4:5] == ['--scope'] else None,
+                   fallback=sys.argv[5] if sys.argv[4:5] == ['--session-fallback'] else
+                   'direct session-only invocation', supervisor=sys.argv[1] == 'supervise')
     print(json.dumps(reconcile(float(sys.argv[3]), abandoned='--abandoned' in sys.argv[4:])))
     return 0
 

@@ -65,6 +65,26 @@ print(json.dumps({'result': result, 'queries': queries}))
             assert (Path(directory) / 'result.json').is_file()
             return json.loads(result.stdout), (Path(directory) / 'apt.log').read_text()
 
+    def test_root_supervisor_scope_check_before_admission(self):
+        spec = importlib.util.spec_from_file_location('package_install', ROOT / 'tools/lab/package_install.py')
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        from unittest.mock import patch
+        job = 'install-' + 'a' * 32
+        unit = 'putgd-supervisor-' + job + '.scope'
+        path = '/user.slice/user-1000.slice/user@1000.service/app.slice/' + unit
+        record = {'tracking': 'cgroup-v2', 'cgroup': {'unit': unit, 'path': path}}
+        def read(target, *a, **kw):
+            return json.dumps(record) if target.name == 'supervisor-process.json' else '0::' + path
+        with patch.object(Path, 'cwd', return_value=Path('/private/' + job)), \
+                patch.object(Path, 'read_text', read):
+            helper.verify_scope()
+            record['cgroup']['path'] += '/escaped'
+            with self.assertRaisesRegex(ValueError, 'left its dedicated cgroup'):
+                helper.verify_scope()
+        with patch.object(Path, 'read_text', side_effect=FileNotFoundError()):
+            helper.verify_scope()  # Legacy callers remain supported.
+
     def test_output_rejects_symlinks_and_hardlinks_without_truncating_target(self):
         spec = importlib.util.spec_from_file_location('package_install', ROOT / 'tools/lab/package_install.py')
         helper = importlib.util.module_from_spec(spec)

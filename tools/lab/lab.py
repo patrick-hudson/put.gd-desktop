@@ -1671,6 +1671,13 @@ def verify_installed_binaries(run, deb):
     return expected
 
 
+def staging_invocation(remote, script, supervisor=False):
+    lifetime = (HERE / 'package_staging.py').read_text()
+    return ('python3 -c ' + shlex.quote(lifetime) +
+            (' launch-supervisor' if supervisor else ' launch') + ' "$HOME/' + remote + '" '
+            + shlex.quote(script) + ' ' + shlex.quote(lifetime))
+
+
 def stage_install_helper(run, remote, helper, digest):
     # Old immutable goldens grant apt-get, not this new helper. Use that existing
     # authority only in the disposable overlay. Staging uses no repositories
@@ -1706,8 +1713,7 @@ def stage_install_helper(run, remote, helper, digest):
               f'echo "{digest}  {helper}" | sha256sum -c -\n'
               f'test "$(stat -c %u:%a {helper})" = 0:755\n'
               f'sudo -n -l {helper} /tmp/check 1 1 >/dev/null\n')
-    lifetime = (HERE / 'package_staging.py').read_text()
-    invocation = 'python3 -c ' + shlex.quote(lifetime) + ' run "$HOME/' + remote + '" ' + shlex.quote(script)
+    invocation = staging_invocation(remote, script)
     # The detached subreaper outlives SSH; only its terminal receipt proves all
     # staging descendants exited. setsid --wait preserves that wait even if the
     # launcher has to fork. Keep the original output/exit status separate.
@@ -1785,7 +1791,8 @@ def recover_staging_fenced(run, job, abandoned):
                        f'Inspect ~/{remote}/staging-process.json and staging-result.json; '
                        + (f'staging session processes are still running: PIDs {report["sessionPids"]}'
                           if report.get('sessionPids') else
-                          report.get('inspectionError', 'staging session exit is unconfirmed')) + '.')
+                          report.get('inspectionError', 'staging cgroup remains populated' if
+                              report.get('cgroupPopulated') else 'staging session exit is unconfirmed')) + '.')
     # The supervisor admits itself under install-guard only while this job
     # holds install-active, writing progress.json before releasing the guard.
     # Repeating the checks and releasing under that same guard means either
@@ -1932,7 +1939,9 @@ def install_package_fenced(run, deb, timeout, recovery):
                     raise failure from staging_error
         raise
     try:
-        ssh(run, f'nohup sudo -n {helper} "$HOME/{remote}" {timeout} {recovery} '
+        invocation = staging_invocation(remote,
+            f'exec sudo -n {helper} "$HOME/{remote}" {timeout} {recovery}', supervisor=True)
+        ssh(run, f'nohup setsid --wait {invocation} '
                  f'> ~/{remote}/supervisor.log 2>&1 < /dev/null &\n')
     except (LabError, subprocess.TimeoutExpired):
         # The remote launch may have happened even when its SSH reply was lost.
@@ -1972,7 +1981,7 @@ def install_package_fenced(run, deb, timeout, recovery):
     write_json(evidence / 'result.json', report)
     try:
         for name in ('apt.log', 'progress.json', 'supervisor.log', 'staging.log',
-                     'staging-process.json', 'staging-result.json', 'staging-output.log'):
+                     'staging-process.json', 'staging-result.json', 'staging-output.log', 'supervisor-process.json'):
             get(run, remote + '/' + name, evidence / name)
         if not report.get('ok'):
             raise LabError(f'Install failed; dpkg state and owned PIDs retained in {evidence}/result.json; '

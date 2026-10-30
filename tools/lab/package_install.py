@@ -183,6 +183,24 @@ def become_subreaper():
         raise OSError(ctypes.get_errno(), 'Cannot become package subreaper')
 
 
+def verify_scope():
+    # sudo must preserve the dedicated user scope. Refuse before admission if a
+    # guest PAM policy moved root elsewhere; never migrate a root process into
+    # a caller-selected cgroup. Legacy/direct callers retain session tracking.
+    try:
+        identity = json.loads(Path('supervisor-process.json').read_text())
+    except FileNotFoundError:
+        return
+    if identity.get('tracking', 'session') == 'session' and 'cgroup' not in identity:
+        return
+    group = identity['cgroup']
+    unit = 'putgd-supervisor-' + Path.cwd().name + '.scope'
+    if (identity.get('tracking') != 'cgroup-v2' or group['unit'] != unit
+            or Path(group['path']).name != unit
+            or '0::' + group['path'] not in Path('/proc/self/cgroup').read_text().splitlines()):
+        raise ValueError('Root supervisor left its dedicated cgroup')
+
+
 def supervise(commands, directory, timeout, recovery, package='putgd'):
     started = time.monotonic()
     owned = OwnedProcesses()
@@ -284,8 +302,9 @@ def main():
     try:
         # Fail before admission where possible, leaving the job recoverable.
         become_subreaper()
+        verify_scope()
         admit(args.directory.name, owner)
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, KeyError, TypeError) as error:
         # No progress.json or result.json: the job (if it still holds the lock)
         # stays recoverable through lab.py recover-staging.
         raise SystemExit(f'Install supervisor refused to start: {error}') from None

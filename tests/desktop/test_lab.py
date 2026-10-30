@@ -380,7 +380,7 @@ class LabContracts(unittest.TestCase):
             self.assertTrue(result['timedOut'])
             self.assertEqual(lab.read_json(Path(result['installEvidence']) / 'result.json'), report)
             self.assertTrue(any('1200 300' in call for call in calls))
-            self.assertEqual(sum('nohup sudo' in call for call in calls), 1)
+            self.assertEqual(sum(' launch-supervisor "$HOME/' in call for call in calls), 1)
 
     def test_install_known_safe_failures_release_only_this_jobs_lock(self):
         for stage in ('upload', 'collection', 'verification'):
@@ -401,7 +401,7 @@ class LabContracts(unittest.TestCase):
                 self.assertEqual(len(release), 1)
                 self.assertIn('if [ "$(cat ~/putgd-lab/install-active/job)" = install-', release[0])
                 if stage == 'upload':
-                    self.assertFalse(any('nohup sudo' in c for c in calls))
+                    self.assertFalse(any(' launch-supervisor "$HOME/' in c for c in calls))
 
     def test_install_rpm_is_rejected_before_guest_work(self):
         with patch.object(lab, 'put') as put, patch.object(lab, 'ssh') as ssh:
@@ -456,6 +456,9 @@ class LabContracts(unittest.TestCase):
                 f'echo "{message}"\n'
                 'echo "E: Unable to lock directory /var/lib/apt/lists/"\nexit 100\n')
             sudo.chmod(0o700)
+            systemctl = home / 'systemctl'
+            systemctl.write_text('#!/bin/sh\nexit 1\n')
+            systemctl.chmod(0o700)
             def ssh(_run, script):
                 result = lab.subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
                     env={**os.environ, 'HOME': str(home), 'PATH': str(home) + ':' + os.environ['PATH']}, timeout=5)
@@ -482,7 +485,7 @@ class LabContracts(unittest.TestCase):
                 with self.assertRaisesRegex(lab.LabError, 'hash mismatch'):
                     lab.install_package(run, 'synthetic.deb')
                 scripts = [c.args[1] for c in ssh.call_args_list]
-                self.assertFalse(any('nohup sudo' in c for c in scripts))
+                self.assertFalse(any(' launch-supervisor "$HOME/' in c for c in scripts))
                 self.assertTrue(any('rmdir' in c for c in scripts))
             self.assertEqual(next(run.glob('install-*/staging.log')).read_text(), 'staging failure evidence')
 
@@ -517,7 +520,7 @@ class LabContracts(unittest.TestCase):
                     releases = [script for script in scripts if 'rmdir' in script]
                     self.assertEqual(len(releases), 1)
                     self.assertIn('if [ "$(cat ~/putgd-lab/install-active/job)" = install-', releases[0])
-                    self.assertFalse(any('nohup sudo' in script for script in scripts))
+                    self.assertFalse(any(' launch-supervisor "$HOME/' in script for script in scripts))
 
     def test_install_staging_log_interrupt_survives_release_failure(self):
         for interrupt in (KeyboardInterrupt(), SystemExit(2)):
@@ -541,7 +544,7 @@ class LabContracts(unittest.TestCase):
                             lab.install_package(run, 'synthetic.deb')
                     self.assertIs(caught.exception, interrupt)
                     self.assertEqual(sum('rmdir' in script for script in scripts), 1)
-                    self.assertFalse(any('nohup sudo' in script for script in scripts))
+                    self.assertFalse(any(' launch-supervisor "$HOME/' in script for script in scripts))
                     self.assertIn('unknown install-active state', warning.getvalue())
 
     def test_failed_staging_holds_lock_on_live_or_unreachable_guest(self):
@@ -1000,7 +1003,7 @@ class LabContracts(unittest.TestCase):
                     patch.object(lab, 'verify_installed_binaries', return_value={}):
                 lab.install_package(run, deb)
             self.assertEqual(polls, 2)
-            self.assertEqual(sum('nohup sudo' in call for call in calls), 1)
+            self.assertEqual(sum(' launch-supervisor "$HOME/' in call for call in calls), 1)
 
     def test_install_lost_launch_reply_reconciles_without_starting_twice(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1011,13 +1014,13 @@ class LabContracts(unittest.TestCase):
             calls = []
             def ssh(_run, script, **kwargs):
                 calls.append(script)
-                if 'nohup sudo' in script:
+                if ' launch-supervisor "$HOME/' in script:
                     raise lab.subprocess.TimeoutExpired('ssh', 60)
                 return json.dumps({'ok': True, 'timedOut': False}) if 'result.json; then cat' in script else ''
             with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), \
                     patch.object(lab, 'get'), patch.object(lab, 'verify_installed_binaries', return_value={}):
                 lab.install_package(run, deb)
-            self.assertEqual(sum('nohup sudo' in c for c in calls), 1)
+            self.assertEqual(sum(' launch-supervisor "$HOME/' in c for c in calls), 1)
             self.assertTrue(any('rmdir' in c for c in calls))
 
     def test_install_profile_timeouts_and_abort_block_blind_retry(self):
@@ -1036,7 +1039,7 @@ class LabContracts(unittest.TestCase):
                 verify.assert_not_called()
             self.assertTrue(any('42 21' in call for call in calls))
             self.assertFalse(any('rmdir' in call for call in calls))
-            self.assertEqual(sum('nohup sudo' in call for call in calls), 1)
+            self.assertEqual(sum(' launch-supervisor "$HOME/' in call for call in calls), 1)
 
     def test_launch_rejects_wrong_host_key_endpoint_before_creating_run(self):
         with tempfile.TemporaryDirectory() as directory:

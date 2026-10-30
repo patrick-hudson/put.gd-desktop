@@ -236,7 +236,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         self.assertEqual(saved['sessionId'], wrapper.pid)
         self.assertNotEqual(saved['sessionId'], os.getsid(0))
         self.assertEqual(saved, {key: lab.read_json(self.remote / 'staging-result.json')[key]
-                               for key in ('pid', 'startTicks', 'sessionId')})
+                               for key in saved})
 
     def test_pidfd_enosys_falls_back_to_proc(self):
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
@@ -877,6 +877,124 @@ with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put', side_ef
         patch.object(lab, 'stage_install_helper', side_effect=stage):
     lab.install_package(home, 'synthetic.deb')
 '''
+
+
+class CgroupStagingContracts(unittest.TestCase):
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location('package_staging', STAGING)
+        self.staging = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.staging)
+        temporary = tempfile.TemporaryDirectory(prefix='cg780-')
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.mount = self.root / 'cgroup'
+        self.mount.mkdir()
+        self.path = '/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-staging-' + JOB + '.scope'
+        self.group = self.mount / self.path.lstrip('/')
+        self.group.mkdir(parents=True)
+        (self.group / 'cgroup.events').write_text('populated 1\nfrozen 0\n')
+        self.boot = self.root / 'boot-id'
+        self.boot.write_text('boot-one')
+        for name, value in (('CGROUP_ROOT', self.mount), ('BOOT_ID', self.boot)):
+            patcher = patch.object(self.staging, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        patcher = patch.object(self.staging, 'unified_mount', side_effect=self.mount.stat)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        info, mount = self.group.stat(), self.mount.stat()
+        self.identity = {'tracking': 'cgroup-v2', 'pid': 123, 'sessionId': 123, 'startTicks': 456,
+            'cgroup': {'path': self.path, 'unit': self.group.name, 'device': info.st_dev,
+                       'inode': info.st_ino, 'mountDevice': mount.st_dev, 'mountInode': mount.st_ino,
+                       'bootId': 'boot-one'}}
+
+    def status(self):
+        return self.staging.cgroup_status(self.identity)
+
+    def test_atomic_hierarchical_populated_flag_controls_liveness(self):
+        # An empty procs file says nothing about a populated delegated child.
+        (self.group / 'cgroup.procs').write_text('')
+        self.assertIs(self.status()['cgroupPopulated'], True)
+        (self.group / 'cgroup.events').write_text('populated 0\nfrozen 0\n')
+        self.assertIs(self.status()['cgroupPopulated'], False)
+        self.assertNotIn('limit', self.status())
+        (self.group / 'cgroup.procs').unlink()
+        (self.group / 'cgroup.events').unlink()
+        self.assertIsNone(self.status()['cgroupPopulated'])  # Missing events is NOT gone.
+        self.group.rmdir()
+        self.assertIs(self.status()['cgroupGone'], True)
+        self.boot.write_text('boot-two')
+        self.assertIsNone(self.status()['cgroupPopulated'])  # Gone across a reboot is uncertain.
+
+    def test_denied_malformed_replaced_or_symlinked_group_is_unknown(self):
+        original = Path.read_text
+        def denied(path, *args, **kwargs):
+            if path.name == 'cgroup.events':
+                raise PermissionError()
+            return original(path, *args, **kwargs)
+        with patch.object(Path, 'read_text', denied):
+            self.assertIsNone(self.status()['cgroupPopulated'])
+        for value in ('', 'populated 2', 'populated 0\npopulated 1', 'populated'):
+            (self.group / 'cgroup.events').write_text(value)
+            self.assertIsNone(self.status()['cgroupPopulated'])
+        self.identity['cgroup']['inode'] += 1
+        self.assertIsNone(self.status()['cgroupPopulated'])
+        self.identity['cgroup']['inode'] -= 1
+        moved = self.group.with_name('preserved')
+        self.group.rename(moved)
+        self.group.symlink_to(moved, target_is_directory=True)
+        self.assertIsNone(self.status()['cgroupPopulated'])
+
+    def test_missing_metadata_cannot_downgrade_cgroup_tracking(self):
+        for key in ('path', 'unit', 'inode', 'bootId'):
+            value = self.identity['cgroup'].pop(key)
+            self.assertIsNone(self.status()['cgroupPopulated'])
+            self.identity['cgroup'][key] = value
+        del self.identity['cgroup']
+        self.assertIsNone(self.status()['cgroupPopulated'])
+        legacy = self.staging.cgroup_status({'pid': 123})
+        self.assertEqual(legacy['tracking'], 'session')
+        self.assertIn('setsid()', legacy['limit'])
+
+    def test_populated_or_unknown_cgroup_blocks_even_matching_terminal_receipt(self):
+        old = os.open('.', os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.chdir(self.root)
+            lab.write_json(self.root / 'staging-process.json', self.identity)
+            lab.write_json(self.root / 'staging-result.json', {**self.identity, 'finished': True, 'exitCode': 0})
+            with patch.object(self.staging.os, 'pidfd_open', side_effect=ProcessLookupError()), \
+                    patch.object(self.staging, 'session_status', return_value={'sessionAlive': False, 'sessionPids': []}):
+                for abandoned in (False, True):
+                    for value in ('populated 1', 'invalid'):
+                        (self.group / 'cgroup.events').write_text(value)
+                        self.assertFalse(self.staging.reconcile(0, abandoned)['finished'])
+                    (self.group / 'cgroup.events').write_text('populated 0')
+                    report = self.staging.reconcile(0, abandoned)
+                    self.assertTrue(report['finished'])
+                    self.assertNotIn('limit', report)
+                # The original session/identity guards still apply to an empty cgroup.
+                with patch.object(self.staging, 'session_status', return_value={'sessionAlive': None}):
+                    self.assertFalse(self.staging.reconcile(0, True)['finished'])
+        finally:
+            os.fchdir(old)
+            os.close(old)
+
+    def test_launch_uses_user_scope_and_never_retries_failed_exec(self):
+        for available in (True, False):
+            with self.subTest(available=available), patch.object(self.staging.shutil, 'which', return_value='/bin/systemd-run'), \
+                    patch.object(self.staging.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0 if available else 1)), \
+                    patch.object(self.staging.os, 'execvpe', side_effect=OSError('failed exec')) as execute:
+                with self.assertRaises(OSError):
+                    self.staging.launch('source', '/private/' + JOB, 'synthetic')
+                self.assertEqual(execute.call_count, 1)
+                arguments, environment = execute.call_args.args[1:]
+                if available:
+                    self.assertEqual(arguments[:3], ['systemd-run', '--user', '--scope'])
+                    self.assertIn('--property=Delegate=yes', arguments)
+                    self.assertIn('--scope', arguments[8:])
+                else:
+                    self.assertIn('--session-fallback', arguments)
+                self.assertEqual(environment['XDG_RUNTIME_DIR'], '/run/user/' + str(os.getuid()))
 
 
 if __name__ == '__main__':
