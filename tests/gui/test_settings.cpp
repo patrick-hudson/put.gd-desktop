@@ -129,6 +129,18 @@ private slots:
   PUTGD_VERIFY_STEADY(events.layouts<64&&events.paints<64,1000);
   qInfo()<<"Idle Settings layout/paint events:"<<events.layouts<<events.paints;
  }
+ void updateChannelHelpReservesItsHeightAfterItAppears(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);QJsonObject update;
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=update;return data;});
+  MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());
+  auto* channel=window.findChild<QComboBox*>("updateChannel");auto* source=window.findChild<QLabel*>("updateChannelSource");QVERIFY(channel&&source);
+  for(int pass=0;pass<2;++pass){
+   update={{"supported",true},{"check",true},{"channelSource","repository"},{"channel","nightly"},{"build",QJsonObject{{"version","26.1026.1-nightly"},{"channel","nightly"},{"supported",true}}},{"action",QJsonObject{{"kind","software-updates"},{"repository","managed"},{"file","/etc/yum.repos.d/putgd.repo"}}}};fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(source->isVisibleTo(window.settings()));
+   const auto fits=[&]{return source->mapTo(&window,QPoint()).y()>=channel->mapTo(&window,QPoint(0,channel->height())).y()&&source->parentWidget()->rect().contains(source->geometry());};
+   PUTGD_VERIFY_STEADY(fits(),200);
+   update["channelSource"]="setting";fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(!source->isVisibleTo(window.settings()));
+  }
+ }
  void stackedLabelsStayCloseToTheirNextWidget_data(){QTest::addColumn<int>("pixels");QTest::newRow("100")<<14;QTest::newRow("125")<<18;QTest::newRow("150")<<21;}
  void stackedLabelsStayCloseToTheirNextWidget(){
   QFETCH(int,pixels);Fonts::load();Ui::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,900);window.show();int checked=0;

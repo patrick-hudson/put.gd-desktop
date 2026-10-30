@@ -294,6 +294,11 @@ private:
   // LayoutRequest, so an unconditional write schedules another sizing pass forever.
   const int spacing=space(stacked?Space::s:Space::l);if(line_->spacing()!=spacing)line_->setSpacing(spacing);
   const Qt::Alignment alignment=compact_?Qt::AlignRight|Qt::AlignTop:Qt::AlignTop;if(line_->itemAt(1)->alignment()!=alignment)line_->setAlignment(value_,alignment);
+  // A status/help child can change its minimum height while this value keeps
+  // the same rectangle. Refresh its inner geometry on a sizing pass; invalidate
+  // the child layout, not the observed row that would schedule us again.
+  if(auto* layout=value_->layout();layout&&value_->isVisible()&&value_->height()>=layout->totalMinimumSize().height())
+   for(int i=0;i<layout->count();++i)if(auto* item=layout->itemAt(i);!item->isEmpty()&&item->geometry().height()<item->minimumSize().height()){layout->invalidate();break;}
  }
  QWidget* value_;QWidget* field_;QBoxLayout* line_;bool compact_;bool stacked_=false;int width_=0,gutter_=0;
 };
