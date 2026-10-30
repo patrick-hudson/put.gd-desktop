@@ -387,6 +387,13 @@ class InputFoundations(unittest.TestCase):
         self.assertEqual(events[0][:2],(50,20))
         self.assertEqual([e[4] for e in events],[True,False])
 
+    def test_desktop_hover_does_not_press_a_button(self):
+        self.ctx.accessible=lambda query:[{'name':'Notice','role':'label','pid':8,'rect':[10,10,80,20]}]
+        self.ctx._probe=lambda *args:{'ok':True}
+        sent=[];self.ctx.target.pointer=lambda *args,**kwargs:sent.append((args,kwargs))
+        self.ctx.hover_accessible({'application':'cinnamon','name':'Notice'})
+        self.assertEqual(sent,[((50,20,200,200),{'head':0})])
+
     def test_read_only_tray_inventory_is_private_and_hashes_pixmaps(self):
         from tools.lab.surface_driver import probe
         from types import SimpleNamespace
@@ -572,6 +579,7 @@ class InputFoundations(unittest.TestCase):
         def click(query):
             clicked.append(query);notice['action_events'].append({'action':'retry'})
         self.ctx.click_accessible=click
+        self.ctx.hover_accessible=lambda query:None
         self.ctx.notification_action(72,'retry')
         self.assertEqual(clicked[0]['within'],[0,0,200,150])
 

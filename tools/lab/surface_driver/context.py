@@ -418,6 +418,12 @@ asyncio.run(main())
         return parse_notifications(result['stdout'],self._notifications_since)
 
     def click_accessible(self, query, button='left'):
+        return self._accessible_pointer(query,button)
+
+    def hover_accessible(self, query):
+        return self._accessible_pointer(query,None)
+
+    def _accessible_pointer(self, query, button):
         """Real pointer input to one visible desktop node, with a fresh hit-test.
 
         This is for desktop-drawn content (notifications/tray/browser), not a
@@ -444,7 +450,13 @@ asyncio.run(main())
                                       'framebuffer' if self.profile['session']=='x11' else 'logical'})
         scale = mapped.get('scale',1)
         px,py = (round((point[i]-mapped.get(('screen_x','screen_y')[i],0))*scale) for i in (0,1))
-        self._pointer_click(px,py,button,mapped['head'],guarded=True)
+        if button is None:
+            w,h = self._dimensions(mapped['head'])
+            if not 0 <= px < w or not 0 <= py < h:
+                raise RecipeBlocked('desktop hover point outside selected head')
+            self.target.pointer(px,py,w,h,head=mapped['head'])
+        else:
+            self._pointer_click(px,py,button,mapped['head'],guarded=True)
         return node
 
     def notification_action(self, identity, action='default'):
@@ -467,14 +479,19 @@ asyncio.run(main())
             raise RecipeBlocked('profile has no notification accessibility ownership selector')
         # Restrict the summary/body witness to this notification server's tree.
         import glob
-        titles = self.accessible({**policy, 'name':glob.escape(notice['summary']), 'visible':True, 'showing':True})
+        name = self.profile.get('notifications',{}).get('title_name_glob','{summary}').replace('{summary}',glob.escape(notice['summary']))
+        titles = self.accessible({**policy, 'name':name, 'visible':True, 'showing':True})
         titles = [n for n in titles if n.get('rect') and min(n['rect'][2:])>0]
+        exact = [n for n in titles if n['name']==notice['summary']]
+        if exact:
+            titles = exact
         if len(titles) != 1:
             raise RecipeBlocked('notification is not uniquely drawn in the desktop accessibility tree')
         title = titles[0]
         if action == 'default':
             query = {**policy, 'pid':title['pid'], 'name':glob.escape(title['name']), 'role':title['role']}
         else:
+            self.hover_accessible({**policy,'pid':title['pid'],'name':glob.escape(title['name']),'role':title['role']})
             containers = [n for n in title.get('ancestors',[]) if n['role'] in ('notification','panel','alert') and n.get('rect')]
             buttons = self.accessible({**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
                                        'visible':True,'showing':True,'enabled':True})

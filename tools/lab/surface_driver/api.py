@@ -205,6 +205,10 @@ class Context:
         """
         raise NotImplementedError
 
+    def hover_accessible(self, query: dict) -> dict:
+        """Move the real pointer over one owned desktop node, verifying its hit-test."""
+        raise NotImplementedError
+
     def notification_action(self, identity: int, action: str = 'default') -> None:
         """Real input to a drawn notification, correlated to ActionInvoked by ID."""
         raise NotImplementedError

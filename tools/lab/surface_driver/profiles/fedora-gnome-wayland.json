@@ -41,7 +41,8 @@
   "notifications": {
     "accessible": {
       "application": "gnome-shell*"
-    }
+    },
+    "title_name_glob": "*{summary}*"
   },
   "windows": {
     "editor.canvas": {
