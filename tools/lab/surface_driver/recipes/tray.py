@@ -338,6 +338,7 @@ def _navigation(interaction, label, target):
             elif target in ('settings', 'destinations'):
                 _page(ctx, target.title())
             elif target == 'capture':
+                _page(ctx, 'Settings')
                 ctx.wait(lambda: ctx.call('ui.viewState').get('settings', {}).get('section') == 1,
                          'Settings Capture section')
             elif target == 'editFile':

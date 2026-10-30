@@ -212,7 +212,7 @@ class FakeContext(Context):
         elif name != tray.FIXTURE_TITLE:
             if name == 'About put.gd':
                 self.about_open = True
-            self.target = {'Change output…': 'Capture'}.get(name, name)
+            self.target = {'Change output…': 'Settings'}.get(name, name)
             self.menu = False
 
     def _invoke(self, action, editing=False):
@@ -380,6 +380,21 @@ class TrayRecipesTest(unittest.TestCase):
         with self.assertRaises(RecipeBlocked):
             tray._menu_parent_state(ctx, node)
         self.assertEqual(ctx.events, [])
+
+    def test_capture_navigation_cannot_pass_from_a_stale_section_inspector(self):
+        ctx = FakeContext()
+        ctx.profile['tray']['menu_prepare_background'] = True
+        ctx.target = 'History'
+        click = ctx.click_at
+        def ignored_navigation(x, y, button='left'):
+            for name, rect in ctx.rects.items():
+                rx, ry, rw, rh = rect
+                if name == 'Change output…' and rx <= x < rx + rw and ry <= y < ry + rh:
+                    return
+            click(x, y, button)
+        ctx.click_at = ignored_navigation
+        with self.assertRaises(RecipeFailed):
+            tray.tray_menu_change_output(ctx)
 
     def test_gnome_gestures_block_before_incorrect_single_click(self):
         for function in (tray.activate, tray.scroll_noop):
