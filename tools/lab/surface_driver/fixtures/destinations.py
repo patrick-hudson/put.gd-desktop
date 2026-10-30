@@ -119,5 +119,8 @@ def destination(scope):
     if scope.ctx.destination=='local':
         scope.ctx.fixture('app-profile')
         return Fixture(id='local',label='Save locally')
+    if scope.ctx.destination!='s3':
+        raise RecipeBlocked('recording destination adapter is local/loopback S3 only in this slice',issue=669)
     value=scope.ctx.fixture('loopback-s3')
+    scope.patch({'actions':{'record':{'destination':'upload','profileId':value.profile_id}}})
     return Fixture(id=value.profile_id,label=value.profile['label'])

@@ -163,8 +163,7 @@ class Fixtures(unittest.TestCase):
         descriptor=self.ctx.fixture('events.record-storage')
         self.ctx.manager.close()
         self.assertTrue(any('umount -- '+descriptor.mountPath in c for c in commands))
-        # The test's mount is mocked; remove its owned empty directory explicitly.
-        Path(descriptor.mountPath).rmdir()
+        self.assertFalse(Path(descriptor.mountPath).exists())
 
     def test_feed_family_serves_and_cleans_up_after_failure(self):
         import ast
@@ -182,6 +181,26 @@ class Fixtures(unittest.TestCase):
         self.assertFalse(Path(value.root).exists())
         from urllib.error import URLError
         with self.assertRaises(URLError):urlopen(value.url,timeout=1)
+
+    def test_quota_denial_leaves_no_owned_mount_directory(self):
+        original=self.ctx.shell
+        for deny_preflight in (True,False):
+            def shell(script,timeout=60):
+                if 'sudo -n mount' in script:
+                    code=1 if deny_preflight or '-t tmpfs' in script else 0
+                    return {'returncode':code,'stdout':'','stderr':''}
+                return original(script,timeout)
+            self.ctx.shell=shell
+            with self.subTest(deny_preflight=deny_preflight),self.assertRaises(RecipeBlocked):
+                self.ctx.fixture('events.record-storage')
+            self.assertFalse(list((self.root/'data').glob('quota-*')))
+
+    def test_remote_receipts_cannot_be_mislabelled_as_proton_or_b2(self):
+        for destination in ('proton','b2'):
+            self.ctx.destination=destination
+            for name in ('upload','destination','live'):
+                with self.subTest(destination=destination,name=name),self.assertRaises(RecipeBlocked):
+                    self.ctx.fixture(name)
 
     def test_recipe_contract_names(self):
         names={'image','upload','history','history-row','local-history','recording','recording-review','review-controls','destination','mcp','live','release','notification_upload','destinations','selector-desktop','diagnostics-upload','file-dialog-portal','file-dialog-fallback','history_rows','history_pair','history_paging','history_retry_upload','history_retry_local','history_active_uploads','history_delete','history_saved_copy','history_window','launcher','recording-export-failure','recording-budget-stop','recording-preview-error','events.slow-upload','events.update-feed','events.older-update-feed','events.update-notification','events.record-storage','events.import-storage','events.recording-source','events.incomplete-multipart','events.browser-handler','events.software-updates-handler'}

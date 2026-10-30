@@ -21,6 +21,8 @@ def track(scope, method, identity):
 def submit(scope, *, remote=False, local_failure=False, active=False, failure=False, cancelled=False):
     ctx=scope.ctx
     ctx.fixture('app-profile')
+    if remote and ctx.destination not in ('local','s3'):
+        raise RecipeBlocked('this slice publishes only to loopback S3; live provider adapters are deferred',issue=669)
     if remote:
         service=ctx.fixture('loopback-s3')
         scope.patch({'actions':{'edit':{'destination':'upload','profileId':service.profile_id}}})

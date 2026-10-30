@@ -59,8 +59,11 @@ def storage(scope):
     ctx.fixture('app-profile')
     if ctx.placement not in ('guest','boat') or (ctx.host=='boat' and not ctx.profile.get('guest')):
         raise RecipeBlocked('quota filesystem requires a disposable nested guest',issue=682)
+    if ctx.shell('sudo -n mount --version >/dev/null 2>&1')['returncode']:
+        raise RecipeBlocked('guest needs a noninteractive privileged mount helper',issue=682)
     path=ctx.target.root+'/data/quota-'+scope.token[:8]
     scope.python('from pathlib import Path\nPath('+repr(path)+').mkdir(mode=0o700)')
+    scope.defer('quota directory',lambda:scope.python('import os\nfrom pathlib import Path\np=Path('+repr(path)+')\nif p.exists():\n assert p.resolve()==p and p.stat().st_uid==os.getuid()\n p.rmdir()'),priority=-300)
     result=ctx.shell('sudo -n mount -t tmpfs -o size=1792m,mode=0700,uid=$(id -u),gid=$(id -g) tmpfs '+shlex.quote(path))
     if result['returncode']:raise RecipeBlocked('guest cannot create private bounded tmpfs',issue=682)
     def unmount():
@@ -108,8 +111,10 @@ def controllers(scope):
     def stall(address,port):
         if address!='127.0.0.1' or not isinstance(port,int) or not 0<port<65536:
             raise RecipeBlocked('network controller accepts only literal loopback fixture endpoints')
+        if ctx.shell('sudo -n nft --version >/dev/null 2>&1')['returncode']:
+            raise RecipeBlocked('guest needs a noninteractive privileged nft helper',issue=682)
         table='sd_'+scope.token[:12]
-        result=ctx.shell("sudo -n nft -f - <<'SD_NFT'\nadd table inet "+table+'\nadd chain inet '+table+' output { type filter hook output priority -10; policy accept; }\nadd rule inet '+table+' output ip daddr 127.0.0.1 tcp dport '+str(port)+' counter drop\nSD_NFT\n')
+        result=ctx.shell("sudo -n nft -f - <<'SD_NFT'\ncreate table inet "+table+'\nadd chain inet '+table+' output { type filter hook output priority -10; policy accept; }\nadd rule inet '+table+' output ip daddr 127.0.0.1 tcp dport '+str(port)+' counter drop\nSD_NFT\n')
         if result['returncode']:raise RecipeBlocked('guest nft controller unavailable',issue=682)
         scope.defer('owned nft table',lambda:checked(ctx.shell('sudo -n nft delete table inet '+table)))
         return table

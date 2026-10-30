@@ -9,7 +9,7 @@ def provider_adapter(scope):
 
 def local(scope):
     ctx=scope.ctx
-    if ctx.destination=='proton':return provider_adapter(scope)
+    if ctx.destination not in ('local','s3'):return provider_adapter(scope)
     service=ctx.fixture('loopback-s3')
     scene=ctx.fixture('selector-desktop')
     image=ctx.fixture('image')
