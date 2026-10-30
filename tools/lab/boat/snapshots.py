@@ -162,7 +162,8 @@ def host_script(checkout, commit, count, prepare):
     capacity_code = "import os,json; s=os.statvfs(" + repr(str(checkout.resolve())) + "); print(json.dumps(dict(availableBytes=s.f_bavail*s.f_frsize,availableInodes=s.f_favail))); assert s.f_bavail*s.f_frsize >= 14*1024**3 and s.f_favail > 1024"
     script += "python3 -c " + q(capacity_code) + "\n"
     if prepare:
-        script += 'sudo -n apt-get update\nsudo -n env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get install -y --allow-downgrades ' + shlex.join([*(p + '/noble' if p in ('nodejs', 'npm') else p for p in packages), 'zstd', 'qemu-system-x86', 'acl']) + '\n'
+        script += 'sudo -n apt-get update\nsudo -n env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get install -y --allow-downgrades ' + shlex.join([*(p + '/noble' if p in ('nodejs', 'npm') else p for p in packages), 'zstd', 'qemu-system-x86', 'acl', 'x11vnc']) + '\n'
+        script += 'id -u putgd-ci >/dev/null 2>&1 || sudo -n useradd --create-home --shell /bin/bash putgd-ci\n'
         sdk = (checkout / 'tools/ci/provision-linux-sdk.sh').read_text()
         if sdk.count('bash tools/ci/sdk-source.sh\n') != 1:
             raise ValueError('CI SDK provisioning recipe changed')
@@ -254,6 +255,8 @@ def seal(source, overlay, destination, expected, commit, name, host_packages, ta
     manifest = make_manifest(name, commit, source, expected, destination, digest(destination),
                              host_packages, result['virtual-size'])
     manifest.update(target_metadata)
+    if name.startswith('putgd-lab-cinnamon-'):
+        manifest['guestSessionPolicy'] = {'mintUpdate': {'autostartOverride': '~/.config/autostart/mintupdate.desktop', 'hidden': True, 'enabled': False, 'scope': 'disposable guest user; original golden preserved'}}
     manifest['golden']['compressedClusters'] = compress
     manifest['conversion'] = {'command': 'qemu-img convert ' + ('-c ' if compress else '') + '-f qcow2 -O qcow2',
                               'hardOutputLimitBytes': limit, 'reserveBytes': 10 * 1024**3}
@@ -301,6 +304,13 @@ def build_manifest(checkout, name, golden, source, expected, output, target=None
     ledger = json.loads(ledger_path.read_text())
     if ledger.get('summary', {}).get('ok') is not True or ledger['summary'].get('tests', 0) <= 0:
         raise ValueError('full CTest run must pass before publication')
+    if ledger.get('retryEnabled') is not False:
+        raise ValueError('publication requires one full CTest run with retries disabled')
+    settings = Path('/etc/environment').read_text().splitlines()
+    if not all(line in settings for line in ('PUTGD_CI_TMPDIR=/dev/shm', 'TMPDIR=/dev/shm')):
+        raise ValueError('persist the documented fast scratch settings before publication')
+    if run(['stat', '-f', '-c', '%T:%t', '/dev/shm']).strip() != 'tmpfs:1021994':
+        raise ValueError('documented scratch must be tmpfs')
     golden = canonical_image(golden)
     packages = ci_packages(checkout)
     info = json.loads(run(['qemu-img', 'info', '--output=json', golden]))
@@ -325,6 +335,8 @@ def build_manifest(checkout, name, golden, source, expected, output, target=None
         data.update(probePackages=provisioned['probePackages'], probeTools=provisioned['probeTools'],
                     probeContract=provisioned.get('probeContract', PROBE_CONTRACT),
                     sourceChain=provisioned.get('sourceChain', []))
+        if 'guestSessionPolicy' in provisioned:
+            data['guestSessionPolicy'] = provisioned['guestSessionPolicy']
         data['golden']['manifestSha256'] = digest(golden.parent / 'manifest.json')
     else:
         data.update(probePackages=[], probeTools=[], goldenUnchanged=True)
@@ -423,12 +435,62 @@ def publish(worker, name, manifest, output):
     return publication_receipt(worker, name, manifest, output, request)
 
 
+def cinnamon_policy_script(install):
+    """Disable only Mint Update's XDG autostart in a disposable guest user profile."""
+    setup = r'''
+source = Path('/etc/xdg/autostart/mintupdate.desktop')
+if not source.is_file():
+    raise RuntimeError('expected Mint Update autostart entry is missing')
+override.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+override.write_text('[Desktop Entry]\nType=Application\nName=Update Manager\nHidden=true\nX-GNOME-Autostart-enabled=false\n')
+override.chmod(0o600)
+for pid, start in running:
+    if (Path('/proc') / str(pid) / 'stat').read_text().split()[21] != start:
+        raise RuntimeError('Mint Update PID identity changed')
+    os.kill(pid, signal.SIGTERM)
+deadline = time.monotonic() + 10
+while updates():
+    if time.monotonic() >= deadline:
+        raise RuntimeError('owned overlay Mint Update did not stop')
+    time.sleep(.2)
+''' if install else ''
+    return "python3 - <<'POLICY'\n" + r'''import os,json,signal,time
+from pathlib import Path
+override = Path.home() / '.config/autostart/mintupdate.desktop'
+def updates():
+    found=[]
+    for p in Path('/proc').iterdir():
+        if not p.name.isdecimal(): continue
+        try:
+            if p.stat().st_uid != os.geteuid() or (p/'comm').read_text().strip() != 'mintUpdate': continue
+            args=(p/'cmdline').read_bytes().split(b'\0')
+            if not any(Path(os.fsdecode(arg)).name.lower() in ('mintupdate', 'mintupdate.py') for arg in args if arg):
+                raise RuntimeError('unexpected Mint Update command identity')
+            found.append((int(p.name), (p/'stat').read_text().split()[21]))
+        except FileNotFoundError: continue
+    return found
+running=updates()
+''' + setup + r'''
+text=override.read_text()
+assert 'Hidden=true' in text and 'X-GNOME-Autostart-enabled=false' in text
+assert not updates(), 'Mint Update must be absent in a fresh verification overlay'
+print(json.dumps(dict(autostartOverride=str(override),hidden=True,enabled=False,priorRunningPids=[pid for pid,start in running],remainingPids=[])))
+POLICY
+'''
+
+
 def guest(args):
     """Operate only fresh lab overlays; the caller supplies an authenticated pin."""
     target = 'ubuntu26.04' if args.profile == 'gnome-wayland' else 'ubuntu24.04'
     if args.package_target is not None and args.package_target != target:
         raise ValueError('DEB target does not match the guest profile')
     if args.install:
+        if args.name is None or args.destination is None:
+            raise ValueError('--install requires a new snapshot name and destination image')
+        prefix = 'putgd-lab-ubuntu-gnome-' if args.profile == 'gnome-wayland' else 'putgd-lab-cinnamon-'
+        if not args.name.startswith(prefix):
+            raise ValueError('snapshot name does not match the guest profile')
+        canonical_image(args.destination)
         package_metadata(args.name, target)
     checkout = args.checkout.resolve()
     controller = (args.controller_checkout or checkout).resolve()
@@ -472,6 +534,8 @@ def guest(args):
                       '--known-hosts', args.known_hosts, '--acceleration', 'kvm', '--timeout', '240'], timeout=300)
         launched = True
         (evidence / 'launch.json').write_text(result)
+        if args.profile == 'cinnamon-x11':
+            exclusive_json(evidence / 'session-policy.json', json.loads(lab.ssh(run_dir, cinnamon_policy_script(args.install))))
         capacity_script = "python3 - <<'CAPACITY'\nimport os,json\nr={}\nfor p in (os.path.expanduser('~'), '/tmp'):\n s=os.statvfs(p); r[p]=dict(availableBytes=s.f_bavail*s.f_frsize,availableInodes=s.f_favail); assert s.f_bavail*s.f_frsize >= 2*1024**3 and s.f_favail > 1024\nprint(json.dumps(r))\nCAPACITY\n"
         (evidence / 'guest-capacity.json').write_text(lab.ssh(run_dir, capacity_script))
         with lab.QMP(run_dir / 'qmp.sock') as qmp:
@@ -494,6 +558,11 @@ def guest(args):
             if observed.get('version') != package['buildInfo']['version'] or observed.get('gitCommit') != package['buildInfo']['gitCommit']:
                 raise ValueError('installed version does not match the package build')
             exclusive_json(evidence / 'installed-version.json', observed)
+            exclusive_json(evidence / 'show.json', lab.cli(run_dir, 'ui.show', {'view': 'settings'}))
+            time.sleep(3)
+            exclusive_json(evidence / 'view-state.json', lab.cli(run_dir, 'ui.viewState'))
+            if args.profile == 'cinnamon-x11':
+                exclusive_json(evidence / 'session-policy-after-start.json', json.loads(lab.ssh(run_dir, cinnamon_policy_script(False))))
             # The new golden must not autostart a private smoke profile on its next boot.
             with lab.QMP(run_dir / 'qmp.sock') as qmp:
                 qmp.execute('screendump', {'filename': str(evidence / 'app-started.ppm')})
@@ -542,7 +611,8 @@ def guest(args):
             exclusive_json(evidence / 'held-overlay-refusal.json', report)
             error = json.loads(refused.stdout).get('error', '')
             if refused.returncode == 0 or not report['overlayStillExists'] or not any(message in error for message in
-                    ('still has the overlay open', 'Privileged host process inventory blocked or incomplete')):
+                    ('still has the overlay open', 'Privileged host process inventory blocked or incomplete',
+                     'Privileged host process inventory found a process using the overlay')):
                 raise ValueError('guard did not explicitly refuse the still-held overlay')
         finally:
             if holder.poll() is None:
@@ -612,6 +682,10 @@ def host_package(args):
                     raise ValueError('installed version does not match the build')
                 exclusive_json(output / 'installed-version.json', version)
                 exclusive_json(output / 'capabilities.json', capabilities)
+                shown = json.loads(subprocess.check_output(['/usr/bin/putgd-cli', 'ui.show', json.dumps({'view': 'settings'})], env=env, text=True, timeout=30))
+                if shown.get('ok') is not True:
+                    raise ValueError('installed app did not open its Settings window')
+                exclusive_json(output / 'show.json', shown)
                 # Give the wall its normal three-second discovery interval.
                 time.sleep(3)
                 client = RFB(args.vnc_port)

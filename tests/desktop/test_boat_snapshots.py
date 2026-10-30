@@ -18,6 +18,25 @@ SHA = 'a' * 40
 
 
 class SnapshotContracts(unittest.TestCase):
+    def test_published_inventory_binds_ids_targets_and_canonical_image_hashes(self):
+        records = sorted((ROOT / 'tools/lab/boat/manifests').glob('*.json'))
+        self.assertEqual({path.stem for path in records}, {
+            'putgd-build-base-v2', 'putgd-build-base-v3', 'putgd-lab-cinnamon-v2',
+            'putgd-lab-cinnamon-v3', 'putgd-lab-ubuntu-gnome-v3', 'putgd-lab-ubuntu-gnome-v4'})
+        for path in records:
+            data = json.loads(path.read_text())
+            with self.subTest(snapshot=data['snapshotName']):
+                self.assertEqual(path.stem, snapshots.snapshot_name(data['snapshotName']))
+                self.assertRegex(data['snapshotId'], r'^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$')
+                snapshots.sha(data['builtTreeCommit'])
+                for key in ('golden', 'sourceGolden'):
+                    snapshots.sha(data[key]['sha256'], 64)
+                    self.assertIn('/work/lab-images/', data[key]['path'])
+                self.assertEqual(data['packageTarget'], snapshots.package_metadata(path.stem)['packageTarget'])
+                self.assertTrue(data['hostPackages'])
+                self.assertIn('@sha256:', data['packageBuild']['containerImage'])
+                self.assertIn(data['lifecycle'], ('superseded', 'recommended'))
+
     def test_old_names_are_always_refused(self):
         for name in snapshots.OLD_NAMES:
             with self.subTest(name=name), self.assertRaises(argparse.ArgumentTypeError):
@@ -37,6 +56,25 @@ class SnapshotContracts(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     snapshots.parser().parse_args(['host-script', '--checkout', '/tmp/source', *extra])
 
+    def test_cinnamon_policy_is_a_user_override_and_verification_is_read_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'proc').mkdir()
+            (root / 'system.desktop').write_text('[Desktop Entry]\nExec=mintupdate-launcher\n')
+            for install in (True, False):
+                script = snapshots.cinnamon_policy_script(install)
+                if not install:
+                    self.assertNotIn('write_text', script)
+                    self.assertNotIn('os.kill', script)
+                body = script.split("\n", 1)[1].rsplit('POLICY', 1)[0]
+                body = body.replace("Path('/proc')", 'Path(' + repr(str(root / 'proc')) + ')')
+                body = body.replace("Path('/etc/xdg/autostart/mintupdate.desktop')", 'Path(' + repr(str(root / 'system.desktop')) + ')')
+                with patch.object(Path, 'home', return_value=root), contextlib.redirect_stdout(io.StringIO()):
+                    exec(compile(body, '<mint-update-policy>', 'exec'), {})
+            text = (root / '.config/autostart/mintupdate.desktop').read_text()
+            self.assertIn('Hidden=true', text)
+            self.assertIn('X-GNOME-Autostart-enabled=false', text)
+
     def test_guest_verification_can_use_exact_controller_and_negative_cleanup(self):
         args = snapshots.parser().parse_args(['guest', '--checkout', '/source', '--commit', SHA,
             '--source', '/image', '--source-sha256', 'b' * 64, '--bootstrap-key', '/public',
@@ -46,6 +84,15 @@ class SnapshotContracts(unittest.TestCase):
         self.assertEqual(args.controller_commit, SHA)
         self.assertTrue(args.test_held_overlay)
         self.assertTrue(args.compress_golden)
+
+    def test_incomplete_guest_install_refuses_before_any_worker_command(self):
+        args = snapshots.parser().parse_args(['guest', '--checkout', '/source', '--commit', SHA,
+            '--source', '/image', '--source-sha256', 'b' * 64, '--bootstrap-key', '/public',
+            '--known-hosts', '/pins', '--evidence', '/evidence', '--profile', 'gnome-wayland',
+            '--run-name', 'v1', '--install'])
+        with patch.object(snapshots, 'run') as command, self.assertRaises(ValueError):
+            snapshots.guest(args)
+        command.assert_not_called()
 
     def test_package_targets_distinguish_host_and_gnome_guest(self):
         for name in ('putgd-build-base-v3', 'putgd-lab-cinnamon-v3'):
@@ -117,6 +164,7 @@ class SnapshotContracts(unittest.TestCase):
     def test_verification_script_cannot_install_or_reprovision(self):
         script = snapshots.host_script(ROOT, SHA, 4, False)
         self.assertNotIn('apt-get', script)
+        self.assertNotIn('useradd', script)
         self.assertNotIn('provision_runtime.py', script)
         self.assertNotIn('provision-linux-sdk.sh', script)
         self.assertIn('cmake --preset dev', script)
@@ -166,6 +214,7 @@ class SnapshotContracts(unittest.TestCase):
         script = snapshots.probe_script()
         self.assertNotIn('sudo', script)
         self.assertNotIn('apt-get', script)
+        self.assertNotIn('useradd', script)
         for tool in ('dbus-monitor', 'xdotool', 'xclip', 'wl-copy', 'wl-paste', 'tesseract'):
             self.assertIn('command -v ' + tool + '\n', script)
         self.assertIn('pyatspi, dbus', script)
