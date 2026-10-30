@@ -13,7 +13,7 @@ import tempfile
 import time
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
@@ -256,6 +256,20 @@ class Running(unittest.TestCase):
         self.ctx.type_text('Ab!')
         self.assertEqual(sent,[['shift','a'],['b'],['shift','1']])
 
+    def test_main_refuses_live_destinations_until_secret_safe_evidence(self):
+        from tools.lab.surface_driver import run as runner
+        self.assertFalse(runner.LIVE_DESTINATIONS_ENABLED)
+        for destination in ('s3','b2','proton'):
+            with self.subTest(destination=destination):
+                out=self.path/('live-'+destination)
+                args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
+                      '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination',destination,
+                      '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(out)]
+                with self.assertRaises(SystemExit) as raised:
+                    runner.main(args)
+                self.assertIn('disabled until secret-safe evidence',str(raised.exception))
+                self.assertFalse(out.exists())
+
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_main_checks_identity_and_configures_local_output(self):
         target=FakeTarget();target.info={'id':'run-id','profile':'cinnamon-x11'};target.run=self.path
@@ -273,7 +287,7 @@ class Running(unittest.TestCase):
               '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination','local',
               '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(self.path/'run'),
               '--coverage',str(self.path/'main-coverage.json')]
-        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'):
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),0)
         mutation=next(json.loads(a[1]) for a in calls if a[0]=='settings.patch')
         self.assertEqual(mutation['patch']['actions']['edit']['destination'],'local')
@@ -282,7 +296,7 @@ class Running(unittest.TestCase):
         self.assertEqual(json.loads((self.path/'run/receipt.json').read_text())['environment']['observed_build']['gitCommit'],'abcdef')
         target.close=lambda:['cleanup incomplete']
         args[args.index('--out')+1]=str(self.path/'run-error')
-        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'):
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),2)
         self.assertEqual(json.loads((self.path/'run-error/receipt.json').read_text())['environment']['cleanup_errors'],['cleanup incomplete'])
 
@@ -298,6 +312,27 @@ class Running(unittest.TestCase):
         self.assertFalse(target.started)
         self.assertEqual(errors,['notification monitor cleanup unavailable'])
 
+    def test_target_removes_only_its_private_session_root_after_exit(self):
+        target=Target.__new__(Target)
+        target._rfb=None;target.monitor_pid=None;target.started=False;target._created_root=True
+        target.root=str(self.path/'owned space');Path(target.root).mkdir(mode=0o700)
+        sibling=self.path/'preserve';sibling.write_text('unrelated')
+        def execute(script,**kwargs):
+            reply=subprocess.run(script,shell=True,text=True,capture_output=True,timeout=10)
+            return {'returncode':reply.returncode,'stdout':reply.stdout,'stderr':reply.stderr}
+        target.execute=execute
+        self.assertEqual(target.close(),[])
+        self.assertFalse(Path(target.root).exists());self.assertEqual(sibling.read_text(),'unrelated')
+        Path(target.root).mkdir(mode=0o700);target._created_root=True
+        (Path(target.root)/'fx-pending').mkdir(mode=0o700)
+        self.assertEqual(target.close(),['private session root cleanup refused'])
+        self.assertTrue(Path(target.root).exists())
+        (Path(target.root)/'fx-pending').rmdir()
+        mountinfo='1 0 0:1 / '+target.root.replace(' ',chr(92)+'040')+' rw - tmpfs tmpfs rw\n'
+        target.execute=lambda script,**kwargs:execute(script.replace("Path('/proc/self/mountinfo').read_text()",repr(mountinfo)),**kwargs)
+        self.assertEqual(target.close(),['private session root cleanup refused'])
+        self.assertTrue(Path(target.root).exists())
+
     def test_resident_operation_identity_is_retained(self):
         self.ctx.target.cli=lambda *args,**kwargs:{'returncode':0,'stderr':'','stdout':
             json.dumps({'ok':True,'result':{'operationId':'test-operation-123'}})}
@@ -311,7 +346,7 @@ class Running(unittest.TestCase):
         calls=[]
         target.physical=SimpleNamespace(ssh=lambda *args:calls.append(args) or json.dumps({'ok':True,'state':'expired','expiresInSeconds':0}))
         target.run=self.path
-        with patch('tools.lab.surface_driver.target.time.monotonic',return_value=110):
+        with patch('tools.lab.surface_driver.target.time.clock_gettime',return_value=110):
             with self.assertRaisesRegex(RecipeBlocked,'no longer held'):target.heartbeat()
         self.assertEqual(len(calls),1)
 
@@ -582,7 +617,7 @@ class InputFoundations(unittest.TestCase):
         def run(*args):
             if args[0]=='xprop' and args[1]=='-root':return 'window id # 0x14'
             if args[1]=='getwindowpid':raise subprocess.CalledProcessError(1,args)
-            if args[0]=='xwininfo':return '  Absolute upper-left X:  0\n  Absolute upper-left Y:  0\n  Width: 100\n  Height: 80\n  Override Redirect State: no\n'
+            if args[1]=='getwindowgeometry':return 'X=0\nY=0\nWIDTH=100\nHEIGHT=80'
             if args[1]=='getwindowname':return 'Other client without PID'
             return ''
         with patch.object(probe.subprocess,'run',return_value=SimpleNamespace(stdout='20')),patch.object(probe,'run',side_effect=run):
@@ -645,19 +680,15 @@ class InputFoundations(unittest.TestCase):
         self.ctx.profile['notifications']['actions_available']=True
         notices=[{'id':72,'summary':'Synthetic notice','actions':['default','Show'],'action_events':[]}]
         self.ctx.notifications=lambda:notices
-        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20],'application':'cinnamon'}
-        queries=[];self.ctx.accessible=lambda query:queries.append(query) or [node]
-        picks=[];self.ctx._probe=lambda name,query:picks.append(query) or {'ok':True}
-        events=[]
-        def pointer(*args,**kwargs):
-            events.append(args)
-            if len(args)>4 and args[4] is False:notices[0]['action_events'].append({'action':'default'})
-        self.ctx.target.pointer=pointer
+        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20]}
+        self.ctx.accessible=lambda query:[node]
+        clicks=[]
+        def click(query):
+            clicks.append(query);notices[0]['action_events'].append({'action':'default'})
+        self.ctx.click_accessible=click
         self.ctx.notification_action(72)
-        # One owned title lookup, hover first, then press/release on the title.
-        self.assertEqual(len(queries),1);self.assertIn('application',queries[0])
-        self.assertEqual(events[0],(50,20,200,200));self.assertEqual([e[4] for e in events[1:]],[True,False])
-        self.assertTrue(all(q['desktop_node'] is node and q['point']==(50,20) for q in picks))
+        self.assertEqual(clicks[0]['pid'],50)
+        self.assertIn('application',clicks[0])
         notices[0]['closed']={'reason':1}
         with self.assertRaisesRegex(RecipeBlocked,'closed'):
             self.ctx.notification_action(72)
@@ -669,24 +700,19 @@ class InputFoundations(unittest.TestCase):
                'ancestors':[{'role':'notification','rect':[0,0,200,150]},
                             {'role':'panel','rect':[20,10,80,20]}]}
         button={'name':'Retry','pid':50,'role':'push button','rect':[20,100,80,20]}
-        outside={'name':'Retry','pid':50,'role':'push button','rect':[20,170,80,20]}
         self.ctx.notifications=lambda:[notice]
-        self.ctx.accessible=lambda query:[title] if query['name']=='Synthetic notice' else [button,outside]
-        self.ctx._probe=lambda name,query:{'ok':True}
-        events=[]
-        def pointer(*args,**kwargs):
-            events.append(args)
-            if len(args)>4 and args[4] is False:notice['action_events'].append({'action':'retry'})
-        self.ctx.target.pointer=pointer
+        self.ctx.accessible=lambda query:[title if query['name']=='Synthetic notice' else button]
+        clicked=[]
+        def click(query):
+            clicked.append(query);notice['action_events'].append({'action':'retry'})
+        self.ctx.click_accessible=click
+        self.ctx.hover_accessible=lambda query:None
         self.ctx.notification_action(72,'retry')
-        self.assertEqual(events[0][:2],(60,20))
-        self.assertEqual([e[:2] for e in events[1:]],[(60,110),(60,110)])
+        self.assertEqual(clicked[0]['within'],[0,0,200,150])
 
     def test_declared_notification_input_gap_blocks_before_observation(self):
-        self.ctx.profile['notifications']=dict(self.ctx.profile['notifications'],actions_available=False,
-                                               reason='Declared desktop gap (#670)')
         self.ctx.notifications=lambda: self.fail('gap must withhold all input before observation')
-        with self.assertRaisesRegex(RecipeBlocked,'Declared desktop gap') as error:
+        with self.assertRaisesRegex(RecipeBlocked,'Two boat guest attempts') as error:
             self.ctx.notification_action(72)
         self.assertEqual(error.exception.issue,670)
 
@@ -734,9 +760,12 @@ class TargetSafety(unittest.TestCase):
         endpoint_check=patch('tools.lab.surface_driver.run.verify_physical_endpoints')
         self.endpoint_check=endpoint_check.start()
         self.addCleanup(endpoint_check.stop)
+        guest_check=patch('tools.lab.surface_driver.run.verify_guest_endpoint')
+        self.guest_check=guest_check.start()
+        self.addCleanup(guest_check.stop)
 
     def arguments(self, host='f44', placement='native', session='owned-session'):
-        return SimpleNamespace(host=host, placement=placement, lock_session=session, boat_id='bx_test')
+        return SimpleNamespace(host=host, placement=placement, lock_session=session, boat_id='bx_test', boat_cli='/trusted/boat')
 
     def target(self, address='192.168.68.70', user='patrick', port=22):
         return SimpleNamespace(physical=SimpleNamespace(config={'host':address,'user':user,'ssh_port':port}),
@@ -848,7 +877,7 @@ class TargetSafety(unittest.TestCase):
                       '--destination','local','--recipes','core_demo','--catalog',str(root),'--build','abcdef',
                       '--out',str(root/str(number)),'--coverage',str(root/'coverage.json')]
                 if session:args+=['--lock-session',session]
-                with patch('tools.lab.surface_driver.run.Target',return_value=target):
+                with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
                     self.assertEqual(main(args),2)
                 for operation in (target.start,target.identity,target.key,target.screenshot):operation.assert_not_called()
                 self.assertIn('blocked',json.loads((root/str(number)/'receipt.json').read_text())['environment'])
@@ -861,13 +890,17 @@ class TargetSafety(unittest.TestCase):
             target.physical=SimpleNamespace(ssh=Mock(side_effect=[
                 json.dumps({'ok':True,'state':'held','expiresInSeconds':30}),
                 json.dumps({'ok':False,'state':'held','expiresInSeconds':29})]))
-            with patch('tools.lab.surface_driver.target.time.monotonic',return_value=101),patch.object(lab,'input_events') as events,patch.object(lab,'key') as key,patch.object(lab,'pointer') as pointer:
+            with patch('tools.lab.surface_driver.target.time.clock_gettime',return_value=101),patch.object(lab,'input_events') as events,patch.object(lab,'key') as key,patch.object(lab,'pointer') as pointer:
                 getattr(target,method)(*arguments)
                 with self.assertRaises(RecipeBlocked):getattr(target,method)(*arguments)
                 self.assertEqual(target.physical.ssh.call_count,2)
-                # A VNC wheel click is one press plus its release (#736).
-                self.assertEqual(sum(m.call_count for m in (events,key,pointer,target._rfb.key,target._rfb.pointer_button,target._rfb.scroll)),
-                                 2 if method=='scroll_vnc' else 1)
+                # A wheel gesture consists of press plus deadline-safe release;
+                # the rejected second gesture must dispatch neither packet.
+                expected = 2 if method == 'scroll_vnc' else 1
+                self.assertEqual(sum(m.call_count for m in (events,key,pointer,target._rfb.key,target._rfb.pointer_button,target._rfb.scroll)),expected)
+                if method == 'scroll_vnc':
+                    self.assertEqual(target._rfb.pointer_button.call_args_list,
+                                     [call(1,1,'wheel-up',True),call(1,1,'wheel-up',False)])
 
     def test_unexpired_held_lock_required_at_start(self):
         for reply in ({'ok':True,'state':'expired','expiresInSeconds':0},
@@ -886,7 +919,7 @@ class TargetSafety(unittest.TestCase):
         target=Target.__new__(Target);target.run=Path(private.name);target._rfb=Mock()
         target._lock=('f44','owned-session')
         target.physical=SimpleNamespace(ssh=Mock(return_value=json.dumps({'ok':True,'state':'held','expiresInSeconds':2})))
-        with patch('tools.lab.surface_driver.target.time.monotonic',side_effect=[100,102]):
+        with patch('tools.lab.surface_driver.target.time.clock_gettime',side_effect=[100,102]):
             with self.assertRaises(RecipeBlocked):target.key(['t'])
         target._rfb.key.assert_not_called()
 
@@ -1053,7 +1086,7 @@ class EndpointSafety(unittest.TestCase):
               '--host-profile','pinned.json','--package','deb','--destination','local','--recipes','core_demo',
               '--catalog',str(self.run),'--build','abcdef','--out',str(self.run/'result'),
               '--coverage',str(self.run/'coverage.json')]
-        with patch('tools.lab.surface_driver.run.Target',return_value=self.target):
+        with patch('tools.lab.surface_driver.run.Target',return_value=self.target),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),2)
         self.target.require_lock.assert_called_once_with('f44','owned')
         for operation in (self.target.start,self.target.identity,self.target.screenshot):operation.assert_not_called()

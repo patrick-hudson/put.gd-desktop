@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/patrick/.t3/worktrees/put.gd/t3-85fd2492
+collected 114 items
+
+tests/desktop/test_surface_driver.py ................................... [ 30%]
+................................................                         [ 72%]
+tests/desktop/test_surface_driver_geometry.py .......................... [ 95%]
+.....                                                                    [100%]
+
+- generated xml file: /home/patrick/.t3/worktrees/put.gd/t3-85fd2492/work/rv736/fixed.xml -
+============================= 114 passed in 3.25s ==============================
