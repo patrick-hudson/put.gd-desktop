@@ -386,8 +386,14 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
                     # If targeting is refused, fixture teardown owns selector
                     # cleanup; never retry keyboard input through a failed guard.
                     cleanup_keys = False
-                    ctx.focus('recsel' if action == 'record' else 'region')
-                    ctx.keys('Esc')
+                    try:
+                        ctx.focus('recsel' if action == 'record' else 'region')
+                        ctx.keys('Esc')
+                    except RecipeFailed as error:
+                        if 'override-redirect target does not take keyboard focus' in str(error):
+                            ctx.note(str(error))
+                            ctx.blocked('Native selector owns a keyboard grab, but the X11 foreground guard requires X input focus', 802)
+                        raise
                     # A real cancellation also establishes that the shortcut did
                     # not merely admit work which failed before showing a selector.
                     settled = _settled(ctx, operation)

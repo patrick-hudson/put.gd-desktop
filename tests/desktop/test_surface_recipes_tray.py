@@ -409,6 +409,16 @@ class TrayRecipesTest(unittest.TestCase):
         self.assertEqual([e for e in ctx.events if e[0] == 'keys'],
                          [('keys', (tray.CHORDS['record'],))])
 
+    def test_native_selector_keyboard_grab_gap_blocks_without_retry(self):
+        ctx = FakeContext()
+        ctx.focus = lambda *a: (_ for _ in ()).throw(RecipeFailed(
+            "keyboard focus 'put.gd' (override-redirect target does not take keyboard focus)"))
+        with self.assertRaises(RecipeBlocked) as caught:
+            tray.shortcut_record(ctx)
+        self.assertEqual(caught.exception.issue, 802)
+        self.assertEqual([e for e in ctx.events if e[0] == 'keys'],
+                         [('keys', (tray.CHORDS['record'],))])
+
     def test_missing_shortcut_channel_blocks_without_pressing_the_shortcut(self):
         ctx = FakeContext()
         ctx.shortcut_available = False
