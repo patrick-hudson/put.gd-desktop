@@ -10,7 +10,7 @@ import shlex
 
 from tools.lab.surface_driver.api import recipe, RecipeBlocked
 from .settings_input import (click as live_click, observe as input_witness,
-                             prepare as prepare_input, ensure_accessible, collapse)
+                             prepare as prepare_input, ensure_accessible, collapse, field_click)
 
 CORE_ISSUE = 681
 
@@ -175,7 +175,7 @@ def replace(ctx, control, text):
         if reply['returncode'] != 0:
             ctx.blocked('Profile synthetic clipboard writer unavailable; template input withheld.')
         ctx.wait(lambda: ctx.clipboard_text() == text, 'synthetic template clipboard is ready')
-    live_click(ctx, control)
+    field_click(ctx, control)
     # Clipboard ownership changes can clear the X11 text selection. Prepare
     # the clipboard first, then select and paste without an intervening probe.
     ctx.keys('Ctrl+A')
@@ -184,10 +184,10 @@ def replace(ctx, control, text):
     else:
         ctx.type_text(text)
     ctx.keys('Tab')
-    if control in ctx.profile.get('settings', {}).get('live_controls', {}) or paste:
+    if control in ctx.profile.get('settings', {}).get('live_controls', {}) or paste or ctx.profile.get('session') == 'wayland':
         if ctx.profile.get('settings', {}).get('input_state_script'):
             input_witness(ctx, ctx.geometry('settings'))
-        ctx.frame('keys-after-' + control)
+        ctx.frame('keys-after-' + control, window='settings')
 
 
 def checkbox(identifier, control, path, section, default):

@@ -428,6 +428,33 @@ class Contracts(unittest.TestCase):
             with self.assertRaisesRegex(RecipeBlocked, refusal):
                 click(ctx, 'archiveRoot')
 
+    def test_native_field_focus_is_proved_before_typing(self):
+        ctx = Fake()
+        ctx.profile['session'] = 'wayland'
+        ctx.profile['settings'].pop('foreground_script')
+        ctx.geometry = lambda window: {'window_id': '42', 'pid': 123, 'x': 120, 'y': 40, 'width': 1440, 'height': 960}
+        scrolled = []
+        def accessible(query):
+            if query.get('states', {}).get('focused'):
+                return [{'objectName': 'qt_spinbox_lineedit', 'accessibleId': 'QApplication.putgdMainWindow.recentActivityLimit.qt_spinbox_lineedit'}] if scrolled else [{'objectName': 'otherField'}]
+            return [{'rect': [700, 920, 180, 28]}]
+        ctx.accessible = accessible
+        ctx.scroll = lambda *a, **k: scrolled.append((a, k))
+        lane.replace(ctx, 'recentActivityLimit', '37')
+        self.assertEqual(len(scrolled), 1)
+        self.assertEqual(ctx.document['retention']['recentActivityLimit'], 37)
+        self.assertIn('native Settings field keyboard focus: recentActivityLimit', ctx.notes)
+        ctx = Fake()
+        ctx.profile['session'] = 'wayland'
+        ctx.profile['settings'].pop('foreground_script')
+        ctx.geometry = lambda window: {'window_id': '42', 'pid': 123, 'x': 120, 'y': 40, 'width': 1440, 'height': 960}
+        ctx.accessible = lambda query: [{'objectName': 'otherField', 'rect': [700, 920, 180, 28]}]
+        ctx.scroll = lambda *a, **k: None
+        with self.assertRaises(RecipeBlocked) as caught:
+            lane.replace(ctx, 'archiveRoot', '/tmp/synthetic')
+        self.assertEqual(caught.exception.issue, 856)
+        self.assertFalse(any(item[0] in ('keys', 'type') for item in ctx.inputs))
+
     def test_disclosure_requires_rendered_text_and_collapse(self):
         from types import SimpleNamespace
         ctx = Fake()

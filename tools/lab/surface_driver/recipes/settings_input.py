@@ -233,6 +233,36 @@ def click(ctx, control, *, after_window=None):
     ctx.frame('input-after-' + control)
 
 
+def field_click(ctx, control):
+    """Withhold native text until AT-SPI confirms the intended field's focus.
+
+    A partly clipped field can lie inside the compositor frame while its
+    parent viewport clips the hit. Scroll with real guarded input and resolve
+    again; a spin box's focus proxy must belong to its exported ID path.
+    """
+    if ctx.profile.get('session') != 'wayland':
+        return click(ctx, control)
+    for _ in range(12):
+        click(ctx, control)
+        geometry = live_geometry(ctx)
+        query = {'owned': True, 'pid': geometry['pid']}
+        rows = ctx.accessible({**query, 'states': {'focused': True}})
+        if any(row.get('objectName') == control or
+               control in (row.get('accessibleId') or '').split('.') for row in rows):
+            ctx.note('native Settings field keyboard focus: ' + control)
+            return
+        ctx.note('Native field is not focused; text withheld while scrolling: ' + control)
+        targets = ctx.accessible({**query, 'objectName': control})
+        rectangles = [row['rect'] for row in targets if row.get('rect')]
+        direction = 3 if len(rectangles) == 1 and rectangles[0][1] < geometry['y'] + geometry['height'] / 2 else -3
+        scale = geometry.get('scale', 1)
+        ctx.scroll(round((geometry['x'] - geometry.get('screen_x', 0) + geometry['width'] - 24) * scale),
+                   round((geometry['y'] - geometry.get('screen_y', 0) + geometry['height'] / 2) * scale),
+                   direction, head=geometry.get('head'))
+    ctx.frame('field-focus-withheld-' + control, window='settings')
+    ctx.blocked('Native Settings field did not acquire verified keyboard focus; no text sent: ' + control, issue=856)
+
+
 def collapse(ctx, control):
     if control not in ctx.profile.get('settings', {}).get('live_controls', {}) or not ctx.profile.get('settings', {}).get('foreground_script'):
         disclosure = ctx.fixture('settings-observations').disclosure
