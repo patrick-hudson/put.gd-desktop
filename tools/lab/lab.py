@@ -1702,10 +1702,13 @@ def stage_install_helper(run, remote, helper, digest):
     # phases (the supervisor) use system scopes.
     scope_digest = hash_file(HERE / 'package_scope.py')
     hook = (f'set -eu; install -d -m 755 /usr/local/lib/putgd-lab; '
-            f'install -o root -g root -m 755 "SOURCE" {helper}; '
-            f'echo "{digest}  {helper}" | sha256sum -c -; '
-            f'install -o root -g root -m 755 "LAUNCHER" {SCOPE_LAUNCHER}; '
-            f'echo "{scope_digest}  {SCOPE_LAUNCHER}" | sha256sum -c -; '
+            # Verify under a temporary name, then rename: a source swapped
+            # while copying never reaches the granted path.
+            f'install -o root -g root -m 755 "SOURCE" {helper}.new; '
+            f'echo "{digest}  {helper}.new" | sha256sum -c -; mv -f {helper}.new {helper}; '
+            f'install -o root -g root -m 755 "LAUNCHER" {SCOPE_LAUNCHER}.new; '
+            f'echo "{scope_digest}  {SCOPE_LAUNCHER}.new" | sha256sum -c -; '
+            f'mv -f {SCOPE_LAUNCHER}.new {SCOPE_LAUNCHER}; '
             f'printf "lab ALL=(root) NOPASSWD: {helper}, {SCOPE_LAUNCHER}\\n" '
             '> /etc/sudoers.d/putgd-lab-install; '
             'chmod 440 /etc/sudoers.d/putgd-lab-install; '

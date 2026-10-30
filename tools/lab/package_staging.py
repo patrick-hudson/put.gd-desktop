@@ -208,7 +208,7 @@ ABANDONED_LIMIT = ('Abandonment proves only that no process remains in the stagi
                    'guest process list if its hooks can daemonize.')
 
 
-def cgroup_status(identity, kind='staging'):
+def cgroup_status(identity, kind='staging', job=None):
     if identity.get('tracking', 'session') == 'session' and 'cgroup' not in identity:
         return {'tracking': 'session', 'limit': ABANDONED_LIMIT,
                 'fallbackReason': identity.get('fallbackReason', 'legacy session-only identity')}
@@ -217,9 +217,13 @@ def cgroup_status(identity, kind='staging'):
         group = identity['cgroup']
         path = group['path']
         unit = group['unit']
+        # The recorded scope must be this job's own system scope (admission
+        # checks the same): a rewritten identity pointing at another job's
+        # scope, or a user-manager path, must never prove this job finished.
         if (identity.get('tracking') != 'cgroup-v2' or not isinstance(path, str)
                 or not re.fullmatch(r'putgd-' + kind + r'-install-[0-9a-f]{32}\.scope', unit)
-                or not path.startswith(('/system.slice/', '/user.slice/')) or Path(path).name != unit
+                or unit != 'putgd-' + kind + '-' + (job or Path.cwd().name) + '.scope'
+                or path != '/system.slice/' + unit
                 or any(part in ('', '.', '..') for part in path.split('/')[1:])
                 or any(type(group[k]) is not int or group[k] <= 0
                        for k in ('device', 'inode', 'mountDevice', 'mountInode'))):

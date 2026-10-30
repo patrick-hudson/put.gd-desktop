@@ -1068,7 +1068,7 @@ class CgroupStagingContracts(unittest.TestCase):
         self.root = Path(temporary.name)
         self.mount = self.root / 'cgroup'
         self.mount.mkdir()
-        self.path = '/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-staging-' + JOB + '.scope'
+        self.path = '/system.slice/putgd-staging-' + JOB + '.scope'
         self.group = self.mount / self.path.lstrip('/')
         self.group.mkdir(parents=True)
         (self.group / 'cgroup.events').write_text('populated 1\nfrozen 0\n')
@@ -1088,7 +1088,7 @@ class CgroupStagingContracts(unittest.TestCase):
                        'bootId': 'boot-one'}}
 
     def status(self):
-        return self.staging.cgroup_status(self.identity)
+        return self.staging.cgroup_status(self.identity, job=JOB)
 
     def test_atomic_hierarchical_populated_flag_controls_liveness(self):
         # An empty procs file says nothing about a populated delegated child.
@@ -1138,9 +1138,12 @@ class CgroupStagingContracts(unittest.TestCase):
     def test_populated_or_unknown_cgroup_blocks_even_matching_terminal_receipt(self):
         old = os.open('.', os.O_RDONLY | os.O_DIRECTORY)
         try:
-            os.chdir(self.root)
-            lab.write_json(self.root / 'staging-process.json', self.identity)
-            lab.write_json(self.root / 'staging-result.json', {**self.identity, 'finished': True, 'exitCode': 0})
+            # Recovery runs inside the job directory; the scope must be this job's.
+            job = self.root / JOB
+            job.mkdir()
+            os.chdir(job)
+            lab.write_json(job / 'staging-process.json', self.identity)
+            lab.write_json(job / 'staging-result.json', {**self.identity, 'finished': True, 'exitCode': 0})
             with patch.object(self.staging.os, 'pidfd_open', side_effect=ProcessLookupError()), \
                     patch.object(self.staging, 'session_status', return_value={'sessionAlive': False, 'sessionPids': []}):
                 for abandoned in (False, True):
@@ -1354,16 +1357,33 @@ class CgroupStagingContracts(unittest.TestCase):
         lab.write_json(job / 'supervisor-process.json', self.identity)
         self.assertFalse(self.reconcile_supervisor()['finished'])
 
-    def test_system_scope_path_and_legacy_user_scope_metadata_both_remain_guarded(self):
-        old = self.group
-        target = self.mount / 'system.slice' / self.group.name
-        target.parent.mkdir()
-        old.rename(target)
-        self.group = target
-        self.identity['cgroup']['path'] = '/system.slice/' + target.name
+    def test_system_scope_reads_populated_and_user_scope_metadata_is_refused(self):
         self.assertIs(self.status()['cgroupPopulated'], True)
-        (target/'cgroup.events').write_text('populated 0')
+        (self.group / 'cgroup.events').write_text('populated 0')
         self.assertIs(self.status()['cgroupPopulated'], False)
+        # A legacy user-manager scope proves nothing: unknown, so the lock is kept.
+        user = self.mount / 'user.slice' / 'user-1000.slice' / self.group.name
+        user.parent.mkdir(parents=True)
+        self.group.rename(user)
+        self.identity['cgroup']['path'] = '/user.slice/user-1000.slice/' + user.name
+        self.assertIsNone(self.status()['cgroupPopulated'])
+        self.assertFalse(self.status()['cgroupGone'])
+
+    def test_identity_pointing_at_another_job_scope_never_proves_finished(self):
+        # Validation B1 on #798: a rewritten identity naming another job's gone
+        # scope, or another path, must not release this job.
+        other = 'putgd-staging-install-' + 'f' * 32 + '.scope'
+        for unit, path in ((other, '/system.slice/' + other),
+                           (self.group.name, '/system.slice/elsewhere/' + self.group.name),
+                           (self.group.name, '/user.slice/' + self.group.name)):
+            with self.subTest(path=path):
+                self.identity['cgroup'] = {**self.identity['cgroup'], 'unit': unit, 'path': path}
+                status = self.status()
+                self.assertIsNone(status['cgroupPopulated'])
+                self.assertFalse(status['cgroupGone'])
+                # The same identity checked from another job's directory is refused too.
+                self.assertIsNone(self.staging.cgroup_status(
+                    self.identity, job='install-' + 'e' * 32)['cgroupPopulated'])
 
 
 if __name__ == '__main__':
