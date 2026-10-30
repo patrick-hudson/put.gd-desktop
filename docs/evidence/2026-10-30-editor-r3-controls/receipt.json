@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-x11-probes-v2",
+    "package": "deb",
+    "destination": "local",
+    "build": "e003bc7983e0",
+    "placement_details": {
+      "boat_sandbox_id": "bx_wj5ckzft",
+      "run_id": "0ed53e7d-23ea-4c4f-a194-72127dfde611",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/editor/work/lab-runs/c2",
+      "session_root": "/tmp/sd-12c19efc",
+      "socket": "/tmp/sd-12c19efc/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2461",
+      "commitCount": 2461,
+      "dirty": false,
+      "gitCommit": "e003bc7983e0a567611121cda65fc1670395bebf",
+      "gitTree": "10d9553fe0bdcf7abefde2c238c71e8eed099ea2",
+      "packageVersion": "26.1030.2461~dev+ge003bc7983e0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2461-dev+ge003bc7983e0"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.colours",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3c2/receipt.json",
+      "note": "operationId=4003637a-f1d5-40df-a536-ca194c7816cf; editor operationId=4003637a-f1d5-40df-a536-ca194c7816cf; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11-probes-v2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/e3c2/frames/editor.palette/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.638972, tolerance=0.025): actual=/home/user/e3c2/frames/editor.palette/02-after.png reference=/home/user/editor-catalog/22-editor-arrow-style.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.palette/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.palette/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.palette/02-after.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6389717853210579,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.palette/03-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.palette/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.palette",
+      "build": "e003bc7983e0",
+      "at": "2026-10-30T05:54:29Z"
+    },
+    {
+      "interaction": "editor.line-width",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3c2/receipt.json",
+      "note": "operationId=3b7e7ff3-1367-430e-a8b8-0009fed07e6f; editor operationId=3b7e7ff3-1367-430e-a8b8-0009fed07e6f; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (2 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11-probes-v2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/e3c2/frames/editor.style_controls/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.style_controls/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.style_controls/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.style_controls",
+      "build": "e003bc7983e0",
+      "at": "2026-10-30T05:54:38Z"
+    },
+    {
+      "interaction": "editor.compact",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3c2/receipt.json",
+      "note": "operationId=52af4945-4414-4140-af64-94191952c923; editor operationId=52af4945-4414-4140-af64-94191952c923; input target 'editor' is obscured by 'Desktop' (window 48234499)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11-probes-v2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/e3c2/frames/editor.compact/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.compact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.compact/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.compact/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.compact/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.compact",
+      "build": "e003bc7983e0",
+      "at": "2026-10-30T05:55:58Z"
+    }
+  ]
+}
