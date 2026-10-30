@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Synthetic stdio peer for testing adapter failure disposition; no SDK or account."""
 import json
-import signal
+import os
 import sys
 import time
 request = json.loads(sys.stdin.buffer.readline())
@@ -62,12 +62,20 @@ if case == 'timeout':
     # guessing how long account-lock persistence and helper startup will take.
     received = request['destination']['settings'].get('receivedFile')
     if received:
+        parent = os.getppid()
+        timeout = request.get('requestTimeoutMs')
+        if timeout is None:
+            timeout = request['destination']['settings'].get('requestTimeoutMs', 120000)
+        deadline = time.monotonic() + timeout / 1000
         with open(received, 'x') as marker:
             marker.write(request['method'])
-        # The parent owns cancellation and the request deadline. An acknowledged
-        # request must not finish merely because its observer was descheduled.
-        while True:
-            signal.pause()
+        # Stay pending while the observer is delayed, but retire after a parent
+        # crash, the accepted deadline, or assertion-failure teardown.
+        while parent > 1 and os.getppid() == parent and not os.path.exists(received + '.stop'):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(0.05, remaining))
     else:
         time.sleep(3)
 elif case == 'malformed':

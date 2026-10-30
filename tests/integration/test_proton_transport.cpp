@@ -33,6 +33,10 @@ class ProtonTransportTest:public QObject {
  static bool requestReceived(const QString& path,const QByteArray& method) {
   QFile marker(path);return marker.open(QIODevice::ReadOnly)&&marker.readAll()==method;
  }
+ static void finishFixture(const QString& path) {
+  // Assertion-failure teardown must also unblock a broken cancellation path.
+  QFile stop(path+".stop");if(stop.open(QIODevice::WriteOnly))stop.close();
+ }
 private slots:
  void nameCheckPropagatesCancellationToHelper() {
   QTemporaryDir dir;QVERIFY(dir.isValid());const auto received=dir.filePath("received");
@@ -41,7 +45,7 @@ private slots:
   auto cancellation=std::make_shared<std::atomic_bool>(false);
   NameCheck result;std::atomic_bool completed=false;Clock::time_point finished;
   std::jthread worker([&]{provider.checkName(d,"synthetic.txt",[&](NameCheck value){result=value;},cancellation);finished=Clock::now();completed.store(true);});
-  auto cancelOnExit=qScopeGuard([&]{cancellation->store(true);});
+  auto cancelOnExit=qScopeGuard([&]{cancellation->store(true);finishFixture(received);});
   // Account-lock persistence can take longer than 200 ms (#577). Prove the
   // request reached the helper before testing cancellation after dispatch.
   PUTGD_TRY_VERIFY(requestReceived(received,"checkName"));
@@ -176,7 +180,7 @@ private slots:
   ProtonProvider provider;UploadRequest request;request.destination=destination("timeout");request.destination.settings["receivedFile"]=received;request.requestTimeoutMs=30000;request.cancellation=std::make_shared<std::atomic_bool>(false);
   StatResult result;std::atomic_bool completed=false;Clock::time_point finished;
   std::jthread worker([&]{provider.reconcile(request,[&](StatResult value){result=value;});finished=Clock::now();completed.store(true);});
-  auto cancelOnExit=qScopeGuard([&]{request.cancellation->store(true);});
+  auto cancelOnExit=qScopeGuard([&]{request.cancellation->store(true);finishFixture(received);});
   PUTGD_TRY_VERIFY(requestReceived(received,"reconcile"));
   const auto cancelledAt=Clock::now();request.cancellation->store(true);
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(completed.load(),2000);worker.join();
