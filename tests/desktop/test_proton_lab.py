@@ -163,6 +163,16 @@ class LendOrder(LendTest):
             self.assertNotIn(ROTATED, path.read_text())
         self.assertNotIn(ROTATED, json.dumps(result))
 
+    def test_the_registry_records_the_last_lend_without_session_material(self):
+        result = self.lend()
+        last = proton.read_registry(self.layout)['lastLend']
+        self.assertEqual((last['run'], last['by'], last['testExit'], last['rotated'], last['carriedBack']),
+                         (str(self.run_dir.resolve()), 'lender', 0, True, 'carry-back-1.json'))
+        self.assertEqual(last['receipts'], result['receipts'])
+        text = self.layout.registry.read_text()
+        self.assertNotIn(BASELINE, text)
+        self.assertNotIn(ROTATED, text)
+
     def test_a_failed_test_still_collects_and_carries_back(self):
         result = self.lend(exit_code=3)
         self.assertEqual(result['testExit'], 3)
@@ -413,9 +423,70 @@ class Registry(unittest.TestCase):
             with self.assertRaises(proton.LabFailure):
                 proton.brokers(directory)
 
+    def test_register_guests_records_the_bridge_and_goldens_by_path_and_hash(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = Path(folder)
+            layout = proton.Layout(base / 'proton', base / 'locks')
+            layout.prepare()
+            proton.write_registry(layout, {'schema': 1, 'host': 'm74', 'reference': 'putgd/proton/lab-m74'})
+            layout.guest_bridge.mkdir(mode=0o700)
+            for name in proton.BROKERS:
+                (layout.guest_bridge / name).write_text('#!/bin/sh\n')
+                (layout.guest_bridge / name).chmod(0o700)
+            golden, pins, key = base / 'image.qcow2', base / 'known_hosts', base / 'identity'
+            golden.write_bytes(b'synthetic golden')
+            pins.write_text('[127.0.0.1]:22220 ssh-ed25519 AAAA\n')
+            key.write_text('synthetic key')
+            guests = proton.register_guests(layout, key, [('gnome-wayland', golden, pins)], 'lender')
+            self.assertEqual(proton.read_registry(layout)['guests'], guests)
+            self.assertEqual(guests['bootstrapKey'], str(key))
+            self.assertEqual(sorted(guests['bridge']), sorted(proton.BROKERS))
+            self.assertEqual(guests['goldens'], [{'path': str(golden), 'bytes': 16, 'profile': 'gnome-wayland',
+                                                  'sha256': proton.lab.hash_file(golden), 'knownHosts': str(pins)}])
+            self.assertNotIn('synthetic key', layout.registry.read_text())
+            with self.assertRaises(proton.LabFailure):
+                proton.register_guests(layout, key, [('gnome-wayland', base / 'missing.qcow2', pins)])
+            (layout.guest_bridge / proton.BROKERS[0]).chmod(0o722)
+            with self.assertRaises(proton.LabFailure):
+                proton.register_guests(layout, key, [('gnome-wayland', golden, pins)])
+
     def test_processes_are_matched_by_exact_environment_value(self):
         pids = proton.processes_with('PUTGD_SYNTHETIC_UNUSED', 'value-that-no-process-has')
         self.assertEqual(pids, [])
+
+
+smoke_spec = importlib.util.spec_from_file_location('proton_lend_smoke', ROOT / 'tools/lab/proton_lend_smoke.py')
+smoke = importlib.util.module_from_spec(smoke_spec)
+smoke_spec.loader.exec_module(smoke)
+
+
+class SmokeCheck(unittest.TestCase):
+    def smoke(self, scope):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        test = smoke.Smoke(folder.name, BORROWED)
+        test.setup = mock.Mock(return_value={'testScope': scope})
+        return test
+
+    def test_check_account_and_folder_runs_test_connection_and_records_its_scope(self):
+        test = self.smoke('account-folder')
+        with mock.patch('sys.stdout'):
+            test.check()
+        test.setup.assert_called_once_with('testDestination')
+        self.assertEqual(test.result['testScope'], 'account-folder')
+        self.assertEqual(test.result['steps'][-1]['step'], 'checked')
+
+    def test_the_upload_wait_covers_every_active_operation_state(self):
+        source = (ROOT / 'src/core/Operation.cpp').read_text()
+        active = source.split('Operation::activeState', 1)[1].split('}', 1)[0]
+        import re
+        for state in re.findall(r'state=="([a-z]+)"', active):
+            self.assertIn(state, smoke.ACTIVE_STATES)
+
+    def test_an_account_only_check_does_not_pass(self):
+        test = self.smoke('account')
+        with mock.patch('sys.stdout'), self.assertRaises(smoke.lab.LabError):
+            test.check()
 
 
 if __name__ == '__main__':
