@@ -423,9 +423,15 @@ class LabContracts(unittest.TestCase):
                     patch.object(lab, 'hash_file', return_value='a' * 64):
                 result = lab.install_package(run, 'synthetic.deb')
             self.assertEqual(Path(put.call_args_list[0].args[1]).name, 'package_install.py')
-            self.assertTrue(put.call_args_list[1].args[2].endswith('/package.deb'))
+            self.assertEqual(Path(put.call_args_list[1].args[1]).name, 'package_scope.py')
+            self.assertTrue(put.call_args_list[2].args[2].endswith('/package.deb'))
             stage = next(c for c in calls if 'Pre-Invoke' in c)
-            self.assertEqual(stage.count('sha256sum -c -'), 3)
+            # Helper and scope launcher: uploaded copy, installed copy, final check.
+            self.assertEqual(stage.count('sha256sum -c -'), 6)
+            grant = next(line for line in stage.splitlines() if 'NOPASSWD' in line)
+            self.assertIn('NOPASSWD: /usr/local/lib/putgd-lab/package_install.py, '
+                          '/usr/local/lib/putgd-lab/package_scope.py\\n', grant)
+            self.assertNotIn('systemd-run', grant)
             self.assertIn('Dir::Etc::sourcelist=/dev/null', stage)
             self.assertIn('Dir::Etc::sourceparts=-', stage)
             self.assertIn('APT::Get::List-Cleanup=0', stage)
@@ -458,6 +464,7 @@ class LabContracts(unittest.TestCase):
             (home / remote).mkdir(parents=True)
             source = home / remote / 'package_install.py'
             source.write_text('synthetic helper')
+            (home / remote / 'package_scope.py').write_bytes((lab.HERE / 'package_scope.py').read_bytes())
             sudo = home / 'sudo'
             sudo.write_text('#!/bin/sh\n'
                 f'echo "{message}"\n'
@@ -790,18 +797,26 @@ class LabContracts(unittest.TestCase):
                 lab.write_json(run / job / 'staging-failed.json', {'error': 'TimeoutExpired'})
                 if case in ('progress.json', 'result.json'):
                     lab.write_json(remote / case, {'synthetic': True})
-                def ssh(_run, script, **kwargs):
+                def ssh(_run, script, refusals=None, **kwargs):
                     result = lab.subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
                         env={**os.environ, 'HOME': directory}, timeout=3)
                     if result.returncode:
-                        raise lab.LabError('guest guard refused recovery')
+                        raise lab.LabError((refusals or {}).get(result.returncode, 'guest guard refused recovery'))
                     return result.stdout
+                unproven = {'finished': False, 'state': 'supervisor-outcome-unknown', 'cgroupPopulated': True}
                 with patch.object(lab, 'verify_owned_guest', side_effect=(
                         lab.LabError('unowned overlay') if case == 'unowned' else None)), \
-                        patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'reconcile_staging') as reconcile:
-                    with self.assertRaises(lab.LabError):
+                        patch.object(lab, 'ssh', side_effect=ssh), \
+                        patch.object(lab, 'reconcile_staging', return_value=unproven) as reconcile:
+                    with self.assertRaisesRegex(lab.LabError, {
+                            'unowned': 'unowned overlay', 'replacement-token': 'not held by this job'}.get(
+                            case, 'supervisor has started and its system scope remains populated')):
                         lab.recover_staging(run, job, abandoned=True)
-                    reconcile.assert_not_called()
+                    # Staging reconciliation never runs once a supervisor started;
+                    # only the supervisor's own proof can release its token.
+                    for call in reconcile.call_args_list:
+                        self.assertTrue(call.kwargs.get('supervisor'))
+                    self.assertEqual(reconcile.called, case in ('progress.json', 'result.json'))
                 self.assertEqual((active / 'job').read_text(), held)
 
     def test_staging_reconciliation_without_pidfd_open_uses_proc_and_keeps_lock(self):

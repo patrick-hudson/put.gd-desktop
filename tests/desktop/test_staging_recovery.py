@@ -80,14 +80,14 @@ class StagingRecoveryContracts(unittest.TestCase):
         self.evidence.mkdir()
         lab.write_json(self.evidence / 'staging-failed.json', {'error': 'KeyboardInterrupt'})
 
-    def ssh(self, _run, script, **kwargs):
+    def ssh(self, _run, script, refusals=None, **kwargs):
         result = subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
             env={**os.environ, 'HOME': str(self.home)}, timeout=WAIT)
         if result.returncode:
-            raise lab.LabError('synthetic guest guard refused recovery')
+            raise lab.LabError((refusals or {}).get(result.returncode, 'synthetic guest guard refused recovery'))
         return result.stdout
 
-    def reconcile(self, mode='pidfd', abandoned=True):
+    def reconcile(self, mode='pidfd', abandoned=True, supervisor=False):
         prelude = {
             'pidfd': '',
             'missing': 'os.__dict__.pop("pidfd_open", None); ',
@@ -115,14 +115,16 @@ class StagingRecoveryContracts(unittest.TestCase):
                       'patch.object(Path, "read_text", read).start(); ',
         }[mode]
         script = 'import os, runpy; ' + prelude + f'runpy.run_path({str(STAGING)!r}, run_name="__main__")'
-        result = subprocess.run([sys.executable, '-c', script, 'reconcile', str(self.remote), '0'] +
-            (['--abandoned'] if abandoned else []), text=True, capture_output=True, check=True, timeout=WAIT)
+        result = subprocess.run([sys.executable, '-c', script, 'reconcile-supervisor' if supervisor else 'reconcile',
+            str(self.remote), '0'] + (['--abandoned'] if abandoned else []),
+            text=True, capture_output=True, check=True, timeout=WAIT)
         self.assertEqual(result.stderr, '')
         return json.loads(result.stdout)
 
     def recover(self, mode='pidfd', abandoned=True):
         with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', side_effect=self.ssh), \
-                patch.object(lab, 'reconcile_staging', side_effect=lambda *a, **kw: self.reconcile(mode, kw['abandoned'])):
+                patch.object(lab, 'reconcile_staging', side_effect=lambda *a, **kw: self.reconcile(
+                    mode, kw.get('abandoned', False), kw.get('supervisor', False))):
             return lab.recover_staging(self.home, JOB, abandoned=abandoned)
 
     def test_validator_live_dead_reused_zombie_and_flock_both_pidfd_paths(self):
@@ -491,7 +493,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
         self.assertEqual(wrapper.wait(timeout=WAIT), 0)
         for abandoned in (False, True):
-            with self.assertRaisesRegex(lab.LabError, 'guest guard refused'):
+            with self.assertRaisesRegex(lab.LabError, 'refused install-e+: the install supervisor has started'):
                 self.recover(abandoned=abandoned)
             self.assertEqual((self.active / 'job').read_text(), JOB)
 
@@ -550,7 +552,7 @@ class StagingRecoveryContracts(unittest.TestCase):
                 (self.evidence / 'staging-failed.json').unlink()
             for abandoned in (False, True):
                 with self.subTest(receipt=receipt, abandoned=abandoned):
-                    with self.assertRaisesRegex(lab.LabError, 'guest guard refused'):
+                    with self.assertRaisesRegex(lab.LabError, 'the install supervisor has started'):
                         self.recover(abandoned=abandoned)
                     self.assertEqual((self.active / 'job').read_text(), JOB)
 
@@ -570,11 +572,67 @@ class StagingRecoveryContracts(unittest.TestCase):
                     return self.reconcile('pidfd', kwargs['abandoned'])
                 with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', side_effect=self.ssh), \
                         patch.object(lab, 'reconcile_staging', side_effect=reconcile):
-                    with self.assertRaisesRegex(lab.LabError, 'guest guard refused'):
+                    # The guard's own refusal is reported, not a bare ssh exit status.
+                    with self.assertRaisesRegex(lab.LabError, 'refused install-e+: the install supervisor has '
+                                                'started \\(progress.json or result.json exists\\)'):
                         lab.recover_staging(self.home, JOB)
                 self.assertEqual((self.active / 'job').read_text(), JOB)
                 # A refused release leaves no recovery receipt claiming success.
                 self.assertFalse((self.evidence / 'staging-recovery.json').exists())
+
+    def recover_supervisor(self, report, during=None):
+        def reconcile(*args, **kwargs):
+            self.assertEqual(kwargs, {'supervisor': True})  # Never staging reconciliation.
+            if during:
+                during()
+            return report
+        with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', side_effect=self.ssh), \
+                patch.object(lab, 'reconcile_staging', side_effect=reconcile), \
+                contextlib.redirect_stderr(io.StringIO()) as stderr:
+            return lab.recover_staging(self.home, JOB), stderr.getvalue()
+
+    def test_finished_supervisor_with_terminal_result_releases_under_install_guard(self):
+        # F3: the controller died after admission; the supervisor finished.
+        lab.write_json(self.remote / 'progress.json', {'admittedJob': JOB})
+        lab.write_json(self.remote / 'result.json', {'ok': True})
+        finished = {'finished': True, 'state': 'supervisor-finished', 'cgroupPopulated': False,
+                    'result': {'ok': True, 'aborted': False, 'remainingPids': []}}
+        report, warning = self.recover_supervisor(finished)
+        self.assertEqual(report, finished)
+        self.assertFalse(self.active.exists())
+        self.assertEqual(lab.read_json(self.evidence / 'supervisor-recovery.json'), finished)
+        self.assertEqual(warning, '')
+        # A failed install is released too, with a visible dpkg-state warning.
+        self.active.mkdir()
+        (self.active / 'job').write_text(JOB)
+        failed = {**finished, 'result': {**finished['result'], 'ok': False}}
+        report, warning = self.recover_supervisor(failed)
+        self.assertEqual(report, failed)
+        self.assertFalse(self.active.exists())
+        self.assertIn('after its install failed', warning)
+
+    def test_supervisor_release_refusals_are_visible_and_keep_the_lock(self):
+        lab.write_json(self.remote / 'progress.json', {'admittedJob': JOB})
+        finished = {'finished': True, 'state': 'supervisor-finished', 'cgroupPopulated': False,
+                    'result': {'ok': True, 'aborted': False, 'remainingPids': []}}
+        for case, report, during, message in (
+                ('no-result', {'finished': False, 'state': 'supervisor-no-result', 'cgroupPopulated': False},
+                 None, 'has started and it has no terminal result.json'),
+                ('populated', {'finished': False, 'state': 'supervisor-outcome-unknown', 'cgroupPopulated': True},
+                 None, 'has started and its system scope remains populated'),
+                ('session', {'finished': False, 'state': 'supervisor-session-tracked'},
+                 None, 'ran without a system scope'),
+                ('result-removed', finished, lambda: (self.remote / 'result.json').unlink(),
+                 'refused install-e+: the install supervisor has no terminal result.json'),
+                ('replaced', finished, lambda: (self.active / 'job').write_text('install-' + 'c' * 32),
+                 'refused install-e+: install-active is not held by this job')):
+            with self.subTest(case=case):
+                lab.write_json(self.remote / 'result.json', {'ok': True})
+                (self.active / 'job').write_text(JOB)
+                with self.assertRaisesRegex(lab.LabError, message):
+                    self.recover_supervisor(report, during)
+                self.assertTrue((self.active / 'job').exists())
+                self.assertFalse((self.evidence / 'supervisor-recovery.json').exists())
 
     def test_controller_dead_before_staging_identity_recovers_as_not_started(self):
         # N1 (validator r3): the controller died after the guest lock and before
@@ -593,7 +651,8 @@ class StagingRecoveryContracts(unittest.TestCase):
                 result = subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
                     env={**os.environ, 'HOME': directory}, timeout=40)
                 if result.returncode:
-                    raise lab.LabError('synthetic guest guard refused recovery')
+                    raise lab.LabError((kwargs.get('refusals') or {}).get(
+                        result.returncode, 'synthetic guest guard refused recovery'))
                 return result.stdout
             with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', side_effect=ssh):
                 # Abandonment still needs a recorded identity.
@@ -790,6 +849,78 @@ class StagingRecoveryContracts(unittest.TestCase):
             (self.remote / 'finish-unrelated').touch()
             unrelated.wait(timeout=WAIT)
 
+    def scoped_wrapper(self, script):
+        # The process sudo's scope launch leaves as its direct child, with the
+        # system scope check replaced (no real scope here).
+        return subprocess.Popen([sys.executable, '-c', SCOPED_WRAPPER, str(STAGING), str(self.remote), script],
+                                start_new_session=True)
+
+    def test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper(self):
+        # F1: the outer sudo stays in the SSH login's scope and relays the
+        # SIGTERM/SIGHUP that systemctl stop session-N.scope or loginctl
+        # terminate-user sends it, to its child (or, with a pty, its child's
+        # process group). The scope wrapper and its staged work must survive and
+        # still write their terminal receipt.
+        for target, number in (('pid', signal.SIGTERM), ('pid', signal.SIGHUP), ('pid', signal.SIGINT),
+                               ('group', signal.SIGTERM), ('group', signal.SIGHUP)):
+            with self.subTest(target=target, signal=number.name):
+                for name in ('staging-process.json', 'staging-result.json', 'child.pid', 'finish', 'staging-cancelled'):
+                    (self.remote / name).unlink(missing_ok=True)
+                client = self.scoped_wrapper('echo $$ > child.pid; while [ ! -e finish ]; do sleep .02; done')
+                wrapper = child = None
+                try:
+                    wait_for(lambda: (self.remote / 'child.pid').exists() and
+                             (self.remote / 'child.pid').read_text().strip())
+                    child = int((self.remote / 'child.pid').read_text())
+                    wrapper = lab.read_json(self.remote / 'staging-process.json')['pid']
+                    if target == 'pid':
+                        os.kill(client.pid, number)  # Exact launch client started by this test.
+                    else:
+                        os.killpg(client.pid, number)  # Its own new process group.
+                    client.wait(timeout=WAIT)
+                    self.assertNotEqual(wrapper, client.pid)
+                    self.assertFalse(dead(wrapper), 'a relayed login signal killed the scoped wrapper')
+                    self.assertEqual(os.getsid(wrapper), wrapper)
+                    self.assertEqual(self.reconcile(abandoned=False)['state'], 'staging-running')
+                    (self.remote / 'finish').touch()
+                    wait_for(lambda: (self.remote / 'staging-result.json').exists())
+                    result = lab.read_json(self.remote / 'staging-result.json')
+                    self.assertEqual((result['pid'], result['exitCode'], result['finished']), (wrapper, 0, True))
+                    wait_for(lambda: dead(wrapper))
+                finally:
+                    (self.remote / 'finish').touch()
+                    if client.poll() is None:
+                        client.wait(timeout=WAIT)
+                    for pid in (wrapper, child):
+                        if pid:
+                            wait_for(lambda: dead(pid))
+
+    def test_scoped_launch_client_reports_the_wrapper_exit_and_wrapper_stays_killable(self):
+        client = self.scoped_wrapper('exit 7')
+        self.assertEqual(client.wait(timeout=WAIT), 7)
+        identity = lab.read_json(self.remote / 'staging-process.json')
+        self.assertNotEqual(identity['pid'], client.pid)
+        self.assertEqual(identity['sessionId'], identity['pid'])
+        self.assertEqual(lab.read_json(self.remote / 'staging-result.json')['exitCode'], 7)
+        for name in ('staging-process.json', 'staging-result.json'):
+            (self.remote / name).unlink()
+        client = self.scoped_wrapper('echo $$ > child.pid; while [ ! -e finish ]; do sleep .02; done')
+        child = None
+        try:
+            wait_for(lambda: (self.remote / 'child.pid').exists() and (self.remote / 'child.pid').read_text().strip())
+            child = int((self.remote / 'child.pid').read_text())
+            wrapper = lab.read_json(self.remote / 'staging-process.json')['pid']
+            os.kill(wrapper, signal.SIGKILL)  # Exact wrapper started by this test.
+            self.assertEqual(client.wait(timeout=WAIT), 128 + signal.SIGKILL)
+            wait_for(lambda: dead(wrapper))
+            self.assertFalse((self.remote / 'staging-result.json').exists())
+        finally:
+            (self.remote / 'finish').touch()
+            if client.poll() is None:
+                client.wait(timeout=WAIT)
+            if child:
+                wait_for(lambda: dead(child))  # Orphaned by the kill; it must see finish.
+
     def test_validator_setsid_escape_is_the_documented_abandoned_limit(self):
         # rev761b test_grandchild_setsid_escapes. While the wrapper lives it waits,
         # as subreaper, for a descendant that left the session. After the wrapper
@@ -820,6 +951,17 @@ class StagingRecoveryContracts(unittest.TestCase):
                 wrapper.wait(timeout=WAIT)
             if escaped:
                 wait_for(lambda: dead(escaped))
+
+# The direct child of sudo's scope launch, without a real system scope.
+SCOPED_WRAPPER = r'''
+import importlib.util, os, sys
+spec = importlib.util.spec_from_file_location('package_staging', sys.argv[1])
+staging = importlib.util.module_from_spec(spec); spec.loader.exec_module(staging)
+staging.scope_identity = lambda unit: {'path': '/system.slice/' + unit, 'unit': unit}
+os.chdir(sys.argv[2])
+sys.exit(staging.run(sys.argv[3], unit='putgd-staging-' + os.path.basename(sys.argv[2]) + '.scope'))
+'''
+
 
 # The independent validator's double-SIGINT controller, with explicit handshakes
 # and a finish gate instead of time-based staging completion.
@@ -1017,41 +1159,33 @@ class CgroupStagingContracts(unittest.TestCase):
             os.close(old)
 
     def test_logout_cannot_stop_the_scoped_watchdog_and_exec_is_not_retried(self):
-        paths = {name: '/usr/bin/' + name for name in ('sudo', 'systemd-run', 'systemctl', 'setpriv')}
+        paths = {name: '/usr/bin/' + name for name in ('sudo', 'systemd-run', 'systemctl')}
         for available, supervisor in ((True, False), (True, True), (False, False), (False, True)):
             with self.subTest(available=available, supervisor=supervisor), \
                     patch.object(self.staging, 'system_scope_tools', return_value=(paths, None) if available else
-                                 (None, 'passwordless sudo for systemd-run probe failed')), \
+                                 (None, 'passwordless sudo for scope launcher probe failed')), \
                     patch.object(self.staging, 'save') as save, \
                     patch.object(self.staging.os, 'execvpe', side_effect=OSError('failed exec')) as execute:
                 with self.assertRaises(OSError):
                     self.staging.launch('source', '/private/' + JOB, 'synthetic', supervisor=supervisor)
                 self.assertEqual(execute.call_count, 1)
                 arguments, environment = execute.call_args.args[1:]
+                kind = 'supervisor' if supervisor else 'staging'
                 if available:
-                    # Fake logind teardown kills every unit owned by the user
-                    # manager. The watchdog must remain owned by PID 1 instead.
-                    manager = 'user' if '--user' in arguments else 'system' if '--system' in arguments else None
-                    user_manager_alive = False
-                    watchdog_alive = manager == 'system' or user_manager_alive
-                    self.assertTrue(watchdog_alive, 'logout killed the detached watchdog')
-                    self.assertEqual(arguments[:4], ['/usr/bin/sudo', '-n', '--', '/usr/bin/systemd-run'])
-                    self.assertIn('--slice=system.slice', arguments)
-                    self.assertIn('--property=Delegate=yes', arguments)
-                    self.assertIn('--reuid=' + str(os.getuid()), arguments)
-                    self.assertIn('--regid=' + str(os.getgid()), arguments)
-                    self.assertIn('--init-groups', arguments)
-                    self.assertLess(arguments.index('/usr/bin/setpriv'), arguments.index('source'))
-                    command = arguments[arguments.index(sys.executable):]
-                    self.assertEqual(command[5], 'synthetic --require-scope' if supervisor else 'synthetic')
-                    self.assertTrue(command[-1].endswith('.scope'))
-                    self.assertNotIn('require-scope', command[-1])
+                    # Only the fixed root launcher is run through sudo: it owns
+                    # every systemd-run argument (system manager, Delegate=yes,
+                    # setpriv back to the caller). Never systemd-run itself.
+                    self.assertEqual(arguments[:6], ['/usr/bin/sudo', '-n', '--', self.staging.SCOPE_LAUNCHER, kind, JOB])
+                    self.assertNotIn('/usr/bin/systemd-run', arguments)
+                    self.assertEqual(arguments[6:], [sys.executable, '-c', 'source', 'supervise' if supervisor else 'run',
+                        '/private/' + JOB, 'synthetic --require-scope' if supervisor else 'synthetic',
+                        '--scope', 'putgd-' + kind + '-' + JOB + '.scope'])
                     self.assertEqual(save.call_args.args[1]['manager'], 'system')
                 else:
                     self.assertIn('--session-fallback', arguments)
                     self.assertEqual(arguments[5], 'synthetic')
                     self.assertEqual(save.call_args.args[1]['fallbackReason'],
-                                     'passwordless sudo for systemd-run probe failed')
+                                     'passwordless sudo for scope launcher probe failed')
                 self.assertNotIn('XDG_RUNTIME_DIR', {k:v for k,v in environment.items() if k not in os.environ})
 
     def test_specific_prerequisite_failures_and_old_systemd_fall_back(self):
@@ -1060,35 +1194,49 @@ class CgroupStagingContracts(unittest.TestCase):
         paths = lambda name: '/usr/bin/' + name
         def version(value):
             return subprocess.CompletedProcess([], 0, 'systemd ' + value + ' (test)\n')
+        ready = subprocess.CompletedProcess([], 0, 'putgd-lab-scope-ready\n')
+        def launcher(uid=0, mode=0o100755):
+            return os.stat_result((mode, 1, 1, 1, uid, 0, 0, 0, 0, 0))
         cases = [
-            ('cgroup', 'cgroup v2 mount', None),
-            ('executable', 'setpriv executable', None),
-            ('version', 'version 253 is below required 254', [version('253')]),
-            ('malformed', 'version could not be established', [subprocess.CompletedProcess([], 0, '')]),
-            ('manager', 'system manager bus probe failed', [version('255'), subprocess.CompletedProcess([], 1, '')]),
-            ('sudo', 'passwordless sudo for systemd-run probe failed',
-             [version('255'), subprocess.CompletedProcess([], 0, ''), subprocess.CompletedProcess([], 1, '')]),
-            ('timeout', 'version probe timed out', subprocess.TimeoutExpired('version', 5)),
+            ('cgroup', 'cgroup v2 mount', None, launcher()),
+            ('executable', 'systemctl executable', None, launcher()),
+            ('missing-launcher', 'scope launcher ' + self.staging.SCOPE_LAUNCHER + ' is not installed', None,
+             FileNotFoundError()),
+            ('user-launcher', 'not a root-owned', None, launcher(uid=1000)),
+            ('writable-launcher', 'not a root-owned', None, launcher(mode=0o100777)),
+            ('version', 'version 253 is below required 254', [version('253')], launcher()),
+            ('malformed', 'version could not be established', [subprocess.CompletedProcess([], 0, '')], launcher()),
+            ('manager', 'system manager bus probe failed', [version('255'), subprocess.CompletedProcess([], 1, '')],
+             launcher()),
+            ('sudo', 'passwordless sudo for scope launcher probe failed',
+             [version('255'), subprocess.CompletedProcess([], 0, ''), subprocess.CompletedProcess([], 1, '')], launcher()),
+            ('not-launcher', 'passwordless sudo for scope launcher probe failed',
+             [version('255'), subprocess.CompletedProcess([], 0, ''), subprocess.CompletedProcess([], 0, '')], launcher()),
+            ('timeout', 'version probe timed out', subprocess.TimeoutExpired('version', 5), launcher()),
         ]
-        for case, reason, replies in cases:
+        for case, reason, replies, info in cases:
             with self.subTest(case=case), patch.object(self.staging, 'unified_mount',
                     side_effect=ValueError() if case == 'cgroup' else None), \
                     patch.object(self.staging.shutil, 'which', side_effect=lambda name:
-                                 None if case == 'executable' and name == 'setpriv' else paths(name)), \
+                                 None if case == 'executable' and name == 'systemctl' else paths(name)), \
+                    patch.object(self.staging.os, 'stat', side_effect=info if isinstance(info, Exception) else None,
+                                 return_value=info), \
                     patch.object(self.staging.subprocess, 'run', side_effect=replies) as probe:
                 tools, actual = self.staging.system_scope_tools()
                 self.assertIsNone(tools)
                 self.assertIn(reason, actual)
         for supported in ('254', '259'):
             with patch.object(self.staging, 'unified_mount'), patch.object(self.staging.shutil, 'which', side_effect=paths), \
+                    patch.object(self.staging.os, 'stat', return_value=launcher()), \
                     patch.object(self.staging.subprocess, 'run', side_effect=[version(supported),
-                        subprocess.CompletedProcess([], 0, ''), subprocess.CompletedProcess([], 0, '')]) as probes:
+                        subprocess.CompletedProcess([], 0, ''), ready]) as probes:
                 tools, reason = self.staging.system_scope_tools()
                 self.assertIsNotNone(tools)
                 self.assertIsNone(reason)
                 self.assertTrue(all('--user' not in call.args[0] for call in probes.call_args_list))
+                # Probe actual execution of the granted launcher, not a policy listing.
                 self.assertEqual(probes.call_args_list[-1].args[0],
-                    ['/usr/bin/sudo', '-n', '--', '/usr/bin/systemd-run', '--version'])
+                    ['/usr/bin/sudo', '-n', '--', self.staging.SCOPE_LAUNCHER, '--probe'])
                 self.assertTrue(all('-l' not in call.args[0] for call in probes.call_args_list))
         with patch.object(self.staging, 'system_scope_tools', return_value=(None, 'systemd-run executable is unavailable')), \
                 patch.object(self.staging, 'save'), patch.object(self.staging.os, 'execvpe', side_effect=OSError()), \
@@ -1096,6 +1244,115 @@ class CgroupStagingContracts(unittest.TestCase):
             with self.assertRaises(OSError):self.staging.launch('source', '/private/' + JOB, 'script')
             self.assertIn('putgd-staging-fallback', output.getvalue())
             self.assertIn('systemd-run executable is unavailable', output.getvalue())
+
+    def supervisor_job(self):
+        # An admitted supervisor's job directory: its wrapper identity in a
+        # /system.slice scope, progress.json and (per case) result.json.
+        job = self.root / JOB
+        job.mkdir()
+        unit = 'putgd-supervisor-' + JOB + '.scope'
+        group = self.mount / 'system.slice' / unit
+        group.mkdir(parents=True)
+        (group / 'cgroup.events').write_text('populated 1\nfrozen 0\n')
+        info, mount = group.stat(), self.mount.stat()
+        identity = {**self.identity, 'cgroup': {**self.identity['cgroup'], 'path': '/system.slice/' + unit,
+                    'unit': unit, 'device': info.st_dev, 'inode': info.st_ino}}
+        lab.write_json(job / 'supervisor-process.json', identity)
+        lab.write_json(job / 'progress.json', {'schemaVersion': 1, 'admittedJob': JOB})
+        old = os.open('.', os.O_RDONLY | os.O_DIRECTORY)
+        os.chdir(job)
+        def restore():
+            os.fchdir(old)
+            os.close(old)
+        self.addCleanup(restore)
+        return job, group
+
+    def reconcile_supervisor(self, alive=False, session=False):
+        # A live recorded wrapper: a real (closable) descriptor that never polls ready.
+        opened = (lambda pid: os.open('/', os.O_RDONLY)) if alive else ProcessLookupError()
+        with patch.object(self.staging.os, 'pidfd_open', side_effect=opened), \
+                patch.object(self.staging, 'proc_fields', return_value=['S'] + ['0'] * 18 + ['456']), \
+                patch.object(self.staging, 'session_status', return_value={
+                    'sessionAlive': session, 'sessionPids': [999] if session else []}), \
+                patch.object(self.staging.select, 'select', return_value=([], [], [])), \
+                patch.object(self.staging, 'RESULT_OWNER', os.getuid()):
+            return self.staging.reconcile_supervisor(0)
+
+    def test_terminal_result_and_empty_or_gone_supervisor_scope_release(self):
+        # F3: an admitted supervisor whose controller died wrote its terminal
+        # result.json; its scope is then empty, later gone. Both prove exit.
+        job, group = self.supervisor_job()
+        result = {'ok': True, 'aborted': False, 'timedOut': False, 'exitCodes': [0, 0], 'remainingPids': []}
+        lab.write_json(job / 'result.json', result)
+        self.assertEqual(self.reconcile_supervisor()['state'], 'supervisor-outcome-unknown')  # populated 1
+        (group / 'cgroup.events').write_text('populated 0\nfrozen 0\n')
+        report = self.reconcile_supervisor()
+        self.assertTrue(report['finished'])
+        self.assertEqual(report['state'], 'supervisor-finished')
+        self.assertIs(report['cgroupPopulated'], False)
+        self.assertEqual(report['result']['ok'], True)
+        (group / 'cgroup.events').unlink()
+        group.rmdir()
+        report = self.reconcile_supervisor()
+        self.assertTrue(report['finished'])
+        self.assertIs(report['cgroupGone'], True)
+        # A failed install's terminal result also releases; the report keeps ok=false.
+        lab.write_json(job / 'result.json', {**result, 'ok': False, 'exitCodes': [0, 100]})
+        report = self.reconcile_supervisor()
+        self.assertTrue(report['finished'])
+        self.assertIs(report['result']['ok'], False)
+
+    def test_supervisor_without_result_or_proof_of_exit_stays_held(self):
+        job, group = self.supervisor_job()
+        (group / 'cgroup.events').write_text('populated 0\n')
+        # progress.json without a terminal result: it may still run.
+        self.assertEqual(self.reconcile_supervisor()['state'], 'supervisor-no-result')
+        lab.write_json(job / 'result.json', {'ok': True, 'aborted': False, 'remainingPids': []})
+        self.assertTrue(self.reconcile_supervisor()['finished'])
+        for events in ('populated 1', 'populated', ''):
+            (group / 'cgroup.events').write_text(events)
+            self.assertFalse(self.reconcile_supervisor()['finished'], events)
+        (group / 'cgroup.events').unlink()  # Unreadable/missing events is not gone.
+        self.assertFalse(self.reconcile_supervisor()['finished'])
+        (group / 'cgroup.events').write_text('populated 0\n')
+        self.assertFalse(self.reconcile_supervisor(alive=True)['finished'])
+        report = self.reconcile_supervisor(session=True)
+        self.assertFalse(report['finished'])
+        self.assertEqual(report['sessionPids'], [999])
+        # Non-terminal, foreign-owned or linked result files are not terminal results.
+        lab.write_json(job / 'result.json', {'schemaVersion': 1})
+        self.assertFalse(self.reconcile_supervisor()['finished'])
+        lab.write_json(job / 'real-result.json', {'ok': True, 'aborted': False, 'remainingPids': []})
+        (job / 'result.json').unlink()
+        (job / 'result.json').symlink_to(job / 'real-result.json')
+        self.assertFalse(self.reconcile_supervisor()['finished'])
+        (job / 'result.json').unlink()
+        (job / 'real-result.json').rename(job / 'result.json')
+        with patch.object(self.staging, 'session_status', return_value={'sessionAlive': False, 'sessionPids': []}), \
+                patch.object(self.staging.os, 'pidfd_open', side_effect=ProcessLookupError()):
+            self.assertEqual(self.staging.reconcile_supervisor(0)['state'], 'supervisor-outcome-unknown')  # owner 0
+        # The wrapper's fence still held: it may still be waiting on descendants.
+        with open(job / 'staging.lock', 'a') as fence:
+            fcntl.flock(fence, fcntl.LOCK_EX)
+            reconcile = subprocess.run([sys.executable, str(STAGING), 'reconcile-supervisor', str(job), '0'],
+                                       capture_output=True, text=True, timeout=WAIT, check=True)
+            self.assertEqual(json.loads(reconcile.stdout)['state'], 'supervisor-running')
+
+    def test_session_tracked_or_identity_less_supervisor_keeps_the_n1_fence(self):
+        job, group = self.supervisor_job()
+        (group / 'cgroup.events').write_text('populated 0\n')
+        lab.write_json(job / 'result.json', {'ok': True, 'aborted': False, 'remainingPids': []})
+        session = {key: value for key, value in self.identity.items() if key != 'cgroup'}
+        lab.write_json(job / 'supervisor-process.json', {**session, 'tracking': 'session',
+                                                         'fallbackReason': 'scope launcher is not installed'})
+        self.assertEqual(self.reconcile_supervisor()['state'], 'supervisor-session-tracked')
+        (job / 'supervisor-process.json').unlink()
+        report = self.reconcile_supervisor()
+        self.assertFalse(report['finished'])
+        self.assertIn('Cannot establish', report['inspectionError'])
+        # A staging scope identity is not this supervisor's scope.
+        lab.write_json(job / 'supervisor-process.json', self.identity)
+        self.assertFalse(self.reconcile_supervisor()['finished'])
 
     def test_system_scope_path_and_legacy_user_scope_metadata_both_remain_guarded(self):
         old = self.group

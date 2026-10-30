@@ -1,390 +1,363 @@
 #!/usr/bin/env python3
-"""Synthetic #780 guest regression. Run only on the remote QEMU host."""
-import hashlib, json, os
+"""#780 guest acceptance: scoped staging and supervisor jobs outlive ended logins.
+
+Run only on the QEMU host, against a fresh owned overlay whose first install
+has not run yet. Every case uses the real `lab.py install` controller with a
+synthetic DEB. Logins end only through plain `systemctl stop session-N.scope`
+or `loginctl terminate-user`: SIGTERM/SIGHUP reach the outer sudo, which relays
+them; nothing sidesteps that relay with SIGKILL. A root SSH observer exists only
+in the overlay. Results go to work/$PUTGD_780_OUTPUT (default e780c).
+"""
+import json
+import os
 from pathlib import Path
-import shlex, signal, subprocess, sys, time, uuid
-ROOT=next(parent for parent in Path(__file__).resolve().parents
-          if (parent/'tools/lab/lab.py').is_file())
-sys.path.insert(0, str(ROOT/'tools/lab'))
-import lab
-RUN=ROOT/'work/lab-runs'/os.environ.get('PUTGD_780_RUN','c1')
-OUT=ROOT/'work'/os.environ.get('PUTGD_780_OUTPUT','e780')
-OUT.mkdir(parents=True,mode=0o700,exist_ok=True)
+import shlex
+import signal
+import subprocess
+import sys
+import time
+
+ROOT = next(parent for parent in Path(__file__).resolve().parents if (parent / 'tools/lab/lab.py').is_file())
+sys.path.insert(0, str(ROOT / 'tools/lab'))
+import lab  # noqa: E402
+
+RUN = ROOT / 'work/lab-runs' / os.environ.get('PUTGD_780_RUN', 'c1')
+OUT = ROOT / 'work' / os.environ.get('PUTGD_780_OUTPUT', 'e780c')
+GATES = '/run/putgd-780'
+OUT.mkdir(parents=True, mode=0o700, exist_ok=True)
 lab.verify_owned_guest(RUN)
 
-def save(name,value): lab.write_json(OUT/name,value)
-def guest(script,timeout=20): return lab.ssh(RUN,'set -eu\n'+script,timeout=timeout)
-def wait_for(function,seconds=20):
-    deadline=time.monotonic()+seconds
+
+def save(name, value):
+    lab.write_json(OUT / name, value)
+
+
+def guest(script, timeout=30):
+    return lab.ssh(RUN, 'set -eu\n' + script, timeout=timeout)
+
+
+ROOT_ARGS = lab.ssh_args(RUN)
+ROOT_ARGS[-1] = 'root@127.0.0.1'
+
+
+def root(script, timeout=60):
+    return lab.command(ROOT_ARGS + ['sh', '-s'], input='set -eu\n' + script, timeout=timeout).stdout
+
+
+def root_python(source, *args, timeout=60):
+    return json.loads(root('python3 -c ' + shlex.quote(source) + ''.join(' ' + shlex.quote(a) for a in args) + '\n',
+                           timeout=timeout))
+
+
+def wait_for(function, seconds, what):
+    deadline = time.monotonic() + seconds
     while True:
-        value=function()
-        if value:return value
-        if time.monotonic()>=deadline:raise TimeoutError('guest handshake')
+        value = function()
+        if value:
+            return value
+        if time.monotonic() >= deadline:
+            raise TimeoutError(what)
+        time.sleep(.5)
+
+
+def lock_holder():
+    return root('cat /home/lab/putgd-lab/install-active/job 2>/dev/null || :\n').strip() or None
+
+
+# Root observer: the overlay's existing passwordless apt-get Pre-Invoke
+# authority adds this run's public key for root and the fixtures below. Empty
+# APT sources keep every apt-get offline. The guest-wide Pre-Invoke gate is the
+# kind of guest-owned hook #780 is about: it can hold staging, or leave a root
+# setsid() daemon behind. Both act only while their /run flag exists.
+GATE_HOOK = r'''#!/usr/bin/python3
+import json, os, sys, time
+from pathlib import Path
+gates = Path('/run/putgd-780')
+def identity(name):
+    fields = Path('/proc/self/stat').read_text().rsplit(')', 1)[1].split()
+    (gates / name).write_text(json.dumps({'pid': os.getpid(), 'uid': os.getuid(), 'sessionId': os.getsid(0),
+        'startTicks': int(fields[19]), 'cgroup': Path('/proc/self/cgroup').read_text().strip()}))
+if (gates / 'staging-gate').exists():
+    identity('staging-ready.json')
+    deadline = time.monotonic() + 900
+    while (gates / 'staging-gate').exists() and time.monotonic() < deadline:
         time.sleep(.1)
-def job():
-    token='install-'+uuid.uuid4().hex
-    guest(lab.INSTALL_LOCK_PREFIX+'mkdir ~/putgd-lab/install-active\nprintf %s '+token+' > ~/putgd-lab/install-active/job\nmkdir -m 700 ~/putgd-lab/'+token+'\n')
-    return token,'putgd-lab/'+token
-
-def read(remote,name):return json.loads(guest('cat ~/'+remote+'/'+name+'\n'))
-def exists(remote,name):return guest('test ! -s ~/'+remote+'/'+name+' || echo present\n').strip()=='present'
-def recover(token):return lab.recover_staging(RUN,token,abandoned=True)
-
-def witness(name):
-    value=lab.screenshot(RUN,name)
-    # Convert with the host's distro Pillow, preserving the QMP original.
-    from PIL import Image
-    source=Path(value['path']);target=OUT/(name+'.png')
-    Image.open(source).save(target)
-    return {'path':target.name,'sha256':lab.hash_file(target)}
-
-save('source.json',{'placement':'boat','files':{str(p.relative_to(ROOT)):lab.hash_file(p) for p in
-    [ROOT/'tools/lab/lab.py',ROOT/'tools/lab/package_staging.py',ROOT/'tools/lab/package_install.py',Path(__file__).resolve()]},
-    'state':lab.state(RUN)})
-save('guest-system.json',{'text':guest('cat /etc/os-release; uname -r; systemctl --version | head -1; loginctl show-user lab -p Linger; printf "runtime=%s bus=%s\\n" "$XDG_RUNTIME_DIR" "${DBUS_SESSION_BUS_ADDRESS-unset}"; cat /proc/self/cgroup; cat /proc/mounts | grep cgroup; df -h / /tmp\n')})
-lab.guest_preflight(RUN,stage='before-780')
-results=[]
-# First exercise the unmodified production helper staging hook in the overlay.
-token,remote=job()
-lab.put(RUN,ROOT/'tools/lab/package_install.py',remote+'/package_install.py')
-lab.stage_install_helper(RUN,remote,'/usr/local/lib/putgd-lab/package_install.py',lab.hash_file(ROOT/'tools/lab/package_install.py'))
-normal=lab.reconcile_staging(RUN,remote,wait=5)
-assert normal['finished'] and normal['tracking']=='cgroup-v2',normal
-released=lab.recover_staging(RUN,token)
-results.append({'case':'production-staging','identity':read(remote,'staging-process.json'),'recovery':released})
-save('results-progress.json',results)
-# A real APT Pre-Invoke root child calls setsid(), exits its hook parent, and
-# waits for a synthetic file. No package or sources are installed/changed.
-token,remote=job()
-child_source='''import json,os,time
-from pathlib import Path
-os.setsid()
-pid=os.getpid()
-fields=Path('/proc/self/stat').read_text().rsplit(')',1)[1].split()
-Path('escaped.json').write_text(json.dumps({'pid':pid,'uid':os.getuid(),'sessionId':os.getsid(0),'startTicks':int(fields[19]),'cgroup':Path('/proc/self/cgroup').read_text().strip()}))
-os.chmod('escaped.json',0o644)
-while not Path('finish').exists():time.sleep(.02)
+if (gates / 'daemon').exists() and not os.fork():
+    os.setsid()
+    if os.fork():
+        os._exit(0)
+    for fd in (0, 1, 2):
+        os.close(fd)
+    identity('daemon.json')
+    deadline = time.monotonic() + 900
+    while not (gates / 'daemon-finish').exists() and time.monotonic() < deadline:
+        time.sleep(.05)
+    os._exit(0)
 '''
-hook_source='import os,subprocess,sys; os.chdir(sys.argv[1]); subprocess.Popen([sys.executable,"-c",'+repr(child_source)+'],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); sys.exit(1)'
-hook='python3 -c '+shlex.quote(hook_source)+' "$HOME/'+remote+'"'
-# HOME is expanded as lab before sudo resets it.
-script='cd "$HOME/'+remote+'"\nhook='+shlex.quote('python3 -c '+shlex.quote(hook_source)+' ')+ '"$HOME/'+remote+'"\n'
-script+='sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 -o "APT::Update::Pre-Invoke::=$hook" update > apt-synthetic.log 2>&1 || :\necho shell-finished > shell-finished\n'
-invocation=lab.staging_invocation(remote,script)
-controller_source='''import sys
-from pathlib import Path
-sys.path.insert(0,sys.argv[1]);import lab
-with lab.install_controller_fence(Path(sys.argv[2]),'busy'):
-    lab.ssh(Path(sys.argv[2]),sys.argv[3],timeout=120)
-'''
-controller=subprocess.Popen([sys.executable,'-c',controller_source,str(ROOT/'tools/lab'),str(RUN),
-    'nohup setsid --wait '+invocation+' > ~/'+remote+'/staging-output.log 2>&1 < /dev/null &\nwait $!\n'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-try:
-    wait_for(lambda:exists(remote,'escaped.json'))
-    wait_for(lambda:exists(remote,'shell-finished'))
-    identity=read(remote,'staging-process.json'); escaped=read(remote,'escaped.json')
-    wrapper_uid=int(guest('stat -c %u /proc/'+str(identity['pid'])+'\n').strip())
-    assert wrapper_uid==1000
-    assert identity['cgroup']['path']=='/system.slice/'+identity['cgroup']['unit']
-    assert identity['tracking']=='cgroup-v2'
-    assert escaped['uid']==0 and escaped['sessionId']!=identity['sessionId'],escaped
-    assert escaped['cgroup']=='0::'+identity['cgroup']['path'],(identity,escaped)
-    # The live controller fence still refuses even before killing the wrapper.
-    try:recover(token);raise AssertionError('live controller accepted')
-    except lab.LabError as error:assert 'controller' in str(error)
-    controller_identity={'pid':controller.pid,'startTicks':int(Path(f'/proc/{controller.pid}/stat').read_text().rsplit(')',1)[1].split()[19])}
-    controller.kill();controller.wait(timeout=5)
-    guest('kill -KILL '+str(identity['pid'])+'\n')
-    # No member of the original session remains; only the cgroup sees root.
-    held=lab.reconcile_staging(RUN,remote,wait=0,abandoned=True)
-    assert not held['finished'] and held['exactProcessAlive'] is False and held['sessionAlive'] is False,held
-    assert held['cgroupPopulated'] is True and 'limit' not in held,held
-    try:recover(token);raise AssertionError('setsid survivor accepted')
-    except lab.LabError as error:assert 'remains held' in str(error)
-    lock=guest('cat ~/putgd-lab/install-active/job\n').strip();assert lock==token
-    visual=witness('setsid-survivor')
-    # Watch the events fd from another SSH scope, outside the staging scope.
-    watch_source='''import json,os,sys,time
-from pathlib import Path
-p=Path(sys.argv[1]);seen=[]
-deadline=time.monotonic()+10
-with open(p/'cgroup.events') as f:
-    Path(sys.argv[2]).write_text('ready')
-    while time.monotonic()<deadline:
-        try:f.seek(0);value=f.read()
-        except OSError as e:
-            seen.append({'error':type(e).__name__,'gone':not p.exists()});break
-        if not seen or seen[-1]!=value:seen.append(value)
-        if 'populated 0' in value:break
-        # Busy observation is bounded to ten seconds on the guest.
-print(json.dumps(seen))
-'''
-    watch=subprocess.Popen(lab.ssh_args(RUN)+['python3 -c '+shlex.quote(watch_source)+' '+shlex.quote('/sys/fs/cgroup'+identity['cgroup']['path'])+' '+shlex.quote('/home/lab/'+remote+'/watch-ready')],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
-    wait_for(lambda:exists(remote,'watch-ready'))
-    guest('touch ~/'+remote+'/finish\n')
-    stdout,stderr=watch.communicate(timeout=15);assert watch.returncode==0,stderr
-    observed=json.loads(stdout)
-    released=wait_for(lambda:(lambda r:r if r['finished'] else None)(lab.reconcile_staging(RUN,remote,wait=0,abandoned=True)))
-    recovery=recover(token)
-    assert recovery['finished'] and recovery['cgroupPopulated'] is False and 'limit' not in recovery,recovery
-    assert guest('test -e ~/putgd-lab/install-active && echo exists || :\n').strip()==''
-    results.append({'case':'setsid-root-grandchild-wrapper-and-controller-sigkill','identity':identity,'escaped':escaped,
-        'controllerKilled':controller_identity,'wrapperUid':wrapper_uid,'held':held,'eventsObserved':observed,'recovery':recovery,'visual':visual})
-    save('results-progress.json',results)
-finally:
-    if controller.poll() is None:controller.kill();controller.wait(timeout=5)
-    guest('touch ~/'+remote+'/finish\n')
-# Root supervisor, launched through the production scope launcher. The helper's
-# normal admission runs unchanged, with a synthetic supervise() to avoid apt.
-token,remote=job()
-root_script='''import json,os,sys
-from pathlib import Path
-from unittest.mock import patch
-import runpy
-source=sys.argv[1]
-def synthetic(commands,directory,timeout,recovery,package='putgd'):
-    Path('root-scope.json').write_text(json.dumps({'uid':os.getuid(),'cgroup':Path('/proc/self/cgroup').read_text().strip(),'admitted':Path('progress.json').exists(),'requiredScope':'--require-scope' in sys.argv}))
-    os.chmod('root-scope.json',0o644)
-ns=runpy.run_path(source,run_name='supervisor_fixture')
-ns['main'].__globals__['supervise']=synthetic
-sys.argv=[source,sys.argv[2],'5','5',*sys.argv[3:]];ns['main']()
-'''
-# Existing apt privilege installs only a temporary fixture and sudo rule in the
-# disposable overlay; never alter the production helper's installed bytes.
-fixture=OUT/'root-fixture.py'; fixture.write_text(root_script)
-lab.put(RUN,fixture,remote+'/root-fixture.py')
-setup='install -m755 /home/lab/'+remote+'/root-fixture.py /usr/local/lib/putgd-lab/root780.py; printf "lab ALL=(root) NOPASSWD: /usr/bin/python3 /usr/local/lib/putgd-lab/root780.py *\\n" > /etc/sudoers.d/putgd-780; chmod 440 /etc/sudoers.d/putgd-780; visudo -cf /etc/sudoers.d/putgd-780; exit 1'
-guest('sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 -o '+shlex.quote('APT::Update::Pre-Invoke::='+setup)+' update >/dev/null 2>&1 || :\n')
-script='exec sudo -n /usr/bin/python3 /usr/local/lib/putgd-lab/root780.py /usr/local/lib/putgd-lab/package_install.py "$HOME/'+remote+'"'
-invocation=lab.staging_invocation(remote,script,supervisor=True)
-guest('nohup setsid --wait '+invocation+' > ~/'+remote+'/supervisor.log 2>&1 < /dev/null &\n')
-wait_for(lambda:exists(remote,'root-scope.json'))
-identity=read(remote,'supervisor-process.json');root=read(remote,'root-scope.json')
-assert root['uid']==0 and root['admitted'] and root['requiredScope'] and root['cgroup']=='0::'+identity['cgroup']['path'],root
-# N1 remains: once progress exists recovery may not release this token.
-try:recover(token);raise AssertionError('admitted supervisor accepted')
-except lab.LabError:pass
-# Fixture performs no package work. Retire its token under the same admission
-# guard only after its wrapper's terminal receipt proves all descendants exit.
-wait_for(lambda:exists(remote,'supervisor-result.json'))
-guest(lab.INSTALL_LOCK_PREFIX+'test "$(cat ~/putgd-lab/install-active/job)" = '+token+'\nrm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
-results.append({'case':'root-supervisor-scope-and-real-admission','identity':identity,'root':root,'recoveryRefusedAfterAdmission':True})
-lab.guest_preflight(RUN,stage='after-prior-cases')
-save('prior-results.json',{'passed':True,'placement':'boat','results':results,'visual':witness('completed')})
 
-
-
-# Separate root SSH is an observer, never a login by the lab user. Its public
-# key exists only in this owned overlay; the private per-run key stays on host.
-public=(RUN/'identity.pub').read_text().strip()
-observer_hook=('set -eu; install -d -m 700 /root/.ssh; printf "\\n%s\\n" '+shlex.quote(public)+
-    ' >> /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys; '
+setup_hook = (
+    'set -eu; install -d -m 700 /root/.ssh; printf "\\n%s\\n" ' + shlex.quote((RUN / 'identity.pub').read_text().strip())
+    + ' >> /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys; '
     'printf "PermitRootLogin prohibit-password\\n" > /etc/ssh/sshd_config.d/00-putgd-780-root.conf; '
     '/usr/sbin/sshd -t; systemctl reload ssh.service; exit 1')
 guest('sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null -o Dir::Etc::sourceparts=- '
-      '-o APT::Get::List-Cleanup=0 -o '+shlex.quote('APT::Update::Pre-Invoke::='+observer_hook)+
+      '-o APT::Get::List-Cleanup=0 -o ' + shlex.quote('APT::Update::Pre-Invoke::=' + setup_hook) +
       ' update > /tmp/putgd-780-observer-setup.log 2>&1 || :\n')
-root_args=lab.ssh_args(RUN);root_args[-1]='root@127.0.0.1'
-def root_guest(script,timeout=30):
-    return lab.command(root_args+['sh','-s'],input='set -eu\n'+script,timeout=timeout).stdout
-assert root_guest('id -u\n').strip()=='0'
-save('root-observer.json',{'uid':0,'purpose':'Observe lab user-manager stop without opening a lab login',
-                          'temporaryRootPublicKeyOnly':True,'placement':'boat'})
+assert root('id -u\n').strip() == '0'
+root('install -d -m 755 /usr/local/lib/putgd-780 ' + GATES + '\n'
+     'cat > /usr/local/lib/putgd-780/gate <<\'PYGATE\'\n' + GATE_HOOK + 'PYGATE\n'
+     'chmod 755 /usr/local/lib/putgd-780/gate\n'
+     "printf 'Dir::Etc::sourcelist \"/dev/null\";\\nDir::Etc::sourceparts \"-\";\\n"
+     "APT::Get::List-Cleanup \"0\";\\nAPT::Update::Pre-Invoke {\"/usr/local/lib/putgd-780/gate\";};\\n' "
+     '> /etc/apt/apt.conf.d/99-putgd-780-fixture\n')
+save('guest-system.json', {'placement': 'boat', 'text': root(
+    'cat /etc/os-release; uname -r; systemctl --version | head -1; sudo --version | head -1; '
+    'loginctl show-user lab -p Linger; ls /var/lib/systemd/linger; stat -fc %T /sys/fs/cgroup; '
+    'cat /etc/sudoers.d/putgd-lab*; ls -l /usr/local/lib/putgd-lab\n')})
+assert root('test ! -e /var/lib/systemd/linger/lab && echo no-linger\n').strip() == 'no-linger'
 
-# Name collisions must not adopt another scope or retry commands outside it.
-token,remote=job()
-unit='putgd-staging-'+token+'.scope'
-holder_source="import json,os,time;from pathlib import Path;d=Path('/home/lab/"+remote+"');d.joinpath('holder-ready.json').write_text(json.dumps({'pid':os.getpid(),'cgroup':Path('/proc/self/cgroup').read_text().strip()}));\nwhile not d.joinpath('holder-finish').exists():time.sleep(.02)"
-root_guest('nohup setsid --wait systemd-run --system --scope --quiet --unit='+unit+
-           ' --property=Delegate=yes -- /usr/bin/python3 -c '+shlex.quote(holder_source)+
-           ' > /dev/null 2>&1 < /dev/null &\n')
-wait_for(lambda:root_guest('test ! -s /home/lab/'+remote+'/holder-ready.json || echo ready\n').strip())
-invocation=lab.staging_invocation(remote,'echo unsafe > collision-command-ran')
-collision=lab.command(lab.ssh_args(RUN)+['sh','-s'],input='setsid --wait '+invocation+'\n',timeout=30,check=False)
-assert collision.returncode!=0
-assert not exists(remote,'collision-command-ran') and not exists(remote,'staging-process.json')
-holder=json.loads(root_guest('cat /home/lab/'+remote+'/holder-ready.json\n'))
-assert root_guest('kill -0 '+str(holder['pid'])+'\necho alive\n').strip()=='alive'
-recovered=lab.recover_staging(RUN,token)
-assert recovered['state']=='staging-not-started'
-root_guest('touch /home/lab/'+remote+'/holder-finish\n')
-results.append({'case':'existing-scope-name-collision','exitCode':collision.returncode,
-                'existingHolder':holder,'commandDidNotRun':True,'recovery':recovered})
-lab.guest_preflight(RUN,stage='before-logout-watchdog')
-save('four-prior-cases.json',{'passed':True,'results':results,'visual':witness('before-logout')})
+# Synthetic putgd package whose postinst can hold the supervisor phase.
+package_root = OUT / 'package'
+(package_root / 'DEBIAN').mkdir(parents=True, exist_ok=True)
+(package_root / 'usr/bin').mkdir(parents=True, exist_ok=True)
+(package_root / 'usr/bin/putgd-synthetic780').write_text('#!/bin/sh\necho synthetic780\n')
+(package_root / 'usr/bin/putgd-synthetic780').chmod(0o755)
+(package_root / 'DEBIAN/control').write_text(
+    'Package: putgd\nVersion: 99.780.3\nArchitecture: all\nMaintainer: put.gd lab <lab@invalid>\n'
+    'Description: Synthetic disposable #780 lifetime fixture\n')
+(package_root / 'DEBIAN/postinst').write_text(
+    '#!/bin/sh\nset -eu\nif [ -e ' + GATES + '/postinst-gate ]; then\n'
+    '  echo "$$ $(cat /proc/self/cgroup)" > ' + GATES + '/postinst-ready\n'
+    '  i=0; while [ -e ' + GATES + '/postinst-gate ] && [ $i -lt 1800 ]; do sleep .5; i=$((i+1)); done\nfi\n')
+(package_root / 'DEBIAN/postinst').chmod(0o755)
+DEB = OUT / 'putgd-synthetic780.deb'
+lab.command(['dpkg-deb', '--root-owner-group', '--build', package_root, DEB])
 
-# Run the unmodified fixed-command supervisor against a tiny synthetic package.
-# Empty APT sources and the controlled dpkg postinst gate exist only in this VM.
-# Root-only SSH after logout cannot keep user@1000.service alive.
-root_guest("printf 'Dir::Etc::sourcelist \"/dev/null\";\\nDir::Etc::sourceparts \"-\";\\nAPT::Get::List-Cleanup \"0\";\\n' > /etc/apt/apt.conf.d/99-putgd-780-fixture\n")
-package_root=OUT/'watchdog-package';(package_root/'DEBIAN').mkdir(parents=True)
-(package_root/'DEBIAN/control').write_text('Package: putgd\nVersion: 99.0.780\nArchitecture: all\nMaintainer: put.gd lab <lab@invalid>\nDescription: Synthetic disposable watchdog lifetime fixture\n')
-# The token is deterministic for this child controller, so postinst can address
-# exactly its job without a global process/name search.
-watchdog_token='install-'+uuid.uuid4().hex
-watchdog_remote='putgd-lab/'+watchdog_token
-postinst_source="""import json,os,time
+# Ancestry of the scope wrapper back to the outer sudo in its login scope.
+IDENTITIES = r'''
+import json, os, sys
 from pathlib import Path
-root=Path('/home/lab/"""+watchdog_remote+"""')
-pid=os.getpid();ancestors=[]
-while pid>1:
-    fields=Path(f'/proc/{pid}/stat').read_text().rsplit(')',1)[1].split()
-    args=Path(f'/proc/{pid}/cmdline').read_bytes().split(bytes([0]))
-    if any(value.endswith(b'/package_install.py') for value in args):
-        supervisor={'pid':pid,'startTicks':int(fields[19]),'cgroup':Path(f'/proc/{pid}/cgroup').read_text().strip()}
+def record(pid):
+    try:
+        fields = Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
+        status = dict(line.split(':\t', 1) for line in Path(f'/proc/{pid}/status').read_text().splitlines() if ':\t' in line)
+        return {'pid': pid, 'ppid': int(fields[1]), 'sessionId': int(fields[3]), 'startTicks': int(fields[19]),
+                'uid': int(status['Uid'].split()[0]), 'comm': Path(f'/proc/{pid}/comm').read_text().strip(),
+                'cgroup': Path(f'/proc/{pid}/cgroup').read_text().strip()}
+    except (FileNotFoundError, ProcessLookupError):
+        return None
+job = Path('/home/lab/putgd-lab') / sys.argv[1]
+wrapper = record(json.loads((job / (sys.argv[2] + '-process.json')).read_text())['pid'])
+chain = []
+pid = wrapper['ppid']
+while pid > 1:
+    current = record(pid)
+    chain.append(current)
+    if '/session-' in current['cgroup']:
         break
-    pid=int(fields[1])
-else:raise RuntimeError('Owned supervisor ancestor missing')
-root.joinpath('watchdog-ready.json').write_text(json.dumps({'supervisor':supervisor,'postinstPid':os.getpid(),'uid':os.getuid()}))
-os.chmod(root/'watchdog-ready.json',0o644)
-end=time.monotonic()+180
-while not root.joinpath('watchdog-finish').exists():
-    if time.monotonic()>end:raise TimeoutError('postinst release gate')
-    time.sleep(.02)
-"""
-postinst=package_root/'DEBIAN/postinst'
-postinst.write_text('#!/bin/sh\nset -eu\n/usr/bin/python3 -c '+shlex.quote(postinst_source)+'\n')
-postinst.chmod(0o755)
-package=OUT/'watchdog.deb'
-lab.command(['dpkg-deb','--build',package_root,package])
+    pid = current['ppid']
+login = chain[-1]['cgroup'].rsplit('/', 1)[1]
+assert login.startswith('session-') and login.endswith('.scope'), chain
+group = Path('/sys/fs/cgroup' + wrapper['cgroup'][3:])
+print(json.dumps({'wrapper': wrapper, 'launchChain': chain, 'loginScope': login,
+    'scopeMembers': [record(int(p)) for p in (group / 'cgroup.procs').read_text().split()],
+    'sessions': os.popen('loginctl list-sessions --no-legend').read()}))
+'''
 
-# Disable autologin in the overlay so logout really leaves no lab login.
-# Retain hashes and changed keys, never complete authentication configuration.
-configure_autologin=r"""import hashlib,json,re
+OBSERVE = r'''
+import json, subprocess, sys
 from pathlib import Path
-files=[Path('/etc/gdm3/custom.conf'),Path('/etc/gdm3/daemon.conf'),Path('/etc/gdm/custom.conf'),Path('/etc/lightdm/lightdm.conf')]
-files+=list(Path('/etc/lightdm/lightdm.conf.d').glob('*.conf'))
-changes=[]
-for p in files:
-    if not p.is_file():continue
-    old=p.read_text();new=re.sub(r'(?m)^([ \t]*AutomaticLoginEnable[ \t]*=).*$',r'\1false',old)
-    new=re.sub(r'(?m)^([ \t]*autologin-user[ \t]*=).*$',r'\1',new)
-    if new!=old:
-        p.write_text(new);changes.append({'path':str(p),'beforeSha256':hashlib.sha256(old.encode()).hexdigest(),'afterSha256':hashlib.sha256(new.encode()).hexdigest()})
-print(json.dumps(changes))
-"""
-save('autologin-disabled.json',json.loads(root_guest('python3 -c '+shlex.quote(configure_autologin)+'\n')))
-assert root_guest('test ! -e /var/lib/systemd/linger/lab && echo no-linger\n').strip()=='no-linger'
+ids = json.loads(sys.argv[1])
+def alive(entry):
+    try:
+        fields = Path(f"/proc/{entry['pid']}/stat").read_text().rsplit(')', 1)[1].split()
+        return int(fields[19]) == entry['startTicks'] and fields[0] not in ('Z', 'X')
+    except (FileNotFoundError, ProcessLookupError):
+        return False
+state = lambda unit: subprocess.run(['systemctl', 'show', unit, '--property=ActiveState', '--value'],
+                                    capture_output=True, text=True).stdout.strip()
+scope = ids['wrapper']['cgroup'][3:]
+events = Path('/sys/fs/cgroup' + scope + '/cgroup.events')
+print(json.dumps({'wrapperAlive': alive(ids['wrapper']), 'launchChainAlive': [alive(e) for e in ids['launchChain']],
+    'loginScope': state(ids['loginScope']), 'userManager': state('user@1000.service'),
+    'wrapperCgroup': Path(f"/proc/{ids['wrapper']['pid']}/cgroup").read_text().strip() if alive(ids['wrapper']) else None,
+    'scopeEvents': events.read_text().split('\n')[0] if events.exists() else 'gone',
+    'sessions': subprocess.run(['loginctl', 'list-sessions', '--no-legend'], capture_output=True, text=True).stdout}))
+'''
 
-# A controller uses the real install flow, then blocks locally only after an
-# actual supervisor poll. No orphan lab SSH keeps the user manager running.
-controller_code="""import sys,types
-from pathlib import Path
-sys.path.insert(0,sys.argv[1]);import lab
-lab.uuid.uuid4=lambda:types.SimpleNamespace(hex=sys.argv[4])
-real=lab.ssh
-def ssh(run,script,**kw):
-    answer=real(run,script,**kw)
-    if 'result.json; then cat' in script and not answer.strip():
-        print('supervisor-phase',flush=True);sys.stdin.read()
-    return answer
-lab.ssh=ssh
-lab.install_package(Path(sys.argv[2]),Path(sys.argv[3]),install_timeout=180,install_recovery_timeout=60)
-"""
-controller_log=(OUT/'logout-controller.log').open('w')
-controller=subprocess.Popen([sys.executable,'-c',controller_code,str(ROOT/'tools/lab'),str(RUN),str(package),watchdog_token[8:]],
-                            stdin=subprocess.PIPE,stdout=controller_log,stderr=controller_log)
-start=time.monotonic();released=False
-try:
-    wait_for(lambda:'supervisor-phase' in (OUT/'logout-controller.log').read_text(),60)
-    ready=wait_for(lambda:(json.loads(root_guest('cat /home/lab/'+watchdog_remote+'/watchdog-ready.json\n'))
-                         if root_guest('test ! -s /home/lab/'+watchdog_remote+'/watchdog-ready.json || echo ready\n').strip() else None),90)
-    supervisor=ready['supervisor'];assert ready['uid']==0
-    assert supervisor['cgroup'].startswith('0::/system.slice/putgd-supervisor-')
-    controller_identity={'pid':controller.pid,'startTicks':int(Path(f'/proc/{controller.pid}/stat').read_text().rsplit(')',1)[1].split()[19])}
-    desktop=lab.load_profile(lab.state(RUN)['profile'])['session_process']
-    logout='cinnamon-session-quit' if desktop=='cinnamon' else 'gnome-session-quit'
-    session_probe="""import json,subprocess
-rows=subprocess.check_output(['loginctl','list-sessions','--no-legend'],text=True).splitlines()
-ids=[]
-for row in rows:
-    fields=row.split()
-    if len(fields)>2 and fields[1]=='1000':
-        kind=subprocess.check_output(['loginctl','show-session',fields[0],'--property=Type','--value'],text=True).strip()
-        if kind in ('x11','wayland'):ids.append(fields[0])
-print(json.dumps(ids))
-"""
-    desktop_sessions=json.loads(root_guest('python3 -c '+shlex.quote(session_probe)+'\n'))
-    assert len(desktop_sessions)==1,desktop_sessions
-    logout_result=lab.guest_session(RUN,'timeout 10 '+logout+' --logout --no-prompt\n',timeout=15)
-    controller.kill();controller.wait(timeout=5);killed_at=time.monotonic()
-    # Session-manager logout can leave a closing logind session occupied by
-    # desktop agents. End that exact recorded login too: otherwise user@ never
-    # stops and the watchdog lifetime condition has not actually been tested.
-    end_logins="""import json,subprocess
-rows=subprocess.check_output(['loginctl','list-sessions','--no-legend'],text=True).splitlines()
-records=[]
-for row in rows:
-    fields=row.split()
-    if len(fields)<3 or fields[1]!='1000':continue
-    session=fields[0];assert session.isalnum()
-    probe=subprocess.run(['loginctl','show-session',session,'-p','User','-p','Class','-p','Type','-p','State','-p','Leader'],text=True,capture_output=True)
-    properties=dict(line.split('=',1) for line in probe.stdout.splitlines() if '=' in line)
-    if properties.get('User')!='1000' or properties.get('Class') in ('manager','manager-early'):continue
-    record={'session':session,'properties':properties}
-    record['killExit']=subprocess.run(['loginctl','kill-session','--signal=KILL',session],capture_output=True).returncode
-    record['terminateExit']=subprocess.run(['loginctl','terminate-session',session],capture_output=True).returncode
-    records.append(record)
-print(json.dumps(records))
-"""
-    # sudo's scope-launch client can remain in a closing SSH login after the
-    # controller dies. End every exact owned user login, including that client,
-    # without stopping the user manager itself. PID 1 must then stop it normally.
-    ended_logins=json.loads(root_guest('python3 -c '+shlex.quote(end_logins)+'\n'))
-    save('last-login-ended.json',ended_logins)
 
-    snapshots=[];inactive_at=None
-    deadline=time.monotonic()+90
-    while time.monotonic()<deadline:
-        probe="""import json,subprocess
-from pathlib import Path
-pid="""+str(supervisor['pid'])+"""
-try:
-    fields=Path(f'/proc/{pid}/stat').read_text().rsplit(')',1)[1].split()
-    alive=fields[0] not in ('Z','X') and int(fields[19])=="""+str(supervisor['startTicks'])+"""
-except FileNotFoundError:alive=False
-state=subprocess.run(['systemctl','show','user@1000.service','--property=ActiveState','--value'],text=True,capture_output=True).stdout.strip()
-print(json.dumps({'managerState':state,'supervisorAlive':alive,'sessions':subprocess.run(['loginctl','list-sessions','--no-legend'],text=True,capture_output=True).stdout}))
-"""
-        current=json.loads(root_guest('python3 -c '+shlex.quote(probe)+'\n'))
-        current['secondsAfterControllerKill']=time.monotonic()-killed_at;snapshots.append(current)
-        save('logout-progress.json',{'rootSupervisor':supervisor,'controllerKilled':controller_identity,
-                                    'terminatedDesktopSessions':desktop_sessions,'snapshots':snapshots})
-        assert current['supervisorAlive'],current
-        if current['managerState']=='inactive':
-            inactive_at=inactive_at or time.monotonic()
-            if time.monotonic()-inactive_at>=12:break
-        else:inactive_at=None
+def install(name):
+    log = (OUT / (name + '-controller.log')).open('w')
+    return subprocess.Popen([sys.executable, str(ROOT / 'tools/lab/lab.py'), 'install', '--run', str(RUN),
+                             '--deb', str(DEB), '--install-timeout', '300', '--install-recovery-timeout', '60'],
+                            stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True), log
+
+
+def kill_controller(controller):
+    # The exact controller started above and its own ssh children (its group).
+    os.killpg(controller.pid, signal.SIGKILL)
+    controller.wait(timeout=30)
+
+
+def end_login(mode, ids):
+    if mode == 'stop-session':
+        command = 'systemctl stop ' + shlex.quote(ids['loginScope'])
+    else:
+        command = 'loginctl terminate-user lab'
+    started = time.monotonic()
+    output = root(command + '\necho exit=$?\n', timeout=150)
+    return {'mode': mode, 'command': command, 'output': output.strip(), 'seconds': time.monotonic() - started}
+
+
+def observe(ids, seconds=12):
+    samples = []
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        samples.append(root_python(OBSERVE, json.dumps(ids)))
         time.sleep(1)
-    else:raise TimeoutError('Lab user manager did not remain stopped')
-    visual=witness('logged-out-watchdog-alive')
-    root_guest('touch /home/lab/'+watchdog_remote+'/watchdog-finish\n');released=True
-    result=wait_for(lambda:json.loads(root_guest('cat /home/lab/'+watchdog_remote+'/result.json\n'))
-                    if root_guest('test ! -s /home/lab/'+watchdog_remote+'/result.json || echo ready\n').strip() else None,30)
-    assert result['ok'] and not result['aborted'] and not result['remainingPids'],result
-    terminal=wait_for(lambda:json.loads(root_guest('cat /home/lab/'+watchdog_remote+'/supervisor-result.json\n'))
-                      if root_guest('test ! -s /home/lab/'+watchdog_remote+'/supervisor-result.json || echo ready\n').strip() else None,10)
-    assert terminal['finished'] and terminal['exitCode']==0
-    manager_after=root_guest('systemctl show user@1000.service --property=ActiveState --value\n').strip()
-    assert manager_after=='inactive'
-    # Preserve the normal post-admission guard: staging recovery is not the
-    # install-result acknowledgement path. Fixture cleanup follows terminal proof.
-    guard=lab.INSTALL_LOCK_PREFIX.replace('~/','/home/lab/')
-    root_guest(guard+'test "$(cat /home/lab/putgd-lab/install-active/job)" = '+watchdog_token+
-               '\nrm /home/lab/putgd-lab/install-active/job\nrmdir /home/lab/putgd-lab/install-active\n')
-    results.append({'case':'logout-controller-sigkill-detached-watchdog','controllerKilled':controller_identity,
-                    'rootSupervisor':supervisor,'logoutCommand':logout,'lingerEnabled':False,
-                    'terminatedDesktopSessions':desktop_sessions,'loginEndResults':ended_logins,
-                    'userManagerSnapshots':snapshots,'managerAfterResult':manager_after,
-                    'result':result,'wrapperTerminal':terminal,'visual':visual,
-                    'terminalFixtureLockAcknowledged':True})
-    save('results.json',{'passed':True,'placement':'boat','results':results})
-    print(json.dumps({'passed':True,'cases':len(results)}),flush=True)
+    return samples
+
+
+def refused(function):
+    try:
+        function()
+    except lab.LabError as error:
+        return str(error)
+    raise AssertionError('recovery released a live job')
+
+
+def held_case(name, phase, mode):
+    """Hold a real install at a gate, kill its controller, end the login, then finish and recover."""
+    gate = 'staging-gate' if phase == 'staging' else 'postinst-gate'
+    ready = 'staging-ready.json' if phase == 'staging' else 'postinst-ready'
+    root(f'rm -f {GATES}/{ready}; touch {GATES}/{gate}\n')
+    controller, log = install(name)
+    try:
+        wait_for(lambda: root(f'test -e {GATES}/{ready} && echo ready || :\n').strip(), 240, name + ' gate')
+        job = lock_holder()
+        ids = root_python(IDENTITIES, job, phase)
+        assert ids['wrapper']['uid'] == 1000 and ids['wrapper']['cgroup'] == f'0::/system.slice/putgd-{phase}-{job}.scope', ids
+        kill_controller(controller)
+        ended = end_login(mode, ids)
+        samples = observe(ids)
+        last = samples[-1]
+        # The login and its launch chain are gone; the wrapper and scope are not.
+        assert last['wrapperAlive'] and not any(last['launchChainAlive']), last
+        assert last['loginScope'] in ('inactive', ''), last
+        assert last['wrapperCgroup'] == ids['wrapper']['cgroup'], last
+        held = refused(lambda: lab.recover_staging(RUN, job))
+        assert lock_holder() == job
+        root(f'rm -f {GATES}/{gate}\n')
+        terminal = 'result.json' if phase == 'supervisor' else 'staging-result.json'
+        wait_for(lambda: root(f'test -e /home/lab/putgd-lab/{job}/{terminal} && echo done || :\n').strip(), 240,
+                 name + ' terminal result')
+        results = {}
+        for file in (('result.json', 'supervisor-result.json') if phase == 'supervisor' else ('staging-result.json',)):
+            results[file] = wait_for(lambda: json.loads(root(f'cat /home/lab/putgd-lab/{job}/{file} 2>/dev/null || :\n')
+                                                        or 'null'), 60, name + ' ' + file)
+        if phase == 'supervisor':
+            assert results['result.json']['ok'] and not results['result.json']['remainingPids'], results
+            assert results['supervisor-result.json']['exitCode'] == 0, results
+        else:
+            assert results['staging-result.json']['exitCode'] == 0, results
+        assert results[('supervisor' if phase == 'supervisor' else 'staging') + '-result.json']['pid'] == ids['wrapper']['pid']
+        recovery = lab.recover_staging(RUN, job)
+        assert recovery['state'] == ('supervisor-finished' if phase == 'supervisor' else 'staging-finished'), recovery
+        assert lock_holder() is None
+        return {'case': name, 'phase': phase, 'loginEnd': ended, 'job': job, 'identities': ids,
+                'afterLoginEnd': samples, 'refusedWhileRunning': held, 'terminal': results, 'recovery': recovery,
+                'lockAfter': None}
+    finally:
+        root(f'rm -f {GATES}/{gate}\n')
+        if controller.poll() is None:
+            kill_controller(controller)
+        log.close()
+
+
+results = []
+try:
+    # 1. Fresh overlay: no scope launcher yet. Staging falls back to the session
+    # scan and grants the launcher; the supervisor then uses its system scope.
+    controller, log = install('fallback-first-install')
+    code = controller.wait(timeout=600)
+    log.close()
+    assert code == 0, (OUT / 'fallback-first-install-controller.log').read_text()
+    evidence = Path(json.loads((OUT / 'fallback-first-install-controller.log').read_text().splitlines()[-1])['installEvidence'])
+    tracking = {name: lab.read_json(evidence / name) for name in ('staging-tracking.json', 'supervisor-tracking.json')}
+    assert tracking['staging-tracking.json']['tracking'] == 'session', tracking
+    assert 'scope launcher' in tracking['staging-tracking.json']['fallbackReason'], tracking
+    assert tracking['supervisor-tracking.json']['tracking'] == 'cgroup-v2', tracking
+    grant = root('cat /etc/sudoers.d/putgd-lab-install; stat -c "%U %a" /usr/local/lib/putgd-lab/package_scope.py; '
+                 'sha256sum /usr/local/lib/putgd-lab/package_scope.py\n')
+    assert 'systemd-run' not in grant.splitlines()[0] and 'root 755' in grant, grant
+    assert lab.hash_file(ROOT / 'tools/lab/package_scope.py') in grant
+    results.append({'case': 'fallback-first-install', 'tracking': tracking, 'grant': grant,
+                    'result': lab.read_json(evidence / 'result.json'), 'controllerWarning': [
+                        line for line in (OUT / 'fallback-first-install-controller.log').read_text().splitlines()
+                        if 'session-only tracking' in line], 'lockAfter': lock_holder()})
+    assert results[-1]['lockAfter'] is None
+    save('results-progress.json', results)
+
+    for phase in ('supervisor', 'staging'):
+        for mode in ('stop-session', 'terminate-user'):
+            results.append(held_case(f'{phase}-{mode}', phase, mode))
+            save('results-progress.json', results)
+
+    # A root setsid() daemon from the guest's own Pre-Invoke hook outlives the
+    # wrapper. Recovery refuses while populated, and releases once it exits.
+    root(f'rm -f {GATES}/daemon.json {GATES}/daemon-finish; touch {GATES}/daemon\n')
+    controller, log = install('setsid-survivor')
+    try:
+        daemon = wait_for(lambda: json.loads(root(f'cat {GATES}/daemon.json 2>/dev/null || :\n') or 'null'), 240,
+                          'daemon')
+        job = lock_holder()
+        ids = root_python(IDENTITIES, job, 'staging')
+        assert daemon['uid'] == 0 and daemon['sessionId'] != ids['wrapper']['sessionId'], (daemon, ids)
+        assert daemon['cgroup'] == ids['wrapper']['cgroup'], (daemon, ids)
+        kill_controller(controller)
+        ended = end_login('stop-session', ids)
+        samples = observe(ids, 6)
+        assert samples[-1]['wrapperAlive'], samples[-1]  # As subreaper it waits for the daemon.
+        root(f'kill -KILL {ids["wrapper"]["pid"]}\n')  # The exact wrapper identity recorded above.
+        time.sleep(1)
+        holding = [refused(lambda: lab.recover_staging(RUN, job, abandoned=abandoned)) for abandoned in (False, True)]
+        assert all('cgroup remains populated' in message for message in holding), holding
+        assert lock_holder() == job
+        watch = subprocess.Popen(ROOT_ARGS + ['python3', '-c', shlex.quote(
+            'import json,sys,time\nfrom pathlib import Path\np=Path(sys.argv[1]);seen=[]\n'
+            'deadline=time.monotonic()+60\n'
+            'while time.monotonic()<deadline:\n'
+            '    try:value=(p/"cgroup.events").read_text().split("\\n")[0]\n'
+            '    except OSError:value="gone"\n'
+            '    if not seen or seen[-1]!=value:seen.append(value)\n'
+            '    if value in ("populated 0","gone"):break\n'
+            '    time.sleep(.01)\n'
+            'print(json.dumps(seen))'), shlex.quote('/sys/fs/cgroup' + ids['wrapper']['cgroup'][3:])],
+            stdout=subprocess.PIPE, text=True)
+        time.sleep(2)
+        root(f'touch {GATES}/daemon-finish\n')
+        events, _ = watch.communicate(timeout=90)
+        def released():
+            if root_python(OBSERVE, json.dumps(ids))['scopeEvents'] == 'populated 1':
+                return None
+            return lab.recover_staging(RUN, job, abandoned=True)
+        recovery = wait_for(released, 60, 'survivor exit')
+        assert recovery['finished'] and recovery['cgroupPopulated'] is False and 'limit' not in recovery, recovery
+        assert lock_holder() is None
+        results.append({'case': 'setsid-root-survivor', 'job': job, 'daemon': daemon, 'identities': ids,
+                        'loginEnd': ended, 'afterLoginEnd': samples, 'refusedWhilePopulated': holding,
+                        'eventsObserved': json.loads(events), 'recovery': recovery})
+    finally:
+        root(f'touch {GATES}/daemon-finish; rm -f {GATES}/daemon\n')
+        if controller.poll() is None:
+            kill_controller(controller)
+        log.close()
+    save('results.json', {'passed': True, 'placement': 'boat', 'results': results,
+                          'linger': root('loginctl show-user lab -p Linger 2>&1 || :\n').strip(),
+                          'source': {str(p.relative_to(ROOT)): lab.hash_file(p) for p in sorted(
+                              (ROOT / 'tools/lab').glob('package_*.py')) + [ROOT / 'tools/lab/lab.py', Path(__file__)]},
+                          'state': lab.state(RUN)})
+    print(json.dumps({'passed': True, 'cases': len(results)}), flush=True)
 except BaseException as error:
-    save('logout-failure.json',{'errorType':type(error).__name__,'message':str(error)})
-    witness('logout-failed')
+    save('failure.json', {'errorType': type(error).__name__, 'message': str(error), 'completed': results})
     raise
-finally:
-    if controller.poll() is None:controller.kill();controller.wait(timeout=5)
-    if not released:root_guest('touch /home/lab/'+watchdog_remote+'/watchdog-finish\n')
-    controller.stdin.close();controller_log.close()

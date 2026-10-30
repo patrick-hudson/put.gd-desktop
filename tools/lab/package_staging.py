@@ -9,6 +9,8 @@ import select
 from pathlib import Path
 import re
 import shutil
+import signal
+import stat
 import subprocess
 import sys
 import time
@@ -22,6 +24,10 @@ def save(name, value):
 
 CGROUP_ROOT = Path('/sys/fs/cgroup')
 BOOT_ID = Path('/proc/sys/kernel/random/boot_id')
+# Root-owned in the overlay (staged with package_install.py) and granted alone.
+SCOPE_LAUNCHER = '/usr/local/lib/putgd-lab/package_scope.py'
+# The root supervisor writes result.json; the lab user owns its directory.
+RESULT_OWNER = 0
 
 
 def unified_mount():
@@ -63,16 +69,22 @@ def system_scope_tools():
     except (OSError, ValueError):
         return None, 'cgroup v2 mount at /sys/fs/cgroup is unavailable'
     paths = {}
-    for name in ('systemd-run', 'systemctl', 'sudo', 'setpriv'):
+    for name in ('systemd-run', 'systemctl', 'sudo'):
         paths[name] = shutil.which(name)
         if not paths[name]:
             return None, name + ' executable is unavailable'
+    try:
+        info = os.stat(SCOPE_LAUNCHER)
+    except OSError:
+        return None, 'scope launcher ' + SCOPE_LAUNCHER + ' is not installed'
+    if info.st_uid != 0 or info.st_mode & 0o022 or not stat.S_ISREG(info.st_mode):
+        return None, 'scope launcher is not a root-owned, root-writable-only file'
     probes = [
         ([paths['systemd-run'], '--version'], 'systemd-run version probe'),
         ([paths['systemctl'], '--system', 'show', '--property=Version', '--value'],
          'system manager bus probe'),
-        ([paths['sudo'], '-n', '--', paths['systemd-run'], '--version'],
-         'passwordless sudo for systemd-run probe'),
+        ([paths['sudo'], '-n', '--', SCOPE_LAUNCHER, '--probe'],
+         'passwordless sudo for scope launcher probe'),
     ]
     for arguments, prerequisite in probes:
         try:
@@ -82,7 +94,8 @@ def system_scope_tools():
             return None, prerequisite + ' timed out'
         except OSError:
             return None, prerequisite + ' could not execute'
-        if result.returncode:
+        if result.returncode or (prerequisite.endswith('launcher probe')
+                                 and result.stdout.strip() != 'putgd-lab-scope-ready'):
             return None, prerequisite + ' failed'
         if prerequisite == 'systemd-run version probe':
             version = re.match(r'systemd ([0-9]+)\b', result.stdout)
@@ -102,22 +115,16 @@ def launch(source, directory, script, supervisor=False):
         job = Path(directory).name
         if not re.fullmatch(r'install-[0-9a-f]{32}', job):
             raise ValueError('Scope requires an install job ID')
-        unit = ('putgd-supervisor-' if supervisor else 'putgd-staging-') + job + '.scope'
+        kind = 'supervisor' if supervisor else 'staging'
+        unit = 'putgd-' + kind + '-' + job + '.scope'
         if supervisor:
             arguments[5] += ' --require-scope'
         arguments += ['--scope', unit]
         # PID 1 owns this scope. A user@UID.service stop after logout must not
-        # kill the detached watchdog. setpriv uses no PAM session and drops
-        # back to the caller before executing any wrapper/staging code.
-        import pwd
-        user = pwd.getpwuid(os.getuid())
-        arguments = [paths['sudo'], '-n', '--', paths['systemd-run'], '--system', '--scope',
-                     '--quiet', '--slice=system.slice', '--property=Delegate=yes',
-                     '--unit=' + unit, '--expand-environment=no', '--',
-                     paths['setpriv'], '--reuid=' + str(os.getuid()), '--regid=' + str(os.getgid()),
-                     '--init-groups', '--', '/usr/bin/env', 'HOME=' + user.pw_dir,
-                     'USER=' + user.pw_name, 'LOGNAME=' + user.pw_name,
-                     'PATH=' + os.environ.get('PATH', os.defpath), *arguments]
+        # kill the detached watchdog. The root launcher's fixed systemd-run and
+        # setpriv arguments (no PAM session) drop back to this user before any
+        # wrapper/staging code runs.
+        arguments = [paths['sudo'], '-n', '--', SCOPE_LAUNCHER, kind, job, *arguments]
         tracking = {'tracking': 'cgroup-v2', 'manager': 'system', 'unit': unit}
     else:
         arguments += ['--session-fallback', reason]
@@ -126,9 +133,42 @@ def launch(source, directory, script, supervisor=False):
     os.execvpe(arguments[0], arguments, os.environ.copy())
 
 
+LAUNCH_SIGNALS = {signal.SIGHUP, signal.SIGINT, signal.SIGQUIT, signal.SIGTERM}
+
+
+def detach():
+    """Leave only a waiter as the scope launch client's child; return its exit code there.
+
+    The outer sudo stays in the SSH login's session scope as this process's
+    parent. Ending that login (systemctl stop session-N.scope, loginctl
+    terminate-session/terminate-user) sends it SIGTERM/SIGHUP, which sudo relays
+    to its child, or to the child's process group with a pty. A scope isolates
+    cgroups, not signals. Only the waiter receives them; the wrapper continues in
+    its own session and scope, reparented to PID 1, and stays killable directly.
+    """
+    signal.pthread_sigmask(signal.SIG_BLOCK, LAUNCH_SIGNALS)
+    child = os.fork()
+    if child:
+        signal.pthread_sigmask(signal.SIG_UNBLOCK, LAUNCH_SIGNALS)
+        code = os.waitstatus_to_exitcode(os.waitpid(child, 0)[1])
+        return code if code >= 0 else 128 - code
+    os.setsid()
+    # A signal relayed to the launch group before setsid() was aimed at the
+    # waiter: ignoring a pending signal discards it. Later signals act normally.
+    previous = {number: signal.signal(number, signal.SIG_IGN) for number in LAUNCH_SIGNALS}
+    signal.pthread_sigmask(signal.SIG_UNBLOCK, LAUNCH_SIGNALS)
+    for number, handler in previous.items():
+        signal.signal(number, signal.SIG_DFL if handler is None else handler)
+    return None
+
+
 def run(script, unit=None, fallback='direct session-only invocation', supervisor=False):
     # Every staging descendant must remain identifiable after wrapper death.
-    if os.getsid(0) != os.getpid():
+    if unit:
+        waiter = detach()
+        if waiter is not None:
+            return waiter
+    elif os.getsid(0) != os.getpid():
         os.setsid()
     # nohup protects this process from the SSH session disappearing. A terminal
     # receipt requires ECHILD, including adopted sudo/apt/hook descendants.
@@ -168,7 +208,7 @@ ABANDONED_LIMIT = ('Abandonment proves only that no process remains in the stagi
                    'guest process list if its hooks can daemonize.')
 
 
-def cgroup_status(identity):
+def cgroup_status(identity, kind='staging'):
     if identity.get('tracking', 'session') == 'session' and 'cgroup' not in identity:
         return {'tracking': 'session', 'limit': ABANDONED_LIMIT,
                 'fallbackReason': identity.get('fallbackReason', 'legacy session-only identity')}
@@ -178,7 +218,7 @@ def cgroup_status(identity):
         path = group['path']
         unit = group['unit']
         if (identity.get('tracking') != 'cgroup-v2' or not isinstance(path, str)
-                or not re.fullmatch(r'putgd-staging-install-[0-9a-f]{32}\.scope', unit)
+                or not re.fullmatch(r'putgd-' + kind + r'-install-[0-9a-f]{32}\.scope', unit)
                 or not path.startswith(('/system.slice/', '/user.slice/')) or Path(path).name != unit
                 or any(part in ('', '.', '..') for part in path.split('/')[1:])
                 or any(type(group[k]) is not int or group[k] <= 0
@@ -248,11 +288,11 @@ def session_status(session):
                 'inspectionError': 'Cannot enumerate staging session: ' + type(error).__name__}
 
 
-def process_status():
+def process_status(kind='staging'):
     handle = None
     status = {'exactProcessAlive': None, 'sessionAlive': None}
     try:
-        identity = json.loads(Path('staging-process.json').read_text())
+        identity = json.loads(Path(kind + '-process.json').read_text())
         pid = identity['pid']
         if (type(pid) is not int or pid <= 0 or
                 type(identity['startTicks']) is not int or identity['startTicks'] <= 0 or
@@ -281,7 +321,7 @@ def process_status():
             status['exactProcessAlive'] = alive
         except (ProcessLookupError, FileNotFoundError):
             status['exactProcessAlive'] = False
-        return {**status, **session_status(identity['sessionId']), **cgroup_status(identity)}
+        return {**status, **session_status(identity['sessionId']), **cgroup_status(identity, kind)}
     except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
         return {**status, 'inspectionError':
                 'Cannot establish staging session leader identity: ' + type(error).__name__}
@@ -333,6 +373,65 @@ def reconcile(seconds, abandoned=False):
         return {'finished': False, 'state': 'staging-outcome-unknown', **status}
 
 
+def terminal_result():
+    """The root supervisor's result.json, written once after its package work ends.
+
+    progress.json alone means it may still run. Refuse links, other owners and
+    non-terminal content: the lab user owns this directory.
+    """
+    try:
+        fd = os.open('result.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return None
+    with os.fdopen(fd) as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != RESULT_OWNER:
+            raise ValueError('result.json is not the root supervisor\'s single-link regular file')
+        result = json.loads(stream.read(1 << 20))
+    if (not isinstance(result, dict) or type(result.get('ok')) is not bool
+            or type(result.get('aborted')) is not bool or type(result.get('remainingPids')) is not list):
+        raise ValueError('result.json is not a terminal supervisor result')
+    return {key: result.get(key) for key in ('ok', 'aborted', 'timedOut', 'exitCodes', 'remainingPids', 'error')}
+
+
+def reconcile_supervisor(seconds):
+    """Prove an admitted supervisor finished, for a job whose controller is gone.
+
+    Requires its terminal result.json and its recorded system scope empty
+    (populated 0) or gone, plus every wrapper identity and session check. A
+    session-tracked or identity-less supervisor is never released here.
+    """
+    deadline = time.monotonic() + seconds
+    with open('staging.lock', 'a') as fence:
+        while True:
+            try:
+                fcntl.flock(fence, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    return {'finished': False, 'state': 'supervisor-running', **process_status('supervisor')}
+                time.sleep(.1)
+        Path('staging-cancelled').touch(mode=0o600, exist_ok=True)
+        status = process_status('supervisor')
+        while ((status['exactProcessAlive'] is True or status['sessionAlive'] is True
+                or status.get('cgroupPopulated') is True) and time.monotonic() < deadline):
+            time.sleep(.1)
+            status = process_status('supervisor')
+        if status.get('tracking') != 'cgroup-v2' and 'inspectionError' not in status:
+            return {'finished': False, 'state': 'supervisor-session-tracked', **status}
+        if (status['exactProcessAlive'] is not False or status['sessionAlive'] is not False
+                or status.get('cgroupPopulated') is not False):
+            return {'finished': False, 'state': 'supervisor-outcome-unknown', **status}
+        try:
+            result = terminal_result()
+        except (OSError, ValueError) as error:
+            return {'finished': False, 'state': 'supervisor-outcome-unknown', **status,
+                    'inspectionError': 'Cannot read terminal result.json: ' + str(error)}
+        if result is None:
+            return {'finished': False, 'state': 'supervisor-no-result', **status}
+        return {'finished': True, 'state': 'supervisor-finished', **status, 'result': result}
+
+
 def main():
     os.umask(0o077)
     os.chdir(sys.argv[2])
@@ -342,6 +441,9 @@ def main():
         return run(sys.argv[3], unit=sys.argv[5] if sys.argv[4:5] == ['--scope'] else None,
                    fallback=sys.argv[5] if sys.argv[4:5] == ['--session-fallback'] else
                    'direct session-only invocation', supervisor=sys.argv[1] == 'supervise')
+    if sys.argv[1] == 'reconcile-supervisor':
+        print(json.dumps(reconcile_supervisor(float(sys.argv[3]))))
+        return 0
     print(json.dumps(reconcile(float(sys.argv[3]), abandoned='--abandoned' in sys.argv[4:])))
     return 0
 

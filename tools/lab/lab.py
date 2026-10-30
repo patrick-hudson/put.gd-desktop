@@ -482,8 +482,13 @@ def ssh_args(run, bootstrap=False):
             '-p', str(info['ssh_port']), info['guest_user'] + '@127.0.0.1']
 
 
-def ssh(run, script, timeout=60, bootstrap=False):
-    return command(ssh_args(run, bootstrap) + ['sh', '-s'], timeout=timeout, input=script).stdout
+def ssh(run, script, timeout=60, bootstrap=False, refusals=None):
+    # refusals maps a guard script's exit status to its reason; guest stderr
+    # stays hidden (it can contain private data).
+    result = command(ssh_args(run, bootstrap) + ['sh', '-s'], timeout=timeout, input=script, check=not refusals)
+    if result.returncode:
+        raise LabError(refusals.get(result.returncode, f'ssh failed (exit {result.returncode})'))
+    return result.stdout
 
 
 def scp_connection(run):
@@ -1685,22 +1690,34 @@ def report_staging_tracking(tracking, phase):
               file=sys.stderr)
 
 
+SCOPE_LAUNCHER = '/usr/local/lib/putgd-lab/package_scope.py'
+
+
 def stage_install_helper(run, remote, helper, digest):
-    # Old immutable goldens grant apt-get, not this new helper. Use that existing
-    # authority only in the disposable overlay. Staging uses no repositories
-    # and disables list cleanup; normal apt work belongs to the supervisor.
+    # Old immutable goldens grant apt-get, not these new helpers. Use that
+    # existing authority only in the disposable overlay. Staging uses no
+    # repositories and disables list cleanup; normal apt work belongs to the
+    # supervisor. The scope launcher is granted alone: never systemd-run itself.
+    # A fresh overlay's first staging therefore uses session tracking; later
+    # phases (the supervisor) use system scopes.
+    scope_digest = hash_file(HERE / 'package_scope.py')
     hook = (f'set -eu; install -d -m 755 /usr/local/lib/putgd-lab; '
             f'install -o root -g root -m 755 "SOURCE" {helper}; '
             f'echo "{digest}  {helper}" | sha256sum -c -; '
-            'printf "lab ALL=(root) NOPASSWD: /usr/local/lib/putgd-lab/package_install.py\\n" '
+            f'install -o root -g root -m 755 "LAUNCHER" {SCOPE_LAUNCHER}; '
+            f'echo "{scope_digest}  {SCOPE_LAUNCHER}" | sha256sum -c -; '
+            f'printf "lab ALL=(root) NOPASSWD: {helper}, {SCOPE_LAUNCHER}\\n" '
             '> /etc/sudoers.d/putgd-lab-install; '
             'chmod 440 /etc/sudoers.d/putgd-lab-install; '
             'visudo -cf /etc/sudoers.d/putgd-lab-install; exit 1')
     # sudo resets HOME on some guests, so expand the caller's path before sudo.
-    before, after = hook.split('SOURCE')
+    before, rest = hook.split('SOURCE')
+    middle, after = rest.split('LAUNCHER')
     script = (f'set -eu\nsource="$HOME/{remote}/package_install.py"\n'
+              f'launcher="$HOME/{remote}/package_scope.py"\n'
               f'echo "{digest}  $source" | sha256sum -c -\n'
-              f'hook={shlex.quote(before)}"$source"{shlex.quote(after)}\n'
+              f'echo "{scope_digest}  $launcher" | sha256sum -c -\n'
+              f'hook={shlex.quote(before)}"$source"{shlex.quote(middle)}"$launcher"{shlex.quote(after)}\n'
               'LC_ALL=C sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null '
               '-o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 '
               '-o "APT::Update::Pre-Invoke::=$hook" update '
@@ -1719,7 +1736,9 @@ def stage_install_helper(run, remote, helper, digest):
               f'test -x {helper}\n'
               f'echo "{digest}  {helper}" | sha256sum -c -\n'
               f'test "$(stat -c %u:%a {helper})" = 0:755\n'
-              f'sudo -n -l {helper} /tmp/check 1 1 >/dev/null\n')
+              f'sudo -n -l {helper} /tmp/check 1 1 >/dev/null\n'
+              f'echo "{scope_digest}  {SCOPE_LAUNCHER}" | sha256sum -c -\n'
+              f'test "$(stat -c %u:%a {SCOPE_LAUNCHER})" = 0:755\n')
     invocation = staging_invocation(remote, script)
     # The detached subreaper outlives SSH; only its terminal receipt proves all
     # staging descendants exited. setsid --wait preserves that wait even if the
@@ -1744,10 +1763,10 @@ INSTALL_LOCK_PREFIX = ('set -eu\numask 077\nmkdir -p ~/putgd-lab\n'
                        'exec 9> ~/putgd-lab/install-guard\nflock -x -w 5 9\n')
 
 
-def reconcile_staging(run, remote, wait=30, abandoned=False):
+def reconcile_staging(run, remote, wait=30, abandoned=False, supervisor=False):
     lifetime = (HERE / 'package_staging.py').read_text()
-    script = ('python3 -c ' + shlex.quote(lifetime) + ' reconcile "$HOME/' + remote + '" ' + str(wait)
-              + (' --abandoned' if abandoned else '') + '\n')
+    script = ('python3 -c ' + shlex.quote(lifetime) + (' reconcile-supervisor' if supervisor else ' reconcile')
+              + ' "$HOME/' + remote + '" ' + str(wait) + (' --abandoned' if abandoned else '') + '\n')
     report = json.loads(ssh(run, script, timeout=wait + 10))
     if not isinstance(report, dict) or type(report.get('finished')) is not bool:
         raise LabError('Invalid staging reconciliation receipt')
@@ -1780,17 +1799,31 @@ def recover_staging(run, job, abandoned=False):
         return recover_staging_fenced(run, job, abandoned)
 
 
+# Recovery guard exit statuses and the reasons reported for them.
+RECOVERY_REFUSALS = {3: 'install-active is not held by this job',
+                     4: 'the install supervisor has started (progress.json or result.json exists)',
+                     5: 'the install supervisor has no terminal result.json'}
+
+
+def guarded_recovery(run, job, script):
+    return ssh(run, script, refusals={code: f'recover-staging refused {job}: {reason}.'
+                                      for code, reason in RECOVERY_REFUSALS.items()})
+
+
 def recover_staging_fenced(run, job, abandoned):
     remote = 'putgd-lab/' + job
     verify_owned_guest(run)
-    # Recovery is exclusively for pre-supervisor staging. Never clear an
-    # install supervisor's lock or a replacement job's token. Each check is its
-    # own statement: under set -e a failed left side of && does not exit.
-    owned = (f'if [ "$(cat ~/putgd-lab/install-active/job)" != {job} ]; then\n'
-             'echo "install-active is not held by this job" >&2; exit 3\nfi\n'
-             f'if [ -e ~/{remote}/progress.json ] || [ -e ~/{remote}/result.json ]; then\n'
-             'echo "the install supervisor has started" >&2; exit 3\nfi\n')
-    ssh(run, 'set -eu\n' + owned)
+    # Each check is its own statement: under set -e a failed left side of &&
+    # does not exit. Never clear a replacement job's token.
+    held = (f'if [ "$(cat ~/putgd-lab/install-active/job)" != {job} ]; then\n'
+            'echo "install-active is not held by this job" >&2; exit 3\nfi\n')
+    started = f'[ -e ~/{remote}/progress.json ] || [ -e ~/{remote}/result.json ]'
+    supervisor = guarded_recovery(run, job, 'set -eu\n' + held + f'if {started}; then echo supervisor; fi\n')
+    if supervisor.strip() == 'supervisor':
+        return recover_supervisor(run, job, remote, held)
+    # Pre-supervisor staging: never clear an install supervisor's lock.
+    owned = held + (f'if {started}; then\n'
+                    'echo "the install supervisor has started" >&2; exit 4\nfi\n')
     # A missing host receipt needs no guest identity: the controller fence
     # proves the controller exited, and reconcile fences a delayed staging
     # launch before reporting staging-not-started.
@@ -1806,12 +1839,43 @@ def recover_staging_fenced(run, job, abandoned):
     # holds install-active, writing progress.json before releasing the guard.
     # Repeating the checks and releasing under that same guard means either
     # this release or the supervisor's admission fails.
-    ssh(run, INSTALL_LOCK_PREFIX + owned + 'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
+    guarded_recovery(run, job, INSTALL_LOCK_PREFIX + owned +
+                     'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
     # Record recovery only after the release succeeded: a refused release
     # (a supervisor admitted after reconcile) must not leave a receipt.
     evidence = Path(run) / job
     evidence.mkdir(mode=0o700, exist_ok=True)
     write_json(evidence / 'staging-recovery.json', report)
+    return report
+
+
+def recover_supervisor(run, job, remote, held):
+    # An admitted supervisor whose controller is gone: release only after its
+    # terminal result.json and an empty or gone system scope (cgroup.events
+    # populated 0), with every wrapper identity and session check. A
+    # session-tracked or identity-less supervisor stays held (no proof that its
+    # root descendants exited). progress.json without result.json stays held.
+    report = reconcile_staging(run, remote, supervisor=True)
+    if report['finished'] is not True:
+        reasons = {'supervisor-running': 'its scope wrapper still holds the job fence',
+                   'supervisor-session-tracked': 'it ran without a system scope, so its exit cannot be proven',
+                   'supervisor-no-result': 'it has no terminal result.json'}
+        reason = (f'session processes are still running: PIDs {report["sessionPids"]}' if report.get('sessionPids')
+                  else 'its system scope remains populated' if report.get('cgroupPopulated')
+                  else report.get('inspectionError') or reasons.get(report['state'], 'its exit is unconfirmed'))
+        raise LabError(f'recover-staging refused {job}: the install supervisor has started and '
+                       f'{reason} ({report["state"]}); install-active blocks retries. Inspect '
+                       f'~/{remote}/supervisor-process.json, progress.json and result.json.')
+    # Same install-guard as admission and every other release.
+    guarded_recovery(run, job, INSTALL_LOCK_PREFIX + held + f'if [ ! -e ~/{remote}/result.json ]; then\n'
+                     'echo "no terminal result.json" >&2; exit 5\nfi\n'
+                     'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
+    evidence = Path(run) / job
+    evidence.mkdir(mode=0o700, exist_ok=True)
+    write_json(evidence / 'supervisor-recovery.json', report)
+    if not report['result']['ok']:
+        print(f'Released {job} after its install failed; inspect ~/{remote}/result.json and dpkg state '
+              'before the next install.', file=sys.stderr)
     return report
 
 
@@ -1903,11 +1967,13 @@ def install_package_fenced(run, deb, timeout, recovery):
         write_json(evidence / 'request.json', {'timeoutSeconds': timeout, 'recoverySeconds': recovery,
                                              'remoteDirectory': remote, 'helperSha256': helper_sha256})
         put(run, str(HERE / 'package_install.py'), remote + '/package_install.py')
+        put(run, str(HERE / 'package_scope.py'), remote + '/package_scope.py')
         staging_attempted = True
         stage_install_helper(run, remote, helper, helper_sha256)
         staging_finished = True
         write_json(evidence / 'helper.json', {'sha256': helper_sha256, 'verified': True,
                    'source': remote + '/package_install.py', 'installedPath': helper,
+                   'scopeLauncher': {'sha256': hash_file(HERE / 'package_scope.py'), 'installedPath': SCOPE_LAUNCHER},
                    'route': 'existing passwordless apt-get Pre-Invoke; no sources or list cleanup'})
         put(run, str(Path(deb).resolve()), remote + '/package.deb')
     except BaseException as staging_error:
@@ -1990,7 +2056,8 @@ def install_package_fenced(run, deb, timeout, recovery):
             pass
         if time.monotonic() >= deadline:
             raise LabError(f'Install outcome unavailable; guest watchdog owns recovery in ~/{remote}; '
-                           'install-active blocks retries. Inspect result.json and dpkg state before recovery.')
+                           'install-active blocks retries. Inspect result.json and dpkg state, then run '
+                           f'tools/lab/lab.py recover-staging --run {run} --job {token}.')
         time.sleep(1)
     if startup_error:
         raise LabError(startup_error)
@@ -2002,7 +2069,8 @@ def install_package_fenced(run, deb, timeout, recovery):
             get(run, remote + '/' + name, evidence / name)
         if not report.get('ok'):
             raise LabError(f'Install failed; dpkg state and owned PIDs retained in {evidence}/result.json; '
-                           'install-active blocks retries pending recovery.')
+                           'install-active blocks retries until tools/lab/lab.py recover-staging '
+                           f'--run {run} --job {token}.')
         installed = verify_installed_binaries(run, deb)
     finally:
         # A successful report proves apt stopped and dpkg is clean. Hold the
@@ -2149,7 +2217,9 @@ def main():
             child.add_argument('--abandoned', action='store_true',
                                help='Recover only with no live install controller, a free staging flock, a dead/reused session leader '
                                     'and no live session processes; never signals processes. Descendants that '
-                                    'called setsid() are outside the session check (see the report\'s limit field)')
+                                    'called setsid() are outside the session check (see the report\'s limit field). '
+                                    'An admitted supervisor is released (with or without this flag) only after its '
+                                    'terminal result.json and an empty or gone system scope')
         if name == 'install':
             child.add_argument('--install-timeout', type=int, help='Apt budget in seconds (profile install_timeout, default 900)')
             child.add_argument('--install-recovery-timeout', type=int, help='Wait for owned processes after timeout (profile install_recovery_timeout, default 600)')
