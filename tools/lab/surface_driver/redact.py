@@ -215,6 +215,9 @@ class Redactor:
             host = parsed.hostname if parsed.scheme in ('http', 'https') else None
         except ValueError:
             host = None
+        # A registered path/query token can also occur in the hostname.
+        # Derivatives obey the same literal replacement rule as every field.
+        host = self.text(host) if host else host
         return {'host': host, 'hash': hmac.new(self._salt, value.encode(), hashlib.sha256).hexdigest(),
                 'length': len(value), 'present': bool(value)}
 

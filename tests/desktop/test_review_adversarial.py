@@ -369,6 +369,14 @@ class Adv(unittest.TestCase):
         self.assertIn('SyntheticPrivateFragment726', redactor.audit_literals)
         self.assertNotIn('SyntheticPrivateFragment726', redactor.text('fragment SyntheticPrivateFragment726'))
 
+    def test_url_derivative_host_cannot_reintroduce_a_registered_token(self):
+        link = 'https://'+TOKEN+'.example/'+TOKEN
+        redactor = Redactor()
+        redactor.remember({'token': TOKEN})
+        self.assertNotIn(TOKEN, json.dumps(redactor.url(link)))
+        self.assertNotIn(TOKEN, redactor.text('copied '+link))
+        self.assertNotIn(TOKEN, json.dumps(redactor.safe({'url': Sensitive(link)})))
+
     def test_resident_private_log_and_state_root_removed_after_quit(self):
         from tools.lab.surface_driver.target import Target
         target=Target.__new__(Target)
