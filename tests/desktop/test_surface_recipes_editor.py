@@ -185,6 +185,25 @@ class EditorRecipes(unittest.TestCase):
             self.assertEqual(('image',),r.needs)
             self.assertEqual(('local',),r.destinations)
 
+    def test_help_click_ignores_the_same_label_tooltip(self):
+        ctx=FakeContext()
+        ctx.accessible=lambda query: [
+            {'name':'Keyboard help','role':'tool tip','enabled':True,'pid':12,'window':'Edit image'},
+            {'name':'Keyboard help','role':'toggle button','enabled':True,'pid':12,'window':'Edit image'}]
+        clicks=[]
+        ctx.click_accessible=lambda query: clicks.append(query)
+        editor._click_keyboard_help(ctx)
+        self.assertEqual([{'owned':True,'pid':12,'window':'Edit image','name':'Keyboard help','role':'toggle button'}],clicks)
+
+    def test_help_click_refuses_two_interactive_matches(self):
+        ctx=FakeContext()
+        row={'name':'Keyboard help','role':'toggle button','enabled':True,'pid':12,'window':'Edit image'}
+        ctx.accessible=lambda query: [row,row]
+        clicks=[]
+        ctx.click_accessible=lambda query: clicks.append(query)
+        with self.assertRaises(RecipeBlocked): editor._click_keyboard_help(ctx)
+        self.assertEqual([],clicks)
+
     def test_fresh_session_frames_inspect_and_cleanup(self):
         ctx=FakeContext(); editor.redact(ctx)
         self.assertIn(('view','editor.view',{'id':'op-1','action':'fit'}),ctx.events)

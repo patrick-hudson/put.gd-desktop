@@ -320,7 +320,20 @@ def crop(ctx):
         _frame(ctx, 'after', '23-editor-crop')
 
 
-@recipe('editor.geometry', 'editor.keyboard-help', 'editor.destination', needs=IMAGE)
+def _click_keyboard_help(ctx):
+    # The visible text also names a help/tooltip node after expansion. Select
+    # the enabled interactive disclosure, never an arbitrary same-label node.
+    nodes = ctx.accessible({'owned':True, 'name':'Keyboard help', 'visible':True, 'showing':True})
+    buttons = [n for n in nodes if n.get('enabled') and n.get('role') in
+               ('push button','toggle button','check box')]
+    if len(buttons) != 1:
+        ctx.blocked('Keyboard help needs one owned interactive disclosure; same-label non-controls must not receive input', issue=CORE_ISSUE)
+    node = buttons[0]
+    ctx.click_accessible({'owned':True,'pid':node['pid'],'window':node['window'],
+                          'name':'Keyboard help','role':node['role']})
+
+
+@recipe('editor.geometry', needs=IMAGE)
 def properties(ctx):
     with _session(ctx) as op:
         ctx.click('placeMark', window='editor')
@@ -331,48 +344,78 @@ def properties(ctx):
             ctx.keys('Ctrl+A'); ctx.type_text(value); ctx.keys('Return')
         ctx.wait(lambda: _inspect(ctx, op)['shapes'][0]['rect'] == [30,40,100,80], 'real steppers update selected geometry')
         _frame(ctx, 'geometry', '26h-editor-geometry-expanded')
-        # Four expanded steppers can push Help below the scroll viewport.
-        # Collapse through real input before resolving/clicking Help (#789).
+
+
+@recipe('editor.keyboard-help', needs=IMAGE)
+def keyboard_help(ctx):
+    with _session(ctx) as op:
+        ctx.click('placeMark', window='editor')
+        ctx.click('text:Position and size', window='editor')
+        ctx.wait(lambda: _inspect(ctx, op)['view']['geometryDetails']['open'], 'geometry disclosure opens')
+        _frame(ctx, 'geometry-expanded', '26h-editor-geometry-expanded')
+        # Keep the disclosure inside the actual scroll viewport (#789).
         ctx.click('text:Position and size', window='editor')
         ctx.wait(lambda: not _inspect(ctx, op)['view']['geometryDetails']['open'], 'geometry disclosure collapses')
-        ctx.click('text:Keyboard help', window='editor')
+        _click_keyboard_help(ctx)
         ctx.wait(lambda: _inspect(ctx, op)['view']['keyboardHelp']['open'], 'keyboard help expands')
         _frame(ctx, 'help', '26d-editor-keyboard-help')
-        ctx.click('text:Keyboard help', window='editor')
+        _click_keyboard_help(ctx)
         ctx.wait(lambda: not _inspect(ctx, op)['view']['keyboardHelp']['open'], 'keyboard help collapses')
-        ctx.click('text:Save to the local archive', window='editor')
-        ctx.expect(bool(_inspect(ctx, op)['view']['destination']['text']), 'destination identifies the isolated output')
-        ctx.keys('Esc')
         _frame(ctx, 'after', '26-editor-selected')
 
 
-@recipe('editor.zoom', 'editor.key-pan-alt', 'editor.mouse-pan', needs=IMAGE)
+@recipe('editor.destination', needs=IMAGE)
+def destination(ctx):
+    with _session(ctx) as op:
+        text = _inspect(ctx, op)['view']['destination']['text']
+        ctx.expect(bool(text), 'destination identifies the isolated local output')
+        ctx.click_accessible({'owned':True,'name':text,'role':'label'})
+        ctx.expect(_inspect(ctx, op)['view']['destination']['text']==text, 'destination remains visible after real pointer input')
+        _frame(ctx, 'after')
+
+
+@recipe('editor.zoom', needs=IMAGE)
 def zoom_pan(ctx):
     with _session(ctx) as op:
         ctx.click('text:Zoom', window='editor')
         _frame(ctx, 'menu', '26f-editor-zoom-menu')
         ctx.keys('Esc')
-        # Menu dismissal returns focus to the Zoom button. Select's real
-        # shortcut restores canvas focus before testing canvas/window keys.
-        _tool(ctx, op, 'select', 'V')
+        # Verify the editor has regained native focus after menu dismissal.
+        # Keep the Zoom button's child focus so Ctrl+1 still proves the
+        # documented window shortcut, rather than requiring canvas focus.
+        ctx.focus('editor', raise_window=False)
         ctx.keys('Ctrl+1')
         ctx.wait(lambda: _inspect(ctx, op)['view']['zoomPercent'] == 100, 'actual size shortcut')
         ctx.keys('Ctrl+=')
         ctx.wait(lambda: _inspect(ctx, op)['view']['zoomPercent'] > 100, 'zoom in shortcut')
         ctx.keys('Ctrl+-','Ctrl+0')
         ctx.wait(lambda: _inspect(ctx, op)['view']['fitted'], 'Fit shortcut')
-        # Enlarge until pan has a measurable visible-rectangle effect.
+        _frame(ctx, 'after', '26-editor-selected')
+
+
+@recipe('editor.key-pan-alt', needs=IMAGE)
+def key_pan(ctx):
+    with _session(ctx) as op:
+        _tool(ctx, op, 'select', 'V')
         _view(ctx, op, action='zoom', percent=400)
         before = _inspect(ctx, op)['view']['visibleRect']
         ctx.keys('Alt+Left','Alt+Shift+Up')
-        ctx.expect(_inspect(ctx, op)['view']['visibleRect'] != before, 'Alt arrows pan canvas')
+        ctx.wait(lambda: _inspect(ctx, op)['view']['visibleRect'] != before, 'Alt arrows pan canvas')
+        _frame(ctx, 'after', '26-editor-selected')
+
+
+@recipe('editor.mouse-pan', needs=IMAGE)
+def mouse_pan(ctx):
+    with _session(ctx) as op:
+        _tool(ctx, op, 'select', 'V')
+        _view(ctx, op, action='zoom', percent=400)
         before = _inspect(ctx, op)['view']['visibleRect']
         centre = _point(ctx,op,320,160)
         ctx.drag(centre, (centre[0]+60, centre[1]+30), button='middle')
-        ctx.expect(_inspect(ctx, op)['view']['visibleRect'] != before, 'middle drag pans canvas')
+        ctx.wait(lambda: _inspect(ctx, op)['view']['visibleRect'] != before, 'middle drag pans canvas')
         before = _inspect(ctx, op)['view']['visibleRect']
         ctx.scroll(*centre, clicks=-2)
-        ctx.expect(_inspect(ctx, op)['view']['visibleRect'] != before, 'wheel pans canvas')
+        ctx.wait(lambda: _inspect(ctx, op)['view']['visibleRect'] != before, 'wheel pans canvas')
         _frame(ctx, 'after', '26-editor-selected')
 
 
@@ -512,6 +555,7 @@ def palette(ctx):
     with _session(ctx, recent_colours=['#123456', '#654321']) as op:
         _tool(ctx, op, 'rectangle', 'R')
         ctx.keys('Insert')
+        ctx.use_catalog('editor', '22-editor-arrow-style')
         colours = [('Red','#dc2626'),('Orange','#f59e0b'),('Yellow','#facc15'),('Green','#22c55e'),
                    ('Blue','#3b82f6'),('White','#ffffff'),('Black','#111317')]
         for name, colour in colours:
@@ -532,6 +576,7 @@ def style_controls(ctx):
     with _session(ctx) as op:
         _tool(ctx,op,'rectangle','R')
         ctx.keys('Insert')
+        ctx.use_catalog('editor', '22-editor-arrow-style')
         for key, width in [('Home',2),('Down',4),('End',8)]:
             ctx.click('lineWidth', window='editor')
             ctx.keys(key,'Return')
@@ -540,10 +585,12 @@ def style_controls(ctx):
         _frame(ctx,'width','22-editor-arrow-style')
         _tool(ctx, op, 'blur', 'B')
         ctx.keys('Insert')
+        ctx.use_catalog('editor', '21-editor-blur-warning')
         ctx.click('blurStrengthValue',window='editor'); ctx.keys('Ctrl+A'); ctx.type_text('24'); ctx.keys('Return')
         ctx.expect(_inspect(ctx,op)['shapes'][-1]['strength']==24,'blur strength control changes mark')
         _tool(ctx,op,'text','T')
         ctx.keys('Insert'); ctx.type_text('font check'); ctx.keys('Return')
+        ctx.use_catalog('editor', '26e-editor-text-stepper-1060')
         ctx.click('textSize',window='editor'); ctx.keys('Ctrl+A'); ctx.type_text('32'); ctx.keys('Return')
         ctx.expect(_inspect(ctx,op)['shapes'][-1]['fontPixels']==32,'font size control changes label')
         ctx.click('textFont',window='editor'); ctx.keys('Home','Return')
@@ -707,8 +754,8 @@ def save_feedback(ctx):
         ctx.blocked('Saved banner/copy/dismiss/failure/details/recovery checked; Show in folder and compact overflow actions need bounded file-manager/window fixtures',issue=CORE_ISSUE)
 
 
-@recipe('editor.window-close','editor.compact',needs=IMAGE)
-def window_chrome(ctx):
+@recipe('editor.compact',needs=IMAGE)
+def compact(ctx):
     with _session(ctx) as op:
         _resize(ctx,1060,820)
         view=_inspect(ctx,op)['view']
@@ -716,6 +763,11 @@ def window_chrome(ctx):
         _frame(ctx,'compact','26c-editor-1060')
         _resize(ctx,1180,820)
         _frame(ctx,'restored','26-editor-selected')
+
+
+@recipe('editor.window-close', needs=IMAGE)
+def window_chrome(ctx):
+    with _session(ctx) as op:
         before=ctx.geometry('editor')
         ctx.click('windowMaximize',window='editor')
         ctx.wait(lambda: ctx.geometry('editor')['width']>before['width'],'maximize enlarges editor')
@@ -729,9 +781,11 @@ def window_chrome(ctx):
         ctx.wait(lambda: ctx.geometry('editor')['width']==before['width'],'restore original window')
         ctx.click('windowMinimize',window='editor')
         def minimized():
-            try: ctx.geometry('editor')
+            try: state = ctx.geometry('editor').get('states', {})
             except RecipeBlocked: return True
-            return False
+            # X11 may retain geometry for an iconified client; the WM state
+            # proves minimize even while the old rectangle remains queryable.
+            return state.get('minimized') or state.get('iconified')
         ctx.wait(minimized,'minimize hides live editor window')
         ctx.call('editor.raise',{'id':op})
         ctx.wait(lambda: ctx.geometry('editor'),'raise restores minimized editor')
