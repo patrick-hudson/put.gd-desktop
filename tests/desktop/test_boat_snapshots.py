@@ -37,6 +37,16 @@ class SnapshotContracts(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     snapshots.parser().parse_args(['host-script', '--checkout', '/tmp/source', *extra])
 
+    def test_guest_verification_can_use_exact_controller_and_negative_cleanup(self):
+        args = snapshots.parser().parse_args(['guest', '--checkout', '/source', '--commit', SHA,
+            '--source', '/image', '--source-sha256', 'b' * 64, '--bootstrap-key', '/public',
+            '--known-hosts', '/pins', '--evidence', '/evidence', '--profile', 'gnome-wayland',
+            '--run-name', 'v1', '--controller-checkout', '/controller', '--controller-commit', SHA,
+            '--test-held-overlay', '--compress-golden'])
+        self.assertEqual(args.controller_commit, SHA)
+        self.assertTrue(args.test_held_overlay)
+        self.assertTrue(args.compress_golden)
+
     def test_package_targets_distinguish_host_and_gnome_guest(self):
         for name in ('putgd-build-base-v3', 'putgd-lab-cinnamon-v3'):
             self.assertEqual(snapshots.package_metadata(name)['packageTarget'], 'ubuntu24.04')
@@ -58,6 +68,14 @@ class SnapshotContracts(unittest.TestCase):
         package['buildInfo']['dirty'] = True
         with self.assertRaises(ValueError):
             snapshots.validate_package(package, 'ubuntu24.04', SHA)
+
+    def test_guest_platform_requires_the_target_distro(self):
+        snapshots.validate_guest_platform({'id': 'ubuntu', 'versionId': '26.04'}, 'ubuntu26.04')
+        snapshots.validate_guest_platform({'id': 'linuxmint', 'versionId': '22.3', 'ubuntuCodename': 'noble'}, 'ubuntu24.04')
+        with self.assertRaises(ValueError):
+            snapshots.validate_guest_platform({'id': 'ubuntu', 'versionId': '24.04'}, 'ubuntu26.04')
+        with self.assertRaises(ValueError):
+            snapshots.validate_guest_platform({'id': 'debian', 'versionId': '13'}, 'ubuntu26.04')
 
     def test_wrong_target_is_rejected_before_sealing_writes_any_image(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -102,9 +120,39 @@ class SnapshotContracts(unittest.TestCase):
         self.assertNotIn('provision_runtime.py', script)
         self.assertNotIn('provision-linux-sdk.sh', script)
         self.assertIn('cmake --preset dev', script)
-        self.assertIn('ctest_retry.py', script)
+        self.assertNotIn('ctest_retry.py', script)
+        self.assertIn('ctest --preset dev --parallel 12', script)
+        self.assertIn('scratch_base=${PUTGD_CI_TMPDIR:-/dev/shm}', script)
         self.assertIn('ctest_preflight.py', script)
-        self.assertIn('--junit \"$PWD/build/dev/snapshot-tests.xml\"', script)
+        self.assertIn('--output-junit \"$PWD/build/dev/snapshot-tests.xml\"', script)
+
+    def test_persisted_scratch_setup_is_valid_python_and_preserves_other_settings(self):
+        with patch.object(snapshots, 'run', return_value='tmpfs:1021994'), patch.object(snapshots.subprocess, 'run') as setup:
+            snapshots.prepare_scratch()
+        code = setup.call_args.kwargs['input']
+        compile(code, '<scratch-setup>', 'exec')
+        self.assertIn("lines=p.read_text().splitlines()", code)
+        self.assertIn('PUTGD_CI_TMPDIR=/dev/shm', code)
+
+    def test_direct_ctest_requires_exact_complete_passing_registry(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            build = root / 'build/dev'
+            build.mkdir(parents=True)
+            (build / 'registered-tests.json').write_text(json.dumps({'tests': [{'name': 'a'}, {'name': 'b'}]}))
+            for xml, status, expected in (
+                ('<testsuite><testcase name="a"/><testcase name="b"/></testsuite>', 0, True),
+                ('<testsuite><testcase name="a"/></testsuite>', 0, False),
+                ('<testsuite><testcase name="a"/><testcase name="a"/></testsuite>', 0, False),
+                ('<testsuite><testcase name="a"><failure/></testcase><testcase name="b"/></testsuite>', 1, False),
+                ('<testsuite><testcase name="a"/><testcase name="b"/></testsuite>', 1, False),
+            ):
+                (build / 'snapshot-tests.xml').write_text(xml)
+                with patch.object(snapshots, 'run', return_value=SHA):
+                    self.assertEqual(snapshots.record_ctest(root, status)['ok'], expected)
+                ledger = json.loads((build / 'snapshot-flakes.json').read_text())
+                self.assertIs(ledger['retryEnabled'], False)
+                self.assertEqual(ledger['summary']['retried'], [])
 
     def test_preparation_uses_distro_npm_and_ci_provisioners(self):
         script = snapshots.host_script(ROOT, SHA, 4, True)

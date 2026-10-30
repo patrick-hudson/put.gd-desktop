@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 import tempfile
+import xml.etree.ElementTree as ET
 
 OLD_NAMES = frozenset(('putgd-build-base', 'putgd-lab-cinnamon',
                        'putgd-lab-ubuntu-gnome', 'putgd-lab-ubuntu-gnome-v2',
@@ -81,6 +82,15 @@ def validate_package(package, target, commit):
     if (package.get('packageTarget') != target or package['buildInfo'].get('gitCommit') != commit
             or package['buildInfo'].get('dirty') is not False):
         raise ValueError('package must match the guest target and expected clean nightly commit')
+
+
+
+def validate_guest_platform(platform, target):
+    compatible = ((platform.get('id') == 'ubuntu' and platform.get('versionId') == target.removeprefix('ubuntu'))
+                  or (target == 'ubuntu24.04' and platform.get('id') == 'linuxmint'
+                      and platform.get('ubuntuCodename') == 'noble'))
+    if not compatible:
+        raise ValueError('guest distribution does not match the requested native package target')
 
 
 def run_name(value):
@@ -166,13 +176,39 @@ def host_script(checkout, commit, count, prepare):
     ancestors = [p for p in checkout.resolve().parents if str(p).startswith('/home/user')]
     if ancestors:
         script += 'sudo -n setfacl -m u:putgd-ci:--x ' + shlex.join(str(p) for p in ancestors) + '\n'
-    script += 'test_tmp=$(mktemp -d /tmp/pgs.XXXXXX)\n'
+    script += 'scratch_base=${PUTGD_CI_TMPDIR:-/dev/shm}\n'
+    script += 'test "$(stat -f -c %T:%t "$scratch_base")" = tmpfs:1021994\n'
+    script += 'df -h "$scratch_base"\n'
+    script += 'test_tmp=$(mktemp -d "$scratch_base/p.XXXXXX")\n'
     script += 'sudo -n python3 tools/ci/ctest_preflight.py --build build/dev --tmp "$test_tmp" --user putgd-ci\n'
     script += 'sudo -n chown -R putgd-ci:putgd-ci build/dev "$test_tmp"\n'
     script += 'sudo -n install -d -m 700 -o putgd-ci -g putgd-ci "$test_tmp"/{config,data,state,cache,runtime}\n'
     script += "trap 'sudo -n chown -R user:user build/dev' EXIT\n"
-    script += "sudo -n runuser -u putgd-ci -- env -u DISPLAY -u XAUTHORITY -u WAYLAND_DISPLAY PUTGD_TEST_TIME_SCALE=3 LANG=C.UTF-8 LC_ALL=C.UTF-8 TMPDIR=\"$test_tmp\" XDG_CONFIG_HOME=\"$test_tmp/config\" XDG_DATA_HOME=\"$test_tmp/data\" XDG_STATE_HOME=\"$test_tmp/state\" XDG_CACHE_HOME=\"$test_tmp/cache\" XDG_RUNTIME_DIR=\"$test_tmp/runtime\" python3 tools/ci/ctest_retry.py --ledger \"$PWD/build/dev/snapshot-flakes.json\" --junit \"$PWD/build/dev/snapshot-tests.xml\" -- --preset dev --parallel 8 --resource-spec-file \"$PWD/tools/ci/ctest-resources.json\"\n"
+    script += "ctest_status=0\n"
+    script += "sudo -n runuser -u putgd-ci -- env -u DISPLAY -u XAUTHORITY -u WAYLAND_DISPLAY PUTGD_TEST_TIME_SCALE=3 LANG=C.UTF-8 LC_ALL=C.UTF-8 TMPDIR=\"$test_tmp\" XDG_CONFIG_HOME=\"$test_tmp/config\" XDG_DATA_HOME=\"$test_tmp/data\" XDG_STATE_HOME=\"$test_tmp/state\" XDG_CACHE_HOME=\"$test_tmp/cache\" XDG_RUNTIME_DIR=\"$test_tmp/runtime\" ctest --preset dev --parallel 12 --resource-spec-file \"$PWD/tools/ci/ctest-resources.json\" --output-junit \"$PWD/build/dev/snapshot-tests.xml\" || ctest_status=$?\n"
+    script += 'sudo -n chown -R user:user build/dev\n'
+    script += 'python3 ' + q(str(Path(__file__).resolve())) + ' ctest-result --checkout "$PWD" --exit-code "$ctest_status"\n'
     return script
+
+
+
+def record_ctest(checkout, code):
+    build = checkout.resolve() / 'build/dev'
+    cases = list(ET.parse(build / 'snapshot-tests.xml').iter('testcase'))
+    expected = {test['name'] for test in json.loads((build / 'registered-tests.json').read_text())['tests']}
+    names = {case.attrib['name'] for case in cases}
+    failed = [case.attrib['name'] for case in cases if case.find('failure') is not None
+              or case.find('error') is not None or case.find('skipped') is not None
+              or case.attrib.get('status') in ('fail', 'notrun')]
+    ok = code == 0 and bool(expected) and names == expected and len(cases) == len(expected) and not failed
+    summary = {'tests': len(cases), 'failedFirst': failed, 'failed': failed, 'retried': [],
+               'passedOnRetry': [], 'blocking': failed, 'unexplainedCtestFailure': code != 0 and not failed,
+               'ok': ok}
+    (build / 'snapshot-flakes.json').write_text(json.dumps({
+        'schemaVersion': 1, 'source': {'kind': 'boat-direct-ctest', 'commit': run(['git', 'rev-parse', 'HEAD'], cwd=checkout).strip()},
+        'command': ['ctest', '--preset', 'dev', '--parallel', '12', '--resource-spec-file', str(checkout / 'tools/ci/ctest-resources.json')],
+        'exitCode': code, 'retryEnabled': False, 'summary': summary}, indent=2) + '\n')
+    return summary
 
 
 def canonical_image(path):
@@ -182,7 +218,7 @@ def canonical_image(path):
     return path
 
 
-def seal(source, overlay, destination, expected, commit, name, host_packages, target=None):
+def seal(source, overlay, destination, expected, commit, name, host_packages, target=None, compress=False):
     target_metadata = package_metadata(name, target)
     source, overlay = Path(source).resolve(), Path(overlay).resolve()
     destination = canonical_image(destination)
@@ -195,7 +231,19 @@ def seal(source, overlay, destination, expected, commit, name, host_packages, ta
         raise ValueError('overlay must directly reference the specified source golden')
     # qemu-img convert takes an image lock and refuses a writable running source.
     destination.parent.mkdir(mode=0o700, parents=True)
-    run(['qemu-img', 'convert', '-f', 'qcow2', '-O', 'qcow2', overlay, destination])
+    available = os.statvfs(destination.parent)
+    limit = available.f_bavail * available.f_frsize - 10 * 1024**3 - 256 * 1024**2
+    if limit <= 0:
+        raise ValueError('host reserve unavailable before flattening')
+    def output_limit():
+        import resource
+        resource.setrlimit(resource.RLIMIT_FSIZE, (limit, limit))
+        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    converted = subprocess.run(['nice', '-n', '10', 'qemu-img', 'convert', *(['-c'] if compress else []),
+        '-f', 'qcow2', '-O', 'qcow2', overlay, destination], text=True, capture_output=True, timeout=1800, preexec_fn=output_limit)
+    (destination.parent / 'conversion.log').write_text(converted.stdout + converted.stderr)
+    if converted.returncode:
+        raise RuntimeError('flattening failed or reached its hard file-size reserve; partial image preserved')
     result = json.loads(run(['qemu-img', 'info', '--output=json', destination]))
     if result['format'] != 'qcow2' or result.get('backing-filename'):
         raise ValueError('new image must be standalone qcow2')
@@ -206,6 +254,9 @@ def seal(source, overlay, destination, expected, commit, name, host_packages, ta
     manifest = make_manifest(name, commit, source, expected, destination, digest(destination),
                              host_packages, result['virtual-size'])
     manifest.update(target_metadata)
+    manifest['golden']['compressedClusters'] = compress
+    manifest['conversion'] = {'command': 'qemu-img convert ' + ('-c ' if compress else '') + '-f qcow2 -O qcow2',
+                              'hardOutputLimitBytes': limit, 'reserveBytes': 10 * 1024**3}
     parent_manifest = source.parent / 'manifest.json'
     if parent_manifest.is_file():
         parent = json.loads(parent_manifest.read_text())
@@ -234,7 +285,7 @@ def make_manifest(name, commit, source, source_hash, image, image_hash, packages
 
 
 
-def build_manifest(checkout, name, golden, source, expected, output, target=None, deb=None):
+def build_manifest(checkout, name, golden, source, expected, output, target=None, deb=None, controller=None, controller_commit=None):
     snapshot_name(name)
     target_metadata = package_metadata(name, target)
     checkout = checkout.resolve()
@@ -243,7 +294,8 @@ def build_manifest(checkout, name, golden, source, expected, output, target=None
     commit = run(['git', 'rev-parse', 'HEAD'], cwd=checkout).strip()
     if identity.get('gitCommit') != commit or identity.get('dirty') is not False:
         raise ValueError('built identity must match the clean checkout')
-    if digest(source) != expected:
+    source_digest = digest(source)
+    if source_digest != expected:
         raise ValueError('source golden changed')
     ledger_path = checkout / 'build/dev/snapshot-flakes.json'
     ledger = json.loads(ledger_path.read_text())
@@ -256,10 +308,12 @@ def build_manifest(checkout, name, golden, source, expected, output, target=None
         raise ValueError('golden must be standalone qcow2')
     data = {'schemaVersion': 1, 'placement': 'boat', 'snapshotName': name, **target_metadata,
             'builtTreeCommit': commit, 'builtTree': str(checkout), 'buildInfo': identity,
+            'fastScratch': {'base': '/dev/shm', 'filesystem': 'tmpfs', 'environment': 'PUTGD_CI_TMPDIR',
+                            'privatePerRun': True, 'testParallel': 12, 'timeScale': 3, 'retryEnabled': False},
             'hostPackages': packages, 'hostPackageVersions': run(['dpkg-query', '-W',
                 '-f=${binary:Package}=${Version}\n', *packages]).splitlines(),
             'sourceGolden': {'path': str(source), 'sha256': expected},
-            'golden': {'path': str(golden), 'sha256': digest(golden), 'standalone': True,
+            'golden': {'path': str(golden), 'sha256': source_digest if golden == source.resolve() else digest(golden), 'standalone': True,
                        'virtualBytes': info['virtual-size']},
             'buildInfoSha256': digest(identity_path),
             'ctestSummary': ledger['summary'], 'ctestLedgerSha256': digest(ledger_path),
@@ -269,7 +323,9 @@ def build_manifest(checkout, name, golden, source, expected, output, target=None
         if provisioned['golden']['sha256'] != data['golden']['sha256']:
             raise ValueError('provisioned golden digest changed')
         data.update(probePackages=provisioned['probePackages'], probeTools=provisioned['probeTools'],
-                    probeContract=provisioned.get('probeContract', PROBE_CONTRACT))
+                    probeContract=provisioned.get('probeContract', PROBE_CONTRACT),
+                    sourceChain=provisioned.get('sourceChain', []))
+        data['golden']['manifestSha256'] = digest(golden.parent / 'manifest.json')
     else:
         data.update(probePackages=[], probeTools=[], goldenUnchanged=True)
     bootstrap = Path('/home/user/snapshot-bootstrap')
@@ -288,6 +344,22 @@ def build_manifest(checkout, name, golden, source, expected, output, target=None
     if len(images) != 1 or not re.fullmatch(r'ubuntu:[0-9.]+@sha256:[0-9a-f]{64}', images[0]):
         raise ValueError('package target container must be pinned in the exact source workflow')
     data['packageBuild']['containerImage'] = images[0]
+    if Path('/home/user/putgd-gnome-golden/image.qcow2').exists():
+        raise ValueError('legacy GNOME golden remains outside canonical work/lab-images; preserve its bytes and resolve references before relocation')
+    data['imagesRoot'] = str(golden.parent.parent)
+    data['goldenInventory'] = []
+    for image in sorted(golden.parent.parent.rglob('*.qcow2')):
+        image_info = json.loads(run(['qemu-img', 'info', '--output=json', image]))
+        if not image_info.get('backing-filename'):
+            canonical_image(image)
+            data['goldenInventory'].append({'path': str(image), 'format': image_info['format'],
+                                           'standalone': True, 'virtualBytes': image_info['virtual-size']})
+    if controller is not None:
+        actual = run(['git', 'rev-parse', 'HEAD'], cwd=controller).strip()
+        if controller_commit is not None and actual != controller_commit:
+            raise ValueError('lab controller commit mismatch')
+        data['labController'] = {'path': str(controller.resolve()), 'commit': actual,
+            'entrypoint': str(controller.resolve() / 'tools/lab/lab.py')}
     if deb is not None:
         package = deb_identity(deb)
         validate_package(package, data['packageTarget'], commit)
@@ -356,8 +428,14 @@ def guest(args):
     target = 'ubuntu26.04' if args.profile == 'gnome-wayland' else 'ubuntu24.04'
     if args.package_target is not None and args.package_target != target:
         raise ValueError('DEB target does not match the guest profile')
+    if args.install:
+        package_metadata(args.name, target)
     checkout = args.checkout.resolve()
-    sys.path.insert(0, str(checkout / 'tools/lab'))
+    controller = (args.controller_checkout or checkout).resolve()
+    controller_commit = run(['git', 'rev-parse', 'HEAD'], cwd=controller).strip()
+    if args.controller_commit is not None and controller_commit != args.controller_commit:
+        raise ValueError('lab controller does not match its requested commit')
+    sys.path.insert(0, str(controller / 'tools/lab'))
     import lab
     if run(['git', 'rev-parse', 'HEAD'], cwd=checkout).strip() != args.commit:
         raise ValueError('checkout does not match requested commit')
@@ -365,7 +443,9 @@ def guest(args):
         raise ValueError('source golden hash mismatch')
     evidence = args.evidence.absolute()
     evidence.mkdir(mode=0o700, parents=True, exist_ok=False)
-    run_dir = checkout / 'work/lab-runs' / args.run_name
+    exclusive_json(evidence / 'controller.json', {'path': str(controller), 'commit': controller_commit,
+                                                'applicationCommit': args.commit})
+    run_dir = controller / 'work/lab-runs' / args.run_name
     socket_check = run(['python3', checkout / 'tools/diagnostics/check_socket_paths.py', '--socket',
                         run_dir / 'qmp.sock', run_dir / 'vnc.sock'])
     (evidence / 'socket-preflight.json').write_text(socket_check)
@@ -376,7 +456,8 @@ def guest(args):
         'placement': 'boat', 'filesystem': run(['stat', '-f', '-c', '%T:%t', checkout]).strip(),
         'availableBytes': capacity.f_bavail * capacity.f_frsize,
         'availableInodes': capacity.f_favail, 'requiredReserveBytes': 10 * 1024**3})
-    expected_growth = args.source.stat().st_size + 2 * 1024**3 if args.install else 0
+    image_estimate = args.source.stat().st_size // (2 if args.compress_golden else 1)
+    expected_growth = image_estimate + 2 * 1024**3 if args.install else 0
     if capacity.f_bavail * capacity.f_frsize < 10 * 1024**3 + expected_growth or capacity.f_favail <= 1024:
         raise ValueError('Boat host capacity below reserve')
     if not os.access('/dev/kvm', os.R_OK | os.W_OK):
@@ -386,7 +467,7 @@ def guest(args):
         validate_package(package, target, args.package_commit or args.commit)
     launched = False
     try:
-        result = run(['python3', checkout / 'tools/lab/lab.py', 'launch', '--profile', args.profile,
+        result = run(['python3', controller / 'tools/lab/lab.py', 'launch', '--profile', args.profile,
                       '--golden', args.source, '--run', run_dir, '--bootstrap-key', args.bootstrap_key,
                       '--known-hosts', args.known_hosts, '--acceleration', 'kvm', '--timeout', '240'], timeout=300)
         launched = True
@@ -401,6 +482,9 @@ def guest(args):
         if checked.returncode:
             raise ValueError('probe installation/check failed; evidence preserved')
         exclusive_json(evidence / 'idle-policy.json', lab.guest_preflight(run_dir, apply=False, stage='snapshot-check'))
+        platform = json.loads(lab.ssh(run_dir, "/usr/bin/python3 - <<'PLATFORM'\nimport json\nfrom pathlib import Path\nfrom PyQt6.QtCore import QT_VERSION_STR\nd=dict(line.split('=',1) for line in Path('/etc/os-release').read_text().splitlines() if '=' in line)\nd={k:v.strip(chr(34)) for k,v in d.items()}\nprint(json.dumps(dict(id=d.get('ID'),versionId=d.get('VERSION_ID'),ubuntuCodename=d.get('UBUNTU_CODENAME'),qtVersion=QT_VERSION_STR)))\nPLATFORM\n"))
+        validate_guest_platform(platform, target)
+        exclusive_json(evidence / 'platform.json', {**platform, 'packageTarget': target})
         if package:
             exclusive_json(evidence / 'package-artifact.json', {**package, 'packageTarget': target})
             exclusive_json(evidence / 'install.json', lab.install(run_dir, deb=args.deb))
@@ -429,11 +513,11 @@ def guest(args):
             lab.ssh(run_dir, "sed -i '/" + key.replace('/', r'\/') + "/d' ~/.ssh/authorized_keys\nsync\n")
     finally:
         if launched or (run_dir / 'state.json').exists():
-            (evidence / 'reset.json').write_text(run(['python3', checkout / 'tools/lab/lab.py',
+            (evidence / 'reset.json').write_text(run(['python3', controller / 'tools/lab/lab.py',
                                                      'reset', '--run', run_dir]))
     if args.install:
         result = seal(args.source, run_dir / 'disk.qcow2', args.destination, args.source_sha256,
-                      args.commit, args.name, ci_packages(checkout), target)
+                      args.commit, args.name, ci_packages(checkout), target, args.compress_golden)
         exclusive_json(evidence / 'golden.json', result)
     state = json.loads((run_dir / 'state.json').read_text())
     completion = {'run': str(run_dir), 'runId': state['id'], 'completed': True, 'outcome': 'passed'}
@@ -441,8 +525,34 @@ def guest(args):
     exclusive_json(evidence / 'cleanup-evidence.json', {
         'schemaVersion': 1, 'kind': 'vm-overlay-cleanup-evidence', **completion,
         'files': {p.name: digest(p) for p in evidence.iterdir() if p.is_file()}})
-    cleanup_args = ['python3', checkout / 'tools/lab/lab.py', 'cleanup', '--run', run_dir,
+    cleanup_args = ['python3', controller / 'tools/lab/lab.py', 'cleanup', '--run', run_dir,
                     '--images-root', args.source.parent.parent, '--evidence-manifest', evidence / 'cleanup-evidence.json']
+    if args.test_held_overlay:
+        holder = subprocess.Popen([sys.executable, '-c',
+            'import os,sys,time,json; f=open(sys.argv[1],"rb"); s=os.fstat(f.fileno()); print(json.dumps(dict(device=s.st_dev,inode=s.st_ino,fd=f.fileno())),flush=True); time.sleep(60)',
+            str(run_dir / 'disk.qcow2')], stdout=subprocess.PIPE, text=True)
+        try:
+            held_identity = json.loads(holder.stdout.readline())
+            actual = (run_dir / 'disk.qcow2').stat()
+            if held_identity.get('device') != actual.st_dev or held_identity.get('inode') != actual.st_ino:
+                raise RuntimeError('held-overlay witness did not open the exact overlay')
+            refused = subprocess.run([str(a) for a in cleanup_args], text=True, capture_output=True, timeout=90)
+            report = {'holderPid': holder.pid, 'heldIdentity': held_identity, 'exitCode': refused.returncode, 'stdout': refused.stdout,
+                      'stderr': refused.stderr, 'overlayStillExists': (run_dir / 'disk.qcow2').exists()}
+            exclusive_json(evidence / 'held-overlay-refusal.json', report)
+            error = json.loads(refused.stdout).get('error', '')
+            if refused.returncode == 0 or not report['overlayStillExists'] or not any(message in error for message in
+                    ('still has the overlay open', 'Privileged host process inventory blocked or incomplete')):
+                raise ValueError('guard did not explicitly refuse the still-held overlay')
+        finally:
+            if holder.poll() is None:
+                holder.terminate()
+            holder.wait(timeout=15)
+            holder.stdout.close()
+        final_manifest = evidence / 'cleanup-evidence-final.json'
+        exclusive_json(final_manifest, {'schemaVersion': 1, 'kind': 'vm-overlay-cleanup-evidence', **completion,
+            'files': {p.name: digest(p) for p in evidence.iterdir() if p.is_file()}})
+        cleanup_args[-1] = final_manifest
     (evidence / 'cleanup-preview.json').write_text(run([*cleanup_args, '--dry-run']))
     (evidence / 'cleanup.json').write_text(run(cleanup_args))
     return {'run': str(run_dir), 'evidence': str(evidence), 'placement': 'boat', 'ok': True}
@@ -533,9 +643,28 @@ def host_package(args):
     return {'ok': True, 'evidence': str(output)}
 
 
+
+def prepare_scratch():
+    if run(['stat', '-f', '-c', '%T:%t', '/dev/shm']).strip() != 'tmpfs:1021994':
+        raise ValueError('/dev/shm is not a supported tmpfs scratch')
+    code = r"""from pathlib import Path
+p=Path('/etc/environment')
+lines=p.read_text().splitlines()
+lines=[line for line in lines if not line.startswith(('PUTGD_CI_TMPDIR=', 'TMPDIR='))]
+lines += ['PUTGD_CI_TMPDIR=/dev/shm', 'TMPDIR=/dev/shm']
+p.write_text('\n'.join(lines)+'\n')
+"""
+    subprocess.run(['sudo', '-n', '/usr/bin/python3', '-'], input=code, text=True, check=True, timeout=30)
+    return {'base': '/dev/shm', 'filesystem': 'tmpfs', 'environmentFile': '/etc/environment'}
+
+
 def parser():
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest='command', required=True)
+    sub.add_parser('prepare-scratch', help='persist the Boat tmpfs CTest default without changing /tmp mounts')
+    result_p = sub.add_parser('ctest-result', help='record one direct full CTest pass; never retry')
+    result_p.add_argument('--checkout', type=Path, required=True)
+    result_p.add_argument('--exit-code', type=int, required=True)
     host = sub.add_parser('host-script', help='emit a reviewed script to run on a Boat worker')
     host.add_argument('--checkout', type=Path, required=True)
     host.add_argument('--commit', type=sha, required=True)
@@ -550,6 +679,7 @@ def parser():
     seal_p.add_argument('--commit', type=sha, required=True)
     seal_p.add_argument('--name', type=snapshot_name, required=True)
     seal_p.add_argument('--package-target', choices=('ubuntu24.04', 'ubuntu26.04'))
+    seal_p.add_argument('--compress', action='store_true')
     guest_p = sub.add_parser('guest', help='launch a fresh overlay, install/check probes, stop and retire it')
     for flag in ('checkout', 'source', 'bootstrap-key', 'known-hosts', 'evidence'):
         guest_p.add_argument('--' + flag, type=Path, required=True)
@@ -563,12 +693,18 @@ def parser():
     guest_p.add_argument('--package-target', choices=('ubuntu24.04', 'ubuntu26.04'))
     guest_p.add_argument('--deb', type=Path)
     guest_p.add_argument('--package-commit', type=sha)
+    guest_p.add_argument('--controller-checkout', type=Path)
+    guest_p.add_argument('--controller-commit', type=sha)
+    guest_p.add_argument('--test-held-overlay', action='store_true')
+    guest_p.add_argument('--compress-golden', action='store_true')
     manifest_p = sub.add_parser('manifest', help='bind built identity, package versions and golden chain')
     for flag in ('checkout', 'golden', 'source', 'output'):
         manifest_p.add_argument('--' + flag, type=Path, required=True)
     manifest_p.add_argument('--name', type=snapshot_name, required=True)
     manifest_p.add_argument('--package-target', choices=('ubuntu24.04', 'ubuntu26.04'))
     manifest_p.add_argument('--deb', type=Path)
+    manifest_p.add_argument('--controller-checkout', type=Path)
+    manifest_p.add_argument('--controller-commit', type=sha)
     manifest_p.add_argument('--source-sha256', type=lambda x: sha(x, 64), required=True)
     save = sub.add_parser('publish', help='save only a new name and retain its API receipt')
     host_smoke = sub.add_parser('host-package', help='install/start a matching DEB on an owned Boat Ubuntu 24.04 head')
@@ -588,19 +724,26 @@ def parser():
 
 def main():
     a = parser().parse_args()
-    if a.command == 'host-script':
+    if a.command == 'prepare-scratch':
+        print(json.dumps(prepare_scratch(), indent=2))
+    elif a.command == 'ctest-result':
+        summary = record_ctest(a.checkout, a.exit_code)
+        print(json.dumps(summary, indent=2))
+        if not summary['ok']:
+            raise SystemExit(1)
+    elif a.command == 'host-script':
         print(host_script(a.checkout, a.commit, a.jobs, a.prepare), end='')
     elif a.command == 'probe-script':
         print(probe_script(a.install), end='')
     elif a.command == 'seal':
         print(json.dumps(seal(a.source, a.overlay, a.destination, a.source_sha256,
-                              a.commit, a.name, ci_packages(a.checkout), a.package_target), indent=2))
+                              a.commit, a.name, ci_packages(a.checkout), a.package_target, a.compress), indent=2))
     elif a.command == 'guest':
         if a.install and (not a.destination or not a.name):
             raise ValueError('--install requires --destination and --name')
         print(json.dumps(guest(a), indent=2))
     elif a.command == 'manifest':
-        print(json.dumps(build_manifest(a.checkout, a.name, a.golden, a.source, a.source_sha256, a.output, a.package_target, a.deb), indent=2))
+        print(json.dumps(build_manifest(a.checkout, a.name, a.golden, a.source, a.source_sha256, a.output, a.package_target, a.deb, a.controller_checkout, a.controller_commit), indent=2))
     elif a.command == 'host-package':
         print(json.dumps(host_package(a), indent=2))
     elif a.command in ('publish', 'receipt'):
