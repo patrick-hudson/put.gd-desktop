@@ -542,7 +542,7 @@ class LabContracts(unittest.TestCase):
                     self.assertIs(caught.exception, interrupt)
                     self.assertEqual(sum('rmdir' in script for script in scripts), 1)
                     self.assertFalse(any('nohup sudo' in script for script in scripts))
-                    self.assertIn('retains install-active', warning.getvalue())
+                    self.assertIn('unknown install-active state', warning.getvalue())
 
     def test_failed_staging_holds_lock_on_live_or_unreachable_guest(self):
         for transport in (lab.subprocess.TimeoutExpired('ssh', 60), KeyboardInterrupt(), SystemExit(2)):
@@ -559,7 +559,7 @@ class LabContracts(unittest.TestCase):
                             lab.install_package(run, 'synthetic.deb')
                         if isinstance(transport, (KeyboardInterrupt, SystemExit)):
                             self.assertIs(caught.exception, transport)
-                            self.assertIn('retains install-active', warning.getvalue())
+                            self.assertIn('unknown install-active state', warning.getvalue())
                         else:
                             self.assertIn('recover-staging', str(caught.exception))
                         self.assertFalse(any('rmdir' in c.args[1] for c in ssh.call_args_list))
@@ -577,7 +577,7 @@ class LabContracts(unittest.TestCase):
                     with self.assertRaises(type(error) if isinstance(error, (KeyboardInterrupt, SystemExit)) else KeyboardInterrupt):
                         lab.install_package(run, 'synthetic.deb')
                 job = next(run.glob('install-*')).name
-                self.assertIn('retains install-active', warning.getvalue())
+                self.assertIn('unknown install-active state', warning.getvalue())
                 self.assertIn(f'recover-staging --run {run} --job {job}', warning.getvalue())
                 self.assertFalse(any('rmdir' in c.args[1] for c in ssh.call_args_list))
 
@@ -689,10 +689,6 @@ class LabContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             job = 'install-' + 'b' * 32
-            with patch.object(lab, 'ssh') as ssh:
-                with self.assertRaisesRegex(lab.LabError, 'No controller staging-failure receipt'):
-                    lab.recover_staging(run, job)
-                ssh.assert_not_called()
             (run / job).mkdir()
             lab.write_json(run / job / 'staging-failed.json', {'error': 'TimeoutExpired'})
             for finished in (False, True):
@@ -718,7 +714,7 @@ class LabContracts(unittest.TestCase):
         dead = json.loads(lab.subprocess.run([sys.executable, '-c',
             'import json, os; from pathlib import Path; '
             'print(json.dumps({"pid": os.getpid(), "startTicks": '
-            'int(Path("/proc/self/stat").read_text().rsplit(")", 1)[1].split()[19])}))'],
+            'int(Path("/proc/self/stat").read_text().rsplit(")", 1)[1].split()[19]), "sessionId": os.getpid()}))'],
             capture_output=True, text=True, check=True, timeout=3).stdout)
         original_reconcile = lab.reconcile_staging
         for case in ('flock-held', 'alive', 'terminal-but-alive', 'missing-identity', 'invalid-identity', 'unknown', 'dead', 'reused'):
@@ -733,7 +729,7 @@ class LabContracts(unittest.TestCase):
                 (run / job).mkdir()
                 lab.write_json(run / job / 'staging-failed.json', {'error': 'TimeoutExpired'})
                 identity = (dead if case in ('dead', 'flock-held') else
-                            {'pid': process.pid, 'startTicks': ticks + (case == 'reused')})
+                            {'pid': process.pid, 'sessionId': process.pid, 'startTicks': ticks + (case == 'reused')})
                 if case == 'invalid-identity':
                     identity = {'pid': -1, 'startTicks': ticks}
                 if case == 'unknown':
@@ -757,7 +753,7 @@ class LabContracts(unittest.TestCase):
                             self.assertFalse(report['exactProcessAlive'])
                             self.assertEqual(report['process'], identity)
                             self.assertFalse(active.exists())
-                            self.assertEqual(lab.read_json(run / job / 'staging-reconciliation.json'), report)
+                            self.assertEqual(lab.read_json(run / job / 'staging-recovery.json'), report)
                             delayed = lab.subprocess.run([sys.executable, str(lab.HERE / 'package_staging.py'),
                                 'run', str(remote), 'touch must-not-run'], timeout=3)
                             self.assertEqual(delayed.returncode, 125)
@@ -799,7 +795,7 @@ class LabContracts(unittest.TestCase):
                 self.assertEqual((active / 'job').read_text(), held)
 
     def test_staging_reconciliation_without_pidfd_open_uses_proc_and_keeps_lock(self):
-        identity = {'pid': os.getpid(), 'startTicks': int(
+        identity = {'pid': os.getpid(), 'sessionId': os.getpid(), 'startTicks': int(
             Path('/proc/self/stat').read_text().rsplit(')', 1)[1].split()[19])}
         for reused in (False, True):
             with self.subTest(reused=reused), tempfile.TemporaryDirectory() as directory:
@@ -829,7 +825,7 @@ class LabContracts(unittest.TestCase):
     def test_abandoned_recovery_refuses_unreadable_proc_identity(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            lab.write_json(root / 'staging-process.json', {'pid': os.getpid(), 'startTicks': 1})
+            lab.write_json(root / 'staging-process.json', {'pid': os.getpid(), 'sessionId': os.getpid(), 'startTicks': 1})
             # Only /proc reads fail; reading the saved job identity still works.
             script = ("import os, runpy; from pathlib import Path; from unittest.mock import patch; "
                       "os.__dict__.pop('pidfd_open', None); original = Path.read_text; "

@@ -1707,8 +1707,9 @@ def stage_install_helper(run, remote, helper, digest):
     lifetime = (HERE / 'package_staging.py').read_text()
     invocation = 'python3 -c ' + shlex.quote(lifetime) + ' run "$HOME/' + remote + '" ' + shlex.quote(script)
     # The detached subreaper outlives SSH; only its terminal receipt proves all
-    # staging descendants exited. Keep the original output/exit status separate.
-    output = ssh(run, f'nohup {invocation} > ~/{remote}/staging-output.log 2>&1 < /dev/null &\n'
+    # staging descendants exited. setsid --wait preserves that wait even if the
+    # launcher has to fork. Keep the original output/exit status separate.
+    output = ssh(run, f'nohup setsid --wait {invocation} > ~/{remote}/staging-output.log 2>&1 < /dev/null &\n'
                       'staging_pid=$!\nwait "$staging_pid"\ncode=$?\n'
                       f'cat ~/{remote}/staging-output.log\nexit "$code"\n')
     for line in output.splitlines():
@@ -1740,23 +1741,55 @@ def recover_staging(run, job, abandoned=False):
     if not re.fullmatch(r'install-[0-9a-f]{32}', job):
         raise LabError('Recovery requires the exact held install job ID')
     remote = 'putgd-lab/' + job
-    if not (Path(run) / job / 'staging-failed.json').is_file():
-        raise LabError('No controller staging-failure receipt; reconcile the active controller before recovery')
+    missing_receipt = not (Path(run) / job / 'staging-failed.json').is_file()
+    identity_guard = f'test -s ~/{remote}/staging-process.json\n' if missing_receipt else ''
     verify_owned_guest(run)
     # Recovery is exclusively for pre-supervisor staging. Never clear an
     # install supervisor's lock or a replacement job's token.
     ssh(run, f'set -eu\ntest "$(cat ~/putgd-lab/install-active/job)" = {job}\n'
-             f'test ! -e ~/{remote}/progress.json && test ! -e ~/{remote}/result.json\n')
+             f'test ! -e ~/{remote}/progress.json && test ! -e ~/{remote}/result.json\n' + identity_guard)
     report = reconcile_staging(run, remote, abandoned=abandoned)
     if report['finished'] is not True:
         raise LabError(f'Staging {job} remains held ({report["state"]}); install-active blocks retries. '
                        f'Inspect ~/{remote}/staging-process.json and staging-result.json; '
-                       'do not remove the lock while staging may still be running.')
-    write_json(Path(run) / job / 'staging-reconciliation.json', report)
+                       + report.get('inspectionError', 'staging session exit is unconfirmed') + '.')
+    evidence = Path(run) / job
+    evidence.mkdir(mode=0o700, exist_ok=True)
+    write_json(evidence / 'staging-recovery.json', report)
     ssh(run, INSTALL_LOCK_PREFIX + f'test "$(cat ~/putgd-lab/install-active/job)" = {job}\n'
              f'test ! -e ~/{remote}/progress.json && test ! -e ~/{remote}/result.json\n'
-             'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
+             + identity_guard + 'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
     return report
+
+
+def staging_failure_guidance(run, token, error):
+    previous = None
+    try:
+        try:
+            previous = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        except ValueError:
+            pass  # Non-main-thread callers cannot change signal disposition.
+        try:
+            lock = ssh(run, INSTALL_LOCK_PREFIX +
+                'if test ! -e ~/putgd-lab/install-active; then echo released; '
+                f'elif [ "$(cat ~/putgd-lab/install-active/job)" = {token} ]; then echo held; '
+                'else echo replacement; fi\n', timeout=10).strip()
+        except (Exception, KeyboardInterrupt, SystemExit):
+            lock = 'unknown'
+        description = {'held': 'retains install-active; retries are blocked',
+                       'released': 'no longer holds install-active; the lock is released',
+                       'replacement': 'no longer owns install-active; a replacement job holds it'}
+        message = (f'Install staging job {token} ' + description.get(lock,
+                   'has unknown install-active state; inspect the guest before retrying') + '. '
+                   f'Inspect ~/putgd-lab/{token}/staging-process.json and staging-result.json. ')
+        if lock not in ('released', 'replacement'):
+            message += (f'When reachable, run tools/lab/lab.py recover-staging --run {run} --job {token}. ')
+        message += f'Reconciliation: {type(error).__name__}.'
+        print(message, file=sys.stderr)
+        return message
+    finally:
+        if previous is not None:
+            signal.signal(signal.SIGINT, previous)
 
 
 def install_package(run, deb, install_timeout=None, install_recovery_timeout=None):
@@ -1823,6 +1856,9 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
             write_json(evidence / 'staging-failed.json', {'error': type(staging_error).__name__})
         except OSError:
             pass  # Evidence IO must not bypass lifetime reconciliation.
+        except (KeyboardInterrupt, SystemExit) as error:
+            staging_failure_guidance(run, token, error)
+            raise  # Recovery can reconstruct this interrupted receipt from the guest.
         # Log collection is independent of lifetime proof, including its own
         # cancellation. An uncertain guest outcome must retain the job token.
         try:
@@ -1843,17 +1879,14 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
                     raise LabError('Staging exit is unconfirmed (' + report['state'] + ')')
                 release_lock()
             except BaseException as error:
-                message = (f'Install staging job {token} retains install-active; retries are blocked. '
-                           f'Inspect ~/{remote}/staging-process.json and staging-result.json. '
-                           f'When reachable, run tools/lab/lab.py recover-staging --run {run} --job {token}. '
-                           f'Reconciliation: {type(error).__name__}.')
+                message = staging_failure_guidance(run, token, error)
                 if isinstance(error, (KeyboardInterrupt, SystemExit)):
-                    print(message, file=sys.stderr)
                     raise
-                if isinstance(interrupted, (KeyboardInterrupt, SystemExit)):
-                    print(message, file=sys.stderr)
-                else:
-                    raise LabError(message) from error
+                if not isinstance(interrupted, (KeyboardInterrupt, SystemExit)):
+                    failure = LabError(message)
+                    if hasattr(failure, 'add_note'):
+                        failure.add_note(f'Staging reconciliation failed: {error}')
+                    raise failure from staging_error
         raise
     try:
         ssh(run, f'nohup sudo -n {helper} "$HOME/{remote}" {timeout} {recovery} '
@@ -2045,7 +2078,7 @@ def main():
         if name == 'recover-staging':
             child.add_argument('--job', required=True, help='Exact held staging job ID')
             child.add_argument('--abandoned', action='store_true',
-                               help='Recover without a terminal receipt only if the staging flock is free and the recorded PID is dead or reused; never signal processes')
+                               help='Recover only with a free staging flock, dead/reused session leader and no live session processes; never signal processes')
         if name == 'install':
             child.add_argument('--install-timeout', type=int, help='Apt budget in seconds (profile install_timeout, default 900)')
             child.add_argument('--install-recovery-timeout', type=int, help='Wait for owned processes after timeout (profile install_recovery_timeout, default 600)')
