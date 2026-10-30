@@ -33,10 +33,10 @@
   },
   "catalog_windows": {},
   "focus": {
-    "backend": "profile-compositor",
+    "backend": "compositor-witness",
     "raise_before_input": false,
-    "reason": "Requires compositor_script returning verified focus/stacking; public resident view-state does not expose focus",
-    "desktop_hit_test": "gnome-shell-at-spi"
+    "desktop_hit_test": "gnome-shell-at-spi",
+    "reason": "Mutter frame/focus/stacking and stage pick from the lab-only putgd-lab-witness@put.gd extension"
   },
   "notifications": {
     "accessible": {
@@ -128,5 +128,16 @@
         "application": "putgd*"
       }
     }
+  },
+  "compositor": {
+    "kind": "gnome-lab-witness",
+    "shell_application": "gnome-shell*",
+    "stage": "tools/lab/surface_driver/compositor/gnome-witness (lab guests only: compositor/stage-gnome-witness.sh, then guest_reboot.py)"
+  },
+  "selector_accessible": {
+    "query": {
+      "application": "gnome-shell*"
+    },
+    "via": "put.gd Shell extension St actor in gnome-shell's own tree"
   }
 }

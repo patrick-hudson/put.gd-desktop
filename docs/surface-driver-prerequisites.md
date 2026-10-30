@@ -78,3 +78,62 @@ Authorized interrupted drags release at the last dispatched position. Guest QMP 
 sends only button-up, with no absolute-axis event. The RFB fallback reuses its
 last dispatched coordinates because RFB pointer packets require coordinates;
 it never moves to an unvisited drag endpoint during cleanup.
+
+## Desktop observation, occlusion and Wayland placement
+
+`ctx.start_notifications()` (the runner calls it after setup) starts one desktop
+observer per run. `Target.close` stops it through `monitor_pid`, and the observer
+dies with its parent.
+
+- **Notification log.** `notifications.log` holds only the private family's own
+  notification traffic: put.gd `Notify` calls whose sender PID belongs to the
+  private family, the server's reply to each exact call, and the server's
+  `ActionInvoked`/`NotificationClosed` for those IDs. Other applications'
+  notifications, and other clients calling themselves "put.gd", never reach the
+  disk. A notification row's `id` stays null until the server's reply arrives.
+- **Runtime menus and out-of-tree widgets.** Qt lists only non-popup top-level
+  windows as application children. A `QMenu::exec()` context or row menu, a
+  viewport child widget, and Cinnamon's native region selector are therefore
+  missing from an AT-SPI tree walk. The observer listens for
+  `object:state-changed:showing` and `:focused`, and records the private family's
+  showing popups and focused widget in `$XDG_RUNTIME_DIR/putgd-lab-popups.json`.
+  Each `accessible()` call walks them live over the a11y bus as extra roots.
+
+Notification input waits briefly for the banner to be drawn. It hovers the drawn
+title, because shell buttons arm only after the pointer enters, and then clicks
+the title or the action button with a fresh compositor stage pick. Cinnamon's
+default banner lasts 4 s and only fades while hovered. Cinnamon and GNOME show
+one banner at a time, so a resident banner left by an earlier run, or the
+golden's updater banner, blocks later ones. Close those in a disposable guest
+before a notification check.
+
+On X11, pointer guards also ask the shell's AT-SPI stage pick whether a banner,
+panel or shell menu is drawn at the point. The X hit-test cannot see these,
+because they are not X windows. A just-mapped target may settle (#750): if the
+active window is 0, or another window of the same private process, the probe
+activates the target once, waits up to 2.5 s and re-observes. It never displaces
+a foreign window.
+
+Wayland clients report AT-SPI extents relative to their own window. A profile
+`compositor` witness places them on the desktop and answers focus and hit-tests:
+
+- **GNOME** uses the lab-only `putgd-lab-witness@put.gd` Shell extension under
+  `tools/lab/surface_driver/compositor/gnome-witness`. Stage it **only in a
+  disposable guest**: run `compositor/stage-gnome-witness.sh DIR` inside the
+  guest, then `python3 tools/lab/guest_reboot.py RUN`, and enable it if it is not
+  `ACTIVE`. It reports Mutter's frame rects, focus, stacking and stage pick. Its
+  only action is `Activate`, for an explicit `focus(raise_window=True)`. GNOME
+  denies an untokenised `editor.raise`. Never install it on a real desktop.
+- **KDE** needs no install. Each observation loads a read-only KWin script over
+  `org.kde.KWin /Scripting`; the script reports `workspace.stackingOrder` with
+  exact `clientGeometry`.
+
+Without a witness, or when placement is implausible, a row's `rect` is null and
+`coordinate_error` gives the reason; window-relative numbers are never used. On
+GNOME, client-side decorations are split symmetrically, within bounds.
+
+Selector readback is per desktop (`selector_accessible` in the profile). On
+Cinnamon it is the private family's `Capture region` pane, found through its
+focus event. On GNOME it is the put.gd Shell extension's St actor in
+gnome-shell's tree. The release's `putgd@put.gd` extension must be enabled in
+the GNOME golden overlay.
