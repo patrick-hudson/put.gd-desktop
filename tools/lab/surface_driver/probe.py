@@ -1352,13 +1352,143 @@ def notification_log(query):
     return {'alive': alive, 'text': data.decode('utf-8', 'replace')}
 
 
+PORTAL_REQUEST_PREFIX = '/org/freedesktop/portal/desktop/request/'
+PORTAL_MARKER_INTERFACE = 'org.putgd.LabPortalMonitor'
+PORTAL_RULES = ("type='method_call',interface='org.freedesktop.portal.ScreenCast'",
+                "type='method_call',interface='org.freedesktop.impl.portal.ScreenCast'",
+                "type='method_call',interface='org.freedesktop.impl.portal.RemoteDesktop'",
+                "type='method_call',interface='org.freedesktop.impl.portal.Request',member='Close'",
+                "type='signal',interface='org.freedesktop.portal.Request',member='Response'",
+                "type='signal',interface='" + PORTAL_MARKER_INTERFACE + "',member='Marker'")
+
+
+def portal_request_path(sender, token):
+    """xdg-desktop-portal's request object path for a caller's handle_token."""
+    return PORTAL_REQUEST_PREFIX + sender.lstrip(':').replace('.', '_') + '/' + token
+
+
+class PortalFilter:
+    """ScreenCast consent bookkeeping from dbus-monitor blocks; no payload text.
+
+    Keeps one JSON record per relevant message: the private family's own
+    org.freedesktop.portal.ScreenCast calls (sender proven owned, with the
+    handle_token's request path), every frontend→backend impl ScreenCast or
+    RemoteDesktop call (request handle, app id and the backend's process),
+    impl Request.Close, Request::Response codes and this run's marker.
+    Options dictionaries, restore tokens and stream properties are dropped.
+    """
+    def __init__(self, sender_owned, backend):
+        self.sender_owned, self.backend = sender_owned, backend
+
+    def record(self, block):
+        header = block.split('\n', 1)[0]
+        def field(name):
+            found = re.search(r'\b' + name + r'=(\S+?);?(?:\s|$)', header)
+            return found[1] if found else None
+        sender, destination, path = field('sender'), field('destination'), field('path')
+        interface, member = field('interface'), field('member')
+        at = re.search(r'\btime=([0-9.]+)', header)
+        at = float(at[1]) if at else None
+        if not sender or not interface or not member:
+            return None
+        objects = re.findall(r'^\s*object path "([^"]*)"', block, re.M)
+        strings = re.findall(r'^\s*string "((?:[^"\\]|\\.)*)"', block, re.M)
+        if header.startswith('method call') and interface == 'org.freedesktop.portal.ScreenCast':
+            if not self.sender_owned(sender):
+                return None
+            token = re.search(r'string "handle_token"\s*variant\s+string "([A-Za-z0-9_]{1,128})"', block)
+            return {'kind': 'public', 'member': member, 'sender': sender, 'at': at,
+                    'handle': portal_request_path(sender, token[1]) if token else None,
+                    'token': token[1] if token else None}
+        if header.startswith('method call') and interface in ('org.freedesktop.impl.portal.ScreenCast',
+                                                              'org.freedesktop.impl.portal.RemoteDesktop'):
+            handle = objects[0] if objects and objects[0].startswith(PORTAL_REQUEST_PREFIX) else None
+            # impl Start/SelectSources: (handle, session, app_id, parent_window, options)
+            app_id = strings[0] if handle and member in ('Start', 'SelectSources', 'SelectDevices') and strings else None
+            pid, executable = self.backend(destination)
+            return {'kind': 'impl', 'interface': interface.rsplit('.', 1)[1], 'member': member, 'sender': sender,
+                    'destination': destination, 'handle': handle, 'app_id': app_id, 'at': at,
+                    'backend_pid': pid, 'backend_exe': executable}
+        if header.startswith('method call') and interface == 'org.freedesktop.impl.portal.Request' and member == 'Close':
+            return {'kind': 'close', 'sender': sender, 'handle': path, 'at': at}
+        if header.startswith('signal') and interface == 'org.freedesktop.portal.Request' and member == 'Response':
+            code = re.search(r'^\s*uint32 (\d+)', block, re.M)
+            return {'kind': 'response', 'sender': sender, 'destination': destination, 'handle': path,
+                    'code': int(code[1]) if code else None, 'at': at}
+        if header.startswith('signal') and interface == PORTAL_MARKER_INTERFACE and self.sender_owned(sender):
+            return {'kind': 'marker', 'token': strings[0] if strings else '', 'at': at}
+        return None
+
+
+def process_executable(pid):
+    try:
+        return os.path.basename(os.readlink('/proc/%d/exe' % pid))
+    except (OSError, TypeError):
+        return None
+
+
+def portal_monitor(query):
+    """Long-running ScreenCast consent observer for one fixture, until terminated."""
+    import select
+    import signal
+    def die_with_parent():
+        ctypes.CDLL(None).prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
+    owners, backends = {}, {}
+    def sender_owned(sender):
+        if sender not in owners:
+            try:
+                owners[sender] = owned(sender_pid(sender))
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+                owners[sender] = False
+        return owners[sender]
+    def backend(name):
+        if name not in backends:
+            try:
+                pid = sender_pid(name) if name else None
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+                pid = None
+            backends[name] = (pid, process_executable(pid))
+        return backends[name]
+    keeper = PortalFilter(sender_owned, backend)
+    child = subprocess.Popen(['dbus-monitor', '--session', *PORTAL_RULES], stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, preexec_fn=die_with_parent)
+    signal.signal(signal.SIGTERM, lambda *_: (child.terminate(), sys.exit(0)))
+    descriptor = os.open(query['log'], os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    buffer, block, written = b'', [], [0]
+    def flush():
+        record = keeper.record(''.join(block)) if block else None
+        block.clear()
+        if record is not None and written[0] < 1024 * 1024:
+            line = (json.dumps(record, sort_keys=True) + '\n').encode()
+            written[0] += len(line)
+            os.write(descriptor, line)
+    while True:
+        ready, _, _ = select.select([child.stdout], [], [], .05)
+        if not ready:
+            flush()
+            continue
+        chunk = os.read(child.stdout.fileno(), 65536)
+        if not chunk:
+            flush()
+            break
+        buffer += chunk
+        while b'\n' in buffer:
+            raw, buffer = buffer.split(b'\n', 1)
+            line = raw.decode('utf-8', 'replace') + '\n'
+            if line[:1] not in (' ', '\t', '\n') and block:
+                flush()
+            block.append(line)
+    return {'exit': child.wait()}
+
+
 def main():
     request = json.loads(sys.argv[1])
     try:
         function = {'accessible': accessible, 'geometry': geometry, 'control': control_geometry,
                     'foreground': foreground, 'windows': windows, 'tray':tray,
                     'notification_monitor': notification_monitor, 'notification_log': notification_log,
-                    'popup_watch': popup_watch}[request['probe']]
+                    'popup_watch': popup_watch, 'portal_monitor': portal_monitor,
+                    'compositor_windows': lambda query: compositor_windows(query['compositor'])}[request['probe']]
         print(json.dumps({'ok': True, 'result': function(request['query'])}))
     except Exception as error:
         print(json.dumps({'ok': False, 'error': type(error).__name__ + ': ' + str(error)}))

@@ -123,7 +123,7 @@ while True:
         name, query = request['probe'], request['query']
         fresh = (name in ('accessible','control') or bool(query.get('accessible')) or
                  (os.environ.get('XDG_SESSION_TYPE') == 'wayland' and
-                  name in ('geometry','foreground','windows')))
+                  name in ('geometry','foreground','windows','compositor_windows')))
         if fresh:
             try:
                 child = subprocess.run([sys.executable,'-c',SOURCE,json.dumps(request)],

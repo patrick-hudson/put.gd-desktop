@@ -128,5 +128,25 @@
         "application": "putgd*"
       }
     }
+  },
+  "recording": {
+    "consent": {
+      "kind": "portal-dialog",
+      "reason": "Portal acquisition on GNOME Wayland: xdg-desktop-portal-gnome draws Share Screen for each new ScreenCast Start until the stored restore token is accepted (#791)",
+      "backends": [
+        "xdg-desktop-portal-gnome"
+      ],
+      "shell_backends": [
+        "gnome-shell"
+      ],
+      "dialog": {
+        "title": "Share Screen",
+        "prompt": "*wants to share your screen*"
+      },
+      "accept": {
+        "role": "push button",
+        "name": "Share"
+      }
+    }
   }
 }
