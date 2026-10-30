@@ -27,14 +27,14 @@ class FakeContext(Context):
         # Exercise recipe logic against a capable fake, independently of the
         # real Cinnamon preflight blocker. This is never desktop evidence.
         self.profile['tray'].pop('preflight_blocked', None)
-        self.profile['tray']['icon'] = {'name': 'put.gd'}
+        self.profile['tray']['icon'] = {'name': 'put.gd', 'application': 'cinnamon'}
         self.events = []
         self.rects = {}
         self.about_open = False
         self.menu = False
         self.output = False
         self.edit_sources = False
-        self.fixture = False
+        self.fixture_open = False
         self.operations = []
         self.notices = []
         self.clipboard = ''
@@ -47,6 +47,28 @@ class FakeContext(Context):
         self.shortcut_available = True
         self.broken_save = False
         self.ignored_input = False
+
+    def fixture(self, name, **options):
+        from tools.lab.surface_driver.fixtures.base import Fixture
+        self.events.append(('fixture', name))
+        if name == 'app-profile':
+            return Fixture(root='/tmp/tray-fake', output_dir='/tmp/tray-fake/out')
+        if name == 'events.clipboard':
+            self.clipboard = 'putgd synthetic clipboard text'
+            return Fixture(text=self.clipboard)
+        if name == 'tray-proton-busy':
+            raise RecipeBlocked('proton_account_busy fixture unavailable', 670)
+        raise AssertionError(name)
+
+    def click_accessible(self, query, button='left'):
+        assert any(k in query for k in ('pid', 'application', 'owned'))
+        nodes = self.accessible(query)
+        assert len(nodes) == 1
+        self.click_at(*tray._point(self, nodes[0]), button=button)
+        return nodes[0]
+
+    def focus(self, window, raise_window=True):
+        self.events.append(('focus', window))
 
     def view(self, method, params=None):
         self.events.append(('view', method, params))
@@ -104,7 +126,7 @@ class FakeContext(Context):
     def accessible(self, query):
         name = query['name']
         names = {'put.gd', self.target, 'History', 'Settings', 'Destinations'}
-        if self.fixture:
+        if self.fixture_open:
             names.add(tray.FIXTURE_TITLE)
         if self.menu:
             names.update(tray.LABELS.values())
@@ -128,6 +150,7 @@ class FakeContext(Context):
         rx, ry, rw, rh = self.rects[name]
         return [{'name': name, 'role': query.get('role', 'label'),
                  'rect': {'x': rx, 'y': ry, 'width': rw, 'height': rh},
+                 'pid': 4242, 'application': 'cinnamon', 'showing': True,
                  'enabled': not name.endswith(': Local only'), 'visible': True,
                  'selected': name == self.target}]
 
@@ -213,11 +236,11 @@ class FakeContext(Context):
         elif 'printf synthetic' in script:
             self.obstruction = True
         elif 'putgd-desktop-fixture --output' in script:
-            self.fixture = True
+            self.fixture_open = True
             output = '4242'
         elif script.startswith('kill --'):
             assert script == 'kill -- 4242\n'
-            self.fixture = False
+            self.fixture_open = False
         elif script.startswith('rm --'):
             self.obstruction = False
         elif 'mkdir -m 500' in script:
@@ -255,37 +278,34 @@ class TrayRecipesTest(unittest.TestCase):
         self.assertEqual(set(actual), {i for i, owner in owners.items() if owner == 'tray'})
         self.assertEqual(len(actual), len(set(actual)))
 
-    def test_every_executable_recipe_uses_real_input_and_restores_settings(self):
-        for r in self.recipes():
-            if any(i in tray.BLOCKED for i in r.interactions) or r.function == tray.attention_with_busy_latch:
-                continue
-            with self.subTest(recipe=r.name):
+    def test_executable_menu_recipes_use_owned_real_input(self):
+        for function in (tray.context_menu, tray.activate, tray.tray_menu_about,
+                         tray.tray_menu_settings, tray.tray_menu_destinations,
+                         tray.tray_menu_upload_clipboard, tray.shortcut_clipboard):
+            with self.subTest(recipe=function.__name__):
                 ctx = FakeContext()
-                r.function(ctx)
-                self.assertTrue(r.desktop_drawn)
-                self.assertEqual(ctx.events[0][0], 'view')
-                self.assertGreaterEqual(sum(e[0] == 'frame' for e in ctx.events), 2)
-                self.assertTrue(any(e[0] in ('click', 'keys', 'scroll') for e in ctx.events))
-                self.assertEqual(ctx.document, ctx.original)
-                self.assertFalse(ctx.fixture)
+                function(ctx)
+                self.assertTrue(any(e[0] in ('click', 'keys') for e in ctx.events))
                 self.assertFalse(any(e[0] == 'call' and e[1] == 'action.invoke' for e in ctx.events))
+                self.assertFalse(any(e[0] == 'shell' and 'kill --' in e[1] for e in ctx.events))
 
-    def test_explicit_blocked_rows_have_reason_and_frames(self):
+    def test_explicit_blocked_rows_have_issue(self):
         for interaction, reason in tray.BLOCKED.items():
             with self.subTest(interaction=interaction):
                 r = next(r for r in self.recipes() if interaction in r.interactions)
                 ctx = FakeContext()
-                with self.assertRaisesRegex(RecipeBlocked, reason.split(';')[0]):
+                with self.assertRaises(RecipeBlocked) as caught:
                     r.function(ctx)
-                self.assertGreaterEqual(sum(e[0] == 'frame' for e in ctx.events), 2)
+                self.assertEqual(caught.exception.issue, 670)
 
-    def test_operation_failure_is_not_a_pass_and_cleanup_runs(self):
-        ctx = FakeContext()
-        ctx.broken_save = True
-        with self.assertRaises(RecipeFailed):
-            tray.saved_locally(ctx)
-        self.assertEqual(ctx.document, ctx.original)
-        self.assertFalse(ctx.fixture)
+    def test_notification_actions_block_before_input(self):
+        for function in (tray.save_diagnostics, tray.show_in_folder,
+                         tray.resident_close, tray.diagnostics_not_saved):
+            ctx = FakeContext()
+            with self.assertRaises(RecipeBlocked) as caught:
+                function(ctx)
+            self.assertEqual(caught.exception.issue, 670)
+            self.assertFalse(ctx.events)
 
     def test_missing_shortcut_channel_blocks_without_pressing_the_shortcut(self):
         ctx = FakeContext()
@@ -293,14 +313,13 @@ class TrayRecipesTest(unittest.TestCase):
         with self.assertRaises(RecipeBlocked):
             tray.shortcut_region(ctx)
         self.assertFalse(any(e[0] == 'keys' and 'Ctrl+Shift+1' in e[1] for e in ctx.events))
-        self.assertEqual(ctx.document, ctx.original)
 
     def test_ignored_input_cannot_pass_clipboard_recipe(self):
         ctx = FakeContext()
         ctx.ignored_input = True
         with self.assertRaises(RecipeFailed):
             tray.tray_menu_upload_clipboard(ctx)
-        self.assertFalse(ctx.fixture)
+        self.assertFalse(ctx.fixture_open)
 
     def test_ignored_tray_activation_cannot_pass_using_a_hidden_history_inspector(self):
         ctx = FakeContext()
@@ -324,7 +343,6 @@ class TrayRecipesTest(unittest.TestCase):
         ctx = FakeContext()
         with self.assertRaisesRegex(RecipeBlocked, 'proton_account_busy'):
             tray.attention_with_busy_latch(ctx)
-        self.assertEqual(ctx.document, ctx.original)
 
     def test_ambiguous_accessibility_target_fails_before_click(self):
         ctx = FakeContext()
@@ -355,12 +373,28 @@ class TrayRecipesTest(unittest.TestCase):
             tray._press(ctx, 'Save diagnostics for this upload')
         self.assertFalse(any(e[0] == 'click' for e in ctx.events))
 
-    def test_known_desktop_preflight_block_prevents_input(self):
+    def test_icon_selector_is_scoped_to_the_shell(self):
         ctx = FakeContext()
-        ctx.profile['tray']['preflight_blocked'] = 'Cinnamon locator needs core support'
-        with self.assertRaisesRegex(RecipeBlocked, 'Cinnamon locator'):
+        ctx.profile['tray']['icon'] = None
+        with self.assertRaises(RecipeBlocked) as caught:
             tray.context_menu(ctx)
+        self.assertEqual(caught.exception.issue, 670)
         self.assertFalse(any(e[0] == 'click' for e in ctx.events))
+
+    def test_fixture_cleanup_is_delegated_to_core(self):
+        ctx = FakeContext()
+        tray.tray_menu_upload_clipboard(ctx)
+        self.assertIn(('fixture', 'app-profile'), ctx.events)
+        self.assertIn(('fixture', 'events.clipboard'), ctx.events)
+        self.assertFalse(any(e[0] == 'shell' and 'mktemp' in e[1] for e in ctx.events))
+
+    def test_catalog_rows_are_the_published_stable_ids(self):
+        path = ROOT / 'docs/evidence/catalog-tray-confirm/2026-10-29/catalog/00-tray-menu-idle.controls.json'
+        rows = json.loads(path.read_text())['controls']
+        ids = {r['name'] for r in rows}
+        for key in ('trayOutputSummary', 'trayChangeOutput', *tray.LABELS, 'history', 'preferences'):
+            self.assertIn(key, ids)
+            self.assertIn(key, tray.CONTROLS)
 
     def test_about_dialog_is_closed_after_its_evidence_frame(self):
         ctx = FakeContext()

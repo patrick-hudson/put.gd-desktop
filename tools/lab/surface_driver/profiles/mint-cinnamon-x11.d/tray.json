@@ -1,7 +1,9 @@
 {
   "tray": {
     "icon": {
-      "name": "put.gd"
+      "name": "put.gd",
+      "role": "label",
+      "application": "cinnamon*"
     },
     "notification_server": "cinnamon",
     "resident_notifications": true,
@@ -15,8 +17,8 @@
       "full": "00-tray-menu-idle",
       "output": "00-tray-output-submenu",
       "uploading": "00-tray-menu-uploading",
-      "proton-busy": "00-tray-menu-proton-busy"
-    },
-    "preflight_blocked": "Cinnamon Boat locator blocked after two smoke attempts: put.gd matches frame/label; anonymous SNI panel could not be bound to a unique desktop root. Needs an owned tray rectangle from core (#670). No further input retries in this run."
+      "proton-busy": "00-tray-menu-proton-busy",
+      "edit": "00-tray-edit-submenu"
+    }
   }
 }

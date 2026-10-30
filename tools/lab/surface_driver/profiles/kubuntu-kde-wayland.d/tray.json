@@ -1,7 +1,9 @@
 {
   "tray": {
     "icon": {
-      "name": "put.gd"
+      "name": "put.gd",
+      "role": "label",
+      "application": "plasmashell*"
     },
     "notification_server": "Plasma",
     "resident_notifications": false,
@@ -11,7 +13,8 @@
       "full": "00-tray-menu-idle",
       "output": "00-tray-output-submenu",
       "uploading": "00-tray-menu-uploading",
-      "proton-busy": "00-tray-menu-proton-busy"
+      "proton-busy": "00-tray-menu-proton-busy",
+      "edit": "00-tray-edit-submenu"
     }
   }
 }
