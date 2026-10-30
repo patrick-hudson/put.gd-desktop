@@ -5,9 +5,13 @@ Requires the authenticated boat CLI, OpenSSH and distro python3-yaml locally.
 All compilation and rendering happen remotely. See docs/boat-candidates.md.
 """
 import argparse
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -18,12 +22,50 @@ import sys
 import tarfile
 import threading
 import time
+import uuid
 
 ROOT = Path(__file__).resolve().parents[3]
 REPOSITORY = 'https://github.com/patrick-hudson/put.gd-desktop.git'
 TARGETS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44',
            'ui-catalog', 'lab-fixture')
 CANCEL = threading.Event()
+CREATE_TIMEOUT = 120
+LATE_CREATE_GRACE = 30
+LEASE_ROOT = Path.home() / '.local/state/putgd/boat-candidate-runs'
+
+
+@contextmanager
+def run_lease(nonce):
+    """A shared, cross-worktree flock; retained files identify dead local runs.
+
+    Unknown leases (e.g. a controller on another workstation) are protected until
+    the sandbox TTL. Never unlink lock files: that would split the lock namespace.
+    """
+    LEASE_ROOT.mkdir(parents=True, mode=0o700, exist_ok=True)
+    with (LEASE_ROOT / nonce).open('x') as lease:
+        os.chmod(lease.name, 0o600)
+        fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        yield
+
+
+def orphaned(item, nonce):
+    if nonce:
+        try:
+            with (LEASE_ROOT / nonce).open('r') as lease:
+                fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return True
+        except BlockingIOError:
+            return False  # A known live controller wins even over an expired TTL.
+        except FileNotFoundError:
+            pass  # Unknown controllers may only be reaped after TTL expiry.
+    try:
+        created = datetime.fromisoformat(item['createdAt'].replace('Z', '+00:00')).timestamp()
+        ttl = int(item['ttlSeconds'])
+        if ttl > 0 and time.time() >= created + ttl:
+            return True
+    except (KeyError, TypeError, ValueError):
+        pass  # Missing/unknown remote metadata is not permission to delete.
+    return False
 
 
 def exact_sha(value):
@@ -46,7 +88,7 @@ def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument('commit', type=exact_sha, nargs='?')
     result.add_argument('--cleanup', type=exact_sha, metavar='SHA',
-                        help='delete only candidate workers named for this full commit; no build')
+                        help='delete only eligible orphan candidate workers for this full commit; preserve live peers; no build')
     result.add_argument('--output', required=True, type=Path,
                         help='new private directory outside every Git checkout')
     result.add_argument('--artifact', choices=TARGETS, action='append',
@@ -72,7 +114,7 @@ def run(argv, *, timeout=120, input=None, log=None, cleanup=False):
     first = True
     while True:
         try:
-            output, _ = process.communicate(input=input if first else None, timeout=1)
+            output, _ = process.communicate(input=input if first else None, timeout=min(1, max(0, deadline - time.monotonic())))
             break
         except subprocess.TimeoutExpired:
             first = False
@@ -176,6 +218,7 @@ def recipe(target, packages, ci):
         script += 'qt_version=$(python3 -c \'import json; print(json.load(open("packaging/appimage/tools.lock.json"))["buildInputs"]["qt"])\')\n'
         script += '/opt/aqt/bin/aqt install-qt linux desktop "$qt_version" linux_gcc_64 -m qtimageformats -O /opt/Qt\n'
         script += 'export QT_ROOT_DIR=/opt/Qt/$qt_version/gcc_64\nexport PATH=$QT_ROOT_DIR/bin:$PATH\nexport LD_LIBRARY_PATH=$QT_ROOT_DIR/lib\nexport QT_PLUGIN_PATH=$QT_ROOT_DIR/plugins QML2_IMPORT_PATH=$QT_ROOT_DIR/qml\n'
+        script += 'export PKG_CONFIG_PATH=${PKG_CONFIG_PATH:+$PKG_CONFIG_PATH:}$QT_ROOT_DIR/lib/pkgconfig\n'
         script += step(app, 'Verify pinned SDK source')
         script += 'bash tools/releases/provision-sdk.sh\npython3 tools/releases/provision-appimage.py --qt-root "$QT_ROOT_DIR"\n'
         script += step(app, 'Provision pinned Proton helper')
@@ -199,7 +242,7 @@ def recipe(target, packages, ci):
     script += step(native, 'Verify pinned SDK source') + 'bash tools/releases/provision-sdk.sh\n'
     script += step(native, 'Provision pinned Proton helper')
     script += 'cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=ON -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_BUNDLE_PROTON=ON -DCMAKE_INSTALL_PREFIX=/usr -DPUTGD_PACKAGE_TARGET= -DPUTGD_UPDATE_CHECK=OFF\n'
-    script += 'cmake --build --preset release --parallel "$(nproc)"\ncpack --config build/release/CPackConfig.cmake -G DEB -D CPACK_PACKAGE_NAME=putgd-lab-fixture -D CPACK_DEBIAN_PACKAGE_NAME=putgd-lab-fixture -D CPACK_PACKAGE_FILE_NAME=putgd-lab-fixture -B build/lab-packages\n'
+    script += 'cmake --build --preset release --parallel "$(nproc)"\ncpack --config build/release/CPackConfig.cmake -G DEB -D CPACK_PACKAGE_NAME=putgd-lab-fixture -D CPACK_DEBIAN_PACKAGE_NAME=putgd-lab-fixture -D CPACK_PACKAGE_FILE_NAME=putgd-lab-fixture -D CPACK_DEBIAN_PACKAGE_CONFLICTS=putgd -D CPACK_DEBIAN_PACKAGE_REPLACES=putgd -D "CPACK_PACKAGE_DESCRIPTION_SUMMARY=Disposable lab fixture build of put.gd; test use only" -D "CPACK_DEBIAN_PACKAGE_DESCRIPTION=Disposable lab fixture build of put.gd; test use only" -B build/lab-packages\n'
     script += 'test "$(dpkg-deb -f build/lab-packages/*.deb Package)" = putgd-lab-fixture\n'
     script += 'dpkg-deb -f build/lab-packages/*.deb > /out/lab-package-control.txt\n'
     script += 'build/release/putgd-cli --update-info > /out/update-info.json\n'
@@ -207,11 +250,19 @@ def recipe(target, packages, ci):
     return base, script, 'release'
 
 
-def sha256(path):
+def check_collection_deadline(deadline):
+    if deadline is not None and time.monotonic() >= deadline:
+        raise TimeoutError("Collection deadline reached (bounded by sandbox TTL)")
+
+
+def sha256(path, *, deadline=None):
+    check_collection_deadline(deadline)
     digest = hashlib.sha256()
     with path.open('rb') as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            check_collection_deadline(deadline)
             digest.update(chunk)
+    check_collection_deadline(deadline)
     return digest.hexdigest()
 
 
@@ -255,15 +306,19 @@ def ssh_options(pin):
             '-o', 'ServerAliveCountMax=3']
 
 
-def restore_archive(archive, destination, expected):
-    if sha256(archive) != expected:
+def restore_archive(archive, destination, expected, *, deadline=None):
+    if sha256(archive, deadline=deadline) != expected:
         raise ValueError('Transport archive SHA-256 mismatch')
     # Validate the entire archive before writing anything. Never restore ownership,
     # permissions, links, devices or timestamps supplied by the worker.
     with tarfile.open(archive) as stream:
-        members = stream.getmembers()
+        members = []
+        for member in stream:
+            check_collection_deadline(deadline)
+            members.append(member)
         names = set()
         for member in members:
+            check_collection_deadline(deadline)
             path = Path(member.name)
             if path.is_absolute() or '..' in path.parts or not (member.isdir() or member.isfile()):
                 raise ValueError('Unsafe transport archive member: ' + member.name)
@@ -273,6 +328,7 @@ def restore_archive(archive, destination, expected):
             names.add(name)
         destination.mkdir(mode=0o700)
         for member in members:
+            check_collection_deadline(deadline)
             path = destination / member.name
             if member.isdir():
                 path.mkdir(parents=True, mode=0o700, exist_ok=True)
@@ -280,31 +336,65 @@ def restore_archive(archive, destination, expected):
                 path.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
                 with stream.extractfile(member) as source, path.open('xb') as target:
                     while chunk := source.read(1024 * 1024):
+                        check_collection_deadline(deadline)
                         target.write(chunk)
                 path.chmod(0o700 if member.mode & 0o100 else 0o600)
+    check_collection_deadline(deadline)
 
 
-def collect_artifacts(ssh, options, host, port, directory, receipt, build_error, *, timeout=150):
-    """One hashed archive, with one finite budget including remote packing and extraction."""
+def collection_budget(size, files):
+    # Historical 60–65 MB outliers took ~385s. Allow 128 KiB/s plus
+    # per-file work and startup reserve, rather than a size-blind 150s floor.
+    return 150 + math.ceil(size / (128 * 1024)) + math.ceil(files * 0.05)
+
+
+def collect_artifacts(ssh, options, host, port, directory, receipt, build_error, *, timeout=150, ttl_deadline=None):
+    """One uncompressed archive; measured phases and a finite size-scaled budget."""
     started = time.monotonic()
-    deadline = started + max(150, timeout)
+    deadline = min(started + max(150, timeout), ttl_deadline) if ttl_deadline is not None else started + max(150, timeout)
     collection_error = None
+    phases = receipt['collectionPhases'] = {}
     def remaining():
-        return max(1, deadline - time.monotonic())
+        check_collection_deadline(deadline)
+        return deadline - time.monotonic()
+    def measured(name, action):
+        began = time.monotonic()
+        try:
+            return action()
+        finally:
+            phases[name] = round(time.monotonic() - began, 3)
     try:
-        digest = run([*ssh, 'set -eu; cd /home/user/candidate; '
-                      'tar -cf artifacts.tar -C output .; sha256sum artifacts.tar'],
-                     timeout=remaining()).split()[0]
+        # Separate size discovery from packing so a slow transfer still receives
+        # the appropriate budget. Retain filesystem and I/O pressure context.
+        probe = measured('probeSeconds', lambda: run([*ssh,
+            "set -eu; cd /home/user/candidate/output; "
+            "du -sb .; find . -type f | wc -l; df -PT .; "
+            "cat /proc/pressure/io 2>/dev/null || true"], timeout=remaining()))
+        lines = probe.splitlines()
+        size, files = int(lines[0].split()[0]), int(lines[1])
+        budget = max(150, timeout, collection_budget(size, files))
+        deadline = min(started + budget, ttl_deadline) if ttl_deadline is not None else started + budget
+        receipt['collectionBudgetSeconds'] = round(deadline - started, 3)
+        receipt['collectionTtlCapped'] = deadline < started + budget
+        check_collection_deadline(deadline)
+        receipt['collectionInput'] = {'bytes': size, 'files': files, 'diskAndPressure': lines[2:]}
+        digest = measured('packSeconds', lambda: run([*ssh,
+            'set -eu; cd /home/user/candidate; '
+            'tar -cf artifacts.tar -C output .; sha256sum artifacts.tar'],
+            timeout=remaining())).split()[0]
         if not re.fullmatch('[0-9a-f]{64}', digest):
             raise ValueError('Invalid transport archive digest')
         archive = directory / 'artifacts.tar'
-        run(['scp', *options, '-P', port, f'user@{host}:/home/user/candidate/artifacts.tar',
-             str(archive)], timeout=remaining())
-        restore_archive(archive, directory / 'artifacts', digest)
+        measured('transferSeconds', lambda: run(['scp', *options, '-P', port,
+            f'user@{host}:/home/user/candidate/artifacts.tar', str(archive)], timeout=remaining()))
+        measured('restoreSeconds', lambda: restore_archive(archive, directory / 'artifacts', digest, deadline=deadline))
         if time.monotonic() > deadline:
-            raise TimeoutError('Collection deadline exceeded')
-        receipt['transport'] = {'kind': 'tar', 'sha256': digest, 'bytes': archive.stat().st_size}
+            raise TimeoutError('Collection deadline exceeded (bounded by sandbox TTL)')
+        receipt['transport'] = {'kind': 'tar', 'compression': 'none',
+                                'sha256': digest, 'bytes': archive.stat().st_size}
     except Exception as error:
+        if ttl_deadline is not None and time.monotonic() >= ttl_deadline:
+            error = TimeoutError('Collection cannot finish before sandbox TTL expiry: ' + str(error))
         collection_error = error
         receipt['collectionError'] = str(error)
     receipt['collectionSeconds'] = round(time.monotonic() - started, 3)
@@ -314,8 +404,8 @@ def collect_artifacts(ssh, options, host, port, directory, receipt, build_error,
         raise collection_error
 
 
-def worker_name(commit, target):
-    return f'putgd-{commit[:12]}-{target}'
+def worker_name(commit, target, nonce=None):
+    return f'putgd-{commit[:12]}-{target}' + (f'-{nonce}' if nonce else '')
 
 
 def all_sandboxes():
@@ -326,14 +416,16 @@ def all_sandboxes():
 
 
 def cleanup_workers(name, sandbox_id=None, *, recovery_seconds=0, timeout=120):
-    """Recover an interrupted create by exact fixed name, then await actual absence."""
+    """Delete by exact ID, or by this run's unique nonce name; await absence."""
+    if name is None and sandbox_id is None:
+        raise ValueError('Cleanup requires an exact name or sandbox ID')
     deadline = time.monotonic() + timeout
     recovery_until = time.monotonic() + recovery_seconds
     requested = set()
     result = {'name': name, 'requests': [], 'verified': False}
     while True:
         listing = all_sandboxes()
-        owned = [item for item in listing if item.get('name') == name or item['id'] == sandbox_id]
+        owned = [item for item in listing if (name is not None and item.get('name') == name) or item['id'] == sandbox_id]
         for item in owned:
             if item['id'] not in requested:
                 deletion = boat('delete', item['id'], '--yes', cleanup=True)
@@ -344,9 +436,25 @@ def cleanup_workers(name, sandbox_id=None, *, recovery_seconds=0, timeout=120):
                           deletedIds=sorted(requested), verifiedAt=time.time())
             return result
         if time.monotonic() >= deadline:
-            raise RuntimeError('Worker deletion not complete: ' + name)
+            raise RuntimeError('Worker deletion not complete: ' + str(name or sandbox_id))
         # CANCEL is deliberately ignored here, including repeated terminal signals.
         time.sleep(2)
+
+
+def cleanup_orphans(commit, target):
+    """Sweep only dead local leases or TTL-expired workers; preserve live peers."""
+    prefix = worker_name(commit, target)
+    pattern = re.compile(re.escape(prefix) + r'(?:-([0-9a-f]{16}))?')
+    result = {'deleted': [], 'preserved': [], 'verified': True}
+    for item in all_sandboxes():
+        match = pattern.fullmatch(item.get('name') or '')
+        if not match:
+            continue
+        if orphaned(item, match[1]):
+            result['deleted'].append(cleanup_workers(None, item['id']))
+        else:
+            result['preserved'].append(item['id'])
+    return result
 
 
 def ci_differences(target):
@@ -359,7 +467,7 @@ def ci_differences(target):
     if target == 'appimage':
         common += [
             'Pinned native Ubuntu 24.04 container instead of mutable GitHub ubuntu-24.04 hosted VM; package inventory retained. Hosted preinstalled desktop links can differ (appimage-build.json rootDesktopEntry.removedLinks).',
-            'Run hosted_apt_mirrors.py and export QT_PLUGIN_PATH/QML2_IMPORT_PATH as install-qt-action does; provision locked Qt with aqtinstall 3.3.* / py7zr 1.1.0 in a fresh venv instead of the cached Action.',
+            'Run hosted_apt_mirrors.py and export QT_PLUGIN_PATH/QML2_IMPORT_PATH/PKG_CONFIG_PATH as install-qt-action does; provision locked Qt with aqtinstall 3.3.* / py7zr 1.1.0 in a fresh venv instead of the cached Action.',
             'Installer uses install-packages.sh defaults (4 attempts, 900s overall and 600s stall per attempt), rather than the AppImage CI dependency step environment (3 attempts, 300s overall, 120s stall). Installer labels default to distro/manager.',
         ]
     elif target == 'ui-catalog':
@@ -394,23 +502,27 @@ def build_worker(target, args, output, specification):
     directory.mkdir(mode=0o700)
     receipt = {'artifact': target, 'commit': args.commit, 'snapshot': 'putgd-build-base-v2',
                'placementReason': 'parallel candidate packaging; preserve quiet physical acceptance hosts',
-               'ciDifferences': ci_differences(target), 'name': worker_name(args.commit, target),
-               'type': args.type, 'ttlSeconds': args.ttl, 'state': 'pending'}
+               'ciDifferences': ci_differences(target), 'runNonce': args.run_nonce,
+               'name': worker_name(args.commit, target, args.run_nonce),
+               'type': args.type, 'ttlSeconds': args.ttl, 'state': 'pending',
+               'cleanupVerified': False}
     sandbox_id = None
     deadline = started + args.ttl - 180
     def remaining():
         return max(1, deadline - time.monotonic())
+    creation_started = None
     try:
-        receipt['startupCleanup'] = cleanup_workers(receipt['name'])
+        receipt['startupCleanup'] = cleanup_orphans(args.commit, target)
         if CANCEL.is_set():
             raise TimeoutError('Cancelled before worker creation')
         # Keep the first `created` event even if startup later fails or is interrupted.
         creation = directory / 'creation.jsonl'
+        creation_started = time.monotonic()
         try:
             with creation.open('w') as stream:
                 run(['boat', '--no-update', '--json', 'new', '--from', 'putgd-build-base-v2',
                      '--no-env', '--type', args.type, '--ttl', str(args.ttl), '--name',
-                     worker_name(args.commit, target)], log=stream)
+                     receipt['name']], log=stream, timeout=CREATE_TIMEOUT)
         finally:
             for line in creation.read_text().splitlines():
                 try:
@@ -497,7 +609,8 @@ sudo -n chown -R user:user /home/user/candidate/output
                 receipt['legacyScpStatus'] = 'failed'
                 receipt['legacyScpError'] = str(error)
             receipt['legacyScpSeconds'] = round(time.monotonic() - legacy_started, 3)
-        collect_artifacts(ssh, options, host, port, directory, receipt, build_error, timeout=remaining())
+        collect_artifacts(ssh, options, host, port, directory, receipt, build_error, timeout=remaining(),
+                          ttl_deadline=started + args.ttl)
         receipt['identity'] = verify_identity(directory / 'artifacts', args.commit, target)
         receipt['files'] = inventory(directory / 'artifacts')
         if receipt.get('legacyScpStatus') == 'passed':
@@ -510,8 +623,16 @@ sudo -n chown -R user:user /home/user/candidate/output
         receipt['state'] = 'failed'
     finally:
         try:
+            # An ID identifies the single create, so ordinary failures need no
+            # late-create wait. Without an ID, observe the original window plus
+            # at least a short grace after the CLI has stopped (including timeout).
+            recovery = 0
+            if creation_started is not None and sandbox_id is None:
+                recovery = max(LATE_CREATE_GRACE,
+                               creation_started + CREATE_TIMEOUT - time.monotonic())
             receipt['cleanup'] = cleanup_workers(receipt['name'], sandbox_id,
-                                                  recovery_seconds=10 if not sandbox_id else 0)
+                                                 recovery_seconds=recovery,
+                                                 timeout=recovery + 120)
             receipt['cleanupVerified'] = receipt['cleanup']['verified']
         except Exception as error:
             receipt['cleanupError'] = str(error)
@@ -534,11 +655,10 @@ def main(argv=None):
         output = prepare_output(args.output)
         results = []
         for target in TARGETS:
-            name = worker_name(args.cleanup, target)
             try:
-                results.append(cleanup_workers(name, recovery_seconds=2))
+                results.append(dict(target=target, **cleanup_orphans(args.cleanup, target)))
             except Exception as error:
-                results.append({'name': name, 'verified': False, 'error': str(error)})
+                results.append({'target': target, 'verified': False, 'error': str(error)})
             write_json(output / 'cleanup.json', results)
         return 0 if all(item['verified'] for item in results) else 1
     targets = args.artifact or list(TARGETS)
@@ -553,13 +673,15 @@ def main(argv=None):
     snapshots = boat('snapshots')['named']
     snapshot = next(item for item in snapshots if item['name'] == 'putgd-build-base-v2')
     output = prepare_output(args.output)
+    args.run_nonce = uuid.uuid4().hex[:16]
     started = time.monotonic()
     manifest = {'schemaVersion': 1, 'commit': args.commit, 'repository': REPOSITORY,
+                'runNonce': args.run_nonce,
                 'snapshot': {key: snapshot[key] for key in ('name', 'snapshotId', 'createdAt')},
                 'scope': 'candidate build rehearsal; no desktop or release acceptance',
                 'artifacts': []}
     write_json(output / 'manifest.json', manifest)
-    with ThreadPoolExecutor(max_workers=len(targets)) as executor:
+    with run_lease(args.run_nonce), ThreadPoolExecutor(max_workers=len(targets)) as executor:
         futures = [executor.submit(build_worker, target, args, output, specifications[target])
                    for target in targets]
         for future in as_completed(futures):

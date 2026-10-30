@@ -1,0 +1,7 @@
+test_fake_cli_same_sha_live_runs_never_delete_each_others_workers (contracts.CandidateContracts.test_fake_cli_same_sha_live_runs_never_delete_each_others_workers) ... ok
+test_fake_cli_interrupted_create_without_id_recovers_late_worker (contracts.CandidateContracts.test_fake_cli_interrupted_create_without_id_recovers_late_worker) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.170s
+
+OK
