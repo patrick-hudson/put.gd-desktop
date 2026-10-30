@@ -546,19 +546,27 @@ asyncio.run(main())
         # Restrict the summary/body witness to this notification server's tree.
         import glob
         name = self.profile.get('notifications',{}).get('title_name_glob','{summary}').replace('{summary}',glob.escape(notice['summary']))
-        titles = self.accessible({**policy, 'name':name, 'visible':True, 'showing':True})
-        titles = [n for n in titles if n.get('rect') and min(n['rect'][2:])>0]
-        exact = [n for n in titles if n['name']==notice['summary']]
-        if exact:
-            titles = exact
+        def drawn():
+            titles = self.accessible({**policy, 'name':name, 'visible':True, 'showing':True})
+            titles = [n for n in titles if n.get('rect') and min(n['rect'][2:])>0]
+            exact = [n for n in titles if n['name']==notice['summary']]
+            return exact or titles
+        # The server draws the banner shortly after its Notify reply. Wait for
+        # it briefly; Cinnamon's default banner lasts 4 s and only fades on hover.
+        titles = []
+        deadline = time.monotonic()+float(self.profile.get('notifications',{}).get('draw_seconds',3))
+        while True:
+            titles = drawn()
+            if len(titles) == 1 or time.monotonic() > deadline:
+                break
+            time.sleep(.1)
         if len(titles) != 1:
             raise RecipeBlocked('notification is not uniquely drawn in the desktop accessibility tree')
         title = titles[0]
-        # Shell banners expire within seconds and pause while hovered; St
-        # buttons also arm only after the pointer has entered them. Hover the
+        # St buttons arm only after the pointer has entered them: hover the
         # drawn title at once, then click without another tree walk.
         self._accessible_pointer(None, None, node=title)
-        time.sleep(.15)
+        time.sleep(.05)
         if action == 'default':
             target = title
         else:
