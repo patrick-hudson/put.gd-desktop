@@ -117,7 +117,10 @@ class Workflows(unittest.TestCase):
         contracts = job(workflow('ci.yml'), 'contracts')
         for group in ('release', 'proton', 'lab', 'observer', 'evidence'):
             self.assertIn('python3 tools/ci/contracts.py ' + group, contracts)
-        self.assertEqual(contracts.count('if: always()'), 7)
+        self.assertEqual(contracts.count('if: always()'), 8)
+        self.assertIn('python3-pil python3-pytest', contracts)
+        self.assertIn('python3 -m pytest -v tests/desktop/test_surface*.py', contracts)
+        self.assertIn('--junitxml=build/contracts/surface-tests.xml', contracts)
         self.assertIn('sha256sum --check --strict', contracts)
         self.assertIn('qemu-utils', contracts)
 
