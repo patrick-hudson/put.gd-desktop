@@ -282,7 +282,13 @@ timeout. A missing log or disconnected guest does not replace the original error
 Staging runs under a detached, unprivileged guest subreaper in a new Linux
 session (`setsid`), in that job's private `~/putgd-lab/install-<id>` directory.
 `staging-process.json` records the session ID, session leader PID and `/proc`
-start ticks before any privileged work. `staging-result.json` is
+start ticks before any privileged work. When cgroup v2 and the systemd user
+manager are reachable, the launcher first enters a dedicated transient
+`systemd-run --user --scope --property=Delegate=yes` unit named
+`putgd-staging-install-<id>.scope`. The identity then also records
+`tracking: "cgroup-v2"`, its cgroup path/device/inode, the cgroup mount identity
+and boot ID. It never uses the SSH connection's `session-N.scope`, whose sshd
+processes could outlive the controller. `staging-result.json` is
 written only after the staging shell and all its descendants have exited. A
 lost SSH reply, timeout, or Ctrl-C therefore does not establish completion.
 Failed staging reconciles the same job for up to 30 seconds, independently of
@@ -324,6 +330,11 @@ way. The command then authenticates the owned running overlay, rejects a changed
 lock token and any package-supervisor progress/result, and repeats the bounded
 guest lifetime check before releasing that token.
 
+The root package supervisor is launched through the same user-scope mechanism,
+in a separate `putgd-supervisor-install-<id>.scope`. Its wrapper records
+`supervisor-process.json` before sudo; the root helper verifies that sudo kept
+it in that exact scope before admission. It never migrates a root process into
+a caller-selected cgroup. The normal install evidence includes that identity.
 The root package supervisor also admits itself under `install-guard`. It
 becomes a subreaper first, then starts only while its own job holds
 `install-active`, and writes `progress.json` before releasing the guard. A
@@ -346,6 +357,15 @@ recovery after a recorded start, and every `--abandoned` recovery. The scan
 enumerates `/proc/<pid>/stat` session IDs (field 6), including root-owned
 staging descendants. An empty session must be empty on two consecutive passes,
 because a member that forks and exits during a single pass can be missed.
+For cgroup-tracked jobs these checks are additional guards: recovery also
+requires the recorded cgroup's `cgroup.events` to report `populated 0`. This
+kernel flag is atomic and includes processes in delegated child cgroups,
+including descendants that called `setsid()`. Reading `cgroup.procs` is not an
+emptiness test. If systemd has already removed the empty scope, recovery may
+instead prove its directory gone on the same boot and cgroup mount, together
+with all the original identity/session checks. A missing or unreadable
+`cgroup.events` in an existing directory, a replaced cgroup inode, changed
+boot/mount, invalid metadata or any uncertain inspection retains the lock.
 Missing identity for `--abandoned`, unreadable process information or
 incomplete enumeration (including restricted procfs mounts) refuses recovery.
 
@@ -375,29 +395,35 @@ python3 tools/lab/lab.py recover-staging --run "$lab_run" \
 `--abandoned` requires every recovery guard above, an unheld guest
 `staging.lock` flock, a valid recorded session leader PID that is dead or has
 different `/proc` start ticks, and a complete scan proving no live process has
-the recorded session ID. Killing the wrapper can free its flock while privileged
+the recorded session ID. Cgroup-tracked jobs additionally require atomic
+cgroup emptiness or the authenticated gone-scope proof above. Killing the wrapper can free its flock while privileged
 children still run. Children that remain in the staging session keep recovery
 blocked until they exit. Zombie or exited processes do not count as live.
 
-The session scan has two limits. First, a live wrapper waits, as subreaper, for every
-descendant. That includes descendants that called `setsid()`, which keeps
-ordinary recovery blocked. After the wrapper is killed, though, a descendant
-that left the session with `setsid()` is not visible to the scan. `--abandoned`
-can then release `install-active` while it runs. The in-tree staging commands
-start no such process: the hook runs only `install`, `sha256sum`, `printf`,
-`chmod` and `visudo`, `apt-get update` with empty sources runs no dpkg, and
-sudo's `use_pty` has no effect without a terminal. The remaining risk is a
-guest's own APT Pre-Invoke hook daemonizing. Second, the `/proc` scan is not
-atomic. Two consecutive empty passes make a miss unlikely, but a member that
-keeps forking and exiting could evade both. Proving the session empty would
-mean freezing it. Recovery never signals, and a cgroup is not available yet.
-The `staging-abandoned` report states both limits in its `limit` field. If the
-guest's hooks can daemonize, inspect its process list before retrying.
-Cgroup-based tracking, whose `cgroup.events` `populated` flag is atomic, is
-[#780](https://github.com/patrick-hudson/put.gd-desktop/issues/780).
+The launcher probes cgroup v2 at `/sys/fs/cgroup` and the user manager over
+noninteractive SSH before starting work. It explicitly selects
+`/run/user/<uid>` and its user bus. A desktop login or pam_systemd may provide
+them; lingering is not assumed or enabled. If either prerequisite is
+unavailable, the job retains the existing session scan and records
+`tracking: "session"` with a `fallbackReason`. A scope-creation or scope-entry
+failure after selection fails the launch; it never retries the command outside
+the scope. Mint 22.3 and Ubuntu 26.04 guest regressions cover the actual sudo
+APT hook and root supervisor, including SSH with lingering disabled. Other
+guest profiles use the same runtime checks; Aurora/rpm-ostree's AppImage route
+does not run the APT staging/supervisor path.
+
+**Only session-tracked jobs retain the following limits.** A live wrapper waits,
+as subreaper, for every descendant, including ones that called `setsid()`.
+After the wrapper is killed, a descendant that left the session with `setsid()`
+is invisible to the scan. The `/proc` scan is also not atomic: a process that
+keeps forking and exiting could evade both passes. The in-tree staging hook
+starts no such daemon, but a guest's own APT Pre-Invoke hook could. Session-only
+reports retain both warnings in `limit`; inspect the guest process list when
+its hooks can daemonize. Cgroup-tracked reports have no session-scan `limit`.
+Recovery never signals or freezes processes.
 
 A held flock, live matching leader,
-live session member, malformed identity or uncertain inspection retains
+live session member, populated cgroup, malformed identity or uncertain inspection retains
 `install-active`; so does a missing identity under `--abandoned`. Recovery
 writes `staging-recovery.json` only after the guarded release succeeds. Older receipts without a session ID cannot prove abandonment;
 preserve the run for investigation.
@@ -411,11 +437,14 @@ report and the error. Other inspection failures remain unknown and cannot
 authorize abandonment. The command never signals a process. It fences delayed starts,
 records a `staging-abandoned` report in the host's `staging-recovery.json`, and
 clears only the matching install token. The missing terminal receipt remains
-missing; recovery proves session quiescence rather than a successful helper
+missing; recovery proves process quiescence rather than a successful helper
 installation. These rules apply only to disposable overlays; immutable goldens
 and the separate package supervisor's recovery remain unchanged.
 See the [Cinnamon cancellation proof](evidence/2026-10-30-lab-staging-748/README.md)
-for the exact identities, refused retries, later successful install and cleanup.
+for the earlier exact identities, refused retries, later successful install and cleanup.
+The [cgroup recovery regression](evidence/2026-10-30-staging-cgroup-780/README.md)
+records the #780 guest identities, setsid/SIGKILL proof, fallback unit cases and
+resource retirement.
 
 This uses authority already granted to apt in the disposable guest. It never
 changes the host, golden, bootstrap key or `authorized_keys`, and needs no guest
