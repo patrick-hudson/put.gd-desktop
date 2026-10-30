@@ -596,6 +596,18 @@ class Fixtures(unittest.TestCase):
         self.ctx.manager.close()
         self.ctx.profile['dialogs']={'backends':{'fallback':{'environment':{'DBUS_SESSION_BUS_ADDRESS':'foreign'}}}}
         with self.assertRaises(RecipeBlocked):self.ctx.fixture('file-dialog-fallback')
+
+    def test_dialog_fixture_prepares_and_retires_diagnostics_start_folder(self):
+        baseline=copy.deepcopy(self.ctx.document)
+        self.ctx.fixture('file-dialog-fallback')
+        folder=Path(self.ctx.document['archive']['root'])/'diagnostics'
+        self.assertTrue(folder.is_dir(), 'Nautilus must open the chooser without a missing-folder alert')
+        self.assertTrue(folder.is_relative_to(self.root))
+        self.assertEqual(folder.stat().st_mode & 0o777,0o700)
+        self.assertEqual(list(folder.iterdir()),[])
+        self.assertEqual(self.ctx.manager.close(),[])
+        self.assertFalse(folder.exists())
+        self.assertEqual(self.ctx.document,baseline)
     def test_notification_is_published_lazily_after_needs(self):
         calls=[]
         with patch.object(notifications,'upload',lambda scope:calls.append('publish') or Fixture(link='http://127.0.0.1/synthetic',name='synthetic.png')):
