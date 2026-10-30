@@ -845,9 +845,7 @@ asyncio.run(main())
         if len(titles) != 1:
             raise RecipeBlocked('notification is not uniquely drawn in the desktop accessibility tree')
         title = titles[0]
-        # St buttons arm only after the pointer has entered them: hover the
-        # drawn title at once, let the shell process the enter (0.05 s was
-        # too short on Cinnamon), then click without another tree walk.
+        # Enter the banner promptly so it stays drawn and can expand.
         self._accessible_pointer(None, None, node=title)
         time.sleep(.25)
         def stable_target(resolve):
@@ -889,6 +887,12 @@ asyncio.run(main())
                         return inside[0]
                 return None
             # GNOME Shell reveals a banner's buttons only once it expands on hover.
+            target = stable_target(button)
+            # Cinnamon's St.Button emits clicked only while its own hover
+            # state is set. Moving from the title in the press packet can
+            # deliver press/release before it processes the enter event.
+            self._accessible_pointer(None, None, node=target)
+            time.sleep(.25)
             target = stable_target(button)
         # Do not click a replacement/closed generation, or count an action
         # another client already invoked before our native input.

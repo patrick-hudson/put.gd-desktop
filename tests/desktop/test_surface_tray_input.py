@@ -118,6 +118,34 @@ class ShellActorPick(unittest.TestCase):
 
 
 class NotificationTarget(unittest.TestCase):
+    def test_named_action_is_hovered_and_rechecked_before_its_press(self):
+        with patch('tools.lab.surface_driver.context.require_host_ocr'):
+            ctx, directory = context({'session': 'x11', 'notifications': {
+                'accessible': {'application': 'cinnamon*'}}})
+        self.addCleanup(directory.cleanup)
+        notice = {'id': 5, 'at': 1, 'sender': ':1.2', 'server': ':1.3', 'summary': 'Saved',
+                  'actions': ['open', 'Open'], 'closed': None, 'action_events': []}
+        ctx.notifications = lambda: [notice]
+        hovered, reads = [], []
+        def accessible(query):
+            reads.append(query['name'])
+            return [{'pid': 70, 'application': 'cinnamon', 'name': query['name'],
+                     'role': 'label' if query['name'] == 'Saved' else 'push button',
+                     'rect': [100, 20 if query['name'] == 'Saved' else 100, 100, 20],
+                     'ancestors': [{'role': 'notification', 'rect': [80, 10, 300, 200]}]}]
+        ctx.accessible = accessible
+        def pointer(query, button, node=None):
+            if button is None:
+                hovered.append((node['name'], len(reads)))
+            else:
+                self.assertEqual(hovered[-1][0], 'Open', 'St action must process its own pointer enter before a press')
+                self.assertGreater(len(reads), hovered[-1][1], 'resolve fresh bounds after entering the action')
+                notice['action_events'] = [{'action': 'open'}]
+        ctx._accessible_pointer = pointer
+        ctx.wait = lambda callback, *a, **k: self.assertTrue(callback())
+        with patch('tools.lab.surface_driver.context.time.sleep'):
+            ctx.notification_action(5, 'open')
+
     def test_hover_layout_change_requires_a_fresh_stable_action_rectangle(self):
         with patch('tools.lab.surface_driver.context.require_host_ocr'):
             ctx, directory = context({'session': 'x11', 'notifications': {
